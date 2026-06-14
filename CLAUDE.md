@@ -1,6 +1,6 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-`specs/004-rendering-harness/plan.md` (active feature: Build the Rendering Test
-Harness — migration Stage R5).
+`specs/005-ci-cadence-wiring/plan.md` (active feature: Wire Validation into CI at
+Chosen Cadences — migration Stage R6).
 <!-- SPECKIT END -->

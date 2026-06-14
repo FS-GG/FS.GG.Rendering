@@ -1,0 +1,186 @@
+name: "Harness evidence"
+description: >-
+  Run a Rendering.Harness subcommand and decide pass/skip/fail from EACH emitted run.json.status
+  (per tier), never from the aggregate process exit code. Renders the per-run proof-scope summary
+  (proved / notProvedHere / failed / overall) to the job summary and uploads the harness artifacts.
+  See specs/005-ci-cadence-wiring/contracts/{gate-contract,run-summary.schema}.md.
+
+inputs:
+  subcommand:
+    description: "Harness subcommand: probe | offscreen | live-x11 | perf."
+    required: true
+  args:
+    description: "Extra args appended to the subcommand (e.g. '--mode paced-native')."
+    required: false
+    default: ""
+  required-tiers:
+    description: >-
+      Space/comma-separated tier tokens (e.g. 'T0') whose run.json.status:"failed" MUST fail the
+      job. Tiers not listed are advisory: a failed/skipped advisory tier never fails the job.
+      Empty (default) = fully advisory. A capability being ABSENT yields status:"skipped" and never
+      fails, regardless of this input (gate-contract "What can NEVER fail the gate").
+    required: false
+    default: ""
+  cadence:
+    description: "gate | release | capability — labels the proof-scope summary; only 'gate' renders a pass/fail overall."
+    required: false
+    default: "gate"
+  label:
+    description: "Human label for this check in the summary. Defaults to the subcommand."
+    required: false
+    default: ""
+  out:
+    description: "Output directory for harness evidence. Defaults to artifacts/harness/<subcommand>."
+    required: false
+    default: ""
+  artifact-name:
+    description: "Name of the uploaded artifact bundle. Defaults to harness-<subcommand>."
+    required: false
+    default: ""
+
+outputs:
+  gl:
+    description: "'present' | 'absent' — hardware GL per the run's probe facts (run.json env.gl.renderer)."
+    value: ${{ steps.render.outputs.gl }}
+  display:
+    description: "'present' | 'absent' — display per the run's probe facts (run.json env.display)."
+    value: ${{ steps.render.outputs.display }}
+  failed:
+    description: "'true' | 'false' — a required tier reported status:failed, or the process misconfigured (exit 2)."
+    value: ${{ steps.render.outputs.failed }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Resolve paths
+      id: paths
+      shell: bash
+      run: |
+        set -euo pipefail
+        sub='${{ inputs.subcommand }}'
+        out='${{ inputs.out }}';            [ -z "$out" ] && out="artifacts/harness/${sub}"
+        name='${{ inputs.artifact-name }}'; [ -z "$name" ] && name="harness-${sub}"
+        label='${{ inputs.label }}';        [ -z "$label" ] && label="$sub"
+        {
+          echo "out=$out"
+          echo "name=$name"
+          echo "label=$label"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Run harness subcommand
+      id: harness
+      shell: bash
+      run: |
+        # Capture the exit code WITHOUT failing the step: the gate signal is each tier's
+        # run.json.status, not this process exit code. `offscreen` returns 1 whenever T1 is cleanly
+        # skipped (Cli.fs runOffscreen requires BOTH tiers Passed for exit 0), which must not red
+        # the gate. Only exit 2 (bad usage) is treated as a hard misconfiguration below.
+        set +e
+        out='${{ steps.paths.outputs.out }}'
+        mkdir -p "$out"
+        echo "::group::harness ${{ inputs.subcommand }} ${{ inputs.args }}"
+        dotnet run --project tests/Rendering.Harness/Rendering.Harness.fsproj -- \
+          ${{ inputs.subcommand }} ${{ inputs.args }} --out "$out"
+        code=$?
+        echo "::endgroup::"
+        echo "harness process exit code: $code"
+        echo "code=$code" >> "$GITHUB_OUTPUT"
+
+    - name: Render proof-scope summary
+      id: render
+      shell: bash
+      run: |
+        set -euo pipefail
+        out='${{ steps.paths.outputs.out }}'
+        label='${{ steps.paths.outputs.label }}'
+        cadence='${{ inputs.cadence }}'
+        code='${{ steps.harness.outputs.code }}'
+        required='${{ inputs.required-tiers }}'
+        required="${required//,/ }"
+        summary="${GITHUB_STEP_SUMMARY:-/dev/stdout}"
+
+        failed=false
+        gl=absent
+        display=absent
+
+        {
+          echo "### Proof scope — ${label} (cadence: ${cadence})"
+          echo ""
+        } >> "$summary"
+
+        # Exit 2 = bad usage = misconfiguration: fail fast, distinct from a clean capability skip.
+        if [ "$code" = "2" ]; then
+          failed=true
+          { echo "**failed (misconfiguration):** harness reported bad usage (process exit 2) — fail-fast, not a skip."; echo ""; } >> "$summary"
+        fi
+
+        # One run.json per tier: single-tier subcommands write \$out/run.json; multi-tier (offscreen
+        # -> T0+T1) write \$out/<tier>/run.json. Decide per tier from .status, never from \$code.
+        mapfile -t runs < <(find "$out" -name run.json | sort)
+        if [ "${#runs[@]}" -eq 0 ] && [ "$code" != "2" ]; then
+          failed=true
+          { echo "**failed:** subcommand produced no run.json (process exit ${code})."; echo ""; } >> "$summary"
+        fi
+
+        proved=(); notproved=(); failedlist=()
+        for rj in "${runs[@]:-}"; do
+          [ -z "$rj" ] && continue
+          tier=$(jq -r '.tier' "$rj")
+          status=$(jq -r '.status' "$rj")
+          proof=$(jq -r '.proofLevel' "$rj")
+          authfor=$(jq -r '(.authoritativeFor // []) | join(", ")' "$rj")
+          notauth=$(jq -r '(.notAuthoritativeFor // []) | join(", ")' "$rj")
+          reason=$(jq -r '.skipReason // "no rationale recorded"' "$rj")
+          disp=$(jq -r '.env.display // "null"' "$rj")
+          glr=$(jq -r '.env.gl.renderer // "null"' "$rj")
+          [ "$disp" != "null" ] && display=present
+          [ "$glr" != "null" ] && gl=present
+          case "$status" in
+            passed)  proved+=("${tier} (${proof}) — authoritative for: ${authfor}") ;;
+            skipped) notproved+=("${tier} — rationale: \"${reason}\"; not authoritative for: ${notauth}") ;;
+            failed)
+              failedlist+=("${tier} (${proof})")
+              for t in $required; do [ "$t" = "$tier" ] && failed=true; done
+              ;;
+            *) failedlist+=("${tier} (unknown status: ${status})"); failed=true ;;
+          esac
+        done
+
+        emit_list() { # $1 = header, rest = items (empty-string placeholders from "${arr[@]:-}" are skipped)
+          local header="$1"; shift
+          echo "**${header}:**" >> "$summary"
+          local any=false item
+          for item in "$@"; do
+            [ -z "$item" ] && continue
+            printf -- '- %s\n' "$item" >> "$summary"
+            any=true
+          done
+          [ "$any" = false ] && echo "- (none)" >> "$summary"
+          echo "" >> "$summary"
+        }
+        emit_list "proved" "${proved[@]:-}"
+        emit_list "notProvedHere" "${notproved[@]:-}"
+        emit_list "failed" "${failedlist[@]:-}"
+        { echo "runnerCapability: { display: ${display}, gl: ${gl} }"; echo ""; } >> "$summary"
+
+        if [ "$cadence" = "gate" ]; then
+          [ "$failed" = "true" ] && overall="fail" || overall="pass"
+        else
+          overall="evidence-only"
+        fi
+        { echo "**overall (${label}): ${overall}**"; echo ""; } >> "$summary"
+
+        { echo "gl=$gl"; echo "display=$display"; echo "failed=$failed"; } >> "$GITHUB_OUTPUT"
+
+        if [ "$failed" = "true" ]; then
+          echo "::error::${label}: a required tier reported status:failed (or misconfiguration). See proof-scope summary."
+          exit 1
+        fi
+
+    - name: Upload harness evidence
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.paths.outputs.name }}
+        path: ${{ steps.paths.outputs.out }}
+        if-no-files-found: warn

@@ -1,0 +1,69 @@
+name: capability
+
+# Capability cadence. Runs the display/GL/input-dependent harness tiers that the headless gate
+# cannot prove: T2 (live X11), T3 (faithful perf), T-uinput (kernel input). Scheduled + manual only.
+# NEVER a required check; its failure or ABSENCE never blocks a merge (FR-007, FR-011).
+# Until a display/GL/uinput-capable runner is provisioned (out of scope), these degrade-and-disclose
+# exactly like any capability-absent run — the wiring is correct and inert, live the moment a capable
+# runner exists. Cadence contract: specs/005-ci-cadence-wiring/contracts/cadence-matrix.md.
+on:
+  schedule:
+    # Weekly, Mondays 06:00 UTC — opt-in cadence, never on the push path.
+    - cron: '0 6 * * 1'
+  workflow_dispatch: {}
+
+concurrency:
+  group: capability-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  capability-tiers:
+    name: Capability tiers (advisory, evidence-only)
+    runs-on: ubuntu-latest # TODO: swap to a display/GL/uinput-capable runner label once provisioned.
+    # Restrict to the canonical repo: fork schedules/dispatch never run this.
+    if: github.repository == 'FS-GG/FS.GG.Rendering'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # Each tier is advisory: required-tiers is empty and the step is continue-on-error, so a missing
+      # capability (skip), a not-yet-capable runner, or the still-pending `input` backend can never
+      # turn this non-required workflow into a blocking red. The proof-scope summary discloses, per
+      # tier, exactly what was proved and what was not proved here.
+
+      - name: Harness live X11 (T2)
+        continue-on-error: true
+        uses: ./.github/actions/harness-evidence
+        with:
+          subcommand: live-x11
+          cadence: capability
+          label: harness live-x11 (T2)
+          out: artifacts/harness/live-x11
+          artifact-name: harness-live-x11
+
+      - name: Harness faithful perf (T3)
+        continue-on-error: true
+        uses: ./.github/actions/harness-evidence
+        with:
+          subcommand: perf
+          args: --mode paced-native
+          cadence: capability
+          label: harness perf (T3, paced-native)
+          out: artifacts/harness/perf
+          artifact-name: harness-perf
+
+      - name: Harness kernel input (T-uinput)
+        continue-on-error: true
+        uses: ./.github/actions/harness-evidence
+        with:
+          subcommand: input
+          args: --backend uinput
+          cadence: capability
+          label: harness input (T-uinput)
+          out: artifacts/harness/input
+          artifact-name: harness-input
