@@ -10,6 +10,7 @@
     <Compile Include="Tests.fs" />
     <Compile Include="YogaFallbackDiagnosticsTests.fs" />
     <Compile Include="Feature097IncrementalTests.fs" />
+    <Compile Include="Audit_IncrementalLayout.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
