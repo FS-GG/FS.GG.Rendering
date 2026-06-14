@@ -29,6 +29,26 @@ dotnet build FS.GG.Rendering.slnx -c Release    # all runtime libs + local tests
 DISPLAY=:1 dotnet test FS.GG.Rendering.slnx -c Release   # default local tier (GL via X11)
 ```
 
+### Rendering test harness (Stage R5, in progress)
+
+`tests/Rendering.Harness/` is a tiered evidence CLI — a **capability, not a gate**. Every run
+emits a `run.json`/`metrics.csv`/`summary.md` that declares **what it proves and what it does
+not** (no overclaim), and tiers degrade cleanly when a capability is missing.
+
+```sh
+dotnet run --project tests/Rendering.Harness -- probe         # env facts (display/GL/refresh/backend)
+dotnet run --project tests/Rendering.Harness -- offscreen     # T0 deterministic + T1 offscreen readback (headless)
+dotnet run --project tests/Rendering.Harness -- perf --mode throughput --frames 100   # T3 offscreen render throughput
+```
+
+Working today (headless, CI-tested): **probe**, **T0/T1 offscreen**, **T3 offscreen
+render-throughput** (real per-frame timing, honestly **not** vsync-faithful). The pure
+overclaim/degradation core is unit-tested in `tests/Rendering.Harness.Tests`. Live tiers
+(**T2** X11 window + input, **faithful vsync perf**, **T-uinput**) and the input backends are
+pending — they need a live desktop session / kernel `uinput` not available in CI; the CLI
+reports those subcommands as pending rather than faking a pass. See
+[`docs/harness/capability-baseline.md`](docs/harness/capability-baseline.md).
+
 ## Project layout (FS-GG org)
 
 | Repo | Role |

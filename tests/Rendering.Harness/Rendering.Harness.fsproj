@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Domain.fs" />
+    <Compile Include="RunPlan.fsi" />
+    <Compile Include="RunPlan.fs" />
+    <Compile Include="Evidence.fsi" />
+    <Compile Include="Evidence.fs" />
+    <Compile Include="Probe.fsi" />
+    <Compile Include="Probe.fs" />
+    <Compile Include="Tiers.fsi" />
+    <Compile Include="Tiers.fs" />
+    <Compile Include="Perf.fsi" />
+    <Compile Include="Perf.fs" />
+    <Compile Include="X11.fsi" />
+    <Compile Include="X11.fs" />
+    <Compile Include="Live.fsi" />
+    <Compile Include="Live.fs" />
+    <Compile Include="Cli.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\SkiaViewer\SkiaViewer.fsproj" />
+    <ProjectReference Include="..\..\src\Controls.Elmish\Controls.Elmish.fsproj" />
+    <ProjectReference Include="..\..\src\Testing\Testing.fsproj" />
+    <ProjectReference Include="..\..\src\Scene\Scene.fsproj" />
+    <ProjectReference Include="..\..\src\Controls\Controls.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="Silk.NET.GLFW" />
+    <PackageReference Include="Silk.NET.Windowing" />
+    <PackageReference Include="Silk.NET.Windowing.Glfw" />
+    <PackageReference Include="Silk.NET.OpenGL" />
+  </ItemGroup>
+
+</Project>

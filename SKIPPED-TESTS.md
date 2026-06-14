@@ -20,6 +20,14 @@ feature (not golden-dependent) remain **active and passing**.
 **Un-skip when**: the R5 harness lands with its committed perf goldens and a deterministic
 perf-capture path.
 
+**R5 status (2026-06-14)**: the harness T3 perf tier now provides a **headless offscreen
+render-throughput** mode (`harness perf --mode throughput`) with real per-frame timing +
+percentiles, honestly scoped (`offscreen-render-throughput`, **not** vsync-faithful). The
+**faithful vsync/present-timing** perf path these Feature109 tests want still depends on the
+live present loop (blocked headlessly in this container — see
+`docs/harness/capability-baseline.md`), so they remain `ptest`/`ptestList` until that tier
+lands.
+
 ## 2. FSI transcript fixture → excluded old-repo artifact — 1
 
 - `tests/Controls.Tests/TypedControlContractTests.fs` — "FSI transcript expectations …"

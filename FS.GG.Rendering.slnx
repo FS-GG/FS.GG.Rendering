@@ -19,6 +19,8 @@
     <Project Path="tests/KeyboardInput.Tests/KeyboardInput.Tests.fsproj" />
     <Project Path="tests/Layout.Tests/Layout.Tests.fsproj" />
     <Project Path="tests/Lib.Tests/Lib.Tests.fsproj" />
+    <Project Path="tests/Rendering.Harness.Tests/Rendering.Harness.Tests.fsproj" />
+    <Project Path="tests/Rendering.Harness/Rendering.Harness.fsproj" />
     <Project Path="tests/Scene.Tests/Scene.Tests.fsproj" />
     <Project Path="tests/SkiaViewer.Tests/SkiaViewer.Tests.fsproj" />
     <Project Path="tests/Smoke.Tests/Smoke.Tests.fsproj" />
