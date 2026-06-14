@@ -1,0 +1,60 @@
+name: release
+
+# Release-only cadence. Runs the packaging/consumption checks that are too heavy for the push gate
+# and only meaningful at a release: Package.Tests and the generated-product tests from the template.
+# This workflow is NEVER a required check and NEVER runs on push/PR (FR-008, SC-007).
+# Cadence contract: specs/005-ci-cadence-wiring/contracts/cadence-matrix.md (release row).
+on:
+  release:
+    types: [published]
+  push:
+    tags: ['v*']
+  workflow_dispatch: {}
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  package-tests:
+    name: Package consumption (release-only)
+    runs-on: ubuntu-latest
+    # Restrict to the canonical repo: fork tags/dispatch never run this (no fork secret exposure, FR-013).
+    if: github.repository == 'FS-GG/FS.GG.Rendering'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      # Package.Tests is an exe test project outside the slnx; restore+build it directly.
+      - name: Run Package.Tests
+        run: dotnet test tests/Package.Tests/Package.Tests.fsproj -c Release
+
+  template-product-tests:
+    name: Generated product (template instantiation, release-only)
+    runs-on: ubuntu-latest
+    if: github.repository == 'FS-GG/FS.GG.Rendering'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      # Exercise the real consumer path: install the in-repo `dotnet new` template, instantiate a
+      # product, and run THAT generated product's tests (template/base/tests/Product.Tests becomes
+      # the generated product's tests). This is gated on the instantiation tooling actually working
+      # — a broken template or generated app fails here, which is exactly what this release-only
+      # check exists to catch. We do NOT reference a top-level tests/Product.Tests (it does not exist).
+      - name: Install template + instantiate generated product
+        run: |
+          set -euo pipefail
+          dotnet new install .
+          work="$(mktemp -d)"
+          dotnet new fs-skia-ui --name GeneratedProduct --output "$work/GeneratedProduct"
+          echo "PRODUCT_DIR=$work/GeneratedProduct" >> "$GITHUB_ENV"
+      - name: Test generated product
+        run: |
+          set -euo pipefail
+          dotnet test "$PRODUCT_DIR" -c Release

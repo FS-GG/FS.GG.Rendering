@@ -1,0 +1,146 @@
+name: gate
+
+# The required pre-merge gate. Fast, deterministic, runs on every change. Branch protection
+# requires THIS workflow and only this one (see docs/ci/cadence-map.md §5).
+# Contracts: specs/005-ci-cadence-wiring/contracts/{gate-contract,run-summary.schema}.md
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Superseded pushes/PRs cancel in-flight runs so a stale red/green never misleads (Edge Case:
+# concurrent pushes). PR runs key off the PR ref; branch pushes off the branch ref.
+concurrency:
+  group: gate-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+# No privileged secrets are used, so fork PRs run and get a real signal (FR-001, FR-013).
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    name: Deterministic gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # SDK pinning decision: docs/ci/cadence-map.md §1 (no global.json in repo).
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # T007 (FR-002) — a build failure MUST fail the gate. Debug so test/harness steps reuse it
+      # with --no-build. The slnx contains src + all local-tier tests + the harness; it does NOT
+      # contain Package.Tests (release-only), so no release check can leak into the gate.
+      - name: Build solution (net10.0)
+        run: dotnet build FS.GG.Rendering.slnx -c Debug
+
+      # T013 (US2, FR-005/FR-010) — classify the runner (display? GL?) up front; the GL-dependent
+      # steps key off this output rather than guessing. Informational: probe never gates.
+      - name: Probe runner capability
+        id: probe
+        uses: ./.github/actions/harness-evidence
+        with:
+          subcommand: probe
+          cadence: gate
+          label: probe (runner capability)
+          out: artifacts/harness/probe
+          artifact-name: harness-probe
+          # required-tiers intentionally empty: probe is informational, never gates.
+
+      # T008 (FR-002/FR-003) — the default local deterministic tier (capability `none`). Any
+      # failure MUST fail the gate. --no-build reuses the Debug build above.
+      - name: Default local tier (deterministic)
+        run: |
+          set -euo pipefail
+          for p in Color Scene Layout Input KeyboardInput Elmish Controls Testing Lib; do
+            echo "::group::dotnet test tests/${p}.Tests"
+            dotnet test "tests/${p}.Tests/${p}.Tests.fsproj" -c Debug --no-build
+            echo "::endgroup::"
+          done
+
+      # T009 (FR-003) — public .fsi surface-drift across all 9 committed baselines. Regenerate in
+      # place and fail on ANY uncommitted change: a modified baseline = surface drift; an untracked
+      # new baseline = a package gained a surface with no committed baseline (the spec's
+      # "first run with no baseline" edge — fails, never silently passes). The generator writes
+      # directly to tests/surface-baselines/, so this is the canonical regenerate-then-git-diff check.
+      - name: Surface-baseline drift (.fsi)
+        run: |
+          set -euo pipefail
+          dotnet fsi scripts/refresh-surface-baselines.fsx
+          if ! git diff --quiet -- tests/surface-baselines; then
+            echo "::error::public .fsi surface drift — run scripts/refresh-surface-baselines.fsx and commit the updated baselines."
+            git --no-pager diff -- tests/surface-baselines
+            exit 1
+          fi
+          untracked="$(git ls-files --others --exclude-standard -- tests/surface-baselines)"
+          if [ -n "$untracked" ]; then
+            echo "::error::new public surface baseline(s) not committed (first-run-with-no-baseline fails the gate):"
+            echo "$untracked"
+            exit 1
+          fi
+          echo "no .fsi surface drift across $(ls tests/surface-baselines/*.txt | wc -l) committed baselines"
+
+      # T010 (FR-003) — fsdocs site build in STRICT mode so FsDocsWarnOnMissingDocs (Directory.Build.props)
+      # is fatal: a broken docs build OR a missing-doc stub fails the gate. Build only, no publish.
+      - name: Docs build (fsdocs, strict)
+        run: |
+          set -euo pipefail
+          dotnet tool install --global fsdocs-tool
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          dotnet fsdocs build --strict
+
+      # T011 (FR-004) + T015 (FR-005/FR-011) — ONE offscreen invocation emits T0/run.json and
+      # T1/run.json. The action reads each tier's run.json.status (NOT the aggregate process exit
+      # code, which is 1 whenever T1 is cleanly skipped). T0 is required; T1 is advisory and a
+      # headless skip discloses under notProvedHere without reddening the gate.
+      - name: Harness offscreen (T0 required, T1 advisory)
+        uses: ./.github/actions/harness-evidence
+        with:
+          subcommand: offscreen
+          required-tiers: T0
+          cadence: gate
+          label: harness offscreen (T0 det / T1 readback)
+          out: artifacts/harness/offscreen
+          artifact-name: harness-offscreen
+
+      # T014 (FR-005/FR-010/FR-011) — GL-dependent local checks. On a headless runner (no hardware
+      # GL) they are SKIPPED with a written, machine-readable rationale and never affect pass/fail.
+      # When GL is present they run and a real failure fails the gate. A misconfiguration (GL claimed
+      # present but the test harness itself errors) surfaces as a real failure with probe facts, not
+      # a silent skip.
+      - name: GL local checks (SkiaViewer + Smoke) — degrade & disclose
+        env:
+          GL_PRESENT: ${{ steps.probe.outputs.gl }}
+        run: |
+          set -euo pipefail
+          if [ "$GL_PRESENT" != "present" ]; then
+            {
+              echo "### Proof scope — GL local checks (cadence: gate)"
+              echo ""
+              echo "**notProvedHere:**"
+              echo "- SkiaViewer.Tests, Smoke.Tests — rationale: \"no hardware GL on hosted runner\" (probe: gl=${GL_PRESENT}); not run, not failed."
+              echo ""
+              echo "**overall (GL local checks): evidence-only (skipped, disclosed)**"
+              echo ""
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "GL absent (probe gl=${GL_PRESENT}); SkiaViewer.Tests + Smoke.Tests skipped-with-rationale, gate unaffected."
+            exit 0
+          fi
+          echo "GL present; running GL-dependent local checks."
+          for p in SkiaViewer Smoke; do
+            echo "::group::dotnet test tests/${p}.Tests"
+            dotnet test "tests/${p}.Tests/${p}.Tests.fsproj" -c Debug --no-build
+            echo "::endgroup::"
+          done
+          {
+            echo "### Proof scope — GL local checks (cadence: gate)"
+            echo ""
+            echo "**proved:**"
+            echo "- SkiaViewer.Tests, Smoke.Tests (GL present on this runner)"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
