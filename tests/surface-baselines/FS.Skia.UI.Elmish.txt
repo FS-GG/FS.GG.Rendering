@@ -1,4 +1,12 @@
+FS.Skia.UI.Elmish.Animation
+FS.Skia.UI.Elmish.AnimationTick
 FS.Skia.UI.Elmish.ElmishAdapter
 FS.Skia.UI.Elmish.ElmishAdapterEffect`1
+FS.Skia.UI.Elmish.ElmishAdapterEffect`1+DispatchUser
+FS.Skia.UI.Elmish.ElmishAdapterEffect`1+DispatchViewer
+FS.Skia.UI.Elmish.ElmishAdapterEffect`1+Tags
 FS.Skia.UI.Elmish.ElmishAdapterModel`1
 FS.Skia.UI.Elmish.ElmishAdapterMsg`1
+FS.Skia.UI.Elmish.ElmishAdapterMsg`1+Tags
+FS.Skia.UI.Elmish.ElmishAdapterMsg`1+UserMsg
+FS.Skia.UI.Elmish.ElmishAdapterMsg`1+ViewerMsg
