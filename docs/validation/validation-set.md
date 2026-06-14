@@ -1,0 +1,48 @@
+# Initial validation set
+
+> Migration Stage R3 deliverable. The `import-now` candidates from
+> [`justification-records.md`](./justification-records.md), partitioned by frequency. This is
+> what Stage R4 actually imports and what contributors run. It is **deliberately small**: the
+> **Local inner loop** is the default tier run on every change; heavier and release-only
+> checks are separated so routine work stays fast.
+
+## Local inner loop (default — run on every change)
+
+A named, enumerated set of fast checks (no item is "everything else"):
+
+1. `Color.Tests`
+2. `Scene.Tests`
+3. `Layout.Tests`
+4. `Input.Tests`
+5. `KeyboardInput.Tests`
+6. `Elmish.Tests`
+7. `Controls.Tests`
+8. `Testing.Tests`
+9. `SkiaViewer.Tests`
+10. `Smoke.Tests`
+11. `Lib.Tests` (runtime-protecting subset)
+
+All are fast and deterministic (9–11 need a GL context, which the dev baseline provides).
+This is the tier a contributor runs as routine work.
+
+## CI (runs on push / PR)
+
+- `surface-baselines` (+ `refresh-surface-baselines.fsx`) — public `.fsi` surface-drift.
+- docs build (`fsdocs`) — the docs site builds from current sources.
+
+## Release-only (separate from local; runs at packaging/release)
+
+- `Package.Tests` — package restore + consumption contract.
+- `Product.Tests` (template) — generated product restores / builds / instantiates.
+
+## Manual / advisory
+
+None in the active set. Heavier on-demand checks (e.g. visual parity) are **not** imported
+as-is — they are folded into the Stage R5 harness (see [`harness.md`](./harness.md)) and
+tracked in the [`deferral-ledger.md`](./deferral-ledger.md).
+
+## Invariants
+
+- Every member carries exactly one frequency label and appears in exactly one group above.
+- **Release-only checks do not appear in the Local group** (no overlap).
+- Every member traces to an `import-now` row in [`justification-records.md`](./justification-records.md).
