@@ -13,10 +13,21 @@ normal .NET tooling, with no dependency on any external governance platform.
 
 ## Status
 
-Early. This repository was split out of the archived
+Active. This repository was split out of the archived
 [`EHotwagner/FS-Skia-UI`](https://github.com/EHotwagner/FS-Skia-UI) as a fresh start
 and is being populated stage by stage per the rendering implementation plan
-(R1 fresh repo → R2 product shape → R3 validation set → R4 import source → …).
+(R1 fresh repo → R2 product shape → R3 validation set → **R4 import source ✓** → R5 test
+harness → …). As of R4 the **product source lives here**: the runtime libraries (`src/`)
+build on `net10.0` and the default local test tier passes. See [`PROVENANCE.md`](PROVENANCE.md)
+for what was imported and from where, and [`SKIPPED-TESTS.md`](SKIPPED-TESTS.md) for the
+documented out-of-scope skips. Next: the comprehensive test harness (Stage R5).
+
+### Build & test
+
+```sh
+dotnet build FS.GG.Rendering.slnx -c Release    # all runtime libs + local tests
+DISPLAY=:1 dotnet test FS.GG.Rendering.slnx -c Release   # default local tier (GL via X11)
+```
 
 ## Project layout (FS-GG org)
 

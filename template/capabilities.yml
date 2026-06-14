@@ -1,0 +1,195 @@
+schemaVersion: "1.0"
+catalogVersion: "2026-05-16"
+# validation paths are listed through tests, docs, evidence, and surfaceBaseline fields per capability.
+# implementationSkills inventory (feature 059 split the former
+# fs-skia-layout-evidence catch-all into two registered skills):
+# skillId: fs-skia-layout-readability
+# displayName: Layout Readability
+# skill: .agents/skills/fs-skia-layout-readability/SKILL.md
+# appliesTo: generated-game-hud-readability, gameplay-region-bounds,
+# public-scene-host-update-guidance, generated-validation
+# skillId: fs-skia-evidence-mode
+# displayName: Evidence Mode
+# skill: .agents/skills/fs-skia-evidence-mode/SKILL.md
+# appliesTo: deterministic-render-only-evidence, visual-proof-honesty,
+# host-warning-classification
+# evidence: specs/<feature>/readiness/skill-loading-evidence.md
+defaultApp:
+  - scene
+  - skiaviewer
+  - elmish
+  - keyboard-input
+  - layout
+  - controls
+capabilities:
+  - id: scene
+    displayName: Scene
+    packageId: FS.Skia.UI.Scene
+    project: src/Scene/Scene.fsproj
+    contracts:
+      - src/Scene/Scene.fsi
+    tests:
+      - tests/Scene.Tests/Scene.Tests.fsproj
+    skill: template/product-skills/fs-skia-scene/SKILL.md
+    templateFragment: template/fragments/scene
+    dependencies: []
+    profiles: [app, headless-scene, governed, sample-pack]
+    defaultApp: true
+    evidence: [capability-catalog, package-surface, generated-product]
+    surfaceBaseline: readiness/surface-baselines/FS.Skia.UI.Scene.txt
+    docs: docs/reports/v3Design.md
+    ownerNotes: Dependency-light scene vocabulary.
+  - id: skiaviewer
+    displayName: SkiaViewer
+    packageId: FS.Skia.UI.SkiaViewer
+    project: src/SkiaViewer/SkiaViewer.fsproj
+    contracts:
+      - src/SkiaViewer/SkiaViewer.fsi
+    tests:
+      - tests/SkiaViewer.Tests/SkiaViewer.Tests.fsproj
+    skill: template/product-skills/fs-skia-skiaviewer/SKILL.md
+    templateFragment: template/fragments/skiaviewer
+    dependencies: [scene]
+    profiles: [app, governed, sample-pack]
+    defaultApp: true
+    evidence: [capability-catalog, package-surface, generated-product]
+    surfaceBaseline: readiness/surface-baselines/FS.Skia.UI.SkiaViewer.txt
+    docs: docs/reports/v3Design.md
+    ownerNotes: Host and viewer workflow boundary.
+  - id: elmish
+    displayName: Elmish
+    packageId: FS.Skia.UI.Elmish
+    project: src/Elmish/Elmish.fsproj
+    contracts:
+      - src/Elmish/Elmish.fsi
+    tests:
+      - tests/Elmish.Tests/Elmish.Tests.fsproj
+    skill: template/product-skills/fs-skia-elmish/SKILL.md
+    templateFragment: template/fragments/elmish
+    dependencies: [scene, skiaviewer]
+    profiles: [app, governed, sample-pack]
+    defaultApp: true
+    evidence: [capability-catalog, package-surface, generated-product]
+    surfaceBaseline: readiness/surface-baselines/FS.Skia.UI.Elmish.txt
+    docs: docs/reports/v3Design.md
+    ownerNotes: Elmish adapter and pure update boundary.
+  - id: keyboard-input
+    displayName: KeyboardInput
+    packageId: FS.Skia.UI.KeyboardInput
+    project: src/KeyboardInput/KeyboardInput.fsproj
+    contracts:
+      - src/KeyboardInput/KeyboardInput.fsi
+    tests:
+      - tests/KeyboardInput.Tests/KeyboardInput.Tests.fsproj
+    skill: template/product-skills/fs-skia-keyboard-input/SKILL.md
+    templateFragment: template/fragments/keyboard-input
+    dependencies: [scene]
+    profiles: [app, governed, sample-pack]
+    defaultApp: true
+    evidence: [capability-catalog, package-surface, generated-product]
+    surfaceBaseline: readiness/surface-baselines/FS.Skia.UI.KeyboardInput.txt
+    docs: docs/reports/v3Design.md
+    ownerNotes: Keyboard reducer and command effects.
+  - id: layout
+    displayName: Layout
+    packageId: FS.Skia.UI.Layout
+    project: src/Layout/Layout.fsproj
+    contracts:
+      - src/Layout/Types.fsi
+      - src/Layout/Layout.fsi
+      - src/Layout/GraphValidation.fsi
+      - src/Layout/Graph.fsi
+    tests:
+      - tests/Layout.Tests/Layout.Tests.fsproj
+    skill: src/Layout/skill/SKILL.md
+    templateFragment: template/fragments/layout
+    dependencies: [scene]
+    profiles: [app, headless-scene, governed, sample-pack]
+    defaultApp: true
+    evidence: [capability-catalog, package-surface, generated-product]
+    surfaceBaseline: readiness/surface-baselines/FS.Skia.UI.Layout.txt
+    docs: docs/reports/v3Design.md
+    ownerNotes: Yoga-backed layout and graph helpers.
+  - id: controls
+    displayName: Controls
+    packageId: FS.Skia.UI.Controls
+    project: src/Controls/Controls.fsproj
+    contracts:
+      - src/Controls/Types.fsi
+      - src/Controls/Control.fsi
+      - src/Controls/Pointer.fsi
+      - src/Controls/Attributes.fsi
+      - src/Controls/Theme.fsi
+      - src/Controls/Accessibility.fsi
+      - src/Controls/Diagnostics.fsi
+      - src/Controls/Catalog.fsi
+      - src/Controls/ControlRuntime.fsi
+      - src/Controls/RichText.fsi
+      - src/Controls/TextInput.fsi
+      - src/Controls/Collections.fsi
+      - src/Controls/Charts.fsi
+      - src/Controls/DataGrid.fsi
+      - src/Controls/CustomControl.fsi
+      # Feature 089 (TYPED-SURFACE-1): the typed front door (FS.Skia.UI.Controls.Typed).
+      # Enrolling the 14 Widgets/*.fsi publishes every control's Props/view straight from
+      # source into docs/api-surface/Controls/, so a whole-catalog consumer never reflects
+      # FS.Skia.UI.Controls.dll. Additive — the legacy builder .fsi above stay published.
+      - src/Controls/Widgets/Primitives.fsi
+      - src/Controls/Widgets/Buttons.fsi
+      - src/Controls/Widgets/Containers.fsi
+      - src/Controls/Widgets/Input.fsi
+      - src/Controls/Widgets/TextBoxWidget.fsi
+      - src/Controls/Widgets/TextAreaWidget.fsi
+      - src/Controls/Widgets/Display.fsi
+      - src/Controls/Widgets/CollectionsWidgets.fsi
+      - src/Controls/Widgets/DataGridWidget.fsi
+      - src/Controls/Widgets/Navigation.fsi
+      - src/Controls/Widgets/Overlay.fsi
+      - src/Controls/Widgets/ChartsWidgets.fsi
+      - src/Controls/Widgets/CustomControlWidget.fsi
+      - src/Controls/Widgets/Pickers.fsi
+    tests:
+      - tests/Controls.Tests/Controls.Tests.fsproj
+    skill: template/product-skills/fs-skia-ui-widgets/SKILL.md
+    templateFragment: template/fragments/controls
+    dependencies: [scene, layout, keyboard-input]
+    profiles: [app, governed, sample-pack]
+    defaultApp: true
+    evidence: [control-catalog, public-surface, semantic-tests, interaction-tests, layout-rendering, chart-datagrid-controls, generated-product]
+    surfaceBaseline: readiness/surface-baselines/FS.Skia.UI.Controls.txt
+    docs: docs/reports/controls.md
+    ownerNotes: Skia-rendered ordinary controls, rich text, chart controls, graph controls, DataGrid, custom wrappers, and product-owned ControlRuntime guidance.
+  - id: testing
+    displayName: Testing
+    packageId: FS.Skia.UI.Testing
+    project: src/Testing/Testing.fsproj
+    contracts:
+      - src/Testing/Testing.fsi
+    tests:
+      - tests/Testing.Tests/Testing.Tests.fsproj
+    skill: template/product-skills/fs-skia-testing/SKILL.md
+    templateFragment: template/fragments/testing
+    dependencies: [scene]
+    profiles: [governed, sample-pack]
+    defaultApp: false
+    evidence: [capability-catalog, package-surface, generated-product]
+    surfaceBaseline: readiness/surface-baselines/FS.Skia.UI.Testing.txt
+    docs: docs/reports/v3Design.md
+    ownerNotes: Product validation helpers.
+  - id: samples
+    displayName: Samples
+    packageId: non-runtime
+    nonRuntime: true
+    contracts:
+      - no-public-surface
+    tests:
+      - tests/Smoke.Tests/Smoke.Tests.fsproj
+    skill: template/fragments/samples/skill/SKILL.md
+    templateFragment: template/fragments/samples
+    dependencies: [scene, skiaviewer, elmish]
+    profiles: [sample-pack]
+    defaultApp: false
+    evidence: [generated-product]
+    surfaceBaseline: no-public-surface
+    docs: docs/reports/v3Design.md
+    ownerNotes: Optional sample content only.

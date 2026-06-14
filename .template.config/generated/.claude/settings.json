@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./fake.sh build -t Dev)",
+      "Bash(./fake.sh build -t Test)",
+      "Bash(./fake.sh build -t Verify)"
+    ],
+    "deny": []
+  }
+}

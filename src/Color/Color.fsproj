@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <IsPackable>true</IsPackable>
+    <PackageId>FS.Skia.UI.Color</PackageId>
+    <AssemblyName>FS.Skia.UI.Color</AssemblyName>
+    <Version>0.1.129-preview.1</Version>
+    <Title>FS.Skia.UI.Color</Title>
+    <Description>WCAG 2.x contrast measurement and Radix-derived accessible palette ramps over the FS.Skia.UI.Scene Color type.</Description>
+    <PackageTags>fsharp;skia;color;contrast;wcag;accessibility</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Contrast.fsi" />
+    <Compile Include="Contrast.fs" />
+    <Compile Include="Palettes.fsi" />
+    <Compile Include="Palettes.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Scene\Scene.fsproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,92 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <GenerateProgramFile>false</GenerateProgramFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="PublicSurfaceTests.fs" />
+    <Compile Include="TypedControlContractTests.fs" />
+    <Compile Include="TypedLoweringTests.fs" />
+    <Compile Include="TypedMigrationTests.fs" />
+    <Compile Include="TypedExpansionTests.fs" />
+    <Compile Include="DiagnosticsTests.fs" />
+    <Compile Include="ControlRuntimeContractTests.fs" />
+    <Compile Include="DataGridTests.fs" />
+    <Compile Include="SemanticTests.fs" />
+    <Compile Include="InteractionTests.fs" />
+    <Compile Include="PointerInteractionTests.fs" />
+    <Compile Include="TextInputTests.fs" />
+    <Compile Include="TypedGalleryPanel.fs" />
+    <Compile Include="AccessibilityTests.fs" />
+    <Compile Include="RenderingTests.fs" />
+    <Compile Include="ReconcileTests.fs" />
+    <Compile Include="DesignTokenParityTests.fs" />
+    <Compile Include="Feature080ExtractionTests.fs" />
+    <Compile Include="RenderTreeTests.fs" />
+    <Compile Include="Feature086LayoutBoundsTests.fs" />
+    <Compile Include="Feature086PreviewParityTests.fs" />
+    <Compile Include="Feature090RecoveryTests.fs" />
+    <Compile Include="Feature091RetainedRenderTests.fs" />
+    <Compile Include="Feature092RetainedRenderTests.fs" />
+    <Compile Include="Feature093StyleResolverTests.fs" />
+    <Compile Include="Feature093StylePropertyTests.fs" />
+    <Compile Include="Feature093ParityTests.fs" />
+    <Compile Include="Feature093RetainedStateTests.fs" />
+    <Compile Include="Feature094FocusTests.fs" />
+    <Compile Include="Feature095SlotCompositionTests.fs" />
+    <Compile Include="Feature096RuntimeBridgeTests.fs" />
+    <Compile Include="Feature097WiringTests.fs" />
+    <Compile Include="Feature098UnifiedSchemeTests.fs" />
+    <Compile Include="Feature099AnimationClockTests.fs" />
+    <Compile Include="Feature100NavigationTests.fs" />
+    <Compile Include="Feature101LayoutDriftGuardTests.fs" />
+    <Compile Include="Feature103CrossFadeTests.fs" />
+    <Compile Include="Feature105ParityTests.fs" />
+    <Compile Include="Feature108FocusTests.fs" />
+    <Compile Include="Feature108CompositionTests.fs" />
+    <Compile Include="Feature108ThemingTests.fs" />
+    <Compile Include="Feature112TouchedCountTests.fs" />
+    <Compile Include="Feature112TargetedStampParityTests.fs" />
+    <Compile Include="Feature112PrecedenceTests.fs" />
+    <Compile Include="Feature113MemoSeamTests.fs" />
+    <Compile Include="Feature113MemoParityTests.fs" />
+    <Compile Include="Feature113StabilityDiagTests.fs" />
+    <Compile Include="Feature114OverscanTests.fs" />
+    <Compile Include="Feature114OverscanParityTests.fs" />
+    <Compile Include="Feature114OffscreenTests.fs" />
+    <Compile Include="Feature114AccessibilityTests.fs" />
+    <Compile Include="Feature116DamageTests.fs" />
+    <Compile Include="Feature116PictureCacheTests.fs" />
+    <Compile Include="Feature116CacheBoundTests.fs" />
+    <Compile Include="Feature116OffscreenDiagTests.fs" />
+    <Compile Include="Feature117TextCacheTests.fs" />
+    <Compile Include="Feature117CacheBoundTests.fs" />
+    <Compile Include="Feature117LayoutInvalidatedTests.fs" />
+    <Compile Include="Feature120FingerprintTests.fs" />
+    <Compile Include="Feature121IdleTickTests.fs" />
+    <Compile Include="Feature122CustomControlTests.fs" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Controls\Controls.fsproj" />
+    <!-- Feature 108 (US6, T032): the theming-contrast suite reuses FS.Skia.UI.Color.Contrast.ratio
+         against the WCAG reference pairs. Test-only reference — Controls itself does not depend on
+         the Color package (no package-graph change). -->
+    <ProjectReference Include="..\..\src\Color\Color.fsproj" />
+    <!-- R4 import: the Feature-066 typed-catalog drift suite (CatalogTests.fs) referenced the
+         governance engine (FS.Skia.UI.Build); removed per FR-006 (no governance runtime). The
+         typed-catalog drift check belongs to the governance repo, not the rendering product. -->
+    <PackageReference Include="Expecto" />
+    <!-- Feature 067: FsCheck (test-only, pinned 3.3.3 in Directory.Packages.props)
+         drives the round-trip and determinism properties for the internal
+         reconciler. Not a product dependency — DependencyReport is unaffected. -->
+    <PackageReference Include="FsCheck" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="YoloDev.Expecto.TestSdk" />
+  </ItemGroup>
+
+</Project>

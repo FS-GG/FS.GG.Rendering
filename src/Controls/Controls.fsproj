@@ -1,0 +1,141 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <IsPackable>true</IsPackable>
+    <PackageId>FS.Skia.UI.Controls</PackageId>
+    <AssemblyName>FS.Skia.UI.Controls</AssemblyName>
+    <Version>0.1.129-preview.1</Version>
+    <Title>FS.Skia.UI.Controls</Title>
+    <Description>Declarative Skia controls, rich rendering, chart controls, graph controls, DataGrid, and product-owned control runtime contracts.</Description>
+    <PackageTags>fsharp;skia;controls;widgets;charts;graph;datagrid</PackageTags>
+  </PropertyGroup>
+
+  <!-- Feature 067: expose the assembly-internal `module Reconcile` to the test
+       assembly via the SDK-generated InternalsVisibleTo attribute (no
+       AssemblyInfo.fs source file, which would lack the .fsi pair the
+       surface-area gate requires). -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Controls.Tests" />
+    <!-- Feature 091 (E2): the interactive controls adapter wires `module internal RetainedRender`
+         (the 067 reconciler) onto its production render path. The adapter is part of the framework,
+         not a package consumer, so it reaches the internal module via InternalsVisibleTo — the
+         module stays `internal` (no public-surface entry, zero baseline delta), consistent with the
+         "do not promote Reconcile to public" rule. -->
+    <InternalsVisibleTo Include="FS.Skia.UI.Controls.Elmish" />
+    <!-- Feature 092 (E2): the Controls.Elmish adapter tests drive the wired focus/text seam against
+         the real internal `RetainedRender` structure (SC-001, no hand-seeded identity map), so the
+         Elmish.Tests assembly reaches `RetainedRender`/`RetainedId`/`RetainedUiState` via IVT too. -->
+    <InternalsVisibleTo Include="Elmish.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Types.fsi" />
+    <Compile Include="Types.fs" />
+    <!-- Feature 069: the generated design-token module (single source
+         design-tokens.tokens.json -> DesignTokens.fs via DesignTokenDrift /
+         RefreshSurfaceBaselines). Curated .fsi (Principle II); the .fs is generated.
+         Compiles before Theme, which re-expresses light/dark in terms of these tokens. -->
+    <Compile Include="DesignTokens.fsi" />
+    <Compile Include="DesignTokens.fs" />
+    <Compile Include="Theme.fsi" />
+    <Compile Include="Theme.fs" />
+    <!-- Feature 108 (US6): live-theming primitive (mode+accent -> RolePalette -> Theme). After
+         Theme (it projects onto Theme.light/dark); no Color-package dependency. -->
+    <Compile Include="Theming.fsi" />
+    <Compile Include="Theming.fs" />
+    <!-- Feature 093 (E3): the pure state→style resolver. Inserted after Theme (so it sees
+         Types/DesignTokens/Theme) and before Attributes/Control (which route migrated paint
+         through it). ResolvedStyle + Style.resolve are Tier-1 public surface. -->
+    <Compile Include="Style.fsi" />
+    <Compile Include="Style.fs" />
+    <Compile Include="Diagnostics.fsi" />
+    <Compile Include="Diagnostics.fs" />
+    <Compile Include="Accessibility.fsi" />
+    <Compile Include="Accessibility.fs" />
+    <Compile Include="Attributes.fsi" />
+    <Compile Include="Attributes.fs" />
+    <Compile Include="Internal/AttrKeys.fs" />
+    <Compile Include="Control.fsi" />
+    <Compile Include="Control.fs" />
+    <Compile Include="Reconcile.fsi" />
+    <Compile Include="Reconcile.fs" />
+    <Compile Include="Widget.fsi" />
+    <Compile Include="Widget.fs" />
+    <Compile Include="Catalog.fsi" />
+    <Compile Include="Catalog.fs" />
+    <Compile Include="TextInput.fsi" />
+    <Compile Include="TextInput.fs" />
+    <Compile Include="ControlRuntime.fsi" />
+    <Compile Include="ControlRuntime.fs" />
+    <!-- Feature 114 (Phase 6): the virtualization model (`VisibleRange`/`CollectionModel`) compiles
+         before RetainedRender so the retained `step` can read each `data-grid` node's `VisibleRange`
+         total for the `VirtualMaterialized`/`VirtualTotal` counts. Depends only on `Types`. -->
+    <Compile Include="Collections.fsi" />
+    <Compile Include="Collections.fs" />
+    <!-- Feature 091 (E2): the retained render structure that wires the parked keyed
+         reconciler (067) onto the live render path. `module internal` (no public-surface
+         entry, mirrors Reconcile); reached by Controls.Tests via InternalsVisibleTo.
+         Depends on Control (renderTree internals), Reconcile (the diff), and
+         TextInput (TextInputModel for re-keyed text state). -->
+    <Compile Include="RetainedRender.fsi" />
+    <Compile Include="RetainedRender.fs" />
+    <!-- Feature 075: pure pointer-interaction front door over ControlRuntime +
+         Layout.hitTestComputed (host-independent; no SkiaViewer dependency). -->
+    <Compile Include="Pointer.fsi" />
+    <Compile Include="Pointer.fs" />
+    <!-- Feature 094 (E4): pure focus model (tab order / traversal / key routing) over the
+         lowered Control tree + AccessibilityMetadata. Depends only on already-compiled
+         Accessibility/Control types; the ControlId<->RetainedId binding lives at the host seam. -->
+    <Compile Include="Focus.fsi" />
+    <Compile Include="Focus.fs" />
+    <Compile Include="Charts.fsi" />
+    <Compile Include="Charts.fs" />
+    <Compile Include="RichText.fsi" />
+    <Compile Include="RichText.fs" />
+    <Compile Include="DataGrid.fsi" />
+    <Compile Include="DataGrid.fs" />
+    <Compile Include="CustomControl.fsi" />
+    <Compile Include="CustomControl.fs" />
+    <Compile Include="Widgets/WidgetLowering.fs" />
+    <Compile Include="Widgets/Primitives.fsi" />
+    <Compile Include="Widgets/Primitives.fs" />
+    <Compile Include="Widgets/TextBoxWidget.fsi" />
+    <Compile Include="Widgets/TextBoxWidget.fs" />
+    <Compile Include="Widgets/DataGridWidget.fsi" />
+    <Compile Include="Widgets/DataGridWidget.fs" />
+    <Compile Include="Widgets/Display.fsi" />
+    <Compile Include="Widgets/Display.fs" />
+    <Compile Include="Widgets/Input.fsi" />
+    <Compile Include="Widgets/Input.fs" />
+    <Compile Include="Widgets/TextAreaWidget.fsi" />
+    <Compile Include="Widgets/TextAreaWidget.fs" />
+    <Compile Include="Widgets/CollectionsWidgets.fsi" />
+    <Compile Include="Widgets/CollectionsWidgets.fs" />
+    <Compile Include="Widgets/Containers.fsi" />
+    <Compile Include="Widgets/Containers.fs" />
+    <Compile Include="Widgets/Navigation.fsi" />
+    <Compile Include="Widgets/Navigation.fs" />
+    <Compile Include="Widgets/Overlay.fsi" />
+    <Compile Include="Widgets/Overlay.fs" />
+    <Compile Include="Widgets/ChartsWidgets.fsi" />
+    <Compile Include="Widgets/ChartsWidgets.fs" />
+    <Compile Include="Widgets/CustomControlWidget.fsi" />
+    <Compile Include="Widgets/CustomControlWidget.fs" />
+    <Compile Include="Widgets/Buttons.fsi" />
+    <Compile Include="Widgets/Buttons.fs" />
+    <Compile Include="Widgets/Pickers.fsi" />
+    <Compile Include="Widgets/Pickers.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="catalog.yml" Pack="true" PackagePath="contentFiles/any/any/catalog.yml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Scene\Scene.fsproj" />
+    <ProjectReference Include="..\Layout\Layout.fsproj" />
+    <ProjectReference Include="..\KeyboardInput\KeyboardInput.fsproj" />
+  </ItemGroup>
+
+</Project>

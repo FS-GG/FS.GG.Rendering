@@ -1,0 +1,7 @@
+name: app
+description: Default V3 product starter.
+capabilities: [scene, skiaviewer, elmish, keyboard-input, layout, controls, full-governance]
+governance: full
+samples: false
+sourceFrameworkMode: false
+validationCommands: [Dev, Test, Verify]

@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <IsPackable>true</IsPackable>
+    <PackageId>FS.Skia.UI.Layout</PackageId>
+    <AssemblyName>FS.Skia.UI.Layout</AssemblyName>
+    <Version>0.1.129-preview.1</Version>
+    <Title>FS.Skia.UI.Layout</Title>
+    <Description>Pure layout and graph scene builders for FS.Skia.UI.</Description>
+    <PackageTags>fsharp;skia;layout;graph;elmish</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Types.fsi" />
+    <Compile Include="Types.fs" />
+    <Compile Include="Layout.fsi" />
+    <Compile Include="Layout.fs" />
+    <Compile Include="GraphValidation.fsi" />
+    <Compile Include="GraphValidation.fs" />
+    <Compile Include="Graph.fsi" />
+    <Compile Include="Graph.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Scene\Scene.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Yoga.Net" />
+  </ItemGroup>
+
+</Project>

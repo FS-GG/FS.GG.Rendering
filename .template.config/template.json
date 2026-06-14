@@ -1,0 +1,291 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "FS-Skia-UI Contributors",
+  "classifications": [
+    "F#",
+    "Skia",
+    "Elmish",
+    "Template"
+  ],
+  "identity": "FS.Skia.UI.Template",
+  "name": "FS Skia UI Governed Project",
+  "shortName": "fs-skia-ui",
+  "sourceName": "Product",
+  "preferNameDirectory": true,
+  "symbols": {
+    "profile": {
+      "type": "parameter",
+      "datatype": "choice",
+      "defaultValue": "app",
+      "description": "V3 product profile to generate.",
+      "choices": [
+        {
+          "choice": "app",
+          "description": "Default V3 product app with Scene, SkiaViewer, Elmish, KeyboardInput, Layout, Controls, product tests, and product governance."
+        },
+        {
+          "choice": "headless-scene",
+          "description": "Headless Scene-only V3 product for scene/widget authoring."
+        },
+        {
+          "choice": "governed",
+          "description": "Governed V3 product with Scene plus Testing helpers."
+        },
+        {
+          "choice": "sample-pack",
+          "description": "Sample-oriented V3 product with Scene, SkiaViewer, Elmish, and sample-pack content."
+        }
+      ]
+    },
+    "rootNamespace": {
+      "type": "parameter",
+      "datatype": "text",
+      "defaultValue": "Product",
+      "description": "Compatibility parameter accepted by the template; generated project names are derived from --name."
+    },
+    "packagePrefix": {
+      "type": "parameter",
+      "datatype": "text",
+      "defaultValue": "FS.Skia.UI",
+      "description": "Package prefix reserved for future generated product packages."
+    },
+    "authors": {
+      "type": "parameter",
+      "datatype": "text",
+      "defaultValue": "FS-Skia-UI Contributors",
+      "replaces": "FS-Skia-UI Contributors",
+      "description": "Generated product authors."
+    },
+    "repositoryUrl": {
+      "type": "parameter",
+      "datatype": "text",
+      "defaultValue": "https://github.com/FS-Skia-UI/FS-Skia-UI",
+      "replaces": "https://github.com/FS-Skia-UI/FS-Skia-UI",
+      "description": "Generated product repository URL."
+    },
+    "targetFramework": {
+      "type": "parameter",
+      "datatype": "text",
+      "defaultValue": "net10.0",
+      "replaces": "net10.0",
+      "description": "Target framework for generated projects."
+    },
+    "skipGitInit": {
+      "type": "parameter",
+      "datatype": "bool",
+      "defaultValue": "false",
+      "description": "Skip automatic Git repository initialization after template creation."
+    },
+    "feedback": {
+      "type": "parameter",
+      "datatype": "bool",
+      "defaultValue": "false",
+      "description": "Capture per-phase Spec Kit feedback into specs/<feature>/feedback/ (adds the after_* feedback hooks and the fs-skia-feedback-capture skill). Default false induces no diff."
+    },
+    "projectSlug": {
+      "type": "generated",
+      "generator": "casing",
+      "parameters": {
+        "source": "name",
+        "toLower": true
+      },
+      "replaces": "fs-skia-ui"
+    }
+  },
+  "sources": [
+    {
+      "source": "template/base/",
+      "target": "./",
+      "exclude": [
+        "bin/**",
+        "obj/**",
+        "**/bin/**",
+        "**/obj/**"
+      ],
+      "comment": "Feature 060 (FR-003): the emitted docs/api-surface/**/*.fsi tree is the authoritative framework contract surface; copy it verbatim so the sourceName ('Product') substitution does not rewrite framework signatures (e.g. ProductDefect) in the generated reference. Feature 062 (FR-003/005/006): the generated docs/evidence-formats.md and docs/skillist-reference.md references and the authored docs/scaffold-map.md are copied verbatim (no sourceName substitution) so their governance tokens are not rewritten. Feature 108 (FR-020): docs/interactive-readiness.md is copied verbatim for the same reason (its skill names / readiness tokens must not be rewritten).",
+      "copyOnly": [
+        "docs/api-surface/**",
+        "docs/evidence-formats.md",
+        "docs/skillist-reference.md",
+        "docs/scaffold-map.md",
+        "docs/interactive-readiness.md"
+      ]
+    },
+    {
+      "source": ".specify/",
+      "target": ".specify/",
+      "copyOnly": [
+        "**/*"
+      ],
+      "exclude": [
+        "feature.json",
+        "memory/constitution.md",
+        "extensions/evidence/scripts/**"
+      ]
+    },
+    {
+      "source": ".agents/skills/",
+      "target": ".agents/skills/",
+      "copyOnly": [
+        "**/*"
+      ]
+    },
+    {
+      "source": ".agents/skills/",
+      "target": ".claude/skills/",
+      "copyOnly": [
+        "**/*"
+      ]
+    },
+    {
+      "source": ".template.config/generated/",
+      "target": "./"
+    },
+    {
+      "condition": "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\")",
+      "source": "template/product-skills/fs-skia-scene/",
+      "target": ".agents/skills/fs-skia-scene/"
+    },
+    {
+      "condition": "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\")",
+      "source": "template/product-skills/fs-skia-scene/",
+      "target": ".claude/skills/fs-skia-scene/"
+    },
+    {
+      "condition": "(profile == \"app\" || profile == \"sample-pack\")",
+      "source": "template/product-skills/fs-skia-skiaviewer/",
+      "target": ".agents/skills/fs-skia-skiaviewer/"
+    },
+    {
+      "condition": "(profile == \"app\" || profile == \"sample-pack\")",
+      "source": "template/product-skills/fs-skia-skiaviewer/",
+      "target": ".claude/skills/fs-skia-skiaviewer/"
+    },
+    {
+      "condition": "(profile == \"app\" || profile == \"sample-pack\")",
+      "source": "template/product-skills/fs-skia-elmish/",
+      "target": ".agents/skills/fs-skia-elmish/"
+    },
+    {
+      "condition": "(profile == \"app\" || profile == \"sample-pack\")",
+      "source": "template/product-skills/fs-skia-elmish/",
+      "target": ".claude/skills/fs-skia-elmish/"
+    },
+    {
+      "condition": "(profile == \"app\")",
+      "source": "template/product-skills/fs-skia-keyboard-input/",
+      "target": ".agents/skills/fs-skia-keyboard-input/"
+    },
+    {
+      "condition": "(profile == \"app\")",
+      "source": "template/product-skills/fs-skia-keyboard-input/",
+      "target": ".claude/skills/fs-skia-keyboard-input/"
+    },
+    {
+      "condition": "(profile == \"app\")",
+      "source": "template/product-skills/fs-skia-ui-widgets/",
+      "target": ".agents/skills/fs-skia-ui-widgets/"
+    },
+    {
+      "condition": "(profile == \"app\")",
+      "source": "template/product-skills/fs-skia-ui-widgets/",
+      "target": ".claude/skills/fs-skia-ui-widgets/"
+    },
+    {
+      "condition": "(profile == \"governed\")",
+      "source": "template/product-skills/fs-skia-testing/",
+      "target": ".agents/skills/fs-skia-testing/"
+    },
+    {
+      "condition": "(profile == \"governed\")",
+      "source": "template/product-skills/fs-skia-testing/",
+      "target": ".claude/skills/fs-skia-testing/"
+    },
+    {
+      "condition": "(profile == \"sample-pack\")",
+      "source": "template/fragments/samples/",
+      "target": "samples/",
+      "exclude": [
+        "skill/**"
+      ]
+    },
+    {
+      "condition": "(profile == \"sample-pack\")",
+      "source": "template/fragments/samples/skill/",
+      "target": ".agents/skills/fs-skia-samples/"
+    },
+    {
+      "condition": "(profile == \"sample-pack\")",
+      "source": "template/fragments/samples/skill/",
+      "target": ".claude/skills/fs-skia-samples/"
+    },
+    {
+      "condition": "(feedback == true)",
+      "source": "template/feedback/skill/",
+      "target": ".agents/skills/fs-skia-feedback-capture/"
+    },
+    {
+      "condition": "(feedback == true)",
+      "source": "template/feedback/skill/",
+      "target": ".claude/skills/fs-skia-feedback-capture/"
+    },
+    {
+      "condition": "(feedback == true)",
+      "source": "template/feedback/extensions/",
+      "target": ".specify/extensions/feedback/"
+    }
+  ],
+  "postActions": [
+    {
+      "condition": "(!skipGitInit && OS != \"Windows_NT\")",
+      "description": "Make generated shell scripts executable and create the initial Git commit for standalone Spec Kit workflows.",
+      "manualInstructions": [
+        {
+          "text": "Run 'find . -type f \\( -name \"*.sh\" -o -name \"fake.sh\" \\) -exec chmod +x {} +' and then run 'git init && git add . && git commit -m \"[Spec Kit] Initial commit\"' if this project is not already inside a Git repository."
+        }
+      ],
+      "actionId": "3A7C4B45-1F5D-4A30-959A-51B88E82B5D2",
+      "args": {
+        "executable": "bash",
+        "args": "-c \"find . -type f \\( -name '*.sh' -o -name 'fake.sh' \\) -exec chmod +x {} +; if ! command -v git >/dev/null 2>&1; then echo '[fs-skia-ui] git not found; skipped repository initialization' >&2; exit 0; fi; if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then git init -q && git add . && git -c user.name='FS Skia UI Template' -c user.email='template@example.invalid' commit --allow-empty -q -m '[Spec Kit] Initial commit'; fi\"",
+        "redirectStandardOutput": false,
+        "redirectStandardError": false
+      },
+      "continueOnError": true
+    },
+    {
+      "condition": "(skipGitInit && OS != \"Windows_NT\")",
+      "description": "Make generated shell scripts executable.",
+      "manualInstructions": [
+        {
+          "text": "Run 'find . -type f \\( -name \"*.sh\" -o -name \"fake.sh\" \\) -exec chmod +x {} +' from the generated project root."
+        }
+      ],
+      "actionId": "3A7C4B45-1F5D-4A30-959A-51B88E82B5D2",
+      "args": {
+        "executable": "bash",
+        "args": "-c \"find . -type f \\( -name '*.sh' -o -name 'fake.sh' \\) -exec chmod +x {} +\"",
+        "redirectStandardOutput": false,
+        "redirectStandardError": false
+      },
+      "continueOnError": true
+    },
+    {
+      "condition": "(!skipGitInit && OS == \"Windows_NT\")",
+      "description": "Create the initial Git commit for standalone Spec Kit workflows.",
+      "manualInstructions": [
+        {
+          "text": "Run 'git init && git add . && git commit -m \"[Spec Kit] Initial commit\"' from the generated project root if this project is not already inside a Git repository."
+        }
+      ],
+      "actionId": "3A7C4B45-1F5D-4A30-959A-51B88E82B5D2",
+      "args": {
+        "executable": "powershell",
+        "args": "-NoProfile -ExecutionPolicy Bypass -Command \"if (-not (Get-Command git -ErrorAction SilentlyContinue)) { Write-Warning '[fs-skia-ui] git not found; skipped repository initialization'; exit 0 }; git rev-parse --is-inside-work-tree 2>$null | Out-Null; if ($LASTEXITCODE -ne 0) { git init -q; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; git add .; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; git -c user.name='FS Skia UI Template' -c user.email='template@example.invalid' commit --allow-empty -q -m '[Spec Kit] Initial commit'; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } }\"",
+        "redirectStandardOutput": false,
+        "redirectStandardError": false
+      },
+      "continueOnError": true
+    }
+  ]
+}

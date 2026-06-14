@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Model.fs" />
+    <Compile Include="View.fs" />
+    <Compile Include="LayoutEvidence.fs" />
+    <!--#if (profile == "app" || profile == "sample-pack") -->
+    <Compile Include="WindowOptions.fs" />
+    <!--#endif -->
+    <Compile Include="EvidenceCommands.fs" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FS.Skia.UI.Scene" />
+    <!--#if (profile == "app" || profile == "sample-pack") -->
+    <PackageReference Include="FS.Skia.UI.SkiaViewer" />
+    <PackageReference Include="FS.Skia.UI.Elmish" />
+    <!--#endif -->
+    <!--#if (profile == "app") -->
+    <PackageReference Include="FS.Skia.UI.KeyboardInput" />
+    <PackageReference Include="FS.Skia.UI.Layout" />
+    <PackageReference Include="FS.Skia.UI.Controls" />
+    <PackageReference Include="FS.Skia.UI.Controls.Elmish" />
+    <!--#endif -->
+    <!--#if (profile == "governed") -->
+    <PackageReference Include="FS.Skia.UI.Testing" />
+    <!--#endif -->
+  </ItemGroup>
+
+</Project>

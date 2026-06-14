@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <IsPackable>true</IsPackable>
+    <PackageId>FS.Skia.UI.Elmish</PackageId>
+    <AssemblyName>FS.Skia.UI.Elmish</AssemblyName>
+    <Version>0.1.129-preview.1</Version>
+    <Title>FS.Skia.UI.Elmish</Title>
+    <Description>Elmish adapter contracts for FS.Skia.UI V3 products.</Description>
+    <PackageTags>fsharp;elmish;skia;ui</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Elmish.fsi" />
+    <Compile Include="Elmish.fs" />
+    <Compile Include="AnimationTick.fsi" />
+    <Compile Include="AnimationTick.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Scene\Scene.fsproj" />
+    <ProjectReference Include="..\SkiaViewer\SkiaViewer.fsproj" />
+    <PackageReference Include="Fable.Elmish" />
+  </ItemGroup>
+
+</Project>

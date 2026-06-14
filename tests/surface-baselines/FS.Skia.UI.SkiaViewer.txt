@@ -1,0 +1,5 @@
+FS.Skia.UI.SkiaViewer.Viewer
+FS.Skia.UI.SkiaViewer.ViewerEffect
+FS.Skia.UI.SkiaViewer.ViewerModel
+FS.Skia.UI.SkiaViewer.ViewerMsg
+FS.Skia.UI.SkiaViewer.ViewerOptions

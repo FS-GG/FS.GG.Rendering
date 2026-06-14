@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <IsPackable>true</IsPackable>
+    <PackageId>FS.Skia.UI.KeyboardInput</PackageId>
+    <AssemblyName>FS.Skia.UI.KeyboardInput</AssemblyName>
+    <Version>0.1.129-preview.1</Version>
+    <Title>FS.Skia.UI.KeyboardInput</Title>
+    <Description>Package-owned keyboard input runtime, reducer, effect, diagnostics, and state display contracts for FS.Skia.UI products.</Description>
+    <PackageTags>fsharp;keyboard;input;runtime;ui</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="KeyboardInput.fsi" />
+    <Compile Include="KeyboardInput.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Scene\Scene.fsproj" />
+    <PackageReference Include="YamlDotNet" />
+  </ItemGroup>
+
+</Project>

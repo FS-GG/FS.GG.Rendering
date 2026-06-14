@@ -1,0 +1,62 @@
+<Project>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsAsErrors>FS0025;FS0026;FS0052;FS0064</WarningsAsErrors>
+    <!-- Principle II: visibility lives in .fsi, not in .fs.
+         FS0078 would warn on `private` or `internal` on top-level bindings
+         in a file that has a companion .fsi. We promote it to error. -->
+    <WarningsAsErrors>$(WarningsAsErrors);FS0078</WarningsAsErrors>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Package">
+    <Version>0.1.0-preview.1</Version>
+    <Authors>FS.GG Contributors</Authors>
+    <Company>FS.GG Contributors</Company>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/FS-GG/FS.GG.Rendering</PackageProjectUrl>
+    <!-- 064 (FR-010): a public nuget.org listing requires a RepositoryUrl distinct from
+         PackageProjectUrl; shared here so every packable project carries it. -->
+    <RepositoryUrl>https://github.com/FS-GG/FS.GG.Rendering.git</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- 064 (FR-010): pack each project's own README.md as the package listing readme when it
+         exists. Conditional so non-packable / readme-less projects are unaffected; the
+         pre-publish check (RequiredMetadata) enforces that every packable project has one. -->
+    <PackageReadmeFile Condition="Exists('$(MSBuildProjectDirectory)/README.md')">README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <!-- 076 (FR-001/FR-003): fsdocs documentation-site properties. These configure the
+       FSharp.Formatting build only; they do NOT touch package identity. Per research R2
+       decision (ii) the fsdocs source-link is set via FsDocs* properties so the published
+       PackageProjectUrl/RepositoryUrl metadata is left undisturbed. GenerateDocumentationFile
+       is already true above, so XML doc emission is on for the API reference. -->
+  <PropertyGroup Label="FsDocs">
+    <!-- FR-003 / SC-001: a missing summary on a supported public member becomes an fsdocs
+         warning; under a strict fsdocs build it fails the build (zero empty stubs). -->
+    <FsDocsWarnOnMissingDocs>true</FsDocsWarnOnMissingDocs>
+    <FsDocsTheme>default</FsDocsTheme>
+    <!-- Source/"edit" links point at the ACTUAL remote (EHotwagner) rather than the
+         aspirational PackageProjectUrl org, without rewriting package metadata. -->
+    <FsDocsSourceRepository>https://github.com/FS-GG/FS.GG.Rendering/tree/main</FsDocsSourceRepository>
+    <FsDocsLicenseLink>https://github.com/FS-GG/FS.GG.Rendering/blob/main/LICENSE</FsDocsLicenseLink>
+    <FsDocsReleaseNotesLink>https://github.com/FS-GG/FS.GG.Rendering/blob/main/CHANGELOG.md</FsDocsReleaseNotesLink>
+    <!-- Real logo/favicon assets so the header shows a mark, not a broken placeholder. -->
+    <FsDocsLogoSource>img/logo.svg</FsDocsLogoSource>
+    <FsDocsFaviconSource>img/logo.svg</FsDocsFaviconSource>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FSharp.Core" />
+  </ItemGroup>
+
+  <ItemGroup Condition="Exists('$(MSBuildProjectDirectory)/README.md')">
+    <None Include="$(MSBuildProjectDirectory)/README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

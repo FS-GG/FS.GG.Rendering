@@ -1,0 +1,60 @@
+# Per-phase fs-skia-ui / Spec Kit feedback hooks (feature 058, US3, D5).
+#
+# Shipped ONLY when the project was generated with `dotnet new fs-skia-ui --feedback true`.
+# These entries augment the project's Spec Kit `after_*` hooks: on completion of each
+# phase the agent runs `speckit.feedback.capture` (the `fs-skia-feedback-capture` command
+# skill), which surfaces the four prompts (the fourth — skill gaps — added by feature
+# 061) and writes one record to `specs/<feature>/feedback/<phase>-<date>.md`.
+#
+# after_* semantics ⇒ these fire only on phase COMPLETION; an aborted/failed phase writes
+# nothing (FR-016).
+
+hooks:
+  after_specify:
+  - extension: feedback
+    command: speckit.feedback.capture
+    enabled: true
+    optional: false
+    prompt: Capture fs-skia-ui feedback for the specify phase?
+    description: Per-phase fs-skia-ui / Spec Kit feedback capture
+    condition: null
+  after_clarify:
+  - extension: feedback
+    command: speckit.feedback.capture
+    enabled: true
+    optional: false
+    prompt: Capture fs-skia-ui feedback for the clarify phase?
+    description: Per-phase fs-skia-ui / Spec Kit feedback capture
+    condition: null
+  after_plan:
+  - extension: feedback
+    command: speckit.feedback.capture
+    enabled: true
+    optional: false
+    prompt: Capture fs-skia-ui feedback for the plan phase?
+    description: Per-phase fs-skia-ui / Spec Kit feedback capture
+    condition: null
+  after_tasks:
+  - extension: feedback
+    command: speckit.feedback.capture
+    enabled: true
+    optional: false
+    prompt: Capture fs-skia-ui feedback for the tasks phase?
+    description: Per-phase fs-skia-ui / Spec Kit feedback capture
+    condition: null
+  after_analyze:
+  - extension: feedback
+    command: speckit.feedback.capture
+    enabled: true
+    optional: false
+    prompt: Capture fs-skia-ui feedback for the analyze phase?
+    description: Per-phase fs-skia-ui / Spec Kit feedback capture
+    condition: null
+  after_implement:
+  - extension: feedback
+    command: speckit.feedback.capture
+    enabled: true
+    optional: false
+    prompt: Capture fs-skia-ui feedback for the implement phase?
+    description: Per-phase fs-skia-ui / Spec Kit feedback capture
+    condition: null

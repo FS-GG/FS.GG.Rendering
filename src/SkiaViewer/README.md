@@ -1,0 +1,75 @@
+# FS.Skia.UI.SkiaViewer
+
+Skia viewer host workflow contracts for FS.Skia.UI V3 products.
+
+`FS.Skia.UI.SkiaViewer` is one of the **FS.Skia.UI** distribution packages — an F# / Elmish UI and 2D
+scene-graph framework for .NET 10 desktop, rendered through Vulkan + SkiaSharp.
+
+## Install
+
+```bash
+dotnet add package FS.Skia.UI.SkiaViewer
+```
+
+Or scaffold a full governed project that wires the FS.Skia.UI packages together:
+
+```bash
+dotnet new install FS.Skia.UI.Template
+dotnet new fs-skia-ui -o MyApp
+```
+
+## Usage
+
+`Viewer.run` opens the Vulkan + Skia viewer for a single scene. It returns a `Result`, so a host
+that has no usable desktop session (or fails to present) reports a typed `ViewerRunFailure` rather
+than throwing — match on it instead of assuming success.
+
+```fsharp
+open FS.Skia.UI.Scene
+open FS.Skia.UI.SkiaViewer
+
+let options: ViewerOptions =
+    { Title = "My App"
+      InitialSize = { Width = 1280; Height = 720 } }
+
+// The rendered content is any SceneNode from FS.Skia.UI.Scene.
+let scene: SceneNode = Rectangle((0.0, 0.0, 1280.0, 720.0), Colors.white)
+
+match Viewer.run options scene with
+| Ok outcome ->
+    printfn "Window opened: %b, first frame presented: %b" outcome.WindowOpened outcome.FirstFramePresented
+| Error failure ->
+    printfn "Viewer blocked at %A (%A): %s" failure.BlockedStage failure.Classification failure.Message
+```
+
+For an Elmish-style application, build a `GeneratedAppHost` (with `Init` / `Update` / `View` /
+`MapKey` / `Tick` / `Diagnostics`) and run it with `Viewer.runApp options host`, which returns the
+same `Result<ViewerLaunchOutcome, ViewerRunFailure>`.
+
+## API at a glance
+
+- **`Viewer.run` / `Viewer.runApp`** — open the viewer for a single `SceneNode`, or for a full
+  `GeneratedAppHost<'model,'msg>`; both return `Result<ViewerLaunchOutcome, ViewerRunFailure>`.
+- **`Viewer.runBounded` / `runUntilFirstFrame` / `runForFrames`** — headless, bounded evidence runs
+  that render to a `ViewerRunFailure`-or-`ViewerRunEvidence` `Result` for CI and screenshots.
+- **`Viewer.captureScreenshotEvidence`** — drive a `ScreenshotEvidenceRequest` to a
+  `ScreenshotEvidenceResult` recording capture source, pixel-content validation, and proof status.
+- **`Viewer.desktopSessionDiagnostic` / `runtimeCapability`** — probe the host for a usable desktop
+  session and the renderer/keyboard/window capabilities currently available.
+- **`ViewerOptions`, `ViewerRunRequest`, `GeneratedAppHost<'model,'msg>`** — the core input
+  contracts: window title/size, bounded-run target plus diagnostics, and the Elmish app surface.
+- **`FS.Skia.UI.SkiaViewer.Host.Viewer`** — the lower-level Elmish host edge (`create`,
+  `withSubscription` / `withEventMapping` / `withEffectMapping`, `run`) over `ViewerProgram<'model,'msg>`.
+- **`Host.Diagnostics`** — constructors for structured `RenderDiagnostic` values (`vulkanUnavailable`,
+  `unsupportedPlatform`, `frameRenderFailed`, `startupFailed`, and more), keyed by `DiagnosticStage`.
+
+## Versioning
+
+All `FS.Skia.UI.*` libraries share one version and move together. In a generated project a
+single `<FsSkiaUiVersion>` in `Directory.Packages.props` pins every package — upgrading is one
+edit; see `docs/UPGRADING.md`. Pre-release versions use a `-preview.N` suffix.
+
+## Links
+
+- Repository & issues: https://github.com/FS-Skia-UI/FS-Skia-UI
+- License: MIT

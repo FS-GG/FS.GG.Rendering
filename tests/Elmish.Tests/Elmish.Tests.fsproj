@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <GenerateProgramFile>false</GenerateProgramFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Tests.fs" />
+    <Compile Include="ControlsElmishAdapterContractTests.fs" />
+    <Compile Include="TypedControlsAdapterTests.fs" />
+    <Compile Include="AdapterCmdTests.fs" />
+    <Compile Include="AnimationTickTests.fs" />
+    <Compile Include="Feature090DispatchTests.fs" />
+    <Compile Include="Feature092LiveSurvivalTests.fs" />
+    <Compile Include="Feature094FocusRoutingTests.fs" />
+    <Compile Include="Feature096LiveBridgeTests.fs" />
+    <Compile Include="Feature098DispatchTests.fs" />
+    <Compile Include="Feature099AnimationSeamTests.fs" />
+    <Compile Include="Feature100NavigationTests.fs" />
+    <Compile Include="Feature108MetricsTests.fs" />
+    <Compile Include="Feature109MetricsHonestyTests.fs" />
+    <Compile Include="Feature109CorpusTests.fs" />
+    <Compile Include="Feature109BaselineReportTests.fs" />
+    <Compile Include="Feature110RetainedRoutingTests.fs" />
+    <Compile Include="Feature110RetainedRoutingParityTests.fs" />
+    <Compile Include="Feature110FallbackTests.fs" />
+    <Compile Include="Feature111FrameCauseTests.fs" />
+    <Compile Include="Feature111PhaseRecordTests.fs" />
+    <Compile Include="Feature111ViewSkipTests.fs" />
+    <Compile Include="Feature113MemoMetricsTests.fs" />
+    <Compile Include="Feature114VirtualMetricsTests.fs" />
+    <Compile Include="Feature116MetricsTests.fs" />
+    <Compile Include="Feature117MetricsTests.fs" />
+    <Compile Include="Feature120MetricsTests.fs" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Elmish\Elmish.fsproj" />
+    <ProjectReference Include="..\..\src\Controls.Elmish\Controls.Elmish.fsproj" />
+    <PackageReference Include="Expecto" />
+    <PackageReference Include="FsCheck" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="YoloDev.Expecto.TestSdk" />
+  </ItemGroup>
+
+</Project>

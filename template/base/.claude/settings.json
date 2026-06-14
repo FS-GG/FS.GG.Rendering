@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./fake.sh build -t Dev)",
+      "Bash(./fake.sh build -t Test)",
+      "Bash(./fake.sh build -t Verify)"
+    ],
+    "deny": []
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/validate-speckit-project.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

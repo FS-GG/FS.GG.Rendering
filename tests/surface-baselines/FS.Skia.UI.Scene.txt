@@ -1,0 +1,8 @@
+FS.Skia.UI.Scene.Color
+FS.Skia.UI.Scene.Colors
+FS.Skia.UI.Scene.Paint
+FS.Skia.UI.Scene.Point
+FS.Skia.UI.Scene.Rect
+FS.Skia.UI.Scene.Scene
+FS.Skia.UI.Scene.SceneNode
+FS.Skia.UI.Scene.Size

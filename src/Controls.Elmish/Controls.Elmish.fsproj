@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <IsPackable>true</IsPackable>
+    <PackageId>FS.Skia.UI.Controls.Elmish</PackageId>
+    <AssemblyName>FS.Skia.UI.Controls.Elmish</AssemblyName>
+    <Version>0.1.129-preview.1</Version>
+    <Title>FS.Skia.UI.Controls.Elmish</Title>
+    <Description>Elmish command, subscription, and program adapters for Controls and KeyboardInput runtime effects.</Description>
+    <PackageTags>fsharp;skia;controls;elmish;adapter</PackageTags>
+  </PropertyGroup>
+
+  <!-- Feature 092 (E2): the focus/text routing seam re-keyed onto the retained structure
+       (`resolveFocus`/`routeFocusedText`) takes the internal `RetainedRender` type, so it is
+       `internal` to this assembly and the adapter tests reach it via InternalsVisibleTo. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Elmish.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="ControlsElmish.fsi" />
+    <Compile Include="ControlsElmish.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Controls\Controls.fsproj" />
+    <ProjectReference Include="..\KeyboardInput\KeyboardInput.fsproj" />
+    <!-- Feature 085 (research D3-AMEND): the interactive pointer/size-aware host
+         (InteractiveAppHost + runInteractiveApp) lives here, not in SkiaViewer, because
+         PointerInteraction/interpretPointerOutcome are Controls surface and the viewer is
+         host-independent. This adds an acyclic Controls.Elmish -> SkiaViewer edge. -->
+    <ProjectReference Include="..\SkiaViewer\SkiaViewer.fsproj" />
+    <PackageReference Include="Fable.Elmish" />
+  </ItemGroup>
+
+</Project>

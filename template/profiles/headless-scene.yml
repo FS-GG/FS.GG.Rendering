@@ -1,0 +1,8 @@
+name: headless-scene
+description: Headless scene/widget authoring profile.
+capabilities: [scene]
+optionalCapabilities: [layout, controls, testing]
+governance: full
+samples: false
+sourceFrameworkMode: false
+validationCommands: [Dev, Test, Verify]

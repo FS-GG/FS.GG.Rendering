@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <GenerateProgramFile>false</GenerateProgramFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="SurfaceAreaTests.fs" Condition="Exists('SurfaceAreaTests.fs')" />
+    <Compile Include="PackageApiReferenceTests.fs" />
+    <Compile Include="NameCollisionSafetyTests.fs" />
+    <Compile Include="GeneratedConsumerValidationTests.fs" />
+    <Compile Include="FsiTranscriptCoverageTests.fs" />
+    <Compile Include="Tests.fs" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Scene\Scene.fsproj" Condition="Exists('..\..\src\Scene\Scene.fsproj')" />
+    <ProjectReference Include="..\..\src\Layout\Layout.fsproj" Condition="Exists('..\..\src\Layout\Layout.fsproj')" />
+    <ProjectReference Include="..\..\src\Controls\Controls.fsproj" Condition="Exists('..\..\src\Controls\Controls.fsproj')" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Expecto" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="YoloDev.Expecto.TestSdk" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,31 @@
+{
+  "$description": "FS.Skia.UI.Controls theme primitives — single source of truth (feature 069). DTCG format; generated into src/Controls/DesignTokens.fs via ./fake.sh build -t RefreshSurfaceBaselines.",
+  "light": {
+    "foreground":            { "$type": "color",      "$value": "#1f2937ff" },
+    "background":            { "$type": "color",      "$value": "#f8fafcff" },
+    "accent":                { "$type": "color",      "$value": "#2563ebff" },
+    "danger":                { "$type": "color",      "$value": "#b91c1cff" },
+    "success":               { "$type": "color",      "$value": "#15803dff" },
+    "warning":               { "$type": "color",      "$value": "#b45309ff" },
+    "muted":                 { "$type": "color",      "$value": "#64748bff" },
+    "fontFamily":            { "$type": "fontFamily", "$value": null },
+    "fontSize":              { "$type": "dimension",  "$value": 14.0 },
+    "density":               { "$type": "number",     "$value": 1.0 },
+    "cornerRadius":          { "$type": "dimension",  "$value": 4.0 },
+    "contrastRequiredRatio": { "$type": "number",     "$value": 4.5 }
+  },
+  "dark": {
+    "foreground":            { "$type": "color",      "$value": "#f1f5f9ff" },
+    "background":            { "$type": "color",      "$value": "#111827ff" },
+    "accent":                { "$type": "color",      "$value": "#60a5faff" },
+    "danger":                { "$type": "color",      "$value": "#ff9592ff" },
+    "success":               { "$type": "color",      "$value": "#4ade80ff" },
+    "warning":               { "$type": "color",      "$value": "#fbbf24ff" },
+    "muted":                 { "$type": "color",      "$value": "#94a3b8ff" },
+    "fontFamily":            { "$type": "fontFamily", "$value": null },
+    "fontSize":              { "$type": "dimension",  "$value": 14.0 },
+    "density":               { "$type": "number",     "$value": 1.0 },
+    "cornerRadius":          { "$type": "dimension",  "$value": 4.0 },
+    "contrastRequiredRatio": { "$type": "number",     "$value": 4.5 }
+  }
+}
