@@ -17,6 +17,7 @@
     <Compile Include="Feature120ReplayCacheTests.fs" />
     <Compile Include="Feature121LiveHostPacingTests.fs" />
     <Compile Include="Feature122PresentPathTests.fs" />
+    <Compile Include="Audit_ReplayCache.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
