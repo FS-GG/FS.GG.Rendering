@@ -8,7 +8,9 @@
     <PackageVersion Include="FSharp.Core" Version="10.1.301" />
     <PackageVersion Include="Silk.NET.Input" Version="2.23.0" />
     <PackageVersion Include="Silk.NET.OpenGL" Version="2.23.0" />
+    <PackageVersion Include="Silk.NET.GLFW" Version="2.23.0" />
     <PackageVersion Include="Silk.NET.Windowing" Version="2.23.0" />
+    <PackageVersion Include="Silk.NET.Windowing.Glfw" Version="2.23.0" />
     <PackageVersion Include="Silk.NET.Windowing.Extensions" Version="2.23.0" />
     <PackageVersion Include="SkiaSharp" Version="4.147.0-preview.3.1" />
     <PackageVersion Include="SkiaSharp.NativeAssets.Linux" Version="4.147.0-preview.3.1" />

@@ -40,7 +40,7 @@ tested in `tests/Rendering.Harness.Tests` per constitution Principle V (FSI-firs
 - [x] T003 Author `tests/Rendering.Harness/Probe.fsi` then `Probe.fs`: env probe recording display/GL/refresh/extension facts + effective backend, shelling `xdpyinfo`/`xrandr`/`xinput` and detecting Wayland-vs-X11 (FR-002, FR-014).
 - [x] T004 Author `tests/Rendering.Harness/RunPlan.fsi` then `RunPlan.fs` — **pure**: tier → `RequiredCapability`, `Assertions`, `ClaimableProof`, `NotAuthoritativeFor`, and `Degradation (Run|Skip|FailClassified)` computed from `ProbeFacts`; `vsync-faithful` claimable only when present facts complete (FR-007/008/012/014).
 - [x] T005 [P] Author `tests/Rendering.Harness.Tests` unit tests for `RunPlan` (proof-level gating incl. vsync-faithful, degradation Run/Skip/FailClassified, `NotAuthoritativeFor` non-empty for non-probe tiers) and the `Evidence` schema — the FSI-first semantic tests; these join the default local tier (Principle V).
-- [ ] T006 Author `tests/Rendering.Harness/X11.fsi` then `X11.fs`: edge interpreter shelling `xdotool` (window search + XTEST), `maim`/`xwd` (capture), `xrandr` (modes); unsets `WAYLAND_DISPLAY` for the viewer process.
+- [x] T006 Author `tests/Rendering.Harness/X11.fsi` then `X11.fs`: edge interpreter shelling `xdotool` (window search + XTEST), `maim`/`xwd` (capture), `xrandr` (modes); unsets `WAYLAND_DISPLAY` for the viewer process.
 - [x] T007 Author `tests/Rendering.Harness/Cli.fs` (`[<EntryPoint>]`): `argv` dispatch for `probe|offscreen|live-x11|perf|input` + common flags (`--out`/`--scene`/`--json`) + exit codes (0 pass/clean-skip, 1 fail, 2 usage) per `contracts/cli.schema.md`; wire the `probe` subcommand end-to-end.
 
 **Checkpoint**: `probe` runs and writes a valid `run.json`; pure unit tests green.
@@ -73,9 +73,9 @@ tested in `tests/Rendering.Harness.Tests` per constitution Principle V (FSI-firs
 
 ### Implementation for User Story 2
 
-- [ ] T013 [US2] Add the **T2** executor in `Tiers.fs`: launch `SkiaViewer.run` with `WAYLAND_DISPLAY` unset, discover the window (`X11.fs`/xdotool), capture a non-blank window PNG (maim), inject mouse+keyboard via XTEST, confirm + record a visible state change; classify a Wayland-effective run as failed (FR-006/014); wire the `live-x11` subcommand.
+- [x] T013 [US2] Add the **T2** executor in `Tiers.fs`: launch `SkiaViewer.run` with `WAYLAND_DISPLAY` unset, discover the window (`X11.fs`/xdotool), capture a non-blank window PNG (maim), inject mouse+keyboard via XTEST, confirm + record a visible state change; classify a Wayland-effective run as failed (FR-006/014); wire the `live-x11` subcommand.
 - [ ] T014 [US2] Add the `x11-xtest` input backend to `Input.fs` (xdotool, default live) and wire `input --backend x11-xtest` (FR-010).
-- [ ] T015 [US2] Validate quickstart V3 (window found, non-blank PNG, input injected, visible change; Wayland-effective → classified/failed) (SC-002).
+- [x] T015 [US2] Validate quickstart V3 (window found, non-blank PNG, input injected, visible change; Wayland-effective → classified/failed) (SC-002).
 
 **Checkpoint**: live X11 smoke + real input works.
 
@@ -89,9 +89,9 @@ tested in `tests/Rendering.Harness.Tests` per constitution Principle V (FSI-firs
 
 ### Implementation for User Story 3
 
-- [ ] T016 [US3] Author `tests/Rendering.Harness/Perf.fsi` then `Perf.fs` with modes `throughput`/`paced-60`/`paced-native`/`stress-resize`/`input-latency` (each declaring deterministic/live-host/timing) and the **T3** executor via `SkiaViewer.runBounded` + `FrameMetrics.Paint/ComposeDuration`; persist per-frame + p50/p95/p99 metrics with display/swap facts; refuse `vsync-faithful` when present facts are missing (FR-007/009); wire the `perf` subcommand.
-- [ ] T017 [US3] Re-home the 17 R4-skipped `Feature109` perf tests as harness perf goldens written to the gitignored `artifacts/` run dir (not repo-relative); update `SKIPPED-TESTS.md` to reference the harness perf modes.
-- [ ] T018 [US3] Validate quickstart V4 (`perf --mode paced-native` persists percentile + present facts; removing vblank facts → not `vsync-faithful`) (SC-003).
+- [x] T016 [US3] Author `tests/Rendering.Harness/Perf.fsi` then `Perf.fs` with modes `throughput`/`paced-60`/`paced-native`/`stress-resize`/`input-latency` (each declaring deterministic/live-host/timing) and the **T3** executor via `SkiaViewer.runBounded` + `FrameMetrics.Paint/ComposeDuration`; persist per-frame + p50/p95/p99 metrics with display/swap facts; refuse `vsync-faithful` when present facts are missing (FR-007/009); wire the `perf` subcommand.
+- [x] T017 [US3] Re-home the 17 R4-skipped `Feature109` perf tests as harness perf goldens written to the gitignored `artifacts/` run dir (not repo-relative); update `SKIPPED-TESTS.md` to reference the harness perf modes.
+- [x] T018 [US3] Validate quickstart V4 (`perf --mode paced-native` persists percentile + present facts; removing vblank facts → not `vsync-faithful`) (SC-003).
 
 **Checkpoint**: faithful, non-overclaiming perf evidence.
 
@@ -114,9 +114,9 @@ tested in `tests/Rendering.Harness.Tests` per constitution Principle V (FSI-firs
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
-- [ ] T021 [P] Write `docs/harness/capability-baseline.md` — the recorded dev-environment capability baseline (FR-015), noting the probe re-measures per run.
+- [x] T021 [P] Write `docs/harness/capability-baseline.md` — the recorded dev-environment capability baseline (FR-015), noting the probe re-measures per run.
 - [ ] T022 Run the full quickstart V1–V6 and confirm SC-001..SC-007; confirm `tests/Rendering.Harness.Tests` is green in the default local tier, that **no tier is required for a routine rendering change** (FR-012), that no tier references a governance path (FR-013), and that this feature changed **no `src/**` `.fsi`** (no new product public API — FR-011).
-- [ ] T023 [P] Update `README.md` (+ `docs/`) to document the harness — how to run each tier, the capability-not-gate framing, and the no-overclaim evidence contract; cross-reference `SKIPPED-TESTS.md`.
+- [x] T023 [P] Update `README.md` (+ `docs/`) to document the harness — how to run each tier, the capability-not-gate framing, and the no-overclaim evidence contract; cross-reference `SKIPPED-TESTS.md`.
 
 ---
 

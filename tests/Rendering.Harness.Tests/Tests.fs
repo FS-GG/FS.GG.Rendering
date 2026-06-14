@@ -74,6 +74,13 @@ let tierTests =
             Expect.equal ev.Status Passed "T1 passes (non-blank offscreen readback)"
             Expect.equal ev.ProofLevel OffscreenPixels "T1 proof level"
         }
+        test "T3 perf records real timing but withholds vsync-faithful (no present facts)" {
+            let ev, fms = Perf.runPerf Perf.Throughput 20 baseFacts (tmp "perf")
+            Expect.equal ev.Status Passed "perf passes"
+            Expect.equal ev.ProofLevel Timing "timing proof level"
+            Expect.isNonEmpty fms "real per-frame render samples recorded"
+            Expect.contains ev.NotAuthoritativeFor "vsync-faithful" "vsync-faithful withheld (no present facts)"
+        }
     ]
 
 [<Tests>]

@@ -46,15 +46,71 @@ let private runOffscreen (rest: string list) =
     printfn "%s" p1
     if evT0.Status = Passed && evT1.Status = Passed then 0 else 1
 
+let private flagValue (flag: string) (rest: string list) =
+    let rec find xs =
+        match xs with
+        | f :: v :: _ when f = flag -> Some v
+        | _ :: tl -> find tl
+        | [] -> None
+    find rest
+
+let private runPerfCmd (rest: string list) =
+    let mode =
+        match flagValue "--mode" rest with
+        | Some m -> Perf.parseMode m
+        | None -> Some Perf.Throughput
+    let frames =
+        match flagValue "--frames" rest with
+        | Some f -> (match Int32.TryParse f with | true, v -> v | _ -> 120)
+        | None -> 120
+    match mode with
+    | None -> eprintfn "unknown --mode (expected throughput|paced-60|paced-native|stress-resize|input-latency)"; 2
+    | Some m ->
+        let facts = Probe.probe ()
+        let out = outDir rest
+        let selfDll =
+            match System.Reflection.Assembly.GetEntryAssembly() with
+            | null -> ""
+            | a -> a.Location
+        let ev, fms =
+            match m with
+            | Perf.PacedNative -> Live.runFaithfulPerf facts selfDll out // faithful GPU vsync timing
+            | _ -> Perf.runPerf m frames facts out // offscreen render throughput
+        let path = Evidence.write out ev fms
+        printfn "%s" path
+        match ev.Status with
+        | RunStatus.Passed
+        | RunStatus.Skipped -> 0
+        | RunStatus.Failed -> 1
+
+let private runLiveCmd (rest: string list) =
+    let facts = Probe.probe ()
+    let out = outDir rest
+    let selfDll =
+        match System.Reflection.Assembly.GetEntryAssembly() with
+        | null -> ""
+        | a -> a.Location
+    let ev = Live.runLive facts selfDll out
+    let path = Evidence.write out ev []
+    printfn "%s" path
+    match ev.Status with
+    | RunStatus.Passed
+    | RunStatus.Skipped -> 0
+    | RunStatus.Failed -> 1
+
 [<EntryPoint>]
 let main argv =
     match List.ofArray argv with
     | "probe" :: rest -> runProbe rest
     | "offscreen" :: rest -> runOffscreen rest
-    | "live-x11" :: _
-    | "perf" :: _
+    | "perf" :: rest -> runPerfCmd rest
+    | "__viewer" :: _ -> Live.launchViewerChild ()
+    | "__vsyncprobe" :: stampFile :: rest ->
+        let seconds = match rest with | s :: _ -> (match Double.TryParse s with | true, v -> v | _ -> 3.0) | [] -> 3.0
+        Live.launchVsyncProbeChild stampFile seconds
+    | "live-x11" :: rest -> runLiveCmd rest
     | "input" :: _ ->
-        eprintfn "tier executor pending: live (T2), perf (T3), and kernel-input (T-uinput) wire next; the deterministic T0/T1 offscreen tiers and probe are implemented."
+        eprintfn "input backends pending: pure (deterministic MVU host), x11-xtest, and uinput wire next; probe, T0/T1 offscreen, T3 perf-throughput, and T2 live-x11 are implemented."
         2
     | []
     | "--help" :: _ ->
