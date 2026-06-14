@@ -1,0 +1,32 @@
+bin/
+obj/
+*.user
+.vs/
+.idea/
+.vscode/
+.ionide/
+*.suo
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+
+# FSharp.Formatting (generated docs site is never committed)
+output/
+.fsdocs/
+tmp/
+
+# Test output
+TestResults/
+artifacts/
+*.trx
+*.coverage
+coverage/
+
+# FSI
+.fsi-cache/
+*.fsx.lock
+
+# macOS / Linux cruft
+.DS_Store
