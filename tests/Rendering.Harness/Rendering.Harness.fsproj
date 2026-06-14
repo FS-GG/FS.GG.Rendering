@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Domain.fs" />
+    <Compile Include="RunPlan.fsi" />
+    <Compile Include="RunPlan.fs" />
+    <Compile Include="Evidence.fsi" />
+    <Compile Include="Evidence.fs" />
+    <Compile Include="Probe.fsi" />
+    <Compile Include="Probe.fs" />
+    <Compile Include="Tiers.fsi" />
+    <Compile Include="Tiers.fs" />
+    <Compile Include="Cli.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\SkiaViewer\SkiaViewer.fsproj" />
+    <ProjectReference Include="..\..\src\Controls.Elmish\Controls.Elmish.fsproj" />
+    <ProjectReference Include="..\..\src\Testing\Testing.fsproj" />
+    <ProjectReference Include="..\..\src\Scene\Scene.fsproj" />
+    <ProjectReference Include="..\..\src\Controls\Controls.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SkiaSharp" />
+  </ItemGroup>
+
+</Project>
