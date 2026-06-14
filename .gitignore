@@ -28,5 +28,8 @@ coverage/
 .fsi-cache/
 *.fsx.lock
 
+# Spec Kit extension catalog cache (machine-local, transient)
+.specify/extensions/.cache/
+
 # macOS / Linux cruft
 .DS_Store
