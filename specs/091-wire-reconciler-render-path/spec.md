@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-15
 
-**Status**: Draft
+**Status**: Final
 
 **Input**: User description: "next phase in fs.gg"
 
@@ -187,6 +187,7 @@ confirm a `KeyCollision` warning is emitted while the step still completes witho
   throwing and without corrupting identity.
 - **FR-010**: The entire surface MUST remain **assembly-internal** — zero public-surface-baseline
   delta — and remain exercised only through the in-assembly property tests via `InternalsVisibleTo`.
+  (Verified directly by the surface-drift check; this requirement has no separate Success Criterion.)
 
 ### Key Entities *(include if feature involves data)*
 
