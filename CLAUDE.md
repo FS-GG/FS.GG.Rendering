@@ -1,5 +1,5 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/121-paced-noalloc-tick/plan.md
+at specs/122-harness-input-backends/plan.md
 <!-- SPECKIT END -->
