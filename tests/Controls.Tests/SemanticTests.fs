@@ -4,6 +4,8 @@ open Expecto
 open System.Reflection
 open FS.GG.UI.Scene
 open FS.GG.UI.Controls
+open FS.GG.UI.Themes.Default
+open FS.GG.UI.DesignSystem
 
 type FormModel =
     { Count: int

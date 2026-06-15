@@ -1,18 +1,18 @@
 // DesignTokens.fsi — curated public surface of the generated token module (feature 069).
 // Principle II: this hand-curated signature is the SOLE public-surface declaration; the
-// paired DesignTokens.fs is GENERATED from src/Controls/design-tokens.tokens.json (the DTCG
-// single source of truth) and carries no access modifiers. Regenerate via
+// paired DesignTokens.fs is GENERATED from src/Themes.Default/design-tokens.tokens.json (the
+// DTCG single source of truth) and carries no access modifiers. Regenerate via
 // `./fake.sh build -t RefreshSurfaceBaselines`; currency is enforced by DesignTokenDrift.
 //
-// This is the additive public delta to FS.GG.UI.Controls (FR-002, FR-008, US3). The Theme
-// type and the Theme module signatures are UNCHANGED; this is the only new public surface.
+// Feature 125: relocated from FS.GG.UI.Controls to the FS.GG.UI.DesignSystem layer. The
+// generated token MODULE lives here; the DTCG JSON source travels with the default theme.
 
-namespace FS.GG.UI.Controls
+namespace FS.GG.UI.DesignSystem
 
 open FS.GG.UI.Scene
 
 /// Typed, compiler-checked design-token values generated from
-/// `src/Controls/design-tokens.tokens.json` (the DTCG single source of truth).
+/// `src/Themes.Default/design-tokens.tokens.json` (the DTCG single source of truth).
 /// Token VALUES are generated; this curated signature is the sole public-surface declaration.
 /// Token references are greppable and stay in lock-step with the DTCG source via DesignTokenDrift.
 module DesignTokens =

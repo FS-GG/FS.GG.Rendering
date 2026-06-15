@@ -27,6 +27,9 @@
     <PackageReference Include="FS.GG.UI.Layout" />
     <PackageReference Include="FS.GG.UI.Controls" />
     <PackageReference Include="FS.GG.UI.Controls.Elmish" />
+    <!-- Feature 125: design-system primitives + default theme carved out of Controls. -->
+    <PackageReference Include="FS.GG.UI.DesignSystem" />
+    <PackageReference Include="FS.GG.UI.Themes.Default" />
     <!--#endif -->
     <!--#if (profile == "governed") -->
     <PackageReference Include="FS.GG.UI.Testing" />

@@ -9,6 +9,8 @@ module Feature093RetainedStateTests
 open Expecto
 open FS.GG.UI.Scene
 open FS.GG.UI.Controls
+open FS.GG.UI.Themes.Default
+open FS.GG.UI.DesignSystem
 
 let private theme = Theme.light
 let private size: Size = { Width = 320; Height = 240 }

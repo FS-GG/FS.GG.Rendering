@@ -8,7 +8,9 @@ module Feature108ThemingTests
 open Expecto
 open FS.GG.UI.Scene
 open FS.GG.UI.Controls
-open FS.GG.UI.Controls.Theming
+open FS.GG.UI.Themes.Default.Theming
+open FS.GG.UI.Themes.Default
+open FS.GG.UI.DesignSystem
 
 let private rgb r g b : Color =
     { Red = byte r

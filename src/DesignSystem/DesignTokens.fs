@@ -1,6 +1,6 @@
-// GENERATED — do not edit. Source of truth: src/Controls/design-tokens.tokens.json
+// GENERATED — do not edit. Source of truth: src/Themes.Default/design-tokens.tokens.json
 // Regenerate via: ./fake.sh build -t RefreshSurfaceBaselines
-namespace FS.GG.UI.Controls
+namespace FS.GG.UI.DesignSystem
 
 open FS.GG.UI.Scene
 

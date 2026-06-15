@@ -79,6 +79,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Controls\Controls.fsproj" />
+    <!-- Feature 125: the design-system primitives and the default theme were carved out of
+         Controls into their own packages; the suites exercise both (Theme.light/dark, Style.resolve,
+         the relocated types), so reference them directly. -->
+    <ProjectReference Include="..\..\src\DesignSystem\DesignSystem.fsproj" />
+    <ProjectReference Include="..\..\src\Themes.Default\Themes.Default.fsproj" />
     <!-- Feature 108 (US6, T032): the theming-contrast suite reuses FS.GG.UI.Color.Contrast.ratio
          against the WCAG reference pairs. Test-only reference — Controls itself does not depend on
          the Color package (no package-graph change). -->

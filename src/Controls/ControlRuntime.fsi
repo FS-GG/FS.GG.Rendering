@@ -1,4 +1,5 @@
 namespace FS.GG.UI.Controls
+open FS.GG.UI.DesignSystem
 
 /// The text caret position (`Index`) within a focused control identified by `ControlId`.
 type ControlCaret =

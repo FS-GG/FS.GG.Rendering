@@ -3,8 +3,10 @@
 /// depend on a display (FR-016).
 module ControlsGallery.App.Program
 
-open FS.GG.UI.Controls.Theming
+open FS.GG.UI.Themes.Default.Theming
 open ControlsGallery.Core
+open FS.GG.UI.Themes.Default
+open FS.GG.UI.DesignSystem
 
 let private usage () =
     printfn "Controls Gallery — usage:"

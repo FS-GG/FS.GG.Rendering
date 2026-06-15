@@ -1,6 +1,7 @@
 namespace FS.GG.UI.Controls
 
 open System
+open FS.GG.UI.DesignSystem
 
 type TextInputMode =
     | SingleLine

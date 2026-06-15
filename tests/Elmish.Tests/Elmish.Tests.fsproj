@@ -43,6 +43,9 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Elmish\Elmish.fsproj" />
     <ProjectReference Include="..\..\src\Controls.Elmish\Controls.Elmish.fsproj" />
+    <!-- Feature 125: design-system primitives + default theme carved out of Controls. -->
+    <ProjectReference Include="..\..\src\DesignSystem\DesignSystem.fsproj" />
+    <ProjectReference Include="..\..\src\Themes.Default\Themes.Default.fsproj" />
     <PackageReference Include="Expecto" />
     <PackageReference Include="FsCheck" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />

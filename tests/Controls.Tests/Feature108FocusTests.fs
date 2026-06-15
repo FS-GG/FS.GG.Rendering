@@ -8,6 +8,7 @@ module Feature108FocusTests
 
 open Expecto
 open FS.GG.UI.Controls
+open FS.GG.UI.DesignSystem
 
 // Last-writer read of a control's VisualState over the PUBLIC attribute surface (mirrors the
 // renderer's `visualStateOf`), so the test does not depend on any internal helper.

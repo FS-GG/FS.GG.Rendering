@@ -1,4 +1,6 @@
-namespace FS.GG.UI.Controls
+namespace FS.GG.UI.Themes.Default
+
+open FS.GG.UI.DesignSystem
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 /// Palette and density tokens for controls: built-in `light`/`dark` themes plus `withDensity`/`withAccent`/`resolve`.

@@ -4,7 +4,9 @@ module ControlsGallery.Core.Model
 
 open FS.GG.UI.Scene
 open FS.GG.UI.Controls
-open FS.GG.UI.Controls.Theming
+open FS.GG.UI.Themes.Default.Theming
+open FS.GG.UI.Themes.Default
+open FS.GG.UI.DesignSystem
 
 /// Per-control seeded interactive state, shared by every page's `Build`. Populated so
 /// no control renders empty (FR-004) and so interactive controls have somewhere to

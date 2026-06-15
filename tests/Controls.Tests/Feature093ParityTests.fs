@@ -13,6 +13,8 @@ open System.IO
 open Expecto
 open FS.GG.UI.Scene
 open FS.GG.UI.Controls
+open FS.GG.UI.Themes.Default
+open FS.GG.UI.DesignSystem
 
 let private box: Rect = { X = 10.0; Y = 40.0; Width = 284.0; Height = 92.0 }
 

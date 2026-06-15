@@ -1,4 +1,5 @@
 namespace FS.GG.UI.Controls
+open FS.GG.UI.DesignSystem
 
 type Widget<'msg> = { Lowered: Control<'msg> }
 

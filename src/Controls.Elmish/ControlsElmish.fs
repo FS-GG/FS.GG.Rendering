@@ -6,6 +6,7 @@ open FS.GG.UI.KeyboardInput
 open FS.GG.UI.Scene
 open FS.GG.UI.SkiaViewer
 open Elmish
+open FS.GG.UI.DesignSystem
 
 type AdapterDiagnostic =
     { Code: string

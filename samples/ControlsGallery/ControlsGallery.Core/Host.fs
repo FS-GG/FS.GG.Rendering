@@ -7,11 +7,13 @@ module ControlsGallery.Core.Host
 open System
 open FS.GG.UI.Scene
 open FS.GG.UI.Controls
-open FS.GG.UI.Controls.Theming
+open FS.GG.UI.Themes.Default.Theming
 open FS.GG.UI.Controls.Elmish
 open FS.GG.UI.SkiaViewer
 open FS.GG.UI.KeyboardInput
 open ControlsGallery.Core.Model
+open FS.GG.UI.Themes.Default
+open FS.GG.UI.DesignSystem
 
 /// The seeded starting model: first page, Light, indigo accent, seeded demo state.
 let initModel: GalleryModel =

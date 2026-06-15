@@ -3,6 +3,8 @@ module ControlsDataGridTests
 open System.Diagnostics
 open Expecto
 open FS.GG.UI.Controls
+open FS.GG.UI.Themes.Default
+open FS.GG.UI.DesignSystem
 
 type GridMsg =
     | RowSelected of string

@@ -1,8 +1,8 @@
-namespace FS.GG.UI.Controls
+namespace FS.GG.UI.DesignSystem
 
 open FS.GG.UI.Scene
 
-// Feature 093 (E3): `ResolvedStyle` (the record) is declared on `Types.fsi` — BEFORE `Theme` —
+// Feature 093 (E3): `ResolvedStyle` (the record) is declared on `Types.DesignSystem.fsi` — BEFORE `Theme` —
 // so the overlapping field names (`Foreground`/`FontFamily`/`FontSize`) resolve to `Theme` for
 // the many unannotated `theme.*` accesses in the renderer (F# picks the last-declared type for
 // an ambiguous bare field). Same public surface, same namespace; only the declaration site

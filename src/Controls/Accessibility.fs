@@ -1,4 +1,5 @@
 namespace FS.GG.UI.Controls
+open FS.GG.UI.DesignSystem
 
 module Accessibility =
     let keyboard focusable activationKeys navigationKeys =

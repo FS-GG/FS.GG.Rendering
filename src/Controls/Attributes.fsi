@@ -1,4 +1,5 @@
 namespace FS.GG.UI.Controls
+open FS.GG.UI.DesignSystem
 
 /// Builder functions (`Attr`) for constructing the typed `Attr<'msg>` values that
 /// configure a control — covering content, layout, state, style, theme, and event attributes.

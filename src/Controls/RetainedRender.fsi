@@ -1,4 +1,5 @@
 namespace FS.GG.UI.Controls
+open FS.GG.UI.DesignSystem
 
 /// Feature 091 (E2) — the retained render structure that wires the parked keyed reconciler
 /// (`module internal Reconcile`, feature 067) onto the live render path. Each frame holds the

@@ -1,6 +1,7 @@
 namespace FS.GG.UI.Controls
 
 open FS.GG.UI.Scene
+open FS.GG.UI.DesignSystem
 
 type RichTextWeight =
     | Regular

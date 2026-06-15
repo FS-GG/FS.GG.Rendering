@@ -9,6 +9,8 @@ module Feature112TouchedCountTests
 open Expecto
 open FS.GG.UI.Scene
 open FS.GG.UI.Controls
+open FS.GG.UI.Themes.Default
+open FS.GG.UI.DesignSystem
 
 let private theme = Theme.light
 let private emptyModel = fst (ControlRuntime.init ())

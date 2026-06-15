@@ -14,6 +14,8 @@ module Feature117LayoutInvalidatedTests
 open Expecto
 open FS.GG.UI.Scene
 open FS.GG.UI.Controls
+open FS.GG.UI.Themes.Default
+open FS.GG.UI.DesignSystem
 
 let private theme = Theme.light
 let private size: Size = { Width = 640; Height = 480 }

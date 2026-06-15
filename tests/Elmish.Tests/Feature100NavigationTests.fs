@@ -14,6 +14,8 @@ open FS.GG.UI.Scene
 open FS.GG.UI.Controls
 open FS.GG.UI.Controls.Elmish
 open FS.GG.UI.KeyboardInput
+open FS.GG.UI.Themes.Default
+open FS.GG.UI.DesignSystem
 
 type private Msg =
     | RadioChanged of string

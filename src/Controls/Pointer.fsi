@@ -1,6 +1,7 @@
 namespace FS.GG.UI.Controls
 
 open FS.GG.UI.Layout
+open FS.GG.UI.DesignSystem
 
 /// Framework-neutral mouse button identity (FR-013). Qualified access is required
 /// because the bare case names (`Primary`/`Secondary`) otherwise collide with the

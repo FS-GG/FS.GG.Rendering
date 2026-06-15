@@ -5,10 +5,12 @@
 module ControlsGallery.App.Interactive
 
 open FS.GG.UI.Scene
-open FS.GG.UI.Controls.Theming
+open FS.GG.UI.Themes.Default.Theming
 open FS.GG.UI.Controls.Elmish
 open FS.GG.UI.SkiaViewer
 open ControlsGallery.Core
+open FS.GG.UI.Themes.Default
+open FS.GG.UI.DesignSystem
 
 let run (mode: ThemeMode) (accent: Color): int =
     let capability = Viewer.runtimeCapability ()

@@ -18,6 +18,8 @@ module Feature101LayoutDriftGuardTests
 open Expecto
 open FS.GG.UI.Scene
 open FS.GG.UI.Controls
+open FS.GG.UI.Themes.Default
+open FS.GG.UI.DesignSystem
 
 // ---------------------------------------------------------------------------------------------------
 // C1 — the pure drift report (FR-002 under-coverage, FR-003 over-coverage, FR-007 human-legible)
