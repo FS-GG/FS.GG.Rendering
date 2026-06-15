@@ -1,6 +1,6 @@
-namespace FS.Skia.UI.Controls
+namespace FS.GG.UI.Controls
 
-open FS.Skia.UI.Layout
+open FS.GG.UI.Layout
 
 [<RequireQualifiedAccess>]
 type PointerButton =

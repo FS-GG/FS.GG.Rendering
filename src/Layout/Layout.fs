@@ -1,8 +1,8 @@
-namespace FS.Skia.UI.Layout
+namespace FS.GG.UI.Layout
 
 open System
 open Facebook.Yoga
-open FS.Skia.UI.Scene
+open FS.GG.UI.Scene
 
 module Layout =
     // R2: Yoga's internal pixel-grid rounding snaps each node using its UNROUNDED absolute position
@@ -42,7 +42,7 @@ module Layout =
             [ diagnostic
                   nodeId
                   InvalidLayoutValue
-                  FS.Skia.UI.Layout.DiagnosticSeverity.Warning
+                  FS.GG.UI.Layout.DiagnosticSeverity.Warning
                   $"Invalid {name} value '{value}' was normalized to 0."
                   (Some name)
                   true ]
@@ -56,7 +56,7 @@ module Layout =
             [ diagnostic
                   nodeId
                   InvalidLayoutValue
-                  FS.Skia.UI.Layout.DiagnosticSeverity.Warning
+                  FS.GG.UI.Layout.DiagnosticSeverity.Warning
                   $"Invalid {name} value '{value}' was normalized to 0."
                   (Some name)
                   true ]
@@ -94,9 +94,9 @@ module Layout =
 
         let diagnostics =
             [ if not (nonNegative available.Width) then
-                  diagnostic None InvalidAvailableSpace FS.Skia.UI.Layout.DiagnosticSeverity.Error "Invalid available width was normalized to 0." (Some "available-width") true
+                  diagnostic None InvalidAvailableSpace FS.GG.UI.Layout.DiagnosticSeverity.Error "Invalid available width was normalized to 0." (Some "available-width") true
               if not (nonNegative available.Height) then
-                  diagnostic None InvalidAvailableSpace FS.Skia.UI.Layout.DiagnosticSeverity.Error "Invalid available height was normalized to 0." (Some "available-height") true ]
+                  diagnostic None InvalidAvailableSpace FS.GG.UI.Layout.DiagnosticSeverity.Error "Invalid available height was normalized to 0." (Some "available-height") true ]
 
         { available with Width = width; Height = height }, diagnostics
 
@@ -104,7 +104,7 @@ module Layout =
         let rec collect path (node: LayoutNode) =
             let own =
                 if String.IsNullOrWhiteSpace node.Id then
-                    [ diagnostic None InvalidLayoutValue FS.Skia.UI.Layout.DiagnosticSeverity.Error $"Layout node at {path} has an empty id." (Some "node-id") true ]
+                    [ diagnostic None InvalidLayoutValue FS.GG.UI.Layout.DiagnosticSeverity.Error $"Layout node at {path} has an empty id." (Some "node-id") true ]
                 else
                     []
 
@@ -122,7 +122,7 @@ module Layout =
             |> List.countBy id
             |> List.choose (fun (nodeId, count) ->
                 if count > 1 then
-                    Some(diagnostic (Some nodeId) DuplicateLayoutNodeId FS.Skia.UI.Layout.DiagnosticSeverity.Error $"Duplicate layout node id '{nodeId}' appears {count} times." (Some "node-id") true)
+                    Some(diagnostic (Some nodeId) DuplicateLayoutNodeId FS.GG.UI.Layout.DiagnosticSeverity.Error $"Duplicate layout node id '{nodeId}' appears {count} times." (Some "node-id") true)
                 else
                     None)
 
@@ -135,7 +135,7 @@ module Layout =
         let conflictDiagnostics =
             match minValue, maxValue with
             | Some minValue, Some maxValue when minValue > maxValue ->
-                [ diagnostic nodeId UnsatisfiedConstraint FS.Skia.UI.Layout.DiagnosticSeverity.Warning $"Minimum {axis} exceeds maximum {axis}; maximum was used." (Some axis) true ]
+                [ diagnostic nodeId UnsatisfiedConstraint FS.GG.UI.Layout.DiagnosticSeverity.Warning $"Minimum {axis} exceeds maximum {axis}; maximum was used." (Some axis) true ]
             | _ -> []
 
         let bounded =
@@ -157,9 +157,9 @@ module Layout =
             let response =
                 measure
                     { AvailableWidth = max 0.0 availableWidth
-                      WidthMode = FS.Skia.UI.Layout.MeasureMode.AtMost
+                      WidthMode = FS.GG.UI.Layout.MeasureMode.AtMost
                       AvailableHeight = max 0.0 availableHeight
-                      HeightMode = FS.Skia.UI.Layout.MeasureMode.AtMost }
+                      HeightMode = FS.GG.UI.Layout.MeasureMode.AtMost }
 
             let diagnostics = response.Diagnostics
 
@@ -169,7 +169,7 @@ module Layout =
                 0.0,
                 0.0,
                 diagnostics
-                @ [ diagnostic nodeId UnmeasurableContent FS.Skia.UI.Layout.DiagnosticSeverity.Warning "Invalid measurement output was normalized to 0x0." (Some "measure") true ]
+                @ [ diagnostic nodeId UnmeasurableContent FS.GG.UI.Layout.DiagnosticSeverity.Warning "Invalid measurement output was normalized to 0x0." (Some "measure") true ]
 
     let preferredMainSize isRow availableMain (node: LayoutNode) =
         let explicit =
@@ -363,9 +363,9 @@ module Layout =
 
     let yogaMeasureMode mode =
         match mode with
-        | Facebook.Yoga.MeasureMode.Exactly -> FS.Skia.UI.Layout.MeasureMode.Exactly
-        | Facebook.Yoga.MeasureMode.AtMost -> FS.Skia.UI.Layout.MeasureMode.AtMost
-        | _ -> FS.Skia.UI.Layout.MeasureMode.Undefined
+        | Facebook.Yoga.MeasureMode.Exactly -> FS.GG.UI.Layout.MeasureMode.Exactly
+        | Facebook.Yoga.MeasureMode.AtMost -> FS.GG.UI.Layout.MeasureMode.AtMost
+        | _ -> FS.GG.UI.Layout.MeasureMode.Undefined
 
     let setOptional value apply =
         match value with
@@ -415,7 +415,7 @@ module Layout =
 
     let yogaFailureInjectionEnabled () =
         let mutable enabled = false
-        AppContext.TryGetSwitch("FS.Skia.UI.Layout.ForceYogaFailure", &enabled) && enabled
+        AppContext.TryGetSwitch("FS.GG.UI.Layout.ForceYogaFailure", &enabled) && enabled
 
     let tryYogaLayout (available: AvailableSpace) (pin: LayoutBounds option) (root: LayoutNode) =
         let measurementDiagnostics = ResizeArray<LayoutDiagnostic>()
@@ -446,7 +446,7 @@ module Layout =
                                 diagnostic
                                     (Some node.Id)
                                     UnmeasurableContent
-                                    FS.Skia.UI.Layout.DiagnosticSeverity.Warning
+                                    FS.GG.UI.Layout.DiagnosticSeverity.Warning
                                     "Invalid measurement output was normalized to 0x0."
                                     (Some "measure")
                                     true
@@ -564,7 +564,7 @@ module Layout =
                     diagnostic
                         (Some root.Id)
                         FallbackBoundsApplied
-                        FS.Skia.UI.Layout.DiagnosticSeverity.Warning
+                        FS.GG.UI.Layout.DiagnosticSeverity.Warning
                         $"Yoga execution failed recoverably; pure fallback layout was applied. {ex.GetType().Name}: {ex.Message}"
                         (Some "yoga")
                         true
@@ -574,7 +574,7 @@ module Layout =
 
         let fallbackDiagnostics =
             if allDiagnostics |> List.exists (fun item -> item.FallbackApplied) then
-                [ diagnostic None FallbackBoundsApplied FS.Skia.UI.Layout.DiagnosticSeverity.Info "One or more layout inputs required bounded fallback geometry." None true ]
+                [ diagnostic None FallbackBoundsApplied FS.GG.UI.Layout.DiagnosticSeverity.Info "One or more layout inputs required bounded fallback geometry." None true ]
             else
                 []
 

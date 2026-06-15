@@ -1,16 +1,16 @@
-namespace FS.Skia.UI.SkiaViewer.Host
+namespace FS.GG.UI.SkiaViewer.Host
 
 open System
 open Elmish
-open FS.Skia.UI.Scene
-open FS.Skia.UI.SkiaViewer
+open FS.GG.UI.Scene
+open FS.GG.UI.SkiaViewer
 
-/// Viewer host contract type (moved from the FS.Skia.UI monolith, retyped onto FS.Skia.UI.Scene).
+/// Viewer host contract type (moved from the FS.GG.UI monolith, retyped onto FS.GG.UI.Scene).
 type DiagnosticOptions =
     { Verbose: bool }
 
 [<NoEquality; NoComparison>]
-/// Viewer host contract type (moved from the FS.Skia.UI monolith, retyped onto FS.Skia.UI.Scene).
+/// Viewer host contract type (moved from the FS.GG.UI monolith, retyped onto FS.GG.UI.Scene).
 type ViewerConfiguration =
     { Title: string
       InitialSize: Size
@@ -25,14 +25,14 @@ type ViewerConfiguration =
       /// readback present path byte-identical.
       PresentMode: ViewerPresentMode }
 
-/// Viewer host contract type (moved from the FS.Skia.UI monolith, retyped onto FS.Skia.UI.Scene).
+/// Viewer host contract type (moved from the FS.GG.UI monolith, retyped onto FS.GG.UI.Scene).
 type DiagnosticSeverity =
     | Info
     | Warning
     | Error
     | Fatal
 
-/// Viewer host contract type (moved from the FS.Skia.UI monolith, retyped onto FS.Skia.UI.Scene).
+/// Viewer host contract type (moved from the FS.GG.UI monolith, retyped onto FS.GG.UI.Scene).
 type DiagnosticStage =
     | PlatformCheck
     | GlContext
@@ -44,7 +44,7 @@ type DiagnosticStage =
     | ScreenshotCapture
     | Shutdown
 
-/// Viewer host contract type (moved from the FS.Skia.UI monolith, retyped onto FS.Skia.UI.Scene).
+/// Viewer host contract type (moved from the FS.GG.UI monolith, retyped onto FS.GG.UI.Scene).
 type RenderDiagnostic =
     { Severity: DiagnosticSeverity
       Stage: DiagnosticStage
@@ -57,7 +57,7 @@ type ViewerPointerButton =
     | SecondaryButton
     | MiddleButton
 
-/// Viewer host contract type (moved from the FS.Skia.UI monolith, retyped onto FS.Skia.UI.Scene).
+/// Viewer host contract type (moved from the FS.GG.UI monolith, retyped onto FS.GG.UI.Scene).
 type ViewerEvent =
     | Loaded
     | UpdateTick of elapsedSeconds: float
@@ -78,17 +78,17 @@ type ViewerEvent =
     | CloseRequested
     | DiagnosticReported of RenderDiagnostic
 
-/// Viewer host contract type (moved from the FS.Skia.UI monolith, retyped onto FS.Skia.UI.Scene).
+/// Viewer host contract type (moved from the FS.GG.UI monolith, retyped onto FS.GG.UI.Scene).
 type ScreenshotFormat =
     | Png
     | Jpeg
 
-/// Viewer host contract type (moved from the FS.Skia.UI monolith, retyped onto FS.Skia.UI.Scene).
+/// Viewer host contract type (moved from the FS.GG.UI monolith, retyped onto FS.GG.UI.Scene).
 type ScreenshotRequest =
     { Destination: string
       Format: ScreenshotFormat }
 
-/// Viewer host contract type (moved from the FS.Skia.UI monolith, retyped onto FS.Skia.UI.Scene).
+/// Viewer host contract type (moved from the FS.GG.UI monolith, retyped onto FS.GG.UI.Scene).
 type ViewerEffect<'msg> =
     | InitializeRenderer
     | RenderFrame of Scene
@@ -97,7 +97,7 @@ type ViewerEffect<'msg> =
     | ReportDiagnostic of RenderDiagnostic
     | Dispatch of 'msg
 
-/// Viewer host contract type (moved from the FS.Skia.UI monolith, retyped onto FS.Skia.UI.Scene).
+/// Viewer host contract type (moved from the FS.GG.UI monolith, retyped onto FS.GG.UI.Scene).
 type ViewerProgram<'model, 'msg> =
     { Configuration: ViewerConfiguration
       Init: unit -> 'model * Cmd<'msg>
@@ -109,25 +109,25 @@ type ViewerProgram<'model, 'msg> =
 
 /// Structured host diagnostics (moved with the host; behaviour preserved).
 module Diagnostics =
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val create: severity: DiagnosticSeverity -> stage: DiagnosticStage -> message: string -> cause: string option -> RenderDiagnostic
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val unsupportedPlatform: platform: string -> RenderDiagnostic
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val invalidConfiguration: message: string -> RenderDiagnostic
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val glUnavailable: detail: string -> RenderDiagnostic
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val missingCapability: capability: string -> detail: string -> RenderDiagnostic
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val invalidPath: detail: string -> RenderDiagnostic
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val unavailableFont: family: string -> RenderDiagnostic
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val frameRenderFailed: detail: string -> RenderDiagnostic
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val screenshotFailed: detail: string -> RenderDiagnostic
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val shutdownFailed: detail: string -> RenderDiagnostic
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val startupFailed: stage: DiagnosticStage -> detail: string -> RenderDiagnostic

@@ -4,8 +4,8 @@ open System
 open System.IO
 open Microsoft.FSharp.Reflection
 open Expecto
-open FS.Skia.UI.Controls
-open FS.Skia.UI.Controls.Typed
+open FS.GG.UI.Controls
+open FS.GG.UI.Controls.Typed
 
 // ---------------------------------------------------------------------------
 // Feature 070 — migrate the remaining 41 catalog controls to the typed front
@@ -19,41 +19,41 @@ open FS.Skia.UI.Controls.Typed
 // (Image, Slider, Menu, Dialog, Grid, Border, Overlay, …) are also
 // `AccessibilityRole` union cases, so a bare `Image.create` path can resolve to
 // the case rather than the module; a module abbreviation forces module resolution.
-module LRichText = FS.Skia.UI.Controls.RichText
-module LLabel = FS.Skia.UI.Controls.Label
-module LImage = FS.Skia.UI.Controls.Image
-module LIcon = FS.Skia.UI.Controls.Icon
-module LSeparator = FS.Skia.UI.Controls.Separator
-module LBadge = FS.Skia.UI.Controls.Badge
-module LProgressBar = FS.Skia.UI.Controls.ProgressBar
-module LSpinner = FS.Skia.UI.Controls.Spinner
-module LValidationMessage = FS.Skia.UI.Controls.ValidationMessage
-module LIconButton = FS.Skia.UI.Controls.IconButton
-module LNumericInput = FS.Skia.UI.Controls.NumericInput
-module LRadioGroup = FS.Skia.UI.Controls.RadioGroup
-module LSwitch = FS.Skia.UI.Controls.Switch
-module LSlider = FS.Skia.UI.Controls.Slider
-module LTextArea = FS.Skia.UI.Controls.TextArea
-module LTextInput = FS.Skia.UI.Controls.TextInput
-module LCollections = FS.Skia.UI.Controls.Collections
-module LGrid = FS.Skia.UI.Controls.Grid
-module LDock = FS.Skia.UI.Controls.Dock
-module LWrap = FS.Skia.UI.Controls.Wrap
-module LBorder = FS.Skia.UI.Controls.Border
-module LPanel = FS.Skia.UI.Controls.Panel
-module LTabs = FS.Skia.UI.Controls.Tabs
-module LMenu = FS.Skia.UI.Controls.Menu
-module LToolbar = FS.Skia.UI.Controls.Toolbar
-module LTooltip = FS.Skia.UI.Controls.Tooltip
-module LDialog = FS.Skia.UI.Controls.Dialog
-module LToast = FS.Skia.UI.Controls.Toast
-module LOverlay = FS.Skia.UI.Controls.Overlay
-module LLineChart = FS.Skia.UI.Controls.LineChart
-module LBarChart = FS.Skia.UI.Controls.BarChart
-module LPieChart = FS.Skia.UI.Controls.PieChart
-module LScatterPlot = FS.Skia.UI.Controls.ScatterPlot
-module LGraphView = FS.Skia.UI.Controls.GraphView
-module LControl = FS.Skia.UI.Controls.Control
+module LRichText = FS.GG.UI.Controls.RichText
+module LLabel = FS.GG.UI.Controls.Label
+module LImage = FS.GG.UI.Controls.Image
+module LIcon = FS.GG.UI.Controls.Icon
+module LSeparator = FS.GG.UI.Controls.Separator
+module LBadge = FS.GG.UI.Controls.Badge
+module LProgressBar = FS.GG.UI.Controls.ProgressBar
+module LSpinner = FS.GG.UI.Controls.Spinner
+module LValidationMessage = FS.GG.UI.Controls.ValidationMessage
+module LIconButton = FS.GG.UI.Controls.IconButton
+module LNumericInput = FS.GG.UI.Controls.NumericInput
+module LRadioGroup = FS.GG.UI.Controls.RadioGroup
+module LSwitch = FS.GG.UI.Controls.Switch
+module LSlider = FS.GG.UI.Controls.Slider
+module LTextArea = FS.GG.UI.Controls.TextArea
+module LTextInput = FS.GG.UI.Controls.TextInput
+module LCollections = FS.GG.UI.Controls.Collections
+module LGrid = FS.GG.UI.Controls.Grid
+module LDock = FS.GG.UI.Controls.Dock
+module LWrap = FS.GG.UI.Controls.Wrap
+module LBorder = FS.GG.UI.Controls.Border
+module LPanel = FS.GG.UI.Controls.Panel
+module LTabs = FS.GG.UI.Controls.Tabs
+module LMenu = FS.GG.UI.Controls.Menu
+module LToolbar = FS.GG.UI.Controls.Toolbar
+module LTooltip = FS.GG.UI.Controls.Tooltip
+module LDialog = FS.GG.UI.Controls.Dialog
+module LToast = FS.GG.UI.Controls.Toast
+module LOverlay = FS.GG.UI.Controls.Overlay
+module LLineChart = FS.GG.UI.Controls.LineChart
+module LBarChart = FS.GG.UI.Controls.BarChart
+module LPieChart = FS.GG.UI.Controls.PieChart
+module LScatterPlot = FS.GG.UI.Controls.ScatterPlot
+module LGraphView = FS.GG.UI.Controls.GraphView
+module LControl = FS.GG.UI.Controls.Control
 
 type Msg =
     | Save

@@ -2,8 +2,8 @@ module LayoutTests
 
 open Expecto
 open System.Diagnostics
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Layout
+open FS.GG.UI.Scene
+open FS.GG.UI.Layout
 
 let child label =
     Defaults.child (Scene.text (0.0, 0.0) label Colors.white)
@@ -353,7 +353,7 @@ let contractTests =
             let measurementDiagnostic =
                 { NodeId = Some "measured"
                   Code = LayoutDiagnosticCode.UnmeasurableContent
-                  Severity = FS.Skia.UI.Layout.DiagnosticSeverity.Warning
+                  Severity = FS.GG.UI.Layout.DiagnosticSeverity.Warning
                   Message = "sample measurement warning"
                   Constraint = Some "text"
                   FallbackApplied = false }

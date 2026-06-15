@@ -10,7 +10,7 @@ module Feature100NavigationTests
 open Expecto
 open FsCheck
 open FsCheck.FSharp
-open FS.Skia.UI.Controls
+open FS.GG.UI.Controls
 
 // A KeyboardOperation declaring the four arrows plus Home/End (so the pure route can exercise the
 // First/Last directions even though no shipping role currently declares Home/End in keyboardFor).

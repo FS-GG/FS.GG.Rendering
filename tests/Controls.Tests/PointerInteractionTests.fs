@@ -8,8 +8,8 @@ module PointerInteractionTests
 open Expecto
 open FsCheck
 open FsCheck.FSharp
-open FS.Skia.UI.Layout
-open FS.Skia.UI.Controls
+open FS.GG.UI.Layout
+open FS.GG.UI.Controls
 
 // --- fixtures ---------------------------------------------------------------
 

@@ -4,12 +4,12 @@
 // single source of truth) and carries no access modifiers. Regenerate via
 // `./fake.sh build -t RefreshSurfaceBaselines`; currency is enforced by DesignTokenDrift.
 //
-// This is the additive public delta to FS.Skia.UI.Controls (FR-002, FR-008, US3). The Theme
+// This is the additive public delta to FS.GG.UI.Controls (FR-002, FR-008, US3). The Theme
 // type and the Theme module signatures are UNCHANGED; this is the only new public surface.
 
-namespace FS.Skia.UI.Controls
+namespace FS.GG.UI.Controls
 
-open FS.Skia.UI.Scene
+open FS.GG.UI.Scene
 
 /// Typed, compiler-checked design-token values generated from
 /// `src/Controls/design-tokens.tokens.json` (the DTCG single source of truth).

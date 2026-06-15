@@ -1,6 +1,6 @@
-namespace FS.Skia.UI.Controls.Typed
+namespace FS.GG.UI.Controls.Typed
 
-open FS.Skia.UI.Controls
+open FS.GG.UI.Controls
 
 type RichTextProps<'msg> =
     { Id: ControlId option
@@ -45,7 +45,7 @@ module RichText =
     let defaults: RichTextProps<'msg> = { Id = None; Runs = [] }
 
     let view (props: RichTextProps<'msg>) : Widget<'msg> =
-        FS.Skia.UI.Controls.RichText.create (FS.Skia.UI.Controls.RichText.block props.Runs) []
+        FS.GG.UI.Controls.RichText.create (FS.GG.UI.Controls.RichText.block props.Runs) []
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl
 
@@ -53,7 +53,7 @@ module Label =
     let defaults: LabelProps<'msg> = { Id = None; Text = "" }
 
     let view (props: LabelProps<'msg>) : Widget<'msg> =
-        FS.Skia.UI.Controls.Label.create [ FS.Skia.UI.Controls.Label.text props.Text ]
+        FS.GG.UI.Controls.Label.create [ FS.GG.UI.Controls.Label.text props.Text ]
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl
 
@@ -61,7 +61,7 @@ module Image =
     let defaults: ImageProps<'msg> = { Id = None; Value = "" }
 
     let view (props: ImageProps<'msg>) : Widget<'msg> =
-        FS.Skia.UI.Controls.Image.create [ FS.Skia.UI.Controls.Image.source props.Value ]
+        FS.GG.UI.Controls.Image.create [ FS.GG.UI.Controls.Image.source props.Value ]
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl
 
@@ -69,7 +69,7 @@ module Icon =
     let defaults: IconProps<'msg> = { Id = None; Text = "" }
 
     let view (props: IconProps<'msg>) : Widget<'msg> =
-        FS.Skia.UI.Controls.Icon.create [ FS.Skia.UI.Controls.Icon.name props.Text ]
+        FS.GG.UI.Controls.Icon.create [ FS.GG.UI.Controls.Icon.name props.Text ]
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl
 
@@ -77,7 +77,7 @@ module Separator =
     let defaults: SeparatorProps<'msg> = { Id = None }
 
     let view (props: SeparatorProps<'msg>) : Widget<'msg> =
-        FS.Skia.UI.Controls.Separator.create []
+        FS.GG.UI.Controls.Separator.create []
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl
 
@@ -85,7 +85,7 @@ module Badge =
     let defaults: BadgeProps<'msg> = { Id = None; Text = "" }
 
     let view (props: BadgeProps<'msg>) : Widget<'msg> =
-        FS.Skia.UI.Controls.Badge.create [ FS.Skia.UI.Controls.Badge.text props.Text ]
+        FS.GG.UI.Controls.Badge.create [ FS.GG.UI.Controls.Badge.text props.Text ]
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl
 
@@ -93,7 +93,7 @@ module ProgressBar =
     let defaults: ProgressBarProps<'msg> = { Id = None; Value = 0.0 }
 
     let view (props: ProgressBarProps<'msg>) : Widget<'msg> =
-        FS.Skia.UI.Controls.ProgressBar.create [ FS.Skia.UI.Controls.ProgressBar.value props.Value ]
+        FS.GG.UI.Controls.ProgressBar.create [ FS.GG.UI.Controls.ProgressBar.value props.Value ]
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl
 
@@ -101,7 +101,7 @@ module Spinner =
     let defaults: SpinnerProps<'msg> = { Id = None }
 
     let view (props: SpinnerProps<'msg>) : Widget<'msg> =
-        FS.Skia.UI.Controls.Spinner.create []
+        FS.GG.UI.Controls.Spinner.create []
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl
 
@@ -110,8 +110,8 @@ module ValidationMessage =
         { Id = None; Text = ""; Severity = Valid }
 
     let view (props: ValidationMessageProps<'msg>) : Widget<'msg> =
-        FS.Skia.UI.Controls.ValidationMessage.create
-            [ FS.Skia.UI.Controls.ValidationMessage.text props.Text
+        FS.GG.UI.Controls.ValidationMessage.create
+            [ FS.GG.UI.Controls.ValidationMessage.text props.Text
               Attr.validation props.Severity ]
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl

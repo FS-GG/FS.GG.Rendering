@@ -1,9 +1,9 @@
-namespace FS.Skia.UI.Controls.Typed
+namespace FS.GG.UI.Controls.Typed
 
 open System
 open System.Globalization
-open FS.Skia.UI.Controls
-open FS.Skia.UI.Scene
+open FS.GG.UI.Controls
+open FS.GG.UI.Scene
 
 type ColorSwatch = { Name: string; Color: Color }
 
@@ -46,14 +46,14 @@ module DatePicker =
             | None -> ""
 
         let field =
-            FS.Skia.UI.Controls.TextBox.create
-                [ FS.Skia.UI.Controls.TextBox.value formatted
-                  FS.Skia.UI.Controls.TextBox.readOnly true ]
+            FS.GG.UI.Controls.TextBox.create
+                [ FS.GG.UI.Controls.TextBox.value formatted
+                  FS.GG.UI.Controls.TextBox.readOnly true ]
 
         let trigger =
-            FS.Skia.UI.Controls.Button.create
-                [ FS.Skia.UI.Controls.Button.text "Open calendar"
-                  FS.Skia.UI.Controls.Button.enabled props.Enabled ]
+            FS.GG.UI.Controls.Button.create
+                [ FS.GG.UI.Controls.Button.text "Open calendar"
+                  FS.GG.UI.Controls.Button.enabled props.Enabled ]
 
         // The popup calendar shows one day Button per day of the selected month; no
         // selection ⇒ an empty calendar (placeholder field, dispatches nothing).
@@ -63,25 +63,25 @@ module DatePicker =
                 [ for day in 1 .. DateTime.DaysInMonth(date.Year, date.Month) ->
                       let chosen = DateOnly(date.Year, date.Month, day)
 
-                      FS.Skia.UI.Controls.Button.create
-                          [ yield FS.Skia.UI.Controls.Button.text (string day)
-                            yield FS.Skia.UI.Controls.Button.enabled props.Enabled
+                      FS.GG.UI.Controls.Button.create
+                          [ yield FS.GG.UI.Controls.Button.text (string day)
+                            yield FS.GG.UI.Controls.Button.enabled props.Enabled
                             match props.OnChange with
-                            | Some map -> yield FS.Skia.UI.Controls.Button.onClick (map chosen)
+                            | Some map -> yield FS.GG.UI.Controls.Button.onClick (map chosen)
                             | None -> () ]
-                      |> FS.Skia.UI.Controls.Control.withKey (sprintf "day-%d" day) ]
+                      |> FS.GG.UI.Controls.Control.withKey (sprintf "day-%d" day) ]
             | None -> []
 
         let calendar =
-            FS.Skia.UI.Controls.Grid.create [ FS.Skia.UI.Controls.Grid.children dayButtons ]
+            FS.GG.UI.Controls.Grid.create [ FS.GG.UI.Controls.Grid.children dayButtons ]
 
         let overlay =
-            FS.Skia.UI.Controls.Overlay.create
-                [ FS.Skia.UI.Controls.Overlay.child calendar
+            FS.GG.UI.Controls.Overlay.create
+                [ FS.GG.UI.Controls.Overlay.child calendar
                   Attr.selected props.IsOpen ]
 
-        FS.Skia.UI.Controls.Stack.create
-            [ FS.Skia.UI.Controls.Stack.children [ field; trigger; overlay ]
+        FS.GG.UI.Controls.Stack.create
+            [ FS.GG.UI.Controls.Stack.children [ field; trigger; overlay ]
               WidgetLowering.a11y
                   AccessibilityRole.TextBox
                   "Date picker"
@@ -98,13 +98,13 @@ module TimePicker =
 
     let view (props: TimePickerProps<'msg>) : Widget<'msg> =
         let segment (key: string) (text: string) (next: TimeOnly option) =
-            FS.Skia.UI.Controls.Button.create
-                [ yield FS.Skia.UI.Controls.Button.text text
-                  yield FS.Skia.UI.Controls.Button.enabled props.Enabled
+            FS.GG.UI.Controls.Button.create
+                [ yield FS.GG.UI.Controls.Button.text text
+                  yield FS.GG.UI.Controls.Button.enabled props.Enabled
                   match next, props.OnChange with
-                  | Some time, Some map -> yield FS.Skia.UI.Controls.Button.onClick (map time)
+                  | Some time, Some map -> yield FS.GG.UI.Controls.Button.onClick (map time)
                   | _ -> () ]
-            |> FS.Skia.UI.Controls.Control.withKey key
+            |> FS.GG.UI.Controls.Control.withKey key
 
         let hourText, minuteText =
             match props.Value with
@@ -118,10 +118,10 @@ module TimePicker =
             segment "minute-segment" minuteText (props.Value |> Option.map (fun time -> time.AddMinutes 1.0))
 
         let separator =
-            FS.Skia.UI.Controls.Label.create [ FS.Skia.UI.Controls.Label.text ":" ]
+            FS.GG.UI.Controls.Label.create [ FS.GG.UI.Controls.Label.text ":" ]
 
-        FS.Skia.UI.Controls.Stack.create
-            [ FS.Skia.UI.Controls.Stack.children [ hourSegment; separator; minuteSegment ]
+        FS.GG.UI.Controls.Stack.create
+            [ FS.GG.UI.Controls.Stack.children [ hourSegment; separator; minuteSegment ]
               WidgetLowering.a11y AccessibilityRole.TextBox "Time picker" [ "ArrowUp"; "ArrowDown" ] ]
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl
@@ -135,17 +135,17 @@ module ColorPicker =
 
     let view (props: ColorPickerProps<'msg>) : Widget<'msg> =
         let cell (swatch: ColorSwatch) =
-            FS.Skia.UI.Controls.Button.create
-                [ yield FS.Skia.UI.Controls.Button.text swatch.Name
+            FS.GG.UI.Controls.Button.create
+                [ yield FS.GG.UI.Controls.Button.text swatch.Name
                   yield Attr.selected (props.Selected = Some swatch)
                   yield Attr.create "color" Style (UntypedValue(swatch.Color :> obj))
                   match props.OnSelected with
-                  | Some map -> yield FS.Skia.UI.Controls.Button.onClick (map swatch)
+                  | Some map -> yield FS.GG.UI.Controls.Button.onClick (map swatch)
                   | None -> () ]
-            |> FS.Skia.UI.Controls.Control.withKey (sprintf "swatch-%s" swatch.Name)
+            |> FS.GG.UI.Controls.Control.withKey (sprintf "swatch-%s" swatch.Name)
 
-        FS.Skia.UI.Controls.Wrap.create
-            [ FS.Skia.UI.Controls.Wrap.children (props.Swatches |> List.map cell)
+        FS.GG.UI.Controls.Wrap.create
+            [ FS.GG.UI.Controls.Wrap.children (props.Swatches |> List.map cell)
               WidgetLowering.a11y
                   AccessibilityRole.List
                   "Color picker"

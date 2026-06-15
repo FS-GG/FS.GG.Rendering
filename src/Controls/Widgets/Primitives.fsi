@@ -1,6 +1,6 @@
-namespace FS.Skia.UI.Controls.Typed
+namespace FS.GG.UI.Controls.Typed
 
-open FS.Skia.UI.Controls
+open FS.GG.UI.Controls
 
 /// Semantic style intent for a button (Variant taxonomy class).
 type ButtonIntent =

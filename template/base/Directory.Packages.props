@@ -1,40 +1,40 @@
 <Project>
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
-    <!-- 064 (FR-004): the SINGLE source of FS.Skia.UI version truth. Every FS.Skia.UI.*
+    <!-- 064 (FR-004): the SINGLE source of FS.GG.UI version truth. Every FS.GG.UI.*
          pin below references $(FsSkiaUiVersion), and build.fsx reads this property at
          runtime to bind the engine assembly — so a consumer upgrade is ONE edit to this
          value + `dotnet restore`. Preview vs stable is explicit in the value
          (`-preview.N` => preview channel; a bare `x.y.z` => stable). See docs/UPGRADING.md. -->
-    <FsSkiaUiVersion>0.1.129-preview.1</FsSkiaUiVersion>
+    <FsSkiaUiVersion>0.1.0-preview.1</FsSkiaUiVersion>
   </PropertyGroup>
   <ItemGroup>
     <!-- 043 (FR-013): the published governance engine consumed in-process by the
          generated build.fsx; pinned for every profile and bumped with the other
-         FS.Skia.UI.* packages via the single $(FsSkiaUiVersion) above. -->
-    <PackageVersion Include="FS.Skia.UI.Build" Version="$(FsSkiaUiVersion)" />
+         FS.GG.UI.* packages via the single $(FsSkiaUiVersion) above. -->
+    <PackageVersion Include="FS.GG.UI.Build" Version="$(FsSkiaUiVersion)" />
     <!-- 058 (US2, FR-008): the shipped skill-support library backing the fsharp-*
-         authoring skills, pinned unconditionally (every profile) like FS.Skia.UI.Build,
-         so the fsharp-* skills' FS.Skia.UI.SkillSupport .fsi references resolve in any
+         authoring skills, pinned unconditionally (every profile) like FS.GG.UI.Build,
+         so the fsharp-* skills' FS.GG.UI.SkillSupport .fsi references resolve in any
          generated project (SC-004). -->
-    <PackageVersion Include="FS.Skia.UI.SkillSupport" Version="$(FsSkiaUiVersion)" />
-    <PackageVersion Include="FS.Skia.UI.Scene" Version="$(FsSkiaUiVersion)" />
+    <PackageVersion Include="FS.GG.UI.SkillSupport" Version="$(FsSkiaUiVersion)" />
+    <PackageVersion Include="FS.GG.UI.Scene" Version="$(FsSkiaUiVersion)" />
     <!-- 083 (FR-013): the WCAG contrast + accessible-palette package, pinned unconditionally
-         (every profile) like FS.Skia.UI.Scene — it is a core color capability depending only
+         (every profile) like FS.GG.UI.Scene — it is a core color capability depending only
          on Scene, so every generated project can consume Contrast/Palettes. -->
-    <PackageVersion Include="FS.Skia.UI.Color" Version="$(FsSkiaUiVersion)" />
+    <PackageVersion Include="FS.GG.UI.Color" Version="$(FsSkiaUiVersion)" />
     <!--#if (profile == "app" || profile == "sample-pack") -->
-    <PackageVersion Include="FS.Skia.UI.SkiaViewer" Version="$(FsSkiaUiVersion)" />
-    <PackageVersion Include="FS.Skia.UI.Elmish" Version="$(FsSkiaUiVersion)" />
+    <PackageVersion Include="FS.GG.UI.SkiaViewer" Version="$(FsSkiaUiVersion)" />
+    <PackageVersion Include="FS.GG.UI.Elmish" Version="$(FsSkiaUiVersion)" />
     <!--#endif -->
     <!--#if (profile == "app") -->
-    <PackageVersion Include="FS.Skia.UI.KeyboardInput" Version="$(FsSkiaUiVersion)" />
-    <PackageVersion Include="FS.Skia.UI.Layout" Version="$(FsSkiaUiVersion)" />
-    <PackageVersion Include="FS.Skia.UI.Controls" Version="$(FsSkiaUiVersion)" />
-    <PackageVersion Include="FS.Skia.UI.Controls.Elmish" Version="$(FsSkiaUiVersion)" />
+    <PackageVersion Include="FS.GG.UI.KeyboardInput" Version="$(FsSkiaUiVersion)" />
+    <PackageVersion Include="FS.GG.UI.Layout" Version="$(FsSkiaUiVersion)" />
+    <PackageVersion Include="FS.GG.UI.Controls" Version="$(FsSkiaUiVersion)" />
+    <PackageVersion Include="FS.GG.UI.Controls.Elmish" Version="$(FsSkiaUiVersion)" />
     <!--#endif -->
     <!--#if (profile == "governed") -->
-    <PackageVersion Include="FS.Skia.UI.Testing" Version="$(FsSkiaUiVersion)" />
+    <PackageVersion Include="FS.GG.UI.Testing" Version="$(FsSkiaUiVersion)" />
     <!--#endif -->
     <PackageVersion Include="Expecto" Version="10.2.2" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />

@@ -1,6 +1,6 @@
-namespace FS.Skia.UI.Color
+namespace FS.GG.UI.Color
 
-open FS.Skia.UI.Scene
+open FS.GG.UI.Scene
 
 /// The element kind a color is used for; selects the WCAG threshold (FR-003).
 type Role =

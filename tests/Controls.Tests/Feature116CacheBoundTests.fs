@@ -5,11 +5,11 @@ module Feature116CacheBoundTests
 // over the REAL wired `RetainedRender.step` path. Driving more distinct cacheable rows than the cap
 // keeps `PictureCacheEntryCount <= PictureCacheCap` at all times; eviction is deterministic (same
 // input → same surviving entries); an evicted entry recomputes as a MISS with fresh, correct paint
-// (never a stale hit). Render-only / deterministic — no live Vulkan window ([[fs-skia-evidence-mode]]).
+// (never a stale hit). Render-only / deterministic — no live Vulkan window ([[fs-gg-evidence-mode]]).
 
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
 
 let private theme = Theme.light
 let private size: Size = { Width = 640; Height = 480 }

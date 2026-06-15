@@ -3,11 +3,11 @@
   <PropertyGroup>
     <OutputType>Library</OutputType>
     <IsPackable>true</IsPackable>
-    <PackageId>FS.Skia.UI.SkiaViewer</PackageId>
-    <AssemblyName>FS.Skia.UI.SkiaViewer</AssemblyName>
-    <Version>0.1.129-preview.1</Version>
-    <Title>FS.Skia.UI.SkiaViewer</Title>
-    <Description>Skia viewer host workflow contracts for FS.Skia.UI V3 products.</Description>
+    <PackageId>FS.GG.UI.SkiaViewer</PackageId>
+    <AssemblyName>FS.GG.UI.SkiaViewer</AssemblyName>
+    <Version>0.1.0-preview.1</Version>
+    <Title>FS.GG.UI.SkiaViewer</Title>
+    <Description>Skia viewer host workflow contracts for FS.GG.UI V3 products.</Description>
     <PackageTags>fsharp;skia;viewer;opengl;desktop</PackageTags>
   </PropertyGroup>
 

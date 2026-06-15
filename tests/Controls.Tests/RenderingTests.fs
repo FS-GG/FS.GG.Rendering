@@ -2,9 +2,9 @@ module ControlsRenderingTests
 
 open System
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
-open FS.Skia.UI.Controls.Typed
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
+open FS.GG.UI.Controls.Typed
 
 [<Tests>]
 let typedGalleryRenderingTests =
@@ -133,13 +133,13 @@ let renderingTests =
 
         test "typed views render byte-for-byte identical to legacy IR at multiple viewports" {
             let typedScreen =
-                FS.Skia.UI.Controls.Typed.Stack.view
-                    { FS.Skia.UI.Controls.Typed.Stack.defaults with
+                FS.GG.UI.Controls.Typed.Stack.view
+                    { FS.GG.UI.Controls.Typed.Stack.defaults with
                         Children =
-                            [ FS.Skia.UI.Controls.Typed.TextBlock.view
-                                  { FS.Skia.UI.Controls.Typed.TextBlock.defaults with Text = "Catalog" }
-                              FS.Skia.UI.Controls.Typed.Button.view
-                                  { FS.Skia.UI.Controls.Typed.Button.defaults with
+                            [ FS.GG.UI.Controls.Typed.TextBlock.view
+                                  { FS.GG.UI.Controls.Typed.TextBlock.defaults with Text = "Catalog" }
+                              FS.GG.UI.Controls.Typed.Button.view
+                                  { FS.GG.UI.Controls.Typed.Button.defaults with
                                       Text = "Save"
                                       OnClick = Some() } ] }
                 |> Widget.toControl

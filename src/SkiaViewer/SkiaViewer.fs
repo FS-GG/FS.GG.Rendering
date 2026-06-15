@@ -1,11 +1,11 @@
-namespace FS.Skia.UI.SkiaViewer
+namespace FS.GG.UI.SkiaViewer
 
 open System
 open System.Diagnostics
 open System.Threading
 open Elmish
-open FS.Skia.UI.KeyboardInput
-open FS.Skia.UI.Scene
+open FS.GG.UI.KeyboardInput
+open FS.GG.UI.Scene
 open SkiaSharp
 open Silk.NET.Input
 open Silk.NET.Maths
@@ -508,7 +508,7 @@ type ViewerPointerInput =
 /// so the existing `GeneratedAppHost` construction sites and the durable
 /// `Viewer.runApp viewerOptions generatedHost` GovernanceTests literal are unbroken (FR-006).
 /// This is the Controls-free lower runner; the Control/PointerInteraction-aware
-/// `InteractiveAppHost` (FS.Skia.UI.Controls.Elmish) adapts onto it (research D3-AMEND).
+/// `InteractiveAppHost` (FS.GG.UI.Controls.Elmish) adapts onto it (research D3-AMEND).
 type InteractiveViewerHost<'model,'msg> =
     { Init: unit -> 'model * ViewerEffect list
       Update: 'msg -> 'model -> 'model * ViewerEffect list
@@ -904,7 +904,7 @@ module Viewer =
 
             let sessionBus = envOption "DBUS_SESSION_BUS_ADDRESS"
 
-            let fallback = IO.Path.Combine(IO.Path.GetTempPath(), "fs-skia-ui-runtime")
+            let fallback = IO.Path.Combine(IO.Path.GetTempPath(), "fs-gg-ui-runtime")
 
             let blockedReason =
                 if not (OperatingSystem.IsLinux()) then
@@ -1998,7 +1998,7 @@ module Viewer =
         with ex ->
             None, PixelContentUnreadable ex.Message
 
-    let private writeSceneImageEvidence path (size: FS.Skia.UI.Scene.Size) scene =
+    let private writeSceneImageEvidence path (size: FS.GG.UI.Scene.Size) scene =
         ensureParentDirectory path
         let width = max 1 size.Width
         let height = max 1 size.Height
@@ -2671,7 +2671,7 @@ module Viewer =
                 else
                     IO.Path.ChangeExtension(request.OutputPath, ".png") |> string
 
-            let screenshotSize: FS.Skia.UI.Scene.Size = { Width = request.Width; Height = request.Height }
+            let screenshotSize: FS.GG.UI.Scene.Size = { Width = request.Width; Height = request.Height }
             let written = writeSceneImageEvidence screenshotPath screenshotSize scene
             let dimensions, pixelValidation = pngDimensionsAndNonBlank screenshotPath
 

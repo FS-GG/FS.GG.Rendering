@@ -1,27 +1,27 @@
-# FS.Skia.UI.Input
+# FS.GG.UI.Input
 
-Host-coupled interactive input runtime for FS.Skia.UI: YAML key-binding configuration, modes, sequences, command intents, diagnostics, bigram analysis, and keyboard state-display projection over the SkiaViewer host.
+Host-coupled interactive input runtime for FS.GG.UI: YAML key-binding configuration, modes, sequences, command intents, diagnostics, bigram analysis, and keyboard state-display projection over the SkiaViewer host.
 
-`FS.Skia.UI.Input` is one of the **FS.Skia.UI** distribution packages — an F# / Elmish UI and 2D
+`FS.GG.UI.Input` is one of the **FS.GG.UI** distribution packages — an F# / Elmish UI and 2D
 scene-graph framework for .NET 10 desktop, rendered through Vulkan + SkiaSharp.
 
 ## Install
 
 ```bash
-dotnet add package FS.Skia.UI.Input
+dotnet add package FS.GG.UI.Input
 ```
 
-Or scaffold a full governed project that wires the FS.Skia.UI packages together:
+Or scaffold a full governed project that wires the FS.GG.UI packages together:
 
 ```bash
-dotnet new install FS.Skia.UI.Template
-dotnet new fs-skia-ui -o MyApp
+dotnet new install FS.GG.UI.Template
+dotnet new fs-gg-ui -o MyApp
 ```
 
 ## Usage
 
 ```fsharp
-open FS.Skia.UI.Input
+open FS.GG.UI.Input
 
 // Register the commands your YAML bindings can emit.
 let commands : CommandDefinition list =
@@ -58,7 +58,7 @@ let step (runtime: InputRuntime) =
 
 ## Versioning
 
-All `FS.Skia.UI.*` libraries share one version and move together. In a generated project a
+All `FS.GG.UI.*` libraries share one version and move together. In a generated project a
 single `<FsSkiaUiVersion>` in `Directory.Packages.props` pins every package — upgrading is one
 edit; see `docs/UPGRADING.md`. Pre-release versions use a `-preview.N` suffix.
 

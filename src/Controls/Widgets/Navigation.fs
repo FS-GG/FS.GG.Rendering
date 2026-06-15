@@ -1,6 +1,6 @@
-namespace FS.Skia.UI.Controls.Typed
+namespace FS.GG.UI.Controls.Typed
 
-open FS.Skia.UI.Controls
+open FS.GG.UI.Controls
 
 type TabsProps<'msg> =
     { Id: ControlId option
@@ -33,15 +33,15 @@ module Tabs =
 
     let view (props: TabsProps<'msg>) : Widget<'msg> =
         let attrs =
-            [ yield FS.Skia.UI.Controls.Tabs.items props.Items
+            [ yield FS.GG.UI.Controls.Tabs.items props.Items
               match props.SelectedKey with
-              | Some key -> yield FS.Skia.UI.Controls.Tabs.selected key
+              | Some key -> yield FS.GG.UI.Controls.Tabs.selected key
               | None -> ()
               match props.OnChanged with
-              | Some map -> yield FS.Skia.UI.Controls.Tabs.onChanged map
+              | Some map -> yield FS.GG.UI.Controls.Tabs.onChanged map
               | None -> () ]
 
-        FS.Skia.UI.Controls.Tabs.create attrs
+        FS.GG.UI.Controls.Tabs.create attrs
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl
 
@@ -50,12 +50,12 @@ module Menu =
 
     let view (props: MenuProps<'msg>) : Widget<'msg> =
         let attrs =
-            [ yield FS.Skia.UI.Controls.Menu.items props.Items
+            [ yield FS.GG.UI.Controls.Menu.items props.Items
               match props.OnSelected with
-              | Some map -> yield FS.Skia.UI.Controls.Menu.onSelected map
+              | Some map -> yield FS.GG.UI.Controls.Menu.onSelected map
               | None -> () ]
 
-        FS.Skia.UI.Controls.Menu.create attrs
+        FS.GG.UI.Controls.Menu.create attrs
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl
 
@@ -80,11 +80,11 @@ module Toolbar =
         let children = props.Children |> List.map Widget.toControl
 
         let attrs =
-            [ yield FS.Skia.UI.Controls.Toolbar.children children
+            [ yield FS.GG.UI.Controls.Toolbar.children children
               match props.OnClick with
               | Some msg -> yield Attr.on "onClick" msg
               | None -> () ]
 
-        FS.Skia.UI.Controls.Toolbar.create attrs
+        FS.GG.UI.Controls.Toolbar.create attrs
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl

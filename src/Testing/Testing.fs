@@ -1,7 +1,7 @@
-namespace FS.Skia.UI.Testing
+namespace FS.GG.UI.Testing
 
 open System
-open FS.Skia.UI.Scene
+open FS.GG.UI.Scene
 open SkiaSharp
 
 type PackageReferenceExpectation =

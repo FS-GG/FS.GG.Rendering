@@ -8,22 +8,22 @@ module ControlsFeature105ParityTests
 // for this refactor (the helper bodies are the verbatim originals, single-sourced).
 
 open Expecto
-open FS.Skia.UI.Controls
-open FS.Skia.UI.Controls.Typed
+open FS.GG.UI.Controls
+open FS.GG.UI.Controls.Typed
 
 // Several legacy builder modules (Button, CheckBox, Switch, Slider, TextBox, …) share
-// a name with an `AccessibilityRole` union case, so a bare `FS.Skia.UI.Controls.X.member`
+// a name with an `AccessibilityRole` union case, so a bare `FS.GG.UI.Controls.X.member`
 // path can resolve to the case. Module abbreviations force module resolution.
-module LControl = FS.Skia.UI.Controls.Control
-module LButton = FS.Skia.UI.Controls.Button
-module LCheckBox = FS.Skia.UI.Controls.CheckBox
-module LSwitch = FS.Skia.UI.Controls.Switch
-module LSlider = FS.Skia.UI.Controls.Slider
-module LNumericInput = FS.Skia.UI.Controls.NumericInput
-module LTextBox = FS.Skia.UI.Controls.TextBox
-module LTextArea = FS.Skia.UI.Controls.TextArea
-module LRadioGroup = FS.Skia.UI.Controls.RadioGroup
-module LTabs = FS.Skia.UI.Controls.Tabs
+module LControl = FS.GG.UI.Controls.Control
+module LButton = FS.GG.UI.Controls.Button
+module LCheckBox = FS.GG.UI.Controls.CheckBox
+module LSwitch = FS.GG.UI.Controls.Switch
+module LSlider = FS.GG.UI.Controls.Slider
+module LNumericInput = FS.GG.UI.Controls.NumericInput
+module LTextBox = FS.GG.UI.Controls.TextBox
+module LTextArea = FS.GG.UI.Controls.TextArea
+module LRadioGroup = FS.GG.UI.Controls.RadioGroup
+module LTabs = FS.GG.UI.Controls.Tabs
 
 type Msg =
     | Bool of bool

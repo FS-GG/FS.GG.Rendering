@@ -21,7 +21,7 @@ values explicitly with a helper such as `toScenePoint` before constructing a
 generated code and review evidence as an explicit conversion.
 
 ```fsharp
-open FS.Skia.UI.Scene
+open FS.GG.UI.Scene
 
 let panel = { Red = 40uy; Green = 90uy; Blue = 200uy; Alpha = 255uy }
 let ink = { Red = 255uy; Green = 255uy; Blue = 255uy; Alpha = 255uy }

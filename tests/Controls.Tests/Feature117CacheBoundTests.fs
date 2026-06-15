@@ -5,11 +5,11 @@ module Feature117CacheBoundTests
 // the pure `RetainedRender.measureTextCached` lookup. Measuring more distinct strings than the cap keeps
 // `Entries.Count <= cap` at all times; eviction is deterministic (same input order → same surviving
 // entries + same hit/miss sequence); an evicted key re-misses (fresh, correct measure) when next needed,
-// never a stale hit. Render-only / deterministic ([[fs-skia-evidence-mode]]).
+// never a stale hit. Render-only / deterministic ([[fs-gg-evidence-mode]]).
 
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
 
 let private empty: TextMeasureCache = { Entries = Map.empty; Clock = 0 }
 let private font: FontSpec = { Family = Some "Inter"; Size = 15.0; Weight = None }

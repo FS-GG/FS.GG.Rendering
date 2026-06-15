@@ -10,8 +10,8 @@ module Feature093StyleResolverTests
 //     over an earlier one (FR-003/FR-004).
 
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
 
 let private theme = Theme.light
 

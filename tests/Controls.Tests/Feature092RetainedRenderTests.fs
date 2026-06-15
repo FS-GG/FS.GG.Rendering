@@ -7,12 +7,12 @@ module Feature092RetainedRenderTests
 // counter (FR-007/SC-003), theme in the fragment reuse key (FR-008/SC-006), the single first-frame
 // paint + first-frame collision diagnostics (FR-009/SC-005), the per-node hit-test that
 // disambiguates unkeyed siblings (FR-004/SC-002), and multi-frame byte-identity (SC-004).
-// Render-only / deterministic — no live Vulkan window ([[fs-skia-evidence-mode]]).
+// Render-only / deterministic — no live Vulkan window ([[fs-gg-evidence-mode]]).
 
 open System.IO
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
 
 let private theme = Theme.light
 let private size: Size = { Width = 640; Height = 480 }
@@ -193,7 +193,7 @@ let multiFrame =
 
 // =============================================================================================
 // Evidence capture (T020 / T025 / T026) — writes the real offscreen artifacts the contract
-// requires, from the WIRED path itself. Render-only / deterministic ([[fs-skia-evidence-mode]]).
+// requires, from the WIRED path itself. Render-only / deterministic ([[fs-gg-evidence-mode]]).
 // =============================================================================================
 
 module private Evidence =
@@ -260,7 +260,7 @@ let evidence =
                         "scenario=identical tree, theme changes light->dark between frames"
                         sprintf "frame1-byte-identical-to-dark-rebuild=%b" themeByteIdentical
                         sprintf "frame1-differs-from-light-rebuild=%b" (ts.Render.Scene <> (Control.renderTree Theme.light size tree).Scene)
-                        "readback-note=AUTHORITATIVE proof is pure structural equality of the ControlRenderResult.Scene values; SceneEvidence.renderPng is a capability-hash, not a pixel encoder ([[fs-skia-evidence-mode]])."
+                        "readback-note=AUTHORITATIVE proof is pure structural equality of the ControlRenderResult.Scene values; SceneEvidence.renderPng is a capability-hash, not a pixel encoder ([[fs-gg-evidence-mode]])."
                         "authoritative-test=Feature092RetainedRenderTests/092 US4 theme in the fragment reuse key"
                         "" ]
               )

@@ -64,12 +64,12 @@ let nameCollisionSafetyTests =
         test "collision guidance uses explicit Scene and Controls qualifications" {
             let report = readCollisionReport ()
 
-            [ "FS.Skia.UI.Scene.Rect"
-              "FS.Skia.UI.Scene.Paint"
-              "FS.Skia.UI.Scene.TextRun"
-              "FS.Skia.UI.Controls.TextBlock.create"
-              "FS.Skia.UI.Controls.TextBox.onChanged"
-              "FS.Skia.UI.Controls.Stack.children" ]
+            [ "FS.GG.UI.Scene.Rect"
+              "FS.GG.UI.Scene.Paint"
+              "FS.GG.UI.Scene.TextRun"
+              "FS.GG.UI.Controls.TextBlock.create"
+              "FS.GG.UI.Controls.TextBox.onChanged"
+              "FS.GG.UI.Controls.Stack.children" ]
             |> List.iter (fun sample ->
                 Expect.stringContains report sample $"collision guidance includes {sample}")
         }
@@ -92,11 +92,11 @@ let nameCollisionSafetyTests =
                 let script = readTranscript scriptName
                 let log = readTranscript logName
 
-                [ "FS.Skia.UI.Scene.Rect"
-                  "FS.Skia.UI.Scene.Paint"
-                  "FS.Skia.UI.Controls.Stack.children"
-                  "FS.Skia.UI.Controls.TextBlock.create"
-                  "FS.Skia.UI.Controls.TextBox.onChanged" ]
+                [ "FS.GG.UI.Scene.Rect"
+                  "FS.GG.UI.Scene.Paint"
+                  "FS.GG.UI.Controls.Stack.children"
+                  "FS.GG.UI.Controls.TextBlock.create"
+                  "FS.GG.UI.Controls.TextBox.onChanged" ]
                 |> List.iter (fun required ->
                     Expect.stringContains script required $"{scriptName} qualifies {required}")
 

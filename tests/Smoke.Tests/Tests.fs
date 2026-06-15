@@ -175,7 +175,7 @@ let smokeContractTests =
                 Expect.stringContains source "status=ok" $"{sample} reports smoke success"
                 Expect.stringContains source $"sample={sample}" $"{sample} identifies itself"
                 Expect.stringContains projectContent @"..\..\src\Controls\Controls.fsproj" $"{sample} uses Controls project"
-                Expect.isFalse (projectContent.Contains("FS.Skia.UI.Charts", StringComparison.Ordinal)) $"{sample} does not use Charts package"
+                Expect.isFalse (projectContent.Contains("FS.GG.UI.Charts", StringComparison.Ordinal)) $"{sample} does not use Charts package"
                 Expect.isFalse (projectContent.Contains(@"..\..\src\Charts\Charts.fsproj", StringComparison.Ordinal)) $"{sample} does not use removed Charts project"
 
                 requiredSource

@@ -3,8 +3,8 @@ module ControlsElmishAdapterContractTests
 open System
 open System.IO
 open Expecto
-open FS.Skia.UI.Controls
-open FS.Skia.UI.Controls.Elmish
+open FS.GG.UI.Controls
+open FS.GG.UI.Controls.Elmish
 
 let repositoryRoot =
     // Feature 045 deleted build.fsx; locate the repo root by the solution file instead, and
@@ -37,7 +37,7 @@ let controlsElmishAdapterContractTests =
             Expect.isTrue (File.Exists adapterContract) "src/Controls.Elmish/ControlsElmish.fsi exists"
 
             let project = readIfExists adapterProject
-            Expect.stringContains project "FS.Skia.UI.Controls.Elmish" "adapter package id is Controls-specific"
+            Expect.stringContains project "FS.GG.UI.Controls.Elmish" "adapter package id is Controls-specific"
             Expect.stringContains project "Fable.Elmish" "adapter owns Fable.Elmish dependency"
             Expect.stringContains project @"..\Controls\Controls.fsproj" "adapter references Controls"
             Expect.stringContains project @"..\KeyboardInput\KeyboardInput.fsproj" "adapter references KeyboardInput"

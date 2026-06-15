@@ -1,7 +1,7 @@
-namespace FS.Skia.UI.Layout
+namespace FS.GG.UI.Layout
 
 open System
-open FS.Skia.UI.Scene
+open FS.GG.UI.Scene
 
 type GraphTarget =
     | Node of nodeId: string

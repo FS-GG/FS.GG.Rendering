@@ -1,19 +1,19 @@
-namespace FS.Skia.UI.Controls.Elmish
+namespace FS.GG.UI.Controls.Elmish
 
 open System
-open FS.Skia.UI.Controls
-open FS.Skia.UI.KeyboardInput
-open FS.Skia.UI.Scene
-open FS.Skia.UI.SkiaViewer
+open FS.GG.UI.Controls
+open FS.GG.UI.KeyboardInput
+open FS.GG.UI.Scene
+open FS.GG.UI.SkiaViewer
 open Elmish
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type AdapterDiagnostic =
     { Code: string
       Message: string
       Source: string }
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type AdapterEffect<'msg> =
     | DispatchProductMessage of 'msg
     | DispatchControlRuntimeMessage of ControlRuntimeMsg
@@ -21,15 +21,15 @@ type AdapterEffect<'msg> =
     | DispatchHostCommand of string
     | ReportAdapterDiagnostic of AdapterDiagnostic
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type AdapterCommand<'msg> = AdapterEffect<'msg> list
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type AdapterSubscription<'msg> =
     { Id: string
       Subscribe: unit -> AdapterCommand<'msg> }
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type AdapterProgram<'model, 'msg> =
     { Init: unit -> 'model * AdapterCommand<'msg>
       Update: 'msg -> 'model -> 'model * AdapterCommand<'msg>
@@ -294,11 +294,11 @@ module AdapterCmd =
     /// `Cmd.none`. Pure to construct; never throws. FR-003/FR-008.
     val toCmd: route: (AdapterEffect<'msg> -> 'msg) -> command: AdapterCommand<'msg> -> Cmd<'msg>
 
-/// Public contract module exposed by this FS.Skia.UI package.
+/// Public contract module exposed by this FS.GG.UI package.
 module ControlsElmish =
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val interpretKeyboardEffect: mapCommand: (CommandId -> 'msg) -> effect: KeyboardEffect -> AdapterCommand<'msg>
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val interpretControlEffect: mapRuntime: (ControlRuntimeMsg -> 'msg) -> effect: ControlRuntimeEffect -> AdapterCommand<'msg>
     /// Lower a single pointer interaction (075) into adapter commands. Diagnostics
     /// lower to `ReportAdapterDiagnostic`; every other interaction is offered to the
@@ -316,16 +316,16 @@ module ControlsElmish =
         interactions: PointerInteraction list ->
         runtimeMessages: ControlRuntimeMsg list ->
             AdapterCommand<'msg>
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val subscriptions: keyboard: AdapterSubscription<'msg> list -> controls: AdapterSubscription<'msg> list -> AdapterSubscription<'msg> list
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val program:
         init: (unit -> 'model * AdapterCommand<'msg>) ->
         update: ('msg -> 'model -> 'model * AdapterCommand<'msg>) ->
         view: ('model -> Control<'msg>) ->
         subscriptions: ('model -> AdapterSubscription<'msg> list) ->
             AdapterProgram<'model, 'msg>
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val diagnostic: source: string -> code: string -> message: string -> AdapterDiagnostic
     /// Adapt a typed (`Widget<'msg>`-returning) view to the `Control<'msg>` view the
     /// program record expects (= `view >> Widget.toControl`). Lets typed authoring

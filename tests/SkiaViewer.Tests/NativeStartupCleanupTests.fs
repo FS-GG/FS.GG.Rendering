@@ -1,7 +1,7 @@
-module internal FS.Skia.UI.NativeStartupCleanupTests
+module internal FS.GG.UI.NativeStartupCleanupTests
 
 open Expecto
-open FS.Skia.UI.SkiaViewer.Host
+open FS.GG.UI.SkiaViewer.Host
 
 [<Tests>]
 let nativeStartupCleanupTests =

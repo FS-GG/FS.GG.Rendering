@@ -1,6 +1,6 @@
 module Product.LayoutEvidence
 
-open FS.Skia.UI.Scene
+open FS.GG.UI.Scene
 open Product.Model
 open Product.View
 //#if (profile == "governed" || profile == "headless-scene")

@@ -8,8 +8,8 @@ module Feature113MemoSeamTests
 // never object identity; the cache is keyed per `ControlId`.
 
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
 
 let private scene (tag: float) : Scene list = [ Scene.rectangle (tag, 0.0, 10.0, 10.0) Colors.black ]
 

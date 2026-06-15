@@ -1,4 +1,4 @@
-namespace FS.Skia.UI.Controls
+namespace FS.GG.UI.Controls
 
 module Accessibility =
     let keyboard focusable activationKeys navigationKeys =
@@ -134,7 +134,7 @@ module Accessibility =
             [ "normal" ]
             None
             (keyboardFor role focusable)
-            (Some(contrast FS.Skia.UI.Scene.Colors.black FS.Skia.UI.Scene.Colors.white 7.0 4.5))
+            (Some(contrast FS.GG.UI.Scene.Colors.black FS.GG.UI.Scene.Colors.white 7.0 4.5))
             navRange
 
     let validate control =
@@ -150,8 +150,8 @@ module Accessibility =
                   && metadata.Keyboard.ActivationKeys.IsEmpty
                   && metadata.Keyboard.NavigationKeys.IsEmpty
               then
-                  yield FS.Skia.UI.Controls.Diagnostics.create control.Key control.Kind MissingAccessibilityMetadata ControlDiagnosticSeverity.Error "Focusable control is missing keyboard navigation metadata."
+                  yield FS.GG.UI.Controls.Diagnostics.create control.Key control.Kind MissingAccessibilityMetadata ControlDiagnosticSeverity.Error "Focusable control is missing keyboard navigation metadata."
               match metadata.Contrast with
               | Some evidence when evidence.Ratio < evidence.RequiredRatio ->
-                  yield FS.Skia.UI.Controls.Diagnostics.create control.Key control.Kind ContrastFailure ControlDiagnosticSeverity.Error "Contrast evidence is below the required ratio."
+                  yield FS.GG.UI.Controls.Diagnostics.create control.Key control.Kind ContrastFailure ControlDiagnosticSeverity.Error "Contrast evidence is below the required ratio."
               | _ -> () ]

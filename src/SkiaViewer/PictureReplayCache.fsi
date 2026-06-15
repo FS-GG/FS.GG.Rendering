@@ -1,4 +1,4 @@
-namespace FS.Skia.UI.SkiaViewer
+namespace FS.GG.UI.SkiaViewer
 
 /// Feature 120 (US3) — internal bounded LRU of recorded `SKPicture`s keyed by `CachedSubtree.CacheId`,
 /// validated by `Fingerprint`. Owns native picture lifetime (records on a miss, replays on a valid hit,
@@ -25,8 +25,8 @@ module internal PictureReplayCache =
     val paintBoundary:
         cache: Cache ->
         canvas: SkiaSharp.SKCanvas ->
-        paintScene: (SkiaSharp.SKCanvas -> FS.Skia.UI.Scene.Scene -> unit) ->
-        boundary: FS.Skia.UI.Scene.CacheBoundary ->
+        paintScene: (SkiaSharp.SKCanvas -> FS.GG.UI.Scene.Scene -> unit) ->
+        boundary: FS.GG.UI.Scene.CacheBoundary ->
             unit
 
     /// Live entry count, native-byte total, and per-lifetime hit/miss/record/skipped-node counters

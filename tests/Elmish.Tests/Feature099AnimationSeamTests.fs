@@ -6,7 +6,7 @@ module Feature099AnimationSeamTests
 // (`ControlRuntime.applyRuntimeVisualState`, R1) and `RetainedRender.step` starts/retargets +
 // SAMPLES the clock on paint. These tests drive that same sequence directly (the in-assembly test IS
 // the user-reachable surface for the internal wired path) — no live Vulkan window, render-only /
-// deterministic ([[fs-skia-evidence-mode]]).
+// deterministic ([[fs-gg-evidence-mode]]).
 //   * T008 / SC-001 / FR-002/FR-003: a hover transition ANIMATES — ≥1 intermediate sampled
 //     appearance before the target, converging to exactly the snapped target; a no-seam build snaps.
 //   * T011 / SC-002 / FR-004: an in-flight tween SURVIVES a sibling-shifting unrelated re-render and
@@ -17,9 +17,9 @@ module Feature099AnimationSeamTests
 open System
 open System.IO
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
-open FS.Skia.UI.Controls.Elmish
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
+open FS.GG.UI.Controls.Elmish
 
 type private Msg = Noop
 
@@ -130,7 +130,7 @@ let animatesVsSnaps =
                   sprintf "converges-to-exact-snap-target=%b" (settledIdx.IsSome)
                   sprintf "first-frame-snaps-to-target=%b" (frames.[0] = snapTarget)
                   "no-seam-counterfactual=a build without the seam paints the snapped target on frame 0 (no intermediate) and fails the intermediate-frame assertion"
-                  "note=AUTHORITATIVE proof is the captured sampled frame sequence: ≥1 intermediate appearance (structurally distinct from the target) precedes a frame byte-equal to the static snapped target. Structural Scene equality, no pixel encoder ([[fs-skia-evidence-mode]])."
+                  "note=AUTHORITATIVE proof is the captured sampled frame sequence: ≥1 intermediate appearance (structurally distinct from the target) precedes a frame byte-equal to the static snapped target. Structural Scene equality, no pixel encoder ([[fs-gg-evidence-mode]])."
                   "authoritative-test=Feature099AnimationSeamTests/099 US1 a visual-state transition animates (not snaps) on the live seam" ]
         }
     ]

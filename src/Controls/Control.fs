@@ -1,23 +1,23 @@
-namespace FS.Skia.UI.Controls
+namespace FS.GG.UI.Controls
 
 open System
-open FS.Skia.UI.Scene
+open FS.GG.UI.Scene
 
-module LayoutDefaults = FS.Skia.UI.Layout.Defaults
+module LayoutDefaults = FS.GG.UI.Layout.Defaults
 
 module StandardControlKindHelpers =
     let toControlKind kind =
         match kind with
-        | FS.Skia.UI.Controls.StandardControlKind.TextBlock -> "text-block"
-        | FS.Skia.UI.Controls.StandardControlKind.Button -> "button"
-        | FS.Skia.UI.Controls.StandardControlKind.TextBox -> "text-box"
-        | FS.Skia.UI.Controls.StandardControlKind.LineChart -> "line-chart"
-        | FS.Skia.UI.Controls.StandardControlKind.BarChart -> "bar-chart"
-        | FS.Skia.UI.Controls.StandardControlKind.PieChart -> "pie-chart"
-        | FS.Skia.UI.Controls.StandardControlKind.ScatterPlot -> "scatter-plot"
-        | FS.Skia.UI.Controls.StandardControlKind.GraphView -> "graph-view"
-        | FS.Skia.UI.Controls.StandardControlKind.DataGrid -> "data-grid"
-        | FS.Skia.UI.Controls.StandardControlKind.Custom value -> value
+        | FS.GG.UI.Controls.StandardControlKind.TextBlock -> "text-block"
+        | FS.GG.UI.Controls.StandardControlKind.Button -> "button"
+        | FS.GG.UI.Controls.StandardControlKind.TextBox -> "text-box"
+        | FS.GG.UI.Controls.StandardControlKind.LineChart -> "line-chart"
+        | FS.GG.UI.Controls.StandardControlKind.BarChart -> "bar-chart"
+        | FS.GG.UI.Controls.StandardControlKind.PieChart -> "pie-chart"
+        | FS.GG.UI.Controls.StandardControlKind.ScatterPlot -> "scatter-plot"
+        | FS.GG.UI.Controls.StandardControlKind.GraphView -> "graph-view"
+        | FS.GG.UI.Controls.StandardControlKind.DataGrid -> "data-grid"
+        | FS.GG.UI.Controls.StandardControlKind.Custom value -> value
 
 module internal ControlInternals =
     // Feature 117 (Phase 8, FR-001/FR-004): the text-measure cache hook. `Scene.measureText` is a pure
@@ -1184,7 +1184,7 @@ module internal ControlInternals =
         |> List.rev
         |> Scene.group
 
-    let rec layoutNode (theme: Theme) (control: Control<'msg>) : FS.Skia.UI.Layout.LayoutNode =
+    let rec layoutNode (theme: Theme) (control: Control<'msg>) : FS.GG.UI.Layout.LayoutNode =
         // Feature 102 (R8): this `Key ?? Kind` is the legacy 080 single-control *preview*/layout id, local
         // to this offscreen `layoutNode` path. It is intentionally NOT the R3-unified `Key ?? path`
         // dispatch/recovery id (feature 098) — the divergence R3 removed was on the live dispatch path, not
@@ -1253,17 +1253,17 @@ module internal ControlInternals =
         | "split-view"
         | "wrap"
         | "grid"
-        | "dock" -> FS.Skia.UI.Layout.Row
+        | "dock" -> FS.GG.UI.Layout.Row
         | _ ->
             match orientationOf c with
-            | Some "horizontal" -> FS.Skia.UI.Layout.Row
-            | _ -> FS.Skia.UI.Layout.Column
+            | Some "horizontal" -> FS.GG.UI.Layout.Row
+            | _ -> FS.GG.UI.Layout.Column
 
     let private wrapOf kind =
         match kind with
         | "wrap"
-        | "grid" -> FS.Skia.UI.Layout.Wrap
-        | _ -> FS.Skia.UI.Layout.NoWrap
+        | "grid" -> FS.GG.UI.Layout.Wrap
+        | _ -> FS.GG.UI.Layout.NoWrap
 
     /// Feature 097 (R2): the attribute NAMES the incremental dirty-set classifier (`layoutDirtySet`)
     /// keys on, so a change to a geometry-driving attribute re-measures while a content/style/state/
@@ -1282,11 +1282,11 @@ module internal ControlInternals =
     /// independence is pinned by the same test file.)
     let layoutAffectingAttrNames: Set<string> = Set.ofList [ AttrWidth; AttrHeight; AttrOrientation ]
 
-    let rec private toLayout (path: string) (c: Control<'msg>) : FS.Skia.UI.Layout.LayoutNode =
+    let rec private toLayout (path: string) (c: Control<'msg>) : FS.GG.UI.Layout.LayoutNode =
         let id = c.Key |> Option.defaultValue path
         let isLeaf = List.isEmpty c.Children
 
-        let size: FS.Skia.UI.Layout.LayoutSize =
+        let size: FS.GG.UI.Layout.LayoutSize =
             if isLeaf then
                 { Width = Some(nodeWidth c)
                   Height = Some(nodeHeight c) }
@@ -1307,20 +1307,20 @@ module internal ControlInternals =
     /// Build the nested Yoga layout tree for `control` at `size`, evaluate it, and return the
     /// root `LayoutNode` plus the evaluated absolute bounds keyed by the SAME collision-free
     /// structural id (`Key |> defaultValue path`) the paint/bounds passes look up.
-    let private availableOf (size: FS.Skia.UI.Scene.Size) : FS.Skia.UI.Layout.AvailableSpace =
+    let private availableOf (size: FS.GG.UI.Scene.Size) : FS.GG.UI.Layout.AvailableSpace =
         { Width = float size.Width
-          WidthMode = FS.Skia.UI.Layout.Exactly
+          WidthMode = FS.GG.UI.Layout.Exactly
           Height = float size.Height
-          HeightMode = FS.Skia.UI.Layout.Exactly }
+          HeightMode = FS.GG.UI.Layout.Exactly }
 
-    let private boundsByIdOf (result: FS.Skia.UI.Layout.LayoutResult) =
+    let private boundsByIdOf (result: FS.GG.UI.Layout.LayoutResult) =
         result.Bounds
-        |> List.map (fun (b: FS.Skia.UI.Layout.ComputedBounds) -> b.NodeId, b.Bounds)
+        |> List.map (fun (b: FS.GG.UI.Layout.ComputedBounds) -> b.NodeId, b.Bounds)
         |> Map.ofList
 
-    let evaluateLayout (size: FS.Skia.UI.Scene.Size) (control: Control<'msg>) =
+    let evaluateLayout (size: FS.GG.UI.Scene.Size) (control: Control<'msg>) =
         let root = toLayout "0" control
-        let result = FS.Skia.UI.Layout.Layout.evaluate (availableOf size) root
+        let result = FS.GG.UI.Layout.Layout.evaluate (availableOf size) root
         root, boundsByIdOf result, result
 
     /// Feature 097 (R2): the incremental render-path seam (contract C4). Drives layout through
@@ -1329,13 +1329,13 @@ module internal ControlInternals =
     /// returns (so the reuse-driven paint walk is unchanged) plus the new `LayoutResult` to carry
     /// forward. `Bounds` are byte-identical to a full `evaluateLayout` (INV-1).
     let evaluateLayoutIncremental
-        (size: FS.Skia.UI.Scene.Size)
+        (size: FS.GG.UI.Scene.Size)
         (control: Control<'msg>)
-        (previous: FS.Skia.UI.Layout.LayoutResult)
-        (dirty: Set<FS.Skia.UI.Layout.LayoutNodeId>)
+        (previous: FS.GG.UI.Layout.LayoutResult)
+        (dirty: Set<FS.GG.UI.Layout.LayoutNodeId>)
         =
         let root = toLayout "0" control
-        let result = FS.Skia.UI.Layout.Layout.evaluateIncremental previous (Set.toList dirty) (availableOf size) root
+        let result = FS.GG.UI.Layout.Layout.evaluateIncremental previous (Set.toList dirty) (availableOf size) root
         root, boundsByIdOf result, result
 
     let private paintLeaf (theme: Theme) (box: Rect) (c: Control<'msg>) : Scene list =
@@ -1370,7 +1370,7 @@ module internal ControlInternals =
     /// contracts C2/C5). Returns `[]` for a node with no computed box.
     let paintNode
         (theme: Theme)
-        (boundsById: Map<string, FS.Skia.UI.Layout.LayoutBounds>)
+        (boundsById: Map<string, FS.GG.UI.Layout.LayoutBounds>)
         (path: string)
         (c: Control<'msg>)
         : Scene list =
@@ -1378,7 +1378,7 @@ module internal ControlInternals =
 
         match Map.tryFind id boundsById with
         | None -> []
-        | Some(b: FS.Skia.UI.Layout.LayoutBounds) ->
+        | Some(b: FS.GG.UI.Layout.LayoutBounds) ->
             let box: Rect = { X = b.X; Y = b.Y; Width = b.Width; Height = b.Height }
 
             if List.isEmpty c.Children then
@@ -1391,20 +1391,20 @@ module internal ControlInternals =
     /// The evaluated absolute box of a node, looked up by the same structural id `paintNode`
     /// uses (`Key |> defaultValue path`). `None` when the node was not laid out.
     let nodeBox
-        (boundsById: Map<string, FS.Skia.UI.Layout.LayoutBounds>)
+        (boundsById: Map<string, FS.GG.UI.Layout.LayoutBounds>)
         (path: string)
         (c: Control<'msg>)
         : Rect option =
         let id = c.Key |> Option.defaultValue path
 
         Map.tryFind id boundsById
-        |> Option.map (fun (b: FS.Skia.UI.Layout.LayoutBounds) ->
+        |> Option.map (fun (b: FS.GG.UI.Layout.LayoutBounds) ->
             { X = b.X; Y = b.Y; Width = b.Width; Height = b.Height }: Rect)
 
     /// The evaluated `Bounds` list (`ControlId * Rect`) `renderTree` surfaces, computed from a
     /// pre-evaluated `boundsById` so the retained path produces the identical list.
     let collectBoundsWith
-        (boundsById: Map<string, FS.Skia.UI.Layout.LayoutBounds>)
+        (boundsById: Map<string, FS.GG.UI.Layout.LayoutBounds>)
         (control: Control<'msg>)
         : (ControlId * Rect) list =
         let rec go (path: string) (c: Control<'msg>) : (ControlId * Rect) list =
@@ -1416,7 +1416,7 @@ module internal ControlInternals =
 
             let here =
                 match Map.tryFind layoutId boundsById with
-                | Some(b: FS.Skia.UI.Layout.LayoutBounds) -> [ controlId, ({ X = b.X; Y = b.Y; Width = b.Width; Height = b.Height }: Rect) ]
+                | Some(b: FS.GG.UI.Layout.LayoutBounds) -> [ controlId, ({ X = b.X; Y = b.Y; Width = b.Width; Height = b.Height }: Rect) ]
                 | None -> []
 
             here
@@ -1554,7 +1554,7 @@ module Control =
     // Scene from the SAME functions — the retained/partial render path is byte-for-byte
     // identical to this full rebuild by construction (the only divergence point removed).
     // `next frame is produced by diffing against the retained previous tree` (FR-005, C2).
-    let renderTree (theme: Theme) (size: FS.Skia.UI.Scene.Size) (control: Control<'msg>) =
+    let renderTree (theme: Theme) (size: FS.GG.UI.Scene.Size) (control: Control<'msg>) =
         let root, boundsById, _ = ControlInternals.evaluateLayout size control
 
         let rec paint (path: string) (c: Control<'msg>) : Scene list =
@@ -1576,18 +1576,18 @@ module Control =
     // reconstructing a `LayoutResult` whose `NodeId`s ARE the `ControlId`s in `Bounds`, so the
     // shipped topmost-wins (reverse-scan) semantics return the deepest containing control.
     let hitTest (result: ControlRenderResult<'msg>) (x: float) (y: float) : ControlId option =
-        let computed: FS.Skia.UI.Layout.LayoutResult =
+        let computed: FS.GG.UI.Layout.LayoutResult =
             { Bounds =
                 result.Bounds
                 |> List.map (fun (controlId, (rect: Rect)) ->
                     { NodeId = controlId
                       Bounds = { X = rect.X; Y = rect.Y; Width = rect.Width; Height = rect.Height }
-                      Visibility = FS.Skia.UI.Layout.Visible }: FS.Skia.UI.Layout.ComputedBounds)
+                      Visibility = FS.GG.UI.Layout.Visible }: FS.GG.UI.Layout.ComputedBounds)
               Diagnostics = []
               Invalidated = []
               Revision = 0L }
 
-        FS.Skia.UI.Layout.Layout.hitTestComputed (LayoutDefaults.pixelSnapPolicy 1.0) computed x y
+        FS.GG.UI.Layout.Layout.hitTestComputed (LayoutDefaults.pixelSnapPolicy 1.0) computed x y
 
     // FR-004/FR-004a/FR-005 (feature 090): resolve a structural hit `ControlId` — the id a
     // `PointerInteraction`/`hitTest` carries: a `Key` for an authored node, else the positional
@@ -1606,7 +1606,7 @@ module Control =
     // `Id = Key |> defaultValue path`, so `Id <> path` ⇔ the node carries an explicit `Key`). No
     // clock/randomness; resume-safe; reads existing render data only — no layout-math change.
     let nearestAuthored (result: ControlRenderResult<'msg>) (hit: ControlId) : ControlId option =
-        let rec search (path: string) (nearestKeyed: ControlId option) (node: FS.Skia.UI.Layout.LayoutNode) : ControlId option =
+        let rec search (path: string) (nearestKeyed: ControlId option) (node: FS.GG.UI.Layout.LayoutNode) : ControlId option =
             // FR-003 (feature 098): a node is *authored* when it is KEYED (`node.Id <> path`) OR its
             // canonical id is BOUND (`node.Id ∈ result.BoundIds`). `node.Id` is already `Key ?? path`,
             // so it IS the canonical id: a directly-keyed leaf stays a fixed point, and an unkeyed-bound

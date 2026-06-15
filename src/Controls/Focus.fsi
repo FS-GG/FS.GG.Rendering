@@ -1,4 +1,4 @@
-namespace FS.Skia.UI.Controls
+namespace FS.GG.UI.Controls
 
 /// Feature 094 (E4) — the pure focus model: a deterministic single tab order derived purely from
 /// `AccessibilityMetadata`, keyboard traversal over that order, and classification of a delivered

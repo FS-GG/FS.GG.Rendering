@@ -6,14 +6,14 @@ module Feature092LiveSurvivalTests
 // hand-seeded `StateByIdentity` for focus/text — the exact gap 091 left. These tests reach the
 // internal retained structure + seam via InternalsVisibleTo (the in-assembly test IS the
 // user-reachable surface for the wired path). Render-only / deterministic, no live Vulkan window
-// ([[fs-skia-evidence-mode]]).
+// ([[fs-gg-evidence-mode]]).
 
 open System
 open System.IO
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
-open FS.Skia.UI.Controls.Elmish
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
+open FS.GG.UI.Controls.Elmish
 
 type private Msg =
     | NameChanged of string
@@ -279,7 +279,7 @@ let evidence =
                         sprintf "focus-survived=%b" focusSurvived
                         sprintf "draft-survived(hixy)=%b" draftSurvived
                         "clock-note=the per-control animation clock survival now has a real host seam (feature 099, R4) and is proven through it in Feature099AnimationClockTests/us2-survival; 092 keeps proving focus + in-progress text survival."
-                        "readback-note=AUTHORITATIVE proof is the carried RetainedId-keyed state (draft text continued not reset); structural/identity equality, no pixel encoder needed ([[fs-skia-evidence-mode]])."
+                        "readback-note=AUTHORITATIVE proof is the carried RetainedId-keyed state (draft text continued not reset); structural/identity equality, no pixel encoder needed ([[fs-gg-evidence-mode]])."
                         "authoritative-test=Feature092LiveSurvivalTests/092 US1 live survival through the real adapter seam"
                         "" ]
               )

@@ -1,27 +1,27 @@
-# FS.Skia.UI.Testing
+# FS.GG.UI.Testing
 
-Generated product and package validation helpers for FS.Skia.UI V3 products.
+Generated product and package validation helpers for FS.GG.UI V3 products.
 
-`FS.Skia.UI.Testing` is one of the **FS.Skia.UI** distribution packages — an F# / Elmish UI and 2D
+`FS.GG.UI.Testing` is one of the **FS.GG.UI** distribution packages — an F# / Elmish UI and 2D
 scene-graph framework for .NET 10 desktop, rendered through Vulkan + SkiaSharp.
 
 ## Install
 
 ```bash
-dotnet add package FS.Skia.UI.Testing
+dotnet add package FS.GG.UI.Testing
 ```
 
-Or scaffold a full governed project that wires the FS.Skia.UI packages together:
+Or scaffold a full governed project that wires the FS.GG.UI packages together:
 
 ```bash
-dotnet new install FS.Skia.UI.Template
-dotnet new fs-skia-ui -o MyApp
+dotnet new install FS.GG.UI.Template
+dotnet new fs-gg-ui -o MyApp
 ```
 
 ## Usage
 
 ```fsharp
-open FS.Skia.UI.Testing
+open FS.GG.UI.Testing
 
 // Describe what a generated product is expected to contain.
 let expectation =
@@ -29,13 +29,13 @@ let expectation =
       RequiredFiles = [ "Program.fs"; "Directory.Packages.props" ]
       ForbiddenPrefixes = [ "Internal." ]
       PackageReferences =
-        [ { PackageId = "FS.Skia.UI"; Required = true } ] }
+        [ { PackageId = "FS.GG.UI"; Required = true } ] }
 
 printfn "%s" (GeneratedProductAssertions.summarize expectation)
 
 // Detect pinned-package drift against the expected local consumer feed.
-let expected = [ { PackageId = "FS.Skia.UI"; Version = "3.0.0"; FeedPath = "./feed" } ]
-let actual = [ { PackageId = "FS.Skia.UI"; Version = "2.9.0"; FeedPath = "./feed" } ]
+let expected = [ { PackageId = "FS.GG.UI"; Version = "3.0.0"; FeedPath = "./feed" } ]
+let actual = [ { PackageId = "FS.GG.UI"; Version = "2.9.0"; FeedPath = "./feed" } ]
 
 for drift in LocalConsumerPackages.classifyDrift expected actual do
     printfn "%s expected %s but found %A — run: %s"
@@ -60,7 +60,7 @@ for drift in LocalConsumerPackages.classifyDrift expected actual do
 
 ## Versioning
 
-All `FS.Skia.UI.*` libraries share one version and move together. In a generated project a
+All `FS.GG.UI.*` libraries share one version and move together. In a generated project a
 single `<FsSkiaUiVersion>` in `Directory.Packages.props` pins every package — upgrading is one
 edit; see `docs/UPGRADING.md`. Pre-release versions use a `-preview.N` suffix.
 

@@ -1,6 +1,6 @@
-namespace FS.Skia.UI.Controls.Typed
+namespace FS.GG.UI.Controls.Typed
 
-open FS.Skia.UI.Controls
+open FS.GG.UI.Controls
 
 type LineChartProps<'msg> =
     { Id: ControlId option
@@ -40,8 +40,8 @@ module LineChart =
     let defaults: LineChartProps<'msg> = { Id = None; Series = []; OnSelected = None }
 
     let view (props: LineChartProps<'msg>) : Widget<'msg> =
-        FS.Skia.UI.Controls.LineChart.create
-            (FS.Skia.UI.Controls.LineChart.series props.Series
+        FS.GG.UI.Controls.LineChart.create
+            (FS.GG.UI.Controls.LineChart.series props.Series
              :: ChartLowering.eventAttrs props.OnSelected)
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl
@@ -50,8 +50,8 @@ module BarChart =
     let defaults: BarChartProps<'msg> = { Id = None; Series = []; OnSelected = None }
 
     let view (props: BarChartProps<'msg>) : Widget<'msg> =
-        FS.Skia.UI.Controls.BarChart.create
-            (FS.Skia.UI.Controls.BarChart.series props.Series
+        FS.GG.UI.Controls.BarChart.create
+            (FS.GG.UI.Controls.BarChart.series props.Series
              :: ChartLowering.eventAttrs props.OnSelected)
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl
@@ -60,8 +60,8 @@ module PieChart =
     let defaults: PieChartProps<'msg> = { Id = None; Values = []; OnSelected = None }
 
     let view (props: PieChartProps<'msg>) : Widget<'msg> =
-        FS.Skia.UI.Controls.PieChart.create
-            (FS.Skia.UI.Controls.PieChart.values props.Values
+        FS.GG.UI.Controls.PieChart.create
+            (FS.GG.UI.Controls.PieChart.values props.Values
              :: ChartLowering.eventAttrs props.OnSelected)
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl
@@ -70,8 +70,8 @@ module ScatterPlot =
     let defaults: ScatterPlotProps<'msg> = { Id = None; Series = []; OnSelected = None }
 
     let view (props: ScatterPlotProps<'msg>) : Widget<'msg> =
-        FS.Skia.UI.Controls.ScatterPlot.create
-            (FS.Skia.UI.Controls.ScatterPlot.series props.Series
+        FS.GG.UI.Controls.ScatterPlot.create
+            (FS.GG.UI.Controls.ScatterPlot.series props.Series
              :: ChartLowering.eventAttrs props.OnSelected)
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl
@@ -80,8 +80,8 @@ module GraphView =
     let defaults: GraphViewProps<'msg> = { Id = None; Nodes = []; OnSelected = None }
 
     let view (props: GraphViewProps<'msg>) : Widget<'msg> =
-        FS.Skia.UI.Controls.GraphView.create
-            (FS.Skia.UI.Controls.GraphView.nodes props.Nodes
+        FS.GG.UI.Controls.GraphView.create
+            (FS.GG.UI.Controls.GraphView.nodes props.Nodes
              :: ChartLowering.eventAttrs props.OnSelected)
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl

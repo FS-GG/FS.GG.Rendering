@@ -3,11 +3,11 @@ module Feature108CompositionTests
 // Feature 108 (US5) — `Control.map`/`Widget.map` change only the message type (structure / key /
 // focus identity preserved, lowering structurally equal to authoring directly in 'b, SC-007), and
 // the DataGrid sort cycles asc → desc → none on the third toggle (SC-008). Pure transitions; the
-// in-assembly test is the user-reachable surface ([[fs-skia-ui-widgets]]). Red on the pre-108 build
+// in-assembly test is the user-reachable surface ([[fs-gg-ui-widgets]]). Red on the pre-108 build
 // (no `Control.map`; bi-state sort).
 
 open Expecto
-open FS.Skia.UI.Controls
+open FS.GG.UI.Controls
 
 type private Msg =
     | Inc

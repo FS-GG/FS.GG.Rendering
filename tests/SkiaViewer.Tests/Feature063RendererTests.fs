@@ -10,8 +10,8 @@ module Feature063RendererTests
 open System
 open Expecto
 open SkiaSharp
-open FS.Skia.UI.Scene
-open FS.Skia.UI.SkiaViewer
+open FS.GG.UI.Scene
+open FS.GG.UI.SkiaViewer
 
 // The pre-fix placeholder occupied (8,8)-(48,48). A primitive drawn well to the right of
 // that box leaves pixels at x >= 100 only when it is *actually* rendered, so "lit pixels

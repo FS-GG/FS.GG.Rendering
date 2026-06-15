@@ -1,7 +1,7 @@
-namespace FS.Skia.UI.Controls.Theming
+namespace FS.GG.UI.Controls.Theming
 
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
 
 // Feature 108 (US6, FR-017/018): the live-theming primitive (see Theming.fsi). Pure projections
 // over the framework `Theme` — no I/O, no Color-package dependency. Child namespace so the role

@@ -277,7 +277,7 @@ let governanceTests =
             let build = System.IO.File.ReadAllText(System.IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "build.fsx"))
 
             // Feature 043 (FR-013): generated evidence runs in-process through the packaged
-            // FS.Skia.UI.Build engine — no copied Python / run-audit.sh.
+            // FS.GG.UI.Build engine — no copied Python / run-audit.sh.
             // Feature 064 (FR-004 / R1): the in-process orchestration lives in the engine's
             // GeneratedRunner; build.fsx resolves the engine from <FsSkiaUiVersion> at runtime
             // (no version literal) and delegates the two evidence targets to it by reflection.

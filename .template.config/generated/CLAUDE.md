@@ -1,4 +1,4 @@
-# Generated FS Skia UI Claude Code Instructions
+# Generated FS GG UI Claude Code Instructions
 
 @AGENTS.md
 

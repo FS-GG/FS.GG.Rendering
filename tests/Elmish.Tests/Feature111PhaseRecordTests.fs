@@ -8,11 +8,11 @@ module Feature111PhaseRecordTests
 
 open System
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.KeyboardInput
-open FS.Skia.UI.SkiaViewer
-open FS.Skia.UI.Controls
-open FS.Skia.UI.Controls.Elmish
+open FS.GG.UI.Scene
+open FS.GG.UI.KeyboardInput
+open FS.GG.UI.SkiaViewer
+open FS.GG.UI.Controls
+open FS.GG.UI.Controls.Elmish
 
 type private Msg = Bump
 

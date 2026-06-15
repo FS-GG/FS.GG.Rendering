@@ -4,7 +4,7 @@ open System
 open Expecto
 open Product.Program
 open Product.Model
-open FS.Skia.UI.Scene
+open FS.GG.UI.Scene
 
 // Feature 060 (FR-005): replaceable scaffold-BEHAVIOR tests. These call the scaffold
 // product's `view`/`update`/host/scene-text directly, so when you replace the scaffold
@@ -40,7 +40,7 @@ let sceneText node =
 let behaviorTests =
     testList "product-behavior" [
         test "generated headless product exposes scene contract" {
-            let scene: FS.Skia.UI.Scene.Scene = { Nodes = [ Product.Program.view initialModel ] }
+            let scene: FS.GG.UI.Scene.Scene = { Nodes = [ Product.Program.view initialModel ] }
             let text = scene.Nodes |> List.map sceneText |> String.concat " "
             let updated, effects = Product.Program.update Rendered initialModel
 
@@ -65,7 +65,7 @@ let behaviorTests =
         test "generated governed profile validates layout through Testing helpers" {
             let report = Product.Program.layoutEvidenceForSize { Width = 640; Height = 480 } initialModel
             let result =
-                FS.Skia.UI.Testing.GeneratedLayoutValidation.validate
+                FS.GG.UI.Testing.GeneratedLayoutValidation.validate
                     { Report = report
                       RequireReadableLayout = true }
 
@@ -75,10 +75,10 @@ let behaviorTests =
         //#endif
     ]
 //#else
-open FS.Skia.UI.Controls
-open FS.Skia.UI.Controls.Elmish
-open FS.Skia.UI.KeyboardInput
-open FS.Skia.UI.SkiaViewer
+open FS.GG.UI.Controls
+open FS.GG.UI.Controls.Elmish
+open FS.GG.UI.KeyboardInput
+open FS.GG.UI.SkiaViewer
 
 [<Tests>]
 let behaviorTests =
@@ -88,7 +88,7 @@ let behaviorTests =
         }
 
         test "generated public contract exposes qualified app-owned names" {
-            let scene: FS.Skia.UI.Scene.Scene = { Nodes = [ Product.Program.view initialModel ] }
+            let scene: FS.GG.UI.Scene.Scene = { Nodes = [ Product.Program.view initialModel ] }
             let host = Product.Program.generatedHost
             let updated, _ = Product.Program.update NoOp initialModel
 
@@ -156,19 +156,19 @@ let behaviorTests =
         // dispatches that control's bound message — proving the pointer host is interactive.
         test "pointer click on the Save control routes its bound message (SC-003)" {
             let host = Product.Program.interactiveHost
-            let size: FS.Skia.UI.Scene.Size = { Width = 640; Height = 480 }
+            let size: FS.GG.UI.Scene.Size = { Width = 640; Height = 480 }
             let model0 = fst (host.Init())
             let rendered = Control.renderTree host.Theme size (host.View size model0)
 
             // Resolve the "save" control's evaluated box via the layout engine (the same path
             // runInteractiveApp hit-tests), then click its centre.
-            let available: FS.Skia.UI.Layout.AvailableSpace =
+            let available: FS.GG.UI.Layout.AvailableSpace =
                 { Width = float size.Width
-                  WidthMode = FS.Skia.UI.Layout.Exactly
+                  WidthMode = FS.GG.UI.Layout.Exactly
                   Height = float size.Height
-                  HeightMode = FS.Skia.UI.Layout.Exactly }
+                  HeightMode = FS.GG.UI.Layout.Exactly }
 
-            let layoutResult = FS.Skia.UI.Layout.Layout.evaluate available rendered.Layout
+            let layoutResult = FS.GG.UI.Layout.Layout.evaluate available rendered.Layout
             let saveBox = (layoutResult.Bounds |> List.find (fun b -> b.NodeId = "save")).Bounds
             let cx = saveBox.X + saveBox.Width / 2.0
             let cy = saveBox.Y + saveBox.Height / 2.0

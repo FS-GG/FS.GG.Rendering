@@ -1,6 +1,6 @@
 # Effects Boundary
 
-This is the single, canonical page describing how your generated FS.Skia.UI app
+This is the single, canonical page describing how your generated FS.GG.UI app
 turns pure decisions into real window/render/screenshot work. You can follow it
 without reading framework reports or framework source.
 

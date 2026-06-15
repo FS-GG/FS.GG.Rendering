@@ -1,5 +1,5 @@
 ---
-name: fs-skia-elmish
+name: fs-gg-elmish
 description: Work on Elmish adapter contracts and generated product Elmish wiring.
 ---
 
@@ -11,7 +11,7 @@ Owns `src/Elmish/`, Elmish adapter tests, `template/fragments/elmish/`, and gene
 
 ## Public Contract
 
-The supported API lives in `src/Elmish/Elmish.fsi`. Surface changes require `readiness/surface-baselines/FS.Skia.UI.Elmish.txt`.
+The supported API lives in `src/Elmish/Elmish.fsi`. Surface changes require `readiness/surface-baselines/FS.GG.UI.Elmish.txt`.
 
 ## Build Commands
 
@@ -40,9 +40,9 @@ Products that select Elmish receive Scene and SkiaViewer prerequisites plus this
 Open the package namespace and initialize the adapter over a pure user model:
 
 ```fsharp
-open FS.Skia.UI.Scene
-open FS.Skia.UI.SkiaViewer
-open FS.Skia.UI.Elmish
+open FS.GG.UI.Scene
+open FS.GG.UI.SkiaViewer
+open FS.GG.UI.Elmish
 
 let options = { Title = "elmish"; InitialSize = { Width = 320; Height = 240 } }
 let render (count: int) = Text((10.0, 20.0), sprintf "count=%d" count, Colors.white)
@@ -59,13 +59,13 @@ Every arcade demo (Asteroids, Breakout, …) re-derives the same deterministic
 than re-implementing them per game. Each is a pure function of the model, so it
 lives inside `update`, never in the interpreter.
 
-**Shipped helper: deterministic seeded RNG (`FS.Skia.UI.SkillSupport.Random`).**
+**Shipped helper: deterministic seeded RNG (`FS.GG.UI.SkillSupport.Random`).**
 As of feature 062 (FR-010), the thrice-re-implemented seeded RNG is **shipped real
 API** — use it instead of ambient `System.Random` so your `update` stays pure and
 replayable. Thread the opaque `RngState` through your `Model`:
 
 ```fsharp
-open FS.Skia.UI.SkillSupport
+open FS.GG.UI.SkillSupport
 
 // in init: seed once (same seed ⇒ identical replayable stream on any platform)
 let model0 = { model with Rng = Random.seedRng 42UL }
@@ -80,7 +80,7 @@ let spawnColumn, rng' = Random.nextBelow boardColumns model.Rng
 (a prerequisite for deterministic-replay evidence).
 
 The three loop primitives below remain **documented conventions, not shipped
-`FS.Skia.UI` API** (feature 062 D10/D11 defer them with rationale — not yet at the
+`FS.GG.UI` API** (feature 062 D10/D11 defer them with rationale — not yet at the
 3-demo recurrence bar); each documented convention is the spec if a later feature
 ships it.
 
@@ -121,8 +121,8 @@ rather than hard-failing the phase.
 
 ## Related
 
-- [[fs-skia-skiaviewer]] provides the `ViewerModel`/`ViewerMsg` this adapter wraps.
-- [[fs-skia-scene]] supplies the `SceneNode` the render function produces.
+- [[fs-gg-skiaviewer]] provides the `ViewerModel`/`ViewerMsg` this adapter wraps.
+- [[fs-gg-scene]] supplies the `SceneNode` the render function produces.
 
 ## Sources / links
 

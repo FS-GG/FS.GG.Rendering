@@ -1,4 +1,4 @@
-namespace FS.Skia.UI.Controls
+namespace FS.GG.UI.Controls
 
 // `ChartPoint` / `ChartSeries` are declared in Types.fsi (feature 080, surface-neutral move).
 

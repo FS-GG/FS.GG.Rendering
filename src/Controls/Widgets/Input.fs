@@ -1,6 +1,6 @@
-namespace FS.Skia.UI.Controls.Typed
+namespace FS.GG.UI.Controls.Typed
 
-open FS.Skia.UI.Controls
+open FS.GG.UI.Controls
 
 type IconButtonProps<'msg> =
     { Id: ControlId option
@@ -51,14 +51,14 @@ module IconButton =
 
     let view (props: IconButtonProps<'msg>) : Widget<'msg> =
         let attrs =
-            [ yield FS.Skia.UI.Controls.IconButton.icon props.Text
+            [ yield FS.GG.UI.Controls.IconButton.icon props.Text
               yield Attr.enabled props.Enabled
               yield Attr.style (InputLowering.intentStyle props.Intent)
               match props.OnClick with
-              | Some msg -> yield FS.Skia.UI.Controls.IconButton.onClick msg
+              | Some msg -> yield FS.GG.UI.Controls.IconButton.onClick msg
               | None -> () ]
 
-        FS.Skia.UI.Controls.IconButton.create attrs
+        FS.GG.UI.Controls.IconButton.create attrs
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl
 
@@ -71,13 +71,13 @@ module NumericInput =
 
     let view (props: NumericInputProps<'msg>) : Widget<'msg> =
         let attrs =
-            [ yield FS.Skia.UI.Controls.NumericInput.value props.Value
+            [ yield FS.GG.UI.Controls.NumericInput.value props.Value
               yield Attr.readOnly props.ReadOnly
               match props.OnChanged with
-              | Some map -> yield FS.Skia.UI.Controls.NumericInput.onChanged map
+              | Some map -> yield FS.GG.UI.Controls.NumericInput.onChanged map
               | None -> () ]
 
-        FS.Skia.UI.Controls.NumericInput.create attrs
+        FS.GG.UI.Controls.NumericInput.create attrs
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl
 
@@ -90,15 +90,15 @@ module RadioGroup =
 
     let view (props: RadioGroupProps<'msg>) : Widget<'msg> =
         let attrs =
-            [ yield FS.Skia.UI.Controls.RadioGroup.items props.Items
+            [ yield FS.GG.UI.Controls.RadioGroup.items props.Items
               match props.SelectedKey with
-              | Some key -> yield FS.Skia.UI.Controls.RadioGroup.selected key
+              | Some key -> yield FS.GG.UI.Controls.RadioGroup.selected key
               | None -> ()
               match props.OnChanged with
-              | Some map -> yield FS.Skia.UI.Controls.RadioGroup.onChanged map
+              | Some map -> yield FS.GG.UI.Controls.RadioGroup.onChanged map
               | None -> () ]
 
-        FS.Skia.UI.Controls.RadioGroup.create attrs
+        FS.GG.UI.Controls.RadioGroup.create attrs
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl
 
@@ -108,12 +108,12 @@ module Switch =
 
     let view (props: SwitchProps<'msg>) : Widget<'msg> =
         let attrs =
-            [ yield FS.Skia.UI.Controls.Switch.checked' props.Checked
+            [ yield FS.GG.UI.Controls.Switch.checked' props.Checked
               match props.OnChanged with
-              | Some map -> yield FS.Skia.UI.Controls.Switch.onChanged map
+              | Some map -> yield FS.GG.UI.Controls.Switch.onChanged map
               | None -> () ]
 
-        FS.Skia.UI.Controls.Switch.create attrs
+        FS.GG.UI.Controls.Switch.create attrs
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl
 
@@ -123,11 +123,11 @@ module Slider =
 
     let view (props: SliderProps<'msg>) : Widget<'msg> =
         let attrs =
-            [ yield FS.Skia.UI.Controls.Slider.value props.Value
+            [ yield FS.GG.UI.Controls.Slider.value props.Value
               match props.OnChanged with
-              | Some map -> yield FS.Skia.UI.Controls.Slider.onChanged map
+              | Some map -> yield FS.GG.UI.Controls.Slider.onChanged map
               | None -> () ]
 
-        FS.Skia.UI.Controls.Slider.create attrs
+        FS.GG.UI.Controls.Slider.create attrs
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl

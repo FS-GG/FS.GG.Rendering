@@ -8,7 +8,7 @@ module Feature114OffscreenTests
 // holds at all times. Dispatch outcomes for already-materialized rows stay byte-identical (FR-016).
 
 open Expecto
-open FS.Skia.UI.Controls
+open FS.GG.UI.Controls
 
 let private columns: DataGridColumn list =
     [ { Key = "name"; Header = "Name"; Width = 200.0; ColumnType = TextColumn } ]

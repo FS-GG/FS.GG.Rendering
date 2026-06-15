@@ -1,6 +1,6 @@
-namespace FS.Skia.UI.Color
+namespace FS.GG.UI.Color
 
-open FS.Skia.UI.Scene
+open FS.GG.UI.Scene
 
 /// Radix-derived, role-labelled accessible ramps (FR-005, FR-006). Reusable
 /// catalog data only — NOT a second source of truth for shipped themes. The WCAG

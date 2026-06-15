@@ -1,10 +1,10 @@
 module ControlsTypedGalleryPanel
 
-open FS.Skia.UI.Controls
-open FS.Skia.UI.Controls.Typed
+open FS.GG.UI.Controls
+open FS.GG.UI.Controls.Typed
 
 // Typed-authoring gallery panel for the US2 render/accessibility coverage suites
-// (feature 071). Authored ONLY through `FS.Skia.UI.Controls.Typed.*` `view` functions —
+// (feature 071). Authored ONLY through `FS.GG.UI.Controls.Typed.*` `view` functions —
 // no `Attr`, no `*.create` — mirroring `samples/ControlsGallery/Program.fs`
 // `typedAuthoringPanel`. Covers >=1 control per mechanic group (display, input, stateful
 // input, layout container, navigation/composite, overlay, selection collection,

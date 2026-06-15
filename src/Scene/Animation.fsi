@@ -1,8 +1,8 @@
-namespace FS.Skia.UI.Scene
+namespace FS.GG.UI.Scene
 
 open System
 
-/// Declarative motion for FS.Skia.UI (feature 073). A bounded, additive slice:
+/// Declarative motion for FS.GG.UI (feature 073). A bounded, additive slice:
 /// an author declares — as data against an existing `Scene` — that opacity, an
 /// affine transform, and/or color should travel from a start value to a target
 /// value over a duration shaped by a named easing curve. Sampling is a **pure**
@@ -64,7 +64,7 @@ type AnimationState<'a> =
       Easing: Easing
       Interp: 'a -> 'a -> float -> 'a }
 
-/// Public contract module exposed by this FS.Skia.UI package.
+/// Public contract module exposed by this FS.GG.UI package.
 module Easing =
     /// Maps normalized progress `t` to eased progress. Input `t` is clamped to
     /// `[0,1]` before the curve, so out-of-domain samples yield the endpoint.
@@ -73,7 +73,7 @@ module Easing =
     /// `EaseInOut`.
     val Default: Easing
 
-/// Public contract module exposed by this FS.Skia.UI package.
+/// Public contract module exposed by this FS.GG.UI package.
 module Transform =
     /// The all-identity transform (no translate, unit scale, no rotation).
     val identity: Transform
@@ -85,7 +85,7 @@ module Transform =
     /// `PerspectiveTransform` (`M31 = M32 = 0`, `M33 = 1`).
     val toPerspectiveTransform: transform: Transform -> PerspectiveTransform
 
-/// Public contract module exposed by this FS.Skia.UI package.
+/// Public contract module exposed by this FS.GG.UI package.
 module Tween =
     /// Normalized, eased, clamped progress in `[0,1]`. `Duration ≤ 0` ⇒ `1.0`
     /// (no divide-by-zero).
@@ -94,7 +94,7 @@ module Tween =
     /// interpolant for `'a`. Monotone in elapsed per its easing.
     val sample: interp: ('a -> 'a -> float -> 'a) -> elapsed: TimeSpan -> tween: Tween<'a> -> 'a
 
-/// Public contract module exposed by this FS.Skia.UI package.
+/// Public contract module exposed by this FS.GG.UI package.
 module Animation =
     /// Linear interpolation between two floats (the `'a = float` interpolant
     /// passed to `Tween.sample` / `AnimationState.create`). Sibling of
@@ -120,7 +120,7 @@ module Animation =
     /// gating.
     val isSettled: elapsed: TimeSpan -> animation: Animation -> bool
 
-/// Public contract module exposed by this FS.Skia.UI package.
+/// Public contract module exposed by this FS.GG.UI package.
 module AnimationState =
     /// Initial state: `Current = Start = Target = initial`, `Elapsed = 0`. The
     /// `interp` argument is the per-`'a` interpolant (`lerpFloat` / `Color.lerp`

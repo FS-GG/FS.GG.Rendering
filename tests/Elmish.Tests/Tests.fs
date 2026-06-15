@@ -1,9 +1,9 @@
 module ElmishCapabilityTests
 
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.SkiaViewer
-open FS.Skia.UI.Elmish
+open FS.GG.UI.Scene
+open FS.GG.UI.SkiaViewer
+open FS.GG.UI.Elmish
 
 [<Tests>]
 let tests =

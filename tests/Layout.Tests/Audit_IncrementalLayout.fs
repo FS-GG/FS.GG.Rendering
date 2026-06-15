@@ -1,13 +1,13 @@
 module Audit_IncrementalLayout
 
 // Audit of the imported incremental-layout mechanism (feature 006-verify-imported-mechanisms).
-// Exercises the REAL `FS.Skia.UI.Layout.Layout` seam (`evaluate` / `evaluateIncremental`) with
+// Exercises the REAL `FS.GG.UI.Layout.Layout` seam (`evaluate` / `evaluateIncremental`) with
 // proven discriminating power. Every test name is prefixed "Audit: " so the suite can be run via
 // `--filter Audit`. A legitimately-red assertion here is a FINDING, never weakened to pass.
 
 open Expecto
 open FsCheck
-open FS.Skia.UI.Layout
+open FS.GG.UI.Layout
 
 // --- shared fixtures (mirrors Feature097IncrementalTests construction) ------------------------
 

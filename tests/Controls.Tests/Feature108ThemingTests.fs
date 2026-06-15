@@ -1,14 +1,14 @@
 module Feature108ThemingTests
 
 // Feature 108 (US6) — `Theming.resolve` (mode + accent -> RolePalette) and `Theming.toTheme`
-// (palette -> framework Theme) are pure projections, and `FS.Skia.UI.Color.Contrast.ratio` matches
+// (palette -> framework Theme) are pure projections, and `FS.GG.UI.Color.Contrast.ratio` matches
 // the WCAG relative-luminance reference for known pairs with the AA thresholds checkable via
-// `Contrast.verdict` (SC-010). Contrast is REUSED, not re-implemented ([[fs-skia-design-tokens]]).
+// `Contrast.verdict` (SC-010). Contrast is REUSED, not re-implemented ([[fs-gg-design-tokens]]).
 
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
-open FS.Skia.UI.Controls.Theming
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
+open FS.GG.UI.Controls.Theming
 
 let private rgb r g b : Color =
     { Red = byte r
@@ -37,13 +37,13 @@ let tests =
         }
 
         test "Contrast.ratio matches the WCAG reference: black on white = 21:1 (SC-010)" {
-            let ratio = FS.Skia.UI.Color.Contrast.ratio (rgb 0 0 0) (rgb 255 255 255)
+            let ratio = FS.GG.UI.Color.Contrast.ratio (rgb 0 0 0) (rgb 255 255 255)
             Expect.isTrue (abs (ratio - 21.0) < 0.1) (sprintf "black/white is the 21:1 WCAG maximum (got %f)" ratio)
         }
 
         test "AA thresholds are checkable via Contrast.verdict (SC-010)" {
-            Expect.equal (FS.Skia.UI.Color.Contrast.verdict FS.Skia.UI.Color.Text 4.5) FS.Skia.UI.Color.Aa "4.5:1 passes AA for normal text"
-            Expect.equal (FS.Skia.UI.Color.Contrast.verdict FS.Skia.UI.Color.GraphicOrUi 3.0) FS.Skia.UI.Color.Aa "3:1 passes AA for large/graphic"
-            Expect.equal (FS.Skia.UI.Color.Contrast.verdict FS.Skia.UI.Color.Text 2.0) FS.Skia.UI.Color.Fail "2:1 fails AA for normal text"
+            Expect.equal (FS.GG.UI.Color.Contrast.verdict FS.GG.UI.Color.Text 4.5) FS.GG.UI.Color.Aa "4.5:1 passes AA for normal text"
+            Expect.equal (FS.GG.UI.Color.Contrast.verdict FS.GG.UI.Color.GraphicOrUi 3.0) FS.GG.UI.Color.Aa "3:1 passes AA for large/graphic"
+            Expect.equal (FS.GG.UI.Color.Contrast.verdict FS.GG.UI.Color.Text 2.0) FS.GG.UI.Color.Fail "2:1 fails AA for normal text"
         }
     ]

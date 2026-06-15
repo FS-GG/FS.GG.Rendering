@@ -1,15 +1,15 @@
 module Feature119OpenGlHostTests
 
 open Expecto
-open FS.Skia.UI.SkiaViewer
-open FS.Skia.UI.SkiaViewer.Host
+open FS.GG.UI.SkiaViewer
+open FS.GG.UI.SkiaViewer.Host
 
 // Feature 119 — OpenGL present backend. Deterministic semantic tests for the present-mode
 // mapping, the GL host ledger/startup contract, and the classified GL-unavailable diagnostic.
 // The live, readback-free direct-present proof on real GPU hardware is captured under
 // specs/119-opengl-present-backend/readiness/ (supported-host-persistent-launch.txt,
 // smoke/zero-readback-present.md, sample-smoke/gl-direct-present-frame.png) — see
-// [[fs-skia-evidence-mode]].
+// [[fs-gg-evidence-mode]].
 
 [<Tests>]
 let feature119OpenGlHostTests =

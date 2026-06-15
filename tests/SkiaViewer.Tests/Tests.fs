@@ -3,9 +3,9 @@ module SkiaViewerCapabilityTests
 open System
 open System.Collections.Generic
 open Expecto
-open FS.Skia.UI.KeyboardInput
-open FS.Skia.UI.Scene
-open FS.Skia.UI.SkiaViewer
+open FS.GG.UI.KeyboardInput
+open FS.GG.UI.Scene
+open FS.GG.UI.SkiaViewer
 
 type HostModel =
     { Count: int
@@ -958,7 +958,7 @@ let tests =
         test "desktop diagnostics accept present Wayland socket runtime directory and session bus" {
             if OperatingSystem.IsLinux() then
                 let runtimeDirectory =
-                    IO.Path.Combine(IO.Path.GetTempPath(), $"fs-skia-runtime-{Guid.NewGuid():N}")
+                    IO.Path.Combine(IO.Path.GetTempPath(), $"fs-gg-runtime-{Guid.NewGuid():N}")
 
                 IO.Directory.CreateDirectory runtimeDirectory |> ignore
                 let waylandSocket = IO.Path.Combine(runtimeDirectory, "wayland-0")
@@ -969,7 +969,7 @@ let tests =
                         [ "XDG_RUNTIME_DIR", runtimeDirectory
                           "WAYLAND_DISPLAY", "wayland-0"
                           "DISPLAY", null
-                          "DBUS_SESSION_BUS_ADDRESS", "unix:path=/tmp/fs-skia-bus" ]
+                          "DBUS_SESSION_BUS_ADDRESS", "unix:path=/tmp/fs-gg-bus" ]
                         (fun () ->
                             let diagnostic = Viewer.desktopSessionDiagnostic()
 
@@ -980,7 +980,7 @@ let tests =
                             Expect.equal diagnostic.DisplayVariable (Some "WAYLAND_DISPLAY=wayland-0") "Wayland display variable is preferred"
                             Expect.equal diagnostic.DisplaySocket (Some waylandSocket) "Wayland socket path is derived from runtime directory"
                             Expect.isTrue diagnostic.DisplaySocketExists "Wayland socket existence is reported"
-                            Expect.equal diagnostic.SessionBus (Some "unix:path=/tmp/fs-skia-bus") "session bus is reported"
+                            Expect.equal diagnostic.SessionBus (Some "unix:path=/tmp/fs-gg-bus") "session bus is reported"
                             Expect.equal diagnostic.DiagnosticClass "environment-session-ready" "present prerequisites classify as ready"
                             Expect.stringContains diagnostic.Message "present" "message confirms prerequisites")
                 finally
@@ -1357,7 +1357,7 @@ let tests =
                   Diagnostics = Viewer.defaultDiagnostics }
 
             let evidencePath =
-                IO.Path.Combine(IO.Path.GetTempPath(), $"fs-skia-run-app-evidence-{Guid.NewGuid():N}.txt")
+                IO.Path.Combine(IO.Path.GetTempPath(), $"fs-gg-run-app-evidence-{Guid.NewGuid():N}.txt")
 
             let request =
                 { Target = FirstFrame
@@ -1405,7 +1405,7 @@ let tests =
                   Diagnostics = Viewer.defaultDiagnostics }
 
             let imagePath =
-                IO.Path.Combine(IO.Path.GetTempPath(), $"fs-skia-requested-image-evidence-{Guid.NewGuid():N}.png")
+                IO.Path.Combine(IO.Path.GetTempPath(), $"fs-gg-requested-image-evidence-{Guid.NewGuid():N}.png")
 
             let request =
                 { Target = FirstFrame
@@ -1438,7 +1438,7 @@ let tests =
                   Diagnostics = Viewer.defaultDiagnostics }
 
             let metadataPath =
-                IO.Path.Combine(IO.Path.GetTempPath(), $"fs-skia-metadata-hash-evidence-{Guid.NewGuid():N}.txt")
+                IO.Path.Combine(IO.Path.GetTempPath(), $"fs-gg-metadata-hash-evidence-{Guid.NewGuid():N}.txt")
 
             let request =
                 { Target = FirstFrame

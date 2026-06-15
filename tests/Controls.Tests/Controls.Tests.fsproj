@@ -79,12 +79,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Controls\Controls.fsproj" />
-    <!-- Feature 108 (US6, T032): the theming-contrast suite reuses FS.Skia.UI.Color.Contrast.ratio
+    <!-- Feature 108 (US6, T032): the theming-contrast suite reuses FS.GG.UI.Color.Contrast.ratio
          against the WCAG reference pairs. Test-only reference — Controls itself does not depend on
          the Color package (no package-graph change). -->
     <ProjectReference Include="..\..\src\Color\Color.fsproj" />
     <!-- R4 import: the Feature-066 typed-catalog drift suite (CatalogTests.fs) referenced the
-         governance engine (FS.Skia.UI.Build); removed per FR-006 (no governance runtime). The
+         governance engine (FS.GG.UI.Build); removed per FR-006 (no governance runtime). The
          typed-catalog drift check belongs to the governance repo, not the rendering product. -->
     <PackageReference Include="Expecto" />
     <!-- Feature 067: FsCheck (test-only, pinned 3.3.3 in Directory.Packages.props)

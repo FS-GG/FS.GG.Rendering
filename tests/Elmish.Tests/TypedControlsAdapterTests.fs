@@ -2,8 +2,8 @@ module ControlsTypedAdapterTests
 
 open System.IO
 open Expecto
-open FS.Skia.UI.Controls
-open FS.Skia.UI.Controls.Elmish
+open FS.GG.UI.Controls
+open FS.GG.UI.Controls.Elmish
 
 let repositoryRoot =
     let rec find dir =
@@ -24,13 +24,13 @@ type Model = { Saved: bool }
 // `Widget.toControl` so it satisfies the existing `AdapterProgram.View: 'model ->
 // Control<'msg>` contract with no adapter edit (FR-009).
 let widgetView (model: Model) : Control<Msg> =
-    FS.Skia.UI.Controls.Typed.Stack.view
-        { FS.Skia.UI.Controls.Typed.Stack.defaults with
+    FS.GG.UI.Controls.Typed.Stack.view
+        { FS.GG.UI.Controls.Typed.Stack.defaults with
             Children =
-                [ FS.Skia.UI.Controls.Typed.TextBlock.view
-                      { FS.Skia.UI.Controls.Typed.TextBlock.defaults with Text = "Typed" }
-                  FS.Skia.UI.Controls.Typed.Button.view
-                      { FS.Skia.UI.Controls.Typed.Button.defaults with
+                [ FS.GG.UI.Controls.Typed.TextBlock.view
+                      { FS.GG.UI.Controls.Typed.TextBlock.defaults with Text = "Typed" }
+                  FS.GG.UI.Controls.Typed.Button.view
+                      { FS.GG.UI.Controls.Typed.Button.defaults with
                           Id = Some "save"
                           Text = "Save"
                           OnClick = Some Save } ] }
@@ -40,13 +40,13 @@ let widgetView (model: Model) : Control<Msg> =
 // `Widget<'msg>` directly — note the absence of any `Widget.toControl` shim in
 // product code (068 US1). `widgetView model = typedWidgetView model |> Widget.toControl`.
 let typedWidgetView (model: Model) : Widget<Msg> =
-    FS.Skia.UI.Controls.Typed.Stack.view
-        { FS.Skia.UI.Controls.Typed.Stack.defaults with
+    FS.GG.UI.Controls.Typed.Stack.view
+        { FS.GG.UI.Controls.Typed.Stack.defaults with
             Children =
-                [ FS.Skia.UI.Controls.Typed.TextBlock.view
-                      { FS.Skia.UI.Controls.Typed.TextBlock.defaults with Text = "Typed" }
-                  FS.Skia.UI.Controls.Typed.Button.view
-                      { FS.Skia.UI.Controls.Typed.Button.defaults with
+                [ FS.GG.UI.Controls.Typed.TextBlock.view
+                      { FS.GG.UI.Controls.Typed.TextBlock.defaults with Text = "Typed" }
+                  FS.GG.UI.Controls.Typed.Button.view
+                      { FS.GG.UI.Controls.Typed.Button.defaults with
                           Id = Some "save"
                           Text = "Save"
                           OnClick = Some Save } ] }
@@ -110,8 +110,8 @@ let typedAdapterTests =
 
         test "Widget.ofControl lowers identically to the wrapped control; Widget and Control programs coexist (US4, FR-010)" {
             let legacy: Control<Msg> =
-                FS.Skia.UI.Controls.Typed.Button.view
-                    { FS.Skia.UI.Controls.Typed.Button.defaults with
+                FS.GG.UI.Controls.Typed.Button.view
+                    { FS.GG.UI.Controls.Typed.Button.defaults with
                         Id = Some "save"
                         Text = "Save"
                         OnClick = Some Save }

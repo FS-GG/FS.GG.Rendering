@@ -7,9 +7,9 @@
     "Elmish",
     "Template"
   ],
-  "identity": "FS.Skia.UI.Template",
-  "name": "FS Skia UI Governed Project",
-  "shortName": "fs-skia-ui",
+  "identity": "FS.GG.UI.Template",
+  "name": "FS GG UI Governed Project",
+  "shortName": "fs-gg-ui",
   "sourceName": "Product",
   "preferNameDirectory": true,
   "symbols": {
@@ -46,7 +46,7 @@
     "packagePrefix": {
       "type": "parameter",
       "datatype": "text",
-      "defaultValue": "FS.Skia.UI",
+      "defaultValue": "FS.GG.UI",
       "description": "Package prefix reserved for future generated product packages."
     },
     "authors": {
@@ -80,7 +80,7 @@
       "type": "parameter",
       "datatype": "bool",
       "defaultValue": "false",
-      "description": "Capture per-phase Spec Kit feedback into specs/<feature>/feedback/ (adds the after_* feedback hooks and the fs-skia-feedback-capture skill). Default false induces no diff."
+      "description": "Capture per-phase Spec Kit feedback into specs/<feature>/feedback/ (adds the after_* feedback hooks and the fs-gg-feedback-capture skill). Default false induces no diff."
     },
     "projectSlug": {
       "type": "generated",
@@ -89,7 +89,7 @@
         "source": "name",
         "toLower": true
       },
-      "replaces": "fs-skia-ui"
+      "replaces": "fs-gg-ui"
     }
   },
   "sources": [
@@ -143,63 +143,63 @@
     },
     {
       "condition": "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\")",
-      "source": "template/product-skills/fs-skia-scene/",
-      "target": ".agents/skills/fs-skia-scene/"
+      "source": "template/product-skills/fs-gg-scene/",
+      "target": ".agents/skills/fs-gg-scene/"
     },
     {
       "condition": "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\")",
-      "source": "template/product-skills/fs-skia-scene/",
-      "target": ".claude/skills/fs-skia-scene/"
+      "source": "template/product-skills/fs-gg-scene/",
+      "target": ".claude/skills/fs-gg-scene/"
     },
     {
       "condition": "(profile == \"app\" || profile == \"sample-pack\")",
-      "source": "template/product-skills/fs-skia-skiaviewer/",
-      "target": ".agents/skills/fs-skia-skiaviewer/"
+      "source": "template/product-skills/fs-gg-skiaviewer/",
+      "target": ".agents/skills/fs-gg-skiaviewer/"
     },
     {
       "condition": "(profile == \"app\" || profile == \"sample-pack\")",
-      "source": "template/product-skills/fs-skia-skiaviewer/",
-      "target": ".claude/skills/fs-skia-skiaviewer/"
+      "source": "template/product-skills/fs-gg-skiaviewer/",
+      "target": ".claude/skills/fs-gg-skiaviewer/"
     },
     {
       "condition": "(profile == \"app\" || profile == \"sample-pack\")",
-      "source": "template/product-skills/fs-skia-elmish/",
-      "target": ".agents/skills/fs-skia-elmish/"
+      "source": "template/product-skills/fs-gg-elmish/",
+      "target": ".agents/skills/fs-gg-elmish/"
     },
     {
       "condition": "(profile == \"app\" || profile == \"sample-pack\")",
-      "source": "template/product-skills/fs-skia-elmish/",
-      "target": ".claude/skills/fs-skia-elmish/"
+      "source": "template/product-skills/fs-gg-elmish/",
+      "target": ".claude/skills/fs-gg-elmish/"
     },
     {
       "condition": "(profile == \"app\")",
-      "source": "template/product-skills/fs-skia-keyboard-input/",
-      "target": ".agents/skills/fs-skia-keyboard-input/"
+      "source": "template/product-skills/fs-gg-keyboard-input/",
+      "target": ".agents/skills/fs-gg-keyboard-input/"
     },
     {
       "condition": "(profile == \"app\")",
-      "source": "template/product-skills/fs-skia-keyboard-input/",
-      "target": ".claude/skills/fs-skia-keyboard-input/"
+      "source": "template/product-skills/fs-gg-keyboard-input/",
+      "target": ".claude/skills/fs-gg-keyboard-input/"
     },
     {
       "condition": "(profile == \"app\")",
-      "source": "template/product-skills/fs-skia-ui-widgets/",
-      "target": ".agents/skills/fs-skia-ui-widgets/"
+      "source": "template/product-skills/fs-gg-ui-widgets/",
+      "target": ".agents/skills/fs-gg-ui-widgets/"
     },
     {
       "condition": "(profile == \"app\")",
-      "source": "template/product-skills/fs-skia-ui-widgets/",
-      "target": ".claude/skills/fs-skia-ui-widgets/"
+      "source": "template/product-skills/fs-gg-ui-widgets/",
+      "target": ".claude/skills/fs-gg-ui-widgets/"
     },
     {
       "condition": "(profile == \"governed\")",
-      "source": "template/product-skills/fs-skia-testing/",
-      "target": ".agents/skills/fs-skia-testing/"
+      "source": "template/product-skills/fs-gg-testing/",
+      "target": ".agents/skills/fs-gg-testing/"
     },
     {
       "condition": "(profile == \"governed\")",
-      "source": "template/product-skills/fs-skia-testing/",
-      "target": ".claude/skills/fs-skia-testing/"
+      "source": "template/product-skills/fs-gg-testing/",
+      "target": ".claude/skills/fs-gg-testing/"
     },
     {
       "condition": "(profile == \"sample-pack\")",
@@ -212,22 +212,22 @@
     {
       "condition": "(profile == \"sample-pack\")",
       "source": "template/fragments/samples/skill/",
-      "target": ".agents/skills/fs-skia-samples/"
+      "target": ".agents/skills/fs-gg-samples/"
     },
     {
       "condition": "(profile == \"sample-pack\")",
       "source": "template/fragments/samples/skill/",
-      "target": ".claude/skills/fs-skia-samples/"
+      "target": ".claude/skills/fs-gg-samples/"
     },
     {
       "condition": "(feedback == true)",
       "source": "template/feedback/skill/",
-      "target": ".agents/skills/fs-skia-feedback-capture/"
+      "target": ".agents/skills/fs-gg-feedback-capture/"
     },
     {
       "condition": "(feedback == true)",
       "source": "template/feedback/skill/",
-      "target": ".claude/skills/fs-skia-feedback-capture/"
+      "target": ".claude/skills/fs-gg-feedback-capture/"
     },
     {
       "condition": "(feedback == true)",
@@ -247,7 +247,7 @@
       "actionId": "3A7C4B45-1F5D-4A30-959A-51B88E82B5D2",
       "args": {
         "executable": "bash",
-        "args": "-c \"find . -type f \\( -name '*.sh' -o -name 'fake.sh' \\) -exec chmod +x {} +; if ! command -v git >/dev/null 2>&1; then echo '[fs-skia-ui] git not found; skipped repository initialization' >&2; exit 0; fi; if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then git init -q && git add . && git -c user.name='FS Skia UI Template' -c user.email='template@example.invalid' commit --allow-empty -q -m '[Spec Kit] Initial commit'; fi\"",
+        "args": "-c \"find . -type f \\( -name '*.sh' -o -name 'fake.sh' \\) -exec chmod +x {} +; if ! command -v git >/dev/null 2>&1; then echo '[fs-gg-ui] git not found; skipped repository initialization' >&2; exit 0; fi; if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then git init -q && git add . && git -c user.name='FS GG UI Template' -c user.email='template@example.invalid' commit --allow-empty -q -m '[Spec Kit] Initial commit'; fi\"",
         "redirectStandardOutput": false,
         "redirectStandardError": false
       },
@@ -281,7 +281,7 @@
       "actionId": "3A7C4B45-1F5D-4A30-959A-51B88E82B5D2",
       "args": {
         "executable": "powershell",
-        "args": "-NoProfile -ExecutionPolicy Bypass -Command \"if (-not (Get-Command git -ErrorAction SilentlyContinue)) { Write-Warning '[fs-skia-ui] git not found; skipped repository initialization'; exit 0 }; git rev-parse --is-inside-work-tree 2>$null | Out-Null; if ($LASTEXITCODE -ne 0) { git init -q; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; git add .; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; git -c user.name='FS Skia UI Template' -c user.email='template@example.invalid' commit --allow-empty -q -m '[Spec Kit] Initial commit'; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } }\"",
+        "args": "-NoProfile -ExecutionPolicy Bypass -Command \"if (-not (Get-Command git -ErrorAction SilentlyContinue)) { Write-Warning '[fs-gg-ui] git not found; skipped repository initialization'; exit 0 }; git rev-parse --is-inside-work-tree 2>$null | Out-Null; if ($LASTEXITCODE -ne 0) { git init -q; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; git add .; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; git -c user.name='FS GG UI Template' -c user.email='template@example.invalid' commit --allow-empty -q -m '[Spec Kit] Initial commit'; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } }\"",
         "redirectStandardOutput": false,
         "redirectStandardError": false
       },

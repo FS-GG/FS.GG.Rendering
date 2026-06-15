@@ -13,8 +13,8 @@ any source is copied (source import is Stage R4).
 - **[docs-to-import.md](./docs-to-import.md)** — triage of source docs for Stage R4
   (import-as-is / adapt / exclude).
 - **decisions/** — recorded product-shape decisions:
-  - [0001-package-identity.md](./decisions/0001-package-identity.md) — keep `FS.Skia.UI.*`;
-    rebrand deferred to Stage R8.
+  - [0001-package-identity.md](./decisions/0001-package-identity.md) — accepted at R8: rebranded
+    `FS.Skia.UI.*` → `FS.GG.UI.*`.
   - [0002-template-ownership.md](./decisions/0002-template-ownership.md) — rendering repo owns
     the templates for now.
 

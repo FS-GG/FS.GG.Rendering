@@ -1,4 +1,4 @@
-namespace FS.Skia.UI.Controls
+namespace FS.GG.UI.Controls
 
 module Attr =
     let standardAttributeName name =

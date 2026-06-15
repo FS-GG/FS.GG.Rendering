@@ -1,7 +1,7 @@
 module ControlsTextInputTests
 
 open Expecto
-open FS.Skia.UI.Controls
+open FS.GG.UI.Controls
 
 [<Tests>]
 let textInputTests =

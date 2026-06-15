@@ -5,8 +5,8 @@ open System.IO
 open System.Diagnostics
 open System.Threading
 open Elmish
-open FS.Skia.UI.Scene
-open FS.Skia.UI.SkiaViewer.Host
+open FS.GG.UI.Scene
+open FS.GG.UI.SkiaViewer.Host
 
 module Live =
 

@@ -1,4 +1,4 @@
-namespace FS.Skia.UI.Controls
+namespace FS.GG.UI.Controls
 
 /// Builder functions (`Attr`) for constructing the typed `Attr<'msg>` values that
 /// configure a control — covering content, layout, state, style, theme, and event attributes.

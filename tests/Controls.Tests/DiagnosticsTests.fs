@@ -1,7 +1,7 @@
 module ControlsDiagnosticsTests
 
 open Expecto
-open FS.Skia.UI.Controls
+open FS.GG.UI.Controls
 
 let assertMessageContains (diagnostic: ControlDiagnostic) expected =
     Expect.stringContains diagnostic.Message expected $"diagnostic message names {expected}"
@@ -10,13 +10,13 @@ let assertMessageContains (diagnostic: ControlDiagnostic) expected =
 let diagnosticsTests =
     testList "Controls boundary diagnostics" [
         test "boundary diagnostics name stale references and leaking dependencies" {
-            let stale = Diagnostics.stalePackageReference "FS.Skia.UI.Charts" "template/capabilities.yml"
-            let leak = Diagnostics.dependencyLeak "FS.Skia.UI.Controls" "src/SkiaViewer/SkiaViewer.fsproj"
+            let stale = Diagnostics.stalePackageReference "FS.GG.UI.Charts" "template/capabilities.yml"
+            let leak = Diagnostics.dependencyLeak "FS.GG.UI.Controls" "src/SkiaViewer/SkiaViewer.fsproj"
 
             Expect.equal stale.Code StaleGeneratedReference "stale package references use stale-reference code"
-            assertMessageContains stale "FS.Skia.UI.Charts"
+            assertMessageContains stale "FS.GG.UI.Charts"
             assertMessageContains stale "template/capabilities.yml"
-            assertMessageContains leak "FS.Skia.UI.Controls"
+            assertMessageContains leak "FS.GG.UI.Controls"
             assertMessageContains leak "src/SkiaViewer/SkiaViewer.fsproj"
         }
 
@@ -38,11 +38,11 @@ let diagnosticsTests =
 
         test "validation diagnostics name packages capabilities controls profiles adapters runtime environment and migration gaps" {
             let diagnostics =
-                [ Diagnostics.stalePackageReference "FS.Skia.UI.Charts" "template/capabilities.yml", [ "FS.Skia.UI.Charts"; "template/capabilities.yml" ]
+                [ Diagnostics.stalePackageReference "FS.GG.UI.Charts" "template/capabilities.yml", [ "FS.GG.UI.Charts"; "template/capabilities.yml" ]
                   Diagnostics.create None "capability:charts" StaleGeneratedReference Error "Generated capability `charts` is not active.", [ "charts" ]
                   Diagnostics.missingRequired (Some "data-grid") "data-grid" "rows", [ "rows" ]
                   Diagnostics.catalogOmission "data-grid" "evidence", [ "data-grid"; "evidence" ]
-                  Diagnostics.create None "generated-profile:app" MissingRequiredAttribute Error "Generated profile `app` is missing `FS.Skia.UI.Controls.Elmish`.", [ "app"; "FS.Skia.UI.Controls.Elmish" ]
+                  Diagnostics.create None "generated-profile:app" MissingRequiredAttribute Error "Generated profile `app` is missing `FS.GG.UI.Controls.Elmish`.", [ "app"; "FS.GG.UI.Controls.Elmish" ]
                   Diagnostics.create None "adapter-contract" MissingRequiredAttribute Error "Adapter contract `ControlsElmish.program` is missing.", [ "ControlsElmish.program" ]
                   Diagnostics.duplicateRuntimeDefinition "KeyboardModel" "src/Controls/KeyboardInput.fs", [ "KeyboardModel"; "src/Controls/KeyboardInput.fs" ]
                   Diagnostics.unsupportedEnvironment "rich-text" "drop-shadow", [ "drop-shadow" ]

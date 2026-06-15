@@ -22,11 +22,11 @@ let main args =
         0
 
 //#else
-open FS.Skia.UI.SkiaViewer
+open FS.GG.UI.SkiaViewer
 open System.IO
 open Product.WindowOptions
 //#if (profile == "app")
-open FS.Skia.UI.Controls.Elmish
+open FS.GG.UI.Controls.Elmish
 //#endif
 
 type Model = Product.Model.Model

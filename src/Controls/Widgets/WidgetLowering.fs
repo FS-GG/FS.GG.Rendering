@@ -1,6 +1,6 @@
-namespace FS.Skia.UI.Controls.Typed
+namespace FS.GG.UI.Controls.Typed
 
-open FS.Skia.UI.Controls
+open FS.GG.UI.Controls
 
 // Feature 105 (US1, FR-001/FR-002/FR-004): the single home for the typed-widget
 // lowering helpers that were verbatim-duplicated across the per-family `*Lowering`
@@ -13,7 +13,7 @@ module internal WidgetLowering =
     // Apply a stable key when the typed `Props` carried an `Id`, else pass through.
     let withKeyOpt id control =
         match id with
-        | Some key -> FS.Skia.UI.Controls.Control.withKey key control
+        | Some key -> FS.GG.UI.Controls.Control.withKey key control
         | None -> control
 
     // A string-payload event adapter: bind `eventKind`, defaulting an absent payload to "".

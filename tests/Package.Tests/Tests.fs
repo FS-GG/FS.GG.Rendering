@@ -67,16 +67,16 @@ let packageContractTests =
             let build = buildFrontEnd ()
 
             // V3 Stage 5: the monolith is retired; PackLocal packs the nine split packages only.
-            [ "src/Scene/Scene.fsproj", "FS.Skia.UI.Scene"
-              "src/SkiaViewer/SkiaViewer.fsproj", "FS.Skia.UI.SkiaViewer"
-              "src/Layout/Layout.fsproj", "FS.Skia.UI.Layout"
-              "src/Controls.Elmish/Controls.Elmish.fsproj", "FS.Skia.UI.Controls.Elmish"
-              "src/Controls/Controls.fsproj", "FS.Skia.UI.Controls" ]
+            [ "src/Scene/Scene.fsproj", "FS.GG.UI.Scene"
+              "src/SkiaViewer/SkiaViewer.fsproj", "FS.GG.UI.SkiaViewer"
+              "src/Layout/Layout.fsproj", "FS.GG.UI.Layout"
+              "src/Controls.Elmish/Controls.Elmish.fsproj", "FS.GG.UI.Controls.Elmish"
+              "src/Controls/Controls.fsproj", "FS.GG.UI.Controls" ]
             |> List.iter (fun (project, packageId) ->
                 Expect.stringContains build project $"{project} is packed by PackLocal"
                 Expect.stringContains build packageId $"{packageId} is packed by PackLocal")
 
-            Expect.isFalse (build.Contains("\"src/Charts/Charts.fsproj\", \"FS.Skia.UI.Charts\"")) "Charts is not an active PackLocal package"
+            Expect.isFalse (build.Contains("\"src/Charts/Charts.fsproj\", \"FS.GG.UI.Charts\"")) "Charts is not an active PackLocal package"
         }
 
         test "controls boundary has no active Charts package capability or monolithic viewer coupling" {
@@ -90,7 +90,7 @@ let packageContractTests =
             let monolithRef = $@"..\{monolithDir}\{monolithDir}.fsproj"
 
             Expect.isFalse (File.Exists(Path.Combine(repositoryRoot, "src", "Charts", "Charts.fsproj"))) "legacy Charts project is removed or deactivated from source ownership"
-            Expect.isFalse (build.Contains("FS.Skia.UI.Charts", StringComparison.Ordinal)) "build wiring has no active Charts package reference"
+            Expect.isFalse (build.Contains("FS.GG.UI.Charts", StringComparison.Ordinal)) "build wiring has no active Charts package reference"
             Expect.isFalse (capabilities.Contains("id: charts", StringComparison.OrdinalIgnoreCase)) "generated capability catalog has no active charts capability"
             Expect.isFalse (controlsProject.Contains(monolithRef, StringComparison.Ordinal)) "Controls package does not depend on the retired monolithic viewer/runtime project"
             Expect.isTrue (File.Exists(Path.Combine(repositoryRoot, "src", "Controls", "DataGrid.fsi"))) "DataGrid public contract is owned by Controls"
@@ -107,15 +107,15 @@ let packageContractTests =
                   "template/profiles/sample-pack.yml"
                   "template/base/Directory.Packages.props"
                   "template/base/src/Product/Product.fsproj"
-                  "template/base/.agents/skills/fs-skia-project/SKILL.md"
+                  "template/base/.agents/skills/fs-gg-project/SKILL.md"
                   "scripts/refresh-surface-baselines.fsx" ]
 
             let forbiddenTokens =
-                [ "PackageReference Include=\"FS.Skia.UI.Charts\""
+                [ "PackageReference Include=\"FS.GG.UI.Charts\""
                   "src/Charts/Charts.fsproj"
                   "id: charts"
                   "template/fragments/charts"
-                  ".agents/skills/fs-skia-charts/SKILL.md" ]
+                  ".agents/skills/fs-gg-charts/SKILL.md" ]
 
             let activeHits =
                 generatedProductInputs
@@ -131,13 +131,13 @@ let packageContractTests =
                             None))
 
             Expect.isEmpty activeHits "active generated product inputs do not select Charts package, capability, project, or chart-specific generated skill"
-            Expect.isFalse (build.Contains("\"FS.Skia.UI.Charts\"", StringComparison.Ordinal)) "generated product package validation does not enumerate Charts as an available capability package"
-            Expect.isFalse (File.Exists(repositoryPath "readiness/surface-baselines/FS.Skia.UI.Charts.txt")) "legacy Charts package has no active surface baseline"
+            Expect.isFalse (build.Contains("\"FS.GG.UI.Charts\"", StringComparison.Ordinal)) "generated product package validation does not enumerate Charts as an available capability package"
+            Expect.isFalse (File.Exists(repositoryPath "readiness/surface-baselines/FS.GG.UI.Charts.txt")) "legacy Charts package has no active surface baseline"
             Expect.isFalse (File.Exists(repositoryPath "template/fragments/charts/skill/SKILL.md")) "template has no chart-specific generated skill fragment"
-            Expect.isFalse (File.Exists(repositoryPath "template/base/.agents/skills/fs-skia-charts/SKILL.md")) "generated product base has no chart-specific generated skill"
-            Expect.stringContains build "readiness/surface-baselines/FS.Skia.UI.Controls.Elmish.txt" "package surface report includes the Controls.Elmish adapter baseline"
-            Expect.stringContains build "readiness/surface-baselines/FS.Skia.UI.Controls.txt" "package surface report includes the Controls baseline"
-            Expect.stringContains build "readiness/surface-baselines/FS.Skia.UI.KeyboardInput.txt" "package surface report includes the KeyboardInput baseline"
+            Expect.isFalse (File.Exists(repositoryPath "template/base/.agents/skills/fs-gg-charts/SKILL.md")) "generated product base has no chart-specific generated skill"
+            Expect.stringContains build "readiness/surface-baselines/FS.GG.UI.Controls.Elmish.txt" "package surface report includes the Controls.Elmish adapter baseline"
+            Expect.stringContains build "readiness/surface-baselines/FS.GG.UI.Controls.txt" "package surface report includes the Controls baseline"
+            Expect.stringContains build "readiness/surface-baselines/FS.GG.UI.KeyboardInput.txt" "package surface report includes the KeyboardInput baseline"
         }
 
         test "package consumer smoke is deferred outside v1 verification" {
@@ -167,7 +167,7 @@ let packageContractTests =
 
                       Expect.equal exitCode 0 stderr)
 
-                  let consumerRoot = Path.Combine(Path.GetTempPath(), "fs-skia-ui-package-consumer-" + Guid.NewGuid().ToString("N"))
+                  let consumerRoot = Path.Combine(Path.GetTempPath(), "fs-gg-ui-package-consumer-" + Guid.NewGuid().ToString("N"))
                   Directory.CreateDirectory consumerRoot |> ignore
 
                   File.WriteAllText(
@@ -183,9 +183,9 @@ let packageContractTests =
 """
                   )
 
-                  [ "SceneConsumer", "FS.Skia.UI.Scene"
-                    "LayoutConsumer", "FS.Skia.UI.Layout"
-                    "ControlsConsumer", "FS.Skia.UI.Controls" ]
+                  [ "SceneConsumer", "FS.GG.UI.Scene"
+                    "LayoutConsumer", "FS.GG.UI.Layout"
+                    "ControlsConsumer", "FS.GG.UI.Controls" ]
                   |> List.filter (fun (_, packageId) ->
                       File.Exists(Path.Combine(packageOutput, packageId + $".{packageVersion}.nupkg")))
                   |> List.iter (fun (name, packageId) ->

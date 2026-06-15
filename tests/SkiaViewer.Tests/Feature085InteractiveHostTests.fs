@@ -7,10 +7,10 @@ module Feature085InteractiveHostTests
 // durable visible-window launch is proven separately in readiness/interactive-visible-window.md.
 
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
-open FS.Skia.UI.Controls.Elmish
-open FS.Skia.UI.SkiaViewer
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
+open FS.GG.UI.Controls.Elmish
+open FS.GG.UI.SkiaViewer
 
 type private Msg =
     | Increment
@@ -49,13 +49,13 @@ let private goCentre () =
     let model0 = fst (host.Init ())
     let rendered = Control.renderTree host.Theme size (host.View size model0)
 
-    let available: FS.Skia.UI.Layout.AvailableSpace =
+    let available: FS.GG.UI.Layout.AvailableSpace =
         { Width = float size.Width
-          WidthMode = FS.Skia.UI.Layout.Exactly
+          WidthMode = FS.GG.UI.Layout.Exactly
           Height = float size.Height
-          HeightMode = FS.Skia.UI.Layout.Exactly }
+          HeightMode = FS.GG.UI.Layout.Exactly }
 
-    let result = FS.Skia.UI.Layout.Layout.evaluate available rendered.Layout
+    let result = FS.GG.UI.Layout.Layout.evaluate available rendered.Layout
     let go = result.Bounds |> List.find (fun b -> b.NodeId = "go")
     go.Bounds.X + go.Bounds.Width / 2.0, go.Bounds.Y + go.Bounds.Height / 2.0
 

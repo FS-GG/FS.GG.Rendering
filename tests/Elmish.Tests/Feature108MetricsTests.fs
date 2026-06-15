@@ -6,15 +6,15 @@ module Feature108MetricsTests
 // determinism surface: idle = zero work, K coalesced moves = one processed move, a pure-hover frame
 // does not rebuild, a click interleaved with moves is processed within its frame, and a Tick that
 // only advances clocks does not report a false whole-tree rebuild. `FrameDuration` is excluded.
-// Reaches the real adapter path with no live window ([[fs-skia-elmish]] / [[fs-skia-evidence-mode]]).
+// Reaches the real adapter path with no live window ([[fs-gg-elmish]] / [[fs-gg-evidence-mode]]).
 
 open System
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.KeyboardInput
-open FS.Skia.UI.SkiaViewer
-open FS.Skia.UI.Controls
-open FS.Skia.UI.Controls.Elmish
+open FS.GG.UI.Scene
+open FS.GG.UI.KeyboardInput
+open FS.GG.UI.SkiaViewer
+open FS.GG.UI.Controls
+open FS.GG.UI.Controls.Elmish
 
 type private Msg =
     | Inc
@@ -59,13 +59,13 @@ let private keyHost =
 let private centreOf (model: int) (nodeId: ControlId) =
     let rendered = Control.renderTree host.Theme size (view model)
 
-    let available: FS.Skia.UI.Layout.AvailableSpace =
+    let available: FS.GG.UI.Layout.AvailableSpace =
         { Width = float size.Width
-          WidthMode = FS.Skia.UI.Layout.Exactly
+          WidthMode = FS.GG.UI.Layout.Exactly
           Height = float size.Height
-          HeightMode = FS.Skia.UI.Layout.Exactly }
+          HeightMode = FS.GG.UI.Layout.Exactly }
 
-    let result = FS.Skia.UI.Layout.Layout.evaluate available rendered.Layout
+    let result = FS.GG.UI.Layout.Layout.evaluate available rendered.Layout
     let b = result.Bounds |> List.find (fun b -> b.NodeId = nodeId)
     b.Bounds.X + b.Bounds.Width / 2.0, b.Bounds.Y + b.Bounds.Height / 2.0
 

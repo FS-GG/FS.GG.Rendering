@@ -2,8 +2,8 @@ module ControlsSemanticTests
 
 open Expecto
 open System.Reflection
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
 
 type FormModel =
     { Count: int

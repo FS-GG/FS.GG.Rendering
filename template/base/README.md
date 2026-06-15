@@ -1,6 +1,6 @@
 # Product
 
-This generated product references selected FS.Skia.UI capabilities instead of
+This generated product references selected FS.GG.UI capabilities instead of
 copying the framework repository.
 
 The selected capabilities are controlled by `--profile`:
@@ -50,7 +50,7 @@ concurrent context, rerun the affected FAKE-backed commands sequentially before
 classifying the failure as a product regression.
 
 The generated targets run the evidence graph and merge-gate audit in-process
-through the packaged `FS.Skia.UI.Build` engine (no Python or shell audit script
+through the packaged `FS.GG.UI.Build` engine (no Python or shell audit script
 is copied into or executed by the generated project).
 The workflow does not depend on executable file mode being preserved when the
 checkout is copied. Redirected `Verify` output is written as plain text under
@@ -59,7 +59,7 @@ contain embedded NUL byte blocks.
 
 ## Explore the app in FSI
 
-To load the built app and all its transitive `FS.Skia.UI.*` references into FSI
+To load the built app and all its transitive `FS.GG.UI.*` references into FSI
 in a single step — with **zero manual reference edits** — build once, then run
 the generated load script:
 
@@ -77,32 +77,32 @@ Spec Kit is installed in this repo through `.specify/` and the project-local
 `speckit-*` skills under `.agents/skills/`. Use `$speckit-specify`,
 `$speckit-plan`, and `$speckit-tasks` to start governed feature work.
 
-The product references FS.Skia.UI packages from **public nuget.org** — the generated
+The product references FS.GG.UI packages from **public nuget.org** — the generated
 `NuGet.config` references that feed only, with no machine-local path, so `dotnet restore`
-works on any machine. All `FS.Skia.UI.*` packages and the build engine are pinned by a single
+works on any machine. All `FS.GG.UI.*` packages and the build engine are pinned by a single
 `<FsSkiaUiVersion>` in `Directory.Packages.props`; upgrading is one edit + `dotnet restore`
-(see `docs/UPGRADING.md`). _Framework developers_ working from a clone of the FS.Skia.UI
+(see `docs/UPGRADING.md`). _Framework developers_ working from a clone of the FS.GG.UI
 repository instead pack the source with `./fake.sh build -t PackLocal` and add
 `~/.local/share/nuget-local` as a NuGet source before restoring.
 Use the generated source-shaped package API reference. Do not use assembly reflection or
 repository source inspection as an authoring substitute. When Scene and Controls are used in
 the same file, qualify collision-prone names such as
-`FS.Skia.UI.Scene.Rect`, `FS.Skia.UI.Scene.Paint`,
-`FS.Skia.UI.Scene.TextRun`, `FS.Skia.UI.Controls.TextBlock.create`,
-`FS.Skia.UI.Controls.TextBox.onChanged`, and
-`FS.Skia.UI.Controls.Stack.children`. Do not rely on namespace open order.
+`FS.GG.UI.Scene.Rect`, `FS.GG.UI.Scene.Paint`,
+`FS.GG.UI.Scene.TextRun`, `FS.GG.UI.Controls.TextBlock.create`,
+`FS.GG.UI.Controls.TextBox.onChanged`, and
+`FS.GG.UI.Controls.Stack.children`. Do not rely on namespace open order.
 
 The product owns its application code, tests, documentation, readiness evidence,
 and selected local skills.
 
-Visual demo task lists assign scene rendering -> fs-skia-scene, screenshot
-capture -> fs-skia-skiaviewer, layout readability -> fs-skia-layout-readability,
-persistent viewer launch -> fs-skia-skiaviewer, deterministic evidence mode ->
-fs-skia-evidence-mode, generated-package validation ->
-fs-skia-template-update, graph validation -> speckit-evidence-graph, and audit
+Visual demo task lists assign scene rendering -> fs-gg-scene, screenshot
+capture -> fs-gg-skiaviewer, layout readability -> fs-gg-layout-readability,
+persistent viewer launch -> fs-gg-skiaviewer, deterministic evidence mode ->
+fs-gg-evidence-mode, generated-package validation ->
+fs-gg-template-update, graph validation -> speckit-evidence-graph, and audit
 validation -> speckit-evidence-audit. Ordered multi-skill examples preserve
 implementation-before-evidence, graph-before-audit, debug-before-broad-rerun,
-and visible mirrors such as `[skillist: speckit-tasks, fs-skia-layout-readability]`.
+and visible mirrors such as `[skillist: speckit-tasks, fs-gg-layout-readability]`.
 
 Generated readiness scaffolds include `readiness/visual-evidence-honesty.md`,
 `readiness/window-visibility.md`, `readiness/governance-risk-levels.md`,
@@ -111,9 +111,9 @@ Generated readiness scaffolds include `readiness/visual-evidence-honesty.md`,
 `readiness/real-image-evidence.md`. Each scaffold records the authoritative
 command, artifact path, failure class, and next action.
 
-For generated app profiles, `FS.Skia.UI.Controls` is the authoring path for
+For generated app profiles, `FS.GG.UI.Controls` is the authoring path for
 ordinary controls, rich text, chart controls, graph controls, and DataGrid.
-When Elmish integration is selected, `FS.Skia.UI.Controls.Elmish` provides the
+When Elmish integration is selected, `FS.GG.UI.Controls.Elmish` provides the
 adapter for commands, subscriptions, and program wiring. Users moving from the
 legacy Charts package should use Controls chart and DataGrid declarations
 directly; there is no compatibility shim.
@@ -126,7 +126,7 @@ resolves to a concrete, populated reference you can open:
 
 - **Typed Props front door (recommended, compiler-guided).** `src/Product/View.fs` is the
   worked starter: every control is `{ Module.defaults with Field = ... } |> Module.view`
-  through `FS.Skia.UI.Controls.Typed`. To add a control kind not shown, type
+  through `FS.GG.UI.Controls.Typed`. To add a control kind not shown, type
   `SomeControl.defaults` and let IntelliSense enumerate its `Props` fields — no
   attribute-name guessing.
 - **Source-shaped API reference on disk.** `docs/api-surface/Controls/*.fsi` carries the
@@ -135,12 +135,12 @@ resolves to a concrete, populated reference you can open:
 - **Per-control catalog facts.** `docs/controls-catalog.md` answers "which attributes/events
   does control *X* support?" for the demonstrated controls and explains how to enumerate the
   rest.
-- **Programmatic discovery API.** `FS.Skia.UI.Controls.Catalog` —
+- **Programmatic discovery API.** `FS.GG.UI.Controls.Catalog` —
   `knownControlKinds`, `requiredAttributes`, `supportedAttributes`, `supportedEvents`, and
   `markdownSummary` — reports any control's complete contract as data, from IntelliSense or at
   runtime. A control authored through the legacy builder rather than the typed front door is
   still fully supported; the catalog reports its contract either way.
-- **Interactive host seam.** `FS.Skia.UI.Controls.Elmish.ControlsElmish.runInteractiveApp`
+- **Interactive host seam.** `FS.GG.UI.Controls.Elmish.ControlsElmish.runInteractiveApp`
   (wired in `src/Product/Program.fs`) runs an interactive controls app; `programOfWidget` /
   `widgetView` wire a typed `Widget<'msg>` view directly.
 

@@ -1,6 +1,6 @@
 module Product.View
 
-open FS.Skia.UI.Scene
+open FS.GG.UI.Scene
 open Product.Model
 //#if (profile == "governed" || profile == "headless-scene")
 
@@ -14,10 +14,10 @@ let view model =
     )
 
 //#else
-open FS.Skia.UI.Controls
-open FS.Skia.UI.Controls.Elmish
-open FS.Skia.UI.KeyboardInput
-open FS.Skia.UI.Scene
+open FS.GG.UI.Controls
+open FS.GG.UI.Controls.Elmish
+open FS.GG.UI.KeyboardInput
+open FS.GG.UI.Scene
 
 // The typed Props front door (the `Controls.Typed` namespace) is the recommended,
 // compiler-guided authoring path: each control is built from an immutable `Props<'msg>` record
@@ -27,14 +27,14 @@ open FS.Skia.UI.Scene
 // fully-qualified and remain documented for consumers who want them. Discover a control's
 // contract from IntelliSense, the bundled `docs/api-surface/Controls/` signatures,
 // `docs/controls-catalog.md`, or the `Catalog` discovery API — never by reflection.
-module TextBlock = FS.Skia.UI.Controls.Typed.TextBlock
-module RichText = FS.Skia.UI.Controls.Typed.RichText
-module TextBox = FS.Skia.UI.Controls.Typed.TextBox
-module Button = FS.Skia.UI.Controls.Typed.Button
-module LineChart = FS.Skia.UI.Controls.Typed.LineChart
-module GraphView = FS.Skia.UI.Controls.Typed.GraphView
-module DataGrid = FS.Skia.UI.Controls.Typed.DataGrid
-module Stack = FS.Skia.UI.Controls.Typed.Stack
+module TextBlock = FS.GG.UI.Controls.Typed.TextBlock
+module RichText = FS.GG.UI.Controls.Typed.RichText
+module TextBox = FS.GG.UI.Controls.Typed.TextBox
+module Button = FS.GG.UI.Controls.Typed.Button
+module LineChart = FS.GG.UI.Controls.Typed.LineChart
+module GraphView = FS.GG.UI.Controls.Typed.GraphView
+module DataGrid = FS.GG.UI.Controls.Typed.DataGrid
+module Stack = FS.GG.UI.Controls.Typed.Stack
 
 let visibleRows model =
     { FirstIndex = 0
@@ -107,7 +107,7 @@ let adapterProgram =
 // production tree-render path (`Control.renderTree`) at the output extent, so the
 // unmodified generated app shows actual styled controls — form, rich text, chart, graph,
 // and DataGrid — laid out by the framework, not hand-drawn placeholder geometry (FR-003).
-let contentArea: FS.Skia.UI.Scene.Size = { Width = 640; Height = 480 }
+let contentArea: FS.GG.UI.Scene.Size = { Width = 640; Height = 480 }
 
 let view (model: Model) : SceneNode =
     let rendered = Control.renderTree Theme.light contentArea (controlsExampleView model)

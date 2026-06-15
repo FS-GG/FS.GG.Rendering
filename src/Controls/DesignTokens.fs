@@ -1,8 +1,8 @@
 // GENERATED — do not edit. Source of truth: src/Controls/design-tokens.tokens.json
 // Regenerate via: ./fake.sh build -t RefreshSurfaceBaselines
-namespace FS.Skia.UI.Controls
+namespace FS.GG.UI.Controls
 
-open FS.Skia.UI.Scene
+open FS.GG.UI.Scene
 
 module DesignTokens =
     module Light =

@@ -29,11 +29,16 @@ the one record to update if imported scope ever changes.
 
 ## Identity status
 
-Package and template identity is **retained as `FS.Skia.UI.*`** — unchanged by the repository
-move. Any rename to a new identity (e.g. `FS.GG.UI.*`) is a separate, explicit decision deferred
-to migration **Stage R8**; it has **not** happened. Details and the per-package mapping are in
-[`package-identity-migration.md`](./package-identity-migration.md); the decision record is
-[`docs/product/decisions/0001-package-identity.md`](../product/decisions/0001-package-identity.md).
+Package and template identity was **rebranded `FS.Skia.UI.*` → `FS.GG.UI.*` at migration Stage R8**
+(the explicit release decision the R7 move had deferred). All runtime package IDs, root namespaces,
+assembly names, and the template identity (`FS.GG.UI.Template`) now carry the `FS.GG.UI.` brand; only
+the brand prefix changed (descriptive `SkiaSharp`/`SkiaViewer` usage is retained), and the public API
+surface differs only by the namespace prefix. The new lineage starts at `0.1.0-preview.1`; the old
+`FS.Skia.UI.*` IDs freeze and are deprecated (not deleted) with a forward pointer. The per-package
+mapping is in [`package-identity-migration.md`](./package-identity-migration.md); the accepted
+decision is [`docs/product/decisions/0001-package-identity.md`](../product/decisions/0001-package-identity.md);
+the old-ID deprecation is a recorded action in
+[`package-deprecation-notice.md`](./package-deprecation-notice.md).
 
 ## Directional policy
 
@@ -65,6 +70,7 @@ under *Excluded* in [`PROVENANCE.md`](../../PROVENANCE.md).
 |---|---|
 | [`PROVENANCE.md`](../../PROVENANCE.md) | Authoritative lineage: source commit, path map, adaptations, exclusions. |
 | [`old-repo-redirect.md`](./old-repo-redirect.md) | Copy-ready redirect/deprecation notice for the archived old repo + its package pages (a recorded action — not yet applied). |
-| [`package-identity-migration.md`](./package-identity-migration.md) | Retained `FS.Skia.UI.*` identity mapping; rebrand deferred to R8. |
-| [`docs/product/decisions/0001-package-identity.md`](../product/decisions/0001-package-identity.md) | The package-identity decision record (deferral to R8). |
+| [`package-identity-migration.md`](./package-identity-migration.md) | Old→new identity mapping: rebranded `FS.Skia.UI.*` → `FS.GG.UI.*` at R8 (R7 retained-mapping kept as history). |
+| [`package-deprecation-notice.md`](./package-deprecation-notice.md) | Copy-ready deprecation of old `FS.Skia.UI.*` IDs → `FS.GG.UI.*` replacements (a recorded action — not yet applied). |
+| [`docs/product/decisions/0001-package-identity.md`](../product/decisions/0001-package-identity.md) | The package-identity decision record (accepted at R8: rebrand to `FS.GG.UI.*`). |
 | [`FS-GG/.github`](https://github.com/FS-GG/.github) | Org profile + cross-repo split/migration docs. |

@@ -1,15 +1,15 @@
-# FS.Skia.UI.Template
+# FS.GG.UI.Template
 
-The `dotnet new` project template for **FS.Skia.UI** — an F# / Elmish UI and 2D scene-graph
+The `dotnet new` project template for **FS.GG.UI** — an F# / Elmish UI and 2D scene-graph
 framework for .NET 10 desktop, rendered through Vulkan + SkiaSharp.
 
 ## Install & scaffold
 
 ```bash
-dotnet new install FS.Skia.UI.Template
-dotnet new fs-skia-ui -o MyApp        # profiles: app, headless-scene, governed, sample-pack
+dotnet new install FS.GG.UI.Template
+dotnet new fs-gg-ui -o MyApp        # profiles: app, headless-scene, governed, sample-pack
 cd MyApp
-dotnet restore                        # resolves FS.Skia.UI.* from nuget.org only
+dotnet restore                        # resolves FS.GG.UI.* from nuget.org only
 dotnet build
 dotnet test
 ```
@@ -19,13 +19,13 @@ path — so it works on any machine without a repository checkout.
 
 ## Usage
 
-Install the template once, then scaffold a project with `dotnet new fs-skia-ui`. The
+Install the template once, then scaffold a project with `dotnet new fs-gg-ui`. The
 generated project name is derived from `--name` (`-o` sets the output directory):
 
 ```bash
-dotnet new install FS.Skia.UI.Template
-dotnet new fs-skia-ui --name MyApp                              # default profile: app
-dotnet new fs-skia-ui --name MyScene --profile headless-scene  # scene/widget authoring
+dotnet new install FS.GG.UI.Template
+dotnet new fs-gg-ui --name MyApp                              # default profile: app
+dotnet new fs-gg-ui --name MyScene --profile headless-scene  # scene/widget authoring
 cd MyApp
 dotnet restore
 ```
@@ -39,7 +39,7 @@ install and `speckit-*` skills, so you drive features through a governed agent l
 | Option | Default | Effect |
 |--------|---------|--------|
 | `--profile <p>` | `app` | Which product to scaffold (see profile table below). |
-| `--feedback true` | `false` | Capture per-phase Spec Kit feedback into `specs/<feature>/feedback/` — adds the `after_*` feedback hooks and the `fs-skia-feedback-capture` skill. Default `false` induces no diff. |
+| `--feedback true` | `false` | Capture per-phase Spec Kit feedback into `specs/<feature>/feedback/` — adds the `after_*` feedback hooks and the `fs-gg-feedback-capture` skill. Default `false` induces no diff. |
 | `--skipGitInit true` | `false` | Don't create the initial Git commit (use when generating inside an existing repo). |
 
 | Profile | Scaffolds |
@@ -51,7 +51,7 @@ install and `speckit-*` skills, so you drive features through a governed agent l
 
 ## Single-source versioning
 
-Every generated project pins all `FS.Skia.UI.*` packages **and** the in-process build engine to
+Every generated project pins all `FS.GG.UI.*` packages **and** the in-process build engine to
 one `<FsSkiaUiVersion>` value in `Directory.Packages.props`. Upgrading is a single edit + `dotnet
 restore`; see the generated `docs/UPGRADING.md`. Preview vs stable is explicit in the value
 (`-preview.N` ⇒ preview channel).

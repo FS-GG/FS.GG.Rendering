@@ -2,7 +2,7 @@ module ControlsControlRuntimeContractTests
 
 open System.IO
 open Expecto
-open FS.Skia.UI.Controls
+open FS.GG.UI.Controls
 
 let repositoryRoot =
     let rec find dir =

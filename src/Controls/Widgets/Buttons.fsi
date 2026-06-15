@@ -1,6 +1,6 @@
-namespace FS.Skia.UI.Controls.Typed
+namespace FS.GG.UI.Controls.Typed
 
-open FS.Skia.UI.Controls
+open FS.GG.UI.Controls
 
 /// A secondary command in a `SplitButton` popup menu. `Key` is the selection
 /// identity dispatched by `OnSelected`; `Label` is the displayed text.

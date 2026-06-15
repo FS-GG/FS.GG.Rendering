@@ -1,13 +1,13 @@
 module PaletteTests
 
 (* Feature 083 / US2 (SC-003) — failing-first (Principle I/VI) ramp-invariant test for the
-   Radix-derived palettes in FS.Skia.UI.Color. Asserts every offered family has matched
+   Radix-derived palettes in FS.GG.UI.Color. Asserts every offered family has matched
    Light + Dark ramps and that at least one documented Text-step over a documented
    AppBackground-step meets AA body text (>= 4.5:1) under Contrast.ratio. *)
 
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Color
+open FS.GG.UI.Scene
+open FS.GG.UI.Color
 
 [<Tests>]
 let rampInvariantTests =

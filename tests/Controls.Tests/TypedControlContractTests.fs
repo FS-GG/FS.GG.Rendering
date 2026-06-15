@@ -4,7 +4,7 @@ open System
 open System.IO
 open Microsoft.FSharp.Reflection
 open Expecto
-open FS.Skia.UI.Controls
+open FS.GG.UI.Controls
 
 let repositoryRoot =
     let rec find dir =
@@ -222,26 +222,26 @@ let typedControlsFrontDoorContractTests =
             Expect.equal (sprintf "%A" (Widget.toControl widget)) (sprintf "%A" control) "Widget.toControl (ofControl c) = c"
         }
 
-        test "six typed modules under FS.Skia.UI.Controls.Typed lower to Control" {
+        test "six typed modules under FS.GG.UI.Controls.Typed lower to Control" {
             // Existence of the typed modules is proven by these calls compiling;
             // each view must lower through the Widget seam to a legacy Control kind.
             let lowered =
-                [ Widget.toControl (FS.Skia.UI.Controls.Typed.TextBlock.view FS.Skia.UI.Controls.Typed.TextBlock.defaults)
-                  Widget.toControl (FS.Skia.UI.Controls.Typed.Button.view FS.Skia.UI.Controls.Typed.Button.defaults)
-                  Widget.toControl (FS.Skia.UI.Controls.Typed.CheckBox.view FS.Skia.UI.Controls.Typed.CheckBox.defaults)
-                  Widget.toControl (FS.Skia.UI.Controls.Typed.Stack.view FS.Skia.UI.Controls.Typed.Stack.defaults) ]
+                [ Widget.toControl (FS.GG.UI.Controls.Typed.TextBlock.view FS.GG.UI.Controls.Typed.TextBlock.defaults)
+                  Widget.toControl (FS.GG.UI.Controls.Typed.Button.view FS.GG.UI.Controls.Typed.Button.defaults)
+                  Widget.toControl (FS.GG.UI.Controls.Typed.CheckBox.view FS.GG.UI.Controls.Typed.CheckBox.defaults)
+                  Widget.toControl (FS.GG.UI.Controls.Typed.Stack.view FS.GG.UI.Controls.Typed.Stack.defaults) ]
                 |> List.map (fun control -> control.Kind)
 
             Expect.equal lowered [ "text-block"; "button"; "check-box"; "stack" ] "primitive typed views lower to legacy kinds"
 
-            let textBoxProps = FS.Skia.UI.Controls.Typed.TextBox.defaults "id"
-            let textBoxModel, _ = FS.Skia.UI.Controls.Typed.TextBox.init textBoxProps
-            let textBox = Widget.toControl (FS.Skia.UI.Controls.Typed.TextBox.view textBoxProps textBoxModel)
+            let textBoxProps = FS.GG.UI.Controls.Typed.TextBox.defaults "id"
+            let textBoxModel, _ = FS.GG.UI.Controls.Typed.TextBox.init textBoxProps
+            let textBox = Widget.toControl (FS.GG.UI.Controls.Typed.TextBox.view textBoxProps textBoxModel)
             Expect.equal textBox.Kind "text-box" "typed TextBox lowers to legacy text-box"
 
-            let gridProps = FS.Skia.UI.Controls.Typed.DataGrid.defaults "grid"
-            let gridModel, _ = FS.Skia.UI.Controls.Typed.DataGrid.init gridProps
-            let grid = Widget.toControl (FS.Skia.UI.Controls.Typed.DataGrid.view gridProps gridModel)
+            let gridProps = FS.GG.UI.Controls.Typed.DataGrid.defaults "grid"
+            let gridModel, _ = FS.GG.UI.Controls.Typed.DataGrid.init gridProps
+            let grid = Widget.toControl (FS.GG.UI.Controls.Typed.DataGrid.view gridProps gridModel)
             Expect.equal grid.Kind "data-grid" "typed DataGrid lowers to legacy data-grid"
         }
 

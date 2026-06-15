@@ -1,6 +1,6 @@
-namespace FS.Skia.UI.Controls.Typed
+namespace FS.GG.UI.Controls.Typed
 
-open FS.Skia.UI.Controls
+open FS.GG.UI.Controls
 
 type TextAreaProps<'msg> =
     { Id: ControlId
@@ -25,13 +25,13 @@ module TextArea =
 
     let view (props: TextAreaProps<'msg>) (model: TextInputModel) : Widget<'msg> =
         let attrs =
-            [ yield FS.Skia.UI.Controls.TextArea.value model.DraftText
+            [ yield FS.GG.UI.Controls.TextArea.value model.DraftText
               yield Attr.readOnly props.ReadOnly
               yield Attr.validation model.Validation
               match props.OnChanged with
-              | Some map -> yield FS.Skia.UI.Controls.TextArea.onChanged map
+              | Some map -> yield FS.GG.UI.Controls.TextArea.onChanged map
               | None -> () ]
 
-        FS.Skia.UI.Controls.TextArea.create attrs
+        FS.GG.UI.Controls.TextArea.create attrs
         |> Control.withKey props.Id
         |> Widget.ofControl

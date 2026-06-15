@@ -1,4 +1,4 @@
-namespace FS.Skia.UI.Elmish
+namespace FS.GG.UI.Elmish
 
 open System
 open Elmish
@@ -7,7 +7,7 @@ open Elmish
 /// own message type (via the `toMsg` mapper) or pattern-match it directly.
 type AnimationTick = AnimationTick of TimeSpan
 
-/// Public contract module exposed by this FS.Skia.UI package.
+/// Public contract module exposed by this FS.GG.UI package.
 ///
 /// Additive Elmish tick helper (feature 073). The only interpreter-edge
 /// component of the animation slice: it advances time by emitting frame-delta

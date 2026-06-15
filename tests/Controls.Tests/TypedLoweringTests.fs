@@ -1,26 +1,26 @@
 module ControlsTypedLoweringTests
 
 open Expecto
-open FS.Skia.UI.Controls
-open FS.Skia.UI.Controls.Typed
+open FS.GG.UI.Controls
+open FS.GG.UI.Controls.Typed
 
 // File-private abbreviations for the legacy builders. Several control names
 // (Button, TextBox, CheckBox, …) are also `AccessibilityRole` union cases, so a
 // bare `LCheckBox.create` path can resolve to the case rather
 // than the module; a module abbreviation forces module resolution.
-module LTextBlock = FS.Skia.UI.Controls.TextBlock
-module LButton = FS.Skia.UI.Controls.Button
-module LCheckBox = FS.Skia.UI.Controls.CheckBox
-module LStack = FS.Skia.UI.Controls.Stack
-module LTextBox = FS.Skia.UI.Controls.TextBox
-module LTextInput = FS.Skia.UI.Controls.TextInput
-module LDataGrid = FS.Skia.UI.Controls.DataGrid
-module LControl = FS.Skia.UI.Controls.Control
-module LBadge = FS.Skia.UI.Controls.Badge
+module LTextBlock = FS.GG.UI.Controls.TextBlock
+module LButton = FS.GG.UI.Controls.Button
+module LCheckBox = FS.GG.UI.Controls.CheckBox
+module LStack = FS.GG.UI.Controls.Stack
+module LTextBox = FS.GG.UI.Controls.TextBox
+module LTextInput = FS.GG.UI.Controls.TextInput
+module LDataGrid = FS.GG.UI.Controls.DataGrid
+module LControl = FS.GG.UI.Controls.Control
+module LBadge = FS.GG.UI.Controls.Badge
 // Feature 106 (T008): the additional starter-demonstrated typed controls.
-module LRichText = FS.Skia.UI.Controls.RichText
-module LLineChart = FS.Skia.UI.Controls.LineChart
-module LGraphView = FS.Skia.UI.Controls.GraphView
+module LRichText = FS.GG.UI.Controls.RichText
+module LLineChart = FS.GG.UI.Controls.LineChart
+module LGraphView = FS.GG.UI.Controls.GraphView
 
 // Msg used to bind the typed authoring surface; needs equality for parity.
 type Msg =

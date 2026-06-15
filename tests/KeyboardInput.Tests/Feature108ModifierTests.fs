@@ -6,7 +6,7 @@ module Feature108ModifierTests
 // the pre-108 build (no `KeyModifiers`).
 
 open Expecto
-open FS.Skia.UI.KeyboardInput
+open FS.GG.UI.KeyboardInput
 
 let private ev raw : ViewerKeyEvent =
     { RawKey = raw

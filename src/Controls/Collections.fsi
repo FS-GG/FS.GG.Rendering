@@ -1,4 +1,4 @@
-namespace FS.Skia.UI.Controls
+namespace FS.GG.UI.Controls
 
 /// The slice of a virtualized list currently realized: `FirstIndex`/`Count` within `Total`.
 type VisibleRange =

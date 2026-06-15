@@ -14,7 +14,7 @@ There are two discovery paths, and both are reachable from this generated projec
 > data, and the `docs/api-surface/Controls/` bundle carries the typed `Props` and legacy
 > builder signatures on disk.
 
-## Programmatic discovery — `FS.Skia.UI.Controls.Catalog`
+## Programmatic discovery — `FS.GG.UI.Controls.Catalog`
 
 Every function is documented in `docs/api-surface/Controls/Catalog.fsi` (and in IntelliSense).
 The ones you reach for when authoring:
@@ -31,7 +31,7 @@ The ones you reach for when authoring:
 ### Worked example — a control's complete attribute set, no reflection
 
 ```fsharp
-open FS.Skia.UI.Controls
+open FS.GG.UI.Controls
 
 // "What does a text box accept?" — answered from the discovery API:
 let required = Catalog.requiredAttributes StandardControlKind.TextBox   // [ value ]
@@ -45,7 +45,7 @@ printfn "%s" (Catalog.markdownSummary ())
 ## Static reference — the starter-demonstrated controls
 
 These are the controls the generated `View.fs` authors through the typed Props front door
-(`FS.Skia.UI.Controls.Typed`). Every control here also accepts the **common attributes**
+(`FS.GG.UI.Controls.Typed`). Every control here also accepts the **common attributes**
 shared across kinds: `enabled`, `visible`, `width`, `height`, `padding`, `style`, `theme`,
 `accessibility`.
 
@@ -78,7 +78,7 @@ surface is fully documented in `docs/api-surface/Controls/`. The typed front doo
 ## Authoring an interactive controls app — the host seam
 
 Constructing controls is only half of "authoring a controls app". The interactive host entry
-point is `FS.Skia.UI.Controls.Elmish.ControlsElmish.runInteractiveApp`, wired in the generated
+point is `FS.GG.UI.Controls.Elmish.ControlsElmish.runInteractiveApp`, wired in the generated
 `Program.fs`. A typed (`Widget<'msg>`-returning) view can be wired straight through with
 `ControlsElmish.programOfWidget` (or `ControlsElmish.widgetView`), which lowers via
 `Widget.toControl` for you. See `docs/api-surface/Controls/` (the `Elmish` and `Widget`

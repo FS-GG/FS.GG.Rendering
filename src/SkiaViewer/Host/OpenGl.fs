@@ -1,4 +1,4 @@
-namespace FS.Skia.UI.SkiaViewer.Host
+namespace FS.GG.UI.SkiaViewer.Host
 
 #nowarn "9"
 #nowarn "51"
@@ -16,13 +16,13 @@ open Silk.NET.Maths
 open Silk.NET.Windowing
 open Silk.NET.OpenGL
 open SkiaSharp
-open FS.Skia.UI.Scene
+open FS.GG.UI.Scene
 // The shared scene painter (feature 063): both this interactive host and the
 // image-evidence path delegate to `SceneRenderer.paintNode`.
-open FS.Skia.UI.SkiaViewer
+open FS.GG.UI.SkiaViewer
 // Open the host namespace last so the host's own DiagnosticSeverity/DiagnosticStage/RenderDiagnostic
 // (richer than the Scene package's) take precedence over the Scene-vocabulary names brought in above.
-open FS.Skia.UI.SkiaViewer.Host
+open FS.GG.UI.SkiaViewer.Host
 
 module GlResources =
     type ResourceCategory =
@@ -227,7 +227,7 @@ module GlHost =
 
     let trace configuration message =
         if configuration.Diagnostics.Verbose then
-            Console.Error.WriteLine($"FS.Skia.UI GlHost: {message}")
+            Console.Error.WriteLine($"FS.GG.UI GlHost: {message}")
 
     let toNativeSize (size: Size) =
         Vector2D<int>(size.Width, size.Height)
@@ -908,7 +908,7 @@ module GlHost =
                 Ok()
             | ReportDiagnostic diagnostic ->
                 if program.Configuration.Diagnostics.Verbose then
-                    Console.Error.WriteLine($"FS.Skia.UI diagnostic: {diagnostic.Stage}: {diagnostic.Message}")
+                    Console.Error.WriteLine($"FS.GG.UI diagnostic: {diagnostic.Stage}: {diagnostic.Message}")
 
                 Ok()
             | Dispatch msg ->

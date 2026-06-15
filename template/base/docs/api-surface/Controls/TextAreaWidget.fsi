@@ -1,6 +1,6 @@
-namespace FS.Skia.UI.Controls.Typed
+namespace FS.GG.UI.Controls.Typed
 
-open FS.Skia.UI.Controls
+open FS.GG.UI.Controls
 
 /// Immutable, compiler-checked authoring surface for a multi-line text area. `Id`
 /// is required identity for a stateful control. Reuses the existing `TextInput`

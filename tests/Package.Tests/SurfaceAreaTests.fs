@@ -47,29 +47,29 @@ let assertBaseline packageName (assembly: Assembly) =
 let surfaceAreaTests =
     testList "Surface baselines" [
         test "surface baselines use stable root readiness path" {
-            // V3 Stage 5: the retired FS.Skia.UI monolith no longer owns a surface baseline;
+            // V3 Stage 5: the retired FS.GG.UI monolith no longer owns a surface baseline;
             // the stable-root-path invariant is asserted against a live split package.
             let baselinePath =
-                Path.Combine(repositoryRoot, "readiness", "surface-baselines", "FS.Skia.UI.Scene.txt")
+                Path.Combine(repositoryRoot, "readiness", "surface-baselines", "FS.GG.UI.Scene.txt")
 
-            Expect.isTrue (File.Exists baselinePath) "stable FS.Skia.UI.Scene package surface baseline exists"
+            Expect.isTrue (File.Exists baselinePath) "stable FS.GG.UI.Scene package surface baseline exists"
             Expect.isFalse (baselinePath.Contains("specs/002-skia-feature-parity", StringComparison.Ordinal)) "baseline path is not historical feature readiness"
         }
 
-        test "FS.Skia.UI.Layout baseline exports expected contract names" {
-            assertBaseline "FS.Skia.UI.Layout" typeof<FS.Skia.UI.Layout.GraphDefinition>.Assembly
+        test "FS.GG.UI.Layout baseline exports expected contract names" {
+            assertBaseline "FS.GG.UI.Layout" typeof<FS.GG.UI.Layout.GraphDefinition>.Assembly
         }
 
         test "SkiaViewer package exposes selected generated persistent viewer entry point" {
             let assemblyPath =
-                Path.Combine(repositoryRoot, "src", "SkiaViewer", "bin", "Debug", "net10.0", "FS.Skia.UI.SkiaViewer.dll")
+                Path.Combine(repositoryRoot, "src", "SkiaViewer", "bin", "Debug", "net10.0", "FS.GG.UI.SkiaViewer.dll")
 
             Expect.isTrue (File.Exists assemblyPath) "SkiaViewer assembly has been built"
 
             let assembly = Assembly.LoadFrom assemblyPath
 
             let viewerModule =
-                match assembly.GetType("FS.Skia.UI.SkiaViewer.Viewer") |> Option.ofObj with
+                match assembly.GetType("FS.GG.UI.SkiaViewer.Viewer") |> Option.ofObj with
                 | Some value -> value
                 | None ->
                     failtest "SkiaViewer package exports Viewer module"
@@ -84,19 +84,19 @@ let surfaceAreaTests =
             Expect.contains methodNames "runAppWithWindowBehavior" "window-behavior overload remains packaged but is not the generated default"
         }
 
-        test "FS.Skia.UI.Controls baseline exports expected contract names" {
-            assertBaseline "FS.Skia.UI.Controls" typeof<FS.Skia.UI.Controls.Control<int>>.Assembly
+        test "FS.GG.UI.Controls baseline exports expected contract names" {
+            assertBaseline "FS.GG.UI.Controls" typeof<FS.GG.UI.Controls.Control<int>>.Assembly
         }
 
         test "V3 capability packages declare package-specific contracts and baselines" {
-            [ "Scene", "src/Scene/Scene.fsproj", "src/Scene/Scene.fsi", "readiness/surface-baselines/FS.Skia.UI.Scene.txt"
-              "SkiaViewer", "src/SkiaViewer/SkiaViewer.fsproj", "src/SkiaViewer/SkiaViewer.fsi", "readiness/surface-baselines/FS.Skia.UI.SkiaViewer.txt"
-              "Elmish", "src/Elmish/Elmish.fsproj", "src/Elmish/Elmish.fsi", "readiness/surface-baselines/FS.Skia.UI.Elmish.txt"
-              "KeyboardInput", "src/KeyboardInput/KeyboardInput.fsproj", "src/KeyboardInput/KeyboardInput.fsi", "readiness/surface-baselines/FS.Skia.UI.KeyboardInput.txt"
-              "Layout", "src/Layout/Layout.fsproj", "src/Layout/Layout.fsi", "readiness/surface-baselines/FS.Skia.UI.Layout.txt"
-              "Controls", "src/Controls/Controls.fsproj", "src/Controls/Types.fsi", "readiness/surface-baselines/FS.Skia.UI.Controls.txt"
-              "Controls.Elmish", "src/Controls.Elmish/Controls.Elmish.fsproj", "src/Controls.Elmish/ControlsElmish.fsi", "readiness/surface-baselines/FS.Skia.UI.Controls.Elmish.txt"
-              "Testing", "src/Testing/Testing.fsproj", "src/Testing/Testing.fsi", "readiness/surface-baselines/FS.Skia.UI.Testing.txt" ]
+            [ "Scene", "src/Scene/Scene.fsproj", "src/Scene/Scene.fsi", "readiness/surface-baselines/FS.GG.UI.Scene.txt"
+              "SkiaViewer", "src/SkiaViewer/SkiaViewer.fsproj", "src/SkiaViewer/SkiaViewer.fsi", "readiness/surface-baselines/FS.GG.UI.SkiaViewer.txt"
+              "Elmish", "src/Elmish/Elmish.fsproj", "src/Elmish/Elmish.fsi", "readiness/surface-baselines/FS.GG.UI.Elmish.txt"
+              "KeyboardInput", "src/KeyboardInput/KeyboardInput.fsproj", "src/KeyboardInput/KeyboardInput.fsi", "readiness/surface-baselines/FS.GG.UI.KeyboardInput.txt"
+              "Layout", "src/Layout/Layout.fsproj", "src/Layout/Layout.fsi", "readiness/surface-baselines/FS.GG.UI.Layout.txt"
+              "Controls", "src/Controls/Controls.fsproj", "src/Controls/Types.fsi", "readiness/surface-baselines/FS.GG.UI.Controls.txt"
+              "Controls.Elmish", "src/Controls.Elmish/Controls.Elmish.fsproj", "src/Controls.Elmish/ControlsElmish.fsi", "readiness/surface-baselines/FS.GG.UI.Controls.Elmish.txt"
+              "Testing", "src/Testing/Testing.fsproj", "src/Testing/Testing.fsi", "readiness/surface-baselines/FS.GG.UI.Testing.txt" ]
             |> List.iter (fun (name, project, contract, baseline) ->
                 Expect.isTrue (File.Exists(Path.Combine(repositoryRoot, project))) $"{name} project exists"
                 Expect.isTrue (File.Exists(Path.Combine(repositoryRoot, contract))) $"{name} public .fsi contract exists"
@@ -120,16 +120,16 @@ let surfaceAreaTests =
             |> List.iter (fun transcriptScript ->
                 Expect.isTrue (File.Exists(Path.Combine(repositoryRoot, transcriptScript))) $"{transcriptScript} produces public FSI evidence")
 
-            [ "readiness/surface-baselines/FS.Skia.UI.Controls.txt"
-              "readiness/surface-baselines/FS.Skia.UI.KeyboardInput.txt"
-              "readiness/surface-baselines/FS.Skia.UI.Controls.Elmish.txt" ]
+            [ "readiness/surface-baselines/FS.GG.UI.Controls.txt"
+              "readiness/surface-baselines/FS.GG.UI.KeyboardInput.txt"
+              "readiness/surface-baselines/FS.GG.UI.Controls.Elmish.txt" ]
             |> List.iter (fun baselinePath ->
                 Expect.isTrue (File.Exists(Path.Combine(repositoryRoot, baselinePath))) $"{baselinePath} exists for package surface review")
         }
 
         test "removed Charts package has no active surface baseline participation" {
             let chartsBaseline =
-                Path.Combine(repositoryRoot, "readiness", "surface-baselines", "FS.Skia.UI.Charts.txt")
+                Path.Combine(repositoryRoot, "readiness", "surface-baselines", "FS.GG.UI.Charts.txt")
 
             Expect.isFalse (File.Exists chartsBaseline) "legacy Charts package surface baseline is removed from active package review"
         }
@@ -137,7 +137,7 @@ let surfaceAreaTests =
         test "Controls FSI transcript authors chart graph and DataGrid without Charts package" {
             let transcript = File.ReadAllText(Path.Combine(repositoryRoot, "scripts", "controls-prelude.fsx"))
 
-            [ "open FS.Skia.UI.Controls"
+            [ "open FS.GG.UI.Controls"
               "LineChart.create"
               "GraphView.create"
               "DataGrid.create"
@@ -146,8 +146,8 @@ let surfaceAreaTests =
             |> List.iter (fun required ->
                 Expect.stringContains transcript required $"Controls FSI transcript includes {required}")
 
-            [ "FS.Skia.UI.Charts"
-              "open FS.Skia.UI.Charts"
+            [ "FS.GG.UI.Charts"
+              "open FS.GG.UI.Charts"
               "#r \"../src/Charts" ]
             |> List.iter (fun forbidden ->
                 Expect.isFalse (transcript.Contains(forbidden, StringComparison.Ordinal)) $"Controls FSI transcript does not use {forbidden}")
@@ -200,13 +200,13 @@ let surfaceAreaTests =
             |> List.iter (fun (implementation, signature) ->
                 Expect.isTrue (File.Exists signature) $"{implementation} has a paired .fsi signature")
 
-            [ "readiness/surface-baselines/FS.Skia.UI.Controls.txt", "FS.Skia.UI.Controls.DataGrid"
-              "readiness/surface-baselines/FS.Skia.UI.KeyboardInput.txt", "FS.Skia.UI.KeyboardInput.KeyboardModel"
-              "readiness/surface-baselines/FS.Skia.UI.Controls.Elmish.txt", "FS.Skia.UI.Controls.Elmish.ControlsElmish" ]
+            [ "readiness/surface-baselines/FS.GG.UI.Controls.txt", "FS.GG.UI.Controls.DataGrid"
+              "readiness/surface-baselines/FS.GG.UI.KeyboardInput.txt", "FS.GG.UI.KeyboardInput.KeyboardModel"
+              "readiness/surface-baselines/FS.GG.UI.Controls.Elmish.txt", "FS.GG.UI.Controls.Elmish.ControlsElmish" ]
             |> List.iter (fun (baselinePath, expectedExport) ->
                 let content = File.ReadAllText(Path.Combine(repositoryRoot, baselinePath))
                 Expect.stringContains content expectedExport $"{baselinePath} contains {expectedExport}")
 
-            Expect.isFalse (File.Exists(Path.Combine(repositoryRoot, "readiness", "surface-baselines", "FS.Skia.UI.Charts.txt"))) "removed Charts baseline is not active"
+            Expect.isFalse (File.Exists(Path.Combine(repositoryRoot, "readiness", "surface-baselines", "FS.GG.UI.Charts.txt"))) "removed Charts baseline is not active"
         }
     ]

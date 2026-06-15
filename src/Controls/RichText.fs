@@ -1,6 +1,6 @@
-namespace FS.Skia.UI.Controls
+namespace FS.GG.UI.Controls
 
-open FS.Skia.UI.Scene
+open FS.GG.UI.Scene
 
 type RichTextWeight =
     | Regular

@@ -4,9 +4,9 @@ open Expecto
 open FsCheck
 open FsCheck.FSharp
 open Elmish
-open FS.Skia.UI.Controls
-open FS.Skia.UI.KeyboardInput
-open FS.Skia.UI.Controls.Elmish
+open FS.GG.UI.Controls
+open FS.GG.UI.KeyboardInput
+open FS.GG.UI.Controls.Elmish
 
 /// Run an Elmish `Cmd<'msg>` through a recording dispatcher and return the
 /// messages it delivered, in dispatch order.

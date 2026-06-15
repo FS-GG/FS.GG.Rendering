@@ -4,7 +4,7 @@ module Feature109MetricsHonestyTests
 // conflated "the model changed" with "the view ran") was replaced by the two precise booleans
 // `ProductModelChanged` + `ViewCalled` and the integer `FullRenderCount`. These tests drive the
 // deterministic, byte-stable `ControlsElmish.Perf.runScript` path — the authoritative observability
-// surface this feature ships ([[fs-skia-controls-host]]) — and assert each field against the real
+// surface this feature ships ([[fs-gg-controls-host]]) — and assert each field against the real
 // code-path fact: a no-message frame changes no model; a model-changing message with no visual diff
 // re-measures nothing; an animation-only tick runs the view (overlay) with NO product message, so
 // `ProductModelChanged` and `ViewCalled` genuinely DIVERGE (SC-011); coalescing collapses a move
@@ -13,11 +13,11 @@ module Feature109MetricsHonestyTests
 
 open System
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.KeyboardInput
-open FS.Skia.UI.SkiaViewer
-open FS.Skia.UI.Controls
-open FS.Skia.UI.Controls.Elmish
+open FS.GG.UI.Scene
+open FS.GG.UI.KeyboardInput
+open FS.GG.UI.SkiaViewer
+open FS.GG.UI.Controls
+open FS.GG.UI.Controls.Elmish
 
 type private Msg =
     | Inc

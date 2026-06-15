@@ -1,5 +1,5 @@
 ---
-name: fs-skia-keyboard-input
+name: fs-gg-keyboard-input
 description: Work on keyboard input contracts and generated product keyboard guidance.
 ---
 
@@ -11,7 +11,7 @@ Owns `src/KeyboardInput/`, keyboard input tests, `template/fragments/keyboard-in
 
 ## Public Contract
 
-The supported API lives in `src/KeyboardInput/KeyboardInput.fsi`. Surface changes require `readiness/surface-baselines/FS.Skia.UI.KeyboardInput.txt`.
+The supported API lives in `src/KeyboardInput/KeyboardInput.fsi`. Surface changes require `readiness/surface-baselines/FS.GG.UI.KeyboardInput.txt`.
 
 ## Build Commands
 
@@ -29,7 +29,7 @@ readiness package-surface reports. Stable public surface baselines live under
 
 ## Package Boundary
 
-Keyboard input may depend on Scene and YamlDotNet only. Keep viewer hosting, controls, charting, graphing, and layout concerns out of this package; use `fs-skia-ui-widgets` for widget authoring.
+Keyboard input may depend on Scene and YamlDotNet only. Keep viewer hosting, controls, charting, graphing, and layout concerns out of this package; use `fs-gg-ui-widgets` for widget authoring.
 
 ## Generated Product
 
@@ -40,7 +40,7 @@ Products that select keyboard input receive the keyboard skill only when selecte
 Open the package namespace and drive the pure keyboard reducer:
 
 ```fsharp
-open FS.Skia.UI.KeyboardInput
+open FS.GG.UI.KeyboardInput
 
 let model, _ = Keyboard.init [ { Key = "Space"; Command = "jump" } ]
 let key, isDown = ViewerKeyboard.normalizeEvent { RawKey = "Space"; Direction = KeyDown }
@@ -60,8 +60,8 @@ rather than hard-failing the phase.
 
 ## Related
 
-- [[fs-skia-skiaviewer]] dispatches host key events into this reducer.
-- [[fs-skia-scene]] is the only allowed package dependency for keyboard state visuals.
+- [[fs-gg-skiaviewer]] dispatches host key events into this reducer.
+- [[fs-gg-scene]] is the only allowed package dependency for keyboard state visuals.
 
 ## Sources / links
 

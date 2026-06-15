@@ -8,7 +8,7 @@ module Feature097IncrementalTests
 open Expecto
 open FsCheck
 open FsCheck.FSharp
-open FS.Skia.UI.Layout
+open FS.GG.UI.Layout
 
 let private available =
     { Width = 400.0

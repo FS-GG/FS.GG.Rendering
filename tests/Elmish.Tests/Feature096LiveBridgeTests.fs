@@ -9,13 +9,13 @@ module Feature096LiveBridgeTests
 //     inert / un-bridged build (the same view without the bridge) does NOT produce (identical frames).
 // Render-only / deterministic; the in-assembly test reaches the internal retained structure + the
 // internal bridge via InternalsVisibleTo (the wired path is the user-reachable surface) —
-// [[fs-skia-evidence-mode]].
+// [[fs-gg-evidence-mode]].
 
 open System.IO
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
-open FS.Skia.UI.Controls.Elmish
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
+open FS.GG.UI.Controls.Elmish
 
 type private Msg = NameChanged of string
 
@@ -125,7 +125,7 @@ let feature096LiveBridge =
                   sprintf "focus-input-restyles=%b" (focusBridged <> focusInert)
                   sprintf "press-input-restyles=%b" (pressBridged <> pressInert)
                   sprintf "un-bridged-build-is-inert=%b" (focusInert = restInert)
-                  "note=the responds-proof is the bridged frame DIFFERING from the inert/un-bridged frame for the same input; an inert build paints identical frames regardless of interaction state. Structural Scene inequality, not a pixel encoder ([[fs-skia-evidence-mode]])."
+                  "note=the responds-proof is the bridged frame DIFFERING from the inert/un-bridged frame for the same input; an inert build paints identical frames regardless of interaction state. Structural Scene inequality, not a pixel encoder ([[fs-gg-evidence-mode]])."
                   "authoritative-test=Feature096LiveBridgeTests/Feature 096 runtime bridge — live retained path" ]
         }
     ]

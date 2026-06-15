@@ -1,4 +1,4 @@
-namespace FS.Skia.UI.Controls
+namespace FS.GG.UI.Controls
 
 /// Accessibility facts a catalog entry advertises for a control: its `Role`,
 /// where the accessible name comes from (`NameSource`), reported `StateMetadata`,

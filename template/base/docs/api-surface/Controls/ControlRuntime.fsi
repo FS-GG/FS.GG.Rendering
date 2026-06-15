@@ -1,4 +1,4 @@
-namespace FS.Skia.UI.Controls
+namespace FS.GG.UI.Controls
 
 /// The text caret position (`Index`) within a focused control identified by `ControlId`.
 type ControlCaret =

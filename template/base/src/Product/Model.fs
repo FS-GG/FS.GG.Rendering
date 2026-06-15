@@ -2,7 +2,7 @@ module Product.Model
 
 open System
 //#if (profile == "governed" || profile == "headless-scene")
-open FS.Skia.UI.Scene
+open FS.GG.UI.Scene
 
 type Model =
     { Name: string
@@ -22,11 +22,11 @@ let update msg model =
     | NoOp -> model, []
 
 //#else
-open FS.Skia.UI.Controls
-open FS.Skia.UI.Controls.Elmish
-open FS.Skia.UI.KeyboardInput
-open FS.Skia.UI.Scene
-open FS.Skia.UI.SkiaViewer
+open FS.GG.UI.Controls
+open FS.GG.UI.Controls.Elmish
+open FS.GG.UI.KeyboardInput
+open FS.GG.UI.Scene
+open FS.GG.UI.SkiaViewer
 
 type Model =
     { Name: string

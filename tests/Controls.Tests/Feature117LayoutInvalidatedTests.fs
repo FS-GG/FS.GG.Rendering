@@ -9,11 +9,11 @@ module Feature117LayoutInvalidatedTests
 // fixed-size-ancestor propagation EXPANDS the pre-pinning dirty set into the re-measured boundary
 // subtree — the honest direction the framework guarantees; see readiness/layout-invalidated-authority.md
 // for the spec correction); and the feature-101 drift guard's attribute set is unchanged (FR-008).
-// Render-only / deterministic ([[fs-skia-evidence-mode]], [[fs-skia-reconciliation]]).
+// Render-only / deterministic ([[fs-gg-evidence-mode]], [[fs-gg-reconciliation]]).
 
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
 
 let private theme = Theme.light
 let private size: Size = { Width = 640; Height = 480 }

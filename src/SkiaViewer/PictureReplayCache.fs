@@ -1,10 +1,10 @@
-namespace FS.Skia.UI.SkiaViewer
+namespace FS.GG.UI.SkiaViewer
 
 #nowarn "3261"
 
 open System.Collections.Generic
 open SkiaSharp
-open FS.Skia.UI.Scene
+open FS.GG.UI.Scene
 
 // Feature 120 (US3, FR-007/FR-011/FR-013/FR-014) — the load-bearing backend replay cache. On a hit it
 // replays a recorded `SKPicture` (skipping the per-primitive draw-call walk); on a miss it records,

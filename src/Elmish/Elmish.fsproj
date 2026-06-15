@@ -3,11 +3,11 @@
   <PropertyGroup>
     <OutputType>Library</OutputType>
     <IsPackable>true</IsPackable>
-    <PackageId>FS.Skia.UI.Elmish</PackageId>
-    <AssemblyName>FS.Skia.UI.Elmish</AssemblyName>
-    <Version>0.1.129-preview.1</Version>
-    <Title>FS.Skia.UI.Elmish</Title>
-    <Description>Elmish adapter contracts for FS.Skia.UI V3 products.</Description>
+    <PackageId>FS.GG.UI.Elmish</PackageId>
+    <AssemblyName>FS.GG.UI.Elmish</AssemblyName>
+    <Version>0.1.0-preview.1</Version>
+    <Title>FS.GG.UI.Elmish</Title>
+    <Description>Elmish adapter contracts for FS.GG.UI V3 products.</Description>
     <PackageTags>fsharp;elmish;skia;ui</PackageTags>
   </PropertyGroup>
 

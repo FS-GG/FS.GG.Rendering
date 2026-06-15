@@ -31,8 +31,8 @@ let fsiTranscriptCoverageTests =
         test "Scene transcript authors primitives, Paint helpers, and geometry records" {
             let transcript = readTranscript "scene-authoring.fsx"
 
-            [ "#r \"nuget: FS.Skia.UI.Scene"
-              "open FS.Skia.UI.Scene"
+            [ "#r \"nuget: FS.GG.UI.Scene"
+              "open FS.GG.UI.Scene"
               "Rect"
               "Paint"
               "Stroke"
@@ -45,8 +45,8 @@ let fsiTranscriptCoverageTests =
         test "Viewer and keyboard transcript authors public records and cases" {
             let transcript = readTranscript "viewer-keyboard-authoring.fsx"
 
-            [ "#r \"nuget: FS.Skia.UI.SkiaViewer"
-              "#r \"nuget: FS.Skia.UI.KeyboardInput"
+            [ "#r \"nuget: FS.GG.UI.SkiaViewer"
+              "#r \"nuget: FS.GG.UI.KeyboardInput"
               "ViewerOptions"
               "InitialSize"
               "ViewerWindowPosition.Coordinates"
@@ -60,11 +60,11 @@ let fsiTranscriptCoverageTests =
         test "Controls-adjacent transcript authors controls without relying on repository source" {
             let transcript = readTranscript "controls-adjacent-authoring.fsx"
 
-            [ "#r \"nuget: FS.Skia.UI.Controls"
-              "#r \"nuget: FS.Skia.UI.Controls.Elmish"
-              "FS.Skia.UI.Controls.TextBlock.create"
-              "FS.Skia.UI.Controls.TextBox.onChanged"
-              "FS.Skia.UI.Controls.DataGrid.create"
+            [ "#r \"nuget: FS.GG.UI.Controls"
+              "#r \"nuget: FS.GG.UI.Controls.Elmish"
+              "FS.GG.UI.Controls.TextBlock.create"
+              "FS.GG.UI.Controls.TextBox.onChanged"
+              "FS.GG.UI.Controls.DataGrid.create"
               "ControlsElmish" ]
             |> List.iter (fun required ->
                 Expect.stringContains transcript required $"Controls transcript includes {required}")

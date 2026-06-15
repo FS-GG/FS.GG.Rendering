@@ -1,10 +1,10 @@
-namespace FS.Skia.UI.SkiaViewer
+namespace FS.GG.UI.SkiaViewer
 
 open System
-open FS.Skia.UI.KeyboardInput
-open FS.Skia.UI.Scene
+open FS.GG.UI.KeyboardInput
+open FS.GG.UI.Scene
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ViewerOptions =
     { Title: string
       InitialSize: Size
@@ -24,12 +24,12 @@ type ViewerOptions =
       /// does not use the persistent event loop.
       FrameRateCap: int option }
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ViewerLaunchMode =
     | InteractiveWindow
     | PersistentEvidence
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ViewerCloseReason =
     | UserClose
     | AppRequestedClose
@@ -39,24 +39,24 @@ type ViewerCloseReason =
     | TimeoutClose
     | FailureDrivenClose
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ViewerObservedValue =
     | Observed of bool
     | Unsupported
     | Unavailable
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ViewerWindowResizePolicy =
     | Resizable
     | FixedSize
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ViewerWindowMaximizePolicy =
     | Maximizable
     | NotMaximizable
 
 [<RequireQualifiedAccess>]
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ViewerWindowStartupState =
     | Normal
     | Maximized
@@ -66,26 +66,26 @@ type ViewerWindowStartupState =
     /// no exclusive-mode resolution change). Distinct from exclusive `Fullscreen`.
     | WindowedFullscreen
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ViewerWindowPosition =
     | Centered
     | Coordinates of x: int * y: int
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ViewerBackendPreference =
     | DefaultBackend
     | Vulkan
     | OpenGL
     | Software
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ViewerWindowOptionStatus =
     | Honored
     | Degraded
     | UnsupportedOption
     | FailedOption
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ViewerWindowBehaviorRequest =
     { ResizePolicy: ViewerWindowResizePolicy
       MaximizePolicy: ViewerWindowMaximizePolicy
@@ -93,7 +93,7 @@ type ViewerWindowBehaviorRequest =
       StartupPosition: ViewerWindowPosition option
       BackendPreference: ViewerBackendPreference option }
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ViewerWindowOptionResult =
     { Option: string
       Requested: string
@@ -101,7 +101,7 @@ type ViewerWindowOptionResult =
       Status: ViewerWindowOptionStatus
       Message: string }
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ViewerWindowStateDiagnostic =
     { WindowInitialized: bool
       NativeHandle: ViewerObservedValue
@@ -117,14 +117,14 @@ type ViewerWindowStateDiagnostic =
       FailureClass: string option
       Message: string }
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ViewerVisualEvidenceKind =
     | Image
     | PixelReadback
     | MetadataHash
     | UnsupportedHost
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ViewerVisualEvidenceArtifact =
     { Kind: ViewerVisualEvidenceKind
       Path: string option
@@ -133,7 +133,7 @@ type ViewerVisualEvidenceArtifact =
       ProvesDesktopVisibility: bool
       Message: string }
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ViewerFailureClass =
     | EnvironmentSession
     | WindowVisibility
@@ -144,13 +144,13 @@ type ViewerFailureClass =
     | AppLifecycle
     | ProductDefectFailure
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ViewerInputDispatchStatus =
     | Verified
     | NotVerified
     | NotRequired
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ViewerDiagnosticLevel =
     | Error
     | Warning
@@ -158,7 +158,7 @@ type ViewerDiagnosticLevel =
     | Debug
     | Trace
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ViewerDiagnosticCategory =
     | Startup
     | EnvironmentSession
@@ -171,7 +171,7 @@ type ViewerDiagnosticCategory =
     | Scene
     | Screenshot
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ViewerRunBlockedStage =
     | DesktopPrerequisite
     | ProcessLaunch
@@ -192,7 +192,7 @@ type ViewerRunBlockedStage =
     | Timeout
     | Unknown
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ViewerRunFailureClassification =
     | UnsupportedEnvironment
     | PackageResolution
@@ -200,7 +200,7 @@ type ViewerRunFailureClassification =
     | AppLifecycle
     | ProductDefect
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ViewerDiagnosticEvent =
     { Level: ViewerDiagnosticLevel
       Category: ViewerDiagnosticCategory
@@ -209,7 +209,7 @@ type ViewerDiagnosticEvent =
       Stage: ViewerRunBlockedStage option
       Elapsed: TimeSpan option }
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ViewerDiagnosticsOptions =
     { MinimumLevel: ViewerDiagnosticLevel
       Categories: Set<ViewerDiagnosticCategory>
@@ -217,13 +217,13 @@ type ViewerDiagnosticsOptions =
       Sink: (ViewerDiagnosticEvent -> unit) option
       Verbose: bool }
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ViewerEvidenceTarget =
     | FirstFrame
     | FrameCount of int
     | Duration of TimeSpan
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ViewerRunRequest =
     { Target: ViewerEvidenceTarget
       Timeout: TimeSpan
@@ -231,7 +231,7 @@ type ViewerRunRequest =
       RendererMode: string
       EvidencePath: string option }
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ViewerRunEvidence =
     { FramesRendered: int
       Elapsed: TimeSpan
@@ -240,7 +240,7 @@ type ViewerRunEvidence =
       LastDiagnosticSummary: string option
       EvidencePath: string option }
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ViewerRunFailure =
     { BlockedStage: ViewerRunBlockedStage
       Classification: ViewerRunFailureClassification
@@ -248,13 +248,13 @@ type ViewerRunFailure =
       Message: string
       LastDiagnosticSummary: string option }
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ScreenshotEvidenceStatus =
     | ScreenshotOk
     | ScreenshotUnsupported
     | ScreenshotFailed
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ScreenshotEvidenceRequest =
     { Command: string
       AppOrSample: string
@@ -269,40 +269,40 @@ type ScreenshotEvidenceRequest =
 and ScreenshotCaptureMode =
     | ViewerRenderTargetPng
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ViewerOpenStatus =
     | ViewerOpenConfirmed
     | ViewerOpenUnsupported
     | ViewerOpenFailed
     | ViewerOpenUnknown
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type FirstFrameStatus =
     | FirstFramePresentedStatus
     | FirstFrameNotPresentedStatus
     | FirstFrameUnknownStatus
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ScreenshotCaptureAvailability =
     | CaptureAvailable
     | CaptureUnavailable of reason: string
     | CaptureAvailabilityUnknown of reason: string
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ScreenshotCaptureSource =
     | LiveViewerWindow
     | DeterministicSceneRender
     | PixelReadbackSource
     | NoCaptureSource
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ScreenshotPixelContentValidation =
     | PixelContentNonBlank
     | PixelContentBlank
     | PixelContentUnreadable of reason: string
     | PixelContentNotValidated of reason: string
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ScreenshotEvidenceResult =
     { Status: ScreenshotEvidenceStatus
       Command: string
@@ -332,7 +332,7 @@ type ScreenshotEvidenceResult =
       Fallback: string option
       Diagnostics: string list }
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ViewerRuntimeCapability =
     { PersistentWindow: bool
       BoundedSmoke: bool
@@ -341,7 +341,7 @@ type ViewerRuntimeCapability =
       UnsupportedHostReasons: string list
       MissingPackageCapabilities: string list }
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ViewerDesktopSessionDiagnostic =
     { RuntimeDirectory: string option
       RuntimeDirectoryExists: bool
@@ -356,7 +356,7 @@ type ViewerDesktopSessionDiagnostic =
       DiagnosticClass: string
       Message: string }
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ViewerLaunchOutcome =
     { Status: string
       Mode: string
@@ -381,7 +381,7 @@ type ViewerLaunchOutcome =
       Category: ViewerDiagnosticCategory option
       Message: string }
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ViewerWindowObservationResult =
     { DiagnosticSource: string
       Command: string option
@@ -399,7 +399,7 @@ type ViewerWindowObservationResult =
       MissingFacts: string list
       Message: string }
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ViewerLifecycleState =
     | NotStarted
     | CheckingDesktopSession
@@ -418,7 +418,7 @@ type ViewerLifecycleState =
     | Failed
     | Unsupported
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ViewerModel =
     { Options: ViewerOptions
       WindowBehavior: ViewerWindowBehaviorRequest
@@ -429,7 +429,7 @@ type ViewerModel =
       InputDispatch: ViewerInputDispatchStatus
       LastScene: SceneNode option }
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ViewerRunModel =
     { Request: ViewerRunRequest
       FramesRendered: int
@@ -437,7 +437,7 @@ type ViewerRunModel =
       LastDiagnostic: ViewerDiagnosticEvent option
       Completed: Result<ViewerRunEvidence, ViewerRunFailure> option }
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ViewerMsg =
     | Start
     | StartInteractive
@@ -459,7 +459,7 @@ type ViewerMsg =
     | RunFailed of ViewerRunFailure
     | RunTimedOut
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ViewerRunMsg =
     | BeginRun
     | RunStarted of DateTimeOffset
@@ -469,7 +469,7 @@ type ViewerRunMsg =
     | FailRun of ViewerRunFailure
     | TimeoutRun
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ViewerEffect =
     | OpenWindow of title: string * size: Size
     | ApplyWindowOptions of ViewerWindowBehaviorRequest
@@ -486,7 +486,7 @@ type ViewerEffect =
     | WriteVisualEvidence of path: string * artifact: ViewerVisualEvidenceArtifact
     | WriteRunEvidence of path: string * evidence: ViewerRunEvidence
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type ViewerRunEffect =
     | OpenBoundedWindow of ViewerRunRequest
     | RequestFrame
@@ -494,7 +494,7 @@ type ViewerRunEffect =
     | StopBoundedRun
     | PersistRunEvidence of ViewerRunEvidence
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type EvidenceWorkflowModel =
     { Request: ScreenshotEvidenceRequest
       ViewerOpenStatus: ViewerOpenStatus
@@ -504,7 +504,7 @@ type EvidenceWorkflowModel =
       Result: ScreenshotEvidenceResult option
       Diagnostics: string list }
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type EvidenceWorkflowMsg =
     | LaunchStarted
     | LaunchCompleted of ViewerOpenStatus
@@ -515,7 +515,7 @@ type EvidenceWorkflowMsg =
     | CaptureFailed of message: string
     | EvidenceReportWritten of path: string
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type EvidenceWorkflowEffect =
     | LaunchViewerForEvidence of ScreenshotEvidenceRequest
     | CaptureViewerScreenshot of outputPath: string
@@ -525,7 +525,7 @@ type EvidenceWorkflowEffect =
     | CollectProcessOutput
     | ValidateGeneratedGuidance
 
-/// Public contract type exposed by this FS.Skia.UI package.
+/// Public contract type exposed by this FS.GG.UI package.
 type GeneratedAppHost<'model,'msg> =
     { Init: unit -> 'model * ViewerEffect list
       Update: 'msg -> 'model -> 'model * ViewerEffect list
@@ -563,7 +563,7 @@ type ViewerPointerInput =
 /// Pointer-aware, size-aware durable host variant (feature 085). Mirrors `GeneratedAppHost`
 /// field-for-field PLUS a model-aware pointer seam (`MapPointer`) and a size-carrying `View`.
 /// Controls-free lower runner; the Control/PointerInteraction-aware `InteractiveAppHost`
-/// (FS.Skia.UI.Controls.Elmish) adapts onto it (research D3-AMEND). `GeneratedAppHost` and
+/// (FS.GG.UI.Controls.Elmish) adapts onto it (research D3-AMEND). `GeneratedAppHost` and
 /// `Viewer.runApp` are left intact (FR-006).
 /// Feature 091 (E2, behavioral note — signature unchanged): the per-message repaint stores the
 /// `SceneNode` the host's `View` produces (the existing `currentScene <- host.View …` seam). The
@@ -590,45 +590,45 @@ type InteractiveViewerHost<'model,'msg> =
       Tick: TimeSpan -> 'msg option
       Diagnostics: ViewerDiagnosticsOptions }
 
-/// Public contract module exposed by this FS.Skia.UI package.
+/// Public contract module exposed by this FS.GG.UI package.
 module Viewer =
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val init: options: ViewerOptions -> ViewerModel * ViewerEffect list
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val initWithWindowBehavior: options: ViewerOptions -> behavior: ViewerWindowBehaviorRequest -> ViewerModel * ViewerEffect list
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val update: msg: ViewerMsg -> model: ViewerModel -> ViewerModel * ViewerEffect list
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val initRun: request: ViewerRunRequest -> ViewerRunModel * ViewerRunEffect list
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val updateRun: msg: ViewerRunMsg -> model: ViewerRunModel -> ViewerRunModel * ViewerRunEffect list
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val defaultDiagnostics: ViewerDiagnosticsOptions
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val defaultWindowBehavior: ViewerWindowBehaviorRequest
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val validateWindowBehavior: request: ViewerWindowBehaviorRequest -> ViewerWindowOptionResult list
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val validateWindowLaunchBehavior: initialSize: Size -> request: ViewerWindowBehaviorRequest -> ViewerWindowOptionResult list
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val classifyWindowState: diagnostic: ViewerWindowStateDiagnostic -> ViewerLifecycleState
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val shouldCaptureDiagnostic: options: ViewerDiagnosticsOptions -> diagnostic: ViewerDiagnosticEvent -> bool
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val captureDiagnostic: options: ViewerDiagnosticsOptions -> diagnostic: ViewerDiagnosticEvent -> ViewerDiagnosticEvent option
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val failureFromDiagnostic: diagnostic: ViewerDiagnosticEvent -> ViewerRunFailure
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val classifyWindowObservation: outcome: ViewerLaunchOutcome -> externalObservationAttempted: bool -> externalWindowMatched: bool option -> captureAttempted: bool -> captureSucceeded: bool option -> ViewerWindowObservationResult
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val desktopSessionDiagnostic: unit -> ViewerDesktopSessionDiagnostic
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val runtimeCapability: unit -> ViewerRuntimeCapability
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val run: options: ViewerOptions -> scene: SceneNode -> Result<ViewerLaunchOutcome, ViewerRunFailure>
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val runApp: options: ViewerOptions -> host: GeneratedAppHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val runAppWithWindowBehavior: options: ViewerOptions -> behavior: ViewerWindowBehaviorRequest -> host: GeneratedAppHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
     /// Feature 085 — pointer-aware, size-aware durable launch. Routes native pointer events
     /// and window resizes to the host and renders the size-aware `View`; additive to
@@ -636,24 +636,24 @@ module Viewer =
     val runInteractiveViewer: options: ViewerOptions -> host: InteractiveViewerHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
     /// As `runInteractiveViewer` with an explicit window behavior.
     val runInteractiveViewerWithWindowBehavior: options: ViewerOptions -> behavior: ViewerWindowBehaviorRequest -> host: InteractiveViewerHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val runAppEvidence: request: ViewerRunRequest -> options: ViewerOptions -> host: GeneratedAppHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val runBounded: request: ViewerRunRequest -> options: ViewerOptions -> scene: SceneNode -> Result<ViewerRunEvidence, ViewerRunFailure>
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val runUntilFirstFrame: options: ViewerOptions -> scene: SceneNode -> Result<ViewerRunEvidence, ViewerRunFailure>
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val runForFrames: frameCount: int -> options: ViewerOptions -> scene: SceneNode -> Result<ViewerRunEvidence, ViewerRunFailure>
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val captureScreenshotEvidence: request: ScreenshotEvidenceRequest -> options: ViewerOptions -> scene: SceneNode -> ScreenshotEvidenceResult
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val initEvidenceWorkflow: request: ScreenshotEvidenceRequest -> EvidenceWorkflowModel * EvidenceWorkflowEffect list
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val updateEvidenceWorkflow: msg: EvidenceWorkflowMsg -> model: EvidenceWorkflowModel -> EvidenceWorkflowModel * EvidenceWorkflowEffect list
 
-/// Public contract module exposed by this FS.Skia.UI package.
+/// Public contract module exposed by this FS.GG.UI package.
 module GeneratedAppHost =
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val dispatchKey: host: GeneratedAppHost<'model,'msg> -> raw: ViewerKeyEvent -> model: 'model -> 'model * ViewerEffect list
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val smoke: host: GeneratedAppHost<'model,'msg> -> request: ViewerRunRequest -> Result<ViewerRunEvidence, ViewerRunFailure>

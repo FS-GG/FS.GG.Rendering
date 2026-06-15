@@ -2,7 +2,7 @@ module YogaFallbackDiagnosticsTests
 
 open System
 open Expecto
-open FS.Skia.UI.Layout
+open FS.GG.UI.Layout
 
 // This test mutates a PROCESS-GLOBAL AppContext switch (`ForceYogaFailure`). Expecto runs tests in
 // parallel by default, so without sequencing a concurrent test (e.g. the feature 097 incremental
@@ -17,7 +17,7 @@ let yogaFallbackDiagnosticsTests =
                 { Defaults.layoutNode "root" with
                     Children = [ { Defaults.layoutNode "child" with Intent = { Defaults.layoutIntent with Size = { Width = Some 96.0; Height = Some 24.0 } } } ] }
 
-            AppContext.SetSwitch("FS.Skia.UI.Layout.ForceYogaFailure", true)
+            AppContext.SetSwitch("FS.GG.UI.Layout.ForceYogaFailure", true)
 
             try
                 let result = Layout.evaluate (Defaults.availableSpace 320.0 180.0) root
@@ -28,13 +28,13 @@ let yogaFallbackDiagnosticsTests =
                     result.Diagnostics
                     (fun item ->
                         item.Code = FallbackBoundsApplied
-                        && item.Severity = FS.Skia.UI.Layout.DiagnosticSeverity.Warning
+                        && item.Severity = FS.GG.UI.Layout.DiagnosticSeverity.Warning
                         && item.Constraint = Some "yoga"
                         && item.FallbackApplied
                         && item.NodeId = Some "root"
                         && item.Message.Contains("pure fallback layout"))
                     "Yoga fallback diagnostic is observable through existing public fields"
             finally
-                AppContext.SetSwitch("FS.Skia.UI.Layout.ForceYogaFailure", false)
+                AppContext.SetSwitch("FS.GG.UI.Layout.ForceYogaFailure", false)
         }
     ]

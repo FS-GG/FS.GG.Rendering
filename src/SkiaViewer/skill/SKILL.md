@@ -1,5 +1,5 @@
 ---
-name: fs-skia-skiaviewer
+name: fs-gg-skiaviewer
 description: Work on viewer host contracts and generated product viewer usage.
 ---
 
@@ -11,7 +11,7 @@ Owns `src/SkiaViewer/`, viewer tests, `template/fragments/skiaviewer/`, and gene
 
 ## Public Contract
 
-The supported API lives in `src/SkiaViewer/SkiaViewer.fsi`. Surface changes require `readiness/surface-baselines/FS.Skia.UI.SkiaViewer.txt`.
+The supported API lives in `src/SkiaViewer/SkiaViewer.fsi`. Surface changes require `readiness/surface-baselines/FS.GG.UI.SkiaViewer.txt`.
 
 ## Build Commands
 
@@ -42,8 +42,8 @@ Open the package namespace and drive a bounded, headless-friendly run:
 
 ```fsharp
 open System
-open FS.Skia.UI.Scene
-open FS.Skia.UI.SkiaViewer
+open FS.GG.UI.Scene
+open FS.GG.UI.SkiaViewer
 
 let options = { Title = "demo"; InitialSize = { Width = 320; Height = 240 } }
 let scene = Rectangle((0.0, 0.0, 320.0, 240.0), Colors.rgb 16uy 16uy 24uy)
@@ -56,14 +56,14 @@ match Viewer.runUntilFirstFrame options scene with
 ## Common pitfalls
 
 - **`Result.Ok`/`Result.Error` shadowed by `ViewerDiagnosticLevel`.** `open
-  FS.Skia.UI.SkiaViewer` brings `ViewerDiagnosticLevel.Error` (and its peers
+  FS.GG.UI.SkiaViewer` brings `ViewerDiagnosticLevel.Error` (and its peers
   `Warning`/`Info`/`Debug`/`Trace`) into scope, so a **bare** `Ok`/`Error` in a
   match or constructor can bind to the union case instead of the `Result` case —
   e.g. `Error msg` resolves ambiguously and a bare `| Error -> …` arm silently
   matches the diagnostic level, not a failed `Result`. **Remedy:** qualify as
   `Result.Ok` / `Result.Error` when you mean the result type. This is the same
   co-opened-DU collision documented for `Unknown` in the
-  [[fs-skia-keyboard-input]] "Common pitfalls" (where `ViewerKey.Unknown` and
+  [[fs-gg-keyboard-input]] "Common pitfalls" (where `ViewerKey.Unknown` and
   `ViewerRunBlockedStage.Unknown` collide) — qualify the case when two opened
   modules export the same name.
 
@@ -79,8 +79,8 @@ rather than hard-failing the phase.
 
 ## Related
 
-- [[fs-skia-scene]] supplies the scene descriptions this host renders.
-- [[fs-skia-elmish]] wires viewer hosting into an Elmish program.
+- [[fs-gg-scene]] supplies the scene descriptions this host renders.
+- [[fs-gg-elmish]] wires viewer hosting into an Elmish program.
 
 ## Sources / links
 

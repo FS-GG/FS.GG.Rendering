@@ -1,7 +1,7 @@
-namespace FS.Skia.UI.Controls
+namespace FS.GG.UI.Controls
 
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Layout
+open FS.GG.UI.Scene
+open FS.GG.UI.Layout
 
 /// The author-supplied definition of a custom control: measure/render/layout/hit-test/event callbacks
 /// plus optional `Accessibility` and `Diagnostics`, keyed by `Id`.

@@ -7,8 +7,8 @@ module Feature112TouchedCountTests
 // regression guard (the full-tree oracle route reports the whole node count).
 
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
 
 let private theme = Theme.light
 let private emptyModel = fst (ControlRuntime.init ())

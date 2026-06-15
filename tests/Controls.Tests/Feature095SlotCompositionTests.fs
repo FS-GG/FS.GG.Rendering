@@ -17,15 +17,15 @@ module Feature095SlotCompositionTests
 //     order) free, because the fill lands in `Children`.
 //   * T019 / SC-004 — a slotted control keeps its E2 retained identity across a sibling-shifting
 //     re-render through the LIVE retained path (not a hand-seeded StateByIdentity map).
-// Render-only / deterministic — no live Vulkan window ([[fs-skia-evidence-mode]]).
+// Render-only / deterministic — no live Vulkan window ([[fs-gg-evidence-mode]]).
 
 open System.IO
 open Expecto
 open FsCheck
 open FsCheck.FSharp
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
-open FS.Skia.UI.Controls.Typed
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
+open FS.GG.UI.Controls.Typed
 
 let private theme = Theme.light
 let private size: Size = { Width = 640; Height = 480 }
@@ -140,7 +140,7 @@ module private Gen095 =
 
             let baseChildren = if kind = "panel" then [ Widget.toControl (label "body" "content") ] else []
             let attrs = [ if not (List.isEmpty fills) then ControlInternals.slotFill fills ]
-            return Control.create kind (attrs @ [ FS.Skia.UI.Controls.Panel.children baseChildren ])
+            return Control.create kind (attrs @ [ FS.GG.UI.Controls.Panel.children baseChildren ])
         }
 
 [<Tests>]
@@ -215,7 +215,7 @@ let unfilledParity =
           test "an unfilled Panel lowers identically to the legacy no-slot Panel" {
               let body = label "b" "body"
               let panelSlots = Panel.view { Panel.defaults with Children = [ body ] } |> Widget.toControl
-              let legacy = FS.Skia.UI.Controls.Panel.create [ FS.Skia.UI.Controls.Panel.children [ Widget.toControl body ] ]
+              let legacy = FS.GG.UI.Controls.Panel.create [ FS.GG.UI.Controls.Panel.children [ Widget.toControl body ] ]
               Expect.equal (sprintf "%A" panelSlots) (sprintf "%A" legacy) "unfilled Panel == legacy Panel (additive)"
           }
 
@@ -307,7 +307,7 @@ let retainedIdentity =
 
 // =============================================================================================
 // Evidence capture — writes the real parity baselines (T016) + a slot-placement artifact (T014)
-// from the WIRED path itself. Render-only / deterministic ([[fs-skia-evidence-mode]]).
+// from the WIRED path itself. Render-only / deterministic ([[fs-gg-evidence-mode]]).
 // =============================================================================================
 
 module private Evidence =

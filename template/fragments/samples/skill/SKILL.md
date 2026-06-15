@@ -1,5 +1,5 @@
 ---
-name: fs-skia-samples
+name: fs-gg-samples
 description: Work on optional generated product sample-pack content.
 ---
 
@@ -21,7 +21,7 @@ its own API.
 A sample-pack screen is ordinary product code reusing existing capability surfaces:
 
 ```fsharp
-open FS.Skia.UI.Scene
+open FS.GG.UI.Scene
 
 // A minimal sample scene copied into a sample-pack product. No sample-owned API.
 let sampleScene : Scene =
@@ -63,8 +63,8 @@ rather than hard-failing the phase.
 
 ## Related
 
-- [[fs-skia-scene]] — the primitive capability most samples demonstrate.
-- [[fs-skia-skiaviewer]] — host wiring a runnable sample launches through.
+- [[fs-gg-scene]] — the primitive capability most samples demonstrate.
+- [[fs-gg-skiaviewer]] — host wiring a runnable sample launches through.
 
 ## Sources / links
 

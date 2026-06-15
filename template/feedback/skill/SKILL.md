@@ -1,13 +1,13 @@
 ---
-name: fs-skia-feedback-capture
-description: Capture per-phase fs-skia-ui / Spec Kit feedback (process friction, generalizable-code candidates, severity) into specs/<feature>/feedback/ after each phase.
-compatibility: Authoring command skill, shipped only when `dotnet new fs-skia-ui --feedback true`; no product runtime.
+name: fs-gg-feedback-capture
+description: Capture per-phase fs-gg-ui / Spec Kit feedback (process friction, generalizable-code candidates, severity) into specs/<feature>/feedback/ after each phase.
+compatibility: Authoring command skill, shipped only when `dotnet new fs-gg-ui --feedback true`; no product runtime.
 metadata:
-  author: fs-skia-ui
+  author: fs-gg-ui
   source: specs/058-skills-quality-feedback/contracts/feedback-capture.md
 ---
 
-# fs-skia-feedback-capture
+# fs-gg-feedback-capture
 
 An authoring **command** skill invoked by the generated project's `after_*` Spec Kit
 hooks (only present under `--feedback true`). On phase completion it surfaces four exact
@@ -28,7 +28,7 @@ Markdown record; it calls no shipped `.fsi` surface.
 ## The four prompts (exact wording, `{phase}` substituted)
 
 1. "During the *{phase}* phase, did anything go wrong or cause friction in the
-   fs-skia-ui / Spec Kit process — and what would have helped you?"
+   fs-gg-ui / Spec Kit process — and what would have helped you?"
 2. "Did you write any F# code on a skill topic this phase that could be generalized into
    the support library? If yes, name the skill family/topic and the candidate helper (and
    link any external docs/research used)."
@@ -62,7 +62,7 @@ severity: minor            # none | minor | major | blocker
 
 One record per phase (FR-014). Severity is mandatory (FR-015). A record naming
 generalizable code MUST capture the skill family/topic + candidate helper so it can be
-triaged into `FS.Skia.UI.SkillSupport` (FR-015 → US2).
+triaged into `FS.GG.UI.SkillSupport` (FR-015 → US2).
 
 ## Persistent problems
 
@@ -76,7 +76,7 @@ rather than hard-failing the phase.
 
 ## Related
 
-[[fs-skia-project]], [[fsharp-build-orchestration]]
+[[fs-gg-project]], [[fsharp-build-orchestration]]
 
 ## Sources / links
 

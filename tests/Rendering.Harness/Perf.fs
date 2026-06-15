@@ -3,8 +3,8 @@ namespace Rendering.Harness
 open System
 open System.IO
 open System.Diagnostics
-open FS.Skia.UI.Scene
-open FS.Skia.UI.SkiaViewer
+open FS.GG.UI.Scene
+open FS.GG.UI.SkiaViewer
 
 module Perf =
 

@@ -9,7 +9,7 @@ module AnimationTickTests
 open System
 open Expecto
 open Elmish
-open FS.Skia.UI.Elmish
+open FS.GG.UI.Elmish
 
 type private DemoModel = { Running: bool }
 
@@ -46,7 +46,7 @@ let animationTickTests =
         test "the subscription id is stably scoped" {
             let sub = Animation.tickSubscription isAnimating AnimationTick interval { Running = true }
             let ids = sub |> List.map fst
-            Expect.equal ids [ [ "fs-skia-ui"; "animation-tick" ] ] "stable, scoped SubId"
+            Expect.equal ids [ [ "fs-gg-ui"; "animation-tick" ] ] "stable, scoped SubId"
         }
 
         test "dropping the animating state stops further ticks cleanly (removed widget edge)" {

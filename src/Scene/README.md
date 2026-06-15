@@ -1,27 +1,27 @@
-# FS.Skia.UI.Scene
+# FS.GG.UI.Scene
 
-Dependency-light scene vocabulary for FS.Skia.UI V3 products.
+Dependency-light scene vocabulary for FS.GG.UI V3 products.
 
-`FS.Skia.UI.Scene` is one of the **FS.Skia.UI** distribution packages — an F# / Elmish UI and 2D
+`FS.GG.UI.Scene` is one of the **FS.GG.UI** distribution packages — an F# / Elmish UI and 2D
 scene-graph framework for .NET 10 desktop, rendered through Vulkan + SkiaSharp.
 
 ## Install
 
 ```bash
-dotnet add package FS.Skia.UI.Scene
+dotnet add package FS.GG.UI.Scene
 ```
 
-Or scaffold a full governed project that wires the FS.Skia.UI packages together:
+Or scaffold a full governed project that wires the FS.GG.UI packages together:
 
 ```bash
-dotnet new install FS.Skia.UI.Template
-dotnet new fs-skia-ui -o MyApp
+dotnet new install FS.GG.UI.Template
+dotnet new fs-gg-ui -o MyApp
 ```
 
 ## Usage
 
 ```fsharp
-open FS.Skia.UI.Scene
+open FS.GG.UI.Scene
 
 // Build a small immutable scene from typed constructors.
 let scene =
@@ -56,7 +56,7 @@ let evidence =
 
 ## Versioning
 
-All `FS.Skia.UI.*` libraries share one version and move together. In a generated project a
+All `FS.GG.UI.*` libraries share one version and move together. In a generated project a
 single `<FsSkiaUiVersion>` in `Directory.Packages.props` pins every package — upgrading is one
 edit; see `docs/UPGRADING.md`. Pre-release versions use a `-preview.N` suffix.
 

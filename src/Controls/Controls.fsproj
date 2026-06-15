@@ -3,10 +3,10 @@
   <PropertyGroup>
     <OutputType>Library</OutputType>
     <IsPackable>true</IsPackable>
-    <PackageId>FS.Skia.UI.Controls</PackageId>
-    <AssemblyName>FS.Skia.UI.Controls</AssemblyName>
-    <Version>0.1.129-preview.1</Version>
-    <Title>FS.Skia.UI.Controls</Title>
+    <PackageId>FS.GG.UI.Controls</PackageId>
+    <AssemblyName>FS.GG.UI.Controls</AssemblyName>
+    <Version>0.1.0-preview.1</Version>
+    <Title>FS.GG.UI.Controls</Title>
     <Description>Declarative Skia controls, rich rendering, chart controls, graph controls, DataGrid, and product-owned control runtime contracts.</Description>
     <PackageTags>fsharp;skia;controls;widgets;charts;graph;datagrid</PackageTags>
   </PropertyGroup>
@@ -22,7 +22,7 @@
          not a package consumer, so it reaches the internal module via InternalsVisibleTo — the
          module stays `internal` (no public-surface entry, zero baseline delta), consistent with the
          "do not promote Reconcile to public" rule. -->
-    <InternalsVisibleTo Include="FS.Skia.UI.Controls.Elmish" />
+    <InternalsVisibleTo Include="FS.GG.UI.Controls.Elmish" />
     <!-- Feature 092 (E2): the Controls.Elmish adapter tests drive the wired focus/text seam against
          the real internal `RetainedRender` structure (SC-001, no hand-seeded identity map), so the
          Elmish.Tests assembly reaches `RetainedRender`/`RetainedId`/`RetainedUiState` via IVT too. -->

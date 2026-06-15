@@ -10,10 +10,10 @@ module Feature100NavigationTests
 
 open System
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
-open FS.Skia.UI.Controls.Elmish
-open FS.Skia.UI.KeyboardInput
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
+open FS.GG.UI.Controls.Elmish
+open FS.GG.UI.KeyboardInput
 
 type private Msg =
     | RadioChanged of string

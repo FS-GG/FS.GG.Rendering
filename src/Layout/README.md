@@ -1,27 +1,27 @@
-# FS.Skia.UI.Layout
+# FS.GG.UI.Layout
 
-Pure layout and graph scene builders for FS.Skia.UI.
+Pure layout and graph scene builders for FS.GG.UI.
 
-`FS.Skia.UI.Layout` is one of the **FS.Skia.UI** distribution packages — an F# / Elmish UI and 2D
+`FS.GG.UI.Layout` is one of the **FS.GG.UI** distribution packages — an F# / Elmish UI and 2D
 scene-graph framework for .NET 10 desktop, rendered through Vulkan + SkiaSharp.
 
 ## Install
 
 ```bash
-dotnet add package FS.Skia.UI.Layout
+dotnet add package FS.GG.UI.Layout
 ```
 
-Or scaffold a full governed project that wires the FS.Skia.UI packages together:
+Or scaffold a full governed project that wires the FS.GG.UI packages together:
 
 ```bash
-dotnet new install FS.Skia.UI.Template
-dotnet new fs-skia-ui -o MyApp
+dotnet new install FS.GG.UI.Template
+dotnet new fs-gg-ui -o MyApp
 ```
 
 ## Usage
 
 ```fsharp
-open FS.Skia.UI.Layout
+open FS.GG.UI.Layout
 
 // Stack two children into an 800x600 region.
 let panel =
@@ -63,7 +63,7 @@ match Graph.layout graph with
 
 ## Versioning
 
-All `FS.Skia.UI.*` libraries share one version and move together. In a generated project a
+All `FS.GG.UI.*` libraries share one version and move together. In a generated project a
 single `<FsSkiaUiVersion>` in `Directory.Packages.props` pins every package — upgrading is one
 edit; see `docs/UPGRADING.md`. Pre-release versions use a `-preview.N` suffix.
 

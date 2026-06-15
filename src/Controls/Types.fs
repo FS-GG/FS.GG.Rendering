@@ -1,14 +1,14 @@
-namespace FS.Skia.UI.Controls
+namespace FS.GG.UI.Controls
 
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Layout
+open FS.GG.UI.Scene
+open FS.GG.UI.Layout
 
 type ControlId = string
 type ControlKind = string
 
 // Chart data records (feature 080): defined here in Types.fs — which compiles before
 // Control.fs — so the renderer/extraction in Control.fs can read X/Y/Label. The public
-// `FS.Skia.UI.Controls.ChartPoint`/`ChartSeries` names are unchanged (surface-neutral move
+// `FS.GG.UI.Controls.ChartPoint`/`ChartSeries` names are unchanged (surface-neutral move
 // out of Charts.fs); the chart authoring modules stay in Charts.fs.
 type ChartPoint =
     { X: float

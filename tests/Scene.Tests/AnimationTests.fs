@@ -8,7 +8,7 @@ open System
 open Expecto
 open FsCheck
 open FsCheck.FSharp
-open FS.Skia.UI.Scene
+open FS.GG.UI.Scene
 
 let private allEasings = [ Linear; EaseIn; EaseOut; EaseInOut ]
 

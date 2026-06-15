@@ -5,7 +5,7 @@ module Feature112PrecedenceTests
 // control is never re-stamped by a derived transition; a derived Normal emits NO visualState attribute.
 
 open Expecto
-open FS.Skia.UI.Controls
+open FS.GG.UI.Controls
 
 let private emptyModel = fst (ControlRuntime.init ())
 let private modelWith f = f emptyModel
