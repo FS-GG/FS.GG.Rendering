@@ -8,6 +8,9 @@ The product source in this repository was imported from FS-Skia-UI, bounded by t
 map (`docs/product/module-map.md`, `import-from-source`) and the R3 validation set
 (`docs/validation/validation-set.md`, `import-now`).
 
+This file is the **authoritative lineage** referenced by the Stage R7 bridge
+(`docs/bridge/README.md`); update imported scope here, not in the bridge.
+
 ## Path map
 
 | Source path | Repo path |
@@ -46,6 +49,22 @@ map (`docs/product/module-map.md`, `import-from-source`) and the R3 validation s
   baseline → Stage R5 harness; one FSI-transcript check → excluded old-repo readiness artifact).
 - **Build format**: solution authored as `FS.GG.Rendering.slnx` (the .NET 10 XML solution
   format that `dotnet new sln` now emits).
+
+## Repo-authored (not imported)
+
+These areas exist in the working tree but were **built in this repository**, not imported, so they
+intentionally have no import path-map row:
+
+- `tests/Rendering.Harness`, `tests/Rendering.Harness.Tests` — the tiered evidence CLI and its unit
+  tests, authored at Stage R5 (feature `004-rendering-harness`).
+- `FS.GG.Rendering.slnx` — the solution, authored here (see *Build format* under Adaptations).
+- `specs/**`, `docs/**` other than `docs/imported/` — this repository's own Spec Kit + product docs.
+
+## Named gaps
+
+None. Every imported top-level area (`src/`, `tests/` suites, `template/`, `.template.config/`,
+`.template.package/`, `docs/imported/`, `tests/surface-baselines/`, `scripts/`, and the root build
+metadata) is accounted for by a Path-map row, an Adaptation, or the *Repo-authored* list above.
 
 ## Excluded (left in the source archive)
 
