@@ -5,6 +5,8 @@
 **Repo**: FS.GG.Rendering (migration stages R1–R8 complete; product source live on `net10.0`)
 **Scope**: A build plan for the work that is genuinely missing or only partially landed, organized into independently shippable workstreams under the project's `Spec → .fsi → semantic tests → implementation` contract.
 
+**Revision (2026-06-15, addendum)**: Integrated two bodies of archived FS-Skia-UI source material the user surfaced — the **sample-app test specs** (`docs/testSpecs/{Showcase,Games,Productivity}`, 33 specs) and the **Ant Design UI-story adoption analysis** (`docs/reports/2026-06-09-1538-ant-design-ui-story-adoption-analysis.md`). These add Workstream **F** (Ant-derived design-system adoption: token taxonomy, policy-driven color validation, central style resolver) and Workstream **G** (sample applications), and reshape Workstream D's theme/kit phases. Source links in the Appendix.
+
 ---
 
 ## 1. Executive summary
@@ -17,9 +19,13 @@ A focused audit (build run + four parallel source investigations) revised the he
 
 3. **The layer split is genuinely greenfield.** Design-system primitives, themes, and kits are physically bundled inside the single `FS.GG.UI.Controls` assembly. Only `Light`/`Dark` themes exist; **Ant/Fluent/Material are named-only**, and **no design-specific kits exist at all**. This is the largest net-new effort.
 
+4. **The Ant Design adoption already has a detailed design.** The archived analysis (`2026-06-09-1538-ant-design-ui-story-adoption-analysis.md`) prescribes adopting Ant Design as a *design language / token taxonomy / pattern library / quality bar* — **not** a React or DOM dependency. Its three pillars are reusable across every future theme: a richer DTCG **token taxonomy** (seed → map → alias → component), a **policy-driven color/contrast validator** (`--design-system wcag|ant|material|fluent`, replacing the WCAG-only gate as one selectable policy), and a **central visual-state style resolver** (`resolve: theme → kind → intent → states → ControlStyle`) so controls stop reading `theme.Accent`/`theme.Danger` directly. This is captured as Workstream F and is the substance that makes "real themes" (D) possible.
+
+5. **The sample apps are specced but unbuilt.** The archive carries 33 sample-app specs — a 10-page **Controls Gallery showcase** (exercises all 52 catalog controls + shell/navigation/palette/evidence contract), 12 **games** (Tetris, Snake, Pong, …), and 10 **productivity** apps (Kanban, Todo, Calendar, …). They were deliberately deferred at import (R3 routed sample galleries to "validation surface, decided with the validation set"). Built, they triple as living docs, integration tests, and perf-corpus material. This is Workstream G.
+
 The build is green (`dotnet build -c Release` → 0 warnings, 0 errors). 18 tests are honestly skipped (`ptest`/`ptestList`): 17 perf-corpus/baseline tests waiting on a faithful-vsync capture path + committed goldens, and 1 FSI-transcript fixture from the old repo.
 
-This plan defines **five workstreams (A–E)**, each independently valuable, with phased tasks, file-level targets, evidence requirements, constitution-gate notes, and a suggested sequencing. Workstreams A, C, and E are low-risk and near-term; B is environment-blocked (needs a capable CI runner); D is the strategic, multi-feature effort.
+This plan defines **seven workstreams (A–G)**, each independently valuable, with phased tasks, file-level targets, evidence requirements, constitution-gate notes, and a suggested sequencing. Workstreams A, C, and E are low-risk and near-term; B is environment-blocked (needs a capable CI runner); D, F, and G are the strategic, multi-feature efforts — and they chain: **C11 (visual-state style layer) → F (design-system enrichment) → D (layer split + themes/kits) → G (Ant-styled showcase)**, with the Light/Dark showcase (G) landable early and independently.
 
 ---
 
@@ -84,6 +90,8 @@ CI: `gate.yml` (required, deterministic + surface-drift + docs + harness T0), `c
 | **C** | Spec/test backfill for accreted RetainedRender features (092–121) + close 093/095/096 | Backfill | Low | No |
 | **D** | Physical layer split + concrete themes (Ant/Fluent/Material) + kits | Net-new (large) | High | No |
 | **E** | Cleanup follow-ups (DF-1, memo counter narrative, renderHash alpha, FSI fixture) | Tidy | Low | No |
+| **F** | Ant Design adoption — token taxonomy, policy-driven color validation, central style resolver, enterprise patterns/agent skill | Net-new (large) | Med–High | No |
+| **G** | Sample applications — Controls Gallery showcase + games + productivity demos | Net-new (large) | Med | Live tiers GL-gated only |
 
 ---
 
@@ -232,11 +240,11 @@ Create and move (compile order preserved):
 - **Package identity**: stay consistent with the Stage R8 `FS.GG.UI.*` scheme.
 
 ### 7.3 Phase D2 — concrete themes
-4. **`FS.GG.UI.Themes.AntDesign`**, **`…Themes.Fluent`**, **`…Themes.Material`** (new, one assembly each) — each provides a `Theme` instance (color/typography/spacing/radius/shadow values) over the shared `DesignSystem` slots + visual-state styling, depending only on `DesignSystem`. **No control forks** — they style the existing `Button`/`TextBox`/etc. Prove the layering rule with a test that renders the *same* `Control` tree under all themes and asserts behavior/accessibility identical, visuals differ.
-- Prerequisite: Workstream C11 (093/095/096 visual-state style layer) defines the slot/visual-state vocabulary themes target — **land C11 before D2**.
+4. **`FS.GG.UI.Themes.AntDesign`** (flagship — see Workstream F), then **`…Themes.Fluent`**, **`…Themes.Material`** (new, one assembly each) — each provides a `Theme` instance (color/typography/spacing/radius/shadow values) over the shared `DesignSystem` slots + visual-state styling, depending only on `DesignSystem`. **No control forks** — they style the existing `Button`/`TextBox`/etc. Prove the layering rule with a test that renders the *same* `Control` tree under all themes and asserts behavior/accessibility identical, visuals differ.
+- **Prerequisites**: Workstream C11 (093/095/096 visual-state style layer) defines the slot/visual-state vocabulary, and **Workstream F supplies the token taxonomy + central style resolver** these themes target. Land **C11 → F → D2** in that order. Ant is built first because F's design basis is Ant-derived; Fluent/Material reuse the same machinery.
 
 ### 7.4 Phase D3 — design-specific kits
-5. **`FS.GG.UI.Themes.AntDesign.Kit`** (or a `Kits` assembly) — implement at least `AntDesign.Form` (validation-flow layout) and `AntDesign.Table` (filtering/sorting/empty-state) as opinionated compositions over controls + theme. Depends on `Controls` + the Ant theme. This is the proof that a kit is justified only when it adds *composition/workflow behavior beyond styling* (layering.md decision rule).
+5. **`FS.GG.UI.Themes.AntDesign.Kit`** (or a `Kits` assembly) — implement at least `AntDesign.Form` (validation-flow layout) and `AntDesign.Table` (filtering/sorting/empty-state) as opinionated compositions over controls + theme. Depends on `Controls` + the Ant theme. This is the proof that a kit is justified only when it adds *composition/workflow behavior beyond styling* (layering.md decision rule). The Ant report's **enterprise page templates** (workbench / list / detail / form / result / exception) are the target recipes — see F.
 
 ### 7.5 Tasks
 - **D1.1** Create `DesignSystem` project; move tokens/types/style; add `Success`/`Warning`; preserve compile order. Build green.
@@ -272,43 +280,155 @@ Low-risk tidy items surfaced by the audit and the 091 plan, batchable opportunis
 
 ---
 
-## 9. Cross-cutting concerns (apply to every workstream)
+## 9. Workstream F — Ant Design adoption (design-system enrichment)
 
-1. **Constitution contract** — author `spec.md` → `.fsi` (if surface changes) → semantic tests → implementation, in that order, for net-new work (Workstreams A, D). For backfill (C), follow the 091 pattern and record the import-before-spec deviation. Tier-classify each change (1 = contracted/observable; 2 = internal/behavior-neutral).
-2. **Surface-drift gate** is the single most fragile CI interaction. Any new public package or renamed public type/module across the 9 (soon more) baselines fails `gate.yml` step 4 until `scripts/refresh-surface-baselines.fsx` is updated (new row) and baselines are regenerated + committed. Treat baseline regeneration as part of the same change, never a follow-up.
-3. **No-overclaim evidence** (harness) — every new tier/backend must populate a non-empty `NotAuthoritativeFor`, degrade cleanly (Skip/Fail-classified, never hang or fake), and disclose what it does *not* prove.
-4. **Determinism** — no wall-clock, no `Math.random`; perf goldens compare structure/counts/ratios, never absolute milliseconds.
-5. **Docs sync** — update `README.md` (harness status is currently stale re: T2/vsync), `SKIPPED-TESTS.md` (running tally), `docs/harness/capability-baseline.md`, `module-map.md` (layer dispositions), and add decision records under `docs/product/decisions/` for the namespace move.
+**Goal**: Implement the three reusable pillars from the archived Ant Design adoption analysis so the framework gains a real, governed design language — **without any React/DOM dependency**. Ant is rendered through Skia + F# control IR by translating its *stable ideas* (token model, color/contrast policy, interaction patterns) into local primitives. The output is the machinery every theme in Workstream D consumes; Ant is the first and reference policy, Fluent/Material plug into the same seams later.
+
+> Source: `EHotwagner/FS-Skia-UI` → `docs/reports/2026-06-09-1538-ant-design-ui-story-adoption-analysis.md` (Ant docs v6.4.3 observed). Adopt as design language / token taxonomy / pattern library / quality bar — *not* a component dependency. Ant default brand blue `#1677ff`; functional success/warning/error/info families; 8-unit grid; `controlHeight 32`.
+
+### 9.1 Pillar 1 — richer token taxonomy (generated, not hand-coded)
+Expand the DTCG source (`src/Controls/design-tokens.tokens.json`) and the generated `DesignTokens` module from today's ~13 primitives into Ant's layered model, **generated** into the new `FS.GG.UI.DesignSystem` package (Workstream D1):
+
+| Token group | Examples | Notes |
+|---|---|---|
+| `seed` | `colorPrimary`, `colorSuccess/Warning/Error/Info`, `colorTextBase`, `colorBgBase`, `fontSize`, `lineHeight`, `borderRadius`, `controlHeight`, `sizeUnit`, `sizeStep`, `motionUnit` | Stable inputs; Ant defaults are references, not automatic choices |
+| `map.light` / `map.dark` | `colorPrimaryHover/Active/Bg`, `colorErrorBg`, `colorBorder`, `colorFillSecondary`, `colorBgContainer/Elevated/Layout`, `colorText/Secondary/Disabled` | Derived; start as explicit DTCG aliases before adding algorithms |
+| `alias.light` / `alias.dark` | `text.default/secondary`, `surface.canvas/container/elevated`, `border.default`, `item.hoverBg/selectedBg`, `focus.ring`, `feedback.errorText/warningText` | Friendly names renderer code consumes |
+| `component.<control>` | `button.primaryBg`, `input.activeBorder`, `table.headerBg/rowHoverBg`, `tabs.itemSelectedColor`, `menu.itemSelectedBg` | Needed once controls stop hardcoding generic roles |
+
+Also add semantic **spacing** (`space.xs/sm/md/lg/xl = 4/8/16/24/32`), **named density** (`Comfortable`/`Middle`/`Compact`, preserving `Theme.withDensity`), a small **type scale** (body/small/title/section/display + `lineHeight`), and **elevation** tokens (`none`/`low`/`medium`/`high` → inputs/hover-cards/dropdowns/dialogs).
+
+> **Surface-gate caution**: new *public* token names in `DesignTokens.fsi` are a contract change (per-package surface baseline + the design-token-drift gate). Land the experiment in an internal/additive module first; promote to public surface deliberately with regenerated baselines.
+
+### 9.2 Pillar 2 — policy-driven color/contrast validation
+Replace the hard-coded WCAG-only gate with a selectable **design-system policy**, surfaced as a template parameter:
+
+```fsharp
+type DesignSystemPolicy = | Wcag | Ant | Material | Fluent | Custom of string
+type ColorPolicy =
+    { Id: DesignSystemPolicy; TokenSeed: string
+      Pairings: ValidatedPairing list; ThresholdFor: Role -> float; ReportLabel: string }
+```
+
+- `wcag` stays the **compatibility default** (preserves today's `ContrastCheck` ratio gate).
+- `ant` becomes the first richer policy: validates Ant's own semantic color/contrast choices (text/title, neutral, functional, primary pairings) rather than rejecting Ant for differing from WCAG-only. A WCAG ratio remains a *reported* diagnostic, not the sole authority.
+- Template surface: `dotnet new fs-gg-ui --design-system wcag|ant`. The gate keeps its name but delegates to the selected policy. New policy = policy unit tests + a generated policy report + routed governance evidence.
+
+### 9.3 Pillar 3 — central visual-state style resolver
+Introduce one resolver that maps semantic role + state → concrete draw style, so controls stop sprinkling `theme.Accent`/`theme.Muted`/`theme.Danger` across render code:
+
+```fsharp
+type ControlIntent = | Default | Primary | Success | Warning | Danger | Link | Text
+type ControlStyle =
+    { Text: Color; Background: Color; Border: Color; FocusRing: Color option
+      Shadow: string option; FontSize: float; Radius: float }
+val resolve: theme: Theme -> kind: ControlKind -> intent: ControlIntent -> states: VisualState list -> ControlStyle
+```
+
+The `VisualState` union already names `Normal/Disabled/Hover/Pressed/Focused/Selected/Loading/Validation`; the missing piece is this resolver. **This is the same need as Workstream C11 (093/095/096 visual-state style layer)** — land them together: C11 specs the style layer, F supplies the Ant-informed resolver shape and token bindings. Controls are migrated to consume `resolve` incrementally (button intents first — they already lower `ButtonIntent` that the renderer must actually honor).
+
+### 9.4 Pillar 4 — enterprise interaction patterns & agent guidance (lower priority, docs-first)
+- Encode Ant's interaction principles (Direct / Stay-on-page / Lightweight / Invitation / Transition / React-immediately) as control/showcase behavior: inline edit, popconfirm/undo toast, hover-reveal actions, empty/loading/error states, immediate validation. Mostly docs + showcase wiring (Workstream G), not new controls.
+- The **enterprise page templates** (workbench / list / detail / form / result / exception) become the kit recipes (Workstream D3) and generated-app story.
+- Author an agent skill `fs-gg-ant-design/SKILL.md` translating Ant docs → this repo's token/control/renderer/policy machinery (mirrors the existing skill-sync pattern). Optional, low priority.
+
+### 9.5 Tasks
+- **F1** — Expand DTCG token source + generator to the seed/map/alias/component taxonomy (internal/additive first). Generated, not hand-coded.
+- **F2** — `ColorPolicy` abstraction + `wcag` (compat) and `ant` policies; policy unit tests + generated policy report.
+- **F3** — `--design-system wcag|ant` template parameter + `TemplateCheck`/generated-product validation.
+- **F4** — Central `resolve` style resolver (co-designed with C11); migrate button intents to consume it; parity test that resolver output ≡ current rendering for the default policy (behavior-neutral until a theme opts in).
+- **F5** — Promote chosen public token/policy surface deliberately: regenerate per-package surface baselines + design-token-drift baseline; decision record under `docs/product/decisions/`.
+- **F6** *(optional)* — Ant interaction-pattern docs per control family + the `fs-gg-ant-design` agent skill.
+
+### 9.6 Acceptance / evidence
+- `--design-system wcag` generated product is byte-identical to today (compat); `--design-system ant` selects Ant tokens + Ant policy and passes Ant pairings.
+- Resolver migration is behavior-neutral under the default policy (parity test green); intents actually change draw style under `ant`.
+- Public token/policy surface changes are gated: surface + design-token-drift baselines regenerated and committed; governance route recorded.
+
+### 9.7 Risks
+- **Public-surface / token-drift blast radius** — the token taxonomy is the second-most-likely thing (after D's package adds) to redden the gate. Keep experiments internal; promote in one deliberate, baseline-regenerating change.
+- **`Theme` record shape** — the report is explicit: *do not* change the public `Theme` record shape until a feature routes it (breaking consumer contract). Add `Success`/`Warning` (already needed, Workstream D1) but defer broader `Theme` expansion behind the resolver/internal tokens.
+- **Scope creep into a "paint preset"** — selecting `ant` must change *policy*, not just colors, or it's not a real design-system choice. Keep F2 and F1 paired.
 
 ---
 
-## 10. Suggested sequencing & roadmap
+## 10. Workstream G — Sample applications
+
+**Goal**: Build the sample apps the archive specced, as runnable F# consumers of the framework. They are the highest-leverage validation surface: living documentation, integration tests across the whole stack (controls + layout + input + viewer + Elmish), deterministic perf-corpus material (feeds Workstream B), and the proof that "a generated app looks like a real tool" (feeds D/F).
+
+> Source: `EHotwagner/FS-Skia-UI` → `docs/testSpecs/{Showcase,Games,Productivity}` — 33 specs. They were deliberately deferred at import (R3: "sample galleries are validation surface, decided with the validation set", left in the archive per `PROVENANCE.md`). Specs reference `FS.Skia.UI.*` and `src/Controls/Catalog.fs` (52 controls) — **rebrand identifiers to `FS.GG.UI.*` on adoption**.
+
+### 10.1 What the specs contain
+- **Showcase (11 specs)** — a multi-page **Controls Gallery**: a `Dock` shell (top app bar with theme toggle + accent selector, left nav rail, scrolling content, bottom status strip), one cohesive palette ("Indigo & Teal on Slate", Light + Dark + accent variants), a pointer-interaction contract, and per-page evidence requirements. Pages `01`–`10` cover **all 52 catalog controls** (display/typography, buttons, text/numeric input, selection/toggles, data/collections, layout/containers, navigation/menus, overlays/feedback, charts, pointer-playground/custom). Every catalog control appears on exactly one page and is reachable by navigation.
+- **Games (12 specs)** — Tetris, Snake, Pong, Asteroids, Breakout, Lunar Lander, Sokoban, Space Invaders, Tower Defense, Top-down Racer, Bomberman-lite, Platformer. Each spec is complete: goal, controls, state model, **determinism + evidence mode** (seeded input script, frame/occupancy/score outcomes, screenshot evidence), acceptance criteria, out-of-scope. Strong exercise of keyboard input, deterministic step timing, grid rendering, and the persistent interactive loop.
+- **Productivity (10 specs)** — Kanban board, Todo/task manager, Calendar scheduler, Contact manager, Expense tracker, File manager, Invoice builder, Markdown notes, Pomodoro timer, Spreadsheet editor. Exercise forms, data grids, lists, validation, inline edit — the enterprise patterns F/D target.
+
+### 10.2 Phasing
+- **G1 — Controls Gallery showcase (on Light/Dark)**: the flagship. Build the shell + all 10 pages against the *current* control set and Light/Dark themes. Landable **early and independently** of F/D — it only needs existing controls. Doubles as a coverage check: every `Catalog.fs` control rendered + interactive. Deterministic seeded evidence per page.
+- **G2 — a representative slice of Games + Productivity** (e.g. Tetris + Snake + Pong; Kanban + Todo + Calendar): broad end-to-end integration + the seeded evidence harness. Pick the set that maximizes distinct control/input coverage.
+- **G3 — Ant restyle + enterprise templates**: once F + D2/D3 land, re-skin the showcase under the Ant theme and realize the workbench/list/detail/form/result/exception page templates as productivity-app demos. This is where F/D pay off visibly.
+- **G4 — wire samples as evidence**: feed the deterministic sample runs into the harness/perf corpus (Workstream B) and CI (advisory tier), so samples are *checked*, not just shipped.
+
+### 10.3 Placement & build
+- New `samples/` tree (outside the solution's default test tier, like `Package.Tests`), each sample its own `FS.GG.UI.*`-consuming project; or generated via the template. Decide one (recommend `samples/` project-reference for dev velocity, plus one template-generated sample for the consumer-path proof).
+- Each sample supports **two modes**: interactive (GL/X11 window) and **headless deterministic evidence** (seeded input script → frame/state outcome + screenshot), mirroring the spec's "Determinism and Evidence" sections. Headless mode runs in CI; interactive is GL-gated.
+
+### 10.4 Acceptance / evidence
+- Showcase renders all 52 catalog controls across 10 navigable pages; a coverage test asserts no catalog control is unreferenced.
+- Each adopted game/productivity sample: a seeded run is repeatable (byte-stable evidence outcome), acceptance criteria from its spec pass, screenshot evidence captures the required surfaces.
+- Samples build against the *public* package surface only (no `InternalsVisibleTo`) — proving the consumer path end-to-end (ties to the README/`docs/usage.md` consumption story).
+
+### 10.5 Risks
+- **Maintenance burden** — 33 apps is a lot of surface to keep green. Mitigate: build G1 + a curated G2 slice first; treat the rest as a backlog, not a batch. `log`/disclose which specs are adopted vs deferred.
+- **Catalog drift** — the showcase's 52-control coverage assertion will fail when the catalog changes; that's a feature (keeps the gallery honest), but budget for it.
+- **GL dependency** — interactive mode needs a display; keep the deterministic-evidence mode the CI-facing path so samples don't make the gate GL-dependent.
+
+---
+
+## 11. Cross-cutting concerns (apply to every workstream)
+
+1. **Constitution contract** — author `spec.md` → `.fsi` (if surface changes) → semantic tests → implementation, in that order, for net-new work (Workstreams A, D, F, G). For backfill (C), follow the 091 pattern and record the import-before-spec deviation. Tier-classify each change (1 = contracted/observable; 2 = internal/behavior-neutral).
+2. **Surface-drift gate** is the single most fragile CI interaction. Any new public package or renamed public type/module across the 9 (soon more) baselines fails `gate.yml` step 4 until `scripts/refresh-surface-baselines.fsx` is updated (new row) and baselines are regenerated + committed. The **design-token-drift gate** is the analogous hazard for Workstream F's token taxonomy. Treat baseline regeneration as part of the same change, never a follow-up.
+3. **No-overclaim evidence** (harness, and Workstream G sample evidence) — every new tier/backend/sample-evidence run must populate a non-empty `NotAuthoritativeFor`, degrade cleanly (Skip/Fail-classified, never hang or fake), and disclose what it does *not* prove.
+4. **Determinism** — no wall-clock, no `Math.random`; perf goldens and sample-evidence outcomes compare structure/counts/ratios, never absolute milliseconds. Sample apps accept an explicit seed.
+5. **No React/DOM dependency** (Workstream F) — Ant is adopted as a *design language*, translated into Skia + F# primitives. No web/icon-font/component dependency ships.
+6. **Provenance & rebrand** — the imported testSpecs and Ant report trace to `EHotwagner/FS-Skia-UI`; record the adoption in `PROVENANCE.md` and rebrand `FS.Skia.UI.*` → `FS.GG.UI.*` identifiers on import (Stage R8 scheme).
+7. **Docs sync** — update `README.md` (harness status is currently stale re: T2/vsync), `SKIPPED-TESTS.md` (running tally), `docs/harness/capability-baseline.md`, `module-map.md` (layer dispositions + sample disposition), `docs/usage.md` (theme/sample story), and add decision records under `docs/product/decisions/` for the namespace move, the `--design-system` policy, and the token-taxonomy promotion.
+
+---
+
+## 12. Suggested sequencing & roadmap
 
 ```
 Near term (no env dependency, high confidence)
-  C11 (093/095/096 visual-state specs)  ──┐  prerequisite for D2
+  C11 (093/095/096 visual-state specs)  ──┐  prerequisite for F + D2
   C1–C10 (RetainedRender backfill)        │  parallelizable; low risk
   A1–A2, A5–A6 (pure input backend + CLI) │  headless-runnable now
+  G1 (Controls Gallery on Light/Dark)     │  needs only existing controls
   E1, E2, E4 (cleanups)                   │
                                           ▼
 Mid term
   A3 (x11-xtest backend)        — needs GL/X11 runner to *prove*, skips clean otherwise
   B1–B3 (offscreen-derived perf goldens, un-skip subset)   — removes most of the 17 skips
   D1.1–D1.5 (assembly split, behavior-neutral)             — strategic; ship as its own release
+  F1–F2 (token taxonomy + wcag/ant policies, internal)     — design-system enrichment
+  G2 (curated games + productivity slice)                  — broad integration + evidence
                                           ▼
 Later (env- or scope-gated)
   A4, A7 (uinput backend + integration)   — needs /dev/uinput
   B4 (capable CI runner)                  — ops; flips vsync/uinput from advisory to executed
-  D2 (Ant/Fluent/Material themes)         — after C11 + D1
-  D3 (kits)                               — after D2
-  E3 (renderHash alpha)                   — decide + implement
+  F3–F5 (template --design-system, resolver migration, public-surface promotion)
+  D2 (Ant flagship, then Fluent/Material) — after C11 + F + D1
+  D3 (kits + enterprise page templates)   — after D2 + F
+  G3, G4 (Ant restyle + samples-as-evidence)              — after F + D2/D3
+  E3 (renderHash alpha), F6 (agent skill) — decide + implement
 ```
 
-**Recommended first cut (one to two iterations):** C11 + a batch of C backfills + A1/A2/A5/A6 (pure input) + E1/E2/E4. All headless, all low-risk, all move the skip count and the contract-coverage forward without new infrastructure. Then commit to D1 as a dedicated effort.
+**Recommended first cut (one to two iterations):** C11 + a batch of C backfills + A1/A2/A5/A6 (pure input) + **G1 (the Controls Gallery on Light/Dark)** + E1/E2/E4. All headless or existing-controls-only, all low-risk, all move the skip count, contract coverage, and demonstrable consumer story forward without new infrastructure. Then commit to **D1 → F → D2** as the strategic design-system arc, with the Ant restyle (G3) as its visible payoff.
 
 ---
 
-## 11. Risk register
+## 13. Risk register
 
 | Risk | Workstream | Likelihood | Impact | Mitigation |
 |---|---|---|---|---|
@@ -319,21 +439,32 @@ Later (env- or scope-gated)
 | Capable CI runner never provisioned | A4/B4 | Med | Med | A1–A3/B1–B3 deliver value headlessly; kernel/vsync tiers stay advisory + honest-skip |
 | `ydotool`/`ydotoold` hangs instead of skipping | A4 | Low | Med | Detect daemon/socket absence → Skip; bounded timeout on shell-out |
 | Backfill silently masks a real behavior bug | C | Low | Med | Behavior changes split into their own Tier-1/2 feature, never folded into docs |
+| Token taxonomy reddens surface / design-token-drift gate | F | High | Med | Experiment internal/additive; promote public surface in one baseline-regenerating change |
+| `ant` policy becomes a paint preset, not a design system | F | Med | Med | Pair F1 (tokens) + F2 (policy); policy controls validation semantics, not just colors |
+| Public `Theme` record shape change breaks consumers | F | Low | High | Defer broad `Theme` expansion behind resolver/internal tokens; only add Success/Warning (D1) |
+| 33 sample apps become an unmaintainable batch | G | Med | Med | Ship G1 + curated G2 first; rest is a disclosed backlog, not a batch |
+| Samples make the CI gate GL-dependent | G | Med | Med | Deterministic-evidence mode is the CI path; interactive mode is GL-gated/advisory |
 
 ---
 
-## 12. Definition of done (per workstream)
+## 14. Definition of done (per workstream)
 
 - **A**: `harness input` runs all three backends; `pure` is in the gate green; `uinput`/`x11-xtest` honest-skip headless; harness unit tests cover planner + non-empty `NotAuthoritativeFor`; capability-baseline updated.
 - **B**: offscreen-derived Feature109 subset un-skipped + green deterministically; `SKIPPED-TESTS.md` updated; vsync/uinput tiers run on capable runner (when provisioned).
 - **C**: every listed feature has spec/plan/tasks; `/speckit-analyze` consistent; zero public-surface delta; memo counter narrative fixed.
 - **D**: assemblies split, full suite + drift gate green; multi-theme parity test passes; ≥1 kit with tests; map/decision docs updated.
 - **E**: DF-1 applied; memo comment fixed; FSI fixture un-skipped; renderHash decision recorded.
+- **F**: token taxonomy generated + drift-gated; `wcag` (compat) and `ant` policies pass with `--design-system` template parameter; central `resolve` resolver in place, behavior-neutral under default policy; public token/policy surface promoted with regenerated baselines + decision record.
+- **G**: Controls Gallery covers all 52 catalog controls across 10 navigable pages (coverage assertion green); ≥1 curated game + ≥1 productivity sample with repeatable seeded evidence + passing acceptance criteria; samples build against the public package surface only.
 
 ---
 
 ### Appendix — key source references
 - Harness: `tests/Rendering.Harness/{Cli,Live,Perf,Probe,RunPlan,Tiers,X11,Evidence,Domain}.fs(i)`; `docs/harness/capability-baseline.md`; `specs/004-rendering-harness/`.
 - RetainedRender: `src/Controls/RetainedRender.fsi` (445 lines) / `.fs` (1376 lines); `src/Controls/Reconcile.fsi/.fs`; `specs/{091,092,093,095,096,099,103}-*/`.
-- Layers: `src/Controls/{Types,DesignTokens,Theme,Theming,Style}.fs(i)`, `design-tokens.tokens.json`; `docs/product/{layering,module-map}.md`.
+- Layers / design system: `src/Controls/{Types,DesignTokens,Theme,Theming,Style}.fs(i)`, `design-tokens.tokens.json`; `docs/product/{layering,module-map}.md`.
 - Build/CI/audit: `.github/workflows/{gate,capability,release}.yml`; `scripts/refresh-surface-baselines.fsx`; `tests/surface-baselines/*.txt`; `SKIPPED-TESTS.md`; `docs/audit/mechanism-audit.md`; `specs/{005,006}-*/`.
+- **Archived FS-Skia-UI source material (Workstreams F & G)** — repo `EHotwagner/FS-Skia-UI` (archive/provenance):
+  - Ant Design adoption analysis: `docs/reports/2026-06-09-1538-ant-design-ui-story-adoption-analysis.md` (Ant docs v6.4.3; policy-driven color, seed→map→alias→component tokens, central style resolver, enterprise patterns).
+  - Sample-app specs: `docs/testSpecs/Showcase/{00-…overview,01–10}.md` (Controls Gallery, 52 controls), `docs/testSpecs/Games/*.md` (12), `docs/testSpecs/Productivity/*.md` (10).
+  - Control catalog referenced by the showcase: `src/Controls/Catalog.fs` (now `FS.GG.UI.Controls` in this repo).
