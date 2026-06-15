@@ -89,3 +89,19 @@ run earns those facts *by measurement*: `swapControl` is set to `1` only after t
 interval is observed to lock to the probed vblank period, so the label reflects a real, reproduced
 lock rather than an assumption. The offscreen-throughput T3 run, which has no live swap, leaves
 `swapControl` absent and is correctly **not** labelled vsync-faithful.
+
+## Input backends (feature 122)
+
+`harness input --backend pure|x11-xtest|uinput --script <name> [--out <dir>] [--json]` replays a
+backend-agnostic declarative input script (click / key / injected-wait) and emits no-overclaim
+`Evidence`. The run/skip/fail decision comes from the pure `RunPlan.plan`; the executor only interprets.
+
+| Backend | Proof | Status on this host |
+|---|---|---|
+| `pure` | `deterministic` — replays the script against a self-contained demo scene; proves `input-msg-dispatch` + `input-to-repaint` by a `before <> after` change. Byte-reproducible (deterministic `runId`, injected `Wait`, no wall-clock). | ✅ **runs in the gate** — `passed`, byte-identical across replays |
+| `x11-xtest` | `live-host` — drives a live viewer window with real XTEST input (nested `Xvfb` + EGL viewer) and confirms a before/after repaint. | ✅ **runs fully** (X11/GL/XTEST present) — `passed`, `window.png` + `window-after.png` captured |
+| `uinput` | `kernel-input` — requires `/dev/uinput`. | ⛔ `/dev/uinput` absent → clean **skip** (exit 0, disclosed reason, prompt). The kernel-drive executor is the env-gated **Workstream A4** follow-up, proven on a capable runner. |
+
+Every input `run.json` carries a non-empty `notAuthoritativeFor` (e.g. `pure` discloses it does NOT prove
+`real-input` / `kernel-input-path`). Unknown `--backend`/`--script` exits non-zero with a classified
+message. Harness-only — no product API, so the public-surface-drift gate is unaffected.

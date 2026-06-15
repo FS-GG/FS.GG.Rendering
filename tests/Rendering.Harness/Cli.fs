@@ -109,9 +109,34 @@ let main argv =
         let seconds = match rest with | s :: _ -> (match Double.TryParse s with | true, v -> v | _ -> 3.0) | [] -> 3.0
         Live.launchVsyncProbeChild stampFile seconds
     | "live-x11" :: rest -> runLiveCmd rest
-    | "input" :: _ ->
-        eprintfn "input backends pending: pure (deterministic MVU host), x11-xtest, and uinput wire next; probe, T0/T1 offscreen, T3 perf-throughput, and T2 live-x11 are implemented."
-        2
+    | "input" :: rest ->
+        let known () = Input.scripts |> Map.toList |> List.map fst |> String.concat ", "
+        match flagValue "--backend" rest |> Option.bind Input.parseBackend, flagValue "--script" rest with
+        | None, _ ->
+            eprintfn "input: --backend pure|x11-xtest|uinput required"
+            2
+        | _, None ->
+            eprintfn "input: --script <name> required (known: %s)" (known ())
+            2
+        | Some backend, Some name ->
+            match Input.tryScript name with
+            | None ->
+                eprintfn "input: unknown script '%s' (known: %s)" name (known ())
+                2
+            | Some script ->
+                let facts = Probe.probe ()
+                let out = outDir rest
+                let selfDll =
+                    match System.Reflection.Assembly.GetEntryAssembly() with
+                    | null -> ""
+                    | a -> a.Location
+                let ev = Input.run backend script facts selfDll out
+                let path = Evidence.write out ev []
+                printfn "%s" path
+                match ev.Status with
+                | RunStatus.Passed
+                | RunStatus.Skipped -> 0
+                | RunStatus.Failed -> 1
     | []
     | "--help" :: _ ->
         printfn "usage: <probe|offscreen|live-x11|perf|input> [--out <dir>] [--json]"
