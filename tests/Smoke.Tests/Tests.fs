@@ -22,13 +22,19 @@ let rec findRepositoryRoot (directory: string) =
 
 let repositoryRoot = findRepositoryRoot AppContext.BaseDirectory
 
-// The samples/ tree was not imported at migration Stage R4. Every smoke test below exercises a
-// samples/* project, so when the tree is absent they skip-with-reason (Ignored) rather than fail —
-// self-restoring to real assertions once samples are imported. (Stage R4 pending.)
-let samplesPresent = Directory.Exists(Path.Combine(repositoryRoot, "samples"))
+// The parity samples/ tree was not imported at migration Stage R4. Each parity smoke test below
+// exercises a parity samples/* project, so when that tree is absent they skip-with-reason (Ignored)
+// rather than fail — self-restoring to real assertions once the parity samples are imported.
+//
+// Feature 123 added a *different*, package-consuming sample at samples/ControlsGallery (a consumer
+// of the packed FS.GG.UI.* surface, not a src/ project-reference parity sample). It has its own
+// dedicated, GL-free contract test (`controlsGalleryConsumerContract` below). To keep the parity
+// checks dormant until Stage R4, gate them on a parity marker (BasicViewer) rather than the mere
+// existence of samples/ — which feature 123 now populates.
+let paritySamplesPresent = Directory.Exists(Path.Combine(repositoryRoot, "samples", "BasicViewer"))
 let skipIfNoSamples () =
-    if not samplesPresent then
-        skiptest "samples/ not imported (migration Stage R4 pending) — smoke contract checks skipped, not failed"
+    if not paritySamplesPresent then
+        skiptest "parity samples/ not imported (migration Stage R4 pending) — smoke contract checks skipped, not failed"
 
 let readinessPath segments =
     let activeFeature = Path.Combine(repositoryRoot, "specs", "011-controls-boundary-refactor")
@@ -103,8 +109,7 @@ let smokeContractTests =
               "DemoReel", "samples/DemoReel/DemoReel.fsproj"
               "KeyboardInputGallery", "samples/KeyboardInputGallery/KeyboardInputGallery.fsproj"
               "ChartsGallery", "samples/ChartsGallery/ChartsGallery.fsproj"
-              "DataGridGallery", "samples/DataGridGallery/DataGridGallery.fsproj"
-              "ControlsGallery", "samples/ControlsGallery/ControlsGallery.fsproj" ]
+              "DataGridGallery", "samples/DataGridGallery/DataGridGallery.fsproj" ]
             |> List.iter (fun (sample, project) ->
                 let projectPath = Path.Combine(repositoryRoot, project)
                 let programPath = Path.Combine(Path.GetDirectoryName projectPath |> Option.ofObj |> Option.defaultValue repositoryRoot, "Program.fs")
@@ -142,16 +147,7 @@ let smokeContractTests =
 
         test "Controls boundary gallery contract smoke sources cover Controls-owned chart DataGrid and adapter paths" {
             skipIfNoSamples ()
-            [ "ControlsGallery",
-              "samples/ControlsGallery/ControlsGallery.fsproj",
-              [ "LineChart.create"
-                "GraphView.create"
-                "DataGrid.create"
-                "ControlsElmish.program"
-                "Keyboard.update"
-                "ControlRuntime.update"
-                "printfn \"sample=ControlsGallery\"" ]
-              "ChartsGallery",
+            [ "ChartsGallery",
               "samples/ChartsGallery/ChartsGallery.fsproj",
               [ "LineChart.create"
                 "BarChart.create"
@@ -181,5 +177,47 @@ let smokeContractTests =
                 requiredSource
                 |> List.iter (fun required ->
                     Expect.stringContains source required $"{sample} source includes {required}"))
+        }
+    ]
+
+// Feature 123 — Controls Gallery Showcase. A package-consuming sample kept outside the main
+// solution and the default test tier (research R8). These checks read source only: they keep the
+// gallery honest in CI WITHOUT depending on a display/GL (FR-016) or on the packed packages being
+// restored — the gallery's own deterministic Expecto suite covers behavior.
+[<Tests>]
+let controlsGalleryConsumerContract =
+    let galleryRoot = Path.Combine(repositoryRoot, "samples", "ControlsGallery")
+    testList "Controls Gallery (feature 123) consumer-path contract" [
+        test "the gallery's three projects exist" {
+            [ "ControlsGallery.Core/ControlsGallery.Core.fsproj"
+              "ControlsGallery.App/ControlsGallery.App.fsproj"
+              "ControlsGallery.Tests/ControlsGallery.Tests.fsproj" ]
+            |> List.iter (fun proj ->
+                Expect.isTrue (File.Exists(Path.Combine(galleryRoot, proj))) $"{proj} exists")
+        }
+
+        test "consumes packed FS.GG.UI.* packages only — no src/ project references (FR-013/SC-005)" {
+            let projects = Directory.GetFiles(galleryRoot, "*.fsproj", SearchOption.AllDirectories)
+            Expect.isGreaterThan projects.Length 0 "gallery projects found"
+            projects
+            |> Array.iter (fun f ->
+                let content = File.ReadAllText f
+                Expect.isFalse (content.Contains(@"..\..\src\", StringComparison.Ordinal)) $"{Path.GetFileName f}: no Windows-style src project ref"
+                Expect.isFalse (content.Contains("/src/", StringComparison.Ordinal)) $"{Path.GetFileName f}: no posix src project ref"
+                Expect.isTrue (content.Contains("FS.GG.UI.Controls", StringComparison.Ordinal)) $"{Path.GetFileName f}: references the packed Controls package")
+        }
+
+        test "nuget.config points at the local packed feed (the consumer path, SC-005)" {
+            let cfg = Path.Combine(galleryRoot, "nuget.config")
+            Expect.isTrue (File.Exists cfg) "nuget.config exists"
+            Expect.stringContains (File.ReadAllText cfg) "nuget-local" "local packed feed configured"
+        }
+
+        test "the page registry references all 10 page ids (52→10 coverage source)" {
+            let pages = File.ReadAllText(Path.Combine(galleryRoot, "ControlsGallery.Core", "Pages.fs"))
+            [ "display-typography"; "buttons"; "text-numeric-input"; "selection-toggles"
+              "data-collections"; "layout-containers"; "navigation-menus"; "overlays-feedback"
+              "charts"; "pointer-custom" ]
+            |> List.iter (fun pid -> Expect.stringContains pages pid $"registry references page {pid}")
         }
     ]

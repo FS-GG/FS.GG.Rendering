@@ -20,6 +20,8 @@ tmp/
 # Test output
 TestResults/
 artifacts/
+# Controls Gallery (feature 123) per-page evidence output — transient, regenerated per run.
+artifacts/controls-gallery/
 *.trx
 *.coverage
 coverage/
