@@ -20,7 +20,12 @@ and is being populated stage by stage per the rendering implementation plan
 harness → …). As of R4 the **product source lives here**: the runtime libraries (`src/`)
 build on `net10.0` and the default local test tier passes. See [`PROVENANCE.md`](PROVENANCE.md)
 for what was imported and from where, and [`SKIPPED-TESTS.md`](SKIPPED-TESTS.md) for the
-documented out-of-scope skips. Next: the comprehensive test harness (Stage R5).
+documented out-of-scope skips.
+
+This repository is the **canonical home** of the rendering product; the source repo
+[`EHotwagner/FS-Skia-UI`](https://github.com/EHotwagner/FS-Skia-UI) is archive/provenance only. See
+the migration bridge — [`docs/bridge/README.md`](docs/bridge/README.md) — for the handoff,
+directional policy, and identity status.
 
 ### Build & test
 
