@@ -156,8 +156,9 @@ type internal RetainedRender<'msg> =
       /// (all cold misses); each `step` consults it for a memoizable node and advances it.
       Memo: MemoCache
       /// Feature 113 (Phase 5): the always-miss switch (FR-008). `true` on the live path (the seam is
-      /// active); a parity test flips it `false` to force every `memoize` call down the Miss path
-      /// (nothing reused), proving the rendered scene is byte-identical with the seam disabled.
+      /// active); a parity test flips it `false` to BYPASS the seam — `memoize` is not called at all, so
+      /// nothing is reused and both `MemoHits`/`MemoMisses` stay 0/0 (NOT "every node a miss") — proving the
+      /// rendered scene is byte-identical with the seam disabled.
       MemoEnabled: bool
       /// Feature 097 (R2): the previous frame's full `LayoutResult` — the per-frame measure/bounds
       /// cache (FR-002). `step` threads it into `Layout.evaluateIncremental` so an unchanged subtree's

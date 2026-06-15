@@ -788,6 +788,12 @@ module SceneEvidence =
                   EvidencePath = request.EvidencePath
                   Value = value }
 
+    /// A capability-set digest of `scene`: it hashes the sorted, DISTINCT set of element-type markers
+    /// produced by `describe` (plus the output size), deliberately discarding every node PAYLOAD —
+    /// geometry, colour, and OPACITY/ALPHA. Consequently an opacity-only (or any value-only) change does
+    /// NOT change `renderHash` (Workstream E3 limitation, by design — this is a coarse "what kinds of things
+    /// are drawn" hash, not a render fingerprint). For a collision-resistant, value-sensitive (alpha-sensitive)
+    /// structural fingerprint, use feature 120's `RetainedRender.hashScene` instead.
     let renderHash size scene =
         render
             { Scene = scene
