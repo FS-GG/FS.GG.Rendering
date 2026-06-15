@@ -1,6 +1,6 @@
-namespace FS.Skia.UI.Controls.Typed
+namespace FS.GG.UI.Controls.Typed
 
-open FS.Skia.UI.Controls
+open FS.GG.UI.Controls
 
 type SplitButtonItem = { Key: string; Label: string }
 
@@ -34,15 +34,15 @@ module ToggleButton =
 
     let view (props: ToggleButtonProps<'msg>) : Widget<'msg> =
         let attrs =
-            [ yield FS.Skia.UI.Controls.Button.text props.Text
-              yield FS.Skia.UI.Controls.Button.enabled props.Enabled
+            [ yield FS.GG.UI.Controls.Button.text props.Text
+              yield FS.GG.UI.Controls.Button.enabled props.Enabled
               yield Attr.selected props.IsOn
               match props.OnToggle with
-              | Some map -> yield FS.Skia.UI.Controls.Button.onClick (map (not props.IsOn))
+              | Some map -> yield FS.GG.UI.Controls.Button.onClick (map (not props.IsOn))
               | None -> ()
               yield WidgetLowering.a11y AccessibilityRole.Button "Toggle button" [ "Tab"; "Shift+Tab" ] ]
 
-        FS.Skia.UI.Controls.Button.create attrs
+        FS.GG.UI.Controls.Button.create attrs
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl
 
@@ -58,34 +58,34 @@ module SplitButton =
 
     let view (props: SplitButtonProps<'msg>) : Widget<'msg> =
         let primary =
-            FS.Skia.UI.Controls.Button.create
-                [ yield FS.Skia.UI.Controls.Button.text props.Text
-                  yield FS.Skia.UI.Controls.Button.enabled props.Enabled
+            FS.GG.UI.Controls.Button.create
+                [ yield FS.GG.UI.Controls.Button.text props.Text
+                  yield FS.GG.UI.Controls.Button.enabled props.Enabled
                   match props.OnClick with
-                  | Some msg -> yield FS.Skia.UI.Controls.Button.onClick msg
+                  | Some msg -> yield FS.GG.UI.Controls.Button.onClick msg
                   | None -> () ]
 
         let trigger =
-            FS.Skia.UI.Controls.Button.create
-                [ FS.Skia.UI.Controls.Button.text "More"
-                  FS.Skia.UI.Controls.Button.enabled props.Enabled ]
+            FS.GG.UI.Controls.Button.create
+                [ FS.GG.UI.Controls.Button.text "More"
+                  FS.GG.UI.Controls.Button.enabled props.Enabled ]
 
         let menu =
-            FS.Skia.UI.Controls.Menu.create
-                [ yield FS.Skia.UI.Controls.Menu.items (props.Items |> List.map (fun item -> item.Label))
+            FS.GG.UI.Controls.Menu.create
+                [ yield FS.GG.UI.Controls.Menu.items (props.Items |> List.map (fun item -> item.Label))
                   match props.OnSelected with
-                  | Some map -> yield FS.Skia.UI.Controls.Menu.onSelected map
+                  | Some map -> yield FS.GG.UI.Controls.Menu.onSelected map
                   | None -> () ]
 
         // Popup visibility is product-owned via `IsOpen`; the overlay is always present so
         // node counts stay stable across open/closed states (FR-009 stable node counts).
         let overlay =
-            FS.Skia.UI.Controls.Overlay.create
-                [ FS.Skia.UI.Controls.Overlay.child menu
+            FS.GG.UI.Controls.Overlay.create
+                [ FS.GG.UI.Controls.Overlay.child menu
                   Attr.selected props.IsOpen ]
 
-        FS.Skia.UI.Controls.Toolbar.create
-            [ FS.Skia.UI.Controls.Toolbar.children [ primary; trigger; overlay ]
+        FS.GG.UI.Controls.Toolbar.create
+            [ FS.GG.UI.Controls.Toolbar.children [ primary; trigger; overlay ]
               WidgetLowering.a11y AccessibilityRole.Menu "Split button" [ "ArrowDown"; "ArrowUp"; "Tab" ] ]
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl

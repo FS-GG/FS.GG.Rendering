@@ -1,6 +1,6 @@
-namespace FS.Skia.UI.Controls.Typed
+namespace FS.GG.UI.Controls.Typed
 
-open FS.Skia.UI.Controls
+open FS.GG.UI.Controls
 
 type DataGridProps<'msg> =
     { Id: ControlId
@@ -22,17 +22,17 @@ module DataGrid =
           OnSelectionChanged = None }
 
     let init (props: DataGridProps<'msg>) : DataGridModel * DataGridEffect list =
-        FS.Skia.UI.Controls.DataGrid.init props.Id props.Columns props.Rows.Length props.RowHeight props.ViewportHeight
+        FS.GG.UI.Controls.DataGrid.init props.Id props.Columns props.Rows.Length props.RowHeight props.ViewportHeight
 
     let update (msg: DataGridMsg) (model: DataGridModel) : DataGridModel * DataGridEffect list =
-        FS.Skia.UI.Controls.DataGrid.update msg model
+        FS.GG.UI.Controls.DataGrid.update msg model
 
     let view (props: DataGridProps<'msg>) (model: DataGridModel) : Widget<'msg> =
         let attrs =
-            [ yield FS.Skia.UI.Controls.DataGrid.rows props.Rows
-              yield FS.Skia.UI.Controls.DataGrid.visibleRange model.VisibleRange
-              yield FS.Skia.UI.Controls.DataGrid.selectedRows model.SelectedRows
-              yield FS.Skia.UI.Controls.DataGrid.focusedCell model.FocusedCell
+            [ yield FS.GG.UI.Controls.DataGrid.rows props.Rows
+              yield FS.GG.UI.Controls.DataGrid.visibleRange model.VisibleRange
+              yield FS.GG.UI.Controls.DataGrid.selectedRows model.SelectedRows
+              yield FS.GG.UI.Controls.DataGrid.focusedCell model.FocusedCell
               match props.OnSelectionChanged with
               | Some map ->
                   yield
@@ -43,6 +43,6 @@ module DataGrid =
                           |> map)
               | None -> () ]
 
-        FS.Skia.UI.Controls.DataGrid.create props.Columns attrs
+        FS.GG.UI.Controls.DataGrid.create props.Columns attrs
         |> Control.withKey props.Id
         |> Widget.ofControl

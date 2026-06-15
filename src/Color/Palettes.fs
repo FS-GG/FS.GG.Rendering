@@ -1,6 +1,6 @@
-namespace FS.Skia.UI.Color
+namespace FS.GG.UI.Color
 
-open FS.Skia.UI.Scene
+open FS.GG.UI.Scene
 
 // Ramps are derived from Radix Colors (https://www.radix-ui.com/colors), MIT-licensed.
 // Copyright (c) 2022 WorkOS. The 12-step, role-structured light/dark scales are reproduced

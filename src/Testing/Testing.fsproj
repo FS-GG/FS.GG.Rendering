@@ -3,11 +3,11 @@
   <PropertyGroup>
     <OutputType>Library</OutputType>
     <IsPackable>true</IsPackable>
-    <PackageId>FS.Skia.UI.Testing</PackageId>
-    <AssemblyName>FS.Skia.UI.Testing</AssemblyName>
-    <Version>0.1.129-preview.1</Version>
-    <Title>FS.Skia.UI.Testing</Title>
-    <Description>Generated product and package validation helpers for FS.Skia.UI V3 products.</Description>
+    <PackageId>FS.GG.UI.Testing</PackageId>
+    <AssemblyName>FS.GG.UI.Testing</AssemblyName>
+    <Version>0.1.0-preview.1</Version>
+    <Title>FS.GG.UI.Testing</Title>
+    <Description>Generated product and package validation helpers for FS.GG.UI V3 products.</Description>
     <PackageTags>fsharp;testing;governance;template</PackageTags>
   </PropertyGroup>
 

@@ -1,5 +1,5 @@
 ---
-name: fs-skia-testing
+name: fs-gg-testing
 description: Work on generated product and package validation helper contracts.
 ---
 
@@ -11,7 +11,7 @@ Owns `src/Testing/`, testing helper contracts, `template/fragments/testing/`, an
 
 ## Public Contract
 
-The supported API lives in `src/Testing/Testing.fsi`. Surface changes require `readiness/surface-baselines/FS.Skia.UI.Testing.txt`.
+The supported API lives in `src/Testing/Testing.fsi`. Surface changes require `readiness/surface-baselines/FS.GG.UI.Testing.txt`.
 
 ## Build Commands
 
@@ -40,7 +40,7 @@ Testing is available to governed products when selected and should stay product-
 Open the package namespace and build a generated-product validation evidence report:
 
 ```fsharp
-open FS.Skia.UI.Testing
+open FS.GG.UI.Testing
 
 let report =
     EvidenceReports.build
@@ -65,7 +65,7 @@ rather than hard-failing the phase.
 
 ## Related
 
-- [[fs-skia-scene]] supplies the `LayoutEvidenceReport` types these helpers validate.
+- [[fs-gg-scene]] supplies the `LayoutEvidenceReport` types these helpers validate.
 - [[fsharp-build-orchestration]] runs the governed targets these helpers back.
 
 ## Sources / links

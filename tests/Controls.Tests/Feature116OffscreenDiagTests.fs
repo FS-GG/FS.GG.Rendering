@@ -7,11 +7,11 @@ module Feature116OffscreenDiagTests
 // paint over a multi-node group) is flagged with an advisory `OffscreenComposition` diagnostic naming
 // the control + effect; a plain control is silent; in BOTH cases rendered output is byte-identical to
 // the pre-feature state (advisory only, never alters paint). A `RectClip` (the ubiquitous cheap label
-// clip) is intentionally NOT flagged. Render-only / deterministic ([[fs-skia-evidence-mode]]).
+// clip) is intentionally NOT flagged. Render-only / deterministic ([[fs-gg-evidence-mode]]).
 
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
 
 let private theme = Theme.light
 let private size: Size = { Width = 640; Height = 480 }

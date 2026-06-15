@@ -44,9 +44,9 @@ engineer or agent to act.
 ## Generated Product Constraints
 
 - Use the generated `build.fsx` targets as the local command surface.
-- Keep FS.Skia.UI framework implementation source out of this product unless a
+- Keep FS.GG.UI framework implementation source out of this product unless a
   feature plan explicitly opts into framework development.
-- Product features may consume selected FS.Skia.UI packages and local skills,
+- Product features may consume selected FS.GG.UI packages and local skills,
   but product readiness evidence belongs under this repository's own `specs/`
   tree.
 - Local skills under `.agents/skills/*/SKILL.md` and generated product

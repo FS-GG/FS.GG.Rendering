@@ -17,15 +17,15 @@ let repoRoot = Path.GetFullPath(Path.Combine(scriptDir, ".."))
 
 // Every package → its src project folder (assembly name == package name). One row per committed baseline.
 let packages =
-    [ "FS.Skia.UI.Layout", "Layout"
-      "FS.Skia.UI.KeyboardInput", "KeyboardInput"
-      "FS.Skia.UI.Controls", "Controls"
-      "FS.Skia.UI.Controls.Elmish", "Controls.Elmish"
-      "FS.Skia.UI.Elmish", "Elmish"
-      "FS.Skia.UI.Input", "Input"
-      "FS.Skia.UI.Scene", "Scene"
-      "FS.Skia.UI.SkiaViewer", "SkiaViewer"
-      "FS.Skia.UI.Testing", "Testing" ]
+    [ "FS.GG.UI.Layout", "Layout"
+      "FS.GG.UI.KeyboardInput", "KeyboardInput"
+      "FS.GG.UI.Controls", "Controls"
+      "FS.GG.UI.Controls.Elmish", "Controls.Elmish"
+      "FS.GG.UI.Elmish", "Elmish"
+      "FS.GG.UI.Input", "Input"
+      "FS.GG.UI.Scene", "Scene"
+      "FS.GG.UI.SkiaViewer", "SkiaViewer"
+      "FS.GG.UI.Testing", "Testing" ]
 
 let binDir proj = Path.Combine(repoRoot, "src", proj, "bin", "Debug", "net10.0")
 let binDirs = packages |> List.map (snd >> binDir)

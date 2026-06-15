@@ -1,11 +1,11 @@
-namespace FS.Skia.UI.SkiaViewer.Host
+namespace FS.GG.UI.SkiaViewer.Host
 
 open System
 open Elmish
-open FS.Skia.UI.Scene
-open FS.Skia.UI.SkiaViewer
+open FS.GG.UI.Scene
+open FS.GG.UI.SkiaViewer
 // Open the host namespace last so the host's own diagnostic types take precedence over Scene's.
-open FS.Skia.UI.SkiaViewer.Host
+open FS.GG.UI.SkiaViewer.Host
 
 module Viewer =
     let defaultConfiguration title initialSize =

@@ -1,6 +1,6 @@
-namespace FS.Skia.UI.Controls
+namespace FS.GG.UI.Controls
 
-open FS.Skia.UI.Scene
+open FS.GG.UI.Scene
 
 // Feature 091 (E2) — wiring the parked keyed reconciler (feature 067) onto the live render path.
 // This is NOT a new algorithm: it consumes `Reconcile.diff`'s patch and drives the next frame
@@ -13,9 +13,9 @@ open FS.Skia.UI.Scene
 type internal RetainedId = RetainedId of uint64
 
 type internal RenderFragment =
-    { OwnScene: FS.Skia.UI.Scene.Scene list
-      SubtreeScene: FS.Skia.UI.Scene.Scene list
-      Box: FS.Skia.UI.Scene.Rect option
+    { OwnScene: FS.GG.UI.Scene.Scene list
+      SubtreeScene: FS.GG.UI.Scene.Scene list
+      Box: FS.GG.UI.Scene.Rect option
       // Feature 120 (US3): the structural fingerprint of `SubtreeScene` (computed when painted, carried on Keep).
       Fingerprint: uint64 }
 
@@ -34,10 +34,10 @@ type internal RetainedNode<'msg> =
 // own-scene snapshot, captured at transition start, composited under the next own-scene (empty ⇒ a
 // plain fade-in). Generalizes the 091 transform-only carried slot.
 type internal AnimationClock =
-    { Anim: FS.Skia.UI.Scene.Animation
+    { Anim: FS.GG.UI.Scene.Animation
       Elapsed: System.TimeSpan
       Target: VisualState
-      From: FS.Skia.UI.Scene.Scene list }
+      From: FS.GG.UI.Scene.Scene list }
 
 type internal RetainedUiState =
     { Animation: AnimationClock option
@@ -53,7 +53,7 @@ type internal MemoOutcome =
 
 type internal MemoEntry =
     { Dependency: obj
-      Subtree: FS.Skia.UI.Scene.Scene list }
+      Subtree: FS.GG.UI.Scene.Scene list }
 
 type internal MemoCache = Map<ControlId, MemoEntry>
 
@@ -61,7 +61,7 @@ type internal MemoCache = Map<ControlId, MemoEntry>
 // the node's box + a structural digest of its painted subtree (which embeds every render-affecting
 // input). Compared by F# structural `=`.
 type internal PictureCacheKey =
-    { Box: FS.Skia.UI.Scene.Rect option
+    { Box: FS.GG.UI.Scene.Rect option
       // Feature 120 (US3): the collision-resistant structural fingerprint (replaces the 116 `sprintf "%A"`).
       Fingerprint: uint64 }
 
@@ -85,7 +85,7 @@ type internal TextMeasureKey =
 // by measurement order (no wall-clock). Over the cap the least-recently-accessed entry is dropped; a
 // dropped key re-misses when next needed.
 type internal TextMeasureCache =
-    { Entries: Map<TextMeasureKey, int * FS.Skia.UI.Scene.TextMetrics>
+    { Entries: Map<TextMeasureKey, int * FS.GG.UI.Scene.TextMetrics>
       Clock: int }
 
 type internal RetainedRender<'msg> =
@@ -98,7 +98,7 @@ type internal RetainedRender<'msg> =
       // Feature 113 (Phase 5): the always-miss switch (FR-008); `true` on the live path.
       MemoEnabled: bool
       // Feature 097 (R2): previous frame's full LayoutResult — the measure/bounds cache (FR-002).
-      Layout: FS.Skia.UI.Layout.LayoutResult
+      Layout: FS.GG.UI.Layout.LayoutResult
       // Feature 116 (Phase 7): the bounded cross-frame picture cache (FR-009/FR-010).
       PictureCache: PictureCache
       // Feature 116 (Phase 7): the picture-cache always-miss switch (FR-007); `true` on the live path.
@@ -190,7 +190,7 @@ module internal RetainedRender =
 
     let private memoDependency
         (theme: Theme)
-        (boundsById: Map<string, FS.Skia.UI.Layout.LayoutBounds>)
+        (boundsById: Map<string, FS.GG.UI.Layout.LayoutBounds>)
         (path: string)
         (c: Control<'msg>)
         : obj =
@@ -230,10 +230,10 @@ module internal RetainedRender =
         (cache: TextMeasureCache)
         (enabled: bool)
         (text: string)
-        (font: FS.Skia.UI.Scene.FontSpec)
-        : FS.Skia.UI.Scene.TextMetrics * TextMeasureCache * bool =
+        (font: FS.GG.UI.Scene.FontSpec)
+        : FS.GG.UI.Scene.TextMetrics * TextMeasureCache * bool =
         if not enabled then
-            FS.Skia.UI.Scene.Scene.measureText text font, cache, false
+            FS.GG.UI.Scene.Scene.measureText text font, cache, false
         else
             let key: TextMeasureKey =
                 { Text = text; Family = font.Family; Size = font.Size; Weight = font.Weight }
@@ -243,7 +243,7 @@ module internal RetainedRender =
                 let clock = cache.Clock + 1
                 metrics, { cache with Entries = Map.add key (clock, metrics) cache.Entries; Clock = clock }, true
             | None ->
-                let metrics = FS.Skia.UI.Scene.Scene.measureText text font
+                let metrics = FS.GG.UI.Scene.Scene.measureText text font
                 let clock = cache.Clock + 1
                 let mutable entries = Map.add key (clock, metrics) cache.Entries
 
@@ -266,7 +266,7 @@ module internal RetainedRender =
     // fixed leaf payload (Color/Rect/Paint/Font) is folded via `%A` (complete for a bounded record). A
     // distinct tag per case keeps structurally-different shapes apart. Pure, total, deterministic — equal
     // scenes hash equal, any render-affecting change flips the value. Exhaustive over `SceneNode`.
-    let hashScene (scenes: FS.Skia.UI.Scene.Scene list) : uint64 =
+    let hashScene (scenes: FS.GG.UI.Scene.Scene list) : uint64 =
         let mutable h = 0xcbf29ce484222325UL // mutable: hot path / FNV-1a accumulator
         let prime = 0x100000001b3UL
         let mix (x: uint64) = h <- (h ^^^ x) * prime
@@ -421,7 +421,7 @@ module internal RetainedRender =
     // cell of the x/y grid is counted once iff any box covers it — so overlapping damage is not
     // double-counted and the result never exceeds the frame. `n` is the small dirty-rect count; integer
     // control geometry → deterministic.
-    let unionArea (boxes: FS.Skia.UI.Scene.Rect list) (frameArea: int) : int =
+    let unionArea (boxes: FS.GG.UI.Scene.Rect list) (frameArea: int) : int =
         match boxes with
         | [] -> 0
         | boxes ->
@@ -451,7 +451,7 @@ module internal RetainedRender =
     /// so it is intentionally NOT flagged); or a non-opaque paint over a multi-node group (which a
     /// layered backend composites through a `SaveLayer`). Returns the effect name (for the advisory
     /// message) or `None`. Pure; reads only the lowered scene. Advisory only — never alters output.
-    let offscreenEffect (ownScene: FS.Skia.UI.Scene.Scene list) : string option =
+    let offscreenEffect (ownScene: FS.GG.UI.Scene.Scene list) : string option =
         let mutable sawPathClip = false
         let mutable sawShadow = false
         let mutable sawLowOpacity = false
@@ -507,7 +507,7 @@ module internal RetainedRender =
     let defaultTransitionDuration = System.TimeSpan.FromMilliseconds 150.0
 
     // The longest tween duration carried by an animation (the point past which it is settled).
-    let clockDuration (anim: FS.Skia.UI.Scene.Animation) : System.TimeSpan =
+    let clockDuration (anim: FS.GG.UI.Scene.Animation) : System.TimeSpan =
         [ anim.Opacity |> Option.map (fun t -> t.Duration)
           anim.Transform |> Option.map (fun t -> t.Duration)
           anim.Color |> Option.map (fun t -> t.Duration) ]
@@ -520,36 +520,36 @@ module internal RetainedRender =
     // the framework default, eased out. End = 1.0 means a settled clock samples to opacity 1.0, so
     // `applyAt`'s identity-at-rest lowering makes the converged frame byte-identical to the static
     // render of the (now-stamped) state — FR-005 holds by construction.
-    let fadeAnimation (startOpacity: float) : FS.Skia.UI.Scene.Animation =
-        { FS.Skia.UI.Scene.Animation.empty with
+    let fadeAnimation (startOpacity: float) : FS.GG.UI.Scene.Animation =
+        { FS.GG.UI.Scene.Animation.empty with
             Opacity =
                 Some
                     { Start = startOpacity
                       End = 1.0
                       Duration = defaultTransitionDuration
-                      Easing = FS.Skia.UI.Scene.EaseOut } }
+                      Easing = FS.GG.UI.Scene.EaseOut } }
 
     // Feature 103 (R6): the prior-snapshot fade-OUT — opacity travels 1.0 → 0.0 over the same
     // framework default + easing as the fade-in, so the two layers cross at the eased midpoint. Drives
     // the `From` snapshot UNDER the next own-scene in `sampleOnPaint`. Because both layers share the
     // eased curve and lerp is linear, the fade-out is exactly the complement of the fade-in.
-    let private fadeOutAnimation: FS.Skia.UI.Scene.Animation =
-        { FS.Skia.UI.Scene.Animation.empty with
+    let private fadeOutAnimation: FS.GG.UI.Scene.Animation =
+        { FS.GG.UI.Scene.Animation.empty with
             Opacity =
                 Some
                     { Start = 1.0
                       End = 0.0
                       Duration = defaultTransitionDuration
-                      Easing = FS.Skia.UI.Scene.EaseOut } }
+                      Easing = FS.GG.UI.Scene.EaseOut } }
 
     // The clock's current sampled opacity (the displayed value a mid-flight retarget continues from).
     let currentOpacity (clock: AnimationClock) : float =
         match clock.Anim.Opacity with
-        | Some tween -> FS.Skia.UI.Scene.Tween.sample FS.Skia.UI.Scene.Animation.lerpFloat clock.Elapsed tween
+        | Some tween -> FS.GG.UI.Scene.Tween.sample FS.GG.UI.Scene.Animation.lerpFloat clock.Elapsed tween
         | None -> 1.0
 
     let clockActive (clock: AnimationClock) : bool =
-        not (FS.Skia.UI.Scene.Animation.isSettled clock.Elapsed clock.Anim)
+        not (FS.GG.UI.Scene.Animation.isSettled clock.Elapsed clock.Anim)
 
     let advance (delta: System.TimeSpan) (clock: AnimationClock) : AnimationClock =
         // Non-positive delta is a designed no-op — never rewinds (the host never emits these). A
@@ -573,7 +573,7 @@ module internal RetainedRender =
         else
             state
 
-    let updateClockForState (desired: VisualState) (priorOwn: FS.Skia.UI.Scene.Scene list) (carried: AnimationClock option) : AnimationClock option =
+    let updateClockForState (desired: VisualState) (priorOwn: FS.GG.UI.Scene.Scene list) (carried: AnimationClock option) : AnimationClock option =
         // Compare the desired (stamped) VisualState against the carried clock's Target (contract C2).
         let triggered =
             match carried, desired with
@@ -609,7 +609,7 @@ module internal RetainedRender =
         | Some c when (not (clockActive c)) && c.Target = Normal -> None
         | other -> other
 
-    let sampleOnPaint (clock: AnimationClock) (ownScene: FS.Skia.UI.Scene.Scene list) : FS.Skia.UI.Scene.Scene list =
+    let sampleOnPaint (clock: AnimationClock) (ownScene: FS.GG.UI.Scene.Scene list) : FS.GG.UI.Scene.Scene list =
         // Feature 103 (R6): a genuine cross-fade — composite two opacity-driven layers via the public
         // feature-073 `Animation.applyAt` (paint-level only; opacity, never layout). The prior state's
         // static `From` snapshot fades OUT (1→0) UNDER this frame's static `ownScene` fading IN (via
@@ -620,12 +620,12 @@ module internal RetainedRender =
         let priorLayer =
             match clock.From with
             | [] -> []
-            | nodes -> [ FS.Skia.UI.Scene.Animation.applyAt clock.Elapsed fadeOutAnimation (FS.Skia.UI.Scene.Scene.group nodes) ]
+            | nodes -> [ FS.GG.UI.Scene.Animation.applyAt clock.Elapsed fadeOutAnimation (FS.GG.UI.Scene.Scene.group nodes) ]
 
         let nextLayer =
             match ownScene with
             | [] -> []
-            | nodes -> [ FS.Skia.UI.Scene.Animation.applyAt clock.Elapsed clock.Anim (FS.Skia.UI.Scene.Scene.group nodes) ]
+            | nodes -> [ FS.GG.UI.Scene.Animation.applyAt clock.Elapsed clock.Anim (FS.GG.UI.Scene.Scene.group nodes) ]
 
         match priorLayer @ nextLayer with
         | [] -> []
@@ -660,7 +660,7 @@ module internal RetainedRender =
         walk control
         List.ofSeq diags
 
-    let init (theme: Theme) (size: FS.Skia.UI.Scene.Size) (control: Control<'msg>) : RetainedInit<'msg> =
+    let init (theme: Theme) (size: FS.GG.UI.Scene.Size) (control: Control<'msg>) : RetainedInit<'msg> =
         let layoutRoot, boundsById, layoutResult = ControlInternals.evaluateLayout size control
 
         let mutable nextId = 0UL
@@ -826,7 +826,7 @@ module internal RetainedRender =
 
     let step
         (theme: Theme)
-        (size: FS.Skia.UI.Scene.Size)
+        (size: FS.GG.UI.Scene.Size)
         (prev: RetainedRender<'msg>)
         (next: Control<'msg>)
         : RetainedRenderStep<'msg> =
@@ -859,7 +859,7 @@ module internal RetainedRender =
         let mutable textHits = 0
         let mutable textMisses = 0
 
-        let measureCached (text: string) (font: FS.Skia.UI.Scene.FontSpec) : FS.Skia.UI.Scene.TextMetrics =
+        let measureCached (text: string) (font: FS.GG.UI.Scene.FontSpec) : FS.GG.UI.Scene.TextMetrics =
             let metrics, tc', wasHit = measureTextCached tc prev.TextCacheEnabled text font
             tc <- tc'
             if wasHit then textHits <- textHits + 1 else textMisses <- textMisses + 1
@@ -911,7 +911,7 @@ module internal RetainedRender =
         // dependency was unchanged) without recomputing; a MISS recomputes and stores it. With
         // `MemoEnabled = false` (the always-miss oracle, FR-008) every node paints directly — nothing is
         // reused — so the rendered scene is byte-identical to the seam-active build (memo-on ≡ memo-off).
-        let paintOwn (path: string) (nc: Control<'msg>) : FS.Skia.UI.Scene.Scene list =
+        let paintOwn (path: string) (nc: Control<'msg>) : FS.GG.UI.Scene.Scene list =
             if prev.MemoEnabled && isMemoizable nc then
                 let dep = memoDependency theme boundsById path nc
                 let id = nc.Key |> Option.defaultValue path
@@ -926,7 +926,7 @@ module internal RetainedRender =
             else
                 ControlInternals.paintNode theme boundsById path nc
 
-        let paintFresh (path: string) (nc: Control<'msg>) : FS.Skia.UI.Scene.Scene list =
+        let paintFresh (path: string) (nc: Control<'msg>) : FS.GG.UI.Scene.Scene list =
             recomputed <- recomputed + 1
             // FR-001: a repainted node contributes its evaluated box to the damage set (`None` boxes
             // contribute no rectangle).
@@ -1118,8 +1118,8 @@ module internal RetainedRender =
         let mutable replaySkippedNodes = 0
         let mutable replayNativeBytes = 0
 
-        let countNodes (scenes: FS.Skia.UI.Scene.Scene list) =
-            scenes |> List.sumBy (fun s -> List.length (FS.Skia.UI.Scene.Scene.describe s))
+        let countNodes (scenes: FS.GG.UI.Scene.Scene list) =
+            scenes |> List.sumBy (fun s -> List.length (FS.GG.UI.Scene.Scene.describe s))
 
         let rec walkPictures (n: RetainedNode<'msg>) =
             if isCacheablePicture n.Control then

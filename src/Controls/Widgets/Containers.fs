@@ -1,6 +1,6 @@
-namespace FS.Skia.UI.Controls.Typed
+namespace FS.GG.UI.Controls.Typed
 
-open FS.Skia.UI.Controls
+open FS.GG.UI.Controls
 
 type GridProps<'msg> =
     { Id: ControlId option
@@ -71,7 +71,7 @@ module Grid =
     let view (props: GridProps<'msg>) : Widget<'msg> =
         let children = props.Children |> List.map Widget.toControl
 
-        FS.Skia.UI.Controls.Grid.create [ FS.Skia.UI.Controls.Grid.children children ]
+        FS.GG.UI.Controls.Grid.create [ FS.GG.UI.Controls.Grid.children children ]
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl
 
@@ -81,7 +81,7 @@ module Dock =
     let view (props: DockProps<'msg>) : Widget<'msg> =
         let children = props.Children |> List.map Widget.toControl
 
-        FS.Skia.UI.Controls.Dock.create [ FS.Skia.UI.Controls.Dock.children children ]
+        FS.GG.UI.Controls.Dock.create [ FS.GG.UI.Controls.Dock.children children ]
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl
 
@@ -95,9 +95,9 @@ module Wrap =
         let attrs =
             [ ContainerLowering.orientationAttr props.Orientation
               ContainerLowering.spacingAttr props.Spacing
-              FS.Skia.UI.Controls.Wrap.children children ]
+              FS.GG.UI.Controls.Wrap.children children ]
 
-        FS.Skia.UI.Controls.Wrap.create attrs
+        FS.GG.UI.Controls.Wrap.create attrs
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl
 
@@ -107,11 +107,11 @@ module Border =
 
     let view (props: BorderProps<'msg>) : Widget<'msg> =
         let attrs =
-            [ FS.Skia.UI.Controls.Border.child (Widget.toControl props.Child)
+            [ FS.GG.UI.Controls.Border.child (Widget.toControl props.Child)
               Attr.create "thickness" Layout (FloatValue props.Thickness)
               Attr.padding props.Padding ]
 
-        FS.Skia.UI.Controls.Border.create attrs
+        FS.GG.UI.Controls.Border.create attrs
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl
 
@@ -131,12 +131,12 @@ module Panel =
               | None -> () ]
 
         let attrs =
-            [ yield FS.Skia.UI.Controls.Panel.children children
+            [ yield FS.GG.UI.Controls.Panel.children children
               match slots with
               | [] -> ()
               | fills -> yield ControlInternals.slotFill fills ]
 
-        FS.Skia.UI.Controls.Panel.create attrs
+        FS.GG.UI.Controls.Panel.create attrs
         |> WidgetLowering.withKeyOpt props.Id
         |> ControlInternals.lowerSlots
         |> Widget.ofControl

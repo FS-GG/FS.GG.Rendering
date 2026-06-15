@@ -1,9 +1,9 @@
 module Feature118PresentModeTests
 
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.SkiaViewer
-open FS.Skia.UI.SkiaViewer.Host
+open FS.GG.UI.Scene
+open FS.GG.UI.SkiaViewer
+open FS.GG.UI.SkiaViewer.Host
 
 // Feature 118 — backend present-mode contract. The DirectToSwapchain *mechanism* (readback-free
 // present) is blocked upstream by SkiaSharp's managed-binding gap (SKSurface cannot wrap a

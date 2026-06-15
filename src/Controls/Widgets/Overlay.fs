@@ -1,6 +1,6 @@
-namespace FS.Skia.UI.Controls.Typed
+namespace FS.GG.UI.Controls.Typed
 
-open FS.Skia.UI.Controls
+open FS.GG.UI.Controls
 
 type TooltipProps<'msg> =
     { Id: ControlId option
@@ -29,7 +29,7 @@ module Tooltip =
     let defaults: TooltipProps<'msg> = { Id = None; Text = "" }
 
     let view (props: TooltipProps<'msg>) : Widget<'msg> =
-        FS.Skia.UI.Controls.Tooltip.create [ FS.Skia.UI.Controls.Tooltip.text props.Text ]
+        FS.GG.UI.Controls.Tooltip.create [ FS.GG.UI.Controls.Tooltip.text props.Text ]
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl
 
@@ -45,7 +45,7 @@ module Dialog =
         let children = props.Children |> List.map Widget.toControl
 
         let attrs =
-            [ yield FS.Skia.UI.Controls.Dialog.children children
+            [ yield FS.GG.UI.Controls.Dialog.children children
               match props.Title with
               | Some title -> yield Attr.create "title" Content (TextValue title)
               | None -> ()
@@ -54,7 +54,7 @@ module Dialog =
               | Some map -> yield WidgetLowering.onString "onSelected" map
               | None -> () ]
 
-        FS.Skia.UI.Controls.Dialog.create attrs
+        FS.GG.UI.Controls.Dialog.create attrs
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl
 
@@ -63,8 +63,8 @@ module Toast =
         { Id = None; Text = ""; Severity = Valid }
 
     let view (props: ToastProps<'msg>) : Widget<'msg> =
-        FS.Skia.UI.Controls.Toast.create
-            [ FS.Skia.UI.Controls.Toast.text props.Text
+        FS.GG.UI.Controls.Toast.create
+            [ FS.GG.UI.Controls.Toast.text props.Text
               Attr.validation props.Severity ]
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl
@@ -75,9 +75,9 @@ module Overlay =
 
     let view (props: OverlayProps<'msg>) : Widget<'msg> =
         let attrs =
-            [ FS.Skia.UI.Controls.Overlay.child (Widget.toControl props.Child)
+            [ FS.GG.UI.Controls.Overlay.child (Widget.toControl props.Child)
               Attr.selected props.IsOpen ]
 
-        FS.Skia.UI.Controls.Overlay.create attrs
+        FS.GG.UI.Controls.Overlay.create attrs
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl

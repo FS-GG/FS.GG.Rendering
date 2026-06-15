@@ -2,9 +2,9 @@ module ControlsInteractionTests
 
 open System
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
-open FS.Skia.UI.Controls.Typed
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
+open FS.GG.UI.Controls.Typed
 
 type Msg =
     | Save of int
@@ -70,8 +70,8 @@ let typedInteractionTests =
     testList "Typed controls interaction dispatch" [
         test "typed Button OnClick dispatches the same message as legacy onClick" {
             let typed =
-                FS.Skia.UI.Controls.Typed.Button.view
-                    { FS.Skia.UI.Controls.Typed.Button.defaults with
+                FS.GG.UI.Controls.Typed.Button.view
+                    { FS.GG.UI.Controls.Typed.Button.defaults with
                         Id = Some "save-button"
                         Text = "Save"
                         OnClick = Some(Save 1) }
@@ -82,8 +82,8 @@ let typedInteractionTests =
 
         test "typed Button with disabled state suppresses dispatch" {
             let disabled =
-                FS.Skia.UI.Controls.Typed.Button.view
-                    { FS.Skia.UI.Controls.Typed.Button.defaults with
+                FS.GG.UI.Controls.Typed.Button.view
+                    { FS.GG.UI.Controls.Typed.Button.defaults with
                         Id = Some "save-button"
                         Enabled = false
                         OnClick = Some(Save 1) }
@@ -94,8 +94,8 @@ let typedInteractionTests =
 
         test "typed Button without OnClick dispatches nothing" {
             let noHandler =
-                FS.Skia.UI.Controls.Typed.Button.view
-                    { FS.Skia.UI.Controls.Typed.Button.defaults with
+                FS.GG.UI.Controls.Typed.Button.view
+                    { FS.GG.UI.Controls.Typed.Button.defaults with
                         Id = Some "save-button"
                         Text = "Save" }
                 |> Widget.toControl
@@ -105,8 +105,8 @@ let typedInteractionTests =
 
         test "typed CheckBox OnChanged maps payload identically to legacy onChanged" {
             let typed =
-                FS.Skia.UI.Controls.Typed.CheckBox.view
-                    { FS.Skia.UI.Controls.Typed.CheckBox.defaults with
+                FS.GG.UI.Controls.Typed.CheckBox.view
+                    { FS.GG.UI.Controls.Typed.CheckBox.defaults with
                         Id = Some "agree"
                         OnChanged = Some(fun isChecked -> Changed(if isChecked then "on" else "off")) }
                 |> Widget.toControl

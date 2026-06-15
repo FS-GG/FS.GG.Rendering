@@ -16,8 +16,8 @@ module Feature101LayoutDriftGuardTests
 // substitute for any real dependency, so this is NOT synthetic evidence.
 
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
 
 // ---------------------------------------------------------------------------------------------------
 // C1 — the pure drift report (FR-002 under-coverage, FR-003 over-coverage, FR-007 human-legible)

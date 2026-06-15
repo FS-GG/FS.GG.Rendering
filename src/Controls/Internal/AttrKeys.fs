@@ -1,4 +1,4 @@
-namespace FS.Skia.UI.Controls
+namespace FS.GG.UI.Controls
 
 // Feature 105 (US3, FR-007): the closed set of control-intrinsic attribute names, as a typed
 // key so a mistyped internal name is a compile error rather than a silent runtime miss.

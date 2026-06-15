@@ -25,6 +25,6 @@ window records the observed truth (`window-visible=true`, `first-frame-presented
 ## Host-seam authority
 
 The interactive seam (`runInteractiveApp`, `InteractiveAppHost`, `PointerInteraction`, `Perf.runScript`)
-is **present in the `FS.Skia.UI.Controls.Elmish` package, not in `docs/api-surface/`** — its authority
-is the `fs-skia-controls-host` skill + `ControlsElmish.fsi` (see `scaffold-map.md`). Focus visibility is
+is **present in the `FS.GG.UI.Controls.Elmish` package, not in `docs/api-surface/`** — its authority
+is the `fs-gg-controls-host` skill + `ControlsElmish.fsi` (see `scaffold-map.md`). Focus visibility is
 the public `Focus.markFocused model.Focused (view …)` call inside `view`.

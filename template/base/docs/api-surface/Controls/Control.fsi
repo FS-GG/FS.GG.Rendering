@@ -1,4 +1,4 @@
-namespace FS.Skia.UI.Controls
+namespace FS.GG.UI.Controls
 
 /// Internal extraction seam (feature 080) — `internal` accessibility, no public-surface
 /// entry (mirrors `module internal Reconcile`); reached from `Controls.Tests` via
@@ -13,12 +13,12 @@ module internal ControlInternals =
     /// frame's layout + paint measurement and clears it afterwards; with no hook installed `measureText`
     /// is the direct un-cached `Scene.measureText` (byte-identical to pre-117). `[<ThreadStatic>]`-backed,
     /// so concurrent test steps never cross-contaminate.
-    val setMeasureTextHook: hook: (string -> FS.Skia.UI.Scene.FontSpec -> FS.Skia.UI.Scene.TextMetrics) option -> unit
+    val setMeasureTextHook: hook: (string -> FS.GG.UI.Scene.FontSpec -> FS.GG.UI.Scene.TextMetrics) option -> unit
 
     /// Feature 117 (Phase 8, FR-001/FR-004): measure text through the active cache hook when one is
     /// installed, else directly via the pure `Scene.measureText`. The six layout/paint text-measure call
     /// sites route through here so the cache spans both the layout and paint passes of one frame.
-    val measureText: text: string -> font: FS.Skia.UI.Scene.FontSpec -> FS.Skia.UI.Scene.TextMetrics
+    val measureText: text: string -> font: FS.GG.UI.Scene.FontSpec -> FS.GG.UI.Scene.TextMetrics
 
     /// Feature 097 (R2): attribute names `toLayout` reads to derive geometry (single source for the
     /// incremental dirty-set classifier; FR-003 anti-drift). See the implementation comment.
@@ -29,45 +29,45 @@ module internal ControlInternals =
     /// Builds + evaluates the nested Yoga layout, returning the root node and the absolute
     /// bounds keyed by the collision-free structural id (`Key |> defaultValue path`).
     val evaluateLayout:
-        size: FS.Skia.UI.Scene.Size ->
+        size: FS.GG.UI.Scene.Size ->
         control: Control<'msg> ->
-            FS.Skia.UI.Layout.LayoutNode * Map<string, FS.Skia.UI.Layout.LayoutBounds> * FS.Skia.UI.Layout.LayoutResult
+            FS.GG.UI.Layout.LayoutNode * Map<string, FS.GG.UI.Layout.LayoutBounds> * FS.GG.UI.Layout.LayoutResult
 
     /// Feature 097 (R2): incremental layout seam — re-measures only the `dirty` set (conservatively
     /// propagated inside `Layout.evaluateIncremental`) against the previous frame's `LayoutResult`,
     /// returning the same `root, boundsById` shape plus the new result to carry forward. `Bounds` are
     /// byte-identical to `evaluateLayout`.
     val evaluateLayoutIncremental:
-        size: FS.Skia.UI.Scene.Size ->
+        size: FS.GG.UI.Scene.Size ->
         control: Control<'msg> ->
-        previous: FS.Skia.UI.Layout.LayoutResult ->
-        dirty: Set<FS.Skia.UI.Layout.LayoutNodeId> ->
-            FS.Skia.UI.Layout.LayoutNode * Map<string, FS.Skia.UI.Layout.LayoutBounds> * FS.Skia.UI.Layout.LayoutResult
+        previous: FS.GG.UI.Layout.LayoutResult ->
+        dirty: Set<FS.GG.UI.Layout.LayoutNodeId> ->
+            FS.GG.UI.Layout.LayoutNode * Map<string, FS.GG.UI.Layout.LayoutBounds> * FS.GG.UI.Layout.LayoutResult
 
     /// Feature 091 — paint ONE node's own contribution (`here`) at its computed box; the
     /// reusable unit a retained `RenderFragment` caches. Depends only on (theme, box, the
     /// node's own Kind/Content/Attributes/has-children), never on descendants.
     val paintNode:
         theme: Theme ->
-        boundsById: Map<string, FS.Skia.UI.Layout.LayoutBounds> ->
+        boundsById: Map<string, FS.GG.UI.Layout.LayoutBounds> ->
         path: string ->
         c: Control<'msg> ->
-            FS.Skia.UI.Scene.Scene list
+            FS.GG.UI.Scene.Scene list
 
     /// Feature 091 — the evaluated absolute box of a node, by the same structural id
     /// `paintNode` looks up. `None` when the node was not laid out.
     val nodeBox:
-        boundsById: Map<string, FS.Skia.UI.Layout.LayoutBounds> ->
+        boundsById: Map<string, FS.GG.UI.Layout.LayoutBounds> ->
         path: string ->
         c: Control<'msg> ->
-            FS.Skia.UI.Scene.Rect option
+            FS.GG.UI.Scene.Rect option
 
     /// Feature 091 — the evaluated `Bounds` list `renderTree` surfaces, from a pre-evaluated
     /// `boundsById`, so the retained path emits the identical list.
     val collectBoundsWith:
-        boundsById: Map<string, FS.Skia.UI.Layout.LayoutBounds> ->
+        boundsById: Map<string, FS.GG.UI.Layout.LayoutBounds> ->
         control: Control<'msg> ->
-            (ControlId * FS.Skia.UI.Scene.Rect) list
+            (ControlId * FS.GG.UI.Scene.Rect) list
 
     /// Feature 091 — the recursive `EventBindings` list `renderTree` surfaces, factored so the
     /// retained path emits the identical list.
@@ -82,7 +82,7 @@ module internal ControlInternals =
     /// Feature 093 (E3) — dispatch a rich-family control to its faithful geometry within `box`.
     /// Exposed (internal) so the migration parity tests assert the Button/CheckBox paint is
     /// structurally-`Scene`-equal to the frozen pre-refactor procedural geometry (SC-003/SC-007).
-    val faithfulContent: theme: Theme -> box: FS.Skia.UI.Scene.Rect -> control: Control<'msg> -> FS.Skia.UI.Scene.Scene list
+    val faithfulContent: theme: Theme -> box: FS.GG.UI.Scene.Rect -> control: Control<'msg> -> FS.GG.UI.Scene.Scene list
 
     /// Feature 113 (Phase 5) — the resolved cell data the `data-grid` row/column projection
     /// (`gridGeom`) reads: the control's `items` attribute, or the sample fallback `faithfulContent`
@@ -166,7 +166,7 @@ module Control =
     /// `paintNode`, which the retained path reuses, so a full `renderTree` and the retained
     /// partial render are byte-for-byte identical (FR-005).
     val renderTree:
-        theme: Theme -> size: FS.Skia.UI.Scene.Size -> control: Control<'msg> -> ControlRenderResult<'msg>
+        theme: Theme -> size: FS.GG.UI.Scene.Size -> control: Control<'msg> -> ControlRenderResult<'msg>
     /// Resolve which rendered control (if any) contains the point (x, y), from the public
     /// `renderTree` result alone. `None` when the point lies in a gap. Layered over
     /// `Layout.hitTestComputed` against the evaluated `Bounds` (FR-012).
@@ -193,7 +193,7 @@ module Control =
 /// Builders for the `TextBlock` control — a multi-line, wrapping run of body text.
 module TextBlock =
     /// Build a `TextBlock` from its attributes; pair with `TextBlock.text` for the content. The
-    /// typed `Props` front door (`FS.Skia.UI.Controls.Typed`) is the recommended authoring path.
+    /// typed `Props` front door (`FS.GG.UI.Controls.Typed`) is the recommended authoring path.
     val create: Attr<'msg> list -> Control<'msg>
     /// Set the displayed text of a `TextBlock` (`Attr` carrying the run of characters to lay out
     /// and wrap).
@@ -203,7 +203,7 @@ module TextBlock =
 /// adjacent field.
 module Label =
     /// Build a `Label` from its attributes; pair with `Label.text` for the caption. The typed
-    /// `Props` front door (`FS.Skia.UI.Controls.Typed`) is the recommended authoring path.
+    /// `Props` front door (`FS.GG.UI.Controls.Typed`) is the recommended authoring path.
     val create: Attr<'msg> list -> Control<'msg>
     /// Set the caption text of a `Label` (`Attr` carrying the single-line string to display).
     val text: string -> Attr<'msg>
@@ -211,7 +211,7 @@ module Label =
 /// Builders for the `Image` control — a bitmap displayed from a source reference.
 module Image =
     /// Build an `Image` from its attributes; pair with `Image.source` for the bitmap. The typed
-    /// `Props` front door (`FS.Skia.UI.Controls.Typed`) is the recommended authoring path.
+    /// `Props` front door (`FS.GG.UI.Controls.Typed`) is the recommended authoring path.
     val create: Attr<'msg> list -> Control<'msg>
     /// Set the `Image` source (`Attr` carrying the path/URI string the renderer loads the bitmap
     /// from).
@@ -220,7 +220,7 @@ module Image =
 /// Builders for the `Icon` control — a glyph chosen from the icon set by name.
 module Icon =
     /// Build an `Icon` from its attributes; pair with `Icon.name` to choose the glyph. The typed
-    /// `Props` front door (`FS.Skia.UI.Controls.Typed`) is the recommended authoring path.
+    /// `Props` front door (`FS.GG.UI.Controls.Typed`) is the recommended authoring path.
     val create: Attr<'msg> list -> Control<'msg>
     /// Select which glyph an `Icon` shows (`Attr` carrying the icon-set name to look up).
     val name: string -> Attr<'msg>
@@ -228,13 +228,13 @@ module Icon =
 /// Builders for the `Separator` control — a thin divider rule between adjacent content.
 module Separator =
     /// Build a `Separator` divider from its attributes (takes no content of its own). The typed
-    /// `Props` front door (`FS.Skia.UI.Controls.Typed`) is the recommended authoring path.
+    /// `Props` front door (`FS.GG.UI.Controls.Typed`) is the recommended authoring path.
     val create: Attr<'msg> list -> Control<'msg>
 
 /// Builders for the `Badge` control — a small count/status pill overlaid on or beside content.
 module Badge =
     /// Build a `Badge` pill from its attributes; pair with `Badge.text` for its label. The typed
-    /// `Props` front door (`FS.Skia.UI.Controls.Typed`) is the recommended authoring path.
+    /// `Props` front door (`FS.GG.UI.Controls.Typed`) is the recommended authoring path.
     val create: Attr<'msg> list -> Control<'msg>
     /// Set the label shown inside a `Badge` (`Attr` carrying the short count/status string).
     val text: string -> Attr<'msg>
@@ -242,7 +242,7 @@ module Badge =
 /// Builders for the `Button` control — a clickable command surface with a text label.
 module Button =
     /// Build a `Button` from its attributes; pair with `Button.text` and `Button.onClick`. The
-    /// typed `Props` front door (`FS.Skia.UI.Controls.Typed`) is the recommended authoring path.
+    /// typed `Props` front door (`FS.GG.UI.Controls.Typed`) is the recommended authoring path.
     val create: Attr<'msg> list -> Control<'msg>
     /// Set the `Button` label (`Attr` carrying the caption rendered on the command surface).
     val text: string -> Attr<'msg>
@@ -259,7 +259,7 @@ module Button =
 /// Builders for the `IconButton` control — a compact, glyph-only clickable command.
 module IconButton =
     /// Build an `IconButton` from its attributes; pair with `IconButton.icon` and `onClick`. The
-    /// typed `Props` front door (`FS.Skia.UI.Controls.Typed`) is the recommended authoring path.
+    /// typed `Props` front door (`FS.GG.UI.Controls.Typed`) is the recommended authoring path.
     val create: Attr<'msg> list -> Control<'msg>
     /// Choose the glyph an `IconButton` shows (`Attr` carrying the icon-set name; the visual
     /// stand-in for a text label).
@@ -270,7 +270,7 @@ module IconButton =
 /// Builders for the `CheckBox` control — a labelled boolean toggle with a tick box.
 module CheckBox =
     /// Build a `CheckBox` from its attributes; pair with `CheckBox.checked'` and `onChanged`. The
-    /// typed `Props` front door (`FS.Skia.UI.Controls.Typed`) is the recommended authoring path.
+    /// typed `Props` front door (`FS.GG.UI.Controls.Typed`) is the recommended authoring path.
     val create: Attr<'msg> list -> Control<'msg>
     /// Set the label beside a `CheckBox` (`Attr` carrying the descriptive caption text).
     val text: string -> Attr<'msg>
@@ -284,7 +284,7 @@ module CheckBox =
 /// boolean).
 module Switch =
     /// Build a `Switch` from its attributes; pair with `Switch.checked'` and `onChanged`. The
-    /// typed `Props` front door (`FS.Skia.UI.Controls.Typed`) is the recommended authoring path.
+    /// typed `Props` front door (`FS.GG.UI.Controls.Typed`) is the recommended authoring path.
     val create: Attr<'msg> list -> Control<'msg>
     /// Set the on/off position of a `Switch` (`Attr.checked'`; `true` slides the thumb on). A
     /// controlled value driven from model state and reconciled via `onChanged`.
@@ -296,7 +296,7 @@ module Switch =
 /// track.
 module Slider =
     /// Build a `Slider` from its attributes; pair with `Slider.value` and `onChanged`. The typed
-    /// `Props` front door (`FS.Skia.UI.Controls.Typed`) is the recommended authoring path.
+    /// `Props` front door (`FS.GG.UI.Controls.Typed`) is the recommended authoring path.
     val create: Attr<'msg> list -> Control<'msg>
     /// Set the `Slider` position (`Attr.value`; a `float` over the control's range, default 0–1).
     /// A controlled value driven from model state and reconciled via `onChanged`.
@@ -308,7 +308,7 @@ module Slider =
 /// affordances.
 module NumericInput =
     /// Build a `NumericInput` from its attributes; pair with `NumericInput.value` and `onChanged`.
-    /// The typed `Props` front door (`FS.Skia.UI.Controls.Typed`) is the recommended path.
+    /// The typed `Props` front door (`FS.GG.UI.Controls.Typed`) is the recommended path.
     val create: Attr<'msg> list -> Control<'msg>
     /// Set the current number in a `NumericInput` (`Attr.value`; a controlled `float` driven from
     /// model state and reconciled via `onChanged`).
@@ -320,7 +320,7 @@ module NumericInput =
 /// Builders for the `TextBox` control — a single-line editable text field.
 module TextBox =
     /// Build a `TextBox` from its attributes; pair with `TextBox.value` and `onChanged`. The
-    /// typed `Props` front door (`FS.Skia.UI.Controls.Typed`) is the recommended authoring path.
+    /// typed `Props` front door (`FS.GG.UI.Controls.Typed`) is the recommended authoring path.
     val create: Attr<'msg> list -> Control<'msg>
     /// Set the current text in a `TextBox` (`Attr.value`; a controlled `string` driven from model
     /// state and reconciled via `onChanged`).
@@ -338,7 +338,7 @@ module TextBox =
 /// counterpart to `TextBox`).
 module TextArea =
     /// Build a `TextArea` from its attributes; pair with `TextArea.value` and `onChanged`. The
-    /// typed `Props` front door (`FS.Skia.UI.Controls.Typed`) is the recommended authoring path.
+    /// typed `Props` front door (`FS.GG.UI.Controls.Typed`) is the recommended authoring path.
     val create: Attr<'msg> list -> Control<'msg>
     /// Set the current multi-line text in a `TextArea` (`Attr.value`; a controlled `string`
     /// reconciled via `onChanged`).
@@ -350,7 +350,7 @@ module TextArea =
 /// a time.
 module RadioGroup =
     /// Build a `RadioGroup` from its attributes; pair with `RadioGroup.items`, `selected` and
-    /// `onChanged`. The typed `Props` front door (`FS.Skia.UI.Controls.Typed`) is recommended.
+    /// `onChanged`. The typed `Props` front door (`FS.GG.UI.Controls.Typed`) is recommended.
     val create: Attr<'msg> list -> Control<'msg>
     /// Supply the option labels of a `RadioGroup` (`Attr.items`; one radio button per `string` in
     /// the list, in order).
@@ -366,7 +366,7 @@ module RadioGroup =
 /// by default; see `Stack.orientation`).
 module Stack =
     /// Build a `Stack` container from its attributes; pair with `Stack.children` for content. The
-    /// typed `Props` front door (`FS.Skia.UI.Controls.Typed`) is the recommended authoring path.
+    /// typed `Props` front door (`FS.GG.UI.Controls.Typed`) is the recommended authoring path.
     val create: Attr<'msg> list -> Control<'msg>
     /// Supply the ordered child controls a `Stack` arranges (`Attr.children`).
     val children: Control<'msg> list -> Attr<'msg>
@@ -378,7 +378,7 @@ module Stack =
 /// matrix.
 module Grid =
     /// Build a `Grid` container from its attributes; pair with `Grid.children` for content. The
-    /// typed `Props` front door (`FS.Skia.UI.Controls.Typed`) is the recommended authoring path.
+    /// typed `Props` front door (`FS.GG.UI.Controls.Typed`) is the recommended authoring path.
     val create: Attr<'msg> list -> Control<'msg>
     /// Supply the child controls a `Grid` places into its cells (`Attr.children`).
     val children: Control<'msg> list -> Attr<'msg>
@@ -387,7 +387,7 @@ module Grid =
 /// remaining centre.
 module Dock =
     /// Build a `Dock` container from its attributes; pair with `Dock.children` for content. The
-    /// typed `Props` front door (`FS.Skia.UI.Controls.Typed`) is the recommended authoring path.
+    /// typed `Props` front door (`FS.GG.UI.Controls.Typed`) is the recommended authoring path.
     val create: Attr<'msg> list -> Control<'msg>
     /// Supply the child controls a `Dock` arranges against its edges (`Attr.children`).
     val children: Control<'msg> list -> Attr<'msg>
@@ -396,7 +396,7 @@ module Dock =
 /// line when they overflow.
 module Wrap =
     /// Build a `Wrap` container from its attributes; pair with `Wrap.children` for content. The
-    /// typed `Props` front door (`FS.Skia.UI.Controls.Typed`) is the recommended authoring path.
+    /// typed `Props` front door (`FS.GG.UI.Controls.Typed`) is the recommended authoring path.
     val create: Attr<'msg> list -> Control<'msg>
     /// Supply the child controls a `Wrap` flows and line-wraps (`Attr.children`).
     val children: Control<'msg> list -> Attr<'msg>
@@ -404,7 +404,7 @@ module Wrap =
 /// Builders for the `Border` container — wraps a single child in a stroked/padded frame.
 module Border =
     /// Build a `Border` from its attributes; pair with `Border.child` for the wrapped content. The
-    /// typed `Props` front door (`FS.Skia.UI.Controls.Typed`) is the recommended authoring path.
+    /// typed `Props` front door (`FS.GG.UI.Controls.Typed`) is the recommended authoring path.
     val create: Attr<'msg> list -> Control<'msg>
     /// Set the single control a `Border` frames (`Attr.child`; a `Border` holds exactly one
     /// child, unlike the multi-child containers).
@@ -414,7 +414,7 @@ module Border =
 /// Header/Footer slots (Feature 095).
 module Panel =
     /// Build a `Panel` from its attributes; pair with `Panel.children` for content. The typed
-    /// `Props` front door (`FS.Skia.UI.Controls.Typed`) is the recommended authoring path.
+    /// `Props` front door (`FS.GG.UI.Controls.Typed`) is the recommended authoring path.
     val create: Attr<'msg> list -> Control<'msg>
     /// Supply the child controls a `Panel` groups on its surface (`Attr.children`).
     val children: Control<'msg> list -> Attr<'msg>
@@ -422,7 +422,7 @@ module Panel =
 /// Builders for the `ProgressBar` control — a horizontal fill showing completion of a task.
 module ProgressBar =
     /// Build a `ProgressBar` from its attributes; pair with `ProgressBar.value` for the fill. The
-    /// typed `Props` front door (`FS.Skia.UI.Controls.Typed`) is the recommended authoring path.
+    /// typed `Props` front door (`FS.GG.UI.Controls.Typed`) is the recommended authoring path.
     val create: Attr<'msg> list -> Control<'msg>
     /// Set the completion of a `ProgressBar` (`Attr.value`; a `float` fraction, 0 = empty through
     /// 1 = full).
@@ -431,13 +431,13 @@ module ProgressBar =
 /// Builders for the `Spinner` control — an indeterminate busy/loading indicator.
 module Spinner =
     /// Build a `Spinner` busy indicator from its attributes (no progress value; it animates
-    /// indeterminately). The typed `Props` front door (`FS.Skia.UI.Controls.Typed`) is recommended.
+    /// indeterminately). The typed `Props` front door (`FS.GG.UI.Controls.Typed`) is recommended.
     val create: Attr<'msg> list -> Control<'msg>
 
 /// Builders for the `ValidationMessage` control — inline error/hint text shown beneath a field.
 module ValidationMessage =
     /// Build a `ValidationMessage` from its attributes; pair with `ValidationMessage.text` for the
-    /// message. The typed `Props` front door (`FS.Skia.UI.Controls.Typed`) is recommended.
+    /// message. The typed `Props` front door (`FS.GG.UI.Controls.Typed`) is recommended.
     val create: Attr<'msg> list -> Control<'msg>
     /// Set the validation text shown to the user (`Attr` carrying the error/hint `string`).
     val text: string -> Attr<'msg>
@@ -445,7 +445,7 @@ module ValidationMessage =
 /// Builders for the `Tabs` control — a row of tab headers selecting one active page.
 module Tabs =
     /// Build a `Tabs` strip from its attributes; pair with `Tabs.items`, `selected` and
-    /// `onChanged`. The typed `Props` front door (`FS.Skia.UI.Controls.Typed`) is recommended.
+    /// `onChanged`. The typed `Props` front door (`FS.GG.UI.Controls.Typed`) is recommended.
     val create: Attr<'msg> list -> Control<'msg>
     /// Supply the tab header labels of a `Tabs` strip (`Attr.items`; one tab per `string`, in
     /// order).
@@ -460,7 +460,7 @@ module Tabs =
 /// Builders for the `Menu` control — a list of selectable command entries.
 module Menu =
     /// Build a `Menu` from its attributes; pair with `Menu.items` and `onSelected`. The typed
-    /// `Props` front door (`FS.Skia.UI.Controls.Typed`) is the recommended authoring path.
+    /// `Props` front door (`FS.GG.UI.Controls.Typed`) is the recommended authoring path.
     val create: Attr<'msg> list -> Control<'msg>
     /// Supply the entry labels of a `Menu` (`Attr.items`; one selectable row per `string`, in
     /// order).
@@ -473,7 +473,7 @@ module Menu =
 /// icons, separators).
 module Toolbar =
     /// Build a `Toolbar` from its attributes; pair with `Toolbar.children` for content. The typed
-    /// `Props` front door (`FS.Skia.UI.Controls.Typed`) is the recommended authoring path.
+    /// `Props` front door (`FS.GG.UI.Controls.Typed`) is the recommended authoring path.
     val create: Attr<'msg> list -> Control<'msg>
     /// Supply the command controls a `Toolbar` lays out left-to-right (`Attr.children`).
     val children: Control<'msg> list -> Attr<'msg>
@@ -481,7 +481,7 @@ module Toolbar =
 /// Builders for the `Tooltip` control — a transient hover hint floating over content.
 module Tooltip =
     /// Build a `Tooltip` from its attributes; pair with `Tooltip.text` for the hint. The typed
-    /// `Props` front door (`FS.Skia.UI.Controls.Typed`) is the recommended authoring path.
+    /// `Props` front door (`FS.GG.UI.Controls.Typed`) is the recommended authoring path.
     val create: Attr<'msg> list -> Control<'msg>
     /// Set the hint text a `Tooltip` shows on hover (`Attr` carrying the `string` to float).
     val text: string -> Attr<'msg>
@@ -489,7 +489,7 @@ module Tooltip =
 /// Builders for the `Dialog` container — a modal surface holding a focused task's content.
 module Dialog =
     /// Build a `Dialog` from its attributes; pair with `Dialog.children` for content. The typed
-    /// `Props` front door (`FS.Skia.UI.Controls.Typed`) is the recommended authoring path.
+    /// `Props` front door (`FS.GG.UI.Controls.Typed`) is the recommended authoring path.
     val create: Attr<'msg> list -> Control<'msg>
     /// Supply the child controls a `Dialog` hosts in its modal body (`Attr.children`).
     val children: Control<'msg> list -> Attr<'msg>
@@ -497,7 +497,7 @@ module Dialog =
 /// Builders for the `Toast` control — a brief, auto-dismissing notification banner.
 module Toast =
     /// Build a `Toast` notification from its attributes; pair with `Toast.text` for the message.
-    /// The typed `Props` front door (`FS.Skia.UI.Controls.Typed`) is the recommended path.
+    /// The typed `Props` front door (`FS.GG.UI.Controls.Typed`) is the recommended path.
     val create: Attr<'msg> list -> Control<'msg>
     /// Set the message a `Toast` displays (`Attr` carrying the short notification `string`).
     val text: string -> Attr<'msg>
@@ -506,7 +506,7 @@ module Toast =
 /// single child (scrims, popovers).
 module Overlay =
     /// Build an `Overlay` from its attributes; pair with `Overlay.child` for the layered content.
-    /// The typed `Props` front door (`FS.Skia.UI.Controls.Typed`) is the recommended path.
+    /// The typed `Props` front door (`FS.GG.UI.Controls.Typed`) is the recommended path.
     val create: Attr<'msg> list -> Control<'msg>
     /// Set the single control an `Overlay` floats above the UI (`Attr.child`; an `Overlay` holds
     /// exactly one child).

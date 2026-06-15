@@ -9,15 +9,15 @@ module Feature099AnimationClockTests
 //     no animation attribute and is byte-identical to the pre-R4 static render (zero recompute).
 // The pure core (`advance` / `updateClockForState` / `sampleOnPaint` / `clockActive`) and the live
 // `RetainedRender.init`/`step` path are reached via InternalsVisibleTo (the in-assembly test IS the
-// user-reachable surface for these internal stories) — [[fs-skia-evidence-mode]].
+// user-reachable surface for these internal stories) — [[fs-gg-evidence-mode]].
 
 open System
 open System.IO
 open Expecto
 open FsCheck
 open FsCheck.FSharp
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
 
 let private theme = Theme.light
 let private size: Size = { Width = 640; Height = 480 }

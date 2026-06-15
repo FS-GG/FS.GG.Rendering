@@ -1,4 +1,4 @@
-namespace FS.Skia.UI.Controls
+namespace FS.GG.UI.Controls
 
 /// Constructors for `ControlDiagnostic` values reported by the controls runtime and validation passes.
 module Diagnostics =

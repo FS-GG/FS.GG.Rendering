@@ -6,8 +6,8 @@ module ControlsFeature086PreviewParityTests
 // additive `Bounds` field on `ControlRenderResult`.
 
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
 
 type private Msg = Clicked
 

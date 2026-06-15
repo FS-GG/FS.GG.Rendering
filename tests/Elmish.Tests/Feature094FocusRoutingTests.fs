@@ -6,14 +6,14 @@ module Feature094FocusRoutingTests
 // once (pointer-equivalent), a focused Slider navigates on the arrows, the E1 text seam is unchanged,
 // focus survives a sibling-shifting re-render via the live retained path, and the focus indicator is
 // the E3 resolver's `Focused` state (no procedural branch). Render-only / deterministic — no live
-// Vulkan window ([[fs-skia-evidence-mode]]).
+// Vulkan window ([[fs-gg-evidence-mode]]).
 
 open System
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
-open FS.Skia.UI.Controls.Elmish
-open FS.Skia.UI.KeyboardInput
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
+open FS.GG.UI.Controls.Elmish
+open FS.GG.UI.KeyboardInput
 
 type private Msg =
     | Clicked

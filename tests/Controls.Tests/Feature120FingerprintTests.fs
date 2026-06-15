@@ -6,8 +6,8 @@ module Feature120FingerprintTests
 // `[<assembly: InternalsVisibleTo("Controls.Tests")>]`. Pure/deterministic — no window.
 
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
 
 let private sceneOf (nodes: SceneNode list) : Scene list = [ { Nodes = nodes } ]
 

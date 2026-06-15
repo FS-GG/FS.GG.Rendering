@@ -1,7 +1,7 @@
-namespace FS.Skia.UI.Elmish
+namespace FS.GG.UI.Elmish
 
-open FS.Skia.UI.Scene
-open FS.Skia.UI.SkiaViewer
+open FS.GG.UI.Scene
+open FS.GG.UI.SkiaViewer
 
 type ElmishAdapterModel<'model> =
     { UserModel: 'model

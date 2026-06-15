@@ -1,6 +1,6 @@
 # Evidence formats — required shapes
 
-<!-- GENERATED from FS.Skia.UI.Build.Evidence.EvidenceFormatSchema (feature 062, FR-005).
+<!-- GENERATED from FS.GG.UI.Build.Evidence.EvidenceFormatSchema (feature 062, FR-005).
      Single-sourced from the constants the validators enforce, so this reference, the
      failing-class diagnostics, and the scans/audit/task-parser cannot drift. Do not edit
      by hand; regenerate with ./fake.sh build -t RefreshSurfaceBaselines. Currency-checked
@@ -8,7 +8,7 @@
 
 This reference lists, per evidence-format class, the complete required shape of each
 enforced readiness file — so an author can recover the contract **before** triggering a
-failure, without decompiling `FS.Skia.UI.Build.dll` or copying a sibling project (FR-005).
+failure, without decompiling `FS.GG.UI.Build.dll` or copying a sibling project (FR-005).
 
 ## readiness-contract
 

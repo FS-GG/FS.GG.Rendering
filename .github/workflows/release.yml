@@ -52,7 +52,7 @@ jobs:
           set -euo pipefail
           dotnet new install .
           work="$(mktemp -d)"
-          dotnet new fs-skia-ui --name GeneratedProduct --output "$work/GeneratedProduct"
+          dotnet new fs-gg-ui --name GeneratedProduct --output "$work/GeneratedProduct"
           echo "PRODUCT_DIR=$work/GeneratedProduct" >> "$GITHUB_ENV"
       - name: Test generated product
         run: |

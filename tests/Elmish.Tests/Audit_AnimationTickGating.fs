@@ -13,7 +13,7 @@ module Audit_AnimationTickGating
 open System
 open Expecto
 open Elmish
-open FS.Skia.UI.Elmish
+open FS.GG.UI.Elmish
 
 type private DemoModel = { Running: bool }
 

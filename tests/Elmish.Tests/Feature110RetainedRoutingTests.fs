@@ -11,11 +11,11 @@ module Feature110RetainedRoutingTests
 // full per-sample drag path.
 
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.KeyboardInput
-open FS.Skia.UI.SkiaViewer
-open FS.Skia.UI.Controls
-open FS.Skia.UI.Controls.Elmish
+open FS.GG.UI.Scene
+open FS.GG.UI.KeyboardInput
+open FS.GG.UI.SkiaViewer
+open FS.GG.UI.Controls
+open FS.GG.UI.Controls.Elmish
 
 type private Msg = Bump
 
@@ -42,13 +42,13 @@ let private unboundHost: InteractiveAppHost<int, Msg> =
 let private centreOf (h: InteractiveAppHost<int, Msg>) (model: int) (nodeId: ControlId) =
     let rendered = Control.renderTree h.Theme size (h.View size model)
 
-    let available: FS.Skia.UI.Layout.AvailableSpace =
+    let available: FS.GG.UI.Layout.AvailableSpace =
         { Width = float size.Width
-          WidthMode = FS.Skia.UI.Layout.Exactly
+          WidthMode = FS.GG.UI.Layout.Exactly
           Height = float size.Height
-          HeightMode = FS.Skia.UI.Layout.Exactly }
+          HeightMode = FS.GG.UI.Layout.Exactly }
 
-    let result = FS.Skia.UI.Layout.Layout.evaluate available rendered.Layout
+    let result = FS.GG.UI.Layout.Layout.evaluate available rendered.Layout
     let b = result.Bounds |> List.find (fun b -> b.NodeId = nodeId)
     b.Bounds.X + b.Bounds.Width / 2.0, b.Bounds.Y + b.Bounds.Height / 2.0
 

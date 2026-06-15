@@ -1,6 +1,6 @@
 ---
-name: fs-skia-generated-controls-guidance
-description: Generated product guidance for Skia-rendered FS.Skia.UI Controls, rich text, chart controls, graph controls, DataGrid, and custom wrappers.
+name: fs-gg-generated-controls-guidance
+description: Generated product guidance for Skia-rendered FS.GG.UI Controls, rich text, chart controls, graph controls, DataGrid, and custom wrappers.
 ---
 
 # Generated Controls
@@ -14,7 +14,7 @@ custom wrappers.
 
 ## Public Contract
 
-Reference `FS.Skia.UI.Controls` and build `Control<'msg>` values with
+Reference `FS.GG.UI.Controls` and build `Control<'msg>` values with
 module-per-control `create` functions and declarative attributes.
 DataGrid is a data control with product-owned rows, columns, selection, focus,
 and viewport state.
@@ -70,14 +70,14 @@ Use `GraphView.create`, `BarChart.create`, `PieChart.create`, and
 graph or chart variants.
 
 When the generated product also selects Elmish program integration, use the
-`FS.Skia.UI.Controls.Elmish` adapter at the product edge for commands and
+`FS.GG.UI.Controls.Elmish` adapter at the product edge for commands and
 subscriptions.
 
 ## Capability surface — E1–E5 (live dispatch → lookless slot composition)
 
 The Controls runtime is a declarative-retained MVU core: your generated product
 writes a single `view : 'model -> Control<'msg>` (or builds `Widget<'msg>` through
-the typed front door `FS.Skia.UI.Controls.Typed`), and the framework supplies five
+the typed front door `FS.GG.UI.Controls.Typed`), and the framework supplies five
 composable, **all-shipped** capabilities. None of them is a data binding,
 `DataContext`, or lookless `ControlTemplate` — those remain permanent non-goals.
 
@@ -88,8 +88,8 @@ loop routes a `ControlEvent` to it through `Control.dispatch`, returning the `'m
 your `update` folds in.
 
 ```fsharp
-open FS.Skia.UI.Controls
-open FS.Skia.UI.Controls.Typed
+open FS.GG.UI.Controls
+open FS.GG.UI.Controls.Typed
 
 let saveButton =
     Button.view { Button.defaults with Id = Some "save"; Text = "Save"; OnClick = Some SaveRequested }
@@ -189,7 +189,7 @@ docs, or framework implementation projects.
 Users moving from the legacy Charts package should replace chart declarations
 with Controls `LineChart`, `BarChart`, `PieChart`, `ScatterPlot`, `GraphView`,
 and `DataGrid` declarations. There is no compatibility shim; generated
-products should use `FS.Skia.UI.Controls` directly.
+products should use `FS.GG.UI.Controls` directly.
 
 ## Persistent problems
 
@@ -203,8 +203,8 @@ rather than hard-failing the phase.
 
 ## Related
 
-- [[fs-skia-ui-widgets]] — the product-skills counterpart for generated controls.
-- [[fs-skia-elmish]] — wire control messages through the pure adapter at the edge.
+- [[fs-gg-ui-widgets]] — the product-skills counterpart for generated controls.
+- [[fs-gg-elmish]] — wire control messages through the pure adapter at the edge.
 
 ## Sources / links
 

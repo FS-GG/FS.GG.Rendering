@@ -1,6 +1,6 @@
-namespace FS.Skia.UI.Controls.Typed
+namespace FS.GG.UI.Controls.Typed
 
-open FS.Skia.UI.Controls
+open FS.GG.UI.Controls
 
 type ButtonIntent =
     | Primary
@@ -66,7 +66,7 @@ module TextBlock =
     let defaults: TextBlockProps<'msg> = { Id = None; Text = "" }
 
     let view (props: TextBlockProps<'msg>) : Widget<'msg> =
-        FS.Skia.UI.Controls.TextBlock.create [ FS.Skia.UI.Controls.TextBlock.text props.Text ]
+        FS.GG.UI.Controls.TextBlock.create [ FS.GG.UI.Controls.TextBlock.text props.Text ]
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl
 
@@ -93,8 +93,8 @@ module Button =
               | None -> () ]
 
         let attrs =
-            [ yield FS.Skia.UI.Controls.Button.text props.Text
-              yield FS.Skia.UI.Controls.Button.enabled props.Enabled
+            [ yield FS.GG.UI.Controls.Button.text props.Text
+              yield FS.GG.UI.Controls.Button.enabled props.Enabled
               yield Attr.style (LegacyControls.intentStyle props.Intent)
               // Feature 093 (E3): `Classes = []` lowers to NO style attribute (byte-identical to
               // the pre-feature lowering, A1); a non-empty list attaches the ordered classes.
@@ -107,10 +107,10 @@ module Button =
               | [] -> ()
               | fills -> yield ControlInternals.slotFill fills
               match props.OnClick with
-              | Some msg -> yield FS.Skia.UI.Controls.Button.onClick msg
+              | Some msg -> yield FS.GG.UI.Controls.Button.onClick msg
               | None -> () ]
 
-        FS.Skia.UI.Controls.Button.create attrs
+        FS.GG.UI.Controls.Button.create attrs
         |> WidgetLowering.withKeyOpt props.Id
         |> ControlInternals.lowerSlots
         |> Widget.ofControl
@@ -125,17 +125,17 @@ module CheckBox =
 
     let view (props: CheckBoxProps<'msg>) : Widget<'msg> =
         let attrs =
-            [ yield FS.Skia.UI.Controls.CheckBox.text props.Text
-              yield FS.Skia.UI.Controls.CheckBox.checked' props.Checked
+            [ yield FS.GG.UI.Controls.CheckBox.text props.Text
+              yield FS.GG.UI.Controls.CheckBox.checked' props.Checked
               // Feature 093 (E3): `Classes = []` lowers to NO style attribute (byte-identical, A1).
               match props.Classes with
               | [] -> ()
               | classes -> yield Attr.styleClasses classes
               match props.OnChanged with
-              | Some map -> yield FS.Skia.UI.Controls.CheckBox.onChanged map
+              | Some map -> yield FS.GG.UI.Controls.CheckBox.onChanged map
               | None -> () ]
 
-        FS.Skia.UI.Controls.CheckBox.create attrs
+        FS.GG.UI.Controls.CheckBox.create attrs
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl
 
@@ -152,8 +152,8 @@ module Stack =
         let attrs =
             [ LegacyControls.orientationAttr props.Orientation
               LegacyControls.spacingAttr props.Spacing
-              FS.Skia.UI.Controls.Stack.children children ]
+              FS.GG.UI.Controls.Stack.children children ]
 
-        FS.Skia.UI.Controls.Stack.create attrs
+        FS.GG.UI.Controls.Stack.create attrs
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl

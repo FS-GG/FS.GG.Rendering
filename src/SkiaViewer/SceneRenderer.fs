@@ -1,4 +1,4 @@
-namespace FS.Skia.UI.SkiaViewer
+namespace FS.GG.UI.SkiaViewer
 
 #nowarn "44"
 #nowarn "3261"
@@ -7,7 +7,7 @@ namespace FS.Skia.UI.SkiaViewer
 open System
 open System.IO
 open SkiaSharp
-open FS.Skia.UI.Scene
+open FS.GG.UI.Scene
 
 /// Single shared scene painter (feature 063, FR-001/002). Both the interactive
 /// `GlHost.drawScene` and the image-evidence `drawScreenshotScene` delegate to

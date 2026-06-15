@@ -6,7 +6,7 @@ module Feature116DamageTests
 // A localized visual change reports a small region (the changed control's box, not the whole frame); a
 // theme switch (all paint invalidated) reports frame-spanning damage (every node repainted); an idle
 // frame reports `0/0/0`; the integer counts are deterministic across runs. Render-only / deterministic
-// — no live Vulkan window ([[fs-skia-evidence-mode]]).
+// — no live Vulkan window ([[fs-gg-evidence-mode]]).
 //
 // DirtyArea definition (research §a, pinned in readiness/damage-metrics-authority.md): the summed
 // integer w*h over the DISTINCT repainted boxes. A localized change covers only the changed box
@@ -14,8 +14,8 @@ module Feature116DamageTests
 // is frame-spanning (≫ the localized area).
 
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
 
 let private theme = Theme.light
 let private size: Size = { Width = 640; Height = 480 }

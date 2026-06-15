@@ -3,8 +3,8 @@ module ControlsRenderTreeTests
 // Feature 085 US1 — Control.renderTree faithful nested-tree rendering (SC-001, FR-001/002/003).
 
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
 
 type private Msg = Clicked
 

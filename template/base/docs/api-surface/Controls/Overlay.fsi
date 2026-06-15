@@ -1,6 +1,6 @@
-namespace FS.Skia.UI.Controls.Typed
+namespace FS.GG.UI.Controls.Typed
 
-open FS.Skia.UI.Controls
+open FS.GG.UI.Controls
 
 /// Immutable, compiler-checked authoring surface for a tooltip. `text` required.
 type TooltipProps<'msg> =

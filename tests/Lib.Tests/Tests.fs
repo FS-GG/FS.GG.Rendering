@@ -1,12 +1,12 @@
-module FS.Skia.UI.Tests
+module FS.GG.UI.Tests
 
 open System
 open System.Diagnostics
 open System.IO
 open Elmish
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.SkiaViewer.Host
+open FS.GG.UI.Scene
+open FS.GG.UI.SkiaViewer.Host
 
 type CounterMsg =
     | Increment
@@ -451,7 +451,7 @@ let us1ContractTests =
                 Scene.rectangleWithPaint { X = 0.0; Y = 0.0; Width = 40.0; Height = 20.0 } diagnosticPaint
                 |> Scene.diagnostics
 
-            // The split FS.Skia.UI.Scene vocabulary is FSharp.Core-only: it diagnoses pure declaration
+            // The split FS.GG.UI.Scene vocabulary is FSharp.Core-only: it diagnoses pure declaration
             // problems (an empty dash path-effect) but no longer performs SkiaSharp-backed shader/font
             // capability probing — that host-level diagnosis travels with the viewer host.
             Expect.isNonEmpty diagnostics "an empty dash path-effect declaration is diagnosed"
@@ -485,7 +485,7 @@ let us1ContractTests =
 
             // The lean scene vocabulary validates image-resource existence; SkiaSharp-backed font
             // availability and path-structure validation are host-level concerns that no longer live
-            // in FS.Skia.UI.Scene.
+            // in FS.GG.UI.Scene.
             Expect.exists diagnostics (fun d -> d.Message.Contains "Invalid image resource") "missing image reports an invalid resource"
         }
 

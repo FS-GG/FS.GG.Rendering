@@ -1,7 +1,7 @@
 module Audit_AnimationSampling
 
 // Feature 006 (Verify Imported Mechanisms) — US2 audit of the real
-// `FS.Skia.UI.Scene.Animation` sampling seam (`applyAt` / `sampleFrames` /
+// `FS.GG.UI.Scene.Animation` sampling seam (`applyAt` / `sampleFrames` /
 // `isSettled`). These tests exercise the SHIPPED module (no stubs, no shims):
 //
 //   * T006 scaffold sanity   — the seam is reachable from the test assembly.
@@ -21,7 +21,7 @@ module Audit_AnimationSampling
 
 open System
 open Expecto
-open FS.Skia.UI.Scene
+open FS.GG.UI.Scene
 
 let private ms (n: float) = TimeSpan.FromMilliseconds n
 

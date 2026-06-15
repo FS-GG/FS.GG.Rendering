@@ -2,7 +2,7 @@ module ControlsDataGridTests
 
 open System.Diagnostics
 open Expecto
-open FS.Skia.UI.Controls
+open FS.GG.UI.Controls
 
 type GridMsg =
     | RowSelected of string

@@ -8,10 +8,10 @@ module Feature098DispatchTests
 // container-keyed recovery stay byte-identical to 090, and a MapPointer-only consumer is unchanged.
 
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
-open FS.Skia.UI.Controls.Elmish
-open FS.Skia.UI.SkiaViewer
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
+open FS.GG.UI.Controls.Elmish
+open FS.GG.UI.SkiaViewer
 
 type private Msg =
     | Inc
@@ -53,13 +53,13 @@ let private pointer phase x y : ViewerPointerInput =
 let private centreOf (host: InteractiveAppHost<Model, Msg>) (model: Model) (nodeId: ControlId) =
     let rendered = Control.renderTree host.Theme size (host.View size model)
 
-    let available: FS.Skia.UI.Layout.AvailableSpace =
+    let available: FS.GG.UI.Layout.AvailableSpace =
         { Width = float size.Width
-          WidthMode = FS.Skia.UI.Layout.Exactly
+          WidthMode = FS.GG.UI.Layout.Exactly
           Height = float size.Height
-          HeightMode = FS.Skia.UI.Layout.Exactly }
+          HeightMode = FS.GG.UI.Layout.Exactly }
 
-    let result = FS.Skia.UI.Layout.Layout.evaluate available rendered.Layout
+    let result = FS.GG.UI.Layout.Layout.evaluate available rendered.Layout
     let b = result.Bounds |> List.find (fun b -> b.NodeId = nodeId)
     b.Bounds.X + b.Bounds.Width / 2.0, b.Bounds.Y + b.Bounds.Height / 2.0
 

@@ -1,9 +1,9 @@
-namespace FS.Skia.UI.SkiaViewer.Host
+namespace FS.GG.UI.SkiaViewer.Host
 
 open System
 open Elmish
-open FS.Skia.UI.Scene
-open FS.Skia.UI.SkiaViewer
+open FS.GG.UI.Scene
+open FS.GG.UI.SkiaViewer
 
 type DiagnosticOptions =
     { Verbose: bool }

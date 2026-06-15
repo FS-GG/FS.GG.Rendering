@@ -16,8 +16,8 @@ module Audit_ReplayCache
 
 open Expecto
 open SkiaSharp
-open FS.Skia.UI.Scene
-open FS.Skia.UI.SkiaViewer
+open FS.GG.UI.Scene
+open FS.GG.UI.SkiaViewer
 
 // --- fixtures (mirroring Feature120ReplayCacheTests) -------------------------------------------------
 

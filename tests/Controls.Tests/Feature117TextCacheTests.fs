@@ -8,11 +8,11 @@ module Feature117TextCacheTests
 // always-miss oracle (`enabled = false`) produces identical measured values (cache-on ≡ cache-off,
 // FR-004); empty/whitespace text caches without error; and a `fittedFontSize` caption's distinct
 // candidate sizes are distinct keys with the chosen size unchanged. Render-only / deterministic
-// ([[fs-skia-evidence-mode]]); the byte-identity authority is the un-cached measure ([[fs-skia-reconciliation]]).
+// ([[fs-gg-evidence-mode]]); the byte-identity authority is the un-cached measure ([[fs-gg-reconciliation]]).
 
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
 
 let private theme = Theme.light
 let private size: Size = { Width = 640; Height = 480 }

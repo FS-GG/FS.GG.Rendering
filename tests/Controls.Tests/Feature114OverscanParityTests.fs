@@ -6,8 +6,8 @@ module Feature114OverscanParityTests
 // adjacent rows are added, the visible region is unchanged, and no rows are fabricated or duplicated.
 
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
 
 let private columns: DataGridColumn list =
     [ { Key = "name"; Header = "Name"; Width = 200.0; ColumnType = TextColumn }

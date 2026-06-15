@@ -13,8 +13,8 @@ open System.IO
 open Expecto
 open FsCheck
 open FsCheck.FSharp
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
 
 let private theme = Theme.light
 let private size: Size = { Width = 640; Height = 480 }
@@ -394,7 +394,7 @@ let us4 =
 // =============================================================================================
 // Evidence capture (T017 / T021) — writes the real offscreen artifacts the contract requires,
 // from the WIRED path itself (this assembly has InternalsVisibleTo access to RetainedRender).
-// Render-only / deterministic: no live Vulkan window ([[fs-skia-evidence-mode]]). The readiness
+// Render-only / deterministic: no live Vulkan window ([[fs-gg-evidence-mode]]). The readiness
 // dir is located deterministically from the source file location.
 // =============================================================================================
 
@@ -419,7 +419,7 @@ module private Evidence =
     /// yields a decodable image regardless of GPU; the hash is written to a `.capability-hash`
     /// sidecar and `decodable` is reported `false`. A real pixel PNG would need the windowed
     /// render-target path (`SkiaViewer.captureScreenshotEvidence`), which is out of scope here
-    /// ([[fs-skia-evidence-mode]]: a hash must never be presented as a decodable image).
+    /// ([[fs-gg-evidence-mode]]: a hash must never be presented as a decodable image).
     let writeImage (basePath: string) (scene: Scene) : bool =
         match SceneEvidence.renderPng size scene with
         | Ok bytes when isPng bytes ->
@@ -473,7 +473,7 @@ let evidence =
                         "readback-authoritative=false"
                         "readback-note=SceneEvidence.renderPng/renderReadbackEvidence are deterministic CAPABILITY-hash functions (size + sorted scene-capability descriptors), NOT pixel encoders, so they emit no decodable PNG and equal hashes mean equal capability sets (not identical pixels) — this is independent of the GPU (the environment HAS one). The AUTHORITATIVE parity proof is the pure structural equality of the ControlRenderResult.Scene values (wired == full rebuild), asserted by the test. A real pixel PNG would require the windowed render-target path (SkiaViewer.captureScreenshotEvidence), out of scope here."
                         "authoritative-test=Feature091RetainedRenderTests/091 US3 partial update + golden parity"
-                        "note=wired Render.Scene is byte-identical to Control.renderTree next (zero diff); no live Vulkan window required ([[fs-skia-evidence-mode]])."
+                        "note=wired Render.Scene is byte-identical to Control.renderTree next (zero diff); no live Vulkan window required ([[fs-gg-evidence-mode]])."
                         "" ]
               )
 

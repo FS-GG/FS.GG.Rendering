@@ -1,11 +1,11 @@
-namespace FS.Skia.UI.Controls.Typed
+namespace FS.GG.UI.Controls.Typed
 
 open System
-open FS.Skia.UI.Controls
-open FS.Skia.UI.Scene
+open FS.GG.UI.Controls
+open FS.GG.UI.Scene
 
 /// One palette entry for a `ColorPicker`. `Color` is the reused
-/// `FS.Skia.UI.Scene.Color` (no new dependency, no hex string); `Name` is the
+/// `FS.GG.UI.Scene.Color` (no new dependency, no hex string); `Name` is the
 /// accessible label and selection identity.
 type ColorSwatch = { Name: string; Color: Color }
 

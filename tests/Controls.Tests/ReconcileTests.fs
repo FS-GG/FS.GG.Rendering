@@ -1,7 +1,7 @@
 module ReconcileTests
 
 // Feature 067 — internal keyed reconciliation. These tests reach the
-// `module internal Reconcile` in FS.Skia.UI.Controls via
+// `module internal Reconcile` in FS.GG.UI.Controls via
 // `[<assembly: InternalsVisibleTo("Controls.Tests")>]`. Per the feature's
 // vertical-slice rule, the in-assembly Expecto/FsCheck test IS the
 // user-reachable surface for these internal-only user stories. Authored
@@ -15,7 +15,7 @@ module ReconcileTests
 open Expecto
 open FsCheck
 open FsCheck.FSharp
-open FS.Skia.UI.Controls
+open FS.GG.UI.Controls
 
 // --- builders -------------------------------------------------------------
 

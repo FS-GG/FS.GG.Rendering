@@ -11,8 +11,8 @@ module Feature093ParityTests
 
 open System.IO
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
 
 let private box: Rect = { X = 10.0; Y = 40.0; Width = 284.0; Height = 92.0 }
 

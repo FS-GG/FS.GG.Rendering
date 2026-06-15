@@ -1,21 +1,21 @@
-# FS.Skia.UI.SkiaViewer
+# FS.GG.UI.SkiaViewer
 
-Skia viewer host workflow contracts for FS.Skia.UI V3 products.
+Skia viewer host workflow contracts for FS.GG.UI V3 products.
 
-`FS.Skia.UI.SkiaViewer` is one of the **FS.Skia.UI** distribution packages — an F# / Elmish UI and 2D
+`FS.GG.UI.SkiaViewer` is one of the **FS.GG.UI** distribution packages — an F# / Elmish UI and 2D
 scene-graph framework for .NET 10 desktop, rendered through Vulkan + SkiaSharp.
 
 ## Install
 
 ```bash
-dotnet add package FS.Skia.UI.SkiaViewer
+dotnet add package FS.GG.UI.SkiaViewer
 ```
 
-Or scaffold a full governed project that wires the FS.Skia.UI packages together:
+Or scaffold a full governed project that wires the FS.GG.UI packages together:
 
 ```bash
-dotnet new install FS.Skia.UI.Template
-dotnet new fs-skia-ui -o MyApp
+dotnet new install FS.GG.UI.Template
+dotnet new fs-gg-ui -o MyApp
 ```
 
 ## Usage
@@ -25,14 +25,14 @@ that has no usable desktop session (or fails to present) reports a typed `Viewer
 than throwing — match on it instead of assuming success.
 
 ```fsharp
-open FS.Skia.UI.Scene
-open FS.Skia.UI.SkiaViewer
+open FS.GG.UI.Scene
+open FS.GG.UI.SkiaViewer
 
 let options: ViewerOptions =
     { Title = "My App"
       InitialSize = { Width = 1280; Height = 720 } }
 
-// The rendered content is any SceneNode from FS.Skia.UI.Scene.
+// The rendered content is any SceneNode from FS.GG.UI.Scene.
 let scene: SceneNode = Rectangle((0.0, 0.0, 1280.0, 720.0), Colors.white)
 
 match Viewer.run options scene with
@@ -58,14 +58,14 @@ same `Result<ViewerLaunchOutcome, ViewerRunFailure>`.
   session and the renderer/keyboard/window capabilities currently available.
 - **`ViewerOptions`, `ViewerRunRequest`, `GeneratedAppHost<'model,'msg>`** — the core input
   contracts: window title/size, bounded-run target plus diagnostics, and the Elmish app surface.
-- **`FS.Skia.UI.SkiaViewer.Host.Viewer`** — the lower-level Elmish host edge (`create`,
+- **`FS.GG.UI.SkiaViewer.Host.Viewer`** — the lower-level Elmish host edge (`create`,
   `withSubscription` / `withEventMapping` / `withEffectMapping`, `run`) over `ViewerProgram<'model,'msg>`.
 - **`Host.Diagnostics`** — constructors for structured `RenderDiagnostic` values (`vulkanUnavailable`,
   `unsupportedPlatform`, `frameRenderFailed`, `startupFailed`, and more), keyed by `DiagnosticStage`.
 
 ## Versioning
 
-All `FS.Skia.UI.*` libraries share one version and move together. In a generated project a
+All `FS.GG.UI.*` libraries share one version and move together. In a generated project a
 single `<FsSkiaUiVersion>` in `Directory.Packages.props` pins every package — upgrading is one
 edit; see `docs/UPGRADING.md`. Pre-release versions use a `-preview.N` suffix.
 

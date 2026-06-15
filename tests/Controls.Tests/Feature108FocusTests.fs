@@ -4,10 +4,10 @@ module Feature108FocusTests
 // control whose identity (`Key ?? structural path`) equals the focused id, leaving every other
 // control untouched, byte-identical when `None`, and never overriding a consumer-set non-Normal
 // state. The in-assembly test IS the user-reachable surface for this pure transition
-// ([[fs-skia-ui-widgets]]). Red on the pre-108 build (no `markFocused`).
+// ([[fs-gg-ui-widgets]]). Red on the pre-108 build (no `markFocused`).
 
 open Expecto
-open FS.Skia.UI.Controls
+open FS.GG.UI.Controls
 
 // Last-writer read of a control's VisualState over the PUBLIC attribute surface (mirrors the
 // renderer's `visualStateOf`), so the test does not depend on any internal helper.

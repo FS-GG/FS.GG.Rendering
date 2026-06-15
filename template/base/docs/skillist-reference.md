@@ -14,23 +14,23 @@ ids resolved from the live registry and the closed `owns:`→implied-skill table
 
 | skillist id (`name:`) | resolved SKILL.md path |
 |---|---|
-| `fs-skia-controls-host` | .agents/skills/fs-skia-controls-host/SKILL.md |
-| `fs-skia-design-tokens` | .agents/skills/fs-skia-design-tokens/SKILL.md |
-| `fs-skia-elmish` | src/Elmish/skill/SKILL.md |
-| `fs-skia-evidence-mode` | .agents/skills/fs-skia-evidence-mode/SKILL.md |
-| `fs-skia-generated-controls-guidance` | template/fragments/controls/skill/SKILL.md |
-| `fs-skia-keyboard-input` | src/KeyboardInput/skill/SKILL.md |
-| `fs-skia-layout` | src/Layout/skill/SKILL.md |
-| `fs-skia-layout-readability` | .agents/skills/fs-skia-layout-readability/SKILL.md |
-| `fs-skia-reconciliation` | .agents/skills/fs-skia-reconciliation/SKILL.md |
-| `fs-skia-samples` | template/fragments/samples/skill/SKILL.md |
-| `fs-skia-scene` | src/Scene/skill/SKILL.md |
-| `fs-skia-skiaviewer` | src/SkiaViewer/skill/SKILL.md |
-| `fs-skia-template-update` | .agents/skills/fs-skia-template-update/SKILL.md |
-| `fs-skia-testing` | src/Testing/skill/SKILL.md |
-| `fs-skia-typed-controls` | .agents/skills/fs-skia-typed-controls/SKILL.md |
-| `fs-skia-ui-widgets` | src/Controls/skill/SKILL.md |
-| `fs-skia-viewer-host` | .agents/skills/fs-skia-viewer-host/SKILL.md |
+| `fs-gg-controls-host` | .agents/skills/fs-gg-controls-host/SKILL.md |
+| `fs-gg-design-tokens` | .agents/skills/fs-gg-design-tokens/SKILL.md |
+| `fs-gg-elmish` | src/Elmish/skill/SKILL.md |
+| `fs-gg-evidence-mode` | .agents/skills/fs-gg-evidence-mode/SKILL.md |
+| `fs-gg-generated-controls-guidance` | template/fragments/controls/skill/SKILL.md |
+| `fs-gg-keyboard-input` | src/KeyboardInput/skill/SKILL.md |
+| `fs-gg-layout` | src/Layout/skill/SKILL.md |
+| `fs-gg-layout-readability` | .agents/skills/fs-gg-layout-readability/SKILL.md |
+| `fs-gg-reconciliation` | .agents/skills/fs-gg-reconciliation/SKILL.md |
+| `fs-gg-samples` | template/fragments/samples/skill/SKILL.md |
+| `fs-gg-scene` | src/Scene/skill/SKILL.md |
+| `fs-gg-skiaviewer` | src/SkiaViewer/skill/SKILL.md |
+| `fs-gg-template-update` | .agents/skills/fs-gg-template-update/SKILL.md |
+| `fs-gg-testing` | src/Testing/skill/SKILL.md |
+| `fs-gg-typed-controls` | .agents/skills/fs-gg-typed-controls/SKILL.md |
+| `fs-gg-ui-widgets` | src/Controls/skill/SKILL.md |
+| `fs-gg-viewer-host` | .agents/skills/fs-gg-viewer-host/SKILL.md |
 | `fsdocs-api-doc` | .agents/skills/fsdocs-api-doc/SKILL.md |
 | `fsdocs-build` | .agents/skills/fsdocs-build/SKILL.md |
 | `fsdocs-examples` | .agents/skills/fsdocs-examples/SKILL.md |
@@ -65,15 +65,15 @@ ids resolved from the live registry and the closed `owns:`→implied-skill table
 
 | directory-like name | accepted id (`name:`) | SKILL.md |
 |---|---|---|
-| `Controls` | `fs-skia-ui-widgets` | src/Controls/skill/SKILL.md |
-| `Elmish` | `fs-skia-elmish` | src/Elmish/skill/SKILL.md |
-| `KeyboardInput` | `fs-skia-keyboard-input` | src/KeyboardInput/skill/SKILL.md |
-| `Layout` | `fs-skia-layout` | src/Layout/skill/SKILL.md |
-| `Scene` | `fs-skia-scene` | src/Scene/skill/SKILL.md |
-| `SkiaViewer` | `fs-skia-skiaviewer` | src/SkiaViewer/skill/SKILL.md |
-| `Testing` | `fs-skia-testing` | src/Testing/skill/SKILL.md |
-| `controls` | `fs-skia-generated-controls-guidance` | template/fragments/controls/skill/SKILL.md |
-| `samples` | `fs-skia-samples` | template/fragments/samples/skill/SKILL.md |
+| `Controls` | `fs-gg-ui-widgets` | src/Controls/skill/SKILL.md |
+| `Elmish` | `fs-gg-elmish` | src/Elmish/skill/SKILL.md |
+| `KeyboardInput` | `fs-gg-keyboard-input` | src/KeyboardInput/skill/SKILL.md |
+| `Layout` | `fs-gg-layout` | src/Layout/skill/SKILL.md |
+| `Scene` | `fs-gg-scene` | src/Scene/skill/SKILL.md |
+| `SkiaViewer` | `fs-gg-skiaviewer` | src/SkiaViewer/skill/SKILL.md |
+| `Testing` | `fs-gg-testing` | src/Testing/skill/SKILL.md |
+| `controls` | `fs-gg-generated-controls-guidance` | template/fragments/controls/skill/SKILL.md |
+| `samples` | `fs-gg-samples` | template/fragments/samples/skill/SKILL.md |
 
 ## Closed `owns:` vocabulary → implied skill
 

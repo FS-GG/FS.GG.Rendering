@@ -3,7 +3,7 @@
 Adds Elmish adapter package references and generated product Elmish guidance.
 
 Generated products that select Elmish and Controls should reference
-`FS.Skia.UI.Controls.Elmish` for command, subscription, and program adapter
+`FS.GG.UI.Controls.Elmish` for command, subscription, and program adapter
 wiring. Base Controls views remain generic over product messages and return
 `Control<'msg>`.
 
@@ -12,8 +12,8 @@ subscriptions in reusable guidance; generated examples may replace `'msg` with
 the product `Msg` type.
 
 ```fsharp
-open FS.Skia.UI.Controls
-open FS.Skia.UI.Controls.Elmish
+open FS.GG.UI.Controls
+open FS.GG.UI.Controls.Elmish
 
 let init () : Model * AdapterCommand<Msg> =
     initialModel, []

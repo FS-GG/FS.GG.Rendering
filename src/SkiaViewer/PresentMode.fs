@@ -1,4 +1,4 @@
-namespace FS.Skia.UI.SkiaViewer
+namespace FS.GG.UI.SkiaViewer
 
 [<RequireQualifiedAccess>]
 /// Selects how the live viewer presents each rendered frame on the OpenGL host backend

@@ -42,14 +42,14 @@ let preservesXmlSummaries (reference: string) =
     |> Array.exists (fun line -> line.TrimStart().StartsWith("///", StringComparison.Ordinal))
 
 let requiredPackages =
-    [ "FS.Skia.UI.Scene", [ "src/Scene/Scene.fsi" ]
-      "FS.Skia.UI.SkiaViewer", [ "src/SkiaViewer/SkiaViewer.fsi" ]
-      "FS.Skia.UI.Elmish", [ "src/Elmish/Elmish.fsi" ]
-      "FS.Skia.UI.KeyboardInput", [ "src/KeyboardInput/KeyboardInput.fsi" ]
-      "FS.Skia.UI.Layout", [ "src/Layout/Layout.fsi"; "src/Layout/Types.fsi"; "src/Layout/Graph.fsi"; "src/Layout/GraphValidation.fsi" ]
-      "FS.Skia.UI.Controls", [ "src/Controls/Types.fsi"; "src/Controls/Control.fsi"; "src/Controls/Attributes.fsi"; "src/Controls/DataGrid.fsi"; "src/Controls/Charts.fsi"; "src/Controls/TextInput.fsi"; "src/Controls/RichText.fsi" ]
-      "FS.Skia.UI.Controls.Elmish", [ "src/Controls.Elmish/ControlsElmish.fsi" ]
-      "FS.Skia.UI.Testing", [ "src/Testing/Testing.fsi" ] ]
+    [ "FS.GG.UI.Scene", [ "src/Scene/Scene.fsi" ]
+      "FS.GG.UI.SkiaViewer", [ "src/SkiaViewer/SkiaViewer.fsi" ]
+      "FS.GG.UI.Elmish", [ "src/Elmish/Elmish.fsi" ]
+      "FS.GG.UI.KeyboardInput", [ "src/KeyboardInput/KeyboardInput.fsi" ]
+      "FS.GG.UI.Layout", [ "src/Layout/Layout.fsi"; "src/Layout/Types.fsi"; "src/Layout/Graph.fsi"; "src/Layout/GraphValidation.fsi" ]
+      "FS.GG.UI.Controls", [ "src/Controls/Types.fsi"; "src/Controls/Control.fsi"; "src/Controls/Attributes.fsi"; "src/Controls/DataGrid.fsi"; "src/Controls/Charts.fsi"; "src/Controls/TextInput.fsi"; "src/Controls/RichText.fsi" ]
+      "FS.GG.UI.Controls.Elmish", [ "src/Controls.Elmish/ControlsElmish.fsi" ]
+      "FS.GG.UI.Testing", [ "src/Testing/Testing.fsi" ] ]
 
 [<Tests>]
 let packageApiReferenceTests =
@@ -77,10 +77,10 @@ let packageApiReferenceTests =
         }
 
         test "source-shaped reference preserves F# authoring names and parameter labels" {
-            let scene = readReference "FS.Skia.UI.Scene"
-            let controls = readReference "FS.Skia.UI.Controls"
-            let viewer = readReference "FS.Skia.UI.SkiaViewer"
-            let keyboard = readReference "FS.Skia.UI.KeyboardInput"
+            let scene = readReference "FS.GG.UI.Scene"
+            let controls = readReference "FS.GG.UI.Controls"
+            let viewer = readReference "FS.GG.UI.SkiaViewer"
+            let keyboard = readReference "FS.GG.UI.KeyboardInput"
 
             [ "type Rect ="
               "Width: float"
@@ -113,9 +113,9 @@ let packageApiReferenceTests =
         }
 
         test "reference output carries XML summaries and unsupported symbol diagnostics" {
-            let scene = readReference "FS.Skia.UI.Scene"
-            let controls = readReference "FS.Skia.UI.Controls"
-            let testing = readReference "FS.Skia.UI.Testing"
+            let scene = readReference "FS.GG.UI.Scene"
+            let controls = readReference "FS.GG.UI.Controls"
+            let testing = readReference "FS.GG.UI.Testing"
 
             // FR-004 (feature 107): preservation is proven by a PACKAGE-AGNOSTIC signal — every
             // tracked package's reference preserved at least one `///` summary line — not by
@@ -135,7 +135,7 @@ let packageApiReferenceTests =
             Expect.stringContains controls "typed `Props`" "Controls reference preserves substantive XML summaries (typed Props cross-reference)"
             Expect.isTrue
                 (preservesXmlSummaries controls
-                 && not (controls.Contains "Public contract function exposed by this FS.Skia.UI package."))
+                 && not (controls.Contains "Public contract function exposed by this FS.GG.UI package."))
                 "a fully-documented package (no placeholder boilerplate) still satisfies the preservation signal (SC-002)"
 
             [ scene; controls; testing ]
@@ -150,14 +150,14 @@ let packageApiReferenceTests =
         // without waiting for the deferred non-Controls documentation pass to land.
         test "FR-004 a placeholder-free reference still satisfies the preservation signal" {
             let documented =
-                "package-id: FS.Skia.UI.Scene\nxml-summary-count: 2\n## Curated Signatures\n```fsharp\n"
+                "package-id: FS.GG.UI.Scene\nxml-summary-count: 2\n## Curated Signatures\n```fsharp\n"
                 + "/// The drawing surface a scene paints onto.\ntype Surface = { Width: int }\n"
                 + "/// Begins a new frame on the surface.\nval beginFrame: surface: Surface -> unit\n```\n"
             Expect.isTrue
                 (preservesXmlSummaries documented)
                 "documenting a package (placeholder removed) keeps the preservation check green"
             Expect.isFalse
-                (documented.Contains "Public contract type exposed by this FS.Skia.UI package.")
+                (documented.Contains "Public contract type exposed by this FS.GG.UI package.")
                 "the documented reference carries no placeholder boilerplate"
         }
 
@@ -166,7 +166,7 @@ let packageApiReferenceTests =
         // sample was replaced, not the guarantee itself.
         test "FR-005 the preservation check still fails when /// summaries are dropped" {
             let dropped =
-                "package-id: FS.Skia.UI.Scene\nxml-summary-count: 0\n## Curated Signatures\n```fsharp\n"
+                "package-id: FS.GG.UI.Scene\nxml-summary-count: 0\n## Curated Signatures\n```fsharp\n"
                 + "type Surface = { Width: int }\nval beginFrame: surface: Surface -> unit\n```\n"
             Expect.isFalse
                 (preservesXmlSummaries dropped)
@@ -189,9 +189,9 @@ let packageApiReferenceTests =
 
             let evaluation = File.ReadAllText evaluationPath
 
-            [ "FS.Skia.UI.Scene"
-              "FS.Skia.UI.Controls"
-              "FS.Skia.UI.SkiaViewer"
+            [ "FS.GG.UI.Scene"
+              "FS.GG.UI.Controls"
+              "FS.GG.UI.SkiaViewer"
               "F# authoring spelling fidelity"
               "record-field and union-case visibility"
               "parameter names and labels"

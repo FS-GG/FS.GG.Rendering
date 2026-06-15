@@ -2,9 +2,9 @@ module ControlsAccessibilityTests
 
 open System
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
-open FS.Skia.UI.Controls.Typed
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
+open FS.GG.UI.Controls.Typed
 
 [<Tests>]
 let typedGalleryAccessibilityTests =
@@ -113,7 +113,7 @@ let accessibilityTests =
 
         test "missing accessibility and low contrast fail diagnostics" {
             let lowContrast =
-                Accessibility.metadata AccessibilityRole.Button "Low" [ "normal" ] (Some 1) (Accessibility.keyboard true [ "Enter" ] [ "Tab" ]) (Some(Accessibility.contrast FS.Skia.UI.Scene.Colors.black FS.Skia.UI.Scene.Colors.black 1.0 4.5)) None
+                Accessibility.metadata AccessibilityRole.Button "Low" [ "normal" ] (Some 1) (Accessibility.keyboard true [ "Enter" ] [ "Tab" ]) (Some(Accessibility.contrast FS.GG.UI.Scene.Colors.black FS.GG.UI.Scene.Colors.black 1.0 4.5)) None
 
             let control = Button.create [ Button.text "Low"; Attr.accessibility lowContrast ]
             let diagnostics = Accessibility.validate control

@@ -9,8 +9,8 @@ module Feature086SceneTranslateTests
 open System
 open Expecto
 open SkiaSharp
-open FS.Skia.UI.Scene
-open FS.Skia.UI.SkiaViewer
+open FS.GG.UI.Scene
+open FS.GG.UI.SkiaViewer
 
 let private renderToPng (width: int) (height: int) (scene: SceneNode) =
     let dir = IO.Path.Combine(IO.Path.GetTempPath(), "fs086-translate")

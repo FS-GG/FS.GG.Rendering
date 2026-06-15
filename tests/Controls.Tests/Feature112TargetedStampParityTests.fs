@@ -8,8 +8,8 @@ module Feature112TargetedStampParityTests
 // driving the live loop. Controls have no value equality; `Scene` does, so compare the rendered scenes.
 
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
 
 let private theme = Theme.light
 let private size: Size = { Width = 320; Height = 240 }

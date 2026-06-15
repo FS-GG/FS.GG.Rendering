@@ -9,8 +9,8 @@ module Feature093StylePropertyTests
 open Expecto
 open FsCheck
 open FsCheck.FSharp
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
 
 module private Gen093 =
     let private colors =

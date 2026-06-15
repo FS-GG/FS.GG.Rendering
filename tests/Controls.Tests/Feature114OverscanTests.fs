@@ -7,7 +7,7 @@ module Feature114OverscanTests
 // and does NOT scale with the total logical row count.
 
 open Expecto
-open FS.Skia.UI.Controls
+open FS.GG.UI.Controls
 
 // Count the materialized `data-grid-row` nodes in a built grid (the realized window).
 let rec private countKind (kind: string) (c: Control<'msg>) : int =

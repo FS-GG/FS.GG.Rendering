@@ -9,13 +9,13 @@ module Feature080ExtractionTests
 // label-on-a-box. These tests assert the structured points are extracted with X/Y/Label
 // preserved; they are RED against the pre-fix matcher (yields `[]`) and GREEN after T006.
 //
-// `ControlInternals` is internal to FS.Skia.UI.Controls and reachable here via the
+// `ControlInternals` is internal to FS.GG.UI.Controls and reachable here via the
 // `InternalsVisibleTo("Controls.Tests")` item in Controls.fsproj (same access path the
 // reconciler tests use).
 
 open Expecto
-open FS.Skia.UI.Controls
-open FS.Skia.UI.Controls.Typed
+open FS.GG.UI.Controls
+open FS.GG.UI.Controls.Typed
 
 [<Tests>]
 let chartValuesExtractionTests =

@@ -2,7 +2,7 @@ module KeyboardInputCapabilityTests
 
 open Microsoft.FSharp.Reflection
 open Expecto
-open FS.Skia.UI.KeyboardInput
+open FS.GG.UI.KeyboardInput
 
 let recordFields<'T> =
     FSharpType.GetRecordFields(typeof<'T>)

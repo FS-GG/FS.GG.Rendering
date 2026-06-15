@@ -2,7 +2,7 @@ module SceneCapabilityTests
 
 open System.IO
 open Expecto
-open FS.Skia.UI.Scene
+open FS.GG.UI.Scene
 
 [<Tests>]
 let tests =
@@ -77,7 +77,7 @@ let tests =
                     Scene.text (4.0, 18.0) "Generated" Colors.white
                 ]
 
-            let path = Path.Combine(Path.GetTempPath(), "fs-skia-scene-evidence-metadata.txt")
+            let path = Path.Combine(Path.GetTempPath(), "fs-gg-scene-evidence-metadata.txt")
             if File.Exists path then
                 File.Delete path
 

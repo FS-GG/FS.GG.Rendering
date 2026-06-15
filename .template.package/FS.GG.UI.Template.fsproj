@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <PackageType>Template</PackageType>
+    <PackageId>FS.GG.UI.Template</PackageId>
+    <Title>FS GG UI Project Template</Title>
+    <Description>Governed FS.GG.UI V3 product template with app, headless-scene, governed, and sample-pack profiles.</Description>
+    <Version>0.1.0-preview.1</Version>
+    <Authors>FS-Skia-UI Contributors</Authors>
+    <PackageTags>fsharp;skia;elmish;template</PackageTags>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <NoDefaultExcludes>true</NoDefaultExcludes>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningsAsErrors></WarningsAsErrors>
+    <NoWarn>$(NoWarn);NU5100;NU5110;NU5111;NU5119;NU5128</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Includes .template.config/template.json plus template-owned source under content/. -->
+    <Content Include="..\**\*"
+             Exclude="..\.fake\**;..\.git\**;..\.template.package\**;..\artifacts\**;..\bin\**;..\obj\**;..\**\bin\**;..\**\obj\**;..\specs\**;..\.specify\feature.json;..\.specify\memory\constitution.md"
+             PackagePath="content" />
+  </ItemGroup>
+
+</Project>

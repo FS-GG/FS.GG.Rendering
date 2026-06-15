@@ -1,10 +1,10 @@
-namespace FS.Skia.UI.Input
+namespace FS.GG.UI.Input
 
 open System
 open System.IO
 open YamlDotNet.RepresentationModel
-open FS.Skia.UI.Scene
-open FS.Skia.UI.SkiaViewer.Host
+open FS.GG.UI.Scene
+open FS.GG.UI.SkiaViewer.Host
 
 type CommandId = string
 type ModeId = string

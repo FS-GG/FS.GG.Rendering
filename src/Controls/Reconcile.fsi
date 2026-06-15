@@ -1,4 +1,4 @@
-namespace FS.Skia.UI.Controls
+namespace FS.GG.UI.Controls
 
 /// Internal keyed VDOM diff over the lowered `Control<'msg>` IR. Pure, total,
 /// deterministic; not wired into the render path (feature 067, internal only).

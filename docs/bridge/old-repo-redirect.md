@@ -39,17 +39,25 @@
 
 ## Block B — package-page deprecation/redirect (for each `FS.Skia.UI.*` NuGet description)
 
-```markdown
-Active development of this package has moved to the FS-GG org:
-https://github.com/FS-GG/FS.GG.Rendering
+> Updated at Stage R8: the package identity **was rebranded** `FS.Skia.UI.*` → `FS.GG.UI.*`. Block B
+> now redirects to the renamed replacement, consistent with
+> [`package-deprecation-notice.md`](./package-deprecation-notice.md).
 
-The package identity (`FS.Skia.UI.*`) is unchanged — this is a repository move, not a rename. Any
-future rename is a separate, later release decision and has not happened.
+```markdown
+This package has been renamed. Active development continues as **FS.GG.UI.<Module>** in the FS-GG org:
+https://www.nuget.org/packages/FS.GG.UI.<Module> — https://github.com/FS-GG/FS.GG.Rendering
+
+`FS.Skia.UI.<Module>` is deprecated and frozen at its last published version; it is **not** deleted,
+so existing version pins keep resolving. Please migrate to `FS.GG.UI.<Module>` — the public API is
+unchanged apart from the `FS.Skia.UI` → `FS.GG.UI` namespace prefix.
 ```
 
-> Note: Block B asserts **no rename** — package identity is retained as `FS.Skia.UI.*` (see
-> [`package-identity-migration.md`](./package-identity-migration.md)). Do not edit Block B to claim
-> a new package ID; that would be a Stage R8 decision, not part of R7.
+(Substitute `<Module>` per package; for the template, `FS.GG.UI.Template`. Full old→new map and the
+per-package apply steps are in [`package-deprecation-notice.md`](./package-deprecation-notice.md).)
+
+> Note: At Stage R8 the rebrand **happened** — Block B now asserts the rename to `FS.GG.UI.*` (see
+> [`package-identity-migration.md`](./package-identity-migration.md)). The deprecation of the old IDs
+> on the public feed remains a **recorded action, not yet applied** from this tree.
 
 ## Apply checklist (for the owner)
 

@@ -1,5 +1,5 @@
 ---
-name: fs-skia-layout
+name: fs-gg-layout
 description: Work on Yoga-backed layout contracts and generated product layout usage.
 ---
 
@@ -7,11 +7,11 @@ description: Work on Yoga-backed layout contracts and generated product layout u
 
 ## Scope
 
-Owns `src/Layout/`, layout tests, and runtime layout engine guidance. Generated product layout-control and widget examples are owned by `fs-skia-ui-widgets`.
+Owns `src/Layout/`, layout tests, and runtime layout engine guidance. Generated product layout-control and widget examples are owned by `fs-gg-ui-widgets`.
 
 ## Public Contract
 
-The supported API lives in `src/Layout/*.fsi`. Surface changes require `readiness/surface-baselines/FS.Skia.UI.Layout.txt`.
+The supported API lives in `src/Layout/*.fsi`. Surface changes require `readiness/surface-baselines/FS.GG.UI.Layout.txt`.
 
 ## Build Commands
 
@@ -33,14 +33,14 @@ Layout may depend on Scene and Yoga.Net. Do not introduce viewer, keyboard, cont
 
 ## Generated Product
 
-Products that select Controls receive `FS.Skia.UI.Layout` as a runtime dependency but use `fs-skia-ui-widgets` for generated widget guidance. Use this skill only for lower-level layout engine work.
+Products that select Controls receive `FS.GG.UI.Layout` as a runtime dependency but use `fs-gg-ui-widgets` for generated widget guidance. Use this skill only for lower-level layout engine work.
 
 ## Runnable example
 
 Open the package namespace and evaluate a single layout node:
 
 ```fsharp
-open FS.Skia.UI.Layout
+open FS.GG.UI.Layout
 
 let root = Defaults.layoutNode "root"
 let available = Defaults.availableSpace 320.0 240.0
@@ -60,8 +60,8 @@ rather than hard-failing the phase.
 
 ## Related
 
-- [[fs-skia-scene]] is the render target of `Layout.renderComputed`.
-- [[fs-skia-ui-widgets]] owns generated layout-control and widget examples.
+- [[fs-gg-scene]] is the render target of `Layout.renderComputed`.
+- [[fs-gg-ui-widgets]] owns generated layout-control and widget examples.
 
 ## Sources / links
 

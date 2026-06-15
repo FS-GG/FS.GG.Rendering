@@ -1,6 +1,6 @@
-# Upgrading FS.Skia.UI
+# Upgrading FS.GG.UI
 
-This project pins every `FS.Skia.UI.*` package **and** the in-process build engine to a
+This project pins every `FS.GG.UI.*` package **and** the in-process build engine to a
 **single source of version truth**, so moving to a newer release is **one edit**.
 
 ## The one edit
@@ -9,12 +9,12 @@ Open `Directory.Packages.props` and change the single `<FsSkiaUiVersion>` value:
 
 ```xml
 <PropertyGroup>
-  <FsSkiaUiVersion>0.1.68-preview.1</FsSkiaUiVersion>   <!-- the ONLY FS.Skia.UI version literal -->
+  <FsSkiaUiVersion>0.1.68-preview.1</FsSkiaUiVersion>   <!-- the ONLY FS.GG.UI version literal -->
 </PropertyGroup>
 ```
 
-Every `FS.Skia.UI.*` library pin references `$(FsSkiaUiVersion)`, and `build.fsx` reads this
-same property at runtime to bind the `FS.Skia.UI.Build` engine. There is no second place to
+Every `FS.GG.UI.*` library pin references `$(FsSkiaUiVersion)`, and `build.fsx` reads this
+same property at runtime to bind the `FS.GG.UI.Build` engine. There is no second place to
 edit — the libraries and the build engine always move together.
 
 ## Then restore

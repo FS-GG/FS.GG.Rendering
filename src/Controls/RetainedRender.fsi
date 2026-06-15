@@ -1,4 +1,4 @@
-namespace FS.Skia.UI.Controls
+namespace FS.GG.UI.Controls
 
 /// Feature 091 (E2) — the retained render structure that wires the parked keyed reconciler
 /// (`module internal Reconcile`, feature 067) onto the live render path. Each frame holds the
@@ -25,9 +25,9 @@ type internal RetainedId = RetainedId of uint64
 /// pre-order painted scene of the node AND its descendants (reused verbatim when the whole subtree
 /// is unchanged AND unshifted); `Box` is the node's evaluated absolute box (the reuse key).
 type internal RenderFragment =
-    { OwnScene: FS.Skia.UI.Scene.Scene list
-      SubtreeScene: FS.Skia.UI.Scene.Scene list
-      Box: FS.Skia.UI.Scene.Rect option
+    { OwnScene: FS.GG.UI.Scene.Scene list
+      SubtreeScene: FS.GG.UI.Scene.Scene list
+      Box: FS.GG.UI.Scene.Rect option
       /// Feature 120 (US3, FR-008): the collision-resistant structural fingerprint of `SubtreeScene`,
       /// computed via `hashScene` when the fragment is (re)painted and carried unchanged on a `Keep`
       /// reuse (cost ∝ damage, not tree size). The backend replay key and the `CachedSubtree.Fingerprint`.
@@ -57,10 +57,10 @@ type internal RetainedNode<'msg> =
 /// fade from ⇒ a plain fade-in). `None` on the slot ⇒ the identity is at rest and paints
 /// byte-identically to the static render (FR-004/FR-005).
 type internal AnimationClock =
-    { Anim: FS.Skia.UI.Scene.Animation
+    { Anim: FS.GG.UI.Scene.Animation
       Elapsed: System.TimeSpan
       Target: VisualState
-      From: FS.Skia.UI.Scene.Scene list }
+      From: FS.GG.UI.Scene.Scene list }
 
 /// Feature 113 (Phase 5) — what a single `memoize` call resolved to: a `Hit` reused the
 /// previously-lowered subtree for the identity (the dependency compared equal, the thunk did NOT
@@ -79,7 +79,7 @@ type internal MemoOutcome =
 /// memoized site; widening the stored subtree type travels with the deferred `Style.resolve` site.
 type internal MemoEntry =
     { Dependency: obj
-      Subtree: FS.Skia.UI.Scene.Scene list }
+      Subtree: FS.GG.UI.Scene.Scene list }
 
 /// Feature 113 (Phase 5) — the per-frame memo store, keyed by the control's stable `ControlId`.
 /// Carried frame-to-frame in the retained structure; an absent key is a cold miss.
@@ -102,7 +102,7 @@ type internal RetainedUiState =
 /// construction, so equality on this key proves a hit is byte-identical to a fresh paint and any
 /// single changed input forces a miss (no input can be omitted). Compared by F# structural `=`.
 type internal PictureCacheKey =
-    { Box: FS.Skia.UI.Scene.Rect option
+    { Box: FS.GG.UI.Scene.Rect option
       /// Feature 120 (US3, FR-008): the collision-resistant structural fingerprint of the boundary's
       /// painted subtree, replacing the feature-116 truncation-prone `sprintf "%A"` digest. Two subtrees
       /// that stringify identically under the old truncating key but differ structurally produce different
@@ -138,7 +138,7 @@ type internal TextMeasureKey =
 /// dropped key re-misses (re-measures, re-stores) when next needed (never a stale hit).
 /// `Entries.Count <= TextMeasureCacheCap` at all times.
 type internal TextMeasureCache =
-    { Entries: Map<TextMeasureKey, int * FS.Skia.UI.Scene.TextMetrics>
+    { Entries: Map<TextMeasureKey, int * FS.GG.UI.Scene.TextMetrics>
       Clock: int }
 
 /// The per-frame retained root plus the monotonic identity counter, the identity-keyed UI
@@ -163,7 +163,7 @@ type internal RetainedRender<'msg> =
       /// cache (FR-002). `step` threads it into `Layout.evaluateIncremental` so an unchanged subtree's
       /// bounds survive across frames and are reused without re-measuring. Seeded by `init` with a full
       /// `evaluate`; advanced each `step` to the incremental result.
-      Layout: FS.Skia.UI.Layout.LayoutResult
+      Layout: FS.GG.UI.Layout.LayoutResult
       /// Feature 116 (Phase 7, FR-009/FR-010): the bounded cross-frame picture cache carried frame-to-frame.
       /// Seeded by `init` (every first-frame cacheable boundary a cold miss); each `step` consults it for a
       /// hit/miss outcome per cacheable identity, refreshes recency, and evicts LRU over the cap. An absent
@@ -309,9 +309,9 @@ module internal RetainedRender =
     val internal memoize:
         id: ControlId ->
         dependency: obj ->
-        compute: (unit -> FS.Skia.UI.Scene.Scene list) ->
+        compute: (unit -> FS.GG.UI.Scene.Scene list) ->
         cache: MemoCache ->
-            FS.Skia.UI.Scene.Scene list * MemoCache * MemoOutcome
+            FS.GG.UI.Scene.Scene list * MemoCache * MemoOutcome
 
     /// Feature 116 (Phase 7, FR-009): the fixed picture-cache entry cap. `PictureCacheEntryCount` never
     /// exceeds this; the eviction-pressure scenario drives 320 distinct cacheable rows (1.25 × cap).
@@ -323,12 +323,12 @@ module internal RetainedRender =
     /// truncation, unlike the superseded `sprintf "%A"` digest, so a structural difference that the old key
     /// would have collided on yields a different fingerprint. Pure, total, deterministic; identical scenes
     /// hash identically and any single render-affecting change flips the value (FR-010). The replay key.
-    val internal hashScene: scenes: FS.Skia.UI.Scene.Scene list -> uint64
+    val internal hashScene: scenes: FS.GG.UI.Scene.Scene list -> uint64
 
     /// Feature 120 (US4, FR-015): the integer area of the UNION of a set of damage rectangles, clamped to
     /// the frame area. Overlapping rectangles are counted once (never the sum), and the result never
     /// exceeds `frameArea`. Pure, total, deterministic (coordinate-compression over integer geometry).
-    val internal unionArea: boxes: FS.Skia.UI.Scene.Rect list -> frameArea: int -> int
+    val internal unionArea: boxes: FS.GG.UI.Scene.Rect list -> frameArea: int -> int
 
     /// Feature 117 (Phase 8, FR-003): the fixed text-measure-cache entry cap (aligned with
     /// `PictureCacheCap`). `TextCache.Entries.Count` never exceeds this; the eviction-pressure scenario
@@ -348,15 +348,15 @@ module internal RetainedRender =
         cache: TextMeasureCache ->
         enabled: bool ->
         text: string ->
-        font: FS.Skia.UI.Scene.FontSpec ->
-            FS.Skia.UI.Scene.TextMetrics * TextMeasureCache * bool
+        font: FS.GG.UI.Scene.FontSpec ->
+            FS.GG.UI.Scene.TextMetrics * TextMeasureCache * bool
 
     /// Feature 116 (Phase 7, FR-011): the pure offscreen-effect detector. Returns the name of the first
     /// offscreen-composition-forcing effect in a node's painted scene (a drop-shadow/image-filter, a
     /// `PathClip`, or a non-opaque paint over a multi-node group) or `None`. A `RectClip` (the cheap
     /// ubiquitous label clip, lowered to `canvas.ClipRect` with no layer) is deliberately NOT flagged.
     /// Advisory only — reads the lowered scene, never alters output. Reached by the test assemblies.
-    val internal offscreenEffect: ownScene: FS.Skia.UI.Scene.Scene list -> string option
+    val internal offscreenEffect: ownScene: FS.GG.UI.Scene.Scene list -> string option
 
     /// Feature 099 (R4): the single pinned framework default transition — exactly 150 ms, `EaseOut`,
     /// on the opacity channel — applied when a tween is started/retargeted. A fixed constant (not a
@@ -389,7 +389,7 @@ module internal RetainedRender =
     /// unchanged, and DROP a settled return-to-`Normal` clock so the identity is byte-identical at rest
     /// (FR-003/FR-005). On a fresh transition or a mid-flight retarget the new clock's `From = priorOwn`
     /// (the snapshot it cross-fades from); an advance-only/kept clock retains its existing `From`.
-    val internal updateClockForState: desired: VisualState -> priorOwn: FS.Skia.UI.Scene.Scene list -> carried: AnimationClock option -> AnimationClock option
+    val internal updateClockForState: desired: VisualState -> priorOwn: FS.GG.UI.Scene.Scene list -> carried: AnimationClock option -> AnimationClock option
 
     /// Feature 099 (R4) / 103 (R6): composite an ACTIVE clock onto an identity's own painted scene
     /// (paint-level only — opacity, never layout). A genuine cross-fade of two opacity-driven layers
@@ -399,13 +399,13 @@ module internal RetainedRender =
     /// endpoints (SC-001). `From = []` degenerates to the plain fade-in. Used only for active clocks —
     /// a settled/absent clock paints `ownScene` unchanged (the settle path is untouched, so the final
     /// frame stays byte-identical, FR-005).
-    val internal sampleOnPaint: clock: AnimationClock -> ownScene: FS.Skia.UI.Scene.Scene list -> FS.Skia.UI.Scene.Scene list
+    val internal sampleOnPaint: clock: AnimationClock -> ownScene: FS.GG.UI.Scene.Scene list -> FS.GG.UI.Scene.Scene list
 
     /// Build the initial retained structure from the first frame's lowered tree, painting it
     /// ONCE. The returned `Render` is byte-identical to `Control.renderTree theme size control`
     /// (so the adapter reuses it rather than re-painting), and `Diagnostics` carries any
     /// first-frame duplicate-key `KeyCollision` (FR-009). Total; never throws.
-    val init: theme: Theme -> size: FS.Skia.UI.Scene.Size -> control: Control<'msg> -> RetainedInit<'msg>
+    val init: theme: Theme -> size: FS.GG.UI.Scene.Size -> control: Control<'msg> -> RetainedInit<'msg>
 
     /// Produce the next frame from the retained `prev` and the next lowered tree, by
     /// `Reconcile.diff`-ing and reusing/recomputing fragments under the patch.
@@ -417,7 +417,7 @@ module internal RetainedRender =
     ///   - round-trip:       Render is byte-identical to `Control.renderTree theme size next`
     val step:
         theme: Theme ->
-        size: FS.Skia.UI.Scene.Size ->
+        size: FS.GG.UI.Scene.Size ->
         prev: RetainedRender<'msg> ->
         next: Control<'msg> ->
             RetainedRenderStep<'msg>

@@ -1,7 +1,7 @@
-namespace FS.Skia.UI.Controls
+namespace FS.GG.UI.Controls
 
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Layout
+open FS.GG.UI.Scene
+open FS.GG.UI.Layout
 
 type CustomControlDefinition<'msg> =
     { Id: ControlId

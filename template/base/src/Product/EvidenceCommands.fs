@@ -2,7 +2,7 @@ module Product.EvidenceCommands
 
 open System
 open System.IO
-open FS.Skia.UI.Scene
+open FS.GG.UI.Scene
 open Product.Model
 open Product.View
 open Product.LayoutEvidence
@@ -68,10 +68,10 @@ let tryRunEvidenceCommand args =
     | _ -> None
 
 //#else
-open FS.Skia.UI.Controls
-open FS.Skia.UI.Controls.Elmish
-open FS.Skia.UI.KeyboardInput
-open FS.Skia.UI.SkiaViewer
+open FS.GG.UI.Controls
+open FS.GG.UI.Controls.Elmish
+open FS.GG.UI.KeyboardInput
+open FS.GG.UI.SkiaViewer
 open Product.WindowOptions
 
 let writeGeneratedEvidenceLines (path: string) echoToStdout exitCode lines =

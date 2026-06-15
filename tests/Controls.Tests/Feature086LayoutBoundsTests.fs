@@ -5,8 +5,8 @@ module ControlsFeature086LayoutBoundsTests
 // surface (`Bounds`) and `Control.hitTest`, not internal helpers (vertical-slice rule).
 
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
 
 type private Msg = Clicked
 

@@ -1,7 +1,7 @@
-namespace FS.Skia.UI.Controls
+namespace FS.GG.UI.Controls
 
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Layout
+open FS.GG.UI.Scene
+open FS.GG.UI.Layout
 
 /// Stable string identity of a control instance (`ControlId`), used as the join key
 /// across `Bounds`, `EventBindings`, and `BoundIds` for hit-testing and event dispatch.

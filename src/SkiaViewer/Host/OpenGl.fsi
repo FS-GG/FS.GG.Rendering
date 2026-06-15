@@ -1,8 +1,8 @@
-namespace FS.Skia.UI.SkiaViewer.Host
+namespace FS.GG.UI.SkiaViewer.Host
 
 /// GL resource-ownership ledger (feature 119; GL successor to the former VulkanResources).
 module GlResources =
-    /// Public contract type exposed by this FS.Skia.UI package.
+    /// Public contract type exposed by this FS.GG.UI package.
     type ResourceCategory =
         | GlContext
         | GlSurface
@@ -11,13 +11,13 @@ module GlResources =
         | SkiaSurface
         | SkiaGpu
 
-    /// Public contract type exposed by this FS.Skia.UI package.
+    /// Public contract type exposed by this FS.GG.UI package.
     type OwnershipState =
         | Acquired
         | Transferred
         | Released
 
-    /// Public contract type exposed by this FS.Skia.UI package.
+    /// Public contract type exposed by this FS.GG.UI package.
     type OwnedResource =
         { Id: string
           Category: ResourceCategory
@@ -27,22 +27,22 @@ module GlResources =
           ReleaseAction: string
           State: OwnershipState }
 
-    /// Public contract type exposed by this FS.Skia.UI package.
+    /// Public contract type exposed by this FS.GG.UI package.
     type ReleaseRecord =
         { Id: string
           Category: ResourceCategory
           Stage: string
           Order: int }
 
-    /// Public contract type exposed by this FS.Skia.UI package.
+    /// Public contract type exposed by this FS.GG.UI package.
     type ResourceLedger =
         { Owned: OwnedResource list
           Released: ReleaseRecord list }
 
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val empty: ResourceLedger
 
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val acquire:
         id: string ->
         category: ResourceCategory ->
@@ -52,23 +52,23 @@ module GlResources =
         ledger: ResourceLedger ->
             ResourceLedger
 
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val transfer: id: string -> transferPoint: string -> ledger: ResourceLedger -> ResourceLedger
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val acquired: ledger: ResourceLedger -> OwnedResource list
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val releaseAll: stage: string -> ledger: ResourceLedger -> ResourceLedger * ReleaseRecord list
 
 /// GL startup-stage ordering + cleanup model (feature 119; GL successor to the former VulkanStartup).
 module GlStartup =
-    /// Public contract type exposed by this FS.Skia.UI package.
+    /// Public contract type exposed by this FS.GG.UI package.
     type StartupStage =
         { Name: string
           Order: int
           Resource: GlResources.ResourceCategory option
           DiagnosticStage: string }
 
-    /// Public contract type exposed by this FS.Skia.UI package.
+    /// Public contract type exposed by this FS.GG.UI package.
     type StartupFailureCase =
         { FailedStage: StartupStage
           AcquiredBeforeFailure: GlResources.OwnedResource list
@@ -78,18 +78,18 @@ module GlStartup =
           DiagnosticCause: string
           Synthetic: bool }
 
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val stages: StartupStage list
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val stageByName: name: string -> StartupStage option
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val simulateFailure: failedStageName: string -> StartupFailureCase
-    /// Public contract function exposed by this FS.Skia.UI package.
+    /// Public contract function exposed by this FS.GG.UI package.
     val simulateSuccessfulShutdown: unit -> GlResources.ReleaseRecord list
 
 /// The OpenGL/Skia presentation host body (internal helpers hidden; only `run` is reachable).
 module GlHost =
-    /// Public contract function exposed by this FS.Skia.UI package. Signature shape preserved
+    /// Public contract function exposed by this FS.GG.UI package. Signature shape preserved
     /// from the former VulkanHost.run so Host/Viewer.fs routes unchanged.
     val run: program: ViewerProgram<'model, 'msg> -> Result<unit, RenderDiagnostic>
 
@@ -101,7 +101,7 @@ module GlHost =
     /// Feature 120 (US2): pure present-or-skip decision (present iff first frame, scene changed, or the
     /// framebuffer size changed). Exposed for the idle-skip transition test (T016).
     val shouldPresent:
-        prev: FS.Skia.UI.Scene.Scene option -> next: FS.Skia.UI.Scene.Scene -> sizeChanged: bool -> bool
+        prev: FS.GG.UI.Scene.Scene option -> next: FS.GG.UI.Scene.Scene -> sizeChanged: bool -> bool
 
     [<RequireQualifiedAccess>]
     /// Feature 122 (FR-001/002): what the live DirectToSwapchain host does for one frame — paint a
@@ -118,8 +118,8 @@ module GlHost =
     /// compositor (Wayland windowed-fullscreen) from rotating an undrawn black buffer into view.
     /// Exposed for the present-plan transition test (T011).
     val planPresent:
-        prev: FS.Skia.UI.Scene.Scene option ->
-        next: FS.Skia.UI.Scene.Scene ->
+        prev: FS.GG.UI.Scene.Scene option ->
+        next: FS.GG.UI.Scene.Scene ->
         sizeChanged: bool ->
         idleRepresentsRemaining: int ->
             PresentAction

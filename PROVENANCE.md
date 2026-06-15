@@ -36,8 +36,16 @@ This file is the **authoritative lineage** referenced by the Stage R7 bridge
 - **Repo-root marker**: 8 test files searched for `FS-Skia-UI.sln`; rewritten to this repo's
   solution `FS.GG.Rendering.slnx`.
 - **Ownership metadata**: `Authors`/`Company`/repository URLs in `Directory.Build.props`
-  changed to FS.GG. **Package identity preserved**: each project keeps `FS.Skia.UI.<Module>`
-  (`<PackageId>`/`<AssemblyName>`); rebrand deferred to Stage R8.
+  changed to FS.GG at import (R4). **Package identity rebranded at Stage R8**: at import the
+  projects kept the source identity `FS.Skia.UI.<Module>`; **Stage R8 rebranded that identity to
+  `FS.GG.UI.<Module>`** (`<PackageId>`/`<AssemblyName>`/root namespace) as one coherent matrix, with
+  the template moving to `FS.GG.UI.Template`. The imported files still trace to their source paths and
+  commit (above); their import-time `FS.Skia.UI.*` identifiers now read `FS.GG.UI.*` in-tree. The full
+  old→new map and acceptance record are in
+  [`docs/product/decisions/0001-package-identity.md`](docs/product/decisions/0001-package-identity.md)
+  and [`docs/bridge/package-identity-migration.md`](docs/bridge/package-identity-migration.md).
+  (The excluded source-repo `FS.Skia.UI.Build` governance engine named below is **not** part of this
+  repo and is referenced by its original source identity as history.)
 - **Vulkan**: the source already presents through OpenGL (no Vulkan backend). The public
   `ViewerBackendPreference.Vulkan` case is **retained** as a graceful "unsupported, presents
   through OpenGL" result (parallel to `Software`, Principle VI). No Vulkan dependency exists.

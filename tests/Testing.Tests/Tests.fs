@@ -2,8 +2,8 @@ module TestingCapabilityTests
 
 open System
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Testing
+open FS.GG.UI.Scene
+open FS.GG.UI.Testing
 open SkiaSharp
 
 let writePng (path: string) (width: int) (height: int) draw =
@@ -50,41 +50,41 @@ let tests =
                     { Profile = "app"
                       RequiredFiles = [ "src/Product/Product.fsproj" ]
                       ForbiddenPrefixes = [ "samples/" ]
-                      PackageReferences = [ { PackageId = "FS.Skia.UI.Scene"; Required = true } ] }
+                      PackageReferences = [ { PackageId = "FS.GG.UI.Scene"; Required = true } ] }
 
             Expect.stringContains summary "app" "profile is included"
-            Expect.stringContains summary "FS.Skia.UI.Scene" "package is included"
+            Expect.stringContains summary "FS.GG.UI.Scene" "package is included"
         }
 
         test "local consumer package reports include feed snippets restore command and drift" {
             let expected =
-                [ { PackageId = "FS.Skia.UI.Scene"; Version = "1.2.3"; FeedPath = "/tmp/feed" }
-                  { PackageId = "FS.Skia.UI.SkiaViewer"; Version = "1.2.3"; FeedPath = "/tmp/feed" } ]
+                [ { PackageId = "FS.GG.UI.Scene"; Version = "1.2.3"; FeedPath = "/tmp/feed" }
+                  { PackageId = "FS.GG.UI.SkiaViewer"; Version = "1.2.3"; FeedPath = "/tmp/feed" } ]
 
             let actual =
-                [ { PackageId = "FS.Skia.UI.Scene"; Version = "1.2.2"; FeedPath = "/tmp/feed" } ]
+                [ { PackageId = "FS.GG.UI.Scene"; Version = "1.2.2"; FeedPath = "/tmp/feed" } ]
 
             let drift = LocalConsumerPackages.classifyDrift expected actual
             Expect.hasLength drift 2 "stale and missing packages are both reported"
 
             let report = LocalConsumerPackages.report "/tmp/feed" expected
             Expect.equal report.FeedPath "/tmp/feed" "feed path is recorded"
-            Expect.equal (report.Packages |> List.map _.PackageId) [ "FS.Skia.UI.Scene"; "FS.Skia.UI.SkiaViewer" ] "generated consumer package set is recorded"
-            Expect.stringContains report.ConsumerConfigSnippet "FS.Skia.UI.Scene" "package snippet names identities"
+            Expect.equal (report.Packages |> List.map _.PackageId) [ "FS.GG.UI.Scene"; "FS.GG.UI.SkiaViewer" ] "generated consumer package set is recorded"
+            Expect.stringContains report.ConsumerConfigSnippet "FS.GG.UI.Scene" "package snippet names identities"
             Expect.stringContains report.ConsumerConfigSnippet "1.2.3" "package snippet names versions"
             Expect.isSome report.NuGetConfigSnippet "optional NuGet.config snippet is provided"
             Expect.stringContains (report.NuGetConfigSnippet |> Option.defaultValue "") "/tmp/feed" "NuGet.config snippet names feed path"
             Expect.stringContains report.RestoreCommand "dotnet restore" "restore command is included"
-            Expect.exists drift (fun item -> item.PackageId = "FS.Skia.UI.Scene" && item.ActualVersion = Some "1.2.2") "stale package drift is reported before generated build failures"
-            Expect.exists drift (fun item -> item.PackageId = "FS.Skia.UI.SkiaViewer" && item.ActualVersion = None) "missing package drift is reported before generated build failures"
+            Expect.exists drift (fun item -> item.PackageId = "FS.GG.UI.Scene" && item.ActualVersion = Some "1.2.2") "stale package drift is reported before generated build failures"
+            Expect.exists drift (fun item -> item.PackageId = "FS.GG.UI.SkiaViewer" && item.ActualVersion = None) "missing package drift is reported before generated build failures"
             drift
             |> List.iter (fun item ->
                 Expect.stringContains item.RemediationCommand "PackLocal" "drift diagnostics name PackLocal remediation")
         }
 
         test "evidence report helper writes stable ordered fields and validates unsupported fallback" {
-            let root = IO.Path.Combine(IO.Path.GetTempPath(), $"fs-skia-evidence-report-{Guid.NewGuid():N}")
-            let path = IO.Path.Combine(root, "nested", "fs-skia-evidence-report.txt")
+            let root = IO.Path.Combine(IO.Path.GetTempPath(), $"fs-gg-evidence-report-{Guid.NewGuid():N}")
+            let path = IO.Path.Combine(root, "nested", "fs-gg-evidence-report.txt")
             let originalOut = Console.Out
             use capturedOut = new IO.StringWriter()
 
@@ -303,7 +303,7 @@ let tests =
         }
 
         test "default text glyph evidence accepts glyph-shaped PNG coverage" {
-            let root = IO.Path.Combine(IO.Path.GetTempPath(), $"fs-skia-default-text-{Guid.NewGuid():N}")
+            let root = IO.Path.Combine(IO.Path.GetTempPath(), $"fs-gg-default-text-{Guid.NewGuid():N}")
             let screenshot = IO.Path.Combine(root, "artifacts", "default-text.png")
 
             writePng screenshot 160 80 (fun canvas -> drawGlyphText canvas 12.0f 12.0f 7.0f "HUD")
@@ -329,7 +329,7 @@ let tests =
         }
 
         test "default text glyph evidence rejects solid block and tofu-like screenshots" {
-            let root = IO.Path.Combine(IO.Path.GetTempPath(), $"fs-skia-default-text-negative-{Guid.NewGuid():N}")
+            let root = IO.Path.Combine(IO.Path.GetTempPath(), $"fs-gg-default-text-negative-{Guid.NewGuid():N}")
             let solid = IO.Path.Combine(root, "artifacts", "solid.png")
             let tofu = IO.Path.Combine(root, "artifacts", "tofu.png")
 
@@ -447,17 +447,17 @@ let tests =
 
         test "generated package verification fails NU1603 exact-version drift and missing sources" {
             let requested =
-                [ { PackageId = "FS.Skia.UI.SkiaViewer"; Version = "0.1.16-persistent.1"; FeedPath = "/tmp/feed" } ]
+                [ { PackageId = "FS.GG.UI.SkiaViewer"; Version = "0.1.16-persistent.1"; FeedPath = "/tmp/feed" } ]
 
             let resolved =
-                [ { PackageId = "FS.Skia.UI.SkiaViewer"; Version = "0.1.16-preview.1"; FeedPath = "/tmp/feed" } ]
+                [ { PackageId = "FS.GG.UI.SkiaViewer"; Version = "0.1.16-preview.1"; FeedPath = "/tmp/feed" } ]
 
             let result =
                 GeneratedConsumerValidation.verifyPackageResolution
                     { RequestedPackages = requested
                       ResolvedPackages = resolved
                       PackageSources = []
-                      RestoreWarnings = [ "NU1603: FS.Skia.UI.SkiaViewer 0.1.16-persistent.1 was not found" ] }
+                      RestoreWarnings = [ "NU1603: FS.GG.UI.SkiaViewer 0.1.16-persistent.1 was not found" ] }
 
             Expect.isFalse result.ExactMatch "NU1603 prevents exact package verification"
             Expect.equal result.FailureReason (Some "NU1603") "NU1603 is the primary failure class"
@@ -467,9 +467,9 @@ let tests =
 
         test "generated package verification accepts exact requested resolved versions and configured sources" {
             let requested =
-                [ { PackageId = "FS.Skia.UI.Scene"; Version = "0.1.16-persistent.1"; FeedPath = "/tmp/feed" }
-                  { PackageId = "FS.Skia.UI.SkiaViewer"; Version = "0.1.16-persistent.1"; FeedPath = "/tmp/feed" }
-                  { PackageId = "FS.Skia.UI.Testing"; Version = "0.1.16-persistent.1"; FeedPath = "/tmp/feed" } ]
+                [ { PackageId = "FS.GG.UI.Scene"; Version = "0.1.16-persistent.1"; FeedPath = "/tmp/feed" }
+                  { PackageId = "FS.GG.UI.SkiaViewer"; Version = "0.1.16-persistent.1"; FeedPath = "/tmp/feed" }
+                  { PackageId = "FS.GG.UI.Testing"; Version = "0.1.16-persistent.1"; FeedPath = "/tmp/feed" } ]
 
             let result =
                 GeneratedConsumerValidation.verifyPackageResolution
@@ -485,10 +485,10 @@ let tests =
 
         test "generated package verification reports version mismatch failure when NU1603 is absent" {
             let requested =
-                [ { PackageId = "FS.Skia.UI.Testing"; Version = "0.1.16-persistent.1"; FeedPath = "/tmp/feed" } ]
+                [ { PackageId = "FS.GG.UI.Testing"; Version = "0.1.16-persistent.1"; FeedPath = "/tmp/feed" } ]
 
             let resolved =
-                [ { PackageId = "FS.Skia.UI.Testing"; Version = "0.1.16-preview.1"; FeedPath = "/tmp/feed" } ]
+                [ { PackageId = "FS.GG.UI.Testing"; Version = "0.1.16-preview.1"; FeedPath = "/tmp/feed" } ]
 
             let result =
                 GeneratedConsumerValidation.verifyPackageResolution
@@ -890,8 +890,8 @@ status=failed mode=interactive-window diagnostic-class=product-defect native-han
         test "generated validation contract output includes all required validation fields" {
             let packageResolution =
                 GeneratedConsumerValidation.verifyPackageResolution
-                    { RequestedPackages = [ { PackageId = "FS.Skia.UI.SkiaViewer"; Version = "0.1.17-preview.1"; FeedPath = "/tmp/feed" } ]
-                      ResolvedPackages = [ { PackageId = "FS.Skia.UI.SkiaViewer"; Version = "0.1.17-preview.1"; FeedPath = "/tmp/feed" } ]
+                    { RequestedPackages = [ { PackageId = "FS.GG.UI.SkiaViewer"; Version = "0.1.17-preview.1"; FeedPath = "/tmp/feed" } ]
+                      ResolvedPackages = [ { PackageId = "FS.GG.UI.SkiaViewer"; Version = "0.1.17-preview.1"; FeedPath = "/tmp/feed" } ]
                       PackageSources = [ "/tmp/feed" ]
                       RestoreWarnings = [] }
 

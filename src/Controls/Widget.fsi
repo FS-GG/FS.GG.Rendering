@@ -1,4 +1,4 @@
-namespace FS.Skia.UI.Controls
+namespace FS.GG.UI.Controls
 
 /// Opaque public return type of every typed `view`. Wraps the lowered
 /// `Control<'msg>` IR. The internal representation (`{ Lowered: Control<'msg> }`)

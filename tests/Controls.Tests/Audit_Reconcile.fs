@@ -16,8 +16,8 @@ module Audit_Reconcile
 open Expecto
 open FsCheck
 open FsCheck.FSharp
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
 
 // --- builders -------------------------------------------------------------
 

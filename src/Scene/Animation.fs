@@ -1,4 +1,4 @@
-namespace FS.Skia.UI.Scene
+namespace FS.GG.UI.Scene
 
 open System
 

@@ -15,9 +15,9 @@ module Feature122PresentPathTests
 // `defaultWindowBehavior` is the windowed-fullscreen default the no-flag path uses.
 
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.SkiaViewer
-open FS.Skia.UI.SkiaViewer.Host
+open FS.GG.UI.Scene
+open FS.GG.UI.SkiaViewer
+open FS.GG.UI.SkiaViewer.Host
 
 // Mirrors the (private) GlHost.bufferFillDepth — 3 covers typical triple-buffering.
 let private bufferFillDepth = 3

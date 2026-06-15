@@ -7,8 +7,8 @@ module Feature097WiringTests
 // at-rest (FR-008/SC-005). Real wired path; no synthetic fixtures.
 
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
 
 let private theme = Theme.light
 let private size: Size = { Width = 400; Height = 300 }

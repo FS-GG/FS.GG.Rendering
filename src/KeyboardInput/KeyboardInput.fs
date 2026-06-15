@@ -1,4 +1,4 @@
-namespace FS.Skia.UI.KeyboardInput
+namespace FS.GG.UI.KeyboardInput
 
 type CommandId = string
 type KeyId = string

@@ -7,7 +7,7 @@ module Feature122CustomControlTests
 // approved at task generation — see tasks.md Synthetic-Evidence Inventory T023).
 
 open Expecto
-open FS.Skia.UI.Controls
+open FS.GG.UI.Controls
 
 // SYNTHETIC: a deliberately malformed definition (null Id, a null effect string) — the error path the
 // guard protects. Render/Draw/Layout are phantom (never invoked by validate/create), so `failwith`

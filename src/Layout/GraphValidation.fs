@@ -1,4 +1,4 @@
-namespace FS.Skia.UI.Layout
+namespace FS.GG.UI.Layout
 
 type GraphValidationIssue =
     | DuplicateNodeId of string

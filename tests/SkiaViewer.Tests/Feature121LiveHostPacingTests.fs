@@ -7,9 +7,9 @@ module Feature121LiveHostPacingTests
 // readiness/runtime-limitations.md); these assert the extracted pure decision + the validation seam.
 
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.SkiaViewer
-open FS.Skia.UI.SkiaViewer.Host
+open FS.GG.UI.Scene
+open FS.GG.UI.SkiaViewer
+open FS.GG.UI.SkiaViewer.Host
 
 let private options cap : ViewerOptions =
     { Title = "Product"

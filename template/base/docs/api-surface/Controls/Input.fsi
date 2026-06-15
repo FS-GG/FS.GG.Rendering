@@ -1,6 +1,6 @@
-namespace FS.Skia.UI.Controls.Typed
+namespace FS.GG.UI.Controls.Typed
 
-open FS.Skia.UI.Controls
+open FS.GG.UI.Controls
 
 /// Immutable, compiler-checked authoring surface for an icon-only command.
 /// `OnClick = None` lowers to NO event binding (FR-005), never a default message.

@@ -7,7 +7,7 @@ module Feature114AccessibilityTests
 // controls is byte-identical.
 
 open Expecto
-open FS.Skia.UI.Controls
+open FS.GG.UI.Controls
 
 let private columns: DataGridColumn list =
     [ { Key = "name"; Header = "Name"; Width = 200.0; ColumnType = TextColumn } ]

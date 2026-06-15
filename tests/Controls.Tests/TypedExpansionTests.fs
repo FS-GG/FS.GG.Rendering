@@ -2,9 +2,9 @@ module ControlsTypedExpansionTests
 
 open System
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
-open FS.Skia.UI.Controls.Typed
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
+open FS.GG.UI.Controls.Typed
 
 // ---------------------------------------------------------------------------
 // Feature 072 — catalog breadth expansion (five genuinely new controls spanning
@@ -21,16 +21,16 @@ open FS.Skia.UI.Controls.Typed
 // (Button, Menu, Grid, Border, Overlay, List) are also `AccessibilityRole` union
 // cases or typed modules, so a bare path can resolve to the wrong symbol; a module
 // abbreviation forces module resolution (the TypedMigrationTests technique).
-module LButton = FS.Skia.UI.Controls.Button
-module LMenu = FS.Skia.UI.Controls.Menu
-module LToolbar = FS.Skia.UI.Controls.Toolbar
-module LOverlay = FS.Skia.UI.Controls.Overlay
-module LGrid = FS.Skia.UI.Controls.Grid
-module LWrap = FS.Skia.UI.Controls.Wrap
-module LStack = FS.Skia.UI.Controls.Stack
-module LTextBox = FS.Skia.UI.Controls.TextBox
-module LLabel = FS.Skia.UI.Controls.Label
-module LControl = FS.Skia.UI.Controls.Control
+module LButton = FS.GG.UI.Controls.Button
+module LMenu = FS.GG.UI.Controls.Menu
+module LToolbar = FS.GG.UI.Controls.Toolbar
+module LOverlay = FS.GG.UI.Controls.Overlay
+module LGrid = FS.GG.UI.Controls.Grid
+module LWrap = FS.GG.UI.Controls.Wrap
+module LStack = FS.GG.UI.Controls.Stack
+module LTextBox = FS.GG.UI.Controls.TextBox
+module LLabel = FS.GG.UI.Controls.Label
+module LControl = FS.GG.UI.Controls.Control
 
 type Msg =
     | Save

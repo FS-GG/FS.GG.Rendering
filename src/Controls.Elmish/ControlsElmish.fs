@@ -1,10 +1,10 @@
-namespace FS.Skia.UI.Controls.Elmish
+namespace FS.GG.UI.Controls.Elmish
 
 open System
-open FS.Skia.UI.Controls
-open FS.Skia.UI.KeyboardInput
-open FS.Skia.UI.Scene
-open FS.Skia.UI.SkiaViewer
+open FS.GG.UI.Controls
+open FS.GG.UI.KeyboardInput
+open FS.GG.UI.Scene
+open FS.GG.UI.SkiaViewer
 open Elmish
 
 type AdapterDiagnostic =
@@ -283,14 +283,14 @@ module ControlsElmish =
         | Some pointerMsg ->
             let rendered = Control.renderTree host.Theme size (host.View size model)
 
-            let available: FS.Skia.UI.Layout.AvailableSpace =
+            let available: FS.GG.UI.Layout.AvailableSpace =
                 { Width = float size.Width
-                  WidthMode = FS.Skia.UI.Layout.Exactly
+                  WidthMode = FS.GG.UI.Layout.Exactly
                   Height = float size.Height
-                  HeightMode = FS.Skia.UI.Layout.Exactly }
+                  HeightMode = FS.GG.UI.Layout.Exactly }
 
-            let layoutResult = FS.Skia.UI.Layout.Layout.evaluate available rendered.Layout
-            let policy = FS.Skia.UI.Layout.Defaults.pixelSnapPolicy 1.0
+            let layoutResult = FS.GG.UI.Layout.Layout.evaluate available rendered.Layout
+            let policy = FS.GG.UI.Layout.Defaults.pixelSnapPolicy 1.0
 
             let state', interactions, _runtimeMessages =
                 Pointer.update policy layoutResult pointerMsg state
@@ -398,7 +398,7 @@ module ControlsElmish =
         match Pointer.toMsg (pointerSampleOf input) with
         | None -> state, [], 0
         | Some pointerMsg ->
-            let policy = FS.Skia.UI.Layout.Defaults.pixelSnapPolicy 1.0
+            let policy = FS.GG.UI.Layout.Defaults.pixelSnapPolicy 1.0
 
             let state', interactions, _runtimeMessages =
                 Pointer.update policy retained.Layout pointerMsg state
@@ -1045,7 +1045,7 @@ module ControlsElmish =
                   FrameDuration = duration
                   // Feature 120 (US1): live backend present timing (non-golden), read from the OpenGL host's
                   // last present (one-frame lag, live diagnostic only); (US3) replay model counts.
-                  PaintDuration = (lastPresentTiming.Value <- FS.Skia.UI.SkiaViewer.Host.GlHost.lastPresentTiming(); fst lastPresentTiming.Value)
+                  PaintDuration = (lastPresentTiming.Value <- FS.GG.UI.SkiaViewer.Host.GlHost.lastPresentTiming(); fst lastPresentTiming.Value)
                   ComposeDuration = snd lastPresentTiming.Value
                   ReplayHitCount = lastWorkReduction.Value |> Option.map (fun w -> w.ReplayHits) |> Option.defaultValue 0
                   ReplayMissCount = lastWorkReduction.Value |> Option.map (fun w -> w.ReplayMisses) |> Option.defaultValue 0

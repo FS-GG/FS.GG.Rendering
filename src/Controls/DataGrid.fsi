@@ -1,4 +1,4 @@
-namespace FS.Skia.UI.Controls
+namespace FS.GG.UI.Controls
 
 /// How a `DataGridColumn` renders and interprets its cells — `TextColumn`,
 /// `NumericColumn`, `BooleanColumn`, or a `CustomColumn` named by its tag.

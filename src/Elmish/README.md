@@ -1,21 +1,21 @@
-# FS.Skia.UI.Elmish
+# FS.GG.UI.Elmish
 
-Elmish adapter contracts for FS.Skia.UI V3 products.
+Elmish adapter contracts for FS.GG.UI V3 products.
 
-`FS.Skia.UI.Elmish` is one of the **FS.Skia.UI** distribution packages — an F# / Elmish UI and 2D
+`FS.GG.UI.Elmish` is one of the **FS.GG.UI** distribution packages — an F# / Elmish UI and 2D
 scene-graph framework for .NET 10 desktop, rendered through Vulkan + SkiaSharp.
 
 ## Install
 
 ```bash
-dotnet add package FS.Skia.UI.Elmish
+dotnet add package FS.GG.UI.Elmish
 ```
 
-Or scaffold a full governed project that wires the FS.Skia.UI packages together:
+Or scaffold a full governed project that wires the FS.GG.UI packages together:
 
 ```bash
-dotnet new install FS.Skia.UI.Template
-dotnet new fs-skia-ui -o MyApp
+dotnet new install FS.GG.UI.Template
+dotnet new fs-gg-ui -o MyApp
 ```
 
 ## Usage
@@ -25,9 +25,9 @@ The adapter wraps your own Elmish `model`/`msg` together with the viewer, so a s
 projects your model to a `SceneNode`; the adapter rebuilds the scene on every message.
 
 ```fsharp
-open FS.Skia.UI.Scene
-open FS.Skia.UI.SkiaViewer
-open FS.Skia.UI.Elmish
+open FS.GG.UI.Scene
+open FS.GG.UI.SkiaViewer
+open FS.GG.UI.Elmish
 
 // Your own Elmish model/msg
 type Model = { Count: int }
@@ -58,7 +58,7 @@ let next, _ =
 
 ## Versioning
 
-All `FS.Skia.UI.*` libraries share one version and move together. In a generated project a
+All `FS.GG.UI.*` libraries share one version and move together. In a generated project a
 single `<FsSkiaUiVersion>` in `Directory.Packages.props` pins every package — upgrading is one
 edit; see `docs/UPGRADING.md`. Pre-release versions use a `-preview.N` suffix.
 

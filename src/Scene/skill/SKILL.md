@@ -1,5 +1,5 @@
 ---
-name: fs-skia-scene
+name: fs-gg-scene
 description: Work on dependency-light scene primitives and generated product scene usage.
 ---
 
@@ -11,7 +11,7 @@ Owns `src/Scene/`, Scene package tests, `template/fragments/scene/`, and generat
 
 ## Public Contract
 
-The supported API lives in `src/Scene/Scene.fsi`. Surface changes require `readiness/surface-baselines/FS.Skia.UI.Scene.txt` and package-surface evidence.
+The supported API lives in `src/Scene/Scene.fsi`. Surface changes require `readiness/surface-baselines/FS.GG.UI.Scene.txt` and package-surface evidence.
 
 ## Build Commands
 
@@ -29,7 +29,7 @@ under `readiness/surface-baselines/`.
 
 ## Package Boundary
 
-Scene must not reference Elmish, Silk.NET, SkiaSharp, Yoga.Net, or YamlDotNet. Keep host, input, layout, and widget concerns outside this package; use `fs-skia-ui-widgets` for control, chart, and graph authoring.
+Scene must not reference Elmish, Silk.NET, SkiaSharp, Yoga.Net, or YamlDotNet. Keep host, input, layout, and widget concerns outside this package; use `fs-gg-ui-widgets` for control, chart, and graph authoring.
 
 ## Generated Product
 
@@ -40,7 +40,7 @@ Scene is included in every app, governed, headless scene, and sample-pack produc
 Open the package namespace and build a small pure scene description:
 
 ```fsharp
-open FS.Skia.UI.Scene
+open FS.GG.UI.Scene
 
 let scene =
     Scene.group
@@ -56,7 +56,7 @@ printfn "%A %s" kinds evidence.DeterministicHash
 ## One shared painter: node count is structural, the image is the visual proof
 
 The interactive host renderer and the image-evidence (screenshot) renderer are the
-**same** shared painter (`SceneRenderer.paintNode` inside `FS.Skia.UI.SkiaViewer`,
+**same** shared painter (`SceneRenderer.paintNode` inside `FS.GG.UI.SkiaViewer`,
 feature 063). Its `match` over `SceneNode` is **exhaustive — there is no wildcard
 fallback** — so every modeled primitive (`Line`, `Path`, `Arc`, `Points`, `Vertices`,
 `Ellipse`/`FilledEllipse`, `Image`, `RegionNode`, `Chart`, and real-glyph
@@ -101,8 +101,8 @@ rather than hard-failing the phase.
 
 ## Related
 
-- [[fs-skia-skiaviewer]] hosts and renders these scene descriptions.
-- [[fs-skia-ui-widgets]] builds higher-level controls that compile down to Scene.
+- [[fs-gg-skiaviewer]] hosts and renders these scene descriptions.
+- [[fs-gg-ui-widgets]] builds higher-level controls that compile down to Scene.
 
 ## Sources / links
 

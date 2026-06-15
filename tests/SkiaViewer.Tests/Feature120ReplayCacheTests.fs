@@ -9,9 +9,9 @@ module Feature120ReplayCacheTests
 
 open Expecto
 open SkiaSharp
-open FS.Skia.UI.Scene
-open FS.Skia.UI.SkiaViewer
-open FS.Skia.UI.SkiaViewer.Host
+open FS.GG.UI.Scene
+open FS.GG.UI.SkiaViewer
+open FS.GG.UI.SkiaViewer.Host
 
 let private blue: Color = { Red = 0uy; Green = 0uy; Blue = 255uy; Alpha = 255uy }
 

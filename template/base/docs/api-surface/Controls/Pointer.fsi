@@ -1,6 +1,6 @@
-namespace FS.Skia.UI.Controls
+namespace FS.GG.UI.Controls
 
-open FS.Skia.UI.Layout
+open FS.GG.UI.Layout
 
 /// Framework-neutral mouse button identity (FR-013). Qualified access is required
 /// because the bare case names (`Primary`/`Secondary`) otherwise collide with the
@@ -92,7 +92,7 @@ type PointerMsg =
     | WindowExited
     | FocusLost
 
-/// Public contract module exposed by this FS.Skia.UI package: the pointer
+/// Public contract module exposed by this FS.GG.UI package: the pointer
 /// coordination front door (pure, host-independent, replayable). FR-001/FR-009.
 module Pointer =
     /// The single pointer origin tag, used to distinguish pointer-originated

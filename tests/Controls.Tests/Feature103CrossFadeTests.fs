@@ -8,7 +8,7 @@ module Feature103CrossFadeTests
 // snapshot UNDER the next one (two opacity-driven layers via the public `Animation.applyAt`). The
 // in-assembly test IS the user-reachable surface for this internal story (InternalsVisibleTo);
 // render-only / deterministic, injected `TimeSpan` deltas are the sole time coordinate, no wall-clock
-// ([[fs-skia-evidence-mode]] / [[fs-skia-reconciliation]]).
+// ([[fs-gg-evidence-mode]] / [[fs-gg-reconciliation]]).
 //
 //   * T006 (red) / T010 (green) / SC-001 / INV-3 — a Normal→Hover transition whose paint differs in a
 //     token-derived colour shows BOTH endpoints mid-flight (prior fading out under next fading in), so
@@ -25,8 +25,8 @@ open System.IO
 open Expecto
 open FsCheck
 open FsCheck.FSharp
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
 
 type private Msg = Noop
 

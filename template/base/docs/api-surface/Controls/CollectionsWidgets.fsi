@@ -1,6 +1,6 @@
-namespace FS.Skia.UI.Controls.Typed
+namespace FS.GG.UI.Controls.Typed
 
-open FS.Skia.UI.Controls
+open FS.GG.UI.Controls
 
 /// Immutable, compiler-checked authoring surface for a bounded list view. `items`
 /// required. Reuses the existing `Collections` model — no parallel state type

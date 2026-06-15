@@ -48,9 +48,9 @@ let generatedConsumerValidationTests =
               "repository-source-inspection: false"
               "assembly-reflection-authoring: false"
               "package-references:"
-              "FS.Skia.UI.Scene"
-              "FS.Skia.UI.Controls"
-              "FS.Skia.UI.SkiaViewer" ]
+              "FS.GG.UI.Scene"
+              "FS.GG.UI.Controls"
+              "FS.GG.UI.SkiaViewer" ]
             |> List.iter (fun required ->
                 Expect.stringContains report required $"generated consumer validation includes {required}")
         }

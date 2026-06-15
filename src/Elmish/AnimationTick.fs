@@ -1,4 +1,4 @@
-namespace FS.Skia.UI.Elmish
+namespace FS.GG.UI.Elmish
 
 open System
 open System.Threading
@@ -17,7 +17,7 @@ module Animation =
         (model: 'model)
         : Sub<'msg> =
         if isAnimating model then
-            let subId: SubId = [ "fs-skia-ui"; subKey ]
+            let subId: SubId = [ "fs-gg-ui"; subKey ]
 
             let start (dispatch: Dispatch<'msg>) : IDisposable =
                 // Emit an immediate frame so the first advance happens without

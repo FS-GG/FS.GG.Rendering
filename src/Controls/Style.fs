@@ -1,6 +1,6 @@
-namespace FS.Skia.UI.Controls
+namespace FS.GG.UI.Controls
 
-open FS.Skia.UI.Scene
+open FS.GG.UI.Scene
 
 // Feature 093 (E3): the single pure state→style resolver. A closed, ordered, last-writer-wins
 // fold over (theme/token base < attached classes (earlier < later) < current VisualState). No

@@ -5,7 +5,7 @@ open System.Reflection
 open System.Text.RegularExpressions
 
 // Feature 043 (FR-013): generated projects run the EvidenceGraph / EvidenceAudit gates
-// IN-PROCESS through the published FS.Skia.UI.Build engine. No Python or shell audit scripts
+// IN-PROCESS through the published FS.GG.UI.Build engine. No Python or shell audit scripts
 // are copied into or executed by generated products; the only retained external process is
 // `dotnet test`.
 //
@@ -15,7 +15,7 @@ open System.Text.RegularExpressions
 // `<FsSkiaUiVersion>` in Directory.Packages.props — at runtime, loads the matching, already
 // `dotnet restore`-d engine assembly from the NuGet global-packages folder, and invokes the
 // generated-evidence façade by reflection (so no typed `open` pins a version). The result:
-// exactly ONE literal FS.Skia.UI version value in the whole generated project, and a consumer
+// exactly ONE literal FS.GG.UI version value in the whole generated project, and a consumer
 // upgrade is a single edit to <FsSkiaUiVersion> + `dotnet restore` — libraries AND the build
 // engine move together. See docs/UPGRADING.md.
 
@@ -55,14 +55,14 @@ let private fsSkiaUiVersion () =
     let propsPath = path [ Directory.GetCurrentDirectory(); "Directory.Packages.props" ]
 
     if not (File.Exists propsPath) then
-        failwithf "Cannot resolve the FS.Skia.UI engine version: %s is missing." propsPath
+        failwithf "Cannot resolve the FS.GG.UI engine version: %s is missing." propsPath
 
     let m = Regex.Match(File.ReadAllText propsPath, "<FsSkiaUiVersion>([^<]+)</FsSkiaUiVersion>")
 
     if m.Success then
         m.Groups.[1].Value.Trim()
     else
-        failwithf "Cannot resolve <FsSkiaUiVersion> from %s; it is the single source of FS.Skia.UI version truth." propsPath
+        failwithf "Cannot resolve <FsSkiaUiVersion> from %s; it is the single source of FS.GG.UI version truth." propsPath
 
 let private nugetPackagesRoot () =
     match Environment.GetEnvironmentVariable "NUGET_PACKAGES" with
@@ -72,7 +72,7 @@ let private nugetPackagesRoot () =
 
 // Probe the NuGet global-packages cache for an assembly by simple name, preferring net10.0.
 // The engine's transitive dependency closure (Fake.Core, YamlDotNet, FSharp.SystemTextJson,
-// DiffPlex, FS.Skia.UI.SkillSupport, …) is restored into this cache; Assembly.LoadFrom of the
+// DiffPlex, FS.GG.UI.SkillSupport, …) is restored into this cache; Assembly.LoadFrom of the
 // engine alone does not bring them, so we resolve each on demand at invoke time.
 let private probeCachedAssembly (nugetPackages: string) (simpleName: string) : string option =
     let packageDir = path [ nugetPackages; simpleName.ToLowerInvariant() ]
@@ -100,7 +100,7 @@ let private restoreEngine (version: string) =
         proj,
         "<Project Sdk=\"Microsoft.NET.Sdk\">\n"
         + "  <PropertyGroup>\n    <TargetFramework>net10.0</TargetFramework>\n    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>\n  </PropertyGroup>\n"
-        + sprintf "  <ItemGroup>\n    <PackageReference Include=\"FS.Skia.UI.Build\" Version=\"%s\" />\n  </ItemGroup>\n" version
+        + sprintf "  <ItemGroup>\n    <PackageReference Include=\"FS.GG.UI.Build\" Version=\"%s\" />\n  </ItemGroup>\n" version
         + "</Project>\n")
 
     let psi = ProcessStartInfo("dotnet", sprintf "restore \"%s\"" proj)
@@ -123,14 +123,14 @@ let private engineAssembly =
         (let version = fsSkiaUiVersion ()
          let nugetPackages = nugetPackagesRoot ()
          // NuGet lowercases package-id folders in the global-packages cache.
-         let dll = path [ nugetPackages; "fs.skia.ui.build"; version; "lib"; "net10.0"; "FS.Skia.UI.Build.dll" ]
+         let dll = path [ nugetPackages; "fs.skia.ui.build"; version; "lib"; "net10.0"; "FS.GG.UI.Build.dll" ]
 
          if not (File.Exists dll) then
              restoreEngine version
 
          if not (File.Exists dll) then
              failwithf
-                 "FS.Skia.UI.Build %s could not be restored to %s. Ensure the version exists on a configured feed (`dotnet restore`)."
+                 "FS.GG.UI.Build %s could not be restored to %s. Ensure the version exists on a configured feed (`dotnet restore`)."
                  version
                  dll
 
@@ -149,15 +149,15 @@ let private engineAssembly =
 
 let private runGeneratedEvidence (target: string) : int =
     let assembly = engineAssembly.Value
-    let runnerType = assembly.GetType("FS.Skia.UI.Build.Evidence.GeneratedRunner")
+    let runnerType = assembly.GetType("FS.GG.UI.Build.Evidence.GeneratedRunner")
 
     if isNull runnerType then
-        failwith "FS.Skia.UI.Build.Evidence.GeneratedRunner not found in the resolved engine assembly."
+        failwith "FS.GG.UI.Build.Evidence.GeneratedRunner not found in the resolved engine assembly."
 
     let runMethod = runnerType.GetMethod("run")
 
     if isNull runMethod then
-        failwith "FS.Skia.UI.Build.Evidence.GeneratedRunner.run not found in the resolved engine assembly."
+        failwith "FS.GG.UI.Build.Evidence.GeneratedRunner.run not found in the resolved engine assembly."
 
     runMethod.Invoke(null, [| box target; box (Directory.GetCurrentDirectory()) |]) :?> int
 

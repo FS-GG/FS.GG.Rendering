@@ -1,19 +1,19 @@
-namespace FS.Skia.UI.Controls.Theming
+namespace FS.GG.UI.Controls.Theming
 
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Controls
+open FS.GG.UI.Scene
+open FS.GG.UI.Controls
 
 /// Feature 108 (US6, FR-017): the theme mode the live-theming primitive resolves against. A closed
-/// Controls-local DU (Light | Dark) — deliberately NOT `FS.Skia.UI.Color.Palettes.RampVariant`, so
+/// Controls-local DU (Light | Dark) — deliberately NOT `FS.GG.UI.Color.Palettes.RampVariant`, so
 /// `Theming` adds no Controls→Color package dependency (the plan's "no new dependency" constraint).
-/// The WCAG contrast reuse (`FS.Skia.UI.Color.Contrast.ratio`) is exercised in the Controls.Tests
+/// The WCAG contrast reuse (`FS.GG.UI.Color.Contrast.ratio`) is exercised in the Controls.Tests
 /// theming suite, which references the Color package directly (test-only, no package impact).
 ///
 /// Placement note: the `RolePalette`/`Theming` surface lives in the CHILD namespace
-/// `FS.Skia.UI.Controls.Theming` (not the contract sketch's bare `FS.Skia.UI.Controls`) so its role
+/// `FS.GG.UI.Controls.Theming` (not the contract sketch's bare `FS.GG.UI.Controls`) so its role
 /// field names (`Background`/`Foreground`/`Accent`/`Danger`/`Muted`) are not auto-in-scope during
 /// `Control.fs` compilation, where they would otherwise poison `Theme` record-field inference (the
-/// documented "type-move clashes Theme fields" gotcha). Consumers `open FS.Skia.UI.Controls.Theming`.
+/// documented "type-move clashes Theme fields" gotcha). Consumers `open FS.GG.UI.Controls.Theming`.
 type ThemeMode =
     | Light
     | Dark

@@ -1,14 +1,14 @@
 module ContrastTests
 
 (* Feature 083 / US1 (SC-002) + US3 (SC-004) — failing-first (Principle I/VI) tests for the
-   WCAG 2.x contrast surface in FS.Skia.UI.Color. Each case calls the real
+   WCAG 2.x contrast surface in FS.GG.UI.Color. Each case calls the real
    Contrast.relativeLuminance / ratio / verdict / check / checkPaint functions over literal
    Scene colors and asserts the TYPED result, never a string/IO scrape. Before Contrast.fs
    existed these did not compile. *)
 
 open Expecto
-open FS.Skia.UI.Scene
-open FS.Skia.UI.Color
+open FS.GG.UI.Scene
+open FS.GG.UI.Color
 
 let private tol = 0.01
 

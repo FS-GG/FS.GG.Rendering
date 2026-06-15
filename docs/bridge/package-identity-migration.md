@@ -1,40 +1,60 @@
 # Package & template identity — migration note
 
-> Part of the Stage R7 bridge. Records what happened to package and template **identity** across the
-> repository move. Short version: **nothing changed.** Identity is retained as `FS.Skia.UI.*`.
+> Originally a Stage R7 bridge note. **Updated at Stage R8**: the identity has since been
+> **rebranded** `FS.Skia.UI.*` → `FS.GG.UI.*`. The "nothing changed / retained as `FS.Skia.UI.*`"
+> statement below was true of the R7 *repository move* and is preserved as history — it is **no
+> longer the current identity**.
 
-## The move did not rename anything
+## Current identity (since Stage R8): rebranded to `FS.GG.UI.*`
+
+At migration **Stage R8** the deferred package-identity decision was resolved to an accepted
+**rebrand**: every runtime package ID, root namespace, assembly name, and the `dotnet new` template
+identity moved from `FS.Skia.UI.*` to `FS.GG.UI.*` as one coherent matrix. Only the `FS.Skia.UI.`
+brand prefix changed; descriptive Skia/SkiaSharp technology references (the `SkiaViewer` module name,
+genuine `SkiaSharp` references, the descriptive `skia` package tag) are retained. The public API
+surface differs only by the namespace prefix. The new lineage starts at `0.1.0-preview.1`; the old
+`FS.Skia.UI.*` IDs freeze at their last published version and are deprecated (not deleted) with a
+forward pointer.
+
+Authoritative record: [`docs/product/decisions/0001-package-identity.md`](../product/decisions/0001-package-identity.md)
+(status: **accepted**). Deprecation/redirect of old IDs:
+[`package-deprecation-notice.md`](./package-deprecation-notice.md).
+
+### Old → new mapping
+
+| Old identity (`FS.Skia.UI.*`) | New identity (`FS.GG.UI.*`) |
+|---|---|
+| `FS.Skia.UI.Color`           | `FS.GG.UI.Color`           |
+| `FS.Skia.UI.Scene`           | `FS.GG.UI.Scene`           |
+| `FS.Skia.UI.Layout`          | `FS.GG.UI.Layout`          |
+| `FS.Skia.UI.Input`           | `FS.GG.UI.Input`           |
+| `FS.Skia.UI.KeyboardInput`   | `FS.GG.UI.KeyboardInput`   |
+| `FS.Skia.UI.SkiaViewer`      | `FS.GG.UI.SkiaViewer`      |
+| `FS.Skia.UI.Elmish`          | `FS.GG.UI.Elmish`          |
+| `FS.Skia.UI.Controls`        | `FS.GG.UI.Controls`        |
+| `FS.Skia.UI.Controls.Elmish` | `FS.GG.UI.Controls.Elmish` |
+| `FS.Skia.UI.Testing`         | `FS.GG.UI.Testing`         |
+| `FS.Skia.UI.Template`        | `FS.GG.UI.Template`        |
+
+(Source of truth for the new IDs: each `src/<Module>/*.fsproj`, `Directory.Build.props`, and
+`.template.config/template.json`. Import-path lineage for the imported files is in
+[`PROVENANCE.md`](../../PROVENANCE.md), where the import-time `FS.Skia.UI.*` identifiers are mapped to
+their `FS.GG.UI.*` form and traced to their source.)
+
+---
+
+## History — Stage R7: the repository move did not rename anything
+
+> Retained as history. True of the R7 move; superseded by the R8 rebrand above.
 
 Moving the rendering product from `EHotwagner/FS-Skia-UI` to
-[`FS.GG.Rendering`](https://github.com/FS-GG/FS.GG.Rendering) is a **repository** change, not a
-**package** change. Every package ID, root namespace, assembly name, and the template package ID is
-**retained exactly as imported**. A consumer of any `FS.Skia.UI.*` package is unaffected by the
-move — same IDs, same namespaces.
+[`FS.GG.Rendering`](https://github.com/FS-GG/FS.GG.Rendering) was a **repository** change, not a
+**package** change. At that point every package ID, root namespace, assembly name, and the template
+package ID was **retained exactly as imported** — a consumer of any `FS.Skia.UI.*` package was
+unaffected by the move. Only ownership metadata (`Authors`/`Company`/repository URLs) was re-pointed
+to FS-GG at import; the package *identity* was not touched **until R8**.
 
-## Retained identities
-
-| Identity | Value | Status |
-|---|---|---|
-| Runtime package IDs | `FS.Skia.UI.Color`, `FS.Skia.UI.Scene`, `FS.Skia.UI.Layout`, `FS.Skia.UI.Input`, `FS.Skia.UI.KeyboardInput`, `FS.Skia.UI.SkiaViewer`, `FS.Skia.UI.Elmish`, `FS.Skia.UI.Controls`, `FS.Skia.UI.Controls.Elmish`, `FS.Skia.UI.Testing` | Retained — unchanged by the move |
-| Template package ID | `FS.Skia.UI.Template` | Retained — unchanged by the move |
-| Root namespaces / assembly names | `FS.Skia.UI.<Module>` | Retained — unchanged by the move |
-| Pack output location | `~/.local/share/nuget-local/` | Unchanged |
-
-(Source of truth for the IDs: each `src/<Module>/*.fsproj` and `Directory.Build.props`; see also the
-import path map in [`PROVENANCE.md`](../../PROVENANCE.md). Only ownership metadata —
-`Authors`/`Company`/repository URLs — was re-pointed to FS-GG at import; the package *identity* was
-not touched.)
-
-## Rename is deferred to Stage R8 — and is not decided here
-
-Whether to rebrand to a new identity such as `FS.GG.UI.*` is a separate, explicit release decision
-deferred to migration **Stage R8**. The decision record is
-[`docs/product/decisions/0001-package-identity.md`](../product/decisions/0001-package-identity.md)
-(status: *deferred*).
-
-**This note neither decides nor begins a rebrand.** It only records the current, retained mapping so
-that:
-
-- nobody mistakes "the repo moved" for "the packages were renamed"; and
-- if R8 later chooses a rename, it starts from this documented baseline and publishes replacement
-  packages before deprecating the old IDs (per the constitution's package-identity constraint).
+The R7 note recorded that mapping so nobody would mistake "the repo moved" for "the packages were
+renamed," and so that if R8 chose a rename it would start from a documented baseline and publish
+replacement packages before deprecating old IDs (per the constitution's package-identity constraint).
+**Stage R8 took that rename** — see the current identity above.

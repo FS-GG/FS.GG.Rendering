@@ -8,7 +8,7 @@ module Feature113StabilityDiagTests
 // `layoutDriftReport`).
 
 open Expecto
-open FS.Skia.UI.Controls
+open FS.GG.UI.Controls
 
 // Event handlers are first-class function values: F# re-wraps a function in a fresh closure adapter at
 // each use site, so an event value is effectively always reference-fresh (and functions have no

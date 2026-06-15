@@ -1,4 +1,4 @@
-namespace FS.Skia.UI.Controls
+namespace FS.GG.UI.Controls
 
 /// Whether a `TextInputModel` accepts a `SingleLine` or `MultiLine` of text.
 type TextInputMode =
