@@ -1,0 +1,90 @@
+# Quickstart: Validating the Runtime Visual-State Bridge (Feature 096)
+
+This is a **backfill** — the code, the suites, and the readiness evidence already exist. This guide
+shows how to **run and read** the 096 validation, not how to build the feature. Validation is the
+conformance check that the suites are green, the readiness evidence regenerates, and the
+public-surface delta is zero.
+
+## Prerequisites
+
+- .NET SDK with `net10.0` (per `Directory.Build.props`).
+- Repo root: `/home/developer/projects/FS.GG.Rendering`.
+- No GL context / display required — every 096 proof is deterministic and headless (`VisualState` /
+  record comparison, structural `Scene` equality against the un-bridged build, and the in-process live
+  `RetainedRender.step`).
+
+## 1. Build the library
+
+```bash
+dotnet build src/Controls/Controls.fsproj
+```
+
+Expected: clean build. `Controls.fsproj` declares `<InternalsVisibleTo Include="Controls.Tests" />`,
+so the suite can reach the internal bridge (`applyRuntimeVisualState` and the feature-112 targeted
+variants). The public projection `deriveVisualState` is reached directly.
+
+## 2. Run the Feature 096 suites
+
+```bash
+# Projection + bridge (Controls.Tests): precedence, stamp, at-rest, focus, arbitration, scoped kinds
+dotnet test tests/Controls.Tests/Controls.Tests.fsproj --filter "FullyQualifiedName~096"
+
+# Live retained path (Elmish.Tests): E2 survival + responds-proof (also regenerates readiness/)
+dotnet test tests/Elmish.Tests/Elmish.Tests.fsproj --filter "FullyQualifiedName~096"
+```
+
+Expected: all three suites pass. What each proves (see `contracts/runtime-bridge.md` §4 for the full
+clause mapping):
+
+| Suite / test group | Proves | SC |
+|---|---|---|
+| `Feature096RuntimeBridgeTests` — precedence/peel + unknown-id ⇒ `Normal` + determinism | `deriveVisualState` selects under `Pressed > Selected > Focused > Hover > Normal`; peeling reveals the next; unknown id ⇒ `Normal`; identical inputs → identical result | SC-001 |
+| `Feature096RuntimeBridgeTests` — no-attribute restyle + non-interacted sibling unchanged | a NO-attribute (unstyled) control carries the derived `Hover`/`Pressed`/`Selected`; a non-interacted sibling resolves `Normal` and is returned unchanged | SC-002 (US1) |
+| `Feature096RuntimeBridgeTests` — at-rest unchanged + Scene-identity + zero-recompute | an empty-model tree is structurally unchanged; the at-rest bridged `Scene` is byte-identical to the un-bridged build; the live retained step recomputes 0 nodes | SC-003 |
+| `Feature096RuntimeBridgeTests` — focus indicator + focus move | a focused control gains `Focused` with no consumer attribute; moving focus moves the indicator (the prior control returns to `Normal`) | SC-002 |
+| `Feature096RuntimeBridgeTests` — consumer-vs-derived arbitration | consumer-`Disabled`/`Selected` is preserved under interaction; a consumer-`Normal` control takes the derived `Focused` | SC-004 (US3) |
+| `Feature096RuntimeBridgeTests` — single-hover bounded repaint | a single hover entering one control is a bounded (`< baseline`) repaint, the hovered control counted as work | SC-005 |
+| `Feature096RuntimeBridgeTests` — per-widened-kind restyle + unmigrated-kind no-delta | each widened kind (`button`/`slider`/`text-box`/`radio-group`/`switch`) restyles under a runtime state and is byte-identical at rest; an unmigrated kind shows no render delta | SC-006 |
+| `Feature096BridgePropertyTests` — three `Gen096` properties (≥1000 cases) | the projection is total + deterministic; the closed order holds (consumer non-`Normal` preserved, else derived fills the slot); the stamp is deterministic | SC-004 |
+| `Feature096LiveBridgeTests` — focus survives a sibling shift | the `Focused` indicator stays on the same retained identity across a sibling-shifting re-render via the live retained path, where a position-keyed baseline loses identity | SC-007 |
+| `Feature096LiveBridgeTests` — responds on the live path | a focus/hover input restyles on the live path; an inert (un-bridged) build does not — structural `Scene` inequality | SC-002 |
+
+## 3. Confirm zero public-surface delta
+
+```bash
+dotnet test tests/Controls.Tests/Controls.Tests.fsproj --filter "FullyQualifiedName~Surface"
+```
+
+Expected: pass **unchanged**. The lone public entry, `deriveVisualState`, sits on the `ControlRuntime`
+module already committed in `tests/surface-baselines/FS.GG.UI.Controls.txt` (lines 61-89:
+`FS.GG.UI.Controls.ControlRuntime` + `ControlRuntimeModel`/`ControlRuntimeMsg`/`ControlRuntimeEffect`).
+The bridge (`applyRuntimeVisualState`) and the feature-112 variants are `internal`. Backfilling the
+spec adds no new baseline delta (FR-008, SC-008).
+
+## 4. Read the readiness evidence
+
+```text
+specs/096-runtime-visual-state-bridge/readiness/
+├── focus-survives-reshuffle.md   # E2 retained-id survival across a sibling shift (SC-007, FR-007)
+└── responds-proof.md             # bridged frame differs from the inert/un-bridged build for the same input
+```
+
+Both are regenerated by `Feature096LiveBridgeTests` against the **real** bridge
+(`applyRuntimeVisualState`) and the **live** `RetainedRender.init`/`step` —
+`hand-seeded-state-by-identity=false`. `focus-survives-reshuffle.md` records
+`retained-id-stable-across-shift=true`, `focused-state-before-shift=Focused`,
+`focused-state-after-shift=Focused`, `baseline-loses-identity-on-shift=true`. `responds-proof.md`
+records `focus-input-restyles=true`, `press-input-restyles=true`, `un-bridged-build-is-inert=true`.
+The evidence is **structural `Scene` (in)equality**, not pixels or desktop visibility — that limitation
+is in scope-of-proof and disclosed in the evidence files.
+
+## What this validation does NOT cover
+
+- Pixel-level rendering or on-screen visibility (out of scope; structural `Scene` equality only).
+- The live host deriving `Selected` — `ControlsElmish` populates focus/hover/press but not the
+  text-range `Selection`, so the `Selected` branch is exercised by tests, forward-looking on the real
+  render path (bounded follow-up DF-2). The projection is total and deterministic regardless.
+- A visible restyle for kinds beyond the five 096 widened — `progress-bar`/`numeric-input` and others
+  are correctly inert under the bridge today (bounded follow-up DF-3).
+- Deriving the head states (`Disabled`/`Validation`/`Loading`) — these are permanent author intent, not
+  a deferral; the projection never produces them.
