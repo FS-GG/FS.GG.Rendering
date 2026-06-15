@@ -92,7 +92,9 @@ jobs:
           set -euo pipefail
           dotnet tool install --global fsdocs-tool
           export PATH="$PATH:$HOME/.dotnet/tools"
-          dotnet fsdocs build --strict
+          # The global tool installs a `fsdocs` command (not a `dotnet-fsdocs` shim), so invoke it
+          # directly — `dotnet fsdocs` looks for a nonexistent `dotnet-fsdocs` and fails.
+          fsdocs build --strict
 
       # T011 (FR-004) + T015 (FR-005/FR-011) — ONE offscreen invocation emits T0/run.json and
       # T1/run.json. The action reads each tier's run.json.status (NOT the aggregate process exit
