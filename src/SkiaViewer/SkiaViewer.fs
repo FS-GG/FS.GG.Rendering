@@ -1273,11 +1273,17 @@ module Viewer =
                     (), Cmd.ofMsg (LegacyHostEffect Host.ViewerEffect.Shutdown)
                 | _ -> (), Cmd.none
             | LegacyPointer input ->
+                // Feature 124: the pointer handler (run in the `when` guard) already folded any
+                // resulting messages into the model. Do NOT emit a per-event RenderFrame — a fast mouse
+                // produces hundreds of pointer events/sec, and one full repaint each bypassed the
+                // FrameRateCap (renders spiked to ~3x the cap) and backed the loop up, so input arrived
+                // in stutters/bursts. The paced RenderTick (60Hz) presents the updated scene, exactly as
+                // the LegacyKey path above already relies on.
                 match onPointer with
                 | Some handle when handle input ->
                     closeReason := Some AppRequestedClose
                     (), Cmd.ofMsg (LegacyHostEffect Host.ViewerEffect.Shutdown)
-                | _ -> (), Cmd.ofMsg (LegacyHostEffect(Host.ViewerEffect.RenderFrame(renderCurrentScene ())))
+                | _ -> (), Cmd.none
             | LegacyResized size ->
                 onResize |> Option.iter (fun handle -> handle size)
                 (), Cmd.ofMsg (LegacyHostEffect(Host.ViewerEffect.RenderFrame(renderCurrentScene ())))
