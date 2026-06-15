@@ -1,0 +1,22 @@
+<Project>
+
+  <!-- Standalone consumer tree. This file SHADOWS the repository-root
+       Directory.Build.props (MSBuild stops at the nearest one walking up), so the
+       sample never inherits the product's pack identity / packable-project rules.
+       It mirrors the engineering constraints that matter for a consumer: net10.0,
+       Nullable, and the constitution's FS0078-as-error (Principle II — no access
+       modifiers on top-level bindings). -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <!-- Mirror the repo's escalated warnings (incl. FS0078) without turning ALL
+         warnings into errors — the sample stays buildable while honoring Principle II. -->
+    <WarningsAsErrors>FS0025;FS0026;FS0052;FS0064;FS0078</WarningsAsErrors>
+    <!-- Consumer sample: never packed, never part of the product surface (FR-013). -->
+    <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+</Project>

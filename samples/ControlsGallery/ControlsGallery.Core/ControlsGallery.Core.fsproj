@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+  </PropertyGroup>
+
+  <!-- Pure, testable gallery core. Consumes the framework as packed packages only
+       (no ProjectReference into src/ — FR-013 / SC-005). The package set is wider than
+       the original task sketch (which named only Controls + Color): authoring the
+       seeded FrameInput scripts (Scripts.fs), the deterministic evidence record
+       (Evidence.fs), and the MVU host bridge (Host.fs) needs the public surfaces of
+       Controls.Elmish and SkiaViewer too. All four are packages, so the consumer-only
+       rule is preserved. -->
+  <ItemGroup>
+    <Compile Include="GalleryTheme.fs" />
+    <Compile Include="Model.fs" />
+    <Compile Include="DemoState.fs" />
+    <Compile Include="Pages.fs" />
+    <Compile Include="CoverageMap.fs" />
+    <Compile Include="Scripts.fs" />
+    <Compile Include="Shell.fs" />
+    <Compile Include="Host.fs" />
+    <Compile Include="Evidence.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FS.GG.UI.Controls" Version="0.1.0-preview.1" />
+    <PackageReference Include="FS.GG.UI.Color" Version="0.1.0-preview.1" />
+    <PackageReference Include="FS.GG.UI.Controls.Elmish" Version="0.1.0-preview.1" />
+    <PackageReference Include="FS.GG.UI.SkiaViewer" Version="0.1.0-preview.1" />
+  </ItemGroup>
+
+</Project>
