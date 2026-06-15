@@ -6,6 +6,8 @@ open Microsoft.FSharp.Reflection
 open Expecto
 open FS.GG.UI.Controls
 open FS.GG.UI.Controls.Typed
+open FS.GG.UI.Themes.Default
+open FS.GG.UI.DesignSystem
 
 // ---------------------------------------------------------------------------
 // Feature 070 — migrate the remaining 41 catalog controls to the typed front

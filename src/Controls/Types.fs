@@ -2,6 +2,8 @@ namespace FS.GG.UI.Controls
 
 open FS.GG.UI.Scene
 open FS.GG.UI.Layout
+// Feature 125: design-system primitives relocated to FS.GG.UI.DesignSystem.
+open FS.GG.UI.DesignSystem
 
 type ControlId = string
 type ControlKind = string
@@ -175,56 +177,6 @@ type AccessibilityMetadata =
       Contrast: ContrastEvidence option
       Navigation: NavRange option
       Collection: CollectionPosition option }
-
-type ValidationState =
-    | Valid
-    | Invalid of string
-    | Pending of string
-
-type VisualState =
-    | Normal
-    | Disabled
-    | Hover
-    | Pressed
-    | Focused
-    | Selected
-    | Loading
-    | Validation of ValidationState
-
-[<RequireQualifiedAccess>]
-type StyleVariant =
-    | Primary
-    | Danger
-    | Ghost
-    | Neutral
-    | Success
-    | Warning
-
-type StyleClass =
-    | Variant of StyleVariant
-    | Custom of string
-
-type ResolvedStyle =
-    { Foreground: Color
-      Fill: Color
-      Stroke: Color
-      StrokeWidth: float
-      FontFamily: string option
-      FontSize: float
-      FontWeight: int option }
-
-type Theme =
-    { Name: string
-      Foreground: Color
-      Background: Color
-      Accent: Color
-      Danger: Color
-      Muted: Color
-      FontFamily: string option
-      FontSize: float
-      Density: float
-      CornerRadius: float
-      ContrastRequiredRatio: float }
 
 [<RequireQualifiedAccess>]
 type ControlEventOrigin =

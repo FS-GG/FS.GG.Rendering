@@ -2,6 +2,7 @@ namespace FS.GG.UI.Controls
 
 open System
 open FS.GG.UI.Scene
+open FS.GG.UI.DesignSystem
 
 module LayoutDefaults = FS.GG.UI.Layout.Defaults
 

@@ -1,6 +1,7 @@
 namespace FS.GG.UI.Controls.Typed
 
 open FS.GG.UI.Controls
+open FS.GG.UI.DesignSystem
 
 /// Semantic style intent for a button (Variant taxonomy class).
 type ButtonIntent =

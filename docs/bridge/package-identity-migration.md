@@ -43,6 +43,30 @@ their `FS.GG.UI.*` form and traced to their source.)
 
 ---
 
+## Feature 125: design-system / default-theme namespace relocation out of `FS.GG.UI.Controls`
+
+The design-system primitives and the default theme were **carved out of `FS.GG.UI.Controls`** into
+two new, separately-referenceable packages, and the relocated types **changed namespace** to match.
+This is a pre-1.0, in-repo-only relocation with **no backward-source-compat shims** (no
+`TypeForwardedTo`, no aliases): in-repo consumers add an `open` at the point of use.
+
+| Symbol(s) | Old namespace (`FS.GG.UI.Controls`) | New package / namespace |
+|---|---|---|
+| `ValidationState`, `VisualState`, `StyleVariant`, `StyleClass`, `ResolvedStyle`, `Theme` (type), `DesignTokens`, `Style.resolve` | `FS.GG.UI.Controls` | **`FS.GG.UI.DesignSystem`** (`FS.GG.UI.DesignSystem`) |
+| `Theme` (module: `light`/`dark`/`withDensity`/`withAccent`/`resolve`) | `FS.GG.UI.Controls` | **`FS.GG.UI.Themes.Default`** (`FS.GG.UI.Themes.Default`) |
+| `ThemeMode`, `RolePalette`, `Theming` | `FS.GG.UI.Controls.Theming` | **`FS.GG.UI.Themes.Default`** (`FS.GG.UI.Themes.Default.Theming`) |
+
+Consumer migration: add `open FS.GG.UI.DesignSystem` wherever a relocated primitive is named, and
+`open FS.GG.UI.Themes.Default` (and `open FS.GG.UI.Themes.Default.Theming`) wherever the default
+theme values or the live-theming surface are used. `FS.GG.UI.Controls` itself now references
+`FS.GG.UI.DesignSystem` and **must not** reference any theme package (the acyclic layering edge).
+`Theme` additionally gains two **additive** roles, `Success`/`Warning` (token-sourced; no existing
+field value or render output changes).
+
+Rationale and the no-shim decision: [`docs/product/decisions/0003-designsystem-namespace-relocation.md`](../product/decisions/0003-designsystem-namespace-relocation.md).
+
+---
+
 ## History — Stage R7: the repository move did not rename anything
 
 > Retained as history. True of the R7 move; superseded by the R8 rebrand above.

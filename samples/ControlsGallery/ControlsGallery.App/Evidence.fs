@@ -13,6 +13,7 @@ open FS.GG.UI.Controls.Elmish
 open FS.GG.UI.SkiaViewer
 open ControlsGallery.Core
 open ControlsGallery.Core.Model
+open FS.GG.UI.Themes.Default
 
 let private size: Size = { Width = 1024; Height = 768 }
 

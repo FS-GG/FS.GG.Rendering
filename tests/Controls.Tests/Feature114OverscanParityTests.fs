@@ -8,6 +8,8 @@ module Feature114OverscanParityTests
 open Expecto
 open FS.GG.UI.Scene
 open FS.GG.UI.Controls
+open FS.GG.UI.Themes.Default
+open FS.GG.UI.DesignSystem
 
 let private columns: DataGridColumn list =
     [ { Key = "name"; Header = "Name"; Width = 200.0; ColumnType = TextColumn }

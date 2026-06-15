@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <IsPackable>true</IsPackable>
+    <PackageId>FS.GG.UI.DesignSystem</PackageId>
+    <AssemblyName>FS.GG.UI.DesignSystem</AssemblyName>
+    <Version>0.1.0-preview.1</Version>
+    <Title>FS.GG.UI.DesignSystem</Title>
+    <Description>Design-system primitives: token model, Theme record, ResolvedStyle, style variants/classes, visual/validation state, and the pure Style.resolve resolver. Depends only on the scene vocabulary.</Description>
+    <PackageTags>fsharp;skia;design-system;tokens;theme;style</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Feature 093/125: the design-system slice carved out of FS.GG.UI.Controls. Declaration
+         order is load-bearing: ResolvedStyle is declared immediately before Theme so the shared
+         bare field names (Foreground/FontFamily/FontSize) bind to Theme (last-declared-wins). -->
+    <Compile Include="Types.DesignSystem.fsi" />
+    <Compile Include="Types.DesignSystem.fs" />
+    <!-- Feature 069: the generated design-token module (single source: design-tokens.tokens.json,
+         which now lives with the default theme in FS.GG.UI.Themes.Default). Curated .fsi
+         (Principle II); the .fs is generated. Compiles before any type that reads tokens. -->
+    <Compile Include="DesignTokens.fsi" />
+    <Compile Include="DesignTokens.fs" />
+    <!-- Feature 093 (E3): the pure state→style resolver. Sees Types + DesignTokens. -->
+    <Compile Include="Style.fsi" />
+    <Compile Include="Style.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Scene\Scene.fsproj" />
+  </ItemGroup>
+
+</Project>

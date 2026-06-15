@@ -14,6 +14,8 @@ open FsCheck
 open FsCheck.FSharp
 open FS.GG.UI.Scene
 open FS.GG.UI.Controls
+open FS.GG.UI.Themes.Default
+open FS.GG.UI.DesignSystem
 
 let private ms (n: float) = TimeSpan.FromMilliseconds n
 let private ownScene: Scene list = [ Scene.rectangle (0.0, 0.0, 10.0, 10.0) Colors.black ]

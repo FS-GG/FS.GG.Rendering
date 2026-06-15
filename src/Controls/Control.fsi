@@ -1,4 +1,5 @@
 namespace FS.GG.UI.Controls
+open FS.GG.UI.DesignSystem
 
 /// Internal extraction seam (feature 080) — `internal` accessibility, no public-surface
 /// entry (mirrors `module internal Reconcile`); reached from `Controls.Tests` via

@@ -1,6 +1,7 @@
 namespace FS.GG.UI.Controls.Typed
 
 open FS.GG.UI.Controls
+open FS.GG.UI.DesignSystem
 
 /// Immutable, compiler-checked authoring surface for rich text. `runs` required.
 type RichTextProps<'msg> =

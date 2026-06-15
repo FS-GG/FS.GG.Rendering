@@ -2,8 +2,10 @@ module ControlsGallery.Tests.ThemeInvarianceTests
 
 open Expecto
 open FS.GG.UI.Controls
-open FS.GG.UI.Controls.Theming
+open FS.GG.UI.Themes.Default.Theming
 open ControlsGallery.Core
+open FS.GG.UI.Themes.Default
+open FS.GG.UI.DesignSystem
 
 let private size: FS.GG.UI.Scene.Size = { Width = 1024; Height = 768 }
 

@@ -1,6 +1,7 @@
 namespace FS.GG.UI.Controls
 
 open FS.GG.UI.Scene
+open FS.GG.UI.DesignSystem
 
 // Feature 091 (E2) — wiring the parked keyed reconciler (feature 067) onto the live render path.
 // This is NOT a new algorithm: it consumes `Reconcile.diff`'s patch and drives the next frame

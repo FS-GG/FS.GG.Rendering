@@ -1,4 +1,4 @@
-namespace FS.GG.UI.Controls
+namespace FS.GG.UI.DesignSystem
 
 open FS.GG.UI.Scene
 

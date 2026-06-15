@@ -1,6 +1,7 @@
 namespace FS.GG.UI.Controls
 
 open System.Collections.Generic
+open FS.GG.UI.DesignSystem
 
 module internal Reconcile =
 

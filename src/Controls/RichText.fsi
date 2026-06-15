@@ -1,6 +1,7 @@
 namespace FS.GG.UI.Controls
 
 open FS.GG.UI.Scene
+open FS.GG.UI.DesignSystem
 
 /// The font weight applied to a `RichTextRun`: `Regular`, `Medium`, or `Bold`.
 type RichTextWeight =

@@ -4,6 +4,8 @@ open System.IO
 open Expecto
 open FS.GG.UI.Controls
 open FS.GG.UI.Controls.Elmish
+open FS.GG.UI.Themes.Default
+open FS.GG.UI.DesignSystem
 
 let repositoryRoot =
     let rec find dir =

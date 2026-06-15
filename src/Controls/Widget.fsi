@@ -1,4 +1,5 @@
 namespace FS.GG.UI.Controls
+open FS.GG.UI.DesignSystem
 
 /// Opaque public return type of every typed `view`. Wraps the lowered
 /// `Control<'msg>` IR. The internal representation (`{ Lowered: Control<'msg> }`)

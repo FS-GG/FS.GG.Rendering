@@ -12,6 +12,8 @@ open System.IO
 open Expecto
 open FS.GG.UI.Scene
 open FS.GG.UI.Controls
+open FS.GG.UI.Themes.Default
+open FS.GG.UI.DesignSystem
 
 let private repositoryRoot =
     let rec find dir =
@@ -31,6 +33,10 @@ let private frozenLight : Theme =
       Background = Colors.rgba 248uy 250uy 252uy 255uy
       Accent = Colors.rgba 37uy 99uy 235uy 255uy
       Danger = Colors.rgba 185uy 28uy 28uy 255uy
+      // Feature 125 (FR-004): additive success/warning roles, sourced from the DTCG token set
+      // (no pre-feature literal existed). Theme.light sets the same token-derived values.
+      Success = DesignTokens.Light.success
+      Warning = DesignTokens.Light.warning
       Muted = Colors.rgba 100uy 116uy 139uy 255uy
       FontFamily = None
       FontSize = 14.0
@@ -49,6 +55,10 @@ let private frozenDark : Theme =
         // gate. It was deliberately brought into conformance with a Radix dark-red text step
         // (#ff9592, 8.42:1). The parity oracle tracks that intentional accessibility fix.
         Danger = Colors.rgba 255uy 149uy 146uy 255uy
+        // Feature 125 (FR-004): dark success/warning come from the Dark token set (the `with`-copy
+        // would otherwise inherit light's values, diverging from Theme.dark).
+        Success = DesignTokens.Dark.success
+        Warning = DesignTokens.Dark.warning
         Muted = Colors.rgba 148uy 163uy 184uy 255uy }
 
 [<Tests>]

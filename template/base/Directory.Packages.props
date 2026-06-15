@@ -32,6 +32,9 @@
     <PackageVersion Include="FS.GG.UI.Layout" Version="$(FsSkiaUiVersion)" />
     <PackageVersion Include="FS.GG.UI.Controls" Version="$(FsSkiaUiVersion)" />
     <PackageVersion Include="FS.GG.UI.Controls.Elmish" Version="$(FsSkiaUiVersion)" />
+    <!-- Feature 125: design-system primitives + default theme carved out of Controls. -->
+    <PackageVersion Include="FS.GG.UI.DesignSystem" Version="$(FsSkiaUiVersion)" />
+    <PackageVersion Include="FS.GG.UI.Themes.Default" Version="$(FsSkiaUiVersion)" />
     <!--#endif -->
     <!--#if (profile == "governed") -->
     <PackageVersion Include="FS.GG.UI.Testing" Version="$(FsSkiaUiVersion)" />

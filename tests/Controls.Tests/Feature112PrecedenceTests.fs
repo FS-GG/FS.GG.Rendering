@@ -6,6 +6,7 @@ module Feature112PrecedenceTests
 
 open Expecto
 open FS.GG.UI.Controls
+open FS.GG.UI.DesignSystem
 
 let private emptyModel = fst (ControlRuntime.init ())
 let private modelWith f = f emptyModel

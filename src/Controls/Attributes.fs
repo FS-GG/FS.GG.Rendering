@@ -1,4 +1,5 @@
 namespace FS.GG.UI.Controls
+open FS.GG.UI.DesignSystem
 
 module Attr =
     let standardAttributeName name =
@@ -71,7 +72,9 @@ module Attr =
     let styleClasses classes = create "styleClasses" Style (StyleClassesValue classes)
     let visualState state = create "visualState" State (VisualStateValue state)
     let theme theme = create "theme" Theme (ThemeValue theme)
-    let validation state = create "validation" Validation (ValidationValue state)
+    // Feature 125: `Validation` is now ambiguous — `VisualState.Validation` (from the relocated
+    // FS.GG.UI.DesignSystem open) shadows the `AttrCategory.Validation` case; qualify the category.
+    let validation state = create "validation" AttrCategory.Validation (ValidationValue state)
     let accessibility metadata = create "accessibility" Accessibility (AccessibilityValue metadata)
     let on eventKind msg = create eventKind Event (MessageValue msg)
     let onWith eventKind map = create eventKind Event (EventValue map)

@@ -27,6 +27,9 @@
          runInteractiveApp + routeInteractivePointer) lives in Controls.Elmish (research
          D3-AMEND); this suite exercises its real adapter routing path headlessly. -->
     <ProjectReference Include="..\..\src\Controls.Elmish\Controls.Elmish.fsproj" />
+    <!-- Feature 125: design-system primitives + default theme carved out of Controls. -->
+    <ProjectReference Include="..\..\src\DesignSystem\DesignSystem.fsproj" />
+    <ProjectReference Include="..\..\src\Themes.Default\Themes.Default.fsproj" />
     <PackageReference Include="Expecto" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="SkiaSharp" />

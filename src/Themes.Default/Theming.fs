@@ -1,7 +1,8 @@
-namespace FS.GG.UI.Controls.Theming
+namespace FS.GG.UI.Themes.Default.Theming
 
 open FS.GG.UI.Scene
-open FS.GG.UI.Controls
+open FS.GG.UI.DesignSystem
+open FS.GG.UI.Themes.Default
 
 // Feature 108 (US6, FR-017/018): the live-theming primitive (see Theming.fsi). Pure projections
 // over the framework `Theme` — no I/O, no Color-package dependency. Child namespace so the role

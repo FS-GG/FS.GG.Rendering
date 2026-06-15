@@ -1,6 +1,7 @@
 namespace FS.GG.UI.Controls.Typed
 
 open FS.GG.UI.Controls
+open FS.GG.UI.DesignSystem
 
 /// Immutable, compiler-checked authoring surface for a multi-line text area. `Id`
 /// is required identity for a stateful control. Reuses the existing `TextInput`

@@ -3,6 +3,8 @@ module ControlsTypedLoweringTests
 open Expecto
 open FS.GG.UI.Controls
 open FS.GG.UI.Controls.Typed
+open FS.GG.UI.Themes.Default
+open FS.GG.UI.DesignSystem
 
 // File-private abbreviations for the legacy builders. Several control names
 // (Button, TextBox, CheckBox, …) are also `AccessibilityRole` union cases, so a

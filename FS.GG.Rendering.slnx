@@ -3,6 +3,7 @@
     <Project Path="src/Color/Color.fsproj" />
     <Project Path="src/Controls.Elmish/Controls.Elmish.fsproj" />
     <Project Path="src/Controls/Controls.fsproj" />
+    <Project Path="src/DesignSystem/DesignSystem.fsproj" />
     <Project Path="src/Elmish/Elmish.fsproj" />
     <Project Path="src/Input/Input.fsproj" />
     <Project Path="src/KeyboardInput/KeyboardInput.fsproj" />
@@ -10,6 +11,7 @@
     <Project Path="src/Scene/Scene.fsproj" />
     <Project Path="src/SkiaViewer/SkiaViewer.fsproj" />
     <Project Path="src/Testing/Testing.fsproj" />
+    <Project Path="src/Themes.Default/Themes.Default.fsproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Color.Tests/Color.Tests.fsproj" />

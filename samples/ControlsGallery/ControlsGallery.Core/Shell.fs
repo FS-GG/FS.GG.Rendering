@@ -6,8 +6,10 @@ module ControlsGallery.Core.Shell
 
 open FS.GG.UI.Scene
 open FS.GG.UI.Controls
-open FS.GG.UI.Controls.Theming
+open FS.GG.UI.Themes.Default.Theming
 open ControlsGallery.Core.Model
+open FS.GG.UI.Themes.Default
+open FS.GG.UI.DesignSystem
 
 let private appBar (model: GalleryModel): Control<GalleryMsg> =
     let themeLabel =

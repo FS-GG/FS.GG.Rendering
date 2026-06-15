@@ -1,4 +1,5 @@
 namespace FS.GG.UI.Controls
+open FS.GG.UI.DesignSystem
 
 /// Whether a `TextInputModel` accepts a `SingleLine` or `MultiLine` of text.
 type TextInputMode =

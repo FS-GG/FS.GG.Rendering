@@ -6,7 +6,9 @@ module ControlsGallery.Core.GalleryTheme
 
 open FS.GG.UI.Scene
 open FS.GG.UI.Controls
-open FS.GG.UI.Controls.Theming
+open FS.GG.UI.Themes.Default.Theming
+open FS.GG.UI.Themes.Default
+open FS.GG.UI.DesignSystem
 
 /// Indigo primary accent (#6366F1).
 let indigo: Color = Colors.rgb 99uy 102uy 241uy

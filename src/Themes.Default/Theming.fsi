@@ -1,7 +1,7 @@
-namespace FS.GG.UI.Controls.Theming
+namespace FS.GG.UI.Themes.Default.Theming
 
 open FS.GG.UI.Scene
-open FS.GG.UI.Controls
+open FS.GG.UI.DesignSystem
 
 /// Feature 108 (US6, FR-017): the theme mode the live-theming primitive resolves against. A closed
 /// Controls-local DU (Light | Dark) — deliberately NOT `FS.GG.UI.Color.Palettes.RampVariant`, so
@@ -10,10 +10,10 @@ open FS.GG.UI.Controls
 /// theming suite, which references the Color package directly (test-only, no package impact).
 ///
 /// Placement note: the `RolePalette`/`Theming` surface lives in the CHILD namespace
-/// `FS.GG.UI.Controls.Theming` (not the contract sketch's bare `FS.GG.UI.Controls`) so its role
+/// `FS.GG.UI.Themes.Default.Theming` (not the bare `FS.GG.UI.Themes.Default`) so its role
 /// field names (`Background`/`Foreground`/`Accent`/`Danger`/`Muted`) are not auto-in-scope during
-/// `Control.fs` compilation, where they would otherwise poison `Theme` record-field inference (the
-/// documented "type-move clashes Theme fields" gotcha). Consumers `open FS.GG.UI.Controls.Theming`.
+/// theme/consumer compilation, where they would otherwise poison `Theme` record-field inference (the
+/// documented "type-move clashes Theme fields" gotcha). Consumers `open FS.GG.UI.Themes.Default.Theming`.
 type ThemeMode =
     | Light
     | Dark

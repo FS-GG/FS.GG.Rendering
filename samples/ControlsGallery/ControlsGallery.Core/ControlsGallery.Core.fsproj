@@ -28,6 +28,9 @@
     <PackageReference Include="FS.GG.UI.Color" Version="0.1.0-preview.1" />
     <PackageReference Include="FS.GG.UI.Controls.Elmish" Version="0.1.0-preview.1" />
     <PackageReference Include="FS.GG.UI.SkiaViewer" Version="0.1.0-preview.1" />
+    <!-- Feature 125: design-system primitives + default theme carved out of Controls. -->
+    <PackageReference Include="FS.GG.UI.DesignSystem" Version="0.1.0-preview.1" />
+    <PackageReference Include="FS.GG.UI.Themes.Default" Version="0.1.0-preview.1" />
   </ItemGroup>
 
 </Project>

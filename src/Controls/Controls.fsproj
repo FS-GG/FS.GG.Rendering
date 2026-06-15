@@ -30,25 +30,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Feature 125: the design-system primitives (Types.DesignSystem/DesignTokens/Style) and the
+         default theme (Theme/Theming/design-tokens.tokens.json) were carved out of this project
+         into FS.GG.UI.DesignSystem and FS.GG.UI.Themes.Default. Types.fs stays (control-semantic
+         types) but now `open FS.GG.UI.DesignSystem`. Controls references DesignSystem only — never
+         a theme project (the forbidden layering edge). -->
     <Compile Include="Types.fsi" />
     <Compile Include="Types.fs" />
-    <!-- Feature 069: the generated design-token module (single source
-         design-tokens.tokens.json -> DesignTokens.fs via DesignTokenDrift /
-         RefreshSurfaceBaselines). Curated .fsi (Principle II); the .fs is generated.
-         Compiles before Theme, which re-expresses light/dark in terms of these tokens. -->
-    <Compile Include="DesignTokens.fsi" />
-    <Compile Include="DesignTokens.fs" />
-    <Compile Include="Theme.fsi" />
-    <Compile Include="Theme.fs" />
-    <!-- Feature 108 (US6): live-theming primitive (mode+accent -> RolePalette -> Theme). After
-         Theme (it projects onto Theme.light/dark); no Color-package dependency. -->
-    <Compile Include="Theming.fsi" />
-    <Compile Include="Theming.fs" />
-    <!-- Feature 093 (E3): the pure state→style resolver. Inserted after Theme (so it sees
-         Types/DesignTokens/Theme) and before Attributes/Control (which route migrated paint
-         through it). ResolvedStyle + Style.resolve are Tier-1 public surface. -->
-    <Compile Include="Style.fsi" />
-    <Compile Include="Style.fs" />
     <Compile Include="Diagnostics.fsi" />
     <Compile Include="Diagnostics.fs" />
     <Compile Include="Accessibility.fsi" />
@@ -136,6 +124,9 @@
     <ProjectReference Include="..\Scene\Scene.fsproj" />
     <ProjectReference Include="..\Layout\Layout.fsproj" />
     <ProjectReference Include="..\KeyboardInput\KeyboardInput.fsproj" />
+    <!-- Feature 125: Controls consumes the relocated design-system primitives. It does NOT
+         reference any theme project (Themes.Default), preserving the acyclic layering. -->
+    <ProjectReference Include="..\DesignSystem\DesignSystem.fsproj" />
   </ItemGroup>
 
 </Project>
