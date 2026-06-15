@@ -312,6 +312,13 @@ module GlHost =
             options.API <- GraphicsAPI(ContextAPI.OpenGL, ContextProfile.Core, ContextFlags.Default, APIVersion(3, 3))
             options.FramesPerSecond <- configuration.TargetFrameRate |> Option.defaultValue 60 |> float
             options.UpdatesPerSecond <- options.FramesPerSecond
+            // Feature 124 (FR-001): the present path swaps buffers explicitly (renderFrameDirect /
+            // representLastGoodFrame call `window.SwapBuffers()`). Silk.NET's default
+            // `ShouldSwapAutomatically = true` ALSO swaps after every `DoRender()`, so each frame was
+            // swapped TWICE — the second swap presenting an undefined back buffer, which a compositor
+            // shows as a black flash (worse for longer paints, the GPU being mid-draw). Disabling the
+            // automatic swap leaves exactly one explicit present per frame and the flicker is gone.
+            options.ShouldSwapAutomatically <- false
             // Carry window-startup intent (fullscreen / maximized / windowed-fullscreen
             // / borderless) into the live window before creation.
             match configuration.ConfigureWindow with
