@@ -1,5 +1,5 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/095-lookless-slot-composition/plan.md
+at specs/096-runtime-visual-state-bridge/plan.md
 <!-- SPECKIT END -->
