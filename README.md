@@ -1,74 +1,66 @@
 # FS.GG.Rendering
 
-The **rendering/runtime** repository of the [FS-GG](https://github.com/FS-GG)
-project: an F# desktop UI framework that renders [Elmish](https://elmish.github.io/elmish/)
-(Model-View-Update) applications with [SkiaSharp](https://github.com/mono/SkiaSharp)
-over **OpenGL (GL)**.
+An F# desktop UI framework that renders Model-View-Update (MVU) applications with
+[SkiaSharp](https://github.com/mono/SkiaSharp) over **OpenGL**. You describe a scene
+of primitives or a tree of semantic controls; the framework measures, lays it out,
+and paints it — with an interactive render loop, theming, input routing, and a
+deterministic offscreen path for tests.
 
-It owns the product end-to-end — scene and drawing primitives, layout, input, the
-Skia viewer/host, Elmish integration, controls, the design-system and theme layers,
-testing helpers, packages, docs, and templates. It builds, tests, documents, packs,
-and releases with **standard [Spec Kit](https://github.com/github/spec-kit)** and
-normal .NET tooling, with no dependency on any external governance platform.
+The render core is **Elmish-free**; idiomatic [Elmish](https://elmish.github.io/elmish/)
+(`Cmd`, subscriptions) is an **optional** adapter layer.
 
-## Status
+## Quick taste
 
-Active. This repository was split out of the archived
-[`EHotwagner/FS-Skia-UI`](https://github.com/EHotwagner/FS-Skia-UI) as a fresh start
-and is being populated stage by stage per the rendering implementation plan
-(R1 fresh repo → R2 product shape → R3 validation set → **R4 import source ✓** → R5 test
-harness → …). As of R4 the **product source lives here**: the runtime libraries (`src/`)
-build on `net10.0` and the default local test tier passes. See [`PROVENANCE.md`](PROVENANCE.md)
-for what was imported and from where, and [`SKIPPED-TESTS.md`](SKIPPED-TESTS.md) for the
-documented out-of-scope skips.
+```fsharp
+open FS.GG.UI.SkiaViewer
 
-This repository is the **canonical home** of the rendering product; the source repo
-[`EHotwagner/FS-Skia-UI`](https://github.com/EHotwagner/FS-Skia-UI) is archive/provenance only. See
-the migration bridge — [`docs/bridge/README.md`](docs/bridge/README.md) — for the handoff,
-directional policy, and identity status.
+let options : ViewerOptions =
+    { Title = "Hello"; InitialSize = size
+      PresentMode = ViewerPresentMode.DirectToSwapchain; FrameRateCap = None }
 
-### Build & test
+// Render a static scene…
+Viewer.run options scene |> ignore
+
+// …or drive an interactive MVU window with your own model/msg:
+Viewer.runInteractiveViewer options host |> ignore
+```
+
+For semantic controls (Button, TextBox, DataGrid…) with Elmish, use
+`Controls.Elmish.runInteractiveApp`. **Full walkthrough → [`docs/usage.md`](docs/usage.md).**
+
+## Consume it
+
+Published as `FS.GG.UI.*` packages on `net10.0` (`0.1.0-preview.1`). Not on a public
+feed yet — reference the projects directly, `dotnet pack` to a local feed, or scaffold
+from the template (`dotnet new install . && dotnet new fs-gg-ui`). See
+[`docs/usage.md`](docs/usage.md#getting-the-packages) for all three paths and the
+package map.
+
+## Build & test
 
 ```sh
-dotnet build FS.GG.Rendering.slnx -c Release    # all runtime libs + local tests
+dotnet build FS.GG.Rendering.slnx -c Release         # all runtime libs + local tests
 DISPLAY=:1 dotnet test FS.GG.Rendering.slnx -c Release   # default local tier (GL via X11)
 ```
 
-### Rendering test harness (Stage R5, in progress)
+The offscreen/deterministic tiers run headless; live windowed rendering needs a GL/X11
+session. The tiered evidence CLI under `tests/Rendering.Harness/` declares what each run
+proves and what it does not.
 
-`tests/Rendering.Harness/` is a tiered evidence CLI — a **capability, not a gate**. Every run
-emits a `run.json`/`metrics.csv`/`summary.md` that declares **what it proves and what it does
-not** (no overclaim), and tiers degrade cleanly when a capability is missing.
+## Status
 
-```sh
-dotnet run --project tests/Rendering.Harness -- probe         # env facts (display/GL/refresh/backend)
-dotnet run --project tests/Rendering.Harness -- offscreen     # T0 deterministic + T1 offscreen readback (headless)
-dotnet run --project tests/Rendering.Harness -- perf --mode throughput --frames 100   # T3 offscreen render throughput
-```
+Active preview. This repository is the canonical home of the FS-GG rendering product,
+split out of the archived [`EHotwagner/FS-Skia-UI`](https://github.com/EHotwagner/FS-Skia-UI)
+(see [`PROVENANCE.md`](PROVENANCE.md)). Only Light/Dark themes ship today; named themes,
+design kits, and the remaining harness tiers are on the roadmap in
+[`docs/reports/`](docs/reports/).
 
-Working today (headless, CI-tested): **probe**, **T0/T1 offscreen**, **T3 offscreen
-render-throughput** (real per-frame timing, honestly **not** vsync-faithful). The pure
-overclaim/degradation core is unit-tested in `tests/Rendering.Harness.Tests`. Live tiers
-(**T2** X11 window + input, **faithful vsync perf**, **T-uinput**) and the input backends are
-pending — they need a live desktop session / kernel `uinput` not available in CI; the CLI
-reports those subcommands as pending rather than faking a pass. See
-[`docs/harness/capability-baseline.md`](docs/harness/capability-baseline.md).
+## Learn more
 
-## Project layout (FS-GG org)
-
-| Repo | Role |
-|---|---|
-| **FS.GG.Rendering** (this) | Rendering/runtime product — active. |
-| FS.GG.Governance | Optional governance/tooling — later, developed independently. |
-| [.github](https://github.com/FS-GG/.github) | Org profile and cross-repo split/migration docs. |
-
-## Working in this repo
-
-- Feature workflow: standard Spec Kit (`specify → plan → tasks → implement`).
-- Project rules live in [`.specify/memory/constitution.md`](.specify/memory/constitution.md)
-  (v1.0.0): contract-first `Spec → .fsi → semantic tests → implementation`,
-  visibility in `.fsi`, idiomatic simplicity, Elmish/MVU for stateful/I-O work,
-  mandatory test evidence, and observable/safe failure.
+- [`docs/usage.md`](docs/usage.md) — how to consume and render, in detail.
+- [`docs/product/layering.md`](docs/product/layering.md) — the four-layer UI model.
+- [`docs/product/module-map.md`](docs/product/module-map.md) — what each module owns.
+- [`SKIPPED-TESTS.md`](SKIPPED-TESTS.md) — documented out-of-scope test skips.
 
 ## License
 
