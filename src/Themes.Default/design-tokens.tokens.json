@@ -1,5 +1,5 @@
 {
-  "$description": "FS.GG.UI.Controls theme primitives — single source of truth (feature 069). DTCG format; generated into src/Controls/DesignTokens.fs via ./fake.sh build -t RefreshSurfaceBaselines.",
+  "$description": "FS.GG.UI theme tokens — single source of truth. DTCG format. The flat light/dark primitives (feature 069) generate the public DesignTokens module (hand-curated); the seed/map/alias/component + space/density/type/elevation groups (feature 126) generate the internal DesignTokensExt module via scripts/generate-design-tokens.fsx.",
   "light": {
     "foreground":            { "$type": "color",      "$value": "#1f2937ff" },
     "background":            { "$type": "color",      "$value": "#f8fafcff" },
@@ -27,5 +27,140 @@
     "density":               { "$type": "number",     "$value": 1.0 },
     "cornerRadius":          { "$type": "dimension",  "$value": 4.0 },
     "contrastRequiredRatio": { "$type": "number",     "$value": 4.5 }
+  },
+
+  "seed": {
+    "colorPrimary":  { "$type": "color",     "$value": "#1677ffff" },
+    "colorSuccess":  { "$type": "color",     "$value": "#15803dff" },
+    "colorWarning":  { "$type": "color",     "$value": "#b45309ff" },
+    "colorError":    { "$type": "color",     "$value": "#b91c1cff" },
+    "colorInfo":     { "$type": "color",     "$value": "#1677ffff" },
+    "colorTextBase": { "$type": "color",     "$value": "#1f2937ff" },
+    "colorBgBase":   { "$type": "color",     "$value": "#f8fafcff" },
+    "fontSize":      { "$type": "dimension", "$value": 14.0 },
+    "lineHeight":    { "$type": "number",    "$value": 1.5 },
+    "borderRadius":  { "$type": "dimension", "$value": 4.0 },
+    "controlHeight": { "$type": "dimension", "$value": 32.0 },
+    "sizeUnit":      { "$type": "dimension", "$value": 4.0 },
+    "sizeStep":      { "$type": "number",    "$value": 4.0 },
+    "motionUnit":    { "$type": "number",    "$value": 0.1 }
+  },
+
+  "map": {
+    "light": {
+      "colorPrimaryHover":  { "$type": "color", "$value": "#4096ffff" },
+      "colorPrimaryActive": { "$type": "color", "$value": "#0958d9ff" },
+      "colorPrimaryBg":     { "$type": "color", "$value": "#e6f4ffff" },
+      "colorErrorBg":       { "$type": "color", "$value": "#fff2f0ff" },
+      "colorBorder":        { "$type": "color", "$value": "#d9d9d9ff" },
+      "colorFillSecondary": { "$type": "color", "$value": "#f5f5f5ff" },
+      "colorBgContainer":   { "$type": "color", "$value": "#ffffffff" },
+      "colorBgElevated":    { "$type": "color", "$value": "#ffffffff" },
+      "colorBgLayout":      { "$type": "color", "$value": "#f5f5f5ff" },
+      "colorText":          { "$type": "color", "$value": "#1f2937ff" },
+      "colorTextSecondary": { "$type": "color", "$value": "#64748bff" },
+      "colorTextDisabled":  { "$type": "color", "$value": "#bfbfbfff" }
+    },
+    "dark": {
+      "colorPrimaryHover":  { "$type": "color", "$value": "#3c89e8ff" },
+      "colorPrimaryActive": { "$type": "color", "$value": "#1668dcff" },
+      "colorPrimaryBg":     { "$type": "color", "$value": "#111a2cff" },
+      "colorErrorBg":       { "$type": "color", "$value": "#2c1618ff" },
+      "colorBorder":        { "$type": "color", "$value": "#424242ff" },
+      "colorFillSecondary": { "$type": "color", "$value": "#1f1f1fff" },
+      "colorBgContainer":   { "$type": "color", "$value": "#1f1f1fff" },
+      "colorBgElevated":    { "$type": "color", "$value": "#2a2a2aff" },
+      "colorBgLayout":      { "$type": "color", "$value": "#000000ff" },
+      "colorText":          { "$type": "color", "$value": "#f1f5f9ff" },
+      "colorTextSecondary": { "$type": "color", "$value": "#94a3b8ff" },
+      "colorTextDisabled":  { "$type": "color", "$value": "#5a5a5aff" }
+    }
+  },
+
+  "alias": {
+    "light": {
+      "text.default":         { "$type": "color", "$value": "#1f2937ff" },
+      "text.secondary":       { "$type": "color", "$value": "#64748bff" },
+      "surface.canvas":       { "$type": "color", "$value": "#f5f5f5ff" },
+      "surface.container":    { "$type": "color", "$value": "#ffffffff" },
+      "surface.elevated":     { "$type": "color", "$value": "#ffffffff" },
+      "border.default":       { "$type": "color", "$value": "#d9d9d9ff" },
+      "item.hoverBg":         { "$type": "color", "$value": "#f5f5f5ff" },
+      "item.selectedBg":      { "$type": "color", "$value": "#e6f4ffff" },
+      "focus.ring":           { "$type": "color", "$value": "#1677ffff" },
+      "feedback.errorText":   { "$type": "color", "$value": "#b91c1cff" },
+      "feedback.warningText": { "$type": "color", "$value": "#b45309ff" }
+    },
+    "dark": {
+      "text.default":         { "$type": "color", "$value": "#f1f5f9ff" },
+      "text.secondary":       { "$type": "color", "$value": "#94a3b8ff" },
+      "surface.canvas":       { "$type": "color", "$value": "#000000ff" },
+      "surface.container":    { "$type": "color", "$value": "#1f1f1fff" },
+      "surface.elevated":     { "$type": "color", "$value": "#2a2a2aff" },
+      "border.default":       { "$type": "color", "$value": "#424242ff" },
+      "item.hoverBg":         { "$type": "color", "$value": "#1f1f1fff" },
+      "item.selectedBg":      { "$type": "color", "$value": "#111a2cff" },
+      "focus.ring":           { "$type": "color", "$value": "#1677ffff" },
+      "feedback.errorText":   { "$type": "color", "$value": "#b91c1cff" },
+      "feedback.warningText": { "$type": "color", "$value": "#b45309ff" }
+    }
+  },
+
+  "component": {
+    "button": {
+      "primaryBg":      { "$type": "color", "$value": "#1677ffff" },
+      "primaryHoverBg": { "$type": "color", "$value": "#4096ffff" },
+      "defaultBorder":  { "$type": "color", "$value": "#d9d9d9ff" },
+      "dangerBg":       { "$type": "color", "$value": "#b91c1cff" }
+    },
+    "input": {
+      "activeBorder":    { "$type": "color", "$value": "#1677ffff" },
+      "hoverBorder":     { "$type": "color", "$value": "#4096ffff" },
+      "placeholderText": { "$type": "color", "$value": "#bfbfbfff" }
+    },
+    "table": {
+      "headerBg":    { "$type": "color", "$value": "#fafafaff" },
+      "rowHoverBg":  { "$type": "color", "$value": "#f5f5f5ff" },
+      "borderColor": { "$type": "color", "$value": "#f0f0f0ff" }
+    },
+    "tabs": {
+      "itemSelectedColor": { "$type": "color", "$value": "#1677ffff" },
+      "inkBar":            { "$type": "color", "$value": "#1677ffff" },
+      "itemColor":         { "$type": "color", "$value": "#1f2937ff" }
+    },
+    "menu": {
+      "itemSelectedBg":    { "$type": "color", "$value": "#e6f4ffff" },
+      "itemSelectedColor": { "$type": "color", "$value": "#1677ffff" },
+      "itemHoverBg":       { "$type": "color", "$value": "#f5f5f5ff" }
+    }
+  },
+
+  "space": {
+    "xs": { "$type": "dimension", "$value": 4.0 },
+    "sm": { "$type": "dimension", "$value": 8.0 },
+    "md": { "$type": "dimension", "$value": 16.0 },
+    "lg": { "$type": "dimension", "$value": 24.0 },
+    "xl": { "$type": "dimension", "$value": 32.0 }
+  },
+
+  "density": {
+    "comfortable": { "$type": "number", "$value": 1.0 },
+    "middle":      { "$type": "number", "$value": 0.875 },
+    "compact":     { "$type": "number", "$value": 0.75 }
+  },
+
+  "type": {
+    "display": { "fontSize": { "$type": "dimension", "$value": 30.0 }, "lineHeight": { "$type": "number", "$value": 1.3 } },
+    "section": { "fontSize": { "$type": "dimension", "$value": 20.0 }, "lineHeight": { "$type": "number", "$value": 1.4 } },
+    "title":   { "fontSize": { "$type": "dimension", "$value": 16.0 }, "lineHeight": { "$type": "number", "$value": 1.5 } },
+    "body":    { "fontSize": { "$type": "dimension", "$value": 14.0 }, "lineHeight": { "$type": "number", "$value": 1.5 } },
+    "small":   { "fontSize": { "$type": "dimension", "$value": 12.0 }, "lineHeight": { "$type": "number", "$value": 1.5 } }
+  },
+
+  "elevation": {
+    "none":   { "$type": "shadow", "$value": "none" },
+    "low":    { "$type": "shadow", "$value": "0 1 2 #0000000f" },
+    "medium": { "$type": "shadow", "$value": "0 4 12 #00000014" },
+    "high":   { "$type": "shadow", "$value": "0 8 24 #0000001f" }
   }
 }

@@ -22,9 +22,21 @@
          (Principle II); the .fs is generated. Compiles before any type that reads tokens. -->
     <Compile Include="DesignTokens.fsi" />
     <Compile Include="DesignTokens.fs" />
+    <!-- Feature 126 (F1): the Ant-derived token taxonomy (seed/map/alias/component +
+         spacing/density/type/elevation). `module internal` with NO .fsi — additive, zero
+         public-surface delta; GENERATED from the DTCG source via
+         scripts/generate-design-tokens.fsx. Nothing reads it yet (F4 resolver / D2 themes do). -->
+    <Compile Include="DesignTokensExt.fs" />
     <!-- Feature 093 (E3): the pure state→style resolver. Sees Types + DesignTokens. -->
     <Compile Include="Style.fsi" />
     <Compile Include="Style.fs" />
+  </ItemGroup>
+
+  <!-- Feature 126 (F1): expose the internal DesignTokensExt taxonomy to the test assembly that
+       exercises it (and, later, the F4 resolver). It carries no public surface, so this is the
+       only way tests can name the tokens — mirrors the Controls Reconcile/RetainedRender pattern. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Controls.Tests" />
   </ItemGroup>
 
   <ItemGroup>
