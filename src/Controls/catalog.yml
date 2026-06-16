@@ -1505,3 +1505,256 @@ controls:
     supportStatus: supported
     owner: controls
   # END GENERATED: typed-catalog/upload
+  # Feature 133 (D2C.1): net-new generic chart controls (Charts2). Hand-maintained.
+  # BEGIN GENERATED: typed-catalog/area-chart
+  - id: area-chart
+    displayName: Area Chart
+    category: chart
+    module: AreaChart
+    typedModule: AreaChart
+    purpose: Controls-owned filled-area trend visualization.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: []
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: Chart, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md, specs/011-controls-boundary-refactor/readiness/chart-datagrid-controls.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/area-chart
+  # BEGIN GENERATED: typed-catalog/column-chart
+  - id: column-chart
+    displayName: Column Chart
+    category: chart
+    module: ColumnChart
+    typedModule: ColumnChart
+    purpose: Controls-owned vertical-bar categorical visualization.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: []
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: Chart, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md, specs/011-controls-boundary-refactor/readiness/chart-datagrid-controls.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/column-chart
+  # BEGIN GENERATED: typed-catalog/histogram
+  - id: histogram
+    displayName: Histogram
+    category: chart
+    module: Histogram
+    typedModule: Histogram
+    purpose: Controls-owned frequency-distribution visualization.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: []
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: Chart, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md, specs/011-controls-boundary-refactor/readiness/chart-datagrid-controls.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/histogram
+  # BEGIN GENERATED: typed-catalog/box-plot
+  - id: box-plot
+    displayName: Box Plot
+    category: chart
+    module: BoxPlot
+    typedModule: BoxPlot
+    purpose: Controls-owned box-and-whisker distribution visualization.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: []
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: Chart, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md, specs/011-controls-boundary-refactor/readiness/chart-datagrid-controls.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/box-plot
+  # BEGIN GENERATED: typed-catalog/heatmap
+  - id: heatmap
+    displayName: Heatmap
+    category: chart
+    module: Heatmap
+    typedModule: Heatmap
+    purpose: Controls-owned colour-intensity grid visualization.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: []
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: Chart, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md, specs/011-controls-boundary-refactor/readiness/chart-datagrid-controls.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/heatmap
+  # BEGIN GENERATED: typed-catalog/radar-chart
+  - id: radar-chart
+    displayName: Radar Chart
+    category: chart
+    module: RadarChart
+    typedModule: RadarChart
+    purpose: Controls-owned multi-axis polygon visualization.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: []
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: Chart, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md, specs/011-controls-boundary-refactor/readiness/chart-datagrid-controls.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/radar-chart
+  # BEGIN GENERATED: typed-catalog/rose-chart
+  - id: rose-chart
+    displayName: Rose Chart
+    category: chart
+    module: RoseChart
+    typedModule: RoseChart
+    purpose: Controls-owned polar-area (Nightingale) visualization.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: []
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: Chart, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md, specs/011-controls-boundary-refactor/readiness/chart-datagrid-controls.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/rose-chart
+  # BEGIN GENERATED: typed-catalog/waterfall-chart
+  - id: waterfall-chart
+    displayName: Waterfall Chart
+    category: chart
+    module: WaterfallChart
+    typedModule: WaterfallChart
+    purpose: Controls-owned cumulative-delta visualization.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: []
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: Chart, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md, specs/011-controls-boundary-refactor/readiness/chart-datagrid-controls.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/waterfall-chart
+  # BEGIN GENERATED: typed-catalog/funnel-chart
+  - id: funnel-chart
+    displayName: Funnel Chart
+    category: chart
+    module: FunnelChart
+    typedModule: FunnelChart
+    purpose: Controls-owned stage-conversion visualization.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: []
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: Chart, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md, specs/011-controls-boundary-refactor/readiness/chart-datagrid-controls.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/funnel-chart
+  # BEGIN GENERATED: typed-catalog/gauge-chart
+  - id: gauge-chart
+    displayName: Gauge Chart
+    category: chart
+    module: GaugeChart
+    typedModule: GaugeChart
+    purpose: Controls-owned single-value dial visualization.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: []
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: Chart, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md, specs/011-controls-boundary-refactor/readiness/chart-datagrid-controls.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/gauge-chart
+  # BEGIN GENERATED: typed-catalog/sankey-diagram
+  - id: sankey-diagram
+    displayName: Sankey Diagram
+    category: graph
+    module: SankeyDiagram
+    typedModule: SankeyDiagram
+    purpose: Controls-owned flow-between-nodes visualization.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: []
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: Graph, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md, specs/011-controls-boundary-refactor/readiness/chart-datagrid-controls.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/sankey-diagram
+  # BEGIN GENERATED: typed-catalog/chord-diagram
+  - id: chord-diagram
+    displayName: Chord Diagram
+    category: graph
+    module: ChordDiagram
+    typedModule: ChordDiagram
+    purpose: Controls-owned node-relationship ring visualization.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: []
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: Graph, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md, specs/011-controls-boundary-refactor/readiness/chart-datagrid-controls.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/chord-diagram
+  # BEGIN GENERATED: typed-catalog/treemap
+  - id: treemap
+    displayName: Treemap
+    category: chart
+    module: Treemap
+    typedModule: Treemap
+    purpose: Controls-owned nested-rectangle hierarchy visualization.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: []
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: Chart, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md, specs/011-controls-boundary-refactor/readiness/chart-datagrid-controls.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/treemap
+  # BEGIN GENERATED: typed-catalog/sunburst
+  - id: sunburst
+    displayName: Sunburst
+    category: chart
+    module: Sunburst
+    typedModule: Sunburst
+    purpose: Controls-owned radial-hierarchy visualization.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: []
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: Chart, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md, specs/011-controls-boundary-refactor/readiness/chart-datagrid-controls.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/sunburst

@@ -38,7 +38,8 @@ raw `ant.design` URLs across other docs; link here instead.
   (`resolve`, `resolveDefault`, `baseStyleFor`, `neutralPolicy`, `IntentPolicy`) drives the
   stateful styling of a region (hover/active/disabled/selected/focus).
 - **Color/contrast policy** → `FS.GG.UI.Color.ColorPolicy` (`wcag`, `ant`).
-- **The one semantic control set** → `FS.GG.UI.Controls.Catalog` (82 controls after feature 132;
+- **The one semantic control set** → `FS.GG.UI.Controls.Catalog` (96 controls after feature 133's
+  net-new charts; 82 after feature 132;
   categories are the pattern-doc families). No per-theme control forks.
 - **The concrete Ant theme** → `FS.GG.UI.Themes.AntDesign` (`AntTheme.antLight`/`antDark` +
   `AntIntentPolicy`); the Ant visual language realized over the one control set through the resolver/
@@ -50,6 +51,31 @@ raw `ant.design` URLs across other docs; link here instead.
 Ant component-overview entry (existing / net-new / composition / not-applicable) against the live
 repo control + token surface, snapshot-dated by this hub (`2026-06-16`). The honesty check
 `tests/Controls.Tests/Feature132CoverageMatrixTests.fs` keeps it from drifting.
+
+## Ant Charts overview snapshot (D2C.1)
+
+Ant Design Charts (the AntV-based `@ant-design/charts` product) is a **distinct** product from the
+Ant Design components catalogued above — it is realized over AntV G2/G6/L7, not the React component
+library. FS.GG adopts it **as a design language only** (no AntV/G2/G6/L7/React/JS charting or
+geospatial dependency): the repo's own Skia + F# chart controls render the chart families, coloured
+through theme roles/tokens. **No charting engine is added.**
+
+This hub is the single owner of the **`2026-06-16`** retrieval date for the Ant Charts overview too;
+no upstream version label is restated (Ant publishes none in its LLM docs). The canonical overview is
+grouped into these families — the pinned entry list lives in the honesty-check test
+`tests/Controls.Tests/Feature133ChartCoverageMatrixTests.fs`, and every entry is dispositioned by the
+chart coverage matrix [`../coverage/ant-chart-coverage.md`](../coverage/ant-chart-coverage.md):
+
+| Ant Charts family | Representative overview entries | FS.GG disposition summary |
+|---|---|---|
+| **Statistical** | Line, Area, Column, Bar, Pie, Scatter, Histogram, Box Plot, Heatmap, Radar, Rose, Waterfall, Funnel, Dual Axes, Stacked Column, Grouped Column, Bullet | existing five + net-new generics; combo/dual-axis as composition |
+| **Relational** | Sankey, Chord, Network Graph | `graph-view` (existing) + net-new sankey/chord |
+| **Hierarchical** | Treemap, Sunburst | net-new generics |
+| **Geo-Flow** | Choropleth Map, Point Map, Heatmap Map, Flow Map | not-applicable (geospatial dependency forbidden) |
+| **General** | Gauge | net-new generic |
+
+The honesty check `tests/Controls.Tests/Feature133ChartCoverageMatrixTests.fs` keeps the matrix from
+drifting (every overview entry dispositioned; no dangling chart-control or token reference).
 
 ## Curated semantic-parts snapshot (for `part:` refs)
 

@@ -2,6 +2,7 @@ FS.GG.UI.Controls.Accessibility
 FS.GG.UI.Controls.AccessibilityMetadata
 FS.GG.UI.Controls.AccessibilityRole
 FS.GG.UI.Controls.AccessibilityRole+Tags
+FS.GG.UI.Controls.AreaChart
 FS.GG.UI.Controls.Attr
 FS.GG.UI.Controls.AttrCategory
 FS.GG.UI.Controls.AttrCategory+Tags
@@ -26,12 +27,14 @@ FS.GG.UI.Controls.Attr`1
 FS.GG.UI.Controls.Badge
 FS.GG.UI.Controls.BarChart
 FS.GG.UI.Controls.Border
+FS.GG.UI.Controls.BoxPlot
 FS.GG.UI.Controls.Button
 FS.GG.UI.Controls.Catalog
 FS.GG.UI.Controls.CatalogAccessibility
 FS.GG.UI.Controls.ChartPoint
 FS.GG.UI.Controls.ChartSeries
 FS.GG.UI.Controls.CheckBox
+FS.GG.UI.Controls.ChordDiagram
 FS.GG.UI.Controls.CollectionEffect
 FS.GG.UI.Controls.CollectionModel
 FS.GG.UI.Controls.CollectionMsg
@@ -42,6 +45,7 @@ FS.GG.UI.Controls.CollectionMsg+Tags
 FS.GG.UI.Controls.CollectionMsg+ToggleKey
 FS.GG.UI.Controls.CollectionPosition
 FS.GG.UI.Controls.Collections
+FS.GG.UI.Controls.ColumnChart
 FS.GG.UI.Controls.ContrastEvidence
 FS.GG.UI.Controls.Control
 FS.GG.UI.Controls.ControlCaret
@@ -153,8 +157,12 @@ FS.GG.UI.Controls.Focus
 FS.GG.UI.Controls.FocusMove
 FS.GG.UI.Controls.FocusMove+Tags
 FS.GG.UI.Controls.FocusStop
+FS.GG.UI.Controls.FunnelChart
+FS.GG.UI.Controls.GaugeChart
 FS.GG.UI.Controls.GraphView
 FS.GG.UI.Controls.Grid
+FS.GG.UI.Controls.Heatmap
+FS.GG.UI.Controls.Histogram
 FS.GG.UI.Controls.Icon
 FS.GG.UI.Controls.IconButton
 FS.GG.UI.Controls.Image
@@ -232,6 +240,7 @@ FS.GG.UI.Controls.PointerSample
 FS.GG.UI.Controls.PointerState
 FS.GG.UI.Controls.PressCandidate
 FS.GG.UI.Controls.ProgressBar
+FS.GG.UI.Controls.RadarChart
 FS.GG.UI.Controls.RadioGroup
 FS.GG.UI.Controls.RichText
 FS.GG.UI.Controls.RichTextBlock
@@ -240,6 +249,8 @@ FS.GG.UI.Controls.RichTextRun
 FS.GG.UI.Controls.RichTextStyle
 FS.GG.UI.Controls.RichTextWeight
 FS.GG.UI.Controls.RichTextWeight+Tags
+FS.GG.UI.Controls.RoseChart
+FS.GG.UI.Controls.SankeyDiagram
 FS.GG.UI.Controls.ScatterPlot
 FS.GG.UI.Controls.Separator
 FS.GG.UI.Controls.Slider
@@ -263,6 +274,7 @@ FS.GG.UI.Controls.StandardControlKind+Tags
 FS.GG.UI.Controls.StandardEventKind
 FS.GG.UI.Controls.StandardEventKind+Custom
 FS.GG.UI.Controls.StandardEventKind+Tags
+FS.GG.UI.Controls.Sunburst
 FS.GG.UI.Controls.Switch
 FS.GG.UI.Controls.TabOrder
 FS.GG.UI.Controls.Tabs
@@ -291,6 +303,7 @@ FS.GG.UI.Controls.TextSelection
 FS.GG.UI.Controls.Toast
 FS.GG.UI.Controls.Toolbar
 FS.GG.UI.Controls.Tooltip
+FS.GG.UI.Controls.Treemap
 FS.GG.UI.Controls.Typed.Badge
 FS.GG.UI.Controls.Typed.BadgeProps`1
 FS.GG.UI.Controls.Typed.BarChart
@@ -402,6 +415,7 @@ FS.GG.UI.Controls.Typed.Wrap
 FS.GG.UI.Controls.Typed.WrapProps`1
 FS.GG.UI.Controls.ValidationMessage
 FS.GG.UI.Controls.VisibleRange
+FS.GG.UI.Controls.WaterfallChart
 FS.GG.UI.Controls.Widget
 FS.GG.UI.Controls.Widget`1
 FS.GG.UI.Controls.Wrap
