@@ -325,6 +325,64 @@ module Catalog =
           // BEGIN GENERATED: typed-catalog/upload
           definition "upload" "Upload" "input" "Upload" "File drop zone with an upload action." [] common [ "onChange" ] states "Button"
           // END GENERATED: typed-catalog/upload
+          // Feature 133 (D2C.1): net-new generic chart controls (Charts2). Hand-maintained GENERATED
+          // rows (no in-repo typed-catalog generator — see PROVENANCE.md). Mirrored in catalog.yml.
+          // BEGIN GENERATED: typed-catalog/area-chart
+          definition "area-chart" "Area Chart" "chart" "AreaChart" "Controls-owned filled-area trend visualization." [] common [] states "Chart"
+          |> withChartDataGridEvidence
+          // END GENERATED: typed-catalog/area-chart
+          // BEGIN GENERATED: typed-catalog/column-chart
+          definition "column-chart" "Column Chart" "chart" "ColumnChart" "Controls-owned vertical-bar categorical visualization." [] common [] states "Chart"
+          |> withChartDataGridEvidence
+          // END GENERATED: typed-catalog/column-chart
+          // BEGIN GENERATED: typed-catalog/histogram
+          definition "histogram" "Histogram" "chart" "Histogram" "Controls-owned frequency-distribution visualization." [] common [] states "Chart"
+          |> withChartDataGridEvidence
+          // END GENERATED: typed-catalog/histogram
+          // BEGIN GENERATED: typed-catalog/box-plot
+          definition "box-plot" "Box Plot" "chart" "BoxPlot" "Controls-owned box-and-whisker distribution visualization." [] common [] states "Chart"
+          |> withChartDataGridEvidence
+          // END GENERATED: typed-catalog/box-plot
+          // BEGIN GENERATED: typed-catalog/heatmap
+          definition "heatmap" "Heatmap" "chart" "Heatmap" "Controls-owned colour-intensity grid visualization." [] common [] states "Chart"
+          |> withChartDataGridEvidence
+          // END GENERATED: typed-catalog/heatmap
+          // BEGIN GENERATED: typed-catalog/radar-chart
+          definition "radar-chart" "Radar Chart" "chart" "RadarChart" "Controls-owned multi-axis polygon visualization." [] common [] states "Chart"
+          |> withChartDataGridEvidence
+          // END GENERATED: typed-catalog/radar-chart
+          // BEGIN GENERATED: typed-catalog/rose-chart
+          definition "rose-chart" "Rose Chart" "chart" "RoseChart" "Controls-owned polar-area (Nightingale) visualization." [] common [] states "Chart"
+          |> withChartDataGridEvidence
+          // END GENERATED: typed-catalog/rose-chart
+          // BEGIN GENERATED: typed-catalog/waterfall-chart
+          definition "waterfall-chart" "Waterfall Chart" "chart" "WaterfallChart" "Controls-owned cumulative-delta visualization." [] common [] states "Chart"
+          |> withChartDataGridEvidence
+          // END GENERATED: typed-catalog/waterfall-chart
+          // BEGIN GENERATED: typed-catalog/funnel-chart
+          definition "funnel-chart" "Funnel Chart" "chart" "FunnelChart" "Controls-owned stage-conversion visualization." [] common [] states "Chart"
+          |> withChartDataGridEvidence
+          // END GENERATED: typed-catalog/funnel-chart
+          // BEGIN GENERATED: typed-catalog/gauge-chart
+          definition "gauge-chart" "Gauge Chart" "chart" "GaugeChart" "Controls-owned single-value dial visualization." [] common [] states "Chart"
+          |> withChartDataGridEvidence
+          // END GENERATED: typed-catalog/gauge-chart
+          // BEGIN GENERATED: typed-catalog/sankey-diagram
+          definition "sankey-diagram" "Sankey Diagram" "graph" "SankeyDiagram" "Controls-owned flow-between-nodes visualization." [] common [] states "Graph"
+          |> withChartDataGridEvidence
+          // END GENERATED: typed-catalog/sankey-diagram
+          // BEGIN GENERATED: typed-catalog/chord-diagram
+          definition "chord-diagram" "Chord Diagram" "graph" "ChordDiagram" "Controls-owned node-relationship ring visualization." [] common [] states "Graph"
+          |> withChartDataGridEvidence
+          // END GENERATED: typed-catalog/chord-diagram
+          // BEGIN GENERATED: typed-catalog/treemap
+          definition "treemap" "Treemap" "chart" "Treemap" "Controls-owned nested-rectangle hierarchy visualization." [] common [] states "Chart"
+          |> withChartDataGridEvidence
+          // END GENERATED: typed-catalog/treemap
+          // BEGIN GENERATED: typed-catalog/sunburst
+          definition "sunburst" "Sunburst" "chart" "Sunburst" "Controls-owned radial-hierarchy visualization." [] common [] states "Chart"
+          |> withChartDataGridEvidence
+          // END GENERATED: typed-catalog/sunburst
         ]
 
     let standardSchema =

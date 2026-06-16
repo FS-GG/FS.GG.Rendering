@@ -79,6 +79,8 @@
     <Compile Include="Focus.fs" />
     <Compile Include="Charts.fsi" />
     <Compile Include="Charts.fs" />
+    <Compile Include="Charts2.fsi" />
+    <Compile Include="Charts2.fs" />
     <Compile Include="RichText.fsi" />
     <Compile Include="RichText.fs" />
     <Compile Include="DataGrid.fsi" />

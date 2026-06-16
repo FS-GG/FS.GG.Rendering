@@ -78,6 +78,11 @@
     <Compile Include="Feature132ThemeParityTests.fs" />
     <Compile Include="Feature132NewControlContractTests.fs" />
     <Compile Include="Feature132CoverageMatrixTests.fs" />
+    <!-- Feature 133 (D2C.1): the Ant Charts coverage-matrix honesty check + no-dep guard, the
+         net-new chart-control contract suite, and the all-family chart parity guard. -->
+    <Compile Include="Feature133ChartCoverageMatrixTests.fs" />
+    <Compile Include="Feature133NewChartControlContractTests.fs" />
+    <Compile Include="Feature133ChartParityTests.fs" />
     <Compile Include="Audit_Reconcile.fs" />
     <Compile Include="Audit_MemoCache.fs" />
     <Compile Include="Audit_PictureCache.fs" />

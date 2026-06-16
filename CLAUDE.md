@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/132-ant-concrete-theme/plan.md
+at specs/133-ant-design-charts/plan.md
 <!-- SPECKIT END -->
 
 ## Ant Design — source of truth

@@ -308,14 +308,10 @@ module internal ControlInternals =
                 | FloatValue value -> Some [ { X = 0.0; Y = value; Label = None } ]
                 | _ -> None)
 
-        match control.Kind with
-        | "line-chart"
-        | "bar-chart"
-        | "scatter-plot" ->
-            points "series" |> Option.defaultValue []
-        | "pie-chart" ->
-            points "values" |> Option.defaultValue []
-        | "graph-view" ->
+        // Feature 133 (D2C.1): the net-new charts read either `series` (ChartSeries list) or
+        // `values` (ChartPoint list), mirroring the existing charts; the flow diagrams (sankey/chord)
+        // read `nodes` like `graph-view`. The reader is a pure function of the control's attributes.
+        let nodesAsPoints () =
             AttrKeys.tryKey AttrKeys.Nodes control.Attributes
             |> Option.bind (fun attr ->
                 match attr.Value with
@@ -323,6 +319,31 @@ module internal ControlInternals =
                     Some(values |> List.mapi (fun index label -> { X = float index; Y = float index; Label = Some label }))
                 | _ -> None)
             |> Option.defaultValue []
+
+        match control.Kind with
+        | "line-chart"
+        | "bar-chart"
+        | "scatter-plot"
+        // series-shaped net-new charts
+        | "area-chart"
+        | "column-chart"
+        | "box-plot" ->
+            points "series" |> Option.defaultValue []
+        | "pie-chart"
+        // point-shaped net-new charts
+        | "histogram"
+        | "heatmap"
+        | "radar-chart"
+        | "rose-chart"
+        | "waterfall-chart"
+        | "funnel-chart"
+        | "gauge-chart"
+        | "treemap"
+        | "sunburst" ->
+            points "values" |> Option.defaultValue []
+        | "graph-view"
+        | "sankey-diagram"
+        | "chord-diagram" -> nodesAsPoints ()
         | _ -> []
 
     /// Read the field-name-free run projection (text, colour, size, weight) that `RichText.create`
@@ -367,7 +388,11 @@ module internal ControlInternals =
               "tag"; "avatar"; "card"; "descriptions"; "statistic"; "timeline"; "empty"; "skeleton"
               "qr-code"; "watermark"; "alert"; "result"; "drawer"; "popover"; "popconfirm"; "tour"
               "float-button"; "breadcrumb"; "steps"; "pagination"; "segmented"; "anchor"; "affix"
-              "collapse"; "rate"; "carousel"; "calendar"; "cascader"; "auto-complete"; "upload" ]
+              "collapse"; "rate"; "carousel"; "calendar"; "cascader"; "auto-complete"; "upload"
+              // Feature 133 (D2C.1) — net-new generic chart controls (theme-role-driven schematics).
+              "area-chart"; "column-chart"; "histogram"; "box-plot"; "heatmap"; "radar-chart"
+              "rose-chart"; "waterfall-chart"; "funnel-chart"; "gauge-chart"; "sankey-diagram"
+              "chord-diagram"; "treemap"; "sunburst" ]
 
     /// A human caption for the rich-family title band: "date-picker" -> "Date picker".
     /// Used so the thumbnail's title is the control's NAME, not its sample content (which the
@@ -412,6 +437,25 @@ module internal ControlInternals =
     let private colorAt theme i =
         let p = palette theme
         List.item (((i % p.Length) + p.Length) % p.Length) p
+
+    // Feature 133 (D2C.1, data-model §3): the categorical series palette for the NET-NEW charts,
+    // derived purely from `Theme` ROLE VALUES (never `Theme.Name`) so it diverges under the Ant
+    // theme yet never branches on theme identity (FR-001/FR-007). Distinct from `palette` above —
+    // that one is pinned to literals for the EXISTING charts' Default byte-identity (SC-004); the
+    // net-new charts have no baseline, so every colour traces to a token-sourced role here.
+    let private chartPalette (theme: Theme) : Color list =
+        [ theme.Accent; theme.Danger; theme.Success; theme.Warning; theme.Muted; theme.Foreground ]
+
+    let private chartColorAt (theme: Theme) i =
+        let p = chartPalette theme
+        List.item (((i % p.Length) + p.Length) % p.Length) p
+
+    /// Blend two colours by `t` ∈ [0,1] — used by intensity ramps (heatmap/treemap) so the low→high
+    /// scale runs `Muted`→`Accent` from theme roles, with no inline hex.
+    let private lerpColor (a: Color) (b: Color) (t: float) : Color =
+        let t = max 0.0 (min 1.0 t)
+        let mix (x: byte) (y: byte) = byte (float x + (float y - float x) * t)
+        Colors.rgba (mix a.Red b.Red) (mix a.Green b.Green) (mix a.Blue b.Blue) (mix a.Alpha b.Alpha)
 
     let private mkText (theme: Theme) (x: float) (baseline: float) (size: float) (color: Color) (s: string) =
         Scene.textRun
@@ -560,6 +604,294 @@ module internal ControlInternals =
                 |> List.map (fun (a, b) -> Scene.line a b (Paint.stroke theme.Foreground 2.0))
             let nodes = positions |> List.map (fun p -> Scene.circle p 8.0 theme.Accent)
             edges @ nodes
+
+    // ---- Feature 133 (D2C.1) net-new chart geometry -----------------------------------------
+    // Every function is a pure schematic built from existing Scene primitives, coloured ONLY from
+    // theme-role values via `chartPalette`/`chartColorAt`/`lerpColor` (no inline hex, no theme
+    // identity branch). Empty/degenerate data resolves to the honest `emptyState` so the resolver
+    // stays total (FR-007, spec Edge Cases).
+
+    /// Scaled bar heights over [0, max] for a point list — shared by column/histogram/waterfall.
+    let private scaledBars (box: Rect) (pts: ChartPoint list) : (float * float) list =
+        let maxY = pts |> List.map (fun p -> max 0.0 p.Y) |> List.fold max 1e-9
+        pts |> List.map (fun p -> p.Y, (max 0.0 p.Y / maxY) * box.Height)
+
+    /// `area-chart` — a filled region under the series outline (distinct, heavier fill than line).
+    let private areaGeom theme (box: Rect) (pts: ChartPoint list) : Scene list =
+        match normIndexed box pts with
+        | [] -> emptyState theme box "(no data)"
+        | (head :: _) as ps ->
+            let baseY = box.Y + box.Height
+            let areaCmds =
+                Path.moveTo head.X baseY
+                :: (ps |> List.map (fun p -> Path.lineTo p.X p.Y))
+                @ [ Path.lineTo (List.last ps).X baseY; Path.close ]
+            let area = Scene.path (Path.create Winding areaCmds) (Paint.withOpacity 0.38 (Paint.fill theme.Accent))
+            let lineCmds = Path.moveTo head.X head.Y :: (List.tail ps |> List.map (fun p -> Path.lineTo p.X p.Y))
+            let stroke = Scene.path (Path.create Winding lineCmds) (Paint.stroke theme.Accent 2.5)
+            axes theme box @ [ area; stroke ]
+
+    /// `column-chart` — vertical bars in the categorical palette.
+    let private columnGeom theme (box: Rect) (pts: ChartPoint list) : Scene list =
+        match pts with
+        | [] -> emptyState theme box "(no data)"
+        | _ ->
+            let n = List.length pts
+            let gap = 6.0
+            let bw = (box.Width - gap * float (n - 1)) / float n
+            scaledBars box pts
+            |> List.mapi (fun i (_, h) ->
+                let bx = box.X + float i * (bw + gap)
+                Scene.rectangle (bx, box.Y + box.Height - h, bw, h) (chartColorAt theme i))
+
+    /// `histogram` — adjacent (gapless) frequency bars in a single accent fill, hairline-separated.
+    let private histogramGeom theme (box: Rect) (pts: ChartPoint list) : Scene list =
+        match pts with
+        | [] -> emptyState theme box "(no data)"
+        | _ ->
+            let n = List.length pts
+            let bw = box.Width / float n
+            scaledBars box pts
+            |> List.mapi (fun i (_, h) ->
+                let bx = box.X + float i * bw
+                [ Scene.rectangle (bx, box.Y + box.Height - h, bw, h) theme.Accent
+                  Scene.rectangleWithPaint { X = bx; Y = box.Y + box.Height - h; Width = bw; Height = h } (Paint.stroke theme.Background 1.0) ])
+            |> List.collect id
+
+    /// `box-plot` — a box-and-whisker schematic per category (box around the value, median + whiskers).
+    let private boxPlotGeom theme (box: Rect) (pts: ChartPoint list) : Scene list =
+        match pts with
+        | [] -> emptyState theme box "(no data)"
+        | _ ->
+            let n = List.length pts
+            let gap = 10.0
+            let bw = (box.Width - gap * float (n - 1)) / float n
+            scaledBars box pts
+            |> List.mapi (fun i (_, h) ->
+                let cx = box.X + float i * (bw + gap) + bw / 2.0
+                let half = bw / 2.0
+                let median = box.Y + box.Height - h
+                let boxTop = max box.Y (median - box.Height * 0.14)
+                let boxBot = min (box.Y + box.Height) (median + box.Height * 0.14)
+                [ Scene.line { X = cx; Y = boxTop - 10.0 } { X = cx; Y = boxBot + 10.0 } (Paint.stroke theme.Muted 1.5)
+                  Scene.rectangleWithPaint { X = cx - half; Y = boxTop; Width = bw; Height = boxBot - boxTop } (Paint.fill (chartColorAt theme i))
+                  Scene.line { X = cx - half; Y = median } { X = cx + half; Y = median } (Paint.stroke theme.Foreground 2.0) ])
+            |> List.collect id
+
+    /// `heatmap` — a near-square grid of cells, intensity ramped `Muted`→`Accent` from the value.
+    let private heatmapGeom theme (box: Rect) (pts: ChartPoint list) : Scene list =
+        match pts with
+        | [] -> emptyState theme box "(no data)"
+        | _ ->
+            let n = List.length pts
+            let cols = max 1 (int (ceil (sqrt (float n))))
+            let rows = max 1 (int (ceil (float n / float cols)))
+            let cw = box.Width / float cols
+            let ch = box.Height / float rows
+            let maxY = pts |> List.map (fun p -> max 0.0 p.Y) |> List.fold max 1e-9
+            pts
+            |> List.mapi (fun i p ->
+                let r = i / cols
+                let c = i % cols
+                let t = max 0.0 p.Y / maxY
+                Scene.rectangle (box.X + float c * cw, box.Y + float r * ch, cw - 2.0, ch - 2.0) (lerpColor theme.Muted theme.Accent t))
+
+    /// `radar-chart` — radial spokes + the value polygon, normalized to the canvas radius.
+    let private radarGeom theme (box: Rect) (pts: ChartPoint list) : Scene list =
+        match pts with
+        | [] | [ _ ] -> emptyState theme box "(no data)"
+        | _ ->
+            let n = List.length pts
+            let cx = box.X + box.Width / 2.0
+            let cy = box.Y + box.Height / 2.0
+            let r = (min box.Width box.Height) / 2.0 - 6.0
+            let maxY = pts |> List.map (fun p -> max 0.0 p.Y) |> List.fold max 1e-9
+            let angle i = float i / float n * 2.0 * System.Math.PI - System.Math.PI / 2.0
+            let spokes =
+                [ for i in 0 .. n - 1 ->
+                    let a = angle i
+                    Scene.line { X = cx; Y = cy } { X = cx + r * cos a; Y = cy + r * sin a } (Paint.stroke theme.Muted 1.0) ]
+            let verts =
+                pts |> List.mapi (fun i p ->
+                    let a = angle i
+                    let rr = r * (max 0.0 p.Y / maxY)
+                    { X = cx + rr * cos a; Y = cy + rr * sin a })
+            let head = List.head verts
+            let polyCmds = Path.moveTo head.X head.Y :: (List.tail verts |> List.map (fun v -> Path.lineTo v.X v.Y)) @ [ Path.close ]
+            let poly = Scene.path (Path.create Winding polyCmds) (Paint.withOpacity 0.35 (Paint.fill theme.Accent))
+            spokes @ [ poly ]
+
+    /// `rose-chart` — Nightingale polar-area sectors; sector radius scales with the value.
+    let private roseGeom theme (box: Rect) (pts: ChartPoint list) : Scene list =
+        match pts with
+        | [] -> emptyState theme box "(no data)"
+        | _ ->
+            let n = List.length pts
+            let cx = box.X + box.Width / 2.0
+            let cy = box.Y + box.Height / 2.0
+            let rMax = (min box.Width box.Height) / 2.0 - 2.0
+            let maxY = pts |> List.map (fun p -> max 0.0 p.Y) |> List.fold max 1e-9
+            let sweep = 360.0 / float n
+            pts
+            |> List.mapi (fun i p ->
+                let r = rMax * sqrt (max 0.0 p.Y / maxY)
+                let bounds: Rect = { X = cx - r; Y = cy - r; Width = 2.0 * r; Height = 2.0 * r }
+                Scene.arc bounds (-90.0 + float i * sweep) sweep (Paint.fill (chartColorAt theme i)))
+
+    /// `waterfall-chart` — running cumulative bars; rises in `Success`, falls in `Danger`.
+    let private waterfallGeom theme (box: Rect) (pts: ChartPoint list) : Scene list =
+        match pts with
+        | [] -> emptyState theme box "(no data)"
+        | _ ->
+            let n = List.length pts
+            let gap = 6.0
+            let bw = (box.Width - gap * float (n - 1)) / float n
+            let cumulative = (pts |> List.scan (fun acc p -> acc + p.Y) 0.0)
+            let allLevels = cumulative
+            let lo = List.min allLevels
+            let hi = List.max allLevels
+            let span = if hi - lo < 1e-9 then 1.0 else hi - lo
+            let yOf v = box.Y + box.Height - (v - lo) / span * box.Height
+            pts
+            |> List.mapi (fun i p ->
+                let prev = List.item i cumulative
+                let curr = List.item (i + 1) cumulative
+                let bx = box.X + float i * (bw + gap)
+                let top = min (yOf prev) (yOf curr)
+                let h = abs (yOf curr - yOf prev)
+                let color = if p.Y >= 0.0 then theme.Success else theme.Danger
+                Scene.rectangle (bx, top, bw, max 1.0 h) color)
+
+    /// `funnel-chart` — centred trapezoid stack, each band narrowing with its value.
+    let private funnelGeom theme (box: Rect) (pts: ChartPoint list) : Scene list =
+        match pts with
+        | [] -> emptyState theme box "(no data)"
+        | _ ->
+            let n = List.length pts
+            let bandH = box.Height / float n
+            let maxY = pts |> List.map (fun p -> max 0.0 p.Y) |> List.fold max 1e-9
+            let cx = box.X + box.Width / 2.0
+            let widthAt i =
+                match List.tryItem i pts with
+                | Some p -> box.Width * (max 0.0 p.Y / maxY)
+                | None -> 0.0
+            pts
+            |> List.mapi (fun i _ ->
+                let wTop = widthAt i
+                let wBot = widthAt (i + 1)
+                let yTop = box.Y + float i * bandH
+                let yBot = yTop + bandH
+                let cmds =
+                    [ Path.moveTo (cx - wTop / 2.0) yTop
+                      Path.lineTo (cx + wTop / 2.0) yTop
+                      Path.lineTo (cx + wBot / 2.0) yBot
+                      Path.lineTo (cx - wBot / 2.0) yBot
+                      Path.close ]
+                Scene.path (Path.create Winding cmds) (Paint.fill (chartColorAt theme i)))
+
+    /// `gauge-chart` — a 180° track with the value arc + a needle; `value` is a fraction in [0,1].
+    let private gaugeGeom theme (box: Rect) (value: float) : Scene list =
+        let v = max 0.0 (min 1.0 value)
+        let cx = box.X + box.Width / 2.0
+        let cy = box.Y + box.Height * 0.85
+        let r = (min (box.Width / 2.0) box.Height) - 6.0
+        let r = max 8.0 r
+        let bounds: Rect = { X = cx - r; Y = cy - r; Width = 2.0 * r; Height = 2.0 * r }
+        let track = Scene.arc bounds 180.0 180.0 (Paint.stroke theme.Muted 8.0)
+        let valArc = Scene.arc bounds 180.0 (180.0 * v) (Paint.stroke theme.Accent 8.0)
+        let a = System.Math.PI + System.Math.PI * v
+        let needle = Scene.line { X = cx; Y = cy } { X = cx + r * cos a; Y = cy + r * sin a } (Paint.stroke theme.Foreground 2.5)
+        [ track; valArc; needle; Scene.circle { X = cx; Y = cy } 4.0 theme.Foreground ]
+
+    /// `sankey-diagram` — source/target node columns linked by translucent flow bands.
+    let private sankeyGeom theme (box: Rect) (pts: ChartPoint list) : Scene list =
+        match pts with
+        | [] -> emptyState theme box "(no data)"
+        | _ ->
+            let n = List.length pts
+            let leftN = max 1 ((n + 1) / 2)
+            let rightN = max 1 (n - leftN)
+            let nodeW = 12.0
+            let nodeColumn count x =
+                [ for i in 0 .. count - 1 ->
+                    let h = box.Height / float count - 6.0
+                    let y = box.Y + float i * (box.Height / float count) + 3.0
+                    (x, y, h) ]
+            let left = nodeColumn leftN box.X
+            let right = nodeColumn rightN (box.X + box.Width - nodeW)
+            let bands =
+                [ for (lx, ly, lh) in left do
+                    for (rx, ry, rh) in right do
+                        let cmds =
+                            [ Path.moveTo (lx + nodeW) (ly + lh / 2.0)
+                              Path.lineTo rx (ry + rh / 2.0) ]
+                        yield Scene.path (Path.create Winding cmds) (Paint.withOpacity 0.25 (Paint.stroke theme.Accent 3.0)) ]
+            let leftNodes = left |> List.mapi (fun i (x, y, h) -> Scene.rectangle (x, y, nodeW, h) (chartColorAt theme i))
+            let rightNodes = right |> List.mapi (fun i (x, y, h) -> Scene.rectangle (x, y, nodeW, h) (chartColorAt theme (i + leftN)))
+            bands @ leftNodes @ rightNodes
+
+    /// `chord-diagram` — nodes on a ring linked by chords across the circle.
+    let private chordGeom theme (box: Rect) (pts: ChartPoint list) : Scene list =
+        match pts with
+        | [] | [ _ ] -> emptyState theme box "(no data)"
+        | _ ->
+            let n = List.length pts
+            let cx = box.X + box.Width / 2.0
+            let cy = box.Y + box.Height / 2.0
+            let r = (min box.Width box.Height) / 2.0 - 8.0
+            let positions =
+                [ for i in 0 .. n - 1 ->
+                    let a = float i / float n * 2.0 * System.Math.PI - System.Math.PI / 2.0
+                    { X = cx + r * cos a; Y = cy + r * sin a } ]
+            let chords =
+                [ for i in 0 .. n - 1 do
+                    let j = (i + n / 2) % n
+                    let a = positions.[i]
+                    let b = positions.[j]
+                    yield Scene.path (Path.create Winding [ Path.moveTo a.X a.Y; Path.lineTo b.X b.Y ]) (Paint.withOpacity 0.3 (Paint.stroke theme.Accent 2.0)) ]
+            let ring = Scene.arc { X = cx - r; Y = cy - r; Width = 2.0 * r; Height = 2.0 * r } 0.0 360.0 (Paint.stroke theme.Muted 1.0)
+            let nodes = positions |> List.mapi (fun i p -> Scene.circle p 6.0 (chartColorAt theme i))
+            ring :: chords @ nodes
+
+    /// `treemap` — slice-and-dice nested rectangles sized by value, intensity-ramped.
+    let private treemapGeom theme (box: Rect) (pts: ChartPoint list) : Scene list =
+        match pts with
+        | [] -> emptyState theme box "(no data)"
+        | _ ->
+            let total = pts |> List.sumBy (fun p -> max 0.0 p.Y)
+            let total = if total < 1e-9 then 1.0 else total
+            let maxY = pts |> List.map (fun p -> max 0.0 p.Y) |> List.fold max 1e-9
+            // Horizontal slice-and-dice: each tile gets a width-share of the row proportional to value.
+            let mutable x = box.X
+            [ for i in 0 .. pts.Length - 1 do
+                let p = pts.[i]
+                let w = box.Width * (max 0.0 p.Y / total)
+                let t = max 0.0 p.Y / maxY
+                yield Scene.rectangle (x, box.Y, max 1.0 (w - 2.0), box.Height) (lerpColor theme.Muted theme.Accent t)
+                x <- x + w ]
+
+    /// `sunburst` — a centre hub ringed by value-proportional arc segments.
+    let private sunburstGeom theme (box: Rect) (pts: ChartPoint list) : Scene list =
+        match pts with
+        | [] -> emptyState theme box "(no data)"
+        | _ ->
+            let total = pts |> List.sumBy (fun p -> max 0.0 p.Y)
+            let total = if total < 1e-9 then 1.0 else total
+            let cx = box.X + box.Width / 2.0
+            let cy = box.Y + box.Height / 2.0
+            let rOuter = (min box.Width box.Height) / 2.0 - 2.0
+            let bounds: Rect = { X = cx - rOuter; Y = cy - rOuter; Width = 2.0 * rOuter; Height = 2.0 * rOuter }
+            let ring =
+                pts
+                |> List.indexed
+                |> List.fold
+                    (fun (start, acc) (i, p) ->
+                        let sweep = (max 0.0 p.Y / total) * 360.0
+                        start + sweep, Scene.arc bounds start sweep (Paint.fill (chartColorAt theme i)) :: acc)
+                    (-90.0, [])
+                |> snd
+                |> List.rev
+            ring @ [ Scene.circle { X = cx; Y = cy } (rOuter * 0.4) theme.Background ]
 
     // ---- collection / selection / value geometry --------------------------------------------
 
@@ -1346,6 +1678,21 @@ module internal ControlInternals =
         | "pie-chart" -> pieGeom theme box (chartValues control)
         | "scatter-plot" -> scatterGeom theme box (chartValues control)
         | "graph-view" -> graphGeom theme box (chartValues control)
+        // Feature 133 (D2C.1) — net-new generic charts (theme-role-driven, no theme-identity branch).
+        | "area-chart" -> areaGeom theme box (chartValues control)
+        | "column-chart" -> columnGeom theme box (chartValues control)
+        | "histogram" -> histogramGeom theme box (chartValues control)
+        | "box-plot" -> boxPlotGeom theme box (chartValues control)
+        | "heatmap" -> heatmapGeom theme box (chartValues control)
+        | "radar-chart" -> radarGeom theme box (chartValues control)
+        | "rose-chart" -> roseGeom theme box (chartValues control)
+        | "waterfall-chart" -> waterfallGeom theme box (chartValues control)
+        | "funnel-chart" -> funnelGeom theme box (chartValues control)
+        | "gauge-chart" -> gaugeGeom theme box (floatValue "value" 0.5 control.Attributes)
+        | "sankey-diagram" -> sankeyGeom theme box (chartValues control)
+        | "chord-diagram" -> chordGeom theme box (chartValues control)
+        | "treemap" -> treemapGeom theme box (chartValues control)
+        | "sunburst" -> sunburstGeom theme box (chartValues control)
         | "list-view"
         | "list-box"
         | "multi-select-list"
