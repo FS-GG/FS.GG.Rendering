@@ -12,6 +12,7 @@
     <Compile Include="NameCollisionSafetyTests.fs" />
     <Compile Include="GeneratedConsumerValidationTests.fs" />
     <Compile Include="FsiTranscriptCoverageTests.fs" />
+    <Compile Include="Feature128DesignSystemTemplateTests.fs" />
     <Compile Include="Tests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
