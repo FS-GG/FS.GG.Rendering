@@ -37,6 +37,22 @@
         }
       ]
     },
+    "designSystem": {
+      "type": "parameter",
+      "datatype": "choice",
+      "defaultValue": "wcag",
+      "description": "Governing color policy for the generated product. 'wcag' (default) is byte-identical to today; 'ant' imprints the Ant design language and Ant contrast policy. Unknown values are rejected.",
+      "choices": [
+        {
+          "choice": "wcag",
+          "description": "WCAG 2.x contrast governance (default; no diff vs today's template)."
+        },
+        {
+          "choice": "ant",
+          "description": "Ant Design contrast expectations over the Ant-derived tokens."
+        }
+      ]
+    },
     "rootNamespace": {
       "type": "parameter",
       "datatype": "text",
@@ -233,6 +249,12 @@
       "condition": "(feedback == true)",
       "source": "template/feedback/extensions/",
       "target": ".specify/extensions/feedback/"
+    },
+    {
+      "condition": "(designSystem == \"ant\")",
+      "source": "template/design-system/ant/",
+      "target": "./",
+      "comment": "Feature 128 (F3): the ant-only design-system overlay (the feedback no-diff precedent). Fires ONLY for designSystem == \"ant\"; no entry fires for wcag, so the default scaffold stays byte-identical to today (FR-003/SC-001). Copies a self-describing policy record + the Ant imprint as data; template/base/ is untouched."
     }
   ],
   "postActions": [
