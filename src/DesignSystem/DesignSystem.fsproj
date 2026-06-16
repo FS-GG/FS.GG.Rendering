@@ -22,30 +22,27 @@
          (Principle II); the .fs is generated. Compiles before any type that reads tokens. -->
     <Compile Include="DesignTokens.fsi" />
     <Compile Include="DesignTokens.fs" />
-    <!-- Feature 126 (F1): the Ant-derived token taxonomy (seed/map/alias/component +
-         spacing/density/type/elevation). `module internal` with NO .fsi — additive, zero
-         public-surface delta; GENERATED from the DTCG source via
-         scripts/generate-design-tokens.fsx. Nothing reads it yet (F4 resolver / D2 themes do). -->
+    <!-- Feature 126 (F1) / 130 (F5): the Ant-derived token taxonomy (seed/map/alias/component +
+         spacing/density/type/elevation). PROMOTED to public in F5 via a paired GENERATED .fsi
+         (Principle II — visibility lives in the .fsi, not a .fs modifier). Both files are GENERATED
+         from the DTCG source via scripts/generate-design-tokens.fsx and kept in lock-step by the
+         generator drift check. The .fsi compiles immediately before its .fs. -->
+    <Compile Include="DesignTokensExt.fsi" />
     <Compile Include="DesignTokensExt.fs" />
     <!-- Feature 093 (E3): the pure state→style resolver. Sees Types + DesignTokens. -->
     <Compile Include="Style.fsi" />
     <Compile Include="Style.fs" />
-    <!-- Feature 129 (F4): the front-half resolver (kind+intent → baseStyle) + IntentPolicy seam.
-         Composes on Style.resolve, so it compiles AFTER it. `module internal`, NO .fsi —
-         additive, zero public-surface delta. Consumed by buttonGeom + the F4 tests via IVT. -->
+    <!-- Feature 129 (F4) / 130 (F5): the front-half resolver (kind+intent → baseStyle) + IntentPolicy
+         seam. Composes on Style.resolve, so it compiles AFTER it. PROMOTED to public in F5 via a
+         hand-curated .fsi (Principle II); the .fsi compiles immediately before its .fs. -->
+    <Compile Include="StyleResolver.fsi" />
     <Compile Include="StyleResolver.fs" />
   </ItemGroup>
 
-  <!-- Feature 126 (F1): expose the internal DesignTokensExt taxonomy to the test assembly that
-       exercises it (and, later, the F4 resolver). It carries no public surface, so this is the
-       only way tests can name the tokens — mirrors the Controls Reconcile/RetainedRender pattern. -->
-  <ItemGroup>
-    <InternalsVisibleTo Include="Controls.Tests" />
-    <!-- Feature 129 (F4): grant the Controls production assembly access so `buttonGeom` can call
-         the internal StyleResolver. IVT is NOT public surface — invisible to the surface-drift
-         gate (quickstart V5 / G6) — so the zero-surface-delta invariant is preserved. -->
-    <InternalsVisibleTo Include="FS.GG.UI.Controls" />
-  </ItemGroup>
+  <!-- Feature 130 (F5): the F1/F4 InternalsVisibleTo grants (Controls.Tests, FS.GG.UI.Controls) for
+       DesignTokensExt and StyleResolver are REMOVED — both are now public, so the grants are redundant.
+       IVT is not public surface, so this removal is invisible to the surface-drift gate (baseline-neutral);
+       it is guarded by a green full-suite build. -->
 
   <ItemGroup>
     <ProjectReference Include="..\Scene\Scene.fsproj" />
