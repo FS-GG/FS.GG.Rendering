@@ -12,11 +12,18 @@ any source is copied (source import is Stage R4).
   primitives, themes, design-specific kits) and the one-control-set rule.
 - **[docs-to-import.md](./docs-to-import.md)** — triage of source docs for Stage R4
   (import-as-is / adapt / exclude).
+- **[ant-design/](./ant-design/README.md)** — Ant Design adoption (Workstream F): per-family
+  interaction-pattern docs + enterprise-template recipes. The
+  **[Ant source-of-truth hub](./ant-design/reference/ant-llms-sources.md)** is the canonical
+  upstream Ant reference for FS.GG — it catalogs the three Ant LLM files (`llms.txt`,
+  `llms-full.txt`, `llms-semantic.md`); cite it rather than raw `ant.design` URLs.
 - **decisions/** — recorded product-shape decisions:
   - [0001-package-identity.md](./decisions/0001-package-identity.md) — accepted at R8: rebranded
     `FS.Skia.UI.*` → `FS.GG.UI.*`.
   - [0002-template-ownership.md](./decisions/0002-template-ownership.md) — rendering repo owns
     the templates for now.
+  - [0005-ant-design-pattern-docs.md](./decisions/0005-ant-design-pattern-docs.md) — F6 docs-only
+    scope, `Catalog.categories` coverage anchor, and the three-Ant-LLM-files source of truth.
 
 ## See also
 

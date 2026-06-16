@@ -12,6 +12,11 @@ forms, buttons, text input, lists, tables, rich text, layout containers, chart
 controls, graph controls, DataGrid, custom control wrappers, catalog examples,
 and generated product guidance.
 
+For **Ant-styled** controls, the canonical upstream Ant reference is the central hub
+[`docs/product/ant-design/reference/ant-llms-sources.md`](../../../docs/product/ant-design/reference/ant-llms-sources.md)
+(the three Ant LLM files); apply patterns via the `fs-gg-ant-design` skill and the per-family docs
+under `docs/product/ant-design/patterns/`. Ant is a design language only — no React/DOM.
+
 ## Public Contract
 
 The supported API lives in `src/Controls/*.fsi`. View functions should build
