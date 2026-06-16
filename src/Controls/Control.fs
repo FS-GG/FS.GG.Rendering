@@ -362,7 +362,12 @@ module internal ControlInternals =
               // hid an editable field's chrome (text-box/text-area read as plain labels), dropped
               // rich-text's styled runs (it rendered its kind id), and drew `separator` as the word
               // "separator" instead of a divider rule. They now lower to control-specific geometry.
-              "text-box"; "text-area"; "rich-text"; "separator" ]
+              "text-box"; "text-area"; "rich-text"; "separator"
+              // Feature 132 (D2.1) — net-new Ant-overview controls (control-specific schematics).
+              "tag"; "avatar"; "card"; "descriptions"; "statistic"; "timeline"; "empty"; "skeleton"
+              "qr-code"; "watermark"; "alert"; "result"; "drawer"; "popover"; "popconfirm"; "tour"
+              "float-button"; "breadcrumb"; "steps"; "pagination"; "segmented"; "anchor"; "affix"
+              "collapse"; "rate"; "carousel"; "calendar"; "cascader"; "auto-complete"; "upload" ]
 
     /// A human caption for the rich-family title band: "date-picker" -> "Date picker".
     /// Used so the thumbnail's title is the control's NAME, not its sample content (which the
@@ -1043,6 +1048,281 @@ module internal ControlInternals =
         let cy = box.Y + box.Height / 2.0
         [ Scene.line { X = box.X; Y = cy } { X = box.X + box.Width; Y = cy } (Paint.stroke theme.Foreground 3.0) ]
 
+    // ---- Feature 132 (D2.1) net-new Ant-overview control geometry ---------------------------
+    // Generic, theme-agnostic schematics for the net-new controls. Each reads ONLY `theme` roles
+    // (token-sourced) — never theme identity — so it renders neutrally under Default and Ant-styled
+    // under AntDesign with no control edits (FR-007, contract R3/R4). The varied role usage
+    // (Accent / Muted / Foreground / Background / Danger / Success / Warning) guarantees the
+    // resolved paint diverges when the Ant palette differs from Default (FR-013).
+
+    /// A compact filled pill with contrasting text — the shared shape for tag/segment chips.
+    let private pillGeom theme (x: float) (cy: float) (fill: Color) (fg: Color) (label: string) : float * Scene list =
+        let h = 24.0
+        let textW = (measureText label { Family = theme.FontFamily; Size = 12.0; Weight = None }).Width
+        let w = max 36.0 (textW + 18.0)
+        let by = cy - h / 2.0
+        w, [ Scene.rectangle (x, by, w, h) fill
+             mkText theme (x + 9.0) (by + h / 2.0 + 4.0) 12.0 fg label ]
+
+    /// A coloured status chip — `tag`.
+    let private tagGeom theme (box: Rect) (label: string) : Scene list =
+        snd (pillGeom theme box.X (box.Y + box.Height / 2.0) theme.Accent theme.Background (if label = "" then "tag" else label))
+
+    /// A round monogram — `avatar`.
+    let private avatarGeom theme (box: Rect) (label: string) : Scene list =
+        let r = 18.0
+        let cx = box.X + r
+        let cy = box.Y + box.Height / 2.0
+        [ Scene.circle { X = cx; Y = cy } r theme.Accent
+          mkText theme (cx - 9.0) (cy + 5.0) 13.0 theme.Background (if label = "" then "?" else label) ]
+
+    /// A framed surface with a header band — `card`.
+    let private cardGeom theme (box: Rect) (title: string) : Scene list =
+        let headH = 28.0
+        [ Scene.rectangleWithPaint box (Paint.stroke theme.Muted 1.0)
+          Scene.rectangle (box.X, box.Y, box.Width, headH) theme.Muted
+          mkText theme (box.X + 10.0) (box.Y + 19.0) 14.0 theme.Foreground (if title = "" then "Card" else title)
+          mkText theme (box.X + 10.0) (box.Y + headH + 22.0) 12.0 theme.Foreground "Card content" ]
+
+    /// A label : value term list — `descriptions`.
+    let private descriptionsGeom theme (box: Rect) (items: string list) : Scene list =
+        let shown = items |> itemsOr [ "Name"; "Ant"; "Status"; "Active" ] |> List.truncate 6
+        shown
+        |> List.mapi (fun i it ->
+            let y = box.Y + 16.0 + float i * 22.0
+            let fg = if i % 2 = 0 then theme.Muted else theme.Foreground
+            mkText theme box.X y 12.0 fg it)
+
+    /// A large emphasised metric over a caption — `statistic`.
+    let private statisticGeom theme (box: Rect) (value: string) : Scene list =
+        [ mkText theme box.X (box.Y + 18.0) 12.0 theme.Muted "Total"
+          mkText theme box.X (box.Y + 46.0) 28.0 theme.Accent (if value = "" then "0" else value) ]
+
+    /// A vertical dotted event rail — `timeline`.
+    let private timelineGeom theme (box: Rect) (items: string list) : Scene list =
+        let shown = items |> itemsOr [ "Created"; "Shipped"; "Delivered" ] |> List.truncate 6
+        shown
+        |> List.mapi (fun i it ->
+            let y = box.Y + 16.0 + float i * 24.0
+            [ Scene.circle { X = box.X + 6.0; Y = y - 4.0 } 4.0 theme.Accent
+              mkText theme (box.X + 20.0) y 12.0 theme.Foreground it ])
+        |> List.concat
+
+    /// A muted "no data" placeholder with a framed glyph — `empty`.
+    let private emptyGeom theme (box: Rect) (caption: string) : Scene list =
+        let cx = box.X + box.Width / 2.0
+        [ Scene.rectangleWithPaint { X = cx - 28.0; Y = box.Y + 10.0; Width = 56.0; Height = 36.0 } (Paint.stroke theme.Muted 1.0)
+          mkText theme (cx - 28.0) (box.Y + 64.0) 12.0 theme.Muted (if caption = "" then "No data" else caption) ]
+
+    /// Grey placeholder bars — `skeleton`.
+    let private skeletonGeom theme (box: Rect) : Scene list =
+        [ 0; 1; 2 ]
+        |> List.map (fun i ->
+            let w = box.Width * (if i = 2 then 0.6 else 0.9)
+            Scene.rectangle (box.X, box.Y + 12.0 + float i * 20.0, w, 12.0) theme.Muted)
+
+    /// A square module grid — `qr-code`.
+    let private qrCodeGeom theme (box: Rect) : Scene list =
+        let n = 7
+        let side = min box.Width box.Height - 8.0
+        let cell = side / float n
+        [ for r in 0 .. n - 1 do
+            for c in 0 .. n - 1 do
+                if (r + c + r * c) % 2 = 0 then
+                    yield Scene.rectangle (box.X + float c * cell, box.Y + float r * cell, cell - 1.0, cell - 1.0) theme.Foreground ]
+
+    /// Faint repeated brand text — `watermark`.
+    let private watermarkGeom theme (box: Rect) (label: string) : Scene list =
+        let text = if label = "" then "FS.GG" else label
+        let paintFaint = Paint.withOpacity 0.25 (Paint.fill theme.Muted)
+        [ for r in 0 .. 2 do
+            yield Scene.textRun
+                { Text = text
+                  Position = { X = box.X + float (r % 2) * 60.0; Y = box.Y + 24.0 + float r * 28.0 }
+                  Font = { Family = theme.FontFamily; Size = 14.0; Weight = None }
+                  Paint = paintFaint } ]
+
+    /// A coloured information banner — `alert` (warning role so it diverges from accent controls).
+    let private alertGeom theme (box: Rect) (label: string) : Scene list =
+        let h = 36.0
+        [ Scene.rectangle (box.X, box.Y, box.Width, h) theme.Warning
+          Scene.rectangle (box.X, box.Y, 4.0, h) theme.Danger
+          mkText theme (box.X + 12.0) (box.Y + h / 2.0 + 4.0) 13.0 theme.Background (if label = "" then "Alert" else label) ]
+
+    /// A centred outcome panel: status dot + title — `result`.
+    let private resultGeom theme (box: Rect) (title: string) : Scene list =
+        let cx = box.X + box.Width / 2.0
+        [ Scene.circle { X = cx; Y = box.Y + 26.0 } 14.0 theme.Success
+          mkText theme (cx - 30.0) (box.Y + 62.0) 14.0 theme.Foreground (if title = "" then "Success" else title) ]
+
+    /// A right-edge sliding surface — `drawer`.
+    let private drawerGeom theme (box: Rect) (title: string) : Scene list =
+        let w = box.Width * 0.55
+        let x = box.X + box.Width - w
+        [ Scene.rectangle (box.X, box.Y, box.Width, box.Height) theme.Muted
+          Scene.rectangle (x, box.Y, w, box.Height) theme.Background
+          Scene.rectangleWithPaint { X = x; Y = box.Y; Width = w; Height = box.Height } (Paint.stroke theme.Muted 1.0)
+          mkText theme (x + 10.0) (box.Y + 22.0) 13.0 theme.Foreground (if title = "" then "Drawer" else title) ]
+
+    /// A small floating callout box — `popover` (and the base for popconfirm/tour).
+    let private popoverGeom theme (box: Rect) (label: string) (withActions: bool) : Scene list =
+        let w = min box.Width 180.0
+        let h = if withActions then 70.0 else 50.0
+        let baseScene =
+            [ Scene.rectangle (box.X, box.Y, w, h) theme.Background
+              Scene.rectangleWithPaint { X = box.X; Y = box.Y; Width = w; Height = h } (Paint.stroke theme.Muted 1.0)
+              mkText theme (box.X + 10.0) (box.Y + 24.0) 12.0 theme.Foreground (if label = "" then "Popover" else label) ]
+        if withActions then
+            baseScene
+            @ snd (pillGeom theme (box.X + w - 64.0) (box.Y + h - 16.0) theme.Accent theme.Background "OK")
+        else
+            baseScene
+
+    /// A circular floating action button — `float-button`.
+    let private floatButtonGeom theme (box: Rect) (label: string) : Scene list =
+        let r = 22.0
+        let cx = box.X + box.Width - r - 6.0
+        let cy = box.Y + box.Height - r - 6.0
+        [ Scene.circle { X = cx; Y = cy } r theme.Accent
+          mkText theme (cx - 5.0) (cy + 6.0) 18.0 theme.Background (if label = "" then "+" else label) ]
+
+    /// A trail of separated path labels — `breadcrumb`.
+    let private breadcrumbGeom theme (box: Rect) (items: string list) : Scene list =
+        let shown = items |> itemsOr [ "Home"; "Library"; "Item" ]
+        let cy = box.Y + box.Height / 2.0
+        let mutable x = box.X
+        [ for i, it in List.indexed shown do
+            let fg = if i = List.length shown - 1 then theme.Foreground else theme.Muted
+            yield mkText theme x (cy + 4.0) 13.0 fg it
+            let w = (measureText it { Family = theme.FontFamily; Size = 13.0; Weight = None }).Width
+            x <- x + w + 8.0
+            if i < List.length shown - 1 then
+                yield mkText theme x (cy + 4.0) 13.0 theme.Muted "/"
+                x <- x + 12.0 ]
+
+    /// Numbered horizontal progress steps — `steps`.
+    let private stepsGeom theme (box: Rect) (items: string list) : Scene list =
+        let shown = items |> itemsOr [ "First"; "Second"; "Third" ] |> List.truncate 4
+        let n = max 1 (List.length shown)
+        let stepW = box.Width / float n
+        let cy = box.Y + 22.0
+        shown
+        |> List.mapi (fun i it ->
+            let cx = box.X + float i * stepW + 16.0
+            let fill = if i = 0 then theme.Accent else theme.Muted
+            [ Scene.circle { X = cx; Y = cy } 12.0 fill
+              mkText theme (cx - 4.0) (cy + 5.0) 13.0 theme.Background (string (i + 1))
+              mkText theme (cx - 14.0) (cy + 30.0) 11.0 theme.Foreground it ])
+        |> List.concat
+
+    /// A row of page-number chips — `pagination`.
+    let private paginationGeom theme (box: Rect) (total: int) : Scene list =
+        let n = max 1 (min total 6)
+        let cy = box.Y + box.Height / 2.0
+        let mutable x = box.X
+        [ for i in 1 .. n do
+            let fill = if i = 1 then theme.Accent else theme.Background
+            let fg = if i = 1 then theme.Background else theme.Foreground
+            let w, scene = pillGeom theme x cy fill fg (string i)
+            yield! scene
+            x <- x + w + 6.0 ]
+
+    /// A connected single-select segment row — `segmented`.
+    let private segmentedGeom theme (box: Rect) (items: string list) : Scene list =
+        let shown = items |> itemsOr [ "Day"; "Week"; "Month" ] |> List.truncate 5
+        let cy = box.Y + box.Height / 2.0
+        let mutable x = box.X
+        [ yield Scene.rectangle (box.X, cy - 16.0, box.Width, 32.0) theme.Muted
+          for i, it in List.indexed shown do
+            let fill = if i = 0 then theme.Background else theme.Muted
+            let fg = if i = 0 then theme.Accent else theme.Foreground
+            let w, scene = pillGeom theme (x + 2.0) cy fill fg it
+            yield! scene
+            x <- x + w + 4.0 ]
+
+    /// A vertical in-page link list — `anchor`.
+    let private anchorGeom theme (box: Rect) (items: string list) : Scene list =
+        let shown = items |> itemsOr [ "Intro"; "Usage"; "API" ] |> List.truncate 6
+        [ yield Scene.rectangle (box.X, box.Y, 2.0, box.Height) theme.Muted
+          for i, it in List.indexed shown do
+            let fg = if i = 0 then theme.Accent else theme.Muted
+            yield mkText theme (box.X + 12.0) (box.Y + 16.0 + float i * 22.0) 12.0 fg it ]
+
+    /// A pinned-to-top bar — `affix`.
+    let private affixGeom theme (box: Rect) (label: string) : Scene list =
+        [ Scene.rectangle (box.X, box.Y, box.Width, 30.0) theme.Accent
+          mkText theme (box.X + 10.0) (box.Y + 20.0) 13.0 theme.Background (if label = "" then "Affixed" else label) ]
+
+    /// Stacked expandable section headers — `collapse`.
+    let private collapseGeom theme (box: Rect) (items: string list) : Scene list =
+        let shown = items |> itemsOr [ "Panel 1"; "Panel 2"; "Panel 3" ] |> List.truncate 5
+        shown
+        |> List.mapi (fun i it ->
+            let y = box.Y + float i * 30.0
+            [ Scene.rectangle (box.X, y, box.Width, 28.0) theme.Muted
+              mkText theme (box.X + 24.0) (y + 19.0) 12.0 theme.Foreground it
+              mkText theme (box.X + 8.0) (y + 19.0) 12.0 theme.Accent (if i = 0 then "-" else "+") ])
+        |> List.concat
+
+    /// A row of star glyphs, the leading ones filled — `rate`.
+    let private rateGeom theme (box: Rect) (value: float) : Scene list =
+        let filled = int (value + 0.5)
+        let cy = box.Y + box.Height / 2.0
+        [ for i in 0 .. 4 do
+            let color = if i < filled then theme.Warning else theme.Muted
+            yield Scene.circle { X = box.X + 14.0 + float i * 26.0; Y = cy } 9.0 color ]
+
+    /// A framed slide with position dots — `carousel`.
+    let private carouselGeom theme (box: Rect) (items: string list) : Scene list =
+        let shown = items |> itemsOr [ "Slide 1"; "Slide 2"; "Slide 3" ]
+        let label = List.head shown
+        [ yield Scene.rectangle (box.X, box.Y, box.Width, box.Height - 16.0) theme.Muted
+          yield mkText theme (box.X + 12.0) (box.Y + box.Height / 2.0) 14.0 theme.Foreground label
+          for i in 0 .. List.length shown - 1 do
+            let color = if i = 0 then theme.Accent else theme.Background
+            yield Scene.circle { X = box.X + box.Width / 2.0 - 12.0 + float i * 12.0; Y = box.Y + box.Height - 6.0 } 4.0 color ]
+
+    /// A month day-cell grid — `calendar`.
+    let private calendarGeom theme (box: Rect) : Scene list =
+        let cols = 7
+        let rows = 4
+        let cw = box.Width / float cols
+        let rh = (box.Height - 4.0) / float rows
+        [ for r in 0 .. rows - 1 do
+            for c in 0 .. cols - 1 do
+                let day = r * cols + c + 1
+                yield Scene.rectangleWithPaint
+                          { X = box.X + float c * cw; Y = box.Y + float r * rh; Width = cw - 2.0; Height = rh - 2.0 }
+                          (Paint.stroke theme.Muted 1.0)
+                yield mkText theme (box.X + float c * cw + 4.0) (box.Y + float r * rh + 14.0) 10.0 theme.Foreground (string day) ]
+
+    /// Cascading selection columns — `cascader`.
+    let private cascaderGeom theme (box: Rect) (items: string list) : Scene list =
+        let shown = items |> itemsOr [ "Region"; "City"; "District" ]
+        let colW = box.Width / 3.0
+        [ for ci in 0 .. 2 do
+            yield Scene.rectangleWithPaint
+                      { X = box.X + float ci * colW; Y = box.Y; Width = colW - 2.0; Height = box.Height }
+                      (Paint.stroke theme.Muted 1.0)
+            let label = List.tryItem ci shown |> Option.defaultValue ""
+            if label <> "" then
+                yield mkText theme (box.X + float ci * colW + 6.0) (box.Y + 18.0) 11.0 theme.Foreground label ]
+
+    /// A text field with a suggestion dropdown — `auto-complete`.
+    let private autoCompleteGeom theme (box: Rect) (value: string) : Scene list =
+        [ Scene.rectangleWithPaint { X = box.X; Y = box.Y; Width = box.Width; Height = 30.0 } (Paint.stroke theme.Accent 1.5)
+          mkText theme (box.X + 8.0) (box.Y + 20.0) 13.0 theme.Foreground (if value = "" then "Search…" else value)
+          Scene.rectangle (box.X, box.Y + 34.0, box.Width, 54.0) theme.Background
+          Scene.rectangleWithPaint { X = box.X; Y = box.Y + 34.0; Width = box.Width; Height = 54.0 } (Paint.stroke theme.Muted 1.0)
+          mkText theme (box.X + 8.0) (box.Y + 52.0) 12.0 theme.Muted "Suggestion 1"
+          mkText theme (box.X + 8.0) (box.Y + 74.0) 12.0 theme.Muted "Suggestion 2" ]
+
+    /// A dashed drop zone with an upload action — `upload`.
+    let private uploadGeom theme (box: Rect) (label: string) : Scene list =
+        [ Scene.rectangleWithPaint box (Paint.stroke theme.Muted 1.0)
+          mkText theme (box.X + box.Width / 2.0 - 40.0) (box.Y + box.Height / 2.0 - 6.0) 12.0 theme.Muted "Drop files here" ]
+        @ snd (pillGeom theme (box.X + box.Width / 2.0 - 30.0) (box.Y + box.Height / 2.0 + 18.0) theme.Accent theme.Background (if label = "" then "Upload" else label))
+
     /// Dispatch a rich-family control to its faithful geometry (within `box`, below the title).
     let faithfulContent (theme: Theme) (box: Rect) (control: Control<'msg>) : Scene list =
         let label = control.Content |> Option.defaultValue ""
@@ -1109,6 +1389,38 @@ module internal ControlInternals =
         | "text-area" -> textAreaFieldGeom theme box (textValueOf "value" control |> Option.defaultValue "")
         | "rich-text" -> richTextGeom theme box (richTextRuns control)
         | "separator" -> separatorGeom theme box
+        // Feature 132 (D2.1) — net-new Ant-overview controls. All paint flows from `theme` roles
+        // (and, where intent matters, the resolver) — no branch on theme identity (FR-007, R4).
+        | "tag" -> tagGeom theme box label
+        | "avatar" -> avatarGeom theme box label
+        | "card" -> cardGeom theme box label
+        | "descriptions" -> descriptionsGeom theme box (stringListOf "items" control)
+        | "statistic" -> statisticGeom theme box (textValueOf "value" control |> Option.orElse (control.Content) |> Option.defaultValue "")
+        | "timeline" -> timelineGeom theme box (stringListOf "items" control)
+        | "empty" -> emptyGeom theme box label
+        | "skeleton" -> skeletonGeom theme box
+        | "qr-code" -> qrCodeGeom theme box
+        | "watermark" -> watermarkGeom theme box label
+        | "alert" -> alertGeom theme box label
+        | "result" -> resultGeom theme box label
+        | "drawer" -> drawerGeom theme box label
+        | "popover" -> popoverGeom theme box label false
+        | "popconfirm" -> popoverGeom theme box (if label = "" then "Confirm?" else label) true
+        | "tour" -> popoverGeom theme box (if label = "" then "Step 1 of 3" else label) true
+        | "float-button" -> floatButtonGeom theme box label
+        | "breadcrumb" -> breadcrumbGeom theme box (stringListOf "items" control)
+        | "steps" -> stepsGeom theme box (stringListOf "items" control)
+        | "pagination" -> paginationGeom theme box (int (floatValue "value" 4.0 control.Attributes))
+        | "segmented" -> segmentedGeom theme box (stringListOf "items" control)
+        | "anchor" -> anchorGeom theme box (stringListOf "items" control)
+        | "affix" -> affixGeom theme box label
+        | "collapse" -> collapseGeom theme box (stringListOf "items" control)
+        | "rate" -> rateGeom theme box (floatValue "value" 0.0 control.Attributes)
+        | "carousel" -> carouselGeom theme box (stringListOf "items" control)
+        | "calendar" -> calendarGeom theme box
+        | "cascader" -> cascaderGeom theme box (stringListOf "items" control)
+        | "auto-complete" -> autoCompleteGeom theme box (textValueOf "value" control |> Option.defaultValue "")
+        | "upload" -> uploadGeom theme box label
         | "icon" ->
             let name =
                 control.Content
