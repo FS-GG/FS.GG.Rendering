@@ -805,42 +805,27 @@ module internal ControlInternals =
 
     // ---- command / button geometry ----------------------------------------------------------
 
-    /// A filled command button sized to its label, vertically centred. `primary` ⇒ accent fill
-    /// with light text; otherwise an accent-outlined neutral surface.
+    /// A filled command button sized to its label, vertically centred. `kind = "button"` ⇒ accent
+    /// fill with light text; `"icon-button"` ⇒ an accent-outlined neutral surface.
     //
-    // Feature 093 (E3): Button (box+label migrant) — paint flows through `Style.resolve`. The
-    // base reproduces the prior procedural colours exactly, so `resolve theme base [] Normal =
-    // base` is byte-identical (FR-005, SC-003); attached classes / visual state compose on top
-    // per the fixed precedence (FR-001/FR-003/FR-004). `primary` still selects the fill-vs-outline
-    // geometry; the resolver supplies the colours.
-    let private buttonGeom theme (box: Rect) (classes: StyleClass list) (state: VisualState) (primary: bool) (label: string) : Scene list =
+    // Feature 093 (E3): Button (box+label migrant) — paint flows through the resolver.
+    // Feature 129 (F4): the `baseStyle` is now obtained from the central front-half path
+    // `StyleResolver.resolveDefault theme kind intent classes state`, replacing the inline
+    // `primary: bool` literal dispatch. The structural bases were relocated verbatim into
+    // `StyleResolver.baseStyleFor`, and the default (neutral) policy ignores `intent`, so the
+    // default-theme output is byte-identical across every intent and visual state (FR-003, SC-001).
+    // `kind` selects the fill-vs-outline geometry; the resolver supplies the colours; `intent` is
+    // now a THREADED, consumed argument (reaches resolution) rather than dead code.
+    let private buttonGeom theme (box: Rect) (classes: StyleClass list) (state: VisualState) (kind: string) (intent: string) (label: string) : Scene list =
         let h = 38.0
         let textW = (measureText label { Family = theme.FontFamily; Size = 15.0; Weight = None }).Width
         let w = min box.Width (max 70.0 (textW + 32.0))
         let by = box.Y + box.Height / 2.0 - h / 2.0
         let rect = { X = box.X; Y = by; Width = w; Height = h }
 
-        let baseStyle: ResolvedStyle =
-            if primary then
-                { Foreground = theme.Background
-                  Fill = theme.Accent
-                  Stroke = theme.Accent
-                  StrokeWidth = 0.0
-                  FontFamily = theme.FontFamily
-                  FontSize = 15.0
-                  FontWeight = None }
-            else
-                { Foreground = theme.Accent
-                  Fill = Colors.transparent
-                  Stroke = theme.Accent
-                  StrokeWidth = 2.0
-                  FontFamily = theme.FontFamily
-                  FontSize = 15.0
-                  FontWeight = None }
+        let style = StyleResolver.resolveDefault theme kind intent classes state
 
-        let style = Style.resolve theme baseStyle classes state
-
-        if primary then
+        if kind = "button" then
             [ Scene.rectangle (box.X, by, w, h) style.Fill
               mkText theme (box.X + 16.0) (by + h / 2.0 + 5.0) 15.0 style.Foreground label ]
         else
@@ -1069,6 +1054,12 @@ module internal ControlInternals =
         // survives a sibling-shifting re-render under the retained identity (FR-006, SC-005).
         let classes = styleClassesOf control.Attributes
         let state = visualStateOf control.Attributes
+        // Feature 129 (F4): the semantic intent — lowered to the `style` attribute by `Button.view`
+        // (`Primitives.fs:99`) and, until now, never read by the renderer (so `Danger` ≡ `Primary`).
+        // It is now extracted and threaded into the central resolver. A missing attribute defaults
+        // to the neutral `"primary"`. The default (neutral) policy still ignores it, so this is
+        // byte-identical under the default theme — but the value now reaches resolution (FR-002, R3).
+        let intent = textValueOf "style" control |> Option.defaultValue "primary"
         match control.Kind with
         | "line-chart" -> lineGeom theme box (chartValues control)
         | "bar-chart" -> barGeom theme box (chartValues control)
@@ -1092,8 +1083,8 @@ module internal ControlInternals =
         | "switch" -> switchGeom theme box classes state (boolValue "selected" false control.Attributes)
         | "check-box" -> checkboxGeom theme box classes state (boolValue "selected" false control.Attributes) label
         // command / button family
-        | "button" -> buttonGeom theme box classes state true label
-        | "icon-button" -> buttonGeom theme box classes state false label
+        | "button" -> buttonGeom theme box classes state "button" intent label
+        | "icon-button" -> buttonGeom theme box classes state "icon-button" intent label
         | "badge" -> badgeGeom theme box label
         | "toggle-button" -> toggleGeom theme box (boolValue "selected" true control.Attributes) label
         | "split-button" -> splitGeom theme box label

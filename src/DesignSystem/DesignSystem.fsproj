@@ -30,6 +30,10 @@
     <!-- Feature 093 (E3): the pure state→style resolver. Sees Types + DesignTokens. -->
     <Compile Include="Style.fsi" />
     <Compile Include="Style.fs" />
+    <!-- Feature 129 (F4): the front-half resolver (kind+intent → baseStyle) + IntentPolicy seam.
+         Composes on Style.resolve, so it compiles AFTER it. `module internal`, NO .fsi —
+         additive, zero public-surface delta. Consumed by buttonGeom + the F4 tests via IVT. -->
+    <Compile Include="StyleResolver.fs" />
   </ItemGroup>
 
   <!-- Feature 126 (F1): expose the internal DesignTokensExt taxonomy to the test assembly that
@@ -37,6 +41,10 @@
        only way tests can name the tokens — mirrors the Controls Reconcile/RetainedRender pattern. -->
   <ItemGroup>
     <InternalsVisibleTo Include="Controls.Tests" />
+    <!-- Feature 129 (F4): grant the Controls production assembly access so `buttonGeom` can call
+         the internal StyleResolver. IVT is NOT public surface — invisible to the surface-drift
+         gate (quickstart V5 / G6) — so the zero-surface-delta invariant is preserved. -->
+    <InternalsVisibleTo Include="FS.GG.UI.Controls" />
   </ItemGroup>
 
   <ItemGroup>
