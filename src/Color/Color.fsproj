@@ -16,6 +16,18 @@
     <Compile Include="Contrast.fs" />
     <Compile Include="Palettes.fsi" />
     <Compile Include="Palettes.fs" />
+    <!-- Feature 127 (Workstream F2): the internal color-policy engine. `module internal` with
+         NO .fsi — additive, zero public-surface delta; reuses Contrast in-assembly so the `wcag`
+         policy stays byte-identical to today. Loads last (after Palettes), depends only on
+         Contrast/Role/Verdict already declared above. -->
+    <Compile Include="ColorPolicy.fs" />
+  </ItemGroup>
+
+  <!-- Feature 127 (F2): expose the internal ColorPolicy engine to the test assembly that drives
+       the design-system pairing catalog + evaluation + drift gate (mirrors the DesignTokensExt /
+       Reconcile / RetainedRender internal-with-IVT pattern). Carries no public surface. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Controls.Tests" />
   </ItemGroup>
 
   <ItemGroup>
