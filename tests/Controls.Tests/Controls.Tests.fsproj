@@ -68,6 +68,7 @@
     <Compile Include="Feature120FingerprintTests.fs" />
     <Compile Include="Feature121IdleTickTests.fs" />
     <Compile Include="Feature122CustomControlTests.fs" />
+    <Compile Include="Feature126TokenTaxonomyTests.fs" />
     <Compile Include="Audit_Reconcile.fs" />
     <Compile Include="Audit_MemoCache.fs" />
     <Compile Include="Audit_PictureCache.fs" />
