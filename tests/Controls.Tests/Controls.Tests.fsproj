@@ -73,6 +73,11 @@
     <Compile Include="Feature129CentralStyleResolverTests.fs" />
     <Compile Include="Feature130PublicSurfaceTests.fs" />
     <Compile Include="Feature131AntPatternDocsTests.fs" />
+    <!-- Feature 132 (D2.1): the Ant theme parity guard, the net-new control contract suite, and the
+         coverage-matrix honesty check. -->
+    <Compile Include="Feature132ThemeParityTests.fs" />
+    <Compile Include="Feature132NewControlContractTests.fs" />
+    <Compile Include="Feature132CoverageMatrixTests.fs" />
     <Compile Include="Audit_Reconcile.fs" />
     <Compile Include="Audit_MemoCache.fs" />
     <Compile Include="Audit_PictureCache.fs" />
@@ -89,6 +94,8 @@
          the relocated types), so reference them directly. -->
     <ProjectReference Include="..\..\src\DesignSystem\DesignSystem.fsproj" />
     <ProjectReference Include="..\..\src\Themes.Default\Themes.Default.fsproj" />
+    <!-- Feature 132 (D2.1): the Ant Design theme package the parity + contract suites resolve. -->
+    <ProjectReference Include="..\..\src\Themes.AntDesign\Themes.AntDesign.fsproj" />
     <!-- Feature 108 (US6, T032): the theming-contrast suite reuses FS.GG.UI.Color.Contrast.ratio
          against the WCAG reference pairs. Test-only reference — Controls itself does not depend on
          the Color package (no package-graph change). -->

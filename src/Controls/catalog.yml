@@ -2,7 +2,7 @@ schemaVersion: "1.0"
 catalogVersion: "2026-05-16"
 owner: controls
 summary:
-  supportedCount: 52
+  supportedCount: 82
   categories: [display, input, selection, navigation, layout, feedback, data, chart, graph, custom]
   evidence:
     - specs/010-skia-controls-library/readiness/control-catalog.md
@@ -964,3 +964,544 @@ controls:
     supportStatus: supported
     owner: controls
   # END GENERATED: typed-catalog/color-picker
+  # Feature 132 (D2.1): net-new generic Ant-overview controls (mirrors the GENERATED rows in Catalog.fs).
+  # BEGIN GENERATED: typed-catalog/tag
+  - id: tag
+    displayName: Tag
+    category: display
+    module: Tag
+    typedModule: Tag
+    purpose: Compact coloured status chip.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: [onClose]
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: StaticText, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/tag
+  # BEGIN GENERATED: typed-catalog/avatar
+  - id: avatar
+    displayName: Avatar
+    category: display
+    module: Avatar
+    typedModule: Avatar
+    purpose: Round monogram or image stand-in.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: []
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: Image, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/avatar
+  # BEGIN GENERATED: typed-catalog/card
+  - id: card
+    displayName: Card
+    category: display
+    module: Card
+    typedModule: Card
+    purpose: Framed content surface with a header band.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: []
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: Group, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/card
+  # BEGIN GENERATED: typed-catalog/descriptions
+  - id: descriptions
+    displayName: Descriptions
+    category: display
+    module: Descriptions
+    typedModule: Descriptions
+    purpose: Label/value term list.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: []
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: Group, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/descriptions
+  # BEGIN GENERATED: typed-catalog/statistic
+  - id: statistic
+    displayName: Statistic
+    category: display
+    module: Statistic
+    typedModule: Statistic
+    purpose: Emphasised metric over a caption.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: []
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: StaticText, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/statistic
+  # BEGIN GENERATED: typed-catalog/timeline
+  - id: timeline
+    displayName: Timeline
+    category: display
+    module: Timeline
+    typedModule: Timeline
+    purpose: Vertical dotted event rail.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: []
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: Group, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/timeline
+  # BEGIN GENERATED: typed-catalog/empty
+  - id: empty
+    displayName: Empty
+    category: feedback
+    module: Empty
+    typedModule: Empty
+    purpose: Muted no-data placeholder.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: []
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: StaticText, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/empty
+  # BEGIN GENERATED: typed-catalog/skeleton
+  - id: skeleton
+    displayName: Skeleton
+    category: feedback
+    module: Skeleton
+    typedModule: Skeleton
+    purpose: Grey loading placeholder bars.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: []
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: StaticText, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/skeleton
+  # BEGIN GENERATED: typed-catalog/qr-code
+  - id: qr-code
+    displayName: QR Code
+    category: display
+    module: QrCode
+    typedModule: QrCode
+    purpose: Deterministic QR module grid.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: []
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: Image, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/qr-code
+  # BEGIN GENERATED: typed-catalog/watermark
+  - id: watermark
+    displayName: Watermark
+    category: display
+    module: Watermark
+    typedModule: Watermark
+    purpose: Faint repeated brand text overlay.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: []
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: StaticText, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/watermark
+  # BEGIN GENERATED: typed-catalog/alert
+  - id: alert
+    displayName: Alert
+    category: feedback
+    module: Alert
+    typedModule: Alert
+    purpose: Coloured information banner.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: [onClose]
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: Alert, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/alert
+  # BEGIN GENERATED: typed-catalog/result
+  - id: result
+    displayName: Result
+    category: feedback
+    module: Result
+    typedModule: Result
+    purpose: Centred operation-outcome panel.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: []
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: StaticText, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/result
+  # BEGIN GENERATED: typed-catalog/drawer
+  - id: drawer
+    displayName: Drawer
+    category: feedback
+    module: Drawer
+    typedModule: Drawer
+    purpose: Edge-anchored sliding panel.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: [onClose]
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: Dialog, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/drawer
+  # BEGIN GENERATED: typed-catalog/popover
+  - id: popover
+    displayName: Popover
+    category: feedback
+    module: Popover
+    typedModule: Popover
+    purpose: Floating callout anchored to a trigger.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: []
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: Tooltip, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/popover
+  # BEGIN GENERATED: typed-catalog/popconfirm
+  - id: popconfirm
+    displayName: Popconfirm
+    category: feedback
+    module: Popconfirm
+    typedModule: Popconfirm
+    purpose: Confirm callout with accept/cancel.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: [onConfirm, onCancel]
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: Dialog, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/popconfirm
+  # BEGIN GENERATED: typed-catalog/tour
+  - id: tour
+    displayName: Tour
+    category: feedback
+    module: Tour
+    typedModule: Tour
+    purpose: Guided multi-step highlight callout.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: []
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: Dialog, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/tour
+  # BEGIN GENERATED: typed-catalog/float-button
+  - id: float-button
+    displayName: Float Button
+    category: navigation
+    module: FloatButton
+    typedModule: FloatButton
+    purpose: Circular floating action button.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: [onClick]
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: Button, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/float-button
+  # BEGIN GENERATED: typed-catalog/breadcrumb
+  - id: breadcrumb
+    displayName: Breadcrumb
+    category: navigation
+    module: Breadcrumb
+    typedModule: Breadcrumb
+    purpose: Separated path trail.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: []
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: Navigation, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/breadcrumb
+  # BEGIN GENERATED: typed-catalog/steps
+  - id: steps
+    displayName: Steps
+    category: navigation
+    module: Steps
+    typedModule: Steps
+    purpose: Numbered horizontal progress steps.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: []
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: Group, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/steps
+  # BEGIN GENERATED: typed-catalog/pagination
+  - id: pagination
+    displayName: Pagination
+    category: navigation
+    module: Pagination
+    typedModule: Pagination
+    purpose: Page-number chip row.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: [onChange]
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: Navigation, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/pagination
+  # BEGIN GENERATED: typed-catalog/segmented
+  - id: segmented
+    displayName: Segmented
+    category: navigation
+    module: Segmented
+    typedModule: Segmented
+    purpose: Connected single-select segment row.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: [onChange]
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: TabList, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/segmented
+  # BEGIN GENERATED: typed-catalog/anchor
+  - id: anchor
+    displayName: Anchor
+    category: navigation
+    module: Anchor
+    typedModule: Anchor
+    purpose: Vertical in-page link list.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: []
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: Navigation, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/anchor
+  # BEGIN GENERATED: typed-catalog/affix
+  - id: affix
+    displayName: Affix
+    category: navigation
+    module: Affix
+    typedModule: Affix
+    purpose: Pinned-to-edge bar.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: []
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: Group, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/affix
+  # BEGIN GENERATED: typed-catalog/collapse
+  - id: collapse
+    displayName: Collapse
+    category: display
+    module: Collapse
+    typedModule: Collapse
+    purpose: Stacked expandable section headers.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: [onChange]
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: Group, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/collapse
+  # BEGIN GENERATED: typed-catalog/rate
+  - id: rate
+    displayName: Rate
+    category: input
+    module: Rate
+    typedModule: Rate
+    purpose: Star rating row.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: [onChange]
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: Slider, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/rate
+  # BEGIN GENERATED: typed-catalog/carousel
+  - id: carousel
+    displayName: Carousel
+    category: display
+    module: Carousel
+    typedModule: Carousel
+    purpose: Rotating slide deck.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: []
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: Group, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/carousel
+  # BEGIN GENERATED: typed-catalog/calendar
+  - id: calendar
+    displayName: Calendar
+    category: display
+    module: Calendar
+    typedModule: Calendar
+    purpose: Month day-cell grid.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: [onChange]
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: Grid, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/calendar
+  # BEGIN GENERATED: typed-catalog/cascader
+  - id: cascader
+    displayName: Cascader
+    category: selection
+    module: Cascader
+    typedModule: Cascader
+    purpose: Cascading selection columns.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: [onChange]
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: ComboBox, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/cascader
+  # BEGIN GENERATED: typed-catalog/auto-complete
+  - id: auto-complete
+    displayName: Auto Complete
+    category: input
+    module: AutoComplete
+    typedModule: AutoComplete
+    purpose: Text field with a suggestion dropdown.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: [onChange]
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: ComboBox, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/auto-complete
+  # BEGIN GENERATED: typed-catalog/upload
+  - id: upload
+    displayName: Upload
+    category: input
+    module: Upload
+    typedModule: Upload
+    purpose: File drop zone with an upload action.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: [onChange]
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: Button, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/upload

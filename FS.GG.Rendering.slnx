@@ -11,6 +11,7 @@
     <Project Path="src/Scene/Scene.fsproj" />
     <Project Path="src/SkiaViewer/SkiaViewer.fsproj" />
     <Project Path="src/Testing/Testing.fsproj" />
+    <Project Path="src/Themes.AntDesign/Themes.AntDesign.fsproj" />
     <Project Path="src/Themes.Default/Themes.Default.fsproj" />
   </Folder>
   <Folder Name="/tests/">

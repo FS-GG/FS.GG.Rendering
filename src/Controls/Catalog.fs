@@ -232,6 +232,99 @@ module Catalog =
           // BEGIN GENERATED: typed-catalog/color-picker
           definition "color-picker" "Color Picker" "selection" "ColorPicker" "Palette swatch color selection." [ "swatches" ] common [ "onSelected" ] states "List"
           // END GENERATED: typed-catalog/color-picker
+          // Feature 132 (D2.1): net-new generic Ant-overview controls (Display2/Feedback2/Navigation2/
+          // Interactive2/DataEntry2). Hand-maintained GENERATED rows (the source-repo typed-catalog
+          // generator is governance material, excluded at import — see PROVENANCE.md). Mirrored in catalog.yml.
+          // BEGIN GENERATED: typed-catalog/tag
+          definition "tag" "Tag" "display" "Tag" "Compact coloured status chip." [] common [ "onClose" ] states "StaticText"
+          // END GENERATED: typed-catalog/tag
+          // BEGIN GENERATED: typed-catalog/avatar
+          definition "avatar" "Avatar" "display" "Avatar" "Round monogram or image stand-in." [] common [] states "Image"
+          // END GENERATED: typed-catalog/avatar
+          // BEGIN GENERATED: typed-catalog/card
+          definition "card" "Card" "display" "Card" "Framed content surface with a header band." [] common [] states "Group"
+          // END GENERATED: typed-catalog/card
+          // BEGIN GENERATED: typed-catalog/descriptions
+          definition "descriptions" "Descriptions" "display" "Descriptions" "Label/value term list." [] common [] states "Group"
+          // END GENERATED: typed-catalog/descriptions
+          // BEGIN GENERATED: typed-catalog/statistic
+          definition "statistic" "Statistic" "display" "Statistic" "Emphasised metric over a caption." [] common [] states "StaticText"
+          // END GENERATED: typed-catalog/statistic
+          // BEGIN GENERATED: typed-catalog/timeline
+          definition "timeline" "Timeline" "display" "Timeline" "Vertical dotted event rail." [] common [] states "Group"
+          // END GENERATED: typed-catalog/timeline
+          // BEGIN GENERATED: typed-catalog/empty
+          definition "empty" "Empty" "feedback" "Empty" "Muted no-data placeholder." [] common [] states "StaticText"
+          // END GENERATED: typed-catalog/empty
+          // BEGIN GENERATED: typed-catalog/skeleton
+          definition "skeleton" "Skeleton" "feedback" "Skeleton" "Grey loading placeholder bars." [] common [] states "StaticText"
+          // END GENERATED: typed-catalog/skeleton
+          // BEGIN GENERATED: typed-catalog/qr-code
+          definition "qr-code" "QR Code" "display" "QrCode" "Deterministic QR module grid." [] common [] states "Image"
+          // END GENERATED: typed-catalog/qr-code
+          // BEGIN GENERATED: typed-catalog/watermark
+          definition "watermark" "Watermark" "display" "Watermark" "Faint repeated brand text overlay." [] common [] states "StaticText"
+          // END GENERATED: typed-catalog/watermark
+          // BEGIN GENERATED: typed-catalog/alert
+          definition "alert" "Alert" "feedback" "Alert" "Coloured information banner." [] common [ "onClose" ] states "Alert"
+          // END GENERATED: typed-catalog/alert
+          // BEGIN GENERATED: typed-catalog/result
+          definition "result" "Result" "feedback" "Result" "Centred operation-outcome panel." [] common [] states "StaticText"
+          // END GENERATED: typed-catalog/result
+          // BEGIN GENERATED: typed-catalog/drawer
+          definition "drawer" "Drawer" "feedback" "Drawer" "Edge-anchored sliding panel." [] common [ "onClose" ] states "Dialog"
+          // END GENERATED: typed-catalog/drawer
+          // BEGIN GENERATED: typed-catalog/popover
+          definition "popover" "Popover" "feedback" "Popover" "Floating callout anchored to a trigger." [] common [] states "Tooltip"
+          // END GENERATED: typed-catalog/popover
+          // BEGIN GENERATED: typed-catalog/popconfirm
+          definition "popconfirm" "Popconfirm" "feedback" "Popconfirm" "Confirm callout with accept/cancel." [] common [ "onConfirm"; "onCancel" ] states "Dialog"
+          // END GENERATED: typed-catalog/popconfirm
+          // BEGIN GENERATED: typed-catalog/tour
+          definition "tour" "Tour" "feedback" "Tour" "Guided multi-step highlight callout." [] common [] states "Dialog"
+          // END GENERATED: typed-catalog/tour
+          // BEGIN GENERATED: typed-catalog/float-button
+          definition "float-button" "Float Button" "navigation" "FloatButton" "Circular floating action button." [] common [ "onClick" ] states "Button"
+          // END GENERATED: typed-catalog/float-button
+          // BEGIN GENERATED: typed-catalog/breadcrumb
+          definition "breadcrumb" "Breadcrumb" "navigation" "Breadcrumb" "Separated path trail." [] common [] states "Navigation"
+          // END GENERATED: typed-catalog/breadcrumb
+          // BEGIN GENERATED: typed-catalog/steps
+          definition "steps" "Steps" "navigation" "Steps" "Numbered horizontal progress steps." [] common [] states "Group"
+          // END GENERATED: typed-catalog/steps
+          // BEGIN GENERATED: typed-catalog/pagination
+          definition "pagination" "Pagination" "navigation" "Pagination" "Page-number chip row." [] common [ "onChange" ] states "Navigation"
+          // END GENERATED: typed-catalog/pagination
+          // BEGIN GENERATED: typed-catalog/segmented
+          definition "segmented" "Segmented" "navigation" "Segmented" "Connected single-select segment row." [] common [ "onChange" ] states "TabList"
+          // END GENERATED: typed-catalog/segmented
+          // BEGIN GENERATED: typed-catalog/anchor
+          definition "anchor" "Anchor" "navigation" "Anchor" "Vertical in-page link list." [] common [] states "Navigation"
+          // END GENERATED: typed-catalog/anchor
+          // BEGIN GENERATED: typed-catalog/affix
+          definition "affix" "Affix" "navigation" "Affix" "Pinned-to-edge bar." [] common [] states "Group"
+          // END GENERATED: typed-catalog/affix
+          // BEGIN GENERATED: typed-catalog/collapse
+          definition "collapse" "Collapse" "display" "Collapse" "Stacked expandable section headers." [] common [ "onChange" ] states "Group"
+          // END GENERATED: typed-catalog/collapse
+          // BEGIN GENERATED: typed-catalog/rate
+          definition "rate" "Rate" "input" "Rate" "Star rating row." [] common [ "onChange" ] states "Slider"
+          // END GENERATED: typed-catalog/rate
+          // BEGIN GENERATED: typed-catalog/carousel
+          definition "carousel" "Carousel" "display" "Carousel" "Rotating slide deck." [] common [] states "Group"
+          // END GENERATED: typed-catalog/carousel
+          // BEGIN GENERATED: typed-catalog/calendar
+          definition "calendar" "Calendar" "display" "Calendar" "Month day-cell grid." [] common [ "onChange" ] states "Grid"
+          // END GENERATED: typed-catalog/calendar
+          // BEGIN GENERATED: typed-catalog/cascader
+          definition "cascader" "Cascader" "selection" "Cascader" "Cascading selection columns." [] common [ "onChange" ] states "ComboBox"
+          // END GENERATED: typed-catalog/cascader
+          // BEGIN GENERATED: typed-catalog/auto-complete
+          definition "auto-complete" "Auto Complete" "input" "AutoComplete" "Text field with a suggestion dropdown." [] common [ "onChange" ] states "ComboBox"
+          // END GENERATED: typed-catalog/auto-complete
+          // BEGIN GENERATED: typed-catalog/upload
+          definition "upload" "Upload" "input" "Upload" "File drop zone with an upload action." [] common [ "onChange" ] states "Button"
+          // END GENERATED: typed-catalog/upload
         ]
 
     let standardSchema =

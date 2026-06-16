@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <IsPackable>true</IsPackable>
+    <PackageId>FS.GG.UI.Themes.AntDesign</PackageId>
+    <AssemblyName>FS.GG.UI.Themes.AntDesign</AssemblyName>
+    <Version>0.1.0-preview.1</Version>
+    <Title>FS.GG.UI.Themes.AntDesign</Title>
+    <Description>The Ant Design theme layer: a concrete Theme value (antLight/antDark) plus an IntentPolicy that drive Ant's visual language over the framework's existing semantic controls. Opt-in and behaviour-neutral; depends only on FS.GG.UI.DesignSystem (no Controls reference — no control forks).</Description>
+    <PackageTags>fsharp;skia;theme;design-tokens;ant-design</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Feature 132 (D2.1): the Ant Design theme layer. AntTheme (the Theme value) before
+         AntIntentPolicy (it reads no AntTheme members but the value-first order mirrors Themes.Default). -->
+    <Compile Include="AntTheme.fsi" />
+    <Compile Include="AntTheme.fs" />
+    <Compile Include="AntIntentPolicy.fsi" />
+    <Compile Include="AntIntentPolicy.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DesignSystem\DesignSystem.fsproj" />
+  </ItemGroup>
+
+</Project>

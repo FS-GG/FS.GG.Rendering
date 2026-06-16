@@ -246,13 +246,17 @@ Create and move (compile order preserved):
 ### 7.4 Phase D3 — design-specific kits
 5. **`FS.GG.UI.Themes.AntDesign.Kit`** (or a `Kits` assembly) — implement at least `AntDesign.Form` (validation-flow layout) and `AntDesign.Table` (filtering/sorting/empty-state) as opinionated compositions over controls + theme. Depends on `Controls` + the Ant theme. This is the proof that a kit is justified only when it adds *composition/workflow behavior beyond styling* (layering.md decision rule). The Ant report's **enterprise page templates** (workbench / list / detail / form / result / exception) are the target recipes — see F.
 
+### 7.4b Phase D2-Charts — Ant Design Charts adoption (follow-up to D2.1)
+**Follow-up feature, sequenced after D2.1** (the concrete Ant theme; see `specs/132-ant-concrete-theme/`). Extend the framework's existing chart controls (line/bar/pie/scatter) toward the [Ant Design Charts](https://ant-design-charts.antgroup.com/en/components/overview) catalog — statistical (column/area/histogram/box/...), relational (sankey/chord/...), hierarchical (treemap/sunburst/...), and geo/flow families — adopted as a **design language only**: a chart-type catalog + token/visual mapping over the repo's chart controls and the Ant token taxonomy. **No JS/React/AntV charting dependency**; charts render through the existing Skia + F# chart-control path. Like D2.1, it ships a coverage matrix (each Ant Charts entry → existing chart control / net-new chart control / composition / not-applicable), an honesty check against the public surface, and Ant-vs-default parity where applicable. Scope here is charts only; this is explicitly the "charts follow-up" requested alongside the D2.1 widened-component-coverage feature (132, FR-019).
+
 ### 7.5 Tasks
 - **D1.1** Create `DesignSystem` project; move tokens/types/style; add `Success`/`Warning`; preserve compile order. Build green.
 - **D1.2** Create `Themes.Default`; move `Theme`/`Theming`/tokens JSON; build green.
 - **D1.3** Refactor `Controls` to reference `DesignSystem`; fix imports; behavior-neutral. Full existing test suite green.
 - **D1.4** Update `.slnx`, `scripts/refresh-surface-baselines.fsx` (+rows), regenerate + commit all baselines; gate green.
 - **D1.5** Decision record + template update + bridge note for the namespace move.
-- **D2.1–D2.3** Ant / Fluent / Material theme assemblies + the "one control set, many themes" parity test.
+- **D2.1–D2.3** Ant / Fluent / Material theme assemblies + the "one control set, many themes" parity test. (D2.1 = the flagship Ant theme, widened to maximal Ant component-overview coverage incl. net-new generic controls — see `specs/132-ant-concrete-theme/`.)
+- **D2C.1** Ant Design Charts adoption (follow-up to D2.1; see Phase D2-Charts above) — chart-type catalog + token mapping over existing chart controls + coverage matrix; no JS/React charting dependency.
 - **D3.1** `AntDesign.Form` + `AntDesign.Table` kits + tests.
 
 ### 7.6 Acceptance / evidence

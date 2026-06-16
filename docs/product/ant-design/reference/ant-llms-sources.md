@@ -38,8 +38,18 @@ raw `ant.design` URLs across other docs; link here instead.
   (`resolve`, `resolveDefault`, `baseStyleFor`, `neutralPolicy`, `IntentPolicy`) drives the
   stateful styling of a region (hover/active/disabled/selected/focus).
 - **Color/contrast policy** → `FS.GG.UI.Color.ColorPolicy` (`wcag`, `ant`).
-- **The one semantic control set** → `FS.GG.UI.Controls.Catalog` (52 controls; categories are the
-  pattern-doc families). No per-theme control forks.
+- **The one semantic control set** → `FS.GG.UI.Controls.Catalog` (82 controls after feature 132;
+  categories are the pattern-doc families). No per-theme control forks.
+- **The concrete Ant theme** → `FS.GG.UI.Themes.AntDesign` (`AntTheme.antLight`/`antDark` +
+  `AntIntentPolicy`); the Ant visual language realized over the one control set through the resolver/
+  token seams (feature 132 / D2.1, decision [0006](../../decisions/0006-antdesign-theme-and-new-controls.md)).
+
+## Ant component coverage matrix
+
+[`../coverage/ant-component-coverage.md`](../coverage/ant-component-coverage.md) dispositions **every**
+Ant component-overview entry (existing / net-new / composition / not-applicable) against the live
+repo control + token surface, snapshot-dated by this hub (`2026-06-16`). The honesty check
+`tests/Controls.Tests/Feature132CoverageMatrixTests.fs` keeps it from drifting.
 
 ## Curated semantic-parts snapshot (for `part:` refs)
 

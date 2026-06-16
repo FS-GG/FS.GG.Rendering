@@ -114,6 +114,20 @@
     <Compile Include="Widgets/Buttons.fs" />
     <Compile Include="Widgets/Pickers.fsi" />
     <Compile Include="Widgets/Pickers.fs" />
+    <!-- Feature 132 (D2.1): net-new generic, theme-agnostic controls filling the Ant component
+         overview gaps. Grouped into cohesive modules; all after Control.fs (they wrap Control.create)
+         and authored .fsi-first. Rendered through the kind-string dispatch in Control.fs's
+         faithfulContent (no theme-identity branch). -->
+    <Compile Include="Display2.fsi" />
+    <Compile Include="Display2.fs" />
+    <Compile Include="Feedback2.fsi" />
+    <Compile Include="Feedback2.fs" />
+    <Compile Include="Navigation2.fsi" />
+    <Compile Include="Navigation2.fs" />
+    <Compile Include="Interactive2.fsi" />
+    <Compile Include="Interactive2.fs" />
+    <Compile Include="DataEntry2.fsi" />
+    <Compile Include="DataEntry2.fs" />
   </ItemGroup>
 
   <ItemGroup>
