@@ -17,7 +17,7 @@ open FS.GG.UI.Scene
 // renderer drops today is dropped here too — but now as an explicit identity policy over a
 // THREADED argument, making it a live seam rather than dead code). A non-default policy supplied
 // directly to `resolve` proves intent divergence is reachable with zero control edits (US3).
-module internal StyleResolver =
+module StyleResolver =
 
     /// The overridable `(theme, lowered-intent-string, structural base) → adjusted base` seam.
     /// `neutralPolicy` keeps it identity (intent ignored ⇒ default-neutral); a divergent policy
@@ -68,4 +68,6 @@ module internal StyleResolver =
 
     /// Convenience: the neutral path that `buttonGeom` calls — intent threaded but ignored, so
     /// byte-identical to the pre-migration `Style.resolve theme (structural base) classes state`.
-    let resolveDefault = resolve neutralPolicy
+    /// Written as a fully-applied function (not the eta-reduced `resolve neutralPolicy`) so its
+    /// arity matches the curated public signature in StyleResolver.fsi; semantically identical.
+    let resolveDefault theme kind intent classes state = resolve neutralPolicy theme kind intent classes state

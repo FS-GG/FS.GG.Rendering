@@ -8,7 +8,7 @@ namespace FS.GG.UI.DesignSystem
 
 open FS.GG.UI.Scene
 
-module internal DesignTokensExt =
+module DesignTokensExt =
 
     module Seed =
         let colorPrimary : Color = Colors.rgba 22uy 119uy 255uy 255uy
