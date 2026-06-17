@@ -203,7 +203,7 @@ budgets, skipped-environment categories, and compatibility scaffolding exist.
 - [x] T067 Run promotion and placement reuse validation and record repeated-work reduction, demotion, and parity results in specs/147-compositor-damage-redraw/readiness/validation-summary.md using tests/Controls.Tests/Controls.Tests.fsproj and tests/Elmish.Tests/Elmish.Tests.fsproj
 - [x] T068 Run damage, promotion, and snapshot performance probes and record threshold results in specs/147-compositor-damage-redraw/readiness/validation-summary.md using tests/Rendering.Harness/Rendering.Harness.fsproj
 - [x] T069 Run readiness package and compatibility ledger validation and record ready, limited, rejected, and skipped tier status in specs/147-compositor-damage-redraw/readiness/validation-summary.md using tests/Rendering.Harness.Tests/Rendering.Harness.Tests.fsproj and tests/Package.Tests/Package.Tests.fsproj
-- [ ] T070 Run full solution, package surface, and pack validation and record final results in specs/147-compositor-damage-redraw/readiness/validation-summary.md using FS.GG.Rendering.slnx, tests/Package.Tests/Package.Tests.fsproj, and ~/.local/share/nuget-local/
+- [x] T070 Run full solution, package surface, and pack validation and record final results in specs/147-compositor-damage-redraw/readiness/validation-summary.md using FS.GG.Rendering.slnx, tests/Package.Tests/Package.Tests.fsproj, and ~/.local/share/nuget-local/
 
 ---
 

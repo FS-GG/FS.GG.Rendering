@@ -351,6 +351,7 @@ module Compositor =
               "- `dotnet build FS.GG.Rendering.slnx --no-restore`: passed."
               "- Feature147 focused Controls, Elmish, SkiaViewer, Rendering.Harness, and Package tests: passed."
               "- `dotnet test tests/Package.Tests/Package.Tests.fsproj --filter Surface`: passed."
+              "- `dotnet pack FS.GG.Rendering.slnx -c Release -o ~/.local/share/nuget-local`: passed for `0.1.10-preview.1`."
               "- `dotnet test FS.GG.Rendering.slnx --no-build`: blocked outside Feature147 by existing Controls typed/transient-metadata parity failures."
               ""
               "## Diagnostics"
