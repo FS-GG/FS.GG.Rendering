@@ -347,31 +347,35 @@ module internal ControlInternals =
                 | _ -> None)
             |> Option.defaultValue []
 
-        match control.Kind with
-        | "line-chart"
-        | "bar-chart"
-        | "scatter-plot"
-        // series-shaped net-new charts
-        | "area-chart"
-        | "column-chart"
-        | "box-plot" ->
-            points "series" |> Option.defaultValue []
-        | "pie-chart"
-        // point-shaped net-new charts
-        | "histogram"
-        | "heatmap"
-        | "radar-chart"
-        | "rose-chart"
-        | "waterfall-chart"
-        | "funnel-chart"
-        | "gauge-chart"
-        | "treemap"
-        | "sunburst" ->
-            points "values" |> Option.defaultValue []
-        | "graph-view"
-        | "sankey-diagram"
-        | "chord-diagram" -> nodesAsPoints ()
-        | _ -> []
+        // Feature 136 (US3/T035): guard degenerate data — drop non-finite (NaN/Inf) points so a
+        // chart never computes wild geometry; n=0 yields [] (the geoms render an empty state).
+        let raw =
+            match control.Kind with
+            | "line-chart"
+            | "bar-chart"
+            | "scatter-plot"
+            // series-shaped net-new charts
+            | "area-chart"
+            | "column-chart"
+            | "box-plot" ->
+                points "series" |> Option.defaultValue []
+            | "pie-chart"
+            // point-shaped net-new charts
+            | "histogram"
+            | "heatmap"
+            | "radar-chart"
+            | "rose-chart"
+            | "waterfall-chart"
+            | "funnel-chart"
+            | "gauge-chart"
+            | "treemap"
+            | "sunburst" ->
+                points "values" |> Option.defaultValue []
+            | "graph-view"
+            | "sankey-diagram"
+            | "chord-diagram" -> nodesAsPoints ()
+            | _ -> []
+        raw |> List.filter (fun p -> System.Double.IsFinite p.X && System.Double.IsFinite p.Y)
 
     /// Read the field-name-free run projection (text, colour, size, weight) that `RichText.create`
     /// stashes in the `richTextRuns` attr, so the preview can draw real per-run colour/weight
@@ -417,6 +421,15 @@ module internal ControlInternals =
               "float-button"; "breadcrumb"; "steps"; "pagination"; "segmented"; "anchor"; "affix"
               "collapse"; "rate"; "carousel"; "calendar"; "cascader"; "auto-complete"; "upload"
               // Feature 133 (D2C.1) — net-new generic chart controls (theme-role-driven schematics).
+              "area-chart"; "column-chart"; "histogram"; "box-plot"; "heatmap"; "radar-chart"
+              "rose-chart"; "waterfall-chart"; "funnel-chart"; "gauge-chart"; "sankey-diagram"
+              "chord-diagram"; "treemap"; "sunburst" ]
+
+    /// Feature 136 (US3/T035): the chart families whose render geometry is clipped to the control box
+    /// (so a chart body never overruns its bounds) and degenerate-data-guarded (via `chartValues`).
+    let chartFamilies =
+        Set.ofList
+            [ "line-chart"; "bar-chart"; "pie-chart"; "scatter-plot"; "graph-view"
               "area-chart"; "column-chart"; "histogram"; "box-plot"; "heatmap"; "radar-chart"
               "rose-chart"; "waterfall-chart"; "funnel-chart"; "gauge-chart"; "sankey-diagram"
               "chord-diagram"; "treemap"; "sunburst" ]
@@ -928,17 +941,27 @@ module internal ControlInternals =
         | _ ->
             let shown = items |> List.truncate 5
             let n = List.length shown
-            let rowH = box.Height / float n
-            shown
-            |> List.mapi (fun i it ->
-                let ry = box.Y + float i * rowH
-                let bg =
-                    if Set.contains it selected then theme.Accent
-                    elif i % 2 = 0 then theme.Muted
-                    else theme.Background
-                Scene.group
-                    [ Scene.rectangle (box.X, ry, box.Width, rowH - 1.5) bg
-                      mkText theme (box.X + 8.0) (ry + rowH * 0.62) 12.0 theme.Foreground it ])
+            // Feature 136 (US3/T032): each row gets at least `minRowHeight` so items never collapse
+            // onto a shared baseline when the box is short; the rows are clipped to the box (a taller
+            // stack is clipped, not overprinted — distinct y-bands always).
+            let minRowHeight = 18.0
+            let rowH = max minRowHeight (box.Height / float n)
+
+            let rows =
+                shown
+                |> List.mapi (fun i it ->
+                    let ry = box.Y + float i * rowH
+
+                    let bg =
+                        if Set.contains it selected then theme.Accent
+                        elif i % 2 = 0 then theme.Muted
+                        else theme.Background
+
+                    Scene.group
+                        [ Scene.rectangle (box.X, ry, box.Width, rowH - 1.5) bg
+                          mkText theme (box.X + 8.0) (ry + rowH * 0.62) 12.0 theme.Foreground it ])
+
+            [ Scene.clipped (RectClip box) (Scene.group rows) ]
 
     /// Tabular chrome for `data-grid`: a header band, column/row rules, and sample cell text laid
     /// out row-major from `cells` (first `cols` entries are the header). The preview is built as a
@@ -1446,11 +1469,20 @@ module internal ControlInternals =
     /// A label : value term list — `descriptions`.
     let private descriptionsGeom theme (box: Rect) (items: string list) : Scene list =
         let shown = items |> itemsOr [ "Name"; "Ant"; "Status"; "Active" ] |> List.truncate 6
-        shown
-        |> List.mapi (fun i it ->
-            let y = box.Y + 16.0 + float i * 22.0
-            let fg = if i % 2 = 0 then theme.Muted else theme.Foreground
-            mkText theme box.X y 12.0 fg it)
+        let n = max 1 (List.length shown)
+        // Feature 136 (US3/T033): scale the row spacing to the box height (capped at the natural 22px)
+        // instead of a fixed 22px stride that runs past the box, and clip to the box — descriptions
+        // never paint past their bounds (FR-007).
+        let rowH = min 22.0 (box.Height / float n)
+
+        let rows =
+            shown
+            |> List.mapi (fun i it ->
+                let y = box.Y + rowH * (float i + 0.7)
+                let fg = if i % 2 = 0 then theme.Muted else theme.Foreground
+                mkText theme box.X y 12.0 fg it)
+
+        [ Scene.clipped (RectClip box) (Scene.group rows) ]
 
     /// A large emphasised metric over a caption — `statistic`.
     let private statisticGeom theme (box: Rect) (value: string) : Scene list =
@@ -1483,12 +1515,19 @@ module internal ControlInternals =
     /// A square module grid — `qr-code`.
     let private qrCodeGeom theme (box: Rect) : Scene list =
         let n = 7
-        let side = min box.Width box.Height - 8.0
+        // Feature 136 (US3/T034): enforce a minimum module-grid size so a non-empty payload always
+        // shows a populated grid (each module ≥ 3px) even when the box is compressed, and clip to the
+        // box so the grid never overruns (FR-007). Pre-fix `side = min(w,h)-8` collapsed to ~0 → blank.
+        let side = max (float n * 3.0) (min box.Width box.Height - 8.0)
         let cell = side / float n
-        [ for r in 0 .. n - 1 do
-            for c in 0 .. n - 1 do
-                if (r + c + r * c) % 2 = 0 then
-                    yield Scene.rectangle (box.X + float c * cell, box.Y + float r * cell, cell - 1.0, cell - 1.0) theme.Foreground ]
+
+        let modules =
+            [ for r in 0 .. n - 1 do
+                  for c in 0 .. n - 1 do
+                      if (r + c + r * c) % 2 = 0 then
+                          yield Scene.rectangle (box.X + float c * cell, box.Y + float r * cell, cell - 1.0, cell - 1.0) theme.Foreground ]
+
+        [ Scene.clipped (RectClip box) (Scene.group modules) ]
 
     /// Faint repeated brand text — `watermark`.
     let private watermarkGeom theme (box: Rect) (label: string) : Scene list =
@@ -1927,6 +1966,11 @@ module internal ControlInternals =
 
     let private directionOf (c: Control<'msg>) =
         match c.Kind with
+        // Feature 136 (US3/T031): a data-grid and its row/header lay out horizontally (Row) so cells
+        // sit side-by-side as a table, not stacked vertically.
+        | "data-grid"
+        | "data-grid-row"
+        | "data-grid-header"
         | "toolbar"
         | "split-view"
         | "wrap"
@@ -2018,7 +2062,14 @@ module internal ControlInternals =
 
     let private paintLeaf (theme: Theme) (box: Rect) (c: Control<'msg>) : Scene list =
         if Set.contains c.Kind richFamilies then
-            faithfulContent theme box c
+            let content = faithfulContent theme box c
+            // Feature 136 (US3/T035): clip chart bodies to the control box so degenerate or
+            // out-of-range data can never paint outside its bounds (the data is also finite-guarded
+            // in `chartValues`). Non-chart rich families are unchanged.
+            if Set.contains c.Kind chartFamilies then
+                [ Scene.clipped (RectClip box) (Scene.group content) ]
+            else
+                content
         else
             let label = c.Content |> Option.defaultValue c.Kind
 

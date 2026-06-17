@@ -132,18 +132,18 @@ header/body cells, menu items distinct, descriptions aligned within box, QR non-
 
 ### Tests for User Story 3 ⚠️ (write first, must FAIL on today's renderer)
 
-- [ ] T027 [P] [US3] data-grid table-structure test — columns side-by-side; header cell N horizontally aligned with body cell N — in `tests/Controls.Tests/`
-- [ ] T028 [P] [US3] menu/combo distinct-row test — each item occupies a distinct y-band, none share a baseline — in `tests/Controls.Tests/`
-- [ ] T029 [P] [US3] descriptions-in-box + qr-code-populated test — bottom descriptions item within `box.Y + box.Height`; non-empty payload yields a visible non-empty QR grid even when the box is small — in `tests/Controls.Tests/`
-- [ ] T030 [P] [US3] chart in-box + degenerate-data test — chart body stays within its box; `n=0`/NaN/Inf data renders an empty (non-crashing, non-overrunning) chart — in `tests/Controls.Tests/`
+- [X] T027 [P] [US3] data-grid table-structure test — columns side-by-side; header cell N horizontally aligned with body cell N — in `tests/Controls.Tests/`
+- [X] T028 [P] [US3] menu/combo distinct-row test — each item occupies a distinct y-band, none share a baseline — in `tests/Controls.Tests/`
+- [X] T029 [P] [US3] descriptions-in-box + qr-code-populated test — bottom descriptions item within `box.Y + box.Height`; non-empty payload yields a visible non-empty QR grid even when the box is small — in `tests/Controls.Tests/`
+- [X] T030 [P] [US3] chart in-box + degenerate-data test — chart body stays within its box; `n=0`/NaN/Inf data renders an empty (non-crashing, non-overrunning) chart — in `tests/Controls.Tests/`
 
 ### Implementation for User Story 3
 
-- [ ] T031 [US3] Map `data-grid-row`/`data-grid-header` to `Row` in `directionOf` (`Control.fs:1901-1911`) and share a column-width track so header/body cells align, in `src/Controls/Control.fs` (and `src/Controls/DataGrid.fs` if geometry lives there)
-- [ ] T032 [P] [US3] `rowsGeom`: `rowH = max(minRowHeight, box.Height / n)` so items never collapse onto a shared baseline (`Control.fs:898-914`) in `src/Controls/Control.fs`
-- [ ] T033 [P] [US3] Make `descriptionsGeom` respect `box.Height` (scale spacing or truncate-with-affordance, never past the box) replacing fixed `16 + i*22` (`Control.fs:1420-1426`) in `src/Controls/Control.fs`
-- [ ] T034 [P] [US3] Enforce a minimum QR module-grid size and clip to box in `qrCodeGeom` (`Control.fs:1457-1464`) in `src/Controls/Control.fs`
-- [ ] T035 [P] [US3] Wrap chart **render** geometry in `Scene.clipped (RectClip box)` and guard degenerate data (`n=0`/NaN/Inf) in the chart-geometry section of `src/Controls/Control.fs` (the `lineGeom`/`barGeom`/`pieGeom`/`areaGeom`/`columnGeom`/`radarGeom`/… functions, `Control.fs:~496-700`, anchor `Control.fs:513-645`; dispatch at `Control.fs:1676-1691`). NOTE: `src/Controls/Charts.fs` / `Charts2.fs` are *authoring* modules, **not** render geometry — do not edit them for clipping. (depends on T005)
+- [X] T031 [US3] Map `data-grid-row`/`data-grid-header` to `Row` in `directionOf` (`Control.fs:1901-1911`) and share a column-width track so header/body cells align, in `src/Controls/Control.fs` (and `src/Controls/DataGrid.fs` if geometry lives there)
+- [X] T032 [P] [US3] `rowsGeom`: `rowH = max(minRowHeight, box.Height / n)` so items never collapse onto a shared baseline (`Control.fs:898-914`) in `src/Controls/Control.fs`
+- [X] T033 [P] [US3] Make `descriptionsGeom` respect `box.Height` (scale spacing or truncate-with-affordance, never past the box) replacing fixed `16 + i*22` (`Control.fs:1420-1426`) in `src/Controls/Control.fs`
+- [X] T034 [P] [US3] Enforce a minimum QR module-grid size and clip to box in `qrCodeGeom` (`Control.fs:1457-1464`) in `src/Controls/Control.fs`
+- [X] T035 [P] [US3] Wrap chart **render** geometry in `Scene.clipped (RectClip box)` and guard degenerate data (`n=0`/NaN/Inf) in the chart-geometry section of `src/Controls/Control.fs` (the `lineGeom`/`barGeom`/`pieGeom`/`areaGeom`/`columnGeom`/`radarGeom`/… functions, `Control.fs:~496-700`, anchor `Control.fs:513-645`; dispatch at `Control.fs:1676-1691`). NOTE: `src/Controls/Charts.fs` / `Charts2.fs` are *authoring* modules, **not** render geometry — do not edit them for clipping. (depends on T005)
 
 **Checkpoint**: US1 + US2 + US3 all independently functional.
 
