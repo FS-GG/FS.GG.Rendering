@@ -1346,6 +1346,19 @@ module internal ControlInternals =
         @ [ Scene.rectangle (box.X + contentW + 4.0, box.Y, barW, box.Height) theme.Muted
             Scene.rectangle (box.X + contentW + 4.0, box.Y + 6.0, barW, box.Height * 0.4) theme.Accent ]
 
+    /// Feature 137 (US3) — the scroll affordance painted by a `scroll-viewer` *container* (the leaf
+    /// `scrollViewerGeom` above is the no-content placeholder). A track at the right edge plus a thumb;
+    /// the thumb is shorter than the track when the content overflows the viewport (it is scrollable).
+    /// `contentHeight > box.Height` ⇒ thumb ratio `< 1` (a scroll affordance); content is confined to the
+    /// box by the shared container clip (`composeContainerScene`), so it is clipped/scrollable not spilled.
+    let scrollAffordance theme (box: Rect) (contentHeight: float) : Scene list =
+        let barW = 10.0
+        let trackX = box.X + box.Width - barW
+        let ratio = if contentHeight <= box.Height then 1.0 else box.Height / contentHeight
+        let thumbH = max 12.0 (box.Height * ratio)
+        [ Scene.rectangle (trackX, box.Y, barW, box.Height) theme.Muted
+          Scene.rectangle (trackX, box.Y, barW, thumbH) theme.Accent ]
+
     /// Two layered, offset surfaces suggesting stacked content — `overlay`.
     let private overlayGeom theme (box: Rect) (label: string) : Scene list =
         let off = 16.0
@@ -2118,9 +2131,54 @@ module internal ControlInternals =
             if List.isEmpty c.Children then
                 paintLeaf theme box c
             else
-                // Container: a faint frame so the nesting is visible; the real children are
-                // painted by their own `paintNode` at their own computed bounds.
-                [ Scene.rectangleWithPaint box (Paint.stroke theme.Muted 1.0) ]
+                // Container: a faint frame so the nesting is visible; the real children are painted by
+                // their own `paintNode` at their own computed bounds and clipped to this box by
+                // `composeContainerScene` (feature 137 US1).
+                let frame = [ Scene.rectangleWithPaint box (Paint.stroke theme.Muted 1.0) ]
+
+                if c.Kind = "scroll-viewer" then
+                    // Feature 137 (US3): a `scroll-viewer` is a real clipping viewport — it paints a
+                    // scroll affordance whose thumb reflects how far the content overflows the box. The
+                    // content (taller than the box) is confined by the container clip: scrollable, not
+                    // spilled. The overflow lives in the DESCENDANTS (Yoga clamps the direct child's box
+                    // to the viewport but lays its children out past it), so the content extent is the
+                    // deepest descendant bottom edge.
+                    let rec maxBottom (p: string) (n: Control<'msg>) : float =
+                        let nid = n.Key |> Option.defaultValue p
+
+                        let here =
+                            match Map.tryFind nid boundsById with
+                            | Some(nb: FS.GG.UI.Layout.LayoutBounds) -> nb.Y + nb.Height
+                            | None -> box.Y
+
+                        here :: (n.Children |> List.mapi (fun i ch -> maxBottom (p + "." + string i) ch))
+                        |> List.max
+
+                    let contentHeight =
+                        match c.Children |> List.mapi (fun i ch -> maxBottom (path + "." + string i) ch) with
+                        | [] -> box.Height
+                        | bottoms -> max box.Height (List.max bottoms - box.Y)
+
+                    frame @ scrollAffordance theme box contentHeight
+                else
+                    frame
+
+    /// Feature 137 (US1, the blocker) — the single shared container-clip composition rule
+    /// (data-model §1). Composes a node's own paint with its assembled children: when there is a box
+    /// AND at least one child scene, the children are wrapped in a `ClipNode` to the node's box (so no
+    /// child paints past its container); a leaf or a box-less node composes flat — byte-identical to the
+    /// pre-137 `own @ childScenes`. Used at EVERY paint-assembly site so full ≡ retained and
+    /// cache-on ≡ cache-off hold by construction (the `assemble` emit walk was the feature-136 miss).
+    let composeContainerScene (box: Rect option) (own: Scene list) (childScenes: Scene list) : Scene list =
+        match box, childScenes with
+        | Some b, _ :: _ -> own @ [ Scene.clipped (RectClip b) (Scene.group childScenes) ]
+        | _ -> own @ childScenes
+
+    /// Feature 137 (US2) — a node authors a deferred z-top overlay/transient surface (built on the
+    /// `Overlay` container). Such a node's painted subtree is collected OUT of the in-flow container-clip
+    /// hierarchy and emitted last (above the flow, at true coordinates, escaping ancestor clips). A
+    /// transient surface (date-picker calendar, etc.) floats by authoring its open content as an `Overlay`.
+    let isOverlayNode (c: Control<'msg>) : bool = c.Kind = "overlay"
 
     /// The evaluated absolute box of a node, looked up by the same structural id `paintNode`
     /// uses (`Key |> defaultValue path`). `None` when the node was not laid out.
@@ -2141,7 +2199,11 @@ module internal ControlInternals =
         (boundsById: Map<string, FS.GG.UI.Layout.LayoutBounds>)
         (control: Control<'msg>)
         : (ControlId * Rect) list =
-        let rec go (path: string) (c: Control<'msg>) : (ControlId * Rect) list =
+        // Feature 137 (US2): `go` returns (in-flow, overlay) bounds. Overlay-surface subtrees are
+        // collected last so the shipped topmost-wins (reverse-scan) `hitTest` consults the overlay group
+        // BEFORE in-flow — a click where an open overlay covers an in-flow sibling returns the overlay.
+        // For an overlay-free tree the overlay list is empty and the bounds are byte-identical pre-order.
+        let rec go (path: string) (c: Control<'msg>) : (ControlId * Rect) list * (ControlId * Rect) list =
             // FR-001/FR-007 (feature 098): the emitted `ControlId` is the unified `Key ?? path`
             // (`layoutId`) — the same id `EventBindings`/`BoundIds`/recovery use — replacing the old
             // divergent `Key ?? Kind`. Keyed nodes are unchanged; unkeyed ids shift `Kind → path`.
@@ -2153,12 +2215,17 @@ module internal ControlInternals =
                 | Some(b: FS.GG.UI.Layout.LayoutBounds) -> [ controlId, ({ X = b.X; Y = b.Y; Width = b.Width; Height = b.Height }: Rect) ]
                 | None -> []
 
-            here
-            @ (c.Children
-               |> List.mapi (fun index child -> go (path + "." + string index) child)
-               |> List.concat)
+            let childResults = c.Children |> List.mapi (fun index child -> go (path + "." + string index) child)
+            let childInFlow = childResults |> List.collect fst
+            let childOverlay = childResults |> List.collect snd
 
-        go "0" control
+            if isOverlayNode c then
+                [], here @ childInFlow @ childOverlay
+            else
+                here @ childInFlow, childOverlay
+
+        let inFlow, overlay = go "0" control
+        inFlow @ overlay
 
     /// The recursive `EventBindings` list `renderTree` surfaces, factored so the retained path
     /// emits the identical list. Path-aware (FR-001): re-derives each node's `parent + "." + index`
@@ -2189,6 +2256,16 @@ module internal ControlInternals =
             |> List.fold (fun acc (index, child) -> go (path + "." + string index) child acc) acc
 
         go "0" control Set.empty
+
+/// Feature 137 (US3) — read-back geometry of a `scroll-viewer` viewport, derived from a render
+/// result. `Viewport` is the clipping box; `ContentHeight` is the laid-out content extent;
+/// `MaxOffset` is how far the content extends past the viewport (`> 0` ⇒ scrollable, with the
+/// overflow clipped to the box, not spilled); `Offset` is the current scroll top (0 at rest).
+type ScrollViewport =
+    { Viewport: Rect
+      ContentHeight: float
+      Offset: float
+      MaxOffset: float }
 
 module Control =
     let create kind (attrs: Attr<'msg> list) =
@@ -2291,13 +2368,31 @@ module Control =
     let renderTree (theme: Theme) (size: FS.GG.UI.Scene.Size) (control: Control<'msg>) =
         let root, boundsById, _ = ControlInternals.evaluateLayout size control
 
-        let rec paint (path: string) (c: Control<'msg>) : Scene list =
-            ControlInternals.paintNode theme boundsById path c
-            @ (c.Children
-               |> List.mapi (fun index child -> paint (path + "." + string index) child)
-               |> List.concat)
+        // Feature 137 (US1/US2): `paint` returns (in-flow, overlay). US1 composes own + children through
+        // the single shared container-clip rule (children clipped to this node's box). US2 collects any
+        // overlay/transient subtree OUT of the in-flow clip hierarchy into the second list, so it paints
+        // last (z-top), at true coordinates, escaping ancestor clips. The full render stays byte-identical
+        // to the retained build that uses the same rule + split.
+        let rec paint (path: string) (c: Control<'msg>) : Scene list * Scene list =
+            let own = ControlInternals.paintNode theme boundsById path c
 
-        { Scene = paint "0" control |> Scene.group
+            let childResults =
+                c.Children |> List.mapi (fun index child -> paint (path + "." + string index) child)
+
+            let childInFlow = childResults |> List.collect fst
+            let childOverlay = childResults |> List.collect snd
+            let composed = ControlInternals.composeContainerScene (ControlInternals.nodeBox boundsById path c) own childInFlow
+
+            if ControlInternals.isOverlayNode c then
+                // Float: this whole subtree leaves the in-flow flow and joins the deferred overlay group
+                // (after any overlays nested deeper), so ancestor container clips never wrap it.
+                [], composed @ childOverlay
+            else
+                composed, childOverlay
+
+        let inFlow, overlay = paint "0" control
+
+        { Scene = (inFlow @ overlay) |> Scene.group
           Layout = root
           Bounds = ControlInternals.collectBoundsWith boundsById control
           Diagnostics = diagnostics control
@@ -2368,6 +2463,45 @@ module Control =
                 |> List.tryPick (fun (index, child) -> search (path + "." + string index) nearestForChildren child)
 
         search "0" None result.Layout
+
+    /// Feature 137 (US3) — read back the scroll geometry of a `scroll-viewer` from a render result:
+    /// its clipping viewport box, the laid-out content height, and the scroll metrics. `MaxOffset > 0`
+    /// means the content overflows the viewport (scrollable; the overflow is confined to the box by the
+    /// container clip, not spilled). `Offset` is the current top (0 at rest). `None` when `scrollViewerId`
+    /// is not a laid-out node in the result.
+    let scrollViewport (result: ControlRenderResult<'msg>) (scrollViewerId: ControlId) : ScrollViewport option =
+        let boundsMap = result.Bounds |> Map.ofList
+
+        let rec find (node: FS.GG.UI.Layout.LayoutNode) : FS.GG.UI.Layout.LayoutNode option =
+            if node.Id = scrollViewerId then
+                Some node
+            else
+                node.Children |> List.tryPick find
+
+        let rec descendantIds (n: FS.GG.UI.Layout.LayoutNode) : ControlId list =
+            n.Children |> List.collect (fun c -> c.Id :: descendantIds c)
+
+        match find result.Layout, Map.tryFind scrollViewerId boundsMap with
+        | Some node, Some viewport ->
+            let contentHeight =
+                match descendantIds node |> List.choose (fun id -> Map.tryFind id boundsMap) with
+                | [] -> viewport.Height
+                | rects -> max viewport.Height ((rects |> List.map (fun (r: Rect) -> r.Y + r.Height) |> List.max) - viewport.Y)
+
+            Some
+                { Viewport = viewport
+                  ContentHeight = contentHeight
+                  Offset = 0.0
+                  MaxOffset = max 0.0 (contentHeight - viewport.Height) }
+        | _ -> None
+
+    /// Feature 137 (US2) — the public entry to the deferred overlay render pass: does this control author
+    /// a z-top overlay/transient surface (built on the `Overlay` container)? `renderTree` collects such a
+    /// subtree OUT of the in-flow container-clip hierarchy and paints it last (above the flow, at true
+    /// coordinates, escaping ancestor clips); `hitTest` consults the overlay group first. A transient
+    /// surface (menu/combo/auto-complete/date-picker calendar) floats by authoring its open content as an
+    /// `Overlay`. An empty overlay group renders byte-identically to a pure in-flow pass.
+    let isOverlaySurface (control: Control<'msg>) : bool = ControlInternals.isOverlayNode control
 
     let dispatch (event: ControlEvent) (control: Control<'msg>) =
         // FR-001/D5 (feature 098): thread the positional path so the unkeyed `binding.ControlId`

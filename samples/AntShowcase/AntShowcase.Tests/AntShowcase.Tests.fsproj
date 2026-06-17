@@ -17,6 +17,7 @@
     <Compile Include="DeterminismTests.fs" />
     <Compile Include="DegradeTests.fs" />
     <Compile Include="InteractionTests.fs" />
+    <Compile Include="FeedbackTests.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
 

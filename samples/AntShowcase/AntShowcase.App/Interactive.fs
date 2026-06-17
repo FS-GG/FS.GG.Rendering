@@ -22,8 +22,18 @@ let run (mode: ThemeMode) (startPage: string): int =
     else
         let baseHost = Host.create mode
         let page = PageRegistry.byId startPage
+        // App-edge persistence: seed the model with previously-saved feedback, and after each
+        // pure update detect a newly-submitted entry (the model's feedback grew) and append it
+        // to the log. Core's `update` stays pure; the file write lives only here (Principle IV).
         let host =
-            { baseHost with Init = fun () -> { Host.initModel with Mode = mode; CurrentPage = page.Id }, [] }
+            { baseHost with
+                Init = fun () -> { Host.initModel with Mode = mode; CurrentPage = page.Id; Feedback = FeedbackStore.load () }, []
+                Update =
+                    fun msg model ->
+                        let model', effects = baseHost.Update msg model
+                        if List.length model'.Feedback > List.length model.Feedback then
+                            FeedbackStore.append (List.head model'.Feedback)
+                        model', effects }
         let options: ViewerOptions =
             { Title = "Ant Design Controls Showcase"
               InitialSize = { Width = 1280; Height = 800 }

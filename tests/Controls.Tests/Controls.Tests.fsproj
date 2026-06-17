@@ -95,6 +95,7 @@
     <Compile Include="Audit_AnimationClock.fs" />
     <Compile Include="Feature136OverflowTests.fs" />
     <Compile Include="Feature136CompositeTests.fs" />
+    <Compile Include="Feature137ClippingTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

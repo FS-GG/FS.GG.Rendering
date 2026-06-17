@@ -107,11 +107,18 @@ type PageMsg =
     | FormFieldChanged of field: string * value: string
     | FormSubmitted
 
+/// A piece of user feedback captured on a page, saved so it can be acted upon later.
+type FeedbackEntry =
+    { PageId: string
+      Text: string }
+
 /// Top-level showcase events.
 type AntShowcaseMsg =
     | NavigateTo of pageId: string
     | ToggleMode
     | PageMsg of PageMsg
+    | FeedbackChanged of string        // edit the current feedback draft
+    | FeedbackSubmitted                // save the draft as a FeedbackEntry for the current page
 
 /// A navigable page (data-model §2). `view` builds the body from seeded state.
 type Page =
@@ -121,11 +128,15 @@ type Page =
       ControlIds: string list
       View: DemoState -> Control<AntShowcaseMsg> }
 
-/// The MVU model (data-model §3).
+/// The MVU model (data-model §3). `FeedbackDraft` is the in-progress feedback text for the
+/// current page; `Feedback` is the accumulated saved feedback (newest first), persisted by
+/// the App edge so it can be acted upon later.
 type AntShowcaseModel =
     { CurrentPage: string
       Mode: ThemeMode
-      PageState: DemoState }
+      PageState: DemoState
+      FeedbackDraft: string
+      Feedback: FeedbackEntry list }
 
 /// Outcome of the coverage check (FR-003): empty/empty ⇒ pass (data-model §6).
 type CoverageResult =
@@ -206,3 +217,30 @@ let update (msg: AntShowcaseMsg) (model: AntShowcaseModel): AntShowcaseModel =
             | Dark -> Light
         { model with Mode = flipped }
     | PageMsg pm -> { model with PageState = updatePage pm model.PageState }
+    | FeedbackChanged text -> { model with FeedbackDraft = text }
+    | FeedbackSubmitted ->
+        // Save the draft as a page-tagged entry (newest first) and clear the draft. A blank
+        // or whitespace-only draft is a no-op (nothing to save).
+        if System.String.IsNullOrWhiteSpace model.FeedbackDraft then
+            model
+        else
+            let entry = { PageId = model.CurrentPage; Text = model.FeedbackDraft.Trim() }
+            { model with Feedback = entry :: model.Feedback; FeedbackDraft = "" }
+
+// --- feedback persistence encoding (pure; tab-separated, newline/tab-escaped) ----------
+
+let private escapeField (s: string): string =
+    s.Replace("\\", "\\\\").Replace("\t", "\\t").Replace("\n", "\\n")
+
+let private unescapeField (s: string): string =
+    s.Replace("\\n", "\n").Replace("\\t", "\t").Replace("\\\\", "\\")
+
+/// Serialize a feedback entry to one storable line: `<pageId>\t<escaped text>`.
+let encodeFeedbackLine (e: FeedbackEntry): string =
+    escapeField e.PageId + "\t" + escapeField e.Text
+
+/// Parse a stored feedback line back into an entry (None for a malformed/blank line).
+let decodeFeedbackLine (line: string): FeedbackEntry option =
+    match line.Split([| '\t' |], 2) with
+    | [| pageId; text |] when pageId <> "" -> Some { PageId = unescapeField pageId; Text = unescapeField text }
+    | _ -> None

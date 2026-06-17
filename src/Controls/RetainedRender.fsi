@@ -28,6 +28,10 @@ type internal RetainedId = RetainedId of uint64
 type internal RenderFragment =
     { OwnScene: FS.GG.UI.Scene.Scene list
       SubtreeScene: FS.GG.UI.Scene.Scene list
+      /// Feature 137 (US2): the deferred z-top overlay contribution of this subtree (painted subtrees of
+      /// `Overlay`/transient descendants, collected out of the in-flow clip hierarchy). Empty for an
+      /// overlay-free subtree, so `SubtreeScene`/`Fingerprint`/cache parity are unchanged there.
+      OverlayScene: FS.GG.UI.Scene.Scene list
       Box: FS.GG.UI.Scene.Rect option
       /// Feature 120 (US3, FR-008): the collision-resistant structural fingerprint of `SubtreeScene`,
       /// computed via `hashScene` when the fragment is (re)painted and carried unchanged on a `Keep`

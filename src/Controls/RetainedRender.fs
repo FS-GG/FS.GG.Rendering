@@ -16,6 +16,10 @@ type internal RetainedId = RetainedId of uint64
 type internal RenderFragment =
     { OwnScene: FS.GG.UI.Scene.Scene list
       SubtreeScene: FS.GG.UI.Scene.Scene list
+      // Feature 137 (US2): the deferred z-top overlay contribution of this subtree (the painted subtrees
+      // of any `Overlay`/transient descendants, collected OUT of the in-flow clip hierarchy). Empty for
+      // an overlay-free subtree, so `SubtreeScene`/`Fingerprint` and cache parity are unchanged there.
+      OverlayScene: FS.GG.UI.Scene.Scene list
       Box: FS.GG.UI.Scene.Rect option
       // Feature 120 (US3): the structural fingerprint of `SubtreeScene` (computed when painted, carried on Keep).
       Fingerprint: uint64 }
@@ -157,6 +161,27 @@ type internal RetainedInit<'msg> =
 module internal RetainedRender =
 
     let childPath (path: string) (index: int) = path + "." + string index
+
+    // Feature 137 (US1/US2): the SINGLE retained composition for one node — its in-flow `SubtreeScene`
+    // and its deferred `OverlayScene` — shared by every build/carry site so the retained tree composes
+    // exactly like `Control.renderTree`'s paint. US1 clips the in-flow children to the node box; US2
+    // pulls an overlay node's whole subtree (own + in-flow children) out of the flow into the overlay
+    // contribution (after deeper overlays), so it escapes ancestor clips and paints last. For an
+    // overlay-free subtree the overlay list is empty and `SubtreeScene`/`Fingerprint` are unchanged.
+    let composeRetainedScenes
+        (nc: Control<'msg>)
+        (box: FS.GG.UI.Scene.Rect option)
+        (own: FS.GG.UI.Scene.Scene list)
+        (children: RetainedNode<'msg> list)
+        : FS.GG.UI.Scene.Scene list * FS.GG.UI.Scene.Scene list =
+        let childInFlow = children |> List.collect (fun c -> c.Fragment.SubtreeScene)
+        let childOverlay = children |> List.collect (fun c -> c.Fragment.OverlayScene)
+        let composed = ControlInternals.composeContainerScene box own childInFlow
+
+        if ControlInternals.isOverlayNode nc then
+            [], composed @ childOverlay
+        else
+            composed, childOverlay
 
     // ---------------------------------------------------------------------------------------------
     // Feature 113 (Phase 5) — the control-internal memoization seam. Pure + total + deterministic:
@@ -691,14 +716,17 @@ module internal RetainedRender =
         let rec build (path: string) (nc: Control<'msg>) : RetainedNode<'msg> =
             let own = paintOwn path nc
             let children = nc.Children |> List.mapi (fun i child -> build (childPath path i) child)
-            let subtree = own @ (children |> List.collect (fun c -> c.Fragment.SubtreeScene))
+            let box = ControlInternals.nodeBox boundsById path nc
+            // Feature 137 (US1/US2): clip children to the node box + collect the overlay contribution.
+            let subtree, overlay = composeRetainedScenes nc box own children
 
             { Identity = mint ()
               Control = nc
               Fragment =
                 { OwnScene = own
                   SubtreeScene = subtree
-                  Box = ControlInternals.nodeBox boundsById path nc
+                  OverlayScene = overlay
+                  Box = box
                   Fingerprint = hashScene subtree }
               Children = children }
 
@@ -729,7 +757,8 @@ module internal RetainedRender =
         // `Control.renderTree`'s `paint "0"` builds), so this `Render` is byte-identical to a full
         // rebuild — the adapter reuses it instead of calling `Control.renderTree` a second time.
         let render: ControlRenderResult<'msg> =
-            { Scene = root.Fragment.SubtreeScene |> Scene.group
+            // Feature 137 (US2): in-flow first, then the deferred z-top overlay group (empty ⇒ unchanged).
+            { Scene = (root.Fragment.SubtreeScene @ root.Fragment.OverlayScene) |> Scene.group
               Layout = layoutRoot
               Bounds = ControlInternals.collectBoundsWith boundsById control
               Diagnostics = Control.diagnostics control
@@ -944,14 +973,17 @@ module internal RetainedRender =
         let rec buildFresh (path: string) (nc: Control<'msg>) : RetainedNode<'msg> =
             let own = paintFresh path nc
             let children = nc.Children |> List.mapi (fun i child -> buildFresh (childPath path i) child)
-            let subtree = own @ (children |> List.collect (fun c -> c.Fragment.SubtreeScene))
+            let box = ControlInternals.nodeBox boundsById path nc
+            // Feature 137 (US1/US2): clip children to the node box + collect the overlay contribution.
+            let subtree, overlay = composeRetainedScenes nc box own children
 
             { Identity = mint ()
               Control = nc
               Fragment =
                 { OwnScene = own
                   SubtreeScene = subtree
-                  Box = ControlInternals.nodeBox boundsById path nc
+                  OverlayScene = overlay
+                  Box = box
                   Fingerprint = hashScene subtree }
               Children = children }
 
@@ -965,14 +997,17 @@ module internal RetainedRender =
                 List.map2 (fun p c -> p, c) pr.Children nc.Children
                 |> List.mapi (fun i (p, c) -> carry (childPath path i) p c)
 
-            let subtree = own @ (children |> List.collect (fun c -> c.Fragment.SubtreeScene))
+            let box = ControlInternals.nodeBox boundsById path nc
+            // Feature 137 (US1/US2): clip children to the node box + collect the overlay contribution.
+            let subtree, overlay = composeRetainedScenes nc box own children
 
             { Identity = pr.Identity
               Control = nc
               Fragment =
                 { OwnScene = own
                   SubtreeScene = subtree
-                  Box = ControlInternals.nodeBox boundsById path nc
+                  OverlayScene = overlay
+                  Box = box
                   Fingerprint = hashScene subtree }
               Children = children }
 
@@ -1042,13 +1077,15 @@ module internal RetainedRender =
                         // paint the next child fresh rather than throw.
                         | Reconcile.ChildRemove _ -> buildFresh cp c)
 
-                let subtree = own @ (children |> List.collect (fun c -> c.Fragment.SubtreeScene))
+                // Feature 137 (US1/US2): clip children to the node box + collect the overlay contribution.
+                let subtree, overlay = composeRetainedScenes nc box own children
 
                 { Identity = pr.Identity
                   Control = nc
                   Fragment =
                     { OwnScene = own
                       SubtreeScene = subtree
+                      OverlayScene = overlay
                       Box = box
                       Fingerprint = hashScene subtree }
                   Children = children }
@@ -1247,17 +1284,24 @@ module internal RetainedRender =
 
         let sceneList =
             if not needsEmitWalk then
-                newRoot.Fragment.SubtreeScene
+                // Feature 137 (US2): in-flow first, then the deferred z-top overlay group (empty ⇒ unchanged).
+                newRoot.Fragment.SubtreeScene @ newRoot.Fragment.OverlayScene
             else
-                let rec assemble (n: RetainedNode<'msg>) : Scene list =
+                // Feature 137 (US1/US2): the emit walk returns (in-flow, overlay) and applies the SAME
+                // container clip + overlay split as the build/fast-path sites — using each node's cached
+                // `Fragment.Box`/`isOverlayNode` — so cache-on (this walk) ≡ cache-off (the fast path),
+                // overlays present or not (the linchpin that fixes the feature-136 regression).
+                let rec assemble (n: RetainedNode<'msg>) : Scene list * Scene list =
                     if replayHitIds.Contains n.Identity then
                         let (RetainedId cacheId) = n.Identity
-
+                        // A cacheable boundary (data-grid-row) is a leaf with no overlay descendants; carry
+                        // its (empty) overlay contribution for completeness.
                         [ { Nodes =
                               [ CachedSubtree
                                     { CacheId = cacheId
                                       Fingerprint = n.Fragment.Fingerprint
-                                      Scene = Scene.group n.Fragment.SubtreeScene } ] } ]
+                                      Scene = Scene.group n.Fragment.SubtreeScene } ] } ],
+                        n.Fragment.OverlayScene
                     else
                         let ownStatic = n.Fragment.OwnScene
 
@@ -1266,9 +1310,18 @@ module internal RetainedRender =
                             | Some c when clockActive c -> sampleOnPaint c ownStatic
                             | _ -> ownStatic
 
-                        own @ (n.Children |> List.collect assemble)
+                        let childResults = n.Children |> List.map assemble
+                        let childInFlow = childResults |> List.collect fst
+                        let childOverlay = childResults |> List.collect snd
+                        let composed = ControlInternals.composeContainerScene n.Fragment.Box own childInFlow
 
-                assemble newRoot
+                        if ControlInternals.isOverlayNode n.Control then
+                            [], composed @ childOverlay
+                        else
+                            composed, childOverlay
+
+                let inFlow, overlay = assemble newRoot
+                inFlow @ overlay
 
         // Byte-identical to `Control.renderTree theme size next` AT REST: `SubtreeScene` is the
         // pre-order concatenation of `paintNode` over every node — the same list `renderTree`'s paint

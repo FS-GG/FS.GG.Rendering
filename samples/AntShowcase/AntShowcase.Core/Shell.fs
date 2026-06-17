@@ -38,6 +38,26 @@ let private content (model: AntShowcaseModel): Control<AntShowcaseMsg> =
     let props = FS.GG.UI.Controls.Typed.ScrollViewer.defaults "content-scroll" (Widget.ofControl body)
     Widget.toControl (FS.GG.UI.Controls.Typed.ScrollViewer.view props)
 
+/// A feedback capture section shown on EVERY page: a draft field + submit button, plus the
+/// feedback already saved for the current page. Submitting saves a page-tagged entry (pure
+/// `update`); the App edge persists it so it can be acted upon later (`AntShowcase feedback`).
+let private feedbackSection (model: AntShowcaseModel): Control<AntShowcaseMsg> =
+    let forPage = model.Feedback |> List.filter (fun e -> e.PageId = model.CurrentPage)
+    let saved =
+        if List.isEmpty forPage then
+            [ TextBlock.create [ TextBlock.text "No feedback saved for this page yet." ] ]
+        else
+            forPage |> List.map (fun e -> TextBlock.create [ TextBlock.text ("• " + e.Text) ])
+    let summary =
+        sprintf "%d saved for this page · %d total" (List.length forPage) (List.length model.Feedback)
+    Panel.create
+        [ Panel.children
+              ([ Label.create [ Label.text "Feedback for this page" ]
+                 TextBox.create [ TextBox.value model.FeedbackDraft; TextBox.onChanged (fun v -> FeedbackChanged v) ]
+                 Button.create [ Button.text "Submit feedback"; Button.onClick FeedbackSubmitted ]
+                 TextBlock.create [ TextBlock.text summary ] ]
+               @ saved) ]
+
 let private statusStrip (model: AntShowcaseModel): Control<AntShowcaseMsg> =
     let page = PageRegistry.byId model.CurrentPage
     let kindText =
@@ -62,4 +82,5 @@ let view (_size: Size) (model: AntShowcaseModel): Control<AntShowcaseMsg> =
           Stack.children
               [ appBar model
                 Stack.create [ Stack.orientation "horizontal"; Stack.children [ navRail model; content model ] ]
+                feedbackSection model
                 statusStrip model ] ]

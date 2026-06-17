@@ -252,6 +252,7 @@ FS.GG.UI.Controls.RichTextWeight+Tags
 FS.GG.UI.Controls.RoseChart
 FS.GG.UI.Controls.SankeyDiagram
 FS.GG.UI.Controls.ScatterPlot
+FS.GG.UI.Controls.ScrollViewport
 FS.GG.UI.Controls.Separator
 FS.GG.UI.Controls.Slider
 FS.GG.UI.Controls.Spinner

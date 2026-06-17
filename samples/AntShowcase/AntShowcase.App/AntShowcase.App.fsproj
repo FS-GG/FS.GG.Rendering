@@ -8,6 +8,7 @@
   <!-- The thin edge / interpreter: turns the pure Core into a live window or a
        headless evidence run. References Core by project, the rest as packages. -->
   <ItemGroup>
+    <Compile Include="FeedbackStore.fs" />
     <Compile Include="Interactive.fs" />
     <Compile Include="Evidence.fs" />
     <Compile Include="Program.fs" />
