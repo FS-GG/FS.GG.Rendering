@@ -46,7 +46,7 @@ let result : ControlRenderResult<Msg> = Control.render Theme.dark view
 
 ## API at a glance
 
-- `Control` — core lifecycle: `create` / `standard` / `customControl` build nodes, `render` produces a `ControlRenderResult` (scene, layout, diagnostics, event bindings), and `dispatch` / `diagnostics` inspect a `Control<'msg>`.
+- `Control` — core lifecycle: `create` / `standard` / `customControl` build nodes, `render` produces a `ControlRenderResult` (scene, layout, diagnostics, event bindings), and `dispatch` / `diagnostics` inspect a `Control<'msg>`. Rendering also clips every container's children to its bounds (no spill), paints `Overlay`-built transient surfaces last (z-top, escaping ancestor clips — `isOverlaySurface`), and makes `scroll-viewer` a real clipping viewport (`scrollViewport` reads back its `ScrollViewport` geometry). See `docs/bridge/feature-137-render-blockers.md`.
 - Declarative control modules — `Button`, `Label`, `TextBlock`, `CheckBox`, `Slider`, `TextBox`, `Stack`, `Grid`, `Border`, `Tabs`, `Dialog`, and more, each with `create` plus content/event attributes like `text`, `onClick`, and `children`.
 - `Charts` — `LineChart`, `BarChart`, `PieChart`, `ScatterPlot`, and `GraphView`, fed by `ChartSeries` / `ChartPoint` records.
 - `DataGrid` — virtualized grid with an Elmish `init` / `update` over `DataGridModel`, `DataGridMsg`, and `DataGridEffect`, plus a declarative `create` using `DataGridColumn` / `DataGridRow`.

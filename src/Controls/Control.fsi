@@ -69,6 +69,22 @@ module internal ControlInternals =
         c: Control<'msg> ->
             FS.GG.UI.Scene.Rect option
 
+    /// Feature 137 (US1, the blocker) — the SINGLE shared container-clip composition rule. Composes a
+    /// node's own paint with its assembled children, clipping the children to the node's `box` when there
+    /// is a box AND at least one child scene; otherwise composes flat (`own @ childScenes`, byte-identical
+    /// to the pre-137 assembly). EVERY paint-assembly site (full `renderTree` paint, the four
+    /// `RetainedRender` build/carry sites, and the `RetainedRender.assemble` emit walk) routes through it,
+    /// so full ≡ retained and cache-on ≡ cache-off hold by construction.
+    val composeContainerScene:
+        box: FS.GG.UI.Scene.Rect option ->
+        own: FS.GG.UI.Scene.Scene list ->
+        childScenes: FS.GG.UI.Scene.Scene list ->
+            FS.GG.UI.Scene.Scene list
+
+    /// Feature 137 (US2) — a node authors a deferred z-top overlay/transient surface (built on the
+    /// `Overlay` container); its subtree is collected out of the in-flow clip hierarchy and painted last.
+    val isOverlayNode: c: Control<'msg> -> bool
+
     /// Feature 091 — the evaluated `Bounds` list `renderTree` surfaces, from a pre-evaluated
     /// `boundsById`, so the retained path emits the identical list.
     val collectBoundsWith:
@@ -125,6 +141,16 @@ module internal ControlInternals =
     /// returned verbatim (byte-identical, FR-003). Never throws for any (kind, fills) — totality
     /// (SC-005). Fills land in `Children`, inheriting E1–E4 + E2 identity by construction (FR-004).
     val lowerSlots: control: Control<'msg> -> Control<'msg>
+
+/// Feature 137 (US3) — read-back geometry of a `scroll-viewer` viewport, derived from a render
+/// result. `Viewport` is the clipping box; `ContentHeight` is the laid-out content extent;
+/// `MaxOffset` is how far the content extends past the viewport (`> 0` ⇒ scrollable, with the overflow
+/// clipped to the box, not spilled); `Offset` is the current scroll top (0 at rest).
+type ScrollViewport =
+    { Viewport: FS.GG.UI.Scene.Rect
+      ContentHeight: float
+      Offset: float
+      MaxOffset: float }
 
 /// Core authoring and rendering verbs for `Control<'msg>` — construction, standard/custom
 /// lowering, keying, single-control preview `render` and nested `renderTree`.
@@ -187,6 +213,16 @@ module Control =
     /// `MapPointer` with the raw interaction, never inventing an id. Pure/total/deterministic; reads
     /// the `renderTree` layout tree only, no layout-math change (FR-004/FR-004a/FR-005, feature 090).
     val nearestAuthored: result: ControlRenderResult<'msg> -> hit: ControlId -> ControlId option
+    /// Feature 137 (US3) — read back the scroll geometry of a `scroll-viewer` from a render result
+    /// (its clipping viewport box, laid-out content height, and scroll metrics). `MaxOffset > 0` means
+    /// the content overflows the viewport (scrollable; the overflow is confined to the box by the
+    /// container clip). `None` when `scrollViewerId` is not a laid-out node in the result.
+    val scrollViewport: result: ControlRenderResult<'msg> -> scrollViewerId: ControlId -> ScrollViewport option
+    /// Feature 137 (US2) — the public entry to the deferred overlay render pass: does this control author
+    /// a z-top overlay/transient surface (an `Overlay` container)? `renderTree` paints such a subtree last
+    /// (above the flow, escaping ancestor container clips) and `hitTest` consults the overlay group first;
+    /// an empty overlay group renders byte-identically to a pure in-flow pass.
+    val isOverlaySurface: control: Control<'msg> -> bool
     /// Collect the `ControlDiagnostic` list a control's tree reports (e.g. authoring issues),
     /// for surfacing in tooling without rendering.
     val diagnostics: control: Control<'msg> -> ControlDiagnostic list
