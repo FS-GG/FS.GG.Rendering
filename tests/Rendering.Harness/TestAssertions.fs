@@ -59,6 +59,11 @@ module TestAssertions =
                 X = run.Position.X + dx
                 Y = run.Position.Y + dy
                 Size = run.Font.Size } ]
+        | GlyphRun run ->
+            [ { Text = run.Data.Text
+                X = run.Position.X + dx
+                Y = run.Position.Y + dy
+                Size = run.Data.Font.Size } ]
         | Group scenes -> scenes |> List.collect (collectText dx dy)
         | Translate((tx, ty), s) -> collectText (dx + tx) (dy + ty) s
         | ClipNode(_, s) -> collectText dx dy s

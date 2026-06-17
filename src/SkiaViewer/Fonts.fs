@@ -250,4 +250,39 @@ module Fonts =
                 Some(sprintf "text-fallback: substituted U+%04X '%c' -> '%c' (family %s)" (int o) o s fam)
             | FallbackResolution.Tofu o -> Some(sprintf "text-fallback: tofu U+%04X '%c' (no bundled coverage)" (int o) o))
 
+    let buildGlyphRunData (text: string) (font: FontSpec) : GlyphRunData =
+        let size = max 1.0 font.Size
+        let resolved = resolveText font text
+        let mutable x = 0.0
+
+        let glyphs =
+            resolved
+            |> List.mapi (fun index rc ->
+                let advance = charAdvance size rc
+                let current = x
+                x <- x + advance
+
+                { GlyphId = int rc.Rendered
+                  SourceText = string rc.Original
+                  Advance = advance
+                  Offset = { X = 0.0; Y = 0.0 }
+                  Cluster = index
+                  Position = { X = current; Y = 0.0 } })
+
+        let measured = realMeasure text font
+        let glyphMetrics =
+            { Advance = measured.Width
+              Height = measured.Height
+              Baseline = measured.Baseline }
+
+        let data =
+            { Text = text
+              Font = font
+              Glyphs = glyphs
+              Metrics = glyphMetrics
+              Fingerprint = ""
+              FallbackDiagnostics = diagnostics resolved }
+
+        { data with Fingerprint = Scene.glyphRunFingerprint data }
+
     let installMeasurementSeam () = Scene.setRealTextMeasurer (Some realMeasure)

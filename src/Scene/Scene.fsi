@@ -183,6 +183,38 @@ type TextMetrics =
       Height: float
       Baseline: float }
 
+/// One glyph in the Feature 140 proof data shape. This is a deterministic
+/// package-owned representation for measurement, drawing, diagnostics, and
+/// future cache/protocol work; it is not a full shaping engine.
+type GlyphRunGlyph =
+    { GlyphId: int
+      SourceText: string
+      Advance: float
+      Offset: Point
+      Cluster: int
+      Position: Point }
+
+/// Aggregate metrics for a glyph-run proof.
+type GlyphRunMetrics =
+    { Advance: float
+      Height: float
+      Baseline: float }
+
+/// Stable glyph-run proof payload.
+type GlyphRunData =
+    { Text: string
+      Font: FontSpec
+      Glyphs: GlyphRunGlyph list
+      Metrics: GlyphRunMetrics
+      Fingerprint: string
+      FallbackDiagnostics: string list }
+
+/// Drawable glyph-run proof node payload.
+type GlyphRun =
+    { Data: GlyphRunData
+      Position: Point
+      Paint: Paint }
+
 /// Public contract type exposed by this FS.GG.UI package.
 type Vertex =
     { Position: Point
@@ -217,6 +249,7 @@ type SceneElementKind =
     | ChartElement
     | TranslateElement
     | SizedTextElement
+    | GlyphRunElement
 
 /// Public contract type exposed by this FS.GG.UI package.
 type RenderReadbackEvidence =
@@ -342,6 +375,7 @@ type SceneNode =
     | Chart of values: float list
     | Translate of (float * float) * Scene
     | SizedText of (float * float) * string * float * Color
+    | GlyphRun of GlyphRun
     /// Feature 120 (FR-007): a reuse-stable subtree marked as a backend replay-cache boundary.
     /// TRANSPARENT to every Scene-IR consumer except the OpenGL backend painter — `describe`,
     /// diagnostics, `measure`, opacity scaling, and every retained walk recurse straight into
@@ -485,6 +519,16 @@ module Scene =
     val textAt: position: Point -> text: string -> color: Color -> Scene
     /// Public contract function exposed by this FS.GG.UI package.
     val textRun: run: TextRun -> Scene
+    /// Build deterministic glyph-run proof data using the dependency-light Scene measurement heuristic.
+    val buildGlyphRun: text: string -> font: FontSpec -> GlyphRunData
+    /// Deterministic fingerprint over glyph-run proof data.
+    val glyphRunFingerprint: data: GlyphRunData -> string
+    /// Measure the already-built glyph-run proof data.
+    val measureGlyphRun: data: GlyphRunData -> TextMetrics
+    /// Draw already-built glyph-run proof data at `position` with `paint`.
+    val glyphRun: position: Point -> data: GlyphRunData -> paint: Paint -> Scene
+    /// Convenience constructor that builds proof data and emits a drawable glyph-run proof node.
+    val glyphRunProof: position: Point -> text: string -> font: FontSpec -> paint: Paint -> Scene
     /// The pure, host-independent text-measure heuristic (calibrated to the bundled default family;
     /// deliberately conservative so a box sized by it is never narrower than the renderer draws).
     val measureText: text: string -> font: FontSpec -> TextMetrics

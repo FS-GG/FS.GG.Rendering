@@ -65,6 +65,10 @@ module Fonts =
     /// (`Scene.setRealTextMeasurer`). `Height`/`Baseline` follow the resolved primary font's metrics.
     val realMeasure: text: string -> font: FontSpec -> TextMetrics
 
+    /// Build Feature 140 glyph-run proof data using the same bundled-font fallback and advances that
+    /// the renderer uses to draw text. This is a proof helper, not full shaping.
+    val buildGlyphRunData: text: string -> font: FontSpec -> GlyphRunData
+
     /// Aggregate per-character resolutions into a disclosure report.
     val report: resolved: ResolvedChar list -> FallbackReport
 

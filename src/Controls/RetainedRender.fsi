@@ -333,6 +333,12 @@ module internal RetainedRender =
     /// hash identically and any single render-affecting change flips the value (FR-010). The replay key.
     val internal hashScene: scenes: FS.GG.UI.Scene.Scene list -> uint64
 
+    /// Feature 140: retained invalidation evidence reads the same modifier classification table as
+    /// composition normalization instead of carrying a separate local table.
+    val internal classifyModifierEffect:
+        effect: Composition.ModifierEffect ->
+            Composition.EffectInvalidation
+
     /// Feature 120 (US4, FR-015): the integer area of the UNION of a set of damage rectangles, clamped to
     /// the frame area. Overlapping rectangles are counted once (never the sum), and the result never
     /// exceeds `frameArea`. Pure, total, deterministic (coordinate-compression over integer geometry).

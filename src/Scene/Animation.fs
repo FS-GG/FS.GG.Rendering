@@ -153,6 +153,7 @@ module private Lower =
         | Chart values -> Chart values
         | Translate(offset, scene) -> Translate(offset, scaleScene o scene)
         | SizedText(pos, s, size, color) -> SizedText(pos, s, size, scaleColor o color)
+        | GlyphRun run -> GlyphRun { run with Paint = scalePaint o run.Paint }
         // Feature 120 (FR-007): transparent — scaling changes content, so unwrap the boundary and
         // scale the inner subtree (a scaled subtree is no longer byte-identical to its recorded
         // picture, so it must not carry the cache marker into the overlay sampler).

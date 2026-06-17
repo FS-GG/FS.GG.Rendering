@@ -23,6 +23,7 @@
     <Compile Include="Feature122PresentPathTests.fs" />
     <Compile Include="Audit_ReplayCache.fs" />
     <Compile Include="Feature136TextRenderingTests.fs" />
+    <Compile Include="Feature140GlyphRunRenderingTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

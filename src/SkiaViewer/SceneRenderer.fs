@@ -287,6 +287,8 @@ module internal SceneRenderer =
             drawText canvas x y text { Family = None; Size = 24.0; Weight = None } (skColor color) true
         | TextRun run ->
             drawText canvas run.Position.X run.Position.Y run.Text run.Font (paintColor run.Paint) run.Paint.Antialias
+        | GlyphRun run ->
+            drawText canvas run.Position.X run.Position.Y run.Data.Text run.Data.Font (paintColor run.Paint) run.Paint.Antialias
         | Image((x, y, width, height), source) ->
             let destination = SKRect(float32 x, float32 y, float32 (x + width), float32 (y + height))
 

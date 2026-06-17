@@ -160,6 +160,32 @@ type TextMetrics =
       Height: float
       Baseline: float }
 
+type GlyphRunGlyph =
+    { GlyphId: int
+      SourceText: string
+      Advance: float
+      Offset: Point
+      Cluster: int
+      Position: Point }
+
+type GlyphRunMetrics =
+    { Advance: float
+      Height: float
+      Baseline: float }
+
+type GlyphRunData =
+    { Text: string
+      Font: FontSpec
+      Glyphs: GlyphRunGlyph list
+      Metrics: GlyphRunMetrics
+      Fingerprint: string
+      FallbackDiagnostics: string list }
+
+type GlyphRun =
+    { Data: GlyphRunData
+      Position: Point
+      Paint: Paint }
+
 type Vertex =
     { Position: Point
       Color: Color option }
@@ -191,6 +217,7 @@ type SceneElementKind =
     | ChartElement
     | TranslateElement
     | SizedTextElement
+    | GlyphRunElement
 
 type RenderReadbackEvidence =
     { Size: Size
@@ -299,6 +326,7 @@ type SceneNode =
     | Chart of values: float list
     | Translate of (float * float) * Scene
     | SizedText of (float * float) * string * float * Color
+    | GlyphRun of GlyphRun
     /// Feature 120 (FR-007): a backend replay-cache boundary; transparent to every consumer except
     /// the GL painter (see `Scene.fsi`).
     | CachedSubtree of CacheBoundary
@@ -529,20 +557,99 @@ module Scene =
     let textRun run =
         { Nodes = [ TextRun run ] }
 
-    let measureText (text: string) (font: FontSpec) =
+    let private measureTextHeuristic (text: string) (font: FontSpec) =
         // Feature 136 (R2/T016): the pure, host-independent heuristic kept for pure callers and pure
         // goldens. The per-glyph advance ratio `0.58·size` is calibrated against the bundled default
         // family (Noto Sans averages ~0.49·size; the probe in research.md R1 measured "Stable" at
-        // 0.49·size·n): it stays deliberately *conservative* (≥ the real average advance) so a box
-        // sized by this heuristic is never narrower than the bundled-font renderer draws — no mid-word
-        // clip even without the real measurer installed. When the rendering edge installs a real
-        // measurer (`setRealTextMeasurer`), `measureTextResolved` returns exact draw-equal advances.
+        // 0.49·size·n): it stays deliberately *conservative* (>= the real average advance) so a box
+        // sized by this heuristic is never narrower than the bundled-font renderer draws.
         let size = max 1.0 font.Size
         let glyphAdvance = max 1.0 (size * 0.58)
 
         { Width = glyphAdvance * float text.Length
           Height = size
           Baseline = size * 0.8 }
+
+    let private glyphRunFingerprintOf text font glyphs metrics diagnostics =
+        let glyphPayload =
+            glyphs
+            |> List.map (fun g -> sprintf "%d:%s:%.12g:%.12g:%.12g:%d:%.12g:%.12g" g.GlyphId g.SourceText g.Advance g.Offset.X g.Offset.Y g.Cluster g.Position.X g.Position.Y)
+            |> String.concat "|"
+
+        let payload =
+            String.concat
+                "\u001f"
+                [ text
+                  sprintf "%A" font
+                  glyphPayload
+                  sprintf "%.12g:%.12g:%.12g" metrics.Advance metrics.Height metrics.Baseline
+                  String.concat "|" diagnostics ]
+
+        SHA256.HashData(Encoding.UTF8.GetBytes payload)
+        |> Convert.ToHexString
+        |> fun value -> value.ToLowerInvariant()
+
+    let buildGlyphRun (text: string) (font: FontSpec) : GlyphRunData =
+        let metrics = measureTextHeuristic text font
+        let perGlyph =
+            if String.IsNullOrEmpty text then
+                0.0
+            else
+                metrics.Width / float text.Length
+
+        let mutable x = 0.0
+
+        let glyphs =
+            text
+            |> Seq.mapi (fun index ch ->
+                let current = x
+                x <- x + perGlyph
+
+                { GlyphId = int ch
+                  SourceText = string ch
+                  Advance = perGlyph
+                  Offset = { X = 0.0; Y = 0.0 }
+                  Cluster = index
+                  Position = { X = current; Y = 0.0 } })
+            |> Seq.toList
+
+        let glyphMetrics =
+            { Advance = metrics.Width
+              Height = metrics.Height
+              Baseline = metrics.Baseline }
+
+        let diagnostics =
+            text
+            |> Seq.choose (fun ch ->
+                if Char.IsSurrogate ch then
+                    Some(sprintf "glyph-run-proof: unsupported surrogate code unit U+%04X deferred to full shaping" (int ch))
+                else
+                    None)
+            |> Seq.toList
+
+        { Text = text
+          Font = font
+          Glyphs = glyphs
+          Metrics = glyphMetrics
+          Fingerprint = glyphRunFingerprintOf text font glyphs glyphMetrics diagnostics
+          FallbackDiagnostics = diagnostics }
+
+    let glyphRunFingerprint (data: GlyphRunData) =
+        glyphRunFingerprintOf data.Text data.Font data.Glyphs data.Metrics data.FallbackDiagnostics
+
+    let measureGlyphRun (data: GlyphRunData) =
+        { Width = data.Metrics.Advance
+          Height = data.Metrics.Height
+          Baseline = data.Metrics.Baseline }
+
+    let glyphRun position (data: GlyphRunData) paint =
+        { Nodes = [ GlyphRun { Data = data; Position = position; Paint = paint } ] }
+
+    let glyphRunProof position text font paint =
+        glyphRun position (buildGlyphRun text font) paint
+
+    let measureText (text: string) (font: FontSpec) =
+        measureTextHeuristic text font
 
     // Feature 136 (R2/FR-002): the real-metrics measurer seam. `measureText` above stays pure; the
     // rendering edge (`SkiaViewer.Fonts`) installs a measurer here that returns the bundled-font
@@ -611,6 +718,7 @@ module Scene =
             | Chart _ -> [ ChartElement ]
             | Translate(_, scene) -> TranslateElement :: describe scene
             | SizedText _ -> [ SizedTextElement ]
+            | GlyphRun _ -> [ GlyphRunElement ]
             // Feature 120 (FR-007): transparent — describe the wrapped subtree, no marker element.
             | CachedSubtree boundary -> describe boundary.Scene
 
@@ -652,6 +760,10 @@ module Scene =
             | Arc(_, _, _, paint)
             | RegionNode(_, paint)
             | TextRun { Paint = paint } -> paintDiagnostics paint
+            | GlyphRun run ->
+                paintDiagnostics run.Paint
+                @ (run.Data.FallbackDiagnostics
+                   |> List.map (fun message -> diagnostic Warning message (Some "glyph-run-proof")))
             | Image(_, source) when String.IsNullOrWhiteSpace source -> [ diagnostic Error "Invalid image resource declaration." (Some "Image source path is empty.") ]
             | Image(_, source) when not (IO.File.Exists source) -> [ diagnostic Error "Invalid image resource declaration." (Some $"Image source '{source}' does not exist.") ]
             | ClipNode(_, scene)

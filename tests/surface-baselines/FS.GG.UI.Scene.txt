@@ -23,6 +23,10 @@ FS.GG.UI.Scene.Easing
 FS.GG.UI.Scene.Easing+Tags
 FS.GG.UI.Scene.EllipseShapeEvidence
 FS.GG.UI.Scene.FontSpec
+FS.GG.UI.Scene.GlyphRun
+FS.GG.UI.Scene.GlyphRunData
+FS.GG.UI.Scene.GlyphRunGlyph
+FS.GG.UI.Scene.GlyphRunMetrics
 FS.GG.UI.Scene.ImageFilter
 FS.GG.UI.Scene.ImageFilter+DropShadow
 FS.GG.UI.Scene.ImageFilter+Tags
@@ -93,6 +97,7 @@ FS.GG.UI.Scene.SceneNode+ClipNode
 FS.GG.UI.Scene.SceneNode+ColorSpaceNode
 FS.GG.UI.Scene.SceneNode+Ellipse
 FS.GG.UI.Scene.SceneNode+FilledEllipse
+FS.GG.UI.Scene.SceneNode+GlyphRun
 FS.GG.UI.Scene.SceneNode+Group
 FS.GG.UI.Scene.SceneNode+Image
 FS.GG.UI.Scene.SceneNode+Line

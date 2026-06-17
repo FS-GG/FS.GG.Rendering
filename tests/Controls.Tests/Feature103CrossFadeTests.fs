@@ -103,6 +103,7 @@ let rec private colorsOfNode (n: SceneNode) : (Rgb * byte) list =
     | Text(_, _, c) -> [ (rgbOf c, c.Alpha) ]
     | SizedText(_, _, _, c) -> [ (rgbOf c, c.Alpha) ]
     | TextRun run -> paint run.Paint
+    | GlyphRun run -> paint run.Paint
     | RegionNode(_, p) -> paint p
     | ClipNode(_, s)
     | ColorSpaceNode(_, s)

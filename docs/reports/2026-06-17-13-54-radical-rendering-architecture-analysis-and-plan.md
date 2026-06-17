@@ -330,6 +330,13 @@ Dependency graph: R1a has no dependency; R2 depends on R1a if it changes assembl
 
 Each phase is independently shippable and Tier-1-disclosed. P0–P3 are the high-leverage core; P4–P8 are capability expansion in any order their deps allow.
 
+**Feature 140 status (2026-06-17).** P2's internal foundation has landed as an assembly-internal Controls
+composition model for modifiers, invalidation classification, normalization, local z-order, layer hosts,
+portals, legacy lowering, and compatibility evidence. The only public IR delta is the glyph-run proof surface
+in `FS.GG.UI.Scene` plus a SkiaViewer proof helper/drawing path. Still deferred: R1b retained unification,
+full HarfBuzz shaping/bidi/line breaking, overlay interaction state, portable serialization, compositor work,
+and intrinsic layout.
+
 ---
 
 ## 13. Cross-cutting: parity, determinism, surface/baseline discipline, perf

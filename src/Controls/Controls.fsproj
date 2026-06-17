@@ -44,6 +44,8 @@
     <Compile Include="Internal/AttrKeys.fs" />
     <Compile Include="Attributes.fsi" />
     <Compile Include="Attributes.fs" />
+    <Compile Include="Composition.fsi" />
+    <Compile Include="Composition.fs" />
     <Compile Include="Control.fsi" />
     <Compile Include="Control.fs" />
     <Compile Include="Reconcile.fsi" />

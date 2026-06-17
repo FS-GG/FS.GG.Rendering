@@ -2265,6 +2265,12 @@ module internal ControlInternals =
     /// transient surface (date-picker calendar, etc.) floats by authoring its open content as an `Overlay`.
     let isOverlayNode (c: Control<'msg>) : bool = c.Kind = "overlay"
 
+    let private compositionEntriesForControl (c: Control<'msg>) : Composition.ModifierEntry list =
+        if isOverlayNode c then
+            Composition.legacyLower Composition.LegacyOverlay
+        else
+            []
+
     /// Feature 139 (R1a): one node's assembled contribution split into normal in-flow paint and the
     /// deferred overlay group. This is internal contract shape only; no public scene IR changes.
     type CurrentNodeAssemblyResult =
@@ -2283,7 +2289,8 @@ module internal ControlInternals =
         : CurrentNodeAssemblyResult =
         let childInFlow = childAssemblies |> List.collect _.InFlowScene
         let childOverlay = childAssemblies |> List.collect _.OverlayScene
-        let composed = composeContainerScene box ownScene childInFlow
+        let chain = compositionEntriesForControl control |> Composition.normalize
+        let composed = composeContainerScene box ownScene childInFlow |> Composition.applyChain chain
 
         if isOverlayNode control then
             { InFlowScene = []

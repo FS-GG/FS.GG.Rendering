@@ -15,6 +15,7 @@
     <Compile Include="AnimationTests.fs" />
     <Compile Include="Audit_AnimationSampling.fs" />
     <Compile Include="Feature136MeasurementSeamTests.fs" />
+    <Compile Include="Feature140GlyphRunTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

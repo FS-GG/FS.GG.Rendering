@@ -239,6 +239,8 @@ module internal RetainedRender =
     /// drives more distinct strings than the cap to prove bounded memory + deterministic LRU eviction.
     let TextMeasureCacheCap = 256
 
+    let classifyModifierEffect effect = Composition.classify effect
+
     // Feature 117 (Phase 8, FR-001/FR-002/FR-003/FR-004): the pure, total text-measure cache lookup.
     // `Scene.measureText` is a pure function of `(text, font)`, so the cached value EQUALS the un-cached
     // value for every key (research R5) — the cache is a transparent accelerator. A resident key returns
@@ -421,6 +423,13 @@ module internal RetainedRender =
                 mixStr t
                 mix (bits size)
                 mixA c
+            | GlyphRun run ->
+                mixTag 25
+                mixStr run.Data.Text
+                mixA run.Data.Font
+                mixStr run.Data.Fingerprint
+                mixA run.Position
+                mixA run.Paint
             // Feature 120 (FR-007): transparent — hash the wrapped subtree's content.
             | CachedSubtree boundary ->
                 mixTag 24
