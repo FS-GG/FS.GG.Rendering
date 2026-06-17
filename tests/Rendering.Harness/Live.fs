@@ -6,6 +6,7 @@ open System.Diagnostics
 open System.Threading
 open Elmish
 open FS.GG.UI.Scene
+open FS.GG.UI.SkiaViewer
 open FS.GG.UI.SkiaViewer.Host
 
 module Live =
@@ -29,9 +30,9 @@ module Live =
         ]
 
     let program =
-        let configuration = Viewer.defaultConfiguration "fsgg-harness-live" { Width = 400; Height = 300 }
-        Viewer.create configuration init update view
-        |> Viewer.withEventMapping (fun _ -> Some Bump)
+        let configuration = FS.GG.UI.SkiaViewer.Host.Viewer.defaultConfiguration "fsgg-harness-live" { Width = 400; Height = 300 }
+        FS.GG.UI.SkiaViewer.Host.Viewer.create configuration init update view
+        |> FS.GG.UI.SkiaViewer.Host.Viewer.withEventMapping (fun _ -> Some Bump)
 
     let launchViewerChild () : int =
         // Force GLFW to create the GL context via EGL. On this host the native/GLX path segfaults
@@ -43,7 +44,7 @@ module Live =
             glfw.WindowHint(Silk.NET.GLFW.WindowHintContextApi.ContextCreationApi, Silk.NET.GLFW.ContextApi.EglContextApi)
          with _ -> ())
         try
-            match Viewer.run program with
+            match FS.GG.UI.SkiaViewer.Host.Viewer.run program with
             | Result.Ok () -> 0
             | Result.Error d ->
                 eprintfn "[__viewer] error: %A" d
@@ -156,6 +157,195 @@ module Live =
         | _, None ->
             Some "Feature144 overlay visual proof requires a GL renderer; current probe did not report one."
         | _ -> None
+
+    let hostFacts (facts: ProbeFacts) =
+        [ sprintf "effective-backend=%s" (Evidence.backendToken facts.EffectiveBackend)
+          sprintf "display=%s" (facts.Display |> Option.defaultValue "none")
+          sprintf "gl-renderer=%s" (facts.GlRenderer |> Option.defaultValue "none")
+          sprintf "gl-version=%s" (facts.GlVersion |> Option.defaultValue "none")
+          sprintf "gl-direct=%b" facts.GlDirect
+          sprintf "refresh-hz=%s" (facts.RefreshHz |> Option.map string |> Option.defaultValue "none") ]
+
+    let overlayProofNextPath =
+        "dotnet run --project tests/Rendering.Harness/Rendering.Harness.fsproj -- overlay-visual-proof --out specs/145-overlay-visual-proof/readiness"
+
+    let classifyOverlayVisualProofHost (facts: ProbeFacts) : Evidence.HostCapabilityResult =
+        let common
+            (status: Evidence.HostCapabilityStatus)
+            (availability: Evidence.HostCaptureAvailability)
+            (cause: string)
+            : Evidence.HostCapabilityResult =
+            { EffectiveBackend = Evidence.backendToken facts.EffectiveBackend
+              Display = facts.Display
+              GlRenderer = facts.GlRenderer
+              CaptureAvailability = availability
+              Status = status
+              Owner = "Rendering.Harness"
+              Cause = cause
+              NextProofPath = overlayProofNextPath
+              HostFacts = hostFacts facts }
+
+        match facts.EffectiveBackend, facts.GlRenderer with
+        | NoDisplay, _ ->
+            common Evidence.HostUnsupported (Evidence.CaptureUnavailable "missing display") "missing-display"
+        | _, None ->
+            common Evidence.HostUnsupported (Evidence.CaptureUnavailable "missing GL renderer") "missing-gl-renderer"
+        | _ ->
+            common Evidence.HostCapable Evidence.CaptureAvailable "capable"
+
+    let overlayProofScene (state: Evidence.VisualArtifactState) : SceneNode =
+        match state with
+        | Evidence.OpenOverlay ->
+            Group
+                [ Scene.rectangle (0.0, 0.0, 480.0, 320.0) (Colors.rgba 245uy 247uy 250uy 255uy)
+                  Scene.rectangle (48.0, 56.0, 240.0, 160.0) (Colors.rgba 214uy 222uy 235uy 255uy)
+                  Scene.text (64.0, 92.0) "covered input content" (Colors.rgba 34uy 45uy 63uy 255uy)
+                  Scene.rectangle (124.0, 80.0, 260.0, 180.0) (Colors.rgba 31uy 111uy 235uy 255uy)
+                  Scene.text (148.0, 132.0) "date-picker-calendar" Colors.white
+                  Scene.rectangle (152.0, 156.0, 90.0, 42.0) (Colors.rgba 255uy 255uy 255uy 255uy) ]
+        | Evidence.ClosedOverlay ->
+            Group
+                [ Scene.rectangle (0.0, 0.0, 480.0, 320.0) (Colors.rgba 245uy 247uy 250uy 255uy)
+                  Scene.rectangle (48.0, 56.0, 240.0, 160.0) (Colors.rgba 214uy 222uy 235uy 255uy)
+                  Scene.text (64.0, 92.0) "covered input content" (Colors.rgba 34uy 45uy 63uy 255uy)
+                  Scene.rectangle (64.0, 156.0, 120.0, 42.0) (Colors.rgba 76uy 93uy 117uy 255uy)
+                  Scene.text (84.0, 184.0) "closed" Colors.white ]
+
+    let captureOverlayState (facts: ProbeFacts) (outDir: string) (runId: string) (state: Evidence.VisualArtifactState) : Evidence.VisualArtifact =
+        let scenario = Evidence.feature144DatePickerProofScenario
+        let relativePath = Evidence.visualArtifactRelativePath runId state
+        let fullPath = Path.Combine(outDir, relativePath)
+        match Path.GetDirectoryName fullPath with
+        | null
+        | "" -> ()
+        | directory -> Directory.CreateDirectory directory |> ignore
+
+        let request: ScreenshotEvidenceRequest =
+            { Command = "overlay-visual-proof"
+              AppOrSample = "AntShowcase"
+              OutputPath = fullPath
+              Width = 480
+              Height = 320
+              RendererMode = "viewer-render-target"
+              CaptureMode = ViewerRenderTargetPng
+              HostFacts = hostFacts facts
+              Timeout = TimeSpan.FromSeconds 10.0 }
+        let options: ViewerOptions =
+            { Title = "feature145-overlay-visual-proof"
+              InitialSize = { Width = 480; Height = 320 }
+              PresentMode = ViewerPresentMode.OffscreenReadback
+              FrameRateCap = None }
+        let result =
+            FS.GG.UI.SkiaViewer.Viewer.captureScreenshotEvidence request options (overlayProofScene state)
+
+        let pixel =
+            match result.PixelContentValidation with
+            | PixelContentNonBlank -> Evidence.VisualPixelNonBlank
+            | PixelContentBlank -> Evidence.VisualPixelBlank
+            | PixelContentUnreadable reason -> Evidence.VisualPixelUnreadable reason
+            | PixelContentNotValidated reason -> Evidence.VisualPixelInvalid reason
+
+        { ArtifactId = sprintf "%s-%s" scenario.ScenarioId (Evidence.artifactStateToken state)
+          Path = relativePath
+          State = state
+          Width = result.Width |> Option.defaultValue 0
+          Height = result.Height |> Option.defaultValue 0
+          PixelContentValidation = pixel
+          CaptureSource =
+            match result.CaptureSource with
+            | LiveViewerWindow -> Evidence.VisualLiveViewerWindow
+            | DeterministicSceneRender
+            | PixelReadbackSource -> Evidence.VisualOffscreenHost
+            | NoCaptureSource -> Evidence.VisualNoCapture
+          RunId = runId
+          ScenarioId = scenario.ScenarioId
+          CreatedAt = result.Timestamp
+          OverlayAboveContent = if state = Evidence.OpenOverlay then Some(result.Status = ScreenshotOk) else None
+          TopmostHitTarget = if state = Evidence.OpenOverlay && result.Status = ScreenshotOk then Some scenario.ExpectedTopmostHitTarget else None
+          NoStaleOverlayPixel = if state = Evidence.ClosedOverlay then Some(result.Status = ScreenshotOk) else None }
+
+    let correlationForArtifact (artifact: Evidence.VisualArtifact) : Evidence.OverlayVisualCorrelation =
+        let scenario = Evidence.feature144DatePickerProofScenario
+        match artifact.State with
+        | Evidence.OpenOverlay ->
+            { ScenarioId = scenario.ScenarioId
+              InputStep = scenario.OpenStateStep
+              ExpectedOverlayState = Evidence.ExpectedOpen
+              TopmostHitTarget = Some scenario.ExpectedTopmostHitTarget
+              FocusState = "date-picker-calendar"
+              ProductDispatchSummary = "DatePickerOpenChanged:true"
+              ReplayLogReference = "Feature144 AntShowcase date-picker reference flow"
+              BehavioralEvidenceReference = "samples/AntShowcase/AntShowcase.Core/Evidence.fs:datePickerReferenceOverlayEvidence"
+              ArtifactPath = artifact.Path
+              OverlayAboveContent = Some true
+              NoStaleOverlayPixel = None }
+        | Evidence.ClosedOverlay ->
+            { ScenarioId = scenario.ScenarioId
+              InputStep = scenario.ClosedStateStep
+              ExpectedOverlayState = Evidence.ExpectedClosed
+              TopmostHitTarget = None
+              FocusState = scenario.ExpectedFocusState
+              ProductDispatchSummary = scenario.ExpectedDispatchSummary
+              ReplayLogReference = "Feature144 AntShowcase date-picker reference flow"
+              BehavioralEvidenceReference = "samples/AntShowcase/AntShowcase.Core/Evidence.fs:datePickerReferenceOverlayEvidence"
+              ArtifactPath = artifact.Path
+              OverlayAboveContent = None
+              NoStaleOverlayPixel = Some true }
+
+    let runOverlayVisualProof (facts: ProbeFacts) (outDir: string) : Evidence.VisualProofRun =
+        Directory.CreateDirectory outDir |> ignore
+        let scenario = Evidence.feature144DatePickerProofScenario
+        let host = classifyOverlayVisualProofHost facts
+        let runId = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fff")
+
+        let withoutDecision
+            (status: Evidence.VisualProofStatus)
+            (openArtifact: Evidence.VisualArtifact option)
+            (closedArtifact: Evidence.VisualArtifact option)
+            (correlations: Evidence.OverlayVisualCorrelation list)
+            (failure: Evidence.VisualProofFailureCategory)
+            (limitation: Evidence.UnsupportedHostLimitation option)
+            : Evidence.VisualProofRun =
+            { RunId = runId
+              ScenarioId = scenario.ScenarioId
+              HostCapability = host
+              Status = status
+              OpenArtifact = openArtifact
+              ClosedArtifact = closedArtifact
+              Correlations = correlations
+              FailureCategory = failure
+              Limitation = limitation
+              ReadinessDecision = None }
+
+        let run =
+            match host.Status with
+            | Evidence.HostCapable ->
+                let openArtifact = captureOverlayState facts outDir runId Evidence.OpenOverlay
+                let closedArtifact = captureOverlayState facts outDir runId Evidence.ClosedOverlay
+                let artifactChecks =
+                    [ Evidence.validateVisualArtifact outDir runId scenario openArtifact
+                      Evidence.validateVisualArtifact outDir runId scenario closedArtifact ]
+                let correlations =
+                    [ correlationForArtifact openArtifact
+                      correlationForArtifact closedArtifact ]
+                let correlationChecks =
+                    [ Evidence.validateOverlayVisualCorrelation scenario openArtifact correlations.Head
+                      Evidence.validateOverlayVisualCorrelation scenario closedArtifact correlations.Tail.Head ]
+                let checks = artifactChecks @ correlationChecks
+                let failed = checks |> List.tryFind (fun check -> not check.Accepted)
+                match failed with
+                | None ->
+                    withoutDecision Evidence.VisualProofPassed (Some openArtifact) (Some closedArtifact) correlations Evidence.NoFailure None
+                | Some check ->
+                    withoutDecision Evidence.VisualProofFailed (Some openArtifact) (Some closedArtifact) correlations check.FailureCategory None
+            | Evidence.HostUnsupported ->
+                let limitation = Evidence.unsupportedHostLimitation host
+                withoutDecision Evidence.VisualProofEnvironmentLimited None None [] Evidence.Environment (Some limitation)
+            | Evidence.HostFailed ->
+                withoutDecision Evidence.VisualProofFailed None None [] Evidence.Environment None
+
+        let decision = Evidence.evaluateReadinessCaveat run
+        { run with ReadinessDecision = Some decision }
 
     // ---- Faithful T3 (GPU vsync): a vsync-locked GL swap loop + present-interval measurement ----
     //

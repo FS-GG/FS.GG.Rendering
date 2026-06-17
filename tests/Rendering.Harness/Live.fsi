@@ -20,6 +20,12 @@ module Live =
     /// run on the current host.
     val overlayVisualLimitation: facts: ProbeFacts -> string option
 
+    /// Classify whether the current host may claim Feature 145 real overlay visual proof.
+    val classifyOverlayVisualProofHost: facts: ProbeFacts -> Evidence.HostCapabilityResult
+
+    /// Run the Feature 145 overlay visual-proof path and return the readiness run record.
+    val runOverlayVisualProof: facts: ProbeFacts -> outDir: string -> Evidence.VisualProofRun
+
     /// Internal child entry (`harness __vsyncprobe <stampfile> [seconds]`): run a **vsync-locked GL
     /// swap loop** (swap interval 1) on the GPU display for `seconds`, timestamping each buffer swap,
     /// then write the stamps to `stampFile`. The FS.Skia viewer's frame-metrics hooks were proven

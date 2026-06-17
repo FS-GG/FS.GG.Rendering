@@ -98,6 +98,29 @@ let private runLiveCmd (rest: string list) =
     | RunStatus.Skipped -> 0
     | RunStatus.Failed -> 1
 
+let private overlayProofOutDir (rest: string list) =
+    match flagValue "--out" rest with
+    | Some d -> d
+    | None -> Evidence.feature145ReadinessDirectory
+
+let private runOverlayVisualProofCmd (rest: string list) =
+    let facts = Probe.probe ()
+    let out = overlayProofOutDir rest
+    IO.Directory.CreateDirectory(out) |> ignore
+    let run = Live.runOverlayVisualProof facts out
+    IO.File.WriteAllText(IO.Path.Combine(out, "visual-proof.md"), Evidence.renderVisualProofRun run)
+    IO.File.WriteAllText(IO.Path.Combine(out, "correlation.md"), Evidence.renderCorrelation run)
+    match run.Limitation with
+    | Some limitation ->
+        IO.File.WriteAllText(IO.Path.Combine(out, "unsupported-host.md"), Evidence.renderUnsupportedHostLimitation limitation)
+    | None ->
+        IO.File.WriteAllText(IO.Path.Combine(out, "unsupported-host.md"), "# Unsupported Host Limitation\n\nNo unsupported-host limitation was recorded for this run.\n")
+    printfn "%s" (IO.Path.Combine(out, "visual-proof.md"))
+    match run.Status with
+    | Evidence.VisualProofPassed
+    | Evidence.VisualProofEnvironmentLimited -> 0
+    | Evidence.VisualProofFailed -> 1
+
 [<EntryPoint>]
 let main argv =
     match List.ofArray argv with
@@ -109,6 +132,7 @@ let main argv =
         let seconds = match rest with | s :: _ -> (match Double.TryParse s with | true, v -> v | _ -> 3.0) | [] -> 3.0
         Live.launchVsyncProbeChild stampFile seconds
     | "live-x11" :: rest -> runLiveCmd rest
+    | "overlay-visual-proof" :: rest -> runOverlayVisualProofCmd rest
     | "input" :: rest ->
         let known () = Input.scripts |> Map.toList |> List.map fst |> String.concat ", "
         match flagValue "--backend" rest |> Option.bind Input.parseBackend, flagValue "--script" rest with
@@ -139,7 +163,7 @@ let main argv =
                 | RunStatus.Failed -> 1
     | []
     | "--help" :: _ ->
-        printfn "usage: <probe|offscreen|live-x11|perf|input> [--out <dir>] [--json]"
+        printfn "usage: <probe|offscreen|live-x11|overlay-visual-proof|perf|input> [--out <dir>] [--json]"
         0
     | other ->
         eprintfn "unknown subcommand: %s" (String.concat " " other)

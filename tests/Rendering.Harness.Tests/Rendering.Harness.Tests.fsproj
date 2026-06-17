@@ -13,6 +13,7 @@
     <Compile Include="Feature143OverlayRenderingTests.fs" />
     <Compile Include="Feature144OverlayRenderingParityTests.fs" />
     <Compile Include="Feature144OverlayVisualProofTests.fs" />
+    <Compile Include="Feature145OverlayVisualProofTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
@@ -23,6 +24,8 @@
   <ItemGroup>
     <PackageReference Include="Expecto" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" />
   </ItemGroup>
 

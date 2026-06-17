@@ -21,6 +21,7 @@
     <Compile Include="Feature143DatePickerFlowTests.fs" />
     <Compile Include="Feature144DatePickerFlowTests.fs" />
     <Compile Include="Feature144DatePickerStaleOverlayTests.fs" />
+    <Compile Include="Feature145OverlayVisualProofTests.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
 

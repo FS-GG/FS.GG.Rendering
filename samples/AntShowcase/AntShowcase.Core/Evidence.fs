@@ -32,7 +32,14 @@ type PageEvidenceRecord =
 /// date-picker flow. This is intentionally product-state oriented: the coordinator asks
 /// for open/focus/value changes, while AntShowcase owns the applied state.
 type DatePickerOverlayEvidence =
-    { ReplayLog: string list
+    { ScenarioId: string
+      InputStep: string
+      ExpectedOverlayState: string
+      TopmostHitTarget: string
+      FocusState: string
+      DispatchSummary: string
+      BehavioralEvidenceReference: string
+      ReplayLog: string list
       FocusTransitions: (string option * string option) list
       ProductMessages: string list
       Diagnostics: string list
@@ -40,7 +47,14 @@ type DatePickerOverlayEvidence =
 
 /// Deterministic reference evidence for the Feature 144 date-picker flow.
 let datePickerReferenceOverlayEvidence (): DatePickerOverlayEvidence =
-    { ReplayLog = [ "navigate:text-numeric-input"; "open:date-picker-calendar"; "focus:calendar"; "select:2026-06-17"; "close:date-picker-calendar"; "focus:trigger" ]
+    { ScenarioId = "feature144-antshowcase-date-picker-reference"
+      InputStep = "open:date-picker-calendar"
+      ExpectedOverlayState = "open"
+      TopmostHitTarget = "date-picker-calendar"
+      FocusState = "date-picker-trigger"
+      DispatchSummary = "DatePickerOpenChanged:true; DatePickerChanged:2026-06-17; DatePickerOpenChanged:false"
+      BehavioralEvidenceReference = "Feature144 AntShowcase date-picker reference flow"
+      ReplayLog = [ "navigate:text-numeric-input"; "open:date-picker-calendar"; "focus:calendar"; "select:2026-06-17"; "close:date-picker-calendar"; "focus:trigger" ]
       FocusTransitions = [ None, Some "date-picker-calendar"; Some "date-picker-calendar", Some "date-picker-trigger" ]
       ProductMessages = [ "DatePickerOpenChanged:true"; "DatePickerChanged:2026-06-17"; "DatePickerOpenChanged:false" ]
       Diagnostics = []
