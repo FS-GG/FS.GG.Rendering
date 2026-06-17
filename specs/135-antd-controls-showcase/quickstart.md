@@ -11,15 +11,19 @@ running it against the feed *is* the proof the Ant-theme consumer path works end
 > coverage until the feed is refreshed.
 
 ```sh
-# 1. Repack the product (includes Themes.AntDesign, which is in the slnx) → local feed
-dotnet pack FS.GG.Rendering.slnx -c Release        # output → ~/.local/share/nuget-local/
+# 1. Repack the product (includes Themes.AntDesign, which is in the slnx).
+#    NOTE: pack writes each .nupkg to src/<proj>/bin/Release/, NOT to the feed (no PackageOutputPath).
+dotnet pack FS.GG.Rendering.slnx -c Release
 
-# 2. Same version (0.1.0-preview.1) is reused, so invalidate the consumer cache for the refreshed ids
+# 2. Copy the freshly packed FS.GG.UI.* packages into the local feed.
+find src -path '*/bin/Release/FS.GG.UI.*.0.1.0-preview.1.nupkg' -exec cp {} ~/.local/share/nuget-local/ \;
+
+# 3. Same version (0.1.0-preview.1) is reused, so invalidate the consumer cache for the refreshed ids
 dotnet nuget locals global-packages --clear
 #   (or, narrowly:)
 # rm -rf ~/.nuget/packages/fs.gg.ui.themes.antdesign ~/.nuget/packages/fs.gg.ui.controls
 
-# 3. Verify the new package landed and Controls now carries the net-new Ant controls
+# 4. Verify the new package landed and Controls now carries the net-new Ant controls
 ls ~/.local/share/nuget-local/FS.GG.UI.Themes.AntDesign.0.1.0-preview.1.nupkg
 unzip -p ~/.local/share/nuget-local/FS.GG.UI.Controls.0.1.0-preview.1.nupkg lib/net10.0/FS.GG.UI.Controls.dll \
   | strings | grep -i segmented   # expect a hit

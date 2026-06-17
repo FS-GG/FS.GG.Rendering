@@ -141,7 +141,8 @@ specs/135-antd-controls-showcase/
 │   ├── cli.md                    #   list | interactive <id> | evidence --seed N | coverage subcommands + exit codes
 │   ├── page-registry.md          #   the 96→family-page bijection + the 6 enterprise template pages, PageKind rule
 │   ├── enterprise-templates.md   #   the 6 template recipes → catalog-control compositions + the form-validation contract
-│   └── evidence-record.md        #   per-page evidence-record schema + disclosure rule (reused from G1, Ant-themed)
+│   ├── evidence-record.md        #   per-page evidence-record schema + disclosure rule (reused from G1, Ant-themed)
+│   └── interaction-contract.md   #   pointer/keyboard input mapping + per-family behavior + the test oracle (FR-014/US5)
 ├── checklists/
 │   └── requirements.md  # (created by /speckit-specify)
 └── tasks.md             # Phase 2 output (/speckit-tasks — NOT created here)

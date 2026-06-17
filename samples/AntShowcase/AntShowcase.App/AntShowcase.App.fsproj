@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>AntShowcase</AssemblyName>
+  </PropertyGroup>
+
+  <!-- The thin edge / interpreter: turns the pure Core into a live window or a
+       headless evidence run. References Core by project, the rest as packages. -->
+  <ItemGroup>
+    <Compile Include="Interactive.fs" />
+    <Compile Include="Evidence.fs" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AntShowcase.Core\AntShowcase.Core.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FS.GG.UI.Controls.Elmish" Version="0.1.0-preview.1" />
+    <PackageReference Include="FS.GG.UI.SkiaViewer" Version="0.1.0-preview.1" />
+    <PackageReference Include="FS.GG.UI.Testing" Version="0.1.0-preview.1" />
+  </ItemGroup>
+
+</Project>

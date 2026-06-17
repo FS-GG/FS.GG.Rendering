@@ -24,6 +24,8 @@ artifacts/
 artifacts/controls-gallery/
 # Sample Apps (feature 134, G2) per-sample evidence output — transient, regenerated per run.
 artifacts/sample-apps/
+# Ant Showcase (feature 135, G3) per-page evidence output — transient, regenerated per run.
+artifacts/ant-showcase/
 *.trx
 *.coverage
 coverage/

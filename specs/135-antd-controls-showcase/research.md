@@ -8,11 +8,15 @@ Alternatives considered**. There are **no remaining NEEDS CLARIFICATION**.
 ## R1 — Refresh the local NuGet feed before building (the hard precondition)
 
 **Decision**: Treat a **feed refresh** as the first build step. Run `dotnet pack FS.GG.Rendering.slnx -c
-Release` (output → `~/.local/share/nuget-local/`, the constitution's pack location) so the feed carries
-(a) the **new `FS.GG.UI.Themes.AntDesign.0.1.0-preview.1.nupkg`** and (b) a **`FS.GG.UI.Controls` package
-that contains the 96-control catalog incl. the net-new Ant primitives**. Because the repack reuses the same
-version string `0.1.0-preview.1`, also **invalidate the consumer cache** for the affected ids before
-restore: `dotnet nuget locals global-packages --clear` (or delete just
+Release`, then **copy** the produced `FS.GG.UI.*.0.1.0-preview.1.nupkg` files into the feed (the constitution's
+pack location, `~/.local/share/nuget-local/`) so the feed carries (a) the **new
+`FS.GG.UI.Themes.AntDesign.0.1.0-preview.1.nupkg`** and (b) a **`FS.GG.UI.Controls` package that contains the
+96-control catalog incl. the net-new Ant primitives**. **Verified gotcha (2026-06-17):** `dotnet pack` on the
+slnx writes each package to its own `src/<proj>/bin/Release/`, **not** to the feed — there is no
+`PackageOutputPath` wired up — so an explicit copy is required:
+`find src -path '*/bin/Release/FS.GG.UI.*.0.1.0-preview.1.nupkg' -exec cp {} ~/.local/share/nuget-local/ \;`.
+Because the repack reuses the same version string `0.1.0-preview.1`, also **invalidate the consumer cache**
+before restore: `dotnet nuget locals global-packages --clear` (or delete just
 `~/.nuget/packages/fs.gg.ui.themes.antdesign` and `~/.nuget/packages/fs.gg.ui.controls`). Document this as
 quickstart step **V0** and as a README precondition.
 
