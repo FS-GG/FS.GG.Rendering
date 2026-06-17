@@ -35,6 +35,8 @@ Feature 143 validation is recorded in `specs/143-interaction-overlay-state/readi
 
 Feature 144 validation is recorded in `specs/144-overlay-host-widget-integration/readiness/`: restore and solution build passed; focused Feature143/144 Controls, Elmish, KeyboardInput, Rendering.Harness, and AntShowcase date-picker tests passed; `scripts/refresh-surface-baselines.fsx` passed with additive `FS.GG.UI.Controls` deltas. The current caveat is visual proof scope: this local run does not claim a real offscreen GL screenshot; `Rendering.Harness.Live.overlayVisualLimitation` records the unsupported-host path and the next proof path.
 
+Feature 144 landing status: feature commit `983c6be` was squash-merged to `main` as `6297bfa` and pushed to `origin/main` on 2026-06-17. Packable projects were bumped from `0.1.6-preview.1` to `0.1.7-preview.1`, and `dotnet pack FS.GG.Rendering.slnx -c Release -o ~/.local/share/nuget-local` completed successfully for the source packages.
+
 Table of contents:
 
 1. Executive summary & the one thesis
