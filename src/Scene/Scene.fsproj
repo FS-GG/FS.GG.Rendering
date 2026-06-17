@@ -14,6 +14,8 @@
   <ItemGroup>
     <Compile Include="Scene.fsi" />
     <Compile Include="Scene.fs" />
+    <Compile Include="SceneCodec.fsi" />
+    <Compile Include="SceneCodec.fs" />
     <Compile Include="Animation.fsi" />
     <Compile Include="Animation.fs" />
   </ItemGroup>

@@ -21,6 +21,8 @@
     <Compile Include="Fonts.fsi" />
     <Compile Include="Fonts.fs" />
     <Compile Include="SceneRenderer.fs" />
+    <Compile Include="ReferenceRendering.fsi" />
+    <Compile Include="ReferenceRendering.fs" />
     <Compile Include="Host/OpenGl.fsi" />
     <Compile Include="Host/OpenGl.fs" />
     <Compile Include="Host/Viewer.fsi" />

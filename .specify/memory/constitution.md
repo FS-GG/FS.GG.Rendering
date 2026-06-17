@@ -2,12 +2,12 @@
 Sync Impact Report
 ==================
 Adapted from: FS-Skia-UI Constitution v1.3.0 (sibling repo, source/provenance only)
-This file: FS.GG.Rendering Constitution v1.0.0 (fresh repo — versioning restarts)
+This file: FS.GG.Rendering Constitution v1.1.0
 
-Version change: (new repo) → 1.0.0
-Bump rationale: First constitution for the FS.GG rendering/runtime repository.
-Versioning restarts because this is a distinct product repository, not an in-place
-amendment of FS-Skia-UI. Provenance recorded here rather than as a continuation.
+Version change: 1.0.0 → 1.1.0
+Bump rationale: Material governance update aligning package identity with the accepted
+Stage R8 rebrand decision (`FS.Skia.UI.*` → `FS.GG.UI.*`) already reflected in source,
+README, and product decision records.
 
 Principles (renamed/renumbered from source):
 - I.   Spec → FSI → Semantic Tests → Implementation   (kept; "by hope" wording trimmed)
@@ -34,7 +34,8 @@ OpenGL; Vulkan is explicitly out of scope here.
 
 Sections:
 - Added: Local Skills (advisory)
-- Changed: Engineering Constraints (GL backend; governance/evidence constraints dropped)
+- Changed: Engineering Constraints (package identity aligned to `FS.GG.UI.*`; GL backend;
+  governance/evidence constraints dropped)
 - Changed: Development Workflow (standard Spec Kit; gate ladder removed)
 - Kept:    Change Classification (Tier 1 / Tier 2)
 
@@ -43,6 +44,9 @@ Templates / artifacts reviewed:
 - .specify/templates/spec-template.md      ✅ no governance terms, no edits needed
 - .specify/templates/tasks-template.md     ✅ no skillist/evidence terms, no edits needed
 - .specify/templates/checklist-template.md ✅ no edits needed
+- docs/product/decisions/0001-package-identity.md ✅ records accepted Stage R8 rebrand
+- README.md ✅ already documents `FS.GG.UI.*` packages
+- .specify/templates/commands/ ⚠ not present in this checkout; no command templates to update
 
 Deferred TODOs:
 - TODO(STRUCTURED_LOGGING): logging library not yet selected; record in an ADR when chosen.
@@ -240,8 +244,11 @@ of whether tests pass.
   controls MUST NOT fork per theme (no `AntButton`/`FluentButton` behavior
   copies). A design-specific kit is justified only when a design language adds
   composition or workflow behavior beyond styling.
-- Package identity stays `FS.Skia.UI.*` initially; any rebrand to `FS.GG.UI.*` is
-  a separate, explicit release decision, not part of ordinary work.
+- Package identity is `FS.GG.UI.*` as accepted in
+  `docs/product/decisions/0001-package-identity.md`; legacy `FS.Skia.UI.*` IDs
+  remain deprecated/frozen migration identities. Any future rebrand away from
+  `FS.GG.UI.*` is a separate, explicit release decision, not part of ordinary
+  work.
 - Pack output location: `~/.local/share/nuget-local/`.
 - Structured-logging library: TODO(STRUCTURED_LOGGING) — not yet selected; record
   the choice in an ADR.
@@ -294,4 +301,4 @@ is correct and the template is defective until synchronized.
   obligations
 - PATCH — clarifications that do not change the meaning of the rules
 
-**Version**: 1.0.0 | **Ratified**: 2026-06-14 | **Last Amended**: 2026-06-14
+**Version**: 1.1.0 | **Ratified**: 2026-06-14 | **Last Amended**: 2026-06-17

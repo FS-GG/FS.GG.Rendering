@@ -3,6 +3,7 @@ module Rendering.Harness.Cli
 open System
 open System.IO
 open Rendering.Harness
+open FS.GG.UI.SkiaViewer
 
 // Parse `--out <dir>` from the remaining args; default to a gitignored per-run dir.
 let outDir (rest: string list) =
@@ -121,6 +122,32 @@ let private runOverlayVisualProofCmd (rest: string list) =
     | Evidence.VisualProofEnvironmentLimited -> 0
     | Evidence.VisualProofFailed -> 1
 
+let private renderAnywhereReferenceOutDir (rest: string list) =
+    match flagValue "--out" rest with
+    | Some d -> d
+    | None -> RenderAnywhere.referenceDirectory
+
+let private renderAnywhereBrowserOutDir (rest: string list) =
+    match flagValue "--out" rest with
+    | Some d -> d
+    | None -> RenderAnywhere.browserDirectory
+
+let private runRenderAnywhereReferenceCmd (rest: string list) =
+    let out = renderAnywhereReferenceOutDir rest
+    let evidence = RenderAnywhere.runReferenceCommand out
+    printfn "%s" (IO.Path.Combine(out, "summary.md"))
+
+    if evidence |> List.exists (fun item -> item.Verdict = ReferenceFailed) then
+        1
+    else
+        0
+
+let private runRenderAnywhereBrowserFeasibilityCmd (rest: string list) =
+    let out = renderAnywhereBrowserOutDir rest
+    RenderAnywhere.runBrowserFeasibilityCommand out |> ignore
+    printfn "%s" (IO.Path.Combine(out, "browser-feasibility.md"))
+    0
+
 [<EntryPoint>]
 let main argv =
     match List.ofArray argv with
@@ -133,6 +160,8 @@ let main argv =
         Live.launchVsyncProbeChild stampFile seconds
     | "live-x11" :: rest -> runLiveCmd rest
     | "overlay-visual-proof" :: rest -> runOverlayVisualProofCmd rest
+    | "render-anywhere-reference" :: rest -> runRenderAnywhereReferenceCmd rest
+    | "render-anywhere-browser-feasibility" :: rest -> runRenderAnywhereBrowserFeasibilityCmd rest
     | "input" :: rest ->
         let known () = Input.scripts |> Map.toList |> List.map fst |> String.concat ", "
         match flagValue "--backend" rest |> Option.bind Input.parseBackend, flagValue "--script" rest with
@@ -163,7 +192,7 @@ let main argv =
                 | RunStatus.Failed -> 1
     | []
     | "--help" :: _ ->
-        printfn "usage: <probe|offscreen|live-x11|overlay-visual-proof|perf|input> [--out <dir>] [--json]"
+        printfn "usage: <probe|offscreen|live-x11|overlay-visual-proof|render-anywhere-reference|render-anywhere-browser-feasibility|perf|input> [--out <dir>] [--json]"
         0
     | other ->
         eprintfn "unknown subcommand: %s" (String.concat " " other)

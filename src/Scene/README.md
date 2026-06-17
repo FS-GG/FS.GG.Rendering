@@ -39,6 +39,10 @@ let scene =
 // Inspect the element kinds without touching a GPU.
 let kinds = Scene.describe scene
 
+// Export a deterministic portable package and inspect it before any renderer runs.
+let package = SceneCodec.export scene
+let report = SceneCodec.inspect package.CanonicalBytes
+
 // Produce deterministic render-readback evidence for a fixed output size.
 let evidence =
     Scene.renderReadbackEvidence { Width = 320; Height = 240 } scene
@@ -51,6 +55,8 @@ let evidence =
 - `Paint` module — builds and refines `Paint` values: start from `fill`/`stroke`, then layer `withOpacity`, `withBlendMode`, `withShader`, and the filter/effect `with*` combinators.
 - `Path` module — assembles `PathSpec` geometry (`moveTo`, `lineTo`, `quadTo`, `cubicTo`, `create`) and queries it (`bounds`, `measure`, `segment`, `combine`).
 - `Scene` / `SceneNode` types — the core record and discriminated-union scene-graph vocabulary that every constructor produces.
+- `SceneCodec` module — exports/imports deterministic portable scene packages, computes package
+  identities, inspects protocol/capability/resource compatibility, and compares imported scenes.
 - `SceneEvidence` module — renders a `SceneEvidenceRequest` to deterministic evidence, returning `Result` (`render`, `renderHash`, `renderPng`).
 - `LayoutEvidence` module — derives and `classify`s `LayoutEvidenceReport` HUD/gameplay layout proofs from render-readback evidence.
 

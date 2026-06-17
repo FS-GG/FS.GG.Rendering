@@ -116,3 +116,25 @@ module TestAssertions =
     let themeInvariant (render: 'theme -> 'r) (equate: 'r -> 'r -> bool) (light: 'theme) (dark: 'theme) : bool =
         let l, d = themePair render light dark
         equate l d
+
+    /// Feature 146 helper: package identities are stable SHA-256 tokens.
+    let packageIdentityLooksSha256 (identity: string) : bool =
+        identity.StartsWith("sha256:", System.StringComparison.Ordinal)
+        && identity.Length = "sha256:".Length + 64
+        && identity.Substring("sha256:".Length)
+           |> Seq.forall (fun ch -> System.Uri.IsHexDigit ch)
+
+    /// Feature 146 helper: find a package diagnostic by stage and message fragment.
+    let hasPackageDiagnostic stage (messageFragment: string) (diagnostics: PackageDiagnostic list) : bool =
+        diagnostics
+        |> List.exists (fun diagnostic ->
+            diagnostic.Stage = stage
+            && diagnostic.Message.Contains(messageFragment, System.StringComparison.OrdinalIgnoreCase))
+
+    /// Feature 146 helper: compact artifact metadata check for readiness outputs.
+    let artifactMetadataComplete (path: string option) (identity: string option) : bool =
+        match path, identity with
+        | Some value, Some hash ->
+            not (System.String.IsNullOrWhiteSpace value)
+            && packageIdentityLooksSha256 hash
+        | _ -> false

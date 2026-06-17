@@ -293,6 +293,15 @@ type ScreenshotEvidenceRecord =
       ArtifactPath: string option
       Diagnostics: string list }
 
+type PackageInspectionAssertionCheck =
+    { Report: PackageInspectionReport
+      ExpectedStatus: PackageInspectionStatus
+      RequiredDiagnosticFragments: string list }
+
+type PackageInspectionAssertionResult =
+    { Accepted: bool
+      Diagnostics: string list }
+
 module GeneratedProductAssertions =
     let summarize expectation =
         let packages =
@@ -618,7 +627,7 @@ module GeneratedConsumerValidation =
           Diagnostics = diagnostics }
 
 module GeneratedLayoutValidation =
-    let validate check =
+    let validate (check: GeneratedLayoutValidationCheck) =
         let classified = LayoutEvidence.classify check.Report
 
         let diagnostics =
@@ -1326,4 +1335,21 @@ module EvidenceReports =
         { Accepted = failureClass.IsNone
           MissingFields = missing
           FailureClass = failureClass
+          Diagnostics = diagnostics }
+
+module PackageInspectionAssertions =
+    let validate (check: PackageInspectionAssertionCheck) =
+        let diagnostics =
+            [ if check.Report.Status <> check.ExpectedStatus then
+                  $"expected package inspection status {check.ExpectedStatus}, got {check.Report.Status}"
+
+              for fragment in check.RequiredDiagnosticFragments do
+                  let found =
+                      check.Report.Diagnostics
+                      |> List.exists (fun diagnostic -> diagnostic.Message.Contains(fragment, StringComparison.OrdinalIgnoreCase))
+
+                  if not found then
+                      $"missing package diagnostic containing '{fragment}'" ]
+
+        { Accepted = diagnostics.IsEmpty
           Diagnostics = diagnostics }

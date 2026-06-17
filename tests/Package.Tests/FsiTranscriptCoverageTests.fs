@@ -20,9 +20,17 @@ let repositoryPath (relativePath: string) =
 let transcriptPath name =
     repositoryPath $"specs/035-api-discovery-names/readiness/fsi/{name}"
 
+let feature146TranscriptPath name =
+    repositoryPath $"specs/146-render-anywhere-protocol/readiness/fsi/{name}"
+
 let readTranscript name =
     let path = transcriptPath name
     Expect.isTrue (File.Exists path) $"FSI transcript evidence exists at {path}"
+    File.ReadAllText path
+
+let readFeature146Transcript name =
+    let path = feature146TranscriptPath name
+    Expect.isTrue (File.Exists path) $"Feature146 FSI transcript evidence exists at {path}"
     File.ReadAllText path
 
 [<Tests>]
@@ -85,5 +93,30 @@ let fsiTranscriptCoverageTests =
                 let logPath = transcriptPath logName
                 Expect.isTrue (File.Exists logPath) $"{logName} exists"
                 Expect.stringContains (File.ReadAllText logPath) "FSI transcript PASS" $"{logName} records a passing FSI run")
+        }
+
+        test "Feature146 transcripts cover SceneCodec and ReferenceRendering authoring" {
+            let sceneCodec = readFeature146Transcript "scene-codec-authoring.fsx"
+            let referenceRendering = readFeature146Transcript "reference-rendering-authoring.fsx"
+
+            [ "SceneCodec.export"
+              "SceneCodec.inspect"
+              "SceneCodec.packageIdentity"
+              "SceneCodec.compareScenes" ]
+            |> List.iter (fun required ->
+                Expect.stringContains sceneCodec required $"SceneCodec transcript includes {required}")
+
+            [ "ReferenceRendering.init"
+              "PackageBytes"
+              "OutputDirectory"
+              "OutputSize" ]
+            |> List.iter (fun required ->
+                Expect.stringContains referenceRendering required $"ReferenceRendering transcript includes {required}")
+
+            [ "scene-codec-authoring.log"
+              "reference-rendering-authoring.log" ]
+            |> List.iter (fun logName ->
+                let log = readFeature146Transcript logName
+                Expect.stringContains log "FSI transcript PASS" $"{logName} records passing FSI coverage")
         }
     ]

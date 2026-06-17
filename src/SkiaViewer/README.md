@@ -46,6 +46,11 @@ For an Elmish-style application, build a `GeneratedAppHost` (with `Init` / `Upda
 `MapKey` / `Tick` / `Diagnostics`) and run it with `Viewer.runApp options host`, which returns the
 same `Result<ViewerLaunchOutcome, ViewerRunFailure>`.
 
+Portable scene packages from `FS.GG.UI.Scene.SceneCodec` can be rendered through the
+`ReferenceRendering` oracle to produce a PNG artifact plus protocol, capability, resource, and
+renderer metadata. Unsupported host conditions return `ReferenceEnvironmentLimited` rather than a
+false pass.
+
 ## API at a glance
 
 - **`Viewer.run` / `Viewer.runApp`** — open the viewer for a single `SceneNode`, or for a full
@@ -54,6 +59,8 @@ same `Result<ViewerLaunchOutcome, ViewerRunFailure>`.
   that render to a `ViewerRunFailure`-or-`ViewerRunEvidence` `Result` for CI and screenshots.
 - **`Viewer.captureScreenshotEvidence`** — drive a `ScreenshotEvidenceRequest` to a
   `ScreenshotEvidenceResult` recording capture source, pixel-content validation, and proof status.
+- **`ReferenceRendering.init` / `update` / `run`** — MVU-style reference rendering for portable
+  scene packages, with explicit inspect/render/write effects and Skia-backed PNG evidence.
 - **`Viewer.desktopSessionDiagnostic` / `runtimeCapability`** — probe the host for a usable desktop
   session and the renderer/keyboard/window capabilities currently available.
 - **`ViewerOptions`, `ViewerRunRequest`, `GeneratedAppHost<'model,'msg>`** — the core input

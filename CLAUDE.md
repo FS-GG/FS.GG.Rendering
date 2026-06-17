@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/145-overlay-visual-proof/plan.md
+at specs/146-render-anywhere-protocol/plan.md
 <!-- SPECKIT END -->
 
 ## Ant Design — source of truth

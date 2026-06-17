@@ -17,6 +17,8 @@
     <Compile Include="TextShapingParity.fs" />
     <Compile Include="RunPlan.fsi" />
     <Compile Include="RunPlan.fs" />
+    <Compile Include="RenderAnywhere.fsi" />
+    <Compile Include="RenderAnywhere.fs" />
     <Compile Include="Evidence.fsi" />
     <Compile Include="Evidence.fs" />
     <Compile Include="Probe.fsi" />

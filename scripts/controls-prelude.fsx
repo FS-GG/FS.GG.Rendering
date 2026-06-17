@@ -5,6 +5,31 @@
 open FS.GG.UI.Controls
 open FS.GG.UI.Scene
 
+let chartSeries =
+    [ { Name = "revenue"
+        Points =
+            [ { X = 1.0; Y = 12.0; Label = Some "Q1" }
+              { X = 2.0; Y = 18.0; Label = Some "Q2" } ] } ]
+
+let chart : Control<unit> =
+    LineChart.create [ LineChart.series chartSeries ]
+
+let graph : Control<unit> =
+    GraphView.create [ GraphView.nodes [ "scene"; "viewer"; "browser" ] ]
+
+let columns =
+    [ { Key = "name"; Header = "Name"; Width = 160.0; ColumnType = TextColumn }
+      { Key = "score"; Header = "Score"; Width = 96.0; ColumnType = NumericColumn } ]
+
+let rows =
+    [ { Key = "row-1"
+        Cells =
+            [ { RowKey = "row-1"; ColumnKey = "name"; Value = "Portable scene" }
+              { RowKey = "row-1"; ColumnKey = "score"; Value = "1" } ] } ]
+
+let grid : Control<unit> =
+    DataGrid.create columns [ DataGrid.columns columns; DataGrid.rows rows ]
+
 let anchor =
     { AnchorId = "date-trigger"
       AnchorBounds = Some { X = 12.0; Y = 24.0; Width = 140.0; Height = 32.0 }
@@ -44,3 +69,4 @@ printfn "open surfaces: %A" (state1.OpenSurfaces |> List.map _.Id.SurfaceId)
 printfn "open effects: %A" effects1
 printfn "selection effects: %A" effects2
 printfn "replay entries: %d" (OverlayState.replayLog state2).OverlayTransitions.Length
+printfn "controls: %A %A %A" chart graph grid

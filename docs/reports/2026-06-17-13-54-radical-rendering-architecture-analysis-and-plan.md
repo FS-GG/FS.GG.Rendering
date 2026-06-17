@@ -4,9 +4,9 @@
 |---|---|
 | **Authored** | 2026-06-17 13:54 CEST (2026-06-17T11:54Z) |
 | **Author** | Claude Opus 4.8 (1M context), with four parallel research agents (offline codebase map + 3 online prior-art deep-dives) |
-| **Repo state** | Originally analyzed at branch `main` @ `8f75594`; implementation/package status updated through Feature 145 overlay visual proof on branch `145-overlay-visual-proof` |
+| **Repo state** | Originally analyzed at branch `main` @ `8f75594`; implementation/package status audited through `main` @ `512c6b0` (`0.1.8-preview.1` package bump after Feature 145), with Feature 146 implemented and validated on branch `146-render-anywhere-protocol` |
 | **Scope** | The **radical** framework options only (per request), grounded in offline code reading and online prior art (React Fiber, Jetpack Compose, SwiftUI/AttributeGraph, Flutter, Elm, WebRender, Chromium `cc`, Skia, HarfBuzz) |
-| **Status** | Current through Feature 145: P0, P1, P2, P3, and P4 are implemented; P5 now includes the Feature 143 pure overlay coordinator, Feature 144 transient widget metadata/host/runtime dispatch seams/AntShowcase date-picker flow/deterministic corpus evidence, and Feature 145 real overlay visual proof with current-run open and closed artifacts. |
+| **Status** | Current as of local validation on 2026-06-18 00:04 CEST: P0-P5 are implemented and landed; P6 is implemented as Feature 146 with a portable scene package codec, resource/capability inspection, Skia reference rendering oracle, browser feasibility fallback report, package-readiness artifacts, and refreshed public surface baselines; P7/P8 remain unimplemented. |
 
 ---
 
@@ -14,9 +14,9 @@
 
 This is two documents in one: an **analysis** of where FS.GG.Rendering actually is (grounded in the live code, with `file:line` anchors), and a **comprehensive implementation plan** for the radical bets, sequenced into phases with change-sites, parity oracles, risks, and exit criteria. Sources for every external claim are in §16.
 
-### Current status update (2026-06-17 22:36 CEST)
+### Current status update (2026-06-18 00:04 CEST)
 
-This report began as a plan from `main` @ `8f75594`. The repository has since shipped P0-P3, pushed package version `0.1.3-preview.1`, implemented Feature 142 / P4 on `142-harfbuzz-text-shaping`, implemented the Feature 143 / P5 pure overlay coordinator on `143-interaction-overlay-state`, implemented Feature 144 / P5 host/widget overlay integration on `144-overlay-host-widget-integration`, and implemented Feature 145 / P5 overlay visual proof on `145-overlay-visual-proof`:
+This report began as a plan from `main` @ `8f75594`. The repository has since shipped P0-P3, pushed package version `0.1.3-preview.1`, implemented Feature 142 / P4 on `142-harfbuzz-text-shaping`, implemented the Feature 143 / P5 pure overlay coordinator on `143-interaction-overlay-state`, implemented Feature 144 / P5 host/widget overlay integration on `144-overlay-host-widget-integration`, implemented and merged Feature 145 / P5 overlay visual proof, bumped packages to `0.1.8-preview.1`, and implemented Feature 146 / P6 render-anywhere on `146-render-anywhere-protocol`:
 
 | Phase | Status | Evidence |
 |---|---|---|
@@ -25,7 +25,8 @@ This report began as a plan from `main` @ `8f75594`. The repository has since sh
 | **P2 - IR foundation** | Shipped as Feature 140. Internal Controls composition, modifier classification, local z-order, portals/layers, legacy lowering, and glyph-run proof support are merged. | `ac2b560` `Merge 140-modifier-layer-ir (squash)`; package bump `41fb05c` to `0.1.3-preview.1`. |
 | **P3 - Keystone** | Implemented as Feature 141. Retained fragments now store owner-produced assembly results and invalidation evidence; structural scene fingerprinting moved to the assembly-owner side and retained rendering aliases it. | `specs/141-retained-renderer-unification/readiness.md`; focused Feature141, Feature139, Feature140, public-surface, audit, solution build, non-Controls broad deterministic suites, surface-baseline refresh, and offscreen harness passed. |
 | **P4 - Text** | Implemented as Feature 142. Scene now carries dependency-light shaped text evidence; SkiaViewer owns HarfBuzz provider install/status/shape/draw; retained text measurement cache keys include the provider version bucket; pure fallback remains available. | `specs/142-harfbuzz-text-shaping/readiness/validation-log.md`; `measure-draw-parity.md`; `fallback-diagnostics.md`; `cache-retained-parity.md`; `surface-baseline.md`; `package-surface.md`; `baseline-disclosure-ledger.md`. |
-| **P5 - Interaction** | Advanced through Feature 145. Feature 143 introduced the pure overlay coordinator; Feature 144 adds transient metadata for eight widget categories, pointer/focus/runtime/Elmish routing seams, product-visible open/focus/selection dispatch, AntShowcase product-owned date-picker evidence, deterministic overlay corpus parity, and unsupported-host disclosure; Feature 145 closes the remaining visual-proof caveat with real current-run open/closed artifacts correlated to the date-picker flow. | `specs/143-interaction-overlay-state/readiness/feature143-readiness.md`; `specs/144-overlay-host-widget-integration/readiness/README.md`; `specs/145-overlay-visual-proof/readiness/visual-proof.md`; Feature 145 focused Rendering.Harness and AntShowcase filters passed; three capable-host proof runs passed/closed with stable scenario and evidence labels. |
+| **P5 - Interaction** | Implemented and landed through Feature 145. Feature 143 introduced the pure overlay coordinator; Feature 144 adds transient metadata for eight widget categories, pointer/focus/runtime/Elmish routing seams, product-visible open/focus/selection dispatch, AntShowcase product-owned date-picker evidence, deterministic overlay corpus parity, and unsupported-host disclosure; Feature 145 closes the remaining visual-proof caveat with real current-run open/closed artifacts correlated to the date-picker flow. | `specs/143-interaction-overlay-state/readiness/feature143-readiness.md`; `specs/144-overlay-host-widget-integration/readiness/README.md`; `specs/145-overlay-visual-proof/readiness/visual-proof.md`; Feature 145 focused Rendering.Harness and AntShowcase filters passed; three capable-host proof runs passed/closed with stable scenario and evidence labels; `b632d93` `Merge 145-overlay-visual-proof (squash)`; package bump `512c6b0` to `0.1.8-preview.1`. |
+| **P6 - Render-anywhere** | Implemented as Feature 146. Scene now exposes a deterministic portable package codec and inspection surface; SkiaViewer exposes a reference rendering oracle; Testing exposes package-inspection assertions; the harness records reference PNG evidence and a browser feasibility fallback decision. | `src/Scene/SceneCodec.fsi`; `src/SkiaViewer/ReferenceRendering.fsi`; `src/Testing/Testing.fsi`; `tests/Rendering.Harness/RenderAnywhere.fsi`; `specs/146-render-anywhere-protocol/readiness/validation-summary.md`; `reference/summary.md`; `browser/browser-feasibility.md`; refreshed `readiness/surface-baselines/*`. |
 
 Feature 141 validation is recorded in `specs/141-retained-renderer-unification/readiness.md`: focused Feature 141 tests include 200 deterministic generated direct/cold/warm retained equivalence cases; Feature 139 and Feature 140 compatibility filters passed; retained/cache/fingerprint `Audit` filters passed; the full solution build passed; all non-Controls broad deterministic test projects passed; `scripts/refresh-surface-baselines.fsx` passed; and the offscreen harness wrote `artifacts/feature141-harness/T1/run.json` with `status: passed`. The remaining caveat is local validation scope: `dotnet test tests/Controls.Tests/Controls.Tests.fsproj --filter Feature091 --no-build` did not complete in the shell window and was interrupted after more than two minutes, so it is recorded as a limitation rather than a pass.
 
@@ -38,6 +39,8 @@ Feature 144 validation is recorded in `specs/144-overlay-host-widget-integration
 Feature 145 validation is recorded in `specs/145-overlay-visual-proof/readiness/`: the `overlay-visual-proof` harness command ran three equivalent capable-host attempts on X11 display `:1` with AMD Radeon GL renderer. Runs `20260617-203509-749`, `20260617-203538-828`, and `20260617-203538-994` all produced non-blank open/closed PNG artifacts, kept scenario id `feature144-antshowcase-date-picker-reference`, reported `passed`, and closed the Feature 144 visual-proof caveat. The unsupported-host path was separately exercised with display variables unset and reported `environment-limited` with cause `missing-display` and no accepted artifacts.
 
 Feature 144 landing status: feature commit `983c6be` was squash-merged to `main` as `6297bfa` and pushed to `origin/main` on 2026-06-17. Packable projects were bumped from `0.1.6-preview.1` to `0.1.7-preview.1`, and `dotnet pack FS.GG.Rendering.slnx -c Release -o ~/.local/share/nuget-local` completed successfully for the source packages.
+
+Feature 145 landing/package status: Feature 145 was squash-merged to `main` as `b632d93`, then packable projects were bumped to `0.1.8-preview.1` in `512c6b0`. Feature 146 now builds on that commit and implements the P6 portable scene package, reference oracle, inspection helpers, and browser feasibility fallback report. Feature 146 validation passed for solution build, focused Feature146 tests, package tests, surface tests, readiness FSI snippets, reference/browser harness commands, and `dotnet pack`; the full solution test requires Wayland to be disabled and currently remains blocked by unrelated Controls typed-lowering parity failures around `transientWidgetMetadata`.
 
 Table of contents:
 
@@ -275,7 +278,7 @@ type PortalSpec = { Target: LayerId; Anchor: AnchorSpec; Dismiss: DismissPolicy 
 
 **Effort.** L. Depends on R2 (portals) and R3 (anchoring/measurement).
 
-**Feature 143/144/145 status (2026-06-17).** P5 has advanced across three slices. Feature 143 added the pure overlay coordinator in `src/Controls/OverlayState.fsi` / `.fs`: finite supported surface kinds, dismissal policy, focus scope, modal trap mode, topmost hit decisions, replay logs, diagnostics, and ordered effects. Feature 144 adds product-owned transient widget metadata, metadata collection/validation/translation, pointer/focus overlay routing helpers, runtime dispatch records, Controls.Elmish overlay effect interpretation, eight-category widget lowering, AntShowcase reference date-picker evidence, and deterministic Rendering.Harness overlay corpus evidence. Feature 145 adds the real overlay visual-proof harness/readiness path and closes the Feature 144 caveat with current-run open/closed PNG artifacts correlated to the AntShowcase date-picker flow. Focused Feature143/144/145 tests pass across the relevant harness and AntShowcase filters; unsupported hosts still report an environment-limited limitation without accepted artifacts.
+**Feature 143/144/145 status (2026-06-17).** P5 was implemented across three slices. Feature 143 added the pure overlay coordinator in `src/Controls/OverlayState.fsi` / `.fs`: finite supported surface kinds, dismissal policy, focus scope, modal trap mode, topmost hit decisions, replay logs, diagnostics, and ordered effects. Feature 144 adds product-owned transient widget metadata, metadata collection/validation/translation, pointer/focus overlay routing helpers, runtime dispatch records, Controls.Elmish overlay effect interpretation, eight-category widget lowering, AntShowcase reference date-picker evidence, and deterministic Rendering.Harness overlay corpus evidence. Feature 145 adds the real overlay visual-proof harness/readiness path and closes the Feature 144 caveat with current-run open/closed PNG artifacts correlated to the AntShowcase date-picker flow. Focused Feature143/144/145 tests pass across the relevant harness and AntShowcase filters; unsupported hosts still report an environment-limited limitation without accepted artifacts.
 
 ---
 
@@ -300,6 +303,29 @@ type PortalSpec = { Target: LayerId; Anchor: AnchorSpec; Dismiss: DismissPolicy 
 **Invariants/oracles.** Round-trip `fromProto∘toProto = id` (property test); identical scenes serialize byte-identically; each backend diffed pixel-wise against the server-PNG oracle within tolerance.
 
 **Effort.** XL (multi-phase). Depends on R2 (stable IR) + R7 (`GlyphRun`).
+
+**Feature 146 status (2026-06-18 00:04 CEST).** P6 is implemented as
+`146-render-anywhere-protocol`. The implementation adds `SceneCodec` to `FS.GG.UI.Scene` for a
+deterministic TLV scene package (`FSGGSCENE`), package identity hashing, resource manifests,
+capability/resource inspection, forward-compatible optional-tag skipping, required-tag rejection,
+semantic scene comparison, and diagnostic formatting. `FS.GG.UI.SkiaViewer` adds
+`ReferenceRendering` as an MVU/effect/evidence surface that imports portable packages, renders
+through the existing Skia scene path, writes PNG artifacts, validates decodable/non-blank output,
+and classifies failures or environment-limited runs honestly. `FS.GG.UI.Testing` adds package
+inspection assertions, and `tests/Rendering.Harness/RenderAnywhere` records the representative
+corpus, reference evidence, and browser feasibility fallback report.
+
+Validation is recorded in `specs/146-render-anywhere-protocol/readiness/validation-summary.md`.
+Focused Feature146 tests passed in Scene, SkiaViewer, Rendering.Harness, and Package.Tests; the full
+Package.Tests project and package surface filter passed; `scripts/refresh-surface-baselines.fsx`
+passed and refreshed root readiness baselines; the reference harness wrote three PNG artifacts; the
+browser feasibility command wrote a documented CanvasKit command-stream fallback report; readiness
+FSI snippets passed; solution build passed; and `dotnet pack FS.GG.Rendering.slnx -c Release -o
+/home/developer/.local/share/nuget-local --no-restore` passed for the `0.1.8-preview.1` package
+set. Full solution tests require `WAYLAND_DISPLAY` to be unset on this host; with X11 forced, the
+run avoided the `libdecor-gtk.so` Wayland crash but still surfaced unrelated Controls
+typed-lowering parity failures where typed transient widgets include `transientWidgetMetadata` and
+legacy comparison expectations do not.
 
 ---
 
@@ -354,15 +380,15 @@ Dependency graph: R1a has no dependency; R2 depends on R1a if it changes assembl
 
 | Phase | Workstream(s) | Why here | Exit criteria |
 |---|---|---|---|
-| **P0 — Quick win** | R3a (layout attrs) + fix the pre-existing Elmish metrics test | Low-risk, unblocks T027, immediate authoring value | Flex attrs authorable; existing `padding`/`margin` honored; drift guard updated; T027 shell chrome clean; Elmish suite green |
-| **P1 — Duplication reduction** | R1a shared assembly extraction | Removes the most dangerous duplication before adding new semantics | One internal current-semantics assembly seam; `renderTree`, retained init/build/carry/emit call it; byte-identical output; suite green |
-| **P2 — IR foundation** | R2 internal modifier/layer model + R7 `GlyphRun` type spike | Everything downstream composes over cleaner assembly/IR; public surface only after proof | Modifiers/portals proven internally; old nodes lower to new representation; 137 overlay pass reimplemented as portals; public compatibility plan written; goldens re-based + disclosed if pixels change |
-| **P3 — Keystone** | R1b retained renderer unification | The clean algebra makes the single fold tractable; kills the drift bug class | One `assemble`; `RenderFragment` constructor-private; second builder deleted; fuzz property test green; byte-identical output through the refactor |
+| **P0 — Quick win** | R3a (layout attrs) + fix the pre-existing Elmish metrics test | Low-risk, unblocks T027, immediate authoring value | Implemented as Feature 138: flex attrs authorable; existing `padding`/`margin` honored; drift guard updated; T027 shell chrome clean; Elmish suite green |
+| **P1 — Duplication reduction** | R1a shared assembly extraction | Removes the most dangerous duplication before adding new semantics | Implemented as Feature 139: one internal current-semantics assembly seam; `renderTree`, retained init/build/carry/emit call it; byte-identical output; suite green |
+| **P2 — IR foundation** | R2 internal modifier/layer model + R7 `GlyphRun` type spike | Everything downstream composes over cleaner assembly/IR; public surface only after proof | Implemented as Feature 140: modifiers/portals proven internally; old nodes lower to new representation; 137 overlay pass reimplemented as portals; public compatibility plan written; goldens re-based + disclosed if pixels change |
+| **P3 — Keystone** | R1b retained renderer unification | The clean algebra makes the single fold tractable; kills the drift bug class | Implemented as Feature 141: one `assemble`; `RenderFragment` constructor-private; second builder deleted; fuzz property test green; byte-identical output through the refactor |
 | **P4 — Text** | R7 (HarfBuzz shaping) | Independent; unblocks portable text for R5 | Implemented as Feature 142: measured/drawn shaped glyph evidence path; complex-script fixture coverage; pure fallback intact |
-| **P5 — Interaction** | R4 (overlay state) | Needs R2 portals + R3 anchoring | Advanced through Feature 145: pure overlay coordinator, transient widget metadata, host/runtime dispatch seams, AntShowcase reference date-picker flow, deterministic corpus parity, unsupported-host disclosure, and real current-run overlay visual proof landed |
-| **P6 — Render-anywhere** | R5 (protocol + server PNG + CanvasKit feasibility) | Needs stable IR (R2) + portable text (R7) | Round-trip codec; server-PNG oracle; CanvasKit feasibility proven or fallback chosen; showcase diffed against oracle |
-| **P7 — Compositor** | R6 (present-path proof, promotion, scissor, key split, texture) | Needs R2 modifiers; pure perf, gated by probes | Present-path proof green; damage-scissored frames; promotion heuristic; scroll re-blits; parity oracle holds per tier; probes show net win |
-| **P8 — Radical layout** | R3b (intrinsic protocol) | Needs R1b; removes the scrollViewport descendant-walk smell | Constraints/intrinsics protocol; ScrollViewer reimplemented; incremental≡full preserved |
+| **P5 — Interaction** | R4 (overlay state) | Needs R2 portals + R3 anchoring | Implemented and landed through Feature 145: pure overlay coordinator, transient widget metadata, host/runtime dispatch seams, AntShowcase reference date-picker flow, deterministic corpus parity, unsupported-host disclosure, and real current-run overlay visual proof |
+| **P6 — Render-anywhere** | R5 (protocol + server PNG + CanvasKit feasibility) | Needs stable IR (R2) + portable text (R7) | Implemented as Feature 146: deterministic package codec and inspection surface; Skia reference oracle with PNG evidence; package inspection helpers; browser feasibility fallback report; focused/package/build/pack validation passed; full solution remains blocked by unrelated Controls transient-metadata parity failures |
+| **P7 — Compositor** | R6 (present-path proof, promotion, scissor, key split, texture) | Needs R2 modifiers; pure perf, gated by probes | Not implemented. Exit criteria remain: present-path proof green; damage-scissored frames; promotion heuristic; scroll re-blits; parity oracle holds per tier; probes show net win |
+| **P8 — Radical layout** | R3b (intrinsic protocol) | Needs R1b; removes the scrollViewport descendant-walk smell | Not implemented. Exit criteria remain: constraints/intrinsics protocol; ScrollViewer reimplemented; incremental≡full preserved |
 
 Each phase is independently shippable and Tier-1-disclosed. P0–P3 are the high-leverage core; P4–P8 are capability expansion in any order their deps allow.
 
@@ -424,4 +450,4 @@ and intrinsic layout.
 
 ---
 
-*End of report. This document chooses the radical options and tracks their delivery status. P0-P4 are implemented, and P5 has advanced through Feature 145 overlay visual proof; the previous Feature 144 visual-proof caveat is closed on the current capable host, so the recommended next action is continuing the later render-anywhere/compositor workstreams.*
+*End of report. This document chooses the radical options and tracks their delivery status. P0-P5 are implemented and landed through Feature 145 plus package version `0.1.8-preview.1`; P6 is implemented as Feature 146 with portable scene packaging, reference rendering, capability/resource inspection, and browser feasibility fallback evidence; P7 compositor work and P8 intrinsic-layout work remain unimplemented. The recommended next action is resolving the unrelated Controls transient-metadata parity failures or choosing whether to proceed to P7 compositor work.*

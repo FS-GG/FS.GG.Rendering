@@ -335,6 +335,17 @@ type ScreenshotEvidenceRecord =
       ArtifactPath: string option
       Diagnostics: string list }
 
+/// Public contract type exposed by this FS.GG.UI package.
+type PackageInspectionAssertionCheck =
+    { Report: PackageInspectionReport
+      ExpectedStatus: PackageInspectionStatus
+      RequiredDiagnosticFragments: string list }
+
+/// Public contract type exposed by this FS.GG.UI package.
+type PackageInspectionAssertionResult =
+    { Accepted: bool
+      Diagnostics: string list }
+
 /// Public contract module exposed by this FS.GG.UI package.
 module GeneratedProductAssertions =
     /// Public contract function exposed by this FS.GG.UI package.
@@ -409,3 +420,8 @@ module EvidenceReports =
     val validateScreenshotArtifact: check: ScreenshotArtifactValidationCheck -> ScreenshotArtifactValidationResult
     /// Public contract function exposed by this FS.GG.UI package.
     val validateScreenshotEvidence: check: ScreenshotEvidenceReportCheck -> ScreenshotEvidenceReportValidationResult
+
+/// Public contract module exposed by this FS.GG.UI package.
+module PackageInspectionAssertions =
+    /// Public contract function exposed by this FS.GG.UI package.
+    val validate: check: PackageInspectionAssertionCheck -> PackageInspectionAssertionResult

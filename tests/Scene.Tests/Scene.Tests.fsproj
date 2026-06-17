@@ -20,6 +20,11 @@
     <Compile Include="Feature142RunItemizationTests.fs" />
     <Compile Include="Feature142ShapedTextDeterminismTests.fs" />
     <Compile Include="Feature142PureFallbackCompatibilityTests.fs" />
+    <Compile Include="Feature146PortableSceneRoundTripTests.fs" />
+    <Compile Include="Feature146PortableSceneCompatibilityTests.fs" />
+    <Compile Include="Feature146PortableSceneResourceTests.fs" />
+    <Compile Include="Feature146PackageCapabilityInspectionTests.fs" />
+    <Compile Include="Feature146PackageResourceInspectionTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
