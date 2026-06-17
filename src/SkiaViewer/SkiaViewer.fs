@@ -1976,6 +1976,9 @@ module Viewer =
         // host uses. Every primitive (Line/Path/Arc/real-glyph Text/…) renders to real
         // pixels; the prior placeholder-rect wildcard that masqueraded as "scene visible"
         // is deleted.
+        // Feature 136 (FR-001/T017): clear the text-fallback disclosure accumulator so the report read
+        // back after this capture (via `Text.fallbackReport`) reflects exactly this page's render.
+        SceneRenderer.resetFallbackEvents ()
         SceneRenderer.paintNode canvas scene
 
     let private pngDimensionsAndNonBlank (path: string) : (int * int) option * ScreenshotPixelContentValidation =
@@ -2918,3 +2921,23 @@ module GeneratedAppHost =
             | Duration _ -> { Width = 1; Height = 1 }
 
         Viewer.runBounded request { Title = "Generated App"; InitialSize = size; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None } scene
+
+/// Feature 136 (R2/FR-001/FR-002): the rendering-edge text seam. Hosts install the bundled-font
+/// real-metrics measurer once before building/laying out control scenes so box sizing equals draw
+/// width (no clip), and read back the per-page fallback/tofu disclosure after a render (T017).
+module Text =
+
+    /// Install the bundled-font real-metrics measurer into the `Scene` measurement seam so control
+    /// box sizing uses true advances. Idempotent; call once at host startup before layout.
+    let installMeasurer () = Fonts.installMeasurementSeam ()
+
+    /// Clear the text-fallback disclosure accumulator (the screenshot path also clears it per capture).
+    let resetFallbackDisclosure () = SceneRenderer.resetFallbackEvents ()
+
+    /// Aggregate disclosure (substituted/tofu counts + affected code points) for the most recent render.
+    let fallbackReport () : Fonts.FallbackReport =
+        SceneRenderer.fallbackEvents |> List.ofSeq |> Fonts.report
+
+    /// Structured diagnostic lines for every non-authored character in the most recent render (FR-001).
+    let fallbackDiagnostics () : string list =
+        SceneRenderer.fallbackEvents |> List.ofSeq |> Fonts.diagnostics

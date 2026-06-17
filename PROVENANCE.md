@@ -74,6 +74,25 @@ None. Every imported top-level area (`src/`, `tests/` suites, `template/`, `.tem
 `.template.package/`, `docs/imported/`, `tests/surface-baselines/`, `scripts/`, and the root build
 metadata) is accounted for by a Path-map row, an Adaptation, or the *Repo-authored* list above.
 
+## Bundled font assets (feature 136 — `src/SkiaViewer/assets/fonts/`)
+
+Feature `136-showcase-render-fixes` embeds a standard font set in `FS.GG.UI.SkiaViewer`
+(`<EmbeddedResource>`, logical-named `FS.GG.UI.SkiaViewer.Fonts.<file>`) so text renders through real
+typefaces (`SKTypeface.FromStream`) independent of the host's `SKTypeface.Default` — the determinism
+basis for the byte-identical same-seed evidence gate (SC-005). **No new NuGet runtime dependency** is
+introduced; these are repo-vendored asset files. Every face is under a free/open license:
+
+| Asset | Family | License | Upstream |
+|---|---|---|---|
+| `NotoSans-Regular.ttf`, `NotoSans-Bold.ttf` | Noto Sans | SIL OFL 1.1 | `googlefonts/noto-fonts` (`hinted/ttf/NotoSans`) |
+| `NotoSansMono-Regular.ttf` | Noto Sans Mono | SIL OFL 1.1 | `googlefonts/noto-fonts` (`hinted/ttf/NotoSansMono`) |
+| `Inter-Regular.ttf`, `Inter-Bold.ttf` | Inter | SIL OFL 1.1 | `google/fonts` `ofl/inter` variable, statically instanced at `wght=400`/`700`, `opsz=14` (fontTools `varLib.instancer`) |
+| `JetBrainsMono-Regular.ttf` | JetBrains Mono | SIL OFL 1.1 | `JetBrains/JetBrainsMono` (`fonts/ttf`) |
+| `DejaVuSans.ttf`, `DejaVuSans-Bold.ttf`, `DejaVuSansMono.ttf` | DejaVu Sans / Sans Mono | DejaVu license (Bitstream Vera derivative — free, permissive) | bundled via the build host's `matplotlib` mpl-data |
+
+All five families are OFL/free and redistributable; the OFL requires only that the fonts not be sold by
+themselves and that reserved names be respected (the file names above are the upstream face names).
+
 ## Excluded (left in the source archive)
 
 `build/**` (FAKE/governance build front-end), `readiness/` (historical), `docs/testSpecs`,

@@ -7,6 +7,8 @@
 
   <ItemGroup>
     <Compile Include="Domain.fs" />
+    <!-- Feature 136 (T006): pure Scene-only assertion helpers, linked into the US1–US4 test projects. -->
+    <Compile Include="TestAssertions.fs" />
     <Compile Include="RunPlan.fsi" />
     <Compile Include="RunPlan.fs" />
     <Compile Include="Evidence.fsi" />

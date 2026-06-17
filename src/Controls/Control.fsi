@@ -25,6 +25,12 @@ module internal ControlInternals =
     /// incremental dirty-set classifier; FR-003 anti-drift). See the implementation comment.
     val layoutAffectingAttrNames: Set<string>
 
+    /// Feature 136 (US1/T016A, FR-002): the text overflow affordance. Returns the longest prefix of
+    /// `label` that fits `maxWidth` at `size` with a trailing ellipsis (`…`) when the label overflows,
+    /// else `label` unchanged — so an over-long label shows an explicit `…` instead of being silently
+    /// clipped by the box. A single-character label is never truncated.
+    val ellipsize: family: string option -> size: float -> maxWidth: float -> label: string -> string
+
     /// Feature 091 — the per-node measure of `Control.renderTree`, factored so the wired
     /// retained path (`module internal RetainedRender`) measures with the IDENTICAL function.
     /// Builds + evaluates the nested Yoga layout, returning the root node and the absolute

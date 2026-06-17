@@ -234,7 +234,9 @@ module internal RetainedRender =
         (font: FS.GG.UI.Scene.FontSpec)
         : FS.GG.UI.Scene.TextMetrics * TextMeasureCache * bool =
         if not enabled then
-            FS.GG.UI.Scene.Scene.measureText text font, cache, false
+            // Feature 136 (R2): resolve through the real measurer when installed, else the pure
+            // heuristic (byte-identical to pre-136 when none installed). Keeps cache-on ≡ cache-off.
+            FS.GG.UI.Scene.Scene.measureTextResolved text font, cache, false
         else
             let key: TextMeasureKey =
                 { Text = text; Family = font.Family; Size = font.Size; Weight = font.Weight }
@@ -244,7 +246,7 @@ module internal RetainedRender =
                 let clock = cache.Clock + 1
                 metrics, { cache with Entries = Map.add key (clock, metrics) cache.Entries; Clock = clock }, true
             | None ->
-                let metrics = FS.GG.UI.Scene.Scene.measureText text font
+                let metrics = FS.GG.UI.Scene.Scene.measureTextResolved text font
                 let clock = cache.Clock + 1
                 let mutable entries = Map.add key (clock, metrics) cache.Entries
 

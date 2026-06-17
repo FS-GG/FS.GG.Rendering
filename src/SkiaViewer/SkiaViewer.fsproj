@@ -18,6 +18,8 @@
     <Compile Include="Host/Diagnostics.fs" />
     <Compile Include="PictureReplayCache.fsi" />
     <Compile Include="PictureReplayCache.fs" />
+    <Compile Include="Fonts.fsi" />
+    <Compile Include="Fonts.fs" />
     <Compile Include="SceneRenderer.fs" />
     <Compile Include="Host/OpenGl.fsi" />
     <Compile Include="Host/OpenGl.fs" />
@@ -25,6 +27,40 @@
     <Compile Include="Host/Viewer.fs" />
     <Compile Include="SkiaViewer.fsi" />
     <Compile Include="SkiaViewer.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Feature 136 (FR-001/SC-005): the bundled standard font set, embedded so text renders through
+         real typefaces (SKTypeface.FromStream) independent of host fonts. Logical names are explicit and
+         stable so Fonts.fs resolves them by a fixed `FS.GG.UI.SkiaViewer.Fonts.<file>` manifest key.
+         Licenses (OFL/free) recorded in PROVENANCE.md. -->
+    <EmbeddedResource Include="assets\fonts\NotoSans-Regular.ttf">
+      <LogicalName>FS.GG.UI.SkiaViewer.Fonts.NotoSans-Regular.ttf</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="assets\fonts\NotoSans-Bold.ttf">
+      <LogicalName>FS.GG.UI.SkiaViewer.Fonts.NotoSans-Bold.ttf</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="assets\fonts\NotoSansMono-Regular.ttf">
+      <LogicalName>FS.GG.UI.SkiaViewer.Fonts.NotoSansMono-Regular.ttf</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="assets\fonts\Inter-Regular.ttf">
+      <LogicalName>FS.GG.UI.SkiaViewer.Fonts.Inter-Regular.ttf</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="assets\fonts\Inter-Bold.ttf">
+      <LogicalName>FS.GG.UI.SkiaViewer.Fonts.Inter-Bold.ttf</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="assets\fonts\JetBrainsMono-Regular.ttf">
+      <LogicalName>FS.GG.UI.SkiaViewer.Fonts.JetBrainsMono-Regular.ttf</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="assets\fonts\DejaVuSans.ttf">
+      <LogicalName>FS.GG.UI.SkiaViewer.Fonts.DejaVuSans.ttf</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="assets\fonts\DejaVuSans-Bold.ttf">
+      <LogicalName>FS.GG.UI.SkiaViewer.Fonts.DejaVuSans-Bold.ttf</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="assets\fonts\DejaVuSansMono.ttf">
+      <LogicalName>FS.GG.UI.SkiaViewer.Fonts.DejaVuSansMono.ttf</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
 
   <ItemGroup>
