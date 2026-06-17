@@ -4,9 +4,9 @@
 |---|---|
 | **Authored** | 2026-06-17 13:54 CEST (2026-06-17T11:54Z) |
 | **Author** | Claude Opus 4.8 (1M context), with four parallel research agents (offline codebase map + 3 online prior-art deep-dives) |
-| **Repo state** | Originally analyzed at branch `main` @ `8f75594`; implementation/package status audited through `main` @ `512c6b0` (`0.1.8-preview.1` package bump after Feature 145), with Feature 146 implemented and validated on branch `146-render-anywhere-protocol` |
+| **Repo state** | Originally analyzed at branch `main` @ `8f75594`; implementation/package status audited through `origin/main` @ `d62b026` (`0.1.9-preview.1` package bump after Feature 146) |
 | **Scope** | The **radical** framework options only (per request), grounded in offline code reading and online prior art (React Fiber, Jetpack Compose, SwiftUI/AttributeGraph, Flutter, Elm, WebRender, Chromium `cc`, Skia, HarfBuzz) |
-| **Status** | Current as of local validation on 2026-06-18 00:04 CEST: P0-P5 are implemented and landed; P6 is implemented as Feature 146 with a portable scene package codec, resource/capability inspection, Skia reference rendering oracle, browser feasibility fallback report, package-readiness artifacts, and refreshed public surface baselines; P7/P8 remain unimplemented. |
+| **Status** | Current as of local validation on 2026-06-18 00:04 CEST: P0-P6 are implemented and landed; Feature 146 was squash-merged as `c0f16ce`, pushed to `origin/main`, and followed by mandatory package bump `d62b026` to `0.1.9-preview.1`; P7/P8 remain unimplemented. |
 
 ---
 
@@ -16,7 +16,7 @@ This is two documents in one: an **analysis** of where FS.GG.Rendering actually 
 
 ### Current status update (2026-06-18 00:04 CEST)
 
-This report began as a plan from `main` @ `8f75594`. The repository has since shipped P0-P3, pushed package version `0.1.3-preview.1`, implemented Feature 142 / P4 on `142-harfbuzz-text-shaping`, implemented the Feature 143 / P5 pure overlay coordinator on `143-interaction-overlay-state`, implemented Feature 144 / P5 host/widget overlay integration on `144-overlay-host-widget-integration`, implemented and merged Feature 145 / P5 overlay visual proof, bumped packages to `0.1.8-preview.1`, and implemented Feature 146 / P6 render-anywhere on `146-render-anywhere-protocol`:
+This report began as a plan from `main` @ `8f75594`. The repository has since shipped P0-P3, pushed package version `0.1.3-preview.1`, implemented Feature 142 / P4 on `142-harfbuzz-text-shaping`, implemented the Feature 143 / P5 pure overlay coordinator on `143-interaction-overlay-state`, implemented Feature 144 / P5 host/widget overlay integration on `144-overlay-host-widget-integration`, implemented and merged Feature 145 / P5 overlay visual proof, bumped packages to `0.1.8-preview.1`, implemented Feature 146 / P6 render-anywhere, squash-merged it to `main` as `c0f16ce`, and bumped packages to `0.1.9-preview.1` in `d62b026`:
 
 | Phase | Status | Evidence |
 |---|---|---|
@@ -40,7 +40,7 @@ Feature 145 validation is recorded in `specs/145-overlay-visual-proof/readiness/
 
 Feature 144 landing status: feature commit `983c6be` was squash-merged to `main` as `6297bfa` and pushed to `origin/main` on 2026-06-17. Packable projects were bumped from `0.1.6-preview.1` to `0.1.7-preview.1`, and `dotnet pack FS.GG.Rendering.slnx -c Release -o ~/.local/share/nuget-local` completed successfully for the source packages.
 
-Feature 145 landing/package status: Feature 145 was squash-merged to `main` as `b632d93`, then packable projects were bumped to `0.1.8-preview.1` in `512c6b0`. Feature 146 now builds on that commit and implements the P6 portable scene package, reference oracle, inspection helpers, and browser feasibility fallback report. Feature 146 validation passed for solution build, focused Feature146 tests, package tests, surface tests, readiness FSI snippets, reference/browser harness commands, and `dotnet pack`; the full solution test requires Wayland to be disabled and currently remains blocked by unrelated Controls typed-lowering parity failures around `transientWidgetMetadata`.
+Feature 145 landing/package status: Feature 145 was squash-merged to `main` as `b632d93`, then packable projects were bumped to `0.1.8-preview.1` in `512c6b0`. Feature 146 was implemented on `146-render-anywhere-protocol`, feature-committed as `99c511e`, squash-merged to `main` as `c0f16ce`, pushed to `origin/main`, then followed by mandatory package bump `d62b026` to `0.1.9-preview.1` and a second push. Feature 146 validation passed for solution build, focused Feature146 tests, package tests, surface tests, readiness FSI snippets, reference/browser harness commands, and `dotnet pack`; the full solution test requires Wayland to be disabled and currently remains blocked by unrelated Controls typed-lowering parity failures around `transientWidgetMetadata`.
 
 Table of contents:
 
@@ -321,8 +321,8 @@ Package.Tests project and package surface filter passed; `scripts/refresh-surfac
 passed and refreshed root readiness baselines; the reference harness wrote three PNG artifacts; the
 browser feasibility command wrote a documented CanvasKit command-stream fallback report; readiness
 FSI snippets passed; solution build passed; and `dotnet pack FS.GG.Rendering.slnx -c Release -o
-/home/developer/.local/share/nuget-local --no-restore` passed for the `0.1.8-preview.1` package
-set. Full solution tests require `WAYLAND_DISPLAY` to be unset on this host; with X11 forced, the
+/home/developer/.local/share/nuget-local --no-restore` passed before merge and again after the
+mandatory post-merge bump to `0.1.9-preview.1`. Full solution tests require `WAYLAND_DISPLAY` to be unset on this host; with X11 forced, the
 run avoided the `libdecor-gtk.so` Wayland crash but still surfaced unrelated Controls
 typed-lowering parity failures where typed transient widgets include `transientWidgetMetadata` and
 legacy comparison expectations do not.
@@ -386,7 +386,7 @@ Dependency graph: R1a has no dependency; R2 depends on R1a if it changes assembl
 | **P3 — Keystone** | R1b retained renderer unification | The clean algebra makes the single fold tractable; kills the drift bug class | Implemented as Feature 141: one `assemble`; `RenderFragment` constructor-private; second builder deleted; fuzz property test green; byte-identical output through the refactor |
 | **P4 — Text** | R7 (HarfBuzz shaping) | Independent; unblocks portable text for R5 | Implemented as Feature 142: measured/drawn shaped glyph evidence path; complex-script fixture coverage; pure fallback intact |
 | **P5 — Interaction** | R4 (overlay state) | Needs R2 portals + R3 anchoring | Implemented and landed through Feature 145: pure overlay coordinator, transient widget metadata, host/runtime dispatch seams, AntShowcase reference date-picker flow, deterministic corpus parity, unsupported-host disclosure, and real current-run overlay visual proof |
-| **P6 — Render-anywhere** | R5 (protocol + server PNG + CanvasKit feasibility) | Needs stable IR (R2) + portable text (R7) | Implemented as Feature 146: deterministic package codec and inspection surface; Skia reference oracle with PNG evidence; package inspection helpers; browser feasibility fallback report; focused/package/build/pack validation passed; full solution remains blocked by unrelated Controls transient-metadata parity failures |
+| **P6 — Render-anywhere** | R5 (protocol + server PNG + CanvasKit feasibility) | Needs stable IR (R2) + portable text (R7) | Implemented and landed as Feature 146: deterministic package codec and inspection surface; Skia reference oracle with PNG evidence; package inspection helpers; browser feasibility fallback report; focused/package/build/pack validation passed; squash merge `c0f16ce`; package bump `d62b026` to `0.1.9-preview.1`; full solution remains blocked by unrelated Controls transient-metadata parity failures |
 | **P7 — Compositor** | R6 (present-path proof, promotion, scissor, key split, texture) | Needs R2 modifiers; pure perf, gated by probes | Not implemented. Exit criteria remain: present-path proof green; damage-scissored frames; promotion heuristic; scroll re-blits; parity oracle holds per tier; probes show net win |
 | **P8 — Radical layout** | R3b (intrinsic protocol) | Needs R1b; removes the scrollViewport descendant-walk smell | Not implemented. Exit criteria remain: constraints/intrinsics protocol; ScrollViewer reimplemented; incremental≡full preserved |
 
@@ -450,4 +450,4 @@ and intrinsic layout.
 
 ---
 
-*End of report. This document chooses the radical options and tracks their delivery status. P0-P5 are implemented and landed through Feature 145 plus package version `0.1.8-preview.1`; P6 is implemented as Feature 146 with portable scene packaging, reference rendering, capability/resource inspection, and browser feasibility fallback evidence; P7 compositor work and P8 intrinsic-layout work remain unimplemented. The recommended next action is resolving the unrelated Controls transient-metadata parity failures or choosing whether to proceed to P7 compositor work.*
+*End of report. This document chooses the radical options and tracks their delivery status. P0-P6 are implemented and landed through Feature 146 plus package version `0.1.9-preview.1`; P7 compositor work and P8 intrinsic-layout work remain unimplemented. The recommended next action is resolving the unrelated Controls transient-metadata parity failures or choosing whether to proceed to P7 compositor work.*

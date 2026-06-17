@@ -19,7 +19,7 @@ Validated from branch `146-render-anywhere-protocol`.
 | `dotnet fsi scripts/controls-prelude.fsx` | PASS |
 | `dotnet fsi scripts/input-prelude.fsx` | PASS |
 | `dotnet fsi scripts/controls-elmish-prelude.fsx` | PASS |
-| `dotnet pack FS.GG.Rendering.slnx -c Release -o /home/developer/.local/share/nuget-local --no-restore` | PASS; produced `0.1.8-preview.1` local packages |
+| `dotnet pack FS.GG.Rendering.slnx -c Release -o /home/developer/.local/share/nuget-local --no-restore` | PASS; produced `0.1.8-preview.1` local packages before merge and `0.1.9-preview.1` local packages after the mandatory post-merge version bump |
 
 ## Focused Evidence
 
@@ -28,6 +28,13 @@ Validated from branch `146-render-anywhere-protocol`.
 - Browser feasibility: `browser/browser-feasibility.md`; current decision is a documented CanvasKit command-stream proof/fallback, not a production browser backend claim.
 - Compatibility ledger: `compatibility-ledger.md`.
 - Package-readiness artifacts restored for `specs/035-api-discovery-names` and `specs/036-archive-readiness-api-docs` so `Package.Tests` is green.
+
+## Landing Status
+
+- Feature branch commit: `99c511e` (`Implement render-anywhere scene protocol`).
+- Squash-merged to `main` as `c0f16ce` (`Merge 146-render-anywhere-protocol (squash)`) and pushed to `origin/main`.
+- Packable projects bumped from `0.1.8-preview.1` to `0.1.9-preview.1` in `d62b026` (`Bump packages to 0.1.9-preview.1`) and pushed to `origin/main`.
+- Local NuGet HTTP and global-package caches were cleared after the package bump.
 
 ## Full Solution Caveat
 
