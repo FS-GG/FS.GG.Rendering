@@ -5,7 +5,7 @@
     <IsPackable>true</IsPackable>
     <PackageId>FS.GG.UI.Input</PackageId>
     <AssemblyName>FS.GG.UI.Input</AssemblyName>
-    <Version>0.1.4-preview.1</Version>
+    <Version>0.1.5-preview.1</Version>
     <Title>FS.GG.UI.Input</Title>
     <Description>Host-coupled interactive input runtime for FS.GG.UI: YAML key-binding configuration, modes, sequences, command intents, diagnostics, bigram analysis, and keyboard state-display projection over the SkiaViewer host.</Description>
     <PackageTags>fsharp;skia;input;keyboard;runtime;ui</PackageTags>
