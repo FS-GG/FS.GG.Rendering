@@ -113,6 +113,27 @@ let tests =
             Expect.isTrue (roundTrip (parent [ leaf "a" "A"; leaf "b" "B" ]) (parent [ leaf "a" "A"; leaf "c" "C" ])) "insert/remove round-trips"
         }
 
+        test "Audit: Feature141 retained child reorder/remove cannot leave stale rendered output" {
+            let theme = Theme.light
+            let size: Size = { Width = 420; Height = 260 }
+            let keyed key label =
+                TextBlock.create [ TextBlock.text label; Attr.width 120.0; Attr.height 24.0 ]
+                |> Control.withKey key
+
+            let view children = Stack.create [ Stack.children children ]
+            let start = view [ keyed "a" "A"; keyed "b" "B"; keyed "c" "C" ]
+            let init = RetainedRender.init theme size start
+
+            let reordered = view [ keyed "c" "C"; keyed "a" "A"; keyed "b" "B" ]
+            let reorderStep = RetainedRender.step theme size init.Retained reordered
+            Expect.equal reorderStep.Render.Scene (Control.renderTree theme size reordered).Scene "reordered retained output equals direct output"
+
+            let removed = view [ keyed "a" "A"; keyed "c" "C" ]
+            let removalStep = RetainedRender.step theme size init.Retained removed
+            Expect.equal removalStep.Render.Scene (Control.renderTree theme size removed).Scene "removed-child retained output equals direct output"
+            Expect.isFalse ((sprintf "%A" removalStep.Render.Scene).Contains("\"B\"")) "removed child text is not left visible in retained output"
+        }
+
         // ---- DISCRIMINATING POWER: prove the round-trip oracle goes RED on a broken patch ----
         test "Audit: DISCRIMINATING — a forced wrong Keep patch breaks the round-trip (proves teeth)" {
             // For a genuine change (prev <> next) the CORRECT patch round-trips, but substituting the

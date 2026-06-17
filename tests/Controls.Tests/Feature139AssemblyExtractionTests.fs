@@ -19,7 +19,10 @@ let private sceneRect x y w h color =
 
 let private assembly inFlow overlay : ControlInternals.CurrentNodeAssemblyResult =
     { InFlowScene = inFlow
-      OverlayScene = overlay }
+      OverlayScene = overlay
+      Fingerprint = ControlInternals.hashScene (inFlow @ overlay)
+      Diagnostics = []
+      ChildContributions = [] }
 
 let private raw kind attrs children : Control<Msg> =
     { Kind = kind

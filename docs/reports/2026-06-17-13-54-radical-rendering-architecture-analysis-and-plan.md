@@ -4,9 +4,9 @@
 |---|---|
 | **Authored** | 2026-06-17 13:54 CEST (2026-06-17T11:54Z) |
 | **Author** | Claude Opus 4.8 (1M context), with four parallel research agents (offline codebase map + 3 online prior-art deep-dives) |
-| **Repo state** | Originally analyzed at branch `main` @ `8f75594`; implementation/package status updated through `main` @ `41fb05c` |
+| **Repo state** | Originally analyzed at branch `main` @ `8f75594`; implementation/package status updated through Feature 141 on branch `141-retained-renderer-unification` |
 | **Scope** | The **radical** framework options only (per request), grounded in offline code reading and online prior art (React Fiber, Jetpack Compose, SwiftUI/AttributeGraph, Flutter, Elm, WebRender, Chromium `cc`, Skia, HarfBuzz) |
-| **Status** | Current through Feature 140: P0, P1, and P2 shipped; next planned phase is P3 retained-renderer unification. |
+| **Status** | Current through Feature 141: P0, P1, P2, and P3 are implemented; P3 validation is recorded with one local Feature091 timeout limitation. |
 
 ---
 
@@ -14,18 +14,18 @@
 
 This is two documents in one: an **analysis** of where FS.GG.Rendering actually is (grounded in the live code, with `file:line` anchors), and a **comprehensive implementation plan** for the radical bets, sequenced into phases with change-sites, parity oracles, risks, and exit criteria. Sources for every external claim are in §16.
 
-### Current status update (2026-06-17 17:42 CEST)
+### Current status update (2026-06-17 18:31 CEST)
 
-This report began as a plan from `main` @ `8f75594`. The repository has since shipped the first three roadmap phases and pushed package version `0.1.3-preview.1`:
+This report began as a plan from `main` @ `8f75594`. The repository has since shipped the first three roadmap phases, pushed package version `0.1.3-preview.1`, and implemented Feature 141 / P3 on `141-retained-renderer-unification`:
 
 | Phase | Status | Evidence |
 |---|---|---|
 | **P0 - Quick win** | Shipped as Feature 138. Layout attrs and the metrics fix are merged. | `5ae3dad` `Merge 138-layout-attrs-metrics-fix (squash)`; package bump `c1318ee`. |
 | **P1 - Duplication reduction** | Shipped as Feature 139. The shared current-node assembly seam is merged. | `f92621d` `Merge 139-shared-assembly-extraction (squash)`; package bump `143342f`. |
 | **P2 - IR foundation** | Shipped as Feature 140. Internal Controls composition, modifier classification, local z-order, portals/layers, legacy lowering, and glyph-run proof support are merged. | `ac2b560` `Merge 140-modifier-layer-ir (squash)`; package bump `41fb05c` to `0.1.3-preview.1`. |
-| **P3 - Keystone** | Next. Retained-renderer unification remains the next structural phase. | Build on the Feature 139 seam and Feature 140 composition foundation. |
+| **P3 - Keystone** | Implemented as Feature 141. Retained fragments now store owner-produced assembly results and invalidation evidence; structural scene fingerprinting moved to the assembly-owner side and retained rendering aliases it. | `specs/141-retained-renderer-unification/readiness.md`; focused Feature141, Feature139, Feature140, public-surface, audit, solution build, non-Controls broad deterministic suites, surface-baseline refresh, and offscreen harness passed. |
 
-Feature 140 validation is recorded in `specs/140-modifier-layer-ir/readiness.md`: focused Feature 140 tests, legacy compatibility oracles, broad deterministic suites, GL-local Skia/Smoke suites, the offscreen rendering harness, and surface-baseline refresh passed. The remaining caveats are tooling state, not Feature 140 behavior: `./fake.sh` is absent and the `tests/Package.Tests` surface filter still expects stale baseline paths.
+Feature 141 validation is recorded in `specs/141-retained-renderer-unification/readiness.md`: focused Feature 141 tests include 200 deterministic generated direct/cold/warm retained equivalence cases; Feature 139 and Feature 140 compatibility filters passed; retained/cache/fingerprint `Audit` filters passed; the full solution build passed; all non-Controls broad deterministic test projects passed; `scripts/refresh-surface-baselines.fsx` passed; and the offscreen harness wrote `artifacts/feature141-harness/T1/run.json` with `status: passed`. The remaining caveat is local validation scope: `dotnet test tests/Controls.Tests/Controls.Tests.fsproj --filter Feature091 --no-build` did not complete in the shell window and was interrupted after more than two minutes, so it is recorded as a limitation rather than a pass.
 
 Table of contents:
 

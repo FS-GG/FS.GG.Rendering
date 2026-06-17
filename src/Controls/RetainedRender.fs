@@ -13,16 +13,42 @@ open FS.GG.UI.DesignSystem
 
 type internal RetainedId = RetainedId of uint64
 
+type internal RetainedInvalidationDecision =
+    | Reused
+    | Rebuilt
+    | Discarded
+    | FreshFallback
+
+type internal RetainedInvalidationReason =
+    | InitialAssembly
+    | StableInputs
+    | VisualInput
+    | LayoutInput
+    | ModifierLayerInput
+    | TextProofInput
+    | ExplicitIdentity
+    | ChildOrdering
+    | ChildRemoval
+    | ChildInsertion
+    | ThemeInput
+    | CacheBoundaryInput
+    | UnsafeReuse
+
+type internal RetainedInvalidationEvidence =
+    { Decision: RetainedInvalidationDecision
+      Reason: RetainedInvalidationReason
+      FingerprintBefore: uint64 option
+      FingerprintAfter: uint64 option
+      BoxBefore: FS.GG.UI.Scene.Rect option
+      BoxAfter: FS.GG.UI.Scene.Rect option }
+
 type internal RenderFragment =
     { OwnScene: FS.GG.UI.Scene.Scene list
-      SubtreeScene: FS.GG.UI.Scene.Scene list
-      // Feature 137 (US2): the deferred z-top overlay contribution of this subtree (the painted subtrees
-      // of any `Overlay`/transient descendants, collected OUT of the in-flow clip hierarchy). Empty for
-      // an overlay-free subtree, so `SubtreeScene`/`Fingerprint` and cache parity are unchanged there.
-      OverlayScene: FS.GG.UI.Scene.Scene list
+      // Feature 141 (R1b): owner-produced assembly result. Retained rendering stores and reuses this
+      // result instead of carrying independently constructible in-flow/overlay composition fields.
+      Assembly: ControlInternals.CurrentNodeAssemblyResult
       Box: FS.GG.UI.Scene.Rect option
-      // Feature 120 (US3): the structural fingerprint of `SubtreeScene` (computed when painted, carried on Keep).
-      Fingerprint: uint64 }
+      InvalidationEvidence: RetainedInvalidationEvidence list }
 
 type internal RetainedNode<'msg> =
     { Identity: RetainedId
@@ -169,15 +195,37 @@ module internal RetainedRender =
         (box: FS.GG.UI.Scene.Rect option)
         (own: FS.GG.UI.Scene.Scene list)
         (children: RetainedNode<'msg> list)
-        : FS.GG.UI.Scene.Scene list * FS.GG.UI.Scene.Scene list =
+        : ControlInternals.CurrentNodeAssemblyResult =
         let childAssemblies: ControlInternals.CurrentNodeAssemblyResult list =
             children
-            |> List.map (fun child ->
-                { InFlowScene = child.Fragment.SubtreeScene
-                  OverlayScene = child.Fragment.OverlayScene })
+            |> List.map (fun child -> child.Fragment.Assembly)
 
-        let assembled = ControlInternals.assembleCurrentNode nc box own childAssemblies
-        assembled.InFlowScene, assembled.OverlayScene
+        ControlInternals.assembleCurrentNode nc box own childAssemblies
+
+    let private evidence
+        (decision: RetainedInvalidationDecision)
+        (reason: RetainedInvalidationReason)
+        (before: RenderFragment option)
+        (after: ControlInternals.CurrentNodeAssemblyResult)
+        (afterBox: Rect option)
+        : RetainedInvalidationEvidence =
+        { Decision = decision
+          Reason = reason
+          FingerprintBefore = before |> Option.map (fun fragment -> fragment.Assembly.Fingerprint)
+          FingerprintAfter = Some after.Fingerprint
+          BoxBefore = before |> Option.bind (fun fragment -> fragment.Box)
+          BoxAfter = afterBox }
+
+    let private retainedFragment
+        (own: Scene list)
+        (assembly: ControlInternals.CurrentNodeAssemblyResult)
+        (box: Rect option)
+        (evidence: RetainedInvalidationEvidence)
+        : RenderFragment =
+        { OwnScene = own
+          Assembly = assembly
+          Box = box
+          InvalidationEvidence = [ evidence ] }
 
     // ---------------------------------------------------------------------------------------------
     // Feature 113 (Phase 5) — the control-internal memoization seam. Pure + total + deterministic:
@@ -284,160 +332,8 @@ module internal RetainedRender =
     // unchanged AND its entry is still resident.
     let private isCacheablePicture (c: Control<'msg>) = c.Kind = "data-grid-row"
 
-    // Feature 120 (US3, FR-008/FR-010): the collision-resistant structural fingerprint of a painted
-    // scene. An FNV-1a fold over a deterministic walk: the UNBOUNDED dimension (the node tree AND every
-    // node's intrinsic list payload — points, vertices, chart values) is recursed/iterated element by
-    // element, so NOTHING is truncated (the defect of the superseded `sprintf "%A"` over the whole
-    // subtree, which truncates sequences past ~100 elements and so collides on long lists). Each small
-    // fixed leaf payload (Color/Rect/Paint/Font) is folded via `%A` (complete for a bounded record). A
-    // distinct tag per case keeps structurally-different shapes apart. Pure, total, deterministic — equal
-    // scenes hash equal, any render-affecting change flips the value. Exhaustive over `SceneNode`.
-    let hashScene (scenes: FS.GG.UI.Scene.Scene list) : uint64 =
-        let mutable h = 0xcbf29ce484222325UL // mutable: hot path / FNV-1a accumulator
-        let prime = 0x100000001b3UL
-        let mix (x: uint64) = h <- (h ^^^ x) * prime
-        let bits (d: float) = uint64 (System.BitConverter.DoubleToInt64Bits d)
-
-        let mixStr (s: string) =
-            mix (uint64 s.Length)
-            for c in s do
-                mix (uint64 (uint16 c))
-
-        let mixA (v: 'a) = mixStr (sprintf "%A" v)
-        let mixTag (t: int) = mix (uint64 (uint32 t))
-
-        let rec goNodes (nodes: SceneNode list) =
-            mixTag 0xA1
-            mix (uint64 (List.length nodes))
-            nodes |> List.iter goNode
-            mixTag 0xA2
-
-        and goScene (s: Scene) = goNodes s.Nodes
-
-        and goNode (node: SceneNode) =
-            match node with
-            | Empty -> mixTag 1
-            | Group scenes ->
-                mixTag 2
-                mix (uint64 (List.length scenes))
-                scenes |> List.iter goScene
-            | Rectangle(b, c) ->
-                mixTag 3
-                mixA b
-                mixA c
-            | PaintedRectangle(r, p) ->
-                mixTag 4
-                mixA r
-                mixA p
-            | Circle(ctr, rad, fill) ->
-                mixTag 5
-                mixA ctr
-                mix (bits rad)
-                mixA fill
-            | FilledEllipse(b, fill) ->
-                mixTag 6
-                mixA b
-                mixA fill
-            | Ellipse(r, p) ->
-                mixTag 7
-                mixA r
-                mixA p
-            | Line(a, b, p) ->
-                mixTag 8
-                mixA a
-                mixA b
-                mixA p
-            | Path(spec, p) ->
-                mixTag 9
-                mixA spec
-                mixA p
-            | Points(pts, p) ->
-                mixTag 10
-                mix (uint64 (List.length pts))
-                pts |> List.iter mixA
-                mixA p
-            | Vertices(m, vs, p) ->
-                mixTag 11
-                mixA m
-                mix (uint64 (List.length vs))
-                vs |> List.iter mixA
-                mixA p
-            | Arc(r, sa, ea, p) ->
-                mixTag 12
-                mixA r
-                mix (bits sa)
-                mix (bits ea)
-                mixA p
-            | Text((x, y), t, c) ->
-                mixTag 13
-                mix (bits x)
-                mix (bits y)
-                mixStr t
-                mixA c
-            | TextRun run ->
-                mixTag 14
-                mixStr run.Text
-                mixA run.Position
-                mixA run.Font
-                mixA run.Paint
-            | Image((x, y, w, ht), src) ->
-                mixTag 15
-                mix (bits x)
-                mix (bits y)
-                mix (bits w)
-                mix (bits ht)
-                mixStr src
-            | ClipNode(clip, scene) ->
-                mixTag 16
-                mixA clip
-                goScene scene
-            | RegionNode(region, p) ->
-                mixTag 17
-                mixA region
-                mixA p
-            | ColorSpaceNode(cs, scene) ->
-                mixTag 18
-                mixA cs
-                goScene scene
-            | PerspectiveNode(t, scene) ->
-                mixTag 19
-                mixA t
-                goScene scene
-            | PictureNode picture ->
-                mixTag 20
-                mixStr picture.Name
-                goScene picture.Scene
-            | Chart values ->
-                mixTag 21
-                mix (uint64 (List.length values))
-                values |> List.iter (bits >> mix)
-            | Translate((dx, dy), scene) ->
-                mixTag 22
-                mix (bits dx)
-                mix (bits dy)
-                goScene scene
-            | SizedText((x, y), t, size, c) ->
-                mixTag 23
-                mix (bits x)
-                mix (bits y)
-                mixStr t
-                mix (bits size)
-                mixA c
-            | GlyphRun run ->
-                mixTag 25
-                mixStr run.Data.Text
-                mixA run.Data.Font
-                mixStr run.Data.Fingerprint
-                mixA run.Position
-                mixA run.Paint
-            // Feature 120 (FR-007): transparent — hash the wrapped subtree's content.
-            | CachedSubtree boundary ->
-                mixTag 24
-                goScene boundary.Scene
-
-        mix (uint64 (List.length scenes))
-        scenes |> List.iter goScene
-        h
+    // Feature 120/141: compatibility alias over the owner-side structural Scene fingerprint.
+    let hashScene scenes = ControlInternals.hashScene scenes
 
     // The COMPLETE correctness key for a cacheable boundary: the node's evaluated box + the
     // collision-resistant structural fingerprint of its painted subtree (feature 120, FR-008 — replacing
@@ -447,7 +343,7 @@ module internal RetainedRender =
     // is the one already memoized on the fragment (cost ∝ damage, not tree size).
     let private pictureKeyOf (n: RetainedNode<'msg>) : PictureCacheKey =
         { Box = n.Fragment.Box
-          Fingerprint = n.Fragment.Fingerprint }
+          Fingerprint = n.Fragment.Assembly.Fingerprint }
 
     // Feature 120 (US4, FR-015): the integer area of the UNION of a set of damage rectangles (no longer
     // the sum), clamped to the frame area. Coordinate-compression over the distinct boxes: each elementary
@@ -723,16 +619,11 @@ module internal RetainedRender =
             let children = nc.Children |> List.mapi (fun i child -> build (childPath path i) child)
             let box = ControlInternals.nodeBox boundsById path nc
             // Feature 137 (US1/US2): clip children to the node box + collect the overlay contribution.
-            let subtree, overlay = assembleRetainedNode nc box own children
+            let assembly = assembleRetainedNode nc box own children
 
             { Identity = mint ()
               Control = nc
-              Fragment =
-                { OwnScene = own
-                  SubtreeScene = subtree
-                  OverlayScene = overlay
-                  Box = box
-                  Fingerprint = hashScene subtree }
+              Fragment = retainedFragment own assembly box (evidence FreshFallback InitialAssembly None assembly box)
               Children = children }
 
         let root = build "0" control
@@ -763,7 +654,7 @@ module internal RetainedRender =
         // rebuild — the adapter reuses it instead of calling `Control.renderTree` a second time.
         let render: ControlRenderResult<'msg> =
             // Feature 137 (US2): in-flow first, then the deferred z-top overlay group (empty ⇒ unchanged).
-            { Scene = (root.Fragment.SubtreeScene @ root.Fragment.OverlayScene) |> Scene.group
+            { Scene = (root.Fragment.Assembly.InFlowScene @ root.Fragment.Assembly.OverlayScene) |> Scene.group
               Layout = layoutRoot
               Bounds = ControlInternals.collectBoundsWith boundsById control
               Diagnostics = Control.diagnostics control
@@ -983,21 +874,16 @@ module internal RetainedRender =
 
         // Build a brand-new subtree (Replace / ChildInsert / fallback): mint fresh ids, paint
         // every node. Used where there is no matched prev node — so no false identity is retained.
-        let rec buildFresh (path: string) (nc: Control<'msg>) : RetainedNode<'msg> =
+        let rec buildFresh (reason: RetainedInvalidationReason) (path: string) (nc: Control<'msg>) : RetainedNode<'msg> =
             let own = paintFresh path nc
-            let children = nc.Children |> List.mapi (fun i child -> buildFresh (childPath path i) child)
+            let children = nc.Children |> List.mapi (fun i child -> buildFresh reason (childPath path i) child)
             let box = ControlInternals.nodeBox boundsById path nc
             // Feature 137 (US1/US2): clip children to the node box + collect the overlay contribution.
-            let subtree, overlay = assembleRetainedNode nc box own children
+            let assembly = assembleRetainedNode nc box own children
 
             { Identity = mint ()
               Control = nc
-              Fragment =
-                { OwnScene = own
-                  SubtreeScene = subtree
-                  OverlayScene = overlay
-                  Box = box
-                  Fingerprint = hashScene subtree }
+              Fragment = retainedFragment own assembly box (evidence FreshFallback reason None assembly box)
               Children = children }
 
         // Recompute a structurally-identical subtree whose box SHIFTED (a `Keep` relaid out by an
@@ -1012,16 +898,12 @@ module internal RetainedRender =
 
             let box = ControlInternals.nodeBox boundsById path nc
             // Feature 137 (US1/US2): clip children to the node box + collect the overlay contribution.
-            let subtree, overlay = assembleRetainedNode nc box own children
+            let assembly = assembleRetainedNode nc box own children
+            let reason = if themeChanged then ThemeInput else LayoutInput
 
             { Identity = pr.Identity
               Control = nc
-              Fragment =
-                { OwnScene = own
-                  SubtreeScene = subtree
-                  OverlayScene = overlay
-                  Box = box
-                  Fingerprint = hashScene subtree }
+              Fragment = retainedFragment own assembly box (evidence Rebuilt reason (Some pr.Fragment) assembly box)
               Children = children }
 
         // The reuse-driven walk: produce the next retained node for `nc` under `patch`, matched
@@ -1034,7 +916,12 @@ module internal RetainedRender =
                 if box = pr.Fragment.Box && not themeChanged then
                     // unchanged AND unshifted AND same theme: reuse the cached subtree verbatim
                     // (identity-at-rest: zero re-measure/re-paint, zero id churn, same RetainedId).
-                    { pr with Control = nc }
+                    { pr with
+                        Control = nc
+                        Fragment =
+                            { pr.Fragment with
+                                InvalidationEvidence =
+                                    [ evidence Reused StableInputs (Some pr.Fragment) pr.Fragment.Assembly box ] } }
                 else
                     // an upstream layout change shifted this subtree, or the theme changed (FR-008):
                     // recompute under the new theme/box, carrying identities (the node is the same).
@@ -1044,7 +931,7 @@ module internal RetainedRender =
                 // Kind/Key changed -> a different node. Mint a fresh identity; the old identity
                 // (and its UI state) is dropped — no false identity across a Replace (SC-001 -).
                 changedBound <- changedBound + Control.count nc
-                buildFresh path nc
+                buildFresh ExplicitIdentity path nc
 
             | Reconcile.NodePatch.Update u ->
                 let box = ControlInternals.nodeBox boundsById path nc
@@ -1085,22 +972,53 @@ module internal RetainedRender =
                         | Reconcile.ChildMove (f, _, p) -> build cp pr.Children.[f] p c
                         | Reconcile.ChildInsert (_, node) ->
                             changedBound <- changedBound + Control.count node
-                            buildFresh cp node
+                            buildFresh ChildInsertion cp node
                         // Unreachable (ChildRemove is filtered out of `producing`); kept total —
                         // paint the next child fresh rather than throw.
-                        | Reconcile.ChildRemove _ -> buildFresh cp c)
+                        | Reconcile.ChildRemove _ -> buildFresh ChildRemoval cp c)
 
                 // Feature 137 (US1/US2): clip children to the node box + collect the overlay contribution.
-                let subtree, overlay = assembleRetainedNode nc box own children
+                let assembly = assembleRetainedNode nc box own children
+                let hasChildInsertion =
+                    u.Children
+                    |> List.exists (function
+                        | Reconcile.ChildInsert _ -> true
+                        | _ -> false)
+
+                let hasChildRemoval =
+                    u.Children
+                    |> List.exists (function
+                        | Reconcile.ChildRemove _ -> true
+                        | _ -> false)
+
+                let hasChildMove =
+                    u.Children
+                    |> List.exists (function
+                        | Reconcile.ChildMove _ -> true
+                        | _ -> false)
+
+                let hasLayoutAttrChange =
+                    u.AttrChanges
+                    |> List.exists (fun change ->
+                        match change with
+                        | Reconcile.AttrSet attr ->
+                            attr.Category = AttrCategory.Layout
+                            || Set.contains attr.Name ControlInternals.layoutAffectingAttrNames
+                        | Reconcile.AttrRemoved name ->
+                            Set.contains name ControlInternals.layoutAffectingAttrNames
+                            || (pr.Control.Attributes |> List.exists (fun attr -> attr.Name = name && attr.Category = AttrCategory.Layout)))
+
+                let reason =
+                    if hasChildRemoval then ChildRemoval
+                    elif hasChildInsertion then ChildInsertion
+                    elif hasChildMove then ChildOrdering
+                    elif hasLayoutAttrChange then LayoutInput
+                    elif not ownUnchanged then VisualInput
+                    else StableInputs
 
                 { Identity = pr.Identity
                   Control = nc
-                  Fragment =
-                    { OwnScene = own
-                      SubtreeScene = subtree
-                      OverlayScene = overlay
-                      Box = box
-                      Fingerprint = hashScene subtree }
+                  Fragment = retainedFragment own assembly box (evidence Rebuilt reason (Some pr.Fragment) assembly box)
                   Children = children }
 
         let newRoot = build "0" prev.Root result.Patch next
@@ -1189,14 +1107,14 @@ module internal RetainedRender =
                     pictureHits <- pictureHits + 1
                     // Reuse-stable boundary → emit + replay; tally the skipped painted nodes (SC-004).
                     replayHitIds.Add n.Identity |> ignore
-                    replaySkippedNodes <- replaySkippedNodes + countNodes n.Fragment.SubtreeScene
+                    replaySkippedNodes <- replaySkippedNodes + countNodes n.Fragment.Assembly.InFlowScene
                 else
                     pictureMisses <- pictureMisses + 1
 
                 // Native-byte model: every cacheable boundary resident after this frame holds a recorded
                 // picture proportional to its subtree node count (bounded by the cap).
                 if prev.PictureCacheEnabled then
-                    replayNativeBytes <- replayNativeBytes + countNodes n.Fragment.SubtreeScene * bytesPerNode
+                    replayNativeBytes <- replayNativeBytes + countNodes n.Fragment.Assembly.InFlowScene * bytesPerNode
 
                 pcEntries <- Map.add n.Identity (pcClock, key) pcEntries
 
@@ -1292,13 +1210,13 @@ module internal RetainedRender =
         // painter replays its recorded picture instead of re-walking it. TRANSPARENT to pixels (the
         // painter sees through when replay is disabled, replays the identical content when enabled) and to
         // every IR consumer (`describe`/diagnostics/`measure` recurse into the wrapped scene). A
-        // reuse-stable boundary is at rest, so its wrapped content is exactly `Fragment.SubtreeScene`.
+        // reuse-stable boundary is at rest, so its wrapped content is exactly `Fragment.Assembly.InFlowScene`.
         let needsEmitWalk = anyActive || replayHitIds.Count > 0
 
         let sceneList =
             if not needsEmitWalk then
                 // Feature 137 (US2): in-flow first, then the deferred z-top overlay group (empty ⇒ unchanged).
-                newRoot.Fragment.SubtreeScene @ newRoot.Fragment.OverlayScene
+                newRoot.Fragment.Assembly.InFlowScene @ newRoot.Fragment.Assembly.OverlayScene
             else
                 // Feature 139 (R1a): the emit walk also uses the shared current-node assembly owner, with
                 // each retained fragment supplying the node box and child assemblies.
@@ -1307,13 +1225,19 @@ module internal RetainedRender =
                         let (RetainedId cacheId) = n.Identity
                         // A cacheable boundary (data-grid-row) is a leaf with no overlay descendants; carry
                         // its (empty) overlay contribution for completeness.
-                        { InFlowScene =
+                        let inFlow =
                             [ { Nodes =
                                   [ CachedSubtree
                                         { CacheId = cacheId
-                                          Fingerprint = n.Fragment.Fingerprint
-                                          Scene = Scene.group n.Fragment.SubtreeScene } ] } ]
-                          OverlayScene = n.Fragment.OverlayScene }
+                                          Fingerprint = n.Fragment.Assembly.Fingerprint
+                                          Scene = Scene.group n.Fragment.Assembly.InFlowScene } ] } ]
+                        let overlay = n.Fragment.Assembly.OverlayScene
+
+                        { InFlowScene = inFlow
+                          OverlayScene = overlay
+                          Fingerprint = ControlInternals.hashScene (inFlow @ overlay)
+                          Diagnostics = []
+                          ChildContributions = [] }
                     else
                         let ownStatic = n.Fragment.OwnScene
 

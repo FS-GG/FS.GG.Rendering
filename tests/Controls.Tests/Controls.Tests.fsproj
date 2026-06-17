@@ -105,6 +105,7 @@
     <Compile Include="Feature140PortalLayerTests.fs" />
     <Compile Include="Feature140LegacyCompatibilityTests.fs" />
     <Compile Include="Feature140LegacyCacheTextOverlayTests.fs" />
+    <Compile Include="Feature141RetainedRendererUnificationTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

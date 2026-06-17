@@ -21,23 +21,49 @@ open FS.GG.UI.DesignSystem
 /// counter (no clock/randomness), so identical frame sequences mint identical ids (SC-005).
 type internal RetainedId = RetainedId of uint64
 
-/// The cached, reusable unit of measure + paint for one retained node. `OwnScene` is the node's
-/// own painted contribution (`Control.renderTree`'s per-node `here`); `SubtreeScene` is the
-/// in-flow result from the shared Feature 139 `ControlInternals.assembleCurrentNode` owner for the node
-/// and descendants (reused verbatim when the whole subtree is unchanged AND unshifted); `Box` is the
-/// node's evaluated absolute box (the reuse key).
+/// Feature 141 (R1b): retained reuse decision category recorded on a fragment. These values are
+/// diagnostics/evidence only; they never alter rendered output.
+type internal RetainedInvalidationDecision =
+    | Reused
+    | Rebuilt
+    | Discarded
+    | FreshFallback
+
+/// Feature 141 (R1b): the render-affecting input class that forced or permitted a retained decision.
+type internal RetainedInvalidationReason =
+    | InitialAssembly
+    | StableInputs
+    | VisualInput
+    | LayoutInput
+    | ModifierLayerInput
+    | TextProofInput
+    | ExplicitIdentity
+    | ChildOrdering
+    | ChildRemoval
+    | ChildInsertion
+    | ThemeInput
+    | CacheBoundaryInput
+    | UnsafeReuse
+
+/// Feature 141 (R1b): deterministic retained invalidation evidence. Fingerprints and boxes are snapshots
+/// around the decision so tests and readiness notes can distinguish reuse, rebuild, discard, and fallback.
+type internal RetainedInvalidationEvidence =
+    { Decision: RetainedInvalidationDecision
+      Reason: RetainedInvalidationReason
+      FingerprintBefore: uint64 option
+      FingerprintAfter: uint64 option
+      BoxBefore: FS.GG.UI.Scene.Rect option
+      BoxAfter: FS.GG.UI.Scene.Rect option }
+
+/// The cached, reusable unit of measure + paint for one retained node. `OwnScene` is the node's own
+/// painted contribution (`Control.renderTree`'s per-node `here`). `Assembly` is the owner-produced result
+/// from `ControlInternals.assembleCurrentNode`; retained rendering stores and reuses it instead of owning
+/// independent in-flow/overlay composition fields. `Box` is the evaluated absolute box (the reuse key).
 type internal RenderFragment =
     { OwnScene: FS.GG.UI.Scene.Scene list
-      SubtreeScene: FS.GG.UI.Scene.Scene list
-      /// Feature 139 (R1a): the deferred z-top overlay contribution returned by the shared current-node
-      /// assembly owner. Empty for an overlay-free subtree, so `SubtreeScene`/`Fingerprint`/cache parity
-      /// are unchanged there.
-      OverlayScene: FS.GG.UI.Scene.Scene list
+      Assembly: ControlInternals.CurrentNodeAssemblyResult
       Box: FS.GG.UI.Scene.Rect option
-      /// Feature 120 (US3, FR-008): the collision-resistant structural fingerprint of `SubtreeScene`,
-      /// computed via `hashScene` when the fragment is (re)painted and carried unchanged on a `Keep`
-      /// reuse (cost ∝ damage, not tree size). The backend replay key and the `CachedSubtree.Fingerprint`.
-      Fingerprint: uint64 }
+      InvalidationEvidence: RetainedInvalidationEvidence list }
 
 /// One retained control node: its stable identity, the lowered control it was built from, its
 /// cached render fragment, and its retained children (mirroring `Control.Children` order).
@@ -103,7 +129,7 @@ type internal RetainedUiState =
 
 /// Feature 116 (Phase 7, FR-006): the picture cache's COMPLETE correctness key for one cacheable
 /// boundary. `Box` is the node's evaluated absolute box (explicit for attribution); `Picture` is a
-/// structural digest of the node's painted subtree (`Fragment.SubtreeScene`) — which embeds EVERY
+/// structural digest of the node's painted subtree (`Fragment.Assembly.InFlowScene`) — which embeds EVERY
 /// render-affecting input (theme colours, clip, opacity, transform, font/text, visual-state) by
 /// construction, so equality on this key proves a hit is byte-identical to a fresh paint and any
 /// single changed input forces a miss (no input can be omitted). Compared by F# structural `=`.

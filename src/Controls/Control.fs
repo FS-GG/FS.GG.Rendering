@@ -2271,11 +2271,169 @@ module internal ControlInternals =
         else
             []
 
+    // Feature 141 (R1b): the structural fingerprint now lives with the authoritative assembly owner, not
+    // only in RetainedRender. RetainedRender.hashScene remains as a compatibility alias over this function.
+    let hashScene (scenes: Scene list) : uint64 =
+        let mutable h = 0xcbf29ce484222325UL // mutable: hot path / FNV-1a accumulator
+        let prime = 0x100000001b3UL
+        let mix (x: uint64) = h <- (h ^^^ x) * prime
+        let bits (d: float) = uint64 (System.BitConverter.DoubleToInt64Bits d)
+
+        let mixStr (s: string) =
+            mix (uint64 s.Length)
+            for c in s do
+                mix (uint64 (uint16 c))
+
+        let mixA (v: 'a) = mixStr (sprintf "%A" v)
+        let mixTag (t: int) = mix (uint64 (uint32 t))
+
+        let rec goNodes (nodes: SceneNode list) =
+            mixTag 0xA1
+            mix (uint64 (List.length nodes))
+            nodes |> List.iter goNode
+            mixTag 0xA2
+
+        and goScene (s: Scene) = goNodes s.Nodes
+
+        and goNode (node: SceneNode) =
+            match node with
+            | Empty -> mixTag 1
+            | Group scenes ->
+                mixTag 2
+                mix (uint64 (List.length scenes))
+                scenes |> List.iter goScene
+            | Rectangle(b, c) ->
+                mixTag 3
+                mixA b
+                mixA c
+            | PaintedRectangle(r, p) ->
+                mixTag 4
+                mixA r
+                mixA p
+            | Circle(ctr, rad, fill) ->
+                mixTag 5
+                mixA ctr
+                mix (bits rad)
+                mixA fill
+            | FilledEllipse(b, fill) ->
+                mixTag 6
+                mixA b
+                mixA fill
+            | Ellipse(r, p) ->
+                mixTag 7
+                mixA r
+                mixA p
+            | Line(a, b, p) ->
+                mixTag 8
+                mixA a
+                mixA b
+                mixA p
+            | Path(spec, p) ->
+                mixTag 9
+                mixA spec
+                mixA p
+            | Points(pts, p) ->
+                mixTag 10
+                mix (uint64 (List.length pts))
+                pts |> List.iter mixA
+                mixA p
+            | Vertices(m, vs, p) ->
+                mixTag 11
+                mixA m
+                mix (uint64 (List.length vs))
+                vs |> List.iter mixA
+                mixA p
+            | Arc(r, sa, ea, p) ->
+                mixTag 12
+                mixA r
+                mix (bits sa)
+                mix (bits ea)
+                mixA p
+            | Text((x, y), t, c) ->
+                mixTag 13
+                mix (bits x)
+                mix (bits y)
+                mixStr t
+                mixA c
+            | TextRun run ->
+                mixTag 14
+                mixStr run.Text
+                mixA run.Position
+                mixA run.Font
+                mixA run.Paint
+            | Image((x, y, w, ht), src) ->
+                mixTag 15
+                mix (bits x)
+                mix (bits y)
+                mix (bits w)
+                mix (bits ht)
+                mixStr src
+            | ClipNode(clip, scene) ->
+                mixTag 16
+                mixA clip
+                goScene scene
+            | RegionNode(region, p) ->
+                mixTag 17
+                mixA region
+                mixA p
+            | ColorSpaceNode(cs, scene) ->
+                mixTag 18
+                mixA cs
+                goScene scene
+            | PerspectiveNode(t, scene) ->
+                mixTag 19
+                mixA t
+                goScene scene
+            | PictureNode picture ->
+                mixTag 20
+                mixStr picture.Name
+                goScene picture.Scene
+            | Chart values ->
+                mixTag 21
+                mix (uint64 (List.length values))
+                values |> List.iter (bits >> mix)
+            | Translate((dx, dy), scene) ->
+                mixTag 22
+                mix (bits dx)
+                mix (bits dy)
+                goScene scene
+            | SizedText((x, y), t, size, c) ->
+                mixTag 23
+                mix (bits x)
+                mix (bits y)
+                mixStr t
+                mix (bits size)
+                mixA c
+            | CachedSubtree boundary ->
+                mixTag 24
+                goScene boundary.Scene
+            | GlyphRun run ->
+                mixTag 25
+                mixStr run.Data.Text
+                mixA run.Data.Font
+                mixStr run.Data.Fingerprint
+                mixA run.Position
+                mixA run.Paint
+
+        mix (uint64 (List.length scenes))
+        scenes |> List.iter goScene
+        h
+
+    /// Feature 141 (R1b): per-child metadata retained rendering stores as owner-produced assembly
+    /// evidence. It is deliberately descriptive; scene semantics remain the assembled scene lists.
+    type CurrentNodeChildContribution =
+        { Index: int
+          InFlowFingerprint: uint64
+          OverlayFingerprint: uint64 }
+
     /// Feature 139 (R1a): one node's assembled contribution split into normal in-flow paint and the
     /// deferred overlay group. This is internal contract shape only; no public scene IR changes.
     type CurrentNodeAssemblyResult =
         { InFlowScene: Scene list
-          OverlayScene: Scene list }
+          OverlayScene: Scene list
+          Fingerprint: uint64
+          Diagnostics: ControlDiagnostic list
+          ChildContributions: CurrentNodeChildContribution list }
 
     /// Feature 139 (R1a): the single current-semantics assembly owner. It deliberately captures only
     /// today's own-paint + child-paint + container-clip + overlay-promotion behavior; R2/R1b work such as
@@ -2291,13 +2449,37 @@ module internal ControlInternals =
         let childOverlay = childAssemblies |> List.collect _.OverlayScene
         let chain = compositionEntriesForControl control |> Composition.normalize
         let composed = composeContainerScene box ownScene childInFlow |> Composition.applyChain chain
+        let childContributions =
+            childAssemblies
+            |> List.mapi (fun index child ->
+                { Index = index
+                  InFlowFingerprint = hashScene child.InFlowScene
+                  OverlayFingerprint = hashScene child.OverlayScene })
+
+        let diagnostics =
+            chain.Diagnostics
+            |> List.map (fun d ->
+                { ControlId = control.Key
+                  ControlKind = control.Kind
+                  Code = UnsupportedStateCombination
+                  Severity = ControlDiagnosticSeverity.Warning
+                  Message = d.Message
+                  EvidencePath = None })
 
         if isOverlayNode control then
+            let overlayScene = composed @ childOverlay
             { InFlowScene = []
-              OverlayScene = composed @ childOverlay }
+              OverlayScene = overlayScene
+              Fingerprint = hashScene overlayScene
+              Diagnostics = diagnostics
+              ChildContributions = childContributions }
         else
+            let allScene = composed @ childOverlay
             { InFlowScene = composed
-              OverlayScene = childOverlay }
+              OverlayScene = childOverlay
+              Fingerprint = hashScene allScene
+              Diagnostics = diagnostics
+              ChildContributions = childContributions }
 
     /// The evaluated absolute box of a node, looked up by the same structural id `paintNode`
     /// uses (`Key |> defaultValue path`). `None` when the node was not laid out.

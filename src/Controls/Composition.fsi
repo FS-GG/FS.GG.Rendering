@@ -55,6 +55,17 @@ module internal Composition =
     val fingerprint: effects: ModifierEntry list -> uint64
     val applyChain: chain: ModifierChain -> content: Scene list -> Scene list
 
+    /// Feature 141 (R1b): retained reuse reads this normalized composition evidence instead of owning a
+    /// second modifier/layer/portal invalidation table.
+    type RetainedReuseEvidence =
+        { NormalizedModifierFingerprint: uint64
+          AffectsLayout: bool
+          AffectsPaint: bool
+          AffectsOrder: bool
+          Reasons: string list }
+
+    val retainedReuseEvidence: chain: ModifierChain -> RetainedReuseEvidence
+
     type OrderedContribution =
         { Id: string
           DeclIndex: int

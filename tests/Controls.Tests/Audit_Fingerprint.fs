@@ -44,6 +44,25 @@ let tests =
             Expect.equal (RetainedRender.hashScene a) (RetainedRender.hashScene a) "deterministic across repeated calls"
         }
 
+        test "Audit: Feature141 assembly-result fingerprints are owner-produced and deterministic" {
+            let own = sceneOf [ Rectangle((0.0, 0.0, 12.0, 8.0), blue) ]
+            let child = sceneOf [ SceneNode.Text((1.0, 2.0), "child", red) ]
+            let control: Control<int> = { Kind = "stack"; Key = Some "owner"; Attributes = []; Children = []; Content = None; Accessibility = None }
+            let box = { X = 0.0; Y = 0.0; Width = 120.0; Height = 60.0 }
+
+            let childAssembly =
+                ControlInternals.assembleCurrentNode control (Some box) child []
+
+            let assembledA = ControlInternals.assembleCurrentNode control (Some box) own [ childAssembly ]
+            let assembledB = ControlInternals.assembleCurrentNode control (Some box) own [ childAssembly ]
+
+            Expect.equal assembledA.Fingerprint assembledB.Fingerprint "equivalent owner assemblies produce stable fingerprints"
+            Expect.equal assembledA.Fingerprint (ControlInternals.hashScene (assembledA.InFlowScene @ assembledA.OverlayScene)) "assembly fingerprint is produced by ControlInternals.hashScene"
+            Expect.equal (RetainedRender.hashScene assembledA.InFlowScene) (ControlInternals.hashScene assembledA.InFlowScene) "RetainedRender.hashScene aliases the owner-side fingerprint"
+            Expect.equal assembledA.ChildContributions.Length 1 "assembly metadata records child contribution count"
+            Expect.equal assembledA.ChildContributions.Head.InFlowFingerprint childAssembly.Fingerprint "child contribution stores child owner fingerprint"
+        }
+
         // ---- COLLISION PROBE: enumerated single-field render-affecting mutations ----
         test "Audit: COLLISION PROBE — any single render-affecting change flips the fingerprint (FR-007)" {
             let baseScene = sceneOf [ Rectangle((0.0, 0.0, 10.0, 10.0), blue) ]

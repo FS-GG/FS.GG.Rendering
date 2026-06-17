@@ -185,6 +185,22 @@ module internal Composition =
     let fingerprint effects =
         effects |> normalize |> fun chain -> fnv1a chain.FingerprintInput
 
+    type RetainedReuseEvidence =
+        { NormalizedModifierFingerprint: uint64
+          AffectsLayout: bool
+          AffectsPaint: bool
+          AffectsOrder: bool
+          Reasons: string list }
+
+    let retainedReuseEvidence (chain: ModifierChain) : RetainedReuseEvidence =
+        let invalidations = chain.NormalizedEffects |> List.map (fun entry -> classify entry.Effect)
+
+        { NormalizedModifierFingerprint = fnv1a chain.FingerprintInput
+          AffectsLayout = invalidations |> List.exists _.AffectsLayout
+          AffectsPaint = invalidations |> List.exists _.AffectsPaint
+          AffectsOrder = invalidations |> List.exists _.AffectsOrder
+          Reasons = invalidations |> List.map _.Reason |> List.distinct }
+
     let private mapColor opacity color =
         let bounded = Math.Clamp(opacity, 0.0, 1.0)
         { color with Alpha = byte (Math.Round(float color.Alpha * bounded)) }

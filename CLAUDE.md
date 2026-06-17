@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/140-modifier-layer-ir/plan.md
+at specs/141-retained-renderer-unification/plan.md
 <!-- SPECKIT END -->
 
 ## Ant Design — source of truth

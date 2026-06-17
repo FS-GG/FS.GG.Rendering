@@ -31,4 +31,19 @@ let publicSurfaceTests =
                 let path = Path.Combine(repositoryRoot, "src", "Controls", file.Replace("/", string Path.DirectorySeparatorChar))
                 Expect.isTrue (File.Exists path) $"{file} exists")
         }
+
+        test "Feature141 retained renderer unification keeps public Controls surface stable" {
+            let controlFsi = File.ReadAllText(Path.Combine(repositoryRoot, "src", "Controls", "Control.fsi"))
+            let typesFsi = File.ReadAllText(Path.Combine(repositoryRoot, "src", "Controls", "Types.fsi"))
+
+            Expect.isTrue (controlFsi.Contains("module internal ControlInternals")) "assembly-owner changes stay internal"
+            Expect.isFalse (controlFsi.Contains("module RetainedRender")) "retained rendering is not promoted to public Control.fsi"
+            Expect.isTrue (typesFsi.Contains("type ControlRenderResult<'msg>")) "public render result remains present"
+            Expect.isTrue (typesFsi.Contains("Scene: Scene")) "ControlRenderResult.Scene remains public"
+            Expect.isTrue (typesFsi.Contains("Bounds: (ControlId * Rect) list")) "ControlRenderResult.Bounds remains public"
+            Expect.isTrue (typesFsi.Contains("Diagnostics: ControlDiagnostic list")) "ControlRenderResult.Diagnostics remains public"
+            Expect.isTrue (typesFsi.Contains("EventBindings: ControlEventBinding<'msg> list")) "ControlRenderResult.EventBindings remains public"
+            Expect.isTrue (typesFsi.Contains("BoundIds: Set<ControlId>")) "ControlRenderResult.BoundIds remains public"
+            Expect.isTrue (typesFsi.Contains("NodeCount: int")) "ControlRenderResult.NodeCount remains public"
+        }
     ]
