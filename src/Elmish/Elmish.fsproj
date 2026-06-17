@@ -5,7 +5,7 @@
     <IsPackable>true</IsPackable>
     <PackageId>FS.GG.UI.Elmish</PackageId>
     <AssemblyName>FS.GG.UI.Elmish</AssemblyName>
-    <Version>0.1.1-preview.1</Version>
+    <Version>0.1.2-preview.1</Version>
     <Title>FS.GG.UI.Elmish</Title>
     <Description>Elmish adapter contracts for FS.GG.UI V3 products.</Description>
     <PackageTags>fsharp;elmish;skia;ui</PackageTags>
