@@ -6,13 +6,13 @@
 | **Author** | Claude Opus 4.8 (1M context), with four parallel research agents (offline codebase map + 3 online prior-art deep-dives) |
 | **Repo state** | branch `main` @ `8f75594` (feature 137 merged: container clipping + overlay pass + scroll viewport) |
 | **Scope** | The **radical** framework options only (per request), grounded in offline code reading and online prior art (React Fiber, Jetpack Compose, SwiftUI/AttributeGraph, Flutter, Elm, WebRender, Chromium `cc`, Skia, HarfBuzz) |
-| **Status** | Analysis + plan. No code changed by this document. |
+| **Status** | Analysis + revised plan. No code changed by this document. |
 
 ---
 
 ## 0. How to read this
 
-This is two documents in one: an **analysis** of where FS.GG.Rendering actually is (grounded in the live code, with `file:line` anchors), and a **comprehensive implementation plan** for the radical bets, sequenced into phases with change-sites, parity oracles, risks, and exit criteria. Sources for every external claim are in §10.
+This is two documents in one: an **analysis** of where FS.GG.Rendering actually is (grounded in the live code, with `file:line` anchors), and a **comprehensive implementation plan** for the radical bets, sequenced into phases with change-sites, parity oracles, risks, and exit criteria. Sources for every external claim are in §16.
 
 Table of contents:
 
@@ -43,7 +43,7 @@ The weakness is **architectural duplication**, not missing capability. The two r
 
 **The thesis, confirmed by every mature framework we studied:** *incrementality must be a generic memoization/reconciliation layer wrapped around exactly one pure builder — never a second hand-written builder.* React (one component fn + Fiber bailout), Compose (one `@Composable` + slot-table skipping), SwiftUI (one `body` + AttributeGraph), Flutter (one `build` + the Element tree's single `updateChild`), and Elm (one pure `view` + `lazy`/diff) **all** have exactly one producer of UI structure. None has a "full" path and an "incremental" path. The FS.GG bug is precisely the anti-pattern they all avoid.
 
-Therefore the radical program below is organized so that the **first deep refactor collapses the two paths into one**, and the others (a modifier algebra, first-class layers/portals, a portable IR, multi-backend rendering, real text, a real compositor, real interaction) are built on top of that single, now-trustworthy producer. The payoff compounds: every subsequent capability is added once, in one place, with parity guaranteed by construction rather than chased by tests.
+Therefore the radical program below is organized around a narrower rule: **remove duplicated assembly before adding new public assembly semantics.** The original "R2 before R1" sequencing is too risky if it forces the modifier/layer rules to be implemented twice first. The revised plan introduces a small **R1a shared-assembly extraction** before public IR churn, then lands the modifier/layer algebra, then completes the retained-renderer unification. The payoff still compounds: every subsequent capability is added once, in one place, with parity guaranteed by construction rather than chased by tests.
 
 ---
 
@@ -53,9 +53,9 @@ Selected (the radical options):
 
 | # | Workstream | One-line radical goal | Depends on |
 |---|---|---|---|
-| **R1** | Unify the renderer | Delete the second builder; one pure `assemble` + a generic memo/reconcile layer; fragments constructor-private so a second producer is a *compile error* | — (enabled by R2) |
-| **R2** | Modifier algebra + layers/portals | Clip/opacity/offset/z/cache become composable *modifiers*; z-order and out-of-tree portals become first-class Scene-IR concepts | — |
-| **R3** | Layout model + intrinsic protocol | Surface the already-wired flex model as attributes; add a constraints-down/sizes-up + intrinsic-size protocol | — (R3a), R1 (R3b) |
+| **R1** | Unify the renderer | **R1a:** extract one shared assembly function without public IR churn. **R1b:** delete the second builder; one pure `assemble` + a generic memo/reconcile layer; fragments constructor-private so a second producer is a *compile error* | R1a: —; R1b: R1a + R2 |
+| **R2** | Modifier algebra + layers/portals | Clip/opacity/offset/z/cache become composable *modifiers*; z-order and out-of-tree portals become first-class Scene-IR concepts | R1a |
+| **R3** | Layout model + intrinsic protocol | Surface the already-wired flex model as attributes; add a constraints-down/sizes-up + intrinsic-size protocol | — (R3a), R1b (R3b) |
 | **R4** | Interaction/overlay state | Transient surfaces genuinely open/close, trap focus, dismiss-on-outside; anchored portals | R2, R3 |
 | **R5** | Scene IR as portable protocol | Versioned TLV serialization + multi-backend (server PNG → CanvasKit/WASM → Canvas2D) | R2, R7 |
 | **R6** | Compositor | Layer-promotion heuristic + damage scissoring + content/transform key split + texture tier | R2 |
@@ -91,7 +91,7 @@ All anchors verified against `8f75594` unless marked `~`.
 ### 3.4 Layout — `src/Layout/*` (the surprise: it's already complete)
 - `LayoutIntent` (`Types.fsi`) already has the **full flex model**: `Direction, Wrap, AlignItems, AlignSelf, JustifyContent, Padding, Margin, Gap, Size, MinSize, MaxSize, FlexGrow, FlexShrink, FlexBasis`.
 - The Yoga binding (`Layout.fs:376-411`) **already wires every one of those** to `YGNodeStyleSet*` (FlexDirection, Wrap, AlignItems/Self, JustifyContent, Padding, Margin, Gap, Width/Height, Min/Max).
-- **The only gap:** `Control.toLayout` reads just `width`/`height`/`orientation`, and `layoutAffectingAttrNames = {width,height,orientation}`. So **the entire flex model is one mapping function away from being authorable.** (This is why T027 dead-ended last session — `flexShrink 0` on the shell bands would have pinned them; the machinery was there, just unexposed.)
+- **The main gap:** `Control.toLayout` reads just `width`/`height`/`orientation`, hardcodes `Padding = 8` and `Gap = 8`, and `layoutAffectingAttrNames = {width,height,orientation}`. Some authoring builders already exist (`Attr.padding`, `Attr.margin`), but they are ignored by `toLayout` and the drift tests currently assert they are not layout-driving. So the flex model is mostly one mapping/test update away from being authorable, not a lower-level Yoga problem. (This is why T027 dead-ended last session — `flexShrink 0` on the shell bands would have pinned them; the machinery was there, just unexposed.)
 
 ### 3.5 Public surface & test infra
 - Visibility lives in `.fsi`; `tests/surface-baselines/*.txt` list public **types** (members don't add lines); the Package.Tests gate fails on drift; `scripts/refresh-surface-baselines.fsx` regenerates.
@@ -122,7 +122,10 @@ All anchors verified against `8f75594` unless marked `~`.
 
 ## 5. Workstream R1 — Unify the renderer (the keystone)
 
-**Goal.** One pure producer of scene structure; the retained renderer becomes a generic memoization/reconciliation layer over it. Full ≡ retained and cache-on ≡ cache-off become **structural properties**, not test-chased invariants.
+**Goal.** One pure producer of scene structure; the retained renderer becomes a generic memoization/reconciliation layer over it. Full ≡ retained and cache-on ≡ cache-off become **structural properties**, not test-chased invariants. To avoid expanding the duplicated architecture first, split the work into two deliberately separate cuts:
+
+- **R1a — shared assembly extraction:** extract the current full/retained composition rules into one internal assembly function while keeping today's public `SceneNode` shape. This is a behavior-preserving refactor: same `ClipNode`, same `Translate`, same overlay pass, same goldens.
+- **R1b — full retained unification:** after R2 proves the cleaner algebra/layer model, collapse retained build/carry/emit into one generic memo/reconcile layer over the single producer.
 
 **Target shape (Elm `lazy` + Flutter Element + Compose applier):**
 
@@ -144,15 +147,15 @@ reconcileChild : parent -> old:Node option -> next:Tree option -> Node option
 - **Memo key = (structural-position + explicit Key, input-hash)**; the cached value is *the fragment `assemble` produced last time for these inputs*. F# structural equality of immutable records/DUs gives reliable input comparison for free.
 
 **Change-sites.**
-- New `src/Controls/Assemble.fs(i)` — the single `assemble` + `AssembleCtx` (theme, boundsById). Move the body of `paintNode`/`composeContainerScene`/overlay split here as the one composition.
-- `Control.renderTree` → "reconcile with a cold cache" (thin wrapper over the applier).
+- **R1a:** new `src/Controls/Assemble.fs(i)` with an internal `assembleCurrent : AssembleCtx -> Control<'msg> -> AssembledScene` that owns the current `paintNode` + `composeContainerScene` + overlay split. `Control.renderTree`, `RetainedRender.init`, retained build/carry, and retained emit all call this one function or a narrow child-composition helper. No public `Scene` changes.
+- **R1b:** evolve that module into the single `assemble` + `AssembleCtx` (theme, boundsById). `Control.renderTree` becomes "reconcile with a cold cache" (thin wrapper over the applier).
 - `RetainedRender.fs` — `init`/`step` reduce to: diff (`Reconcile.diff`, kept), then `reconcileChild` walk that calls `memoize`/`assemble`; **delete** the parallel `build`/`buildFresh`/`carry`/`assemble`-emit composition logic. `RenderFragment` constructor → private.
 - Keep all existing cache plumbing (memo/picture/text) — it becomes the *inputs* to `memoize`, not a separate code path.
 - Tests: the parity suites stay but are downgraded to "redundant invariant checks"; add an FsCheck property test fuzzing random trees asserting `assemble(tree) ≡ reconcile(cold) ≡ reconcile(warm)`.
 
 **Invariants/oracles.** All existing parity oracles must stay green *unchanged* through the refactor (they are the safety net). Add the property test as the new structural guarantee.
 
-**Risks.** Highest-risk workstream (touches the parity machinery). Mitigation: land it as a *pure refactor* with byte-identical output first (the 757-test suite + goldens are the oracle), *then* simplify. Do it after R2 so the single fold is clean.
+**Risks.** Highest-risk workstream (touches the parity machinery). Mitigation: land R1a as a *pure refactor* with byte-identical output first (the suite + goldens are the oracle), then do R2 over one internal assembly seam, then simplify in R1b.
 
 **Effort.** L–XL. The keystone; everything else is cheaper once this lands.
 
@@ -181,6 +184,8 @@ and Node =
     | Portal of PortalSpec * Node
 ```
 
+This shape is **conceptual**, not permission to collapse the architecture boundary blindly. `Scene` should remain a display-list/protocol layer unless the project explicitly decides to make layout containers part of the Scene contract. Prefer an internal modifier/layer lowering first, then expose the smallest public surface that proved necessary. In particular, avoid making `Container of LayoutSpec` a public `SceneNode` unless the Control/Layout/Scene responsibility split is deliberately redrawn.
+
 - **Order semantics** documented + property-tested: right-associative fold `mₙ ∘ … ∘ m₁ ∘ node` (innermost applied first), so `padding |> background` colors the padding (SwiftUI/Compose semantics).
 - **Three effect classes** for independent invalidation (Compose capability-interface lesson): `LayoutEffect` (Padding/Frame → re-measure+paint), `DrawEffect` (Opacity/Clip/Transform/Offset/Background/Overlay → re-paint only), `OrderEffect` (ZIndex → re-composite only). Non-layout modifiers are layout-neutral (pass constraints through, report child size unchanged).
 - **Algebraic normalization pass** (cheap correctness+perf win): `Opacity a ∘ Opacity b ≡ Opacity (a*b)`; `Transform A ∘ Transform B ≡ Transform (A·B)`; `Padding p ∘ Padding q ≡ Padding (p+q)`; drop identities (`Opacity 1`, `Transform I`, `Padding 0`); collapse adjacent paint modifiers into a single `graphicsLayer`-style render-node.
@@ -202,11 +207,11 @@ type PortalSpec = { Target: LayerId; Anchor: AnchorSpec; Dismiss: DismissPolicy 
 - `src/SkiaViewer/SceneRenderer.fs`: a `Modified(mods,scene)` painter case (apply mods L→R via Save/Restore/paint config); a layer-host composite pass (paint `Root`, then `Layers` bottom→top); hit-test across layers top-down via the shared ordering fn.
 - `src/Controls/...`: `composeContainerScene` becomes `withClip` over the children node; the overlay split becomes `portal`; `RetainedRender.OverlayScene` is subsumed by layer hosts.
 - `hashScene` (`RetainedRender`): hash modifier lists + layers.
-- Surface baseline + rebaseline ledger (Tier-1): new public `Modifier`/`Portal`/`LayerId` types; deprecated node kinds.
+- Surface baseline + rebaseline ledger (Tier-1): new public `Modifier`/`Portal`/`LayerId` types if and only if they are truly public authoring/protocol concepts. Because `SceneNode` is public and downstream consumers may exhaustively match it, this is a major compatibility event: publish a migration note, keep old constructors working for at least one cycle, add compatibility tests proving old nodes lower to the new representation, and decide explicitly whether the package version needs a major bump.
 
 **Invariants/oracles.** "Hit matches paint" property test (in-tree + cross-layer). Empty-layer scene ≡ pre-R2 (the 137 empty-overlay invariant generalized). Normalization is output-preserving (property test: `render(normalize s) ≡ render s`).
 
-**Risks.** IR change ripples to every consumer; mitigate with the deprecation cycle (old kinds lower to modifiers) and the exhaustive-match painter (compiler finds every site). **Do R2 before R1** so R1's single fold is over the clean algebra.
+**Risks.** IR change ripples to every consumer; mitigate with the deprecation cycle (old kinds lower to modifiers) and the exhaustive-match painter (compiler finds every site). Do R2 after R1a so the new rules land behind one current-semantics assembly seam, then complete R1b once the fold is clean.
 
 **Effort.** L.
 
@@ -215,12 +220,13 @@ type PortalSpec = { Target: LayerId; Anchor: AnchorSpec; Dismiss: DismissPolicy 
 ## 7. Workstream R3 — Layout: surface the model + intrinsic protocol
 
 **R3a (quick win, low risk, do first).** Surface the already-wired flex model as attributes. *Zero* Layout/Yoga changes — purely the `Control` boundary.
-- `src/Controls/Attributes.fs(i)`: add `flexGrow, flexShrink, flexBasis, alignSelf, alignItems, justifyContent, gap, padding, margin, minWidth/Height, maxWidth/Height` builders.
-- `Control.toLayout`: map each attribute into the corresponding `LayoutIntent` field (the fields and Yoga wiring already exist — `Types.fsi` + `Layout.fs:376-411`).
+- `src/Controls/Attributes.fs(i)`: keep existing `padding`/`margin` builders, add the missing `flexGrow, flexShrink, flexBasis, alignSelf, alignItems, justifyContent, gap, minWidth/Height, maxWidth/Height` builders, and decide whether `padding`/`margin` remain uniform-only or gain edge-specific variants.
+- `Control.toLayout`: map each attribute into the corresponding `LayoutIntent` field (the fields and Yoga wiring already exist — `Types.fsi` + `Layout.fs:376-411`). Replace the current hardcoded `Padding = 8` / `Gap = 8` behavior with explicit defaults plus authored overrides.
 - `layoutAffectingAttrNames`: extend the set so incremental layout invalidates correctly.
+- `tests/Controls.Tests/Feature101LayoutDriftGuardTests.fs`: update the candidate corpus and expected discovered set. It currently treats `padding`/`margin` as non-layout-driving; that assertion must flip when `toLayout` starts reading them.
 - Immediately fixes the T027 shell-chrome problem (`flexShrink 0` pins the bands) and a whole class of "Yoga shrank my fixed child" surprises.
 
-**R3b (radical, after R1).** Add the constraints-down/sizes-up + intrinsic-size protocol (Flutter/Compose/SwiftUI convergence) so containers like `ScrollViewer` stop walking descendants to discover content height.
+**R3b (radical, after R1b).** Add the constraints-down/sizes-up + intrinsic-size protocol (Flutter/Compose/SwiftUI convergence) so containers like `ScrollViewer` stop walking descendants to discover content height.
 - An `ILayout`-style protocol: `Measure(constraints, children, cache) -> Size`; `Place(bounds, children, cache)`; `Min/MaxIntrinsicWidth/Height`. **Single measure per pass**; intrinsics are the only legal "measure twice." A `LayoutCache` persists across measure/place and invalidations.
 - Keep Yoga as the default flex container behind this protocol; add an opt-in relational (`ConstraintLayout`/Cassowary) container *only* as a specialized escape hatch (predictability/O(n) stays the default).
 
@@ -258,7 +264,7 @@ type PortalSpec = { Target: LayerId; Anchor: AnchorSpec; Dismiss: DismissPolicy 
 
 **Phased backends.**
 1. **Server PNG** (lowest risk, immediate value): swap the `SceneEvidence` placeholder for a real Skia raster/headless-GL surface → the **golden oracle** for all other backends.
-2. **CanvasKit / Skia-WASM** (highest fidelity, least new code): recompile the `Scene → SkCanvas` painter to WASM; identical effects; ~1.5 MB.
+2. **CanvasKit / Skia-WASM** (highest fidelity target, but not assumed cheap): run a feasibility spike before committing. The spike must prove the .NET/F# + SkiaSharp/CanvasKit packaging path, font/resource loading, and browser host model. If direct reuse of the current `Scene → SKCanvas` painter is not practical, fall back to a generated/interpreted CanvasKit command stream.
 3. **Canvas2D** (optional, size-driven): hand-written interpreter for the Core subset; GPU-tier nodes get software fallback/diagnostic.
 4. WebGPU/Graphite — deferred.
 
@@ -275,7 +281,7 @@ type PortalSpec = { Target: LayerId; Anchor: AnchorSpec; Dismiss: DismissPolicy 
 **Goal.** Turn the existing `SkPicture` replay cache + damage set into a real compositor: damage-scissored frame paint, generalized layer promotion, content/transform key separation, and a texture tier — partial redraw instead of full re-walk.
 
 **Design (in dependency order, each preserving the disabled-cache parity oracle).**
-1. **Damage-scissored frame paint** (biggest win from data you already have): set the frame canvas clip to the existing **union damage rect**, then replay. Untouched cached pictures outside the clip cost nothing.
+1. **Damage-scissored frame paint** (biggest win from data you already have, but correctness depends on presentation semantics): first prove the host preserves previous pixels or has a retained backing surface/layer tree. If each frame starts from a fresh cleared framebuffer, clipping to the union damage rect will leave untouched regions blank/stale. The first deliverable is a present-path proof test; only then set the frame canvas clip to the existing **union damage rect** and replay.
 2. **Generalize boundary selection** beyond data-grid rows: a Flutter-style promotion heuristic — promote a subtree to a `CacheBoundary` when its fingerprint was stable over the last *N* frames (you already track prior-frame stability, FR-012) *and* node-count exceeds a threshold; **demote** boundaries whose fingerprint churns every frame (pure cost).
 3. **Split the boundary key into content-fingerprint + placement-transform** (the Chromium `cc` property-tree lesson): a subtree that only *moves*/scrolls re-blits at a new offset instead of re-recording. Highest-leverage IR change for compositor efficiency; composes with R2's `Transform` modifier.
 4. **Texture-promotion tier** above SkPicture replay: for stable-but-expensive boundaries (blurs/shadows/large paths), snapshot to an `SKImage` and `DrawImage`; same `CacheId`/`Fingerprint` key (the Flutter `EngineLayer` analog). Choose tier by recorded op-count/cost.
@@ -308,20 +314,21 @@ type PortalSpec = { Target: LayerId; Anchor: AnchorSpec; Dismiss: DismissPolicy 
 
 ## 12. Sequenced roadmap, dependencies & milestones
 
-Dependency graph (→ = "depends on"): R1→R2; R3b→R1; R4→R2,R3; R5→R2,R7; R6→R2. R3a, R7 are near-independent.
+Dependency graph: R1a has no dependency; R2 depends on R1a if it changes assembly semantics; R1b depends on R1a + R2; R3b depends on R1b; R4 depends on R2 + R3 anchoring; R5 depends on R2 + R7; R6 depends on R2 plus a present-path proof. R3a and the initial `GlyphRun` type spike are near-independent.
 
 | Phase | Workstream(s) | Why here | Exit criteria |
 |---|---|---|---|
-| **P0 — Quick win** | R3a (layout attrs) + fix the pre-existing Elmish metrics test | Zero-risk, unblocks T027, immediate authoring value | Flex attrs authorable; T027 shell chrome clean; Elmish suite green |
-| **P1 — IR foundation** | R2 (modifier algebra + layers/portals) + R7 `GlyphRun` node only | Everything downstream composes over the clean algebra/IR; do before R1 | Modifiers/portals shipped; old nodes lower to modifiers; 137 overlay pass reimplemented as portals; all goldens re-based + disclosed; suite green |
-| **P2 — Keystone** | R1 (unify renderer) | The clean algebra makes the single fold tractable; kills the drift bug class | One `assemble`; `RenderFragment` constructor-private; second builder deleted; fuzz property test green; byte-identical output through the refactor |
-| **P3 — Text** | R7 (HarfBuzz shaping) | Independent; unblocks portable text for R5 | Measured==drawn; complex scripts render; pure fallback goldens intact |
-| **P4 — Interaction** | R4 (overlay state) | Needs R2 portals + R3 anchoring | Dropdowns open/close/dismiss/focus-trap; deterministic; reference: AntShowcase date-picker |
-| **P5 — Render-anywhere** | R5 (protocol + server PNG + CanvasKit) | Needs stable IR (R2) + portable text (R7) | Round-trip codec; server-PNG oracle; CanvasKit renders the showcase pixel-matching the oracle |
-| **P6 — Compositor** | R6 (promotion, scissor, key split, texture) | Needs R2 modifiers; pure perf, gated by probes | Damage-scissored frames; promotion heuristic; scroll re-blits; parity oracle holds per tier; probes show net win |
-| **P7 — Radical layout** | R3b (intrinsic protocol) | Needs R1; removes the scrollViewport descendant-walk smell | Constraints/intrinsics protocol; ScrollViewer reimplemented; incremental≡full preserved |
+| **P0 — Quick win** | R3a (layout attrs) + fix the pre-existing Elmish metrics test | Low-risk, unblocks T027, immediate authoring value | Flex attrs authorable; existing `padding`/`margin` honored; drift guard updated; T027 shell chrome clean; Elmish suite green |
+| **P1 — Duplication reduction** | R1a shared assembly extraction | Removes the most dangerous duplication before adding new semantics | One internal current-semantics assembly seam; `renderTree`, retained init/build/carry/emit call it; byte-identical output; suite green |
+| **P2 — IR foundation** | R2 internal modifier/layer model + R7 `GlyphRun` type spike | Everything downstream composes over cleaner assembly/IR; public surface only after proof | Modifiers/portals proven internally; old nodes lower to new representation; 137 overlay pass reimplemented as portals; public compatibility plan written; goldens re-based + disclosed if pixels change |
+| **P3 — Keystone** | R1b retained renderer unification | The clean algebra makes the single fold tractable; kills the drift bug class | One `assemble`; `RenderFragment` constructor-private; second builder deleted; fuzz property test green; byte-identical output through the refactor |
+| **P4 — Text** | R7 (HarfBuzz shaping) | Independent; unblocks portable text for R5 | Measured==drawn; complex scripts render; pure fallback goldens intact |
+| **P5 — Interaction** | R4 (overlay state) | Needs R2 portals + R3 anchoring | Dropdowns open/close/dismiss/focus-trap; deterministic; reference: AntShowcase date-picker |
+| **P6 — Render-anywhere** | R5 (protocol + server PNG + CanvasKit feasibility) | Needs stable IR (R2) + portable text (R7) | Round-trip codec; server-PNG oracle; CanvasKit feasibility proven or fallback chosen; showcase diffed against oracle |
+| **P7 — Compositor** | R6 (present-path proof, promotion, scissor, key split, texture) | Needs R2 modifiers; pure perf, gated by probes | Present-path proof green; damage-scissored frames; promotion heuristic; scroll re-blits; parity oracle holds per tier; probes show net win |
+| **P8 — Radical layout** | R3b (intrinsic protocol) | Needs R1b; removes the scrollViewport descendant-walk smell | Constraints/intrinsics protocol; ScrollViewer reimplemented; incremental≡full preserved |
 
-Each phase is independently shippable and Tier-1-disclosed. P0–P2 are the high-leverage core; P3–P7 are capability expansion in any order their deps allow.
+Each phase is independently shippable and Tier-1-disclosed. P0–P3 are the high-leverage core; P4–P8 are capability expansion in any order their deps allow.
 
 ---
 
@@ -339,22 +346,25 @@ Each phase is independently shippable and Tier-1-disclosed. P0–P2 are the high
 
 | Risk | Severity | Mitigation |
 |---|---|---|
-| R1 destabilizes the parity machinery | High | Do R2 first (clean fold); land R1 as byte-identical pure refactor gated by the full suite+goldens, then simplify; fuzz property test |
-| IR change (R2/R5/R7) ripples to all consumers | High | Deprecation cycle (old nodes lower to modifiers); exhaustive-match painter forces the compiler to find every site; phase-by-phase Tier-1 re-baseline |
+| R1 destabilizes the parity machinery | High | Split R1: land R1a as byte-identical shared assembly first, do R2 over that seam, then complete R1b; fuzz property test |
+| Public `SceneNode` compatibility breaks downstream consumers | High | Treat R2 as a major compatibility event; keep old constructors/lowering for at least one cycle; publish migration notes and versioning decision; test old-node lowering |
+| IR change (R2/R5/R7) ripples to all consumers | High | Internal-first rollout where possible; deprecation cycle (old nodes lower to modifiers); exhaustive-match painter forces the compiler to find every internal site; phase-by-phase Tier-1 re-baseline |
 | Modifier order/normalization subtly changes pixels | Med | Property test `render(normalize s) ≡ render s`; document inside-out fold; goldens |
 | Canvas2D backend drifts from Skia | Med | Prefer CanvasKit (same Skia) first; Canvas2D only for Core subset, diffed vs server-PNG oracle |
+| CanvasKit/WASM path is harder than assumed | Med | Feasibility spike before project commitment; prove packaging, font/resource loading, and host model; fall back to a CanvasKit command stream if direct painter reuse fails |
 | Text shaping changes every text golden | Med (expected) | Keep pure heuristic as the no-shaper default; shaper installed only at the rendering edge; disclose re-baselines |
+| Damage scissoring corrupts fresh-frame presentation | Med | Add a present-path proof before clipping; require retained backing surface/layer preservation or redraw untouched regions |
 | Over-promotion in R6 costs more than it saves | Med | Conservative heuristic (multi-frame stability + node count), demotion, probe-gated |
-| Scope/timeline (7 workstreams) | Med | P0–P2 deliver most structural value; P3–P7 are independent capability adds shippable in any dep-valid order |
+| Scope/timeline (7 workstreams) | Med | P0–P3 deliver most structural value; P4–P8 are independent capability adds shippable in any dep-valid order |
 
 ---
 
 ## 15. Decision log
 
 - **Chosen (radical):** R1 unify; R2 modifier algebra + first-class layers/portals; R3 surface layout + intrinsic protocol; R4 interaction/overlay state; R5 portable IR + multi-backend; R6 compositor; R7 HarfBuzz shaping. Rationale: each is the radical variant from the brainstorm, and together they form a compounding program rooted in the one-builder thesis.
-- **Sequencing decision:** R2 *before* R1 (the algebra makes the single fold clean), against the naive "unify first" instinct.
+- **Sequencing decision (revised):** R1a *before* R2, then R1b after R2. The earlier R2-before-R1 plan made the algebra clean but risked implementing the new rules in both existing assembly paths. The revised sequence removes the dangerous duplication seam first without changing public IR.
 - **Deferred:** Cassowary/constraint solver as the *core* layout engine — kept only as an opt-in relational container (Flexbox/Yoga predictability + O(n) wins; constraint solvers are globally coupled and hard to debug). WebGPU/Graphite browser backend (Dawn-on-web immature). A bespoke binary IR before the modifier algebra stabilizes (would churn).
-- **Reframed by evidence:** the layout work is *much* cheaper than assumed — `LayoutIntent` + the Yoga binding already implement the full flex model (`Types.fsi`; `Layout.fs:376-411`); only the `Control.toLayout` attr-mapping is missing. R3a is therefore P0.
+- **Reframed by evidence:** the layout work is *much* cheaper than assumed — `LayoutIntent` + the Yoga binding already implement the full flex model (`Types.fsi`; `Layout.fs:376-411`). `Attr.padding`/`Attr.margin` already exist; `Control.toLayout` ignores them and lacks the rest of the flex mapping. R3a is therefore P0.
 
 ---
 
@@ -370,4 +380,4 @@ Each phase is independently shippable and Tier-1-disclosed. P0–P2 are the high
 
 ---
 
-*End of report. This document chooses the radical options and plans them; it changes no code. Recommended first action: P0 (surface the flex layout attributes + fix the pre-existing Elmish metrics test), then P1 (the modifier-algebra IR refactor) as the foundation for the keystone renderer unification (P2).*
+*End of report. This document chooses the radical options and plans them; it changes no code. Recommended first action: P0 (surface the flex layout attributes + fix the pre-existing Elmish metrics test), then P1 (R1a shared assembly extraction), then P2 (modifier/layer IR foundation), then P3 (full retained-renderer unification).*
