@@ -39,6 +39,8 @@
     <Compile Include="Types.fs" />
     <Compile Include="Diagnostics.fsi" />
     <Compile Include="Diagnostics.fs" />
+    <Compile Include="OverlayState.fsi" />
+    <Compile Include="OverlayState.fs" />
     <Compile Include="Accessibility.fsi" />
     <Compile Include="Accessibility.fs" />
     <Compile Include="Internal/AttrKeys.fs" />

@@ -41,6 +41,22 @@ module Diagnostics =
     val staleEventTarget: controlId: ControlId -> eventKind: string -> ControlDiagnostic
     /// Reports that `scopeName` owned by `owner` cannot be expanded as requested.
     val unsupportedScopeExpansion: scopeName: string -> owner: string -> ControlDiagnostic
+    /// Reports that an overlay surface cannot open or place because its anchor is unavailable.
+    val missingOverlayAnchor: surfaceId: ControlId -> anchorId: ControlId -> ControlDiagnostic
+    /// Reports that overlay focus referenced a target that is no longer present.
+    val staleOverlayFocusTarget: surfaceId: ControlId option -> targetId: ControlId -> ControlDiagnostic
+    /// Reports that a dismissal attempt was blocked by the active surface policy.
+    val blockedOverlayDismissal: surfaceId: ControlId -> reason: string -> ControlDiagnostic
+    /// Reports that a disabled trigger ignored an overlay open request.
+    val disabledOverlayTrigger: triggerId: ControlId -> surfaceId: ControlId -> ControlDiagnostic
+    /// Reports that placement found no fully fitting position for the overlay surface.
+    val noFitOverlayPlacement: surfaceId: ControlId -> placement: string -> ControlDiagnostic
+    /// Reports that a product dispatch was suppressed because it had already been emitted.
+    val duplicateOverlayDispatch: surfaceId: ControlId -> dispatchKey: string -> ControlDiagnostic
+    /// Reports that an overlay message referenced stale or invalid state.
+    val invalidOverlayMessage: surfaceId: ControlId option -> message: string -> ControlDiagnostic
+    /// Reports that a modal overlay blocked lower-layer routing.
+    val lowerLayerBlocked: surfaceId: ControlId -> targetId: ControlId option -> ControlDiagnostic
 
     /// Feature 113 (Phase 5) — the stability-diagnostic report (report-only, NOT an enforced gate).
     /// Given TWO builds of the SAME logical control (sub)tree (`first`/`second` — the same model run

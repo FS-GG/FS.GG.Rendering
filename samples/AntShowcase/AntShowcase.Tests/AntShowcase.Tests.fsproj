@@ -18,11 +18,14 @@
     <Compile Include="DegradeTests.fs" />
     <Compile Include="InteractionTests.fs" />
     <Compile Include="FeedbackTests.fs" />
+    <Compile Include="Feature143DatePickerFlowTests.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\AntShowcase.Core\AntShowcase.Core.fsproj" />
+    <ProjectReference Include="..\..\..\src\Controls\Controls.fsproj" />
+    <ProjectReference Include="..\..\..\src\Scene\Scene.fsproj" />
   </ItemGroup>
 
   <ItemGroup>

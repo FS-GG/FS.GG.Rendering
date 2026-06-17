@@ -10,6 +10,7 @@
     <Compile Include="Tests.fs" />
     <Compile Include="Feature142TextFixtureCorpusTests.fs" />
     <Compile Include="Feature142BaselineLedgerTests.fs" />
+    <Compile Include="Feature143OverlayRenderingTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

@@ -108,6 +108,16 @@
     <Compile Include="Feature141RetainedRendererUnificationTests.fs" />
     <Compile Include="Feature142ControlsTextShapingTests.fs" />
     <Compile Include="Feature142TextCacheParityTests.fs" />
+    <Compile Include="Feature143OverlayFixtures.fs" />
+    <Compile Include="Feature143OverlayStateContractTests.fs" />
+    <Compile Include="Feature143InteractionOverlayStateTests.fs" />
+    <Compile Include="Feature143OverlayHitTestTests.fs" />
+    <Compile Include="Feature143ClosedStateCompatibilityTests.fs" />
+    <Compile Include="Feature143OverlayFocusTests.fs" />
+    <Compile Include="Feature143OverlayModalTests.fs" />
+    <Compile Include="Feature143OverlayModalHitTests.fs" />
+    <Compile Include="Feature143OverlayReplayTests.fs" />
+    <Compile Include="Feature143ReferenceDatePickerTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

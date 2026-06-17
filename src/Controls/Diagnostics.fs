@@ -54,6 +54,31 @@ module Diagnostics =
     let unsupportedScopeExpansion (scopeName: string) (owner: string) =
         create None scopeName UnsupportedEnvironment Error $"Unsupported scope expansion `{scopeName}` requested by `{owner}`."
 
+    let missingOverlayAnchor (surfaceId: ControlId) (anchorId: ControlId) =
+        create (Some surfaceId) "overlay-state" MissingOverlayAnchor Error $"Overlay surface `{surfaceId}` is missing anchor `{anchorId}`."
+
+    let staleOverlayFocusTarget (surfaceId: ControlId option) (targetId: ControlId) =
+        create surfaceId "overlay-state" StaleOverlayFocusTarget Warning $"Overlay focus target `{targetId}` is stale and will be recovered."
+
+    let blockedOverlayDismissal (surfaceId: ControlId) (reason: string) =
+        create (Some surfaceId) "overlay-state" BlockedOverlayDismissal Info $"Overlay surface `{surfaceId}` blocked dismissal `{reason}`."
+
+    let disabledOverlayTrigger (triggerId: ControlId) (surfaceId: ControlId) =
+        create (Some triggerId) "overlay-state" DisabledOverlayTrigger Info $"Disabled trigger `{triggerId}` ignored open request for overlay surface `{surfaceId}`."
+
+    let noFitOverlayPlacement (surfaceId: ControlId) (placement: string) =
+        create (Some surfaceId) "overlay-state" NoFitOverlayPlacement Warning $"Overlay surface `{surfaceId}` has no fully fitting placement for `{placement}`."
+
+    let duplicateOverlayDispatch (surfaceId: ControlId) (dispatchKey: string) =
+        create (Some surfaceId) "overlay-state" DuplicateOverlayDispatch Warning $"Overlay surface `{surfaceId}` suppressed duplicate product dispatch `{dispatchKey}`."
+
+    let invalidOverlayMessage (surfaceId: ControlId option) (message: string) =
+        create surfaceId "overlay-state" InvalidOverlayMessage Warning message
+
+    let lowerLayerBlocked (surfaceId: ControlId) (targetId: ControlId option) =
+        let target = targetId |> Option.defaultValue "<none>"
+        create (Some surfaceId) "overlay-state" LowerLayerBlocked Info $"Modal overlay `{surfaceId}` blocked lower-layer target `{target}`."
+
     // Feature 113 (Phase 5): is an attribute/event value STABLE across two builds of the same model?
     // Stability is exactly the reuse condition: a structurally-equal scalar value is stable; a
     // reference-fresh closure (a per-frame lambda) or a rebuilt `UntypedValue` that is not structurally

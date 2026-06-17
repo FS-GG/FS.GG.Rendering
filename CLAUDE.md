@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/142-harfbuzz-text-shaping/plan.md
+at specs/143-interaction-overlay-state/plan.md
 <!-- SPECKIT END -->
 
 ## Ant Design — source of truth

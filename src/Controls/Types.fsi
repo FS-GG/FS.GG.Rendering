@@ -157,6 +157,14 @@ type ControlDiagnosticCode =
     | UnsupportedEnvironment
     | KeyCollision
     | StaleGeneratedReference
+    | MissingOverlayAnchor
+    | StaleOverlayFocusTarget
+    | BlockedOverlayDismissal
+    | DisabledOverlayTrigger
+    | NoFitOverlayPlacement
+    | DuplicateOverlayDispatch
+    | InvalidOverlayMessage
+    | LowerLayerBlocked
     /// Feature 113 (Phase 5): an always-new input (a rebuilt `UntypedValue`, a per-frame event
     /// closure, an unstable key) that compared unequal across two builds of the same model and so
     /// defeats memoized subtree reuse. Reported by `Diagnostics.stabilityReport`; advisory only.

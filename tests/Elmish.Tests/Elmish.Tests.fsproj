@@ -36,6 +36,9 @@
     <Compile Include="Feature120MetricsTests.fs" />
     <Compile Include="Feature138TextMetricsTests.fs" />
     <Compile Include="Feature142TextMetricsTests.fs" />
+    <Compile Include="Feature143OverlayDispatchFixtures.fs" />
+    <Compile Include="Feature143OverlayDispatchTests.fs" />
+    <Compile Include="Feature143OverlayParityTests.fs" />
     <Compile Include="Audit_DamageTracking.fs" />
     <Compile Include="Audit_Virtualization.fs" />
     <Compile Include="Audit_AnimationTickGating.fs" />

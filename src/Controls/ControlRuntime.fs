@@ -44,6 +44,10 @@ type ControlRuntimeModel =
       Diagnostics: ControlDiagnostic list
       RecentEffects: ControlRuntimeEffect list }
 
+type OverlayRuntimeBridge =
+    { Overlay: OverlayState
+      Effects: OverlayEffect list }
+
 type ControlRuntimeMsg =
     | FocusControl of ControlId option
     | HoverControl of ControlId option
@@ -111,7 +115,7 @@ module ControlRuntime =
             Composition = model.Composition |> Option.filter (fun composition -> composition.ControlId <> controlId)
             ActiveDrag = model.ActiveDrag |> Option.filter (fun drag -> drag.ControlId <> controlId) }
 
-    let update msg model =
+    let update (msg: ControlRuntimeMsg) (model: ControlRuntimeModel) =
         match msg with
         | FocusControl controlId ->
             { model with FocusedControl = controlId }
@@ -328,3 +332,7 @@ module ControlRuntime =
         | None ->
             { Stamped = applyRuntimeVisualState cur fresh
               RuntimeStateTouchedNodeCount = Control.count fresh }
+
+    let attachOverlayEffects (overlay: OverlayState) (effects: OverlayEffect list) =
+        { Overlay = overlay
+          Effects = effects }

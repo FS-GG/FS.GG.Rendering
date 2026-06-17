@@ -127,6 +127,14 @@ type ControlDiagnosticCode =
     | UnsupportedEnvironment
     | KeyCollision
     | StaleGeneratedReference
+    | MissingOverlayAnchor
+    | StaleOverlayFocusTarget
+    | BlockedOverlayDismissal
+    | DisabledOverlayTrigger
+    | NoFitOverlayPlacement
+    | DuplicateOverlayDispatch
+    | InvalidOverlayMessage
+    | LowerLayerBlocked
     | UnstableReuseInput
     | OffscreenComposition
 

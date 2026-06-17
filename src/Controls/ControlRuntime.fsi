@@ -50,6 +50,12 @@ type ControlRuntimeModel =
       Diagnostics: ControlDiagnostic list
       RecentEffects: ControlRuntimeEffect list }
 
+/// Host-owned overlay bridge data. `ControlRuntime` carries this value at the edge
+/// without making product-owned overlay visibility part of `ControlRuntimeModel`.
+type OverlayRuntimeBridge =
+    { Overlay: OverlayState
+      Effects: OverlayEffect list }
+
 /// An input message driving the runtime transition, e.g. `FocusControl`, `HoverControl`, `PressControl`, `SetCaret`, `StartDrag`, or `Reset`.
 type ControlRuntimeMsg =
     | FocusControl of ControlId option
@@ -132,3 +138,6 @@ module ControlRuntime =
         cur: ControlRuntimeModel ->
         fresh: Control<'msg> ->
             RuntimeStampResult<'msg>
+
+    /// Builds the explicit host bridge for overlay state and effects without mutating product state.
+    val attachOverlayEffects: overlay: OverlayState -> effects: OverlayEffect list -> OverlayRuntimeBridge
