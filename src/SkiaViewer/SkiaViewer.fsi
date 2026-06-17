@@ -657,3 +657,17 @@ module GeneratedAppHost =
     val dispatchKey: host: GeneratedAppHost<'model,'msg> -> raw: ViewerKeyEvent -> model: 'model -> 'model * ViewerEffect list
     /// Public contract function exposed by this FS.GG.UI package.
     val smoke: host: GeneratedAppHost<'model,'msg> -> request: ViewerRunRequest -> Result<ViewerRunEvidence, ViewerRunFailure>
+
+/// Feature 136 (R2/FR-001/FR-002): the rendering-edge text seam — install the bundled-font
+/// real-metrics measurer (so control box sizing equals draw width) and read back per-page text
+/// fallback/tofu disclosure after a render.
+module Text =
+    /// Install the bundled-font real-metrics measurer into the `Scene` measurement seam. Idempotent;
+    /// call once at host startup before laying out control scenes.
+    val installMeasurer: unit -> unit
+    /// Clear the text-fallback disclosure accumulator (the screenshot path also clears it per capture).
+    val resetFallbackDisclosure: unit -> unit
+    /// Aggregate disclosure (substituted/tofu counts + affected code points) for the most recent render.
+    val fallbackReport: unit -> Fonts.FallbackReport
+    /// Structured diagnostic lines for every non-authored character in the most recent render (FR-001).
+    val fallbackDiagnostics: unit -> string list

@@ -50,7 +50,10 @@ module internal ControlInternals =
     let measureText (text: string) (font: FontSpec) : TextMetrics =
         match TextMeasureHookHolder.Slot with
         | Some f -> f text font
-        | None -> Scene.measureText text font
+        // Feature 136 (R2/FR-002): the un-cached base path resolves through the real-metrics measurer
+        // when the rendering edge has installed one (`Scene.setRealTextMeasurer`), so box sizing equals
+        // draw width. With none installed this is the pure `Scene.measureText` (byte-identical to pre-136).
+        | None -> Scene.measureTextResolved text font
 
     let tryLast name (attrs: Attr<'msg> list) =
         attrs
@@ -286,6 +289,30 @@ module internal ControlInternals =
                         search (remaining - 1) low mid
 
             search 8 minSize upper
+
+    /// Feature 136 (US1/T016A, FR-002): the overflow affordance for text whose real-metric advance
+    /// **still** exceeds its box after shrink-to-fit (`fittedFontSize` bottomed out). Returns the
+    /// longest prefix of `label` that fits `maxWidth` at `size` with a trailing ellipsis (`…`) — an
+    /// explicit "more here" affordance — instead of letting the box clip drop characters silently. The
+    /// label is returned unchanged when it already fits; a single-character label is never truncated.
+    let ellipsize family (size: float) (maxWidth: float) (label: string) : string =
+        let font = { Family = family; Size = size; Weight = None }
+        let width (s: string) = (measureText s font).Width
+
+        if maxWidth <= 0.0 || label.Length <= 1 || width label <= maxWidth then
+            label
+        else
+            let ellipsis = "…"
+
+            let rec largestFit n =
+                if n <= 0 then
+                    ellipsis
+                elif width (label.Substring(0, n) + ellipsis) <= maxWidth then
+                    label.Substring(0, n) + ellipsis
+                else
+                    largestFit (n - 1)
+
+            largestFit (label.Length - 1)
 
     let chartValues (control: Control<'msg>) : ChartPoint list =
         // Feature 080 (FR-002): read the structured `UntypedValue(ChartSeries list)` (series)
@@ -2005,8 +2032,13 @@ module internal ControlInternals =
 
             let textY = box.Y + (box.Height + fontSize) * 0.5 - 3.0
 
+            // Feature 136 (T016A): if the label still overflows the box at the smallest fitted size,
+            // ellipsize it (explicit `…`) rather than letting the clip rect silently drop characters.
+            let shown =
+                ellipsize theme.FontFamily fontSize (box.Width - 16.0) label
+
             let labelRun =
-                { Text = label
+                { Text = shown
                   Position = { X = box.X + 8.0; Y = textY }
                   Font = { Family = theme.FontFamily; Size = fontSize; Weight = None }
                   Paint = Paint.fill theme.Foreground }

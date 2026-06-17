@@ -485,8 +485,17 @@ module Scene =
     val textAt: position: Point -> text: string -> color: Color -> Scene
     /// Public contract function exposed by this FS.GG.UI package.
     val textRun: run: TextRun -> Scene
-    /// Public contract function exposed by this FS.GG.UI package.
+    /// The pure, host-independent text-measure heuristic (calibrated to the bundled default family;
+    /// deliberately conservative so a box sized by it is never narrower than the renderer draws).
     val measureText: text: string -> font: FontSpec -> TextMetrics
+    /// Feature 136 (R2/FR-002): install (`Some`) or clear (`None`) a real-metrics text measurer used by
+    /// `measureTextResolved`. The rendering edge (`SkiaViewer.Fonts`) injects a measurer matching the
+    /// bundled-font renderer's advances, so the advance used to size a text box equals the advance used
+    /// to draw it (no mid-word clip). Process-wide; the pure `measureText` heuristic is unchanged.
+    val setRealTextMeasurer: measurer: (string -> FontSpec -> TextMetrics) option -> unit
+    /// Measure via the installed real measurer when present, else the pure `measureText` heuristic.
+    /// With no measurer installed this is byte-identical to `measureText` (pure-caller default).
+    val measureTextResolved: text: string -> font: FontSpec -> TextMetrics
     /// Public contract function exposed by this FS.GG.UI package.
     val image: bounds: float * float * float * float -> source: string -> Scene
     /// Public contract function exposed by this FS.GG.UI package.

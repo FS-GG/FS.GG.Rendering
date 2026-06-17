@@ -159,103 +159,52 @@ module internal SceneRenderer =
 
         skPath
 
-    let vectorGlyphPattern character =
-        match Char.ToUpperInvariant character with
-        | 'A' -> [ "01110"; "10001"; "10001"; "11111"; "10001"; "10001"; "10001" ]
-        | 'B' -> [ "11110"; "10001"; "10001"; "11110"; "10001"; "10001"; "11110" ]
-        | 'C' -> [ "01111"; "10000"; "10000"; "10000"; "10000"; "10000"; "01111" ]
-        | 'D' -> [ "11110"; "10001"; "10001"; "10001"; "10001"; "10001"; "11110" ]
-        | 'E' -> [ "11111"; "10000"; "10000"; "11110"; "10000"; "10000"; "11111" ]
-        | 'F' -> [ "11111"; "10000"; "10000"; "11110"; "10000"; "10000"; "10000" ]
-        | 'G' -> [ "01111"; "10000"; "10000"; "10011"; "10001"; "10001"; "01111" ]
-        | 'H' -> [ "10001"; "10001"; "10001"; "11111"; "10001"; "10001"; "10001" ]
-        | 'I' -> [ "11111"; "00100"; "00100"; "00100"; "00100"; "00100"; "11111" ]
-        | 'J' -> [ "00111"; "00010"; "00010"; "00010"; "10010"; "10010"; "01100" ]
-        | 'K' -> [ "10001"; "10010"; "10100"; "11000"; "10100"; "10010"; "10001" ]
-        | 'L' -> [ "10000"; "10000"; "10000"; "10000"; "10000"; "10000"; "11111" ]
-        | 'M' -> [ "10001"; "11011"; "10101"; "10101"; "10001"; "10001"; "10001" ]
-        | 'N' -> [ "10001"; "11001"; "10101"; "10011"; "10001"; "10001"; "10001" ]
-        | 'O' -> [ "01110"; "10001"; "10001"; "10001"; "10001"; "10001"; "01110" ]
-        | 'P' -> [ "11110"; "10001"; "10001"; "11110"; "10000"; "10000"; "10000" ]
-        | 'Q' -> [ "01110"; "10001"; "10001"; "10001"; "10101"; "10010"; "01101" ]
-        | 'R' -> [ "11110"; "10001"; "10001"; "11110"; "10100"; "10010"; "10001" ]
-        | 'S' -> [ "01111"; "10000"; "10000"; "01110"; "00001"; "00001"; "11110" ]
-        | 'T' -> [ "11111"; "00100"; "00100"; "00100"; "00100"; "00100"; "00100" ]
-        | 'U' -> [ "10001"; "10001"; "10001"; "10001"; "10001"; "10001"; "01110" ]
-        | 'V' -> [ "10001"; "10001"; "10001"; "10001"; "10001"; "01010"; "00100" ]
-        | 'W' -> [ "10001"; "10001"; "10001"; "10101"; "10101"; "10101"; "01010" ]
-        | 'X' -> [ "10001"; "10001"; "01010"; "00100"; "01010"; "10001"; "10001" ]
-        | 'Y' -> [ "10001"; "10001"; "01010"; "00100"; "00100"; "00100"; "00100" ]
-        | 'Z' -> [ "11111"; "00001"; "00010"; "00100"; "01000"; "10000"; "11111" ]
-        | '0' -> [ "01110"; "10001"; "10011"; "10101"; "11001"; "10001"; "01110" ]
-        | '1' -> [ "00100"; "01100"; "00100"; "00100"; "00100"; "00100"; "01110" ]
-        | '2' -> [ "01110"; "10001"; "00001"; "00010"; "00100"; "01000"; "11111" ]
-        | '3' -> [ "11110"; "00001"; "00001"; "01110"; "00001"; "00001"; "11110" ]
-        | '4' -> [ "00010"; "00110"; "01010"; "10010"; "11111"; "00010"; "00010" ]
-        | '5' -> [ "11111"; "10000"; "10000"; "11110"; "00001"; "00001"; "11110" ]
-        | '6' -> [ "01110"; "10000"; "10000"; "11110"; "10001"; "10001"; "01110" ]
-        | '7' -> [ "11111"; "00001"; "00010"; "00100"; "01000"; "01000"; "01000" ]
-        | '8' -> [ "01110"; "10001"; "10001"; "01110"; "10001"; "10001"; "01110" ]
-        | '9' -> [ "01110"; "10001"; "10001"; "01111"; "00001"; "00001"; "01110" ]
-        | '.' -> [ "00000"; "00000"; "00000"; "00000"; "00000"; "01100"; "01100" ]
-        | ',' -> [ "00000"; "00000"; "00000"; "00000"; "01100"; "01100"; "01000" ]
-        | ':' -> [ "00000"; "01100"; "01100"; "00000"; "01100"; "01100"; "00000" ]
-        | ';' -> [ "00000"; "01100"; "01100"; "00000"; "01100"; "01100"; "01000" ]
-        | '/' -> [ "00001"; "00010"; "00010"; "00100"; "01000"; "01000"; "10000" ]
-        | '\\' -> [ "10000"; "01000"; "01000"; "00100"; "00010"; "00010"; "00001" ]
-        | '-' -> [ "00000"; "00000"; "00000"; "11111"; "00000"; "00000"; "00000" ]
-        | '_' -> [ "00000"; "00000"; "00000"; "00000"; "00000"; "00000"; "11111" ]
-        | '+' -> [ "00000"; "00100"; "00100"; "11111"; "00100"; "00100"; "00000" ]
-        | '=' -> [ "00000"; "00000"; "11111"; "00000"; "11111"; "00000"; "00000" ]
-        | '(' -> [ "00010"; "00100"; "01000"; "01000"; "01000"; "00100"; "00010" ]
-        | ')' -> [ "01000"; "00100"; "00010"; "00010"; "00010"; "00100"; "01000" ]
-        | '[' -> [ "01110"; "01000"; "01000"; "01000"; "01000"; "01000"; "01110" ]
-        | ']' -> [ "01110"; "00010"; "00010"; "00010"; "00010"; "00010"; "01110" ]
-        | '&' -> [ "01100"; "10010"; "10100"; "01000"; "10101"; "10010"; "01101" ]
-        | '%' -> [ "11001"; "11010"; "00010"; "00100"; "01000"; "01011"; "10011" ]
-        | '!' -> [ "00100"; "00100"; "00100"; "00100"; "00100"; "00000"; "00100" ]
-        | '?' -> [ "01110"; "10001"; "00001"; "00010"; "00100"; "00000"; "00100" ]
-        | ' ' -> [ "00000"; "00000"; "00000"; "00000"; "00000"; "00000"; "00000" ]
-        | _ -> [ "11111"; "00001"; "00010"; "00100"; "00100"; "00000"; "00100" ]
+    // Feature 136 (FR-001): a tofu (missing-glyph) box — an unambiguous hollow rectangle, never a
+    // plausible-looking letter or digit. Drawn only for characters with no bundled coverage and no
+    // deliberate substitute. Its advance matches `Fonts.charAdvance` (≈0.6·size) so measure == draw.
+    let private drawTofuBox (canvas: SKCanvas) (left: float32) (baseline: float32) (size: float) (color: SKColor) antialias =
+        use paint = new SKPaint()
+        paint.Color <- color
+        paint.IsAntialias <- antialias
+        paint.Style <- SKPaintStyle.Stroke
+        paint.StrokeWidth <- max 1.0f (float32 size / 16.0f)
+        let h = float32 size * 0.7f
+        let w = float32 size * 0.5f
+        canvas.DrawRect(left, baseline - h, w, h, paint)
 
-    let drawVectorText (canvas: SKCanvas) x y (text: string) size color antialias =
-        let cell = Math.Max(1.0f, float32 size / 7.0f)
-        let glyphAdvance = cell * 6.0f
-        let top = float32 y - float32 size
+    // Feature 136 (FR-001/SC-005): per-present text-fallback disclosure accumulator. The renderer
+    // records every non-`Authored` per-character outcome as it DRAWS (not during measurement — that
+    // would double count). The host resets it at the start of each present/screenshot and reads it via
+    // `SkiaViewer` (T017). Single-present, single-threaded edge mutation (constitution IV).
+    let mutable fallbackEvents: ResizeArray<Fonts.ResolvedChar> = ResizeArray()
 
+    let resetFallbackEvents () = fallbackEvents <- ResizeArray()
+
+    /// Draw `text` with its baseline at (x, y) through the bundled-font registry. Each character is
+    /// resolved to the real typeface that covers it (per-character fallback chain) and drawn at the
+    /// registry's advance, so the drawn width equals the measured width (no mid-word clip) and mixed
+    /// case is preserved (no force-uppercase). Uncovered characters render as a disclosed tofu box —
+    /// never a different-but-plausible glyph. Replaces the host-`SKTypeface.Default`/5×7 vector path.
+    let drawText (canvas: SKCanvas) x y (text: string) (font: FontSpec) (color: SKColor) antialias =
+        let size = max 1.0 font.Size
+        let resolved = Fonts.resolveText font text
         use paint = new SKPaint()
         paint.Color <- color
         paint.IsAntialias <- antialias
         paint.Style <- SKPaintStyle.Fill
+        let baseline = float32 y
+        let mutable penX = float32 x
 
-        text
-        |> Seq.iteri (fun index character ->
-            let left = float32 x + float32 index * glyphAdvance
+        for rc in resolved do
+            match rc.Resolution with
+            | Fonts.FallbackResolution.Authored _ -> ()
+            | _ -> fallbackEvents.Add rc
 
-            vectorGlyphPattern character
-            |> List.iteri (fun row line ->
-                line
-                |> Seq.iteri (fun column value ->
-                    if value = '1' then
-                        canvas.DrawRect(left + float32 column * cell, top + float32 row * cell, cell * 0.86f, cell * 0.86f, paint))))
+            match rc.Resolution with
+            | Fonts.FallbackResolution.Tofu _ -> drawTofuBox canvas penX baseline size color antialias
+            | _ -> canvas.DrawText(string rc.Rendered, SKPoint(penX, baseline), rc.Font, paint)
 
-    let drawTextWithFallback (canvas: SKCanvas) x y (text: string) size color antialias =
-        let mutable nativeDrawn = false
-
-        try
-            use paint = new SKPaint()
-            use font = new SKFont(SKTypeface.Default, float32 size)
-            paint.Color <- color
-            paint.IsAntialias <- antialias
-
-            if font.ContainsGlyphs(text) then
-                canvas.DrawText(text, SKPoint(float32 x, float32 y), font, paint)
-                nativeDrawn <- true
-        with _ ->
-            nativeDrawn <- false
-
-        if not nativeDrawn then
-            drawVectorText canvas x y text size color antialias
+            penX <- penX + float32 (Fonts.charAdvance size rc)
 
     /// Paint one `SceneNode` onto `canvas`. Exhaustive over every `SceneNode` case —
     /// **no wildcard** — so a new primitive forces both render paths to handle it.
@@ -335,9 +284,9 @@ module internal SceneRenderer =
             configurePaint scenePaint paint
             canvas.DrawArc(skRect bounds, float32 startAngle, float32 sweepAngle, false, paint)
         | Text((x, y), text, color) ->
-            drawTextWithFallback canvas x y text 24.0 (skColor color) true
+            drawText canvas x y text { Family = None; Size = 24.0; Weight = None } (skColor color) true
         | TextRun run ->
-            drawTextWithFallback canvas run.Position.X run.Position.Y run.Text run.Font.Size (paintColor run.Paint) run.Paint.Antialias
+            drawText canvas run.Position.X run.Position.Y run.Text run.Font (paintColor run.Paint) run.Paint.Antialias
         | Image((x, y, width, height), source) ->
             let destination = SKRect(float32 x, float32 y, float32 (x + width), float32 (y + height))
 
@@ -420,7 +369,7 @@ module internal SceneRenderer =
             scene.Nodes |> List.iter (paintNode canvas)
             canvas.Restore()
         | SizedText((x, y), text, size, color) ->
-            drawTextWithFallback canvas x y text size (skColor color) true
+            drawText canvas x y text { Family = None; Size = size; Weight = None } (skColor color) true
         // Feature 120 (US3, FR-007): a backend replay-cache boundary. With an active cache, replay the
         // recorded picture on a hit or record-then-draw on a miss; otherwise (no/disabled cache) recurse
         // straight into the wrapped scene — TRANSPARENT, byte-identical to the direct walk (FR-011).

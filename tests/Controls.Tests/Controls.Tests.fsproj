@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Feature 136 (T006): shared Scene-only assertion helpers (canonical copy in Rendering.Harness). -->
+    <Compile Include="..\Rendering.Harness\TestAssertions.fs">
+      <Link>TestAssertions.fs</Link>
+    </Compile>
     <Compile Include="PublicSurfaceTests.fs" />
     <Compile Include="TypedControlContractTests.fs" />
     <Compile Include="TypedLoweringTests.fs" />
@@ -89,6 +93,7 @@
     <Compile Include="Audit_TextCache.fs" />
     <Compile Include="Audit_Fingerprint.fs" />
     <Compile Include="Audit_AnimationClock.fs" />
+    <Compile Include="Feature136OverflowTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

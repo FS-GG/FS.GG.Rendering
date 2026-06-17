@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Feature 136 (T006): shared Scene-only assertion helpers (canonical copy in Rendering.Harness). -->
+    <Compile Include="..\Rendering.Harness\TestAssertions.fs">
+      <Link>TestAssertions.fs</Link>
+    </Compile>
     <Compile Include="NativeStartupCleanupTests.fs" />
     <Compile Include="Tests.fs" />
     <Compile Include="Feature063RendererTests.fs" />
@@ -18,6 +22,7 @@
     <Compile Include="Feature121LiveHostPacingTests.fs" />
     <Compile Include="Feature122PresentPathTests.fs" />
     <Compile Include="Audit_ReplayCache.fs" />
+    <Compile Include="Feature136TextRenderingTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

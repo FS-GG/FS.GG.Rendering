@@ -530,12 +530,33 @@ module Scene =
         { Nodes = [ TextRun run ] }
 
     let measureText (text: string) (font: FontSpec) =
+        // Feature 136 (R2/T016): the pure, host-independent heuristic kept for pure callers and pure
+        // goldens. The per-glyph advance ratio `0.58·size` is calibrated against the bundled default
+        // family (Noto Sans averages ~0.49·size; the probe in research.md R1 measured "Stable" at
+        // 0.49·size·n): it stays deliberately *conservative* (≥ the real average advance) so a box
+        // sized by this heuristic is never narrower than the bundled-font renderer draws — no mid-word
+        // clip even without the real measurer installed. When the rendering edge installs a real
+        // measurer (`setRealTextMeasurer`), `measureTextResolved` returns exact draw-equal advances.
         let size = max 1.0 font.Size
         let glyphAdvance = max 1.0 (size * 0.58)
 
         { Width = glyphAdvance * float text.Length
           Height = size
           Baseline = size * 0.8 }
+
+    // Feature 136 (R2/FR-002): the real-metrics measurer seam. `measureText` above stays pure; the
+    // rendering edge (`SkiaViewer.Fonts`) installs a measurer here that returns the bundled-font
+    // renderer's true advances so the advance used to SIZE a text box equals the advance used to DRAW
+    // it. Process-wide, disclosed interpreter-edge mutation (constitution IV). `None` (the default) ⇒
+    // `measureTextResolved` is byte-identical to the pure `measureText` path.
+    let mutable realTextMeasurer: (string -> FontSpec -> TextMetrics) option = None
+
+    let setRealTextMeasurer (measurer: (string -> FontSpec -> TextMetrics) option) = realTextMeasurer <- measurer
+
+    let measureTextResolved (text: string) (font: FontSpec) : TextMetrics =
+        match realTextMeasurer with
+        | Some m -> m text font
+        | None -> measureText text font
 
     let image bounds source =
         { Nodes = [ Image(bounds, source) ] }
