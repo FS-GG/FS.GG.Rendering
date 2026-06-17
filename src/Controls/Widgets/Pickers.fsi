@@ -44,8 +44,8 @@ module DatePicker =
     val defaults: DatePickerProps<'msg>
     /// Lowers to a legacy `Stack` of [ read-only field showing the formatted `Value`
     /// or a placeholder; trigger `Button`; an `Overlay` `Grid` of day `Button`s shown
-    /// when `IsOpen` ]; `Value = None` ⇒ placeholder + empty calendar; `OnChange =
-    /// None` ⇒ no binding.
+    /// when product-owned `IsOpen` is true ]; carries transient calendar metadata;
+    /// `Value = None` ⇒ placeholder + empty calendar; `OnChange = None` ⇒ no binding.
     val view: props: DatePickerProps<'msg> -> Widget<'msg>
 
 /// Typed Props front door for the `TimePicker` control.
@@ -61,6 +61,6 @@ module ColorPicker =
     /// Authoring defaults; optional fields take their value from here.
     val defaults: ColorPickerProps<'msg>
     /// Lowers to a legacy `Wrap` of colored swatch `Button` cells (one per swatch),
-    /// the `Selected` cell highlighted; empty `Swatches` ⇒ empty grid; `OnSelected =
-    /// None` ⇒ no binding.
+    /// the product-owned `Selected` cell highlighted, and carries transient palette
+    /// metadata; empty `Swatches` ⇒ empty grid; `OnSelected = None` ⇒ no binding.
     val view: props: ColorPickerProps<'msg> -> Widget<'msg>

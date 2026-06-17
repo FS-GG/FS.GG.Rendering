@@ -16,6 +16,10 @@ module Live =
     /// cleanly (skip/fail-classified) per the probe facts.
     val runLive: facts: ProbeFacts -> selfDll: string -> outDir: string -> Evidence.Evidence
 
+    /// Human-readable Feature 144 limitation when offscreen visual proof cannot
+    /// run on the current host.
+    val overlayVisualLimitation: facts: ProbeFacts -> string option
+
     /// Internal child entry (`harness __vsyncprobe <stampfile> [seconds]`): run a **vsync-locked GL
     /// swap loop** (swap interval 1) on the GPU display for `seconds`, timestamping each buffer swap,
     /// then write the stamps to `stampFile`. The FS.Skia viewer's frame-metrics hooks were proven

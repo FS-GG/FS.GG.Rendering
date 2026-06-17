@@ -45,3 +45,14 @@ let formInvalidThenValid: AntShowcaseMsg list =
       PageMsg(FormFieldChanged("Email", "ada@example.com"))
       PageMsg(FormFieldChanged("Agree", "true"))
       PageMsg FormSubmitted ]
+
+/// Feature 144 reference flow for the date-picker transient calendar. This stays in the
+/// pure message layer because the overlay coordinator emits product-visible requests,
+/// while the sample keeps calendar visibility and selection product-owned.
+let datePickerReferenceFlow: AntShowcaseMsg list =
+    [ NavigateTo "text-numeric-input"
+      PageMsg(DatePickerOpenChanged true)
+      PageMsg(DatePickerFocusChanged(Some "date-picker-calendar"))
+      PageMsg(DatePickerChanged(DateOnly(2026, 6, 17)))
+      PageMsg(DatePickerOpenChanged false)
+      PageMsg(DatePickerFocusChanged(Some "date-picker-trigger")) ]

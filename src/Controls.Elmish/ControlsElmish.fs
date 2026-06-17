@@ -170,6 +170,25 @@ module ControlsElmish =
         | ReportControlRuntimeDiagnostic controlDiagnostic ->
             [ ReportAdapterDiagnostic(diagnostic "control-runtime" (string controlDiagnostic.Code) controlDiagnostic.Message) ]
 
+    let interpretOverlayEffect mapOpen mapDispatch mapFocus effect =
+        match effect with
+        | RequestOpenStateChange(surface, isOpen) -> [ AdapterEffect.DispatchProductMessage(mapOpen surface isOpen) ]
+        | OverlayEffect.DispatchProductMessage(surface, payload) -> [ AdapterEffect.DispatchProductMessage(mapDispatch surface payload) ]
+        | RequestFocus focus ->
+            [ yield DispatchControlRuntimeMessage(FocusControl focus)
+              match mapFocus focus with
+              | Some msg -> yield AdapterEffect.DispatchProductMessage msg
+              | None -> () ]
+        | ReportOverlayDiagnostic controlDiagnostic ->
+            [ ReportAdapterDiagnostic(diagnostic "overlay-state" (string controlDiagnostic.Code) controlDiagnostic.Message) ]
+        | ConsumeInput
+        | AllowPassThrough -> []
+        | RecordTopmostHit decision ->
+            [ ReportAdapterDiagnostic(diagnostic "overlay-state" "TopmostHit" decision.Input) ]
+
+    let interpretOverlayOutcome mapOpen mapDispatch mapFocus effects =
+        effects |> List.collect (interpretOverlayEffect mapOpen mapDispatch mapFocus)
+
     let interpretPointerEffect (mapInteraction: PointerInteraction -> 'msg option) (interaction: PointerInteraction) =
         match interaction with
         | Diagnostic pointerDiagnostic ->

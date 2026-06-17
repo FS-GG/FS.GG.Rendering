@@ -10,6 +10,7 @@
     <Compile Include="Tests.fs" />
     <Compile Include="Feature108ModifierTests.fs" />
     <Compile Include="Feature143OverlayKeyboardTests.fs" />
+    <Compile Include="Feature144OverlayKeyboardEvidenceTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

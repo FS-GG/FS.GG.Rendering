@@ -1,6 +1,49 @@
 namespace FS.GG.UI.Controls
 open FS.GG.UI.DesignSystem
 
+/// Product-owned transient surface metadata emitted by widget authoring paths
+/// before a host has resolved current-frame anchor bounds.
+type TransientWidgetMetadata =
+    { SurfaceKind: TransientSurfaceKind
+      SurfaceId: ControlId
+      ParentSurfaceId: ControlId option
+      TriggerId: ControlId
+      AnchorId: ControlId
+      LayerPriority: int
+      DismissalPolicy: DismissalPolicy
+      FocusScope: FocusScope
+      Modal: bool
+      SelectionDispatchKey: string option
+      VisibilityState: bool
+      TriggerEnabled: bool }
+
+/// Product-visible request emitted when an input asks a transient trigger to
+/// open or close. Disabled triggers return a diagnostic and suppress opening.
+type WidgetActivationRequest =
+    { TriggerId: ControlId
+      SurfaceId: ControlId
+      ActivationSource: OverlayActivationSource
+      RequestedOpenState: bool
+      Diagnostic: ControlDiagnostic option }
+
+/// Helpers for carrying transient widget metadata on a `Control<'msg>` tree and
+/// translating it to the pure `OverlaySurface` coordinator contract.
+module TransientWidget =
+    /// Attach transient widget metadata to a control as an ordinary attribute.
+    val attribute: metadata: TransientWidgetMetadata -> Attr<'msg>
+    /// Collect all transient widget metadata records carried by a control tree.
+    val collect: control: Control<'msg> -> TransientWidgetMetadata list
+    /// Validate metadata against an optional current-frame anchor.
+    val validate: anchor: AnchorEvidence option -> metadata: TransientWidgetMetadata -> ControlDiagnostic list
+    /// Translate widget metadata plus resolved anchor evidence into an `OverlaySurface`.
+    val toSurface: anchor: AnchorEvidence -> metadata: TransientWidgetMetadata -> OverlaySurface
+    /// Build the product-visible activation request for a metadata record.
+    val activationRequest:
+        source: OverlayActivationSource ->
+        requestedOpenState: bool ->
+        metadata: TransientWidgetMetadata ->
+            WidgetActivationRequest
+
 /// Internal extraction seam (feature 080) — `internal` accessibility, no public-surface
 /// entry (mirrors `module internal Reconcile`); reached from `Controls.Tests` via
 /// `InternalsVisibleTo`. Only `chartValues` is exposed, for the FR-002 extraction test that

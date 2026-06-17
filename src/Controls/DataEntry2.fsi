@@ -21,6 +21,8 @@ module DataEntry2 =
         val create: attrs: Attr<'msg> list -> Control<'msg>
         /// Set the current query text.
         val value: value: string -> Attr<'msg>
+        /// Attach product-owned suggestion-list metadata for overlay routing.
+        val transientMetadata: controlId: ControlId -> isOpen: bool -> enabled: bool -> Attr<'msg>
         /// Dispatch the new query (payload) on change.
         val onChange: map: (string -> 'msg) -> Attr<'msg>
 

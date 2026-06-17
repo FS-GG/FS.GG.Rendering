@@ -109,8 +109,10 @@ let private buttonsPage (s: DemoState): Control<AntShowcaseMsg> =
 let private inputPage (s: DemoState): Control<AntShowcaseMsg> =
     let dateProps =
         { FS.GG.UI.Controls.Typed.DatePicker.defaults with
-            Value = Some(System.DateOnly(2026, 6, 15))
-            OnChange = Some(fun _ -> PageMsg ButtonClicked) }
+            Id = Some "date-picker"
+            Value = s.DatePickerSelected
+            IsOpen = s.DatePickerOpen
+            OnChange = Some(fun date -> PageMsg(DatePickerChanged date)) }
     let timeProps =
         { FS.GG.UI.Controls.Typed.TimePicker.defaults with
             Value = Some(System.TimeOnly(9, 30))

@@ -76,4 +76,7 @@ let seed: DemoState =
       OverlayOpen = false
       DialogOpen = false
       DrawerOpen = false
+      DatePickerOpen = false
+      DatePickerSelected = Some(System.DateOnly(2026, 6, 15))
+      DatePickerFocused = None
       Form = formSeed }

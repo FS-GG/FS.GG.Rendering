@@ -120,9 +120,22 @@ module ComboBox =
         Collections.update msg model
 
     let view (props: ComboBoxProps<'msg>) (model: CollectionModel) : Widget<'msg> =
+        let surfaceId = props.Id + "-dropdown"
+        let triggerId = props.Id + "-trigger"
+
         let attrs =
             [ yield Attr.items props.Items
               yield! CollectionLowering.stateAttrs model
+              yield
+                  WidgetLowering.transientMetadata
+                      TransientSurfaceKind.ComboDropdown
+                      surfaceId
+                      triggerId
+                      false
+                      true
+                      40
+                      false
+                      (Some "onChanged")
               match props.OnChanged with
               | Some map -> yield WidgetLowering.onString "onChanged" map
               | None -> () ]

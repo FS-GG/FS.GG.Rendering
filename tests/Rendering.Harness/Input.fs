@@ -38,6 +38,15 @@ module Input =
         |> List.map (fun s -> s.Name, s)
         |> Map.ofList
 
+    let overlayCorpus () =
+        [ for i in 0 .. 99 ->
+            { Name = sprintf "feature144-overlay-%03d" i
+              Steps =
+                [ Click(120 + (i % 8) * 4, 80 + (i % 5) * 6)
+                  Key "Escape"
+                  Wait 16
+                  Key "Tab" ] } ]
+
     let tryScript (name: string) : InputScript option = Map.tryFind name scripts
 
     // A step is an INPUT event (vs an injected Wait) — one input event advances the demo counter by one.

@@ -48,6 +48,12 @@ type OverlayRuntimeBridge =
     { Overlay: OverlayState
       Effects: OverlayEffect list }
 
+type OverlayRuntimeDispatchRecord =
+    { SurfaceId: ControlId option
+      Kind: string
+      Payload: string option
+      ProductVisible: bool }
+
 type ControlRuntimeMsg =
     | FocusControl of ControlId option
     | HoverControl of ControlId option
@@ -336,3 +342,43 @@ module ControlRuntime =
     let attachOverlayEffects (overlay: OverlayState) (effects: OverlayEffect list) =
         { Overlay = overlay
           Effects = effects }
+
+    let overlayDispatchRecords (bridge: OverlayRuntimeBridge) : OverlayRuntimeDispatchRecord list =
+        bridge.Effects
+        |> List.map (fun effect ->
+            match effect with
+            | DispatchProductMessage(surface, payload) ->
+                { SurfaceId = Some surface
+                  Kind = "dispatch-product-message"
+                  Payload = payload
+                  ProductVisible = true }
+            | RequestOpenStateChange(surface, isOpen) ->
+                { SurfaceId = Some surface
+                  Kind = "request-open-state-change"
+                  Payload = Some(string isOpen)
+                  ProductVisible = true }
+            | RequestFocus focus ->
+                { SurfaceId = focus
+                  Kind = "request-focus"
+                  Payload = focus
+                  ProductVisible = true }
+            | ReportOverlayDiagnostic diagnostic ->
+                { SurfaceId = diagnostic.ControlId
+                  Kind = "report-overlay-diagnostic"
+                  Payload = Some diagnostic.Message
+                  ProductVisible = false }
+            | ConsumeInput ->
+                { SurfaceId = bridge.Overlay.ActiveSurface
+                  Kind = "consume-input"
+                  Payload = None
+                  ProductVisible = false }
+            | AllowPassThrough ->
+                { SurfaceId = bridge.Overlay.ActiveSurface
+                  Kind = "allow-pass-through"
+                  Payload = None
+                  ProductVisible = false }
+            | RecordTopmostHit decision ->
+                { SurfaceId = decision.ChosenTarget
+                  Kind = "record-topmost-hit"
+                  Payload = Some decision.Input
+                  ProductVisible = false })

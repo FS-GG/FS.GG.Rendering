@@ -57,6 +57,10 @@ module SplitButton =
           OnSelected = None }
 
     let view (props: SplitButtonProps<'msg>) : Widget<'msg> =
+        let rootId = props.Id |> Option.defaultValue "split-button"
+        let surfaceId = rootId + "-menu"
+        let triggerId = rootId + "-trigger"
+
         let primary =
             FS.GG.UI.Controls.Button.create
                 [ yield FS.GG.UI.Controls.Button.text props.Text
@@ -86,6 +90,15 @@ module SplitButton =
 
         FS.GG.UI.Controls.Toolbar.create
             [ FS.GG.UI.Controls.Toolbar.children [ primary; trigger; overlay ]
+              WidgetLowering.transientMetadata
+                  TransientSurfaceKind.SplitButtonMenu
+                  surfaceId
+                  triggerId
+                  props.IsOpen
+                  props.Enabled
+                  30
+                  false
+                  (Some "onSelected")
               WidgetLowering.a11y AccessibilityRole.Menu "Split button" [ "ArrowDown"; "ArrowUp"; "Tab" ] ]
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl

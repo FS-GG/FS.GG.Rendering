@@ -43,6 +43,8 @@ module Dialog =
           OnSelected = None }
 
     let view (props: DialogProps<'msg>) : Widget<'msg> =
+        let surfaceId = props.Id |> Option.defaultValue "dialog"
+        let triggerId = surfaceId + "-trigger"
         let children = props.Children |> List.map Widget.toControl
 
         let attrs =
@@ -51,6 +53,16 @@ module Dialog =
               | Some title -> yield Attr.create "title" Content (TextValue title)
               | None -> ()
               yield Attr.selected props.IsOpen
+              yield
+                  WidgetLowering.transientMetadata
+                      TransientSurfaceKind.DialogModal
+                      surfaceId
+                      triggerId
+                      props.IsOpen
+                      true
+                      100
+                      true
+                      (Some "onSelected")
               match props.OnSelected with
               | Some map -> yield WidgetLowering.onString "onSelected" map
               | None -> () ]

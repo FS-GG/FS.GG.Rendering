@@ -118,6 +118,14 @@
     <Compile Include="Feature143OverlayModalHitTests.fs" />
     <Compile Include="Feature143OverlayReplayTests.fs" />
     <Compile Include="Feature143ReferenceDatePickerTests.fs" />
+    <Compile Include="Feature144OverlayFixtures.fs" />
+    <Compile Include="Feature144FsiSemanticTests.fs" />
+    <Compile Include="Feature144TransientMetadataTests.fs" />
+    <Compile Include="Feature144TransientMetadataFailureTests.fs" />
+    <Compile Include="Feature144ClosedStateCompatibilityTests.fs" />
+    <Compile Include="Feature144OverlayPointerRoutingTests.fs" />
+    <Compile Include="Feature144OverlayFocusRoutingTests.fs" />
+    <Compile Include="Feature144CompatibilityContractTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

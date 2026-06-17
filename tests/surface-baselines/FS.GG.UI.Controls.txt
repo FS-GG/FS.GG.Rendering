@@ -165,6 +165,9 @@ FS.GG.UI.Controls.Feedback2+Tour
 FS.GG.UI.Controls.Focus
 FS.GG.UI.Controls.FocusMove
 FS.GG.UI.Controls.FocusMove+Tags
+FS.GG.UI.Controls.FocusRecoveryDecision
+FS.GG.UI.Controls.FocusRecoveryTargetKind
+FS.GG.UI.Controls.FocusRecoveryTargetKind+Tags
 FS.GG.UI.Controls.FocusScope
 FS.GG.UI.Controls.FocusStop
 FS.GG.UI.Controls.FocusTransition
@@ -237,6 +240,7 @@ FS.GG.UI.Controls.OverlayMsg+PointerRouted
 FS.GG.UI.Controls.OverlayMsg+SelectionCompleted
 FS.GG.UI.Controls.OverlayMsg+Tags
 FS.GG.UI.Controls.OverlayRuntimeBridge
+FS.GG.UI.Controls.OverlayRuntimeDispatchRecord
 FS.GG.UI.Controls.OverlayState
 FS.GG.UI.Controls.OverlaySurface
 FS.GG.UI.Controls.OverlaySurfaceId
@@ -271,6 +275,7 @@ FS.GG.UI.Controls.PointerMsg+Tags
 FS.GG.UI.Controls.PointerMsg+Up
 FS.GG.UI.Controls.PointerMsg+WheelMsg
 FS.GG.UI.Controls.PointerOrigin
+FS.GG.UI.Controls.PointerOverlayRoutingResult
 FS.GG.UI.Controls.PointerPhase
 FS.GG.UI.Controls.PointerPhase+Tags
 FS.GG.UI.Controls.PointerSample
@@ -347,6 +352,8 @@ FS.GG.UI.Controls.Tooltip
 FS.GG.UI.Controls.TopmostHitDecision
 FS.GG.UI.Controls.TransientSurfaceKind
 FS.GG.UI.Controls.TransientSurfaceKind+Tags
+FS.GG.UI.Controls.TransientWidget
+FS.GG.UI.Controls.TransientWidgetMetadata
 FS.GG.UI.Controls.TrapMode
 FS.GG.UI.Controls.TrapMode+Tags
 FS.GG.UI.Controls.Treemap
@@ -463,5 +470,6 @@ FS.GG.UI.Controls.ValidationMessage
 FS.GG.UI.Controls.VisibleRange
 FS.GG.UI.Controls.WaterfallChart
 FS.GG.UI.Controls.Widget
+FS.GG.UI.Controls.WidgetActivationRequest
 FS.GG.UI.Controls.Widget`1
 FS.GG.UI.Controls.Wrap

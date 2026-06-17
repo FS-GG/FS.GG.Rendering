@@ -84,6 +84,16 @@ type PointerInteraction =
     | FocusMovedByPointer of control: ControlId
     | Diagnostic of PointerDiagnostic
 
+/// Overlay-aware pointer routing result: the pure coordinator state after
+/// routing, the topmost decision that was recorded, and the overlay effects the
+/// host must interpret before lower content sees the original input.
+type PointerOverlayRoutingResult =
+    { State: OverlayState
+      Decision: TopmostHitDecision
+      Effects: OverlayEffect list
+      PassThrough: bool
+      Diagnostics: ControlDiagnostic list }
+
 /// Internal transition input derived from a PointerSample.
 type PointerMsg =
     | Move of x: float * y: float
@@ -119,6 +129,18 @@ module Pointer =
         msg: PointerMsg ->
         state: PointerState ->
             PointerState * PointerInteraction list * ControlRuntimeMsg list
+
+    /// Route a resolved pointer target through the current overlay state before
+    /// lower content. The decision is pure and deterministic: modal topmost
+    /// surfaces block covered targets, non-modal outside targets request the
+    /// active surface's outside-pointer policy, and pass-through is exposed by
+    /// the returned overlay effects.
+    val routeOverlay:
+        overlay: OverlayState ->
+        input: string ->
+        candidateLayers: ControlId list ->
+        chosenTarget: ControlId option ->
+            PointerOverlayRoutingResult
 
     /// Replay a recorded message sequence to a final state + accumulated effects;
     /// identical input yields identical output (SC-005).

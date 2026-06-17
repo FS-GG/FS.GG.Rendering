@@ -44,6 +44,7 @@ module SplitButton =
     /// Authoring defaults; optional fields take their value from here.
     val defaults: SplitButtonProps<'msg>
     /// Lowers to a legacy `Toolbar` of [ primary `Button`; dropdown-trigger
-    /// `Button`; an `Overlay` `Menu` of `Items` shown when `IsOpen` ]; `None`
+    /// `Button`; an `Overlay` `Menu` of `Items` shown when product-owned
+    /// `IsOpen` is true ]; carries transient split-menu metadata; `None`
     /// callbacks lower to no binding.
     val view: props: SplitButtonProps<'msg> -> Widget<'msg>

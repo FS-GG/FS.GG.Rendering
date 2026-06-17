@@ -40,3 +40,36 @@ module internal WidgetLowering =
                 (Accessibility.keyboard true [ "Enter"; "Space" ] navigationKeys)
                 None
                 None)
+
+    let private focusScope surfaceId triggerId trapMode =
+        { SurfaceId = surfaceId
+          Stops = [ surfaceId + "-item-1"; surfaceId + "-item-2" ]
+          InitialFocus = Some(surfaceId + "-item-1")
+          RecoveryTarget = Some triggerId
+          TrapMode = trapMode }
+
+    let transientMetadata
+        (kind: TransientSurfaceKind)
+        (surfaceId: ControlId)
+        (triggerId: ControlId)
+        (isOpen: bool)
+        (enabled: bool)
+        (layerPriority: int)
+        (modal: bool)
+        (dispatchKey: string option)
+        : Attr<'msg> =
+        let trapMode = if modal then ModalTrap else LocalScope
+
+        TransientWidget.attribute
+            { SurfaceKind = kind
+              SurfaceId = surfaceId
+              ParentSurfaceId = None
+              TriggerId = triggerId
+              AnchorId = triggerId
+              LayerPriority = layerPriority
+              DismissalPolicy = if modal then OverlayState.modalDismissalPolicy () else OverlayState.defaultDismissalPolicy ()
+              FocusScope = focusScope surfaceId triggerId trapMode
+              Modal = modal
+              SelectionDispatchKey = dispatchKey
+              VisibilityState = isOpen
+              TriggerEnabled = enabled }

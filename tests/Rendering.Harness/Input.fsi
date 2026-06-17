@@ -32,6 +32,10 @@ module Input =
     /// The named script catalog, resolved by `--script <name>`.
     val scripts: Map<string, InputScript>
 
+    /// Feature 144 representative overlay corpus. The scripts are pure and
+    /// deterministic; each represents a generated overlay scene/input sequence.
+    val overlayCorpus: unit -> InputScript list
+
     /// Resolve a script by name; `None` if unknown.
     val tryScript: name: string -> InputScript option
 

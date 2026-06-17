@@ -32,6 +32,19 @@ type KeyRouting =
     | Traverse of FocusMove
     | Fallthrough
 
+type FocusRecoveryTargetKind =
+    | Trigger
+    | ParentSurface
+    | Fallback
+    | NoFocus
+
+type FocusRecoveryDecision =
+    { From: ControlId option
+      To: ControlId option
+      Reason: string
+      RecoveryTargetKind: FocusRecoveryTargetKind
+      Diagnostic: ControlDiagnostic option }
+
 module Focus =
 
     // The id scheme every host seam uses for a lowered control: the authored Key, else the Kind.
@@ -192,6 +205,54 @@ module Focus =
             Traverse(if shift then Previous else Next)
         else
             Fallthrough
+
+    let private classifyRecovery (prior: OverlayState) (target: ControlId option) =
+        match target with
+        | None -> NoFocus
+        | Some id ->
+            let priorSurface =
+                prior.OpenSurfaces
+                |> List.tryFind (fun surface ->
+                    surface.Trigger.ControlId = id
+                    || surface.Trigger.RecoveryTarget = Some id
+                    || surface.FocusScope.RecoveryTarget = Some id)
+
+            match priorSurface with
+            | Some _ -> Trigger
+            | None ->
+                let parent =
+                    prior.OpenSurfaces
+                    |> List.exists (fun surface ->
+                        surface.Id.ParentSurfaceId = Some id
+                        || surface.FocusScope.InitialFocus = Some id)
+
+                if parent then ParentSurface else Fallback
+
+    let recoverOverlayFocus (overlay: OverlayState) (removedTarget: ControlId) =
+        let fromFocus = overlay.FocusedControl
+        let next, effects = OverlayState.update (FocusTargetRemoved removedTarget) overlay
+
+        let focus =
+            effects
+            |> List.tryPick (function
+                | RequestFocus value -> Some value
+                | _ -> None)
+            |> Option.defaultValue next.FocusedControl
+
+        let diagnostic =
+            effects
+            |> List.tryPick (function
+                | ReportOverlayDiagnostic diagnostic -> Some diagnostic
+                | _ -> None)
+
+        let decision =
+            { From = fromFocus
+              To = focus
+              Reason = "focus-target-removed"
+              RecoveryTargetKind = classifyRecovery overlay focus
+              Diagnostic = diagnostic }
+
+        next, effects, decision
 
     // FR-004: the same focusability predicate `order` uses — a control is focusable iff its
     // AccessibilityMetadata declares `Keyboard.Focusable`.

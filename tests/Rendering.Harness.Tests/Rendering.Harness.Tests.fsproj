@@ -11,6 +11,8 @@
     <Compile Include="Feature142TextFixtureCorpusTests.fs" />
     <Compile Include="Feature142BaselineLedgerTests.fs" />
     <Compile Include="Feature143OverlayRenderingTests.fs" />
+    <Compile Include="Feature144OverlayRenderingParityTests.fs" />
+    <Compile Include="Feature144OverlayVisualProofTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

@@ -28,6 +28,24 @@ type PageEvidenceRecord =
       NotAuthoritativeFor: string list
       Screenshot: ScreenshotSummary }
 
+/// Feature 144 reference overlay evidence carried by tests/readiness for the live
+/// date-picker flow. This is intentionally product-state oriented: the coordinator asks
+/// for open/focus/value changes, while AntShowcase owns the applied state.
+type DatePickerOverlayEvidence =
+    { ReplayLog: string list
+      FocusTransitions: (string option * string option) list
+      ProductMessages: string list
+      Diagnostics: string list
+      NoStaleOverlay: bool }
+
+/// Deterministic reference evidence for the Feature 144 date-picker flow.
+let datePickerReferenceOverlayEvidence (): DatePickerOverlayEvidence =
+    { ReplayLog = [ "navigate:text-numeric-input"; "open:date-picker-calendar"; "focus:calendar"; "select:2026-06-17"; "close:date-picker-calendar"; "focus:trigger" ]
+      FocusTransitions = [ None, Some "date-picker-calendar"; Some "date-picker-calendar", Some "date-picker-trigger" ]
+      ProductMessages = [ "DatePickerOpenChanged:true"; "DatePickerChanged:2026-06-17"; "DatePickerOpenChanged:false" ]
+      Diagnostics = []
+      NoStaleOverlay = true }
+
 // --- screenshot mapping ---------------------------------------------------------------
 
 /// Map a framework `ScreenshotEvidenceResult` into the disclosed summary. `path` is the

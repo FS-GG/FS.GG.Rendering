@@ -40,7 +40,8 @@ module Tooltip =
 module Dialog =
     /// Authoring defaults; optional fields take their value from here.
     val defaults: DialogProps<'msg>
-    /// Lowers children via `Widget.toControl` into `Dialog.children`, order preserved.
+    /// Lowers children via `Widget.toControl` into `Dialog.children`, preserves
+    /// product-owned `IsOpen`, and carries modal transient metadata for overlay routing.
     val view: props: DialogProps<'msg> -> Widget<'msg>
 
 /// Typed Props front door for the `Toast` control.

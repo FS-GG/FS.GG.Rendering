@@ -49,8 +49,21 @@ module Menu =
     let defaults: MenuProps<'msg> = { Id = None; Items = []; OnSelected = None }
 
     let view (props: MenuProps<'msg>) : Widget<'msg> =
+        let surfaceId = props.Id |> Option.defaultValue "menu"
+        let triggerId = surfaceId + "-trigger"
+
         let attrs =
             [ yield FS.GG.UI.Controls.Menu.items props.Items
+              yield
+                  WidgetLowering.transientMetadata
+                      TransientSurfaceKind.Menu
+                      surfaceId
+                      triggerId
+                      true
+                      true
+                      10
+                      false
+                      (Some "onSelected")
               match props.OnSelected with
               | Some map -> yield FS.GG.UI.Controls.Menu.onSelected map
               | None -> () ]
@@ -63,8 +76,21 @@ module ContextMenu =
     let defaults: ContextMenuProps<'msg> = { Id = None; Items = []; OnSelected = None }
 
     let view (props: ContextMenuProps<'msg>) : Widget<'msg> =
+        let surfaceId = props.Id |> Option.defaultValue "context-menu"
+        let triggerId = surfaceId + "-trigger"
+
         let attrs =
             [ yield Attr.items props.Items
+              yield
+                  WidgetLowering.transientMetadata
+                      TransientSurfaceKind.ContextMenu
+                      surfaceId
+                      triggerId
+                      true
+                      true
+                      20
+                      false
+                      (Some "onSelected")
               match props.OnSelected with
               | Some map -> yield WidgetLowering.onString "onSelected" map
               | None -> () ]

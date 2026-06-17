@@ -54,6 +54,22 @@ type KeyRouting =
     | Traverse of FocusMove
     | Fallthrough
 
+/// Classification of where overlay focus recovered after a dismissal or stale
+/// target removal.
+type FocusRecoveryTargetKind =
+    | Trigger
+    | ParentSurface
+    | Fallback
+    | NoFocus
+
+/// Overlay focus recovery evidence derived from the pure overlay coordinator.
+type FocusRecoveryDecision =
+    { From: ControlId option
+      To: ControlId option
+      Reason: string
+      RecoveryTargetKind: FocusRecoveryTargetKind
+      Diagnostic: ControlDiagnostic option }
+
 /// The pure focus model: derive tab `order`, `traverse` it, and `route` a delivered key against the focused control.
 module Focus =
 
@@ -89,6 +105,14 @@ module Focus =
         isTab: bool ->
         shift: bool ->
             KeyRouting
+
+    /// Recover overlay focus after a target disappears by delegating to the
+    /// overlay coordinator and returning the coordinator state, emitted effects,
+    /// and an audit-friendly recovery decision.
+    val recoverOverlayFocus:
+        overlay: OverlayState ->
+        removedTarget: ControlId ->
+            OverlayState * OverlayEffect list * FocusRecoveryDecision
 
     /// Feature 108 (US1, FR-001..005): stamp `VisualState.Focused` on the single focusable control
     /// whose identity (`Key ?? structural path`, the feature-098 unification minted root "0", child

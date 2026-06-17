@@ -56,6 +56,15 @@ type OverlayRuntimeBridge =
     { Overlay: OverlayState
       Effects: OverlayEffect list }
 
+/// Runtime audit record for an interpreted overlay effect. These records are
+/// derived from effects and do not add open or selected state to
+/// `ControlRuntimeModel`.
+type OverlayRuntimeDispatchRecord =
+    { SurfaceId: ControlId option
+      Kind: string
+      Payload: string option
+      ProductVisible: bool }
+
 /// An input message driving the runtime transition, e.g. `FocusControl`, `HoverControl`, `PressControl`, `SetCaret`, `StartDrag`, or `Reset`.
 type ControlRuntimeMsg =
     | FocusControl of ControlId option
@@ -141,3 +150,7 @@ module ControlRuntime =
 
     /// Builds the explicit host bridge for overlay state and effects without mutating product state.
     val attachOverlayEffects: overlay: OverlayState -> effects: OverlayEffect list -> OverlayRuntimeBridge
+
+    /// Builds deterministic dispatch records for the overlay effects currently
+    /// attached to the runtime bridge.
+    val overlayDispatchRecords: bridge: OverlayRuntimeBridge -> OverlayRuntimeDispatchRecord list

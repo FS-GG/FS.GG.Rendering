@@ -39,6 +39,12 @@
     <Compile Include="Feature143OverlayDispatchFixtures.fs" />
     <Compile Include="Feature143OverlayDispatchTests.fs" />
     <Compile Include="Feature143OverlayParityTests.fs" />
+    <Compile Include="Feature144OverlayDispatchFixtures.fs" />
+    <Compile Include="Feature144FsiSemanticTests.fs" />
+    <Compile Include="Feature144OverlayHostRoutingTests.fs" />
+    <Compile Include="Feature144ProductOwnedVisibilityTests.fs" />
+    <Compile Include="Feature144ProductDispatchTests.fs" />
+    <Compile Include="Feature144OverlayReplayDeterminismTests.fs" />
     <Compile Include="Audit_DamageTracking.fs" />
     <Compile Include="Audit_Virtualization.fs" />
     <Compile Include="Audit_AnimationTickGating.fs" />

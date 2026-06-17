@@ -22,6 +22,12 @@ module Evidence =
           P99Ms: float option
           Artifacts: string list }
 
+    type OverlayEvidence =
+        { ReplayLog: string list
+          ProductMessages: string list
+          HitOrder: string list
+          Diagnostics: string list }
+
     let tierToken tier =
         match tier with
         | T0 -> "T0"
@@ -120,6 +126,14 @@ module Evidence =
         | Some r -> line (sprintf "- skipped: %s" r)
         | None -> ()
         sb.ToString()
+
+    let overlaySummary (evidence: OverlayEvidence) =
+        sprintf
+            "replay=%d product=%d hit=%d diagnostics=%d"
+            evidence.ReplayLog.Length
+            evidence.ProductMessages.Length
+            evidence.HitOrder.Length
+            evidence.Diagnostics.Length
 
     let write (dir: string) (evidence: Evidence) (frameMs: float list) =
         let e = evidence

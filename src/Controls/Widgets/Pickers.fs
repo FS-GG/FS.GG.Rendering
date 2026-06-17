@@ -40,6 +40,10 @@ module DatePicker =
           OnChange = None }
 
     let view (props: DatePickerProps<'msg>) : Widget<'msg> =
+        let rootId = props.Id |> Option.defaultValue "date-picker"
+        let surfaceId = rootId + "-calendar"
+        let triggerId = rootId + "-trigger"
+
         let formatted =
             match props.Value with
             | Some date -> date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
@@ -82,6 +86,15 @@ module DatePicker =
 
         FS.GG.UI.Controls.Stack.create
             [ FS.GG.UI.Controls.Stack.children [ field; trigger; overlay ]
+              WidgetLowering.transientMetadata
+                  TransientSurfaceKind.DatePickerCalendar
+                  surfaceId
+                  triggerId
+                  props.IsOpen
+                  props.Enabled
+                  60
+                  false
+                  (Some "onChange")
               WidgetLowering.a11y
                   AccessibilityRole.TextBox
                   "Date picker"
@@ -134,6 +147,10 @@ module ColorPicker =
           OnSelected = None }
 
     let view (props: ColorPickerProps<'msg>) : Widget<'msg> =
+        let rootId = props.Id |> Option.defaultValue "color-picker"
+        let surfaceId = rootId + "-palette"
+        let triggerId = rootId + "-trigger"
+
         let cell (swatch: ColorSwatch) =
             FS.GG.UI.Controls.Button.create
                 [ yield FS.GG.UI.Controls.Button.text swatch.Name
@@ -146,6 +163,15 @@ module ColorPicker =
 
         FS.GG.UI.Controls.Wrap.create
             [ FS.GG.UI.Controls.Wrap.children (props.Swatches |> List.map cell)
+              WidgetLowering.transientMetadata
+                  TransientSurfaceKind.ColorPickerPalette
+                  surfaceId
+                  triggerId
+                  true
+                  true
+                  70
+                  false
+                  (Some "onSelected")
               WidgetLowering.a11y
                   AccessibilityRole.List
                   "Color picker"

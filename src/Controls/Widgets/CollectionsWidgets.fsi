@@ -75,7 +75,9 @@ module ComboBox =
     val init: props: ComboBoxProps<'msg> -> CollectionModel * CollectionEffect list
     /// Delegates to `Collections.update`.
     val update: msg: CollectionMsg -> model: CollectionModel -> CollectionModel * CollectionEffect list
-    /// Lowers structurally equal to `Control.standard (Custom "combo-box")` for the current model state.
+    /// Lowers structurally equal to `Control.standard (Custom "combo-box")`
+    /// for the current product-owned model state and carries transient dropdown
+    /// metadata for overlay routing.
     val view: props: ComboBoxProps<'msg> -> model: CollectionModel -> Widget<'msg>
 
 /// Typed Props front door for the `TreeView` control.

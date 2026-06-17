@@ -4,6 +4,7 @@ owner: controls
 summary:
   supportedCount: 82
   categories: [display, input, selection, navigation, layout, feedback, data, chart, graph, custom]
+  transientSurfaces: [menu, context-menu, split-button-menu, combo-dropdown, auto-complete-suggestions, date-picker-calendar, color-picker-palette, dialog-modal]
   evidence:
     - specs/010-skia-controls-library/readiness/control-catalog.md
     - specs/010-skia-controls-library/readiness/layout-rendering.md

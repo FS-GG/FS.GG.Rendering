@@ -6,6 +6,107 @@ open FS.GG.UI.DesignSystem
 
 module LayoutDefaults = FS.GG.UI.Layout.Defaults
 
+type TransientWidgetMetadata =
+    { SurfaceKind: TransientSurfaceKind
+      SurfaceId: ControlId
+      ParentSurfaceId: ControlId option
+      TriggerId: ControlId
+      AnchorId: ControlId
+      LayerPriority: int
+      DismissalPolicy: DismissalPolicy
+      FocusScope: FocusScope
+      Modal: bool
+      SelectionDispatchKey: string option
+      VisibilityState: bool
+      TriggerEnabled: bool }
+
+type WidgetActivationRequest =
+    { TriggerId: ControlId
+      SurfaceId: ControlId
+      ActivationSource: OverlayActivationSource
+      RequestedOpenState: bool
+      Diagnostic: ControlDiagnostic option }
+
+module TransientWidget =
+    let private attrName = "transientWidgetMetadata"
+
+    let attribute (metadata: TransientWidgetMetadata) : Attr<'msg> =
+        Attr.create attrName Data (UntypedValue(metadata :> obj))
+
+    let collect (control: Control<'msg>) : TransientWidgetMetadata list =
+        let rec walk current =
+            let here =
+                current.Attributes
+                |> List.choose (fun attr ->
+                    if attr.Name = attrName then
+                        match attr.Value with
+                        | UntypedValue(:? TransientWidgetMetadata as metadata) -> Some metadata
+                        | _ -> None
+                    else
+                        None)
+
+            here @ (current.Children |> List.collect walk)
+
+        walk control
+
+    let private blank (value: string) = String.IsNullOrWhiteSpace value
+
+    let validate (anchor: AnchorEvidence option) (metadata: TransientWidgetMetadata) : ControlDiagnostic list =
+        let findings = System.Collections.Generic.List<ControlDiagnostic>()
+
+        if not (OverlayState.supportedSurfaceKinds () |> List.contains metadata.SurfaceKind) then
+            findings.Add(Diagnostics.invalidOverlayMessage (Some metadata.SurfaceId) $"Unsupported transient surface kind `{metadata.SurfaceKind}`.")
+
+        if blank metadata.SurfaceId then
+            findings.Add(Diagnostics.invalidOverlayMessage None "Transient widget metadata is missing a surface id.")
+
+        if blank metadata.TriggerId then
+            findings.Add(Diagnostics.invalidOverlayMessage (Some metadata.SurfaceId) "Transient widget metadata is missing a trigger id.")
+
+        if blank metadata.AnchorId then
+            findings.Add(Diagnostics.missingOverlayAnchor metadata.SurfaceId metadata.AnchorId)
+
+        if metadata.FocusScope.SurfaceId <> metadata.SurfaceId then
+            findings.Add(Diagnostics.staleOverlayFocusTarget (Some metadata.SurfaceId) metadata.FocusScope.SurfaceId)
+
+        if metadata.VisibilityState then
+            match anchor with
+            | Some evidence when evidence.AnchorBounds.IsSome -> ()
+            | Some evidence -> findings.Add(Diagnostics.missingOverlayAnchor metadata.SurfaceId evidence.AnchorId)
+            | None -> findings.Add(Diagnostics.missingOverlayAnchor metadata.SurfaceId metadata.AnchorId)
+
+        List.ofSeq findings
+
+    let toSurface (anchor: AnchorEvidence) (metadata: TransientWidgetMetadata) : OverlaySurface =
+        { Id =
+            { SurfaceId = metadata.SurfaceId
+              ParentSurfaceId = metadata.ParentSurfaceId
+              TriggerId = metadata.TriggerId }
+          Kind = metadata.SurfaceKind
+          Trigger =
+            { ControlId = metadata.TriggerId
+              Enabled = metadata.TriggerEnabled
+              ActivationSource = ProductOwnedOpen
+              RecoveryTarget = metadata.FocusScope.RecoveryTarget }
+          LayerPriority = metadata.LayerPriority
+          Anchor = anchor
+          DismissalPolicy = metadata.DismissalPolicy
+          FocusScope = metadata.FocusScope
+          Modal = metadata.Modal }
+
+    let activationRequest source requestedOpenState metadata =
+        let diagnostic =
+            if requestedOpenState && not metadata.TriggerEnabled then
+                Some(Diagnostics.disabledOverlayTrigger metadata.TriggerId metadata.SurfaceId)
+            else
+                None
+
+        { TriggerId = metadata.TriggerId
+          SurfaceId = metadata.SurfaceId
+          ActivationSource = source
+          RequestedOpenState = requestedOpenState && diagnostic.IsNone
+          Diagnostic = diagnostic }
+
 module StandardControlKindHelpers =
     let toControlKind kind =
         match kind with

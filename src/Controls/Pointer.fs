@@ -64,6 +64,13 @@ type PointerInteraction =
     | FocusMovedByPointer of control: ControlId
     | Diagnostic of PointerDiagnostic
 
+type PointerOverlayRoutingResult =
+    { State: OverlayState
+      Decision: TopmostHitDecision
+      Effects: OverlayEffect list
+      PassThrough: bool
+      Diagnostics: ControlDiagnostic list }
+
 type PointerMsg =
     | Move of x: float * y: float
     | Down of button: PointerButton * x: float * y: float
@@ -97,6 +104,15 @@ module Pointer =
 
     let private controlExists (layout: LayoutResult) (control: ControlId) =
         layout.Bounds |> List.exists (fun item -> item.NodeId = control)
+
+    let private isInsideSurface (surface: OverlaySurface) (target: ControlId option) =
+        match target with
+        | None -> false
+        | Some id ->
+            id = surface.Id.SurfaceId
+            || id = surface.Id.TriggerId
+            || id = surface.Trigger.ControlId
+            || (surface.FocusScope.Stops |> List.contains id)
 
     let private beyondThreshold (threshold: float) (startX: float) (startY: float) (x: float) (y: float) =
         let dx = x - startX
@@ -246,6 +262,38 @@ module Pointer =
                 | _ -> [ CancelInteraction None; HoverControl None ]
 
             { state with Presses = Map.empty; Hover = None }, cancelled @ hoverLeave, runtimeMsgs
+
+    let routeOverlay
+        (overlay: OverlayState)
+        (input: string)
+        (candidateLayers: ControlId list)
+        (chosenTarget: ControlId option)
+        : PointerOverlayRoutingResult =
+        let active = overlay.OpenSurfaces |> List.tryLast
+
+        let blockedByModal, outsideOfSurface =
+            match active with
+            | Some surface when surface.Modal && not (isInsideSurface surface chosenTarget) ->
+                Some surface.Id.SurfaceId, None
+            | Some surface when not (isInsideSurface surface chosenTarget) ->
+                None, Some surface.Id.SurfaceId
+            | _ -> None, None
+
+        let decision =
+            { Input = input
+              CandidateLayers = candidateLayers
+              ChosenTarget = chosenTarget
+              BlockedByModal = blockedByModal
+              OutsideOfSurface = outsideOfSurface }
+
+        let next, effects = OverlayState.update (PointerRouted decision) overlay
+        let passThrough = effects |> List.exists (function AllowPassThrough -> true | _ -> false)
+
+        { State = next
+          Decision = decision
+          Effects = effects
+          PassThrough = passThrough
+          Diagnostics = OverlayState.diagnostics next }
 
     let replay
         (policy: PixelSnapPolicy)

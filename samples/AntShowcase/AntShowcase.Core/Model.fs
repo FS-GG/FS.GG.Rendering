@@ -4,6 +4,7 @@
 /// shipped antLight/antDark — R3), so this module has no theme-package dependency.
 module AntShowcase.Core.Model
 
+open System
 open FS.GG.UI.Controls
 
 /// Light/Dark selector. Maps to AntTheme.antLight / AntTheme.antDark (R3). No accent seam
@@ -71,6 +72,10 @@ type DemoState =
       OverlayOpen: bool
       DialogOpen: bool
       DrawerOpen: bool
+      // Feature 144 reference flow: product-owned transient calendar state.
+      DatePickerOpen: bool
+      DatePickerSelected: DateOnly option
+      DatePickerFocused: ControlId option
       // Enterprise form template
       Form: FormState }
 
@@ -104,6 +109,9 @@ type PageMsg =
     | OverlayToggled of bool
     | DialogToggled of bool
     | DrawerToggled of bool
+    | DatePickerOpenChanged of bool
+    | DatePickerChanged of DateOnly
+    | DatePickerFocusChanged of ControlId option
     | FormFieldChanged of field: string * value: string
     | FormSubmitted
 
@@ -190,6 +198,13 @@ let updatePage (msg: PageMsg) (state: DemoState): DemoState =
     | OverlayToggled v -> { state with OverlayOpen = v }
     | DialogToggled v -> { state with DialogOpen = v }
     | DrawerToggled v -> { state with DrawerOpen = v }
+    | DatePickerOpenChanged v -> { state with DatePickerOpen = v }
+    | DatePickerChanged v ->
+        { state with
+            DatePickerSelected = Some v
+            DatePickerOpen = false
+            DatePickerFocused = Some "date-picker-trigger" }
+    | DatePickerFocusChanged v -> { state with DatePickerFocused = v }
     | FormFieldChanged(field, value) ->
         let f = state.Form
         let f' =

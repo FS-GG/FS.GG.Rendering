@@ -71,6 +71,17 @@ let runPage (seed: int) (outDir: string) (page: Page): Evidence.PageEvidenceReco
     let record = Evidence.build page.Id seed mode page.ControlIds metrics summary
     File.WriteAllText(Path.Combine(dir, "run.json"), Evidence.toRunJson record)
     File.WriteAllText(Path.Combine(dir, "summary.md"), Evidence.toSummaryMd record)
+
+    if page.Id = "text-numeric-input" then
+        let overlay = Evidence.datePickerReferenceOverlayEvidence ()
+        let overlayLines =
+            [ "# Feature 144 date-picker overlay evidence"
+              ""
+              sprintf "- replay: %s" (String.concat " -> " overlay.ReplayLog)
+              sprintf "- product messages: %s" (String.concat ", " overlay.ProductMessages)
+              sprintf "- diagnostics: %s" (if List.isEmpty overlay.Diagnostics then "none" else String.concat ", " overlay.Diagnostics)
+              sprintf "- no stale overlay: %b" overlay.NoStaleOverlay ]
+        File.WriteAllText(Path.Combine(dir, "feature144-date-picker-overlay.md"), String.concat Environment.NewLine overlayLines + Environment.NewLine)
     record
 
 /// Run evidence over all pages (or one via `pageFilter`). Always exits 0 on success,

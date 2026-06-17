@@ -39,14 +39,16 @@ module Tabs =
 module Menu =
     /// Authoring defaults; optional fields take their value from here.
     val defaults: MenuProps<'msg>
-    /// Lowers structurally equal to the legacy `Menu.create` attrs.
+    /// Lowers structurally equal to the legacy `Menu.create` attrs and carries
+    /// product-owned transient metadata for overlay routing and selection dispatch.
     val view: props: MenuProps<'msg> -> Widget<'msg>
 
 /// Typed Props front door for the `ContextMenu` control.
 module ContextMenu =
     /// Authoring defaults; optional fields take their value from here.
     val defaults: ContextMenuProps<'msg>
-    /// Lowers structurally equal to `Control.standard (Custom "context-menu")`.
+    /// Lowers structurally equal to `Control.standard (Custom "context-menu")`
+    /// and carries product-owned transient metadata for overlay routing.
     val view: props: ContextMenuProps<'msg> -> Widget<'msg>
 
 /// Typed Props front door for the `Toolbar` control.

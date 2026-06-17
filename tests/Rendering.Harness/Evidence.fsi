@@ -22,6 +22,13 @@ module Evidence =
           P99Ms: float option
           Artifacts: string list }
 
+    /// Overlay parity evidence gathered by Feature 144 harness tests.
+    type OverlayEvidence =
+        { ReplayLog: string list
+          ProductMessages: string list
+          HitOrder: string list
+          Diagnostics: string list }
+
     /// Stable string forms used in the artifacts.
     val tierToken: tier: Tier -> string
     val proofToken: proof: ProofLevel -> string
@@ -36,6 +43,9 @@ module Evidence =
 
     /// Render the human `summary.md` restating what the run proves and does NOT prove (pure).
     val toSummary: evidence: Evidence -> string
+
+    /// Stable one-line summary for overlay parity evidence.
+    val overlaySummary: evidence: OverlayEvidence -> string
 
     /// Compute p50/p95/p99 (ms) from per-frame durations; `None` when there are no frames.
     val percentiles: frameMs: float list -> (float option * float option * float option)

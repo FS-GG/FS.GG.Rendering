@@ -302,6 +302,22 @@ module ControlsElmish =
     val interpretKeyboardEffect: mapCommand: (CommandId -> 'msg) -> effect: KeyboardEffect -> AdapterCommand<'msg>
     /// Public contract function exposed by this FS.GG.UI package.
     val interpretControlEffect: mapRuntime: (ControlRuntimeMsg -> 'msg) -> effect: ControlRuntimeEffect -> AdapterCommand<'msg>
+    /// Interpret one overlay effect at the host boundary. Open/close requests
+    /// and product dispatches are mapped to product messages; focus requests
+    /// always update ControlRuntime and may also emit a product focus message.
+    val interpretOverlayEffect:
+        mapOpen: (ControlId -> bool -> 'msg) ->
+        mapDispatch: (ControlId -> string option -> 'msg) ->
+        mapFocus: (ControlId option -> 'msg option) ->
+        effect: OverlayEffect ->
+            AdapterCommand<'msg>
+    /// Interpret an ordered overlay effect list, preserving dispatch order.
+    val interpretOverlayOutcome:
+        mapOpen: (ControlId -> bool -> 'msg) ->
+        mapDispatch: (ControlId -> string option -> 'msg) ->
+        mapFocus: (ControlId option -> 'msg option) ->
+        effects: OverlayEffect list ->
+            AdapterCommand<'msg>
     /// Lower a single pointer interaction (075) into adapter commands. Diagnostics
     /// lower to `ReportAdapterDiagnostic`; every other interaction is offered to the
     /// consumer router `mapInteraction` (a `None` result is a no-op `[]`). Mirrors

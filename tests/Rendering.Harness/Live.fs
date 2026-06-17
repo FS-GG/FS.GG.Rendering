@@ -149,6 +149,14 @@ module Live =
                 finally
                     try xvfb.Kill true with _ -> ()
 
+    let overlayVisualLimitation (facts: ProbeFacts) =
+        match facts.EffectiveBackend, facts.GlRenderer with
+        | NoDisplay, _ ->
+            Some "Feature144 overlay visual proof requires an offscreen GL/display host; current probe has no display."
+        | _, None ->
+            Some "Feature144 overlay visual proof requires a GL renderer; current probe did not report one."
+        | _ -> None
+
     // ---- Faithful T3 (GPU vsync): a vsync-locked GL swap loop + present-interval measurement ----
     //
     // The FS.Skia viewer's per-frame `OnFrameMetrics`/view hooks were empirically proven UNRELIABLE
