@@ -1,4 +1,5 @@
 namespace FS.GG.UI.Controls
+open FS.GG.UI.Layout
 open FS.GG.UI.DesignSystem
 
 module Attr =
@@ -64,10 +65,21 @@ module Attr =
     let readOnly value = create "readOnly" State (BoolValue value)
     let loading value = create "loading" State (BoolValue value)
     let selected value = create "selected" State (BoolValue value)
-    let width value = create "width" Layout (FloatValue value)
-    let height value = create "height" Layout (FloatValue value)
-    let padding value = create "padding" Layout (FloatValue value)
-    let margin value = create "margin" Layout (FloatValue value)
+    let width value = create AttrKeys.LayoutWidth AttrCategory.Layout (FloatValue value)
+    let height value = create AttrKeys.LayoutHeight AttrCategory.Layout (FloatValue value)
+    let padding value = create AttrKeys.LayoutPadding AttrCategory.Layout (FloatValue value)
+    let margin value = create AttrKeys.LayoutMargin AttrCategory.Layout (FloatValue value)
+    let gap value = create AttrKeys.LayoutGap AttrCategory.Layout (FloatValue value)
+    let alignItems (value: LayoutAlign) = create AttrKeys.LayoutAlignItems AttrCategory.Layout (UntypedValue(value :> obj))
+    let alignSelf (value: LayoutAlign) = create AttrKeys.LayoutAlignSelf AttrCategory.Layout (UntypedValue(value :> obj))
+    let justifyContent (value: LayoutAlign) = create AttrKeys.LayoutJustifyContent AttrCategory.Layout (UntypedValue(value :> obj))
+    let flexGrow value = create AttrKeys.LayoutFlexGrow AttrCategory.Layout (FloatValue value)
+    let flexShrink value = create AttrKeys.LayoutFlexShrink AttrCategory.Layout (FloatValue value)
+    let flexBasis value = create AttrKeys.LayoutFlexBasis AttrCategory.Layout (FloatValue value)
+    let minWidth value = create AttrKeys.LayoutMinWidth AttrCategory.Layout (FloatValue value)
+    let minHeight value = create AttrKeys.LayoutMinHeight AttrCategory.Layout (FloatValue value)
+    let maxWidth value = create AttrKeys.LayoutMaxWidth AttrCategory.Layout (FloatValue value)
+    let maxHeight value = create AttrKeys.LayoutMaxHeight AttrCategory.Layout (FloatValue value)
     let style name = create "style" Style (TextValue name)
     let styleClasses classes = create "styleClasses" Style (StyleClassesValue classes)
     let visualState state = create "visualState" State (VisualStateValue state)

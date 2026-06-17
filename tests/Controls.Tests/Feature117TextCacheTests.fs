@@ -41,9 +41,27 @@ let private styleToggle (n: int) (model: int) : Control<int> =
       Content = None
       Accessibility = None }
 
+let private repeatedTextToggle (n: int) (model: int) : Control<int> =
+    { Kind = "stack"
+      Key = None
+      Attributes = []
+      Children =
+        [ for i in 0 .. n - 1 ->
+            { Kind = "data-grid-row"
+              Key = Some(sprintf "repeat-%d" i)
+              Attributes =
+                [ { Name = "width"; Category = AttrCategory.Style; Value = FloatValue 200.0 }
+                  { Name = "height"; Category = AttrCategory.Style; Value = FloatValue 24.0 }
+                  { Name = "selected"; Category = AttrCategory.Style; Value = BoolValue(model % 2 = 0) } ]
+              Children = []
+              Content = Some "same repeated text"
+              Accessibility = None } ]
+      Content = None
+      Accessibility = None }
+
 [<Tests>]
 let tests =
-    testList "Feature 117 text-measure cache (US1, FR-001/002/004)" [
+    testList "Feature117TextCache" [
 
         test "a cold key is a miss; the identical key is a hit with byte-identical metrics (FR-001/SC-002→SC-001/FR-004)" {
             let m1, c1, hit1 = RetainedRender.measureTextCached empty true "Hello" font
@@ -133,5 +151,19 @@ let tests =
 
             // ...and equals a fresh full rebuild (the standing parity oracle).
             Expect.equal on.Render.Scene (Control.renderTree theme size v1).Scene "cache-on scene equals a fresh full rebuild"
+        }
+
+        test "a cold retained frame with repeated text reports no same-frame duplicate hits (Feature138)" {
+            let v0 = repeatedTextToggle 6 0
+            let v1 = repeatedTextToggle 6 1
+            let r0 = (RetainedRender.init theme size v0).Retained
+            let cold = RetainedRender.step theme size r0 v1
+
+            Expect.equal cold.WorkReduction.TextMeasureCacheHits 0 "cold same-frame duplicate reuse is not a metric hit"
+            Expect.isTrue (cold.WorkReduction.TextMeasureCacheMisses > 0) "the first cold measurements are still recorded as misses"
+
+            let warm = RetainedRender.step theme size cold.Retained (repeatedTextToggle 6 2)
+            Expect.isTrue (warm.WorkReduction.TextMeasureCacheHits > 0) "the next frame reports prior-frame reuse as hits"
+            Expect.equal warm.WorkReduction.TextMeasureCacheMisses 0 "the warm frame does no fresh text measurement"
         }
     ]

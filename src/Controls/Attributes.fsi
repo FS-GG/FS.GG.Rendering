@@ -1,4 +1,5 @@
 namespace FS.GG.UI.Controls
+open FS.GG.UI.Layout
 open FS.GG.UI.DesignSystem
 
 /// Builder functions (`Attr`) for constructing the typed `Attr<'msg>` values that
@@ -61,6 +62,29 @@ module Attr =
     /// Layout builder (`margin`) setting uniform outer spacing in pixels around the control
     /// within its parent; omitted defaults to no margin.
     val margin: value: float -> Attr<'msg>
+    /// Layout builder (`gap`) setting uniform spacing in pixels between child controls;
+    /// omitted preserves the Controls compatibility gap.
+    val gap: value: float -> Attr<'msg>
+    /// Layout builder (`alignItems`) setting child cross-axis alignment for a container.
+    val alignItems: value: LayoutAlign -> Attr<'msg>
+    /// Layout builder (`alignSelf`) overriding the parent cross-axis alignment for this control.
+    val alignSelf: value: LayoutAlign -> Attr<'msg>
+    /// Layout builder (`justifyContent`) setting main-axis child distribution for a container.
+    val justifyContent: value: LayoutAlign -> Attr<'msg>
+    /// Layout builder (`flexGrow`) setting how this control consumes extra main-axis space.
+    val flexGrow: value: float -> Attr<'msg>
+    /// Layout builder (`flexShrink`) setting how this control yields main-axis space under constraint.
+    val flexShrink: value: float -> Attr<'msg>
+    /// Layout builder (`flexBasis`) setting the preferred main-axis size before grow/shrink.
+    val flexBasis: value: float -> Attr<'msg>
+    /// Layout builder (`minWidth`) setting the minimum layout width in pixels.
+    val minWidth: value: float -> Attr<'msg>
+    /// Layout builder (`minHeight`) setting the minimum layout height in pixels.
+    val minHeight: value: float -> Attr<'msg>
+    /// Layout builder (`maxWidth`) setting the maximum layout width in pixels.
+    val maxWidth: value: float -> Attr<'msg>
+    /// Layout builder (`maxHeight`) setting the maximum layout height in pixels.
+    val maxHeight: value: float -> Attr<'msg>
     /// Style builder (`style`) attaching a single named style class by string — the free-form
     /// counterpart to the typed `styleClasses` builder.
     val style: name: string -> Attr<'msg>

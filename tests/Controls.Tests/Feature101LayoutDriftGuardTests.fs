@@ -18,6 +18,7 @@ module Feature101LayoutDriftGuardTests
 open Expecto
 open FS.GG.UI.Scene
 open FS.GG.UI.Controls
+open FS.GG.UI.Layout
 open FS.GG.UI.Themes.Default
 open FS.GG.UI.DesignSystem
 
@@ -98,7 +99,9 @@ let probeCorpus: string list =
     // (1) the classifier's own covered set
     Set.toList ControlInternals.layoutAffectingAttrNames
     // (2) the controls-layer attribute vocabulary (Attr builders + Control.fs reads)
-    @ [ "width"; "height"; "orientation"; "padding"; "margin"
+    @ [ "width"; "height"; "orientation"; "padding"; "margin"; "gap"; "spacing"
+        "alignItems"; "alignSelf"; "justifyContent"; "flexGrow"; "flexShrink"; "flexBasis"
+        "minWidth"; "minHeight"; "maxWidth"; "maxHeight"
         "value"; "text"; "selected"; "enabled"; "readOnly"; "visible"; "loading"
         "items"; "nodes"; "styleClasses"; "visualState"; "accessibility"; "style"; "theme" ]
     // (3) explicit non-layout names — the over-coverage probes
@@ -112,6 +115,9 @@ let probeCorpus: string list =
 let private probeValue (name: string) : AttrValue<unit> =
     match name with
     | "orientation" -> TextValue "horizontal"
+    | "alignItems"
+    | "alignSelf"
+    | "justifyContent" -> UntypedValue(LayoutAlign.Center :> obj)
     | _ -> FloatValue 173.0
 
 let private probeAttr (name: string) : Attr<unit> =
@@ -157,6 +163,23 @@ let discoverLayoutDrivingNames (size: Size) : Set<string> =
 let private catAttr (name: string) (category: AttrCategory) (v: float) : Attr<unit> =
     { Name = name; Category = category; Value = FloatValue v }
 
+let private geometryAttr (name: string) (variant: int) : Attr<unit> =
+    let value =
+        match name with
+        | "orientation" -> TextValue(if variant = 0 then "vertical" else "horizontal")
+        | "alignItems"
+        | "alignSelf"
+        | "justifyContent" ->
+            UntypedValue((if variant = 0 then LayoutAlign.Start else LayoutAlign.Center) :> obj)
+        | _ -> FloatValue(if variant = 0 then 1.0 else 2.0)
+
+    { Name = name; Category = AttrCategory.Style; Value = value }
+
+let private feature138GeometryNames =
+    [ "width"; "height"; "orientation"; "padding"; "margin"; "gap"; "spacing"
+      "alignItems"; "alignSelf"; "justifyContent"; "flexGrow"; "flexShrink"; "flexBasis"
+      "minWidth"; "minHeight"; "maxWidth"; "maxHeight" ]
+
 let private catTheme = Theme.light
 
 /// A keyed `panel` carrying `panelAttrs`, wrapped in a stack root with a leaf child so it is a real,
@@ -188,7 +211,7 @@ let private remeasuredFor (prev: Control<unit>) (next: Control<unit>) : int =
 
 [<Tests>]
 let tests =
-    testList "Feature101 layout dirty-set anti-drift guard (R7)" [
+    testList "Feature101LayoutDriftGuard" [
 
         // -------- C1: pure drift report, both directions, sorted (FR-002/FR-003) --------
 
@@ -236,9 +259,15 @@ let tests =
 
         // -------- C2: the load-bearing behavioral-probe equality gate (FR-001, SC-001/SC-002) --------
 
-        test "the behavioral probe discovers EXACTLY the geometry names {width;height;orientation}" {
+        test "the behavioral probe discovers EXACTLY the geometry names read by toLayout" {
             let discovered = discoverLayoutDrivingNames probeSize
-            Expect.equal discovered (Set.ofList [ "width"; "height"; "orientation" ]) "probe discovers the real layout inputs"
+            Expect.equal
+                discovered
+                (Set.ofList
+                    [ "width"; "height"; "orientation"; "padding"; "margin"; "gap"; "spacing"
+                      "alignItems"; "alignSelf"; "justifyContent"; "flexGrow"; "flexShrink"; "flexBasis"
+                      "minWidth"; "minHeight"; "maxWidth"; "maxHeight" ])
+                "probe discovers the real layout inputs"
         }
 
         test "LOAD-BEARING GATE: probe-discovered names == layoutAffectingAttrNames, no drift (FR-001/FR-002/FR-003)" {
@@ -254,7 +283,7 @@ let tests =
             // Sanity: the corpus DOES include non-layout names; none of them is discovered, so an over-broad
             // literal entry would be caught by the gate above.
             let discovered = discoverLayoutDrivingNames probeSize
-            for name in [ "background"; "foreground"; "text"; "value"; "selected"; "padding"; "margin" ] do
+            for name in [ "background"; "foreground"; "text"; "value"; "selected"; "enabled"; "styleClasses"; "visualState" ] do
                 Expect.isFalse (Set.contains name discovered) (sprintf "'%s' is not a layout-driving name" name)
         }
 
@@ -281,6 +310,21 @@ let tests =
             let prev = panelTree [ catAttr "background" AttrCategory.Style 1.0 ]
             let next = panelTree [ catAttr "background" AttrCategory.Style 2.0 ]
             Expect.equal (remeasuredFor prev next) 0 "a style/content change re-measures nothing"
+        }
+
+        test "changed geometry names dirty layout even without Layout category (Feature138)" {
+            for name in feature138GeometryNames do
+                let prev = panelTree [ geometryAttr name 0 ]
+                let next = panelTree [ geometryAttr name 1 ]
+                Expect.isGreaterThan (remeasuredFor prev next) 0 (sprintf "%s change re-measures through the name set" name)
+
+        }
+
+        test "removed geometry names dirty layout even without Layout category (Feature138)" {
+            for name in feature138GeometryNames do
+                let prev = panelTree [ geometryAttr name 0 ]
+                let next = panelTree []
+                Expect.isGreaterThan (remeasuredFor prev next) 0 (sprintf "%s removal re-measures through the name set" name)
         }
 
         test "the name-set gate does NOT demand a category-only attribute appear (channels independent, FR-003<->FR-004)" {

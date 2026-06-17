@@ -60,6 +60,11 @@ module internal ControlInternals =
         |> List.rev
         |> List.tryFind (fun attr -> attr.Name = name)
 
+    let tryLastAny names (attrs: Attr<'msg> list) =
+        attrs
+        |> List.rev
+        |> List.tryFind (fun attr -> names |> List.contains attr.Name)
+
     let textFrom (attrs: Attr<'msg> list) =
         AttrKeys.tryKey AttrKeys.Text attrs
         |> Option.orElseWith (fun () -> AttrKeys.tryKey AttrKeys.Value attrs)
@@ -184,6 +189,49 @@ module internal ControlInternals =
             | FloatValue value -> Some value
             | _ -> None)
         |> Option.defaultValue defaultValue
+
+    let private tryFloat name (attrs: Attr<'msg> list) =
+        tryLast name attrs
+        |> Option.bind (fun attr ->
+            match attr.Value with
+            | FloatValue value -> Some value
+            | _ -> None)
+
+    let private tryFloatAny names (attrs: Attr<'msg> list) =
+        tryLastAny names attrs
+        |> Option.bind (fun attr ->
+            match attr.Value with
+            | FloatValue value -> Some value
+            | _ -> None)
+
+    let private uniformSpacing value : FS.GG.UI.Layout.LayoutPadding =
+        { Left = value
+          Top = value
+          Right = value
+          Bottom = value }
+
+    let private uniformGap value : FS.GG.UI.Layout.LayoutGap =
+        { Row = value; Column = value }
+
+    let private alignFromString value =
+        match value with
+        | "auto" -> Some FS.GG.UI.Layout.LayoutAlign.Auto
+        | "start" -> Some FS.GG.UI.Layout.LayoutAlign.Start
+        | "center" -> Some FS.GG.UI.Layout.LayoutAlign.Center
+        | "end" -> Some FS.GG.UI.Layout.LayoutAlign.End
+        | "stretch" -> Some FS.GG.UI.Layout.LayoutAlign.Stretch
+        | "spaceBetween" -> Some FS.GG.UI.Layout.LayoutAlign.SpaceBetween
+        | "spaceAround" -> Some FS.GG.UI.Layout.LayoutAlign.SpaceAround
+        | "spaceEvenly" -> Some FS.GG.UI.Layout.LayoutAlign.SpaceEvenly
+        | _ -> None
+
+    let private tryAlign name (attrs: Attr<'msg> list) =
+        tryLast name attrs
+        |> Option.bind (fun attr ->
+            match attr.Value with
+            | UntypedValue(:? FS.GG.UI.Layout.LayoutAlign as value) -> Some value
+            | TextValue value -> alignFromString value
+            | _ -> None)
 
     let accessibility kind (attrs: Attr<'msg> list) text =
         AttrKeys.tryKey AttrKeys.Accessibility attrs
@@ -444,14 +492,12 @@ module internal ControlInternals =
             let cap (w: string) = if w.Length = 0 then w else string (System.Char.ToUpper w[0]) + w.Substring 1
             cap head :: tail |> String.concat " "
 
-    // Feature 101 (R7, US2 / SC-002): the ONE authoritative token per layout-driving attribute name.
-    // `nodeWidth`/`nodeHeight` (`hasAttr`/`floatValue`), `orientationOf`, and `layoutAffectingAttrNames`
-    // below all reference these, so no string literal of a layout-driving name is hand-duplicated.
-    // `private` to this internal module (reached only via `InternalsVisibleTo`); NOT in `Control.fsi`
-    // and NO behavior change (byte-identically the same three strings).
-    let [<Literal>] private AttrWidth = "width"
-    let [<Literal>] private AttrHeight = "height"
-    let [<Literal>] private AttrOrientation = "orientation"
+    // Feature 101/138: the layout-driving attribute names flow through the shared internal
+    // AttrKeys vocabulary so builder emission, layout lowering, and dirty-set membership do not
+    // hand-copy the same strings.
+    let private AttrWidth = AttrKeys.LayoutWidth
+    let private AttrHeight = AttrKeys.LayoutHeight
+    let private AttrOrientation = AttrKeys.LayoutOrientation
 
     /// Preview node width: explicit `width` wins; rich families fill the preview canvas.
     let nodeWidth (control: Control<'msg>) =
@@ -2003,7 +2049,8 @@ module internal ControlInternals =
     /// Feature 097 (R2): the attribute NAMES the incremental dirty-set classifier (`layoutDirtySet`)
     /// keys on, so a change to a geometry-driving attribute re-measures while a content/style/state/
     /// visual-state change does not (SC-004). These are the same names `toLayout` (below) reads to
-    /// derive geometry — `Size` from `width`/`height`, `Direction` from `orientation`.
+    /// derive geometry — `Size` from `width`/`height`, `Direction` from `orientation`, spacing
+    /// fields from padding/margin/gap, flex fields, alignment, and min/max constraints.
     ///
     /// Feature 101 (R7): this literal is a SEPARATE, hot-path `Set` from `toLayout`'s reads — it is NOT
     /// auto-derived from them, so the two agree by maintenance discipline alone. That agreement is now
@@ -2011,11 +2058,29 @@ module internal ControlInternals =
     /// `tests/Controls.Tests/Feature101LayoutDriftGuardTests.fs` toggles each candidate attribute on
     /// representative fixtures, observes which names actually change the real `evaluateLayout` output,
     /// and fails the build the instant this set drifts from what `toLayout` reads (either direction).
-    /// The shared `[<Literal>]` name tokens above remove typo drift; the gate makes membership drift
+    /// The shared `AttrKeys` name tokens remove typo drift; the gate makes membership drift
     /// impossible to ship. (A change tagged `AttrCategory.Layout` is honoured by `layoutDirtySet`
     /// independently of this name set, so a future categorised attr needs no edit here — that
     /// independence is pinned by the same test file.)
-    let layoutAffectingAttrNames: Set<string> = Set.ofList [ AttrWidth; AttrHeight; AttrOrientation ]
+    let layoutAffectingAttrNames: Set<string> =
+        Set.ofList
+            [ AttrKeys.LayoutWidth
+              AttrKeys.LayoutHeight
+              AttrKeys.LayoutOrientation
+              AttrKeys.LayoutPadding
+              AttrKeys.LayoutMargin
+              AttrKeys.LayoutGap
+              AttrKeys.LayoutSpacing
+              AttrKeys.LayoutAlignItems
+              AttrKeys.LayoutAlignSelf
+              AttrKeys.LayoutJustifyContent
+              AttrKeys.LayoutFlexGrow
+              AttrKeys.LayoutFlexShrink
+              AttrKeys.LayoutFlexBasis
+              AttrKeys.LayoutMinWidth
+              AttrKeys.LayoutMinHeight
+              AttrKeys.LayoutMaxWidth
+              AttrKeys.LayoutMaxHeight ]
 
     let rec private toLayout (path: string) (c: Control<'msg>) : FS.GG.UI.Layout.LayoutNode =
         let id = c.Key |> Option.defaultValue path
@@ -2029,14 +2094,34 @@ module internal ControlInternals =
                 { Width = (if hasAttr AttrWidth c.Attributes then Some(nodeWidth c) else None)
                   Height = (if hasAttr AttrHeight c.Attributes then Some(nodeHeight c) else None) }
 
+        let attrs = c.Attributes
+        let padding = tryFloat AttrKeys.LayoutPadding attrs |> Option.map uniformSpacing |> Option.defaultValue (uniformSpacing 8.0)
+        let margin = tryFloat AttrKeys.LayoutMargin attrs |> Option.map uniformSpacing |> Option.defaultValue LayoutDefaults.padding
+        let gap = tryFloatAny [ AttrKeys.LayoutGap; AttrKeys.LayoutSpacing ] attrs |> Option.map uniformGap |> Option.defaultValue (uniformGap 8.0)
+        let minSize: FS.GG.UI.Layout.LayoutSize =
+            { Width = tryFloat AttrKeys.LayoutMinWidth attrs
+              Height = tryFloat AttrKeys.LayoutMinHeight attrs }
+        let maxSize: FS.GG.UI.Layout.LayoutSize =
+            { Width = tryFloat AttrKeys.LayoutMaxWidth attrs
+              Height = tryFloat AttrKeys.LayoutMaxHeight attrs }
+
         { LayoutDefaults.layoutNode id with
             Intent =
                 { LayoutDefaults.layoutIntent with
                     Direction = directionOf c
                     Wrap = wrapOf c.Kind
-                    Gap = { Row = 8.0; Column = 8.0 }
-                    Padding = { Left = 8.0; Top = 8.0; Right = 8.0; Bottom = 8.0 }
-                    Size = size }
+                    AlignItems = tryAlign AttrKeys.LayoutAlignItems attrs |> Option.defaultValue LayoutDefaults.layoutIntent.AlignItems
+                    AlignSelf = tryAlign AttrKeys.LayoutAlignSelf attrs
+                    JustifyContent = tryAlign AttrKeys.LayoutJustifyContent attrs |> Option.defaultValue LayoutDefaults.layoutIntent.JustifyContent
+                    Padding = padding
+                    Margin = margin
+                    Gap = gap
+                    Size = size
+                    MinSize = minSize
+                    MaxSize = maxSize
+                    FlexGrow = tryFloat AttrKeys.LayoutFlexGrow attrs |> Option.defaultValue LayoutDefaults.layoutIntent.FlexGrow
+                    FlexShrink = tryFloat AttrKeys.LayoutFlexShrink attrs |> Option.defaultValue LayoutDefaults.layoutIntent.FlexShrink
+                    FlexBasis = tryFloat AttrKeys.LayoutFlexBasis attrs }
             Children = c.Children |> List.mapi (fun index child -> toLayout (path + "." + string index) child) }
 
     /// Build the nested Yoga layout tree for `control` at `size`, evaluate it, and return the

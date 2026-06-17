@@ -41,9 +41,9 @@
     <Compile Include="Diagnostics.fs" />
     <Compile Include="Accessibility.fsi" />
     <Compile Include="Accessibility.fs" />
+    <Compile Include="Internal/AttrKeys.fs" />
     <Compile Include="Attributes.fsi" />
     <Compile Include="Attributes.fs" />
-    <Compile Include="Internal/AttrKeys.fs" />
     <Compile Include="Control.fsi" />
     <Compile Include="Control.fs" />
     <Compile Include="Reconcile.fsi" />

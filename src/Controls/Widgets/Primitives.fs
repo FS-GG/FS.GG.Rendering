@@ -58,7 +58,7 @@ module LegacyControls =
         | Horizontal -> "horizontal"
 
     let spacingAttr (spacing: float) : Attr<'msg> =
-        Attr.create "spacing" Layout (FloatValue spacing)
+        Attr.create AttrKeys.LayoutSpacing Layout (FloatValue spacing)
 
     let orientationAttr orientation : Attr<'msg> =
         Attr.create "orientation" Layout (TextValue(orientationName orientation))

@@ -8,7 +8,7 @@ module Feature117LayoutInvalidatedTests
 // reports a bounded, explainable `LayoutInvalidatedNodeCount` that is `<= RemeasuredNodeCount` (since
 // fixed-size-ancestor propagation EXPANDS the pre-pinning dirty set into the re-measured boundary
 // subtree — the honest direction the framework guarantees; see readiness/layout-invalidated-authority.md
-// for the spec correction); and the feature-101 drift guard's attribute set is unchanged (FR-008).
+// for the spec correction); and the feature-101 drift guard's attribute set is explicit.
 // Render-only / deterministic ([[fs-gg-evidence-mode]], [[fs-gg-reconciliation]]).
 
 open Expecto
@@ -95,10 +95,13 @@ let tests =
             Expect.isTrue (invalidated <= total) (sprintf "invalidated %d is bounded by the total node count %d" invalidated total)
         }
 
-        test "the feature-101 drift-guard attribute set is unchanged — no new geometry-driving attribute (FR-008)" {
+        test "the feature-101 drift-guard attribute set covers every geometry-driving attribute" {
             Expect.equal
                 ControlInternals.layoutAffectingAttrNames
-                (Set.ofList [ "width"; "height"; "orientation" ])
-                "this rung adds no new layout-affecting attribute (the drift guard stays in force)"
+                (Set.ofList
+                    [ "width"; "height"; "orientation"; "padding"; "margin"; "gap"; "spacing"
+                      "alignItems"; "alignSelf"; "justifyContent"; "flexGrow"; "flexShrink"; "flexBasis"
+                      "minWidth"; "minHeight"; "maxWidth"; "maxHeight" ])
+                "the drift guard covers the geometry names read by toLayout"
         }
     ]

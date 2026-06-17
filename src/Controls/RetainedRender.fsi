@@ -250,10 +250,11 @@ type internal WorkReductionRecord =
       PictureCacheHits: int
       PictureCacheMisses: int
       PictureCacheEntryCount: int
-      /// Feature 117 (Phase 8, FR-001/FR-005): the per-frame text-measure cache reuse outcomes over every
-      /// `(text, font)` measured while laying out and painting this frame. `TextMeasureCacheHits` reused a
-      /// resident measurement without re-invoking `Scene.measureText`; `TextMeasureCacheMisses` measured
-      /// fresh (a cold, changed, or evicted key) and stored it. Both `0` on a frame that measures no text;
+      /// Feature 117/138: the per-frame text-measure cache outcomes over every `(text, font)` measured
+      /// while laying out and painting this frame. `TextMeasureCacheHits` means prior-frame reuse: the key
+      /// was resident before the frame's measurement window began. Same-frame duplicate text can still
+      /// reuse the cache internally, but it is not reported as a hit. `TextMeasureCacheMisses` counts fresh
+      /// measurements for keys not resident at frame start. Both `0` on a frame that measures no text;
       /// under the `TextCacheEnabled` oracle `false` every measurement re-misses (`TextMeasureCacheHits =
       /// 0`). Surfaced as the public `FrameMetrics.TextMeasureCacheHitCount` / `TextMeasureCacheMissCount`.
       TextMeasureCacheHits: int

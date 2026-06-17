@@ -43,3 +43,6 @@ specs/*/readiness/
 
 # macOS / Linux cruft
 .DS_Store
+Thumbs.db
+*.tmp
+*.swp

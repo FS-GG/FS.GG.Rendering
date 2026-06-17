@@ -10,6 +10,57 @@ open FS.GG.UI.DesignSystem
 // `width`/`height`/`orientation` already single-source through feature 101's `[<Literal>]` attr
 // names (compile-checked there), so they are not duplicated here.
 module internal AttrKeys =
+    [<Literal>]
+    let LayoutWidth = "width"
+
+    [<Literal>]
+    let LayoutHeight = "height"
+
+    [<Literal>]
+    let LayoutOrientation = "orientation"
+
+    [<Literal>]
+    let LayoutPadding = "padding"
+
+    [<Literal>]
+    let LayoutMargin = "margin"
+
+    [<Literal>]
+    let LayoutGap = "gap"
+
+    [<Literal>]
+    let LayoutSpacing = "spacing"
+
+    [<Literal>]
+    let LayoutAlignItems = "alignItems"
+
+    [<Literal>]
+    let LayoutAlignSelf = "alignSelf"
+
+    [<Literal>]
+    let LayoutJustifyContent = "justifyContent"
+
+    [<Literal>]
+    let LayoutFlexGrow = "flexGrow"
+
+    [<Literal>]
+    let LayoutFlexShrink = "flexShrink"
+
+    [<Literal>]
+    let LayoutFlexBasis = "flexBasis"
+
+    [<Literal>]
+    let LayoutMinWidth = "minWidth"
+
+    [<Literal>]
+    let LayoutMinHeight = "minHeight"
+
+    [<Literal>]
+    let LayoutMaxWidth = "maxWidth"
+
+    [<Literal>]
+    let LayoutMaxHeight = "maxHeight"
+
     type AttrKey =
         | Text
         | Value

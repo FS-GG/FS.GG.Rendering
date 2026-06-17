@@ -51,7 +51,7 @@ module ContainerLowering =
         Attr.create "orientation" Layout (TextValue(orientationName orientation))
 
     let spacingAttr (spacing: float) : Attr<'msg> =
-        Attr.create "spacing" Layout (FloatValue spacing)
+        Attr.create AttrKeys.LayoutSpacing Layout (FloatValue spacing)
 
     let onFloat (eventKind: string) (map: float -> 'msg) : Attr<'msg> =
         Attr.onWith eventKind (fun event ->

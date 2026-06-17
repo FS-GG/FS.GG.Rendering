@@ -143,16 +143,17 @@ type FrameMetrics =
       /// pictures than the cap). A steady cache may retain entries across an idle frame, so this reflects
       /// live size, not necessarily `0`. Deterministic, golden-asserted via `Perf.runScript`.
       PictureCacheEntryCount: int
-      /// Feature 117 (Phase 8, FR-001/FR-005, US1): text-measure cache HITS this frame — measurements
-      /// `(text, font)` whose key was resident, reused without re-invoking `Scene.measureText`. `0` on a
-      /// frame that measures no text or under the always-miss oracle. A warm text-heavy frame whose text
-      /// inputs did not change reports `> 0`. Deterministic, golden-asserted via `Perf.runScript`.
+      /// Feature 117/138: text-measure cache HITS this frame — measurements `(text, font)` whose key was
+      /// resident before this frame's measurement window began, reused without re-invoking
+      /// `Scene.measureText`. Same-frame duplicate text may reuse the cache internally, but is not reported
+      /// as a hit. `0` on a frame that measures no text or under the always-miss oracle. A warm text-heavy
+      /// frame whose text inputs did not change reports `> 0`. Deterministic, golden-asserted via
+      /// `Perf.runScript`.
       TextMeasureCacheHitCount: int
       /// Feature 117 (Phase 8, FR-001/FR-005, US1): text-measure cache MISSES this frame — measurements
-      /// whose key was cold, changed (any of text/family/size/weight), or evicted, so the text was measured
-      /// fresh and stored. `0` on a frame that measures no text; `> 0` on a cold frame and on a style-only
-      /// frame only if new text appeared (unchanged text serves hits). Deterministic, golden-asserted via
-      /// `Perf.runScript`.
+      /// whose key was not resident before the frame and therefore required a fresh measurement. `0` on a
+      /// frame that measures no text; `> 0` on a cold frame and on a style-only frame only if new text
+      /// appeared. Deterministic, golden-asserted via `Perf.runScript`.
       TextMeasureCacheMissCount: int
       /// Feature 117 (Phase 8, FR-006, US2): the size of the layout dirty set fed into incremental layout
       /// this frame (the patch-derived self-dirty nodes BEFORE fixed-size-ancestor propagation). Distinct

@@ -878,23 +878,31 @@ module internal RetainedRender =
         // style-only / visual-state-only frame (no layout-affecting attr changed → empty dirty set).
         let invalidated = Set.count dirty
 
-        // Feature 117 (Phase 8, FR-001/FR-003/FR-004): install the per-frame text-measure cache over THIS
-        // frame's layout + paint measurement. A working copy of the carried cache + per-frame hit/miss
-        // counters; the closure consults the cache (a resident key → hit, reused without re-invoking
-        // `Scene.measureText`; an absent/evicted key → miss, measured once, stored, LRU-evicted over the
-        // cap), or — when the `TextCacheEnabled` oracle is `false` — always re-measures and counts a miss
-        // (never consulting/populating the cache), proving cache-on ≡ cache-off (FR-004). The cached value
-        // EQUALS the un-cached value by construction (`Scene.measureText` is pure, research R5), so layout
-        // boxes / fitted sizes / emitted scene are byte-identical. Interpreter-edge mutation confined to the
-        // step (constitution III), exactly like the id/work counters and the 116 picture cache.
+        // Feature 117/138: install the per-frame text-measure cache over THIS frame's layout + paint
+        // measurement. The cache still reuses same-frame inserts, but metric hits mean prior-frame reuse:
+        // only keys resident before this frame began count as hits. A cold repeated text therefore records
+        // the first insert as a miss and the same-frame reuse as neither a hit nor another miss.
         let mutable tc = prev.TextCache
+        let frameStartTextKeys = prev.TextCache.Entries |> Map.toSeq |> Seq.map fst |> Set.ofSeq
         let mutable textHits = 0
         let mutable textMisses = 0
 
         let measureCached (text: string) (font: FS.GG.UI.Scene.FontSpec) : FS.GG.UI.Scene.TextMetrics =
+            let key: TextMeasureKey =
+                { Text = text
+                  Family = font.Family
+                  Size = font.Size
+                  Weight = font.Weight }
+
             let metrics, tc', wasHit = measureTextCached tc prev.TextCacheEnabled text font
             tc <- tc'
-            if wasHit then textHits <- textHits + 1 else textMisses <- textMisses + 1
+            if not prev.TextCacheEnabled then
+                textMisses <- textMisses + 1
+            elif wasHit then
+                if Set.contains key frameStartTextKeys then
+                    textHits <- textHits + 1
+            else
+                textMisses <- textMisses + 1
             metrics
 
         // Active for the WHOLE measurement window of this frame — the incremental layout pass AND the
