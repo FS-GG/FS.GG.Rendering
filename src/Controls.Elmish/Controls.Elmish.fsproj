@@ -5,7 +5,7 @@
     <IsPackable>true</IsPackable>
     <PackageId>FS.GG.UI.Controls.Elmish</PackageId>
     <AssemblyName>FS.GG.UI.Controls.Elmish</AssemblyName>
-    <Version>0.1.2-preview.1</Version>
+    <Version>0.1.3-preview.1</Version>
     <Title>FS.GG.UI.Controls.Elmish</Title>
     <Description>Elmish command, subscription, and program adapters for Controls and KeyboardInput runtime effects.</Description>
     <PackageTags>fsharp;skia;controls;elmish;adapter</PackageTags>
