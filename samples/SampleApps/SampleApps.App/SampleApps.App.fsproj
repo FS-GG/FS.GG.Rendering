@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>SampleApps</AssemblyName>
+  </PropertyGroup>
+
+  <!-- The thin edge / interpreter: turns the pure Core into a live window, a headless
+       evidence run, or the coverage report. References Core by project; the rest as packages. -->
+  <ItemGroup>
+    <Compile Include="Evidence.fs" />
+    <Compile Include="Interactive.fs" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SampleApps.Core\SampleApps.Core.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FS.GG.UI.Controls.Elmish" Version="0.1.0-preview.1" />
+    <PackageReference Include="FS.GG.UI.SkiaViewer" Version="0.1.0-preview.1" />
+    <PackageReference Include="FS.GG.UI.Testing" Version="0.1.0-preview.1" />
+  </ItemGroup>
+
+</Project>

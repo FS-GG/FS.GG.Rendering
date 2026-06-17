@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+  </PropertyGroup>
+
+  <!-- Pure, testable sample cores + shared harness. Consumes the framework as packed
+       FS.GG.UI.* packages only (no ProjectReference into src/ — FR-010 / SC-006).
+       <Compile Include> order is dependency order:
+         Prng -> SampleTheme -> Evidence -> Harness -> Games/* -> Productivity/* -> Registry -> Coverage. -->
+  <ItemGroup>
+    <Compile Include="Prng.fs" />
+    <Compile Include="SampleTheme.fs" />
+    <Compile Include="Evidence.fs" />
+    <Compile Include="Harness.fs" />
+    <!-- Sample cores added per user story (US1: Tetris; US2: Todo; US3: the rest). -->
+    <Compile Include="Games/Tetris.fs" />
+    <Compile Include="Games/Snake.fs" />
+    <Compile Include="Games/Pong.fs" />
+    <Compile Include="Productivity/Todo.fs" />
+    <Compile Include="Productivity/Kanban.fs" />
+    <Compile Include="Productivity/Calendar.fs" />
+    <Compile Include="Registry.fs" />
+    <Compile Include="Coverage.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FS.GG.UI.Controls" Version="0.1.0-preview.1" />
+    <PackageReference Include="FS.GG.UI.Color" Version="0.1.0-preview.1" />
+    <PackageReference Include="FS.GG.UI.Controls.Elmish" Version="0.1.0-preview.1" />
+    <PackageReference Include="FS.GG.UI.SkiaViewer" Version="0.1.0-preview.1" />
+    <PackageReference Include="FS.GG.UI.DesignSystem" Version="0.1.0-preview.1" />
+    <PackageReference Include="FS.GG.UI.Themes.Default" Version="0.1.0-preview.1" />
+    <PackageReference Include="FS.GG.UI.KeyboardInput" Version="0.1.0-preview.1" />
+  </ItemGroup>
+
+</Project>

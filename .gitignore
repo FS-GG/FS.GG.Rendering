@@ -22,6 +22,8 @@ TestResults/
 artifacts/
 # Controls Gallery (feature 123) per-page evidence output — transient, regenerated per run.
 artifacts/controls-gallery/
+# Sample Apps (feature 134, G2) per-sample evidence output — transient, regenerated per run.
+artifacts/sample-apps/
 *.trx
 *.coverage
 coverage/

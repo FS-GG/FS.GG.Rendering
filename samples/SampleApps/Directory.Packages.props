@@ -1,0 +1,10 @@
+<Project>
+
+  <!-- Shadows the repo-root central-package-management file. The sample pins the
+       packed FS.GG.UI.* versions inline on each PackageReference instead, keeping the
+       consumer tree self-contained and decoupled from the product's version list. -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+</Project>
