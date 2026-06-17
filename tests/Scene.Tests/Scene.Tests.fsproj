@@ -16,6 +16,10 @@
     <Compile Include="Audit_AnimationSampling.fs" />
     <Compile Include="Feature136MeasurementSeamTests.fs" />
     <Compile Include="Feature140GlyphRunTests.fs" />
+    <Compile Include="Feature142ShapedTextTests.fs" />
+    <Compile Include="Feature142RunItemizationTests.fs" />
+    <Compile Include="Feature142ShapedTextDeterminismTests.fs" />
+    <Compile Include="Feature142PureFallbackCompatibilityTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

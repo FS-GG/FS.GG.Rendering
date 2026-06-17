@@ -665,6 +665,14 @@ module Text =
     /// Install the bundled-font real-metrics measurer into the `Scene` measurement seam. Idempotent;
     /// call once at host startup before laying out control scenes.
     val installMeasurer: unit -> unit
+    /// Install the HarfBuzz-backed shaping provider and matching shaped measurement seam.
+    val installShapingProvider: unit -> Fonts.TextShapingProviderStatus
+    /// Clear the shaping provider and use explicit fallback text measurement/render evidence.
+    val clearShapingProvider: unit -> Fonts.TextShapingProviderStatus
+    /// Read the active shaping provider state and diagnostics.
+    val shapingProviderStatus: unit -> Fonts.TextShapingProviderStatus
+    /// Shape a text value through the active provider/fallback path for diagnostic readback.
+    val shapeText: text: string -> font: FontSpec -> ShapedTextResult
     /// Clear the text-fallback disclosure accumulator (the screenshot path also clears it per capture).
     val resetFallbackDisclosure: unit -> unit
     /// Aggregate disclosure (substituted/tofu counts + affected code points) for the most recent render.

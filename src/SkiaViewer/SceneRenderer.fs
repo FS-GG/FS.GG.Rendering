@@ -180,12 +180,34 @@ module internal SceneRenderer =
 
     let resetFallbackEvents () = fallbackEvents <- ResizeArray()
 
+    let rec private drawGlyphRunData (canvas: SKCanvas) x y (data: GlyphRunData) (color: SKColor) antialias =
+        use paint = new SKPaint()
+        paint.Color <- color
+        paint.IsAntialias <- antialias
+        paint.Style <- SKPaintStyle.Fill
+
+        if data.Provider.Availability = ProviderInstalled && not data.Glyphs.IsEmpty then
+            let glyphs = data.Glyphs |> List.map (fun g -> uint16 g.GlyphId) |> List.toArray
+            let positions =
+                data.Glyphs
+                |> List.map (fun g -> SKPoint(float32 (x + g.Position.X + g.Offset.X), float32 (y + g.Position.Y + g.Offset.Y)))
+                |> List.toArray
+
+            use builder = new SKTextBlobBuilder()
+            builder.AddPositionedRun(glyphs, Fonts.resolveFont data.Font, positions)
+            use blob = builder.Build()
+
+            if not (isNull blob) then
+                canvas.DrawText(blob, 0.0f, 0.0f, paint)
+        else
+            drawFallbackText canvas x y data.Text data.Font color antialias
+
     /// Draw `text` with its baseline at (x, y) through the bundled-font registry. Each character is
     /// resolved to the real typeface that covers it (per-character fallback chain) and drawn at the
     /// registry's advance, so the drawn width equals the measured width (no mid-word clip) and mixed
     /// case is preserved (no force-uppercase). Uncovered characters render as a disclosed tofu box —
     /// never a different-but-plausible glyph. Replaces the host-`SKTypeface.Default`/5×7 vector path.
-    let drawText (canvas: SKCanvas) x y (text: string) (font: FontSpec) (color: SKColor) antialias =
+    and private drawFallbackText (canvas: SKCanvas) x y (text: string) (font: FontSpec) (color: SKColor) antialias =
         let size = max 1.0 font.Size
         let resolved = Fonts.resolveText font text
         use paint = new SKPaint()
@@ -205,6 +227,19 @@ module internal SceneRenderer =
             | _ -> canvas.DrawText(string rc.Rendered, SKPoint(penX, baseline), rc.Font, paint)
 
             penX <- penX + float32 (Fonts.charAdvance size rc)
+
+    let drawText (canvas: SKCanvas) x y (text: string) (font: FontSpec) (color: SKColor) antialias =
+        let shaped = Fonts.buildShapedGlyphRunData text font
+
+        if shaped.Provider.Availability = ProviderInstalled then
+            let resolved = Fonts.resolveText font text
+
+            for rc in resolved do
+                match rc.Resolution with
+                | Fonts.FallbackResolution.Authored _ -> ()
+                | _ -> fallbackEvents.Add rc
+
+        drawGlyphRunData canvas x y shaped color antialias
 
     /// Paint one `SceneNode` onto `canvas`. Exhaustive over every `SceneNode` case —
     /// **no wildcard** — so a new primitive forces both render paths to handle it.
@@ -288,7 +323,7 @@ module internal SceneRenderer =
         | TextRun run ->
             drawText canvas run.Position.X run.Position.Y run.Text run.Font (paintColor run.Paint) run.Paint.Antialias
         | GlyphRun run ->
-            drawText canvas run.Position.X run.Position.Y run.Data.Text run.Data.Font (paintColor run.Paint) run.Paint.Antialias
+            drawGlyphRunData canvas run.Position.X run.Position.Y run.Data (paintColor run.Paint) run.Paint.Antialias
         | Image((x, y, width, height), source) ->
             let destination = SKRect(float32 x, float32 y, float32 (x + width), float32 (y + height))
 

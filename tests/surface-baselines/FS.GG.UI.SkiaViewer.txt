@@ -24,6 +24,7 @@ FS.GG.UI.SkiaViewer.Fonts+FallbackResolution+Substituted
 FS.GG.UI.SkiaViewer.Fonts+FallbackResolution+Tags
 FS.GG.UI.SkiaViewer.Fonts+FallbackResolution+Tofu
 FS.GG.UI.SkiaViewer.Fonts+ResolvedChar
+FS.GG.UI.SkiaViewer.Fonts+TextShapingProviderStatus
 FS.GG.UI.SkiaViewer.GeneratedAppHost
 FS.GG.UI.SkiaViewer.GeneratedAppHost`2
 FS.GG.UI.SkiaViewer.Host.DiagnosticOptions

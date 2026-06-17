@@ -9,6 +9,12 @@
     <Compile Include="Domain.fs" />
     <!-- Feature 136 (T006): pure Scene-only assertion helpers, linked into the US1–US4 test projects. -->
     <Compile Include="TestAssertions.fs" />
+    <Compile Include="TextShapingFixtures.fsi" />
+    <Compile Include="TextShapingFixtures.fs" />
+    <Compile Include="TextShapingOracle.fsi" />
+    <Compile Include="TextShapingOracle.fs" />
+    <Compile Include="TextShapingParity.fsi" />
+    <Compile Include="TextShapingParity.fs" />
     <Compile Include="RunPlan.fsi" />
     <Compile Include="RunPlan.fs" />
     <Compile Include="Evidence.fsi" />

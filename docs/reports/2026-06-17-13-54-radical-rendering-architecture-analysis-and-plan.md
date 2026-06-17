@@ -4,9 +4,9 @@
 |---|---|
 | **Authored** | 2026-06-17 13:54 CEST (2026-06-17T11:54Z) |
 | **Author** | Claude Opus 4.8 (1M context), with four parallel research agents (offline codebase map + 3 online prior-art deep-dives) |
-| **Repo state** | Originally analyzed at branch `main` @ `8f75594`; implementation/package status updated through Feature 141 on branch `141-retained-renderer-unification` |
+| **Repo state** | Originally analyzed at branch `main` @ `8f75594`; implementation/package status updated through Feature 142 on branch `142-harfbuzz-text-shaping` |
 | **Scope** | The **radical** framework options only (per request), grounded in offline code reading and online prior art (React Fiber, Jetpack Compose, SwiftUI/AttributeGraph, Flutter, Elm, WebRender, Chromium `cc`, Skia, HarfBuzz) |
-| **Status** | Current through Feature 141: P0, P1, P2, and P3 are implemented; P3 validation is recorded with one local Feature091 timeout limitation. |
+| **Status** | Current through Feature 142: P0, P1, P2, P3, and P4 are implemented; P4 validation is recorded with one pre-existing package-readiness limitation in this checkout. |
 
 ---
 
@@ -14,9 +14,9 @@
 
 This is two documents in one: an **analysis** of where FS.GG.Rendering actually is (grounded in the live code, with `file:line` anchors), and a **comprehensive implementation plan** for the radical bets, sequenced into phases with change-sites, parity oracles, risks, and exit criteria. Sources for every external claim are in §16.
 
-### Current status update (2026-06-17 18:31 CEST)
+### Current status update (2026-06-17 19:42 CEST)
 
-This report began as a plan from `main` @ `8f75594`. The repository has since shipped the first three roadmap phases, pushed package version `0.1.3-preview.1`, and implemented Feature 141 / P3 on `141-retained-renderer-unification`:
+This report began as a plan from `main` @ `8f75594`. The repository has since shipped P0-P3, pushed package version `0.1.3-preview.1`, and implemented Feature 142 / P4 on `142-harfbuzz-text-shaping`:
 
 | Phase | Status | Evidence |
 |---|---|---|
@@ -24,8 +24,11 @@ This report began as a plan from `main` @ `8f75594`. The repository has since sh
 | **P1 - Duplication reduction** | Shipped as Feature 139. The shared current-node assembly seam is merged. | `f92621d` `Merge 139-shared-assembly-extraction (squash)`; package bump `143342f`. |
 | **P2 - IR foundation** | Shipped as Feature 140. Internal Controls composition, modifier classification, local z-order, portals/layers, legacy lowering, and glyph-run proof support are merged. | `ac2b560` `Merge 140-modifier-layer-ir (squash)`; package bump `41fb05c` to `0.1.3-preview.1`. |
 | **P3 - Keystone** | Implemented as Feature 141. Retained fragments now store owner-produced assembly results and invalidation evidence; structural scene fingerprinting moved to the assembly-owner side and retained rendering aliases it. | `specs/141-retained-renderer-unification/readiness.md`; focused Feature141, Feature139, Feature140, public-surface, audit, solution build, non-Controls broad deterministic suites, surface-baseline refresh, and offscreen harness passed. |
+| **P4 - Text** | Implemented as Feature 142. Scene now carries dependency-light shaped text evidence; SkiaViewer owns HarfBuzz provider install/status/shape/draw; retained text measurement cache keys include the provider version bucket; pure fallback remains available. | `specs/142-harfbuzz-text-shaping/readiness/validation-log.md`; `measure-draw-parity.md`; `fallback-diagnostics.md`; `cache-retained-parity.md`; `surface-baseline.md`; `package-surface.md`; `baseline-disclosure-ledger.md`. |
 
 Feature 141 validation is recorded in `specs/141-retained-renderer-unification/readiness.md`: focused Feature 141 tests include 200 deterministic generated direct/cold/warm retained equivalence cases; Feature 139 and Feature 140 compatibility filters passed; retained/cache/fingerprint `Audit` filters passed; the full solution build passed; all non-Controls broad deterministic test projects passed; `scripts/refresh-surface-baselines.fsx` passed; and the offscreen harness wrote `artifacts/feature141-harness/T1/run.json` with `status: passed`. The remaining caveat is local validation scope: `dotnet test tests/Controls.Tests/Controls.Tests.fsproj --filter Feature091 --no-build` did not complete in the shell window and was interrupted after more than two minutes, so it is recorded as a limitation rather than a pass.
+
+Feature 142 validation is recorded in `specs/142-harfbuzz-text-shaping/readiness/validation-log.md`: restore and full solution build passed; focused Scene, SkiaViewer, Controls, Rendering.Harness, and Elmish test projects passed; `scripts/refresh-surface-baselines.fsx` passed with additive `FS.GG.UI.Scene` and `FS.GG.UI.SkiaViewer` deltas. The package-readiness caveat is local checkout scope: no root `fake.sh` exists, and `Package.Tests` still depends on historical readiness artifacts such as `readiness/surface-baselines/*`, `scripts/controls-prelude.fsx`, and `specs/035-api-discovery-names/readiness/*`; this is recorded as a pre-existing package-readiness limitation rather than a Feature 142 shaping regression.
 
 Table of contents:
 
@@ -323,6 +326,15 @@ type PortalSpec = { Target: LayerId; Anchor: AnchorSpec; Dismiss: DismissPolicy 
 
 **Effort.** M–L. Largely independent; coordinate the `GlyphRun` node with R2/R5.
 
+**Feature 142 status (2026-06-17).** P4's first production text-shaping slice is implemented on
+`142-harfbuzz-text-shaping`. `src/Scene` exposes dependency-light shaped text records, provider evidence,
+fallback modes, fingerprints, and glyph-run projection without taking a Skia/HarfBuzz dependency.
+`src/SkiaViewer` owns `SkiaSharp.HarfBuzz`, the HarfBuzzSharp native asset packages, provider lifecycle/status,
+shaped result construction, and glyph-id/position drawing through `SKTextBlobBuilder`. Controls/retained text
+measurement cache keys include the active text provider version bucket, so pure fallback, bundled fallback, and
+HarfBuzz shaping cannot reuse stale text metrics across provider changes. Still deferred: full bidi, line breaking,
+portable serialization, browser rendering, caret/selection/editing, and compositor work.
+
 ---
 
 ## 12. Sequenced roadmap, dependencies & milestones
@@ -335,7 +347,7 @@ Dependency graph: R1a has no dependency; R2 depends on R1a if it changes assembl
 | **P1 — Duplication reduction** | R1a shared assembly extraction | Removes the most dangerous duplication before adding new semantics | One internal current-semantics assembly seam; `renderTree`, retained init/build/carry/emit call it; byte-identical output; suite green |
 | **P2 — IR foundation** | R2 internal modifier/layer model + R7 `GlyphRun` type spike | Everything downstream composes over cleaner assembly/IR; public surface only after proof | Modifiers/portals proven internally; old nodes lower to new representation; 137 overlay pass reimplemented as portals; public compatibility plan written; goldens re-based + disclosed if pixels change |
 | **P3 — Keystone** | R1b retained renderer unification | The clean algebra makes the single fold tractable; kills the drift bug class | One `assemble`; `RenderFragment` constructor-private; second builder deleted; fuzz property test green; byte-identical output through the refactor |
-| **P4 — Text** | R7 (HarfBuzz shaping) | Independent; unblocks portable text for R5 | Measured==drawn; complex scripts render; pure fallback goldens intact |
+| **P4 — Text** | R7 (HarfBuzz shaping) | Independent; unblocks portable text for R5 | Implemented as Feature 142: measured/drawn shaped glyph evidence path; complex-script fixture coverage; pure fallback intact |
 | **P5 — Interaction** | R4 (overlay state) | Needs R2 portals + R3 anchoring | Dropdowns open/close/dismiss/focus-trap; deterministic; reference: AntShowcase date-picker |
 | **P6 — Render-anywhere** | R5 (protocol + server PNG + CanvasKit feasibility) | Needs stable IR (R2) + portable text (R7) | Round-trip codec; server-PNG oracle; CanvasKit feasibility proven or fallback chosen; showcase diffed against oracle |
 | **P7 — Compositor** | R6 (present-path proof, promotion, scissor, key split, texture) | Needs R2 modifiers; pure perf, gated by probes | Present-path proof green; damage-scissored frames; promotion heuristic; scroll re-blits; parity oracle holds per tier; probes show net win |

@@ -161,7 +161,8 @@ type internal TextMeasureKey =
     { Text: string
       Family: string option
       Size: float
-      Weight: int option }
+      Weight: int option
+      MeasurementVersionBucket: string }
 
 /// Feature 117 (Phase 8, FR-003): the bounded cross-frame text-measure cache, mirroring the 116
 /// `PictureCache` discipline. A fixed-cap LRU over measured text identities (`TextMeasureKey`), each
@@ -385,6 +386,18 @@ module internal RetainedRender =
     /// un-cached `Scene.measureText` value for every key (research R5). Returns `(metrics, advanced cache,
     /// wasHit)`. Deterministic + total; reached by the test assemblies.
     val internal measureTextCached:
+        cache: TextMeasureCache ->
+        enabled: bool ->
+        text: string ->
+        font: FS.GG.UI.Scene.FontSpec ->
+            FS.GG.UI.Scene.TextMetrics * TextMeasureCache * bool
+
+    /// Feature 142 (P4/R7): test-only entry point for the same cache lookup with an explicit shaping
+    /// provider/version bucket. Production uses `Scene.textMeasurementVersionBucket()` through
+    /// `measureTextCached`; this keeps provider-partition tests deterministic without mutating global
+    /// Scene state.
+    val internal measureTextCachedWithBucket:
+        bucket: string ->
         cache: TextMeasureCache ->
         enabled: bool ->
         text: string ->

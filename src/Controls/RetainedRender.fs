@@ -109,7 +109,8 @@ type internal TextMeasureKey =
     { Text: string
       Family: string option
       Size: float
-      Weight: int option }
+      Weight: int option
+      MeasurementVersionBucket: string }
 
 // Feature 117 (Phase 8, FR-003): the bounded cross-frame text-measure cache — a fixed-cap LRU over
 // measured text identities, each holding its measured `TextMetrics` + a monotonic access stamp advanced
@@ -298,7 +299,8 @@ module internal RetainedRender =
     // is `false` (the always-miss oracle, FR-004) every request re-measures and is a miss, never
     // consulting/populating the cache — proving cache-on ≡ cache-off. Returns `(metrics, advanced cache,
     // wasHit)`. Deterministic: the recency stamp (`Clock`) advances by measurement order, never a clock.
-    let internal measureTextCached
+    let internal measureTextCachedWithBucket
+        (bucket: string)
         (cache: TextMeasureCache)
         (enabled: bool)
         (text: string)
@@ -310,7 +312,11 @@ module internal RetainedRender =
             FS.GG.UI.Scene.Scene.measureTextResolved text font, cache, false
         else
             let key: TextMeasureKey =
-                { Text = text; Family = font.Family; Size = font.Size; Weight = font.Weight }
+                { Text = text
+                  Family = font.Family
+                  Size = font.Size
+                  Weight = font.Weight
+                  MeasurementVersionBucket = bucket }
 
             match Map.tryFind key cache.Entries with
             | Some(_, metrics) ->
@@ -326,6 +332,19 @@ module internal RetainedRender =
                     entries <- Map.remove lruKey entries
 
                 metrics, { cache with Entries = entries; Clock = clock }, false
+
+    let internal measureTextCached
+        (cache: TextMeasureCache)
+        (enabled: bool)
+        (text: string)
+        (font: FS.GG.UI.Scene.FontSpec)
+        : FS.GG.UI.Scene.TextMetrics * TextMeasureCache * bool =
+        measureTextCachedWithBucket
+            (FS.GG.UI.Scene.Scene.textMeasurementVersionBucket ())
+            cache
+            enabled
+            text
+            font
 
     // A cacheable picture boundary: a materialized data-grid row (the row analog of the 113 data-grid
     // memo site). Each row's painted picture is cached and reused when its full correctness key is
@@ -788,7 +807,8 @@ module internal RetainedRender =
                 { Text = text
                   Family = font.Family
                   Size = font.Size
-                  Weight = font.Weight }
+                  Weight = font.Weight
+                  MeasurementVersionBucket = FS.GG.UI.Scene.Scene.textMeasurementVersionBucket () }
 
             let metrics, tc', wasHit = measureTextCached tc prev.TextCacheEnabled text font
             tc <- tc'

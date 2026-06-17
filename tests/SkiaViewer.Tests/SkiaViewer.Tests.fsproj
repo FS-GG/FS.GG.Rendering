@@ -24,6 +24,9 @@
     <Compile Include="Audit_ReplayCache.fs" />
     <Compile Include="Feature136TextRenderingTests.fs" />
     <Compile Include="Feature140GlyphRunRenderingTests.fs" />
+    <Compile Include="Feature142HarfBuzzShapingTests.fs" />
+    <Compile Include="Feature142FallbackDiagnosticsTests.fs" />
+    <Compile Include="Feature142SurfaceAndDependencyTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

@@ -106,6 +106,8 @@
     <Compile Include="Feature140LegacyCompatibilityTests.fs" />
     <Compile Include="Feature140LegacyCacheTextOverlayTests.fs" />
     <Compile Include="Feature141RetainedRendererUnificationTests.fs" />
+    <Compile Include="Feature142ControlsTextShapingTests.fs" />
+    <Compile Include="Feature142TextCacheParityTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

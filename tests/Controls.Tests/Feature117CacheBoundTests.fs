@@ -52,7 +52,13 @@ let tests =
         test "an evicted key re-misses with a fresh correct measure, never a stale hit (FR-003/SC-005)" {
             // After overflowing the cap starting from text-0, the LRU (text-0, first inserted) is evicted.
             let c, _ = sweep (cap + 1) empty
-            Expect.isFalse (c.Entries.ContainsKey { Text = "text-0"; Family = font.Family; Size = font.Size; Weight = font.Weight })
+            Expect.isFalse
+                (c.Entries.ContainsKey
+                    { Text = "text-0"
+                      Family = font.Family
+                      Size = font.Size
+                      Weight = font.Weight
+                      MeasurementVersionBucket = Scene.textMeasurementVersionBucket () })
                 "the least-recently-used key (text-0) was evicted under pressure"
 
             let m, _, hit = RetainedRender.measureTextCached c true "text-0" font

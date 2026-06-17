@@ -38,6 +38,11 @@ module Fonts =
           TofuCount: int
           AffectedCodePoints: int list }
 
+    /// Rendering-edge text shaping provider status.
+    type TextShapingProviderStatus =
+        { Evidence: ShapingProviderEvidence
+          Diagnostics: string list }
+
     /// The default proportional family used when a request carries no family (`Noto Sans`).
     val defaultSansFamily: string
     /// The default monospace family (`Noto Sans Mono`).
@@ -64,6 +69,21 @@ module Fonts =
     /// Real-metrics measurer matching the renderer, shaped for the `Scene` measurement seam
     /// (`Scene.setRealTextMeasurer`). `Height`/`Baseline` follow the resolved primary font's metrics.
     val realMeasure: text: string -> font: FontSpec -> TextMetrics
+
+    /// Install the HarfBuzz-backed shaping provider and the matching measurement seam.
+    val installShapingProvider: unit -> TextShapingProviderStatus
+
+    /// Clear the shaping provider and return to explicit bundled-font fallback evidence.
+    val clearShapingProvider: unit -> TextShapingProviderStatus
+
+    /// Read the active shaping provider state.
+    val shapingProviderStatus: unit -> TextShapingProviderStatus
+
+    /// Shape text when the provider is installed, otherwise return explicit fallback evidence.
+    val shapeText: text: string -> font: FontSpec -> ShapedTextResult
+
+    /// Build drawable glyph-run data from `shapeText`.
+    val buildShapedGlyphRunData: text: string -> font: FontSpec -> GlyphRunData
 
     /// Build Feature 140 glyph-run proof data using the same bundled-font fallback and advances that
     /// the renderer uses to draw text. This is a proof helper, not full shaping.

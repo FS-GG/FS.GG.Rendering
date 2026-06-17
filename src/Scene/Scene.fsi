@@ -183,6 +183,97 @@ type TextMetrics =
       Height: float
       Baseline: float }
 
+/// Direction evidence associated with a shaped text run.
+type TextDirection =
+    | AutoDirection
+    | LeftToRight
+    | RightToLeft
+    | MixedDirection
+
+/// Script bucket evidence associated with a shaped text run.
+type TextScript =
+    | AutoScript
+    | LatinScript
+    | ArabicScript
+    | DevanagariScript
+    | ThaiScript
+    | EmojiScript
+    | SymbolScript
+    | MixedScript
+    | UnknownScript
+
+/// Availability state for the rendering-edge text shaping provider.
+type ShapingProviderAvailability =
+    | ProviderInstalled
+    | ProviderCleared
+    | ProviderUnavailable
+    | ProviderFailed
+
+/// Dependency-light provider evidence stored with shaped text results.
+type ShapingProviderEvidence =
+    { Availability: ShapingProviderAvailability
+      ProviderId: string
+      VersionBucket: string
+      Failure: string option }
+
+/// Fallback decision for one shaped run or glyph range.
+type TextFallbackDecision =
+    | AuthoredFace of family: string
+    | SubstitutedFace of requested: string * resolved: string
+    | MissingGlyphs of sourceText: string
+    | PureFallback
+    | ProviderFailure of message: string
+
+/// One stable, drawable glyph emitted by a shaped text result.
+type ShapedGlyph =
+    { GlyphId: int
+      SourceCluster: int
+      SourceText: string
+      ResolvedFace: string option
+      Advance: float
+      Offset: Point
+      Position: Point
+      Missing: bool }
+
+/// One homogeneous text run and its shaping/fallback evidence.
+type TextShapeRun =
+    { TextRange: int * int
+      SourceText: string
+      ResolvedFont: string option
+      Direction: TextDirection
+      Script: TextScript
+      FallbackDecision: TextFallbackDecision
+      Glyphs: ShapedGlyph list
+      Advance: float
+      Diagnostics: string list }
+
+/// Indicates whether a shaped text result came from shaping or explicit fallback.
+type ShapedTextFallbackMode =
+    | Shaped
+    | PureFallbackMode
+    | ProviderUnavailableFallback
+    | ShapingFailedFallback
+
+/// Aggregate metrics derived from a shaped text result.
+type ShapedTextMetrics =
+    { Advance: float
+      Width: float
+      Height: float
+      Baseline: float
+      Bounds: Rect option }
+
+/// Dependency-light authoritative text payload for measurement, drawing, cache evidence, and diagnostics.
+type ShapedTextResult =
+    { Text: string
+      Font: FontSpec
+      Provider: ShapingProviderEvidence
+      Runs: TextShapeRun list
+      Glyphs: ShapedGlyph list
+      Metrics: ShapedTextMetrics
+      Diagnostics: string list
+      Fingerprint: string
+      FallbackMode: ShapedTextFallbackMode }
+
 /// One glyph in the Feature 140 proof data shape. This is a deterministic
 /// package-owned representation for measurement, drawing, diagnostics, and
 /// future cache/protocol work; it is not a full shaping engine.
@@ -192,7 +283,9 @@ type GlyphRunGlyph =
       Advance: float
       Offset: Point
       Cluster: int
-      Position: Point }
+      Position: Point
+      ResolvedFace: string option
+      Missing: bool }
 
 /// Aggregate metrics for a glyph-run proof.
 type GlyphRunMetrics =
@@ -204,9 +297,12 @@ type GlyphRunMetrics =
 type GlyphRunData =
     { Text: string
       Font: FontSpec
+      Provider: ShapingProviderEvidence
+      Runs: TextShapeRun list
       Glyphs: GlyphRunGlyph list
       Metrics: GlyphRunMetrics
       Fingerprint: string
+      FallbackMode: ShapedTextFallbackMode
       FallbackDiagnostics: string list }
 
 /// Drawable glyph-run proof node payload.
@@ -521,6 +617,14 @@ module Scene =
     val textRun: run: TextRun -> Scene
     /// Build deterministic glyph-run proof data using the dependency-light Scene measurement heuristic.
     val buildGlyphRun: text: string -> font: FontSpec -> GlyphRunData
+    /// Build dependency-light pure-fallback shaped text evidence without a rendering-edge provider.
+    val buildFallbackShapedText: text: string -> font: FontSpec -> ShapedTextResult
+    /// Deterministic fingerprint over shaped text evidence.
+    val shapedTextFingerprint: result: ShapedTextResult -> string
+    /// Project shaped text aggregate metrics into the existing `TextMetrics` shape.
+    val measureShapedText: result: ShapedTextResult -> TextMetrics
+    /// Convert a shaped text result into drawable glyph-run data.
+    val glyphRunDataFromShapedText: result: ShapedTextResult -> GlyphRunData
     /// Deterministic fingerprint over glyph-run proof data.
     val glyphRunFingerprint: data: GlyphRunData -> string
     /// Measure the already-built glyph-run proof data.
@@ -537,6 +641,10 @@ module Scene =
     /// bundled-font renderer's advances, so the advance used to size a text box equals the advance used
     /// to draw it (no mid-word clip). Process-wide; the pure `measureText` heuristic is unchanged.
     val setRealTextMeasurer: measurer: (string -> FontSpec -> TextMetrics) option -> unit
+    /// Current version bucket for the active text measurement provider/fallback path.
+    val textMeasurementVersionBucket: unit -> string
+    /// Set the active text measurement version bucket used by retained cache keys.
+    val setTextMeasurementVersionBucket: bucket: string -> unit
     /// Measure via the installed real measurer when present, else the pure `measureText` heuristic.
     /// With no measurer installed this is byte-identical to `measureText` (pure-caller default).
     val measureTextResolved: text: string -> font: FontSpec -> TextMetrics

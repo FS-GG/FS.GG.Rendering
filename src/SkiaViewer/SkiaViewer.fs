@@ -2931,6 +2931,18 @@ module Text =
     /// box sizing uses true advances. Idempotent; call once at host startup before layout.
     let installMeasurer () = Fonts.installMeasurementSeam ()
 
+    /// Install the HarfBuzz-backed shaping provider and matching shaped measurement seam.
+    let installShapingProvider () = Fonts.installShapingProvider ()
+
+    /// Clear the shaping provider and use explicit fallback text measurement/render evidence.
+    let clearShapingProvider () = Fonts.clearShapingProvider ()
+
+    /// Read the active shaping provider state and diagnostics.
+    let shapingProviderStatus () = Fonts.shapingProviderStatus ()
+
+    /// Shape a text value through the active provider/fallback path for diagnostic readback.
+    let shapeText text font = Fonts.shapeText text font
+
     /// Clear the text-fallback disclosure accumulator (the screenshot path also clears it per capture).
     let resetFallbackDisclosure () = SceneRenderer.resetFallbackEvents ()
 
