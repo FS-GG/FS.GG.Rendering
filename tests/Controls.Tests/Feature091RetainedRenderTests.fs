@@ -69,7 +69,7 @@ let private stack (children: Control<int> list) : Control<int> =
 [<Tests>]
 let us1 =
     testList
-        "091 US1 identity survives an unrelated re-render"
+        "Feature091 US1 identity survives an unrelated re-render"
         [ test "a keyed control matched (not Replaced) carries its RetainedId across an unrelated change" {
               // frame 0: [a, editor]; frame 1: [a', editor] — only `a` changed, editor identical.
               let prev = stack [ leaf "a" "A"; leaf "editor" "type here" ]
@@ -157,7 +157,7 @@ let private startedClock () : AnimationClock =
 [<Tests>]
 let us2 =
     testList
-        "091 US2 focus + animation survive an unrelated re-render"
+        "Feature091 US2 focus + animation survive an unrelated re-render"
         [ test "wired path: focus + an in-flight clock keyed by RetainedId survive an unrelated update" {
               // The defect class this closes is a POSITIONAL SHIFT: an unrelated change inserts a
               // sibling above `editor`, shifting its path-derived id. The keyed diff still matches it.
@@ -211,7 +211,7 @@ let us2 =
 [<Tests>]
 let us3 =
     testList
-        "091 US3 partial update + golden parity"
+        "Feature091 US3 partial update + golden parity"
         [ test "a localized leaf change recomputes only the changed subtree (RecomputedNodeCount < N)" {
               // wide tree of fixed-size leaves; change ONE leaf's content (no geometry shift).
               let leaves prefix n = [ for i in 1..n -> leaf (prefix + string i) ("v" + string i) ]
@@ -325,7 +325,7 @@ module private Gen091 =
 [<Tests>]
 let us4 =
     testList
-        "091 US4 invariants on the wired path (FsCheck, >=1000 cases)"
+        "Feature091 US4 invariants on the wired path (FsCheck, >=1000 cases)"
         [ test "round-trip: wired Render is byte-identical to renderTree next (SC-005/FR-006)" {
               let roundTrips (prev: Control<int>, next: Control<int>) =
                   let s = RetainedRender.step theme size (rinit theme size prev) next
@@ -434,7 +434,7 @@ module private Evidence =
 [<Tests>]
 let evidence =
     testList
-        "091 evidence capture"
+        "Feature091 evidence capture"
         [ test "capture retained-parity + work-reduction artifacts (SC-003/SC-004)" {
               let dir = Evidence.ensure "retained-parity"
               let pdir = Evidence.ensure "partial-update"

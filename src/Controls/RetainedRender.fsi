@@ -23,14 +23,15 @@ type internal RetainedId = RetainedId of uint64
 
 /// The cached, reusable unit of measure + paint for one retained node. `OwnScene` is the node's
 /// own painted contribution (`Control.renderTree`'s per-node `here`); `SubtreeScene` is the
-/// pre-order painted scene of the node AND its descendants (reused verbatim when the whole subtree
-/// is unchanged AND unshifted); `Box` is the node's evaluated absolute box (the reuse key).
+/// in-flow result from the shared Feature 139 `ControlInternals.assembleCurrentNode` owner for the node
+/// and descendants (reused verbatim when the whole subtree is unchanged AND unshifted); `Box` is the
+/// node's evaluated absolute box (the reuse key).
 type internal RenderFragment =
     { OwnScene: FS.GG.UI.Scene.Scene list
       SubtreeScene: FS.GG.UI.Scene.Scene list
-      /// Feature 137 (US2): the deferred z-top overlay contribution of this subtree (painted subtrees of
-      /// `Overlay`/transient descendants, collected out of the in-flow clip hierarchy). Empty for an
-      /// overlay-free subtree, so `SubtreeScene`/`Fingerprint`/cache parity are unchanged there.
+      /// Feature 139 (R1a): the deferred z-top overlay contribution returned by the shared current-node
+      /// assembly owner. Empty for an overlay-free subtree, so `SubtreeScene`/`Fingerprint`/cache parity
+      /// are unchanged there.
       OverlayScene: FS.GG.UI.Scene.Scene list
       Box: FS.GG.UI.Scene.Rect option
       /// Feature 120 (US3, FR-008): the collision-resistant structural fingerprint of `SubtreeScene`,

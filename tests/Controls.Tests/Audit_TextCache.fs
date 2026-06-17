@@ -42,7 +42,7 @@ let private styleToggle (n: int) (model: int) : Control<int> =
 
 [<Tests>]
 let tests =
-    testList "Audit: Text-measure cache parity + key-completeness + effectiveness (FR-004/008/009)" [
+    testList "Audit_TextCache: Text-measure cache parity + key-completeness + effectiveness (FR-004/008/009)" [
 
         // ---- T004 scaffold sanity ----
         test "Audit: TextCache scaffold reachability — TextCacheEnabled + counters (T004)" {

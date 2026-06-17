@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/138-layout-attrs-metrics-fix/plan.md
+at specs/139-shared-assembly-extraction/plan.md
 <!-- SPECKIT END -->
 
 ## Ant Design — source of truth

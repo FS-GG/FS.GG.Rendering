@@ -42,7 +42,7 @@ let private step prev next = RetainedRender.step theme size prev next
 
 [<Tests>]
 let tests =
-    testList "Audit: Memo cache parity + key-completeness + effectiveness (FR-004/008/009)" [
+    testList "Audit_MemoCache: Memo cache parity + key-completeness + effectiveness (FR-004/008/009)" [
 
         // ---- T004 scaffold sanity ----
         test "Audit: Memo scaffold reachability — MemoEnabled + MemoHits/MemoMisses (T004)" {

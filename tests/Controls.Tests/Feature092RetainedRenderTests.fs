@@ -51,7 +51,7 @@ let private stack (children: Control<int> list) : Control<int> =
 [<Tests>]
 let workReduction =
     testList
-        "092 US3 work-reduction split (changed vs shifted)"
+        "Feature092 US3 work-reduction split (changed vs shifted)"
         [ test "a sibling-shifting insert: RecomputedNodeCount = ChangedSubtreeBound + ShiftedNodeCount < Baseline" {
               // insert a sibling ABOVE a fixed-size leaf: the leaf is unchanged but its box shifts
               // down (relaid out), so it is recomputed-but-unchanged → counted as shifted, not changed.
@@ -81,7 +81,7 @@ let workReduction =
 [<Tests>]
 let themeReuse =
     testList
-        "092 US4 theme in the fragment reuse key"
+        "Feature092 US4 theme in the fragment reuse key"
         [ test "a theme change between frames repaints: second frame is byte-identical to a full rebuild under the new theme" {
               // identical TREE across the two frames; only the theme changes. A fragment cached under
               // the light theme must NOT be reused under dark (FR-008).
@@ -111,7 +111,7 @@ let themeReuse =
 [<Tests>]
 let firstFrame =
     testList
-        "092 US4 single first-frame paint + frame-0 diagnostics"
+        "Feature092 US4 single first-frame paint + frame-0 diagnostics"
         [ test "init paints the first frame once: its Render is byte-identical to a full rebuild (no double paint)" {
               let tree = stack [ leaf "a" "A"; leaf "b" "B" ]
               let i = RetainedRender.init theme size tree
@@ -146,7 +146,7 @@ let firstFrame =
 [<Tests>]
 let hitTest =
     testList
-        "092 US2 retainedHitTest resolves per-node identity"
+        "Feature092 US2 retainedHitTest resolves per-node identity"
         [ test "two unkeyed same-kind siblings resolve to DISTINCT RetainedIds (no shared-id collapse)" {
               let prev = stack [ leafUnkeyed "A"; leafUnkeyed "B" ]
               let r0 = rinit theme size prev
@@ -176,7 +176,7 @@ let hitTest =
 [<Tests>]
 let multiFrame =
     testList
-        "092 multi-frame chained reconciliation parity"
+        "Feature092 multi-frame chained reconciliation parity"
         [ test "a chained sequence of 4 frames stays byte-identical to a full rebuild at every step (SC-004)" {
               let f0 = stack [ leaf "a" "A0"; leaf "b" "B0"; leaf "c" "C0" ]
               let f1 = stack [ leaf "a" "A1"; leaf "b" "B0"; leaf "c" "C0" ]
@@ -212,7 +212,7 @@ module private Evidence =
 [<Tests>]
 let evidence =
     testList
-        "092 evidence capture (controls)"
+        "Feature092 evidence capture (controls)"
         [ test "capture work-reduction (SC-003) + theme-reuse (SC-006) + first-frame (SC-005) + multi-frame (SC-004)" {
               // --- work-reduction (sibling-shifting change) ---
               let prev = stack [ leaf "editor" "hi" ]

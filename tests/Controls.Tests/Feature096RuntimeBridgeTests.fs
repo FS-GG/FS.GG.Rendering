@@ -42,7 +42,7 @@ let private button (key: string) : Control<int> =
 
 [<Tests>]
 let feature096RuntimeBridgeTests =
-    testList "Feature 096 runtime visual-state bridge" [
+    testList "Feature096 runtime visual-state bridge" [
 
         // ---- T010 — deriveVisualState runtime precedence (SC-004) -----------------------------
         test "T010 — runtime precedence Pressed > Selected > Focused > Hover > Normal" {
@@ -279,7 +279,7 @@ module private Gen096 =
 
 [<Tests>]
 let feature096BridgePropertyTests =
-    testList "Feature 096 bridge properties (FsCheck, SC-004)" [
+    testList "Feature096 bridge properties (FsCheck, SC-004)" [
 
         testCase "deriveVisualState is total + deterministic over ≥1000 generated combos" (fun () ->
             let prop (m, id, _) = ControlRuntime.deriveVisualState m id = ControlRuntime.deriveVisualState m id

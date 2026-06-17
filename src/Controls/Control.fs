@@ -2265,6 +2265,33 @@ module internal ControlInternals =
     /// transient surface (date-picker calendar, etc.) floats by authoring its open content as an `Overlay`.
     let isOverlayNode (c: Control<'msg>) : bool = c.Kind = "overlay"
 
+    /// Feature 139 (R1a): one node's assembled contribution split into normal in-flow paint and the
+    /// deferred overlay group. This is internal contract shape only; no public scene IR changes.
+    type CurrentNodeAssemblyResult =
+        { InFlowScene: Scene list
+          OverlayScene: Scene list }
+
+    /// Feature 139 (R1a): the single current-semantics assembly owner. It deliberately captures only
+    /// today's own-paint + child-paint + container-clip + overlay-promotion behavior; R2/R1b work such as
+    /// modifier algebra, portals, public IR changes, intrinsic layout, text shaping, compositor changes,
+    /// and portable protocol changes stays outside this seam.
+    let assembleCurrentNode
+        (control: Control<'msg>)
+        (box: Rect option)
+        (ownScene: Scene list)
+        (childAssemblies: CurrentNodeAssemblyResult list)
+        : CurrentNodeAssemblyResult =
+        let childInFlow = childAssemblies |> List.collect _.InFlowScene
+        let childOverlay = childAssemblies |> List.collect _.OverlayScene
+        let composed = composeContainerScene box ownScene childInFlow
+
+        if isOverlayNode control then
+            { InFlowScene = []
+              OverlayScene = composed @ childOverlay }
+        else
+            { InFlowScene = composed
+              OverlayScene = childOverlay }
+
     /// The evaluated absolute box of a node, looked up by the same structural id `paintNode`
     /// uses (`Key |> defaultValue path`). `None` when the node was not laid out.
     let nodeBox
@@ -2453,31 +2480,19 @@ module Control =
     let renderTree (theme: Theme) (size: FS.GG.UI.Scene.Size) (control: Control<'msg>) =
         let root, boundsById, _ = ControlInternals.evaluateLayout size control
 
-        // Feature 137 (US1/US2): `paint` returns (in-flow, overlay). US1 composes own + children through
-        // the single shared container-clip rule (children clipped to this node's box). US2 collects any
-        // overlay/transient subtree OUT of the in-flow clip hierarchy into the second list, so it paints
-        // last (z-top), at true coordinates, escaping ancestor clips. The full render stays byte-identical
-        // to the retained build that uses the same rule + split.
-        let rec paint (path: string) (c: Control<'msg>) : Scene list * Scene list =
+        // Feature 139 (R1a): the recursive paint walk delegates the current-node assembly rule to
+        // `ControlInternals.assembleCurrentNode`, the same owner retained build and emit paths use.
+        let rec paint (path: string) (c: Control<'msg>) : ControlInternals.CurrentNodeAssemblyResult =
             let own = ControlInternals.paintNode theme boundsById path c
 
-            let childResults =
+            let childAssemblies =
                 c.Children |> List.mapi (fun index child -> paint (path + "." + string index) child)
 
-            let childInFlow = childResults |> List.collect fst
-            let childOverlay = childResults |> List.collect snd
-            let composed = ControlInternals.composeContainerScene (ControlInternals.nodeBox boundsById path c) own childInFlow
+            ControlInternals.assembleCurrentNode c (ControlInternals.nodeBox boundsById path c) own childAssemblies
 
-            if ControlInternals.isOverlayNode c then
-                // Float: this whole subtree leaves the in-flow flow and joins the deferred overlay group
-                // (after any overlays nested deeper), so ancestor container clips never wrap it.
-                [], composed @ childOverlay
-            else
-                composed, childOverlay
+        let assembled = paint "0" control
 
-        let inFlow, overlay = paint "0" control
-
-        { Scene = (inFlow @ overlay) |> Scene.group
+        { Scene = (assembled.InFlowScene @ assembled.OverlayScene) |> Scene.group
           Layout = root
           Bounds = ControlInternals.collectBoundsWith boundsById control
           Diagnostics = diagnostics control

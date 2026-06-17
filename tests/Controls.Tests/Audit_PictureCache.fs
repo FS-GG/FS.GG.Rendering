@@ -39,6 +39,34 @@ let private grid (rows: Control<int> list) : Control<int> =
 
 let private threeRows = grid [ plainRow "r0" "zero"; plainRow "r1" "one"; plainRow "r2" "two" ]
 
+let private clippedOffsetRows =
+    { Kind = "stack"
+      Key = Some "clip-offset"
+      Attributes = [ Attr.width 150.0; Attr.height 76.0; Attr.margin 18.0; Attr.padding 0.0 ]
+      Children = [ plainRow "co0" "offset zero"; plainRow "co1" "offset one"; plainRow "co2" "offset two" ]
+      Content = None
+      Accessibility = None }
+
+let rec private clipNodes (s: Scene) : (Clip * Scene) list = s.Nodes |> List.collect clipNodesNode
+
+and private clipNodesNode (n: SceneNode) : (Clip * Scene) list =
+    match n with
+    | ClipNode(c, inner) -> (c, inner) :: clipNodes inner
+    | CachedSubtree b -> clipNodes b.Scene
+    | Group scenes -> scenes |> List.collect clipNodes
+    | Translate(_, inner) -> clipNodes inner
+    | ColorSpaceNode(_, inner) -> clipNodes inner
+    | PerspectiveNode(_, inner) -> clipNodes inner
+    | PictureNode p -> clipNodes p.Scene
+    | _ -> []
+
+let private rectClipRects (s: Scene) : Rect list =
+    clipNodes s
+    |> List.choose (fun (c, _) ->
+        match c with
+        | RectClip r -> Some r
+        | _ -> None)
+
 // Flatten the paint-order leaf stream, normalizing transparent grouping (Group / CachedSubtree).
 let rec private flattenScene (s: Scene) : SceneNode list = s.Nodes |> List.collect flattenNode
 and private flattenNode (n: SceneNode) : SceneNode list =
@@ -56,7 +84,7 @@ let private flat (r: ControlRenderResult<int>) = flattenScene r.Scene
 
 [<Tests>]
 let tests =
-    testList "Audit: Picture cache parity + present-but-dead + effectiveness (FR-004/008/010, D5)" [
+    testList "Audit_PictureCache: Picture cache parity + present-but-dead + effectiveness (FR-004/008/010, D5)" [
 
         // ---- T004 scaffold sanity ----
         test "Audit: PictureCache scaffold reachability — PictureCacheEnabled + counters (T004)" {
@@ -92,6 +120,20 @@ let tests =
             // above would go RED on a real divergence.
             let differentScene = RetainedRender.step theme size (rinit theme size threeRows) (grid [ plainRow "r0" "zero"; plainRow "r1" "CHANGED"; plainRow "r2" "two" ])
             Expect.notEqual (flat differentScene.Render) (flat on.Render) "a genuinely different scene is caught by the byte-identity oracle (discriminating)"
+        }
+
+        test "Audit: cache-disabled parity holds for cached rows inside clipped and offset content (Feature139)" {
+            let tree = grid [ clippedOffsetRows ]
+            let enabled = rinit theme size tree
+            let disabled = { rinit theme size tree with PictureCacheEnabled = false }
+            let on = RetainedRender.step theme size enabled tree
+            let off = RetainedRender.step theme size disabled tree
+
+            Expect.isNonEmpty (rectClipRects on.Render.Scene) "the fixture exercises a container clip around cached rows"
+            Expect.isTrue (on.WorkReduction.PictureCacheHits > 0) "cache-on reuses the clipped cached row boundaries"
+            Expect.equal off.WorkReduction.PictureCacheHits 0 "the disabled oracle reports no hits"
+            Expect.isTrue (off.WorkReduction.PictureCacheMisses > 0) "the disabled oracle re-misses the cached row boundaries"
+            Expect.equal (flat off.Render) (flat on.Render) "cache-off scene is byte-identical to cache-on inside clipped and offset content"
         }
 
         // ---- T031 EFFECTIVENESS: steady-state hits ≫ 0, misses → 0 ----

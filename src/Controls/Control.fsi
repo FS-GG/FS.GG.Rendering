@@ -69,12 +69,10 @@ module internal ControlInternals =
         c: Control<'msg> ->
             FS.GG.UI.Scene.Rect option
 
-    /// Feature 137 (US1, the blocker) — the SINGLE shared container-clip composition rule. Composes a
-    /// node's own paint with its assembled children, clipping the children to the node's `box` when there
-    /// is a box AND at least one child scene; otherwise composes flat (`own @ childScenes`, byte-identical
-    /// to the pre-137 assembly). EVERY paint-assembly site (full `renderTree` paint, the four
-    /// `RetainedRender` build/carry sites, and the `RetainedRender.assemble` emit walk) routes through it,
-    /// so full ≡ retained and cache-on ≡ cache-off hold by construction.
+    /// Feature 137 (US1): the shared container-clip composition helper used by the Feature 139
+    /// `assembleCurrentNode` owner. It clips child in-flow paint to the node `box` when there is a box and
+    /// at least one child scene; otherwise it composes flat (`own @ childScenes`, byte-identical to the
+    /// pre-137 assembly).
     val composeContainerScene:
         box: FS.GG.UI.Scene.Rect option ->
         own: FS.GG.UI.Scene.Scene list ->
@@ -84,6 +82,23 @@ module internal ControlInternals =
     /// Feature 137 (US2) — a node authors a deferred z-top overlay/transient surface (built on the
     /// `Overlay` container); its subtree is collected out of the in-flow clip hierarchy and painted last.
     val isOverlayNode: c: Control<'msg> -> bool
+
+    /// Feature 139 (R1a): the current-semantics assembly result for one control node. `InFlowScene`
+    /// remains in the parent clipping hierarchy; `OverlayScene` is deferred to the z-top overlay group.
+    type CurrentNodeAssemblyResult =
+        { InFlowScene: FS.GG.UI.Scene.Scene list
+          OverlayScene: FS.GG.UI.Scene.Scene list }
+
+    /// Feature 139 (R1a): the single current-node assembly owner. Combines one node's own paint and
+    /// already-assembled children through today's container clipping and overlay-promotion rules. This is
+    /// the R1a scope boundary only: modifier algebra, portals, public IR changes, intrinsic layout, text
+    /// shaping, compositor work, and portable protocol changes remain deferred to later phases.
+    val assembleCurrentNode:
+        control: Control<'msg> ->
+        box: FS.GG.UI.Scene.Rect option ->
+        ownScene: FS.GG.UI.Scene.Scene list ->
+        childAssemblies: CurrentNodeAssemblyResult list ->
+            CurrentNodeAssemblyResult
 
     /// Feature 091 — the evaluated `Bounds` list `renderTree` surfaces, from a pre-evaluated
     /// `boundsById`, so the retained path emits the identical list.

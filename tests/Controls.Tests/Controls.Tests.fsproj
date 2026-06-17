@@ -98,6 +98,7 @@
     <Compile Include="Feature137ClippingTests.fs" />
     <Compile Include="Feature138LayoutAttributesTests.fs" />
     <Compile Include="Feature138ShellChromeTests.fs" />
+    <Compile Include="Feature139AssemblyExtractionTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
