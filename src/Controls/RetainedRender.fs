@@ -174,6 +174,56 @@ type internal WorkReductionRecord =
       ReplaySkippedNodes: int
       ReplayCacheNativeBytes: int }
 
+type internal CompositorDamageRegion =
+    { DamageX: int
+      DamageY: int
+      DamageWidth: int
+      DamageHeight: int }
+
+type internal CompositorDamageRegionSet =
+    { FrameWidth: int
+      FrameHeight: int
+      Regions: CompositorDamageRegion list
+      UnionArea: int
+      FullFrameInvalidation: bool
+      Cause: string }
+
+type internal CompositorFallbackReason =
+    | MissingProof
+    | FailedProof of reason: string
+    | EnvironmentLimited of reason: string
+    | FullFrameInvalidation
+    | EmptyDamage
+    | UnsafeDamage of reason: string
+
+type internal CompositorTier =
+    | NoCompositorTier
+    | RetainedTier
+    | ReplayTier
+    | SnapshotTier
+    | DemotedTier
+
+type internal PromotionDecisionKind =
+    | Promote
+    | Keep
+    | Demote
+    | Reject
+    | Observe
+
+type internal PromotionDecision =
+    { BoundaryId: string
+      Decision: PromotionDecisionKind
+      Reason: string
+      ObservedStabilityFrames: int
+      ExpectedSavedWork: int
+      MeasuredOverhead: int
+      Tier: CompositorTier }
+
+type internal SnapshotResourceVerdict =
+    | SnapshotReady
+    | SnapshotDemoted of reason: string
+    | SnapshotLimited of reason: string
+
 type internal RetainedRenderStep<'msg> =
     { Retained: RetainedRender<'msg>
       Render: ControlRenderResult<'msg>
@@ -391,6 +441,119 @@ module internal RetainedRender =
                         area <- area + (x1 - x0) * (y1 - y0)
 
             min (int area) frameArea
+
+    let private rectOfDamage (damage: CompositorDamageRegion) : Rect =
+        { X = float damage.DamageX
+          Y = float damage.DamageY
+          Width = float damage.DamageWidth
+          Height = float damage.DamageHeight }
+
+    let private damageOfRect frameWidth frameHeight (rect: Rect) : CompositorDamageRegion option =
+        let clamp lo hi value = min hi (max lo value)
+        let x0 = clamp 0 frameWidth (int (System.Math.Floor rect.X))
+        let y0 = clamp 0 frameHeight (int (System.Math.Floor rect.Y))
+        let x1 = clamp 0 frameWidth (int (System.Math.Ceiling(rect.X + rect.Width)))
+        let y1 = clamp 0 frameHeight (int (System.Math.Ceiling(rect.Y + rect.Height)))
+        let width = x1 - x0
+        let height = y1 - y0
+
+        if width <= 0 || height <= 0 then
+            None
+        else
+            Some
+                { DamageX = x0
+                  DamageY = y0
+                  DamageWidth = width
+                  DamageHeight = height }
+
+    let damageRegionSet frameWidth frameHeight fullFrameInvalidation cause boxes =
+        let frameArea = max 0 frameWidth * max 0 frameHeight
+
+        let regions =
+            if fullFrameInvalidation then
+                if frameArea = 0 then
+                    []
+                else
+                    [ { DamageX = 0
+                        DamageY = 0
+                        DamageWidth = max 0 frameWidth
+                        DamageHeight = max 0 frameHeight } ]
+            else
+                boxes
+                |> List.choose (damageOfRect frameWidth frameHeight)
+                |> List.distinct
+
+        { FrameWidth = frameWidth
+          FrameHeight = frameHeight
+          Regions = regions
+          UnionArea = unionArea (regions |> List.map rectOfDamage) frameArea
+          FullFrameInvalidation = fullFrameInvalidation
+          Cause = cause }
+
+    let placementDamage frameWidth frameHeight oldBox newBox =
+        damageRegionSet frameWidth frameHeight false "placement-only movement" [ oldBox; newBox ]
+
+    let classifyDamageFallback proofReady (proofReason: string option) (damage: CompositorDamageRegionSet) =
+        match proofReady, proofReason, damage.FullFrameInvalidation, damage.Regions with
+        | false, Some reason, _, _ when reason.Contains("environment", System.StringComparison.OrdinalIgnoreCase) -> Some(EnvironmentLimited reason)
+        | false, Some reason, _, _ -> Some(FailedProof reason)
+        | false, None, _, _ -> Some MissingProof
+        | true, _, true, _ -> Some FullFrameInvalidation
+        | true, _, false, [] -> Some EmptyDamage
+        | true, _, false, _ when damage.UnionArea > damage.FrameWidth * damage.FrameHeight -> Some(UnsafeDamage "damage exceeds frame area")
+        | _ -> None
+
+    let promotionDecision boundaryId observedStabilityFrames observationWindow expectedSavedWork measuredOverhead parityPassed =
+        if not parityPassed then
+            { BoundaryId = boundaryId
+              Decision = Reject
+              Reason = "parity failed"
+              ObservedStabilityFrames = observedStabilityFrames
+              ExpectedSavedWork = expectedSavedWork
+              MeasuredOverhead = measuredOverhead
+              Tier = NoCompositorTier }
+        elif observedStabilityFrames < observationWindow then
+            { BoundaryId = boundaryId
+              Decision = Observe
+              Reason = "stability window incomplete"
+              ObservedStabilityFrames = observedStabilityFrames
+              ExpectedSavedWork = expectedSavedWork
+              MeasuredOverhead = measuredOverhead
+              Tier = NoCompositorTier }
+        elif expectedSavedWork <= 0 then
+            { BoundaryId = boundaryId
+              Decision = Reject
+              Reason = "no expected saved work"
+              ObservedStabilityFrames = observedStabilityFrames
+              ExpectedSavedWork = expectedSavedWork
+              MeasuredOverhead = measuredOverhead
+              Tier = NoCompositorTier }
+        elif measuredOverhead >= expectedSavedWork then
+            { BoundaryId = boundaryId
+              Decision = Demote
+              Reason = "bookkeeping overhead exceeds saved work"
+              ObservedStabilityFrames = observedStabilityFrames
+              ExpectedSavedWork = expectedSavedWork
+              MeasuredOverhead = measuredOverhead
+              Tier = DemotedTier }
+        else
+            { BoundaryId = boundaryId
+              Decision = Promote
+              Reason = "stable and beneficial"
+              ObservedStabilityFrames = observedStabilityFrames
+              ExpectedSavedWork = expectedSavedWork
+              MeasuredOverhead = measuredOverhead
+              Tier = ReplayTier }
+
+    let snapshotVerdict supported (byteEstimate: int64) (byteBudget: int64) (benefitPercent: float) (thresholdPercent: float) =
+        if not supported then
+            SnapshotLimited "snapshot host unsupported"
+        elif byteEstimate > byteBudget then
+            SnapshotDemoted "snapshot budget exceeded"
+        elif benefitPercent < thresholdPercent then
+            SnapshotDemoted "snapshot benefit below threshold"
+        else
+            SnapshotReady
 
     /// Feature 116 (FR-011): scan a node's own painted scene for an effect that forces OFFSCREEN
     /// composition (a separate layer + composite). In THIS renderer that is: a drop-shadow / image

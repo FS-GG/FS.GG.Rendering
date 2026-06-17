@@ -126,6 +126,9 @@
     <Compile Include="Feature144OverlayPointerRoutingTests.fs" />
     <Compile Include="Feature144OverlayFocusRoutingTests.fs" />
     <Compile Include="Feature144CompatibilityContractTests.fs" />
+    <Compile Include="Feature147DamageUnionTests.fs" />
+    <Compile Include="Feature147PromotionReuseTests.fs" />
+    <Compile Include="Feature147SnapshotBudgetTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

@@ -55,6 +55,10 @@ let result : ControlRenderResult<Msg> = Control.render Theme.dark view
 - `Attr` — low-level attribute builders (`text`, `value`, `children`, `theme`, `validation`, `on` / `onWith`) for composing `Attr<'msg>` values directly. Layout builders include `padding`, `margin`, `gap`, `alignItems`, `alignSelf`, `justifyContent`, `flexGrow`, `flexShrink`, `flexBasis`, `minWidth`, `minHeight`, `maxWidth`, and `maxHeight`; omitted padding/gap keep the Controls compatibility defaults, explicit zero overrides them, and the legacy `spacing` name is treated as a gap alias.
 - `Catalog` — the governed control registry: `supportedControls`, `standardSchema`, and `validate` describe and check the standard control surface.
 
+## Compositor diagnostics
+
+Feature147 adds deterministic retained-render policy helpers for damage-union accounting, proof-gated fallback classification, promotion eligibility, placement movement damage, and snapshot-budget verdicts. The public Controls package keeps those mechanics internal; consumers should inspect the derived `CompositorFrameDiagnostics` helper from `FS.GG.UI.Controls.Elmish` when reviewing proof readiness, damage area, fallback reason, reuse counters, and snapshot byte estimates.
+
 ## Versioning
 
 All `FS.GG.UI.*` libraries share one version and move together. In a generated project a

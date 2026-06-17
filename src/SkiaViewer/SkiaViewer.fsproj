@@ -14,6 +14,8 @@
   <ItemGroup>
     <Compile Include="PresentMode.fsi" />
     <Compile Include="PresentMode.fs" />
+    <Compile Include="CompositorProof.fsi" />
+    <Compile Include="CompositorProof.fs" />
     <Compile Include="Host/Diagnostics.fsi" />
     <Compile Include="Host/Diagnostics.fs" />
     <Compile Include="PictureReplayCache.fsi" />

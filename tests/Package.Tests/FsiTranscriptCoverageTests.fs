@@ -23,6 +23,9 @@ let transcriptPath name =
 let feature146TranscriptPath name =
     repositoryPath $"specs/146-render-anywhere-protocol/readiness/fsi/{name}"
 
+let feature147TranscriptPath name =
+    repositoryPath $"specs/147-compositor-damage-redraw/readiness/fsi/{name}"
+
 let readTranscript name =
     let path = transcriptPath name
     Expect.isTrue (File.Exists path) $"FSI transcript evidence exists at {path}"
@@ -31,6 +34,11 @@ let readTranscript name =
 let readFeature146Transcript name =
     let path = feature146TranscriptPath name
     Expect.isTrue (File.Exists path) $"Feature146 FSI transcript evidence exists at {path}"
+    File.ReadAllText path
+
+let readFeature147Transcript name =
+    let path = feature147TranscriptPath name
+    Expect.isTrue (File.Exists path) $"Feature147 FSI transcript evidence exists at {path}"
     File.ReadAllText path
 
 [<Tests>]
@@ -117,6 +125,27 @@ let fsiTranscriptCoverageTests =
               "reference-rendering-authoring.log" ]
             |> List.iter (fun logName ->
                 let log = readFeature146Transcript logName
+                Expect.stringContains log "FSI transcript PASS" $"{logName} records passing FSI coverage")
+        }
+
+        test "Feature147 transcripts cover compositor proof and metrics authoring" {
+            let proof = readFeature147Transcript "compositor-proof-authoring.fsx"
+            let metrics = readFeature147Transcript "compositor-metrics-authoring.fsx"
+
+            [ "FS.GG.UI.SkiaViewer"
+              "CompositorProof.HostProfile"
+              "CompositorProof.readiness" ]
+            |> List.iter (fun required -> Expect.stringContains proof required $"proof transcript includes {required}")
+
+            [ "FS.GG.UI.Controls.Elmish"
+              "CompositorFrameDiagnostics"
+              "FrameMetrics" ]
+            |> List.iter (fun required -> Expect.stringContains metrics required $"metrics transcript includes {required}")
+
+            [ "compositor-proof-authoring.log"
+              "compositor-metrics-authoring.log" ]
+            |> List.iter (fun logName ->
+                let log = readFeature147Transcript logName
                 Expect.stringContains log "FSI transcript PASS" $"{logName} records passing FSI coverage")
         }
     ]

@@ -80,6 +80,17 @@ type FrameMetrics =
       ReplaySkippedNodeCount: int
       ReplayCacheNativeBytes: int }
 
+type CompositorFrameDiagnostics =
+    { ProofStatus: string
+      DamageUnionArea: int
+      ScissorCandidateArea: int
+      FallbackReason: string option
+      PromotionDecisionCount: int
+      ReuseHitCount: int
+      ReuseMissCount: int
+      DemotionCount: int
+      SnapshotResourceBytes: int }
+
 /// Feature 108 (US3, FR-009): one ordered step of the deterministic perf driver.
 [<RequireQualifiedAccess>]
 type FrameInput<'msg> =
@@ -205,6 +216,23 @@ module ControlsElmish =
         =
         (runtimeMessages |> List.map DispatchControlRuntimeMessage)
         @ (interactions |> List.collect (interpretPointerEffect mapInteraction))
+
+    let compositorDiagnostics proofReady fallbackReason (metrics: FrameMetrics) =
+        let fallback =
+            if proofReady then
+                fallbackReason
+            else
+                fallbackReason |> Option.orElse (Some "present proof is not ready")
+
+        { ProofStatus = if proofReady then "passed" else "not-ready"
+          DamageUnionArea = metrics.DirtyArea
+          ScissorCandidateArea = if proofReady && fallback.IsNone then metrics.DirtyArea else 0
+          FallbackReason = fallback
+          PromotionDecisionCount = metrics.PictureCacheHitCount + metrics.PictureCacheMissCount
+          ReuseHitCount = metrics.PictureCacheHitCount + metrics.ReplayHitCount
+          ReuseMissCount = metrics.PictureCacheMissCount + metrics.ReplayMissCount
+          DemotionCount = if metrics.ReplaySkippedNodeCount = 0 && metrics.ReplayMissCount > 0 then 1 else 0
+          SnapshotResourceBytes = metrics.ReplayCacheNativeBytes }
 
     let subscriptions (keyboard: AdapterSubscription<'msg> list) (controls: AdapterSubscription<'msg> list) =
         keyboard @ controls

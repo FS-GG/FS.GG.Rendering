@@ -210,6 +210,16 @@ module GlStartup =
         firstRelease @ secondRelease
 
 module GlHost =
+    type ScissorRect =
+        { X: int
+          Y: int
+          Width: int
+          Height: int }
+
+    type ScissorDecision =
+        | Scissored of ScissorRect list
+        | FullRedraw of reason: string
+
     /// The GL/Skia framebuffer state. The render target + `SKSurface` wrap FBO 0 and are
     /// recreated on resize (FR-006), sized from the window framebuffer pixels (high-DPI/Wayland
     /// correct). Recreated, not leaked: the prior surface/target are disposed before re-wrapping.
@@ -294,6 +304,40 @@ module GlHost =
     /// just update. Testable in isolation (T006).
     let shouldAdvanceFrame (lastFrameTime: float) (now: float) (frameInterval: float) : bool =
         now - lastFrameTime >= frameInterval
+
+    let normalizeScissorRects frameWidth frameHeight (rects: ScissorRect list) =
+        let clamp lo hi value = min hi (max lo value)
+
+        rects
+        |> List.choose (fun rect ->
+            let x0 = clamp 0 frameWidth rect.X
+            let y0 = clamp 0 frameHeight rect.Y
+            let x1 = clamp 0 frameWidth (rect.X + rect.Width)
+            let y1 = clamp 0 frameHeight (rect.Y + rect.Height)
+            let width = x1 - x0
+            let height = y1 - y0
+
+            if width <= 0 || height <= 0 then
+                None
+            else
+                Some { X = x0; Y = y0; Width = width; Height = height })
+        |> List.distinct
+
+    let scissorArea (rects: ScissorRect list) =
+        rects |> List.sumBy (fun rect -> rect.Width * rect.Height)
+
+    let decideScissorRedraw (proof: CompositorProof.ProofReadiness) fullFrameInvalidation damage frameWidth frameHeight =
+        match proof with
+        | CompositorProof.ProofReadiness.Ready when fullFrameInvalidation -> FullRedraw "full-frame invalidation"
+        | CompositorProof.ProofReadiness.Ready ->
+            match normalizeScissorRects frameWidth frameHeight damage with
+            | [] -> FullRedraw "empty damage"
+            | rects -> Scissored rects
+        | CompositorProof.ProofReadiness.Missing -> FullRedraw "missing present-path proof"
+        | CompositorProof.ProofReadiness.Stale -> FullRedraw "stale present-path proof"
+        | CompositorProof.ProofReadiness.HostMismatch -> FullRedraw "host-mismatched present-path proof"
+        | CompositorProof.ProofReadiness.Failed reason -> FullRedraw $"failed present-path proof: {reason}"
+        | CompositorProof.ProofReadiness.EnvironmentLimited reason -> FullRedraw $"environment-limited present-path proof: {reason}"
 
     let bind result next =
         match result with

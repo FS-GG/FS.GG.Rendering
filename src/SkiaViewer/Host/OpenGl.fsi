@@ -1,5 +1,7 @@
 namespace FS.GG.UI.SkiaViewer.Host
 
+open FS.GG.UI.SkiaViewer
+
 /// GL resource-ownership ledger (feature 119; GL successor to the former VulkanResources).
 module GlResources =
     /// Public contract type exposed by this FS.GG.UI package.
@@ -89,6 +91,19 @@ module GlStartup =
 
 /// The OpenGL/Skia presentation host body (internal helpers hidden; only `run` is reachable).
 module GlHost =
+    /// Feature 147: integer framebuffer scissor rectangle used by the proof and partial-redraw
+    /// decision helpers. Coordinates are clamped to the framebuffer before use.
+    type ScissorRect =
+        { X: int
+          Y: int
+          Width: int
+          Height: int }
+
+    /// Feature 147: pure decision for whether a frame may use scissored redraw or must use full redraw.
+    type ScissorDecision =
+        | Scissored of ScissorRect list
+        | FullRedraw of reason: string
+
     /// Public contract function exposed by this FS.GG.UI package. Signature shape preserved
     /// from the former VulkanHost.run so Host/Viewer.fs routes unchanged.
     val run: program: ViewerProgram<'model, 'msg> -> Result<unit, RenderDiagnostic>
@@ -128,3 +143,22 @@ module GlHost =
     /// `frameInterval` seconds elapsed since the last advance. Gates DoUpdate AND DoRender so the
     /// `ViewerOptions.FrameRateCap` bounds render cadence. Exposed for the pacing test (T006).
     val shouldAdvanceFrame: lastFrameTime: float -> now: float -> frameInterval: float -> bool
+
+    /// Feature 147: clamp damage rectangles to the framebuffer and discard empty regions.
+    val normalizeScissorRects:
+        frameWidth: int ->
+        frameHeight: int ->
+        rects: ScissorRect list ->
+            ScissorRect list
+
+    /// Feature 147: deterministic area of the scissor set after clipping.
+    val scissorArea: rects: ScissorRect list -> int
+
+    /// Feature 147: decide if the host may use scissored redraw for this frame.
+    val decideScissorRedraw:
+        proof: CompositorProof.ProofReadiness ->
+        fullFrameInvalidation: bool ->
+        damage: ScissorRect list ->
+        frameWidth: int ->
+        frameHeight: int ->
+            ScissorDecision

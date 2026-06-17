@@ -9,6 +9,7 @@ FS.GG.UI.Controls.Elmish.AdapterEffect`1+ReportAdapterDiagnostic
 FS.GG.UI.Controls.Elmish.AdapterEffect`1+Tags
 FS.GG.UI.Controls.Elmish.AdapterProgram`2
 FS.GG.UI.Controls.Elmish.AdapterSubscription`1
+FS.GG.UI.Controls.Elmish.CompositorFrameDiagnostics
 FS.GG.UI.Controls.Elmish.ControlsElmish
 FS.GG.UI.Controls.Elmish.ControlsElmish+Perf
 FS.GG.UI.Controls.Elmish.FrameCause

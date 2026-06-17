@@ -313,6 +313,57 @@ type internal WorkReductionRecord =
       ReplaySkippedNodes: int
       ReplayCacheNativeBytes: int }
 
+/// Feature 147: clipped compositor damage expressed in frame-pixel coordinates.
+type internal CompositorDamageRegion =
+    { DamageX: int
+      DamageY: int
+      DamageWidth: int
+      DamageHeight: int }
+
+type internal CompositorDamageRegionSet =
+    { FrameWidth: int
+      FrameHeight: int
+      Regions: CompositorDamageRegion list
+      UnionArea: int
+      FullFrameInvalidation: bool
+      Cause: string }
+
+type internal CompositorFallbackReason =
+    | MissingProof
+    | FailedProof of reason: string
+    | EnvironmentLimited of reason: string
+    | FullFrameInvalidation
+    | EmptyDamage
+    | UnsafeDamage of reason: string
+
+type internal CompositorTier =
+    | NoCompositorTier
+    | RetainedTier
+    | ReplayTier
+    | SnapshotTier
+    | DemotedTier
+
+type internal PromotionDecisionKind =
+    | Promote
+    | Keep
+    | Demote
+    | Reject
+    | Observe
+
+type internal PromotionDecision =
+    { BoundaryId: string
+      Decision: PromotionDecisionKind
+      Reason: string
+      ObservedStabilityFrames: int
+      ExpectedSavedWork: int
+      MeasuredOverhead: int
+      Tier: CompositorTier }
+
+type internal SnapshotResourceVerdict =
+    | SnapshotReady
+    | SnapshotDemoted of reason: string
+    | SnapshotLimited of reason: string
+
 /// The result of one wired frame: the next retained structure, the render result (byte-identical
 /// to a full rebuild of `next`), the diagnostics surfaced from the diff (e.g. `KeyCollision`), and
 /// the measured work reduction.
@@ -370,6 +421,50 @@ module internal RetainedRender =
     /// the frame area. Overlapping rectangles are counted once (never the sum), and the result never
     /// exceeds `frameArea`. Pure, total, deterministic (coordinate-compression over integer geometry).
     val internal unionArea: boxes: FS.GG.UI.Scene.Rect list -> frameArea: int -> int
+
+    /// Feature 147: clip damage rectangles to the frame, deduplicate them, and compute true union area.
+    val internal damageRegionSet:
+        frameWidth: int ->
+        frameHeight: int ->
+        fullFrameInvalidation: bool ->
+        cause: string ->
+        boxes: FS.GG.UI.Scene.Rect list ->
+            CompositorDamageRegionSet
+
+    /// Feature 147: placement-only reuse damages both old and new covered regions.
+    val internal placementDamage:
+        frameWidth: int ->
+        frameHeight: int ->
+        oldBox: FS.GG.UI.Scene.Rect ->
+        newBox: FS.GG.UI.Scene.Rect ->
+            CompositorDamageRegionSet
+
+    /// Feature 147: classify why a frame must fall back to full redraw.
+    val internal classifyDamageFallback:
+        proofReady: bool ->
+        proofReason: string option ->
+        damage: CompositorDamageRegionSet ->
+            CompositorFallbackReason option
+
+    /// Feature 147: deterministic promotion/demotion policy over observed stability, benefit, overhead,
+    /// and parity. Pure policy only; rendering remains byte-identical unless a caller accepts the decision.
+    val internal promotionDecision:
+        boundaryId: string ->
+        observedStabilityFrames: int ->
+        observationWindow: int ->
+        expectedSavedWork: int ->
+        measuredOverhead: int ->
+        parityPassed: bool ->
+            PromotionDecision
+
+    /// Feature 147: snapshot tier verdict for host support, byte budget, and measured benefit.
+    val internal snapshotVerdict:
+        supported: bool ->
+        byteEstimate: int64 ->
+        byteBudget: int64 ->
+        benefitPercent: float ->
+        thresholdPercent: float ->
+            SnapshotResourceVerdict
 
     /// Feature 117 (Phase 8, FR-003): the fixed text-measure-cache entry cap (aligned with
     /// `PictureCacheCap`). `TextCache.Entries.Count` never exceeds this; the eviction-pressure scenario

@@ -345,6 +345,18 @@ legacy comparison expectations do not.
 
 **Effort.** L. Depends on R2 (`Transform`/`CacheBoundary` modifiers).
 
+**Feature 147 status (2026-06-18).** P7 has a deterministic readiness slice on
+`147-compositor-damage-redraw`: `CompositorProof` contracts, host/profile readiness validation,
+OpenGL scissor decision helpers, retained damage-union and promotion/snapshot policy helpers,
+derived `CompositorFrameDiagnostics`, harness commands for proof/parity/perf/readiness, refreshed
+surface baselines, and readiness artifacts under `specs/147-compositor-damage-redraw/readiness/`.
+The slice is intentionally limited: the generated present proof is `environment-limited` because
+the live GL sentinel/readback interpreter is not implemented yet, so damage scissoring remains
+fallback-gated and no shipped performance win is claimed. Remaining P7 exit criteria are live
+sentinel/readback proof, SceneRenderer/SkiaViewer no-clear scissored drawing plus full-redraw
+fallback diagnostics, full content/placement tracking, expanded corpus execution, snapshot resource
+lifecycle/composition, and real host timing probes.
+
 ---
 
 ## 11. Workstream R7 — Real text shaping (HarfBuzz)
@@ -387,7 +399,7 @@ Dependency graph: R1a has no dependency; R2 depends on R1a if it changes assembl
 | **P4 — Text** | R7 (HarfBuzz shaping) | Independent; unblocks portable text for R5 | Implemented as Feature 142: measured/drawn shaped glyph evidence path; complex-script fixture coverage; pure fallback intact |
 | **P5 — Interaction** | R4 (overlay state) | Needs R2 portals + R3 anchoring | Implemented and landed through Feature 145: pure overlay coordinator, transient widget metadata, host/runtime dispatch seams, AntShowcase reference date-picker flow, deterministic corpus parity, unsupported-host disclosure, and real current-run overlay visual proof |
 | **P6 — Render-anywhere** | R5 (protocol + server PNG + CanvasKit feasibility) | Needs stable IR (R2) + portable text (R7) | Implemented and landed as Feature 146: deterministic package codec and inspection surface; Skia reference oracle with PNG evidence; package inspection helpers; browser feasibility fallback report; focused/package/build/pack validation passed; squash merge `c0f16ce`; package bump `d62b026` to `0.1.9-preview.1`; full solution remains blocked by unrelated Controls transient-metadata parity failures |
-| **P7 — Compositor** | R6 (present-path proof, promotion, scissor, key split, texture) | Needs R2 modifiers; pure perf, gated by probes | Not implemented. Exit criteria remain: present-path proof green; damage-scissored frames; promotion heuristic; scroll re-blits; parity oracle holds per tier; probes show net win |
+| **P7 — Compositor** | R6 (present-path proof, promotion, scissor, key split, texture) | Needs R2 modifiers; pure perf, gated by probes | Partially implemented as Feature 147 deterministic readiness slice: proof/scissor/policy contracts, diagnostics, harness commands, readiness artifacts, and surface baselines are in place. Live sentinel proof, integrated damage-scissored frames, full promotion/key-split tracking, snapshot composition, and real timing wins remain open |
 | **P8 — Radical layout** | R3b (intrinsic protocol) | Needs R1b; removes the scrollViewport descendant-walk smell | Not implemented. Exit criteria remain: constraints/intrinsics protocol; ScrollViewer reimplemented; incremental≡full preserved |
 
 Each phase is independently shippable and Tier-1-disclosed. P0–P3 are the high-leverage core; P4–P8 are capability expansion in any order their deps allow.
@@ -450,4 +462,4 @@ and intrinsic layout.
 
 ---
 
-*End of report. This document chooses the radical options and tracks their delivery status. P0-P6 are implemented and landed through Feature 146 plus package version `0.1.9-preview.1`; P7 compositor work and P8 intrinsic-layout work remain unimplemented. The recommended next action is resolving the unrelated Controls transient-metadata parity failures or choosing whether to proceed to P7 compositor work.*
+*End of report. This document chooses the radical options and tracks their delivery status. P0-P6 are implemented and landed through Feature 146 plus package version `0.1.9-preview.1`; P7 now has Feature 147's deterministic readiness slice but remains performance-limited until live proof, renderer integration, and timing probes are complete; P8 intrinsic-layout work remains unimplemented.*

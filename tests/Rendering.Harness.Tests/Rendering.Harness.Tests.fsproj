@@ -17,6 +17,8 @@
     <Compile Include="Feature146RenderAnywhereEvidenceTests.fs" />
     <Compile Include="Feature146BrowserFeasibilityTests.fs" />
     <Compile Include="Feature146BrowserEvidenceFormatterTests.fs" />
+    <Compile Include="Feature147CompositorEvidenceTests.fs" />
+    <Compile Include="Feature147CompositorReadinessTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

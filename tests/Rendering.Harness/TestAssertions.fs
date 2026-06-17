@@ -138,3 +138,16 @@ module TestAssertions =
             not (System.String.IsNullOrWhiteSpace value)
             && packageIdentityLooksSha256 hash
         | _ -> false
+
+    /// Feature 147 helper: all readiness paths for the compositor package must stay under the feature
+    /// readiness directory so generated artifacts cannot masquerade as unrelated evidence.
+    let feature147ReadinessPath (path: string) : bool =
+        path.Replace('\\', '/').StartsWith("specs/147-compositor-damage-redraw/readiness/", System.StringComparison.Ordinal)
+
+    /// Feature 147 helper: an accepted parity verdict must be the explicit passed token.
+    let feature147ParityPassed (token: string) : bool =
+        System.String.Equals(token, "passed", System.StringComparison.Ordinal)
+
+    /// Feature 147 helper: readiness can be claimed only by the explicit ready token.
+    let feature147ReadyTier (token: string) : bool =
+        System.String.Equals(token, "ready", System.StringComparison.Ordinal)

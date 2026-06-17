@@ -221,6 +221,20 @@ type FrameMetrics =
       /// real `SKPicture` native byte total in the non-golden timing baseline.
       ReplayCacheNativeBytes: int }
 
+/// Feature 147: derived compositor diagnostics over the existing per-frame metrics. This keeps
+/// `FrameMetrics` source-compatible while giving readiness reviewers named damage, fallback,
+/// promotion/reuse, and snapshot-budget fields.
+type CompositorFrameDiagnostics =
+    { ProofStatus: string
+      DamageUnionArea: int
+      ScissorCandidateArea: int
+      FallbackReason: string option
+      PromotionDecisionCount: int
+      ReuseHitCount: int
+      ReuseMissCount: int
+      DemotionCount: int
+      SnapshotResourceBytes: int }
+
 [<RequireQualifiedAccess>]
 /// Feature 108 (US3, FR-009): one ordered step of the deterministic perf driver. `Key` carries the
 /// parsed base key + held modifiers; `Pointer` carries an already-resolved `PointerInteraction`;
@@ -334,6 +348,12 @@ module ControlsElmish =
         interactions: PointerInteraction list ->
         runtimeMessages: ControlRuntimeMsg list ->
             AdapterCommand<'msg>
+    /// Feature 147: derive compositor readiness diagnostics from existing `FrameMetrics`.
+    val compositorDiagnostics:
+        proofReady: bool ->
+        fallbackReason: string option ->
+        metrics: FrameMetrics ->
+            CompositorFrameDiagnostics
     /// Public contract function exposed by this FS.GG.UI package.
     val subscriptions: keyboard: AdapterSubscription<'msg> list -> controls: AdapterSubscription<'msg> list -> AdapterSubscription<'msg> list
     /// Public contract function exposed by this FS.GG.UI package.

@@ -28,6 +28,9 @@
     <Compile Include="Feature142FallbackDiagnosticsTests.fs" />
     <Compile Include="Feature142SurfaceAndDependencyTests.fs" />
     <Compile Include="Feature146ReferenceRenderingTests.fs" />
+    <Compile Include="Feature147PresentPathProofTests.fs" />
+    <Compile Include="Feature147ScissorRedrawTests.fs" />
+    <Compile Include="Feature147SnapshotResourceTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
