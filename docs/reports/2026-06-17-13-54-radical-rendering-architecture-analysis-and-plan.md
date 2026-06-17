@@ -4,15 +4,28 @@
 |---|---|
 | **Authored** | 2026-06-17 13:54 CEST (2026-06-17T11:54Z) |
 | **Author** | Claude Opus 4.8 (1M context), with four parallel research agents (offline codebase map + 3 online prior-art deep-dives) |
-| **Repo state** | branch `main` @ `8f75594` (feature 137 merged: container clipping + overlay pass + scroll viewport) |
+| **Repo state** | Originally analyzed at branch `main` @ `8f75594`; implementation/package status updated through `main` @ `41fb05c` |
 | **Scope** | The **radical** framework options only (per request), grounded in offline code reading and online prior art (React Fiber, Jetpack Compose, SwiftUI/AttributeGraph, Flutter, Elm, WebRender, Chromium `cc`, Skia, HarfBuzz) |
-| **Status** | Analysis + revised plan. No code changed by this document. |
+| **Status** | Current through Feature 140: P0, P1, and P2 shipped; next planned phase is P3 retained-renderer unification. |
 
 ---
 
 ## 0. How to read this
 
 This is two documents in one: an **analysis** of where FS.GG.Rendering actually is (grounded in the live code, with `file:line` anchors), and a **comprehensive implementation plan** for the radical bets, sequenced into phases with change-sites, parity oracles, risks, and exit criteria. Sources for every external claim are in §16.
+
+### Current status update (2026-06-17 17:42 CEST)
+
+This report began as a plan from `main` @ `8f75594`. The repository has since shipped the first three roadmap phases and pushed package version `0.1.3-preview.1`:
+
+| Phase | Status | Evidence |
+|---|---|---|
+| **P0 - Quick win** | Shipped as Feature 138. Layout attrs and the metrics fix are merged. | `5ae3dad` `Merge 138-layout-attrs-metrics-fix (squash)`; package bump `c1318ee`. |
+| **P1 - Duplication reduction** | Shipped as Feature 139. The shared current-node assembly seam is merged. | `f92621d` `Merge 139-shared-assembly-extraction (squash)`; package bump `143342f`. |
+| **P2 - IR foundation** | Shipped as Feature 140. Internal Controls composition, modifier classification, local z-order, portals/layers, legacy lowering, and glyph-run proof support are merged. | `ac2b560` `Merge 140-modifier-layer-ir (squash)`; package bump `41fb05c` to `0.1.3-preview.1`. |
+| **P3 - Keystone** | Next. Retained-renderer unification remains the next structural phase. | Build on the Feature 139 seam and Feature 140 composition foundation. |
+
+Feature 140 validation is recorded in `specs/140-modifier-layer-ir/readiness.md`: focused Feature 140 tests, legacy compatibility oracles, broad deterministic suites, GL-local Skia/Smoke suites, the offscreen rendering harness, and surface-baseline refresh passed. The remaining caveats are tooling state, not Feature 140 behavior: `./fake.sh` is absent and the `tests/Package.Tests` surface filter still expects stale baseline paths.
 
 Table of contents:
 
@@ -330,7 +343,8 @@ Dependency graph: R1a has no dependency; R2 depends on R1a if it changes assembl
 
 Each phase is independently shippable and Tier-1-disclosed. P0–P3 are the high-leverage core; P4–P8 are capability expansion in any order their deps allow.
 
-**Feature 140 status (2026-06-17).** P2's internal foundation has landed as an assembly-internal Controls
+**Feature 140 status (2026-06-17).** P2's internal foundation has landed and is pushed on `main` at
+`ac2b560`, followed by package version `0.1.3-preview.1` at `41fb05c`. It adds an assembly-internal Controls
 composition model for modifiers, invalidation classification, normalization, local z-order, layer hosts,
 portals, legacy lowering, and compatibility evidence. The only public IR delta is the glyph-run proof surface
 in `FS.GG.UI.Scene` plus a SkiaViewer proof helper/drawing path. Still deferred: R1b retained unification,
@@ -387,4 +401,4 @@ and intrinsic layout.
 
 ---
 
-*End of report. This document chooses the radical options and plans them; it changes no code. Recommended first action: P0 (surface the flex layout attributes + fix the pre-existing Elmish metrics test), then P1 (R1a shared assembly extraction), then P2 (modifier/layer IR foundation), then P3 (full retained-renderer unification).*
+*End of report. This document chooses the radical options and tracks their delivery status. P0, P1, and P2 are now shipped; recommended next action is P3, the full retained-renderer unification.*
