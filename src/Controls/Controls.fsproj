@@ -5,7 +5,7 @@
     <IsPackable>true</IsPackable>
     <PackageId>FS.GG.UI.Controls</PackageId>
     <AssemblyName>FS.GG.UI.Controls</AssemblyName>
-    <Version>0.1.0-preview.1</Version>
+    <Version>0.1.1-preview.1</Version>
     <Title>FS.GG.UI.Controls</Title>
     <Description>Declarative Skia controls, rich rendering, chart controls, graph controls, DataGrid, and product-owned control runtime contracts.</Description>
     <PackageTags>fsharp;skia;controls;widgets;charts;graph;datagrid</PackageTags>
