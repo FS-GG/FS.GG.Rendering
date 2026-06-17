@@ -5,7 +5,7 @@
     <IsPackable>true</IsPackable>
     <PackageId>FS.GG.UI.Scene</PackageId>
     <AssemblyName>FS.GG.UI.Scene</AssemblyName>
-    <Version>0.1.9-preview.1</Version>
+    <Version>0.1.10-preview.1</Version>
     <Title>FS.GG.UI.Scene</Title>
     <Description>Dependency-light scene vocabulary for FS.GG.UI V3 products.</Description>
     <PackageTags>fsharp;skia;scene;ui</PackageTags>
