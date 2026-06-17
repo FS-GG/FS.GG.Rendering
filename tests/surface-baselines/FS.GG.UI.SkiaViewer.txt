@@ -16,6 +16,14 @@ FS.GG.UI.SkiaViewer.EvidenceWorkflowMsg+LaunchCompleted
 FS.GG.UI.SkiaViewer.EvidenceWorkflowMsg+Tags
 FS.GG.UI.SkiaViewer.FirstFrameStatus
 FS.GG.UI.SkiaViewer.FirstFrameStatus+Tags
+FS.GG.UI.SkiaViewer.Fonts
+FS.GG.UI.SkiaViewer.Fonts+FallbackReport
+FS.GG.UI.SkiaViewer.Fonts+FallbackResolution
+FS.GG.UI.SkiaViewer.Fonts+FallbackResolution+Authored
+FS.GG.UI.SkiaViewer.Fonts+FallbackResolution+Substituted
+FS.GG.UI.SkiaViewer.Fonts+FallbackResolution+Tags
+FS.GG.UI.SkiaViewer.Fonts+FallbackResolution+Tofu
+FS.GG.UI.SkiaViewer.Fonts+ResolvedChar
 FS.GG.UI.SkiaViewer.GeneratedAppHost
 FS.GG.UI.SkiaViewer.GeneratedAppHost`2
 FS.GG.UI.SkiaViewer.Host.DiagnosticOptions
@@ -81,6 +89,7 @@ FS.GG.UI.SkiaViewer.ScreenshotPixelContentValidation
 FS.GG.UI.SkiaViewer.ScreenshotPixelContentValidation+PixelContentNotValidated
 FS.GG.UI.SkiaViewer.ScreenshotPixelContentValidation+PixelContentUnreadable
 FS.GG.UI.SkiaViewer.ScreenshotPixelContentValidation+Tags
+FS.GG.UI.SkiaViewer.Text
 FS.GG.UI.SkiaViewer.Viewer
 FS.GG.UI.SkiaViewer.ViewerBackendPreference
 FS.GG.UI.SkiaViewer.ViewerBackendPreference+Tags

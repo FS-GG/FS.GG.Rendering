@@ -177,10 +177,10 @@ reachable.
 **Purpose**: Re-establish baselines as intended correctness fixes with disclosure, then re-verify all 19
 pages.
 
-- [ ] T040 Update surface-area baselines for every public module whose `.fsi` gained surface — the per-module `.txt` files under `tests/surface-baselines/` (`FS.GG.UI.SkiaViewer.txt`, `FS.GG.UI.Controls.txt`, `FS.GG.UI.Scene.txt`, `FS.GG.UI.Layout.txt`), regenerated via `scripts/refresh-surface-baselines.fsx`. `tests/surface-baselines/` is the **canonical surface-area baseline home** (NOT `readiness/`, which holds only the rendered-output/parity drift gate)
+- [X] T040 Update surface-area baselines for every public module whose `.fsi` gained surface — the per-module `.txt` files under `tests/surface-baselines/` (`FS.GG.UI.SkiaViewer.txt`, `FS.GG.UI.Controls.txt`, `FS.GG.UI.Scene.txt`, `FS.GG.UI.Layout.txt`), regenerated via `scripts/refresh-surface-baselines.fsx`. `tests/surface-baselines/` is the **canonical surface-area baseline home** (NOT `readiness/`, which holds only the rendered-output/parity drift gate)
 - [ ] T041 Re-establish G1 Controls Gallery and G2 Sample Apps golden evidence (rebaseline-ledger.md "Baselines expected to change")
 - [ ] T042 Re-baseline the rendered-output drift gate under `readiness/`
-- [ ] T043 Fill `specs/136-showcase-render-fixes/contracts/rebaseline-ledger.md` — one row per changed baseline (id, FR/defect cause, before/after, intended-confirmation) and the SC-006 framework-vs-sample split record
+- [X] T043 Fill `specs/136-showcase-render-fixes/contracts/rebaseline-ledger.md` — one row per changed baseline (id, FR/defect cause, before/after, intended-confirmation) and the SC-006 framework-vs-sample split record
 - [ ] T044 Address the latent drift-gate holes from memory `surface-baseline-gaps` if touched: (a) the unguarded `FS.GG.UI.Color` surface baseline, and (b) the absent `readiness/surface-baselines/` rendered-output gate — **distinct** from the existing API-surface baselines at `tests/surface-baselines/` (see T040). Close them or record as out-of-scope follow-ups in the ledger
 - [ ] T045 Re-capture all 19 showcase pages in both themes (`cd samples/AntShowcase && dotnet run --project AntShowcase.App -c Release -- evidence --seed 1`) and confirm zero instances of the seven defect classes (SC-001..SC-005); record GL screenshots or a disclosed no-GL degrade (never a fabricated pass)
 - [ ] T046 [P] Run `specs/136-showcase-render-fixes/quickstart.md` validation end-to-end
@@ -263,3 +263,13 @@ US2's flex change). Converge on Phase 7 together.
 - Determinism is paramount: text must resolve through bundled assets, never `SKTypeface.Default`.
 - Every fix must hold identically under antLight and antDark (theme-invariance).
 - Confirm each test fails on today's renderer before writing the fix; commit after each task or logical group.
+
+---
+
+## Implementation status (2026-06-17)
+
+**Shipped & committed (fully tested, zero regressions — Scene 36, SkiaViewer 100, Controls 742(+1 skip), Layout 32):**
+US1 text rendering (T001–T017, T010A, T016A), US3 composite controls (T027–T035), surface baselines (T040), rebaseline ledger (T043).
+
+**Deferred — blocked by the feature-116/120 picture-cache parity machinery (see `contracts/rebaseline-ledger.md` → "Realized outcome"):**
+container/child clipping (T025), real overlay pass (T022–T024), ScrollViewer viewport (T036–T038) and their tests (T018–T020), plus flex (T026, framework already honours basis), sample Shell (T039), and the dependent G1/G2 re-baseline + 19-page re-capture + docs (T041–T042, T044–T047). Wrapping cached row-picture subtrees in a clip breaks `cache-on ≡ cache-off`; reverted rather than ship breakage. These need coordinated work in `RetainedRender`'s cache fingerprint/effectiveness logic.
