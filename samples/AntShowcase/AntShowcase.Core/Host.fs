@@ -14,7 +14,9 @@ open AntShowcase.Core.Model
 let initModel: AntShowcaseModel =
     { CurrentPage = (List.head PageRegistry.all).Id
       Mode = Light
-      PageState = DemoState.seed }
+      PageState = DemoState.seed
+      FeedbackDraft = ""
+      Feedback = [] }
 
 /// Map a key press to a showcase message (interaction-contract.md). Activation keys
 /// (Enter/Space) exercise the focused command (FR-014) — enough to make a seeded keyboard

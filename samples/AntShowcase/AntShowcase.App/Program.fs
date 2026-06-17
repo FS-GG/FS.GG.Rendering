@@ -12,6 +12,7 @@ let private usage () =
     printfn "  AntShowcase interactive [<page-id>] [--theme light|dark]"
     printfn "  AntShowcase evidence --seed <int> [--out <dir>] [--page <page-id>]"
     printfn "  AntShowcase coverage"
+    printfn "  AntShowcase feedback [--clear]"
 
 /// Tiny flag reader: value following `--name`, if present.
 let private flag (name: string) (args: string list): string option =
@@ -52,6 +53,21 @@ let main argv =
             (List.length PageRegistry.catalogPages)
             (List.length PageRegistry.templatePages)
         0
+
+    | "feedback" :: rest ->
+        if List.contains "--clear" rest then
+            FeedbackStore.clear ()
+            printfn "ant-showcase: cleared saved feedback (%s)." FeedbackStore.path
+            0
+        else
+            let entries = FeedbackStore.load ()
+            if List.isEmpty entries then
+                printfn "ant-showcase: no feedback saved yet (%s)." FeedbackStore.path
+            else
+                printfn "ant-showcase: %d saved feedback item(s) from %s" (List.length entries) FeedbackStore.path
+                entries
+                |> List.iteri (fun i e -> printfn "  %2d. [%-22s] %s" (i + 1) e.PageId e.Text)
+            0
 
     | "interactive" :: rest ->
         let startPage = firstPositional rest |> Option.defaultValue (List.head PageRegistry.all).Id
