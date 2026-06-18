@@ -21,8 +21,9 @@ The work also exposed several friction points:
 5. The framework lacks structured visual/layout metadata for assertions. The feature can assert declared regions and non-empty render trees, but "readable and not overlapping" still depends heavily on screenshots and human review.
 6. Generated summary commands can overwrite richer hand-written readiness notes. The visual-readiness summarizer rewrote `validation-summary.md` to a minimal link-only summary after a detailed summary had been added.
 7. Skills helped with domain orientation, but they do not yet encode several recurring repository traps: local package-feed drift, readiness ignore rules, concurrent test output locks, post-merge package bump requirements, and how to preserve evidence honesty.
+8. A post-readiness interactive diagnostic found severe input-lag risk in the synchronous post-input render path. Pointer routing itself was fast, but a state-changing click can force hundreds of milliseconds of retained render/lowering/layout/text work on the same event path, causing later mouse events to queue.
 
-The highest-value improvement is a shared "visual readiness and local package feed" toolkit: library-side APIs for screenshot evidence, a CLI or script for pack/update/restore validation, and skill guidance that requires these checks before a feature is marked done.
+The highest-value improvement is a shared "visual readiness, local package feed, and responsiveness diagnostics" toolkit: library-side APIs for screenshot evidence, a CLI or script for pack/update/restore validation, live phase timing for input/update/render/present, and skill guidance that requires these checks before a feature is marked done.
 
 ---
 
@@ -417,6 +418,66 @@ For sample apps, print a compact summary at the end or write structured diagnost
 
 ---
 
+### 3.9 Interactive input lag was traced to synchronous render work after input
+
+**Observation**
+
+After the visual-readiness work, manual interactive use of AntShowcase showed massive mouse input lag: clicks could appear delayed by seconds. A focused local diagnosis separated deterministic app-side cost from live viewer/event-loop cost.
+
+The deterministic checks showed:
+
+- `Shell.view buttons`: approximately `0.11 ms` average over 100 runs.
+- `Control.renderTree buttons`: approximately `397 ms` average over 10 runs.
+- `Control.renderTree buttons clicked`: approximately `396 ms` average over 10 runs.
+- `ControlsElmish.Perf.runScript` for one content-button click: approximately `762 ms` average over 10 runs.
+- Single-page `Control.renderTree` costs across AntShowcase ranged from approximately `333 ms` to `1118 ms`.
+
+The live viewer diagnostics showed:
+
+- Pointer move routing was usually sub-millisecond.
+- Discrete click routing was small, typically around `0.02 ms` to `4 ms`.
+- State-changing clicks left large post-render footprints visible on following samples, for example `remeasure=38..77`, `repaint=57..96`, `dirtyArea=1600000`, and text-measure activity such as `text=0/60` or `text=78/0`.
+- Backend present timing sometimes reported paint work around `60 ms` to `118 ms`.
+
+The observed keyboard contract was minimal but present: AntShowcase maps key-down `Enter` and `Space` to `PageMsg ButtonClicked`; key-up and other keys are ignored unless focused-control routing consumes them first. The same post-input render stall would affect keyboard activations that change the model.
+
+**Impact**
+
+The lag is user-visible and can stack. Even if pointer routing is fast, every state-changing input can synchronously perform expensive retained render/lowering/layout/text/present work. While that work is running, later mouse samples and clicks queue behind it, which feels like delayed clicks.
+
+This also means a screenshot-ready sample can still be interactively poor. Visual readiness and responsiveness readiness are related but separate gates.
+
+**Root cause**
+
+The live viewer dispatch path applies input messages and immediately calls `host.View` / retained render synchronously on the event path:
+
+1. Native input arrives.
+2. `host.MapPointer` or `host.MapKey` produces product messages.
+3. `host.Update` changes the model.
+4. The viewer immediately recomputes the current scene through the retained render path.
+
+The product view construction itself is cheap; the expensive work is below it, primarily `Control.renderTree` / retained lowering / layout / text measurement / paint preparation. Damage tracking also appears too broad for localized updates: button clicks still reported full-frame dirty area (`1600000` at `1600x1000`).
+
+**Improvement**
+
+Responsiveness needs first-class framework support:
+
+1. Add phase timing around `MapPointer`/`MapKey`, product `Update`, `host.View`, retained `step`, text measurement, layout, paint walk, and present.
+2. Report a single input-to-present latency record for each discrete input, not only input-routing metrics.
+3. Queue input messages and render on the frame loop instead of performing expensive render work directly inside input callbacks.
+4. Keep discrete inputs ordered, but coalesce move/hover work before it reaches heavyweight render paths.
+5. Narrow damage tracking so localized state changes do not dirty the whole frame.
+6. Cache text measurement/shaping and unchanged lowered subtrees more aggressively.
+7. Add responsiveness readiness tests or scripts that fail when click/key-to-present latency exceeds a budget.
+
+Candidate budgets:
+
+- Pointer/key routing: `< 4 ms` p95.
+- Product update + view: `< 8 ms` p95 for typical generated screens.
+- Input-to-present: `< 50 ms` p95 for interaction demos, with explicit disclosure when software rendering or unsupported graphics backends prevent this.
+
+---
+
 ## 4. Library improvement opportunities
 
 ### 4.1 Add a package-feed validation library/script
@@ -518,6 +579,45 @@ type DiagnosticCategory =
 ```
 
 The console can still print text, but artifacts and tests should consume structured records.
+
+### 4.7 Add responsiveness diagnostics and decouple input from rendering
+
+**Priority:** High
+
+The framework should expose responsiveness as a first-class validation surface, not a one-off manual diagnosis.
+
+Recommended API additions:
+
+```fsharp
+type InputPhaseTiming =
+    { InputId: int64
+      Cause: FrameCause
+      RoutedAt: System.DateTimeOffset
+      RoutingDuration: System.TimeSpan
+      UpdateDuration: System.TimeSpan
+      ViewDuration: System.TimeSpan
+      RetainedStepDuration: System.TimeSpan
+      LayoutDuration: System.TimeSpan
+      TextDuration: System.TimeSpan
+      PaintDuration: System.TimeSpan
+      PresentDuration: System.TimeSpan
+      InputToPresentDuration: System.TimeSpan
+      ProductModelChanged: bool
+      DirtyArea: int
+      RepaintedNodeCount: int }
+```
+
+Recommended runtime change:
+
+- Input callbacks should enqueue normalized input events and return quickly.
+- The frame loop should drain queued inputs in order, fold model updates, then render once per frame.
+- Pointer moves should remain coalesced; discrete press/release/click/key events should remain ordered and never be dropped.
+
+Recommended test/tooling additions:
+
+- A headless responsiveness script that replays click/key inputs against real sample pages.
+- A live diagnostic mode that writes JSONL timing records.
+- A summary that reports p50/p95/max input-to-present latency by page and control type.
 
 ---
 
@@ -653,6 +753,24 @@ Skills should continue to require this level of honesty:
 - Do not hide environment-limited or incomplete evidence.
 - If failing-first evidence was not preserved, state that in tasks or readiness notes.
 
+### 5.8 Add responsiveness-diagnostics guidance
+
+**Priority:** High
+
+The FS.GG skills should instruct agents to check interactivity separately from screenshot readiness when a generated product or showcase is meant to be used live.
+
+Recommended skill rule:
+
+> For interactive samples, validate at least one pointer activation and one keyboard activation through the deterministic `Perf.runScript` path, then use live `OnFrameMetrics` or a responsiveness diagnostic mode when the user reports lag. Distinguish input routing cost from post-update render/present cost.
+
+Skills should also document the AntShowcase keyboard baseline:
+
+- `Enter` and `Space` on key-down activate the representative command.
+- Key-up is ignored.
+- Other keys route only through focused controls or chord/fallthrough handlers.
+
+This prevents agents from treating "click dispatched" as equivalent to "interaction feels responsive."
+
 ---
 
 ## 6. Prioritized action plan
@@ -663,6 +781,7 @@ Skills should continue to require this level of honesty:
 2. Add skill guidance for package-pin drift.
 3. Add skill guidance for ignored readiness evidence and `git check-ignore`.
 4. Add skill guidance against concurrent `dotnet test` runs for the same output path.
+5. Add a responsiveness diagnostic lane that records pointer/key routing, update, render, paint, present, and input-to-present latency.
 
 ### P1: Make visual readiness reusable
 
@@ -676,6 +795,8 @@ Skills should continue to require this level of honesty:
 1. Emit structured layout/render inspection artifacts.
 2. Add tests for text bounds, clipping, z-order, and section containment.
 3. Add root/surface paint coverage checks for themes.
+4. Add damage-area assertions for localized interactions so a button click cannot silently repaint the whole frame.
+5. Add retained-render/text-cache metrics that identify why a localized update still remeasures or repaints broad regions.
 
 ### P3: Improve validation lane reliability
 
@@ -920,6 +1041,8 @@ solution-tests
 5. Add a skill parity checker for Claude/Codex/local agent skills.
 6. Split full validation into named lanes with timeouts.
 7. Change visual-readiness summary generation to use managed sections or generated-only output files.
+8. Add a responsiveness diagnostic mode and an AntShowcase latency budget report.
+9. Decouple live input dispatch from synchronous retained rendering so input callbacks enqueue work and return quickly.
 
 ---
 
@@ -929,6 +1052,7 @@ The framework is capable enough to produce useful, real visual evidence today, b
 
 - Library APIs for visual evidence and inspection.
 - Scripts for package-feed validation and readiness staging.
+- Responsiveness diagnostics that separate input routing, update, render, paint, and present latency.
 - Skills that remember the repository-specific traps.
 
-That combination would make future generated products easier to validate, make screenshot evidence more trustworthy, and reduce the amount of manual correction required during implementation and merge.
+That combination would make future generated products easier to validate, make screenshot evidence more trustworthy, prevent "renders correctly but feels unusable" regressions, and reduce the amount of manual correction required during implementation and merge.
