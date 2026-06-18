@@ -6,7 +6,7 @@
     <PackageId>FS.GG.UI.Template</PackageId>
     <Title>FS GG UI Project Template</Title>
     <Description>Governed FS.GG.UI V3 product template with app, headless-scene, governed, and sample-pack profiles.</Description>
-    <Version>0.1.7-preview.1</Version>
+    <Version>0.1.8-preview.1</Version>
     <Authors>FS-Skia-UI Contributors</Authors>
     <PackageTags>fsharp;skia;elmish;template</PackageTags>
     <IncludeBuildOutput>false</IncludeBuildOutput>

@@ -41,8 +41,8 @@ package validation. No new public API delta is required by this feature.
 | `dotnet test tests/Package.Tests/Package.Tests.fsproj --filter Feature151` | `accepted` | Package compatibility/readiness checks passed. |
 | `dotnet fsi scripts/refresh-surface-baselines.fsx` | `accepted` | No unexpected public surface drift. |
 | `dotnet test FS.GG.Rendering.slnx` | `accepted` | Full solution validation completed locally. |
-| `dotnet pack FS.GG.Rendering.slnx -c Release -o ~/.local/share/nuget-local` | `accepted` | Source packages packed at `0.1.13-preview.1`. |
-| `dotnet pack .template.package/FS.GG.UI.Template.fsproj -c Release -o ~/.local/share/nuget-local` | `accepted` | Template package packed at `0.1.7-preview.1`. |
+| `dotnet pack FS.GG.Rendering.slnx -c Release -o ~/.local/share/nuget-local` | `accepted` | Source packages packed at `0.1.14-preview.1` after the squash merge. |
+| `dotnet pack .template.package/FS.GG.UI.Template.fsproj -c Release -o ~/.local/share/nuget-local` | `accepted` | Template package packed at `0.1.8-preview.1` after the squash merge. |
 
 ## Blockers
 

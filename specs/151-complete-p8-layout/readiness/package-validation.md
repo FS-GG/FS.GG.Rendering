@@ -10,15 +10,15 @@ Status: `accepted`
 | `dotnet test tests/Package.Tests/Package.Tests.fsproj --filter "Feature151|Surface"` | `accepted` | Package compatibility and surface checks completed. |
 | `dotnet test tests/Testing.Tests/Testing.Tests.fsproj --filter Feature151` | `accepted` | Readiness helper checks completed. |
 | `dotnet fsi scripts/refresh-surface-baselines.fsx` | `accepted` | No unexpected Feature151 public surface drift. |
-| `dotnet pack FS.GG.Rendering.slnx -c Release -o ~/.local/share/nuget-local` | `accepted` | Source packages packed at `0.1.13-preview.1`. |
-| `dotnet pack .template.package/FS.GG.UI.Template.fsproj -c Release -o ~/.local/share/nuget-local` | `accepted` | Template package packed at `0.1.7-preview.1`. |
+| `dotnet pack FS.GG.Rendering.slnx -c Release -o ~/.local/share/nuget-local` | `accepted` | Source packages packed at `0.1.14-preview.1` after the squash merge. |
+| `dotnet pack .template.package/FS.GG.UI.Template.fsproj -c Release -o ~/.local/share/nuget-local` | `accepted` | Template package packed at `0.1.8-preview.1` after the squash merge. |
 
 ## Package Verdicts
 
 - Full solution result: `accepted`.
 - Package surface result: `accepted`.
-- Local source pack result: `accepted` at `0.1.13-preview.1`.
-- Template pack result: `accepted` at `0.1.7-preview.1`.
+- Local source pack result: `accepted` at `0.1.14-preview.1`.
+- Template pack result: `accepted` at `0.1.8-preview.1`.
 - Local feed path: `~/.local/share/nuget-local/`.
 - Failed results: none.
 - Skipped results: none.
