@@ -486,6 +486,47 @@ performance closeout still needs a predeclared threshold/noise policy, represent
 live timing, and reviewer-visible acceptance or rejection. Restoring a root `fake.sh` wrapper would
 remove the separate package-target tooling limitation, but it is not a compositor proof prerequisite.
 
+**Planned P7 performance follow-up features.** Feature 155 proved that the current host can accept
+partial-redraw correctness; the next work must prove whether the compositor is faster and make the
+runtime path earn that claim. These features should be separate from the correctness closeout so an
+unsupported or noisy performance lane cannot invalidate the accepted proof package:
+
+1. **Feature 156 — same-profile timing evidence.** Add a `compositor-performance --feature 156`
+   command that measures full redraw versus damage-scoped redraw on the same stable host profile.
+   It should record warmup frames, sample count, p50/p95/p99, noise band, confidence decision, and
+   artifact paths. Acceptance requires at least five representative scenarios, at least five
+   comparable repetitions per scenario, no cross-profile mixing, and a positive result outside the
+   declared noise threshold.
+2. **Feature 157 — no-clear damage-scissored render path.** Implement the real retained-surface
+   render path that clips repaint to the union damage rect only after the Feature155 proof gate is
+   accepted. It must preserve untouched pixels, update damaged pixels, and fall back to full redraw
+   for invalid damage, unsupported hosts, missing retained backing, resource failures, or parity
+   mismatch.
+3. **Feature 158 — separate proof readback from timing.** Keep screenshot/readback in the proof
+   path, but remove forced GPU readback from performance timing paths. Timing artifacts should
+   measure render/present behavior without validation readback except for explicit probe runs, so
+   the proof mechanism does not dominate the performance sample.
+4. **Feature 159 — layer promotion and content/transform key split.** Promote stable expensive
+   subtrees to retained layers and split cache identity into content fingerprint plus
+   placement/transform keys. Moving or scrolling content should reuse recorded content when only
+   placement changes; churning boundaries must demote to avoid paying promotion overhead.
+5. **Feature 160 — performance validation throughput.** Split long-running broad suites from
+   targeted performance filters. Keep full solution validation as the release gate, but add
+   focused perf filters and bounded harness commands so repeated timing iterations do not depend on
+   the full Controls regression wall time.
+6. **Feature 161 — host performance lane ledger.** Record host-specific GPU/display facts for each
+   timing run: display server, renderer, direct rendering, refresh rate, driver string, package
+   versions, CPU/GPU load notes, and known environment limits. The current accepted lane is X11
+   `:1` with direct OpenGL on AMD Radeon/Mesa; results from that lane must not be generalized to
+   Wayland, indirect GL, missing display, or software raster hosts.
+
+**P7 performance acceptance rule.** Correctness remains accepted from Feature 155. A performance
+claim is accepted only when Feature 156 timing and Feature 157 damage-scissored rendering both pass
+on the same host profile, Feature 158 proves the measurement path is not readback-dominated,
+Feature 159 records net-positive reuse/promotion counters, and Feature 161 scopes the result to a
+known lane. If any part is missing, noisy, cross-profile, or non-beneficial, the report must say
+`performance-not-accepted` while keeping the safe full-redraw fallback.
+
 ---
 
 ## 11. Workstream R7 — Real text shaping (HarfBuzz)
