@@ -67,6 +67,11 @@ the natural intrinsic extent while the viewport bounds remain fixed. `ContentHei
 `MaxOffset` remain available as vertical compatibility aliases; new code should prefer
 `ContentWidth`, `MaxHorizontalOffset`, `MaxVerticalOffset`, `ExtentSource`, and `Diagnostics`.
 
+Feature151 broadens that acceptance to the full ScrollViewer corpus: empty, small, exact-fit,
+overflowing, nested, clipped/layered parent, text-natural-size, dynamic content, and invalid fallback
+cases. The accepted path remains `Layout.contentExtent`; no descendant-bounds walk or public
+`ScrollViewport` shape change is introduced.
+
 ## Versioning
 
 All `FS.GG.UI.*` libraries share one version and move together. In a generated project a

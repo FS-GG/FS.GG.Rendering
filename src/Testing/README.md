@@ -68,6 +68,10 @@ compatibility deltas, and it returns an accepted/missing/blocked status plus dia
 for package consumers and readiness scripts that need to distinguish accepted evidence from failed,
 skipped, synthetic-only, compatibility-blocked, or missing layout evidence.
 
+Feature151 uses the same helper shape for final P8 readiness. Required evidence files are validated
+with `ReadinessFileDiscovery`, and the aggregate report links corpus, ScrollViewer, reuse, parity,
+regression, compatibility, package, and limitation evidence without adding new Testing API.
+
 ## Versioning
 
 All `FS.GG.UI.*` libraries share one version and move together. In a generated project a

@@ -1,5 +1,10 @@
 # Public surface review — full surface-baseline coverage
 
+> Feature151 update (2026-06-18): final P8 readiness did not require a new public `.fsi` surface.
+> The Feature150 Layout, Controls ScrollViewer, Controls.Elmish metrics, and Testing readiness
+> helpers remain the accepted public substrate; surface refresh is expected to show no unexpected
+> Feature151 drift.
+
 > Review opened **and resolved** 2026-06-14 from the R6 CI-wiring finding (see
 > [`docs/ci/cadence-map.md`](../ci/cadence-map.md) §4). The gate's surface-drift check originally
 > guarded **4 of 9** committed baselines because `scripts/refresh-surface-baselines.fsx` only

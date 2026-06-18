@@ -82,6 +82,39 @@ let a11y (role: AccessibilityRole) (nameSource: string) (navigationKeys: string 
             None
             None)
 
+let private focusScope surfaceId triggerId trapMode =
+    { SurfaceId = surfaceId
+      Stops = [ surfaceId + "-item-1"; surfaceId + "-item-2" ]
+      InitialFocus = Some(surfaceId + "-item-1")
+      RecoveryTarget = Some triggerId
+      TrapMode = trapMode }
+
+let transientMetadata
+    (kind: TransientSurfaceKind)
+    (surfaceId: ControlId)
+    (triggerId: ControlId)
+    (isOpen: bool)
+    (enabled: bool)
+    (layerPriority: int)
+    (modal: bool)
+    (dispatchKey: string option)
+    : Attr<'msg> =
+    let trapMode = if modal then ModalTrap else LocalScope
+
+    TransientWidget.attribute
+        { SurfaceKind = kind
+          SurfaceId = surfaceId
+          ParentSurfaceId = None
+          TriggerId = triggerId
+          AnchorId = triggerId
+          LayerPriority = layerPriority
+          DismissalPolicy = if modal then OverlayState.modalDismissalPolicy () else OverlayState.defaultDismissalPolicy ()
+          FocusScope = focusScope surfaceId triggerId trapMode
+          Modal = modal
+          SelectionDispatchKey = dispatchKey
+          VisibilityState = isOpen
+          TriggerEnabled = enabled }
+
 let private color r g b : Color = { Red = r; Green = g; Blue = b; Alpha = 255uy }
 
 // ---------------------------------------------------------------------------
@@ -158,6 +191,15 @@ let datePickerParityTests =
             let legacy =
                 LStack.create
                     [ LStack.children [ field; trigger; overlay ]
+                      transientMetadata
+                          TransientSurfaceKind.DatePickerCalendar
+                          "d-calendar"
+                          "d-trigger"
+                          true
+                          true
+                          60
+                          false
+                          (Some "onChange")
                       a11y AccessibilityRole.TextBox "Date picker" [ "ArrowLeft"; "ArrowRight"; "ArrowUp"; "ArrowDown" ] ]
                 |> LControl.withKey "d"
 
@@ -176,6 +218,15 @@ let datePickerParityTests =
             let legacy =
                 LStack.create
                     [ LStack.children [ field; trigger; overlay ]
+                      transientMetadata
+                          TransientSurfaceKind.DatePickerCalendar
+                          "d-calendar"
+                          "d-trigger"
+                          false
+                          true
+                          60
+                          false
+                          (Some "onChange")
                       a11y AccessibilityRole.TextBox "Date picker" [ "ArrowLeft"; "ArrowRight"; "ArrowUp"; "ArrowDown" ] ]
                 |> LControl.withKey "d"
 
@@ -231,6 +282,15 @@ let breadthParityTests =
             let legacy =
                 LToolbar.create
                     [ LToolbar.children [ primary; trigger; overlay ]
+                      transientMetadata
+                          TransientSurfaceKind.SplitButtonMenu
+                          "s-menu"
+                          "s-trigger"
+                          true
+                          true
+                          30
+                          false
+                          (Some "onSelected")
                       a11y AccessibilityRole.Menu "Split button" [ "ArrowDown"; "ArrowUp"; "Tab" ] ]
                 |> LControl.withKey "s"
 
@@ -289,6 +349,15 @@ let breadthParityTests =
             let legacy =
                 LWrap.create
                     [ LWrap.children [ cell red true; cell blue false ]
+                      transientMetadata
+                          TransientSurfaceKind.ColorPickerPalette
+                          "c-palette"
+                          "c-trigger"
+                          true
+                          true
+                          70
+                          false
+                          (Some "onSelected")
                       a11y AccessibilityRole.List "Color picker" [ "ArrowLeft"; "ArrowRight"; "ArrowUp"; "ArrowDown" ] ]
                 |> LControl.withKey "c"
 

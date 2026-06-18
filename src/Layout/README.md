@@ -70,6 +70,14 @@ placements, and containers that need natural sizes issue `IntrinsicQuery` values
 is the reference helper for fixed viewports such as ScrollViewer; it returns content width/height,
 max offsets, extent source, diagnostics, and dependency keys.
 
+## P8 Layout Readiness
+
+Feature151 accepts the P8 layout bar without adding a new public surface. The readiness package
+under `specs/151-complete-p8-layout/readiness/` records the representative corpus, invalid and
+fallback diagnostics, measured and intrinsic dependency identities, stale-rejection evidence, and
+full/incremental parity. Consumers should treat the Feature150 protocol helpers as the stable public
+entry points for P8 evidence.
+
 ## Versioning
 
 All `FS.GG.UI.*` libraries share one version and move together. In a generated project a

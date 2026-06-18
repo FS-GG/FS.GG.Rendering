@@ -29,6 +29,8 @@ artifacts/ant-showcase/
 *.trx
 *.coverage
 coverage/
+!docs/product/ant-design/coverage/
+!docs/product/ant-design/coverage/*.md
 
 # FSI
 .fsi-cache/

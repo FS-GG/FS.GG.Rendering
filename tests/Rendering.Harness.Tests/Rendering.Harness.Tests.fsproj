@@ -31,6 +31,9 @@
     <Compile Include="Feature149SnapshotEvidenceTests.fs" />
     <Compile Include="Feature149TimingEvidenceTests.fs" />
     <Compile Include="Feature149ReadinessPackageTests.fs" />
+    <Compile Include="Feature151RenderAnywhereRegressionTests.fs" />
+    <Compile Include="Feature151TextShapingRegressionTests.fs" />
+    <Compile Include="Feature151CompositorReadinessRegressionTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

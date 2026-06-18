@@ -138,6 +138,10 @@
     <Compile Include="Feature150ScrollViewerExtentTests.fs" />
     <Compile Include="Feature150LayoutDiagnosticsTests.fs" />
     <Compile Include="Feature150LayoutCompatibilityTests.fs" />
+    <Compile Include="Feature151ScrollViewerFixtures.fs" />
+    <Compile Include="Feature151ScrollViewerCorpusTests.fs" />
+    <Compile Include="Feature151DisabledCacheParityTests.fs" />
+    <Compile Include="Feature151LayoutCompatibilityTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

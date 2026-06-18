@@ -104,6 +104,39 @@ let repositoryRoot =
 let read (relativePath: string) =
     File.ReadAllText(Path.Combine(repositoryRoot, relativePath.Replace("/", string Path.DirectorySeparatorChar)))
 
+let private focusScope surfaceId triggerId trapMode =
+    { SurfaceId = surfaceId
+      Stops = [ surfaceId + "-item-1"; surfaceId + "-item-2" ]
+      InitialFocus = Some(surfaceId + "-item-1")
+      RecoveryTarget = Some triggerId
+      TrapMode = trapMode }
+
+let transientMetadata
+    (kind: TransientSurfaceKind)
+    (surfaceId: ControlId)
+    (triggerId: ControlId)
+    (isOpen: bool)
+    (enabled: bool)
+    (layerPriority: int)
+    (modal: bool)
+    (dispatchKey: string option)
+    : Attr<'msg> =
+    let trapMode = if modal then ModalTrap else LocalScope
+
+    TransientWidget.attribute
+        { SurfaceKind = kind
+          SurfaceId = surfaceId
+          ParentSurfaceId = None
+          TriggerId = triggerId
+          AnchorId = triggerId
+          LayerPriority = layerPriority
+          DismissalPolicy = if modal then OverlayState.modalDismissalPolicy () else OverlayState.defaultDismissalPolicy ()
+          FocusScope = focusScope surfaceId triggerId trapMode
+          Modal = modal
+          SelectionDispatchKey = dispatchKey
+          VisibilityState = isOpen
+          TriggerEnabled = enabled }
+
 // ---------------------------------------------------------------------------
 // T006 — contract: the new typed .fsi surface declares no `obj` field and no
 // untyped/string-keyed event payload.
@@ -293,11 +326,18 @@ let typedMigrationParityTests =
                 "tabs"
             parityEqual
                 (Menu.view { Menu.defaults with Items = [ "file" ]; OnSelected = Some Picked })
-                (LMenu.create [ LMenu.items [ "file" ]; LMenu.onSelected Picked ])
+                (LMenu.create
+                    [ LMenu.items [ "file" ]
+                      transientMetadata TransientSurfaceKind.Menu "menu" "menu-trigger" true true 10 false (Some "onSelected")
+                      LMenu.onSelected Picked ])
                 "menu"
             parityEqual
                 (ContextMenu.view { ContextMenu.defaults with Items = [ "copy" ]; OnSelected = Some Picked })
-                (LControl.standard (StandardControlKind.Custom "context-menu") [ Attr.items [ "copy" ]; Attr.onWith "onSelected" (fun e -> e.Payload |> Option.defaultValue "" |> Picked) ])
+                (LControl.standard
+                    (StandardControlKind.Custom "context-menu")
+                    [ Attr.items [ "copy" ]
+                      transientMetadata TransientSurfaceKind.ContextMenu "context-menu" "context-menu-trigger" true true 20 false (Some "onSelected")
+                      Attr.onWith "onSelected" (fun e -> e.Payload |> Option.defaultValue "" |> Picked) ])
                 "context-menu"
             let a = Label.view { Label.defaults with Text = "A" }
             parityEqual
@@ -312,7 +352,12 @@ let typedMigrationParityTests =
             parityEqual (Tooltip.view { Tooltip.defaults with Text = "tip" }) (LTooltip.create [ LTooltip.text "tip" ]) "tooltip"
             parityEqual
                 (Dialog.view { Dialog.defaults with Title = Some "T"; IsOpen = true; Children = [ a ]; OnSelected = Some Picked })
-                (LDialog.create [ LDialog.children [ Widget.toControl a ]; Attr.create "title" Content (TextValue "T"); Attr.selected true; Attr.onWith "onSelected" (fun e -> e.Payload |> Option.defaultValue "" |> Picked) ])
+                (LDialog.create
+                    [ LDialog.children [ Widget.toControl a ]
+                      Attr.create "title" Content (TextValue "T")
+                      Attr.selected true
+                      transientMetadata TransientSurfaceKind.DialogModal "dialog" "dialog-trigger" true true 100 true (Some "onSelected")
+                      Attr.onWith "onSelected" (fun e -> e.Payload |> Option.defaultValue "" |> Picked) ])
                 "dialog"
             parityEqual
                 (Toast.view { Toast.defaults with Text = "saved"; Severity = Pending "x" })

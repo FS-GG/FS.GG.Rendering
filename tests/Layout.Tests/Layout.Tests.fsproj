@@ -22,6 +22,13 @@
     <Compile Include="Feature150IntrinsicCacheTests.fs" />
     <Compile Include="Feature150IntrinsicInvalidationTests.fs" />
     <Compile Include="Feature150FullIncrementalParityTests.fs" />
+    <Compile Include="Feature151CorpusFixtures.fs" />
+    <Compile Include="Feature151RepresentativeCorpusTests.fs" />
+    <Compile Include="Feature151DiagnosticsTests.fs" />
+    <Compile Include="Feature151ScrollLayoutProtocolTests.fs" />
+    <Compile Include="Feature151MeasuredReuseTests.fs" />
+    <Compile Include="Feature151IntrinsicReuseTests.fs" />
+    <Compile Include="Feature151FullIncrementalParityTests.fs" />
     <Compile Include="Audit_IncrementalLayout.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

@@ -219,4 +219,12 @@ let fsiTranscriptCoverageTests =
             let log = readFeature150Transcript "layout-intrinsic-authoring.log"
             Expect.stringContains log "FSI transcript PASS" "Feature150 transcript log records passing coverage"
         }
+
+        test "Feature151 records no new public FSI delta on top of Feature150" {
+            let ledger = File.ReadAllText(repositoryPath "specs/151-complete-p8-layout/readiness/compatibility-ledger.md")
+
+            Expect.stringContains ledger "No new public `.fsi` surface" "no public delta"
+            Expect.stringContains ledger "Feature150 layout" "Feature150 remains the public substrate"
+            Expect.stringContains ledger "No consumer migration is required" "migration guidance"
+        }
     ]

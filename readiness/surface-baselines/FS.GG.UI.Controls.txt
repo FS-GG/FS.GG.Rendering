@@ -295,6 +295,8 @@ FS.GG.UI.Controls.RichTextWeight+Tags
 FS.GG.UI.Controls.RoseChart
 FS.GG.UI.Controls.SankeyDiagram
 FS.GG.UI.Controls.ScatterPlot
+FS.GG.UI.Controls.ScrollExtentSource
+FS.GG.UI.Controls.ScrollExtentSource+Tags
 FS.GG.UI.Controls.ScrollViewport
 FS.GG.UI.Controls.SelectionCompletionPolicy
 FS.GG.UI.Controls.SelectionCompletionPolicy+Tags

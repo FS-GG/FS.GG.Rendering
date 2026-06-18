@@ -10,6 +10,8 @@
     <Compile Include="Tests.fs" />
     <Compile Include="Feature149CompositorReadinessTests.fs" />
     <Compile Include="Feature150ReadinessHelperTests.fs" />
+    <Compile Include="Feature151ReadinessFixtures.fs" />
+    <Compile Include="Feature151ReadinessHelperTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
