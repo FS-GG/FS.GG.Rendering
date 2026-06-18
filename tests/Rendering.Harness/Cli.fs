@@ -63,6 +63,14 @@ let private isFeature148 (rest: string list) =
         || String.Equals(value, Compositor.feature148Id, StringComparison.OrdinalIgnoreCase)
     | _ -> false
 
+let private isFeature149 (rest: string list) =
+    match flagValue "--feature" rest with
+    | Some value ->
+        value = "149"
+        || value = "feature149"
+        || String.Equals(value, Compositor.feature149Id, StringComparison.OrdinalIgnoreCase)
+    | _ -> false
+
 let private runPerfCmd (rest: string list) =
     let mode =
         match flagValue "--mode" rest with
@@ -189,6 +197,7 @@ let private runCompositorLiveProofCmd (rest: string list) =
     let out =
         match flagValue "--out" rest with
         | Some d -> d
+        | None when isFeature149 rest -> Compositor.feature149LiveProofDirectory
         | None -> Compositor.feature148LiveProofDirectory
     IO.Directory.CreateDirectory(out) |> ignore
     let profile = Compositor.hostProfileFromFacts facts
@@ -198,6 +207,8 @@ let private runCompositorLiveProofCmd (rest: string list) =
         | NoDisplay, _ -> Compositor.ProofEnvironmentLimited "missing display"
         | _, None -> Compositor.ProofEnvironmentLimited "missing GL renderer facts"
         | _ -> Compositor.ProofEnvironmentLimited "live sentinel/damage readback requires a capable host run"
+    let packageVersion =
+        if isFeature149 rest then Compositor.feature149PackageVersion else Compositor.feature148PackageVersion
 
     let proof: Compositor.PresentProof =
         { ProofId = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss")
@@ -208,15 +219,27 @@ let private runCompositorLiveProofCmd (rest: string list) =
           EvidenceArtifacts = [ "proof.md"; "limitations.md" ]
           Diagnostics =
             [ $"backend={profile.DisplayEnvironment}"
-              $"package={Compositor.feature148PackageVersion}"
+              $"package={packageVersion}"
               $"verdict={Compositor.proofVerdictToken verdict}" ] }
 
     let proofPath = IO.Path.Combine(out, "proof.md")
     let limitationsPath = IO.Path.Combine(out, "limitations.md")
-    IO.File.WriteAllText(proofPath, Compositor.renderFeature148LiveProof proof)
+    let proofBody =
+        if isFeature149 rest then
+            Compositor.renderFeature149LiveProof proof
+        else
+            Compositor.renderFeature148LiveProof proof
+
+    let limitationTitle =
+        if isFeature149 rest then
+            "# Feature 149 Live Proof Limitation"
+        else
+            "# Feature 148 Live Proof Limitation"
+
+    IO.File.WriteAllText(proofPath, proofBody)
     IO.File.WriteAllText(
         limitationsPath,
-        "# Feature 148 Live Proof Limitation\n\nThis run is environment-limited until a capable OpenGL host captures sentinel and damage readback artifacts.\n")
+        limitationTitle + "\n\nThis run is environment-limited until a capable OpenGL host captures sentinel and damage readback artifacts.\n")
     printfn "%s" proofPath
     0
 
@@ -226,7 +249,9 @@ let private runCompositorParityCmd (rest: string list) =
     let path = IO.Path.Combine(out, "parity.md")
 
     let body =
-        if isFeature148 rest then
+        if isFeature149 rest then
+            Compositor.renderFeature149ParityReport ()
+        elif isFeature148 rest then
             Compositor.renderFeature148ParityReport ()
         else
             [ "# Feature 147 Damage Parity"
@@ -271,10 +296,16 @@ let private runCompositorReuseCmd (rest: string list) =
     let out =
         match flagValue "--out" rest with
         | Some d -> d
+        | None when isFeature149 rest -> Compositor.feature149ReuseDirectory
         | None -> Compositor.feature148ReuseDirectory
     IO.Directory.CreateDirectory(out) |> ignore
     let path = IO.Path.Combine(out, "reuse.md")
-    IO.File.WriteAllText(path, Compositor.renderFeature148ReuseReport ())
+    let body =
+        if isFeature149 rest then
+            Compositor.renderFeature149ReuseReport ()
+        else
+            Compositor.renderFeature148ReuseReport ()
+    IO.File.WriteAllText(path, body)
     printfn "%s" path
     0
 
@@ -282,10 +313,16 @@ let private runCompositorSnapshotsCmd (rest: string list) =
     let out =
         match flagValue "--out" rest with
         | Some d -> d
+        | None when isFeature149 rest -> Compositor.feature149SnapshotsDirectory
         | None -> Compositor.feature148SnapshotsDirectory
     IO.Directory.CreateDirectory(out) |> ignore
     let path = IO.Path.Combine(out, "snapshots.md")
-    IO.File.WriteAllText(path, Compositor.renderFeature148SnapshotReport ())
+    let body =
+        if isFeature149 rest then
+            Compositor.renderFeature149SnapshotReport ()
+        else
+            Compositor.renderFeature148SnapshotReport ()
+    IO.File.WriteAllText(path, body)
     printfn "%s" path
     0
 
@@ -294,10 +331,16 @@ let private runCompositorTimingCmd (rest: string list) =
     let out =
         match flagValue "--out" rest with
         | Some d -> d
+        | None when isFeature149 rest -> Compositor.feature149TimingDirectory
         | None -> Compositor.feature148TimingDirectory
     IO.Directory.CreateDirectory(out) |> ignore
     let path = IO.Path.Combine(out, $"timing-{tier}.md")
-    IO.File.WriteAllText(path, Compositor.renderFeature148TimingReport tier)
+    let body =
+        if isFeature149 rest then
+            Compositor.renderFeature149TimingReport tier
+        else
+            Compositor.renderFeature148TimingReport tier
+    IO.File.WriteAllText(path, body)
     printfn "%s" path
     0
 
@@ -315,7 +358,7 @@ let private runCompositorReadinessCmd (rest: string list) =
     let proof: Compositor.PresentProof =
         { ProofId = now.UtcDateTime.ToString("yyyyMMdd-HHmmss")
           HostProfile = profile
-          ScenarioId = "proof/sentinel-damage-v1"
+          ScenarioId = if isFeature148 rest || isFeature149 rest then "proof/live-sentinel-damage-v1" else "proof/sentinel-damage-v1"
           Verdict = proofVerdict
           CreatedAt = now
           EvidenceArtifacts = [ "present-proof/proof.md" ]
@@ -330,7 +373,13 @@ let private runCompositorReadinessCmd (rest: string list) =
     let model5, _ = Compositor.updateReadiness (Compositor.TierEvaluated(Compositor.SnapshotTier, Compositor.Skipped "no capable host timing run")) model4
     let summary = IO.Path.Combine(out, "validation-summary.md")
     let ledger = IO.Path.Combine(out, "compatibility-ledger.md")
-    if isFeature148 rest then
+    if isFeature149 rest then
+        let model6, _ = Compositor.updateReadiness (Compositor.TierEvaluated(Compositor.PlacementReuseTier, Compositor.Ready)) model5
+        let model7, _ = Compositor.updateReadiness (Compositor.TierEvaluated(Compositor.ReplayTier, Compositor.Ready)) model6
+        let model8, _ = Compositor.updateReadiness (Compositor.TierEvaluated(Compositor.SnapshotTier, Compositor.Limited "no capable-host snapshot timing run")) model7
+        IO.File.WriteAllText(summary, Compositor.renderFeature149ValidationSummary model8)
+        IO.File.WriteAllText(ledger, Compositor.renderFeature149CompatibilityLedger model8)
+    elif isFeature148 rest then
         let model6, _ = Compositor.updateReadiness (Compositor.TierEvaluated(Compositor.PlacementReuseTier, Compositor.Ready)) model5
         let model7, _ = Compositor.updateReadiness (Compositor.TierEvaluated(Compositor.ReplayTier, Compositor.Ready)) model6
         let model8, _ = Compositor.updateReadiness (Compositor.TierEvaluated(Compositor.SnapshotTier, Compositor.Limited "no capable-host snapshot timing run")) model7

@@ -15,6 +15,7 @@
     <Compile Include="Feature146CompatibilityLedgerTests.fs" />
     <Compile Include="Feature147CompatibilityLedgerTests.fs" />
     <Compile Include="Feature148CompatibilityLedgerTests.fs" />
+    <Compile Include="Feature149CompatibilityLedgerTests.fs" />
     <Compile Include="Feature128DesignSystemTemplateTests.fs" />
     <Compile Include="Tests.fs" />
     <Compile Include="Program.fs" />

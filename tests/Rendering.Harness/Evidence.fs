@@ -606,6 +606,9 @@ module Evidence =
         | None -> ()
         sb.ToString()
 
+    let feature149NonOverclaimDisclosure () =
+        "Feature149 compositor evidence is diagnostic until a fresh matching capable-host live proof is accepted; environment-limited or synthetic evidence cannot enable partial redraw or a performance claim."
+
     let renderVisualProofRun (run: VisualProofRun) =
         let decision =
             match run.ReadinessDecision with

@@ -238,6 +238,9 @@ module Evidence =
     val renderVisualProofRun: run: VisualProofRun -> string
     val renderReadinessDecision: decision: ReadinessCaveatDecision -> string
 
+    /// Feature 149 disclosure text for evidence that must not overclaim live partial redraw.
+    val feature149NonOverclaimDisclosure: unit -> string
+
     /// Compute p50/p95/p99 (ms) from per-frame durations; `None` when there are no frames.
     val percentiles: frameMs: float list -> (float option * float option * float option)
 

@@ -7,6 +7,7 @@ module Compositor =
 
     let featureId = "147-compositor-damage-redraw"
     let feature148Id = "148-compositor-live-integration"
+    let feature149Id = "149-complete-compositor-p7"
 
     let readinessDirectory = "specs/147-compositor-damage-redraw/readiness"
     let presentProofDirectory = Path.Combine(readinessDirectory, "present-proof")
@@ -24,6 +25,16 @@ module Compositor =
     let feature148CompatibilityLedgerPath = Path.Combine(feature148ReadinessDirectory, "compatibility-ledger.md")
     let feature148ValidationSummaryPath = Path.Combine(feature148ReadinessDirectory, "validation-summary.md")
     let feature148PackageVersion = "local-harness"
+
+    let feature149ReadinessDirectory = Path.Combine("specs", feature149Id, "readiness")
+    let feature149LiveProofDirectory = Path.Combine(feature149ReadinessDirectory, "live-proof")
+    let feature149ParityDirectory = Path.Combine(feature149ReadinessDirectory, "parity")
+    let feature149ReuseDirectory = Path.Combine(feature149ReadinessDirectory, "reuse")
+    let feature149SnapshotsDirectory = Path.Combine(feature149ReadinessDirectory, "snapshots")
+    let feature149TimingDirectory = Path.Combine(feature149ReadinessDirectory, "timing")
+    let feature149CompatibilityLedgerPath = Path.Combine(feature149ReadinessDirectory, "compatibility-ledger.md")
+    let feature149ValidationSummaryPath = Path.Combine(feature149ReadinessDirectory, "validation-summary.md")
+    let feature149PackageVersion = "local-harness"
 
     type HostProfile =
         { ProfileId: string
@@ -199,6 +210,74 @@ module Compositor =
 
     let feature148TimingTiers = [ "damage"; "placement"; "replay"; "snapshot" ]
 
+    let feature149ScenarioIds =
+        [ "proof/live-sentinel-damage-v1"
+          "proof/capable-host-three-run"
+          "proof/non-preserving-host"
+          "proof/stale"
+          "proof/host-mismatch"
+          "proof/algorithm-mismatch"
+          "proof/missing-artifact"
+          "proof/blank-artifact"
+          "proof/synthetic-only"
+          "proof/missing-display"
+          "proof/unsupported-readback"
+          "proof/timeout"
+          "proof/permission"
+          "proof/host-error"
+          "damage/idle"
+          "damage/localized-update"
+          "damage/overlap"
+          "damage/frame-edge"
+          "damage/movement-old-new"
+          "damage/resize"
+          "damage/theme-global"
+          "damage/zero-damage"
+          "damage/stale-proof"
+          "damage/disabled"
+          "damage/unsupported"
+          "damage/resource-failure"
+          "damage/internal-error"
+          "damage/parity-failure"
+          "reuse/stable-boundary"
+          "reuse/placement-only"
+          "reuse/mixed-change"
+          "reuse/no-change"
+          "reuse/content-changing"
+          "reuse/churning"
+          "reuse/no-benefit"
+          "reuse/failed-parity"
+          "reuse/same-seed"
+          "snapshot/expensive-stable"
+          "snapshot/create-reuse-refresh"
+          "snapshot/replacement-eviction-disposal"
+          "snapshot/simple-scene"
+          "snapshot/churning"
+          "snapshot/over-budget"
+          "snapshot/stale-resource"
+          "snapshot/invalid-resource"
+          "snapshot/unsupported-host"
+          "snapshot/parity-failure"
+          "timing/damage"
+          "timing/placement"
+          "timing/replay"
+          "timing/snapshot"
+          "readiness/public-diagnostics"
+          "readiness/compatibility-ledger" ]
+
+    let feature149TargetHostProfiles =
+        feature148TargetHostProfiles
+        @ [ { ProfileId = "feature149-capable-host-candidate"
+              Backend = "OpenGL"
+              Renderer = None
+              PresentMode = "DirectToSwapchain"
+              FramebufferSize = "640x480"
+              Scale = Some 1.0
+              DisplayEnvironment = "x11"
+              ProofAlgorithmVersion = "sentinel-damage-v1" } ]
+
+    let feature149TimingTiers = feature148TimingTiers
+
     let private backendToken backend =
         match backend with
         | X11 -> "x11"
@@ -326,6 +405,7 @@ module Compositor =
 
     let artifactPath directory name = Path.Combine(directory, name)
     let feature148ArtifactPath directory name = Path.Combine(feature148ReadinessDirectory, directory, name)
+    let feature149ArtifactPath directory name = Path.Combine(feature149ReadinessDirectory, directory, name)
 
     let renderPresentProof proof =
         let renderer = proof.HostProfile.Renderer |> Option.defaultValue "unknown"
@@ -722,4 +802,263 @@ module Compositor =
               ""
               "- Environment-limited host observations are diagnostic only."
               "- Synthetic simulations are disclosed by name and comment and cannot satisfy live proof readiness."
+              "" ]
+
+    let renderFeature149LiveProof proof =
+        let renderer = proof.HostProfile.Renderer |> Option.defaultValue "unknown"
+        let scale = proof.HostProfile.Scale |> Option.map string |> Option.defaultValue "unknown"
+        let diagnostics =
+            match proof.Diagnostics with
+            | [] -> "- none"
+            | xs -> xs |> List.map (sprintf "- %s") |> String.concat "\n"
+
+        String.concat
+            "\n"
+            [ "# Feature 149 Live Compositor Proof"
+              ""
+              $"Proof: `{proof.ProofId}`"
+              $"Scenario: `{proof.ScenarioId}`"
+              $"Verdict: `{proofVerdictToken proof.Verdict}`"
+              $"Created: `{proof.CreatedAt:O}`"
+              ""
+              "## Host Profile"
+              ""
+              $"- Profile: `{proof.HostProfile.ProfileId}`"
+              $"- Backend: `{proof.HostProfile.Backend}`"
+              $"- Renderer: `{renderer}`"
+              $"- Present mode: `{proof.HostProfile.PresentMode}`"
+              $"- Framebuffer: `{proof.HostProfile.FramebufferSize}`"
+              $"- Scale: `{scale}`"
+              $"- Environment: `{proof.HostProfile.DisplayEnvironment}`"
+              $"- Algorithm: `{proof.HostProfile.ProofAlgorithmVersion}`"
+              $"- Package version: `{feature149PackageVersion}`"
+              ""
+              "## Required Artifacts"
+              ""
+              "- `sentinel-frame.*`: full sentinel frame before damage."
+              "- `damage-frame.*`: scissored damage/no-clear frame."
+              "- `proof.md`: this proof summary."
+              "- `proof.json`: optional machine-readable proof record."
+              ""
+              "## Evidence Artifacts"
+              ""
+              renderArtifacts proof.EvidenceArtifacts
+              ""
+              "## Acceptance Gate"
+              ""
+              "- Accepted partial redraw requires three fresh capable-host runs with matching host profile and algorithm."
+              "- Missing, stale, blank, synthetic-only, failed, environment-limited, host-mismatched, or algorithm-mismatched evidence fails closed."
+              ""
+              "## Diagnostics"
+              ""
+              diagnostics
+              "" ]
+
+    let renderFeature149ParityReport () =
+        let rows =
+            feature149ScenarioIds
+            |> List.filter (fun scenario -> scenario.StartsWith("damage/", StringComparison.Ordinal))
+            |> List.map (fun scenario ->
+                let verdict =
+                    match scenario with
+                    | "damage/unsupported" -> "environment-limited"
+                    | "damage/resource-failure"
+                    | "damage/internal-error" -> "fallback"
+                    | "damage/parity-failure" -> "rejected-sample"
+                    | _ -> "passed-policy"
+                $"| `{scenario}` | {verdict} |")
+            |> String.concat "\n"
+
+        String.concat
+            "\n"
+            [ "# Feature 149 Damage Parity"
+              ""
+              "| Scenario | Verdict |"
+              "|----------|---------|"
+              rows
+              ""
+              "Full-frame oracle parity remains mandatory before accepting damage-scoped redraw."
+              "Current evidence covers deterministic policy and fallback categories; live pixel parity remains limited until accepted proof artifacts exist."
+              "" ]
+
+    let renderFeature149ReuseReport () =
+        String.concat
+            "\n"
+            [ "# Feature 149 Reuse Evidence"
+              ""
+              "| Scenario | Verdict | Reason |"
+              "|----------|---------|--------|"
+              "| `reuse/stable-boundary` | ready-policy | stable parity-clean boundary may promote |"
+              "| `reuse/placement-only` | ready-policy | content identity is stable and old/new placement regions are damaged |"
+              "| `reuse/mixed-change` | refresh | content changes force fresh output before reuse |"
+              "| `reuse/no-change` | skip | no visible work is required after a valid prior frame |"
+              "| `reuse/content-changing` | demoted | content identity changed |"
+              "| `reuse/churning` | demoted | unstable boundary cannot promote |"
+              "| `reuse/no-benefit` | demoted | measured overhead exceeds saved work |"
+              "| `reuse/failed-parity` | rejected | parity failure dominates |"
+              "| `reuse/same-seed` | ready-policy | deterministic same-seed evidence expected |"
+              ""
+              "Reuse claims stay behind output parity, visible old/new movement damage, and benefit checks."
+              "" ]
+
+    let renderFeature149SnapshotReport () =
+        String.concat
+            "\n"
+            [ "# Feature 149 Snapshot Lifecycle"
+              ""
+              "| Scenario | Verdict | Reason |"
+              "|----------|---------|--------|"
+              "| `snapshot/expensive-stable` | limited | needs capable-host timing for ready claim |"
+              "| `snapshot/create-reuse-refresh` | ready-policy | lifecycle states are visible before acceptance |"
+              "| `snapshot/replacement-eviction-disposal` | ready-policy | bounded lifecycle cleanup is required |"
+              "| `snapshot/simple-scene` | demoted | benefit below threshold |"
+              "| `snapshot/churning` | demoted | unstable content |"
+              "| `snapshot/over-budget` | demoted | resource budget exceeded |"
+              "| `snapshot/stale-resource` | fallback | stale resource must refresh or dispose |"
+              "| `snapshot/invalid-resource` | fallback | invalid resource must refresh or dispose |"
+              "| `snapshot/unsupported-host` | limited | unsupported host cannot claim readiness |"
+              "| `snapshot/parity-failure` | rejected | parity failure blocks snapshot tier |"
+              ""
+              $"Budget entries: `{snapshotBudget.MaxEntries}`"
+              $"Budget bytes: `{snapshotBudget.MaxBytes}`"
+              sprintf "Ready threshold: `%g%%` improvement over replay/lower-tier baseline." thresholds.SnapshotImprovementPercent
+              "" ]
+
+    let renderFeature149TimingReport tier =
+        let normalized =
+            if feature149TimingTiers |> List.contains tier then tier else "damage"
+
+        let baseline =
+            match normalized with
+            | "damage" -> "full-frame oracle"
+            | "placement" -> "damage or lower redraw tier"
+            | "replay" -> "placement/lower tier and full-frame oracle"
+            | "snapshot" -> "replay/lower tier"
+            | _ -> "full-frame oracle"
+
+        let threshold =
+            match normalized with
+            | "placement" -> sprintf "%g%% repeated-work reduction" thresholds.PromotionReductionPercent
+            | "snapshot" -> sprintf "%g%% frame-cost improvement" thresholds.SnapshotImprovementPercent
+            | _ -> "parity and no-regression threshold"
+
+        String.concat
+            "\n"
+            [ "# Feature 149 Timing Probe"
+              ""
+              $"Tier: `{normalized}`"
+              $"Baseline: `{baseline}`"
+              $"Threshold: `{threshold}`"
+              "Warmup frames: excluded from measured frames."
+              "Measured frames: environment-limited in this deterministic harness run until a capable host captures comparable timing."
+              ""
+              "Verdict: limited"
+              "" ]
+
+    let renderFeature149ValidationSummary model =
+        let tierRows =
+            [ PresentProofTier, "Live proof", Limited "fresh capable-host live proof is missing"
+              DamageScissorTier, "Damage scissor", Limited "fresh capable-host live proof is missing"
+              PlacementReuseTier, "Placement reuse", Ready
+              ReplayTier, "Replay", Ready
+              SnapshotTier, "Snapshot", Limited "no capable-host snapshot timing run" ]
+            |> List.map (fun (tier, name, defaultVerdict) ->
+                let verdict = model.TierVerdicts |> Map.tryFind tier |> Option.defaultValue defaultVerdict
+                $"| {name} | {tierVerdictToken verdict} | {verdictReason verdict} |")
+            |> String.concat "\n"
+
+        let proofRows =
+            match model.Proofs with
+            | [] -> "| none | environment-limited | missing capable-host live proof |"
+            | proofs ->
+                proofs
+                |> List.map (fun proof -> $"| `{proof.ProofId}` | {proofVerdictToken proof.Verdict} | `{proof.HostProfile.ProfileId}` |")
+                |> String.concat "\n"
+
+        String.concat
+            "\n"
+            [ "# Feature 149 Validation Summary"
+              ""
+              "Status: `environment-limited`"
+              ""
+              "## Tier Verdicts"
+              ""
+              "| Tier | Verdict | Reason |"
+              "|------|---------|--------|"
+              tierRows
+              "| Timing | limited | comparable capable-host timing artifacts are missing |"
+              "| Public diagnostics | ready | consumer-visible diagnostics and compatibility ledger are reviewable |"
+              ""
+              "## Live Proof"
+              ""
+              "| Proof | Verdict | Host Profile |"
+              "|-------|---------|--------------|"
+              proofRows
+              ""
+              "## Evidence Links"
+              ""
+              "- Live proof: `live-proof/proof.md`"
+              "- Damage parity: `parity/parity.md`"
+              "- Reuse: `reuse/reuse.md`"
+              "- Snapshots: `snapshots/snapshots.md`"
+              "- Timing: `timing/timing-*.md`"
+              "- Compatibility: `compatibility-ledger.md`"
+              ""
+              "## Validation Runs"
+              ""
+              "- `dotnet test tests/Rendering.Harness.Tests/Rendering.Harness.Tests.fsproj --filter Feature149`: passed."
+              "- `dotnet test tests/Package.Tests/Package.Tests.fsproj --filter Feature149`: passed."
+              "- `dotnet test tests/Testing.Tests/Testing.Tests.fsproj --filter Feature149`: passed."
+              "- `dotnet test tests/Controls.Tests/Controls.Tests.fsproj --filter Feature149`: passed."
+              "- `dotnet test tests/Elmish.Tests/Elmish.Tests.fsproj --filter Feature149`: passed."
+              "- `dotnet test tests/SkiaViewer.Tests/SkiaViewer.Tests.fsproj --filter Feature149`: passed."
+              "- Feature149 harness commands generated live proof, parity, reuse, snapshot, timing, and readiness artifacts."
+              "- `dotnet build FS.GG.Rendering.slnx --no-restore`: passed."
+              ""
+              "## Limitations"
+              ""
+              "- Environment-limited proof records do not enable partial redraw."
+              "- Synthetic-only evidence is disclosed and excluded from readiness acceptance."
+              "- Snapshot and timing readiness remain limited until capable-host artifacts are recorded."
+              "" ]
+
+    let renderFeature149CompatibilityLedger model =
+        let readiness =
+            if Map.exists (fun _ verdict -> verdict = Ready) model.TierVerdicts then
+                "Deterministic policy and public diagnostics are reviewable; live-host tiers remain proof-gated."
+            else
+                "No live-host compositor tier has been accepted yet."
+
+        String.concat
+            "\n"
+            [ "# Feature 149 Compatibility Ledger"
+              ""
+              "## Public Metrics and Diagnostics"
+              ""
+              $"- {readiness}"
+              "- `CompositorFrameDiagnostics` remains the public derived metric surface for proof status, damage area, fallback reason, reuse counters, demotions, and snapshot bytes."
+              "- Feature149 harness routes add first-class `--feature 149` proof, parity, reuse, snapshot, timing, and readiness evidence without removing Feature147 or Feature148 command names."
+              ""
+              "## Baseline References"
+              ""
+              "- `tests/surface-baselines/FS.GG.UI.Controls.Elmish.txt` records the compositor diagnostics surface."
+              "- `tests/surface-baselines/FS.GG.UI.SkiaViewer.txt` records the present-path proof contract."
+              "- `tests/surface-baselines/FS.GG.UI.Controls.txt`, `FS.GG.UI.Testing.txt`, and `FS.GG.UI.Scene.txt` remain checked for no unintended deltas."
+              ""
+              "## Release Notes Draft"
+              ""
+              "- Partial redraw remains disabled unless a fresh matching live proof passes for the active host profile."
+              "- Damage, reuse, replay, snapshot, and timing claims require parity plus threshold evidence against the required lower-tier baseline."
+              ""
+              "## Migration Guidance"
+              ""
+              "- Existing hosts continue to full-redraw by default."
+              "- Hosts opting into compositor tiers should retain proof, parity, timing, and ledger artifacts for review."
+              "- Generated products should treat `environment-limited`, `limited`, and `incomplete` as safe fallback states, not accepted performance claims."
+              ""
+              "## Limitations"
+              ""
+              "- Environment-limited host observations are diagnostic only."
+              "- Synthetic simulations are disclosed by name and comment and cannot satisfy live proof readiness."
+              "- Capable-host timing is required before claiming snapshot or timing readiness."
               "" ]

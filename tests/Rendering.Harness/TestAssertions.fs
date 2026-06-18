@@ -163,3 +163,15 @@ module TestAssertions =
     /// Feature 148 helper: environment-limited proof records are diagnostic-only.
     let feature148EnvironmentLimited (token: string) : bool =
         System.String.Equals(token, "environment-limited", System.StringComparison.Ordinal)
+
+    /// Feature 149 helper: readiness paths must stay under the final P7 compositor feature package.
+    let feature149ReadinessPath (path: string) : bool =
+        path.Replace('\\', '/').StartsWith("specs/149-complete-compositor-p7/readiness/", System.StringComparison.Ordinal)
+
+    /// Feature 149 helper: live-host acceptance requires the explicit passed proof token.
+    let feature149ProofPassed (token: string) : bool =
+        System.String.Equals(token, "passed", System.StringComparison.Ordinal)
+
+    /// Feature 149 helper: environment-limited proof records are diagnostic-only.
+    let feature149EnvironmentLimited (token: string) : bool =
+        System.String.Equals(token, "environment-limited", System.StringComparison.Ordinal)
