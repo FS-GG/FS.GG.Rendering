@@ -427,6 +427,30 @@ the package surface test suite plus `dotnet pack`. The Feature152 readiness summ
 partial-redraw artifacts, partial redraw remains fallback-gated, and no compositor performance claim
 is accepted.
 
+**Next steps to remove Feature 152 environment limits.** The acceptance vocabulary and readiness
+surface are now in place, but the remaining P7 work is a real host-backed proof interpreter rather
+than more deterministic policy text. The next slice should implement the `CompositorProof` effect
+interpreter at the SkiaViewer or harness edge: detect the active profile, present a sentinel frame,
+present a scissored no-clear damage frame, read pixels, write decodable `sentinel-frame.*` and
+`damage-frame.*` artifacts, validate freshness/non-blank/non-synthetic quality, and classify the
+attempt through the existing proof-set API. `compositor-live-proof --feature 152` should then produce
+`run-1`, `run-2`, and `run-3` for one stable capable-host profile and aggregate them with
+`CompositorProof.evaluateProofSet`.
+
+After the three-run proof set is accepted, the same host profile must run the representative
+damage-scoped parity corpus: full-redraw oracle versus damage-scoped redraw for localized update,
+no-change, movement, overlap, edge clipping, resize, full invalidation, invalid damage, unsupported
+host, and resource-failure paths. Only scenarios with same-profile proof and pixel/artifact parity
+can unlock partial redraw; unsafe paths continue to full redraw with reviewer-visible reasons. The
+performance claim is a separate final gate: predeclare threshold/noise policy, measure at least five
+representative live scenarios with at least five comparable repetitions per scenario, and accept,
+reject, or mark the claim inconclusive from same-profile live timing only. `compositor-readiness
+--feature 152` should load the proof set, parity, and timing records and emit `accepted` only when
+all gates pass. A stable X11/OpenGL or headless-GL lane with working readback and permissions is
+needed for the accepted path; the missing-display path should remain as the unsupported-host
+regression. Restoring a root `fake.sh` wrapper would remove the separate package-target tooling
+limitation, but it is not a compositor proof prerequisite.
+
 ---
 
 ## 11. Workstream R7 — Real text shaping (HarfBuzz)
