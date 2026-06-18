@@ -15,7 +15,7 @@ an independently testable increment. Public or observable surfaces follow the re
 **Current task status (2026-06-18 08:08 CEST)**: 37/58 tasks are complete for the bounded first
 intrinsic-layout slice. Unchecked tasks may have scaffolding or focused tests in place, but remain
 open until the full representative corpus, evaluator-internal cache reuse, broad regression evidence,
-and final pack/readiness acceptance are complete.
+full solution test, and final readiness acceptance are complete.
 
 ## Phase 1: Setup (Shared Infrastructure)
 

@@ -35,4 +35,4 @@ Existing callers that only evaluate layout or read vertical scroll metrics can c
 
 - The implementation keeps Yoga as the default evaluator.
 - The intrinsic query implementation is conservative and deterministic; it is not a general constraint solver.
-- Final package pack validation remains open until the landing/package bump step.
+- Full solution test and broad retained/default layout regression validation remain open follow-up work for final P8 acceptance.

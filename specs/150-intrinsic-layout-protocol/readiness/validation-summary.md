@@ -54,10 +54,12 @@ dotnet build FS.GG.Rendering.slnx --no-restore
 | `dotnet test tests/Package.Tests/Package.Tests.fsproj --no-build --filter Feature150` | accepted | 3 passed. |
 | `dotnet build FS.GG.Rendering.slnx --no-restore` | accepted | Solution build passed with 0 warnings and 0 errors. |
 | `dotnet fsi scripts/refresh-surface-baselines.fsx` | accepted | Refreshed Layout, Controls, Controls.Elmish, and Testing public surface baselines with intentional additive Feature150 deltas. |
+| `dotnet pack FS.GG.Rendering.slnx -c Release -o ~/.local/share/nuget-local` | accepted | Source packages packed at `0.1.13-preview.1`. |
+| `dotnet pack .template.package/FS.GG.UI.Template.fsproj -c Release -o ~/.local/share/nuget-local` | accepted | Template package packed at `0.1.7-preview.1`. |
 
 ## Limitations
 
 - The first slice adds explicit intrinsic/query/cache contracts and ScrollViewer extent readback; it does not replace Yoga or introduce a solver.
 - Intrinsic extent currently evaluates a content `LayoutNode` under explicit large query bounds and records dependency identities; future work can optimize the evaluator internals without changing the public query contract.
 - Readiness evidence is focused on Feature150 filters and package build gates, not broad visual or compositor proof.
-- The full representative corpus, evaluator-internal measured/intrinsic cache reuse, retained rendering regression sweep, full solution test, and package pack validation remain open follow-up work.
+- The full representative corpus, evaluator-internal measured/intrinsic cache reuse, retained rendering regression sweep, and full solution test remain open follow-up work.
