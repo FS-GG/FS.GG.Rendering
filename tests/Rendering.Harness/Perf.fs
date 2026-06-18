@@ -20,6 +20,42 @@ module Perf =
         | LiveHostKind
         | TimingKind
 
+    type TimingPath =
+        | FullRedraw
+        | DamageScoped
+
+    type TimingSample =
+        { ScenarioId: string
+          Path: TimingPath
+          RunId: string
+          HostProfileId: string
+          DurationMs: float
+          ArtifactPath: string }
+
+    type SampleDistribution =
+        { Count: int
+          P50Ms: float
+          P95Ms: float
+          P99Ms: float
+          MinMs: float
+          MaxMs: float
+          RawSamplePath: string }
+
+    type TimingVerdict =
+        | Positive
+        | Noisy
+        | NonBeneficial
+        | Incomplete
+        | Rejected
+        | EnvironmentLimited
+        | Limited
+
+    type ScenarioTimingDecision =
+        { NoiseBandMs: float
+          Verdict: TimingVerdict
+          ConfidenceDecision: string
+          Reasons: string list }
+
     let parseMode token =
         match token with
         | "throughput" -> Some Throughput
@@ -36,6 +72,97 @@ module Perf =
         | PacedNative -> TimingKind
         | StressResize -> LiveHostKind
         | InputLatency -> TimingKind
+
+    let timingPathToken path =
+        match path with
+        | FullRedraw -> "full-redraw"
+        | DamageScoped -> "damage-scoped"
+
+    let timingVerdictToken verdict =
+        match verdict with
+        | Positive -> "positive"
+        | Noisy -> "noisy"
+        | NonBeneficial -> "non-beneficial"
+        | Incomplete -> "incomplete"
+        | Rejected -> "rejected"
+        | EnvironmentLimited -> "environment-limited"
+        | Limited -> "limited"
+
+    let percentile percentile samples =
+        let finite =
+            samples
+            |> List.filter (fun value -> not (Double.IsNaN value) && not (Double.IsInfinity value) && value >= 0.0)
+            |> List.sort
+
+        match finite with
+        | [] -> None
+        | [ value ] -> Some value
+        | values ->
+            let clamped = Math.Clamp(percentile, 0.0, 100.0)
+            let index =
+                Math.Ceiling((clamped / 100.0) * float values.Length)
+                |> int
+                |> fun value -> Math.Clamp(value - 1, 0, values.Length - 1)
+
+            Some values.[index]
+
+    let summarizeSamples rawSamplePath samples =
+        let finite =
+            samples
+            |> List.filter (fun value -> not (Double.IsNaN value) && not (Double.IsInfinity value) && value >= 0.0)
+
+        if finite.Length <> samples.Length || List.isEmpty finite then
+            None
+        else
+            match percentile 50.0 finite, percentile 95.0 finite, percentile 99.0 finite with
+            | Some p50, Some p95, Some p99 ->
+                Some
+                    { Count = finite.Length
+                      P50Ms = p50
+                      P95Ms = p95
+                      P99Ms = p99
+                      MinMs = List.min finite
+                      MaxMs = List.max finite
+                      RawSamplePath = rawSamplePath }
+            | _ -> None
+
+    let noiseBandMs fullRedrawP50Ms =
+        max 0.25 (fullRedrawP50Ms * 0.05)
+
+    let evaluateScenario measuredRepetitions fullRedraw damageScoped =
+        match fullRedraw, damageScoped with
+        | None, _
+        | _, None ->
+            { NoiseBandMs = 0.0
+              Verdict = Incomplete
+              ConfidenceDecision = "incomplete"
+              Reasons = [ "missing or invalid timing distribution" ] }
+        | Some full, Some damage when full.Count < measuredRepetitions || damage.Count < measuredRepetitions || measuredRepetitions < 5 ->
+            { NoiseBandMs = noiseBandMs full.P50Ms
+              Verdict = Incomplete
+              ConfidenceDecision = "incomplete"
+              Reasons = [ "fewer than five measured repetitions per path" ] }
+        | Some full, Some damage ->
+            let noise = noiseBandMs full.P50Ms
+            let p50Gain = full.P50Ms - damage.P50Ms
+            let p95Gain = full.P95Ms - damage.P95Ms
+            let p99Guard = damage.P99Ms <= full.P99Ms + noise
+
+            if p50Gain >= noise && p95Gain >= noise && p99Guard then
+                { NoiseBandMs = noise
+                  Verdict = Positive
+                  ConfidenceDecision = "positive-outside-noise-band"
+                  Reasons = [] }
+            elif Math.Abs(p50Gain) < noise || Math.Abs(p95Gain) < noise then
+                { NoiseBandMs = noise
+                  Verdict = Noisy
+                  ConfidenceDecision = "inside-noise-band"
+                  Reasons = [ "p50 or p95 difference is inside the declared noise band" ] }
+            else
+                { NoiseBandMs = noise
+                  Verdict = NonBeneficial
+                  ConfidenceDecision = "non-beneficial"
+                  Reasons = [ "damage-scoped path is slower, equivalent, or has an unacceptable p99 tail" ] }
 
     let scene: SceneNode = Rectangle((20.0, 20.0, 160.0, 120.0), Colors.white)
 

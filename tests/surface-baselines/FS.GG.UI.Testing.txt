@@ -4,6 +4,12 @@ FS.GG.UI.Testing.CompositorReadinessReport
 FS.GG.UI.Testing.CompositorReadinessStatus
 FS.GG.UI.Testing.CompositorReadinessStatus+Tags
 FS.GG.UI.Testing.CompositorReadinessValidationResult
+FS.GG.UI.Testing.CompositorTimingAssertions
+FS.GG.UI.Testing.CompositorTimingScenario
+FS.GG.UI.Testing.CompositorTimingSummaryCheck
+FS.GG.UI.Testing.CompositorTimingSummaryValidationResult
+FS.GG.UI.Testing.CompositorTimingVerdict
+FS.GG.UI.Testing.CompositorTimingVerdict+Tags
 FS.GG.UI.Testing.DefaultTextGlyphEvidence
 FS.GG.UI.Testing.DefaultTextGlyphEvidenceCheck
 FS.GG.UI.Testing.DefaultTextGlyphEvidenceValidationResult

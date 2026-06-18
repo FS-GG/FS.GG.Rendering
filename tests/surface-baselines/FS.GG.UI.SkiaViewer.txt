@@ -40,6 +40,9 @@ FS.GG.UI.SkiaViewer.CompositorProof+ProofSetReadiness+EnvironmentLimited
 FS.GG.UI.SkiaViewer.CompositorProof+ProofSetReadiness+Failed
 FS.GG.UI.SkiaViewer.CompositorProof+ProofSetReadiness+FallbackGated
 FS.GG.UI.SkiaViewer.CompositorProof+ProofSetReadiness+Tags
+FS.GG.UI.SkiaViewer.CompositorProof+TimingOverheadDisclosure
+FS.GG.UI.SkiaViewer.CompositorProof+TimingPath
+FS.GG.UI.SkiaViewer.CompositorProof+TimingPath+Tags
 FS.GG.UI.SkiaViewer.EvidenceWorkflowEffect
 FS.GG.UI.SkiaViewer.EvidenceWorkflowEffect+CaptureViewerScreenshot
 FS.GG.UI.SkiaViewer.EvidenceWorkflowEffect+LaunchViewerForEvidence
@@ -242,6 +245,8 @@ FS.GG.UI.SkiaViewer.ViewerRunMsg+RunStarted
 FS.GG.UI.SkiaViewer.ViewerRunMsg+Tags
 FS.GG.UI.SkiaViewer.ViewerRunRequest
 FS.GG.UI.SkiaViewer.ViewerRuntimeCapability
+FS.GG.UI.SkiaViewer.ViewerTimingPath
+FS.GG.UI.SkiaViewer.ViewerTimingPath+Tags
 FS.GG.UI.SkiaViewer.ViewerVisualEvidenceArtifact
 FS.GG.UI.SkiaViewer.ViewerVisualEvidenceKind
 FS.GG.UI.SkiaViewer.ViewerVisualEvidenceKind+Tags

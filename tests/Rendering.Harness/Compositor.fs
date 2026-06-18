@@ -14,6 +14,7 @@ module Compositor =
     let feature153Id = "153-compositor-proof-interpreter"
     let feature154Id = "154-compositor-proof-acceptance"
     let feature155Id = "155-native-proof-capture"
+    let feature156Id = "156-same-profile-timing"
 
     let readinessDirectory = "specs/147-compositor-damage-redraw/readiness"
     let presentProofDirectory = Path.Combine(readinessDirectory, "present-proof")
@@ -90,6 +91,21 @@ module Compositor =
     let feature155PackageValidationPath = Path.Combine(feature155ReadinessDirectory, "package-validation.md")
     let feature155RegressionValidationPath = Path.Combine(feature155ReadinessDirectory, "regression-validation.md")
     let feature155PackageVersion = "local-harness"
+
+    let feature156ReadinessDirectory = Path.Combine("specs", feature156Id, "readiness")
+    let feature156TimingDirectory = Path.Combine(feature156ReadinessDirectory, "timing")
+    let feature156TimingScenariosDirectory = Path.Combine(feature156TimingDirectory, "scenarios")
+    let feature156TimingRawDirectory = Path.Combine(feature156TimingDirectory, "raw")
+    let feature156TimingUnsupportedDirectory = Path.Combine(feature156TimingDirectory, "unsupported")
+    let feature156FsiDirectory = Path.Combine(feature156ReadinessDirectory, "fsi")
+    let feature156CompatibilityLedgerPath = Path.Combine(feature156ReadinessDirectory, "compatibility-ledger.md")
+    let feature156ValidationSummaryPath = Path.Combine(feature156ReadinessDirectory, "validation-summary.md")
+    let feature156PackageValidationPath = Path.Combine(feature156ReadinessDirectory, "package-validation.md")
+    let feature156RegressionValidationPath = Path.Combine(feature156ReadinessDirectory, "regression-validation.md")
+    let feature156TimingSummaryPath = Path.Combine(feature156TimingDirectory, "summary.md")
+    let feature156PackageVersion = "local-harness"
+    let feature156AcceptedProfileId = "probe-08a47c01"
+    let feature156PolicyId = "same-profile-live-threshold-v2"
 
     type HostProfile =
         { ProfileId: string
@@ -174,6 +190,76 @@ module Compositor =
 
     type Feature154Effect =
         | WriteFeature154Artifact of path: string
+
+    type Feature156ScenarioVerdict =
+        | Feature156Positive
+        | Feature156Noisy
+        | Feature156NonBeneficial
+        | Feature156Incomplete
+        | Feature156Rejected
+        | Feature156EnvironmentLimited
+        | Feature156Limited
+
+    type Feature156PathDistribution =
+        { SampleCount: int
+          P50Ms: float
+          P95Ms: float
+          P99Ms: float
+          MinMs: float
+          MaxMs: float
+          RawSamplePath: string }
+
+    type Feature156ScenarioReport =
+        { ScenarioId: string
+          FullRedraw: Feature156PathDistribution option
+          DamageScoped: Feature156PathDistribution option
+          WarmupCount: int
+          MeasuredRepetitions: int
+          NoiseBandMs: float
+          Verdict: Feature156ScenarioVerdict
+          ConfidenceDecision: string
+          ArtifactPaths: string list
+          RejectionReasons: string list
+          ProofOverheadIncluded: bool }
+
+    type Feature156TimingSummary =
+        { RunId: string
+          HostProfile: HostProfile
+          PolicyId: string
+          WarmupCount: int
+          MeasuredRepetitions: int
+          ScenarioReports: Feature156ScenarioReport list
+          OverallVerdict: Feature156ScenarioVerdict
+          ShippedPerformanceClaim: string
+          Diagnostics: string list }
+
+    type Feature156Model =
+        { RunId: string
+          ExpectedProfileId: string
+          ActiveProfile: HostProfile option
+          PolicyId: string option
+          WarmupCount: int
+          MeasuredRepetitions: int
+          ScenarioReports: Feature156ScenarioReport list
+          PublishedArtifacts: string list
+          Verdict: Feature156ScenarioVerdict
+          Diagnostics: string list }
+
+    type Feature156Msg =
+        | Feature156HostProfileDetected of HostProfile
+        | Feature156HostProfileRejected of reason: string
+        | Feature156PolicyDeclared of policyId: string
+        | Feature156ScenarioEvaluated of Feature156ScenarioReport
+        | Feature156RunEnvironmentLimited of reason: string
+        | Feature156SummaryPublished of path: string
+        | Feature156DiagnosticRecorded of string
+
+    type Feature156Effect =
+        | Feature156DetectHostProfile
+        | Feature156DeclarePolicy of policyId: string
+        | Feature156PrepareScenario of scenarioId: string
+        | Feature156MeasurePath of scenarioId: string * path: string
+        | Feature156WriteArtifact of path: string
 
     let thresholds =
         { PromotionReductionPercent = 30.0
@@ -510,6 +596,33 @@ module Compositor =
 
     let feature155TimingTiers = [ "damage" ]
 
+    let feature156RequiredScenarioIds =
+        [ "timing/localized-update"
+          "timing/no-change"
+          "timing/movement-old-new"
+          "timing/overlap"
+          "timing/edge-clipping" ]
+
+    let feature156ScenarioIds =
+        feature156RequiredScenarioIds
+        @ [ "timing/cross-profile-rejected"
+            "timing/incomplete-samples"
+            "timing/noisy"
+            "timing/non-beneficial"
+            "timing/readback-limited"
+            "timing/unsupported-host" ]
+
+    let feature156TargetHostProfiles =
+        feature155TargetHostProfiles
+        @ [ { ProfileId = feature156AcceptedProfileId
+              Backend = "OpenGL"
+              Renderer = None
+              PresentMode = "DirectToSwapchain"
+              FramebufferSize = "640x480"
+              Scale = Some 1.0
+              DisplayEnvironment = "x11"
+              ProofAlgorithmVersion = "sentinel-damage-v1" } ]
+
     let private backendToken backend =
         match backend with
         | X11 -> "x11"
@@ -661,6 +774,96 @@ module Compositor =
           WriteFeature154Artifact feature154CompatibilityLedgerPath
           WriteFeature154Artifact feature154ProofSetPath ]
 
+    let feature156VerdictToken verdict =
+        match verdict with
+        | Feature156Positive -> "positive"
+        | Feature156Noisy -> "noisy"
+        | Feature156NonBeneficial -> "non-beneficial"
+        | Feature156Incomplete -> "incomplete"
+        | Feature156Rejected -> "rejected"
+        | Feature156EnvironmentLimited -> "environment-limited"
+        | Feature156Limited -> "limited"
+
+    let feature156OverallVerdict reports =
+        let requiredReports =
+            feature156RequiredScenarioIds
+            |> List.choose (fun scenario ->
+                reports |> List.tryFind (fun report -> report.ScenarioId = scenario))
+
+        if requiredReports.Length < feature156RequiredScenarioIds.Length then
+            Feature156Incomplete
+        elif requiredReports |> List.forall (fun report -> report.Verdict = Feature156Positive) then
+            Feature156Positive
+        elif requiredReports |> List.exists (fun report -> report.Verdict = Feature156EnvironmentLimited) then
+            Feature156EnvironmentLimited
+        elif requiredReports |> List.exists (fun report -> report.Verdict = Feature156Limited) then
+            Feature156Limited
+        elif requiredReports |> List.exists (fun report -> report.Verdict = Feature156Rejected) then
+            Feature156Rejected
+        elif requiredReports |> List.exists (fun report -> report.Verdict = Feature156Incomplete) then
+            Feature156Incomplete
+        elif requiredReports |> List.exists (fun report -> report.Verdict = Feature156Noisy) then
+            Feature156Noisy
+        else
+            Feature156NonBeneficial
+
+    let initFeature156 warmupCount measuredRepetitions =
+        let runId = "feature156-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss")
+
+        { RunId = runId
+          ExpectedProfileId = feature156AcceptedProfileId
+          ActiveProfile = None
+          PolicyId = None
+          WarmupCount = max 0 warmupCount
+          MeasuredRepetitions = max 1 measuredRepetitions
+          ScenarioReports = []
+          PublishedArtifacts = []
+          Verdict = Feature156Incomplete
+          Diagnostics = [] },
+        [ Feature156DetectHostProfile
+          Feature156DeclarePolicy feature156PolicyId ]
+
+    let updateFeature156 msg model =
+        let model' =
+            match msg with
+            | Feature156HostProfileDetected profile ->
+                { model with ActiveProfile = Some profile }
+            | Feature156HostProfileRejected reason ->
+                { model with
+                    Verdict = Feature156Rejected
+                    Diagnostics = model.Diagnostics @ [ reason ] }
+            | Feature156PolicyDeclared policyId ->
+                { model with PolicyId = Some policyId }
+            | Feature156ScenarioEvaluated report ->
+                let reports =
+                    model.ScenarioReports
+                    |> List.filter (fun existing -> existing.ScenarioId <> report.ScenarioId)
+                    |> fun existing -> existing @ [ report ]
+
+                { model with
+                    ScenarioReports = reports
+                    Verdict = feature156OverallVerdict reports }
+            | Feature156RunEnvironmentLimited reason ->
+                { model with
+                    Verdict = Feature156EnvironmentLimited
+                    Diagnostics = model.Diagnostics @ [ reason ] }
+            | Feature156SummaryPublished path ->
+                { model with PublishedArtifacts = model.PublishedArtifacts @ [ path ] }
+            | Feature156DiagnosticRecorded diagnostic ->
+                { model with Diagnostics = model.Diagnostics @ [ diagnostic ] }
+
+        let measurementEffects =
+            feature156RequiredScenarioIds
+            |> List.collect (fun scenario ->
+                [ Feature156PrepareScenario scenario
+                  Feature156MeasurePath(scenario, "full-redraw")
+                  Feature156MeasurePath(scenario, "damage-scoped") ])
+
+        model',
+        [ Feature156WriteArtifact feature156TimingSummaryPath
+          Feature156WriteArtifact feature156ValidationSummaryPath ]
+        @ measurementEffects
+
     let artifactPath directory name = Path.Combine(directory, name)
     let feature148ArtifactPath directory name = Path.Combine(feature148ReadinessDirectory, directory, name)
     let feature149ArtifactPath directory name = Path.Combine(feature149ReadinessDirectory, directory, name)
@@ -668,8 +871,21 @@ module Compositor =
     let feature153ArtifactPath directory name = Path.Combine(feature153ReadinessDirectory, directory, name)
     let feature154ArtifactPath directory name = Path.Combine(feature154ReadinessDirectory, directory, name)
     let feature155ArtifactPath directory name = Path.Combine(feature155ReadinessDirectory, directory, name)
+    let feature156ArtifactPath directory name = Path.Combine(feature156ReadinessDirectory, directory, name)
 
-    let renderPresentProof proof =
+    let feature156ScenarioFileName (scenarioId: string) =
+        scenarioId.Replace("/", "-") + ".md"
+
+    let private feature156FormatMs (value: float) =
+        value.ToString("0.###", Globalization.CultureInfo.InvariantCulture)
+
+    let feature156DistributionRow (distribution: Feature156PathDistribution option) =
+        match distribution with
+        | None -> "`missing` | `missing` | `missing` | `0`"
+        | Some distribution ->
+            $"`{feature156FormatMs distribution.P50Ms}` | `{feature156FormatMs distribution.P95Ms}` | `{feature156FormatMs distribution.P99Ms}` | `{distribution.SampleCount}`"
+
+    let renderPresentProof (proof: PresentProof) =
         let renderer = proof.HostProfile.Renderer |> Option.defaultValue "unknown"
         let artifacts =
             match proof.EvidenceArtifacts with
@@ -811,7 +1027,7 @@ module Compositor =
         | [] -> "- none"
         | xs -> xs |> List.map (sprintf "- `%s`") |> String.concat "\n"
 
-    let renderFeature148LiveProof proof =
+    let renderFeature148LiveProof (proof: PresentProof) =
         let renderer = proof.HostProfile.Renderer |> Option.defaultValue "unknown"
         let scale = proof.HostProfile.Scale |> Option.map string |> Option.defaultValue "unknown"
         let diagnostics =
@@ -1066,7 +1282,7 @@ module Compositor =
               "- Synthetic simulations are disclosed by name and comment and cannot satisfy live proof readiness."
               "" ]
 
-    let renderFeature149LiveProof proof =
+    let renderFeature149LiveProof (proof: PresentProof) =
         let renderer = proof.HostProfile.Renderer |> Option.defaultValue "unknown"
         let scale = proof.HostProfile.Scale |> Option.map string |> Option.defaultValue "unknown"
         let diagnostics =
@@ -1325,7 +1541,7 @@ module Compositor =
               "- Capable-host timing is required before claiming snapshot or timing readiness."
               "" ]
 
-    let renderFeature152LiveProof proof =
+    let renderFeature152LiveProof (proof: PresentProof) =
         let renderer = proof.HostProfile.Renderer |> Option.defaultValue "unknown"
         let scale = proof.HostProfile.Scale |> Option.map string |> Option.defaultValue "unknown"
         let diagnostics =
@@ -1517,7 +1733,7 @@ module Compositor =
               "- Capable-host timing remains required for any performance claim."
               "" ]
 
-    let renderFeature153LiveProof proof =
+    let renderFeature153LiveProof (proof: PresentProof) =
         let renderer = proof.HostProfile.Renderer |> Option.defaultValue "unknown"
         let scale = proof.HostProfile.Scale |> Option.map string |> Option.defaultValue "unknown"
         let diagnostics =
@@ -1696,7 +1912,7 @@ module Compositor =
               "- Broad solution validation must preserve Feature 152 proof-set behavior and adjacent compositor readiness checks."
               "" ]
 
-    let renderFeature154LiveProof proof =
+    let renderFeature154LiveProof (proof: PresentProof) =
         let renderer = proof.HostProfile.Renderer |> Option.defaultValue "unknown"
         let scale = proof.HostProfile.Scale |> Option.map string |> Option.defaultValue "unknown"
         let diagnostics =
@@ -1940,7 +2156,7 @@ module Compositor =
               "- Broad solution validation must preserve Feature 153 proof interpreter behavior and adjacent layout, render-anywhere, text-shaping, overlay, package, and public-surface checks."
               "" ]
 
-    let renderFeature155LiveProof proof =
+    let renderFeature155LiveProof (proof: PresentProof) =
         let renderer = proof.HostProfile.Renderer |> Option.defaultValue "unknown"
         let scale = proof.HostProfile.Scale |> Option.map string |> Option.defaultValue "unknown"
         let diagnostics =
@@ -2213,4 +2429,239 @@ module Compositor =
               "- Focused Feature155 tests pass for SkiaViewer, Rendering.Harness, and Package suites."
               "- Broad solution validation passes on retry and preserves adjacent layout, render-anywhere, text-shaping, overlay, package, and public-surface checks."
               "- Performance claim remains separate and is not accepted by this correctness closeout."
+              "" ]
+
+    let private feature156Reasons report =
+        match report.RejectionReasons with
+        | [] -> "- none"
+        | reasons -> reasons |> List.map (sprintf "- %s") |> String.concat "\n"
+
+    let renderFeature156ScenarioReport (report: Feature156ScenarioReport) =
+        let full = feature156DistributionRow report.FullRedraw
+        let damage = feature156DistributionRow report.DamageScoped
+        let artifacts = renderArtifacts report.ArtifactPaths
+        let overhead =
+            if report.ProofOverheadIncluded then
+                "proof-readback-or-validation-overhead-included"
+            else
+                "measurement-path-isolated-from-proof-readback"
+
+        String.concat
+            "\n"
+            [ $"# Feature 156 Scenario: {report.ScenarioId}"
+              ""
+              $"Scenario id: `{report.ScenarioId}`"
+              $"Verdict: `{feature156VerdictToken report.Verdict}`"
+              $"Confidence decision: `{report.ConfidenceDecision}`"
+              $"Warmup count: `{report.WarmupCount}`"
+              $"Measured repetitions: `{report.MeasuredRepetitions}`"
+              $"Noise band ms: `{feature156FormatMs report.NoiseBandMs}`"
+              $"Overhead disclosure: `{overhead}`"
+              ""
+              "| Path | p50 ms | p95 ms | p99 ms | Samples |"
+              "|------|--------|--------|--------|---------|"
+              $"| full-redraw | {full} |"
+              $"| damage-scoped | {damage} |"
+              ""
+              "## Artifacts"
+              ""
+              artifacts
+              ""
+              "## Rejection Reasons"
+              ""
+              feature156Reasons report
+              "" ]
+
+    let renderFeature156TimingSummary (summary: Feature156TimingSummary) =
+        let renderer = summary.HostProfile.Renderer |> Option.defaultValue "unknown"
+        let scale = summary.HostProfile.Scale |> Option.map string |> Option.defaultValue "unknown"
+        let rows =
+            if List.isEmpty summary.ScenarioReports then
+                "| none | missing | missing | missing | missing | missing | missing | missing | missing | missing |"
+            else
+                summary.ScenarioReports
+                |> List.map (fun report ->
+                    let fullP50 = report.FullRedraw |> Option.map (fun d -> feature156FormatMs d.P50Ms) |> Option.defaultValue "missing"
+                    let fullP95 = report.FullRedraw |> Option.map (fun d -> feature156FormatMs d.P95Ms) |> Option.defaultValue "missing"
+                    let fullP99 = report.FullRedraw |> Option.map (fun d -> feature156FormatMs d.P99Ms) |> Option.defaultValue "missing"
+                    let damageP50 = report.DamageScoped |> Option.map (fun d -> feature156FormatMs d.P50Ms) |> Option.defaultValue "missing"
+                    let damageP95 = report.DamageScoped |> Option.map (fun d -> feature156FormatMs d.P95Ms) |> Option.defaultValue "missing"
+                    let damageP99 = report.DamageScoped |> Option.map (fun d -> feature156FormatMs d.P99Ms) |> Option.defaultValue "missing"
+                    let artifact =
+                        report.ArtifactPaths
+                        |> List.tryFind (fun path -> path.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
+                        |> Option.defaultValue (Path.Combine("scenarios", feature156ScenarioFileName report.ScenarioId))
+
+                    $"| `{report.ScenarioId}` | `{fullP50}` | `{fullP95}` | `{fullP99}` | `{damageP50}` | `{damageP95}` | `{damageP99}` | `{feature156FormatMs report.NoiseBandMs}` | `{feature156VerdictToken report.Verdict}` | `{report.ConfidenceDecision}` | `{artifact}` |")
+                |> String.concat "\n"
+
+        let rejectionReasons =
+            summary.ScenarioReports
+            |> List.collect (fun report -> report.RejectionReasons |> List.map (fun reason -> $"{report.ScenarioId}: {reason}"))
+
+        String.concat
+            "\n"
+            [ "# Feature 156 Same-Profile Timing Summary"
+              ""
+              $"Run identity: `{summary.RunId}`"
+              $"Feature 156 timing verdict: `{feature156VerdictToken summary.OverallVerdict}`"
+              $"Shipped P7 performance claim: `{summary.ShippedPerformanceClaim}`"
+              $"Policy id: `{summary.PolicyId}`"
+              "Noise-band formula: `max(0.25 ms, 5% of full-redraw p50)`"
+              $"Warmup count: `{summary.WarmupCount}`"
+              $"Measured repetitions per path: `{summary.MeasuredRepetitions}`"
+              ""
+              "## Host Profile"
+              ""
+              $"- Accepted profile id: `{feature156AcceptedProfileId}`"
+              $"- Measured profile id: `{summary.HostProfile.ProfileId}`"
+              $"- Backend: `{summary.HostProfile.Backend}`"
+              $"- Renderer: `{renderer}`"
+              $"- Present mode: `{summary.HostProfile.PresentMode}`"
+              $"- Framebuffer: `{summary.HostProfile.FramebufferSize}`"
+              $"- Scale: `{scale}`"
+              $"- Display environment: `{summary.HostProfile.DisplayEnvironment}`"
+              $"- Package version: `{feature156PackageVersion}`"
+              ""
+              "## Feature 155 Baseline"
+              ""
+              "- Proof/parity baseline: `../155-native-proof-capture/readiness/validation-summary.md`"
+              "- Correctness status: `accepted` for accepted host profile `probe-08a47c01`."
+              "- Fallback status: `partial-redraw-accepted` for correctness; performance remains separate."
+              ""
+              "## Scenario Table"
+              ""
+              "| Scenario | Full p50 | Full p95 | Full p99 | Damage p50 | Damage p95 | Damage p99 | Noise band | Verdict | Confidence | Artifact |"
+              "|----------|----------|----------|----------|------------|------------|------------|------------|---------|------------|----------|"
+              rows
+              ""
+              "## Rejection Reasons"
+              ""
+              if List.isEmpty rejectionReasons then "- none" else rejectionReasons |> List.map (sprintf "- %s") |> String.concat "\n"
+              ""
+              "## Overhead Disclosure"
+              ""
+              "- Scenario reports state whether proof readback or validation overhead is included."
+              "- Readback-dominated or unseparated overhead is `limited` and cannot support a shipped claim."
+              ""
+              "## Remaining Gates"
+              ""
+              "- Feature 157 damage-scissored no-clear renderer: `remaining`"
+              "- Feature 158 readback separation: `remaining`"
+              "- Feature 159 net-positive reuse/promotion counters: `remaining`"
+              "- Feature 160 validation throughput follow-up: `remaining`, not a shipped performance-acceptance gate"
+              "- Feature 161 host performance lane ledger: `remaining`"
+              ""
+              "## Diagnostics"
+              ""
+              if List.isEmpty summary.Diagnostics then "- none" else summary.Diagnostics |> List.map (sprintf "- %s") |> String.concat "\n"
+              "" ]
+
+    let renderFeature156CompatibilityLedger () =
+        String.concat
+            "\n"
+            [ "# Feature 156 Compatibility Ledger"
+              ""
+              "Status: `accepted`"
+              ""
+              "## Public API and Diagnostics"
+              ""
+              "- `FS.GG.UI.Testing.CompositorTimingAssertions` adds package-visible timing summary validation for Feature 156."
+              "- `FS.GG.UI.SkiaViewer.CompositorProof` adds timing path and proof-overhead disclosure helpers used by viewer-facing tests."
+              "- `Rendering.Harness` adds `compositor-performance --feature 156` and `compositor-readiness --feature 156` evidence routes."
+              ""
+              "## Compatibility Impact"
+              ""
+              "- Existing Feature 155 proof, parity, fallback, and correctness vocabulary remains authoritative."
+              "- `performance-not-accepted` remains the shipped P7 performance claim until later gates pass."
+              "- New timing helpers are additive and do not change package identities."
+              ""
+              "## Migration Guidance"
+              ""
+              "- Consumers should treat `noisy`, `non-beneficial`, `incomplete`, `rejected`, `limited`, and `environment-limited` as non-accepting timing states."
+              "- Positive Feature 156 timing is scoped to `probe-08a47c01` and is not a universal host performance claim."
+              "" ]
+
+    let renderFeature156PackageValidation validationLines =
+        String.concat
+            "\n"
+            [ "# Feature 156 Package Validation"
+              ""
+              "Status: `accepted-with-recorded-limitations`"
+              ""
+              "## Surface and Package Checks"
+              ""
+              if List.isEmpty validationLines then "- pending local validation" else validationLines |> List.map (sprintf "- %s") |> String.concat "\n"
+              ""
+              "## Public Surface"
+              ""
+              "- SkiaViewer and Testing surface baselines are refreshed when `.fsi` public timing helpers change."
+              "- Package FSI transcript coverage is recorded under `readiness/fsi/`."
+              "" ]
+
+    let renderFeature156RegressionValidation validationLines =
+        String.concat
+            "\n"
+            [ "# Feature 156 Regression Validation"
+              ""
+              "Status: `accepted-with-recorded-limitations`"
+              ""
+              "## Validation Runs"
+              ""
+              if List.isEmpty validationLines then "- pending local validation" else validationLines |> List.map (sprintf "- %s") |> String.concat "\n"
+              ""
+              "## Safety Boundary"
+              ""
+              "- Feature 155 correctness acceptance remains the P7 safety baseline."
+              "- Unsupported-host validation remains fail-closed with zero accepted performance artifacts."
+              "- Shipped P7 performance claim remains `performance-not-accepted`."
+              "" ]
+
+    let renderFeature156ValidationSummary (summary: Feature156TimingSummary) =
+        String.concat
+            "\n"
+            [ "# Feature 156 Readiness Summary"
+              ""
+              $"Status: `{feature156VerdictToken summary.OverallVerdict}`"
+              "Proof/parity baseline: `accepted`"
+              $"Timing status: `{feature156VerdictToken summary.OverallVerdict}`"
+              "Correctness status: `accepted-via-feature-155`"
+              "Fallback status: `partial-redraw-accepted`"
+              $"Performance claim: `{summary.ShippedPerformanceClaim}`"
+              $"Accepted host profile: `{feature156AcceptedProfileId}`"
+              ""
+              "## Evidence Links"
+              ""
+              "- Timing summary: `timing/summary.md`"
+              "- Scenario reports: `timing/scenarios/`"
+              "- Raw samples: `timing/raw/`"
+              "- Unsupported host: `timing/unsupported/README.md`"
+              "- Compatibility ledger: `compatibility-ledger.md`"
+              "- Package validation: `package-validation.md`"
+              "- Regression validation: `regression-validation.md`"
+              "- FSI timing authoring: `fsi/compositor-performance-authoring.fsx`"
+              "- FSI readiness authoring: `fsi/compositor-readiness-authoring.fsx`"
+              ""
+              "## Reviewer Determination"
+              ""
+              "- A reviewer can determine scenario verdicts, distributions, host profile, policy, artifact paths, limitations, and final claim status from `timing/summary.md`."
+              "- Under-5-minute determination check: recorded in this package after local validation."
+              ""
+              "## Decision"
+              ""
+              "- Timing evidence is fail-closed and scoped to the accepted Feature 155 profile."
+              "- `performance-not-accepted` remains the shipped P7 performance claim until Features 157, 158, 159, and 161 pass."
+              "- Feature 160 remains a validation-throughput follow-up, not a performance-acceptance gate."
+              "" ]
+
+    let renderFeature156UnsupportedHostReport (reason: string) =
+        String.concat
+            "\n"
+            [ "# Feature 156 Unsupported Host Timing"
+              ""
+              "Status: `environment-limited`"
+              "Accepted performance artifacts: `0`"
+              $"Reason: `{reason}`"
+              ""
+              "Unsupported or unavailable presentation environments cannot contribute to positive timing evidence."
               "" ]

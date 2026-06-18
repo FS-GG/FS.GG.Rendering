@@ -137,7 +137,20 @@ module CompositorProof =
         | ObservePixels
         | WriteProofArtifact of path: string * proof: PresentProof
 
+    [<RequireQualifiedAccess>]
+    type TimingPath =
+        | FullRedraw
+        | DamageScoped
+
+    type TimingOverheadDisclosure =
+        { Path: TimingPath
+          ProofReadbackIncluded: bool
+          ValidationReadbackIncluded: bool
+          ReviewerNote: string }
+
     val sentinelDamageRect: Rect
+    val timingPathToken: path: TimingPath -> string
+    val timingOverheadVerdict: disclosure: TimingOverheadDisclosure -> string
     val profileId: profile: HostProfile -> string
     val verdictToken: verdict: PresentProofVerdict -> string
     val readinessToken: readiness: ProofReadiness -> string

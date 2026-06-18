@@ -133,11 +133,33 @@ module CompositorProof =
         | ObservePixels
         | WriteProofArtifact of path: string * proof: PresentProof
 
+    [<RequireQualifiedAccess>]
+    type TimingPath =
+        | FullRedraw
+        | DamageScoped
+
+    type TimingOverheadDisclosure =
+        { Path: TimingPath
+          ProofReadbackIncluded: bool
+          ValidationReadbackIncluded: bool
+          ReviewerNote: string }
+
     let sentinelDamageRect =
         { X = 16.0
           Y = 16.0
           Width = 64.0
           Height = 64.0 }
+
+    let timingPathToken path =
+        match path with
+        | TimingPath.FullRedraw -> "full-redraw"
+        | TimingPath.DamageScoped -> "damage-scoped"
+
+    let timingOverheadVerdict disclosure =
+        if disclosure.ProofReadbackIncluded || disclosure.ValidationReadbackIncluded then
+            "limited"
+        else
+            "isolated"
 
     let private envToken env =
         match env with

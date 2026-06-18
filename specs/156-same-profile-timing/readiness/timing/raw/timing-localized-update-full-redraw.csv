@@ -1,0 +1,6 @@
+sample-index,scenario-id,path,run-id,host-profile-id,duration-ms
+1,timing/localized-update,full-redraw,feature156-20260618130404,probe-08a47c01,13.573
+2,timing/localized-update,full-redraw,feature156-20260618130404,probe-08a47c01,14.054
+3,timing/localized-update,full-redraw,feature156-20260618130404,probe-08a47c01,13.897
+4,timing/localized-update,full-redraw,feature156-20260618130404,probe-08a47c01,13.605
+5,timing/localized-update,full-redraw,feature156-20260618130404,probe-08a47c01,13.571

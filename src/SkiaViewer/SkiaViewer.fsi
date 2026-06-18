@@ -248,6 +248,12 @@ type ViewerRunFailure =
       Message: string
       LastDiagnosticSummary: string option }
 
+[<RequireQualifiedAccess>]
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerTimingPath =
+    | FullRedraw
+    | DamageScoped
+
 /// Public contract type exposed by this FS.GG.UI package.
 type ScreenshotEvidenceStatus =
     | ScreenshotOk
@@ -592,6 +598,10 @@ type InteractiveViewerHost<'model,'msg> =
 
 /// Public contract module exposed by this FS.GG.UI package.
 module Viewer =
+    /// Public contract function exposed by this FS.GG.UI package.
+    val timingPathToken: path: ViewerTimingPath -> string
+    /// Public contract function exposed by this FS.GG.UI package.
+    val timingPathCanSupportClaim: path: ViewerTimingPath -> proofReadbackIncluded: bool -> validationReadbackIncluded: bool -> bool
     /// Public contract function exposed by this FS.GG.UI package.
     val init: options: ViewerOptions -> ViewerModel * ViewerEffect list
     /// Public contract function exposed by this FS.GG.UI package.

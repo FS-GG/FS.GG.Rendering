@@ -12,6 +12,7 @@ module Compositor =
     val feature153Id: string
     val feature154Id: string
     val feature155Id: string
+    val feature156Id: string
 
     val readinessDirectory: string
     val presentProofDirectory: string
@@ -88,6 +89,21 @@ module Compositor =
     val feature155PackageValidationPath: string
     val feature155RegressionValidationPath: string
     val feature155PackageVersion: string
+
+    val feature156ReadinessDirectory: string
+    val feature156TimingDirectory: string
+    val feature156TimingScenariosDirectory: string
+    val feature156TimingRawDirectory: string
+    val feature156TimingUnsupportedDirectory: string
+    val feature156FsiDirectory: string
+    val feature156CompatibilityLedgerPath: string
+    val feature156ValidationSummaryPath: string
+    val feature156PackageValidationPath: string
+    val feature156RegressionValidationPath: string
+    val feature156TimingSummaryPath: string
+    val feature156PackageVersion: string
+    val feature156AcceptedProfileId: string
+    val feature156PolicyId: string
 
     type HostProfile =
         { ProfileId: string
@@ -173,6 +189,76 @@ module Compositor =
     type Feature154Effect =
         | WriteFeature154Artifact of path: string
 
+    type Feature156ScenarioVerdict =
+        | Feature156Positive
+        | Feature156Noisy
+        | Feature156NonBeneficial
+        | Feature156Incomplete
+        | Feature156Rejected
+        | Feature156EnvironmentLimited
+        | Feature156Limited
+
+    type Feature156PathDistribution =
+        { SampleCount: int
+          P50Ms: float
+          P95Ms: float
+          P99Ms: float
+          MinMs: float
+          MaxMs: float
+          RawSamplePath: string }
+
+    type Feature156ScenarioReport =
+        { ScenarioId: string
+          FullRedraw: Feature156PathDistribution option
+          DamageScoped: Feature156PathDistribution option
+          WarmupCount: int
+          MeasuredRepetitions: int
+          NoiseBandMs: float
+          Verdict: Feature156ScenarioVerdict
+          ConfidenceDecision: string
+          ArtifactPaths: string list
+          RejectionReasons: string list
+          ProofOverheadIncluded: bool }
+
+    type Feature156TimingSummary =
+        { RunId: string
+          HostProfile: HostProfile
+          PolicyId: string
+          WarmupCount: int
+          MeasuredRepetitions: int
+          ScenarioReports: Feature156ScenarioReport list
+          OverallVerdict: Feature156ScenarioVerdict
+          ShippedPerformanceClaim: string
+          Diagnostics: string list }
+
+    type Feature156Model =
+        { RunId: string
+          ExpectedProfileId: string
+          ActiveProfile: HostProfile option
+          PolicyId: string option
+          WarmupCount: int
+          MeasuredRepetitions: int
+          ScenarioReports: Feature156ScenarioReport list
+          PublishedArtifacts: string list
+          Verdict: Feature156ScenarioVerdict
+          Diagnostics: string list }
+
+    type Feature156Msg =
+        | Feature156HostProfileDetected of HostProfile
+        | Feature156HostProfileRejected of reason: string
+        | Feature156PolicyDeclared of policyId: string
+        | Feature156ScenarioEvaluated of Feature156ScenarioReport
+        | Feature156RunEnvironmentLimited of reason: string
+        | Feature156SummaryPublished of path: string
+        | Feature156DiagnosticRecorded of string
+
+    type Feature156Effect =
+        | Feature156DetectHostProfile
+        | Feature156DeclarePolicy of policyId: string
+        | Feature156PrepareScenario of scenarioId: string
+        | Feature156MeasurePath of scenarioId: string * path: string
+        | Feature156WriteArtifact of path: string
+
     val thresholds: Thresholds
     val snapshotBudget: SnapshotBudget
     val scenarioIds: string list
@@ -194,6 +280,9 @@ module Compositor =
     val feature155ScenarioIds: string list
     val feature155TargetHostProfiles: HostProfile list
     val feature155TimingTiers: string list
+    val feature156ScenarioIds: string list
+    val feature156RequiredScenarioIds: string list
+    val feature156TargetHostProfiles: HostProfile list
 
     val hostProfileFromFacts: facts: ProbeFacts -> HostProfile
     val proofVerdictToken: verdict: ProofVerdict -> string
@@ -210,6 +299,8 @@ module Compositor =
     val updateReadiness: msg: ReadinessMsg -> model: ReadinessModel -> ReadinessModel * ReadinessEffect list
     val initFeature154: unit -> Feature154Model * Feature154Effect list
     val updateFeature154: msg: Feature154Msg -> model: Feature154Model -> Feature154Model * Feature154Effect list
+    val initFeature156: warmupCount: int -> measuredRepetitions: int -> Feature156Model * Feature156Effect list
+    val updateFeature156: msg: Feature156Msg -> model: Feature156Model -> Feature156Model * Feature156Effect list
 
     val artifactPath: directory: string -> name: string -> string
     val feature148ArtifactPath: directory: string -> name: string -> string
@@ -218,6 +309,11 @@ module Compositor =
     val feature153ArtifactPath: directory: string -> name: string -> string
     val feature154ArtifactPath: directory: string -> name: string -> string
     val feature155ArtifactPath: directory: string -> name: string -> string
+    val feature156ArtifactPath: directory: string -> name: string -> string
+    val feature156ScenarioFileName: scenarioId: string -> string
+    val feature156VerdictToken: verdict: Feature156ScenarioVerdict -> string
+    val feature156DistributionRow: distribution: Feature156PathDistribution option -> string
+    val feature156OverallVerdict: reports: Feature156ScenarioReport list -> Feature156ScenarioVerdict
     val renderPresentProof: proof: PresentProof -> string
     val renderValidationSummary: model: ReadinessModel -> string
     val renderCompatibilityLedger: model: ReadinessModel -> string
@@ -262,3 +358,10 @@ module Compositor =
     val renderFeature155CompatibilityLedger: model: ReadinessModel -> string
     val renderFeature155PackageValidation: unit -> string
     val renderFeature155RegressionValidation: unit -> string
+    val renderFeature156ScenarioReport: report: Feature156ScenarioReport -> string
+    val renderFeature156TimingSummary: summary: Feature156TimingSummary -> string
+    val renderFeature156CompatibilityLedger: unit -> string
+    val renderFeature156PackageValidation: validationLines: string list -> string
+    val renderFeature156RegressionValidation: validationLines: string list -> string
+    val renderFeature156ValidationSummary: summary: Feature156TimingSummary -> string
+    val renderFeature156UnsupportedHostReport: reason: string -> string

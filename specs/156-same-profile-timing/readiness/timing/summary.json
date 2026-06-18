@@ -1,0 +1,7 @@
+{
+  "runId": "feature156-20260618130404",
+  "profileId": "probe-08a47c01",
+  "policyId": "same-profile-live-threshold-v2",
+  "overallVerdict": "noisy",
+  "shippedPerformanceClaim": "performance-not-accepted"
+}

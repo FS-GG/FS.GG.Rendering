@@ -20,6 +20,42 @@ module Perf =
         | LiveHostKind
         | TimingKind
 
+    type TimingPath =
+        | FullRedraw
+        | DamageScoped
+
+    type TimingSample =
+        { ScenarioId: string
+          Path: TimingPath
+          RunId: string
+          HostProfileId: string
+          DurationMs: float
+          ArtifactPath: string }
+
+    type SampleDistribution =
+        { Count: int
+          P50Ms: float
+          P95Ms: float
+          P99Ms: float
+          MinMs: float
+          MaxMs: float
+          RawSamplePath: string }
+
+    type TimingVerdict =
+        | Positive
+        | Noisy
+        | NonBeneficial
+        | Incomplete
+        | Rejected
+        | EnvironmentLimited
+        | Limited
+
+    type ScenarioTimingDecision =
+        { NoiseBandMs: float
+          Verdict: TimingVerdict
+          ConfidenceDecision: string
+          Reasons: string list }
+
     /// Parse a `--mode` token; `None` if unrecognised.
     val parseMode: token: string -> PerfMode option
 
@@ -28,3 +64,19 @@ module Perf =
 
     /// Run the T3 perf tier for `mode` over `frames` bounded frames; build the evidence.
     val runPerf: mode: PerfMode -> frames: int -> facts: ProbeFacts -> outDir: string -> Evidence.Evidence * float list
+
+    val timingPathToken: path: TimingPath -> string
+
+    val timingVerdictToken: verdict: TimingVerdict -> string
+
+    val percentile: percentile: float -> samples: float list -> float option
+
+    val summarizeSamples: rawSamplePath: string -> samples: float list -> SampleDistribution option
+
+    val noiseBandMs: fullRedrawP50Ms: float -> float
+
+    val evaluateScenario:
+        measuredRepetitions: int ->
+        fullRedraw: SampleDistribution option ->
+        damageScoped: SampleDistribution option ->
+            ScenarioTimingDecision

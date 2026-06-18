@@ -1,0 +1,6 @@
+sample-index,scenario-id,path,run-id,host-profile-id,duration-ms
+1,timing/localized-update,damage-scoped,feature156-20260618130404,probe-08a47c01,12.932
+2,timing/localized-update,damage-scoped,feature156-20260618130404,probe-08a47c01,13.278
+3,timing/localized-update,damage-scoped,feature156-20260618130404,probe-08a47c01,13.17
+4,timing/localized-update,damage-scoped,feature156-20260618130404,probe-08a47c01,13.413
+5,timing/localized-update,damage-scoped,feature156-20260618130404,probe-08a47c01,14.296

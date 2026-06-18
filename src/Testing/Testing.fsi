@@ -429,6 +429,45 @@ type CompositorReadinessValidationResult =
       BlockingLimitations: string list
       Diagnostics: string list }
 
+/// Public contract type exposed by this FS.GG.UI package.
+type CompositorTimingVerdict =
+    | CompositorTimingPositive
+    | CompositorTimingNoisy
+    | CompositorTimingNonBeneficial
+    | CompositorTimingIncomplete
+    | CompositorTimingRejected
+    | CompositorTimingEnvironmentLimited
+    | CompositorTimingLimited
+
+/// Public contract type exposed by this FS.GG.UI package.
+type CompositorTimingScenario =
+    { ScenarioId: string
+      FullRedrawSampleCount: int
+      DamageScopedSampleCount: int
+      Verdict: CompositorTimingVerdict
+      ArtifactPaths: string list
+      RejectionReasons: string list }
+
+/// Public contract type exposed by this FS.GG.UI package.
+type CompositorTimingSummaryCheck =
+    { Feature: string
+      ExpectedProfileId: string
+      ActualProfileId: string
+      PolicyId: string
+      WarmupCount: int
+      MeasuredRepetitions: int
+      RequiredScenarioIds: string list
+      Scenarios: CompositorTimingScenario list
+      ShippedPerformanceClaim: string }
+
+/// Public contract type exposed by this FS.GG.UI package.
+type CompositorTimingSummaryValidationResult =
+    { Accepted: bool
+      Verdict: CompositorTimingVerdict
+      MissingScenarios: string list
+      RejectedScenarios: string list
+      Diagnostics: string list }
+
 /// Public contract module exposed by this FS.GG.UI package.
 module GeneratedProductAssertions =
     /// Public contract function exposed by this FS.GG.UI package.
@@ -522,3 +561,10 @@ module CompositorReadiness =
     val statusText: status: CompositorReadinessStatus -> string
     /// Public contract function exposed by this FS.GG.UI package.
     val validate: report: CompositorReadinessReport -> CompositorReadinessValidationResult
+
+/// Public contract module exposed by this FS.GG.UI package.
+module CompositorTimingAssertions =
+    /// Public contract function exposed by this FS.GG.UI package.
+    val verdictText: verdict: CompositorTimingVerdict -> string
+    /// Public contract function exposed by this FS.GG.UI package.
+    val validateSummary: check: CompositorTimingSummaryCheck -> CompositorTimingSummaryValidationResult

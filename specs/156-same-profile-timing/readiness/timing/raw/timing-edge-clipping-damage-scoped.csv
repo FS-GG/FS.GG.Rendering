@@ -1,0 +1,6 @@
+sample-index,scenario-id,path,run-id,host-profile-id,duration-ms
+1,timing/edge-clipping,damage-scoped,feature156-20260618130404,probe-08a47c01,14.223
+2,timing/edge-clipping,damage-scoped,feature156-20260618130404,probe-08a47c01,13.358
+3,timing/edge-clipping,damage-scoped,feature156-20260618130404,probe-08a47c01,13.14
+4,timing/edge-clipping,damage-scoped,feature156-20260618130404,probe-08a47c01,13.022
+5,timing/edge-clipping,damage-scoped,feature156-20260618130404,probe-08a47c01,13.073

@@ -41,6 +41,9 @@ let feature153TranscriptPath name =
 let feature154TranscriptPath name =
     repositoryPath $"specs/154-compositor-proof-acceptance/readiness/fsi/{name}"
 
+let feature156TranscriptPath name =
+    repositoryPath $"specs/156-same-profile-timing/readiness/fsi/{name}"
+
 let feature150TranscriptPath name =
     repositoryPath $"specs/150-intrinsic-layout-protocol/readiness/fsi/{name}"
 
@@ -82,6 +85,11 @@ let readFeature153Transcript name =
 let readFeature154Transcript name =
     let path = feature154TranscriptPath name
     Expect.isTrue (File.Exists path) $"Feature154 FSI transcript evidence exists at {path}"
+    File.ReadAllText path
+
+let readFeature156Transcript name =
+    let path = feature156TranscriptPath name
+    Expect.isTrue (File.Exists path) $"Feature156 FSI transcript evidence exists at {path}"
     File.ReadAllText path
 
 let readFeature150Transcript name =
@@ -283,6 +291,31 @@ let fsiTranscriptCoverageTests =
               "compositor-readiness-authoring.log" ]
             |> List.iter (fun logName ->
                 let log = readFeature154Transcript logName
+                Expect.stringContains log "FSI transcript PASS" $"{logName} records passing FSI coverage")
+        }
+
+        test "Feature156 transcripts cover timing policy readiness and Testing helpers" {
+            let timing = readFeature156Transcript "compositor-performance-authoring.fsx"
+            let readiness = readFeature156Transcript "compositor-readiness-authoring.fsx"
+
+            [ "FS.GG.UI.SkiaViewer"
+              "ViewerTimingPath.DamageScoped"
+              "CompositorProof.TimingOverheadDisclosure"
+              "FS.GG.UI.Testing"
+              "CompositorTimingAssertions.validateSummary"
+              "same-profile-live-threshold-v2" ]
+            |> List.iter (fun required -> Expect.stringContains timing required $"Feature156 timing transcript includes {required}")
+
+            [ "FS.GG.UI.Testing"
+              "CompositorTimingAssertions.verdictText"
+              "CompositorReadiness.validate"
+              "156-same-profile-timing" ]
+            |> List.iter (fun required -> Expect.stringContains readiness required $"Feature156 readiness transcript includes {required}")
+
+            [ "compositor-performance-authoring.log"
+              "compositor-readiness-authoring.log" ]
+            |> List.iter (fun logName ->
+                let log = readFeature156Transcript logName
                 Expect.stringContains log "FSI transcript PASS" $"{logName} records passing FSI coverage")
         }
 

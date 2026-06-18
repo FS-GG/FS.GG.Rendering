@@ -213,6 +213,11 @@ type ViewerRunFailure =
       Message: string
       LastDiagnosticSummary: string option }
 
+[<RequireQualifiedAccess>]
+type ViewerTimingPath =
+    | FullRedraw
+    | DamageScoped
+
 type ScreenshotEvidenceStatus =
     | ScreenshotOk
     | ScreenshotUnsupported
@@ -533,6 +538,15 @@ type private LegacyHostMsg<'msg> =
     | LegacyAppMsg of 'msg
 
 module Viewer =
+    let timingPathToken path =
+        match path with
+        | ViewerTimingPath.FullRedraw -> "full-redraw"
+        | ViewerTimingPath.DamageScoped -> "damage-scoped"
+
+    let timingPathCanSupportClaim path proofReadbackIncluded validationReadbackIncluded =
+        match path with
+        | ViewerTimingPath.FullRedraw
+        | ViewerTimingPath.DamageScoped -> not proofReadbackIncluded && not validationReadbackIncluded
 
     module DiagnosticsFiltering =
         let levelRank level =

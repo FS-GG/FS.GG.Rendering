@@ -1,0 +1,6 @@
+sample-index,scenario-id,path,run-id,host-profile-id,duration-ms
+1,timing/no-change,full-redraw,feature156-20260618130404,probe-08a47c01,13.41
+2,timing/no-change,full-redraw,feature156-20260618130404,probe-08a47c01,13.194
+3,timing/no-change,full-redraw,feature156-20260618130404,probe-08a47c01,13.645
+4,timing/no-change,full-redraw,feature156-20260618130404,probe-08a47c01,14.785
+5,timing/no-change,full-redraw,feature156-20260618130404,probe-08a47c01,14.003

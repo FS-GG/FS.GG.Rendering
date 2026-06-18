@@ -376,6 +376,41 @@ type CompositorReadinessValidationResult =
       BlockingLimitations: string list
       Diagnostics: string list }
 
+type CompositorTimingVerdict =
+    | CompositorTimingPositive
+    | CompositorTimingNoisy
+    | CompositorTimingNonBeneficial
+    | CompositorTimingIncomplete
+    | CompositorTimingRejected
+    | CompositorTimingEnvironmentLimited
+    | CompositorTimingLimited
+
+type CompositorTimingScenario =
+    { ScenarioId: string
+      FullRedrawSampleCount: int
+      DamageScopedSampleCount: int
+      Verdict: CompositorTimingVerdict
+      ArtifactPaths: string list
+      RejectionReasons: string list }
+
+type CompositorTimingSummaryCheck =
+    { Feature: string
+      ExpectedProfileId: string
+      ActualProfileId: string
+      PolicyId: string
+      WarmupCount: int
+      MeasuredRepetitions: int
+      RequiredScenarioIds: string list
+      Scenarios: CompositorTimingScenario list
+      ShippedPerformanceClaim: string }
+
+type CompositorTimingSummaryValidationResult =
+    { Accepted: bool
+      Verdict: CompositorTimingVerdict
+      MissingScenarios: string list
+      RejectedScenarios: string list
+      Diagnostics: string list }
+
 module GeneratedProductAssertions =
     let summarize expectation =
         let packages =
@@ -1578,4 +1613,103 @@ module CompositorReadiness =
           Status = status
           MissingEvidence = missingEvidence
           BlockingLimitations = blockingLimitations
+          Diagnostics = diagnostics }
+
+module CompositorTimingAssertions =
+    let verdictText verdict =
+        match verdict with
+        | CompositorTimingPositive -> "positive"
+        | CompositorTimingNoisy -> "noisy"
+        | CompositorTimingNonBeneficial -> "non-beneficial"
+        | CompositorTimingIncomplete -> "incomplete"
+        | CompositorTimingRejected -> "rejected"
+        | CompositorTimingEnvironmentLimited -> "environment-limited"
+        | CompositorTimingLimited -> "limited"
+
+    let private verdictBlocksPositive verdict =
+        match verdict with
+        | CompositorTimingPositive -> false
+        | _ -> true
+
+    let validateSummary (check: CompositorTimingSummaryCheck) : CompositorTimingSummaryValidationResult =
+        let missingScenarios =
+            check.RequiredScenarioIds
+            |> List.filter (fun scenario ->
+                check.Scenarios |> List.exists (fun candidate -> candidate.ScenarioId = scenario) |> not)
+
+        let requiredScenarioResults =
+            check.RequiredScenarioIds
+            |> List.choose (fun scenario ->
+                check.Scenarios |> List.tryFind (fun candidate -> candidate.ScenarioId = scenario))
+
+        let rejectedScenarios =
+            requiredScenarioResults
+            |> List.choose (fun scenario ->
+                if verdictBlocksPositive scenario.Verdict then
+                    Some $"{scenario.ScenarioId}:{verdictText scenario.Verdict}"
+                else
+                    None)
+
+        let incompleteSamples =
+            requiredScenarioResults
+            |> List.choose (fun scenario ->
+                if scenario.FullRedrawSampleCount < check.MeasuredRepetitions
+                   || scenario.DamageScopedSampleCount < check.MeasuredRepetitions then
+                    Some scenario.ScenarioId
+                else
+                    None)
+
+        let missingArtifacts =
+            requiredScenarioResults
+            |> List.choose (fun scenario ->
+                if List.isEmpty scenario.ArtifactPaths then Some scenario.ScenarioId else None)
+
+        let diagnostics =
+            [ if String.IsNullOrWhiteSpace check.Feature then
+                  "timing summary must name the feature"
+              if check.ExpectedProfileId <> check.ActualProfileId then
+                  $"profile mismatch: expected={check.ExpectedProfileId} actual={check.ActualProfileId}"
+              if check.PolicyId <> "same-profile-live-threshold-v2" then
+                  $"unexpected timing policy: {check.PolicyId}"
+              if check.WarmupCount < 0 then
+                  "warmup count must not be negative"
+              if check.MeasuredRepetitions < 5 then
+                  "at least five measured repetitions are required"
+              for scenario in missingScenarios do
+                  $"missing required timing scenario: {scenario}"
+              for scenario in rejectedScenarios do
+                  $"non-positive timing scenario: {scenario}"
+              for scenario in incompleteSamples do
+                  $"incomplete timing samples: {scenario}"
+              for scenario in missingArtifacts do
+                  $"missing timing artifacts: {scenario}"
+              if check.ShippedPerformanceClaim <> "performance-not-accepted" then
+                  "Feature 156 cannot accept the shipped P7 performance claim by itself"
+              for scenario in requiredScenarioResults do
+                  yield! scenario.RejectionReasons |> List.map (fun reason -> $"{scenario.ScenarioId}: {reason}") ]
+
+        let verdict =
+            if not missingScenarios.IsEmpty || not incompleteSamples.IsEmpty || not missingArtifacts.IsEmpty then
+                CompositorTimingIncomplete
+            elif diagnostics |> List.exists (fun item -> item.Contains("profile mismatch", StringComparison.OrdinalIgnoreCase)) then
+                CompositorTimingRejected
+            elif requiredScenarioResults |> List.exists (fun scenario -> scenario.Verdict = CompositorTimingEnvironmentLimited) then
+                CompositorTimingEnvironmentLimited
+            elif requiredScenarioResults |> List.exists (fun scenario -> scenario.Verdict = CompositorTimingLimited) then
+                CompositorTimingLimited
+            elif requiredScenarioResults |> List.exists (fun scenario -> scenario.Verdict = CompositorTimingRejected) then
+                CompositorTimingRejected
+            elif requiredScenarioResults |> List.exists (fun scenario -> scenario.Verdict = CompositorTimingNoisy) then
+                CompositorTimingNoisy
+            elif requiredScenarioResults |> List.exists (fun scenario -> scenario.Verdict = CompositorTimingNonBeneficial) then
+                CompositorTimingNonBeneficial
+            elif requiredScenarioResults.Length = check.RequiredScenarioIds.Length then
+                CompositorTimingPositive
+            else
+                CompositorTimingIncomplete
+
+        { Accepted = verdict = CompositorTimingPositive && diagnostics.IsEmpty
+          Verdict = verdict
+          MissingScenarios = missingScenarios
+          RejectedScenarios = rejectedScenarios
           Diagnostics = diagnostics }

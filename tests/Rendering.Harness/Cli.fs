@@ -104,6 +104,14 @@ let private isFeature155 (rest: string list) =
         || String.Equals(value, Compositor.feature155Id, StringComparison.OrdinalIgnoreCase)
     | _ -> false
 
+let private isFeature156 (rest: string list) =
+    match flagValue "--feature" rest with
+    | Some value ->
+        value = "156"
+        || value = "feature156"
+        || String.Equals(value, Compositor.feature156Id, StringComparison.OrdinalIgnoreCase)
+    | _ -> false
+
 let private attemptCount (rest: string list) =
     match flagValue "--attempt-count" rest with
     | Some value ->
@@ -135,6 +143,164 @@ let private damageScene () =
           Scene.rectangle (32.0, 32.0, 132.0, 92.0) (Colors.rgb 64uy 220uy 144uy)
           Scene.rectangle (320.0, 200.0, 96.0, 96.0) (Colors.rgb 236uy 80uy 96uy)
           Scene.rectangle (500.0, 48.0, 72.0, 144.0) (Colors.rgb 72uy 96uy 210uy) ]
+
+let private feature156ScenarioStem (scenarioId: string) =
+    scenarioId.Replace("/", "-")
+
+let private feature156FormatMs (value: float) =
+    value.ToString("0.###", Globalization.CultureInfo.InvariantCulture)
+
+let private feature156ScenarioScene scenarioId damageScoped =
+    let accent =
+        if damageScoped then
+            Colors.rgb 236uy 80uy 96uy
+        else
+            Colors.rgb 220uy 180uy 64uy
+
+    match scenarioId with
+    | "timing/no-change" ->
+        SceneNode.Group
+            [ Scene.rectangle (0.0, 0.0, 640.0, 480.0) (Colors.rgb 12uy 18uy 30uy)
+              Scene.rectangle (96.0, 96.0, 180.0, 120.0) (Colors.rgb 64uy 160uy 220uy) ]
+    | "timing/movement-old-new" ->
+        let x = if damageScoped then 260.0 else 220.0
+        SceneNode.Group
+            [ Scene.rectangle (0.0, 0.0, 640.0, 480.0) (Colors.rgb 16uy 20uy 32uy)
+              Scene.rectangle (x, 180.0, 120.0, 96.0) accent
+              Scene.rectangle (80.0, 340.0, 420.0, 36.0) (Colors.rgb 80uy 96uy 120uy) ]
+    | "timing/overlap" ->
+        SceneNode.Group
+            [ Scene.rectangle (0.0, 0.0, 640.0, 480.0) (Colors.rgb 18uy 20uy 28uy)
+              Scene.rectangle (180.0, 130.0, 180.0, 150.0) (Colors.rgb 60uy 180uy 180uy)
+              Scene.rectangle (260.0, 190.0, 170.0, 150.0) accent ]
+    | "timing/edge-clipping" ->
+        SceneNode.Group
+            [ Scene.rectangle (0.0, 0.0, 640.0, 480.0) (Colors.rgb 20uy 20uy 26uy)
+              Scene.rectangle (-24.0, 64.0, 144.0, 144.0) accent
+              Scene.rectangle (540.0, 380.0, 160.0, 120.0) (Colors.rgb 92uy 180uy 96uy) ]
+    | _ ->
+        SceneNode.Group
+            [ Scene.rectangle (0.0, 0.0, 640.0, 480.0) (Colors.rgb 12uy 18uy 30uy)
+              Scene.rectangle (32.0, 32.0, 132.0, 92.0) (Colors.rgb 64uy 220uy 144uy)
+              Scene.rectangle (320.0, 200.0, 96.0, 96.0) accent
+              Scene.rectangle (500.0, 48.0, 72.0, 144.0) (Colors.rgb 72uy 96uy 210uy) ]
+
+let private feature156PathDistribution (distribution: Perf.SampleDistribution) : Compositor.Feature156PathDistribution =
+    { SampleCount = distribution.Count
+      P50Ms = distribution.P50Ms
+      P95Ms = distribution.P95Ms
+      P99Ms = distribution.P99Ms
+      MinMs = distribution.MinMs
+      MaxMs = distribution.MaxMs
+      RawSamplePath = distribution.RawSamplePath }
+
+let private feature156VerdictFromPerf verdict =
+    match verdict with
+    | Perf.Positive -> Compositor.Feature156Positive
+    | Perf.Noisy -> Compositor.Feature156Noisy
+    | Perf.NonBeneficial -> Compositor.Feature156NonBeneficial
+    | Perf.Incomplete -> Compositor.Feature156Incomplete
+    | Perf.Rejected -> Compositor.Feature156Rejected
+    | Perf.EnvironmentLimited -> Compositor.Feature156EnvironmentLimited
+    | Perf.Limited -> Compositor.Feature156Limited
+
+let private writeFeature156RawSamples rawPath scenarioId path runId hostProfile samples =
+    let sampleLines =
+        samples
+        |> List.mapi (fun index duration ->
+            $"{index + 1},{scenarioId},{path},{runId},{hostProfile},{feature156FormatMs duration}")
+
+    let lines = "sample-index,scenario-id,path,run-id,host-profile-id,duration-ms" :: sampleLines
+
+    File.WriteAllText(rawPath, String.concat Environment.NewLine lines + Environment.NewLine)
+
+let private captureFeature156Sample rawDir scenarioId path hostFacts =
+    let stem = feature156ScenarioStem scenarioId
+    let imagePath = Path.Combine(rawDir, $"{stem}-{path}-latest.png")
+    let scene = feature156ScenarioScene scenarioId (path = "damage-scoped")
+    let options: ViewerOptions =
+        { Title = $"Feature156 {path}"
+          InitialSize = proofSize
+          PresentMode = ViewerPresentMode.OffscreenReadback
+          FrameRateCap = None }
+
+    let request: ScreenshotEvidenceRequest =
+        { Command = "compositor-performance"
+          AppOrSample = $"feature156-{stem}-{path}"
+          OutputPath = imagePath
+          Width = proofSize.Width
+          Height = proofSize.Height
+          RendererMode = "skia"
+          CaptureMode = ViewerRenderTargetPng
+          HostFacts = hostFacts
+          Timeout = TimeSpan.FromSeconds 10.0 }
+
+    let sw = System.Diagnostics.Stopwatch.StartNew()
+    let result = Viewer.captureScreenshotEvidence request options scene
+    sw.Stop()
+
+    if result.Status = ScreenshotOk then
+        Some sw.Elapsed.TotalMilliseconds
+    else
+        None
+
+let private runFeature156Path rawDir scenarioId path warmup repetitions runId hostProfileId hostFacts =
+    for _ in 1..warmup do
+        captureFeature156Sample rawDir scenarioId path hostFacts |> ignore
+
+    let samples =
+        [ for _ in 1..repetitions do
+              match captureFeature156Sample rawDir scenarioId path hostFacts with
+              | Some ms -> ms
+              | None -> Double.NaN ]
+
+    let rawRelative = Path.Combine("raw", $"{feature156ScenarioStem scenarioId}-{path}.csv").Replace('\\', '/')
+    let rawPath = Path.Combine(rawDir, $"{feature156ScenarioStem scenarioId}-{path}.csv")
+    writeFeature156RawSamples rawPath scenarioId path runId hostProfileId samples
+    rawRelative, Perf.summarizeSamples rawRelative samples
+
+let private feature156SummaryFromReports
+    runId
+    (profile: Compositor.HostProfile)
+    warmup
+    repetitions
+    (reports: Compositor.Feature156ScenarioReport list)
+    diagnostics
+    : Compositor.Feature156TimingSummary =
+    let overall = Compositor.feature156OverallVerdict reports
+    { RunId = runId
+      HostProfile = profile
+      PolicyId = Compositor.feature156PolicyId
+      WarmupCount = warmup
+      MeasuredRepetitions = repetitions
+      ScenarioReports = reports
+      OverallVerdict = overall
+      ShippedPerformanceClaim = "performance-not-accepted"
+      Diagnostics = diagnostics }
+
+let private feature156VerdictFromToken token =
+    match token with
+    | "positive" -> Some Compositor.Feature156Positive
+    | "noisy" -> Some Compositor.Feature156Noisy
+    | "non-beneficial" -> Some Compositor.Feature156NonBeneficial
+    | "incomplete" -> Some Compositor.Feature156Incomplete
+    | "rejected" -> Some Compositor.Feature156Rejected
+    | "environment-limited" -> Some Compositor.Feature156EnvironmentLimited
+    | "limited" -> Some Compositor.Feature156Limited
+    | _ -> None
+
+let private feature156ExistingTimingVerdict timingSummaryPath =
+    if File.Exists timingSummaryPath then
+        File.ReadLines timingSummaryPath
+        |> Seq.tryPick (fun line ->
+            let prefix = "Feature 156 timing verdict: `"
+
+            if line.StartsWith(prefix, StringComparison.Ordinal) then
+                line.Substring(prefix.Length).TrimEnd('`') |> feature156VerdictFromToken
+            else
+                None)
+    else
+        None
 
 let private captureProofImage command app hostFacts path scene =
     let options: ViewerOptions =
@@ -691,6 +857,142 @@ let private runCompositorTimingCmd (rest: string list) =
     printfn "%s" path
     0
 
+let private runCompositorPerformanceCmd (rest: string list) =
+    if not (isFeature156 rest) then
+        eprintfn "compositor-performance requires --feature 156"
+        2
+    else
+        let policy = flagValue "--policy" rest |> Option.defaultValue Compositor.feature156PolicyId
+        let requestedScenario = flagValue "--scenario" rest
+        let scenarioSet =
+            match requestedScenario with
+            | Some scenario when Compositor.feature156ScenarioIds |> List.contains scenario -> [ scenario ]
+            | Some scenario ->
+                eprintfn "unknown Feature 156 scenario: %s" scenario
+                []
+            | None -> Compositor.feature156RequiredScenarioIds
+
+        if policy <> Compositor.feature156PolicyId then
+            eprintfn "unknown Feature 156 policy: %s" policy
+            2
+        elif List.isEmpty scenarioSet then
+            2
+        else
+            let warmup = positiveIntFlag "--warmup" 3 rest
+            let repetitions = positiveIntFlag "--repetitions" 5 rest
+            let out =
+                match flagValue "--out" rest with
+                | Some d -> d
+                | None -> Compositor.feature156TimingDirectory
+
+            let scenariosDir = Path.Combine(out, "scenarios")
+            let rawDir = Path.Combine(out, "raw")
+            let unsupportedDir =
+                let outLeaf =
+                    out.TrimEnd([| Path.DirectorySeparatorChar; Path.AltDirectorySeparatorChar |])
+                    |> Path.GetFileName
+
+                if String.Equals(outLeaf, "unsupported", StringComparison.OrdinalIgnoreCase) then
+                    out
+                else
+                    Path.Combine(out, "unsupported")
+            Directory.CreateDirectory(scenariosDir) |> ignore
+            Directory.CreateDirectory(rawDir) |> ignore
+            Directory.CreateDirectory(unsupportedDir) |> ignore
+
+            let facts = Probe.probe ()
+            let profile = Compositor.hostProfileFromFacts facts
+            let expectedProfile = flagValue "--profile" rest |> Option.defaultValue Compositor.feature156AcceptedProfileId
+            let runId = "feature156-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss")
+            let renderer = profile.Renderer |> Option.defaultValue "unknown"
+            let display = facts.Display |> Option.defaultValue "none"
+            let refreshHz = facts.RefreshHz |> Option.map string |> Option.defaultValue "unknown"
+            let hostFacts =
+                [ $"profile={profile.ProfileId}"
+                  $"backend={profile.DisplayEnvironment}"
+                  $"renderer={renderer}"
+                  $"display={display}"
+                  $"gl-direct={facts.GlDirect.ToString().ToLowerInvariant()}"
+                  $"refresh-hz={refreshHz}" ]
+
+            let failClosedReports (verdict: Compositor.Feature156ScenarioVerdict) reason : Compositor.Feature156ScenarioReport list =
+                scenarioSet
+                |> List.map (fun scenario ->
+                    { ScenarioId = scenario
+                      FullRedraw = None
+                      DamageScoped = None
+                      WarmupCount = warmup
+                      MeasuredRepetitions = repetitions
+                      NoiseBandMs = 0.0
+                      Verdict = verdict
+                      ConfidenceDecision = Compositor.feature156VerdictToken verdict
+                      ArtifactPaths = [ Path.Combine("scenarios", Compositor.feature156ScenarioFileName scenario).Replace('\\', '/') ]
+                      RejectionReasons = [ reason ]
+                      ProofOverheadIncluded = false })
+
+            let reports, diagnostics =
+                match facts.EffectiveBackend, facts.GlRenderer, facts.GlDirect, profile.ProfileId = expectedProfile with
+                | NoDisplay, _, _, _ ->
+                    let reason = "missing display"
+                    File.WriteAllText(Path.Combine(unsupportedDir, "README.md"), Compositor.renderFeature156UnsupportedHostReport reason)
+                    failClosedReports Compositor.Feature156EnvironmentLimited reason, [ reason; "accepted performance artifacts=0" ]
+                | _, None, _, _ ->
+                    let reason = "missing GL renderer facts"
+                    File.WriteAllText(Path.Combine(unsupportedDir, "README.md"), Compositor.renderFeature156UnsupportedHostReport reason)
+                    failClosedReports Compositor.Feature156EnvironmentLimited reason, [ reason; "accepted performance artifacts=0" ]
+                | _, _, false, _ ->
+                    let reason = "OpenGL direct rendering is unavailable"
+                    File.WriteAllText(Path.Combine(unsupportedDir, "README.md"), Compositor.renderFeature156UnsupportedHostReport reason)
+                    failClosedReports Compositor.Feature156EnvironmentLimited reason, [ reason; "accepted performance artifacts=0" ]
+                | _, _, _, false ->
+                    let reason = $"profile mismatch: expected={expectedProfile} actual={profile.ProfileId}"
+                    failClosedReports Compositor.Feature156Rejected reason, [ reason ]
+                | _ ->
+                    let reports : Compositor.Feature156ScenarioReport list =
+                        scenarioSet
+                        |> List.map (fun scenario ->
+                            let fullRaw, full = runFeature156Path rawDir scenario "full-redraw" warmup repetitions runId profile.ProfileId hostFacts
+                            let damageRaw, damage = runFeature156Path rawDir scenario "damage-scoped" warmup repetitions runId profile.ProfileId hostFacts
+                            let decision = Perf.evaluateScenario repetitions full damage
+                            let verdict = feature156VerdictFromPerf decision.Verdict
+                            let scenarioPath = Path.Combine("scenarios", Compositor.feature156ScenarioFileName scenario).Replace('\\', '/')
+                            { ScenarioId = scenario
+                              FullRedraw = full |> Option.map feature156PathDistribution
+                              DamageScoped = damage |> Option.map feature156PathDistribution
+                              WarmupCount = warmup
+                              MeasuredRepetitions = repetitions
+                              NoiseBandMs = decision.NoiseBandMs
+                              Verdict = verdict
+                              ConfidenceDecision = decision.ConfidenceDecision
+                              ArtifactPaths = [ scenarioPath; fullRaw; damageRaw ]
+                              RejectionReasons = decision.Reasons
+                              ProofOverheadIncluded = false })
+
+                    reports, [ "same-profile timing measurement completed"; "shipped performance claim remains performance-not-accepted" ]
+
+            for report in reports do
+                let path = Path.Combine(scenariosDir, Compositor.feature156ScenarioFileName report.ScenarioId)
+                File.WriteAllText(path, Compositor.renderFeature156ScenarioReport report)
+
+            let summary = feature156SummaryFromReports runId profile warmup repetitions reports diagnostics
+            File.WriteAllText(Path.Combine(out, "summary.md"), Compositor.renderFeature156TimingSummary summary)
+
+            if rest |> List.contains "--json" then
+                let json =
+                    [ "{"
+                      $"  \"runId\": \"{summary.RunId}\","
+                      $"  \"profileId\": \"{profile.ProfileId}\","
+                      $"  \"policyId\": \"{summary.PolicyId}\","
+                      $"  \"overallVerdict\": \"{Compositor.feature156VerdictToken summary.OverallVerdict}\","
+                      $"  \"shippedPerformanceClaim\": \"{summary.ShippedPerformanceClaim}\""
+                      "}" ]
+                    |> String.concat Environment.NewLine
+
+                File.WriteAllText(Path.Combine(out, "summary.json"), json + Environment.NewLine)
+
+            printfn "%s" (Path.Combine(out, "summary.md"))
+            0
+
 let private loadFeature155AttemptProofs (readinessRoot: string) (profile: Compositor.HostProfile) =
     let attemptsRoot = Path.Combine(readinessRoot, "live-proof", "attempts")
     if not (Directory.Exists attemptsRoot) then
@@ -736,7 +1038,7 @@ let private loadFeature155AttemptProofs (readinessRoot: string) (profile: Compos
                 Some loadedProof)
         |> Seq.toList
 
-let private runCompositorReadinessCmd (rest: string list) =
+let private runLegacyCompositorReadinessCmd (rest: string list) =
     let facts = Probe.probe ()
     let out =
         match flagValue "--out" rest with
@@ -844,6 +1146,82 @@ let private runCompositorReadinessCmd (rest: string list) =
     printfn "%s" summary
     0
 
+let private runFeature156ReadinessCmd (rest: string list) =
+    let facts = Probe.probe ()
+    let profile = Compositor.hostProfileFromFacts facts
+    let out =
+        match flagValue "--out" rest with
+        | Some d -> d
+        | None -> Compositor.feature156ReadinessDirectory
+
+    let timingDir = Path.Combine(out, "timing")
+    let scenariosDir = Path.Combine(timingDir, "scenarios")
+    let rawDir = Path.Combine(timingDir, "raw")
+    let unsupportedDir = Path.Combine(timingDir, "unsupported")
+    let fsiDir = Path.Combine(out, "fsi")
+    Directory.CreateDirectory(scenariosDir) |> ignore
+    Directory.CreateDirectory(rawDir) |> ignore
+    Directory.CreateDirectory(unsupportedDir) |> ignore
+    Directory.CreateDirectory(fsiDir) |> ignore
+
+    let reports : Compositor.Feature156ScenarioReport list =
+        Compositor.feature156RequiredScenarioIds
+        |> List.map (fun scenario ->
+            { ScenarioId = scenario
+              FullRedraw = None
+              DamageScoped = None
+              WarmupCount = 3
+              MeasuredRepetitions = 5
+              NoiseBandMs = 0.0
+              Verdict = Compositor.Feature156Incomplete
+              ConfidenceDecision = "incomplete"
+              ArtifactPaths = [ Path.Combine("timing", "scenarios", Compositor.feature156ScenarioFileName scenario).Replace('\\', '/') ]
+              RejectionReasons = [ "readiness command did not collect timing samples in this invocation" ]
+              ProofOverheadIncluded = false })
+
+    let summary =
+        feature156SummaryFromReports
+            ("feature156-readiness-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss"))
+            profile
+            3
+            5
+            reports
+            [ "readiness package assembled"; "performance-not-accepted preserved" ]
+
+    let timingSummaryPath = Path.Combine(timingDir, "summary.md")
+    let validationSummary =
+        match feature156ExistingTimingVerdict timingSummaryPath with
+        | Some verdict ->
+            { summary with
+                OverallVerdict = verdict
+                Diagnostics = summary.Diagnostics @ [ "readiness package reflected existing timing summary verdict" ] }
+        | None -> summary
+
+    if not (File.Exists timingSummaryPath) then
+        File.WriteAllText(timingSummaryPath, Compositor.renderFeature156TimingSummary summary)
+
+    for report in reports do
+        let path = Path.Combine(scenariosDir, Compositor.feature156ScenarioFileName report.ScenarioId)
+        if not (File.Exists path) then
+            File.WriteAllText(path, Compositor.renderFeature156ScenarioReport report)
+
+    let unsupportedPath = Path.Combine(unsupportedDir, "README.md")
+    if not (File.Exists unsupportedPath) then
+        File.WriteAllText(unsupportedPath, Compositor.renderFeature156UnsupportedHostReport "not run in this readiness invocation")
+
+    File.WriteAllText(Path.Combine(out, "compatibility-ledger.md"), Compositor.renderFeature156CompatibilityLedger ())
+    File.WriteAllText(Path.Combine(out, "package-validation.md"), Compositor.renderFeature156PackageValidation [ "`compositor-readiness --feature 156`: package assembled." ])
+    File.WriteAllText(Path.Combine(out, "regression-validation.md"), Compositor.renderFeature156RegressionValidation [ "`compositor-readiness --feature 156`: package assembled." ])
+    File.WriteAllText(Path.Combine(out, "validation-summary.md"), Compositor.renderFeature156ValidationSummary validationSummary)
+    printfn "%s" (Path.Combine(out, "validation-summary.md"))
+    0
+
+let private runCompositorReadinessCmd (rest: string list) =
+    if isFeature156 rest then
+        runFeature156ReadinessCmd rest
+    else
+        runLegacyCompositorReadinessCmd rest
+
 [<EntryPoint>]
 let main argv =
     match List.ofArray argv with
@@ -865,6 +1243,7 @@ let main argv =
     | "compositor-reuse" :: rest -> runCompositorReuseCmd rest
     | "compositor-snapshots" :: rest -> runCompositorSnapshotsCmd rest
     | "compositor-timing" :: rest -> runCompositorTimingCmd rest
+    | "compositor-performance" :: rest -> runCompositorPerformanceCmd rest
     | "compositor-readiness" :: rest -> runCompositorReadinessCmd rest
     | "input" :: rest ->
         let known () = Input.scripts |> Map.toList |> List.map fst |> String.concat ", "
@@ -896,7 +1275,7 @@ let main argv =
                 | RunStatus.Failed -> 1
     | []
     | "--help" :: _ ->
-        printfn "usage: <probe|offscreen|live-x11|overlay-visual-proof|render-anywhere-reference|render-anywhere-browser-feasibility|compositor-present-proof|compositor-live-proof|compositor-parity|compositor-perf|compositor-reuse|compositor-snapshots|compositor-timing|compositor-readiness|perf|input> [--out <dir>] [--json]"
+        printfn "usage: <probe|offscreen|live-x11|overlay-visual-proof|render-anywhere-reference|render-anywhere-browser-feasibility|compositor-present-proof|compositor-live-proof|compositor-parity|compositor-perf|compositor-reuse|compositor-snapshots|compositor-timing|compositor-performance|compositor-readiness|perf|input> [--out <dir>] [--json]"
         0
     | other ->
         eprintfn "unknown subcommand: %s" (String.concat " " other)

@@ -1,0 +1,10 @@
+Feature 156 policy: same-profile-live-threshold-v2
+Accepted profile: probe-08a47c01
+Skia timing path: damage-scoped
+Overhead verdict: isolated
+Helper verdict: noisy
+Timing verdict: noisy
+Confidence: inside-noise-band
+Noise band ms: 0.680
+Shipped performance claim: performance-not-accepted
+FSI transcript PASS

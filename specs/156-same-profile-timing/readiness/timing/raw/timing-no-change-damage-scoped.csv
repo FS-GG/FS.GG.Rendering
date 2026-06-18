@@ -1,0 +1,6 @@
+sample-index,scenario-id,path,run-id,host-profile-id,duration-ms
+1,timing/no-change,damage-scoped,feature156-20260618130404,probe-08a47c01,13.187
+2,timing/no-change,damage-scoped,feature156-20260618130404,probe-08a47c01,13.179
+3,timing/no-change,damage-scoped,feature156-20260618130404,probe-08a47c01,13.063
+4,timing/no-change,damage-scoped,feature156-20260618130404,probe-08a47c01,13.363
+5,timing/no-change,damage-scoped,feature156-20260618130404,probe-08a47c01,12.772

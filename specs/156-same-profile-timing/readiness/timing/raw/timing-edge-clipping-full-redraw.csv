@@ -1,0 +1,6 @@
+sample-index,scenario-id,path,run-id,host-profile-id,duration-ms
+1,timing/edge-clipping,full-redraw,feature156-20260618130404,probe-08a47c01,12.669
+2,timing/edge-clipping,full-redraw,feature156-20260618130404,probe-08a47c01,12.734
+3,timing/edge-clipping,full-redraw,feature156-20260618130404,probe-08a47c01,12.85
+4,timing/edge-clipping,full-redraw,feature156-20260618130404,probe-08a47c01,12.668
+5,timing/edge-clipping,full-redraw,feature156-20260618130404,probe-08a47c01,14
