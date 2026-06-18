@@ -1,0 +1,3 @@
+FSI transcript PASS
+
+Feature154 proof-set authoring covered CompositorProof.LiveProofAttempt, CompositorProof.evaluateProofSet, CompositorProof.ProofSetReadiness, and CompositorReadiness.validate/status helpers.

@@ -445,12 +445,27 @@ Controls/Package completion output. `./fake.sh` remains absent, so `PackageSurfa
 `PackLocal` Fake targets remain tooling-limited. The post-merge package bump raises source packages
 to `0.1.16-preview.1` and the template package to `0.1.10-preview.1`.
 
-**Remaining steps to remove Feature 153 environment limits.** The interpreter and acceptance
-vocabulary are now in place, but a capable host still needs to produce real sentinel and damage
-readback artifacts. The accepted path should run `compositor-live-proof --feature 153` with
-`--attempt-count 3` on one stable capable-host profile, persist decodable non-blank
-`sentinel-frame.*` and `damage-frame.*` artifacts per attempt, validate freshness/non-synthetic
-quality, and aggregate the selected trio with `CompositorProof.evaluateProofSet`.
+**Feature 154 status (2026-06-18, pre-merge).** Feature 154 implements the P7 proof-acceptance
+closeout package on `154-compositor-proof-acceptance`. It adds Feature154 harness constants,
+renderers, command routing for `compositor-live-proof`, `compositor-parity`, `compositor-timing`,
+and `compositor-readiness`, focused tests across SkiaViewer, Rendering.Harness, Controls, Elmish,
+Testing, and Package suites, FSI transcript coverage, and readiness evidence under
+`specs/154-compositor-proof-acceptance/readiness/`. All 70 tasks are checked. Focused Feature154
+filters pass: `SkiaViewer.Tests` (10), `Rendering.Harness.Tests` (9), `Controls.Tests` (2),
+`Elmish.Tests` (2), `Testing.Tests` (3), and `Package.Tests` (3). Broad
+`dotnet test FS.GG.Rendering.slnx --no-restore` passes locally; the final long-running Controls
+suite reports 876 passed / 1 skipped. Unsupported-host quickstart completes in approximately 0.6s
+with `environment-limited` and zero accepted partial-redraw artifacts. Root `./fake.sh` remains
+absent, so the FAKE `PackageSurfaceCheck` and `PackLocal` targets are tooling-limited here; direct
+`dotnet pack` is handled during the merge/package step.
+
+**Remaining steps to remove Feature 154 environment limits.** The interpreter, acceptance
+vocabulary, readiness package, and validation gates are now in place, but a capable host still
+needs to produce real sentinel and damage readback artifacts. The accepted path should run
+`compositor-live-proof --feature 154` with `--attempt-count 3` on one stable capable-host profile,
+persist decodable non-blank `sentinel-frame.*` and `damage-frame.*` artifacts per attempt, validate
+freshness/non-synthetic quality, and aggregate the selected trio with
+`CompositorProof.evaluateProofSet`.
 
 After the three-run proof set is accepted, the same host profile must run the representative
 damage-scoped parity corpus: full-redraw oracle versus damage-scoped redraw for localized update,
@@ -460,7 +475,7 @@ can unlock partial redraw; unsafe paths continue to full redraw with reviewer-vi
 performance claim is a separate final gate: predeclare threshold/noise policy, measure at least five
 representative live scenarios with at least five comparable repetitions per scenario, and accept,
 reject, or mark the claim inconclusive from same-profile live timing only. `compositor-readiness
---feature 153` should load the proof set, parity, and timing records and emit `accepted` only when
+--feature 154` should load the proof set, parity, and timing records and emit `accepted` only when
 all gates pass. A stable X11/OpenGL or headless-GL lane with working readback and permissions is
 needed for the accepted path; the missing-display path should remain as the unsupported-host
 regression. Restoring a root `fake.sh` wrapper would remove the separate package-target tooling
@@ -508,7 +523,7 @@ Dependency graph: R1a has no dependency; R2 depends on R1a if it changes assembl
 | **P4 — Text** | R7 (HarfBuzz shaping) | Independent; unblocks portable text for R5 | Implemented as Feature 142: measured/drawn shaped glyph evidence path; complex-script fixture coverage; pure fallback intact |
 | **P5 — Interaction** | R4 (overlay state) | Needs R2 portals + R3 anchoring | Implemented and landed through Feature 145: pure overlay coordinator, transient widget metadata, host/runtime dispatch seams, AntShowcase reference date-picker flow, deterministic corpus parity, unsupported-host disclosure, and real current-run overlay visual proof |
 | **P6 — Render-anywhere** | R5 (protocol + server PNG + CanvasKit feasibility) | Needs stable IR (R2) + portable text (R7) | Implemented and landed as Feature 146: deterministic package codec and inspection surface; Skia reference oracle with PNG evidence; package inspection helpers; browser feasibility fallback report; focused/package/build/pack validation passed; squash merge `c0f16ce`; package bump `d62b026` to `0.1.9-preview.1`; full solution remains blocked by unrelated Controls transient-metadata parity failures |
-| **P7 — Compositor** | R6 (present-path proof, promotion, scissor, key split, texture) | Needs R2 modifiers; pure perf, gated by probes | Implemented through the Feature149 evidence/readiness package plus Feature152 and Feature153 live-proof closeout layers: Feature 147 landed as squash merge `85b0b7e`, package bump `2247cb3` to `0.1.10-preview.1`; Feature 148 landed as squash merge `7d708c4`; Feature 149 landed as squash merge `a9a1ef1`; Feature 152 landed as squash merge `8ea61c4`, followed by package bump `61d1ce8` to source packages `0.1.15-preview.1` and template package `0.1.9-preview.1`; Feature 153 landed as squash merge `d7c539c`, followed by source package bump to `0.1.16-preview.1` and template package bump to `0.1.10-preview.1`, adding exact selected-attempt proof-set identity, live-host classification, Feature153 harness routes, focused validation, FSI transcript coverage, and readiness evidence. Current readiness remains `environment-limited` because live sentinel/damage readback has not produced three accepted capable-host artifacts; partial redraw and performance claims remain fallback-gated. |
+| **P7 — Compositor** | R6 (present-path proof, promotion, scissor, key split, texture) | Needs R2 modifiers; pure perf, gated by probes | Implemented through the Feature149 evidence/readiness package plus Feature152, Feature153, and Feature154 live-proof closeout layers: Feature 147 landed as squash merge `85b0b7e`, package bump `2247cb3` to `0.1.10-preview.1`; Feature 148 landed as squash merge `7d708c4`; Feature 149 landed as squash merge `a9a1ef1`; Feature 152 landed as squash merge `8ea61c4`, followed by package bump `61d1ce8` to source packages `0.1.15-preview.1` and template package `0.1.9-preview.1`; Feature 153 landed as squash merge `d7c539c`, followed by source package bump to `0.1.16-preview.1` and template package bump to `0.1.10-preview.1`; Feature 154 is implemented pre-merge with exact proof acceptance, same-profile parity, timing decision, final readiness, compatibility, package, regression, and transcript coverage. Current readiness remains `environment-limited` because live sentinel/damage readback has not produced three accepted capable-host artifacts; partial redraw and performance claims remain fallback-gated. |
 | **P8 — Radical layout** | R3b (intrinsic protocol) | Needs R1b; removes the scrollViewport descendant-walk smell | Accepted through Feature151 on top of Feature150's public protocol: representative corpus breadth, ScrollViewer extent corpus, measured/intrinsic dependency identity, stale-rejection classification, full/incremental parity, broad regression evidence, package validation, and final readiness summary are recorded. P7 live compositor proof remains environment-limited and is not a P8 claim. |
 
 Each phase is independently shippable and Tier-1-disclosed. P0–P3 are the high-leverage core; P4–P8 are capability expansion in any order their deps allow.
@@ -571,4 +586,4 @@ and intrinsic layout.
 
 ---
 
-*End of report. This document chooses the radical options and tracks their delivery status. P0-P6 are implemented and landed through Feature 146 plus package version `0.1.9-preview.1`; P7 has Feature 147's deterministic readiness slice landed on `main` plus package version `0.1.10-preview.1`, Feature 148's focused evidence/readiness layer squash-merged as `7d708c4`, Feature 149 squash-merged as `a9a1ef1` with 68/68 tasks checked, Feature 152 squash-merged as `8ea61c4` with 66/66 tasks checked and packages bumped to `0.1.15-preview.1` / template `0.1.9-preview.1`, and Feature 153 squash-merged as `d7c539c` with 68/68 tasks checked, focused Feature153 filters passing, unsupported-host evidence passing in 1s, broad solution validation recorded as interrupted after partial pass output, and packages bumped to `0.1.16-preview.1` / template `0.1.10-preview.1`. P7 remains environment-limited for live partial-redraw acceptance until three fresh capable-host sentinel/damage readback proofs pass. P8 is accepted through Feature150 plus Feature151: Feature150 shipped the public intrinsic-layout protocol as squash merge `acad00d`, and Feature151 completed the representative corpus, reuse/parity, regression, compatibility, package, and readiness evidence package as squash merge `6f9d606`, with full solution and package validation passing locally.*
+*End of report. This document chooses the radical options and tracks their delivery status. P0-P6 are implemented and landed through Feature 146 plus package version `0.1.9-preview.1`; P7 has Feature 147's deterministic readiness slice landed on `main` plus package version `0.1.10-preview.1`, Feature 148's focused evidence/readiness layer squash-merged as `7d708c4`, Feature 149 squash-merged as `a9a1ef1` with 68/68 tasks checked, Feature 152 squash-merged as `8ea61c4` with 66/66 tasks checked and packages bumped to `0.1.15-preview.1` / template `0.1.9-preview.1`, Feature 153 squash-merged as `d7c539c` with 68/68 tasks checked, focused Feature153 filters passing, unsupported-host evidence passing in 1s, broad solution validation recorded as interrupted after partial pass output, and packages bumped to `0.1.16-preview.1` / template `0.1.10-preview.1`, and Feature 154 implemented pre-merge with 70/70 tasks checked, focused Feature154 filters passing, broad solution validation passing locally, unsupported-host evidence passing in approximately 0.6s, and final readiness still environment-limited. P7 remains environment-limited for live partial-redraw acceptance until three fresh capable-host sentinel/damage readback proofs pass. P8 is accepted through Feature150 plus Feature151: Feature150 shipped the public intrinsic-layout protocol as squash merge `acad00d`, and Feature151 completed the representative corpus, reuse/parity, regression, compatibility, package, and readiness evidence package as squash merge `6f9d606`, with full solution and package validation passing locally.*

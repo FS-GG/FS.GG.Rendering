@@ -10,6 +10,7 @@ module Compositor =
     val feature149Id: string
     val feature152Id: string
     val feature153Id: string
+    val feature154Id: string
 
     val readinessDirectory: string
     val presentProofDirectory: string
@@ -58,6 +59,20 @@ module Compositor =
     val feature153PackageValidationPath: string
     val feature153RegressionValidationPath: string
     val feature153PackageVersion: string
+
+    val feature154ReadinessDirectory: string
+    val feature154LiveProofDirectory: string
+    val feature154LiveProofAttemptsDirectory: string
+    val feature154LiveProofUnsupportedDirectory: string
+    val feature154ParityDirectory: string
+    val feature154TimingDirectory: string
+    val feature154FsiDirectory: string
+    val feature154ProofSetPath: string
+    val feature154CompatibilityLedgerPath: string
+    val feature154ValidationSummaryPath: string
+    val feature154PackageValidationPath: string
+    val feature154RegressionValidationPath: string
+    val feature154PackageVersion: string
 
     type HostProfile =
         { ProfileId: string
@@ -128,6 +143,21 @@ module Compositor =
         | WriteValidationSummary of path: string
         | WriteCompatibilityLedger of path: string
 
+    type Feature154Model =
+        { ProofStatus: string
+          ParityStatus: string
+          TimingStatus: string
+          PublishedArtifacts: string list }
+
+    type Feature154Msg =
+        | ProofEvidenceRecorded of status: string
+        | ParityEvidenceRecorded of status: string
+        | TimingEvidenceRecorded of status: string
+        | ArtifactPublished of path: string
+
+    type Feature154Effect =
+        | WriteFeature154Artifact of path: string
+
     val thresholds: Thresholds
     val snapshotBudget: SnapshotBudget
     val scenarioIds: string list
@@ -143,6 +173,9 @@ module Compositor =
     val feature152TimingTiers: string list
     val feature153ScenarioIds: string list
     val feature153TargetHostProfiles: HostProfile list
+    val feature154ScenarioIds: string list
+    val feature154TargetHostProfiles: HostProfile list
+    val feature154TimingTiers: string list
 
     val hostProfileFromFacts: facts: ProbeFacts -> HostProfile
     val proofVerdictToken: verdict: ProofVerdict -> string
@@ -157,12 +190,15 @@ module Compositor =
 
     val initReadiness: unit -> ReadinessModel * ReadinessEffect list
     val updateReadiness: msg: ReadinessMsg -> model: ReadinessModel -> ReadinessModel * ReadinessEffect list
+    val initFeature154: unit -> Feature154Model * Feature154Effect list
+    val updateFeature154: msg: Feature154Msg -> model: Feature154Model -> Feature154Model * Feature154Effect list
 
     val artifactPath: directory: string -> name: string -> string
     val feature148ArtifactPath: directory: string -> name: string -> string
     val feature149ArtifactPath: directory: string -> name: string -> string
     val feature152ArtifactPath: directory: string -> name: string -> string
     val feature153ArtifactPath: directory: string -> name: string -> string
+    val feature154ArtifactPath: directory: string -> name: string -> string
     val renderPresentProof: proof: PresentProof -> string
     val renderValidationSummary: model: ReadinessModel -> string
     val renderCompatibilityLedger: model: ReadinessModel -> string
@@ -191,3 +227,11 @@ module Compositor =
     val renderFeature153CompatibilityLedger: model: ReadinessModel -> string
     val renderFeature153PackageValidation: unit -> string
     val renderFeature153RegressionValidation: unit -> string
+    val renderFeature154LiveProof: proof: PresentProof -> string
+    val renderFeature154ProofSet: model: ReadinessModel -> string
+    val renderFeature154ParityReport: unit -> string
+    val renderFeature154TimingReport: tier: string -> scenarioCount: int -> repetitions: int -> string
+    val renderFeature154ValidationSummary: model: ReadinessModel -> string
+    val renderFeature154CompatibilityLedger: model: ReadinessModel -> string
+    val renderFeature154PackageValidation: unit -> string
+    val renderFeature154RegressionValidation: unit -> string

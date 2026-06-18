@@ -38,6 +38,9 @@ let feature152TranscriptPath name =
 let feature153TranscriptPath name =
     repositoryPath $"specs/153-compositor-proof-interpreter/readiness/fsi/{name}"
 
+let feature154TranscriptPath name =
+    repositoryPath $"specs/154-compositor-proof-acceptance/readiness/fsi/{name}"
+
 let feature150TranscriptPath name =
     repositoryPath $"specs/150-intrinsic-layout-protocol/readiness/fsi/{name}"
 
@@ -74,6 +77,11 @@ let readFeature152Transcript name =
 let readFeature153Transcript name =
     let path = feature153TranscriptPath name
     Expect.isTrue (File.Exists path) $"Feature153 FSI transcript evidence exists at {path}"
+    File.ReadAllText path
+
+let readFeature154Transcript name =
+    let path = feature154TranscriptPath name
+    Expect.isTrue (File.Exists path) $"Feature154 FSI transcript evidence exists at {path}"
     File.ReadAllText path
 
 let readFeature150Transcript name =
@@ -251,6 +259,31 @@ let fsiTranscriptCoverageTests =
 
             let log = readFeature153Transcript "compositor-proof-interpreter-authoring.log"
             Expect.stringContains log "FSI transcript PASS" "Feature153 transcript log records passing coverage"
+        }
+
+        test "Feature154 transcripts cover proof acceptance and final readiness authoring" {
+            let proof = readFeature154Transcript "compositor-proof-acceptance-authoring.fsx"
+            let readiness = readFeature154Transcript "compositor-readiness-authoring.fsx"
+
+            [ "FS.GG.UI.SkiaViewer"
+              "CompositorProof.LiveProofAttempt"
+              "CompositorProof.evaluateProofSet"
+              "CompositorProof.ProofSetReadiness"
+              "FS.GG.UI.Testing"
+              "CompositorReadiness.validate" ]
+            |> List.iter (fun required -> Expect.stringContains proof required $"Feature154 proof transcript includes {required}")
+
+            [ "FS.GG.UI.Testing"
+              "CompositorReadiness.statusText"
+              "CompositorReadiness.validate"
+              "154-compositor-proof-acceptance" ]
+            |> List.iter (fun required -> Expect.stringContains readiness required $"Feature154 readiness transcript includes {required}")
+
+            [ "compositor-proof-acceptance-authoring.log"
+              "compositor-readiness-authoring.log" ]
+            |> List.iter (fun logName ->
+                let log = readFeature154Transcript logName
+                Expect.stringContains log "FSI transcript PASS" $"{logName} records passing FSI coverage")
         }
 
         test "Feature150 transcript covers intrinsic layout and readiness authoring" {
