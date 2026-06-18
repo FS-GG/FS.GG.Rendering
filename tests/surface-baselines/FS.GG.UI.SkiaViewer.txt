@@ -76,6 +76,10 @@ FS.GG.UI.SkiaViewer.Host.DiagnosticStage
 FS.GG.UI.SkiaViewer.Host.DiagnosticStage+Tags
 FS.GG.UI.SkiaViewer.Host.Diagnostics
 FS.GG.UI.SkiaViewer.Host.GlHost
+FS.GG.UI.SkiaViewer.Host.GlHost+LiveProofHostFacts
+FS.GG.UI.SkiaViewer.Host.GlHost+LiveProofHostReadiness
+FS.GG.UI.SkiaViewer.Host.GlHost+LiveProofHostReadiness+HostError
+FS.GG.UI.SkiaViewer.Host.GlHost+LiveProofHostReadiness+Tags
 FS.GG.UI.SkiaViewer.Host.GlHost+PresentAction
 FS.GG.UI.SkiaViewer.Host.GlHost+PresentAction+Tags
 FS.GG.UI.SkiaViewer.Host.GlHost+ScissorDecision

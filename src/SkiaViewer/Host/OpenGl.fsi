@@ -104,6 +104,27 @@ module GlHost =
         | Scissored of ScissorRect list
         | FullRedraw of reason: string
 
+    /// Feature 153: pure host facts used to classify whether a live sentinel/damage proof can run.
+    type LiveProofHostFacts =
+        { Display: string option
+          WaylandDisplay: string option
+          SessionType: string option
+          Renderer: string option
+          ReadbackAvailable: bool
+          PermissionGranted: bool
+          TimedOut: bool }
+
+    [<RequireQualifiedAccess>]
+    /// Feature 153: live proof host classification before attempting to accept evidence.
+    type LiveProofHostReadiness =
+        | Capable
+        | MissingDisplay
+        | MissingRenderer
+        | ReadbackUnavailable
+        | PermissionDenied
+        | Timeout
+        | HostError of string
+
     /// Public contract function exposed by this FS.GG.UI package. Signature shape preserved
     /// from the former VulkanHost.run so Host/Viewer.fs routes unchanged.
     val run: program: ViewerProgram<'model, 'msg> -> Result<unit, RenderDiagnostic>
@@ -162,3 +183,9 @@ module GlHost =
         frameWidth: int ->
         frameHeight: int ->
             ScissorDecision
+
+    /// Feature 153: classify host facts without opening native resources.
+    val classifyLiveProofHost: facts: LiveProofHostFacts -> LiveProofHostReadiness
+
+    /// Feature 153: build the proof host profile used by live proof attempts.
+    val liveProofHostProfile: facts: LiveProofHostFacts -> CompositorProof.HostProfile

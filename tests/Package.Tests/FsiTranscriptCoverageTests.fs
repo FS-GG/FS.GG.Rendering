@@ -35,6 +35,9 @@ let feature149TranscriptPath name =
 let feature152TranscriptPath name =
     repositoryPath $"specs/152-compositor-live-proof/readiness/fsi/{name}"
 
+let feature153TranscriptPath name =
+    repositoryPath $"specs/153-compositor-proof-interpreter/readiness/fsi/{name}"
+
 let feature150TranscriptPath name =
     repositoryPath $"specs/150-intrinsic-layout-protocol/readiness/fsi/{name}"
 
@@ -66,6 +69,11 @@ let readFeature149Transcript name =
 let readFeature152Transcript name =
     let path = feature152TranscriptPath name
     Expect.isTrue (File.Exists path) $"Feature152 FSI transcript evidence exists at {path}"
+    File.ReadAllText path
+
+let readFeature153Transcript name =
+    let path = feature153TranscriptPath name
+    Expect.isTrue (File.Exists path) $"Feature153 FSI transcript evidence exists at {path}"
     File.ReadAllText path
 
 let readFeature150Transcript name =
@@ -225,6 +233,24 @@ let fsiTranscriptCoverageTests =
 
             let log = readFeature152Transcript "compositor-live-proof-authoring.log"
             Expect.stringContains log "FSI transcript PASS" "Feature152 transcript log records passing coverage"
+        }
+
+        test "Feature153 transcripts cover proof interpreter readiness authoring" {
+            let transcript = readFeature153Transcript "compositor-proof-interpreter-authoring.fsx"
+
+            [ "FS.GG.UI.SkiaViewer"
+              "CompositorProof.AcceptedProofSet"
+              "CompositorProof.evaluateProofSet"
+              "CompositorProof.ProofSetReadiness"
+              "FS.GG.UI.SkiaViewer.Host"
+              "GlHost.LiveProofHostFacts"
+              "Viewer.liveProofInterpreterSupported"
+              "FS.GG.UI.Testing"
+              "CompositorReadiness.validate" ]
+            |> List.iter (fun required -> Expect.stringContains transcript required $"Feature153 transcript includes {required}")
+
+            let log = readFeature153Transcript "compositor-proof-interpreter-authoring.log"
+            Expect.stringContains log "FSI transcript PASS" "Feature153 transcript log records passing coverage"
         }
 
         test "Feature150 transcript covers intrinsic layout and readiness authoring" {

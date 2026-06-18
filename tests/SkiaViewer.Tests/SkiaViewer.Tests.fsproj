@@ -42,6 +42,9 @@
     <Compile Include="Feature152LiveProofTests.fs" />
     <Compile Include="Feature152LiveProofSimulationTests.fs" />
     <Compile Include="Feature152DamageScopedRedrawTests.fs" />
+    <Compile Include="Feature153LiveProofInterpreterTests.fs" />
+    <Compile Include="Feature153LiveProofHostTests.fs" />
+    <Compile Include="Feature153LiveProofSimulationTests.fs" />
     <Compile Include="Feature151RetainedRenderingRegressionTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

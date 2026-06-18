@@ -37,5 +37,8 @@ module Viewer =
         program: ViewerProgram<'model, 'msg> ->
             ViewerProgram<'model, 'msg>
 
+    /// Feature 153: whether the viewer program shape can host live proof effects.
+    val liveProofInterpreterSupported: program: ViewerProgram<'model, 'msg> -> bool
+
     /// Public contract function exposed by this FS.GG.UI package.
     val run: program: ViewerProgram<'model, 'msg> -> Result<unit, RenderDiagnostic>

@@ -13,6 +13,7 @@
     <Compile Include="Feature151ReadinessFixtures.fs" />
     <Compile Include="Feature151ReadinessHelperTests.fs" />
     <Compile Include="Feature152ReadinessHelperTests.fs" />
+    <Compile Include="Feature153ReadinessHelperTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

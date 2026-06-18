@@ -44,6 +44,8 @@ coverage/
 specs/*/readiness/
 !specs/152-compositor-live-proof/readiness/
 !specs/152-compositor-live-proof/readiness/**
+!specs/153-compositor-proof-interpreter/readiness/
+!specs/153-compositor-proof-interpreter/readiness/**
 
 # macOS / Linux cruft
 .DS_Store

@@ -1,0 +1,14 @@
+FSI transcript PASS
+
+Covered:
+
+- FS.GG.UI.SkiaViewer
+- CompositorProof.LiveProofAttempt
+- CompositorProof.AcceptedProofSet
+- CompositorProof.evaluateProofSet
+- CompositorProof.ProofSetReadiness
+- FS.GG.UI.SkiaViewer.Host
+- GlHost.LiveProofHostFacts
+- Viewer.liveProofInterpreterSupported
+- FS.GG.UI.Testing
+- CompositorReadiness.validate

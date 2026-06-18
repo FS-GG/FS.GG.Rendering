@@ -220,6 +220,25 @@ module GlHost =
         | Scissored of ScissorRect list
         | FullRedraw of reason: string
 
+    type LiveProofHostFacts =
+        { Display: string option
+          WaylandDisplay: string option
+          SessionType: string option
+          Renderer: string option
+          ReadbackAvailable: bool
+          PermissionGranted: bool
+          TimedOut: bool }
+
+    [<RequireQualifiedAccess>]
+    type LiveProofHostReadiness =
+        | Capable
+        | MissingDisplay
+        | MissingRenderer
+        | ReadbackUnavailable
+        | PermissionDenied
+        | Timeout
+        | HostError of string
+
     /// The GL/Skia framebuffer state. The render target + `SKSurface` wrap FBO 0 and are
     /// recreated on resize (FR-006), sized from the window framebuffer pixels (high-DPI/Wayland
     /// correct). Recreated, not leaked: the prior surface/target are disposed before re-wrapping.
@@ -338,6 +357,53 @@ module GlHost =
         | CompositorProof.ProofReadiness.HostMismatch -> FullRedraw "host-mismatched present-path proof"
         | CompositorProof.ProofReadiness.Failed reason -> FullRedraw $"failed present-path proof: {reason}"
         | CompositorProof.ProofReadiness.EnvironmentLimited reason -> FullRedraw $"environment-limited present-path proof: {reason}"
+
+    let classifyLiveProofHost facts =
+        if facts.TimedOut then
+            LiveProofHostReadiness.Timeout
+        elif not facts.PermissionGranted then
+            LiveProofHostReadiness.PermissionDenied
+        elif facts.Display.IsNone && facts.WaylandDisplay.IsNone then
+            LiveProofHostReadiness.MissingDisplay
+        elif facts.Renderer |> Option.forall String.IsNullOrWhiteSpace then
+            LiveProofHostReadiness.MissingRenderer
+        elif not facts.ReadbackAvailable then
+            LiveProofHostReadiness.ReadbackUnavailable
+        else
+            LiveProofHostReadiness.Capable
+
+    let private displayEnvironment facts =
+        match facts.SessionType |> Option.map (_.Trim().ToLowerInvariant()) with
+        | Some "x11" -> CompositorProof.HostDisplayEnvironment.X11
+        | Some "wayland" -> CompositorProof.HostDisplayEnvironment.Wayland
+        | _ when facts.Display.IsSome -> CompositorProof.HostDisplayEnvironment.X11
+        | _ when facts.WaylandDisplay.IsSome -> CompositorProof.HostDisplayEnvironment.Wayland
+        | _ -> CompositorProof.HostDisplayEnvironment.MissingDisplay
+
+    let liveProofHostProfile facts : CompositorProof.HostProfile =
+        let environment = displayEnvironment facts
+        let environmentToken =
+            match environment with
+            | CompositorProof.HostDisplayEnvironment.X11 -> "x11"
+            | CompositorProof.HostDisplayEnvironment.Wayland -> "wayland"
+            | CompositorProof.HostDisplayEnvironment.Headless -> "headless"
+            | CompositorProof.HostDisplayEnvironment.MissingDisplay -> "missing-display"
+            | CompositorProof.HostDisplayEnvironment.Unknown -> "unknown"
+
+        let renderer = facts.Renderer |> Option.filter (String.IsNullOrWhiteSpace >> not)
+        let readiness =
+            classifyLiveProofHost facts
+            |> sprintf "%A"
+            |> fun value -> value.ToLowerInvariant()
+
+        { ProfileId = $"feature153-{environmentToken}-{readiness}"
+          Backend = "OpenGL"
+          Renderer = renderer
+          PresentMode = ViewerPresentMode.DirectToSwapchain
+          FramebufferSize = { Width = 640; Height = 480 }
+          Scale = Some 1.0
+          DisplayEnvironment = environment
+          ProofAlgorithmVersion = CompositorProof.proofAlgorithmVersion }
 
     let bind result next =
         match result with

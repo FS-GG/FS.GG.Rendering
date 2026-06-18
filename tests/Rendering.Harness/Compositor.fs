@@ -9,6 +9,7 @@ module Compositor =
     let feature148Id = "148-compositor-live-integration"
     let feature149Id = "149-complete-compositor-p7"
     let feature152Id = "152-compositor-live-proof"
+    let feature153Id = "153-compositor-proof-interpreter"
 
     let readinessDirectory = "specs/147-compositor-damage-redraw/readiness"
     let presentProofDirectory = Path.Combine(readinessDirectory, "present-proof")
@@ -45,6 +46,18 @@ module Compositor =
     let feature152CompatibilityLedgerPath = Path.Combine(feature152ReadinessDirectory, "compatibility-ledger.md")
     let feature152ValidationSummaryPath = Path.Combine(feature152ReadinessDirectory, "validation-summary.md")
     let feature152PackageVersion = "local-harness"
+
+    let feature153ReadinessDirectory = Path.Combine("specs", feature153Id, "readiness")
+    let feature153LiveProofDirectory = Path.Combine(feature153ReadinessDirectory, "live-proof")
+    let feature153LiveProofAttemptsDirectory = Path.Combine(feature153LiveProofDirectory, "attempts")
+    let feature153LiveProofUnsupportedDirectory = Path.Combine(feature153LiveProofDirectory, "unsupported")
+    let feature153FsiDirectory = Path.Combine(feature153ReadinessDirectory, "fsi")
+    let feature153ProofSetPath = Path.Combine(feature153ReadinessDirectory, "proof-set.md")
+    let feature153CompatibilityLedgerPath = Path.Combine(feature153ReadinessDirectory, "compatibility-ledger.md")
+    let feature153ValidationSummaryPath = Path.Combine(feature153ReadinessDirectory, "validation-summary.md")
+    let feature153PackageValidationPath = Path.Combine(feature153ReadinessDirectory, "package-validation.md")
+    let feature153RegressionValidationPath = Path.Combine(feature153ReadinessDirectory, "regression-validation.md")
+    let feature153PackageVersion = "local-harness"
 
     type HostProfile =
         { ProfileId: string
@@ -330,6 +343,34 @@ module Compositor =
 
     let feature152TimingTiers = [ "damage" ]
 
+    let feature153ScenarioIds =
+        [ "proof/live-sentinel-damage-v1"
+          "proof/capable-host-three-run"
+          "proof/unsupported-host-zero-accepted"
+          "proof/readback-limited"
+          "proof/stale"
+          "proof/host-mismatch"
+          "proof/proof-method-mismatch"
+          "proof/missing-artifact"
+          "proof/blank-artifact"
+          "proof/synthetic-only"
+          "proof/selected-trio"
+          "readiness/final-decision"
+          "readiness/compatibility-ledger"
+          "readiness/package-validation"
+          "readiness/regression-validation" ]
+
+    let feature153TargetHostProfiles =
+        feature152TargetHostProfiles
+        @ [ { ProfileId = "feature153-capable-host-candidate"
+              Backend = "OpenGL"
+              Renderer = None
+              PresentMode = "DirectToSwapchain"
+              FramebufferSize = "640x480"
+              Scale = Some 1.0
+              DisplayEnvironment = "x11"
+              ProofAlgorithmVersion = "sentinel-damage-v1" } ]
+
     let private backendToken backend =
         match backend with
         | X11 -> "x11"
@@ -459,6 +500,7 @@ module Compositor =
     let feature148ArtifactPath directory name = Path.Combine(feature148ReadinessDirectory, directory, name)
     let feature149ArtifactPath directory name = Path.Combine(feature149ReadinessDirectory, directory, name)
     let feature152ArtifactPath directory name = Path.Combine(feature152ReadinessDirectory, directory, name)
+    let feature153ArtifactPath directory name = Path.Combine(feature153ReadinessDirectory, directory, name)
 
     let renderPresentProof proof =
         let renderer = proof.HostProfile.Renderer |> Option.defaultValue "unknown"
@@ -1306,4 +1348,183 @@ module Compositor =
               ""
               "- Synthetic simulations are failure-path tests only and cannot accept live proof."
               "- Capable-host timing remains required for any performance claim."
+              "" ]
+
+    let renderFeature153LiveProof proof =
+        let renderer = proof.HostProfile.Renderer |> Option.defaultValue "unknown"
+        let scale = proof.HostProfile.Scale |> Option.map string |> Option.defaultValue "unknown"
+        let diagnostics =
+            match proof.Diagnostics with
+            | [] -> "- none"
+            | xs -> xs |> List.map (sprintf "- %s") |> String.concat "\n"
+
+        String.concat
+            "\n"
+            [ "# Feature 153 Live Proof Interpreter"
+              ""
+              $"Proof: `{proof.ProofId}`"
+              $"Scenario: `{proof.ScenarioId}`"
+              $"Verdict: `{proofVerdictToken proof.Verdict}`"
+              $"Created: `{proof.CreatedAt:O}`"
+              ""
+              "## Host Profile"
+              ""
+              $"- Profile: `{proof.HostProfile.ProfileId}`"
+              $"- Backend: `{proof.HostProfile.Backend}`"
+              $"- Renderer: `{renderer}`"
+              $"- Present mode: `{proof.HostProfile.PresentMode}`"
+              $"- Framebuffer: `{proof.HostProfile.FramebufferSize}`"
+              $"- Scale: `{scale}`"
+              $"- Environment: `{proof.HostProfile.DisplayEnvironment}`"
+              $"- Algorithm: `{proof.HostProfile.ProofAlgorithmVersion}`"
+              $"- Package version: `{feature153PackageVersion}`"
+              ""
+              "## Attempt Evidence"
+              ""
+              "- `attempts/`: capable-host attempt summaries and frame artifacts when the host can capture them."
+              "- `attempts/<attempt-id>/sentinel-frame.png`: sentinel frame artifact."
+              "- `attempts/<attempt-id>/damage-frame.png`: damage-scoped frame artifact."
+              "- `unsupported/`: environment-limited output with zero accepted partial-redraw artifacts."
+              ""
+              "## Acceptance Gate"
+              ""
+              "- Accepted proof requires exactly three selected fresh matching capable-host attempts."
+              "- Missing, stale, blank, synthetic-only, failed, environment-limited, host-mismatched, or proof-method-mismatched evidence fails closed."
+              "- This feature does not enable partial redraw or accept a compositor performance claim."
+              ""
+              "## Evidence Artifacts"
+              ""
+              renderArtifacts proof.EvidenceArtifacts
+              ""
+              "## Diagnostics"
+              ""
+              diagnostics
+              "" ]
+
+    let renderFeature153ProofSet (model: ReadinessModel) =
+        let proofRows =
+            match model.Proofs with
+            | [] -> "| none | fallback-gated | no capable-host attempts are available |"
+            | proofs ->
+                proofs
+                |> List.map (fun proof -> $"| `{proof.ProofId}` | {proofVerdictToken proof.Verdict} | `{proof.HostProfile.ProfileId}` |")
+                |> String.concat "\n"
+
+        String.concat
+            "\n"
+            [ "# Feature 153 Proof-Set Decision"
+              ""
+              "Status: `environment-limited`"
+              "Selected attempts: `0/3`"
+              "Freshness window: `24:00:00`"
+              ""
+              "| Proof | Verdict | Host Profile |"
+              "|-------|---------|--------------|"
+              proofRows
+              ""
+              "## Decision"
+              ""
+              "- The current checkout has no accepted three-run capable-host proof set."
+              "- Unsupported, failed, synthetic, stale, host-mismatched, or proof-method-mismatched attempts cannot be selected."
+              "- Partial redraw remains fallback-gated until this proof set is accepted and later same-profile parity also passes."
+              "" ]
+
+    let renderFeature153ValidationSummary model =
+        let proofRows =
+            match model.Proofs with
+            | [] -> "| none | environment-limited | missing capable-host live proof |"
+            | proofs ->
+                proofs
+                |> List.map (fun proof -> $"| `{proof.ProofId}` | {proofVerdictToken proof.Verdict} | `{proof.HostProfile.ProfileId}` |")
+                |> String.concat "\n"
+
+        String.concat
+            "\n"
+            [ "# Feature 153 Compositor Proof Interpreter Readiness"
+              ""
+              "Status: `environment-limited`"
+              "Proof set: `environment-limited`"
+              "Fallback status: `fallback-gated`"
+              "Performance claim: `not-accepted`"
+              ""
+              "## Live Proof"
+              ""
+              "| Proof | Verdict | Host Profile |"
+              "|-------|---------|--------------|"
+              proofRows
+              ""
+              "## Evidence Links"
+              ""
+              "- Live proof index: `live-proof/README.md`"
+              "- Capable-host attempts: `live-proof/attempts/README.md`"
+              "- Unsupported host: `live-proof/unsupported/README.md`"
+              "- Proof-set decision: `proof-set.md`"
+              "- Compatibility: `compatibility-ledger.md`"
+              "- Package validation: `package-validation.md`"
+              "- Regression validation: `regression-validation.md`"
+              "- FSI authoring: `fsi/compositor-proof-interpreter-authoring.fsx`"
+              ""
+              "## Limitations"
+              ""
+              "- This host is environment-limited for live sentinel/damage readback and records zero accepted partial-redraw artifacts."
+              "- Partial redraw remains fallback-gated until exactly three fresh matching capable-host attempts are accepted and same-profile parity passes."
+              "- No compositor performance claim is accepted until later same-profile live timing evidence passes a declared threshold and noise policy."
+              ""
+              "## Synthetic Disclosure"
+              ""
+              "- Synthetic Feature153 tests cover rejection and environment-limited paths only."
+              "- Synthetic artifacts cannot satisfy accepted proof attempts or proof-set acceptance."
+              "" ]
+
+    let renderFeature153CompatibilityLedger (model: ReadinessModel) =
+        ignore model
+        String.concat
+            "\n"
+            [ "# Feature 153 Compatibility Ledger"
+              ""
+              "## Public API and Diagnostics"
+              ""
+              "- `CompositorProof.AcceptedProofSet` records selected attempt ids and freshness window for exact three-run proof-set review."
+              "- `GlHost.LiveProofHostFacts` and `GlHost.LiveProofHostReadiness` classify capable and unsupported host inputs before accepting evidence."
+              "- `Viewer.liveProofInterpreterSupported` exposes whether a viewer program shape can host live proof effects."
+              "- `FS.GG.UI.Testing.CompositorReadiness` continues to expose consumer-facing readiness validation status vocabulary."
+              ""
+              "## Fallback and Readiness Vocabulary"
+              ""
+              "- `environment-limited`, `fallback-gated`, `failed`, and `missing-evidence` remain non-accepting states."
+              "- Unsupported hosts record zero accepted partial-redraw artifacts."
+              "- Partial redraw remains full-redraw fallback-gated unless proof and later same-profile parity pass."
+              ""
+              "## Migration Guidance"
+              ""
+              "- Consumers should treat Feature 153 as proof-readiness evidence, not as a performance claim."
+              "- Existing hosts continue full redraw unless the readiness summary records accepted proof and parity evidence."
+              ""
+              "## Synthetic Disclosure"
+              ""
+              "- Synthetic tests are named with `Synthetic` and carry `// SYNTHETIC:` comments at use sites."
+              "- Synthetic evidence is rejection-path coverage only."
+              "" ]
+
+    let renderFeature153PackageValidation () =
+        String.concat
+            "\n"
+            [ "# Feature 153 Package Validation"
+              ""
+              "Status: `pending-local-validation`"
+              ""
+              "- SkiaViewer surface baseline is refreshed for selected proof-set ids, host readiness facts, and viewer proof support."
+              "- Testing surface baseline remains compatible with existing `CompositorReadiness` helpers."
+              "- Package FSI transcript coverage is recorded in `fsi/compositor-proof-interpreter-authoring.fsx`."
+              "" ]
+
+    let renderFeature153RegressionValidation () =
+        String.concat
+            "\n"
+            [ "# Feature 153 Regression Validation"
+              ""
+              "Status: `pending-local-validation`"
+              ""
+              "- Focused Feature153 tests must pass for SkiaViewer, Rendering.Harness, Testing, and Package suites."
+              "- Broad solution validation must preserve Feature 152 proof-set behavior and adjacent compositor readiness checks."
               "" ]

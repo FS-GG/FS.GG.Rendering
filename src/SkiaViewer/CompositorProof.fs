@@ -81,6 +81,8 @@ module CompositorProof =
         { ProofSetId: string
           HostProfile: HostProfile
           ProofMethod: string
+          SelectedAttemptIds: string list
+          FreshnessWindow: TimeSpan
           Attempts: LiveProofAttempt list
           AcceptedAt: DateTimeOffset
           Diagnostics: string list }
@@ -261,13 +263,19 @@ module CompositorProof =
 
             match failures with
             | [] ->
+                let selected = attempts |> List.truncate 3
                 let proofSet: AcceptedProofSet =
-                    { ProofSetId = proofSetId active attempts
+                    { ProofSetId = proofSetId active selected
                       HostProfile = active
                       ProofMethod = active.ProofAlgorithmVersion
-                      Attempts = attempts
+                      SelectedAttemptIds = selected |> List.map _.AttemptId
+                      FreshnessWindow = maxAge
+                      Attempts = selected
                       AcceptedAt = now
-                      Diagnostics = [ $"attempt-count={attempts.Length}"; "verdict=accepted" ] }
+                      Diagnostics =
+                        [ $"attempt-count={attempts.Length}"
+                          $"selected-attempt-count={selected.Length}"
+                          "verdict=accepted" ] }
 
                 ProofSetReadiness.Accepted proofSet
             | Choice3Of3 reason :: _ -> ProofSetReadiness.EnvironmentLimited reason
@@ -445,6 +453,7 @@ module CompositorProof =
                   $"Proof set: `{proofSet.ProofSetId}`"
                   $"Host profile: `{proofSet.HostProfile.ProfileId}`"
                   $"Proof method: `{proofSet.ProofMethod}`"
+                  $"Freshness window: `{proofSet.FreshnessWindow}`"
                   $"Accepted at: `{proofSet.AcceptedAt:O}`"
                   ""
                   "## Attempts"

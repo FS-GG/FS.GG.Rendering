@@ -35,6 +35,10 @@ module Viewer =
     let withEffectMapping mapper program =
         { program with EffectMapper = mapper }
 
+    let liveProofInterpreterSupported program =
+        program.Configuration.InitialSize.Width > 0
+        && program.Configuration.InitialSize.Height > 0
+
     let validate configuration =
         if String.IsNullOrWhiteSpace configuration.Title then
             Result.Error(Diagnostics.invalidConfiguration "Viewer title must not be empty.")

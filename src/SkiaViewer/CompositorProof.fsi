@@ -85,6 +85,8 @@ module CompositorProof =
         { ProofSetId: string
           HostProfile: HostProfile
           ProofMethod: string
+          SelectedAttemptIds: string list
+          FreshnessWindow: TimeSpan
           Attempts: LiveProofAttempt list
           AcceptedAt: DateTimeOffset
           Diagnostics: string list }
