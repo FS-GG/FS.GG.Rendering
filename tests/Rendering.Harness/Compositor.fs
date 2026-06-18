@@ -17,6 +17,7 @@ module Compositor =
     let feature156Id = "156-same-profile-timing"
     let feature157Id = "157-no-clear-damage-scissor"
     let feature158Id = "158-separate-proof-timing"
+    let feature159Id = "159-layer-promotion-keys"
 
     let readinessDirectory = "specs/147-compositor-damage-redraw/readiness"
     let presentProofDirectory = Path.Combine(readinessDirectory, "present-proof")
@@ -144,6 +145,26 @@ module Compositor =
     let feature158PerformanceCommand = "compositor-performance --feature 158"
     let feature158ProbeCommand = "compositor-performance --feature 158 --probe-readback"
     let feature158ReadinessCommand = "compositor-readiness --feature 158"
+
+    let feature159ReadinessDirectory = Path.Combine("specs", feature159Id, "readiness")
+    let feature159PromotionDirectory = Path.Combine(feature159ReadinessDirectory, "promotion")
+    let feature159PromotionAttemptsDirectory = Path.Combine(feature159PromotionDirectory, "attempts")
+    let feature159PromotionReuseDirectory = Path.Combine(feature159PromotionDirectory, "reuse")
+    let feature159PromotionDemotionsDirectory = Path.Combine(feature159PromotionDirectory, "demotions")
+    let feature159PromotionFallbacksDirectory = Path.Combine(feature159PromotionDirectory, "fallbacks")
+    let feature159PromotionParityDirectory = Path.Combine(feature159PromotionDirectory, "parity")
+    let feature159PromotionUnsupportedDirectory = Path.Combine(feature159PromotionDirectory, "unsupported")
+    let feature159CountersDirectory = Path.Combine(feature159ReadinessDirectory, "counters")
+    let feature159FsiDirectory = Path.Combine(feature159ReadinessDirectory, "fsi")
+    let feature159CompatibilityLedgerPath = Path.Combine(feature159ReadinessDirectory, "compatibility-ledger.md")
+    let feature159ValidationSummaryPath = Path.Combine(feature159ReadinessDirectory, "validation-summary.md")
+    let feature159PackageValidationPath = Path.Combine(feature159ReadinessDirectory, "package-validation.md")
+    let feature159RegressionValidationPath = Path.Combine(feature159ReadinessDirectory, "regression-validation.md")
+    let feature159PromotionSummaryPath = Path.Combine(feature159PromotionDirectory, "summary.md")
+    let feature159AcceptedProfileId = feature156AcceptedProfileId
+    let feature159PolicyId = "layer-promotion-v1"
+    let feature159PromotionCommand = "compositor-promotion --feature 159"
+    let feature159ReadinessCommand = "compositor-readiness --feature 159"
 
     type HostProfile =
         { ProfileId: string
@@ -467,6 +488,69 @@ module Compositor =
         | Feature158MeasurePath of scenarioId: string * path: string
         | Feature158CaptureProbeReadback of scenarioId: string
         | Feature158WriteArtifact of path: string
+
+    [<RequireQualifiedAccess>]
+    type Feature159ReadinessStatus =
+        | Accepted
+        | NonBeneficial
+        | FallbackOnly
+        | Rejected
+        | EnvironmentLimited
+
+    type Feature159Attempt =
+        { AttemptId: string
+          RunId: string
+          ScenarioId: string
+          HostProfile: HostProfile
+          PolicyId: string
+          PromotionDecision: string
+          ReuseDecision: string
+          ContentIdentity: string
+          PlacementIdentity: string
+          PrimaryReason: string option
+          CounterNetSavedWork: int
+          ParityStatus: string
+          AcceptedReuseArtifacts: int
+          AcceptedPromotionArtifacts: int
+          ArtifactPaths: string list
+          Diagnostics: string list }
+
+    type Feature159Summary =
+        { RunId: string
+          HostProfile: HostProfile
+          PolicyId: string
+          Status: Feature159ReadinessStatus
+          Attempts: Feature159Attempt list
+          UnsupportedHostReason: string option
+          RequiredScenarioCoverage: string list
+          CounterNetSavedWork: int
+          PerformanceClaim: string
+          Diagnostics: string list }
+
+    type Feature159Model =
+        { RunId: string
+          ActiveProfile: HostProfile option
+          PolicyId: string option
+          Attempts: Feature159Attempt list
+          PublishedArtifacts: string list
+          Status: Feature159ReadinessStatus
+          Diagnostics: string list }
+
+    type Feature159Msg =
+        | Feature159HostProfileDetected of HostProfile
+        | Feature159PolicyDeclared of policyId: string
+        | Feature159AttemptRecorded of Feature159Attempt
+        | Feature159RunEnvironmentLimited of reason: string
+        | Feature159SummaryPublished of path: string
+        | Feature159DiagnosticRecorded of string
+
+    type Feature159Effect =
+        | Feature159DetectHostProfile
+        | Feature159DeclarePolicy of policyId: string
+        | Feature159PrepareScenario of scenarioId: string
+        | Feature159EvaluatePromotion of scenarioId: string
+        | Feature159CompareParity of scenarioId: string
+        | Feature159WriteArtifact of path: string
 
     let thresholds =
         { PromotionReductionPercent = 30.0
@@ -887,6 +971,41 @@ module Compositor =
     let feature158TargetHostProfiles =
         feature157TargetHostProfiles
         @ [ { ProfileId = feature158AcceptedProfileId
+              Backend = "OpenGL"
+              Renderer = None
+              PresentMode = "DirectToSwapchain"
+              FramebufferSize = "640x480"
+              Scale = Some 1.0
+              DisplayEnvironment = "x11"
+              ProofAlgorithmVersion = "sentinel-damage-v1" } ]
+
+    let feature159RequiredScenarioIds =
+        [ "promotion/static-retained"
+          "promotion/placement-only-move"
+          "promotion/scroll-shifted"
+          "promotion/nested-retained"
+          "promotion/content-change"
+          "promotion/churn-demotion"
+          "promotion/fallback-safe" ]
+
+    let feature159FallbackScenarioIds =
+        [ "promotion/ambiguous-identity"
+          "promotion/parity-mismatch"
+          "promotion/cross-profile"
+          "promotion/missing-policy"
+          "promotion/unsupported-host" ]
+
+    let feature159ScenarioIds =
+        feature159RequiredScenarioIds
+        @ feature159FallbackScenarioIds
+        @ [ "readiness/validation-summary"
+            "readiness/compatibility-ledger"
+            "readiness/package-validation"
+            "readiness/regression-validation" ]
+
+    let feature159TargetHostProfiles =
+        feature158TargetHostProfiles
+        @ [ { ProfileId = feature159AcceptedProfileId
               Backend = "OpenGL"
               Renderer = None
               PresentMode = "DirectToSwapchain"
@@ -1330,6 +1449,89 @@ module Compositor =
           Feature158WriteArtifact feature158PackageValidationPath
           Feature158WriteArtifact feature158RegressionValidationPath ]
 
+    let feature159StatusToken status =
+        match status with
+        | Feature159ReadinessStatus.Accepted -> "accepted"
+        | Feature159ReadinessStatus.NonBeneficial -> "non-beneficial"
+        | Feature159ReadinessStatus.FallbackOnly -> "fallback-only"
+        | Feature159ReadinessStatus.Rejected -> "rejected"
+        | Feature159ReadinessStatus.EnvironmentLimited -> "environment-limited"
+
+    let feature159ScenarioFileName (scenarioId: string) =
+        scenarioId.Replace("/", "-") + ".md"
+
+    let private feature159StatusFromAttempts (attempts: Feature159Attempt list) (diagnostics: string list) =
+        if diagnostics |> List.exists (fun item -> item.Contains("environment-limited", StringComparison.OrdinalIgnoreCase)) then
+            Feature159ReadinessStatus.EnvironmentLimited
+        else
+            let requiredAttempts =
+                feature159RequiredScenarioIds
+                |> List.choose (fun scenario -> attempts |> List.tryFind (fun attempt -> attempt.ScenarioId = scenario))
+
+            let allRequiredCovered = requiredAttempts.Length = feature159RequiredScenarioIds.Length
+            let acceptedAttempts =
+                attempts
+                |> List.filter (fun attempt ->
+                    attempt.PolicyId = feature159PolicyId
+                    && attempt.ParityStatus = "passed"
+                    && attempt.CounterNetSavedWork > 0
+                    && attempt.AcceptedReuseArtifacts + attempt.AcceptedPromotionArtifacts > 0)
+
+            if allRequiredCovered && acceptedAttempts.Length >= 3 then
+                Feature159ReadinessStatus.Accepted
+            elif attempts |> List.exists (fun attempt -> attempt.PrimaryReason = Some "parity-mismatch" || attempt.PrimaryReason = Some "missing-policy") then
+                Feature159ReadinessStatus.Rejected
+            elif allRequiredCovered && attempts |> List.exists (fun attempt -> attempt.PromotionDecision = "non-beneficial") then
+                Feature159ReadinessStatus.NonBeneficial
+            elif not (List.isEmpty attempts) then
+                Feature159ReadinessStatus.FallbackOnly
+            else
+                Feature159ReadinessStatus.EnvironmentLimited
+
+    let initFeature159 () : Feature159Model * Feature159Effect list =
+        { RunId = "feature159-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss")
+          ActiveProfile = None
+          PolicyId = None
+          Attempts = []
+          PublishedArtifacts = []
+          Status = Feature159ReadinessStatus.EnvironmentLimited
+          Diagnostics = [] },
+        [ Feature159DetectHostProfile
+          Feature159DeclarePolicy feature159PolicyId
+          for scenario in feature159RequiredScenarioIds do
+              Feature159PrepareScenario scenario
+              Feature159EvaluatePromotion scenario
+              Feature159CompareParity scenario
+          Feature159WriteArtifact feature159PromotionSummaryPath
+          Feature159WriteArtifact feature159ValidationSummaryPath ]
+
+    let updateFeature159 (msg: Feature159Msg) (model: Feature159Model) : Feature159Model * Feature159Effect list =
+        let model' =
+            match msg with
+            | Feature159HostProfileDetected profile ->
+                { model with ActiveProfile = Some profile }
+            | Feature159PolicyDeclared policyId ->
+                { model with PolicyId = Some policyId }
+            | Feature159AttemptRecorded attempt ->
+                { model with Attempts = model.Attempts @ [ attempt ] }
+            | Feature159RunEnvironmentLimited reason ->
+                { model with
+                    Status = Feature159ReadinessStatus.EnvironmentLimited
+                    Diagnostics = model.Diagnostics @ [ $"environment-limited: {reason}" ] }
+            | Feature159SummaryPublished path ->
+                { model with PublishedArtifacts = model.PublishedArtifacts @ [ path ] }
+            | Feature159DiagnosticRecorded diagnostic ->
+                { model with Diagnostics = model.Diagnostics @ [ diagnostic ] }
+
+        let status = feature159StatusFromAttempts model'.Attempts model'.Diagnostics
+
+        { model' with Status = status },
+        [ Feature159WriteArtifact feature159PromotionSummaryPath
+          Feature159WriteArtifact feature159ValidationSummaryPath
+          Feature159WriteArtifact feature159CompatibilityLedgerPath
+          Feature159WriteArtifact feature159PackageValidationPath
+          Feature159WriteArtifact feature159RegressionValidationPath ]
+
     let artifactPath directory name = Path.Combine(directory, name)
     let feature148ArtifactPath directory name = Path.Combine(feature148ReadinessDirectory, directory, name)
     let feature149ArtifactPath directory name = Path.Combine(feature149ReadinessDirectory, directory, name)
@@ -1340,6 +1542,7 @@ module Compositor =
     let feature156ArtifactPath directory name = Path.Combine(feature156ReadinessDirectory, directory, name)
     let feature157ArtifactPath directory name = Path.Combine(feature157ReadinessDirectory, directory, name)
     let feature158ArtifactPath directory name = Path.Combine(feature158ReadinessDirectory, directory, name)
+    let feature159ArtifactPath directory name = Path.Combine(feature159ReadinessDirectory, directory, name)
 
     let feature156ScenarioFileName (scenarioId: string) =
         scenarioId.Replace("/", "-") + ".md"
@@ -1352,6 +1555,11 @@ module Compositor =
                 summary.ScenarioReports
                 (summary.Diagnostics
                  @ [ if summary.Status = Feature158ReadinessStatus.EnvironmentLimited then "environment-limited" ])
+
+    let feature159OverallStatus (summary: Feature159Summary) =
+        match summary.UnsupportedHostReason with
+        | Some _ -> Feature159ReadinessStatus.EnvironmentLimited
+        | None -> feature159StatusFromAttempts summary.Attempts summary.Diagnostics
 
     let private feature156FormatMs (value: float) =
         value.ToString("0.###", Globalization.CultureInfo.InvariantCulture)
@@ -3759,4 +3967,258 @@ module Compositor =
               "Elapsed time target: `under-2-minutes`"
               ""
               "Unsupported or unavailable presentation environments cannot contribute to accepted readback-free timing evidence."
+              "" ]
+
+    let renderFeature159AttemptReport (attempt: Feature159Attempt) =
+        let artifacts = renderArtifacts attempt.ArtifactPaths
+        let diagnostics =
+            if List.isEmpty attempt.Diagnostics then "- none" else attempt.Diagnostics |> List.map (sprintf "- %s") |> String.concat "\n"
+        let reason = attempt.PrimaryReason |> Option.defaultValue "none"
+
+        String.concat
+            "\n"
+            [ "# Feature 159 Promotion Attempt"
+              ""
+              $"Attempt: `{attempt.AttemptId}`"
+              $"Run identity: `{attempt.RunId}`"
+              $"Scenario: `{attempt.ScenarioId}`"
+              $"Policy id: `{attempt.PolicyId}`"
+              $"Host profile: `{attempt.HostProfile.ProfileId}`"
+              $"Promotion decision: `{attempt.PromotionDecision}`"
+              $"Reuse decision: `{attempt.ReuseDecision}`"
+              $"Primary reason: `{reason}`"
+              $"Content identity: `{attempt.ContentIdentity}`"
+              $"Placement identity: `{attempt.PlacementIdentity}`"
+              $"Net saved work: `{attempt.CounterNetSavedWork}`"
+              $"Parity status: `{attempt.ParityStatus}`"
+              $"Accepted reuse artifacts: `{attempt.AcceptedReuseArtifacts}`"
+              $"Accepted promotion artifacts: `{attempt.AcceptedPromotionArtifacts}`"
+              ""
+              "## Artifacts"
+              ""
+              artifacts
+              ""
+              "## Diagnostics"
+              ""
+              diagnostics
+              "" ]
+
+    let private feature159AttemptRows (summary: Feature159Summary) =
+        match summary.Attempts with
+        | [] -> "| none | missing | missing | missing | 0 | missing |"
+        | attempts ->
+            attempts
+            |> List.map (fun attempt ->
+                let reason = attempt.PrimaryReason |> Option.defaultValue "none"
+                let artifact =
+                    attempt.ArtifactPaths
+                    |> List.tryFind (fun path -> path.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
+                    |> Option.defaultValue (Path.Combine("attempts", feature159ScenarioFileName attempt.ScenarioId).Replace('\\', '/'))
+                $"| `{attempt.ScenarioId}` | `{attempt.PromotionDecision}` | `{attempt.ReuseDecision}` | `{reason}` | `{attempt.CounterNetSavedWork}` | `{artifact}` |")
+            |> String.concat "\n"
+
+    let renderFeature159PromotionSummary (summary: Feature159Summary) =
+        let status = feature159OverallStatus summary
+        let unsupported = summary.UnsupportedHostReason |> Option.defaultValue "none"
+        let acceptedAttemptCount =
+            summary.Attempts
+            |> List.filter (fun attempt -> attempt.CounterNetSavedWork > 0 && attempt.ParityStatus = "passed")
+            |> List.length
+        let diagnostics =
+            if List.isEmpty summary.Diagnostics then "- none" else summary.Diagnostics |> List.map (sprintf "- %s") |> String.concat "\n"
+
+        String.concat
+            "\n"
+            [ "# Feature 159 Layer Promotion Summary"
+              ""
+              $"Run identity: `{summary.RunId}`"
+              $"Feature 159 status: `{feature159StatusToken status}`"
+              $"Policy id: `{summary.PolicyId}`"
+              $"Accepted profile id: `{feature159AcceptedProfileId}`"
+              $"Measured profile id: `{summary.HostProfile.ProfileId}`"
+              $"Unsupported-host reason: `{unsupported}`"
+              $"Accepted attempts: `{acceptedAttemptCount}`"
+              $"Net saved work: `{summary.CounterNetSavedWork}`"
+              $"Shipped P7 performance claim: `{summary.PerformanceClaim}`"
+              ""
+              "## Scenario Coverage"
+              ""
+              "| Scenario | Promotion | Reuse | Primary reason | Net saved work | Artifact |"
+              "|----------|-----------|-------|----------------|----------------|----------|"
+              feature159AttemptRows summary
+              ""
+              "## Required Scenarios"
+              ""
+              (summary.RequiredScenarioCoverage |> List.map (sprintf "- `%s`") |> String.concat "\n")
+              ""
+              "## Diagnostics"
+              ""
+              diagnostics
+              "" ]
+
+    let renderFeature159CounterReport (summary: Feature159Summary) =
+        let accepted =
+            summary.Attempts
+            |> List.filter (fun attempt -> attempt.CounterNetSavedWork > 0 && attempt.ParityStatus = "passed")
+        let placementOnlyReuse =
+            accepted
+            |> List.filter (fun attempt -> attempt.ReuseDecision = "content-reused-placement-updated")
+            |> List.length
+        let contentRerecording =
+            summary.Attempts
+            |> List.filter (fun attempt -> attempt.ReuseDecision = "content-re-recorded")
+            |> List.length
+        let demotions =
+            summary.Attempts
+            |> List.filter (fun attempt -> attempt.PromotionDecision = "demoted")
+            |> List.length
+        let fallbacks =
+            summary.Attempts
+            |> List.filter (fun attempt -> attempt.ReuseDecision = "fallback-full-redraw")
+            |> List.length
+        let acceptedReuseArtifacts = summary.Attempts |> List.sumBy _.AcceptedReuseArtifacts
+        let acceptedPromotionArtifacts = summary.Attempts |> List.sumBy _.AcceptedPromotionArtifacts
+
+        String.concat
+            "\n"
+            [ "# Feature 159 Counter Evidence"
+              ""
+              $"Avoided/net saved work: `{summary.CounterNetSavedWork}`"
+              $"Placement-only reuse attempts: `{placementOnlyReuse}`"
+              $"Content re-recording attempts: `{contentRerecording}`"
+              $"Demotions: `{demotions}`"
+              $"Fallbacks: `{fallbacks}`"
+              $"Accepted reuse artifacts: `{acceptedReuseArtifacts}`"
+              $"Accepted promotion artifacts: `{acceptedPromotionArtifacts}`"
+              $"Performance claim: `{summary.PerformanceClaim}`"
+              ""
+              "Counters from unsupported, cross-profile, stale, missing-policy, resource-limited, or parity-failing attempts are excluded from accepted Feature 159 status."
+              "" ]
+
+    let renderFeature159CompatibilityLedger () =
+        String.concat
+            "\n"
+            [ "# Feature 159 Compatibility Ledger"
+              ""
+              "Status: `accepted-with-recorded-limitations`"
+              ""
+              "## Public Surface"
+              ""
+              "- `FS.GG.UI.Controls` public package surface remains unchanged; Feature 159 retained-render helpers are internal diagnostics."
+              "- `FS.GG.UI.SkiaViewer` public package surface remains unchanged; split replay diagnostics are internal to the viewer package."
+              "- `FS.GG.UI.Testing` adds package-visible `Feature159Readiness` helper records and status tokens."
+              "- `Rendering.Harness` adds `compositor-promotion --feature 159` and extends `compositor-readiness --feature 159`."
+              ""
+              "## Claim Boundary"
+              ""
+              "- Feature 159 may accept net-positive reuse/promotion counters."
+              "- The shipped P7 performance claim remains `performance-not-accepted` until same-profile timing and host-lane gates also pass."
+              ""
+              "## Surface Evidence"
+              ""
+              "- `readiness/fsi/FS.GG.UI.Controls.txt`"
+              "- `readiness/fsi/FS.GG.UI.SkiaViewer.txt`"
+              "- `readiness/fsi/FS.GG.UI.Testing.txt`"
+              "" ]
+
+    let renderFeature159PackageValidation validationLines =
+        String.concat
+            "\n"
+            [ "# Feature 159 Package Validation"
+              ""
+              "Status: `accepted-with-recorded-limitations`"
+              ""
+              "## Validation Runs"
+              ""
+              if List.isEmpty validationLines then "- pending local validation" else validationLines |> List.map (sprintf "- %s") |> String.concat "\n"
+              ""
+              "## Package Surface"
+              ""
+              "- Controls and SkiaViewer Feature 159 implementation details remain internal."
+              "- Testing package exposes `Feature159Readiness` for generated-product/package validation."
+              "- FSI transcripts cover content/placement identity, promotion command authoring, and readiness helper authoring."
+              "" ]
+
+    let renderFeature159RegressionValidation validationLines =
+        String.concat
+            "\n"
+            [ "# Feature 159 Regression Validation"
+              ""
+              "Status: `accepted-with-recorded-limitations`"
+              ""
+              "## Validation Runs"
+              ""
+              if List.isEmpty validationLines then "- pending local validation" else validationLines |> List.map (sprintf "- %s") |> String.concat "\n"
+              ""
+              "## Preservation"
+              ""
+              "- Feature 155 proof capture remains the correctness gate."
+              "- Feature 157 no-clear damage readiness remains preserved."
+              "- Feature 158 readback-free timing separation remains preserved."
+              "- Unsupported-host output remains fail-closed with zero accepted Feature 159 reuse or promotion artifacts."
+              "- Shipped P7 performance claim remains `performance-not-accepted`."
+              "" ]
+
+    let renderFeature159ValidationSummary (summary: Feature159Summary) =
+        let status = feature159OverallStatus summary
+        let acceptedAttemptCount =
+            summary.Attempts
+            |> List.filter (fun attempt -> attempt.CounterNetSavedWork > 0 && attempt.ParityStatus = "passed")
+            |> List.length
+        String.concat
+            "\n"
+            [ "# Feature 159 Readiness Summary"
+              ""
+              $"Status: `{feature159StatusToken status}`"
+              $"Policy id: `{summary.PolicyId}`"
+              $"Accepted host profile: `{feature159AcceptedProfileId}`"
+              $"Measured host profile: `{summary.HostProfile.ProfileId}`"
+              $"Accepted attempt count: `{acceptedAttemptCount}`"
+              $"Counter net saved work: `{summary.CounterNetSavedWork}`"
+              $"Performance claim: `{summary.PerformanceClaim}`"
+              ""
+              "## Evidence Links"
+              ""
+              "- Promotion summary: `promotion/summary.md`"
+              "- Attempts: `promotion/attempts/`"
+              "- Reuse: `promotion/reuse/README.md`"
+              "- Demotions: `promotion/demotions/`"
+              "- Fallbacks: `promotion/fallbacks/`"
+              "- Parity: `promotion/parity/`"
+              "- Unsupported host: `promotion/unsupported/validation.md`"
+              "- Counters: `counters/promotion.md`"
+              "- Compatibility ledger: `compatibility-ledger.md`"
+              "- Package validation: `package-validation.md`"
+              "- Regression validation: `regression-validation.md`"
+              "- FSI identity authoring: `fsi/content-placement-identity-authoring.fsx`"
+              "- FSI promotion authoring: `fsi/compositor-promotion-authoring.fsx`"
+              "- FSI readiness authoring: `fsi/compositor-readiness-authoring.fsx`"
+              ""
+              "## Reviewer Checklist"
+              ""
+              "- Required scenarios are listed in `promotion/summary.md`."
+              "- Promotion decisions use stable tokens: `promoted`, `observing`, `kept`, `demoted`, `rejected`, `bypassed`, `non-beneficial`, `fallback-only`, `environment-limited`."
+              "- Reuse decisions use stable tokens: `content-reused-placement-updated`, `content-recorded`, `content-re-recorded`, `fallback-full-redraw`, `reuse-rejected`, `environment-limited`."
+              "- Unsupported-host evidence records accepted reuse artifacts `0` and accepted promotion artifacts `0`."
+              "- Synthetic fixtures are limited to rejection/helper tests and include `SYNTHETIC` comments in test sources."
+              "- `performance-not-accepted` remains the shipped compositor performance claim."
+              ""
+              "## Decision"
+              ""
+              "- Feature 159 accepts only same-profile, parity-passing, net-positive promotion/reuse counters."
+              "- Missing, stale, ambiguous, cross-profile, resource-limited, unsupported, or parity-failing evidence fails closed."
+              "" ]
+
+    let renderFeature159UnsupportedHostReport (reason: string) =
+        String.concat
+            "\n"
+            [ "# Feature 159 Unsupported Host Promotion"
+              ""
+              "Status: `environment-limited`"
+              "Accepted Feature 159 reuse artifacts: `0`"
+              "Accepted Feature 159 promotion artifacts: `0`"
+              $"Reason: `{reason}`"
+              "Elapsed time target: `under-2-minutes`"
+              ""
+              "Unsupported or unavailable presentation environments cannot contribute to accepted Feature 159 reuse or promotion evidence."
               "" ]

@@ -311,7 +311,17 @@ type internal WorkReductionRecord =
       ReplayMisses: int
       ReplayRecords: int
       ReplaySkippedNodes: int
-      ReplayCacheNativeBytes: int }
+      ReplayCacheNativeBytes: int
+      /// Feature 159: content/placement split-key counters used by promotion readiness.
+      AvoidedContentWork: int
+      PlacementOnlyReuseCount: int
+      ContentRecordCount: int
+      ContentRerecordCount: int
+      PromotionCount: int
+      DemotionCount: int
+      FallbackCount: int
+      PromotionOverhead: int
+      NetSavedWork: int }
 
 /// Feature 147: clipped compositor damage expressed in frame-pixel coordinates.
 type internal CompositorDamageRegion =
@@ -358,6 +368,146 @@ type internal PromotionDecision =
       ExpectedSavedWork: int
       MeasuredOverhead: int
       Tier: CompositorTier }
+
+/// Feature 159: stable primary reason token for non-accepted promotion or reuse evidence.
+[<RequireQualifiedAccess>]
+type internal Feature159Reason =
+    | Instability
+    | LowCost
+    | OverheadExceedsSavedWork
+    | StaleContentIdentity
+    | StalePlacementIdentity
+    | AmbiguousIdentity
+    | CrossProfileEvidence
+    | MissingRetainedContent
+    | ResourceLimited
+    | UnsupportedHost
+    | ParityMismatch
+    | NonBeneficialCounters
+    | RunIdentityMismatch
+    | ScenarioDefinitionMismatch
+    | MissingPolicy
+    | EnvironmentLimited
+
+[<RequireQualifiedAccess>]
+type internal Feature159PromotionStatus =
+    | Promoted
+    | Observing
+    | Kept
+    | Demoted
+    | Rejected
+    | Bypassed
+    | NonBeneficial
+    | FallbackOnly
+    | PromotionEnvironmentLimited
+
+[<RequireQualifiedAccess>]
+type internal Feature159ReuseStatus =
+    | ContentReusedPlacementUpdated
+    | ContentRecorded
+    | ContentRerecorded
+    | FallbackFullRedraw
+    | ReuseRejected
+    | ReuseEnvironmentLimited
+
+[<RequireQualifiedAccess>]
+type internal Feature159RetainedLayerState =
+    | Recorded
+    | Reused
+    | Refreshed
+    | Bypassed
+    | Evicted
+    | Demoted
+    | Invalid
+    | Unavailable
+
+type internal Feature159ContentIdentity =
+    { BoundaryId: string
+      ContentId: uint64
+      LocalContentFingerprint: uint64
+      AlgorithmVersion: string
+      RunId: string
+      ArtifactPath: string option }
+
+type internal Feature159PlacementIdentity =
+    { BoundaryId: string
+      PlacementId: uint64
+      Box: FS.GG.UI.Scene.Rect option
+      ScrollOffsetX: float
+      ScrollOffsetY: float
+      Scale: float
+      Coverage: FS.GG.UI.Scene.Rect list
+      AlgorithmVersion: string }
+
+type internal Feature159ReuseCounters =
+    { AvoidedContentWork: int
+      PlacementOnlyReuseCount: int
+      ContentRecordCount: int
+      ContentRerecordCount: int
+      PromotionCount: int
+      DemotionCount: int
+      FallbackCount: int
+      ReplayHits: int
+      ReplayMisses: int
+      ReplayRecords: int
+      PromotionOverhead: int
+      NetSavedWork: int }
+
+type internal Feature159ReuseDecision =
+    { BoundaryId: string
+      Status: Feature159ReuseStatus
+      PrimaryReason: Feature159Reason option
+      PriorContentIdentity: Feature159ContentIdentity option
+      CurrentContentIdentity: Feature159ContentIdentity option
+      PriorPlacementIdentity: Feature159PlacementIdentity option
+      CurrentPlacementIdentity: Feature159PlacementIdentity option
+      CounterDelta: Feature159ReuseCounters
+      ArtifactPaths: string list }
+
+type internal Feature159PromotionCandidate =
+    { BoundaryId: string
+      ScenarioId: string
+      HostProfileId: string
+      ObservationWindow: int
+      ObservedStabilityFrames: int
+      ExpectedSavedWork: int
+      MeasuredOverhead: int
+      ReductionPercent: float
+      ContentStable: bool
+      ParityPassed: bool
+      ResourceLimited: bool
+      CurrentTier: CompositorTier }
+
+type internal Feature159ParityResult =
+    { ScenarioId: string
+      AttemptId: string
+      Verdict: string
+      OutsideDamageDriftCount: int
+      ArtifactPaths: string list
+      Diagnostics: string list }
+
+type internal Feature159PromotionDecision =
+    { BoundaryId: string
+      Status: Feature159PromotionStatus
+      PrimaryReason: Feature159Reason option
+      ObservedStabilityFrames: int
+      ExpectedSavedWork: int
+      MeasuredOverhead: int
+      ReductionPercent: float
+      TargetTier: CompositorTier
+      Parity: Feature159ParityResult option
+      ArtifactPaths: string list }
+
+type internal Feature159RetainedLayer =
+    { LayerId: string
+      BoundaryId: string
+      ContentIdentity: Feature159ContentIdentity
+      LastPlacementIdentity: Feature159PlacementIdentity
+      HostProfileId: string
+      RunId: string
+      State: Feature159RetainedLayerState
+      ResourceEstimate: int
+      Diagnostics: string list }
 
 type internal SnapshotResourceVerdict =
     | SnapshotReady
@@ -456,6 +606,46 @@ module internal RetainedRender =
         measuredOverhead: int ->
         parityPassed: bool ->
             PromotionDecision
+
+    val internal feature159ReasonToken: reason: Feature159Reason -> string
+    val internal feature159PromotionStatusToken: status: Feature159PromotionStatus -> string
+    val internal feature159ReuseStatusToken: status: Feature159ReuseStatus -> string
+
+    val internal feature159ContentIdentity:
+        boundaryId: string ->
+        runId: string ->
+        localContentFingerprint: uint64 ->
+        artifactPath: string option ->
+            Feature159ContentIdentity
+
+    val internal feature159PlacementIdentity:
+        boundaryId: string ->
+        box: FS.GG.UI.Scene.Rect option ->
+        scrollOffsetX: float ->
+        scrollOffsetY: float ->
+        scale: float ->
+        coverage: FS.GG.UI.Scene.Rect list ->
+            Feature159PlacementIdentity
+
+    val internal feature159ClassifyReuse:
+        priorContent: Feature159ContentIdentity option ->
+        currentContent: Feature159ContentIdentity ->
+        priorPlacement: Feature159PlacementIdentity option ->
+        currentPlacement: Feature159PlacementIdentity ->
+        retainedResident: bool ->
+        sameProfile: bool ->
+        parityPassed: bool ->
+        resourceLimited: bool ->
+            Feature159ReuseDecision
+
+    val internal feature159EvaluatePromotion:
+        candidate: Feature159PromotionCandidate ->
+        parity: Feature159ParityResult option ->
+            Feature159PromotionDecision
+
+    val internal feature159CountersFromWork:
+        work: WorkReductionRecord ->
+            Feature159ReuseCounters
 
     /// Feature 147: snapshot tier verdict for host support, byte budget, and measured benefit.
     val internal snapshotVerdict:

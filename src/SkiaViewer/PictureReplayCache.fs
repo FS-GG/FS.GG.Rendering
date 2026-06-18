@@ -36,7 +36,85 @@ module internal PictureReplayCache =
         member val Records = 0 with get, set
         member val SkippedNodes = 0 with get, set
 
+    type internal SplitReplayFallbackReason =
+        | MissingResidentPicture
+        | ChangedRunOrProfile
+        | DisabledReplay
+        | ResourceLimitedRetention
+        | ParityMismatch
+
+    type internal SplitReplayRequest =
+        { ContentCacheId: uint64
+          ContentFingerprint: uint64
+          PlacementFingerprint: uint64
+          RunProfileMatches: bool
+          RetainedResident: bool
+          ResourceLimited: bool
+          ParityPassed: bool
+          ReplayEnabled: bool }
+
+    type internal SplitReplayDecision =
+        { Status: string
+          FallbackReason: SplitReplayFallbackReason option
+          ContentKey: uint64
+          PlacementOnlyChange: bool
+          RecordRequired: bool }
+
     let create (enabled: bool) = Cache(enabled)
+
+    let classifySplitReplay previous current =
+        let contentMatches =
+            previous
+            |> Option.exists (fun prior ->
+                prior.ContentCacheId = current.ContentCacheId
+                && prior.ContentFingerprint = current.ContentFingerprint)
+
+        let placementOnlyChange =
+            contentMatches
+            && previous |> Option.exists (fun prior -> prior.PlacementFingerprint <> current.PlacementFingerprint)
+
+        if not current.ReplayEnabled then
+            { Status = "fallback-full-redraw"
+              FallbackReason = Some DisabledReplay
+              ContentKey = current.ContentCacheId
+              PlacementOnlyChange = placementOnlyChange
+              RecordRequired = false }
+        elif not current.RunProfileMatches then
+            { Status = "reuse-rejected"
+              FallbackReason = Some ChangedRunOrProfile
+              ContentKey = current.ContentCacheId
+              PlacementOnlyChange = placementOnlyChange
+              RecordRequired = false }
+        elif current.ResourceLimited then
+            { Status = "fallback-full-redraw"
+              FallbackReason = Some ResourceLimitedRetention
+              ContentKey = current.ContentCacheId
+              PlacementOnlyChange = placementOnlyChange
+              RecordRequired = false }
+        elif not current.ParityPassed then
+            { Status = "reuse-rejected"
+              FallbackReason = Some ParityMismatch
+              ContentKey = current.ContentCacheId
+              PlacementOnlyChange = placementOnlyChange
+              RecordRequired = false }
+        elif not current.RetainedResident then
+            { Status = "fallback-full-redraw"
+              FallbackReason = Some MissingResidentPicture
+              ContentKey = current.ContentCacheId
+              PlacementOnlyChange = placementOnlyChange
+              RecordRequired = false }
+        elif contentMatches then
+            { Status = "content-reused-placement-updated"
+              FallbackReason = None
+              ContentKey = current.ContentCacheId
+              PlacementOnlyChange = placementOnlyChange
+              RecordRequired = false }
+        else
+            { Status = "content-re-recorded"
+              FallbackReason = None
+              ContentKey = current.ContentCacheId
+              PlacementOnlyChange = false
+              RecordRequired = true }
 
     // Painted-node count of a scene — `Scene.describe` sees through wrappers, matching the RetainedRender
     // skipped-node model.

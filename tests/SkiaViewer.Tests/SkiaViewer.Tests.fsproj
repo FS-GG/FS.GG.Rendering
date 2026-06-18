@@ -53,6 +53,7 @@
     <Compile Include="Feature155NativeCaptureTests.fs" />
     <Compile Include="Feature156CompositorTimingTests.fs" />
     <Compile Include="Feature157NoClearDamageTests.fs" />
+    <Compile Include="Feature159ReplayReuseTests.fs" />
     <Compile Include="Feature151RetainedRenderingRegressionTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

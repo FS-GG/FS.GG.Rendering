@@ -136,6 +136,9 @@
     <Compile Include="Feature149ReuseDecisionTests.fs" />
     <Compile Include="Feature152DamagePlanTests.fs" />
     <Compile Include="Feature154DamageParityPlanTests.fs" />
+    <Compile Include="Feature159IdentitySplitTests.fs" />
+    <Compile Include="Feature159PromotionDecisionTests.fs" />
+    <Compile Include="Feature159ReuseCounterTests.fs" />
     <Compile Include="Feature150ScrollFixtures.fs" />
     <Compile Include="Feature150ScrollViewerExtentTests.fs" />
     <Compile Include="Feature150LayoutDiagnosticsTests.fs" />

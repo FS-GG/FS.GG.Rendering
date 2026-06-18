@@ -25,6 +25,7 @@
     <Compile Include="Feature156CompatibilityTests.fs" />
     <Compile Include="Feature157CompatibilityTests.fs" />
     <Compile Include="Feature158CompatibilityTests.fs" />
+    <Compile Include="Feature159CompatibilityTests.fs" />
     <Compile Include="Feature151PackageValidationTests.fs" />
     <Compile Include="Feature128DesignSystemTemplateTests.fs" />
     <Compile Include="Tests.fs" />

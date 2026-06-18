@@ -443,6 +443,44 @@ type CompositorDamageReadinessValidationResult =
       MissingScenarios: string list
       Diagnostics: string list }
 
+type Feature159ReadinessStatus =
+    | Feature159Accepted
+    | Feature159NonBeneficial
+    | Feature159FallbackOnly
+    | Feature159Rejected
+    | Feature159EnvironmentLimited
+
+type Feature159ScenarioEvidence =
+    { ScenarioId: string
+      Status: Feature159ReadinessStatus
+      PromotionDecision: string
+      ReuseDecision: string
+      AcceptedAttemptCount: int
+      CounterNetSavedWork: int
+      ParityPassed: bool
+      ArtifactPaths: string list
+      PrimaryReason: string option }
+
+type Feature159ReadinessCheck =
+    { Feature: string
+      RequiredScenarioIds: string list
+      Scenarios: Feature159ScenarioEvidence list
+      AcceptedAttemptCount: int
+      UnsupportedHostStatus: Feature159ReadinessStatus
+      AcceptedReuseArtifacts: int
+      AcceptedPromotionArtifacts: int
+      CompatibilityAccepted: bool
+      PackageAccepted: bool
+      RegressionAccepted: bool
+      PerformanceClaim: string
+      Limitations: string list }
+
+type Feature159ReadinessValidationResult =
+    { Accepted: bool
+      Status: Feature159ReadinessStatus
+      MissingScenarios: string list
+      Diagnostics: string list }
+
 module GeneratedProductAssertions =
     let summarize expectation =
         let packages =
@@ -1836,6 +1874,112 @@ module CompositorDamageReadiness =
                 CompositorDamageFallbackOnly
 
         { Accepted = status = CompositorDamageAccepted && diagnostics.IsEmpty
+          Status = status
+          MissingScenarios = missingScenarios
+          Diagnostics = diagnostics }
+
+module Feature159Readiness =
+    let statusText status =
+        match status with
+        | Feature159Accepted -> "accepted"
+        | Feature159NonBeneficial -> "non-beneficial"
+        | Feature159FallbackOnly -> "fallback-only"
+        | Feature159Rejected -> "rejected"
+        | Feature159EnvironmentLimited -> "environment-limited"
+
+    let private statusBlocksAcceptance status =
+        match status with
+        | Feature159Accepted -> false
+        | _ -> true
+
+    let validate (check: Feature159ReadinessCheck) : Feature159ReadinessValidationResult =
+        let missingScenarios =
+            check.RequiredScenarioIds
+            |> List.filter (fun scenario ->
+                check.Scenarios |> List.exists (fun candidate -> candidate.ScenarioId = scenario) |> not)
+
+        let requiredScenarioResults =
+            check.RequiredScenarioIds
+            |> List.choose (fun scenario ->
+                check.Scenarios |> List.tryFind (fun candidate -> candidate.ScenarioId = scenario))
+
+        let missingArtifacts =
+            requiredScenarioResults
+            |> List.choose (fun scenario ->
+                if List.isEmpty scenario.ArtifactPaths then Some scenario.ScenarioId else None)
+
+        let scenarioFailures =
+            requiredScenarioResults
+            |> List.choose (fun scenario ->
+                if statusBlocksAcceptance scenario.Status then
+                    Some $"{scenario.ScenarioId}:{statusText scenario.Status}"
+                else
+                    None)
+
+        let fallbackOnly =
+            requiredScenarioResults.Length = check.RequiredScenarioIds.Length
+            && requiredScenarioResults |> List.forall (fun scenario -> scenario.Status = Feature159FallbackOnly)
+
+        let environmentLimited =
+            requiredScenarioResults |> List.exists (fun scenario -> scenario.Status = Feature159EnvironmentLimited)
+
+        let nonBeneficial =
+            requiredScenarioResults.Length = check.RequiredScenarioIds.Length
+            && requiredScenarioResults |> List.exists (fun scenario -> scenario.Status = Feature159NonBeneficial)
+            && requiredScenarioResults |> List.forall (fun scenario -> scenario.Status = Feature159Accepted || scenario.Status = Feature159NonBeneficial)
+
+        let unsupportedArtifactViolation =
+            check.UnsupportedHostStatus = Feature159EnvironmentLimited
+            && (check.AcceptedReuseArtifacts <> 0 || check.AcceptedPromotionArtifacts <> 0)
+
+        let diagnostics =
+            [ if String.IsNullOrWhiteSpace check.Feature then
+                  "Feature 159 readiness check must name the feature"
+              for scenario in missingScenarios do
+                  $"missing required promotion scenario: {scenario}"
+              for scenario in missingArtifacts do
+                  $"missing promotion artifact path: {scenario}"
+              for failure in scenarioFailures do
+                  $"non-accepted promotion scenario: {failure}"
+              if check.AcceptedAttemptCount < 3 && not fallbackOnly && not environmentLimited then
+                  "accepted Feature 159 readiness requires at least three accepted attempts"
+              if requiredScenarioResults |> List.exists (fun scenario -> scenario.Status = Feature159Accepted && not scenario.ParityPassed) then
+                  "accepted Feature 159 scenarios require passing parity"
+              if check.Scenarios |> List.exists (fun scenario -> scenario.Status = Feature159Accepted && scenario.CounterNetSavedWork <= 0) then
+                  "accepted Feature 159 scenarios require positive net saved work"
+              if unsupportedArtifactViolation then
+                  "unsupported-host evidence must contain zero accepted Feature 159 reuse or promotion artifacts"
+              if not check.CompatibilityAccepted then
+                  "compatibility ledger is not accepted"
+              if not check.PackageAccepted then
+                  "package validation is not accepted"
+              if not check.RegressionAccepted then
+                  "regression validation is not accepted"
+              if check.PerformanceClaim <> "performance-not-accepted" then
+                  "Feature 159 cannot accept the shipped P7 performance claim by itself"
+              for limitation in check.Limitations do
+                  if limitation.Contains("blocking", StringComparison.OrdinalIgnoreCase) then
+                      $"blocking Feature 159 readiness limitation: {limitation}" ]
+
+        let status =
+            if environmentLimited || unsupportedArtifactViolation then
+                Feature159EnvironmentLimited
+            elif not missingScenarios.IsEmpty || not missingArtifacts.IsEmpty then
+                Feature159Rejected
+            elif requiredScenarioResults |> List.exists (fun scenario -> scenario.Status = Feature159Rejected) then
+                Feature159Rejected
+            elif fallbackOnly then
+                Feature159FallbackOnly
+            elif nonBeneficial then
+                Feature159NonBeneficial
+            elif diagnostics.IsEmpty
+                 && check.AcceptedAttemptCount >= 3
+                 && requiredScenarioResults |> List.forall (fun scenario -> scenario.Status = Feature159Accepted) then
+                Feature159Accepted
+            else
+                Feature159FallbackOnly
+
+        { Accepted = status = Feature159Accepted && diagnostics.IsEmpty
           Status = status
           MissingScenarios = missingScenarios
           Diagnostics = diagnostics }

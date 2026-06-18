@@ -504,6 +504,48 @@ type CompositorDamageReadinessValidationResult =
       MissingScenarios: string list
       Diagnostics: string list }
 
+/// Feature 159 promotion/reuse readiness status.
+type Feature159ReadinessStatus =
+    | Feature159Accepted
+    | Feature159NonBeneficial
+    | Feature159FallbackOnly
+    | Feature159Rejected
+    | Feature159EnvironmentLimited
+
+/// Feature 159 scenario-level promotion/reuse evidence used by package checks.
+type Feature159ScenarioEvidence =
+    { ScenarioId: string
+      Status: Feature159ReadinessStatus
+      PromotionDecision: string
+      ReuseDecision: string
+      AcceptedAttemptCount: int
+      CounterNetSavedWork: int
+      ParityPassed: bool
+      ArtifactPaths: string list
+      PrimaryReason: string option }
+
+/// Feature 159 package-visible readiness check.
+type Feature159ReadinessCheck =
+    { Feature: string
+      RequiredScenarioIds: string list
+      Scenarios: Feature159ScenarioEvidence list
+      AcceptedAttemptCount: int
+      UnsupportedHostStatus: Feature159ReadinessStatus
+      AcceptedReuseArtifacts: int
+      AcceptedPromotionArtifacts: int
+      CompatibilityAccepted: bool
+      PackageAccepted: bool
+      RegressionAccepted: bool
+      PerformanceClaim: string
+      Limitations: string list }
+
+/// Feature 159 readiness validation result.
+type Feature159ReadinessValidationResult =
+    { Accepted: bool
+      Status: Feature159ReadinessStatus
+      MissingScenarios: string list
+      Diagnostics: string list }
+
 /// Public contract module exposed by this FS.GG.UI package.
 module GeneratedProductAssertions =
     /// Public contract function exposed by this FS.GG.UI package.
@@ -611,3 +653,10 @@ module CompositorDamageReadiness =
     val statusText: status: CompositorDamageReadinessStatus -> string
     /// Feature 157: validate accepted, fallback-only, rejected, and environment-limited damage packages.
     val validate: check: CompositorDamageReadinessCheck -> CompositorDamageReadinessValidationResult
+
+/// Feature 159 promotion/reuse readiness helper.
+module Feature159Readiness =
+    /// Feature 159: stable status token for readiness summaries.
+    val statusText: status: Feature159ReadinessStatus -> string
+    /// Feature 159: validate promotion/reuse readiness packages without accepting broader performance.
+    val validate: check: Feature159ReadinessCheck -> Feature159ReadinessValidationResult

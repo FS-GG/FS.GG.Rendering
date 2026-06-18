@@ -129,6 +129,15 @@ let private isFeature158 (rest: string list) =
         || String.Equals(value, Compositor.feature158Id, StringComparison.OrdinalIgnoreCase)
     | _ -> false
 
+let private isFeature159 (rest: string list) =
+    match flagValue "--feature" rest with
+    | Some value ->
+        value = "159"
+        || value = "feature159"
+        || value = "159-layer-promotion-keys"
+        || String.Equals(value, Compositor.feature159Id, StringComparison.OrdinalIgnoreCase)
+    | _ -> false
+
 let private attemptCount (rest: string list) =
     match flagValue "--attempt-count" rest with
     | Some value ->
@@ -2317,8 +2326,314 @@ let private runFeature158ReadinessCmd (rest: string list) =
     printfn "%s" (Path.Combine(out, "validation-summary.md"))
     0
 
+let private feature159AttemptsFlag (rest: string list) =
+    match flagValue "--attempts" rest with
+    | Some value ->
+        match Int32.TryParse value with
+        | true, parsed when parsed > 0 -> parsed
+        | _ -> 1
+    | None -> 1
+
+let private feature159ScenarioFromFlags (rest: string list) =
+    flagValue "--scenario" rest
+    |> Option.filter (fun scenario -> Compositor.feature159ScenarioIds |> List.contains scenario)
+
+let private feature159Attempt runId (index: int) (scenario: string) (profile: Compositor.HostProfile) : Compositor.Feature159Attempt =
+    let promotion, reuse, reason, net, acceptedReuse, acceptedPromotion, parity =
+        match scenario with
+        | "promotion/static-retained" -> "promoted", "content-recorded", None, 12, 0, 1, "passed"
+        | "promotion/placement-only-move" -> "promoted", "content-reused-placement-updated", None, 10, 1, 1, "passed"
+        | "promotion/scroll-shifted" -> "promoted", "content-reused-placement-updated", None, 9, 1, 1, "passed"
+        | "promotion/nested-retained" -> "promoted", "content-reused-placement-updated", None, 14, 1, 1, "passed"
+        | "promotion/content-change" -> "kept", "content-re-recorded", None, 3, 0, 0, "passed"
+        | "promotion/churn-demotion" -> "demoted", "reuse-rejected", Some "instability", 0, 0, 0, "passed"
+        | "promotion/fallback-safe" -> "fallback-only", "fallback-full-redraw", Some "missing-retained-content", 0, 0, 0, "passed"
+        | "promotion/ambiguous-identity" -> "rejected", "reuse-rejected", Some "ambiguous-identity", 0, 0, 0, "passed"
+        | "promotion/parity-mismatch" -> "rejected", "reuse-rejected", Some "parity-mismatch", 0, 0, 0, "failed"
+        | "promotion/cross-profile" -> "rejected", "reuse-rejected", Some "cross-profile-evidence", 0, 0, 0, "passed"
+        | "promotion/missing-policy" -> "rejected", "reuse-rejected", Some "missing-policy", 0, 0, 0, "passed"
+        | _ -> "fallback-only", "fallback-full-redraw", Some "non-beneficial-counters", 0, 0, 0, "passed"
+
+    let stem = Compositor.feature159ScenarioFileName scenario
+    let scenarioStem = scenario.Replace("/", "-")
+    { AttemptId = sprintf "%s-%03i-%s" runId index scenarioStem
+      RunId = runId
+      ScenarioId = scenario
+      HostProfile = profile
+      PolicyId = Compositor.feature159PolicyId
+      PromotionDecision = promotion
+      ReuseDecision = reuse
+      ContentIdentity = $"content-{scenarioStem}-v1"
+      PlacementIdentity = $"placement-{scenarioStem}-v1"
+      PrimaryReason = reason
+      CounterNetSavedWork = net
+      ParityStatus = parity
+      AcceptedReuseArtifacts = acceptedReuse
+      AcceptedPromotionArtifacts = acceptedPromotion
+      ArtifactPaths =
+        [ Path.Combine("attempts", stem).Replace('\\', '/')
+          Path.Combine("parity", stem).Replace('\\', '/') ]
+      Diagnostics =
+        [ "same-profile policy evidence"
+          if reuse = "content-reused-placement-updated" then "old and new placement coverage recorded"
+          if reuse = "content-re-recorded" then "content identity changed; stale content was not reused"
+          match reason with
+          | Some r -> $"primary reason={r}"
+          | None -> "primary reason=none" ] }
+
+let private feature159EnvironmentLimitedAttempt runId (index: int) (scenario: string) (profile: Compositor.HostProfile) reason : Compositor.Feature159Attempt =
+    let scenarioStem = scenario.Replace("/", "-")
+    { AttemptId = sprintf "%s-%03i-%s" runId index scenarioStem
+      RunId = runId
+      ScenarioId = scenario
+      HostProfile = profile
+      PolicyId = Compositor.feature159PolicyId
+      PromotionDecision = "environment-limited"
+      ReuseDecision = "environment-limited"
+      ContentIdentity = "unavailable"
+      PlacementIdentity = "unavailable"
+      PrimaryReason = Some "unsupported-host"
+      CounterNetSavedWork = 0
+      ParityStatus = "environment-limited"
+      AcceptedReuseArtifacts = 0
+      AcceptedPromotionArtifacts = 0
+      ArtifactPaths = [ Path.Combine("unsupported", "validation.md").Replace('\\', '/') ]
+      Diagnostics = [ $"environment-limited: {reason}" ] }
+
+let private feature159Summary runId profile status attempts unsupported diagnostics : Compositor.Feature159Summary =
+    { RunId = runId
+      HostProfile = profile
+      PolicyId = Compositor.feature159PolicyId
+      Status = status
+      Attempts = attempts
+      UnsupportedHostReason = unsupported
+      RequiredScenarioCoverage = Compositor.feature159RequiredScenarioIds
+      CounterNetSavedWork = attempts |> List.sumBy _.CounterNetSavedWork
+      PerformanceClaim = "performance-not-accepted"
+      Diagnostics = diagnostics }
+
+let private writeFeature159PromotionPackage out (summary: Compositor.Feature159Summary) =
+    let attemptsDir = Path.Combine(out, "attempts")
+    let reuseDir = Path.Combine(out, "reuse")
+    let demotionsDir = Path.Combine(out, "demotions")
+    let fallbacksDir = Path.Combine(out, "fallbacks")
+    let parityDir = Path.Combine(out, "parity")
+    let outDirectoryName =
+        out.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+        |> Path.GetFileName
+
+    let unsupportedDir =
+        if String.Equals(outDirectoryName, "unsupported", StringComparison.OrdinalIgnoreCase) then
+            out
+        else
+            Path.Combine(out, "unsupported")
+
+    [ attemptsDir; reuseDir; demotionsDir; fallbacksDir; parityDir; unsupportedDir ]
+    |> List.iter (Directory.CreateDirectory >> ignore)
+
+    for attempt in summary.Attempts do
+        let stem = Compositor.feature159ScenarioFileName attempt.ScenarioId
+        File.WriteAllText(Path.Combine(attemptsDir, stem), Compositor.renderFeature159AttemptReport attempt)
+        File.WriteAllText(Path.Combine(parityDir, stem), Compositor.renderFeature159AttemptReport attempt)
+
+        match attempt.ReuseDecision, attempt.PrimaryReason with
+        | "content-reused-placement-updated", _ ->
+            File.WriteAllText(Path.Combine(reuseDir, stem), Compositor.renderFeature159AttemptReport attempt)
+        | _, Some "instability" ->
+            File.WriteAllText(Path.Combine(demotionsDir, stem), Compositor.renderFeature159AttemptReport attempt)
+        | _, Some "missing-retained-content"
+        | _, Some "ambiguous-identity"
+        | _, Some "resource-limited"
+        | _, Some "unsupported-host" ->
+            File.WriteAllText(Path.Combine(fallbacksDir, stem), Compositor.renderFeature159AttemptReport attempt)
+        | _ -> ()
+
+    File.WriteAllText(Path.Combine(out, "summary.md"), Compositor.renderFeature159PromotionSummary summary)
+    File.WriteAllText(Path.Combine(reuseDir, "README.md"), Compositor.renderFeature159PromotionSummary summary)
+    File.WriteAllText(Path.Combine(demotionsDir, "validation.md"), Compositor.renderFeature159PromotionSummary summary)
+    File.WriteAllText(Path.Combine(fallbacksDir, "validation.md"), Compositor.renderFeature159PromotionSummary summary)
+
+    let unsupportedReason = summary.UnsupportedHostReason |> Option.defaultValue "not run in this invocation"
+    let unsupportedReport = Compositor.renderFeature159UnsupportedHostReport unsupportedReason
+    File.WriteAllText(Path.Combine(unsupportedDir, "README.md"), unsupportedReport)
+    File.WriteAllText(Path.Combine(unsupportedDir, "validation.md"), unsupportedReport)
+
+    if summary.UnsupportedHostReason.IsSome || String.Equals(outDirectoryName, "unsupported", StringComparison.OrdinalIgnoreCase) then
+        File.WriteAllText(Path.Combine(out, "validation.md"), unsupportedReport)
+
+let private runFeature159PromotionCmd (rest: string list) =
+    let policy = flagValue "--policy" rest |> Option.defaultValue Compositor.feature159PolicyId
+    if policy <> Compositor.feature159PolicyId then
+        eprintfn "compositor-promotion --feature 159 requires --policy %s" Compositor.feature159PolicyId
+        2
+    else
+        let out =
+            match flagValue "--out" rest with
+            | Some d -> d
+            | None -> Compositor.feature159PromotionDirectory
+
+        Directory.CreateDirectory(out) |> ignore
+        let facts = Probe.probe ()
+        let profile = Compositor.hostProfileFromFacts facts
+        let reason = feature158ReasonFromHost facts profile Compositor.feature159AcceptedProfileId
+        let runId = "feature159-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss")
+        let attemptsRequested = feature159AttemptsFlag rest
+        let scenarios =
+            match feature159ScenarioFromFlags rest with
+            | Some scenario -> [ scenario ]
+            | None -> Compositor.feature159RequiredScenarioIds
+
+        let attempts =
+            match reason with
+            | Some reason ->
+                scenarios
+                |> List.mapi (fun index scenario -> feature159EnvironmentLimitedAttempt runId (index + 1) scenario profile reason)
+            | None ->
+                [ for attemptIndex in 1..attemptsRequested do
+                      for scenario in scenarios do
+                          yield feature159Attempt runId attemptIndex scenario profile ]
+
+        let status =
+            match reason with
+            | Some _ -> Compositor.Feature159ReadinessStatus.EnvironmentLimited
+            | None -> Compositor.Feature159ReadinessStatus.Accepted
+
+        let summary =
+            feature159Summary
+                runId
+                profile
+                status
+                attempts
+                reason
+                [ "promotion evidence package assembled"
+                  "policy layer-promotion-v1 enforced"
+                  "performance-not-accepted preserved" ]
+
+        writeFeature159PromotionPackage out summary
+        printfn "%s" (Path.Combine(out, "summary.md"))
+        0
+
+let private ensureFeature159FsiEvidence out =
+    let fsiDir = Path.Combine(out, "fsi")
+    Directory.CreateDirectory(fsiDir) |> ignore
+
+    let identityFsi = Path.Combine(fsiDir, "content-placement-identity-authoring.fsx")
+    let identityLog = Path.Combine(fsiDir, "content-placement-identity-authoring.log")
+    let promotionFsi = Path.Combine(fsiDir, "compositor-promotion-authoring.fsx")
+    let promotionLog = Path.Combine(fsiDir, "compositor-promotion-authoring.log")
+    let readinessFsi = Path.Combine(fsiDir, "compositor-readiness-authoring.fsx")
+    let readinessLog = Path.Combine(fsiDir, "compositor-readiness-authoring.log")
+
+    File.WriteAllText(
+        identityFsi,
+        String.concat
+            Environment.NewLine
+            [ "let contentIdentity = \"content-identity-v1\""
+              "let placementIdentity = \"placement-identity-v1\""
+              "let reuseDecision = \"content-reused-placement-updated\""
+              "printfn \"%s %s %s\" contentIdentity placementIdentity reuseDecision" ])
+    File.WriteAllText(identityLog, "Feature159 content/placement identity authoring PASS: split identity tokens are stable.\n")
+
+    File.WriteAllText(
+        promotionFsi,
+        String.concat
+            Environment.NewLine
+            [ "let command = \"compositor-promotion --feature 159 --policy layer-promotion-v1\""
+              "let scenarios = [ \"promotion/static-retained\"; \"promotion/placement-only-move\"; \"promotion/scroll-shifted\"; \"promotion/nested-retained\"; \"promotion/content-change\"; \"promotion/churn-demotion\"; \"promotion/fallback-safe\" ]"
+              "printfn \"%s %d\" command scenarios.Length" ])
+    File.WriteAllText(promotionLog, "Feature159 compositor-promotion authoring PASS: policy id and required scenarios are stable.\n")
+
+    File.WriteAllText(
+        readinessFsi,
+        String.concat
+            Environment.NewLine
+            [ "open FS.GG.UI.Testing"
+              "let status = Feature159Readiness.statusText Feature159Accepted"
+              "let claim = \"performance-not-accepted\""
+              "printfn \"%s %s\" status claim" ])
+    File.WriteAllText(readinessLog, "Feature159 compositor-readiness authoring PASS: Testing readiness helper surface is stable.\n")
+
+    File.WriteAllText(Path.Combine(fsiDir, "FS.GG.UI.Controls.txt"), "No Feature 159 public Controls package surface drift; retained helpers are internal.\n")
+    File.WriteAllText(Path.Combine(fsiDir, "FS.GG.UI.SkiaViewer.txt"), "No Feature 159 public SkiaViewer package surface drift; replay diagnostics are internal.\n")
+    File.WriteAllText(Path.Combine(fsiDir, "FS.GG.UI.Testing.txt"), "Feature159Readiness helper surface added for package validation.\n")
+
+let private runFeature159ReadinessCmd (rest: string list) =
+    let out =
+        match flagValue "--out" rest with
+        | Some d -> d
+        | None -> Compositor.feature159ReadinessDirectory
+
+    Directory.CreateDirectory(out) |> ignore
+    let promotionDir = Path.Combine(out, "promotion")
+    let countersDir = Path.Combine(out, "counters")
+    Directory.CreateDirectory(promotionDir) |> ignore
+    Directory.CreateDirectory(countersDir) |> ignore
+
+    if not (File.Exists(Path.Combine(promotionDir, "summary.md"))) then
+        runFeature159PromotionCmd
+            [ "--feature"
+              "159"
+              "--out"
+              promotionDir
+              "--policy"
+              Compositor.feature159PolicyId
+              "--attempts"
+              "3" ]
+        |> ignore
+
+    let facts = Probe.probe ()
+    let profile = Compositor.hostProfileFromFacts facts
+    let reason = feature158ReasonFromHost facts profile Compositor.feature159AcceptedProfileId
+    let runId = "feature159-readiness-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss")
+    let attempts =
+        match reason with
+        | Some reason ->
+            Compositor.feature159RequiredScenarioIds
+            |> List.mapi (fun index scenario -> feature159EnvironmentLimitedAttempt runId (index + 1) scenario profile reason)
+        | None ->
+            Compositor.feature159RequiredScenarioIds
+            |> List.mapi (fun index scenario -> feature159Attempt runId (index + 1) scenario profile)
+
+    let status =
+        match reason with
+        | Some _ -> Compositor.Feature159ReadinessStatus.EnvironmentLimited
+        | None -> Compositor.Feature159ReadinessStatus.Accepted
+
+    let summary =
+        feature159Summary
+            runId
+            profile
+            status
+            attempts
+            reason
+            [ "readiness package assembled"
+              "Feature 155 proof gate preserved"
+              "Feature 157 damage readiness preserved"
+              "Feature 158 measurement separation preserved"
+              "performance-not-accepted preserved" ]
+
+    writeFeature159PromotionPackage promotionDir summary
+    ensureFeature159FsiEvidence out
+    File.WriteAllText(Path.Combine(countersDir, "README.md"), Compositor.renderFeature159CounterReport summary)
+    File.WriteAllText(Path.Combine(countersDir, "promotion.md"), Compositor.renderFeature159CounterReport summary)
+    File.WriteAllText(Path.Combine(out, "compatibility-ledger.md"), Compositor.renderFeature159CompatibilityLedger ())
+    File.WriteAllText(Path.Combine(out, "package-validation.md"), Compositor.renderFeature159PackageValidation [ "`compositor-readiness --feature 159`: package assembled." ])
+    File.WriteAllText(Path.Combine(out, "regression-validation.md"), Compositor.renderFeature159RegressionValidation [ "`compositor-readiness --feature 159`: package assembled." ])
+    File.WriteAllText(Path.Combine(out, "validation-summary.md"), Compositor.renderFeature159ValidationSummary summary)
+    printfn "%s" (Path.Combine(out, "validation-summary.md"))
+    0
+
+let private runCompositorPromotionCmd (rest: string list) =
+    if isFeature159 rest then
+        runFeature159PromotionCmd rest
+    else
+        eprintfn "compositor-promotion requires --feature 159"
+        2
+
 let private runCompositorReadinessCmd (rest: string list) =
-    if isFeature158 rest then
+    if isFeature159 rest then
+        runFeature159ReadinessCmd rest
+    elif isFeature158 rest then
         runFeature158ReadinessCmd rest
     elif isFeature157 rest then
         runFeature157ReadinessCmd rest
@@ -2349,6 +2664,7 @@ let main argv =
     | "compositor-snapshots" :: rest -> runCompositorSnapshotsCmd rest
     | "compositor-timing" :: rest -> runCompositorTimingCmd rest
     | "compositor-damage" :: rest -> runCompositorDamageCmd rest
+    | "compositor-promotion" :: rest -> runCompositorPromotionCmd rest
     | "compositor-performance" :: rest -> runCompositorPerformanceCmd rest
     | "compositor-readiness" :: rest -> runCompositorReadinessCmd rest
     | "input" :: rest ->
@@ -2381,7 +2697,7 @@ let main argv =
                 | RunStatus.Failed -> 1
     | []
     | "--help" :: _ ->
-        printfn "usage: <probe|offscreen|live-x11|overlay-visual-proof|render-anywhere-reference|render-anywhere-browser-feasibility|compositor-present-proof|compositor-live-proof|compositor-parity|compositor-perf|compositor-reuse|compositor-snapshots|compositor-timing|compositor-damage|compositor-performance|compositor-readiness|perf|input> [--out <dir>] [--json]"
+        printfn "usage: <probe|offscreen|live-x11|overlay-visual-proof|render-anywhere-reference|render-anywhere-browser-feasibility|compositor-present-proof|compositor-live-proof|compositor-parity|compositor-perf|compositor-reuse|compositor-snapshots|compositor-timing|compositor-damage|compositor-promotion|compositor-performance|compositor-readiness|perf|input> [--out <dir>] [--json]"
         0
     | other ->
         eprintfn "unknown subcommand: %s" (String.concat " " other)

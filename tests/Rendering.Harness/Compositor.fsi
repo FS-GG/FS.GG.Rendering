@@ -15,6 +15,7 @@ module Compositor =
     val feature156Id: string
     val feature157Id: string
     val feature158Id: string
+    val feature159Id: string
 
     val readinessDirectory: string
     val presentProofDirectory: string
@@ -142,6 +143,26 @@ module Compositor =
     val feature158PerformanceCommand: string
     val feature158ProbeCommand: string
     val feature158ReadinessCommand: string
+
+    val feature159ReadinessDirectory: string
+    val feature159PromotionDirectory: string
+    val feature159PromotionAttemptsDirectory: string
+    val feature159PromotionReuseDirectory: string
+    val feature159PromotionDemotionsDirectory: string
+    val feature159PromotionFallbacksDirectory: string
+    val feature159PromotionParityDirectory: string
+    val feature159PromotionUnsupportedDirectory: string
+    val feature159CountersDirectory: string
+    val feature159FsiDirectory: string
+    val feature159CompatibilityLedgerPath: string
+    val feature159ValidationSummaryPath: string
+    val feature159PackageValidationPath: string
+    val feature159RegressionValidationPath: string
+    val feature159PromotionSummaryPath: string
+    val feature159AcceptedProfileId: string
+    val feature159PolicyId: string
+    val feature159PromotionCommand: string
+    val feature159ReadinessCommand: string
 
     type HostProfile =
         { ProfileId: string
@@ -466,6 +487,69 @@ module Compositor =
         | Feature158CaptureProbeReadback of scenarioId: string
         | Feature158WriteArtifact of path: string
 
+    [<RequireQualifiedAccess>]
+    type Feature159ReadinessStatus =
+        | Accepted
+        | NonBeneficial
+        | FallbackOnly
+        | Rejected
+        | EnvironmentLimited
+
+    type Feature159Attempt =
+        { AttemptId: string
+          RunId: string
+          ScenarioId: string
+          HostProfile: HostProfile
+          PolicyId: string
+          PromotionDecision: string
+          ReuseDecision: string
+          ContentIdentity: string
+          PlacementIdentity: string
+          PrimaryReason: string option
+          CounterNetSavedWork: int
+          ParityStatus: string
+          AcceptedReuseArtifacts: int
+          AcceptedPromotionArtifacts: int
+          ArtifactPaths: string list
+          Diagnostics: string list }
+
+    type Feature159Summary =
+        { RunId: string
+          HostProfile: HostProfile
+          PolicyId: string
+          Status: Feature159ReadinessStatus
+          Attempts: Feature159Attempt list
+          UnsupportedHostReason: string option
+          RequiredScenarioCoverage: string list
+          CounterNetSavedWork: int
+          PerformanceClaim: string
+          Diagnostics: string list }
+
+    type Feature159Model =
+        { RunId: string
+          ActiveProfile: HostProfile option
+          PolicyId: string option
+          Attempts: Feature159Attempt list
+          PublishedArtifacts: string list
+          Status: Feature159ReadinessStatus
+          Diagnostics: string list }
+
+    type Feature159Msg =
+        | Feature159HostProfileDetected of HostProfile
+        | Feature159PolicyDeclared of policyId: string
+        | Feature159AttemptRecorded of Feature159Attempt
+        | Feature159RunEnvironmentLimited of reason: string
+        | Feature159SummaryPublished of path: string
+        | Feature159DiagnosticRecorded of string
+
+    type Feature159Effect =
+        | Feature159DetectHostProfile
+        | Feature159DeclarePolicy of policyId: string
+        | Feature159PrepareScenario of scenarioId: string
+        | Feature159EvaluatePromotion of scenarioId: string
+        | Feature159CompareParity of scenarioId: string
+        | Feature159WriteArtifact of path: string
+
     val thresholds: Thresholds
     val snapshotBudget: SnapshotBudget
     val scenarioIds: string list
@@ -497,6 +581,10 @@ module Compositor =
     val feature158RequiredScenarioIds: string list
     val feature158ScenarioIds: string list
     val feature158TargetHostProfiles: HostProfile list
+    val feature159RequiredScenarioIds: string list
+    val feature159FallbackScenarioIds: string list
+    val feature159ScenarioIds: string list
+    val feature159TargetHostProfiles: HostProfile list
 
     val hostProfileFromFacts: facts: ProbeFacts -> HostProfile
     val proofVerdictToken: verdict: ProofVerdict -> string
@@ -519,6 +607,8 @@ module Compositor =
     val updateFeature157: msg: Feature157Msg -> model: Feature157Model -> Feature157Model * Feature157Effect list
     val initFeature158: warmupCount: int -> measuredRepetitions: int -> Feature158Model * Feature158Effect list
     val updateFeature158: msg: Feature158Msg -> model: Feature158Model -> Feature158Model * Feature158Effect list
+    val initFeature159: unit -> Feature159Model * Feature159Effect list
+    val updateFeature159: msg: Feature159Msg -> model: Feature159Model -> Feature159Model * Feature159Effect list
 
     val artifactPath: directory: string -> name: string -> string
     val feature148ArtifactPath: directory: string -> name: string -> string
@@ -530,6 +620,7 @@ module Compositor =
     val feature156ArtifactPath: directory: string -> name: string -> string
     val feature157ArtifactPath: directory: string -> name: string -> string
     val feature158ArtifactPath: directory: string -> name: string -> string
+    val feature159ArtifactPath: directory: string -> name: string -> string
     val feature156ScenarioFileName: scenarioId: string -> string
     val feature156VerdictToken: verdict: Feature156ScenarioVerdict -> string
     val feature156DistributionRow: distribution: Feature156PathDistribution option -> string
@@ -541,6 +632,9 @@ module Compositor =
     val feature158ScenarioFileName: scenarioId: string -> string
     val feature158OverallStatus: summary: Feature158TimingSummary -> Feature158ReadinessStatus
     val feature158DistributionRow: distribution: Feature158PathDistribution option -> string
+    val feature159StatusToken: status: Feature159ReadinessStatus -> string
+    val feature159ScenarioFileName: scenarioId: string -> string
+    val feature159OverallStatus: summary: Feature159Summary -> Feature159ReadinessStatus
     val renderPresentProof: proof: PresentProof -> string
     val renderValidationSummary: model: ReadinessModel -> string
     val renderCompatibilityLedger: model: ReadinessModel -> string
@@ -612,3 +706,11 @@ module Compositor =
     val renderFeature158RegressionValidation: validationLines: string list -> string
     val renderFeature158ValidationSummary: summary: Feature158TimingSummary -> string
     val renderFeature158UnsupportedHostReport: reason: string -> string
+    val renderFeature159AttemptReport: attempt: Feature159Attempt -> string
+    val renderFeature159PromotionSummary: summary: Feature159Summary -> string
+    val renderFeature159CounterReport: summary: Feature159Summary -> string
+    val renderFeature159CompatibilityLedger: unit -> string
+    val renderFeature159PackageValidation: validationLines: string list -> string
+    val renderFeature159RegressionValidation: validationLines: string list -> string
+    val renderFeature159ValidationSummary: summary: Feature159Summary -> string
+    val renderFeature159UnsupportedHostReport: reason: string -> string

@@ -47,6 +47,9 @@ let feature156TranscriptPath name =
 let feature157TranscriptPath name =
     repositoryPath $"specs/157-no-clear-damage-scissor/readiness/fsi/{name}"
 
+let feature159TranscriptPath name =
+    repositoryPath $"specs/159-layer-promotion-keys/readiness/fsi/{name}"
+
 let feature150TranscriptPath name =
     repositoryPath $"specs/150-intrinsic-layout-protocol/readiness/fsi/{name}"
 
@@ -98,6 +101,11 @@ let readFeature156Transcript name =
 let readFeature157Transcript name =
     let path = feature157TranscriptPath name
     Expect.isTrue (File.Exists path) $"Feature157 FSI transcript evidence exists at {path}"
+    File.ReadAllText path
+
+let readFeature159Transcript name =
+    let path = feature159TranscriptPath name
+    Expect.isTrue (File.Exists path) $"Feature159 FSI transcript evidence exists at {path}"
     File.ReadAllText path
 
 let readFeature150Transcript name =
@@ -350,6 +358,36 @@ let fsiTranscriptCoverageTests =
             |> List.iter (fun logName ->
                 let log = readFeature157Transcript logName
                 Expect.stringContains log "Feature157" $"{logName} records Feature157 FSI coverage")
+        }
+
+        test "Feature159 transcripts cover split identity promotion and readiness helpers" {
+            let identity = readFeature159Transcript "content-placement-identity-authoring.fsx"
+            let promotion = readFeature159Transcript "compositor-promotion-authoring.fsx"
+            let readiness = readFeature159Transcript "compositor-readiness-authoring.fsx"
+
+            [ "content-identity-v1"
+              "placement-identity-v1"
+              "content-reused-placement-updated" ]
+            |> List.iter (fun required -> Expect.stringContains identity required $"Feature159 identity transcript includes {required}")
+
+            [ "compositor-promotion --feature 159"
+              "layer-promotion-v1"
+              "promotion/static-retained"
+              "promotion/placement-only-move" ]
+            |> List.iter (fun required -> Expect.stringContains promotion required $"Feature159 promotion transcript includes {required}")
+
+            [ "FS.GG.UI.Testing"
+              "Feature159Readiness.statusText"
+              "Feature159Accepted"
+              "performance-not-accepted" ]
+            |> List.iter (fun required -> Expect.stringContains readiness required $"Feature159 readiness transcript includes {required}")
+
+            [ "content-placement-identity-authoring.log"
+              "compositor-promotion-authoring.log"
+              "compositor-readiness-authoring.log" ]
+            |> List.iter (fun logName ->
+                let log = readFeature159Transcript logName
+                Expect.stringContains log "Feature159" $"{logName} records Feature159 FSI coverage")
         }
 
         test "Feature150 transcript covers intrinsic layout and readiness authoring" {
