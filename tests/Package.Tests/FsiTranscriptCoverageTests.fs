@@ -26,6 +26,9 @@ let feature146TranscriptPath name =
 let feature147TranscriptPath name =
     repositoryPath $"specs/147-compositor-damage-redraw/readiness/fsi/{name}"
 
+let feature148TranscriptPath name =
+    repositoryPath $"specs/148-compositor-live-integration/readiness/fsi/{name}"
+
 let readTranscript name =
     let path = transcriptPath name
     Expect.isTrue (File.Exists path) $"FSI transcript evidence exists at {path}"
@@ -39,6 +42,11 @@ let readFeature146Transcript name =
 let readFeature147Transcript name =
     let path = feature147TranscriptPath name
     Expect.isTrue (File.Exists path) $"Feature147 FSI transcript evidence exists at {path}"
+    File.ReadAllText path
+
+let readFeature148Transcript name =
+    let path = feature148TranscriptPath name
+    Expect.isTrue (File.Exists path) $"Feature148 FSI transcript evidence exists at {path}"
     File.ReadAllText path
 
 [<Tests>]
@@ -147,5 +155,19 @@ let fsiTranscriptCoverageTests =
             |> List.iter (fun logName ->
                 let log = readFeature147Transcript logName
                 Expect.stringContains log "FSI transcript PASS" $"{logName} records passing FSI coverage")
+        }
+
+        test "Feature148 transcripts cover live proof and compositor diagnostics authoring" {
+            let transcript = readFeature148Transcript "compositor-live-authoring.fsx"
+
+            [ "FS.GG.UI.SkiaViewer"
+              "CompositorProof.ProofReadiness"
+              "CompositorProof.readinessToken"
+              "FS.GG.UI.Controls.Elmish"
+              "CompositorFrameDiagnostics" ]
+            |> List.iter (fun required -> Expect.stringContains transcript required $"Feature148 transcript includes {required}")
+
+            let log = readFeature148Transcript "compositor-live-authoring.log"
+            Expect.stringContains log "FSI transcript PASS" "Feature148 transcript log records passing coverage"
         }
     ]

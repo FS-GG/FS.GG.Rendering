@@ -129,6 +129,9 @@
     <Compile Include="Feature147DamageUnionTests.fs" />
     <Compile Include="Feature147PromotionReuseTests.fs" />
     <Compile Include="Feature147SnapshotBudgetTests.fs" />
+    <Compile Include="Feature148DamagePlanTests.fs" />
+    <Compile Include="Feature148PlacementReuseTests.fs" />
+    <Compile Include="Feature148SnapshotEligibilityTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

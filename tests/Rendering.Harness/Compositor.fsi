@@ -6,6 +6,7 @@ open System
 module Compositor =
 
     val featureId: string
+    val feature148Id: string
 
     val readinessDirectory: string
     val presentProofDirectory: string
@@ -13,6 +14,16 @@ module Compositor =
     val perfDirectory: string
     val compatibilityLedgerPath: string
     val validationSummaryPath: string
+
+    val feature148ReadinessDirectory: string
+    val feature148LiveProofDirectory: string
+    val feature148ParityDirectory: string
+    val feature148ReuseDirectory: string
+    val feature148SnapshotsDirectory: string
+    val feature148TimingDirectory: string
+    val feature148CompatibilityLedgerPath: string
+    val feature148ValidationSummaryPath: string
+    val feature148PackageVersion: string
 
     type HostProfile =
         { ProfileId: string
@@ -87,6 +98,9 @@ module Compositor =
     val snapshotBudget: SnapshotBudget
     val scenarioIds: string list
     val targetHostProfiles: HostProfile list
+    val feature148ScenarioIds: string list
+    val feature148TargetHostProfiles: HostProfile list
+    val feature148TimingTiers: string list
 
     val hostProfileFromFacts: facts: ProbeFacts -> HostProfile
     val proofVerdictToken: verdict: ProofVerdict -> string
@@ -103,6 +117,14 @@ module Compositor =
     val updateReadiness: msg: ReadinessMsg -> model: ReadinessModel -> ReadinessModel * ReadinessEffect list
 
     val artifactPath: directory: string -> name: string -> string
+    val feature148ArtifactPath: directory: string -> name: string -> string
     val renderPresentProof: proof: PresentProof -> string
     val renderValidationSummary: model: ReadinessModel -> string
     val renderCompatibilityLedger: model: ReadinessModel -> string
+    val renderFeature148LiveProof: proof: PresentProof -> string
+    val renderFeature148ParityReport: unit -> string
+    val renderFeature148ReuseReport: unit -> string
+    val renderFeature148SnapshotReport: unit -> string
+    val renderFeature148TimingReport: tier: string -> string
+    val renderFeature148ValidationSummary: model: ReadinessModel -> string
+    val renderFeature148CompatibilityLedger: model: ReadinessModel -> string

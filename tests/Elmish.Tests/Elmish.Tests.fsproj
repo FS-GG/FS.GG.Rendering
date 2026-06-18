@@ -46,6 +46,7 @@
     <Compile Include="Feature144ProductDispatchTests.fs" />
     <Compile Include="Feature144OverlayReplayDeterminismTests.fs" />
     <Compile Include="Feature147CompositorMetricsTests.fs" />
+    <Compile Include="Feature148CompositorMetricsTests.fs" />
     <Compile Include="Audit_DamageTracking.fs" />
     <Compile Include="Audit_Virtualization.fs" />
     <Compile Include="Audit_AnimationTickGating.fs" />

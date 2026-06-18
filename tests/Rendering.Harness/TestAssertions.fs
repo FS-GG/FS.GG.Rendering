@@ -151,3 +151,15 @@ module TestAssertions =
     /// Feature 147 helper: readiness can be claimed only by the explicit ready token.
     let feature147ReadyTier (token: string) : bool =
         System.String.Equals(token, "ready", System.StringComparison.Ordinal)
+
+    /// Feature 148 helper: readiness paths must stay under the live-integration feature package.
+    let feature148ReadinessPath (path: string) : bool =
+        path.Replace('\\', '/').StartsWith("specs/148-compositor-live-integration/readiness/", System.StringComparison.Ordinal)
+
+    /// Feature 148 helper: live-host acceptance requires the explicit passed proof token.
+    let feature148ProofPassed (token: string) : bool =
+        System.String.Equals(token, "passed", System.StringComparison.Ordinal)
+
+    /// Feature 148 helper: environment-limited proof records are diagnostic-only.
+    let feature148EnvironmentLimited (token: string) : bool =
+        System.String.Equals(token, "environment-limited", System.StringComparison.Ordinal)

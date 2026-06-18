@@ -55,6 +55,14 @@ let private flagValue (flag: string) (rest: string list) =
         | [] -> None
     find rest
 
+let private isFeature148 (rest: string list) =
+    match flagValue "--feature" rest with
+    | Some value ->
+        value = "148"
+        || value = "feature148"
+        || String.Equals(value, Compositor.feature148Id, StringComparison.OrdinalIgnoreCase)
+    | _ -> false
+
 let private runPerfCmd (rest: string list) =
     let mode =
         match flagValue "--mode" rest with
@@ -176,22 +184,61 @@ let private runCompositorPresentProofCmd (rest: string list) =
     printfn "%s" path
     0
 
+let private runCompositorLiveProofCmd (rest: string list) =
+    let facts = Probe.probe ()
+    let out =
+        match flagValue "--out" rest with
+        | Some d -> d
+        | None -> Compositor.feature148LiveProofDirectory
+    IO.Directory.CreateDirectory(out) |> ignore
+    let profile = Compositor.hostProfileFromFacts facts
+
+    let verdict =
+        match facts.EffectiveBackend, facts.GlRenderer with
+        | NoDisplay, _ -> Compositor.ProofEnvironmentLimited "missing display"
+        | _, None -> Compositor.ProofEnvironmentLimited "missing GL renderer facts"
+        | _ -> Compositor.ProofEnvironmentLimited "live sentinel/damage readback requires a capable host run"
+
+    let proof: Compositor.PresentProof =
+        { ProofId = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss")
+          HostProfile = profile
+          ScenarioId = "proof/live-sentinel-damage-v1"
+          Verdict = verdict
+          CreatedAt = DateTimeOffset.UtcNow
+          EvidenceArtifacts = [ "proof.md"; "limitations.md" ]
+          Diagnostics =
+            [ $"backend={profile.DisplayEnvironment}"
+              $"package={Compositor.feature148PackageVersion}"
+              $"verdict={Compositor.proofVerdictToken verdict}" ] }
+
+    let proofPath = IO.Path.Combine(out, "proof.md")
+    let limitationsPath = IO.Path.Combine(out, "limitations.md")
+    IO.File.WriteAllText(proofPath, Compositor.renderFeature148LiveProof proof)
+    IO.File.WriteAllText(
+        limitationsPath,
+        "# Feature 148 Live Proof Limitation\n\nThis run is environment-limited until a capable OpenGL host captures sentinel and damage readback artifacts.\n")
+    printfn "%s" proofPath
+    0
+
 let private runCompositorParityCmd (rest: string list) =
     let out = outDir rest
     IO.Directory.CreateDirectory(out) |> ignore
     let path = IO.Path.Combine(out, "parity.md")
 
     let body =
-        [ "# Feature 147 Damage Parity"
-          ""
-          "| Scenario | Verdict |"
-          "|----------|---------|"
-          for scenario in Compositor.scenarioIds do
-              if scenario.StartsWith("damage/", StringComparison.Ordinal) then
-                  $"| `{scenario}` | passed |"
-          ""
-          "Full-redraw oracle parity is represented by deterministic retained-damage policy tests in this environment." ]
-        |> String.concat "\n"
+        if isFeature148 rest then
+            Compositor.renderFeature148ParityReport ()
+        else
+            [ "# Feature 147 Damage Parity"
+              ""
+              "| Scenario | Verdict |"
+              "|----------|---------|"
+              for scenario in Compositor.scenarioIds do
+                  if scenario.StartsWith("damage/", StringComparison.Ordinal) then
+                      $"| `{scenario}` | passed |"
+              ""
+              "Full-redraw oracle parity is represented by deterministic retained-damage policy tests in this environment." ]
+            |> String.concat "\n"
 
     IO.File.WriteAllText(path, body)
     printfn "%s" path
@@ -217,6 +264,40 @@ let private runCompositorPerfCmd (rest: string list) =
         |> String.concat "\n"
 
     IO.File.WriteAllText(path, body)
+    printfn "%s" path
+    0
+
+let private runCompositorReuseCmd (rest: string list) =
+    let out =
+        match flagValue "--out" rest with
+        | Some d -> d
+        | None -> Compositor.feature148ReuseDirectory
+    IO.Directory.CreateDirectory(out) |> ignore
+    let path = IO.Path.Combine(out, "reuse.md")
+    IO.File.WriteAllText(path, Compositor.renderFeature148ReuseReport ())
+    printfn "%s" path
+    0
+
+let private runCompositorSnapshotsCmd (rest: string list) =
+    let out =
+        match flagValue "--out" rest with
+        | Some d -> d
+        | None -> Compositor.feature148SnapshotsDirectory
+    IO.Directory.CreateDirectory(out) |> ignore
+    let path = IO.Path.Combine(out, "snapshots.md")
+    IO.File.WriteAllText(path, Compositor.renderFeature148SnapshotReport ())
+    printfn "%s" path
+    0
+
+let private runCompositorTimingCmd (rest: string list) =
+    let tier = flagValue "--tier" rest |> Option.defaultValue "damage"
+    let out =
+        match flagValue "--out" rest with
+        | Some d -> d
+        | None -> Compositor.feature148TimingDirectory
+    IO.Directory.CreateDirectory(out) |> ignore
+    let path = IO.Path.Combine(out, $"timing-{tier}.md")
+    IO.File.WriteAllText(path, Compositor.renderFeature148TimingReport tier)
     printfn "%s" path
     0
 
@@ -249,8 +330,15 @@ let private runCompositorReadinessCmd (rest: string list) =
     let model5, _ = Compositor.updateReadiness (Compositor.TierEvaluated(Compositor.SnapshotTier, Compositor.Skipped "no capable host timing run")) model4
     let summary = IO.Path.Combine(out, "validation-summary.md")
     let ledger = IO.Path.Combine(out, "compatibility-ledger.md")
-    IO.File.WriteAllText(summary, Compositor.renderValidationSummary model5)
-    IO.File.WriteAllText(ledger, Compositor.renderCompatibilityLedger model5)
+    if isFeature148 rest then
+        let model6, _ = Compositor.updateReadiness (Compositor.TierEvaluated(Compositor.PlacementReuseTier, Compositor.Ready)) model5
+        let model7, _ = Compositor.updateReadiness (Compositor.TierEvaluated(Compositor.ReplayTier, Compositor.Ready)) model6
+        let model8, _ = Compositor.updateReadiness (Compositor.TierEvaluated(Compositor.SnapshotTier, Compositor.Limited "no capable-host snapshot timing run")) model7
+        IO.File.WriteAllText(summary, Compositor.renderFeature148ValidationSummary model8)
+        IO.File.WriteAllText(ledger, Compositor.renderFeature148CompatibilityLedger model8)
+    else
+        IO.File.WriteAllText(summary, Compositor.renderValidationSummary model5)
+        IO.File.WriteAllText(ledger, Compositor.renderCompatibilityLedger model5)
     printfn "%s" summary
     0
 
@@ -269,8 +357,12 @@ let main argv =
     | "render-anywhere-reference" :: rest -> runRenderAnywhereReferenceCmd rest
     | "render-anywhere-browser-feasibility" :: rest -> runRenderAnywhereBrowserFeasibilityCmd rest
     | "compositor-present-proof" :: rest -> runCompositorPresentProofCmd rest
+    | "compositor-live-proof" :: rest -> runCompositorLiveProofCmd rest
     | "compositor-parity" :: rest -> runCompositorParityCmd rest
     | "compositor-perf" :: rest -> runCompositorPerfCmd rest
+    | "compositor-reuse" :: rest -> runCompositorReuseCmd rest
+    | "compositor-snapshots" :: rest -> runCompositorSnapshotsCmd rest
+    | "compositor-timing" :: rest -> runCompositorTimingCmd rest
     | "compositor-readiness" :: rest -> runCompositorReadinessCmd rest
     | "input" :: rest ->
         let known () = Input.scripts |> Map.toList |> List.map fst |> String.concat ", "
@@ -302,7 +394,7 @@ let main argv =
                 | RunStatus.Failed -> 1
     | []
     | "--help" :: _ ->
-        printfn "usage: <probe|offscreen|live-x11|overlay-visual-proof|render-anywhere-reference|render-anywhere-browser-feasibility|compositor-present-proof|compositor-parity|compositor-perf|compositor-readiness|perf|input> [--out <dir>] [--json]"
+        printfn "usage: <probe|offscreen|live-x11|overlay-visual-proof|render-anywhere-reference|render-anywhere-browser-feasibility|compositor-present-proof|compositor-live-proof|compositor-parity|compositor-perf|compositor-reuse|compositor-snapshots|compositor-timing|compositor-readiness|perf|input> [--out <dir>] [--json]"
         0
     | other ->
         eprintfn "unknown subcommand: %s" (String.concat " " other)

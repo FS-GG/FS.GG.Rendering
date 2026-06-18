@@ -19,6 +19,12 @@
     <Compile Include="Feature146BrowserEvidenceFormatterTests.fs" />
     <Compile Include="Feature147CompositorEvidenceTests.fs" />
     <Compile Include="Feature147CompositorReadinessTests.fs" />
+    <Compile Include="Feature148LiveProofEvidenceTests.fs" />
+    <Compile Include="Feature148DamageParityTests.fs" />
+    <Compile Include="Feature148ReuseEvidenceTests.fs" />
+    <Compile Include="Feature148SnapshotEvidenceTests.fs" />
+    <Compile Include="Feature148TimingEvidenceTests.fs" />
+    <Compile Include="Feature148ReadinessPackageTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

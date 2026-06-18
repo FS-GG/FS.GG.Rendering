@@ -69,9 +69,12 @@ false pass.
   `withSubscription` / `withEventMapping` / `withEffectMapping`, `run`) over `ViewerProgram<'model,'msg>`.
 - **`Host.Diagnostics`** — constructors for structured `RenderDiagnostic` values (`vulkanUnavailable`,
   `unsupportedPlatform`, `frameRenderFailed`, `startupFailed`, and more), keyed by `DiagnosticStage`.
-- **`CompositorProof` / `Host.GlHost.ScissorDecision`** — Feature147 proof and scissor policy contracts.
-  Damage-scissored redraw remains proof-gated: missing, stale, failed, host-mismatched, synthetic, or
-  environment-limited proof keeps the viewer on a full-redraw fallback until live host evidence is available.
+- **`CompositorProof` / `Host.GlHost.ScissorDecision`** — Feature147/148 proof and scissor policy
+  contracts. Damage-scissored redraw remains proof-gated: missing, stale, failed, host-mismatched,
+  synthetic, or environment-limited proof keeps the viewer on a full-redraw fallback until fresh
+  sentinel/damage readback evidence is available for the active host profile. Snapshot and timing
+  readiness likewise require parity-clean evidence and resource/timing artifacts before claiming
+  performance value.
 
 ## Versioning
 

@@ -31,6 +31,10 @@
     <Compile Include="Feature147PresentPathProofTests.fs" />
     <Compile Include="Feature147ScissorRedrawTests.fs" />
     <Compile Include="Feature147SnapshotResourceTests.fs" />
+    <Compile Include="Feature148LiveProofTests.fs" />
+    <Compile Include="Feature148LiveProofSimulationTests.fs" />
+    <Compile Include="Feature148DamageScopedRedrawTests.fs" />
+    <Compile Include="Feature148SnapshotLifecycleTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
