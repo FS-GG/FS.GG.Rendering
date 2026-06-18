@@ -33,9 +33,21 @@ let avatarInitials = "AL"
 let paginationTotal = 8
 
 // --- enterprise template demo data (US2 / R6) -----------------------------------------
-let workbenchRows = [ "Build #142 — passed"; "Build #141 — passed"; "Build #140 — failed" ]
-let listRows = [ "Order 1001 — shipped"; "Order 1002 — pending"; "Order 1003 — shipped" ]
-let detailFacts = [ "Status"; "Open"; "Owner"; "Ada"; "Priority"; "High" ]
+let workbenchRows =
+    [ "Build #142 — passed · 8 min"
+      "Release candidate — running · 3/5 jobs"
+      "Design-token audit — needs review" ]
+
+let listRows =
+    [ "Order 1001 — shipped · Enterprise"
+      "Order 1002 — pending approval"
+      "Order 1003 — shipped · Renewal" ]
+
+let detailFacts =
+    [ "Status"; "Open"
+      "Owner"; "Ada"
+      "Priority"; "High"
+      "SLA"; "24h response" ]
 
 /// The seeded form starting state (Editing, populated with a valid baseline; the form
 /// page's seeded script drives an invalid-then-valid sequence over it).

@@ -2,8 +2,9 @@
 
 Adds the `FS.GG.UI.Controls` package reference, Skia-rendered Controls
 guidance, product-owned example views, product test coverage, and generated
-controls guidance. Generated app skill installation receives the consumer-facing
-`fs-gg-ui-widgets` skill authored in this fragment (`skill/SKILL.md`).
+controls guidance. The fragment skill is `fs-gg-generated-controls-guidance`
+(`skill/SKILL.md`); generated app skill installation receives the consumer-facing
+`fs-gg-ui-widgets` skill from `template/product-skills/fs-gg-ui-widgets/SKILL.md`.
 
 Generated products use one Elmish-style Controls path for ordinary controls,
 rich text, chart controls, graph controls, and DataGrid. Product models own

@@ -8,31 +8,41 @@
        only (no ProjectReference into src/ — FR-015 / SC-006). Renders ONLY under the Ant
        theme: FS.GG.UI.Themes.AntDesign is referenced; FS.GG.UI.Themes.Default is NOT.
        Compile order is the type-dependency order:
-       Model -> AntTheme -> DemoState -> Pages -> Templates -> PageRegistry -> CoverageMap
-       -> Scripts -> Shell -> Host -> Evidence. -->
+       Model -> AntTheme -> DemoState -> VisualConfig -> ShellLayout -> PageProfiles ->
+       Pages -> Templates -> PageRegistry -> CoverageMap -> Scripts ->
+       VisualReadinessWorkflow -> Shell -> Host -> Evidence. -->
   <ItemGroup>
     <Compile Include="Model.fs" />
     <Compile Include="AntTheme.fs" />
     <Compile Include="DemoState.fs" />
+    <Compile Include="VisualConfig.fsi" />
+    <Compile Include="VisualConfig.fs" />
+    <Compile Include="ShellLayout.fsi" />
+    <Compile Include="ShellLayout.fs" />
+    <Compile Include="PageProfiles.fsi" />
+    <Compile Include="PageProfiles.fs" />
     <Compile Include="Pages.fs" />
     <Compile Include="Templates.fs" />
     <Compile Include="PageRegistry.fs" />
     <Compile Include="CoverageMap.fs" />
     <Compile Include="Scripts.fs" />
+    <Compile Include="VisualReadinessWorkflow.fsi" />
+    <Compile Include="VisualReadinessWorkflow.fs" />
     <Compile Include="Shell.fs" />
     <Compile Include="Host.fs" />
+    <Compile Include="Evidence.fsi" />
     <Compile Include="Evidence.fs" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="FS.GG.UI.Themes.AntDesign" Version="0.1.0-preview.1" />
-    <PackageReference Include="FS.GG.UI.Controls" Version="0.1.0-preview.1" />
-    <PackageReference Include="FS.GG.UI.Color" Version="0.1.0-preview.1" />
-    <PackageReference Include="FS.GG.UI.Scene" Version="0.1.0-preview.1" />
-    <PackageReference Include="FS.GG.UI.Controls.Elmish" Version="0.1.0-preview.1" />
-    <PackageReference Include="FS.GG.UI.SkiaViewer" Version="0.1.0-preview.1" />
-    <PackageReference Include="FS.GG.UI.DesignSystem" Version="0.1.0-preview.1" />
-    <PackageReference Include="FS.GG.UI.KeyboardInput" Version="0.1.0-preview.1" />
+    <PackageReference Include="FS.GG.UI.Themes.AntDesign" Version="0.1.23-preview.1" />
+    <PackageReference Include="FS.GG.UI.Controls" Version="0.1.23-preview.1" />
+    <PackageReference Include="FS.GG.UI.Color" Version="0.1.23-preview.1" />
+    <PackageReference Include="FS.GG.UI.Scene" Version="0.1.23-preview.1" />
+    <PackageReference Include="FS.GG.UI.Controls.Elmish" Version="0.1.23-preview.1" />
+    <PackageReference Include="FS.GG.UI.SkiaViewer" Version="0.1.23-preview.1" />
+    <PackageReference Include="FS.GG.UI.DesignSystem" Version="0.1.23-preview.1" />
+    <PackageReference Include="FS.GG.UI.KeyboardInput" Version="0.1.23-preview.1" />
   </ItemGroup>
 
 </Project>

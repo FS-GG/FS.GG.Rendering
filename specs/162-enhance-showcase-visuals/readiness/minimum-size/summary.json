@@ -1,0 +1,137 @@
+{
+  "seed": 1,
+  "size": "1280x800",
+  "acceptedSizeRole": "minimum",
+  "pageIds": ["data-collections", "charts-statistical", "charts-advanced", "feedback-status", "tpl-form", "tpl-exception"],
+  "themeIds": ["antLight", "antDark"],
+  "requiredScreenshotCount": 12,
+  "presentScreenshotCount": 12,
+  "completenessStatus": "complete",
+  "captureAvailability": "available",
+  "reviewerDefectStatus": "clear",
+  "visualReadinessStatus": "accepted",
+  "contactSheets": ["contact-sheet-light.png", "contact-sheet-dark.png"],
+  "limitations": [],
+  "screenshots": [
+    {
+      "pageId": "data-collections",
+      "themeId": "antLight",
+      "width": 1280,
+      "height": 800,
+      "relativePath": "light/data-collections.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "charts-statistical",
+      "themeId": "antLight",
+      "width": 1280,
+      "height": 800,
+      "relativePath": "light/charts-statistical.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "charts-advanced",
+      "themeId": "antLight",
+      "width": 1280,
+      "height": 800,
+      "relativePath": "light/charts-advanced.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "feedback-status",
+      "themeId": "antLight",
+      "width": 1280,
+      "height": 800,
+      "relativePath": "light/feedback-status.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "tpl-form",
+      "themeId": "antLight",
+      "width": 1280,
+      "height": 800,
+      "relativePath": "light/tpl-form.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "tpl-exception",
+      "themeId": "antLight",
+      "width": 1280,
+      "height": 800,
+      "relativePath": "light/tpl-exception.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "data-collections",
+      "themeId": "antDark",
+      "width": 1280,
+      "height": 800,
+      "relativePath": "dark/data-collections.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "charts-statistical",
+      "themeId": "antDark",
+      "width": 1280,
+      "height": 800,
+      "relativePath": "dark/charts-statistical.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "charts-advanced",
+      "themeId": "antDark",
+      "width": 1280,
+      "height": 800,
+      "relativePath": "dark/charts-advanced.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "feedback-status",
+      "themeId": "antDark",
+      "width": 1280,
+      "height": 800,
+      "relativePath": "dark/feedback-status.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "tpl-form",
+      "themeId": "antDark",
+      "width": 1280,
+      "height": 800,
+      "relativePath": "dark/tpl-form.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "tpl-exception",
+      "themeId": "antDark",
+      "width": 1280,
+      "height": 800,
+      "relativePath": "dark/tpl-exception.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    }
+  ]
+}

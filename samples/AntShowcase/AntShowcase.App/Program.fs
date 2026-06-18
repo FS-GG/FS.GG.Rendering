@@ -11,6 +11,8 @@ let private usage () =
     printfn "  AntShowcase list"
     printfn "  AntShowcase interactive [<page-id>] [--theme light|dark]"
     printfn "  AntShowcase evidence --seed <int> [--out <dir>] [--page <page-id>]"
+    printfn "  AntShowcase visual-readiness --seed <int> --size <width>x<height> --themes <list> [--pages <list>] [--out <dir>]"
+    printfn "  AntShowcase visual-readiness --summarize <dir> [--minimum-size <dir>] [--out <dir>]"
     printfn "  AntShowcase coverage"
     printfn "  AntShowcase feedback [--clear]"
 
@@ -87,6 +89,9 @@ let main argv =
         | None ->
             eprintfn "ant-showcase: evidence requires --seed <int>."
             2
+
+    | "visual-readiness" :: rest ->
+        VisualReadiness.run rest
 
     | [] ->
         usage ()

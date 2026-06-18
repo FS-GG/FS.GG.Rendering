@@ -1,0 +1,397 @@
+{
+  "seed": 1,
+  "size": "1600x1000",
+  "acceptedSizeRole": "preferred",
+  "pageIds": ["display-typography", "cards-stats-media", "buttons", "text-numeric-input", "selection-toggles", "layout-containers", "navigation-menus", "overlays", "feedback-status", "data-collections", "charts-statistical", "charts-advanced", "graphs-custom", "tpl-workbench", "tpl-list", "tpl-detail", "tpl-form", "tpl-result", "tpl-exception"],
+  "themeIds": ["antLight", "antDark"],
+  "requiredScreenshotCount": 38,
+  "presentScreenshotCount": 38,
+  "completenessStatus": "complete",
+  "captureAvailability": "available",
+  "reviewerDefectStatus": "clear",
+  "visualReadinessStatus": "accepted",
+  "contactSheets": ["contact-sheet-light.png", "contact-sheet-dark.png"],
+  "limitations": [],
+  "screenshots": [
+    {
+      "pageId": "display-typography",
+      "themeId": "antLight",
+      "width": 1600,
+      "height": 1000,
+      "relativePath": "light/display-typography.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "cards-stats-media",
+      "themeId": "antLight",
+      "width": 1600,
+      "height": 1000,
+      "relativePath": "light/cards-stats-media.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "buttons",
+      "themeId": "antLight",
+      "width": 1600,
+      "height": 1000,
+      "relativePath": "light/buttons.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "text-numeric-input",
+      "themeId": "antLight",
+      "width": 1600,
+      "height": 1000,
+      "relativePath": "light/text-numeric-input.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "selection-toggles",
+      "themeId": "antLight",
+      "width": 1600,
+      "height": 1000,
+      "relativePath": "light/selection-toggles.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "layout-containers",
+      "themeId": "antLight",
+      "width": 1600,
+      "height": 1000,
+      "relativePath": "light/layout-containers.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "navigation-menus",
+      "themeId": "antLight",
+      "width": 1600,
+      "height": 1000,
+      "relativePath": "light/navigation-menus.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "overlays",
+      "themeId": "antLight",
+      "width": 1600,
+      "height": 1000,
+      "relativePath": "light/overlays.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "feedback-status",
+      "themeId": "antLight",
+      "width": 1600,
+      "height": 1000,
+      "relativePath": "light/feedback-status.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "data-collections",
+      "themeId": "antLight",
+      "width": 1600,
+      "height": 1000,
+      "relativePath": "light/data-collections.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "charts-statistical",
+      "themeId": "antLight",
+      "width": 1600,
+      "height": 1000,
+      "relativePath": "light/charts-statistical.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "charts-advanced",
+      "themeId": "antLight",
+      "width": 1600,
+      "height": 1000,
+      "relativePath": "light/charts-advanced.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "graphs-custom",
+      "themeId": "antLight",
+      "width": 1600,
+      "height": 1000,
+      "relativePath": "light/graphs-custom.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "tpl-workbench",
+      "themeId": "antLight",
+      "width": 1600,
+      "height": 1000,
+      "relativePath": "light/tpl-workbench.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "tpl-list",
+      "themeId": "antLight",
+      "width": 1600,
+      "height": 1000,
+      "relativePath": "light/tpl-list.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "tpl-detail",
+      "themeId": "antLight",
+      "width": 1600,
+      "height": 1000,
+      "relativePath": "light/tpl-detail.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "tpl-form",
+      "themeId": "antLight",
+      "width": 1600,
+      "height": 1000,
+      "relativePath": "light/tpl-form.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "tpl-result",
+      "themeId": "antLight",
+      "width": 1600,
+      "height": 1000,
+      "relativePath": "light/tpl-result.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "tpl-exception",
+      "themeId": "antLight",
+      "width": 1600,
+      "height": 1000,
+      "relativePath": "light/tpl-exception.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "display-typography",
+      "themeId": "antDark",
+      "width": 1600,
+      "height": 1000,
+      "relativePath": "dark/display-typography.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "cards-stats-media",
+      "themeId": "antDark",
+      "width": 1600,
+      "height": 1000,
+      "relativePath": "dark/cards-stats-media.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "buttons",
+      "themeId": "antDark",
+      "width": 1600,
+      "height": 1000,
+      "relativePath": "dark/buttons.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "text-numeric-input",
+      "themeId": "antDark",
+      "width": 1600,
+      "height": 1000,
+      "relativePath": "dark/text-numeric-input.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "selection-toggles",
+      "themeId": "antDark",
+      "width": 1600,
+      "height": 1000,
+      "relativePath": "dark/selection-toggles.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "layout-containers",
+      "themeId": "antDark",
+      "width": 1600,
+      "height": 1000,
+      "relativePath": "dark/layout-containers.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "navigation-menus",
+      "themeId": "antDark",
+      "width": 1600,
+      "height": 1000,
+      "relativePath": "dark/navigation-menus.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "overlays",
+      "themeId": "antDark",
+      "width": 1600,
+      "height": 1000,
+      "relativePath": "dark/overlays.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "feedback-status",
+      "themeId": "antDark",
+      "width": 1600,
+      "height": 1000,
+      "relativePath": "dark/feedback-status.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "data-collections",
+      "themeId": "antDark",
+      "width": 1600,
+      "height": 1000,
+      "relativePath": "dark/data-collections.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "charts-statistical",
+      "themeId": "antDark",
+      "width": 1600,
+      "height": 1000,
+      "relativePath": "dark/charts-statistical.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "charts-advanced",
+      "themeId": "antDark",
+      "width": 1600,
+      "height": 1000,
+      "relativePath": "dark/charts-advanced.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "graphs-custom",
+      "themeId": "antDark",
+      "width": 1600,
+      "height": 1000,
+      "relativePath": "dark/graphs-custom.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "tpl-workbench",
+      "themeId": "antDark",
+      "width": 1600,
+      "height": 1000,
+      "relativePath": "dark/tpl-workbench.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "tpl-list",
+      "themeId": "antDark",
+      "width": 1600,
+      "height": 1000,
+      "relativePath": "dark/tpl-list.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "tpl-detail",
+      "themeId": "antDark",
+      "width": 1600,
+      "height": 1000,
+      "relativePath": "dark/tpl-detail.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "tpl-form",
+      "themeId": "antDark",
+      "width": 1600,
+      "height": 1000,
+      "relativePath": "dark/tpl-form.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "tpl-result",
+      "themeId": "antDark",
+      "width": 1600,
+      "height": 1000,
+      "relativePath": "dark/tpl-result.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    },
+    {
+      "pageId": "tpl-exception",
+      "themeId": "antDark",
+      "width": 1600,
+      "height": 1000,
+      "relativePath": "dark/tpl-exception.png",
+      "captureSource": "real-screenshot",
+      "completeness": "complete",
+      "degradedReason": null
+    }
+  ]
+}

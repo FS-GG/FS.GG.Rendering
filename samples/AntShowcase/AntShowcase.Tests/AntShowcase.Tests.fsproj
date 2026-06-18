@@ -10,6 +10,7 @@
        test tier is unaffected); run on its own via `dotnet test`. References Core by
        project, the rest as packages. -->
   <ItemGroup>
+    <Compile Include="VisualTestHelpers.fs" />
     <Compile Include="CoverageTests.fs" />
     <Compile Include="PageRenderTests.fs" />
     <Compile Include="TemplateTests.fs" />
@@ -22,6 +23,11 @@
     <Compile Include="Feature144DatePickerFlowTests.fs" />
     <Compile Include="Feature144DatePickerStaleOverlayTests.fs" />
     <Compile Include="Feature145OverlayVisualProofTests.fs" />
+    <Compile Include="VisualShellTests.fs" />
+    <Compile Include="VisualPageTests.fs" />
+    <Compile Include="VisualTemplateTests.fs" />
+    <Compile Include="VisualEvidenceTests.fs" />
+    <Compile Include="VisualReadinessTests.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
 
@@ -32,9 +38,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="FS.GG.UI.Controls" Version="0.1.0-preview.1" />
-    <PackageReference Include="FS.GG.UI.Controls.Elmish" Version="0.1.0-preview.1" />
-    <PackageReference Include="FS.GG.UI.SkiaViewer" Version="0.1.0-preview.1" />
+    <PackageReference Include="FS.GG.UI.Controls" Version="0.1.23-preview.1" />
+    <PackageReference Include="FS.GG.UI.Controls.Elmish" Version="0.1.23-preview.1" />
+    <PackageReference Include="FS.GG.UI.SkiaViewer" Version="0.1.23-preview.1" />
     <PackageReference Include="Expecto" Version="10.2.2" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.15.3" />

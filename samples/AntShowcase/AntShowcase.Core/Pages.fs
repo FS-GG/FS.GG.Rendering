@@ -21,10 +21,25 @@ open AntShowcase.Core.DemoState
 /// Title + body grouping. Theme-independent, so the control-tree shape is identical
 /// across antLight/antDark (FR-008/SC-003).
 let private section (title: string) (body: Control<AntShowcaseMsg>): Control<AntShowcaseMsg> =
-    Stack.create [ Stack.children [ Label.create [ Label.text title ]; body ] ]
+    Border.create
+        [ Attr.width 520.0
+          Attr.height 150.0
+          Attr.padding 8.0
+          Border.child
+              (Stack.create
+                  [ Stack.children [ Label.create [ Label.text title ]; body ] ]) ]
 
 let private group (bodies: Control<AntShowcaseMsg> list): Control<AntShowcaseMsg> =
-    Stack.create [ Stack.children bodies ]
+    Wrap.create [ Wrap.children bodies ]
+
+let private largeSection (title: string) (body: Control<AntShowcaseMsg>): Control<AntShowcaseMsg> =
+    Border.create
+        [ Attr.width 520.0
+          Attr.height 220.0
+          Attr.padding 10.0
+          Border.child
+              (Stack.create
+                  [ Stack.children [ Label.create [ Label.text title ]; body ] ]) ]
 
 let private toControl w = Widget.toControl w
 
@@ -74,7 +89,7 @@ let private cardsPage (_s: DemoState): Control<AntShowcaseMsg> =
           section "statistic" (Statistic.create [ Statistic.value "1,284" ])
           section "qr-code" (QrCode.create [ QrCode.value "https://fs.gg/ant" ])
           section "watermark" (Watermark.create [ Watermark.text "FS.GG" ])
-          section "calendar" (Calendar.create [ Calendar.onChange (fun d -> PageMsg(TextChanged d)) ])
+          largeSection "calendar" (Calendar.create [ Calendar.onChange (fun d -> PageMsg(TextChanged d)) ])
           section "collapse" (Collapse.create [ Attr.items collapsePanels; Collapse.onChange (fun k -> PageMsg(CollapseToggled k)) ])
           section "carousel" (Carousel.create [ Attr.items carouselSlides ])
           section "timeline" (Timeline.create [ Attr.items timelineItems ]) ]
@@ -182,8 +197,8 @@ let private layoutPage (_s: DemoState): Control<AntShowcaseMsg> =
           section "wrap" (Wrap.create [ Wrap.children [ sample "W1"; sample "W2"; sample "W3" ] ])
           section "border" (Border.create [ Border.child (sample "Bordered") ])
           section "panel" (Panel.create [ Panel.children [ sample "Panel content" ] ])
-          section "scroll-viewer" (toControl (FS.GG.UI.Controls.Typed.ScrollViewer.view scrollProps))
-          section "split-view" (toControl (FS.GG.UI.Controls.Typed.SplitView.view splitProps)) ]
+          largeSection "scroll-viewer" (toControl (FS.GG.UI.Controls.Typed.ScrollViewer.view scrollProps))
+          largeSection "split-view" (toControl (FS.GG.UI.Controls.Typed.SplitView.view splitProps)) ]
 
 // ---------------------------------------------------------------------------------
 // Page 7 — Navigation & Menus
@@ -228,7 +243,7 @@ let private feedbackPage (s: DemoState): Control<AntShowcaseMsg> =
           section "skeleton" (Skeleton.create [])
           section "alert" (Alert.create [ Alert.text "Your changes have been saved." ])
           section "result" (Result.create [ Result.title "Submitted successfully" ])
-          section "drawer" (Drawer.create [ Drawer.title "Filters"; Drawer.onClose (PageMsg(DrawerToggled false)) ])
+          largeSection "drawer" (Drawer.create [ Drawer.title "Filters"; Drawer.onClose (PageMsg(DrawerToggled false)) ])
           section "popover" (Popover.create [ Popover.text "More information" ])
           section "popconfirm" (Popconfirm.create [ Popconfirm.text "Delete this item?"; Popconfirm.onConfirm (PageMsg ButtonClicked); Popconfirm.onCancel (PageMsg ButtonClicked) ])
           section "tour" (Tour.create [ Tour.text "Step 1 of 3 — welcome!" ]) ]
@@ -254,37 +269,37 @@ let private dataPage (_s: DemoState): Control<AntShowcaseMsg> =
         [ { Key = "r1"; Cells = [ { RowKey = "r1"; ColumnKey = "name"; Value = "Design" }; { RowKey = "r1"; ColumnKey = "count"; Value = "3" } ] }
           { Key = "r2"; Cells = [ { RowKey = "r2"; ColumnKey = "name"; Value = "Engineering" }; { RowKey = "r2"; ColumnKey = "count"; Value = "5" } ] } ]
     group
-        [ section "list-view" (toControl (FS.GG.UI.Controls.Typed.ListView.view lvProps lvModel))
-          section "tree-view" (toControl (FS.GG.UI.Controls.Typed.TreeView.view tvProps tvModel))
-          section "data-grid" (DataGrid.create cols [ DataGrid.rows rows ]) ]
+        [ largeSection "list-view" (toControl (FS.GG.UI.Controls.Typed.ListView.view lvProps lvModel))
+          largeSection "tree-view" (toControl (FS.GG.UI.Controls.Typed.TreeView.view tvProps tvModel))
+          largeSection "data-grid" (DataGrid.create cols [ DataGrid.rows rows ]) ]
 
 // ---------------------------------------------------------------------------------
 // Page 11 — Charts I — Statistical
 // ---------------------------------------------------------------------------------
 let private chartsStatPage (_s: DemoState): Control<AntShowcaseMsg> =
     group
-        [ section "line-chart" (LineChart.create [ LineChart.series series ])
-          section "bar-chart" (BarChart.create [ BarChart.series series ])
-          section "pie-chart" (PieChart.create [ PieChart.values categoricalValues ])
-          section "scatter-plot" (ScatterPlot.create [ ScatterPlot.series series ])
-          section "area-chart" (AreaChart.create [ AreaChart.series series ])
-          section "column-chart" (ColumnChart.create [ ColumnChart.series series ])
-          section "histogram" (Histogram.create [ Histogram.values categoricalValues ])
-          section "box-plot" (BoxPlot.create [ BoxPlot.series series ]) ]
+        [ largeSection "line-chart" (LineChart.create [ LineChart.series series ])
+          largeSection "bar-chart" (BarChart.create [ BarChart.series series ])
+          largeSection "pie-chart" (PieChart.create [ PieChart.values categoricalValues ])
+          largeSection "scatter-plot" (ScatterPlot.create [ ScatterPlot.series series ])
+          largeSection "area-chart" (AreaChart.create [ AreaChart.series series ])
+          largeSection "column-chart" (ColumnChart.create [ ColumnChart.series series ])
+          largeSection "histogram" (Histogram.create [ Histogram.values categoricalValues ])
+          largeSection "box-plot" (BoxPlot.create [ BoxPlot.series series ]) ]
 
 // ---------------------------------------------------------------------------------
 // Page 12 — Charts II — Advanced
 // ---------------------------------------------------------------------------------
 let private chartsAdvPage (_s: DemoState): Control<AntShowcaseMsg> =
     group
-        [ section "heatmap" (Heatmap.create [ Heatmap.values categoricalValues ])
-          section "radar-chart" (RadarChart.create [ RadarChart.values categoricalValues ])
-          section "rose-chart" (RoseChart.create [ RoseChart.values categoricalValues ])
-          section "waterfall-chart" (WaterfallChart.create [ WaterfallChart.values categoricalValues ])
-          section "funnel-chart" (FunnelChart.create [ FunnelChart.values categoricalValues ])
-          section "gauge-chart" (GaugeChart.create [ GaugeChart.value 0.72 ])
-          section "treemap" (Treemap.create [ Treemap.values categoricalValues ])
-          section "sunburst" (Sunburst.create [ Sunburst.values categoricalValues ]) ]
+        [ largeSection "heatmap" (Heatmap.create [ Heatmap.values categoricalValues ])
+          largeSection "radar-chart" (RadarChart.create [ RadarChart.values categoricalValues ])
+          largeSection "rose-chart" (RoseChart.create [ RoseChart.values categoricalValues ])
+          largeSection "waterfall-chart" (WaterfallChart.create [ WaterfallChart.values categoricalValues ])
+          largeSection "funnel-chart" (FunnelChart.create [ FunnelChart.values categoricalValues ])
+          largeSection "gauge-chart" (GaugeChart.create [ GaugeChart.value 0.72 ])
+          largeSection "treemap" (Treemap.create [ Treemap.values categoricalValues ])
+          largeSection "sunburst" (Sunburst.create [ Sunburst.values categoricalValues ]) ]
 
 // ---------------------------------------------------------------------------------
 // Page 13 — Graphs & Custom
@@ -305,9 +320,9 @@ let private graphsPage (_s: DemoState): Control<AntShowcaseMsg> =
           Accessibility = None
           Diagnostics = [] }
     group
-        [ section "graph-view" (GraphView.create [ GraphView.nodes [ "Alpha"; "Beta"; "Gamma" ] ])
-          section "sankey-diagram" (SankeyDiagram.create [ SankeyDiagram.nodes [ "Source"; "Stage"; "Target" ] ])
-          section "chord-diagram" (ChordDiagram.create [ ChordDiagram.nodes [ "A"; "B"; "C" ] ])
+        [ largeSection "graph-view" (GraphView.create [ GraphView.nodes [ "Alpha"; "Beta"; "Gamma" ] ])
+          largeSection "sankey-diagram" (SankeyDiagram.create [ SankeyDiagram.nodes [ "Source"; "Stage"; "Target" ] ])
+          largeSection "chord-diagram" (ChordDiagram.create [ ChordDiagram.nodes [ "A"; "B"; "C" ] ])
           section "custom-control" (CustomControl.create customDef []) ]
 
 /// The 13 family pages, tagged `Catalog`, in nav order. The control→page assignment is

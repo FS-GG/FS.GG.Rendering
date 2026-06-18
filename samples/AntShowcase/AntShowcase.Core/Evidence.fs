@@ -28,6 +28,35 @@ type PageEvidenceRecord =
       NotAuthoritativeFor: string list
       Screenshot: ScreenshotSummary }
 
+/// One visual-readiness screenshot entry. A `CaptureSource` other than `real-screenshot`
+/// is a disclosed limitation and can never accept visual readiness.
+type VisualScreenshotRecord =
+    { PageId: string
+      ThemeId: string
+      Width: int
+      Height: int
+      RelativePath: string
+      CaptureSource: string
+      Completeness: string
+      DegradedReason: string option }
+
+/// Matrix-level visual-readiness summary for the preferred or minimum-size run.
+type VisualReadinessSummary =
+    { Seed: int
+      Size: string
+      AcceptedSizeRole: string
+      PageIds: string list
+      ThemeIds: string list
+      RequiredScreenshotCount: int
+      PresentScreenshotCount: int
+      CompletenessStatus: string
+      CaptureAvailability: string
+      ReviewerDefectStatus: string
+      VisualReadinessStatus: string
+      Screenshots: VisualScreenshotRecord list
+      ContactSheets: string list
+      Limitations: string list }
+
 /// Feature 144 reference overlay evidence carried by tests/readiness for the live
 /// date-picker flow. This is intentionally product-state oriented: the coordinator asks
 /// for open/focus/value changes, while AntShowcase owns the applied state.
@@ -95,9 +124,10 @@ let build
     (seed: int)
     (mode: string)
     (controlIds: string list)
-    (_metrics: FrameMetrics list)
+    (metrics: FrameMetrics list)
     (shot: ScreenshotSummary)
     : PageEvidenceRecord =
+    let _ = metrics
     let authoritative =
         if shot.ProvesScreenshot then
             [ "determinism"; "tree-equality"; "non-blank-offscreen-png" ]
@@ -219,3 +249,102 @@ let toSummaryMd (r: PageEvidenceRecord): string =
     | Some fb -> line (sprintf "- fallback: %s" fb)
     | None -> ()
     sb.ToString()
+
+let visualScreenshotToJson (s: VisualScreenshotRecord): string =
+    String.concat
+        "\n"
+        [ "    {"
+          sprintf "      \"pageId\": %s," (q s.PageId)
+          sprintf "      \"themeId\": %s," (q s.ThemeId)
+          sprintf "      \"width\": %d," s.Width
+          sprintf "      \"height\": %d," s.Height
+          sprintf "      \"relativePath\": %s," (q s.RelativePath)
+          sprintf "      \"captureSource\": %s," (q s.CaptureSource)
+          sprintf "      \"completeness\": %s," (q s.Completeness)
+          sprintf "      \"degradedReason\": %s" (optStr s.DegradedReason)
+          "    }" ]
+
+let visualSummaryToJson (summary: VisualReadinessSummary): string =
+    let screenshots =
+        if List.isEmpty summary.Screenshots then
+            ""
+        else
+            summary.Screenshots |> List.map visualScreenshotToJson |> String.concat ",\n"
+    String.concat
+        "\n"
+        [ "{"
+          sprintf "  \"seed\": %d," summary.Seed
+          sprintf "  \"size\": %s," (q summary.Size)
+          sprintf "  \"acceptedSizeRole\": %s," (q summary.AcceptedSizeRole)
+          sprintf "  \"pageIds\": %s," (strList summary.PageIds)
+          sprintf "  \"themeIds\": %s," (strList summary.ThemeIds)
+          sprintf "  \"requiredScreenshotCount\": %d," summary.RequiredScreenshotCount
+          sprintf "  \"presentScreenshotCount\": %d," summary.PresentScreenshotCount
+          sprintf "  \"completenessStatus\": %s," (q summary.CompletenessStatus)
+          sprintf "  \"captureAvailability\": %s," (q summary.CaptureAvailability)
+          sprintf "  \"reviewerDefectStatus\": %s," (q summary.ReviewerDefectStatus)
+          sprintf "  \"visualReadinessStatus\": %s," (q summary.VisualReadinessStatus)
+          sprintf "  \"contactSheets\": %s," (strList summary.ContactSheets)
+          sprintf "  \"limitations\": %s," (strList summary.Limitations)
+          "  \"screenshots\": ["
+          screenshots
+          "  ]"
+          "}" ]
+    + "\n"
+
+let visualSummaryToMarkdown (summary: VisualReadinessSummary): string =
+    let sb = System.Text.StringBuilder()
+    let line (t: string) = sb.AppendLine(t) |> ignore
+    line "# AntShowcase visual readiness"
+    line ""
+    line (sprintf "- seed: `%d`" summary.Seed)
+    line (sprintf "- size: `%s` (%s)" summary.Size summary.AcceptedSizeRole)
+    line (sprintf "- pages: `%d`" (List.length summary.PageIds))
+    line (sprintf "- themes: `%s`" (String.concat "," summary.ThemeIds))
+    line (sprintf "- required screenshots: `%d`" summary.RequiredScreenshotCount)
+    line (sprintf "- present screenshots: `%d`" summary.PresentScreenshotCount)
+    line (sprintf "- completeness: **%s**" summary.CompletenessStatus)
+    line (sprintf "- capture availability: **%s**" summary.CaptureAvailability)
+    line (sprintf "- reviewer defects: **%s**" summary.ReviewerDefectStatus)
+    line (sprintf "- visual readiness: **%s**" summary.VisualReadinessStatus)
+    if not (List.isEmpty summary.ContactSheets) then
+        line ""
+        line "## Contact Sheets"
+        summary.ContactSheets |> List.iter (fun path -> line (sprintf "- `%s`" path))
+    if not (List.isEmpty summary.Limitations) then
+        line ""
+        line "## Limitations"
+        summary.Limitations |> List.iter (fun limitation -> line (sprintf "- %s" limitation))
+    line ""
+    line "## Screenshots"
+    summary.Screenshots
+    |> List.iter (fun s ->
+        let degraded = s.DegradedReason |> Option.defaultValue "none"
+        line (sprintf "- `%s` `%s` `%s` `%s` degraded=`%s`" s.PageId s.ThemeId s.RelativePath s.Completeness degraded))
+    sb.ToString()
+
+let reviewerDefectTemplate (pageIds: string list) (themeIds: string list): string =
+    let classes =
+        [ "shell overlap"
+          "navigation label spill"
+          "top-bar displacement"
+          "content-footer collision"
+          "unplanned background exposure"
+          "section overpaint"
+          "clipped primary label"
+          "unreadable primary content"
+          "transient-surface overprint"
+          "template hierarchy unclear"
+          "lower-level limitation" ]
+    let header =
+        [ "# Reviewer Defect Classification"
+          ""
+          sprintf "Defect classes: %s" (String.concat ", " classes)
+          ""
+          "| pageId | themeId | severity | class | readiness impact | reviewer | timestamp | notes |"
+          "|---|---|---|---|---|---|---|---|" ]
+    let rows =
+        [ for pageId in pageIds do
+              for themeId in themeIds do
+                  sprintf "| %s | %s | none | none | no-blocker | pending | pending | pending review |" pageId themeId ]
+    String.concat System.Environment.NewLine (header @ rows) + System.Environment.NewLine

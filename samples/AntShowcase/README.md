@@ -15,21 +15,22 @@ never branch on theme identity; antLight↔antDark differ only by resolved visua
 This is **Workstream G3 only** (Ant restyle + enterprise templates). G4 (wiring sample runs
 into the perf/CI corpus) and dedicated Ant Charts dashboards (feature 133) are out of scope.
 
-## ⚠️ Precondition — refresh the local feed (quickstart V0 / research R1)
+## Precondition — refresh the local feed (quickstart V0 / research R1)
 
-The local feed predates feature 132: it had **no `FS.GG.UI.Themes.AntDesign`** package and a
-`FS.GG.UI.Controls` package with only the pre-132 controls. Before building, refresh it:
+AntShowcase consumes the framework through the configured local NuGet feed, not through
+`src/` project references. Before building, pack the current FS.GG.UI package set into the
+feed and clear the global package cache so stale package contents are not reused:
 
 ```sh
 # from the repo root:
-dotnet pack FS.GG.Rendering.slnx -c Release
-find src -path '*/bin/Release/FS.GG.UI.*.0.1.0-preview.1.nupkg' -exec cp {} ~/.local/share/nuget-local/ \;
+dotnet restore FS.GG.Rendering.slnx
+dotnet build FS.GG.Rendering.slnx -c Release --no-restore
+dotnet pack FS.GG.Rendering.slnx -c Release --no-build -o ~/.local/share/nuget-local
 dotnet nuget locals global-packages --clear
 ```
 
-`dotnet pack` writes each `.nupkg` to `src/<proj>/bin/Release/` (no `PackageOutputPath`), so
-the explicit copy is required; the same version string is reused, so the cache must be
-cleared. Verify: `ls ~/.local/share/nuget-local/FS.GG.UI.Themes.AntDesign.0.1.0-preview.1.nupkg`.
+The sample currently pins FS.GG.UI packages to `0.1.23-preview.1`. Verify the feed with:
+`ls ~/.local/share/nuget-local/FS.GG.UI.Themes.AntDesign.0.1.23-preview.1.nupkg`.
 
 ## Layout
 
@@ -54,12 +55,16 @@ app would.
 ## Two modes
 
 1. **Interactive windowed mode** — a GL-gated MVU app: top app bar (antLight/antDark
-   toggle), left nav rail of all 19 pages, scrolling content, bottom status strip. On a
-   host with no live window/GL it discloses the reason and exits 0.
+   toggle), left nav rail of all 19 pages, scrolling content, bottom status strip. The
+   preferred inspection size is `1600x1000`; the documented minimum accepted size is
+   `1280x800`. On a host with no live window/GL it discloses the reason and exits 0.
 2. **Headless deterministic evidence mode** — the CI-facing path. Per page it replays a
    seeded `FrameInput` script for the golden state outcome and captures an offscreen
    screenshot, writing a per-page record that **discloses what it is not authoritative
    for** and **degrades cleanly when no display/GL is present**.
+3. **Visual-readiness mode** — the maintainer inspection path. It captures every requested
+   page/theme screenshot, validates completeness, writes per-theme contact sheets, and
+   blocks accepted readiness until reviewer classifications are present and clear.
 
 ## Build & run
 
@@ -70,12 +75,19 @@ dotnet build AntShowcase.App/AntShowcase.App.fsproj -c Release
 dotnet run --project AntShowcase.App -c Release -- coverage      # 96/96 mapped, 0 drift
 dotnet run --project AntShowcase.App -c Release -- list          # 13 catalog + 6 template pages
 dotnet run --project AntShowcase.App -c Release -- evidence --seed 1   # byte-identical, disclosed
+dotnet run --project AntShowcase.App -c Release -- visual-readiness --seed 1 --size 1600x1000 --themes light,dark --out ../../specs/162-enhance-showcase-visuals/readiness/visual-evidence
+dotnet run --project AntShowcase.App -c Release -- visual-readiness --seed 1 --size 1280x800 --themes light,dark --pages data-collections,charts-statistical,charts-advanced,feedback-status,tpl-form,tpl-exception --out ../../specs/162-enhance-showcase-visuals/readiness/minimum-size
+dotnet run --project AntShowcase.App -c Release -- visual-readiness --summarize ../../specs/162-enhance-showcase-visuals/readiness/visual-evidence --minimum-size ../../specs/162-enhance-showcase-visuals/readiness/minimum-size --out ../../specs/162-enhance-showcase-visuals/readiness
 dotnet run --project AntShowcase.App -c Release -- interactive display-typography --theme dark
 dotnet test AntShowcase.Tests/AntShowcase.Tests.fsproj -c Release      # outside the default tier
 ```
 
 Per-page evidence lands under `artifacts/ant-showcase/<seed>/<page-id>/`
 (`run.json` / `state.txt` / `summary.md` / `frame.png`), gitignored.
+Feature 162 visual-readiness evidence is intentionally committed under
+`specs/162-enhance-showcase-visuals/readiness/`; degraded capture, missing screenshots, or
+missing reviewer classification must remain visible in that readiness summary rather than
+being treated as accepted proof.
 
 See `coverage-report.md` for the committed control→page map and `PROVENANCE.md` for the
 rebrand + template-recipe source disclosure.

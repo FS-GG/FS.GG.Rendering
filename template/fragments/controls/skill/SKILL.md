@@ -24,6 +24,27 @@ data, and DataGrid data. Only use `Control.customControl`,
 vendor extension points; custom usage must be visibly named as custom rather
 than masquerading as a misspelled standard control.
 
+## `CustomControl` does NOT rasterize its content
+
+`Control.renderTree` (the production paint path the live host and every screenshot/preview
+use) paints a **labeled placeholder** for a `custom-control` — it does **not** invoke the
+`CustomControlDefinition` `Render`/`Draw`/`Layout` fields, so authored Skia geometry does
+**not** appear in the window or in evidence. The catalog calls it a "product-owned wrapper",
+which is for routing custom **events/attributes**, not for drawing.
+
+So: when geometry must actually show in the rasterized/screenshot path, **build it from
+primitive controls** (`Border` + `TextBlock` + `Stack`), not from one big `CustomControl`.
+A reusable recipe is a fixed-cell grid composed of framed cells/rows that `renderTree` paints
+reliably. Reserve `CustomControl` for non-visual extension seams.
+
+## No-new-dependency property tests
+
+When the product test project ships no FsCheck reference and the governance decision is
+"no dependency change," you can still get property-style coverage: drive a **deterministic
+generative loop** (a fixed-seed sequence of inputs) through the **real** engine/function and
+assert the invariant each iteration. Disclose the pattern in the test file header so it reads
+as intentional, not as a missing dependency.
+
 ## Generic Message Flow
 
 Keep product state and messages in the generated product:

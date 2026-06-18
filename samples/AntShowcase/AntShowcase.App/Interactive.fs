@@ -36,7 +36,7 @@ let run (mode: ThemeMode) (startPage: string): int =
                         model', effects }
         let options: ViewerOptions =
             { Title = "Ant Design Controls Showcase"
-              InitialSize = { Width = 1280; Height = 800 }
+              InitialSize = VisualConfig.preferredSize
               PresentMode = ViewerPresentMode.DirectToSwapchain
               FrameRateCap = Some 60 }
         // `Result.Ok`/`Result.Error` are qualified: a viewer namespace also defines an
