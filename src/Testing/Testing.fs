@@ -518,6 +518,60 @@ type Feature160ThroughputReadinessValidationResult =
       MissingScenarios: string list
       Diagnostics: string list }
 
+type Feature161HostLaneReadinessStatus =
+    | Feature161Accepted
+    | Feature161Blocked
+    | Feature161Rejected
+    | Feature161FallbackOnly
+    | Feature161EnvironmentLimited
+    | Feature161MissingEvidence
+
+type Feature161HostFactEvidence =
+    { LaneId: string
+      DisplayServer: string
+      DisplayIdentity: string
+      RendererIdentity: string
+      DirectRendering: bool option
+      RefreshStatus: string
+      DriverIdentity: string
+      PackageVersionSet: string
+      CpuLoadNote: string
+      GpuLoadNote: string
+      EnvironmentLimits: string list
+      HostProfile: string
+      RunIdentity: string
+      ScenarioIdentity: string
+      TimingPolicyIdentity: string
+      ArtifactPaths: string list }
+
+type Feature161ClaimScopeEvidence =
+    { AcceptedLaneId: string option
+      NonGeneralizedLanes: string list
+      RemainingBlockers: string list
+      PerformanceClaim: string }
+
+type Feature161HostLaneReadinessCheck =
+    { Feature: string
+      RequiredScenarioIds: string list
+      CoveredScenarioIds: string list
+      HostFacts: Feature161HostFactEvidence option
+      AcceptedLaneScopedPerformanceArtifacts: int
+      UnsupportedHostStatus: Feature161HostLaneReadinessStatus
+      PriorGateStatuses: string list
+      ClaimScope: Feature161ClaimScopeEvidence
+      FullValidationStatus: string
+      CompatibilityAccepted: bool
+      PackageAccepted: bool
+      RegressionAccepted: bool
+      Limitations: string list }
+
+type Feature161HostLaneReadinessValidationResult =
+    { Accepted: bool
+      Status: Feature161HostLaneReadinessStatus
+      MissingFacts: string list
+      MissingScenarios: string list
+      Diagnostics: string list }
+
 module GeneratedProductAssertions =
     let summarize expectation =
         let packages =
@@ -2136,5 +2190,139 @@ module Feature160ThroughputReadiness =
 
         { Accepted = status = Feature160Accepted && diagnostics.IsEmpty
           Status = status
+          MissingScenarios = missingScenarios
+          Diagnostics = diagnostics }
+
+module Feature161HostLaneReadiness =
+    let statusText status =
+        match status with
+        | Feature161Accepted -> "accepted"
+        | Feature161Blocked -> "blocked"
+        | Feature161Rejected -> "rejected"
+        | Feature161FallbackOnly -> "fallback-only"
+        | Feature161EnvironmentLimited -> "environment-limited"
+        | Feature161MissingEvidence -> "missing-evidence"
+
+    let fullValidationPassed (status: string) =
+        String.Equals(status, "passed", StringComparison.OrdinalIgnoreCase)
+        || String.Equals(status, "current-passed", StringComparison.OrdinalIgnoreCase)
+
+    let blank (value: string) = String.IsNullOrWhiteSpace value
+
+    let requiredFacts (facts: Feature161HostFactEvidence option) =
+        match facts with
+        | None ->
+            [ "host-facts" ]
+        | Some facts ->
+            [ if blank facts.LaneId then "lane-id"
+              if blank facts.DisplayServer then "display-server"
+              if blank facts.DisplayIdentity then "display-identity"
+              if blank facts.RendererIdentity then "renderer-identity"
+              if facts.DirectRendering.IsNone then "direct-rendering"
+              if blank facts.RefreshStatus then "refresh-status"
+              if blank facts.DriverIdentity then "driver-identity"
+              if blank facts.PackageVersionSet then "package-version-set"
+              if blank facts.CpuLoadNote then "cpu-load-note"
+              if blank facts.GpuLoadNote then "gpu-load-note"
+              if blank facts.HostProfile then "host-profile"
+              if blank facts.RunIdentity then "run-identity"
+              if blank facts.ScenarioIdentity then "scenario-identity"
+              if blank facts.TimingPolicyIdentity then "timing-policy-identity"
+              if List.isEmpty facts.ArtifactPaths then "artifact-paths" ]
+
+    let unsupportedFacts (facts: Feature161HostFactEvidence option) =
+        match facts with
+        | None -> []
+        | Some facts ->
+            [ if facts.DisplayServer = "missing-display" || blank facts.DisplayIdentity then "missing-display"
+              if facts.DirectRendering = Some false then "indirect-rendering"
+              if facts.RendererIdentity.Contains("llvmpipe", StringComparison.OrdinalIgnoreCase)
+                 || facts.RendererIdentity.Contains("software", StringComparison.OrdinalIgnoreCase) then
+                  "software-raster"
+              if facts.RendererIdentity = "unknown" then "unknown-renderer"
+              if facts.EnvironmentLimits |> List.exists (fun item -> item.Contains("virtual", StringComparison.OrdinalIgnoreCase)) then
+                  "virtualized-presentation"
+              if facts.PackageVersionSet.Contains("stale", StringComparison.OrdinalIgnoreCase) then
+                  "stale-package" ]
+
+    let validate (check: Feature161HostLaneReadinessCheck) : Feature161HostLaneReadinessValidationResult =
+        let missingScenarios =
+            check.RequiredScenarioIds
+            |> List.filter (fun scenario -> check.CoveredScenarioIds |> List.contains scenario |> not)
+
+        let missingFacts = requiredFacts check.HostFacts
+        let unsupported = unsupportedFacts check.HostFacts
+        let priorGateBlocked =
+            check.PriorGateStatuses
+            |> List.exists (fun status ->
+                not (String.Equals(status, "confirmed", StringComparison.OrdinalIgnoreCase))
+                && not (String.Equals(status, "accepted", StringComparison.OrdinalIgnoreCase)))
+
+        let fullValidationBlocked = not (fullValidationPassed check.FullValidationStatus)
+        let unsupportedArtifactViolation =
+            check.UnsupportedHostStatus = Feature161EnvironmentLimited
+            && check.AcceptedLaneScopedPerformanceArtifacts <> 0
+
+        let performanceClaim = check.ClaimScope.PerformanceClaim
+
+        let diagnostics =
+            [ if String.IsNullOrWhiteSpace check.Feature then
+                  "Feature 161 host lane readiness check must name the feature"
+              for scenario in missingScenarios do
+                  $"missing required host-lane scenario: {scenario}"
+              for fact in missingFacts do
+                  $"missing host lane fact: {fact}"
+              for item in unsupported do
+                  $"unsupported host lane fact: {item}"
+              if check.AcceptedLaneScopedPerformanceArtifacts < 1
+                 && check.UnsupportedHostStatus <> Feature161EnvironmentLimited then
+                  "accepted Feature 161 host-lane readiness requires at least one accepted lane-scoped performance artifact"
+              if unsupportedArtifactViolation then
+                  "unsupported-host evidence must contain zero accepted Feature 161 performance artifacts"
+              if check.ClaimScope.AcceptedLaneId.IsNone
+                 && check.AcceptedLaneScopedPerformanceArtifacts > 0 then
+                  "accepted artifacts must name an accepted lane id"
+              if List.isEmpty check.ClaimScope.NonGeneralizedLanes then
+                  "claim scope must list non-generalized lanes"
+              if priorGateBlocked then
+                  "prior P7 gate status blocks host-lane readiness"
+              if fullValidationBlocked && check.AcceptedLaneScopedPerformanceArtifacts > 0 then
+                  $"full validation blocks release-ready status: {check.FullValidationStatus}"
+              if not check.CompatibilityAccepted then
+                  "compatibility ledger is not accepted"
+              if not check.PackageAccepted then
+                  "package validation is not accepted"
+              if not check.RegressionAccepted then
+                  "regression validation is not accepted"
+              if performanceClaim <> "performance-not-accepted" then
+                  "Feature 161 cannot broaden or accept the shipped P7 performance claim by itself"
+              for limitation in check.Limitations do
+                  if limitation.Contains("overclaim", StringComparison.OrdinalIgnoreCase) then
+                      $"overclaimed Feature 161 host-lane limitation: {limitation}" ]
+
+        let status =
+            if check.UnsupportedHostStatus = Feature161EnvironmentLimited
+               && check.AcceptedLaneScopedPerformanceArtifacts = 0 then
+                Feature161EnvironmentLimited
+            elif not missingFacts.IsEmpty then
+                Feature161MissingEvidence
+            elif unsupportedArtifactViolation
+                 || not missingScenarios.IsEmpty
+                 || not unsupported.IsEmpty
+                 || check.ClaimScope.AcceptedLaneId.IsNone
+                 || performanceClaim <> "performance-not-accepted" then
+                Feature161Rejected
+            elif priorGateBlocked || fullValidationBlocked then
+                Feature161Blocked
+            elif diagnostics.IsEmpty && check.AcceptedLaneScopedPerformanceArtifacts > 0 then
+                Feature161Accepted
+            elif check.AcceptedLaneScopedPerformanceArtifacts = 0 then
+                Feature161FallbackOnly
+            else
+                Feature161Rejected
+
+        { Accepted = status = Feature161Accepted && diagnostics.IsEmpty
+          Status = status
+          MissingFacts = missingFacts
           MissingScenarios = missingScenarios
           Diagnostics = diagnostics }

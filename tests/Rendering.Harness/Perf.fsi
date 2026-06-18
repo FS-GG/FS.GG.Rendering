@@ -83,6 +83,19 @@ module Perf =
         | ScenarioDefinitionMismatch
         | PackageVersionMismatch
         | RunIdentityMismatch
+        | MissingDisplay
+        | IndirectRendering
+        | SoftwareRaster
+        | UnknownRenderer
+        | VirtualizedPresentation
+        | AmbiguousGpu
+        | RefreshRateUnavailable
+        | LoadNonRepresentative
+        | HostFactsMissing
+        | HostFactsContradictory
+        | CrossLaneEvidence
+        | NoisyTiming
+        | PriorGateBlocked
         | UnsupportedHost
         | EnvironmentLimitedReason
         | ScenarioCoverageMissing

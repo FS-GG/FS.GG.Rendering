@@ -83,6 +83,19 @@ module Perf =
         | ScenarioDefinitionMismatch
         | PackageVersionMismatch
         | RunIdentityMismatch
+        | MissingDisplay
+        | IndirectRendering
+        | SoftwareRaster
+        | UnknownRenderer
+        | VirtualizedPresentation
+        | AmbiguousGpu
+        | RefreshRateUnavailable
+        | LoadNonRepresentative
+        | HostFactsMissing
+        | HostFactsContradictory
+        | CrossLaneEvidence
+        | NoisyTiming
+        | PriorGateBlocked
         | UnsupportedHost
         | EnvironmentLimitedReason
         | ScenarioCoverageMissing
@@ -175,6 +188,19 @@ module Perf =
         | ScenarioDefinitionMismatch -> "scenario-definition-mismatch"
         | PackageVersionMismatch -> "package-version-mismatch"
         | RunIdentityMismatch -> "run-identity-mismatch"
+        | MissingDisplay -> "missing-display"
+        | IndirectRendering -> "indirect-rendering"
+        | SoftwareRaster -> "software-raster"
+        | UnknownRenderer -> "unknown-renderer"
+        | VirtualizedPresentation -> "virtualized-presentation"
+        | AmbiguousGpu -> "ambiguous-gpu"
+        | RefreshRateUnavailable -> "refresh-rate-unavailable"
+        | LoadNonRepresentative -> "load-non-representative"
+        | HostFactsMissing -> "host-facts-missing"
+        | HostFactsContradictory -> "host-facts-contradictory"
+        | CrossLaneEvidence -> "cross-lane-evidence"
+        | NoisyTiming -> "noisy-timing"
+        | PriorGateBlocked -> "prior-gate-blocked"
         | UnsupportedHost -> "unsupported-host"
         | EnvironmentLimitedReason -> "environment-limited"
         | ScenarioCoverageMissing -> "scenario-coverage-missing"

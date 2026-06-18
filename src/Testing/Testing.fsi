@@ -587,6 +587,65 @@ type Feature160ThroughputReadinessValidationResult =
       MissingScenarios: string list
       Diagnostics: string list }
 
+/// Feature 161 host-lane-readiness status.
+type Feature161HostLaneReadinessStatus =
+    | Feature161Accepted
+    | Feature161Blocked
+    | Feature161Rejected
+    | Feature161FallbackOnly
+    | Feature161EnvironmentLimited
+    | Feature161MissingEvidence
+
+/// Feature 161 host facts required to scope performance evidence to one lane.
+type Feature161HostFactEvidence =
+    { LaneId: string
+      DisplayServer: string
+      DisplayIdentity: string
+      RendererIdentity: string
+      DirectRendering: bool option
+      RefreshStatus: string
+      DriverIdentity: string
+      PackageVersionSet: string
+      CpuLoadNote: string
+      GpuLoadNote: string
+      EnvironmentLimits: string list
+      HostProfile: string
+      RunIdentity: string
+      ScenarioIdentity: string
+      TimingPolicyIdentity: string
+      ArtifactPaths: string list }
+
+/// Feature 161 claim scope evidence for package validation.
+type Feature161ClaimScopeEvidence =
+    { AcceptedLaneId: string option
+      NonGeneralizedLanes: string list
+      RemainingBlockers: string list
+      PerformanceClaim: string }
+
+/// Feature 161 package-visible host lane readiness check.
+type Feature161HostLaneReadinessCheck =
+    { Feature: string
+      RequiredScenarioIds: string list
+      CoveredScenarioIds: string list
+      HostFacts: Feature161HostFactEvidence option
+      AcceptedLaneScopedPerformanceArtifacts: int
+      UnsupportedHostStatus: Feature161HostLaneReadinessStatus
+      PriorGateStatuses: string list
+      ClaimScope: Feature161ClaimScopeEvidence
+      FullValidationStatus: string
+      CompatibilityAccepted: bool
+      PackageAccepted: bool
+      RegressionAccepted: bool
+      Limitations: string list }
+
+/// Feature 161 host lane readiness validation result.
+type Feature161HostLaneReadinessValidationResult =
+    { Accepted: bool
+      Status: Feature161HostLaneReadinessStatus
+      MissingFacts: string list
+      MissingScenarios: string list
+      Diagnostics: string list }
+
 /// Public contract module exposed by this FS.GG.UI package.
 module GeneratedProductAssertions =
     /// Public contract function exposed by this FS.GG.UI package.
@@ -708,3 +767,10 @@ module Feature160ThroughputReadiness =
     val statusText: status: Feature160ThroughputReadinessStatus -> string
     /// Feature 160: validate focused throughput packages while preserving the performance-claim boundary.
     val validate: check: Feature160ThroughputReadinessCheck -> Feature160ThroughputReadinessValidationResult
+
+/// Feature 161 host-lane-readiness helper.
+module Feature161HostLaneReadiness =
+    /// Feature 161: stable status token for readiness summaries.
+    val statusText: status: Feature161HostLaneReadinessStatus -> string
+    /// Feature 161: validate host lane readiness packages without broadening performance claims across lanes.
+    val validate: check: Feature161HostLaneReadinessCheck -> Feature161HostLaneReadinessValidationResult

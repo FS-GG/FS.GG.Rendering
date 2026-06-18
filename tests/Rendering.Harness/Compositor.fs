@@ -19,6 +19,7 @@ module Compositor =
     let feature158Id = "158-separate-proof-timing"
     let feature159Id = "159-layer-promotion-keys"
     let feature160Id = "160-performance-validation-throughput"
+    let feature161Id = "161-host-performance-lane-ledger"
 
     let readinessDirectory = "specs/147-compositor-damage-redraw/readiness"
     let presentProofDirectory = Path.Combine(readinessDirectory, "present-proof")
@@ -189,6 +190,26 @@ module Compositor =
     let feature160UnsupportedHostMinutes = 2
     let feature160PerformanceCommand = "compositor-performance --feature 160 --lane focused"
     let feature160ReadinessCommand = "compositor-readiness --feature 160"
+
+    let feature161ReadinessDirectory = Path.Combine("specs", feature161Id, "readiness")
+    let feature161LaneLedgerDirectory = Path.Combine(feature161ReadinessDirectory, "lane-ledger")
+    let feature161LaneLedgerEntriesDirectory = Path.Combine(feature161LaneLedgerDirectory, "entries")
+    let feature161LaneLedgerHostFactsDirectory = Path.Combine(feature161LaneLedgerDirectory, "host-facts")
+    let feature161LaneLedgerExcludedDirectory = Path.Combine(feature161LaneLedgerDirectory, "excluded")
+    let feature161LaneLedgerUnsupportedDirectory = Path.Combine(feature161LaneLedgerDirectory, "unsupported")
+    let feature161FullValidationDirectory = Path.Combine(feature161ReadinessDirectory, "full-validation")
+    let feature161FsiDirectory = Path.Combine(feature161ReadinessDirectory, "fsi")
+    let feature161CompatibilityLedgerPath = Path.Combine(feature161ReadinessDirectory, "compatibility-ledger.md")
+    let feature161ValidationSummaryPath = Path.Combine(feature161ReadinessDirectory, "validation-summary.md")
+    let feature161PackageValidationPath = Path.Combine(feature161ReadinessDirectory, "package-validation.md")
+    let feature161RegressionValidationPath = Path.Combine(feature161ReadinessDirectory, "regression-validation.md")
+    let feature161LaneLedgerSummaryPath = Path.Combine(feature161LaneLedgerDirectory, "summary.md")
+    let feature161LaneLedgerSummaryJsonPath = Path.Combine(feature161LaneLedgerDirectory, "summary.json")
+    let feature161AcceptedProfileId = feature160AcceptedProfileId
+    let feature161PolicyId = "host-lane-ledger-v1"
+    let feature161HostLaneId = "x11-:1-direct-opengl-amd-mesa"
+    let feature161PerformanceCommand = "compositor-performance --feature 161 --lane host-ledger"
+    let feature161ReadinessCommand = "compositor-readiness --feature 161"
 
     type HostProfile =
         { ProfileId: string
@@ -678,6 +699,107 @@ module Compositor =
         | Feature160WriteUnsupportedHostArtifact of path: string
         | Feature160WriteFullValidationRecord of path: string
         | Feature160WriteArtifact of path: string
+
+    [<RequireQualifiedAccess>]
+    type Feature161ReadinessStatus =
+        | Accepted
+        | Blocked
+        | Rejected
+        | FallbackOnly
+        | EnvironmentLimited
+
+    type Feature161HostFacts =
+        { DisplayServer: string
+          DisplayIdentity: string
+          RendererIdentity: string
+          DirectRendering: bool option
+          RefreshRateHz: float option
+          RefreshUnavailableReason: string option
+          DriverIdentity: string
+          PackageVersionSet: string
+          CpuLoadNote: string
+          GpuLoadNote: string
+          EnvironmentLimits: string list
+          HostProfile: HostProfile
+          RunIdentity: string
+          ScenarioIdentity: string
+          TimingPolicyIdentity: string
+          CollectionTime: DateTimeOffset
+          ArtifactLocations: string list }
+
+    type Feature161PriorGate =
+        { Feature: string
+          Status: string
+          EvidencePath: string }
+
+    type Feature161LedgerEntry =
+        { EntryId: string
+          LaneId: string
+          HostFacts: Feature161HostFacts
+          PriorGates: Feature161PriorGate list
+          Status: Feature161ReadinessStatus
+          PrimaryExclusionReason: Perf.ExclusionReason option
+          TimingStatus: string
+          AcceptedLaneScopedPerformanceArtifacts: int
+          ArtifactPaths: string list
+          Diagnostics: string list }
+
+    type Feature161ClaimScope =
+        { AcceptedLaneId: string option
+          AppliesTo: string
+          NonGeneralizedLanes: string list
+          RemainingBlockers: string list
+          PerformanceClaim: string }
+
+    type Feature161Summary =
+        { RunId: string
+          HostProfile: HostProfile
+          PolicyId: string
+          Entries: Feature161LedgerEntry list
+          UnsupportedHostReason: string option
+          ClaimScope: Feature161ClaimScope
+          FullValidationStatus: string
+          CompatibilityImpact: string
+          PackageValidationStatus: string
+          RegressionValidationStatus: string
+          Status: Feature161ReadinessStatus
+          ReleaseReadyStatus: string
+          PerformanceClaim: string
+          Diagnostics: string list }
+
+    type Feature161Model =
+        { RunId: string
+          ExpectedProfileId: string
+          ActiveProfile: HostProfile option
+          PolicyId: string option
+          HostFacts: Feature161HostFacts option
+          Entries: Feature161LedgerEntry list
+          PriorGates: Feature161PriorGate list
+          PublishedArtifacts: string list
+          Status: Feature161ReadinessStatus
+          Diagnostics: string list }
+
+    type Feature161Msg =
+        | Feature161HostProfileDetected of HostProfile
+        | Feature161HostProfileRejected of reason: string
+        | Feature161PolicyDeclared of policyId: string
+        | Feature161HostFactsCollected of Feature161HostFacts
+        | Feature161HostFactsRejected of reason: Perf.ExclusionReason * diagnostic: string
+        | Feature161PriorGateLinked of Feature161PriorGate
+        | Feature161LedgerEntryRecorded of Feature161LedgerEntry
+        | Feature161ArtifactPublished of path: string
+        | Feature161DiagnosticRecorded of string
+
+    type Feature161Effect =
+        | Feature161DetectHostProfile
+        | Feature161DeclarePolicy of policyId: string
+        | Feature161CollectHostFacts
+        | Feature161LoadThroughputPackage of path: string
+        | Feature161WriteHostFactsArtifact of path: string
+        | Feature161WriteLedgerEntryArtifact of path: string
+        | Feature161WriteExcludedEvidenceArtifact of path: string
+        | Feature161WriteUnsupportedHostArtifact of path: string
+        | Feature161WriteArtifact of path: string
 
     let thresholds =
         { PromotionReductionPercent = 30.0
@@ -1176,6 +1298,25 @@ module Compositor =
               Scale = Some 1.0
               DisplayEnvironment = "x11"
               ProofAlgorithmVersion = "sentinel-damage-v1" } ]
+
+    let feature161RequiredScenarioIds = feature160RequiredScenarioIds
+
+    let feature161NonGeneralizedLanes =
+        [ "Wayland"
+          "indirect GL"
+          "missing display"
+          "software raster"
+          "virtualized presentation"
+          "unknown renderer"
+          "stale package"
+          "cross-profile timing" ]
+
+    let feature161PriorGateLinks =
+        [ { Feature = feature155Id; Status = "confirmed"; EvidencePath = "specs/155-native-proof-capture/readiness/validation-summary.md" }
+          { Feature = feature157Id; Status = "confirmed"; EvidencePath = "specs/157-no-clear-damage-scissor/readiness/validation-summary.md" }
+          { Feature = feature158Id; Status = "confirmed"; EvidencePath = "specs/158-separate-proof-timing/readiness/validation-summary.md" }
+          { Feature = feature159Id; Status = "confirmed"; EvidencePath = "specs/159-layer-promotion-keys/readiness/validation-summary.md" }
+          { Feature = feature160Id; Status = "confirmed"; EvidencePath = "specs/160-performance-validation-throughput/readiness/validation-summary.md" } ]
 
     let private backendToken backend =
         match backend with
@@ -1884,6 +2025,208 @@ module Compositor =
           Feature160WriteArtifact feature160RegressionValidationPath
           Feature160WriteFullValidationRecord(Path.Combine(feature160FullValidationDirectory, "validation.md")) ]
 
+    let feature161StatusToken status =
+        match status with
+        | Feature161ReadinessStatus.Accepted -> "accepted"
+        | Feature161ReadinessStatus.Blocked -> "blocked"
+        | Feature161ReadinessStatus.Rejected -> "rejected"
+        | Feature161ReadinessStatus.FallbackOnly -> "fallback-only"
+        | Feature161ReadinessStatus.EnvironmentLimited -> "environment-limited"
+
+    let feature161HostFactsFileName (entryId: string) =
+        "facts-" + entryId.Replace("/", "-") + ".md"
+
+    let feature161LedgerEntryFileName (entryId: string) =
+        "entry-" + entryId.Replace("/", "-") + ".md"
+
+    let feature161LaneIdFromFacts (facts: Feature161HostFacts) =
+        let display = facts.DisplayIdentity.Trim().ToLowerInvariant().Replace(":", "")
+        let renderer = facts.RendererIdentity.Trim().ToLowerInvariant()
+        let rendererToken =
+            if renderer.Contains("amd", StringComparison.OrdinalIgnoreCase)
+               || renderer.Contains("radeon", StringComparison.OrdinalIgnoreCase) then
+                "amd-mesa"
+            elif String.IsNullOrWhiteSpace renderer then
+                "unknown-renderer"
+            else
+                renderer.Replace(" ", "-").Replace("/", "-")
+
+        let direct =
+            match facts.DirectRendering with
+            | Some true -> "direct-opengl"
+            | Some false -> "indirect-opengl"
+            | None -> "unknown-opengl"
+
+        let displayToken = if String.IsNullOrWhiteSpace display then "missing-display" else ":" + display
+        $"{facts.DisplayServer.Trim().ToLowerInvariant()}-{displayToken}-{direct}-{rendererToken}"
+
+    let feature161ValidateHostFacts (facts: Feature161HostFacts) =
+        let blank value = String.IsNullOrWhiteSpace value
+        let renderer = facts.RendererIdentity.Trim()
+        let displayServer = facts.DisplayServer.Trim()
+        let displayIdentity = facts.DisplayIdentity.Trim()
+
+        if blank displayServer || blank displayIdentity || displayServer = "missing-display" then
+            Some Perf.MissingDisplay
+        elif blank renderer then
+            Some Perf.UnknownRenderer
+        elif renderer.Contains("llvmpipe", StringComparison.OrdinalIgnoreCase)
+             || renderer.Contains("software", StringComparison.OrdinalIgnoreCase)
+             || renderer.Contains("swiftshader", StringComparison.OrdinalIgnoreCase) then
+            Some Perf.SoftwareRaster
+        elif facts.DirectRendering = Some false then
+            Some Perf.IndirectRendering
+        elif facts.DirectRendering.IsNone then
+            Some Perf.HostFactsMissing
+        elif facts.RefreshRateHz.IsNone && Option.isNone facts.RefreshUnavailableReason then
+            Some Perf.RefreshRateUnavailable
+        elif blank facts.DriverIdentity
+             || blank facts.PackageVersionSet
+             || blank facts.CpuLoadNote
+             || blank facts.GpuLoadNote
+             || blank facts.RunIdentity
+             || blank facts.ScenarioIdentity
+             || blank facts.TimingPolicyIdentity
+             || List.isEmpty facts.ArtifactLocations then
+            Some Perf.HostFactsMissing
+        elif facts.TimingPolicyIdentity <> feature161PolicyId then
+            Some Perf.HostFactsContradictory
+        elif facts.PackageVersionSet.Contains("stale", StringComparison.OrdinalIgnoreCase) then
+            Some Perf.PackageVersionMismatch
+        elif facts.CpuLoadNote.Contains("non-representative", StringComparison.OrdinalIgnoreCase)
+             || facts.GpuLoadNote.Contains("non-representative", StringComparison.OrdinalIgnoreCase) then
+            Some Perf.LoadNonRepresentative
+        elif facts.EnvironmentLimits |> List.exists (fun item -> item.Contains("virtual", StringComparison.OrdinalIgnoreCase)) then
+            Some Perf.VirtualizedPresentation
+        else
+            None
+
+    let feature161LedgerEntryAccepted (entry: Feature161LedgerEntry) =
+        entry.Status = Feature161ReadinessStatus.Accepted
+        && entry.PrimaryExclusionReason.IsNone
+        && feature161ValidateHostFacts entry.HostFacts |> Option.isNone
+        && entry.LaneId = feature161HostLaneId
+        && entry.HostFacts.HostProfile.ProfileId = feature161AcceptedProfileId
+        && entry.HostFacts.TimingPolicyIdentity = feature161PolicyId
+        && entry.AcceptedLaneScopedPerformanceArtifacts > 0
+        && entry.PriorGates |> List.forall (fun gate -> gate.Status = "confirmed" || gate.Status = "accepted")
+
+    let feature161ScopeFromEntries (entries: Feature161LedgerEntry list) =
+        let accepted = entries |> List.filter feature161LedgerEntryAccepted
+        let blockers =
+            [ if List.isEmpty accepted then
+                  "no accepted lane-scoped performance artifacts"
+              if entries |> List.exists (fun entry -> entry.PrimaryExclusionReason = Some Perf.NoisyTiming) then
+                  "same-profile timing remains noisy"
+              if entries |> List.exists (fun entry -> entry.PriorGates |> List.exists (fun gate -> gate.Status <> "confirmed" && gate.Status <> "accepted")) then
+                  "prior P7 gate blocked"
+              if entries |> List.exists (fun entry -> feature161ValidateHostFacts entry.HostFacts |> Option.isSome) then
+                  "host facts incomplete or unsupported" ]
+
+        match accepted with
+        | entry :: _ ->
+            { AcceptedLaneId = Some entry.LaneId
+              AppliesTo = "X11 `:1` with direct OpenGL on AMD Radeon/Mesa for profile `probe-08a47c01`"
+              NonGeneralizedLanes = feature161NonGeneralizedLanes
+              RemainingBlockers = blockers
+              PerformanceClaim = "performance-not-accepted" }
+        | [] ->
+            { AcceptedLaneId = None
+              AppliesTo = "no lane accepted"
+              NonGeneralizedLanes = feature161NonGeneralizedLanes
+              RemainingBlockers = blockers
+              PerformanceClaim = "performance-not-accepted" }
+
+    let feature161OverallStatus (summary: Feature161Summary) =
+        if summary.UnsupportedHostReason.IsSome then
+            Feature161ReadinessStatus.EnvironmentLimited
+        elif summary.Entries |> List.exists (fun entry -> entry.Status = Feature161ReadinessStatus.Accepted)
+             && summary.ClaimScope.AcceptedLaneId.IsSome
+             && summary.FullValidationStatus = "passed" then
+            Feature161ReadinessStatus.Accepted
+        elif summary.Entries |> List.exists (fun entry -> entry.Status = Feature161ReadinessStatus.Accepted)
+             && summary.ClaimScope.AcceptedLaneId.IsSome then
+            Feature161ReadinessStatus.Blocked
+        elif summary.Entries |> List.exists (fun entry -> entry.Status = Feature161ReadinessStatus.Rejected) then
+            Feature161ReadinessStatus.Rejected
+        elif List.isEmpty summary.Entries then
+            Feature161ReadinessStatus.FallbackOnly
+        else
+            Feature161ReadinessStatus.EnvironmentLimited
+
+    let initFeature161 sourceThroughput : Feature161Model * Feature161Effect list =
+        let runId = "feature161-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss")
+        let source = sourceThroughput |> Option.defaultValue feature160ThroughputDirectory
+
+        { RunId = runId
+          ExpectedProfileId = feature161AcceptedProfileId
+          ActiveProfile = None
+          PolicyId = None
+          HostFacts = None
+          Entries = []
+          PriorGates = []
+          PublishedArtifacts = []
+          Status = Feature161ReadinessStatus.FallbackOnly
+          Diagnostics = [] },
+        [ Feature161DetectHostProfile
+          Feature161DeclarePolicy feature161PolicyId
+          Feature161CollectHostFacts
+          Feature161LoadThroughputPackage source
+          Feature161WriteArtifact feature161LaneLedgerSummaryPath
+          Feature161WriteArtifact feature161ValidationSummaryPath ]
+
+    let feature161StatusFromModel (model: Feature161Model) =
+        if model.Diagnostics |> List.exists (fun item -> item.Contains("environment-limited", StringComparison.OrdinalIgnoreCase)) then
+            Feature161ReadinessStatus.EnvironmentLimited
+        elif model.Entries |> List.exists feature161LedgerEntryAccepted then
+            Feature161ReadinessStatus.Blocked
+        elif model.Entries |> List.exists (fun entry -> entry.Status = Feature161ReadinessStatus.Rejected) then
+            Feature161ReadinessStatus.Rejected
+        elif model.HostFacts.IsSome then
+            Feature161ReadinessStatus.FallbackOnly
+        else
+            Feature161ReadinessStatus.FallbackOnly
+
+    let updateFeature161 (msg: Feature161Msg) (model: Feature161Model) : Feature161Model * Feature161Effect list =
+        let model' =
+            match msg with
+            | Feature161HostProfileDetected profile ->
+                { model with ActiveProfile = Some profile }
+            | Feature161HostProfileRejected reason ->
+                { model with
+                    Status = Feature161ReadinessStatus.Rejected
+                    Diagnostics = model.Diagnostics @ [ reason ] }
+            | Feature161PolicyDeclared policyId ->
+                { model with PolicyId = Some policyId }
+            | Feature161HostFactsCollected facts ->
+                { model with HostFacts = Some facts }
+            | Feature161HostFactsRejected(reason, diagnostic) ->
+                { model with
+                    Status = Feature161ReadinessStatus.Rejected
+                    Diagnostics = model.Diagnostics @ [ $"{Perf.exclusionReasonToken reason}: {diagnostic}" ] }
+            | Feature161PriorGateLinked gate ->
+                { model with PriorGates = model.PriorGates @ [ gate ] }
+            | Feature161LedgerEntryRecorded entry ->
+                { model with Entries = model.Entries @ [ entry ] }
+            | Feature161ArtifactPublished path ->
+                { model with PublishedArtifacts = model.PublishedArtifacts @ [ path ] }
+            | Feature161DiagnosticRecorded diagnostic ->
+                { model with Diagnostics = model.Diagnostics @ [ diagnostic ] }
+
+        let status = feature161StatusFromModel model'
+
+        { model' with Status = status },
+        [ Feature161WriteArtifact feature161LaneLedgerSummaryPath
+          Feature161WriteArtifact feature161LaneLedgerSummaryJsonPath
+          Feature161WriteArtifact feature161ValidationSummaryPath
+          Feature161WriteArtifact feature161CompatibilityLedgerPath
+          Feature161WriteArtifact feature161PackageValidationPath
+          Feature161WriteArtifact feature161RegressionValidationPath
+          Feature161WriteHostFactsArtifact(Path.Combine(feature161LaneLedgerHostFactsDirectory, "facts-current.md"))
+          Feature161WriteLedgerEntryArtifact(Path.Combine(feature161LaneLedgerEntriesDirectory, "entry-current.md"))
+          Feature161WriteExcludedEvidenceArtifact(Path.Combine(feature161LaneLedgerExcludedDirectory, "README.md"))
+          Feature161WriteUnsupportedHostArtifact(Path.Combine(feature161LaneLedgerUnsupportedDirectory, "README.md")) ]
+
     let artifactPath directory name = Path.Combine(directory, name)
     let feature148ArtifactPath directory name = Path.Combine(feature148ReadinessDirectory, directory, name)
     let feature149ArtifactPath directory name = Path.Combine(feature149ReadinessDirectory, directory, name)
@@ -1896,6 +2239,7 @@ module Compositor =
     let feature158ArtifactPath directory name = Path.Combine(feature158ReadinessDirectory, directory, name)
     let feature159ArtifactPath directory name = Path.Combine(feature159ReadinessDirectory, directory, name)
     let feature160ArtifactPath directory name = Path.Combine(feature160ReadinessDirectory, directory, name)
+    let feature161ArtifactPath directory name = Path.Combine(feature161ReadinessDirectory, directory, name)
 
     let feature156ScenarioFileName (scenarioId: string) =
         scenarioId.Replace("/", "-") + ".md"
@@ -4642,7 +4986,7 @@ module Compositor =
               diagnostics
               "" ]
 
-    let renderFeature160ExcludedEvidenceReport reason iterations =
+    let renderFeature160ExcludedEvidenceReport reason (iterations: Feature160Iteration list) =
         let rows =
             match iterations with
             | [] -> "| none | 0 | none |"
@@ -4939,4 +5283,384 @@ module Compositor =
               $"Elapsed time target: `under-{feature160UnsupportedHostMinutes}-minutes`"
               ""
               "Unsupported or unavailable presentation environments cannot contribute to accepted Feature 160 throughput evidence."
+              "" ]
+
+    let renderFeature161HostFacts (facts: Feature161HostFacts) =
+        let refresh =
+            match facts.RefreshRateHz, facts.RefreshUnavailableReason with
+            | Some hz, _ -> hz.ToString("0.###", Globalization.CultureInfo.InvariantCulture) + " Hz"
+            | None, Some reason -> "unavailable: " + reason
+            | None, None -> "missing"
+
+        let direct =
+            match facts.DirectRendering with
+            | Some true -> "true"
+            | Some false -> "false"
+            | None -> "unknown"
+
+        let limits =
+            match facts.EnvironmentLimits with
+            | [] -> "- none"
+            | xs -> xs |> List.map (sprintf "- %s") |> String.concat "\n"
+
+        String.concat
+            "\n"
+            [ "# Feature 161 Host Facts"
+              ""
+              $"Run identity: `{facts.RunIdentity}`"
+              $"Scenario identity: `{facts.ScenarioIdentity}`"
+              $"Timing policy identity: `{facts.TimingPolicyIdentity}`"
+              $"Collection time: `{facts.CollectionTime:O}`"
+              $"Lane id: `{feature161LaneIdFromFacts facts}`"
+              ""
+              "## Required Facts"
+              ""
+              $"Display server: `{facts.DisplayServer}`"
+              $"Display identity: `{facts.DisplayIdentity}`"
+              $"Renderer identity: `{facts.RendererIdentity}`"
+              $"Direct rendering: `{direct}`"
+              $"Refresh: `{refresh}`"
+              $"Driver identity: `{facts.DriverIdentity}`"
+              $"Package version set: `{facts.PackageVersionSet}`"
+              $"CPU load note: `{facts.CpuLoadNote}`"
+              $"GPU load note: `{facts.GpuLoadNote}`"
+              $"Host profile: `{facts.HostProfile.ProfileId}`"
+              ""
+              "## Environment Limits"
+              ""
+              limits
+              ""
+              "## Artifacts"
+              ""
+              renderArtifacts facts.ArtifactLocations
+              "" ]
+
+    let renderFeature161LedgerEntry (entry: Feature161LedgerEntry) =
+        let reason = entry.PrimaryExclusionReason |> Option.map Perf.exclusionReasonToken |> Option.defaultValue "none"
+        let priorRows =
+            match entry.PriorGates with
+            | [] -> "| none | missing | none |"
+            | gates ->
+                gates
+                |> List.map (fun gate -> $"| `{gate.Feature}` | `{gate.Status}` | `{gate.EvidencePath}` |")
+                |> String.concat "\n"
+
+        let diagnostics =
+            if List.isEmpty entry.Diagnostics then "- none" else entry.Diagnostics |> List.map (sprintf "- %s") |> String.concat "\n"
+
+        String.concat
+            "\n"
+            [ "# Feature 161 Lane Ledger Entry"
+              ""
+              $"Entry id: `{entry.EntryId}`"
+              $"Lane id: `{entry.LaneId}`"
+              $"Status: `{feature161StatusToken entry.Status}`"
+              $"Primary exclusion reason: `{reason}`"
+              $"Timing status: `{entry.TimingStatus}`"
+              $"Accepted lane-scoped performance artifacts: `{entry.AcceptedLaneScopedPerformanceArtifacts}`"
+              ""
+              "## Host Facts"
+              ""
+              $"Display: `{entry.HostFacts.DisplayServer}` `{entry.HostFacts.DisplayIdentity}`"
+              $"Renderer: `{entry.HostFacts.RendererIdentity}`"
+              $"Direct rendering: `{entry.HostFacts.DirectRendering}`"
+              $"Host profile: `{entry.HostFacts.HostProfile.ProfileId}`"
+              $"Package version set: `{entry.HostFacts.PackageVersionSet}`"
+              ""
+              "## Prior P7 Gates"
+              ""
+              "| Feature | Status | Evidence |"
+              "|---------|--------|----------|"
+              priorRows
+              ""
+              "## Artifacts"
+              ""
+              renderArtifacts entry.ArtifactPaths
+              ""
+              "## Diagnostics"
+              ""
+              diagnostics
+              "" ]
+
+    let renderFeature161ExcludedEvidenceReport reason entries =
+        let rows =
+            match entries with
+            | [] -> "| none | none | 0 |"
+            | xs ->
+                xs
+                |> List.map (fun entry ->
+                    let artifact =
+                        entry.ArtifactPaths
+                        |> List.tryFind (fun path -> path.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
+                        |> Option.defaultValue "missing"
+                    $"| `{entry.EntryId}` | `{artifact}` | `{entry.AcceptedLaneScopedPerformanceArtifacts}` |")
+                |> String.concat "\n"
+
+        String.concat
+            "\n"
+            [ $"# Feature 161 Excluded Lane Evidence: {Perf.exclusionReasonToken reason}"
+              ""
+              $"Primary reason: `{Perf.exclusionReasonToken reason}`"
+              "Accepted lane-scoped performance contribution: `0`"
+              ""
+              "| Entry | Artifact | Accepted contribution |"
+              "|-------|----------|-----------------------|"
+              rows
+              "" ]
+
+    let feature161EntryRows (summary: Feature161Summary) =
+        match summary.Entries with
+        | [] -> "| none | missing | none | 0 | none |"
+        | entries ->
+            entries
+            |> List.map (fun entry ->
+                let reason = entry.PrimaryExclusionReason |> Option.map Perf.exclusionReasonToken |> Option.defaultValue "none"
+                let artifact =
+                    entry.ArtifactPaths
+                    |> List.tryFind (fun path -> path.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
+                    |> Option.defaultValue (Path.Combine("lane-ledger", "entries", feature161LedgerEntryFileName entry.EntryId).Replace('\\', '/'))
+                $"| `{entry.EntryId}` | `{feature161StatusToken entry.Status}` | `{reason}` | `{entry.AcceptedLaneScopedPerformanceArtifacts}` | `{artifact}` |")
+            |> String.concat "\n"
+
+    let renderFeature161LaneLedgerSummary (summary: Feature161Summary) =
+        let status = feature161OverallStatus summary
+        let acceptedCount = summary.Entries |> List.filter feature161LedgerEntryAccepted |> List.length
+        let excludedCount = summary.Entries |> List.filter (fun entry -> entry.PrimaryExclusionReason.IsSome) |> List.length
+        let unsupported = summary.UnsupportedHostReason |> Option.defaultValue "none"
+        let acceptedLane = summary.ClaimScope.AcceptedLaneId |> Option.defaultValue "none"
+        let blockers =
+            match summary.ClaimScope.RemainingBlockers with
+            | [] -> "- none"
+            | xs -> xs |> List.map (sprintf "- %s") |> String.concat "\n"
+        let diagnostics =
+            if List.isEmpty summary.Diagnostics then "- none" else summary.Diagnostics |> List.map (sprintf "- %s") |> String.concat "\n"
+
+        String.concat
+            "\n"
+            [ "# Feature 161 Host Performance Lane Ledger"
+              ""
+              $"Run identity: `{summary.RunId}`"
+              $"Status: `{feature161StatusToken status}`"
+              $"Release-ready status: `{summary.ReleaseReadyStatus}`"
+              $"Performance claim: `{summary.PerformanceClaim}`"
+              $"Policy id: `{summary.PolicyId}`"
+              $"Accepted lane id: `{acceptedLane}`"
+              $"Claim applies to: {summary.ClaimScope.AppliesTo}"
+              $"Accepted lane-scoped performance artifacts: `{acceptedCount}`"
+              $"Excluded lane entries: `{excludedCount}`"
+              $"Unsupported-host reason: `{unsupported}`"
+              $"Full validation status: `{summary.FullValidationStatus}`"
+              $"Compatibility impact: `{summary.CompatibilityImpact}`"
+              $"Package validation: `{summary.PackageValidationStatus}`"
+              $"Regression validation: `{summary.RegressionValidationStatus}`"
+              ""
+              "## Non-Generalized Lanes"
+              ""
+              (summary.ClaimScope.NonGeneralizedLanes |> List.map (sprintf "- %s") |> String.concat "\n")
+              ""
+              "## Remaining Blockers"
+              ""
+              blockers
+              ""
+              "## Ledger Entries"
+              ""
+              "| Entry | Status | Primary reason | Accepted artifacts | Artifact |"
+              "|-------|--------|----------------|--------------------|----------|"
+              feature161EntryRows summary
+              ""
+              "## Artifact Links"
+              ""
+              "- Host facts: `lane-ledger/host-facts/`"
+              "- Entries: `lane-ledger/entries/`"
+              "- Excluded evidence: `lane-ledger/excluded/`"
+              "- Unsupported-host evidence: `lane-ledger/unsupported/README.md`"
+              "- Summary JSON: `lane-ledger/summary.json`"
+              ""
+              "## Diagnostics"
+              ""
+              diagnostics
+              "" ]
+
+    let renderFeature161LaneLedgerSummaryJson (summary: Feature161Summary) =
+        let status = feature161OverallStatus summary
+        let acceptedCount = summary.Entries |> List.filter feature161LedgerEntryAccepted |> List.length
+        let acceptedLane = summary.ClaimScope.AcceptedLaneId |> Option.defaultValue ""
+        let unsupported = summary.UnsupportedHostReason |> Option.defaultValue ""
+        let excludedReasons =
+            summary.Entries
+            |> List.choose _.PrimaryExclusionReason
+            |> List.distinct
+            |> List.map (fun reason -> $"    \"{escapeJson (Perf.exclusionReasonToken reason)}\"")
+            |> String.concat ",\n"
+
+        String.concat
+            "\n"
+            [ "{"
+              $"  \"runId\": \"{escapeJson summary.RunId}\","
+              $"  \"status\": \"{feature161StatusToken status}\","
+              $"  \"policyId\": \"{escapeJson summary.PolicyId}\","
+              $"  \"acceptedLaneId\": \"{escapeJson acceptedLane}\","
+              $"  \"hostProfileId\": \"{escapeJson summary.HostProfile.ProfileId}\","
+              $"  \"acceptedLaneScopedPerformanceArtifacts\": {acceptedCount},"
+              $"  \"entryCount\": {summary.Entries.Length},"
+              $"  \"unsupportedHostReason\": \"{escapeJson unsupported}\","
+              $"  \"performanceClaim\": \"{escapeJson summary.PerformanceClaim}\","
+              "  \"excludedReasons\": ["
+              excludedReasons
+              "  ]"
+              "}" ]
+
+    let renderFeature161CompatibilityLedger () =
+        String.concat
+            "\n"
+            [ "# Feature 161 Compatibility Ledger"
+              ""
+              "Status: `accepted-with-recorded-limitations`"
+              ""
+              "## Public Surface"
+              ""
+              "- `FS.GG.UI.Testing` adds package-visible `Feature161HostLaneReadiness` helper records and status tokens."
+              "- `Rendering.Harness` adds `compositor-performance --feature 161 --lane host-ledger` and `compositor-readiness --feature 161` evidence routes."
+              "- Runtime compositor rendering behavior is unchanged; the feature changes reviewer-visible performance readiness semantics only."
+              ""
+              "## Compatibility Impact"
+              ""
+              "- Host lane facts are additive diagnostics for package and release review."
+              "- Evidence from X11 `:1` direct OpenGL AMD/Mesa is not generalized to Wayland, indirect GL, missing-display, software-raster, virtualized, or unknown lanes."
+              "- The shipped compositor performance claim remains `performance-not-accepted` until same-profile timing, Feature 159 reuse/promotion, Feature 160 throughput, and Feature 161 host-lane gates are all accepted for one named lane."
+              ""
+              "## Surface Evidence"
+              ""
+              "- `readiness/fsi/FS.GG.UI.Testing.txt`"
+              "- `readiness/fsi/Rendering.Harness.Compositor.txt`"
+              "- `readiness/fsi/Rendering.Harness.Perf.txt`"
+              "" ]
+
+    let renderFeature161PackageValidation validationLines =
+        String.concat
+            "\n"
+            [ "# Feature 161 Package Validation"
+              ""
+              "Status: `accepted-with-recorded-limitations`"
+              ""
+              "## Validation Runs"
+              ""
+              if List.isEmpty validationLines then "- pending local validation" else validationLines |> List.map (sprintf "- %s") |> String.concat "\n"
+              ""
+              "## Package Surface"
+              ""
+              "- Rendering.Harness exposes Feature 161 host-lane ledger signatures, command, and readiness rendering."
+              "- Testing package exposes `Feature161HostLaneReadiness` for package validation."
+              "- FSI transcripts cover compositor host-lane authoring and host-lane readiness helper authoring."
+              "- FSI compositor transcript: `compositor-host-lane-authoring.fsx`."
+              "- FSI helper transcript: `feature161-host-lane-readiness-authoring.fsx`."
+              "" ]
+
+    let renderFeature161RegressionValidation validationLines =
+        String.concat
+            "\n"
+            [ "# Feature 161 Regression Validation"
+              ""
+              "Status: `accepted-with-recorded-limitations`"
+              ""
+              "## Validation Runs"
+              ""
+              if List.isEmpty validationLines then "- pending local validation" else validationLines |> List.map (sprintf "- %s") |> String.concat "\n"
+              ""
+              "## Preservation"
+              ""
+              "- Feature 155 proof correctness remains preserved."
+              "- Feature 157 no-clear damage-scissored readiness remains preserved."
+              "- Feature 158 readback-free timing separation remains preserved."
+              "- Feature 159 reuse/promotion evidence remains a separate performance-claim gate."
+              "- Feature 160 throughput evidence remains accepted only within its focused validation boundary."
+              "- Full-redraw fallback and unsupported-host fail-closed behavior remain unchanged."
+              "- Public-surface drift is recorded in Feature 161 FSI evidence."
+              "" ]
+
+    let renderFeature161FullValidationRecord status =
+        let normalized = if String.IsNullOrWhiteSpace status then "missing" else status
+        String.concat
+            "\n"
+            [ "# Feature 161 Full Validation"
+              ""
+              $"Status: `{normalized}`"
+              "Command: `dotnet test FS.GG.Rendering.slnx --no-restore`"
+              if normalized = "passed" then
+                  "Release-ready blocker: `none`"
+              else
+                  "Release-ready blocker: `full-validation-not-current-passed`"
+              ""
+              "Full solution validation is recorded separately from host-lane ledger collection."
+              "" ]
+
+    let renderFeature161ValidationSummary (summary: Feature161Summary) =
+        let status = feature161OverallStatus summary
+        let acceptedCount = summary.Entries |> List.filter feature161LedgerEntryAccepted |> List.length
+        let unsupported = summary.UnsupportedHostReason |> Option.defaultValue "none"
+        let acceptedLane = summary.ClaimScope.AcceptedLaneId |> Option.defaultValue "none"
+
+        String.concat
+            "\n"
+            [ "# Feature 161 Readiness Summary"
+              ""
+              $"Status: `{feature161StatusToken status}`"
+              $"Release-ready status: `{summary.ReleaseReadyStatus}`"
+              $"Policy id: `{summary.PolicyId}`"
+              $"Accepted lane id: `{acceptedLane}`"
+              $"Accepted host profile: `{feature161AcceptedProfileId}`"
+              $"Measured host profile: `{summary.HostProfile.ProfileId}`"
+              $"Accepted lane-scoped performance artifacts: `{acceptedCount}`"
+              $"Unsupported-host result: `{unsupported}`"
+              $"Full validation status: `{summary.FullValidationStatus}`"
+              $"Compatibility impact: `{summary.CompatibilityImpact}`"
+              $"Package validation: `{summary.PackageValidationStatus}`"
+              $"Regression validation: `{summary.RegressionValidationStatus}`"
+              $"Performance claim: `{summary.PerformanceClaim}`"
+              ""
+              "## Evidence Links"
+              ""
+              "- Lane ledger summary: `lane-ledger/summary.md`"
+              "- Lane ledger summary JSON: `lane-ledger/summary.json`"
+              "- Host facts: `lane-ledger/host-facts/`"
+              "- Accepted entries: `lane-ledger/entries/`"
+              "- Excluded evidence: `lane-ledger/excluded/`"
+              "- Unsupported host: `lane-ledger/unsupported/README.md`"
+              "- Full validation: `full-validation/validation.md`"
+              "- Compatibility ledger: `compatibility-ledger.md`"
+              "- Package validation: `package-validation.md`"
+              "- Regression validation: `regression-validation.md`"
+              "- FSI compositor host-lane authoring: `fsi/compositor-host-lane-authoring.fsx`"
+              "- FSI readiness helper authoring: `fsi/feature161-host-lane-readiness-authoring.fsx`"
+              ""
+              "## Reviewer Checklist"
+              ""
+              "- Lane facts list display, renderer, direct rendering, refresh, driver, package, load, environment, host profile, run, scenario, timing policy, collection time, and artifact locations."
+              "- Accepted and rejected entries are separated by lane and never combined across display server, renderer, direct-rendering mode, driver, package, host profile, scenario, policy, or run identity."
+              "- Unsupported-host evidence records accepted lane-scoped performance artifacts `0`."
+              "- Prior P7 gates link Feature 155, Feature 157, Feature 158, Feature 159, and Feature 160 evidence."
+              "- Compatibility, package, regression, full-validation, and public-surface evidence are linked from this entry point."
+              "- Under-5-minute reviewer decision target: this single summary links every required decision field."
+              "- `performance-not-accepted` remains the shipped compositor performance claim unless all timing, reuse, throughput, and host-lane gates pass for one named lane."
+              ""
+              "## Non-Generalized Lanes"
+              ""
+              (summary.ClaimScope.NonGeneralizedLanes |> List.map (sprintf "- %s") |> String.concat "\n")
+              ""
+              "## Remaining Blockers"
+              ""
+              (if List.isEmpty summary.ClaimScope.RemainingBlockers then "- none" else summary.ClaimScope.RemainingBlockers |> List.map (sprintf "- %s") |> String.concat "\n")
+              "" ]
+
+    let renderFeature161UnsupportedHostReport (reason: string) =
+        String.concat
+            "\n"
+            [ "# Feature 161 Unsupported Host Lane Ledger"
+              ""
+              "Status: `environment-limited`"
+              "Accepted lane-scoped performance artifacts: `0`"
+              "Accepted host-lane ledger entries: `0`"
+              $"Reason: `{reason}`"
+              ""
+              "Unsupported, missing-display, indirect-rendering, software-raster, virtualized, or unknown-renderer environments cannot contribute accepted lane-scoped performance evidence."
               "" ]

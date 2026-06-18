@@ -1,0 +1,14 @@
+{
+  "runId": "feature161-readiness-20260618193407",
+  "status": "accepted",
+  "policyId": "host-lane-ledger-v1",
+  "acceptedLaneId": "x11-:1-direct-opengl-amd-mesa",
+  "hostProfileId": "probe-08a47c01",
+  "acceptedLaneScopedPerformanceArtifacts": 1,
+  "entryCount": 1,
+  "unsupportedHostReason": "",
+  "performanceClaim": "performance-not-accepted",
+  "excludedReasons": [
+
+  ]
+}

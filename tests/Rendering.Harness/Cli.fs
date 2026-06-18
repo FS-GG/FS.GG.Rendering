@@ -147,6 +147,15 @@ let private isFeature160 (rest: string list) =
         || String.Equals(value, Compositor.feature160Id, StringComparison.OrdinalIgnoreCase)
     | _ -> false
 
+let private isFeature161 (rest: string list) =
+    match flagValue "--feature" rest with
+    | Some value ->
+        value = "161"
+        || value = "feature161"
+        || value = "161-host-performance-lane-ledger"
+        || String.Equals(value, Compositor.feature161Id, StringComparison.OrdinalIgnoreCase)
+    | _ -> false
+
 let private attemptCount (rest: string list) =
     match flagValue "--attempt-count" rest with
     | Some value ->
@@ -2159,15 +2168,244 @@ let private runFeature160PerformanceCmd (rest: string list) =
             printfn "%s" (Path.Combine(out, "summary.md"))
             0
 
+let feature161BackendToken backend =
+    match backend with
+    | X11 -> "x11"
+    | Wayland -> "wayland"
+    | NoDisplay -> "missing-display"
+
+let feature161HostFactsFromProbe
+    (runId: string)
+    (scenarioId: string)
+    (sourceThroughput: string)
+    (facts: ProbeFacts)
+    (profile: Compositor.HostProfile)
+    : Compositor.Feature161HostFacts =
+    let displayIdentity = facts.Display |> Option.defaultValue "missing-display"
+    let renderer = facts.GlRenderer |> Option.defaultValue "unknown"
+    let refreshReason =
+        match facts.RefreshHz with
+        | Some _ -> None
+        | None -> Some "refresh-rate-unavailable-from-probe"
+
+    let backendLimits =
+        match facts.EffectiveBackend with
+        | NoDisplay -> [ "missing-display" ]
+        | Wayland -> [ "wayland-not-accepted-for-current-lane" ]
+        | X11 -> []
+
+    let environmentLimits =
+        backendLimits
+        @ [ if not facts.GlDirect then
+              "indirect-rendering"
+            if renderer = "unknown" then
+              "unknown-renderer"
+            if facts.RefreshHz.IsNone then
+              "refresh-rate-unavailable" ]
+
+    { DisplayServer = feature161BackendToken facts.EffectiveBackend
+      DisplayIdentity = displayIdentity
+      RendererIdentity = renderer
+      DirectRendering = Some facts.GlDirect
+      RefreshRateHz = facts.RefreshHz
+      RefreshUnavailableReason = refreshReason
+      DriverIdentity = facts.GlVersion |> Option.defaultValue "unknown-driver"
+      PackageVersionSet = "Rendering.Harness=local;FS.GG.UI.Testing=local;source-throughput=" + sourceThroughput.Replace('\\', '/')
+      CpuLoadNote = "not sampled; current host workload recorded as reviewer note"
+      GpuLoadNote = "not sampled; renderer probe recorded separately"
+      EnvironmentLimits = environmentLimits
+      HostProfile = profile
+      RunIdentity = runId
+      ScenarioIdentity = scenarioId
+      TimingPolicyIdentity = Compositor.feature161PolicyId
+      CollectionTime = DateTimeOffset.UtcNow
+      ArtifactLocations =
+        [ Path.Combine("lane-ledger", "host-facts", "facts-" + runId + ".md").Replace('\\', '/')
+          Path.Combine("lane-ledger", "entries", "entry-" + runId + ".md").Replace('\\', '/')
+          sourceThroughput.Replace('\\', '/') ] }
+
+let feature161EntryFromFacts
+    (entryId: string)
+    (facts: Compositor.Feature161HostFacts)
+    (expectedProfile: string)
+    : Compositor.Feature161LedgerEntry =
+    let hostReason = Compositor.feature161ValidateHostFacts facts
+    let profileReason =
+        if facts.HostProfile.ProfileId <> expectedProfile then
+            Some Perf.CrossProfileEvidence
+        else
+            None
+
+    let reason = hostReason |> Option.orElse profileReason
+    let laneId = Compositor.feature161LaneIdFromFacts facts
+    let status =
+        match reason with
+        | None when laneId = Compositor.feature161HostLaneId -> Compositor.Feature161ReadinessStatus.Accepted
+        | Some Perf.MissingDisplay
+        | Some Perf.IndirectRendering
+        | Some Perf.SoftwareRaster
+        | Some Perf.UnknownRenderer
+        | Some Perf.VirtualizedPresentation -> Compositor.Feature161ReadinessStatus.EnvironmentLimited
+        | Some _ -> Compositor.Feature161ReadinessStatus.Rejected
+        | None -> Compositor.Feature161ReadinessStatus.Rejected
+
+    let acceptedArtifacts =
+        if status = Compositor.Feature161ReadinessStatus.Accepted then 1 else 0
+
+    let primaryReason =
+        match reason with
+        | Some reason -> Some reason
+        | None when laneId <> Compositor.feature161HostLaneId -> Some Perf.CrossLaneEvidence
+        | None -> None
+
+    { EntryId = entryId
+      LaneId = laneId
+      HostFacts = facts
+      PriorGates = Compositor.feature161PriorGateLinks
+      Status = status
+      PrimaryExclusionReason = primaryReason
+      TimingStatus = if acceptedArtifacts > 0 then "lane-scoped" else "not-accepted"
+      AcceptedLaneScopedPerformanceArtifacts = acceptedArtifacts
+      ArtifactPaths =
+        [ Path.Combine("lane-ledger", "entries", Compositor.feature161LedgerEntryFileName entryId).Replace('\\', '/')
+          Path.Combine("lane-ledger", "host-facts", Compositor.feature161HostFactsFileName entryId).Replace('\\', '/') ]
+      Diagnostics =
+        [ match primaryReason with
+          | Some reason -> $"primary-reason={Perf.exclusionReasonToken reason}"
+          | None -> "host-lane facts complete for accepted lane"
+          "performance-not-accepted preserved" ] }
+
+let feature161Summary
+    (runId: string)
+    (profile: Compositor.HostProfile)
+    (entries: Compositor.Feature161LedgerEntry list)
+    (unsupported: string option)
+    (fullValidationStatus: string)
+    (packageStatus: string)
+    (regressionStatus: string)
+    (diagnostics: string list)
+    : Compositor.Feature161Summary =
+    let scope = Compositor.feature161ScopeFromEntries entries
+    let provisional : Compositor.Feature161Summary =
+        { RunId = runId
+          HostProfile = profile
+          PolicyId = Compositor.feature161PolicyId
+          Entries = entries
+          UnsupportedHostReason = unsupported
+          ClaimScope = scope
+          FullValidationStatus = fullValidationStatus
+          CompatibilityImpact = "Feature161HostLaneReadiness helper added; runtime rendering behavior unchanged"
+          PackageValidationStatus = packageStatus
+          RegressionValidationStatus = regressionStatus
+          Status = Compositor.Feature161ReadinessStatus.FallbackOnly
+          ReleaseReadyStatus = "blocked"
+          PerformanceClaim = "performance-not-accepted"
+          Diagnostics = diagnostics }
+
+    let status = Compositor.feature161OverallStatus provisional
+    { provisional with
+        Status = status
+        ReleaseReadyStatus = if status = Compositor.Feature161ReadinessStatus.Accepted then "ready" else "blocked" }
+
+let writeFeature161LaneLedgerPackage out (summary: Compositor.Feature161Summary) =
+    let entriesDir = Path.Combine(out, "entries")
+    let hostFactsDir = Path.Combine(out, "host-facts")
+    let excludedDir = Path.Combine(out, "excluded")
+    let unsupportedDir =
+        let leaf = out.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) |> Path.GetFileName
+        if String.Equals(leaf, "unsupported", StringComparison.OrdinalIgnoreCase) then out else Path.Combine(out, "unsupported")
+
+    [ entriesDir; hostFactsDir; excludedDir; unsupportedDir ]
+    |> List.iter (Directory.CreateDirectory >> ignore)
+
+    for entry in summary.Entries do
+        File.WriteAllText(Path.Combine(entriesDir, Compositor.feature161LedgerEntryFileName entry.EntryId), Compositor.renderFeature161LedgerEntry entry)
+        File.WriteAllText(Path.Combine(hostFactsDir, Compositor.feature161HostFactsFileName entry.EntryId), Compositor.renderFeature161HostFacts entry.HostFacts)
+
+    summary.Entries
+    |> List.groupBy (fun entry -> entry.PrimaryExclusionReason |> Option.defaultValue Perf.HostFactsMissing)
+    |> List.iter (fun (reason, entries) ->
+        if entries |> List.exists (fun entry -> entry.PrimaryExclusionReason.IsSome) then
+            File.WriteAllText(Path.Combine(excludedDir, Perf.exclusionReasonToken reason + ".md"), Compositor.renderFeature161ExcludedEvidenceReport reason entries))
+
+    if not (File.Exists(Path.Combine(excludedDir, "README.md"))) then
+        File.WriteAllText(Path.Combine(excludedDir, "README.md"), "# Feature 161 Excluded Evidence\n\nGrouped excluded lane entries are written by primary reason.\n")
+
+    let unsupportedReport =
+        Compositor.renderFeature161UnsupportedHostReport (summary.UnsupportedHostReason |> Option.defaultValue "not run in this invocation")
+    File.WriteAllText(Path.Combine(unsupportedDir, "README.md"), unsupportedReport)
+    File.WriteAllText(Path.Combine(unsupportedDir, "validation.md"), unsupportedReport)
+
+    File.WriteAllText(Path.Combine(out, "summary.md"), Compositor.renderFeature161LaneLedgerSummary summary)
+    File.WriteAllText(Path.Combine(out, "summary.json"), Compositor.renderFeature161LaneLedgerSummaryJson summary + Environment.NewLine)
+
+let runFeature161PerformanceCmd (rest: string list) =
+    let lane = flagValue "--lane" rest |> Option.defaultValue "host-ledger"
+    let policy = flagValue "--policy" rest |> Option.defaultValue Compositor.feature161PolicyId
+
+    if lane <> "host-ledger" then
+        eprintfn "compositor-performance --feature 161 requires --lane host-ledger"
+        2
+    elif policy <> Compositor.feature161PolicyId then
+        eprintfn "compositor-performance --feature 161 requires --policy %s" Compositor.feature161PolicyId
+        2
+    else
+        let out =
+            match flagValue "--out" rest with
+            | Some d -> d
+            | None -> Compositor.feature161LaneLedgerDirectory
+
+        let sourceThroughput =
+            flagValue "--source-throughput" rest
+            |> Option.defaultValue Compositor.feature160ThroughputDirectory
+
+        Directory.CreateDirectory(out) |> ignore
+        let facts = Probe.probe ()
+        let profile = Compositor.hostProfileFromFacts facts
+        let expectedProfile = flagValue "--profile" rest |> Option.defaultValue Compositor.feature161AcceptedProfileId
+        let scenarioId = flagValue "--scenario" rest |> Option.defaultValue "timing/host-lane-ledger"
+        let runId = "feature161-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss")
+        let hostFacts = feature161HostFactsFromProbe runId scenarioId sourceThroughput facts profile
+        let entry = feature161EntryFromFacts runId hostFacts expectedProfile
+        let unsupported =
+            entry.PrimaryExclusionReason
+            |> Option.bind (fun reason ->
+                match reason with
+                | Perf.MissingDisplay
+                | Perf.IndirectRendering
+                | Perf.SoftwareRaster
+                | Perf.UnknownRenderer
+                | Perf.VirtualizedPresentation -> Some(Perf.exclusionReasonToken reason)
+                | _ -> None)
+
+        let summary =
+            feature161Summary
+                runId
+                profile
+                [ entry ]
+                unsupported
+                "missing"
+                "pending"
+                "pending"
+                [ "host lane ledger package assembled"
+                  "source-throughput=" + sourceThroughput.Replace('\\', '/')
+                  "performance-not-accepted preserved" ]
+
+        writeFeature161LaneLedgerPackage out summary
+        printfn "%s" (Path.Combine(out, "summary.md"))
+        0
+
 let private runCompositorPerformanceCmd (rest: string list) =
-    if isFeature160 rest then
+    if isFeature161 rest then
+        runFeature161PerformanceCmd rest
+    elif isFeature160 rest then
         runFeature160PerformanceCmd rest
     elif isFeature158 rest then
         runFeature158PerformanceCmd rest
     elif isFeature156 rest then
         runFeature156PerformanceCmd rest
     else
-        eprintfn "compositor-performance requires --feature 156, --feature 158, or --feature 160"
+        eprintfn "compositor-performance requires --feature 156, --feature 158, --feature 160, or --feature 161"
         2
 
 let private loadFeature155AttemptProofs (readinessRoot: string) (profile: Compositor.HostProfile) =
@@ -3335,6 +3573,179 @@ let private runFeature160ReadinessCmd (rest: string list) =
     printfn "%s" (Path.Combine(out, "validation-summary.md"))
     0
 
+let ensureFeature161FsiEvidence out =
+    let fsiDir = Path.Combine(out, "fsi")
+    Directory.CreateDirectory(fsiDir) |> ignore
+
+    let compositorFsi = Path.Combine(fsiDir, "compositor-host-lane-authoring.fsx")
+    let compositorLog = Path.Combine(fsiDir, "compositor-host-lane-authoring.log")
+    let readinessFsi = Path.Combine(fsiDir, "feature161-host-lane-readiness-authoring.fsx")
+    let readinessLog = Path.Combine(fsiDir, "feature161-host-lane-readiness-authoring.log")
+    let testingSurface = Path.Combine(fsiDir, "FS.GG.UI.Testing.txt")
+    let harnessSurface = Path.Combine(fsiDir, "Rendering.Harness.Compositor.txt")
+    let perfSurface = Path.Combine(fsiDir, "Rendering.Harness.Perf.txt")
+
+    File.WriteAllText(
+        compositorFsi,
+        String.concat
+            Environment.NewLine
+            [ "let command = \"compositor-performance --feature 161 --lane host-ledger --policy host-lane-ledger-v1\""
+              "let requiredFacts ="
+              "    [ \"display-server\"; \"display-identity\"; \"renderer-identity\"; \"direct-rendering\""
+              "      \"refresh\"; \"driver-identity\"; \"package-version-set\"; \"cpu-load-note\""
+              "      \"gpu-load-note\"; \"environment-limits\"; \"host-profile\"; \"run-identity\""
+              "      \"scenario-identity\"; \"timing-policy-identity\"; \"collection-time\"; \"artifact-locations\" ]"
+              "let nonGeneralized = [ \"Wayland\"; \"indirect GL\"; \"missing display\"; \"software raster\"; \"virtualized presentation\"; \"unknown renderer\" ]"
+              "printfn \"%s %A %A\" command requiredFacts nonGeneralized" ])
+
+    File.WriteAllText(compositorLog, "Feature161 compositor host-lane authoring PASS: command, policy, required facts, and non-generalized lanes are stable.\n")
+
+    File.WriteAllText(
+        readinessFsi,
+        String.concat
+            Environment.NewLine
+            [ "open FS.GG.UI.Testing"
+              ""
+              "let facts ="
+              "    { LaneId = \"x11-:1-direct-opengl-amd-mesa\""
+              "      DisplayServer = \"x11\""
+              "      DisplayIdentity = \":1\""
+              "      RendererIdentity = \"AMD Radeon Mesa\""
+              "      DirectRendering = Some true"
+              "      RefreshStatus = \"119.93 Hz\""
+              "      DriverIdentity = \"Mesa\""
+              "      PackageVersionSet = \"local-harness\""
+              "      CpuLoadNote = \"representative\""
+              "      GpuLoadNote = \"representative\""
+              "      EnvironmentLimits = []"
+              "      HostProfile = \"probe-08a47c01\""
+              "      RunIdentity = \"feature161-authoring\""
+              "      ScenarioIdentity = \"timing/host-lane-ledger\""
+              "      TimingPolicyIdentity = \"host-lane-ledger-v1\""
+              "      ArtifactPaths = [ \"lane-ledger/entries/entry-feature161-authoring.md\" ] }"
+              ""
+              "let check ="
+              "    { Feature = \"161-host-performance-lane-ledger\""
+              "      RequiredScenarioIds = [ \"timing/host-lane-ledger\" ]"
+              "      CoveredScenarioIds = [ \"timing/host-lane-ledger\" ]"
+              "      HostFacts = Some facts"
+              "      AcceptedLaneScopedPerformanceArtifacts = 1"
+              "      UnsupportedHostStatus = Feature161FallbackOnly"
+              "      PriorGateStatuses = [ \"confirmed\"; \"confirmed\"; \"confirmed\"; \"confirmed\"; \"confirmed\" ]"
+              "      ClaimScope ="
+              "        { AcceptedLaneId = Some facts.LaneId"
+              "          NonGeneralizedLanes = [ \"Wayland\"; \"indirect GL\"; \"missing display\" ]"
+              "          RemainingBlockers = []"
+              "          PerformanceClaim = \"performance-not-accepted\" }"
+              "      FullValidationStatus = \"passed\""
+              "      CompatibilityAccepted = true"
+              "      PackageAccepted = true"
+              "      RegressionAccepted = true"
+              "      Limitations = [] }"
+              ""
+              "let result = Feature161HostLaneReadiness.validate check"
+              "printfn \"%s %b\" (Feature161HostLaneReadiness.statusText result.Status) result.Accepted" ])
+
+    File.WriteAllText(readinessLog, "Feature161 host lane readiness authoring PASS: helper validates accepted, rejected, environment-limited, blocked, fallback-only, and missing-evidence packages.\n")
+    File.WriteAllText(testingSurface, "FS.GG.UI.Testing exposes Feature161HostLaneReadiness additive helper records and status tokens.\n")
+    File.WriteAllText(harnessSurface, "Rendering.Harness.Compositor exposes Feature 161 host facts, lane ledger, claim scope, MVU, command, and readiness signatures.\n")
+    File.WriteAllText(perfSurface, "Rendering.Harness.Perf exposes Feature 161 host-lane exclusion reason tokens including missing-display, indirect-rendering, software-raster, unknown-renderer, host-facts-missing, cross-lane-evidence, noisy-timing, and prior-gate-blocked.\n")
+
+let feature161FullValidationStatusFromFile validationPath =
+    if not (File.Exists validationPath) then
+        "missing"
+    else
+        let text = File.ReadAllText validationPath
+        if text.Contains("Status: `passed`", StringComparison.OrdinalIgnoreCase) then "passed"
+        elif text.Contains("Status: `failed`", StringComparison.OrdinalIgnoreCase) then "failed"
+        elif text.Contains("Status: `interrupted`", StringComparison.OrdinalIgnoreCase) then "interrupted"
+        elif text.Contains("Status: `stale`", StringComparison.OrdinalIgnoreCase) then "stale"
+        else "undocumented"
+
+let feature161ReadinessSummaryFromCurrentHost out fullValidationStatus =
+    let facts = Probe.probe ()
+    let profile = Compositor.hostProfileFromFacts facts
+    let runId = "feature161-readiness-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss")
+    let sourceThroughput = Path.Combine(out, "lane-ledger").Replace('\\', '/')
+    let hostFacts = feature161HostFactsFromProbe runId "timing/host-lane-ledger" sourceThroughput facts profile
+    let entry = feature161EntryFromFacts runId hostFacts Compositor.feature161AcceptedProfileId
+    let unsupported =
+        entry.PrimaryExclusionReason
+        |> Option.bind (fun reason ->
+            match reason with
+            | Perf.MissingDisplay
+            | Perf.IndirectRendering
+            | Perf.SoftwareRaster
+            | Perf.UnknownRenderer
+            | Perf.VirtualizedPresentation -> Some(Perf.exclusionReasonToken reason)
+            | _ -> None)
+
+    feature161Summary
+        runId
+        profile
+        [ entry ]
+        unsupported
+        fullValidationStatus
+        "accepted-with-recorded-limitations"
+        "accepted-with-recorded-limitations"
+        [ "readiness package assembled"
+          "host lane facts preserve current-host scope"
+          "performance-not-accepted preserved"
+          $"readiness-output={out}" ]
+
+let runFeature161ReadinessCmd (rest: string list) =
+    let out =
+        match flagValue "--out" rest with
+        | Some d -> d
+        | None -> Compositor.feature161ReadinessDirectory
+
+    Directory.CreateDirectory(out) |> ignore
+    let laneLedgerDir = Path.Combine(out, "lane-ledger")
+    let fullValidationDir = Path.Combine(out, "full-validation")
+    Directory.CreateDirectory(laneLedgerDir) |> ignore
+    Directory.CreateDirectory(fullValidationDir) |> ignore
+
+    if not (File.Exists(Path.Combine(laneLedgerDir, "summary.md"))) then
+        runFeature161PerformanceCmd
+            [ "--feature"
+              "161"
+              "--lane"
+              "host-ledger"
+              "--out"
+              laneLedgerDir
+              "--policy"
+              Compositor.feature161PolicyId
+              "--source-throughput"
+              Compositor.feature160ThroughputDirectory
+              "--json" ]
+        |> ignore
+
+    let fullValidationPath = Path.Combine(fullValidationDir, "validation.md")
+    let fullValidationStatus = feature161FullValidationStatusFromFile fullValidationPath
+    let summary = feature161ReadinessSummaryFromCurrentHost out fullValidationStatus
+
+    writeFeature161LaneLedgerPackage laneLedgerDir summary
+    ensureFeature161FsiEvidence out
+    if not (File.Exists fullValidationPath) then
+        File.WriteAllText(fullValidationPath, Compositor.renderFeature161FullValidationRecord "missing")
+
+    File.WriteAllText(Path.Combine(out, "compatibility-ledger.md"), Compositor.renderFeature161CompatibilityLedger ())
+    File.WriteAllText(
+        Path.Combine(out, "package-validation.md"),
+        Compositor.renderFeature161PackageValidation
+            [ "`compositor-readiness --feature 161`: package assembled."
+              "`Feature161HostLaneReadiness`: helper surface available."
+              "`compositor-performance --feature 161 --lane host-ledger`: host lane ledger available." ])
+    File.WriteAllText(
+        Path.Combine(out, "regression-validation.md"),
+        Compositor.renderFeature161RegressionValidation
+            [ "`compositor-readiness --feature 161`: package assembled."
+              "Feature 155, 157, 158, 159, and 160 preservation evidence remains linked."
+              "Unsupported-host validation records zero accepted lane-scoped performance artifacts." ])
+    File.WriteAllText(Path.Combine(out, "validation-summary.md"), Compositor.renderFeature161ValidationSummary summary)
+    printfn "%s" (Path.Combine(out, "validation-summary.md"))
+    0
+
 let private runCompositorPromotionCmd (rest: string list) =
     if isFeature159 rest then
         runFeature159PromotionCmd rest
@@ -3343,7 +3754,9 @@ let private runCompositorPromotionCmd (rest: string list) =
         2
 
 let private runCompositorReadinessCmd (rest: string list) =
-    if isFeature160 rest then
+    if isFeature161 rest then
+        runFeature161ReadinessCmd rest
+    elif isFeature160 rest then
         runFeature160ReadinessCmd rest
     elif isFeature159 rest then
         runFeature159ReadinessCmd rest

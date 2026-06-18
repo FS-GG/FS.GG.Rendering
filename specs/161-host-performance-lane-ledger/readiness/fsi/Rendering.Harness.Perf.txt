@@ -1,0 +1,1 @@
+Rendering.Harness.Perf exposes Feature 161 host-lane exclusion reason tokens including missing-display, indirect-rendering, software-raster, unknown-renderer, host-facts-missing, cross-lane-evidence, noisy-timing, and prior-gate-blocked.

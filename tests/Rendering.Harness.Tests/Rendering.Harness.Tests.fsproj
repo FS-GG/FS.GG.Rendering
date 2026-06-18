@@ -50,6 +50,9 @@
     <Compile Include="Feature158ReadinessPackageTests.fs" />
     <Compile Include="Feature159PromotionEvidenceTests.fs" />
     <Compile Include="Feature159ReadinessPackageTests.fs" />
+    <Compile Include="Feature161HostLaneFactTests.fs" />
+    <Compile Include="Feature161LaneLedgerTests.fs" />
+    <Compile Include="Feature161ReadinessPackageTests.fs" />
     <Compile Include="Feature160FocusedLaneTests.fs" />
     <Compile Include="Feature160ReleaseGateSeparationTests.fs" />
     <Compile Include="Feature160ReadinessPackageTests.fs" />

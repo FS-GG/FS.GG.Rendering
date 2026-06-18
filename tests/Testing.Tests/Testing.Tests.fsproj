@@ -19,6 +19,7 @@
     <Compile Include="Feature157DamageReadinessHelperTests.fs" />
     <Compile Include="Feature159ReadinessHelperTests.fs" />
     <Compile Include="Feature160ThroughputReadinessTests.fs" />
+    <Compile Include="Feature161HostLaneReadinessTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

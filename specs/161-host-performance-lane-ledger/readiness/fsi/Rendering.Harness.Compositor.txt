@@ -1,0 +1,1 @@
+Rendering.Harness.Compositor exposes Feature 161 host facts, lane ledger, claim scope, MVU, command, and readiness signatures.

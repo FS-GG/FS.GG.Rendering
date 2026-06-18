@@ -17,6 +17,7 @@ module Compositor =
     val feature158Id: string
     val feature159Id: string
     val feature160Id: string
+    val feature161Id: string
 
     val readinessDirectory: string
     val presentProofDirectory: string
@@ -187,6 +188,26 @@ module Compositor =
     val feature160UnsupportedHostMinutes: int
     val feature160PerformanceCommand: string
     val feature160ReadinessCommand: string
+
+    val feature161ReadinessDirectory: string
+    val feature161LaneLedgerDirectory: string
+    val feature161LaneLedgerEntriesDirectory: string
+    val feature161LaneLedgerHostFactsDirectory: string
+    val feature161LaneLedgerExcludedDirectory: string
+    val feature161LaneLedgerUnsupportedDirectory: string
+    val feature161FullValidationDirectory: string
+    val feature161FsiDirectory: string
+    val feature161CompatibilityLedgerPath: string
+    val feature161ValidationSummaryPath: string
+    val feature161PackageValidationPath: string
+    val feature161RegressionValidationPath: string
+    val feature161LaneLedgerSummaryPath: string
+    val feature161LaneLedgerSummaryJsonPath: string
+    val feature161AcceptedProfileId: string
+    val feature161PolicyId: string
+    val feature161HostLaneId: string
+    val feature161PerformanceCommand: string
+    val feature161ReadinessCommand: string
 
     type HostProfile =
         { ProfileId: string
@@ -677,6 +698,107 @@ module Compositor =
         | Feature160WriteFullValidationRecord of path: string
         | Feature160WriteArtifact of path: string
 
+    [<RequireQualifiedAccess>]
+    type Feature161ReadinessStatus =
+        | Accepted
+        | Blocked
+        | Rejected
+        | FallbackOnly
+        | EnvironmentLimited
+
+    type Feature161HostFacts =
+        { DisplayServer: string
+          DisplayIdentity: string
+          RendererIdentity: string
+          DirectRendering: bool option
+          RefreshRateHz: float option
+          RefreshUnavailableReason: string option
+          DriverIdentity: string
+          PackageVersionSet: string
+          CpuLoadNote: string
+          GpuLoadNote: string
+          EnvironmentLimits: string list
+          HostProfile: HostProfile
+          RunIdentity: string
+          ScenarioIdentity: string
+          TimingPolicyIdentity: string
+          CollectionTime: DateTimeOffset
+          ArtifactLocations: string list }
+
+    type Feature161PriorGate =
+        { Feature: string
+          Status: string
+          EvidencePath: string }
+
+    type Feature161LedgerEntry =
+        { EntryId: string
+          LaneId: string
+          HostFacts: Feature161HostFacts
+          PriorGates: Feature161PriorGate list
+          Status: Feature161ReadinessStatus
+          PrimaryExclusionReason: Perf.ExclusionReason option
+          TimingStatus: string
+          AcceptedLaneScopedPerformanceArtifacts: int
+          ArtifactPaths: string list
+          Diagnostics: string list }
+
+    type Feature161ClaimScope =
+        { AcceptedLaneId: string option
+          AppliesTo: string
+          NonGeneralizedLanes: string list
+          RemainingBlockers: string list
+          PerformanceClaim: string }
+
+    type Feature161Summary =
+        { RunId: string
+          HostProfile: HostProfile
+          PolicyId: string
+          Entries: Feature161LedgerEntry list
+          UnsupportedHostReason: string option
+          ClaimScope: Feature161ClaimScope
+          FullValidationStatus: string
+          CompatibilityImpact: string
+          PackageValidationStatus: string
+          RegressionValidationStatus: string
+          Status: Feature161ReadinessStatus
+          ReleaseReadyStatus: string
+          PerformanceClaim: string
+          Diagnostics: string list }
+
+    type Feature161Model =
+        { RunId: string
+          ExpectedProfileId: string
+          ActiveProfile: HostProfile option
+          PolicyId: string option
+          HostFacts: Feature161HostFacts option
+          Entries: Feature161LedgerEntry list
+          PriorGates: Feature161PriorGate list
+          PublishedArtifacts: string list
+          Status: Feature161ReadinessStatus
+          Diagnostics: string list }
+
+    type Feature161Msg =
+        | Feature161HostProfileDetected of HostProfile
+        | Feature161HostProfileRejected of reason: string
+        | Feature161PolicyDeclared of policyId: string
+        | Feature161HostFactsCollected of Feature161HostFacts
+        | Feature161HostFactsRejected of reason: Perf.ExclusionReason * diagnostic: string
+        | Feature161PriorGateLinked of Feature161PriorGate
+        | Feature161LedgerEntryRecorded of Feature161LedgerEntry
+        | Feature161ArtifactPublished of path: string
+        | Feature161DiagnosticRecorded of string
+
+    type Feature161Effect =
+        | Feature161DetectHostProfile
+        | Feature161DeclarePolicy of policyId: string
+        | Feature161CollectHostFacts
+        | Feature161LoadThroughputPackage of path: string
+        | Feature161WriteHostFactsArtifact of path: string
+        | Feature161WriteLedgerEntryArtifact of path: string
+        | Feature161WriteExcludedEvidenceArtifact of path: string
+        | Feature161WriteUnsupportedHostArtifact of path: string
+        | Feature161WriteArtifact of path: string
+
     val thresholds: Thresholds
     val snapshotBudget: SnapshotBudget
     val scenarioIds: string list
@@ -715,6 +837,9 @@ module Compositor =
     val feature160RequiredScenarioIds: string list
     val feature160ScenarioIds: string list
     val feature160TargetHostProfiles: HostProfile list
+    val feature161RequiredScenarioIds: string list
+    val feature161NonGeneralizedLanes: string list
+    val feature161PriorGateLinks: Feature161PriorGate list
 
     val hostProfileFromFacts: facts: ProbeFacts -> HostProfile
     val proofVerdictToken: verdict: ProofVerdict -> string
@@ -741,6 +866,8 @@ module Compositor =
     val updateFeature159: msg: Feature159Msg -> model: Feature159Model -> Feature159Model * Feature159Effect list
     val initFeature160: attempts: int -> maxIterationMinutes: int -> Feature160Model * Feature160Effect list
     val updateFeature160: msg: Feature160Msg -> model: Feature160Model -> Feature160Model * Feature160Effect list
+    val initFeature161: sourceThroughput: string option -> Feature161Model * Feature161Effect list
+    val updateFeature161: msg: Feature161Msg -> model: Feature161Model -> Feature161Model * Feature161Effect list
 
     val artifactPath: directory: string -> name: string -> string
     val feature148ArtifactPath: directory: string -> name: string -> string
@@ -754,6 +881,7 @@ module Compositor =
     val feature158ArtifactPath: directory: string -> name: string -> string
     val feature159ArtifactPath: directory: string -> name: string -> string
     val feature160ArtifactPath: directory: string -> name: string -> string
+    val feature161ArtifactPath: directory: string -> name: string -> string
     val feature156ScenarioFileName: scenarioId: string -> string
     val feature156VerdictToken: verdict: Feature156ScenarioVerdict -> string
     val feature156DistributionRow: distribution: Feature156PathDistribution option -> string
@@ -774,6 +902,14 @@ module Compositor =
     val feature160FocusedThroughputStatus: summary: Feature160ThroughputSummary -> Feature160ReadinessStatus
     val feature160OverallStatus: summary: Feature160ThroughputSummary -> Feature160ReadinessStatus
     val feature160FullValidationStatus: record: Feature160FullValidationRecord option -> string
+    val feature161StatusToken: status: Feature161ReadinessStatus -> string
+    val feature161HostFactsFileName: entryId: string -> string
+    val feature161LedgerEntryFileName: entryId: string -> string
+    val feature161LaneIdFromFacts: facts: Feature161HostFacts -> string
+    val feature161ValidateHostFacts: facts: Feature161HostFacts -> Perf.ExclusionReason option
+    val feature161LedgerEntryAccepted: entry: Feature161LedgerEntry -> bool
+    val feature161ScopeFromEntries: entries: Feature161LedgerEntry list -> Feature161ClaimScope
+    val feature161OverallStatus: summary: Feature161Summary -> Feature161ReadinessStatus
     val renderPresentProof: proof: PresentProof -> string
     val renderValidationSummary: model: ReadinessModel -> string
     val renderCompatibilityLedger: model: ReadinessModel -> string
@@ -863,3 +999,14 @@ module Compositor =
     val renderFeature160FullValidationRecord: record: Feature160FullValidationRecord option -> string
     val renderFeature160ValidationSummary: summary: Feature160ThroughputSummary -> string
     val renderFeature160UnsupportedHostReport: reason: string -> string
+    val renderFeature161HostFacts: facts: Feature161HostFacts -> string
+    val renderFeature161LedgerEntry: entry: Feature161LedgerEntry -> string
+    val renderFeature161ExcludedEvidenceReport: reason: Perf.ExclusionReason -> entries: Feature161LedgerEntry list -> string
+    val renderFeature161LaneLedgerSummary: summary: Feature161Summary -> string
+    val renderFeature161LaneLedgerSummaryJson: summary: Feature161Summary -> string
+    val renderFeature161CompatibilityLedger: unit -> string
+    val renderFeature161PackageValidation: validationLines: string list -> string
+    val renderFeature161RegressionValidation: validationLines: string list -> string
+    val renderFeature161FullValidationRecord: status: string -> string
+    val renderFeature161ValidationSummary: summary: Feature161Summary -> string
+    val renderFeature161UnsupportedHostReport: reason: string -> string
