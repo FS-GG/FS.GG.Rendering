@@ -56,6 +56,44 @@ module Perf =
           ConfidenceDecision: string
           Reasons: string list }
 
+    type MeasurementPolicy =
+        | ReadbackFree
+        | ReadbackOutsideMeasurement
+        | ProbeReadbackIncluded
+        | Unverified
+        | Missing
+
+    type InclusionStatus =
+        | Included
+        | Excluded
+        | Probe
+
+    type ExclusionReason =
+        | ProbeRunExcluded
+        | ProofReadbackInMeasuredInterval
+        | MissingMeasurementPolicy
+        | UnverifiableMeasurementPolicy
+        | CrossProfileEvidence
+        | ScenarioDefinitionMismatch
+        | PackageVersionMismatch
+        | RunIdentityMismatch
+        | UnsupportedHost
+        | EnvironmentLimitedReason
+        | FailedProofReadback
+
+    type ClassifiedTimingSample =
+        { ScenarioId: string
+          ScenarioDefinitionId: string
+          Path: TimingPath
+          RunId: string
+          HostProfileId: string
+          PackageVersion: string
+          DurationMs: float
+          MeasurementPolicy: MeasurementPolicy
+          InclusionStatus: InclusionStatus
+          ExclusionReason: ExclusionReason option
+          ArtifactPath: string }
+
     let parseMode token =
         match token with
         | "throughput" -> Some Throughput
@@ -87,6 +125,78 @@ module Perf =
         | Rejected -> "rejected"
         | EnvironmentLimited -> "environment-limited"
         | Limited -> "limited"
+
+    let measurementPolicyToken policy =
+        match policy with
+        | ReadbackFree -> "readback-free"
+        | ReadbackOutsideMeasurement -> "readback-outside-measurement"
+        | ProbeReadbackIncluded -> "probe-readback-included"
+        | Unverified -> "unverified"
+        | Missing -> "missing"
+
+    let parseMeasurementPolicy token =
+        match token with
+        | "readback-free" -> Some ReadbackFree
+        | "readback-outside-measurement" -> Some ReadbackOutsideMeasurement
+        | "probe-readback-included" -> Some ProbeReadbackIncluded
+        | "unverified" -> Some Unverified
+        | "missing" -> Some Missing
+        | _ -> None
+
+    let inclusionStatusToken status =
+        match status with
+        | Included -> "included"
+        | Excluded -> "excluded"
+        | Probe -> "probe"
+
+    let exclusionReasonToken reason =
+        match reason with
+        | ProbeRunExcluded -> "probe-run-excluded"
+        | ProofReadbackInMeasuredInterval -> "proof-readback-in-measured-interval"
+        | MissingMeasurementPolicy -> "missing-measurement-policy"
+        | UnverifiableMeasurementPolicy -> "unverifiable-measurement-policy"
+        | CrossProfileEvidence -> "cross-profile-evidence"
+        | ScenarioDefinitionMismatch -> "scenario-definition-mismatch"
+        | PackageVersionMismatch -> "package-version-mismatch"
+        | RunIdentityMismatch -> "run-identity-mismatch"
+        | UnsupportedHost -> "unsupported-host"
+        | EnvironmentLimitedReason -> "environment-limited"
+        | FailedProofReadback -> "failed-proof-readback"
+
+    let classifyMeasurementPolicy policy isExplicitProbe readbackInMeasuredInterval =
+        if isExplicitProbe || policy = ProbeReadbackIncluded then
+            Probe, Some ProbeRunExcluded
+        elif readbackInMeasuredInterval then
+            Excluded, Some ProofReadbackInMeasuredInterval
+        else
+            match policy with
+            | ReadbackFree
+            | ReadbackOutsideMeasurement -> Included, None
+            | Missing -> Excluded, Some MissingMeasurementPolicy
+            | Unverified -> Excluded, Some UnverifiableMeasurementPolicy
+            | ProbeReadbackIncluded -> Probe, Some ProbeRunExcluded
+
+    let private invalidDuration value =
+        Double.IsNaN value || Double.IsInfinity value || value < 0.0
+
+    let classifyTimingSample expectedRunId expectedHostProfileId expectedPackageVersion expectedScenarioDefinitions sample =
+        let status, reason =
+            if sample.RunId <> expectedRunId then
+                Excluded, Some RunIdentityMismatch
+            elif sample.HostProfileId <> expectedHostProfileId then
+                Excluded, Some CrossProfileEvidence
+            elif sample.PackageVersion <> expectedPackageVersion then
+                Excluded, Some PackageVersionMismatch
+            else
+                match expectedScenarioDefinitions |> Map.tryFind sample.ScenarioId with
+                | None -> Excluded, Some ScenarioDefinitionMismatch
+                | Some expected when expected <> sample.ScenarioDefinitionId -> Excluded, Some ScenarioDefinitionMismatch
+                | Some _ when invalidDuration sample.DurationMs -> Excluded, Some UnverifiableMeasurementPolicy
+                | Some _ -> classifyMeasurementPolicy sample.MeasurementPolicy false false
+
+        { sample with
+            InclusionStatus = status
+            ExclusionReason = reason }
 
     let percentile percentile samples =
         let finite =

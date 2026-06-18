@@ -56,6 +56,44 @@ module Perf =
           ConfidenceDecision: string
           Reasons: string list }
 
+    type MeasurementPolicy =
+        | ReadbackFree
+        | ReadbackOutsideMeasurement
+        | ProbeReadbackIncluded
+        | Unverified
+        | Missing
+
+    type InclusionStatus =
+        | Included
+        | Excluded
+        | Probe
+
+    type ExclusionReason =
+        | ProbeRunExcluded
+        | ProofReadbackInMeasuredInterval
+        | MissingMeasurementPolicy
+        | UnverifiableMeasurementPolicy
+        | CrossProfileEvidence
+        | ScenarioDefinitionMismatch
+        | PackageVersionMismatch
+        | RunIdentityMismatch
+        | UnsupportedHost
+        | EnvironmentLimitedReason
+        | FailedProofReadback
+
+    type ClassifiedTimingSample =
+        { ScenarioId: string
+          ScenarioDefinitionId: string
+          Path: TimingPath
+          RunId: string
+          HostProfileId: string
+          PackageVersion: string
+          DurationMs: float
+          MeasurementPolicy: MeasurementPolicy
+          InclusionStatus: InclusionStatus
+          ExclusionReason: ExclusionReason option
+          ArtifactPath: string }
+
     /// Parse a `--mode` token; `None` if unrecognised.
     val parseMode: token: string -> PerfMode option
 
@@ -68,6 +106,28 @@ module Perf =
     val timingPathToken: path: TimingPath -> string
 
     val timingVerdictToken: verdict: TimingVerdict -> string
+
+    val measurementPolicyToken: policy: MeasurementPolicy -> string
+
+    val parseMeasurementPolicy: token: string -> MeasurementPolicy option
+
+    val inclusionStatusToken: status: InclusionStatus -> string
+
+    val exclusionReasonToken: reason: ExclusionReason -> string
+
+    val classifyMeasurementPolicy:
+        policy: MeasurementPolicy ->
+        isExplicitProbe: bool ->
+        readbackInMeasuredInterval: bool ->
+            InclusionStatus * ExclusionReason option
+
+    val classifyTimingSample:
+        expectedRunId: string ->
+        expectedHostProfileId: string ->
+        expectedPackageVersion: string ->
+        expectedScenarioDefinitions: Map<string, string> ->
+        sample: ClassifiedTimingSample ->
+            ClassifiedTimingSample
 
     val percentile: percentile: float -> samples: float list -> float option
 

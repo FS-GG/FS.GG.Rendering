@@ -16,6 +16,7 @@ module Compositor =
     let feature155Id = "155-native-proof-capture"
     let feature156Id = "156-same-profile-timing"
     let feature157Id = "157-no-clear-damage-scissor"
+    let feature158Id = "158-separate-proof-timing"
 
     let readinessDirectory = "specs/147-compositor-damage-redraw/readiness"
     let presentProofDirectory = Path.Combine(readinessDirectory, "present-proof")
@@ -122,6 +123,27 @@ module Compositor =
     let feature157DamageSummaryPath = Path.Combine(feature157DamageDirectory, "summary.md")
     let feature157DamageSummaryJsonPath = Path.Combine(feature157DamageDirectory, "summary.json")
     let feature157AcceptedProfileId = feature156AcceptedProfileId
+
+    let feature158ReadinessDirectory = Path.Combine("specs", feature158Id, "readiness")
+    let feature158TimingDirectory = Path.Combine(feature158ReadinessDirectory, "timing")
+    let feature158TimingScenariosDirectory = Path.Combine(feature158TimingDirectory, "scenarios")
+    let feature158TimingRawDirectory = Path.Combine(feature158TimingDirectory, "raw")
+    let feature158TimingExcludedDirectory = Path.Combine(feature158TimingDirectory, "excluded")
+    let feature158TimingUnsupportedDirectory = Path.Combine(feature158TimingDirectory, "unsupported")
+    let feature158ProofProbesDirectory = Path.Combine(feature158ReadinessDirectory, "proof-probes")
+    let feature158FsiDirectory = Path.Combine(feature158ReadinessDirectory, "fsi")
+    let feature158SurfaceBaselinesDirectory = Path.Combine(feature158ReadinessDirectory, "surface-baselines")
+    let feature158CompatibilityLedgerPath = Path.Combine(feature158ReadinessDirectory, "compatibility-ledger.md")
+    let feature158ValidationSummaryPath = Path.Combine(feature158ReadinessDirectory, "validation-summary.md")
+    let feature158PackageValidationPath = Path.Combine(feature158ReadinessDirectory, "package-validation.md")
+    let feature158RegressionValidationPath = Path.Combine(feature158ReadinessDirectory, "regression-validation.md")
+    let feature158TimingSummaryPath = Path.Combine(feature158TimingDirectory, "summary.md")
+    let feature158TimingSummaryJsonPath = Path.Combine(feature158TimingDirectory, "summary.json")
+    let feature158AcceptedProfileId = feature156AcceptedProfileId
+    let feature158PolicyId = "readback-free-timing-v1"
+    let feature158PerformanceCommand = "compositor-performance --feature 158"
+    let feature158ProbeCommand = "compositor-performance --feature 158 --probe-readback"
+    let feature158ReadinessCommand = "compositor-readiness --feature 158"
 
     type HostProfile =
         { ProfileId: string
@@ -344,6 +366,107 @@ module Compositor =
         | Feature157RenderFullRedrawFrame of scenarioId: string
         | Feature157CompareParity of scenarioId: string
         | Feature157WriteArtifact of path: string
+
+    [<RequireQualifiedAccess>]
+    type Feature158ReadinessStatus =
+        | Accepted
+        | FallbackOnly
+        | Rejected
+        | EnvironmentLimited
+
+    type Feature158TimingSample =
+        { SampleId: string
+          SampleIndex: int
+          ScenarioId: string
+          ScenarioDefinitionId: string
+          Path: Perf.TimingPath
+          RunId: string
+          HostProfileId: string
+          PackageVersion: string
+          DurationMs: float
+          MeasurementPolicy: Perf.MeasurementPolicy
+          InclusionStatus: Perf.InclusionStatus
+          ExclusionReason: Perf.ExclusionReason option
+          ArtifactPath: string }
+
+    type Feature158PathDistribution =
+        { SampleCount: int
+          P50Ms: float
+          P95Ms: float
+          P99Ms: float
+          MinMs: float
+          MaxMs: float
+          RawSamplePath: string }
+
+    type Feature158ScenarioReport =
+        { ScenarioId: string
+          ScenarioDefinitionId: string
+          FullRedraw: Feature158PathDistribution option
+          DamageScoped: Feature158PathDistribution option
+          WarmupCount: int
+          MeasuredRepetitions: int
+          IncludedSamples: Feature158TimingSample list
+          ExcludedSamples: Feature158TimingSample list
+          ProofProbeArtifacts: string list
+          Status: Feature158ReadinessStatus
+          ArtifactPaths: string list
+          Diagnostics: string list }
+
+    type Feature158ProofProbeEvidence =
+        { ProbeId: string
+          HostProfile: HostProfile
+          ScenarioIds: string list
+          ReadbackArtifacts: string list
+          ProbeSampleIds: string list
+          ExclusionReason: Perf.ExclusionReason
+          Diagnostics: string list }
+
+    type Feature158TimingSummary =
+        { RunId: string
+          HostProfile: HostProfile
+          PolicyId: string
+          WarmupCount: int
+          MeasuredRepetitions: int
+          ScenarioReports: Feature158ScenarioReport list
+          IncludedSamples: Feature158TimingSample list
+          ExcludedSamples: Feature158TimingSample list
+          ProofProbeEvidence: Feature158ProofProbeEvidence list
+          UnsupportedHostReason: string option
+          Feature156Comparison: string
+          Status: Feature158ReadinessStatus
+          PerformanceClaim: string
+          Diagnostics: string list }
+
+    type Feature158Model =
+        { RunId: string
+          ExpectedProfileId: string
+          ActiveProfile: HostProfile option
+          PolicyId: string option
+          WarmupCount: int
+          MeasuredRepetitions: int
+          ScenarioReports: Feature158ScenarioReport list
+          ProofProbeEvidence: Feature158ProofProbeEvidence list
+          PublishedArtifacts: string list
+          Status: Feature158ReadinessStatus
+          Diagnostics: string list }
+
+    type Feature158Msg =
+        | Feature158HostProfileDetected of HostProfile
+        | Feature158HostProfileRejected of reason: string
+        | Feature158PolicyDeclared of policyId: string
+        | Feature158ScenarioEvaluated of Feature158ScenarioReport
+        | Feature158ProbeEvidenceRecorded of Feature158ProofProbeEvidence
+        | Feature158RunEnvironmentLimited of reason: string
+        | Feature158SummaryPublished of path: string
+        | Feature158DiagnosticRecorded of string
+
+    type Feature158Effect =
+        | Feature158DetectHostProfile
+        | Feature158DeclarePolicy of policyId: string
+        | Feature158PrepareScenario of scenarioId: string
+        | Feature158MeasurePath of scenarioId: string * path: string
+        | Feature158CaptureProbeReadback of scenarioId: string
+        | Feature158WriteArtifact of path: string
 
     let thresholds =
         { PromotionReductionPercent = 30.0
@@ -744,6 +867,34 @@ module Compositor =
               DisplayEnvironment = "x11"
               ProofAlgorithmVersion = "sentinel-damage-v1" } ]
 
+    let feature158RequiredScenarioIds = feature156RequiredScenarioIds
+
+    let feature158ScenarioIds =
+        feature158RequiredScenarioIds
+        @ [ "timing/probe-readback"
+            "timing/proof-readback-in-measured-interval"
+            "timing/missing-policy"
+            "timing/unverified-policy"
+            "timing/cross-profile-evidence"
+            "timing/package-version-mismatch"
+            "timing/run-identity-mismatch"
+            "timing/unsupported-host"
+            "readiness/validation-summary"
+            "readiness/compatibility-ledger"
+            "readiness/package-validation"
+            "readiness/regression-validation" ]
+
+    let feature158TargetHostProfiles =
+        feature157TargetHostProfiles
+        @ [ { ProfileId = feature158AcceptedProfileId
+              Backend = "OpenGL"
+              Renderer = None
+              PresentMode = "DirectToSwapchain"
+              FramebufferSize = "640x480"
+              Scale = Some 1.0
+              DisplayEnvironment = "x11"
+              ProofAlgorithmVersion = "sentinel-damage-v1" } ]
+
     let private backendToken backend =
         match backend with
         | X11 -> "x11"
@@ -1077,6 +1228,108 @@ module Compositor =
           Feature157WriteArtifact feature157PackageValidationPath
           Feature157WriteArtifact feature157RegressionValidationPath ]
 
+    let feature158StatusToken status =
+        match status with
+        | Feature158ReadinessStatus.Accepted -> "accepted"
+        | Feature158ReadinessStatus.FallbackOnly -> "fallback-only"
+        | Feature158ReadinessStatus.Rejected -> "rejected"
+        | Feature158ReadinessStatus.EnvironmentLimited -> "environment-limited"
+
+    let feature158ScenarioFileName (scenarioId: string) =
+        scenarioId.Replace("/", "-") + ".md"
+
+    let private feature158StatusFromReports (reports: Feature158ScenarioReport list) (diagnostics: string list) =
+        if diagnostics |> List.exists (fun item -> item.Contains("environment-limited", StringComparison.OrdinalIgnoreCase)) then
+            Feature158ReadinessStatus.EnvironmentLimited
+        else
+            let requiredReports =
+                feature158RequiredScenarioIds
+                |> List.choose (fun scenario -> reports |> List.tryFind (fun report -> report.ScenarioId = scenario))
+
+            let allRequiredCovered = requiredReports.Length = feature158RequiredScenarioIds.Length
+            let allAccepted =
+                allRequiredCovered
+                && requiredReports
+                   |> List.forall (fun report ->
+                       report.Status = Feature158ReadinessStatus.Accepted
+                       && not (List.isEmpty report.IncludedSamples)
+                       && report.IncludedSamples
+                          |> List.forall (fun sample ->
+                              sample.InclusionStatus = Perf.Included
+                              && (sample.MeasurementPolicy = Perf.ReadbackFree
+                                  || sample.MeasurementPolicy = Perf.ReadbackOutsideMeasurement)))
+
+            if allAccepted then
+                Feature158ReadinessStatus.Accepted
+            elif reports |> List.exists (fun report -> report.Status = Feature158ReadinessStatus.EnvironmentLimited) then
+                Feature158ReadinessStatus.EnvironmentLimited
+            elif reports |> List.exists (fun report -> report.Status = Feature158ReadinessStatus.FallbackOnly) then
+                Feature158ReadinessStatus.FallbackOnly
+            elif reports |> List.exists (fun report -> not (List.isEmpty report.IncludedSamples)) then
+                Feature158ReadinessStatus.Rejected
+            else
+                Feature158ReadinessStatus.FallbackOnly
+
+    let initFeature158 warmupCount measuredRepetitions : Feature158Model * Feature158Effect list =
+        { RunId = "feature158-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss")
+          ExpectedProfileId = feature158AcceptedProfileId
+          ActiveProfile = None
+          PolicyId = None
+          WarmupCount = max 0 warmupCount
+          MeasuredRepetitions = max 1 measuredRepetitions
+          ScenarioReports = []
+          ProofProbeEvidence = []
+          PublishedArtifacts = []
+          Status = Feature158ReadinessStatus.FallbackOnly
+          Diagnostics = [] },
+        [ Feature158DetectHostProfile
+          Feature158DeclarePolicy feature158PolicyId
+          for scenario in feature158RequiredScenarioIds do
+              Feature158PrepareScenario scenario
+              Feature158MeasurePath(scenario, "full-redraw")
+              Feature158MeasurePath(scenario, "damage-scoped")
+          Feature158WriteArtifact feature158TimingSummaryPath
+          Feature158WriteArtifact feature158ValidationSummaryPath ]
+
+    let updateFeature158 (msg: Feature158Msg) (model: Feature158Model) : Feature158Model * Feature158Effect list =
+        let model' =
+            match msg with
+            | Feature158HostProfileDetected profile ->
+                { model with ActiveProfile = Some profile }
+            | Feature158HostProfileRejected reason ->
+                { model with
+                    Status = Feature158ReadinessStatus.Rejected
+                    Diagnostics = model.Diagnostics @ [ reason ] }
+            | Feature158PolicyDeclared policyId ->
+                { model with PolicyId = Some policyId }
+            | Feature158ScenarioEvaluated report ->
+                let reports =
+                    model.ScenarioReports
+                    |> List.filter (fun existing -> existing.ScenarioId <> report.ScenarioId)
+                    |> fun existing -> existing @ [ report ]
+
+                { model with ScenarioReports = reports }
+            | Feature158ProbeEvidenceRecorded evidence ->
+                { model with ProofProbeEvidence = model.ProofProbeEvidence @ [ evidence ] }
+            | Feature158RunEnvironmentLimited reason ->
+                { model with
+                    Status = Feature158ReadinessStatus.EnvironmentLimited
+                    Diagnostics = model.Diagnostics @ [ $"environment-limited: {reason}" ] }
+            | Feature158SummaryPublished path ->
+                { model with PublishedArtifacts = model.PublishedArtifacts @ [ path ] }
+            | Feature158DiagnosticRecorded diagnostic ->
+                { model with Diagnostics = model.Diagnostics @ [ diagnostic ] }
+
+        let status = feature158StatusFromReports model'.ScenarioReports model'.Diagnostics
+
+        { model' with Status = status },
+        [ Feature158WriteArtifact feature158TimingSummaryPath
+          Feature158WriteArtifact feature158TimingSummaryJsonPath
+          Feature158WriteArtifact feature158ValidationSummaryPath
+          Feature158WriteArtifact feature158CompatibilityLedgerPath
+          Feature158WriteArtifact feature158PackageValidationPath
+          Feature158WriteArtifact feature158RegressionValidationPath ]
+
     let artifactPath directory name = Path.Combine(directory, name)
     let feature148ArtifactPath directory name = Path.Combine(feature148ReadinessDirectory, directory, name)
     let feature149ArtifactPath directory name = Path.Combine(feature149ReadinessDirectory, directory, name)
@@ -1086,14 +1339,30 @@ module Compositor =
     let feature155ArtifactPath directory name = Path.Combine(feature155ReadinessDirectory, directory, name)
     let feature156ArtifactPath directory name = Path.Combine(feature156ReadinessDirectory, directory, name)
     let feature157ArtifactPath directory name = Path.Combine(feature157ReadinessDirectory, directory, name)
+    let feature158ArtifactPath directory name = Path.Combine(feature158ReadinessDirectory, directory, name)
 
     let feature156ScenarioFileName (scenarioId: string) =
         scenarioId.Replace("/", "-") + ".md"
+
+    let feature158OverallStatus (summary: Feature158TimingSummary) =
+        match summary.UnsupportedHostReason with
+        | Some _ -> Feature158ReadinessStatus.EnvironmentLimited
+        | None ->
+            feature158StatusFromReports
+                summary.ScenarioReports
+                (summary.Diagnostics
+                 @ [ if summary.Status = Feature158ReadinessStatus.EnvironmentLimited then "environment-limited" ])
 
     let private feature156FormatMs (value: float) =
         value.ToString("0.###", Globalization.CultureInfo.InvariantCulture)
 
     let feature156DistributionRow (distribution: Feature156PathDistribution option) =
+        match distribution with
+        | None -> "`missing` | `missing` | `missing` | `0`"
+        | Some distribution ->
+            $"`{feature156FormatMs distribution.P50Ms}` | `{feature156FormatMs distribution.P95Ms}` | `{feature156FormatMs distribution.P99Ms}` | `{distribution.SampleCount}`"
+
+    let feature158DistributionRow (distribution: Feature158PathDistribution option) =
         match distribution with
         | None -> "`missing` | `missing` | `missing` | `0`"
         | Some distribution ->
@@ -3143,4 +3412,351 @@ module Compositor =
               $"Reason: `{reason}`"
               ""
               "Unsupported or unavailable presentation environments cannot accept damage-scoped no-clear artifacts."
+              "" ]
+
+    let private feature158SampleRows (samples: Feature158TimingSample list) =
+        match samples with
+        | [] -> "| none | none | none | none | none | none | none | none |"
+        | xs ->
+            xs
+            |> List.map (fun sample ->
+                let reason = sample.ExclusionReason |> Option.map Perf.exclusionReasonToken |> Option.defaultValue "none"
+                $"| `{sample.SampleId}` | `{sample.ScenarioId}` | `{Perf.timingPathToken sample.Path}` | `{feature156FormatMs sample.DurationMs}` | `{Perf.measurementPolicyToken sample.MeasurementPolicy}` | `{Perf.inclusionStatusToken sample.InclusionStatus}` | `{reason}` | `{sample.ArtifactPath}` |")
+            |> String.concat "\n"
+
+    let private feature158Distribution (distribution: Feature158PathDistribution option) =
+        feature158DistributionRow distribution
+
+    let renderFeature158ScenarioReport (report: Feature158ScenarioReport) =
+        let diagnostics =
+            if List.isEmpty report.Diagnostics then "- none" else report.Diagnostics |> List.map (sprintf "- %s") |> String.concat "\n"
+
+        String.concat
+            "\n"
+            [ $"# Feature 158 Scenario: {report.ScenarioId}"
+              ""
+              $"Scenario id: `{report.ScenarioId}`"
+              $"Scenario definition: `{report.ScenarioDefinitionId}`"
+              $"Measurement-separation status: `{feature158StatusToken report.Status}`"
+              $"Warmup count: `{report.WarmupCount}`"
+              $"Measured repetitions: `{report.MeasuredRepetitions}`"
+              $"Included timing samples: `{report.IncludedSamples.Length}`"
+              $"Excluded timing samples: `{report.ExcludedSamples.Length}`"
+              ""
+              "## Distributions"
+              ""
+              "| Path | p50 ms | p95 ms | p99 ms | Samples |"
+              "|------|--------|--------|--------|---------|"
+              $"| full-redraw | {feature158Distribution report.FullRedraw} |"
+              $"| damage-scoped | {feature158Distribution report.DamageScoped} |"
+              ""
+              "## Included Samples"
+              ""
+              "| Sample | Scenario | Path | Duration ms | Policy | Status | Reason | Artifact |"
+              "|--------|----------|------|-------------|--------|--------|--------|----------|"
+              feature158SampleRows report.IncludedSamples
+              ""
+              "## Excluded Samples"
+              ""
+              "| Sample | Scenario | Path | Duration ms | Policy | Status | Reason | Artifact |"
+              "|--------|----------|------|-------------|--------|--------|--------|----------|"
+              feature158SampleRows report.ExcludedSamples
+              ""
+              "## Proof/Probe Artifacts"
+              ""
+              renderArtifacts report.ProofProbeArtifacts
+              ""
+              "## Artifacts"
+              ""
+              renderArtifacts report.ArtifactPaths
+              ""
+              "## Diagnostics"
+              ""
+              diagnostics
+              "" ]
+
+    let renderFeature158ExcludedSamplesReport (reason: Perf.ExclusionReason) (samples: Feature158TimingSample list) =
+        String.concat
+            "\n"
+            [ $"# Feature 158 Excluded Samples: {Perf.exclusionReasonToken reason}"
+              ""
+              $"Primary reason: `{Perf.exclusionReasonToken reason}`"
+              $"Excluded sample count: `{samples.Length}`"
+              ""
+              "| Sample | Scenario | Path | Duration ms | Policy | Status | Reason | Artifact |"
+              "|--------|----------|------|-------------|--------|--------|--------|----------|"
+              feature158SampleRows samples
+              "" ]
+
+    let renderFeature158ProofProbeReport (evidence: Feature158ProofProbeEvidence list) =
+        let rows =
+            match evidence with
+            | [] -> "| none | none | none | none | none |"
+            | xs ->
+                xs
+                |> List.map (fun item ->
+                    let scenarios = String.concat ", " item.ScenarioIds
+                    let artifacts = String.concat ", " item.ReadbackArtifacts
+                    let samples = String.concat ", " item.ProbeSampleIds
+                    $"| `{item.ProbeId}` | `{item.HostProfile.ProfileId}` | `{scenarios}` | `{Perf.exclusionReasonToken item.ExclusionReason}` | `{samples}` | `{artifacts}` |")
+                |> String.concat "\n"
+
+        String.concat
+            "\n"
+            [ "# Feature 158 Proof/Probe Evidence"
+              ""
+              "Proof/readback remains available as explicit probe evidence and is excluded from performance acceptance."
+              ""
+              "| Probe | Host profile | Scenarios | Exclusion reason | Probe samples | Readback artifacts |"
+              "|-------|--------------|-----------|------------------|---------------|--------------------|"
+              rows
+              "" ]
+
+    let private feature158ScenarioRows (summary: Feature158TimingSummary) =
+        match summary.ScenarioReports with
+        | [] -> "| none | missing | 0 | 0 | missing | missing | missing |"
+        | reports ->
+            reports
+            |> List.map (fun report ->
+                let artifact =
+                    report.ArtifactPaths
+                    |> List.tryFind (fun path -> path.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
+                    |> Option.defaultValue (Path.Combine("scenarios", feature158ScenarioFileName report.ScenarioId).Replace('\\', '/'))
+                let proofProbeLinks = String.concat ", " report.ProofProbeArtifacts
+                $"| `{report.ScenarioId}` | `{feature158StatusToken report.Status}` | `{report.IncludedSamples.Length}` | `{report.ExcludedSamples.Length}` | `{report.ScenarioDefinitionId}` | `{artifact}` | `{proofProbeLinks}` |")
+            |> String.concat "\n"
+
+    let private feature158ExcludedReasons (summary: Feature158TimingSummary) =
+        let excluded =
+            summary.ExcludedSamples
+            |> List.choose _.ExclusionReason
+            |> List.countBy id
+
+        match excluded with
+        | [] -> "- none"
+        | xs ->
+            xs
+            |> List.map (fun (reason, count) -> $"- `{Perf.exclusionReasonToken reason}`: `{count}`")
+            |> String.concat "\n"
+
+    let renderFeature158TimingSummary (summary: Feature158TimingSummary) =
+        let status = feature158OverallStatus summary
+        let renderer = summary.HostProfile.Renderer |> Option.defaultValue "unknown"
+        let scale = summary.HostProfile.Scale |> Option.map string |> Option.defaultValue "unknown"
+        let unsupported = summary.UnsupportedHostReason |> Option.defaultValue "none"
+        let diagnostics =
+            if List.isEmpty summary.Diagnostics then "- none" else summary.Diagnostics |> List.map (sprintf "- %s") |> String.concat "\n"
+
+        String.concat
+            "\n"
+            [ "# Feature 158 Readback-Free Timing Summary"
+              ""
+              $"Run identity: `{summary.RunId}`"
+              $"Feature 158 measurement-separation status: `{feature158StatusToken status}`"
+              $"Policy id: `{summary.PolicyId}`"
+              $"Accepted profile id: `{feature158AcceptedProfileId}`"
+              $"Measured profile id: `{summary.HostProfile.ProfileId}`"
+              $"Unsupported-host reason: `{unsupported}`"
+              $"Included timing samples: `{summary.IncludedSamples.Length}`"
+              $"Excluded timing samples: `{summary.ExcludedSamples.Length}`"
+              $"Shipped P7 performance claim: `{summary.PerformanceClaim}`"
+              $"Feature 156 comparison: `{summary.Feature156Comparison}`"
+              $"Warmup count: `{summary.WarmupCount}`"
+              $"Measured repetitions per path: `{summary.MeasuredRepetitions}`"
+              ""
+              "## Host Profile"
+              ""
+              $"- Backend: `{summary.HostProfile.Backend}`"
+              $"- Renderer: `{renderer}`"
+              $"- Present mode: `{summary.HostProfile.PresentMode}`"
+              $"- Framebuffer: `{summary.HostProfile.FramebufferSize}`"
+              $"- Scale: `{scale}`"
+              $"- Display environment: `{summary.HostProfile.DisplayEnvironment}`"
+              $"- Package version: `{feature156PackageVersion}`"
+              ""
+              "## Measurement Policy"
+              ""
+              "- Accepted timing samples must declare `readback-free` or `readback-outside-measurement`."
+              "- Proof/probe/readback samples are listed as excluded evidence and never enter the accepted performance set."
+              "- Missing, unverifiable, contaminated, cross-profile, cross-run, scenario-mismatched, package-mismatched, or unsupported samples fail closed."
+              ""
+              "## Scenario Coverage"
+              ""
+              "| Scenario | Status | Included | Excluded | Scenario definition | Artifact | Proof/probe links |"
+              "|----------|--------|----------|----------|---------------------|----------|-------------------|"
+              feature158ScenarioRows summary
+              ""
+              "## Excluded Reasons"
+              ""
+              feature158ExcludedReasons summary
+              ""
+              "## Evidence Links"
+              ""
+              "- Scenario reports: `scenarios/`"
+              "- Raw samples: `raw/`"
+              "- Excluded samples: `excluded/`"
+              "- Unsupported host: `unsupported/README.md`"
+              "- Proof/probe evidence: `../proof-probes/README.md`"
+              ""
+              "## Remaining Gates"
+              ""
+              "- Feature 159 net-positive reuse/promotion counters: `remaining`"
+              "- Feature 161 host performance lane ledger: `remaining`"
+              "- Feature 160 validation throughput follow-up: `remaining`, not a shipped performance-acceptance gate"
+              ""
+              "## Diagnostics"
+              ""
+              diagnostics
+              "" ]
+
+    let renderFeature158TimingSummaryJson (summary: Feature158TimingSummary) =
+        let status = feature158OverallStatus summary
+        let unsupported = summary.UnsupportedHostReason |> Option.defaultValue ""
+        let reasons =
+            summary.ExcludedSamples
+            |> List.choose _.ExclusionReason
+            |> List.distinct
+            |> List.map (fun reason -> $"    \"{escapeJson (Perf.exclusionReasonToken reason)}\"")
+            |> String.concat ",\n"
+
+        String.concat
+            "\n"
+            [ "{"
+              $"  \"runId\": \"{escapeJson summary.RunId}\","
+              $"  \"status\": \"{feature158StatusToken status}\","
+              $"  \"policyId\": \"{escapeJson summary.PolicyId}\","
+              $"  \"hostProfile\": \"{escapeJson summary.HostProfile.ProfileId}\","
+              $"  \"includedSampleCount\": {summary.IncludedSamples.Length},"
+              $"  \"excludedSampleCount\": {summary.ExcludedSamples.Length},"
+              $"  \"unsupportedHostReason\": \"{escapeJson unsupported}\","
+              $"  \"feature156Comparison\": \"{escapeJson summary.Feature156Comparison}\","
+              $"  \"performanceClaim\": \"{escapeJson summary.PerformanceClaim}\","
+              "  \"excludedReasons\": ["
+              reasons
+              "  ]"
+              "}" ]
+
+    let renderFeature158CompatibilityLedger () =
+        String.concat
+            "\n"
+            [ "# Feature 158 Compatibility Ledger"
+              ""
+              "Status: `accepted-with-recorded-limitations`"
+              ""
+              "## Public API and Diagnostics"
+              ""
+              "- No new `FS.GG.UI.Testing` public helper surface is introduced by Feature 158."
+              "- No new `FS.GG.UI.SkiaViewer` public helper surface is introduced by Feature 158."
+              "- `Rendering.Harness` adds `compositor-performance --feature 158`, `compositor-performance --feature 158 --probe-readback`, and `compositor-readiness --feature 158` evidence routes."
+              "- Harness-visible `.fsi` contracts add measurement policy, proof/probe exclusion, and readiness-package records for reviewer evidence."
+              ""
+              "## Compatibility Impact"
+              ""
+              "- Existing Feature 155 proof-set, Feature 156 timing, and Feature 157 damage readiness contracts remain source-compatible."
+              "- Proof readback remains available only as proof/probe evidence and is excluded from performance acceptance."
+              "- The shipped P7 performance claim remains `performance-not-accepted` until Feature 159 and Feature 161 gates pass."
+              ""
+              "## Public Surface Drift"
+              ""
+              "- Package surface baselines for `FS.GG.UI.Testing` and `FS.GG.UI.SkiaViewer` are unchanged for Feature 158."
+              "- Harness command output shape is additive and documented through readiness artifacts."
+              "" ]
+
+    let renderFeature158PackageValidation validationLines =
+        String.concat
+            "\n"
+            [ "# Feature 158 Package Validation"
+              ""
+              "Status: `accepted-with-recorded-limitations`"
+              ""
+              "## Validation Runs"
+              ""
+              if List.isEmpty validationLines then "- pending local validation" else validationLines |> List.map (sprintf "- %s") |> String.concat "\n"
+              ""
+              "## Package Surface"
+              ""
+              "- No Testing or SkiaViewer package-visible helper surface was added for Feature 158."
+              "- Feature 158 FSI evidence exercises observable harness command authoring and no-new-helper compatibility notes."
+              "- Package identity remains unchanged."
+              "" ]
+
+    let renderFeature158RegressionValidation validationLines =
+        String.concat
+            "\n"
+            [ "# Feature 158 Regression Validation"
+              ""
+              "Status: `accepted-with-recorded-limitations`"
+              ""
+              "## Validation Runs"
+              ""
+              if List.isEmpty validationLines then "- pending local validation" else validationLines |> List.map (sprintf "- %s") |> String.concat "\n"
+              ""
+              "## Preservation"
+              ""
+              "- Feature 155 proof and parity acceptance remains the correctness gate."
+              "- Feature 156 timing remains context-only and available for comparison."
+              "- Feature 157 damage-scissored no-clear readiness remains accepted for the current stable profile."
+              "- Unsupported-host validation remains fail-closed with zero accepted proof artifacts and zero accepted performance artifacts."
+              "- Shipped P7 performance claim remains `performance-not-accepted`."
+              "" ]
+
+    let renderFeature158ValidationSummary (summary: Feature158TimingSummary) =
+        let status = feature158OverallStatus summary
+        String.concat
+            "\n"
+            [ "# Feature 158 Readiness Summary"
+              ""
+              $"Status: `{feature158StatusToken status}`"
+              $"Measurement policy id: `{summary.PolicyId}`"
+              $"Accepted host profile: `{feature158AcceptedProfileId}`"
+              $"Measured host profile: `{summary.HostProfile.ProfileId}`"
+              $"Included timing samples: `{summary.IncludedSamples.Length}`"
+              $"Excluded timing samples: `{summary.ExcludedSamples.Length}`"
+              $"Proof/probe evidence entries: `{summary.ProofProbeEvidence.Length}`"
+              $"Feature 156 comparison: `{summary.Feature156Comparison}`"
+              $"Performance claim: `{summary.PerformanceClaim}`"
+              ""
+              "## Evidence Links"
+              ""
+              "- Timing summary: `timing/summary.md`"
+              "- Timing summary JSON: `timing/summary.json`"
+              "- Scenario reports: `timing/scenarios/`"
+              "- Raw timing samples: `timing/raw/`"
+              "- Excluded samples: `timing/excluded/`"
+              "- Unsupported host: `timing/unsupported/README.md`"
+              "- Proof/probe evidence: `proof-probes/README.md`"
+              "- Compatibility ledger: `compatibility-ledger.md`"
+              "- Package validation: `package-validation.md`"
+              "- Regression validation: `regression-validation.md`"
+              "- FSI performance authoring: `fsi/compositor-performance-authoring.fsx`"
+              "- FSI readiness authoring: `fsi/compositor-readiness-authoring.fsx`"
+              ""
+              "## Reviewer Checklist"
+              ""
+              "- Measurement policy is visible from this summary and `timing/summary.md`."
+              "- Included samples are linked through scenario reports and raw CSV/JSON files."
+              "- Excluded samples are grouped by stable reason under `timing/excluded/`."
+              "- Proof/probe readback artifacts are linked from `proof-probes/README.md` and excluded from accepted timing."
+              "- Unsupported-host output records `environment-limited`, accepted proof artifacts `0`, and accepted performance artifacts `0`."
+              "- Feature 156 comparison is recorded as `supersedes`, `confirms`, or `contextualizes`; this run records the value above."
+              "- Under-5-minute reviewer inspection evidence is recorded by this single entry point."
+              ""
+              "## Decision"
+              ""
+              "- Feature 158 accepts measurement separation only when required scenarios publish readback-free or outside-measurement samples."
+              "- The shipped compositor performance claim remains `performance-not-accepted` until Feature 159 and Feature 161 pass."
+              "" ]
+
+    let renderFeature158UnsupportedHostReport (reason: string) =
+        String.concat
+            "\n"
+            [ "# Feature 158 Unsupported Host Timing"
+              ""
+              "Status: `environment-limited`"
+              "Accepted proof artifacts: `0`"
+              "Accepted performance artifacts: `0`"
+              $"Reason: `{reason}`"
+              "Elapsed time target: `under-2-minutes`"
+              ""
+              "Unsupported or unavailable presentation environments cannot contribute to accepted readback-free timing evidence."
               "" ]

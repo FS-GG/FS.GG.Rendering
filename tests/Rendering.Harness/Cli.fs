@@ -2,6 +2,7 @@ module Rendering.Harness.Cli
 
 open System
 open System.IO
+open System.Text.Json
 open Rendering.Harness
 open FS.GG.UI.Scene
 open FS.GG.UI.SkiaViewer
@@ -118,6 +119,14 @@ let private isFeature157 (rest: string list) =
         value = "157"
         || value = "feature157"
         || String.Equals(value, Compositor.feature157Id, StringComparison.OrdinalIgnoreCase)
+    | _ -> false
+
+let private isFeature158 (rest: string list) =
+    match flagValue "--feature" rest with
+    | Some value ->
+        value = "158"
+        || value = "feature158"
+        || String.Equals(value, Compositor.feature158Id, StringComparison.OrdinalIgnoreCase)
     | _ -> false
 
 let private attemptCount (rest: string list) =
@@ -309,6 +318,449 @@ let private feature156ExistingTimingVerdict timingSummaryPath =
                 None)
     else
         None
+
+let private feature158ReasonFromHost facts (profile: Compositor.HostProfile) expectedProfile =
+    match facts.EffectiveBackend, facts.GlRenderer, facts.GlDirect, profile.ProfileId = expectedProfile with
+    | NoDisplay, _, _, _ -> Some "missing display"
+    | _, None, _, _ -> Some "missing GL renderer facts"
+    | _, _, false, _ -> Some "OpenGL direct rendering is unavailable"
+    | _, _, _, false -> Some $"profile mismatch: expected={expectedProfile} actual={profile.ProfileId}"
+    | _ -> None
+
+let private feature158ScenarioDefinition scenarioId =
+    "feature156-required-v1:" + feature156ScenarioStem scenarioId
+
+let private feature158Distribution rawSamplePath samples : Compositor.Feature158PathDistribution option =
+    Perf.summarizeSamples rawSamplePath samples
+    |> Option.map (fun distribution ->
+        { SampleCount = distribution.Count
+          P50Ms = distribution.P50Ms
+          P95Ms = distribution.P95Ms
+          P99Ms = distribution.P99Ms
+          MinMs = distribution.MinMs
+          MaxMs = distribution.MaxMs
+          RawSamplePath = distribution.RawSamplePath })
+
+let private feature158SummaryFromReports
+    runId
+    (profile: Compositor.HostProfile)
+    warmup
+    repetitions
+    (reports: Compositor.Feature158ScenarioReport list)
+    (proofProbes: Compositor.Feature158ProofProbeEvidence list)
+    (unsupported: string option)
+    (diagnostics: string list)
+    : Compositor.Feature158TimingSummary =
+    let included = reports |> List.collect _.IncludedSamples
+    let excluded = reports |> List.collect _.ExcludedSamples
+    let status =
+        match unsupported with
+        | Some _ -> Compositor.Feature158ReadinessStatus.EnvironmentLimited
+        | None when Compositor.feature158RequiredScenarioIds |> List.forall (fun scenario -> reports |> List.exists (fun report -> report.ScenarioId = scenario && report.Status = Compositor.Feature158ReadinessStatus.Accepted)) ->
+            Compositor.Feature158ReadinessStatus.Accepted
+        | None when not (List.isEmpty included) -> Compositor.Feature158ReadinessStatus.Rejected
+        | None -> Compositor.Feature158ReadinessStatus.FallbackOnly
+
+    { RunId = runId
+      HostProfile = profile
+      PolicyId = Compositor.feature158PolicyId
+      WarmupCount = warmup
+      MeasuredRepetitions = repetitions
+      ScenarioReports = reports
+      IncludedSamples = included
+      ExcludedSamples = excluded
+      ProofProbeEvidence = proofProbes
+      UnsupportedHostReason = unsupported
+      Feature156Comparison = if status = Compositor.Feature158ReadinessStatus.Accepted then "contextualizes" else "contextualizes"
+      Status = status
+      PerformanceClaim = "performance-not-accepted"
+      Diagnostics = diagnostics }
+
+type private Feature158TimingSnapshot =
+    { RunId: string
+      Status: Compositor.Feature158ReadinessStatus
+      IncludedSampleCount: int
+      ExcludedSampleCount: int
+      UnsupportedHostReason: string option
+      Feature156Comparison: string
+      PerformanceClaim: string
+      ExcludedReasons: Perf.ExclusionReason list }
+
+let private feature158StatusFromToken token =
+    match token with
+    | "accepted" -> Compositor.Feature158ReadinessStatus.Accepted
+    | "fallback-only" -> Compositor.Feature158ReadinessStatus.FallbackOnly
+    | "rejected" -> Compositor.Feature158ReadinessStatus.Rejected
+    | "environment-limited" -> Compositor.Feature158ReadinessStatus.EnvironmentLimited
+    | _ -> Compositor.Feature158ReadinessStatus.FallbackOnly
+
+let private feature158ExclusionReasonFromToken token =
+    match token with
+    | "probe-run-excluded" -> Some Perf.ProbeRunExcluded
+    | "proof-readback-in-measured-interval" -> Some Perf.ProofReadbackInMeasuredInterval
+    | "missing-measurement-policy" -> Some Perf.MissingMeasurementPolicy
+    | "unverifiable-measurement-policy" -> Some Perf.UnverifiableMeasurementPolicy
+    | "cross-profile-evidence" -> Some Perf.CrossProfileEvidence
+    | "scenario-definition-mismatch" -> Some Perf.ScenarioDefinitionMismatch
+    | "package-version-mismatch" -> Some Perf.PackageVersionMismatch
+    | "run-identity-mismatch" -> Some Perf.RunIdentityMismatch
+    | "unsupported-host" -> Some Perf.UnsupportedHost
+    | "environment-limited" -> Some Perf.EnvironmentLimitedReason
+    | "failed-proof-readback" -> Some Perf.FailedProofReadback
+    | _ -> None
+
+let private jsonString (root: JsonElement) (name: string) =
+    let mutable property = Unchecked.defaultof<JsonElement>
+    if root.TryGetProperty(name, &property) && property.ValueKind = JsonValueKind.String then
+        property.GetString() |> Option.ofObj
+    else
+        None
+
+let private jsonInt (root: JsonElement) (name: string) =
+    let mutable property = Unchecked.defaultof<JsonElement>
+    let mutable value = 0
+    if root.TryGetProperty(name, &property) && property.TryGetInt32(&value) then
+        Some value
+    else
+        None
+
+let private loadFeature158TimingSnapshot timingDir =
+    let path = Path.Combine(timingDir, "summary.json")
+    if not (File.Exists path) then
+        None
+    else
+        try
+            use document = JsonDocument.Parse(File.ReadAllText path)
+            let root = document.RootElement
+            let reasons =
+                let mutable property = Unchecked.defaultof<JsonElement>
+                if root.TryGetProperty("excludedReasons", &property) && property.ValueKind = JsonValueKind.Array then
+                    [ for item in property.EnumerateArray() do
+                          if item.ValueKind = JsonValueKind.String then
+                              match item.GetString() |> Option.ofObj |> Option.bind feature158ExclusionReasonFromToken with
+                              | Some reason -> reason
+                              | None -> () ]
+                else
+                    []
+
+            let unsupported =
+                jsonString root "unsupportedHostReason"
+                |> Option.bind (fun value -> if String.IsNullOrWhiteSpace value then None else Some value)
+
+            Some
+                { RunId = jsonString root "runId" |> Option.defaultValue ("feature158-readiness-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss"))
+                  Status = jsonString root "status" |> Option.map feature158StatusFromToken |> Option.defaultValue Compositor.Feature158ReadinessStatus.FallbackOnly
+                  IncludedSampleCount = jsonInt root "includedSampleCount" |> Option.defaultValue 0
+                  ExcludedSampleCount = jsonInt root "excludedSampleCount" |> Option.defaultValue 0
+                  UnsupportedHostReason = unsupported
+                  Feature156Comparison = jsonString root "feature156Comparison" |> Option.defaultValue "contextualizes"
+                  PerformanceClaim = jsonString root "performanceClaim" |> Option.defaultValue "performance-not-accepted"
+                  ExcludedReasons = reasons }
+        with _ ->
+            None
+
+let private feature158CountByScenario total =
+    let scenarios = Compositor.feature158RequiredScenarioIds
+    let count = max 0 total
+    let scenarioCount = max 1 scenarios.Length
+    let quotient = count / scenarioCount
+    let remainder = count % scenarioCount
+    scenarios
+    |> List.mapi (fun index scenario -> scenario, quotient + if index < remainder then 1 else 0)
+    |> Map.ofList
+
+let private loadFeature158ProofProbeEvidence proofProbeDir (profile: Compositor.HostProfile) : Compositor.Feature158ProofProbeEvidence list =
+    if not (Directory.Exists proofProbeDir) then
+        []
+    else
+        let artifacts =
+            Directory.EnumerateFiles(proofProbeDir, "*.png")
+            |> Seq.map (fun path ->
+                let fileName = Path.GetFileName path |> Option.ofObj |> Option.defaultValue "probe-readback.png"
+                Path.Combine("proof-probes", fileName).Replace('\\', '/'))
+            |> Seq.sort
+            |> Seq.toList
+
+        match artifacts with
+        | [] -> []
+        | xs ->
+            [ { Compositor.Feature158ProofProbeEvidence.ProbeId = "feature158-existing-proof-probes"
+                HostProfile = profile
+                ScenarioIds = Compositor.feature158RequiredScenarioIds
+                ReadbackArtifacts = xs
+                ProbeSampleIds = []
+                ExclusionReason = Perf.ProbeRunExcluded
+                Diagnostics = [ "loaded from proof-probes directory"; "accepted performance samples=0" ] } ]
+
+let private feature158Sample sampleId sampleIndex scenario path runId profile packageVersion policy status reason duration artifact : Compositor.Feature158TimingSample =
+    { SampleId = sampleId
+      SampleIndex = sampleIndex
+      ScenarioId = scenario
+      ScenarioDefinitionId = feature158ScenarioDefinition scenario
+      Path = path
+      RunId = runId
+      HostProfileId = profile
+      PackageVersion = packageVersion
+      DurationMs = duration
+      MeasurementPolicy = policy
+      InclusionStatus = status
+      ExclusionReason = reason
+      ArtifactPath = artifact }
+
+let private feature158ScenarioReport
+    scenario
+    scenarioDefinition
+    fullRedraw
+    damageScoped
+    warmup
+    repetitions
+    included
+    excluded
+    proofProbeArtifacts
+    status
+    artifactPaths
+    diagnostics
+    : Compositor.Feature158ScenarioReport =
+    { ScenarioId = scenario
+      ScenarioDefinitionId = scenarioDefinition
+      FullRedraw = fullRedraw
+      DamageScoped = damageScoped
+      WarmupCount = warmup
+      MeasuredRepetitions = repetitions
+      IncludedSamples = included
+      ExcludedSamples = excluded
+      ProofProbeArtifacts = proofProbeArtifacts
+      Status = status
+      ArtifactPaths = artifactPaths
+      Diagnostics = diagnostics }
+
+let private feature158ReadinessReportsFromSnapshot (snapshot: Feature158TimingSnapshot) (profile: Compositor.HostProfile) proofProbeArtifacts =
+    let includedCounts = feature158CountByScenario snapshot.IncludedSampleCount
+    let excludedCounts = feature158CountByScenario snapshot.ExcludedSampleCount
+    let excludedReasons =
+        match snapshot.ExcludedReasons with
+        | [] -> [ Perf.UnverifiableMeasurementPolicy ]
+        | reasons -> reasons
+
+    Compositor.feature158RequiredScenarioIds
+    |> List.map (fun scenario ->
+        let includedCount = includedCounts |> Map.tryFind scenario |> Option.defaultValue 0
+        let excludedCount = excludedCounts |> Map.tryFind scenario |> Option.defaultValue 0
+
+        let included =
+            [ for index in 1..includedCount ->
+                  let path = if index % 2 = 0 then Perf.DamageScoped else Perf.FullRedraw
+                  let sampleIndex = index.ToString("000")
+                  feature158Sample
+                      $"{snapshot.RunId}-{feature156ScenarioStem scenario}-included-{sampleIndex}"
+                      index
+                      scenario
+                      path
+                      snapshot.RunId
+                      profile.ProfileId
+                      Compositor.feature156PackageVersion
+                      Perf.ReadbackFree
+                      Perf.Included
+                      None
+                      0.0
+                      (Path.Combine("timing", "summary.json").Replace('\\', '/')) ]
+
+        let excluded =
+            [ for index in 1..excludedCount ->
+                  let sampleIndex = index.ToString("000")
+                  let reason = excludedReasons.[(index - 1) % excludedReasons.Length]
+                  let status, policy =
+                      if reason = Perf.ProbeRunExcluded then
+                          Perf.Probe, Perf.ProbeReadbackIncluded
+                      else
+                          Perf.Excluded, Perf.Unverified
+
+                  feature158Sample
+                      $"{snapshot.RunId}-{feature156ScenarioStem scenario}-excluded-{sampleIndex}"
+                      index
+                      scenario
+                      Perf.FullRedraw
+                      snapshot.RunId
+                      profile.ProfileId
+                      Compositor.feature156PackageVersion
+                      policy
+                      status
+                      (Some reason)
+                      0.0
+                      (Path.Combine("timing", "excluded", Perf.exclusionReasonToken reason + ".md").Replace('\\', '/')) ]
+
+        let status =
+            match snapshot.Status with
+            | Compositor.Feature158ReadinessStatus.Accepted when List.isEmpty included -> Compositor.Feature158ReadinessStatus.FallbackOnly
+            | status -> status
+
+        feature158ScenarioReport
+            scenario
+            (feature158ScenarioDefinition scenario)
+            None
+            None
+            3
+            5
+            included
+            excluded
+            proofProbeArtifacts
+            status
+            [ Path.Combine("timing", "scenarios", Compositor.feature158ScenarioFileName scenario).Replace('\\', '/') ]
+            [ "readiness summary derived from timing/summary.json" ])
+
+let private writeFeature158RawSamples rawDir scenario pathToken runId hostProfile packageVersion policy (samples: Compositor.Feature158TimingSample list) =
+    let rawStem = $"{feature156ScenarioStem scenario}-{pathToken}"
+    let csvRelative = Path.Combine("raw", rawStem + ".csv").Replace('\\', '/')
+    let jsonRelative = Path.Combine("raw", rawStem + ".json").Replace('\\', '/')
+    let csvPath = Path.Combine(rawDir, rawStem + ".csv")
+    let jsonPath = Path.Combine(rawDir, rawStem + ".json")
+
+    let csvLines =
+        samples
+        |> List.map (fun (sample: Compositor.Feature158TimingSample) ->
+            let reason = sample.ExclusionReason |> Option.map Perf.exclusionReasonToken |> Option.defaultValue ""
+            $"{sample.SampleIndex},{sample.SampleId},{sample.ScenarioId},{Perf.timingPathToken sample.Path},{sample.RunId},{sample.HostProfileId},{sample.PackageVersion},{sample.ScenarioDefinitionId},{feature156FormatMs sample.DurationMs},{Perf.measurementPolicyToken sample.MeasurementPolicy},{Perf.inclusionStatusToken sample.InclusionStatus},{reason},{sample.ArtifactPath}")
+
+    let header = "sample-index,sample-id,scenario-id,path,run-id,host-profile-id,package-version,scenario-definition-id,duration-ms,measurement-policy,inclusion-status,exclusion-reason,artifact-path"
+    File.WriteAllText(csvPath, String.concat Environment.NewLine (header :: csvLines) + Environment.NewLine)
+
+    let jsonSamples =
+        samples
+        |> List.map (fun sample ->
+            let reason = sample.ExclusionReason |> Option.map Perf.exclusionReasonToken |> Option.defaultValue ""
+            $"    {{ \"sampleId\": \"{sample.SampleId}\", \"scenarioId\": \"{sample.ScenarioId}\", \"path\": \"{Perf.timingPathToken sample.Path}\", \"durationMs\": {feature156FormatMs sample.DurationMs}, \"measurementPolicy\": \"{Perf.measurementPolicyToken sample.MeasurementPolicy}\", \"inclusionStatus\": \"{Perf.inclusionStatusToken sample.InclusionStatus}\", \"exclusionReason\": \"{reason}\" }}")
+        |> String.concat ",\n"
+
+    File.WriteAllText(jsonPath, String.concat Environment.NewLine [ "["; jsonSamples; "]" ] + Environment.NewLine)
+    csvRelative, jsonRelative
+
+let private measureFeature158Path rawDir scenario path warmup repetitions runId hostProfileId hostFacts =
+    let pathToken = Perf.timingPathToken path
+    let scene = feature156ScenarioScene scenario (path = Perf.DamageScoped)
+    let options: ViewerOptions =
+        { Title = $"Feature158 {pathToken}"
+          InitialSize = proofSize
+          PresentMode = ViewerPresentMode.DirectToSwapchain
+          FrameRateCap = Some 60 }
+
+    for _ in 1..warmup do
+        Viewer.runForFrames 1 options scene |> ignore
+
+    let samples =
+        [ for index in 1..repetitions do
+              let sw = System.Diagnostics.Stopwatch.StartNew()
+              let result = Viewer.runForFrames 1 options scene
+              sw.Stop()
+              let status, reason, duration, policy =
+                  match result with
+                  | Result.Ok _ -> Perf.Included, None, sw.Elapsed.TotalMilliseconds, Perf.ReadbackFree
+                  | Result.Error _ -> Perf.Excluded, Some Perf.UnverifiableMeasurementPolicy, Double.NaN, Perf.Unverified
+
+              let sampleIndex = index.ToString("000")
+              let sampleId = $"{runId}-{feature156ScenarioStem scenario}-{pathToken}-{sampleIndex}"
+              let artifact = Path.Combine("raw", $"{feature156ScenarioStem scenario}-{pathToken}.csv").Replace('\\', '/')
+              let sample = feature158Sample sampleId index scenario path runId hostProfileId Compositor.feature156PackageVersion policy status reason duration artifact
+              match result with
+              | Result.Ok _ -> sample
+              | Result.Error failure -> { sample with ArtifactPath = artifact + $"; failure={failure.Message}" } ]
+
+    let csvRelative, jsonRelative = writeFeature158RawSamples rawDir scenario pathToken runId hostProfileId Compositor.feature156PackageVersion Perf.ReadbackFree samples
+    let includedDurations =
+        samples
+        |> List.filter (fun sample -> sample.InclusionStatus = Perf.Included)
+        |> List.map _.DurationMs
+
+    csvRelative, jsonRelative, samples, feature158Distribution csvRelative includedDurations
+
+let private feature158FailClosedReport scenario warmup repetitions status reason : Compositor.Feature158ScenarioReport =
+    let sample =
+        feature158Sample
+            $"feature158-failclosed-{feature156ScenarioStem scenario}"
+            1
+            scenario
+            Perf.FullRedraw
+            "feature158-failclosed"
+            Compositor.feature158AcceptedProfileId
+            Compositor.feature156PackageVersion
+            Perf.Missing
+            Perf.Excluded
+            (Some reason)
+            Double.NaN
+            (Path.Combine("excluded", Perf.exclusionReasonToken reason + ".md").Replace('\\', '/'))
+
+    feature158ScenarioReport
+        scenario
+        (feature158ScenarioDefinition scenario)
+        None
+        None
+        warmup
+        repetitions
+        []
+        [ sample ]
+        []
+        status
+        [ Path.Combine("scenarios", Compositor.feature158ScenarioFileName scenario).Replace('\\', '/') ]
+        [ Perf.exclusionReasonToken reason ]
+
+let private feature158ScenarioStatus (included: Compositor.Feature158TimingSample list) (excluded: Compositor.Feature158TimingSample list) =
+    if List.isEmpty included && excluded |> List.exists (fun sample -> sample.ExclusionReason = Some Perf.EnvironmentLimitedReason || sample.ExclusionReason = Some Perf.UnsupportedHost) then
+        Compositor.Feature158ReadinessStatus.EnvironmentLimited
+    elif not (List.isEmpty included)
+         && included |> List.forall (fun sample -> sample.MeasurementPolicy = Perf.ReadbackFree || sample.MeasurementPolicy = Perf.ReadbackOutsideMeasurement)
+         && excluded |> List.forall (fun sample -> sample.InclusionStatus <> Perf.Included) then
+        Compositor.Feature158ReadinessStatus.Accepted
+    elif List.isEmpty included then
+        Compositor.Feature158ReadinessStatus.FallbackOnly
+    else
+        Compositor.Feature158ReadinessStatus.Rejected
+
+let private writeFeature158TimingPackage out (summary: Compositor.Feature158TimingSummary) =
+    let scenariosDir = Path.Combine(out, "scenarios")
+    let excludedDir = Path.Combine(out, "excluded")
+    let unsupportedDir =
+        let outLeaf =
+            out.TrimEnd([| Path.DirectorySeparatorChar; Path.AltDirectorySeparatorChar |])
+            |> Path.GetFileName
+
+        if String.Equals(outLeaf, "unsupported", StringComparison.OrdinalIgnoreCase) then
+            out
+        else
+            Path.Combine(out, "unsupported")
+    let proofProbeDir =
+        match Directory.GetParent(out) |> Option.ofObj with
+        | None -> Path.Combine(out, "proof-probes")
+        | Some parent -> Path.Combine(parent.FullName, "proof-probes")
+
+    Directory.CreateDirectory(scenariosDir) |> ignore
+    Directory.CreateDirectory(excludedDir) |> ignore
+    Directory.CreateDirectory(unsupportedDir) |> ignore
+    Directory.CreateDirectory(proofProbeDir) |> ignore
+
+    for report in summary.ScenarioReports do
+        File.WriteAllText(Path.Combine(scenariosDir, Compositor.feature158ScenarioFileName report.ScenarioId), Compositor.renderFeature158ScenarioReport report)
+
+    summary.ExcludedSamples
+    |> List.groupBy (fun sample -> sample.ExclusionReason |> Option.defaultValue Perf.UnverifiableMeasurementPolicy)
+    |> List.iter (fun (reason, samples) ->
+        File.WriteAllText(Path.Combine(excludedDir, Perf.exclusionReasonToken reason + ".md"), Compositor.renderFeature158ExcludedSamplesReport reason samples))
+
+    if not (File.Exists(Path.Combine(excludedDir, "README.md"))) then
+        File.WriteAllText(Path.Combine(excludedDir, "README.md"), "# Feature 158 Excluded Samples\n\nGrouped excluded samples are written by primary reason.\n")
+
+    let proofProbeReadme = Path.Combine(proofProbeDir, "README.md")
+    if not (List.isEmpty summary.ProofProbeEvidence) || not (File.Exists proofProbeReadme) then
+        File.WriteAllText(proofProbeReadme, Compositor.renderFeature158ProofProbeReport summary.ProofProbeEvidence)
+
+    match summary.UnsupportedHostReason with
+    | Some reason ->
+        File.WriteAllText(Path.Combine(unsupportedDir, "README.md"), Compositor.renderFeature158UnsupportedHostReport reason)
+        File.WriteAllText(Path.Combine(unsupportedDir, "validation.md"), Compositor.renderFeature158UnsupportedHostReport reason)
+    | None ->
+        if not (File.Exists(Path.Combine(unsupportedDir, "README.md"))) then
+            File.WriteAllText(Path.Combine(unsupportedDir, "README.md"), Compositor.renderFeature158UnsupportedHostReport "not run in this invocation")
+
+    File.WriteAllText(Path.Combine(out, "summary.md"), Compositor.renderFeature158TimingSummary summary)
+    File.WriteAllText(Path.Combine(out, "summary.json"), Compositor.renderFeature158TimingSummaryJson summary + Environment.NewLine)
 
 let private captureProofImage command app hostFacts path scene =
     let options: ViewerOptions =
@@ -1029,7 +1481,7 @@ let private runCompositorDamageCmd (rest: string list) =
             printfn "%s" (Path.Combine(out, "summary.md"))
             0
 
-let private runCompositorPerformanceCmd (rest: string list) =
+let private runFeature156PerformanceCmd (rest: string list) =
     if not (isFeature156 rest) then
         eprintfn "compositor-performance requires --feature 156"
         2
@@ -1164,6 +1616,188 @@ let private runCompositorPerformanceCmd (rest: string list) =
 
             printfn "%s" (Path.Combine(out, "summary.md"))
             0
+
+let private runFeature158PerformanceCmd (rest: string list) =
+    let policy = flagValue "--policy" rest |> Option.defaultValue Compositor.feature158PolicyId
+    let requestedScenario = flagValue "--scenario" rest
+    let scenarioSet =
+        match requestedScenario with
+        | Some scenario when Compositor.feature158ScenarioIds |> List.contains scenario -> [ scenario ]
+        | Some scenario ->
+            eprintfn "unknown Feature 158 scenario: %s" scenario
+            []
+        | None -> Compositor.feature158RequiredScenarioIds
+
+    if policy <> Compositor.feature158PolicyId then
+        eprintfn "unknown Feature 158 policy: %s" policy
+        2
+    elif List.isEmpty scenarioSet then
+        2
+    else
+        let warmup = positiveIntFlag "--warmup" 3 rest
+        let repetitions = positiveIntFlag "--repetitions" 5 rest
+        let probeReadback = rest |> List.contains "--probe-readback"
+        let out =
+            match flagValue "--out" rest with
+            | Some d -> d
+            | None -> Compositor.feature158TimingDirectory
+
+        let scenariosDir = Path.Combine(out, "scenarios")
+        let rawDir = Path.Combine(out, "raw")
+        let unsupportedDir =
+            let outLeaf =
+                out.TrimEnd([| Path.DirectorySeparatorChar; Path.AltDirectorySeparatorChar |])
+                |> Path.GetFileName
+
+            if String.Equals(outLeaf, "unsupported", StringComparison.OrdinalIgnoreCase) then
+                out
+            else
+                Path.Combine(out, "unsupported")
+
+        Directory.CreateDirectory(out) |> ignore
+        Directory.CreateDirectory(scenariosDir) |> ignore
+        Directory.CreateDirectory(rawDir) |> ignore
+        Directory.CreateDirectory(unsupportedDir) |> ignore
+
+        let facts = Probe.probe ()
+        let profile = Compositor.hostProfileFromFacts facts
+        let expectedProfile = flagValue "--profile" rest |> Option.defaultValue Compositor.feature158AcceptedProfileId
+        let runId = "feature158-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss")
+        let hostReason = feature158ReasonFromHost facts profile expectedProfile
+
+        let reports, proofProbeEvidence, unsupported, diagnostics =
+            match hostReason with
+            | Some reason when reason.Contains("profile mismatch", StringComparison.OrdinalIgnoreCase) ->
+                let reports : Compositor.Feature158ScenarioReport list =
+                    scenarioSet
+                    |> List.map (fun scenario ->
+                        feature158FailClosedReport scenario warmup repetitions Compositor.Feature158ReadinessStatus.Rejected Perf.CrossProfileEvidence)
+
+                reports, [], None, [ reason; "accepted performance artifacts=0" ]
+            | Some reason ->
+                let reports : Compositor.Feature158ScenarioReport list =
+                    scenarioSet
+                    |> List.map (fun scenario ->
+                        feature158FailClosedReport scenario warmup repetitions Compositor.Feature158ReadinessStatus.EnvironmentLimited Perf.EnvironmentLimitedReason)
+
+                File.WriteAllText(Path.Combine(unsupportedDir, "README.md"), Compositor.renderFeature158UnsupportedHostReport reason)
+                File.WriteAllText(Path.Combine(unsupportedDir, "validation.md"), Compositor.renderFeature158UnsupportedHostReport reason)
+                reports, [], Some reason, [ reason; "accepted proof artifacts=0"; "accepted performance artifacts=0" ]
+            | None when probeReadback ->
+                let proofProbeDir =
+                    match Directory.GetParent(out) |> Option.ofObj with
+                    | None -> Path.Combine(out, "proof-probes")
+                    | Some parent -> Path.Combine(parent.FullName, "proof-probes")
+                Directory.CreateDirectory(proofProbeDir) |> ignore
+                let readbackArtifact = Path.Combine(proofProbeDir, $"{runId}-probe-readback.png")
+                let readbackFileName =
+                    Path.GetFileName(readbackArtifact)
+                    |> Option.ofObj
+                    |> Option.defaultValue "probe-readback.png"
+                let probeResult =
+                    captureProofImage
+                        Compositor.feature158ProbeCommand
+                        "feature158-probe-readback"
+                        [ $"profile={profile.ProfileId}"; "measurement-policy=probe-readback-included" ]
+                        readbackArtifact
+                        (feature156ScenarioScene (List.head scenarioSet) false)
+
+                let probeSamples =
+                    scenarioSet
+                    |> List.mapi (fun index scenario ->
+                        let sampleIndex = (index + 1).ToString("000")
+                        let sampleId = $"{runId}-probe-{feature156ScenarioStem scenario}-{sampleIndex}"
+                        feature158Sample
+                            sampleId
+                            (index + 1)
+                            scenario
+                            Perf.FullRedraw
+                            runId
+                            profile.ProfileId
+                            Compositor.feature156PackageVersion
+                            Perf.ProbeReadbackIncluded
+                            Perf.Probe
+                            (Some Perf.ProbeRunExcluded)
+                            0.0
+                            (Path.Combine("..", "proof-probes", readbackFileName).Replace('\\', '/')))
+
+                let evidence : Compositor.Feature158ProofProbeEvidence =
+                    { ProbeId = runId + "-probe"
+                      HostProfile = profile
+                      ScenarioIds = scenarioSet
+                      ReadbackArtifacts =
+                        [ Path.Combine("proof-probes", readbackFileName).Replace('\\', '/')
+                          $"probe-status={probeResult.Status}" ]
+                      ProbeSampleIds = probeSamples |> List.map _.SampleId
+                      ExclusionReason = Perf.ProbeRunExcluded
+                      Diagnostics = [ "explicit probe readback path"; "accepted performance samples=0" ] }
+
+                let reports : Compositor.Feature158ScenarioReport list =
+                    scenarioSet
+                    |> List.map (fun scenario ->
+                        let samples = probeSamples |> List.filter (fun sample -> sample.ScenarioId = scenario)
+                        feature158ScenarioReport
+                            scenario
+                            (feature158ScenarioDefinition scenario)
+                            None
+                            None
+                            0
+                            samples.Length
+                            []
+                            samples
+                            evidence.ReadbackArtifacts
+                            Compositor.Feature158ReadinessStatus.FallbackOnly
+                            [ Path.Combine("scenarios", Compositor.feature158ScenarioFileName scenario).Replace('\\', '/') ]
+                            [ "probe-readback-included"; "probe-run-excluded"; "accepted performance samples=0" ])
+
+                reports, [ evidence ], None, [ "explicit probe readback completed"; "accepted performance artifacts=0" ]
+            | None ->
+                let reports : Compositor.Feature158ScenarioReport list =
+                    scenarioSet
+                    |> List.map (fun scenario ->
+                        let fullCsv, fullJson, fullSamples, fullDist =
+                            measureFeature158Path rawDir scenario Perf.FullRedraw warmup repetitions runId profile.ProfileId []
+
+                        let damageCsv, damageJson, damageSamples, damageDist =
+                            measureFeature158Path rawDir scenario Perf.DamageScoped warmup repetitions runId profile.ProfileId []
+
+                        let samples = fullSamples @ damageSamples
+                        let included = samples |> List.filter (fun sample -> sample.InclusionStatus = Perf.Included)
+                        let excluded = samples |> List.filter (fun sample -> sample.InclusionStatus <> Perf.Included)
+
+                        feature158ScenarioReport
+                            scenario
+                            (feature158ScenarioDefinition scenario)
+                            fullDist
+                            damageDist
+                            warmup
+                            repetitions
+                            included
+                            excluded
+                            []
+                            (feature158ScenarioStatus included excluded)
+                            [ Path.Combine("scenarios", Compositor.feature158ScenarioFileName scenario).Replace('\\', '/')
+                              fullCsv
+                              fullJson
+                              damageCsv
+                              damageJson ]
+                            [ "measurement-policy=readback-free-timing-v1"; "readback-free direct present path used for accepted samples" ])
+
+                reports, [], None, [ "readback-free timing measurement completed"; "shipped performance claim remains performance-not-accepted" ]
+
+        let summary = feature158SummaryFromReports runId profile warmup repetitions reports proofProbeEvidence unsupported diagnostics
+        writeFeature158TimingPackage out summary
+        printfn "%s" (Path.Combine(out, "summary.md"))
+        0
+
+let private runCompositorPerformanceCmd (rest: string list) =
+    if isFeature158 rest then
+        runFeature158PerformanceCmd rest
+    elif isFeature156 rest then
+        runFeature156PerformanceCmd rest
+    else
+        eprintfn "compositor-performance requires --feature 156 or --feature 158"
+        2
 
 let private loadFeature155AttemptProofs (readinessRoot: string) (profile: Compositor.HostProfile) =
     let attemptsRoot = Path.Combine(readinessRoot, "live-proof", "attempts")
@@ -1500,8 +2134,154 @@ let private runFeature157ReadinessCmd (rest: string list) =
     printfn "%s" (Path.Combine(out, "validation-summary.md"))
     0
 
+let private ensureFeature158FsiEvidence out =
+    let fsiDir = Path.Combine(out, "fsi")
+    Directory.CreateDirectory(fsiDir) |> ignore
+    let performanceFsi = Path.Combine(fsiDir, "compositor-performance-authoring.fsx")
+    let performanceLog = Path.Combine(fsiDir, "compositor-performance-authoring.log")
+    let readinessFsi = Path.Combine(fsiDir, "compositor-readiness-authoring.fsx")
+    let readinessLog = Path.Combine(fsiDir, "compositor-readiness-authoring.log")
+
+    File.WriteAllText(
+        performanceFsi,
+        String.concat
+            Environment.NewLine
+            [ "let command = \"compositor-performance --feature 158 --policy readback-free-timing-v1\""
+              "let probe = \"compositor-performance --feature 158 --probe-readback\""
+              "let acceptedPolicies = [ \"readback-free\"; \"readback-outside-measurement\" ]"
+              "let excludedProbeReason = \"probe-run-excluded\""
+              "printfn \"%s %s %A\" command probe acceptedPolicies" ])
+
+    File.WriteAllText(performanceLog, "Feature158 compositor-performance authoring PASS: command policy and probe exclusion tokens are stable.\n")
+
+    File.WriteAllText(
+        readinessFsi,
+        String.concat
+            Environment.NewLine
+            [ "let readiness = \"compositor-readiness --feature 158\""
+              "let statusTokens = [ \"accepted\"; \"rejected\"; \"fallback-only\"; \"environment-limited\" ]"
+              "let performanceClaim = \"performance-not-accepted\""
+              "let noTestingHelperSurface = true"
+              "let noSkiaViewerHelperSurface = true"
+              "printfn \"%s %s %b %b\" readiness performanceClaim noTestingHelperSurface noSkiaViewerHelperSurface" ])
+
+    File.WriteAllText(readinessLog, "Feature158 compositor-readiness authoring PASS: no Testing or SkiaViewer helper surface added.\n")
+
+let private runFeature158ReadinessCmd (rest: string list) =
+    let out =
+        match flagValue "--out" rest with
+        | Some d -> d
+        | None -> Compositor.feature158ReadinessDirectory
+
+    Directory.CreateDirectory(out) |> ignore
+    let timingDir = Path.Combine(out, "timing")
+    let scenariosDir = Path.Combine(timingDir, "scenarios")
+    let rawDir = Path.Combine(timingDir, "raw")
+    let excludedDir = Path.Combine(timingDir, "excluded")
+    let unsupportedDir = Path.Combine(timingDir, "unsupported")
+    let proofProbeDir = Path.Combine(out, "proof-probes")
+    let surfaceDir = Path.Combine(out, "surface-baselines")
+
+    [ timingDir; scenariosDir; rawDir; excludedDir; unsupportedDir; proofProbeDir; surfaceDir ]
+    |> List.iter (Directory.CreateDirectory >> ignore)
+
+    if not (File.Exists(Path.Combine(timingDir, "summary.md"))) then
+        runFeature158PerformanceCmd
+            [ "--feature"
+              "158"
+              "--out"
+              timingDir
+              "--policy"
+              Compositor.feature158PolicyId
+              "--warmup"
+              "1"
+              "--repetitions"
+              "1"
+              "--json" ]
+        |> ignore
+
+    let facts = Probe.probe ()
+    let profile = Compositor.hostProfileFromFacts facts
+    let reason = feature158ReasonFromHost facts profile Compositor.feature158AcceptedProfileId
+    let timingSnapshot = loadFeature158TimingSnapshot timingDir
+    let proofProbeEvidence = loadFeature158ProofProbeEvidence proofProbeDir profile
+    let proofProbeArtifacts = proofProbeEvidence |> List.collect _.ReadbackArtifacts
+
+    let unsupportedReason, scenarioReports, runId, warmup, repetitions, feature156Comparison, performanceClaim =
+        match reason with
+        | Some reason ->
+            let reports : Compositor.Feature158ScenarioReport list =
+                Compositor.feature158RequiredScenarioIds
+                |> List.map (fun scenario ->
+                    feature158FailClosedReport scenario 1 1 Compositor.Feature158ReadinessStatus.EnvironmentLimited Perf.EnvironmentLimitedReason)
+
+            Some reason, reports, "feature158-readiness-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss"), 1, 1, "contextualizes", "performance-not-accepted"
+        | None ->
+            match timingSnapshot with
+            | Some snapshot ->
+                None,
+                feature158ReadinessReportsFromSnapshot snapshot profile proofProbeArtifacts,
+                snapshot.RunId,
+                3,
+                5,
+                snapshot.Feature156Comparison,
+                snapshot.PerformanceClaim
+            | None ->
+                let reports : Compositor.Feature158ScenarioReport list =
+                    Compositor.feature158RequiredScenarioIds
+                    |> List.map (fun scenario ->
+                        feature158ScenarioReport
+                            scenario
+                            (feature158ScenarioDefinition scenario)
+                            None
+                            None
+                            1
+                            1
+                            []
+                            []
+                            [ "proof-probes/README.md" ]
+                            Compositor.Feature158ReadinessStatus.FallbackOnly
+                            [ Path.Combine("timing", "scenarios", Compositor.feature158ScenarioFileName scenario).Replace('\\', '/') ]
+                            [ "readiness summary links timing command output" ])
+
+                None, reports, "feature158-readiness-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss"), 1, 1, "contextualizes", "performance-not-accepted"
+
+    let summary =
+        feature158SummaryFromReports
+            runId
+            profile
+            warmup
+            repetitions
+            scenarioReports
+            proofProbeEvidence
+            (unsupportedReason |> Option.orElse (timingSnapshot |> Option.bind _.UnsupportedHostReason))
+            [ "readiness package assembled"
+              "measurement policy readback-free-timing-v1 preserved"
+              $"{performanceClaim} preserved"
+              $"Feature 156 comparison={feature156Comparison}" ]
+
+    ensureFeature158FsiEvidence out
+    File.WriteAllText(Path.Combine(proofProbeDir, "README.md"), Compositor.renderFeature158ProofProbeReport summary.ProofProbeEvidence)
+    File.WriteAllText(Path.Combine(out, "compatibility-ledger.md"), Compositor.renderFeature158CompatibilityLedger ())
+    File.WriteAllText(Path.Combine(out, "package-validation.md"), Compositor.renderFeature158PackageValidation [ "`compositor-readiness --feature 158`: package assembled." ])
+    File.WriteAllText(Path.Combine(out, "regression-validation.md"), Compositor.renderFeature158RegressionValidation [ "`compositor-readiness --feature 158`: package assembled." ])
+    File.WriteAllText(Path.Combine(out, "validation-summary.md"), Compositor.renderFeature158ValidationSummary summary)
+
+    if not (File.Exists(Path.Combine(unsupportedDir, "README.md"))) then
+        File.WriteAllText(Path.Combine(unsupportedDir, "README.md"), Compositor.renderFeature158UnsupportedHostReport (unsupportedReason |> Option.defaultValue "not run in this invocation"))
+
+    if not (File.Exists(Path.Combine(unsupportedDir, "validation.md"))) then
+        File.WriteAllText(Path.Combine(unsupportedDir, "validation.md"), Compositor.renderFeature158UnsupportedHostReport (unsupportedReason |> Option.defaultValue "not run in this invocation"))
+
+    File.WriteAllText(Path.Combine(surfaceDir, "FS.GG.UI.Testing.txt"), "No Feature 158 public Testing surface drift.\n")
+    File.WriteAllText(Path.Combine(surfaceDir, "FS.GG.UI.SkiaViewer.txt"), "No Feature 158 public SkiaViewer surface drift.\n")
+    printfn "%s" (Path.Combine(out, "validation-summary.md"))
+    0
+
 let private runCompositorReadinessCmd (rest: string list) =
-    if isFeature157 rest then
+    if isFeature158 rest then
+        runFeature158ReadinessCmd rest
+    elif isFeature157 rest then
         runFeature157ReadinessCmd rest
     elif isFeature156 rest then
         runFeature156ReadinessCmd rest

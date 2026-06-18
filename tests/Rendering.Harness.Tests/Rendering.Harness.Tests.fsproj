@@ -46,6 +46,8 @@
     <Compile Include="Feature156ReadinessPackageTests.fs" />
     <Compile Include="Feature157DamageEvidenceTests.fs" />
     <Compile Include="Feature157ReadinessPackageTests.fs" />
+    <Compile Include="Feature158MeasurementPolicyTests.fs" />
+    <Compile Include="Feature158ReadinessPackageTests.fs" />
     <Compile Include="Feature151RenderAnywhereRegressionTests.fs" />
     <Compile Include="Feature151TextShapingRegressionTests.fs" />
     <Compile Include="Feature151CompositorReadinessRegressionTests.fs" />

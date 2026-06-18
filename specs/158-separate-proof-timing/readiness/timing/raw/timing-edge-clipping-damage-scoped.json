@@ -1,0 +1,7 @@
+[
+    { "sampleId": "feature158-20260618152718-timing-edge-clipping-damage-scoped-001", "scenarioId": "timing/edge-clipping", "path": "damage-scoped", "durationMs": 25.334, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" },
+    { "sampleId": "feature158-20260618152718-timing-edge-clipping-damage-scoped-002", "scenarioId": "timing/edge-clipping", "path": "damage-scoped", "durationMs": 32.515, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" },
+    { "sampleId": "feature158-20260618152718-timing-edge-clipping-damage-scoped-003", "scenarioId": "timing/edge-clipping", "path": "damage-scoped", "durationMs": 25.946, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" },
+    { "sampleId": "feature158-20260618152718-timing-edge-clipping-damage-scoped-004", "scenarioId": "timing/edge-clipping", "path": "damage-scoped", "durationMs": 33.491, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" },
+    { "sampleId": "feature158-20260618152718-timing-edge-clipping-damage-scoped-005", "scenarioId": "timing/edge-clipping", "path": "damage-scoped", "durationMs": 23.31, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" }
+]

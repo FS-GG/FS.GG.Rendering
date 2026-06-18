@@ -1,0 +1,7 @@
+[
+    { "sampleId": "feature158-20260618152718-timing-no-change-damage-scoped-001", "scenarioId": "timing/no-change", "path": "damage-scoped", "durationMs": 33.898, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" },
+    { "sampleId": "feature158-20260618152718-timing-no-change-damage-scoped-002", "scenarioId": "timing/no-change", "path": "damage-scoped", "durationMs": 43.453, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" },
+    { "sampleId": "feature158-20260618152718-timing-no-change-damage-scoped-003", "scenarioId": "timing/no-change", "path": "damage-scoped", "durationMs": 40.18, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" },
+    { "sampleId": "feature158-20260618152718-timing-no-change-damage-scoped-004", "scenarioId": "timing/no-change", "path": "damage-scoped", "durationMs": 28.725, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" },
+    { "sampleId": "feature158-20260618152718-timing-no-change-damage-scoped-005", "scenarioId": "timing/no-change", "path": "damage-scoped", "durationMs": 29.195, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" }
+]

@@ -1,0 +1,14 @@
+{
+  "runId": "feature158-20260618152941",
+  "status": "environment-limited",
+  "policyId": "readback-free-timing-v1",
+  "hostProfile": "probe-eb6566e6",
+  "includedSampleCount": 0,
+  "excludedSampleCount": 5,
+  "unsupportedHostReason": "missing display",
+  "feature156Comparison": "contextualizes",
+  "performanceClaim": "performance-not-accepted",
+  "excludedReasons": [
+    "environment-limited"
+  ]
+}

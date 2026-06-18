@@ -1,0 +1,7 @@
+[
+    { "sampleId": "feature158-20260618152718-timing-overlap-damage-scoped-001", "scenarioId": "timing/overlap", "path": "damage-scoped", "durationMs": 25.366, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" },
+    { "sampleId": "feature158-20260618152718-timing-overlap-damage-scoped-002", "scenarioId": "timing/overlap", "path": "damage-scoped", "durationMs": 34.087, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" },
+    { "sampleId": "feature158-20260618152718-timing-overlap-damage-scoped-003", "scenarioId": "timing/overlap", "path": "damage-scoped", "durationMs": 30.889, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" },
+    { "sampleId": "feature158-20260618152718-timing-overlap-damage-scoped-004", "scenarioId": "timing/overlap", "path": "damage-scoped", "durationMs": 27.379, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" },
+    { "sampleId": "feature158-20260618152718-timing-overlap-damage-scoped-005", "scenarioId": "timing/overlap", "path": "damage-scoped", "durationMs": 24.682, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" }
+]

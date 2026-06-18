@@ -1,0 +1,14 @@
+{
+  "runId": "feature158-20260618152718",
+  "status": "accepted",
+  "policyId": "readback-free-timing-v1",
+  "hostProfile": "probe-08a47c01",
+  "includedSampleCount": 50,
+  "excludedSampleCount": 0,
+  "unsupportedHostReason": "",
+  "feature156Comparison": "contextualizes",
+  "performanceClaim": "performance-not-accepted",
+  "excludedReasons": [
+
+  ]
+}
