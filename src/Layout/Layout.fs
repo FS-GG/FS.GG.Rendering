@@ -718,6 +718,366 @@ module Layout =
                             Invalidated = remeasured |> Map.toList |> List.map fst
                             Revision = previous.Revision + 1L }
 
+    let private boundIdentity bound =
+        match bound with
+        | Bounded value -> $"bounded:{value:R}"
+        | Unbounded -> "unbounded"
+
+    let private finiteNonNegativeOrZero value =
+        if nonNegative value then value else 0.0
+
+    let private normalizeBound value =
+        match value with
+        | Some value when nonNegative value -> Bounded value
+        | Some _ -> Bounded 0.0
+        | None -> Unbounded
+
+    let private maxBoundValue fallback bound =
+        match bound with
+        | Bounded value -> max 0.0 value
+        | Unbounded -> fallback
+
+    let constraints source minWidth maxWidth minHeight maxHeight =
+        let minWidth = finiteNonNegativeOrZero minWidth
+        let minHeight = finiteNonNegativeOrZero minHeight
+        let maxWidth = normalizeBound maxWidth
+        let maxHeight = normalizeBound maxHeight
+
+        let maxWidth =
+            match maxWidth with
+            | Bounded value when value < minWidth -> Bounded minWidth
+            | other -> other
+
+        let maxHeight =
+            match maxHeight with
+            | Bounded value when value < minHeight -> Bounded minHeight
+            | other -> other
+
+        let widthMode =
+            match maxWidth with
+            | Bounded value when value = minWidth -> Exactly
+            | Bounded _ -> AtMost
+            | Unbounded -> Undefined
+
+        let heightMode =
+            match maxHeight with
+            | Bounded value when value = minHeight -> Exactly
+            | Bounded _ -> AtMost
+            | Unbounded -> Undefined
+
+        let identity =
+            [ string source
+              minWidth.ToString("R", Globalization.CultureInfo.InvariantCulture)
+              boundIdentity maxWidth
+              minHeight.ToString("R", Globalization.CultureInfo.InvariantCulture)
+              boundIdentity maxHeight
+              string widthMode
+              string heightMode ]
+            |> String.concat "|"
+
+        { MinWidth = minWidth
+          MaxWidth = maxWidth
+          MinHeight = minHeight
+          MaxHeight = maxHeight
+          WidthMode = widthMode
+          HeightMode = heightMode
+          Source = source
+          NormalizedIdentity = identity }
+
+    let constraintsFromAvailable source available =
+        let available, _ = normalizeAvailable available
+        let maxWidth =
+            match available.WidthMode with
+            | Undefined -> None
+            | _ -> Some available.Width
+
+        let maxHeight =
+            match available.HeightMode with
+            | Undefined -> None
+            | _ -> Some available.Height
+
+        constraints source 0.0 maxWidth 0.0 maxHeight
+
+    let rec layoutInputKey (node: LayoutNode) =
+        let sizeKey (size: LayoutSize) =
+            let item (value: float option) =
+                value
+                |> Option.map (fun value -> value.ToString("R", Globalization.CultureInfo.InvariantCulture))
+                |> Option.defaultValue "auto"
+
+            $"w={item size.Width};h={item size.Height}"
+
+        let intent = node.Intent
+
+        [ node.Id
+          string node.Visibility
+          string intent.Direction
+          string intent.Wrap
+          string intent.AlignItems
+          string intent.AlignSelf
+          string intent.JustifyContent
+          $"pad={intent.Padding.Left:R},{intent.Padding.Top:R},{intent.Padding.Right:R},{intent.Padding.Bottom:R}"
+          $"margin={intent.Margin.Left:R},{intent.Margin.Top:R},{intent.Margin.Right:R},{intent.Margin.Bottom:R}"
+          $"gap={intent.Gap.Row:R},{intent.Gap.Column:R}"
+          sizeKey intent.Size
+          sizeKey intent.MinSize
+          sizeKey intent.MaxSize
+          let basis = intent.FlexBasis |> Option.map (fun v -> v.ToString("R", Globalization.CultureInfo.InvariantCulture)) |> Option.defaultValue "auto"
+          $"grow={intent.FlexGrow:R};shrink={intent.FlexShrink:R};basis={basis}"
+          if node.Measure.IsSome then "measure=some" else "measure=none"
+          if node.Content.IsSome then "content=some" else "content=none"
+          node.Children |> List.map layoutInputKey |> String.concat "[" ]
+        |> String.concat "|"
+
+    let intrinsicQuery participantId axis crossAxisConstraint layoutInputKey source : IntrinsicQuery =
+        let cross =
+            crossAxisConstraint
+            |> Option.filter nonNegative
+            |> Option.map (fun value -> value.ToString("R", Globalization.CultureInfo.InvariantCulture))
+            |> Option.defaultValue "unbounded"
+
+        let identity = $"{participantId}|{axis}|cross={cross}|input={layoutInputKey}|source={source}|rev=150"
+
+        { ParticipantId = participantId
+          Axis = axis
+          CrossAxisConstraint = crossAxisConstraint |> Option.filter nonNegative
+          LayoutInputKey = layoutInputKey
+          QuerySource = source
+          QueryIdentity = identity
+          Revision = 150 }
+
+    let private resultIdentity size (diagnostics: LayoutDiagnostic list) =
+        let diagnosticKey =
+            diagnostics
+            |> List.map (fun d -> $"{d.NodeId}|{d.Code}|{d.Severity}|{d.Constraint}|{d.FallbackApplied}")
+            |> String.concat ","
+
+        $"{size:R}|{diagnosticKey}"
+
+    let private boundsExtent (bounds: ComputedBounds list) =
+        match bounds with
+        | [] -> 0.0, 0.0
+        | root :: rest ->
+            let measured = if List.isEmpty rest then [ root ] else rest
+
+            let maxRight =
+                measured
+                |> List.map (fun item -> item.Bounds.X + item.Bounds.Width)
+                |> List.max
+
+            let maxBottom =
+                measured
+                |> List.map (fun item -> item.Bounds.Y + item.Bounds.Height)
+                |> List.max
+
+            max 0.0 (maxRight - root.Bounds.X), max 0.0 (maxBottom - root.Bounds.Y)
+
+    let evaluateIntrinsic (query: IntrinsicQuery) (node: LayoutNode) : IntrinsicSizeResult =
+        if query.ParticipantId <> node.Id then
+            { QueryIdentity = query.QueryIdentity
+              Size = 0.0
+              Dependencies = []
+              Accepted = false
+              Diagnostics =
+                [ diagnostic
+                      (Some query.ParticipantId)
+                      UnsupportedIntrinsicQuery
+                      FS.GG.UI.Layout.DiagnosticSeverity.Warning
+                      $"Intrinsic query target '{query.ParticipantId}' does not match node '{node.Id}'."
+                      (Some "participant")
+                      false ] }
+        else
+            let cross = query.CrossAxisConstraint |> Option.defaultValue 10000.0 |> max 0.0
+            let large = 1000000.0
+            let leafIntrinsic () =
+                let measuredWidth, measuredHeight, measureDiagnostics = measureLeaf (Some node.Id) cross cross node.Measure
+
+                match query.Axis with
+                | IntrinsicMinWidth
+                | IntrinsicMaxWidth -> node.Intent.Size.Width |> Option.defaultValue measuredWidth, measureDiagnostics
+                | IntrinsicMinHeight
+                | IntrinsicMaxHeight -> node.Intent.Size.Height |> Option.defaultValue measuredHeight, measureDiagnostics
+
+            let size, resultDiagnostics =
+                if List.isEmpty node.Children then
+                    leafIntrinsic ()
+                else
+                    let available : AvailableSpace =
+                        match query.Axis with
+                        | IntrinsicMinWidth
+                        | IntrinsicMaxWidth ->
+                            { Width = large
+                              WidthMode = AtMost
+                              Height = cross
+                              HeightMode = if query.CrossAxisConstraint.IsSome then Exactly else Undefined }
+                        | IntrinsicMinHeight
+                        | IntrinsicMaxHeight ->
+                            { Width = cross
+                              WidthMode = if query.CrossAxisConstraint.IsSome then Exactly else Undefined
+                              Height = large
+                              HeightMode = AtMost }
+
+                    let result = evaluate available node
+                    let extentWidth, extentHeight = boundsExtent result.Bounds
+
+                    let size =
+                        match query.Axis with
+                        | IntrinsicMinWidth
+                        | IntrinsicMaxWidth -> extentWidth
+                        | IntrinsicMinHeight
+                        | IntrinsicMaxHeight -> extentHeight
+
+                    size, result.Diagnostics
+
+            let accepted = nonNegative size
+            let diagnostics =
+                if accepted then
+                    resultDiagnostics
+                else
+                    diagnostic
+                        (Some node.Id)
+                        RejectedIntrinsicResult
+                        FS.GG.UI.Layout.DiagnosticSeverity.Error
+                        "Intrinsic result was not finite and non-negative."
+                        (Some "intrinsic")
+                        false
+                    :: resultDiagnostics
+
+            { QueryIdentity = query.QueryIdentity
+              Size = if accepted then size else 0.0
+              Dependencies =
+                node.Children
+                |> List.map (fun (child: LayoutNode) ->
+                    { QueryIdentity = $"{query.QueryIdentity}|child={child.Id}"
+                      ResultIdentity = layoutInputKey child })
+              Accepted = accepted
+              Diagnostics = diagnostics }
+
+    let cacheEntry kind participantId constraintIdentity layoutInputKey childDependencyKeys resultIdentity : LayoutCacheEntry =
+        let id =
+            [ string kind
+              participantId
+              constraintIdentity
+              layoutInputKey
+              childDependencyKeys |> String.concat ","
+              resultIdentity
+              "rev=150" ]
+            |> String.concat "|"
+
+        { EntryId = id
+          EntryKind = kind
+          ParticipantId = participantId
+          ConstraintIdentity = constraintIdentity
+          LayoutInputKey = layoutInputKey
+          ChildDependencyKeys = childDependencyKeys
+          ResultIdentity = resultIdentity
+          Revision = 150 }
+
+    let measureProtocol (constraints: LayoutConstraints) (node: LayoutNode) : MeasuredLayoutResult =
+        let width = max constraints.MinWidth (maxBoundValue constraints.MinWidth constraints.MaxWidth)
+        let height = max constraints.MinHeight (maxBoundValue constraints.MinHeight constraints.MaxHeight)
+
+        let available : AvailableSpace =
+            { Width = width
+              WidthMode = constraints.WidthMode
+              Height = height
+              HeightMode = constraints.HeightMode }
+
+        let result = evaluate available node
+        let byId : Map<LayoutNodeId, ComputedBounds> = result.Bounds |> List.map (fun b -> b.NodeId, b) |> Map.ofList
+
+        let measuredSize =
+            match Map.tryFind node.Id byId with
+            | Some own -> ({ MeasuredWidth = own.Bounds.Width; MeasuredHeight = own.Bounds.Height }: LayoutMeasuredSize)
+            | None -> ({ MeasuredWidth = 0.0; MeasuredHeight = 0.0 }: LayoutMeasuredSize)
+
+        let placement (child: LayoutNode) =
+            match Map.tryFind child.Id byId with
+            | Some bounds ->
+                let b = bounds.Bounds
+                Some
+                    ({ ChildId = child.Id
+                       Bounds = b
+                       Visibility = bounds.Visibility
+                       PlacementIdentity = $"{child.Id}|{b.X:R},{b.Y:R},{b.Width:R},{b.Height:R}|{bounds.Visibility}" }
+                    : LayoutChildPlacement)
+            | None -> None
+
+        let duplicateMeasurementDiagnostics =
+            node.Children
+            |> List.countBy (fun child -> child.Id)
+            |> List.choose (fun (id, count) ->
+                if count > 1 then
+                    Some(
+                        diagnostic
+                            (Some id)
+                            DuplicateMeasurement
+                            FS.GG.UI.Layout.DiagnosticSeverity.Warning
+                            $"Participant '{id}' appears {count} times under one measurement parent; cache reuse requires unique participant ids."
+                            (Some "participant")
+                            false
+                    )
+                else
+                    None)
+
+        let childDependencyKeys = node.Children |> List.map layoutInputKey
+        let measuredIdentity = $"{measuredSize.MeasuredWidth:R}x{measuredSize.MeasuredHeight:R}"
+
+        let entry =
+            cacheEntry MeasuredLayoutEntry node.Id constraints.NormalizedIdentity (layoutInputKey node) childDependencyKeys measuredIdentity
+
+        { ParticipantId = node.Id
+          Constraints = constraints
+          MeasuredSize = measuredSize
+          ChildPlacements = node.Children |> List.choose placement
+          IntrinsicDependencies = []
+          CacheEntryId = entry.EntryId
+          Diagnostics = result.Diagnostics @ duplicateMeasurementDiagnostics }
+
+    let contentExtent viewportWidth viewportHeight (content: LayoutNode option) : LayoutContentExtent =
+        let viewportWidth = finiteNonNegativeOrZero viewportWidth
+        let viewportHeight = finiteNonNegativeOrZero viewportHeight
+
+        match content with
+        | None ->
+            { ContentWidth = viewportWidth
+              ContentHeight = viewportHeight
+              MaxHorizontalOffset = 0.0
+              MaxVerticalOffset = 0.0
+              ExtentSource = EmptyContent
+              DependencyKeys = []
+              Diagnostics = [] }
+        | Some node ->
+            let inputKey = layoutInputKey node
+            let widthQuery = intrinsicQuery node.Id IntrinsicMaxWidth (Some viewportHeight) inputKey IntrinsicQuerySource.ScrollViewer
+            let heightQuery = intrinsicQuery node.Id IntrinsicMaxHeight (Some viewportWidth) inputKey IntrinsicQuerySource.ScrollViewer
+            let widthResult = evaluateIntrinsic widthQuery node
+            let heightResult = evaluateIntrinsic heightQuery node
+
+            let accepted = widthResult.Accepted && heightResult.Accepted
+            let contentWidth = max viewportWidth (if accepted then widthResult.Size else viewportWidth)
+            let contentHeight = max viewportHeight (if accepted then heightResult.Size else viewportHeight)
+
+            let fallbackDiagnostics =
+                if accepted then
+                    []
+                else
+                    [ diagnostic
+                          (Some node.Id)
+                          InsufficientDependencyEvidence
+                          FS.GG.UI.Layout.DiagnosticSeverity.Warning
+                          "Scroll content extent fell back to the viewport because intrinsic dependency evidence was incomplete."
+                          (Some "scroll-extent")
+                          true ]
+
+            { ContentWidth = contentWidth
+              ContentHeight = contentHeight
+              MaxHorizontalOffset = max 0.0 (contentWidth - viewportWidth)
+              MaxVerticalOffset = max 0.0 (contentHeight - viewportHeight)
+              ExtentSource = if accepted then IntrinsicResult else MeasuredFallback
+              DependencyKeys = [ widthQuery.QueryIdentity; heightQuery.QueryIdentity ]
+              Diagnostics = widthResult.Diagnostics @ heightResult.Diagnostics @ fallbackDiagnostics }
+
     let rec contentById (node: LayoutNode) =
         seq {
             yield node.Id, node.Content

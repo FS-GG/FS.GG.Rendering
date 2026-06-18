@@ -135,6 +135,8 @@ type ControlDiagnosticCode =
     | DuplicateOverlayDispatch
     | InvalidOverlayMessage
     | LowerLayerBlocked
+    | ScrollIntrinsicUnavailable
+    | ScrollExtentFallback
     | UnstableReuseInput
     | OffscreenComposition
 

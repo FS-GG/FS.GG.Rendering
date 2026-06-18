@@ -32,6 +32,9 @@ let feature148TranscriptPath name =
 let feature149TranscriptPath name =
     repositoryPath $"specs/149-complete-compositor-p7/readiness/fsi/{name}"
 
+let feature150TranscriptPath name =
+    repositoryPath $"specs/150-intrinsic-layout-protocol/readiness/fsi/{name}"
+
 let readTranscript name =
     let path = transcriptPath name
     Expect.isTrue (File.Exists path) $"FSI transcript evidence exists at {path}"
@@ -55,6 +58,11 @@ let readFeature148Transcript name =
 let readFeature149Transcript name =
     let path = feature149TranscriptPath name
     Expect.isTrue (File.Exists path) $"Feature149 FSI transcript evidence exists at {path}"
+    File.ReadAllText path
+
+let readFeature150Transcript name =
+    let path = feature150TranscriptPath name
+    Expect.isTrue (File.Exists path) $"Feature150 FSI transcript evidence exists at {path}"
     File.ReadAllText path
 
 [<Tests>]
@@ -193,5 +201,22 @@ let fsiTranscriptCoverageTests =
 
             let log = readFeature149Transcript "compositor-readiness-authoring.log"
             Expect.stringContains log "FSI transcript PASS" "Feature149 transcript log records passing coverage"
+        }
+
+        test "Feature150 transcript covers intrinsic layout and readiness authoring" {
+            let transcript = readFeature150Transcript "layout-intrinsic-authoring.fsx"
+
+            [ "FS.GG.UI.Layout"
+              "Layout.constraints"
+              "Layout.intrinsicQuery"
+              "IntrinsicMaxHeight"
+              "FS.GG.UI.Controls"
+              "FS.GG.UI.Controls.Elmish"
+              "FS.GG.UI.Testing"
+              "LayoutReadiness.statusText" ]
+            |> List.iter (fun required -> Expect.stringContains transcript required $"Feature150 transcript includes {required}")
+
+            let log = readFeature150Transcript "layout-intrinsic-authoring.log"
+            Expect.stringContains log "FSI transcript PASS" "Feature150 transcript log records passing coverage"
         }
     ]

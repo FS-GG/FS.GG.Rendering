@@ -21,6 +21,7 @@ FS.GG.UI.Controls.Elmish.FrameInput`1+Tags
 FS.GG.UI.Controls.Elmish.FrameInput`1+Tick
 FS.GG.UI.Controls.Elmish.FrameMetrics
 FS.GG.UI.Controls.Elmish.InteractiveAppHost`2
+FS.GG.UI.Controls.Elmish.LayoutWorkMetrics
 FS.GG.UI.Controls.Elmish.RespondsProof
 FS.GG.UI.Controls.Elmish.RespondsVerdict
 FS.GG.UI.Controls.Elmish.RespondsVerdict+Tags

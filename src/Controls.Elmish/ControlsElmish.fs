@@ -91,6 +91,13 @@ type CompositorFrameDiagnostics =
       DemotionCount: int
       SnapshotResourceBytes: int }
 
+type LayoutWorkMetrics =
+    { LayoutWorkCount: int
+      IntrinsicQueryWorkCount: int
+      IntrinsicCacheHitCount: int
+      IntrinsicCacheMissCount: int
+      IntrinsicInvalidationCount: int }
+
 /// Feature 108 (US3, FR-009): one ordered step of the deterministic perf driver.
 [<RequireQualifiedAccess>]
 type FrameInput<'msg> =
@@ -233,6 +240,13 @@ module ControlsElmish =
           ReuseMissCount = metrics.PictureCacheMissCount + metrics.ReplayMissCount
           DemotionCount = if metrics.ReplaySkippedNodeCount = 0 && metrics.ReplayMissCount > 0 then 1 else 0
           SnapshotResourceBytes = metrics.ReplayCacheNativeBytes }
+
+    let layoutMetrics (metrics: FrameMetrics) =
+        { LayoutWorkCount = metrics.RemeasuredNodeCount
+          IntrinsicQueryWorkCount = 0
+          IntrinsicCacheHitCount = 0
+          IntrinsicCacheMissCount = if metrics.LayoutRan then metrics.LayoutInvalidatedNodeCount else 0
+          IntrinsicInvalidationCount = metrics.LayoutInvalidatedNodeCount }
 
     let subscriptions (keyboard: AdapterSubscription<'msg> list) (controls: AdapterSubscription<'msg> list) =
         keyboard @ controls

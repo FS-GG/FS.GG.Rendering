@@ -46,7 +46,7 @@ let result : ControlRenderResult<Msg> = Control.render Theme.dark view
 
 ## API at a glance
 
-- `Control` — core lifecycle: `create` / `standard` / `customControl` build nodes, `render` produces a `ControlRenderResult` (scene, layout, diagnostics, event bindings), and `dispatch` / `diagnostics` inspect a `Control<'msg>`. Rendering also clips every container's children to its bounds (no spill), paints `Overlay`-built transient surfaces last (z-top, escaping ancestor clips — `isOverlaySurface`), and makes `scroll-viewer` a real clipping viewport (`scrollViewport` reads back its `ScrollViewport` geometry). See `docs/bridge/feature-137-render-blockers.md`.
+- `Control` — core lifecycle: `create` / `standard` / `customControl` build nodes, `render` produces a `ControlRenderResult` (scene, layout, diagnostics, event bindings), and `dispatch` / `diagnostics` inspect a `Control<'msg>`. Rendering also clips every container's children to its bounds (no spill), paints `Overlay`-built transient surfaces last (z-top, escaping ancestor clips — `isOverlaySurface`), and makes `scroll-viewer` a real clipping viewport. `scrollViewport` reads back `ScrollViewport` geometry with content width/height, horizontal/vertical max offsets, extent source, and diagnostics derived from the Layout intrinsic protocol. See `docs/bridge/feature-137-render-blockers.md`.
 - Declarative control modules — `Button`, `Label`, `TextBlock`, `CheckBox`, `Slider`, `TextBox`, `Stack`, `Grid`, `Border`, `Tabs`, `Dialog`, and more, each with `create` plus content/event attributes like `text`, `onClick`, and `children`.
 - `Charts` — `LineChart`, `BarChart`, `PieChart`, `ScatterPlot`, and `GraphView`, fed by `ChartSeries` / `ChartPoint` records.
 - `DataGrid` — virtualized grid with an Elmish `init` / `update` over `DataGridModel`, `DataGridMsg`, and `DataGridEffect`, plus a declarative `create` using `DataGridColumn` / `DataGridRow`.
@@ -58,6 +58,14 @@ let result : ControlRenderResult<Msg> = Control.render Theme.dark view
 ## Compositor diagnostics
 
 Feature147 adds deterministic retained-render policy helpers for damage-union accounting, proof-gated fallback classification, promotion eligibility, placement movement damage, and snapshot-budget verdicts. Feature148 extends the readiness evidence around those helpers: localized/overlap/edge damage, movement old/new regions, content-vs-placement reuse, churn/no-benefit demotion, bounded snapshot eligibility, and timing thresholds are all recorded as reviewable evidence before a compositor tier can claim readiness. The public Controls package keeps the mechanics internal; consumers should inspect the derived `CompositorFrameDiagnostics` helper from `FS.GG.UI.Controls.Elmish` when reviewing proof readiness, damage area, fallback reason, reuse counters, demotions, and snapshot byte estimates.
+
+## ScrollViewer Extent
+
+Feature150 changes ScrollViewer extent readback to use `FS.GG.UI.Layout.Layout.contentExtent`.
+Small content reports the viewport as the extent and zero max offsets. Overflowing content reports
+the natural intrinsic extent while the viewport bounds remain fixed. `ContentHeight`, `Offset`, and
+`MaxOffset` remain available as vertical compatibility aliases; new code should prefer
+`ContentWidth`, `MaxHorizontalOffset`, `MaxVerticalOffset`, `ExtentSource`, and `Diagnostics`.
 
 ## Versioning
 

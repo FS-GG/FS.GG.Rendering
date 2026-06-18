@@ -1,0 +1,4 @@
+FSI transcript PASS
+Command: dotnet fsi specs/150-intrinsic-layout-protocol/readiness/fsi/layout-intrinsic-authoring.fsx
+Coverage: FS.GG.UI.Layout constraints, intrinsic query, Controls scroll surface namespace, Controls.Elmish namespace, Testing layout readiness helper.
+

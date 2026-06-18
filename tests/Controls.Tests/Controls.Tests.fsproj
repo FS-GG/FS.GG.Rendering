@@ -134,6 +134,10 @@
     <Compile Include="Feature148SnapshotEligibilityTests.fs" />
     <Compile Include="Feature149DamagePlanTests.fs" />
     <Compile Include="Feature149ReuseDecisionTests.fs" />
+    <Compile Include="Feature150ScrollFixtures.fs" />
+    <Compile Include="Feature150ScrollViewerExtentTests.fs" />
+    <Compile Include="Feature150LayoutDiagnosticsTests.fs" />
+    <Compile Include="Feature150LayoutCompatibilityTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

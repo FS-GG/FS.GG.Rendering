@@ -99,6 +99,12 @@ type LayoutDiagnosticCode =
     | UnmeasurableContent
     | FallbackBoundsApplied
     | UnsupportedLayoutIntent
+    | UnsupportedIntrinsicQuery
+    | RejectedIntrinsicResult
+    | StaleLayoutCacheEntry
+    | DuplicateMeasurement
+    | InsufficientDependencyEvidence
+    | ContradictoryIntrinsicExtent
 
 /// Public contract type exposed by this FS.GG.UI package.
 type LayoutDiagnostic =
@@ -157,6 +163,130 @@ type AvailableSpace =
       WidthMode: MeasureMode
       Height: float
       HeightMode: MeasureMode }
+
+/// Public contract type exposed by this FS.GG.UI package.
+type LayoutConstraintBound =
+    | Bounded of float
+    | Unbounded
+
+/// Public contract type exposed by this FS.GG.UI package.
+type LayoutConstraintSource =
+    | Viewport
+    | Parent
+    | IntrinsicProbe
+    | Fallback
+    | Compatibility
+
+/// Public contract type exposed by this FS.GG.UI package.
+type LayoutConstraints =
+    { MinWidth: float
+      MaxWidth: LayoutConstraintBound
+      MinHeight: float
+      MaxHeight: LayoutConstraintBound
+      WidthMode: MeasureMode
+      HeightMode: MeasureMode
+      Source: LayoutConstraintSource
+      NormalizedIdentity: string }
+
+/// Public contract type exposed by this FS.GG.UI package.
+type LayoutMeasuredSize =
+    { MeasuredWidth: float
+      MeasuredHeight: float }
+
+/// Public contract type exposed by this FS.GG.UI package.
+type LayoutMeasurementRequest =
+    { ParticipantId: LayoutNodeId
+      Constraints: LayoutConstraints
+      ParentPath: string
+      PassId: string
+      LayoutInputKey: string }
+
+/// Public contract type exposed by this FS.GG.UI package.
+type LayoutChildPlacement =
+    { ChildId: LayoutNodeId
+      Bounds: LayoutBounds
+      Visibility: LayoutVisibility
+      PlacementIdentity: string }
+
+/// Public contract type exposed by this FS.GG.UI package.
+type IntrinsicAxis =
+    | IntrinsicMinWidth
+    | IntrinsicMaxWidth
+    | IntrinsicMinHeight
+    | IntrinsicMaxHeight
+
+/// Public contract type exposed by this FS.GG.UI package.
+type IntrinsicQuerySource =
+    | ScrollViewer
+    | CustomContainer
+    | CompatibilityCheck
+    | DiagnosticProbe
+
+/// Public contract type exposed by this FS.GG.UI package.
+type IntrinsicQuery =
+    { ParticipantId: LayoutNodeId
+      Axis: IntrinsicAxis
+      CrossAxisConstraint: float option
+      LayoutInputKey: string
+      QuerySource: IntrinsicQuerySource
+      QueryIdentity: string
+      Revision: int }
+
+/// Public contract type exposed by this FS.GG.UI package.
+type IntrinsicDependency =
+    { QueryIdentity: string
+      ResultIdentity: string }
+
+/// Public contract type exposed by this FS.GG.UI package.
+type IntrinsicSizeResult =
+    { QueryIdentity: string
+      Size: float
+      Dependencies: IntrinsicDependency list
+      Accepted: bool
+      Diagnostics: LayoutDiagnostic list }
+
+/// Public contract type exposed by this FS.GG.UI package.
+type MeasuredLayoutResult =
+    { ParticipantId: LayoutNodeId
+      Constraints: LayoutConstraints
+      MeasuredSize: LayoutMeasuredSize
+      ChildPlacements: LayoutChildPlacement list
+      IntrinsicDependencies: IntrinsicDependency list
+      CacheEntryId: string
+      Diagnostics: LayoutDiagnostic list }
+
+/// Public contract type exposed by this FS.GG.UI package.
+type LayoutCacheEntryKind =
+    | MeasuredLayoutEntry
+    | IntrinsicLayoutEntry
+
+/// Public contract type exposed by this FS.GG.UI package.
+type LayoutCacheEntry =
+    { EntryId: string
+      EntryKind: LayoutCacheEntryKind
+      ParticipantId: LayoutNodeId
+      ConstraintIdentity: string
+      LayoutInputKey: string
+      ChildDependencyKeys: string list
+      ResultIdentity: string
+      Revision: int }
+
+/// Public contract type exposed by this FS.GG.UI package.
+type LayoutContentExtentSource =
+    | EmptyContent
+    | IntrinsicResult
+    | MeasuredFallback
+    | DiagnosticFallback
+
+/// Public contract type exposed by this FS.GG.UI package.
+type LayoutContentExtent =
+    { ContentWidth: float
+      ContentHeight: float
+      MaxHorizontalOffset: float
+      MaxVerticalOffset: float
+      ExtentSource: LayoutContentExtentSource
+      DependencyKeys: string list
+      Diagnostics: LayoutDiagnostic list }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ComputedBounds =

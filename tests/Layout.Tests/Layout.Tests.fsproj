@@ -15,6 +15,13 @@
     <Compile Include="YogaFallbackDiagnosticsTests.fs" />
     <Compile Include="Feature097IncrementalTests.fs" />
     <Compile Include="Feature138IncrementalLayoutTests.fs" />
+    <Compile Include="Feature150Fixtures.fs" />
+    <Compile Include="Feature150IntrinsicProtocolTests.fs" />
+    <Compile Include="Feature150MeasureDeterminismTests.fs" />
+    <Compile Include="Feature150LayoutDiagnosticsTests.fs" />
+    <Compile Include="Feature150IntrinsicCacheTests.fs" />
+    <Compile Include="Feature150IntrinsicInvalidationTests.fs" />
+    <Compile Include="Feature150FullIncrementalParityTests.fs" />
     <Compile Include="Audit_IncrementalLayout.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

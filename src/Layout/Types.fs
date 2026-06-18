@@ -85,6 +85,12 @@ type LayoutDiagnosticCode =
     | UnmeasurableContent
     | FallbackBoundsApplied
     | UnsupportedLayoutIntent
+    | UnsupportedIntrinsicQuery
+    | RejectedIntrinsicResult
+    | StaleLayoutCacheEntry
+    | DuplicateMeasurement
+    | InsufficientDependencyEvidence
+    | ContradictoryIntrinsicExtent
 
 type LayoutDiagnostic =
     { NodeId: LayoutNodeId option
@@ -136,6 +142,114 @@ type AvailableSpace =
       WidthMode: MeasureMode
       Height: float
       HeightMode: MeasureMode }
+
+type LayoutConstraintBound =
+    | Bounded of float
+    | Unbounded
+
+type LayoutConstraintSource =
+    | Viewport
+    | Parent
+    | IntrinsicProbe
+    | Fallback
+    | Compatibility
+
+type LayoutConstraints =
+    { MinWidth: float
+      MaxWidth: LayoutConstraintBound
+      MinHeight: float
+      MaxHeight: LayoutConstraintBound
+      WidthMode: MeasureMode
+      HeightMode: MeasureMode
+      Source: LayoutConstraintSource
+      NormalizedIdentity: string }
+
+type LayoutMeasuredSize =
+    { MeasuredWidth: float
+      MeasuredHeight: float }
+
+type LayoutMeasurementRequest =
+    { ParticipantId: LayoutNodeId
+      Constraints: LayoutConstraints
+      ParentPath: string
+      PassId: string
+      LayoutInputKey: string }
+
+type LayoutChildPlacement =
+    { ChildId: LayoutNodeId
+      Bounds: LayoutBounds
+      Visibility: LayoutVisibility
+      PlacementIdentity: string }
+
+type IntrinsicAxis =
+    | IntrinsicMinWidth
+    | IntrinsicMaxWidth
+    | IntrinsicMinHeight
+    | IntrinsicMaxHeight
+
+type IntrinsicQuerySource =
+    | ScrollViewer
+    | CustomContainer
+    | CompatibilityCheck
+    | DiagnosticProbe
+
+type IntrinsicQuery =
+    { ParticipantId: LayoutNodeId
+      Axis: IntrinsicAxis
+      CrossAxisConstraint: float option
+      LayoutInputKey: string
+      QuerySource: IntrinsicQuerySource
+      QueryIdentity: string
+      Revision: int }
+
+type IntrinsicDependency =
+    { QueryIdentity: string
+      ResultIdentity: string }
+
+type IntrinsicSizeResult =
+    { QueryIdentity: string
+      Size: float
+      Dependencies: IntrinsicDependency list
+      Accepted: bool
+      Diagnostics: LayoutDiagnostic list }
+
+type MeasuredLayoutResult =
+    { ParticipantId: LayoutNodeId
+      Constraints: LayoutConstraints
+      MeasuredSize: LayoutMeasuredSize
+      ChildPlacements: LayoutChildPlacement list
+      IntrinsicDependencies: IntrinsicDependency list
+      CacheEntryId: string
+      Diagnostics: LayoutDiagnostic list }
+
+type LayoutCacheEntryKind =
+    | MeasuredLayoutEntry
+    | IntrinsicLayoutEntry
+
+type LayoutCacheEntry =
+    { EntryId: string
+      EntryKind: LayoutCacheEntryKind
+      ParticipantId: LayoutNodeId
+      ConstraintIdentity: string
+      LayoutInputKey: string
+      ChildDependencyKeys: string list
+      ResultIdentity: string
+      Revision: int }
+
+type LayoutContentExtentSource =
+    | EmptyContent
+    | IntrinsicResult
+    | MeasuredFallback
+    | DiagnosticFallback
+
+type LayoutContentExtent =
+    { ContentWidth: float
+      ContentHeight: float
+      MaxHorizontalOffset: float
+      MaxVerticalOffset: float
+      ExtentSource: LayoutContentExtentSource
+      DependencyKeys: string list
+      Diagnostics: LayoutDiagnostic list }
 
 type ComputedBounds =
     { NodeId: LayoutNodeId
@@ -229,17 +343,17 @@ type GraphLayoutResult =
       Edges: GraphEdge list }
 
 module Defaults =
-    let padding =
+    let padding : LayoutPadding =
         { Left = 0.0
           Top = 0.0
           Right = 0.0
           Bottom = 0.0 }
 
-    let layoutGap = { Row = 0.0; Column = 0.0 }
+    let layoutGap : LayoutGap = { Row = 0.0; Column = 0.0 }
 
-    let layoutSize = { Width = None; Height = None }
+    let layoutSize : LayoutSize = { Width = None; Height = None }
 
-    let layoutIntent =
+    let layoutIntent : LayoutIntent =
         { Direction = LayoutDirection.Row
           Wrap = LayoutWrap.NoWrap
           AlignItems = LayoutAlign.Stretch
@@ -255,7 +369,7 @@ module Defaults =
           FlexShrink = 1.0
           FlexBasis = None }
 
-    let layoutNode id =
+    let layoutNode id : LayoutNode =
         { Id = id
           Intent = layoutIntent
           Visibility = LayoutVisibility.Visible

@@ -33,6 +33,13 @@ FS.GG.UI.Testing.HostWarningClass+Tags
 FS.GG.UI.Testing.HostWarningClassification
 FS.GG.UI.Testing.HostWarningClassificationCheck
 FS.GG.UI.Testing.HostWarningClassificationResult
+FS.GG.UI.Testing.LayoutCompatibilityDelta
+FS.GG.UI.Testing.LayoutReadiness
+FS.GG.UI.Testing.LayoutReadinessEvidence
+FS.GG.UI.Testing.LayoutReadinessReport
+FS.GG.UI.Testing.LayoutReadinessStatus
+FS.GG.UI.Testing.LayoutReadinessStatus+Tags
+FS.GG.UI.Testing.LayoutReadinessValidationResult
 FS.GG.UI.Testing.LocalConsumerPackage
 FS.GG.UI.Testing.LocalConsumerPackageDrift
 FS.GG.UI.Testing.LocalConsumerPackageReport

@@ -346,6 +346,53 @@ type PackageInspectionAssertionResult =
     { Accepted: bool
       Diagnostics: string list }
 
+/// Public contract type exposed by this FS.GG.UI package.
+type LayoutReadinessStatus =
+    | LayoutReadinessAccepted
+    | LayoutReadinessIncomplete
+    | LayoutReadinessFailed
+    | LayoutReadinessSkipped
+    | LayoutReadinessEnvironmentLimited
+    | LayoutReadinessSyntheticOnly
+    | LayoutReadinessCompatibilityBlocked
+    | LayoutReadinessMissingEvidence
+
+/// Public contract type exposed by this FS.GG.UI package.
+type LayoutReadinessEvidence =
+    { Name: string
+      Path: string option
+      Status: LayoutReadinessStatus
+      Required: bool
+      Diagnostics: string list }
+
+/// Public contract type exposed by this FS.GG.UI package.
+type LayoutCompatibilityDelta =
+    { Surface: string
+      Change: string
+      Migration: string option
+      Intentional: bool }
+
+/// Public contract type exposed by this FS.GG.UI package.
+type LayoutReadinessReport =
+    { Feature: string
+      ContractStatus: LayoutReadinessStatus
+      ScrollViewerStatus: LayoutReadinessStatus
+      IntrinsicStatus: LayoutReadinessStatus
+      ParityStatus: LayoutReadinessStatus
+      CompatibilityStatus: LayoutReadinessStatus
+      DiagnosticsStatus: LayoutReadinessStatus
+      Evidence: LayoutReadinessEvidence list
+      CompatibilityDeltas: LayoutCompatibilityDelta list
+      Limitations: string list }
+
+/// Public contract type exposed by this FS.GG.UI package.
+type LayoutReadinessValidationResult =
+    { Accepted: bool
+      Status: LayoutReadinessStatus
+      MissingEvidence: string list
+      BlockingLimitations: string list
+      Diagnostics: string list }
+
 /// Public contract module exposed by this FS.GG.UI package.
 module GeneratedProductAssertions =
     /// Public contract function exposed by this FS.GG.UI package.
@@ -425,3 +472,10 @@ module EvidenceReports =
 module PackageInspectionAssertions =
     /// Public contract function exposed by this FS.GG.UI package.
     val validate: check: PackageInspectionAssertionCheck -> PackageInspectionAssertionResult
+
+/// Public contract module exposed by this FS.GG.UI package.
+module LayoutReadiness =
+    /// Public contract function exposed by this FS.GG.UI package.
+    val statusText: status: LayoutReadinessStatus -> string
+    /// Public contract function exposed by this FS.GG.UI package.
+    val validate: report: LayoutReadinessReport -> LayoutReadinessValidationResult

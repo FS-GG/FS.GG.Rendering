@@ -302,6 +302,48 @@ type PackageInspectionAssertionResult =
     { Accepted: bool
       Diagnostics: string list }
 
+type LayoutReadinessStatus =
+    | LayoutReadinessAccepted
+    | LayoutReadinessIncomplete
+    | LayoutReadinessFailed
+    | LayoutReadinessSkipped
+    | LayoutReadinessEnvironmentLimited
+    | LayoutReadinessSyntheticOnly
+    | LayoutReadinessCompatibilityBlocked
+    | LayoutReadinessMissingEvidence
+
+type LayoutReadinessEvidence =
+    { Name: string
+      Path: string option
+      Status: LayoutReadinessStatus
+      Required: bool
+      Diagnostics: string list }
+
+type LayoutCompatibilityDelta =
+    { Surface: string
+      Change: string
+      Migration: string option
+      Intentional: bool }
+
+type LayoutReadinessReport =
+    { Feature: string
+      ContractStatus: LayoutReadinessStatus
+      ScrollViewerStatus: LayoutReadinessStatus
+      IntrinsicStatus: LayoutReadinessStatus
+      ParityStatus: LayoutReadinessStatus
+      CompatibilityStatus: LayoutReadinessStatus
+      DiagnosticsStatus: LayoutReadinessStatus
+      Evidence: LayoutReadinessEvidence list
+      CompatibilityDeltas: LayoutCompatibilityDelta list
+      Limitations: string list }
+
+type LayoutReadinessValidationResult =
+    { Accepted: bool
+      Status: LayoutReadinessStatus
+      MissingEvidence: string list
+      BlockingLimitations: string list
+      Diagnostics: string list }
+
 module GeneratedProductAssertions =
     let summarize expectation =
         let packages =
@@ -1075,7 +1117,7 @@ module EvidenceReports =
         | EvidenceUnsupported -> 0
         | EvidenceFailed -> 1
 
-    let private normalizeFields fields =
+    let private normalizeFields (fields: EvidenceReportField list) =
         fields
         |> List.filter (fun item -> not (String.IsNullOrWhiteSpace item.Name))
         |> List.map (fun item -> { item with Name = item.Name.Trim(); Value = item.Value.Trim() })
@@ -1352,4 +1394,83 @@ module PackageInspectionAssertions =
                       $"missing package diagnostic containing '{fragment}'" ]
 
         { Accepted = diagnostics.IsEmpty
+          Diagnostics = diagnostics }
+
+module LayoutReadiness =
+    let statusText status =
+        match status with
+        | LayoutReadinessAccepted -> "accepted"
+        | LayoutReadinessIncomplete -> "incomplete"
+        | LayoutReadinessFailed -> "failed"
+        | LayoutReadinessSkipped -> "skipped"
+        | LayoutReadinessEnvironmentLimited -> "environment-limited"
+        | LayoutReadinessSyntheticOnly -> "synthetic-only"
+        | LayoutReadinessCompatibilityBlocked -> "compatibility-blocked"
+        | LayoutReadinessMissingEvidence -> "missing-evidence"
+
+    let private blocksAcceptance status =
+        match status with
+        | LayoutReadinessAccepted -> false
+        | LayoutReadinessEnvironmentLimited -> false
+        | _ -> true
+
+    let validate (report: LayoutReadinessReport) =
+        let requiredStatuses =
+            [ "contract", report.ContractStatus
+              "scroll-viewer", report.ScrollViewerStatus
+              "intrinsic-cache", report.IntrinsicStatus
+              "full-incremental-parity", report.ParityStatus
+              "compatibility", report.CompatibilityStatus
+              "diagnostics", report.DiagnosticsStatus ]
+
+        let missingEvidence =
+            report.Evidence
+            |> List.choose (fun evidence ->
+                if evidence.Required && (evidence.Path.IsNone || evidence.Status = LayoutReadinessMissingEvidence) then
+                    Some evidence.Name
+                else
+                    None)
+
+        let blockedStatus =
+            requiredStatuses
+            |> List.filter (snd >> blocksAcceptance)
+            |> List.map (fun (name, status) -> $"{name}:{statusText status}")
+
+        let blockingLimitations =
+            report.Limitations
+            |> List.filter (fun item -> item.Contains("blocking", StringComparison.OrdinalIgnoreCase))
+
+        let unintentionalDeltas =
+            report.CompatibilityDeltas
+            |> List.filter (fun delta -> not delta.Intentional)
+            |> List.map (fun delta -> $"{delta.Surface}:{delta.Change}")
+
+        let diagnostics =
+            [ if String.IsNullOrWhiteSpace report.Feature then
+                  "layout readiness report must name the feature"
+              for missing in missingEvidence do
+                  $"missing required layout readiness evidence: {missing}"
+              for status in blockedStatus do
+                  $"blocking layout readiness status: {status}"
+              for limitation in blockingLimitations do
+                  $"blocking layout readiness limitation: {limitation}"
+              for delta in unintentionalDeltas do
+                  $"unintentional layout compatibility delta: {delta}"
+              for evidence in report.Evidence do
+                  yield! evidence.Diagnostics ]
+
+        let status =
+            if not missingEvidence.IsEmpty then
+                LayoutReadinessMissingEvidence
+            elif not unintentionalDeltas.IsEmpty then
+                LayoutReadinessCompatibilityBlocked
+            elif not blockedStatus.IsEmpty || not blockingLimitations.IsEmpty then
+                LayoutReadinessIncomplete
+            else
+                LayoutReadinessAccepted
+
+        { Accepted = status = LayoutReadinessAccepted
+          Status = status
+          MissingEvidence = missingEvidence
+          BlockingLimitations = blockingLimitations
           Diagnostics = diagnostics }

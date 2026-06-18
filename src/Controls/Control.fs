@@ -2323,29 +2323,12 @@ module internal ControlInternals =
                 let frame = [ Scene.rectangleWithPaint box (Paint.stroke theme.Muted 1.0) ]
 
                 if c.Kind = "scroll-viewer" then
-                    // Feature 137 (US3): a `scroll-viewer` is a real clipping viewport — it paints a
-                    // scroll affordance whose thumb reflects how far the content overflows the box. The
-                    // content (taller than the box) is confined by the container clip: scrollable, not
-                    // spilled. The overflow lives in the DESCENDANTS (Yoga clamps the direct child's box
-                    // to the viewport but lays its children out past it), so the content extent is the
-                    // deepest descendant bottom edge.
-                    let rec maxBottom (p: string) (n: Control<'msg>) : float =
-                        let nid = n.Key |> Option.defaultValue p
+                    // Feature 150: the scroll affordance uses the same intrinsic extent path exposed by
+                    // `Control.scrollViewport`, not a rendered descendant-bounds walk.
+                    let layoutNode = toLayout path c
+                    let extent = FS.GG.UI.Layout.Layout.contentExtent box.Width box.Height (layoutNode.Children |> List.tryHead)
 
-                        let here =
-                            match Map.tryFind nid boundsById with
-                            | Some(nb: FS.GG.UI.Layout.LayoutBounds) -> nb.Y + nb.Height
-                            | None -> box.Y
-
-                        here :: (n.Children |> List.mapi (fun i ch -> maxBottom (p + "." + string i) ch))
-                        |> List.max
-
-                    let contentHeight =
-                        match c.Children |> List.mapi (fun i ch -> maxBottom (path + "." + string i) ch) with
-                        | [] -> box.Height
-                        | bottoms -> max box.Height (List.max bottoms - box.Y)
-
-                    frame @ scrollAffordance theme box contentHeight
+                    frame @ scrollAffordance theme box extent.ContentHeight
                 else
                     frame
 
@@ -2659,15 +2642,26 @@ module internal ControlInternals =
 
         go "0" control Set.empty
 
-/// Feature 137 (US3) — read-back geometry of a `scroll-viewer` viewport, derived from a render
-/// result. `Viewport` is the clipping box; `ContentHeight` is the laid-out content extent;
-/// `MaxOffset` is how far the content extends past the viewport (`> 0` ⇒ scrollable, with the
-/// overflow clipped to the box, not spilled); `Offset` is the current scroll top (0 at rest).
+/// Feature 150 — source used to derive a `scroll-viewer` content extent.
+type ScrollExtentSource =
+    | EmptyContentExtent
+    | IntrinsicContentExtent
+    | MeasuredFallbackExtent
+    | DiagnosticFallbackExtent
+
+/// Feature 137/150 — read-back geometry of a `scroll-viewer` viewport.
 type ScrollViewport =
     { Viewport: Rect
+      ContentWidth: float
       ContentHeight: float
+      OffsetX: float
+      OffsetY: float
       Offset: float
-      MaxOffset: float }
+      MaxHorizontalOffset: float
+      MaxVerticalOffset: float
+      MaxOffset: float
+      ExtentSource: ScrollExtentSource
+      Diagnostics: ControlDiagnostic list }
 
 module Control =
     let create kind (attrs: Attr<'msg> list) =
@@ -2854,11 +2848,37 @@ module Control =
 
         search "0" None result.Layout
 
-    /// Feature 137 (US3) — read back the scroll geometry of a `scroll-viewer` from a render result:
-    /// its clipping viewport box, the laid-out content height, and the scroll metrics. `MaxOffset > 0`
-    /// means the content overflows the viewport (scrollable; the overflow is confined to the box by the
-    /// container clip, not spilled). `Offset` is the current top (0 at rest). `None` when `scrollViewerId`
-    /// is not a laid-out node in the result.
+    let private scrollExtentSource source =
+        match source with
+        | FS.GG.UI.Layout.EmptyContent -> EmptyContentExtent
+        | FS.GG.UI.Layout.IntrinsicResult -> IntrinsicContentExtent
+        | FS.GG.UI.Layout.MeasuredFallback -> MeasuredFallbackExtent
+        | FS.GG.UI.Layout.DiagnosticFallback -> DiagnosticFallbackExtent
+
+    let private scrollDiagnostic controlId (diagnostic: FS.GG.UI.Layout.LayoutDiagnostic) =
+        let code =
+            match diagnostic.Code with
+            | FS.GG.UI.Layout.UnsupportedIntrinsicQuery
+            | FS.GG.UI.Layout.RejectedIntrinsicResult
+            | FS.GG.UI.Layout.InsufficientDependencyEvidence
+            | FS.GG.UI.Layout.ContradictoryIntrinsicExtent -> ScrollIntrinsicUnavailable
+            | _ when diagnostic.FallbackApplied -> ScrollExtentFallback
+            | _ -> LayoutConflict
+
+        { ControlId = Some controlId
+          ControlKind = "scroll-viewer"
+          Code = code
+          Severity =
+            match diagnostic.Severity with
+            | FS.GG.UI.Layout.DiagnosticSeverity.Info -> ControlDiagnosticSeverity.Info
+            | FS.GG.UI.Layout.DiagnosticSeverity.Warning -> ControlDiagnosticSeverity.Warning
+            | FS.GG.UI.Layout.DiagnosticSeverity.Error -> ControlDiagnosticSeverity.Error
+          Message = diagnostic.Message
+          EvidencePath = None }
+
+    /// Feature 137/150 — read back the scroll geometry of a `scroll-viewer` from a render result.
+    /// The content extent is derived from the Layout intrinsic protocol. `MaxOffset` remains a
+    /// vertical compatibility alias for `MaxVerticalOffset`.
     let scrollViewport (result: ControlRenderResult<'msg>) (scrollViewerId: ControlId) : ScrollViewport option =
         let boundsMap = result.Bounds |> Map.ofList
 
@@ -2868,21 +2888,23 @@ module Control =
             else
                 node.Children |> List.tryPick find
 
-        let rec descendantIds (n: FS.GG.UI.Layout.LayoutNode) : ControlId list =
-            n.Children |> List.collect (fun c -> c.Id :: descendantIds c)
-
         match find result.Layout, Map.tryFind scrollViewerId boundsMap with
         | Some node, Some viewport ->
-            let contentHeight =
-                match descendantIds node |> List.choose (fun id -> Map.tryFind id boundsMap) with
-                | [] -> viewport.Height
-                | rects -> max viewport.Height ((rects |> List.map (fun (r: Rect) -> r.Y + r.Height) |> List.max) - viewport.Y)
+            let extent = FS.GG.UI.Layout.Layout.contentExtent viewport.Width viewport.Height (node.Children |> List.tryHead)
+            let diagnostics = extent.Diagnostics |> List.map (scrollDiagnostic scrollViewerId)
 
             Some
                 { Viewport = viewport
-                  ContentHeight = contentHeight
+                  ContentWidth = extent.ContentWidth
+                  ContentHeight = extent.ContentHeight
+                  OffsetX = 0.0
+                  OffsetY = 0.0
                   Offset = 0.0
-                  MaxOffset = max 0.0 (contentHeight - viewport.Height) }
+                  MaxHorizontalOffset = extent.MaxHorizontalOffset
+                  MaxVerticalOffset = extent.MaxVerticalOffset
+                  MaxOffset = extent.MaxVerticalOffset
+                  ExtentSource = scrollExtentSource extent.ExtentSource
+                  Diagnostics = diagnostics }
         | _ -> None
 
     /// Feature 137 (US2) — the public entry to the deferred overlay render pass: does this control author

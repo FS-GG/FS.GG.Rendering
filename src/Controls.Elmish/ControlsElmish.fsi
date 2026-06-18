@@ -235,6 +235,14 @@ type CompositorFrameDiagnostics =
       DemotionCount: int
       SnapshotResourceBytes: int }
 
+/// Feature 150: deterministic layout/intrinsic work projection for Controls.Elmish consumers.
+type LayoutWorkMetrics =
+    { LayoutWorkCount: int
+      IntrinsicQueryWorkCount: int
+      IntrinsicCacheHitCount: int
+      IntrinsicCacheMissCount: int
+      IntrinsicInvalidationCount: int }
+
 [<RequireQualifiedAccess>]
 /// Feature 108 (US3, FR-009): one ordered step of the deterministic perf driver. `Key` carries the
 /// parsed base key + held modifiers; `Pointer` carries an already-resolved `PointerInteraction`;
@@ -354,6 +362,8 @@ module ControlsElmish =
         fallbackReason: string option ->
         metrics: FrameMetrics ->
             CompositorFrameDiagnostics
+    /// Feature 150: project layout and intrinsic cache work from a frame metrics record.
+    val layoutMetrics: metrics: FrameMetrics -> LayoutWorkMetrics
     /// Public contract function exposed by this FS.GG.UI package.
     val subscriptions: keyboard: AdapterSubscription<'msg> list -> controls: AdapterSubscription<'msg> list -> AdapterSubscription<'msg> list
     /// Public contract function exposed by this FS.GG.UI package.

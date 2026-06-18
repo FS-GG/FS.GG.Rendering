@@ -56,10 +56,19 @@ match Graph.layout graph with
 - `Layout.evaluate` / `Layout.evaluateIncremental` — compute (or incrementally recompute) a `LayoutResult` for a `LayoutNode` tree against an `AvailableSpace`.
 - `Layout.horizontalStack` / `Layout.verticalStack` / `Layout.dock` — build a `Scene` from `LayoutChild` lists using `StackConfig` / `DockConfig`; `measureHorizontal` / `measureVertical` return the child `LayoutBounds`.
 - `Layout.renderComputed`, `Layout.snapBounds`, `Layout.hitTestComputed` — turn a computed result into a `Scene`, apply a `PixelSnapPolicy`, and resolve a point to a `LayoutNodeId`.
+- `Layout.constraints`, `Layout.measureProtocol`, `Layout.intrinsicQuery`, `Layout.evaluateIntrinsic`, `Layout.cacheEntry`, and `Layout.contentExtent` — Feature150's explicit constraints-down, sizes-up and intrinsic-query contract. These records expose deterministic identities and dependency keys so containers can request natural size without inspecting rendered descendants.
 - `Layout.initWorkflow` / `Layout.updateWorkflow` / `Layout.interpretWorkflowEffect` — Elmish-style `LayoutWorkflowModel` / `LayoutWorkflowMsg` / `LayoutWorkflowEffect` loop for host-resize and invalidation handling.
 - `Graph.layout` / `Graph.directed` / `Graph.undirected` — lay out or render a `GraphDefinition`, returning a `Result` with `GraphValidationIssue` lists on failure; `Graph.hitTest` resolves a point to a `GraphTarget`.
 - `GraphValidation.validate` / `hasCycle` / `disconnectedComponents` — inspect a `GraphDefinition` for duplicate ids, missing endpoints, self-loops, cycles, and connectivity.
 - `Defaults` — constructors for the core records (`layoutNode`, `availableSpace`, `pixelSnapPolicy`, `stackConfig`, `dockConfig`, `graphConfig`, `child`, plus default `padding` / `layoutIntent` / `sizing`).
+
+## Intrinsic Layout Protocol
+
+Feature150 keeps Yoga as the default evaluator and adds explicit protocol records around it:
+parents create `LayoutConstraints`, participants produce `MeasuredLayoutResult` values with child
+placements, and containers that need natural sizes issue `IntrinsicQuery` values. `Layout.contentExtent`
+is the reference helper for fixed viewports such as ScrollViewer; it returns content width/height,
+max offsets, extent source, diagnostics, and dependency keys.
 
 ## Versioning
 

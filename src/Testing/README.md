@@ -57,6 +57,16 @@ for drift in LocalConsumerPackages.classifyDrift expected actual do
   `validateScreenshotArtifact` and `validateScreenshotEvidence` for screenshot proofs.
 - `PersistentLaunchArtifactValidation` / `ReadinessFileDiscovery` — `validate` persisted launch artifacts
   and required readiness files.
+- `LayoutReadiness` — validate Feature150-style layout readiness reports that aggregate public
+  contract, ScrollViewer, intrinsic/cache, parity, compatibility, diagnostics, evidence links, deltas,
+  and limitations.
+
+## Layout Readiness
+
+`LayoutReadiness.validate` is pure: pass a `LayoutReadinessReport` with discovered evidence and
+compatibility deltas, and it returns an accepted/missing/blocked status plus diagnostics. It is meant
+for package consumers and readiness scripts that need to distinguish accepted evidence from failed,
+skipped, synthetic-only, compatibility-blocked, or missing layout evidence.
 
 ## Versioning
 

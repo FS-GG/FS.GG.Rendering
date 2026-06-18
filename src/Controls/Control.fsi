@@ -218,15 +218,29 @@ module internal ControlInternals =
     /// (SC-005). Fills land in `Children`, inheriting E1–E4 + E2 identity by construction (FR-004).
     val lowerSlots: control: Control<'msg> -> Control<'msg>
 
-/// Feature 137 (US3) — read-back geometry of a `scroll-viewer` viewport, derived from a render
-/// result. `Viewport` is the clipping box; `ContentHeight` is the laid-out content extent;
-/// `MaxOffset` is how far the content extends past the viewport (`> 0` ⇒ scrollable, with the overflow
-/// clipped to the box, not spilled); `Offset` is the current scroll top (0 at rest).
+/// Feature 150 — source used to derive a `scroll-viewer` content extent.
+type ScrollExtentSource =
+    | EmptyContentExtent
+    | IntrinsicContentExtent
+    | MeasuredFallbackExtent
+    | DiagnosticFallbackExtent
+
+/// Feature 137/150 — read-back geometry of a `scroll-viewer` viewport, derived from a render
+/// result. `Viewport` is the clipping box; `ContentWidth`/`ContentHeight` are the content extent;
+/// `MaxHorizontalOffset`/`MaxVerticalOffset` are accepted scroll ranges. The legacy vertical
+/// `Offset`/`MaxOffset` fields mirror `OffsetY`/`MaxVerticalOffset`.
 type ScrollViewport =
     { Viewport: FS.GG.UI.Scene.Rect
+      ContentWidth: float
       ContentHeight: float
+      OffsetX: float
+      OffsetY: float
       Offset: float
-      MaxOffset: float }
+      MaxHorizontalOffset: float
+      MaxVerticalOffset: float
+      MaxOffset: float
+      ExtentSource: ScrollExtentSource
+      Diagnostics: ControlDiagnostic list }
 
 /// Core authoring and rendering verbs for `Control<'msg>` — construction, standard/custom
 /// lowering, keying, single-control preview `render` and nested `renderTree`.

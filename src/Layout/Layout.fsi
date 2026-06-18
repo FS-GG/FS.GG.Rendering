@@ -5,6 +5,45 @@ open FS.GG.UI.Scene
 /// Public contract module exposed by this FS.GG.UI package.
 module Layout =
     /// Public contract function exposed by this FS.GG.UI package.
+    val constraints:
+        source: LayoutConstraintSource ->
+        minWidth: float ->
+        maxWidth: float option ->
+        minHeight: float ->
+        maxHeight: float option ->
+            LayoutConstraints
+    /// Public contract function exposed by this FS.GG.UI package.
+    val constraintsFromAvailable: source: LayoutConstraintSource -> available: AvailableSpace -> LayoutConstraints
+    /// Public contract function exposed by this FS.GG.UI package.
+    val layoutInputKey: node: LayoutNode -> string
+    /// Public contract function exposed by this FS.GG.UI package.
+    val intrinsicQuery:
+        participantId: LayoutNodeId ->
+        axis: IntrinsicAxis ->
+        crossAxisConstraint: float option ->
+        layoutInputKey: string ->
+        source: IntrinsicQuerySource ->
+            IntrinsicQuery
+    /// Public contract function exposed by this FS.GG.UI package.
+    val evaluateIntrinsic: query: IntrinsicQuery -> node: LayoutNode -> IntrinsicSizeResult
+    /// Public contract function exposed by this FS.GG.UI package.
+    val measureProtocol: constraints: LayoutConstraints -> node: LayoutNode -> MeasuredLayoutResult
+    /// Public contract function exposed by this FS.GG.UI package.
+    val cacheEntry:
+        kind: LayoutCacheEntryKind ->
+        participantId: LayoutNodeId ->
+        constraintIdentity: string ->
+        layoutInputKey: string ->
+        childDependencyKeys: string list ->
+        resultIdentity: string ->
+            LayoutCacheEntry
+    /// Public contract function exposed by this FS.GG.UI package.
+    val contentExtent:
+        viewportWidth: float ->
+        viewportHeight: float ->
+        content: LayoutNode option ->
+            LayoutContentExtent
+    /// Public contract function exposed by this FS.GG.UI package.
     val evaluate : available: AvailableSpace -> root: LayoutNode -> LayoutResult
     /// Public contract function exposed by this FS.GG.UI package.
     val evaluateIncremental :
