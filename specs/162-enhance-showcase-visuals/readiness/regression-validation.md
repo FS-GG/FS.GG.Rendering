@@ -1,6 +1,6 @@
 # Regression Validation Ledger
 
-Validated on 2026-06-18 after AntShowcase was repinned to the current local package version `0.1.23-preview.1`.
+Validated on 2026-06-18 after AntShowcase was repinned to the current local package version `0.1.24-preview.1`.
 
 ## Existing AntShowcase Coverage
 

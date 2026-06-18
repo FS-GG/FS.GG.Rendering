@@ -2,7 +2,7 @@
 
 - Restore/build command: `dotnet restore FS.GG.Rendering.slnx && dotnet build FS.GG.Rendering.slnx -c Release --no-restore`
 - Restore/build status: passed, 0 warnings, 0 errors
-- Restore/build duration: 3.42s for the final build step after restore
+- Restore/build duration: 47.01s for the final post-merge package-bump build step after restore
 
 - Full test command attempted: `dotnet test FS.GG.Rendering.slnx -c Release --no-restore --no-build`
 - Full test status: canceled due to a stuck `Controls.Tests` child process

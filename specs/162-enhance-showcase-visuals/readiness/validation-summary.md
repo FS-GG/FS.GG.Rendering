@@ -16,13 +16,13 @@
   - Contact sheets: `contact-sheet-light.png`, `contact-sheet-dark.png`
 
 - Package-feed validation: `package-feed.md`
-  - Status: passed for solution build, pack/local-feed, AntShowcase build/list/coverage, focused tests, full AntShowcase tests, and visual-readiness evidence.
+  - Status: passed for solution build, `0.1.24-preview.1` pack/local-feed, AntShowcase build/list/coverage, focused tests, full AntShowcase tests, and visual-readiness evidence.
 
 - Compatibility ledger: `compatibility-ledger.md`
-  - Status: no FS.GG.UI public package surface change. Feature changes are sample/readiness scoped.
+  - Status: no FS.GG.UI public package surface change from Feature 162. Post-merge package versions were bumped to `0.1.24-preview.1`.
 
 - Regression validation: `regression-validation.md`
   - Status: passed for AntShowcase coverage, determinism, interaction, feedback, templates, theme invariance, and Feature 143/144/145 sample overlay regressions.
 
 - Full validation: `full-validation/validation.md`
-  - Status: solution restore/build passed. Full solution test was attempted and canceled because `Controls.Tests` stopped producing output for several minutes; no failures were reported before cancellation.
+  - Status: solution restore/build passed. Full solution test was attempted before the package bump and canceled because `Controls.Tests` stopped producing output for several minutes; no failures were reported before cancellation.

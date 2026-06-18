@@ -6,25 +6,25 @@ Validated on 2026-06-18 from `/home/developer/projects/FS.GG.Rendering`.
 
 - Command: `dotnet restore FS.GG.Rendering.slnx && dotnet build FS.GG.Rendering.slnx -c Release --no-restore`
 - Status: passed
-- Output: solution restored after the global package cache clear, then built successfully in Release with 0 warnings and 0 errors.
+- Output: solution restored after the global package cache clear, then built successfully in Release with 0 warnings and 0 errors. The post-merge package-bump build completed in 47.01s.
 
 ## Pack
 
-- Command: `rm -rf /tmp/fs-gg-rendering-local-feed && mkdir -p /tmp/fs-gg-rendering-local-feed && dotnet pack FS.GG.Rendering.slnx -c Release --no-build -o /tmp/fs-gg-rendering-local-feed`
+- Command: `dotnet pack FS.GG.Rendering.slnx -c Release --no-build -o ~/.local/share/nuget-local`
 - Status: passed
-- Output: produced 13 `FS.GG.UI.*.0.1.23-preview.1.nupkg` packages. NuGet readme warnings were emitted for existing package metadata only.
+- Output: produced 13 `FS.GG.UI.*.0.1.24-preview.1.nupkg` packages. NuGet readme warnings were emitted for existing package metadata only.
 
 ## Local Feed
 
-- Command: `cp /tmp/fs-gg-rendering-local-feed/FS.GG.UI.*.0.1.23-preview.1.nupkg ~/.local/share/nuget-local/ && dotnet nuget locals global-packages --clear`
+- Command: `dotnet nuget locals global-packages --clear`
 - Status: passed
-- Output: copied the current package set into the configured AntShowcase local feed and cleared `/home/developer/.nuget/packages/`.
+- Output: packed the current package set directly into the configured AntShowcase local feed and cleared `/home/developer/.nuget/packages/`.
 
 ## AntShowcase Build
 
 - Command: `dotnet restore samples/AntShowcase/AntShowcase.App/AntShowcase.App.fsproj && dotnet restore samples/AntShowcase/AntShowcase.Tests/AntShowcase.Tests.fsproj && dotnet build samples/AntShowcase/AntShowcase.App/AntShowcase.App.fsproj -c Release --no-restore`
 - Status: passed
-- Output: AntShowcase restored from the local feed with `FS.GG.UI.*` package pins at `0.1.23-preview.1`, then built with 0 warnings and 0 errors.
+- Output: AntShowcase restored from the local feed with `FS.GG.UI.*` package pins at `0.1.24-preview.1`, then built with 0 warnings and 0 errors.
 
 ## AntShowcase List
 
