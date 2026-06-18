@@ -32,6 +32,10 @@
 - `dotnet test tests/SkiaViewer.Tests/SkiaViewer.Tests.fsproj --filter Feature148`: passed.
 - `dotnet test tests/Elmish.Tests/Elmish.Tests.fsproj --filter Feature148`: passed.
 - `dotnet build FS.GG.Rendering.slnx --no-restore`: passed.
+- `dotnet fsi scripts/refresh-surface-baselines.fsx`: passed; no public surface baseline diffs remained after refresh.
+- `dotnet pack -c Release -o ~/.local/share/nuget-local`: passed for source packages at `0.1.11-preview.1`.
+- `dotnet pack .template.package/FS.GG.UI.Template.fsproj -c Release -o ~/.local/share/nuget-local`: passed for `FS.GG.UI.Template` at `0.1.5-preview.1`.
+- Task status after pack validation: 61/76 complete; remaining tasks are native live proof, renderer/snapshot integration, final timing module work, and related public surface expansion.
 
 ## Limitations
 
