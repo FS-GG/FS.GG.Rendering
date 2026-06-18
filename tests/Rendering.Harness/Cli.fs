@@ -762,6 +762,26 @@ let private writeFeature158TimingPackage out (summary: Compositor.Feature158Timi
     File.WriteAllText(Path.Combine(out, "summary.md"), Compositor.renderFeature158TimingSummary summary)
     File.WriteAllText(Path.Combine(out, "summary.json"), Compositor.renderFeature158TimingSummaryJson summary + Environment.NewLine)
 
+let private writeFeature158ProbeEvidencePackage out (summary: Compositor.Feature158TimingSummary) =
+    let excludedDir = Path.Combine(out, "excluded")
+    let proofProbeDir =
+        match Directory.GetParent(out) |> Option.ofObj with
+        | None -> Path.Combine(out, "proof-probes")
+        | Some parent -> Path.Combine(parent.FullName, "proof-probes")
+
+    Directory.CreateDirectory(excludedDir) |> ignore
+    Directory.CreateDirectory(proofProbeDir) |> ignore
+
+    summary.ExcludedSamples
+    |> List.groupBy (fun sample -> sample.ExclusionReason |> Option.defaultValue Perf.UnverifiableMeasurementPolicy)
+    |> List.iter (fun (reason, samples) ->
+        File.WriteAllText(Path.Combine(excludedDir, Perf.exclusionReasonToken reason + ".md"), Compositor.renderFeature158ExcludedSamplesReport reason samples))
+
+    if not (File.Exists(Path.Combine(excludedDir, "README.md"))) then
+        File.WriteAllText(Path.Combine(excludedDir, "README.md"), "# Feature 158 Excluded Samples\n\nGrouped excluded samples are written by primary reason.\n")
+
+    File.WriteAllText(Path.Combine(proofProbeDir, "README.md"), Compositor.renderFeature158ProofProbeReport summary.ProofProbeEvidence)
+
 let private captureProofImage command app hostFacts path scene =
     let options: ViewerOptions =
         { Title = "Feature155 native proof capture"
@@ -1666,15 +1686,24 @@ let private runFeature158PerformanceCmd (rest: string list) =
         let hostReason = feature158ReasonFromHost facts profile expectedProfile
 
         let reports, proofProbeEvidence, unsupported, diagnostics =
-            match hostReason with
-            | Some reason when reason.Contains("profile mismatch", StringComparison.OrdinalIgnoreCase) ->
+            match probeReadback, hostReason with
+            | true, Some reason ->
+                let reports : Compositor.Feature158ScenarioReport list =
+                    scenarioSet
+                    |> List.map (fun scenario ->
+                        feature158FailClosedReport scenario warmup repetitions Compositor.Feature158ReadinessStatus.EnvironmentLimited Perf.EnvironmentLimitedReason)
+
+                File.WriteAllText(Path.Combine(unsupportedDir, "README.md"), Compositor.renderFeature158UnsupportedHostReport reason)
+                File.WriteAllText(Path.Combine(unsupportedDir, "validation.md"), Compositor.renderFeature158UnsupportedHostReport reason)
+                reports, [], Some reason, [ reason; "explicit probe readback unavailable"; "accepted proof artifacts=0"; "accepted performance artifacts=0" ]
+            | false, Some reason when reason.Contains("profile mismatch", StringComparison.OrdinalIgnoreCase) ->
                 let reports : Compositor.Feature158ScenarioReport list =
                     scenarioSet
                     |> List.map (fun scenario ->
                         feature158FailClosedReport scenario warmup repetitions Compositor.Feature158ReadinessStatus.Rejected Perf.CrossProfileEvidence)
 
                 reports, [], None, [ reason; "accepted performance artifacts=0" ]
-            | Some reason ->
+            | false, Some reason ->
                 let reports : Compositor.Feature158ScenarioReport list =
                     scenarioSet
                     |> List.map (fun scenario ->
@@ -1683,7 +1712,7 @@ let private runFeature158PerformanceCmd (rest: string list) =
                 File.WriteAllText(Path.Combine(unsupportedDir, "README.md"), Compositor.renderFeature158UnsupportedHostReport reason)
                 File.WriteAllText(Path.Combine(unsupportedDir, "validation.md"), Compositor.renderFeature158UnsupportedHostReport reason)
                 reports, [], Some reason, [ reason; "accepted proof artifacts=0"; "accepted performance artifacts=0" ]
-            | None when probeReadback ->
+            | true, None ->
                 let proofProbeDir =
                     match Directory.GetParent(out) |> Option.ofObj with
                     | None -> Path.Combine(out, "proof-probes")
@@ -1751,7 +1780,7 @@ let private runFeature158PerformanceCmd (rest: string list) =
                             [ "probe-readback-included"; "probe-run-excluded"; "accepted performance samples=0" ])
 
                 reports, [ evidence ], None, [ "explicit probe readback completed"; "accepted performance artifacts=0" ]
-            | None ->
+            | false, None ->
                 let reports : Compositor.Feature158ScenarioReport list =
                     scenarioSet
                     |> List.map (fun scenario ->
@@ -1786,8 +1815,18 @@ let private runFeature158PerformanceCmd (rest: string list) =
                 reports, [], None, [ "readback-free timing measurement completed"; "shipped performance claim remains performance-not-accepted" ]
 
         let summary = feature158SummaryFromReports runId profile warmup repetitions reports proofProbeEvidence unsupported diagnostics
-        writeFeature158TimingPackage out summary
-        printfn "%s" (Path.Combine(out, "summary.md"))
+        if probeReadback then
+            writeFeature158ProbeEvidencePackage out summary
+            let outputReason =
+                summary.ExcludedSamples
+                |> List.choose _.ExclusionReason
+                |> List.tryHead
+                |> Option.defaultValue Perf.ProbeRunExcluded
+
+            printfn "%s" (Path.Combine(out, "excluded", Perf.exclusionReasonToken outputReason + ".md"))
+        else
+            writeFeature158TimingPackage out summary
+            printfn "%s" (Path.Combine(out, "summary.md"))
         0
 
 let private runCompositorPerformanceCmd (rest: string list) =

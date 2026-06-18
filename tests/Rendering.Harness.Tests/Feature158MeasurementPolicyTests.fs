@@ -1,5 +1,7 @@
 module Feature158MeasurementPolicyTests
 
+open System
+open System.IO
 open Expecto
 open Rendering.Harness
 
@@ -119,5 +121,56 @@ let tests =
             Expect.equal model5.PolicyId (Some Compositor.feature158PolicyId) "policy"
             Expect.contains model5.PublishedArtifacts "timing/summary.md" "summary"
             Expect.equal model5.ProofProbeEvidence.Length 1 "probe evidence"
+        }
+
+        test "explicit probe command does not overwrite existing timing summary" {
+            let root = Path.Combine(Path.GetTempPath(), "feature158-probe-preserves-summary-" + Guid.NewGuid().ToString("N"))
+            let timingDir = Path.Combine(root, "timing")
+
+            try
+                let timingExit =
+                    Cli.main
+                        [| "compositor-performance"
+                           "--feature"
+                           "158"
+                           "--out"
+                           timingDir
+                           "--policy"
+                           Compositor.feature158PolicyId
+                           "--warmup"
+                           "1"
+                           "--repetitions"
+                           "1"
+                           "--scenario"
+                           "timing/localized-update" |]
+
+                Expect.equal timingExit 0 "timing command exits cleanly"
+                let summaryPath = Path.Combine(timingDir, "summary.md")
+                Expect.isTrue (File.Exists summaryPath) "timing summary exists before probe"
+                let beforeProbe = File.ReadAllText summaryPath
+
+                let probeExit =
+                    Cli.main
+                        [| "compositor-performance"
+                           "--feature"
+                           "158"
+                           "--probe-readback"
+                           "--out"
+                           timingDir
+                           "--scenario"
+                           "timing/localized-update" |]
+
+                Expect.equal probeExit 0 "probe command exits cleanly"
+                Expect.equal (File.ReadAllText summaryPath) beforeProbe "probe command preserves the accepted timing summary"
+
+                let excludedDir = Path.Combine(timingDir, "excluded")
+                let hasProbeOrUnsupportedExclusion =
+                    File.Exists(Path.Combine(excludedDir, "probe-run-excluded.md"))
+                    || File.Exists(Path.Combine(excludedDir, "environment-limited.md"))
+
+                Expect.isTrue hasProbeOrUnsupportedExclusion "probe command writes excluded probe or unsupported-host evidence"
+            finally
+                if Directory.Exists root then
+                    Directory.Delete(root, true)
         }
     ]

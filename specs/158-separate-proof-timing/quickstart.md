@@ -51,6 +51,8 @@ Expected:
 - Probe/readback artifacts are written or linked from `readiness/proof-probes/`.
 - Probe samples declare `probe-readback-included`.
 - Probe samples are excluded from performance acceptance with reason `probe-run-excluded`.
+- Existing readback-free `timing/summary.md` and `timing/summary.json` files are preserved when
+  the probe writes into the same timing output directory.
 
 ## 4. Assemble Readiness
 
