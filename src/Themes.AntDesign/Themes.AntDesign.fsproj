@@ -5,7 +5,7 @@
     <IsPackable>true</IsPackable>
     <PackageId>FS.GG.UI.Themes.AntDesign</PackageId>
     <AssemblyName>FS.GG.UI.Themes.AntDesign</AssemblyName>
-    <Version>0.1.17-preview.1</Version>
+    <Version>0.1.18-preview.1</Version>
     <Title>FS.GG.UI.Themes.AntDesign</Title>
     <Description>The Ant Design theme layer: a concrete Theme value (antLight/antDark) plus an IntentPolicy that drive Ant's visual language over the framework's existing semantic controls. Opt-in and behaviour-neutral; depends only on FS.GG.UI.DesignSystem (no Controls reference — no control forks).</Description>
     <PackageTags>fsharp;skia;theme;design-tokens;ant-design</PackageTags>
