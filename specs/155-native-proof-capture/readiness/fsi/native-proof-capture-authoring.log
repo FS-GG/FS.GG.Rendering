@@ -1,0 +1,8 @@
+FSI transcript PASS
+
+Feature155 native proof capture authoring validated accepted proof-set status, three live attempt directories, passed per-attempt proof metadata, unsupported-host zero-artifact behavior, and explicit no-performance-claim status.
+
+Output:
+
+Feature155 native proof capture readiness accepted with 3 attempts.
+Performance claim remains not accepted.

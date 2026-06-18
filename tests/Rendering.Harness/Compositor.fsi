@@ -11,6 +11,7 @@ module Compositor =
     val feature152Id: string
     val feature153Id: string
     val feature154Id: string
+    val feature155Id: string
 
     val readinessDirectory: string
     val presentProofDirectory: string
@@ -73,6 +74,20 @@ module Compositor =
     val feature154PackageValidationPath: string
     val feature154RegressionValidationPath: string
     val feature154PackageVersion: string
+
+    val feature155ReadinessDirectory: string
+    val feature155LiveProofDirectory: string
+    val feature155LiveProofAttemptsDirectory: string
+    val feature155LiveProofUnsupportedDirectory: string
+    val feature155ParityDirectory: string
+    val feature155TimingDirectory: string
+    val feature155FsiDirectory: string
+    val feature155ProofSetPath: string
+    val feature155CompatibilityLedgerPath: string
+    val feature155ValidationSummaryPath: string
+    val feature155PackageValidationPath: string
+    val feature155RegressionValidationPath: string
+    val feature155PackageVersion: string
 
     type HostProfile =
         { ProfileId: string
@@ -176,6 +191,9 @@ module Compositor =
     val feature154ScenarioIds: string list
     val feature154TargetHostProfiles: HostProfile list
     val feature154TimingTiers: string list
+    val feature155ScenarioIds: string list
+    val feature155TargetHostProfiles: HostProfile list
+    val feature155TimingTiers: string list
 
     val hostProfileFromFacts: facts: ProbeFacts -> HostProfile
     val proofVerdictToken: verdict: ProofVerdict -> string
@@ -199,6 +217,7 @@ module Compositor =
     val feature152ArtifactPath: directory: string -> name: string -> string
     val feature153ArtifactPath: directory: string -> name: string -> string
     val feature154ArtifactPath: directory: string -> name: string -> string
+    val feature155ArtifactPath: directory: string -> name: string -> string
     val renderPresentProof: proof: PresentProof -> string
     val renderValidationSummary: model: ReadinessModel -> string
     val renderCompatibilityLedger: model: ReadinessModel -> string
@@ -235,3 +254,11 @@ module Compositor =
     val renderFeature154CompatibilityLedger: model: ReadinessModel -> string
     val renderFeature154PackageValidation: unit -> string
     val renderFeature154RegressionValidation: unit -> string
+    val renderFeature155LiveProof: proof: PresentProof -> string
+    val renderFeature155ProofSet: model: ReadinessModel -> string
+    val renderFeature155ParityReport: unit -> string
+    val renderFeature155TimingReport: tier: string -> scenarioCount: int -> repetitions: int -> string
+    val renderFeature155ValidationSummary: model: ReadinessModel -> string
+    val renderFeature155CompatibilityLedger: model: ReadinessModel -> string
+    val renderFeature155PackageValidation: unit -> string
+    val renderFeature155RegressionValidation: unit -> string

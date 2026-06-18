@@ -49,6 +49,8 @@
     <Compile Include="Feature154LiveProofHostTests.fs" />
     <Compile Include="Feature154SyntheticRejectionTests.fs" />
     <Compile Include="Feature154DamageScopedParityTests.fs" />
+    <Compile Include="Feature155ProofWorkflowTests.fs" />
+    <Compile Include="Feature155NativeCaptureTests.fs" />
     <Compile Include="Feature151RetainedRenderingRegressionTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
