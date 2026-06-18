@@ -1,0 +1,7 @@
+[
+    { "sampleId": "feature160-20260618180244-003-timing-localized-update-damage-scoped-001", "scenarioId": "timing/localized-update", "path": "damage-scoped", "durationMs": 33.394, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" },
+    { "sampleId": "feature160-20260618180244-003-timing-localized-update-damage-scoped-002", "scenarioId": "timing/localized-update", "path": "damage-scoped", "durationMs": 33.037, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" },
+    { "sampleId": "feature160-20260618180244-003-timing-localized-update-damage-scoped-003", "scenarioId": "timing/localized-update", "path": "damage-scoped", "durationMs": 27.876, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" },
+    { "sampleId": "feature160-20260618180244-003-timing-localized-update-damage-scoped-004", "scenarioId": "timing/localized-update", "path": "damage-scoped", "durationMs": 39.042, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" },
+    { "sampleId": "feature160-20260618180244-003-timing-localized-update-damage-scoped-005", "scenarioId": "timing/localized-update", "path": "damage-scoped", "durationMs": 32.157, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" }
+]

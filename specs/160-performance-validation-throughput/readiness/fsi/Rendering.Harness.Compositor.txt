@@ -1,0 +1,1 @@
+Rendering.Harness.Compositor exposes Feature 160 focused-lane command, MVU, iteration, full-validation, and readiness signatures.

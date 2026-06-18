@@ -54,6 +54,8 @@ specs/*/readiness/
 !specs/157-no-clear-damage-scissor/readiness/**
 !specs/159-layer-promotion-keys/readiness/
 !specs/159-layer-promotion-keys/readiness/**
+!specs/160-performance-validation-throughput/readiness/
+!specs/160-performance-validation-throughput/readiness/**
 
 # macOS / Linux cruft
 .DS_Store

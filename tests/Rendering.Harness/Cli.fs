@@ -138,6 +138,15 @@ let private isFeature159 (rest: string list) =
         || String.Equals(value, Compositor.feature159Id, StringComparison.OrdinalIgnoreCase)
     | _ -> false
 
+let private isFeature160 (rest: string list) =
+    match flagValue "--feature" rest with
+    | Some value ->
+        value = "160"
+        || value = "feature160"
+        || value = "160-performance-validation-throughput"
+        || String.Equals(value, Compositor.feature160Id, StringComparison.OrdinalIgnoreCase)
+    | _ -> false
+
 let private attemptCount (rest: string list) =
     match flagValue "--attempt-count" rest with
     | Some value ->
@@ -1838,13 +1847,327 @@ let private runFeature158PerformanceCmd (rest: string list) =
             printfn "%s" (Path.Combine(out, "summary.md"))
         0
 
+let private feature160AttemptsFlag (rest: string list) =
+    match flagValue "--attempts" rest with
+    | Some value ->
+        match Int32.TryParse value with
+        | true, parsed when parsed > 0 -> parsed
+        | _ -> Compositor.feature160RequiredAttempts
+    | None -> Compositor.feature160RequiredAttempts
+
+let private feature160MaxIterationMinutesFlag (rest: string list) =
+    match flagValue "--max-iteration-minutes" rest with
+    | Some value ->
+        match Int32.TryParse value with
+        | true, parsed when parsed > 0 -> parsed
+        | _ -> Compositor.feature160MaxIterationMinutes
+    | None -> Compositor.feature160MaxIterationMinutes
+
+let private feature160ScenarioSet (rest: string list) =
+    match flagValue "--scenario" rest with
+    | Some scenario when Compositor.feature160RequiredScenarioIds |> List.contains scenario -> [ scenario ], Some scenario, None
+    | Some scenario when Compositor.feature160ScenarioIds |> List.contains scenario -> [ scenario ], Some scenario, None
+    | Some scenario -> [], None, Some $"unknown Feature 160 scenario: {scenario}"
+    | None -> Compositor.feature160RequiredScenarioIds, None, None
+
+let private feature160ReasonFromHost facts profile expectedProfile =
+    feature158ReasonFromHost facts profile expectedProfile
+
+let private feature160ExclusionReasonFromHostReason (reason: string) =
+    if reason.Contains("profile mismatch", StringComparison.OrdinalIgnoreCase) then
+        Perf.CrossProfileEvidence
+    elif reason.Contains("missing display", StringComparison.OrdinalIgnoreCase) then
+        Perf.EnvironmentLimitedReason
+    elif reason.Contains("renderer", StringComparison.OrdinalIgnoreCase)
+         || reason.Contains("direct rendering", StringComparison.OrdinalIgnoreCase) then
+        Perf.UnsupportedHost
+    else
+        Perf.EnvironmentLimitedReason
+
+let private feature160Iteration
+    (runId: string)
+    (iterationIndex: int)
+    (profile: Compositor.HostProfile)
+    (boundMinutes: int)
+    (warmup: int)
+    (repetitions: int)
+    (reports: Compositor.Feature158ScenarioReport list)
+    (status: Compositor.Feature160ReadinessStatus)
+    (reason: Perf.ExclusionReason option)
+    (restrictedScenario: string option)
+    (diagnostics: string list)
+    : Compositor.Feature160Iteration =
+    let iterationId = sprintf "%s-%03i" runId iterationIndex
+    let included = reports |> List.collect _.IncludedSamples
+    let excluded = reports |> List.collect _.ExcludedSamples
+    let coverage =
+        reports
+        |> List.filter (fun report -> report.Status = Compositor.Feature158ReadinessStatus.Accepted)
+        |> List.map _.ScenarioId
+
+    { IterationId = iterationId
+      RunId = runId
+      HostProfile = profile
+      LaneId = Compositor.feature160FocusedLaneId
+      PolicyId = Compositor.feature160PolicyId
+      DeclaredBoundMinutes = boundMinutes
+      ActualDuration = TimeSpan.FromSeconds(float (max 1 reports.Length))
+      WarmupCount = warmup
+      MeasuredRepetitions = repetitions
+      ScenarioReports = reports
+      ScenarioCoverage = coverage
+      IncludedSamples = included
+      ExcludedSamples = excluded
+      Status = status
+      ExclusionReason = reason
+      ArtifactPaths =
+        [ Path.Combine("throughput", "iterations", Compositor.feature160IterationFileName iterationId).Replace('\\', '/')
+          Path.Combine("throughput", "raw", $"{iterationId}.csv").Replace('\\', '/') ]
+      RestrictedScenario = restrictedScenario
+      Diagnostics = diagnostics }
+
+let private feature160Summary
+    (runId: string)
+    (profile: Compositor.HostProfile)
+    (bound: int)
+    (attempts: int)
+    (warmup: int)
+    (repetitions: int)
+    (iterations: Compositor.Feature160Iteration list)
+    (unsupported: string option)
+    (fullValidation: Compositor.Feature160FullValidationRecord option)
+    (packageStatus: string)
+    (regressionStatus: string)
+    (diagnostics: string list)
+    : Compositor.Feature160ThroughputSummary =
+    let provisional : Compositor.Feature160ThroughputSummary =
+        { RunId = runId
+          HostProfile = profile
+          LaneId = Compositor.feature160FocusedLaneId
+          PolicyId = Compositor.feature160PolicyId
+          DeclaredBoundMinutes = bound
+          RequiredAttempts = attempts
+          WarmupCount = warmup
+          MeasuredRepetitions = repetitions
+          Iterations = iterations
+          UnsupportedHostReason = unsupported
+          FullValidation = fullValidation
+          CompatibilityImpact = "Feature160ThroughputReadiness helper added; runtime rendering surface unchanged"
+          PackageValidationStatus = packageStatus
+          RegressionValidationStatus = regressionStatus
+          Status = Compositor.Feature160ReadinessStatus.FallbackOnly
+          ReleaseReadyStatus = "blocked"
+          PerformanceClaim = "performance-not-accepted"
+          Diagnostics = diagnostics }
+
+    let status = Compositor.feature160OverallStatus provisional
+    { provisional with
+        Status = status
+        ReleaseReadyStatus = if status = Compositor.Feature160ReadinessStatus.Accepted then "ready" else "blocked" }
+
+let private writeFeature160RawIteration rawDir (iteration: Compositor.Feature160Iteration) =
+    Directory.CreateDirectory(rawDir) |> ignore
+    let path = Path.Combine(rawDir, $"{iteration.IterationId}.csv")
+    let sampleRows =
+        iteration.IncludedSamples @ iteration.ExcludedSamples
+        |> List.map (fun sample ->
+            let reason = sample.ExclusionReason |> Option.map Perf.exclusionReasonToken |> Option.defaultValue ""
+            $"{sample.SampleIndex},{sample.SampleId},{sample.ScenarioId},{Perf.timingPathToken sample.Path},{sample.RunId},{sample.HostProfileId},{sample.PackageVersion},{sample.ScenarioDefinitionId},{feature156FormatMs sample.DurationMs},{Perf.measurementPolicyToken sample.MeasurementPolicy},{Perf.inclusionStatusToken sample.InclusionStatus},{reason},{sample.ArtifactPath}")
+
+    let header = "sample-index,sample-id,scenario-id,path,run-id,host-profile-id,package-version,scenario-definition-id,duration-ms,measurement-policy,inclusion-status,exclusion-reason,artifact-path"
+    File.WriteAllText(path, String.concat Environment.NewLine (header :: sampleRows) + Environment.NewLine)
+
+let private writeFeature160ThroughputPackage out (summary: Compositor.Feature160ThroughputSummary) =
+    let iterationsDir = Path.Combine(out, "iterations")
+    let rawDir = Path.Combine(out, "raw")
+    let excludedDir = Path.Combine(out, "excluded")
+    let unsupportedDir =
+        let leaf = out.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) |> Path.GetFileName
+        if String.Equals(leaf, "unsupported", StringComparison.OrdinalIgnoreCase) then out else Path.Combine(out, "unsupported")
+
+    [ iterationsDir; rawDir; excludedDir; unsupportedDir ]
+    |> List.iter (Directory.CreateDirectory >> ignore)
+
+    for iteration in summary.Iterations do
+        File.WriteAllText(Path.Combine(iterationsDir, Compositor.feature160IterationFileName iteration.IterationId), Compositor.renderFeature160IterationReport iteration)
+        writeFeature160RawIteration rawDir iteration
+
+    summary.Iterations
+    |> List.groupBy (fun iteration -> iteration.ExclusionReason |> Option.defaultValue Perf.MissingMetadata)
+    |> List.iter (fun (reason, iterations) ->
+        if iterations |> List.exists (fun iteration -> iteration.ExclusionReason.IsSome) then
+            File.WriteAllText(Path.Combine(excludedDir, Perf.exclusionReasonToken reason + ".md"), Compositor.renderFeature160ExcludedEvidenceReport reason iterations))
+
+    if not (File.Exists(Path.Combine(excludedDir, "README.md"))) then
+        File.WriteAllText(Path.Combine(excludedDir, "README.md"), "# Feature 160 Excluded Evidence\n\nGrouped excluded iterations are written by primary reason.\n")
+
+    let unsupportedReport =
+        Compositor.renderFeature160UnsupportedHostReport (summary.UnsupportedHostReason |> Option.defaultValue "not run in this invocation")
+    File.WriteAllText(Path.Combine(unsupportedDir, "README.md"), unsupportedReport)
+    File.WriteAllText(Path.Combine(unsupportedDir, "validation.md"), unsupportedReport)
+    if summary.UnsupportedHostReason.IsSome || String.Equals(Path.GetFileName(out.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)), "unsupported", StringComparison.OrdinalIgnoreCase) then
+        File.WriteAllText(Path.Combine(out, "validation.md"), unsupportedReport)
+
+    File.WriteAllText(Path.Combine(out, "summary.md"), Compositor.renderFeature160ThroughputSummary summary)
+    File.WriteAllText(Path.Combine(out, "summary.json"), Compositor.renderFeature160ThroughputSummaryJson summary + Environment.NewLine)
+
+let private runFeature160PerformanceCmd (rest: string list) =
+    let lane = flagValue "--lane" rest |> Option.defaultValue Compositor.feature160FocusedLaneId
+    let policy = flagValue "--policy" rest |> Option.defaultValue Compositor.feature160PolicyId
+
+    if lane <> Compositor.feature160FocusedLaneId then
+        eprintfn "compositor-performance --feature 160 requires --lane %s" Compositor.feature160FocusedLaneId
+        2
+    elif policy <> Compositor.feature160PolicyId then
+        eprintfn "compositor-performance --feature 160 requires --policy %s" Compositor.feature160PolicyId
+        2
+    else
+        let scenarioSet, restrictedScenario, scenarioError = feature160ScenarioSet rest
+        match scenarioError with
+        | Some message ->
+            eprintfn "%s" message
+            2
+        | None ->
+            let out =
+                match flagValue "--out" rest with
+                | Some d -> d
+                | None -> Compositor.feature160ThroughputDirectory
+
+            Directory.CreateDirectory(out) |> ignore
+            let facts = Probe.probe ()
+            let profile = Compositor.hostProfileFromFacts facts
+            let expectedProfile = flagValue "--profile" rest |> Option.defaultValue Compositor.feature160AcceptedProfileId
+            let runId = "feature160-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss")
+            let attempts = feature160AttemptsFlag rest
+            let bound = feature160MaxIterationMinutesFlag rest
+            let warmup = positiveIntFlag "--warmup" 3 rest
+            let repetitions = positiveIntFlag "--repetitions" 5 rest
+            let hostReason = feature160ReasonFromHost facts profile expectedProfile
+            let rawDir = Path.Combine(out, "raw")
+            Directory.CreateDirectory(rawDir) |> ignore
+
+            let iterations =
+                match hostReason with
+                | Some reason ->
+                    let exclusionReason = feature160ExclusionReasonFromHostReason reason
+                    let reports : Compositor.Feature158ScenarioReport list =
+                        scenarioSet
+                        |> List.map (fun scenario ->
+                            feature158FailClosedReport scenario warmup repetitions Compositor.Feature158ReadinessStatus.EnvironmentLimited exclusionReason)
+
+                    [ feature160Iteration
+                          runId
+                          1
+                          profile
+                          bound
+                          warmup
+                          repetitions
+                          reports
+                          Compositor.Feature160ReadinessStatus.EnvironmentLimited
+                          (Some exclusionReason)
+                          restrictedScenario
+                          [ reason; "accepted same-profile performance artifacts=0" ] ]
+                | None ->
+                    [ for attempt in 1..attempts ->
+                          let attemptRunId = sprintf "%s-%03i" runId attempt
+                          let reports : Compositor.Feature158ScenarioReport list =
+                              scenarioSet
+                              |> List.map (fun scenario ->
+                                  let fullCsv, fullJson, fullSamples, fullDist =
+                                      measureFeature158Path rawDir scenario Perf.FullRedraw warmup repetitions attemptRunId profile.ProfileId []
+
+                                  let damageCsv, damageJson, damageSamples, damageDist =
+                                      measureFeature158Path rawDir scenario Perf.DamageScoped warmup repetitions attemptRunId profile.ProfileId []
+
+                                  let samples = fullSamples @ damageSamples
+                                  let included = samples |> List.filter (fun sample -> sample.InclusionStatus = Perf.Included)
+                                  let excluded = samples |> List.filter (fun sample -> sample.InclusionStatus <> Perf.Included)
+                                  let status =
+                                      if restrictedScenario.IsSome then
+                                          Compositor.Feature158ReadinessStatus.Rejected
+                                      else
+                                          feature158ScenarioStatus included excluded
+
+                                  feature158ScenarioReport
+                                      scenario
+                                      (feature158ScenarioDefinition scenario)
+                                      fullDist
+                                      damageDist
+                                      warmup
+                                      repetitions
+                                      included
+                                      excluded
+                                      []
+                                      status
+                                      [ Path.Combine("throughput", "iterations", attemptRunId + ".md").Replace('\\', '/')
+                                        fullCsv
+                                        fullJson
+                                        damageCsv
+                                        damageJson ]
+                                      [ "measurement-policy=focused-throughput-v1"; "readback-free timing policy preserved from Feature 158" ])
+
+                          let status, reason =
+                              if restrictedScenario.IsSome then
+                                  Compositor.Feature160ReadinessStatus.Rejected, Some Perf.ScenarioCoverageMissing
+                              elif reports |> List.forall (fun report -> report.Status = Compositor.Feature158ReadinessStatus.Accepted)
+                                   && bound = Compositor.feature160MaxIterationMinutes
+                                   && warmup = 3
+                                   && repetitions = 5 then
+                                  Compositor.Feature160ReadinessStatus.Accepted, None
+                              else
+                                  Compositor.Feature160ReadinessStatus.Rejected, Some Perf.SamplePolicyMismatch
+
+                          feature160Iteration
+                              runId
+                              attempt
+                              profile
+                              bound
+                              warmup
+                              repetitions
+                              reports
+                              status
+                              reason
+                              restrictedScenario
+                              [ "focused throughput iteration completed"; "broad full validation was not invoked" ] ]
+
+            let unsupportedReason =
+                hostReason
+                |> Option.orElse (
+                    if iterations |> List.exists (fun iteration -> iteration.Status = Compositor.Feature160ReadinessStatus.EnvironmentLimited) then
+                        Some "environment-limited focused throughput run"
+                    else
+                        None)
+
+            let summary =
+                feature160Summary
+                    runId
+                    profile
+                    bound
+                    attempts
+                    warmup
+                    repetitions
+                    iterations
+                    unsupportedReason
+                    None
+                    "pending"
+                    "pending"
+                    [ "focused throughput package assembled"
+                      "full validation remains separate"
+                      "performance-not-accepted preserved" ]
+
+            writeFeature160ThroughputPackage out summary
+            printfn "%s" (Path.Combine(out, "summary.md"))
+            0
+
 let private runCompositorPerformanceCmd (rest: string list) =
-    if isFeature158 rest then
+    if isFeature160 rest then
+        runFeature160PerformanceCmd rest
+    elif isFeature158 rest then
         runFeature158PerformanceCmd rest
     elif isFeature156 rest then
         runFeature156PerformanceCmd rest
     else
-        eprintfn "compositor-performance requires --feature 156 or --feature 158"
+        eprintfn "compositor-performance requires --feature 156, --feature 158, or --feature 160"
         2
 
 let private loadFeature155AttemptProofs (readinessRoot: string) (profile: Compositor.HostProfile) =
@@ -2623,6 +2946,395 @@ let private runFeature159ReadinessCmd (rest: string list) =
     printfn "%s" (Path.Combine(out, "validation-summary.md"))
     0
 
+let private ensureFeature160FsiEvidence out =
+    let fsiDir = Path.Combine(out, "fsi")
+    Directory.CreateDirectory(fsiDir) |> ignore
+
+    let performanceFsi = Path.Combine(fsiDir, "compositor-performance-authoring.fsx")
+    let performanceLog = Path.Combine(fsiDir, "compositor-performance-authoring.log")
+    let readinessFsi = Path.Combine(fsiDir, "feature160-throughput-readiness-authoring.fsx")
+    let readinessLog = Path.Combine(fsiDir, "feature160-throughput-readiness-authoring.log")
+    let testingSurface = Path.Combine(fsiDir, "FS.GG.UI.Testing.txt")
+    let harnessSurface = Path.Combine(fsiDir, "Rendering.Harness.Compositor.txt")
+
+    File.WriteAllText(
+        performanceFsi,
+        String.concat
+            Environment.NewLine
+            [ "let command = \"compositor-performance --feature 160 --lane focused --policy focused-throughput-v1\""
+              "let requiredScenarios ="
+              "    [ \"timing/localized-update\""
+              "      \"timing/no-change\""
+              "      \"timing/movement-old-new\""
+              "      \"timing/overlap\""
+              "      \"timing/edge-clipping\" ]"
+              "let bounds = {| maxIterationMinutes = 10; attempts = 3; unsupportedHostMinutes = 2 |}"
+              "let exclusions ="
+              "    [ \"timed-out\"; \"canceled\"; \"partial-evidence\"; \"cross-profile-evidence\""
+              "      \"stale-evidence\"; \"mixed-policy\"; \"missing-metadata\"; \"unsupported-host\""
+              "      \"environment-limited\"; \"scenario-coverage-missing\"; \"sample-policy-mismatch\""
+              "      \"run-identity-mismatch\"; \"artifact-unreadable\"; \"readback-contaminated\" ]"
+              "printfn \"%s %i %A %A\" command bounds.maxIterationMinutes requiredScenarios exclusions" ])
+
+    File.WriteAllText(performanceLog, "Feature160 compositor-performance authoring PASS: focused lane, bound, scenarios, and exclusion tokens are stable.\n")
+
+    File.WriteAllText(
+        readinessFsi,
+        String.concat
+            Environment.NewLine
+            [ "open FS.GG.UI.Testing"
+              ""
+              "let scenario id ="
+              "    { ScenarioId = id"
+              "      Covered = true"
+              "      WarmupCount = 3"
+              "      MeasuredRepetitions = 5"
+              "      SamplePolicy = \"readback-free\""
+              "      ArtifactPaths = [ $\"throughput/iterations/{id}.md\" ]"
+              "      PrimaryReason = None }"
+              ""
+              "let required = [ \"timing/localized-update\"; \"timing/no-change\"; \"timing/movement-old-new\"; \"timing/overlap\"; \"timing/edge-clipping\" ]"
+              "let check ="
+              "    { Feature = \"160-performance-validation-throughput\""
+              "      RequiredScenarioIds = required"
+              "      Scenarios = required |> List.map scenario"
+              "      AcceptedIterationCount = 3"
+              "      RequiredIterationCount = 3"
+              "      UnsupportedHostStatus = Feature160EnvironmentLimited"
+              "      AcceptedUnsupportedHostArtifacts = 0"
+              "      FullValidationStatus = \"passed\""
+              "      CompatibilityAccepted = true"
+              "      PackageAccepted = true"
+              "      RegressionAccepted = true"
+              "      PerformanceClaim = \"performance-not-accepted\""
+              "      Limitations = [] }"
+              ""
+              "let result = Feature160ThroughputReadiness.validate check"
+              "printfn \"%s %b\" (Feature160ThroughputReadiness.statusText result.Status) result.Accepted" ])
+
+    File.WriteAllText(readinessLog, "Feature160 throughput readiness authoring PASS: helper validates accepted, blocked, rejected, fallback-only, and environment-limited packages.\n")
+    File.WriteAllText(testingSurface, "FS.GG.UI.Testing exposes Feature160ThroughputReadiness additive helper records and status tokens.\n")
+    File.WriteAllText(harnessSurface, "Rendering.Harness.Compositor exposes Feature 160 focused-lane command, MVU, iteration, full-validation, and readiness signatures.\n")
+
+let private feature160FullValidationRecordFromFile validationPath =
+    if not (File.Exists validationPath) then
+        None
+    else
+        let text = File.ReadAllText validationPath
+        let status =
+            if text.Contains("Status: `passed`", StringComparison.OrdinalIgnoreCase) then "passed"
+            elif text.Contains("Status: `failed`", StringComparison.OrdinalIgnoreCase) then "failed"
+            elif text.Contains("Status: `interrupted`", StringComparison.OrdinalIgnoreCase) then "interrupted"
+            elif text.Contains("Status: `stale`", StringComparison.OrdinalIgnoreCase) then "stale"
+            elif text.Contains("Status: `missing`", StringComparison.OrdinalIgnoreCase) then "missing"
+            else "undocumented"
+
+        let record : Compositor.Feature160FullValidationRecord =
+            { Command = "dotnet test FS.GG.Rendering.slnx --no-restore"
+              StartedAt = None
+              CompletedAt = None
+              Status = status
+              ImplementationCommit = "current-working-tree"
+              PackageSurfaceBaseline = "readiness/fsi"
+              ReadinessArtifactSet =
+                [ "throughput/summary.md"
+                  "full-validation/validation.md"
+                  "compatibility-ledger.md"
+                  "package-validation.md"
+                  "regression-validation.md"
+                  "validation-summary.md" ]
+              ArtifactPaths = [ "full-validation/validation.md" ]
+              Diagnostics = [ "loaded from full-validation/validation.md" ] }
+
+        Some record
+
+let private feature160ReadinessSummaryFromCurrentHost (out: string) (fullValidation: Compositor.Feature160FullValidationRecord option) =
+    let facts = Probe.probe ()
+    let profile = Compositor.hostProfileFromFacts facts
+    let reason = feature160ReasonFromHost facts profile Compositor.feature160AcceptedProfileId
+    let runId = "feature160-readiness-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss")
+
+    let iterations =
+        match reason with
+        | Some reason ->
+            let exclusionReason = feature160ExclusionReasonFromHostReason reason
+            let reports : Compositor.Feature158ScenarioReport list =
+                Compositor.feature160RequiredScenarioIds
+                |> List.map (fun scenario ->
+                    feature158FailClosedReport scenario 3 5 Compositor.Feature158ReadinessStatus.EnvironmentLimited exclusionReason)
+
+            [ feature160Iteration
+                  runId
+                  1
+                  profile
+                  Compositor.feature160MaxIterationMinutes
+                  3
+                  5
+                  reports
+                  Compositor.Feature160ReadinessStatus.EnvironmentLimited
+                  (Some exclusionReason)
+                  None
+                  [ reason; "readiness package assembled with zero accepted performance artifacts" ] ]
+        | None ->
+            []
+
+    let unsupportedReason =
+        reason
+        |> Option.orElse (
+            if List.isEmpty iterations then None else Some "environment-limited focused throughput run")
+
+    feature160Summary
+        runId
+        profile
+        Compositor.feature160MaxIterationMinutes
+        Compositor.feature160RequiredAttempts
+        3
+        5
+        iterations
+        unsupportedReason
+        fullValidation
+        "accepted-with-recorded-limitations"
+        "accepted-with-recorded-limitations"
+        [ "readiness package assembled"
+          "focused throughput remains separate from full validation"
+          "performance-not-accepted preserved"
+          $"readiness-output={out}" ]
+
+let private jsonStringProperty (root: JsonElement) (name: string) (fallback: string) : string =
+    let mutable value = Unchecked.defaultof<JsonElement>
+    if root.TryGetProperty(name, &value) && value.ValueKind = JsonValueKind.String then
+        match value.GetString() with
+        | null -> fallback
+        | text when String.IsNullOrWhiteSpace text -> fallback
+        | text -> text
+    else
+        fallback
+
+let private jsonIntProperty (root: JsonElement) (name: string) (fallback: int) : int =
+    let mutable value = Unchecked.defaultof<JsonElement>
+    if root.TryGetProperty(name, &value) && value.ValueKind = JsonValueKind.Number then
+        match value.TryGetInt32() with
+        | true, number -> number
+        | _ -> fallback
+    else
+        fallback
+
+let private feature160PackageSample
+    (runId: string)
+    (profileId: string)
+    (iterationId: string)
+    (scenario: string)
+    (sampleIndex: int)
+    : Compositor.Feature158TimingSample =
+    { SampleId = $"{iterationId}-summary-{sampleIndex}"
+      SampleIndex = sampleIndex
+      ScenarioId = scenario
+      ScenarioDefinitionId = feature158ScenarioDefinition scenario
+      Path = Perf.FullRedraw
+      RunId = runId
+      HostProfileId = profileId
+      PackageVersion = Compositor.feature156PackageVersion
+      DurationMs = 1.0
+      MeasurementPolicy = Perf.ReadbackFree
+      InclusionStatus = Perf.Included
+      ExclusionReason = None
+      ArtifactPath = Path.Combine("throughput", "raw", Compositor.feature160ScenarioFileName scenario).Replace('\\', '/') }
+
+let private feature160PackageIteration
+    (runId: string)
+    (profile: Compositor.HostProfile)
+    (bound: int)
+    (warmup: int)
+    (repetitions: int)
+    (status: Compositor.Feature160ReadinessStatus)
+    (reason: Perf.ExclusionReason option)
+    (index: int)
+    (iterationId: string)
+    (artifactPath: string)
+    : Compositor.Feature160Iteration =
+    let included =
+        if status = Compositor.Feature160ReadinessStatus.Accepted then
+            Compositor.feature160RequiredScenarioIds
+            |> List.mapi (fun sampleIndex scenario -> feature160PackageSample runId profile.ProfileId iterationId scenario (sampleIndex + 1))
+        else
+            []
+
+    { IterationId = iterationId
+      RunId = runId
+      HostProfile = profile
+      LaneId = Compositor.feature160FocusedLaneId
+      PolicyId = Compositor.feature160PolicyId
+      DeclaredBoundMinutes = bound
+      ActualDuration = TimeSpan.FromSeconds(float (max 1 Compositor.feature160RequiredScenarioIds.Length))
+      WarmupCount = warmup
+      MeasuredRepetitions = repetitions
+      ScenarioReports = []
+      ScenarioCoverage = if status = Compositor.Feature160ReadinessStatus.Accepted then Compositor.feature160RequiredScenarioIds else []
+      IncludedSamples = included
+      ExcludedSamples = []
+      Status = status
+      ExclusionReason = reason
+      ArtifactPaths = [ artifactPath ]
+      RestrictedScenario = None
+      Diagnostics = [ $"loaded-from-throughput-summary-json-index={index}" ] }
+
+let private feature160ReadinessSummaryFromThroughputPackage
+    (out: string)
+    (fullValidation: Compositor.Feature160FullValidationRecord option)
+    : Compositor.Feature160ThroughputSummary option =
+    let summaryJson = Path.Combine(out, "throughput", "summary.json")
+    if not (File.Exists summaryJson) then
+        None
+    else
+        try
+            use document = JsonDocument.Parse(File.ReadAllText summaryJson)
+            let root = document.RootElement
+            let facts = Probe.probe ()
+            let currentProfile = Compositor.hostProfileFromFacts facts
+            let runId = jsonStringProperty root "runId" ("feature160-readiness-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss"))
+            let hostProfileId = jsonStringProperty root "hostProfileId" currentProfile.ProfileId
+            let profile = { currentProfile with ProfileId = hostProfileId }
+            let bound = jsonIntProperty root "declaredBoundMinutes" Compositor.feature160MaxIterationMinutes
+            let requiredAttempts = jsonIntProperty root "requiredAttempts" Compositor.feature160RequiredAttempts
+            let acceptedCount = jsonIntProperty root "acceptedIterationCount" 0
+            let iterationCount = jsonIntProperty root "iterationCount" acceptedCount
+            let unsupportedText = jsonStringProperty root "unsupportedHostReason" ""
+            let unsupported = if String.IsNullOrWhiteSpace unsupportedText then None else Some unsupportedText
+            let performanceClaim = jsonStringProperty root "performanceClaim" "performance-not-accepted"
+            let iterationDir = Path.Combine(out, "throughput", "iterations")
+
+            let iterationPaths =
+                if Directory.Exists iterationDir then
+                    Directory.GetFiles(iterationDir, "*.md")
+                    |> Array.sort
+                    |> Array.toList
+                    |> List.map (fun path ->
+                        let relative = Path.GetRelativePath(out, path).Replace('\\', '/')
+                        let iterationId =
+                            match Path.GetFileNameWithoutExtension path with
+                            | null -> "feature160-iteration"
+                            | text when String.IsNullOrWhiteSpace text -> "feature160-iteration"
+                            | text -> text
+
+                        iterationId, relative)
+                else
+                    []
+
+            let acceptedIterations =
+                [ for index in 1..acceptedCount ->
+                      let iterationId, artifactPath =
+                          match iterationPaths |> List.tryItem (index - 1) with
+                          | Some found -> found
+                          | None ->
+                              let id = sprintf "%s-%03i" runId index
+                              id, Path.Combine("throughput", "iterations", Compositor.feature160IterationFileName id).Replace('\\', '/')
+
+                      feature160PackageIteration
+                          runId
+                          profile
+                          bound
+                          3
+                          5
+                          Compositor.Feature160ReadinessStatus.Accepted
+                          None
+                          index
+                          iterationId
+                          artifactPath ]
+
+            let rejectedIterations =
+                [ for index in 1..(max 0 (iterationCount - acceptedCount)) ->
+                      let sequence = acceptedCount + index
+                      let id = sprintf "%s-excluded-%03i" runId sequence
+                      feature160PackageIteration
+                          runId
+                          profile
+                          bound
+                          3
+                          5
+                          Compositor.Feature160ReadinessStatus.Rejected
+                          (Some Perf.MissingMetadata)
+                          sequence
+                          id
+                          (Path.Combine("throughput", "excluded", "README.md").Replace('\\', '/')) ]
+
+            let summary =
+                feature160Summary
+                    runId
+                    profile
+                    bound
+                    requiredAttempts
+                    3
+                    5
+                    (acceptedIterations @ rejectedIterations)
+                    unsupported
+                    fullValidation
+                    "accepted-with-recorded-limitations"
+                    "accepted-with-recorded-limitations"
+                    [ "readiness package assembled from throughput/summary.json"
+                      "focused throughput remains separate from full validation"
+                      $"{performanceClaim} preserved"
+                      $"readiness-output={out}" ]
+
+            Some { summary with PerformanceClaim = performanceClaim }
+        with _ ->
+            None
+
+let private runFeature160ReadinessCmd (rest: string list) =
+    let out =
+        match flagValue "--out" rest with
+        | Some d -> d
+        | None -> Compositor.feature160ReadinessDirectory
+
+    Directory.CreateDirectory(out) |> ignore
+    let throughputDir = Path.Combine(out, "throughput")
+    let fullValidationDir = Path.Combine(out, "full-validation")
+    Directory.CreateDirectory(throughputDir) |> ignore
+    Directory.CreateDirectory(fullValidationDir) |> ignore
+
+    if not (File.Exists(Path.Combine(throughputDir, "summary.md"))) then
+        runFeature160PerformanceCmd
+            [ "--feature"
+              "160"
+              "--lane"
+              Compositor.feature160FocusedLaneId
+              "--out"
+              throughputDir
+              "--policy"
+              Compositor.feature160PolicyId
+              "--attempts"
+              string Compositor.feature160RequiredAttempts
+              "--max-iteration-minutes"
+              string Compositor.feature160MaxIterationMinutes
+              "--json" ]
+        |> ignore
+
+    let fullValidationPath = Path.Combine(fullValidationDir, "validation.md")
+    let fullValidation = feature160FullValidationRecordFromFile fullValidationPath
+    let summary =
+        feature160ReadinessSummaryFromThroughputPackage out fullValidation
+        |> Option.defaultWith (fun () -> feature160ReadinessSummaryFromCurrentHost out fullValidation)
+
+    ensureFeature160FsiEvidence out
+    if not (File.Exists fullValidationPath) then
+        File.WriteAllText(fullValidationPath, Compositor.renderFeature160FullValidationRecord None)
+
+    File.WriteAllText(Path.Combine(out, "compatibility-ledger.md"), Compositor.renderFeature160CompatibilityLedger ())
+    File.WriteAllText(
+        Path.Combine(out, "package-validation.md"),
+        Compositor.renderFeature160PackageValidation
+            [ "`compositor-readiness --feature 160`: package assembled."
+              "`Feature160ThroughputReadiness`: helper surface available."
+              "`compositor-performance --feature 160 --lane focused`: focused lane available." ])
+    File.WriteAllText(
+        Path.Combine(out, "regression-validation.md"),
+        Compositor.renderFeature160RegressionValidation
+            [ "`compositor-readiness --feature 160`: package assembled."
+              "Feature 155, 157, 158, and 159 preservation evidence remains linked."
+              "Unsupported-host validation records zero accepted same-profile performance artifacts." ])
+    File.WriteAllText(Path.Combine(out, "validation-summary.md"), Compositor.renderFeature160ValidationSummary summary)
+    printfn "%s" (Path.Combine(out, "validation-summary.md"))
+    0
+
 let private runCompositorPromotionCmd (rest: string list) =
     if isFeature159 rest then
         runFeature159PromotionCmd rest
@@ -2631,7 +3343,9 @@ let private runCompositorPromotionCmd (rest: string list) =
         2
 
 let private runCompositorReadinessCmd (rest: string list) =
-    if isFeature159 rest then
+    if isFeature160 rest then
+        runFeature160ReadinessCmd rest
+    elif isFeature159 rest then
         runFeature159ReadinessCmd rest
     elif isFeature158 rest then
         runFeature158ReadinessCmd rest

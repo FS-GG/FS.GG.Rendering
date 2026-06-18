@@ -546,6 +546,47 @@ type Feature159ReadinessValidationResult =
       MissingScenarios: string list
       Diagnostics: string list }
 
+/// Feature 160 throughput-readiness status.
+type Feature160ThroughputReadinessStatus =
+    | Feature160Accepted
+    | Feature160Blocked
+    | Feature160Rejected
+    | Feature160FallbackOnly
+    | Feature160EnvironmentLimited
+
+/// Feature 160 scenario-level coverage and sample-policy evidence.
+type Feature160ScenarioEvidence =
+    { ScenarioId: string
+      Covered: bool
+      WarmupCount: int
+      MeasuredRepetitions: int
+      SamplePolicy: string
+      ArtifactPaths: string list
+      PrimaryReason: string option }
+
+/// Feature 160 package-visible throughput readiness check.
+type Feature160ThroughputReadinessCheck =
+    { Feature: string
+      RequiredScenarioIds: string list
+      Scenarios: Feature160ScenarioEvidence list
+      AcceptedIterationCount: int
+      RequiredIterationCount: int
+      UnsupportedHostStatus: Feature160ThroughputReadinessStatus
+      AcceptedUnsupportedHostArtifacts: int
+      FullValidationStatus: string
+      CompatibilityAccepted: bool
+      PackageAccepted: bool
+      RegressionAccepted: bool
+      PerformanceClaim: string
+      Limitations: string list }
+
+/// Feature 160 throughput readiness validation result.
+type Feature160ThroughputReadinessValidationResult =
+    { Accepted: bool
+      Status: Feature160ThroughputReadinessStatus
+      MissingScenarios: string list
+      Diagnostics: string list }
+
 /// Public contract module exposed by this FS.GG.UI package.
 module GeneratedProductAssertions =
     /// Public contract function exposed by this FS.GG.UI package.
@@ -660,3 +701,10 @@ module Feature159Readiness =
     val statusText: status: Feature159ReadinessStatus -> string
     /// Feature 159: validate promotion/reuse readiness packages without accepting broader performance.
     val validate: check: Feature159ReadinessCheck -> Feature159ReadinessValidationResult
+
+/// Feature 160 throughput-readiness helper.
+module Feature160ThroughputReadiness =
+    /// Feature 160: stable status token for readiness summaries.
+    val statusText: status: Feature160ThroughputReadinessStatus -> string
+    /// Feature 160: validate focused throughput packages while preserving the performance-claim boundary.
+    val validate: check: Feature160ThroughputReadinessCheck -> Feature160ThroughputReadinessValidationResult

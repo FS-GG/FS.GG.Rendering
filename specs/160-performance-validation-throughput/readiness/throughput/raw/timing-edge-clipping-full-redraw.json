@@ -1,0 +1,7 @@
+[
+    { "sampleId": "feature160-20260618180244-003-timing-edge-clipping-full-redraw-001", "scenarioId": "timing/edge-clipping", "path": "full-redraw", "durationMs": 34.716, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" },
+    { "sampleId": "feature160-20260618180244-003-timing-edge-clipping-full-redraw-002", "scenarioId": "timing/edge-clipping", "path": "full-redraw", "durationMs": 27.968, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" },
+    { "sampleId": "feature160-20260618180244-003-timing-edge-clipping-full-redraw-003", "scenarioId": "timing/edge-clipping", "path": "full-redraw", "durationMs": 34.948, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" },
+    { "sampleId": "feature160-20260618180244-003-timing-edge-clipping-full-redraw-004", "scenarioId": "timing/edge-clipping", "path": "full-redraw", "durationMs": 38.374, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" },
+    { "sampleId": "feature160-20260618180244-003-timing-edge-clipping-full-redraw-005", "scenarioId": "timing/edge-clipping", "path": "full-redraw", "durationMs": 31.764, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" }
+]

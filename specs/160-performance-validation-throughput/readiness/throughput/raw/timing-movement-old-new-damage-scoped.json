@@ -1,0 +1,7 @@
+[
+    { "sampleId": "feature160-20260618180244-003-timing-movement-old-new-damage-scoped-001", "scenarioId": "timing/movement-old-new", "path": "damage-scoped", "durationMs": 32.94, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" },
+    { "sampleId": "feature160-20260618180244-003-timing-movement-old-new-damage-scoped-002", "scenarioId": "timing/movement-old-new", "path": "damage-scoped", "durationMs": 41.597, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" },
+    { "sampleId": "feature160-20260618180244-003-timing-movement-old-new-damage-scoped-003", "scenarioId": "timing/movement-old-new", "path": "damage-scoped", "durationMs": 43.431, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" },
+    { "sampleId": "feature160-20260618180244-003-timing-movement-old-new-damage-scoped-004", "scenarioId": "timing/movement-old-new", "path": "damage-scoped", "durationMs": 38.343, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" },
+    { "sampleId": "feature160-20260618180244-003-timing-movement-old-new-damage-scoped-005", "scenarioId": "timing/movement-old-new", "path": "damage-scoped", "durationMs": 39.44, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" }
+]

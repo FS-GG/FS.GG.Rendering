@@ -481,6 +481,43 @@ type Feature159ReadinessValidationResult =
       MissingScenarios: string list
       Diagnostics: string list }
 
+type Feature160ThroughputReadinessStatus =
+    | Feature160Accepted
+    | Feature160Blocked
+    | Feature160Rejected
+    | Feature160FallbackOnly
+    | Feature160EnvironmentLimited
+
+type Feature160ScenarioEvidence =
+    { ScenarioId: string
+      Covered: bool
+      WarmupCount: int
+      MeasuredRepetitions: int
+      SamplePolicy: string
+      ArtifactPaths: string list
+      PrimaryReason: string option }
+
+type Feature160ThroughputReadinessCheck =
+    { Feature: string
+      RequiredScenarioIds: string list
+      Scenarios: Feature160ScenarioEvidence list
+      AcceptedIterationCount: int
+      RequiredIterationCount: int
+      UnsupportedHostStatus: Feature160ThroughputReadinessStatus
+      AcceptedUnsupportedHostArtifacts: int
+      FullValidationStatus: string
+      CompatibilityAccepted: bool
+      PackageAccepted: bool
+      RegressionAccepted: bool
+      PerformanceClaim: string
+      Limitations: string list }
+
+type Feature160ThroughputReadinessValidationResult =
+    { Accepted: bool
+      Status: Feature160ThroughputReadinessStatus
+      MissingScenarios: string list
+      Diagnostics: string list }
+
 module GeneratedProductAssertions =
     let summarize expectation =
         let packages =
@@ -1980,6 +2017,124 @@ module Feature159Readiness =
                 Feature159FallbackOnly
 
         { Accepted = status = Feature159Accepted && diagnostics.IsEmpty
+          Status = status
+          MissingScenarios = missingScenarios
+          Diagnostics = diagnostics }
+
+module Feature160ThroughputReadiness =
+    let statusText status =
+        match status with
+        | Feature160Accepted -> "accepted"
+        | Feature160Blocked -> "blocked"
+        | Feature160Rejected -> "rejected"
+        | Feature160FallbackOnly -> "fallback-only"
+        | Feature160EnvironmentLimited -> "environment-limited"
+
+    let private fullValidationPassed (status: string) =
+        String.Equals(status, "passed", StringComparison.OrdinalIgnoreCase)
+        || String.Equals(status, "current-passed", StringComparison.OrdinalIgnoreCase)
+
+    let private samplePolicyAccepted (policy: string) =
+        String.Equals(policy, "readback-free", StringComparison.OrdinalIgnoreCase)
+        || String.Equals(policy, "readback-outside-measurement", StringComparison.OrdinalIgnoreCase)
+
+    let validate (check: Feature160ThroughputReadinessCheck) : Feature160ThroughputReadinessValidationResult =
+        let requiredIterations = max 1 check.RequiredIterationCount
+
+        let missingScenarios =
+            check.RequiredScenarioIds
+            |> List.filter (fun scenario ->
+                check.Scenarios
+                |> List.exists (fun candidate -> candidate.ScenarioId = scenario && candidate.Covered)
+                |> not)
+
+        let requiredScenarioResults =
+            check.RequiredScenarioIds
+            |> List.choose (fun scenario ->
+                check.Scenarios |> List.tryFind (fun candidate -> candidate.ScenarioId = scenario))
+
+        let missingArtifacts =
+            requiredScenarioResults
+            |> List.choose (fun scenario ->
+                if List.isEmpty scenario.ArtifactPaths then Some scenario.ScenarioId else None)
+
+        let invalidWarmup =
+            requiredScenarioResults
+            |> List.choose (fun scenario ->
+                if scenario.WarmupCount <> 3 then Some scenario.ScenarioId else None)
+
+        let invalidRepetitions =
+            requiredScenarioResults
+            |> List.choose (fun scenario ->
+                if scenario.MeasuredRepetitions <> 5 then Some scenario.ScenarioId else None)
+
+        let invalidSamplePolicy =
+            requiredScenarioResults
+            |> List.choose (fun scenario ->
+                if samplePolicyAccepted scenario.SamplePolicy then None else Some scenario.ScenarioId)
+
+        let unsupportedArtifactViolation =
+            check.UnsupportedHostStatus = Feature160EnvironmentLimited
+            && check.AcceptedUnsupportedHostArtifacts <> 0
+
+        let fullValidationBlocked = not (fullValidationPassed check.FullValidationStatus)
+
+        let diagnostics =
+            [ if String.IsNullOrWhiteSpace check.Feature then
+                  "Feature 160 throughput readiness check must name the feature"
+              for scenario in missingScenarios do
+                  $"missing required throughput scenario: {scenario}"
+              for scenario in missingArtifacts do
+                  $"missing throughput artifact path: {scenario}"
+              for scenario in invalidWarmup do
+                  $"scenario warmup must be 3: {scenario}"
+              for scenario in invalidRepetitions do
+                  $"scenario measured repetitions must be 5: {scenario}"
+              for scenario in invalidSamplePolicy do
+                  $"scenario sample policy is not accepted: {scenario}"
+              if check.AcceptedIterationCount < requiredIterations
+                 && check.UnsupportedHostStatus <> Feature160EnvironmentLimited then
+                  $"accepted Feature 160 throughput requires at least {requiredIterations} accepted iterations"
+              if unsupportedArtifactViolation then
+                  "unsupported-host evidence must contain zero accepted Feature 160 performance artifacts"
+              if fullValidationBlocked && check.AcceptedIterationCount >= requiredIterations && missingScenarios.IsEmpty then
+                  $"full validation blocks release-ready status: {check.FullValidationStatus}"
+              if not check.CompatibilityAccepted then
+                  "compatibility ledger is not accepted"
+              if not check.PackageAccepted then
+                  "package validation is not accepted"
+              if not check.RegressionAccepted then
+                  "regression validation is not accepted"
+              if check.PerformanceClaim <> "performance-not-accepted" then
+                  "Feature 160 cannot accept the shipped P7 performance claim by itself"
+              for limitation in check.Limitations do
+                  if limitation.Contains("overclaim", StringComparison.OrdinalIgnoreCase) then
+                      $"overclaimed Feature 160 throughput limitation: {limitation}" ]
+
+        let status =
+            if check.UnsupportedHostStatus = Feature160EnvironmentLimited && check.AcceptedIterationCount = 0 then
+                Feature160EnvironmentLimited
+            elif unsupportedArtifactViolation
+                 || not missingScenarios.IsEmpty
+                 || not missingArtifacts.IsEmpty
+                 || not invalidWarmup.IsEmpty
+                 || not invalidRepetitions.IsEmpty
+                 || not invalidSamplePolicy.IsEmpty
+                 || check.PerformanceClaim <> "performance-not-accepted" then
+                Feature160Rejected
+            elif check.AcceptedIterationCount >= requiredIterations
+                 && fullValidationBlocked then
+                Feature160Blocked
+            elif diagnostics.IsEmpty
+                 && check.AcceptedIterationCount >= requiredIterations
+                 && fullValidationPassed check.FullValidationStatus then
+                Feature160Accepted
+            elif check.AcceptedIterationCount = 0 then
+                Feature160FallbackOnly
+            else
+                Feature160Rejected
+
+        { Accepted = status = Feature160Accepted && diagnostics.IsEmpty
           Status = status
           MissingScenarios = missingScenarios
           Diagnostics = diagnostics }

@@ -16,6 +16,7 @@ module Compositor =
     val feature157Id: string
     val feature158Id: string
     val feature159Id: string
+    val feature160Id: string
 
     val readinessDirectory: string
     val presentProofDirectory: string
@@ -163,6 +164,29 @@ module Compositor =
     val feature159PolicyId: string
     val feature159PromotionCommand: string
     val feature159ReadinessCommand: string
+
+    val feature160ReadinessDirectory: string
+    val feature160ThroughputDirectory: string
+    val feature160ThroughputIterationsDirectory: string
+    val feature160ThroughputRawDirectory: string
+    val feature160ThroughputExcludedDirectory: string
+    val feature160ThroughputUnsupportedDirectory: string
+    val feature160FullValidationDirectory: string
+    val feature160FsiDirectory: string
+    val feature160CompatibilityLedgerPath: string
+    val feature160ValidationSummaryPath: string
+    val feature160PackageValidationPath: string
+    val feature160RegressionValidationPath: string
+    val feature160ThroughputSummaryPath: string
+    val feature160ThroughputSummaryJsonPath: string
+    val feature160AcceptedProfileId: string
+    val feature160PolicyId: string
+    val feature160FocusedLaneId: string
+    val feature160RequiredAttempts: int
+    val feature160MaxIterationMinutes: int
+    val feature160UnsupportedHostMinutes: int
+    val feature160PerformanceCommand: string
+    val feature160ReadinessCommand: string
 
     type HostProfile =
         { ProfileId: string
@@ -550,6 +574,109 @@ module Compositor =
         | Feature159CompareParity of scenarioId: string
         | Feature159WriteArtifact of path: string
 
+    [<RequireQualifiedAccess>]
+    type Feature160ReadinessStatus =
+        | Accepted
+        | Blocked
+        | Rejected
+        | FallbackOnly
+        | EnvironmentLimited
+
+    type Feature160FullValidationRecord =
+        { Command: string
+          StartedAt: DateTimeOffset option
+          CompletedAt: DateTimeOffset option
+          Status: string
+          ImplementationCommit: string
+          PackageSurfaceBaseline: string
+          ReadinessArtifactSet: string list
+          ArtifactPaths: string list
+          Diagnostics: string list }
+
+    type Feature160Iteration =
+        { IterationId: string
+          RunId: string
+          HostProfile: HostProfile
+          LaneId: string
+          PolicyId: string
+          DeclaredBoundMinutes: int
+          ActualDuration: TimeSpan
+          WarmupCount: int
+          MeasuredRepetitions: int
+          ScenarioReports: Feature158ScenarioReport list
+          ScenarioCoverage: string list
+          IncludedSamples: Feature158TimingSample list
+          ExcludedSamples: Feature158TimingSample list
+          Status: Feature160ReadinessStatus
+          ExclusionReason: Perf.ExclusionReason option
+          ArtifactPaths: string list
+          RestrictedScenario: string option
+          Diagnostics: string list }
+
+    type Feature160ThroughputSummary =
+        { RunId: string
+          HostProfile: HostProfile
+          LaneId: string
+          PolicyId: string
+          DeclaredBoundMinutes: int
+          RequiredAttempts: int
+          WarmupCount: int
+          MeasuredRepetitions: int
+          Iterations: Feature160Iteration list
+          UnsupportedHostReason: string option
+          FullValidation: Feature160FullValidationRecord option
+          CompatibilityImpact: string
+          PackageValidationStatus: string
+          RegressionValidationStatus: string
+          Status: Feature160ReadinessStatus
+          ReleaseReadyStatus: string
+          PerformanceClaim: string
+          Diagnostics: string list }
+
+    type Feature160Model =
+        { RunId: string
+          ExpectedProfileId: string
+          ActiveProfile: HostProfile option
+          LaneId: string option
+          PolicyId: string option
+          DeclaredBoundMinutes: int option
+          Iterations: Feature160Iteration list
+          FullValidation: Feature160FullValidationRecord option
+          PublishedArtifacts: string list
+          Status: Feature160ReadinessStatus
+          Diagnostics: string list }
+
+    type Feature160Msg =
+        | Feature160HostProfileDetected of HostProfile
+        | Feature160HostProfileRejected of reason: string
+        | Feature160LaneDeclared of laneId: string
+        | Feature160PolicyDeclared of policyId: string
+        | Feature160BoundDeclared of minutes: int
+        | Feature160IterationStarted of iterationId: string
+        | Feature160IterationCompleted of Feature160Iteration
+        | Feature160IterationTimedOut of iterationId: string * reason: string
+        | Feature160IterationCanceled of iterationId: string * reason: string
+        | Feature160IterationExcluded of Feature160Iteration
+        | Feature160FullValidationRecorded of Feature160FullValidationRecord
+        | Feature160ArtifactPublished of path: string
+        | Feature160DiagnosticRecorded of string
+
+    type Feature160Effect =
+        | Feature160DetectHostProfile
+        | Feature160DeclareFocusedLane of laneId: string
+        | Feature160DeclarePolicy of policyId: string
+        | Feature160DeclareIterationBound of minutes: int
+        | Feature160PrepareScenario of scenarioId: string
+        | Feature160RunTimingWarmup of scenarioId: string
+        | Feature160MeasurePath of scenarioId: string * path: string
+        | Feature160EnforceIterationTimeout of iterationId: string * minutes: int
+        | Feature160WriteRawSampleArtifact of path: string
+        | Feature160WriteIterationArtifact of path: string
+        | Feature160WriteExcludedEvidenceArtifact of path: string
+        | Feature160WriteUnsupportedHostArtifact of path: string
+        | Feature160WriteFullValidationRecord of path: string
+        | Feature160WriteArtifact of path: string
+
     val thresholds: Thresholds
     val snapshotBudget: SnapshotBudget
     val scenarioIds: string list
@@ -585,6 +712,9 @@ module Compositor =
     val feature159FallbackScenarioIds: string list
     val feature159ScenarioIds: string list
     val feature159TargetHostProfiles: HostProfile list
+    val feature160RequiredScenarioIds: string list
+    val feature160ScenarioIds: string list
+    val feature160TargetHostProfiles: HostProfile list
 
     val hostProfileFromFacts: facts: ProbeFacts -> HostProfile
     val proofVerdictToken: verdict: ProofVerdict -> string
@@ -609,6 +739,8 @@ module Compositor =
     val updateFeature158: msg: Feature158Msg -> model: Feature158Model -> Feature158Model * Feature158Effect list
     val initFeature159: unit -> Feature159Model * Feature159Effect list
     val updateFeature159: msg: Feature159Msg -> model: Feature159Model -> Feature159Model * Feature159Effect list
+    val initFeature160: attempts: int -> maxIterationMinutes: int -> Feature160Model * Feature160Effect list
+    val updateFeature160: msg: Feature160Msg -> model: Feature160Model -> Feature160Model * Feature160Effect list
 
     val artifactPath: directory: string -> name: string -> string
     val feature148ArtifactPath: directory: string -> name: string -> string
@@ -621,6 +753,7 @@ module Compositor =
     val feature157ArtifactPath: directory: string -> name: string -> string
     val feature158ArtifactPath: directory: string -> name: string -> string
     val feature159ArtifactPath: directory: string -> name: string -> string
+    val feature160ArtifactPath: directory: string -> name: string -> string
     val feature156ScenarioFileName: scenarioId: string -> string
     val feature156VerdictToken: verdict: Feature156ScenarioVerdict -> string
     val feature156DistributionRow: distribution: Feature156PathDistribution option -> string
@@ -635,6 +768,12 @@ module Compositor =
     val feature159StatusToken: status: Feature159ReadinessStatus -> string
     val feature159ScenarioFileName: scenarioId: string -> string
     val feature159OverallStatus: summary: Feature159Summary -> Feature159ReadinessStatus
+    val feature160StatusToken: status: Feature160ReadinessStatus -> string
+    val feature160ScenarioFileName: scenarioId: string -> string
+    val feature160IterationFileName: iterationId: string -> string
+    val feature160FocusedThroughputStatus: summary: Feature160ThroughputSummary -> Feature160ReadinessStatus
+    val feature160OverallStatus: summary: Feature160ThroughputSummary -> Feature160ReadinessStatus
+    val feature160FullValidationStatus: record: Feature160FullValidationRecord option -> string
     val renderPresentProof: proof: PresentProof -> string
     val renderValidationSummary: model: ReadinessModel -> string
     val renderCompatibilityLedger: model: ReadinessModel -> string
@@ -714,3 +853,13 @@ module Compositor =
     val renderFeature159RegressionValidation: validationLines: string list -> string
     val renderFeature159ValidationSummary: summary: Feature159Summary -> string
     val renderFeature159UnsupportedHostReport: reason: string -> string
+    val renderFeature160IterationReport: iteration: Feature160Iteration -> string
+    val renderFeature160ExcludedEvidenceReport: reason: Perf.ExclusionReason -> iterations: Feature160Iteration list -> string
+    val renderFeature160ThroughputSummary: summary: Feature160ThroughputSummary -> string
+    val renderFeature160ThroughputSummaryJson: summary: Feature160ThroughputSummary -> string
+    val renderFeature160CompatibilityLedger: unit -> string
+    val renderFeature160PackageValidation: validationLines: string list -> string
+    val renderFeature160RegressionValidation: validationLines: string list -> string
+    val renderFeature160FullValidationRecord: record: Feature160FullValidationRecord option -> string
+    val renderFeature160ValidationSummary: summary: Feature160ThroughputSummary -> string
+    val renderFeature160UnsupportedHostReport: reason: string -> string

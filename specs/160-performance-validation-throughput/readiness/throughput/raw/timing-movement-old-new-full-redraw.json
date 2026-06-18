@@ -1,0 +1,7 @@
+[
+    { "sampleId": "feature160-20260618180244-003-timing-movement-old-new-full-redraw-001", "scenarioId": "timing/movement-old-new", "path": "full-redraw", "durationMs": 33.332, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" },
+    { "sampleId": "feature160-20260618180244-003-timing-movement-old-new-full-redraw-002", "scenarioId": "timing/movement-old-new", "path": "full-redraw", "durationMs": 34.102, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" },
+    { "sampleId": "feature160-20260618180244-003-timing-movement-old-new-full-redraw-003", "scenarioId": "timing/movement-old-new", "path": "full-redraw", "durationMs": 26.472, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" },
+    { "sampleId": "feature160-20260618180244-003-timing-movement-old-new-full-redraw-004", "scenarioId": "timing/movement-old-new", "path": "full-redraw", "durationMs": 23.404, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" },
+    { "sampleId": "feature160-20260618180244-003-timing-movement-old-new-full-redraw-005", "scenarioId": "timing/movement-old-new", "path": "full-redraw", "durationMs": 51.68, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" }
+]

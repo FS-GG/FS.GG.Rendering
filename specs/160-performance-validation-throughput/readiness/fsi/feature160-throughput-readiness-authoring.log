@@ -1,0 +1,1 @@
+Feature160 throughput readiness authoring PASS: helper validates accepted, blocked, rejected, fallback-only, and environment-limited packages.

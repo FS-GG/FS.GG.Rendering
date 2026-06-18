@@ -1,0 +1,17 @@
+{
+  "runId": "feature160-20260618180244",
+  "status": "blocked",
+  "focusedThroughputStatus": "accepted",
+  "fullValidationStatus": "missing",
+  "laneId": "focused",
+  "policyId": "focused-throughput-v1",
+  "declaredBoundMinutes": 10,
+  "requiredAttempts": 3,
+  "acceptedIterationCount": 3,
+  "iterationCount": 3,
+  "unsupportedHostReason": "",
+  "performanceClaim": "performance-not-accepted",
+  "excludedReasons": [
+
+  ]
+}

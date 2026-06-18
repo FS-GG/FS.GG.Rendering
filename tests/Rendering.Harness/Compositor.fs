@@ -18,6 +18,7 @@ module Compositor =
     let feature157Id = "157-no-clear-damage-scissor"
     let feature158Id = "158-separate-proof-timing"
     let feature159Id = "159-layer-promotion-keys"
+    let feature160Id = "160-performance-validation-throughput"
 
     let readinessDirectory = "specs/147-compositor-damage-redraw/readiness"
     let presentProofDirectory = Path.Combine(readinessDirectory, "present-proof")
@@ -165,6 +166,29 @@ module Compositor =
     let feature159PolicyId = "layer-promotion-v1"
     let feature159PromotionCommand = "compositor-promotion --feature 159"
     let feature159ReadinessCommand = "compositor-readiness --feature 159"
+
+    let feature160ReadinessDirectory = Path.Combine("specs", feature160Id, "readiness")
+    let feature160ThroughputDirectory = Path.Combine(feature160ReadinessDirectory, "throughput")
+    let feature160ThroughputIterationsDirectory = Path.Combine(feature160ThroughputDirectory, "iterations")
+    let feature160ThroughputRawDirectory = Path.Combine(feature160ThroughputDirectory, "raw")
+    let feature160ThroughputExcludedDirectory = Path.Combine(feature160ThroughputDirectory, "excluded")
+    let feature160ThroughputUnsupportedDirectory = Path.Combine(feature160ThroughputDirectory, "unsupported")
+    let feature160FullValidationDirectory = Path.Combine(feature160ReadinessDirectory, "full-validation")
+    let feature160FsiDirectory = Path.Combine(feature160ReadinessDirectory, "fsi")
+    let feature160CompatibilityLedgerPath = Path.Combine(feature160ReadinessDirectory, "compatibility-ledger.md")
+    let feature160ValidationSummaryPath = Path.Combine(feature160ReadinessDirectory, "validation-summary.md")
+    let feature160PackageValidationPath = Path.Combine(feature160ReadinessDirectory, "package-validation.md")
+    let feature160RegressionValidationPath = Path.Combine(feature160ReadinessDirectory, "regression-validation.md")
+    let feature160ThroughputSummaryPath = Path.Combine(feature160ThroughputDirectory, "summary.md")
+    let feature160ThroughputSummaryJsonPath = Path.Combine(feature160ThroughputDirectory, "summary.json")
+    let feature160AcceptedProfileId = feature158AcceptedProfileId
+    let feature160PolicyId = "focused-throughput-v1"
+    let feature160FocusedLaneId = "focused"
+    let feature160RequiredAttempts = 3
+    let feature160MaxIterationMinutes = 10
+    let feature160UnsupportedHostMinutes = 2
+    let feature160PerformanceCommand = "compositor-performance --feature 160 --lane focused"
+    let feature160ReadinessCommand = "compositor-readiness --feature 160"
 
     type HostProfile =
         { ProfileId: string
@@ -551,6 +575,109 @@ module Compositor =
         | Feature159EvaluatePromotion of scenarioId: string
         | Feature159CompareParity of scenarioId: string
         | Feature159WriteArtifact of path: string
+
+    [<RequireQualifiedAccess>]
+    type Feature160ReadinessStatus =
+        | Accepted
+        | Blocked
+        | Rejected
+        | FallbackOnly
+        | EnvironmentLimited
+
+    type Feature160FullValidationRecord =
+        { Command: string
+          StartedAt: DateTimeOffset option
+          CompletedAt: DateTimeOffset option
+          Status: string
+          ImplementationCommit: string
+          PackageSurfaceBaseline: string
+          ReadinessArtifactSet: string list
+          ArtifactPaths: string list
+          Diagnostics: string list }
+
+    type Feature160Iteration =
+        { IterationId: string
+          RunId: string
+          HostProfile: HostProfile
+          LaneId: string
+          PolicyId: string
+          DeclaredBoundMinutes: int
+          ActualDuration: TimeSpan
+          WarmupCount: int
+          MeasuredRepetitions: int
+          ScenarioReports: Feature158ScenarioReport list
+          ScenarioCoverage: string list
+          IncludedSamples: Feature158TimingSample list
+          ExcludedSamples: Feature158TimingSample list
+          Status: Feature160ReadinessStatus
+          ExclusionReason: Perf.ExclusionReason option
+          ArtifactPaths: string list
+          RestrictedScenario: string option
+          Diagnostics: string list }
+
+    type Feature160ThroughputSummary =
+        { RunId: string
+          HostProfile: HostProfile
+          LaneId: string
+          PolicyId: string
+          DeclaredBoundMinutes: int
+          RequiredAttempts: int
+          WarmupCount: int
+          MeasuredRepetitions: int
+          Iterations: Feature160Iteration list
+          UnsupportedHostReason: string option
+          FullValidation: Feature160FullValidationRecord option
+          CompatibilityImpact: string
+          PackageValidationStatus: string
+          RegressionValidationStatus: string
+          Status: Feature160ReadinessStatus
+          ReleaseReadyStatus: string
+          PerformanceClaim: string
+          Diagnostics: string list }
+
+    type Feature160Model =
+        { RunId: string
+          ExpectedProfileId: string
+          ActiveProfile: HostProfile option
+          LaneId: string option
+          PolicyId: string option
+          DeclaredBoundMinutes: int option
+          Iterations: Feature160Iteration list
+          FullValidation: Feature160FullValidationRecord option
+          PublishedArtifacts: string list
+          Status: Feature160ReadinessStatus
+          Diagnostics: string list }
+
+    type Feature160Msg =
+        | Feature160HostProfileDetected of HostProfile
+        | Feature160HostProfileRejected of reason: string
+        | Feature160LaneDeclared of laneId: string
+        | Feature160PolicyDeclared of policyId: string
+        | Feature160BoundDeclared of minutes: int
+        | Feature160IterationStarted of iterationId: string
+        | Feature160IterationCompleted of Feature160Iteration
+        | Feature160IterationTimedOut of iterationId: string * reason: string
+        | Feature160IterationCanceled of iterationId: string * reason: string
+        | Feature160IterationExcluded of Feature160Iteration
+        | Feature160FullValidationRecorded of Feature160FullValidationRecord
+        | Feature160ArtifactPublished of path: string
+        | Feature160DiagnosticRecorded of string
+
+    type Feature160Effect =
+        | Feature160DetectHostProfile
+        | Feature160DeclareFocusedLane of laneId: string
+        | Feature160DeclarePolicy of policyId: string
+        | Feature160DeclareIterationBound of minutes: int
+        | Feature160PrepareScenario of scenarioId: string
+        | Feature160RunTimingWarmup of scenarioId: string
+        | Feature160MeasurePath of scenarioId: string * path: string
+        | Feature160EnforceIterationTimeout of iterationId: string * minutes: int
+        | Feature160WriteRawSampleArtifact of path: string
+        | Feature160WriteIterationArtifact of path: string
+        | Feature160WriteExcludedEvidenceArtifact of path: string
+        | Feature160WriteUnsupportedHostArtifact of path: string
+        | Feature160WriteFullValidationRecord of path: string
+        | Feature160WriteArtifact of path: string
 
     let thresholds =
         { PromotionReductionPercent = 30.0
@@ -1006,6 +1133,42 @@ module Compositor =
     let feature159TargetHostProfiles =
         feature158TargetHostProfiles
         @ [ { ProfileId = feature159AcceptedProfileId
+              Backend = "OpenGL"
+              Renderer = None
+              PresentMode = "DirectToSwapchain"
+              FramebufferSize = "640x480"
+              Scale = Some 1.0
+              DisplayEnvironment = "x11"
+              ProofAlgorithmVersion = "sentinel-damage-v1" } ]
+
+    let feature160RequiredScenarioIds = feature158RequiredScenarioIds
+
+    let feature160ScenarioIds =
+        feature160RequiredScenarioIds
+        @ [ "timing/restricted-debug"
+            "timing/timed-out"
+            "timing/canceled"
+            "timing/partial-evidence"
+            "timing/cross-profile-evidence"
+            "timing/stale-evidence"
+            "timing/mixed-policy"
+            "timing/missing-metadata"
+            "timing/unsupported-host"
+            "timing/environment-limited"
+            "timing/scenario-coverage-missing"
+            "timing/sample-policy-mismatch"
+            "timing/run-identity-mismatch"
+            "timing/artifact-unreadable"
+            "timing/readback-contaminated"
+            "readiness/validation-summary"
+            "readiness/full-validation"
+            "readiness/compatibility-ledger"
+            "readiness/package-validation"
+            "readiness/regression-validation" ]
+
+    let feature160TargetHostProfiles =
+        feature159TargetHostProfiles
+        @ [ { ProfileId = feature160AcceptedProfileId
               Backend = "OpenGL"
               Renderer = None
               PresentMode = "DirectToSwapchain"
@@ -1532,6 +1695,195 @@ module Compositor =
           Feature159WriteArtifact feature159PackageValidationPath
           Feature159WriteArtifact feature159RegressionValidationPath ]
 
+    let feature160StatusToken status =
+        match status with
+        | Feature160ReadinessStatus.Accepted -> "accepted"
+        | Feature160ReadinessStatus.Blocked -> "blocked"
+        | Feature160ReadinessStatus.Rejected -> "rejected"
+        | Feature160ReadinessStatus.FallbackOnly -> "fallback-only"
+        | Feature160ReadinessStatus.EnvironmentLimited -> "environment-limited"
+
+    let feature160ScenarioFileName (scenarioId: string) =
+        scenarioId.Replace("/", "-") + ".md"
+
+    let feature160IterationFileName (iterationId: string) =
+        iterationId.Replace("/", "-") + ".md"
+
+    let private feature160AcceptedSamplePolicy (sample: Feature158TimingSample) =
+        sample.InclusionStatus = Perf.Included
+        && (sample.MeasurementPolicy = Perf.ReadbackFree
+            || sample.MeasurementPolicy = Perf.ReadbackOutsideMeasurement)
+
+    let private feature160IterationAccepted (iteration: Feature160Iteration) =
+        let coverage = iteration.ScenarioCoverage |> Set.ofList
+        iteration.Status = Feature160ReadinessStatus.Accepted
+        && iteration.ExclusionReason.IsNone
+        && iteration.RestrictedScenario.IsNone
+        && iteration.HostProfile.ProfileId = feature160AcceptedProfileId
+        && iteration.LaneId = feature160FocusedLaneId
+        && iteration.PolicyId = feature160PolicyId
+        && iteration.DeclaredBoundMinutes = feature160MaxIterationMinutes
+        && iteration.ActualDuration <= TimeSpan.FromMinutes(float feature160MaxIterationMinutes)
+        && iteration.WarmupCount = 3
+        && iteration.MeasuredRepetitions = 5
+        && feature160RequiredScenarioIds |> List.forall coverage.Contains
+        && not (List.isEmpty iteration.IncludedSamples)
+        && iteration.IncludedSamples |> List.forall feature160AcceptedSamplePolicy
+        && iteration.ArtifactPaths |> List.exists (fun path -> path.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
+
+    let feature160FullValidationStatus record =
+        match record with
+        | None -> "missing"
+        | Some validation ->
+            if validation.Command <> "dotnet test FS.GG.Rendering.slnx --no-restore" then
+                "stale"
+            elif validation.Status = "passed" || validation.Status = "current-passed" then
+                "passed"
+            elif validation.Status = "failed" then
+                "failed"
+            elif validation.Status = "interrupted" then
+                "interrupted"
+            elif validation.Status = "stale" then
+                "stale"
+            elif String.IsNullOrWhiteSpace validation.Status then
+                "undocumented"
+            else
+                validation.Status
+
+    let private feature160FullValidationAccepts record =
+        feature160FullValidationStatus record = "passed"
+
+    let feature160FocusedThroughputStatus (summary: Feature160ThroughputSummary) =
+        match summary.UnsupportedHostReason with
+        | Some _ -> Feature160ReadinessStatus.EnvironmentLimited
+        | None ->
+            let accepted = summary.Iterations |> List.filter feature160IterationAccepted
+            if accepted.Length >= summary.RequiredAttempts then
+                Feature160ReadinessStatus.Accepted
+            elif summary.Iterations |> List.exists (fun iteration -> iteration.Status = Feature160ReadinessStatus.Rejected) then
+                Feature160ReadinessStatus.Rejected
+            elif summary.Iterations |> List.exists (fun iteration -> iteration.Status = Feature160ReadinessStatus.EnvironmentLimited) then
+                Feature160ReadinessStatus.EnvironmentLimited
+            elif List.isEmpty summary.Iterations then
+                Feature160ReadinessStatus.FallbackOnly
+            else
+                Feature160ReadinessStatus.Rejected
+
+    let feature160OverallStatus (summary: Feature160ThroughputSummary) =
+        match feature160FocusedThroughputStatus summary with
+        | Feature160ReadinessStatus.Accepted when not (feature160FullValidationAccepts summary.FullValidation) ->
+            Feature160ReadinessStatus.Blocked
+        | status -> status
+
+    let initFeature160 attempts maxIterationMinutes : Feature160Model * Feature160Effect list =
+        let requiredAttempts = max 1 attempts
+        let bound = max 1 maxIterationMinutes
+        let runId = "feature160-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss")
+
+        { RunId = runId
+          ExpectedProfileId = feature160AcceptedProfileId
+          ActiveProfile = None
+          LaneId = None
+          PolicyId = None
+          DeclaredBoundMinutes = None
+          Iterations = []
+          FullValidation = None
+          PublishedArtifacts = []
+          Status = Feature160ReadinessStatus.FallbackOnly
+          Diagnostics = [] },
+        [ Feature160DetectHostProfile
+          Feature160DeclareFocusedLane feature160FocusedLaneId
+          Feature160DeclarePolicy feature160PolicyId
+          Feature160DeclareIterationBound bound
+          for attempt in 1..requiredAttempts do
+              let iterationId = sprintf "%s-%03i" runId attempt
+              Feature160EnforceIterationTimeout(iterationId, bound)
+          for scenario in feature160RequiredScenarioIds do
+              Feature160PrepareScenario scenario
+              Feature160RunTimingWarmup scenario
+              Feature160MeasurePath(scenario, "full-redraw")
+              Feature160MeasurePath(scenario, "damage-scoped")
+          Feature160WriteArtifact feature160ThroughputSummaryPath
+          Feature160WriteArtifact feature160ValidationSummaryPath ]
+
+    let private feature160StatusFromModel (model: Feature160Model) =
+        let summary =
+            { RunId = model.RunId
+              HostProfile =
+                model.ActiveProfile
+                |> Option.defaultValue
+                    { ProfileId = feature160AcceptedProfileId
+                      Backend = "OpenGL"
+                      Renderer = None
+                      PresentMode = "DirectToSwapchain"
+                      FramebufferSize = "640x480"
+                      Scale = Some 1.0
+                      DisplayEnvironment = "unknown"
+                      ProofAlgorithmVersion = "sentinel-damage-v1" }
+              LaneId = model.LaneId |> Option.defaultValue feature160FocusedLaneId
+              PolicyId = model.PolicyId |> Option.defaultValue feature160PolicyId
+              DeclaredBoundMinutes = model.DeclaredBoundMinutes |> Option.defaultValue feature160MaxIterationMinutes
+              RequiredAttempts = feature160RequiredAttempts
+              WarmupCount = 3
+              MeasuredRepetitions = 5
+              Iterations = model.Iterations
+              UnsupportedHostReason =
+                model.Diagnostics
+                |> List.tryFind (fun item -> item.Contains("environment-limited", StringComparison.OrdinalIgnoreCase))
+              FullValidation = model.FullValidation
+              CompatibilityImpact = "pending"
+              PackageValidationStatus = "pending"
+              RegressionValidationStatus = "pending"
+              Status = model.Status
+              ReleaseReadyStatus = "pending"
+              PerformanceClaim = "performance-not-accepted"
+              Diagnostics = model.Diagnostics }
+
+        feature160OverallStatus summary
+
+    let updateFeature160 (msg: Feature160Msg) (model: Feature160Model) : Feature160Model * Feature160Effect list =
+        let model' =
+            match msg with
+            | Feature160HostProfileDetected profile ->
+                { model with ActiveProfile = Some profile }
+            | Feature160HostProfileRejected reason ->
+                { model with
+                    Status = Feature160ReadinessStatus.Rejected
+                    Diagnostics = model.Diagnostics @ [ reason ] }
+            | Feature160LaneDeclared laneId ->
+                { model with LaneId = Some laneId }
+            | Feature160PolicyDeclared policyId ->
+                { model with PolicyId = Some policyId }
+            | Feature160BoundDeclared minutes ->
+                { model with DeclaredBoundMinutes = Some(max 1 minutes) }
+            | Feature160IterationStarted iterationId ->
+                { model with Diagnostics = model.Diagnostics @ [ $"iteration-started={iterationId}" ] }
+            | Feature160IterationCompleted iteration ->
+                { model with Iterations = model.Iterations @ [ iteration ] }
+            | Feature160IterationExcluded iteration ->
+                { model with Iterations = model.Iterations @ [ iteration ] }
+            | Feature160IterationTimedOut(iterationId, reason) ->
+                { model with Diagnostics = model.Diagnostics @ [ $"timed-out:{iterationId}:{reason}" ] }
+            | Feature160IterationCanceled(iterationId, reason) ->
+                { model with Diagnostics = model.Diagnostics @ [ $"canceled:{iterationId}:{reason}" ] }
+            | Feature160FullValidationRecorded record ->
+                { model with FullValidation = Some record }
+            | Feature160ArtifactPublished path ->
+                { model with PublishedArtifacts = model.PublishedArtifacts @ [ path ] }
+            | Feature160DiagnosticRecorded diagnostic ->
+                { model with Diagnostics = model.Diagnostics @ [ diagnostic ] }
+
+        let status = feature160StatusFromModel model'
+
+        { model' with Status = status },
+        [ Feature160WriteArtifact feature160ThroughputSummaryPath
+          Feature160WriteArtifact feature160ThroughputSummaryJsonPath
+          Feature160WriteArtifact feature160ValidationSummaryPath
+          Feature160WriteArtifact feature160CompatibilityLedgerPath
+          Feature160WriteArtifact feature160PackageValidationPath
+          Feature160WriteArtifact feature160RegressionValidationPath
+          Feature160WriteFullValidationRecord(Path.Combine(feature160FullValidationDirectory, "validation.md")) ]
+
     let artifactPath directory name = Path.Combine(directory, name)
     let feature148ArtifactPath directory name = Path.Combine(feature148ReadinessDirectory, directory, name)
     let feature149ArtifactPath directory name = Path.Combine(feature149ReadinessDirectory, directory, name)
@@ -1543,6 +1895,7 @@ module Compositor =
     let feature157ArtifactPath directory name = Path.Combine(feature157ReadinessDirectory, directory, name)
     let feature158ArtifactPath directory name = Path.Combine(feature158ReadinessDirectory, directory, name)
     let feature159ArtifactPath directory name = Path.Combine(feature159ReadinessDirectory, directory, name)
+    let feature160ArtifactPath directory name = Path.Combine(feature160ReadinessDirectory, directory, name)
 
     let feature156ScenarioFileName (scenarioId: string) =
         scenarioId.Replace("/", "-") + ".md"
@@ -4221,4 +4574,369 @@ module Compositor =
               "Elapsed time target: `under-2-minutes`"
               ""
               "Unsupported or unavailable presentation environments cannot contribute to accepted Feature 159 reuse or promotion evidence."
+              "" ]
+
+    let private feature160IterationRows (summary: Feature160ThroughputSummary) =
+        match summary.Iterations with
+        | [] -> "| none | missing | 0 | missing | missing | none |"
+        | iterations ->
+            iterations
+            |> List.map (fun iteration ->
+                let reason = iteration.ExclusionReason |> Option.map Perf.exclusionReasonToken |> Option.defaultValue "none"
+                let artifact =
+                    iteration.ArtifactPaths
+                    |> List.tryFind (fun path -> path.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
+                    |> Option.defaultValue (Path.Combine("throughput", "iterations", feature160IterationFileName iteration.IterationId).Replace('\\', '/'))
+                let restricted = iteration.RestrictedScenario |> Option.defaultValue "none"
+                let durationMinutes = iteration.ActualDuration.TotalMinutes.ToString("0.###", Globalization.CultureInfo.InvariantCulture)
+                $"| `{iteration.IterationId}` | `{feature160StatusToken iteration.Status}` | `{durationMinutes}` | `{reason}` | `{restricted}` | `{artifact}` |")
+            |> String.concat "\n"
+
+    let private feature160ScenarioRows (iteration: Feature160Iteration) =
+        match iteration.ScenarioReports with
+        | [] -> "| none | missing | 0 | 0 | missing |"
+        | reports ->
+            reports
+            |> List.map (fun report ->
+                $"| `{report.ScenarioId}` | `{feature158StatusToken report.Status}` | `{report.WarmupCount}` | `{report.MeasuredRepetitions}` | `{report.ScenarioDefinitionId}` |")
+            |> String.concat "\n"
+
+    let renderFeature160IterationReport (iteration: Feature160Iteration) =
+        let reason = iteration.ExclusionReason |> Option.map Perf.exclusionReasonToken |> Option.defaultValue "none"
+        let restricted = iteration.RestrictedScenario |> Option.defaultValue "none"
+        let durationMinutes = iteration.ActualDuration.TotalMinutes.ToString("0.###", Globalization.CultureInfo.InvariantCulture)
+        let diagnostics =
+            if List.isEmpty iteration.Diagnostics then "- none" else iteration.Diagnostics |> List.map (sprintf "- %s") |> String.concat "\n"
+
+        String.concat
+            "\n"
+            [ "# Feature 160 Focused Throughput Iteration"
+              ""
+              $"Iteration id: `{iteration.IterationId}`"
+              $"Run identity: `{iteration.RunId}`"
+              $"Status: `{feature160StatusToken iteration.Status}`"
+              $"Primary exclusion reason: `{reason}`"
+              $"Restricted scenario: `{restricted}`"
+              $"Lane id: `{iteration.LaneId}`"
+              $"Policy id: `{iteration.PolicyId}`"
+              $"Declared bound minutes: `{iteration.DeclaredBoundMinutes}`"
+              $"Actual duration minutes: `{durationMinutes}`"
+              $"Host profile: `{iteration.HostProfile.ProfileId}`"
+              $"Warmup count: `{iteration.WarmupCount}`"
+              $"Measured repetitions: `{iteration.MeasuredRepetitions}`"
+              $"Included samples: `{iteration.IncludedSamples.Length}`"
+              $"Excluded samples: `{iteration.ExcludedSamples.Length}`"
+              ""
+              "## Scenario Coverage"
+              ""
+              "| Scenario | Status | Warmup | Measured repetitions | Scenario definition |"
+              "|----------|--------|--------|----------------------|---------------------|"
+              feature160ScenarioRows iteration
+              ""
+              "## Artifacts"
+              ""
+              renderArtifacts iteration.ArtifactPaths
+              ""
+              "## Diagnostics"
+              ""
+              diagnostics
+              "" ]
+
+    let renderFeature160ExcludedEvidenceReport reason iterations =
+        let rows =
+            match iterations with
+            | [] -> "| none | 0 | none |"
+            | xs ->
+                xs
+                |> List.map (fun iteration ->
+                    let artifact =
+                        iteration.ArtifactPaths
+                        |> List.tryFind (fun path -> path.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
+                        |> Option.defaultValue "missing"
+                    let durationMinutes = iteration.ActualDuration.TotalMinutes.ToString("0.###", Globalization.CultureInfo.InvariantCulture)
+                    $"| `{iteration.IterationId}` | `{durationMinutes}` | `{artifact}` |")
+                |> String.concat "\n"
+
+        String.concat
+            "\n"
+            [ $"# Feature 160 Excluded Evidence: {Perf.exclusionReasonToken reason}"
+              ""
+              $"Primary reason: `{Perf.exclusionReasonToken reason}`"
+              "Accepted throughput contribution: `0`"
+              ""
+              "| Iteration | Duration minutes | Artifact |"
+              "|-----------|------------------|----------|"
+              rows
+              "" ]
+
+    let renderFeature160ThroughputSummary (summary: Feature160ThroughputSummary) =
+        let focusedStatus = feature160FocusedThroughputStatus summary
+        let overallStatus = feature160OverallStatus summary
+        let acceptedCount = summary.Iterations |> List.filter feature160IterationAccepted |> List.length
+        let excludedCount = summary.Iterations |> List.filter (fun iteration -> iteration.ExclusionReason.IsSome) |> List.length
+        let unsupported = summary.UnsupportedHostReason |> Option.defaultValue "none"
+        let fullValidation = feature160FullValidationStatus summary.FullValidation
+        let releaseStatus = if overallStatus = Feature160ReadinessStatus.Accepted then "ready" else "blocked"
+        let diagnostics =
+            if List.isEmpty summary.Diagnostics then "- none" else summary.Diagnostics |> List.map (sprintf "- %s") |> String.concat "\n"
+
+        String.concat
+            "\n"
+            [ "# Feature 160 Focused Throughput Summary"
+              ""
+              $"Run identity: `{summary.RunId}`"
+              $"Final throughput status: `{feature160StatusToken overallStatus}`"
+              $"Focused throughput status: `{feature160StatusToken focusedStatus}`"
+              $"Full validation status: `{fullValidation}`"
+              $"Release-ready status: `{releaseStatus}`"
+              $"Shipped compositor performance claim: `{summary.PerformanceClaim}`"
+              $"Lane id: `{summary.LaneId}`"
+              $"Policy id: `{summary.PolicyId}`"
+              $"Declared per-iteration bound minutes: `{summary.DeclaredBoundMinutes}`"
+              $"Required accepted iterations: `{summary.RequiredAttempts}`"
+              $"Accepted iterations: `{acceptedCount}`"
+              $"Excluded iterations: `{excludedCount}`"
+              $"Unsupported-host reason: `{unsupported}`"
+              $"Accepted same-profile performance artifacts from unsupported-host validation: `0`"
+              $"Host profile: `{summary.HostProfile.ProfileId}`"
+              $"Warmup count: `{summary.WarmupCount}`"
+              $"Measured repetitions: `{summary.MeasuredRepetitions}`"
+              ""
+              "## Required Scenarios"
+              ""
+              (feature160RequiredScenarioIds |> List.map (sprintf "- `%s`") |> String.concat "\n")
+              ""
+              "## Iterations"
+              ""
+              "| Iteration | Status | Duration minutes | Primary reason | Restricted scenario | Artifact |"
+              "|-----------|--------|------------------|----------------|---------------------|----------|"
+              feature160IterationRows summary
+              ""
+              "## Release Gate Separation"
+              ""
+              "- Focused throughput collection does not run `dotnet test FS.GG.Rendering.slnx --no-restore`."
+              "- Full validation is recorded separately under `full-validation/` and blocks release-ready status when missing, failing, interrupted, stale, or undocumented."
+              "- Noisy same-profile timing remains a performance-claim gate; it is not a focused-throughput exclusion reason by itself."
+              ""
+              "## Artifact Links"
+              ""
+              "- Iterations: `throughput/iterations/`"
+              "- Raw samples: `throughput/raw/`"
+              "- Excluded evidence: `throughput/excluded/`"
+              "- Unsupported-host evidence: `throughput/unsupported/README.md`"
+              "- Full validation: `full-validation/validation.md`"
+              ""
+              "## Diagnostics"
+              ""
+              diagnostics
+              "" ]
+
+    let renderFeature160ThroughputSummaryJson (summary: Feature160ThroughputSummary) =
+        let focusedStatus = feature160FocusedThroughputStatus summary
+        let overallStatus = feature160OverallStatus summary
+        let acceptedCount = summary.Iterations |> List.filter feature160IterationAccepted |> List.length
+        let unsupportedReason = summary.UnsupportedHostReason |> Option.defaultValue ""
+        let excludedReasons =
+            summary.Iterations
+            |> List.choose _.ExclusionReason
+            |> List.distinct
+            |> List.map (fun reason -> $"    \"{escapeJson (Perf.exclusionReasonToken reason)}\"")
+            |> String.concat ",\n"
+
+        String.concat
+            "\n"
+            [ "{"
+              $"  \"runId\": \"{escapeJson summary.RunId}\","
+              $"  \"status\": \"{feature160StatusToken overallStatus}\","
+              $"  \"focusedThroughputStatus\": \"{feature160StatusToken focusedStatus}\","
+              $"  \"fullValidationStatus\": \"{escapeJson (feature160FullValidationStatus summary.FullValidation)}\","
+              $"  \"laneId\": \"{escapeJson summary.LaneId}\","
+              $"  \"policyId\": \"{escapeJson summary.PolicyId}\","
+              $"  \"hostProfileId\": \"{escapeJson summary.HostProfile.ProfileId}\","
+              $"  \"declaredBoundMinutes\": {summary.DeclaredBoundMinutes},"
+              $"  \"requiredAttempts\": {summary.RequiredAttempts},"
+              $"  \"acceptedIterationCount\": {acceptedCount},"
+              $"  \"iterationCount\": {summary.Iterations.Length},"
+              $"  \"unsupportedHostReason\": \"{escapeJson unsupportedReason}\","
+              $"  \"performanceClaim\": \"{escapeJson summary.PerformanceClaim}\","
+              "  \"excludedReasons\": ["
+              excludedReasons
+              "  ]"
+              "}" ]
+
+    let renderFeature160CompatibilityLedger () =
+        String.concat
+            "\n"
+            [ "# Feature 160 Compatibility Ledger"
+              ""
+              "Status: `accepted-with-recorded-limitations`"
+              ""
+              "## Public Surface"
+              ""
+              "- `FS.GG.UI.Testing` adds package-visible `Feature160ThroughputReadiness` helper records and status tokens."
+              "- `Rendering.Harness` adds `compositor-performance --feature 160 --lane focused` and `compositor-readiness --feature 160` evidence routes."
+              "- Controls and SkiaViewer package identities are unchanged."
+              ""
+              "## Compatibility Impact"
+              ""
+              "- The helper is additive and validates readiness packages; it does not change runtime rendering behavior."
+              "- The shipped compositor performance claim remains `performance-not-accepted` until same-profile timing, Feature 159 reuse/promotion, Feature 160 throughput, and Feature 161 host-lane gates are complete."
+              ""
+              "## Surface Evidence"
+              ""
+              "- `readiness/fsi/FS.GG.UI.Testing.txt`"
+              "- `readiness/fsi/Rendering.Harness.Compositor.txt`"
+              "" ]
+
+    let renderFeature160PackageValidation validationLines =
+        String.concat
+            "\n"
+            [ "# Feature 160 Package Validation"
+              ""
+              "Status: `accepted-with-recorded-limitations`"
+              ""
+              "## Validation Runs"
+              ""
+              if List.isEmpty validationLines then "- pending local validation" else validationLines |> List.map (sprintf "- %s") |> String.concat "\n"
+              ""
+              "## Package Surface"
+              ""
+              "- Rendering.Harness exposes Feature 160 focused-lane and readiness signatures."
+              "- Testing package exposes `Feature160ThroughputReadiness` for package validation."
+              "- FSI transcripts cover compositor performance authoring and throughput readiness helper authoring."
+              "" ]
+
+    let renderFeature160RegressionValidation validationLines =
+        String.concat
+            "\n"
+            [ "# Feature 160 Regression Validation"
+              ""
+              "Status: `accepted-with-recorded-limitations`"
+              ""
+              "## Validation Runs"
+              ""
+              if List.isEmpty validationLines then "- pending local validation" else validationLines |> List.map (sprintf "- %s") |> String.concat "\n"
+              ""
+              "## Preservation"
+              ""
+              "- Feature 155 proof correctness remains preserved."
+              "- Feature 157 no-clear damage readiness remains preserved."
+              "- Feature 158 readback-free timing separation and required scenario set remain preserved."
+              "- Feature 159 reuse/promotion readiness remains a separate performance-claim gate."
+              "- Unsupported-host output remains fail-closed with zero accepted same-profile performance artifacts."
+              "- Public-surface drift is recorded in Feature 160 FSI evidence."
+              "" ]
+
+    let renderFeature160FullValidationRecord record =
+        match record with
+        | None ->
+            String.concat
+                "\n"
+                [ "# Feature 160 Full Validation"
+                  ""
+                  "Status: `missing`"
+                  "Command: `dotnet test FS.GG.Rendering.slnx --no-restore`"
+                  "Release-ready blocker: `full-validation-missing`"
+                  ""
+                  "Full solution validation is intentionally not run inside focused throughput collection."
+                  "" ]
+        | Some validation ->
+            let started = validation.StartedAt |> Option.map string |> Option.defaultValue "unknown"
+            let completed = validation.CompletedAt |> Option.map string |> Option.defaultValue "unknown"
+            String.concat
+                "\n"
+                [ "# Feature 160 Full Validation"
+                  ""
+                  $"Status: `{feature160FullValidationStatus (Some validation)}`"
+                  $"Command: `{validation.Command}`"
+                  $"Started: `{started}`"
+                  $"Completed: `{completed}`"
+                  $"Implementation commit: `{validation.ImplementationCommit}`"
+                  $"Package/surface baseline: `{validation.PackageSurfaceBaseline}`"
+                  ""
+                  "## Artifacts"
+                  ""
+                  renderArtifacts validation.ArtifactPaths
+                  ""
+                  "## Diagnostics"
+                  ""
+                  if List.isEmpty validation.Diagnostics then "- none" else validation.Diagnostics |> List.map (sprintf "- %s") |> String.concat "\n"
+                  "" ]
+
+    let renderFeature160ValidationSummary (summary: Feature160ThroughputSummary) =
+        let focusedStatus = feature160FocusedThroughputStatus summary
+        let overallStatus = feature160OverallStatus summary
+        let fullValidation = feature160FullValidationStatus summary.FullValidation
+        let acceptedCount = summary.Iterations |> List.filter feature160IterationAccepted |> List.length
+        let unsupported = summary.UnsupportedHostReason |> Option.defaultValue "none"
+        let releaseStatus = if overallStatus = Feature160ReadinessStatus.Accepted then "ready" else "blocked"
+        let releaseDecision =
+            if releaseStatus = "ready" then
+                "- Release-ready status is ready because current full validation is passing."
+            else
+                "- Release-ready status remains blocked until current full validation is passing."
+
+        String.concat
+            "\n"
+            [ "# Feature 160 Readiness Summary"
+              ""
+              $"Status: `{feature160StatusToken overallStatus}`"
+              $"Focused throughput status: `{feature160StatusToken focusedStatus}`"
+              $"Full validation status: `{fullValidation}`"
+              $"Release-ready status: `{releaseStatus}`"
+              $"Policy id: `{summary.PolicyId}`"
+              $"Lane id: `{summary.LaneId}`"
+              $"Accepted host profile: `{feature160AcceptedProfileId}`"
+              $"Measured host profile: `{summary.HostProfile.ProfileId}`"
+              $"Accepted iteration count: `{acceptedCount}`"
+              $"Required iteration count: `{summary.RequiredAttempts}`"
+              $"Declared bound minutes: `{summary.DeclaredBoundMinutes}`"
+              $"Unsupported-host result: `{unsupported}`"
+              $"Compatibility impact: `{summary.CompatibilityImpact}`"
+              $"Package validation: `{summary.PackageValidationStatus}`"
+              $"Regression validation: `{summary.RegressionValidationStatus}`"
+              $"Performance claim: `{summary.PerformanceClaim}`"
+              ""
+              "## Evidence Links"
+              ""
+              "- Throughput summary: `throughput/summary.md`"
+              "- Throughput summary JSON: `throughput/summary.json`"
+              "- Iterations: `throughput/iterations/`"
+              "- Raw samples: `throughput/raw/`"
+              "- Excluded evidence: `throughput/excluded/`"
+              "- Unsupported host: `throughput/unsupported/README.md`"
+              "- Full validation: `full-validation/validation.md`"
+              "- Compatibility ledger: `compatibility-ledger.md`"
+              "- Package validation: `package-validation.md`"
+              "- Regression validation: `regression-validation.md`"
+              "- FSI performance authoring: `fsi/compositor-performance-authoring.fsx`"
+              "- FSI readiness helper authoring: `fsi/feature160-throughput-readiness-authoring.fsx`"
+              ""
+              "## Reviewer Checklist"
+              ""
+              "- Required scenarios, lane id, policy id, declared bound, sample counts, accepted iterations, exclusions, and host profile are visible from `throughput/summary.md`."
+              "- Unsupported-host evidence records accepted same-profile performance artifacts `0`."
+              "- Full validation is a separate release gate and is visible from `full-validation/validation.md`."
+              "- Compatibility, package, regression, and public-surface evidence are linked from this entry point."
+              "- Under-5-minute reviewer decision target: this single summary links every required decision field."
+              "- `performance-not-accepted` remains the shipped compositor performance claim."
+              ""
+              "## Decision"
+              ""
+              "- Feature 160 accepts validation throughput only when three fresh same-profile focused iterations complete within the declared bound with all Feature 158 scenarios and sample policy preserved."
+              releaseDecision
+              "" ]
+
+    let renderFeature160UnsupportedHostReport (reason: string) =
+        String.concat
+            "\n"
+            [ "# Feature 160 Unsupported Host Throughput"
+              ""
+              "Status: `environment-limited`"
+              "Accepted same-profile performance artifacts: `0`"
+              "Accepted focused throughput iterations: `0`"
+              $"Reason: `{reason}`"
+              $"Elapsed time target: `under-{feature160UnsupportedHostMinutes}-minutes`"
+              ""
+              "Unsupported or unavailable presentation environments cannot contribute to accepted Feature 160 throughput evidence."
               "" ]

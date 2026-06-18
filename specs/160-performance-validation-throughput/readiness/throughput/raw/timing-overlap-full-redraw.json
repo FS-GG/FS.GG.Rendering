@@ -1,0 +1,7 @@
+[
+    { "sampleId": "feature160-20260618180244-003-timing-overlap-full-redraw-001", "scenarioId": "timing/overlap", "path": "full-redraw", "durationMs": 28.765, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" },
+    { "sampleId": "feature160-20260618180244-003-timing-overlap-full-redraw-002", "scenarioId": "timing/overlap", "path": "full-redraw", "durationMs": 31.118, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" },
+    { "sampleId": "feature160-20260618180244-003-timing-overlap-full-redraw-003", "scenarioId": "timing/overlap", "path": "full-redraw", "durationMs": 34.908, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" },
+    { "sampleId": "feature160-20260618180244-003-timing-overlap-full-redraw-004", "scenarioId": "timing/overlap", "path": "full-redraw", "durationMs": 26.435, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" },
+    { "sampleId": "feature160-20260618180244-003-timing-overlap-full-redraw-005", "scenarioId": "timing/overlap", "path": "full-redraw", "durationMs": 30.998, "measurementPolicy": "readback-free", "inclusionStatus": "included", "exclusionReason": "" }
+]

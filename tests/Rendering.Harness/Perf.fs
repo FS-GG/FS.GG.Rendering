@@ -69,16 +69,26 @@ module Perf =
         | Probe
 
     type ExclusionReason =
+        | TimedOut
+        | Canceled
+        | PartialEvidence
         | ProbeRunExcluded
         | ProofReadbackInMeasuredInterval
         | MissingMeasurementPolicy
+        | MissingMetadata
         | UnverifiableMeasurementPolicy
         | CrossProfileEvidence
+        | StaleEvidence
+        | MixedPolicy
         | ScenarioDefinitionMismatch
         | PackageVersionMismatch
         | RunIdentityMismatch
         | UnsupportedHost
         | EnvironmentLimitedReason
+        | ScenarioCoverageMissing
+        | SamplePolicyMismatch
+        | ArtifactUnreadable
+        | ReadbackContaminated
         | FailedProofReadback
 
     type ClassifiedTimingSample =
@@ -151,16 +161,26 @@ module Perf =
 
     let exclusionReasonToken reason =
         match reason with
+        | TimedOut -> "timed-out"
+        | Canceled -> "canceled"
+        | PartialEvidence -> "partial-evidence"
         | ProbeRunExcluded -> "probe-run-excluded"
         | ProofReadbackInMeasuredInterval -> "proof-readback-in-measured-interval"
         | MissingMeasurementPolicy -> "missing-measurement-policy"
+        | MissingMetadata -> "missing-metadata"
         | UnverifiableMeasurementPolicy -> "unverifiable-measurement-policy"
         | CrossProfileEvidence -> "cross-profile-evidence"
+        | StaleEvidence -> "stale-evidence"
+        | MixedPolicy -> "mixed-policy"
         | ScenarioDefinitionMismatch -> "scenario-definition-mismatch"
         | PackageVersionMismatch -> "package-version-mismatch"
         | RunIdentityMismatch -> "run-identity-mismatch"
         | UnsupportedHost -> "unsupported-host"
         | EnvironmentLimitedReason -> "environment-limited"
+        | ScenarioCoverageMissing -> "scenario-coverage-missing"
+        | SamplePolicyMismatch -> "sample-policy-mismatch"
+        | ArtifactUnreadable -> "artifact-unreadable"
+        | ReadbackContaminated -> "readback-contaminated"
         | FailedProofReadback -> "failed-proof-readback"
 
     let classifyMeasurementPolicy policy isExplicitProbe readbackInMeasuredInterval =

@@ -69,16 +69,26 @@ module Perf =
         | Probe
 
     type ExclusionReason =
+        | TimedOut
+        | Canceled
+        | PartialEvidence
         | ProbeRunExcluded
         | ProofReadbackInMeasuredInterval
         | MissingMeasurementPolicy
+        | MissingMetadata
         | UnverifiableMeasurementPolicy
         | CrossProfileEvidence
+        | StaleEvidence
+        | MixedPolicy
         | ScenarioDefinitionMismatch
         | PackageVersionMismatch
         | RunIdentityMismatch
         | UnsupportedHost
         | EnvironmentLimitedReason
+        | ScenarioCoverageMissing
+        | SamplePolicyMismatch
+        | ArtifactUnreadable
+        | ReadbackContaminated
         | FailedProofReadback
 
     type ClassifiedTimingSample =
