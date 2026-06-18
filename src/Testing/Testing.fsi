@@ -393,6 +393,42 @@ type LayoutReadinessValidationResult =
       BlockingLimitations: string list
       Diagnostics: string list }
 
+/// Public contract type exposed by this FS.GG.UI package.
+type CompositorReadinessStatus =
+    | CompositorReadinessAccepted
+    | CompositorReadinessFallbackGated
+    | CompositorReadinessFailed
+    | CompositorReadinessEnvironmentLimited
+    | CompositorReadinessMissingEvidence
+    | CompositorReadinessCompatibilityBlocked
+
+/// Public contract type exposed by this FS.GG.UI package.
+type CompositorReadinessEvidence =
+    { EvidenceName: string
+      EvidencePath: string option
+      EvidenceStatus: CompositorReadinessStatus
+      EvidenceRequired: bool
+      EvidenceDiagnostics: string list }
+
+/// Public contract type exposed by this FS.GG.UI package.
+type CompositorReadinessReport =
+    { Feature: string
+      ProofStatus: CompositorReadinessStatus
+      ParityStatus: CompositorReadinessStatus
+      TimingStatus: CompositorReadinessStatus
+      CompatibilityStatus: CompositorReadinessStatus
+      RegressionStatus: CompositorReadinessStatus
+      Evidence: CompositorReadinessEvidence list
+      Limitations: string list }
+
+/// Public contract type exposed by this FS.GG.UI package.
+type CompositorReadinessValidationResult =
+    { Accepted: bool
+      Status: CompositorReadinessStatus
+      MissingEvidence: string list
+      BlockingLimitations: string list
+      Diagnostics: string list }
+
 /// Public contract module exposed by this FS.GG.UI package.
 module GeneratedProductAssertions =
     /// Public contract function exposed by this FS.GG.UI package.
@@ -479,3 +515,10 @@ module LayoutReadiness =
     val statusText: status: LayoutReadinessStatus -> string
     /// Public contract function exposed by this FS.GG.UI package.
     val validate: report: LayoutReadinessReport -> LayoutReadinessValidationResult
+
+/// Public contract module exposed by this FS.GG.UI package.
+module CompositorReadiness =
+    /// Public contract function exposed by this FS.GG.UI package.
+    val statusText: status: CompositorReadinessStatus -> string
+    /// Public contract function exposed by this FS.GG.UI package.
+    val validate: report: CompositorReadinessReport -> CompositorReadinessValidationResult

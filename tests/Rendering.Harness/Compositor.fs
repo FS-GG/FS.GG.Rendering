@@ -8,6 +8,7 @@ module Compositor =
     let featureId = "147-compositor-damage-redraw"
     let feature148Id = "148-compositor-live-integration"
     let feature149Id = "149-complete-compositor-p7"
+    let feature152Id = "152-compositor-live-proof"
 
     let readinessDirectory = "specs/147-compositor-damage-redraw/readiness"
     let presentProofDirectory = Path.Combine(readinessDirectory, "present-proof")
@@ -35,6 +36,15 @@ module Compositor =
     let feature149CompatibilityLedgerPath = Path.Combine(feature149ReadinessDirectory, "compatibility-ledger.md")
     let feature149ValidationSummaryPath = Path.Combine(feature149ReadinessDirectory, "validation-summary.md")
     let feature149PackageVersion = "local-harness"
+
+    let feature152ReadinessDirectory = Path.Combine("specs", feature152Id, "readiness")
+    let feature152LiveProofDirectory = Path.Combine(feature152ReadinessDirectory, "live-proof")
+    let feature152ParityDirectory = Path.Combine(feature152ReadinessDirectory, "parity")
+    let feature152TimingDirectory = Path.Combine(feature152ReadinessDirectory, "timing")
+    let feature152FsiDirectory = Path.Combine(feature152ReadinessDirectory, "fsi")
+    let feature152CompatibilityLedgerPath = Path.Combine(feature152ReadinessDirectory, "compatibility-ledger.md")
+    let feature152ValidationSummaryPath = Path.Combine(feature152ReadinessDirectory, "validation-summary.md")
+    let feature152PackageVersion = "local-harness"
 
     type HostProfile =
         { ProfileId: string
@@ -278,6 +288,48 @@ module Compositor =
 
     let feature149TimingTiers = feature148TimingTiers
 
+    let feature152ScenarioIds =
+        [ "proof/live-sentinel-damage-v1"
+          "proof/capable-host-three-run"
+          "proof/unsupported-host-zero-accepted"
+          "proof/stale"
+          "proof/host-mismatch"
+          "proof/proof-method-mismatch"
+          "proof/missing-artifact"
+          "proof/blank-artifact"
+          "proof/synthetic-only"
+          "damage/localized-update"
+          "damage/no-change"
+          "damage/movement-old-new"
+          "damage/edge-clipped"
+          "damage/resize"
+          "damage/full-frame-invalidation"
+          "damage/invalid-damage"
+          "damage/unsupported"
+          "damage/resource-failure"
+          "damage/parity-failure"
+          "timing/localized-update"
+          "timing/no-change"
+          "timing/movement"
+          "timing/resize"
+          "timing/churn"
+          "readiness/final-decision"
+          "readiness/compatibility-ledger"
+          "readiness/package-validation" ]
+
+    let feature152TargetHostProfiles =
+        feature149TargetHostProfiles
+        @ [ { ProfileId = "feature152-capable-host-candidate"
+              Backend = "OpenGL"
+              Renderer = None
+              PresentMode = "DirectToSwapchain"
+              FramebufferSize = "640x480"
+              Scale = Some 1.0
+              DisplayEnvironment = "x11"
+              ProofAlgorithmVersion = "sentinel-damage-v1" } ]
+
+    let feature152TimingTiers = [ "damage" ]
+
     let private backendToken backend =
         match backend with
         | X11 -> "x11"
@@ -406,6 +458,7 @@ module Compositor =
     let artifactPath directory name = Path.Combine(directory, name)
     let feature148ArtifactPath directory name = Path.Combine(feature148ReadinessDirectory, directory, name)
     let feature149ArtifactPath directory name = Path.Combine(feature149ReadinessDirectory, directory, name)
+    let feature152ArtifactPath directory name = Path.Combine(feature152ReadinessDirectory, directory, name)
 
     let renderPresentProof proof =
         let renderer = proof.HostProfile.Renderer |> Option.defaultValue "unknown"
@@ -1061,4 +1114,196 @@ module Compositor =
               "- Environment-limited host observations are diagnostic only."
               "- Synthetic simulations are disclosed by name and comment and cannot satisfy live proof readiness."
               "- Capable-host timing is required before claiming snapshot or timing readiness."
+              "" ]
+
+    let renderFeature152LiveProof proof =
+        let renderer = proof.HostProfile.Renderer |> Option.defaultValue "unknown"
+        let scale = proof.HostProfile.Scale |> Option.map string |> Option.defaultValue "unknown"
+        let diagnostics =
+            match proof.Diagnostics with
+            | [] -> "- none"
+            | xs -> xs |> List.map (sprintf "- %s") |> String.concat "\n"
+
+        String.concat
+            "\n"
+            [ "# Feature 152 Live Proof Run Set"
+              ""
+              $"Proof: `{proof.ProofId}`"
+              $"Scenario: `{proof.ScenarioId}`"
+              $"Verdict: `{proofVerdictToken proof.Verdict}`"
+              $"Created: `{proof.CreatedAt:O}`"
+              ""
+              "## Host Profile"
+              ""
+              $"- Profile: `{proof.HostProfile.ProfileId}`"
+              $"- Backend: `{proof.HostProfile.Backend}`"
+              $"- Renderer: `{renderer}`"
+              $"- Present mode: `{proof.HostProfile.PresentMode}`"
+              $"- Framebuffer: `{proof.HostProfile.FramebufferSize}`"
+              $"- Scale: `{scale}`"
+              $"- Environment: `{proof.HostProfile.DisplayEnvironment}`"
+              $"- Algorithm: `{proof.HostProfile.ProofAlgorithmVersion}`"
+              $"- Package version: `{feature152PackageVersion}`"
+              ""
+              "## Required Artifacts"
+              ""
+              "- `run-1/proof.md`, `run-2/proof.md`, `run-3/proof.md`: three fresh matching capable-host attempts."
+              "- `sentinel-frame.*`: first full-frame sentinel artifact for each attempt."
+              "- `damage-frame.*`: scissored damage/no-clear artifact for each attempt."
+              "- `unsupported/README.md`: unsupported-host record with zero accepted artifacts."
+              ""
+              "## Acceptance Gate"
+              ""
+              "- Accepted partial redraw requires three fresh matching capable-host runs for the same host profile and proof method."
+              "- Missing, stale, blank, synthetic-only, failed, environment-limited, host-mismatched, or proof-method-mismatched evidence fails closed."
+              "- Unsupported hosts record `environment-limited` and zero accepted partial-redraw artifacts."
+              ""
+              "## Evidence Artifacts"
+              ""
+              renderArtifacts proof.EvidenceArtifacts
+              ""
+              "## Diagnostics"
+              ""
+              diagnostics
+              "" ]
+
+    let renderFeature152ParityReport () =
+        let rows =
+            feature152ScenarioIds
+            |> List.filter (fun scenario -> scenario.StartsWith("damage/", StringComparison.Ordinal))
+            |> List.map (fun scenario ->
+                let verdict =
+                    match scenario with
+                    | "damage/unsupported" -> "environment-limited"
+                    | "damage/resource-failure" -> "fallback"
+                    | "damage/parity-failure" -> "rejected"
+                    | "damage/resize"
+                    | "damage/full-frame-invalidation"
+                    | "damage/invalid-damage" -> "full-redraw-fallback"
+                    | _ -> "requires-same-profile-live-proof"
+                $"| `{scenario}` | {verdict} |")
+            |> String.concat "\n"
+
+        String.concat
+            "\n"
+            [ "# Feature 152 Damage-Scoped Live Parity"
+              ""
+              "| Scenario | Verdict |"
+              "|----------|---------|"
+              rows
+              ""
+              "Damage-scoped output can be accepted only after the same host profile has an accepted three-run proof set."
+              "Resize, full invalidation, invalid damage, unsupported hosts, resource failure, and parity failure route to full redraw or another recorded safe fallback."
+              "" ]
+
+    let renderFeature152TimingReport tier =
+        let normalized =
+            if feature152TimingTiers |> List.contains tier then tier else "damage"
+
+        String.concat
+            "\n"
+            [ "# Feature 152 Timing Claim Decision"
+              ""
+              $"Tier: `{normalized}`"
+              "Baseline: `full-redraw oracle`"
+              "Threshold policy: predeclared benefit/noise policy required before any performance claim is accepted."
+              "Required corpus: at least 5 representative live scenarios."
+              "Required repetitions: at least 5 comparable repetitions per scenario."
+              "Snapshot/reuse context: context-only unless same-profile live timing exists."
+              ""
+              "Verdict: `environment-limited`"
+              ""
+              "No compositor performance claim is accepted from synthetic, incomplete, noisy, non-beneficial, or environment-limited timing evidence."
+              "" ]
+
+    let renderFeature152ValidationSummary model =
+        let tierRows =
+            [ PresentProofTier, "Live proof", Limited "three fresh matching capable-host proof attempts are missing"
+              DamageScissorTier, "Damage scissor", Limited "same-profile accepted proof and live parity are missing"
+              PlacementReuseTier, "Reuse context", Skipped "reuse evidence is context-only for Feature 152 timing"
+              ReplayTier, "Replay context", Skipped "replay evidence is context-only for Feature 152 timing"
+              SnapshotTier, "Timing claim", Limited "same-profile capable-host timing is missing" ]
+            |> List.map (fun (tier, name, defaultVerdict) ->
+                let verdict = model.TierVerdicts |> Map.tryFind tier |> Option.defaultValue defaultVerdict
+                $"| {name} | {tierVerdictToken verdict} | {verdictReason verdict} |")
+            |> String.concat "\n"
+
+        let proofRows =
+            match model.Proofs with
+            | [] -> "| none | environment-limited | missing capable-host live proof |"
+            | proofs ->
+                proofs
+                |> List.map (fun proof -> $"| `{proof.ProofId}` | {proofVerdictToken proof.Verdict} | `{proof.HostProfile.ProfileId}` |")
+                |> String.concat "\n"
+
+        String.concat
+            "\n"
+            [ "# Feature 152 P7 Readiness Summary"
+              ""
+              "Status: `environment-limited`"
+              "Performance claim: `environment-limited`"
+              ""
+              "## Tier Verdicts"
+              ""
+              "| Tier | Verdict | Reason |"
+              "|------|---------|--------|"
+              tierRows
+              "| Compatibility | ready | public diagnostic and readiness vocabulary impact is documented |"
+              "| Regression | ready | focused adjacent readiness verdicts are recorded or explicitly limited |"
+              ""
+              "## Live Proof"
+              ""
+              "| Proof | Verdict | Host Profile |"
+              "|-------|---------|--------------|"
+              proofRows
+              ""
+              "## Evidence Links"
+              ""
+              "- Live proof: `live-proof/README.md`"
+              "- Unsupported host: `live-proof/unsupported/README.md`"
+              "- Damage parity: `parity/README.md`"
+              "- Timing: `timing/README.md`"
+              "- Compatibility: `compatibility-ledger.md`"
+              "- Package validation: `package-validation.md`"
+              "- Regression validation: `regression-validation.md`"
+              ""
+              "## Limitations"
+              ""
+              "- This run is environment-limited in the current host and records zero accepted partial-redraw artifacts."
+              "- Partial redraw remains fallback-gated until three fresh matching capable-host attempts and same-profile parity pass."
+              "- No compositor performance claim is accepted without same-profile live timing."
+              "" ]
+
+    let renderFeature152CompatibilityLedger (model: ReadinessModel) =
+        ignore model
+        String.concat
+            "\n"
+            [ "# Feature 152 Compatibility Ledger"
+              ""
+              "## Public Metrics and Diagnostics"
+              ""
+              "- `CompositorProof` adds accepted proof-set vocabulary for three-run capable-host acceptance."
+              "- `FS.GG.UI.Testing.CompositorReadiness` exposes consumer-facing readiness validation status vocabulary."
+              "- Existing fallback behavior remains safe: unsupported, missing, stale, synthetic, mismatched, failed, invalid-damage, or parity-failed evidence keeps full redraw."
+              ""
+              "## Baseline References"
+              ""
+              "- `readiness/surface-baselines/FS.GG.UI.SkiaViewer.txt` records proof-set surface exposure."
+              "- `readiness/surface-baselines/FS.GG.UI.Testing.txt` records consumer readiness helper exposure."
+              "- `readiness/surface-baselines/FS.GG.UI.Controls.txt` and `readiness/surface-baselines/FS.GG.UI.Controls.Elmish.txt` remain regression references."
+              ""
+              "## Release Notes Draft"
+              ""
+              "- P7 live partial redraw is accepted only from a three-run same-profile live proof set plus same-profile parity."
+              "- Current environment-limited evidence records no partial-redraw or performance acceptance."
+              ""
+              "## Migration Guidance"
+              ""
+              "- Consumers should treat `environment-limited`, `fallback-gated`, `failed`, and `missing-evidence` as non-accepting readiness states."
+              "- Existing hosts continue to full-redraw unless the readiness summary records accepted proof and parity evidence."
+              ""
+              "## Limitations"
+              ""
+              "- Synthetic simulations are failure-path tests only and cannot accept live proof."
+              "- Capable-host timing remains required for any performance claim."
               "" ]

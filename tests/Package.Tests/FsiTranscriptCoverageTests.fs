@@ -32,6 +32,9 @@ let feature148TranscriptPath name =
 let feature149TranscriptPath name =
     repositoryPath $"specs/149-complete-compositor-p7/readiness/fsi/{name}"
 
+let feature152TranscriptPath name =
+    repositoryPath $"specs/152-compositor-live-proof/readiness/fsi/{name}"
+
 let feature150TranscriptPath name =
     repositoryPath $"specs/150-intrinsic-layout-protocol/readiness/fsi/{name}"
 
@@ -58,6 +61,11 @@ let readFeature148Transcript name =
 let readFeature149Transcript name =
     let path = feature149TranscriptPath name
     Expect.isTrue (File.Exists path) $"Feature149 FSI transcript evidence exists at {path}"
+    File.ReadAllText path
+
+let readFeature152Transcript name =
+    let path = feature152TranscriptPath name
+    Expect.isTrue (File.Exists path) $"Feature152 FSI transcript evidence exists at {path}"
     File.ReadAllText path
 
 let readFeature150Transcript name =
@@ -201,6 +209,22 @@ let fsiTranscriptCoverageTests =
 
             let log = readFeature149Transcript "compositor-readiness-authoring.log"
             Expect.stringContains log "FSI transcript PASS" "Feature149 transcript log records passing coverage"
+        }
+
+        test "Feature152 transcripts cover proof-set and readiness helper authoring" {
+            let transcript = readFeature152Transcript "compositor-live-proof-authoring.fsx"
+
+            [ "FS.GG.UI.SkiaViewer"
+              "CompositorProof.LiveProofAttempt"
+              "CompositorProof.evaluateProofSet"
+              "CompositorProof.ProofSetReadiness"
+              "FS.GG.UI.Testing"
+              "CompositorReadiness.statusText"
+              "CompositorReadiness.validate" ]
+            |> List.iter (fun required -> Expect.stringContains transcript required $"Feature152 transcript includes {required}")
+
+            let log = readFeature152Transcript "compositor-live-proof-authoring.log"
+            Expect.stringContains log "FSI transcript PASS" "Feature152 transcript log records passing coverage"
         }
 
         test "Feature150 transcript covers intrinsic layout and readiness authoring" {

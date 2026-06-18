@@ -31,6 +31,10 @@
     <Compile Include="Feature149SnapshotEvidenceTests.fs" />
     <Compile Include="Feature149TimingEvidenceTests.fs" />
     <Compile Include="Feature149ReadinessPackageTests.fs" />
+    <Compile Include="Feature152LiveProofEvidenceTests.fs" />
+    <Compile Include="Feature152DamageParityTests.fs" />
+    <Compile Include="Feature152TimingEvidenceTests.fs" />
+    <Compile Include="Feature152ReadinessPackageTests.fs" />
     <Compile Include="Feature151RenderAnywhereRegressionTests.fs" />
     <Compile Include="Feature151TextShapingRegressionTests.fs" />
     <Compile Include="Feature151CompositorReadinessRegressionTests.fs" />

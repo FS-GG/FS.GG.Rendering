@@ -42,6 +42,8 @@ coverage/
 # Per-feature readiness evidence is transient test output (written by the Feature0xx tests
 # into specs/<feature>/readiness/); regenerated on every run, never committed.
 specs/*/readiness/
+!specs/152-compositor-live-proof/readiness/
+!specs/152-compositor-live-proof/readiness/**
 
 # macOS / Linux cruft
 .DS_Store

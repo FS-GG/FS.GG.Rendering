@@ -18,6 +18,7 @@
     <Compile Include="Feature149CompatibilityLedgerTests.fs" />
     <Compile Include="Feature150CompatibilityLedgerTests.fs" />
     <Compile Include="Feature151CompatibilityLedgerTests.fs" />
+    <Compile Include="Feature152CompatibilityLedgerTests.fs" />
     <Compile Include="Feature151PackageValidationTests.fs" />
     <Compile Include="Feature128DesignSystemTemplateTests.fs" />
     <Compile Include="Tests.fs" />

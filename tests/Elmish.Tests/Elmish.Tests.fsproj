@@ -50,6 +50,7 @@
     <Compile Include="Feature149CompositorMetricsTests.fs" />
     <Compile Include="Feature150LayoutMetricsTests.fs" />
     <Compile Include="Feature151LayoutRegressionMetricsTests.fs" />
+    <Compile Include="Feature152CompositorMetricsTests.fs" />
     <Compile Include="Audit_DamageTracking.fs" />
     <Compile Include="Audit_Virtualization.fs" />
     <Compile Include="Audit_AnimationTickGating.fs" />

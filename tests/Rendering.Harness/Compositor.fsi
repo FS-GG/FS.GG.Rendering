@@ -8,6 +8,7 @@ module Compositor =
     val featureId: string
     val feature148Id: string
     val feature149Id: string
+    val feature152Id: string
 
     val readinessDirectory: string
     val presentProofDirectory: string
@@ -35,6 +36,15 @@ module Compositor =
     val feature149CompatibilityLedgerPath: string
     val feature149ValidationSummaryPath: string
     val feature149PackageVersion: string
+
+    val feature152ReadinessDirectory: string
+    val feature152LiveProofDirectory: string
+    val feature152ParityDirectory: string
+    val feature152TimingDirectory: string
+    val feature152FsiDirectory: string
+    val feature152CompatibilityLedgerPath: string
+    val feature152ValidationSummaryPath: string
+    val feature152PackageVersion: string
 
     type HostProfile =
         { ProfileId: string
@@ -115,6 +125,9 @@ module Compositor =
     val feature149ScenarioIds: string list
     val feature149TargetHostProfiles: HostProfile list
     val feature149TimingTiers: string list
+    val feature152ScenarioIds: string list
+    val feature152TargetHostProfiles: HostProfile list
+    val feature152TimingTiers: string list
 
     val hostProfileFromFacts: facts: ProbeFacts -> HostProfile
     val proofVerdictToken: verdict: ProofVerdict -> string
@@ -133,6 +146,7 @@ module Compositor =
     val artifactPath: directory: string -> name: string -> string
     val feature148ArtifactPath: directory: string -> name: string -> string
     val feature149ArtifactPath: directory: string -> name: string -> string
+    val feature152ArtifactPath: directory: string -> name: string -> string
     val renderPresentProof: proof: PresentProof -> string
     val renderValidationSummary: model: ReadinessModel -> string
     val renderCompatibilityLedger: model: ReadinessModel -> string
@@ -150,3 +164,8 @@ module Compositor =
     val renderFeature149TimingReport: tier: string -> string
     val renderFeature149ValidationSummary: model: ReadinessModel -> string
     val renderFeature149CompatibilityLedger: model: ReadinessModel -> string
+    val renderFeature152LiveProof: proof: PresentProof -> string
+    val renderFeature152ParityReport: unit -> string
+    val renderFeature152TimingReport: tier: string -> string
+    val renderFeature152ValidationSummary: model: ReadinessModel -> string
+    val renderFeature152CompatibilityLedger: model: ReadinessModel -> string

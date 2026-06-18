@@ -1,3 +1,9 @@
+FS.GG.UI.Testing.CompositorReadiness
+FS.GG.UI.Testing.CompositorReadinessEvidence
+FS.GG.UI.Testing.CompositorReadinessReport
+FS.GG.UI.Testing.CompositorReadinessStatus
+FS.GG.UI.Testing.CompositorReadinessStatus+Tags
+FS.GG.UI.Testing.CompositorReadinessValidationResult
 FS.GG.UI.Testing.DefaultTextGlyphEvidence
 FS.GG.UI.Testing.DefaultTextGlyphEvidenceCheck
 FS.GG.UI.Testing.DefaultTextGlyphEvidenceValidationResult

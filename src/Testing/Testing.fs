@@ -344,6 +344,38 @@ type LayoutReadinessValidationResult =
       BlockingLimitations: string list
       Diagnostics: string list }
 
+type CompositorReadinessStatus =
+    | CompositorReadinessAccepted
+    | CompositorReadinessFallbackGated
+    | CompositorReadinessFailed
+    | CompositorReadinessEnvironmentLimited
+    | CompositorReadinessMissingEvidence
+    | CompositorReadinessCompatibilityBlocked
+
+type CompositorReadinessEvidence =
+    { EvidenceName: string
+      EvidencePath: string option
+      EvidenceStatus: CompositorReadinessStatus
+      EvidenceRequired: bool
+      EvidenceDiagnostics: string list }
+
+type CompositorReadinessReport =
+    { Feature: string
+      ProofStatus: CompositorReadinessStatus
+      ParityStatus: CompositorReadinessStatus
+      TimingStatus: CompositorReadinessStatus
+      CompatibilityStatus: CompositorReadinessStatus
+      RegressionStatus: CompositorReadinessStatus
+      Evidence: CompositorReadinessEvidence list
+      Limitations: string list }
+
+type CompositorReadinessValidationResult =
+    { Accepted: bool
+      Status: CompositorReadinessStatus
+      MissingEvidence: string list
+      BlockingLimitations: string list
+      Diagnostics: string list }
+
 module GeneratedProductAssertions =
     let summarize expectation =
         let packages =
@@ -1414,7 +1446,7 @@ module LayoutReadiness =
         | LayoutReadinessEnvironmentLimited -> false
         | _ -> true
 
-    let validate (report: LayoutReadinessReport) =
+    let validate (report: LayoutReadinessReport) : LayoutReadinessValidationResult =
         let requiredStatuses =
             [ "contract", report.ContractStatus
               "scroll-viewer", report.ScrollViewerStatus
@@ -1470,6 +1502,79 @@ module LayoutReadiness =
                 LayoutReadinessAccepted
 
         { Accepted = status = LayoutReadinessAccepted
+          Status = status
+          MissingEvidence = missingEvidence
+          BlockingLimitations = blockingLimitations
+          Diagnostics = diagnostics }
+
+module CompositorReadiness =
+    let statusText status =
+        match status with
+        | CompositorReadinessAccepted -> "accepted"
+        | CompositorReadinessFallbackGated -> "fallback-gated"
+        | CompositorReadinessFailed -> "failed"
+        | CompositorReadinessEnvironmentLimited -> "environment-limited"
+        | CompositorReadinessMissingEvidence -> "missing-evidence"
+        | CompositorReadinessCompatibilityBlocked -> "compatibility-blocked"
+
+    let private blocksCorrectness status =
+        match status with
+        | CompositorReadinessAccepted -> false
+        | _ -> true
+
+    let validate (report: CompositorReadinessReport) : CompositorReadinessValidationResult =
+        let requiredStatuses =
+            [ "proof", report.ProofStatus
+              "parity", report.ParityStatus
+              "compatibility", report.CompatibilityStatus
+              "regression", report.RegressionStatus ]
+
+        let missingEvidence =
+            report.Evidence
+            |> List.choose (fun evidence ->
+                if evidence.EvidenceRequired && (evidence.EvidencePath.IsNone || evidence.EvidenceStatus = CompositorReadinessMissingEvidence) then
+                    Some evidence.EvidenceName
+                else
+                    None)
+
+        let blockedStatus =
+            requiredStatuses
+            |> List.filter (snd >> blocksCorrectness)
+            |> List.map (fun (name, status) -> $"{name}:{statusText status}")
+
+        let blockingLimitations =
+            report.Limitations
+            |> List.filter (fun item -> item.Contains("blocking", StringComparison.OrdinalIgnoreCase))
+
+        let diagnostics =
+            [ if String.IsNullOrWhiteSpace report.Feature then
+                  "compositor readiness report must name the feature"
+              for missing in missingEvidence do
+                  $"missing required compositor readiness evidence: {missing}"
+              for status in blockedStatus do
+                  $"blocking compositor readiness status: {status}"
+              if report.TimingStatus <> CompositorReadinessAccepted then
+                  $"timing claim status: {statusText report.TimingStatus}"
+              for limitation in blockingLimitations do
+                  $"blocking compositor readiness limitation: {limitation}"
+              for evidence in report.Evidence do
+                  yield! evidence.EvidenceDiagnostics ]
+
+        let status =
+            if not missingEvidence.IsEmpty then
+                CompositorReadinessMissingEvidence
+            elif report.CompatibilityStatus = CompositorReadinessCompatibilityBlocked then
+                CompositorReadinessCompatibilityBlocked
+            elif report.ProofStatus = CompositorReadinessEnvironmentLimited then
+                CompositorReadinessEnvironmentLimited
+            elif requiredStatuses |> List.exists (snd >> (=) CompositorReadinessFailed) then
+                CompositorReadinessFailed
+            elif not blockedStatus.IsEmpty || not blockingLimitations.IsEmpty then
+                CompositorReadinessFallbackGated
+            else
+                CompositorReadinessAccepted
+
+        { Accepted = status = CompositorReadinessAccepted
           Status = status
           MissingEvidence = missingEvidence
           BlockingLimitations = blockingLimitations

@@ -65,6 +65,37 @@ module CompositorProof =
           CreatedAt: DateTimeOffset
           Diagnostics: string list }
 
+    /// Feature 152 artifact quality gate for one live proof attempt.
+    type ProofArtifactQuality =
+        { Present: bool
+          Decodable: bool
+          NonBlank: bool
+          Fresh: bool
+          Synthetic: bool }
+
+    /// Feature 152 accepted-set candidate. Synthetic attempts are allowed only for rejection tests.
+    type LiveProofAttempt =
+        { AttemptId: string
+          Proof: PresentProof
+          ProofMethod: string
+          ArtifactQuality: ProofArtifactQuality }
+
+    /// Feature 152 accepted run set that unlocks a same-profile live partial-redraw claim.
+    type AcceptedProofSet =
+        { ProofSetId: string
+          HostProfile: HostProfile
+          ProofMethod: string
+          Attempts: LiveProofAttempt list
+          AcceptedAt: DateTimeOffset
+          Diagnostics: string list }
+
+    [<RequireQualifiedAccess>]
+    type ProofSetReadiness =
+        | Accepted of AcceptedProofSet
+        | FallbackGated of reason: string
+        | Failed of reason: string
+        | EnvironmentLimited of reason: string
+
     [<RequireQualifiedAccess>]
     type ProofReadiness =
         | Ready
@@ -109,10 +140,20 @@ module CompositorProof =
     val verdictToken: verdict: PresentProofVerdict -> string
     val readinessToken: readiness: ProofReadiness -> string
     val failureCauseText: cause: PresentProofFailureCause -> string
+    val proofSetReadinessToken: readiness: ProofSetReadiness -> string
+    val artifactQualityAccepted: quality: ProofArtifactQuality -> bool
+    val artifactQualityFailure: quality: ProofArtifactQuality -> string option
     val proofMatchesHost: active: HostProfile -> proof: PresentProof -> bool
     val proofIsFresh: now: DateTimeOffset -> maxAge: TimeSpan -> proof: PresentProof -> bool
     val readiness: active: HostProfile -> now: DateTimeOffset -> maxAge: TimeSpan -> proof: PresentProof option -> ProofReadiness
+    val evaluateProofSet:
+        active: HostProfile ->
+        now: DateTimeOffset ->
+        maxAge: TimeSpan ->
+        attempts: LiveProofAttempt list ->
+            ProofSetReadiness
     val classifyObservations: observations: PresentProofObservation list -> PresentProofVerdict
     val init: unit -> Model * Effect list
     val update: now: DateTimeOffset -> outputPath: string -> msg: Msg -> model: Model -> Model * Effect list
     val renderProof: proof: PresentProof -> string
+    val renderProofSet: readiness: ProofSetReadiness -> string

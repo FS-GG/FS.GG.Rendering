@@ -1,4 +1,5 @@
 FS.GG.UI.SkiaViewer.CompositorProof
+FS.GG.UI.SkiaViewer.CompositorProof+AcceptedProofSet
 FS.GG.UI.SkiaViewer.CompositorProof+Effect
 FS.GG.UI.SkiaViewer.CompositorProof+Effect+PresentDamageFrame
 FS.GG.UI.SkiaViewer.CompositorProof+Effect+PresentSentinelFrame
@@ -7,6 +8,7 @@ FS.GG.UI.SkiaViewer.CompositorProof+Effect+WriteProofArtifact
 FS.GG.UI.SkiaViewer.CompositorProof+HostDisplayEnvironment
 FS.GG.UI.SkiaViewer.CompositorProof+HostDisplayEnvironment+Tags
 FS.GG.UI.SkiaViewer.CompositorProof+HostProfile
+FS.GG.UI.SkiaViewer.CompositorProof+LiveProofAttempt
 FS.GG.UI.SkiaViewer.CompositorProof+Model
 FS.GG.UI.SkiaViewer.CompositorProof+Msg
 FS.GG.UI.SkiaViewer.CompositorProof+Msg+ArtifactWritten
@@ -25,12 +27,19 @@ FS.GG.UI.SkiaViewer.CompositorProof+PresentProofVerdict
 FS.GG.UI.SkiaViewer.CompositorProof+PresentProofVerdict+PresentProofEnvironmentLimited
 FS.GG.UI.SkiaViewer.CompositorProof+PresentProofVerdict+PresentProofFailed
 FS.GG.UI.SkiaViewer.CompositorProof+PresentProofVerdict+Tags
+FS.GG.UI.SkiaViewer.CompositorProof+ProofArtifactQuality
 FS.GG.UI.SkiaViewer.CompositorProof+ProofPhase
 FS.GG.UI.SkiaViewer.CompositorProof+ProofPhase+Tags
 FS.GG.UI.SkiaViewer.CompositorProof+ProofReadiness
 FS.GG.UI.SkiaViewer.CompositorProof+ProofReadiness+EnvironmentLimited
 FS.GG.UI.SkiaViewer.CompositorProof+ProofReadiness+Failed
 FS.GG.UI.SkiaViewer.CompositorProof+ProofReadiness+Tags
+FS.GG.UI.SkiaViewer.CompositorProof+ProofSetReadiness
+FS.GG.UI.SkiaViewer.CompositorProof+ProofSetReadiness+Accepted
+FS.GG.UI.SkiaViewer.CompositorProof+ProofSetReadiness+EnvironmentLimited
+FS.GG.UI.SkiaViewer.CompositorProof+ProofSetReadiness+Failed
+FS.GG.UI.SkiaViewer.CompositorProof+ProofSetReadiness+FallbackGated
+FS.GG.UI.SkiaViewer.CompositorProof+ProofSetReadiness+Tags
 FS.GG.UI.SkiaViewer.EvidenceWorkflowEffect
 FS.GG.UI.SkiaViewer.EvidenceWorkflowEffect+CaptureViewerScreenshot
 FS.GG.UI.SkiaViewer.EvidenceWorkflowEffect+LaunchViewerForEvidence
