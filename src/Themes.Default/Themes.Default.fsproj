@@ -5,7 +5,7 @@
     <IsPackable>true</IsPackable>
     <PackageId>FS.GG.UI.Themes.Default</PackageId>
     <AssemblyName>FS.GG.UI.Themes.Default</AssemblyName>
-    <Version>0.1.19-preview.1</Version>
+    <Version>0.1.20-preview.1</Version>
     <Title>FS.GG.UI.Themes.Default</Title>
     <Description>The default Light/Dark theme layer: the Theme value module, the ThemeMode/RolePalette/Theming mode+accent derivation, and the DTCG token source. Depends only on FS.GG.UI.DesignSystem.</Description>
     <PackageTags>fsharp;skia;theme;design-tokens;light;dark</PackageTags>
