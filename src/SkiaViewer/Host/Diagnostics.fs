@@ -126,3 +126,7 @@ module Diagnostics =
 
     let startupFailed stage detail =
         create DiagnosticSeverity.Fatal stage "OpenGL initialization failed. The viewer has no fallback renderer." (Some detail)
+
+    let damageScopedDecision (decision: string) reason =
+        let cause = reason |> Option.filter (String.IsNullOrWhiteSpace >> not)
+        create DiagnosticSeverity.Info DiagnosticStage.Framebuffer $"Feature157 damage render decision: {decision}." cause

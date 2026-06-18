@@ -1,0 +1,9 @@
+# Feature 157 Parity
+
+Scenario: `damage/nested-retained`
+Attempt: `feature157-readiness-005-damage-nested-retained`
+Parity status: `accepted`
+Preserved-pixel evidence: `preserved pixels outside damage matched sentinel/full-redraw oracle`
+Damaged-pixel evidence: `damaged pixels updated inside validated damage region`
+
+Accepted parity requires zero unexplained drift outside damage and expected updates inside damage.

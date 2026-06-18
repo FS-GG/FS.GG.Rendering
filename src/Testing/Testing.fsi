@@ -468,6 +468,42 @@ type CompositorTimingSummaryValidationResult =
       RejectedScenarios: string list
       Diagnostics: string list }
 
+/// Feature 157 damage-scoped correctness readiness status.
+type CompositorDamageReadinessStatus =
+    | CompositorDamageAccepted
+    | CompositorDamageFallbackOnly
+    | CompositorDamageRejected
+    | CompositorDamageEnvironmentLimited
+
+/// Feature 157 scenario-level damage evidence used by package checks.
+type CompositorDamageScenarioEvidence =
+    { ScenarioId: string
+      Status: CompositorDamageReadinessStatus
+      AcceptedAttemptCount: int
+      ArtifactPaths: string list
+      FallbackReason: string option }
+
+/// Feature 157 package-visible readiness check.
+type CompositorDamageReadinessCheck =
+    { Feature: string
+      RequiredScenarioIds: string list
+      Scenarios: CompositorDamageScenarioEvidence list
+      AcceptedAttemptCount: int
+      UnsupportedHostStatus: CompositorDamageReadinessStatus
+      AcceptedPartialRedrawArtifacts: int
+      CompatibilityAccepted: bool
+      PackageAccepted: bool
+      RegressionAccepted: bool
+      PerformanceClaim: string
+      Limitations: string list }
+
+/// Feature 157 readiness validation result.
+type CompositorDamageReadinessValidationResult =
+    { Accepted: bool
+      Status: CompositorDamageReadinessStatus
+      MissingScenarios: string list
+      Diagnostics: string list }
+
 /// Public contract module exposed by this FS.GG.UI package.
 module GeneratedProductAssertions =
     /// Public contract function exposed by this FS.GG.UI package.
@@ -568,3 +604,10 @@ module CompositorTimingAssertions =
     val verdictText: verdict: CompositorTimingVerdict -> string
     /// Public contract function exposed by this FS.GG.UI package.
     val validateSummary: check: CompositorTimingSummaryCheck -> CompositorTimingSummaryValidationResult
+
+/// Feature 157 damage-scoped readiness helper.
+module CompositorDamageReadiness =
+    /// Feature 157: stable status token for readiness summaries.
+    val statusText: status: CompositorDamageReadinessStatus -> string
+    /// Feature 157: validate accepted, fallback-only, rejected, and environment-limited damage packages.
+    val validate: check: CompositorDamageReadinessCheck -> CompositorDamageReadinessValidationResult

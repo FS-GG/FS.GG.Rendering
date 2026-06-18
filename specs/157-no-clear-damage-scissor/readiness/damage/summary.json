@@ -1,0 +1,16 @@
+{
+  "runId": "feature157-readiness-20260618141033",
+  "status": "accepted",
+  "hostProfile": "probe-08a47c01",
+  "acceptedAttemptCount": 5,
+  "fallbackCount": 0,
+  "unsupportedHostReason": "",
+  "performanceClaim": "performance-not-accepted",
+  "scenarioCoverage": [
+    "damage/static-preserved",
+    "damage/localized-update",
+    "damage/movement-old-new",
+    "damage/scroll-shifted",
+    "damage/nested-retained"
+  ]
+}

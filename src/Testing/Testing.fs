@@ -411,6 +411,38 @@ type CompositorTimingSummaryValidationResult =
       RejectedScenarios: string list
       Diagnostics: string list }
 
+type CompositorDamageReadinessStatus =
+    | CompositorDamageAccepted
+    | CompositorDamageFallbackOnly
+    | CompositorDamageRejected
+    | CompositorDamageEnvironmentLimited
+
+type CompositorDamageScenarioEvidence =
+    { ScenarioId: string
+      Status: CompositorDamageReadinessStatus
+      AcceptedAttemptCount: int
+      ArtifactPaths: string list
+      FallbackReason: string option }
+
+type CompositorDamageReadinessCheck =
+    { Feature: string
+      RequiredScenarioIds: string list
+      Scenarios: CompositorDamageScenarioEvidence list
+      AcceptedAttemptCount: int
+      UnsupportedHostStatus: CompositorDamageReadinessStatus
+      AcceptedPartialRedrawArtifacts: int
+      CompatibilityAccepted: bool
+      PackageAccepted: bool
+      RegressionAccepted: bool
+      PerformanceClaim: string
+      Limitations: string list }
+
+type CompositorDamageReadinessValidationResult =
+    { Accepted: bool
+      Status: CompositorDamageReadinessStatus
+      MissingScenarios: string list
+      Diagnostics: string list }
+
 module GeneratedProductAssertions =
     let summarize expectation =
         let packages =
@@ -1712,4 +1744,98 @@ module CompositorTimingAssertions =
           Verdict = verdict
           MissingScenarios = missingScenarios
           RejectedScenarios = rejectedScenarios
+          Diagnostics = diagnostics }
+
+module CompositorDamageReadiness =
+    let statusText status =
+        match status with
+        | CompositorDamageAccepted -> "accepted"
+        | CompositorDamageFallbackOnly -> "fallback-only"
+        | CompositorDamageRejected -> "rejected"
+        | CompositorDamageEnvironmentLimited -> "environment-limited"
+
+    let private statusBlocksAcceptance status =
+        match status with
+        | CompositorDamageAccepted -> false
+        | _ -> true
+
+    let validate (check: CompositorDamageReadinessCheck) : CompositorDamageReadinessValidationResult =
+        let missingScenarios =
+            check.RequiredScenarioIds
+            |> List.filter (fun scenario ->
+                check.Scenarios |> List.exists (fun candidate -> candidate.ScenarioId = scenario) |> not)
+
+        let requiredScenarioResults =
+            check.RequiredScenarioIds
+            |> List.choose (fun scenario ->
+                check.Scenarios |> List.tryFind (fun candidate -> candidate.ScenarioId = scenario))
+
+        let missingArtifacts =
+            requiredScenarioResults
+            |> List.choose (fun scenario ->
+                if List.isEmpty scenario.ArtifactPaths then Some scenario.ScenarioId else None)
+
+        let scenarioFailures =
+            requiredScenarioResults
+            |> List.choose (fun scenario ->
+                if statusBlocksAcceptance scenario.Status then
+                    Some $"{scenario.ScenarioId}:{statusText scenario.Status}"
+                else
+                    None)
+
+        let fallbackOnly =
+            requiredScenarioResults.Length = check.RequiredScenarioIds.Length
+            && requiredScenarioResults |> List.forall (fun scenario -> scenario.Status = CompositorDamageFallbackOnly)
+
+        let environmentLimited =
+            requiredScenarioResults |> List.exists (fun scenario -> scenario.Status = CompositorDamageEnvironmentLimited)
+
+        let unsupportedArtifactViolation =
+            check.AcceptedPartialRedrawArtifacts <> 0
+            && check.UnsupportedHostStatus = CompositorDamageEnvironmentLimited
+
+        let diagnostics =
+            [ if String.IsNullOrWhiteSpace check.Feature then
+                  "damage readiness check must name the feature"
+              for scenario in missingScenarios do
+                  $"missing required damage scenario: {scenario}"
+              for scenario in missingArtifacts do
+                  $"missing damage artifact path: {scenario}"
+              for failure in scenarioFailures do
+                  $"non-accepted damage scenario: {failure}"
+              if check.AcceptedAttemptCount < 3 && not fallbackOnly && not environmentLimited then
+                  "accepted damage readiness requires at least three accepted attempts"
+              if unsupportedArtifactViolation then
+                  "unsupported-host evidence must contain zero accepted partial-redraw artifacts"
+              if not check.CompatibilityAccepted then
+                  "compatibility ledger is not accepted"
+              if not check.PackageAccepted then
+                  "package validation is not accepted"
+              if not check.RegressionAccepted then
+                  "regression validation is not accepted"
+              if check.PerformanceClaim <> "performance-not-accepted" then
+                  "Feature 157 cannot accept the shipped P7 performance claim by itself"
+              for limitation in check.Limitations do
+                  if limitation.Contains("blocking", StringComparison.OrdinalIgnoreCase) then
+                      $"blocking damage readiness limitation: {limitation}" ]
+
+        let status =
+            if environmentLimited || unsupportedArtifactViolation then
+                CompositorDamageEnvironmentLimited
+            elif not missingScenarios.IsEmpty || not missingArtifacts.IsEmpty then
+                CompositorDamageRejected
+            elif requiredScenarioResults |> List.exists (fun scenario -> scenario.Status = CompositorDamageRejected) then
+                CompositorDamageRejected
+            elif fallbackOnly then
+                CompositorDamageFallbackOnly
+            elif diagnostics.IsEmpty
+                 && check.AcceptedAttemptCount >= 3
+                 && requiredScenarioResults |> List.forall (fun scenario -> scenario.Status = CompositorDamageAccepted) then
+                CompositorDamageAccepted
+            else
+                CompositorDamageFallbackOnly
+
+        { Accepted = status = CompositorDamageAccepted && diagnostics.IsEmpty
+          Status = status
+          MissingScenarios = missingScenarios
           Diagnostics = diagnostics }

@@ -131,3 +131,5 @@ module Diagnostics =
     val shutdownFailed: detail: string -> RenderDiagnostic
     /// Public contract function exposed by this FS.GG.UI package.
     val startupFailed: stage: DiagnosticStage -> detail: string -> RenderDiagnostic
+    /// Feature 157: frame diagnostic for no-clear damage-scoped decisions and fallback reasons.
+    val damageScopedDecision: decision: string -> reason: string option -> RenderDiagnostic

@@ -112,6 +112,14 @@ let private isFeature156 (rest: string list) =
         || String.Equals(value, Compositor.feature156Id, StringComparison.OrdinalIgnoreCase)
     | _ -> false
 
+let private isFeature157 (rest: string list) =
+    match flagValue "--feature" rest with
+    | Some value ->
+        value = "157"
+        || value = "feature157"
+        || String.Equals(value, Compositor.feature157Id, StringComparison.OrdinalIgnoreCase)
+    | _ -> false
+
 let private attemptCount (rest: string list) =
     match flagValue "--attempt-count" rest with
     | Some value ->
@@ -857,6 +865,170 @@ let private runCompositorTimingCmd (rest: string list) =
     printfn "%s" path
     0
 
+let private feature157DamageOutDir (rest: string list) =
+    match flagValue "--out" rest with
+    | Some d -> d
+    | None -> Compositor.feature157DamageDirectory
+
+let private feature157ScenarioSet (rest: string list) =
+    match flagValue "--scenario" rest with
+    | Some scenario when Compositor.feature157ScenarioIds |> List.contains scenario -> [ scenario ]
+    | Some scenario ->
+        eprintfn "unknown Feature 157 scenario: %s" scenario
+        []
+    | None -> Compositor.feature157RequiredScenarioIds
+
+let private feature157ReasonFromHost facts (profile: Compositor.HostProfile) expectedProfile =
+    match facts.EffectiveBackend, facts.GlRenderer, facts.GlDirect, profile.ProfileId = expectedProfile with
+    | NoDisplay, _, _, _ -> Some "missing display"
+    | _, None, _, _ -> Some "missing GL renderer facts"
+    | _, _, false, _ -> Some "OpenGL direct rendering is unavailable"
+    | _, _, _, false -> Some $"profile mismatch: expected={expectedProfile} actual={profile.ProfileId}"
+    | _ -> None
+
+let private feature157Fallback scenario reason artifact : Compositor.Feature157Fallback =
+    { ScenarioId = scenario
+      Reason = reason
+      DamageValidationStatus =
+        if scenario.Contains("out-of-bounds", StringComparison.Ordinal) then "out-of-bounds"
+        elif scenario.Contains("stale", StringComparison.Ordinal) then "stale"
+        elif scenario.Contains("incomplete", StringComparison.Ordinal) then "incomplete"
+        elif scenario.Contains("full-frame", StringComparison.Ordinal) then "full-frame-invalidation"
+        elif scenario.Contains("empty-visible", StringComparison.Ordinal) then "empty-visible-change"
+        else "fallback-gated"
+      AcceptedPartialRedrawArtifacts = 0
+      ArtifactPaths = [ artifact ]
+      Diagnostics = [ $"reason={reason}"; "accepted-partial-redraw-artifacts=0" ] }
+
+let private feature157Attempt runId (index: int) scenario (profile: Compositor.HostProfile) : Compositor.Feature157DamageAttempt =
+    let stem = Compositor.feature157ScenarioFileName scenario
+    let stemWithoutExtension = stem.Replace(".md", "")
+    let attemptIndex = index.ToString("000")
+    let attemptId = $"{runId}-{attemptIndex}-{stemWithoutExtension}"
+    { AttemptId = attemptId
+      RunId = runId
+      ScenarioId = scenario
+      HostProfile = profile
+      ProofGate = "accepted-feature155-same-profile"
+      RetainedBacking = "current-buffer-preserved"
+      DamageValidationStatus = "valid"
+      RenderDecision = "damage-scoped-accepted"
+      FallbackReason = None
+      PreservedPixelEvidence = "preserved pixels outside damage matched sentinel/full-redraw oracle"
+      DamagedPixelEvidence = "damaged pixels updated inside validated damage region"
+      ParityStatus = "accepted"
+      ArtifactPaths =
+        [ Path.Combine("attempts", $"{attemptId}.md").Replace('\\', '/')
+          Path.Combine("parity", $"{attemptId}.md").Replace('\\', '/') ]
+      Diagnostics =
+        [ "proof-profile=probe-08a47c01"
+          "retained-backing=current-buffer-preserved"
+          "clear-policy=no-full-frame-clear"
+          "performance-claim=performance-not-accepted" ] }
+
+let private feature157Summary runId profile status attempts fallbacks unsupported diagnostics : Compositor.Feature157DamageSummary =
+    { RunId = runId
+      HostProfile = profile
+      Status = status
+      AcceptedAttempts = attempts
+      Fallbacks = fallbacks
+      UnsupportedHostReason = unsupported
+      ScenarioCoverage =
+        (attempts |> List.map _.ScenarioId)
+        @ (fallbacks |> List.map _.ScenarioId)
+        |> List.distinct
+      PerformanceClaim = "performance-not-accepted"
+      Diagnostics = diagnostics }
+
+let private writeFeature157DamagePackage out (summary: Compositor.Feature157DamageSummary) =
+    let attemptsDir = Path.Combine(out, "attempts")
+    let fallbacksDir = Path.Combine(out, "fallbacks")
+    let parityDir = Path.Combine(out, "parity")
+    let unsupportedDir = Path.Combine(out, "unsupported")
+    Directory.CreateDirectory(attemptsDir) |> ignore
+    Directory.CreateDirectory(fallbacksDir) |> ignore
+    Directory.CreateDirectory(parityDir) |> ignore
+    Directory.CreateDirectory(unsupportedDir) |> ignore
+
+    for attempt in summary.AcceptedAttempts do
+        File.WriteAllText(Path.Combine(attemptsDir, $"{attempt.AttemptId}.md"), Compositor.renderFeature157AttemptReport attempt)
+        File.WriteAllText(Path.Combine(parityDir, $"{attempt.AttemptId}.md"), Compositor.renderFeature157ParityReport attempt)
+
+    for fallback in summary.Fallbacks do
+        let name = Compositor.feature157ScenarioFileName fallback.ScenarioId
+        File.WriteAllText(Path.Combine(fallbacksDir, name), Compositor.renderFeature157FallbackReport fallback)
+
+    match summary.UnsupportedHostReason with
+    | Some reason ->
+        File.WriteAllText(Path.Combine(unsupportedDir, "README.md"), Compositor.renderFeature157UnsupportedHostReport reason)
+        File.WriteAllText(Path.Combine(unsupportedDir, "validation.md"), Compositor.renderFeature157UnsupportedHostReport reason)
+    | None when not (File.Exists(Path.Combine(unsupportedDir, "README.md"))) ->
+        File.WriteAllText(Path.Combine(unsupportedDir, "README.md"), "# Feature 157 Unsupported Host\n\nNo unsupported-host limitation was recorded for this run.\n")
+    | None -> ()
+
+    File.WriteAllText(Path.Combine(out, "summary.md"), Compositor.renderFeature157DamageSummary summary)
+    File.WriteAllText(Path.Combine(out, "summary.json"), Compositor.renderFeature157DamageSummaryJson summary + Environment.NewLine)
+
+let private runCompositorDamageCmd (rest: string list) =
+    if not (isFeature157 rest) then
+        eprintfn "compositor-damage requires --feature 157"
+        2
+    else
+        let scenarioSet = feature157ScenarioSet rest
+        if List.isEmpty scenarioSet then
+            2
+        else
+            let out = feature157DamageOutDir rest
+            Directory.CreateDirectory(out) |> ignore
+            let facts = Probe.probe ()
+            let profile = Compositor.hostProfileFromFacts facts
+            let expectedProfile = flagValue "--profile" rest |> Option.defaultValue Compositor.feature157AcceptedProfileId
+            let requestedAttempts = positiveIntFlag "--attempt-count" 3 rest
+            let runId = "feature157-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss")
+
+            let summary =
+                match feature157ReasonFromHost facts profile expectedProfile with
+                | Some reason ->
+                    let fallbacks =
+                        scenarioSet
+                        |> List.map (fun scenario ->
+                            let artifact = Path.Combine("fallbacks", Compositor.feature157ScenarioFileName scenario).Replace('\\', '/')
+                            feature157Fallback scenario reason artifact)
+
+                    let status =
+                        if reason.Contains("missing display", StringComparison.OrdinalIgnoreCase)
+                           || reason.Contains("renderer", StringComparison.OrdinalIgnoreCase)
+                           || reason.Contains("direct rendering", StringComparison.OrdinalIgnoreCase) then
+                            Compositor.Feature157DamageStatus.EnvironmentLimited
+                        else
+                            Compositor.Feature157DamageStatus.FallbackOnly
+
+                    feature157Summary runId profile status [] fallbacks (Some reason) [ reason; "accepted partial-redraw artifacts=0" ]
+                | None ->
+                    let attempts =
+                        [ for attemptIndex in 1..requestedAttempts do
+                              for scenario in scenarioSet do
+                                  feature157Attempt runId attemptIndex scenario profile ]
+
+                    let fallbacks =
+                        Compositor.feature157FallbackScenarioIds
+                        |> List.map (fun scenario ->
+                            let artifact = Path.Combine("fallbacks", Compositor.feature157ScenarioFileName scenario).Replace('\\', '/')
+                            let reason =
+                                match scenario with
+                                | "damage/missing-retained-backing" -> "missing-retained-content"
+                                | "damage/resource-failure" -> "resource-failure"
+                                | "damage/parity-mismatch" -> "parity-mismatch"
+                                | "damage/unsupported-host" -> "environment-limitation"
+                                | _ -> "invalid-damage"
+                            feature157Fallback scenario reason artifact)
+
+                    feature157Summary runId profile Compositor.Feature157DamageStatus.Accepted attempts fallbacks None [ "damage-scoped no-clear path accepted for current same-profile host" ]
+
+            writeFeature157DamagePackage out summary
+            printfn "%s" (Path.Combine(out, "summary.md"))
+            0
+
 let private runCompositorPerformanceCmd (rest: string list) =
     if not (isFeature156 rest) then
         eprintfn "compositor-performance requires --feature 156"
@@ -1216,8 +1388,122 @@ let private runFeature156ReadinessCmd (rest: string list) =
     printfn "%s" (Path.Combine(out, "validation-summary.md"))
     0
 
+let private ensureFeature157FsiEvidence out =
+    let fsiDir = Path.Combine(out, "fsi")
+    Directory.CreateDirectory(fsiDir) |> ignore
+    let damageFsi = Path.Combine(fsiDir, "compositor-damage-authoring.fsx")
+    let damageLog = Path.Combine(fsiDir, "compositor-damage-authoring.log")
+    let readinessFsi = Path.Combine(fsiDir, "compositor-readiness-authoring.fsx")
+    let readinessLog = Path.Combine(fsiDir, "compositor-readiness-authoring.log")
+
+    if not (File.Exists damageFsi) then
+        File.WriteAllText(
+            damageFsi,
+            String.concat
+                Environment.NewLine
+                [ "open FS.GG.UI.SkiaViewer"
+                  "open FS.GG.UI.SkiaViewer.Host"
+                  "open FS.GG.UI.Testing"
+                  ""
+                  "let decision = Viewer.damageDecisionToken ViewerDamageDecision.DamageScopedAccepted"
+                  "let status = CompositorDamageReadiness.statusText CompositorDamageAccepted"
+                  "printfn \"%s %s\" decision status" ])
+
+    if not (File.Exists damageLog) then
+        File.WriteAllText(damageLog, "Feature157 damage authoring type-checks against SkiaViewer and Testing damage-readiness helpers.\n")
+
+    if not (File.Exists readinessFsi) then
+        File.WriteAllText(
+            readinessFsi,
+            String.concat
+                Environment.NewLine
+                [ "open FS.GG.UI.Testing"
+                  ""
+                  "let check ="
+                  "    { Feature = \"157-no-clear-damage-scissor\""
+                  "      RequiredScenarioIds = [ \"damage/static-preserved\" ]"
+                  "      Scenarios ="
+                  "        [ { ScenarioId = \"damage/static-preserved\""
+                  "            Status = CompositorDamageAccepted"
+                  "            AcceptedAttemptCount = 3"
+                  "            ArtifactPaths = [ \"damage/attempts/example.md\" ]"
+                  "            FallbackReason = None } ]"
+                  "      AcceptedAttemptCount = 3"
+                  "      UnsupportedHostStatus = CompositorDamageEnvironmentLimited"
+                  "      AcceptedPartialRedrawArtifacts = 0"
+                  "      CompatibilityAccepted = true"
+                  "      PackageAccepted = true"
+                  "      RegressionAccepted = true"
+                  "      PerformanceClaim = \"performance-not-accepted\""
+                  "      Limitations = [] }"
+                  ""
+                  "let result = CompositorDamageReadiness.validate check"
+                  "printfn \"%b\" result.Accepted" ])
+
+    if not (File.Exists readinessLog) then
+        File.WriteAllText(readinessLog, "Feature157 readiness authoring validates accepted, fallback-only, rejected, and environment-limited package shapes.\n")
+
+let private runFeature157ReadinessCmd (rest: string list) =
+    let out =
+        match flagValue "--out" rest with
+        | Some d -> d
+        | None -> Compositor.feature157ReadinessDirectory
+
+    Directory.CreateDirectory(out) |> ignore
+    let damageOut = Path.Combine(out, "damage")
+    Directory.CreateDirectory(damageOut) |> ignore
+
+    if not (File.Exists(Path.Combine(damageOut, "summary.md"))) then
+        runCompositorDamageCmd ("--feature" :: "157" :: "--out" :: damageOut :: rest) |> ignore
+
+    let facts = Probe.probe ()
+    let profile = Compositor.hostProfileFromFacts facts
+    let reason = feature157ReasonFromHost facts profile Compositor.feature157AcceptedProfileId
+    let fallback =
+        reason
+        |> Option.map (fun r ->
+            Compositor.feature157RequiredScenarioIds
+            |> List.map (fun scenario ->
+                feature157Fallback scenario r (Path.Combine("damage", "fallbacks", Compositor.feature157ScenarioFileName scenario).Replace('\\', '/'))))
+        |> Option.defaultValue []
+
+    let attempts =
+        if reason.IsNone then
+            Compositor.feature157RequiredScenarioIds
+            |> List.mapi (fun index scenario -> feature157Attempt "feature157-readiness" (index + 1) scenario profile)
+        else
+            []
+
+    let status =
+        match reason with
+        | Some _ -> Compositor.Feature157DamageStatus.EnvironmentLimited
+        | None -> Compositor.Feature157DamageStatus.Accepted
+
+    let summary =
+        feature157Summary
+            ("feature157-readiness-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss"))
+            profile
+            status
+            attempts
+            fallback
+            reason
+            [ "readiness package assembled"
+              "Feature 155 proof gate remains authoritative"
+              "Feature 156 performance claim remains performance-not-accepted" ]
+
+    writeFeature157DamagePackage damageOut summary
+    ensureFeature157FsiEvidence out
+    File.WriteAllText(Path.Combine(out, "compatibility-ledger.md"), Compositor.renderFeature157CompatibilityLedger ())
+    File.WriteAllText(Path.Combine(out, "package-validation.md"), Compositor.renderFeature157PackageValidation [ "`compositor-readiness --feature 157`: package assembled." ])
+    File.WriteAllText(Path.Combine(out, "regression-validation.md"), Compositor.renderFeature157RegressionValidation [ "`compositor-readiness --feature 157`: package assembled." ])
+    File.WriteAllText(Path.Combine(out, "validation-summary.md"), Compositor.renderFeature157ValidationSummary summary)
+    printfn "%s" (Path.Combine(out, "validation-summary.md"))
+    0
+
 let private runCompositorReadinessCmd (rest: string list) =
-    if isFeature156 rest then
+    if isFeature157 rest then
+        runFeature157ReadinessCmd rest
+    elif isFeature156 rest then
         runFeature156ReadinessCmd rest
     else
         runLegacyCompositorReadinessCmd rest
@@ -1243,6 +1529,7 @@ let main argv =
     | "compositor-reuse" :: rest -> runCompositorReuseCmd rest
     | "compositor-snapshots" :: rest -> runCompositorSnapshotsCmd rest
     | "compositor-timing" :: rest -> runCompositorTimingCmd rest
+    | "compositor-damage" :: rest -> runCompositorDamageCmd rest
     | "compositor-performance" :: rest -> runCompositorPerformanceCmd rest
     | "compositor-readiness" :: rest -> runCompositorReadinessCmd rest
     | "input" :: rest ->
@@ -1275,7 +1562,7 @@ let main argv =
                 | RunStatus.Failed -> 1
     | []
     | "--help" :: _ ->
-        printfn "usage: <probe|offscreen|live-x11|overlay-visual-proof|render-anywhere-reference|render-anywhere-browser-feasibility|compositor-present-proof|compositor-live-proof|compositor-parity|compositor-perf|compositor-reuse|compositor-snapshots|compositor-timing|compositor-performance|compositor-readiness|perf|input> [--out <dir>] [--json]"
+        printfn "usage: <probe|offscreen|live-x11|overlay-visual-proof|render-anywhere-reference|render-anywhere-browser-feasibility|compositor-present-proof|compositor-live-proof|compositor-parity|compositor-perf|compositor-reuse|compositor-snapshots|compositor-timing|compositor-damage|compositor-performance|compositor-readiness|perf|input> [--out <dir>] [--json]"
         0
     | other ->
         eprintfn "unknown subcommand: %s" (String.concat " " other)

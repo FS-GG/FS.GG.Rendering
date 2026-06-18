@@ -218,6 +218,14 @@ type ViewerTimingPath =
     | FullRedraw
     | DamageScoped
 
+[<RequireQualifiedAccess>]
+type ViewerDamageDecision =
+    | DamageScopedAccepted
+    | FullRedraw
+    | SkipNoChange
+    | Rejected
+    | EnvironmentLimited
+
 type ScreenshotEvidenceStatus =
     | ScreenshotOk
     | ScreenshotUnsupported
@@ -547,6 +555,14 @@ module Viewer =
         match path with
         | ViewerTimingPath.FullRedraw
         | ViewerTimingPath.DamageScoped -> not proofReadbackIncluded && not validationReadbackIncluded
+
+    let damageDecisionToken decision =
+        match decision with
+        | ViewerDamageDecision.DamageScopedAccepted -> "damage-scoped-accepted"
+        | ViewerDamageDecision.FullRedraw -> "full-redraw"
+        | ViewerDamageDecision.SkipNoChange -> "skip-no-change"
+        | ViewerDamageDecision.Rejected -> "rejected"
+        | ViewerDamageDecision.EnvironmentLimited -> "environment-limited"
 
     module DiagnosticsFiltering =
         let levelRank level =

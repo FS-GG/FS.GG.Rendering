@@ -220,6 +220,66 @@ module GlHost =
         | Scissored of ScissorRect list
         | FullRedraw of reason: string
 
+    [<RequireQualifiedAccess>]
+    type DamageValidationStatus =
+        | Valid
+        | EmptyNoChange
+        | EmptyVisibleChange
+        | OutOfBounds
+        | Stale
+        | Duplicated
+        | Incomplete
+        | Ambiguous
+        | FullFrameInvalidation
+
+    [<RequireQualifiedAccess>]
+    type RetainedBackingStatus =
+        | CurrentBufferPreserved
+        | RetainedFrameRestored
+        | Missing
+        | Stale
+        | CrossRun
+        | CrossProfile
+        | Resized
+        | ResourceFailed
+
+    type DamageValidationResult =
+        { Status: DamageValidationStatus
+          Rects: ScissorRect list
+          UnionArea: int
+          Reason: string option }
+
+    [<RequireQualifiedAccess>]
+    type DamageRenderDecisionKind =
+        | DamageScopedAccepted
+        | FullRedraw
+        | SkipNoChange
+        | Rejected
+        | EnvironmentLimited
+
+    type DamageRenderDecision =
+        { Kind: DamageRenderDecisionKind
+          ScissorRects: ScissorRect list
+          DamageArea: int
+          FallbackReason: string option
+          ProofGate: string
+          RetainedBacking: string
+          Parity: string }
+
+    type DamageRenderEligibility =
+        { Proof: CompositorProof.ProofReadiness
+          RetainedBacking: RetainedBackingStatus
+          Damage: ScissorRect list
+          FrameWidth: int
+          FrameHeight: int
+          VisibleChange: bool
+          FullFrameInvalidation: bool
+          StaleDamage: bool
+          IncompleteDamage: bool
+          AmbiguousDamage: bool
+          ResourcesAvailable: bool
+          ParityAccepted: bool }
+
     type LiveProofHostFacts =
         { Display: string option
           WaylandDisplay: string option
@@ -357,6 +417,125 @@ module GlHost =
         | CompositorProof.ProofReadiness.HostMismatch -> FullRedraw "host-mismatched present-path proof"
         | CompositorProof.ProofReadiness.Failed reason -> FullRedraw $"failed present-path proof: {reason}"
         | CompositorProof.ProofReadiness.EnvironmentLimited reason -> FullRedraw $"environment-limited present-path proof: {reason}"
+
+    let private proofGateToken proof =
+        CompositorProof.readinessToken proof
+
+    let private retainedBackingToken retained =
+        match retained with
+        | RetainedBackingStatus.CurrentBufferPreserved -> "current-buffer-preserved"
+        | RetainedBackingStatus.RetainedFrameRestored -> "retained-frame-restored"
+        | RetainedBackingStatus.Missing -> "missing-retained-content"
+        | RetainedBackingStatus.Stale -> "stale-retained-content"
+        | RetainedBackingStatus.CrossRun -> "cross-run-retained-content"
+        | RetainedBackingStatus.CrossProfile -> "cross-profile-retained-content"
+        | RetainedBackingStatus.Resized -> "resized-retained-content"
+        | RetainedBackingStatus.ResourceFailed -> "retained-resource-failure"
+
+    let private retainedBackingAccepted retained =
+        match retained with
+        | RetainedBackingStatus.CurrentBufferPreserved
+        | RetainedBackingStatus.RetainedFrameRestored -> true
+        | _ -> false
+
+    let private fallback kind reason eligibility validation =
+        { Kind = kind
+          ScissorRects = validation.Rects
+          DamageArea = validation.UnionArea
+          FallbackReason = Some reason
+          ProofGate = proofGateToken eligibility.Proof
+          RetainedBacking = retainedBackingToken eligibility.RetainedBacking
+          Parity = if eligibility.ParityAccepted then "accepted" else "not-accepted" }
+
+    let validateDamage damage frameWidth frameHeight visibleChange fullFrameInvalidation staleDamage incompleteDamage ambiguousDamage =
+        let normalized = normalizeScissorRects frameWidth frameHeight damage
+        let outOfBounds =
+            damage
+            |> List.exists (fun rect ->
+                rect.X < 0
+                || rect.Y < 0
+                || rect.Width < 0
+                || rect.Height < 0
+                || rect.X + rect.Width > frameWidth
+                || rect.Y + rect.Height > frameHeight)
+
+        let duplicated = damage.Length <> (damage |> List.distinct).Length
+        let status, reason =
+            if fullFrameInvalidation then
+                DamageValidationStatus.FullFrameInvalidation, Some "full-frame invalidation"
+            elif staleDamage then
+                DamageValidationStatus.Stale, Some "stale damage"
+            elif ambiguousDamage then
+                DamageValidationStatus.Ambiguous, Some "ambiguous damage"
+            elif incompleteDamage then
+                DamageValidationStatus.Incomplete, Some "incomplete damage"
+            elif outOfBounds then
+                DamageValidationStatus.OutOfBounds, Some "out-of-bounds damage"
+            elif duplicated then
+                DamageValidationStatus.Duplicated, Some "duplicated damage"
+            elif List.isEmpty normalized && visibleChange then
+                DamageValidationStatus.EmptyVisibleChange, Some "empty visible change"
+            elif List.isEmpty normalized then
+                DamageValidationStatus.EmptyNoChange, None
+            else
+                DamageValidationStatus.Valid, None
+
+        { Status = status
+          Rects = normalized
+          UnionArea = scissorArea normalized
+          Reason = reason }
+
+    let decideDamageScopedRender eligibility =
+        let validation =
+            validateDamage
+                eligibility.Damage
+                eligibility.FrameWidth
+                eligibility.FrameHeight
+                eligibility.VisibleChange
+                eligibility.FullFrameInvalidation
+                eligibility.StaleDamage
+                eligibility.IncompleteDamage
+                eligibility.AmbiguousDamage
+
+        match eligibility.Proof, validation.Status with
+        | CompositorProof.ProofReadiness.EnvironmentLimited reason, _ ->
+            fallback DamageRenderDecisionKind.EnvironmentLimited $"environment-limited present-path proof: {reason}" eligibility validation
+        | CompositorProof.ProofReadiness.Missing, _ ->
+            fallback DamageRenderDecisionKind.FullRedraw "missing present-path proof" eligibility validation
+        | CompositorProof.ProofReadiness.Stale, _ ->
+            fallback DamageRenderDecisionKind.FullRedraw "stale present-path proof" eligibility validation
+        | CompositorProof.ProofReadiness.HostMismatch, _ ->
+            fallback DamageRenderDecisionKind.FullRedraw "host-mismatched present-path proof" eligibility validation
+        | CompositorProof.ProofReadiness.Failed reason, _ ->
+            fallback DamageRenderDecisionKind.Rejected $"failed present-path proof: {reason}" eligibility validation
+        | CompositorProof.ProofReadiness.Ready, DamageValidationStatus.EmptyNoChange ->
+            { Kind = DamageRenderDecisionKind.SkipNoChange
+              ScissorRects = []
+              DamageArea = 0
+              FallbackReason = None
+              ProofGate = "ready"
+              RetainedBacking = retainedBackingToken eligibility.RetainedBacking
+              Parity = if eligibility.ParityAccepted then "accepted" else "not-accepted" }
+        | CompositorProof.ProofReadiness.Ready, DamageValidationStatus.Valid when not (retainedBackingAccepted eligibility.RetainedBacking) ->
+            fallback DamageRenderDecisionKind.FullRedraw (retainedBackingToken eligibility.RetainedBacking) eligibility validation
+        | CompositorProof.ProofReadiness.Ready, DamageValidationStatus.Valid when not eligibility.ResourcesAvailable ->
+            fallback DamageRenderDecisionKind.FullRedraw "resource-failure" eligibility validation
+        | CompositorProof.ProofReadiness.Ready, DamageValidationStatus.Valid when not eligibility.ParityAccepted ->
+            fallback DamageRenderDecisionKind.Rejected "parity-mismatch" eligibility validation
+        | CompositorProof.ProofReadiness.Ready, DamageValidationStatus.Valid ->
+            { Kind = DamageRenderDecisionKind.DamageScopedAccepted
+              ScissorRects = validation.Rects
+              DamageArea = validation.UnionArea
+              FallbackReason = None
+              ProofGate = "ready"
+              RetainedBacking = retainedBackingToken eligibility.RetainedBacking
+              Parity = "accepted" }
+        | CompositorProof.ProofReadiness.Ready, _ ->
+            fallback
+                DamageRenderDecisionKind.FullRedraw
+                (validation.Reason |> Option.defaultValue "invalid damage")
+                eligibility
+                validation
 
     let classifyLiveProofHost facts =
         if facts.TimedOut then

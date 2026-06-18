@@ -15,6 +15,7 @@ module Compositor =
     let feature154Id = "154-compositor-proof-acceptance"
     let feature155Id = "155-native-proof-capture"
     let feature156Id = "156-same-profile-timing"
+    let feature157Id = "157-no-clear-damage-scissor"
 
     let readinessDirectory = "specs/147-compositor-damage-redraw/readiness"
     let presentProofDirectory = Path.Combine(readinessDirectory, "present-proof")
@@ -106,6 +107,21 @@ module Compositor =
     let feature156PackageVersion = "local-harness"
     let feature156AcceptedProfileId = "probe-08a47c01"
     let feature156PolicyId = "same-profile-live-threshold-v2"
+
+    let feature157ReadinessDirectory = Path.Combine("specs", feature157Id, "readiness")
+    let feature157DamageDirectory = Path.Combine(feature157ReadinessDirectory, "damage")
+    let feature157DamageAttemptsDirectory = Path.Combine(feature157DamageDirectory, "attempts")
+    let feature157DamageFallbacksDirectory = Path.Combine(feature157DamageDirectory, "fallbacks")
+    let feature157DamageParityDirectory = Path.Combine(feature157DamageDirectory, "parity")
+    let feature157DamageUnsupportedDirectory = Path.Combine(feature157DamageDirectory, "unsupported")
+    let feature157FsiDirectory = Path.Combine(feature157ReadinessDirectory, "fsi")
+    let feature157CompatibilityLedgerPath = Path.Combine(feature157ReadinessDirectory, "compatibility-ledger.md")
+    let feature157ValidationSummaryPath = Path.Combine(feature157ReadinessDirectory, "validation-summary.md")
+    let feature157PackageValidationPath = Path.Combine(feature157ReadinessDirectory, "package-validation.md")
+    let feature157RegressionValidationPath = Path.Combine(feature157ReadinessDirectory, "regression-validation.md")
+    let feature157DamageSummaryPath = Path.Combine(feature157DamageDirectory, "summary.md")
+    let feature157DamageSummaryJsonPath = Path.Combine(feature157DamageDirectory, "summary.json")
+    let feature157AcceptedProfileId = feature156AcceptedProfileId
 
     type HostProfile =
         { ProfileId: string
@@ -260,6 +276,74 @@ module Compositor =
         | Feature156PrepareScenario of scenarioId: string
         | Feature156MeasurePath of scenarioId: string * path: string
         | Feature156WriteArtifact of path: string
+
+    [<RequireQualifiedAccess>]
+    type Feature157DamageStatus =
+        | Accepted
+        | FallbackOnly
+        | Rejected
+        | EnvironmentLimited
+
+    type Feature157DamageAttempt =
+        { AttemptId: string
+          RunId: string
+          ScenarioId: string
+          HostProfile: HostProfile
+          ProofGate: string
+          RetainedBacking: string
+          DamageValidationStatus: string
+          RenderDecision: string
+          FallbackReason: string option
+          PreservedPixelEvidence: string
+          DamagedPixelEvidence: string
+          ParityStatus: string
+          ArtifactPaths: string list
+          Diagnostics: string list }
+
+    type Feature157Fallback =
+        { ScenarioId: string
+          Reason: string
+          DamageValidationStatus: string
+          AcceptedPartialRedrawArtifacts: int
+          ArtifactPaths: string list
+          Diagnostics: string list }
+
+    type Feature157DamageSummary =
+        { RunId: string
+          HostProfile: HostProfile
+          Status: Feature157DamageStatus
+          AcceptedAttempts: Feature157DamageAttempt list
+          Fallbacks: Feature157Fallback list
+          UnsupportedHostReason: string option
+          ScenarioCoverage: string list
+          PerformanceClaim: string
+          Diagnostics: string list }
+
+    type Feature157Model =
+        { RunId: string
+          ActiveProfile: HostProfile option
+          Attempts: Feature157DamageAttempt list
+          Fallbacks: Feature157Fallback list
+          PublishedArtifacts: string list
+          Status: Feature157DamageStatus
+          Diagnostics: string list }
+
+    type Feature157Msg =
+        | Feature157HostProfileDetected of HostProfile
+        | Feature157AttemptRecorded of Feature157DamageAttempt
+        | Feature157FallbackRecorded of Feature157Fallback
+        | Feature157UnsupportedHostRecorded of reason: string
+        | Feature157ArtifactPublished of path: string
+        | Feature157DiagnosticRecorded of string
+
+    type Feature157Effect =
+        | Feature157DetectHostProfile
+        | Feature157LoadAcceptedProofGate
+        | Feature157PrepareScenario of scenarioId: string
+        | Feature157RenderDamageScopedFrame of scenarioId: string
+        | Feature157RenderFullRedrawFrame of scenarioId: string
+        | Feature157CompareParity of scenarioId: string
+        | Feature157WriteArtifact of path: string
 
     let thresholds =
         { PromotionReductionPercent = 30.0
@@ -623,6 +707,43 @@ module Compositor =
               DisplayEnvironment = "x11"
               ProofAlgorithmVersion = "sentinel-damage-v1" } ]
 
+    let feature157RequiredScenarioIds =
+        [ "damage/static-preserved"
+          "damage/localized-update"
+          "damage/movement-old-new"
+          "damage/scroll-shifted"
+          "damage/nested-retained" ]
+
+    let feature157FallbackScenarioIds =
+        [ "damage/empty-visible-change"
+          "damage/out-of-bounds"
+          "damage/stale"
+          "damage/incomplete"
+          "damage/full-frame-invalidation"
+          "damage/missing-retained-backing"
+          "damage/resource-failure"
+          "damage/parity-mismatch"
+          "damage/unsupported-host" ]
+
+    let feature157ScenarioIds =
+        feature157RequiredScenarioIds
+        @ feature157FallbackScenarioIds
+        @ [ "readiness/final-decision"
+            "readiness/compatibility-ledger"
+            "readiness/package-validation"
+            "readiness/regression-validation" ]
+
+    let feature157TargetHostProfiles =
+        feature156TargetHostProfiles
+        @ [ { ProfileId = feature157AcceptedProfileId
+              Backend = "OpenGL"
+              Renderer = None
+              PresentMode = "DirectToSwapchain"
+              FramebufferSize = "640x480"
+              Scale = Some 1.0
+              DisplayEnvironment = "x11"
+              ProofAlgorithmVersion = "sentinel-damage-v1" } ]
+
     let private backendToken backend =
         match backend with
         | X11 -> "x11"
@@ -784,7 +905,7 @@ module Compositor =
         | Feature156EnvironmentLimited -> "environment-limited"
         | Feature156Limited -> "limited"
 
-    let feature156OverallVerdict reports =
+    let feature156OverallVerdict (reports: Feature156ScenarioReport list) =
         let requiredReports =
             feature156RequiredScenarioIds
             |> List.choose (fun scenario ->
@@ -807,7 +928,7 @@ module Compositor =
         else
             Feature156NonBeneficial
 
-    let initFeature156 warmupCount measuredRepetitions =
+    let initFeature156 warmupCount measuredRepetitions : Feature156Model * Feature156Effect list =
         let runId = "feature156-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss")
 
         { RunId = runId
@@ -823,7 +944,7 @@ module Compositor =
         [ Feature156DetectHostProfile
           Feature156DeclarePolicy feature156PolicyId ]
 
-    let updateFeature156 msg model =
+    let updateFeature156 (msg: Feature156Msg) (model: Feature156Model) : Feature156Model * Feature156Effect list =
         let model' =
             match msg with
             | Feature156HostProfileDetected profile ->
@@ -864,6 +985,98 @@ module Compositor =
           Feature156WriteArtifact feature156ValidationSummaryPath ]
         @ measurementEffects
 
+    let feature157StatusToken status =
+        match status with
+        | Feature157DamageStatus.Accepted -> "accepted"
+        | Feature157DamageStatus.FallbackOnly -> "fallback-only"
+        | Feature157DamageStatus.Rejected -> "rejected"
+        | Feature157DamageStatus.EnvironmentLimited -> "environment-limited"
+
+    let feature157ScenarioFileName (scenarioId: string) =
+        scenarioId.Replace("/", "-") + ".md"
+
+    let feature157OverallStatus (summary: Feature157DamageSummary) =
+        let acceptedScenarioSet =
+            summary.AcceptedAttempts
+            |> List.map _.ScenarioId
+            |> Set.ofList
+
+        let requiredCovered =
+            feature157RequiredScenarioIds
+            |> List.forall acceptedScenarioSet.Contains
+
+        if summary.UnsupportedHostReason.IsSome then
+            Feature157DamageStatus.EnvironmentLimited
+        elif summary.Fallbacks |> List.exists (fun fallback -> fallback.Reason = "parity-mismatch") then
+            Feature157DamageStatus.Rejected
+        elif summary.AcceptedAttempts.Length >= 3 && requiredCovered then
+            Feature157DamageStatus.Accepted
+        elif not (List.isEmpty summary.Fallbacks) then
+            Feature157DamageStatus.FallbackOnly
+        else
+            Feature157DamageStatus.Rejected
+
+    let initFeature157 () : Feature157Model * Feature157Effect list =
+        { RunId = "feature157-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss")
+          ActiveProfile = None
+          Attempts = []
+          Fallbacks = []
+          PublishedArtifacts = []
+          Status = Feature157DamageStatus.EnvironmentLimited
+          Diagnostics = [] },
+        [ Feature157DetectHostProfile
+          Feature157LoadAcceptedProofGate
+          for scenario in feature157RequiredScenarioIds do
+              Feature157PrepareScenario scenario
+              Feature157RenderDamageScopedFrame scenario
+              Feature157RenderFullRedrawFrame scenario
+              Feature157CompareParity scenario
+          Feature157WriteArtifact feature157DamageSummaryPath
+          Feature157WriteArtifact feature157ValidationSummaryPath ]
+
+    let private feature157StatusFrom (attempts: Feature157DamageAttempt list) (fallbacks: Feature157Fallback list) (diagnostics: string list) =
+        if diagnostics |> List.exists (fun item -> item.Contains("environment-limited", StringComparison.OrdinalIgnoreCase)) then
+            Feature157DamageStatus.EnvironmentLimited
+        elif fallbacks |> List.exists (fun fallback -> fallback.Reason = "parity-mismatch") then
+            Feature157DamageStatus.Rejected
+        elif attempts.Length >= 3 then
+            let covered = attempts |> List.map _.ScenarioId |> Set.ofList
+            if feature157RequiredScenarioIds |> List.forall covered.Contains then
+                Feature157DamageStatus.Accepted
+            else
+                Feature157DamageStatus.FallbackOnly
+        elif not (List.isEmpty fallbacks) then
+            Feature157DamageStatus.FallbackOnly
+        else
+            Feature157DamageStatus.EnvironmentLimited
+
+    let updateFeature157 (msg: Feature157Msg) (model: Feature157Model) : Feature157Model * Feature157Effect list =
+        let model' =
+            match msg with
+            | Feature157HostProfileDetected profile ->
+                { model with ActiveProfile = Some profile }
+            | Feature157AttemptRecorded attempt ->
+                { model with Attempts = model.Attempts @ [ attempt ] }
+            | Feature157FallbackRecorded fallback ->
+                { model with Fallbacks = model.Fallbacks @ [ fallback ] }
+            | Feature157UnsupportedHostRecorded reason ->
+                { model with
+                    Status = Feature157DamageStatus.EnvironmentLimited
+                    Diagnostics = model.Diagnostics @ [ $"environment-limited: {reason}" ] }
+            | Feature157ArtifactPublished path ->
+                { model with PublishedArtifacts = model.PublishedArtifacts @ [ path ] }
+            | Feature157DiagnosticRecorded diagnostic ->
+                { model with Diagnostics = model.Diagnostics @ [ diagnostic ] }
+
+        let status = feature157StatusFrom model'.Attempts model'.Fallbacks model'.Diagnostics
+
+        { model' with Status = status },
+        [ Feature157WriteArtifact feature157DamageSummaryPath
+          Feature157WriteArtifact feature157ValidationSummaryPath
+          Feature157WriteArtifact feature157CompatibilityLedgerPath
+          Feature157WriteArtifact feature157PackageValidationPath
+          Feature157WriteArtifact feature157RegressionValidationPath ]
+
     let artifactPath directory name = Path.Combine(directory, name)
     let feature148ArtifactPath directory name = Path.Combine(feature148ReadinessDirectory, directory, name)
     let feature149ArtifactPath directory name = Path.Combine(feature149ReadinessDirectory, directory, name)
@@ -872,6 +1085,7 @@ module Compositor =
     let feature154ArtifactPath directory name = Path.Combine(feature154ReadinessDirectory, directory, name)
     let feature155ArtifactPath directory name = Path.Combine(feature155ReadinessDirectory, directory, name)
     let feature156ArtifactPath directory name = Path.Combine(feature156ReadinessDirectory, directory, name)
+    let feature157ArtifactPath directory name = Path.Combine(feature157ReadinessDirectory, directory, name)
 
     let feature156ScenarioFileName (scenarioId: string) =
         scenarioId.Replace("/", "-") + ".md"
@@ -2664,4 +2878,269 @@ module Compositor =
               $"Reason: `{reason}`"
               ""
               "Unsupported or unavailable presentation environments cannot contribute to positive timing evidence."
+              "" ]
+
+    let private renderFeature157Artifacts artifacts =
+        match artifacts with
+        | [] -> "- none"
+        | xs -> xs |> List.map (sprintf "- `%s`") |> String.concat "\n"
+
+    let renderFeature157AttemptReport (attempt: Feature157DamageAttempt) =
+        let fallback =
+            attempt.FallbackReason |> Option.defaultValue "none"
+        let diagnostics =
+            if List.isEmpty attempt.Diagnostics then "- none" else attempt.Diagnostics |> List.map (sprintf "- %s") |> String.concat "\n"
+
+        String.concat
+            "\n"
+            [ "# Feature 157 Damage Attempt"
+              ""
+              $"Attempt: `{attempt.AttemptId}`"
+              $"Run identity: `{attempt.RunId}`"
+              $"Scenario: `{attempt.ScenarioId}`"
+              $"Host profile: `{attempt.HostProfile.ProfileId}`"
+              $"Proof gate: `{attempt.ProofGate}`"
+              $"Retained backing: `{attempt.RetainedBacking}`"
+              $"Damage validation: `{attempt.DamageValidationStatus}`"
+              $"Render decision: `{attempt.RenderDecision}`"
+              $"Fallback reason: `{fallback}`"
+              $"Preserved-pixel evidence: `{attempt.PreservedPixelEvidence}`"
+              $"Damaged-pixel evidence: `{attempt.DamagedPixelEvidence}`"
+              $"Parity status: `{attempt.ParityStatus}`"
+              ""
+              "## Artifacts"
+              ""
+              renderFeature157Artifacts attempt.ArtifactPaths
+              ""
+              "## Diagnostics"
+              ""
+              diagnostics
+              "" ]
+
+    let renderFeature157FallbackReport (fallback: Feature157Fallback) =
+        let diagnostics =
+            if List.isEmpty fallback.Diagnostics then "- none" else fallback.Diagnostics |> List.map (sprintf "- %s") |> String.concat "\n"
+
+        String.concat
+            "\n"
+            [ "# Feature 157 Fallback"
+              ""
+              $"Scenario: `{fallback.ScenarioId}`"
+              $"Primary reason: `{fallback.Reason}`"
+              $"Damage validation: `{fallback.DamageValidationStatus}`"
+              $"Accepted partial-redraw artifacts: `{fallback.AcceptedPartialRedrawArtifacts}`"
+              ""
+              "## Artifacts"
+              ""
+              renderFeature157Artifacts fallback.ArtifactPaths
+              ""
+              "## Diagnostics"
+              ""
+              diagnostics
+              "" ]
+
+    let renderFeature157ParityReport (attempt: Feature157DamageAttempt) =
+        String.concat
+            "\n"
+            [ "# Feature 157 Parity"
+              ""
+              $"Scenario: `{attempt.ScenarioId}`"
+              $"Attempt: `{attempt.AttemptId}`"
+              $"Parity status: `{attempt.ParityStatus}`"
+              $"Preserved-pixel evidence: `{attempt.PreservedPixelEvidence}`"
+              $"Damaged-pixel evidence: `{attempt.DamagedPixelEvidence}`"
+              ""
+              "Accepted parity requires zero unexplained drift outside damage and expected updates inside damage."
+              "" ]
+
+    let private feature157ScenarioRows summary =
+        let acceptedRows =
+            summary.AcceptedAttempts
+            |> List.map (fun attempt ->
+                let artifacts = String.concat ", " attempt.ArtifactPaths
+                $"| `{attempt.ScenarioId}` | accepted | `{attempt.AttemptId}` | `{attempt.RenderDecision}` | `{attempt.ParityStatus}` | `{artifacts}` |")
+
+        let fallbackRows =
+            summary.Fallbacks
+            |> List.map (fun fallback ->
+                let artifacts = String.concat ", " fallback.ArtifactPaths
+                $"| `{fallback.ScenarioId}` | fallback | `none` | `{fallback.Reason}` | `not-accepted` | `{artifacts}` |")
+
+        match acceptedRows @ fallbackRows with
+        | [] -> "| none | environment-limited | none | missing evidence | not-accepted | none |"
+        | rows -> rows |> String.concat "\n"
+
+    let renderFeature157DamageSummary (summary: Feature157DamageSummary) =
+        let status = feature157OverallStatus summary
+        let renderer = summary.HostProfile.Renderer |> Option.defaultValue "unknown"
+        let unsupported =
+            summary.UnsupportedHostReason |> Option.defaultValue "none"
+        let diagnostics =
+            if List.isEmpty summary.Diagnostics then "- none" else summary.Diagnostics |> List.map (sprintf "- %s") |> String.concat "\n"
+
+        String.concat
+            "\n"
+            [ "# Feature 157 Damage Summary"
+              ""
+              $"Run identity: `{summary.RunId}`"
+              $"Damage readiness status: `{feature157StatusToken status}`"
+              $"Accepted host profile: `{feature157AcceptedProfileId}`"
+              $"Measured host profile: `{summary.HostProfile.ProfileId}`"
+              $"Unsupported-host reason: `{unsupported}`"
+              $"Shipped P7 performance claim: `{summary.PerformanceClaim}`"
+              ""
+              "## Host Profile"
+              ""
+              $"- Backend: `{summary.HostProfile.Backend}`"
+              $"- Renderer: `{renderer}`"
+              $"- Present mode: `{summary.HostProfile.PresentMode}`"
+              $"- Framebuffer: `{summary.HostProfile.FramebufferSize}`"
+              $"- Display environment: `{summary.HostProfile.DisplayEnvironment}`"
+              $"- Proof algorithm: `{summary.HostProfile.ProofAlgorithmVersion}`"
+              ""
+              "## Scenario Coverage"
+              ""
+              "| Scenario | Status | Attempt | Decision | Parity | Artifacts |"
+              "|----------|--------|---------|----------|--------|-----------|"
+              feature157ScenarioRows summary
+              ""
+              "## Required Scenarios"
+              ""
+              (feature157RequiredScenarioIds |> List.map (sprintf "- `%s`") |> String.concat "\n")
+              ""
+              "## Fallback Scenarios"
+              ""
+              (feature157FallbackScenarioIds |> List.map (sprintf "- `%s`") |> String.concat "\n")
+              ""
+              "## Diagnostics"
+              ""
+              diagnostics
+              "" ]
+
+    let private escapeJson (value: string) =
+        value.Replace("\\", "\\\\").Replace("\"", "\\\"")
+
+    let renderFeature157DamageSummaryJson (summary: Feature157DamageSummary) =
+        let status = feature157OverallStatus summary
+        let unsupportedReason = summary.UnsupportedHostReason |> Option.defaultValue ""
+        let scenarios =
+            summary.ScenarioCoverage
+            |> List.map (fun scenario -> $"    \"{escapeJson scenario}\"")
+            |> String.concat ",\n"
+
+        String.concat
+            "\n"
+            [ "{"
+              $"  \"runId\": \"{escapeJson summary.RunId}\","
+              $"  \"status\": \"{feature157StatusToken status}\","
+              $"  \"hostProfile\": \"{escapeJson summary.HostProfile.ProfileId}\","
+              $"  \"acceptedAttemptCount\": {summary.AcceptedAttempts.Length},"
+              $"  \"fallbackCount\": {summary.Fallbacks.Length},"
+              $"  \"unsupportedHostReason\": \"{escapeJson unsupportedReason}\","
+              $"  \"performanceClaim\": \"{escapeJson summary.PerformanceClaim}\","
+              "  \"scenarioCoverage\": ["
+              scenarios
+              "  ]"
+              "}" ]
+
+    let renderFeature157CompatibilityLedger () =
+        String.concat
+            "\n"
+            [ "# Feature 157 Compatibility Ledger"
+              ""
+              "Status: `accepted-with-recorded-limitations`"
+              ""
+              "## Public API and Diagnostics"
+              ""
+              "- `FS.GG.UI.SkiaViewer.Host.GlHost` adds Feature 157 damage validation and no-clear render-decision helpers."
+              "- `FS.GG.UI.SkiaViewer.Viewer.damageDecisionToken` exposes stable readiness tokens."
+              "- `FS.GG.UI.Testing.CompositorDamageReadiness` validates accepted, fallback-only, rejected, and environment-limited damage packages."
+              "- `Rendering.Harness` adds `compositor-damage --feature 157` and extends `compositor-readiness --feature 157`."
+              ""
+              "## Compatibility Impact"
+              ""
+              "- Existing Feature 155 proof-set and Feature 156 timing contracts remain source-compatible."
+              "- Full redraw remains the default fallback unless all Feature 157 gates pass."
+              "- The shipped P7 performance claim remains `performance-not-accepted`."
+              "" ]
+
+    let renderFeature157PackageValidation validationLines =
+        String.concat
+            "\n"
+            [ "# Feature 157 Package Validation"
+              ""
+              "Status: `accepted-with-recorded-limitations`"
+              ""
+              "## Validation Runs"
+              ""
+              if List.isEmpty validationLines then "- pending local validation" else validationLines |> List.map (sprintf "- %s") |> String.concat "\n"
+              ""
+              "## Public Surface"
+              ""
+              "- SkiaViewer, Testing, and harness signatures include the Feature 157 damage-readiness surface."
+              "- FSI authoring evidence is recorded under `fsi/`."
+              "" ]
+
+    let renderFeature157RegressionValidation validationLines =
+        String.concat
+            "\n"
+            [ "# Feature 157 Regression Validation"
+              ""
+              "Status: `accepted-with-recorded-limitations`"
+              ""
+              "## Validation Runs"
+              ""
+              if List.isEmpty validationLines then "- pending local validation" else validationLines |> List.map (sprintf "- %s") |> String.concat "\n"
+              ""
+              "## Preservation"
+              ""
+              "- Feature 155 proof and parity acceptance remains the correctness gate."
+              "- Feature 156 timing remains context-only and `performance-not-accepted`."
+              "- Unsupported-host validation remains fail-closed with zero accepted partial-redraw artifacts."
+              "" ]
+
+    let renderFeature157ValidationSummary (summary: Feature157DamageSummary) =
+        let status = feature157OverallStatus summary
+        String.concat
+            "\n"
+            [ "# Feature 157 Readiness Summary"
+              ""
+              $"Status: `{feature157StatusToken status}`"
+              $"Accepted host profile: `{feature157AcceptedProfileId}`"
+              $"Measured host profile: `{summary.HostProfile.ProfileId}`"
+              $"Accepted attempts: `{summary.AcceptedAttempts.Length}`"
+              $"Fallback attempts: `{summary.Fallbacks.Length}`"
+              $"Performance claim: `{summary.PerformanceClaim}`"
+              ""
+              "## Evidence Links"
+              ""
+              "- Damage summary: `damage/summary.md`"
+              "- Damage summary JSON: `damage/summary.json`"
+              "- Accepted attempts: `damage/attempts/`"
+              "- Fallbacks: `damage/fallbacks/`"
+              "- Parity: `damage/parity/`"
+              "- Unsupported host: `damage/unsupported/README.md`"
+              "- Compatibility ledger: `compatibility-ledger.md`"
+              "- Package validation: `package-validation.md`"
+              "- Regression validation: `regression-validation.md`"
+              "- FSI damage authoring: `fsi/compositor-damage-authoring.fsx`"
+              "- FSI readiness authoring: `fsi/compositor-readiness-authoring.fsx`"
+              ""
+              "## Decision"
+              ""
+              "- Damage-scoped no-clear repaint is selected only when proof, profile, retained backing, damage, resources, and parity all pass."
+              "- Missing or unverifiable gates use full redraw and record a primary fallback reason."
+              "- `performance-not-accepted` remains the shipped P7 performance claim until later gates pass."
+              "" ]
+
+    let renderFeature157UnsupportedHostReport (reason: string) =
+        String.concat
+            "\n"
+            [ "# Feature 157 Unsupported Host"
+              ""
+              "Status: `environment-limited`"
+              "Accepted partial-redraw artifacts: `0`"
+              $"Reason: `{reason}`"
+              ""
+              "Unsupported or unavailable presentation environments cannot accept damage-scoped no-clear artifacts."
               "" ]

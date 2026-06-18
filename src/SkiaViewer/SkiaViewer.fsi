@@ -254,6 +254,15 @@ type ViewerTimingPath =
     | FullRedraw
     | DamageScoped
 
+[<RequireQualifiedAccess>]
+/// Feature 157: public decision vocabulary for no-clear damage-scoped readiness diagnostics.
+type ViewerDamageDecision =
+    | DamageScopedAccepted
+    | FullRedraw
+    | SkipNoChange
+    | Rejected
+    | EnvironmentLimited
+
 /// Public contract type exposed by this FS.GG.UI package.
 type ScreenshotEvidenceStatus =
     | ScreenshotOk
@@ -602,6 +611,8 @@ module Viewer =
     val timingPathToken: path: ViewerTimingPath -> string
     /// Public contract function exposed by this FS.GG.UI package.
     val timingPathCanSupportClaim: path: ViewerTimingPath -> proofReadbackIncluded: bool -> validationReadbackIncluded: bool -> bool
+    /// Feature 157: stable token for damage render decisions in readiness artifacts.
+    val damageDecisionToken: decision: ViewerDamageDecision -> string
     /// Public contract function exposed by this FS.GG.UI package.
     val init: options: ViewerOptions -> ViewerModel * ViewerEffect list
     /// Public contract function exposed by this FS.GG.UI package.

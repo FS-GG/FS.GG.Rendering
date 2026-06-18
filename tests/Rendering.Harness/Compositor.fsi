@@ -13,6 +13,7 @@ module Compositor =
     val feature154Id: string
     val feature155Id: string
     val feature156Id: string
+    val feature157Id: string
 
     val readinessDirectory: string
     val presentProofDirectory: string
@@ -104,6 +105,21 @@ module Compositor =
     val feature156PackageVersion: string
     val feature156AcceptedProfileId: string
     val feature156PolicyId: string
+
+    val feature157ReadinessDirectory: string
+    val feature157DamageDirectory: string
+    val feature157DamageAttemptsDirectory: string
+    val feature157DamageFallbacksDirectory: string
+    val feature157DamageParityDirectory: string
+    val feature157DamageUnsupportedDirectory: string
+    val feature157FsiDirectory: string
+    val feature157CompatibilityLedgerPath: string
+    val feature157ValidationSummaryPath: string
+    val feature157PackageValidationPath: string
+    val feature157RegressionValidationPath: string
+    val feature157DamageSummaryPath: string
+    val feature157DamageSummaryJsonPath: string
+    val feature157AcceptedProfileId: string
 
     type HostProfile =
         { ProfileId: string
@@ -259,6 +275,74 @@ module Compositor =
         | Feature156MeasurePath of scenarioId: string * path: string
         | Feature156WriteArtifact of path: string
 
+    [<RequireQualifiedAccess>]
+    type Feature157DamageStatus =
+        | Accepted
+        | FallbackOnly
+        | Rejected
+        | EnvironmentLimited
+
+    type Feature157DamageAttempt =
+        { AttemptId: string
+          RunId: string
+          ScenarioId: string
+          HostProfile: HostProfile
+          ProofGate: string
+          RetainedBacking: string
+          DamageValidationStatus: string
+          RenderDecision: string
+          FallbackReason: string option
+          PreservedPixelEvidence: string
+          DamagedPixelEvidence: string
+          ParityStatus: string
+          ArtifactPaths: string list
+          Diagnostics: string list }
+
+    type Feature157Fallback =
+        { ScenarioId: string
+          Reason: string
+          DamageValidationStatus: string
+          AcceptedPartialRedrawArtifacts: int
+          ArtifactPaths: string list
+          Diagnostics: string list }
+
+    type Feature157DamageSummary =
+        { RunId: string
+          HostProfile: HostProfile
+          Status: Feature157DamageStatus
+          AcceptedAttempts: Feature157DamageAttempt list
+          Fallbacks: Feature157Fallback list
+          UnsupportedHostReason: string option
+          ScenarioCoverage: string list
+          PerformanceClaim: string
+          Diagnostics: string list }
+
+    type Feature157Model =
+        { RunId: string
+          ActiveProfile: HostProfile option
+          Attempts: Feature157DamageAttempt list
+          Fallbacks: Feature157Fallback list
+          PublishedArtifacts: string list
+          Status: Feature157DamageStatus
+          Diagnostics: string list }
+
+    type Feature157Msg =
+        | Feature157HostProfileDetected of HostProfile
+        | Feature157AttemptRecorded of Feature157DamageAttempt
+        | Feature157FallbackRecorded of Feature157Fallback
+        | Feature157UnsupportedHostRecorded of reason: string
+        | Feature157ArtifactPublished of path: string
+        | Feature157DiagnosticRecorded of string
+
+    type Feature157Effect =
+        | Feature157DetectHostProfile
+        | Feature157LoadAcceptedProofGate
+        | Feature157PrepareScenario of scenarioId: string
+        | Feature157RenderDamageScopedFrame of scenarioId: string
+        | Feature157RenderFullRedrawFrame of scenarioId: string
+        | Feature157CompareParity of scenarioId: string
+        | Feature157WriteArtifact of path: string
+
     val thresholds: Thresholds
     val snapshotBudget: SnapshotBudget
     val scenarioIds: string list
@@ -283,6 +367,10 @@ module Compositor =
     val feature156ScenarioIds: string list
     val feature156RequiredScenarioIds: string list
     val feature156TargetHostProfiles: HostProfile list
+    val feature157RequiredScenarioIds: string list
+    val feature157FallbackScenarioIds: string list
+    val feature157ScenarioIds: string list
+    val feature157TargetHostProfiles: HostProfile list
 
     val hostProfileFromFacts: facts: ProbeFacts -> HostProfile
     val proofVerdictToken: verdict: ProofVerdict -> string
@@ -301,6 +389,8 @@ module Compositor =
     val updateFeature154: msg: Feature154Msg -> model: Feature154Model -> Feature154Model * Feature154Effect list
     val initFeature156: warmupCount: int -> measuredRepetitions: int -> Feature156Model * Feature156Effect list
     val updateFeature156: msg: Feature156Msg -> model: Feature156Model -> Feature156Model * Feature156Effect list
+    val initFeature157: unit -> Feature157Model * Feature157Effect list
+    val updateFeature157: msg: Feature157Msg -> model: Feature157Model -> Feature157Model * Feature157Effect list
 
     val artifactPath: directory: string -> name: string -> string
     val feature148ArtifactPath: directory: string -> name: string -> string
@@ -310,10 +400,14 @@ module Compositor =
     val feature154ArtifactPath: directory: string -> name: string -> string
     val feature155ArtifactPath: directory: string -> name: string -> string
     val feature156ArtifactPath: directory: string -> name: string -> string
+    val feature157ArtifactPath: directory: string -> name: string -> string
     val feature156ScenarioFileName: scenarioId: string -> string
     val feature156VerdictToken: verdict: Feature156ScenarioVerdict -> string
     val feature156DistributionRow: distribution: Feature156PathDistribution option -> string
     val feature156OverallVerdict: reports: Feature156ScenarioReport list -> Feature156ScenarioVerdict
+    val feature157StatusToken: status: Feature157DamageStatus -> string
+    val feature157ScenarioFileName: scenarioId: string -> string
+    val feature157OverallStatus: summary: Feature157DamageSummary -> Feature157DamageStatus
     val renderPresentProof: proof: PresentProof -> string
     val renderValidationSummary: model: ReadinessModel -> string
     val renderCompatibilityLedger: model: ReadinessModel -> string
@@ -365,3 +459,13 @@ module Compositor =
     val renderFeature156RegressionValidation: validationLines: string list -> string
     val renderFeature156ValidationSummary: summary: Feature156TimingSummary -> string
     val renderFeature156UnsupportedHostReport: reason: string -> string
+    val renderFeature157AttemptReport: attempt: Feature157DamageAttempt -> string
+    val renderFeature157FallbackReport: fallback: Feature157Fallback -> string
+    val renderFeature157ParityReport: attempt: Feature157DamageAttempt -> string
+    val renderFeature157DamageSummary: summary: Feature157DamageSummary -> string
+    val renderFeature157DamageSummaryJson: summary: Feature157DamageSummary -> string
+    val renderFeature157CompatibilityLedger: unit -> string
+    val renderFeature157PackageValidation: validationLines: string list -> string
+    val renderFeature157RegressionValidation: validationLines: string list -> string
+    val renderFeature157ValidationSummary: summary: Feature157DamageSummary -> string
+    val renderFeature157UnsupportedHostReport: reason: string -> string

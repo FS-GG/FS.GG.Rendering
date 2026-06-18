@@ -104,6 +104,72 @@ module GlHost =
         | Scissored of ScissorRect list
         | FullRedraw of reason: string
 
+    [<RequireQualifiedAccess>]
+    /// Feature 157: reviewer-visible damage validation classification before the host can skip a full clear.
+    type DamageValidationStatus =
+        | Valid
+        | EmptyNoChange
+        | EmptyVisibleChange
+        | OutOfBounds
+        | Stale
+        | Duplicated
+        | Incomplete
+        | Ambiguous
+        | FullFrameInvalidation
+
+    [<RequireQualifiedAccess>]
+    /// Feature 157: retained previous-frame backing state used by the no-clear path gate.
+    type RetainedBackingStatus =
+        | CurrentBufferPreserved
+        | RetainedFrameRestored
+        | Missing
+        | Stale
+        | CrossRun
+        | CrossProfile
+        | Resized
+        | ResourceFailed
+
+    /// Feature 157: damage validation result after framebuffer-coordinate clipping.
+    type DamageValidationResult =
+        { Status: DamageValidationStatus
+          Rects: ScissorRect list
+          UnionArea: int
+          Reason: string option }
+
+    [<RequireQualifiedAccess>]
+    /// Feature 157: host render decision for the no-clear damage-scissored branch.
+    type DamageRenderDecisionKind =
+        | DamageScopedAccepted
+        | FullRedraw
+        | SkipNoChange
+        | Rejected
+        | EnvironmentLimited
+
+    /// Feature 157: package-visible diagnostic summary for one render decision.
+    type DamageRenderDecision =
+        { Kind: DamageRenderDecisionKind
+          ScissorRects: ScissorRect list
+          DamageArea: int
+          FallbackReason: string option
+          ProofGate: string
+          RetainedBacking: string
+          Parity: string }
+
+    /// Feature 157: pure eligibility inputs for deciding whether the no-clear path may run.
+    type DamageRenderEligibility =
+        { Proof: CompositorProof.ProofReadiness
+          RetainedBacking: RetainedBackingStatus
+          Damage: ScissorRect list
+          FrameWidth: int
+          FrameHeight: int
+          VisibleChange: bool
+          FullFrameInvalidation: bool
+          StaleDamage: bool
+          IncompleteDamage: bool
+          AmbiguousDamage: bool
+          ResourcesAvailable: bool
+          ParityAccepted: bool }
+
     /// Feature 153: pure host facts used to classify whether a live sentinel/damage proof can run.
     type LiveProofHostFacts =
         { Display: string option
@@ -183,6 +249,23 @@ module GlHost =
         frameWidth: int ->
         frameHeight: int ->
             ScissorDecision
+
+    /// Feature 157: classify damage before any no-clear paint is attempted.
+    val validateDamage:
+        damage: ScissorRect list ->
+        frameWidth: int ->
+        frameHeight: int ->
+        visibleChange: bool ->
+        fullFrameInvalidation: bool ->
+        staleDamage: bool ->
+        incompleteDamage: bool ->
+        ambiguousDamage: bool ->
+            DamageValidationResult
+
+    /// Feature 157: decide if the real DirectToSwapchain no-clear path may be selected.
+    val decideDamageScopedRender:
+        eligibility: DamageRenderEligibility ->
+            DamageRenderDecision
 
     /// Feature 153: classify host facts without opening native resources.
     val classifyLiveProofHost: facts: LiveProofHostFacts -> LiveProofHostReadiness
