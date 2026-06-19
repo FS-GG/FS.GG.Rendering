@@ -25,6 +25,7 @@ open FS.GG.UI.DesignSystem
 type private Msg =
     | Clicked of int
     | Toggled of bool
+    | SliderChanged of float
 
 let private size: Size = { Width = 320; Height = 200 }
 
@@ -61,6 +62,10 @@ let private centreOf (host: InteractiveAppHost<int, Msg>) (model: int) (nodeId: 
     let result = FS.GG.UI.Layout.Layout.evaluate available rendered.Layout
     let b = result.Bounds |> List.find (fun b -> b.NodeId = nodeId)
     b.Bounds.X + b.Bounds.Width / 2.0, b.Bounds.Y + b.Bounds.Height / 2.0
+
+let private renderBoundsOf (host: InteractiveAppHost<int, Msg>) (model: int) (nodeId: ControlId) =
+    let rendered = Control.renderTree host.Theme size (host.View size model)
+    rendered.Bounds |> List.find (fun (id, _) -> id = nodeId) |> snd
 
 // Drive a press+release at (x, y) through the preserved full-render ORACLE; return the routed msgs.
 let private clickOracle (host: InteractiveAppHost<int, Msg>) (model: int) (x: float) (y: float) : Msg list =
@@ -160,6 +165,37 @@ let tests =
             let model = fst (host.Init ())
             let dx, dy = centreOf host model "deep"
             assertParity host model "deeply nested keyed button" dx dy
+        }
+
+        test "slider: click and drag dispatch onChanged with a clamped numeric payload (SC-003)" {
+            let sliderView (_: Size) (_: int) : Control<Msg> =
+                Slider.create [ Slider.value 0.25; Slider.onChanged SliderChanged ]
+                |> Control.withKey "volume"
+
+            let host = hostOf sliderView (fun _ -> None)
+            let model = fst (host.Init ())
+            let bounds = renderBoundsOf host model "volume"
+            let y = bounds.Y + bounds.Height / 2.0
+            let x75 = bounds.X + bounds.Width * 0.75
+            let x25 = bounds.X + bounds.Width * 0.25
+
+            assertParity host model "slider click at 75%" x75 y
+
+            let retainedClick, _ = clickRetained host model x75 y
+            Expect.equal retainedClick [ SliderChanged 0.75 ] "clicking the slider dispatches the pointer-derived value payload"
+
+            let r = RetainedRender.init host.Theme size (host.View size model)
+            let dragMsgs, dragFallbacks =
+                ControlsElmish.routeRetainedInteraction
+                    host
+                    size
+                    model
+                    r.Retained
+                    r.Render
+                    (DragMove("volume", PointerButton.Primary, x25, y))
+
+            Expect.equal dragFallbacks 0 "slider drag resolves from the retained frame"
+            Expect.equal dragMsgs [ SliderChanged 0.25 ] "dragging the slider dispatches a changed payload"
         }
 
         test "MapPointer fallback parity: an unbound control routes through MapPointer identically (FR-006)" {

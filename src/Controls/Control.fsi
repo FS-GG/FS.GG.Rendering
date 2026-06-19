@@ -83,6 +83,14 @@ module internal ControlInternals =
         control: Control<'msg> ->
             FS.GG.UI.Layout.LayoutNode * Map<string, FS.GG.UI.Layout.LayoutBounds> * FS.GG.UI.Layout.LayoutResult
 
+    /// Compose a render result scene over an opaque viewport background from the active theme.
+    /// Internal so full and retained render paths keep identical root-surface semantics.
+    val sceneWithViewportBackground:
+        theme: Theme ->
+        size: FS.GG.UI.Scene.Size ->
+        scenes: FS.GG.UI.Scene.Scene list ->
+            FS.GG.UI.Scene.Scene
+
     /// Feature 097 (R2): incremental layout seam — re-measures only the `dirty` set (conservatively
     /// propagated inside `Layout.evaluateIncremental`) against the previous frame's `LayoutResult`,
     /// returning the same `root, boundsById` shape plus the new result to carry forward. `Bounds` are

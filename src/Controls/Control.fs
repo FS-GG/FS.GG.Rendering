@@ -2244,6 +2244,10 @@ module internal ControlInternals =
         let result = FS.GG.UI.Layout.Layout.evaluate (availableOf size) root
         root, boundsByIdOf result, result
 
+    let sceneWithViewportBackground (theme: Theme) (size: FS.GG.UI.Scene.Size) (scenes: Scene list) : Scene =
+        (Scene.rectangle (0.0, 0.0, float size.Width, float size.Height) theme.Background :: scenes)
+        |> Scene.group
+
     /// Feature 097 (R2): the incremental render-path seam (contract C4). Drives layout through
     /// `Layout.evaluateIncremental`, threading the previous frame's `LayoutResult` (the bounds cache)
     /// and the patch-derived `dirty` set. Returns the same `root, boundsById` shape `evaluateLayout`
@@ -2776,7 +2780,7 @@ module Control =
 
         let assembled = paint "0" control
 
-        { Scene = (assembled.InFlowScene @ assembled.OverlayScene) |> Scene.group
+        { Scene = (assembled.InFlowScene @ assembled.OverlayScene) |> ControlInternals.sceneWithViewportBackground theme size
           Layout = root
           Bounds = ControlInternals.collectBoundsWith boundsById control
           Diagnostics = diagnostics control

@@ -1201,7 +1201,9 @@ module internal RetainedRender =
         // rebuild — the adapter reuses it instead of calling `Control.renderTree` a second time.
         let render: ControlRenderResult<'msg> =
             // Feature 137 (US2): in-flow first, then the deferred z-top overlay group (empty ⇒ unchanged).
-            { Scene = (root.Fragment.Assembly.InFlowScene @ root.Fragment.Assembly.OverlayScene) |> Scene.group
+            { Scene =
+                (root.Fragment.Assembly.InFlowScene @ root.Fragment.Assembly.OverlayScene)
+                |> ControlInternals.sceneWithViewportBackground theme size
               Layout = layoutRoot
               Bounds = ControlInternals.collectBoundsWith boundsById control
               Diagnostics = Control.diagnostics control
@@ -1807,7 +1809,7 @@ module internal RetainedRender =
         // pre-order concatenation of `paintNode` over every node — the same list `renderTree`'s paint
         // builds. An active clock contributes a paint-level overlay scoped to its own identity.
         let render: ControlRenderResult<'msg> =
-            { Scene = sceneList |> Scene.group
+            { Scene = sceneList |> ControlInternals.sceneWithViewportBackground theme size
               Layout = root
               Bounds = ControlInternals.collectBoundsWith boundsById next
               Diagnostics = Control.diagnostics next

@@ -367,33 +367,93 @@ module ControlsElmish =
     // binding-eligible here and go straight to `MapPointer`.
     let clickEquivalentKinds = [ "click"; "changed"; "selected" ]
 
+    let private tryFindControlById (root: Control<'msg>) (controlId: ControlId) : Control<'msg> option =
+        let rec loop path (control: Control<'msg>) =
+            let id = control.Key |> Option.defaultValue path
+            if id = controlId then
+                Some control
+            else
+                control.Children
+                |> List.mapi (fun index child -> path + "." + string index, child)
+                |> List.tryPick (fun (childPath, child) -> loop childPath child)
+
+        loop "0" root
+
+    let private dispatchBindings
+        (origin: ControlEventOrigin)
+        (controlId: ControlId)
+        (kind: string)
+        (payload: string option)
+        (nav: NavPayload option)
+        (bindings: ControlEventBinding<'msg> list)
+        : 'msg list =
+        bindings
+        |> List.map (fun binding ->
+            binding.Dispatch
+                { Kind = kind
+                  ControlId = Some controlId
+                  Origin = origin
+                  Payload = payload
+                  Nav = nav })
+
+    let private sliderChangedMessages
+        (rendered: ControlRenderResult<'msg>)
+        (root: Control<'msg>)
+        (authored: ControlId)
+        (x: float)
+        (origin: ControlEventOrigin)
+        : 'msg list option =
+        match tryFindControlById root authored with
+        | Some control when control.Kind = "slider" ->
+            let bindings =
+                rendered.EventBindings
+                |> List.filter (fun binding -> binding.ControlId = authored && binding.EventKind = "changed")
+
+            match bindings, rendered.Bounds |> List.tryFind (fun (id, _) -> id = authored) with
+            | [], _ -> None
+            | _, None -> None
+            | _, Some(_, bounds) ->
+                let value = Math.Clamp((x - bounds.X) / max 1.0 bounds.Width, 0.0, 1.0)
+                let payload = value.ToString("0.###", Globalization.CultureInfo.InvariantCulture)
+
+                dispatchBindings origin authored "changed" (Some payload) (Some(SteppedValue value)) bindings
+                |> Some
+        | _ -> None
+
     // Resolve the authored bindings (if any) a single interaction should dispatch. `Some msgs` means
     // an authored binding consumed the interaction (MapPointer is NOT consulted for it); `None` means
     // no authored binding matched, so the host falls back to `MapPointer` with the raw interaction.
-    let bindingMessagesFor (rendered: ControlRenderResult<'msg>) (interaction: PointerInteraction) : 'msg list option =
+    let bindingMessagesFor (rendered: ControlRenderResult<'msg>) (root: Control<'msg>) (interaction: PointerInteraction) : 'msg list option =
         match interaction with
-        | Click(control, _, _, _) ->
+        | Click(control, _, x, _) ->
             match Control.nearestAuthored rendered control with
             | Some authored ->
-                let matched =
-                    rendered.EventBindings
-                    |> List.filter (fun binding ->
-                        binding.ControlId = authored
-                        && List.contains binding.EventKind clickEquivalentKinds)
+                match sliderChangedMessages rendered root authored x ControlEventOrigin.Pointer with
+                | Some msgs -> Some msgs
+                | None ->
+                    let matched =
+                        rendered.EventBindings
+                        |> List.filter (fun binding ->
+                            binding.ControlId = authored
+                            && List.contains binding.EventKind clickEquivalentKinds)
 
-                match matched with
-                | [] -> None
-                | bindings ->
-                    bindings
-                    |> List.map (fun binding ->
-                        binding.Dispatch
-                            { Kind = binding.EventKind
-                              ControlId = Some authored
-                              Origin = ControlEventOrigin.Pointer
-                              Payload = None
-                              Nav = None })
-                    |> Some
+                    match matched with
+                    | [] -> None
+                    | bindings ->
+                        bindings
+                        |> List.map (fun binding ->
+                            binding.Dispatch
+                                { Kind = binding.EventKind
+                                  ControlId = Some authored
+                                  Origin = ControlEventOrigin.Pointer
+                                  Payload = None
+                                  Nav = None })
+                        |> Some
             | None -> None
+        | DragMove(control, PointerButton.Primary, x, _)
+        | DragEnd(control, PointerButton.Primary, x, _) ->
+            Control.nearestAuthored rendered control
+            |> Option.bind (fun authored -> sliderChangedMessages rendered root authored x ControlEventOrigin.Pointer)
         | _ -> None
 
     // Translate a native viewer pointer input into the neutral 075 `PointerSample` the gesture fold
@@ -441,7 +501,8 @@ module ControlsElmish =
         match Pointer.toMsg (pointerSampleOf input) with
         | None -> state, []
         | Some pointerMsg ->
-            let rendered = Control.renderTree host.Theme size (host.View size model)
+            let current = host.View size model
+            let rendered = Control.renderTree host.Theme size current
 
             let available: FS.GG.UI.Layout.AvailableSpace =
                 { Width = float size.Width
@@ -467,7 +528,7 @@ module ControlsElmish =
             let messages =
                 interactions
                 |> List.collect (fun interaction ->
-                    match bindingMessagesFor rendered interaction with
+                    match bindingMessagesFor rendered current interaction with
                     | Some msgs -> msgs
                     | None ->
                         interpretPointerEffect host.MapPointer interaction
@@ -493,29 +554,9 @@ module ControlsElmish =
         | Click(_, _, x, y) ->
             match RetainedRender.retainedHitTest x y retained with
             | None -> None, true
-            | Some rid ->
-                match Map.tryFind rid (RetainedRender.authoredControlIds render.BoundIds retained) with
-                | None -> None, false
-                | Some authored ->
-                    let matched =
-                        render.EventBindings
-                        |> List.filter (fun binding ->
-                            binding.ControlId = authored
-                            && List.contains binding.EventKind clickEquivalentKinds)
-
-                    match matched with
-                    | [] -> None, false
-                    | bindings ->
-                        bindings
-                        |> List.map (fun binding ->
-                            binding.Dispatch
-                                { Kind = binding.EventKind
-                                  ControlId = Some authored
-                                  Origin = ControlEventOrigin.Pointer
-                                  Payload = None
-                                  Nav = None })
-                        |> Some,
-                        false
+            | Some _ -> bindingMessagesFor render retained.Root.Control interaction, false
+        | DragMove(_, PointerButton.Primary, _, _)
+        | DragEnd(_, PointerButton.Primary, _, _) -> bindingMessagesFor render retained.Root.Control interaction, false
         | _ -> None, false
 
     // Feature 110 (FR-001/FR-002/FR-003): route ONE already-resolved interaction from the retained frame.
@@ -536,9 +577,10 @@ module ControlsElmish =
         | None, false -> interpretPointerEffect host.MapPointer interaction |> AdapterCmd.productMessages, 0
         | None, true ->
             // Counted full-render fallback (FR-007/FR-009): a fresh render + the oracle's resolution.
-            let rendered = Control.renderTree host.Theme size (host.View size model)
+            let current = host.View size model
+            let rendered = Control.renderTree host.Theme size current
 
-            match bindingMessagesFor rendered interaction with
+            match bindingMessagesFor rendered current interaction with
             | Some msgs -> msgs, 1
             | None -> interpretPointerEffect host.MapPointer interaction |> AdapterCmd.productMessages, 1
 

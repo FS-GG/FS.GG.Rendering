@@ -59,7 +59,11 @@ let private navTitle (p: Page): string =
 
 let private navItem (current: string) (p: Page): Control<SecondAntShowcaseMsg> =
     let marker = if p.Id = current then "▸ " else "  "
-    Button.create [ Button.text (marker + navTitle p); Button.onClick (NavigateTo p.Id); Attr.width 120.0 ]
+    Button.create
+        [ Button.text (marker + navTitle p)
+          Button.onClick (NavigateTo p.Id)
+          Attr.styleClasses [ FS.GG.UI.DesignSystem.StyleClass.Custom "ghost" ]
+          Attr.width 120.0 ]
 
 let private navRail (bounds: ShellLayout.Rect) (model: SecondAntShowcaseModel): Control<SecondAntShowcaseMsg> =
     let header t = Label.create [ Label.text t ]
