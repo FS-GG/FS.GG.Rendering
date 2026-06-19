@@ -33,14 +33,14 @@
     <Compile Include="Evidence.fs" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="FS.GG.UI.Themes.AntDesign" Version="0.1.25-preview.1" />
-    <PackageReference Include="FS.GG.UI.Controls" Version="0.1.25-preview.1" />
-    <PackageReference Include="FS.GG.UI.Color" Version="0.1.25-preview.1" />
-    <PackageReference Include="FS.GG.UI.Scene" Version="0.1.25-preview.1" />
-    <PackageReference Include="FS.GG.UI.Controls.Elmish" Version="0.1.25-preview.1" />
-    <PackageReference Include="FS.GG.UI.SkiaViewer" Version="0.1.25-preview.1" />
-    <PackageReference Include="FS.GG.UI.Testing" Version="0.1.25-preview.1" />
-    <PackageReference Include="FS.GG.UI.DesignSystem" Version="0.1.25-preview.1" />
-    <PackageReference Include="FS.GG.UI.KeyboardInput" Version="0.1.25-preview.1" />
+    <PackageReference Include="FS.GG.UI.Themes.AntDesign" Version="0.1.26-preview.1" />
+    <PackageReference Include="FS.GG.UI.Controls" Version="0.1.26-preview.1" />
+    <PackageReference Include="FS.GG.UI.Color" Version="0.1.26-preview.1" />
+    <PackageReference Include="FS.GG.UI.Scene" Version="0.1.26-preview.1" />
+    <PackageReference Include="FS.GG.UI.Controls.Elmish" Version="0.1.26-preview.1" />
+    <PackageReference Include="FS.GG.UI.SkiaViewer" Version="0.1.26-preview.1" />
+    <PackageReference Include="FS.GG.UI.Testing" Version="0.1.26-preview.1" />
+    <PackageReference Include="FS.GG.UI.DesignSystem" Version="0.1.26-preview.1" />
+    <PackageReference Include="FS.GG.UI.KeyboardInput" Version="0.1.26-preview.1" />
   </ItemGroup>
 </Project>
