@@ -1,0 +1,9 @@
+  AntShowcase.Core -> /home/developer/projects/FS.GG.Rendering/samples/AntShowcase/AntShowcase.Core/bin/Debug/net10.0/AntShowcase.Core.dll
+  AntShowcase.Tests -> /home/developer/projects/FS.GG.Rendering/samples/AntShowcase/AntShowcase.Tests/bin/Debug/net10.0/AntShowcase.Tests.dll
+Test run for /home/developer/projects/FS.GG.Rendering/samples/AntShowcase/AntShowcase.Tests/bin/Debug/net10.0/AntShowcase.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Data collector 'Blame' message: All tests finished running, Sequence file will not be generated.
+WARNING: Overwriting results file: /home/developer/projects/FS.GG.Rendering/specs/163-package-feed-validation-lanes/readiness/lanes/antshowcase-sample/TestResults/antshowcase-sample.trx
+Results File: /home/developer/projects/FS.GG.Rendering/specs/163-package-feed-validation-lanes/readiness/lanes/antshowcase-sample/TestResults/antshowcase-sample.trx
+
+Passed!  - Failed:     0, Passed:    78, Skipped:     0, Total:    78, Duration: 50 s - AntShowcase.Tests.dll (net10.0)

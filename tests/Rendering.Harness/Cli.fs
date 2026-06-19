@@ -201,7 +201,31 @@ let private feature156ScenarioScene scenarioId damageScoped =
         else
             Colors.rgb 220uy 180uy 64uy
 
+    let sparseHeavyStaticLayer =
+        [ for row in 0..23 do
+              for col in 0..31 do
+                  let x = float col * 20.0
+                  let y = float row * 20.0
+                  let color =
+                      match (row + col) % 3 with
+                      | 0 -> Colors.rgb 52uy 82uy 112uy
+                      | 1 -> Colors.rgb 72uy 118uy 96uy
+                      | _ -> Colors.rgb 96uy 80uy 128uy
+
+                  yield Scene.rectangle (x, y, 18.0, 18.0) color ]
+
     match scenarioId with
+    | "timing/sparse-heavy-localized-update" ->
+        let dirtyPatch = Scene.rectangle (304.0, 224.0, 24.0, 24.0) accent
+
+        if damageScoped then
+            // Models a retained-backing hot path: only the tiny dirty patch is redrawn.
+            SceneNode.Group [ dirtyPatch ]
+        else
+            SceneNode.Group
+                ((Scene.rectangle (0.0, 0.0, 640.0, 480.0) (Colors.rgb 12uy 18uy 30uy)
+                  :: sparseHeavyStaticLayer)
+                 @ [ dirtyPatch ])
     | "timing/no-change" ->
         SceneNode.Group
             [ Scene.rectangle (0.0, 0.0, 640.0, 480.0) (Colors.rgb 12uy 18uy 30uy)
@@ -3769,6 +3793,92 @@ let private runCompositorReadinessCmd (rest: string list) =
     else
         runLegacyCompositorReadinessCmd rest
 
+let private flagValues (flag: string) (rest: string list) =
+    let rec collect acc xs =
+        match xs with
+        | f :: v :: tl when f = flag -> collect (acc @ [ v ]) tl
+        | _ :: tl -> collect acc tl
+        | [] -> acc
+
+    collect [] rest
+
+let private hasFlag (flag: string) (rest: string list) =
+    rest |> List.exists ((=) flag)
+
+let private runPackageFeedCmd (rest: string list) =
+    let mode =
+        flagValue "--mode" rest
+        |> Option.defaultValue "check"
+        |> PackageFeed.tryParseMode
+
+    match mode with
+    | None ->
+        eprintfn "package-feed: --mode must be check, refresh, or proof"
+        2
+    | Some mode ->
+        let repositoryRoot = Directory.GetCurrentDirectory()
+        let samples = flagValues "--sample" rest
+
+        if samples.IsEmpty then
+            eprintfn "package-feed: at least one --sample <path> is required"
+            2
+        else
+            let out =
+                flagValue "--out" rest
+                |> Option.defaultValue "specs/163-package-feed-validation-lanes/readiness/package-proof"
+
+            let feed =
+                flagValue "--feed" rest
+                |> Option.defaultValue PackageFeed.defaultFeedPath
+
+            let options: PackageFeed.PackageFeedOptions =
+                { RepositoryRoot = repositoryRoot
+                  SelectedSamples = samples
+                  FeedPath = feed
+                  OutDir = out
+                  Mode = mode
+                  PackBeforeCheck = hasFlag "--pack" rest
+                  IsolatedCachePath = flagValue "--isolated-cache" rest
+                  Cold = hasFlag "--cold" rest
+                  ClearGlobalCache = hasFlag "--clear-global-cache" rest
+                  AllowedExceptionIds = flagValues "--allow-exception" rest |> Set.ofList
+                  CompatibilityExceptions = [] }
+
+            let result = PackageFeed.runWorkflow options
+
+            printfn "package-feed status: %s" (PackageFeed.proofStatusToken result.Status)
+            printfn "packages: %i" result.CurrentPackages.Length
+            printfn "pins: %i" result.PackagePins.Length
+
+            for evidence in result.EvidenceFiles do
+                printfn "%s" evidence
+
+            for diagnostic in result.Diagnostics do
+                eprintfn "%s" diagnostic
+
+            match result.Status with
+            | PackageFeed.Passed -> 0
+            | PackageFeed.Failed -> 1
+            | PackageFeed.EnvironmentLimited -> 3
+
+let private runValidationLanesCmd (rest: string list) =
+    let repositoryRoot = Directory.GetCurrentDirectory()
+
+    let out =
+        flagValue "--out" rest
+        |> Option.defaultValue "specs/163-package-feed-validation-lanes/readiness/lanes"
+
+    let laneIds = flagValues "--lane" rest
+    let summary = ValidationLanes.runLanes repositoryRoot out laneIds
+
+    printfn "%s" (Path.Combine(out, "summary.md"))
+
+    match summary.OverallReadiness with
+    | ValidationLanes.Ready -> 0
+    | ValidationLanes.Blocked
+    | ValidationLanes.Incomplete
+    | ValidationLanes.EnvironmentLimitedReadiness -> 1
+
 [<EntryPoint>]
 let main argv =
     match List.ofArray argv with
@@ -3794,6 +3904,8 @@ let main argv =
     | "compositor-promotion" :: rest -> runCompositorPromotionCmd rest
     | "compositor-performance" :: rest -> runCompositorPerformanceCmd rest
     | "compositor-readiness" :: rest -> runCompositorReadinessCmd rest
+    | "package-feed" :: rest -> runPackageFeedCmd rest
+    | "validation-lanes" :: rest -> runValidationLanesCmd rest
     | "input" :: rest ->
         let known () = Input.scripts |> Map.toList |> List.map fst |> String.concat ", "
         match flagValue "--backend" rest |> Option.bind Input.parseBackend, flagValue "--script" rest with
@@ -3824,7 +3936,7 @@ let main argv =
                 | RunStatus.Failed -> 1
     | []
     | "--help" :: _ ->
-        printfn "usage: <probe|offscreen|live-x11|overlay-visual-proof|render-anywhere-reference|render-anywhere-browser-feasibility|compositor-present-proof|compositor-live-proof|compositor-parity|compositor-perf|compositor-reuse|compositor-snapshots|compositor-timing|compositor-damage|compositor-promotion|compositor-performance|compositor-readiness|perf|input> [--out <dir>] [--json]"
+        printfn "usage: <probe|offscreen|live-x11|overlay-visual-proof|render-anywhere-reference|render-anywhere-browser-feasibility|compositor-present-proof|compositor-live-proof|compositor-parity|compositor-perf|compositor-reuse|compositor-snapshots|compositor-timing|compositor-damage|compositor-promotion|compositor-performance|compositor-readiness|package-feed|validation-lanes|perf|input> [--out <dir>] [--json]"
         0
     | other ->
         eprintfn "unknown subcommand: %s" (String.concat " " other)

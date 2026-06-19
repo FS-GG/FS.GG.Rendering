@@ -76,6 +76,8 @@ let tests =
             Expect.equal Compositor.feature160RequiredAttempts 3 "attempts"
             Expect.equal Compositor.feature160RequiredScenarioIds Compositor.feature158RequiredScenarioIds "Feature 158 scenario set"
             Expect.contains Compositor.feature160RequiredScenarioIds "timing/edge-clipping" "edge clipping"
+            Expect.contains Compositor.feature160ScenarioIds "timing/sparse-heavy-localized-update" "damage-friendly debug scenario"
+            Expect.isFalse (Compositor.feature160RequiredScenarioIds |> List.contains "timing/sparse-heavy-localized-update") "debug scenario is not an acceptance requirement"
 
             [ Perf.TimedOut, "timed-out"
               Perf.Canceled, "canceled"

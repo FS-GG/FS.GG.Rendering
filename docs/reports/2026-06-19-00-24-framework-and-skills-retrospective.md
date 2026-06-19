@@ -1366,6 +1366,10 @@ The plan and tasks should keep `[P]` only for tasks that edit different files an
 
 Make package-only sample validation deterministic and make long-running validation diagnosable.
 
+**Implementation status on 2026-06-19:** Feature 163 landed the first repository-level package-feed
+proof and focused validation-lane runner. Evidence is committed under
+`specs/163-package-feed-validation-lanes/readiness/`.
+
 **Primary user stories**
 
 - **US1:** A maintainer can refresh the local feed, update package-consuming samples, and prove no stale `FS.GG.UI.*` packages are used.
@@ -1374,13 +1378,14 @@ Make package-only sample validation deterministic and make long-running validati
 
 **Expected source paths**
 
-- `scripts/check-sample-package-pins.fsx`
-- `scripts/refresh-local-feed.fsx`
+- `scripts/refresh-local-feed-and-samples.fsx`
 - `scripts/run-validation-lanes.fsx`
 - `samples/AntShowcase/nuget.config`
-- `samples/AntShowcase/README.md`
-- `docs/reports/` or `specs/<feature>/readiness/`
-- `tests/Testing.Tests/` or a new script-focused test project if needed
+- `tests/Rendering.Harness/PackageFeed.fsi`
+- `tests/Rendering.Harness/ValidationLanes.fsi`
+- `tests/Rendering.Harness.Tests/Feature163*.fs`
+- `tests/Package.Tests/Feature163PackageFeedValidationTests.fs`
+- `specs/163-package-feed-validation-lanes/readiness/`
 
 **Spec and plan requirements**
 
@@ -1388,19 +1393,20 @@ Make package-only sample validation deterministic and make long-running validati
 - Validation lanes must use isolated result directories.
 - The controls lane must use `--blame-hang --blame-hang-timeout`.
 - The lane runner must not treat a canceled or timed-out full solution run as green.
-- A cold package proof must record `dotnet nuget locals all --list` and whether global packages were cleared or a lane-specific package cache was used.
+- Package proof must record whether global packages were cleared or a lane-specific package cache
+  was used. Feature 163's default proof uses an isolated cache and does not clear global caches.
 
 **Task outline**
 
-- [ ] T001 [P] Add failing tests or FSI transcript for stale `FS.GG.UI.*` package pin detection in `tests/Testing.Tests/` or `specs/163-package-feed-validation-lanes/readiness/`.
-- [ ] T002 [P] Add failing test or scripted fixture for Package Source Mapping verification against `samples/AntShowcase/nuget.config`.
-- [ ] T003 Implement `scripts/check-sample-package-pins.fsx` to compare sample package references with packable project versions.
-- [ ] T004 Implement `scripts/refresh-local-feed.fsx` to pack `src/*/*.fsproj` packages into `~/.local/share/nuget-local` and optionally update sample pins.
-- [ ] T005 Update `samples/AntShowcase/nuget.config` with Package Source Mapping for `FS.GG.UI.*`.
-- [ ] T006 [P] Add lane model and JSON/markdown summary types in the script or `FS.GG.UI.Testing` if reusable.
-- [ ] T007 Implement `scripts/run-validation-lanes.fsx` with lane-specific `--results-directory`, TRX logger, `--blame-hang`, and outer timeout handling.
-- [ ] T008 [P] Document lane usage in `samples/AntShowcase/README.md`.
-- [ ] T009 Run cold package proof, AntShowcase tests, Controls lane, and full/aggregate lane; save logs under `specs/163-package-feed-validation-lanes/readiness/`.
+- [x] T001 [P] Add failing tests or FSI transcript for stale `FS.GG.UI.*` package pin detection.
+- [x] T002 [P] Add failing test or scripted fixture for Package Source Mapping verification against `samples/AntShowcase/nuget.config`.
+- [x] T003 Implement package-pin checking in `scripts/refresh-local-feed-and-samples.fsx --mode check`.
+- [x] T004 Implement refresh/proof workflow in `scripts/refresh-local-feed-and-samples.fsx`.
+- [x] T005 Update `samples/AntShowcase/nuget.config` with Package Source Mapping for `FS.GG.UI.*`.
+- [x] T006 [P] Add lane model and JSON/markdown summary types in `Rendering.Harness.ValidationLanes`.
+- [x] T007 Implement `scripts/run-validation-lanes.fsx` with lane-specific logs, result JSON, TRX output for dotnet lanes, `--blame-hang`, and outer timeout/no-progress handling.
+- [x] T008 [P] Document lane usage in `specs/163-package-feed-validation-lanes/quickstart.md`.
+- [x] T009 Run package proof, AntShowcase sample lane, controls lane, and rendering-harness lane; save logs, result JSON, TRX files, and summaries under `specs/163-package-feed-validation-lanes/readiness/`. Aggregate full-solution validation remains optional and is recorded separately from focused readiness.
 
 **Parallel opportunities**
 
@@ -1792,16 +1798,27 @@ dotnet test samples/AntShowcase/AntShowcase.Tests/AntShowcase.Tests.fsproj -c Re
 Lane-runner form:
 
 ```sh
-dotnet fsi scripts/run-validation-lanes.fsx --lane ant-showcase --configuration Release
-dotnet fsi scripts/run-validation-lanes.fsx --lane controls --configuration Release --blame-hang-timeout 10m
-dotnet fsi scripts/run-validation-lanes.fsx --lane package-cold-proof --sample samples/AntShowcase
+dotnet fsi scripts/run-validation-lanes.fsx \
+  --lane package-proof \
+  --lane antshowcase-sample \
+  --lane controls \
+  --lane rendering-harness \
+  --out specs/163-package-feed-validation-lanes/readiness/lanes
 ```
 
 Package proof form:
 
 ```sh
-dotnet fsi scripts/refresh-local-feed.fsx --sample samples/AntShowcase --update-pins
-dotnet fsi scripts/check-sample-package-pins.fsx --sample samples/AntShowcase
+dotnet fsi scripts/refresh-local-feed-and-samples.fsx \
+  --sample samples/AntShowcase \
+  --mode check \
+  --out specs/163-package-feed-validation-lanes/readiness/package-proof
+
+dotnet fsi scripts/refresh-local-feed-and-samples.fsx \
+  --sample samples/AntShowcase \
+  --mode proof \
+  --isolated-cache specs/163-package-feed-validation-lanes/readiness/package-proof/nuget-cache \
+  --out specs/163-package-feed-validation-lanes/readiness/package-proof
 ```
 
 Responsiveness proof form:

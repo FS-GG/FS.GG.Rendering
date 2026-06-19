@@ -56,6 +56,11 @@
     <Compile Include="Feature160FocusedLaneTests.fs" />
     <Compile Include="Feature160ReleaseGateSeparationTests.fs" />
     <Compile Include="Feature160ReadinessPackageTests.fs" />
+    <Compile Include="Feature163TestFixtures.fs" />
+    <Compile Include="Feature163PackageFeedTests.fs" />
+    <Compile Include="Feature163PackageSourceProofTests.fs" />
+    <Compile Include="Feature163ValidationLaneTests.fs" />
+    <Compile Include="Feature163ValidationSummaryTests.fs" />
     <Compile Include="Feature151RenderAnywhereRegressionTests.fs" />
     <Compile Include="Feature151TextShapingRegressionTests.fs" />
     <Compile Include="Feature151CompositorReadinessRegressionTests.fs" />

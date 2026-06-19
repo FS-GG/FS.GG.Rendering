@@ -1,0 +1,15 @@
+  Scene -> /home/developer/projects/FS.GG.Rendering/src/Scene/bin/Debug/net10.0/FS.GG.UI.Scene.dll
+  KeyboardInput -> /home/developer/projects/FS.GG.Rendering/src/KeyboardInput/bin/Debug/net10.0/FS.GG.UI.KeyboardInput.dll
+  Layout -> /home/developer/projects/FS.GG.Rendering/src/Layout/bin/Debug/net10.0/FS.GG.UI.Layout.dll
+  Testing -> /home/developer/projects/FS.GG.Rendering/src/Testing/bin/Debug/net10.0/FS.GG.UI.Testing.dll
+  DesignSystem -> /home/developer/projects/FS.GG.Rendering/src/DesignSystem/bin/Debug/net10.0/FS.GG.UI.DesignSystem.dll
+  Controls -> /home/developer/projects/FS.GG.Rendering/src/Controls/bin/Debug/net10.0/FS.GG.UI.Controls.dll
+  SkiaViewer -> /home/developer/projects/FS.GG.Rendering/src/SkiaViewer/bin/Debug/net10.0/FS.GG.UI.SkiaViewer.dll
+  Package.Tests -> /home/developer/projects/FS.GG.Rendering/tests/Package.Tests/bin/Debug/net10.0/Package.Tests.dll
+Test run for /home/developer/projects/FS.GG.Rendering/tests/Package.Tests/bin/Debug/net10.0/Package.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Data collector 'Blame' message: All tests finished running, Sequence file will not be generated.
+WARNING: Overwriting results file: /home/developer/projects/FS.GG.Rendering/specs/163-package-feed-validation-lanes/readiness/lanes/controls/TestResults/controls.trx
+Results File: /home/developer/projects/FS.GG.Rendering/specs/163-package-feed-validation-lanes/readiness/lanes/controls/TestResults/controls.trx
+
+Passed!  - Failed:     0, Passed:     4, Skipped:     0, Total:     4, Duration: 60 ms - Package.Tests.dll (net10.0)

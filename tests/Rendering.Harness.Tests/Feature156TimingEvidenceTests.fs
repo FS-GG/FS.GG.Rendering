@@ -19,6 +19,16 @@ let tests =
             Expect.equal decision.ConfidenceDecision "positive-outside-noise-band" "confidence"
         }
 
+        test "sparse heavy localized update is positive outside the noise band" {
+            let full = distribution "raw/sparse-heavy-full.csv" [ 31.0; 32.0; 32.5; 33.0; 34.0 ]
+            let damage = distribution "raw/sparse-heavy-damage.csv" [ 3.8; 4.0; 4.1; 4.2; 4.4 ]
+            let decision = Perf.evaluateScenario 5 full damage
+
+            Expect.equal decision.Verdict Perf.Positive "tiny dirty patch should beat a heavy full redraw"
+            Expect.floatClose Accuracy.medium decision.NoiseBandMs 1.625 "5 percent of full p50"
+            Expect.isEmpty decision.Reasons "positive damage-scoped evidence has no rejection reasons"
+        }
+
         test "noisy non-beneficial and incomplete inputs fail closed" {
             let full = distribution "raw/full.csv" [ 10.0; 10.0; 10.0; 10.0; 10.0 ]
             let noisy = distribution "raw/noisy.csv" [ 9.9; 9.9; 9.9; 9.9; 9.9 ]

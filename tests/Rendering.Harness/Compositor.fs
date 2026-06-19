@@ -1267,7 +1267,8 @@ module Compositor =
 
     let feature160ScenarioIds =
         feature160RequiredScenarioIds
-        @ [ "timing/restricted-debug"
+        @ [ "timing/sparse-heavy-localized-update"
+            "timing/restricted-debug"
             "timing/timed-out"
             "timing/canceled"
             "timing/partial-evidence"

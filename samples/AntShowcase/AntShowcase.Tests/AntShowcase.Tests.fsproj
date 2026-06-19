@@ -33,8 +33,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AntShowcase.Core\AntShowcase.Core.fsproj" />
-    <ProjectReference Include="..\..\..\src\Controls\Controls.fsproj" />
-    <ProjectReference Include="..\..\..\src\Scene\Scene.fsproj" />
   </ItemGroup>
 
   <ItemGroup>

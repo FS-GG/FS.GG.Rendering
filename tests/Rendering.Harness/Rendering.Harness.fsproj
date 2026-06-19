@@ -25,6 +25,10 @@
     <Compile Include="Perf.fs" />
     <Compile Include="Compositor.fsi" />
     <Compile Include="Compositor.fs" />
+    <Compile Include="PackageFeed.fsi" />
+    <Compile Include="PackageFeed.fs" />
+    <Compile Include="ValidationLanes.fsi" />
+    <Compile Include="ValidationLanes.fs" />
     <Compile Include="Probe.fsi" />
     <Compile Include="Probe.fs" />
     <Compile Include="Tiers.fsi" />

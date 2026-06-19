@@ -1,0 +1,7 @@
+package-feed status: passed
+packages: 13
+pins: 14
+specs/163-package-feed-validation-lanes/readiness/package-proof/package-versions.md
+specs/163-package-feed-validation-lanes/readiness/package-proof/package-pins.md
+specs/163-package-feed-validation-lanes/readiness/package-proof/source-proof.md
+specs/163-package-feed-validation-lanes/readiness/package-proof/source-proof.json
