@@ -89,6 +89,9 @@ specs/172-fix-mouse-lag/readiness/**/nuget-cache/
 !specs/173-live-responsiveness-runner/readiness/
 !specs/173-live-responsiveness-runner/readiness/**
 specs/173-live-responsiveness-runner/readiness/**/nuget-cache/
+!specs/174-fix-render-lag/readiness/
+!specs/174-fix-render-lag/readiness/**
+specs/174-fix-render-lag/readiness/**/nuget-cache/
 
 # macOS / Linux cruft
 .DS_Store

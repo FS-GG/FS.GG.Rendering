@@ -285,10 +285,17 @@ module ControlsElmish =
           IntrinsicInvalidationCount = metrics.LayoutInvalidatedNodeCount }
 
     let responsivenessTimingContribution (metrics: FrameMetrics) =
-        { RoutingDuration = metrics.FrameDuration
-          UpdateDuration = if metrics.ProductModelChanged then metrics.FrameDuration else TimeSpan.Zero
-          RetainedStepDuration = metrics.PaintDuration
-          LayoutDuration = if metrics.LayoutRan then metrics.FrameDuration else TimeSpan.Zero
+        let nonNegative (value: TimeSpan) =
+            if value < TimeSpan.Zero then TimeSpan.Zero else value
+
+        let framePreparation =
+            metrics.FrameDuration - metrics.PaintDuration - metrics.ComposeDuration
+            |> nonNegative
+
+        { RoutingDuration = TimeSpan.Zero
+          UpdateDuration = if metrics.ProductModelChanged then framePreparation else TimeSpan.Zero
+          RetainedStepDuration = framePreparation
+          LayoutDuration = if metrics.LayoutRan then framePreparation else TimeSpan.Zero
           TextDuration = TimeSpan.Zero
           ProductMessageCount = if metrics.ProductModelChanged then 1 else 0
           ProductModelChanged = metrics.ProductModelChanged

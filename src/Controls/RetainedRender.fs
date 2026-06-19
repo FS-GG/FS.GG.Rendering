@@ -3,6 +3,39 @@ namespace FS.GG.UI.Controls
 open FS.GG.UI.Scene
 open FS.GG.UI.DesignSystem
 
+module private RetainedRenderTrace =
+    let private enabled =
+        System.String.Equals(
+            System.Environment.GetEnvironmentVariable("FS_GG_RENDER_LAG_TRACE"),
+            "1",
+            System.StringComparison.Ordinal
+        )
+
+    let emit eventName fields =
+        if enabled then
+            let fieldsText =
+                fields
+                |> List.map (fun (name, value) -> $"{name}={value}")
+                |> String.concat " "
+
+            let suffix = if System.String.IsNullOrWhiteSpace fieldsText then "" else " " + fieldsText
+            let ts = System.DateTimeOffset.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture)
+            let ticks = System.Diagnostics.Stopwatch.GetTimestamp()
+            System.Console.Error.WriteLine($"FS_GG_RENDER_LAG_TRACE ts={ts} ticks={ticks} event={eventName}{suffix}")
+
+    let time eventName fields (work: unit -> 'a) : 'a =
+        if enabled then
+            let sw = System.Diagnostics.Stopwatch.StartNew()
+            let result = work ()
+            sw.Stop()
+            emit
+                eventName
+                (("durationMs", sw.Elapsed.TotalMilliseconds.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture))
+                 :: fields)
+            result
+        else
+            work ()
+
 // Feature 091 (E2) — wiring the parked keyed reconciler (feature 067) onto the live render path.
 // This is NOT a new algorithm: it consumes `Reconcile.diff`'s patch and drives the next frame
 // from `ControlInternals.evaluateLayout` + `paintNode` (the SAME measure/paint `Control.renderTree`
@@ -50,10 +83,20 @@ type internal RenderFragment =
       Box: FS.GG.UI.Scene.Rect option
       InvalidationEvidence: RetainedInvalidationEvidence list }
 
+type internal RetainedMetadata<'msg> =
+    { InFlowBounds: (ControlId * FS.GG.UI.Scene.Rect) list
+      OverlayBounds: (ControlId * FS.GG.UI.Scene.Rect) list
+      Diagnostics: ControlDiagnostic list
+      EventBindings: ControlEventBinding<'msg> list
+      BoundIds: Set<ControlId>
+      KeyedNodes: (ControlId * ControlKind) list
+      NodeCount: int }
+
 type internal RetainedNode<'msg> =
     { Identity: RetainedId
       Control: Control<'msg>
       Fragment: RenderFragment
+      Metadata: RetainedMetadata<'msg>
       Children: RetainedNode<'msg> list }
 
 // Feature 099 (R4) / 103 (R6): the per-identity animation clock. `Anim` is the feature-073
@@ -142,6 +185,8 @@ type internal RetainedRender<'msg> =
 
 type internal WorkReductionRecord =
     { BaselineNodeCount: int
+      MetadataVisitedNodeCount: int
+      MetadataFallbackCount: int
       RecomputedNodeCount: int
       ChangedSubtreeBound: int
       ShiftedNodeCount: int
@@ -395,11 +440,17 @@ module internal RetainedRender =
         (own: FS.GG.UI.Scene.Scene list)
         (children: RetainedNode<'msg> list)
         : ControlInternals.CurrentNodeAssemblyResult =
-        let childAssemblies: ControlInternals.CurrentNodeAssemblyResult list =
-            children
-            |> List.map (fun child -> child.Fragment.Assembly)
+        RetainedRenderTrace.time
+            "retained-build-assemble-node"
+            [ "kind", nc.Kind
+              "children", string children.Length
+              "ownScenes", string own.Length ]
+            (fun () ->
+                let childAssemblies: ControlInternals.CurrentNodeAssemblyResult list =
+                    children
+                    |> List.map (fun child -> child.Fragment.Assembly)
 
-        ControlInternals.assembleCurrentNode nc box own childAssemblies
+                ControlInternals.assembleCurrentNode nc box own childAssemblies)
 
     let private evidence
         (decision: RetainedInvalidationDecision)
@@ -425,6 +476,69 @@ module internal RetainedRender =
           Assembly = assembly
           Box = box
           InvalidationEvidence = [ evidence ] }
+
+    let private retainedMetadata
+        (path: string)
+        (control: Control<'msg>)
+        (box: Rect option)
+        (children: RetainedNode<'msg> list)
+        : RetainedMetadata<'msg> =
+        let controlId: ControlId = control.Key |> Option.defaultValue path
+
+        let bounds =
+            children
+            |> List.map (fun child ->
+                ({ InFlowBounds = child.Metadata.InFlowBounds
+                   OverlayBounds = child.Metadata.OverlayBounds }
+                 : ControlInternals.CurrentNodeBoundsResult))
+            |> ControlInternals.assembleCurrentNodeBounds control path box
+
+        let eventBindings = ControlInternals.eventBindings path control
+        let boundIds =
+            children
+            |> List.fold (fun acc child -> Set.union acc child.Metadata.BoundIds) Set.empty
+            |> fun acc -> if List.isEmpty eventBindings then acc else Set.add controlId acc
+
+        let keyedNodes =
+            match control.Key with
+            | Some key -> (key, control.Kind) :: (children |> List.collect (fun child -> child.Metadata.KeyedNodes))
+            | None -> children |> List.collect (fun child -> child.Metadata.KeyedNodes)
+
+        { InFlowBounds = bounds.InFlowBounds
+          OverlayBounds = bounds.OverlayBounds
+          Diagnostics =
+            ControlInternals.controlDiagnostics control
+            @ (children |> List.collect (fun child -> child.Metadata.Diagnostics))
+          EventBindings =
+            eventBindings
+            @ (children |> List.collect (fun child -> child.Metadata.EventBindings))
+          BoundIds = boundIds
+          KeyedNodes = keyedNodes
+          NodeCount = 1 + (children |> List.sumBy (fun child -> child.Metadata.NodeCount)) }
+
+    let private duplicateKeyDiagnostics (metadata: RetainedMetadata<'msg>) =
+        metadata.KeyedNodes
+        |> List.groupBy fst
+        |> List.collect (fun (key, rows) ->
+            if rows.Length > 1 then
+                rows |> List.tail |> List.map (fun (_, kind) -> Diagnostics.keyCollision key kind)
+            else
+                [])
+
+    let private renderFromRetainedMetadata
+        (theme: Theme)
+        (size: Size)
+        (layout: FS.GG.UI.Layout.LayoutNode)
+        (sceneList: Scene list)
+        (metadata: RetainedMetadata<'msg>)
+        : ControlRenderResult<'msg> =
+        { Scene = sceneList |> ControlInternals.sceneWithViewportBackground theme size
+          Layout = layout
+          Bounds = metadata.InFlowBounds @ metadata.OverlayBounds
+          Diagnostics = metadata.Diagnostics @ duplicateKeyDiagnostics metadata
+          EventBindings = metadata.EventBindings
+          BoundIds = metadata.BoundIds
+          NodeCount = metadata.NodeCount }
 
     // ---------------------------------------------------------------------------------------------
     // Feature 113 (Phase 5) — the control-internal memoization seam. Pure + total + deterministic:
@@ -1137,7 +1251,8 @@ module internal RetainedRender =
         List.ofSeq diags
 
     let init (theme: Theme) (size: FS.GG.UI.Scene.Size) (control: Control<'msg>) : RetainedInit<'msg> =
-        let layoutRoot, boundsById, layoutResult = ControlInternals.evaluateLayout size control
+        let layoutRoot, boundsById, layoutResult =
+            RetainedRenderTrace.time "retained-init-layout" [] (fun () -> ControlInternals.evaluateLayout size control)
 
         let mutable nextId = 0UL
 
@@ -1152,14 +1267,19 @@ module internal RetainedRender =
         let mutable memo: MemoCache = Map.empty
 
         let paintOwn (path: string) (nc: Control<'msg>) : Scene list =
-            if isMemoizable nc then
-                let dep = memoDependency theme boundsById path nc
-                let id = nc.Key |> Option.defaultValue path
-                let subtree, memo', _ = memoize id dep (fun () -> ControlInternals.paintNode theme boundsById path nc) memo
-                memo <- memo'
-                subtree
-            else
-                ControlInternals.paintNode theme boundsById path nc
+            RetainedRenderTrace.time
+                "retained-build-paint-own"
+                [ "kind", nc.Kind
+                  "memoizable", string (isMemoizable nc) ]
+                (fun () ->
+                    if isMemoizable nc then
+                        let dep = memoDependency theme boundsById path nc
+                        let id = nc.Key |> Option.defaultValue path
+                        let subtree, memo', _ = memoize id dep (fun () -> ControlInternals.paintNode theme boundsById path nc) memo
+                        memo <- memo'
+                        subtree
+                    else
+                        ControlInternals.paintNode theme boundsById path nc)
 
         let rec build (path: string) (nc: Control<'msg>) : RetainedNode<'msg> =
             let own = paintOwn path nc
@@ -1171,9 +1291,14 @@ module internal RetainedRender =
             { Identity = mint ()
               Control = nc
               Fragment = retainedFragment own assembly box (evidence FreshFallback InitialAssembly None assembly box)
+              Metadata = retainedMetadata path nc box children
               Children = children }
 
-        let root = build "0" control
+        let root =
+            RetainedRenderTrace.time
+                "retained-init-build"
+                [ "nodeCount", string (Control.count control) ]
+                (fun () -> build "0" control)
 
         // Feature 116 (Phase 7): seed the bounded picture cache from the first frame's cacheable
         // boundaries (every data-grid row) — all cold here, so a subsequent `step` whose row pictures
@@ -1194,22 +1319,16 @@ module internal RetainedRender =
 
             n.Children |> List.iter seedPictures
 
-        seedPictures root
+        RetainedRenderTrace.time "retained-init-seed-pictures" [] (fun () -> seedPictures root)
 
-        // Paint the first frame ONCE: the Scene IS the root's pre-order SubtreeScene (the same list
-        // `Control.renderTree`'s `paint "0"` builds), so this `Render` is byte-identical to a full
-        // rebuild — the adapter reuses it instead of calling `Control.renderTree` a second time.
         let render: ControlRenderResult<'msg> =
             // Feature 137 (US2): in-flow first, then the deferred z-top overlay group (empty ⇒ unchanged).
-            { Scene =
-                (root.Fragment.Assembly.InFlowScene @ root.Fragment.Assembly.OverlayScene)
-                |> ControlInternals.sceneWithViewportBackground theme size
-              Layout = layoutRoot
-              Bounds = ControlInternals.collectBoundsWith boundsById control
-              Diagnostics = Control.diagnostics control
-              EventBindings = ControlInternals.eventBindingsOf control
-              BoundIds = ControlInternals.boundIdsOf control
-              NodeCount = Control.count control }
+            RetainedRenderTrace.time
+                "retained-init-render-result"
+                [ "metadataNodeCount", string root.Metadata.NodeCount ]
+                (fun () ->
+                    let sceneList = root.Fragment.Assembly.InFlowScene @ root.Fragment.Assembly.OverlayScene
+                    renderFromRetainedMetadata theme size layoutRoot sceneList root.Metadata)
 
         { Retained =
             { Root = root
@@ -1308,14 +1427,16 @@ module internal RetainedRender =
         (next: Control<'msg>)
         : RetainedRenderStep<'msg> =
         // (1) the diff — total; never throws; duplicate keys -> KeyCollision diagnostic (C1/C4).
-        let result = Reconcile.diff prev.Root.Control next
+        let result =
+            RetainedRenderTrace.time "retained-step-diff" [] (fun () -> Reconcile.diff prev.Root.Control next)
 
         // (2) layout of `next` via the INCREMENTAL evaluator (R2, FR-005): re-measure only the
         //     patch-derived dirty set (conservatively propagated to its flex line / fixed-size
         //     ancestor) and reuse the previous frame's cached bounds for everything else. The result
         //     `Bounds` are byte-identical to a full `evaluateLayout` (INV-1), so the reuse-driven paint
         //     walk below (`box = pr.Fragment.Box`) and the surfaced Bounds are unchanged.
-        let dirty = layoutDirtySet prev.Root.Control result.Patch next
+        let dirty =
+            RetainedRenderTrace.time "retained-step-layout-dirty-set" [] (fun () -> layoutDirtySet prev.Root.Control result.Patch next)
         // FR-006: the size of the layout dirty set fed into incremental layout this frame (the
         // patch-derived self-dirty nodes BEFORE fixed-size-ancestor propagation). Distinct from the
         // post-pinning `remeasured` below; `invalidated <= remeasured` because propagation expands each
@@ -1357,7 +1478,11 @@ module internal RetainedRender =
         // explicit clear always runs; `ThreadStatic` isolates concurrent test `step`s.
         ControlInternals.setMeasureTextHook (Some measureCached)
 
-        let root, boundsById, layoutResult = ControlInternals.evaluateLayoutIncremental size next prev.Layout dirty
+        let root, boundsById, layoutResult =
+            RetainedRenderTrace.time
+                "retained-step-layout-incremental"
+                [ "dirtyCount", string invalidated ]
+                (fun () -> ControlInternals.evaluateLayoutIncremental size next prev.Layout dirty)
         // FR-006: nodes actually re-measured this frame = the honest post-propagation set.
         let remeasured = layoutResult.Invalidated |> List.length
 
@@ -1386,11 +1511,18 @@ module internal RetainedRender =
         // `DirtyRectCount` = distinct boxes; `DirtyArea` = summed integer w*h over distinct boxes. An
         // idle (all-`Keep`) frame repaints nothing → `0/0/0`; a theme switch repaints every node.
         let repaintedBoxes = ResizeArray<Rect>()
+        // Feature 174: retained render-result metadata visits. Reused `Keep` subtrees keep their
+        // snapshot and add no per-frame metadata work.
+        let mutable metadataVisited = 0
 
         let mint () =
             let id = RetainedId nextId
             nextId <- nextId + 1UL
             id
+
+        let metadataFor path control box children =
+            metadataVisited <- metadataVisited + 1
+            retainedMetadata path control box children
 
         // Feature 113 (Phase 5): paint a node's OWN scene, routing the sole memoized site (the DataGrid
         // projection) through the memo seam. A HIT reuses the stored projection (its theme/box/cells
@@ -1398,19 +1530,24 @@ module internal RetainedRender =
         // `MemoEnabled = false` (the always-miss oracle, FR-008) every node paints directly — nothing is
         // reused — so the rendered scene is byte-identical to the seam-active build (memo-on ≡ memo-off).
         let paintOwn (path: string) (nc: Control<'msg>) : FS.GG.UI.Scene.Scene list =
-            if prev.MemoEnabled && isMemoizable nc then
-                let dep = memoDependency theme boundsById path nc
-                let id = nc.Key |> Option.defaultValue path
-                let subtree, memo', outcome = memoize id dep (fun () -> ControlInternals.paintNode theme boundsById path nc) memo
-                memo <- memo'
+            RetainedRenderTrace.time
+                "retained-build-paint-own"
+                [ "kind", nc.Kind
+                  "memoizable", string (prev.MemoEnabled && isMemoizable nc) ]
+                (fun () ->
+                    if prev.MemoEnabled && isMemoizable nc then
+                        let dep = memoDependency theme boundsById path nc
+                        let id = nc.Key |> Option.defaultValue path
+                        let subtree, memo', outcome = memoize id dep (fun () -> ControlInternals.paintNode theme boundsById path nc) memo
+                        memo <- memo'
 
-                match outcome with
-                | Hit -> memoHits <- memoHits + 1
-                | Miss -> memoMisses <- memoMisses + 1
+                        match outcome with
+                        | Hit -> memoHits <- memoHits + 1
+                        | Miss -> memoMisses <- memoMisses + 1
 
-                subtree
-            else
-                ControlInternals.paintNode theme boundsById path nc
+                        subtree
+                    else
+                        ControlInternals.paintNode theme boundsById path nc)
 
         let paintFresh (path: string) (nc: Control<'msg>) : FS.GG.UI.Scene.Scene list =
             recomputed <- recomputed + 1
@@ -1434,6 +1571,7 @@ module internal RetainedRender =
             { Identity = mint ()
               Control = nc
               Fragment = retainedFragment own assembly box (evidence FreshFallback reason None assembly box)
+              Metadata = metadataFor path nc box children
               Children = children }
 
         // Recompute a structurally-identical subtree whose box SHIFTED (a `Keep` relaid out by an
@@ -1454,6 +1592,7 @@ module internal RetainedRender =
             { Identity = pr.Identity
               Control = nc
               Fragment = retainedFragment own assembly box (evidence Rebuilt reason (Some pr.Fragment) assembly box)
+              Metadata = metadataFor path nc box children
               Children = children }
 
         // The reuse-driven walk: produce the next retained node for `nc` under `patch`, matched
@@ -1569,9 +1708,11 @@ module internal RetainedRender =
                 { Identity = pr.Identity
                   Control = nc
                   Fragment = retainedFragment own assembly box (evidence Rebuilt reason (Some pr.Fragment) assembly box)
+                  Metadata = metadataFor path nc box children
                   Children = children }
 
-        let newRoot = build "0" prev.Root result.Patch next
+        let newRoot =
+            RetainedRenderTrace.time "retained-step-build" [] (fun () -> build "0" prev.Root result.Patch next)
 
         // Feature 117 (Phase 8): the measurement window is closed — nothing past the paint walk measures
         // text (the virtualization tally and picture-cache pass below read counts/digests only). Clear the
@@ -1599,20 +1740,25 @@ module internal RetainedRender =
 
             c.Children |> List.iter countVirtual
 
-        countVirtual next
+        RetainedRenderTrace.time "retained-step-count-virtual" [] (fun () -> countVirtual next)
 
         // Feature 116 (Phase 7, FR-001/FR-004): reduce the accumulated damage set to its three integer
         // carriers — repainted-node count, count of DISTINCT repainted boxes, and summed integer area
         // over the distinct boxes. Deterministic (integer geometry → reproducible across runs).
         let repaintedNodeCount = recomputed
-        let distinctBoxes = repaintedBoxes |> Seq.distinct |> List.ofSeq
-        let dirtyRectCount = List.length distinctBoxes
-        // Feature 120 (US4, FR-015): the damage area is the area of the UNION of the distinct damage
-        // rectangles (no longer the sum), so overlapping damage is counted once and the value never
-        // exceeds the frame area. Computed by coordinate-compression over the distinct boxes (n is the
-        // small dirty-rect count, integer control geometry → deterministic), then clamped to the frame.
-        let frameArea = size.Width * size.Height
-        let dirtyArea = unionArea distinctBoxes frameArea
+        let distinctBoxes, dirtyRectCount, dirtyArea =
+            RetainedRenderTrace.time
+                "retained-step-damage-reduce"
+                [ "repaintedBoxes", string repaintedBoxes.Count ]
+                (fun () ->
+                    let distinctBoxes = repaintedBoxes |> Seq.distinct |> List.ofSeq
+                    let dirtyRectCount = List.length distinctBoxes
+                    // Feature 120 (US4, FR-015): the damage area is the area of the UNION of the distinct damage
+                    // rectangles (no longer the sum), so overlapping damage is counted once and the value never
+                    // exceeds the frame area. Computed by coordinate-compression over the distinct boxes (n is the
+                    // small dirty-rect count, integer control geometry → deterministic), then clamped to the frame.
+                    let frameArea = size.Width * size.Height
+                    distinctBoxes, dirtyRectCount, unionArea distinctBoxes frameArea)
 
         // Feature 116 (Phase 7, FR-005/FR-006/FR-007/FR-009/FR-010): the bounded picture cache. A
         // read-only walk over the new retained tree visits each cacheable boundary (a data-grid row)
@@ -1674,7 +1820,7 @@ module internal RetainedRender =
 
             n.Children |> List.iter walkPictures
 
-        walkPictures newRoot
+        RetainedRenderTrace.time "retained-step-picture-walk" [] (fun () -> walkPictures newRoot)
         let pictureEntryCount = pcEntries.Count
         // Bound the modeled native bytes by the cap (residency never exceeds PictureCacheCap entries).
         let replayCacheNativeBytes = min replayNativeBytes (PictureCacheCap * bytesPerNode * 64)
@@ -1707,7 +1853,7 @@ module internal RetainedRender =
 
             n.Children |> List.iter collectOffscreen
 
-        collectOffscreen newRoot
+        RetainedRenderTrace.time "retained-step-offscreen-diagnostics" [] (fun () -> collectOffscreen newRoot)
 
         // Re-key UI state to the STABLE identities still live this frame AND compute this frame's
         // animation clocks (R4). Walking `newRoot` is the GC: only live identities carry state, so a
@@ -1725,7 +1871,7 @@ module internal RetainedRender =
             priorOwnById.[n.Identity] <- n.Fragment.OwnScene
             n.Children |> List.iter indexPriorOwn
 
-        indexPriorOwn prev.Root
+        RetainedRenderTrace.time "retained-step-index-prior-own" [] (fun () -> indexPriorOwn prev.Root)
 
         let rec collect (n: RetainedNode<'msg>) (acc: Map<RetainedId, RetainedUiState>) : Map<RetainedId, RetainedUiState> =
             let carried = Map.tryFind n.Identity prev.StateByIdentity
@@ -1747,7 +1893,8 @@ module internal RetainedRender =
 
             n.Children |> List.fold (fun a c -> collect c a) acc
 
-        let stateById = collect newRoot Map.empty
+        let stateById =
+            RetainedRenderTrace.time "retained-step-state-collect" [] (fun () -> collect newRoot Map.empty)
 
         // Assemble the painted scene, overlaying any ACTIVE animation clock onto its identity's own
         // (static) paint — paint-level only, scoped to that subtree (FR-002/FR-010). When NO clock is
@@ -1767,55 +1914,62 @@ module internal RetainedRender =
         let needsEmitWalk = anyActive || replayHitIds.Count > 0
 
         let sceneList =
-            if not needsEmitWalk then
-                // Feature 137 (US2): in-flow first, then the deferred z-top overlay group (empty ⇒ unchanged).
-                newRoot.Fragment.Assembly.InFlowScene @ newRoot.Fragment.Assembly.OverlayScene
-            else
-                // Feature 139 (R1a): the emit walk also uses the shared current-node assembly owner, with
-                // each retained fragment supplying the node box and child assemblies.
-                let rec assemble (n: RetainedNode<'msg>) : ControlInternals.CurrentNodeAssemblyResult =
-                    if replayHitIds.Contains n.Identity then
-                        let (RetainedId cacheId) = n.Identity
-                        // A cacheable boundary (data-grid-row) is a leaf with no overlay descendants; carry
-                        // its (empty) overlay contribution for completeness.
-                        let inFlow =
-                            [ { Nodes =
-                                  [ CachedSubtree
-                                        { CacheId = cacheId
-                                          Fingerprint = n.Fragment.Assembly.Fingerprint
-                                          Scene = Scene.group n.Fragment.Assembly.InFlowScene } ] } ]
-                        let overlay = n.Fragment.Assembly.OverlayScene
-
-                        { InFlowScene = inFlow
-                          OverlayScene = overlay
-                          Fingerprint = ControlInternals.hashScene (inFlow @ overlay)
-                          Diagnostics = []
-                          ChildContributions = [] }
+            RetainedRenderTrace.time
+                "retained-step-scene-assembly"
+                [ "anyActive", string anyActive
+                  "replayBoundaryCount", string replayHitIds.Count ]
+                (fun () ->
+                    if not needsEmitWalk then
+                        // Feature 137 (US2): in-flow first, then the deferred z-top overlay group (empty ⇒ unchanged).
+                        newRoot.Fragment.Assembly.InFlowScene @ newRoot.Fragment.Assembly.OverlayScene
                     else
-                        let ownStatic = n.Fragment.OwnScene
+                        // Feature 139 (R1a): the emit walk also uses the shared current-node assembly owner, with
+                        // each retained fragment supplying the node box and child assemblies.
+                        let rec assemble (n: RetainedNode<'msg>) : ControlInternals.CurrentNodeAssemblyResult =
+                            if replayHitIds.Contains n.Identity then
+                                let (RetainedId cacheId) = n.Identity
+                                // A cacheable boundary (data-grid-row) is a leaf with no overlay descendants; carry
+                                // its (empty) overlay contribution for completeness.
+                                let inFlow =
+                                    [ { Nodes =
+                                          [ CachedSubtree
+                                                { CacheId = cacheId
+                                                  Fingerprint = n.Fragment.Assembly.Fingerprint
+                                                  Scene = Scene.group n.Fragment.Assembly.InFlowScene } ] } ]
+                                let overlay = n.Fragment.Assembly.OverlayScene
 
-                        let own =
-                            match Map.tryFind n.Identity stateById |> Option.bind (fun s -> s.Animation) with
-                            | Some c when clockActive c -> sampleOnPaint c ownStatic
-                            | _ -> ownStatic
+                                { InFlowScene = inFlow
+                                  OverlayScene = overlay
+                                  Fingerprint = ControlInternals.hashScene (inFlow @ overlay)
+                                  Diagnostics = []
+                                  ChildContributions = [] }
+                            else
+                                let ownStatic = n.Fragment.OwnScene
 
-                        let childAssemblies = n.Children |> List.map assemble
-                        ControlInternals.assembleCurrentNode n.Control n.Fragment.Box own childAssemblies
+                                let own =
+                                    match Map.tryFind n.Identity stateById |> Option.bind (fun s -> s.Animation) with
+                                    | Some c when clockActive c -> sampleOnPaint c ownStatic
+                                    | _ -> ownStatic
 
-                let assembled = assemble newRoot
-                assembled.InFlowScene @ assembled.OverlayScene
+                                let childAssemblies = n.Children |> List.map assemble
+                                ControlInternals.assembleCurrentNode n.Control n.Fragment.Box own childAssemblies
+
+                        let assembled = assemble newRoot
+                        assembled.InFlowScene @ assembled.OverlayScene)
 
         // Byte-identical to `Control.renderTree theme size next` AT REST: `SubtreeScene` is the
         // pre-order concatenation of `paintNode` over every node — the same list `renderTree`'s paint
         // builds. An active clock contributes a paint-level overlay scoped to its own identity.
         let render: ControlRenderResult<'msg> =
-            { Scene = sceneList |> ControlInternals.sceneWithViewportBackground theme size
-              Layout = root
-              Bounds = ControlInternals.collectBoundsWith boundsById next
-              Diagnostics = Control.diagnostics next
-              EventBindings = ControlInternals.eventBindingsOf next
-              BoundIds = ControlInternals.boundIdsOf next
-              NodeCount = Control.count next }
+            RetainedRenderTrace.time
+                "retained-step-render-result"
+                [ "sceneListCount", string (List.length sceneList)
+                  "metadataVisitedNodeCount", string metadataVisited
+                  "metadataNodeCount", string newRoot.Metadata.NodeCount ]
+                (fun () -> renderFromRetainedMetadata theme size root sceneList newRoot.Metadata)
+
+        let baselineNodeCount =
+            RetainedRenderTrace.time "retained-step-work-node-count" [] (fun () -> newRoot.Metadata.NodeCount)
 
         { Retained =
             { Root = newRoot
@@ -1834,7 +1988,9 @@ module internal RetainedRender =
           Render = render
           Diagnostics = result.Diagnostics @ List.ofSeq offscreenDiags
           WorkReduction =
-            { BaselineNodeCount = Control.count next
+            { BaselineNodeCount = baselineNodeCount
+              MetadataVisitedNodeCount = metadataVisited
+              MetadataFallbackCount = 0
               RecomputedNodeCount = recomputed
               ChangedSubtreeBound = changedBound
               ShiftedNodeCount = shifted

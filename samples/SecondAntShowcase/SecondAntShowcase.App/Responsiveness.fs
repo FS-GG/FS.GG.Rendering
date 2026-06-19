@@ -363,6 +363,12 @@ let private writeEnvironmentLimitedOutputs (request: Request) (run: string) (met
     let summaryJson =
         JsonSerializer.Serialize(
             {| runId = run
+               baselineProfileId = "2026-06-19"
+               optimizedProfileId = run
+               preparationReductionPercent = Nullable<float>()
+               firstFramePreparationReductionPercent = Nullable<float>()
+               parityStatus = "environment-limited"
+               parityArtifacts = Array.empty<string>
                scope = scopePath request.Scope request.Theme
                overallReadiness = "environment-limited"
                startedUtc = DateTimeOffset.UtcNow
@@ -415,6 +421,11 @@ let private writeEnvironmentLimitedOutputs (request: Request) (run: string) (met
           ""
           $"- scope: {scopePath request.Scope request.Theme}"
           "- overall readiness: environment-limited"
+          "- baseline profile: 2026-06-19"
+          $"- optimized profile: {run}"
+          "- preparation reduction: n/a"
+          "- first-frame preparation reduction: n/a"
+          "- parity: environment-limited"
           "- records: records.jsonl"
           "- first failed budget: environment-boundary"
           "- caveat: SYNTHETIC deterministic headless substitute; no accepted live input-to-present readiness claimed."
@@ -759,6 +770,12 @@ let private writeLiveOutputs (request: Request) (run: string) (live: FS.GG.UI.Co
         let summaryJson =
             JsonSerializer.Serialize(
                 {| runId = run
+                   baselineProfileId = "2026-06-19"
+                   optimizedProfileId = run
+                   preparationReductionPercent = Nullable<float>()
+                   firstFramePreparationReductionPercent = Nullable<float>()
+                   parityStatus = if overallReadiness = "accepted" then "pending-review" else "not-accepted"
+                   parityArtifacts = Array.empty<string>
                    scope = scopePath request.Scope request.Theme
                    overallReadiness = overallReadiness
                    startedUtc = DateTimeOffset.UtcNow
@@ -815,12 +832,19 @@ let private writeLiveOutputs (request: Request) (run: string) (live: FS.GG.UI.Co
                 firstFailedBudget.GetProperty("kind").GetString()
                 |> Option.ofObj
                 |> Option.defaultValue "unknown"
+        let parityStatus =
+            if overallReadiness = "accepted" then "pending-review" else "not-accepted"
 
         let summaryMarkdown =
             [ $"# Responsiveness summary {run}"
               ""
               $"- scope: {scopePath request.Scope request.Theme}"
               $"- overall readiness: {overallReadiness}"
+              "- baseline profile: 2026-06-19"
+              $"- optimized profile: {run}"
+              "- preparation reduction: pending render-lag probe correlation"
+              "- first-frame preparation reduction: pending render-lag probe correlation"
+              $"- parity: {parityStatus}"
               "- records: records.jsonl"
               $"- first failed budget: {firstFailedBudgetKind}"
               "- evidence path: live GL viewer presentation boundary"

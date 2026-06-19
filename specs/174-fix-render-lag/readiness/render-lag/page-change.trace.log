@@ -1,0 +1,470 @@
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.0701942+00:00 ticks=97920797455906 event=elmish-render-retained-start path=init
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.0771533+00:00 ticks=97920804327367 event=elmish-product-view-start
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.1448156+00:00 ticks=97920871983972 event=elmish-product-view-end durationMs=67.478
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.1474866+00:00 ticks=97920874654444 event=elmish-runtime-stamp-end path=init durationMs=70.733
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.2112775+00:00 ticks=97920938446045 event=retained-init-layout durationMs=59.021
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.2162967+00:00 ticks=97920943465983 event=retained-build-paint-own durationMs=3.525 kind=stack memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.2166860+00:00 ticks=97920943854100 event=retained-build-paint-own durationMs=0.006 kind=border memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.2167169+00:00 ticks=97920943883979 event=retained-build-paint-own durationMs=0.001 kind=stack memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.2191985+00:00 ticks=97920946366594 event=retained-build-paint-own durationMs=2.457 kind=text-block memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.2501448+00:00 ticks=97920977312922 event=retained-build-assemble-node durationMs=28.199 kind=text-block children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.2509011+00:00 ticks=97920978068927 event=retained-build-paint-own durationMs=0.007 kind=stack memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.2509664+00:00 ticks=97920978133563 event=retained-build-paint-own durationMs=0.007 kind=text-block memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.2542624+00:00 ticks=97920981430217 event=retained-build-assemble-node durationMs=3.282 kind=text-block children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.2542984+00:00 ticks=97920981465476 event=retained-build-paint-own durationMs=0.007 kind=text-block memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.2554147+00:00 ticks=97920982582156 event=retained-build-assemble-node durationMs=1.103 kind=text-block children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.2613437+00:00 ticks=97920988512219 event=retained-build-assemble-node durationMs=5.896 kind=stack children=2 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.2714724+00:00 ticks=97920998640988 event=retained-build-assemble-node durationMs=10.077 kind=stack children=2 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.2815445+00:00 ticks=97921008712875 event=retained-build-assemble-node durationMs=10.02 kind=border children=1 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.2815935+00:00 ticks=97921008760658 event=retained-build-paint-own durationMs=0.003 kind=stack memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.2816009+00:00 ticks=97921008768022 event=retained-build-paint-own durationMs=0.001 kind=border memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.2816058+00:00 ticks=97921008772892 event=retained-build-paint-own durationMs=0.001 kind=stack memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.2816195+00:00 ticks=97921008786639 event=retained-build-paint-own durationMs=0.01 kind=text-block memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.2825475+00:00 ticks=97921009714991 event=retained-build-assemble-node durationMs=0.915 kind=text-block children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.2825694+00:00 ticks=97921009736483 event=retained-build-paint-own durationMs=0.002 kind=stack memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.2825840+00:00 ticks=97921009751041 event=retained-build-paint-own durationMs=0.005 kind=label memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.2835774+00:00 ticks=97921010745261 event=retained-build-assemble-node durationMs=0.977 kind=label children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.2984877+00:00 ticks=97921025656063 event=retained-build-paint-own durationMs=14.867 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.2994938+00:00 ticks=97921026670943 event=retained-build-assemble-node durationMs=0.949 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.2995383+00:00 ticks=97921026705461 event=retained-build-paint-own durationMs=0.012 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.3003477+00:00 ticks=97921027515101 event=retained-build-assemble-node durationMs=0.799 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.3003765+00:00 ticks=97921027543597 event=retained-build-paint-own durationMs=0.008 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.3012013+00:00 ticks=97921028368747 event=retained-build-assemble-node durationMs=0.815 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.3012331+00:00 ticks=97921028400208 event=retained-build-paint-own durationMs=0.014 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.3031555+00:00 ticks=97921030323202 event=retained-build-assemble-node durationMs=1.91 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.3031890+00:00 ticks=97921030356206 event=retained-build-paint-own durationMs=0.011 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.3067758+00:00 ticks=97921033944239 event=retained-build-assemble-node durationMs=3.565 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.3068608+00:00 ticks=97921034027962 event=retained-build-paint-own durationMs=0.038 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.3083504+00:00 ticks=97921035518742 event=retained-build-assemble-node durationMs=1.467 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.3084141+00:00 ticks=97921035581214 event=retained-build-paint-own durationMs=0.023 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.3091073+00:00 ticks=97921036274757 event=retained-build-assemble-node durationMs=0.682 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.3091316+00:00 ticks=97921036298744 event=retained-build-paint-own durationMs=0.009 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.3098023+00:00 ticks=97921036969673 event=retained-build-assemble-node durationMs=0.661 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.3098179+00:00 ticks=97921036984983 event=retained-build-paint-own durationMs=0.005 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.3104543+00:00 ticks=97921037621616 event=retained-build-assemble-node durationMs=0.629 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.3104722+00:00 ticks=97921037639300 event=retained-build-paint-own durationMs=0.005 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.3111094+00:00 ticks=97921038276744 event=retained-build-assemble-node durationMs=0.63 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.3111265+00:00 ticks=97921038293587 event=retained-build-paint-own durationMs=0.005 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.3117529+00:00 ticks=97921038920190 event=retained-build-assemble-node durationMs=0.619 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.3117673+00:00 ticks=97921038934438 event=retained-build-paint-own durationMs=0.005 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.3124020+00:00 ticks=97921039569247 event=retained-build-assemble-node durationMs=0.626 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.3124182+00:00 ticks=97921039585308 event=retained-build-paint-own durationMs=0.005 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.3130480+00:00 ticks=97921040215278 event=retained-build-assemble-node durationMs=0.622 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.3130730+00:00 ticks=97921040240076 event=retained-build-paint-own durationMs=0.004 kind=label memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.3139036+00:00 ticks=97921041070968 event=retained-build-assemble-node durationMs=0.823 kind=label children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.3139216+00:00 ticks=97921041088663 event=retained-build-paint-own durationMs=0.006 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.3145495+00:00 ticks=97921041716738 event=retained-build-assemble-node durationMs=0.62 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.3145645+00:00 ticks=97921041731597 event=retained-build-paint-own durationMs=0.005 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.3153588+00:00 ticks=97921042526308 event=retained-build-assemble-node durationMs=0.785 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.3153866+00:00 ticks=97921042553822 event=retained-build-paint-own durationMs=0.008 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.3161713+00:00 ticks=97921043338774 event=retained-build-assemble-node durationMs=0.774 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.3161928+00:00 ticks=97921043359905 event=retained-build-paint-own durationMs=0.007 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.3168269+00:00 ticks=97921043994153 event=retained-build-assemble-node durationMs=0.625 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.3168546+00:00 ticks=97921044021787 event=retained-build-paint-own durationMs=0.007 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.3175079+00:00 ticks=97921044675202 event=retained-build-assemble-node durationMs=0.641 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.3175256+00:00 ticks=97921044692737 event=retained-build-paint-own durationMs=0.006 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.3181962+00:00 ticks=97921045363566 event=retained-build-assemble-node durationMs=0.662 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.3492384+00:00 ticks=97921076406833 event=retained-build-assemble-node durationMs=31.016 kind=stack children=21 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.3846792+00:00 ticks=97921111847492 event=retained-build-assemble-node durationMs=35.396 kind=stack children=2 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4193708+00:00 ticks=97921146539160 event=retained-build-assemble-node durationMs=34.638 kind=border children=1 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4194135+00:00 ticks=97921146580641 event=retained-build-paint-own durationMs=0.004 kind=border memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4194202+00:00 ticks=97921146587263 event=retained-build-paint-own durationMs=0.001 kind=stack memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4194302+00:00 ticks=97921146597313 event=retained-build-paint-own durationMs=0.006 kind=text-block memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4202118+00:00 ticks=97921147379199 event=retained-build-assemble-node durationMs=0.769 kind=text-block children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4610875+00:00 ticks=97921188255828 event=retained-build-paint-own durationMs=40.847 kind=scroll-viewer memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4611381+00:00 ticks=97921188305254 event=retained-build-paint-own durationMs=0.005 kind=panel memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4611500+00:00 ticks=97921188317067 event=retained-build-paint-own durationMs=0.006 kind=label memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4621221+00:00 ticks=97921189289776 event=retained-build-assemble-node durationMs=0.962 kind=label children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4621588+00:00 ticks=97921189325916 event=retained-build-paint-own durationMs=0.007 kind=text-block memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4629881+00:00 ticks=97921190155485 event=retained-build-assemble-node durationMs=0.819 kind=text-block children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4630074+00:00 ticks=97921190174553 event=retained-build-paint-own durationMs=0.003 kind=wrap memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4630131+00:00 ticks=97921190180174 event=retained-build-paint-own durationMs=0.001 kind=border memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4630189+00:00 ticks=97921190186045 event=retained-build-paint-own durationMs=0.001 kind=stack memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4630268+00:00 ticks=97921190193910 event=retained-build-paint-own durationMs=0.004 kind=label memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4638559+00:00 ticks=97921191023499 event=retained-build-assemble-node durationMs=0.801 kind=label children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4638798+00:00 ticks=97921191046925 event=retained-build-paint-own durationMs=0.005 kind=text-block memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4646518+00:00 ticks=97921191819523 event=retained-build-assemble-node durationMs=0.762 kind=text-block children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4691423+00:00 ticks=97921196310117 event=retained-build-assemble-node durationMs=4.471 kind=stack children=2 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4744576+00:00 ticks=97921201626233 event=retained-build-assemble-node durationMs=5.277 kind=border children=1 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4744976+00:00 ticks=97921201664758 event=retained-build-paint-own durationMs=0.004 kind=border memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4745042+00:00 ticks=97921201671351 event=retained-build-paint-own durationMs=0.001 kind=stack memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4745134+00:00 ticks=97921201680489 event=retained-build-paint-own durationMs=0.005 kind=label memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4752944+00:00 ticks=97921202462315 event=retained-build-assemble-node durationMs=0.77 kind=label children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4769910+00:00 ticks=97921204159186 event=retained-build-paint-own durationMs=1.664 kind=rich-text memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4776944+00:00 ticks=97921204862038 event=retained-build-assemble-node durationMs=0.666 kind=rich-text children=0 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4819262+00:00 ticks=97921209093998 event=retained-build-assemble-node durationMs=4.205 kind=stack children=2 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4868285+00:00 ticks=97921213996135 event=retained-build-assemble-node durationMs=4.864 kind=border children=1 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4868757+00:00 ticks=97921214042886 event=retained-build-paint-own durationMs=0.004 kind=border memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4868836+00:00 ticks=97921214050702 event=retained-build-paint-own durationMs=0.002 kind=stack memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4868928+00:00 ticks=97921214059879 event=retained-build-paint-own durationMs=0.005 kind=label memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4876589+00:00 ticks=97921214826145 event=retained-build-assemble-node durationMs=0.758 kind=label children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4876764+00:00 ticks=97921214843539 event=retained-build-paint-own durationMs=0.005 kind=label memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4884574+00:00 ticks=97921215624703 event=retained-build-assemble-node durationMs=0.772 kind=label children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4922714+00:00 ticks=97921219439569 event=retained-build-assemble-node durationMs=3.781 kind=stack children=2 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4980560+00:00 ticks=97921225223778 event=retained-build-assemble-node durationMs=5.741 kind=border children=1 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4980846+00:00 ticks=97921225251702 event=retained-build-paint-own durationMs=0.003 kind=border memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4980913+00:00 ticks=97921225258436 event=retained-build-paint-own durationMs=0.001 kind=stack memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4981014+00:00 ticks=97921225268505 event=retained-build-paint-own durationMs=0.006 kind=label memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4988850+00:00 ticks=97921226052255 event=retained-build-assemble-node durationMs=0.773 kind=label children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.4999960+00:00 ticks=97921227164425 event=retained-build-paint-own durationMs=1.084 kind=icon memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.5049843+00:00 ticks=97921232152461 event=retained-build-assemble-node durationMs=4.949 kind=icon children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.5115935+00:00 ticks=97921238761790 event=retained-build-assemble-node durationMs=6.56 kind=stack children=2 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.5197275+00:00 ticks=97921246895825 event=retained-build-assemble-node durationMs=8.082 kind=border children=1 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.5197703+00:00 ticks=97921246937376 event=retained-build-paint-own durationMs=0.004 kind=border memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.5197785+00:00 ticks=97921246945582 event=retained-build-paint-own durationMs=0.001 kind=stack memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.5197893+00:00 ticks=97921246956383 event=retained-build-paint-own durationMs=0.006 kind=label memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.5209264+00:00 ticks=97921248094404 event=retained-build-assemble-node durationMs=1.125 kind=label children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.5212960+00:00 ticks=97921248463815 event=retained-build-paint-own durationMs=0.336 kind=separator memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.5220629+00:00 ticks=97921249230331 event=retained-build-assemble-node durationMs=0.744 kind=separator children=0 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.5257463+00:00 ticks=97921252914662 event=retained-build-assemble-node durationMs=3.653 kind=stack children=2 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.5314060+00:00 ticks=97921258574268 event=retained-build-assemble-node durationMs=5.611 kind=border children=1 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.5314408+00:00 ticks=97921258607974 event=retained-build-paint-own durationMs=0.004 kind=border memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.5314484+00:00 ticks=97921258615488 event=retained-build-paint-own durationMs=0.001 kind=stack memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.5314580+00:00 ticks=97921258625117 event=retained-build-paint-own durationMs=0.005 kind=label memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.5322469+00:00 ticks=97921259414438 event=retained-build-assemble-node durationMs=0.778 kind=label children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.5325302+00:00 ticks=97921259697871 event=retained-build-paint-own durationMs=0.262 kind=badge memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.5334425+00:00 ticks=97921260610071 event=retained-build-assemble-node durationMs=0.892 kind=badge children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.5371205+00:00 ticks=97921264289122 event=retained-build-assemble-node durationMs=3.645 kind=stack children=2 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.5434847+00:00 ticks=97921270653293 event=retained-build-assemble-node durationMs=6.311 kind=border children=1 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.5435338+00:00 ticks=97921270700936 event=retained-build-paint-own durationMs=0.004 kind=border memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.5435417+00:00 ticks=97921270708771 event=retained-build-paint-own durationMs=0.001 kind=stack memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.5435639+00:00 ticks=97921270730994 event=retained-build-paint-own durationMs=0.007 kind=label memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.5444147+00:00 ticks=97921271582246 event=retained-build-assemble-node durationMs=0.837 kind=label children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.5447648+00:00 ticks=97921271932569 event=retained-build-paint-own durationMs=0.318 kind=tag memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.5455072+00:00 ticks=97921272674547 event=retained-build-assemble-node durationMs=0.717 kind=tag children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.5493010+00:00 ticks=97921276469334 event=retained-build-assemble-node durationMs=3.76 kind=stack children=2 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.5545126+00:00 ticks=97921281680745 event=retained-build-assemble-node durationMs=5.16 kind=border children=1 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.5545482+00:00 ticks=97921281715332 event=retained-build-paint-own durationMs=0.004 kind=border memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.5545558+00:00 ticks=97921281722877 event=retained-build-paint-own durationMs=0.001 kind=stack memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.5545692+00:00 ticks=97921281736343 event=retained-build-paint-own durationMs=0.009 kind=label memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.5557580+00:00 ticks=97921282925704 event=retained-build-assemble-node durationMs=1.177 kind=label children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.5561975+00:00 ticks=97921283365212 event=retained-build-paint-own durationMs=0.41 kind=avatar memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.5571221+00:00 ticks=97921284290067 event=retained-build-assemble-node durationMs=0.891 kind=avatar children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.5609551+00:00 ticks=97921288122928 event=retained-build-assemble-node durationMs=3.795 kind=stack children=2 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.5660381+00:00 ticks=97921293205628 event=retained-build-assemble-node durationMs=5.049 kind=border children=1 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.6217112+00:00 ticks=97921348879797 event=retained-build-assemble-node durationMs=55.638 kind=wrap children=8 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.6808154+00:00 ticks=97921407983720 event=retained-build-assemble-node durationMs=59.048 kind=panel children=3 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.7569924+00:00 ticks=97921484160874 event=retained-build-assemble-node durationMs=76.113 kind=scroll-viewer children=1 ownScenes=3
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.8416004+00:00 ticks=97921568769013 event=retained-build-assemble-node durationMs=84.546 kind=stack children=2 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:10.9267815+00:00 ticks=97921653950281 event=retained-build-assemble-node durationMs=85.117 kind=border children=1 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.0715385+00:00 ticks=97921798706942 event=retained-build-assemble-node durationMs=144.693 kind=stack children=2 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.0715881+00:00 ticks=97921798755346 event=retained-build-paint-own durationMs=0.005 kind=border memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.0715980+00:00 ticks=97921798765085 event=retained-build-paint-own durationMs=0.001 kind=stack memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.0716194+00:00 ticks=97921798786477 event=retained-build-paint-own durationMs=0.007 kind=text-block memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.0727193+00:00 ticks=97921799886835 event=retained-build-assemble-node durationMs=1.087 kind=text-block children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.0727447+00:00 ticks=97921799911843 event=retained-build-paint-own durationMs=0.003 kind=stack memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.0727571+00:00 ticks=97921799924167 event=retained-build-paint-own durationMs=0.006 kind=label memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.0738853+00:00 ticks=97921801053001 event=retained-build-assemble-node durationMs=1.116 kind=label children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.0739136+00:00 ticks=97921801080715 event=retained-build-paint-own durationMs=0.008 kind=text-block memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.0749970+00:00 ticks=97921802164821 event=retained-build-assemble-node durationMs=1.07 kind=text-block children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.0750272+00:00 ticks=97921802194338 event=retained-build-paint-own durationMs=0.007 kind=text-block memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.0762073+00:00 ticks=97921803374862 event=retained-build-assemble-node durationMs=1.167 kind=text-block children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.0842322+00:00 ticks=97921811400395 event=retained-build-assemble-node durationMs=7.988 kind=stack children=3 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.0961638+00:00 ticks=97921823332533 event=retained-build-assemble-node durationMs=11.877 kind=stack children=2 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.1110263+00:00 ticks=97921838194720 event=retained-build-assemble-node durationMs=14.802 kind=border children=1 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.1110730+00:00 ticks=97921838240088 event=retained-build-paint-own durationMs=0.005 kind=border memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.1110832+00:00 ticks=97921838250328 event=retained-build-paint-own durationMs=0.001 kind=stack memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.1110967+00:00 ticks=97921838263775 event=retained-build-paint-own durationMs=0.008 kind=text-block memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.1122028+00:00 ticks=97921839370294 event=retained-build-assemble-node durationMs=1.094 kind=text-block children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.1124255+00:00 ticks=97921839593059 event=retained-build-paint-own durationMs=0.194 kind=text-block memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.1135319+00:00 ticks=97921840699428 event=retained-build-assemble-node durationMs=1.087 kind=text-block children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.1189128+00:00 ticks=97921846081543 event=retained-build-assemble-node durationMs=5.35 kind=stack children=2 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.1270389+00:00 ticks=97921854207372 event=retained-build-assemble-node durationMs=8.069 kind=border children=1 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.3118171+00:00 ticks=97922038986083 event=retained-build-assemble-node durationMs=184.72 kind=stack children=4 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.3118733+00:00 ticks=97922039040609 event=retained-init-build durationMs=1100.351 nodeCount=84
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.3127749+00:00 ticks=97922039942950 event=retained-init-seed-pictures durationMs=0.632
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.3132631+00:00 ticks=97922040432145 event=retained-init-render-scene durationMs=0.38
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.3161207+00:00 ticks=97922043288700 event=retained-init-render-bounds durationMs=2.754
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.3276883+00:00 ticks=97922054857128 event=retained-init-render-diagnostics durationMs=11.474
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.3303618+00:00 ticks=97922057529815 event=retained-init-render-event-bindings durationMs=2.524
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.3315508+00:00 ticks=97922058719096 event=retained-init-render-bound-ids durationMs=1.093
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.3322305+00:00 ticks=97922059398462 event=retained-init-render-node-count durationMs=0.064
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.3333628+00:00 ticks=97922060530571 event=elmish-retained-init-end durationMs=1185.838
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.3337285+00:00 ticks=97922060896215 event=elmish-render-retained-end path=init durationMs=1267.015
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.6426130+00:00 ticks=97922369783498 event=gl-render-start
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.8678303+00:00 ticks=97922594999581 event=gl-render-success paintMs=219.157 presentMs=1.006 readbackBytes=0
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.8922588+00:00 ticks=97922619427777 event=render-frame-requested scriptedIndex=0 completionFrames=0
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.8924650+00:00 ticks=97922619634040 event=gl-render-start
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.9006083+00:00 ticks=97922627776762 event=gl-render-success paintMs=1.055 presentMs=0.262 readbackBytes=0
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.9030035+00:00 ticks=97922630172588 event=render-frame-requested scriptedIndex=0 completionFrames=0
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.9030513+00:00 ticks=97922630218507 event=gl-render-start
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.9117746+00:00 ticks=97922638943706 event=gl-render-success paintMs=0.251 presentMs=8.272 readbackBytes=0
+Gtk-Message: 01:02:11.920: Failed to load module "colorreload-gtk-module"
+Gtk-Message: 01:02:11.920: Failed to load module "window-decorations-gtk-module"
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.9207418+00:00 ticks=97922647910847 event=script-input-pump scriptIndex=0 scriptRemaining=4
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.9214384+00:00 ticks=97922648606545 event=render-frame-requested scriptedIndex=1 completionFrames=0
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.9214688+00:00 ticks=97922648635953 event=gl-render-start
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.9216283+00:00 ticks=97922648795694 event=gl-render-success paintMs=0.251 presentMs=8.272 readbackBytes=0
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.9376544+00:00 ticks=97922664823355 event=script-input-pump scriptIndex=1 scriptRemaining=3
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.9442359+00:00 ticks=97922671404911 event=input-queued seq=1 kind=key-down payload=F2 receiptDepth=0 queueDepth=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.9452384+00:00 ticks=97922672406575 event=input-drain-start batch=1 queueBefore=1 queueAfter=0 coalesced=0
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.9462381+00:00 ticks=97922673406497 event=input-handle-start seq=1 kind=key-down payload=F2 queueDelayMs=0.732
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.9556269+00:00 ticks=97922682795952 event=key-routed key=F2 isDown=True messageCount=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.9571322+00:00 ticks=97922684300389 event=model-update-start msg=NavigateTo_"text-numeric-input"
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.9574955+00:00 ticks=97922684663658 event=model-update-end msg=NavigateTo_"text-numeric-input" durationMs=0.353
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.9575161+00:00 ticks=97922684683276 event=view-start msg=NavigateTo_"text-numeric-input"
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.9584295+00:00 ticks=97922685597320 event=elmish-render-retained-start path=step modelUnchanged=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.9584490+00:00 ticks=97922685616167 event=elmish-product-view-start
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.9721502+00:00 ticks=97922699318810 event=elmish-product-view-end durationMs=13.69
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.9722723+00:00 ticks=97922699439405 event=elmish-runtime-stamp-end path=step durationMs=0.078
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.9872879+00:00 ticks=97922714456825 event=retained-step-diff durationMs=12.683
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:11.9906629+00:00 ticks=97922717831621 event=retained-step-layout-dirty-set durationMs=3.245
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0042927+00:00 ticks=97922731461392 event=retained-step-layout-incremental durationMs=9.51 dirtyCount=9
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0071094+00:00 ticks=97922734277839 event=retained-build-paint-own durationMs=0.346 kind=stack memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0081854+00:00 ticks=97922735353849 event=retained-build-paint-own durationMs=0.003 kind=border memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0082376+00:00 ticks=97922735404799 event=retained-build-paint-own durationMs=0.001 kind=stack memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0084650+00:00 ticks=97922735632663 event=retained-build-paint-own durationMs=0.002 kind=stack memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0193256+00:00 ticks=97922746494292 event=retained-build-assemble-node durationMs=10.814 kind=stack children=2 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0312208+00:00 ticks=97922758389818 event=retained-build-assemble-node durationMs=10.789 kind=stack children=2 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0446568+00:00 ticks=97922771826262 event=retained-build-assemble-node durationMs=13.37 kind=border children=1 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0447216+00:00 ticks=97922771889065 event=retained-build-paint-own durationMs=0.004 kind=stack memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0447438+00:00 ticks=97922771910937 event=retained-build-paint-own durationMs=0.001 kind=border memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0447527+00:00 ticks=97922771919845 event=retained-build-paint-own durationMs=0.001 kind=stack memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0447678+00:00 ticks=97922771934884 event=retained-build-paint-own durationMs=0.001 kind=stack memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0462142+00:00 ticks=97922773382550 event=retained-build-paint-own durationMs=1.416 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0473616+00:00 ticks=97922774529728 event=retained-build-assemble-node durationMs=1.099 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0476541+00:00 ticks=97922774822109 event=retained-build-paint-own durationMs=0.245 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0487401+00:00 ticks=97922775908018 event=retained-build-assemble-node durationMs=1.061 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0488017+00:00 ticks=97922775968907 event=retained-build-paint-own durationMs=0.031 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0497632+00:00 ticks=97922776930905 event=retained-build-assemble-node durationMs=0.947 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0498103+00:00 ticks=97922776977426 event=retained-build-paint-own durationMs=0.022 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0507561+00:00 ticks=97922777923763 event=retained-build-assemble-node durationMs=0.934 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0508170+00:00 ticks=97922777984190 event=retained-build-paint-own durationMs=0.026 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0518129+00:00 ticks=97922778980515 event=retained-build-assemble-node durationMs=0.98 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0518900+00:00 ticks=97922779057215 event=retained-build-paint-own durationMs=0.026 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0528191+00:00 ticks=97922779986408 event=retained-build-assemble-node durationMs=0.915 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0528831+00:00 ticks=97922780050283 event=retained-build-paint-own durationMs=0.016 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0537992+00:00 ticks=97922780966541 event=retained-build-assemble-node durationMs=0.904 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0538453+00:00 ticks=97922781012501 event=retained-build-paint-own durationMs=0.016 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0547518+00:00 ticks=97922781919080 event=retained-build-assemble-node durationMs=0.892 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0547933+00:00 ticks=97922781960591 event=retained-build-paint-own durationMs=0.017 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0559637+00:00 ticks=97922783131697 event=retained-build-assemble-node durationMs=1.155 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0560237+00:00 ticks=97922783190812 event=retained-build-paint-own durationMs=0.022 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0570327+00:00 ticks=97922784200633 event=retained-build-assemble-node durationMs=0.996 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0570949+00:00 ticks=97922784262183 event=retained-build-paint-own durationMs=0.028 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0580990+00:00 ticks=97922785267115 event=retained-build-assemble-node durationMs=0.986 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0581821+00:00 ticks=97922785349636 event=retained-build-paint-own durationMs=0.033 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0593760+00:00 ticks=97922786544287 event=retained-build-assemble-node durationMs=1.173 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0594438+00:00 ticks=97922786610887 event=retained-build-paint-own durationMs=0.026 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0604030+00:00 ticks=97922787570901 event=retained-build-assemble-node durationMs=0.945 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0604674+00:00 ticks=97922787634846 event=retained-build-paint-own durationMs=0.024 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0620788+00:00 ticks=97922789247082 event=retained-build-assemble-node durationMs=1.593 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0621457+00:00 ticks=97922789312820 event=retained-build-paint-own durationMs=0.029 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0631958+00:00 ticks=97922790363591 event=retained-build-assemble-node durationMs=1.037 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0632427+00:00 ticks=97922790409892 event=retained-build-paint-own durationMs=0.02 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0646889+00:00 ticks=97922791857156 event=retained-build-assemble-node durationMs=1.433 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0647551+00:00 ticks=97922791922263 event=retained-build-paint-own durationMs=0.028 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0657089+00:00 ticks=97922792876416 event=retained-build-assemble-node durationMs=0.942 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0657554+00:00 ticks=97922792922636 event=retained-build-paint-own durationMs=0.02 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0666648+00:00 ticks=97922793832522 event=retained-build-assemble-node durationMs=0.899 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0667055+00:00 ticks=97922793872630 event=retained-build-paint-own durationMs=0.018 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.0677199+00:00 ticks=97922794887551 event=retained-build-assemble-node durationMs=0.995 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.1092627+00:00 ticks=97922836431782 event=retained-build-assemble-node durationMs=41.503 kind=stack children=21 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.1553337+00:00 ticks=97922882502318 event=retained-build-assemble-node durationMs=46.004 kind=stack children=2 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.2045225+00:00 ticks=97922931691089 event=retained-build-assemble-node durationMs=49.123 kind=border children=1 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.2045835+00:00 ticks=97922931750625 event=retained-build-paint-own durationMs=0.003 kind=border memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.2045937+00:00 ticks=97922931760815 event=retained-build-paint-own durationMs=0.001 kind=stack memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.3000441+00:00 ticks=97923027212497 event=retained-build-paint-own durationMs=95.432 kind=scroll-viewer memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.3000997+00:00 ticks=97923027266803 event=retained-build-paint-own durationMs=0.003 kind=panel memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.3004053+00:00 ticks=97923027572700 event=retained-build-paint-own durationMs=0.29 kind=label memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.3018713+00:00 ticks=97923029038932 event=retained-build-assemble-node durationMs=1.441 kind=label children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.3019237+00:00 ticks=97923029090823 event=retained-build-paint-own durationMs=0.019 kind=text-block memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.3035520+00:00 ticks=97923030719732 event=retained-build-assemble-node durationMs=1.615 kind=text-block children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.3035926+00:00 ticks=97923030759921 event=retained-build-paint-own durationMs=0.004 kind=wrap memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.3036114+00:00 ticks=97923030778607 event=retained-build-paint-own durationMs=0.001 kind=border memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.3036231+00:00 ticks=97923030790340 event=retained-build-paint-own durationMs=0.001 kind=stack memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.3036544+00:00 ticks=97923030821701 event=retained-build-paint-own durationMs=0.022 kind=label memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.3057822+00:00 ticks=97923032950166 event=retained-build-assemble-node durationMs=2.112 kind=label children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.3071252+00:00 ticks=97923034293908 event=retained-build-paint-own durationMs=0.505 kind=text-box memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.3114058+00:00 ticks=97923038574142 event=retained-build-assemble-node durationMs=4.102 kind=text-box children=0 ownScenes=4
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.3219187+00:00 ticks=97923049087060 event=retained-build-assemble-node durationMs=10.377 kind=stack children=2 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.3338235+00:00 ticks=97923060992466 event=retained-build-assemble-node durationMs=11.846 kind=border children=1 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.3338993+00:00 ticks=97923061066570 event=retained-build-paint-own durationMs=0.004 kind=border memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.3339128+00:00 ticks=97923061079936 event=retained-build-paint-own durationMs=0.001 kind=stack memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.3339439+00:00 ticks=97923061110977 event=retained-build-paint-own durationMs=0.023 kind=label memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.3357316+00:00 ticks=97923062899427 event=retained-build-assemble-node durationMs=1.776 kind=label children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.3373473+00:00 ticks=97923064515061 event=retained-build-paint-own durationMs=1.567 kind=text-area memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.3421973+00:00 ticks=97923069365758 event=retained-build-assemble-node durationMs=4.815 kind=text-area children=0 ownScenes=4
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.3533522+00:00 ticks=97923080520158 event=retained-build-assemble-node durationMs=11.104 kind=stack children=2 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.3675404+00:00 ticks=97923094709140 event=retained-build-assemble-node durationMs=14.143 kind=border children=1 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.3676005+00:00 ticks=97923094767654 event=retained-build-paint-own durationMs=0.004 kind=border memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.3676123+00:00 ticks=97923094779447 event=retained-build-paint-own durationMs=0.001 kind=stack memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.3676395+00:00 ticks=97923094806570 event=retained-build-paint-own durationMs=0.019 kind=label memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.3688119+00:00 ticks=97923095979239 event=retained-build-assemble-node durationMs=1.162 kind=label children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.3699074+00:00 ticks=97923097074957 event=retained-build-paint-own durationMs=1.046 kind=numeric-input memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.3726603+00:00 ticks=97923099829514 event=retained-build-assemble-node durationMs=2.712 kind=numeric-input children=0 ownScenes=3
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.3830802+00:00 ticks=97923110250031 event=retained-build-assemble-node durationMs=10.374 kind=stack children=2 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.3950730+00:00 ticks=97923122241505 event=retained-build-assemble-node durationMs=11.932 kind=border children=1 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.3951320+00:00 ticks=97923122299137 event=retained-build-paint-own durationMs=0.003 kind=border memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.3951440+00:00 ticks=97923122311091 event=retained-build-paint-own durationMs=0.001 kind=stack memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.3951733+00:00 ticks=97923122340368 event=retained-build-paint-own durationMs=0.021 kind=label memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.3963432+00:00 ticks=97923123510502 event=retained-build-assemble-node durationMs=1.16 kind=label children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.3967445+00:00 ticks=97923123912155 event=retained-build-paint-own durationMs=0.368 kind=slider memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.3973577+00:00 ticks=97923124525162 event=retained-build-assemble-node durationMs=0.593 kind=slider children=0 ownScenes=3
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4026351+00:00 ticks=97923129803253 event=retained-build-assemble-node durationMs=5.252 kind=stack children=2 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4094139+00:00 ticks=97923136582444 event=retained-build-assemble-node durationMs=6.729 kind=border children=1 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4094722+00:00 ticks=97923136639345 event=retained-build-paint-own durationMs=0.007 kind=border memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4094856+00:00 ticks=97923136652711 event=retained-build-paint-own durationMs=0.001 kind=stack memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4095139+00:00 ticks=97923136681056 event=retained-build-paint-own durationMs=0.021 kind=label memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4107119+00:00 ticks=97923137879345 event=retained-build-assemble-node durationMs=1.187 kind=label children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4108632+00:00 ticks=97923138030730 event=retained-build-paint-own durationMs=0.003 kind=stack memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4111526+00:00 ticks=97923138320236 event=retained-build-paint-own durationMs=0.026 kind=text-box memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4142348+00:00 ticks=97923141402201 event=retained-build-assemble-node durationMs=3.063 kind=text-box children=0 ownScenes=4
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4142749+00:00 ticks=97923141442038 event=retained-build-paint-own durationMs=0.019 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4152517+00:00 ticks=97923142419085 event=retained-build-assemble-node durationMs=0.966 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4152694+00:00 ticks=97923142436519 event=retained-build-paint-own durationMs=0.001 kind=overlay memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4152763+00:00 ticks=97923142443433 event=retained-build-paint-own durationMs=0 kind=grid memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4152943+00:00 ticks=97923142462129 event=retained-build-paint-own durationMs=0.012 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4162578+00:00 ticks=97923143425479 event=retained-build-assemble-node durationMs=0.955 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4162882+00:00 ticks=97923143455378 event=retained-build-paint-own durationMs=0.015 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4172499+00:00 ticks=97923144417345 event=retained-build-assemble-node durationMs=0.952 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4172765+00:00 ticks=97923144443627 event=retained-build-paint-own durationMs=0.011 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4182600+00:00 ticks=97923145427276 event=retained-build-assemble-node durationMs=0.974 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4182863+00:00 ticks=97923145453437 event=retained-build-paint-own durationMs=0.011 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4193142+00:00 ticks=97923146481784 event=retained-build-assemble-node durationMs=1.018 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4193441+00:00 ticks=97923146511232 event=retained-build-paint-own durationMs=0.014 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4209791+00:00 ticks=97923148146674 event=retained-build-assemble-node durationMs=1.625 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4210082+00:00 ticks=97923148175360 event=retained-build-paint-own durationMs=0.011 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4219979+00:00 ticks=97923149165242 event=retained-build-assemble-node durationMs=0.981 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4220272+00:00 ticks=97923149194298 event=retained-build-paint-own durationMs=0.012 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4230348+00:00 ticks=97923150202165 event=retained-build-assemble-node durationMs=0.998 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4230652+00:00 ticks=97923150232294 event=retained-build-paint-own durationMs=0.014 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4240591+00:00 ticks=97923151226444 event=retained-build-assemble-node durationMs=0.984 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4240893+00:00 ticks=97923151256373 event=retained-build-paint-own durationMs=0.011 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4250497+00:00 ticks=97923152216998 event=retained-build-assemble-node durationMs=0.951 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4250790+00:00 ticks=97923152246125 event=retained-build-paint-own durationMs=0.015 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4260789+00:00 ticks=97923153246357 event=retained-build-assemble-node durationMs=0.98 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4261111+00:00 ticks=97923153278229 event=retained-build-paint-own durationMs=0.013 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4271104+00:00 ticks=97923154277850 event=retained-build-assemble-node durationMs=0.99 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4271473+00:00 ticks=97923154314411 event=retained-build-paint-own durationMs=0.02 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4281280+00:00 ticks=97923155295276 event=retained-build-assemble-node durationMs=0.972 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4281542+00:00 ticks=97923155321366 event=retained-build-paint-own durationMs=0.012 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4291066+00:00 ticks=97923156273856 event=retained-build-assemble-node durationMs=0.943 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4291403+00:00 ticks=97923156307451 event=retained-build-paint-own durationMs=0.019 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4301204+00:00 ticks=97923157287754 event=retained-build-assemble-node durationMs=0.971 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4301459+00:00 ticks=97923157313024 event=retained-build-paint-own durationMs=0.011 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4314207+00:00 ticks=97923158588683 event=retained-build-assemble-node durationMs=1.26 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4314662+00:00 ticks=97923158633361 event=retained-build-paint-own durationMs=0.018 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4324475+00:00 ticks=97923159614936 event=retained-build-assemble-node durationMs=0.97 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4324799+00:00 ticks=97923159647009 event=retained-build-paint-own durationMs=0.014 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4335125+00:00 ticks=97923160680085 event=retained-build-assemble-node durationMs=1.023 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4335468+00:00 ticks=97923160713991 event=retained-build-paint-own durationMs=0.016 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4345625+00:00 ticks=97923161730054 event=retained-build-assemble-node durationMs=1.005 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4346009+00:00 ticks=97923161768058 event=retained-build-paint-own durationMs=0.019 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4355967+00:00 ticks=97923162764223 event=retained-build-assemble-node durationMs=0.986 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4356282+00:00 ticks=97923162795353 event=retained-build-paint-own durationMs=0.014 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4366063+00:00 ticks=97923163773633 event=retained-build-assemble-node durationMs=0.968 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4366336+00:00 ticks=97923163800685 event=retained-build-paint-own durationMs=0.012 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4376556+00:00 ticks=97923164823021 event=retained-build-assemble-node durationMs=1.011 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4376864+00:00 ticks=97923164853470 event=retained-build-paint-own durationMs=0.014 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4386563+00:00 ticks=97923165823694 event=retained-build-assemble-node durationMs=0.961 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4386830+00:00 ticks=97923165850115 event=retained-build-paint-own durationMs=0.012 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4396835+00:00 ticks=97923166850899 event=retained-build-assemble-node durationMs=0.981 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4397178+00:00 ticks=97923166884885 event=retained-build-paint-own durationMs=0.016 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4419768+00:00 ticks=97923169144926 event=retained-build-assemble-node durationMs=2.241 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4420685+00:00 ticks=97923169235603 event=retained-build-paint-own durationMs=0.03 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4434583+00:00 ticks=97923170625776 event=retained-build-assemble-node durationMs=1.376 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4435011+00:00 ticks=97923170668299 event=retained-build-paint-own durationMs=0.022 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4444976+00:00 ticks=97923171664914 event=retained-build-assemble-node durationMs=0.985 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4445394+00:00 ticks=97923171706535 event=retained-build-paint-own durationMs=0.021 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4455214+00:00 ticks=97923172688682 event=retained-build-assemble-node durationMs=0.972 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4455524+00:00 ticks=97923172719552 event=retained-build-paint-own durationMs=0.015 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4467874+00:00 ticks=97923173955184 event=retained-build-assemble-node durationMs=1.221 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4468502+00:00 ticks=97923174017335 event=retained-build-paint-own durationMs=0.031 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4479449+00:00 ticks=97923175112703 event=retained-build-assemble-node durationMs=1.077 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4480004+00:00 ticks=97923175167520 event=retained-build-paint-own durationMs=0.024 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.4489944+00:00 ticks=97923176161801 event=retained-build-assemble-node durationMs=0.983 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.5113491+00:00 ticks=97923238517399 event=retained-build-assemble-node durationMs=62.318 kind=grid children=30 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.5863539+00:00 ticks=97923313522466 event=retained-build-assemble-node durationMs=74.946 kind=overlay children=1 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.6647961+00:00 ticks=97923391965002 event=retained-build-assemble-node durationMs=78.385 kind=stack children=3 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.7500831+00:00 ticks=97923477251605 event=retained-build-assemble-node durationMs=85.221 kind=stack children=2 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.8412169+00:00 ticks=97923568385500 event=retained-build-assemble-node durationMs=90.983 kind=border children=1 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.8412769+00:00 ticks=97923568444004 event=retained-build-paint-own durationMs=0.003 kind=border memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.8412918+00:00 ticks=97923568458893 event=retained-build-paint-own durationMs=0.001 kind=stack memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.8413269+00:00 ticks=97923568493982 event=retained-build-paint-own durationMs=0.026 kind=label memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.8425839+00:00 ticks=97923569751406 event=retained-build-assemble-node durationMs=1.245 kind=label children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.8426132+00:00 ticks=97923569780313 event=retained-build-paint-own durationMs=0.003 kind=stack memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.8426557+00:00 ticks=97923569822785 event=retained-build-paint-own durationMs=0.024 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.8436769+00:00 ticks=97923570844219 event=retained-build-assemble-node durationMs=1.012 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.8437042+00:00 ticks=97923570871302 event=retained-build-paint-own durationMs=0.011 kind=label memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.8449277+00:00 ticks=97923572094970 event=retained-build-assemble-node durationMs=1.214 kind=label children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.8449562+00:00 ticks=97923572123325 event=retained-build-paint-own durationMs=0.013 kind=button memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.8459620+00:00 ticks=97923573129329 event=retained-build-assemble-node durationMs=0.997 kind=button children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.8542819+00:00 ticks=97923581450720 event=retained-build-assemble-node durationMs=8.294 kind=stack children=3 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.8673279+00:00 ticks=97923594496451 event=retained-build-assemble-node durationMs=12.995 kind=stack children=2 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.8832907+00:00 ticks=97923610459035 event=retained-build-assemble-node durationMs=15.9 kind=border children=1 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.8833486+00:00 ticks=97923610515726 event=retained-build-paint-own durationMs=0.002 kind=border memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.8833639+00:00 ticks=97923610531055 event=retained-build-paint-own durationMs=0.002 kind=stack memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.8833971+00:00 ticks=97923610564270 event=retained-build-paint-own durationMs=0.022 kind=label memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.8846045+00:00 ticks=97923611771967 event=retained-build-assemble-node durationMs=1.198 kind=label children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.8850100+00:00 ticks=97923612177459 event=retained-build-paint-own durationMs=0.382 kind=rate memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.8859580+00:00 ticks=97923613125198 event=retained-build-assemble-node durationMs=0.929 kind=rate children=0 ownScenes=5
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.8920488+00:00 ticks=97923619217709 event=retained-build-assemble-node durationMs=6.061 kind=stack children=2 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.9005285+00:00 ticks=97923627696858 event=retained-build-assemble-node durationMs=8.408 kind=border children=1 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.9005839+00:00 ticks=97923627751023 event=retained-build-paint-own durationMs=0.002 kind=border memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.9005962+00:00 ticks=97923627763358 event=retained-build-paint-own durationMs=0.001 kind=stack memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.9006281+00:00 ticks=97923627795220 event=retained-build-paint-own durationMs=0.024 kind=label memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.9018478+00:00 ticks=97923629015171 event=retained-build-assemble-node durationMs=1.21 kind=label children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.9021595+00:00 ticks=97923629326969 event=retained-build-paint-own durationMs=0.289 kind=auto-complete memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.9067159+00:00 ticks=97923633883723 event=retained-build-assemble-node durationMs=4.535 kind=auto-complete children=0 ownScenes=6
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.9206168+00:00 ticks=97923647785104 event=retained-build-assemble-node durationMs=13.865 kind=stack children=2 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.9362250+00:00 ticks=97923663393366 event=retained-build-assemble-node durationMs=15.552 kind=border children=1 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.9362866+00:00 ticks=97923663453774 event=retained-build-paint-own durationMs=0.003 kind=border memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.9362968+00:00 ticks=97923663463894 event=retained-build-paint-own durationMs=0 kind=stack memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.9363278+00:00 ticks=97923663494915 event=retained-build-paint-own durationMs=0.024 kind=label memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.9375340+00:00 ticks=97923664701389 event=retained-build-assemble-node durationMs=1.196 kind=label children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.9382481+00:00 ticks=97923665415994 event=retained-build-paint-own durationMs=0.691 kind=upload memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.9411265+00:00 ticks=97923668294692 event=retained-build-assemble-node durationMs=2.849 kind=upload children=0 ownScenes=4
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.9501548+00:00 ticks=97923677322702 event=retained-build-assemble-node durationMs=8.984 kind=stack children=2 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:12.9633250+00:00 ticks=97923690493257 event=retained-build-assemble-node durationMs=13.127 kind=border children=1 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:13.1677197+00:00 ticks=97923894888113 event=retained-build-assemble-node durationMs=204.337 kind=wrap children=9 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:13.3604909+00:00 ticks=97924087659302 event=retained-build-assemble-node durationMs=192.695 kind=panel children=3 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:13.5354440+00:00 ticks=97924262612517 event=retained-build-assemble-node durationMs=174.892 kind=scroll-viewer children=1 ownScenes=3
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:13.7133431+00:00 ticks=97924440511551 event=retained-build-assemble-node durationMs=177.827 kind=stack children=2 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:13.8950061+00:00 ticks=97924622174621 event=retained-build-assemble-node durationMs=181.593 kind=border children=1 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.1212573+00:00 ticks=97924848425873 event=retained-build-assemble-node durationMs=226.192 kind=stack children=2 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.1213195+00:00 ticks=97924848486642 event=retained-build-paint-own durationMs=0.003 kind=border memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.1213339+00:00 ticks=97924848501040 event=retained-build-paint-own durationMs=0.001 kind=stack memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.1213507+00:00 ticks=97924848517833 event=retained-build-paint-own durationMs=0.001 kind=stack memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.1283020+00:00 ticks=97924855470402 event=retained-build-assemble-node durationMs=6.925 kind=stack children=3 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.1399942+00:00 ticks=97924867163093 event=retained-build-assemble-node durationMs=11.632 kind=stack children=2 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.1525794+00:00 ticks=97924879747904 event=retained-build-assemble-node durationMs=12.522 kind=border children=1 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.1526364+00:00 ticks=97924879803573 event=retained-build-paint-own durationMs=0.003 kind=border memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.1526492+00:00 ticks=97924879816338 event=retained-build-paint-own durationMs=0.001 kind=stack memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.1527382+00:00 ticks=97924879905402 event=retained-build-paint-own durationMs=0.075 kind=text-block memoizable=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.1543827+00:00 ticks=97924881550573 event=retained-build-assemble-node durationMs=1.628 kind=text-block children=0 ownScenes=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.1596201+00:00 ticks=97924886788485 event=retained-build-assemble-node durationMs=5.186 kind=stack children=2 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.1663076+00:00 ticks=97924893475436 event=retained-build-assemble-node durationMs=6.626 kind=border children=1 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.4304216+00:00 ticks=97925157590357 event=retained-build-assemble-node durationMs=264.06 kind=stack children=4 ownScenes=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.4304681+00:00 ticks=97925157635264 event=retained-step-build durationMs=2425.808
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.4311783+00:00 ticks=97925158345871 event=retained-step-count-virtual durationMs=0.57
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.4591449+00:00 ticks=97925186314096 event=retained-step-damage-reduce durationMs=27.866 repaintedBoxes=113
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.4602517+00:00 ticks=97925187420285 event=retained-step-picture-walk durationMs=0.788
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.4612321+00:00 ticks=97925188400077 event=retained-step-offscreen-diagnostics durationMs=0.86
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.4617313+00:00 ticks=97925188898781 event=retained-step-index-prior-own durationMs=0.418
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.4632705+00:00 ticks=97925190438175 event=retained-step-state-collect durationMs=1.468
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.4635971+00:00 ticks=97925190764662 event=retained-step-scene-assembly durationMs=0.194 anyActive=False replayBoundaryCount=0
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.4636894+00:00 ticks=97925190856702 event=retained-step-render-scene durationMs=0.03 sceneListCount=4
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.4639531+00:00 ticks=97925191120647 event=retained-step-render-bounds durationMs=0.204
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.4645566+00:00 ticks=97925191724125 event=retained-step-render-diagnostics durationMs=0.544
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.4647372+00:00 ticks=97925191904617 event=retained-step-render-event-bindings durationMs=0.116
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.4649420+00:00 ticks=97925192109437 event=retained-step-render-bound-ids durationMs=0.14
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.4650448+00:00 ticks=97925192212228 event=retained-step-render-node-count durationMs=0.044
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.4651643+00:00 ticks=97925192331741 event=retained-step-work-node-count durationMs=0.065
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.4653642+00:00 ticks=97925192531651 event=elmish-retained-step-end durationMs=2493.004 remeasured=77 repainted=113 dirtyRects=113 replayHits=0 replayMisses=0
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.4654213+00:00 ticks=97925192588582 event=elmish-render-retained-end path=step durationMs=2507.057
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.4654324+00:00 ticks=97925192599503 event=view-end msg=NavigateTo_"text-numeric-input" durationMs=2507.913
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.4654449+00:00 ticks=97925192612028 event=effects-end msg=NavigateTo_"text-numeric-input" durationMs=0.005 closeRequested=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.4654511+00:00 ticks=97925192618190 event=input-handle-end seq=1 handled=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.4654653+00:00 ticks=97925192632368 event=input-drain-end batch=1 handled=1 closeRequested=False
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.4654899+00:00 ticks=97925192657006 event=render-frame-requested scriptedIndex=2 completionFrames=0
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.4654972+00:00 ticks=97925192664350 event=gl-render-start
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.6268145+00:00 ticks=97925353983314 event=gl-render-success paintMs=160.687 presentMs=0.326 readbackBytes=0
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.6279777+00:00 ticks=97925355145102 event=script-input-pump scriptIndex=2 scriptRemaining=2
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.6279979+00:00 ticks=97925355165031 event=render-frame-requested scriptedIndex=3 completionFrames=0
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.6280145+00:00 ticks=97925355181623 event=gl-render-start
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.6330417+00:00 ticks=97925360209987 event=gl-render-success paintMs=0.074 presentMs=4.782 readbackBytes=0
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.6448836+00:00 ticks=97925372052730 event=script-input-pump scriptIndex=3 scriptRemaining=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.6449446+00:00 ticks=97925372111826 event=render-frame-requested scriptedIndex=4 completionFrames=1
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.6449566+00:00 ticks=97925372123799 event=gl-render-start
+FS_GG_RENDER_LAG_TRACE ts=2026-06-19T23:02:14.6454546+00:00 ticks=97925372622532 event=gl-render-success paintMs=0.136 presentMs=0.162 readbackBytes=0

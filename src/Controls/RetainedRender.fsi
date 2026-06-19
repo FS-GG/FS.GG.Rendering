@@ -65,12 +65,24 @@ type internal RenderFragment =
       Box: FS.GG.UI.Scene.Rect option
       InvalidationEvidence: RetainedInvalidationEvidence list }
 
+/// Feature 174: retained render-result metadata for one subtree. Bounds keep in-flow and overlay
+/// buckets separate so the final public `Bounds` ordering remains byte-identical to `Control.renderTree`.
+type internal RetainedMetadata<'msg> =
+    { InFlowBounds: (ControlId * FS.GG.UI.Scene.Rect) list
+      OverlayBounds: (ControlId * FS.GG.UI.Scene.Rect) list
+      Diagnostics: ControlDiagnostic list
+      EventBindings: ControlEventBinding<'msg> list
+      BoundIds: Set<ControlId>
+      KeyedNodes: (ControlId * ControlKind) list
+      NodeCount: int }
+
 /// One retained control node: its stable identity, the lowered control it was built from, its
 /// cached render fragment, and its retained children (mirroring `Control.Children` order).
 type internal RetainedNode<'msg> =
     { Identity: RetainedId
       Control: Control<'msg>
       Fragment: RenderFragment
+      Metadata: RetainedMetadata<'msg>
       Children: RetainedNode<'msg> list }
 
 /// Feature 099 (R4) / Feature 103 (R6) — the per-identity animation clock. Generalizes the
@@ -231,6 +243,11 @@ type internal RetainedRender<'msg> =
 /// violates — the shifted work was recomputed but uncounted; FR-007 splits it out.)
 type internal WorkReductionRecord =
     { BaselineNodeCount: int
+      /// Feature 174: number of retained nodes whose render-result metadata was recomputed this frame.
+      MetadataVisitedNodeCount: int
+      /// Feature 174: number of full metadata fallbacks required this frame. Normal retained paths keep
+      /// this at zero and use retained subtree metadata snapshots instead.
+      MetadataFallbackCount: int
       RecomputedNodeCount: int
       ChangedSubtreeBound: int
       ShiftedNodeCount: int

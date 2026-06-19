@@ -53,6 +53,11 @@
     <Compile Include="Feature173LiveResponsivenessFailClosedTests.fs" />
     <Compile Include="Feature173LiveResponsivenessCoverageTests.fs" />
     <Compile Include="Feature173LiveResponsivenessRegressionTests.fs" />
+    <Compile Include="Feature174RenderLagFixtures.fs" />
+    <Compile Include="Feature174RenderLagProbeTests.fs" />
+    <Compile Include="Feature174ResponsivenessBudgetTests.fs" />
+    <Compile Include="Feature174VisualParityTests.fs" />
+    <Compile Include="Feature174EnvironmentLimitedTests.fs" />
     <Compile Include="Feature169DiagnosticsCliTests.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>

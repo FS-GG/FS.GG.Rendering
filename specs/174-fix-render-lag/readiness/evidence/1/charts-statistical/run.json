@@ -1,0 +1,16 @@
+{
+  "pageId": "charts-statistical",
+  "seed": 1,
+  "mode": "antLight",
+  "controlIds": ["line-chart", "bar-chart", "pie-chart", "scatter-plot", "area-chart", "column-chart", "histogram", "box-plot"],
+  "proofLevel": "deterministic",
+  "authoritativeFor": ["determinism", "tree-equality", "non-blank-offscreen-png"],
+  "notAuthoritativeFor": ["pixel-level-ant-fidelity-vs-upstream-antd", "live-pointer-hit-testing-beyond-seeded-script", "chart-graph-controls-rendered-with-seeded-sample-data-only"],
+  "screenshot": {
+    "provesScreenshot": true,
+    "blockedStage": null,
+    "unsupportedHostReason": null,
+    "fallback": null,
+    "path": "frame.png"
+  }
+}

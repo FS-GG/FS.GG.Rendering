@@ -1,0 +1,23 @@
+{
+  "baselineProfileId": "2026-06-19",
+  "diagnostics": [
+    "viewerOutcome=ok",
+    "firstFramePresented=True"
+  ],
+  "environmentLimitations": [],
+  "firstFramePreparationAfterMs": 0,
+  "firstFramePreparationReductionPercent": 100,
+  "largestNonPaintPreparationAfterMs": 0,
+  "medianInputToVisibleMs": 8.523,
+  "optimizedProfileId": "lag-20260619-230210-0176251",
+  "p95InputToVisibleMs": 8.523,
+  "parityArtifacts": [],
+  "parityStatus": "not-run",
+  "preparationReductionPercent": 100,
+  "runId": "lag-20260619-230210-0176251",
+  "scenarioId": "page-change",
+  "scenarios": [
+    "page-change"
+  ],
+  "status": "measured"
+}

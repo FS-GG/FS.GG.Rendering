@@ -1,0 +1,16 @@
+{
+  "pageId": "layout-containers",
+  "seed": 1,
+  "mode": "antLight",
+  "controlIds": ["stack", "grid", "dock", "wrap", "border", "panel", "scroll-viewer", "split-view"],
+  "proofLevel": "deterministic",
+  "authoritativeFor": ["determinism", "tree-equality", "non-blank-offscreen-png"],
+  "notAuthoritativeFor": ["pixel-level-ant-fidelity-vs-upstream-antd", "live-pointer-hit-testing-beyond-seeded-script", "chart-graph-controls-rendered-with-seeded-sample-data-only"],
+  "screenshot": {
+    "provesScreenshot": true,
+    "blockedStage": null,
+    "unsupportedHostReason": null,
+    "fallback": null,
+    "path": "frame.png"
+  }
+}

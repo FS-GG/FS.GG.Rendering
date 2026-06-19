@@ -10,6 +10,8 @@ let tests =
         test "Synthetic counter helper preserves placement reuse and net saved work" {
             let work =
                 { WorkReductionRecord.BaselineNodeCount = 10
+                  MetadataVisitedNodeCount = 0
+                  MetadataFallbackCount = 0
                   RecomputedNodeCount = 2
                   ChangedSubtreeBound = 1
                   ShiftedNodeCount = 0

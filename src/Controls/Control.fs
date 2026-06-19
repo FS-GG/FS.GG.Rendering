@@ -2523,6 +2523,10 @@ module internal ControlInternals =
           Diagnostics: ControlDiagnostic list
           ChildContributions: CurrentNodeChildContribution list }
 
+    type CurrentNodeBoundsResult =
+        { InFlowBounds: (ControlId * Rect) list
+          OverlayBounds: (ControlId * Rect) list }
+
     /// Feature 139 (R1a): the single current-semantics assembly owner. It deliberately captures only
     /// today's own-paint + child-paint + container-clip + overlay-promotion behavior; R2/R1b work such as
     /// modifier algebra, portals, public IR changes, intrinsic layout, text shaping, compositor changes,
@@ -2568,6 +2572,28 @@ module internal ControlInternals =
               Fingerprint = hashScene allScene
               Diagnostics = diagnostics
               ChildContributions = childContributions }
+
+    let assembleCurrentNodeBounds
+        (control: Control<'msg>)
+        (path: string)
+        (box: Rect option)
+        (childBounds: CurrentNodeBoundsResult list)
+        : CurrentNodeBoundsResult =
+        let controlId: ControlId = control.Key |> Option.defaultValue path
+        let here =
+            match box with
+            | Some b -> [ controlId, b ]
+            | None -> []
+
+        let childInFlow = childBounds |> List.collect _.InFlowBounds
+        let childOverlay = childBounds |> List.collect _.OverlayBounds
+
+        if isOverlayNode control then
+            { InFlowBounds = []
+              OverlayBounds = here @ childInFlow @ childOverlay }
+        else
+            { InFlowBounds = here @ childInFlow
+              OverlayBounds = childOverlay }
 
     /// The evaluated absolute box of a node, looked up by the same structural id `paintNode`
     /// uses (`Key |> defaultValue path`). `None` when the node was not laid out.

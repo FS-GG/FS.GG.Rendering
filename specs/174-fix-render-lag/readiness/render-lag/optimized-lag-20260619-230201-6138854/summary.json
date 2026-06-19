@@ -1,0 +1,23 @@
+{
+  "baselineProfileId": "2026-06-19",
+  "diagnostics": [
+    "viewerOutcome=ok",
+    "firstFramePresented=True"
+  ],
+  "environmentLimitations": [],
+  "firstFramePreparationAfterMs": 1.775,
+  "firstFramePreparationReductionPercent": 99.855,
+  "largestNonPaintPreparationAfterMs": 1.775,
+  "medianInputToVisibleMs": 4.119,
+  "optimizedProfileId": "lag-20260619-230201-6138854",
+  "p95InputToVisibleMs": 4.119,
+  "parityArtifacts": [],
+  "parityStatus": "not-run",
+  "preparationReductionPercent": 99.858,
+  "runId": "lag-20260619-230201-6138854",
+  "scenarioId": "button-click",
+  "scenarios": [
+    "button-click"
+  ],
+  "status": "measured"
+}

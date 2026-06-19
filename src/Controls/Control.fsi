@@ -158,6 +158,13 @@ module internal ControlInternals =
           Diagnostics: ControlDiagnostic list
           ChildContributions: CurrentNodeChildContribution list }
 
+    /// Feature 174: owner-produced current-node bounds contribution. Retained rendering stores this
+    /// metadata shape and asks ControlInternals to apply the same in-flow/overlay ordering rules that
+    /// direct rendering uses, without owning those rules locally.
+    type CurrentNodeBoundsResult =
+        { InFlowBounds: (ControlId * FS.GG.UI.Scene.Rect) list
+          OverlayBounds: (ControlId * FS.GG.UI.Scene.Rect) list }
+
     /// Feature 139 (R1a): the single current-node assembly owner. Combines one node's own paint and
     /// already-assembled children through today's container clipping and overlay-promotion rules. This is
     /// the R1a scope boundary only: modifier algebra, portals, public IR changes, intrinsic layout, text
@@ -169,6 +176,15 @@ module internal ControlInternals =
         childAssemblies: CurrentNodeAssemblyResult list ->
             CurrentNodeAssemblyResult
 
+    /// Feature 174: combine one node's evaluated box with already-assembled child bounds through
+    /// today's direct-render in-flow/overlay ordering semantics.
+    val assembleCurrentNodeBounds:
+        control: Control<'msg> ->
+        path: string ->
+        box: FS.GG.UI.Scene.Rect option ->
+        childBounds: CurrentNodeBoundsResult list ->
+            CurrentNodeBoundsResult
+
     /// Feature 091 — the evaluated `Bounds` list `renderTree` surfaces, from a pre-evaluated
     /// `boundsById`, so the retained path emits the identical list.
     val collectBoundsWith:
@@ -179,6 +195,14 @@ module internal ControlInternals =
     /// Feature 091 — the recursive `EventBindings` list `renderTree` surfaces, factored so the
     /// retained path emits the identical list.
     val eventBindingsOf: control: Control<'msg> -> ControlEventBinding<'msg> list
+
+    /// Feature 174: event bindings for one control at the already-known structural path, so retained
+    /// metadata can reuse unchanged child snapshots instead of rescanning the whole tree.
+    val eventBindings: path: string -> control: Control<'msg> -> ControlEventBinding<'msg> list
+
+    /// Feature 174: diagnostics for one control node, excluding duplicate-key diagnostics that require
+    /// whole-tree key aggregation.
+    val controlDiagnostics: control: Control<'msg> -> ControlDiagnostic list
 
     /// Feature 098 (FR-002) — the canonical ids (`Key ?? path`) of every node carrying ≥1 event
     /// binding. The single source for `ControlRenderResult.BoundIds` at the full rebuild AND the
