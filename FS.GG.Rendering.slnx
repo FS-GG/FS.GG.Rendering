@@ -4,6 +4,7 @@
     <Project Path="src/Controls.Elmish/Controls.Elmish.fsproj" />
     <Project Path="src/Controls/Controls.fsproj" />
     <Project Path="src/DesignSystem/DesignSystem.fsproj" />
+    <Project Path="src/Diagnostics/Diagnostics.fsproj" />
     <Project Path="src/Elmish/Elmish.fsproj" />
     <Project Path="src/Input/Input.fsproj" />
     <Project Path="src/KeyboardInput/KeyboardInput.fsproj" />
@@ -17,6 +18,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/Color.Tests/Color.Tests.fsproj" />
     <Project Path="tests/Controls.Tests/Controls.Tests.fsproj" />
+    <Project Path="tests/Diagnostics.Tests/Diagnostics.Tests.fsproj" />
     <Project Path="tests/Elmish.Tests/Elmish.Tests.fsproj" />
     <Project Path="tests/Input.Tests/Input.Tests.fsproj" />
     <Project Path="tests/KeyboardInput.Tests/KeyboardInput.Tests.fsproj" />

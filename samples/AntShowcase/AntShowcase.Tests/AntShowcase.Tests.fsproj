@@ -31,6 +31,7 @@
     <Compile Include="Feature167ResponsivenessShapeTests.fs" />
     <Compile Include="Feature167KeyboardCompatibilityTests.fs" />
     <Compile Include="Feature167ResponsivenessCliTests.fs" />
+    <Compile Include="Feature169DiagnosticsCliTests.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
   <ItemGroup>
@@ -40,6 +41,7 @@
   <ItemGroup>
     <PackageReference Include="FS.GG.UI.Controls" Version="0.1.30-preview.1" />
     <PackageReference Include="FS.GG.UI.Controls.Elmish" Version="0.1.30-preview.1" />
+    <PackageReference Include="FS.GG.UI.Diagnostics" Version="0.1.30-preview.1" />
     <PackageReference Include="FS.GG.UI.SkiaViewer" Version="0.1.30-preview.1" />
     <PackageReference Include="FS.GG.UI.Testing" Version="0.1.30-preview.1" />
     <PackageReference Include="Expecto" Version="10.2.2" />

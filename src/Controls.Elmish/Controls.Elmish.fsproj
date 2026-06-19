@@ -26,6 +26,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Controls\Controls.fsproj" />
     <ProjectReference Include="..\KeyboardInput\KeyboardInput.fsproj" />
+    <ProjectReference Include="..\Diagnostics\Diagnostics.fsproj" />
     <!-- Feature 085 (research D3-AMEND): the interactive pointer/size-aware host
          (InteractiveAppHost + runInteractiveApp) lives here, not in SkiaViewer, because
          PointerInteraction/interpretPointerOutcome are Controls surface and the viewer is

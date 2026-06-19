@@ -1,0 +1,15 @@
+FS.GG.UI.Diagnostics.AggregatedDiagnostic
+FS.GG.UI.Diagnostics.DiagnosticCategory
+FS.GG.UI.Diagnostics.DiagnosticCategory+Tags
+FS.GG.UI.Diagnostics.DiagnosticContext
+FS.GG.UI.Diagnostics.DiagnosticException
+FS.GG.UI.Diagnostics.DiagnosticReadinessImpact
+FS.GG.UI.Diagnostics.DiagnosticReadinessImpact+Tags
+FS.GG.UI.Diagnostics.DiagnosticSeverity
+FS.GG.UI.Diagnostics.DiagnosticSeverity+Tags
+FS.GG.UI.Diagnostics.DiagnosticSource
+FS.GG.UI.Diagnostics.DiagnosticSummary
+FS.GG.UI.Diagnostics.ReadinessDiagnosticStatus
+FS.GG.UI.Diagnostics.ReadinessDiagnosticStatus+Tags
+FS.GG.UI.Diagnostics.RuntimeDiagnostic
+FS.GG.UI.Diagnostics.RuntimeDiagnostics

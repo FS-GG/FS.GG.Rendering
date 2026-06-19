@@ -75,6 +75,7 @@ let result id role status : ValidationLanes.LaneResult =
       ResultPath = $"lanes/{id}/result.json"
       DiagnosticsPath = $"lanes/{id}/diagnostics.md"
       ResultArtifacts = [ $"lanes/{id}/result.json"; $"lanes/{id}/log.txt" ]
+      RuntimeDiagnostics = None
       Reason = if status = ValidationLanes.Passed then None else Some(status |> ValidationLanes.statusToken)
       Diagnostics = []
       Caveats = []

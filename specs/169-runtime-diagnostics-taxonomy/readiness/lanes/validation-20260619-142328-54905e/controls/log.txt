@@ -1,0 +1,13 @@
+  Scene -> /home/developer/projects/FS.GG.Rendering/src/Scene/bin/Release/net10.0/FS.GG.UI.Scene.dll
+  Diagnostics -> /home/developer/projects/FS.GG.Rendering/src/Diagnostics/bin/Release/net10.0/FS.GG.UI.Diagnostics.dll
+  KeyboardInput -> /home/developer/projects/FS.GG.Rendering/src/KeyboardInput/bin/Release/net10.0/FS.GG.UI.KeyboardInput.dll
+  DesignSystem -> /home/developer/projects/FS.GG.Rendering/src/DesignSystem/bin/Release/net10.0/FS.GG.UI.DesignSystem.dll
+  Layout -> /home/developer/projects/FS.GG.Rendering/src/Layout/bin/Release/net10.0/FS.GG.UI.Layout.dll
+  Color -> /home/developer/projects/FS.GG.Rendering/src/Color/bin/Release/net10.0/FS.GG.UI.Color.dll
+  Themes.AntDesign -> /home/developer/projects/FS.GG.Rendering/src/Themes.AntDesign/bin/Release/net10.0/FS.GG.UI.Themes.AntDesign.dll
+  Controls -> /home/developer/projects/FS.GG.Rendering/src/Controls/bin/Release/net10.0/FS.GG.UI.Controls.dll
+  Themes.Default -> /home/developer/projects/FS.GG.Rendering/src/Themes.Default/bin/Release/net10.0/FS.GG.UI.Themes.Default.dll
+  Controls.Tests -> /home/developer/projects/FS.GG.Rendering/tests/Controls.Tests/bin/Release/net10.0/Controls.Tests.dll
+Test run for /home/developer/projects/FS.GG.Rendering/tests/Controls.Tests/bin/Release/net10.0/Controls.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+  Skipped Typed standard controls contract.FSI transcript expectations cover typed front doors and custom escape hatch

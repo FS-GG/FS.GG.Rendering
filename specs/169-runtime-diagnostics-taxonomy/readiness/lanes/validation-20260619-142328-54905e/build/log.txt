@@ -1,0 +1,34 @@
+  Diagnostics -> /home/developer/projects/FS.GG.Rendering/src/Diagnostics/bin/Release/net10.0/FS.GG.UI.Diagnostics.dll
+  Diagnostics.Tests -> /home/developer/projects/FS.GG.Rendering/tests/Diagnostics.Tests/bin/Release/net10.0/Diagnostics.Tests.dll
+  Scene -> /home/developer/projects/FS.GG.Rendering/src/Scene/bin/Release/net10.0/FS.GG.UI.Scene.dll
+  DesignSystem -> /home/developer/projects/FS.GG.Rendering/src/DesignSystem/bin/Release/net10.0/FS.GG.UI.DesignSystem.dll
+  KeyboardInput -> /home/developer/projects/FS.GG.Rendering/src/KeyboardInput/bin/Release/net10.0/FS.GG.UI.KeyboardInput.dll
+  Layout -> /home/developer/projects/FS.GG.Rendering/src/Layout/bin/Release/net10.0/FS.GG.UI.Layout.dll
+  Themes.Default -> /home/developer/projects/FS.GG.Rendering/src/Themes.Default/bin/Release/net10.0/FS.GG.UI.Themes.Default.dll
+  Themes.AntDesign -> /home/developer/projects/FS.GG.Rendering/src/Themes.AntDesign/bin/Release/net10.0/FS.GG.UI.Themes.AntDesign.dll
+  Color -> /home/developer/projects/FS.GG.Rendering/src/Color/bin/Release/net10.0/FS.GG.UI.Color.dll
+  Testing -> /home/developer/projects/FS.GG.Rendering/src/Testing/bin/Release/net10.0/FS.GG.UI.Testing.dll
+  Scene.Tests -> /home/developer/projects/FS.GG.Rendering/tests/Scene.Tests/bin/Release/net10.0/Scene.Tests.dll
+  KeyboardInput.Tests -> /home/developer/projects/FS.GG.Rendering/tests/KeyboardInput.Tests/bin/Release/net10.0/KeyboardInput.Tests.dll
+  Color.Tests -> /home/developer/projects/FS.GG.Rendering/tests/Color.Tests/bin/Release/net10.0/Color.Tests.dll
+  Testing.Tests -> /home/developer/projects/FS.GG.Rendering/tests/Testing.Tests/bin/Release/net10.0/Testing.Tests.dll
+  SkiaViewer -> /home/developer/projects/FS.GG.Rendering/src/SkiaViewer/bin/Release/net10.0/FS.GG.UI.SkiaViewer.dll
+  Controls -> /home/developer/projects/FS.GG.Rendering/src/Controls/bin/Release/net10.0/FS.GG.UI.Controls.dll
+  Layout.Tests -> /home/developer/projects/FS.GG.Rendering/tests/Layout.Tests/bin/Release/net10.0/Layout.Tests.dll
+  Elmish -> /home/developer/projects/FS.GG.Rendering/src/Elmish/bin/Release/net10.0/FS.GG.UI.Elmish.dll
+  Controls.Elmish -> /home/developer/projects/FS.GG.Rendering/src/Controls.Elmish/bin/Release/net10.0/FS.GG.UI.Controls.Elmish.dll
+  Smoke.Tests -> /home/developer/projects/FS.GG.Rendering/tests/Smoke.Tests/bin/Release/net10.0/Smoke.Tests.dll
+  Input -> /home/developer/projects/FS.GG.Rendering/src/Input/bin/Release/net10.0/FS.GG.UI.Input.dll
+  Lib.Tests -> /home/developer/projects/FS.GG.Rendering/tests/Lib.Tests/bin/Release/net10.0/Lib.Tests.dll
+  Input.Tests -> /home/developer/projects/FS.GG.Rendering/tests/Input.Tests/bin/Release/net10.0/Input.Tests.dll
+  SkiaViewer.Tests -> /home/developer/projects/FS.GG.Rendering/tests/SkiaViewer.Tests/bin/Release/net10.0/SkiaViewer.Tests.dll
+  Elmish.Tests -> /home/developer/projects/FS.GG.Rendering/tests/Elmish.Tests/bin/Release/net10.0/Elmish.Tests.dll
+  Rendering.Harness -> /home/developer/projects/FS.GG.Rendering/tests/Rendering.Harness/bin/Release/net10.0/Rendering.Harness.dll
+  Controls.Tests -> /home/developer/projects/FS.GG.Rendering/tests/Controls.Tests/bin/Release/net10.0/Controls.Tests.dll
+  Rendering.Harness.Tests -> /home/developer/projects/FS.GG.Rendering/tests/Rendering.Harness.Tests/bin/Release/net10.0/Rendering.Harness.Tests.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:03.68

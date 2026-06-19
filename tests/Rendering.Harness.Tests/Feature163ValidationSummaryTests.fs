@@ -19,6 +19,7 @@ let private result (id: string) (status: ValidationLanes.LaneStatus) (required: 
       ResultPath = $"lanes/{id}/result.json"
       DiagnosticsPath = $"lanes/{id}/diagnostics.md"
       ResultArtifacts = [ $"lanes/{id}/result.json" ]
+      RuntimeDiagnostics = None
       Reason = None
       Diagnostics = []
       Caveats = []

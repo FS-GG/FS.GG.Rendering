@@ -75,6 +75,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\KeyboardInput\KeyboardInput.fsproj" />
+    <ProjectReference Include="..\Diagnostics\Diagnostics.fsproj" />
     <ProjectReference Include="..\Scene\Scene.fsproj" />
     <PackageReference Include="Fable.Elmish" />
     <PackageReference Include="Silk.NET.Input" />

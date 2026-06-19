@@ -22,6 +22,7 @@ let packages =
       "FS.GG.UI.Controls", "Controls"
       "FS.GG.UI.Controls.Elmish", "Controls.Elmish"
       "FS.GG.UI.DesignSystem", "DesignSystem"
+      "FS.GG.UI.Diagnostics", "Diagnostics"
       "FS.GG.UI.Themes.AntDesign", "Themes.AntDesign"
       "FS.GG.UI.Themes.Default", "Themes.Default"
       "FS.GG.UI.Elmish", "Elmish"

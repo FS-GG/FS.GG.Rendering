@@ -133,3 +133,8 @@ module Diagnostics =
     val startupFailed: stage: DiagnosticStage -> detail: string -> RenderDiagnostic
     /// Feature 157: frame diagnostic for no-clear damage-scoped decisions and fallback reasons.
     val damageScopedDecision: decision: string -> reason: string option -> RenderDiagnostic
+    /// Converts a host render diagnostic into the shared runtime diagnostics taxonomy.
+    val toRuntimeDiagnostic:
+        context: FS.GG.UI.Diagnostics.DiagnosticContext ->
+        diagnostic: RenderDiagnostic ->
+            FS.GG.UI.Diagnostics.RuntimeDiagnostic

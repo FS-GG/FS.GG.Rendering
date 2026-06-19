@@ -62,11 +62,13 @@
     <Compile Include="Feature167LatencyRecordTests.fs" />
     <Compile Include="Feature167ResponsivenessSummaryTests.fs" />
     <Compile Include="Feature167InteractionParityTests.fs" />
+    <Compile Include="Feature169HostDiagnosticMappingTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\SkiaViewer\SkiaViewer.fsproj" />
+    <ProjectReference Include="..\..\src\Diagnostics\Diagnostics.fsproj" />
     <!-- Feature 085: the interactive pointer/size-aware host (InteractiveAppHost +
          runInteractiveApp + routeInteractivePointer) lives in Controls.Elmish (research
          D3-AMEND); this suite exercises its real adapter routing path headlessly. -->

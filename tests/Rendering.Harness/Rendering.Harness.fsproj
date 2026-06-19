@@ -48,6 +48,7 @@
     <ProjectReference Include="..\..\src\SkiaViewer\SkiaViewer.fsproj" />
     <ProjectReference Include="..\..\src\Controls.Elmish\Controls.Elmish.fsproj" />
     <ProjectReference Include="..\..\src\Testing\Testing.fsproj" />
+    <ProjectReference Include="..\..\src\Diagnostics\Diagnostics.fsproj" />
     <ProjectReference Include="..\..\src\Scene\Scene.fsproj" />
     <ProjectReference Include="..\..\src\Controls\Controls.fsproj" />
   </ItemGroup>

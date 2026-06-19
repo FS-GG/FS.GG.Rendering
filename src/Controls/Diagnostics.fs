@@ -9,6 +9,59 @@ module Diagnostics =
           Message = message
           EvidencePath = None }
 
+    let private runtimeSeverity severity =
+        match severity with
+        | ControlDiagnosticSeverity.Info -> FS.GG.UI.Diagnostics.DiagnosticSeverity.Informational
+        | ControlDiagnosticSeverity.Warning -> FS.GG.UI.Diagnostics.DiagnosticSeverity.Warning
+        | ControlDiagnosticSeverity.Error -> FS.GG.UI.Diagnostics.DiagnosticSeverity.Error
+
+    let private runtimeCategory diagnostic =
+        match diagnostic.Code with
+        | OffscreenComposition
+        | ScrollIntrinsicUnavailable
+        | ScrollExtentFallback
+        | UnstableReuseInput -> FS.GG.UI.Diagnostics.DiagnosticCategory.BackendCost
+        | UnsupportedEnvironment -> FS.GG.UI.Diagnostics.DiagnosticCategory.Environment
+        | NoFitOverlayPlacement -> FS.GG.UI.Diagnostics.DiagnosticCategory.RenderingLimitation
+        | BlockedOverlayDismissal
+        | DisabledOverlayTrigger
+        | LowerLayerBlocked -> FS.GG.UI.Diagnostics.DiagnosticCategory.DeveloperAction
+        | _ ->
+            match diagnostic.Severity with
+            | ControlDiagnosticSeverity.Error -> FS.GG.UI.Diagnostics.DiagnosticCategory.ReadinessBlocker
+            | ControlDiagnosticSeverity.Warning -> FS.GG.UI.Diagnostics.DiagnosticCategory.DeveloperAction
+            | ControlDiagnosticSeverity.Info -> FS.GG.UI.Diagnostics.DiagnosticCategory.DeveloperAction
+
+    let private actionFor diagnostic =
+        match runtimeCategory diagnostic with
+        | FS.GG.UI.Diagnostics.DiagnosticCategory.BackendCost ->
+            "Review only when this appears in a performance-blocked readiness lane."
+        | FS.GG.UI.Diagnostics.DiagnosticCategory.Environment ->
+            "Confirm the host capability or accept the environment limitation for this lane."
+        | FS.GG.UI.Diagnostics.DiagnosticCategory.RenderingLimitation ->
+            "Review the rendering limitation and decide whether the scenario needs a fallback."
+        | FS.GG.UI.Diagnostics.DiagnosticCategory.ReadinessBlocker ->
+            "Fix the controls diagnostic before accepting readiness."
+        | FS.GG.UI.Diagnostics.DiagnosticCategory.DeveloperAction ->
+            "Review the controls diagnostic and update the producer or test evidence."
+
+    let toRuntimeDiagnostic context diagnostic =
+        let source =
+            FS.GG.UI.Diagnostics.RuntimeDiagnostics.source
+                (Some "FS.GG.UI.Controls")
+                diagnostic.ControlKind
+                None
+                diagnostic.ControlId
+
+        FS.GG.UI.Diagnostics.RuntimeDiagnostics.create
+            source
+            (Some(string diagnostic.Code))
+            (Some(runtimeSeverity diagnostic.Severity))
+            (Some(runtimeCategory diagnostic))
+            diagnostic.Message
+            (Some(actionFor diagnostic))
+            context
+
     let missingRequired controlId kind (name: string) =
         create controlId kind MissingRequiredAttribute Error $"Missing required attribute `{name}`."
 

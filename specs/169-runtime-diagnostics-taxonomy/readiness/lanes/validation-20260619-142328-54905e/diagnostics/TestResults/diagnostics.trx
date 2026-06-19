@@ -1,0 +1,109 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="e5f907ae-9881-4675-803d-ed3a25dcb475" name="@ee01623d796c 2026-06-19 16:27:41" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-06-19T16:27:41.7307350+02:00" queuing="2026-06-19T16:27:41.7307350+02:00" start="2026-06-19T16:27:40.8073242+02:00" finish="2026-06-19T16:27:41.8342089+02:00" />
+  <TestSettings name="default" id="e105eb52-ac21-45f1-83c9-23092c262e03">
+    <Deployment runDeploymentRoot="_ee01623d796c_2026-06-19_16_27_41" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="9a9496c6-c47c-4abe-9e1a-aae84625b704" testId="ec8dd48c-4a86-fc09-1cd4-bc6fc74f39b1" testName="Feature169 artifacts.Synthetic diagnostics-summary JSON carries schema status counts and groups" computerName="ee01623d796c" duration="00:00:00.0300000" startTime="2026-06-19T16:27:41.6146140+02:00" endTime="2026-06-19T16:27:41.6907383+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="9a9496c6-c47c-4abe-9e1a-aae84625b704" />
+    <UnitTestResult executionId="1eded07e-8fd0-407b-b5b2-691094d470cb" testId="60cbaf7e-c76d-7acc-8403-df7b730bcf71" testName="Feature169 JSONL artifacts.Synthetic JSONL preserves one runtime diagnostic per line" computerName="ee01623d796c" duration="00:00:00.0300000" startTime="2026-06-19T16:27:41.6146042+02:00" endTime="2026-06-19T16:27:41.6907236+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="1eded07e-8fd0-407b-b5b2-691094d470cb" />
+    <UnitTestResult executionId="7fdc55ef-9899-4ded-bc91-3345ae78d357" testId="996c28e3-c54d-21a8-b43f-39c18d7d0ff3" testName="Feature169 readiness.Synthetic environment error becomes environment-limited when no blocker remains" computerName="ee01623d796c" startTime="2026-06-19T16:27:41.6821162+02:00" endTime="2026-06-19T16:27:41.7082588+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="7fdc55ef-9899-4ded-bc91-3345ae78d357" />
+    <UnitTestResult executionId="a9f79692-8d71-47d5-ac30-d63a7f47a704" testId="e00d369b-5f8c-bd94-53a3-5ad61527b11d" testName="Feature169 artifact failure.Synthetic artifact write failure emits developer-action diagnostic" computerName="ee01623d796c" duration="00:00:00.0430000" startTime="2026-06-19T16:27:41.6146030+02:00" endTime="2026-06-19T16:27:41.6926237+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="a9f79692-8d71-47d5-ac30-d63a7f47a704" />
+    <UnitTestResult executionId="46bc5ed0-58e8-402f-8826-1faa0108f8c1" testId="66bfeac0-9588-e42c-807b-f324e09c0ce3" testName="Feature169 classification.Synthetic stream origin stays in first occurrence context" computerName="ee01623d796c" duration="00:00:00.0100000" startTime="2026-06-19T16:27:41.7109934+02:00" endTime="2026-06-19T16:27:41.7275300+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="46bc5ed0-58e8-402f-8826-1faa0108f8c1" />
+    <UnitTestResult executionId="2be6bb63-0945-4008-b33c-274c74074d58" testId="2b78ee90-69a0-a5ce-f15a-ef2100748021" testName="Feature169 console rendering.Synthetic default console output stays compact while verbose keeps detail" computerName="ee01623d796c" duration="00:00:00.0440000" startTime="2026-06-19T16:27:41.6146032+02:00" endTime="2026-06-19T16:27:41.6939649+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="2be6bb63-0945-4008-b33c-274c74074d58" />
+    <UnitTestResult executionId="59f45d81-7626-490c-ab50-9f14fa4faaeb" testId="68283046-b64e-9cd5-2d28-6981ca05bf3b" testName="Feature169 aggregation.Synthetic repeated backend cost diagnostics aggregate to one occurrence group" computerName="ee01623d796c" duration="00:00:00.0060000" startTime="2026-06-19T16:27:41.6821274+02:00" endTime="2026-06-19T16:27:41.7082591+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="59f45d81-7626-490c-ab50-9f14fa4faaeb" />
+    <UnitTestResult executionId="70c5b5fc-86a6-4d01-b7b7-eecfe0e61d2c" testId="f491edec-7feb-860e-50f8-ac4d395f612f" testName="Feature169 artifacts.Synthetic artifact writer overwrites stale prior blocker artifact" computerName="ee01623d796c" duration="00:00:00.0430000" startTime="2026-06-19T16:27:41.6146276+02:00" endTime="2026-06-19T16:27:41.6936205+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="70c5b5fc-86a6-4d01-b7b7-eecfe0e61d2c" />
+    <UnitTestResult executionId="899da71b-51ea-4407-a02a-516b0e1fab40" testId="a6950985-4982-be92-c8ff-ac4bc74c28f9" testName="Feature169 readiness.Synthetic blocker and unclassified diagnostics fail closed" computerName="ee01623d796c" duration="00:00:00.0300000" startTime="2026-06-19T16:27:41.6147794+02:00" endTime="2026-06-19T16:27:41.6906990+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="899da71b-51ea-4407-a02a-516b0e1fab40" />
+    <UnitTestResult executionId="798e08b3-704e-4b0a-94d4-3004b6580afa" testId="50f18067-184d-b5b2-fb8a-4c6a07848dba" testName="Feature169 classification.Synthetic mixed fixture groups category severity blockers and action guidance" computerName="ee01623d796c" duration="00:00:00.0030000" startTime="2026-06-19T16:27:41.7109872+02:00" endTime="2026-06-19T16:27:41.7191715+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="798e08b3-704e-4b0a-94d4-3004b6580afa" />
+    <UnitTestResult executionId="af517e64-318f-4c14-a901-dcce952c94de" testId="b1843b6e-83b4-7cad-d998-7a7974fa0417" testName="Feature169 readiness.Synthetic valid exception changes blocker to accepted while remaining visible" computerName="ee01623d796c" duration="00:00:00.0270000" startTime="2026-06-19T16:27:41.6149544+02:00" endTime="2026-06-19T16:27:41.6907257+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="af517e64-318f-4c14-a901-dcce952c94de" />
+    <UnitTestResult executionId="30d82a70-380e-4d2a-b193-3d3176a501fb" testId="7bfbbd1c-2465-760c-fac8-12110ec6d710" testName="Feature169 readiness.Synthetic non-blocking classified diagnostics are accepted" computerName="ee01623d796c" duration="00:00:00.0280000" startTime="2026-06-19T16:27:41.6146521+02:00" endTime="2026-06-19T16:27:41.6907057+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="30d82a70-380e-4d2a-b193-3d3176a501fb" />
+    <UnitTestResult executionId="40755836-6521-482c-9808-776d28d2e068" testId="14080ba6-f246-1b4a-0e9c-038e7c4d5de8" testName="Feature169 readiness.Synthetic expired or unmatched exceptions require review" computerName="ee01623d796c" duration="00:00:00.0270000" startTime="2026-06-19T16:27:41.6149651+02:00" endTime="2026-06-19T16:27:41.6907541+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="40755836-6521-482c-9808-776d28d2e068" />
+    <UnitTestResult executionId="47252206-c48e-4461-81ed-c0c18cc0448d" testId="221e1fd0-881a-b0db-4f81-87f11bcee23d" testName="Feature169 Markdown artifacts.Synthetic Markdown reviewer summary exposes status counts blockers and exceptions" computerName="ee01623d796c" duration="00:00:00.0420000" startTime="2026-06-19T16:27:41.6146063+02:00" endTime="2026-06-19T16:27:41.6919951+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="47252206-c48e-4461-81ed-c0c18cc0448d" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="Feature169 readiness.Synthetic environment error becomes environment-limited when no blocker remains" storage="/home/developer/projects/fs.gg.rendering/tests/diagnostics.tests/bin/release/net10.0/diagnostics.tests.dll" id="996c28e3-c54d-21a8-b43f-39c18d7d0ff3">
+      <Execution id="7fdc55ef-9899-4ded-bc91-3345ae78d357" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering/tests/Diagnostics.Tests/bin/Release/net10.0/Diagnostics.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="Feature169 readiness" name="Synthetic environment error becomes environment-limited when no blocker remains" />
+    </UnitTest>
+    <UnitTest name="Feature169 Markdown artifacts.Synthetic Markdown reviewer summary exposes status counts blockers and exceptions" storage="/home/developer/projects/fs.gg.rendering/tests/diagnostics.tests/bin/release/net10.0/diagnostics.tests.dll" id="221e1fd0-881a-b0db-4f81-87f11bcee23d">
+      <Execution id="47252206-c48e-4461-81ed-c0c18cc0448d" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering/tests/Diagnostics.Tests/bin/Release/net10.0/Diagnostics.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="Feature169 Markdown artifacts" name="Synthetic Markdown reviewer summary exposes status counts blockers and exceptions" />
+    </UnitTest>
+    <UnitTest name="Feature169 aggregation.Synthetic repeated backend cost diagnostics aggregate to one occurrence group" storage="/home/developer/projects/fs.gg.rendering/tests/diagnostics.tests/bin/release/net10.0/diagnostics.tests.dll" id="68283046-b64e-9cd5-2d28-6981ca05bf3b">
+      <Execution id="59f45d81-7626-490c-ab50-9f14fa4faaeb" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering/tests/Diagnostics.Tests/bin/Release/net10.0/Diagnostics.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="Feature169 aggregation" name="Synthetic repeated backend cost diagnostics aggregate to one occurrence group" />
+    </UnitTest>
+    <UnitTest name="Feature169 artifacts.Synthetic diagnostics-summary JSON carries schema status counts and groups" storage="/home/developer/projects/fs.gg.rendering/tests/diagnostics.tests/bin/release/net10.0/diagnostics.tests.dll" id="ec8dd48c-4a86-fc09-1cd4-bc6fc74f39b1">
+      <Execution id="9a9496c6-c47c-4abe-9e1a-aae84625b704" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering/tests/Diagnostics.Tests/bin/Release/net10.0/Diagnostics.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="Feature169 artifacts" name="Synthetic diagnostics-summary JSON carries schema status counts and groups" />
+    </UnitTest>
+    <UnitTest name="Feature169 artifact failure.Synthetic artifact write failure emits developer-action diagnostic" storage="/home/developer/projects/fs.gg.rendering/tests/diagnostics.tests/bin/release/net10.0/diagnostics.tests.dll" id="e00d369b-5f8c-bd94-53a3-5ad61527b11d">
+      <Execution id="a9f79692-8d71-47d5-ac30-d63a7f47a704" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering/tests/Diagnostics.Tests/bin/Release/net10.0/Diagnostics.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="Feature169 artifact failure" name="Synthetic artifact write failure emits developer-action diagnostic" />
+    </UnitTest>
+    <UnitTest name="Feature169 JSONL artifacts.Synthetic JSONL preserves one runtime diagnostic per line" storage="/home/developer/projects/fs.gg.rendering/tests/diagnostics.tests/bin/release/net10.0/diagnostics.tests.dll" id="60cbaf7e-c76d-7acc-8403-df7b730bcf71">
+      <Execution id="1eded07e-8fd0-407b-b5b2-691094d470cb" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering/tests/Diagnostics.Tests/bin/Release/net10.0/Diagnostics.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="Feature169 JSONL artifacts" name="Synthetic JSONL preserves one runtime diagnostic per line" />
+    </UnitTest>
+    <UnitTest name="Feature169 readiness.Synthetic blocker and unclassified diagnostics fail closed" storage="/home/developer/projects/fs.gg.rendering/tests/diagnostics.tests/bin/release/net10.0/diagnostics.tests.dll" id="a6950985-4982-be92-c8ff-ac4bc74c28f9">
+      <Execution id="899da71b-51ea-4407-a02a-516b0e1fab40" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering/tests/Diagnostics.Tests/bin/Release/net10.0/Diagnostics.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="Feature169 readiness" name="Synthetic blocker and unclassified diagnostics fail closed" />
+    </UnitTest>
+    <UnitTest name="Feature169 classification.Synthetic mixed fixture groups category severity blockers and action guidance" storage="/home/developer/projects/fs.gg.rendering/tests/diagnostics.tests/bin/release/net10.0/diagnostics.tests.dll" id="50f18067-184d-b5b2-fb8a-4c6a07848dba">
+      <Execution id="798e08b3-704e-4b0a-94d4-3004b6580afa" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering/tests/Diagnostics.Tests/bin/Release/net10.0/Diagnostics.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="Feature169 classification" name="Synthetic mixed fixture groups category severity blockers and action guidance" />
+    </UnitTest>
+    <UnitTest name="Feature169 classification.Synthetic stream origin stays in first occurrence context" storage="/home/developer/projects/fs.gg.rendering/tests/diagnostics.tests/bin/release/net10.0/diagnostics.tests.dll" id="66bfeac0-9588-e42c-807b-f324e09c0ce3">
+      <Execution id="46bc5ed0-58e8-402f-8826-1faa0108f8c1" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering/tests/Diagnostics.Tests/bin/Release/net10.0/Diagnostics.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="Feature169 classification" name="Synthetic stream origin stays in first occurrence context" />
+    </UnitTest>
+    <UnitTest name="Feature169 console rendering.Synthetic default console output stays compact while verbose keeps detail" storage="/home/developer/projects/fs.gg.rendering/tests/diagnostics.tests/bin/release/net10.0/diagnostics.tests.dll" id="2b78ee90-69a0-a5ce-f15a-ef2100748021">
+      <Execution id="2be6bb63-0945-4008-b33c-274c74074d58" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering/tests/Diagnostics.Tests/bin/Release/net10.0/Diagnostics.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="Feature169 console rendering" name="Synthetic default console output stays compact while verbose keeps detail" />
+    </UnitTest>
+    <UnitTest name="Feature169 readiness.Synthetic valid exception changes blocker to accepted while remaining visible" storage="/home/developer/projects/fs.gg.rendering/tests/diagnostics.tests/bin/release/net10.0/diagnostics.tests.dll" id="b1843b6e-83b4-7cad-d998-7a7974fa0417">
+      <Execution id="af517e64-318f-4c14-a901-dcce952c94de" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering/tests/Diagnostics.Tests/bin/Release/net10.0/Diagnostics.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="Feature169 readiness" name="Synthetic valid exception changes blocker to accepted while remaining visible" />
+    </UnitTest>
+    <UnitTest name="Feature169 readiness.Synthetic expired or unmatched exceptions require review" storage="/home/developer/projects/fs.gg.rendering/tests/diagnostics.tests/bin/release/net10.0/diagnostics.tests.dll" id="14080ba6-f246-1b4a-0e9c-038e7c4d5de8">
+      <Execution id="40755836-6521-482c-9808-776d28d2e068" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering/tests/Diagnostics.Tests/bin/Release/net10.0/Diagnostics.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="Feature169 readiness" name="Synthetic expired or unmatched exceptions require review" />
+    </UnitTest>
+    <UnitTest name="Feature169 artifacts.Synthetic artifact writer overwrites stale prior blocker artifact" storage="/home/developer/projects/fs.gg.rendering/tests/diagnostics.tests/bin/release/net10.0/diagnostics.tests.dll" id="f491edec-7feb-860e-50f8-ac4d395f612f">
+      <Execution id="70c5b5fc-86a6-4d01-b7b7-eecfe0e61d2c" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering/tests/Diagnostics.Tests/bin/Release/net10.0/Diagnostics.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="Feature169 artifacts" name="Synthetic artifact writer overwrites stale prior blocker artifact" />
+    </UnitTest>
+    <UnitTest name="Feature169 readiness.Synthetic non-blocking classified diagnostics are accepted" storage="/home/developer/projects/fs.gg.rendering/tests/diagnostics.tests/bin/release/net10.0/diagnostics.tests.dll" id="7bfbbd1c-2465-760c-fac8-12110ec6d710">
+      <Execution id="30d82a70-380e-4d2a-b193-3d3176a501fb" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering/tests/Diagnostics.Tests/bin/Release/net10.0/Diagnostics.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="Feature169 readiness" name="Synthetic non-blocking classified diagnostics are accepted" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="ec8dd48c-4a86-fc09-1cd4-bc6fc74f39b1" executionId="9a9496c6-c47c-4abe-9e1a-aae84625b704" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="60cbaf7e-c76d-7acc-8403-df7b730bcf71" executionId="1eded07e-8fd0-407b-b5b2-691094d470cb" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="996c28e3-c54d-21a8-b43f-39c18d7d0ff3" executionId="7fdc55ef-9899-4ded-bc91-3345ae78d357" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="e00d369b-5f8c-bd94-53a3-5ad61527b11d" executionId="a9f79692-8d71-47d5-ac30-d63a7f47a704" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="66bfeac0-9588-e42c-807b-f324e09c0ce3" executionId="46bc5ed0-58e8-402f-8826-1faa0108f8c1" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="2b78ee90-69a0-a5ce-f15a-ef2100748021" executionId="2be6bb63-0945-4008-b33c-274c74074d58" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="68283046-b64e-9cd5-2d28-6981ca05bf3b" executionId="59f45d81-7626-490c-ab50-9f14fa4faaeb" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="f491edec-7feb-860e-50f8-ac4d395f612f" executionId="70c5b5fc-86a6-4d01-b7b7-eecfe0e61d2c" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="a6950985-4982-be92-c8ff-ac4bc74c28f9" executionId="899da71b-51ea-4407-a02a-516b0e1fab40" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="50f18067-184d-b5b2-fb8a-4c6a07848dba" executionId="798e08b3-704e-4b0a-94d4-3004b6580afa" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="b1843b6e-83b4-7cad-d998-7a7974fa0417" executionId="af517e64-318f-4c14-a901-dcce952c94de" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="7bfbbd1c-2465-760c-fac8-12110ec6d710" executionId="30d82a70-380e-4d2a-b193-3d3176a501fb" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="14080ba6-f246-1b4a-0e9c-038e7c4d5de8" executionId="40755836-6521-482c-9808-776d28d2e068" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="221e1fd0-881a-b0db-4f81-87f11bcee23d" executionId="47252206-c48e-4461-81ed-c0c18cc0448d" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Completed">
+    <Counters total="14" executed="14" passed="14" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <RunInfos>
+      <RunInfo computerName="ee01623d796c" outcome="Warning" timestamp="2026-06-19T16:27:41.7835249+02:00">
+        <Text>Data collector 'Blame' message: All tests finished running, Sequence file will not be generated.</Text>
+      </RunInfo>
+    </RunInfos>
+  </ResultSummary>
+</TestRun>

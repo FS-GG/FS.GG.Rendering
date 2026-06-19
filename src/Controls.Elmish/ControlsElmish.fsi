@@ -400,6 +400,11 @@ module ControlsElmish =
             AdapterProgram<'model, 'msg>
     /// Public contract function exposed by this FS.GG.UI package.
     val diagnostic: source: string -> code: string -> message: string -> AdapterDiagnostic
+    /// Converts an adapter diagnostic into the shared runtime diagnostics taxonomy.
+    val adapterDiagnosticToRuntimeDiagnostic:
+        context: FS.GG.UI.Diagnostics.DiagnosticContext ->
+        diagnostic: AdapterDiagnostic ->
+            FS.GG.UI.Diagnostics.RuntimeDiagnostic
     /// Adapt a typed (`Widget<'msg>`-returning) view to the `Control<'msg>` view the
     /// program record expects (= `view >> Widget.toControl`). Lets typed authoring
     /// compose through the adapter with no boundary shim in product code. FR-001/FR-004.

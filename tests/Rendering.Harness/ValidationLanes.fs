@@ -99,6 +99,7 @@ module ValidationLanes =
           ResultPath: string
           DiagnosticsPath: string
           ResultArtifacts: string list
+          RuntimeDiagnostics: FS.GG.UI.Diagnostics.DiagnosticSummary option
           Reason: string option
           Diagnostics: string list
           Caveats: string list
@@ -450,6 +451,36 @@ module ValidationLanes =
           laneDefinition
               repositoryRoot
               runRoot
+              "diagnostics"
+              "Runtime Diagnostics"
+              "Runtime diagnostics taxonomy, readiness, artifact, and console validation."
+              Optional
+              { FileName = "dotnet"
+                Arguments =
+                    [ "test"
+                      "tests/Diagnostics.Tests/Diagnostics.Tests.fsproj"
+                      "-c"
+                      "Release"
+                      "--no-restore"
+                      "--filter"
+                      "Feature169"
+                      "--logger"
+                      "trx;LogFileName=diagnostics.trx"
+                      "--results-directory"
+                      Path.Combine(runRoot, "diagnostics", "TestResults")
+                      "--blame-hang"
+                      "--blame-hang-timeout"
+                      "2m" ] }
+              10.0
+              (Some 2.0)
+              60.0
+              (Some "dotnet-test")
+              (Some "tests/Diagnostics.Tests/bin/Release")
+              false
+              (Some "aggregate-solution")
+          laneDefinition
+              repositoryRoot
+              runRoot
               "antshowcase-sample"
               "AntShowcase Sample"
               "Package-consuming AntShowcase sample validation."
@@ -652,6 +683,18 @@ module ValidationLanes =
         else
             Error diagnostics
 
+    let laneStatusFromDiagnosticSummary (summary: FS.GG.UI.Diagnostics.DiagnosticSummary) =
+        match summary.Status with
+        | FS.GG.UI.Diagnostics.ReadinessDiagnosticStatus.Accepted -> Passed
+        | FS.GG.UI.Diagnostics.ReadinessDiagnosticStatus.Blocked -> Failed
+        | FS.GG.UI.Diagnostics.ReadinessDiagnosticStatus.ReviewRequired -> Failed
+        | FS.GG.UI.Diagnostics.ReadinessDiagnosticStatus.EnvironmentLimitedStatus -> EnvironmentLimited
+
+    let effectiveStatus result =
+        match result.RuntimeDiagnostics with
+        | Some summary -> laneStatusFromDiagnosticSummary summary
+        | None -> result.Status
+
     let requiredResult result =
         result.ReadinessRole = Required
 
@@ -663,7 +706,7 @@ module ValidationLanes =
         elif
             required
             |> List.exists (fun result ->
-                match result.Status with
+                match effectiveStatus result with
                 | Failed
                 | TimedOut
                 | NoProgressTimedOut
@@ -676,27 +719,27 @@ module ValidationLanes =
         elif
             required
             |> List.exists (fun result ->
-                result.Status = EnvironmentLimited
+                effectiveStatus result = EnvironmentLimited
                 && result.AcceptedEnvironmentLimitation.IsSome)
         then
             EnvironmentLimitedReadiness
         elif
             required
             |> List.exists (fun result ->
-                match result.Status with
+                match effectiveStatus result with
                 | Skipped
                 | NotRun -> true
                 | _ -> false)
         then
             Incomplete
-        elif required |> List.forall (fun result -> result.Status = Passed) then
+        elif required |> List.forall (fun result -> effectiveStatus result = Passed) then
             Ready
         else
             Incomplete
 
     let firstBlockingRequiredLane results =
         results
-        |> List.tryFind (fun result -> result.ReadinessRole = Required && result.Status <> Passed)
+        |> List.tryFind (fun result -> result.ReadinessRole = Required && effectiveStatus result <> Passed)
         |> Option.map _.LaneId
 
     let init lanes =
@@ -810,6 +853,7 @@ module ValidationLanes =
           ResultPath = lane.ResultPath
           DiagnosticsPath = lane.DiagnosticsPath
           ResultArtifacts = [ lane.ResultPath; lane.LogPath; lane.DiagnosticsPath ]
+          RuntimeDiagnostics = None
           Reason = reason
           Diagnostics = diagnostics
           Caveats = caveats
@@ -825,9 +869,91 @@ module ValidationLanes =
         else
             []
 
+    let private tryGetRuntimeProperty (name: string) (element: JsonElement) =
+        let mutable value = Unchecked.defaultof<JsonElement>
+
+        if element.TryGetProperty(name, &value) then
+            Some value
+        else
+            None
+
+    let private readRuntimeDiagnosticsSummary path : FS.GG.UI.Diagnostics.DiagnosticSummary option =
+        try
+            use doc = JsonDocument.Parse(File.ReadAllText path)
+            let root = doc.RootElement
+
+            match tryGetRuntimeProperty "status" root with
+            | Some statusValue when statusValue.ValueKind = JsonValueKind.String ->
+                match statusValue.GetString() |> Option.ofObj |> Option.bind FS.GG.UI.Diagnostics.RuntimeDiagnostics.tryParseReadinessStatus with
+                | Some status ->
+                    let runId =
+                        match tryGetRuntimeProperty "runId" root with
+                        | Some value when value.ValueKind = JsonValueKind.String -> value.GetString() |> Option.ofObj
+                        | _ -> None
+
+                    let artifactPaths =
+                        match tryGetRuntimeProperty "artifactPaths" root with
+                        | Some values when values.ValueKind = JsonValueKind.Array ->
+                            values.EnumerateArray()
+                            |> Seq.choose (fun value ->
+                                if value.ValueKind = JsonValueKind.String then
+                                    value.GetString() |> Option.ofObj
+                                else
+                                    None)
+                            |> Seq.toList
+                        | _ -> [ path ]
+
+                    Some
+                        { RunId = runId
+                          Status = status
+                          CountsBySeverity = []
+                          CountsByCategory = []
+                          BlockerCount = 0
+                          UnclassifiedCount = 0
+                          ReviewRequiredCount = 0
+                          ExceptionCount = 0
+                          ArtifactPaths = artifactPaths
+                          Groups = []
+                          Exceptions = []
+                          ArtifactWriteDiagnostics = [] }
+                | None -> None
+            | _ -> None
+        with _ ->
+            None
+
+    let private discoveredRuntimeDiagnostics (lane: LaneDefinition) =
+        [ lane.EvidenceDirectory; lane.OutputRoot ]
+        |> List.filter Directory.Exists
+        |> List.tryPick (fun root ->
+            Directory.GetFiles(root, "diagnostics-summary.json", SearchOption.AllDirectories)
+            |> Array.tryHead
+            |> Option.bind readRuntimeDiagnosticsSummary)
+
     let withDiscoveredArtifacts (lane: LaneDefinition) (result: LaneResult) =
         let discovered = laneResultArtifacts lane
-        { result with ResultArtifacts = (result.ResultArtifacts @ discovered) |> List.distinct }
+        match discoveredRuntimeDiagnostics lane with
+        | None -> { result with ResultArtifacts = (result.ResultArtifacts @ discovered) |> List.distinct }
+        | Some diagnostics ->
+            let status = laneStatusFromDiagnosticSummary diagnostics
+            let reason =
+                match result.Reason, diagnostics.Status with
+                | Some reason, _ -> Some reason
+                | None, FS.GG.UI.Diagnostics.ReadinessDiagnosticStatus.Accepted -> None
+                | None, status -> Some $"runtime diagnostics status {FS.GG.UI.Diagnostics.RuntimeDiagnostics.readinessStatusToken status}"
+
+            let acceptedEnvironmentLimitation =
+                match diagnostics.Status with
+                | FS.GG.UI.Diagnostics.ReadinessDiagnosticStatus.EnvironmentLimitedStatus ->
+                    result.AcceptedEnvironmentLimitation
+                    |> Option.orElse (Some "runtime diagnostics reported an accepted environment limitation")
+                | _ -> result.AcceptedEnvironmentLimitation
+
+            { result with
+                Status = status
+                Reason = reason
+                AcceptedEnvironmentLimitation = acceptedEnvironmentLimitation
+                RuntimeDiagnostics = Some diagnostics
+                ResultArtifacts = (result.ResultArtifacts @ discovered @ diagnostics.ArtifactPaths) |> List.distinct }
 
     let jsonString (value: string) =
         JsonSerializer.Serialize(value)
@@ -889,6 +1015,15 @@ module ValidationLanes =
               "\"resultPath\":" + jsonString result.ResultPath
               "\"diagnosticsPath\":" + jsonString result.DiagnosticsPath
               "\"artifacts\":" + jsonStringArray result.ResultArtifacts
+              "\"runtimeDiagnosticsStatus\":"
+              + (result.RuntimeDiagnostics
+                 |> Option.map (fun summary -> FS.GG.UI.Diagnostics.RuntimeDiagnostics.readinessStatusToken summary.Status)
+                 |> jsonStringOption)
+              "\"runtimeDiagnosticsArtifacts\":"
+              + (result.RuntimeDiagnostics
+                 |> Option.map _.ArtifactPaths
+                 |> Option.defaultValue []
+                 |> jsonStringArray)
               "\"reason\":" + jsonStringOption result.Reason
               "\"diagnostics\":" + jsonStringArray result.Diagnostics
               "\"caveats\":" + jsonStringArray result.Caveats

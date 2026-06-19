@@ -344,6 +344,16 @@ type ReadinessFileDiscoveryResult =
       MissingFiles: string list
       Diagnostics: string list }
 
+type RuntimeDiagnosticReadinessCheck =
+    { Summary: FS.GG.UI.Diagnostics.DiagnosticSummary
+      RequiredStatus: FS.GG.UI.Diagnostics.ReadinessDiagnosticStatus option
+      RequireAccepted: bool }
+
+type RuntimeDiagnosticReadinessResult =
+    { Accepted: bool
+      Status: string
+      Diagnostics: string list }
+
 type EvidenceReportStatus =
     | EvidenceOk
     | EvidenceUnsupported
@@ -2612,6 +2622,37 @@ module ReadinessFileDiscovery =
 
         { Complete = missing.IsEmpty
           MissingFiles = missing
+          Diagnostics = diagnostics }
+
+module RuntimeDiagnosticReadiness =
+    let validate (check: RuntimeDiagnosticReadinessCheck) : RuntimeDiagnosticReadinessResult =
+        let status = FS.GG.UI.Diagnostics.RuntimeDiagnostics.readinessStatusToken check.Summary.Status
+
+        let accepted =
+            match check.RequiredStatus with
+            | Some required -> check.Summary.Status = required
+            | None when check.RequireAccepted -> check.Summary.Status = FS.GG.UI.Diagnostics.ReadinessDiagnosticStatus.Accepted
+            | None ->
+                check.Summary.Status <> FS.GG.UI.Diagnostics.ReadinessDiagnosticStatus.Blocked
+                && check.Summary.Status <> FS.GG.UI.Diagnostics.ReadinessDiagnosticStatus.ReviewRequired
+
+        let diagnostics =
+            [ if check.RequireAccepted && check.Summary.Status <> FS.GG.UI.Diagnostics.ReadinessDiagnosticStatus.Accepted then
+                  $"runtime diagnostics status `{status}` is not accepted"
+              match check.RequiredStatus with
+              | Some required when check.Summary.Status <> required ->
+                  let requiredToken = FS.GG.UI.Diagnostics.RuntimeDiagnostics.readinessStatusToken required
+                  $"runtime diagnostics status `{status}` did not match required `{requiredToken}`"
+              | _ -> ()
+              if check.Summary.UnclassifiedCount > 0 then
+                  $"runtime diagnostics include {check.Summary.UnclassifiedCount} unclassified occurrence(s)"
+              if check.Summary.BlockerCount > 0 then
+                  $"runtime diagnostics include {check.Summary.BlockerCount} blocker occurrence(s)"
+              if check.Summary.ReviewRequiredCount > 0 then
+                  $"runtime diagnostics include {check.Summary.ReviewRequiredCount} review-required occurrence(s)" ]
+
+        { Accepted = accepted
+          Status = status
           Diagnostics = diagnostics }
 
 module DefaultTextGlyphEvidence =

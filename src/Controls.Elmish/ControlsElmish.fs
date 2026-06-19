@@ -344,6 +344,23 @@ module ControlsElmish =
     let programOfWidget init update view subscriptions =
         program init update (widgetView view) subscriptions
 
+    let adapterDiagnosticToRuntimeDiagnostic context diagnostic =
+        let source =
+            FS.GG.UI.Diagnostics.RuntimeDiagnostics.source
+                (Some "FS.GG.UI.Controls.Elmish")
+                diagnostic.Source
+                None
+                None
+
+        FS.GG.UI.Diagnostics.RuntimeDiagnostics.create
+            source
+            (Some diagnostic.Code)
+            (Some FS.GG.UI.Diagnostics.DiagnosticSeverity.Warning)
+            (Some FS.GG.UI.Diagnostics.DiagnosticCategory.DeveloperAction)
+            diagnostic.Message
+            (Some "Review the adapter diagnostic and update routing or runtime wiring.")
+            context
+
     // FR-001/FR-003 (feature 090): a pointer Click is binding-eligible for an authored control's
     // click-equivalent bindings (`onClick`→"click", a click-driven toggle `onChanged`→"changed", a
     // click-driven `onSelected`→"selected"). Other interactions (hover/drag/scroll) are not

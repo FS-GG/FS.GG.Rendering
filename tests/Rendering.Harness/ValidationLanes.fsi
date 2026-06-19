@@ -95,6 +95,7 @@ module ValidationLanes =
           ResultPath: string
           DiagnosticsPath: string
           ResultArtifacts: string list
+          RuntimeDiagnostics: FS.GG.UI.Diagnostics.DiagnosticSummary option
           Reason: string option
           Diagnostics: string list
           Caveats: string list
@@ -188,6 +189,8 @@ module ValidationLanes =
     val computeOverallReadiness: results: LaneResult list -> OverallReadiness
 
     val firstBlockingRequiredLane: results: LaneResult list -> string option
+
+    val laneStatusFromDiagnosticSummary: summary: FS.GG.UI.Diagnostics.DiagnosticSummary -> LaneStatus
 
     val renderSummaryMarkdown: summary: ValidationSummary -> string
 

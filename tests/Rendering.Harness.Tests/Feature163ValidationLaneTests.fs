@@ -101,6 +101,7 @@ let tests =
                       ResultPath = "result"
                       DiagnosticsPath = "diagnostics"
                       ResultArtifacts = [ "result" ]
+                      RuntimeDiagnostics = None
                       Reason = None
                       Diagnostics = []
                       Caveats = []

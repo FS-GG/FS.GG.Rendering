@@ -130,3 +130,68 @@ module Diagnostics =
     let damageScopedDecision (decision: string) reason =
         let cause = reason |> Option.filter (String.IsNullOrWhiteSpace >> not)
         create DiagnosticSeverity.Info DiagnosticStage.Framebuffer $"Feature157 damage render decision: {decision}." cause
+
+    let private runtimeSeverity severity =
+        match severity with
+        | DiagnosticSeverity.Info -> FS.GG.UI.Diagnostics.DiagnosticSeverity.Informational
+        | DiagnosticSeverity.Warning -> FS.GG.UI.Diagnostics.DiagnosticSeverity.Warning
+        | DiagnosticSeverity.Error
+        | DiagnosticSeverity.Fatal -> FS.GG.UI.Diagnostics.DiagnosticSeverity.Error
+
+    let private runtimeCategory diagnostic =
+        match diagnostic.Stage with
+        | DiagnosticStage.PlatformCheck
+        | DiagnosticStage.GlContext
+        | DiagnosticStage.GlRenderer
+        | DiagnosticStage.GlSurface
+        | DiagnosticStage.SkiaContext -> FS.GG.UI.Diagnostics.DiagnosticCategory.Environment
+        | DiagnosticStage.Framebuffer when diagnostic.Message.Contains("damage render decision", StringComparison.OrdinalIgnoreCase) ->
+            FS.GG.UI.Diagnostics.DiagnosticCategory.BackendCost
+        | DiagnosticStage.ScreenshotCapture
+        | DiagnosticStage.Shutdown -> FS.GG.UI.Diagnostics.DiagnosticCategory.DeveloperAction
+        | DiagnosticStage.FrameRender ->
+            match diagnostic.Severity with
+            | DiagnosticSeverity.Warning -> FS.GG.UI.Diagnostics.DiagnosticCategory.RenderingLimitation
+            | _ -> FS.GG.UI.Diagnostics.DiagnosticCategory.ReadinessBlocker
+        | DiagnosticStage.Framebuffer -> FS.GG.UI.Diagnostics.DiagnosticCategory.RenderingLimitation
+
+    let private codeFor diagnostic =
+        if diagnostic.Message.Contains("damage render decision", StringComparison.OrdinalIgnoreCase) then
+            "DamageScopedDecision"
+        else
+            string diagnostic.Stage
+
+    let private actionFor diagnostic =
+        match runtimeCategory diagnostic with
+        | FS.GG.UI.Diagnostics.DiagnosticCategory.Environment ->
+            "Confirm native host capability or record an accepted environment limitation."
+        | FS.GG.UI.Diagnostics.DiagnosticCategory.BackendCost ->
+            "No action required unless this appears in a performance-blocked lane."
+        | FS.GG.UI.Diagnostics.DiagnosticCategory.RenderingLimitation ->
+            "Review the rendering limitation and fallback behavior."
+        | FS.GG.UI.Diagnostics.DiagnosticCategory.ReadinessBlocker ->
+            "Fix the viewer render failure before accepting readiness."
+        | FS.GG.UI.Diagnostics.DiagnosticCategory.DeveloperAction ->
+            "Review the host artifact or shutdown diagnostic."
+
+    let toRuntimeDiagnostic context diagnostic =
+        let source =
+            FS.GG.UI.Diagnostics.RuntimeDiagnostics.source
+                (Some "FS.GG.UI.SkiaViewer")
+                "opengl-host"
+                None
+                None
+
+        let message =
+            match diagnostic.Cause with
+            | Some cause when not (String.IsNullOrWhiteSpace cause) -> $"{diagnostic.Message} Cause: {cause}"
+            | _ -> diagnostic.Message
+
+        FS.GG.UI.Diagnostics.RuntimeDiagnostics.create
+            source
+            (Some(codeFor diagnostic))
+            (Some(runtimeSeverity diagnostic.Severity))
+            (Some(runtimeCategory diagnostic))
+            message
+            (Some(actionFor diagnostic))
+            context

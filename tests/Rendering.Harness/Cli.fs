@@ -3886,7 +3886,7 @@ let private runValidationLanesCmd (rest: string list) =
 
     let request: ValidationLanes.RunRequest =
         { RequestedLaneIds = flagValues "--lane" rest
-          IncludeOptionalLaneIds = flagValues "--include-optional" rest
+          IncludeOptionalLaneIds = (flagValues "--include-optional" rest) @ (flagValues "--include" rest)
           OutDir = out
           RunId = runId
           ReplaceRun = replaceRunValue.IsSome

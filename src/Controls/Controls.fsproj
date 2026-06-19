@@ -146,6 +146,7 @@
     <ProjectReference Include="..\Scene\Scene.fsproj" />
     <ProjectReference Include="..\Layout\Layout.fsproj" />
     <ProjectReference Include="..\KeyboardInput\KeyboardInput.fsproj" />
+    <ProjectReference Include="..\Diagnostics\Diagnostics.fsproj" />
     <!-- Feature 125: Controls consumes the relocated design-system primitives. It does NOT
          reference any theme project (Themes.Default), preserving the acyclic layering. -->
     <ProjectReference Include="..\DesignSystem\DesignSystem.fsproj" />

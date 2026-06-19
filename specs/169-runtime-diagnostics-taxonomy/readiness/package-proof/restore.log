@@ -1,0 +1,14 @@
+dotnet restore /home/developer/projects/FS.GG.Rendering/samples/AntShowcase/AntShowcase.Core/AntShowcase.Core.fsproj --configfile specs/169-runtime-diagnostics-taxonomy/readiness/package-proof/source-rules.nuget.config --packages /home/developer/projects/FS.GG.Rendering/specs/169-runtime-diagnostics-taxonomy/readiness/package-proof/nuget-cache
+  Determining projects to restore...
+  Restored /home/developer/projects/FS.GG.Rendering/samples/AntShowcase/AntShowcase.Core/AntShowcase.Core.fsproj (in 3.84 sec).
+
+dotnet restore /home/developer/projects/FS.GG.Rendering/samples/AntShowcase/AntShowcase.App/AntShowcase.App.fsproj --configfile specs/169-runtime-diagnostics-taxonomy/readiness/package-proof/source-rules.nuget.config --packages /home/developer/projects/FS.GG.Rendering/specs/169-runtime-diagnostics-taxonomy/readiness/package-proof/nuget-cache
+  Determining projects to restore...
+  Restored /home/developer/projects/FS.GG.Rendering/samples/AntShowcase/AntShowcase.App/AntShowcase.App.fsproj (in 288 ms).
+  1 of 2 projects are up-to-date for restore.
+
+dotnet restore /home/developer/projects/FS.GG.Rendering/samples/AntShowcase/AntShowcase.Tests/AntShowcase.Tests.fsproj --configfile specs/169-runtime-diagnostics-taxonomy/readiness/package-proof/source-rules.nuget.config --packages /home/developer/projects/FS.GG.Rendering/specs/169-runtime-diagnostics-taxonomy/readiness/package-proof/nuget-cache
+  Determining projects to restore...
+  Restored /home/developer/projects/FS.GG.Rendering/samples/AntShowcase/AntShowcase.Tests/AntShowcase.Tests.fsproj (in 661 ms).
+  2 of 3 projects are up-to-date for restore.
+

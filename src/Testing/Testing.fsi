@@ -390,6 +390,18 @@ type ReadinessFileDiscoveryResult =
       MissingFiles: string list
       Diagnostics: string list }
 
+/// Runtime diagnostics readiness check consumed by generated-product and framework evidence.
+type RuntimeDiagnosticReadinessCheck =
+    { Summary: FS.GG.UI.Diagnostics.DiagnosticSummary
+      RequiredStatus: FS.GG.UI.Diagnostics.ReadinessDiagnosticStatus option
+      RequireAccepted: bool }
+
+/// Runtime diagnostics readiness wrapper result.
+type RuntimeDiagnosticReadinessResult =
+    { Accepted: bool
+      Status: string
+      Diagnostics: string list }
+
 /// Public contract type exposed by this FS.GG.UI package.
 type EvidenceReportStatus =
     | EvidenceOk
@@ -961,6 +973,11 @@ module PersistentLaunchArtifactValidation =
 module ReadinessFileDiscovery =
     /// Public contract function exposed by this FS.GG.UI package.
     val validate: check: ReadinessFileDiscoveryCheck -> ReadinessFileDiscoveryResult
+
+/// Public contract module exposed by this FS.GG.UI package.
+module RuntimeDiagnosticReadiness =
+    /// Public contract function exposed by this FS.GG.UI package.
+    val validate: check: RuntimeDiagnosticReadinessCheck -> RuntimeDiagnosticReadinessResult
 
 /// Public contract module exposed by this FS.GG.UI package.
 module DefaultTextGlyphEvidence =

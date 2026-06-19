@@ -37,6 +37,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Scene\Scene.fsproj" Condition="Exists('..\..\src\Scene\Scene.fsproj')" />
+    <ProjectReference Include="..\..\src\Diagnostics\Diagnostics.fsproj" Condition="Exists('..\..\src\Diagnostics\Diagnostics.fsproj')" />
     <ProjectReference Include="..\..\src\SkiaViewer\SkiaViewer.fsproj" Condition="Exists('..\..\src\SkiaViewer\SkiaViewer.fsproj')" />
     <ProjectReference Include="..\..\src\Testing\Testing.fsproj" Condition="Exists('..\..\src\Testing\Testing.fsproj')" />
     <ProjectReference Include="..\..\src\Layout\Layout.fsproj" Condition="Exists('..\..\src\Layout\Layout.fsproj')" />

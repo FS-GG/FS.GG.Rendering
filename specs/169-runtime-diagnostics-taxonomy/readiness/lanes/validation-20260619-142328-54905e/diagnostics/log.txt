@@ -1,0 +1,8 @@
+  Diagnostics -> /home/developer/projects/FS.GG.Rendering/src/Diagnostics/bin/Release/net10.0/FS.GG.UI.Diagnostics.dll
+  Diagnostics.Tests -> /home/developer/projects/FS.GG.Rendering/tests/Diagnostics.Tests/bin/Release/net10.0/Diagnostics.Tests.dll
+Test run for /home/developer/projects/FS.GG.Rendering/tests/Diagnostics.Tests/bin/Release/net10.0/Diagnostics.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Data collector 'Blame' message: All tests finished running, Sequence file will not be generated.
+Results File: /home/developer/projects/FS.GG.Rendering/specs/169-runtime-diagnostics-taxonomy/readiness/lanes/validation-20260619-142328-54905e/diagnostics/TestResults/diagnostics.trx
+
+Passed!  - Failed:     0, Passed:    14, Skipped:     0, Total:    14, Duration: 112 ms - Diagnostics.Tests.dll (net10.0)

@@ -74,6 +74,8 @@
     <Compile Include="Feature168SkillInventoryTests.fs" />
     <Compile Include="Feature168ParityFindingTests.fs" />
     <Compile Include="Feature168ParityReportTests.fs" />
+    <Compile Include="Feature169ValidationDiagnosticsTests.fs" />
+    <Compile Include="Feature169DiagnosticArtifactTests.fs" />
     <Compile Include="Feature151RenderAnywhereRegressionTests.fs" />
     <Compile Include="Feature151TextShapingRegressionTests.fs" />
     <Compile Include="Feature151CompositorReadinessRegressionTests.fs" />
@@ -82,6 +84,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Rendering.Harness\Rendering.Harness.fsproj" />
+    <ProjectReference Include="..\..\src\Diagnostics\Diagnostics.fsproj" />
   </ItemGroup>
 
   <ItemGroup>

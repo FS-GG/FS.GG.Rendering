@@ -57,6 +57,7 @@
     <Compile Include="Feature167InteractionSemanticsTests.fs" />
     <Compile Include="Feature167ResponsivenessSummaryTests.fs" />
     <Compile Include="Feature167DiagnosticsDisabledTests.fs" />
+    <Compile Include="Feature169AdapterDiagnosticMappingTests.fs" />
     <Compile Include="Audit_DamageTracking.fs" />
     <Compile Include="Audit_Virtualization.fs" />
     <Compile Include="Audit_AnimationTickGating.fs" />
@@ -66,6 +67,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Elmish\Elmish.fsproj" />
     <ProjectReference Include="..\..\src\Controls.Elmish\Controls.Elmish.fsproj" />
+    <ProjectReference Include="..\..\src\Diagnostics\Diagnostics.fsproj" />
     <!-- Feature 125: design-system primitives + default theme carved out of Controls. -->
     <ProjectReference Include="..\..\src\DesignSystem\DesignSystem.fsproj" />
     <ProjectReference Include="..\..\src\Themes.Default\Themes.Default.fsproj" />

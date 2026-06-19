@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <GenerateProgramFile>false</GenerateProgramFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Feature169Fixtures.fs" />
+    <Compile Include="Feature169ClassificationTests.fs" />
+    <Compile Include="Feature169AggregationTests.fs" />
+    <Compile Include="Feature169ReadinessTests.fs" />
+    <Compile Include="Feature169ArtifactTests.fs" />
+    <Compile Include="Feature169ArtifactMarkdownTests.fs" />
+    <Compile Include="Feature169JsonLinesTests.fs" />
+    <Compile Include="Feature169ArtifactFailureTests.fs" />
+    <Compile Include="Feature169ConsoleTests.fs" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Diagnostics\Diagnostics.fsproj" />
+    <PackageReference Include="Expecto" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="YoloDev.Expecto.TestSdk" />
+  </ItemGroup>
+
+</Project>

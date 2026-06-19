@@ -14,6 +14,7 @@ let private usage () =
     printfn "  AntShowcase visual-readiness --seed <int> --size <width>x<height> --themes <list> [--pages <list>] [--out <dir>]"
     printfn "  AntShowcase visual-readiness --summarize <dir> [--minimum-size <dir>] [--out <dir>]"
     printfn "  AntShowcase responsiveness --page buttons --theme light --script representative [--out <dir>] [--require-live] [--json]"
+    printfn "  AntShowcase diagnostics [--out <dir>] [--json] [--verbose]"
     printfn "  AntShowcase coverage"
     printfn "  AntShowcase feedback [--clear]"
 
@@ -96,6 +97,9 @@ let main argv =
 
     | "responsiveness" :: rest ->
         Responsiveness.run rest
+
+    | "diagnostics" :: rest ->
+        Diagnostics.run rest
 
     | [] ->
         usage ()

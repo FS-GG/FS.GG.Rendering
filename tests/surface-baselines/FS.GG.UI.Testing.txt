@@ -93,6 +93,9 @@ FS.GG.UI.Testing.PersistentLaunchArtifactValidationResult
 FS.GG.UI.Testing.ReadinessFileDiscovery
 FS.GG.UI.Testing.ReadinessFileDiscoveryCheck
 FS.GG.UI.Testing.ReadinessFileDiscoveryResult
+FS.GG.UI.Testing.RuntimeDiagnosticReadiness
+FS.GG.UI.Testing.RuntimeDiagnosticReadinessCheck
+FS.GG.UI.Testing.RuntimeDiagnosticReadinessResult
 FS.GG.UI.Testing.ScreenshotArtifactValidationCheck
 FS.GG.UI.Testing.ScreenshotArtifactValidationResult
 FS.GG.UI.Testing.ScreenshotEvidenceRecord

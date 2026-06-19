@@ -150,11 +150,13 @@
     <Compile Include="Feature151ScrollViewerCorpusTests.fs" />
     <Compile Include="Feature151DisabledCacheParityTests.fs" />
     <Compile Include="Feature151LayoutCompatibilityTests.fs" />
+    <Compile Include="Feature169RuntimeDiagnosticMappingTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Controls\Controls.fsproj" />
+    <ProjectReference Include="..\..\src\Diagnostics\Diagnostics.fsproj" />
     <!-- Feature 125: the design-system primitives and the default theme were carved out of
          Controls into their own packages; the suites exercise both (Theme.light/dark, Style.resolve,
          the relocated types), so reference them directly. -->

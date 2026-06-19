@@ -11,6 +11,12 @@ module Diagnostics =
         message: string ->
             ControlDiagnostic
 
+    /// Converts a controls runtime diagnostic into the shared runtime diagnostics taxonomy.
+    val toRuntimeDiagnostic:
+        context: FS.GG.UI.Diagnostics.DiagnosticContext ->
+        diagnostic: ControlDiagnostic ->
+            FS.GG.UI.Diagnostics.RuntimeDiagnostic
+
     /// Reports that a control of `kind` is missing a required attribute `name`.
     val missingRequired: controlId: ControlId option -> kind: ControlKind -> name: string -> ControlDiagnostic
     /// Reports that attribute `name` was supplied more than once on a control of `kind`.

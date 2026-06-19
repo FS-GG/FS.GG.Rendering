@@ -74,6 +74,9 @@ specs/166-validation-lane-runner/readiness/**/nuget-cache/
 !specs/168-skill-parity-evidence/readiness/
 !specs/168-skill-parity-evidence/readiness/**
 specs/168-skill-parity-evidence/readiness/**/nuget-cache/
+!specs/169-runtime-diagnostics-taxonomy/readiness/
+!specs/169-runtime-diagnostics-taxonomy/readiness/**
+specs/169-runtime-diagnostics-taxonomy/readiness/**/nuget-cache/
 
 # macOS / Linux cruft
 .DS_Store

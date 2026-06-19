@@ -96,6 +96,7 @@ let surfaceAreaTests =
               "Layout", "src/Layout/Layout.fsproj", "src/Layout/Layout.fsi", "readiness/surface-baselines/FS.GG.UI.Layout.txt"
               "Controls", "src/Controls/Controls.fsproj", "src/Controls/Types.fsi", "readiness/surface-baselines/FS.GG.UI.Controls.txt"
               "Controls.Elmish", "src/Controls.Elmish/Controls.Elmish.fsproj", "src/Controls.Elmish/ControlsElmish.fsi", "readiness/surface-baselines/FS.GG.UI.Controls.Elmish.txt"
+              "Diagnostics", "src/Diagnostics/Diagnostics.fsproj", "src/Diagnostics/Diagnostics.fsi", "readiness/surface-baselines/FS.GG.UI.Diagnostics.txt"
               "Testing", "src/Testing/Testing.fsproj", "src/Testing/Testing.fsi", "readiness/surface-baselines/FS.GG.UI.Testing.txt" ]
             |> List.iter (fun (name, project, contract, baseline) ->
                 Expect.isTrue (File.Exists(Path.Combine(repositoryRoot, project))) $"{name} project exists"
