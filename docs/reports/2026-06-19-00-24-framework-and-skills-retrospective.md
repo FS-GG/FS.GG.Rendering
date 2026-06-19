@@ -458,17 +458,46 @@ The live viewer dispatch path applies input messages and immediately calls `host
 
 The product view construction itself is cheap; the expensive work is below it, primarily `Control.renderTree` / retained lowering / layout / text measurement / paint preparation. Damage tracking also appears too broad for localized updates: button clicks still reported full-frame dirty area (`1600000` at `1600x1000`).
 
+**Architectural decision**
+
+The input/render boundary should be treated as a required scheduler rewrite, not as a local optimization. The problematic seam is the live `dispatchHostMsg` behavior: it folds product messages and recomputes `currentScene` inside the input-triggered call stack. Caching and damage narrowing remain useful, but they do not fix the core failure mode while any expensive render-phase work can still run before the event callback returns.
+
+Target behavior:
+
+```text
+native input callback
+  -> normalize and timestamp input
+  -> enqueue ViewerInputEnvelope
+  -> signal frame loop and return
+
+frame/update loop
+  -> drain queued inputs by priority
+  -> preserve discrete order
+  -> coalesce continuous pointer moves
+  -> map input to product messages
+  -> fold product updates
+  -> mark view dirty
+  -> recompute retained scene at most once for the frame
+
+render/present loop
+  -> paint/present latest dirty scene
+  -> emit correlated input-to-present timing
+```
+
+The retained controls architecture should remain, but it must sit behind an invalidation/scheduler boundary instead of being invoked directly by every input-produced message.
+
 **Improvement**
 
 Responsiveness needs first-class framework support:
 
 1. Add phase timing around `MapPointer`/`MapKey`, product `Update`, `host.View`, retained `step`, text measurement, layout, paint walk, and present.
 2. Report a single input-to-present latency record for each discrete input, not only input-routing metrics.
-3. Queue input messages and render on the frame loop instead of performing expensive render work directly inside input callbacks.
+3. Rewrite the live scheduler so input callbacks enqueue timestamped inputs and render on the frame loop instead of performing expensive render work directly inside callbacks.
 4. Keep discrete inputs ordered, but coalesce move/hover work before it reaches heavyweight render paths.
-5. Narrow damage tracking so localized state changes do not dirty the whole frame.
-6. Cache text measurement/shaping and unchanged lowered subtrees more aggressively.
-7. Add responsiveness readiness tests or scripts that fail when click/key-to-present latency exceeds a budget.
+5. Fold all product messages produced by one input before scene recomputation so one click/key cannot trigger several immediate retained renders.
+6. Narrow damage tracking so localized state changes do not dirty the whole frame.
+7. Cache text measurement/shaping and unchanged lowered subtrees more aggressively.
+8. Add responsiveness readiness tests or scripts that fail when click/key-to-present latency exceeds a budget.
 
 Candidate budgets:
 
@@ -781,7 +810,8 @@ This prevents agents from treating "click dispatched" as equivalent to "interact
 2. Add skill guidance for package-pin drift.
 3. Add skill guidance for ignored readiness evidence and `git check-ignore`.
 4. Add skill guidance against concurrent `dotnet test` runs for the same output path.
-5. Add a responsiveness diagnostic lane that records pointer/key routing, update, render, paint, present, and input-to-present latency.
+5. Add a responsiveness diagnostic lane that records pointer/key routing, update, render, paint, present, queue depth, and input-to-present latency.
+6. Start the input/render scheduler rewrite: native input callbacks must enqueue timestamped input envelopes and return; the frame loop must drain input, fold updates, and recompute the scene at most once per dirty frame.
 
 ### P1: Make visual readiness reusable
 
@@ -1141,7 +1171,106 @@ The responsiveness plan should capture the same conceptual fields even though th
 
 The existing `< 50 ms` p95 budget remains reasonable as a first readiness target because the current measured costs are orders of magnitude above that. The plan should also record long render tasks over `50 ms` even when input-to-present cannot be measured because of host limitations.
 
-### 12.6 Keep visual evidence pure at the model layer and adapter-owned at the image layer
+### 12.6 State-of-the-art patterns for input-latency architecture
+
+The current public guidance across browser, mobile, desktop, and UI-framework sources is consistent on one central point: input callbacks must stay short, and expensive rendering work should be frame-paced, measurable, and interruptible or deferrable where possible.
+
+Relevant patterns:
+
+1. **Measure the whole interaction, not just the handler.** Web INP/Event Timing treats an interaction as input delay, event processing, and presentation delay through the next paint. Chrome's Long Animation Frames API extends this to frame-level diagnosis by surfacing long frames, first UI event timing, render start, and blocking duration. FS.GG's current `OnFrameMetrics` is useful but incomplete because it reports routing and prior present timing, not a correlated native-input-to-present record.
+2. **Keep UI-thread work items small.** WPF's dispatcher model, Avalonia's dispatcher guidance, Windows `DispatcherQueue`, and browser long-task guidance all emphasize that serial UI-thread work blocks subsequent input. The exact APIs differ, but the architecture rule is the same: long work items should be split, deferred, or moved out of the urgent input lane.
+3. **Render on a frame scheduler, not directly from input callbacks.** Android `Choreographer` processes input before frame callbacks and makes frame callbacks the place for per-frame update/render work. Qt's `update()` schedules and merges paint events instead of repainting immediately. Flutter describes a structured pipeline from input through build/layout/paint/compositing/rasterization. FS.GG should follow this model: input should request/invalidate work, and the frame loop should decide when to fold queued input and render.
+4. **Use priority lanes for urgent versus non-urgent work.** React 18 concurrent rendering uses priorities and interruptible rendering so urgent input can remain responsive while larger updates are in progress. Browser Prioritized Task Scheduling and `scheduler.yield()` similarly distinguish user-blocking work from background work. FS.GG does not need React's architecture, but it should add an equivalent concept at the viewer level: discrete input is urgent, pointer moves are continuous/coalescible, and expensive non-visible or secondary updates belong in a lower-priority lane.
+5. **Coalesce continuous input, never reorder discrete input.** Existing FS.GG move coalescing is directionally correct. The problem is that coalescing currently happens inside the same synchronous path that can still do expensive update/view/render work. Coalescing should move to the input queue/frame-scheduler boundary, with counts reported as evidence.
+6. **Use long-frame diagnostics as a first-class readiness signal.** Perfetto FrameTimeline, Chrome LoAF, W3C Long Tasks, and the web INP guidance all treat long frames and presentation delay as actionable performance facts. FS.GG should similarly produce long-frame records, input queue depth, coalesced move counts, and worst input-to-present samples.
+7. **Treat renderer thread separation as a second-stage optimization, not the first move.** WPF, Avalonia, Flutter, and Skia-based systems all have strong thread-affinity constraints somewhere in the stack. Moving GL/Skia rendering to another thread may become valuable, but the first architectural correction should be a scheduler boundary that removes expensive work from native input callbacks while preserving the existing pure update/view contracts.
+
+### 12.7 Local architecture review of the input-lag path
+
+The local codebase already contains several good ingredients:
+
+- `src/Controls.Elmish/ControlsElmish.fs` routes pointer input through retained render data when available, so hit-testing usually avoids a full oracle render.
+- Pointer moves are coalesced before processing a previously pending move.
+- `src/SkiaViewer/Host/OpenGl.fs` paces `DoUpdate()` and `DoRender()` by `TargetFrameRate`, and the live renderer avoids full scene walks for unchanged frames where possible.
+- The product `View` remains pure and cheap in the measured AntShowcase case; the expensive work is lower in the retained/lowering/layout/text/paint path.
+
+The problematic coupling is still direct:
+
+1. Silk.NET input handlers in `src/SkiaViewer/Host/OpenGl.fs` call `dispatchViewerEvent` from mouse and keyboard callbacks.
+2. The legacy event bridge in `src/SkiaViewer/SkiaViewer.fs` maps those events to `LegacyPointer` or `LegacyKey`.
+3. `handlePointer` calls `host.MapPointer input currentSize currentModel`; `handleKey` calls `host.MapKey`.
+4. For each produced message, `dispatchHostMsg` calls `host.Update msg currentModel`, stores the next model, and immediately executes `currentScene <- host.View currentSize currentModel`.
+5. For Controls.Elmish, `host.View` is `SceneNode.Group [ renderRetained size model ]`, so it can run retained reconciliation, layout, text measurement, dirty-region work, and scene production before the input callback path returns.
+6. The paced render tick then presents `renderCurrentScene()`, but by that point the expensive scene recomputation has already blocked the loop.
+
+This explains the observed shape:
+
+- Click/key routing itself can be tiny.
+- A state-changing click can still monopolize the event loop because the post-update `View`/retained-render path is synchronous.
+- Multiple product messages from one input are folded by calling `dispatchHostMsg` repeatedly, so a single discrete input can trigger multiple immediate `host.View` recomputations.
+- The existing frame cap prevents unlimited presents, but it cannot prevent input lag if expensive scene recomputation happens before the next event can be processed.
+- `OnFrameMetrics` currently has a blind spot: it can report input-side routing duration and previous backend present timing, but it does not correlate native input timestamp, update, scene recomputation, paint, swap, and next visible frame in one record.
+
+### 12.8 Rewrite assessment: radical scheduler rewrite is warranted, full framework rewrite is not
+
+A radical rewrite is warranted for the input/render scheduling boundary. A full rewrite of Controls, RetainedRender, Elmish, KeyboardInput, or the product-facing MVU model is not warranted as the first step.
+
+The current architecture conflates five concerns in one call path:
+
+1. Native input delivery.
+2. Host input mapping.
+3. Product model update.
+4. Scene recomputation through retained controls.
+5. Frame presentation readiness.
+
+That coupling violates the common state-of-the-art rule from the research: native input callbacks and urgent UI dispatch should enqueue or perform small routing/update work, then return quickly. Expensive rendering should be scheduled, paced, instrumented, and preferably coalesced to one render per frame.
+
+The recommended rewrite scope is therefore:
+
+- Introduce a `ViewerInputEnvelope` or equivalent internal record carrying sequence id, native timestamp, input kind, priority lane, and original `ViewerPointerInput`/keyboard event.
+- Add an explicit input queue in `SkiaViewer`, with separate handling for urgent discrete input, continuous/coalescible pointer moves, and lower-priority/background work.
+- Change native input callbacks so they normalize/enqueue input, signal the frame loop, and return without calling product `Update` or `host.View`.
+- Drain the queue from the frame/update loop: preserve all discrete input order, coalesce pointer moves, fold all resulting product messages, then call `host.View` at most once for that frame when the model/size/runtime state is dirty.
+- Add a dirty/invalidation model instead of treating every input-produced message as an immediate scene recomputation.
+- Correlate timing from native event timestamp through routing, update, retained step, paint, swap/present, and queue delay in one diagnostic record.
+- Keep `Perf.runScript` deterministic and clock-free for golden structural assertions; add a live or benchmark-oriented path for wall-clock timing.
+- Consider a render-thread or chunked retained-render follow-up only after the queue/frame scheduler exists and the timing data proves the remaining bottleneck.
+
+What should not be rewritten initially:
+
+- Product-facing MVU APIs and generated-product code patterns.
+- The `Control<'msg>` DSL and Ant-styled widget surface.
+- RetainedRender's semantic diff model, except where a timing record or dirty/invalidation hook is required.
+- Keyboard routing/focus semantics, except for delivering key events through the same queued scheduler as pointer events.
+- Skia/GL ownership model, until thread-affinity and context ownership are explicitly designed and tested.
+
+This split gives the best risk/reward profile. It attacks the architectural cause of multi-second delayed clicks without discarding valuable retained-render, focus, keyboard, package, and testing work already in the framework.
+
+The rewrite should move the principal live boundary from "input produces messages, each message calls `host.View` immediately" to "input produces timestamped envelopes, the frame scheduler drains envelopes and renders once when dirty." In package terms:
+
+```text
+SkiaViewer.Host.OpenGl
+  owns native callbacks, native timestamps, wake/signal, and GL/Skia presentation
+
+SkiaViewer
+  owns queued input envelopes, priority/coalescing policy, dirty state,
+  model folding, scene recomputation scheduling, and input-to-present timing
+
+Controls.Elmish
+  owns retained pointer/key routing, focus/runtime state, retained step timing,
+  and adapter metrics, but does not own native event scheduling
+
+Controls
+  owns retained/lowered render performance, dirty-region precision,
+  text/layout/cache behavior, and structured inspection data
+
+Elmish and KeyboardInput
+  remain pure state/update/routing capabilities consumed by the viewer boundary
+```
+
+The first implementation should avoid public churn where possible by adding internal scheduler machinery behind `Viewer.runInteractiveViewer` and the Controls.Elmish adapter. Public additions should be limited to diagnostics and optional configuration. A breaking public host change is justified only if tests prove the current `InteractiveViewerHost` contract cannot report timing or preserve semantics without ambiguity.
+
+### 12.9 Keep visual evidence pure at the model layer and adapter-owned at the image layer
 
 The existing recommendation to promote visual-readiness helpers to `FS.GG.UI.Testing` is still sound, but the implementation should avoid forcing SkiaSharp-specific contact-sheet composition into every test consumer.
 
@@ -1156,7 +1285,7 @@ Split the tooling:
 
 This keeps the core testing package lighter and lets generated products consume the evidence model without inheriting image-composition dependencies unless needed.
 
-### 12.7 Sources consulted
+### 12.10 Sources consulted
 
 - GitHub Spec Kit README: https://github.com/github/spec-kit
 - Microsoft Spec Kit overview: https://developer.microsoft.com/blog/spec-driven-development-spec-kit
@@ -1168,6 +1297,23 @@ This keeps the core testing package lighter and lets generated products consume 
 - Microsoft .NET OpenTelemetry observability overview: https://learn.microsoft.com/en-us/dotnet/core/diagnostics/observability-with-otel
 - W3C Event Timing API: https://www.w3.org/TR/event-timing/
 - W3C Long Tasks API: https://www.w3.org/TR/longtasks-1/
+- web.dev Interaction to Next Paint: https://web.dev/articles/inp
+- web.dev Optimize Interaction to Next Paint: https://web.dev/articles/optimize-inp
+- web.dev Optimize long tasks: https://web.dev/articles/optimize-long-tasks
+- Chrome Long Animation Frames API: https://developer.chrome.com/docs/web-platform/long-animation-frames
+- Chrome `scheduler.yield()` guidance: https://developer.chrome.com/blog/use-scheduler-yield
+- MDN Prioritized Task Scheduling API: https://developer.mozilla.org/en-US/docs/Web/API/Prioritized_Task_Scheduling_API
+- Android `Choreographer` NDK reference: https://developer.android.com/ndk/reference/group/choreographer
+- Flutter architectural overview: https://docs.flutter.dev/resources/architectural-overview
+- React 18 concurrent rendering overview: https://legacy.reactjs.org/blog/2022/03/29/react-v18.html
+- React `startTransition` API reference: https://react.dev/reference/react/startTransition
+- WPF threading model: https://learn.microsoft.com/en-us/dotnet/desktop/wpf/advanced/threading-model
+- Avalonia threading model: https://docs.avaloniaui.net/docs/app-development/threading
+- Windows `DispatcherQueue`: https://learn.microsoft.com/en-us/windows/apps/develop/dispatcherqueue
+- Qt `QWidget::update()` painting behavior: https://doc.qt.io/qt-6/qwidget.html
+- Skia Debugger: https://skia.org/docs/dev/tools/debugger/
+- Skia `SkPictureRecorder`: https://api.skia.org/classSkPictureRecorder.html
+- Perfetto FrameTimeline data source: https://perfetto.dev/docs/data-sources/frametimeline
 
 ---
 
@@ -1389,7 +1535,7 @@ Expose stable inspection metadata so visual assertions can move from manual scre
 
 **Goal**
 
-Make interactive latency measurable, then remove the synchronous post-input render stall from the live path.
+Make interactive latency measurable, then rewrite the live scheduler boundary so native input callbacks no longer perform synchronous scene recomputation.
 
 **Primary user stories**
 
@@ -1405,10 +1551,61 @@ Make interactive latency measurable, then remove the synchronous post-input rend
 - `src/SkiaViewer/SkiaViewer.fsi`
 - `src/SkiaViewer/SkiaViewer.fs`
 - `src/SkiaViewer/Host/OpenGl.fs`
+- `src/SkiaViewer/Host/OpenGl.fsi`
 - `tests/Elmish.Tests/FeatureXXXResponsivenessMetricsTests.fs`
 - `tests/SkiaViewer.Tests/FeatureXXXInputQueueTests.fs`
 - `samples/AntShowcase/AntShowcase.App/Interactive.fs`
 - `samples/AntShowcase/AntShowcase.Tests/InteractionTests.fs`
+
+**Target input/render boundary**
+
+Current boundary to replace:
+
+```text
+OpenGl input callback
+  -> dispatchViewerEvent
+  -> LegacyPointer/LegacyKey
+  -> handlePointer/handleKey
+  -> host.MapPointer/host.MapKey
+  -> for each product message:
+       host.Update
+       currentScene <- host.View currentSize currentModel
+  -> later render tick presents currentScene
+```
+
+Target boundary:
+
+```text
+OpenGl input callback
+  -> capture native timestamp and normalized input
+  -> enqueue ViewerInputEnvelope
+  -> signal scheduler
+  -> return
+
+Frame scheduler
+  -> drain urgent discrete inputs in arrival order
+  -> coalesce continuous pointer moves with metrics
+  -> call host.MapPointer/host.MapKey
+  -> fold all product messages into the model
+  -> mark scene dirty once
+  -> call host.View at most once for the dirty frame
+
+Render/present
+  -> render latest scene at frame cadence
+  -> emit one correlated timing record per discrete interaction
+```
+
+This target keeps the pure product `Update`/`View` model, the retained Controls adapter, and existing keyboard/focus semantics. It changes when heavy work is allowed to run.
+
+**Migration phases**
+
+1. **Measurement first:** Add timing records and queue-depth fields without changing scheduling. This creates a failing/slow baseline for AntShowcase and protects the rewrite from improving perceived lag while hiding phase regressions.
+2. **Internal scheduler model:** Add internal queue, priority lane, dirty-state, and frame-drain types behind the existing viewer entry points. Keep public APIs stable unless diagnostics require additive fields.
+3. **Callback decoupling:** Change native pointer/key callbacks to enqueue envelopes and return. Preserve close, resize, and lifecycle events explicitly because those have different urgency and shutdown semantics.
+4. **Frame-drain execution:** Move `host.MapPointer`/`host.MapKey`, product message folding, and scene recomputation into the paced frame/update loop. Recompute scene once after all folded messages for the frame, not once per message.
+5. **Adapter timing and invalidation:** Let Controls.Elmish report retained-step/layout/text/damage timing into the same input timing record. Add dirty/invalidation hooks only where needed; do not rewrite retained render semantics in this feature.
+6. **Readiness proof:** Capture AntShowcase click and keyboard evidence with p50/p95/max input-to-present latency, queue depth, coalesced moves, and long-frame counts.
+7. **Deferred renderer work:** If the scheduler rewrite still leaves unacceptable latency, open a separate feature for chunked retained render or a render-thread design. That later feature must own GL/Skia thread-affinity risk explicitly.
 
 **Spec and plan requirements**
 
@@ -1417,6 +1614,12 @@ Make interactive latency measurable, then remove the synchronous post-input rend
 - Input queue must preserve press/release/click/key order.
 - Pointer move coalescing must remain explicit and counted.
 - Rendering should be scheduled once per frame after folding queued inputs, not once per native input callback.
+- This is an architectural rewrite of the input/render scheduler boundary, not a wholesale rewrite of Controls, RetainedRender, product MVU code, or the Ant-styled widget API.
+- Native callbacks should enqueue timestamped input envelopes and signal the loop; update/view/render work should happen from the frame/update loop under a dirty/invalidation model.
+- Multiple product messages produced by one input should be folded before scene recomputation so one discrete input cannot trigger several immediate retained renders.
+- Render-thread separation is a possible follow-up only after scheduler/timing data proves it is still necessary; GL/Skia thread-affinity constraints must be designed explicitly.
+- Resize and lifecycle events need explicit policy: resize may force a dirty scene, close must not be delayed behind non-urgent work, and screenshot/readback effects must continue to observe the latest committed scene.
+- The old live path should remain available behind a short-lived diagnostic flag until the new scheduler has parity evidence; remove the flag once AntShowcase and SkiaViewer queue tests pass consistently.
 - Any synthetic/live-window limitations must be disclosed in readiness evidence.
 
 **Task outline**
@@ -1424,23 +1627,26 @@ Make interactive latency measurable, then remove the synchronous post-input rend
 - [ ] T001 [P] Add failing deterministic tests for pointer/key activation metrics shape in `tests/Elmish.Tests/`.
 - [ ] T002 [P] Add failing SkiaViewer tests for queued input ordering and move coalescing in `tests/SkiaViewer.Tests/`.
 - [ ] T003 Draft `InputPhaseTiming`, `InputQueueMetrics`, and `OnInputTiming` in `src/Controls.Elmish/ControlsElmish.fsi`.
-- [ ] T004 Add live timing capture around routing, update, view, retained step, paint, and present.
-- [ ] T005 Add JSONL diagnostic sink and optional metrics counters/histograms.
-- [ ] T006 Change live viewer dispatch so input callbacks enqueue normalized inputs and return quickly.
-- [ ] T007 Drain queued inputs on the frame/update loop, fold model updates, and render once per frame.
-- [ ] T008 Preserve discrete input ordering and expose coalesced move counts.
-- [ ] T009 Add AntShowcase diagnostic mode or environment-gated timing log in `Interactive.fs`.
-- [ ] T010 Add AntShowcase responsiveness tests/scripts for content button click and `Enter`/`Space`.
-- [ ] T011 Run live diagnostic capture where a window/GL host is available; save JSONL and summary under `specs/166-responsiveness-diagnostics/readiness/`.
-- [ ] T012 Add docs explaining latency budgets, limitations, and how to interpret timing fields.
+- [ ] T004 Add internal scheduler types: `ViewerInputEnvelope`, queue state, dirty/invalidation state, input priority lane, and frame-drain result.
+- [ ] T005 Add live timing capture around native timestamp, queue delay, routing, update, view, retained step, paint, and present.
+- [ ] T006 Add JSONL diagnostic sink and optional metrics counters/histograms.
+- [ ] T007 Change live viewer dispatch so input callbacks enqueue normalized inputs and return quickly.
+- [ ] T008 Drain queued inputs on the frame/update loop, fold model updates, and render once per dirty frame.
+- [ ] T009 Preserve discrete input ordering and expose coalesced move counts.
+- [ ] T010 Ensure one input that produces several product messages causes at most one scene recomputation before the next present.
+- [ ] T011 Add AntShowcase diagnostic mode or environment-gated timing log in `Interactive.fs`.
+- [ ] T012 Add AntShowcase responsiveness tests/scripts for content button click and `Enter`/`Space`.
+- [ ] T013 Run live diagnostic capture where a window/GL host is available; save JSONL and summary under `specs/166-responsiveness-diagnostics/readiness/`.
+- [ ] T014 Add docs explaining latency budgets, limitations, and how to interpret timing fields.
 
 **Parallel opportunities**
 
-- T001 and T002 can run in parallel.
-- T003 must land before T004/T005.
-- T004 and T005 can be split between timing capture and output format after T003.
-- T006/T007 should be one coordinated branch because they alter event-loop behavior.
-- T009/T010 can begin once the diagnostic API compiles.
+- **Parallel A:** T001 and T002 can run in parallel because they target different packages and define the failing contracts.
+- **Parallel B:** T003 diagnostics API and T004 internal scheduler model can proceed in parallel after naming is agreed, then converge before public surface review.
+- **Parallel C:** T005 timing capture and T006 JSONL/metrics output can split between viewer timing and artifact serialization after T003/T004.
+- **Serialized core rewrite:** T007, T008, and T010 should be one coordinated branch because they alter the live event-loop semantics and must preserve input ordering.
+- **Parallel D:** T011 and T012 can begin once the diagnostic API compiles; they do not need to wait for final latency budgets.
+- **Parallel E:** Documentation and readiness-summary formatting from T014 can proceed while live-window evidence from T013 is being gathered.
 
 **Definition of done**
 
