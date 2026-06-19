@@ -61,6 +61,13 @@
     <Compile Include="Feature163PackageSourceProofTests.fs" />
     <Compile Include="Feature163ValidationLaneTests.fs" />
     <Compile Include="Feature163ValidationSummaryTests.fs" />
+    <Compile Include="Feature166TestFixtures.fs" />
+    <Compile Include="Feature166LaneCatalogTests.fs" />
+    <Compile Include="Feature166LaneRunnerPreflightTests.fs" />
+    <Compile Include="Feature166LaneStatusTests.fs" />
+    <Compile Include="Feature166ValidationSummaryTests.fs" />
+    <Compile Include="Feature166CancellationTests.fs" />
+    <Compile Include="Feature166SchedulingTests.fs" />
     <Compile Include="Feature151RenderAnywhereRegressionTests.fs" />
     <Compile Include="Feature151TextShapingRegressionTests.fs" />
     <Compile Include="Feature151CompositorReadinessRegressionTests.fs" />

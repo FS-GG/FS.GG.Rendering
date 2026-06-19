@@ -30,6 +30,29 @@ This is the tier a contributor runs as routine work.
 - `surface-baselines` (+ `refresh-surface-baselines.fsx`) — public `.fsi` surface-drift.
 - docs build (`fsdocs`) — the docs site builds from current sources.
 
+## Maintainer validation lanes
+
+The lane runner is an orchestration layer over the direct commands above. It
+writes one run directory per invocation with `summary.md`, `summary.json`, and
+separate per-lane `log.txt`, `result.json`, and `diagnostics.md` files.
+
+```sh
+dotnet fsi scripts/run-validation-lanes.fsx --list
+dotnet fsi scripts/run-validation-lanes.fsx --lane rendering-harness --out artifacts/validation-lanes
+dotnet fsi scripts/run-validation-lanes.fsx --required --out artifacts/validation-lanes
+```
+
+Required lanes are `build`, `library-tests`, `package-proof`, `controls`,
+`rendering-harness`, and `antshowcase-sample`. `aggregate-solution` is optional
+and is reported separately so it cannot hide a required lane failure. The runner
+fails closed for failed, timed-out, no-progress-timeout, canceled, skipped,
+not-run, environment-limited, and infrastructure-error required lanes.
+
+Direct validation commands remain valid for focused debugging. If a direct
+command is intentionally used as a targeted substitute for an incomplete lane
+run, disclose that in the readiness evidence and keep the incomplete lane
+summary visible.
+
 ## Release-only (separate from local; runs at packaging/release)
 
 - `Package.Tests` — package restore + consumption contract.

@@ -1,0 +1,13 @@
+dotnet restore /home/developer/projects/FS.GG.Rendering/samples/AntShowcase/AntShowcase.Core/AntShowcase.Core.fsproj --configfile specs/166-validation-lane-runner/readiness/lanes/validation-20260619-104119-b56046/package-proof/package-proof/source-rules.nuget.config --packages /home/developer/projects/FS.GG.Rendering/specs/166-validation-lane-runner/readiness/lanes/validation-20260619-104119-b56046/package-proof/nuget-cache
+  Determining projects to restore...
+  Restored /home/developer/projects/FS.GG.Rendering/samples/AntShowcase/AntShowcase.Core/AntShowcase.Core.fsproj (in 2.56 sec).
+
+dotnet restore /home/developer/projects/FS.GG.Rendering/samples/AntShowcase/AntShowcase.App/AntShowcase.App.fsproj --configfile specs/166-validation-lane-runner/readiness/lanes/validation-20260619-104119-b56046/package-proof/package-proof/source-rules.nuget.config --packages /home/developer/projects/FS.GG.Rendering/specs/166-validation-lane-runner/readiness/lanes/validation-20260619-104119-b56046/package-proof/nuget-cache
+  Determining projects to restore...
+  Restored /home/developer/projects/FS.GG.Rendering/samples/AntShowcase/AntShowcase.App/AntShowcase.App.fsproj (in 277 ms).
+  1 of 2 projects are up-to-date for restore.
+
+dotnet restore /home/developer/projects/FS.GG.Rendering/samples/AntShowcase/AntShowcase.Tests/AntShowcase.Tests.fsproj --configfile specs/166-validation-lane-runner/readiness/lanes/validation-20260619-104119-b56046/package-proof/package-proof/source-rules.nuget.config --packages /home/developer/projects/FS.GG.Rendering/specs/166-validation-lane-runner/readiness/lanes/validation-20260619-104119-b56046/package-proof/nuget-cache
+  Determining projects to restore...
+  Restored /home/developer/projects/FS.GG.Rendering/samples/AntShowcase/AntShowcase.Tests/AntShowcase.Tests.fsproj (in 632 ms).
+  1 of 2 projects are up-to-date for restore.

@@ -3866,18 +3866,78 @@ let private runValidationLanesCmd (rest: string list) =
 
     let out =
         flagValue "--out" rest
-        |> Option.defaultValue "specs/163-package-feed-validation-lanes/readiness/lanes"
+        |> Option.defaultValue "artifacts/validation-lanes"
 
-    let laneIds = flagValues "--lane" rest
-    let summary = ValidationLanes.runLanes repositoryRoot out laneIds
+    let replaceRunValue =
+        let rec find xs =
+            match xs with
+            | "--replace-run" :: value :: _ when not (value.StartsWith("-", StringComparison.Ordinal)) -> Some(Some value)
+            | "--replace-run" :: _ -> Some None
+            | _ :: tl -> find tl
+            | [] -> None
 
-    printfn "%s" (Path.Combine(out, "summary.md"))
+        find rest
 
-    match summary.OverallReadiness with
-    | ValidationLanes.Ready -> 0
-    | ValidationLanes.Blocked
-    | ValidationLanes.Incomplete
-    | ValidationLanes.EnvironmentLimitedReadiness -> 1
+    let runId =
+        match flagValue "--run-id" rest, replaceRunValue with
+        | Some id, _ -> Some id
+        | None, Some(Some id) -> Some id
+        | None, _ -> None
+
+    let request: ValidationLanes.RunRequest =
+        { RequestedLaneIds = flagValues "--lane" rest
+          IncludeOptionalLaneIds = flagValues "--include-optional" rest
+          OutDir = out
+          RunId = runId
+          ReplaceRun = replaceRunValue.IsSome
+          ListOnly = hasFlag "--list" rest
+          AllowParallel = hasFlag "--parallel" rest }
+
+    if request.ListOnly then
+        let runRoot = Path.Combine(out, request.RunId |> Option.defaultValue "list-only")
+        let lanes = ValidationLanes.defaultLaneDefinitions repositoryRoot runRoot
+
+        for lane in lanes do
+            printfn
+                "%s\t%s\t%s\t%s"
+                lane.Id
+                (ValidationLanes.roleToken lane.ReadinessRole)
+                (lane.Timeout.ToString())
+                lane.Description
+
+        0
+    else
+        let runResult: Result<ValidationLanes.ValidationSummary, ValidationLanes.PreflightDiagnostic list> =
+            ValidationLanes.runRequest repositoryRoot request
+
+        match runResult with
+        | Result.Error diagnostics ->
+            for diagnostic in diagnostics do
+                eprintfn "%s: %s" diagnostic.Code diagnostic.Message
+
+            2
+        | Result.Ok (summary: ValidationLanes.ValidationSummary) ->
+            let markdownPath = Path.Combine(summary.ArtifactRoot, "summary.md")
+            let jsonPath = Path.Combine(summary.ArtifactRoot, "summary.json")
+
+            if hasFlag "--json" rest then
+                printfn
+                    "{\"summaryJson\":%s,\"overallReadiness\":%s}"
+                    (JsonSerializer.Serialize jsonPath)
+                    (JsonSerializer.Serialize(ValidationLanes.readinessToken summary.OverallReadiness))
+            else
+                printfn "%s" markdownPath
+
+            if summary.LaneResults |> List.exists (fun (result: ValidationLanes.LaneResult) -> result.Status = ValidationLanes.Canceled) then
+                130
+            elif summary.LaneResults |> List.exists (fun (result: ValidationLanes.LaneResult) -> result.Status = ValidationLanes.InfrastructureError) then
+                3
+            else
+                match summary.OverallReadiness with
+                | ValidationLanes.Ready -> 0
+                | ValidationLanes.Blocked
+                | ValidationLanes.Incomplete
+                | ValidationLanes.EnvironmentLimitedReadiness -> 1
 
 [<EntryPoint>]
 let main argv =

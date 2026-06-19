@@ -5,18 +5,26 @@ open Rendering.Harness
 
 let private result (id: string) (status: ValidationLanes.LaneStatus) (required: bool) : ValidationLanes.LaneResult =
     { LaneId = id
+      ReadinessRole = if required then ValidationLanes.Required else ValidationLanes.Optional
       Status = status
       Command = "synthetic command"
       StartedUtc = None
       CompletedUtc = None
       Elapsed = None
+      TimeoutBudget = None
+      LastActivityUtc = None
+      LastActivityText = None
       ExitCode = None
       LogPath = $"lanes/{id}/log.txt"
+      ResultPath = $"lanes/{id}/result.json"
+      DiagnosticsPath = $"lanes/{id}/diagnostics.md"
       ResultArtifacts = [ $"lanes/{id}/result.json" ]
+      Reason = None
       Diagnostics = []
       Caveats = []
-      AcceptedException = None
-      Required = required }
+      AcceptedEnvironmentLimitation = None
+      Substitution = None
+      IsAggregate = id = "aggregate-solution" }
 
 [<Tests>]
 let tests =
@@ -27,7 +35,7 @@ let tests =
                 [ result "passed" ValidationLanes.Passed true
                   result "failed" ValidationLanes.Failed true
                   result "timed" ValidationLanes.TimedOut true
-                  result "hung" ValidationLanes.Hung true
+                  result "stalled" ValidationLanes.NoProgressTimedOut true
                   result "skipped" ValidationLanes.Skipped true
                   result "canceled" ValidationLanes.Canceled true
                   result "not-run" ValidationLanes.NotRun true
@@ -35,22 +43,23 @@ let tests =
                   result "aggregate-solution" ValidationLanes.Skipped false ]
 
             let summary: ValidationLanes.ValidationSummary =
-                { PackageProofStatus = Some ValidationLanes.Passed
-                  SelectedSamples = [ "samples/AntShowcase" ]
-                  LocalFeedPath = "~/.local/share/nuget-local"
-                  PackageCachePath = Some "readiness/package-proof/nuget-cache"
-                  SourceRules = [ "FS.GG.UI.* -> nuget-local"; "* -> nuget.org" ]
-                  LaneResults = lanes
+                { RunId = "synthetic"
+                  PolicyVersion = "validation-lanes-v1"
                   OverallReadiness = ValidationLanes.computeOverallReadiness lanes
+                  ArtifactRoot = "readiness/lanes"
+                  StartedUtc = System.DateTime.UtcNow
+                  CompletedUtc = System.DateTime.UtcNow
+                  FirstBlockingRequiredLane = ValidationLanes.firstBlockingRequiredLane lanes
+                  LaneResults = lanes
                   Caveats = [ "aggregate-solution is separate" ]
-                  ArtifactRoot = "readiness/lanes" }
+                  ReplacementNotice = None }
 
             let rendered = ValidationLanes.renderSummaryMarkdown summary
 
             [ "passed"
               "failed"
               "timed-out"
-              "hung"
+              "no-progress-timeout"
               "skipped"
               "canceled"
               "not-run"
@@ -58,7 +67,7 @@ let tests =
             |> List.iter (fun token -> Expect.stringContains rendered token token)
 
             Expect.stringContains rendered "aggregate-solution" "aggregate row"
-            Expect.equal summary.OverallReadiness ValidationLanes.EnvironmentLimitedReadiness "environment limits are not green"
+            Expect.equal summary.OverallReadiness ValidationLanes.Blocked "unaccepted environment limits and failures are blocked"
         }
 
         test "Synthetic readiness is blocked for failed required lanes and incomplete for not-run lanes" {

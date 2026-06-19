@@ -5,6 +5,7 @@
 **Feature 162 baseline after merge:** `main` at `4b086a5` (`chore: bump FS.GG.UI packages to 0.1.24-preview.1`)
 **Feature 163 follow-up:** Package-feed validation lanes are implemented; the current post-merge package set is `0.1.25-preview.1`.
 **Feature 165 follow-up:** Structured render/layout inspection metadata is implemented; the current package set before merge is `0.1.26-preview.1`.
+**Feature 166 follow-up:** Validation lane runner hardening is implemented on `166-validation-lane-runner`; it adds stable required/optional lanes, request preflight, run-id evidence isolation, structured summaries, no-progress classification, and schedule-safety checks. Current required-lane evidence intentionally exposes `Controls.Tests` as `no-progress-timeout`.
 **Primary work observed:** Feature 162, AntShowcase visual readiness implementation, plus earlier local/Codex/Claude skill parity work
 **Scope:** Problems encountered in the framework, validation workflow, and skills while implementing and validating the AntShowcase visual overhaul. This report focuses on improvements possible in library code, sample infrastructure, generated readiness tooling, and coding-agent skills.
 
@@ -610,6 +611,15 @@ This would convert many visual-readiness claims from manual screenshot review in
 
 **Priority:** Medium-high
 
+**Implementation status on 2026-06-19:** Implemented by
+`166-validation-lane-runner`. The runner now supports `--list`, `--required`,
+repeatable `--lane`, `--include-optional`, `--out`, `--run-id`,
+`--replace-run`, and `--json`; writes run-id-scoped Markdown/JSON summaries and
+per-lane logs/results/diagnostics; rejects unknown or duplicate lane requests
+before work starts; and classifies `no-progress-timeout` separately from total
+timeout. Readiness evidence is under
+`specs/166-validation-lane-runner/readiness/`.
+
 Create a validation runner that executes named lanes with:
 
 - Per-project timeout.
@@ -1113,7 +1123,9 @@ solution-tests
 3. Add a package-feed refresh/check script and wire it into AntShowcase docs.
 4. Update FS.GG skills with package-pin, readiness-ignore, and test-parallelism guidance.
 5. Add a skill parity checker for Claude/Codex/local agent skills.
-6. Split full validation into named lanes with timeouts.
+6. [x] Split full validation into named lanes with timeouts. Implemented by
+   `166-validation-lane-runner`; remaining follow-up is to investigate the
+   `Controls.Tests` no-progress blocker it now exposes.
 7. Change visual-readiness summary generation to use managed sections or generated-only output files.
 8. Add a responsiveness diagnostic mode and an AntShowcase latency budget report.
 9. Decouple live input dispatch from synchronous retained rendering so input callbacks enqueue work and return quickly.
@@ -1597,7 +1609,12 @@ additive: screenshots, `LayoutEvidenceReport`, and `GeneratedLayoutValidation` r
 - Focused Feature 165 tests pass for the shipped inspection contract.
 - Representative inspection summaries distinguish accepted, unsupported, environment-limited, not-inspected, and not-run states without relying on screenshot evidence.
 
-### 13.6 Feature 166: responsiveness diagnostics and input-loop scheduling
+### 13.6 Future feature: responsiveness diagnostics and input-loop scheduling
+
+Feature number note: branch `166-validation-lane-runner` was used first for the
+validation-lane hardening follow-up. The responsiveness diagnostics and
+input-loop scheduling work below remains recommended, but should receive a new
+feature number when specified.
 
 **Goal**
 

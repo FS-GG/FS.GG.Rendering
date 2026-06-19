@@ -16,17 +16,23 @@ let private lane
     let command: ValidationLanes.LaneCommand = { FileName = "bash"; Arguments = [ "-lc"; args ] }
 
     { Id = id
+      DisplayName = id
       Description = id
+      ReadinessRole = ValidationLanes.Required
       Command = command
       WorkingDirectory = root
-      Required = true
       Timeout = timeout
       NoProgressTimeout = noProgress
+      ProgressInterval = TimeSpan.FromSeconds 1.0
+      EvidenceDirectory = dir
       LogPath = Path.Combine(dir, "log.txt")
       ResultPath = Path.Combine(dir, "result.json")
       DiagnosticsPath = Path.Combine(dir, "diagnostics.md")
       OutputRoot = Path.Combine(dir, "out")
-      ConcurrencyGroup = Some "test" }
+      ConcurrencyGroup = Some "test"
+      OutputScope = Some id
+      IsAggregate = false
+      SubstitutesFor = None }
 
 [<Tests>]
 let tests =
@@ -38,7 +44,7 @@ let tests =
                 let lanes = ValidationLanes.defaultLaneDefinitions root (Path.Combine(root, "lanes"))
                 let ids = lanes |> List.map _.Id
 
-                [ "package-proof"; "antshowcase-sample"; "controls"; "rendering-harness"; "aggregate-solution" ]
+                [ "build"; "library-tests"; "package-proof"; "antshowcase-sample"; "controls"; "rendering-harness"; "aggregate-solution" ]
                 |> List.iter (fun id -> Expect.contains ids id id)
 
                 let outputRoots = lanes |> List.map _.OutputRoot |> Set.ofList
@@ -55,25 +61,52 @@ let tests =
             try
                 let def = lane root "pass" "printf ok" (TimeSpan.FromSeconds 2.0) None
                 let model, effects = ValidationLanes.init [ def ]
-                Expect.contains effects (ValidationLanes.CreateOutputRoot "pass") "output root"
+                Expect.contains effects ValidationLanes.RegisterCancelHandler "cancel handler"
 
-                let running, runningEffects = ValidationLanes.update (ValidationLanes.RunRequested [ "pass" ]) model
-                Expect.contains runningEffects (ValidationLanes.StartProcess "pass") "start"
+                let request =
+                    { ValidationLanes.defaultRunRequest root with
+                        RequestedLaneIds = [ "pass" ] }
+
+                let _, requestEffects = ValidationLanes.update (ValidationLanes.RunRequested request) model
+                Expect.contains requestEffects (ValidationLanes.ValidateRequest request) "validate"
+
+                let plan: ValidationLanes.LaneRunPlan =
+                    { Request = request
+                      RunId = "run"
+                      SelectionMode = ValidationLanes.ExplicitSelection
+                      ArtifactRoot = Path.Combine(root, "run")
+                      SelectedLanes = [ def ]
+                      Diagnostics = []
+                      ReplacementNotice = None }
+
+                let scheduled, scheduleEffects = ValidationLanes.update (ValidationLanes.PreflightPassed plan) model
+                Expect.contains scheduleEffects (ValidationLanes.CreateRunRoot plan.ArtifactRoot) "create run root"
+
+                let running, runningEffects = ValidationLanes.update (ValidationLanes.LaneStarted("pass", DateTime.UtcNow)) scheduled
+                Expect.contains runningEffects (ValidationLanes.PollProcess "pass") "poll"
 
                 let result: ValidationLanes.LaneResult =
                     { LaneId = "pass"
+                      ReadinessRole = ValidationLanes.Required
                       Status = ValidationLanes.Passed
                       Command = "bash -lc pass"
                       StartedUtc = None
                       CompletedUtc = None
                       Elapsed = None
+                      TimeoutBudget = None
+                      LastActivityUtc = None
+                      LastActivityText = None
                       ExitCode = Some 0
                       LogPath = "log"
+                      ResultPath = "result"
+                      DiagnosticsPath = "diagnostics"
                       ResultArtifacts = [ "result" ]
+                      Reason = None
                       Diagnostics = []
                       Caveats = []
-                      AcceptedException = None
-                      Required = true }
+                      AcceptedEnvironmentLimitation = None
+                      Substitution = None
+                      IsAggregate = false }
 
                 let completed, completedEffects = ValidationLanes.update (ValidationLanes.LaneCompleted result) running
                 Expect.contains completed.CompletedResults result "completed"
@@ -86,7 +119,7 @@ let tests =
                 Feature163TestFixtures.deleteTempRoot root
         }
 
-        test "process runner classifies passed failed timed-out and hung lanes" {
+        test "process runner classifies passed failed timed-out and no-progress lanes" {
             let root = Feature163TestFixtures.createTempRoot "feature163-lane-runner"
 
             try
@@ -101,8 +134,8 @@ let tests =
                 let timedOut = ValidationLanes.runLane (lane root "timed" "sleep 2" (TimeSpan.FromMilliseconds 100.0) None)
                 Expect.equal timedOut.Status ValidationLanes.TimedOut "timed out"
 
-                let hung = ValidationLanes.runLane (lane root "hung" "printf start; sleep 2" (TimeSpan.FromSeconds 2.0) (Some(TimeSpan.FromMilliseconds 100.0)))
-                Expect.equal hung.Status ValidationLanes.Hung "hung"
+                let stalled = ValidationLanes.runLane (lane root "stalled" "printf 'start\n'; sleep 2" (TimeSpan.FromSeconds 2.0) (Some(TimeSpan.FromMilliseconds 100.0)))
+                Expect.equal stalled.Status ValidationLanes.NoProgressTimedOut "no-progress timeout"
             finally
                 Feature163TestFixtures.deleteTempRoot root
         }
