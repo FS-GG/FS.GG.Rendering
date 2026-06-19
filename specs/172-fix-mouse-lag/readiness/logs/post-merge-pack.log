@@ -1,0 +1,176 @@
+
+## dotnet pack .template.package/FS.GG.UI.Template.fsproj
+  Determining projects to restore...
+  Restored /home/developer/projects/FS.GG.Rendering/.template.package/FS.GG.UI.Template.fsproj (in 396 ms).
+  FS.GG.UI.Template -> /home/developer/projects/FS.GG.Rendering/.template.package/bin/Release/net10.0/FS.GG.UI.Template.dll
+  Successfully created package '/home/developer/.local/share/nuget-local/FS.GG.UI.Template.0.1.17-preview.1.nupkg'.
+exit_code=0
+
+## dotnet pack src/Input/Input.fsproj
+  Determining projects to restore...
+  Restored /home/developer/projects/FS.GG.Rendering/src/Diagnostics/Diagnostics.fsproj (in 322 ms).
+  Restored /home/developer/projects/FS.GG.Rendering/src/Scene/Scene.fsproj (in 322 ms).
+  Restored /home/developer/projects/FS.GG.Rendering/src/KeyboardInput/KeyboardInput.fsproj (in 322 ms).
+  Restored /home/developer/projects/FS.GG.Rendering/src/SkiaViewer/SkiaViewer.fsproj (in 336 ms).
+  Restored /home/developer/projects/FS.GG.Rendering/src/Input/Input.fsproj (in 336 ms).
+  Diagnostics -> /home/developer/projects/FS.GG.Rendering/src/Diagnostics/bin/Release/net10.0/FS.GG.UI.Diagnostics.dll
+  Scene -> /home/developer/projects/FS.GG.Rendering/src/Scene/bin/Release/net10.0/FS.GG.UI.Scene.dll
+  KeyboardInput -> /home/developer/projects/FS.GG.Rendering/src/KeyboardInput/bin/Release/net10.0/FS.GG.UI.KeyboardInput.dll
+  SkiaViewer -> /home/developer/projects/FS.GG.Rendering/src/SkiaViewer/bin/Release/net10.0/FS.GG.UI.SkiaViewer.dll
+/usr/share/dotnet/sdk/10.0.301/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.targets(308,5): error MSB4018: The "GenerateDepsFile" task failed unexpectedly. [/home/developer/projects/FS.GG.Rendering/src/Input/Input.fsproj]
+/usr/share/dotnet/sdk/10.0.301/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.targets(308,5): error MSB4018: System.IO.FileNotFoundException: /home/developer/.nuget/packages/fable.core/4.0.0/lib/netstandard2.0/Fable.Core.dll [/home/developer/projects/FS.GG.Rendering/src/Input/Input.fsproj]
+/usr/share/dotnet/sdk/10.0.301/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.targets(308,5): error MSB4018:    at System.Diagnostics.FileVersionInfo.GetVersionInfo(String fileName) [/home/developer/projects/FS.GG.Rendering/src/Input/Input.fsproj]
+/usr/share/dotnet/sdk/10.0.301/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.targets(308,5): error MSB4018:    at Microsoft.NET.Build.Tasks.FileUtilities.GetFileVersion(String sourcePath) [/home/developer/projects/FS.GG.Rendering/src/Input/Input.fsproj]
+/usr/share/dotnet/sdk/10.0.301/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.targets(308,5): error MSB4018:    at Microsoft.NET.Build.Tasks.DependencyContextBuilder.CreateRuntimeFile(String path, String fullPath) [/home/developer/projects/FS.GG.Rendering/src/Input/Input.fsproj]
+/usr/share/dotnet/sdk/10.0.301/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.targets(308,5): error MSB4018:    at System.Linq.Enumerable.ArrayWhereSelectIterator`2.ToArray(ReadOnlySpan`1 source, Func`2 predicate, Func`2 selector) [/home/developer/projects/FS.GG.Rendering/src/Input/Input.fsproj]
+/usr/share/dotnet/sdk/10.0.301/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.targets(308,5): error MSB4018:    at Microsoft.Extensions.DependencyModel.RuntimeAssetGroup..ctor(String runtime, IEnumerable`1 runtimeFiles) [/home/developer/projects/FS.GG.Rendering/src/Input/Input.fsproj]
+/usr/share/dotnet/sdk/10.0.301/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.targets(308,5): error MSB4018:    at Microsoft.NET.Build.Tasks.DependencyContextBuilder.GetRuntimeLibrary(DependencyLibrary library, String[] userRuntimeAssemblies) [/home/developer/projects/FS.GG.Rendering/src/Input/Input.fsproj]
+/usr/share/dotnet/sdk/10.0.301/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.targets(308,5): error MSB4018:    at Microsoft.NET.Build.Tasks.DependencyContextBuilder.Build(String[] userRuntimeAssemblies) [/home/developer/projects/FS.GG.Rendering/src/Input/Input.fsproj]
+/usr/share/dotnet/sdk/10.0.301/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.targets(308,5): error MSB4018:    at Microsoft.NET.Build.Tasks.GenerateDepsFile.WriteDepsFile(String depsFilePath) [/home/developer/projects/FS.GG.Rendering/src/Input/Input.fsproj]
+/usr/share/dotnet/sdk/10.0.301/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.targets(308,5): error MSB4018:    at Microsoft.NET.Build.Tasks.TaskBase.Execute() [/home/developer/projects/FS.GG.Rendering/src/Input/Input.fsproj]
+/usr/share/dotnet/sdk/10.0.301/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.Sdk.targets(308,5): error MSB4018:    at Microsoft.Build.BackEnd.TaskBuilder.ExecuteInstantiatedTask(TaskExecutionHost taskExecutionHost, TaskLoggingContext taskLoggingContext, TaskHost taskHost, ItemBucket bucket, TaskExecutionMode howToExecuteTask) [/home/developer/projects/FS.GG.Rendering/src/Input/Input.fsproj]
+exit_code=1
+
+## retry dotnet pack src/Input/Input.fsproj
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  Scene -> /home/developer/projects/FS.GG.Rendering/src/Scene/bin/Release/net10.0/FS.GG.UI.Scene.dll
+  Diagnostics -> /home/developer/projects/FS.GG.Rendering/src/Diagnostics/bin/Release/net10.0/FS.GG.UI.Diagnostics.dll
+  KeyboardInput -> /home/developer/projects/FS.GG.Rendering/src/KeyboardInput/bin/Release/net10.0/FS.GG.UI.KeyboardInput.dll
+  SkiaViewer -> /home/developer/projects/FS.GG.Rendering/src/SkiaViewer/bin/Release/net10.0/FS.GG.UI.SkiaViewer.dll
+  Input -> /home/developer/projects/FS.GG.Rendering/src/Input/bin/Release/net10.0/FS.GG.UI.Input.dll
+  Successfully created package '/home/developer/.local/share/nuget-local/FS.GG.UI.Input.0.1.34-preview.1.nupkg'.
+exit_code=0
+
+## retry dotnet pack src/Themes.Default/Themes.Default.fsproj
+  Determining projects to restore...
+  Restored /home/developer/projects/FS.GG.Rendering/src/DesignSystem/DesignSystem.fsproj (in 248 ms).
+  Restored /home/developer/projects/FS.GG.Rendering/src/Themes.Default/Themes.Default.fsproj (in 248 ms).
+  1 of 3 projects are up-to-date for restore.
+  Scene -> /home/developer/projects/FS.GG.Rendering/src/Scene/bin/Release/net10.0/FS.GG.UI.Scene.dll
+  DesignSystem -> /home/developer/projects/FS.GG.Rendering/src/DesignSystem/bin/Release/net10.0/FS.GG.UI.DesignSystem.dll
+  Themes.Default -> /home/developer/projects/FS.GG.Rendering/src/Themes.Default/bin/Release/net10.0/FS.GG.UI.Themes.Default.dll
+  The package FS.GG.UI.Themes.Default.0.1.34-preview.1 is missing a readme. Go to https://aka.ms/nuget/authoring-best-practices/readme to learn why package readmes are important.
+  Successfully created package '/home/developer/.local/share/nuget-local/FS.GG.UI.Themes.Default.0.1.34-preview.1.nupkg'.
+exit_code=0
+
+## retry dotnet pack src/KeyboardInput/KeyboardInput.fsproj
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  Scene -> /home/developer/projects/FS.GG.Rendering/src/Scene/bin/Release/net10.0/FS.GG.UI.Scene.dll
+  KeyboardInput -> /home/developer/projects/FS.GG.Rendering/src/KeyboardInput/bin/Release/net10.0/FS.GG.UI.KeyboardInput.dll
+  Successfully created package '/home/developer/.local/share/nuget-local/FS.GG.UI.KeyboardInput.0.1.34-preview.1.nupkg'.
+exit_code=0
+
+## retry dotnet pack src/Testing/Testing.fsproj
+  Determining projects to restore...
+  Restored /home/developer/projects/FS.GG.Rendering/src/Testing/Testing.fsproj (in 235 ms).
+  2 of 3 projects are up-to-date for restore.
+  Diagnostics -> /home/developer/projects/FS.GG.Rendering/src/Diagnostics/bin/Release/net10.0/FS.GG.UI.Diagnostics.dll
+  Scene -> /home/developer/projects/FS.GG.Rendering/src/Scene/bin/Release/net10.0/FS.GG.UI.Scene.dll
+  Testing -> /home/developer/projects/FS.GG.Rendering/src/Testing/bin/Release/net10.0/FS.GG.UI.Testing.dll
+  Successfully created package '/home/developer/.local/share/nuget-local/FS.GG.UI.Testing.0.1.34-preview.1.nupkg'.
+exit_code=0
+
+## retry dotnet pack src/Themes.AntDesign/Themes.AntDesign.fsproj
+  Determining projects to restore...
+  Restored /home/developer/projects/FS.GG.Rendering/src/Themes.AntDesign/Themes.AntDesign.fsproj (in 224 ms).
+  2 of 3 projects are up-to-date for restore.
+  Scene -> /home/developer/projects/FS.GG.Rendering/src/Scene/bin/Release/net10.0/FS.GG.UI.Scene.dll
+  DesignSystem -> /home/developer/projects/FS.GG.Rendering/src/DesignSystem/bin/Release/net10.0/FS.GG.UI.DesignSystem.dll
+  Themes.AntDesign -> /home/developer/projects/FS.GG.Rendering/src/Themes.AntDesign/bin/Release/net10.0/FS.GG.UI.Themes.AntDesign.dll
+  The package FS.GG.UI.Themes.AntDesign.0.1.34-preview.1 is missing a readme. Go to https://aka.ms/nuget/authoring-best-practices/readme to learn why package readmes are important.
+  Successfully created package '/home/developer/.local/share/nuget-local/FS.GG.UI.Themes.AntDesign.0.1.34-preview.1.nupkg'.
+exit_code=0
+
+## retry dotnet pack src/DesignSystem/DesignSystem.fsproj
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  Scene -> /home/developer/projects/FS.GG.Rendering/src/Scene/bin/Release/net10.0/FS.GG.UI.Scene.dll
+  DesignSystem -> /home/developer/projects/FS.GG.Rendering/src/DesignSystem/bin/Release/net10.0/FS.GG.UI.DesignSystem.dll
+  The package FS.GG.UI.DesignSystem.0.1.34-preview.1 is missing a readme. Go to https://aka.ms/nuget/authoring-best-practices/readme to learn why package readmes are important.
+  Successfully created package '/home/developer/.local/share/nuget-local/FS.GG.UI.DesignSystem.0.1.34-preview.1.nupkg'.
+exit_code=0
+
+## retry dotnet pack src/Scene/Scene.fsproj
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  Scene -> /home/developer/projects/FS.GG.Rendering/src/Scene/bin/Release/net10.0/FS.GG.UI.Scene.dll
+  Successfully created package '/home/developer/.local/share/nuget-local/FS.GG.UI.Scene.0.1.34-preview.1.nupkg'.
+exit_code=0
+
+## retry dotnet pack src/Layout/Layout.fsproj
+  Determining projects to restore...
+  Restored /home/developer/projects/FS.GG.Rendering/src/Layout/Layout.fsproj (in 741 ms).
+  1 of 2 projects are up-to-date for restore.
+  Scene -> /home/developer/projects/FS.GG.Rendering/src/Scene/bin/Release/net10.0/FS.GG.UI.Scene.dll
+  Layout -> /home/developer/projects/FS.GG.Rendering/src/Layout/bin/Release/net10.0/FS.GG.UI.Layout.dll
+  Successfully created package '/home/developer/.local/share/nuget-local/FS.GG.UI.Layout.0.1.34-preview.1.nupkg'.
+exit_code=0
+
+## retry dotnet pack src/Color/Color.fsproj
+  Determining projects to restore...
+  Restored /home/developer/projects/FS.GG.Rendering/src/Color/Color.fsproj (in 221 ms).
+  1 of 2 projects are up-to-date for restore.
+  Scene -> /home/developer/projects/FS.GG.Rendering/src/Scene/bin/Release/net10.0/FS.GG.UI.Scene.dll
+  Color -> /home/developer/projects/FS.GG.Rendering/src/Color/bin/Release/net10.0/FS.GG.UI.Color.dll
+  The package FS.GG.UI.Color.0.1.34-preview.1 is missing a readme. Go to https://aka.ms/nuget/authoring-best-practices/readme to learn why package readmes are important.
+  Successfully created package '/home/developer/.local/share/nuget-local/FS.GG.UI.Color.0.1.34-preview.1.nupkg'.
+exit_code=0
+
+## retry dotnet pack src/SkiaViewer/SkiaViewer.fsproj
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  Diagnostics -> /home/developer/projects/FS.GG.Rendering/src/Diagnostics/bin/Release/net10.0/FS.GG.UI.Diagnostics.dll
+  Scene -> /home/developer/projects/FS.GG.Rendering/src/Scene/bin/Release/net10.0/FS.GG.UI.Scene.dll
+  KeyboardInput -> /home/developer/projects/FS.GG.Rendering/src/KeyboardInput/bin/Release/net10.0/FS.GG.UI.KeyboardInput.dll
+  SkiaViewer -> /home/developer/projects/FS.GG.Rendering/src/SkiaViewer/bin/Release/net10.0/FS.GG.UI.SkiaViewer.dll
+  Successfully created package '/home/developer/.local/share/nuget-local/FS.GG.UI.SkiaViewer.0.1.34-preview.1.nupkg'.
+exit_code=0
+
+## retry dotnet pack src/Elmish/Elmish.fsproj
+  Determining projects to restore...
+  Restored /home/developer/projects/FS.GG.Rendering/src/Elmish/Elmish.fsproj (in 279 ms).
+  4 of 5 projects are up-to-date for restore.
+  Scene -> /home/developer/projects/FS.GG.Rendering/src/Scene/bin/Release/net10.0/FS.GG.UI.Scene.dll
+  Diagnostics -> /home/developer/projects/FS.GG.Rendering/src/Diagnostics/bin/Release/net10.0/FS.GG.UI.Diagnostics.dll
+  KeyboardInput -> /home/developer/projects/FS.GG.Rendering/src/KeyboardInput/bin/Release/net10.0/FS.GG.UI.KeyboardInput.dll
+  SkiaViewer -> /home/developer/projects/FS.GG.Rendering/src/SkiaViewer/bin/Release/net10.0/FS.GG.UI.SkiaViewer.dll
+  Elmish -> /home/developer/projects/FS.GG.Rendering/src/Elmish/bin/Release/net10.0/FS.GG.UI.Elmish.dll
+  Successfully created package '/home/developer/.local/share/nuget-local/FS.GG.UI.Elmish.0.1.34-preview.1.nupkg'.
+exit_code=0
+
+## retry dotnet pack src/Controls/Controls.fsproj
+  Determining projects to restore...
+  Restored /home/developer/projects/FS.GG.Rendering/src/Controls/Controls.fsproj (in 239 ms).
+  5 of 6 projects are up-to-date for restore.
+  Scene -> /home/developer/projects/FS.GG.Rendering/src/Scene/bin/Release/net10.0/FS.GG.UI.Scene.dll
+  Diagnostics -> /home/developer/projects/FS.GG.Rendering/src/Diagnostics/bin/Release/net10.0/FS.GG.UI.Diagnostics.dll
+  Layout -> /home/developer/projects/FS.GG.Rendering/src/Layout/bin/Release/net10.0/FS.GG.UI.Layout.dll
+  DesignSystem -> /home/developer/projects/FS.GG.Rendering/src/DesignSystem/bin/Release/net10.0/FS.GG.UI.DesignSystem.dll
+  KeyboardInput -> /home/developer/projects/FS.GG.Rendering/src/KeyboardInput/bin/Release/net10.0/FS.GG.UI.KeyboardInput.dll
+  Controls -> /home/developer/projects/FS.GG.Rendering/src/Controls/bin/Release/net10.0/FS.GG.UI.Controls.dll
+  Successfully created package '/home/developer/.local/share/nuget-local/FS.GG.UI.Controls.0.1.34-preview.1.nupkg'.
+exit_code=0
+
+## retry dotnet pack src/Diagnostics/Diagnostics.fsproj
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  Diagnostics -> /home/developer/projects/FS.GG.Rendering/src/Diagnostics/bin/Release/net10.0/FS.GG.UI.Diagnostics.dll
+  Successfully created package '/home/developer/.local/share/nuget-local/FS.GG.UI.Diagnostics.0.1.34-preview.1.nupkg'.
+exit_code=0
+
+## retry dotnet pack src/Controls.Elmish/Controls.Elmish.fsproj
+  Determining projects to restore...
+  Restored /home/developer/projects/FS.GG.Rendering/src/Controls.Elmish/Controls.Elmish.fsproj (in 272 ms).
+  7 of 8 projects are up-to-date for restore.
+  Diagnostics -> /home/developer/projects/FS.GG.Rendering/src/Diagnostics/bin/Release/net10.0/FS.GG.UI.Diagnostics.dll
+  Scene -> /home/developer/projects/FS.GG.Rendering/src/Scene/bin/Release/net10.0/FS.GG.UI.Scene.dll
+  KeyboardInput -> /home/developer/projects/FS.GG.Rendering/src/KeyboardInput/bin/Release/net10.0/FS.GG.UI.KeyboardInput.dll
+  DesignSystem -> /home/developer/projects/FS.GG.Rendering/src/DesignSystem/bin/Release/net10.0/FS.GG.UI.DesignSystem.dll
+  Layout -> /home/developer/projects/FS.GG.Rendering/src/Layout/bin/Release/net10.0/FS.GG.UI.Layout.dll
+  Controls -> /home/developer/projects/FS.GG.Rendering/src/Controls/bin/Release/net10.0/FS.GG.UI.Controls.dll
+  SkiaViewer -> /home/developer/projects/FS.GG.Rendering/src/SkiaViewer/bin/Release/net10.0/FS.GG.UI.SkiaViewer.dll
+  Controls.Elmish -> /home/developer/projects/FS.GG.Rendering/src/Controls.Elmish/bin/Release/net10.0/FS.GG.UI.Controls.Elmish.dll
+  Successfully created package '/home/developer/.local/share/nuget-local/FS.GG.UI.Controls.Elmish.0.1.34-preview.1.nupkg'.
+exit_code=0

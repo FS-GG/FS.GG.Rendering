@@ -1,0 +1,19 @@
+package-feed status: passed
+packages: 14
+pins: 18
+specs/163-package-feed-validation-lanes/readiness/package-proof/package-versions.md
+specs/163-package-feed-validation-lanes/readiness/package-proof/package-pins.md
+refresh_exit_code=0
+  Determining projects to restore...
+  Restored /home/developer/projects/FS.GG.Rendering/samples/SecondAntShowcase/SecondAntShowcase.Core/SecondAntShowcase.Core.fsproj (in 461 ms).
+  Restored /home/developer/projects/FS.GG.Rendering/samples/SecondAntShowcase/SecondAntShowcase.App/SecondAntShowcase.App.fsproj (in 461 ms).
+  SecondAntShowcase.Core -> /home/developer/projects/FS.GG.Rendering/samples/SecondAntShowcase/SecondAntShowcase.Core/bin/Release/net10.0/SecondAntShowcase.Core.dll
+  SecondAntShowcase.App -> /home/developer/projects/FS.GG.Rendering/samples/SecondAntShowcase/SecondAntShowcase.App/bin/Release/net10.0/SecondAntShowcase.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:07.55
+build_exit_code=0
+test_exit_code=0
