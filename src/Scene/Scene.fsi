@@ -514,6 +514,284 @@ type LayoutEvidenceReport =
       Diagnostics: string list
       RenderEvidence: RenderReadbackEvidence option }
 
+/// Readiness result for one structured visual inspection scope.
+[<RequireQualifiedAccess>]
+type VisualInspectionStatus =
+    /// All required deterministic inspection rules passed.
+    | Accepted
+    /// One or more blocking findings prevent readiness.
+    | Blocked
+    /// Required scope was declared but not fully inspected.
+    | Incomplete
+    /// Required facts are unavailable in the current implementation.
+    | Unsupported
+    /// Required facts are unavailable because of an explicit host or environment limitation.
+    | EnvironmentLimited
+    /// The scope is intentionally outside deterministic inspection coverage.
+    | NotInspected
+    /// The scope was declared but no inspection command ran.
+    | NotRun
+
+/// Severity of one visual inspection finding.
+[<RequireQualifiedAccess>]
+type VisualInspectionSeverity =
+    /// The rule passed or was accepted by an explicit exception.
+    | Pass
+    /// Informational finding.
+    | Info
+    /// Non-blocking issue or caveat.
+    | Warning
+    /// Required readiness blocker.
+    | Blocking
+    /// Required fact cannot be inspected by the implementation.
+    | Unsupported
+    /// Host or environment prevents producing the fact.
+    | EnvironmentLimited
+
+/// Measurement confidence for text and geometric facts.
+[<RequireQualifiedAccess>]
+type VisualInspectionMeasurementMode =
+    /// Fact is measured from authoritative render/layout data.
+    | Exact
+    /// Fact is derived from deterministic approximation.
+    | Approximate
+    /// Fact is not implemented by the inspector.
+    | Unsupported
+    /// Fact was unavailable in this run.
+    | Unavailable
+
+/// Text fit classification for one inspected text run.
+[<RequireQualifiedAccess>]
+type VisualInspectionFitStatus =
+    /// Text is contained inside its owner bounds.
+    | Inside
+    /// Text extends outside its owner bounds.
+    | Overflow
+    /// Text is clipped by its owner or effective clip.
+    | Clipped
+    /// Text intentionally wraps.
+    | Wrapped
+    /// Text is intentionally truncated.
+    | Truncated
+    /// Text fit cannot be inspected by the implementation.
+    | Unsupported
+    /// Text fit was unavailable in this run.
+    | Unavailable
+
+/// Reviewer-facing visual node kind.
+[<RequireQualifiedAccess>]
+type VisualInspectionNodeKind =
+    /// Root of the inspected visual tree.
+    | Root
+    /// Container or grouping node.
+    | Container
+    /// Text-bearing node.
+    | Text
+    /// Shape or primitive paint node.
+    | Shape
+    /// Image-bearing node.
+    | Image
+    /// Overlay surface.
+    | Overlay
+    /// Popup surface.
+    | Popup
+    /// Node kind is known only as an implementation string.
+    | Custom of string
+    /// Node kind is unavailable.
+    | Unknown
+
+/// Paint contribution role for a node or coverage fact.
+[<RequireQualifiedAccess>]
+type VisualInspectionPaintRole =
+    /// Background paint.
+    | Background
+    /// Surface paint.
+    | Surface
+    /// Border paint.
+    | Border
+    /// Foreground paint.
+    | Foreground
+    /// Content paint.
+    | Content
+    /// Overlay paint.
+    | Overlay
+    /// No paint contribution was observed.
+    | None
+    /// Paint role could not be classified.
+    | Unknown
+
+/// Semantic surface role used for containment and overlap checks.
+[<RequireQualifiedAccess>]
+type VisualInspectionSurfaceRole =
+    /// Root screen surface.
+    | Root
+    /// Shell or page frame.
+    | Shell
+    /// Primary content region.
+    | Content
+    /// Navigation region.
+    | Navigation
+    /// Feedback/status region.
+    | Feedback
+    /// Overlay region.
+    | Overlay
+    /// Popup region.
+    | Popup
+    /// Floating non-popup region.
+    | Floating
+    /// Caller-defined surface role.
+    | Custom of string
+    /// Surface role could not be classified.
+    | Unknown
+
+/// Classification for effective clipping.
+[<RequireQualifiedAccess>]
+type VisualInspectionClipStatus =
+    /// No clipping affects the node or region.
+    | None
+    /// Clipping is intentional and owned.
+    | Intentional
+    /// Clipping is accidental and blocks readiness.
+    | Accidental
+    /// Clipping cannot be inspected by the implementation.
+    | Unsupported
+    /// Clipping was unavailable in this run.
+    | Unavailable
+
+/// Coverage state for a paint contribution.
+[<RequireQualifiedAccess>]
+type VisualInspectionCoverageStatus =
+    /// Target is fully covered by intentional paint.
+    | Complete
+    /// Target is only partially covered.
+    | Partial
+    /// Required paint is missing.
+    | Missing
+    /// Coverage cannot be inspected by the implementation.
+    | Unsupported
+    /// Coverage was unavailable in this run.
+    | Unavailable
+
+/// Scope identity for one inspected page, screen, or control tree.
+type VisualInspectionScope =
+    { ScopeId: string
+      Title: string
+      Required: bool }
+
+/// Explicit unsupported or unavailable fact recorded by an inspector.
+type VisualInspectionUnsupportedFact =
+    { Fact: string
+      OwnerId: string option
+      Required: bool
+      Reason: string
+      Diagnostic: string
+      EnvironmentLimited: bool }
+
+/// One inspected visual node with final bounds and relationship metadata.
+type VisualInspectionNode =
+    { NodeId: string
+      ParentId: string option
+      Kind: VisualInspectionNodeKind
+      OwnerId: string option
+      Bounds: Rect option
+      Clip: VisualInspectionClipStatus
+      ZOrder: int
+      PaintRole: VisualInspectionPaintRole
+      SurfaceRole: VisualInspectionSurfaceRole
+      TextRunIds: string list
+      Children: string list
+      Dynamic: bool
+      UnsupportedFacts: VisualInspectionUnsupportedFact list }
+
+/// Measured text facts for one rendered text run.
+type VisualTextInspection =
+    { TextId: string
+      OwnerNodeId: string
+      Text: string
+      TextBounds: Rect option
+      OwnerBounds: Rect option
+      Baseline: float option
+      MeasurementMode: VisualInspectionMeasurementMode
+      FitStatus: VisualInspectionFitStatus
+      Required: bool
+      Diagnostics: string list }
+
+/// Named visual region used for containment, overlap, and paint checks.
+type VisualRegionBoundary =
+    { RegionId: string
+      Name: string
+      Role: VisualInspectionSurfaceRole
+      Bounds: Rect option
+      Required: bool
+      OwnerNodeIds: string list
+      AllowedOverlapRoles: VisualInspectionSurfaceRole list }
+
+/// Evidence that a region or node has intentional paint coverage.
+type VisualPaintCoverage =
+    { CoverageId: string
+      TargetId: string
+      PaintRole: VisualInspectionPaintRole
+      CoverageBounds: Rect option
+      CoverageStatus: VisualInspectionCoverageStatus
+      Reason: string option }
+
+/// Effective clipping evidence for one node or region.
+type VisualClipFact =
+    { ClipId: string
+      NodeId: string
+      ClipBounds: Rect option
+      ClipStatus: VisualInspectionClipStatus
+      Reason: string option
+      AffectedTextRunIds: string list }
+
+/// One deterministic validation finding tied to a rule and affected visual ids.
+type VisualInspectionFinding =
+    { FindingId: string
+      RuleId: string
+      Severity: VisualInspectionSeverity
+      AffectedNodeIds: string list
+      AffectedRegionIds: string list
+      Message: string
+      Expected: string
+      Actual: string
+      ExceptionId: string option
+      Diagnostics: string list }
+
+/// Machine-checkable inspection evidence for one scope.
+type VisualInspectionArtifact =
+    { ArtifactId: string
+      Scope: VisualInspectionScope
+      OutputSize: Size
+      Presentation: string
+      ReadinessStatus: VisualInspectionStatus
+      Nodes: VisualInspectionNode list
+      Regions: VisualRegionBoundary list
+      TextRuns: VisualTextInspection list
+      PaintCoverage: VisualPaintCoverage list
+      ClipFacts: VisualClipFact list
+      Findings: VisualInspectionFinding list
+      UnsupportedFacts: VisualInspectionUnsupportedFact list
+      Diagnostics: string list
+      GeneratedAtUtc: string }
+
+/// Aggregate summary over one or more inspection artifacts and validation results.
+type VisualInspectionSummary =
+    { RunId: string
+      OverallStatus: VisualInspectionStatus
+      ArtifactCount: int
+      InspectedScopes: string list
+      NotInspectedScopes: string list
+      NotRunScopes: string list
+      StatusCounts: (string * int) list
+      FindingCounts: (string * int) list
+      BlockingFindings: VisualInspectionFinding list
+      UnsupportedFacts: VisualInspectionUnsupportedFact list
+      AcceptedExceptions: string list
+      InvalidExceptions: string list
+      RelatedVisualEvidence: string list
+      Caveats: string list
+      Diagnostics: string list }
+
 /// Public contract module exposed by this FS.GG.UI package.
 module Colors =
     /// Public contract function exposed by this FS.GG.UI package.
@@ -731,3 +1009,49 @@ module LayoutEvidence =
     val fromRenderEvidence: scene: Scene -> evidence: RenderReadbackEvidence -> LayoutEvidenceReport
     /// Public contract function exposed by this FS.GG.UI package.
     val unsupported: scene: Scene -> outputSize: Size -> reason: LayoutUnsupportedReason -> LayoutEvidenceReport
+
+/// Dependency-light helpers for structured visual inspection evidence.
+module VisualInspection =
+    /// Stable lowercase token for an inspection readiness status.
+    val statusText: status: VisualInspectionStatus -> string
+    /// Stable lowercase token for a finding severity.
+    val severityText: severity: VisualInspectionSeverity -> string
+    /// Stable lowercase token for a measurement mode.
+    val measurementModeText: mode: VisualInspectionMeasurementMode -> string
+    /// Stable lowercase token for text fit status.
+    val fitStatusText: status: VisualInspectionFitStatus -> string
+    /// Stable lowercase token for a node kind.
+    val nodeKindText: kind: VisualInspectionNodeKind -> string
+    /// Stable lowercase token for paint role.
+    val paintRoleText: role: VisualInspectionPaintRole -> string
+    /// Stable lowercase token for surface role.
+    val surfaceRoleText: role: VisualInspectionSurfaceRole -> string
+    /// Stable lowercase token for clipping status.
+    val clipStatusText: status: VisualInspectionClipStatus -> string
+    /// Stable lowercase token for paint coverage status.
+    val coverageStatusText: status: VisualInspectionCoverageStatus -> string
+    /// Create an explicit unsupported fact.
+    val unsupportedFact:
+        fact: string ->
+        ownerId: string option ->
+        required: bool ->
+        reason: string ->
+        diagnostic: string ->
+        environmentLimited: bool ->
+            VisualInspectionUnsupportedFact
+    /// Build a stable finding id from a rule id and affected ids.
+    val stableFindingId: ruleId: string -> affectedIds: string list -> string
+    /// Create a deterministic finding with a generated stable id.
+    val finding:
+        ruleId: string ->
+        severity: VisualInspectionSeverity ->
+        affectedNodeIds: string list ->
+        affectedRegionIds: string list ->
+        message: string ->
+        expected: string ->
+        actual: string ->
+            VisualInspectionFinding
+    /// Validate artifact identity, ordering, and unsupported-fact disclosure.
+    val artifactDiagnostics: artifact: VisualInspectionArtifact -> string list
+    /// Sort nodes, regions, text runs, findings, and unsupported facts deterministically.
+    val normalizeArtifact: artifact: VisualInspectionArtifact -> VisualInspectionArtifact

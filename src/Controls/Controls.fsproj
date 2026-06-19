@@ -50,6 +50,8 @@
     <Compile Include="Composition.fs" />
     <Compile Include="Control.fsi" />
     <Compile Include="Control.fs" />
+    <Compile Include="Inspection.fsi" />
+    <Compile Include="Inspection.fs" />
     <Compile Include="Reconcile.fsi" />
     <Compile Include="Reconcile.fs" />
     <Compile Include="Widget.fsi" />

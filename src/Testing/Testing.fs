@@ -261,6 +261,41 @@ type GeneratedLayoutValidationResult =
       FailureClass: GeneratedLayoutValidationFailureClass option
       Diagnostics: string list }
 
+type VisualInspectionRule =
+    { RuleId: string
+      Required: bool }
+
+type VisualInspectionException =
+    { ExceptionId: string
+      RuleId: string
+      OwnerId: string
+      AffectedIds: string list
+      Reason: string
+      ExpiresWith: string option }
+
+type VisualInspectionValidationCheck =
+    { Artifact: VisualInspectionArtifact
+      Rules: VisualInspectionRule list
+      Exceptions: VisualInspectionException list
+      RequiredRegionIds: string list
+      PreviousArtifact: VisualInspectionArtifact option
+      EnvironmentLimitations: string list }
+
+type VisualInspectionValidationResult =
+    { ArtifactId: string
+      ReadinessStatus: VisualInspectionStatus
+      Findings: VisualInspectionFinding list
+      AppliedExceptions: string list
+      InvalidExceptions: string list
+      UnusedExceptions: string list
+      Diagnostics: string list }
+
+type VisualInspectionSummarySectionUpdate =
+    { UpdatedText: string
+      SafeToWrite: bool
+      InsertedMarkers: bool
+      Diagnostics: string list }
+
 type HostWarningClass =
     | BenignEnvironmentWarning
     | LaunchFailure
@@ -1303,7 +1338,7 @@ module VisualReadinessMarkdown =
 
         count
 
-    let updateManagedSection (existingText: string) (generatedMarkdown: string) =
+    let updateManagedSection (existingText: string) (generatedMarkdown: string) : VisualSummarySectionUpdate =
         let startCount = countOccurrences existingText startMarker
         let endCount = countOccurrences existingText endMarker
 
@@ -1350,6 +1385,646 @@ module VisualReadinessMarkdown =
               SafeToWrite = false
               InsertedMarkers = false
               Diagnostics = [ "visual readiness managed section must contain exactly one start marker and one end marker" ] }
+
+module VisualInspectionValidation =
+    let rule ruleId = { RuleId = ruleId; Required = true }
+
+    let defaultRules =
+        [ "required-region-present"
+          "required-region-painted"
+          "ordinary-regions-disjoint"
+          "text-contained-in-owner"
+          "clip-intent-classified"
+          "overlay-overlap-classified"
+          "visual-order-stable"
+          "unsupported-required-fact"
+          "identity-stable" ]
+        |> List.map rule
+
+    let private isBlank value = String.IsNullOrWhiteSpace value
+
+    let private isFiniteRect (rect: Rect) =
+        not (Double.IsNaN rect.X)
+        && not (Double.IsNaN rect.Y)
+        && not (Double.IsNaN rect.Width)
+        && not (Double.IsNaN rect.Height)
+        && rect.Width >= 0.0
+        && rect.Height >= 0.0
+
+    let private intersects (a: Rect) (b: Rect) =
+        a.X < b.X + b.Width
+        && a.X + a.Width > b.X
+        && a.Y < b.Y + b.Height
+        && a.Y + a.Height > b.Y
+
+    let private contains (outer: Rect) (inner: Rect) =
+        inner.X >= outer.X
+        && inner.Y >= outer.Y
+        && inner.X + inner.Width <= outer.X + outer.Width
+        && inner.Y + inner.Height <= outer.Y + outer.Height
+
+    let private isOverlayRole role =
+        match role with
+        | VisualInspectionSurfaceRole.Overlay
+        | VisualInspectionSurfaceRole.Popup
+        | VisualInspectionSurfaceRole.Floating -> true
+        | _ -> false
+
+    let private finding ruleId severity nodeIds regionIds message expected actual =
+        VisualInspection.finding ruleId severity nodeIds regionIds message expected actual
+
+    let private affectedIds (finding: VisualInspectionFinding) =
+        finding.AffectedNodeIds @ finding.AffectedRegionIds |> List.sort
+
+    let private exceptionValid (ex: VisualInspectionException) =
+        not (isBlank ex.ExceptionId)
+        && not (isBlank ex.RuleId)
+        && not (isBlank ex.OwnerId)
+        && not ex.AffectedIds.IsEmpty
+        && not (isBlank ex.Reason)
+
+    let private exceptionMatches (finding: VisualInspectionFinding) (ex: VisualInspectionException) =
+        if not (exceptionValid ex) || ex.RuleId <> finding.RuleId then
+            false
+        else
+            Set.ofList ex.AffectedIds = Set.ofList (affectedIds finding)
+
+    let private requiredRegionPresent (artifact: VisualInspectionArtifact) requiredRegionIds =
+        let regionsById = artifact.Regions |> List.map (fun region -> region.RegionId, region) |> Map.ofList
+        let requiredIds =
+            (requiredRegionIds @ (artifact.Regions |> List.filter _.Required |> List.map _.RegionId))
+            |> List.distinct
+
+        [ for regionId in requiredIds do
+              match regionsById |> Map.tryFind regionId with
+              | None ->
+                  finding
+                      "required-region-present"
+                      VisualInspectionSeverity.Blocking
+                      []
+                      [ regionId ]
+                      $"required region `{regionId}` is missing"
+                      "required region present with finite bounds"
+                      "missing"
+              | Some region ->
+                  match region.Bounds with
+                  | Some bounds when isFiniteRect bounds -> ()
+                  | _ ->
+                      finding
+                          "required-region-present"
+                          VisualInspectionSeverity.Blocking
+                          region.OwnerNodeIds
+                          [ region.RegionId ]
+                          $"required region `{region.RegionId}` has missing or invalid bounds"
+                          "finite non-negative bounds"
+                          "missing or invalid bounds" ]
+
+    let private requiredRegionPainted (artifact: VisualInspectionArtifact) =
+        let coverageByTarget =
+            artifact.PaintCoverage
+            |> List.groupBy _.TargetId
+            |> Map.ofList
+
+        [ for region in artifact.Regions do
+              if region.Required then
+                  let coverage = coverageByTarget |> Map.tryFind region.RegionId |> Option.defaultValue []
+                  if coverage.IsEmpty then
+                      finding
+                          "required-region-painted"
+                          VisualInspectionSeverity.Blocking
+                          region.OwnerNodeIds
+                          [ region.RegionId ]
+                          $"required region `{region.RegionId}` has no paint coverage fact"
+                          "complete intentional paint coverage"
+                          "missing coverage fact"
+                  else
+                      for fact in coverage do
+                          match fact.CoverageStatus with
+                          | VisualInspectionCoverageStatus.Complete -> ()
+                          | VisualInspectionCoverageStatus.Unsupported
+                          | VisualInspectionCoverageStatus.Unavailable ->
+                              finding
+                                  "required-region-painted"
+                                  VisualInspectionSeverity.Unsupported
+                                  region.OwnerNodeIds
+                                  [ region.RegionId ]
+                                  $"required region `{region.RegionId}` paint coverage is unsupported"
+                                  "complete intentional paint coverage"
+                                  (VisualInspection.coverageStatusText fact.CoverageStatus)
+                          | VisualInspectionCoverageStatus.Partial
+                          | VisualInspectionCoverageStatus.Missing ->
+                              finding
+                                  "required-region-painted"
+                                  VisualInspectionSeverity.Blocking
+                                  region.OwnerNodeIds
+                                  [ region.RegionId ]
+                                  $"required region `{region.RegionId}` is not fully painted"
+                                  "complete intentional paint coverage"
+                                  (VisualInspection.coverageStatusText fact.CoverageStatus) ]
+
+    let private ordinaryRegionsDisjoint (artifact: VisualInspectionArtifact) =
+        [ for firstIndex, first in artifact.Regions |> List.indexed do
+              for second in artifact.Regions |> List.skip (firstIndex + 1) do
+                  match first.Bounds, second.Bounds with
+                  | Some a, Some b when not (isOverlayRole first.Role) && not (isOverlayRole second.Role) && intersects a b && not (contains a b) && not (contains b a) ->
+                      finding
+                          "ordinary-regions-disjoint"
+                          VisualInspectionSeverity.Blocking
+                          (first.OwnerNodeIds @ second.OwnerNodeIds)
+                          [ first.RegionId; second.RegionId ]
+                          $"ordinary regions `{first.RegionId}` and `{second.RegionId}` overlap"
+                          "ordinary regions are disjoint unless explicitly classified"
+                          "overlap"
+                  | _ -> () ]
+
+    let private textContainedInOwner (artifact: VisualInspectionArtifact) =
+        [ for textRun in artifact.TextRuns do
+              if textRun.Required then
+                  match textRun.FitStatus with
+                  | VisualInspectionFitStatus.Inside ->
+                      match textRun.OwnerBounds, textRun.TextBounds with
+                      | Some owner, Some textBounds when not (contains owner textBounds) ->
+                          finding
+                              "text-contained-in-owner"
+                              VisualInspectionSeverity.Blocking
+                              [ textRun.OwnerNodeId ]
+                              []
+                              $"text `{textRun.TextId}` is classified inside but exceeds its owner bounds"
+                              "text bounds inside owner bounds"
+                              "outside owner bounds"
+                      | _ -> ()
+                  | VisualInspectionFitStatus.Wrapped
+                  | VisualInspectionFitStatus.Truncated -> ()
+                  | VisualInspectionFitStatus.Overflow
+                  | VisualInspectionFitStatus.Clipped ->
+                      finding
+                          "text-contained-in-owner"
+                          VisualInspectionSeverity.Blocking
+                          [ textRun.OwnerNodeId ]
+                          []
+                          $"text `{textRun.TextId}` does not fit inside owner `{textRun.OwnerNodeId}`"
+                          "inside, wrapped, or intentionally truncated text"
+                          (VisualInspection.fitStatusText textRun.FitStatus)
+                  | VisualInspectionFitStatus.Unsupported
+                  | VisualInspectionFitStatus.Unavailable ->
+                      finding
+                          "text-contained-in-owner"
+                          VisualInspectionSeverity.Unsupported
+                          [ textRun.OwnerNodeId ]
+                          []
+                          $"text `{textRun.TextId}` fit facts are unavailable"
+                          "inspectable text fit facts"
+                          (VisualInspection.fitStatusText textRun.FitStatus) ]
+
+    let private clipIntentClassified (artifact: VisualInspectionArtifact) =
+        [ for clip in artifact.ClipFacts do
+              match clip.ClipStatus with
+              | VisualInspectionClipStatus.None
+              | VisualInspectionClipStatus.Intentional -> ()
+              | VisualInspectionClipStatus.Accidental ->
+                  finding
+                      "clip-intent-classified"
+                      VisualInspectionSeverity.Blocking
+                      [ clip.NodeId ]
+                      []
+                      $"node `{clip.NodeId}` has accidental clipping"
+                      "no clipping or intentional owned clipping"
+                      "accidental clipping"
+              | VisualInspectionClipStatus.Unsupported
+              | VisualInspectionClipStatus.Unavailable ->
+                  finding
+                      "clip-intent-classified"
+                      VisualInspectionSeverity.Unsupported
+                      [ clip.NodeId ]
+                      []
+                      $"node `{clip.NodeId}` clipping facts are unavailable"
+                      "inspectable clipping facts"
+                      (VisualInspection.clipStatusText clip.ClipStatus) ]
+
+    let private overlayOverlapClassified (artifact: VisualInspectionArtifact) =
+        [ for firstIndex, first in artifact.Regions |> List.indexed do
+              for second in artifact.Regions |> List.skip (firstIndex + 1) do
+                  if isOverlayRole first.Role || isOverlayRole second.Role then
+                      match first.Bounds, second.Bounds with
+                      | Some a, Some b when intersects a b ->
+                          finding
+                              "overlay-overlap-classified"
+                              VisualInspectionSeverity.Blocking
+                              (first.OwnerNodeIds @ second.OwnerNodeIds)
+                              [ first.RegionId; second.RegionId ]
+                              $"overlay overlap between `{first.RegionId}` and `{second.RegionId}` needs classification"
+                              "explicit owner and reason for overlay overlap"
+                              "unclassified overlay overlap"
+                      | _ -> () ]
+
+    let private unsupportedRequiredFacts (artifact: VisualInspectionArtifact) (environmentLimitations: string list) =
+        [ for fact in artifact.UnsupportedFacts do
+              if fact.Required then
+                  let severity =
+                      if fact.EnvironmentLimited || not environmentLimitations.IsEmpty then
+                          VisualInspectionSeverity.EnvironmentLimited
+                      else
+                          VisualInspectionSeverity.Unsupported
+
+                  finding
+                      "unsupported-required-fact"
+                      severity
+                      (fact.OwnerId |> Option.map List.singleton |> Option.defaultValue [])
+                      []
+                      $"required inspection fact `{fact.Fact}` is unsupported"
+                      "required fact inspectable or explicitly environment-limited"
+                      fact.Reason ]
+
+    let private identityStable (artifact: VisualInspectionArtifact) (previous: VisualInspectionArtifact option) =
+        match previous with
+        | None -> []
+        | Some previousArtifact ->
+            let previousIds = previousArtifact.Nodes |> List.filter (fun n -> not n.Dynamic) |> List.map _.NodeId |> Set.ofList
+            let currentIds = artifact.Nodes |> List.filter (fun n -> not n.Dynamic) |> List.map _.NodeId |> Set.ofList
+
+            if previousIds = currentIds then
+                []
+            else
+                [ finding
+                      "identity-stable"
+                      VisualInspectionSeverity.Blocking
+                      (Set.union previousIds currentIds |> Set.toList)
+                      []
+                      "static node identities changed between inspection runs"
+                      "same static node id set"
+                      "identity set changed" ]
+
+    let private visualOrderStable (artifact: VisualInspectionArtifact) (previous: VisualInspectionArtifact option) =
+        match previous with
+        | None -> []
+        | Some previousArtifact ->
+            let orderOf (a: VisualInspectionArtifact) =
+                a.Nodes |> List.filter (fun n -> not n.Dynamic) |> List.sortBy (fun n -> n.ZOrder, n.NodeId) |> List.map _.NodeId
+
+            let previousOrder = orderOf previousArtifact
+            let currentOrder = orderOf artifact
+
+            if previousOrder = currentOrder then
+                []
+            else
+                [ finding
+                      "visual-order-stable"
+                      VisualInspectionSeverity.Blocking
+                      (previousOrder @ currentOrder |> List.distinct)
+                      []
+                      "static node visual order changed between inspection runs"
+                      "same static visual order"
+                      "visual order changed" ]
+
+    let private findingsForRule (check: VisualInspectionValidationCheck) (rule: VisualInspectionRule) =
+        match rule.RuleId with
+        | "required-region-present" -> requiredRegionPresent check.Artifact check.RequiredRegionIds
+        | "required-region-painted" -> requiredRegionPainted check.Artifact
+        | "ordinary-regions-disjoint" -> ordinaryRegionsDisjoint check.Artifact
+        | "text-contained-in-owner" -> textContainedInOwner check.Artifact
+        | "clip-intent-classified" -> clipIntentClassified check.Artifact
+        | "overlay-overlap-classified" -> overlayOverlapClassified check.Artifact
+        | "unsupported-required-fact" -> unsupportedRequiredFacts check.Artifact check.EnvironmentLimitations
+        | "identity-stable" -> identityStable check.Artifact check.PreviousArtifact
+        | "visual-order-stable" -> visualOrderStable check.Artifact check.PreviousArtifact
+        | unknown when rule.Required ->
+            [ finding unknown VisualInspectionSeverity.Unsupported [] [] $"rule `{unknown}` is not implemented" "implemented validation rule" "unknown rule" ]
+        | _ -> []
+
+    let validateCheck (check: VisualInspectionValidationCheck) =
+        let invalidExceptions =
+            check.Exceptions
+            |> List.filter (exceptionValid >> not)
+            |> List.map _.ExceptionId
+
+        let initialFindings =
+            check.Rules
+            |> List.collect (findingsForRule check)
+            |> List.append check.Artifact.Findings
+            |> List.sortBy _.FindingId
+
+        let validExceptions = check.Exceptions |> List.filter exceptionValid
+        let applied = ResizeArray<string>()
+
+        let findings =
+            initialFindings
+            |> List.map (fun f ->
+                match validExceptions |> List.tryFind (exceptionMatches f) with
+                | Some ex when f.Severity = VisualInspectionSeverity.Blocking ->
+                    applied.Add ex.ExceptionId
+                    { f with
+                        Severity = VisualInspectionSeverity.Pass
+                        ExceptionId = Some ex.ExceptionId
+                        Diagnostics = f.Diagnostics @ [ $"accepted by visual inspection exception `{ex.ExceptionId}`: {ex.Reason}" ] }
+                | _ -> f)
+            |> List.distinctBy _.FindingId
+            |> List.sortBy _.FindingId
+
+        let appliedIds = applied |> Seq.distinct |> Seq.toList
+        let unused =
+            validExceptions
+            |> List.map _.ExceptionId
+            |> List.filter (fun id -> not (List.contains id appliedIds))
+
+        let diagnostics =
+            (VisualInspection.artifactDiagnostics check.Artifact)
+            @ (invalidExceptions |> List.map (fun id -> $"invalid visual inspection exception: {id}"))
+            @ (unused |> List.map (fun id -> $"unused visual inspection exception: {id}"))
+            |> List.distinct
+
+        let has severity =
+            findings |> List.exists (fun f -> f.Severity = severity)
+
+        let status =
+            if not invalidExceptions.IsEmpty || has VisualInspectionSeverity.Blocking then
+                VisualInspectionStatus.Blocked
+            elif has VisualInspectionSeverity.EnvironmentLimited then
+                VisualInspectionStatus.EnvironmentLimited
+            elif has VisualInspectionSeverity.Unsupported then
+                if check.EnvironmentLimitations.IsEmpty then
+                    VisualInspectionStatus.Unsupported
+                else
+                    VisualInspectionStatus.EnvironmentLimited
+            else
+                match check.Artifact.ReadinessStatus with
+                | VisualInspectionStatus.NotRun
+                | VisualInspectionStatus.NotInspected
+                | VisualInspectionStatus.Incomplete -> VisualInspectionStatus.Incomplete
+                | VisualInspectionStatus.Blocked -> VisualInspectionStatus.Blocked
+                | VisualInspectionStatus.Unsupported -> VisualInspectionStatus.Unsupported
+                | VisualInspectionStatus.EnvironmentLimited -> VisualInspectionStatus.EnvironmentLimited
+                | VisualInspectionStatus.Accepted -> VisualInspectionStatus.Accepted
+
+        { ArtifactId = check.Artifact.ArtifactId
+          ReadinessStatus = status
+          Findings = findings
+          AppliedExceptions = appliedIds
+          InvalidExceptions = invalidExceptions
+          UnusedExceptions = unused
+          Diagnostics = diagnostics }
+
+    let validate artifact rules exceptions =
+        validateCheck
+            { Artifact = artifact
+              Rules = rules
+              Exceptions = exceptions
+              RequiredRegionIds = []
+              PreviousArtifact = None
+              EnvironmentLimitations = [] }
+
+module VisualInspectionReadiness =
+    let private statusRank status =
+        match status with
+        | VisualInspectionStatus.Blocked -> 0
+        | VisualInspectionStatus.Unsupported -> 1
+        | VisualInspectionStatus.EnvironmentLimited -> 2
+        | VisualInspectionStatus.Incomplete -> 3
+        | VisualInspectionStatus.NotRun -> 4
+        | VisualInspectionStatus.NotInspected -> 5
+        | VisualInspectionStatus.Accepted -> 6
+
+    let private worstStatus statuses =
+        statuses
+        |> List.sortBy statusRank
+        |> List.tryHead
+        |> Option.defaultValue VisualInspectionStatus.Accepted
+
+    let private countBy values =
+        values |> List.countBy id |> List.sortBy fst
+
+    let aggregate
+        (runId: string)
+        (artifacts: VisualInspectionArtifact list)
+        (results: VisualInspectionValidationResult list)
+        (relatedVisualEvidence: string list)
+        (caveats: string list)
+        =
+        let resultByArtifact = results |> List.map (fun result -> result.ArtifactId, result) |> Map.ofList
+        let statuses =
+            artifacts
+            |> List.map (fun artifact ->
+                resultByArtifact
+                |> Map.tryFind artifact.ArtifactId
+                |> Option.map _.ReadinessStatus
+                |> Option.defaultValue artifact.ReadinessStatus)
+
+        let findings =
+            results |> List.collect _.Findings
+
+        { RunId = runId
+          OverallStatus = worstStatus statuses
+          ArtifactCount = artifacts.Length
+          InspectedScopes =
+            artifacts
+            |> List.filter (fun a -> a.ReadinessStatus <> VisualInspectionStatus.NotInspected && a.ReadinessStatus <> VisualInspectionStatus.NotRun)
+            |> List.map _.Scope.ScopeId
+            |> List.sort
+          NotInspectedScopes =
+            artifacts
+            |> List.filter (fun a -> a.ReadinessStatus = VisualInspectionStatus.NotInspected)
+            |> List.map _.Scope.ScopeId
+            |> List.sort
+          NotRunScopes =
+            artifacts
+            |> List.filter (fun a -> a.ReadinessStatus = VisualInspectionStatus.NotRun)
+            |> List.map _.Scope.ScopeId
+            |> List.sort
+          StatusCounts = statuses |> List.map VisualInspection.statusText |> countBy
+          FindingCounts = findings |> List.map (fun finding -> VisualInspection.severityText finding.Severity) |> countBy
+          BlockingFindings = findings |> List.filter (fun finding -> finding.Severity = VisualInspectionSeverity.Blocking)
+          UnsupportedFacts = artifacts |> List.collect _.UnsupportedFacts
+          AcceptedExceptions = results |> List.collect _.AppliedExceptions |> List.distinct |> List.sort
+          InvalidExceptions = results |> List.collect _.InvalidExceptions |> List.distinct |> List.sort
+          RelatedVisualEvidence = relatedVisualEvidence |> List.distinct |> List.sort
+          Caveats = caveats
+          Diagnostics = results |> List.collect _.Diagnostics |> List.distinct }
+
+module VisualInspectionMarkdown =
+    let startMarker = "<!-- FS.GG VISUAL INSPECTION START -->"
+    let endMarker = "<!-- FS.GG VISUAL INSPECTION END -->"
+
+    let private esc (text: string) =
+        text.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\r", "\\r").Replace("\n", "\\n")
+
+    let private q text = "\"" + esc text + "\""
+
+    let private jsonStringArray values =
+        "[" + (values |> List.map q |> String.concat ", ") + "]"
+
+    let private jsonCounts values =
+        values
+        |> List.map (fun (name, count) -> $"    {q name}: {count}")
+        |> String.concat ",\n"
+
+    let private countsText values =
+        if List.isEmpty values then
+            "none"
+        else
+            values |> List.map (fun (name, count) -> $"{name}={count}") |> String.concat ", "
+
+    let renderSummary (summary: VisualInspectionSummary) =
+        let sb = StringBuilder()
+        let line (text: string) = sb.AppendLine(text) |> ignore
+
+        let inspectedScopesText = String.concat ", " summary.InspectedScopes
+
+        line "## Visual Inspection"
+        line ""
+        line $"- run: `{summary.RunId}`"
+        line $"- status: **{VisualInspection.statusText summary.OverallStatus}**"
+        line $"- artifacts: `{summary.ArtifactCount}`"
+        line $"- inspected scopes: `{inspectedScopesText}`"
+        line $"- status counts: `{countsText summary.StatusCounts}`"
+        line $"- finding counts: `{countsText summary.FindingCounts}`"
+
+        if not summary.BlockingFindings.IsEmpty then
+            line ""
+            line "### Blocking Findings"
+            line "| finding | rule | affected | message |"
+            line "|---|---|---|---|"
+            for finding in summary.BlockingFindings do
+                let affected = String.concat ", " (finding.AffectedRegionIds @ finding.AffectedNodeIds)
+                line $"| `{finding.FindingId}` | `{finding.RuleId}` | `{affected}` | {finding.Message} |"
+
+        if not summary.UnsupportedFacts.IsEmpty then
+            line ""
+            line "### Unsupported Facts"
+            for fact in summary.UnsupportedFacts do
+                let owner = fact.OwnerId |> Option.defaultValue "scope"
+                line $"- `{fact.Fact}` on `{owner}`: {fact.Reason}"
+
+        if not summary.AcceptedExceptions.IsEmpty then
+            line ""
+            line "### Accepted Exceptions"
+            for exceptionId in summary.AcceptedExceptions do
+                line $"- `{exceptionId}`"
+
+        if not summary.InvalidExceptions.IsEmpty then
+            line ""
+            line "### Invalid Exceptions"
+            for exceptionId in summary.InvalidExceptions do
+                line $"- `{exceptionId}`"
+
+        if not summary.RelatedVisualEvidence.IsEmpty then
+            line ""
+            line "### Related Visual Evidence"
+            for path in summary.RelatedVisualEvidence do
+                line $"- `{path}`"
+
+        if not summary.Caveats.IsEmpty then
+            line ""
+            line "### Caveats"
+            for caveat in summary.Caveats do
+                line $"- {caveat}"
+
+        if not summary.Diagnostics.IsEmpty then
+            line ""
+            line "### Diagnostics"
+            for diagnostic in summary.Diagnostics do
+                line $"- {diagnostic}"
+
+        sb.ToString()
+
+    let renderJson (summary: VisualInspectionSummary) =
+        let findingJson =
+            summary.BlockingFindings
+            |> List.map (fun finding ->
+                let affected = finding.AffectedRegionIds @ finding.AffectedNodeIds
+                $"    {{ \"findingId\": {q finding.FindingId}, \"ruleId\": {q finding.RuleId}, \"severity\": {q (VisualInspection.severityText finding.Severity)}, \"affectedIds\": {jsonStringArray affected}, \"message\": {q finding.Message} }}")
+            |> String.concat ",\n"
+
+        let unsupportedJson =
+            summary.UnsupportedFacts
+            |> List.map (fun fact ->
+                let ownerJson = fact.OwnerId |> Option.map q |> Option.defaultValue "null"
+                $"    {{ \"fact\": {q fact.Fact}, \"ownerId\": {ownerJson}, \"required\": {fact.Required.ToString().ToLowerInvariant()}, \"reason\": {q fact.Reason}, \"environmentLimited\": {fact.EnvironmentLimited.ToString().ToLowerInvariant()} }}")
+            |> String.concat ",\n"
+
+        String.concat
+            "\n"
+            [ "{"
+              $"  \"runId\": {q summary.RunId},"
+              $"  \"overallStatus\": {q (VisualInspection.statusText summary.OverallStatus)},"
+              $"  \"artifactCount\": {summary.ArtifactCount},"
+              $"  \"inspectedScopes\": {jsonStringArray summary.InspectedScopes},"
+              $"  \"notInspectedScopes\": {jsonStringArray summary.NotInspectedScopes},"
+              $"  \"notRunScopes\": {jsonStringArray summary.NotRunScopes},"
+              "  \"statusCounts\": {"
+              jsonCounts summary.StatusCounts
+              "  },"
+              "  \"findingCounts\": {"
+              jsonCounts summary.FindingCounts
+              "  },"
+              "  \"blockingFindings\": ["
+              findingJson
+              "  ],"
+              "  \"unsupportedFacts\": ["
+              unsupportedJson
+              "  ],"
+              $"  \"acceptedExceptions\": {jsonStringArray summary.AcceptedExceptions},"
+              $"  \"invalidExceptions\": {jsonStringArray summary.InvalidExceptions},"
+              $"  \"relatedVisualEvidence\": {jsonStringArray summary.RelatedVisualEvidence},"
+              $"  \"caveats\": {jsonStringArray summary.Caveats},"
+              $"  \"diagnostics\": {jsonStringArray summary.Diagnostics}"
+              "}" ]
+        + "\n"
+
+    let private countOccurrences (text: string) (pattern: string) =
+        let mutable count = 0
+        let mutable start = 0
+        let mutable finished = false
+
+        while not finished do
+            let index = text.IndexOf(pattern, start, StringComparison.Ordinal)
+            if index < 0 then
+                finished <- true
+            else
+                count <- count + 1
+                start <- index + pattern.Length
+
+        count
+
+    let updateManagedSection (existingText: string) (generatedMarkdown: string) =
+        let startCount = countOccurrences existingText startMarker
+        let endCount = countOccurrences existingText endMarker
+        let sectionText = startMarker + Environment.NewLine + generatedMarkdown.TrimEnd() + Environment.NewLine + endMarker
+
+        match startCount, endCount with
+        | 0, 0 ->
+            let separator =
+                if String.IsNullOrEmpty existingText then
+                    ""
+                elif existingText.EndsWith(Environment.NewLine, StringComparison.Ordinal) then
+                    Environment.NewLine
+                else
+                    Environment.NewLine + Environment.NewLine
+
+            { UpdatedText = existingText + separator + sectionText + Environment.NewLine
+              SafeToWrite = true
+              InsertedMarkers = true
+              Diagnostics = [] }
+        | 1, 1 ->
+            let startIndex = existingText.IndexOf(startMarker, StringComparison.Ordinal)
+            let endIndex = existingText.IndexOf(endMarker, StringComparison.Ordinal)
+
+            if startIndex > endIndex then
+                { UpdatedText = existingText
+                  SafeToWrite = false
+                  InsertedMarkers = false
+                  Diagnostics = [ "visual inspection managed markers are reversed" ] }
+            else
+                let prefix = existingText.Substring(0, startIndex)
+                let suffix = existingText.Substring(endIndex + endMarker.Length)
+
+                { UpdatedText = prefix + sectionText + suffix
+                  SafeToWrite = true
+                  InsertedMarkers = false
+                  Diagnostics = [] }
+        | _ ->
+            { UpdatedText = existingText
+              SafeToWrite = false
+              InsertedMarkers = false
+              Diagnostics = [ "visual inspection managed section must contain exactly one start marker and one end marker" ] }
 
 module GeneratedProductAssertions =
     let summarize expectation =

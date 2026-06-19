@@ -4,6 +4,7 @@
 **Repository:** FS.GG.Rendering
 **Feature 162 baseline after merge:** `main` at `4b086a5` (`chore: bump FS.GG.UI packages to 0.1.24-preview.1`)
 **Feature 163 follow-up:** Package-feed validation lanes are implemented; the current post-merge package set is `0.1.25-preview.1`.
+**Feature 165 follow-up:** Structured render/layout inspection metadata is implemented; the current package set before merge is `0.1.26-preview.1`.
 **Primary work observed:** Feature 162, AntShowcase visual readiness implementation, plus earlier local/Codex/Claude skill parity work
 **Scope:** Problems encountered in the framework, validation workflow, and skills while implementing and validating the AntShowcase visual overhaul. This report focuses on improvements possible in library code, sample infrastructure, generated readiness tooling, and coding-agent skills.
 
@@ -19,7 +20,7 @@ The work also exposed several friction points:
 2. Per-feature readiness evidence is ignored by default. Feature 162 had to be explicitly allowlisted in `.gitignore` before the evidence package could be committed.
 3. Full-solution test execution is not robust enough as a single validation gate. `Controls.Tests` stopped producing output for several minutes and the full run had to be canceled.
 4. Visual-readiness behavior is mostly sample-owned. Screenshot matrix capture, completeness checks, contact-sheet generation, reviewer-defect gating, and summary assembly belong in reusable testing/tooling APIs rather than a sample app edge.
-5. The framework lacks structured visual/layout metadata for assertions. The feature can assert declared regions and non-empty render trees, but "readable and not overlapping" still depends heavily on screenshots and human review.
+5. Feature 165 adds structured visual/layout metadata for deterministic assertions. The first slice covers Scene inspection records, a Controls `Control.renderTree` adapter, Testing validation/readiness helpers, summaries, and explicit unsupported facts; retained damage metadata and broad sample adoption remain follow-up scope.
 6. Generated summary commands can overwrite richer hand-written readiness notes. The visual-readiness summarizer rewrote `validation-summary.md` to a minimal link-only summary after a detailed summary had been added.
 7. Skills helped with domain orientation, but they do not yet encode several recurring repository traps: local package-feed drift, readiness ignore rules, concurrent test output locks, post-merge package bump requirements, and how to preserve evidence honesty.
 8. A post-readiness interactive diagnostic found severe input-lag risk in the synchronous post-input render path. Pointer routing itself was fast, but a state-changing click can force hundreds of milliseconds of retained render/lowering/layout/text work on the same event path, causing later mouse events to queue.
@@ -390,6 +391,20 @@ type TextRunInspection =
       FitsContainer: bool }
 ```
 
+**Feature 165 update — implemented 2026-06-19**
+
+The first framework-level inspection slice now exists:
+
+- `FS.GG.UI.Scene.VisualInspection*` records define dependency-light scopes, nodes, regions, text runs, paint coverage, clip facts, unsupported facts, findings, artifacts, summaries, stable status tokens, and deterministic finding ids.
+- `FS.GG.UI.Controls.ControlInspection` derives inspection artifacts from the existing `Control.renderTree` path without changing rendered `Scene`, bounds, diagnostics, event bindings, bound ids, or node counts.
+- `FS.GG.UI.Testing.VisualInspectionValidation` validates required regions, paint coverage, ordinary-region overlap, text containment, clip intent, overlay exceptions, unsupported required facts, stable identity, and visual order.
+- `VisualInspectionReadiness` and `VisualInspectionMarkdown` aggregate reviewer-readable Markdown, machine-readable JSON, and safe managed-section updates.
+
+Focused Feature 165 tests passed for Scene, Controls, and Testing. The representative evidence under
+`specs/165-render-layout-inspection/readiness/inspection/` records accepted deterministic inspection
+for a bounded sample plus an explicit non-required unsupported transform fact. Screenshot readiness
+remains separate and unchanged.
+
 This would allow tests to express assertions such as:
 
 - All text bounds are inside their owning section.
@@ -575,6 +590,10 @@ sample-specific rendering or image composition into the Testing package.
 ### 4.3 Add render/layout inspection metadata
 
 **Priority:** High
+
+Status after Feature 165: implemented for the dependency-light Scene model, Controls render-tree
+adapter, Testing validators, summaries, and representative evidence. Remaining follow-up scope is
+retained-render inspection, damage/dirty-rect metadata, and broader sample/generated-product adoption.
 
 Expose a stable test artifact with:
 
@@ -1512,44 +1531,58 @@ Move sample-owned visual readiness data and summary behavior into reusable testi
 
 Expose stable inspection metadata so visual assertions can move from manual screenshot review to deterministic tests.
 
+**Implementation status on 2026-06-19:** Feature 165 shipped the first structured inspection
+contract across `FS.GG.UI.Scene`, `FS.GG.UI.Controls`, and `FS.GG.UI.Testing`. The implementation is
+additive: screenshots, `LayoutEvidenceReport`, and `GeneratedLayoutValidation` remain supported.
+
 **Primary user stories**
 
 - **US1:** A test can inspect final control bounds, text runs, clipping, z-order, and ownership.
 - **US2:** A test can assert text fit and section containment without image analysis.
-- **US3:** A test can assert localized damage bounds after interaction.
-- **US4:** Visual evidence summaries can link screenshot defects to structured nodes.
+- **US3:** A reviewer can consume Markdown/JSON inspection summaries with grouped statuses, findings, unsupported facts, exceptions, and related visual evidence links.
+- **US4:** Samples and generated products can adopt inspection incrementally while unsupported, not-inspected, not-run, and environment-limited scopes stay visible.
 
-**Expected source paths**
+**Implemented source paths**
 
-- `src/Controls/Control.fsi`
-- `src/Controls/Control.fs`
-- `src/Controls/RetainedRender.fsi`
-- `src/Controls/RetainedRender.fs`
-- `src/Layout/Layout.fsi`
-- `src/Layout/Layout.fs`
-- `tests/Controls.Tests/FeatureXXXVisualInspectionTests.fs`
-- `tests/Layout.Tests/FeatureXXXInspectionTests.fs`
-- `samples/AntShowcase/AntShowcase.Tests/VisualShellTests.fs`
+- `src/Scene/Scene.fsi`
+- `src/Scene/Scene.fs`
+- `src/Controls/Inspection.fsi`
+- `src/Controls/Inspection.fs`
+- `src/Testing/Testing.fsi`
+- `src/Testing/Testing.fs`
+- `tests/Scene.Tests/Feature165VisualInspectionModelTests.fs`
+- `tests/Scene.Tests/Feature165VisualInspectionPaintTests.fs`
+- `tests/Controls.Tests/Feature165ControlInspectionLayoutTests.fs`
+- `tests/Controls.Tests/Feature165ControlInspectionPaintTests.fs`
+- `tests/Controls.Tests/Feature165ControlInspectionRegressionTests.fs`
+- `tests/Testing.Tests/Feature165VisualInspectionValidationTests.fs`
+- `tests/Testing.Tests/Feature165VisualInspectionExceptionTests.fs`
+- `tests/Testing.Tests/Feature165VisualInspectionSummaryTests.fs`
+- `tests/Testing.Tests/Feature165VisualInspectionArtifactTests.fs`
+- `tests/Testing.Tests/Feature165VisualInspectionAdoptionTests.fs`
 
 **Spec and plan requirements**
 
 - Inspection artifacts must be stable enough for tests but not expose private renderer internals as a permanent compatibility burden without `.fsi` review.
 - Text fit should be computed from the same measured text data used by rendering.
-- Damage assertions should use union area and dirty rects, not summed overlapping area.
+- Damage assertions should use union area and dirty rects, not summed overlapping area. This remains follow-up scope after the first structured inspection contract.
 - API additions require surface baseline updates.
 
-**Task outline**
+**Implemented task summary**
 
-- [ ] T001 [P] Draft `VisualNodeInspection` and `TextRunInspection` in `src/Controls/Control.fsi` or a dedicated inspection signature.
-- [ ] T002 [P] Add failing Controls tests for text-fit and containment on representative controls.
-- [ ] T003 [P] Add failing Layout tests for final-region disjointness and clipping metadata.
-- [ ] T004 Add inspection emission from `Control.renderTree` output.
-- [ ] T005 Add retained inspection emission after `RetainedRender.step`.
-- [ ] T006 Add text-run bounds and fit status from the text measurement path.
-- [ ] T007 Add damage inspection fields for dirty rect union area, repainted nodes, and shifted nodes.
-- [ ] T008 Update AntShowcase visual shell tests to assert structured region containment.
-- [ ] T009 Update surface baselines and public docs.
-- [ ] T010 Run Controls, Layout, and AntShowcase visual tests; save before/after evidence.
+- [x] Draft dependency-light Scene inspection records and helpers.
+- [x] Add a dedicated Controls inspection signature and adapter.
+- [x] Add Testing validation, readiness, Markdown/JSON, and managed-section helpers.
+- [x] Add semantic tests for model stability, Controls extraction, validation rules, exceptions, summaries, artifacts, adoption, and render-output regression.
+- [x] Update package READMEs, compatibility notes, surface baselines, and representative readiness evidence.
+- [x] Record FSI API-shape, focused tests, package-surface, package-pack, generated-product helper, and timing evidence under `specs/165-render-layout-inspection/readiness/`.
+
+**Remaining follow-up**
+
+- [ ] Add retained-render inspection emission after `RetainedRender.step`.
+- [ ] Add damage inspection fields for dirty rect union area, repainted nodes, and shifted nodes.
+- [ ] Migrate at least one AntShowcase visual-shell assertion to structured inspection evidence.
+- [ ] Replace the missing `fake.sh` target dependency with a canonical repo validation command or restore the wrapper.
 
 **Parallel opportunities**
 
@@ -1560,9 +1593,9 @@ Expose stable inspection metadata so visual assertions can move from manual scre
 
 **Definition of done**
 
-- At least one AntShowcase overlap/text-fit claim is asserted without screenshot review.
-- Localized interactions have damage-area tests that fail if the whole frame is dirtied unnecessarily.
-- Public API and surface baselines are updated consistently.
+- Scene, Controls, and Testing public API and surface baselines are updated consistently.
+- Focused Feature 165 tests pass for the shipped inspection contract.
+- Representative inspection summaries distinguish accepted, unsupported, environment-limited, not-inspected, and not-run states without relying on screenshot evidence.
 
 ### 13.6 Feature 166: responsiveness diagnostics and input-loop scheduling
 

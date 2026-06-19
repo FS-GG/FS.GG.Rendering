@@ -236,7 +236,7 @@ module internal Composition =
             | GlyphRun run -> GlyphRun { run with Paint = { run.Paint with Opacity = run.Paint.Opacity * opacity } })
 
     let private applyOpacity opacity scenes =
-        scenes |> List.map (fun scene -> { scene with Nodes = mapSceneNodes opacity scene.Nodes })
+        scenes |> List.map (fun (scene: Scene) -> { scene with Nodes = mapSceneNodes opacity scene.Nodes })
 
     let applyChain chain content =
         chain.NormalizedEffects

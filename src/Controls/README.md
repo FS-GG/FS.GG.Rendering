@@ -3,7 +3,7 @@
 Declarative Skia controls, rich rendering, chart controls, graph controls, DataGrid, and product-owned control runtime contracts.
 
 `FS.GG.UI.Controls` is one of the **FS.GG.UI** distribution packages — an F# / Elmish UI and 2D
-scene-graph framework for .NET 10 desktop, rendered through Vulkan + SkiaSharp.
+scene-graph framework for .NET 10 desktop, rendered through OpenGL + SkiaSharp.
 
 ## Install
 
@@ -42,11 +42,23 @@ let view =
 
 // Render against a built-in theme to get a Scene + layout + diagnostics.
 let result : ControlRenderResult<Msg> = Control.render Theme.dark view
+
+// Inspect the same renderTree path as structured layout/text/paint metadata.
+let inspection =
+    ControlInspection.inspect
+        { Scope = { ScopeId = "dashboard"; Title = "Dashboard"; Required = true }
+          Theme = Theme.dark
+          OutputSize = { Width = 1280; Height = 800 }
+          Control = view
+          Presentation = "dark"
+          RunId = Some "local-run"
+          RelatedVisualEvidence = [] }
 ```
 
 ## API at a glance
 
 - `Control` — core lifecycle: `create` / `standard` / `customControl` build nodes, `render` produces a `ControlRenderResult` (scene, layout, diagnostics, event bindings), and `dispatch` / `diagnostics` inspect a `Control<'msg>`. Rendering also clips every container's children to its bounds (no spill), paints `Overlay`-built transient surfaces last (z-top, escaping ancestor clips — `isOverlaySurface`), and makes `scroll-viewer` a real clipping viewport. `scrollViewport` reads back `ScrollViewport` geometry with content width/height, horizontal/vertical max offsets, extent source, and diagnostics derived from the Layout intrinsic protocol. See `docs/bridge/feature-137-render-blockers.md`.
+- `ControlInspection` — additive structured inspection over `Control.renderTree`, emitting stable node ids, final bounds, ownership, visual order, text-fit facts, clip facts, paint coverage, surface roles, diagnostics, and explicit unsupported facts without changing rendered output or event bindings.
 - Declarative control modules — `Button`, `Label`, `TextBlock`, `CheckBox`, `Slider`, `TextBox`, `Stack`, `Grid`, `Border`, `Tabs`, `Dialog`, and more, each with `create` plus content/event attributes like `text`, `onClick`, and `children`.
 - `Charts` — `LineChart`, `BarChart`, `PieChart`, `ScatterPlot`, and `GraphView`, fed by `ChartSeries` / `ChartPoint` records.
 - `DataGrid` — virtualized grid with an Elmish `init` / `update` over `DataGridModel`, `DataGridMsg`, and `DataGridEffect`, plus a declarative `create` using `DataGridColumn` / `DataGridRow`.

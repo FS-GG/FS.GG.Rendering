@@ -110,6 +110,14 @@ FS.GG.UI.Testing.VisualEvidenceKind
 FS.GG.UI.Testing.VisualEvidenceKind+Tags
 FS.GG.UI.Testing.VisualEvidenceRequest
 FS.GG.UI.Testing.VisualEvidenceResult
+FS.GG.UI.Testing.VisualInspectionException
+FS.GG.UI.Testing.VisualInspectionMarkdown
+FS.GG.UI.Testing.VisualInspectionReadiness
+FS.GG.UI.Testing.VisualInspectionRule
+FS.GG.UI.Testing.VisualInspectionSummarySectionUpdate
+FS.GG.UI.Testing.VisualInspectionValidation
+FS.GG.UI.Testing.VisualInspectionValidationCheck
+FS.GG.UI.Testing.VisualInspectionValidationResult
 FS.GG.UI.Testing.VisualPage
 FS.GG.UI.Testing.VisualReadiness
 FS.GG.UI.Testing.VisualReadinessMarkdown

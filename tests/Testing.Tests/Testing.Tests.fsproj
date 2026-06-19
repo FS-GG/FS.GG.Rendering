@@ -21,6 +21,11 @@
     <Compile Include="Feature160ThroughputReadinessTests.fs" />
     <Compile Include="Feature161HostLaneReadinessTests.fs" />
     <Compile Include="Feature164VisualReadinessTests.fs" />
+    <Compile Include="Feature165VisualInspectionValidationTests.fs" />
+    <Compile Include="Feature165VisualInspectionExceptionTests.fs" />
+    <Compile Include="Feature165VisualInspectionSummaryTests.fs" />
+    <Compile Include="Feature165VisualInspectionArtifactTests.fs" />
+    <Compile Include="Feature165VisualInspectionAdoptionTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

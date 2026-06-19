@@ -64,6 +64,8 @@ FS.GG.UI.Controls.ControlEvent
 FS.GG.UI.Controls.ControlEventBinding`1
 FS.GG.UI.Controls.ControlEventOrigin
 FS.GG.UI.Controls.ControlEventOrigin+Tags
+FS.GG.UI.Controls.ControlInspection
+FS.GG.UI.Controls.ControlInspectionRequest`1
 FS.GG.UI.Controls.ControlRenderResult`1
 FS.GG.UI.Controls.ControlRuntime
 FS.GG.UI.Controls.ControlRuntimeEffect

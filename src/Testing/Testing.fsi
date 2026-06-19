@@ -295,6 +295,46 @@ type GeneratedLayoutValidationResult =
       FailureClass: GeneratedLayoutValidationFailureClass option
       Diagnostics: string list }
 
+/// Stable validation rule descriptor for structured visual inspection.
+type VisualInspectionRule =
+    { RuleId: string
+      Required: bool }
+
+/// Reviewed allowance for a specific visual inspection finding.
+type VisualInspectionException =
+    { ExceptionId: string
+      RuleId: string
+      OwnerId: string
+      AffectedIds: string list
+      Reason: string
+      ExpiresWith: string option }
+
+/// Request for validating one visual inspection artifact.
+type VisualInspectionValidationCheck =
+    { Artifact: VisualInspectionArtifact
+      Rules: VisualInspectionRule list
+      Exceptions: VisualInspectionException list
+      RequiredRegionIds: string list
+      PreviousArtifact: VisualInspectionArtifact option
+      EnvironmentLimitations: string list }
+
+/// Rule-validation result for one inspected artifact.
+type VisualInspectionValidationResult =
+    { ArtifactId: string
+      ReadinessStatus: VisualInspectionStatus
+      Findings: VisualInspectionFinding list
+      AppliedExceptions: string list
+      InvalidExceptions: string list
+      UnusedExceptions: string list
+      Diagnostics: string list }
+
+/// Safe managed-section update result for inspection summaries.
+type VisualInspectionSummarySectionUpdate =
+    { UpdatedText: string
+      SafeToWrite: bool
+      InsertedMarkers: bool
+      Diagnostics: string list }
+
 /// Public contract type exposed by this FS.GG.UI package.
 type HostWarningClass =
     | BenignEnvironmentWarning
@@ -831,6 +871,45 @@ module VisualReadinessMarkdown =
     val renderJson: report: VisualReadinessReport -> string
     /// Update or insert exactly one generated section while preserving manual text.
     val updateManagedSection: existingText: string -> generatedMarkdown: string -> VisualSummarySectionUpdate
+
+/// Structured visual inspection rule vocabulary and validators.
+module VisualInspectionValidation =
+    /// Create a required validation rule by stable rule id.
+    val rule: ruleId: string -> VisualInspectionRule
+    /// The initial deterministic visual inspection rule set.
+    val defaultRules: VisualInspectionRule list
+    /// Validate an artifact with explicit rules, exceptions, expected regions, and optional previous artifact.
+    val validateCheck: check: VisualInspectionValidationCheck -> VisualInspectionValidationResult
+    /// Validate an artifact with the default check shape.
+    val validate:
+        artifact: VisualInspectionArtifact ->
+        rules: VisualInspectionRule list ->
+        exceptions: VisualInspectionException list ->
+            VisualInspectionValidationResult
+
+/// Readiness aggregation for one or more visual inspection validation results.
+module VisualInspectionReadiness =
+    /// Aggregate artifacts and validation results into a reviewer- and machine-readable summary.
+    val aggregate:
+        runId: string ->
+        artifacts: VisualInspectionArtifact list ->
+        results: VisualInspectionValidationResult list ->
+        relatedVisualEvidence: string list ->
+        caveats: string list ->
+            VisualInspectionSummary
+
+/// Markdown, JSON, and managed-section helpers for visual inspection evidence.
+module VisualInspectionMarkdown =
+    /// Managed-section start marker used in human inspection summaries.
+    val startMarker: string
+    /// Managed-section end marker used in human inspection summaries.
+    val endMarker: string
+    /// Render a human-readable generated Markdown inspection section.
+    val renderSummary: summary: VisualInspectionSummary -> string
+    /// Render deterministic machine-readable JSON for an inspection summary.
+    val renderJson: summary: VisualInspectionSummary -> string
+    /// Update or insert exactly one generated inspection section while preserving manual text.
+    val updateManagedSection: existingText: string -> generatedMarkdown: string -> VisualInspectionSummarySectionUpdate
 
 /// Public contract module exposed by this FS.GG.UI package.
 module GeneratedProductAssertions =

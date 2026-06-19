@@ -1,0 +1,152 @@
+{
+  "artifactId": "representative-sample:320x200:light",
+  "scope": {
+    "scopeId": "representative-sample",
+    "title": "Representative sample",
+    "required": true
+  },
+  "outputSize": {
+    "width": 320,
+    "height": 200
+  },
+  "presentation": "light",
+  "readinessStatus": "accepted",
+  "nodes": [
+    {
+      "nodeId": "root",
+      "parentId": null,
+      "kind": "root",
+      "ownerId": "root",
+      "bounds": { "x": 0.0, "y": 0.0, "width": 320.0, "height": 200.0 },
+      "clip": "intentional",
+      "zOrder": 0,
+      "paintRole": "background",
+      "surfaceRole": "root",
+      "textRunIds": [],
+      "children": ["title", "content", "decorative-transform"],
+      "dynamic": false,
+      "unsupportedFacts": []
+    },
+    {
+      "nodeId": "title",
+      "parentId": "root",
+      "kind": "text",
+      "ownerId": "title",
+      "bounds": { "x": 8.0, "y": 8.0, "width": 304.0, "height": 32.0 },
+      "clip": "none",
+      "zOrder": 1,
+      "paintRole": "content",
+      "surfaceRole": "content",
+      "textRunIds": ["title:text"],
+      "children": [],
+      "dynamic": false,
+      "unsupportedFacts": []
+    },
+    {
+      "nodeId": "content",
+      "parentId": "root",
+      "kind": "container",
+      "ownerId": "content",
+      "bounds": { "x": 8.0, "y": 48.0, "width": 304.0, "height": 120.0 },
+      "clip": "intentional",
+      "zOrder": 2,
+      "paintRole": "border",
+      "surfaceRole": "content",
+      "textRunIds": [],
+      "children": [],
+      "dynamic": false,
+      "unsupportedFacts": []
+    },
+    {
+      "nodeId": "decorative-transform",
+      "parentId": "root",
+      "kind": "transform-card",
+      "ownerId": "decorative-transform",
+      "bounds": { "x": 16.0, "y": 172.0, "width": 80.0, "height": 20.0 },
+      "clip": "none",
+      "zOrder": 3,
+      "paintRole": "content",
+      "surfaceRole": "content",
+      "textRunIds": [],
+      "children": [],
+      "dynamic": false,
+      "unsupportedFacts": [
+        {
+          "fact": "transform-bounds",
+          "ownerId": "decorative-transform",
+          "required": false,
+          "reason": "non-required transformed bounds are explicitly unsupported by the first Controls adapter",
+          "diagnostic": "unsupported facts are recorded instead of inferred as passing",
+          "environmentLimited": false
+        }
+      ]
+    }
+  ],
+  "regions": [
+    {
+      "regionId": "root",
+      "name": "root",
+      "role": "root",
+      "bounds": { "x": 0.0, "y": 0.0, "width": 320.0, "height": 200.0 },
+      "required": true,
+      "ownerNodeIds": ["root"],
+      "allowedOverlapRoles": ["overlay", "popup", "floating"]
+    },
+    {
+      "regionId": "content",
+      "name": "content",
+      "role": "content",
+      "bounds": { "x": 8.0, "y": 48.0, "width": 304.0, "height": 120.0 },
+      "required": false,
+      "ownerNodeIds": ["content"],
+      "allowedOverlapRoles": ["overlay", "popup", "floating"]
+    }
+  ],
+  "textRuns": [
+    {
+      "textId": "title:text",
+      "ownerNodeId": "title",
+      "text": "Representative inspection",
+      "textBounds": { "x": 16.0, "y": 14.0, "width": 168.0, "height": 14.0 },
+      "ownerBounds": { "x": 8.0, "y": 8.0, "width": 304.0, "height": 32.0 },
+      "baseline": 11.2,
+      "measurementMode": "approximate",
+      "fitStatus": "inside",
+      "required": true,
+      "diagnostics": []
+    }
+  ],
+  "paintCoverage": [
+    {
+      "coverageId": "root:paint",
+      "targetId": "root",
+      "paintRole": "background",
+      "coverageBounds": { "x": 0.0, "y": 0.0, "width": 320.0, "height": 200.0 },
+      "coverageStatus": "complete",
+      "reason": null
+    }
+  ],
+  "clipFacts": [
+    {
+      "clipId": "content:clip",
+      "nodeId": "content",
+      "clipBounds": { "x": 8.0, "y": 48.0, "width": 304.0, "height": 120.0 },
+      "clipStatus": "intentional",
+      "reason": "container clipping is part of Control.renderTree composition",
+      "affectedTextRunIds": []
+    }
+  ],
+  "findings": [],
+  "unsupportedFacts": [
+    {
+      "fact": "transform-bounds",
+      "ownerId": "decorative-transform",
+      "required": false,
+      "reason": "non-required transformed bounds are explicitly unsupported by the first Controls adapter",
+      "diagnostic": "unsupported facts are recorded instead of inferred as passing",
+      "environmentLimited": false
+    }
+  ],
+  "diagnostics": [],
+  "generatedAtUtc": "2026-06-19T09:40:00Z"
+}

@@ -443,6 +443,204 @@ type LayoutEvidenceReport =
       Diagnostics: string list
       RenderEvidence: RenderReadbackEvidence option }
 
+[<RequireQualifiedAccess>]
+type VisualInspectionStatus =
+    | Accepted
+    | Blocked
+    | Incomplete
+    | Unsupported
+    | EnvironmentLimited
+    | NotInspected
+    | NotRun
+
+[<RequireQualifiedAccess>]
+type VisualInspectionSeverity =
+    | Pass
+    | Info
+    | Warning
+    | Blocking
+    | Unsupported
+    | EnvironmentLimited
+
+[<RequireQualifiedAccess>]
+type VisualInspectionMeasurementMode =
+    | Exact
+    | Approximate
+    | Unsupported
+    | Unavailable
+
+[<RequireQualifiedAccess>]
+type VisualInspectionFitStatus =
+    | Inside
+    | Overflow
+    | Clipped
+    | Wrapped
+    | Truncated
+    | Unsupported
+    | Unavailable
+
+[<RequireQualifiedAccess>]
+type VisualInspectionNodeKind =
+    | Root
+    | Container
+    | Text
+    | Shape
+    | Image
+    | Overlay
+    | Popup
+    | Custom of string
+    | Unknown
+
+[<RequireQualifiedAccess>]
+type VisualInspectionPaintRole =
+    | Background
+    | Surface
+    | Border
+    | Foreground
+    | Content
+    | Overlay
+    | None
+    | Unknown
+
+[<RequireQualifiedAccess>]
+type VisualInspectionSurfaceRole =
+    | Root
+    | Shell
+    | Content
+    | Navigation
+    | Feedback
+    | Overlay
+    | Popup
+    | Floating
+    | Custom of string
+    | Unknown
+
+[<RequireQualifiedAccess>]
+type VisualInspectionClipStatus =
+    | None
+    | Intentional
+    | Accidental
+    | Unsupported
+    | Unavailable
+
+[<RequireQualifiedAccess>]
+type VisualInspectionCoverageStatus =
+    | Complete
+    | Partial
+    | Missing
+    | Unsupported
+    | Unavailable
+
+type VisualInspectionScope =
+    { ScopeId: string
+      Title: string
+      Required: bool }
+
+type VisualInspectionUnsupportedFact =
+    { Fact: string
+      OwnerId: string option
+      Required: bool
+      Reason: string
+      Diagnostic: string
+      EnvironmentLimited: bool }
+
+type VisualInspectionNode =
+    { NodeId: string
+      ParentId: string option
+      Kind: VisualInspectionNodeKind
+      OwnerId: string option
+      Bounds: Rect option
+      Clip: VisualInspectionClipStatus
+      ZOrder: int
+      PaintRole: VisualInspectionPaintRole
+      SurfaceRole: VisualInspectionSurfaceRole
+      TextRunIds: string list
+      Children: string list
+      Dynamic: bool
+      UnsupportedFacts: VisualInspectionUnsupportedFact list }
+
+type VisualTextInspection =
+    { TextId: string
+      OwnerNodeId: string
+      Text: string
+      TextBounds: Rect option
+      OwnerBounds: Rect option
+      Baseline: float option
+      MeasurementMode: VisualInspectionMeasurementMode
+      FitStatus: VisualInspectionFitStatus
+      Required: bool
+      Diagnostics: string list }
+
+type VisualRegionBoundary =
+    { RegionId: string
+      Name: string
+      Role: VisualInspectionSurfaceRole
+      Bounds: Rect option
+      Required: bool
+      OwnerNodeIds: string list
+      AllowedOverlapRoles: VisualInspectionSurfaceRole list }
+
+type VisualPaintCoverage =
+    { CoverageId: string
+      TargetId: string
+      PaintRole: VisualInspectionPaintRole
+      CoverageBounds: Rect option
+      CoverageStatus: VisualInspectionCoverageStatus
+      Reason: string option }
+
+type VisualClipFact =
+    { ClipId: string
+      NodeId: string
+      ClipBounds: Rect option
+      ClipStatus: VisualInspectionClipStatus
+      Reason: string option
+      AffectedTextRunIds: string list }
+
+type VisualInspectionFinding =
+    { FindingId: string
+      RuleId: string
+      Severity: VisualInspectionSeverity
+      AffectedNodeIds: string list
+      AffectedRegionIds: string list
+      Message: string
+      Expected: string
+      Actual: string
+      ExceptionId: string option
+      Diagnostics: string list }
+
+type VisualInspectionArtifact =
+    { ArtifactId: string
+      Scope: VisualInspectionScope
+      OutputSize: Size
+      Presentation: string
+      ReadinessStatus: VisualInspectionStatus
+      Nodes: VisualInspectionNode list
+      Regions: VisualRegionBoundary list
+      TextRuns: VisualTextInspection list
+      PaintCoverage: VisualPaintCoverage list
+      ClipFacts: VisualClipFact list
+      Findings: VisualInspectionFinding list
+      UnsupportedFacts: VisualInspectionUnsupportedFact list
+      Diagnostics: string list
+      GeneratedAtUtc: string }
+
+type VisualInspectionSummary =
+    { RunId: string
+      OverallStatus: VisualInspectionStatus
+      ArtifactCount: int
+      InspectedScopes: string list
+      NotInspectedScopes: string list
+      NotRunScopes: string list
+      StatusCounts: (string * int) list
+      FindingCounts: (string * int) list
+      BlockingFindings: VisualInspectionFinding list
+      UnsupportedFacts: VisualInspectionUnsupportedFact list
+      AcceptedExceptions: string list
+      InvalidExceptions: string list
+      RelatedVisualEvidence: string list
+      Caveats: string list
+      Diagnostics: string list }
+
 module Colors =
     let rgba red green blue alpha =
         { Red = red
@@ -1270,19 +1468,19 @@ module SceneEvidence =
         | Result.Error failure -> Result.Error failure
 
 module LayoutEvidence =
-    let private intersects first second =
+    let private intersects (first: Rect) (second: Rect) =
         first.X < second.X + second.Width
         && first.X + first.Width > second.X
         && first.Y < second.Y + second.Height
         && first.Y + first.Height > second.Y
 
-    let private overlapDiagnostics report =
+    let private overlapDiagnostics (report: LayoutEvidenceReport) =
         let hudTextOverlaps =
             report.TextBounds
-            |> List.mapi (fun index first ->
+            |> List.mapi (fun index (first: LayoutTextBounds) ->
                 report.TextBounds
                 |> List.skip (index + 1)
-                |> List.choose (fun second ->
+                |> List.choose (fun (second: LayoutTextBounds) ->
                     if intersects first.Bounds second.Bounds then
                         Some
                             { Kind = HudTextOverlap
@@ -1296,9 +1494,9 @@ module LayoutEvidence =
 
         let hudGameplayOverlaps =
             report.TextBounds
-            |> List.collect (fun text ->
+            |> List.collect (fun (text: LayoutTextBounds) ->
                 report.GameplayBounds
-                |> List.choose (fun gameplay ->
+                |> List.choose (fun (gameplay: LayoutGameplayBounds) ->
                     if intersects text.Bounds gameplay.Bounds then
                         Some
                             { Kind = HudGameplayOverlap
@@ -1311,7 +1509,7 @@ module LayoutEvidence =
 
         hudTextOverlaps @ hudGameplayOverlaps
 
-    let classify report =
+    let classify (report: LayoutEvidenceReport) =
         let overlaps = overlapDiagnostics report
 
         let missingFacts =
@@ -1344,7 +1542,7 @@ module LayoutEvidence =
                 ProofLevel = ReadableLayout
                 OverlapStatus = NoLayoutOverlap }
 
-    let fromRenderEvidence scene evidence =
+    let fromRenderEvidence scene (evidence: RenderReadbackEvidence) : LayoutEvidenceReport =
         { Scene = scene
           OutputSize = evidence.Size
           ProofLevel = DeterministicRenderOnly
@@ -1358,7 +1556,7 @@ module LayoutEvidence =
           Diagnostics = [ "deterministic render metadata only" ]
           RenderEvidence = Some evidence }
 
-    let unsupported scene outputSize reason =
+    let unsupported scene outputSize (reason: LayoutUnsupportedReason) : LayoutEvidenceReport =
         { Scene = scene
           OutputSize = outputSize
           ProofLevel = UnsupportedLayoutInspection
@@ -1371,3 +1569,173 @@ module LayoutEvidence =
           UnsupportedReasons = [ reason ]
           Diagnostics = [ $"unsupported layout fact: {reason.Fact}; {reason.Reason}" ]
           RenderEvidence = None }
+
+module VisualInspection =
+    let private cleanToken (value: string) =
+        if String.IsNullOrWhiteSpace value then
+            "unknown"
+        else
+            value.Trim().ToLowerInvariant().Replace(" ", "-").Replace("_", "-")
+
+    let statusText status =
+        match status with
+        | VisualInspectionStatus.Accepted -> "accepted"
+        | VisualInspectionStatus.Blocked -> "blocked"
+        | VisualInspectionStatus.Incomplete -> "incomplete"
+        | VisualInspectionStatus.Unsupported -> "unsupported"
+        | VisualInspectionStatus.EnvironmentLimited -> "environment-limited"
+        | VisualInspectionStatus.NotInspected -> "not-inspected"
+        | VisualInspectionStatus.NotRun -> "not-run"
+
+    let severityText severity =
+        match severity with
+        | VisualInspectionSeverity.Pass -> "pass"
+        | VisualInspectionSeverity.Info -> "info"
+        | VisualInspectionSeverity.Warning -> "warning"
+        | VisualInspectionSeverity.Blocking -> "blocking"
+        | VisualInspectionSeverity.Unsupported -> "unsupported"
+        | VisualInspectionSeverity.EnvironmentLimited -> "environment-limited"
+
+    let measurementModeText mode =
+        match mode with
+        | VisualInspectionMeasurementMode.Exact -> "exact"
+        | VisualInspectionMeasurementMode.Approximate -> "approximate"
+        | VisualInspectionMeasurementMode.Unsupported -> "unsupported"
+        | VisualInspectionMeasurementMode.Unavailable -> "unavailable"
+
+    let fitStatusText status =
+        match status with
+        | VisualInspectionFitStatus.Inside -> "inside"
+        | VisualInspectionFitStatus.Overflow -> "overflow"
+        | VisualInspectionFitStatus.Clipped -> "clipped"
+        | VisualInspectionFitStatus.Wrapped -> "wrapped"
+        | VisualInspectionFitStatus.Truncated -> "truncated"
+        | VisualInspectionFitStatus.Unsupported -> "unsupported"
+        | VisualInspectionFitStatus.Unavailable -> "unavailable"
+
+    let nodeKindText kind =
+        match kind with
+        | VisualInspectionNodeKind.Root -> "root"
+        | VisualInspectionNodeKind.Container -> "container"
+        | VisualInspectionNodeKind.Text -> "text"
+        | VisualInspectionNodeKind.Shape -> "shape"
+        | VisualInspectionNodeKind.Image -> "image"
+        | VisualInspectionNodeKind.Overlay -> "overlay"
+        | VisualInspectionNodeKind.Popup -> "popup"
+        | VisualInspectionNodeKind.Custom value -> cleanToken value
+        | VisualInspectionNodeKind.Unknown -> "unknown"
+
+    let paintRoleText role =
+        match role with
+        | VisualInspectionPaintRole.Background -> "background"
+        | VisualInspectionPaintRole.Surface -> "surface"
+        | VisualInspectionPaintRole.Border -> "border"
+        | VisualInspectionPaintRole.Foreground -> "foreground"
+        | VisualInspectionPaintRole.Content -> "content"
+        | VisualInspectionPaintRole.Overlay -> "overlay"
+        | VisualInspectionPaintRole.None -> "none"
+        | VisualInspectionPaintRole.Unknown -> "unknown"
+
+    let surfaceRoleText role =
+        match role with
+        | VisualInspectionSurfaceRole.Root -> "root"
+        | VisualInspectionSurfaceRole.Shell -> "shell"
+        | VisualInspectionSurfaceRole.Content -> "content"
+        | VisualInspectionSurfaceRole.Navigation -> "navigation"
+        | VisualInspectionSurfaceRole.Feedback -> "feedback"
+        | VisualInspectionSurfaceRole.Overlay -> "overlay"
+        | VisualInspectionSurfaceRole.Popup -> "popup"
+        | VisualInspectionSurfaceRole.Floating -> "floating"
+        | VisualInspectionSurfaceRole.Custom value -> cleanToken value
+        | VisualInspectionSurfaceRole.Unknown -> "unknown"
+
+    let clipStatusText status =
+        match status with
+        | VisualInspectionClipStatus.None -> "none"
+        | VisualInspectionClipStatus.Intentional -> "intentional"
+        | VisualInspectionClipStatus.Accidental -> "accidental"
+        | VisualInspectionClipStatus.Unsupported -> "unsupported"
+        | VisualInspectionClipStatus.Unavailable -> "unavailable"
+
+    let coverageStatusText status =
+        match status with
+        | VisualInspectionCoverageStatus.Complete -> "complete"
+        | VisualInspectionCoverageStatus.Partial -> "partial"
+        | VisualInspectionCoverageStatus.Missing -> "missing"
+        | VisualInspectionCoverageStatus.Unsupported -> "unsupported"
+        | VisualInspectionCoverageStatus.Unavailable -> "unavailable"
+
+    let unsupportedFact fact ownerId required reason diagnostic environmentLimited =
+        { Fact = fact
+          OwnerId = ownerId
+          Required = required
+          Reason = reason
+          Diagnostic = diagnostic
+          EnvironmentLimited = environmentLimited }
+
+    let stableFindingId (ruleId: string) (affectedIds: string list) =
+        let ids =
+            affectedIds
+            |> List.filter (String.IsNullOrWhiteSpace >> not)
+            |> List.map cleanToken
+            |> List.sort
+
+        match ids with
+        | [] -> cleanToken ruleId
+        | _ -> cleanToken ruleId + ":" + String.concat "+" ids
+
+    let finding ruleId severity affectedNodeIds affectedRegionIds message expected actual =
+        { FindingId = stableFindingId ruleId (affectedNodeIds @ affectedRegionIds)
+          RuleId = ruleId
+          Severity = severity
+          AffectedNodeIds = affectedNodeIds |> List.sort
+          AffectedRegionIds = affectedRegionIds |> List.sort
+          Message = message
+          Expected = expected
+          Actual = actual
+          ExceptionId = None
+          Diagnostics = [] }
+
+    let private duplicateIds ids =
+        ids
+        |> List.countBy id
+        |> List.choose (fun (id, count) -> if count > 1 then Some id else None)
+
+    let artifactDiagnostics (artifact: VisualInspectionArtifact) =
+        let nodeIds = artifact.Nodes |> List.map _.NodeId
+        let regionIds = artifact.Regions |> List.map _.RegionId
+        let findingIds = artifact.Findings |> List.map _.FindingId
+        let parentIds = nodeIds |> Set.ofList
+
+        [ for id in duplicateIds nodeIds do
+              $"duplicate visual inspection node id: {id}"
+          for id in duplicateIds regionIds do
+              $"duplicate visual inspection region id: {id}"
+          for id in duplicateIds findingIds do
+              $"duplicate visual inspection finding id: {id}"
+          for node in artifact.Nodes do
+              match node.ParentId with
+              | Some parent when not (Set.contains parent parentIds) -> $"node {node.NodeId} references missing parent {parent}"
+              | _ -> ()
+              match node.Bounds with
+              | Some bounds when bounds.Width < 0.0 || bounds.Height < 0.0 || Double.IsNaN bounds.Width || Double.IsNaN bounds.Height ->
+                  $"node {node.NodeId} has invalid bounds"
+              | _ -> ()
+          for region in artifact.Regions do
+              match region.Bounds with
+              | Some bounds when bounds.Width < 0.0 || bounds.Height < 0.0 || Double.IsNaN bounds.Width || Double.IsNaN bounds.Height ->
+                  $"region {region.RegionId} has invalid bounds"
+              | _ -> ()
+          for fact in artifact.UnsupportedFacts do
+              if String.IsNullOrWhiteSpace fact.Fact || String.IsNullOrWhiteSpace fact.Reason then
+                  "unsupported visual inspection fact is missing fact name or reason" ]
+
+    let normalizeArtifact (artifact: VisualInspectionArtifact) =
+        { artifact with
+            Nodes = artifact.Nodes |> List.sortBy (fun node -> node.ZOrder, node.NodeId)
+            Regions = artifact.Regions |> List.sortBy _.RegionId
+            TextRuns = artifact.TextRuns |> List.sortBy _.TextId
+            PaintCoverage = artifact.PaintCoverage |> List.sortBy _.CoverageId
+            ClipFacts = artifact.ClipFacts |> List.sortBy _.ClipId
+            Findings = artifact.Findings |> List.sortBy _.FindingId
+            UnsupportedFacts = artifact.UnsupportedFacts |> List.sortBy (fun fact -> fact.Fact, defaultArg fact.OwnerId "") }

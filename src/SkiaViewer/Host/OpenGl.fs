@@ -321,7 +321,7 @@ module GlHost =
     let toNativeSize (size: Size) =
         Vector2D<int>(size.Width, size.Height)
 
-    let drawScene scene (canvas: SKCanvas) =
+    let drawScene (scene: Scene) (canvas: SKCanvas) =
         // Feature 063 (FR-001): delegate to the single shared exhaustive painter.
         scene.Nodes |> List.iter (SceneRenderer.paintNode canvas)
 
@@ -703,7 +703,7 @@ module GlHost =
 
     /// Offscreen render → GPU→CPU readback. Backs the on-demand evidence/screenshot routine
     /// (FR-004), independent of the live present path, and the explicit OffscreenReadback mode.
-    let renderSceneToPixels configuration (context: GRContext) (width: int) (height: int) scene =
+    let renderSceneToPixels configuration (context: GRContext) (width: int) (height: int) (scene: Scene) =
         try
             let imageInfo = SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Premul)
 
@@ -745,7 +745,7 @@ module GlHost =
     /// FBO-0-bound `SKSurface` and present with the toolkit buffer swap — **no GPU→CPU readback**,
     /// no staging buffer, no command pool, no queue stall. Empty `Pixels` signals "no readback;
     /// capture renders on demand" (FR-004).
-    let renderFrameDirect configuration (window: IWindow) (context: GRContext) (framebuffer: FramebufferState) scene =
+    let renderFrameDirect configuration (window: IWindow) (context: GRContext) (framebuffer: FramebufferState) (scene: Scene) =
         try
             bind (ensureFramebufferSurface configuration window context framebuffer) (fun surface ->
                 let clear =
@@ -801,7 +801,7 @@ module GlHost =
     /// OffscreenReadback present mode on GL: display the scene on the framebuffer AND read back
     /// the rendered pixels (snapshot carries them). The readback is the explicit, opt-in path;
     /// the live default is `renderFrameDirect`.
-    let renderFrameReadback configuration (window: IWindow) (context: GRContext) (framebuffer: FramebufferState) scene =
+    let renderFrameReadback configuration (window: IWindow) (context: GRContext) (framebuffer: FramebufferState) (scene: Scene) =
         try
             bind (ensureFramebufferSurface configuration window context framebuffer) (fun surface ->
                 let clear =
@@ -834,7 +834,7 @@ module GlHost =
     /// Dispatch on the configured present mode. `DirectToSwapchain` is the readback-free default;
     /// `OffscreenReadback` keeps the readback path for evidence/fallback. `report` carries
     /// live-only, non-golden present diagnostics (FR-005/FR-007).
-    let renderFrame configuration (window: IWindow) (context: GRContext) (framebuffer: FramebufferState) (announced: bool ref) (report: RenderDiagnostic -> unit) scene =
+    let renderFrame configuration (window: IWindow) (context: GRContext) (framebuffer: FramebufferState) (announced: bool ref) (report: RenderDiagnostic -> unit) (scene: Scene) =
         // Feature 120/122 (US2 + FR-001/002): on the live DirectToSwapchain present, an unchanged scene
         // performs NO scene walk. But rather than skipping the buffer swap outright (feature 120, which
         // left an undrawn buffer to rotate in as black on a multi-buffer Wayland swapchain), the host
@@ -1299,7 +1299,7 @@ module GlHost =
                             // On-demand offscreen-readback capture routine (FR-004), independent of
                             // the present mode — sized from the live framebuffer.
                             captureScene <-
-                                Some(fun scene ->
+                                Some(fun (scene: Scene) ->
                                     let width = if framebuffer.Width > 0 then framebuffer.Width else max 1 createdWindow.FramebufferSize.X
                                     let height = if framebuffer.Height > 0 then framebuffer.Height else max 1 createdWindow.FramebufferSize.Y
 

@@ -1,0 +1,31 @@
+{
+  "runId": "feature165-representative",
+  "overallStatus": "accepted",
+  "artifactCount": 1,
+  "inspectedScopes": ["representative-sample"],
+  "notInspectedScopes": [],
+  "notRunScopes": [],
+  "statusCounts": {
+    "accepted": 1
+  },
+  "findingCounts": {},
+  "blockingFindings": [],
+  "unsupportedFacts": [
+    {
+      "fact": "transform-bounds",
+      "ownerId": "decorative-transform",
+      "required": false,
+      "reason": "non-required transformed bounds are explicitly unsupported by the first Controls adapter",
+      "environmentLimited": false
+    }
+  ],
+  "acceptedExceptions": [],
+  "invalidExceptions": [],
+  "relatedVisualEvidence": ["specs/164-shared-visual-readiness/readiness/"],
+  "caveats": [
+    "Representative artifact is bounded to a deterministic Controls inspection fixture.",
+    "Screenshot evidence remains separate and is not required for deterministic inspection validation.",
+    "Full Controls.Tests lane was interrupted after extended silence; focused Feature165 Controls tests passed."
+  ],
+  "diagnostics": []
+}

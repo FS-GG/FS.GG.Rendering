@@ -40,6 +40,15 @@ let actual = [ { PackageId = "FS.GG.UI"; Version = "2.9.0"; FeedPath = "./feed" 
 for drift in LocalConsumerPackages.classifyDrift expected actual do
     printfn "%s expected %s but found %A — run: %s"
         drift.PackageId drift.ExpectedVersion drift.ActualVersion drift.RemediationCommand
+
+// Validate structured visual inspection evidence produced by Scene/Controls.
+let validation =
+    VisualInspectionValidation.validate
+        inspectionArtifact
+        VisualInspectionValidation.defaultRules
+        []
+
+printfn "%s" (VisualInspection.statusText validation.ReadinessStatus)
 ```
 
 ## API at a glance
@@ -59,6 +68,10 @@ for drift in LocalConsumerPackages.classifyDrift expected actual do
   `VisualReadiness` / `VisualReadinessMarkdown` — shared visual-readiness helpers for
   screenshot matrices, PNG completeness, reviewer gates, contact-sheet metadata, reports,
   and managed summary sections.
+- `VisualInspectionValidation` / `VisualInspectionReadiness` / `VisualInspectionMarkdown` —
+  deterministic structured-inspection validation, intentional exception handling, readiness
+  aggregation, machine-readable JSON, reviewer Markdown, and managed-section updates over
+  `FS.GG.UI.Scene` inspection artifacts.
 - `PersistentLaunchArtifactValidation` / `ReadinessFileDiscovery` — `validate` persisted launch artifacts
   and required readiness files.
 - `LayoutReadiness` — validate Feature150-style layout readiness reports that aggregate public
@@ -118,6 +131,24 @@ generated visual-readiness content
 `VisualReadinessMarkdown.updateManagedSection` inserts missing markers deterministically and
 updates exactly one managed section. Multiple, reversed, or one-sided markers return
 `SafeToWrite = false` and leave the original text unchanged.
+
+## Structured Visual Inspection
+
+Structured inspection complements screenshot evidence. `FS.GG.UI.Scene` defines the artifact
+records, `FS.GG.UI.Controls` can emit them from `Control.renderTree`, and `FS.GG.UI.Testing`
+validates rules such as required regions, text containment, clipping intent, paint coverage,
+overlay exceptions, identity stability, visual-order stability, and unsupported required facts.
+
+Generated content in inspection summaries is bounded by managed markers:
+
+```md
+<!-- FS.GG VISUAL INSPECTION START -->
+generated visual-inspection content
+<!-- FS.GG VISUAL INSPECTION END -->
+```
+
+Unsupported, not-inspected, not-run, and environment-limited scopes stay visible in summaries and
+are not collapsed into accepted evidence.
 
 ## Layout Readiness
 

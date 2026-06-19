@@ -3,7 +3,7 @@
 Dependency-light scene vocabulary for FS.GG.UI V3 products.
 
 `FS.GG.UI.Scene` is one of the **FS.GG.UI** distribution packages — an F# / Elmish UI and 2D
-scene-graph framework for .NET 10 desktop, rendered through Vulkan + SkiaSharp.
+scene-graph framework for .NET 10 desktop, rendered through OpenGL + SkiaSharp.
 
 ## Install
 
@@ -46,6 +46,17 @@ let report = SceneCodec.inspect package.CanonicalBytes
 // Produce deterministic render-readback evidence for a fixed output size.
 let evidence =
     Scene.renderReadbackEvidence { Width = 320; Height = 240 } scene
+
+// Build dependency-light structured inspection facts without depending on Controls or Testing.
+let finding =
+    VisualInspection.finding
+        "text-contained-in-owner"
+        VisualInspectionSeverity.Blocking
+        [ "title" ]
+        []
+        "title text exceeds its owner"
+        "text inside owner bounds"
+        "overflow"
 ```
 
 ## API at a glance
@@ -59,6 +70,7 @@ let evidence =
   identities, inspects protocol/capability/resource compatibility, and compares imported scenes.
 - `SceneEvidence` module — renders a `SceneEvidenceRequest` to deterministic evidence, returning `Result` (`render`, `renderHash`, `renderPng`).
 - `LayoutEvidence` module — derives and `classify`s `LayoutEvidenceReport` HUD/gameplay layout proofs from render-readback evidence.
+- `VisualInspection` module and records — dependency-light structured inspection vocabulary for scopes, nodes, regions, text runs, paint coverage, clipping, unsupported facts, findings, artifacts, summaries, stable status tokens, finding ids, and deterministic artifact diagnostics.
 
 ## Versioning
 

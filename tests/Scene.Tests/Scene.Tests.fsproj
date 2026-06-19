@@ -25,6 +25,8 @@
     <Compile Include="Feature146PortableSceneResourceTests.fs" />
     <Compile Include="Feature146PackageCapabilityInspectionTests.fs" />
     <Compile Include="Feature146PackageResourceInspectionTests.fs" />
+    <Compile Include="Feature165VisualInspectionModelTests.fs" />
+    <Compile Include="Feature165VisualInspectionPaintTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
