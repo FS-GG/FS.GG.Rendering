@@ -1,0 +1,20 @@
+[
+  {
+    "sheetId": "ant-showcase-minimum-light",
+    "relativePath": "contact-sheet-light.png",
+    "sizeRole": "minimum",
+    "themeId": "antLight",
+    "targetIds": ["minimum:1280x800:antLight:data-collections:light/data-collections.png", "minimum:1280x800:antLight:charts-statistical:light/charts-statistical.png", "minimum:1280x800:antLight:charts-advanced:light/charts-advanced.png", "minimum:1280x800:antLight:feedback-status:light/feedback-status.png", "minimum:1280x800:antLight:tpl-form:light/tpl-form.png", "minimum:1280x800:antLight:tpl-exception:light/tpl-exception.png"],
+    "missingTargetIds": [],
+    "diagnostics": ["contact sheet PNG composition is sample-owned"]
+  },
+  {
+    "sheetId": "ant-showcase-minimum-dark",
+    "relativePath": "contact-sheet-dark.png",
+    "sizeRole": "minimum",
+    "themeId": "antDark",
+    "targetIds": ["minimum:1280x800:antDark:data-collections:dark/data-collections.png", "minimum:1280x800:antDark:charts-statistical:dark/charts-statistical.png", "minimum:1280x800:antDark:charts-advanced:dark/charts-advanced.png", "minimum:1280x800:antDark:feedback-status:dark/feedback-status.png", "minimum:1280x800:antDark:tpl-form:dark/tpl-form.png", "minimum:1280x800:antDark:tpl-exception:dark/tpl-exception.png"],
+    "missingTargetIds": [],
+    "diagnostics": ["contact sheet PNG composition is sample-owned"]
+  }
+]

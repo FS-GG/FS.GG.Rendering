@@ -1,0 +1,63 @@
+{
+  "seed": 1,
+  "size": "1280x800",
+  "acceptedSizeRole": "minimum",
+  "pageIds": ["data-collections", "charts-statistical", "charts-advanced", "feedback-status", "tpl-form", "tpl-exception"],
+  "themeIds": ["antLight", "antDark"],
+  "requiredScreenshotCount": 12,
+  "presentScreenshotCount": 12,
+  "completenessStatus": "complete",
+  "captureAvailability": "available",
+  "reviewerDefectStatus": "missing",
+  "visualReadinessStatus": "blocked",
+  "sharedVisualReadiness": {
+    "runId": "ant-showcase",
+    "evidenceRoot": ".",
+    "targetCount": 12,
+    "requiredTargetCount": 12,
+    "readinessStatus": "pending-review",
+    "captureStatusCounts": {
+      "complete": 12
+    },
+    "reviewerStatusCounts": {
+  
+    },
+    "targets": [
+      { "targetId": "minimum:1280x800:antLight:data-collections:light/data-collections.png", "pageId": "data-collections", "themeId": "antLight", "size": "1280x800", "relativePath": "light/data-collections.png", "required": true },
+      { "targetId": "minimum:1280x800:antLight:charts-statistical:light/charts-statistical.png", "pageId": "charts-statistical", "themeId": "antLight", "size": "1280x800", "relativePath": "light/charts-statistical.png", "required": true },
+      { "targetId": "minimum:1280x800:antLight:charts-advanced:light/charts-advanced.png", "pageId": "charts-advanced", "themeId": "antLight", "size": "1280x800", "relativePath": "light/charts-advanced.png", "required": true },
+      { "targetId": "minimum:1280x800:antLight:feedback-status:light/feedback-status.png", "pageId": "feedback-status", "themeId": "antLight", "size": "1280x800", "relativePath": "light/feedback-status.png", "required": true },
+      { "targetId": "minimum:1280x800:antLight:tpl-form:light/tpl-form.png", "pageId": "tpl-form", "themeId": "antLight", "size": "1280x800", "relativePath": "light/tpl-form.png", "required": true },
+      { "targetId": "minimum:1280x800:antLight:tpl-exception:light/tpl-exception.png", "pageId": "tpl-exception", "themeId": "antLight", "size": "1280x800", "relativePath": "light/tpl-exception.png", "required": true },
+      { "targetId": "minimum:1280x800:antDark:data-collections:dark/data-collections.png", "pageId": "data-collections", "themeId": "antDark", "size": "1280x800", "relativePath": "dark/data-collections.png", "required": true },
+      { "targetId": "minimum:1280x800:antDark:charts-statistical:dark/charts-statistical.png", "pageId": "charts-statistical", "themeId": "antDark", "size": "1280x800", "relativePath": "dark/charts-statistical.png", "required": true },
+      { "targetId": "minimum:1280x800:antDark:charts-advanced:dark/charts-advanced.png", "pageId": "charts-advanced", "themeId": "antDark", "size": "1280x800", "relativePath": "dark/charts-advanced.png", "required": true },
+      { "targetId": "minimum:1280x800:antDark:feedback-status:dark/feedback-status.png", "pageId": "feedback-status", "themeId": "antDark", "size": "1280x800", "relativePath": "dark/feedback-status.png", "required": true },
+      { "targetId": "minimum:1280x800:antDark:tpl-form:dark/tpl-form.png", "pageId": "tpl-form", "themeId": "antDark", "size": "1280x800", "relativePath": "dark/tpl-form.png", "required": true },
+      { "targetId": "minimum:1280x800:antDark:tpl-exception:dark/tpl-exception.png", "pageId": "tpl-exception", "themeId": "antDark", "size": "1280x800", "relativePath": "dark/tpl-exception.png", "required": true }
+    ],
+    "captures": [
+      { "targetId": "minimum:1280x800:antLight:data-collections:light/data-collections.png", "status": "complete", "relativePath": "light/data-collections.png", "observedSize": "1280x800", "diagnostics": [] },
+      { "targetId": "minimum:1280x800:antLight:charts-statistical:light/charts-statistical.png", "status": "complete", "relativePath": "light/charts-statistical.png", "observedSize": "1280x800", "diagnostics": [] },
+      { "targetId": "minimum:1280x800:antLight:charts-advanced:light/charts-advanced.png", "status": "complete", "relativePath": "light/charts-advanced.png", "observedSize": "1280x800", "diagnostics": [] },
+      { "targetId": "minimum:1280x800:antLight:feedback-status:light/feedback-status.png", "status": "complete", "relativePath": "light/feedback-status.png", "observedSize": "1280x800", "diagnostics": [] },
+      { "targetId": "minimum:1280x800:antLight:tpl-form:light/tpl-form.png", "status": "complete", "relativePath": "light/tpl-form.png", "observedSize": "1280x800", "diagnostics": [] },
+      { "targetId": "minimum:1280x800:antLight:tpl-exception:light/tpl-exception.png", "status": "complete", "relativePath": "light/tpl-exception.png", "observedSize": "1280x800", "diagnostics": [] },
+      { "targetId": "minimum:1280x800:antDark:data-collections:dark/data-collections.png", "status": "complete", "relativePath": "dark/data-collections.png", "observedSize": "1280x800", "diagnostics": [] },
+      { "targetId": "minimum:1280x800:antDark:charts-statistical:dark/charts-statistical.png", "status": "complete", "relativePath": "dark/charts-statistical.png", "observedSize": "1280x800", "diagnostics": [] },
+      { "targetId": "minimum:1280x800:antDark:charts-advanced:dark/charts-advanced.png", "status": "complete", "relativePath": "dark/charts-advanced.png", "observedSize": "1280x800", "diagnostics": [] },
+      { "targetId": "minimum:1280x800:antDark:feedback-status:dark/feedback-status.png", "status": "complete", "relativePath": "dark/feedback-status.png", "observedSize": "1280x800", "diagnostics": [] },
+      { "targetId": "minimum:1280x800:antDark:tpl-form:dark/tpl-form.png", "status": "complete", "relativePath": "dark/tpl-form.png", "observedSize": "1280x800", "diagnostics": [] },
+      { "targetId": "minimum:1280x800:antDark:tpl-exception:dark/tpl-exception.png", "status": "complete", "relativePath": "dark/tpl-exception.png", "observedSize": "1280x800", "diagnostics": [] }
+    ],
+    "reviewerClassifications": [
+  
+    ],
+    "contactSheets": [
+      { "sheetId": "ant-showcase-contact-sheet-1", "relativePath": "contact-sheet-light.png", "targetIds": ["minimum:1280x800:antLight:data-collections:light/data-collections.png", "minimum:1280x800:antLight:charts-statistical:light/charts-statistical.png", "minimum:1280x800:antLight:charts-advanced:light/charts-advanced.png", "minimum:1280x800:antLight:feedback-status:light/feedback-status.png", "minimum:1280x800:antLight:tpl-form:light/tpl-form.png", "minimum:1280x800:antLight:tpl-exception:light/tpl-exception.png", "minimum:1280x800:antDark:data-collections:dark/data-collections.png", "minimum:1280x800:antDark:charts-statistical:dark/charts-statistical.png", "minimum:1280x800:antDark:charts-advanced:dark/charts-advanced.png", "minimum:1280x800:antDark:feedback-status:dark/feedback-status.png", "minimum:1280x800:antDark:tpl-form:dark/tpl-form.png", "minimum:1280x800:antDark:tpl-exception:dark/tpl-exception.png"], "missingTargetIds": [], "diagnostics": ["contact sheet image composition is sample-owned"] },
+      { "sheetId": "ant-showcase-contact-sheet-2", "relativePath": "contact-sheet-dark.png", "targetIds": ["minimum:1280x800:antLight:data-collections:light/data-collections.png", "minimum:1280x800:antLight:charts-statistical:light/charts-statistical.png", "minimum:1280x800:antLight:charts-advanced:light/charts-advanced.png", "minimum:1280x800:antLight:feedback-status:light/feedback-status.png", "minimum:1280x800:antLight:tpl-form:light/tpl-form.png", "minimum:1280x800:antLight:tpl-exception:light/tpl-exception.png", "minimum:1280x800:antDark:data-collections:dark/data-collections.png", "minimum:1280x800:antDark:charts-statistical:dark/charts-statistical.png", "minimum:1280x800:antDark:charts-advanced:dark/charts-advanced.png", "minimum:1280x800:antDark:feedback-status:dark/feedback-status.png", "minimum:1280x800:antDark:tpl-form:dark/tpl-form.png", "minimum:1280x800:antDark:tpl-exception:dark/tpl-exception.png"], "missingTargetIds": [], "diagnostics": ["contact sheet image composition is sample-owned"] }
+    ],
+    "caveats": [],
+    "diagnostics": ["missing or pending reviewer classification: minimum:1280x800:antLight:data-collections:light/data-collections.png", "missing or pending reviewer classification: minimum:1280x800:antLight:charts-statistical:light/charts-statistical.png", "missing or pending reviewer classification: minimum:1280x800:antLight:charts-advanced:light/charts-advanced.png", "missing or pending reviewer classification: minimum:1280x800:antLight:feedback-status:light/feedback-status.png", "missing or pending reviewer classification: minimum:1280x800:antLight:tpl-form:light/tpl-form.png", "missing or pending reviewer classification: minimum:1280x800:antLight:tpl-exception:light/tpl-exception.png", "missing or pending reviewer classification: minimum:1280x800:antDark:data-collections:dark/data-collections.png", "missing or pending reviewer classification: minimum:1280x800:antDark:charts-statistical:dark/charts-statistical.png", "missing or pending reviewer classification: minimum:1280x800:antDark:charts-advanced:dark/charts-advanced.png", "missing or pending reviewer classification: minimum:1280x800:antDark:feedback-status:dark/feedback-status.png", "missing or pending reviewer classification: minimum:1280x800:antDark:tpl-form:dark/tpl-form.png", "missing or pending reviewer classification: minimum:1280x800:antDark:tpl-exception:dark/tpl-exception.png"]
+  }
+}

@@ -63,8 +63,10 @@ app would.
    screenshot, writing a per-page record that **discloses what it is not authoritative
    for** and **degrades cleanly when no display/GL is present**.
 3. **Visual-readiness mode** — the maintainer inspection path. It captures every requested
-   page/theme screenshot, validates completeness, writes per-theme contact sheets, and
-   blocks accepted readiness until reviewer classifications are present and clear.
+   page/theme screenshot and keeps contact-sheet PNG composition in the sample app. Generic
+   target matrix expansion, completeness classification, reviewer table parsing, readiness
+   aggregation, contact-sheet metadata, JSON/Markdown summary rendering, and managed-summary
+   updates delegate to `FS.GG.UI.Testing`.
 
 ## Build & run
 
@@ -75,19 +77,21 @@ dotnet build AntShowcase.App/AntShowcase.App.fsproj -c Release
 dotnet run --project AntShowcase.App -c Release -- coverage      # 96/96 mapped, 0 drift
 dotnet run --project AntShowcase.App -c Release -- list          # 13 catalog + 6 template pages
 dotnet run --project AntShowcase.App -c Release -- evidence --seed 1   # byte-identical, disclosed
-dotnet run --project AntShowcase.App -c Release -- visual-readiness --seed 1 --size 1600x1000 --themes light,dark --out ../../specs/162-enhance-showcase-visuals/readiness/visual-evidence
-dotnet run --project AntShowcase.App -c Release -- visual-readiness --seed 1 --size 1280x800 --themes light,dark --pages data-collections,charts-statistical,charts-advanced,feedback-status,tpl-form,tpl-exception --out ../../specs/162-enhance-showcase-visuals/readiness/minimum-size
-dotnet run --project AntShowcase.App -c Release -- visual-readiness --summarize ../../specs/162-enhance-showcase-visuals/readiness/visual-evidence --minimum-size ../../specs/162-enhance-showcase-visuals/readiness/minimum-size --out ../../specs/162-enhance-showcase-visuals/readiness
+dotnet run --project AntShowcase.App -c Release -- visual-readiness --seed 1 --size 1600x1000 --themes light,dark --out ../../specs/164-shared-visual-readiness/readiness/antshowcase-preferred
+dotnet run --project AntShowcase.App -c Release -- visual-readiness --seed 1 --size 1280x800 --themes light,dark --pages data-collections,charts-statistical,charts-advanced,feedback-status,tpl-form,tpl-exception --out ../../specs/164-shared-visual-readiness/readiness/antshowcase-minimum
+dotnet run --project AntShowcase.App -c Release -- visual-readiness --summarize ../../specs/164-shared-visual-readiness/readiness/antshowcase-preferred --minimum-size ../../specs/164-shared-visual-readiness/readiness/antshowcase-minimum --out ../../specs/164-shared-visual-readiness/readiness
 dotnet run --project AntShowcase.App -c Release -- interactive display-typography --theme dark
 dotnet test AntShowcase.Tests/AntShowcase.Tests.fsproj -c Release      # outside the default tier
 ```
 
 Per-page evidence lands under `artifacts/ant-showcase/<seed>/<page-id>/`
 (`run.json` / `state.txt` / `summary.md` / `frame.png`), gitignored.
-Feature 162 visual-readiness evidence is intentionally committed under
-`specs/162-enhance-showcase-visuals/readiness/`; degraded capture, missing screenshots, or
+Feature 164 visual-readiness evidence is intentionally committed under
+`specs/164-shared-visual-readiness/readiness/`; degraded capture, missing screenshots, or
 missing reviewer classification must remain visible in that readiness summary rather than
-being treated as accepted proof.
+being treated as accepted proof. The summary command updates only the generated managed
+section bounded by `<!-- FS.GG VISUAL READINESS START -->` and
+`<!-- FS.GG VISUAL READINESS END -->`, preserving manual validation notes outside it.
 
 See `coverage-report.md` for the committed control→page map and `PROVENANCE.md` for the
 rebrand + template-recipe source disclosure.

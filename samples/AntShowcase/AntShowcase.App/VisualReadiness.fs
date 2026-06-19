@@ -5,6 +5,7 @@ open System.IO
 open FS.GG.UI.Scene
 open FS.GG.UI.Controls
 open FS.GG.UI.SkiaViewer
+open FS.GG.UI.Testing
 open SkiaSharp
 open AntShowcase.Core
 open AntShowcase.Core.Model
@@ -79,18 +80,21 @@ let pageSelection pageText =
         else
             Result.Ok(requested |> List.map (fun id -> known[id]))
 
-let reviewerStatus outDir pageIds themeIds =
+let reviewerStatus outDir (targets: VisualCaptureTarget list) =
     let path = Path.Combine(outDir, "reviewer-defects.md")
     if not (File.Exists path) then
-        File.WriteAllText(path, CoreEvidence.reviewerDefectTemplate pageIds themeIds)
-        "missing", false
+        File.WriteAllText(path, VisualReviewerClassifications.writeTemplate targets)
+        "missing", false, []
     else
         let text = File.ReadAllText(path)
-        let hasClassification = not (text.Contains("pending review"))
-        let hasCritical = text.Contains("| critical |", StringComparison.OrdinalIgnoreCase) || text.Contains(" critical ", StringComparison.OrdinalIgnoreCase)
-        if not hasClassification then "missing", hasCritical
-        elif hasCritical then "critical", true
-        else "clear", false
+        let parsed = VisualReviewerClassifications.parse text targets
+        let hasPending = not parsed.MissingTargetIds.IsEmpty || not parsed.PendingTargetIds.IsEmpty
+        let hasBlocking = parsed.Classifications |> List.exists (fun row -> row.Severity = VisualReviewerBlocking)
+        let hasMalformed = not parsed.DuplicateTargetIds.IsEmpty || not parsed.UnknownTargetIds.IsEmpty || not parsed.MalformedRows.IsEmpty
+
+        if hasPending then "missing", hasBlocking, parsed.Classifications
+        elif hasBlocking || hasMalformed then "critical", true, parsed.Classifications
+        else "clear", false, parsed.Classifications
 
 let captureScreenshot seed outDir (size: Size) (mode: ThemeMode) themeId (page: Page): CoreEvidence.VisualScreenshotRecord =
     let folder = themeFolder themeId
@@ -168,19 +172,96 @@ let writeCompleteness outDir (summary: CoreEvidence.VisualReadinessSummary) (rec
     File.WriteAllText(Path.Combine(dir, "degraded.md"), "# Degraded\n\n" + (if List.isEmpty degraded then "None\n" else String.concat Environment.NewLine degraded + Environment.NewLine))
     File.WriteAllText(Path.Combine(dir, "dimensions.md"), sprintf "# Dimensions\n\nExpected size: `%s`\n" summary.Size)
 
-let buildSummary seed size role pages themeIds (records: CoreEvidence.VisualScreenshotRecord list) contactSheets reviewerStatus critical : CoreEvidence.VisualReadinessSummary =
-    let required = (List.length pages) * (List.length themeIds)
-    let present = records |> List.filter (fun r -> r.Completeness = "complete" && r.CaptureSource = "real-screenshot") |> List.length
-    let completeness = if present = required then "complete" else "incomplete"
-    let captureAvailability = if present = required then "available" else "environment-limited"
+let captureRecordFor (records: CoreEvidence.VisualScreenshotRecord list) (target: VisualCaptureTarget): VisualCaptureRecord =
+    let screenshot =
+        records
+        |> List.tryFind (fun record -> record.PageId = target.Page.PageId && record.ThemeId = target.Theme.ThemeId && record.RelativePath = target.RelativePath)
+
+    match screenshot with
+    | Some record when record.Completeness = "complete" && record.CaptureSource = "real-screenshot" ->
+        { Target = target
+          Status = VisualCaptureComplete
+          Artifact = None
+          ExpectedWidth = target.Size.Width
+          ExpectedHeight = target.Size.Height
+          ObservedWidth = Some record.Width
+          ObservedHeight = Some record.Height
+          Reason = None
+          Diagnostics = [] }
+    | Some record when record.Completeness = "degraded" ->
+        VisualCompleteness.degraded target (record.DegradedReason |> Option.defaultValue "degraded capture")
+    | Some record ->
+        { Target = target
+          Status = VisualCaptureBlocked
+          Artifact = None
+          ExpectedWidth = target.Size.Width
+          ExpectedHeight = target.Size.Height
+          ObservedWidth = Some record.Width
+          ObservedHeight = Some record.Height
+          Reason = Some record.Completeness
+          Diagnostics = [ record.Completeness ] }
+    | None ->
+        { Target = target
+          Status = VisualCaptureMissing
+          Artifact = None
+          ExpectedWidth = target.Size.Width
+          ExpectedHeight = target.Size.Height
+          ObservedWidth = None
+          ObservedHeight = None
+          Reason = Some "missing screenshot record"
+          Diagnostics = [ "missing screenshot record" ] }
+
+let writeContactSheetMetadata outDir (sheets: VisualContactSheet list) =
+    let sheetJson (sheet: VisualContactSheet) =
+        let q (text: string) = "\"" + text.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\""
+        let list values = "[" + (values |> List.map q |> String.concat ", ") + "]"
+
+        String.concat
+            "\n"
+            [ "  {"
+              sprintf "    \"sheetId\": %s," (q sheet.SheetId)
+              sprintf "    \"relativePath\": %s," (q sheet.RelativePath)
+              sprintf "    \"sizeRole\": %s," (sheet.SizeRole |> Option.map q |> Option.defaultValue "null")
+              sprintf "    \"themeId\": %s," (sheet.ThemeId |> Option.map q |> Option.defaultValue "null")
+              sprintf "    \"targetIds\": %s," (list sheet.TargetIds)
+              sprintf "    \"missingTargetIds\": %s," (list sheet.MissingTargetIds)
+              sprintf "    \"diagnostics\": %s" (list sheet.Diagnostics)
+              "  }" ]
+
+    File.WriteAllText(Path.Combine(outDir, "contact-sheets.json"), "[\n" + (sheets |> List.map sheetJson |> String.concat ",\n") + "\n]\n")
+
+let buildSummary seed size role pages themeIds (targets: VisualCaptureTarget list) (records: CoreEvidence.VisualScreenshotRecord list) (contactSheetMetadata: VisualContactSheet list) reviewerStatus _critical reviewerClassifications : CoreEvidence.VisualReadinessSummary =
+    let captureRecords = targets |> List.map (captureRecordFor records)
     let limitations =
         records
         |> List.choose (fun r -> r.DegradedReason |> Option.map (fun reason -> sprintf "%s/%s: %s" r.ThemeId r.PageId reason))
+
+    let report =
+        VisualReadiness.evaluate
+            "ant-showcase"
+            "."
+            targets
+            captureRecords
+            reviewerClassifications
+            contactSheetMetadata
+            limitations
+            []
+
+    let required = targets |> List.filter _.Required |> List.length
+    let present = captureRecords |> List.filter (fun r -> r.Status = VisualCaptureComplete) |> List.length
+    let completeness = if present = required then "complete" else "incomplete"
+    let captureAvailability =
+        if report.ReadinessStatus = VisualReadinessEnvironmentLimited then "environment-limited"
+        elif present = required then "available"
+        else "environment-limited"
+
     let readiness =
-        if captureAvailability = "environment-limited" then VisualConfig.visualReadinessStatusEnvironmentLimited
-        elif completeness <> "complete" then VisualConfig.visualReadinessStatusBlocked
-        elif reviewerStatus <> "clear" || critical then VisualConfig.visualReadinessStatusBlocked
-        else VisualConfig.visualReadinessStatusAccepted
+        match report.ReadinessStatus with
+        | VisualReadinessAccepted -> VisualConfig.visualReadinessStatusAccepted
+        | VisualReadinessEnvironmentLimited -> VisualConfig.visualReadinessStatusEnvironmentLimited
+        | VisualReadinessPendingReview
+        | VisualReadinessIncomplete
+        | VisualReadinessBlocked -> VisualConfig.visualReadinessStatusBlocked
     { Seed = seed
       Size = VisualConfig.sizeText size
       AcceptedSizeRole = VisualConfig.roleName role
@@ -193,7 +274,7 @@ let buildSummary seed size role pages themeIds (records: CoreEvidence.VisualScre
       ReviewerDefectStatus = reviewerStatus
       VisualReadinessStatus = readiness
       Screenshots = records
-      ContactSheets = contactSheets
+      ContactSheets = contactSheetMetadata |> List.map _.RelativePath
       Limitations = limitations }
 
 let writeSummary outDir (summary: CoreEvidence.VisualReadinessSummary) =
@@ -210,6 +291,7 @@ let runCapture args =
             let themeIds = themes |> List.map snd
             let pageIds = pages |> List.map _.Id
             let workflow, _ = VisualReadinessWorkflow.init seed size themeIds pageIds outDir
+            let sharedTargets = workflow.Targets |> List.map _.SharedTarget
             let records =
                 [ for mode, themeId in themes do
                       for page in pages do
@@ -218,7 +300,8 @@ let runCapture args =
                 records
                 |> List.filter (fun r -> r.ThemeId = themeId)
                 |> List.forall (fun r -> r.Completeness = "complete" && r.CaptureSource = "real-screenshot")
-            let contactSheets =
+            let role = VisualConfig.classifySize size
+            let contactSheetMetadata =
                 themeIds
                 |> List.choose (fun themeId ->
                     if completeTheme themeId then
@@ -229,12 +312,19 @@ let runCapture args =
                             |> List.filter (fun r -> r.ThemeId = themeId && r.Completeness = "complete")
                             |> List.map (fun r -> Path.Combine(outDir, r.RelativePath.Replace("/", string Path.DirectorySeparatorChar)))
                         writeContactSheet (Path.Combine(outDir, name)) imagePaths
-                        Some name
+                        Some
+                            { SheetId = sprintf "ant-showcase-%s-%s" (VisualConfig.roleName role) folder
+                              RelativePath = name
+                              SizeRole = Some(VisualConfig.roleName role)
+                              ThemeId = Some themeId
+                              TargetIds = sharedTargets |> List.filter (fun target -> target.Theme.ThemeId = themeId) |> List.map _.TargetId
+                              MissingTargetIds = []
+                              Diagnostics = [ "contact sheet PNG composition is sample-owned" ] }
                     else None)
-            let reviewer, critical = reviewerStatus outDir pageIds themeIds
-            let role = VisualConfig.classifySize size
-            let summary = buildSummary workflow.Seed workflow.Size role pages themeIds records contactSheets reviewer critical
+            let reviewer, critical, reviewerClassifications = reviewerStatus outDir sharedTargets
+            let summary = buildSummary workflow.Seed workflow.Size role pages themeIds sharedTargets records contactSheetMetadata reviewer critical reviewerClassifications
             writeCompleteness outDir summary records
+            writeContactSheetMetadata outDir contactSheetMetadata
             writeSummary outDir summary
             printfn "ant-showcase: visual-readiness %s, screenshots %d/%d under %s" summary.VisualReadinessStatus summary.PresentScreenshotCount summary.RequiredScreenshotCount outDir
             0
@@ -257,14 +347,14 @@ let runCapture args =
 let runSummary args =
     match flag "--summarize" args with
     | Some dir when Directory.Exists dir ->
-        let outDir = flag "--out" args |> Option.defaultValue "specs/162-enhance-showcase-visuals/readiness"
+        let outDir = flag "--out" args |> Option.defaultValue "specs/164-shared-visual-readiness/readiness"
         Directory.CreateDirectory(outDir) |> ignore
         let minimum =
             flag "--minimum-size" args
             |> Option.map (fun path -> sprintf "- minimum-size evidence: `%s`" path)
             |> Option.defaultValue "- minimum-size evidence: not provided"
-        let lines =
-            [ "# Feature 162 Visual Readiness Summary"
+        let generated =
+            [ "## Generated Visual Readiness Links"
               ""
               sprintf "- preferred evidence: `%s`" dir
               minimum
@@ -272,7 +362,23 @@ let runSummary args =
               "- compatibility ledger: `compatibility-ledger.md`"
               "- regression validation: `regression-validation.md`"
               "- full validation: `full-validation/validation.md`" ]
-        File.WriteAllText(Path.Combine(outDir, "validation-summary.md"), String.concat Environment.NewLine lines + Environment.NewLine)
+            |> String.concat Environment.NewLine
+
+        let summaryPath = Path.Combine(outDir, "validation-summary.md")
+        let existing =
+            if File.Exists summaryPath then
+                File.ReadAllText(summaryPath)
+            else
+                "# Feature 164 Visual Readiness Summary" + Environment.NewLine + Environment.NewLine
+
+        let update = VisualReadinessMarkdown.updateManagedSection existing generated
+
+        if update.SafeToWrite then
+            File.WriteAllText(summaryPath, update.UpdatedText)
+        else
+            eprintfn "ant-showcase: refused to update malformed visual-readiness managed section: %s" (String.concat "; " update.Diagnostics)
+            failwith "malformed visual-readiness managed section"
+
         printfn "ant-showcase: wrote readiness summary under %s" outDir
         0
     | Some dir ->

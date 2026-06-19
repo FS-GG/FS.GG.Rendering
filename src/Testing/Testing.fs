@@ -1,6 +1,9 @@
 namespace FS.GG.UI.Testing
 
 open System
+open System.IO
+open System.Security.Cryptography
+open System.Text
 open FS.GG.UI.Scene
 open SkiaSharp
 
@@ -102,6 +105,119 @@ type VisualEvidenceResult =
       InputOrProgressObserved: bool option
       FallbackReason: string option
       UnsupportedReason: string option
+      Diagnostics: string list }
+
+type VisualSize =
+    { Role: string
+      Width: int
+      Height: int
+      Order: int }
+
+type VisualTheme =
+    { ThemeId: string
+      Title: string
+      Order: int }
+
+type VisualPage =
+    { PageId: string
+      Title: string
+      Order: int
+      Required: bool }
+
+type VisualCaptureTarget =
+    { TargetId: string
+      Page: VisualPage
+      Theme: VisualTheme
+      Size: VisualSize
+      RelativePath: string
+      Required: bool }
+
+type VisualCaptureStatus =
+    | VisualCaptureComplete
+    | VisualCaptureMissing
+    | VisualCaptureWrongSize
+    | VisualCaptureUndecodable
+    | VisualCaptureDegraded
+    | VisualCaptureBlocked
+
+type VisualCaptureArtifact =
+    { RelativePath: string
+      Exists: bool
+      ByteCount: int64 option
+      DecodedWidth: int option
+      DecodedHeight: int option
+      ContentHash: string option
+      DecodeError: string option }
+
+type VisualCaptureRecord =
+    { Target: VisualCaptureTarget
+      Status: VisualCaptureStatus
+      Artifact: VisualCaptureArtifact option
+      ExpectedWidth: int
+      ExpectedHeight: int
+      ObservedWidth: int option
+      ObservedHeight: int option
+      Reason: string option
+      Diagnostics: string list }
+
+type VisualReviewerSeverity =
+    | VisualReviewerPending
+    | VisualReviewerNone
+    | VisualReviewerMinor
+    | VisualReviewerMajor
+    | VisualReviewerBlocking
+
+type VisualReviewerClassification =
+    { TargetId: string
+      Severity: VisualReviewerSeverity
+      DefectClass: string
+      ReadinessImpact: string
+      Reviewer: string
+      ReviewedAt: string
+      Notes: string }
+
+type VisualReviewerValidationResult =
+    { Classifications: VisualReviewerClassification list
+      MissingTargetIds: string list
+      DuplicateTargetIds: string list
+      UnknownTargetIds: string list
+      MalformedRows: string list
+      PendingTargetIds: string list
+      Diagnostics: string list }
+
+type VisualContactSheet =
+    { SheetId: string
+      RelativePath: string
+      SizeRole: string option
+      ThemeId: string option
+      TargetIds: string list
+      MissingTargetIds: string list
+      Diagnostics: string list }
+
+type VisualReadinessStatus =
+    | VisualReadinessAccepted
+    | VisualReadinessPendingReview
+    | VisualReadinessBlocked
+    | VisualReadinessEnvironmentLimited
+    | VisualReadinessIncomplete
+
+type VisualReadinessReport =
+    { RunId: string
+      EvidenceRoot: string
+      Targets: VisualCaptureTarget list
+      Captures: VisualCaptureRecord list
+      ReviewerClassifications: VisualReviewerClassification list
+      ContactSheets: VisualContactSheet list
+      CaptureStatusCounts: (string * int) list
+      ReviewerStatusCounts: (string * int) list
+      ReadinessStatus: VisualReadinessStatus
+      Caveats: string list
+      Diagnostics: string list }
+
+type VisualSummarySectionUpdate =
+    { UpdatedText: string
+      SafeToWrite: bool
+      InsertedMarkers: bool
       Diagnostics: string list }
 
 type GeneratedVisualEvidenceCommandCheck =
@@ -571,6 +687,669 @@ type Feature161HostLaneReadinessValidationResult =
       MissingFacts: string list
       MissingScenarios: string list
       Diagnostics: string list }
+
+module VisualCaptureMatrix =
+    let private blank (value: string) = String.IsNullOrWhiteSpace value
+
+    let private duplicateValues values =
+        values
+        |> List.countBy id
+        |> List.choose (fun (value, count) -> if count > 1 then Some value else None)
+
+    let private normalRelativePath (relativePath: string) =
+        relativePath.Replace('\\', '/').Trim()
+
+    let private pathIsSafe (relativePath: string) =
+        let normalized = normalRelativePath relativePath
+        let hasParentTraversal =
+            normalized.Split('/', StringSplitOptions.RemoveEmptyEntries)
+            |> Array.exists (fun part -> part = "..")
+
+        not (blank normalized)
+        && not (Path.IsPathRooted normalized)
+        && not hasParentTraversal
+
+    let targetId (page: VisualPage) (theme: VisualTheme) (size: VisualSize) (relativePath: string) =
+        let normalizedPath = normalRelativePath relativePath
+        $"{size.Role}:{size.Width}x{size.Height}:{theme.ThemeId}:{page.PageId}:{normalizedPath}"
+
+    let expand (pages: VisualPage list) (themes: VisualTheme list) (sizes: VisualSize list) (pathFor: VisualPage -> VisualTheme -> VisualSize -> string) =
+        let pageDuplicates = pages |> List.map _.PageId |> duplicateValues
+        let themeDuplicates = themes |> List.map _.ThemeId |> duplicateValues
+        let sizeDuplicates = sizes |> List.map (fun size -> $"{size.Role}:{size.Width}x{size.Height}") |> duplicateValues
+
+        let declarationDiagnostics =
+            [ for page in pages do
+                  if blank page.PageId then
+                      "visual page id must be non-empty"
+              for theme in themes do
+                  if blank theme.ThemeId then
+                      "visual theme id must be non-empty"
+              for size in sizes do
+                  if blank size.Role then
+                      "visual size role must be non-empty"
+                  if size.Width <= 0 || size.Height <= 0 then
+                      $"visual size must be positive: {size.Role}"
+              for duplicate in pageDuplicates do
+                  $"duplicate page id: {duplicate}"
+              for duplicate in themeDuplicates do
+                  $"duplicate theme id: {duplicate}"
+              for duplicate in sizeDuplicates do
+                  $"duplicate size: {duplicate}" ]
+
+        let orderedPages = pages |> List.sortBy (fun page -> page.Order, page.PageId)
+        let orderedThemes = themes |> List.sortBy (fun theme -> theme.Order, theme.ThemeId)
+        let orderedSizes = sizes |> List.sortBy (fun size -> size.Order, size.Role, size.Width, size.Height)
+
+        let targets =
+            [ for size in orderedSizes do
+                  for theme in orderedThemes do
+                      for page in orderedPages do
+                          let relativePath = pathFor page theme size |> normalRelativePath
+                          { TargetId = targetId page theme size relativePath
+                            Page = page
+                            Theme = theme
+                            Size = size
+                            RelativePath = relativePath
+                            Required = page.Required } ]
+
+        let targetDuplicates = targets |> List.map _.TargetId |> duplicateValues
+        let pathDuplicates = targets |> List.map _.RelativePath |> duplicateValues
+
+        let targetDiagnostics =
+            [ for target in targets do
+                  if not (pathIsSafe target.RelativePath) then
+                      $"relative path escapes evidence root: {target.RelativePath}"
+              for duplicate in targetDuplicates do
+                  $"duplicate target id: {duplicate}"
+              for duplicate in pathDuplicates do
+                  $"duplicate relative path: {duplicate}" ]
+
+        let diagnostics = declarationDiagnostics @ targetDiagnostics
+        if diagnostics.IsEmpty then Ok targets else Result.Error diagnostics
+
+module VisualCompleteness =
+    let statusText status =
+        match status with
+        | VisualCaptureComplete -> "complete"
+        | VisualCaptureMissing -> "missing"
+        | VisualCaptureWrongSize -> "wrong-size"
+        | VisualCaptureUndecodable -> "undecodable"
+        | VisualCaptureDegraded -> "degraded"
+        | VisualCaptureBlocked -> "blocked"
+
+    let private normalizeRelativePath (relativePath: string) =
+        relativePath.Replace('\\', '/').Trim()
+
+    let private absolutePath evidenceRoot relativePath =
+        Path.Combine(evidenceRoot, normalizeRelativePath relativePath).Replace('/', Path.DirectorySeparatorChar)
+
+    let private hashFile path =
+        use stream = File.OpenRead path
+        use sha = SHA256.Create()
+        sha.ComputeHash stream
+        |> Array.map (fun b -> b.ToString("x2"))
+        |> String.concat ""
+
+    let private missingArtifact (target: VisualCaptureTarget) =
+        { RelativePath = target.RelativePath
+          Exists = false
+          ByteCount = None
+          DecodedWidth = None
+          DecodedHeight = None
+          ContentHash = None
+          DecodeError = Some "missing" }
+
+    let private record (target: VisualCaptureTarget) status (artifact: VisualCaptureArtifact option) reason diagnostics =
+        { Target = target
+          Status = status
+          Artifact = artifact
+          ExpectedWidth = target.Size.Width
+          ExpectedHeight = target.Size.Height
+          ObservedWidth = artifact |> Option.bind _.DecodedWidth
+          ObservedHeight = artifact |> Option.bind _.DecodedHeight
+          Reason = reason
+          Diagnostics = diagnostics }
+
+    let degraded (target: VisualCaptureTarget) reason =
+        if String.IsNullOrWhiteSpace reason then
+            record target VisualCaptureBlocked None (Some "missing degraded reason") [ "degraded capture requires a non-empty reason" ]
+        else
+            record target VisualCaptureDegraded None (Some reason) [ $"degraded capture: {reason}" ]
+
+    let private validateOne evidenceRoot (target: VisualCaptureTarget) =
+        let path = absolutePath evidenceRoot target.RelativePath
+
+        if not (File.Exists path) then
+            let artifact = missingArtifact target
+            record target VisualCaptureMissing (Some artifact) (Some "missing artifact") [ $"missing screenshot: {target.RelativePath}" ]
+        else
+            let info = FileInfo path
+            let byteCount = info.Length
+
+            if byteCount = 0L then
+                let artifact =
+                    { RelativePath = target.RelativePath
+                      Exists = true
+                      ByteCount = Some byteCount
+                      DecodedWidth = None
+                      DecodedHeight = None
+                      ContentHash = Some(hashFile path)
+                      DecodeError = Some "zero-byte artifact" }
+
+                record target VisualCaptureUndecodable (Some artifact) (Some "zero-byte artifact") [ $"zero-byte screenshot: {target.RelativePath}" ]
+            else
+                try
+                    let contentHash = hashFile path
+                    use bitmap = SKBitmap.Decode path
+
+                    if isNull bitmap then
+                        let artifact =
+                            { RelativePath = target.RelativePath
+                              Exists = true
+                              ByteCount = Some byteCount
+                              DecodedWidth = None
+                              DecodedHeight = None
+                              ContentHash = Some contentHash
+                              DecodeError = Some "SKBitmap.Decode returned null" }
+
+                        record target VisualCaptureUndecodable (Some artifact) (Some "undecodable PNG") [ $"undecodable screenshot: {target.RelativePath}" ]
+                    else
+                        let artifact =
+                            { RelativePath = target.RelativePath
+                              Exists = true
+                              ByteCount = Some byteCount
+                              DecodedWidth = Some bitmap.Width
+                              DecodedHeight = Some bitmap.Height
+                              ContentHash = Some contentHash
+                              DecodeError = None }
+
+                        if bitmap.Width = target.Size.Width && bitmap.Height = target.Size.Height then
+                            record target VisualCaptureComplete (Some artifact) None []
+                        else
+                            let diagnostic =
+                                $"wrong-size screenshot: {target.RelativePath} expected {target.Size.Width}x{target.Size.Height} observed {bitmap.Width}x{bitmap.Height}"
+
+                            record target VisualCaptureWrongSize (Some artifact) (Some "wrong-size artifact") [ diagnostic ]
+                with ex ->
+                    let artifact =
+                        { RelativePath = target.RelativePath
+                          Exists = true
+                          ByteCount = Some byteCount
+                          DecodedWidth = None
+                          DecodedHeight = None
+                          ContentHash = None
+                          DecodeError = Some ex.Message }
+
+                    record target VisualCaptureUndecodable (Some artifact) (Some "artifact decode failed") [ $"undecodable screenshot: {target.RelativePath}: {ex.Message}" ]
+
+    let private staleDiagnostics evidenceRoot (targets: VisualCaptureTarget list) =
+        if Directory.Exists evidenceRoot then
+            let targetPaths = targets |> List.map (fun target -> normalizeRelativePath target.RelativePath) |> Set.ofList
+
+            Directory.EnumerateFiles(evidenceRoot, "*.png", SearchOption.AllDirectories)
+            |> Seq.choose (fun path ->
+                let relative = Path.GetRelativePath(evidenceRoot, path) |> normalizeRelativePath
+                if targetPaths.Contains relative then None else Some $"stale artifact outside target matrix: {relative}")
+            |> Seq.toList
+        else
+            []
+
+    let validate evidenceRoot (targets: VisualCaptureTarget list) =
+        let records = targets |> List.map (validateOne evidenceRoot)
+        records, staleDiagnostics evidenceRoot targets
+
+module VisualReviewerClassifications =
+    let severityText severity =
+        match severity with
+        | VisualReviewerPending -> "pending"
+        | VisualReviewerNone -> "none"
+        | VisualReviewerMinor -> "minor"
+        | VisualReviewerMajor -> "major"
+        | VisualReviewerBlocking -> "blocking"
+
+    let private parseSeverity (text: string) =
+        match text.Trim().ToLowerInvariant() with
+        | "pending"
+        | "pending review" -> Ok VisualReviewerPending
+        | "none" -> Ok VisualReviewerNone
+        | "minor" -> Ok VisualReviewerMinor
+        | "major" -> Ok VisualReviewerMajor
+        | "blocking"
+        | "critical" -> Ok VisualReviewerBlocking
+        | other -> Result.Error $"malformed reviewer severity: {other}"
+
+    let private sizeText (size: VisualSize) = $"{size.Role}:{size.Width}x{size.Height}"
+
+    let writeTemplate (targets: VisualCaptureTarget list) =
+        let header =
+            [ "# Visual Readiness Reviewer Classifications"
+              ""
+              "| targetId | pageId | themeId | size | severity | defectClass | readinessImpact | reviewer | timestamp | notes |"
+              "|---|---|---|---|---|---|---|---|---|---|" ]
+
+        let rows =
+            targets
+            |> List.filter _.Required
+            |> List.sortBy (fun target -> target.Size.Order, target.Theme.Order, target.Page.Order, target.TargetId)
+            |> List.map (fun target ->
+                $"| {target.TargetId} | {target.Page.PageId} | {target.Theme.ThemeId} | {sizeText target.Size} | pending | none | pending review | pending | pending | pending review |")
+
+        String.concat Environment.NewLine (header @ rows) + Environment.NewLine
+
+    let private splitRow (line: string) =
+        line.Trim().Trim('|').Split('|', StringSplitOptions.None)
+        |> Array.map (fun cell -> cell.Trim())
+        |> Array.toList
+
+    let private isTableRow (line: string) =
+        let trimmed = line.Trim()
+        trimmed.StartsWith("|") && trimmed.EndsWith("|") && not (trimmed.Contains("---"))
+
+    let parse (markdown: string) (targets: VisualCaptureTarget list) =
+        let targetIds = targets |> List.filter _.Required |> List.map _.TargetId
+        let targetSet = targetIds |> Set.ofList
+
+        let rows =
+            markdown.Split([| "\r\n"; "\n" |], StringSplitOptions.None)
+            |> Array.toList
+            |> List.filter isTableRow
+            |> List.map splitRow
+            |> List.filter (fun cells ->
+                match cells with
+                | "targetId" :: _ -> false
+                | _ -> true)
+
+        let mutable seen: Set<string> = Set.empty
+        let mutable duplicateIds: string list = []
+        let mutable unknownIds: string list = []
+        let mutable malformedRows: string list = []
+        let mutable pendingIds: string list = []
+        let mutable classifications: VisualReviewerClassification list = []
+
+        for cells in rows do
+            match cells with
+            | targetId :: _pageId :: _themeId :: _size :: severityText :: defectClass :: impact :: reviewer :: timestamp :: notesParts ->
+                if not (targetSet.Contains targetId) then
+                    unknownIds <- targetId :: unknownIds
+                elif seen.Contains targetId then
+                    duplicateIds <- targetId :: duplicateIds
+                else
+                    seen <- seen.Add targetId
+
+                match parseSeverity severityText with
+                | Result.Error _diagnostic -> malformedRows <- String.concat " | " cells :: malformedRows
+                | Ok severity ->
+                    let notes = String.concat " | " notesParts
+
+                    if severity = VisualReviewerPending
+                       || impact.Equals("pending review", StringComparison.OrdinalIgnoreCase)
+                       || notes.Contains("pending review", StringComparison.OrdinalIgnoreCase) then
+                        pendingIds <- targetId :: pendingIds
+
+                    classifications <-
+                        { TargetId = targetId
+                          Severity = severity
+                          DefectClass = defectClass
+                          ReadinessImpact = impact
+                          Reviewer = reviewer
+                          ReviewedAt = timestamp
+                          Notes = notes }
+                        :: classifications
+            | _ -> malformedRows <- String.concat " | " cells :: malformedRows
+
+        let missingIds =
+            targetIds
+            |> List.filter (fun targetId -> seen.Contains targetId |> not)
+
+        let duplicateIds = duplicateIds |> List.rev
+        let unknownIds = unknownIds |> List.rev
+        let malformedRows = malformedRows |> List.rev
+        let pendingIds = pendingIds |> List.rev
+        let classifications = classifications |> List.rev
+
+        let diagnostics =
+            [ for targetId in missingIds do
+                  $"missing reviewer row: {targetId}"
+              for targetId in duplicateIds do
+                  $"duplicate reviewer row: {targetId}"
+              for targetId in unknownIds do
+                  $"unknown reviewer target: {targetId}"
+              for row in malformedRows do
+                  $"malformed reviewer row: {row}"
+              for targetId in pendingIds do
+                  $"pending reviewer row: {targetId}" ]
+
+        { Classifications = classifications
+          MissingTargetIds = missingIds
+          DuplicateTargetIds = duplicateIds
+          UnknownTargetIds = unknownIds
+          MalformedRows = malformedRows
+          PendingTargetIds = pendingIds
+          Diagnostics = diagnostics }
+
+module VisualReadiness =
+    let statusText status =
+        match status with
+        | VisualReadinessAccepted -> "accepted"
+        | VisualReadinessPendingReview -> "pending-review"
+        | VisualReadinessBlocked -> "blocked"
+        | VisualReadinessEnvironmentLimited -> "environment-limited"
+        | VisualReadinessIncomplete -> "incomplete"
+
+    let private countByText (textOf: 'a -> string) (values: 'a list) =
+        values
+        |> List.countBy textOf
+        |> List.sortBy fst
+
+    let evaluate
+        (runId: string)
+        (evidenceRoot: string)
+        (targets: VisualCaptureTarget list)
+        (captures: VisualCaptureRecord list)
+        (reviewerClassifications: VisualReviewerClassification list)
+        (contactSheets: VisualContactSheet list)
+        (caveats: string list)
+        (acceptedExceptions: string list)
+        =
+        let requiredTargets = targets |> List.filter _.Required
+        let requiredTargetIds = requiredTargets |> List.map _.TargetId |> Set.ofList
+        let acceptedExceptionIds = acceptedExceptions |> Set.ofList
+        let captureByTarget = captures |> List.map (fun capture -> capture.Target.TargetId, capture) |> Map.ofList
+
+        let missingCaptureIds =
+            requiredTargets
+            |> List.choose (fun target ->
+                if captureByTarget.ContainsKey target.TargetId then None else Some target.TargetId)
+
+        let captureBlocks =
+            requiredTargets
+            |> List.choose (fun target ->
+                captureByTarget
+                |> Map.tryFind target.TargetId
+                |> Option.bind (fun capture ->
+                    if acceptedExceptionIds.Contains target.TargetId then
+                        None
+                    else
+                        match capture.Status with
+                        | VisualCaptureMissing
+                        | VisualCaptureWrongSize
+                        | VisualCaptureUndecodable
+                        | VisualCaptureBlocked -> Some(target.TargetId, VisualCompleteness.statusText capture.Status)
+                        | _ -> None))
+
+        let degradedIds =
+            requiredTargets
+            |> List.choose (fun target ->
+                captureByTarget
+                |> Map.tryFind target.TargetId
+                |> Option.bind (fun capture ->
+                    if capture.Status = VisualCaptureDegraded && not (acceptedExceptionIds.Contains target.TargetId) then
+                        Some target.TargetId
+                    else
+                        None))
+
+        let reviewByTarget =
+            reviewerClassifications
+            |> List.filter (fun review -> requiredTargetIds.Contains review.TargetId)
+            |> List.groupBy _.TargetId
+            |> Map.ofList
+
+        let missingReviewIds =
+            requiredTargets
+            |> List.choose (fun target ->
+                match reviewByTarget |> Map.tryFind target.TargetId with
+                | None -> Some target.TargetId
+                | Some reviews when reviews |> List.exists (fun review -> review.Severity = VisualReviewerPending) -> Some target.TargetId
+                | Some _ -> None)
+
+        let duplicateReviewIds =
+            reviewByTarget
+            |> Map.toList
+            |> List.choose (fun (targetId, reviews) -> if reviews.Length > 1 then Some targetId else None)
+
+        let blockingReviewIds =
+            reviewerClassifications
+            |> List.choose (fun review ->
+                if review.Severity = VisualReviewerBlocking && requiredTargetIds.Contains review.TargetId then
+                    Some review.TargetId
+                else
+                    None)
+
+        let diagnostics =
+            [ for targetId in missingCaptureIds do
+                  $"missing capture record: {targetId}"
+              for targetId, status in captureBlocks do
+                  $"blocking capture status: {targetId} {status}"
+              for targetId in degradedIds do
+                  $"degraded capture blocks accepted readiness: {targetId}"
+              for targetId in missingReviewIds do
+                  $"missing or pending reviewer classification: {targetId}"
+              for targetId in duplicateReviewIds do
+                  $"duplicate reviewer classification: {targetId}"
+              for targetId in blockingReviewIds do
+                  $"blocking reviewer defect: {targetId}" ]
+
+        let status =
+            if not missingCaptureIds.IsEmpty then
+                VisualReadinessIncomplete
+            elif not captureBlocks.IsEmpty || not duplicateReviewIds.IsEmpty || not blockingReviewIds.IsEmpty then
+                VisualReadinessBlocked
+            elif not degradedIds.IsEmpty then
+                VisualReadinessEnvironmentLimited
+            elif not missingReviewIds.IsEmpty then
+                VisualReadinessPendingReview
+            elif diagnostics.IsEmpty then
+                VisualReadinessAccepted
+            else
+                VisualReadinessBlocked
+
+        { RunId = runId
+          EvidenceRoot = evidenceRoot
+          Targets = targets
+          Captures = captures
+          ReviewerClassifications = reviewerClassifications
+          ContactSheets = contactSheets
+          CaptureStatusCounts = captures |> countByText (fun capture -> VisualCompleteness.statusText capture.Status)
+          ReviewerStatusCounts = reviewerClassifications |> countByText (fun review -> VisualReviewerClassifications.severityText review.Severity)
+          ReadinessStatus = status
+          Caveats = caveats
+          Diagnostics = diagnostics }
+
+module VisualReadinessMarkdown =
+    let startMarker = "<!-- FS.GG VISUAL READINESS START -->"
+    let endMarker = "<!-- FS.GG VISUAL READINESS END -->"
+
+    let private esc (text: string) =
+        text.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\r", "\\r").Replace("\n", "\\n")
+
+    let private q text = "\"" + esc text + "\""
+
+    let private jsonStringArray values =
+        "[" + (values |> List.map q |> String.concat ", ") + "]"
+
+    let private jsonCounts values =
+        values
+        |> List.map (fun (name, count) -> $"    {q name}: {count}")
+        |> String.concat ",\n"
+
+    let private statusCountsText values =
+        if List.isEmpty values then
+            "none"
+        else
+            values
+            |> List.map (fun (name, count) -> $"{name}={count}")
+            |> String.concat ", "
+
+    let renderSummary (report: VisualReadinessReport) =
+        let sb = StringBuilder()
+        let line (text: string) = sb.AppendLine(text) |> ignore
+
+        line "## Visual Readiness"
+        line ""
+        line $"- run: `{report.RunId}`"
+        line $"- status: **{VisualReadiness.statusText report.ReadinessStatus}**"
+        line $"- targets: `{report.Targets.Length}`"
+        line $"- required targets: `{report.Targets |> List.filter _.Required |> List.length}`"
+        line $"- capture status counts: `{statusCountsText report.CaptureStatusCounts}`"
+        line $"- reviewer status counts: `{statusCountsText report.ReviewerStatusCounts}`"
+
+        if not report.ContactSheets.IsEmpty then
+            line ""
+            line "### Contact Sheets"
+            for sheet in report.ContactSheets do
+                line $"- `{sheet.RelativePath}` ({sheet.SheetId})"
+
+        let problemCaptures =
+            report.Captures
+            |> List.filter (fun capture -> capture.Status <> VisualCaptureComplete)
+
+        if not problemCaptures.IsEmpty then
+            line ""
+            line "### Capture Diagnostics"
+            for capture in problemCaptures do
+                let reason = capture.Reason |> Option.defaultValue (VisualCompleteness.statusText capture.Status)
+                line $"- `{capture.Target.TargetId}` {VisualCompleteness.statusText capture.Status}: {reason}"
+
+        if not report.Caveats.IsEmpty then
+            line ""
+            line "### Caveats"
+            for caveat in report.Caveats do
+                line $"- {caveat}"
+
+        if not report.Diagnostics.IsEmpty then
+            line ""
+            line "### Diagnostics"
+            for diagnostic in report.Diagnostics do
+                line $"- {diagnostic}"
+
+        sb.ToString()
+
+    let renderJson (report: VisualReadinessReport) =
+        let targetJson =
+            report.Targets
+            |> List.map (fun target ->
+                let size = $"{target.Size.Width}x{target.Size.Height}"
+                let required = string target.Required |> fun value -> value.ToLowerInvariant()
+                $"    {{ \"targetId\": {q target.TargetId}, \"pageId\": {q target.Page.PageId}, \"themeId\": {q target.Theme.ThemeId}, \"size\": {q size}, \"relativePath\": {q target.RelativePath}, \"required\": {required} }}")
+            |> String.concat ",\n"
+
+        let captureJson =
+            report.Captures
+            |> List.map (fun capture ->
+                let observed =
+                    match capture.ObservedWidth, capture.ObservedHeight with
+                    | Some width, Some height -> q $"{width}x{height}"
+                    | _ -> "null"
+
+                $"    {{ \"targetId\": {q capture.Target.TargetId}, \"status\": {q (VisualCompleteness.statusText capture.Status)}, \"relativePath\": {q capture.Target.RelativePath}, \"observedSize\": {observed}, \"diagnostics\": {jsonStringArray capture.Diagnostics} }}")
+            |> String.concat ",\n"
+
+        let reviewerJson =
+            report.ReviewerClassifications
+            |> List.map (fun review ->
+                $"    {{ \"targetId\": {q review.TargetId}, \"severity\": {q (VisualReviewerClassifications.severityText review.Severity)}, \"defectClass\": {q review.DefectClass}, \"readinessImpact\": {q review.ReadinessImpact}, \"reviewer\": {q review.Reviewer}, \"timestamp\": {q review.ReviewedAt}, \"notes\": {q review.Notes} }}")
+            |> String.concat ",\n"
+
+        let sheetJson =
+            report.ContactSheets
+            |> List.map (fun sheet ->
+                $"    {{ \"sheetId\": {q sheet.SheetId}, \"relativePath\": {q sheet.RelativePath}, \"targetIds\": {jsonStringArray sheet.TargetIds}, \"missingTargetIds\": {jsonStringArray sheet.MissingTargetIds}, \"diagnostics\": {jsonStringArray sheet.Diagnostics} }}")
+            |> String.concat ",\n"
+
+        String.concat
+            "\n"
+            [ "{"
+              $"  \"runId\": {q report.RunId},"
+              $"  \"evidenceRoot\": {q report.EvidenceRoot},"
+              $"  \"targetCount\": {report.Targets.Length},"
+              $"  \"requiredTargetCount\": {report.Targets |> List.filter _.Required |> List.length},"
+              $"  \"readinessStatus\": {q (VisualReadiness.statusText report.ReadinessStatus)},"
+              "  \"captureStatusCounts\": {"
+              jsonCounts report.CaptureStatusCounts
+              "  },"
+              "  \"reviewerStatusCounts\": {"
+              jsonCounts report.ReviewerStatusCounts
+              "  },"
+              "  \"targets\": ["
+              targetJson
+              "  ],"
+              "  \"captures\": ["
+              captureJson
+              "  ],"
+              "  \"reviewerClassifications\": ["
+              reviewerJson
+              "  ],"
+              "  \"contactSheets\": ["
+              sheetJson
+              "  ],"
+              $"  \"caveats\": {jsonStringArray report.Caveats},"
+              $"  \"diagnostics\": {jsonStringArray report.Diagnostics}"
+              "}" ]
+        + "\n"
+
+    let private countOccurrences (text: string) (pattern: string) =
+        let mutable count = 0
+        let mutable start = 0
+        let mutable finished = false
+
+        while not finished do
+            let index = text.IndexOf(pattern, start, StringComparison.Ordinal)
+            if index < 0 then
+                finished <- true
+            else
+                count <- count + 1
+                start <- index + pattern.Length
+
+        count
+
+    let updateManagedSection (existingText: string) (generatedMarkdown: string) =
+        let startCount = countOccurrences existingText startMarker
+        let endCount = countOccurrences existingText endMarker
+
+        let sectionText =
+            startMarker
+            + Environment.NewLine
+            + generatedMarkdown.TrimEnd()
+            + Environment.NewLine
+            + endMarker
+
+        match startCount, endCount with
+        | 0, 0 ->
+            let separator =
+                if String.IsNullOrEmpty existingText then
+                    ""
+                elif existingText.EndsWith(Environment.NewLine, StringComparison.Ordinal) then
+                    Environment.NewLine
+                else
+                    Environment.NewLine + Environment.NewLine
+
+            { UpdatedText = existingText + separator + sectionText + Environment.NewLine
+              SafeToWrite = true
+              InsertedMarkers = true
+              Diagnostics = [] }
+        | 1, 1 ->
+            let startIndex = existingText.IndexOf(startMarker, StringComparison.Ordinal)
+            let endIndex = existingText.IndexOf(endMarker, StringComparison.Ordinal)
+
+            if startIndex > endIndex then
+                { UpdatedText = existingText
+                  SafeToWrite = false
+                  InsertedMarkers = false
+                  Diagnostics = [ "visual readiness managed markers are reversed" ] }
+            else
+                let prefix = existingText.Substring(0, startIndex)
+                let suffix = existingText.Substring(endIndex + endMarker.Length)
+
+                { UpdatedText = prefix + sectionText + suffix
+                  SafeToWrite = true
+                  InsertedMarkers = false
+                  Diagnostics = [] }
+        | _ ->
+            { UpdatedText = existingText
+              SafeToWrite = false
+              InsertedMarkers = false
+              Diagnostics = [ "visual readiness managed section must contain exactly one start marker and one end marker" ] }
 
 module GeneratedProductAssertions =
     let summarize expectation =

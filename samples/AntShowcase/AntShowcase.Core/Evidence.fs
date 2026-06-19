@@ -5,8 +5,10 @@
 /// `ControlsGallery.Core.Evidence` so the showcase stays package-only.
 module AntShowcase.Core.Evidence
 
+open System
 open FS.GG.UI.Controls.Elmish
 open FS.GG.UI.SkiaViewer
+open FS.GG.UI.Testing
 
 /// The disclosed subset of a screenshot outcome carried in the record.
 type ScreenshotSummary =
@@ -207,6 +209,131 @@ let private strList (xs: string list): string =
 
 let private boolJson (b: bool): string = if b then "true" else "false"
 
+let private parseSizeText (text: string) =
+    match text.Split('x', StringSplitOptions.RemoveEmptyEntries ||| StringSplitOptions.TrimEntries) with
+    | [| widthText; heightText |] ->
+        match Int32.TryParse widthText, Int32.TryParse heightText with
+        | (true, width), (true, height) -> width, height
+        | _ -> 0, 0
+    | _ -> 0, 0
+
+let private themeFolder themeId =
+    match themeId with
+    | "antLight" -> "light"
+    | "antDark" -> "dark"
+    | other -> other
+
+let private summaryTargets (summary: VisualReadinessSummary) =
+    let width, height = parseSizeText summary.Size
+
+    let pages =
+        summary.PageIds
+        |> List.mapi (fun order pageId ->
+            { PageId = pageId
+              Title = pageId
+              Order = order
+              Required = true })
+
+    let themes =
+        summary.ThemeIds
+        |> List.mapi (fun order themeId ->
+            { ThemeId = themeId
+              Title = themeId
+              Order = order })
+
+    let size =
+        { Role = summary.AcceptedSizeRole
+          Width = width
+          Height = height
+          Order = 0 }
+
+    let pathFor (page: VisualPage) (theme: VisualTheme) (_size: VisualSize) =
+        summary.Screenshots
+        |> List.tryFind (fun screenshot -> screenshot.PageId = page.PageId && screenshot.ThemeId = theme.ThemeId)
+        |> Option.map _.RelativePath
+        |> Option.defaultValue (themeFolder theme.ThemeId + "/" + page.PageId + ".png")
+
+    match VisualCaptureMatrix.expand pages themes [ size ] pathFor with
+    | Ok targets -> targets
+    | Result.Error diagnostics -> failwith (String.concat "; " diagnostics)
+
+let private toSharedReport (summary: VisualReadinessSummary) =
+    let targets = summaryTargets summary
+    let targetByPageTheme =
+        targets
+        |> List.map (fun target -> (target.Page.PageId, target.Theme.ThemeId), target)
+        |> Map.ofList
+
+    let captures =
+        summary.Screenshots
+        |> List.choose (fun screenshot ->
+            targetByPageTheme
+            |> Map.tryFind (screenshot.PageId, screenshot.ThemeId)
+            |> Option.map (fun target ->
+                let status =
+                    match screenshot.Completeness with
+                    | "complete" when screenshot.CaptureSource = "real-screenshot" -> VisualCaptureComplete
+                    | "degraded" -> VisualCaptureDegraded
+                    | "wrong-size" -> VisualCaptureWrongSize
+                    | "undecodable" -> VisualCaptureUndecodable
+                    | "missing" -> VisualCaptureMissing
+                    | _ -> VisualCaptureBlocked
+
+                { Target = target
+                  Status = status
+                  Artifact = None
+                  ExpectedWidth = target.Size.Width
+                  ExpectedHeight = target.Size.Height
+                  ObservedWidth = Some screenshot.Width
+                  ObservedHeight = Some screenshot.Height
+                  Reason = screenshot.DegradedReason
+                  Diagnostics = screenshot.DegradedReason |> Option.toList }))
+
+    let reviewerClassifications =
+        match summary.ReviewerDefectStatus with
+        | "clear" ->
+            targets
+            |> List.map (fun target ->
+                { TargetId = target.TargetId
+                  Severity = VisualReviewerNone
+                  DefectClass = "none"
+                  ReadinessImpact = "no-blocker"
+                  Reviewer = "ant-showcase"
+                  ReviewedAt = "recorded"
+                  Notes = "clear" })
+        | "critical" ->
+            targets
+            |> List.map (fun target ->
+                { TargetId = target.TargetId
+                  Severity = VisualReviewerBlocking
+                  DefectClass = "critical"
+                  ReadinessImpact = "blocking"
+                  Reviewer = "ant-showcase"
+                  ReviewedAt = "recorded"
+                  Notes = "critical reviewer defect present" })
+        | _ -> []
+
+    let contactSheets =
+        summary.ContactSheets
+        |> List.mapi (fun index path ->
+            { SheetId = sprintf "ant-showcase-contact-sheet-%d" (index + 1)
+              RelativePath = path
+              SizeRole = Some summary.AcceptedSizeRole
+              ThemeId = None
+              TargetIds = targets |> List.map _.TargetId
+              MissingTargetIds = []
+              Diagnostics = [ "contact sheet image composition is sample-owned" ] })
+
+    VisualReadiness.evaluate
+        "ant-showcase"
+        "."
+        targets
+        captures
+        reviewerClassifications
+        contactSheets
+        summary.Limitations
+        []
+
 /// Serialize to the contract `run.json` shape. Deterministic: fixed key order, invariant
 /// formatting, no wall-clock fields.
 let toRunJson (r: PageEvidenceRecord): string =
@@ -265,86 +392,56 @@ let visualScreenshotToJson (s: VisualScreenshotRecord): string =
           "    }" ]
 
 let visualSummaryToJson (summary: VisualReadinessSummary): string =
-    let screenshots =
-        if List.isEmpty summary.Screenshots then
-            ""
-        else
-            summary.Screenshots |> List.map visualScreenshotToJson |> String.concat ",\n"
-    String.concat
-        "\n"
-        [ "{"
-          sprintf "  \"seed\": %d," summary.Seed
-          sprintf "  \"size\": %s," (q summary.Size)
-          sprintf "  \"acceptedSizeRole\": %s," (q summary.AcceptedSizeRole)
-          sprintf "  \"pageIds\": %s," (strList summary.PageIds)
-          sprintf "  \"themeIds\": %s," (strList summary.ThemeIds)
-          sprintf "  \"requiredScreenshotCount\": %d," summary.RequiredScreenshotCount
-          sprintf "  \"presentScreenshotCount\": %d," summary.PresentScreenshotCount
-          sprintf "  \"completenessStatus\": %s," (q summary.CompletenessStatus)
-          sprintf "  \"captureAvailability\": %s," (q summary.CaptureAvailability)
-          sprintf "  \"reviewerDefectStatus\": %s," (q summary.ReviewerDefectStatus)
-          sprintf "  \"visualReadinessStatus\": %s," (q summary.VisualReadinessStatus)
-          sprintf "  \"contactSheets\": %s," (strList summary.ContactSheets)
-          sprintf "  \"limitations\": %s," (strList summary.Limitations)
-          "  \"screenshots\": ["
-          screenshots
-          "  ]"
-          "}" ]
-    + "\n"
+    let shared = VisualReadinessMarkdown.renderJson (toSharedReport summary)
+    let prefix =
+        String.concat
+            "\n"
+            [ "{"
+              sprintf "  \"seed\": %d," summary.Seed
+              sprintf "  \"size\": %s," (q summary.Size)
+              sprintf "  \"acceptedSizeRole\": %s," (q summary.AcceptedSizeRole)
+              sprintf "  \"pageIds\": %s," (strList summary.PageIds)
+              sprintf "  \"themeIds\": %s," (strList summary.ThemeIds)
+              sprintf "  \"requiredScreenshotCount\": %d," summary.RequiredScreenshotCount
+              sprintf "  \"presentScreenshotCount\": %d," summary.PresentScreenshotCount
+              sprintf "  \"completenessStatus\": %s," (q summary.CompletenessStatus)
+              sprintf "  \"captureAvailability\": %s," (q summary.CaptureAvailability)
+              sprintf "  \"reviewerDefectStatus\": %s," (q summary.ReviewerDefectStatus)
+              sprintf "  \"visualReadinessStatus\": %s," (q summary.VisualReadinessStatus)
+              "  \"sharedVisualReadiness\": " ]
+
+    prefix + shared.TrimEnd().Replace("\n", "\n  ") + "\n}\n"
 
 let visualSummaryToMarkdown (summary: VisualReadinessSummary): string =
-    let sb = System.Text.StringBuilder()
-    let line (t: string) = sb.AppendLine(t) |> ignore
-    line "# AntShowcase visual readiness"
-    line ""
-    line (sprintf "- seed: `%d`" summary.Seed)
-    line (sprintf "- size: `%s` (%s)" summary.Size summary.AcceptedSizeRole)
-    line (sprintf "- pages: `%d`" (List.length summary.PageIds))
-    line (sprintf "- themes: `%s`" (String.concat "," summary.ThemeIds))
-    line (sprintf "- required screenshots: `%d`" summary.RequiredScreenshotCount)
-    line (sprintf "- present screenshots: `%d`" summary.PresentScreenshotCount)
-    line (sprintf "- completeness: **%s**" summary.CompletenessStatus)
-    line (sprintf "- capture availability: **%s**" summary.CaptureAvailability)
-    line (sprintf "- reviewer defects: **%s**" summary.ReviewerDefectStatus)
-    line (sprintf "- visual readiness: **%s**" summary.VisualReadinessStatus)
-    if not (List.isEmpty summary.ContactSheets) then
-        line ""
-        line "## Contact Sheets"
-        summary.ContactSheets |> List.iter (fun path -> line (sprintf "- `%s`" path))
-    if not (List.isEmpty summary.Limitations) then
-        line ""
-        line "## Limitations"
-        summary.Limitations |> List.iter (fun limitation -> line (sprintf "- %s" limitation))
-    line ""
-    line "## Screenshots"
-    summary.Screenshots
-    |> List.iter (fun s ->
-        let degraded = s.DegradedReason |> Option.defaultValue "none"
-        line (sprintf "- `%s` `%s` `%s` `%s` degraded=`%s`" s.PageId s.ThemeId s.RelativePath s.Completeness degraded))
-    sb.ToString()
+    let shared = VisualReadinessMarkdown.renderSummary (toSharedReport summary)
+    String.concat
+        System.Environment.NewLine
+        [ "# AntShowcase visual readiness"
+          ""
+          sprintf "- seed: `%d`" summary.Seed
+          sprintf "- size: `%s` (%s)" summary.Size summary.AcceptedSizeRole
+          sprintf "- pages: `%d`" (List.length summary.PageIds)
+          sprintf "- themes: `%s`" (String.concat "," summary.ThemeIds)
+          sprintf "- visual readiness: **%s**" summary.VisualReadinessStatus
+          ""
+          shared.TrimEnd()
+          "" ]
 
 let reviewerDefectTemplate (pageIds: string list) (themeIds: string list): string =
-    let classes =
-        [ "shell overlap"
-          "navigation label spill"
-          "top-bar displacement"
-          "content-footer collision"
-          "unplanned background exposure"
-          "section overpaint"
-          "clipped primary label"
-          "unreadable primary content"
-          "transient-surface overprint"
-          "template hierarchy unclear"
-          "lower-level limitation" ]
-    let header =
-        [ "# Reviewer Defect Classification"
-          ""
-          sprintf "Defect classes: %s" (String.concat ", " classes)
-          ""
-          "| pageId | themeId | severity | class | readiness impact | reviewer | timestamp | notes |"
-          "|---|---|---|---|---|---|---|---|" ]
-    let rows =
-        [ for pageId in pageIds do
-              for themeId in themeIds do
-                  sprintf "| %s | %s | none | none | no-blocker | pending | pending | pending review |" pageId themeId ]
-    String.concat System.Environment.NewLine (header @ rows) + System.Environment.NewLine
+    let summary =
+        { Seed = 0
+          Size = "1x1"
+          AcceptedSizeRole = "review"
+          PageIds = pageIds
+          ThemeIds = themeIds
+          RequiredScreenshotCount = pageIds.Length * themeIds.Length
+          PresentScreenshotCount = 0
+          CompletenessStatus = "pending"
+          CaptureAvailability = "pending"
+          ReviewerDefectStatus = "missing"
+          VisualReadinessStatus = "blocked"
+          Screenshots = []
+          ContactSheets = []
+          Limitations = [] }
+
+    VisualReviewerClassifications.writeTemplate (summaryTargets summary)

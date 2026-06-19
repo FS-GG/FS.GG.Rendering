@@ -1,6 +1,7 @@
 module AntShowcase.Core.VisualReadinessWorkflow
 
 open FS.GG.UI.Scene
+open FS.GG.UI.Testing
 
 type ScreenshotStatus =
     | CapturePending
@@ -12,6 +13,7 @@ type ScreenshotTarget =
       ThemeId: string
       Size: Size
       RelativePath: string
+      SharedTarget: VisualCaptureTarget
       Status: ScreenshotStatus }
 
 type ReadinessStatus =

@@ -1,8 +1,10 @@
 module AntShowcase.Tests.VisualReadinessTests
 
 open Expecto
+open FS.GG.UI.Testing
 open AntShowcase.Core
 open AntShowcase.Core.Model
+open AntShowcase.Core.VisualReadinessWorkflow
 open AntShowcase.Tests.VisualTestHelpers
 
 [<Tests>]
@@ -34,5 +36,16 @@ let visualReadinessTests =
                 for mode in [ Light; Dark ] do
                     let rendered = renderShell size mode "data-collections"
                     Expect.isGreaterThan rendered.NodeCount 0 (sprintf "renders %A at %s" mode (VisualConfig.sizeText size))
+        }
+
+        test "shared visual readiness target parity covers preferred and minimum matrices" {
+            let preferred, _ = init 1 VisualConfig.preferredSize VisualConfig.supportedThemeIds (PageRegistry.all |> List.map _.Id) "out"
+            let minimum, _ = init 1 VisualConfig.minimumSize VisualConfig.supportedThemeIds VisualConfig.minimumRepresentativePageIds "out"
+
+            Expect.equal preferred.Targets.Length 38 "preferred 19 pages x 2 themes"
+            Expect.equal minimum.Targets.Length 12 "minimum 6 pages x 2 themes"
+            Expect.equal (preferred.Targets |> List.map _.SharedTarget.TargetId |> List.distinct |> List.length) 38 "preferred shared target ids unique"
+            Expect.isTrue (preferred.Targets |> List.forall (fun target -> target.SharedTarget.RelativePath = target.RelativePath)) "workflow exposes shared-compatible relative paths"
+            Expect.isTrue (minimum.Targets |> List.forall (fun target -> target.SharedTarget.Required)) "minimum shared targets are required"
         }
     ]

@@ -314,6 +314,23 @@ Candidate modules:
 
 The sample should provide only app-specific page rendering and theme selection.
 
+**Feature 164 update — implemented 2026-06-19**
+
+The high-value generic pieces now live in `FS.GG.UI.Testing`:
+
+- `VisualCaptureMatrix` owns deterministic page/theme/size target expansion, duplicate detection, and safe relative path validation.
+- `VisualCompleteness` owns PNG completeness classification, content identity, dimensions, degraded records, and stale-artifact diagnostics.
+- `VisualReviewerClassifications` owns reviewer Markdown template generation and parsing.
+- `VisualReadiness` owns reviewer/capture readiness aggregation.
+- `VisualReadinessMarkdown` owns generated Markdown/JSON and managed-section updates.
+
+AntShowcase is migrated as the first adopter. It still owns page registry, theme selection,
+real screenshot capture through `Viewer.captureScreenshotEvidence`, and contact-sheet PNG
+composition. It now writes shared contact-sheet metadata and embeds the shared readiness
+report in `summary.json`. The preferred run produced 38/38 screenshots and the minimum run
+produced 12/12 screenshots; both remain blocked until reviewer classifications are filled,
+which is the intended acceptance gate.
+
 ---
 
 ### 3.7 Visual/layout assertions are still too indirect
@@ -536,17 +553,24 @@ This can live as:
 
 **Priority:** High
 
-Move common readiness workflow pieces out of AntShowcase:
+Status after Feature 164: mostly implemented.
+
+Moved common readiness workflow pieces out of AntShowcase:
 
 - Screenshot target matrix.
-- Theme alias normalization.
 - Completeness checks.
-- Contact sheet generation.
 - Reviewer-defect parsing.
 - Summary JSON/markdown serializers.
 - Managed-section summary writing.
 
-This would make future generated products and samples much cheaper to validate.
+Still sample-owned by design:
+
+- Theme alias normalization and page registry decisions.
+- Real screenshot capture.
+- Contact-sheet PNG composition.
+
+This makes future generated products and samples cheaper to validate without forcing
+sample-specific rendering or image composition into the Testing package.
 
 ### 4.3 Add render/layout inspection metadata
 

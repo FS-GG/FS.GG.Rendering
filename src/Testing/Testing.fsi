@@ -120,6 +120,133 @@ type VisualEvidenceResult =
       UnsupportedReason: string option
       Diagnostics: string list }
 
+/// Visual-readiness viewport or render size required by a sample.
+type VisualSize =
+    { Role: string
+      Width: int
+      Height: int
+      Order: int }
+
+/// Visual-readiness theme declared by a sample.
+type VisualTheme =
+    { ThemeId: string
+      Title: string
+      Order: int }
+
+/// Visual-readiness page declared by a sample.
+type VisualPage =
+    { PageId: string
+      Title: string
+      Order: int
+      Required: bool }
+
+/// One required page/theme/size/output screenshot target.
+type VisualCaptureTarget =
+    { TargetId: string
+      Page: VisualPage
+      Theme: VisualTheme
+      Size: VisualSize
+      RelativePath: string
+      Required: bool }
+
+/// Screenshot completeness status for a required target.
+type VisualCaptureStatus =
+    | VisualCaptureComplete
+    | VisualCaptureMissing
+    | VisualCaptureWrongSize
+    | VisualCaptureUndecodable
+    | VisualCaptureDegraded
+    | VisualCaptureBlocked
+
+/// Observed filesystem artifact details for one target path.
+type VisualCaptureArtifact =
+    { RelativePath: string
+      Exists: bool
+      ByteCount: int64 option
+      DecodedWidth: int option
+      DecodedHeight: int option
+      ContentHash: string option
+      DecodeError: string option }
+
+/// Completeness classification for one visual capture target.
+type VisualCaptureRecord =
+    { Target: VisualCaptureTarget
+      Status: VisualCaptureStatus
+      Artifact: VisualCaptureArtifact option
+      ExpectedWidth: int
+      ExpectedHeight: int
+      ObservedWidth: int option
+      ObservedHeight: int option
+      Reason: string option
+      Diagnostics: string list }
+
+/// Reviewer severity parsed from visual-readiness review records.
+type VisualReviewerSeverity =
+    | VisualReviewerPending
+    | VisualReviewerNone
+    | VisualReviewerMinor
+    | VisualReviewerMajor
+    | VisualReviewerBlocking
+
+/// Human reviewer classification for one visual capture target.
+type VisualReviewerClassification =
+    { TargetId: string
+      Severity: VisualReviewerSeverity
+      DefectClass: string
+      ReadinessImpact: string
+      Reviewer: string
+      ReviewedAt: string
+      Notes: string }
+
+/// Parsed reviewer classification result with actionable diagnostics.
+type VisualReviewerValidationResult =
+    { Classifications: VisualReviewerClassification list
+      MissingTargetIds: string list
+      DuplicateTargetIds: string list
+      UnknownTargetIds: string list
+      MalformedRows: string list
+      PendingTargetIds: string list
+      Diagnostics: string list }
+
+/// Contact-sheet metadata recorded by the shared readiness report.
+type VisualContactSheet =
+    { SheetId: string
+      RelativePath: string
+      SizeRole: string option
+      ThemeId: string option
+      TargetIds: string list
+      MissingTargetIds: string list
+      Diagnostics: string list }
+
+/// Overall visual-readiness status.
+type VisualReadinessStatus =
+    | VisualReadinessAccepted
+    | VisualReadinessPendingReview
+    | VisualReadinessBlocked
+    | VisualReadinessEnvironmentLimited
+    | VisualReadinessIncomplete
+
+/// Machine-checkable visual-readiness report.
+type VisualReadinessReport =
+    { RunId: string
+      EvidenceRoot: string
+      Targets: VisualCaptureTarget list
+      Captures: VisualCaptureRecord list
+      ReviewerClassifications: VisualReviewerClassification list
+      ContactSheets: VisualContactSheet list
+      CaptureStatusCounts: (string * int) list
+      ReviewerStatusCounts: (string * int) list
+      ReadinessStatus: VisualReadinessStatus
+      Caveats: string list
+      Diagnostics: string list }
+
+/// Safe managed-section update result for human readiness summaries.
+type VisualSummarySectionUpdate =
+    { UpdatedText: string
+      SafeToWrite: bool
+      InsertedMarkers: bool
+      Diagnostics: string list }
+
 /// Public contract type exposed by this FS.GG.UI package.
 type GeneratedVisualEvidenceCommandCheck =
     { Output: string
@@ -645,6 +772,65 @@ type Feature161HostLaneReadinessValidationResult =
       MissingFacts: string list
       MissingScenarios: string list
       Diagnostics: string list }
+
+/// Shared visual-readiness target matrix helpers.
+module VisualCaptureMatrix =
+    /// Build a stable target id from page/theme/size/path facts.
+    val targetId: page: VisualPage -> theme: VisualTheme -> size: VisualSize -> relativePath: string -> string
+    /// Expand pages x themes x sizes into deterministic visual capture targets.
+    val expand:
+        pages: VisualPage list ->
+        themes: VisualTheme list ->
+        sizes: VisualSize list ->
+        pathFor: (VisualPage -> VisualTheme -> VisualSize -> string) ->
+            Result<VisualCaptureTarget list, string list>
+
+/// Shared visual screenshot completeness helpers.
+module VisualCompleteness =
+    /// Stable status token for readiness summaries.
+    val statusText: status: VisualCaptureStatus -> string
+    /// Build a degraded capture record with safe-failure diagnostics.
+    val degraded: target: VisualCaptureTarget -> reason: string -> VisualCaptureRecord
+    /// Validate required PNG artifacts below the evidence root and report stale extras.
+    val validate: evidenceRoot: string -> targets: VisualCaptureTarget list -> VisualCaptureRecord list * string list
+
+/// Shared reviewer-classification Markdown helpers.
+module VisualReviewerClassifications =
+    /// Stable severity token for readiness summaries.
+    val severityText: severity: VisualReviewerSeverity -> string
+    /// Generate a Markdown review table with one row per target.
+    val writeTemplate: targets: VisualCaptureTarget list -> string
+    /// Parse reviewer Markdown against the current target matrix.
+    val parse: markdown: string -> targets: VisualCaptureTarget list -> VisualReviewerValidationResult
+
+/// Shared visual-readiness aggregation helpers.
+module VisualReadiness =
+    /// Stable status token for readiness summaries.
+    val statusText: status: VisualReadinessStatus -> string
+    /// Aggregate captures, reviewer records, contact sheets, and caveats into readiness.
+    val evaluate:
+        runId: string ->
+        evidenceRoot: string ->
+        targets: VisualCaptureTarget list ->
+        captures: VisualCaptureRecord list ->
+        reviewerClassifications: VisualReviewerClassification list ->
+        contactSheets: VisualContactSheet list ->
+        caveats: string list ->
+        acceptedExceptions: string list ->
+            VisualReadinessReport
+
+/// Shared visual-readiness Markdown, JSON, and managed-section helpers.
+module VisualReadinessMarkdown =
+    /// Managed-section start marker used in human summaries.
+    val startMarker: string
+    /// Managed-section end marker used in human summaries.
+    val endMarker: string
+    /// Render a human-readable generated Markdown section.
+    val renderSummary: report: VisualReadinessReport -> string
+    /// Render a deterministic machine-readable JSON report.
+    val renderJson: report: VisualReadinessReport -> string
+    /// Update or insert exactly one generated section while preserving manual text.
+    val updateManagedSection: existingText: string -> generatedMarkdown: string -> VisualSummarySectionUpdate
 
 /// Public contract module exposed by this FS.GG.UI package.
 module GeneratedProductAssertions =

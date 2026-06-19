@@ -1,6 +1,7 @@
 module AntShowcase.Tests.VisualEvidenceTests
 
 open Expecto
+open FS.GG.UI.Testing
 open AntShowcase.Core
 open AntShowcase.Core.VisualReadinessWorkflow
 
@@ -11,6 +12,7 @@ let visualEvidenceTests =
             let model, effects = init 1 VisualConfig.preferredSize VisualConfig.supportedThemeIds (PageRegistry.all |> List.map _.Id) "out"
             Expect.equal model.Targets.Length 38 "19 pages x 2 themes"
             Expect.equal effects.Length 38 "one capture effect per target"
+            Expect.isTrue (model.Targets |> List.forall (fun target -> target.SharedTarget.TargetId.Contains(target.PageId))) "shared target ids are exposed"
         }
 
         test "degraded capture keeps readiness environment-limited" {
@@ -59,6 +61,37 @@ let visualEvidenceTests =
             let rubric = Evidence.reviewerDefectTemplate [ "p1"; "p2" ] [ "antLight"; "antDark" ]
             Expect.stringContains rubric "| p1 | antLight |" "p1 light row"
             Expect.stringContains rubric "| p2 | antDark |" "p2 dark row"
-            Expect.stringContains rubric "shell overlap" "defect classes documented"
+            Expect.stringContains rubric "targetId" "shared reviewer table includes target ids"
+            Expect.stringContains rubric "pending review" "shared reviewer rows begin pending"
+        }
+
+        test "visual summary delegates generated readiness fields to shared report" {
+            let screenshot: Evidence.VisualScreenshotRecord =
+                { PageId = "display-typography"
+                  ThemeId = "antLight"
+                  Width = 1600
+                  Height = 1000
+                  RelativePath = "light/display-typography.png"
+                  CaptureSource = "real-screenshot"
+                  Completeness = "complete"
+                  DegradedReason = None }
+            let summary: Evidence.VisualReadinessSummary =
+                { Seed = 1
+                  Size = "1600x1000"
+                  AcceptedSizeRole = "preferred"
+                  PageIds = [ "display-typography" ]
+                  ThemeIds = [ "antLight" ]
+                  RequiredScreenshotCount = 1
+                  PresentScreenshotCount = 1
+                  CompletenessStatus = "complete"
+                  CaptureAvailability = "available"
+                  ReviewerDefectStatus = "clear"
+                  VisualReadinessStatus = VisualReadiness.statusText VisualReadinessAccepted
+                  Screenshots = [ screenshot ]
+                  ContactSheets = [ "contact-sheet-light.png" ]
+                  Limitations = [] }
+            let json = Evidence.visualSummaryToJson summary
+            Expect.stringContains json "\"sharedVisualReadiness\"" "shared report embedded"
+            Expect.stringContains json "\"readinessStatus\": \"accepted\"" "shared readiness status embedded"
         }
     ]

@@ -61,6 +61,8 @@ specs/*/readiness/
 !specs/163-package-feed-validation-lanes/readiness/
 !specs/163-package-feed-validation-lanes/readiness/**
 specs/163-package-feed-validation-lanes/readiness/**/nuget-cache/
+!specs/164-shared-visual-readiness/readiness/
+!specs/164-shared-visual-readiness/readiness/**
 
 # macOS / Linux cruft
 .DS_Store
