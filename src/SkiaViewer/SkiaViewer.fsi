@@ -796,6 +796,13 @@ type InteractiveViewerHost<'model,'msg> =
       Tick: TimeSpan -> 'msg option
       Diagnostics: ViewerDiagnosticsOptions }
 
+[<RequireQualifiedAccess>]
+/// Scripted input delivered through the live persistent viewer event loop.
+type ViewerScriptInput =
+    | Key of key: ViewerKey * isDown: bool
+    | Pointer of ViewerPointerInput
+    | WaitFrame
+
 /// Public contract module exposed by this FS.GG.UI package.
 module Viewer =
     /// Public contract function exposed by this FS.GG.UI package.
@@ -908,6 +915,20 @@ module Viewer =
     val runInteractiveViewer: options: ViewerOptions -> host: InteractiveViewerHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
     /// As `runInteractiveViewer` with an explicit window behavior.
     val runInteractiveViewerWithWindowBehavior: options: ViewerOptions -> behavior: ViewerWindowBehaviorRequest -> host: InteractiveViewerHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
+    /// Launch `host` in the live persistent viewer, deliver a bounded script through the viewer input queue,
+    /// wait for the final scripted response to present, then close.
+    val runInteractiveViewerScript:
+        options: ViewerOptions ->
+        script: ViewerScriptInput list ->
+        host: InteractiveViewerHost<'model,'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
+    /// As `runInteractiveViewerScript` with an explicit window behavior.
+    val runInteractiveViewerScriptWithWindowBehavior:
+        options: ViewerOptions ->
+        behavior: ViewerWindowBehaviorRequest ->
+        script: ViewerScriptInput list ->
+        host: InteractiveViewerHost<'model,'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
     /// Public contract function exposed by this FS.GG.UI package.
     val runAppEvidence: request: ViewerRunRequest -> options: ViewerOptions -> host: GeneratedAppHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
     /// Public contract function exposed by this FS.GG.UI package.

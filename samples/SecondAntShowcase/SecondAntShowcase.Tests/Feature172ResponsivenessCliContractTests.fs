@@ -34,13 +34,15 @@ let tests =
         test "all-interactive require-live run fails closed with exit code 4 in headless substitute mode" {
             let outDir = SecondAntShowcase.Tests.Feature172ResponsivenessFixtures.tempDir ()
             let code =
-                Responsiveness.run
-                    [ "--script"; "representative"
-                      "--theme"; "light"
-                      "--all-interactive"
-                      "--require-live"
-                      "--out"; outDir
-                      "--json" ]
+                SecondAntShowcase.Tests.Feature172ResponsivenessFixtures.withForcedSubstitute
+                    (fun () ->
+                        Responsiveness.run
+                            [ "--script"; "representative"
+                              "--theme"; "light"
+                              "--all-interactive"
+                              "--require-live"
+                              "--out"; outDir
+                              "--json" ])
 
             use doc = SecondAntShowcase.Tests.Feature172ResponsivenessFixtures.summaryJson outDir
             let root = doc.RootElement

@@ -274,6 +274,11 @@ type FrameInput<'msg> =
     | Tick of TimeSpan
     | Idle
 
+/// Result of a bounded live script delivered through the GL-backed interactive viewer.
+type LiveScriptRunResult =
+    { Outcome: ViewerLaunchOutcome
+      Metrics: FrameMetrics list }
+
 /// Pointer-routing, size-aware durable host (feature 085, research D3-AMEND). Mirrors
 /// `GeneratedAppHost` field-for-field PLUS a `MapPointer` seam over `PointerInteraction` and a
 /// size-carrying `View` that returns a `Control<'msg>` tree (so `Control.renderTree` yields the
@@ -592,6 +597,22 @@ module ControlsElmish =
         behavior: ViewerWindowBehaviorRequest ->
         host: InteractiveAppHost<'model, 'msg> ->
             Result<ViewerLaunchOutcome, ViewerRunFailure>
+
+    /// Launch `host` through the live GL-backed viewer, deliver a bounded `FrameInput` script through
+    /// the viewer input queue, and return the live frame metrics observed by the adapter.
+    module Live =
+        val runScript:
+            options: ViewerOptions ->
+            host: InteractiveAppHost<'model, 'msg> ->
+            script: FrameInput<'msg> list ->
+                Result<LiveScriptRunResult, ViewerRunFailure>
+
+        val runScriptWithWindowBehavior:
+            options: ViewerOptions ->
+            behavior: ViewerWindowBehaviorRequest ->
+            host: InteractiveAppHost<'model, 'msg> ->
+            script: FrameInput<'msg> list ->
+                Result<LiveScriptRunResult, ViewerRunFailure>
 
     /// Feature 108 (US3, FR-009/010): the pure, headless, deterministic frame driver. Folds an
     /// ordered `FrameInput` script over the host's pure `Update` + `RetainedRender.step`, advancing

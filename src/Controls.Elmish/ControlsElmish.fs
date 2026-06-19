@@ -122,6 +122,10 @@ type FrameInput<'msg> =
     | Tick of TimeSpan
     | Idle
 
+type LiveScriptRunResult =
+    { Outcome: ViewerLaunchOutcome
+      Metrics: FrameMetrics list }
+
 type InteractiveAppHost<'model, 'msg> =
     { Init: unit -> 'model * ViewerEffect list
       Update: 'msg -> 'model -> 'model * ViewerEffect list
@@ -1375,50 +1379,57 @@ module ControlsElmish =
             // falls straight through. Precedence (R3): (1) E1 text seam for a focused TEXT control's
             // printable keys, (2) `routeFocusedKey` for activation / navigation / Tab-traversal,
             // (3) `MapKeyChord`/`host.MapKey` for anything no focused control and no traversal consumed.
-            if not pressed then
-                host.MapKey key false |> Option.toList
-            else
-                match retained.Value with
-                | None -> chordFallthrough key
-                | Some r ->
-                    let focusedNode = focused.Value |> Option.bind (fun id -> tryFindNode id r.Root)
+            let sw = System.Diagnostics.Stopwatch.StartNew()
 
-                    // (1) E1 text seam — unchanged delivery for a focused text control's printable keys.
-                    let textHandled =
-                        match textMsgOfKey key, focused.Value, focusedNode with
-                        | Some textMsg, Some id, Some node when isTextNode node ->
-                            let r', msgs = routeFocusedText r (Some id) textMsg
+            let messages =
+                if not pressed then
+                    host.MapKey key false |> Option.toList
+                else
+                    match retained.Value with
+                    | None -> chordFallthrough key
+                    | Some r ->
+                        let focusedNode = focused.Value |> Option.bind (fun id -> tryFindNode id r.Root)
+
+                        // (1) E1 text seam — unchanged delivery for a focused text control's printable keys.
+                        let textHandled =
+                            match textMsgOfKey key, focused.Value, focusedNode with
+                            | Some textMsg, Some id, Some node when isTextNode node ->
+                                let r', msgs = routeFocusedText r (Some id) textMsg
+                                retained.Value <- Some r'
+                                Some msgs
+                            | _ -> None
+
+                        match textHandled with
+                        | Some msgs -> msgs
+                        | None ->
+                            // (2) routeFocusedKey — the tab order is derived from the retained tree's
+                            // root control (the lowered view), so no model/size is needed here.
+                            let order = Focus.order r.Root.Control
+
+                            let shift =
+                                match key with
+                                | ViewerKey.Unknown raw -> raw.StartsWith("Shift+", StringComparison.OrdinalIgnoreCase)
+                                | _ -> false
+
+                            let r', controlMsgs, productMsgs = routeFocusedKey r focused.Value order key shift
                             retained.Value <- Some r'
-                            Some msgs
-                        | _ -> None
 
-                    match textHandled with
-                    | Some msgs -> msgs
-                    | None ->
-                        // (2) routeFocusedKey — the tab order is derived from the retained tree's
-                        // root control (the lowered view), so no model/size is needed here.
-                        let order = Focus.order r.Root.Control
+                            // Apply focus-update messages to the host's focus identity (map the next
+                            // ControlId back to its stable RetainedId).
+                            for cm in controlMsgs do
+                                match cm with
+                                | FocusControl next ->
+                                    focused.Value <- next |> Option.bind (retainedIdOfControl r')
+                                | _ -> ()
 
-                        let shift =
-                            match key with
-                            | ViewerKey.Unknown raw -> raw.StartsWith("Shift+", StringComparison.OrdinalIgnoreCase)
-                            | _ -> false
+                            // (3) Fall through to the chord/`host.MapKey` seam only when nothing was consumed.
+                            match productMsgs, controlMsgs with
+                            | [], [] -> chordFallthrough key
+                            | _ -> productMsgs
 
-                        let r', controlMsgs, productMsgs = routeFocusedKey r focused.Value order key shift
-                        retained.Value <- Some r'
-
-                        // Apply focus-update messages to the host's focus identity (map the next
-                        // ControlId back to its stable RetainedId).
-                        for cm in controlMsgs do
-                            match cm with
-                            | FocusControl next ->
-                                focused.Value <- next |> Option.bind (retainedIdOfControl r')
-                            | _ -> ()
-
-                        // (3) Fall through to the chord/`host.MapKey` seam only when nothing was consumed.
-                        match productMsgs, controlMsgs with
-                        | [], [] -> chordFallthrough key
-                        | _ -> productMsgs
+            sw.Stop()
+            emitFrameMetrics FrameCause.Key 0 0 (not (List.isEmpty messages)) 0 sw.Elapsed
+            messages
 
         // Feature 099 (R4): the host animation seam (contract C1). Each frame the viewer hands us the
         // injected per-frame `delta`; we ADVANCE every live per-identity clock in
@@ -1471,6 +1482,109 @@ module ControlsElmish =
                 Viewer.runInteractiveViewerWithWindowBehavior launchOptions behavior viewerHost)
             options
             host
+
+    module Live =
+        let private viewerButton button =
+            match button with
+            | PointerButton.Primary -> ViewerPointerButtonKind.Primary
+            | PointerButton.Secondary -> ViewerPointerButtonKind.Secondary
+            | PointerButton.Middle -> ViewerPointerButtonKind.Middle
+
+        let private pointer phase x y button deltaX deltaY =
+            ViewerScriptInput.Pointer
+                { Phase = phase
+                  X = x
+                  Y = y
+                  Button = button
+                  DeltaX = deltaX
+                  DeltaY = deltaY }
+
+        let private moved x y =
+            pointer ViewerPointerPhaseKind.Moved x y None 0.0 0.0
+
+        let private pressed button x y =
+            pointer ViewerPointerPhaseKind.Pressed x y (Some(viewerButton button)) 0.0 0.0
+
+        let private released button x y =
+            pointer ViewerPointerPhaseKind.Released x y (Some(viewerButton button)) 0.0 0.0
+
+        let private wheel deltaX deltaY x y =
+            pointer ViewerPointerPhaseKind.Wheel x y None deltaX deltaY
+
+        let private keyWithModifiers key (mods: KeyModifiers) =
+            let prefixes =
+                [ if mods.Ctrl then "Ctrl"
+                  if mods.Alt then "Alt"
+                  if mods.Shift then "Shift"
+                  if mods.Meta then "Meta" ]
+
+            match prefixes with
+            | [] -> key
+            | values -> ViewerKey.Unknown(String.concat "+" (values @ [ ViewerKeyboard.toKeyId key ]))
+
+        let private interactionToScript interaction =
+            match interaction with
+            | HoverEnter(_, x, y) -> [ moved x y ]
+            | HoverLeave _ -> [ pointer ViewerPointerPhaseKind.Exited 0.0 0.0 None 0.0 0.0 ]
+            | PressedDown(_, button, x, y) -> [ pressed button x y ]
+            | ReleasedUp(_, button, x, y) -> [ released button x y ]
+            | Click(_, button, x, y) -> [ pressed button x y; released button x y ]
+            | DragBegin(_, button, startX, startY) -> [ pressed button startX startY ]
+            | DragMove(_, button, x, y) ->
+                let startX = max 0.0 (x - 24.0)
+                [ pressed button startX y; moved x y; released button x y ]
+            | DragEnd(_, button, x, y) -> [ released button x y ]
+            | DragCancelled _ -> [ ViewerScriptInput.WaitFrame ]
+            | Scroll(_, deltaX, deltaY, x, y) -> [ wheel deltaX deltaY x y ]
+            | FocusMovedByPointer _ -> [ ViewerScriptInput.WaitFrame ]
+            | Diagnostic _ -> [ ViewerScriptInput.WaitFrame ]
+
+        let private frameInputToScript input =
+            match input with
+            | FrameInput.Key(key, mods) -> [ ViewerScriptInput.Key(keyWithModifiers key mods, true) ]
+            | FrameInput.Pointer interaction -> interactionToScript interaction
+            | FrameInput.Tick _
+            | FrameInput.Idle -> [ ViewerScriptInput.WaitFrame ]
+
+        let private toViewerScript script =
+            script |> List.collect frameInputToScript
+
+        let runScriptWithWindowBehavior
+            (options: ViewerOptions)
+            (behavior: ViewerWindowBehaviorRequest)
+            (host: InteractiveAppHost<'model, 'msg>)
+            (script: FrameInput<'msg> list)
+            =
+            let observed = ResizeArray<FrameMetrics>()
+
+            let observingHost =
+                { host with
+                    OnFrameMetrics =
+                        fun metric ->
+                            observed.Add metric
+                            host.OnFrameMetrics metric }
+
+            let viewerScript = toViewerScript script
+
+            match
+                runInteractiveAppWithLauncher
+                    (fun launchOptions viewerHost ->
+                        Viewer.runInteractiveViewerScriptWithWindowBehavior launchOptions behavior viewerScript viewerHost)
+                    options
+                    observingHost
+            with
+            | Result.Ok outcome ->
+                Result.Ok
+                    { Outcome = outcome
+                      Metrics = observed |> Seq.toList }
+            | Result.Error failure -> Result.Error failure
+
+        let runScript
+            (options: ViewerOptions)
+            (host: InteractiveAppHost<'model, 'msg>)
+            (script: FrameInput<'msg> list)
+            =
+            runScriptWithWindowBehavior options Viewer.defaultWindowBehavior host script
 
     // Feature 108 (US3, FR-009/010): the pure, headless, deterministic frame driver. Nested in
     // `ControlsElmish` so it reuses the SAME message→update→retained-step + binding-resolution +

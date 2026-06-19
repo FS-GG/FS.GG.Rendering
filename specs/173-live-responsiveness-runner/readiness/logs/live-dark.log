@@ -1,2 +1,4 @@
-{"runId":"resp-20260619-201717-3f1141","summaryJson":"/home/developer/projects/FS.GG.Rendering/specs/173-live-responsiveness-runner/readiness/responsiveness/resp-20260619-201717-3f1141/summary.json","readiness":"environment-limited"}
-exit-code=4
+Gtk-Message: 23:03:53.080: Failed to load module "colorreload-gtk-module"
+Gtk-Message: 23:03:53.080: Failed to load module "window-decorations-gtk-module"
+{"runId":"resp-20260619-210354-bef07e","summaryJson":"/home/developer/projects/FS.GG.Rendering/specs/173-live-responsiveness-runner/readiness/responsiveness/resp-20260619-210354-bef07e/summary.json","readiness":"accepted"}
+exit: 0

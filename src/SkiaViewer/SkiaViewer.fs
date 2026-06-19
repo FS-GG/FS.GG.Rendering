@@ -709,6 +709,12 @@ type InteractiveViewerHost<'model,'msg> =
       Tick: TimeSpan -> 'msg option
       Diagnostics: ViewerDiagnosticsOptions }
 
+[<RequireQualifiedAccess>]
+type ViewerScriptInput =
+    | Key of key: ViewerKey * isDown: bool
+    | Pointer of ViewerPointerInput
+    | WaitFrame
+
 type private LegacyHostMsg<'msg> =
     | LegacyLoaded
     | LegacyUpdateTick of float
@@ -2039,13 +2045,16 @@ module Viewer =
         | Host.ViewerPointerButton.SecondaryButton -> ViewerPointerButtonKind.Secondary
         | Host.ViewerPointerButton.MiddleButton -> ViewerPointerButtonKind.Middle
 
-    let private runPresentedPersistentWindow options behavior diagnostics inputDispatch getScene onTick onKey onPointer onResize inputVerified =
+    let private runPresentedPersistentWindow options behavior diagnostics inputDispatch getScene onTick onKey onPointer onResize inputVerified scriptInputs =
         let windowOpened = ref false
         let framePresented = ref false
         let closeReason: ViewerCloseReason option ref = ref None
         let mutable inputQueue = emptyInputQueue
         let mutable nextDrainBatchId = 1L
         let queuedPayloads = System.Collections.Generic.Dictionary<int64, LegacyQueuedInput>()
+        let scriptedInputs = scriptInputs |> Option.map List.toArray
+        let mutable scriptedIndex = 0
+        let mutable scriptedCompletionFrames = 0
 
         let configuration =
             { Host.Viewer.defaultConfiguration options.Title options.InitialSize with
@@ -2086,6 +2095,36 @@ module Viewer =
             let envelope, nextQueue = enqueueInput DateTimeOffset.UtcNow kind payloadText inputQueue
             inputQueue <- nextQueue
             queuedPayloads[envelope.SequenceId] <- payload
+
+        let enqueueScriptInput input =
+            match input with
+            | ViewerScriptInput.Key(key, isDown) ->
+                let rawKey = ViewerKeyboard.toKeyId key
+
+                enqueueQueuedInput
+                    (if isDown then ViewerResponsivenessInputKind.KeyDown else ViewerResponsivenessInputKind.KeyUp)
+                    rawKey
+                    (QueuedLegacyKey(rawKey, isDown))
+            | ViewerScriptInput.Pointer input ->
+                enqueueQueuedInput (pointerInputKind input) (pointerPayload input) (QueuedLegacyPointer input)
+            | ViewerScriptInput.WaitFrame -> ()
+
+        let pumpScriptInput () =
+            match scriptedInputs with
+            | Some inputs when !framePresented && scriptedIndex < inputs.Length ->
+                let input = inputs.[scriptedIndex]
+                scriptedIndex <- scriptedIndex + 1
+                scriptedCompletionFrames <- 0
+                enqueueScriptInput input
+            | _ -> ()
+
+        let scriptWantsClose () =
+            match scriptedInputs with
+            | Some inputs ->
+                scriptedIndex >= inputs.Length
+                && scriptedCompletionFrames > 0
+                && inputQueueDepth inputQueue = 0
+            | None -> false
 
         let handleQueuedPayload payload =
             match payload with
@@ -2145,15 +2184,21 @@ module Viewer =
                 windowOpened := true
                 (), Cmd.ofMsg (LegacyHostEffect(Host.ViewerEffect.RenderFrame(renderCurrentScene ())))
             | LegacyUpdateTick elapsedSeconds ->
+                pumpScriptInput ()
                 let closeFromQueuedInput = drainQueuedInputs ()
+                let closeFromScript = scriptWantsClose ()
 
-                if closeFromQueuedInput || onTick(TimeSpan.FromSeconds elapsedSeconds) then
+                if closeFromQueuedInput || closeFromScript || onTick(TimeSpan.FromSeconds elapsedSeconds) then
                     closeReason := Some AppRequestedClose
                     (), Cmd.ofMsg (LegacyHostEffect Host.ViewerEffect.Shutdown)
                 else
                     (), Cmd.none
             | LegacyRenderTick _ ->
                 framePresented := true
+                match scriptedInputs with
+                | Some inputs when scriptedIndex >= inputs.Length ->
+                    scriptedCompletionFrames <- scriptedCompletionFrames + 1
+                | _ -> ()
                 (), Cmd.ofMsg (LegacyHostEffect(Host.ViewerEffect.RenderFrame(renderCurrentScene ())))
             | LegacyKey(rawKey, isDown) ->
                 enqueueQueuedInput
@@ -3240,6 +3285,7 @@ module Viewer =
                     None
                     None
                     (fun () -> true)
+                    None
 
     let runAppWithWindowBehavior options behavior (host: GeneratedAppHost<'model, 'msg>) =
         match validateOptions options with
@@ -3340,7 +3386,7 @@ module Viewer =
                     let inputVerified () =
                         not (requireInputDispatchVerification ()) || inputDispatch = "true"
 
-                    match runPresentedPersistentWindow options behavior host.Diagnostics inputDispatch (fun () -> currentScene) handleTick (Some handleKey) None None inputVerified with
+                    match runPresentedPersistentWindow options behavior host.Diagnostics inputDispatch (fun () -> currentScene) handleTick (Some handleKey) None None inputVerified None with
                     | Result.Ok outcome ->
                         Result.Ok(
                             { outcome with
@@ -3357,7 +3403,7 @@ module Viewer =
     // Feature 085 — pointer-aware, size-aware durable launch. Mirrors
     // `runAppWithWindowBehavior` but routes native pointer events and resizes to the host,
     // and renders a size-aware `View`. `runApp`/`GeneratedAppHost` are untouched (FR-006).
-    let runInteractiveViewerWithWindowBehavior options behavior (host: InteractiveViewerHost<'model,'msg>) =
+    let private runInteractiveViewerWithWindowBehaviorCore options behavior script (host: InteractiveViewerHost<'model,'msg>) =
         match validateOptions options with
         | Result.Error failure -> Result.Error failure
         | Result.Ok() ->
@@ -3467,6 +3513,7 @@ module Viewer =
                             (Some handlePointer)
                             (Some handleResize)
                             inputVerified
+                            script
                     with
                     | Result.Ok outcome ->
                         Result.Ok(
@@ -3478,8 +3525,17 @@ module Viewer =
                         )
                     | Result.Error failure -> Result.Error failure
 
+    let runInteractiveViewerWithWindowBehavior options behavior host =
+        runInteractiveViewerWithWindowBehaviorCore options behavior None host
+
     let runInteractiveViewer options host =
         runInteractiveViewerWithWindowBehavior options defaultWindowBehavior host
+
+    let runInteractiveViewerScriptWithWindowBehavior options behavior script host =
+        runInteractiveViewerWithWindowBehaviorCore options behavior (Some script) host
+
+    let runInteractiveViewerScript options script host =
+        runInteractiveViewerScriptWithWindowBehavior options defaultWindowBehavior script host
 
     let runAppEvidence (request: ViewerRunRequest) options (host: GeneratedAppHost<'model, 'msg>) =
         let model, _ = host.Init()

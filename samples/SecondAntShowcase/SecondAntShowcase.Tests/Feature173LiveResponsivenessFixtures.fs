@@ -8,16 +8,27 @@ open SecondAntShowcase.App
 let tempDir () =
     Path.Combine(Path.GetTempPath(), "second-antshowcase-feature173-" + Guid.NewGuid().ToString("N"))
 
+let withForcedSubstitute action =
+    let previous = Environment.GetEnvironmentVariable "FS_GG_RESPONSIVENESS_FORCE_SUBSTITUTE"
+
+    try
+        Environment.SetEnvironmentVariable("FS_GG_RESPONSIVENESS_FORCE_SUBSTITUTE", "1")
+        action ()
+    finally
+        Environment.SetEnvironmentVariable("FS_GG_RESPONSIVENESS_FORCE_SUBSTITUTE", previous)
+
 let runHeadlessRequireLive () =
     let outDir = tempDir ()
     let code =
-        Responsiveness.run
-            [ "--script"; "representative"
-              "--theme"; "light"
-              "--all-interactive"
-              "--require-live"
-              "--out"; outDir
-              "--json" ]
+        withForcedSubstitute
+            (fun () ->
+                Responsiveness.run
+                    [ "--script"; "representative"
+                      "--theme"; "light"
+                      "--all-interactive"
+                      "--require-live"
+                      "--out"; outDir
+                      "--json" ])
 
     code, outDir
 

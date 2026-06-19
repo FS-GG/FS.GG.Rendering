@@ -51,8 +51,8 @@
     <PackageReference Include="FS.GG.UI.Controls" Version="0.1.35-preview.1" />
     <PackageReference Include="FS.GG.UI.Color" Version="0.1.35-preview.1" />
     <PackageReference Include="FS.GG.UI.Scene" Version="0.1.35-preview.1" />
-    <PackageReference Include="FS.GG.UI.Controls.Elmish" Version="0.1.35-preview.1" />
-    <PackageReference Include="FS.GG.UI.SkiaViewer" Version="0.1.35-preview.1" />
+    <PackageReference Include="FS.GG.UI.Controls.Elmish" Version="0.1.38-preview.1" />
+    <PackageReference Include="FS.GG.UI.SkiaViewer" Version="0.1.38-preview.1" />
     <PackageReference Include="FS.GG.UI.Testing" Version="0.1.35-preview.1" />
     <PackageReference Include="FS.GG.UI.DesignSystem" Version="0.1.35-preview.1" />
     <PackageReference Include="FS.GG.UI.KeyboardInput" Version="0.1.35-preview.1" />

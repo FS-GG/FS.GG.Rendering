@@ -7,6 +7,15 @@ open System.Text.Json
 let tempDir () =
     Path.Combine(Path.GetTempPath(), "antshowcase-feature172-" + Guid.NewGuid().ToString("N"))
 
+let withForcedSubstitute action =
+    let previous = Environment.GetEnvironmentVariable "FS_GG_RESPONSIVENESS_FORCE_SUBSTITUTE"
+
+    try
+        Environment.SetEnvironmentVariable("FS_GG_RESPONSIVENESS_FORCE_SUBSTITUTE", "1")
+        action ()
+    finally
+        Environment.SetEnvironmentVariable("FS_GG_RESPONSIVENESS_FORCE_SUBSTITUTE", previous)
+
 let summaryFile outDir =
     Directory.GetFiles(outDir, "summary.json", SearchOption.AllDirectories)
     |> Array.exactlyOne

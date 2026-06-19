@@ -1,0 +1,484 @@
+{
+  "artifactWriteStatus": "complete",
+  "budgets": {
+    "inputReceiptMaxMs": 16,
+    "inputReceiptP95Ms": 4,
+    "inputToVisibleMaxMs": 150,
+    "inputToVisibleP95Ms": 100,
+    "longFrameThresholdMs": 50
+  },
+  "completedUtc": "2026-06-19T21:03:54.2120204+00:00",
+  "coverage": {
+    "acceptedInteractiveFamilies": [
+      "button-click",
+      "data-collection",
+      "date-time",
+      "disclosure",
+      "form-validation",
+      "graph-custom",
+      "navigation",
+      "numeric-entry",
+      "selection-multi",
+      "selection-single",
+      "slider-rating",
+      "text-entry",
+      "toggle-switch",
+      "upload"
+    ],
+    "blockedInteractiveFamilies": [],
+    "displayOnlyExclusions": [
+      {
+        "controlId": "alert",
+        "reason": "static feedback sample"
+      },
+      {
+        "controlId": "area-chart",
+        "reason": "static seeded chart data"
+      },
+      {
+        "controlId": "avatar",
+        "reason": "static identity sample"
+      },
+      {
+        "controlId": "badge",
+        "reason": "static status count sample"
+      },
+      {
+        "controlId": "bar-chart",
+        "reason": "static seeded chart data"
+      },
+      {
+        "controlId": "border",
+        "reason": "layout primitive, behavior comes from composed children"
+      },
+      {
+        "controlId": "box-plot",
+        "reason": "static seeded chart data"
+      },
+      {
+        "controlId": "calendar",
+        "reason": "static month display in this sample"
+      },
+      {
+        "controlId": "card",
+        "reason": "static container sample"
+      },
+      {
+        "controlId": "carousel",
+        "reason": "seeded slide set without auto-play evidence"
+      },
+      {
+        "controlId": "chord-diagram",
+        "reason": "static seeded graph data"
+      },
+      {
+        "controlId": "column-chart",
+        "reason": "static seeded chart data"
+      },
+      {
+        "controlId": "context-menu",
+        "reason": "displayed as menu pattern without host context gesture in headless evidence"
+      },
+      {
+        "controlId": "descriptions",
+        "reason": "static facts display"
+      },
+      {
+        "controlId": "dock",
+        "reason": "layout primitive, behavior comes from composed children"
+      },
+      {
+        "controlId": "empty",
+        "reason": "static empty-state sample"
+      },
+      {
+        "controlId": "funnel-chart",
+        "reason": "static seeded chart data"
+      },
+      {
+        "controlId": "gauge-chart",
+        "reason": "static seeded chart data"
+      },
+      {
+        "controlId": "grid",
+        "reason": "layout primitive, behavior comes from composed children"
+      },
+      {
+        "controlId": "heatmap",
+        "reason": "static seeded chart data"
+      },
+      {
+        "controlId": "histogram",
+        "reason": "static seeded chart data"
+      },
+      {
+        "controlId": "icon",
+        "reason": "static iconography sample"
+      },
+      {
+        "controlId": "image",
+        "reason": "static media sample"
+      },
+      {
+        "controlId": "label",
+        "reason": "static field label sample"
+      },
+      {
+        "controlId": "line-chart",
+        "reason": "static seeded chart data"
+      },
+      {
+        "controlId": "panel",
+        "reason": "layout primitive, behavior comes from composed children"
+      },
+      {
+        "controlId": "pie-chart",
+        "reason": "static seeded chart data"
+      },
+      {
+        "controlId": "qr-code",
+        "reason": "static encoded value"
+      },
+      {
+        "controlId": "radar-chart",
+        "reason": "static seeded chart data"
+      },
+      {
+        "controlId": "result",
+        "reason": "static outcome sample"
+      },
+      {
+        "controlId": "rich-text",
+        "reason": "static rich text formatting sample"
+      },
+      {
+        "controlId": "rose-chart",
+        "reason": "static seeded chart data"
+      },
+      {
+        "controlId": "sankey-diagram",
+        "reason": "static seeded graph data"
+      },
+      {
+        "controlId": "scatter-plot",
+        "reason": "static seeded chart data"
+      },
+      {
+        "controlId": "scroll-viewer",
+        "reason": "host scrolling behavior, not a pure Core state transition"
+      },
+      {
+        "controlId": "separator",
+        "reason": "static layout divider"
+      },
+      {
+        "controlId": "skeleton",
+        "reason": "static loading placeholder sample"
+      },
+      {
+        "controlId": "spinner",
+        "reason": "static loading sample"
+      },
+      {
+        "controlId": "split-view",
+        "reason": "static layout split sample"
+      },
+      {
+        "controlId": "stack",
+        "reason": "layout primitive, behavior comes from composed children"
+      },
+      {
+        "controlId": "statistic",
+        "reason": "static metric display"
+      },
+      {
+        "controlId": "sunburst",
+        "reason": "static seeded chart data"
+      },
+      {
+        "controlId": "tag",
+        "reason": "static classification token"
+      },
+      {
+        "controlId": "text-block",
+        "reason": "static typography sample"
+      },
+      {
+        "controlId": "timeline",
+        "reason": "static chronological display sample"
+      },
+      {
+        "controlId": "toast",
+        "reason": "display-only notification state in this sample"
+      },
+      {
+        "controlId": "toolbar",
+        "reason": "composes command controls covered by button contracts"
+      },
+      {
+        "controlId": "treemap",
+        "reason": "static seeded chart data"
+      },
+      {
+        "controlId": "waterfall-chart",
+        "reason": "static seeded chart data"
+      },
+      {
+        "controlId": "watermark",
+        "reason": "static background affordance"
+      },
+      {
+        "controlId": "wrap",
+        "reason": "layout primitive, behavior comes from composed children"
+      }
+    ],
+    "missingInteractiveFamilies": [],
+    "rejectedInteractiveFamilies": [],
+    "requiredInteractiveFamilies": [
+      "button-click",
+      "data-collection",
+      "date-time",
+      "disclosure",
+      "form-validation",
+      "graph-custom",
+      "navigation",
+      "numeric-entry",
+      "selection-multi",
+      "selection-single",
+      "slider-rating",
+      "text-entry",
+      "toggle-switch",
+      "upload"
+    ]
+  },
+  "diagnostics": [
+    "LIVE: measured through ControlsElmish.Live.runScript and the OpenGL viewer presentation boundary.",
+    "viewerOutcome=ok; firstFramePresented=True"
+  ],
+  "dragContinuity": [
+    {
+      "actionId": "slider-rating",
+      "classification": "continuous",
+      "controlFamily": "slider-rating"
+    }
+  ],
+  "environmentLimitations": [],
+  "firstFailedBudget": null,
+  "groups": [
+    {
+      "controlFamily": "button-click",
+      "controlGroup": "button-click",
+      "count": 1,
+      "inputKind": "pointer-discrete",
+      "longFrameCount": 0,
+      "maxMs": 9.834,
+      "p50Ms": 9.834,
+      "p95Ms": 9.834,
+      "page": "buttons",
+      "readiness": "accepted"
+    },
+    {
+      "controlFamily": "toggle-switch",
+      "controlGroup": "toggle-switch",
+      "count": 1,
+      "inputKind": "pointer-discrete",
+      "longFrameCount": 0,
+      "maxMs": 5.68,
+      "p50Ms": 5.68,
+      "p95Ms": 5.68,
+      "page": "buttons",
+      "readiness": "accepted"
+    },
+    {
+      "controlFamily": "text-entry",
+      "controlGroup": "text-entry",
+      "count": 1,
+      "inputKind": "key-down",
+      "longFrameCount": 0,
+      "maxMs": 1.795,
+      "p50Ms": 1.795,
+      "p95Ms": 1.795,
+      "page": "text-numeric-input",
+      "readiness": "accepted"
+    },
+    {
+      "controlFamily": "numeric-entry",
+      "controlGroup": "numeric-entry",
+      "count": 1,
+      "inputKind": "key-down",
+      "longFrameCount": 0,
+      "maxMs": 1.747,
+      "p50Ms": 1.747,
+      "p95Ms": 1.747,
+      "page": "text-numeric-input",
+      "readiness": "accepted"
+    },
+    {
+      "controlFamily": "date-time",
+      "controlGroup": "date-time",
+      "count": 1,
+      "inputKind": "pointer-discrete",
+      "longFrameCount": 0,
+      "maxMs": 1.695,
+      "p50Ms": 1.695,
+      "p95Ms": 1.695,
+      "page": "text-numeric-input",
+      "readiness": "accepted"
+    },
+    {
+      "controlFamily": "slider-rating",
+      "controlGroup": "slider-rating",
+      "count": 1,
+      "inputKind": "pointer-move",
+      "longFrameCount": 0,
+      "maxMs": 2.769,
+      "p50Ms": 2.769,
+      "p95Ms": 2.769,
+      "page": "text-numeric-input",
+      "readiness": "accepted"
+    },
+    {
+      "controlFamily": "selection-single",
+      "controlGroup": "selection-single",
+      "count": 1,
+      "inputKind": "pointer-discrete",
+      "longFrameCount": 0,
+      "maxMs": 1.727,
+      "p50Ms": 1.727,
+      "p95Ms": 1.727,
+      "page": "selection-toggles",
+      "readiness": "accepted"
+    },
+    {
+      "controlFamily": "selection-multi",
+      "controlGroup": "selection-multi",
+      "count": 1,
+      "inputKind": "pointer-discrete",
+      "longFrameCount": 0,
+      "maxMs": 1.728,
+      "p50Ms": 1.728,
+      "p95Ms": 1.728,
+      "page": "selection-toggles",
+      "readiness": "accepted"
+    },
+    {
+      "controlFamily": "navigation",
+      "controlGroup": "navigation",
+      "count": 1,
+      "inputKind": "pointer-discrete",
+      "longFrameCount": 0,
+      "maxMs": 1.711,
+      "p50Ms": 1.711,
+      "p95Ms": 1.711,
+      "page": "navigation-menus",
+      "readiness": "accepted"
+    },
+    {
+      "controlFamily": "disclosure",
+      "controlGroup": "disclosure",
+      "count": 1,
+      "inputKind": "pointer-discrete",
+      "longFrameCount": 0,
+      "maxMs": 1.762,
+      "p50Ms": 1.762,
+      "p95Ms": 1.762,
+      "page": "cards-stats-media",
+      "readiness": "accepted"
+    },
+    {
+      "controlFamily": "upload",
+      "controlGroup": "upload",
+      "count": 1,
+      "inputKind": "pointer-discrete",
+      "longFrameCount": 0,
+      "maxMs": 1.702,
+      "p50Ms": 1.702,
+      "p95Ms": 1.702,
+      "page": "text-numeric-input",
+      "readiness": "accepted"
+    },
+    {
+      "controlFamily": "data-collection",
+      "controlGroup": "data-collection",
+      "count": 1,
+      "inputKind": "pointer-discrete",
+      "longFrameCount": 0,
+      "maxMs": 1.739,
+      "p50Ms": 1.739,
+      "p95Ms": 1.739,
+      "page": "data-collections",
+      "readiness": "accepted"
+    },
+    {
+      "controlFamily": "form-validation",
+      "controlGroup": "form-validation",
+      "count": 1,
+      "inputKind": "pointer-discrete",
+      "longFrameCount": 0,
+      "maxMs": 1.695,
+      "p50Ms": 1.695,
+      "p95Ms": 1.695,
+      "page": "feedback-status",
+      "readiness": "accepted"
+    },
+    {
+      "controlFamily": "graph-custom",
+      "controlGroup": "graph-custom",
+      "count": 1,
+      "inputKind": "pointer-discrete",
+      "longFrameCount": 0,
+      "maxMs": 1.737,
+      "p50Ms": 1.737,
+      "p95Ms": 1.737,
+      "page": "graphs-custom",
+      "readiness": "accepted"
+    }
+  ],
+  "overallReadiness": "accepted",
+  "recordsPath": "records.jsonl",
+  "runId": "resp-20260619-210354-bef07e",
+  "scope": "second-antshowcase/all-interactive/antDark",
+  "slowestInteractions": [
+    {
+      "actionId": "button-click",
+      "controlFamily": "button-click",
+      "dominantPhase": "present",
+      "inputSequenceId": 1,
+      "recordId": "resp-20260619-210354-bef07e-000001",
+      "totalInputToVisibleMs": 9.834
+    },
+    {
+      "actionId": "toggle-switch",
+      "controlFamily": "toggle-switch",
+      "dominantPhase": "present",
+      "inputSequenceId": 2,
+      "recordId": "resp-20260619-210354-bef07e-000002",
+      "totalInputToVisibleMs": 5.68
+    },
+    {
+      "actionId": "slider-rating",
+      "controlFamily": "slider-rating",
+      "dominantPhase": "present",
+      "inputSequenceId": 6,
+      "recordId": "resp-20260619-210354-bef07e-000006",
+      "totalInputToVisibleMs": 2.769
+    },
+    {
+      "actionId": "text-entry",
+      "controlFamily": "text-entry",
+      "dominantPhase": "present",
+      "inputSequenceId": 3,
+      "recordId": "resp-20260619-210354-bef07e-000003",
+      "totalInputToVisibleMs": 1.795
+    },
+    {
+      "actionId": "disclosure",
+      "controlFamily": "disclosure",
+      "dominantPhase": "present",
+      "inputSequenceId": 10,
+      "recordId": "resp-20260619-210354-bef07e-000010",
+      "totalInputToVisibleMs": 1.762
+    }
+  ],
+  "startedUtc": "2026-06-19T21:03:54.2119858+00:00"
+}

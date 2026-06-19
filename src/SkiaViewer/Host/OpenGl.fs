@@ -842,10 +842,16 @@ module GlHost =
     let representLastGoodFrame configuration (window: IWindow) (context: GRContext) (framebuffer: FramebufferState) (image: SKImage) =
         try
             bind (ensureFramebufferSurface configuration window context framebuffer) (fun surface ->
+                let paintSw = System.Diagnostics.Stopwatch.StartNew()
                 surface.Canvas.DrawImage(image, 0f, 0f)
                 surface.Canvas.Flush()
+                paintSw.Stop()
+                let composeSw = System.Diagnostics.Stopwatch.StartNew()
                 context.Flush()
                 window.SwapBuffers()
+                composeSw.Stop()
+                lastPaintDuration <- paintSw.Elapsed
+                lastComposeDuration <- composeSw.Elapsed
 
                 Ok
                     { Width = framebuffer.Width
@@ -920,14 +926,10 @@ module GlHost =
         match action, lastGoodFrame with
         | PresentAction.SkipPresent, _ ->
             skippedPresentCount <- skippedPresentCount + 1
-            lastPaintDuration <- System.TimeSpan.Zero
-            lastComposeDuration <- System.TimeSpan.Zero
             Ok(idleSnapshot ())
         | PresentAction.RepresentLastGood, Some image ->
             representedCount <- representedCount + 1
             idleRepresentsRemaining <- idleRepresentsRemaining - 1
-            lastPaintDuration <- System.TimeSpan.Zero
-            lastComposeDuration <- System.TimeSpan.Zero
             representLastGoodFrame configuration window context framebuffer image
         | _ ->
             // PaintAndPresent (or RepresentLastGood before any frame is cached → paint a real one).
