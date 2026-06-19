@@ -1,0 +1,8 @@
+
+## responsiveness light
+{"summaryJson":"specs/172-fix-mouse-lag/readiness/responsiveness/resp-20260619-190047-218eb7/summary.json","readiness":"environment-limited"}
+exit_code=4
+
+## responsiveness dark
+{"summaryJson":"specs/172-fix-mouse-lag/readiness/responsiveness/resp-20260619-190052-47cb2f/summary.json","readiness":"environment-limited"}
+exit_code=4

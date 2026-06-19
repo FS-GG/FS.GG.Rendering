@@ -40,6 +40,7 @@ dotnet run --project SecondAntShowcase.App -c Release -- evidence --seed 1 --out
 dotnet run --project SecondAntShowcase.App -c Release -- visual-readiness --seed 1 --size 1600x1000 --themes light,dark --out ../../specs/171-second-antshowcase-sample/readiness/preferred
 dotnet run --project SecondAntShowcase.App -c Release -- visual-readiness --seed 1 --size 1280x800 --themes light,dark --out ../../specs/171-second-antshowcase-sample/readiness/minimum
 dotnet run --project SecondAntShowcase.App -c Release -- review-findings --out ../../specs/171-second-antshowcase-sample/readiness --fail-on-unresolved
+dotnet run --project SecondAntShowcase.App -c Release -- responsiveness --script representative --theme light --all-interactive --require-live --out ../../specs/172-fix-mouse-lag/readiness/responsiveness --json
 dotnet run --project SecondAntShowcase.App -c Release -- interactive display-typography --theme light
 ```
 
@@ -47,6 +48,12 @@ dotnet run --project SecondAntShowcase.App -c Release -- interactive display-typ
 real screenshots when the host supports it and records `environment-limited` or degraded
 evidence when it does not. Environment-limited output is useful automation evidence, but it
 is not accepted live visual fidelity.
+
+`responsiveness --all-interactive --require-live` writes `records.jsonl`, `summary.json`,
+`summary.md`, and `environment.md` for every interactive family. Exit code `0` is reserved
+for accepted measured live evidence, `4` means the visible session or presentation boundary
+was unavailable/incomplete, and `5` means measured evidence missed the 100 ms p95 or 150 ms
+max budget.
 
 ## Layout
 

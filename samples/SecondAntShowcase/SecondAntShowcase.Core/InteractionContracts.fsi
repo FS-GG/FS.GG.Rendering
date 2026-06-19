@@ -7,6 +7,8 @@ type InteractionContract =
       ControlIds: string list
       PageId: string
       StartingState: string
+      ActionType: string
+      InputKind: string
       Action: string
       ExpectedStateChange: string
       VisibleEvidence: string

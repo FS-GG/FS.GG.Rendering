@@ -37,6 +37,14 @@
     <Compile Include="Feature167ResponsivenessShapeTests.fs" />
     <Compile Include="Feature167KeyboardCompatibilityTests.fs" />
     <Compile Include="Feature167ResponsivenessCliTests.fs" />
+    <Compile Include="Feature172ResponsivenessFixtures.fs" />
+    <Compile Include="Feature172PointerActionTests.fs" />
+    <Compile Include="Feature172ResponsivenessCliContractTests.fs" />
+    <Compile Include="Feature172ResponsivenessEvidenceTests.fs" />
+    <Compile Include="Feature172ResponsivenessFailClosedTests.fs" />
+    <Compile Include="Feature172VisualRegressionTests.fs" />
+    <Compile Include="Feature172SliderRegressionTests.fs" />
+    <Compile Include="Feature172CoverageRegressionTests.fs" />
     <Compile Include="Feature169DiagnosticsCliTests.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>

@@ -912,10 +912,22 @@ module Viewer =
 
     let drainInputQueue batchId drainReason queue =
         let before = inputQueueDepth queue
+        let orderedNonContinuous =
+            let laneRank envelope =
+                match envelope.PriorityLane with
+                | Discrete -> 0
+                | Lifecycle -> 1
+                | Continuous -> 2
+                | Background -> 3
+
+            (queue.Lifecycle @ queue.Discrete)
+            |> List.mapi (fun index envelope -> laneRank envelope, index, envelope)
+            |> List.sortBy (fun (rank, index, _) -> rank, index)
+            |> List.map (fun (_, _, envelope) -> envelope)
 
         let drain =
             { BatchId = batchId
-              DiscreteInputs = queue.Lifecycle @ queue.Discrete
+              DiscreteInputs = orderedNonContinuous
               CoalescedPointer = queue.LatestContinuousPointer
               CoalescedMovementCount = queue.ContinuousCoalescedCount
               QueueDepthBeforeDrain = before
@@ -2067,12 +2079,16 @@ module Viewer =
                 let drain, nextQueue = drainInputQueue nextDrainBatchId "frame-update" inputQueue
                 inputQueue <- nextQueue
                 nextDrainBatchId <- nextDrainBatchId + 1L
+                let discreteInputs, deferredInputs =
+                    drain.DiscreteInputs
+                    |> List.partition (fun envelope -> envelope.PriorityLane = Discrete)
 
                 let orderedInputs =
-                    drain.DiscreteInputs
+                    discreteInputs
                     @ (match drain.CoalescedPointer with
                        | Some pointer -> [ pointer ]
                        | None -> [])
+                    @ deferredInputs
 
                 let closeRequested =
                     orderedInputs

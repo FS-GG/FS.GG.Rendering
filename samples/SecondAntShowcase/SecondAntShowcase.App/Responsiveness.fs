@@ -10,8 +10,12 @@ open FS.GG.UI.KeyboardInput
 open SecondAntShowcase.Core
 open SecondAntShowcase.Core.Model
 
+type ResponsivenessScope =
+    | Page of string
+    | AllInteractive
+
 type Request =
-    { Page: string
+    { Scope: ResponsivenessScope
       Theme: ThemeMode
       Script: string
       OutDir: string
@@ -38,8 +42,17 @@ let private tryParseTheme value =
     | "dark" -> Some Dark
     | _ -> None
 
+let private scopeText scope =
+    match scope with
+    | Page page -> page
+    | AllInteractive -> "all-interactive"
+
+let private scopePath scope theme =
+    $"antshowcase/{scopeText scope}/{AntTheme.modeName theme}"
+
 let parse args =
-    let page = flag "--page" args |> Option.defaultValue "buttons"
+    let page = flag "--page" args
+    let allInteractive = hasFlag "--all-interactive" args
     let script = flag "--script" args |> Option.defaultValue "representative"
     let outDir = flag "--out" args |> Option.defaultValue "artifacts/responsiveness"
     let themeText = flag "--theme" args |> Option.defaultValue "light"
@@ -47,13 +60,19 @@ let parse args =
     match tryParseTheme themeText with
     | None -> Error $"unknown theme '{themeText}'"
     | Some theme ->
-        if PageRegistry.all |> List.exists (fun pageSpec -> pageSpec.Id = page) |> not then
-            Error $"unknown page '{page}'"
+        if allInteractive && Option.isSome page then
+            Error "--page and --all-interactive are mutually exclusive"
+        elif page |> Option.exists (fun pageId -> PageRegistry.all |> List.exists (fun pageSpec -> pageSpec.Id = pageId) |> not) then
+            Error $"unknown page '{Option.get page}'"
         elif script <> "representative" then
             Error $"unknown responsiveness script '{script}'"
         else
+            let scope =
+                if allInteractive then AllInteractive
+                else Page(page |> Option.defaultValue "buttons")
+
             Ok
-                { Page = page
+                { Scope = scope
                   Theme = theme
                   Script = script
                   OutDir = outDir
@@ -74,11 +93,33 @@ let private jsonNull =
     use document = JsonDocument.Parse("null")
     document.RootElement.Clone()
 
+let private actionPlan request =
+    let actions =
+        match request.Scope with
+        | AllInteractive -> InteractionContracts.all
+        | Page pageId ->
+            InteractionContracts.all
+            |> List.filter (fun contract -> contract.PageId = pageId)
+
+    actions |> List.map Evidence.responsivenessActionOfContract
+
+let private displayOnlyExclusions () =
+    InteractionContracts.displayOnlyReasons
+    |> Map.toList
+    |> List.map (fun (controlId, reason) -> Evidence.responsivenessDisplayOnlyAction controlId reason)
+
+let private inputKindForToken token =
+    match token with
+    | "pointer-move" -> "pointer-move", "move-burst"
+    | "pointer-discrete" -> "pointer-discrete", "primary-click"
+    | "key-down" -> "key-down", "keyboard-input"
+    | "wheel" -> "wheel", "wheel"
+    | other -> other, other
+
 let private recordJson
     (run: string)
     (inputSequence: int)
-    (inputKind: string)
-    (inputName: string)
+    (action: Evidence.ResponsivenessReviewAction)
     (visibleResponse: string)
     (productChanged: bool)
     (totalMs: float)
@@ -86,6 +127,7 @@ let private recordJson
     (diagnostics: string list)
     =
     let sequenceText = inputSequence.ToString("000000", CultureInfo.InvariantCulture)
+    let inputKind, inputName = inputKindForToken action.InputKind
 
     JsonSerializer.Serialize(
         {| recordId = $"{run}-{sequenceText}"
@@ -93,8 +135,13 @@ let private recordJson
            inputSequenceId = inputSequence
            inputKind = inputKind
            inputName = inputName
-           page = "buttons"
-           controlGroup = "button"
+           page = action.PageId
+           controlGroup = action.ControlFamily
+           controlFamily = action.ControlFamily
+           controlIds = action.ControlIds |> List.toArray
+           actionType = action.ActionType
+           expectedVisibleResult = action.ExpectedVisibleResult
+           observedVisibleResult = if productChanged then action.ExpectedVisibleResult else "not measured in live presentation"
            receiptTimestamp = DateTimeOffset.UtcNow
            queueDepthAtReceipt = 0
            queueDepthAtDrain = 1
@@ -123,6 +170,7 @@ let private recordJson
                repaintedNodeCount = Nullable<int>()
                status = "headless-substitute" |}
            longFrame = totalMs >= 50.0
+           acceptanceStatus = "blocked"
            diagnostics = diagnostics |},
         JsonSerializerOptions(WriteIndented = false)
     )
@@ -136,23 +184,61 @@ let private writeOutputs (request: Request) (run: string) (metrics: FrameMetrics
     let summaryMdPath = Path.Combine(runRoot, "summary.md")
     let environmentPath = Path.Combine(runRoot, "environment.md")
 
-    let productFrames = metrics |> List.filter _.ProductModelChanged |> List.length
+    let anyProductChange = metrics |> List.exists _.ProductModelChanged
     let moveFrame = metrics |> List.tryFind (fun metric -> metric.PointerSamplesReceived > 1)
     let longFrame = metrics |> List.exists (fun metric -> metric.FrameCause = FrameCause.Tick)
+    let actions = actionPlan request
+    let displayOnly = displayOnlyExclusions ()
+    let limitations =
+        [ "headless-substitute:no-live-presentation-boundary"
+          if request.RequireLive then "require-live:visible-surface-unavailable" ]
+    let diagnostic =
+        "SYNTHETIC: deterministic script output is substitute evidence, not accepted live latency."
 
     let records =
-        [ recordJson run 1 "pointer-move" "move-burst" "environment-limited" false 0.0 (moveFrame |> Option.map (fun metric -> max 0 (metric.PointerSamplesReceived - 1)) |> Option.defaultValue 1) [ "SYNTHETIC: deterministic headless substitute; no live GL presentation boundary measured." ]
-          recordJson run 2 "pointer-discrete" "primary-click" "environment-limited" false 0.0 0 [ "SYNTHETIC: pointer shape captured without live presentation." ]
-          recordJson run 3 "key-down" "Enter" "environment-limited" (productFrames > 0) 0.0 0 [ "SYNTHETIC: keyboard activation shape captured without live presentation." ]
-          recordJson run 4 "key-down" "Space" "environment-limited" (productFrames > 1) 0.0 0 [ "SYNTHETIC: keyboard activation shape captured without live presentation." ]
-          recordJson run 5 "key-down" "Escape" "no-visible-response" false 0.0 0 [ "no visible response expected for Escape in the representative script." ] ]
+        actions
+        |> List.mapi (fun index action ->
+            let coalesced =
+                if action.InputKind = "pointer-move" then
+                    moveFrame |> Option.map (fun metric -> max 0 (metric.PointerSamplesReceived - 1)) |> Option.defaultValue 1
+                else
+                    0
+
+            recordJson
+                run
+                (index + 1)
+                action
+                "environment-limited"
+                (anyProductChange && action.ActionId = "button-click")
+                0.0
+                coalesced
+                [ diagnostic ])
 
     File.WriteAllLines(recordsPath, records)
+
+    let requiredFamilies = actions |> List.map _.ControlFamily |> List.distinct |> List.sort
+    let acceptedFamilies: string list = []
+    let missingFamilies = requiredFamilies
+    let groupByFamily =
+        actions
+        |> List.groupBy (fun action -> action.PageId, action.InputKind, action.ControlFamily)
+        |> List.map (fun ((pageId, inputKind, family), grouped) ->
+            {| page = pageId
+               inputKind = inputKind
+               controlGroup = family
+               controlFamily = family
+               count = List.length grouped
+               p50Ms = Nullable<float>()
+               p95Ms = Nullable<float>()
+               maxMs = Nullable<float>()
+               longFrameCount = if longFrame then 1 else 0
+               readiness = "environment-limited" |})
+        |> List.toArray
 
     let summaryJson =
         JsonSerializer.Serialize(
             {| runId = run
-               scope = $"antshowcase/{request.Page}/{AntTheme.modeName request.Theme}"
+               scope = scopePath request.Scope request.Theme
                overallReadiness = "environment-limited"
                startedUtc = DateTimeOffset.UtcNow
                completedUtc = DateTimeOffset.UtcNow
@@ -160,55 +246,64 @@ let private writeOutputs (request: Request) (run: string) (metrics: FrameMetrics
                budgets =
                 {| inputReceiptP95Ms = 4
                    inputReceiptMaxMs = 16
-                   inputToVisibleP95Ms = 50
+                   inputToVisibleP95Ms = Evidence.responsivenessTargetP95Ms
+                   inputToVisibleMaxMs = Evidence.responsivenessTargetMaxMs
                    longFrameThresholdMs = 50 |}
                firstFailedBudget = jsonNull
-               groups =
-                [| {| page = request.Page
-                      inputKind = "pointer-discrete"
-                      controlGroup = "button"
-                      count = 1
-                      p50Ms = Nullable<float>()
-                      p95Ms = Nullable<float>()
-                      maxMs = Nullable<float>()
-                      longFrameCount = if longFrame then 1 else 0
-                      readiness = "environment-limited" |}
-                   {| page = request.Page
-                      inputKind = "key-down"
-                      controlGroup = "button"
-                      count = 3
-                      p50Ms = Nullable<float>()
-                      p95Ms = Nullable<float>()
-                      maxMs = Nullable<float>()
-                      longFrameCount = 0
-                      readiness = "environment-limited" |} |]
+               groups = groupByFamily
+               coverage =
+                {| requiredInteractiveFamilies = requiredFamilies |> List.toArray
+                   acceptedInteractiveFamilies = acceptedFamilies |> List.toArray
+                   displayOnlyExclusions =
+                    displayOnly
+                    |> List.map (fun action ->
+                        {| controlId = action.ControlIds |> List.tryHead |> Option.defaultValue action.ActionId
+                           reason = action.DisplayOnlyReason |> Option.defaultValue "display-only" |})
+                    |> List.toArray
+                   missingInteractiveFamilies = missingFamilies |> List.toArray |}
                slowestInteractions = [||]
-               environmentLimitations =
-                [ "headless-substitute:no-live-presentation-boundary"
-                  if request.RequireLive then "require-live:visible-surface-unavailable" ]
-               diagnostics = [ "SYNTHETIC: deterministic script output is substitute evidence, not accepted live latency." ] |},
+               environmentLimitations = limitations
+               diagnostics = [ diagnostic ] |},
             jsonOptions
         )
 
     File.WriteAllText(summaryJsonPath, summaryJson)
 
+    let groupMarkdown =
+        groupByFamily
+        |> Array.toList
+        |> List.map (fun group ->
+            $"| {group.page} | {group.inputKind} | {group.controlFamily} | {group.count} | n/a | n/a | n/a | {group.longFrameCount} | environment-limited |")
+
+    let missingMarkdown =
+        if List.isEmpty missingFamilies then
+            [ "- none" ]
+        else
+            missingFamilies |> List.map (fun family -> $"- `{family}`")
+
+    let summaryMarkdown =
+        [ $"# Responsiveness summary {run}"
+          ""
+          $"- scope: {scopePath request.Scope request.Theme}"
+          "- overall readiness: environment-limited"
+          "- records: records.jsonl"
+          "- first failed budget: none"
+          "- caveat: SYNTHETIC deterministic headless substitute; no accepted live input-to-present readiness claimed."
+          $"- required interactive families: {List.length requiredFamilies}"
+          $"- accepted interactive families: {List.length acceptedFamilies}"
+          $"- display-only exclusions: {List.length displayOnly}"
+          $"- missing interactive families: {List.length missingFamilies}"
+          ""
+          "| Page | Input | Control | Count | p50 | p95 | max | long frames | readiness |"
+          "|------|-------|---------|-------|-----|-----|-----|-------------|-----------|" ]
+        @ groupMarkdown
+        @ [ ""; "## Missing Interactive Families"; "" ]
+        @ missingMarkdown
+        @ [ "" ]
+
     File.WriteAllText(
         summaryMdPath,
-        String.concat
-            Environment.NewLine
-            [ $"# Responsiveness summary {run}"
-              ""
-              $"- scope: antshowcase/{request.Page}/{AntTheme.modeName request.Theme}"
-              "- overall readiness: environment-limited"
-              "- records: records.jsonl"
-              "- first failed budget: none"
-              "- caveat: SYNTHETIC deterministic headless substitute; no accepted live input-to-present readiness claimed."
-              ""
-              "| Page | Input | Control | Count | p50 | p95 | max | long frames | readiness |"
-              "|------|-------|---------|-------|-----|-----|-----|-------------|-----------|"
-              $"| {request.Page} | pointer-discrete | button | 1 | n/a | n/a | n/a | {(if longFrame then 1 else 0)} | environment-limited |"
-              $"| {request.Page} | key-down | button | 3 | n/a | n/a | n/a | 0 | environment-limited |"
-              "" ]
+        String.concat Environment.NewLine summaryMarkdown
     )
 
     File.WriteAllText(
@@ -220,6 +315,8 @@ let private writeOutputs (request: Request) (run: string) (metrics: FrameMetrics
               "- status: environment-limited"
               "- presentation: no live GL presentation boundary measured by the deterministic command"
               "- substitute: ControlsElmish.Perf.runScript representative script"
+              for limitation in limitations do
+                  $"- limitation: {limitation}"
               "" ]
     )
 
@@ -234,7 +331,12 @@ let run (args: string list) =
         try
             Directory.CreateDirectory request.OutDir |> ignore
             let host = Host.create request.Theme
-            let metrics = ControlsElmish.Perf.runScript host size (Scripts.representative request.Page)
+            let scriptPage =
+                match request.Scope with
+                | Page page -> page
+                | AllInteractive -> "buttons"
+
+            let metrics = ControlsElmish.Perf.runScript host size (Scripts.representative scriptPage)
             let run = runId ()
             let summaryPath = writeOutputs request run metrics
 
@@ -247,7 +349,7 @@ let run (args: string list) =
         with
         | :? UnauthorizedAccessException as ex ->
             eprintfn "second-ant-showcase responsiveness: output root is not writable: %s" ex.Message
-            2
+            3
         | :? IOException as ex ->
             eprintfn "second-ant-showcase responsiveness: output failed: %s" ex.Message
             3

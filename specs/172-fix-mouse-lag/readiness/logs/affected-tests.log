@@ -1,0 +1,85 @@
+
+## tests/SkiaViewer.Tests/SkiaViewer.Tests.fsproj
+Test run for /home/developer/projects/FS.GG.Rendering/tests/SkiaViewer.Tests/bin/Release/net10.0/SkiaViewer.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:   198, Skipped:     0, Total:   198, Duration: 636 ms - SkiaViewer.Tests.dll (net10.0)
+exit_code=0
+
+## tests/Elmish.Tests/Elmish.Tests.fsproj
+Test run for /home/developer/projects/FS.GG.Rendering/tests/Elmish.Tests/bin/Release/net10.0/Elmish.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+  Skipped Feature 109 non-golden timing/allocation baselines (US4, FR-016/017/018/019, SC-007/009).the before/after coalescing baselines are generated and committed (FR-019 / SC-007)
+  Skipped Feature 109 non-golden timing/allocation baselines (US4, FR-016/017/018/019, SC-007/009).the baselines carry timing+allocation, count-first thresholds, and an explicit MissingCounters line (FR-015/018)
+  Skipped Feature 109 performance-scenario corpus — deterministic metrics goldens (US2, SC-005/006).scenario 'hover-sweep-100' matches its committed golden and re-runs byte-identically
+  Skipped Feature 109 non-golden timing/allocation baselines (US4, FR-016/017/018/019, SC-007/009).no timing/allocation field leaks into any deterministic golden (SC-009)
+  Skipped Feature 109 performance-scenario corpus — deterministic metrics goldens (US2, SC-005/006).scenario 'hover-sweep-1000' matches its committed golden and re-runs byte-identically
+  Skipped Feature 109 performance-scenario corpus — deterministic metrics goldens (US2, SC-005/006).scenario 'hover-sweep-5000' matches its committed golden and re-runs byte-identically
+  Skipped Feature 109 performance-scenario corpus — deterministic metrics goldens (US2, SC-005/006).scenario 'datagrid-100' matches its committed golden and re-runs byte-identically
+  Skipped Feature 109 performance-scenario corpus — deterministic metrics goldens (US2, SC-005/006).scenario 'datagrid-1000' matches its committed golden and re-runs byte-identically
+  Skipped Feature 109 performance-scenario corpus — deterministic metrics goldens (US2, SC-005/006).scenario 'datagrid-10000' matches its committed golden and re-runs byte-identically
+  Skipped Feature 109 performance-scenario corpus — deterministic metrics goldens (US2, SC-005/006).scenario 'deep-nested-layout' matches its committed golden and re-runs byte-identically
+  Skipped Feature 109 performance-scenario corpus — deterministic metrics goldens (US2, SC-005/006).scenario 'theme-switch-dashboard' matches its committed golden and re-runs byte-identically
+  Skipped Feature 109 performance-scenario corpus — deterministic metrics goldens (US2, SC-005/006).scenario 'continuous-drag-400' matches its committed golden and re-runs byte-identically
+  Skipped Feature 109 performance-scenario corpus — deterministic metrics goldens (US2, SC-005/006).scenario 'text-entry-while-animating' matches its committed golden and re-runs byte-identically
+  Skipped Feature 109 performance-scenario corpus — deterministic metrics goldens (US2, SC-005/006).scenario 'picture-cache-eviction' matches its committed golden and re-runs byte-identically
+  Skipped Feature 109 performance-scenario corpus — deterministic metrics goldens (US2, SC-005/006).scenario 'picture-cache-reuse' matches its committed golden and re-runs byte-identically
+  Skipped Feature 109 performance-scenario corpus — deterministic metrics goldens (US2, SC-005/006).scenario 'text-heavy-cold-warm' matches its committed golden and re-runs byte-identically
+  Skipped Feature 109 performance-scenario corpus — deterministic metrics goldens (US2, SC-005/006).scenario 'text-cache-eviction' matches its committed golden and re-runs byte-identically
+
+Passed!  - Failed:     0, Passed:   194, Skipped:    17, Total:   211, Duration: 11 s - Elmish.Tests.dll (net10.0)
+exit_code=0
+
+## samples/SecondAntShowcase/SecondAntShowcase.Tests/SecondAntShowcase.Tests.fsproj
+Test run for /home/developer/projects/FS.GG.Rendering/samples/SecondAntShowcase/SecondAntShowcase.Tests/bin/Release/net10.0/SecondAntShowcase.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+  Failed Feature172 visual regression preservation.opaque preferred and minimum shells still render retained inspection evidence [3 s]
+  Error Message:
+   
+retained evidence carries repaint facts. Expected a (0) to be greater than b (0).
+   at SecondAntShowcase.Tests.Feature172VisualRegressionTests.tests@13-2.Invoke(Tuple`2 _arg2) in /home/developer/projects/FS.GG.Rendering/samples/SecondAntShowcase/SecondAntShowcase.Tests/Feature172VisualRegressionTests.fs:line 19
+   at Expecto.Tests.TestCaseBuilder.For[c](IEnumerable`1 sequence, FSharpFunc`2 f)
+   at SecondAntShowcase.Tests.Feature172VisualRegressionTests.tests@12-1.Invoke(Tuple`2 _arg1) in /home/developer/projects/FS.GG.Rendering/samples/SecondAntShowcase/SecondAntShowcase.Tests/Feature172VisualRegressionTests.fs:line 13
+   at Expecto.Tests.TestCaseBuilder.For[c](IEnumerable`1 sequence, FSharpFunc`2 f)
+   at SecondAntShowcase.Tests.Feature172VisualRegressionTests.tests@12.Invoke(Unit unitVar) in /home/developer/projects/FS.GG.Rendering/samples/SecondAntShowcase/SecondAntShowcase.Tests/Feature172VisualRegressionTests.fs:line 12
+
+  Failed PublicSurface.SecondAntShowcase.Core public .fsi surface matches the reviewed baseline [59 ms]
+  Error Message:
+   
+public Core surface drift requires reviewed baseline update. String does not match at position 396. Expected char: '7', but got '4'.
+expected:
+Model 5f394f38d67b3da2561183d84be8b17cc93b3bb2471912ffaee6e0c2ca621ac3
+DemoState 5758bff25950cdc0b081c9bbea1707af1aec417e50283fb71ca0f52f0e191b2d
+AntTheme d7b5fc41c30d0ef62b7bac61e26c606471a7504d473c716bc598577a2af39a34
+PageRegistry 4e36a11d0e3a226eba8574617421ce8fd142bcb9839bc04f1e355026ea46c4fa
+CoverageMap 16de0b1dc5f984dc8c31925e5df3ef1c6dab02be5c415d11048180c8fe37a099
+InteractionContracts 72f49f9a06f6c824e05f4d4c5bdccb40c77c47cfdcb1416820a904f3c80b616f
+ReviewFindings e670794708ffcaa9c6e2471f1aaeb07117f8ae737fafc7c5cebc329824621662
+VisualConfig 1d9c85f1b32dea6bcaf97bb9b3d51527458d450acc6a7ac90e2e3cb69e610b5b
+VisualReadinessWorkflow 973bee696109c7f52db2b6041fe07ec505494d492ef7de20ce183a3eac2c4739
+Evidence 684d4ac2b34d253db9d9165ca55c46c50046108f50bbfd950a2f429bfd971fad
+Shell 3300b795b4510847066e60f23956cfb68c1eb7fb8e23a6aed1ce193ad26b835a
+Pages 25c8c39acbefb3d31be4ee5306ddb84542f6c0c5ca6a005f450279a7fe3843de
+Templates 7f11ce7e4d920311aac46f41532cab61e566f662b6c2d9823ffd8d303de6ab1a
+  actual:
+Model 5f394f38d67b3da2561183d84be8b17cc93b3bb2471912ffaee6e0c2ca621ac3
+DemoState 5758bff25950cdc0b081c9bbea1707af1aec417e50283fb71ca0f52f0e191b2d
+AntTheme d7b5fc41c30d0ef62b7bac61e26c606471a7504d473c716bc598577a2af39a34
+PageRegistry 4e36a11d0e3a226eba8574617421ce8fd142bcb9839bc04f1e355026ea46c4fa
+CoverageMap 16de0b1dc5f984dc8c31925e5df3ef1c6dab02be5c415d11048180c8fe37a099
+InteractionContracts 490d73409906cbfcab9336c0879e7fcbef018aaec53dc85d9fc1c4eaca8e4df8
+ReviewFindings e670794708ffcaa9c6e2471f1aaeb07117f8ae737fafc7c5cebc329824621662
+VisualConfig 1d9c85f1b32dea6bcaf97bb9b3d51527458d450acc6a7ac90e2e3cb69e610b5b
+VisualReadinessWorkflow 973bee696109c7f52db2b6041fe07ec505494d492ef7de20ce183a3eac2c4739
+Evidence 34178a2cb057840d85a90d86487084e47abc7160b169d3b0599b321edf184f5b
+Shell 3300b795b4510847066e60f23956cfb68c1eb7fb8e23a6aed1ce193ad26b835a
+Pages 25c8c39acbefb3d31be4ee5306ddb84542f6c0c5ca6a005f450279a7fe3843de
+Templates 7f11ce7e4d920311aac46f41532cab61e566f662b6c2d9823ffd8d303de6ab1a
+   at SecondAntShowcase.Tests.PublicSurfaceTests.publicSurfaceTests@49.Invoke(Unit unitVar) in /home/developer/projects/FS.GG.Rendering/samples/SecondAntShowcase/SecondAntShowcase.Tests/PublicSurfaceTests.fs:line 52
+   at Expecto.Impl.execTestAsync@578-1.Invoke(Unit unitVar)
+   at Microsoft.FSharp.Control.AsyncPrimitives.CallThenInvoke[T,TResult](AsyncActivation`1 ctxt, TResult result1, FSharpFunc`2 part2) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 509
+   at Microsoft.FSharp.Control.Trampoline.Execute(FSharpFunc`2 firstAction) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 112
+
+
+Failed!  - Failed:     2, Passed:   120, Skipped:     0, Total:   122, Duration: 1 m 2 s - SecondAntShowcase.Tests.dll (net10.0)
+exit_code=1

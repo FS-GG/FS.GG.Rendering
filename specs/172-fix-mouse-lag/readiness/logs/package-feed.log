@@ -1,0 +1,20 @@
+## refresh local feed and SecondAntShowcase sample
+package-feed status: passed
+packages: 14
+pins: 18
+specs/163-package-feed-validation-lanes/readiness/package-proof/package-versions.md
+specs/163-package-feed-validation-lanes/readiness/package-proof/package-pins.md
+refresh_exit_code=0
+
+## build SecondAntShowcase.App --no-incremental
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  SecondAntShowcase.Core -> /home/developer/projects/FS.GG.Rendering/samples/SecondAntShowcase/SecondAntShowcase.Core/bin/Release/net10.0/SecondAntShowcase.Core.dll
+  SecondAntShowcase.App -> /home/developer/projects/FS.GG.Rendering/samples/SecondAntShowcase/SecondAntShowcase.App/bin/Release/net10.0/SecondAntShowcase.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:07.35
+build_exit_code=0

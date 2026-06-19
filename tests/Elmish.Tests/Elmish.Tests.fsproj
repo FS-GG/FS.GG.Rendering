@@ -57,6 +57,7 @@
     <Compile Include="Feature167InteractionSemanticsTests.fs" />
     <Compile Include="Feature167ResponsivenessSummaryTests.fs" />
     <Compile Include="Feature167DiagnosticsDisabledTests.fs" />
+    <Compile Include="Feature172InteractiveResponsivenessTests.fs" />
     <Compile Include="Feature169AdapterDiagnosticMappingTests.fs" />
     <Compile Include="Audit_DamageTracking.fs" />
     <Compile Include="Audit_Virtualization.fs" />

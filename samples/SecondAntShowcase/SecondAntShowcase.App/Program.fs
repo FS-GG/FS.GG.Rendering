@@ -15,7 +15,7 @@ let private usage () =
     printfn "  SecondAntShowcase visual-readiness --seed <int> --size <width>x<height> --themes <list> [--pages <list>] [--out <dir>]"
     printfn "  SecondAntShowcase visual-readiness --summarize <dir> [--minimum-size <dir>] [--out <dir>]"
     printfn "  SecondAntShowcase review-findings [--out <dir>] [--fail-on-unresolved]"
-    printfn "  SecondAntShowcase responsiveness --page buttons --theme light --script representative [--out <dir>] [--require-live] [--json]"
+    printfn "  SecondAntShowcase responsiveness --script representative --theme light [--page <page-id> | --all-interactive] [--out <dir>] [--require-live] [--json]"
     printfn "  SecondAntShowcase diagnostics [--out <dir>] [--json] [--verbose]"
     printfn "  SecondAntShowcase coverage"
     printfn "  SecondAntShowcase feedback [--clear]"

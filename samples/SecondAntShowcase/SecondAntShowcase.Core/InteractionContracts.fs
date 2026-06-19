@@ -7,6 +7,8 @@ type InteractionContract =
       ControlIds: string list
       PageId: string
       StartingState: string
+      ActionType: string
+      InputKind: string
       Action: string
       ExpectedStateChange: string
       VisibleEvidence: string
@@ -25,11 +27,13 @@ let private pageFor controlId =
     |> Option.map _.Id
     |> Option.defaultValue "unknown"
 
-let private contract id controls action expected evidence script =
+let private contract id controls actionType inputKind action expected evidence script =
     { ContractId = id
       ControlIds = controls
       PageId = pageFor (List.head controls)
       StartingState = "seeded demo state"
+      ActionType = actionType
+      InputKind = inputKind
       Action = action
       ExpectedStateChange = expected
       VisibleEvidence = evidence
@@ -38,20 +42,20 @@ let private contract id controls action expected evidence script =
       DisplayOnlyReason = None }
 
 let all: InteractionContract list =
-    [ contract "button-click" [ "button"; "icon-button"; "split-button"; "float-button" ] "activate command" "ButtonClicks increments" "status area and command counter change" ButtonClicked
-      contract "toggle-switch" [ "toggle-button"; "switch" ] "toggle boolean value" "ToggleOn/SwitchOn changes" "checked visual state changes" (ToggleChanged false)
-      contract "text-entry" [ "text-box"; "text-area"; "auto-complete" ] "enter text" "text fields update" "entered text is rendered" (TextChanged "review text")
-      contract "numeric-entry" [ "numeric-input" ] "set numeric value" "NumericValue changes" "numeric value display changes" (NumericChanged 64.0)
-      contract "date-time" [ "date-picker"; "time-picker" ] "choose a date/time value" "DatePickerSelected changes" "selected temporal value is visible" (DatePickerChanged(System.DateOnly(2026, 6, 19)))
-      contract "slider-rating" [ "slider"; "rate"; "progress-bar" ] "adjust value" "SliderValue/RateValue/ProgressValue changes" "position or stars visibly change" (SliderChanged 0.75)
-      contract "selection-single" [ "radio-group"; "combo-box"; "list-box"; "segmented"; "cascader"; "color-picker" ] "select another option" "selected option changes" "selected label or swatch changes" (ComboChanged "Product")
-      contract "selection-multi" [ "check-box"; "multi-select-list"; "tree-view" ] "change selected values" "selection state changes" "checked/selected rows change" (MultiChanged [ "Bold"; "Italic" ])
-      contract "navigation" [ "tabs"; "menu"; "breadcrumb"; "steps"; "pagination"; "anchor"; "affix" ] "navigate within page" "active navigation state changes" "active item or page indicator changes" (TabChanged "Activity")
-      contract "disclosure" [ "collapse"; "drawer"; "popover"; "popconfirm"; "tooltip"; "dialog"; "overlay"; "tour" ] "open or close surface" "expanded/open state changes" "overlay, drawer, or panel visibility changes" (OverlayToggled true)
-      contract "upload" [ "upload" ] "select upload artifact" "UploadValue changes" "selected file name changes" (UploadChanged "contract.pdf")
-      contract "data-collection" [ "list-view"; "data-grid" ] "select or page collection" "PaginationPage changes" "visible row/page state changes" (PageChanged 2)
-      contract "form-validation" [ "validation-message" ] "submit invalid form" "Form.Phase becomes Invalid" "validation message appears" FormSubmitted
-      contract "graph-custom" [ "graph-view"; "custom-control" ] "script pointer/keyboard action" "interaction event is recorded" "custom/graph status changes" ButtonClicked ]
+    [ contract "button-click" [ "button"; "icon-button"; "split-button"; "float-button" ] "click" "pointer-discrete" "activate command" "ButtonClicks increments" "status area and command counter change" ButtonClicked
+      contract "toggle-switch" [ "toggle-button"; "switch" ] "click" "pointer-discrete" "toggle boolean value" "ToggleOn/SwitchOn changes" "checked visual state changes" (ToggleChanged false)
+      contract "text-entry" [ "text-box"; "text-area"; "auto-complete" ] "value-change" "key-down" "enter text" "text fields update" "entered text is rendered" (TextChanged "review text")
+      contract "numeric-entry" [ "numeric-input" ] "value-change" "key-down" "set numeric value" "NumericValue changes" "numeric value display changes" (NumericChanged 64.0)
+      contract "date-time" [ "date-picker"; "time-picker" ] "select" "pointer-discrete" "choose a date/time value" "DatePickerSelected changes" "selected temporal value is visible" (DatePickerChanged(System.DateOnly(2026, 6, 19)))
+      contract "slider-rating" [ "slider"; "rate"; "progress-bar" ] "drag" "pointer-move" "adjust value" "SliderValue/RateValue/ProgressValue changes" "position or stars visibly change" (SliderChanged 0.75)
+      contract "selection-single" [ "radio-group"; "combo-box"; "list-box"; "segmented"; "cascader"; "color-picker" ] "select" "pointer-discrete" "select another option" "selected option changes" "selected label or swatch changes" (ComboChanged "Product")
+      contract "selection-multi" [ "check-box"; "multi-select-list"; "tree-view" ] "select" "pointer-discrete" "change selected values" "selection state changes" "checked/selected rows change" (MultiChanged [ "Bold"; "Italic" ])
+      contract "navigation" [ "tabs"; "menu"; "breadcrumb"; "steps"; "pagination"; "anchor"; "affix" ] "navigate" "pointer-discrete" "navigate within page" "active navigation state changes" "active item or page indicator changes" (TabChanged "Activity")
+      contract "disclosure" [ "collapse"; "drawer"; "popover"; "popconfirm"; "tooltip"; "dialog"; "overlay"; "tour" ] "open-close" "pointer-discrete" "open or close surface" "expanded/open state changes" "overlay, drawer, or panel visibility changes" (OverlayToggled true)
+      contract "upload" [ "upload" ] "select" "pointer-discrete" "select upload artifact" "UploadValue changes" "selected file name changes" (UploadChanged "contract.pdf")
+      contract "data-collection" [ "list-view"; "data-grid" ] "select" "pointer-discrete" "select or page collection" "PaginationPage changes" "visible row/page state changes" (PageChanged 2)
+      contract "form-validation" [ "validation-message" ] "click" "pointer-discrete" "submit invalid form" "Form.Phase becomes Invalid" "validation message appears" FormSubmitted
+      contract "graph-custom" [ "graph-view"; "custom-control" ] "click" "pointer-discrete" "script pointer/keyboard action" "interaction event is recorded" "custom/graph status changes" ButtonClicked ]
 
 let displayOnlyReasons: Map<string, string> =
     [ "text-block", "static typography sample"

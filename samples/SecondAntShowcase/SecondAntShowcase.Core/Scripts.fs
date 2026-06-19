@@ -43,6 +43,32 @@ let representative (_pageId: string): FrameInput<SecondAntShowcaseMsg> list =
       tick 64.0
       FrameInput.Idle ]
 
+let private pointerAction (contract: InteractionContracts.InteractionContract) =
+    let control = contract.ControlIds |> List.tryHead |> Option.defaultValue contract.ContractId
+
+    match contract.ActionType with
+    | "drag"
+    | "value-change" ->
+        [ FrameInput.Pointer(HoverEnter(control, 16.0, 16.0))
+          FrameInput.Pointer(DragMove(control, PointerButton.Primary, 96.0, 16.0)) ]
+    | "navigate"
+    | "open-close"
+    | "select"
+    | "click" ->
+        [ FrameInput.Pointer(HoverEnter(control, 16.0, 16.0))
+          FrameInput.Pointer(Click(control, PointerButton.Primary, 32.0, 24.0)) ]
+    | _ -> [ press Enter ]
+
+/// Feature 172 all-interactive representative script plan. Coordinates are deterministic
+/// placeholders for the retained routing/perf path; accepted responsiveness still requires
+/// the live CLI evidence command to measure a visible presentation boundary.
+let representativeAllInteractive (): FrameInput<SecondAntShowcaseMsg> list =
+    [ tick 16.0
+      for contract in InteractionContracts.all do
+          yield! pointerAction contract
+          tick 16.0
+      FrameInput.Idle ]
+
 /// All page scripts, in registry order.
 let all: (string * FrameInput<SecondAntShowcaseMsg> list) list =
     PageRegistry.all |> List.map (fun p -> p.Id, forPage p.Id)

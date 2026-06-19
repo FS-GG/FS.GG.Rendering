@@ -75,6 +75,43 @@ type RetainedInspectionEvidenceRecord =
       ScreenshotMinimumTargetCount: int
       ReviewerSummary: string }
 
+type ResponsivenessReviewSession =
+    { RunId: string
+      StartedUtc: System.DateTimeOffset
+      CompletedUtc: System.DateTimeOffset option
+      Theme: string
+      Scope: string
+      DesktopSessionStatus: string
+      ArtifactsRoot: string
+      EnvironmentLimitations: string list }
+
+type ResponsivenessReviewAction =
+    { ActionId: string
+      PageId: string
+      ControlFamily: string
+      ControlIds: string list
+      ActionType: string
+      InputKind: string
+      ExpectedVisibleResult: string
+      DisplayOnlyReason: string option }
+
+type ResponsivenessEvidenceRecord =
+    { Action: ResponsivenessReviewAction
+      EnvironmentStatus: string
+      VisibleResponse: string
+      AcceptanceStatus: string
+      Diagnostics: string list }
+
+type ResponsivenessEvidenceSummary =
+    { RunId: string
+      Scope: string
+      OverallReadiness: string
+      RequiredInteractiveFamilies: string list
+      AcceptedInteractiveFamilies: string list
+      DisplayOnlyExclusions: ResponsivenessReviewAction list
+      MissingInteractiveFamilies: string list
+      EnvironmentLimitations: string list }
+
 val datePickerReferenceOverlayEvidence: unit -> DatePickerOverlayEvidence
 val ofScreenshotResult: result: ScreenshotEvidenceResult -> path: string option -> ScreenshotSummary
 val degraded: reason: string -> ScreenshotSummary
@@ -102,3 +139,10 @@ val retainedInspectionToMarkdown: evidence: RetainedInspectionEvidenceRecord -> 
 val visualSummaryToJson: summary: VisualReadinessSummary -> string
 val visualSummaryToMarkdown: summary: VisualReadinessSummary -> string
 val reviewerDefectTemplate: pageIds: string list -> themeIds: string list -> string
+val responsivenessTargetP95Ms: int
+val responsivenessTargetMaxMs: int
+val responsivenessActionOfContract:
+    contract: SecondAntShowcase.Core.InteractionContracts.InteractionContract ->
+        ResponsivenessReviewAction
+val responsivenessDisplayOnlyAction: controlId: string -> reason: string -> ResponsivenessReviewAction
+val responsivenessSummaryMarkdown: summary: ResponsivenessEvidenceSummary -> string

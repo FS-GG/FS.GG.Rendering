@@ -75,6 +75,99 @@ type RetainedInspectionEvidenceRecord =
       ScreenshotMinimumTargetCount: int
       ReviewerSummary: string }
 
+/// One visible-session responsiveness run. `DesktopSessionStatus` is deliberately a token
+/// string because the app edge maps native environment diagnostics into these persisted records.
+type ResponsivenessReviewSession =
+    { RunId: string
+      StartedUtc: DateTimeOffset
+      CompletedUtc: DateTimeOffset option
+      Theme: string
+      Scope: string
+      DesktopSessionStatus: string
+      ArtifactsRoot: string
+      EnvironmentLimitations: string list }
+
+/// One required pointer/keyboard action or one explicit display-only exclusion.
+type ResponsivenessReviewAction =
+    { ActionId: string
+      PageId: string
+      ControlFamily: string
+      ControlIds: string list
+      ActionType: string
+      InputKind: string
+      ExpectedVisibleResult: string
+      DisplayOnlyReason: string option }
+
+/// Sample-level fields layered over the viewer latency record.
+type ResponsivenessEvidenceRecord =
+    { Action: ResponsivenessReviewAction
+      EnvironmentStatus: string
+      VisibleResponse: string
+      AcceptanceStatus: string
+      Diagnostics: string list }
+
+/// Compact coverage/acceptance summary for the maintainer review.
+type ResponsivenessEvidenceSummary =
+    { RunId: string
+      Scope: string
+      OverallReadiness: string
+      RequiredInteractiveFamilies: string list
+      AcceptedInteractiveFamilies: string list
+      DisplayOnlyExclusions: ResponsivenessReviewAction list
+      MissingInteractiveFamilies: string list
+      EnvironmentLimitations: string list }
+
+let responsivenessTargetP95Ms = 100
+let responsivenessTargetMaxMs = 150
+
+let responsivenessActionOfContract (contract: InteractionContracts.InteractionContract): ResponsivenessReviewAction =
+    { ActionId = contract.ContractId
+      PageId = contract.PageId
+      ControlFamily = contract.ContractId
+      ControlIds = contract.ControlIds
+      ActionType = contract.ActionType
+      InputKind = contract.InputKind
+      ExpectedVisibleResult = contract.VisibleEvidence
+      DisplayOnlyReason = contract.DisplayOnlyReason }
+
+let responsivenessDisplayOnlyAction controlId reason: ResponsivenessReviewAction =
+    { ActionId = "display-only-" + controlId
+      PageId = "display-only"
+      ControlFamily = "display-only"
+      ControlIds = [ controlId ]
+      ActionType = "excluded"
+      InputKind = "none"
+      ExpectedVisibleResult = "display-only exclusion"
+      DisplayOnlyReason = Some reason }
+
+let responsivenessSummaryMarkdown (summary: ResponsivenessEvidenceSummary): string =
+    [ "# Responsiveness evidence summary"
+      ""
+      sprintf "- run: %s" summary.RunId
+      sprintf "- scope: %s" summary.Scope
+      sprintf "- readiness: %s" summary.OverallReadiness
+      sprintf "- required interactive families: %d" (List.length summary.RequiredInteractiveFamilies)
+      sprintf "- accepted interactive families: %d" (List.length summary.AcceptedInteractiveFamilies)
+      sprintf "- display-only exclusions: %d" (List.length summary.DisplayOnlyExclusions)
+      sprintf "- missing interactive families: %d" (List.length summary.MissingInteractiveFamilies)
+      ""
+      "## Environment limitations"
+      ""
+      if List.isEmpty summary.EnvironmentLimitations then
+          "- none"
+      else
+          for limitation in summary.EnvironmentLimitations do
+              sprintf "- %s" limitation
+      ""
+      "## Missing interactive families"
+      ""
+      if List.isEmpty summary.MissingInteractiveFamilies then
+          "- none"
+      else
+          for family in summary.MissingInteractiveFamilies do
+              sprintf "- `%s`" family ]
+    |> String.concat Environment.NewLine
+
 /// Feature 144 reference overlay evidence carried by tests/readiness for the live
 /// date-picker flow. This is intentionally product-state oriented: the coordinator asks
 /// for open/focus/value changes, while SecondAntShowcase owns the applied state.

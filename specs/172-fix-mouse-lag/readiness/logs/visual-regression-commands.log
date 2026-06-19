@@ -1,0 +1,12 @@
+
+## visual-preferred
+second-ant-showcase: visual-readiness blocked, screenshots 38/38 under specs/172-fix-mouse-lag/readiness/visual-preferred
+exit_code=0
+
+## visual-minimum
+second-ant-showcase: visual-readiness blocked, screenshots 38/38 under specs/172-fix-mouse-lag/readiness/visual-minimum
+exit_code=0
+
+## review-findings
+second-ant-showcase: visual findings ledger specs/172-fix-mouse-lag/readiness/visual-findings.md (unresolved=0)
+exit_code=0
