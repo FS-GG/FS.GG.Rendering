@@ -35,10 +35,10 @@
           }
         }
       },
-      "FS.GG.UI.Color/0.1.24-preview.1": {
+      "FS.GG.UI.Color/0.1.25-preview.1": {
         "type": "package",
         "dependencies": {
-          "FS.GG.UI.Scene": "0.1.24-preview.1",
+          "FS.GG.UI.Scene": "0.1.25-preview.1",
           "FSharp.Core": "10.1.301"
         },
         "compile": {
@@ -48,13 +48,13 @@
           "lib/net10.0/FS.GG.UI.Color.dll": {}
         }
       },
-      "FS.GG.UI.Controls/0.1.24-preview.1": {
+      "FS.GG.UI.Controls/0.1.25-preview.1": {
         "type": "package",
         "dependencies": {
-          "FS.GG.UI.DesignSystem": "0.1.24-preview.1",
-          "FS.GG.UI.KeyboardInput": "0.1.24-preview.1",
-          "FS.GG.UI.Layout": "0.1.24-preview.1",
-          "FS.GG.UI.Scene": "0.1.24-preview.1",
+          "FS.GG.UI.DesignSystem": "0.1.25-preview.1",
+          "FS.GG.UI.KeyboardInput": "0.1.25-preview.1",
+          "FS.GG.UI.Layout": "0.1.25-preview.1",
+          "FS.GG.UI.Scene": "0.1.25-preview.1",
           "FSharp.Core": "10.1.301"
         },
         "compile": {
@@ -71,12 +71,12 @@
           }
         }
       },
-      "FS.GG.UI.Controls.Elmish/0.1.24-preview.1": {
+      "FS.GG.UI.Controls.Elmish/0.1.25-preview.1": {
         "type": "package",
         "dependencies": {
-          "FS.GG.UI.Controls": "0.1.24-preview.1",
-          "FS.GG.UI.KeyboardInput": "0.1.24-preview.1",
-          "FS.GG.UI.SkiaViewer": "0.1.24-preview.1",
+          "FS.GG.UI.Controls": "0.1.25-preview.1",
+          "FS.GG.UI.KeyboardInput": "0.1.25-preview.1",
+          "FS.GG.UI.SkiaViewer": "0.1.25-preview.1",
           "FSharp.Core": "10.1.301",
           "Fable.Elmish": "5.0.2"
         },
@@ -87,10 +87,10 @@
           "lib/net10.0/FS.GG.UI.Controls.Elmish.dll": {}
         }
       },
-      "FS.GG.UI.DesignSystem/0.1.24-preview.1": {
+      "FS.GG.UI.DesignSystem/0.1.25-preview.1": {
         "type": "package",
         "dependencies": {
-          "FS.GG.UI.Scene": "0.1.24-preview.1",
+          "FS.GG.UI.Scene": "0.1.25-preview.1",
           "FSharp.Core": "10.1.301"
         },
         "compile": {
@@ -100,10 +100,10 @@
           "lib/net10.0/FS.GG.UI.DesignSystem.dll": {}
         }
       },
-      "FS.GG.UI.KeyboardInput/0.1.24-preview.1": {
+      "FS.GG.UI.KeyboardInput/0.1.25-preview.1": {
         "type": "package",
         "dependencies": {
-          "FS.GG.UI.Scene": "0.1.24-preview.1",
+          "FS.GG.UI.Scene": "0.1.25-preview.1",
           "FSharp.Core": "10.1.301",
           "YamlDotNet": "18.0.0"
         },
@@ -114,10 +114,10 @@
           "lib/net10.0/FS.GG.UI.KeyboardInput.dll": {}
         }
       },
-      "FS.GG.UI.Layout/0.1.24-preview.1": {
+      "FS.GG.UI.Layout/0.1.25-preview.1": {
         "type": "package",
         "dependencies": {
-          "FS.GG.UI.Scene": "0.1.24-preview.1",
+          "FS.GG.UI.Scene": "0.1.25-preview.1",
           "FSharp.Core": "10.1.301",
           "Yoga.Net": "3.2.3"
         },
@@ -128,7 +128,7 @@
           "lib/net10.0/FS.GG.UI.Layout.dll": {}
         }
       },
-      "FS.GG.UI.Scene/0.1.24-preview.1": {
+      "FS.GG.UI.Scene/0.1.25-preview.1": {
         "type": "package",
         "dependencies": {
           "FSharp.Core": "10.1.301"
@@ -140,11 +140,11 @@
           "lib/net10.0/FS.GG.UI.Scene.dll": {}
         }
       },
-      "FS.GG.UI.SkiaViewer/0.1.24-preview.1": {
+      "FS.GG.UI.SkiaViewer/0.1.25-preview.1": {
         "type": "package",
         "dependencies": {
-          "FS.GG.UI.KeyboardInput": "0.1.24-preview.1",
-          "FS.GG.UI.Scene": "0.1.24-preview.1",
+          "FS.GG.UI.KeyboardInput": "0.1.25-preview.1",
+          "FS.GG.UI.Scene": "0.1.25-preview.1",
           "FSharp.Core": "10.1.301",
           "Fable.Elmish": "5.0.2",
           "HarfBuzzSharp.NativeAssets.Linux": "8.3.1.6-preview.3.1",
@@ -165,10 +165,10 @@
           "lib/net10.0/FS.GG.UI.SkiaViewer.dll": {}
         }
       },
-      "FS.GG.UI.Themes.AntDesign/0.1.24-preview.1": {
+      "FS.GG.UI.Themes.AntDesign/0.1.25-preview.1": {
         "type": "package",
         "dependencies": {
-          "FS.GG.UI.DesignSystem": "0.1.24-preview.1",
+          "FS.GG.UI.DesignSystem": "0.1.25-preview.1",
           "FSharp.Core": "10.1.301"
         },
         "compile": {
@@ -751,108 +751,108 @@
         "logo.png"
       ]
     },
-    "FS.GG.UI.Color/0.1.24-preview.1": {
-      "sha512": "IPgjoYCowGI1C3+1Za5clBLzGqfnrhU4qhNbFo2NiB1CuZotfB/VrskDP8WbsWSZNhi66bx8xrDwewOBVOB7gw==",
+    "FS.GG.UI.Color/0.1.25-preview.1": {
+      "sha512": "ZzIQJ1tV78TKdiDwU/AXJ3g/3mXehJRIA25Gr3ZiVwqeJZ5kMoj5hypsxAxh+UvnmtVWhXvX2z75VQCqRXJSTg==",
       "type": "package",
-      "path": "fs.gg.ui.color/0.1.24-preview.1",
+      "path": "fs.gg.ui.color/0.1.25-preview.1",
       "files": [
         ".nupkg.metadata",
-        "fs.gg.ui.color.0.1.24-preview.1.nupkg.sha512",
+        "fs.gg.ui.color.0.1.25-preview.1.nupkg.sha512",
         "fs.gg.ui.color.nuspec",
         "lib/net10.0/FS.GG.UI.Color.dll"
       ]
     },
-    "FS.GG.UI.Controls/0.1.24-preview.1": {
-      "sha512": "s6QQPM7iZMv95IjcNRCMitGWFYZ7qF1Kkj3GPN99X5fMEgW4jrNveWVpuIE57SHDGt9OT/JtMbVHJ1gudIsUKA==",
+    "FS.GG.UI.Controls/0.1.25-preview.1": {
+      "sha512": "hlTSXAoSBNFvEY/Lh255EtMVi1G6twWWYrajL2YdeI/Yi7f0CvTqxo+QOU+QWsmNSSEY6wUlROBE3ZKar1SXqA==",
       "type": "package",
-      "path": "fs.gg.ui.controls/0.1.24-preview.1",
+      "path": "fs.gg.ui.controls/0.1.25-preview.1",
       "files": [
         ".nupkg.metadata",
         "README.md",
         "contentFiles/any/any/catalog.yml",
-        "fs.gg.ui.controls.0.1.24-preview.1.nupkg.sha512",
+        "fs.gg.ui.controls.0.1.25-preview.1.nupkg.sha512",
         "fs.gg.ui.controls.nuspec",
         "lib/net10.0/FS.GG.UI.Controls.dll"
       ]
     },
-    "FS.GG.UI.Controls.Elmish/0.1.24-preview.1": {
-      "sha512": "rhAk34ztc9GLXtMp4B97ecIzX4J75V8S733NVBSCx+z6TQa5ZYQGZlW8M5OR58vKv6URNJjaBUfNS0NCuXw8kw==",
+    "FS.GG.UI.Controls.Elmish/0.1.25-preview.1": {
+      "sha512": "1nkB62XyY4ioUYwDPI4wdjXZN96hYsAq4onITb4NS3l2WVvZqQmZ+DqVQQ3gKOBXDpZEnIZRzAmJQGXJ8gyUHg==",
       "type": "package",
-      "path": "fs.gg.ui.controls.elmish/0.1.24-preview.1",
+      "path": "fs.gg.ui.controls.elmish/0.1.25-preview.1",
       "files": [
         ".nupkg.metadata",
         "README.md",
-        "fs.gg.ui.controls.elmish.0.1.24-preview.1.nupkg.sha512",
+        "fs.gg.ui.controls.elmish.0.1.25-preview.1.nupkg.sha512",
         "fs.gg.ui.controls.elmish.nuspec",
         "lib/net10.0/FS.GG.UI.Controls.Elmish.dll"
       ]
     },
-    "FS.GG.UI.DesignSystem/0.1.24-preview.1": {
-      "sha512": "hZJUM1za2Q6HCtkW/u43gIxlNz+5v0CkVJaYlTSEh+yTqOATZlIymDhZJscq2KiBU7uTw1BdAVpZC5ezjJdTng==",
+    "FS.GG.UI.DesignSystem/0.1.25-preview.1": {
+      "sha512": "4DxZPQSKSIkqcy/NHfO2aqfUzOweKzyravCcB3bHLQ9eB3FzxPJHLnxQy7Do3scqyuYiqVAfvw/BF3IY50SxCA==",
       "type": "package",
-      "path": "fs.gg.ui.designsystem/0.1.24-preview.1",
+      "path": "fs.gg.ui.designsystem/0.1.25-preview.1",
       "files": [
         ".nupkg.metadata",
-        "fs.gg.ui.designsystem.0.1.24-preview.1.nupkg.sha512",
+        "fs.gg.ui.designsystem.0.1.25-preview.1.nupkg.sha512",
         "fs.gg.ui.designsystem.nuspec",
         "lib/net10.0/FS.GG.UI.DesignSystem.dll"
       ]
     },
-    "FS.GG.UI.KeyboardInput/0.1.24-preview.1": {
-      "sha512": "ymo4qaQdNkw9O3ZKJpAziahL54DHUDhuOGZXbF1mBfu1e5mczGqPDrQk7i2qg56u8a3xujw8I3LwdyzOS8DdQw==",
+    "FS.GG.UI.KeyboardInput/0.1.25-preview.1": {
+      "sha512": "iHhpK+ksPnNPwO6B37wOxVzHLltPCh6rlavT9pL+JN9oVpCNDvo2q/p5Kar0nA8DBbf8PpxoIOc4egyiQs2v2w==",
       "type": "package",
-      "path": "fs.gg.ui.keyboardinput/0.1.24-preview.1",
+      "path": "fs.gg.ui.keyboardinput/0.1.25-preview.1",
       "files": [
         ".nupkg.metadata",
         "README.md",
-        "fs.gg.ui.keyboardinput.0.1.24-preview.1.nupkg.sha512",
+        "fs.gg.ui.keyboardinput.0.1.25-preview.1.nupkg.sha512",
         "fs.gg.ui.keyboardinput.nuspec",
         "lib/net10.0/FS.GG.UI.KeyboardInput.dll"
       ]
     },
-    "FS.GG.UI.Layout/0.1.24-preview.1": {
-      "sha512": "jVSD/oBECmyo5skmYjZVEkYLpknwdX2/rG08UxAUQDnFjETovAlVC9St8zONbjRd4y3QOLZwEhkvOyvydSnIEg==",
+    "FS.GG.UI.Layout/0.1.25-preview.1": {
+      "sha512": "YuoKkpjx+HDDjRUkqO3AKl4W/TE56EimPIv4CKkR1Pu92nB42LC2i3Ys2huzD4r0uLRIyZqhHRxmETx0fnjRSQ==",
       "type": "package",
-      "path": "fs.gg.ui.layout/0.1.24-preview.1",
+      "path": "fs.gg.ui.layout/0.1.25-preview.1",
       "files": [
         ".nupkg.metadata",
         "README.md",
-        "fs.gg.ui.layout.0.1.24-preview.1.nupkg.sha512",
+        "fs.gg.ui.layout.0.1.25-preview.1.nupkg.sha512",
         "fs.gg.ui.layout.nuspec",
         "lib/net10.0/FS.GG.UI.Layout.dll"
       ]
     },
-    "FS.GG.UI.Scene/0.1.24-preview.1": {
-      "sha512": "dkd3/Il39spYIzdOXUK7FidQ0Q5DhJgI2FtYZXWdAwl61vx+ONvVsKiZZ1WW/zF5LzqKiG6ScELQkEVKDUL2fQ==",
+    "FS.GG.UI.Scene/0.1.25-preview.1": {
+      "sha512": "sDxClq8NYTsS7y520b2TRa/WRvtndnCSR01yvuspqTQXqlOlPLhhfSMta9QjZOu1xRn1ym4Vxiu3beT+gMt5AQ==",
       "type": "package",
-      "path": "fs.gg.ui.scene/0.1.24-preview.1",
+      "path": "fs.gg.ui.scene/0.1.25-preview.1",
       "files": [
         ".nupkg.metadata",
         "README.md",
-        "fs.gg.ui.scene.0.1.24-preview.1.nupkg.sha512",
+        "fs.gg.ui.scene.0.1.25-preview.1.nupkg.sha512",
         "fs.gg.ui.scene.nuspec",
         "lib/net10.0/FS.GG.UI.Scene.dll"
       ]
     },
-    "FS.GG.UI.SkiaViewer/0.1.24-preview.1": {
-      "sha512": "+SnYxMeL9wkhqenv54HD2JxaghfU1Vw/3oxjWAeld3Ut8oHanYO33hQFFkq6+D1tz1ofei+jasc0zDp65S1dzg==",
+    "FS.GG.UI.SkiaViewer/0.1.25-preview.1": {
+      "sha512": "7Kda3LrxwZVYdJERSbUQOVu8uCxcXY4Kp0bq1qXyzA6IcMyzV5y7q48Txd+J3ivCetjLDQSZYere8Cg6M+fYAg==",
       "type": "package",
-      "path": "fs.gg.ui.skiaviewer/0.1.24-preview.1",
+      "path": "fs.gg.ui.skiaviewer/0.1.25-preview.1",
       "files": [
         ".nupkg.metadata",
         "README.md",
-        "fs.gg.ui.skiaviewer.0.1.24-preview.1.nupkg.sha512",
+        "fs.gg.ui.skiaviewer.0.1.25-preview.1.nupkg.sha512",
         "fs.gg.ui.skiaviewer.nuspec",
         "lib/net10.0/FS.GG.UI.SkiaViewer.dll"
       ]
     },
-    "FS.GG.UI.Themes.AntDesign/0.1.24-preview.1": {
-      "sha512": "WEPEDSkpeMSJYzzxM8en9caytadUvsd+CzN+rZ9Oel0LSoAnIASUsByHOfu5tUIOrb4+bQsCR6VTiA40Q05xXA==",
+    "FS.GG.UI.Themes.AntDesign/0.1.25-preview.1": {
+      "sha512": "Bh5pz9558NG0cz8QkiiecKFBgHXhBAyghynN3bc3AYYI84TPr0wE6aYGfa9FLOe/pZzFpTbZtrlA9qGBottY+g==",
       "type": "package",
-      "path": "fs.gg.ui.themes.antdesign/0.1.24-preview.1",
+      "path": "fs.gg.ui.themes.antdesign/0.1.25-preview.1",
       "files": [
         ".nupkg.metadata",
-        "fs.gg.ui.themes.antdesign.0.1.24-preview.1.nupkg.sha512",
+        "fs.gg.ui.themes.antdesign.0.1.25-preview.1.nupkg.sha512",
         "fs.gg.ui.themes.antdesign.nuspec",
         "lib/net10.0/FS.GG.UI.Themes.AntDesign.dll"
       ]
@@ -1547,14 +1547,14 @@
   },
   "projectFileDependencyGroups": {
     "net10.0": [
-      "FS.GG.UI.Color >= 0.1.24-preview.1",
-      "FS.GG.UI.Controls >= 0.1.24-preview.1",
-      "FS.GG.UI.Controls.Elmish >= 0.1.24-preview.1",
-      "FS.GG.UI.DesignSystem >= 0.1.24-preview.1",
-      "FS.GG.UI.KeyboardInput >= 0.1.24-preview.1",
-      "FS.GG.UI.Scene >= 0.1.24-preview.1",
-      "FS.GG.UI.SkiaViewer >= 0.1.24-preview.1",
-      "FS.GG.UI.Themes.AntDesign >= 0.1.24-preview.1",
+      "FS.GG.UI.Color >= 0.1.25-preview.1",
+      "FS.GG.UI.Controls >= 0.1.25-preview.1",
+      "FS.GG.UI.Controls.Elmish >= 0.1.25-preview.1",
+      "FS.GG.UI.DesignSystem >= 0.1.25-preview.1",
+      "FS.GG.UI.KeyboardInput >= 0.1.25-preview.1",
+      "FS.GG.UI.Scene >= 0.1.25-preview.1",
+      "FS.GG.UI.SkiaViewer >= 0.1.25-preview.1",
+      "FS.GG.UI.Themes.AntDesign >= 0.1.25-preview.1",
       "FSharp.Core >= 10.1.301"
     ]
   },
@@ -1602,42 +1602,42 @@
         "dependencies": {
           "FS.GG.UI.Color": {
             "target": "Package",
-            "version": "[0.1.24-preview.1, )",
+            "version": "[0.1.25-preview.1, )",
             "generatePathProperty": true
           },
           "FS.GG.UI.Controls": {
             "target": "Package",
-            "version": "[0.1.24-preview.1, )",
+            "version": "[0.1.25-preview.1, )",
             "generatePathProperty": true
           },
           "FS.GG.UI.Controls.Elmish": {
             "target": "Package",
-            "version": "[0.1.24-preview.1, )",
+            "version": "[0.1.25-preview.1, )",
             "generatePathProperty": true
           },
           "FS.GG.UI.DesignSystem": {
             "target": "Package",
-            "version": "[0.1.24-preview.1, )",
+            "version": "[0.1.25-preview.1, )",
             "generatePathProperty": true
           },
           "FS.GG.UI.KeyboardInput": {
             "target": "Package",
-            "version": "[0.1.24-preview.1, )",
+            "version": "[0.1.25-preview.1, )",
             "generatePathProperty": true
           },
           "FS.GG.UI.Scene": {
             "target": "Package",
-            "version": "[0.1.24-preview.1, )",
+            "version": "[0.1.25-preview.1, )",
             "generatePathProperty": true
           },
           "FS.GG.UI.SkiaViewer": {
             "target": "Package",
-            "version": "[0.1.24-preview.1, )",
+            "version": "[0.1.25-preview.1, )",
             "generatePathProperty": true
           },
           "FS.GG.UI.Themes.AntDesign": {
             "target": "Package",
-            "version": "[0.1.24-preview.1, )",
+            "version": "[0.1.25-preview.1, )",
             "generatePathProperty": true
           },
           "FSharp.Core": {

@@ -1,11 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
     <GenerateProgramFile>false</GenerateProgramFile>
   </PropertyGroup>
-
   <!-- Expecto suites for the showcase. Kept OUTSIDE FS.GG.Rendering.slnx (the default
        test tier is unaffected); run on its own via `dotnet test`. References Core by
        project, the rest as packages. -->
@@ -30,18 +29,15 @@
     <Compile Include="VisualReadinessTests.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\AntShowcase.Core\AntShowcase.Core.fsproj" />
   </ItemGroup>
-
   <ItemGroup>
-    <PackageReference Include="FS.GG.UI.Controls" Version="0.1.24-preview.1" />
-    <PackageReference Include="FS.GG.UI.Controls.Elmish" Version="0.1.24-preview.1" />
-    <PackageReference Include="FS.GG.UI.SkiaViewer" Version="0.1.24-preview.1" />
+    <PackageReference Include="FS.GG.UI.Controls" Version="0.1.25-preview.1" />
+    <PackageReference Include="FS.GG.UI.Controls.Elmish" Version="0.1.25-preview.1" />
+    <PackageReference Include="FS.GG.UI.SkiaViewer" Version="0.1.25-preview.1" />
     <PackageReference Include="Expecto" Version="10.2.2" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.15.3" />
   </ItemGroup>
-
 </Project>

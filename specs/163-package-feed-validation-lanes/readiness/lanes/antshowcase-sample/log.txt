@@ -6,4 +6,4 @@ Data collector 'Blame' message: All tests finished running, Sequence file will n
 WARNING: Overwriting results file: /home/developer/projects/FS.GG.Rendering/specs/163-package-feed-validation-lanes/readiness/lanes/antshowcase-sample/TestResults/antshowcase-sample.trx
 Results File: /home/developer/projects/FS.GG.Rendering/specs/163-package-feed-validation-lanes/readiness/lanes/antshowcase-sample/TestResults/antshowcase-sample.trx
 
-Passed!  - Failed:     0, Passed:    78, Skipped:     0, Total:    78, Duration: 50 s - AntShowcase.Tests.dll (net10.0)
+Passed!  - Failed:     0, Passed:    78, Skipped:     0, Total:    78, Duration: 49 s - AntShowcase.Tests.dll (net10.0)

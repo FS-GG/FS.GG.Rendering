@@ -2,7 +2,8 @@
 
 **Report date:** 2026-06-19 00:24 Europe/Vienna
 **Repository:** FS.GG.Rendering
-**Baseline after merge:** `main` at `4b086a5` (`chore: bump FS.GG.UI packages to 0.1.24-preview.1`)
+**Feature 162 baseline after merge:** `main` at `4b086a5` (`chore: bump FS.GG.UI packages to 0.1.24-preview.1`)
+**Feature 163 follow-up:** Package-feed validation lanes are implemented; the current post-merge package set is `0.1.25-preview.1`.
 **Primary work observed:** Feature 162, AntShowcase visual readiness implementation, plus earlier local/Codex/Claude skill parity work
 **Scope:** Problems encountered in the framework, validation workflow, and skills while implementing and validating the AntShowcase visual overhaul. This report focuses on improvements possible in library code, sample infrastructure, generated readiness tooling, and coding-agent skills.
 
@@ -1024,7 +1025,7 @@ Expected output:
 
 ```text
 sample: samples/AntShowcase
-current package version: 0.1.24-preview.1
+current package version: 0.1.25-preview.1
 all FS.GG.UI package references match
 ```
 
@@ -1369,6 +1370,8 @@ Make package-only sample validation deterministic and make long-running validati
 **Implementation status on 2026-06-19:** Feature 163 landed the first repository-level package-feed
 proof and focused validation-lane runner. Evidence is committed under
 `specs/163-package-feed-validation-lanes/readiness/`.
+The post-merge package bump advanced the current local-feed package set to
+`0.1.25-preview.1`.
 
 **Primary user stories**
 
@@ -1688,7 +1691,7 @@ Encode the repeated traps from this report into local skills and keep Claude/Cod
 - Identify canonical skill sources before editing wrappers.
 - Wrapper updates must not fork guidance from canonical package skills.
 - Parity checker should report missing skills, stale descriptions, broken target paths, and wrapper/canonical drift.
-- Skills should point to the new validation scripts once Feature 163 lands.
+- Skills should point to the Feature 163 validation scripts now that they are available.
 
 **Task outline**
 
@@ -1845,7 +1848,7 @@ Each feature should include:
 
 If the goal is to reduce risk fastest, do this:
 
-1. Land Feature 163's package-pin check and validation lane runner first.
+1. Use Feature 163's package-pin check and validation lane runner as the first validation gate.
 2. Land Feature 166's timing-only diagnostics before changing event-loop scheduling.
 3. Use timing evidence to choose the smallest safe scheduling/render optimization.
 4. Land Feature 167's skill guidance once the commands exist.

@@ -29,8 +29,8 @@ dotnet pack FS.GG.Rendering.slnx -c Release --no-build -o ~/.local/share/nuget-l
 dotnet nuget locals global-packages --clear
 ```
 
-The sample currently pins FS.GG.UI packages to `0.1.24-preview.1`. Verify the feed with:
-`ls ~/.local/share/nuget-local/FS.GG.UI.Themes.AntDesign.0.1.24-preview.1.nupkg`.
+The sample currently pins FS.GG.UI packages to `0.1.25-preview.1`. Verify the feed with:
+`ls ~/.local/share/nuget-local/FS.GG.UI.Themes.AntDesign.0.1.25-preview.1.nupkg`.
 
 ## Layout
 

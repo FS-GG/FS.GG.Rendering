@@ -1,9 +1,8 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <OutputType>Library</OutputType>
   </PropertyGroup>
-
   <!-- Pure, testable showcase core + harness. Consumes the framework as packed packages
        only (no ProjectReference into src/ — FR-015 / SC-006). Renders ONLY under the Ant
        theme: FS.GG.UI.Themes.AntDesign is referenced; FS.GG.UI.Themes.Default is NOT.
@@ -33,16 +32,14 @@
     <Compile Include="Evidence.fsi" />
     <Compile Include="Evidence.fs" />
   </ItemGroup>
-
   <ItemGroup>
-    <PackageReference Include="FS.GG.UI.Themes.AntDesign" Version="0.1.24-preview.1" />
-    <PackageReference Include="FS.GG.UI.Controls" Version="0.1.24-preview.1" />
-    <PackageReference Include="FS.GG.UI.Color" Version="0.1.24-preview.1" />
-    <PackageReference Include="FS.GG.UI.Scene" Version="0.1.24-preview.1" />
-    <PackageReference Include="FS.GG.UI.Controls.Elmish" Version="0.1.24-preview.1" />
-    <PackageReference Include="FS.GG.UI.SkiaViewer" Version="0.1.24-preview.1" />
-    <PackageReference Include="FS.GG.UI.DesignSystem" Version="0.1.24-preview.1" />
-    <PackageReference Include="FS.GG.UI.KeyboardInput" Version="0.1.24-preview.1" />
+    <PackageReference Include="FS.GG.UI.Themes.AntDesign" Version="0.1.25-preview.1" />
+    <PackageReference Include="FS.GG.UI.Controls" Version="0.1.25-preview.1" />
+    <PackageReference Include="FS.GG.UI.Color" Version="0.1.25-preview.1" />
+    <PackageReference Include="FS.GG.UI.Scene" Version="0.1.25-preview.1" />
+    <PackageReference Include="FS.GG.UI.Controls.Elmish" Version="0.1.25-preview.1" />
+    <PackageReference Include="FS.GG.UI.SkiaViewer" Version="0.1.25-preview.1" />
+    <PackageReference Include="FS.GG.UI.DesignSystem" Version="0.1.25-preview.1" />
+    <PackageReference Include="FS.GG.UI.KeyboardInput" Version="0.1.25-preview.1" />
   </ItemGroup>
-
 </Project>
