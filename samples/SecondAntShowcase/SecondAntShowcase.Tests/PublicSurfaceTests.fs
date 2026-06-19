@@ -24,6 +24,7 @@ let private moduleOrder =
       "ReviewFindings"
       "VisualConfig"
       "VisualReadinessWorkflow"
+      "ResponsivenessWorkflow"
       "Evidence"
       "Shell"
       "Pages"

@@ -45,6 +45,14 @@
     <Compile Include="Feature172VisualRegressionTests.fs" />
     <Compile Include="Feature172SliderRegressionTests.fs" />
     <Compile Include="Feature172CoverageRegressionTests.fs" />
+    <Compile Include="Feature173LiveResponsivenessFixtures.fs" />
+    <Compile Include="Feature173LiveResponsivenessWorkflowTests.fs" />
+    <Compile Include="Feature173LiveResponsivenessCliTests.fs" />
+    <Compile Include="Feature173LiveResponsivenessArtifactTests.fs" />
+    <Compile Include="Feature173LiveResponsivenessBudgetTests.fs" />
+    <Compile Include="Feature173LiveResponsivenessFailClosedTests.fs" />
+    <Compile Include="Feature173LiveResponsivenessCoverageTests.fs" />
+    <Compile Include="Feature173LiveResponsivenessRegressionTests.fs" />
     <Compile Include="Feature169DiagnosticsCliTests.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>

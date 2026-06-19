@@ -33,7 +33,7 @@ let tests =
 
             Expect.equal (root.GetProperty("environmentStatus").GetString()) "headless-substitute" "environment status is explicit"
             Expect.equal (root.GetProperty("visibleResponse").GetString()) "environment-limited" "visible response is not presented-frame"
-            Expect.equal (root.GetProperty("acceptanceStatus").GetString()) "blocked" "record is not accepted"
+            Expect.equal (root.GetProperty("acceptanceStatus").GetString()) "environment-limited" "record is not accepted"
             Expect.isFalse (root.GetProperty("phaseTiming").GetProperty("totalInputToVisibleMs").ValueKind = JsonValueKind.Number) "no live total timing is synthesized"
         }
     ]

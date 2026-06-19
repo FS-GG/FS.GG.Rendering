@@ -222,6 +222,7 @@ type ViewerResponsivenessEnvironmentStatus =
 [<RequireQualifiedAccess>]
 type ViewerResponsivenessReadiness =
     | Accepted
+    | Rejected
     | Blocked
     | Incomplete
     | EnvironmentLimited
@@ -273,6 +274,7 @@ type ViewerResponsivenessBudget =
     { InputReceiptP95: TimeSpan
       InputReceiptMax: TimeSpan
       InputToVisibleP95: TimeSpan
+      InputToVisibleMax: TimeSpan
       LongFrameThreshold: TimeSpan }
 
 type ViewerResponsivenessFailedBudget =
@@ -805,6 +807,7 @@ module Viewer =
         { InputReceiptP95 = TimeSpan.FromMilliseconds 4.0
           InputReceiptMax = TimeSpan.FromMilliseconds 16.0
           InputToVisibleP95 = TimeSpan.FromMilliseconds 50.0
+          InputToVisibleMax = TimeSpan.FromMilliseconds 150.0
           LongFrameThreshold = TimeSpan.FromMilliseconds 50.0 }
 
     let defaultResponsivenessOptions =
@@ -847,6 +850,7 @@ module Viewer =
     let responsivenessReadinessToken readiness =
         match readiness with
         | ViewerResponsivenessReadiness.Accepted -> "accepted"
+        | ViewerResponsivenessReadiness.Rejected -> "rejected"
         | ViewerResponsivenessReadiness.Blocked -> "blocked"
         | ViewerResponsivenessReadiness.Incomplete -> "incomplete"
         | ViewerResponsivenessReadiness.EnvironmentLimited -> "environment-limited"
@@ -1078,6 +1082,20 @@ module Viewer =
           Budget = budget }
 
     let private firstFailedBudget (scope: string) (budget: ViewerResponsivenessBudget) (records: ViewerLatencyRecord list) =
+        let environmentBoundaryFailure =
+            records
+            |> List.tryFind (fun record ->
+                record.EnvironmentStatus <> ViewerResponsivenessEnvironmentStatus.Measured
+                || record.VisibleResponse = ViewerResponsivenessVisibleResponse.EnvironmentLimited
+                || record.VisibleResponse = ViewerResponsivenessVisibleResponse.NotRun)
+            |> Option.map (fun record ->
+                failedBudget
+                    "environment-boundary"
+                    (record.Page |> Option.orElse (Some scope))
+                    (Some record.InputKind)
+                    (TimeSpan.FromMilliseconds 1.0)
+                    TimeSpan.Zero)
+
         let receiptDurations =
             records |> List.choose (fun record -> record.PhaseTiming.ReceiptDuration)
 
@@ -1088,31 +1106,38 @@ module Viewer =
                 | ViewerResponsivenessVisibleResponse.PresentedFrame, Some duration -> Some duration
                 | _ -> None)
 
-        match percentile 95.0 receiptDurations with
-        | Some p95 when p95 > budget.InputReceiptP95 ->
-            Some(failedBudget "input-receipt-p95" (Some scope) None p95 budget.InputReceiptP95)
-        | _ ->
-            match maxTime receiptDurations with
-            | Some maxReceipt when maxReceipt > budget.InputReceiptMax ->
-                Some(failedBudget "input-receipt-max" (Some scope) None maxReceipt budget.InputReceiptMax)
+        match environmentBoundaryFailure with
+        | Some failure -> Some failure
+        | None ->
+            match percentile 95.0 receiptDurations with
+            | Some p95 when p95 > budget.InputReceiptP95 ->
+                Some(failedBudget "input-receipt-p95" (Some scope) None p95 budget.InputReceiptP95)
             | _ ->
-                match percentile 95.0 visibleDurations with
-                | Some p95 when p95 > budget.InputToVisibleP95 ->
-                    Some(failedBudget "input-to-visible-p95" (Some scope) None p95 budget.InputToVisibleP95)
+                match maxTime receiptDurations with
+                | Some maxReceipt when maxReceipt > budget.InputReceiptMax ->
+                    Some(failedBudget "input-receipt-max" (Some scope) None maxReceipt budget.InputReceiptMax)
                 | _ ->
-                    records
-                    |> List.tryFind (fun record -> record.LongFrame)
-                    |> Option.map (fun record ->
-                        let measured =
-                            [ record.PhaseTiming.RetainedStepDuration
-                              record.PhaseTiming.PaintDuration
-                              record.PhaseTiming.PresentDuration
-                              record.PhaseTiming.TotalInputToVisibleDuration ]
-                            |> List.choose id
-                            |> maxTime
-                            |> Option.defaultValue (budget.LongFrameThreshold + TimeSpan.FromMilliseconds 1.0)
+                    match percentile 95.0 visibleDurations with
+                    | Some p95 when p95 > budget.InputToVisibleP95 ->
+                        Some(failedBudget "input-to-visible-p95" (Some scope) None p95 budget.InputToVisibleP95)
+                    | _ ->
+                        match maxTime visibleDurations with
+                        | Some maxVisible when maxVisible > budget.InputToVisibleMax ->
+                            Some(failedBudget "input-to-visible-max" (Some scope) None maxVisible budget.InputToVisibleMax)
+                        | _ ->
+                            records
+                            |> List.tryFind (fun record -> record.LongFrame)
+                            |> Option.map (fun record ->
+                                let measured =
+                                    [ record.PhaseTiming.RetainedStepDuration
+                                      record.PhaseTiming.PaintDuration
+                                      record.PhaseTiming.PresentDuration
+                                      record.PhaseTiming.TotalInputToVisibleDuration ]
+                                    |> List.choose id
+                                    |> maxTime
+                                    |> Option.defaultValue (budget.LongFrameThreshold + TimeSpan.FromMilliseconds 1.0)
 
-                        failedBudget "long-frame" (record.Page |> Option.orElse (Some scope)) (Some record.InputKind) measured budget.LongFrameThreshold)
+                                failedBudget "long-frame" (record.Page |> Option.orElse (Some scope)) (Some record.InputKind) measured budget.LongFrameThreshold)
 
     let private dominantPhase (timing: ViewerResponsivenessPhaseTiming) =
         [ "receipt", timing.ReceiptDuration
@@ -1174,8 +1199,12 @@ module Viewer =
                             || record.EnvironmentStatus = ViewerResponsivenessEnvironmentStatus.WriteFailed)
                     then
                         ViewerResponsivenessReadiness.Failed
-                    elif p95 |> Option.exists (fun value -> value > budget.InputToVisibleP95) || longFrames > 0 then
-                        ViewerResponsivenessReadiness.Blocked
+                    elif
+                        p95 |> Option.exists (fun value -> value > budget.InputToVisibleP95)
+                        || measured |> maxTime |> Option.exists (fun value -> value > budget.InputToVisibleMax)
+                        || longFrames > 0
+                    then
+                        ViewerResponsivenessReadiness.Rejected
                     elif
                         groupRecords
                         |> List.exists (fun record ->
@@ -1206,7 +1235,7 @@ module Viewer =
                 record.PhaseTiming.TotalInputToVisibleDuration
                 |> Option.map (fun duration -> duration, record))
             |> List.sortByDescending (fun (duration, _) -> duration.Ticks)
-            |> List.truncate 3
+            |> List.truncate 5
             |> List.map (fun (_, record) ->
                 { RecordId = record.RecordId
                   InputSequenceId = record.InputSequenceId
@@ -1223,8 +1252,8 @@ module Viewer =
         let overall =
             if List.isEmpty records then ViewerResponsivenessReadiness.Incomplete
             elif failedRecord then ViewerResponsivenessReadiness.Failed
-            elif Option.isSome firstFailed then ViewerResponsivenessReadiness.Blocked
             elif not (List.isEmpty environmentLimitations) then ViewerResponsivenessReadiness.EnvironmentLimited
+            elif Option.isSome firstFailed then ViewerResponsivenessReadiness.Rejected
             elif groups |> List.exists (fun group -> group.Readiness = ViewerResponsivenessReadiness.Incomplete) then ViewerResponsivenessReadiness.Incomplete
             else ViewerResponsivenessReadiness.Accepted
 
@@ -1269,6 +1298,7 @@ module Viewer =
                 {| inputReceiptP95Ms = timeMs summary.Budgets.InputReceiptP95
                    inputReceiptMaxMs = timeMs summary.Budgets.InputReceiptMax
                    inputToVisibleP95Ms = timeMs summary.Budgets.InputToVisibleP95
+                   inputToVisibleMaxMs = timeMs summary.Budgets.InputToVisibleMax
                    longFrameThresholdMs = timeMs summary.Budgets.LongFrameThreshold |}
                firstFailedBudget = failed
                groups =

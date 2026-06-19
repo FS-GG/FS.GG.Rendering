@@ -28,7 +28,7 @@ let tests =
             Expect.isTrue (root.TryGetProperty("controlIds", &property)) "control ids are written"
             Expect.isTrue (root.TryGetProperty("actionType", &property)) "action type is written"
             Expect.isTrue (root.TryGetProperty("expectedVisibleResult", &property)) "expected visible result is written"
-            Expect.equal (root.GetProperty("acceptanceStatus").GetString()) "blocked" "substitute record is blocked, not accepted"
+            Expect.equal (root.GetProperty("acceptanceStatus").GetString()) "environment-limited" "substitute record is environment-limited, not accepted"
         }
 
         test "summary carries budgets, coverage, and relative records path" {
@@ -51,7 +51,8 @@ let tests =
             Expect.equal (budgets.GetProperty("inputToVisibleMaxMs").GetInt32()) 150 "max budget is feature budget"
             Expect.equal (coverage.GetProperty("requiredInteractiveFamilies").GetArrayLength()) InteractionContracts.all.Length "all families required"
             Expect.equal (coverage.GetProperty("acceptedInteractiveFamilies").GetArrayLength()) 0 "substitute evidence accepts no families"
+            Expect.equal (coverage.GetProperty("blockedInteractiveFamilies").GetArrayLength()) InteractionContracts.all.Length "all families are blocked until live evidence"
             Expect.isGreaterThan (coverage.GetProperty("displayOnlyExclusions").GetArrayLength()) 0 "display-only exclusions are explicit"
-            Expect.equal (coverage.GetProperty("missingInteractiveFamilies").GetArrayLength()) InteractionContracts.all.Length "all families remain missing until live evidence"
+            Expect.equal (coverage.GetProperty("missingInteractiveFamilies").GetArrayLength()) 0 "families are enumerated, not missing"
         }
     ]

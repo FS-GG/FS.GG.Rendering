@@ -28,8 +28,8 @@ let tests =
             let markdown = Viewer.responsivenessSummaryToMarkdown summary
             use doc = JsonDocument.Parse json
 
-            Expect.equal (doc.RootElement.GetProperty("overallReadiness").GetString()) "blocked" "JSON readiness"
-            Expect.stringContains markdown "overall readiness: blocked" "Markdown readiness"
+            Expect.equal (doc.RootElement.GetProperty("overallReadiness").GetString()) "rejected" "JSON readiness"
+            Expect.stringContains markdown "overall readiness: rejected" "Markdown readiness"
             Expect.stringContains markdown "input-to-visible-p95" "Markdown names first failed budget"
         }
 

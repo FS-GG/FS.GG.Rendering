@@ -1,0 +1,7 @@
+frame,productModelChanged,viewCalled,fullRenderCount,remeasuredNodeCount,memoHit,memoMiss,virtualMaterialized,virtualTotal,repaintedNodes,dirtyRects,dirtyArea,pictureCacheHit,pictureCacheMiss,pictureCacheEntries,textMeasureHit,textMeasureMiss,layoutInvalidated,pointerSamples,pointerMoves,fullRenderFallback,frameCause,diffRan,layoutRan,paintRan,replayHit,replayMiss,replayRecords,replaySkipped,replayCacheBytes
+0,False,False,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,Tick,False,False,False,0,0,0,0,0
+1,True,True,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,Key,True,False,True,0,0,0,0,0
+2,False,False,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,Tick,False,False,False,0,0,0,0,0
+3,True,True,1,0,0,0,0,0,53,53,786432,0,0,0,0,19,0,0,0,0,Key,True,False,True,0,0,0,0,0
+4,False,False,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,Tick,False,False,False,0,0,0,0,0
+5,False,False,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,Idle,False,False,False,0,0,0,0,0

@@ -102,14 +102,36 @@ type ResponsivenessEvidenceRecord =
       AcceptanceStatus: string
       Diagnostics: string list }
 
+type ResponsivenessDragContinuity =
+    { ActionId: string
+      SampleCount: int
+      VisibleFeedbackSamples: int
+      MaxSampleGapMs: float option
+      DelayedCatchUp: bool
+      Classification: string }
+
+type ResponsivenessArtifactWriteStatus =
+    { RecordsJsonl: string
+      SummaryJson: string
+      SummaryMarkdown: string
+      EnvironmentMarkdown: string
+      Status: string
+      Diagnostics: string list }
+
 type ResponsivenessEvidenceSummary =
     { RunId: string
       Scope: string
       OverallReadiness: string
       RequiredInteractiveFamilies: string list
       AcceptedInteractiveFamilies: string list
+      RejectedInteractiveFamilies: string list
+      BlockedInteractiveFamilies: string list
       DisplayOnlyExclusions: ResponsivenessReviewAction list
       MissingInteractiveFamilies: string list
+      FirstFailedBudget: string option
+      SlowestInteractionIds: string list
+      DragContinuity: ResponsivenessDragContinuity list
+      ArtifactWriteStatus: ResponsivenessArtifactWriteStatus
       EnvironmentLimitations: string list }
 
 val datePickerReferenceOverlayEvidence: unit -> DatePickerOverlayEvidence
@@ -141,8 +163,16 @@ val visualSummaryToMarkdown: summary: VisualReadinessSummary -> string
 val reviewerDefectTemplate: pageIds: string list -> themeIds: string list -> string
 val responsivenessTargetP95Ms: int
 val responsivenessTargetMaxMs: int
+val responsivenessArtifactWriteComplete: ResponsivenessArtifactWriteStatus
 val responsivenessActionOfContract:
     contract: SecondAntShowcase.Core.InteractionContracts.InteractionContract ->
         ResponsivenessReviewAction
 val responsivenessDisplayOnlyAction: controlId: string -> reason: string -> ResponsivenessReviewAction
+val responsivenessDragContinuity:
+    actionId: string ->
+    sampleCount: int ->
+    visibleFeedbackSamples: int ->
+    maxSampleGapMs: float option ->
+    delayedCatchUp: bool ->
+        ResponsivenessDragContinuity
 val responsivenessSummaryMarkdown: summary: ResponsivenessEvidenceSummary -> string

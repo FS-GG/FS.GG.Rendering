@@ -86,6 +86,9 @@ specs/171-second-antshowcase-sample/readiness/**/nuget-cache/
 !specs/172-fix-mouse-lag/readiness/
 !specs/172-fix-mouse-lag/readiness/**
 specs/172-fix-mouse-lag/readiness/**/nuget-cache/
+!specs/173-live-responsiveness-runner/readiness/
+!specs/173-live-responsiveness-runner/readiness/**
+specs/173-live-responsiveness-runner/readiness/**/nuget-cache/
 
 # macOS / Linux cruft
 .DS_Store

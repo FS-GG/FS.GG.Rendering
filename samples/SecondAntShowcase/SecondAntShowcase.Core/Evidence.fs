@@ -106,6 +106,22 @@ type ResponsivenessEvidenceRecord =
       AcceptanceStatus: string
       Diagnostics: string list }
 
+type ResponsivenessDragContinuity =
+    { ActionId: string
+      SampleCount: int
+      VisibleFeedbackSamples: int
+      MaxSampleGapMs: float option
+      DelayedCatchUp: bool
+      Classification: string }
+
+type ResponsivenessArtifactWriteStatus =
+    { RecordsJsonl: string
+      SummaryJson: string
+      SummaryMarkdown: string
+      EnvironmentMarkdown: string
+      Status: string
+      Diagnostics: string list }
+
 /// Compact coverage/acceptance summary for the maintainer review.
 type ResponsivenessEvidenceSummary =
     { RunId: string
@@ -113,12 +129,26 @@ type ResponsivenessEvidenceSummary =
       OverallReadiness: string
       RequiredInteractiveFamilies: string list
       AcceptedInteractiveFamilies: string list
+      RejectedInteractiveFamilies: string list
+      BlockedInteractiveFamilies: string list
       DisplayOnlyExclusions: ResponsivenessReviewAction list
       MissingInteractiveFamilies: string list
+      FirstFailedBudget: string option
+      SlowestInteractionIds: string list
+      DragContinuity: ResponsivenessDragContinuity list
+      ArtifactWriteStatus: ResponsivenessArtifactWriteStatus
       EnvironmentLimitations: string list }
 
 let responsivenessTargetP95Ms = 100
 let responsivenessTargetMaxMs = 150
+
+let responsivenessArtifactWriteComplete =
+    { RecordsJsonl = "complete"
+      SummaryJson = "complete"
+      SummaryMarkdown = "complete"
+      EnvironmentMarkdown = "complete"
+      Status = "complete"
+      Diagnostics = [] }
 
 let responsivenessActionOfContract (contract: InteractionContracts.InteractionContract): ResponsivenessReviewAction =
     { ActionId = contract.ContractId
@@ -140,6 +170,24 @@ let responsivenessDisplayOnlyAction controlId reason: ResponsivenessReviewAction
       ExpectedVisibleResult = "display-only exclusion"
       DisplayOnlyReason = Some reason }
 
+let responsivenessDragContinuity actionId sampleCount visibleFeedbackSamples maxSampleGapMs delayedCatchUp =
+    let classification =
+        if sampleCount < 2 then
+            "insufficient-samples"
+        elif delayedCatchUp then
+            "delayed-catch-up"
+        elif visibleFeedbackSamples >= sampleCount then
+            "continuous"
+        else
+            "failed"
+
+    { ActionId = actionId
+      SampleCount = sampleCount
+      VisibleFeedbackSamples = visibleFeedbackSamples
+      MaxSampleGapMs = maxSampleGapMs
+      DelayedCatchUp = delayedCatchUp
+      Classification = classification }
+
 let responsivenessSummaryMarkdown (summary: ResponsivenessEvidenceSummary): string =
     [ "# Responsiveness evidence summary"
       ""
@@ -148,8 +196,12 @@ let responsivenessSummaryMarkdown (summary: ResponsivenessEvidenceSummary): stri
       sprintf "- readiness: %s" summary.OverallReadiness
       sprintf "- required interactive families: %d" (List.length summary.RequiredInteractiveFamilies)
       sprintf "- accepted interactive families: %d" (List.length summary.AcceptedInteractiveFamilies)
+      sprintf "- rejected interactive families: %d" (List.length summary.RejectedInteractiveFamilies)
+      sprintf "- blocked interactive families: %d" (List.length summary.BlockedInteractiveFamilies)
       sprintf "- display-only exclusions: %d" (List.length summary.DisplayOnlyExclusions)
       sprintf "- missing interactive families: %d" (List.length summary.MissingInteractiveFamilies)
+      sprintf "- first failed budget: %s" (summary.FirstFailedBudget |> Option.defaultValue "none")
+      sprintf "- artifact write status: %s" summary.ArtifactWriteStatus.Status
       ""
       "## Environment limitations"
       ""
@@ -165,7 +217,23 @@ let responsivenessSummaryMarkdown (summary: ResponsivenessEvidenceSummary): stri
           "- none"
       else
           for family in summary.MissingInteractiveFamilies do
-              sprintf "- `%s`" family ]
+              sprintf "- `%s`" family
+      ""
+      "## Slowest interactions"
+      ""
+      if List.isEmpty summary.SlowestInteractionIds then
+          "- none"
+      else
+          for recordId in summary.SlowestInteractionIds do
+              sprintf "- `%s`" recordId
+      ""
+      "## Drag continuity"
+      ""
+      if List.isEmpty summary.DragContinuity then
+          "- none"
+      else
+          for drag in summary.DragContinuity do
+              sprintf "- `%s`: %s" drag.ActionId drag.Classification ]
     |> String.concat Environment.NewLine
 
 /// Feature 144 reference overlay evidence carried by tests/readiness for the live

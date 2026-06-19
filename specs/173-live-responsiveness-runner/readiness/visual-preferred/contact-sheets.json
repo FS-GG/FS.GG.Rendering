@@ -1,0 +1,20 @@
+[
+  {
+    "sheetId": "second-ant-showcase-preferred-light",
+    "relativePath": "contact-sheet-light.png",
+    "sizeRole": "preferred",
+    "themeId": "antLight",
+    "targetIds": ["preferred:1600x1000:antLight:display-typography:light/display-typography.png", "preferred:1600x1000:antLight:cards-stats-media:light/cards-stats-media.png", "preferred:1600x1000:antLight:buttons:light/buttons.png", "preferred:1600x1000:antLight:text-numeric-input:light/text-numeric-input.png", "preferred:1600x1000:antLight:selection-toggles:light/selection-toggles.png", "preferred:1600x1000:antLight:layout-containers:light/layout-containers.png", "preferred:1600x1000:antLight:navigation-menus:light/navigation-menus.png", "preferred:1600x1000:antLight:overlays:light/overlays.png", "preferred:1600x1000:antLight:feedback-status:light/feedback-status.png", "preferred:1600x1000:antLight:data-collections:light/data-collections.png", "preferred:1600x1000:antLight:charts-statistical:light/charts-statistical.png", "preferred:1600x1000:antLight:charts-advanced:light/charts-advanced.png", "preferred:1600x1000:antLight:graphs-custom:light/graphs-custom.png", "preferred:1600x1000:antLight:tpl-workbench:light/tpl-workbench.png", "preferred:1600x1000:antLight:tpl-list:light/tpl-list.png", "preferred:1600x1000:antLight:tpl-detail:light/tpl-detail.png", "preferred:1600x1000:antLight:tpl-form:light/tpl-form.png", "preferred:1600x1000:antLight:tpl-result:light/tpl-result.png", "preferred:1600x1000:antLight:tpl-exception:light/tpl-exception.png"],
+    "missingTargetIds": [],
+    "diagnostics": ["contact sheet PNG composition is sample-owned"]
+  },
+  {
+    "sheetId": "second-ant-showcase-preferred-dark",
+    "relativePath": "contact-sheet-dark.png",
+    "sizeRole": "preferred",
+    "themeId": "antDark",
+    "targetIds": ["preferred:1600x1000:antDark:display-typography:dark/display-typography.png", "preferred:1600x1000:antDark:cards-stats-media:dark/cards-stats-media.png", "preferred:1600x1000:antDark:buttons:dark/buttons.png", "preferred:1600x1000:antDark:text-numeric-input:dark/text-numeric-input.png", "preferred:1600x1000:antDark:selection-toggles:dark/selection-toggles.png", "preferred:1600x1000:antDark:layout-containers:dark/layout-containers.png", "preferred:1600x1000:antDark:navigation-menus:dark/navigation-menus.png", "preferred:1600x1000:antDark:overlays:dark/overlays.png", "preferred:1600x1000:antDark:feedback-status:dark/feedback-status.png", "preferred:1600x1000:antDark:data-collections:dark/data-collections.png", "preferred:1600x1000:antDark:charts-statistical:dark/charts-statistical.png", "preferred:1600x1000:antDark:charts-advanced:dark/charts-advanced.png", "preferred:1600x1000:antDark:graphs-custom:dark/graphs-custom.png", "preferred:1600x1000:antDark:tpl-workbench:dark/tpl-workbench.png", "preferred:1600x1000:antDark:tpl-list:dark/tpl-list.png", "preferred:1600x1000:antDark:tpl-detail:dark/tpl-detail.png", "preferred:1600x1000:antDark:tpl-form:dark/tpl-form.png", "preferred:1600x1000:antDark:tpl-result:dark/tpl-result.png", "preferred:1600x1000:antDark:tpl-exception:dark/tpl-exception.png"],
+    "missingTargetIds": [],
+    "diagnostics": ["contact sheet PNG composition is sample-owned"]
+  }
+]

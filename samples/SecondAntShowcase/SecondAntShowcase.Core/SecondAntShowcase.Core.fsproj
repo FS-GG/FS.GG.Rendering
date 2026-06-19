@@ -41,6 +41,8 @@
     <Compile Include="Shell.fsi" />
     <Compile Include="Shell.fs" />
     <Compile Include="Host.fs" />
+    <Compile Include="ResponsivenessWorkflow.fsi" />
+    <Compile Include="ResponsivenessWorkflow.fs" />
     <Compile Include="Evidence.fsi" />
     <Compile Include="Evidence.fs" />
   </ItemGroup>

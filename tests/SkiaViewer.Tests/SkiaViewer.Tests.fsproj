@@ -63,6 +63,7 @@
     <Compile Include="Feature167ResponsivenessSummaryTests.fs" />
     <Compile Include="Feature167InteractionParityTests.fs" />
     <Compile Include="Feature172PointerQueueTests.fs" />
+    <Compile Include="Feature173ReadinessRulesTests.fs" />
     <Compile Include="Feature169HostDiagnosticMappingTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

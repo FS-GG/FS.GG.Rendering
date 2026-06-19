@@ -40,7 +40,7 @@ dotnet run --project SecondAntShowcase.App -c Release -- evidence --seed 1 --out
 dotnet run --project SecondAntShowcase.App -c Release -- visual-readiness --seed 1 --size 1600x1000 --themes light,dark --out ../../specs/171-second-antshowcase-sample/readiness/preferred
 dotnet run --project SecondAntShowcase.App -c Release -- visual-readiness --seed 1 --size 1280x800 --themes light,dark --out ../../specs/171-second-antshowcase-sample/readiness/minimum
 dotnet run --project SecondAntShowcase.App -c Release -- review-findings --out ../../specs/171-second-antshowcase-sample/readiness --fail-on-unresolved
-dotnet run --project SecondAntShowcase.App -c Release -- responsiveness --script representative --theme light --all-interactive --require-live --out ../../specs/172-fix-mouse-lag/readiness/responsiveness --json
+dotnet run --project SecondAntShowcase.App -c Release -- responsiveness --script representative --theme light --all-interactive --require-live --out ../../specs/173-live-responsiveness-runner/readiness/responsiveness --json
 dotnet run --project SecondAntShowcase.App -c Release -- interactive display-typography --theme light
 ```
 
@@ -53,7 +53,8 @@ is not accepted live visual fidelity.
 `summary.md`, and `environment.md` for every interactive family. Exit code `0` is reserved
 for accepted measured live evidence, `4` means the visible session or presentation boundary
 was unavailable/incomplete, and `5` means measured evidence missed the 100 ms p95 or 150 ms
-max budget.
+max budget. Deterministic substitute output remains useful for regression shape, but it is
+reported as `environment-limited` and is never accepted live responsiveness evidence.
 
 ## Layout
 

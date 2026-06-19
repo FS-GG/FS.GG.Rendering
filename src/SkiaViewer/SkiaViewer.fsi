@@ -254,6 +254,7 @@ type ViewerResponsivenessEnvironmentStatus =
 /// Stable run-level readiness token for responsiveness summaries.
 type ViewerResponsivenessReadiness =
     | Accepted
+    | Rejected
     | Blocked
     | Incomplete
     | EnvironmentLimited
@@ -309,6 +310,7 @@ type ViewerResponsivenessBudget =
     { InputReceiptP95: TimeSpan
       InputReceiptMax: TimeSpan
       InputToVisibleP95: TimeSpan
+      InputToVisibleMax: TimeSpan
       LongFrameThreshold: TimeSpan }
 
 /// First failed budget in a responsiveness summary.

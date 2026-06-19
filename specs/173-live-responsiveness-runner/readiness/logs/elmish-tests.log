@@ -1,0 +1,35 @@
+  Determining projects to restore...
+  Restored /home/developer/projects/FS.GG.Rendering/tests/Elmish.Tests/Elmish.Tests.fsproj (in 1.04 sec).
+  10 of 11 projects are up-to-date for restore.
+  Diagnostics -> /home/developer/projects/FS.GG.Rendering/src/Diagnostics/bin/Release/net10.0/FS.GG.UI.Diagnostics.dll
+  Scene -> /home/developer/projects/FS.GG.Rendering/src/Scene/bin/Release/net10.0/FS.GG.UI.Scene.dll
+  DesignSystem -> /home/developer/projects/FS.GG.Rendering/src/DesignSystem/bin/Release/net10.0/FS.GG.UI.DesignSystem.dll
+  KeyboardInput -> /home/developer/projects/FS.GG.Rendering/src/KeyboardInput/bin/Release/net10.0/FS.GG.UI.KeyboardInput.dll
+  Layout -> /home/developer/projects/FS.GG.Rendering/src/Layout/bin/Release/net10.0/FS.GG.UI.Layout.dll
+  Themes.Default -> /home/developer/projects/FS.GG.Rendering/src/Themes.Default/bin/Release/net10.0/FS.GG.UI.Themes.Default.dll
+  Controls -> /home/developer/projects/FS.GG.Rendering/src/Controls/bin/Release/net10.0/FS.GG.UI.Controls.dll
+  SkiaViewer -> /home/developer/projects/FS.GG.Rendering/src/SkiaViewer/bin/Release/net10.0/FS.GG.UI.SkiaViewer.dll
+  Controls.Elmish -> /home/developer/projects/FS.GG.Rendering/src/Controls.Elmish/bin/Release/net10.0/FS.GG.UI.Controls.Elmish.dll
+  Elmish -> /home/developer/projects/FS.GG.Rendering/src/Elmish/bin/Release/net10.0/FS.GG.UI.Elmish.dll
+  Elmish.Tests -> /home/developer/projects/FS.GG.Rendering/tests/Elmish.Tests/bin/Release/net10.0/Elmish.Tests.dll
+Test run for /home/developer/projects/FS.GG.Rendering/tests/Elmish.Tests/bin/Release/net10.0/Elmish.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+  Skipped Feature 109 non-golden timing/allocation baselines (US4, FR-016/017/018/019, SC-007/009).the before/after coalescing baselines are generated and committed (FR-019 / SC-007)
+  Skipped Feature 109 non-golden timing/allocation baselines (US4, FR-016/017/018/019, SC-007/009).the baselines carry timing+allocation, count-first thresholds, and an explicit MissingCounters line (FR-015/018)
+  Skipped Feature 109 non-golden timing/allocation baselines (US4, FR-016/017/018/019, SC-007/009).no timing/allocation field leaks into any deterministic golden (SC-009)
+  Skipped Feature 109 performance-scenario corpus — deterministic metrics goldens (US2, SC-005/006).scenario 'hover-sweep-100' matches its committed golden and re-runs byte-identically
+  Skipped Feature 109 performance-scenario corpus — deterministic metrics goldens (US2, SC-005/006).scenario 'hover-sweep-1000' matches its committed golden and re-runs byte-identically
+  Skipped Feature 109 performance-scenario corpus — deterministic metrics goldens (US2, SC-005/006).scenario 'hover-sweep-5000' matches its committed golden and re-runs byte-identically
+  Skipped Feature 109 performance-scenario corpus — deterministic metrics goldens (US2, SC-005/006).scenario 'datagrid-100' matches its committed golden and re-runs byte-identically
+  Skipped Feature 109 performance-scenario corpus — deterministic metrics goldens (US2, SC-005/006).scenario 'datagrid-1000' matches its committed golden and re-runs byte-identically
+  Skipped Feature 109 performance-scenario corpus — deterministic metrics goldens (US2, SC-005/006).scenario 'datagrid-10000' matches its committed golden and re-runs byte-identically
+  Skipped Feature 109 performance-scenario corpus — deterministic metrics goldens (US2, SC-005/006).scenario 'text-entry-while-animating' matches its committed golden and re-runs byte-identically
+  Skipped Feature 109 performance-scenario corpus — deterministic metrics goldens (US2, SC-005/006).scenario 'deep-nested-layout' matches its committed golden and re-runs byte-identically
+  Skipped Feature 109 performance-scenario corpus — deterministic metrics goldens (US2, SC-005/006).scenario 'theme-switch-dashboard' matches its committed golden and re-runs byte-identically
+  Skipped Feature 109 performance-scenario corpus — deterministic metrics goldens (US2, SC-005/006).scenario 'continuous-drag-400' matches its committed golden and re-runs byte-identically
+  Skipped Feature 109 performance-scenario corpus — deterministic metrics goldens (US2, SC-005/006).scenario 'picture-cache-eviction' matches its committed golden and re-runs byte-identically
+  Skipped Feature 109 performance-scenario corpus — deterministic metrics goldens (US2, SC-005/006).scenario 'text-heavy-cold-warm' matches its committed golden and re-runs byte-identically
+  Skipped Feature 109 performance-scenario corpus — deterministic metrics goldens (US2, SC-005/006).scenario 'picture-cache-reuse' matches its committed golden and re-runs byte-identically
+  Skipped Feature 109 performance-scenario corpus — deterministic metrics goldens (US2, SC-005/006).scenario 'text-cache-eviction' matches its committed golden and re-runs byte-identically
+
+Passed!  - Failed:     0, Passed:   194, Skipped:    17, Total:   211, Duration: 11 s - Elmish.Tests.dll (net10.0)

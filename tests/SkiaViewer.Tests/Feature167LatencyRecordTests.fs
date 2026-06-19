@@ -24,6 +24,7 @@ let tests =
 
         test "stable token helpers cover readiness vocabulary" {
             Expect.equal (Viewer.responsivenessReadinessToken ViewerResponsivenessReadiness.Accepted) "accepted" "accepted token"
+            Expect.equal (Viewer.responsivenessReadinessToken ViewerResponsivenessReadiness.Rejected) "rejected" "rejected token"
             Expect.equal (Viewer.responsivenessReadinessToken ViewerResponsivenessReadiness.EnvironmentLimited) "environment-limited" "environment-limited token"
         }
     ]

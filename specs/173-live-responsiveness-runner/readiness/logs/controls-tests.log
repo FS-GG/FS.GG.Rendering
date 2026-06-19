@@ -1,0 +1,26 @@
+  Determining projects to restore...
+  Restored /home/developer/projects/FS.GG.Rendering/src/DesignSystem/DesignSystem.fsproj (in 617 ms).
+  Restored /home/developer/projects/FS.GG.Rendering/src/Themes.AntDesign/Themes.AntDesign.fsproj (in 617 ms).
+  Restored /home/developer/projects/FS.GG.Rendering/src/Diagnostics/Diagnostics.fsproj (in 617 ms).
+  Restored /home/developer/projects/FS.GG.Rendering/src/Themes.Default/Themes.Default.fsproj (in 617 ms).
+  Restored /home/developer/projects/FS.GG.Rendering/src/Color/Color.fsproj (in 617 ms).
+  Restored /home/developer/projects/FS.GG.Rendering/src/Scene/Scene.fsproj (in 617 ms).
+  Restored /home/developer/projects/FS.GG.Rendering/src/KeyboardInput/KeyboardInput.fsproj (in 1.68 sec).
+  Restored /home/developer/projects/FS.GG.Rendering/src/Layout/Layout.fsproj (in 1.7 sec).
+  Restored /home/developer/projects/FS.GG.Rendering/src/Controls/Controls.fsproj (in 1.7 sec).
+  Restored /home/developer/projects/FS.GG.Rendering/tests/Controls.Tests/Controls.Tests.fsproj (in 15.25 sec).
+  Diagnostics -> /home/developer/projects/FS.GG.Rendering/src/Diagnostics/bin/Release/net10.0/FS.GG.UI.Diagnostics.dll
+  Scene -> /home/developer/projects/FS.GG.Rendering/src/Scene/bin/Release/net10.0/FS.GG.UI.Scene.dll
+  Layout -> /home/developer/projects/FS.GG.Rendering/src/Layout/bin/Release/net10.0/FS.GG.UI.Layout.dll
+  KeyboardInput -> /home/developer/projects/FS.GG.Rendering/src/KeyboardInput/bin/Release/net10.0/FS.GG.UI.KeyboardInput.dll
+  DesignSystem -> /home/developer/projects/FS.GG.Rendering/src/DesignSystem/bin/Release/net10.0/FS.GG.UI.DesignSystem.dll
+  Themes.Default -> /home/developer/projects/FS.GG.Rendering/src/Themes.Default/bin/Release/net10.0/FS.GG.UI.Themes.Default.dll
+  Controls -> /home/developer/projects/FS.GG.Rendering/src/Controls/bin/Release/net10.0/FS.GG.UI.Controls.dll
+  Themes.AntDesign -> /home/developer/projects/FS.GG.Rendering/src/Themes.AntDesign/bin/Release/net10.0/FS.GG.UI.Themes.AntDesign.dll
+  Color -> /home/developer/projects/FS.GG.Rendering/src/Color/bin/Release/net10.0/FS.GG.UI.Color.dll
+  Controls.Tests -> /home/developer/projects/FS.GG.Rendering/tests/Controls.Tests/bin/Release/net10.0/Controls.Tests.dll
+Test run for /home/developer/projects/FS.GG.Rendering/tests/Controls.Tests/bin/Release/net10.0/Controls.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+  Skipped Typed standard controls contract.FSI transcript expectations cover typed front doors and custom escape hatch
+
+Passed!  - Failed:     0, Passed:   893, Skipped:     1, Total:   894, Duration: 4 m 28 s - Controls.Tests.dll (net10.0)

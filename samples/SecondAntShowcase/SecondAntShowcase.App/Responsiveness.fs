@@ -48,7 +48,7 @@ let private scopeText scope =
     | AllInteractive -> "all-interactive"
 
 let private scopePath scope theme =
-    $"antshowcase/{scopeText scope}/{AntTheme.modeName theme}"
+    $"second-antshowcase/{scopeText scope}/{AntTheme.modeName theme}"
 
 let parse args =
     let page = flag "--page" args
@@ -93,6 +93,9 @@ let private jsonNull =
     use document = JsonDocument.Parse("null")
     document.RootElement.Clone()
 
+let private jsonString value =
+    JsonSerializer.SerializeToElement(value, JsonSerializerOptions(WriteIndented = false))
+
 let private actionPlan request =
     let actions =
         match request.Scope with
@@ -116,11 +119,26 @@ let private inputKindForToken token =
     | "wheel" -> "wheel", "wheel"
     | other -> other, other
 
+let private dragContinuityJson (action: Evidence.ResponsivenessReviewAction) =
+    if action.ActionType = "drag" then
+        JsonSerializer.SerializeToElement(
+            {| sampleCount = 0
+               visibleFeedbackSamples = 0
+               maxSampleGapMs = Nullable<float>()
+               delayedCatchUp = false
+               classification = "missing-boundary" |},
+            JsonSerializerOptions(WriteIndented = false)
+        )
+    else
+        jsonNull
+
 let private recordJson
     (run: string)
     (inputSequence: int)
     (action: Evidence.ResponsivenessReviewAction)
     (visibleResponse: string)
+    (environmentStatus: string)
+    (acceptanceStatus: string)
     (productChanged: bool)
     (totalMs: float)
     (coalesced: int)
@@ -151,7 +169,7 @@ let private recordJson
            runtimeStateChanged = inputKind.StartsWith("pointer", StringComparison.Ordinal)
            visibleResponse = visibleResponse
            presentedFrameId = Nullable<int64>()
-           environmentStatus = "headless-substitute"
+           environmentStatus = environmentStatus
            phaseTiming =
             {| receiptDurationMs = durationMs 0.1
                queueDelayMs = durationMs 0.0
@@ -168,15 +186,42 @@ let private recordJson
             {| dirtyRectCount = Nullable<int>()
                dirtyArea = Nullable<int>()
                repaintedNodeCount = Nullable<int>()
-               status = "headless-substitute" |}
+               status = environmentStatus |}
+           dragContinuity = dragContinuityJson action
            longFrame = totalMs >= 50.0
-           acceptanceStatus = "blocked"
+           acceptanceStatus = acceptanceStatus
            diagnostics = diagnostics |},
         JsonSerializerOptions(WriteIndented = false)
     )
 
+let private ensureRunRoot outputRoot run =
+    let rootFull = Path.GetFullPath(outputRoot)
+    let runRoot = Path.GetFullPath(Path.Combine(rootFull, run))
+    let prefix =
+        if rootFull.EndsWith(string Path.DirectorySeparatorChar, StringComparison.Ordinal) then
+            rootFull
+        else
+            rootFull + string Path.DirectorySeparatorChar
+
+    if not (runRoot.StartsWith(prefix, StringComparison.Ordinal)) then
+        invalidOp "responsiveness run directory escaped the output root"
+
+    runRoot
+
+let private liveEnvironmentLimitations requireLive =
+    let display = Environment.GetEnvironmentVariable("DISPLAY")
+    let wayland = Environment.GetEnvironmentVariable("WAYLAND_DISPLAY")
+
+    [ "headless-substitute:no-live-presentation-boundary"
+      if String.IsNullOrWhiteSpace display && String.IsNullOrWhiteSpace wayland then
+          "desktop-prerequisite:no-visible-surface"
+      else
+          "presentation:missing-boundary"
+      if requireLive then
+          "require-live:visible-surface-unavailable" ]
+
 let private writeOutputs (request: Request) (run: string) (metrics: FrameMetrics list) =
-    let runRoot = Path.Combine(request.OutDir, run)
+    let runRoot = ensureRunRoot request.OutDir run
     Directory.CreateDirectory runRoot |> ignore
 
     let recordsPath = Path.Combine(runRoot, "records.jsonl")
@@ -189,9 +234,7 @@ let private writeOutputs (request: Request) (run: string) (metrics: FrameMetrics
     let longFrame = metrics |> List.exists (fun metric -> metric.FrameCause = FrameCause.Tick)
     let actions = actionPlan request
     let displayOnly = displayOnlyExclusions ()
-    let limitations =
-        [ "headless-substitute:no-live-presentation-boundary"
-          if request.RequireLive then "require-live:visible-surface-unavailable" ]
+    let limitations = liveEnvironmentLimitations request.RequireLive
     let diagnostic =
         "SYNTHETIC: deterministic script output is substitute evidence, not accepted live latency."
 
@@ -209,6 +252,8 @@ let private writeOutputs (request: Request) (run: string) (metrics: FrameMetrics
                 (index + 1)
                 action
                 "environment-limited"
+                "headless-substitute"
+                "environment-limited"
                 (anyProductChange && action.ActionId = "button-click")
                 0.0
                 coalesced
@@ -218,7 +263,17 @@ let private writeOutputs (request: Request) (run: string) (metrics: FrameMetrics
 
     let requiredFamilies = actions |> List.map _.ControlFamily |> List.distinct |> List.sort
     let acceptedFamilies: string list = []
-    let missingFamilies = requiredFamilies
+    let rejectedFamilies: string list = []
+    let blockedFamilies = requiredFamilies
+    let missingFamilies: string list = []
+    let dragContinuity =
+        actions
+        |> List.filter (fun action -> action.ActionType = "drag")
+        |> List.map (fun action ->
+            {| controlFamily = action.ControlFamily
+               actionId = action.ActionId
+               classification = "missing-boundary" |})
+        |> List.toArray
     let groupByFamily =
         actions
         |> List.groupBy (fun action -> action.PageId, action.InputKind, action.ControlFamily)
@@ -235,6 +290,16 @@ let private writeOutputs (request: Request) (run: string) (metrics: FrameMetrics
                readiness = "environment-limited" |})
         |> List.toArray
 
+    let firstFailedBudget =
+        JsonSerializer.SerializeToElement(
+            {| kind = "environment-boundary"
+               scope = jsonString (scopePath request.Scope request.Theme)
+               inputKind = jsonNull
+               measuredMs = 1.0
+               budgetMs = 0.0 |},
+            JsonSerializerOptions(WriteIndented = false)
+        )
+
     let summaryJson =
         JsonSerializer.Serialize(
             {| runId = run
@@ -249,11 +314,13 @@ let private writeOutputs (request: Request) (run: string) (metrics: FrameMetrics
                    inputToVisibleP95Ms = Evidence.responsivenessTargetP95Ms
                    inputToVisibleMaxMs = Evidence.responsivenessTargetMaxMs
                    longFrameThresholdMs = 50 |}
-               firstFailedBudget = jsonNull
+               firstFailedBudget = firstFailedBudget
                groups = groupByFamily
                coverage =
                 {| requiredInteractiveFamilies = requiredFamilies |> List.toArray
                    acceptedInteractiveFamilies = acceptedFamilies |> List.toArray
+                   rejectedInteractiveFamilies = rejectedFamilies |> List.toArray
+                   blockedInteractiveFamilies = blockedFamilies |> List.toArray
                    displayOnlyExclusions =
                     displayOnly
                     |> List.map (fun action ->
@@ -262,6 +329,8 @@ let private writeOutputs (request: Request) (run: string) (metrics: FrameMetrics
                     |> List.toArray
                    missingInteractiveFamilies = missingFamilies |> List.toArray |}
                slowestInteractions = [||]
+               dragContinuity = dragContinuity
+               artifactWriteStatus = "complete"
                environmentLimitations = limitations
                diagnostics = [ diagnostic ] |},
             jsonOptions
@@ -287,18 +356,32 @@ let private writeOutputs (request: Request) (run: string) (metrics: FrameMetrics
           $"- scope: {scopePath request.Scope request.Theme}"
           "- overall readiness: environment-limited"
           "- records: records.jsonl"
-          "- first failed budget: none"
+          "- first failed budget: environment-boundary"
           "- caveat: SYNTHETIC deterministic headless substitute; no accepted live input-to-present readiness claimed."
           $"- required interactive families: {List.length requiredFamilies}"
           $"- accepted interactive families: {List.length acceptedFamilies}"
+          $"- rejected interactive families: {List.length rejectedFamilies}"
+          $"- blocked interactive families: {List.length blockedFamilies}"
           $"- display-only exclusions: {List.length displayOnly}"
           $"- missing interactive families: {List.length missingFamilies}"
+          "- artifact write status: complete"
+          ""
+          "Links: `summary.json`, `records.jsonl`, `environment.md`"
           ""
           "| Page | Input | Control | Count | p50 | p95 | max | long frames | readiness |"
           "|------|-------|---------|-------|-----|-----|-----|-------------|-----------|" ]
         @ groupMarkdown
         @ [ ""; "## Missing Interactive Families"; "" ]
         @ missingMarkdown
+        @ [ ""; "## Environment Limitations"; "" ]
+        @ (limitations |> List.map (fun limitation -> $"- {limitation}"))
+        @ [ ""; "## Drag Continuity"; "" ]
+        @ (if Array.isEmpty dragContinuity then
+               [ "- none" ]
+           else
+               dragContinuity
+               |> Array.toList
+               |> List.map (fun drag -> $"- `{drag.controlFamily}`: {drag.classification}"))
         @ [ "" ]
 
     File.WriteAllText(
@@ -315,8 +398,10 @@ let private writeOutputs (request: Request) (run: string) (metrics: FrameMetrics
               "- status: environment-limited"
               "- presentation: no live GL presentation boundary measured by the deterministic command"
               "- substitute: ControlsElmish.Perf.runScript representative script"
+              "- artifact-write-status: complete"
               for limitation in limitations do
                   $"- limitation: {limitation}"
+              "- diagnostic: live responsiveness acceptance requires a visible, focusable desktop session and measured presentation boundary"
               "" ]
     )
 
@@ -341,7 +426,7 @@ let run (args: string list) =
             let summaryPath = writeOutputs request run metrics
 
             if request.PrintJson then
-                printfn """{"summaryJson":"%s","readiness":"environment-limited"}""" summaryPath
+                printfn """{"runId":"%s","summaryJson":"%s","readiness":"environment-limited"}""" run summaryPath
             else
                 printfn "second-ant-showcase responsiveness: wrote %s" summaryPath
 

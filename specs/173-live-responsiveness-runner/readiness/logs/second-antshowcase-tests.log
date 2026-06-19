@@ -1,0 +1,7 @@
+  SecondAntShowcase.Core -> /home/developer/projects/FS.GG.Rendering/samples/SecondAntShowcase/SecondAntShowcase.Core/bin/Release/net10.0/SecondAntShowcase.Core.dll
+  SecondAntShowcase.App -> /home/developer/projects/FS.GG.Rendering/samples/SecondAntShowcase/SecondAntShowcase.App/bin/Release/net10.0/SecondAntShowcase.dll
+  SecondAntShowcase.Tests -> /home/developer/projects/FS.GG.Rendering/samples/SecondAntShowcase/SecondAntShowcase.Tests/bin/Release/net10.0/SecondAntShowcase.Tests.dll
+Test run for /home/developer/projects/FS.GG.Rendering/samples/SecondAntShowcase/SecondAntShowcase.Tests/bin/Release/net10.0/SecondAntShowcase.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:   142, Skipped:     0, Total:   142, Duration: 1 m 5 s - SecondAntShowcase.Tests.dll (net10.0)
