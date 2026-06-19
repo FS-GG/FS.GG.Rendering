@@ -27,6 +27,25 @@ Record helper surface evidence under the active feature readiness
 package-surface reports. Stable public surface baselines live under
 `readiness/surface-baselines/`.
 
+## Feature 168 Evidence Rules
+
+- Package-consuming samples must compare current `FS.GG.UI.` package pins and
+  use `scripts/refresh-local-feed-and-samples.fsx` or `package-feed` proof;
+  stale package pins need a local feed caveat.
+- Committed feature evidence under `specs/*/readiness/` is ignored until
+  `.gitignore` allowlists it; record `git check-ignore` proof before claiming
+  committed evidence.
+- Do not run `dotnet test` for the same project/configuration concurrently
+  unless each run uses isolated output or a distinct `BaseOutputPath`.
+- Prefer real screenshot evidence, disclose degraded captures, require reviewer
+  accepted readiness, and keep manual caveats outside generated summary or
+  managed section rewrites.
+- Responsiveness evidence must validate pointer and keyboard activation
+  separately from screenshot readiness and distinguish input routing from update,
+  render, and present latency.
+- Canceled, timed-out, skipped, synthetic, substitute, degraded,
+  pending-review, or environment-limited checks keep a visible caveat.
+
 ## Package Boundary
 
 Testing helpers must not pull broad framework implementation projects into generated products.

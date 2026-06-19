@@ -39,6 +39,8 @@
     <Compile Include="Live.fs" />
     <Compile Include="Input.fsi" />
     <Compile Include="Input.fs" />
+    <Compile Include="SkillParity.fsi" />
+    <Compile Include="SkillParity.fs" />
     <Compile Include="Cli.fs" />
   </ItemGroup>
 

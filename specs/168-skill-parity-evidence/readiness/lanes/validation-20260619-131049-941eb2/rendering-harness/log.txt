@@ -1,0 +1,16 @@
+  Scene -> /home/developer/projects/FS.GG.Rendering/src/Scene/bin/Release/net10.0/FS.GG.UI.Scene.dll
+  Layout -> /home/developer/projects/FS.GG.Rendering/src/Layout/bin/Release/net10.0/FS.GG.UI.Layout.dll
+  DesignSystem -> /home/developer/projects/FS.GG.Rendering/src/DesignSystem/bin/Release/net10.0/FS.GG.UI.DesignSystem.dll
+  Testing -> /home/developer/projects/FS.GG.Rendering/src/Testing/bin/Release/net10.0/FS.GG.UI.Testing.dll
+  KeyboardInput -> /home/developer/projects/FS.GG.Rendering/src/KeyboardInput/bin/Release/net10.0/FS.GG.UI.KeyboardInput.dll
+  Controls -> /home/developer/projects/FS.GG.Rendering/src/Controls/bin/Release/net10.0/FS.GG.UI.Controls.dll
+  SkiaViewer -> /home/developer/projects/FS.GG.Rendering/src/SkiaViewer/bin/Release/net10.0/FS.GG.UI.SkiaViewer.dll
+  Controls.Elmish -> /home/developer/projects/FS.GG.Rendering/src/Controls.Elmish/bin/Release/net10.0/FS.GG.UI.Controls.Elmish.dll
+  Rendering.Harness -> /home/developer/projects/FS.GG.Rendering/tests/Rendering.Harness/bin/Release/net10.0/Rendering.Harness.dll
+  Rendering.Harness.Tests -> /home/developer/projects/FS.GG.Rendering/tests/Rendering.Harness.Tests/bin/Release/net10.0/Rendering.Harness.Tests.dll
+Test run for /home/developer/projects/FS.GG.Rendering/tests/Rendering.Harness.Tests/bin/Release/net10.0/Rendering.Harness.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Data collector 'Blame' message: All tests finished running, Sequence file will not be generated.
+Results File: /home/developer/projects/FS.GG.Rendering/specs/168-skill-parity-evidence/readiness/lanes/validation-20260619-131049-941eb2/rendering-harness/TestResults/rendering-harness.trx
+
+Passed!  - Failed:     0, Passed:    18, Skipped:     0, Total:    18, Duration: 566 ms - Rendering.Harness.Tests.dll (net10.0)

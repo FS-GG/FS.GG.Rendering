@@ -43,6 +43,19 @@ Run generated product `./fake.sh build -t Verify` for the sample-pack profile.
 Record sample-pack file lists under the active feature
 `readiness/generated-file-lists/` report.
 
+## Feature 168 Sample Evidence Rules
+
+- Sample-pack and package-consuming samples must compare current `FS.GG.UI.`
+  package pins before validation is claimed.
+- Use `scripts/refresh-local-feed-and-samples.fsx` or the `package-feed` proof
+  workflow to prove stale package pins are absent and the local feed is the
+  source of package-consuming sample restores.
+- When sample readiness uses screenshots, prefer real screenshot evidence,
+  disclose degraded captures, require reviewer accepted readiness, and keep
+  generated summary caveats visible.
+- Canceled, timed-out, skipped, synthetic, substitute, pending-review, or
+  environment-limited validation remains a caveat, not a green result.
+
 ## Package Boundary
 
 Do not include samples in default consumer products.

@@ -1,0 +1,133 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="c93baa47-9d7c-42b0-8923-423d0b5f4eb0" name="@ee01623d796c 2026-06-19 15:10:55" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-06-19T15:10:55.6894462+02:00" queuing="2026-06-19T15:10:55.6894463+02:00" start="2026-06-19T15:10:53.3951251+02:00" finish="2026-06-19T15:10:56.2574317+02:00" />
+  <TestSettings name="default" id="87953e1b-7c85-48f7-b42d-34e784bed704">
+    <Deployment runDeploymentRoot="_ee01623d796c_2026-06-19_15_10_55" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="44804d41-57d6-4b22-83fb-ba67ab2782a1" testId="86a8e5d0-009d-dd6b-72ad-33eaf8081d4c" testName="Feature166ValidationSummary.Synthetic summary write completes under SC-001 final summary timing budget" computerName="ee01623d796c" duration="00:00:00.0370000" startTime="2026-06-19T15:10:55.5861539+02:00" endTime="2026-06-19T15:10:55.6614261+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="44804d41-57d6-4b22-83fb-ba67ab2782a1" />
+    <UnitTestResult executionId="cc13666c-e572-40ad-a967-a7ba7ad0e173" testId="d055889e-40ed-0da1-921e-28478e209bc4" testName="Feature166LaneCatalog.default catalog declares required lanes and optional aggregate" computerName="ee01623d796c" duration="00:00:00.0050000" startTime="2026-06-19T15:10:55.6682860+02:00" endTime="2026-06-19T15:10:55.6845019+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="cc13666c-e572-40ad-a967-a7ba7ad0e173" />
+    <UnitTestResult executionId="5b98cd37-48bd-41ac-9dd6-a3e3212bdbd6" testId="4155c00a-a5b9-8470-6c11-69f8aabbec0f" testName="Feature166Scheduling.sequential schedule accepts lanes that share generated output metadata" computerName="ee01623d796c" duration="00:00:00.0250000" startTime="2026-06-19T15:10:55.5860759+02:00" endTime="2026-06-19T15:10:55.6485475+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="5b98cd37-48bd-41ac-9dd6-a3e3212bdbd6" />
+    <UnitTestResult executionId="705d52e4-02b6-4301-ba65-42f0de001c65" testId="8a833de5-9e1d-f837-a8bc-14ec512fe3b5" testName="Feature166LaneCatalog.documented lanes declare concurrency group and output scope metadata" computerName="ee01623d796c" duration="00:00:00.0030000" startTime="2026-06-19T15:10:55.6683081+02:00" endTime="2026-06-19T15:10:55.6830718+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="705d52e4-02b6-4301-ba65-42f0de001c65" />
+    <UnitTestResult executionId="db8275e0-30a9-4433-a7ba-42a69b738484" testId="33d2195d-54d7-ffca-56ee-29732f9eaf4b" testName="Feature166LaneRunnerPreflight.existing run id fails unless replacement is explicit" computerName="ee01623d796c" duration="00:00:00.0050000" startTime="2026-06-19T15:10:55.6682647+02:00" endTime="2026-06-19T15:10:55.6789122+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="db8275e0-30a9-4433-a7ba-42a69b738484" />
+    <UnitTestResult executionId="6c51e207-80e3-45c1-8d31-f4dec7af6f91" testId="915f2031-ce87-0a59-b1c7-29e9e1766fc4" testName="Feature166LaneRunnerPreflight.unknown and duplicate requested lanes fail before work starts" computerName="ee01623d796c" duration="00:00:00.0050000" startTime="2026-06-19T15:10:55.6679839+02:00" endTime="2026-06-19T15:10:55.6782907+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="6c51e207-80e3-45c1-8d31-f4dec7af6f91" />
+    <UnitTestResult executionId="38ea0e9b-4aaa-4d8f-86d4-48eaa04e3b34" testId="7368539a-10aa-841a-6d26-045658b310ec" testName="Feature166LaneStatus.Synthetic status tokens cover every contracted lane outcome" computerName="ee01623d796c" duration="00:00:00.0180000" startTime="2026-06-19T15:10:55.5865884+02:00" endTime="2026-06-19T15:10:55.6531400+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="38ea0e9b-4aaa-4d8f-86d4-48eaa04e3b34" />
+    <UnitTestResult executionId="d85b0119-8c7a-49a9-95a8-e261a0aa503e" testId="382a4834-6da1-0e1c-39a3-030e57198d0e" testName="Feature166Cancellation.Synthetic readiness is blocked when required lanes are canceled skipped or not-run" computerName="ee01623d796c" duration="00:00:00.0060000" startTime="2026-06-19T15:10:55.5860800+02:00" endTime="2026-06-19T15:10:55.6387221+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="d85b0119-8c7a-49a9-95a8-e261a0aa503e" />
+    <UnitTestResult executionId="18d456ca-14ea-4c0d-ad31-e5f76f347371" testId="ebc5448e-4efa-6e7a-1326-469d171dcb63" testName="Feature166Scheduling.unsafe parallel requests name lanes sharing concurrency group or output scope" computerName="ee01623d796c" duration="00:00:00.0290000" startTime="2026-06-19T15:10:55.5860771+02:00" endTime="2026-06-19T15:10:55.6527332+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="18d456ca-14ea-4c0d-ad31-e5f76f347371" />
+    <UnitTestResult executionId="0b646aa1-b5dc-44a7-9657-cccb2763434e" testId="9a1676be-7ab1-a2ac-c412-fc02a039cd3a" testName="Feature166ValidationSummary.Synthetic readiness rules keep optional aggregate failures separate from required readiness" computerName="ee01623d796c" duration="00:00:00.0040000" startTime="2026-06-19T15:10:55.5862757+02:00" endTime="2026-06-19T15:10:55.6452199+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="0b646aa1-b5dc-44a7-9657-cccb2763434e" />
+    <UnitTestResult executionId="b7691918-05c6-4d18-9fae-7320bb443bb0" testId="ec2850e8-f85f-fddc-42ad-8a88d0d3cb80" testName="Feature166ValidationSummary.Synthetic Markdown and JSON summaries agree on readiness fields and evidence paths" computerName="ee01623d796c" duration="00:00:00.0370000" startTime="2026-06-19T15:10:55.5860917+02:00" endTime="2026-06-19T15:10:55.6603815+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="b7691918-05c6-4d18-9fae-7320bb443bb0" />
+    <UnitTestResult executionId="6541d594-8d85-4971-ae08-8ca0c30abf36" testId="080472e7-7097-dd5a-3b89-81313f54b7df" testName="Feature166LaneRunnerPreflight.default request selects required lanes and excludes optional aggregate" computerName="ee01623d796c" duration="00:00:00.0130000" startTime="2026-06-19T15:10:55.6327565+02:00" endTime="2026-06-19T15:10:55.6605105+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="6541d594-8d85-4971-ae08-8ca0c30abf36" />
+    <UnitTestResult executionId="71be9bb6-de62-47c6-b629-f80fdf4b58e3" testId="a7dace74-3de4-532e-fb54-1b2342723884" testName="Feature166Cancellation.Synthetic operator cancellation preserves completed lanes and marks unfinished lanes" computerName="ee01623d796c" duration="00:00:00.0170000" startTime="2026-06-19T15:10:55.5860795+02:00" endTime="2026-06-19T15:10:55.6403696+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="71be9bb6-de62-47c6-b629-f80fdf4b58e3" />
+    <UnitTestResult executionId="1d95936c-cd14-46fa-85a2-09ecb3e4b804" testId="7ff63dcf-8295-b7b2-a62b-86abb627c9b2" testName="Feature166ValidationSummary.replacement notice is rendered when a run is explicitly replaced" computerName="ee01623d796c" duration="00:00:00.0070000" startTime="2026-06-19T15:10:55.5864257+02:00" endTime="2026-06-19T15:10:55.6487561+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="1d95936c-cd14-46fa-85a2-09ecb3e4b804" />
+    <UnitTestResult executionId="4f149c5c-d05f-405e-bc9b-e5790f556d8c" testId="6fb7f5cd-fe08-e9fd-57f5-ba3571c7021f" testName="Feature166LaneCatalog.lane ids result ids and evidence paths are unique" computerName="ee01623d796c" duration="00:00:00.0080000" startTime="2026-06-19T15:10:55.6682831+02:00" endTime="2026-06-19T15:10:55.6868267+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="4f149c5c-d05f-405e-bc9b-e5790f556d8c" />
+    <UnitTestResult executionId="2d66c07a-0907-40f1-805c-8f4e981d8f9a" testId="8d9ff88f-52df-bb20-be7c-18a82a2aa844" testName="Feature166LaneRunnerPreflight.explicit lanes and optional aggregate inclusion are accepted" computerName="ee01623d796c" duration="00:00:00.0030000" startTime="2026-06-19T15:10:55.6679749+02:00" endTime="2026-06-19T15:10:55.6777439+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="2d66c07a-0907-40f1-805c-8f4e981d8f9a" />
+    <UnitTestResult executionId="7d2911a3-ccc8-41de-9fb0-71716e3c439c" testId="68ac4c25-96d4-0b44-bc0b-ae8d8616a695" testName="Feature166LaneStatus.process runner classifies pass fail timeout no-progress and evidence infrastructure failures" computerName="ee01623d796c" duration="00:00:00.5240000" startTime="2026-06-19T15:10:55.5865978+02:00" endTime="2026-06-19T15:10:56.1522169+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="7d2911a3-ccc8-41de-9fb0-71716e3c439c" />
+    <UnitTestResult executionId="322d5003-c183-4944-8174-ea79c2a8fc38" testId="8416b219-3fd1-b225-7010-3a7a03f7ff3e" testName="Feature166LaneStatus.Synthetic MVU transitions emit preflight heartbeat timeout cancellation and summary effects" computerName="ee01623d796c" duration="00:00:00.0190000" startTime="2026-06-19T15:10:55.6326205+02:00" endTime="2026-06-19T15:10:55.6605100+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="322d5003-c183-4944-8174-ea79c2a8fc38" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="Feature166LaneRunnerPreflight.existing run id fails unless replacement is explicit" storage="/home/developer/projects/fs.gg.rendering/tests/rendering.harness.tests/bin/release/net10.0/rendering.harness.tests.dll" id="33d2195d-54d7-ffca-56ee-29732f9eaf4b">
+      <Execution id="db8275e0-30a9-4433-a7ba-42a69b738484" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering/tests/Rendering.Harness.Tests/bin/Release/net10.0/Rendering.Harness.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="Feature166LaneRunnerPreflight" name="existing run id fails unless replacement is explicit" />
+    </UnitTest>
+    <UnitTest name="Feature166LaneCatalog.documented lanes declare concurrency group and output scope metadata" storage="/home/developer/projects/fs.gg.rendering/tests/rendering.harness.tests/bin/release/net10.0/rendering.harness.tests.dll" id="8a833de5-9e1d-f837-a8bc-14ec512fe3b5">
+      <Execution id="705d52e4-02b6-4301-ba65-42f0de001c65" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering/tests/Rendering.Harness.Tests/bin/Release/net10.0/Rendering.Harness.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="Feature166LaneCatalog" name="documented lanes declare concurrency group and output scope metadata" />
+    </UnitTest>
+    <UnitTest name="Feature166LaneStatus.process runner classifies pass fail timeout no-progress and evidence infrastructure failures" storage="/home/developer/projects/fs.gg.rendering/tests/rendering.harness.tests/bin/release/net10.0/rendering.harness.tests.dll" id="68ac4c25-96d4-0b44-bc0b-ae8d8616a695">
+      <Execution id="7d2911a3-ccc8-41de-9fb0-71716e3c439c" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering/tests/Rendering.Harness.Tests/bin/Release/net10.0/Rendering.Harness.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="Feature166LaneStatus" name="process runner classifies pass fail timeout no-progress and evidence infrastructure failures" />
+    </UnitTest>
+    <UnitTest name="Feature166LaneStatus.Synthetic MVU transitions emit preflight heartbeat timeout cancellation and summary effects" storage="/home/developer/projects/fs.gg.rendering/tests/rendering.harness.tests/bin/release/net10.0/rendering.harness.tests.dll" id="8416b219-3fd1-b225-7010-3a7a03f7ff3e">
+      <Execution id="322d5003-c183-4944-8174-ea79c2a8fc38" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering/tests/Rendering.Harness.Tests/bin/Release/net10.0/Rendering.Harness.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="Feature166LaneStatus" name="Synthetic MVU transitions emit preflight heartbeat timeout cancellation and summary effects" />
+    </UnitTest>
+    <UnitTest name="Feature166ValidationSummary.Synthetic summary write completes under SC-001 final summary timing budget" storage="/home/developer/projects/fs.gg.rendering/tests/rendering.harness.tests/bin/release/net10.0/rendering.harness.tests.dll" id="86a8e5d0-009d-dd6b-72ad-33eaf8081d4c">
+      <Execution id="44804d41-57d6-4b22-83fb-ba67ab2782a1" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering/tests/Rendering.Harness.Tests/bin/Release/net10.0/Rendering.Harness.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="Feature166ValidationSummary" name="Synthetic summary write completes under SC-001 final summary timing budget" />
+    </UnitTest>
+    <UnitTest name="Feature166Cancellation.Synthetic readiness is blocked when required lanes are canceled skipped or not-run" storage="/home/developer/projects/fs.gg.rendering/tests/rendering.harness.tests/bin/release/net10.0/rendering.harness.tests.dll" id="382a4834-6da1-0e1c-39a3-030e57198d0e">
+      <Execution id="d85b0119-8c7a-49a9-95a8-e261a0aa503e" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering/tests/Rendering.Harness.Tests/bin/Release/net10.0/Rendering.Harness.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="Feature166Cancellation" name="Synthetic readiness is blocked when required lanes are canceled skipped or not-run" />
+    </UnitTest>
+    <UnitTest name="Feature166LaneRunnerPreflight.unknown and duplicate requested lanes fail before work starts" storage="/home/developer/projects/fs.gg.rendering/tests/rendering.harness.tests/bin/release/net10.0/rendering.harness.tests.dll" id="915f2031-ce87-0a59-b1c7-29e9e1766fc4">
+      <Execution id="6c51e207-80e3-45c1-8d31-f4dec7af6f91" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering/tests/Rendering.Harness.Tests/bin/Release/net10.0/Rendering.Harness.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="Feature166LaneRunnerPreflight" name="unknown and duplicate requested lanes fail before work starts" />
+    </UnitTest>
+    <UnitTest name="Feature166LaneRunnerPreflight.default request selects required lanes and excludes optional aggregate" storage="/home/developer/projects/fs.gg.rendering/tests/rendering.harness.tests/bin/release/net10.0/rendering.harness.tests.dll" id="080472e7-7097-dd5a-3b89-81313f54b7df">
+      <Execution id="6541d594-8d85-4971-ae08-8ca0c30abf36" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering/tests/Rendering.Harness.Tests/bin/Release/net10.0/Rendering.Harness.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="Feature166LaneRunnerPreflight" name="default request selects required lanes and excludes optional aggregate" />
+    </UnitTest>
+    <UnitTest name="Feature166LaneStatus.Synthetic status tokens cover every contracted lane outcome" storage="/home/developer/projects/fs.gg.rendering/tests/rendering.harness.tests/bin/release/net10.0/rendering.harness.tests.dll" id="7368539a-10aa-841a-6d26-045658b310ec">
+      <Execution id="38ea0e9b-4aaa-4d8f-86d4-48eaa04e3b34" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering/tests/Rendering.Harness.Tests/bin/Release/net10.0/Rendering.Harness.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="Feature166LaneStatus" name="Synthetic status tokens cover every contracted lane outcome" />
+    </UnitTest>
+    <UnitTest name="Feature166LaneRunnerPreflight.explicit lanes and optional aggregate inclusion are accepted" storage="/home/developer/projects/fs.gg.rendering/tests/rendering.harness.tests/bin/release/net10.0/rendering.harness.tests.dll" id="8d9ff88f-52df-bb20-be7c-18a82a2aa844">
+      <Execution id="2d66c07a-0907-40f1-805c-8f4e981d8f9a" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering/tests/Rendering.Harness.Tests/bin/Release/net10.0/Rendering.Harness.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="Feature166LaneRunnerPreflight" name="explicit lanes and optional aggregate inclusion are accepted" />
+    </UnitTest>
+    <UnitTest name="Feature166ValidationSummary.Synthetic Markdown and JSON summaries agree on readiness fields and evidence paths" storage="/home/developer/projects/fs.gg.rendering/tests/rendering.harness.tests/bin/release/net10.0/rendering.harness.tests.dll" id="ec2850e8-f85f-fddc-42ad-8a88d0d3cb80">
+      <Execution id="b7691918-05c6-4d18-9fae-7320bb443bb0" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering/tests/Rendering.Harness.Tests/bin/Release/net10.0/Rendering.Harness.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="Feature166ValidationSummary" name="Synthetic Markdown and JSON summaries agree on readiness fields and evidence paths" />
+    </UnitTest>
+    <UnitTest name="Feature166Scheduling.unsafe parallel requests name lanes sharing concurrency group or output scope" storage="/home/developer/projects/fs.gg.rendering/tests/rendering.harness.tests/bin/release/net10.0/rendering.harness.tests.dll" id="ebc5448e-4efa-6e7a-1326-469d171dcb63">
+      <Execution id="18d456ca-14ea-4c0d-ad31-e5f76f347371" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering/tests/Rendering.Harness.Tests/bin/Release/net10.0/Rendering.Harness.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="Feature166Scheduling" name="unsafe parallel requests name lanes sharing concurrency group or output scope" />
+    </UnitTest>
+    <UnitTest name="Feature166ValidationSummary.Synthetic readiness rules keep optional aggregate failures separate from required readiness" storage="/home/developer/projects/fs.gg.rendering/tests/rendering.harness.tests/bin/release/net10.0/rendering.harness.tests.dll" id="9a1676be-7ab1-a2ac-c412-fc02a039cd3a">
+      <Execution id="0b646aa1-b5dc-44a7-9657-cccb2763434e" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering/tests/Rendering.Harness.Tests/bin/Release/net10.0/Rendering.Harness.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="Feature166ValidationSummary" name="Synthetic readiness rules keep optional aggregate failures separate from required readiness" />
+    </UnitTest>
+    <UnitTest name="Feature166Cancellation.Synthetic operator cancellation preserves completed lanes and marks unfinished lanes" storage="/home/developer/projects/fs.gg.rendering/tests/rendering.harness.tests/bin/release/net10.0/rendering.harness.tests.dll" id="a7dace74-3de4-532e-fb54-1b2342723884">
+      <Execution id="71be9bb6-de62-47c6-b629-f80fdf4b58e3" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering/tests/Rendering.Harness.Tests/bin/Release/net10.0/Rendering.Harness.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="Feature166Cancellation" name="Synthetic operator cancellation preserves completed lanes and marks unfinished lanes" />
+    </UnitTest>
+    <UnitTest name="Feature166ValidationSummary.replacement notice is rendered when a run is explicitly replaced" storage="/home/developer/projects/fs.gg.rendering/tests/rendering.harness.tests/bin/release/net10.0/rendering.harness.tests.dll" id="7ff63dcf-8295-b7b2-a62b-86abb627c9b2">
+      <Execution id="1d95936c-cd14-46fa-85a2-09ecb3e4b804" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering/tests/Rendering.Harness.Tests/bin/Release/net10.0/Rendering.Harness.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="Feature166ValidationSummary" name="replacement notice is rendered when a run is explicitly replaced" />
+    </UnitTest>
+    <UnitTest name="Feature166LaneCatalog.default catalog declares required lanes and optional aggregate" storage="/home/developer/projects/fs.gg.rendering/tests/rendering.harness.tests/bin/release/net10.0/rendering.harness.tests.dll" id="d055889e-40ed-0da1-921e-28478e209bc4">
+      <Execution id="cc13666c-e572-40ad-a967-a7ba7ad0e173" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering/tests/Rendering.Harness.Tests/bin/Release/net10.0/Rendering.Harness.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="Feature166LaneCatalog" name="default catalog declares required lanes and optional aggregate" />
+    </UnitTest>
+    <UnitTest name="Feature166Scheduling.sequential schedule accepts lanes that share generated output metadata" storage="/home/developer/projects/fs.gg.rendering/tests/rendering.harness.tests/bin/release/net10.0/rendering.harness.tests.dll" id="4155c00a-a5b9-8470-6c11-69f8aabbec0f">
+      <Execution id="5b98cd37-48bd-41ac-9dd6-a3e3212bdbd6" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering/tests/Rendering.Harness.Tests/bin/Release/net10.0/Rendering.Harness.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="Feature166Scheduling" name="sequential schedule accepts lanes that share generated output metadata" />
+    </UnitTest>
+    <UnitTest name="Feature166LaneCatalog.lane ids result ids and evidence paths are unique" storage="/home/developer/projects/fs.gg.rendering/tests/rendering.harness.tests/bin/release/net10.0/rendering.harness.tests.dll" id="6fb7f5cd-fe08-e9fd-57f5-ba3571c7021f">
+      <Execution id="4f149c5c-d05f-405e-bc9b-e5790f556d8c" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering/tests/Rendering.Harness.Tests/bin/Release/net10.0/Rendering.Harness.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="Feature166LaneCatalog" name="lane ids result ids and evidence paths are unique" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="86a8e5d0-009d-dd6b-72ad-33eaf8081d4c" executionId="44804d41-57d6-4b22-83fb-ba67ab2782a1" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="d055889e-40ed-0da1-921e-28478e209bc4" executionId="cc13666c-e572-40ad-a967-a7ba7ad0e173" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="4155c00a-a5b9-8470-6c11-69f8aabbec0f" executionId="5b98cd37-48bd-41ac-9dd6-a3e3212bdbd6" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="8a833de5-9e1d-f837-a8bc-14ec512fe3b5" executionId="705d52e4-02b6-4301-ba65-42f0de001c65" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="33d2195d-54d7-ffca-56ee-29732f9eaf4b" executionId="db8275e0-30a9-4433-a7ba-42a69b738484" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="915f2031-ce87-0a59-b1c7-29e9e1766fc4" executionId="6c51e207-80e3-45c1-8d31-f4dec7af6f91" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="7368539a-10aa-841a-6d26-045658b310ec" executionId="38ea0e9b-4aaa-4d8f-86d4-48eaa04e3b34" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="382a4834-6da1-0e1c-39a3-030e57198d0e" executionId="d85b0119-8c7a-49a9-95a8-e261a0aa503e" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="ebc5448e-4efa-6e7a-1326-469d171dcb63" executionId="18d456ca-14ea-4c0d-ad31-e5f76f347371" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="9a1676be-7ab1-a2ac-c412-fc02a039cd3a" executionId="0b646aa1-b5dc-44a7-9657-cccb2763434e" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="ec2850e8-f85f-fddc-42ad-8a88d0d3cb80" executionId="b7691918-05c6-4d18-9fae-7320bb443bb0" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="080472e7-7097-dd5a-3b89-81313f54b7df" executionId="6541d594-8d85-4971-ae08-8ca0c30abf36" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="a7dace74-3de4-532e-fb54-1b2342723884" executionId="71be9bb6-de62-47c6-b629-f80fdf4b58e3" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="7ff63dcf-8295-b7b2-a62b-86abb627c9b2" executionId="1d95936c-cd14-46fa-85a2-09ecb3e4b804" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="6fb7f5cd-fe08-e9fd-57f5-ba3571c7021f" executionId="4f149c5c-d05f-405e-bc9b-e5790f556d8c" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="8d9ff88f-52df-bb20-be7c-18a82a2aa844" executionId="2d66c07a-0907-40f1-805c-8f4e981d8f9a" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="68ac4c25-96d4-0b44-bc0b-ae8d8616a695" executionId="7d2911a3-ccc8-41de-9fb0-71716e3c439c" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="8416b219-3fd1-b225-7010-3a7a03f7ff3e" executionId="322d5003-c183-4944-8174-ea79c2a8fc38" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Completed">
+    <Counters total="18" executed="18" passed="18" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <RunInfos>
+      <RunInfo computerName="ee01623d796c" outcome="Warning" timestamp="2026-06-19T15:10:56.2088056+02:00">
+        <Text>Data collector 'Blame' message: All tests finished running, Sequence file will not be generated.</Text>
+      </RunInfo>
+    </RunInfos>
+  </ResultSummary>
+</TestRun>

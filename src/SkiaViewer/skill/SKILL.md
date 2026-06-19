@@ -28,6 +28,20 @@ readiness package-surface reports. Stable public surface baselines live under
 `readiness/surface-baselines/`. Disclose synthetic native evidence if a
 platform window system is unavailable.
 
+## Feature 168 Viewer Evidence Rules
+
+- Package-consuming viewer samples must compare current `FS.GG.UI.` package
+  pins and use `scripts/refresh-local-feed-and-samples.fsx` or `package-feed`
+  proof so stale package pins and local feed assumptions stay visible.
+- Prefer real screenshot evidence; disclose degraded capture, require reviewer
+  accepted readiness, and preserve manual caveats outside generated summary or
+  managed section rewrites.
+- Responsiveness evidence is separate from screenshot readiness: validate
+  pointer and keyboard activation, then distinguish input routing from update,
+  render, and present latency.
+- Canceled, timed-out, skipped, synthetic, substitute, degraded,
+  pending-review, or environment-limited checks must keep a visible caveat.
+
 ## Package Boundary
 
 Keep native window and render effects at the interpreter edge. Scene descriptions stay in Scene; Elmish adapter behavior stays in Elmish.

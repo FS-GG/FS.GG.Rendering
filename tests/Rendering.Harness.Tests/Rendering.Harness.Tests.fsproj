@@ -69,6 +69,11 @@
     <Compile Include="Feature166CancellationTests.fs" />
     <Compile Include="Feature166SchedulingTests.fs" />
     <Compile Include="Feature167ResponsivenessReadinessTests.fs" />
+    <Compile Include="Feature168SkillParityFixtures.fs" />
+    <Compile Include="Feature168GuidanceCoverageTests.fs" />
+    <Compile Include="Feature168SkillInventoryTests.fs" />
+    <Compile Include="Feature168ParityFindingTests.fs" />
+    <Compile Include="Feature168ParityReportTests.fs" />
     <Compile Include="Feature151RenderAnywhereRegressionTests.fs" />
     <Compile Include="Feature151TextShapingRegressionTests.fs" />
     <Compile Include="Feature151CompositorReadinessRegressionTests.fs" />

@@ -193,6 +193,20 @@ Run `./fake.sh build -t Test` for product-owned control examples.
 Product evidence belongs in the generated product readiness folder. Do not copy
 framework readiness reports.
 
+## Feature 168 Control Evidence Rules
+
+- Package-consuming generated controls must compare current `FS.GG.UI.` package
+  pins and use `scripts/refresh-local-feed-and-samples.fsx` or `package-feed`
+  proof to catch stale package pins against the local feed.
+- Prefer real screenshot evidence for controls; disclose degraded captures,
+  require reviewer accepted readiness, and keep manual caveats outside generated
+  summary or managed section rewrites.
+- Responsiveness evidence must validate pointer and keyboard activation
+  separately from screenshot readiness and distinguish input routing from update,
+  render, and present latency.
+- Canceled, timed-out, skipped, synthetic, substitute, degraded,
+  pending-review, or environment-limited checks remain visibly caveated.
+
 ## Package Boundary
 
 Controls owns ordinary controls, rich text, chart controls, graph controls,

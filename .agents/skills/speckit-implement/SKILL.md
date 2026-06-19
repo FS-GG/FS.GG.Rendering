@@ -19,6 +19,26 @@ $ARGUMENTS
 
 You **MUST** consider the user input before proceeding (if not empty).
 
+## Repository Evidence Rules (Feature 168)
+
+Before marking implementation readiness in this repository:
+
+- Package-consuming samples must compare current `FS.GG.UI.` package pins and
+  use `scripts/refresh-local-feed-and-samples.fsx` or the `package-feed` proof
+  workflow; stale package pins are not accepted without a visible local feed
+  caveat.
+- Committed readiness evidence under `specs/*/readiness/` is ignored by default;
+  add the `.gitignore` allowlist before staging it and record `git check-ignore`
+  proof in the readiness ledger.
+- Do not run `dotnet test` for the same project/configuration concurrently
+  unless each run uses isolated output, such as a distinct `BaseOutputPath`.
+- Screenshot readiness prefers real screenshot evidence. Disclose degraded
+  captures, require reviewer accepted readiness before calling it accepted, and
+  keep manual caveats outside generated summary or managed section rewrites.
+- Canceled, timed-out, skipped, synthetic, substitute, degraded,
+  pending-review, or environment-limited checks must keep a visible caveat and
+  must not be summarized as fully green.
+
 ## Pre-Execution Checks
 
 **Check for extension hooks (before implementation)**:

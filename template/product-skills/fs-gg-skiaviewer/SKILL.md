@@ -50,6 +50,20 @@ Run `./fake.sh build -t Test` for product host-wiring coverage.
 Record window-visibility and screenshot evidence under this product's
 `readiness/` paths. Do not copy framework readiness reports into the product.
 
+## Feature 168 Viewer Evidence Rules
+
+- Package-consuming products must compare current `FS.GG.UI.` package pins and
+  use `scripts/refresh-local-feed-and-samples.fsx` or `package-feed` proof when
+  stale package pins or local feed restores affect viewer samples.
+- Prefer real screenshot evidence; disclose degraded capture, require reviewer
+  accepted readiness, and preserve manual caveats outside generated summary or
+  managed section rewrites.
+- Responsiveness evidence is separate from screenshot readiness: validate
+  pointer and keyboard activation, then distinguish input routing from update,
+  render, and present latency.
+- Canceled, timed-out, skipped, synthetic, substitute, degraded,
+  pending-review, or environment-limited checks remain visibly caveated.
+
 ## Package Boundary
 
 Keep window, render, and screenshot I/O inside the `Viewer.runApp` interpreter.

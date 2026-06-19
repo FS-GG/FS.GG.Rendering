@@ -226,6 +226,20 @@ surface baselines live under `readiness/surface-baselines/`. Supported catalog
 rows need purpose, attributes, events, visual states, accessibility metadata,
 examples, tests, and evidence.
 
+## Feature 168 Control Evidence Rules
+
+- Package-consuming control samples must compare current `FS.GG.UI.` package
+  pins and use `scripts/refresh-local-feed-and-samples.fsx` or `package-feed`
+  proof to catch stale package pins against the local feed.
+- Prefer real screenshot evidence for controls; disclose degraded captures,
+  require reviewer accepted readiness, and keep manual caveats outside generated
+  summary or managed section rewrites.
+- Responsiveness evidence must validate pointer and keyboard activation
+  separately from screenshot readiness and distinguish input routing from update,
+  render, and present latency.
+- Canceled, timed-out, skipped, synthetic, substitute, degraded,
+  pending-review, or environment-limited checks must keep a visible caveat.
+
 ## Package Boundary
 
 Controls owns ordinary controls, rich text, chart controls, graph controls,

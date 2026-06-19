@@ -1,0 +1,334 @@
+{
+  "canonicalSourceCount": 6,
+  "caveats": [
+    "Global Codex skill installation paths are excluded from required repository parity.",
+    "Fixture mode uses synthetic skill files and is not real repository parity evidence."
+  ],
+  "checkedAtUtc": "2026-06-19T13:12:14.2685444Z",
+  "findingCountsBySeverity": {
+    "critical": 0,
+    "high": 9,
+    "info": 0,
+    "warning": 9
+  },
+  "findings": [
+    {
+      "canonicalPath": "../../canonical/stale-description/SKILL.md",
+      "category": "stale-description",
+      "exceptionId": null,
+      "findingId": "stale-description:fixture-codex:fs-gg-fixture-stale",
+      "message": "Wrapper description differs from the canonical skill description.",
+      "remediation": "Refresh the wrapper description or add an explicit exception.",
+      "ruleId": null,
+      "severity": "warning",
+      "skillName": "fs-gg-fixture-stale",
+      "surfaceId": "fixture-codex",
+      "wrapperPath": "codex/stale-description/SKILL.md"
+    },
+    {
+      "canonicalPath": "../../canonical/does-not-exist/SKILL.md",
+      "category": "broken-target",
+      "exceptionId": null,
+      "findingId": "broken-target:fixture-codex:fs-gg-fixture-broken",
+      "message": "Wrapper target does not resolve.",
+      "remediation": "Update the wrapper target path or restore the canonical skill source.",
+      "ruleId": null,
+      "severity": "high",
+      "skillName": "fs-gg-fixture-broken",
+      "surfaceId": "fixture-codex",
+      "wrapperPath": "codex/broken-target/SKILL.md"
+    },
+    {
+      "canonicalPath": null,
+      "category": "wrapper-only",
+      "exceptionId": null,
+      "findingId": "wrapper-only:fixture-codex:fs-gg-fixture-wrapper-only",
+      "message": "Wrapper entry has no canonical target.",
+      "remediation": "Add a canonical source route or classify the entry as an intentional command skill.",
+      "ruleId": null,
+      "severity": "warning",
+      "skillName": "fs-gg-fixture-wrapper-only",
+      "surfaceId": "fixture-codex",
+      "wrapperPath": "codex/wrapper-only/SKILL.md"
+    },
+    {
+      "canonicalPath": "canonical/stale-description/SKILL.md",
+      "category": "missing-wrapper",
+      "exceptionId": null,
+      "findingId": "missing-wrapper:claude:fs-gg-fixture-stale",
+      "message": "Canonical skill is not exposed on this supported wrapper surface.",
+      "remediation": "Add a short wrapper that routes to the canonical SKILL.md, or record an explicit exception.",
+      "ruleId": null,
+      "severity": "warning",
+      "skillName": "fs-gg-fixture-stale",
+      "surfaceId": "claude",
+      "wrapperPath": null
+    },
+    {
+      "canonicalPath": "canonical/missing-wrapper/SKILL.md",
+      "category": "missing-wrapper",
+      "exceptionId": null,
+      "findingId": "missing-wrapper:codex-local:fs-gg-fixture-missing",
+      "message": "Canonical skill is not exposed on this supported wrapper surface.",
+      "remediation": "Add a short wrapper that routes to the canonical SKILL.md, or record an explicit exception.",
+      "ruleId": null,
+      "severity": "warning",
+      "skillName": "fs-gg-fixture-missing",
+      "surfaceId": "codex-local",
+      "wrapperPath": null
+    },
+    {
+      "canonicalPath": "canonical/missing-wrapper/SKILL.md",
+      "category": "missing-wrapper",
+      "exceptionId": null,
+      "findingId": "missing-wrapper:claude:fs-gg-fixture-missing",
+      "message": "Canonical skill is not exposed on this supported wrapper surface.",
+      "remediation": "Add a short wrapper that routes to the canonical SKILL.md, or record an explicit exception.",
+      "ruleId": null,
+      "severity": "warning",
+      "skillName": "fs-gg-fixture-missing",
+      "surfaceId": "claude",
+      "wrapperPath": null
+    },
+    {
+      "canonicalPath": "canonical/drift-a/SKILL.md",
+      "category": "missing-wrapper",
+      "exceptionId": null,
+      "findingId": "missing-wrapper:codex-local:fs-gg-fixture-drift",
+      "message": "Canonical skill is not exposed on this supported wrapper surface.",
+      "remediation": "Add a short wrapper that routes to the canonical SKILL.md, or record an explicit exception.",
+      "ruleId": null,
+      "severity": "warning",
+      "skillName": "fs-gg-fixture-drift",
+      "surfaceId": "codex-local",
+      "wrapperPath": null
+    },
+    {
+      "canonicalPath": "canonical/drift-a/SKILL.md",
+      "category": "missing-wrapper",
+      "exceptionId": null,
+      "findingId": "missing-wrapper:claude:fs-gg-fixture-drift",
+      "message": "Canonical skill is not exposed on this supported wrapper surface.",
+      "remediation": "Add a short wrapper that routes to the canonical SKILL.md, or record an explicit exception.",
+      "ruleId": null,
+      "severity": "warning",
+      "skillName": "fs-gg-fixture-drift",
+      "surfaceId": "claude",
+      "wrapperPath": null
+    },
+    {
+      "canonicalPath": "canonical/guidance-gap/SKILL.md",
+      "category": "missing-wrapper",
+      "exceptionId": null,
+      "findingId": "missing-wrapper:codex-local:fs-gg-testing",
+      "message": "Canonical skill is not exposed on this supported wrapper surface.",
+      "remediation": "Add a short wrapper that routes to the canonical SKILL.md, or record an explicit exception.",
+      "ruleId": null,
+      "severity": "warning",
+      "skillName": "fs-gg-testing",
+      "surfaceId": "codex-local",
+      "wrapperPath": null
+    },
+    {
+      "canonicalPath": "canonical/guidance-gap/SKILL.md",
+      "category": "missing-wrapper",
+      "exceptionId": null,
+      "findingId": "missing-wrapper:claude:fs-gg-testing",
+      "message": "Canonical skill is not exposed on this supported wrapper surface.",
+      "remediation": "Add a short wrapper that routes to the canonical SKILL.md, or record an explicit exception.",
+      "ruleId": null,
+      "severity": "warning",
+      "skillName": "fs-gg-testing",
+      "surfaceId": "claude",
+      "wrapperPath": null
+    },
+    {
+      "canonicalPath": "canonical/drift-a/SKILL.md",
+      "category": "canonical-drift",
+      "exceptionId": null,
+      "findingId": "canonical-drift:fixture-canonical:fs-gg-fixture-drift:canonical-drift-a-SKILL.md",
+      "message": "Duplicate canonical sources with the same skill name diverge.",
+      "remediation": "Choose one canonical source or document a specific variant exception.",
+      "ruleId": null,
+      "severity": "high",
+      "skillName": "fs-gg-fixture-drift",
+      "surfaceId": "fixture-canonical",
+      "wrapperPath": null
+    },
+    {
+      "canonicalPath": "canonical/drift-b/SKILL.md",
+      "category": "canonical-drift",
+      "exceptionId": null,
+      "findingId": "canonical-drift:fixture-canonical:fs-gg-fixture-drift:canonical-drift-b-SKILL.md",
+      "message": "Duplicate canonical sources with the same skill name diverge.",
+      "remediation": "Choose one canonical source or document a specific variant exception.",
+      "ruleId": null,
+      "severity": "high",
+      "skillName": "fs-gg-fixture-drift",
+      "surfaceId": "fixture-canonical",
+      "wrapperPath": null
+    },
+    {
+      "canonicalPath": "canonical/guidance-gap/SKILL.md",
+      "category": "guidance-rule-gap",
+      "exceptionId": null,
+      "findingId": "guidance-rule-gap:fixture-canonical:fs-gg-testing:package-pin-drift",
+      "message": "Guidance rule package-pin-drift is missing.",
+      "remediation": "Add the missing concrete command/path/status caveat or record an explicit exception.",
+      "ruleId": "package-pin-drift",
+      "severity": "high",
+      "skillName": "fs-gg-testing",
+      "surfaceId": "fixture-canonical",
+      "wrapperPath": null
+    },
+    {
+      "canonicalPath": "canonical/guidance-gap/SKILL.md",
+      "category": "guidance-rule-gap",
+      "exceptionId": null,
+      "findingId": "guidance-rule-gap:fixture-canonical:fs-gg-testing:readiness-allowlisting",
+      "message": "Guidance rule readiness-allowlisting is missing.",
+      "remediation": "Add the missing concrete command/path/status caveat or record an explicit exception.",
+      "ruleId": "readiness-allowlisting",
+      "severity": "high",
+      "skillName": "fs-gg-testing",
+      "surfaceId": "fixture-canonical",
+      "wrapperPath": null
+    },
+    {
+      "canonicalPath": "canonical/guidance-gap/SKILL.md",
+      "category": "guidance-rule-gap",
+      "exceptionId": null,
+      "findingId": "guidance-rule-gap:fixture-canonical:fs-gg-testing:validation-output-isolation",
+      "message": "Guidance rule validation-output-isolation is missing.",
+      "remediation": "Add the missing concrete command/path/status caveat or record an explicit exception.",
+      "ruleId": "validation-output-isolation",
+      "severity": "high",
+      "skillName": "fs-gg-testing",
+      "surfaceId": "fixture-canonical",
+      "wrapperPath": null
+    },
+    {
+      "canonicalPath": "canonical/guidance-gap/SKILL.md",
+      "category": "guidance-rule-gap",
+      "exceptionId": null,
+      "findingId": "guidance-rule-gap:fixture-canonical:fs-gg-testing:visual-readiness",
+      "message": "Guidance rule visual-readiness is missing.",
+      "remediation": "Add the missing concrete command/path/status caveat or record an explicit exception.",
+      "ruleId": "visual-readiness",
+      "severity": "high",
+      "skillName": "fs-gg-testing",
+      "surfaceId": "fixture-canonical",
+      "wrapperPath": null
+    },
+    {
+      "canonicalPath": "canonical/guidance-gap/SKILL.md",
+      "category": "guidance-rule-gap",
+      "exceptionId": null,
+      "findingId": "guidance-rule-gap:fixture-canonical:fs-gg-testing:responsiveness-diagnostics",
+      "message": "Guidance rule responsiveness-diagnostics is missing.",
+      "remediation": "Add the missing concrete command/path/status caveat or record an explicit exception.",
+      "ruleId": "responsiveness-diagnostics",
+      "severity": "high",
+      "skillName": "fs-gg-testing",
+      "surfaceId": "fixture-canonical",
+      "wrapperPath": null
+    },
+    {
+      "canonicalPath": "canonical/guidance-gap/SKILL.md",
+      "category": "guidance-rule-gap",
+      "exceptionId": null,
+      "findingId": "guidance-rule-gap:fixture-canonical:fs-gg-testing:evidence-honesty",
+      "message": "Guidance rule evidence-honesty is missing.",
+      "remediation": "Add the missing concrete command/path/status caveat or record an explicit exception.",
+      "ruleId": "evidence-honesty",
+      "severity": "high",
+      "skillName": "fs-gg-testing",
+      "surfaceId": "fixture-canonical",
+      "wrapperPath": null
+    }
+  ],
+  "guidanceRuleCoverage": [
+    {
+      "covered": 0,
+      "excepted": 0,
+      "missing": 1,
+      "notApplicable": 5,
+      "partial": 0,
+      "ruleId": "package-pin-drift"
+    },
+    {
+      "covered": 0,
+      "excepted": 0,
+      "missing": 1,
+      "notApplicable": 5,
+      "partial": 0,
+      "ruleId": "readiness-allowlisting"
+    },
+    {
+      "covered": 0,
+      "excepted": 0,
+      "missing": 1,
+      "notApplicable": 5,
+      "partial": 0,
+      "ruleId": "validation-output-isolation"
+    },
+    {
+      "covered": 0,
+      "excepted": 0,
+      "missing": 1,
+      "notApplicable": 5,
+      "partial": 0,
+      "ruleId": "visual-readiness"
+    },
+    {
+      "covered": 0,
+      "excepted": 0,
+      "missing": 1,
+      "notApplicable": 5,
+      "partial": 0,
+      "ruleId": "responsiveness-diagnostics"
+    },
+    {
+      "covered": 0,
+      "excepted": 0,
+      "missing": 0,
+      "notApplicable": 6,
+      "partial": 0,
+      "ruleId": "post-merge-package-bump"
+    },
+    {
+      "covered": 0,
+      "excepted": 0,
+      "missing": 1,
+      "notApplicable": 5,
+      "partial": 0,
+      "ruleId": "evidence-honesty"
+    }
+  ],
+  "overallStatus": "failed",
+  "repositoryRoot": "specs/168-skill-parity-evidence/readiness/fixtures/_skill-parity-fixture",
+  "surfaces": [
+    {
+      "kind": "canonical",
+      "required": true,
+      "rootPath": "canonical",
+      "skillCount": 0,
+      "surfaceId": "fixture-canonical"
+    },
+    {
+      "kind": "wrapper",
+      "required": true,
+      "rootPath": "codex",
+      "skillCount": 0,
+      "surfaceId": "fixture-codex"
+    },
+    {
+      "kind": "wrapper",
+      "required": true,
+      "rootPath": "claude",
+      "skillCount": 0,
+      "surfaceId": "fixture-claude"
+    }
+  ],
+  "wrapperCount": 4
+}

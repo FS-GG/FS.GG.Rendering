@@ -7,6 +7,7 @@
 **Feature 165 follow-up:** Structured render/layout inspection metadata is implemented; the current package set before merge is `0.1.26-preview.1`.
 **Feature 166 follow-up:** Validation lane runner hardening is implemented on `166-validation-lane-runner`; it adds stable required/optional lanes, request preflight, run-id evidence isolation, structured summaries, no-progress classification, and schedule-safety checks. Current required-lane evidence intentionally exposes `Controls.Tests` as `no-progress-timeout`.
 **Feature 167 follow-up:** Input/render responsiveness is implemented on `167-input-render-responsiveness`; it adds SkiaViewer responsiveness records/summaries, queued key/pointer scheduling in the persistent viewer wrapper, Controls.Elmish timing/diagnostics-disabled helpers, AntShowcase responsiveness output, validation-lane summary parsing, surface baselines, and readiness evidence. Current post-merge package set is `0.1.29-preview.1`.
+**Feature 168 follow-up:** Skill parity and evidence guidance is implemented on `168-skill-parity-evidence`; it adds `Rendering.Harness.SkillParity`, `scripts/check-agent-skill-parity.fsx`, fixture-based negative-case checks, generated parity reports, Feature 168 readiness evidence, and updated skill guidance for package pins, readiness allowlisting, validation output isolation, visual/readiness caveats, responsiveness diagnostics, and post-merge package evidence. Repository parity currently reports zero high/critical findings and 35 visible warning-level wrapper metadata findings.
 **Primary work observed:** Feature 162, AntShowcase visual readiness implementation, plus earlier local/Codex/Claude skill parity work
 **Scope:** Problems encountered in the framework, validation workflow, and skills while implementing and validating the AntShowcase visual overhaul. This report focuses on improvements possible in library code, sample infrastructure, generated readiness tooling, and coding-agent skills.
 
@@ -50,6 +51,37 @@ Validation completed during the implementation:
 - `dotnet restore FS.GG.Rendering.slnx`, `dotnet build FS.GG.Rendering.slnx -c Release --no-restore`, `dotnet fsi scripts/refresh-surface-baselines.fsx`, and `dotnet pack FS.GG.Rendering.slnx -c Release --no-build -o ~/.local/share/nuget-local` all passed.
 
 Remaining follow-up: capture accepted live responsiveness on a visible GL-capable desktop session and compare it against the 4 ms receipt p95 / 16 ms receipt max / 50 ms input-to-visible p95 budgets. The environment-limited run proves report shape and fail-closed behavior, not live performance acceptance.
+
+### 1.2 Feature 168 implementation update
+
+The skill parity and evidence-guidance follow-up is now implemented as Feature
+168, resolving the numbering collision in the original detailed plan.
+
+- `Rendering.Harness.SkillParity` inventories canonical package/template skills,
+  Codex/local wrappers, Claude wrappers, Ant guidance, and Spec Kit command
+  surfaces.
+- `scripts/check-agent-skill-parity.fsx` forwards to the harness
+  `skill-parity` subcommand and supports repository mode, fixture mode,
+  `--list-rules`, Markdown reports, summary JSON, and `--fail-on`.
+- Controlled fixture mode detects missing-wrapper, wrapper-only,
+  stale-description, broken-target, canonical-drift, and guidance-rule-gap
+  cases without modifying repository skills.
+- `docs/reports/skills-parity.md` and
+  `specs/168-skill-parity-evidence/readiness/skill-parity-summary.json` are
+  generated. Current repository parity is `warning` with zero high/critical
+  findings; warning-level wrapper metadata drift remains visible.
+- Skill guidance now names package-pin drift, `specs/*/readiness/` allowlisting,
+  `git check-ignore`, same project/configuration `dotnet test` output isolation,
+  real screenshot/reviewer/degraded capture caveats, responsiveness diagnostics,
+  package bump/local feed/sample pin post-merge evidence, and evidence honesty.
+
+Validation completed during the implementation:
+
+- Feature 168 focused Rendering.Harness tests: 12 passed.
+- Fixture mode: expected failure with 9 high and 9 warning synthetic findings.
+- Repository parity: zero high/critical findings.
+- Rendering-harness validation lane: `ready`; `rendering-harness` passed, with
+  the aggregate-solution substitute caveat preserved.
 
 ---
 
@@ -1144,8 +1176,8 @@ solution-tests
 1. Create a Spec Kit feature for reusable visual-readiness tooling in `FS.GG.UI.Testing`.
 2. Create a Spec Kit feature for structured render/layout inspection metadata.
 3. Add a package-feed refresh/check script and wire it into AntShowcase docs.
-4. Update FS.GG skills with package-pin, readiness-ignore, and test-parallelism guidance.
-5. Add a skill parity checker for Claude/Codex/local agent skills.
+4. [x] Update FS.GG skills with package-pin, readiness-ignore, and test-parallelism guidance. Implemented by `168-skill-parity-evidence`.
+5. [x] Add a skill parity checker for Claude/Codex/local agent skills. Implemented by `Rendering.Harness.SkillParity` and `scripts/check-agent-skill-parity.fsx`.
 6. [x] Split full validation into named lanes with timeouts. Implemented by
    `166-validation-lane-runner`; remaining follow-up is to investigate the
    `Controls.Tests` no-progress blocker it now exposes.
@@ -1765,11 +1797,13 @@ This target keeps the pure product `Update`/`View` model, the retained Controls 
 - Discrete inputs are not dropped; moves are coalesced with counts.
 - AntShowcase latency evidence no longer requires ad hoc FSI scripts.
 
-### 13.7 Feature 167: skill parity and evidence guidance
+### 13.7 Feature 168: skill parity and evidence guidance
 
 **Goal**
 
 Encode the repeated traps from this report into local skills and keep Claude/Codex wrappers synchronized.
+
+**Implementation status:** Completed as `168-skill-parity-evidence`.
 
 **Primary user stories**
 
@@ -1783,9 +1817,12 @@ Encode the repeated traps from this report into local skills and keep Claude/Cod
 
 - `.agents/skills/*/SKILL.md`
 - `.claude/skills/*/SKILL.md`
-- `scripts/check-agent-skill-parity.sh` or `scripts/check-agent-skill-parity.fsx`
+- `scripts/check-agent-skill-parity.fsx`
 - `docs/reports/skills-parity.md`
 - `src/*/skill/SKILL.md` where canonical package skills need updates
+- `tests/Rendering.Harness/SkillParity.fsi`
+- `tests/Rendering.Harness/SkillParity.fs`
+- `tests/Rendering.Harness.Tests/Feature168*.fs`
 
 **Spec and plan requirements**
 
@@ -1796,14 +1833,14 @@ Encode the repeated traps from this report into local skills and keep Claude/Cod
 
 **Task outline**
 
-- [ ] T001 [P] Add failing parity-check fixture or dry-run expectation for missing/stale wrappers.
-- [ ] T002 [P] Draft updates for package-pin drift, readiness allowlisting, test parallelism, and validation lane guidance.
-- [ ] T003 [P] Draft updates for visual-readiness and responsiveness diagnostics guidance.
-- [ ] T004 Implement `scripts/check-agent-skill-parity.*`.
-- [ ] T005 Update canonical `.agents/skills` and package-owned `src/*/skill/SKILL.md` entries.
-- [ ] T006 Update `.claude/skills` wrappers to match canonical guidance.
-- [ ] T007 Generate `docs/reports/skills-parity.md`.
-- [ ] T008 Run parity checker and save output under feature readiness.
+- [x] T001 [P] Add failing parity-check fixture or dry-run expectation for missing/stale wrappers.
+- [x] T002 [P] Draft updates for package-pin drift, readiness allowlisting, test parallelism, and validation lane guidance.
+- [x] T003 [P] Draft updates for visual-readiness and responsiveness diagnostics guidance.
+- [x] T004 Implement `scripts/check-agent-skill-parity.fsx`.
+- [x] T005 Update canonical `.agents/skills` and package-owned `src/*/skill/SKILL.md` entries.
+- [x] T006 Update `.claude/skills` wrappers to match canonical guidance.
+- [x] T007 Generate `docs/reports/skills-parity.md`.
+- [x] T008 Run parity checker and save output under feature readiness.
 
 **Parallel opportunities**
 
@@ -1813,11 +1850,16 @@ Encode the repeated traps from this report into local skills and keep Claude/Cod
 
 **Definition of done**
 
-- Parity checker catches a deliberately broken wrapper in test or fixture mode.
-- Claude and Codex guidance both mention package drift, readiness evidence, test-output isolation, visual readiness, and responsiveness diagnostics.
-- Skills link to the concrete scripts and validation lanes that now exist.
+- [x] Parity checker catches deliberately broken wrappers, stale descriptions,
+  wrapper-only entries, canonical drift, and guidance gaps in fixture mode.
+- [x] Claude and Codex guidance both mention package drift, readiness evidence,
+  test-output isolation, visual readiness, and responsiveness diagnostics.
+- [x] Skills link to the concrete scripts and validation lanes that now exist.
+- [x] Durable report: `docs/reports/skills-parity.md`.
+- [x] Readiness summary:
+  `specs/168-skill-parity-evidence/readiness/skill-parity-summary.json`.
 
-### 13.8 Feature 168: runtime diagnostics taxonomy
+### 13.8 Feature 169: runtime diagnostics taxonomy
 
 **Goal**
 
@@ -1883,8 +1925,9 @@ Make runtime diagnostics structured and filterable so expected environment/backe
   └─ leaves accepted live GL latency capture as environment-dependent evidence
 
 168 skills/parity
-  ├─ can start immediately with current report guidance
-  └─ should receive a final pass after 163/164/167 scripts and APIs land
+  ├─ implemented as 168-skill-parity-evidence
+  ├─ includes generated parity report and fixture evidence
+  └─ leaves warning-level wrapper metadata drift visible for follow-up
 
 169 diagnostics taxonomy
   └─ can run in parallel with 164/165 or extend the Feature 167 diagnostics output
@@ -1955,7 +1998,7 @@ If the goal is to reduce risk fastest, do this:
 1. Use Feature 163's package-pin check and validation lane runner as the first validation gate.
 2. Land Feature 166's timing-only diagnostics before changing event-loop scheduling.
 3. Use timing evidence to choose the smallest safe scheduling/render optimization.
-4. Land Feature 167's skill guidance once the commands exist.
+4. [x] Land Feature 168's skill guidance once the commands exist.
 5. Continue with Feature 164 and 165 in parallel to improve future visual-readiness quality.
 
 This MVP gives maintainers immediate tools to prove package correctness, diagnose test hangs, and capture input latency without waiting for the larger visual-inspection architecture.

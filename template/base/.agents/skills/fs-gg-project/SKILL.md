@@ -57,6 +57,19 @@ Run `./fake.sh build -t Test` for product tests and selected capability usage ch
 Store product evidence under product readiness paths. Do not copy framework
 readiness evidence into the product.
 
+## Feature 168 Evidence Rules
+
+- Package-consuming generated products must compare current `FS.GG.UI.` package
+  pins and use `scripts/refresh-local-feed-and-samples.fsx` or `package-feed`
+  proof for stale package pins and local feed evidence.
+- Framework readiness output under `specs/*/readiness/` is ignored until
+  `.gitignore` allowlists it; record `git check-ignore` proof before treating it
+  as committed evidence.
+- Do not run `dotnet test` for the same project/configuration concurrently
+  unless each run uses isolated output or a distinct `BaseOutputPath`.
+- Canceled, timed-out, skipped, synthetic, substitute, degraded,
+  pending-review, or environment-limited evidence must keep a visible caveat.
+
 ## Package Boundary
 
 Reference selected capability packages. Do not copy framework implementation

@@ -3966,6 +3966,7 @@ let main argv =
     | "compositor-readiness" :: rest -> runCompositorReadinessCmd rest
     | "package-feed" :: rest -> runPackageFeedCmd rest
     | "validation-lanes" :: rest -> runValidationLanesCmd rest
+    | "skill-parity" :: rest -> SkillParity.runCli rest
     | "input" :: rest ->
         let known () = Input.scripts |> Map.toList |> List.map fst |> String.concat ", "
         match flagValue "--backend" rest |> Option.bind Input.parseBackend, flagValue "--script" rest with
@@ -3996,7 +3997,7 @@ let main argv =
                 | RunStatus.Failed -> 1
     | []
     | "--help" :: _ ->
-        printfn "usage: <probe|offscreen|live-x11|overlay-visual-proof|render-anywhere-reference|render-anywhere-browser-feasibility|compositor-present-proof|compositor-live-proof|compositor-parity|compositor-perf|compositor-reuse|compositor-snapshots|compositor-timing|compositor-damage|compositor-promotion|compositor-performance|compositor-readiness|package-feed|validation-lanes|perf|input> [--out <dir>] [--json]"
+        printfn "usage: <probe|offscreen|live-x11|overlay-visual-proof|render-anywhere-reference|render-anywhere-browser-feasibility|compositor-present-proof|compositor-live-proof|compositor-parity|compositor-perf|compositor-reuse|compositor-snapshots|compositor-timing|compositor-damage|compositor-promotion|compositor-performance|compositor-readiness|package-feed|validation-lanes|skill-parity|perf|input> [--out <dir>] [--json]"
         0
     | other ->
         eprintfn "unknown subcommand: %s" (String.concat " " other)

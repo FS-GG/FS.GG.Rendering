@@ -50,6 +50,26 @@ Build and write evidence with `EvidenceReports.build` / `write` into this
 product's `readiness/` paths. Do not copy framework readiness reports into the
 product.
 
+## Feature 168 Evidence Rules
+
+- Package-consuming products must compare `FS.GG.UI.` package pins with the
+  current framework packages and use `scripts/refresh-local-feed-and-samples.fsx`
+  or the `package-feed` proof workflow when local feed validation is required;
+  stale package pins need an explicit caveat.
+- Framework readiness output under `specs/*/readiness/` is ignored until
+  `.gitignore` allowlists it; product evidence should still record
+  `git check-ignore` proof when committed.
+- Do not run `dotnet test` for the same project/configuration concurrently
+  unless each run uses isolated output or a distinct `BaseOutputPath`.
+- Prefer real screenshot evidence, disclose degraded capture, require reviewer
+  accepted readiness, and keep manual caveats outside generated summary or
+  managed section rewrites.
+- Responsiveness evidence must validate pointer and keyboard activation
+  separately from screenshot readiness and separate routing from update, render,
+  and present latency.
+- Canceled, timed-out, skipped, synthetic, substitute, degraded,
+  pending-review, or environment-limited checks remain visibly caveated.
+
 ## Package Boundary
 
 Keep assertion and evidence logic pure over value records; let your test runner
