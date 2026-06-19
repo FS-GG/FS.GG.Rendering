@@ -60,6 +60,12 @@ edit; see `docs/UPGRADING.md`. Pre-release versions use a `-preview.N` suffix.
 - `ControlsElmish.interpretControlEffect` — turns a `ControlRuntimeEffect` into an `AdapterCommand<'msg>`, mapping `ControlRuntimeMsg` values through your `mapRuntime` function.
 - `ControlsElmish.subscriptions` — merges keyboard and control `AdapterSubscription<'msg>` lists into one subscription list for the program.
 - `ControlsElmish.diagnostic` — builds an `AdapterDiagnostic` (source, code, message) for reporting adapter-level issues.
+- `ControlsElmish.responsivenessTimingContribution` — projects existing `FrameMetrics` into the
+  adapter-owned timing fields used by SkiaViewer responsiveness records: routing, update, retained
+  step, layout/text, product message count, and no-visible-response reason.
+- `ControlsElmish.diagnosticsDisabledCompatibility` — verifies that diagnostics-disabled
+  deterministic `Perf.runScript` metrics stay clock-free and unchanged, with no responsiveness
+  records written.
 - `AdapterEffect<'msg>` — the effect union (`DispatchProductMessage`, `DispatchControlRuntimeMessage`, `DispatchKeyboardMessage`, `DispatchHostCommand`, `ReportAdapterDiagnostic`); an `AdapterCommand<'msg>` is a list of these.
 - `AdapterProgram<'model,'msg>` / `AdapterSubscription<'msg>` — the program and subscription records that carry `Init`/`Update`/`View`/`Subscriptions` and `Id`/`Subscribe` respectively.
 

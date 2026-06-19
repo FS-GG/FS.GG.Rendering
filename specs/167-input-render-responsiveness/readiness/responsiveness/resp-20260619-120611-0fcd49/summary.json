@@ -1,0 +1,46 @@
+{
+  "budgets": {
+    "inputReceiptMaxMs": 16,
+    "inputReceiptP95Ms": 4,
+    "inputToVisibleP95Ms": 50,
+    "longFrameThresholdMs": 50
+  },
+  "completedUtc": "2026-06-19T12:06:11.2786299+00:00",
+  "diagnostics": [
+    "SYNTHETIC: deterministic script output is substitute evidence, not accepted live latency."
+  ],
+  "environmentLimitations": [
+    "headless-substitute:no-live-presentation-boundary"
+  ],
+  "firstFailedBudget": null,
+  "groups": [
+    {
+      "controlGroup": "button",
+      "count": 1,
+      "inputKind": "pointer-discrete",
+      "longFrameCount": 1,
+      "maxMs": null,
+      "p50Ms": null,
+      "p95Ms": null,
+      "page": "buttons",
+      "readiness": "environment-limited"
+    },
+    {
+      "controlGroup": "button",
+      "count": 3,
+      "inputKind": "key-down",
+      "longFrameCount": 0,
+      "maxMs": null,
+      "p50Ms": null,
+      "p95Ms": null,
+      "page": "buttons",
+      "readiness": "environment-limited"
+    }
+  ],
+  "overallReadiness": "environment-limited",
+  "recordsPath": "records.jsonl",
+  "runId": "resp-20260619-120611-0fcd49",
+  "scope": "antshowcase/buttons/antLight",
+  "slowestInteractions": [],
+  "startedUtc": "2026-06-19T12:06:11.2786299+00:00"
+}

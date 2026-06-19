@@ -55,6 +55,13 @@
     <Compile Include="Feature157NoClearDamageTests.fs" />
     <Compile Include="Feature159ReplayReuseTests.fs" />
     <Compile Include="Feature151RetainedRenderingRegressionTests.fs" />
+    <Compile Include="Feature167SchedulerFixtures.fs" />
+    <Compile Include="Feature167InputQueueTests.fs" />
+    <Compile Include="Feature167SchedulerDrainTests.fs" />
+    <Compile Include="Feature167ReceiptCallbackTests.fs" />
+    <Compile Include="Feature167LatencyRecordTests.fs" />
+    <Compile Include="Feature167ResponsivenessSummaryTests.fs" />
+    <Compile Include="Feature167InteractionParityTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

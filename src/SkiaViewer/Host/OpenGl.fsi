@@ -180,6 +180,23 @@ module GlHost =
           PermissionGranted: bool
           TimedOut: bool }
 
+    /// Feature 167: receipt callback facts captured before queued processing/render work.
+    type InputReceiptDiagnostic =
+        { SequenceId: int64
+          InputKind: string
+          ReceivedAt: System.DateTimeOffset
+          CallbackDuration: System.TimeSpan
+          QueueDepthAtReceipt: int
+          SignalRequested: bool
+          RenderWorkStarted: bool }
+
+    /// Feature 167: presentation boundary timing facts for latency records.
+    type PresentationTimingDiagnostic =
+        { PresentedFrameId: int64
+          PaintDuration: System.TimeSpan option
+          PresentDuration: System.TimeSpan option
+          EnvironmentStatus: string }
+
     [<RequireQualifiedAccess>]
     /// Feature 153: live proof host classification before attempting to accept evidence.
     type LiveProofHostReadiness =
@@ -204,6 +221,34 @@ module GlHost =
     /// framebuffer size changed). Exposed for the idle-skip transition test (T016).
     val shouldPresent:
         prev: FS.GG.UI.Scene.Scene option -> next: FS.GG.UI.Scene.Scene -> sizeChanged: bool -> bool
+
+    /// Feature 167: build a native receipt diagnostic that proves callback work stopped before rendering.
+    val recordInputReceipt:
+        sequenceId: int64 ->
+        inputKind: string ->
+        queueDepthAtReceipt: int ->
+        callbackDuration: System.TimeSpan ->
+        signalRequested: bool ->
+        renderWorkStarted: bool ->
+            InputReceiptDiagnostic
+
+    /// Feature 167: classify whether the receipt callback stayed within both receipt budgets.
+    val receiptWithinBudget:
+        inputReceiptP95: System.TimeSpan ->
+        inputReceiptMax: System.TimeSpan ->
+        receipt: InputReceiptDiagnostic ->
+            bool
+
+    /// Feature 167: true only when the receipt callback started render/present work.
+    val receiptDidRenderWork: receipt: InputReceiptDiagnostic -> bool
+
+    /// Feature 167: build presentation boundary facts from host timings.
+    val presentationTiming:
+        frameId: int64 ->
+        paintDuration: System.TimeSpan option ->
+        presentDuration: System.TimeSpan option ->
+        liveSurfaceAvailable: bool ->
+            PresentationTimingDiagnostic
 
     [<RequireQualifiedAccess>]
     /// Feature 122 (FR-001/002): what the live DirectToSwapchain host does for one frame — paint a

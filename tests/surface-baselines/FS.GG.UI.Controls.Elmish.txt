@@ -12,6 +12,7 @@ FS.GG.UI.Controls.Elmish.AdapterSubscription`1
 FS.GG.UI.Controls.Elmish.CompositorFrameDiagnostics
 FS.GG.UI.Controls.Elmish.ControlsElmish
 FS.GG.UI.Controls.Elmish.ControlsElmish+Perf
+FS.GG.UI.Controls.Elmish.DiagnosticsDisabledCompatibility
 FS.GG.UI.Controls.Elmish.FrameCause
 FS.GG.UI.Controls.Elmish.FrameCause+Tags
 FS.GG.UI.Controls.Elmish.FrameInput`1
@@ -25,3 +26,4 @@ FS.GG.UI.Controls.Elmish.LayoutWorkMetrics
 FS.GG.UI.Controls.Elmish.RespondsProof
 FS.GG.UI.Controls.Elmish.RespondsVerdict
 FS.GG.UI.Controls.Elmish.RespondsVerdict+Tags
+FS.GG.UI.Controls.Elmish.ResponsivenessTimingContribution

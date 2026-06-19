@@ -217,6 +217,195 @@ type ViewerDiagnosticsOptions =
       Sink: (ViewerDiagnosticEvent -> unit) option
       Verbose: bool }
 
+[<RequireQualifiedAccess>]
+/// Stable input-kind tokens used by responsiveness latency records.
+type ViewerResponsivenessInputKind =
+    | PointerMove
+    | PointerDiscrete
+    | KeyDown
+    | KeyUp
+    | Wheel
+    | Resize
+    | Tick
+    | Lifecycle
+
+[<RequireQualifiedAccess>]
+/// Stable visible-response classification for one input latency record.
+type ViewerResponsivenessVisibleResponse =
+    | PresentedFrame
+    | NoVisibleResponse
+    | Failed
+    | EnvironmentLimited
+    | NotRun
+
+[<RequireQualifiedAccess>]
+/// Stable environment/timing status for responsiveness evidence.
+type ViewerResponsivenessEnvironmentStatus =
+    | Measured
+    | MissingBoundary
+    | LowPrecisionTimestamp
+    | NonMonotonicTimestamp
+    | NoVisibleSurface
+    | HeadlessSubstitute
+    | WriteFailed
+    | Failed
+
+[<RequireQualifiedAccess>]
+/// Stable run-level readiness token for responsiveness summaries.
+type ViewerResponsivenessReadiness =
+    | Accepted
+    | Blocked
+    | Incomplete
+    | EnvironmentLimited
+    | Failed
+
+/// Per-phase timing for an input-to-visible-response record.
+type ViewerResponsivenessPhaseTiming =
+    { ReceiptDuration: TimeSpan option
+      QueueDelay: TimeSpan option
+      RoutingDuration: TimeSpan option
+      UpdateDuration: TimeSpan option
+      ViewDuration: TimeSpan option
+      RetainedStepDuration: TimeSpan option
+      LayoutDuration: TimeSpan option
+      TextDuration: TimeSpan option
+      PaintDuration: TimeSpan option
+      PresentDuration: TimeSpan option
+      TotalInputToVisibleDuration: TimeSpan option }
+
+/// Dirty-region summary associated with a latency record.
+type ViewerResponsivenessDirtyRegion =
+    { DirtyRectCount: int option
+      DirtyArea: int option
+      RepaintedNodeCount: int option
+      Status: ViewerResponsivenessEnvironmentStatus }
+
+/// Machine-readable latency record for one processed input.
+type ViewerLatencyRecord =
+    { RecordId: string
+      RunId: string
+      InputSequenceId: int64
+      InputKind: ViewerResponsivenessInputKind
+      InputName: string option
+      Page: string option
+      ControlGroup: string option
+      ReceiptTimestamp: DateTimeOffset
+      QueueDepthAtReceipt: int
+      QueueDepthAtDrain: int
+      CoalescedMovementCount: int
+      ProductMessageCount: int
+      ProductStateChanged: bool
+      RuntimeStateChanged: bool
+      VisibleResponse: ViewerResponsivenessVisibleResponse
+      PresentedFrameId: int64 option
+      EnvironmentStatus: ViewerResponsivenessEnvironmentStatus
+      PhaseTiming: ViewerResponsivenessPhaseTiming
+      DirtyRegion: ViewerResponsivenessDirtyRegion option
+      LongFrame: bool
+      Diagnostics: string list }
+
+/// Default latency budgets used by readiness summaries unless a caller overrides them.
+type ViewerResponsivenessBudget =
+    { InputReceiptP95: TimeSpan
+      InputReceiptMax: TimeSpan
+      InputToVisibleP95: TimeSpan
+      LongFrameThreshold: TimeSpan }
+
+/// First failed budget in a responsiveness summary.
+type ViewerResponsivenessFailedBudget =
+    { Kind: string
+      Scope: string option
+      InputKind: ViewerResponsivenessInputKind option
+      Measured: TimeSpan
+      Budget: TimeSpan }
+
+/// Per-page/input/control rollup in a responsiveness summary.
+type ViewerResponsivenessGroupSummary =
+    { Page: string option
+      InputKind: ViewerResponsivenessInputKind
+      ControlGroup: string option
+      Count: int
+      P50: TimeSpan option
+      P95: TimeSpan option
+      Max: TimeSpan option
+      LongFrameCount: int
+      Readiness: ViewerResponsivenessReadiness }
+
+/// A slow interaction entry in a responsiveness summary.
+type ViewerResponsivenessSlowInteraction =
+    { RecordId: string
+      InputSequenceId: int64
+      TotalInputToVisible: TimeSpan option
+      DominantPhase: string option }
+
+/// Run-level machine-readable and Markdown-friendly responsiveness summary.
+type ViewerResponsivenessSummary =
+    { RunId: string
+      Scope: string
+      OverallReadiness: ViewerResponsivenessReadiness
+      StartedUtc: DateTimeOffset
+      CompletedUtc: DateTimeOffset
+      RecordsPath: string
+      Budgets: ViewerResponsivenessBudget
+      FirstFailedBudget: ViewerResponsivenessFailedBudget option
+      Groups: ViewerResponsivenessGroupSummary list
+      SlowestInteractions: ViewerResponsivenessSlowInteraction list
+      EnvironmentLimitations: string list
+      Diagnostics: string list }
+
+/// Optional responsiveness capture settings for app edges that emit records.
+type ViewerResponsivenessOptions =
+    { Enabled: bool
+      RunId: string option
+      OutputRoot: string option
+      Budget: ViewerResponsivenessBudget
+      Sink: (ViewerLatencyRecord -> unit) option }
+
+/// Priority lane assigned before the frame/update loop drains inputs.
+type ViewerInputPriorityLane =
+    | Discrete
+    | Continuous
+    | Lifecycle
+    | Background
+
+/// Normalized input envelope recorded at receipt time.
+type ViewerInputEnvelope =
+    { SequenceId: int64
+      ReceivedAt: DateTimeOffset
+      InputKind: ViewerResponsivenessInputKind
+      PriorityLane: ViewerInputPriorityLane
+      ReceiptQueueDepth: int
+      Payload: string }
+
+/// Pure queue state for pending viewer input.
+type ViewerInputQueue =
+    { Discrete: ViewerInputEnvelope list
+      LatestContinuousPointer: ViewerInputEnvelope option
+      ContinuousCoalescedCount: int
+      Lifecycle: ViewerInputEnvelope list
+      NextSequenceId: int64
+      MaxObservedDepth: int }
+
+/// One frame/update-loop drain batch.
+type ViewerFrameDrain =
+    { BatchId: int64
+      DiscreteInputs: ViewerInputEnvelope list
+      CoalescedPointer: ViewerInputEnvelope option
+      CoalescedMovementCount: int
+      QueueDepthBeforeDrain: int
+      QueueDepthAfterDrain: int
+      DrainReason: string }
+
+/// Dirty-state decision after a frame drain.
+type ViewerDirtyState =
+    { ProductModelChanged: bool
+      RuntimeStateChanged: bool
+      SizeChanged: bool
+      ThemeChanged: bool
+      SceneDirty: bool
+      DirtyRegionSummary: ViewerResponsivenessDirtyRegion option
+      Reason: string list }
+
 /// Public contract type exposed by this FS.GG.UI package.
 type ViewerEvidenceTarget =
     | FirstFrame
@@ -625,6 +814,66 @@ module Viewer =
     val updateRun: msg: ViewerRunMsg -> model: ViewerRunModel -> ViewerRunModel * ViewerRunEffect list
     /// Public contract function exposed by this FS.GG.UI package.
     val defaultDiagnostics: ViewerDiagnosticsOptions
+    /// Default readiness budget for responsiveness diagnostics.
+    val defaultResponsivenessBudget: ViewerResponsivenessBudget
+    /// Default disabled responsiveness options.
+    val defaultResponsivenessOptions: ViewerResponsivenessOptions
+    /// Stable JSON/readiness token for input kinds.
+    val responsivenessInputKindToken: kind: ViewerResponsivenessInputKind -> string
+    /// Stable JSON/readiness token for visible responses.
+    val responsivenessVisibleResponseToken: response: ViewerResponsivenessVisibleResponse -> string
+    /// Stable JSON/readiness token for environment statuses.
+    val responsivenessEnvironmentStatusToken: status: ViewerResponsivenessEnvironmentStatus -> string
+    /// Stable JSON/readiness token for summary readiness.
+    val responsivenessReadinessToken: readiness: ViewerResponsivenessReadiness -> string
+    /// Empty scheduler queue with the next sequence id starting at 1.
+    val emptyInputQueue: ViewerInputQueue
+    /// Queue depth visible to a newly received input.
+    val inputQueueDepth: queue: ViewerInputQueue -> int
+    /// Enqueue an input, assigning sequence id, priority lane, receipt depth, and coalescing state.
+    val enqueueInput:
+        receivedAt: DateTimeOffset ->
+        inputKind: ViewerResponsivenessInputKind ->
+        payload: string ->
+        queue: ViewerInputQueue ->
+            ViewerInputEnvelope * ViewerInputQueue
+    /// Drain pending inputs for one frame/update pass.
+    val drainInputQueue: batchId: int64 -> drainReason: string -> queue: ViewerInputQueue -> ViewerFrameDrain * ViewerInputQueue
+    /// Build the dirty-state decision from product/runtime/size/theme change facts.
+    val dirtyState:
+        productModelChanged: bool ->
+        runtimeStateChanged: bool ->
+        sizeChanged: bool ->
+        themeChanged: bool ->
+        dirtyRegion: ViewerResponsivenessDirtyRegion option ->
+        reason: string list ->
+            ViewerDirtyState
+    /// True when the dirty-state requires retained-scene recomposition.
+    val dirtyStateRequiresRecompose: dirty: ViewerDirtyState -> bool
+    /// Create a stable-ish run id with the `resp-` prefix.
+    val createResponsivenessRunId: unit -> string
+    /// Encode one latency record as a JSONL line using stable lowercase tokens.
+    val latencyRecordToJsonLine: latency: ViewerLatencyRecord -> string
+    /// Summarize latency records into budget/readiness evidence.
+    val summarizeResponsivenessRecords:
+        runId: string ->
+        scope: string ->
+        recordsPath: string ->
+        startedUtc: DateTimeOffset ->
+        completedUtc: DateTimeOffset ->
+        budget: ViewerResponsivenessBudget ->
+        records: ViewerLatencyRecord list ->
+            ViewerResponsivenessSummary
+    /// Encode a responsiveness summary as machine-readable JSON.
+    val responsivenessSummaryToJson: summary: ViewerResponsivenessSummary -> string
+    /// Encode a responsiveness summary as reviewer-readable Markdown.
+    val responsivenessSummaryToMarkdown: summary: ViewerResponsivenessSummary -> string
+    /// Write records.jsonl, summary.json, summary.md, and environment.md under the output root/run id.
+    val writeResponsivenessRun:
+        outputRoot: string ->
+        summary: ViewerResponsivenessSummary ->
+        records: ViewerLatencyRecord list ->
+            string list
     /// Public contract function exposed by this FS.GG.UI package.
     val defaultWindowBehavior: ViewerWindowBehaviorRequest
     /// Public contract function exposed by this FS.GG.UI package.

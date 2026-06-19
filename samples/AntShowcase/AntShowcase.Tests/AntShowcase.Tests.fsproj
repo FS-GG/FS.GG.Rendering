@@ -27,16 +27,21 @@
     <Compile Include="VisualTemplateTests.fs" />
     <Compile Include="VisualEvidenceTests.fs" />
     <Compile Include="VisualReadinessTests.fs" />
+    <Compile Include="Feature167ResponsivenessFixtures.fs" />
+    <Compile Include="Feature167ResponsivenessShapeTests.fs" />
+    <Compile Include="Feature167KeyboardCompatibilityTests.fs" />
+    <Compile Include="Feature167ResponsivenessCliTests.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\AntShowcase.Core\AntShowcase.Core.fsproj" />
+    <ProjectReference Include="..\AntShowcase.App\AntShowcase.App.fsproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="FS.GG.UI.Controls" Version="0.1.28-preview.1" />
-    <PackageReference Include="FS.GG.UI.Controls.Elmish" Version="0.1.28-preview.1" />
-    <PackageReference Include="FS.GG.UI.SkiaViewer" Version="0.1.28-preview.1" />
-    <PackageReference Include="FS.GG.UI.Testing" Version="0.1.28-preview.1" />
+    <PackageReference Include="FS.GG.UI.Controls" Version="0.1.29-preview.1" />
+    <PackageReference Include="FS.GG.UI.Controls.Elmish" Version="0.1.29-preview.1" />
+    <PackageReference Include="FS.GG.UI.SkiaViewer" Version="0.1.29-preview.1" />
+    <PackageReference Include="FS.GG.UI.Testing" Version="0.1.29-preview.1" />
     <PackageReference Include="Expecto" Version="10.2.2" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.15.3" />

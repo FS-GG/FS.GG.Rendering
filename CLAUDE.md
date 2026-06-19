@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/166-validation-lane-runner/plan.md
+at specs/167-input-render-responsiveness/plan.md
 <!-- SPECKIT END -->
 
 ## Ant Design — source of truth

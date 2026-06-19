@@ -29,8 +29,8 @@ dotnet pack FS.GG.Rendering.slnx -c Release --no-build -o ~/.local/share/nuget-l
 dotnet nuget locals global-packages --clear
 ```
 
-The sample currently pins FS.GG.UI packages to `0.1.26-preview.1`. Verify the feed with:
-`ls ~/.local/share/nuget-local/FS.GG.UI.Themes.AntDesign.0.1.26-preview.1.nupkg`.
+The sample currently pins FS.GG.UI packages to `0.1.29-preview.1`. Verify the feed with:
+`ls ~/.local/share/nuget-local/FS.GG.UI.Themes.AntDesign.0.1.29-preview.1.nupkg`.
 
 ## Layout
 
@@ -67,6 +67,10 @@ app would.
    target matrix expansion, completeness classification, reviewer table parsing, readiness
    aggregation, contact-sheet metadata, JSON/Markdown summary rendering, and managed-summary
    updates delegate to `FS.GG.UI.Testing`.
+4. **Responsiveness mode** — a deterministic representative pointer/key script that writes
+   `records.jsonl`, `summary.json`, `summary.md`, and `environment.md`. Headless runs are marked
+   `environment-limited` and disclose `SYNTHETIC` substitute evidence rather than claiming accepted
+   live input-to-present latency.
 
 ## Build & run
 
@@ -80,6 +84,7 @@ dotnet run --project AntShowcase.App -c Release -- evidence --seed 1   # byte-id
 dotnet run --project AntShowcase.App -c Release -- visual-readiness --seed 1 --size 1600x1000 --themes light,dark --out ../../specs/164-shared-visual-readiness/readiness/antshowcase-preferred
 dotnet run --project AntShowcase.App -c Release -- visual-readiness --seed 1 --size 1280x800 --themes light,dark --pages data-collections,charts-statistical,charts-advanced,feedback-status,tpl-form,tpl-exception --out ../../specs/164-shared-visual-readiness/readiness/antshowcase-minimum
 dotnet run --project AntShowcase.App -c Release -- visual-readiness --summarize ../../specs/164-shared-visual-readiness/readiness/antshowcase-preferred --minimum-size ../../specs/164-shared-visual-readiness/readiness/antshowcase-minimum --out ../../specs/164-shared-visual-readiness/readiness
+dotnet run --project AntShowcase.App -c Release -- responsiveness --page buttons --theme light --script representative --out ../../specs/167-input-render-responsiveness/readiness/responsiveness --json
 dotnet run --project AntShowcase.App -c Release -- interactive display-typography --theme dark
 dotnet test AntShowcase.Tests/AntShowcase.Tests.fsproj -c Release      # outside the default tier
 ```
@@ -92,6 +97,10 @@ missing reviewer classification must remain visible in that readiness summary ra
 being treated as accepted proof. The summary command updates only the generated managed
 section bounded by `<!-- FS.GG VISUAL READINESS START -->` and
 `<!-- FS.GG VISUAL READINESS END -->`, preserving manual validation notes outside it.
+Feature 167 responsiveness evidence is committed under
+`specs/167-input-render-responsiveness/readiness/responsiveness/`; live accepted responsiveness
+requires a visible GL presentation boundary, while deterministic/headless output is a disclosed
+substitute with `environment-limited` readiness.
 
 See `coverage-report.md` for the committed control→page map and `PROVENANCE.md` for the
 rebrand + template-recipe source disclosure.

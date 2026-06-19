@@ -65,6 +65,13 @@ false pass.
   session and the renderer/keyboard/window capabilities currently available.
 - **`ViewerOptions`, `ViewerRunRequest`, `GeneratedAppHost<'model,'msg>`** — the core input
   contracts: window title/size, bounded-run target plus diagnostics, and the Elmish app surface.
+- **Responsiveness diagnostics** — `ViewerLatencyRecord`, `ViewerResponsivenessSummary`,
+  `ViewerResponsivenessBudget`, stable token helpers, JSONL/Markdown summary writers, and default
+  budgets for input receipt, input-to-visible latency, and long-frame reporting.
+- **Input queue helpers** — `Viewer.enqueueInput`, `drainInputQueue`, `dirtyState`, and
+  `dirtyStateRequiresRecompose` model the live scheduler boundary: discrete input preserves order,
+  continuous pointer movement coalesces, and retained recomposition is requested once per dirty
+  frame.
 - **`FS.GG.UI.SkiaViewer.Host.Viewer`** — the lower-level Elmish host edge (`create`,
   `withSubscription` / `withEventMapping` / `withEffectMapping`, `run`) over `ViewerProgram<'model,'msg>`.
 - **`Host.Diagnostics`** — constructors for structured `RenderDiagnostic` values (`vulkanUnavailable`,
@@ -75,6 +82,17 @@ false pass.
   sentinel/damage readback evidence is available for the active host profile. Snapshot and timing
   readiness likewise require parity-clean evidence and resource/timing artifacts before claiming
   performance value.
+
+## Responsiveness Evidence
+
+The viewer exposes additive responsiveness contracts for diagnostic runs and readiness tooling. A
+run writes `records.jsonl`, `summary.json`, `summary.md`, and `environment.md`; environment-limited
+hosts must report statuses such as `headless-substitute`, `missing-boundary`, or
+`no-visible-surface` instead of claiming accepted live latency.
+
+Use `Viewer.summarizeResponsivenessRecords` with `Viewer.defaultResponsivenessBudget` to aggregate
+latency records, then `Viewer.writeResponsivenessRun` to persist reviewer-readable and
+machine-readable evidence.
 
 ## Versioning
 

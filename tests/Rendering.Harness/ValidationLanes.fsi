@@ -114,6 +114,14 @@ module ValidationLanes =
           Caveats: string list
           ReplacementNotice: string option }
 
+    type ResponsivenessSummaryResult =
+        { SummaryPath: string
+          OverallReadiness: string
+          RecordCount: int
+          FirstFailedBudget: string option
+          EnvironmentLimitations: string list
+          Diagnostics: string list }
+
     type Model =
         { LaneDefinitions: LaneDefinition list
           RunPlan: LaneRunPlan option
@@ -158,6 +166,10 @@ module ValidationLanes =
     val statusToken: status: LaneStatus -> string
 
     val readinessToken: readiness: OverallReadiness -> string
+
+    val readResponsivenessSummary: path: string -> Result<ResponsivenessSummaryResult, string>
+
+    val responsivenessSummaryLaneStatus: summary: ResponsivenessSummaryResult -> LaneStatus
 
     val commandText: command: LaneCommand -> string
 

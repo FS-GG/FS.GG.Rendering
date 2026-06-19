@@ -6,6 +6,7 @@
 **Feature 163 follow-up:** Package-feed validation lanes are implemented; the current post-merge package set is `0.1.25-preview.1`.
 **Feature 165 follow-up:** Structured render/layout inspection metadata is implemented; the current package set before merge is `0.1.26-preview.1`.
 **Feature 166 follow-up:** Validation lane runner hardening is implemented on `166-validation-lane-runner`; it adds stable required/optional lanes, request preflight, run-id evidence isolation, structured summaries, no-progress classification, and schedule-safety checks. Current required-lane evidence intentionally exposes `Controls.Tests` as `no-progress-timeout`.
+**Feature 167 follow-up:** Input/render responsiveness is implemented on `167-input-render-responsiveness`; it adds SkiaViewer responsiveness records/summaries, queued key/pointer scheduling in the persistent viewer wrapper, Controls.Elmish timing/diagnostics-disabled helpers, AntShowcase responsiveness output, validation-lane summary parsing, surface baselines, and readiness evidence. Current post-merge package set is `0.1.29-preview.1`.
 **Primary work observed:** Feature 162, AntShowcase visual readiness implementation, plus earlier local/Codex/Claude skill parity work
 **Scope:** Problems encountered in the framework, validation workflow, and skills while implementing and validating the AntShowcase visual overhaul. This report focuses on improvements possible in library code, sample infrastructure, generated readiness tooling, and coding-agent skills.
 
@@ -27,6 +28,28 @@ The work also exposed several friction points:
 8. A post-readiness interactive diagnostic found severe input-lag risk in the synchronous post-input render path. Pointer routing itself was fast, but a state-changing click can force hundreds of milliseconds of retained render/lowering/layout/text work on the same event path, causing later mouse events to queue.
 
 The highest-value improvement is a shared "visual readiness, local package feed, and responsiveness diagnostics" toolkit: library-side APIs for screenshot evidence, a CLI or script for pack/update/restore validation, live phase timing for input/update/render/present, and skill guidance that requires these checks before a feature is marked done.
+
+### 1.1 Feature 167 implementation update
+
+The responsiveness follow-up is no longer only a recommendation. Feature 167 delivered the first bounded implementation slice:
+
+- `SkiaViewer` now exposes additive responsiveness contracts: latency records, readiness summaries, budgets, stable tokens, JSONL/Markdown writers, queue/drain helpers, dirty-state facts, and OpenGL host receipt/presentation diagnostics.
+- The persistent presented viewer path queues key and pointer work as `ViewerInputEnvelope` values, drains them on the paced update loop, preserves discrete order, coalesces continuous pointer movement, and defers product routing/update/view work out of the immediate native input event path.
+- `Controls.Elmish` exposes timing contribution and diagnostics-disabled compatibility helpers while keeping deterministic `Perf.runScript` metrics clock-free.
+- AntShowcase has a `responsiveness` command that writes `records.jsonl`, `summary.json`, `summary.md`, and `environment.md` for a representative buttons-page pointer/key script.
+- The committed readiness run is deliberately `environment-limited`: `specs/167-input-render-responsiveness/readiness/responsiveness/resp-20260619-120611-0fcd49/summary.json` reports `headless-substitute:no-live-presentation-boundary`. It is useful substitute evidence, not accepted live input-to-present latency.
+
+Validation completed during the implementation:
+
+- SkiaViewer Feature167 tests: 11 passed.
+- Elmish Feature167 tests: 6 passed.
+- Rendering.Harness Feature167 tests: 1 passed.
+- Controls interaction/pointer/focus compatibility: 111 passed.
+- KeyboardInput tests: 20 passed.
+- AntShowcase interaction/responsiveness/Feature167: 10 passed.
+- `dotnet restore FS.GG.Rendering.slnx`, `dotnet build FS.GG.Rendering.slnx -c Release --no-restore`, `dotnet fsi scripts/refresh-surface-baselines.fsx`, and `dotnet pack FS.GG.Rendering.slnx -c Release --no-build -o ~/.local/share/nuget-local` all passed.
+
+Remaining follow-up: capture accepted live responsiveness on a visible GL-capable desktop session and compare it against the 4 ms receipt p95 / 16 ms receipt max / 50 ms input-to-visible p95 budgets. The environment-limited run proves report shape and fail-closed behavior, not live performance acceptance.
 
 ---
 
@@ -1389,11 +1412,12 @@ This plan is written so it can be translated directly into Spec Kit features. It
 | 1 | `163-package-feed-validation-lanes` | Package source mapping, local-feed refresh/check scripts, validation lane runner | none | skill docs can start after contracts |
 | 2 | `164-visual-readiness-toolkit` | Shared visual evidence models, completeness checks, summary writer, AntShowcase migration | 163 for package proof only | 165 after API names are settled |
 | 3 | `165-render-inspection-metadata` | Visual inspection tree, text-fit metadata, overlap/damage assertions | none; coordinate names with 164 | 164, 167 |
-| 4 | `166-responsiveness-diagnostics` | Input timing model, live JSONL diagnostics, queue-depth metrics, event-loop decoupling | 163 for validation lanes; optionally 165 for inspection/damage checks | 164 and 167 |
-| 5 | `167-skill-parity-and-evidence-guidance` | Skill updates, parity checker, visual/responsiveness guidance | report and agreed feature names | all code features |
-| 6 | `168-runtime-diagnostics-taxonomy` | Structured runtime diagnostic categories and output routing | can be folded into 166 if desired | 164/165 if kept separate |
+| 4 | `166-validation-lane-runner` | Required/optional lane runner hardening, request preflight, evidence isolation, summaries, timeout classification | 163 concepts and package-proof workflow | 164/165 |
+| 5 | `167-input-render-responsiveness` | Input timing model, responsiveness records/summaries, queue-depth metrics, event-loop decoupling, AntShowcase command | 163 validation lanes; optionally 165 for inspection/damage checks | skill docs |
+| 6 | `168-skill-parity-and-evidence-guidance` | Skill updates, parity checker, visual/responsiveness guidance | report and agreed feature names | all code features |
+| 7 | `169-runtime-diagnostics-taxonomy` | Structured runtime diagnostic categories and output routing | can extend 167 if desired | 164/165 if kept separate |
 
-If team capacity is limited, combine 168 into 166 and deliver five features. If responsiveness is the highest user pain, start 166 immediately after the minimal validation runner from 163 lands.
+If team capacity is limited, fold the runtime diagnostics taxonomy into the existing Feature 167 diagnostics output. Responsiveness has already started as Feature 167 after the validation runner.
 
 ### 13.2 Spec Kit commands per feature
 
@@ -1609,12 +1633,12 @@ additive: screenshots, `LayoutEvidenceReport`, and `GeneratedLayoutValidation` r
 - Focused Feature 165 tests pass for the shipped inspection contract.
 - Representative inspection summaries distinguish accepted, unsupported, environment-limited, not-inspected, and not-run states without relying on screenshot evidence.
 
-### 13.6 Future feature: responsiveness diagnostics and input-loop scheduling
+### 13.6 Implemented follow-up: input/render responsiveness
 
 Feature number note: branch `166-validation-lane-runner` was used first for the
 validation-lane hardening follow-up. The responsiveness diagnostics and
-input-loop scheduling work below remains recommended, but should receive a new
-feature number when specified.
+input-loop scheduling work was implemented as Feature 167 on
+`167-input-render-responsiveness`.
 
 **Goal**
 
@@ -1627,7 +1651,7 @@ Make interactive latency measurable, then rewrite the live scheduler boundary so
 - **US3:** The live viewer queues input and renders on the frame loop, preserving discrete input order while coalescing move work.
 - **US4:** AntShowcase exposes a diagnostic mode/report proving click/key latency against a stated budget.
 
-**Expected source paths**
+**Implemented source paths**
 
 - `src/Controls.Elmish/ControlsElmish.fsi`
 - `src/Controls.Elmish/ControlsElmish.fs`
@@ -1635,10 +1659,10 @@ Make interactive latency measurable, then rewrite the live scheduler boundary so
 - `src/SkiaViewer/SkiaViewer.fs`
 - `src/SkiaViewer/Host/OpenGl.fs`
 - `src/SkiaViewer/Host/OpenGl.fsi`
-- `tests/Elmish.Tests/FeatureXXXResponsivenessMetricsTests.fs`
-- `tests/SkiaViewer.Tests/FeatureXXXInputQueueTests.fs`
-- `samples/AntShowcase/AntShowcase.App/Interactive.fs`
-- `samples/AntShowcase/AntShowcase.Tests/InteractionTests.fs`
+- `tests/Elmish.Tests/Feature167ResponsivenessMetricsTests.fs`
+- `tests/SkiaViewer.Tests/Feature167InputQueueTests.fs`
+- `samples/AntShowcase/AntShowcase.App/Responsiveness.fs`
+- `samples/AntShowcase/AntShowcase.Tests/Feature167ResponsivenessShapeTests.fs`
 
 **Target input/render boundary**
 
@@ -1705,36 +1729,39 @@ This target keeps the pure product `Update`/`View` model, the retained Controls 
 - The old live path should remain available behind a short-lived diagnostic flag until the new scheduler has parity evidence; remove the flag once AntShowcase and SkiaViewer queue tests pass consistently.
 - Any synthetic/live-window limitations must be disclosed in readiness evidence.
 
-**Task outline**
+**Implemented task summary**
 
-- [ ] T001 [P] Add failing deterministic tests for pointer/key activation metrics shape in `tests/Elmish.Tests/`.
-- [ ] T002 [P] Add failing SkiaViewer tests for queued input ordering and move coalescing in `tests/SkiaViewer.Tests/`.
-- [ ] T003 Draft `InputPhaseTiming`, `InputQueueMetrics`, and `OnInputTiming` in `src/Controls.Elmish/ControlsElmish.fsi`.
-- [ ] T004 Add internal scheduler types: `ViewerInputEnvelope`, queue state, dirty/invalidation state, input priority lane, and frame-drain result.
-- [ ] T005 Add live timing capture around native timestamp, queue delay, routing, update, view, retained step, paint, and present.
-- [ ] T006 Add JSONL diagnostic sink and optional metrics counters/histograms.
-- [ ] T007 Change live viewer dispatch so input callbacks enqueue normalized inputs and return quickly.
-- [ ] T008 Drain queued inputs on the frame/update loop, fold model updates, and render once per dirty frame.
-- [ ] T009 Preserve discrete input ordering and expose coalesced move counts.
-- [ ] T010 Ensure one input that produces several product messages causes at most one scene recomputation before the next present.
-- [ ] T011 Add AntShowcase diagnostic mode or environment-gated timing log in `Interactive.fs`.
-- [ ] T012 Add AntShowcase responsiveness tests/scripts for content button click and `Enter`/`Space`.
-- [ ] T013 Run live diagnostic capture where a window/GL host is available; save JSONL and summary under `specs/166-responsiveness-diagnostics/readiness/`.
-- [ ] T014 Add docs explaining latency budgets, limitations, and how to interpret timing fields.
+- [x] Added deterministic tests for pointer/key activation metrics shape in `tests/Elmish.Tests/`.
+- [x] Added SkiaViewer tests for queued input ordering, move coalescing, frame drains, receipt classification, summaries, and discrete final-state parity.
+- [x] Added Controls.Elmish timing contribution and diagnostics-disabled compatibility contracts.
+- [x] Added scheduler types: `ViewerInputEnvelope`, queue state, dirty/invalidation state, input priority lane, and frame-drain result.
+- [x] Added latency record, budget, readiness, JSONL, summary, and environment evidence contracts.
+- [x] Changed the persistent presented viewer wrapper so key/pointer work is queued and drained on the paced update loop.
+- [x] Preserved discrete input ordering and exposed coalesced move counts.
+- [x] Added AntShowcase responsiveness mode and representative pointer/key script tests.
+- [x] Captured deterministic environment-limited responsiveness evidence under `specs/167-input-render-responsiveness/readiness/responsiveness/`.
+- [x] Updated docs, surface baselines, readiness ledgers, and package evidence.
 
-**Parallel opportunities**
+**Remaining follow-up**
 
-- **Parallel A:** T001 and T002 can run in parallel because they target different packages and define the failing contracts.
-- **Parallel B:** T003 diagnostics API and T004 internal scheduler model can proceed in parallel after naming is agreed, then converge before public surface review.
-- **Parallel C:** T005 timing capture and T006 JSONL/metrics output can split between viewer timing and artifact serialization after T003/T004.
-- **Serialized core rewrite:** T007, T008, and T010 should be one coordinated branch because they alter the live event-loop semantics and must preserve input ordering.
-- **Parallel D:** T011 and T012 can begin once the diagnostic API compiles; they do not need to wait for final latency budgets.
-- **Parallel E:** Documentation and readiness-summary formatting from T014 can proceed while live-window evidence from T013 is being gathered.
+- [ ] Capture accepted live input-to-present evidence on a visible GL-capable desktop session.
+- [ ] Expand native presentation-boundary timing beyond the current host diagnostic helpers once live host evidence is available.
+- [ ] Consider deeper retained-render or render-thread work only if live Feature167 summaries still exceed the stated budgets.
+
+**Validation evidence**
+
+- SkiaViewer Feature167 tests: 11 passed.
+- Elmish Feature167 tests: 6 passed.
+- Rendering.Harness Feature167 tests: 1 passed.
+- AntShowcase interaction/responsiveness/Feature167 tests: 10 passed.
+- Controls interaction/pointer/focus compatibility: 111 passed.
+- KeyboardInput compatibility: 20 passed.
+- Surface baselines and package pack completed for `0.1.29-preview.1`.
 
 **Definition of done**
 
-- A content-button click produces one correlated input-to-present timing record.
-- Routing remains low-cost and separately visible from render/present.
+- A content-button click produces one correlated input-to-present timing record or an explicit environment-limited substitute record.
+- Routing remains separately visible from retained/render/present contribution fields.
 - Discrete inputs are not dropped; moves are coalesced with counts.
 - AntShowcase latency evidence no longer requires ad hoc FSI scripts.
 
@@ -1847,17 +1874,20 @@ Make runtime diagnostics structured and filterable so expected environment/backe
   ├─ independent of 164 at the API level
   └─ strengthens 166 damage/latency assertions
 
-166 responsiveness diagnostics
+166 validation-lane runner
+  └─ hardens required/optional readiness lanes for later features
+
+167 input/render responsiveness
   ├─ uses 163 validation lanes
   ├─ can use 165 damage metadata when available
-  └─ may absorb 168 if runtime diagnostics are not split
+  └─ leaves accepted live GL latency capture as environment-dependent evidence
 
-167 skills/parity
+168 skills/parity
   ├─ can start immediately with current report guidance
-  └─ should receive a final pass after 163/164/166 scripts and APIs land
+  └─ should receive a final pass after 163/164/167 scripts and APIs land
 
-168 diagnostics taxonomy
-  └─ can run in parallel with 164/165 or merge into 166
+169 diagnostics taxonomy
+  └─ can run in parallel with 164/165 or extend the Feature 167 diagnostics output
 ```
 
 ### 13.10 Shared validation matrix
@@ -1902,7 +1932,7 @@ Responsiveness proof form:
 
 ```sh
 dotnet run --project samples/AntShowcase/AntShowcase.App/AntShowcase.App.fsproj \
-  -c Release --no-restore -- responsiveness --page buttons --theme light --out specs/166-responsiveness-diagnostics/readiness/buttons-light.jsonl
+  -c Release --no-restore -- responsiveness --page buttons --theme light --script representative --out specs/167-input-render-responsiveness/readiness/responsiveness --json
 ```
 
 ### 13.11 Evidence and readiness rules for every feature

@@ -289,6 +289,21 @@ module GlHost =
           PermissionGranted: bool
           TimedOut: bool }
 
+    type InputReceiptDiagnostic =
+        { SequenceId: int64
+          InputKind: string
+          ReceivedAt: DateTimeOffset
+          CallbackDuration: TimeSpan
+          QueueDepthAtReceipt: int
+          SignalRequested: bool
+          RenderWorkStarted: bool }
+
+    type PresentationTimingDiagnostic =
+        { PresentedFrameId: int64
+          PaintDuration: TimeSpan option
+          PresentDuration: TimeSpan option
+          EnvironmentStatus: string }
+
     [<RequireQualifiedAccess>]
     type LiveProofHostReadiness =
         | Capable
@@ -383,6 +398,48 @@ module GlHost =
     /// just update. Testable in isolation (T006).
     let shouldAdvanceFrame (lastFrameTime: float) (now: float) (frameInterval: float) : bool =
         now - lastFrameTime >= frameInterval
+
+    let recordInputReceipt
+        (sequenceId: int64)
+        (inputKind: string)
+        (queueDepthAtReceipt: int)
+        (callbackDuration: TimeSpan)
+        (signalRequested: bool)
+        (renderWorkStarted: bool)
+        =
+        { SequenceId = sequenceId
+          InputKind = inputKind
+          ReceivedAt = DateTimeOffset.UtcNow
+          CallbackDuration = callbackDuration
+          QueueDepthAtReceipt = queueDepthAtReceipt
+          SignalRequested = signalRequested
+          RenderWorkStarted = renderWorkStarted }
+
+    let receiptWithinBudget (inputReceiptP95: TimeSpan) (inputReceiptMax: TimeSpan) (receipt: InputReceiptDiagnostic) =
+        receipt.CallbackDuration <= inputReceiptMax
+        && receipt.CallbackDuration <= inputReceiptP95
+
+    let receiptDidRenderWork (receipt: InputReceiptDiagnostic) =
+        receipt.RenderWorkStarted
+
+    let presentationTiming
+        (frameId: int64)
+        (paintDuration: TimeSpan option)
+        (presentDuration: TimeSpan option)
+        (liveSurfaceAvailable: bool)
+        =
+        let status =
+            if not liveSurfaceAvailable then
+                "no-visible-surface"
+            elif Option.isSome paintDuration && Option.isSome presentDuration then
+                "measured"
+            else
+                "missing-boundary"
+
+        { PresentedFrameId = frameId
+          PaintDuration = paintDuration
+          PresentDuration = presentDuration
+          EnvironmentStatus = status }
 
     let normalizeScissorRects frameWidth frameHeight (rects: ScissorRect list) =
         let clamp lo hi value = min hi (max lo value)

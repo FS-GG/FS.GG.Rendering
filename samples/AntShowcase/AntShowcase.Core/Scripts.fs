@@ -9,6 +9,7 @@
 module AntShowcase.Core.Scripts
 
 open System
+open FS.GG.UI.Controls
 open FS.GG.UI.Controls.Elmish
 open FS.GG.UI.KeyboardInput
 open AntShowcase.Core.Model
@@ -26,6 +27,20 @@ let forPage (_pageId: string): FrameInput<AntShowcaseMsg> list =
       tick 16.0
       press Enter
       tick 16.0
+      FrameInput.Idle ]
+
+/// Feature 167 representative responsiveness script. The pointer samples exercise the
+/// coalescing/activation shape, Enter and Space exercise keyboard activation, and Escape is
+/// the deterministic no-visible-response input for headless substitute evidence.
+let representative (_pageId: string): FrameInput<AntShowcaseMsg> list =
+    [ tick 16.0
+      FrameInput.Pointer(HoverEnter("buttons-primary", 12.0, 12.0))
+      FrameInput.Pointer(HoverEnter("buttons-primary", 24.0, 18.0))
+      FrameInput.Pointer(Click("buttons-primary", PointerButton.Primary, 32.0, 24.0))
+      press Enter
+      press Space
+      press Escape
+      tick 64.0
       FrameInput.Idle ]
 
 /// All page scripts, in registry order.

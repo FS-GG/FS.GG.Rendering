@@ -98,6 +98,22 @@ type LayoutWorkMetrics =
       IntrinsicCacheMissCount: int
       IntrinsicInvalidationCount: int }
 
+type ResponsivenessTimingContribution =
+    { RoutingDuration: TimeSpan
+      UpdateDuration: TimeSpan
+      RetainedStepDuration: TimeSpan
+      LayoutDuration: TimeSpan
+      TextDuration: TimeSpan
+      ProductMessageCount: int
+      ProductModelChanged: bool
+      RuntimeStateChanged: bool
+      NoVisibleResponseReason: string option }
+
+type DiagnosticsDisabledCompatibility =
+    { FrameMetricsUnchanged: bool
+      RecordsWritten: int
+      ClockFreePerfScript: bool }
+
 /// Feature 108 (US3, FR-009): one ordered step of the deterministic perf driver.
 [<RequireQualifiedAccess>]
 type FrameInput<'msg> =
@@ -247,6 +263,71 @@ module ControlsElmish =
           IntrinsicCacheHitCount = 0
           IntrinsicCacheMissCount = if metrics.LayoutRan then metrics.LayoutInvalidatedNodeCount else 0
           IntrinsicInvalidationCount = metrics.LayoutInvalidatedNodeCount }
+
+    let responsivenessTimingContribution (metrics: FrameMetrics) =
+        { RoutingDuration = metrics.FrameDuration
+          UpdateDuration = if metrics.ProductModelChanged then metrics.FrameDuration else TimeSpan.Zero
+          RetainedStepDuration = metrics.PaintDuration
+          LayoutDuration = if metrics.LayoutRan then metrics.FrameDuration else TimeSpan.Zero
+          TextDuration = TimeSpan.Zero
+          ProductMessageCount = if metrics.ProductModelChanged then 1 else 0
+          ProductModelChanged = metrics.ProductModelChanged
+          RuntimeStateChanged =
+            metrics.PointerSamplesReceived > 0
+            || metrics.PointerMovesProcessed > 0
+            || metrics.FrameCause = FrameCause.Resize
+            || metrics.FrameCause = FrameCause.Theme
+          NoVisibleResponseReason =
+            if metrics.ProductModelChanged || metrics.PaintRan || metrics.LayoutRan then
+                None
+            else
+                Some "no product/runtime/paint change" }
+
+    let private deterministicFrameMetricsShape (metrics: FrameMetrics) =
+        metrics.ProductModelChanged,
+        metrics.ViewCalled,
+        metrics.FullRenderCount,
+        metrics.RemeasuredNodeCount,
+        metrics.MemoHitCount,
+        metrics.MemoMissCount,
+        metrics.VirtualItemsMaterialized,
+        metrics.VirtualItemsTotal,
+        metrics.RepaintedNodeCount,
+        metrics.DirtyRectCount,
+        metrics.DirtyArea,
+        metrics.PictureCacheHitCount,
+        metrics.PictureCacheMissCount,
+        metrics.PictureCacheEntryCount,
+        metrics.TextMeasureCacheHitCount,
+        metrics.TextMeasureCacheMissCount,
+        metrics.LayoutInvalidatedNodeCount,
+        metrics.PointerSamplesReceived,
+        metrics.PointerMovesProcessed,
+        metrics.FullRenderFallbackCount,
+        metrics.FrameCause,
+        metrics.DiffRan,
+        metrics.LayoutRan,
+        metrics.PaintRan,
+        metrics.PaintDuration,
+        metrics.ComposeDuration,
+        metrics.ReplayHitCount,
+        metrics.ReplayMissCount,
+        metrics.ReplayRecordCount,
+        metrics.ReplaySkippedNodeCount,
+        metrics.ReplayCacheNativeBytes
+
+    let diagnosticsDisabledCompatibility before after =
+        let beforeShape = before |> List.map deterministicFrameMetricsShape
+        let afterShape = after |> List.map deterministicFrameMetricsShape
+
+        { FrameMetricsUnchanged = beforeShape = afterShape
+          RecordsWritten = 0
+          ClockFreePerfScript =
+            after
+            |> List.forall (fun metrics ->
+                metrics.FrameDuration = TimeSpan.Zero
+                && metrics.PaintDuration = TimeSpan.Zero
+                && metrics.ComposeDuration = TimeSpan.Zero) }
 
     let subscriptions (keyboard: AdapterSubscription<'msg> list) (controls: AdapterSubscription<'msg> list) =
         keyboard @ controls

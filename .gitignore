@@ -69,6 +69,8 @@ specs/163-package-feed-validation-lanes/readiness/**/nuget-cache/
 !specs/166-validation-lane-runner/readiness/
 !specs/166-validation-lane-runner/readiness/**
 specs/166-validation-lane-runner/readiness/**/nuget-cache/
+!specs/167-input-render-responsiveness/readiness/
+!specs/167-input-render-responsiveness/readiness/**
 
 # macOS / Linux cruft
 .DS_Store

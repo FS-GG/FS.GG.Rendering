@@ -68,6 +68,7 @@
     <Compile Include="Feature166ValidationSummaryTests.fs" />
     <Compile Include="Feature166CancellationTests.fs" />
     <Compile Include="Feature166SchedulingTests.fs" />
+    <Compile Include="Feature167ResponsivenessReadinessTests.fs" />
     <Compile Include="Feature151RenderAnywhereRegressionTests.fs" />
     <Compile Include="Feature151TextShapingRegressionTests.fs" />
     <Compile Include="Feature151CompositorReadinessRegressionTests.fs" />

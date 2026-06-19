@@ -118,6 +118,14 @@ module ValidationLanes =
           Caveats: string list
           ReplacementNotice: string option }
 
+    type ResponsivenessSummaryResult =
+        { SummaryPath: string
+          OverallReadiness: string
+          RecordCount: int
+          FirstFailedBudget: string option
+          EnvironmentLimitations: string list
+          Diagnostics: string list }
+
     type Model =
         { LaneDefinitions: LaneDefinition list
           RunPlan: LaneRunPlan option
@@ -183,6 +191,81 @@ module ValidationLanes =
         | Blocked -> "blocked"
         | Incomplete -> "incomplete"
         | EnvironmentLimitedReadiness -> "environment-limited"
+
+    let private tryGetProperty (name: string) (element: JsonElement) =
+        let mutable value = Unchecked.defaultof<JsonElement>
+
+        if element.TryGetProperty(name, &value) then
+            Some value
+        else
+            None
+
+    let private getStringOr fallback (element: JsonElement) =
+        match element.GetString() with
+        | null -> fallback
+        | value -> value
+
+    let private stringArray name (root: JsonElement) =
+        match tryGetProperty name root with
+        | Some value when value.ValueKind = JsonValueKind.Array ->
+            value.EnumerateArray()
+            |> Seq.choose (fun item ->
+                if item.ValueKind = JsonValueKind.String then
+                    Some(getStringOr "" item)
+                else
+                    None)
+            |> Seq.toList
+        | _ -> []
+
+    let private failedBudgetKind (root: JsonElement) =
+        match tryGetProperty "firstFailedBudget" root with
+        | Some value when value.ValueKind = JsonValueKind.Object ->
+            match tryGetProperty "kind" value with
+            | Some kind when kind.ValueKind = JsonValueKind.String -> Some(getStringOr "" kind)
+            | _ -> None
+        | _ -> None
+
+    let private recordCount (root: JsonElement) =
+        match tryGetProperty "groups" root with
+        | Some groups when groups.ValueKind = JsonValueKind.Array ->
+            groups.EnumerateArray()
+            |> Seq.sumBy (fun group ->
+                match tryGetProperty "count" group with
+                | Some count when count.ValueKind = JsonValueKind.Number -> count.GetInt32()
+                | _ -> 0)
+        | _ -> 0
+
+    let readResponsivenessSummary path =
+        try
+            if not (File.Exists path) then
+                Result.Error $"Responsiveness summary does not exist: {path}"
+            else
+                use doc = JsonDocument.Parse(File.ReadAllText path)
+                let root = doc.RootElement
+
+                let readiness =
+                    match tryGetProperty "overallReadiness" root with
+                    | Some value when value.ValueKind = JsonValueKind.String -> getStringOr "failed" value
+                    | _ -> "failed"
+
+                Result.Ok
+                    { SummaryPath = path
+                      OverallReadiness = readiness
+                      RecordCount = recordCount root
+                      FirstFailedBudget = failedBudgetKind root
+                      EnvironmentLimitations = stringArray "environmentLimitations" root
+                      Diagnostics = stringArray "diagnostics" root }
+        with ex ->
+            Result.Error $"Could not read responsiveness summary '{path}': {ex.Message}"
+
+    let responsivenessSummaryLaneStatus summary =
+        match summary.OverallReadiness with
+        | "accepted" -> Passed
+        | "environment-limited" -> EnvironmentLimited
+        | "incomplete" -> Skipped
+        | "blocked" -> Failed
+        | "failed" -> InfrastructureError
+        | _ -> InfrastructureError
 
     let quoteArg (arg: string) =
         if arg.Contains(' ') || arg.Contains(';') then

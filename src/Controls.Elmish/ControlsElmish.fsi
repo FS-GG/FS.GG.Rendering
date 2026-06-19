@@ -243,6 +243,24 @@ type LayoutWorkMetrics =
       IntrinsicCacheMissCount: int
       IntrinsicInvalidationCount: int }
 
+/// Feature 167: adapter contribution to one responsiveness latency record.
+type ResponsivenessTimingContribution =
+    { RoutingDuration: TimeSpan
+      UpdateDuration: TimeSpan
+      RetainedStepDuration: TimeSpan
+      LayoutDuration: TimeSpan
+      TextDuration: TimeSpan
+      ProductMessageCount: int
+      ProductModelChanged: bool
+      RuntimeStateChanged: bool
+      NoVisibleResponseReason: string option }
+
+/// Feature 167: deterministic compatibility verdict when diagnostics are disabled.
+type DiagnosticsDisabledCompatibility =
+    { FrameMetricsUnchanged: bool
+      RecordsWritten: int
+      ClockFreePerfScript: bool }
+
 [<RequireQualifiedAccess>]
 /// Feature 108 (US3, FR-009): one ordered step of the deterministic perf driver. `Key` carries the
 /// parsed base key + held modifiers; `Pointer` carries an already-resolved `PointerInteraction`;
@@ -364,6 +382,13 @@ module ControlsElmish =
             CompositorFrameDiagnostics
     /// Feature 150: project layout and intrinsic cache work from a frame metrics record.
     val layoutMetrics: metrics: FrameMetrics -> LayoutWorkMetrics
+    /// Feature 167: project existing frame metrics into a latency-record timing contribution.
+    val responsivenessTimingContribution: metrics: FrameMetrics -> ResponsivenessTimingContribution
+    /// Feature 167: verify disabled diagnostics leave deterministic frame metrics unchanged.
+    val diagnosticsDisabledCompatibility:
+        before: FrameMetrics list ->
+        after: FrameMetrics list ->
+            DiagnosticsDisabledCompatibility
     /// Public contract function exposed by this FS.GG.UI package.
     val subscriptions: keyboard: AdapterSubscription<'msg> list -> controls: AdapterSubscription<'msg> list -> AdapterSubscription<'msg> list
     /// Public contract function exposed by this FS.GG.UI package.
