@@ -14,6 +14,10 @@ Feature 173 implementation and automated regression checks are complete, but fin
 | `dotnet fsi scripts/refresh-local-feed-and-samples.fsx --sample samples/SecondAntShowcase` | passed, 14 packages / 18 pins | `logs/package-refresh.log` |
 | `dotnet restore samples/SecondAntShowcase/SecondAntShowcase.Tests/SecondAntShowcase.Tests.fsproj` | passed; required before `--no-restore` because package cache entries were missing after refresh | `logs/second-antshowcase-restore.log` |
 | `dotnet test samples/SecondAntShowcase/SecondAntShowcase.Tests/SecondAntShowcase.Tests.fsproj -c Release --no-restore` | passed, 142 passed / 0 skipped | `logs/second-antshowcase-tests.log` |
+| `dotnet fsi scripts/refresh-local-feed-and-samples.fsx --sample samples/SecondAntShowcase --mode refresh --pack --out specs/173-live-responsiveness-runner/readiness/package-feed-post-merge` | passed, packed 14 packages / aligned 18 pins at `0.1.35-preview.1` | `logs/package-feed-post-merge-refresh.log` |
+| `dotnet fsi scripts/refresh-local-feed-and-samples.fsx --sample samples/SecondAntShowcase --mode proof --isolated-cache specs/173-live-responsiveness-runner/readiness/package-feed-post-merge/nuget-cache --out specs/173-live-responsiveness-runner/readiness/package-feed-post-merge` | passed, isolated source proof | `logs/package-feed-post-merge-proof.log` |
+| `dotnet restore samples/SecondAntShowcase/SecondAntShowcase.Tests/SecondAntShowcase.Tests.fsproj` after post-merge package bump | passed | `logs/second-antshowcase-post-merge-restore.log` |
+| `dotnet test samples/SecondAntShowcase/SecondAntShowcase.Tests/SecondAntShowcase.Tests.fsproj -c Release --no-restore` after post-merge package bump | passed, 142 passed / 0 skipped | `logs/second-antshowcase-post-merge-tests.log` |
 | headless fail-closed responsiveness command | exit `4`, `environment-limited` | `logs/headless-fail-closed.log` |
 | light live responsiveness command | exit `4`, `environment-limited` | `logs/live-light.log` |
 | dark live responsiveness command | exit `4`, `environment-limited` | `logs/live-dark.log` |
@@ -32,6 +36,10 @@ Feature 173 implementation and automated regression checks are complete, but fin
 | `resp-20260619-201717-3f1141` | dark | `environment-limited` | 4 | `responsiveness/resp-20260619-201717-3f1141/summary.json` |
 
 All responsiveness summaries report `artifactWriteStatus = complete` and `firstFailedBudget.kind = environment-boundary`. No run reports accepted live responsiveness.
+
+## Post-Merge Package Evidence
+
+Packable `FS.GG.UI.*` projects were bumped to `0.1.35-preview.1`, packed to the local feed, and proved through the SecondAntShowcase package-consuming sample. Evidence is under `package-feed-post-merge/`, including `package-versions.md`, `package-pins.md`, `source-proof.md`, and `source-proof.json`.
 
 ## Caveats
 

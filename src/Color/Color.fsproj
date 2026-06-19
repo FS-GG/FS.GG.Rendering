@@ -5,7 +5,7 @@
     <IsPackable>true</IsPackable>
     <PackageId>FS.GG.UI.Color</PackageId>
     <AssemblyName>FS.GG.UI.Color</AssemblyName>
-    <Version>0.1.34-preview.1</Version>
+    <Version>0.1.35-preview.1</Version>
     <Title>FS.GG.UI.Color</Title>
     <Description>WCAG 2.x contrast measurement and Radix-derived accessible palette ramps over the FS.GG.UI.Scene Color type.</Description>
     <PackageTags>fsharp;skia;color;contrast;wcag;accessibility</PackageTags>

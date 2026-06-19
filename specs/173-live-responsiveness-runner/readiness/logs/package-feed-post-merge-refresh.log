@@ -1,0 +1,6 @@
+package-feed status: passed
+packages: 14
+pins: 18
+specs/173-live-responsiveness-runner/readiness/package-feed-post-merge/package-versions.md
+specs/173-live-responsiveness-runner/readiness/package-feed-post-merge/package-pins.md
+dotnet pack FS.GG.Rendering.slnx -c Release --no-restore -o /home/developer/.local/share/nuget-local -> exit 0
