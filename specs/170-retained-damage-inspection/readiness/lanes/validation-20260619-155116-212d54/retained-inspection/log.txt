@@ -1,0 +1,49 @@
+  Diagnostics -> /home/developer/projects/FS.GG.Rendering/src/Diagnostics/bin/Release/net10.0/FS.GG.UI.Diagnostics.dll
+  Scene -> /home/developer/projects/FS.GG.Rendering/src/Scene/bin/Release/net10.0/FS.GG.UI.Scene.dll
+  Color -> /home/developer/projects/FS.GG.Rendering/src/Color/bin/Release/net10.0/FS.GG.UI.Color.dll
+  Layout -> /home/developer/projects/FS.GG.Rendering/src/Layout/bin/Release/net10.0/FS.GG.UI.Layout.dll
+  DesignSystem -> /home/developer/projects/FS.GG.Rendering/src/DesignSystem/bin/Release/net10.0/FS.GG.UI.DesignSystem.dll
+  KeyboardInput -> /home/developer/projects/FS.GG.Rendering/src/KeyboardInput/bin/Release/net10.0/FS.GG.UI.KeyboardInput.dll
+  Controls -> /home/developer/projects/FS.GG.Rendering/src/Controls/bin/Release/net10.0/FS.GG.UI.Controls.dll
+  Themes.AntDesign -> /home/developer/projects/FS.GG.Rendering/src/Themes.AntDesign/bin/Release/net10.0/FS.GG.UI.Themes.AntDesign.dll
+  Themes.Default -> /home/developer/projects/FS.GG.Rendering/src/Themes.Default/bin/Release/net10.0/FS.GG.UI.Themes.Default.dll
+  Controls.Tests -> /home/developer/projects/FS.GG.Rendering/tests/Controls.Tests/bin/Release/net10.0/Controls.Tests.dll
+Test run for /home/developer/projects/FS.GG.Rendering/tests/Controls.Tests/bin/Release/net10.0/Controls.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: /home/developer/projects/FS.GG.Rendering/specs/170-retained-damage-inspection/readiness/lanes/validation-20260619-155116-212d54/retained-inspection/TestResults/controls/feature170-controls.trx
+
+Passed!  - Failed:     0, Passed:     4, Skipped:     0, Total:     4, Duration: 259 ms - Controls.Tests.dll (net10.0)
+  Scene -> /home/developer/projects/FS.GG.Rendering/src/Scene/bin/Release/net10.0/FS.GG.UI.Scene.dll
+  Diagnostics -> /home/developer/projects/FS.GG.Rendering/src/Diagnostics/bin/Release/net10.0/FS.GG.UI.Diagnostics.dll
+  Testing -> /home/developer/projects/FS.GG.Rendering/src/Testing/bin/Release/net10.0/FS.GG.UI.Testing.dll
+  Testing.Tests -> /home/developer/projects/FS.GG.Rendering/tests/Testing.Tests/bin/Release/net10.0/Testing.Tests.dll
+Test run for /home/developer/projects/FS.GG.Rendering/tests/Testing.Tests/bin/Release/net10.0/Testing.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: /home/developer/projects/FS.GG.Rendering/specs/170-retained-damage-inspection/readiness/lanes/validation-20260619-155116-212d54/retained-inspection/TestResults/testing/feature170-testing.trx
+
+Passed!  - Failed:     0, Passed:     6, Skipped:     0, Total:     6, Duration: 49 ms - Testing.Tests.dll (net10.0)
+  Diagnostics -> /home/developer/projects/FS.GG.Rendering/src/Diagnostics/bin/Release/net10.0/FS.GG.UI.Diagnostics.dll
+  Scene -> /home/developer/projects/FS.GG.Rendering/src/Scene/bin/Release/net10.0/FS.GG.UI.Scene.dll
+  DesignSystem -> /home/developer/projects/FS.GG.Rendering/src/DesignSystem/bin/Release/net10.0/FS.GG.UI.DesignSystem.dll
+  Layout -> /home/developer/projects/FS.GG.Rendering/src/Layout/bin/Release/net10.0/FS.GG.UI.Layout.dll
+  Testing -> /home/developer/projects/FS.GG.Rendering/src/Testing/bin/Release/net10.0/FS.GG.UI.Testing.dll
+  KeyboardInput -> /home/developer/projects/FS.GG.Rendering/src/KeyboardInput/bin/Release/net10.0/FS.GG.UI.KeyboardInput.dll
+  Controls -> /home/developer/projects/FS.GG.Rendering/src/Controls/bin/Release/net10.0/FS.GG.UI.Controls.dll
+  SkiaViewer -> /home/developer/projects/FS.GG.Rendering/src/SkiaViewer/bin/Release/net10.0/FS.GG.UI.SkiaViewer.dll
+  Controls.Elmish -> /home/developer/projects/FS.GG.Rendering/src/Controls.Elmish/bin/Release/net10.0/FS.GG.UI.Controls.Elmish.dll
+  Rendering.Harness -> /home/developer/projects/FS.GG.Rendering/tests/Rendering.Harness/bin/Release/net10.0/Rendering.Harness.dll
+  Rendering.Harness.Tests -> /home/developer/projects/FS.GG.Rendering/tests/Rendering.Harness.Tests/bin/Release/net10.0/Rendering.Harness.Tests.dll
+Test run for /home/developer/projects/FS.GG.Rendering/tests/Rendering.Harness.Tests/bin/Release/net10.0/Rendering.Harness.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: /home/developer/projects/FS.GG.Rendering/specs/170-retained-damage-inspection/readiness/lanes/validation-20260619-155116-212d54/retained-inspection/TestResults/harness/feature170-harness.trx
+
+Passed!  - Failed:     0, Passed:     3, Skipped:     0, Total:     3, Duration: 56 ms - Rendering.Harness.Tests.dll (net10.0)
+[37m[[37m17:51:50 [37mINF[37m] [37mEXPECTO? Running tests...[37m [37m<[37mExpecto[37m>[37m
+[0m[1000D[?25h[37m[[37m17:51:54 [37mINF[37m] [37mEXPECTO! [36m1[37m tests run in [32m00:00:03.6236251[37m for [36mFeature170 visual inspection adoption.charts-statistical preferred light and dark shells expose structured retained evidence[37m – [36m1[37m passed, [36m0[37m ignored, [36m0[37m failed, [36m0[37m errored. [36mSuccess![37m [37m<[37mExpecto[37m>[37m
+[0m[1000D[?25h[37m[[37m17:51:54 [37mINF[37m] [37mEXPECTO?! Summary...
+Passed: [36m 1
+	Feature170 visual inspection adoption.charts-statistical preferred light and dark shells expose structured retained evidence[37m
+Ignored: [36m0[37m
+Failed: [36m 0[37m
+Errored: [36m0[37m [37m<[37mExpecto[37m>[37m
+[0m

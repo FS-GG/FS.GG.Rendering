@@ -50,8 +50,6 @@
     <Compile Include="Composition.fs" />
     <Compile Include="Control.fsi" />
     <Compile Include="Control.fs" />
-    <Compile Include="Inspection.fsi" />
-    <Compile Include="Inspection.fs" />
     <Compile Include="Reconcile.fsi" />
     <Compile Include="Reconcile.fs" />
     <Compile Include="Widget.fsi" />
@@ -74,6 +72,8 @@
          TextInput (TextInputModel for re-keyed text state). -->
     <Compile Include="RetainedRender.fsi" />
     <Compile Include="RetainedRender.fs" />
+    <Compile Include="Inspection.fsi" />
+    <Compile Include="Inspection.fs" />
     <!-- Feature 075: pure pointer-interaction front door over ControlRuntime +
          Layout.hitTestComputed (host-independent; no SkiaViewer dependency). -->
     <Compile Include="Pointer.fsi" />

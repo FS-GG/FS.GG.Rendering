@@ -792,6 +792,146 @@ type VisualInspectionSummary =
       Caveats: string list
       Diagnostics: string list }
 
+/// Readiness result for retained-render inspection evidence.
+[<RequireQualifiedAccess>]
+type RetainedInspectionStatus =
+    | Accepted
+    | Blocked
+    | ReviewRequired
+    | Unsupported
+    | EnvironmentLimited
+    | NotInspected
+    | NotRun
+
+/// Retained-render node transition classification.
+[<RequireQualifiedAccess>]
+type RetainedNodeStatus =
+    | Retained
+    | Reused
+    | Repainted
+    | Shifted
+    | ShiftedAndRepainted
+    | Added
+    | Removed
+    | Unaffected
+    | Unsupported
+
+/// Visible dirty-region classification for retained damage inspection.
+[<RequireQualifiedAccess>]
+type DamageInspectionStatus =
+    | Empty
+    | Localized
+    | Broad
+    | FullSurface
+    | Unsupported
+    | NotInspected
+
+/// Reviewed allowance for broad or full-surface retained damage.
+type IntentionalDamageException =
+    { ExceptionId: string
+      RuleId: string
+      ScopeId: string
+      TransitionId: string
+      AffectedIds: string list
+      Reason: string
+      ExpiresWith: string option }
+
+/// Before/after frame identity and scenario expectations for retained inspection.
+type RetainedFrameTransition =
+    { TransitionId: string
+      PriorFrameId: string option
+      CurrentFrameId: string
+      InteractionId: string option
+      ExpectedAffectedRegionIds: string list
+      MaximumDirtyPercentage: float option
+      IntentionalExceptions: IntentionalDamageException list }
+
+/// Stable fact about one retained visual node.
+type RetainedNodeInspection =
+    { NodeId: string
+      ParentId: string option
+      RetainedIdentity: string option
+      Kind: string
+      OwnerId: string option
+      Status: RetainedNodeStatus
+      PriorBounds: Rect option
+      CurrentBounds: Rect option
+      AffectedRegionIds: string list
+      Repainted: bool
+      Shifted: bool
+      UnsupportedFacts: VisualInspectionUnsupportedFact list
+      Diagnostics: string list }
+
+/// Visible retained-render damage facts for one transition.
+type DamageRegionInspection =
+    { TransitionId: string
+      DamageStatus: DamageInspectionStatus
+      FrameBounds: Rect
+      DirtyRectangles: Rect list
+      UnionBounds: Rect option
+      UnionArea: int
+      VisibleDirtyArea: int
+      DirtyPercentage: float
+      AffectedRegionIds: string list
+      AffectedNodeIds: string list
+      RepaintedNodeCount: int
+      ShiftedNodeCount: int
+      UnaffectedNodeCount: int
+      Cause: string option
+      Diagnostics: string list }
+
+/// Validation finding for retained node and damage locality evidence.
+type DamageLocalityFinding =
+    { FindingId: string
+      RuleId: string
+      Severity: VisualInspectionSeverity
+      TransitionId: string
+      AffectedNodeIds: string list
+      AffectedRegionIds: string list
+      Message: string
+      Expected: string
+      Actual: string
+      ExceptionId: string option
+      Diagnostics: string list }
+
+/// Machine-checkable retained-render evidence for one inspected scope or transition.
+type RetainedInspectionArtifact =
+    { ArtifactId: string
+      RunId: string
+      Scope: VisualInspectionScope
+      OutputSize: Size
+      Presentation: string
+      Transition: RetainedFrameTransition option
+      FinalVisualArtifact: VisualInspectionArtifact option
+      RetainedNodes: RetainedNodeInspection list
+      Damage: DamageRegionInspection option
+      Findings: DamageLocalityFinding list
+      UnsupportedFacts: VisualInspectionUnsupportedFact list
+      RelatedVisualEvidence: string list
+      ReadinessStatus: RetainedInspectionStatus
+      Diagnostics: string list
+      GeneratedAtUtc: string }
+
+/// Reviewer- and machine-readable retained inspection rollup.
+type RetainedInspectionSummary =
+    { RunId: string
+      OverallStatus: RetainedInspectionStatus
+      ArtifactCount: int
+      InspectedScopes: string list
+      NotInspectedScopes: string list
+      StatusCounts: (string * int) list
+      DamageStatusCounts: (string * int) list
+      NodeStatusCounts: (string * int) list
+      DirtyAreaSummaries: (string * float * string list) list
+      BlockingFindings: DamageLocalityFinding list
+      UnsupportedFacts: VisualInspectionUnsupportedFact list
+      AcceptedExceptions: string list
+      InvalidExceptions: string list
+      RelatedVisualEvidence: string list
+      CommandEvidence: (string * string) list
+      Caveats: string list
+      Diagnostics: string list }
+
 /// Public contract module exposed by this FS.GG.UI package.
 module Colors =
     /// Public contract function exposed by this FS.GG.UI package.
@@ -1055,3 +1195,55 @@ module VisualInspection =
     val artifactDiagnostics: artifact: VisualInspectionArtifact -> string list
     /// Sort nodes, regions, text runs, findings, and unsupported facts deterministically.
     val normalizeArtifact: artifact: VisualInspectionArtifact -> VisualInspectionArtifact
+
+/// Dependency-light helpers for retained-render and damage-locality inspection.
+module RetainedInspection =
+    /// Stable lowercase token for a retained readiness status.
+    val statusText: status: RetainedInspectionStatus -> string
+    /// Stable lowercase token for a retained node status.
+    val nodeStatusText: status: RetainedNodeStatus -> string
+    /// Stable lowercase token for a damage status.
+    val damageStatusText: status: DamageInspectionStatus -> string
+    /// Create an explicit retained/damage unsupported fact.
+    val unsupportedFact:
+        fact: string ->
+        ownerId: string option ->
+        required: bool ->
+        reason: string ->
+        diagnostic: string ->
+        environmentLimited: bool ->
+            VisualInspectionUnsupportedFact
+    /// Build a stable retained finding id from a rule, transition, and affected ids.
+    val stableFindingId: ruleId: string -> transitionId: string -> affectedIds: string list -> string
+    /// Create a deterministic retained/damage finding.
+    val finding:
+        ruleId: string ->
+        severity: VisualInspectionSeverity ->
+        transitionId: string ->
+        affectedNodeIds: string list ->
+        affectedRegionIds: string list ->
+        message: string ->
+        expected: string ->
+        actual: string ->
+            DamageLocalityFinding
+    /// Compute the true visible union area of dirty rectangles clipped to a frame.
+    val dirtyUnionArea: frameBounds: Rect -> dirtyRectangles: Rect list -> int
+    /// Compute the bounding rectangle of clipped dirty rectangles.
+    val dirtyUnionBounds: frameBounds: Rect -> dirtyRectangles: Rect list -> Rect option
+    /// Build visible damage evidence from dirty rectangles and retained counters.
+    val damageRegion:
+        transitionId: string ->
+        frameBounds: Rect ->
+        dirtyRectangles: Rect list ->
+        expectedAffectedRegionIds: string list ->
+        affectedNodeIds: string list ->
+        repaintedNodeCount: int ->
+        shiftedNodeCount: int ->
+        unaffectedNodeCount: int ->
+        cause: string option ->
+        maximumDirtyPercentage: float option ->
+            DamageRegionInspection
+    /// Validate artifact identity, retained node bounds, and unsupported-fact disclosure.
+    val artifactDiagnostics: artifact: RetainedInspectionArtifact -> string list
+    /// Sort retained nodes, damage facts, findings, and unsupported facts deterministically.
+    val normalizeArtifact: artifact: RetainedInspectionArtifact -> RetainedInspectionArtifact

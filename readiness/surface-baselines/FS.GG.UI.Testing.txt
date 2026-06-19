@@ -93,6 +93,13 @@ FS.GG.UI.Testing.PersistentLaunchArtifactValidationResult
 FS.GG.UI.Testing.ReadinessFileDiscovery
 FS.GG.UI.Testing.ReadinessFileDiscoveryCheck
 FS.GG.UI.Testing.ReadinessFileDiscoveryResult
+FS.GG.UI.Testing.RetainedInspectionMarkdown
+FS.GG.UI.Testing.RetainedInspectionReadiness
+FS.GG.UI.Testing.RetainedInspectionRule
+FS.GG.UI.Testing.RetainedInspectionSummarySectionUpdate
+FS.GG.UI.Testing.RetainedInspectionValidation
+FS.GG.UI.Testing.RetainedInspectionValidationCheck
+FS.GG.UI.Testing.RetainedInspectionValidationResult
 FS.GG.UI.Testing.RuntimeDiagnosticReadiness
 FS.GG.UI.Testing.RuntimeDiagnosticReadinessCheck
 FS.GG.UI.Testing.RuntimeDiagnosticReadinessResult

@@ -287,6 +287,8 @@ FS.GG.UI.Controls.ProductDispatch
 FS.GG.UI.Controls.ProgressBar
 FS.GG.UI.Controls.RadarChart
 FS.GG.UI.Controls.RadioGroup
+FS.GG.UI.Controls.RetainedControlInspectionRequest`1
+FS.GG.UI.Controls.RetainedControlTransition`1
 FS.GG.UI.Controls.RichText
 FS.GG.UI.Controls.RichTextBlock
 FS.GG.UI.Controls.RichTextMeasurement

@@ -34,7 +34,28 @@ let visualShellTests =
         test "theme and current page affordances render in full shell" {
             let light = renderShell preferredSize Light "charts-statistical"
             let dark = renderShell preferredSize Dark "charts-statistical"
+            let lightEvidence =
+                Evidence.retainedInspectionEvidence
+                    "charts-statistical"
+                    "antLight"
+                    "preferred"
+                    preferredSize.Width
+                    preferredSize.Height
+
+            let darkEvidence =
+                Evidence.retainedInspectionEvidence
+                    "charts-statistical"
+                    "antDark"
+                    "preferred"
+                    preferredSize.Width
+                    preferredSize.Height
+
             Expect.isGreaterThan light.NodeCount 0 "light shell renders"
             Expect.isGreaterThan dark.NodeCount 0 "dark shell renders"
+            Expect.equal lightEvidence.RetainedStatus "accepted" "light retained shell evidence accepted"
+            Expect.equal darkEvidence.RetainedStatus "accepted" "dark retained shell evidence accepted"
+            Expect.equal lightEvidence.ScreenshotPreferredTargetCount 38 "preferred screenshot count preserved"
+            Expect.equal darkEvidence.ScreenshotMinimumTargetCount 12 "minimum screenshot count preserved"
+            Expect.stringContains (Evidence.retainedInspectionToMarkdown lightEvidence) "affected regions" "reviewer fields visible"
         }
     ]

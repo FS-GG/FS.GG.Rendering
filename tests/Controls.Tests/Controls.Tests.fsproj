@@ -142,6 +142,8 @@
     <Compile Include="Feature165ControlInspectionLayoutTests.fs" />
     <Compile Include="Feature165ControlInspectionPaintTests.fs" />
     <Compile Include="Feature165ControlInspectionRegressionTests.fs" />
+    <Compile Include="Feature170RetainedInspectionTests.fs" />
+    <Compile Include="Feature170DamageRegionUnionTests.fs" />
     <Compile Include="Feature150ScrollFixtures.fs" />
     <Compile Include="Feature150ScrollViewerExtentTests.fs" />
     <Compile Include="Feature150LayoutDiagnosticsTests.fs" />

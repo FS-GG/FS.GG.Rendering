@@ -335,6 +335,37 @@ type VisualInspectionSummarySectionUpdate =
       InsertedMarkers: bool
       Diagnostics: string list }
 
+/// Stable validation rule descriptor for retained/damage inspection.
+type RetainedInspectionRule =
+    { RuleId: string
+      Required: bool }
+
+/// Request for validating one retained inspection artifact.
+type RetainedInspectionValidationCheck =
+    { Artifact: RetainedInspectionArtifact
+      Rules: RetainedInspectionRule list
+      Exceptions: IntentionalDamageException list
+      ExpectedAffectedRegionIds: string list
+      PreviousArtifact: RetainedInspectionArtifact option
+      EnvironmentLimitations: string list }
+
+/// Rule-validation result for one retained inspection artifact.
+type RetainedInspectionValidationResult =
+    { ArtifactId: string
+      ReadinessStatus: RetainedInspectionStatus
+      Findings: DamageLocalityFinding list
+      AppliedExceptions: string list
+      InvalidExceptions: string list
+      UnusedExceptions: string list
+      Diagnostics: string list }
+
+/// Safe managed-section update result for retained inspection summaries.
+type RetainedInspectionSummarySectionUpdate =
+    { UpdatedText: string
+      SafeToWrite: bool
+      InsertedMarkers: bool
+      Diagnostics: string list }
+
 /// Public contract type exposed by this FS.GG.UI package.
 type HostWarningClass =
     | BenignEnvironmentWarning
@@ -922,6 +953,46 @@ module VisualInspectionMarkdown =
     val renderJson: summary: VisualInspectionSummary -> string
     /// Update or insert exactly one generated inspection section while preserving manual text.
     val updateManagedSection: existingText: string -> generatedMarkdown: string -> VisualInspectionSummarySectionUpdate
+
+/// Retained/damage inspection rule vocabulary and validators.
+module RetainedInspectionValidation =
+    /// Create a required validation rule by stable rule id.
+    val rule: ruleId: string -> RetainedInspectionRule
+    /// Deterministic retained/damage rule set.
+    val defaultRules: RetainedInspectionRule list
+    /// Validate an artifact with explicit rules, exceptions, expected regions, and optional previous artifact.
+    val validateCheck: check: RetainedInspectionValidationCheck -> RetainedInspectionValidationResult
+    /// Validate an artifact with the default check shape.
+    val validate:
+        artifact: RetainedInspectionArtifact ->
+        rules: RetainedInspectionRule list ->
+        exceptions: IntentionalDamageException list ->
+            RetainedInspectionValidationResult
+
+/// Readiness aggregation for retained/damage inspection validation results.
+module RetainedInspectionReadiness =
+    /// Aggregate artifacts and validation results into a retained inspection summary.
+    val aggregate:
+        runId: string ->
+        artifacts: RetainedInspectionArtifact list ->
+        results: RetainedInspectionValidationResult list ->
+        relatedVisualEvidence: string list ->
+        commandEvidence: (string * string) list ->
+        caveats: string list ->
+            RetainedInspectionSummary
+
+/// Markdown, JSON, and managed-section helpers for retained inspection evidence.
+module RetainedInspectionMarkdown =
+    /// Managed-section start marker used in human retained inspection summaries.
+    val startMarker: string
+    /// Managed-section end marker used in human retained inspection summaries.
+    val endMarker: string
+    /// Render a human-readable generated retained inspection section.
+    val renderSummary: summary: RetainedInspectionSummary -> string
+    /// Render deterministic machine-readable JSON for a retained inspection summary.
+    val renderJson: summary: RetainedInspectionSummary -> string
+    /// Update or insert exactly one generated retained inspection section while preserving manual text.
+    val updateManagedSection: existingText: string -> generatedMarkdown: string -> RetainedInspectionSummarySectionUpdate
 
 /// Public contract module exposed by this FS.GG.UI package.
 module GeneratedProductAssertions =

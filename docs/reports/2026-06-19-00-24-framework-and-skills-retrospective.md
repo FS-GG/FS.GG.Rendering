@@ -9,6 +9,7 @@
 **Feature 167 follow-up:** Input/render responsiveness is implemented on `167-input-render-responsiveness`; it adds SkiaViewer responsiveness records/summaries, queued key/pointer scheduling in the persistent viewer wrapper, Controls.Elmish timing/diagnostics-disabled helpers, AntShowcase responsiveness output, validation-lane summary parsing, surface baselines, and readiness evidence. Current post-merge package set is `0.1.29-preview.1`.
 **Feature 168 follow-up:** Skill parity and evidence guidance is implemented on `168-skill-parity-evidence`; it adds `Rendering.Harness.SkillParity`, `scripts/check-agent-skill-parity.fsx`, fixture-based negative-case checks, generated parity reports, Feature 168 readiness evidence, and updated skill guidance for package pins, readiness allowlisting, validation output isolation, visual/readiness caveats, responsiveness diagnostics, and post-merge package evidence. Repository parity currently reports zero high/critical findings and 35 visible warning-level wrapper metadata findings. Current post-merge package set is `0.1.30-preview.1`.
 **Feature 169 follow-up:** ✅ Runtime diagnostics taxonomy is implemented and merged from `169-runtime-diagnostics-taxonomy`; it adds `FS.GG.UI.Diagnostics`, typed adapter mappings for Controls, SkiaViewer, Controls.Elmish, Testing readiness helpers, validation-lane diagnostics wiring, AntShowcase diagnostics output, and committed readiness artifacts. ✅ Feature-specific tests, semantic checks, package-feed proof, and the optional diagnostics validation lane passed. ✅ Post-merge packages were bumped, packed, and cold-cache package-feed proved at `0.1.31-preview.1`. ⚠️ The full required validation-lane run remains `blocked` because the existing Controls lane recorded `no-progress-timeout`; this is preserved as non-green evidence in Feature 169 readiness logs.
+**Feature 170 follow-up:** ✅ Retained-render damage inspection is implemented on `170-retained-damage-inspection`. It adds retained/damage public records and helpers in Scene, a Controls retained inspection adapter over `RetainedRender.init`/`RetainedRender.step`, Testing validation/readiness/Markdown/JSON helpers, a focused `retained-inspection` lane, and AntShowcase structured retained evidence for `charts-statistical`. ✅ Focused Controls, Testing, harness, AntShowcase, package compatibility, surface, Debug build, Release build, and canonical `retained-inspection` lane evidence are green under `specs/170-retained-damage-inspection/readiness/`.
 **Primary work observed:** Feature 162, AntShowcase visual readiness implementation, plus earlier local/Codex/Claude skill parity work
 **Scope:** Problems encountered in the framework, validation workflow, and skills while implementing and validating the AntShowcase visual overhaul. This report focuses on improvements possible in library code, sample infrastructure, generated readiness tooling, and coding-agent skills.
 
@@ -24,7 +25,7 @@ The work also exposed several friction points:
 2. Per-feature readiness evidence is ignored by default. Feature 162 had to be explicitly allowlisted in `.gitignore` before the evidence package could be committed.
 3. Full-solution test execution is not robust enough as a single validation gate. `Controls.Tests` stopped producing output for several minutes and the full run had to be canceled.
 4. Visual-readiness behavior is mostly sample-owned. Screenshot matrix capture, completeness checks, contact-sheet generation, reviewer-defect gating, and summary assembly belong in reusable testing/tooling APIs rather than a sample app edge.
-5. Feature 165 adds structured visual/layout metadata for deterministic assertions. The first slice covers Scene inspection records, a Controls `Control.renderTree` adapter, Testing validation/readiness helpers, summaries, and explicit unsupported facts; retained damage metadata and broad sample adoption remain follow-up scope.
+5. Feature 165 adds structured visual/layout metadata for deterministic assertions. Feature 170 is now implementing the retained/damage follow-up: retained-node facts, dirty-area union metadata, damage locality validation, AntShowcase structured evidence adoption, and a maintained validation lane.
 6. Generated summary commands can overwrite richer hand-written readiness notes. The visual-readiness summarizer rewrote `validation-summary.md` to a minimal link-only summary after a detailed summary had been added.
 7. Skills helped with domain orientation, but they do not yet encode several recurring repository traps: local package-feed drift, readiness ignore rules, concurrent test output locks, post-merge package bump requirements, and how to preserve evidence honesty.
 8. A post-readiness interactive diagnostic found severe input-lag risk in the synchronous post-input render path. Pointer routing itself was fast, but a state-changing click can force hundreds of milliseconds of retained render/lowering/layout/text work on the same event path, causing later mouse events to queue.
@@ -112,6 +113,17 @@ The runtime diagnostics taxonomy follow-up is now implemented as Feature 169.
   no-progress timeout. The Feature 169 log keeps that lane non-green while
   showing build, library-tests, package-proof, rendering-harness,
   antshowcase-sample, and diagnostics as passed.
+
+### 1.4 Feature 170 progress update
+
+The retained-render damage inspection follow-up is now implemented as Feature 170.
+
+- ✅ `FS.GG.UI.Scene` now has additive retained/damage inspection records, stable status tokens, true dirty-region union helpers, retained artifact diagnostics, and deterministic normalization.
+- ✅ `FS.GG.UI.Controls.ControlInspection` now exposes retained inspection request/transition types and an adapter that runs `RetainedRender.init` and `RetainedRender.step` before projecting retained node and damage facts.
+- ✅ `FS.GG.UI.Testing` now has retained inspection rules, validation results, readiness aggregation, Markdown/JSON rendering, and managed-section helpers using `<!-- FS.GG RETAINED INSPECTION START -->` / `<!-- FS.GG RETAINED INSPECTION END -->`.
+- ✅ AntShowcase has structured retained inspection adoption evidence for the representative `charts-statistical` preferred-size light/dark shell assertion while preserving screenshot parity counts: preferred `38`, minimum `12`.
+- ✅ Rendering.Harness now lists an optional/on-demand `retained-inspection` lane with the maintained command `dotnet fsi scripts/run-validation-lanes.fsx --lane retained-inspection --out specs/170-retained-damage-inspection/readiness/lanes`.
+- ✅ Current readiness evidence includes focused Controls, Testing, Rendering.Harness, AntShowcase Feature170 and VisualReadiness checks, package compatibility, surface baselines, Debug/Release solution builds, and canonical lane output.
 
 ---
 
@@ -678,8 +690,8 @@ sample-specific rendering or image composition into the Testing package.
 **Priority:** High
 
 Status after Feature 165: implemented for the dependency-light Scene model, Controls render-tree
-adapter, Testing validators, summaries, and representative evidence. Remaining follow-up scope is
-retained-render inspection, damage/dirty-rect metadata, and broader sample/generated-product adoption.
+adapter, Testing validators, summaries, and representative evidence. Feature 170 is now implementing
+the retained-render, damage/dirty-rect, AntShowcase adoption, and validation-lane follow-up.
 
 Expose a stable test artifact with:
 
@@ -1677,10 +1689,10 @@ additive: screenshots, `LayoutEvidenceReport`, and `GeneratedLayoutValidation` r
 
 **Remaining follow-up**
 
-- [ ] Add retained-render inspection emission after `RetainedRender.step`.
-- [ ] Add damage inspection fields for dirty rect union area, repainted nodes, and shifted nodes.
-- [ ] Migrate at least one AntShowcase visual-shell assertion to structured inspection evidence.
-- [ ] Replace the missing `fake.sh` target dependency with a canonical repo validation command or restore the wrapper.
+- ✅ Add retained-render inspection emission after `RetainedRender.step`.
+- ✅ Add damage inspection fields for dirty rect union area, repainted nodes, and shifted nodes.
+- ✅ Migrate at least one AntShowcase visual-shell assertion to structured inspection evidence.
+- ✅ Replace the missing `fake.sh` target dependency with a canonical repo validation command or restore the wrapper.
 
 **Parallel opportunities**
 

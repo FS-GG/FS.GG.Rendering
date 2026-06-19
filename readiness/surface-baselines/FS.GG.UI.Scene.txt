@@ -18,6 +18,10 @@ FS.GG.UI.Scene.ColorFilter+Tags
 FS.GG.UI.Scene.ColorSpace
 FS.GG.UI.Scene.ColorSpace+Tags
 FS.GG.UI.Scene.Colors
+FS.GG.UI.Scene.DamageInspectionStatus
+FS.GG.UI.Scene.DamageInspectionStatus+Tags
+FS.GG.UI.Scene.DamageLocalityFinding
+FS.GG.UI.Scene.DamageRegionInspection
 FS.GG.UI.Scene.DegradationPolicy
 FS.GG.UI.Scene.DegradationPolicy+Tags
 FS.GG.UI.Scene.DiagnosticSeverity
@@ -34,6 +38,7 @@ FS.GG.UI.Scene.GlyphRunMetrics
 FS.GG.UI.Scene.ImageFilter
 FS.GG.UI.Scene.ImageFilter+DropShadow
 FS.GG.UI.Scene.ImageFilter+Tags
+FS.GG.UI.Scene.IntentionalDamageException
 FS.GG.UI.Scene.LayoutEvidence
 FS.GG.UI.Scene.LayoutEvidenceReport
 FS.GG.UI.Scene.LayoutGameplayBounds
@@ -102,6 +107,15 @@ FS.GG.UI.Scene.ResourceKind
 FS.GG.UI.Scene.ResourceKind+BinaryResource
 FS.GG.UI.Scene.ResourceKind+Tags
 FS.GG.UI.Scene.ResourceVerdict
+FS.GG.UI.Scene.RetainedFrameTransition
+FS.GG.UI.Scene.RetainedInspection
+FS.GG.UI.Scene.RetainedInspectionArtifact
+FS.GG.UI.Scene.RetainedInspectionStatus
+FS.GG.UI.Scene.RetainedInspectionStatus+Tags
+FS.GG.UI.Scene.RetainedInspectionSummary
+FS.GG.UI.Scene.RetainedNodeInspection
+FS.GG.UI.Scene.RetainedNodeStatus
+FS.GG.UI.Scene.RetainedNodeStatus+Tags
 FS.GG.UI.Scene.Scene
 FS.GG.UI.Scene.SceneCodec
 FS.GG.UI.Scene.SceneElementKind

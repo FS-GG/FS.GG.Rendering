@@ -27,6 +27,7 @@
     <Compile Include="VisualTemplateTests.fs" />
     <Compile Include="VisualEvidenceTests.fs" />
     <Compile Include="VisualReadinessTests.fs" />
+    <Compile Include="Feature170VisualInspectionAdoptionTests.fs" />
     <Compile Include="Feature167ResponsivenessFixtures.fs" />
     <Compile Include="Feature167ResponsivenessShapeTests.fs" />
     <Compile Include="Feature167KeyboardCompatibilityTests.fs" />

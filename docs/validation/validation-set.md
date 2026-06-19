@@ -48,6 +48,19 @@ and is reported separately so it cannot hide a required lane failure. The runner
 fails closed for failed, timed-out, no-progress-timeout, canceled, skipped,
 not-run, environment-limited, and infrastructure-error required lanes.
 
+The on-demand `retained-inspection` lane is the maintained entry point for retained-render
+inspection and damage-locality readiness:
+
+```sh
+dotnet fsi scripts/run-validation-lanes.fsx --lane retained-inspection --out specs/170-retained-damage-inspection/readiness/lanes
+```
+
+It runs the focused Feature170 Controls, Testing, Rendering.Harness, and AntShowcase checks
+sequentially and writes its own per-lane logs, result JSON, diagnostics, TRX files for the
+VSTest-backed slices, and direct Expecto output for AntShowcase. It is
+optional in the general validation catalog until maintainers deliberately promote it to the
+required lane set.
+
 Direct validation commands remain valid for focused debugging. If a direct
 command is intentionally used as a targeted substitute for an incomplete lane
 run, disclose that in the readiness evidence and keep the incomplete lane

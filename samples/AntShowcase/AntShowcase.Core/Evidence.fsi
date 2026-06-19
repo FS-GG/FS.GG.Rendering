@@ -60,6 +60,21 @@ type VisualReadinessSummary =
       ContactSheets: string list
       Limitations: string list }
 
+type RetainedInspectionEvidenceRecord =
+    { PageId: string
+      ThemeId: string
+      SizeRole: string
+      Width: int
+      Height: int
+      RetainedStatus: string
+      DirtyAreaPercentage: float
+      RepaintedNodeCount: int
+      ShiftedNodeCount: int
+      AffectedRegionIds: string list
+      ScreenshotPreferredTargetCount: int
+      ScreenshotMinimumTargetCount: int
+      ReviewerSummary: string }
+
 val datePickerReferenceOverlayEvidence: unit -> DatePickerOverlayEvidence
 val ofScreenshotResult: result: ScreenshotEvidenceResult -> path: string option -> ScreenshotSummary
 val degraded: reason: string -> ScreenshotSummary
@@ -75,6 +90,15 @@ val build:
 val goldenState: metrics: FrameMetrics list -> string
 val toRunJson: r: PageEvidenceRecord -> string
 val toSummaryMd: r: PageEvidenceRecord -> string
+val retainedInspectionEvidence:
+    pageId: string ->
+    themeId: string ->
+    sizeRole: string ->
+    width: int ->
+    height: int ->
+        RetainedInspectionEvidenceRecord
+val retainedInspectionToJson: evidence: RetainedInspectionEvidenceRecord -> string
+val retainedInspectionToMarkdown: evidence: RetainedInspectionEvidenceRecord -> string
 val visualSummaryToJson: summary: VisualReadinessSummary -> string
 val visualSummaryToMarkdown: summary: VisualReadinessSummary -> string
 val reviewerDefectTemplate: pageIds: string list -> themeIds: string list -> string

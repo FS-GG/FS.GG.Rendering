@@ -77,6 +77,9 @@ specs/168-skill-parity-evidence/readiness/**/nuget-cache/
 !specs/169-runtime-diagnostics-taxonomy/readiness/
 !specs/169-runtime-diagnostics-taxonomy/readiness/**
 specs/169-runtime-diagnostics-taxonomy/readiness/**/nuget-cache/
+!specs/170-retained-damage-inspection/readiness/
+!specs/170-retained-damage-inspection/readiness/**
+specs/170-retained-damage-inspection/readiness/**/nuget-cache/
 
 # macOS / Linux cruft
 .DS_Store

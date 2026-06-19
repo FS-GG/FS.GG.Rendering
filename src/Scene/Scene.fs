@@ -641,6 +641,136 @@ type VisualInspectionSummary =
       Caveats: string list
       Diagnostics: string list }
 
+[<RequireQualifiedAccess>]
+type RetainedInspectionStatus =
+    | Accepted
+    | Blocked
+    | ReviewRequired
+    | Unsupported
+    | EnvironmentLimited
+    | NotInspected
+    | NotRun
+
+[<RequireQualifiedAccess>]
+type RetainedNodeStatus =
+    | Retained
+    | Reused
+    | Repainted
+    | Shifted
+    | ShiftedAndRepainted
+    | Added
+    | Removed
+    | Unaffected
+    | Unsupported
+
+[<RequireQualifiedAccess>]
+type DamageInspectionStatus =
+    | Empty
+    | Localized
+    | Broad
+    | FullSurface
+    | Unsupported
+    | NotInspected
+
+type IntentionalDamageException =
+    { ExceptionId: string
+      RuleId: string
+      ScopeId: string
+      TransitionId: string
+      AffectedIds: string list
+      Reason: string
+      ExpiresWith: string option }
+
+type RetainedFrameTransition =
+    { TransitionId: string
+      PriorFrameId: string option
+      CurrentFrameId: string
+      InteractionId: string option
+      ExpectedAffectedRegionIds: string list
+      MaximumDirtyPercentage: float option
+      IntentionalExceptions: IntentionalDamageException list }
+
+type RetainedNodeInspection =
+    { NodeId: string
+      ParentId: string option
+      RetainedIdentity: string option
+      Kind: string
+      OwnerId: string option
+      Status: RetainedNodeStatus
+      PriorBounds: Rect option
+      CurrentBounds: Rect option
+      AffectedRegionIds: string list
+      Repainted: bool
+      Shifted: bool
+      UnsupportedFacts: VisualInspectionUnsupportedFact list
+      Diagnostics: string list }
+
+type DamageRegionInspection =
+    { TransitionId: string
+      DamageStatus: DamageInspectionStatus
+      FrameBounds: Rect
+      DirtyRectangles: Rect list
+      UnionBounds: Rect option
+      UnionArea: int
+      VisibleDirtyArea: int
+      DirtyPercentage: float
+      AffectedRegionIds: string list
+      AffectedNodeIds: string list
+      RepaintedNodeCount: int
+      ShiftedNodeCount: int
+      UnaffectedNodeCount: int
+      Cause: string option
+      Diagnostics: string list }
+
+type DamageLocalityFinding =
+    { FindingId: string
+      RuleId: string
+      Severity: VisualInspectionSeverity
+      TransitionId: string
+      AffectedNodeIds: string list
+      AffectedRegionIds: string list
+      Message: string
+      Expected: string
+      Actual: string
+      ExceptionId: string option
+      Diagnostics: string list }
+
+type RetainedInspectionArtifact =
+    { ArtifactId: string
+      RunId: string
+      Scope: VisualInspectionScope
+      OutputSize: Size
+      Presentation: string
+      Transition: RetainedFrameTransition option
+      FinalVisualArtifact: VisualInspectionArtifact option
+      RetainedNodes: RetainedNodeInspection list
+      Damage: DamageRegionInspection option
+      Findings: DamageLocalityFinding list
+      UnsupportedFacts: VisualInspectionUnsupportedFact list
+      RelatedVisualEvidence: string list
+      ReadinessStatus: RetainedInspectionStatus
+      Diagnostics: string list
+      GeneratedAtUtc: string }
+
+type RetainedInspectionSummary =
+    { RunId: string
+      OverallStatus: RetainedInspectionStatus
+      ArtifactCount: int
+      InspectedScopes: string list
+      NotInspectedScopes: string list
+      StatusCounts: (string * int) list
+      DamageStatusCounts: (string * int) list
+      NodeStatusCounts: (string * int) list
+      DirtyAreaSummaries: (string * float * string list) list
+      BlockingFindings: DamageLocalityFinding list
+      UnsupportedFacts: VisualInspectionUnsupportedFact list
+      AcceptedExceptions: string list
+      InvalidExceptions: string list
+      RelatedVisualEvidence: string list
+      CommandEvidence: (string * string) list
+      Caveats: string list
+      Diagnostics: string list }
+
 module Colors =
     let rgba red green blue alpha =
         { Red = red
@@ -1739,3 +1869,209 @@ module VisualInspection =
             ClipFacts = artifact.ClipFacts |> List.sortBy _.ClipId
             Findings = artifact.Findings |> List.sortBy _.FindingId
             UnsupportedFacts = artifact.UnsupportedFacts |> List.sortBy (fun fact -> fact.Fact, defaultArg fact.OwnerId "") }
+
+module RetainedInspection =
+    let private cleanToken (value: string) =
+        if String.IsNullOrWhiteSpace value then
+            "unknown"
+        else
+            value.Trim().ToLowerInvariant().Replace(" ", "-").Replace("_", "-")
+
+    let statusText status =
+        match status with
+        | RetainedInspectionStatus.Accepted -> "accepted"
+        | RetainedInspectionStatus.Blocked -> "blocked"
+        | RetainedInspectionStatus.ReviewRequired -> "review-required"
+        | RetainedInspectionStatus.Unsupported -> "unsupported"
+        | RetainedInspectionStatus.EnvironmentLimited -> "environment-limited"
+        | RetainedInspectionStatus.NotInspected -> "not-inspected"
+        | RetainedInspectionStatus.NotRun -> "not-run"
+
+    let nodeStatusText status =
+        match status with
+        | RetainedNodeStatus.Retained -> "retained"
+        | RetainedNodeStatus.Reused -> "reused"
+        | RetainedNodeStatus.Repainted -> "repainted"
+        | RetainedNodeStatus.Shifted -> "shifted"
+        | RetainedNodeStatus.ShiftedAndRepainted -> "shifted-and-repainted"
+        | RetainedNodeStatus.Added -> "added"
+        | RetainedNodeStatus.Removed -> "removed"
+        | RetainedNodeStatus.Unaffected -> "unaffected"
+        | RetainedNodeStatus.Unsupported -> "unsupported"
+
+    let damageStatusText status =
+        match status with
+        | DamageInspectionStatus.Empty -> "empty"
+        | DamageInspectionStatus.Localized -> "localized"
+        | DamageInspectionStatus.Broad -> "broad"
+        | DamageInspectionStatus.FullSurface -> "full-surface"
+        | DamageInspectionStatus.Unsupported -> "unsupported"
+        | DamageInspectionStatus.NotInspected -> "not-inspected"
+
+    let unsupportedFact fact ownerId required reason diagnostic environmentLimited =
+        VisualInspection.unsupportedFact fact ownerId required reason diagnostic environmentLimited
+
+    let stableFindingId ruleId transitionId affectedIds =
+        let ids =
+            affectedIds
+            |> List.filter (String.IsNullOrWhiteSpace >> not)
+            |> List.map cleanToken
+            |> List.sort
+
+        let prefix = cleanToken ruleId + ":" + cleanToken transitionId
+        match ids with
+        | [] -> prefix
+        | _ -> prefix + ":" + String.concat "+" ids
+
+    let finding ruleId severity transitionId affectedNodeIds affectedRegionIds message expected actual =
+        { FindingId = stableFindingId ruleId transitionId (affectedNodeIds @ affectedRegionIds)
+          RuleId = ruleId
+          Severity = severity
+          TransitionId = transitionId
+          AffectedNodeIds = affectedNodeIds |> List.sort
+          AffectedRegionIds = affectedRegionIds |> List.sort
+          Message = message
+          Expected = expected
+          Actual = actual
+          ExceptionId = None
+          Diagnostics = [] }
+
+    let private clipRect (frame: Rect) (rect: Rect) =
+        let x1 = max frame.X rect.X
+        let y1 = max frame.Y rect.Y
+        let x2 = min (frame.X + frame.Width) (rect.X + rect.Width)
+        let y2 = min (frame.Y + frame.Height) (rect.Y + rect.Height)
+
+        if x2 <= x1 || y2 <= y1 then
+            None
+        else
+            Some({ X = x1; Y = y1; Width = x2 - x1; Height = y2 - y1 }: Rect)
+
+    let private clipped frame rects =
+        rects
+        |> List.choose (clipRect frame)
+        |> List.distinct
+
+    let dirtyUnionBounds frameBounds dirtyRectangles =
+        match clipped frameBounds dirtyRectangles with
+        | [] -> None
+        | rects ->
+            let minX = rects |> List.map _.X |> List.min
+            let minY = rects |> List.map _.Y |> List.min
+            let maxX = rects |> List.map (fun r -> r.X + r.Width) |> List.max
+            let maxY = rects |> List.map (fun r -> r.Y + r.Height) |> List.max
+            Some({ X = minX; Y = minY; Width = maxX - minX; Height = maxY - minY }: Rect)
+
+    let dirtyUnionArea frameBounds dirtyRectangles =
+        let rects = clipped frameBounds dirtyRectangles
+
+        match rects with
+        | [] -> 0
+        | _ ->
+            let xs =
+                rects
+                |> List.collect (fun r -> [ r.X; r.X + r.Width ])
+                |> List.distinct
+                |> List.sort
+
+            let ys =
+                rects
+                |> List.collect (fun r -> [ r.Y; r.Y + r.Height ])
+                |> List.distinct
+                |> List.sort
+
+            let covered x1 x2 y1 y2 =
+                rects
+                |> List.exists (fun r ->
+                    x1 >= r.X
+                    && x2 <= r.X + r.Width
+                    && y1 >= r.Y
+                    && y2 <= r.Y + r.Height)
+
+            let mutable area = 0.0
+
+            for x1, x2 in xs |> List.pairwise do
+                for y1, y2 in ys |> List.pairwise do
+                    if x2 > x1 && y2 > y1 && covered x1 x2 y1 y2 then
+                        area <- area + ((x2 - x1) * (y2 - y1))
+
+            area |> int
+
+    let damageRegion transitionId frameBounds dirtyRectangles expectedAffectedRegionIds affectedNodeIds repaintedNodeCount shiftedNodeCount unaffectedNodeCount cause maximumDirtyPercentage =
+        let clippedRectangles = clipped frameBounds dirtyRectangles
+        let area = dirtyUnionArea frameBounds clippedRectangles
+        let frameArea = max 0.0 (frameBounds.Width * frameBounds.Height)
+        let dirtyPercentage =
+            if frameArea <= 0.0 then
+                0.0
+            else
+                float area / frameArea * 100.0
+
+        let status =
+            if clippedRectangles.IsEmpty || area = 0 then
+                DamageInspectionStatus.Empty
+            elif area >= int frameArea && frameArea > 0.0 then
+                DamageInspectionStatus.FullSurface
+            else
+                match maximumDirtyPercentage with
+                | Some limit when dirtyPercentage > limit -> DamageInspectionStatus.Broad
+                | _ -> DamageInspectionStatus.Localized
+
+        { TransitionId = transitionId
+          DamageStatus = status
+          FrameBounds = frameBounds
+          DirtyRectangles = clippedRectangles |> List.sortBy (fun r -> r.Y, r.X, r.Width, r.Height)
+          UnionBounds = dirtyUnionBounds frameBounds clippedRectangles
+          UnionArea = area
+          VisibleDirtyArea = area
+          DirtyPercentage = dirtyPercentage
+          AffectedRegionIds = expectedAffectedRegionIds |> List.distinct |> List.sort
+          AffectedNodeIds = affectedNodeIds |> List.distinct |> List.sort
+          RepaintedNodeCount = repaintedNodeCount
+          ShiftedNodeCount = shiftedNodeCount
+          UnaffectedNodeCount = unaffectedNodeCount
+          Cause = cause
+          Diagnostics = [] }
+
+    let private duplicateIds ids =
+        ids
+        |> List.countBy id
+        |> List.choose (fun (id, count) -> if count > 1 then Some id else None)
+
+    let artifactDiagnostics (artifact: RetainedInspectionArtifact) =
+        let nodeIds = artifact.RetainedNodes |> List.map _.NodeId
+        let findingIds = artifact.Findings |> List.map _.FindingId
+
+        [ for id in duplicateIds nodeIds do
+              $"duplicate retained inspection node id: {id}"
+          for id in duplicateIds findingIds do
+              $"duplicate retained inspection finding id: {id}"
+          for node in artifact.RetainedNodes do
+              match node.Status, node.PriorBounds, node.CurrentBounds with
+              | RetainedNodeStatus.Shifted, None, _
+              | RetainedNodeStatus.Shifted, _, None
+              | RetainedNodeStatus.ShiftedAndRepainted, None, _
+              | RetainedNodeStatus.ShiftedAndRepainted, _, None ->
+                  $"shifted retained node {node.NodeId} is missing prior or current bounds"
+              | _ -> ()
+              for fact in node.UnsupportedFacts do
+                  if String.IsNullOrWhiteSpace fact.Fact || String.IsNullOrWhiteSpace fact.Reason then
+                      $"retained node {node.NodeId} has unsupported fact missing fact name or reason"
+          for fact in artifact.UnsupportedFacts do
+              if String.IsNullOrWhiteSpace fact.Fact || String.IsNullOrWhiteSpace fact.Reason then
+                  "retained inspection unsupported fact is missing fact name or reason" ]
+
+    let normalizeArtifact (artifact: RetainedInspectionArtifact) =
+        { artifact with
+            RetainedNodes = artifact.RetainedNodes |> List.sortBy _.NodeId
+            Damage =
+                artifact.Damage
+                |> Option.map (fun damage ->
+                    { damage with
+                        DirtyRectangles = damage.DirtyRectangles |> List.sortBy (fun r -> r.Y, r.X, r.Width, r.Height)
+                        AffectedNodeIds = damage.AffectedNodeIds |> List.distinct |> List.sort
+                        AffectedRegionIds = damage.AffectedRegionIds |> List.distinct |> List.sort })
+            Findings = artifact.Findings |> List.sortBy _.FindingId
+            UnsupportedFacts = artifact.UnsupportedFacts |> List.sortBy (fun fact -> fact.Fact, defaultArg fact.OwnerId "")
+            RelatedVisualEvidence = artifact.RelatedVisualEvidence |> List.distinct |> List.sort
+            Diagnostics = artifact.Diagnostics |> List.distinct |> List.sort }

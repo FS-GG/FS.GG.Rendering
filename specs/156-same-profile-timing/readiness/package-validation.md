@@ -8,6 +8,7 @@ Status: `accepted-with-recorded-limitations`
 - `dotnet test tests/Testing.Tests/Testing.Tests.fsproj --filter Feature156 --no-build`: passed, 3 tests.
 - `dotnet test tests/Package.Tests/Package.Tests.fsproj --filter Feature156 --no-build`: VSTest reported no matching test cases for this Expecto module filter; package coverage was run without the VSTest filter.
 - `dotnet test tests/Package.Tests/Package.Tests.fsproj --no-build`: passed, 80 tests.
+- `dotnet run --project tests/Rendering.Harness/Rendering.Harness.fsproj --no-build -- compositor-readiness --feature 156 --out specs/156-same-profile-timing/readiness`: passed; assembled readiness package evidence.
 - `dotnet fsi scripts/refresh-surface-baselines.fsx`: passed; refreshed `FS.GG.UI.SkiaViewer` with 267 public types and `FS.GG.UI.Testing` with 79 public types.
 - `dotnet pack FS.GG.Rendering.slnx --no-build -c Debug -o /tmp/fs-gg-rendering-pack-feature156`: passed; produced local `0.1.18-preview.1` packages for packable projects.
 

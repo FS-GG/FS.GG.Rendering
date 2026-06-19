@@ -509,6 +509,29 @@ module ValidationLanes =
           laneDefinition
               repositoryRoot
               runRoot
+              "retained-inspection"
+              "Retained Inspection"
+              "On-demand retained-render inspection, damage locality, harness registration, and AntShowcase adoption validation."
+              Optional
+              { FileName = "bash"
+                Arguments =
+                    [ "-lc"
+                      String.concat
+                          " && "
+                          [ "dotnet test tests/Controls.Tests/Controls.Tests.fsproj -c Release --no-restore --filter Feature170 --logger \"trx;LogFileName=feature170-controls.trx\" --results-directory \"" + Path.Combine(runRoot, "retained-inspection", "TestResults", "controls") + "\""
+                            "dotnet test tests/Testing.Tests/Testing.Tests.fsproj -c Release --no-restore --filter Feature170 --logger \"trx;LogFileName=feature170-testing.trx\" --results-directory \"" + Path.Combine(runRoot, "retained-inspection", "TestResults", "testing") + "\""
+                            "dotnet test tests/Rendering.Harness.Tests/Rendering.Harness.Tests.fsproj -c Release --no-restore --filter Feature170 --logger \"trx;LogFileName=feature170-harness.trx\" --results-directory \"" + Path.Combine(runRoot, "retained-inspection", "TestResults", "harness") + "\""
+                            "dotnet run --project samples/AntShowcase/AntShowcase.Tests/AntShowcase.Tests.fsproj -c Release --no-restore -- --filter-test-list Feature170 --summary" ] ] }
+              5.0
+              (Some 2.0)
+              60.0
+              (Some "dotnet-test")
+              (Some "retained-inspection")
+              false
+              (Some "aggregate-solution")
+          laneDefinition
+              repositoryRoot
+              runRoot
               "aggregate-solution"
               "Aggregate Solution"
               "Full solution validation recorded separately from focused lanes."

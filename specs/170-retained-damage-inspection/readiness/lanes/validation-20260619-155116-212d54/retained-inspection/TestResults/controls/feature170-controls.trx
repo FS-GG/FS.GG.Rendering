@@ -1,0 +1,44 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="4c899b7f-450e-4e41-8b78-d3c645a1e083" name="@ee01623d796c 2026-06-19 17:51:38" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-06-19T17:51:38.9265936+02:00" queuing="2026-06-19T17:51:38.9265937+02:00" start="2026-06-19T17:51:20.3380739+02:00" finish="2026-06-19T17:51:38.9323323+02:00" />
+  <TestSettings name="default" id="890692d5-e8ea-482e-901e-42cb4785d342">
+    <Deployment runDeploymentRoot="_ee01623d796c_2026-06-19_17_51_38" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="0688af6f-177c-4775-8fd7-1a9a1a414266" testId="975ed4d3-2de9-f968-6bd6-5bbe6ecf1bc0" testName="Feature170 damage region union.dirty region area uses clipped true union not summed overlap" computerName="ee01623d796c" duration="00:00:00.0140000" startTime="2026-06-19T17:51:38.5627114+02:00" endTime="2026-06-19T17:51:38.6166726+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="0688af6f-177c-4775-8fd7-1a9a1a414266" />
+    <UnitTestResult executionId="9b01aa3d-a1a8-4ea9-aeac-c9e86316c541" testId="36192fa2-c122-77bc-9a1b-bc4d55bcfee6" testName="Feature170 retained inspection.retained transition classifies reused repainted shifted added and removed nodes" computerName="ee01623d796c" duration="00:00:00.2250000" startTime="2026-06-19T17:51:38.5627192+02:00" endTime="2026-06-19T17:51:38.8223786+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="9b01aa3d-a1a8-4ea9-aeac-c9e86316c541" />
+    <UnitTestResult executionId="cf713900-ab73-48e8-a374-29ec94886558" testId="fb7f083a-15ba-3f31-2fa5-b701705022e4" testName="Feature170 retained inspection.first retained frame reports not-inspected damage with a first-frame diagnostic" computerName="ee01623d796c" duration="00:00:00.1870000" startTime="2026-06-19T17:51:38.5627114+02:00" endTime="2026-06-19T17:51:38.7839928+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="cf713900-ab73-48e8-a374-29ec94886558" />
+    <UnitTestResult executionId="bf4d5ba0-9231-4e67-b787-fcf9fff54827" testId="7d3209e8-2795-a9cc-b687-3aa6712f184f" testName="Feature170 damage region union.empty broad and full-surface damage statuses are explicit" computerName="ee01623d796c" duration="00:00:00.0140000" startTime="2026-06-19T17:51:38.5627133+02:00" endTime="2026-06-19T17:51:38.6166685+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="bf4d5ba0-9231-4e67-b787-fcf9fff54827" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="Feature170 damage region union.empty broad and full-surface damage statuses are explicit" storage="/home/developer/projects/fs.gg.rendering/tests/controls.tests/bin/release/net10.0/controls.tests.dll" id="7d3209e8-2795-a9cc-b687-3aa6712f184f">
+      <Execution id="bf4d5ba0-9231-4e67-b787-fcf9fff54827" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering/tests/Controls.Tests/bin/Release/net10.0/Controls.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="Feature170 damage region union" name="empty broad and full-surface damage statuses are explicit" />
+    </UnitTest>
+    <UnitTest name="Feature170 retained inspection.first retained frame reports not-inspected damage with a first-frame diagnostic" storage="/home/developer/projects/fs.gg.rendering/tests/controls.tests/bin/release/net10.0/controls.tests.dll" id="fb7f083a-15ba-3f31-2fa5-b701705022e4">
+      <Execution id="cf713900-ab73-48e8-a374-29ec94886558" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering/tests/Controls.Tests/bin/Release/net10.0/Controls.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="Feature170 retained inspection" name="first retained frame reports not-inspected damage with a first-frame diagnostic" />
+    </UnitTest>
+    <UnitTest name="Feature170 damage region union.dirty region area uses clipped true union not summed overlap" storage="/home/developer/projects/fs.gg.rendering/tests/controls.tests/bin/release/net10.0/controls.tests.dll" id="975ed4d3-2de9-f968-6bd6-5bbe6ecf1bc0">
+      <Execution id="0688af6f-177c-4775-8fd7-1a9a1a414266" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering/tests/Controls.Tests/bin/Release/net10.0/Controls.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="Feature170 damage region union" name="dirty region area uses clipped true union not summed overlap" />
+    </UnitTest>
+    <UnitTest name="Feature170 retained inspection.retained transition classifies reused repainted shifted added and removed nodes" storage="/home/developer/projects/fs.gg.rendering/tests/controls.tests/bin/release/net10.0/controls.tests.dll" id="36192fa2-c122-77bc-9a1b-bc4d55bcfee6">
+      <Execution id="9b01aa3d-a1a8-4ea9-aeac-c9e86316c541" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering/tests/Controls.Tests/bin/Release/net10.0/Controls.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="Feature170 retained inspection" name="retained transition classifies reused repainted shifted added and removed nodes" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="975ed4d3-2de9-f968-6bd6-5bbe6ecf1bc0" executionId="0688af6f-177c-4775-8fd7-1a9a1a414266" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="36192fa2-c122-77bc-9a1b-bc4d55bcfee6" executionId="9b01aa3d-a1a8-4ea9-aeac-c9e86316c541" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="fb7f083a-15ba-3f31-2fa5-b701705022e4" executionId="cf713900-ab73-48e8-a374-29ec94886558" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="7d3209e8-2795-a9cc-b687-3aa6712f184f" executionId="bf4d5ba0-9231-4e67-b787-fcf9fff54827" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Completed">
+    <Counters total="4" executed="4" passed="4" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+  </ResultSummary>
+</TestRun>

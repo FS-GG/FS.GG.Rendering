@@ -76,6 +76,7 @@
     <Compile Include="Feature168ParityReportTests.fs" />
     <Compile Include="Feature169ValidationDiagnosticsTests.fs" />
     <Compile Include="Feature169DiagnosticArtifactTests.fs" />
+    <Compile Include="Feature170RetainedInspectionLaneTests.fs" />
     <Compile Include="Feature151RenderAnywhereRegressionTests.fs" />
     <Compile Include="Feature151TextShapingRegressionTests.fs" />
     <Compile Include="Feature151CompositorReadinessRegressionTests.fs" />
