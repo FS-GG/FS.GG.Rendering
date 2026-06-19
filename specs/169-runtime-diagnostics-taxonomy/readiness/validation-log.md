@@ -44,3 +44,13 @@ The summary is committed under `specs/169-runtime-diagnostics-taxonomy/readiness
 ## Hooks
 
 - `.specify/extensions.yml` only defines an optional post-implementation git commit hook. The hook was not run separately because the requested workflow commits the completed feature explicitly.
+
+## Post-Merge Package Bump
+
+- Squash-merged Feature 169 into `main`, then bumped packable `FS.GG.UI.*` projects and AntShowcase package pins from `0.1.30-preview.1` to `0.1.31-preview.1`.
+- `dotnet restore FS.GG.Rendering.slnx`: passed.
+- `dotnet build FS.GG.Rendering.slnx -c Release --no-restore`: passed with 0 warnings and 0 errors.
+- `dotnet pack FS.GG.Rendering.slnx -c Release --no-build -o ~/.local/share/nuget-local`: passed and packed the `0.1.31-preview.1` package set, including `FS.GG.UI.Diagnostics`.
+- `dotnet pack src/Diagnostics/Diagnostics.fsproj -c Release --no-build -o ~/.local/share/nuget-local`: exit 0.
+- `dotnet fsi scripts/refresh-local-feed-and-samples.fsx --sample samples/AntShowcase --mode proof --cold --clear-global-cache --isolated-cache specs/169-runtime-diagnostics-taxonomy/readiness/package-feed-post-merge/nuget-cache --out specs/169-runtime-diagnostics-taxonomy/readiness/package-feed-post-merge`: passed.
+- Post-merge source proof status: `passed`; global package cache cleared: `true`; all 18 AntShowcase `FS.GG.UI.*` pins were current at `0.1.31-preview.1`.

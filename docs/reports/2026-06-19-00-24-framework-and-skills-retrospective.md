@@ -8,7 +8,7 @@
 **Feature 166 follow-up:** Validation lane runner hardening is implemented on `166-validation-lane-runner`; it adds stable required/optional lanes, request preflight, run-id evidence isolation, structured summaries, no-progress classification, and schedule-safety checks. Current required-lane evidence intentionally exposes `Controls.Tests` as `no-progress-timeout`.
 **Feature 167 follow-up:** Input/render responsiveness is implemented on `167-input-render-responsiveness`; it adds SkiaViewer responsiveness records/summaries, queued key/pointer scheduling in the persistent viewer wrapper, Controls.Elmish timing/diagnostics-disabled helpers, AntShowcase responsiveness output, validation-lane summary parsing, surface baselines, and readiness evidence. Current post-merge package set is `0.1.29-preview.1`.
 **Feature 168 follow-up:** Skill parity and evidence guidance is implemented on `168-skill-parity-evidence`; it adds `Rendering.Harness.SkillParity`, `scripts/check-agent-skill-parity.fsx`, fixture-based negative-case checks, generated parity reports, Feature 168 readiness evidence, and updated skill guidance for package pins, readiness allowlisting, validation output isolation, visual/readiness caveats, responsiveness diagnostics, and post-merge package evidence. Repository parity currently reports zero high/critical findings and 35 visible warning-level wrapper metadata findings. Current post-merge package set is `0.1.30-preview.1`.
-**Feature 169 follow-up:** ✅ Runtime diagnostics taxonomy is implemented on `169-runtime-diagnostics-taxonomy`; it adds `FS.GG.UI.Diagnostics`, typed adapter mappings for Controls, SkiaViewer, Controls.Elmish, Testing readiness helpers, validation-lane diagnostics wiring, AntShowcase diagnostics output, and committed readiness artifacts. ✅ Feature-specific tests, semantic checks, package-feed proof, and the optional diagnostics validation lane passed. ⚠️ The full required validation-lane run remains `blocked` because the existing Controls lane recorded `no-progress-timeout`; this is preserved as non-green evidence in Feature 169 readiness logs. Current implementation package set before merge is `0.1.30-preview.1`.
+**Feature 169 follow-up:** ✅ Runtime diagnostics taxonomy is implemented and merged from `169-runtime-diagnostics-taxonomy`; it adds `FS.GG.UI.Diagnostics`, typed adapter mappings for Controls, SkiaViewer, Controls.Elmish, Testing readiness helpers, validation-lane diagnostics wiring, AntShowcase diagnostics output, and committed readiness artifacts. ✅ Feature-specific tests, semantic checks, package-feed proof, and the optional diagnostics validation lane passed. ✅ Post-merge packages were bumped, packed, and cold-cache package-feed proved at `0.1.31-preview.1`. ⚠️ The full required validation-lane run remains `blocked` because the existing Controls lane recorded `no-progress-timeout`; this is preserved as non-green evidence in Feature 169 readiness logs.
 **Primary work observed:** Feature 162, AntShowcase visual readiness implementation, plus earlier local/Codex/Claude skill parity work
 **Scope:** Problems encountered in the framework, validation workflow, and skills while implementing and validating the AntShowcase visual overhaul. This report focuses on improvements possible in library code, sample infrastructure, generated readiness tooling, and coding-agent skills.
 
@@ -105,6 +105,9 @@ The runtime diagnostics taxonomy follow-up is now implemented as Feature 169.
 - ✅ Feature-specific validation passed: Diagnostics 14 tests, Controls 2,
   SkiaViewer 2, Elmish 1, Testing 2, Rendering.Harness 3, AntShowcase 2, and
   the optional diagnostics validation lane 14.
+- ✅ Post-merge package bump validation passed at `0.1.31-preview.1`: Release
+  build passed, all 14 `FS.GG.UI.*` packages packed to the local feed, and
+  AntShowcase restored from the local feed with a cold isolated cache.
 - ⚠️ The required validation-lane suite is still blocked by the known Controls
   no-progress timeout. The Feature 169 log keeps that lane non-green while
   showing build, library-tests, package-proof, rendering-harness,
@@ -1945,6 +1948,8 @@ Make runtime diagnostics structured and filterable so expected environment/backe
 - ✅ Readiness status depends on blockers, not on all informational diagnostics.
 - ✅ Package-feed proof and focused Feature 169 tests are recorded under
   `specs/169-runtime-diagnostics-taxonomy/readiness/`.
+- ✅ Post-merge package-feed proof is recorded under
+  `specs/169-runtime-diagnostics-taxonomy/readiness/package-feed-post-merge/`.
 - ⚠️ The required validation-lane suite remains blocked by the existing Controls
   no-progress timeout; Feature 169 diagnostics-specific checks passed.
 
