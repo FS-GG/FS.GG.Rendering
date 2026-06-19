@@ -13,6 +13,7 @@
     <Compile Include="VisualReadiness.fsi" />
     <Compile Include="VisualReadiness.fs" />
     <Compile Include="Responsiveness.fs" />
+    <Compile Include="RenderLagProbe.fs" />
     <Compile Include="Diagnostics.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

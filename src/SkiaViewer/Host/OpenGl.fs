@@ -24,6 +24,22 @@ open FS.GG.UI.SkiaViewer
 // (richer than the Scene package's) take precedence over the Scene-vocabulary names brought in above.
 open FS.GG.UI.SkiaViewer.Host
 
+module private RenderLagTrace =
+    let private enabled =
+        String.Equals(Environment.GetEnvironmentVariable("FS_GG_RENDER_LAG_TRACE"), "1", StringComparison.Ordinal)
+
+    let emit eventName fields =
+        if enabled then
+            let fieldsText =
+                fields
+                |> List.map (fun (name, value) -> $"{name}={value}")
+                |> String.concat " "
+
+            let suffix = if String.IsNullOrWhiteSpace fieldsText then "" else " " + fieldsText
+            let ts = DateTimeOffset.UtcNow.ToString("O", Globalization.CultureInfo.InvariantCulture)
+            let ticks = System.Diagnostics.Stopwatch.GetTimestamp()
+            Console.Error.WriteLine($"FS_GG_RENDER_LAG_TRACE ts={ts} ticks={ticks} event={eventName}{suffix}")
+
 module GlResources =
     type ResourceCategory =
         | GlContext
@@ -1204,10 +1220,17 @@ module GlHost =
                 match renderScene with
                 | Some render ->
                     lastScene <- Some scene
+                    RenderLagTrace.emit "gl-render-start" []
 
                     match render scene with
                     | Ok snapshot ->
                         lastFrame <- Some snapshot
+                        let paint, present = lastPresentTiming()
+                        RenderLagTrace.emit
+                            "gl-render-success"
+                            [ "paintMs", paint.TotalMilliseconds.ToString("0.###", Globalization.CultureInfo.InvariantCulture)
+                              "presentMs", present.TotalMilliseconds.ToString("0.###", Globalization.CultureInfo.InvariantCulture)
+                              "readbackBytes", string snapshot.Pixels.Length ]
 
                         // Direct present yields no readback pixels; flush any deferred captures
                         // by rendering the scene on demand through the offscreen routine (FR-004).
@@ -1223,6 +1246,7 @@ module GlHost =
                                     Result.Error diagnostic
                             | _ -> Ok()
                     | Result.Error diagnostic ->
+                        RenderLagTrace.emit "gl-render-failed" [ "message", diagnostic.Message.Replace(" ", "_") ]
                         dispatchViewerEvent program dispatch (DiagnosticReported diagnostic)
                         Result.Error diagnostic
                 | None ->

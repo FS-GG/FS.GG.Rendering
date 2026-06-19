@@ -8,6 +8,22 @@ open FS.GG.UI.SkiaViewer
 open Elmish
 open FS.GG.UI.DesignSystem
 
+module private RenderLagTrace =
+    let private enabled =
+        String.Equals(Environment.GetEnvironmentVariable("FS_GG_RENDER_LAG_TRACE"), "1", StringComparison.Ordinal)
+
+    let emit eventName fields =
+        if enabled then
+            let fieldsText =
+                fields
+                |> List.map (fun (name, value) -> $"{name}={value}")
+                |> String.concat " "
+
+            let suffix = if String.IsNullOrWhiteSpace fieldsText then "" else " " + fieldsText
+            let ts = DateTimeOffset.UtcNow.ToString("O", Globalization.CultureInfo.InvariantCulture)
+            let ticks = System.Diagnostics.Stopwatch.GetTimestamp()
+            Console.Error.WriteLine($"FS_GG_RENDER_LAG_TRACE ts={ts} ticks={ticks} event={eventName}{suffix}")
+
 type AdapterDiagnostic =
     { Code: string
       Message: string
@@ -1137,25 +1153,51 @@ module ControlsElmish =
         let viewFor (size: Size) (model: 'model) : Control<'msg> =
             match lastView.Value with
             | Some(cachedSize, cachedModel, cachedView) when cachedSize = size && obj.ReferenceEquals(model, cachedModel) ->
+                RenderLagTrace.emit "elmish-product-view-cache-hit" []
                 cachedView
             | _ ->
+                let sw = System.Diagnostics.Stopwatch.StartNew()
+                RenderLagTrace.emit "elmish-product-view-start" []
                 let v = host.View size model
+                sw.Stop()
+                RenderLagTrace.emit
+                    "elmish-product-view-end"
+                    [ "durationMs", sw.Elapsed.TotalMilliseconds.ToString("0.###", Globalization.CultureInfo.InvariantCulture) ]
                 lastView.Value <- Some(size, model, v)
                 v
 
         let renderRetained (size: Size) (model: 'model) : Scene =
             match retained.Value with
             | None ->
+                let totalSw = System.Diagnostics.Stopwatch.StartNew()
+                RenderLagTrace.emit "elmish-render-retained-start" [ "path", "init" ]
                 let runtimeModel = assembleRuntimeModel None
                 // First frame: no prior stamped tree to narrow against → full-tree oracle (FR-006).
+                let stampSw = System.Diagnostics.Stopwatch.StartNew()
                 let stamp = ControlRuntime.runtimeStampFor None runtimeModel (viewFor size model)
+                stampSw.Stop()
+                RenderLagTrace.emit
+                    "elmish-runtime-stamp-end"
+                    [ "path", "init"
+                      "durationMs", stampSw.Elapsed.TotalMilliseconds.ToString("0.###", Globalization.CultureInfo.InvariantCulture) ]
                 lastRuntimeModel.Value <- Some runtimeModel
+                let initSw = System.Diagnostics.Stopwatch.StartNew()
                 let r0 = RetainedRender.init host.Theme size stamp.Stamped
+                initSw.Stop()
+                RenderLagTrace.emit
+                    "elmish-retained-init-end"
+                    [ "durationMs", initSw.Elapsed.TotalMilliseconds.ToString("0.###", Globalization.CultureInfo.InvariantCulture) ]
                 surface r0.Diagnostics
                 retained.Value <- Some r0.Retained
                 lastRender.Value <- Some r0.Render
+                totalSw.Stop()
+                RenderLagTrace.emit
+                    "elmish-render-retained-end"
+                    [ "path", "init"
+                      "durationMs", totalSw.Elapsed.TotalMilliseconds.ToString("0.###", Globalization.CultureInfo.InvariantCulture) ]
                 r0.Render.Scene
             | Some prev ->
+                let totalSw = System.Diagnostics.Stopwatch.StartNew()
                 let runtimeModel = assembleRuntimeModel (Some prev)
                 // Feature 112 (FR-001/FR-002): on a model-unchanged repaint (the view cache would hit),
                 // narrow the runtime-state stamp to only the changed identities via the TARGETED stamp,
@@ -1166,6 +1208,10 @@ module ControlsElmish =
                     | Some(cachedSize, cachedModel, _) -> cachedSize = size && obj.ReferenceEquals(model, cachedModel)
                     | None -> false
 
+                RenderLagTrace.emit
+                    "elmish-render-retained-start"
+                    [ "path", "step"
+                      "modelUnchanged", string modelUnchanged ]
                 let fresh = viewFor size model
 
                 let prior =
@@ -1174,13 +1220,34 @@ module ControlsElmish =
                     else
                         None
 
+                let stampSw = System.Diagnostics.Stopwatch.StartNew()
                 let stamp = ControlRuntime.runtimeStampFor prior runtimeModel fresh
+                stampSw.Stop()
+                RenderLagTrace.emit
+                    "elmish-runtime-stamp-end"
+                    [ "path", "step"
+                      "durationMs", stampSw.Elapsed.TotalMilliseconds.ToString("0.###", Globalization.CultureInfo.InvariantCulture) ]
                 lastRuntimeModel.Value <- Some runtimeModel
+                let stepSw = System.Diagnostics.Stopwatch.StartNew()
                 let s = RetainedRender.step host.Theme size prev stamp.Stamped
+                stepSw.Stop()
+                RenderLagTrace.emit
+                    "elmish-retained-step-end"
+                    [ "durationMs", stepSw.Elapsed.TotalMilliseconds.ToString("0.###", Globalization.CultureInfo.InvariantCulture)
+                      "remeasured", string s.WorkReduction.RemeasuredNodeCount
+                      "repainted", string s.WorkReduction.RepaintedNodeCount
+                      "dirtyRects", string s.WorkReduction.DirtyRectCount
+                      "replayHits", string s.WorkReduction.ReplayHits
+                      "replayMisses", string s.WorkReduction.ReplayMisses ]
                 surface s.Diagnostics
                 lastWorkReduction.Value <- Some s.WorkReduction
                 retained.Value <- Some s.Retained
                 lastRender.Value <- Some s.Render
+                totalSw.Stop()
+                RenderLagTrace.emit
+                    "elmish-render-retained-end"
+                    [ "path", "step"
+                      "durationMs", totalSw.Elapsed.TotalMilliseconds.ToString("0.###", Globalization.CultureInfo.InvariantCulture) ]
                 s.Render.Scene
 
         // A focused node is a TEXT control (the E1 seam owns its printable keys); every other

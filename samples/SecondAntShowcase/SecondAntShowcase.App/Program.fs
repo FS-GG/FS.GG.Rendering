@@ -16,6 +16,7 @@ let private usage () =
     printfn "  SecondAntShowcase visual-readiness --summarize <dir> [--minimum-size <dir>] [--out <dir>]"
     printfn "  SecondAntShowcase review-findings [--out <dir>] [--fail-on-unresolved]"
     printfn "  SecondAntShowcase responsiveness --script representative --theme light [--page <page-id> | --all-interactive] [--out <dir>] [--require-live] [--json]"
+    printfn "  SecondAntShowcase render-lag-probe [--scenario button-click|page-change] [--theme light|dark]"
     printfn "  SecondAntShowcase diagnostics [--out <dir>] [--json] [--verbose]"
     printfn "  SecondAntShowcase coverage"
     printfn "  SecondAntShowcase feedback [--clear]"
@@ -120,6 +121,9 @@ let main argv =
 
     | "responsiveness" :: rest ->
         Responsiveness.run rest
+
+    | "render-lag-probe" :: rest ->
+        RenderLagProbe.run rest
 
     | "diagnostics" :: rest ->
         Diagnostics.run rest

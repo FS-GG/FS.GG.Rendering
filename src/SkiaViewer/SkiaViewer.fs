@@ -14,6 +14,22 @@ open Silk.NET.Input
 open Silk.NET.Maths
 open Silk.NET.Windowing
 
+module private RenderLagTrace =
+    let private enabled =
+        String.Equals(Environment.GetEnvironmentVariable("FS_GG_RENDER_LAG_TRACE"), "1", StringComparison.Ordinal)
+
+    let emit eventName fields =
+        if enabled then
+            let fieldsText =
+                fields
+                |> List.map (fun (name, value) -> $"{name}={value}")
+                |> String.concat " "
+
+            let suffix = if String.IsNullOrWhiteSpace fieldsText then "" else " " + fieldsText
+            let ts = DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture)
+            let ticks = Stopwatch.GetTimestamp()
+            Console.Error.WriteLine($"FS_GG_RENDER_LAG_TRACE ts={ts} ticks={ticks} event={eventName}{suffix}")
+
 type ViewerOptions =
     { Title: string
       InitialSize: Size
@@ -2095,6 +2111,13 @@ module Viewer =
             let envelope, nextQueue = enqueueInput DateTimeOffset.UtcNow kind payloadText inputQueue
             inputQueue <- nextQueue
             queuedPayloads[envelope.SequenceId] <- payload
+            RenderLagTrace.emit
+                "input-queued"
+                [ "seq", string envelope.SequenceId
+                  "kind", responsivenessInputKindToken kind
+                  "payload", payloadText
+                  "receiptDepth", string envelope.ReceiptQueueDepth
+                  "queueDepth", string (inputQueueDepth inputQueue) ]
 
         let enqueueScriptInput input =
             match input with
@@ -2113,6 +2136,10 @@ module Viewer =
             match scriptedInputs with
             | Some inputs when !framePresented && scriptedIndex < inputs.Length ->
                 let input = inputs.[scriptedIndex]
+                RenderLagTrace.emit
+                    "script-input-pump"
+                    [ "scriptIndex", string scriptedIndex
+                      "scriptRemaining", string (inputs.Length - scriptedIndex) ]
                 scriptedIndex <- scriptedIndex + 1
                 scriptedCompletionFrames <- 0
                 enqueueScriptInput input
@@ -2145,9 +2172,16 @@ module Viewer =
             if inputQueueDepth inputQueue = 0 then
                 false
             else
+                let drainStarted = DateTimeOffset.UtcNow
                 let drain, nextQueue = drainInputQueue nextDrainBatchId "frame-update" inputQueue
                 inputQueue <- nextQueue
                 nextDrainBatchId <- nextDrainBatchId + 1L
+                RenderLagTrace.emit
+                    "input-drain-start"
+                    [ "batch", string drain.BatchId
+                      "queueBefore", string drain.QueueDepthBeforeDrain
+                      "queueAfter", string drain.QueueDepthAfterDrain
+                      "coalesced", string drain.CoalescedMovementCount ]
                 let discreteInputs, deferredInputs =
                     drain.DiscreteInputs
                     |> List.partition (fun envelope -> envelope.PriorityLane = Discrete)
@@ -2166,13 +2200,30 @@ module Viewer =
                             let found, payload = queuedPayloads.TryGetValue envelope.SequenceId
 
                             if found then
+                                let queueDelay = drainStarted - envelope.ReceivedAt
+                                RenderLagTrace.emit
+                                    "input-handle-start"
+                                    [ "seq", string envelope.SequenceId
+                                      "kind", responsivenessInputKindToken envelope.InputKind
+                                      "payload", envelope.Payload
+                                      "queueDelayMs", queueDelay.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture) ]
                                 queuedPayloads.Remove envelope.SequenceId |> ignore
-                                handleQueuedPayload payload || closeRequested
+                                let handled = handleQueuedPayload payload
+                                RenderLagTrace.emit
+                                    "input-handle-end"
+                                    [ "seq", string envelope.SequenceId
+                                      "handled", string handled ]
+                                handled || closeRequested
                             else
                                 closeRequested)
                         false
 
                 queuedPayloads.Clear()
+                RenderLagTrace.emit
+                    "input-drain-end"
+                    [ "batch", string drain.BatchId
+                      "handled", string orderedInputs.Length
+                      "closeRequested", string closeRequested ]
                 closeRequested
 
         let init () =
@@ -2199,6 +2250,10 @@ module Viewer =
                 | Some inputs when scriptedIndex >= inputs.Length ->
                     scriptedCompletionFrames <- scriptedCompletionFrames + 1
                 | _ -> ()
+                RenderLagTrace.emit
+                    "render-frame-requested"
+                    [ "scriptedIndex", string scriptedIndex
+                      "completionFrames", string scriptedCompletionFrames ]
                 (), Cmd.ofMsg (LegacyHostEffect(Host.ViewerEffect.RenderFrame(renderCurrentScene ())))
             | LegacyKey(rawKey, isDown) ->
                 enqueueQueuedInput
@@ -3460,10 +3515,34 @@ module Viewer =
                     let initialCloseRequested = interpretEffects initEffects
 
                     let dispatchHostMsg msg =
+                        let msgText = (sprintf "%A" msg).Replace(" ", "_").Replace(Environment.NewLine, "_")
+                        let updateSw = Stopwatch.StartNew()
+                        RenderLagTrace.emit "model-update-start" [ "msg", msgText ]
                         let next, effects = host.Update msg currentModel
+                        updateSw.Stop()
+                        RenderLagTrace.emit
+                            "model-update-end"
+                            [ "msg", msgText
+                              "durationMs", updateSw.Elapsed.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture) ]
                         currentModel <- next
+                        let viewSw = Stopwatch.StartNew()
+                        RenderLagTrace.emit "view-start" [ "msg", msgText ]
                         currentScene <- host.View currentSize currentModel
+                        viewSw.Stop()
+                        RenderLagTrace.emit
+                            "view-end"
+                            [ "msg", msgText
+                              "durationMs", viewSw.Elapsed.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture) ]
+                        let effectsSw = Stopwatch.StartNew()
                         interpretEffects effects
+                        |> fun closeRequested ->
+                            effectsSw.Stop()
+                            RenderLagTrace.emit
+                                "effects-end"
+                                [ "msg", msgText
+                                  "durationMs", effectsSw.Elapsed.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture)
+                                  "closeRequested", string closeRequested ]
+                            closeRequested
 
                     let handleTick elapsed =
                         match host.Tick elapsed with
@@ -3483,11 +3562,28 @@ module Viewer =
                         match host.MapKey key normalizedDown with
                         | [] -> false
                         | msgs ->
+                            RenderLagTrace.emit
+                                "key-routed"
+                                [ "key", rawKey
+                                  "isDown", string normalizedDown
+                                  "messageCount", string msgs.Length ]
                             inputDispatch <- "true"
                             msgs |> List.fold (fun close msg -> dispatchHostMsg msg || close) false
 
                     let handlePointer (input: ViewerPointerInput) =
+                        let pointerSw = Stopwatch.StartNew()
+                        RenderLagTrace.emit
+                            "pointer-route-start"
+                            [ "phase", string input.Phase
+                              "x", input.X.ToString("0.###", CultureInfo.InvariantCulture)
+                              "y", input.Y.ToString("0.###", CultureInfo.InvariantCulture) ]
                         let msgs = host.MapPointer input currentSize currentModel
+                        pointerSw.Stop()
+                        RenderLagTrace.emit
+                            "pointer-route-end"
+                            [ "phase", string input.Phase
+                              "messageCount", string msgs.Length
+                              "durationMs", pointerSw.Elapsed.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture) ]
 
                         if not (List.isEmpty msgs) then
                             inputDispatch <- "true"
