@@ -1046,7 +1046,593 @@ solution-tests
 
 ---
 
-## 12. Bottom line
+## 12. Research-informed refinements to the recommendations
+
+The recommendations above were checked against current public guidance and the repository's own Spec Kit constitution/templates. The research does not change the direction, but it sharpens several implementation choices.
+
+### 12.1 Split the work into several Spec Kit features, not one mega-feature
+
+GitHub Spec Kit's public workflow is explicitly sequential: specify the "what" and "why", plan the "how", then break the plan into phased tasks before implementation. The Microsoft Spec Kit overview also calls out the `.specify` templates, `constitution.md`, and the `/specify` -> `/plan` -> `/tasks` sequence as the intended operating model.
+
+**Refinement**
+
+Use one umbrella report, but create separate Spec Kit feature directories for independently deliverable slices:
+
+1. Package-feed determinism and validation lanes.
+2. Shared visual-readiness tooling.
+3. Structured render/layout inspection metadata.
+4. Responsiveness diagnostics and input-loop scheduling.
+5. Skill/parity updates and evidence guidance.
+
+This keeps each `spec.md`, `plan.md`, and `tasks.md` coherent, limits branch conflicts, and creates natural parallel work streams after foundational contracts are agreed.
+
+### 12.2 Use `dotnet test --blame-hang`, not only shell `timeout`
+
+The earlier recommendation used shell-level `timeout` wrappers. Microsoft documents `dotnet test --blame-hang` and `--blame-hang-timeout` for collecting hang evidence and terminating hung test hosts. Shell timeouts can still protect a lane runner, but they do not produce the same test-order and dump artifacts.
+
+**Refinement**
+
+Each validation lane should write:
+
+- TRX output to a lane-specific results directory.
+- Hang blame artifacts for long tests.
+- Console output with normal verbosity.
+- A lane summary that distinguishes test failure, lane timeout, hang dump produced, and external cancellation.
+
+Candidate command pattern:
+
+```sh
+dotnet test tests/Controls.Tests/Controls.Tests.fsproj \
+  -c Release --no-restore --no-build \
+  --logger "trx;LogFileName=controls.trx" \
+  --results-directory artifacts/test-results/controls \
+  --blame-hang --blame-hang-timeout 10m \
+  --blame-hang-dump-type mini
+```
+
+The outer lane runner can still enforce a larger process timeout, but the inner test command should own test-host diagnostics.
+
+### 12.3 Prefer source mapping and isolated package caches for package-only sample proof
+
+NuGet documentation confirms that `PackageReference` projects consume packages from the global packages folder, that global packages can be cleared with `dotnet nuget locals global-packages --clear`, and that Package Source Mapping constrains which source can serve which package IDs. The current AntShowcase `nuget.config` has `nuget-local` and `nuget.org`, but it does not map `FS.GG.UI.*` exclusively to the local feed.
+
+**Refinement**
+
+Strengthen the local package proof with both source mapping and isolated caches:
+
+1. Add Package Source Mapping so `FS.GG.UI.*` resolves only from `nuget-local`, while third-party packages resolve from `nuget.org`.
+2. For deterministic validation lanes, set a lane-specific package cache, for example `NUGET_PACKAGES=/tmp/fs-gg-nuget/ant-showcase`.
+3. Use `dotnet nuget locals all --list` in readiness logs so the package/cache locations are explicit.
+4. Reserve global cache clearing for a dedicated "cold package proof" lane; avoid making every validation run destructive.
+
+This makes stale local package use harder to miss and reduces accidental cross-lane interference.
+
+### 12.4 Use built-in .NET diagnostics APIs before adding heavy observability dependencies
+
+Microsoft's .NET tracing guidance recommends that library authors instrument with `System.Diagnostics.ActivitySource` / `Activity`, leaving application authors free to choose collectors such as OpenTelemetry. Microsoft also recommends newer `System.Diagnostics.Metrics` APIs for new metrics work, while `EventCounters` remain useful for lightweight near-real-time counters and existing tooling.
+
+**Refinement**
+
+Do not add an OpenTelemetry dependency to core rendering packages just to collect input/render timings. Start with collector-neutral .NET primitives:
+
+- `ActivitySource` spans for input-to-present traces.
+- `System.Diagnostics.Metrics` histograms/counters for latency and queue depth.
+- Optional `EventSource` / `EventCounters` only where existing dotnet tooling needs them.
+- JSONL diagnostic export for deterministic local evidence and CI artifacts.
+
+This satisfies observability needs without coupling the framework to one telemetry backend.
+
+### 12.5 Treat responsiveness as an event-latency and long-task problem
+
+W3C Event Timing defines a model for observing latency of user-triggered events. W3C Long Tasks describes how long UI-thread tasks block other critical tasks, including reaction to user input, and references response targets such as sub-100ms input response and 50ms long-task surfacing.
+
+**Refinement**
+
+The responsiveness plan should capture the same conceptual fields even though this is a desktop F#/Skia viewer, not a browser:
+
+- Native event timestamp.
+- Dispatch/routing start.
+- Routing end.
+- Product update end.
+- View/retained render end.
+- Paint/present end.
+- Queue depth and coalesced/dropped move counts.
+- Input-to-present duration.
+
+The existing `< 50 ms` p95 budget remains reasonable as a first readiness target because the current measured costs are orders of magnitude above that. The plan should also record long render tasks over `50 ms` even when input-to-present cannot be measured because of host limitations.
+
+### 12.6 Keep visual evidence pure at the model layer and adapter-owned at the image layer
+
+The existing recommendation to promote visual-readiness helpers to `FS.GG.UI.Testing` is still sound, but the implementation should avoid forcing SkiaSharp-specific contact-sheet composition into every test consumer.
+
+**Refinement**
+
+Split the tooling:
+
+- `FS.GG.UI.Testing.VisualEvidence`: pure target/status/reviewer/summary model plus PNG completeness validation.
+- `FS.GG.UI.Testing.VisualReadinessMarkdown`: generated-summary and managed-section writing.
+- `FS.GG.UI.Testing.VisualInspection`: pure render/layout inspection assertions.
+- Sample/app or optional adapter code: SkiaSharp contact-sheet composition and screenshot capture integration.
+
+This keeps the core testing package lighter and lets generated products consume the evidence model without inheriting image-composition dependencies unless needed.
+
+### 12.7 Sources consulted
+
+- GitHub Spec Kit README: https://github.com/github/spec-kit
+- Microsoft Spec Kit overview: https://developer.microsoft.com/blog/spec-driven-development-spec-kit
+- Microsoft `dotnet test` VSTest options: https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-test-vstest
+- Microsoft NuGet global packages/cache guidance: https://learn.microsoft.com/en-us/nuget/consume-packages/managing-the-global-packages-and-cache-folders
+- Microsoft NuGet Package Source Mapping: https://learn.microsoft.com/en-us/nuget/consume-packages/package-source-mapping
+- Microsoft .NET EventCounters guidance: https://learn.microsoft.com/en-us/dotnet/core/diagnostics/event-counters
+- Microsoft .NET distributed tracing instrumentation: https://learn.microsoft.com/en-us/dotnet/core/diagnostics/distributed-tracing-instrumentation-walkthroughs
+- Microsoft .NET OpenTelemetry observability overview: https://learn.microsoft.com/en-us/dotnet/core/diagnostics/observability-with-otel
+- W3C Event Timing API: https://www.w3.org/TR/event-timing/
+- W3C Long Tasks API: https://www.w3.org/TR/longtasks-1/
+
+---
+
+## 13. Spec Kit implementation plan
+
+This plan is written so it can be translated directly into Spec Kit features. It follows the local constitution:
+
+- Tier 1 public surface changes use `spec.md`, `plan.md`, `.fsi` contracts, semantic tests, implementation, and docs.
+- Stateful/live input work uses an Elmish/MVU-style boundary where workflow state and effects are represented explicitly.
+- Tests must produce real evidence where safe, with synthetic evidence disclosed.
+- Skills are advisory but should be updated when they encode repeated repository traps.
+
+### 13.1 Recommended feature split and branch order
+
+| Order | Feature branch candidate | Scope | Depends on | Parallel with |
+|---|---|---|---|---|
+| 1 | `163-package-feed-validation-lanes` | Package source mapping, local-feed refresh/check scripts, validation lane runner | none | skill docs can start after contracts |
+| 2 | `164-visual-readiness-toolkit` | Shared visual evidence models, completeness checks, summary writer, AntShowcase migration | 163 for package proof only | 165 after API names are settled |
+| 3 | `165-render-inspection-metadata` | Visual inspection tree, text-fit metadata, overlap/damage assertions | none; coordinate names with 164 | 164, 167 |
+| 4 | `166-responsiveness-diagnostics` | Input timing model, live JSONL diagnostics, queue-depth metrics, event-loop decoupling | 163 for validation lanes; optionally 165 for inspection/damage checks | 164 and 167 |
+| 5 | `167-skill-parity-and-evidence-guidance` | Skill updates, parity checker, visual/responsiveness guidance | report and agreed feature names | all code features |
+| 6 | `168-runtime-diagnostics-taxonomy` | Structured runtime diagnostic categories and output routing | can be folded into 166 if desired | 164/165 if kept separate |
+
+If team capacity is limited, combine 168 into 166 and deliver five features. If responsiveness is the highest user pain, start 166 immediately after the minimal validation runner from 163 lands.
+
+### 13.2 Spec Kit commands per feature
+
+For each feature:
+
+```text
+$speckit-git-feature <feature-name>
+$speckit-specify <feature outcome and user-visible requirements>
+$speckit-plan
+$speckit-tasks
+$speckit-analyze
+$speckit-implement
+```
+
+After implementation:
+
+```text
+$speckit-merge
+```
+
+The plan and tasks should keep `[P]` only for tasks that edit different files and have no dependency on another incomplete task in the same phase. Do not parallelize two `dotnet test` invocations against the same project/configuration unless they use isolated output directories.
+
+### 13.3 Feature 163: package-feed determinism and validation lanes
+
+**Goal**
+
+Make package-only sample validation deterministic and make long-running validation diagnosable.
+
+**Primary user stories**
+
+- **US1:** A maintainer can refresh the local feed, update package-consuming samples, and prove no stale `FS.GG.UI.*` packages are used.
+- **US2:** A maintainer can run named validation lanes with per-lane logs, TRX files, hang diagnostics, and no shared output races.
+- **US3:** A readiness summary can distinguish green lanes, failed lanes, hung lanes, skipped lanes, and canceled lanes.
+
+**Expected source paths**
+
+- `scripts/check-sample-package-pins.fsx`
+- `scripts/refresh-local-feed.fsx`
+- `scripts/run-validation-lanes.fsx`
+- `samples/AntShowcase/nuget.config`
+- `samples/AntShowcase/README.md`
+- `docs/reports/` or `specs/<feature>/readiness/`
+- `tests/Testing.Tests/` or a new script-focused test project if needed
+
+**Spec and plan requirements**
+
+- Package Source Mapping must map `FS.GG.UI.*` only to `nuget-local`.
+- Validation lanes must use isolated result directories.
+- The controls lane must use `--blame-hang --blame-hang-timeout`.
+- The lane runner must not treat a canceled or timed-out full solution run as green.
+- A cold package proof must record `dotnet nuget locals all --list` and whether global packages were cleared or a lane-specific package cache was used.
+
+**Task outline**
+
+- [ ] T001 [P] Add failing tests or FSI transcript for stale `FS.GG.UI.*` package pin detection in `tests/Testing.Tests/` or `specs/163-package-feed-validation-lanes/readiness/`.
+- [ ] T002 [P] Add failing test or scripted fixture for Package Source Mapping verification against `samples/AntShowcase/nuget.config`.
+- [ ] T003 Implement `scripts/check-sample-package-pins.fsx` to compare sample package references with packable project versions.
+- [ ] T004 Implement `scripts/refresh-local-feed.fsx` to pack `src/*/*.fsproj` packages into `~/.local/share/nuget-local` and optionally update sample pins.
+- [ ] T005 Update `samples/AntShowcase/nuget.config` with Package Source Mapping for `FS.GG.UI.*`.
+- [ ] T006 [P] Add lane model and JSON/markdown summary types in the script or `FS.GG.UI.Testing` if reusable.
+- [ ] T007 Implement `scripts/run-validation-lanes.fsx` with lane-specific `--results-directory`, TRX logger, `--blame-hang`, and outer timeout handling.
+- [ ] T008 [P] Document lane usage in `samples/AntShowcase/README.md`.
+- [ ] T009 Run cold package proof, AntShowcase tests, Controls lane, and full/aggregate lane; save logs under `specs/163-package-feed-validation-lanes/readiness/`.
+
+**Parallel opportunities**
+
+- T001 and T002 can be written in parallel.
+- T003 and T004 can start in parallel if they do not share a helper module; otherwise create the shared helper first.
+- T006 and T008 can run in parallel with script implementation.
+- Validation runs for different projects can run in parallel only when output paths and package caches are isolated.
+
+**Definition of done**
+
+- A stale package pin fails validation.
+- `FS.GG.UI.*` package restore is source-mapped to `nuget-local`.
+- A hung test produces blame artifacts instead of silent no-output waiting.
+- Readiness docs include commands, outputs, and package/cache locations.
+
+### 13.4 Feature 164: shared visual-readiness toolkit
+
+**Goal**
+
+Move sample-owned visual readiness data and summary behavior into reusable testing APIs while keeping image-composition adapters optional.
+
+**Primary user stories**
+
+- **US1:** A generated product can define pages/themes/sizes and receive a capture matrix without copying AntShowcase logic.
+- **US2:** A test can validate PNG completeness, degraded capture reasons, and reviewer classifications through `FS.GG.UI.Testing`.
+- **US3:** A summary generator can update managed sections without erasing manual caveats.
+- **US4:** AntShowcase can migrate to the shared toolkit without changing its accepted evidence semantics.
+
+**Expected source paths**
+
+- `src/Testing/Testing.fsi`
+- `src/Testing/Testing.fs`
+- `tests/Testing.Tests/`
+- `samples/AntShowcase/AntShowcase.Core/VisualReadinessWorkflow.fsi`
+- `samples/AntShowcase/AntShowcase.Core/VisualReadinessWorkflow.fs`
+- `samples/AntShowcase/AntShowcase.App/VisualReadiness.fsi`
+- `samples/AntShowcase/AntShowcase.App/VisualReadiness.fs`
+- `samples/AntShowcase/AntShowcase.Tests/VisualReadinessTests.fs`
+
+**Spec and plan requirements**
+
+- Pure evidence models belong in `FS.GG.UI.Testing`.
+- SkiaSharp contact-sheet composition should remain in AntShowcase or an optional adapter unless a new dependency is explicitly justified.
+- Generated markdown must write inside managed markers or write generated-only files.
+- Degraded capture must be represented explicitly, not as a successful capture.
+
+**Task outline**
+
+- [ ] T001 [P] Draft `VisualSize`, `VisualTheme`, `VisualPage`, `VisualCaptureTarget`, `VisualCaptureStatus`, `VisualCaptureRecord`, `ReviewerClassification`, and `VisualReadinessReport` in `src/Testing/Testing.fsi`.
+- [ ] T002 [P] Add semantic tests for capture matrix expansion and status aggregation in `tests/Testing.Tests/`.
+- [ ] T003 [P] Add semantic tests for managed-section markdown writing in `tests/Testing.Tests/`.
+- [ ] T004 Implement pure visual evidence models and matrix expansion in `src/Testing/Testing.fs`.
+- [ ] T005 Implement PNG completeness validation without depending on sample-specific page registries.
+- [ ] T006 Implement reviewer-defect template parsing/writing in `src/Testing/Testing.fs`.
+- [ ] T007 Implement managed-section markdown writer.
+- [ ] T008 Migrate `samples/AntShowcase/AntShowcase.Core/VisualReadinessWorkflow.fs` to call shared APIs.
+- [ ] T009 Migrate `samples/AntShowcase/AntShowcase.App/VisualReadiness.fs` while keeping contact-sheet rendering at the app edge.
+- [ ] T010 Update AntShowcase visual-readiness tests to assert shared API behavior and unchanged output semantics.
+- [ ] T011 Run AntShowcase visual-readiness CLI and tests; save evidence under `specs/164-visual-readiness-toolkit/readiness/`.
+
+**Parallel opportunities**
+
+- T001, T002, and T003 can proceed in parallel after the API names are agreed.
+- T005, T006, and T007 can proceed in parallel after T004 establishes shared types.
+- AntShowcase migration should wait for the shared API to compile, but tests can be prepared in parallel.
+
+**Definition of done**
+
+- AntShowcase no longer owns generic matrix/status/summary logic.
+- Managed markdown reruns do not erase manual validation context.
+- Generated products can consume the toolkit without depending on AntShowcase.
+
+### 13.5 Feature 165: render/layout inspection metadata
+
+**Goal**
+
+Expose stable inspection metadata so visual assertions can move from manual screenshot review to deterministic tests.
+
+**Primary user stories**
+
+- **US1:** A test can inspect final control bounds, text runs, clipping, z-order, and ownership.
+- **US2:** A test can assert text fit and section containment without image analysis.
+- **US3:** A test can assert localized damage bounds after interaction.
+- **US4:** Visual evidence summaries can link screenshot defects to structured nodes.
+
+**Expected source paths**
+
+- `src/Controls/Control.fsi`
+- `src/Controls/Control.fs`
+- `src/Controls/RetainedRender.fsi`
+- `src/Controls/RetainedRender.fs`
+- `src/Layout/Layout.fsi`
+- `src/Layout/Layout.fs`
+- `tests/Controls.Tests/FeatureXXXVisualInspectionTests.fs`
+- `tests/Layout.Tests/FeatureXXXInspectionTests.fs`
+- `samples/AntShowcase/AntShowcase.Tests/VisualShellTests.fs`
+
+**Spec and plan requirements**
+
+- Inspection artifacts must be stable enough for tests but not expose private renderer internals as a permanent compatibility burden without `.fsi` review.
+- Text fit should be computed from the same measured text data used by rendering.
+- Damage assertions should use union area and dirty rects, not summed overlapping area.
+- API additions require surface baseline updates.
+
+**Task outline**
+
+- [ ] T001 [P] Draft `VisualNodeInspection` and `TextRunInspection` in `src/Controls/Control.fsi` or a dedicated inspection signature.
+- [ ] T002 [P] Add failing Controls tests for text-fit and containment on representative controls.
+- [ ] T003 [P] Add failing Layout tests for final-region disjointness and clipping metadata.
+- [ ] T004 Add inspection emission from `Control.renderTree` output.
+- [ ] T005 Add retained inspection emission after `RetainedRender.step`.
+- [ ] T006 Add text-run bounds and fit status from the text measurement path.
+- [ ] T007 Add damage inspection fields for dirty rect union area, repainted nodes, and shifted nodes.
+- [ ] T008 Update AntShowcase visual shell tests to assert structured region containment.
+- [ ] T009 Update surface baselines and public docs.
+- [ ] T010 Run Controls, Layout, and AntShowcase visual tests; save before/after evidence.
+
+**Parallel opportunities**
+
+- T002 and T003 can be written in parallel after T001.
+- T004 and T006 may require coordination because both touch control rendering/text measurement.
+- T005 and T007 can proceed together if one developer owns retained state and another owns damage metadata.
+- AntShowcase assertions should wait for the inspection API to stabilize.
+
+**Definition of done**
+
+- At least one AntShowcase overlap/text-fit claim is asserted without screenshot review.
+- Localized interactions have damage-area tests that fail if the whole frame is dirtied unnecessarily.
+- Public API and surface baselines are updated consistently.
+
+### 13.6 Feature 166: responsiveness diagnostics and input-loop scheduling
+
+**Goal**
+
+Make interactive latency measurable, then remove the synchronous post-input render stall from the live path.
+
+**Primary user stories**
+
+- **US1:** A maintainer can capture per-input timing from native input through present.
+- **US2:** A generated product can run a deterministic responsiveness script for pointer and keyboard activation.
+- **US3:** The live viewer queues input and renders on the frame loop, preserving discrete input order while coalescing move work.
+- **US4:** AntShowcase exposes a diagnostic mode/report proving click/key latency against a stated budget.
+
+**Expected source paths**
+
+- `src/Controls.Elmish/ControlsElmish.fsi`
+- `src/Controls.Elmish/ControlsElmish.fs`
+- `src/SkiaViewer/SkiaViewer.fsi`
+- `src/SkiaViewer/SkiaViewer.fs`
+- `src/SkiaViewer/Host/OpenGl.fs`
+- `tests/Elmish.Tests/FeatureXXXResponsivenessMetricsTests.fs`
+- `tests/SkiaViewer.Tests/FeatureXXXInputQueueTests.fs`
+- `samples/AntShowcase/AntShowcase.App/Interactive.fs`
+- `samples/AntShowcase/AntShowcase.Tests/InteractionTests.fs`
+
+**Spec and plan requirements**
+
+- Timing instrumentation must be collector-neutral: `ActivitySource`, `System.Diagnostics.Metrics`, and JSONL are preferred over mandatory OpenTelemetry dependencies.
+- Deterministic `Perf.runScript` remains clock-free for golden count/bool fields; latency timing lives in a separate live or explicitly benchmark-oriented surface.
+- Input queue must preserve press/release/click/key order.
+- Pointer move coalescing must remain explicit and counted.
+- Rendering should be scheduled once per frame after folding queued inputs, not once per native input callback.
+- Any synthetic/live-window limitations must be disclosed in readiness evidence.
+
+**Task outline**
+
+- [ ] T001 [P] Add failing deterministic tests for pointer/key activation metrics shape in `tests/Elmish.Tests/`.
+- [ ] T002 [P] Add failing SkiaViewer tests for queued input ordering and move coalescing in `tests/SkiaViewer.Tests/`.
+- [ ] T003 Draft `InputPhaseTiming`, `InputQueueMetrics`, and `OnInputTiming` in `src/Controls.Elmish/ControlsElmish.fsi`.
+- [ ] T004 Add live timing capture around routing, update, view, retained step, paint, and present.
+- [ ] T005 Add JSONL diagnostic sink and optional metrics counters/histograms.
+- [ ] T006 Change live viewer dispatch so input callbacks enqueue normalized inputs and return quickly.
+- [ ] T007 Drain queued inputs on the frame/update loop, fold model updates, and render once per frame.
+- [ ] T008 Preserve discrete input ordering and expose coalesced move counts.
+- [ ] T009 Add AntShowcase diagnostic mode or environment-gated timing log in `Interactive.fs`.
+- [ ] T010 Add AntShowcase responsiveness tests/scripts for content button click and `Enter`/`Space`.
+- [ ] T011 Run live diagnostic capture where a window/GL host is available; save JSONL and summary under `specs/166-responsiveness-diagnostics/readiness/`.
+- [ ] T012 Add docs explaining latency budgets, limitations, and how to interpret timing fields.
+
+**Parallel opportunities**
+
+- T001 and T002 can run in parallel.
+- T003 must land before T004/T005.
+- T004 and T005 can be split between timing capture and output format after T003.
+- T006/T007 should be one coordinated branch because they alter event-loop behavior.
+- T009/T010 can begin once the diagnostic API compiles.
+
+**Definition of done**
+
+- A content-button click produces one correlated input-to-present timing record.
+- Routing remains low-cost and separately visible from render/present.
+- Discrete inputs are not dropped; moves are coalesced with counts.
+- AntShowcase latency evidence no longer requires ad hoc FSI scripts.
+
+### 13.7 Feature 167: skill parity and evidence guidance
+
+**Goal**
+
+Encode the repeated traps from this report into local skills and keep Claude/Codex wrappers synchronized.
+
+**Primary user stories**
+
+- **US1:** An agent touching samples is warned about package-pin drift and local-feed proof.
+- **US2:** An agent committing readiness artifacts is warned about `.gitignore` allowlisting and `git check-ignore`.
+- **US3:** An agent validating tests is warned not to parallelize the same project/configuration.
+- **US4:** Claude and Codex skill wrappers can be compared automatically.
+- **US5:** Agents know how to run visual-readiness and responsiveness diagnostics honestly.
+
+**Expected source paths**
+
+- `.agents/skills/*/SKILL.md`
+- `.claude/skills/*/SKILL.md`
+- `scripts/check-agent-skill-parity.sh` or `scripts/check-agent-skill-parity.fsx`
+- `docs/reports/skills-parity.md`
+- `src/*/skill/SKILL.md` where canonical package skills need updates
+
+**Spec and plan requirements**
+
+- Identify canonical skill sources before editing wrappers.
+- Wrapper updates must not fork guidance from canonical package skills.
+- Parity checker should report missing skills, stale descriptions, broken target paths, and wrapper/canonical drift.
+- Skills should point to the new validation scripts once Feature 163 lands.
+
+**Task outline**
+
+- [ ] T001 [P] Add failing parity-check fixture or dry-run expectation for missing/stale wrappers.
+- [ ] T002 [P] Draft updates for package-pin drift, readiness allowlisting, test parallelism, and validation lane guidance.
+- [ ] T003 [P] Draft updates for visual-readiness and responsiveness diagnostics guidance.
+- [ ] T004 Implement `scripts/check-agent-skill-parity.*`.
+- [ ] T005 Update canonical `.agents/skills` and package-owned `src/*/skill/SKILL.md` entries.
+- [ ] T006 Update `.claude/skills` wrappers to match canonical guidance.
+- [ ] T007 Generate `docs/reports/skills-parity.md`.
+- [ ] T008 Run parity checker and save output under feature readiness.
+
+**Parallel opportunities**
+
+- T001, T002, and T003 can run in parallel.
+- T005 and T006 should be sequenced unless wrapper generation is automated.
+- T007 can run after T004 and the skill edits.
+
+**Definition of done**
+
+- Parity checker catches a deliberately broken wrapper in test or fixture mode.
+- Claude and Codex guidance both mention package drift, readiness evidence, test-output isolation, visual readiness, and responsiveness diagnostics.
+- Skills link to the concrete scripts and validation lanes that now exist.
+
+### 13.8 Feature 168: runtime diagnostics taxonomy
+
+**Goal**
+
+Make runtime diagnostics structured and filterable so expected environment/backend-cost messages are not confused with readiness blockers.
+
+**Primary user stories**
+
+- **US1:** A sample run groups diagnostics by category and severity.
+- **US2:** Tests can assert that expected backend-cost diagnostics are informational, not failures.
+- **US3:** Readiness summaries can include diagnostic counts and blocker status.
+
+**Expected source paths**
+
+- `src/Controls/Diagnostics.fsi`
+- `src/Controls/Diagnostics.fs`
+- `src/SkiaViewer/SkiaViewer.fsi`
+- `src/SkiaViewer/SkiaViewer.fs`
+- `samples/AntShowcase/AntShowcase.App/Program.fs`
+- `tests/Controls.Tests/DiagnosticsTests.fs`
+- `tests/SkiaViewer.Tests/`
+
+**Task outline**
+
+- [ ] T001 [P] Add failing tests for diagnostic severity/category mapping.
+- [ ] T002 Draft `DiagnosticSeverity` and `DiagnosticCategory` additions in `.fsi`.
+- [ ] T003 Implement category mapping for environment warnings, backend cost, rendering limitation, readiness blocker, and developer action.
+- [ ] T004 Add structured diagnostic artifact output in sample app edge.
+- [ ] T005 Update readiness summaries to include diagnostic counts.
+- [ ] T006 Run AntShowcase interactive/evidence commands and confirm GTK/module warnings are not reported as readiness blockers.
+
+**Parallel opportunities**
+
+- T001 can run in parallel with T002.
+- T004 and T005 can run after T003 and can be split between app edge and summary code.
+
+**Definition of done**
+
+- Console output is shorter and less alarming by default.
+- Structured artifacts preserve details for tests and diagnosis.
+- Readiness status depends on blockers, not on all informational diagnostics.
+
+### 13.9 Cross-feature dependency graph
+
+```text
+163 package/validation lanes
+  ├─ enables stronger package evidence for 164, 165, 166, 168
+  └─ feeds scripts referenced by 167
+
+164 visual-readiness toolkit
+  ├─ independent after 163 package proof is available
+  └─ can consume inspection data from 165 later
+
+165 render/layout inspection
+  ├─ independent of 164 at the API level
+  └─ strengthens 166 damage/latency assertions
+
+166 responsiveness diagnostics
+  ├─ uses 163 validation lanes
+  ├─ can use 165 damage metadata when available
+  └─ may absorb 168 if runtime diagnostics are not split
+
+167 skills/parity
+  ├─ can start immediately with current report guidance
+  └─ should receive a final pass after 163/164/166 scripts and APIs land
+
+168 diagnostics taxonomy
+  └─ can run in parallel with 164/165 or merge into 166
+```
+
+### 13.10 Shared validation matrix
+
+Use these as the baseline quickstart commands across the features, adjusted per feature path and branch.
+
+```sh
+dotnet test tests/Testing.Tests/Testing.Tests.fsproj -c Release --no-restore
+dotnet test tests/Controls.Tests/Controls.Tests.fsproj -c Release --no-restore --logger "console;verbosity=normal"
+dotnet test tests/Elmish.Tests/Elmish.Tests.fsproj -c Release --no-restore --logger "console;verbosity=normal"
+dotnet test tests/SkiaViewer.Tests/SkiaViewer.Tests.fsproj -c Release --no-restore --logger "console;verbosity=normal"
+dotnet test samples/AntShowcase/AntShowcase.Tests/AntShowcase.Tests.fsproj -c Release --no-restore
+```
+
+Lane-runner form:
+
+```sh
+dotnet fsi scripts/run-validation-lanes.fsx --lane ant-showcase --configuration Release
+dotnet fsi scripts/run-validation-lanes.fsx --lane controls --configuration Release --blame-hang-timeout 10m
+dotnet fsi scripts/run-validation-lanes.fsx --lane package-cold-proof --sample samples/AntShowcase
+```
+
+Package proof form:
+
+```sh
+dotnet fsi scripts/refresh-local-feed.fsx --sample samples/AntShowcase --update-pins
+dotnet fsi scripts/check-sample-package-pins.fsx --sample samples/AntShowcase
+```
+
+Responsiveness proof form:
+
+```sh
+dotnet run --project samples/AntShowcase/AntShowcase.App/AntShowcase.App.fsproj \
+  -c Release --no-restore -- responsiveness --page buttons --theme light --out specs/166-responsiveness-diagnostics/readiness/buttons-light.jsonl
+```
+
+### 13.11 Evidence and readiness rules for every feature
+
+Each feature should include:
+
+- `research.md` recording external decisions and alternatives.
+- `data-model.md` for the public records/unions/scripts introduced.
+- `contracts/` for CLI arguments, JSONL schemas, markdown managed-section format, or public FSI shape.
+- `quickstart.md` with commands that exercise the user-visible path.
+- `tasks.md` with `[P]` markers only where files and dependencies are independent.
+- A `readiness/` directory only when committed evidence is required, plus `.gitignore` allowlisting and `git check-ignore -v` proof.
+- FSI transcript or packed-library semantic evidence for new public APIs.
+- Real screenshot/live-window evidence where available; synthetic evidence must be named and justified.
+
+### 13.12 Suggested MVP path
+
+If the goal is to reduce risk fastest, do this:
+
+1. Land Feature 163's package-pin check and validation lane runner first.
+2. Land Feature 166's timing-only diagnostics before changing event-loop scheduling.
+3. Use timing evidence to choose the smallest safe scheduling/render optimization.
+4. Land Feature 167's skill guidance once the commands exist.
+5. Continue with Feature 164 and 165 in parallel to improve future visual-readiness quality.
+
+This MVP gives maintainers immediate tools to prove package correctness, diagnose test hangs, and capture input latency without waiting for the larger visual-inspection architecture.
+
+---
+
+## 14. Bottom line
 
 The framework is capable enough to produce useful, real visual evidence today, but too much of the readiness workflow lives in sample-specific code and agent memory. The next improvement step should be to turn Feature 162's workflow into reusable infrastructure:
 
