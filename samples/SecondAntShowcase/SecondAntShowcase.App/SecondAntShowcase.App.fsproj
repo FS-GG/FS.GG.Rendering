@@ -1,0 +1,29 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>SecondAntShowcase</AssemblyName>
+  </PropertyGroup>
+  <!-- The thin edge / interpreter: turns the pure Core into a live window or a
+       headless evidence run. References Core by project, the rest as packages. -->
+  <ItemGroup>
+    <Compile Include="FeedbackStore.fs" />
+    <Compile Include="Interactive.fs" />
+    <Compile Include="Evidence.fs" />
+    <Compile Include="VisualReadiness.fsi" />
+    <Compile Include="VisualReadiness.fs" />
+    <Compile Include="Responsiveness.fs" />
+    <Compile Include="Diagnostics.fs" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\SecondAntShowcase.Core\SecondAntShowcase.Core.fsproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="FS.GG.UI.Controls.Elmish" Version="0.1.32-preview.1" />
+    <PackageReference Include="FS.GG.UI.Diagnostics" Version="0.1.32-preview.1" />
+    <PackageReference Include="FS.GG.UI.SkiaViewer" Version="0.1.32-preview.1" />
+    <PackageReference Include="FS.GG.UI.Testing" Version="0.1.32-preview.1" />
+    <PackageReference Include="SkiaSharp" Version="4.147.0-preview.3.1" />
+  </ItemGroup>
+</Project>

@@ -80,6 +80,9 @@ specs/169-runtime-diagnostics-taxonomy/readiness/**/nuget-cache/
 !specs/170-retained-damage-inspection/readiness/
 !specs/170-retained-damage-inspection/readiness/**
 specs/170-retained-damage-inspection/readiness/**/nuget-cache/
+!specs/171-second-antshowcase-sample/readiness/
+!specs/171-second-antshowcase-sample/readiness/**
+specs/171-second-antshowcase-sample/readiness/**/nuget-cache/
 
 # macOS / Linux cruft
 .DS_Store

@@ -1,0 +1,22 @@
+{
+  "seed": 1,
+  "requiredTargetCount": 76,
+  "completeScreenshotCount": 76,
+  "preferred": {
+    "size": "1600x1000",
+    "requiredTargetCount": 38,
+    "completeScreenshotCount": 38,
+    "status": "blocked",
+    "blocker": "missing reviewer classifications"
+  },
+  "minimum": {
+    "size": "1280x800",
+    "requiredTargetCount": 38,
+    "completeScreenshotCount": 38,
+    "status": "blocked",
+    "blocker": "missing reviewer classifications"
+  },
+  "unresolvedFindingCount": 0,
+  "overallStatus": "blocked-pending-reviewer-classification",
+  "acceptedVisualFidelity": false
+}

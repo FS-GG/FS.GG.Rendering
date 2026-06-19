@@ -1,0 +1,20 @@
+[
+  {
+    "sheetId": "second-ant-showcase-minimum-light",
+    "relativePath": "contact-sheet-light.png",
+    "sizeRole": "minimum",
+    "themeId": "antLight",
+    "targetIds": ["minimum:1280x800:antLight:display-typography:light/display-typography.png", "minimum:1280x800:antLight:cards-stats-media:light/cards-stats-media.png", "minimum:1280x800:antLight:buttons:light/buttons.png", "minimum:1280x800:antLight:text-numeric-input:light/text-numeric-input.png", "minimum:1280x800:antLight:selection-toggles:light/selection-toggles.png", "minimum:1280x800:antLight:layout-containers:light/layout-containers.png", "minimum:1280x800:antLight:navigation-menus:light/navigation-menus.png", "minimum:1280x800:antLight:overlays:light/overlays.png", "minimum:1280x800:antLight:feedback-status:light/feedback-status.png", "minimum:1280x800:antLight:data-collections:light/data-collections.png", "minimum:1280x800:antLight:charts-statistical:light/charts-statistical.png", "minimum:1280x800:antLight:charts-advanced:light/charts-advanced.png", "minimum:1280x800:antLight:graphs-custom:light/graphs-custom.png", "minimum:1280x800:antLight:tpl-workbench:light/tpl-workbench.png", "minimum:1280x800:antLight:tpl-list:light/tpl-list.png", "minimum:1280x800:antLight:tpl-detail:light/tpl-detail.png", "minimum:1280x800:antLight:tpl-form:light/tpl-form.png", "minimum:1280x800:antLight:tpl-result:light/tpl-result.png", "minimum:1280x800:antLight:tpl-exception:light/tpl-exception.png"],
+    "missingTargetIds": [],
+    "diagnostics": ["contact sheet PNG composition is sample-owned"]
+  },
+  {
+    "sheetId": "second-ant-showcase-minimum-dark",
+    "relativePath": "contact-sheet-dark.png",
+    "sizeRole": "minimum",
+    "themeId": "antDark",
+    "targetIds": ["minimum:1280x800:antDark:display-typography:dark/display-typography.png", "minimum:1280x800:antDark:cards-stats-media:dark/cards-stats-media.png", "minimum:1280x800:antDark:buttons:dark/buttons.png", "minimum:1280x800:antDark:text-numeric-input:dark/text-numeric-input.png", "minimum:1280x800:antDark:selection-toggles:dark/selection-toggles.png", "minimum:1280x800:antDark:layout-containers:dark/layout-containers.png", "minimum:1280x800:antDark:navigation-menus:dark/navigation-menus.png", "minimum:1280x800:antDark:overlays:dark/overlays.png", "minimum:1280x800:antDark:feedback-status:dark/feedback-status.png", "minimum:1280x800:antDark:data-collections:dark/data-collections.png", "minimum:1280x800:antDark:charts-statistical:dark/charts-statistical.png", "minimum:1280x800:antDark:charts-advanced:dark/charts-advanced.png", "minimum:1280x800:antDark:graphs-custom:dark/graphs-custom.png", "minimum:1280x800:antDark:tpl-workbench:dark/tpl-workbench.png", "minimum:1280x800:antDark:tpl-list:dark/tpl-list.png", "minimum:1280x800:antDark:tpl-detail:dark/tpl-detail.png", "minimum:1280x800:antDark:tpl-form:dark/tpl-form.png", "minimum:1280x800:antDark:tpl-result:dark/tpl-result.png", "minimum:1280x800:antDark:tpl-exception:dark/tpl-exception.png"],
+    "missingTargetIds": [],
+    "diagnostics": ["contact sheet PNG composition is sample-owned"]
+  }
+]
