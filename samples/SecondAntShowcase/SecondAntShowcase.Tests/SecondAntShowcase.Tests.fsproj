@@ -66,11 +66,11 @@
     <ProjectReference Include="..\SecondAntShowcase.App\SecondAntShowcase.App.fsproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="FS.GG.UI.Controls" Version="0.1.35-preview.1" />
-    <PackageReference Include="FS.GG.UI.Controls.Elmish" Version="0.1.38-preview.1" />
-    <PackageReference Include="FS.GG.UI.Diagnostics" Version="0.1.35-preview.1" />
-    <PackageReference Include="FS.GG.UI.SkiaViewer" Version="0.1.38-preview.1" />
-    <PackageReference Include="FS.GG.UI.Testing" Version="0.1.35-preview.1" />
+    <PackageReference Include="FS.GG.UI.Controls" Version="0.1.36-preview.1" />
+    <PackageReference Include="FS.GG.UI.Controls.Elmish" Version="0.1.39-preview.1" />
+    <PackageReference Include="FS.GG.UI.Diagnostics" Version="0.1.36-preview.1" />
+    <PackageReference Include="FS.GG.UI.SkiaViewer" Version="0.1.39-preview.1" />
+    <PackageReference Include="FS.GG.UI.Testing" Version="0.1.36-preview.1" />
     <PackageReference Include="Expecto" Version="10.2.2" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.15.3" />
