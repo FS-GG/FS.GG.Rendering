@@ -1,6 +1,6 @@
 ---
 name: fs-gg-product-testing
-description: Generated product testing guidance; use when asserting generated-product expectations, evidence, or local package drift with the bundled Testing API.
+description: Assert generated-product expectations and evidence in a governed FS.GG.UI product.
 ---
 
 # FS.GG Product Testing

@@ -1,6 +1,6 @@
 ---
 name: fs-gg-skiaviewer
-description: Work on FS.GG viewer host contracts in this repository; use for src/SkiaViewer changes, viewer tests, native host boundaries, and generated product viewer usage checks.
+description: Work on viewer host contracts and generated product viewer usage.
 ---
 
 # FS.GG SkiaViewer

@@ -35,7 +35,8 @@ trunk.
 Screenshot evidence remains separate from live responsiveness. Prefer real
 screenshot captures, disclose degraded capture, require reviewer accepted
 readiness, and preserve manual caveats outside generated summary or managed
-section rewrites.
+section rewrites. Keep accepted readiness explicit in the merge evidence even
+when generated summary or managed section output is refreshed after the merge.
 
 Canceled, timed-out, skipped, synthetic, substitute, degraded, pending-review,
 or environment-limited checks must remain visibly caveated and must not be

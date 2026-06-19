@@ -1,6 +1,6 @@
 ---
 name: fs-gg-feedback-capture
-description: Capture per-phase FS.GG UI or Spec Kit feedback records for generated products; use when working with template feedback hooks or feature feedback output under specs.
+description: Capture per-phase fs-gg-ui / Spec Kit feedback (process friction, generalizable-code candidates, severity) into specs/<feature>/feedback/ after each phase.
 ---
 
 # FS.GG Feedback Capture

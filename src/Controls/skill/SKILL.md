@@ -1,6 +1,6 @@
 ---
 name: fs-gg-ui-widgets
-description: Build Skia-rendered FS.GG.UI Controls, rich text, chart controls, graph controls, DataGrid, custom wrappers, and generated product examples.
+description: Build Skia-rendered FS.GG.UI Controls, ControlInspection and retained inspection adapters, rich text, chart controls, graph controls, DataGrid, custom wrappers, and generated product examples.
 ---
 
 # Controls
@@ -25,6 +25,29 @@ declarative attributes such as `TextBox.value`, `Button.onClick`,
 `LineChart.series`, `DataGrid.columns`, `DataGrid.rows`, and `Stack.children`.
 Persistent values stay in the product model; controls may keep only keyed
 transient interaction state through product-owned `ControlRuntime`.
+
+### Retained Inspection Adapter
+
+`ControlInspection.inspectRetained` is the public Controls-owned bridge from
+`Control<'msg>` trees to Scene retained inspection evidence. It must run the
+real retained render path: `RetainedRender.init` for first-frame evidence and
+`RetainedRender.step` when a prior control is supplied. Do not synthesize
+retained classifications from screenshots or ad hoc structural diffs.
+
+When changing retained inspection:
+
+- keep `RetainedControlTransition<'msg>` and
+  `RetainedControlInspectionRequest<'msg>` additive and package-visible through
+  `src/Controls/Inspection.fsi`;
+- classify reused, repainted, shifted, added, removed, unaffected, unsupported,
+  and first-frame nodes with explicit retained facts;
+- attach the final `VisualInspectionArtifact` so retained facts can be reviewed
+  with visual evidence;
+- keep Controls free of a Testing dependency; validators live in
+  `FS.GG.UI.Testing`;
+- run the focused lane with
+  `dotnet fsi scripts/run-validation-lanes.fsx --lane retained-inspection --out specs/170-retained-damage-inspection/readiness/lanes`
+  when retained inspection behavior changes.
 
 ### `CustomControl` does NOT rasterize its content (feature 122)
 
@@ -275,6 +298,7 @@ rather than hard-failing the phase.
 
 - [[fs-gg-layout]] is the runtime layout engine these controls compose over.
 - [[fs-gg-scene]] is the primitive surface controls ultimately render into.
+- [[fs-gg-testing]] owns retained inspection validation and readiness rendering.
 
 ## Sources / links
 

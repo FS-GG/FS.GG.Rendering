@@ -1,6 +1,6 @@
 ---
 name: fs-gg-ui-widgets
-description: Work on FS.GG Controls and widgets in this repository; use for src/Controls changes, control/widget tests, rich text, charts, graph controls, DataGrid, and generated control checks.
+description: Build Skia-rendered FS.GG.UI Controls, ControlInspection and retained inspection adapters, rich text, chart controls, graph controls, DataGrid, custom wrappers, and generated product examples.
 ---
 
 # FS.GG UI Widgets

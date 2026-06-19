@@ -11,7 +11,7 @@ dotnet test tests/Rendering.Harness.Tests/Rendering.Harness.Tests.fsproj -c Rele
 Result:
 
 ```text
-Passed!  - Failed: 0, Passed: 12, Skipped: 0, Total: 12
+Passed!  - Failed: 0, Passed: 13, Skipped: 0, Total: 13
 ```
 
 ## Surface Baseline Drift Proof
@@ -20,6 +20,10 @@ The focused test `SkillParity FSI surface matches the readiness baseline`
 compares `tests/Rendering.Harness/SkillParity.fsi` against
 `specs/168-skill-parity-evidence/readiness/surface-baselines/Rendering.Harness.SkillParity.txt`.
 It passed in the Feature 168 focused test run.
+
+The focused test `repository parity has no unresolved findings` runs the
+current repository parity model in memory and keeps the green parity state under
+test coverage.
 
 ## Fixture Mode
 
@@ -50,12 +54,12 @@ dotnet fsi scripts/check-agent-skill-parity.fsx --out specs/168-skill-parity-evi
 Result:
 
 ```json
-{"summaryJson":"specs/168-skill-parity-evidence/readiness/skill-parity-summary.json","report":"docs/reports/skills-parity.md","overallStatus":"warning","critical":0,"high":0,"warning":35,"info":0}
+{"summaryJson":"specs/168-skill-parity-evidence/readiness/skill-parity-summary.json","report":"docs/reports/skills-parity.md","overallStatus":"passed","critical":0,"high":0,"warning":0,"info":0}
 ```
 
-The warning status is accepted for this feature because warnings are visible
-wrapper metadata drift and one partial `speckit-merge` visual-readiness warning;
-no unresolved high or critical finding remains.
+The current repository parity status is accepted as green: no unresolved
+critical, high, warning, or info finding remains after the agent-wrapper and
+retained-inspection guidance refresh.
 
 ## Validation Lane
 

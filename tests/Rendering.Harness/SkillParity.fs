@@ -740,6 +740,18 @@ module SkillParity =
     let private findingId category surface skill =
         $"{categoryToken category}:{surface}:{skill}"
 
+    let private productAliasTarget (skillName: string) =
+        let normalized = normalizeText skillName
+
+        if normalized.StartsWith("fs-gg-product-") then
+            Some(normalized.Replace("fs-gg-product-", "fs-gg-"))
+        else
+            None
+
+    let private isIntentionalProductAlias (wrapperName: string) (targetName: string) =
+        productAliasTarget wrapperName
+        |> Option.exists (fun expected -> expected = normalizeText targetName)
+
     let private wrapperFindings (entries: SkillEntry list) =
         entries
         |> List.choose (fun entry ->
@@ -759,7 +771,8 @@ module SkillParity =
                       ExceptionId = None }
             | WrapperEntry, Some target ->
                 match target.CanonicalSkillName, target.CanonicalDescription with
-                | Some targetName, _ when normalizeText targetName <> normalizeText entry.SkillName ->
+                | Some targetName, _ when normalizeText targetName <> normalizeText entry.SkillName
+                                          && not (isIntentionalProductAlias entry.SkillName targetName) ->
                     Some
                         { FindingId = findingId MetadataDrift entry.SurfaceId entry.SkillName
                           SkillName = entry.SkillName
@@ -824,7 +837,14 @@ module SkillParity =
             [ "codex-local", codexNames
               "claude", claudeNames ]
             |> List.choose (fun (surfaceId, names) ->
-                if names.Contains(normalizeText entry.SkillName) then
+                let canonicalName = normalizeText entry.SkillName
+                let productAliasName = canonicalName.Replace("fs-gg-", "fs-gg-product-")
+                let exposedAsAlias =
+                    entry.Path.Contains("template/product-skills", StringComparison.OrdinalIgnoreCase)
+                    && names.Contains productAliasName
+                let antCanonicalSelfExposed = entry.SurfaceId = "ant-canonical" && surfaceId = "claude"
+
+                if names.Contains(canonicalName) || exposedAsAlias || antCanonicalSelfExposed then
                     None
                 else
                     Some

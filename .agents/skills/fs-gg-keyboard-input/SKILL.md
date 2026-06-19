@@ -1,6 +1,6 @@
 ---
 name: fs-gg-keyboard-input
-description: Work on the FS.GG keyboard input package in this repository; use for src/KeyboardInput changes, keyboard tests, ViewerKey contracts, and generated product keyboard guidance.
+description: Work on keyboard input contracts and generated product keyboard guidance.
 ---
 
 # FS.GG Keyboard Input

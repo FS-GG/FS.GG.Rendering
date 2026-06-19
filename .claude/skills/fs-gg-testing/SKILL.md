@@ -1,6 +1,6 @@
 ---
 name: fs-gg-testing
-description: Work on FS.GG generated-product and package validation helper contracts in this repository; use for src/Testing changes, testing helpers, and validation evidence.
+description: Work on generated product, package validation, visual inspection, and retained inspection readiness helper contracts.
 ---
 
 # FS.GG Testing

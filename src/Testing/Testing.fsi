@@ -336,11 +336,17 @@ type VisualInspectionSummarySectionUpdate =
       Diagnostics: string list }
 
 /// Stable validation rule descriptor for retained/damage inspection.
+///
+/// Rule ids are persisted in readiness findings, so keep them stable once
+/// they are emitted by committed evidence.
 type RetainedInspectionRule =
     { RuleId: string
       Required: bool }
 
 /// Request for validating one retained inspection artifact.
+///
+/// The check combines artifact facts, the active rule set, expected affected
+/// regions, intentional damage exceptions, and known environment limitations.
 type RetainedInspectionValidationCheck =
     { Artifact: RetainedInspectionArtifact
       Rules: RetainedInspectionRule list
@@ -350,6 +356,9 @@ type RetainedInspectionValidationCheck =
       EnvironmentLimitations: string list }
 
 /// Rule-validation result for one retained inspection artifact.
+///
+/// Applied, invalid, and unused exceptions stay visible so broad damage is
+/// reviewed explicitly instead of being accepted silently.
 type RetainedInspectionValidationResult =
     { ArtifactId: string
       ReadinessStatus: RetainedInspectionStatus
@@ -959,10 +968,16 @@ module RetainedInspectionValidation =
     /// Create a required validation rule by stable rule id.
     val rule: ruleId: string -> RetainedInspectionRule
     /// Deterministic retained/damage rule set.
+    ///
+    /// The default set checks required facts, dirty-region locality, broad or
+    /// full-surface damage, expected affected regions, and exception hygiene.
     val defaultRules: RetainedInspectionRule list
     /// Validate an artifact with explicit rules, exceptions, expected regions, and optional previous artifact.
     val validateCheck: check: RetainedInspectionValidationCheck -> RetainedInspectionValidationResult
     /// Validate an artifact with the default check shape.
+    ///
+    /// This convenience entry point uses the artifact transition's expected
+    /// affected regions and records exception diagnostics in the result.
     val validate:
         artifact: RetainedInspectionArtifact ->
         rules: RetainedInspectionRule list ->
@@ -972,6 +987,9 @@ module RetainedInspectionValidation =
 /// Readiness aggregation for retained/damage inspection validation results.
 module RetainedInspectionReadiness =
     /// Aggregate artifacts and validation results into a retained inspection summary.
+    ///
+    /// Command evidence and caveats are preserved in the summary so generated
+    /// Markdown/JSON can be used directly in readiness reports.
     val aggregate:
         runId: string ->
         artifacts: RetainedInspectionArtifact list ->

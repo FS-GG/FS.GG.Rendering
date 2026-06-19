@@ -70,4 +70,12 @@ let tests =
             Expect.contains ids "ant-canonical" "ant canonical"
             Expect.contains ids "spec-kit-command" "command surface"
         }
+
+        test "repository parity has no unresolved findings" {
+            let root = repoRoot ()
+            let report = SkillParity.runCheck (SkillParity.defaultRequest root)
+
+            Expect.equal report.OverallStatus SkillParity.Passed "repository parity status"
+            Expect.isEmpty report.Findings "unresolved findings"
+        }
     ]

@@ -1,6 +1,6 @@
 ---
 name: fs-gg-samples
-description: Work on optional generated FS.GG.UI sample-pack content; use for template sample fragments and generated product sample screens.
+description: Work on optional generated product sample-pack content.
 ---
 
 # FS.GG Samples

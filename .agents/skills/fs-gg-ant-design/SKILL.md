@@ -1,6 +1,6 @@
 ---
 name: fs-gg-ant-design
-description: Advisory guide for building Ant-styled UI in FS.GG; use when mapping Ant Design patterns, tokens, semantic parts, or color policy onto this repository without React or DOM dependencies.
+description: "Advisory guide for building Ant-styled UI in FS.GG: map Ant Design's stable ideas onto the repo's tokens, controls, resolver, and color policy — no React/DOM."
 ---
 
 # FS.GG Ant Design

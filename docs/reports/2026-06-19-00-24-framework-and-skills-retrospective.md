@@ -7,7 +7,7 @@
 **Feature 165 follow-up:** Structured render/layout inspection metadata is implemented; the current package set before merge is `0.1.26-preview.1`.
 **Feature 166 follow-up:** Validation lane runner hardening is implemented on `166-validation-lane-runner`; it adds stable required/optional lanes, request preflight, run-id evidence isolation, structured summaries, no-progress classification, and schedule-safety checks. Current required-lane evidence intentionally exposes `Controls.Tests` as `no-progress-timeout`.
 **Feature 167 follow-up:** Input/render responsiveness is implemented on `167-input-render-responsiveness`; it adds SkiaViewer responsiveness records/summaries, queued key/pointer scheduling in the persistent viewer wrapper, Controls.Elmish timing/diagnostics-disabled helpers, AntShowcase responsiveness output, validation-lane summary parsing, surface baselines, and readiness evidence. Current post-merge package set is `0.1.29-preview.1`.
-**Feature 168 follow-up:** Skill parity and evidence guidance is implemented on `168-skill-parity-evidence`; it adds `Rendering.Harness.SkillParity`, `scripts/check-agent-skill-parity.fsx`, fixture-based negative-case checks, generated parity reports, Feature 168 readiness evidence, and updated skill guidance for package pins, readiness allowlisting, validation output isolation, visual/readiness caveats, responsiveness diagnostics, and post-merge package evidence. Repository parity currently reports zero high/critical findings and 35 visible warning-level wrapper metadata findings. Current post-merge package set is `0.1.30-preview.1`.
+**Feature 168 follow-up:** ✅ Skill parity and evidence guidance is implemented on `168-skill-parity-evidence`; it adds `Rendering.Harness.SkillParity`, `scripts/check-agent-skill-parity.fsx`, fixture-based negative-case checks, generated parity reports, Feature 168 readiness evidence, and updated skill guidance for package pins, readiness allowlisting, validation output isolation, visual/readiness caveats, responsiveness diagnostics, and post-merge package evidence. ✅ Current repository parity now passes with zero critical, high, warning, or info findings after the agent-wrapper/API-doc refresh. Current post-merge package set is `0.1.30-preview.1`.
 **Feature 169 follow-up:** ✅ Runtime diagnostics taxonomy is implemented and merged from `169-runtime-diagnostics-taxonomy`; it adds `FS.GG.UI.Diagnostics`, typed adapter mappings for Controls, SkiaViewer, Controls.Elmish, Testing readiness helpers, validation-lane diagnostics wiring, AntShowcase diagnostics output, and committed readiness artifacts. ✅ Feature-specific tests, semantic checks, package-feed proof, and the optional diagnostics validation lane passed. ✅ Post-merge packages were bumped, packed, and cold-cache package-feed proved at `0.1.31-preview.1`. ⚠️ The full required validation-lane run remains `blocked` because the existing Controls lane recorded `no-progress-timeout`; this is preserved as non-green evidence in Feature 169 readiness logs.
 **Feature 170 follow-up:** ✅ Retained-render damage inspection is implemented and squash-merged from `170-retained-damage-inspection`. It adds retained/damage public records and helpers in Scene, a Controls retained inspection adapter over `RetainedRender.init`/`RetainedRender.step`, Testing validation/readiness/Markdown/JSON helpers, a focused `retained-inspection` lane, and AntShowcase structured retained evidence for `charts-statistical`. ✅ Focused Controls, Testing, harness, AntShowcase, package compatibility, surface, Debug build, Release build, and canonical `retained-inspection` lane evidence are green under `specs/170-retained-damage-inspection/readiness/`. ✅ Post-merge packages were bumped, packed, and package-feed proved at `0.1.32-preview.1`.
 **Primary work observed:** Feature 162, AntShowcase visual readiness implementation, plus earlier local/Codex/Claude skill parity work
@@ -27,7 +27,7 @@ The work also exposed several friction points:
 4. Visual-readiness behavior is mostly sample-owned. Screenshot matrix capture, completeness checks, contact-sheet generation, reviewer-defect gating, and summary assembly belong in reusable testing/tooling APIs rather than a sample app edge.
 5. Feature 165 adds structured visual/layout metadata for deterministic assertions. ✅ Feature 170 implements the retained/damage follow-up: retained-node facts, dirty-area union metadata, damage locality validation, AntShowcase structured evidence adoption, and a maintained validation lane.
 6. Generated summary commands can overwrite richer hand-written readiness notes. The visual-readiness summarizer rewrote `validation-summary.md` to a minimal link-only summary after a detailed summary had been added.
-7. Skills helped with domain orientation, but they do not yet encode several recurring repository traps: local package-feed drift, readiness ignore rules, concurrent test output locks, post-merge package bump requirements, and how to preserve evidence honesty.
+7. ✅ Skills now encode the recurring repository traps exposed by this work: local package-feed drift, readiness ignore rules, concurrent test output locks, post-merge package bump requirements, retained-inspection validation, and evidence honesty.
 8. A post-readiness interactive diagnostic found severe input-lag risk in the synchronous post-input render path. Pointer routing itself was fast, but a state-changing click can force hundreds of milliseconds of retained render/lowering/layout/text work on the same event path, causing later mouse events to queue.
 
 The highest-value improvement is a shared "visual readiness, local package feed, and responsiveness diagnostics" toolkit: library-side APIs for screenshot evidence, a CLI or script for pack/update/restore validation, live phase timing for input/update/render/present, and skill guidance that requires these checks before a feature is marked done.
@@ -70,8 +70,8 @@ The skill parity and evidence-guidance follow-up is now implemented as Feature
   cases without modifying repository skills.
 - `docs/reports/skills-parity.md` and
   `specs/168-skill-parity-evidence/readiness/skill-parity-summary.json` are
-  generated. Current repository parity is `warning` with zero high/critical
-  findings; warning-level wrapper metadata drift remains visible.
+  generated. ✅ Current repository parity is `passed` with zero critical, high,
+  warning, or info findings.
 - Skill guidance now names package-pin drift, `specs/*/readiness/` allowlisting,
   `git check-ignore`, same project/configuration `dotnet test` output isolation,
   real screenshot/reviewer/degraded capture caveats, responsiveness diagnostics,
@@ -79,9 +79,10 @@ The skill parity and evidence-guidance follow-up is now implemented as Feature
 
 Validation completed during the implementation:
 
-- Feature 168 focused Rendering.Harness tests: 12 passed.
+- Feature 168 focused Rendering.Harness tests: 13 passed.
 - Fixture mode: expected failure with 9 high and 9 warning synthetic findings.
-- Repository parity: zero high/critical findings.
+- Repository parity: passed with zero unresolved findings after the
+  agent-wrapper/API-doc refresh.
 - Rendering-harness validation lane: `ready`; `rendering-harness` passed, with
   the aggregate-solution substitute caveat preserved.
 
@@ -1992,7 +1993,7 @@ Make runtime diagnostics structured and filterable so expected environment/backe
 168 skills/parity
   ├─ implemented as 168-skill-parity-evidence
   ├─ includes generated parity report and fixture evidence
-  └─ leaves warning-level wrapper metadata drift visible for follow-up
+  └─ now reports passed parity with zero unresolved findings
 
 169 diagnostics taxonomy
   └─ can run in parallel with 164/165 or extend the Feature 167 diagnostics output

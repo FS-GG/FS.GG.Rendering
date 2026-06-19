@@ -1,14 +1,14 @@
 <!-- SKILL-PARITY:START -->
 # Feature 168 Guidance Coverage
 
-Overall status: `warning`
+Overall status: `passed`
 
 | Rule | Covered | Partial | Missing | Excepted | Not applicable |
 | --- | --- | --- | --- | --- | --- |
 | package-pin-drift | 9 | 0 | 0 | 0 | 40 |
 | readiness-allowlisting | 6 | 0 | 0 | 0 | 43 |
 | validation-output-isolation | 4 | 0 | 0 | 0 | 45 |
-| visual-readiness | 9 | 2 | 0 | 0 | 38 |
+| visual-readiness | 11 | 0 | 0 | 0 | 38 |
 | responsiveness-diagnostics | 7 | 0 | 0 | 0 | 42 |
 | post-merge-package-bump | 2 | 0 | 0 | 0 | 47 |
 | evidence-honesty | 12 | 0 | 0 | 0 | 37 |

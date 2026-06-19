@@ -1,6 +1,6 @@
 ---
 name: fs-gg-scene
-description: Work on dependency-light scene primitives and generated product scene usage.
+description: Work on dependency-light scene primitives, visual and retained inspection records, damage-locality evidence, and generated product scene usage.
 ---
 
 # Scene Capability
@@ -12,6 +12,27 @@ Owns `src/Scene/`, Scene package tests, `template/fragments/scene/`, and generat
 ## Public Contract
 
 The supported API lives in `src/Scene/Scene.fsi`. Surface changes require `readiness/surface-baselines/FS.GG.UI.Scene.txt` and package-surface evidence.
+
+## Retained Inspection
+
+Retained and damage-locality evidence is modeled in Scene, not in Controls or
+Testing. Keep `RetainedInspectionStatus`, `RetainedNodeStatus`,
+`DamageInspectionStatus`, `RetainedFrameTransition`, `RetainedNodeInspection`,
+`DamageRegionInspection`, `DamageLocalityFinding`,
+`IntentionalDamageException`, `RetainedInspectionArtifact`,
+`RetainedInspectionSummary`, and the `RetainedInspection` helper module
+dependency-light.
+
+When changing this surface:
+
+- preserve stable lowercase status tokens from `RetainedInspection.statusText`,
+  `nodeStatusText`, and `damageStatusText`;
+- keep dirty-region percentages based on the true clipped dirty union area, not
+  the bounding rectangle area;
+- record unsupported retained facts explicitly instead of treating missing
+  retained data as accepted evidence;
+- refresh `readiness/surface-baselines/FS.GG.UI.Scene.txt` and
+  `tests/surface-baselines/FS.GG.UI.Scene.txt`.
 
 ## Build Commands
 
@@ -103,6 +124,8 @@ rather than hard-failing the phase.
 
 - [[fs-gg-skiaviewer]] hosts and renders these scene descriptions.
 - [[fs-gg-ui-widgets]] builds higher-level controls that compile down to Scene.
+- [[fs-gg-testing]] validates retained inspection artifacts and renders
+  retained readiness summaries.
 
 ## Sources / links
 

@@ -1,6 +1,6 @@
 ---
 name: fs-gg-project
-description: Work on a generated FS.GG.UI product; use for product application code, product tests, product docs, readiness evidence, and copied capability skills.
+description: Work on a generated FS.GG.UI product.
 ---
 
 # FS.GG Project

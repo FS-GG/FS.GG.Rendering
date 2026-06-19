@@ -1,6 +1,6 @@
 ---
 name: fs-gg-product-elmish
-description: Generated product Elmish guidance; use when editing generated FS.GG.UI product code that consumes the bundled Elmish adapter API rather than repository src/Elmish internals.
+description: Drive a generated FS.GG.UI product through the pure Elmish adapter.
 ---
 
 # FS.GG Product Elmish

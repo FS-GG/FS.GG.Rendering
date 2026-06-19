@@ -1,6 +1,6 @@
 ---
 name: fs-gg-product-skiaviewer
-description: Generated product SkiaViewer host guidance; use when wiring a generated FS.GG.UI product to the desktop viewer host and ViewerEffect boundary.
+description: Wire a generated FS.GG.UI product to the desktop viewer host.
 ---
 
 # FS.GG Product SkiaViewer

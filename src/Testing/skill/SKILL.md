@@ -1,6 +1,6 @@
 ---
 name: fs-gg-testing
-description: Work on generated product and package validation helper contracts.
+description: Work on generated product, package validation, visual inspection, and retained inspection readiness helper contracts.
 ---
 
 # Testing Capability
@@ -12,6 +12,27 @@ Owns `src/Testing/`, testing helper contracts, `template/fragments/testing/`, an
 ## Public Contract
 
 The supported API lives in `src/Testing/Testing.fsi`. Surface changes require `readiness/surface-baselines/FS.GG.UI.Testing.txt`.
+
+## Retained Inspection Readiness
+
+Retained inspection validation lives in Testing and consumes Scene artifacts.
+Use `RetainedInspectionValidation`, `RetainedInspectionReadiness`, and
+`RetainedInspectionMarkdown` for damage-locality rules, readiness aggregation,
+Markdown, JSON, and managed-section updates.
+
+When changing this area:
+
+- keep missing required retained facts blocked or unsupported, never silently
+  accepted;
+- keep broad or full-surface damage blocking unless a matching
+  `IntentionalDamageException` is recorded and remains visible;
+- preserve invalid and unused exceptions in diagnostics;
+- keep managed section markers
+  `<!-- FS.GG RETAINED INSPECTION START -->` and
+  `<!-- FS.GG RETAINED INSPECTION END -->` stable;
+- run
+  `dotnet fsi scripts/run-validation-lanes.fsx --lane retained-inspection --out specs/170-retained-damage-inspection/readiness/lanes`
+  when retained validation or readiness rendering changes.
 
 ## Build Commands
 
@@ -86,6 +107,8 @@ rather than hard-failing the phase.
 
 - [[fs-gg-scene]] supplies the `LayoutEvidenceReport` types these helpers validate.
 - [[fsharp-build-orchestration]] runs the governed targets these helpers back.
+- [[fs-gg-ui-widgets]] produces retained inspection artifacts through
+  `ControlInspection.inspectRetained`.
 
 ## Sources / links
 

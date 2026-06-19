@@ -1,6 +1,6 @@
 ---
 name: fs-gg-product-keyboard-input
-description: Generated product keyboard-input guidance; use when mapping ViewerKey values to product messages in generated FS.GG.UI app profiles.
+description: Map keyboard input to product commands in a generated FS.GG.UI product.
 ---
 
 # FS.GG Product Keyboard Input

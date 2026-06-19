@@ -1,6 +1,6 @@
 ---
 name: fs-gg-product-ui-widgets
-description: Generated product UI widget guidance; use when composing Controls, rich text, charts, graphs, DataGrid, or custom wrappers in generated FS.GG.UI product screens.
+description: Generated product guidance for Skia-rendered FS.GG.UI Controls, rich text, chart controls, graph controls, DataGrid, and custom wrappers.
 ---
 
 # FS.GG Product UI Widgets

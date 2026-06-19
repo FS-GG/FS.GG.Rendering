@@ -1,6 +1,6 @@
 ---
 name: fs-gg-product-scene
-description: Generated product Scene guidance; use when building pure Scene or SceneNode descriptions in generated FS.GG.UI products rather than repository src/Scene internals.
+description: Build pure scene descriptions in a generated FS.GG.UI product.
 ---
 
 # FS.GG Product Scene

@@ -795,38 +795,63 @@ type VisualInspectionSummary =
 /// Readiness result for retained-render inspection evidence.
 [<RequireQualifiedAccess>]
 type RetainedInspectionStatus =
+    /// Evidence was produced, validated, and accepted for the inspected scope.
     | Accepted
+    /// Validation found a blocking retained-render or damage-locality issue.
     | Blocked
+    /// Evidence was produced but needs human review before it can be accepted.
     | ReviewRequired
+    /// The requested retained or damage fact is not supported by the inspected path.
     | Unsupported
+    /// The environment prevented complete retained inspection while still producing useful evidence.
     | EnvironmentLimited
+    /// The scope was intentionally skipped by the inspection request.
     | NotInspected
+    /// The inspection did not execute and no evidence was produced.
     | NotRun
 
 /// Retained-render node transition classification.
 [<RequireQualifiedAccess>]
 type RetainedNodeStatus =
+    /// The retained renderer preserved the node identity across the transition.
     | Retained
+    /// The node was matched and reused without needing repaint evidence.
     | Reused
+    /// The node was matched and repainted within the transition.
     | Repainted
+    /// The node was matched and moved between prior and current bounds.
     | Shifted
+    /// The node both moved and repainted in the same transition.
     | ShiftedAndRepainted
+    /// The node appears in the current frame but not the prior frame.
     | Added
+    /// The node appears in the prior frame but not the current frame.
     | Removed
+    /// The node was present and unaffected by the transition.
     | Unaffected
+    /// The node could not be classified with the available retained facts.
     | Unsupported
 
 /// Visible dirty-region classification for retained damage inspection.
 [<RequireQualifiedAccess>]
 type DamageInspectionStatus =
+    /// No visible dirty region was reported for the transition.
     | Empty
+    /// Dirty area is bounded to the expected affected region set.
     | Localized
+    /// Dirty area is wider than expected but does not cover the full frame.
     | Broad
+    /// Dirty area covers the full visible frame.
     | FullSurface
+    /// Damage facts are unavailable or unsupported for the inspected path.
     | Unsupported
+    /// Damage inspection was intentionally not performed.
     | NotInspected
 
 /// Reviewed allowance for broad or full-surface retained damage.
+///
+/// Use exceptions to keep deliberate broad damage visible in evidence instead of
+/// silently downgrading a validation finding.
 type IntentionalDamageException =
     { ExceptionId: string
       RuleId: string
@@ -837,6 +862,9 @@ type IntentionalDamageException =
       ExpiresWith: string option }
 
 /// Before/after frame identity and scenario expectations for retained inspection.
+///
+/// The transition connects retained node facts to the interaction and expected
+/// affected visual regions that validators use for damage-locality checks.
 type RetainedFrameTransition =
     { TransitionId: string
       PriorFrameId: string option
@@ -863,6 +891,10 @@ type RetainedNodeInspection =
       Diagnostics: string list }
 
 /// Visible retained-render damage facts for one transition.
+///
+/// Dirty area values are expressed in visible frame coordinates. `UnionArea`
+/// is the true clipped union of dirty rectangles, not the area of the bounding
+/// rectangle.
 type DamageRegionInspection =
     { TransitionId: string
       DamageStatus: DamageInspectionStatus
@@ -895,6 +927,9 @@ type DamageLocalityFinding =
       Diagnostics: string list }
 
 /// Machine-checkable retained-render evidence for one inspected scope or transition.
+///
+/// The artifact can embed the final visual inspection artifact so retained
+/// facts, damage facts, and screenshot/readback evidence stay correlated.
 type RetainedInspectionArtifact =
     { ArtifactId: string
       RunId: string
@@ -913,6 +948,10 @@ type RetainedInspectionArtifact =
       GeneratedAtUtc: string }
 
 /// Reviewer- and machine-readable retained inspection rollup.
+///
+/// Summaries are intended for readiness reports: they preserve blocking
+/// findings, unsupported facts, accepted exceptions, related visual evidence,
+/// command evidence, caveats, and diagnostics.
 type RetainedInspectionSummary =
     { RunId: string
       OverallStatus: RetainedInspectionStatus
@@ -1231,6 +1270,9 @@ module RetainedInspection =
     /// Compute the bounding rectangle of clipped dirty rectangles.
     val dirtyUnionBounds: frameBounds: Rect -> dirtyRectangles: Rect list -> Rect option
     /// Build visible damage evidence from dirty rectangles and retained counters.
+    ///
+    /// The returned `DirtyPercentage` is computed from the true clipped dirty
+    /// union area divided by the visible frame area.
     val damageRegion:
         transitionId: string ->
         frameBounds: Rect ->

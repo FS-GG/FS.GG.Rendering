@@ -11,7 +11,7 @@ dotnet test tests/Rendering.Harness.Tests/Rendering.Harness.Tests.fsproj -c Rele
 Result on 2026-06-19:
 
 ```text
-Passed!  - Failed:     0, Passed:    12, Skipped:     0, Total:    12
+Passed!  - Failed:     0, Passed:    13, Skipped:     0, Total:    13
 ```
 
 Covered focused areas:
@@ -25,6 +25,7 @@ Covered focused areas:
 - Markdown/JSON report agreement
 - generated-section preservation for manual caveats
 - non-destructive repository skill-file checking
+- current repository parity has no unresolved findings
 
 ## Repository Parity Report Test
 
@@ -37,9 +38,9 @@ dotnet fsi scripts/check-agent-skill-parity.fsx --out specs/168-skill-parity-evi
 Result:
 
 ```json
-{"summaryJson":"specs/168-skill-parity-evidence/readiness/skill-parity-summary.json","report":"docs/reports/skills-parity.md","overallStatus":"warning","critical":0,"high":0,"warning":35,"info":0}
+{"summaryJson":"specs/168-skill-parity-evidence/readiness/skill-parity-summary.json","report":"docs/reports/skills-parity.md","overallStatus":"passed","critical":0,"high":0,"warning":0,"info":0}
 ```
 
-The warning status is retained rather than hidden. It reflects existing
-wrapper-description and wrapper-name drift plus one partial visual-readiness
-warning for `speckit-merge`; no high or critical findings remain.
+The current repository parity report is green. Wrapper-description drift,
+generated-product wrapper aliases, and the `speckit-merge` visual-readiness
+coverage gap are resolved in the active report.

@@ -1,6 +1,6 @@
 ---
 name: fs-gg-elmish
-description: Work on the FS.GG Elmish adapter package in this repository; use for src/Elmish changes, Elmish tests, pure update/effect boundaries, and generated product Elmish integration checks.
+description: Work on Elmish adapter contracts and generated product Elmish wiring.
 ---
 
 # FS.GG Elmish

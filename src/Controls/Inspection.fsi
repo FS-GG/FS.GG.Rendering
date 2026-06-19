@@ -14,6 +14,9 @@ type ControlInspectionRequest<'msg> =
       RelatedVisualEvidence: string list }
 
 /// One retained-render transition to inspect.
+///
+/// Supply a prior control when validating a before/after retained step; omit it
+/// for first-frame evidence where damage is expected to be `NotInspected`.
 type RetainedControlTransition<'msg> =
     { TransitionId: string
       PriorControl: Control<'msg> option
@@ -24,6 +27,9 @@ type RetainedControlTransition<'msg> =
       IntentionalExceptions: IntentionalDamageException list }
 
 /// Request used to inspect retained-render output and damage facts.
+///
+/// This request runs the real retained render path and links any related
+/// screenshot or visual-readiness artifacts through `RelatedVisualEvidence`.
 type RetainedControlInspectionRequest<'msg> =
     { Scope: VisualInspectionScope
       Theme: Theme
@@ -48,4 +54,8 @@ module ControlInspection =
             VisualInspectionArtifact
 
     /// Inspect retained-render output by running `RetainedRender.init` and, when prior input exists, `RetainedRender.step`.
+    ///
+    /// The returned artifact contains retained node classifications, dirty
+    /// region facts, unsupported facts, diagnostics, and the final visual
+    /// inspection artifact for the current control tree.
     val inspectRetained: request: RetainedControlInspectionRequest<'msg> -> RetainedInspectionArtifact

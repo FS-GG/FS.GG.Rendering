@@ -1,6 +1,6 @@
 ---
 name: fs-gg-layout
-description: Work on FS.GG Yoga-backed layout contracts in this repository; use for src/Layout changes, layout tests, layout surface baselines, and layout dependency boundaries.
+description: Work on Yoga-backed layout contracts and generated product layout usage.
 ---
 
 # FS.GG Layout
