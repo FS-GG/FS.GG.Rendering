@@ -80,14 +80,29 @@ selected and `rendering-harness` is a targeted substitute for it.
 This feature changes guidance and harness tooling only. It references the
 existing package-feed proof workflow; it does not add package-feed behavior.
 
-Referenced workflow:
+Post-merge package bump workflow:
 
 ```sh
 dotnet fsi scripts/refresh-local-feed-and-samples.fsx --sample samples/AntShowcase --mode proof --out specs/168-skill-parity-evidence/readiness/package-feed
 ```
 
-Not run for this feature because no package-consuming sample package pins were
-changed.
+Actual command after the mandatory package bump:
+
+```sh
+dotnet fsi scripts/refresh-local-feed-and-samples.fsx --sample samples/AntShowcase --mode proof --out specs/168-skill-parity-evidence/readiness/package-feed-post-merge
+```
+
+Result:
+
+```text
+package-feed status: passed
+packages: 13
+pins: 16
+specs/168-skill-parity-evidence/readiness/package-feed-post-merge/package-versions.md
+specs/168-skill-parity-evidence/readiness/package-feed-post-merge/package-pins.md
+specs/168-skill-parity-evidence/readiness/package-feed-post-merge/source-proof.md
+specs/168-skill-parity-evidence/readiness/package-feed-post-merge/source-proof.json
+```
 
 ## Commit Visibility
 

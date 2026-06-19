@@ -73,6 +73,7 @@ specs/166-validation-lane-runner/readiness/**/nuget-cache/
 !specs/167-input-render-responsiveness/readiness/**
 !specs/168-skill-parity-evidence/readiness/
 !specs/168-skill-parity-evidence/readiness/**
+specs/168-skill-parity-evidence/readiness/**/nuget-cache/
 
 # macOS / Linux cruft
 .DS_Store

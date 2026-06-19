@@ -5,7 +5,7 @@
     <IsPackable>true</IsPackable>
     <PackageId>FS.GG.UI.Testing</PackageId>
     <AssemblyName>FS.GG.UI.Testing</AssemblyName>
-    <Version>0.1.29-preview.1</Version>
+    <Version>0.1.30-preview.1</Version>
     <Title>FS.GG.UI.Testing</Title>
     <Description>Generated product and package validation helpers for FS.GG.UI V3 products.</Description>
     <PackageTags>fsharp;testing;governance;template</PackageTags>

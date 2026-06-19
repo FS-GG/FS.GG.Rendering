@@ -1,0 +1,14 @@
+dotnet restore /home/developer/projects/FS.GG.Rendering/samples/AntShowcase/AntShowcase.Core/AntShowcase.Core.fsproj --configfile specs/168-skill-parity-evidence/readiness/package-feed-post-merge/source-rules.nuget.config --packages /home/developer/projects/FS.GG.Rendering/specs/168-skill-parity-evidence/readiness/package-feed-post-merge/nuget-cache
+  Determining projects to restore...
+  Restored /home/developer/projects/FS.GG.Rendering/samples/AntShowcase/AntShowcase.Core/AntShowcase.Core.fsproj (in 1.22 min).
+
+dotnet restore /home/developer/projects/FS.GG.Rendering/samples/AntShowcase/AntShowcase.App/AntShowcase.App.fsproj --configfile specs/168-skill-parity-evidence/readiness/package-feed-post-merge/source-rules.nuget.config --packages /home/developer/projects/FS.GG.Rendering/specs/168-skill-parity-evidence/readiness/package-feed-post-merge/nuget-cache
+  Determining projects to restore...
+  Restored /home/developer/projects/FS.GG.Rendering/samples/AntShowcase/AntShowcase.App/AntShowcase.App.fsproj (in 256 ms).
+  1 of 2 projects are up-to-date for restore.
+
+dotnet restore /home/developer/projects/FS.GG.Rendering/samples/AntShowcase/AntShowcase.Tests/AntShowcase.Tests.fsproj --configfile specs/168-skill-parity-evidence/readiness/package-feed-post-merge/source-rules.nuget.config --packages /home/developer/projects/FS.GG.Rendering/specs/168-skill-parity-evidence/readiness/package-feed-post-merge/nuget-cache
+  Determining projects to restore...
+  Restored /home/developer/projects/FS.GG.Rendering/samples/AntShowcase/AntShowcase.Tests/AntShowcase.Tests.fsproj (in 17.36 sec).
+  2 of 3 projects are up-to-date for restore.
+
