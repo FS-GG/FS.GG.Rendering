@@ -4,6 +4,13 @@
   "laneRunId": "validation-20260619-155116-212d54",
   "overallReadiness": "ready",
   "retainedInspectionLaneStatus": "passed",
+  "packageVersion": "0.1.32-preview.1",
+  "packageFeedProof": {
+    "status": "passed",
+    "packageVersions": "specs/170-retained-damage-inspection/readiness/package-feed-post-merge/package-versions.md",
+    "packagePins": "specs/170-retained-damage-inspection/readiness/package-feed-post-merge/package-pins.md",
+    "sourceProof": "specs/170-retained-damage-inspection/readiness/package-feed-post-merge/source-proof.md"
+  },
   "elapsed": "00:00:37.5334492",
   "underFiveMinuteTarget": true,
   "reviewerUnderTwoMinuteTarget": true,

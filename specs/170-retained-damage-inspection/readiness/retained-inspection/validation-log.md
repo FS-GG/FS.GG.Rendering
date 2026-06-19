@@ -16,6 +16,8 @@ Status: `accepted`
 | `dotnet test tests/Package.Tests/Package.Tests.fsproj -c Release --no-restore --filter Feature170` | ✅ passed | 3 package compatibility tests |
 | `dotnet test tests/Package.Tests/Package.Tests.fsproj -c Release --no-restore --filter Surface` | ✅ passed | 32 package surface tests |
 | `dotnet fsi scripts/run-validation-lanes.fsx --lane retained-inspection --out specs/170-retained-damage-inspection/readiness/lanes` | ✅ passed | `validation-20260619-155116-212d54`, elapsed `00:00:37.5334492` |
+| `dotnet fsi scripts/refresh-local-feed-and-samples.fsx --sample samples/AntShowcase --mode refresh --pack --out specs/170-retained-damage-inspection/readiness/package-feed-post-merge` | ✅ passed | packed 14 packages at `0.1.32-preview.1` |
+| `dotnet fsi scripts/refresh-local-feed-and-samples.fsx --sample samples/AntShowcase --mode proof --isolated-cache specs/170-retained-damage-inspection/readiness/package-feed-post-merge/nuget-cache --out specs/170-retained-damage-inspection/readiness/package-feed-post-merge` | ✅ passed | AntShowcase restored from the local feed with no source-rule violations |
 
 ## Lane Evidence
 
@@ -24,9 +26,13 @@ Status: `accepted`
 - Lane result: `specs/170-retained-damage-inspection/readiness/lanes/validation-20260619-155116-212d54/retained-inspection/result.json`
 - Lane diagnostics: `specs/170-retained-damage-inspection/readiness/lanes/validation-20260619-155116-212d54/retained-inspection/diagnostics.md`
 - Lane log: `specs/170-retained-damage-inspection/readiness/lanes/validation-20260619-155116-212d54/retained-inspection/log.txt`
+- Package versions: `specs/170-retained-damage-inspection/readiness/package-feed-post-merge/package-versions.md`
+- Package pins: `specs/170-retained-damage-inspection/readiness/package-feed-post-merge/package-pins.md`
+- Package source proof: `specs/170-retained-damage-inspection/readiness/package-feed-post-merge/source-proof.md`
 
 ## Notes
 
 - The lane is optional and substitutes for `aggregate-solution` when explicitly selected.
 - The accepted lane is under the five-minute target.
 - Direct AntShowcase Expecto evidence is used for the sample test because the VSTest adapter returns success without useful filtered output for that sample project.
+- Post-merge package evidence proves the local package feed and AntShowcase pins at `0.1.32-preview.1`.

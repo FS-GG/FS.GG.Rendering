@@ -16,6 +16,7 @@ Status: `accepted`
 - ✅ AntShowcase visual readiness count parity remains accepted: 38 preferred targets and 12 minimum targets.
 - ✅ `dotnet test tests/Package.Tests/Package.Tests.fsproj -c Release --no-restore --filter Feature170`: passed, 3 tests.
 - ✅ `dotnet test tests/Package.Tests/Package.Tests.fsproj -c Release --no-restore --filter Surface`: passed, 32 tests.
+- ✅ Post-merge package feed proof passed at `0.1.32-preview.1`; AntShowcase package pins restore from `/home/developer/.local/share/nuget-local` with no source-rule violations.
 
 ## Git Ignore Proof
 
