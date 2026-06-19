@@ -25,7 +25,7 @@ dotnet fsi scripts/refresh-local-feed-and-samples.fsx
 dotnet nuget locals global-packages --clear
 ```
 
-The sample package pins currently match the product projects at `0.1.32-preview.1`.
+The sample package pins currently match the product projects at `0.1.33-preview.1`.
 
 ## Commands
 
