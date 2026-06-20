@@ -2046,6 +2046,12 @@ module internal RetainedRender =
 
         go retained.Root
 
+    /// F2 (Feature 175 FR-009): the single offset-aware queryable layout. `retained.Layout` is the RAW
+    /// incremental cache (pre-shifting it would double-shift reused descendant bounds each frame), so the
+    /// scroll-offset shift is re-applied HERE — once — for every `LayoutResult` hit-test consumer.
+    let hitTestLayout (retained: RetainedRender<'msg>) : FS.GG.UI.Layout.LayoutResult =
+        ControlInternals.applyScrollOffsets retained.Root.Control retained.Layout
+
     let authoredControlIds (boundIds: Set<ControlId>) (retained: RetainedRender<'msg>) : Map<RetainedId, ControlId> =
         // Feature 110 (FR-003): reproduce `Control.nearestAuthored`'s climb from retained identity.
         // A node is AUTHORED when it is keyed (`canonical <> path`, since `canonical = Key ?? path`)

@@ -14,12 +14,39 @@ open Silk.NET.Input
 open Silk.NET.Maths
 open Silk.NET.Windowing
 
-module private RenderLagTrace =
-    let private enabled =
+module internal RenderLagTrace =
+    /// S3 (Feature 175): one structured live-trace event — the event name plus its key/value fields
+    /// (e.g. focus/hover/scroll resolution, binding dispatch, model-update/view timing).
+    type TraceEvent = { Event: string; Fields: (string * string) list }
+
+    let private stderrEnabled =
         String.Equals(Environment.GetEnvironmentVariable("FS_GG_RENDER_LAG_TRACE"), "1", StringComparison.Ordinal)
 
+    // S3 read-back path: an in-memory ring that captures emitted events so a test or tool can OBSERVE
+    // live state programmatically — without the env var and without a repack-to-instrument loop (the
+    // friction that made diagnosing the Feature-175 focus lag slow). Independent of the stderr toggle.
+    let private captured = System.Collections.Concurrent.ConcurrentQueue<TraceEvent>()
+    let mutable private capturing = false
+
+    /// Begin in-memory capture (clears any prior buffer); pair with `drainCapture`. The buffer is
+    /// process-global, so a deterministic test should assert on the PRESENCE of its uniquely-named
+    /// events rather than an exact list (other activity may emit concurrently).
+    let startCapture () =
+        captured.Clear()
+        capturing <- true
+
+    /// Stop capture and return the events recorded since `startCapture`, in emission order.
+    let drainCapture () =
+        capturing <- false
+        let events = captured.ToArray() |> List.ofArray
+        captured.Clear()
+        events
+
     let emit eventName fields =
-        if enabled then
+        if capturing then
+            captured.Enqueue { Event = eventName; Fields = fields }
+
+        if stderrEnabled then
             let fieldsText =
                 fields
                 |> List.map (fun (name, value) -> $"{name}={value}")
@@ -994,6 +1021,29 @@ module Viewer =
 
     let dirtyStateRequiresRecompose dirty =
         dirty.SceneDirty
+
+    /// F1 (Feature 175 general repaint signal): the single "runtime-state changed → repaint" policy,
+    /// shared by EVERY viewer loop. After an input, if it produced product messages then
+    /// `dispatchHostMsg` already re-derived the scene from the new model; if it produced NONE, runtime
+    /// state (focus traversal, hover, scroll offsets) may still have changed with NO model change, so
+    /// re-derive from `host.View` — the single source reflecting model + every runtime ref — so the
+    /// change renders on THIS input, not the next (the "focus one click behind" / dead-hover /
+    /// dead-scroll class). Centralizing it here keeps the key-only and full-interactive loops from
+    /// drifting: previously only the full-interactive loop refreshed, so the key-only loop silently
+    /// reintroduced the one-frame-behind bug for focus/scroll keys.
+    let internal runtimeStateRepaint (producedMessages: bool) (current: 'scene) (deriveScene: unit -> 'scene) : 'scene =
+        if producedMessages then
+            current
+        else
+            RenderLagTrace.emit "runtime-state-repaint" [ "cause", "no-message-input" ]
+            deriveScene ()
+
+    // S3 (Feature 175): the structured live-trace read-back path, surfaced as plain `(event, fields)`
+    // tuples so a test or tool can observe live state programmatically — no env var, no repack.
+    let internal traceStartCapture () = RenderLagTrace.startCapture ()
+    let internal traceDrainCapture () : (string * (string * string) list) list =
+        RenderLagTrace.drainCapture () |> List.map (fun e -> e.Event, e.Fields)
+    let internal traceEmit (eventName: string) (fields: (string * string) list) = RenderLagTrace.emit eventName fields
 
     let createResponsivenessRunId () =
         let stamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture)
@@ -3436,6 +3486,10 @@ module Viewer =
                             dispatchHostMsg msg
                         | None ->
                             inputDispatch <- "false"
+                            // F1: a key that maps to no product message may still have changed
+                            // host-internal runtime state (focus traversal, scroll keys); re-derive so
+                            // it renders on THIS key. (Previously only the full-interactive loop did this.)
+                            currentScene <- runtimeStateRepaint false currentScene (fun () -> host.View currentModel)
                             false
 
                     let inputVerified () =
@@ -3559,21 +3613,21 @@ module Viewer =
                                     else
                                         ViewerKeyDirection.KeyUp }
 
-                        match host.MapKey key normalizedDown with
-                        | [] ->
-                            // Feature 175 (general repaint trigger): a key may change host-internal
-                            // runtime state (focus traversal, scroll keys) with no product message;
-                            // refresh from `host.View` so the change renders on THIS key, not the next.
-                            currentScene <- host.View currentSize currentModel
-                            false
-                        | msgs ->
+                        let msgs = host.MapKey key normalizedDown
+                        if not (List.isEmpty msgs) then
                             RenderLagTrace.emit
                                 "key-routed"
                                 [ "key", rawKey
                                   "isDown", string normalizedDown
                                   "messageCount", string msgs.Length ]
                             inputDispatch <- "true"
-                            msgs |> List.fold (fun close msg -> dispatchHostMsg msg || close) false
+                        let closeRequested = msgs |> List.fold (fun close msg -> dispatchHostMsg msg || close) false
+                        // F1 general repaint signal: if the key produced no product message it may still
+                        // have changed runtime state (focus traversal, scroll keys); re-derive so it
+                        // renders on THIS key, not the next. (When messages ran, dispatchHostMsg already
+                        // re-derived, so this is a no-op.)
+                        currentScene <- runtimeStateRepaint (not (List.isEmpty msgs)) currentScene (fun () -> host.View currentSize currentModel)
+                        closeRequested
 
                     let handlePointer (input: ViewerPointerInput) =
                         let pointerSw = Stopwatch.StartNew()
@@ -3595,17 +3649,13 @@ module Viewer =
 
                         let closeRequested = msgs |> List.fold (fun close msg -> dispatchHostMsg msg || close) false
 
-                        // Feature 175 (general repaint trigger): `MapPointer` may mutate host-internal
-                        // runtime state (focus/hover/scroll) WITHOUT producing a product message. The
-                        // model is then unchanged, so `dispatchHostMsg` never ran and `currentScene`
-                        // would stay stale until the NEXT model change — the "focus one click behind",
-                        // dead-hover, and dead-scroll class of bugs. Re-derive the scene from
-                        // `host.View`, the single source that reflects ALL state (model + every runtime
-                        // ref), so any such change renders on THIS input. When messages WERE dispatched,
-                        // `dispatchHostMsg` already rendered with the new model + current runtime state,
-                        // so the redundant re-render is skipped.
-                        if List.isEmpty msgs then
-                            currentScene <- host.View currentSize currentModel
+                        // F1 general repaint signal: `MapPointer` may mutate host-internal runtime state
+                        // (focus/hover/scroll) WITHOUT producing a product message, leaving the model
+                        // unchanged so `dispatchHostMsg` never re-derived — the "focus one click behind",
+                        // dead-hover, and dead-scroll class. `runtimeStateRepaint` re-derives from
+                        // `host.View` (the single source reflecting model + every runtime ref) on the
+                        // no-message path, and is a no-op when messages already drove a re-derive.
+                        currentScene <- runtimeStateRepaint (not (List.isEmpty msgs)) currentScene (fun () -> host.View currentSize currentModel)
 
                         closeRequested
 

@@ -491,15 +491,53 @@ module ControlsElmish =
                 dispatchBindings origin authored "changed" (Some payload) None bindings |> Some
         | _ -> None
 
+    /// F3 — the activation-value contract: how a control kind computes its `changed` payload from a
+    /// click, given the rendered frame, the control tree, the authored id, the click x, and the origin.
+    /// `Some msgs` means the kind owns the click and reports its activated value; `None` falls through
+    /// to the generic `Payload = None` click bindings.
+    type private ActivationValueComputer<'msg> =
+        ControlRenderResult<'msg> -> Control<'msg> -> ControlId -> float -> ControlEventOrigin -> 'msg list option
+
+    /// The activation-value REGISTRY: control kind → its activation-value computer. `bindingMessagesFor`
+    /// consults this (keyed by the control's `Kind`) before the generic `Payload = None` fallback, so a
+    /// value-bearing kind declares its click→payload computation in ONE place instead of growing an
+    /// `if kind = …` cascade in the router. Registered today: `slider` (value from x) and the boolean
+    /// toggles `switch`/`check-box` (flip `selected`).
+    ///
+    /// KNOWN GAPS (audit — value-bearing kinds NOT yet registered, so a click still falls through to
+    /// `Payload = None` and the `onChanged` adapter sees its default): `radio-group`/`tabs`
+    /// (`onChangedString` → ""), `numeric-input` (`onChangedFloat` → 0.0), and `segmented`/`rate`
+    /// (no public `onChanged` binding yet). Each becomes correct by REGISTERING a computer here.
+    /// `toggle-button` is intentionally absent: it bakes `not IsOn` into an `onClick` at view time, so it
+    /// needs no payload (the toggle-authoring split is F6).
+    let private activationValueComputers () : (string * ActivationValueComputer<'msg>) list =
+        [ "slider", (fun rendered root authored x origin -> sliderChangedMessages rendered root authored x origin)
+          "switch", (fun rendered root authored _ origin -> toggleChangedMessages rendered root authored origin)
+          "check-box", (fun rendered root authored _ origin -> toggleChangedMessages rendered root authored origin) ]
+
+    /// Consult the activation-value registry for the authored control's kind. The registry key is
+    /// authoritative: an unregistered kind returns `None` (→ generic `Payload = None` click bindings).
+    let private activationValueFor
+        (rendered: ControlRenderResult<'msg>)
+        (root: Control<'msg>)
+        (authored: ControlId)
+        (x: float)
+        (origin: ControlEventOrigin)
+        : 'msg list option =
+        tryFindControlById root authored
+        |> Option.bind (fun control ->
+            activationValueComputers ()
+            |> List.tryFind (fun (kind, _) -> kind = control.Kind)
+            |> Option.bind (fun (_, compute) -> compute rendered root authored x origin))
+
     let bindingMessagesFor (rendered: ControlRenderResult<'msg>) (root: Control<'msg>) (interaction: PointerInteraction) : 'msg list option =
         match interaction with
         | Click(control, _, x, _) ->
             match Control.nearestAuthored rendered control with
             | Some authored ->
-                match sliderChangedMessages rendered root authored x ControlEventOrigin.Pointer with
-                | Some msgs -> Some msgs
-                | None ->
-                match toggleChangedMessages rendered root authored ControlEventOrigin.Pointer with
+                // F3: consult the activation-value registry (keyed by control kind) for the click's
+                // payload; fall through to the generic `Payload = None` click bindings when unregistered.
+                match activationValueFor rendered root authored x ControlEventOrigin.Pointer with
                 | Some msgs -> Some msgs
                 | None ->
                     let matched =
@@ -655,8 +693,12 @@ module ControlsElmish =
             | Some msgs -> msgs, 1
             | None -> interpretPointerEffect host.MapPointer interaction |> AdapterCmd.productMessages, 1
 
-    // Feature 175 (FR-001): pixels of scroll per unit of raw wheel delta. The viewer reports only a few
-    // units per notch, so scroll by this multiple to feel responsive without overshooting.
+    // Feature 175 (FR-001) / F6: wheel-delta normalization. Raw `ViewerPointerInput.DeltaY` from the
+    // viewer is a few units per notch (the GL backend forwards the OS wheel count verbatim, it is NOT
+    // pre-normalized to pixels), so it is scaled to pixels HERE — the SINGLE framework-side wheel→pixels
+    // seam, so no product/host reinvents a multiplier. The companion keyboard step is
+    // `Pointer.scrollLineStep` (40 px/line); at ~3 units/notch this gives ~48 px/notch, a little over one
+    // line — the responsive-without-overshoot target. Change scroll feel here, in one place.
     let private wheelScrollStep = 16.0
 
     // Feature 175 (FR-001/FR-009): the `scroll-viewer` ids in the current tree (Key ?? structural path,
@@ -708,12 +750,12 @@ module ControlsElmish =
         | Some pointerMsg ->
             let policy = FS.GG.UI.Layout.Defaults.pixelSnapPolicy 1.0
 
-            // Feature 175 (FR-009): `retained.Layout` is the RAW (un-scrolled) layout (it is the
-            // incremental cache, so it must not be pre-shifted). Re-apply the scroll-offset shift here
-            // — from the stamped retained tree's `scrollOffset` attrs — so pointer hit-testing inside a
-            // scrolled region resolves the control actually under the pointer, matching the painted
-            // (scrolled) position. Identity when nothing is scrolled.
-            let hitLayout = ControlInternals.applyScrollOffsets retained.Root.Control retained.Layout
+            // F2 (Feature 175 FR-009): resolve the offset-aware queryable layout through the SINGLE
+            // seam `RetainedRender.hitTestLayout` (which re-applies the scroll-offset shift to the RAW
+            // incremental-cache `retained.Layout`), so pointer hit-testing inside a scrolled region
+            // resolves the control actually under the pointer — matching the painted (scrolled) position
+            // and `resolveFocus`'s already-shifted node boxes. No caller re-derives the shift inline.
+            let hitLayout = RetainedRender.hitTestLayout retained
 
             let state', interactions, _runtimeMessages =
                 Pointer.update policy hitLayout pointerMsg state
@@ -1803,11 +1845,11 @@ module ControlsElmish =
             flush ()
             List.ofSeq frames
 
-        let runScript
+        let private runScriptCore
             (host: InteractiveAppHost<'model, 'msg>)
             (size: Size)
             (script: FrameInput<'msg> list)
-            : FrameMetrics list =
+            : 'model * FrameMetrics list =
             let mutable model = fst (host.Init())
             let mutable retained: RetainedRender<'msg> option = None
             // Feature 110 (FR-002): carry the retained frame's `ControlRenderResult` alongside the
@@ -2168,3 +2210,18 @@ module ControlsElmish =
                         LayoutRan = remeasured > 0
                         PaintRan = hasMsgs }
                 | _ -> zero)
+            // `List.map` is eager, so the mutable `model` now holds the FINAL post-script model.
+            |> fun frames -> model, frames
+
+        /// Fold an ordered `FrameInput` script over the host's pure `Update` + `RetainedRender.step`,
+        /// returning the per-frame `FrameMetrics` (consecutive pointer-MOVE inputs coalesce into one
+        /// frame). Pure, headless, byte-stable in its count/bool fields (SC-003/004/005).
+        let runScript host size script : FrameMetrics list =
+            runScriptCore host size script |> snd
+
+        /// As `runScript`, but also returns the FINAL folded model. Lets a caller render the
+        /// POST-interaction frame — e.g. capture an offscreen screenshot of the scene AFTER a
+        /// scroll/hover/focus/click script — closing the "drive interaction → see resulting frame"
+        /// loop without a live window (Feature 175 S1). Same pure, headless, byte-stable fold.
+        let runScriptToModel host size script : 'model * FrameMetrics list =
+            runScriptCore host size script

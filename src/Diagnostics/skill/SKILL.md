@@ -123,8 +123,49 @@ For intended public API changes, build Debug first and refresh baselines:
 ```bash
 dotnet build FS.GG.Rendering.slnx -c Debug
 dotnet fsi scripts/refresh-surface-baselines.fsx
-git status --short tests/surface-baselines
+git status --short readiness/surface-baselines
 ```
+
+## Drive interaction → capture the resulting frame (closed loop)
+
+To self-verify an interaction bug end-to-end — "click/scroll/focus here, then see the frame that
+results" — drive the real host headlessly and capture the POST-interaction frame. This is
+deterministic (the state fold needs no GL) and the PNG readback degrades-and-discloses on a no-GL
+host (do not report an unproven capture as green).
+
+The enabling primitive is `ControlsElmish.Perf.runScriptToModel` (Feature 175 S1): it folds a
+`FrameInput` script (clicks/keys/ticks) through the REAL retained route and returns the FINAL model,
+so you can render the frame AFTER the interaction (the plain `Perf.runScript` returns only metrics; the
+sample `evidence` command captures the static initial page, not the post-script frame). Recipe:
+
+```fsharp
+// 1. DRIVE: fold a click/scroll/focus script to the final model (pure, headless, byte-stable).
+let finalModel, _metrics = ControlsElmish.Perf.runScriptToModel host size script
+// 2. CAPTURE: render the post-interaction frame and read it back offscreen → PNG.
+let scene = SceneNode.Group [ (Control.renderTree host.Theme size (host.View size finalModel)).Scene ]
+let result = Viewer.captureScreenshotEvidence request { options with PresentMode = ViewerPresentMode.OffscreenReadback } scene
+// result.ProvesScreenshot = a real PNG was written; otherwise the capture is environment-limited (disclose it).
+```
+
+For per-interaction assertions (the dispatched messages, resolved focus, and scene after each click,
+threaded across steps), use the reusable repro harness `InteractionRepro` (Feature 175 S2):
+`start size host |> click "control-id"` then read `.LastMsgs` / `focusAt` / `scene`.
+
+Worked, runnable examples (the templates to copy):
+
+- `tests/SkiaViewer.Tests/Feature175InteractionCaptureTests.fs` — drive a click script, assert the
+  post-interaction model, capture the resulting frame to a PNG (or disclose environment-limited).
+- `tests/Elmish.Tests/Feature175InteractionReproTests.fs` — the `InteractionRepro` harness reproducing
+  the toggle flip-both-ways bug in a few lines (generalises `Feature175NavFocusTests`/`Feature175ToggleTests`).
+
+## Unkeyed-sibling visual-state bleed (silent)
+
+If hover/focus/press appears on the WRONG control or on ALL same-kind siblings at once, suspect the
+unkeyed-sibling collapse: visual state stamps by `Key ?? Kind`, so unkeyed interactive siblings of the
+same kind share one stamp id (routing uses the stable `RetainedId` and still works, so the bug is
+silent). Run the analyzer `FS.GG.UI.Controls.Diagnostics.unkeyedInteractiveSiblings root` over the
+control tree — it returns one `MissingStableKey` warning per colliding (parent, kind) group. Fix:
+give each sibling a distinct `Control.withKey`.
 
 ## Triage workflow
 

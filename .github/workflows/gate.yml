@@ -67,23 +67,24 @@ jobs:
       # place and fail on ANY uncommitted change: a modified baseline = surface drift; an untracked
       # new baseline = a package gained a surface with no committed baseline (the spec's
       # "first run with no baseline" edge — fails, never silently passes). The generator writes
-      # directly to tests/surface-baselines/, so this is the canonical regenerate-then-git-diff check.
+      # directly to readiness/surface-baselines/ (the single authoritative location the live gate
+      # `SurfaceAreaTests` reads), so this is the canonical regenerate-then-git-diff check.
       - name: Surface-baseline drift (.fsi)
         run: |
           set -euo pipefail
           dotnet fsi scripts/refresh-surface-baselines.fsx
-          if ! git diff --quiet -- tests/surface-baselines; then
+          if ! git diff --quiet -- readiness/surface-baselines; then
             echo "::error::public .fsi surface drift — run scripts/refresh-surface-baselines.fsx and commit the updated baselines."
-            git --no-pager diff -- tests/surface-baselines
+            git --no-pager diff -- readiness/surface-baselines
             exit 1
           fi
-          untracked="$(git ls-files --others --exclude-standard -- tests/surface-baselines)"
+          untracked="$(git ls-files --others --exclude-standard -- readiness/surface-baselines)"
           if [ -n "$untracked" ]; then
             echo "::error::new public surface baseline(s) not committed (first-run-with-no-baseline fails the gate):"
             echo "$untracked"
             exit 1
           fi
-          echo "no .fsi surface drift across $(ls tests/surface-baselines/*.txt | wc -l) committed baselines"
+          echo "no .fsi surface drift across $(ls readiness/surface-baselines/*.txt | wc -l) committed baselines"
 
       # T010 (FR-003) — fsdocs site build in STRICT mode so FsDocsWarnOnMissingDocs (Directory.Build.props)
       # is fatal: a broken docs build OR a missing-doc stub fails the gate. Build only, no publish.

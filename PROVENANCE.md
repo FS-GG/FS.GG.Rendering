@@ -18,7 +18,7 @@ This file is the **authoritative lineage** referenced by the Stage R7 bridge
 | `src/{Scene,Color,Layout,Input,KeyboardInput,SkiaViewer,Elmish,Controls,Controls.Elmish,Testing}` | `src/<same>` |
 | `tests/{Color,Scene,Layout,Input,KeyboardInput,Elmish,SkiaViewer,Controls,Testing,Lib,Smoke}.Tests` | `tests/<same>` |
 | `tests/Package.Tests` | `tests/Package.Tests` (on disk; release-only, not in solution — wired at R6) |
-| `readiness/surface-baselines/*.txt` | `tests/surface-baselines/` |
+| `readiness/surface-baselines/*.txt` | `readiness/surface-baselines/` |
 | `scripts/refresh-surface-baselines.fsx` | `scripts/` |
 | `template`, `.template.config`, `.template.package` | `template/`, `.template.config/`, `.template.package/` |
 | `docs/FS.GG/{design-and-controls,rendering-project}.md` | `docs/imported/` |
@@ -71,7 +71,7 @@ intentionally have no import path-map row:
 ## Named gaps
 
 None. Every imported top-level area (`src/`, `tests/` suites, `template/`, `.template.config/`,
-`.template.package/`, `docs/imported/`, `tests/surface-baselines/`, `scripts/`, and the root build
+`.template.package/`, `docs/imported/`, `readiness/surface-baselines/`, `scripts/`, and the root build
 metadata) is accounted for by a Path-map row, an Adaptation, or the *Repo-authored* list above.
 
 ## Bundled font assets (feature 136 — `src/SkiaViewer/assets/fonts/`)

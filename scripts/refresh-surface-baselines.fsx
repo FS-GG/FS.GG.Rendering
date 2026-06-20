@@ -1,6 +1,10 @@
-// Regenerates the public-surface baselines in tests/surface-baselines/ from the built assemblies.
+// Regenerates the public-surface baselines in readiness/surface-baselines/ from the built assemblies.
 // Run after an intended public-API change, then commit the updated *.txt. The CI gate runs this and
 // fails on any uncommitted drift (it is the Principle II "visibility lives in .fsi" guard).
+//
+// This is the SINGLE authoritative baseline location: the live gate `SurfaceAreaTests` and the
+// `build/Governance/PackageSurface.fs` governance check both READ `readiness/surface-baselines/`, so
+// the generator WRITES there too — writer and readers agree by construction (no second copy to sync).
 //
 // Loads each assembly by path (with a cross-assembly resolve handler) rather than `#r` + a hardcoded
 // representative type, so adding a package is a one-line table entry. Compiler-generated / anonymous
@@ -61,7 +65,7 @@ let names (assembly: Assembly) =
     |> Array.sort
 
 let write packageName values =
-    let path = Path.Combine(repoRoot, "tests", "surface-baselines", packageName + ".txt")
+    let path = Path.Combine(repoRoot, "readiness", "surface-baselines", packageName + ".txt")
     Directory.CreateDirectory(Path.GetDirectoryName path) |> ignore
     File.WriteAllLines(path, values)
     printfn "wrote %s (%d public types)" path (Array.length values)

@@ -67,6 +67,10 @@
     <Compile Include="Feature175ScrollRoutingTests.fs" />
     <Compile Include="Feature175NavFocusTests.fs" />
     <Compile Include="Feature175ToggleTests.fs" />
+    <Compile Include="Feature175InteractionReproTests.fs" />
+    <Compile Include="Feature175ScrollHitTestTests.fs" />
+    <Compile Include="Feature175ActivationValueTests.fs" />
+    <Compile Include="Feature175ScrollViewerBehaviourTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

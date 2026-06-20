@@ -74,3 +74,11 @@ module Diagnostics =
     /// values (`TextValue`, `StringListValue`, …) and reference-shared event handlers do not flag. Pure,
     /// total, deterministic; never compares a function with `=` (uses reference identity for closures).
     val stabilityReport: first: Control<'msg> -> second: Control<'msg> -> ControlDiagnostic list
+
+    /// F4 diagnostic (report-only): warn when interactive controls of the same `Kind` share a parent and
+    /// are ALL unkeyed, so they collapse onto a single visual-state stamp id (`Key ?? Kind`) — hover /
+    /// focus / press then marks every one of them at once (the Feature-175 unkeyed-nav-button bleed),
+    /// while routing (stable `RetainedId`) still distinguishes them, making the failure silent. One
+    /// `MissingStableKey` warning per colliding (parent, kind) group; the fix is a `Control.withKey` on
+    /// each. Pure, total, deterministic.
+    val unkeyedInteractiveSiblings: root: Control<'msg> -> ControlDiagnostic list

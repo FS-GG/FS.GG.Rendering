@@ -191,3 +191,36 @@ module Diagnostics =
 
         walk "0" first second
         List.ofSeq findings
+
+    // F4 diagnostic: interactive controls of the same `Kind` that share a parent and are ALL unkeyed
+    // collapse onto a SINGLE visual-state stamp id (`Key ?? Kind`), so hover/focus/press marks every
+    // one of them at once — the Feature-175 nav-button bleed, where unkeyed sibling buttons all stamp
+    // to "button". Routing uses the stable per-node `RetainedId` and distinguishes them, so the failure
+    // is SILENT: clicks work, but the visual state smears. This walk warns once per colliding
+    // (parent, kind) group so the author adds a `Control.withKey` to each. Interactivity is "carries an
+    // event attribute" (`Category = Event`) — the same predicate `eventBindings` uses. Report-only;
+    // pure, total, deterministic.
+    let unkeyedInteractiveSiblings (root: Control<'msg>) : ControlDiagnostic list =
+        let isInteractive (control: Control<'msg>) =
+            control.Attributes |> List.exists (fun attr -> attr.Category = Event)
+
+        let rec walk (control: Control<'msg>) : ControlDiagnostic list =
+            let collisionsHere =
+                control.Children
+                |> List.filter (fun child -> isInteractive child && Option.isNone child.Key)
+                |> List.groupBy (fun child -> child.Kind)
+                |> List.choose (fun (kind, group) ->
+                    if List.length group >= 2 then
+                        Some(
+                            create
+                                None
+                                kind
+                                MissingStableKey
+                                Warning
+                                $"{List.length group} unkeyed interactive `{kind}` siblings share one visual-state id (Key ?? Kind); hover/focus/press will mark them all. Give each a distinct `Control.withKey`.")
+                    else
+                        None)
+
+            collisionsHere @ (control.Children |> List.collect walk)
+
+        walk root

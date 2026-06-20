@@ -1,2 +1,0 @@
-FS.GG.UI.Themes.AntDesign.AntIntentPolicy
-FS.GG.UI.Themes.AntDesign.AntTheme

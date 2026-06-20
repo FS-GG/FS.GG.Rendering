@@ -633,3 +633,13 @@ module ControlsElmish =
             size: Size ->
             script: FrameInput<'msg> list ->
                 FrameMetrics list
+
+        /// As `runScript`, but also returns the FINAL folded model so a caller can render the
+        /// POST-interaction frame — e.g. capture an offscreen screenshot of the scene AFTER a
+        /// scroll/hover/focus/click script, closing the "drive interaction → see resulting frame" loop
+        /// without a live window (Feature 175 S1). Same pure, headless, byte-stable fold as `runScript`.
+        val runScriptToModel:
+            host: InteractiveAppHost<'model, 'msg> ->
+            size: Size ->
+            script: FrameInput<'msg> list ->
+                'model * FrameMetrics list

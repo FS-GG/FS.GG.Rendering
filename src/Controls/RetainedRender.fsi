@@ -786,6 +786,16 @@ module internal RetainedRender =
     /// by `init`/`step`; total and deterministic.
     val retainedHitTest: x: float -> y: float -> retained: RetainedRender<'msg> -> RetainedId option
 
+    /// F2 (Feature 175 FR-009): THE single offset-aware queryable layout for a retained frame. The
+    /// stored `retained.Layout` is the RAW (un-scrolled) incremental cache and must NOT be pre-shifted
+    /// (that would double-shift reused descendant bounds each frame). Every `LayoutResult`-based
+    /// hit-test consumer (the live pointer route) MUST resolve through THIS function, so the
+    /// scroll-offset shift is applied in exactly one place and no caller can forget it and silently
+    /// hit-test pre-scroll positions. Keeps the `LayoutResult` consumer in agreement with the painted
+    /// bounds and `retainedHitTest`'s node boxes, which are already shifted. Identity when nothing is
+    /// scrolled (idempotent).
+    val hitTestLayout: retained: RetainedRender<'msg> -> FS.GG.UI.Layout.LayoutResult
+
     /// Feature 110 (FR-003): the retained-id → authored-control-id lookup. For every node in the
     /// retained tree, maps its stable `RetainedId` to the authored `ControlId` whose binding must
     /// fire for a hit on it — the nearest ancestor (including self) that is KEYED (`Key ?? path <>

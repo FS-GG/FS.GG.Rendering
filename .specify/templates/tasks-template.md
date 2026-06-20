@@ -41,6 +41,12 @@ description: "Task list template for feature implementation"
   - Tested independently
   - Delivered as an MVP increment
 
+  STANDING REQUIREMENT (do not drop): the Foundational phase MUST include an
+  early live exploratory smoke run task immediately after the classification /
+  root-cause map, BEFORE any user-story fix. See the "Early live smoke run"
+  callout in Phase 2 below. The plan's root-cause hypotheses are unverified
+  until the real app has been driven and observed.
+
   DO NOT keep these sample tasks in the generated tasks.md file.
   ============================================================================
 -->
@@ -49,8 +55,18 @@ description: "Task list template for feature implementation"
 
 **Purpose**: Project initialization and basic structure
 
+> **⚠️ Comprehensive baseline (STANDING, do not narrow).** The "establish baseline" task MUST run
+> **every** test project and record the full red/green set, so pre-existing failures are known up
+> front and not mistaken for regressions at merge. Do NOT hand-pick a subset of projects: the
+> solution (`dotnet test FS.GG.Rendering.slnx`) deliberately omits `tests/Package.Tests`
+> (release-only — owns the public-surface gate) and the `samples/**/*.Tests` projects (package-feed
+> consumers), which is exactly where Feature 175's surprises hid (stale surface baselines, stale
+> sample pins, missing-report failures). Use the discovery-based runner:
+> `dotnet fsi scripts/baseline-tests.fsx --out specs/<feature>/readiness/baseline.md` — it globs
+> `*.Tests.fsproj` so nothing can silently drop out.
+
 - [ ] T001 Create project structure per implementation plan
-- [ ] T002 Initialize [language] project with [framework] dependencies
+- [ ] T002 Establish the no-regression baseline: `dotnet fsi scripts/baseline-tests.fsx --out specs/<feature>/readiness/baseline.md` (runs EVERY test project — solution + Package.Tests + samples — and records the full red/green set; pre-existing reds are flagged here, not discovered at merge)
 - [ ] T003 [P] Configure linting and formatting tools
 
 ---
@@ -61,16 +77,26 @@ description: "Task list template for feature implementation"
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
+> **⚠️ Early live smoke run (STANDING, do not omit).** After the
+> classification / root-cause map is built and BEFORE any user-story fix,
+> include one task that **drives and observes the real running app** for the
+> behaviour under change (e.g. launch the viewer/sample, exercise the affected
+> interactions, capture live evidence per the Feature-168 evidence rules — live,
+> or `environment-limited` with a disclosed substitute). Treat the plan's
+> root-cause hypotheses as **unverified assumptions until the app has been run**:
+> lessons from Feature 175 showed the deterministic core passed while the running
+> app stayed broken, and the real defects (repaint trigger, unkeyed siblings,
+> toggle payload) were found only by running the app late. Pull this forward;
+> do not defer live evidence to the per-user-story checkpoints.
+
 Examples of foundational tasks (adjust based on your project):
 
-- [ ] T004 Setup database schema and migrations framework
-- [ ] T005 [P] Implement authentication/authorization framework
-- [ ] T006 [P] Setup API routing and middleware structure
-- [ ] T007 Create base models/entities that all stories depend on
-- [ ] T008 Configure error handling and logging infrastructure
-- [ ] T009 Setup environment configuration management
+- [ ] T004 Build the classification / root-cause map that every user story depends on
+- [ ] T005 **Early live smoke run**: drive the real app for the behaviour under change, observe and record live evidence (or `environment-limited` with disclosed substitute) BEFORE building on the plan's hypotheses
+- [ ] T006 [P] Setup/confirm the test + evidence scaffolding all stories depend on
+- [ ] T007 Draft the public-surface (`.fsi`) or contract seams first, before implementation
 
-**Checkpoint**: Foundation ready - user story implementation can now begin in parallel
+**Checkpoint**: Root-cause map confirmed against a live run, seams drafted - user story implementation can now begin in parallel
 
 ---
 
@@ -215,7 +241,7 @@ Task: "Create [Entity2] model in src/models/[entity2].py"
 ### MVP First (User Story 1 Only)
 
 1. Complete Phase 1: Setup
-2. Complete Phase 2: Foundational (CRITICAL - blocks all stories)
+2. Complete Phase 2: Foundational (CRITICAL - blocks all stories) — including the **early live smoke run** that validates the root-cause hypotheses against the real running app before any fix
 3. Complete Phase 3: User Story 1
 4. **STOP and VALIDATE**: Test User Story 1 independently
 5. Deploy/demo if ready

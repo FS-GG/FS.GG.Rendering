@@ -281,6 +281,10 @@ FS.GG.UI.SkiaViewer.ViewerRunMsg+RunStarted
 FS.GG.UI.SkiaViewer.ViewerRunMsg+Tags
 FS.GG.UI.SkiaViewer.ViewerRunRequest
 FS.GG.UI.SkiaViewer.ViewerRuntimeCapability
+FS.GG.UI.SkiaViewer.ViewerScriptInput
+FS.GG.UI.SkiaViewer.ViewerScriptInput+Key
+FS.GG.UI.SkiaViewer.ViewerScriptInput+Pointer
+FS.GG.UI.SkiaViewer.ViewerScriptInput+Tags
 FS.GG.UI.SkiaViewer.ViewerTimingPath
 FS.GG.UI.SkiaViewer.ViewerTimingPath+Tags
 FS.GG.UI.SkiaViewer.ViewerVisualEvidenceArtifact

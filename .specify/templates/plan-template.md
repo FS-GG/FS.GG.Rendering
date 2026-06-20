@@ -10,6 +10,13 @@
 
 [Extract from feature spec: primary requirement + technical approach from research]
 
+> **Standing assumption — root-cause hypotheses are unverified until the app is run.**
+> Any defect/root-cause hypothesis in this plan is provisional. Deterministic tests can pass
+> while the running app stays broken (Feature 175). `/speckit-tasks` MUST schedule an **early live
+> smoke run** in the Foundational phase (right after the root-cause map, before any fix) that drives
+> and observes the real app and either confirms or replaces these hypotheses. Do not build user-story
+> work on unverified hypotheses.
+
 ## Technical Context
 
 <!--

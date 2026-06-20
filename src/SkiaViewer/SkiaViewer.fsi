@@ -823,6 +823,22 @@ module Viewer =
     val updateRun: msg: ViewerRunMsg -> model: ViewerRunModel -> ViewerRunModel * ViewerRunEffect list
     /// Public contract function exposed by this FS.GG.UI package.
     val defaultDiagnostics: ViewerDiagnosticsOptions
+
+    /// F1 (Feature 175 general repaint signal): the single "runtime-state changed → repaint" policy
+    /// shared by every viewer loop. `internal` — exposed only so the regression can assert the policy
+    /// deterministically (the loops are GL/timing-bound). Returns `current` when the input produced
+    /// product messages (dispatch already re-derived) and `deriveScene ()` otherwise (runtime state may
+    /// have changed with no model change — focus/hover/scroll — so re-derive on THIS input).
+    val internal runtimeStateRepaint: producedMessages: bool -> current: 'scene -> deriveScene: (unit -> 'scene) -> 'scene
+
+    /// S3 (Feature 175) live-trace read-back. `traceStartCapture` begins in-memory capture of
+    /// `RenderLagTrace` events (focus/hover/scroll/dispatch/timing); `traceDrainCapture` stops and
+    /// returns them as `(event, fields)` tuples; `traceEmit` records one event. Lets a test or tool
+    /// observe live state programmatically — without the FS_GG_RENDER_LAG_TRACE env var and without a
+    /// repack-to-instrument loop. `internal` — diagnostic seam, not a product contract.
+    val internal traceStartCapture: unit -> unit
+    val internal traceDrainCapture: unit -> (string * (string * string) list) list
+    val internal traceEmit: eventName: string -> fields: (string * string) list -> unit
     /// Default readiness budget for responsiveness diagnostics.
     val defaultResponsivenessBudget: ViewerResponsivenessBudget
     /// Default disabled responsiveness options.

@@ -65,6 +65,9 @@
     <Compile Include="Feature172PointerQueueTests.fs" />
     <Compile Include="Feature173ReadinessRulesTests.fs" />
     <Compile Include="Feature169HostDiagnosticMappingTests.fs" />
+    <Compile Include="Feature175InteractionCaptureTests.fs" />
+    <Compile Include="Feature175RepaintSignalTests.fs" />
+    <Compile Include="Feature175TraceReadbackTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
