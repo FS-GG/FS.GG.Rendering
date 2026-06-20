@@ -43,6 +43,14 @@ let private flag name args =
 let private scenario args =
     flag "--scenario" args |> Option.defaultValue "button-click"
 
+let private intFlag (name: string) (fallback: int) (args: string list) =
+    match flag name args with
+    | Some value ->
+        match Int32.TryParse value with
+        | true, parsed when parsed > 0 -> parsed
+        | _ -> fallback
+    | None -> fallback
+
 let private theme args =
     match flag "--theme" args with
     | Some value ->
@@ -66,6 +74,14 @@ let private hostFor scenario theme =
     let baseHost = Host.create theme
 
     match scenario with
+    | "page-cycle" ->
+        let pages = PageRegistry.all |> List.toArray
+        { baseHost with
+            MapKey =
+                fun key pressed ->
+                    match key, pressed with
+                    | Function index, true when index >= 1 && index <= pages.Length -> Some(NavigateTo pages[index - 1].Id)
+                    | _ -> baseHost.MapKey key pressed }
     | "page-change" ->
         { baseHost with
             MapKey =
@@ -75,16 +91,30 @@ let private hostFor scenario theme =
                     | _ -> baseHost.MapKey key pressed }
     | _ -> baseHost
 
-let private scriptFor scenario =
-    let key =
-        match scenario with
-        | "page-change" -> Function 2
-        | _ -> Enter
+let private scriptFor args scenario =
+    match scenario with
+    | "page-cycle" ->
+        let durationSeconds = intFlag "--duration-seconds" 15 args
+        let pageIntervalFrames = intFlag "--page-interval-frames" 30 args
+        let totalFrames = max 1 (durationSeconds * 60)
+        let pageCount = max 1 PageRegistry.all.Length
 
-    [ FrameInput.Tick(TimeSpan.FromMilliseconds 16.0)
-      FrameInput.Key(key, noMods)
-      FrameInput.Tick(TimeSpan.FromMilliseconds 32.0)
-      FrameInput.Idle ]
+        [ for frame in 1..totalFrames do
+              if frame % pageIntervalFrames = 0 then
+                  let pageIndex = ((frame / pageIntervalFrames) % pageCount) + 1
+                  FrameInput.Key(Function pageIndex, noMods)
+              else
+                  FrameInput.Idle ]
+    | _ ->
+        let key =
+            match scenario with
+            | "page-change" -> Function 2
+            | _ -> Enter
+
+        [ FrameInput.Tick(TimeSpan.FromMilliseconds 16.0)
+          FrameInput.Key(key, noMods)
+          FrameInput.Tick(TimeSpan.FromMilliseconds 32.0)
+          FrameInput.Idle ]
 
 let private jsonOptions =
     JsonSerializerOptions(WriteIndented = true)
@@ -288,7 +318,7 @@ let run args =
         eprintfn "render-lag-probe: forced substitute wrote %s" summaryPath
         1
     else
-        match ControlsElmish.Live.runScriptWithWindowBehavior (options ()) (windowBehavior ()) host (scriptFor scenario) with
+        match ControlsElmish.Live.runScriptWithWindowBehavior (options ()) (windowBehavior ()) host (scriptFor args scenario) with
         | Result.Ok result ->
             let status = if result.Outcome.FirstFramePresented then "measured" else "environment-limited"
             let diagnostics = [ $"viewerOutcome={result.Outcome.Status}"; $"firstFramePresented={result.Outcome.FirstFramePresented}" ]

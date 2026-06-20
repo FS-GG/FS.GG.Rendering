@@ -48,7 +48,7 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="FS.GG.UI.Themes.AntDesign" Version="0.1.36-preview.1" />
-    <PackageReference Include="FS.GG.UI.Controls" Version="0.1.36-preview.1" />
+    <PackageReference Include="FS.GG.UI.Controls" Version="0.1.37-preview.1" />
     <PackageReference Include="FS.GG.UI.Color" Version="0.1.36-preview.1" />
     <PackageReference Include="FS.GG.UI.Scene" Version="0.1.36-preview.1" />
     <PackageReference Include="FS.GG.UI.Controls.Elmish" Version="0.1.39-preview.1" />

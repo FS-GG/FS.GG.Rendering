@@ -2359,21 +2359,258 @@ module internal ControlInternals =
         else
             []
 
-    // Feature 141 (R1b): the structural fingerprint now lives with the authoritative assembly owner, not
-    // only in RetainedRender. RetainedRender.hashScene remains as a compatibility alias over this function.
+    // Feature 120/141: the exact structural scene fingerprint lives with Controls, and retained rendering
+    // aliases it for replay/cache boundaries that need byte-sensitive content keys.
     let hashScene (scenes: Scene list) : uint64 =
         let mutable h = 0xcbf29ce484222325UL // mutable: hot path / FNV-1a accumulator
         let prime = 0x100000001b3UL
         let mix (x: uint64) = h <- (h ^^^ x) * prime
         let bits (d: float) = uint64 (System.BitConverter.DoubleToInt64Bits d)
+        let mixTag (t: int) = mix (uint64 (uint32 t))
+        let mixBool (v: bool) = mix (if v then 1UL else 0UL)
+        let mixByte (v: byte) = mix (uint64 v)
+        let mixInt (v: int) = mix (uint64 (uint32 v))
+        let mixFloat (v: float) = mix (bits v)
 
         let mixStr (s: string) =
             mix (uint64 s.Length)
             for c in s do
                 mix (uint64 (uint16 c))
 
-        let mixA (v: 'a) = mixStr (sprintf "%A" v)
-        let mixTag (t: int) = mix (uint64 (uint32 t))
+        let mixStringOption =
+            function
+            | None -> mixTag 0
+            | Some value ->
+                mixTag 1
+                mixStr value
+
+        let mixOption mixValue =
+            function
+            | None -> mixTag 0
+            | Some value ->
+                mixTag 1
+                mixValue value
+
+        let mixList mixValue values =
+            mix (uint64 (List.length values))
+            values |> List.iter mixValue
+
+        let mixColor (c: Color) =
+            mixByte c.Red
+            mixByte c.Green
+            mixByte c.Blue
+            mixByte c.Alpha
+
+        let mixPoint (p: Point) =
+            mixFloat p.X
+            mixFloat p.Y
+
+        let mixRect (r: Rect) =
+            mixFloat r.X
+            mixFloat r.Y
+            mixFloat r.Width
+            mixFloat r.Height
+
+        let mixStrokeCap =
+            function
+            | Butt -> mixTag 1
+            | Round -> mixTag 2
+            | Square -> mixTag 3
+
+        let mixStrokeJoin =
+            function
+            | Miter -> mixTag 1
+            | RoundJoin -> mixTag 2
+            | Bevel -> mixTag 3
+
+        let mixBlendMode (mode: BlendMode) =
+            match mode with
+            | BlendMode.SrcOver -> mixTag 1
+            | BlendMode.Multiply -> mixTag 2
+            | BlendMode.Screen -> mixTag 3
+            | BlendMode.Overlay -> mixTag 4
+            | BlendMode.Darken -> mixTag 5
+            | BlendMode.Lighten -> mixTag 6
+            | BlendMode.ColorDodge -> mixTag 7
+            | BlendMode.ColorBurn -> mixTag 8
+            | BlendMode.Difference -> mixTag 9
+            | BlendMode.Exclusion -> mixTag 10
+
+        let mixStroke (s: Stroke) =
+            mixFloat s.Width
+            mixStrokeCap s.Cap
+            mixStrokeJoin s.Join
+            mixFloat s.Miter
+
+        let mixShader =
+            function
+            | SolidColor color ->
+                mixTag 1
+                mixColor color
+            | LinearGradient(startPoint, endPoint, colors) ->
+                mixTag 2
+                mixPoint startPoint
+                mixPoint endPoint
+                mixList mixColor colors
+            | RadialGradient(center, radius, colors) ->
+                mixTag 3
+                mixPoint center
+                mixFloat radius
+                mixList mixColor colors
+            | SweepGradient(center, colors) ->
+                mixTag 4
+                mixPoint center
+                mixList mixColor colors
+
+        let mixColorFilter =
+            function
+            | NoColorFilter -> mixTag 1
+            | BlendColor(color, mode) ->
+                mixTag 2
+                mixColor color
+                mixBlendMode mode
+
+        let mixMaskFilter =
+            function
+            | NoMaskFilter -> mixTag 1
+            | Blur sigma ->
+                mixTag 2
+                mixFloat sigma
+
+        let mixImageFilter =
+            function
+            | NoImageFilter -> mixTag 1
+            | DropShadow(dx, dy, blur, color) ->
+                mixTag 2
+                mixFloat dx
+                mixFloat dy
+                mixFloat blur
+                mixColor color
+
+        let mixPathEffect =
+            function
+            | NoPathEffect -> mixTag 1
+            | Dash(intervals, phase) ->
+                mixTag 2
+                mixList mixFloat intervals
+                mixFloat phase
+            | Discrete(segmentLength, deviation) ->
+                mixTag 3
+                mixFloat segmentLength
+                mixFloat deviation
+            | Corner radius ->
+                mixTag 4
+                mixFloat radius
+
+        let mixPaint (p: Paint) =
+            mixOption mixColor p.Fill
+            mixOption mixStroke p.Stroke
+            mixFloat p.Opacity
+            mixBool p.Antialias
+            mixBlendMode p.BlendMode
+            mixOption mixShader p.Shader
+            mixColorFilter p.ColorFilter
+            mixMaskFilter p.MaskFilter
+            mixImageFilter p.ImageFilter
+            mixPathEffect p.PathEffect
+
+        let mixPathFillType =
+            function
+            | Winding -> mixTag 1
+            | EvenOdd -> mixTag 2
+
+        let mixPathCommand =
+            function
+            | MoveTo point ->
+                mixTag 1
+                mixPoint point
+            | LineTo point ->
+                mixTag 2
+                mixPoint point
+            | QuadTo(control, point) ->
+                mixTag 3
+                mixPoint control
+                mixPoint point
+            | CubicTo(control1, control2, point) ->
+                mixTag 4
+                mixPoint control1
+                mixPoint control2
+                mixPoint point
+            | ArcTo(bounds, startAngle, sweepAngle) ->
+                mixTag 5
+                mixRect bounds
+                mixFloat startAngle
+                mixFloat sweepAngle
+            | Close -> mixTag 6
+
+        let mixPathSpec (p: PathSpec) =
+            mixList mixPathCommand p.Commands
+            mixPathFillType p.FillType
+
+        let mixClip =
+            function
+            | RectClip rect ->
+                mixTag 1
+                mixRect rect
+            | PathClip path ->
+                mixTag 2
+                mixPathSpec path
+
+        let mixRegionOperation (operation: RegionOperation) =
+            match operation with
+            | Replace -> mixTag 1
+            | RegionUnion -> mixTag 2
+            | RegionIntersect -> mixTag 3
+            | RegionDifference -> mixTag 4
+
+        let mixRegion (r: Region) =
+            mixList mixRect r.Bounds
+            mixRegionOperation r.Operation
+
+        let mixColorSpace =
+            function
+            | Srgb -> mixTag 1
+            | DisplayP3 -> mixTag 2
+            | AdobeRgb -> mixTag 3
+
+        let mixPerspective (t: PerspectiveTransform) =
+            mixFloat t.M11
+            mixFloat t.M12
+            mixFloat t.M13
+            mixFloat t.M21
+            mixFloat t.M22
+            mixFloat t.M23
+            mixFloat t.M31
+            mixFloat t.M32
+            mixFloat t.M33
+
+        let mixFont (font: FontSpec) =
+            mixStringOption font.Family
+            mixFloat font.Size
+            mixOption mixInt font.Weight
+
+        let mixTextRun (run: TextRun) =
+            mixStr run.Text
+            mixPoint run.Position
+            mixFont run.Font
+            mixPaint run.Paint
+
+        let mixVertexMode =
+            function
+            | Triangles -> mixTag 1
+            | TriangleStrip -> mixTag 2
+            | TriangleFan -> mixTag 3
+
+        let mixVertex (v: Vertex) =
+            mixPoint v.Position
+            mixOption mixColor v.Color
+
+        let mixGlyphRun (run: GlyphRun) =
+            mixStr run.Data.Text
+            mixFont run.Data.Font
+            mixStr run.Data.Fingerprint
+            mixPoint run.Position
+            mixPaint run.Paint
 
         let rec goNodes (nodes: SceneNode list) =
             mixTag 0xA1
@@ -2392,85 +2629,84 @@ module internal ControlInternals =
                 scenes |> List.iter goScene
             | Rectangle(b, c) ->
                 mixTag 3
-                mixA b
-                mixA c
+                let x, y, w, ht = b
+                mixFloat x
+                mixFloat y
+                mixFloat w
+                mixFloat ht
+                mixColor c
             | PaintedRectangle(r, p) ->
                 mixTag 4
-                mixA r
-                mixA p
+                mixRect r
+                mixPaint p
             | Circle(ctr, rad, fill) ->
                 mixTag 5
-                mixA ctr
-                mix (bits rad)
-                mixA fill
+                mixPoint ctr
+                mixFloat rad
+                mixColor fill
             | FilledEllipse(b, fill) ->
                 mixTag 6
-                mixA b
-                mixA fill
+                mixRect b
+                mixColor fill
             | Ellipse(r, p) ->
                 mixTag 7
-                mixA r
-                mixA p
+                mixRect r
+                mixPaint p
             | Line(a, b, p) ->
                 mixTag 8
-                mixA a
-                mixA b
-                mixA p
+                mixPoint a
+                mixPoint b
+                mixPaint p
             | Path(spec, p) ->
                 mixTag 9
-                mixA spec
-                mixA p
+                mixPathSpec spec
+                mixPaint p
             | Points(pts, p) ->
                 mixTag 10
-                mix (uint64 (List.length pts))
-                pts |> List.iter mixA
-                mixA p
+                mixList mixPoint pts
+                mixPaint p
             | Vertices(m, vs, p) ->
                 mixTag 11
-                mixA m
-                mix (uint64 (List.length vs))
-                vs |> List.iter mixA
-                mixA p
+                mixVertexMode m
+                mixList mixVertex vs
+                mixPaint p
             | Arc(r, sa, ea, p) ->
                 mixTag 12
-                mixA r
-                mix (bits sa)
-                mix (bits ea)
-                mixA p
+                mixRect r
+                mixFloat sa
+                mixFloat ea
+                mixPaint p
             | Text((x, y), t, c) ->
                 mixTag 13
-                mix (bits x)
-                mix (bits y)
+                mixFloat x
+                mixFloat y
                 mixStr t
-                mixA c
+                mixColor c
             | TextRun run ->
                 mixTag 14
-                mixStr run.Text
-                mixA run.Position
-                mixA run.Font
-                mixA run.Paint
+                mixTextRun run
             | Image((x, y, w, ht), src) ->
                 mixTag 15
-                mix (bits x)
-                mix (bits y)
-                mix (bits w)
-                mix (bits ht)
+                mixFloat x
+                mixFloat y
+                mixFloat w
+                mixFloat ht
                 mixStr src
             | ClipNode(clip, scene) ->
                 mixTag 16
-                mixA clip
+                mixClip clip
                 goScene scene
             | RegionNode(region, p) ->
                 mixTag 17
-                mixA region
-                mixA p
+                mixRegion region
+                mixPaint p
             | ColorSpaceNode(cs, scene) ->
                 mixTag 18
-                mixA cs
+                mixColorSpace cs
                 goScene scene
             | PerspectiveNode(t, scene) ->
                 mixTag 19
-                mixA t
+                mixPerspective t
                 goScene scene
             | PictureNode picture ->
                 mixTag 20
@@ -2478,34 +2714,102 @@ module internal ControlInternals =
                 goScene picture.Scene
             | Chart values ->
                 mixTag 21
-                mix (uint64 (List.length values))
-                values |> List.iter (bits >> mix)
+                mixList mixFloat values
             | Translate((dx, dy), scene) ->
                 mixTag 22
-                mix (bits dx)
-                mix (bits dy)
+                mixFloat dx
+                mixFloat dy
                 goScene scene
             | SizedText((x, y), t, size, c) ->
                 mixTag 23
-                mix (bits x)
-                mix (bits y)
+                mixFloat x
+                mixFloat y
                 mixStr t
-                mix (bits size)
-                mixA c
+                mixFloat size
+                mixColor c
             | CachedSubtree boundary ->
                 mixTag 24
                 goScene boundary.Scene
             | GlyphRun run ->
                 mixTag 25
-                mixStr run.Data.Text
-                mixA run.Data.Font
-                mixStr run.Data.Fingerprint
-                mixA run.Position
-                mixA run.Paint
+                mixGlyphRun run
 
         mix (uint64 (List.length scenes))
         scenes |> List.iter goScene
         h
+
+    let private fnvOffset = 0xcbf29ce484222325UL
+    let private fnvPrime = 0x100000001b3UL
+
+    let private fingerprintParts (domain: int) (parts: uint64 list) =
+        let mutable h = fnvOffset
+        let mix x = h <- (h ^^^ x) * fnvPrime
+        mix (uint64 (uint32 domain))
+        mix (uint64 (List.length parts))
+        parts |> List.iter mix
+        h
+
+    let private fingerprintString (value: string) =
+        let mutable h = fnvOffset
+        let mix x = h <- (h ^^^ x) * fnvPrime
+        mix 0x535452494E47UL
+        mix (uint64 value.Length)
+
+        for c in value do
+            mix (uint64 (uint16 c))
+
+        h
+
+    let private fingerprintFloat (value: float) =
+        uint64 (System.BitConverter.DoubleToInt64Bits value)
+
+    let private fingerprintBox =
+        function
+        | None -> fingerprintParts 0x1410 [ 0UL ]
+        | Some box ->
+            fingerprintParts
+                0x1411
+                [ fingerprintFloat box.X
+                  fingerprintFloat box.Y
+                  fingerprintFloat box.Width
+                  fingerprintFloat box.Height ]
+
+    let private fingerprintChildList domain children select =
+        let mutable h = fnvOffset
+        let mix x = h <- (h ^^^ x) * fnvPrime
+        mix (uint64 (uint32 domain))
+        mix (uint64 (List.length children))
+
+        children
+        |> List.iteri (fun index child ->
+            mix (uint64 index)
+            mix (select child))
+
+        h
+
+    let private collectAssemblyScenes select assemblies =
+        match assemblies with
+        | [] -> []
+        | [ single ] -> select single
+        | _ -> assemblies |> List.collect select
+
+    let private fingerprintSceneShape (scenes: Scene list) =
+        let mutable sceneCount = 0
+        let mutable nodeCount = 0
+
+        for scene in scenes do
+            sceneCount <- sceneCount + 1
+            nodeCount <- nodeCount + scene.Nodes.Length
+
+        fingerprintParts 0x141A [ uint64 sceneCount; uint64 nodeCount ]
+
+    let private needsExactAssemblyFingerprint (control: Control<'msg>) =
+        // The replay picture cache currently keys only data-grid rows. Ordinary retained nodes use
+        // composable owner fingerprints for evidence/reuse bookkeeping; cache boundaries still receive
+        // the exact structural scene hash that proves replay correctness.
+        control.Kind = "data-grid-row"
+
+    let private emptySceneListFingerprint = hashScene []
 
     /// Feature 141 (R1b): per-child metadata retained rendering stores as owner-produced assembly
     /// evidence. It is deliberately descriptive; scene semantics remain the assembled scene lists.
@@ -2519,6 +2823,8 @@ module internal ControlInternals =
     type CurrentNodeAssemblyResult =
         { InFlowScene: Scene list
           OverlayScene: Scene list
+          InFlowFingerprint: uint64
+          OverlayFingerprint: uint64
           Fingerprint: uint64
           Diagnostics: ControlDiagnostic list
           ChildContributions: CurrentNodeChildContribution list }
@@ -2537,16 +2843,32 @@ module internal ControlInternals =
         (ownScene: Scene list)
         (childAssemblies: CurrentNodeAssemblyResult list)
         : CurrentNodeAssemblyResult =
-        let childInFlow = childAssemblies |> List.collect _.InFlowScene
-        let childOverlay = childAssemblies |> List.collect _.OverlayScene
+        let childInFlow = childAssemblies |> collectAssemblyScenes _.InFlowScene
+        let childOverlay = childAssemblies |> collectAssemblyScenes _.OverlayScene
         let chain = compositionEntriesForControl control |> Composition.normalize
         let composed = composeContainerScene box ownScene childInFlow |> Composition.applyChain chain
+        let ownFingerprint = fingerprintSceneShape ownScene
+        let childInFlowFingerprint = fingerprintChildList 0x1412 childAssemblies _.InFlowFingerprint
+        let childOverlayFingerprint = fingerprintChildList 0x1414 childAssemblies _.OverlayFingerprint
+        let chainFingerprint = fingerprintString chain.FingerprintInput
+        let controlFingerprint = fingerprintString control.Kind
+
+        let composedFingerprint =
+            fingerprintParts
+                0x1416
+                [ controlFingerprint
+                  ownFingerprint
+                  childInFlowFingerprint
+                  uint64 childInFlow.Length
+                  fingerprintBox box
+                  chainFingerprint ]
+
         let childContributions =
             childAssemblies
             |> List.mapi (fun index child ->
                 { Index = index
-                  InFlowFingerprint = hashScene child.InFlowScene
-                  OverlayFingerprint = hashScene child.OverlayScene })
+                  InFlowFingerprint = child.InFlowFingerprint
+                  OverlayFingerprint = child.OverlayFingerprint })
 
         let diagnostics =
             chain.Diagnostics
@@ -2560,16 +2882,43 @@ module internal ControlInternals =
 
         if isOverlayNode control then
             let overlayScene = composed @ childOverlay
+
+            let overlayFingerprint =
+                fingerprintParts 0x1417 [ composedFingerprint; childOverlayFingerprint; uint64 overlayScene.Length ]
+
+            let inFlowFingerprint = emptySceneListFingerprint
+            let fingerprint = fingerprintParts 0x1418 [ inFlowFingerprint; overlayFingerprint ]
+
             { InFlowScene = []
               OverlayScene = overlayScene
-              Fingerprint = hashScene overlayScene
+              InFlowFingerprint = inFlowFingerprint
+              OverlayFingerprint = overlayFingerprint
+              Fingerprint = fingerprint
               Diagnostics = diagnostics
               ChildContributions = childContributions }
         else
-            let allScene = composed @ childOverlay
+            let overlayFingerprint =
+                fingerprintParts 0x1419 [ childOverlayFingerprint; uint64 childOverlay.Length ]
+
+            let fingerprint =
+                fingerprintParts
+                    0x1418
+                    [ composedFingerprint
+                      overlayFingerprint
+                      uint64 (List.length composed + List.length childOverlay) ]
+
+            let inFlowFingerprint, overlayFingerprint, fingerprint =
+                if needsExactAssemblyFingerprint control then
+                    let combined = composed @ childOverlay
+                    hashScene composed, hashScene childOverlay, hashScene combined
+                else
+                    composedFingerprint, overlayFingerprint, fingerprint
+
             { InFlowScene = composed
               OverlayScene = childOverlay
-              Fingerprint = hashScene allScene
+              InFlowFingerprint = inFlowFingerprint
+              OverlayFingerprint = overlayFingerprint
+              Fingerprint = fingerprint
               Diagnostics = diagnostics
               ChildContributions = childContributions }
 

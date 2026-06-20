@@ -1940,6 +1940,8 @@ module internal RetainedRender =
 
                                 { InFlowScene = inFlow
                                   OverlayScene = overlay
+                                  InFlowFingerprint = ControlInternals.hashScene inFlow
+                                  OverlayFingerprint = ControlInternals.hashScene overlay
                                   Fingerprint = ControlInternals.hashScene (inFlow @ overlay)
                                   Diagnostics = []
                                   ChildContributions = [] }

@@ -134,9 +134,8 @@ module internal ControlInternals =
     /// `Overlay` container); its subtree is collected out of the in-flow clip hierarchy and painted last.
     val isOverlayNode: c: Control<'msg> -> bool
 
-    /// Feature 141 (R1b): deterministic structural fingerprint over render-affecting Scene data. This
-    /// lives with the current-node assembly owner so direct rendering and retained rendering can share the
-    /// same assembly-result fingerprint without RetainedRender owning a separate hash contract.
+    /// Feature 120/141: deterministic exact fingerprint over render-affecting Scene data. Retained
+    /// rendering aliases this for replay/cache boundaries without owning a separate hash contract.
     val hashScene: scenes: FS.GG.UI.Scene.Scene list -> uint64
 
     /// Feature 141 (R1b): metadata describing an already-assembled child contribution consumed by the
@@ -148,12 +147,14 @@ module internal ControlInternals =
 
     /// Feature 139 (R1a): the current-semantics assembly result for one control node. `InFlowScene`
     /// remains in the parent clipping hierarchy; `OverlayScene` is deferred to the z-top overlay group.
-    /// Feature 141 (R1b): the owner also records the structural fingerprint, diagnostics, and child
-    /// contribution metadata retained rendering stores and reuses instead of constructing independent
-    /// retained composition fields.
+    /// Feature 141 (R1b): the owner also records composable structural fingerprints, diagnostics, and
+    /// child contribution metadata retained rendering stores and reuses instead of constructing
+    /// independent retained composition fields.
     type CurrentNodeAssemblyResult =
         { InFlowScene: FS.GG.UI.Scene.Scene list
           OverlayScene: FS.GG.UI.Scene.Scene list
+          InFlowFingerprint: uint64
+          OverlayFingerprint: uint64
           Fingerprint: uint64
           Diagnostics: ControlDiagnostic list
           ChildContributions: CurrentNodeChildContribution list }

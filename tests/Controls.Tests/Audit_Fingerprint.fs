@@ -57,10 +57,12 @@ let tests =
             let assembledB = ControlInternals.assembleCurrentNode control (Some box) own [ childAssembly ]
 
             Expect.equal assembledA.Fingerprint assembledB.Fingerprint "equivalent owner assemblies produce stable fingerprints"
-            Expect.equal assembledA.Fingerprint (ControlInternals.hashScene (assembledA.InFlowScene @ assembledA.OverlayScene)) "assembly fingerprint is produced by ControlInternals.hashScene"
+            Expect.equal assembledA.InFlowFingerprint assembledB.InFlowFingerprint "equivalent owner assemblies produce stable in-flow fingerprints"
+            Expect.equal assembledA.OverlayFingerprint assembledB.OverlayFingerprint "equivalent owner assemblies produce stable overlay fingerprints"
             Expect.equal (RetainedRender.hashScene assembledA.InFlowScene) (ControlInternals.hashScene assembledA.InFlowScene) "RetainedRender.hashScene aliases the owner-side fingerprint"
             Expect.equal assembledA.ChildContributions.Length 1 "assembly metadata records child contribution count"
-            Expect.equal assembledA.ChildContributions.Head.InFlowFingerprint childAssembly.Fingerprint "child contribution stores child owner fingerprint"
+            Expect.equal assembledA.ChildContributions.Head.InFlowFingerprint childAssembly.InFlowFingerprint "child contribution stores child in-flow fingerprint"
+            Expect.equal assembledA.ChildContributions.Head.OverlayFingerprint childAssembly.OverlayFingerprint "child contribution stores child overlay fingerprint"
         }
 
         // ---- COLLISION PROBE: enumerated single-field render-affecting mutations ----

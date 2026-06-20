@@ -132,8 +132,13 @@ let parityTests =
 
             Expect.equal
                 init.Retained.Root.Fragment.Assembly.Fingerprint
-                (ControlInternals.hashScene (init.Retained.Root.Fragment.Assembly.InFlowScene @ init.Retained.Root.Fragment.Assembly.OverlayScene))
-                "retained root stores the owner-produced assembly fingerprint"
+                warm.Retained.Root.Fragment.Assembly.Fingerprint
+                "retained root stores a stable owner-produced composable assembly fingerprint"
+
+            Expect.equal
+                init.Retained.Root.Fragment.Assembly.InFlowFingerprint
+                warm.Retained.Root.Fragment.Assembly.InFlowFingerprint
+                "retained root stores a stable owner-produced in-flow fingerprint"
 
             Expect.equal warm.Retained.Root.Fragment.InvalidationEvidence.Head.Decision Reused "warm idle frame records root reuse"
             Expect.equal warm.Retained.Root.Fragment.InvalidationEvidence.Head.Reason StableInputs "warm idle frame records stable inputs"
