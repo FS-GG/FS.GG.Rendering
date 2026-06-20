@@ -59,6 +59,8 @@
     <Compile Include="Feature174VisualParityTests.fs" />
     <Compile Include="Feature174EnvironmentLimitedTests.fs" />
     <Compile Include="Feature169DiagnosticsCliTests.fs" />
+    <Compile Include="ControlPassCoverageTests.fs" />
+    <Compile Include="ControlPassRunnerTests.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
   <ItemGroup>

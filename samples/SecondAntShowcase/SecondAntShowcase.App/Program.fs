@@ -18,6 +18,7 @@ let private usage () =
     printfn "  SecondAntShowcase responsiveness --script representative --theme light [--page <page-id> | --all-interactive] [--out <dir>] [--require-live] [--json]"
     printfn "  SecondAntShowcase render-lag-probe [--scenario button-click|page-change|page-cycle] [--theme light|dark] [--duration-seconds <n>] [--page-interval-frames <n>]"
     printfn "  SecondAntShowcase diagnostics [--out <dir>] [--json] [--verbose]"
+    printfn "  SecondAntShowcase control-pass [--seed <int>] [--themes light,dark] [--sizes preferred,minimum] [--backend pure|x11xtest|uinput] [--require-live] [--page <id> | --all] [--out <dir>] [--json]"
     printfn "  SecondAntShowcase coverage"
     printfn "  SecondAntShowcase feedback [--clear]"
 
@@ -127,6 +128,9 @@ let main argv =
 
     | "diagnostics" :: rest ->
         Diagnostics.run rest
+
+    | "control-pass" :: rest ->
+        ControlPassRunner.run rest
 
     | [] ->
         usage ()

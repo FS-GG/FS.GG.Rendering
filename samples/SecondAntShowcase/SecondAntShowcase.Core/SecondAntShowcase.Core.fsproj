@@ -33,6 +33,8 @@
     <Compile Include="CoverageMap.fs" />
     <Compile Include="InteractionContracts.fsi" />
     <Compile Include="InteractionContracts.fs" />
+    <Compile Include="ControlPass.fsi" />
+    <Compile Include="ControlPass.fs" />
     <Compile Include="ReviewFindings.fsi" />
     <Compile Include="ReviewFindings.fs" />
     <Compile Include="Scripts.fs" />
