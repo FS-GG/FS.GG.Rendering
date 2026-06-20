@@ -223,6 +223,32 @@ Slotted content is a first-class sub-tree: it composes with E1 dispatch, E3 styl
 and E4 focus, and keeps its E2 retained identity across a re-render — **free**,
 because the fill lands in the control's `Children`, not a parallel channel.
 
+## Interaction seams (Feature 175)
+
+- **Offset-aware hit-test is ONE seam.** `retained.Layout` is the RAW incremental cache (pre-shifting
+  it double-shifts reused bounds each frame). The single offset-aware queryable layout is
+  `RetainedRender.hitTestLayout retained`, which re-applies the scroll shift; every `LayoutResult`-based
+  hit-test consumer MUST resolve through it or it silently hit-tests pre-scroll positions.
+  `resolveFocus`/`retainedHitTest` use the already-shifted retained node boxes, so they agree — keep
+  the three consistent. Regression template: `tests/Elmish.Tests/Feature175ScrollHitTestTests.fs`
+  (drives the LIVE route over scrolled content; mutation-test it).
+- **Click→value is a registry, not an `if kind = …`.** A click dispatches `Payload = None` unless the
+  control kind registers a computer in `activationValueComputers` (Controls.Elmish `bindingMessagesFor`):
+  today `slider` (value from x) and `switch`/`check-box` (flip `selected`). Value-bearing kinds NOT yet
+  registered (radio-group, tabs, numeric-input, segmented, rate) fall through to the `onChanged`
+  default — register a computer rather than special-casing the router.
+- **Key interactive same-kind siblings.** Visual state stamps by `Key ?? Kind`; unkeyed interactive
+  same-kind siblings collapse to one stamp id so focus/hover/press marks them ALL (silent — routing
+  still distinguishes them). `Diagnostics.unkeyedInteractiveSiblings root` warns; fix with a distinct
+  `Control.withKey` on each.
+- **Drive a script to a final model.** `ControlsElmish.Perf.runScriptToModel host size script` returns
+  the FINAL folded model (same byte-stable fold as `Perf.runScript`), so you can render/capture the
+  POST-interaction frame — not just the static initial page.
+- **Scroll is first-class.** A product launched through `runInteractiveApp` inherits persistent scroll:
+  pure `ScrollState` (offset/clamp/thumb), the driver's wheel/key fold, and `hitTestLayout`. Drive all
+  of it from one `ScrollState` so offset, thumb, and hit-test stay one cohesive unit
+  (`tests/Elmish.Tests/Feature175ScrollViewerBehaviourTests.fs`).
+
 ## Build Commands
 
 Run `./fake.sh build -t Dev` for normal development and

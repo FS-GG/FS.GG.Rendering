@@ -81,6 +81,22 @@ match Viewer.runUntilFirstFrame options scene with
   `ViewerRunBlockedStage.Unknown` collide) — qualify the case when two opened
   modules export the same name.
 
+## Live-loop repaint & trace read-back (Feature 175)
+
+- **One repaint policy across every loop.** A no-product-message input may still change runtime state
+  (focus traversal, hover, scroll offsets) with NO model change, so the scene must be re-derived from
+  `host.View` or the change renders a frame late (the "focus one click behind" / dead-hover / dead-scroll
+  class). Both viewer loops route this through the single internal seam
+  `Viewer.runtimeStateRepaint producedMessages current deriveScene` (a no-op when messages already drove
+  a dispatch+re-derive). Do NOT re-add an inline `currentScene <- host.View …` in a handler — call the
+  one policy, so the key-only and full-interactive loops cannot drift apart.
+- **Trace read-back (observe live state without a repack).** `RenderLagTrace` writes stderr when
+  `FS_GG_RENDER_LAG_TRACE=1` AND, independently, captures in-memory when capture is on. From a test or
+  tool: `Viewer.traceStartCapture ()` → drive the interaction → `Viewer.traceDrainCapture () :
+  (event, fields) list`. This replaces the add-eprintfn-and-repack loop for diagnosing focus/hover/
+  scroll/dispatch timing. (Internal seams via InternalsVisibleTo; the buffer is process-global, so
+  assert on the PRESENCE of uniquely-named events.)
+
 ## Persistent problems
 
 When a problem outlasts reasonable in-repo attempts, extensive external research is

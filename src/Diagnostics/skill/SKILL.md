@@ -87,6 +87,11 @@ dotnet run --project samples/SecondAntShowcase/SecondAntShowcase.App/SecondAntSh
 dotnet run --project samples/SecondAntShowcase/SecondAntShowcase.App/SecondAntShowcase.App.fsproj -c Release -- render-lag-probe --scenario page-change --theme dark
 ```
 
+Besides the env-gated stderr trace, `RenderLagTrace` has an in-memory read-back path (Feature 175 S3):
+a test or tool can `Viewer.traceStartCapture ()` → drive an interaction → `Viewer.traceDrainCapture ()`
+to observe focus/hover/scroll/dispatch/timing events programmatically — no env var, no repack to add a
+trace. See [[fs-gg-skiaviewer]] "Live-loop repaint & trace read-back".
+
 For responsiveness evidence, prefer all-interactive live runs. If no `DISPLAY`
 or `WAYLAND_DISPLAY` is present, expect environment-limited substitute output.
 
@@ -109,6 +114,21 @@ For package-consuming sample proof, include the sample explicitly:
 ```bash
 dotnet fsi scripts/refresh-local-feed-and-samples.fsx --sample samples/SecondAntShowcase --mode proof --out artifacts/package-feed/second-ant-showcase
 dotnet run --project tests/Rendering.Harness/Rendering.Harness.fsproj -- package-feed --sample samples/SecondAntShowcase --mode proof --out artifacts/package-feed/second-ant-showcase
+```
+
+To test a LOCAL framework change live in a sample (Feature 175 T1), one invocation packs the whole
+solution at a fresh dev version, retargets the sample's Core/App/Tests pins, and restores — the fresh
+version forces the global NuGet cache (which the sample's real run uses) to pick up new bits:
+
+```bash
+dotnet fsi scripts/dev-repack.fsx --sample samples/SecondAntShowcase
+```
+
+To establish a no-regression baseline that can't miss a project (Feature 175 T3) — the solution omits
+`tests/Package.Tests` (release-only) and the `samples/**` projects, exactly where surprises hide:
+
+```bash
+dotnet fsi scripts/baseline-tests.fsx --out specs/<feature>/readiness/baseline.md
 ```
 
 For local skill inventory and wrapper drift, write reports outside tracked docs

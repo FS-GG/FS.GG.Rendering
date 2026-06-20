@@ -93,6 +93,26 @@ let validation = EvidenceReports.validate report
 printfn "accepted=%b status=%s" validation.Accepted (EvidenceReports.statusText report.Status)
 ```
 
+## Interaction repro & capture helpers (Feature 175)
+
+- **Reproduce a live interaction bug deterministically.** Generalise the `InteractionRepro` harness
+  (`tests/Elmish.Tests/Feature175InteractionReproTests.fs`): `start size host |> click "id"` drives the
+  REAL retained pointer route and exposes `.LastMsgs` / `focusAt` / `scene`, threading retained +
+  pointer + model state — a multi-step live bug (the focus/toggle/scroll class) becomes a few lines and
+  a permanent regression. Reaches the internal seams via InternalsVisibleTo.
+- **Drive interaction → capture the resulting frame.** `ControlsElmish.Perf.runScriptToModel host size
+  script` folds a click/scroll/focus script to the FINAL model (pure, headless, byte-stable); render it
+  and offscreen-capture with `Viewer.captureScreenshotEvidence` (`OffscreenReadback`) to a PNG —
+  degrade-and-disclose on a no-GL host (never claim a non-proven capture as green). Worked example:
+  `tests/SkiaViewer.Tests/Feature175InteractionCaptureTests.fs`.
+- **Comprehensive baseline before building on assumptions.** `dotnet fsi scripts/baseline-tests.fsx
+  --out <dir>` runs EVERY `*.Tests.fsproj` — solution + the release-only `tests/Package.Tests` + the
+  `samples/**` projects — and records the full red/green set, so pre-existing failures are known up
+  front, not discovered at merge.
+- **GL-loop tests are timing-nondeterministic.** Frame counts and present timing vary under parallel
+  GL load; assert on a deterministic seam (a policy function, a dispatched-message set, a resolved id)
+  rather than a frame/derivation count.
+
 ## Persistent problems
 
 When a problem outlasts reasonable in-repo attempts, extensive external research is
