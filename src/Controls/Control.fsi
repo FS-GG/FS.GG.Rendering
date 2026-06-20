@@ -83,6 +83,15 @@ module internal ControlInternals =
         control: Control<'msg> ->
             FS.GG.UI.Layout.LayoutNode * Map<string, FS.GG.UI.Layout.LayoutBounds> * FS.GG.UI.Layout.LayoutResult
 
+    /// Feature 175 (FR-009): shift every scrolled `scroll-viewer` descendant's bounds up by its
+    /// accumulated `scrollOffset` (read from the stamped tree). Applied to `boundsById` for paint, and
+    /// re-applied by the live host to the RAW `retained.Layout` for offset-aware pointer hit-testing
+    /// (the raw layout is the incremental cache, so it is not pre-shifted). Identity at rest.
+    val applyScrollOffsets:
+        root: Control<'msg> ->
+        result: FS.GG.UI.Layout.LayoutResult ->
+            FS.GG.UI.Layout.LayoutResult
+
     /// Compose a render result scene over an opaque viewport background from the active theme.
     /// Internal so full and retained render paths keep identical root-surface semantics.
     val sceneWithViewportBackground:

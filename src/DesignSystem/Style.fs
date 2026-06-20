@@ -75,6 +75,9 @@ module Style =
         | Hover -> { s with Fill = theme.Accent }
         | Pressed -> { s with Fill = theme.Muted }
         | Focused -> { s with Stroke = theme.Accent }
+        // Feature 175 (FR-005): combined hover+focus applies BOTH orthogonal deltas (hover fill +
+        // focus stroke) so neither affordance suppresses the other.
+        | FocusedHover -> { s with Fill = theme.Accent; Stroke = theme.Accent }
         | Selected -> { s with Fill = theme.Accent; Foreground = theme.Background }
         | Disabled -> { s with Fill = theme.Muted; Stroke = theme.Muted; Foreground = theme.Muted }
         // Qualified: `Validation` also names `AttrCategory.Validation`; this scrutinee is a `VisualState`.

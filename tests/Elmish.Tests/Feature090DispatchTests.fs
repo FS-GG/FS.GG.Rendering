@@ -110,10 +110,12 @@ let dispatchTests =
               let model1 = routed |> List.fold (fun m msg -> fst (update msg m)) model0
               Expect.equal model1.Count 1 "the model advanced exactly once (Count = 1)"
 
-              // The onChanged control routes its bound message from a click too.
+              // The onChanged control routes its bound message from a click too. Feature 175: a
+              // boolean toggle reports its NEW value, so clicking the (initially false) checkbox
+              // dispatches `Toggled true` — previously it always sent `false` (turn-off-only bug).
               let kx, ky = centreOf host model0 "chk"
               let chkRouted = clickAt host model0 kx ky
-              Expect.contains chkRouted (Toggled false) "the authored onChanged binding fired from a click"
+              Expect.contains chkRouted (Toggled true) "the authored onChanged binding fired with the flipped value (false → true)"
           }
 
           // R1/G1 (US2→US1, FR-004) — a click inside a CONTAINER-KEYED composite (key + onClick on the

@@ -29,6 +29,7 @@ type ControlRuntimeEffect =
     | SelectionChanged of ControlSelection option
     | CompositionChanged of ControlComposition option
     | DragChanged of ControlDrag option
+    | ScrollChanged of ControlId * float
     | StaleTarget of ControlId
     | CancelledInteraction of ControlId option
     | ReportControlRuntimeDiagnostic of ControlDiagnostic
@@ -41,6 +42,7 @@ type ControlRuntimeModel =
       Selection: ControlSelection option
       Composition: ControlComposition option
       ActiveDrag: ControlDrag option
+      ScrollOffsets: Map<ControlId, ScrollState>
       Diagnostics: ControlDiagnostic list
       RecentEffects: ControlRuntimeEffect list }
 
@@ -70,6 +72,8 @@ type ControlRuntimeMsg =
     | RemoveControl of ControlId
     | RecoverStaleTarget of ControlId
     | CancelInteraction of ControlId option
+    | SetScrollExtent of ControlId * float * float
+    | ScrollControl of ControlId * float
     | Reset
 
 /// Feature 112 (FR-007): the targeted runtime-stamp result (see ControlRuntime.fsi).
@@ -86,11 +90,16 @@ module ControlRuntime =
           Selection = None
           Composition = None
           ActiveDrag = None
+          ScrollOffsets = Map.empty
           Diagnostics = []
           RecentEffects = [] }
 
     let init () =
         empty, ([]: ControlRuntimeEffect list)
+
+    /// Feature 175: the scroll model currently owned for `controlId` (`ScrollState.empty` if none).
+    let scrollState (controlId: ControlId) (model: ControlRuntimeModel) =
+        model.ScrollOffsets |> Map.tryFind controlId |> Option.defaultValue ScrollState.empty
 
     let withEffects effects model =
         { model with RecentEffects = effects }, effects
@@ -119,7 +128,8 @@ module ControlRuntime =
             Caret = model.Caret |> Option.filter (fun caret -> caret.ControlId <> controlId)
             Selection = model.Selection |> Option.filter (fun selection -> selection.ControlId <> controlId)
             Composition = model.Composition |> Option.filter (fun composition -> composition.ControlId <> controlId)
-            ActiveDrag = model.ActiveDrag |> Option.filter (fun drag -> drag.ControlId <> controlId) }
+            ActiveDrag = model.ActiveDrag |> Option.filter (fun drag -> drag.ControlId <> controlId)
+            ScrollOffsets = model.ScrollOffsets |> Map.remove controlId }
 
     let update (msg: ControlRuntimeMsg) (model: ControlRuntimeModel) =
         match msg with
@@ -204,6 +214,14 @@ module ControlRuntime =
                 ActiveDrag = None
                 Diagnostics = diagnostic :: model.Diagnostics }
             |> withEffects [ CancelledInteraction controlId; DragChanged None; ReportControlRuntimeDiagnostic diagnostic ]
+        | SetScrollExtent(controlId, contentHeight, viewportHeight) ->
+            let next = scrollState controlId model |> ScrollState.withExtent contentHeight viewportHeight
+            { model with ScrollOffsets = Map.add controlId next model.ScrollOffsets }
+            |> withEffects [ ScrollChanged(controlId, next.Offset) ]
+        | ScrollControl(controlId, delta) ->
+            let next = scrollState controlId model |> ScrollState.applyScrollDelta delta
+            { model with ScrollOffsets = Map.add controlId next model.ScrollOffsets }
+            |> withEffects [ ScrollChanged(controlId, next.Offset) ]
         | Reset ->
             empty |> withEffects []
 
@@ -225,6 +243,9 @@ module ControlRuntime =
         // host that tracks a text-range selection derives `Selected` here without a code change.
         elif model.Selection |> Option.exists (fun s -> s.ControlId = controlId) then
             Selected
+        // Feature 175 (FR-005): focused AND hovered → the combined state (neither suppresses the other).
+        elif model.FocusedControl = Some controlId && model.HoveredControl = Some controlId then
+            FocusedHover
         elif model.FocusedControl = Some controlId then
             Focused
         elif model.HoveredControl = Some controlId then
@@ -338,6 +359,24 @@ module ControlRuntime =
         | None ->
             { Stamped = applyRuntimeVisualState cur fresh
               RuntimeStateTouchedNodeCount = Control.count fresh }
+
+    // Feature 175 (FR-001): host bridge mirroring `applyRuntimeVisualState` — stamp the live scroll
+    // offset onto each `scroll-viewer` node whose id holds a positive offset, so `evaluateLayout`'s
+    // bounds transform shifts its descendants. Emits NOTHING when the offset is 0/absent (byte-identity
+    // at rest). Keyed by `Key ?? Kind` to match the visual-state bridge. `internal`; the host applies it
+    // in `renderRetained` and tests reach it via InternalsVisibleTo.
+    let rec applyScrollOffsets (model: ControlRuntimeModel) (control: Control<'msg>) : Control<'msg> =
+        let id = control.Key |> Option.defaultValue control.Kind
+        let withChildren =
+            { control with Children = control.Children |> List.map (applyScrollOffsets model) }
+
+        match control.Kind, model.ScrollOffsets |> Map.tryFind id with
+        | "scroll-viewer", Some scroll when scroll.Offset > 0.0 ->
+            { withChildren with
+                Attributes =
+                    (withChildren.Attributes |> List.filter (fun a -> a.Name <> AttrKeys.ScrollOffset))
+                    @ [ Attr.create AttrKeys.ScrollOffset Layout (FloatValue scroll.Offset) ] }
+        | _ -> withChildren
 
     let attachOverlayEffects (overlay: OverlayState) (effects: OverlayEffect list) =
         { Overlay = overlay

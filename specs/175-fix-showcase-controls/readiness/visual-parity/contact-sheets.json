@@ -1,0 +1,20 @@
+[
+  {
+    "sheetId": "second-ant-showcase-minimum-light",
+    "relativePath": "contact-sheet-light.png",
+    "sizeRole": "minimum",
+    "themeId": "antLight",
+    "targetIds": ["minimum:1280x800:antLight:buttons:light/buttons.png", "minimum:1280x800:antLight:navigation-menus:light/navigation-menus.png", "minimum:1280x800:antLight:overlays:light/overlays.png", "minimum:1280x800:antLight:selection-toggles:light/selection-toggles.png"],
+    "missingTargetIds": [],
+    "diagnostics": ["contact sheet PNG composition is sample-owned"]
+  },
+  {
+    "sheetId": "second-ant-showcase-minimum-dark",
+    "relativePath": "contact-sheet-dark.png",
+    "sizeRole": "minimum",
+    "themeId": "antDark",
+    "targetIds": ["minimum:1280x800:antDark:buttons:dark/buttons.png", "minimum:1280x800:antDark:navigation-menus:dark/navigation-menus.png", "minimum:1280x800:antDark:overlays:dark/overlays.png", "minimum:1280x800:antDark:selection-toggles:dark/selection-toggles.png"],
+    "missingTargetIds": [],
+    "diagnostics": ["contact sheet PNG composition is sample-owned"]
+  }
+]

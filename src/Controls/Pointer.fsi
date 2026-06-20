@@ -115,6 +115,12 @@ module Pointer =
     /// (FR-006). Override per coordinator with `{ Pointer.init () with DragThreshold = … }`.
     val init: unit -> PointerState
 
+    /// Feature 175 (FR-001): map a keyboard key (with Shift state) to a scroll delta for the focused
+    /// scroll region (`ArrowUp`/`ArrowDown` line step, `PageUp`/`PageDown` viewport step, `Home`/`End`
+    /// to top/bottom via a large signed delta clamped downstream, `Space`/`Shift+Space` page down/up).
+    /// `None` when the key does not scroll. The host reduces the result to `ScrollControl`.
+    val scrollKeyDelta: key: string -> shift: bool -> viewportHeight: float -> float option
+
     /// Map a neutral sample to a transition message (None when not actionable).
     val toMsg: sample: PointerSample -> PointerMsg option
 

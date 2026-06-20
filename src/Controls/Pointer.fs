@@ -83,6 +83,26 @@ module Pointer =
 
     let origin: PointerOrigin = Pointer
 
+    // Feature 175 (FR-001): the line step a single arrow-key scroll applies.
+    let private scrollLineStep = 40.0
+
+    /// Feature 175 (FR-001): map a keyboard key (and Shift state) to a scroll delta for the focused
+    /// scroll region, per contracts/scroll-interaction.md. `None` when the key does not scroll. The
+    /// host reduces the delta to `ControlRuntimeMsg.ScrollControl`, where `applyScrollDelta` clamps it
+    /// to the bounds (so Home/End — a large signed delta — land exactly at top/bottom).
+    let scrollKeyDelta (key: string) (shift: bool) (viewportHeight: float) : float option =
+        match key with
+        | "ArrowDown" -> Some scrollLineStep
+        | "ArrowUp" -> Some -scrollLineStep
+        | "PageDown" -> Some viewportHeight
+        | "PageUp" -> Some -viewportHeight
+        | "Home" -> Some -1e9
+        | "End" -> Some 1e9
+        | "Space"
+        | "Spacebar"
+        | " " -> Some(if shift then -viewportHeight else viewportHeight)
+        | _ -> None
+
     let init () : PointerState =
         { Hover = None
           Presses = Map.empty

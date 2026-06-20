@@ -77,8 +77,8 @@ let private clickOracle (host: InteractiveAppHost<int, Msg>) (model: int) (x: fl
 // return the routed msgs and the summed fallback count (must be 0 on every normal scene).
 let private clickRetained (host: InteractiveAppHost<int, Msg>) (model: int) (x: float) (y: float) : Msg list * int =
     let r = RetainedRender.init host.Theme size (host.View size model)
-    let s1, down, fb1 = ControlsElmish.routeRetainedPointer host r.Retained r.Render (Pointer.init ()) size model (pointer ViewerPointerPhaseKind.Pressed x y)
-    let _s2, up, fb2 = ControlsElmish.routeRetainedPointer host r.Retained r.Render s1 size model (pointer ViewerPointerPhaseKind.Released x y)
+    let s1, down, fb1, _ = ControlsElmish.routeRetainedPointer host r.Retained r.Render (Pointer.init ()) size model (pointer ViewerPointerPhaseKind.Pressed x y)
+    let _s2, up, fb2, _ = ControlsElmish.routeRetainedPointer host r.Retained r.Render s1 size model (pointer ViewerPointerPhaseKind.Released x y)
     down @ up, fb1 + fb2
 
 // Assert the two paths dispatch the identical message list with no fallback (the SC-003 parity gate).

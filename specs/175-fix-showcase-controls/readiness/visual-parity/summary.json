@@ -1,0 +1,55 @@
+{
+  "seed": 175,
+  "size": "1280x800",
+  "acceptedSizeRole": "minimum",
+  "pageIds": ["buttons", "navigation-menus", "overlays", "selection-toggles"],
+  "themeIds": ["antLight", "antDark"],
+  "requiredScreenshotCount": 8,
+  "presentScreenshotCount": 8,
+  "completenessStatus": "complete",
+  "captureAvailability": "available",
+  "reviewerDefectStatus": "missing",
+  "visualReadinessStatus": "blocked",
+  "sharedVisualReadiness": {
+    "runId": "second-ant-showcase",
+    "evidenceRoot": ".",
+    "targetCount": 8,
+    "requiredTargetCount": 8,
+    "readinessStatus": "pending-review",
+    "captureStatusCounts": {
+      "complete": 8
+    },
+    "reviewerStatusCounts": {
+  
+    },
+    "targets": [
+      { "targetId": "minimum:1280x800:antLight:buttons:light/buttons.png", "pageId": "buttons", "themeId": "antLight", "size": "1280x800", "relativePath": "light/buttons.png", "required": true },
+      { "targetId": "minimum:1280x800:antLight:navigation-menus:light/navigation-menus.png", "pageId": "navigation-menus", "themeId": "antLight", "size": "1280x800", "relativePath": "light/navigation-menus.png", "required": true },
+      { "targetId": "minimum:1280x800:antLight:overlays:light/overlays.png", "pageId": "overlays", "themeId": "antLight", "size": "1280x800", "relativePath": "light/overlays.png", "required": true },
+      { "targetId": "minimum:1280x800:antLight:selection-toggles:light/selection-toggles.png", "pageId": "selection-toggles", "themeId": "antLight", "size": "1280x800", "relativePath": "light/selection-toggles.png", "required": true },
+      { "targetId": "minimum:1280x800:antDark:buttons:dark/buttons.png", "pageId": "buttons", "themeId": "antDark", "size": "1280x800", "relativePath": "dark/buttons.png", "required": true },
+      { "targetId": "minimum:1280x800:antDark:navigation-menus:dark/navigation-menus.png", "pageId": "navigation-menus", "themeId": "antDark", "size": "1280x800", "relativePath": "dark/navigation-menus.png", "required": true },
+      { "targetId": "minimum:1280x800:antDark:overlays:dark/overlays.png", "pageId": "overlays", "themeId": "antDark", "size": "1280x800", "relativePath": "dark/overlays.png", "required": true },
+      { "targetId": "minimum:1280x800:antDark:selection-toggles:dark/selection-toggles.png", "pageId": "selection-toggles", "themeId": "antDark", "size": "1280x800", "relativePath": "dark/selection-toggles.png", "required": true }
+    ],
+    "captures": [
+      { "targetId": "minimum:1280x800:antLight:buttons:light/buttons.png", "status": "complete", "relativePath": "light/buttons.png", "observedSize": "1280x800", "diagnostics": [] },
+      { "targetId": "minimum:1280x800:antLight:navigation-menus:light/navigation-menus.png", "status": "complete", "relativePath": "light/navigation-menus.png", "observedSize": "1280x800", "diagnostics": [] },
+      { "targetId": "minimum:1280x800:antLight:overlays:light/overlays.png", "status": "complete", "relativePath": "light/overlays.png", "observedSize": "1280x800", "diagnostics": [] },
+      { "targetId": "minimum:1280x800:antLight:selection-toggles:light/selection-toggles.png", "status": "complete", "relativePath": "light/selection-toggles.png", "observedSize": "1280x800", "diagnostics": [] },
+      { "targetId": "minimum:1280x800:antDark:buttons:dark/buttons.png", "status": "complete", "relativePath": "dark/buttons.png", "observedSize": "1280x800", "diagnostics": [] },
+      { "targetId": "minimum:1280x800:antDark:navigation-menus:dark/navigation-menus.png", "status": "complete", "relativePath": "dark/navigation-menus.png", "observedSize": "1280x800", "diagnostics": [] },
+      { "targetId": "minimum:1280x800:antDark:overlays:dark/overlays.png", "status": "complete", "relativePath": "dark/overlays.png", "observedSize": "1280x800", "diagnostics": [] },
+      { "targetId": "minimum:1280x800:antDark:selection-toggles:dark/selection-toggles.png", "status": "complete", "relativePath": "dark/selection-toggles.png", "observedSize": "1280x800", "diagnostics": [] }
+    ],
+    "reviewerClassifications": [
+  
+    ],
+    "contactSheets": [
+      { "sheetId": "second-ant-showcase-contact-sheet-1", "relativePath": "contact-sheet-light.png", "targetIds": ["minimum:1280x800:antLight:buttons:light/buttons.png", "minimum:1280x800:antLight:navigation-menus:light/navigation-menus.png", "minimum:1280x800:antLight:overlays:light/overlays.png", "minimum:1280x800:antLight:selection-toggles:light/selection-toggles.png", "minimum:1280x800:antDark:buttons:dark/buttons.png", "minimum:1280x800:antDark:navigation-menus:dark/navigation-menus.png", "minimum:1280x800:antDark:overlays:dark/overlays.png", "minimum:1280x800:antDark:selection-toggles:dark/selection-toggles.png"], "missingTargetIds": [], "diagnostics": ["contact sheet image composition is sample-owned"] },
+      { "sheetId": "second-ant-showcase-contact-sheet-2", "relativePath": "contact-sheet-dark.png", "targetIds": ["minimum:1280x800:antLight:buttons:light/buttons.png", "minimum:1280x800:antLight:navigation-menus:light/navigation-menus.png", "minimum:1280x800:antLight:overlays:light/overlays.png", "minimum:1280x800:antLight:selection-toggles:light/selection-toggles.png", "minimum:1280x800:antDark:buttons:dark/buttons.png", "minimum:1280x800:antDark:navigation-menus:dark/navigation-menus.png", "minimum:1280x800:antDark:overlays:dark/overlays.png", "minimum:1280x800:antDark:selection-toggles:dark/selection-toggles.png"], "missingTargetIds": [], "diagnostics": ["contact sheet image composition is sample-owned"] }
+    ],
+    "caveats": [],
+    "diagnostics": ["missing or pending reviewer classification: minimum:1280x800:antLight:buttons:light/buttons.png", "missing or pending reviewer classification: minimum:1280x800:antLight:navigation-menus:light/navigation-menus.png", "missing or pending reviewer classification: minimum:1280x800:antLight:overlays:light/overlays.png", "missing or pending reviewer classification: minimum:1280x800:antLight:selection-toggles:light/selection-toggles.png", "missing or pending reviewer classification: minimum:1280x800:antDark:buttons:dark/buttons.png", "missing or pending reviewer classification: minimum:1280x800:antDark:navigation-menus:dark/navigation-menus.png", "missing or pending reviewer classification: minimum:1280x800:antDark:overlays:dark/overlays.png", "missing or pending reviewer classification: minimum:1280x800:antDark:selection-toggles:dark/selection-toggles.png"]
+  }
+}

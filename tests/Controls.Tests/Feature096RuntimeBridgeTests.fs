@@ -45,9 +45,10 @@ let feature096RuntimeBridgeTests =
     testList "Feature096 runtime visual-state bridge" [
 
         // ---- T010 — deriveVisualState runtime precedence (SC-004) -----------------------------
-        test "T010 — runtime precedence Pressed > Selected > Focused > Hover > Normal" {
+        test "T010 — runtime precedence Pressed > Selected > FocusedHover > Focused > Hover > Normal" {
             // Build one model in which "btn" is simultaneously pressed, selected, focused, hovered;
-            // peeling each higher state off must reveal exactly the next-ranked one.
+            // peeling each higher state off must reveal exactly the next-ranked one. Feature 175 (FR-005)
+            // inserts the combined FocusedHover state between Selected and the single Focused/Hover states.
             let pressed =
                 modelWith (fun m ->
                     { m with
@@ -60,11 +61,15 @@ let feature096RuntimeBridgeTests =
             let selected = { pressed with PressedControls = Set.empty }
             Expect.equal (ControlRuntime.deriveVisualState selected "btn") Selected "selected out-ranks focus/hover"
 
-            let focused = { selected with Selection = None }
-            Expect.equal (ControlRuntime.deriveVisualState focused "btn") Focused "focus out-ranks hover"
+            // Feature 175 (FR-005): focused AND hovered → the combined state (neither suppresses the other).
+            let focusedHover = { selected with Selection = None }
+            Expect.equal (ControlRuntime.deriveVisualState focusedHover "btn") FocusedHover "focus+hover ⇒ combined"
 
-            let hover = { focused with FocusedControl = None }
-            Expect.equal (ControlRuntime.deriveVisualState hover "btn") Hover "hover out-ranks normal"
+            let focused = { focusedHover with HoveredControl = None }
+            Expect.equal (ControlRuntime.deriveVisualState focused "btn") Focused "focus only ⇒ Focused"
+
+            let hover = { focusedHover with FocusedControl = None }
+            Expect.equal (ControlRuntime.deriveVisualState hover "btn") Hover "hover only ⇒ Hover"
 
             let normal = { hover with HoveredControl = None }
             Expect.equal (ControlRuntime.deriveVisualState normal "btn") Normal "no interaction ⇒ Normal"

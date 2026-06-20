@@ -158,6 +158,8 @@
     <Compile Include="Feature151DisabledCacheParityTests.fs" />
     <Compile Include="Feature151LayoutCompatibilityTests.fs" />
     <Compile Include="Feature169RuntimeDiagnosticMappingTests.fs" />
+    <Compile Include="Feature175ScrollStateTests.fs" />
+    <Compile Include="Feature175HoverFocusTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

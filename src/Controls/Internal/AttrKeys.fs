@@ -22,6 +22,10 @@ module internal AttrKeys =
     [<Literal>]
     let LayoutPadding = "padding"
 
+    // Feature 175: the live scroll offset stamped by the host onto a `scroll-viewer` node.
+    [<Literal>]
+    let ScrollOffset = "scrollOffset"
+
     [<Literal>]
     let LayoutMargin = "margin"
 

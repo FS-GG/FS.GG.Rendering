@@ -1,0 +1,292 @@
+{
+  "artifactWriteStatus": "complete",
+  "baselineProfileId": "2026-06-19",
+  "budgets": {
+    "inputReceiptMaxMs": 16,
+    "inputReceiptP95Ms": 4,
+    "inputToVisibleMaxMs": 150,
+    "inputToVisibleP95Ms": 100,
+    "longFrameThresholdMs": 50
+  },
+  "completedUtc": "2026-06-20T09:57:47.1304496+00:00",
+  "coverage": {
+    "acceptedInteractiveFamilies": [
+      "button-click",
+      "toggle-switch"
+    ],
+    "blockedInteractiveFamilies": [],
+    "displayOnlyExclusions": [
+      {
+        "controlId": "alert",
+        "reason": "static feedback sample"
+      },
+      {
+        "controlId": "area-chart",
+        "reason": "static seeded chart data"
+      },
+      {
+        "controlId": "avatar",
+        "reason": "static identity sample"
+      },
+      {
+        "controlId": "badge",
+        "reason": "static status count sample"
+      },
+      {
+        "controlId": "bar-chart",
+        "reason": "static seeded chart data"
+      },
+      {
+        "controlId": "border",
+        "reason": "layout primitive, behavior comes from composed children"
+      },
+      {
+        "controlId": "box-plot",
+        "reason": "static seeded chart data"
+      },
+      {
+        "controlId": "calendar",
+        "reason": "static month display in this sample"
+      },
+      {
+        "controlId": "card",
+        "reason": "static container sample"
+      },
+      {
+        "controlId": "carousel",
+        "reason": "seeded slide set without auto-play evidence"
+      },
+      {
+        "controlId": "chord-diagram",
+        "reason": "static seeded graph data"
+      },
+      {
+        "controlId": "column-chart",
+        "reason": "static seeded chart data"
+      },
+      {
+        "controlId": "context-menu",
+        "reason": "displayed as menu pattern without host context gesture in headless evidence"
+      },
+      {
+        "controlId": "descriptions",
+        "reason": "static facts display"
+      },
+      {
+        "controlId": "dock",
+        "reason": "layout primitive, behavior comes from composed children"
+      },
+      {
+        "controlId": "empty",
+        "reason": "static empty-state sample"
+      },
+      {
+        "controlId": "funnel-chart",
+        "reason": "static seeded chart data"
+      },
+      {
+        "controlId": "gauge-chart",
+        "reason": "static seeded chart data"
+      },
+      {
+        "controlId": "grid",
+        "reason": "layout primitive, behavior comes from composed children"
+      },
+      {
+        "controlId": "heatmap",
+        "reason": "static seeded chart data"
+      },
+      {
+        "controlId": "histogram",
+        "reason": "static seeded chart data"
+      },
+      {
+        "controlId": "icon",
+        "reason": "static iconography sample"
+      },
+      {
+        "controlId": "image",
+        "reason": "static media sample"
+      },
+      {
+        "controlId": "label",
+        "reason": "static field label sample"
+      },
+      {
+        "controlId": "line-chart",
+        "reason": "static seeded chart data"
+      },
+      {
+        "controlId": "panel",
+        "reason": "layout primitive, behavior comes from composed children"
+      },
+      {
+        "controlId": "pie-chart",
+        "reason": "static seeded chart data"
+      },
+      {
+        "controlId": "qr-code",
+        "reason": "static encoded value"
+      },
+      {
+        "controlId": "radar-chart",
+        "reason": "static seeded chart data"
+      },
+      {
+        "controlId": "result",
+        "reason": "static outcome sample"
+      },
+      {
+        "controlId": "rich-text",
+        "reason": "static rich text formatting sample"
+      },
+      {
+        "controlId": "rose-chart",
+        "reason": "static seeded chart data"
+      },
+      {
+        "controlId": "sankey-diagram",
+        "reason": "static seeded graph data"
+      },
+      {
+        "controlId": "scatter-plot",
+        "reason": "static seeded chart data"
+      },
+      {
+        "controlId": "scroll-viewer",
+        "reason": "host scrolling behavior, not a pure Core state transition"
+      },
+      {
+        "controlId": "separator",
+        "reason": "static layout divider"
+      },
+      {
+        "controlId": "skeleton",
+        "reason": "static loading placeholder sample"
+      },
+      {
+        "controlId": "spinner",
+        "reason": "static loading sample"
+      },
+      {
+        "controlId": "split-view",
+        "reason": "static layout split sample"
+      },
+      {
+        "controlId": "stack",
+        "reason": "layout primitive, behavior comes from composed children"
+      },
+      {
+        "controlId": "statistic",
+        "reason": "static metric display"
+      },
+      {
+        "controlId": "sunburst",
+        "reason": "static seeded chart data"
+      },
+      {
+        "controlId": "tag",
+        "reason": "static classification token"
+      },
+      {
+        "controlId": "text-block",
+        "reason": "static typography sample"
+      },
+      {
+        "controlId": "timeline",
+        "reason": "static chronological display sample"
+      },
+      {
+        "controlId": "toast",
+        "reason": "display-only notification state in this sample"
+      },
+      {
+        "controlId": "toolbar",
+        "reason": "composes command controls covered by button contracts"
+      },
+      {
+        "controlId": "treemap",
+        "reason": "static seeded chart data"
+      },
+      {
+        "controlId": "waterfall-chart",
+        "reason": "static seeded chart data"
+      },
+      {
+        "controlId": "watermark",
+        "reason": "static background affordance"
+      },
+      {
+        "controlId": "wrap",
+        "reason": "layout primitive, behavior comes from composed children"
+      }
+    ],
+    "missingInteractiveFamilies": [],
+    "rejectedInteractiveFamilies": [],
+    "requiredInteractiveFamilies": [
+      "button-click",
+      "toggle-switch"
+    ]
+  },
+  "diagnostics": [
+    "LIVE: measured through ControlsElmish.Live.runScript and the OpenGL viewer presentation boundary.",
+    "viewerOutcome=ok; firstFramePresented=True"
+  ],
+  "dragContinuity": [],
+  "environmentLimitations": [],
+  "firstFailedBudget": null,
+  "firstFramePreparationReductionPercent": null,
+  "groups": [
+    {
+      "controlFamily": "button-click",
+      "controlGroup": "button-click",
+      "count": 1,
+      "inputKind": "pointer-discrete",
+      "longFrameCount": 0,
+      "maxMs": 9.343,
+      "p50Ms": 9.343,
+      "p95Ms": 9.343,
+      "page": "buttons",
+      "readiness": "accepted"
+    },
+    {
+      "controlFamily": "toggle-switch",
+      "controlGroup": "toggle-switch",
+      "count": 1,
+      "inputKind": "pointer-discrete",
+      "longFrameCount": 0,
+      "maxMs": 3.065,
+      "p50Ms": 3.065,
+      "p95Ms": 3.065,
+      "page": "buttons",
+      "readiness": "accepted"
+    }
+  ],
+  "optimizedProfileId": "resp-20260620-095747-26117f",
+  "overallReadiness": "accepted",
+  "parityArtifacts": [],
+  "parityStatus": "pending-review",
+  "preparationReductionPercent": null,
+  "recordsPath": "records.jsonl",
+  "runId": "resp-20260620-095747-26117f",
+  "scope": "second-antshowcase/buttons/antLight",
+  "slowestInteractions": [
+    {
+      "actionId": "button-click",
+      "controlFamily": "button-click",
+      "dominantPhase": "paint",
+      "inputSequenceId": 1,
+      "recordId": "resp-20260620-095747-26117f-000001",
+      "totalInputToVisibleMs": 9.343
+    },
+    {
+      "actionId": "toggle-switch",
+      "controlFamily": "toggle-switch",
+      "dominantPhase": "paint",
+      "inputSequenceId": 2,
+      "recordId": "resp-20260620-095747-26117f-000002",
+      "totalInputToVisibleMs": 3.065
+    }
+  ],
+  "startedUtc": "2026-06-20T09:57:47.1304496+00:00"
+}

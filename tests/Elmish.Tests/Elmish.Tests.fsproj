@@ -64,6 +64,9 @@
     <Compile Include="Audit_DamageTracking.fs" />
     <Compile Include="Audit_Virtualization.fs" />
     <Compile Include="Audit_AnimationTickGating.fs" />
+    <Compile Include="Feature175ScrollRoutingTests.fs" />
+    <Compile Include="Feature175NavFocusTests.fs" />
+    <Compile Include="Feature175ToggleTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

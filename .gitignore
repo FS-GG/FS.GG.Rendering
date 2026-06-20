@@ -92,6 +92,9 @@ specs/173-live-responsiveness-runner/readiness/**/nuget-cache/
 !specs/174-fix-render-lag/readiness/
 !specs/174-fix-render-lag/readiness/**
 specs/174-fix-render-lag/readiness/**/nuget-cache/
+!specs/175-fix-showcase-controls/readiness/
+!specs/175-fix-showcase-controls/readiness/**
+specs/175-fix-showcase-controls/readiness/**/nuget-cache/
 
 # macOS / Linux cruft
 .DS_Store

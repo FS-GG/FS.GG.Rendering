@@ -64,6 +64,10 @@ let private navItem (current: string) (p: Page): Control<SecondAntShowcaseMsg> =
           Button.onClick (NavigateTo p.Id)
           Attr.styleClasses [ FS.GG.UI.DesignSystem.StyleClass.Custom "ghost" ]
           Attr.width 120.0 ]
+    // Feature 175: a STABLE per-page key. Without it every nav button collapses to the kind id
+    // "button", so the runtime hover/focus stamp (keyed by Key ?? Kind) would mark ALL nav buttons
+    // when one is focused/hovered. A unique key gives each its own runtime identity.
+    |> Control.withKey ("nav-" + p.Id)
 
 let private navRail (bounds: ShellLayout.Rect) (model: SecondAntShowcaseModel): Control<SecondAntShowcaseMsg> =
     let header t = Label.create [ Label.text t ]
@@ -80,16 +84,26 @@ let private content (bounds: ShellLayout.Rect) (model: SecondAntShowcaseModel): 
     let page = PageRegistry.byId model.CurrentPage
     let profile = PageProfiles.byPageId page.Id
     let body = page.View model.PageState
+    // Feature 175: the content is INTRINSIC height (no fixed cap) so a tall page genuinely overflows;
+    // the scroll-viewer below bounds the VIEWPORT, so content > viewport ⇒ the region scrolls. The old
+    // `Attr.height (bounds.Height - 88.0)` cap sized the content to fit the viewport, so nothing ever
+    // overflowed and the scrollbar had nothing to scroll.
     let framedBody =
         Panel.create
             [ Attr.width (bounds.Width - 32.0)
-              Attr.height (bounds.Height - 88.0)
               Panel.children
                   [ Label.create [ Label.text page.Title ]
                     TextBlock.create [ TextBlock.text (sprintf "profile=%A · columns=%d" profile.Density profile.SectionColumns) ]
                     body ] ]
-    let props = FS.GG.UI.Controls.Typed.ScrollViewer.defaults "content-scroll" (Widget.ofControl framedBody)
-    region bounds "content" (Widget.toControl (FS.GG.UI.Controls.Typed.ScrollViewer.view props))
+    // Build the scroll-viewer with an explicit bounded viewport height (the typed `ScrollViewer.defaults`
+    // does not expose height); its intrinsic-height child overflows when the page is taller than this.
+    let scrollViewer =
+        Control.standard
+            (StandardControlKind.Custom "scroll-viewer")
+            [ Attr.child framedBody
+              Attr.height (bounds.Height - 88.0) ]
+        |> Control.withKey "content-scroll"
+    region bounds "content" scrollViewer
 
 /// A feedback capture section shown on EVERY page: a draft field + submit button, plus the
 /// feedback already saved for the current page. Submitting saves a page-tagged entry (pure

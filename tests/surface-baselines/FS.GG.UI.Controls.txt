@@ -77,6 +77,7 @@ FS.GG.UI.Controls.ControlRuntimeEffect+FocusChanged
 FS.GG.UI.Controls.ControlRuntimeEffect+HoverChanged
 FS.GG.UI.Controls.ControlRuntimeEffect+PressedControlsChanged
 FS.GG.UI.Controls.ControlRuntimeEffect+ReportControlRuntimeDiagnostic
+FS.GG.UI.Controls.ControlRuntimeEffect+ScrollChanged
 FS.GG.UI.Controls.ControlRuntimeEffect+SelectionChanged
 FS.GG.UI.Controls.ControlRuntimeEffect+StaleTarget
 FS.GG.UI.Controls.ControlRuntimeEffect+Tags
@@ -91,7 +92,9 @@ FS.GG.UI.Controls.ControlRuntimeMsg+PressControl
 FS.GG.UI.Controls.ControlRuntimeMsg+RecoverStaleTarget
 FS.GG.UI.Controls.ControlRuntimeMsg+ReleaseControl
 FS.GG.UI.Controls.ControlRuntimeMsg+RemoveControl
+FS.GG.UI.Controls.ControlRuntimeMsg+ScrollControl
 FS.GG.UI.Controls.ControlRuntimeMsg+SetCaret
+FS.GG.UI.Controls.ControlRuntimeMsg+SetScrollExtent
 FS.GG.UI.Controls.ControlRuntimeMsg+SetSelection
 FS.GG.UI.Controls.ControlRuntimeMsg+StartComposition
 FS.GG.UI.Controls.ControlRuntimeMsg+StartDrag
@@ -301,6 +304,7 @@ FS.GG.UI.Controls.SankeyDiagram
 FS.GG.UI.Controls.ScatterPlot
 FS.GG.UI.Controls.ScrollExtentSource
 FS.GG.UI.Controls.ScrollExtentSource+Tags
+FS.GG.UI.Controls.ScrollState
 FS.GG.UI.Controls.ScrollViewport
 FS.GG.UI.Controls.SelectionCompletionPolicy
 FS.GG.UI.Controls.SelectionCompletionPolicy+Tags

@@ -14,6 +14,36 @@ type ControlId = string
 /// `StandardControlKind` such as `"button"` or `"line-chart"`.
 type ControlKind = string
 
+/// Feature 175 (FR-001/FR-002): the scroll model owned per `scroll-viewer` ControlId. Pure value;
+/// derived geometry (scrollable, thumb height/position) is computed by the `ScrollState` module.
+type ScrollState =
+    { Offset: float
+      ContentHeight: float
+      ViewportHeight: float }
+
+/// Feature 175 (FR-001/FR-002): pure transitions and derived geometry over `ScrollState`. Drag,
+/// wheel, and keyboard scroll all reduce to `applyScrollDelta`; the thumb derives from the
+/// viewport/content ratio. All functions are total and deterministic.
+module ScrollState =
+    /// A one-pixel-overflow dead-zone: content within 1px of the viewport is treated as non-scrollable.
+    val deadZone: float
+    /// The minimum thumb height in px so a tall page's thumb stays grabbable.
+    val minThumb: float
+    /// The zero scroll model (offset 0, no extents).
+    val empty: ScrollState
+    /// `max(0, ContentHeight - ViewportHeight)` — the largest valid offset.
+    val maxOffset: state: ScrollState -> float
+    /// True when content exceeds the viewport beyond the dead-zone (a draggable thumb is shown).
+    val scrollable: state: ScrollState -> bool
+    /// Record measured extents and re-clamp the offset (a shrink cannot leave a stale over-scroll).
+    val withExtent: contentHeight: float -> viewportHeight: float -> state: ScrollState -> ScrollState
+    /// `Offset' = clamp(Offset + delta, 0, maxOffset)` — no overscroll at either bound.
+    val applyScrollDelta: delta: float -> state: ScrollState -> ScrollState
+    /// Thumb height from the viewport/content ratio; `0` (no draggable thumb) when not scrollable.
+    val thumbHeight: state: ScrollState -> float
+    /// Thumb top within a track of `trackHeight`, monotonically tracking the offset; `0` when not scrollable.
+    val thumbPosition: trackHeight: float -> state: ScrollState -> float
+
 /// A single plotted datum (`ChartPoint`): `X`/`Y` coordinates plus an optional `Label`
 /// for line, bar, pie, and scatter chart kinds.
 type ChartPoint =

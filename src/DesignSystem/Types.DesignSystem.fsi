@@ -18,6 +18,9 @@ type VisualState =
     | Hover
     | Pressed
     | Focused
+    /// Feature 175 (FR-005): simultaneously hovered AND focused — the combined Ant state (hover fill +
+    /// focus ring), so neither affordance suppresses the other.
+    | FocusedHover
     | Selected
     | Loading
     | Validation of ValidationState

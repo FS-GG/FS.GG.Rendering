@@ -1359,9 +1359,30 @@ module internal ControlInternals =
 
         let style = StyleResolver.resolveDefault theme kind intent classes state
 
+        // Feature 175 (FR-004): a filled button's fill carries hover/press, but FOCUS only moves the
+        // stroke — which the filled branch otherwise ignores, so keyboard focus was invisible on every
+        // button (incl. the ghost nav buttons). Paint a focus ring (the resolved focus stroke) when the
+        // state involves focus; Normal/Hover/Pressed add nothing, so non-focused buttons are unchanged.
+        let focusRing =
+            match state with
+            | Focused
+            | FocusedHover -> [ Scene.rectangleWithPaint rect (Paint.stroke style.Stroke 2.0) ]
+            | _ -> []
+
+        // Feature 175 (FR-003, finding F-009): a default button's resting fill is already `theme.Accent`,
+        // so `applyState Hover` (Fill = Accent) is a no-op and hover was invisible on it. Lighten the
+        // fill on hover so EVERY button shows a visible hover state (a transparent-resting ghost button
+        // lightens its now-Accent hover fill too). Non-hover states keep `style.Fill` (byte-identical).
+        let buttonFill =
+            match state with
+            | Hover
+            | FocusedHover -> lerpColor style.Fill Colors.white 0.18
+            | _ -> style.Fill
+
         if kind = "button" then
-            [ Scene.rectangle (box.X, by, w, h) style.Fill
+            [ Scene.rectangle (box.X, by, w, h) buttonFill
               mkText theme (box.X + 16.0) (by + h / 2.0 + 5.0) 15.0 style.Foreground label ]
+            @ focusRing
         else
             [ Scene.rectangleWithPaint rect (Paint.stroke style.Stroke 2.0)
               mkText theme (box.X + 16.0) (by + h / 2.0 + 5.0) 15.0 style.Foreground label ]
@@ -1498,13 +1519,21 @@ module internal ControlInternals =
     /// the thumb is shorter than the track when the content overflows the viewport (it is scrollable).
     /// `contentHeight > box.Height` ⇒ thumb ratio `< 1` (a scroll affordance); content is confined to the
     /// box by the shared container clip (`composeContainerScene`), so it is clipped/scrollable not spilled.
-    let scrollAffordance theme (box: Rect) (contentHeight: float) : Scene list =
+    // Feature 175 (FR-001/FR-002): the thumb now tracks the live offset and is OMITTED when the
+    // content fits (no draggable affordance, dead-zone honoured). For an overflowing region at
+    // offset 0 this is byte-identical to the pre-175 affordance (same track + same thumb height at
+    // box.Y), so existing at-rest scroll scenes are unchanged.
+    let scrollAffordance theme (box: Rect) (state: ScrollState) : Scene list =
         let barW = 10.0
         let trackX = box.X + box.Width - barW
-        let ratio = if contentHeight <= box.Height then 1.0 else box.Height / contentHeight
-        let thumbH = max 12.0 (box.Height * ratio)
-        [ Scene.rectangle (trackX, box.Y, barW, box.Height) theme.Muted
-          Scene.rectangle (trackX, box.Y, barW, thumbH) theme.Accent ]
+        let track = Scene.rectangle (trackX, box.Y, barW, box.Height) theme.Muted
+        let thumbH = ScrollState.thumbHeight state
+        if thumbH <= 0.0 then
+            [ track ]
+        else
+            let thumbY = box.Y + ScrollState.thumbPosition box.Height state
+            [ track
+              Scene.rectangle (trackX, thumbY, barW, thumbH) theme.Accent ]
 
     /// Two layered, offset surfaces suggesting stacked content — `overlay`.
     let private overlayGeom theme (box: Rect) (label: string) : Scene list =
@@ -2239,10 +2268,64 @@ module internal ControlInternals =
         |> List.map (fun (b: FS.GG.UI.Layout.ComputedBounds) -> b.NodeId, b.Bounds)
         |> Map.ofList
 
+    // Feature 175 (FR-001/FR-009): the live scroll offset stamped onto a `scroll-viewer` node by the
+    // host (absent ⇒ 0.0). Read by both the bounds transform below and the thumb paint, so paint and
+    // hit-test (which BOTH read `boundsById`) agree by construction.
+    let scrollOffsetOf (attrs: Attr<'msg> list) : float =
+        tryFloat AttrKeys.ScrollOffset attrs |> Option.defaultValue 0.0
+
+    let rec private subtreeLayoutIds (path: string) (c: Control<'msg>) : string list =
+        let id = c.Key |> Option.defaultValue path
+        id :: (c.Children |> List.mapi (fun i ch -> subtreeLayoutIds (path + "." + string i) ch) |> List.concat)
+
+    // Accumulate, per layout id, the total vertical scroll offset contributed by every ancestor
+    // `scroll-viewer` carrying a positive `scrollOffset` attr (nested viewers add up). EMPTY when no
+    // node is scrolled, so `applyScrollOffsets` is the identity at rest (byte-identical, FR-014).
+    let rec private collectScrollOffsets (path: string) (c: Control<'msg>) : Map<string, float> =
+        let here =
+            match scrollOffsetOf c.Attributes with
+            | delta when delta > 0.0 ->
+                c.Children
+                |> List.mapi (fun i ch -> subtreeLayoutIds (path + "." + string i) ch)
+                |> List.concat
+                |> List.map (fun id -> id, delta)
+                |> Map.ofList
+            | _ -> Map.empty
+
+        c.Children
+        |> List.mapi (fun i ch -> collectScrollOffsets (path + "." + string i) ch)
+        |> List.fold
+            (fun acc m -> Map.fold (fun a k v -> Map.add k (v + (Map.tryFind k a |> Option.defaultValue 0.0)) a) acc m)
+            here
+
+    /// Feature 175: shift each scrolled `scroll-viewer` descendant's bounds up by its accumulated
+    /// offset IN THE `LayoutResult`, so EVERYTHING that derives from it agrees (FR-009): the paint
+    /// `boundsById` (derived below), `Control.hitTest`'s `Bounds` list, AND the live retained pointer
+    /// route (`retained.Layout` = this `LayoutResult`, hit-tested by `Layout.hitTestComputed`).
+    /// Identity when nothing is scrolled (byte-identical at rest). The viewport CLIP is unchanged —
+    /// `composeContainerScene` still clips children to the `scroll-viewer` box.
+    let applyScrollOffsets (root: Control<'msg>) (result: FS.GG.UI.Layout.LayoutResult) =
+        let offsets = collectScrollOffsets "0" root
+        if Map.isEmpty offsets then
+            result
+        else
+            { result with
+                Bounds =
+                    result.Bounds
+                    |> List.map (fun (b: FS.GG.UI.Layout.ComputedBounds) ->
+                        match Map.tryFind b.NodeId offsets with
+                        | Some delta -> { b with Bounds = { b.Bounds with Y = b.Bounds.Y - delta } }
+                        | None -> b) }
+
     let evaluateLayout (size: FS.GG.UI.Scene.Size) (control: Control<'msg>) =
         let root = toLayout "0" control
         let result = FS.GG.UI.Layout.Layout.evaluate (availableOf size) root
-        root, boundsByIdOf result, result
+        // Feature 175: `boundsById` is offset-shifted (paint + `Control.hitTest` agree), but the RAW
+        // `result` is returned — it is threaded as the incremental layout cache (`prev.Layout`) AND
+        // stored as `retained.Layout`. Shifting the threaded copy would DOUBLE-SHIFT reused descendant
+        // bounds each frame, so the live retained pointer route instead re-applies `applyScrollOffsets`
+        // to `retained.Layout` at hit-test time (idempotent, FR-009).
+        root, boundsByIdOf (applyScrollOffsets control result), result
 
     let sceneWithViewportBackground (theme: Theme) (size: FS.GG.UI.Scene.Size) (scenes: Scene list) : Scene =
         (Scene.rectangle (0.0, 0.0, float size.Width, float size.Height) theme.Background :: scenes)
@@ -2261,7 +2344,8 @@ module internal ControlInternals =
         =
         let root = toLayout "0" control
         let result = FS.GG.UI.Layout.Layout.evaluateIncremental previous (Set.toList dirty) (availableOf size) root
-        root, boundsByIdOf result, result
+        // Feature 175: boundsById shifted (paint); RAW result threaded/stored (see `evaluateLayout`).
+        root, boundsByIdOf (applyScrollOffsets control result), result
 
     let private paintLeaf (theme: Theme) (box: Rect) (c: Control<'msg>) : Scene list =
         if Set.contains c.Kind richFamilies then
@@ -2331,8 +2415,13 @@ module internal ControlInternals =
                     // `Control.scrollViewport`, not a rendered descendant-bounds walk.
                     let layoutNode = toLayout path c
                     let extent = FS.GG.UI.Layout.Layout.contentExtent box.Width box.Height (layoutNode.Children |> List.tryHead)
+                    // Feature 175: thread the live offset (stamped by the host) so the thumb tracks.
+                    let scroll: ScrollState =
+                        { Offset = scrollOffsetOf c.Attributes
+                          ContentHeight = extent.ContentHeight
+                          ViewportHeight = box.Height }
 
-                    frame @ scrollAffordance theme box extent.ContentHeight
+                    frame @ scrollAffordance theme box scroll
                 else
                     frame
 

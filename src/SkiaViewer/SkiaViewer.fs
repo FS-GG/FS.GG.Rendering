@@ -3560,7 +3560,12 @@ module Viewer =
                                         ViewerKeyDirection.KeyUp }
 
                         match host.MapKey key normalizedDown with
-                        | [] -> false
+                        | [] ->
+                            // Feature 175 (general repaint trigger): a key may change host-internal
+                            // runtime state (focus traversal, scroll keys) with no product message;
+                            // refresh from `host.View` so the change renders on THIS key, not the next.
+                            currentScene <- host.View currentSize currentModel
+                            false
                         | msgs ->
                             RenderLagTrace.emit
                                 "key-routed"
@@ -3588,7 +3593,21 @@ module Viewer =
                         if not (List.isEmpty msgs) then
                             inputDispatch <- "true"
 
-                        msgs |> List.fold (fun close msg -> dispatchHostMsg msg || close) false
+                        let closeRequested = msgs |> List.fold (fun close msg -> dispatchHostMsg msg || close) false
+
+                        // Feature 175 (general repaint trigger): `MapPointer` may mutate host-internal
+                        // runtime state (focus/hover/scroll) WITHOUT producing a product message. The
+                        // model is then unchanged, so `dispatchHostMsg` never ran and `currentScene`
+                        // would stay stale until the NEXT model change — the "focus one click behind",
+                        // dead-hover, and dead-scroll class of bugs. Re-derive the scene from
+                        // `host.View`, the single source that reflects ALL state (model + every runtime
+                        // ref), so any such change renders on THIS input. When messages WERE dispatched,
+                        // `dispatchHostMsg` already rendered with the new model + current runtime state,
+                        // so the redundant re-render is skipped.
+                        if List.isEmpty msgs then
+                            currentScene <- host.View currentSize currentModel
+
+                        closeRequested
 
                     let handleResize (size: Size) =
                         currentSize <- size

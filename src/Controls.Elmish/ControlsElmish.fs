@@ -218,6 +218,9 @@ module ControlsElmish =
         | SelectionChanged _
         | CompositionChanged _
         | DragChanged _
+        // Feature 175: scroll offset is owned by the host's scroll state (and surfaced via the
+        // scroll-viewer's optional OnChanged binding), not re-dispatched as a runtime message here.
+        | ScrollChanged _
         | CancelledInteraction _ -> []
         | StaleTarget controlId ->
             [ ReportAdapterDiagnostic(diagnostic "control-runtime" "StaleTarget" $"Stale control target '{controlId}' was ignored by the Controls adapter.") ]
@@ -450,12 +453,53 @@ module ControlsElmish =
     // Resolve the authored bindings (if any) a single interaction should dispatch. `Some msgs` means
     // an authored binding consumed the interaction (MapPointer is NOT consulted for it); `None` means
     // no authored binding matched, so the host falls back to `MapPointer` with the raw interaction.
+    // Feature 175: a boolean toggle (switch / check-box) reports its NEW value via the `changed`
+    // binding's payload — but a CLICK carries no payload, so without this every click dispatched the
+    // `onChangedBool` default (`false`), i.e. the control could be turned OFF but never back ON. Read
+    // the control's current `selected` state and dispatch `not current` (the mirror of
+    // `sliderChangedMessages`, which computes a slider's value from x). `toggle-button` is unaffected:
+    // it bakes `not IsOn` into an `onClick` message at view time, so it needs no payload.
+    let private booleanToggleKinds = Set.ofList [ "switch"; "check-box" ]
+
+    let private toggleChangedMessages
+        (rendered: ControlRenderResult<'msg>)
+        (root: Control<'msg>)
+        (authored: ControlId)
+        (origin: ControlEventOrigin)
+        : 'msg list option =
+        match tryFindControlById root authored with
+        | Some control when booleanToggleKinds.Contains control.Kind ->
+            let bindings =
+                rendered.EventBindings
+                |> List.filter (fun binding -> binding.ControlId = authored && binding.EventKind = "changed")
+
+            match bindings with
+            | [] -> None
+            | bindings ->
+                let current =
+                    control.Attributes
+                    |> List.tryPick (fun a ->
+                        if a.Name = "selected" then
+                            match a.Value with
+                            | BoolValue v -> Some v
+                            | _ -> None
+                        else
+                            None)
+                    |> Option.defaultValue false
+
+                let payload = if not current then "true" else "false"
+                dispatchBindings origin authored "changed" (Some payload) None bindings |> Some
+        | _ -> None
+
     let bindingMessagesFor (rendered: ControlRenderResult<'msg>) (root: Control<'msg>) (interaction: PointerInteraction) : 'msg list option =
         match interaction with
         | Click(control, _, x, _) ->
             match Control.nearestAuthored rendered control with
             | Some authored ->
                 match sliderChangedMessages rendered root authored x ControlEventOrigin.Pointer with
+                | Some msgs -> Some msgs
+                | None ->
+                match toggleChangedMessages rendered root authored ControlEventOrigin.Pointer with
                 | Some msgs -> Some msgs
                 | None ->
                     let matched =
@@ -611,10 +655,45 @@ module ControlsElmish =
             | Some msgs -> msgs, 1
             | None -> interpretPointerEffect host.MapPointer interaction |> AdapterCmd.productMessages, 1
 
+    // Feature 175 (FR-001): pixels of scroll per unit of raw wheel delta. The viewer reports only a few
+    // units per notch, so scroll by this multiple to feel responsive without overshooting.
+    let private wheelScrollStep = 16.0
+
+    // Feature 175 (FR-001/FR-009): the `scroll-viewer` ids in the current tree (Key ?? structural path,
+    // matching `render.Bounds` keys).
+    let rec private collectScrollViewerIds (path: string) (c: Control<'msg>) : ControlId list =
+        let id = c.Key |> Option.defaultValue path
+        let here = if c.Kind = "scroll-viewer" then [ id ] else []
+        here @ (c.Children |> List.mapi (fun i ch -> collectScrollViewerIds (path + "." + string i) ch) |> List.concat)
+
+    // Feature 175: the innermost `scroll-viewer` whose painted bounds contain (x, y), or None.
+    let private enclosingScrollViewer (retained: RetainedRender<'msg>) (render: ControlRenderResult<'msg>) (x: float) (y: float) : ControlId option =
+        let svIds = collectScrollViewerIds "0" retained.Root.Control |> Set.ofList
+        render.Bounds
+        |> List.filter (fun (id, _) -> svIds.Contains id)
+        |> List.filter (fun (_, r: Rect) -> x >= r.X && x < r.X + r.Width && y >= r.Y && y < r.Y + r.Height)
+        |> List.sortBy (fun (_, r) -> r.Width * r.Height) // innermost wins (smallest area)
+        |> List.tryHead
+        |> Option.map fst
+
+    // Feature 175 (FR-001): resolve each `Scroll` interaction to (scroll-viewer id, deltaY,
+    // contentHeight, viewportHeight) so the host can advance its persistent offset (clamped). A scroll
+    // over no scroll-viewer, or a viewer whose extent can't be measured, is dropped.
+    let private resolveScrollDeltas (retained: RetainedRender<'msg>) (render: ControlRenderResult<'msg>) (interactions: PointerInteraction list) =
+        interactions
+        |> List.choose (fun interaction ->
+            match interaction with
+            | Scroll(_, _, deltaY, x, y) ->
+                enclosingScrollViewer retained render x y
+                |> Option.bind (fun svId ->
+                    Control.scrollViewport render svId
+                    |> Option.map (fun vp -> svId, deltaY, vp.ContentHeight, vp.Viewport.Height))
+            | _ -> None)
+
     // Feature 110 (FR-001/FR-004/FR-006): the live retained pointer route. Same gesture fold as the
     // oracle, but over the retained frame's CACHED `LayoutResult` (no fresh layout eval) and resolving
     // each interaction from the retained frame (no fresh render). Returns the advanced PointerState, the
-    // product messages, and the summed `FullRenderFallbackCount`.
+    // product messages, the summed `FullRenderFallbackCount`, and (feature 175) the resolved scroll deltas.
     let routeRetainedPointer
         (host: InteractiveAppHost<'model, 'msg>)
         (retained: RetainedRender<'msg>)
@@ -623,14 +702,21 @@ module ControlsElmish =
         (size: Size)
         (model: 'model)
         (input: ViewerPointerInput)
-        : PointerState * 'msg list * int =
+        : PointerState * 'msg list * int * (ControlId * float * float * float) list =
         match Pointer.toMsg (pointerSampleOf input) with
-        | None -> state, [], 0
+        | None -> state, [], 0, []
         | Some pointerMsg ->
             let policy = FS.GG.UI.Layout.Defaults.pixelSnapPolicy 1.0
 
+            // Feature 175 (FR-009): `retained.Layout` is the RAW (un-scrolled) layout (it is the
+            // incremental cache, so it must not be pre-shifted). Re-apply the scroll-offset shift here
+            // — from the stamped retained tree's `scrollOffset` attrs — so pointer hit-testing inside a
+            // scrolled region resolves the control actually under the pointer, matching the painted
+            // (scrolled) position. Identity when nothing is scrolled.
+            let hitLayout = ControlInternals.applyScrollOffsets retained.Root.Control retained.Layout
+
             let state', interactions, _runtimeMessages =
-                Pointer.update policy retained.Layout pointerMsg state
+                Pointer.update policy hitLayout pointerMsg state
 
             let mutable fallbacks = 0
 
@@ -641,7 +727,7 @@ module ControlsElmish =
                     fallbacks <- fallbacks + fb
                     msgs)
 
-            state', messages, fallbacks
+            state', messages, fallbacks, resolveScrollDeltas retained render interactions
 
     // 092 (FR-004): resolve a click to the stable RetainedId of the control under it, via the
     // retained tree's per-node boxes — replaces the 090 `ControlId` `hitTest |> nearestAuthored`
@@ -1093,6 +1179,10 @@ module ControlsElmish =
         // can compute which identities left a hover/focus/press state and re-stamp only those (the
         // targeted stamp). Updated each paint; `None` until the first stamp.
         let lastRuntimeModel = ref (None: ControlRuntimeModel option) // mutable: hot path / per frame
+        // Feature 175 (FR-001): persistent per-`scroll-viewer` scroll offset, advanced by Scroll/scroll-key
+        // interactions and read back into the runtime model + stamped onto the tree each frame. Lives here
+        // (not in the per-frame rebuilt runtime model) so the offset survives across frames.
+        let scrollOffsets = ref (Map.empty: Map<ControlId, ScrollState>) // mutable: hot path / per frame
         // Diff/first-frame diagnostics (e.g. KeyCollision from duplicate sibling keys) surfaced
         // through the host's diagnostics stderr channel — never silently dropped; de-duped so a
         // standing collision is reported once, not every frame. The path stays total in their presence.
@@ -1144,7 +1234,10 @@ module ControlsElmish =
                     |> Map.toList
                     |> List.map (fun (_, candidate) -> candidate.Control)
                     |> Set.ofList
-                FocusedControl = focusedControlId }
+                FocusedControl = focusedControlId
+                // Feature 175: carry the host's persistent scroll offsets into the runtime model so the
+                // scroll bridge (`applyScrollOffsets`) can stamp them onto the tree this frame.
+                ScrollOffsets = scrollOffsets.Value }
 
         // Produce the production scene for (size, model) through the retained reconciler. The first
         // frame seeds the retained structure and paints ONCE (FR-009 — no second `Control.renderTree`,
@@ -1188,8 +1281,10 @@ module ControlsElmish =
                     [ "path", "init"
                       "durationMs", stampSw.Elapsed.TotalMilliseconds.ToString("0.###", Globalization.CultureInfo.InvariantCulture) ]
                 lastRuntimeModel.Value <- Some runtimeModel
+                // Feature 175: stamp live scroll offsets after the visual-state stamp (identity at rest).
+                let stampedScene = ControlRuntime.applyScrollOffsets runtimeModel stamp.Stamped
                 let initSw = System.Diagnostics.Stopwatch.StartNew()
-                let r0 = RetainedRender.init host.Theme size stamp.Stamped
+                let r0 = RetainedRender.init host.Theme size stampedScene
                 initSw.Stop()
                 RenderLagTrace.emit
                     "elmish-retained-init-end"
@@ -1235,8 +1330,10 @@ module ControlsElmish =
                     [ "path", "step"
                       "durationMs", stampSw.Elapsed.TotalMilliseconds.ToString("0.###", Globalization.CultureInfo.InvariantCulture) ]
                 lastRuntimeModel.Value <- Some runtimeModel
+                // Feature 175: stamp live scroll offsets after the visual-state stamp (identity at rest).
+                let stampedScene = ControlRuntime.applyScrollOffsets runtimeModel stamp.Stamped
                 let stepSw = System.Diagnostics.Stopwatch.StartNew()
-                let s = RetainedRender.step host.Theme size prev stamp.Stamped
+                let s = RetainedRender.step host.Theme size prev stampedScene
                 stepSw.Stop()
                 RenderLagTrace.emit
                     "elmish-retained-step-end"
@@ -1359,8 +1456,20 @@ module ControlsElmish =
 
             match retained.Value, lastRender.Value with
             | Some r, Some render ->
-                let state', messages, fallbacks = routeRetainedPointer host r render pointerState.Value size model input
+                let state', messages, fallbacks, scrollDeltas = routeRetainedPointer host r render pointerState.Value size model input
                 pointerState.Value <- state'
+                // Feature 175 (FR-001/FR-002): advance the persistent scroll offset for each scrolled
+                // viewer (re-clamped against the measured extent; wheel-down increases the offset). The
+                // raw wheel delta is only a few units per notch, so scale it to a usable pixel step
+                // (~3 units → ~48 px) — otherwise scrolling crawls.
+                for (svId, deltaY, contentHeight, viewportHeight) in scrollDeltas do
+                    let next =
+                        scrollOffsets.Value
+                        |> Map.tryFind svId
+                        |> Option.defaultValue ScrollState.empty
+                        |> ScrollState.withExtent contentHeight viewportHeight
+                        |> ScrollState.applyScrollDelta (-deltaY * wheelScrollStep)
+                    scrollOffsets.Value <- Map.add svId next scrollOffsets.Value
                 messages, fallbacks
             | _ ->
                 // No retained frame yet (a pointer sample before the first paint seeded the frame, not

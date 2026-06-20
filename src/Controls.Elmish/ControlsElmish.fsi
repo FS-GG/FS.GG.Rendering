@@ -484,7 +484,9 @@ module ControlsElmish =
         size: Size ->
         model: 'model ->
         input: ViewerPointerInput ->
-            PointerState * 'msg list * int
+            // Feature 175: the 4th element is the resolved scroll deltas (scroll-viewer id, deltaY,
+            // contentHeight, viewportHeight) the host folds into its persistent scroll offset.
+            PointerState * 'msg list * int * (ControlId * float * float * float) list
 
     /// 092 (FR-004): resolve a point to the stable `RetainedId` of the control under it, via the
     /// retained tree's per-node boxes — replacing the 090 `ControlId` `hitTest |> nearestAuthored`

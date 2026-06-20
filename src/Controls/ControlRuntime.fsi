@@ -25,7 +25,7 @@ type ControlDrag =
       CurrentX: float
       CurrentY: float }
 
-/// An observable side effect emitted by `ControlRuntime.update` when interaction state changes (focus, hover, caret, selection, drag, diagnostics).
+/// An observable side effect emitted by `ControlRuntime.update` when interaction state changes (focus, hover, caret, selection, drag, scroll, diagnostics).
 type ControlRuntimeEffect =
     | FocusChanged of ControlId option
     | HoverChanged of ControlId option
@@ -34,6 +34,8 @@ type ControlRuntimeEffect =
     | SelectionChanged of ControlSelection option
     | CompositionChanged of ControlComposition option
     | DragChanged of ControlDrag option
+    /// Feature 175: the new clamped scroll offset for the named `scroll-viewer`.
+    | ScrollChanged of ControlId * float
     | StaleTarget of ControlId
     | CancelledInteraction of ControlId option
     | ReportControlRuntimeDiagnostic of ControlDiagnostic
@@ -47,6 +49,8 @@ type ControlRuntimeModel =
       Selection: ControlSelection option
       Composition: ControlComposition option
       ActiveDrag: ControlDrag option
+      /// Feature 175: per-`scroll-viewer` scroll model, keyed by ControlId. Absent ⇒ `ScrollState.empty`.
+      ScrollOffsets: Map<ControlId, ScrollState>
       Diagnostics: ControlDiagnostic list
       RecentEffects: ControlRuntimeEffect list }
 
@@ -82,6 +86,10 @@ type ControlRuntimeMsg =
     | RemoveControl of ControlId
     | RecoverStaleTarget of ControlId
     | CancelInteraction of ControlId option
+    /// Feature 175: record the measured (contentHeight, viewportHeight) for a `scroll-viewer`.
+    | SetScrollExtent of ControlId * float * float
+    /// Feature 175: apply a scroll delta (drag/wheel/keyboard) to a `scroll-viewer`, clamped.
+    | ScrollControl of ControlId * float
     | Reset
 
 /// Feature 112 (FR-007): the targeted runtime-stamp result — the stamped tree plus the number of nodes
@@ -93,10 +101,12 @@ type internal RuntimeStampResult<'msg> =
     { Stamped: Control<'msg>
       RuntimeStateTouchedNodeCount: int }
 
-/// MVU runtime tracking control focus, hover, press, caret/selection, composition, drag, and derived visual state.
+/// MVU runtime tracking control focus, hover, press, caret/selection, composition, drag, scroll, and derived visual state.
 module ControlRuntime =
     /// Seeds an empty `ControlRuntimeModel` with no focus or interaction and its initial effects.
     val init: unit -> ControlRuntimeModel * ControlRuntimeEffect list
+    /// Feature 175: the scroll model currently owned for `controlId` (`ScrollState.empty` if none).
+    val scrollState: controlId: ControlId -> model: ControlRuntimeModel -> ScrollState
     /// Pure transition applying `msg` to `model`, returning the next model and the `ControlRuntimeEffect` list it raises.
     val update: msg: ControlRuntimeMsg -> model: ControlRuntimeModel -> ControlRuntimeModel * ControlRuntimeEffect list
     /// Returns the `ControlDiagnostic` list currently accumulated in `model`.
@@ -147,6 +157,13 @@ module ControlRuntime =
         cur: ControlRuntimeModel ->
         fresh: Control<'msg> ->
             RuntimeStampResult<'msg>
+
+    /// Feature 175 (FR-001): internal host bridge — stamp the live scroll offset onto each
+    /// `scroll-viewer` node whose id holds a positive offset (so `evaluateLayout` shifts its
+    /// descendants). Emits nothing at offset 0/absent (byte-identity at rest). Keyed by `Key ?? Kind`,
+    /// mirroring `applyRuntimeVisualState`. `internal`; reached by the Controls.Elmish host and tests
+    /// via InternalsVisibleTo.
+    val internal applyScrollOffsets: model: ControlRuntimeModel -> control: Control<'msg> -> Control<'msg>
 
     /// Builds the explicit host bridge for overlay state and effects without mutating product state.
     val attachOverlayEffects: overlay: OverlayState -> effects: OverlayEffect list -> OverlayRuntimeBridge
