@@ -298,28 +298,34 @@ type ControlEventOrigin =
     | Selection
     | Clipboard
 
-/// Typed navigation outcome (`NavPayload`): `SteppedValue` for a value change,
-/// `MovedSelection` for a selection move, or `MovedCell` for grid cell movement.
-/// Feature 100 (R5): the closed set of navigation-outcome payload shapes (FR-005, SC-005).
-/// Mirrors <c>NavIntent</c> one-to-one; exhaustively matched at the host edge.
+/// Typed navigation/interaction outcome (`NavPayload`): `SteppedValue` for a value change,
+/// `MovedSelection` for a selection move, `MovedCell` for grid cell movement, or `EditedText` for a
+/// free-text edit. Feature 100 (R5) / Feature 184 (US3): the closed set of interaction-outcome
+/// payload shapes — the single typed representation now that the stringly `Payload` is retired.
 type NavPayload =
     | SteppedValue of value: float
     | MovedSelection of index: int * item: string option
     | MovedCell of row: int * col: int
+    | EditedText of text: string
 
 /// A dispatched control event (`ControlEvent`): its `Kind`, the source `ControlId`, the
-/// `Origin` input source, an optional string `Payload`, and an optional typed `Nav` outcome.
+/// `Origin` input source, and the typed `Nav` outcome. Feature 184 (US3): the stringly
+/// `Payload : string option` was removed; read the typed outcome via `Nav` or the
+/// `ControlEvent.navText`/`navValue`/`navCell` accessors below.
 type ControlEvent =
     { Kind: string
       ControlId: ControlId option
       Origin: ControlEventOrigin
-      Payload: string option
-      /// Feature 100 (R5): the closed typed navigation outcome for a focused-key navigation
-      /// dispatch. A selection move dual-sets <c>Payload</c> (the moved item id, for existing
-      /// string consumers) AND <c>Nav</c> (the closed <c>MovedSelection</c>); non-navigation
-      /// events leave it <c>None</c>. <c>Payload : string option</c> is retained for backward
-      /// compatibility (research R-3).
       Nav: NavPayload option }
+
+/// Feature 184 (US3): typed projections of a `ControlEvent`'s `Nav` outcome — the single typed
+/// replacement for the retired stringly `Payload`. `navText` yields the string an event carries
+/// (free-text edit or moved-selection item); `navValue` the stepped float (slider / numeric /
+/// boolean-as-0/1); `navCell` the moved grid cell indices.
+module ControlEvent =
+    val navValue: ev: ControlEvent -> float option
+    val navText: ev: ControlEvent -> string option
+    val navCell: ev: ControlEvent -> (int * int) option
 
 /// Classification (`AttrCategory`) of what an attribute affects — `Content`, `Children`,
 /// `Layout`, `Style`, `Theme`, `State`, `Validation`, `Accessibility`, `Event`, `Data`, or

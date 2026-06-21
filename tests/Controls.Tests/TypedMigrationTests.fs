@@ -73,8 +73,7 @@ let sampleEvent: ControlEvent =
     { Kind = "sample"
       ControlId = None
       Origin = ControlEventOrigin.Pointer
-      Payload = Some "alpha"
-      Nav = None }
+      Nav = Some(EditedText "alpha") }
 
 let rec normControl (control: Control<'msg>) : Control<'msg> =
     { control with
@@ -334,7 +333,7 @@ let typedMigrationParityTests =
                     (StandardControlKind.Custom "context-menu")
                     [ Attr.items [ "copy" ]
                       transientMetadata TransientSurfaceKind.ContextMenu "context-menu" "context-menu-trigger" true true 20 false (Some "onSelected")
-                      Attr.onWith "onSelected" (fun e -> e.Payload |> Option.defaultValue "" |> Picked) ])
+                      Attr.onWith "onSelected" (fun e -> ControlEvent.navText e |> Option.defaultValue "" |> Picked) ])
                 "context-menu"
             let a = Label.view { Label.defaults with Text = "A" }
             parityEqual
@@ -354,7 +353,7 @@ let typedMigrationParityTests =
                       Attr.create "title" Content (TextValue "T")
                       Attr.selected true
                       transientMetadata TransientSurfaceKind.DialogModal "dialog" "dialog-trigger" true true 100 true (Some "onSelected")
-                      Attr.onWith "onSelected" (fun e -> e.Payload |> Option.defaultValue "" |> Picked) ])
+                      Attr.onWith "onSelected" (fun e -> ControlEvent.navText e |> Option.defaultValue "" |> Picked) ])
                 "dialog"
             parityEqual
                 (Toast.view { Toast.defaults with Text = "saved"; Severity = Pending "x" })
@@ -385,7 +384,7 @@ let typedMigrationParityTests =
                     [ Attr.items [ "a"; "b" ]
                       Attr.create "selectedKeys" State (StringListValue(model.SelectedKeys |> Set.toList))
                       Attr.create "visibleRange" Data (UntypedValue model.VisibleRange)
-                      Attr.onWith "onSelected" (fun e -> e.Payload |> Option.defaultValue "" |> Picked) ]
+                      Attr.onWith "onSelected" (fun e -> ControlEvent.navText e |> Option.defaultValue "" |> Picked) ]
                 |> LControl.withKey "lv"
             parityEqual (ListView.view props model) legacy "list-view"
         }

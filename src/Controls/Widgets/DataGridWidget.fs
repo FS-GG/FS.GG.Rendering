@@ -35,10 +35,14 @@ module DataGrid =
               yield FS.GG.UI.Controls.DataGrid.focusedCell model.FocusedCell
               match props.OnSelectionChanged with
               | Some map ->
+                  // Feature 184 (US3): the moved cell now arrives typed as `Nav = MovedCell(row, col)`.
+                  // Report the cell as "row:col" (zero-based indices). NOTE: this refines the pre-184
+                  // contract, which reported the concatenated row/column KEYS ("rowKey:colKey") — the
+                  // keys are not recoverable from the typed indices (maintainer-approved behavior change).
                   yield
                       Attr.onWith "onSelected" (fun event ->
-                          event.Payload
-                          |> Option.map (fun value -> [ value ])
+                          ControlEvent.navCell event
+                          |> Option.map (fun (row, col) -> [ sprintf "%d:%d" row col ])
                           |> Option.defaultValue []
                           |> map)
               | None -> () ]

@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/183-type-safety-hardening/plan.md
+at specs/184-backcompat-cleanup/plan.md
 <!-- SPECKIT END -->
 
 ## Ant Design — source of truth

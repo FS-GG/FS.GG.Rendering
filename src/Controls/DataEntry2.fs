@@ -3,7 +3,7 @@ namespace FS.GG.UI.Controls
 module DataEntry2 =
 
     let private onPayload eventKind (map: string -> 'msg) : Attr<'msg> =
-        Attr.onWith eventKind (fun ev -> map (ev.Payload |> Option.defaultValue ""))
+        Attr.onWith eventKind (fun ev -> map (ControlEvent.navText ev |> Option.defaultValue ""))
 
     module Cascader =
         let create attrs = Control.create "cascader" attrs

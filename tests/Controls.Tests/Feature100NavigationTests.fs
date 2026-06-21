@@ -129,7 +129,8 @@ module private Gen100 =
         Gen.oneof
             [ Gen.map (fun d -> SteppedValue(float d)) (Gen.choose (-100, 100))
               Gen.map2 (fun i s -> MovedSelection(i, s)) (Gen.choose (0, 9)) (Gen.elements [ None; Some "x" ])
-              Gen.map2 (fun r c -> MovedCell(r, c)) (Gen.choose (0, 9)) (Gen.choose (0, 9)) ]
+              Gen.map2 (fun r c -> MovedCell(r, c)) (Gen.choose (0, 9)) (Gen.choose (0, 9))
+              Gen.map EditedText (Gen.elements [ ""; "x"; "edited" ]) ]
 
 // A TOTAL match over every NavIntent case — a new case would be a compile error (closed set).
 let private intentTag =
@@ -144,6 +145,7 @@ let private payloadTag =
     | SteppedValue _ -> 0
     | MovedSelection _ -> 1
     | MovedCell _ -> 2
+    | EditedText _ -> 3
 
 // The one-to-one NavIntent -> NavPayload correspondence (each intent class has exactly one
 // payload class).
@@ -166,7 +168,7 @@ let closedModelTests =
         testCase "NavPayload is a closed, totally-matched set; its match is total and never throws (>=1000)" (fun () ->
             let prop (payload: NavPayload) =
                 let tag = payloadTag payload
-                tag >= 0 && tag <= 2
+                tag >= 0 && tag <= 3
 
             Check.One(Config.QuickThrowOnFailure.WithMaxTest 1000, Prop.forAll (Arb.fromGen Gen100.payload) prop))
 

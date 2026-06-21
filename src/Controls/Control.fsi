@@ -270,7 +270,7 @@ type ScrollExtentSource =
 /// Feature 137/150 — read-back geometry of a `scroll-viewer` viewport, derived from a render
 /// result. `Viewport` is the clipping box; `ContentWidth`/`ContentHeight` are the content extent;
 /// `MaxHorizontalOffset`/`MaxVerticalOffset` are accepted scroll ranges. The legacy vertical
-/// `Offset`/`MaxOffset` fields mirror `OffsetY`/`MaxVerticalOffset`.
+/// `Offset` field mirrors `OffsetY`.
 type ScrollViewport =
     { Viewport: FS.GG.UI.Scene.Rect
       ContentWidth: float
@@ -280,7 +280,6 @@ type ScrollViewport =
       Offset: float
       MaxHorizontalOffset: float
       MaxVerticalOffset: float
-      MaxOffset: float
       ExtentSource: ScrollExtentSource
       Diagnostics: ControlDiagnostic list }
 
@@ -346,7 +345,7 @@ module Control =
     /// the `renderTree` layout tree only, no layout-math change (FR-004/FR-004a/FR-005, feature 090).
     val nearestAuthored: result: ControlRenderResult<'msg> -> hit: ControlId -> ControlId option
     /// Feature 137 (US3) — read back the scroll geometry of a `scroll-viewer` from a render result
-    /// (its clipping viewport box, laid-out content height, and scroll metrics). `MaxOffset > 0` means
+    /// (its clipping viewport box, laid-out content height, and scroll metrics). `MaxVerticalOffset > 0` means
     /// the content overflows the viewport (scrollable; the overflow is confined to the box by the
     /// container clip). `None` when `scrollViewerId` is not a laid-out node in the result.
     val scrollViewport: result: ControlRenderResult<'msg> -> scrollViewerId: ControlId -> ScrollViewport option

@@ -159,7 +159,7 @@ let scrollTests =
             match Control.scrollViewport rendered "sv" with
             | Some vp ->
                 Expect.isTrue (vp.ContentHeight > vp.Viewport.Height) "content is taller than the viewport (scrollable)"
-                Expect.isTrue (vp.MaxOffset > 0.0) "a positive max scroll offset is exposed"
+                Expect.isTrue (vp.MaxVerticalOffset > 0.0) "a positive max scroll offset is exposed"
                 Expect.equal vp.Offset 0.0 "the viewport rests at the top (offset 0)"
             | None -> failtest "scrollViewport should resolve the keyed scroll-viewer"
 

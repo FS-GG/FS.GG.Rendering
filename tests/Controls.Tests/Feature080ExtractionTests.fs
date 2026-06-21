@@ -58,15 +58,4 @@ let chartValuesExtractionTests =
             Expect.equal (points |> List.map (fun p -> p.Y)) [ 30.0; 50.0; 20.0 ] "pie slice magnitudes preserved"
             Expect.equal (points |> List.choose (fun p -> p.Label)) [ "A"; "B"; "C" ] "pie slice labels preserved"
         }
-
-        test "flat float-list fallback still extracts (legacy authoring)" {
-            // The legacy untyped path may still carry a flat float list; the fix keeps that
-            // fallback, mapping each value to a ChartPoint with X = index.
-            let control =
-                LineChart.create [ Attr.create "series" Data (UntypedValue([ 1.0; 4.0; 9.0 ])) ]
-
-            let points = ControlInternals.chartValues control
-            Expect.equal (points |> List.map (fun p -> p.Y)) [ 1.0; 4.0; 9.0 ] "flat-list fallback preserved"
-            Expect.equal (points |> List.map (fun p -> p.X)) [ 0.0; 1.0; 2.0 ] "flat-list X defaults to index"
-        }
     ]

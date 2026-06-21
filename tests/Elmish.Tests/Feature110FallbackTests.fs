@@ -92,7 +92,7 @@ let tests =
                 | Some _ ->
                     rendered.EventBindings
                     |> List.filter (fun b -> b.ControlId = "btn" && b.EventKind = "click")
-                    |> List.map (fun b -> b.Dispatch { Kind = "click"; ControlId = Some "btn"; Origin = ControlEventOrigin.Pointer; Payload = None; Nav = None })
+                    |> List.map (fun b -> b.Dispatch { Kind = "click"; ControlId = Some "btn"; Origin = ControlEventOrigin.Pointer; Nav = None })
                 | None -> []
 
             Expect.equal msgs oracle "the fallback dispatched identically to the oracle (FR-007/SC-006)"

@@ -248,13 +248,34 @@ type NavPayload =
     | SteppedValue of value: float
     | MovedSelection of index: int * item: string option
     | MovedCell of row: int * col: int
+    | EditedText of text: string
 
 type ControlEvent =
     { Kind: string
       ControlId: ControlId option
       Origin: ControlEventOrigin
-      Payload: string option
       Nav: NavPayload option }
+
+/// Feature 184 (US3): typed projections of a `ControlEvent`'s `Nav` outcome — the single typed
+/// replacement for the retired stringly `Payload : string option`. `navText` yields the string an
+/// event carries (free-text edit or moved-selection item); `navValue` the stepped float (slider /
+/// numeric / boolean-as-0/1); `navCell` the moved grid cell indices.
+module ControlEvent =
+    let navValue (ev: ControlEvent) : float option =
+        match ev.Nav with
+        | Some(SteppedValue v) -> Some v
+        | _ -> None
+
+    let navText (ev: ControlEvent) : string option =
+        match ev.Nav with
+        | Some(EditedText t) -> Some t
+        | Some(MovedSelection(_, item)) -> item
+        | _ -> None
+
+    let navCell (ev: ControlEvent) : (int * int) option =
+        match ev.Nav with
+        | Some(MovedCell(row, col)) -> Some(row, col)
+        | _ -> None
 
 type AttrCategory =
     | Content

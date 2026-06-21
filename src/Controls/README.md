@@ -75,8 +75,8 @@ Feature147 adds deterministic retained-render policy helpers for damage-union ac
 
 Feature150 changes ScrollViewer extent readback to use `FS.GG.UI.Layout.Layout.contentExtent`.
 Small content reports the viewport as the extent and zero max offsets. Overflowing content reports
-the natural intrinsic extent while the viewport bounds remain fixed. `ContentHeight`, `Offset`, and
-`MaxOffset` remain available as vertical compatibility aliases; new code should prefer
+the natural intrinsic extent while the viewport bounds remain fixed. `ContentHeight` and `Offset`
+remain available as vertical compatibility aliases; new code should prefer
 `ContentWidth`, `MaxHorizontalOffset`, `MaxVerticalOffset`, `ExtentSource`, and `Diagnostics`.
 
 Feature151 broadens that acceptance to the full ScrollViewer corpus: empty, small, exact-fit,

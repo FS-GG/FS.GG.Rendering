@@ -466,12 +466,9 @@ module internal ControlInternals =
     let chartValues (control: Control<'msg>) : ChartPoint list =
         // Feature 080 (FR-002): read the structured `UntypedValue(ChartSeries list)` (series)
         // and `UntypedValue(ChartPoint list)` (pie) the typed front door actually stores,
-        // preserving X/Y/Label. The flat `float list`/`float array`/`FloatValue` fallback is
-        // retained for legacy untyped authoring (mapped to points with X = index). Pre-080 this
-        // matched only the flat shapes, so typed charts silently yielded `[]` (root cause).
-        let indexed (values: float list) =
-            values |> List.mapi (fun index value -> { X = float index; Y = value; Label = None })
-
+        // preserving X/Y/Label. Feature 184 (US4): the untyped flat `float list`/`float array`
+        // authoring fallback was removed (zero in-tree authors); charts are authored only through the
+        // typed front door. The single `FloatValue` arm remains for a scalar-valued attribute.
         let points name =
             tryLast name control.Attributes
             |> Option.bind (fun attr ->
@@ -479,8 +476,6 @@ module internal ControlInternals =
                 | UntypedValue(:? (ChartSeries list) as series) ->
                     Some(series |> List.collect (fun s -> s.Points))
                 | UntypedValue(:? (ChartPoint list) as pts) -> Some pts
-                | UntypedValue(:? (float list) as values) -> Some(indexed values)
-                | UntypedValue(:? (float array) as values) -> Some(indexed (Array.toList values))
                 | FloatValue value -> Some [ { X = 0.0; Y = value; Label = None } ]
                 | _ -> None)
 
@@ -2397,7 +2392,11 @@ module internal ControlInternals =
 
     let private compositionEntriesForControl (c: Control<'msg>) : Composition.ModifierEntry list =
         if isOverlayNode c then
-            Composition.legacyLower Composition.LegacyOverlay
+            // Feature 184 (US2): the overlay path emits the modern modifier IR directly — the literal
+            // entry the retired `Composition.legacyLower LegacyOverlay` produced (byte-stable: same
+            // Source/Effect → same normalize/fingerprint; see Feature184OverlayByteStabilityTests).
+            [ { Composition.Source = Composition.LegacyOverlaySource
+                Composition.Effect = Composition.LayerHint "overlay" } ]
         else
             []
 
@@ -3080,7 +3079,6 @@ type ScrollViewport =
       Offset: float
       MaxHorizontalOffset: float
       MaxVerticalOffset: float
-      MaxOffset: float
       ExtentSource: ScrollExtentSource
       Diagnostics: ControlDiagnostic list }
 
@@ -3298,8 +3296,7 @@ module Control =
           EvidencePath = None }
 
     /// Feature 137/150 — read back the scroll geometry of a `scroll-viewer` from a render result.
-    /// The content extent is derived from the Layout intrinsic protocol. `MaxOffset` remains a
-    /// vertical compatibility alias for `MaxVerticalOffset`.
+    /// The content extent is derived from the Layout intrinsic protocol.
     let scrollViewport (result: ControlRenderResult<'msg>) (scrollViewerId: ControlId) : ScrollViewport option =
         let boundsMap = result.Bounds |> Map.ofList
 
@@ -3323,7 +3320,6 @@ module Control =
                   Offset = 0.0
                   MaxHorizontalOffset = extent.MaxHorizontalOffset
                   MaxVerticalOffset = extent.MaxVerticalOffset
-                  MaxOffset = extent.MaxVerticalOffset
                   ExtentSource = scrollExtentSource extent.ExtentSource
                   Diagnostics = diagnostics }
         | _ -> None
@@ -3394,25 +3390,19 @@ module IconButton =
     let icon value = Attr.text value
     let onClick msg = Attr.on "onClick" msg
 
-// Feature 105 (US1, FR-003): the per-kind `onChanged` builders below inlined three
-// payload-parse shapes (bool / float / string), the float shape duplicating a nested
-// number-parse lambda. They are single-sourced here over one named `tryParseFloat`.
-// Hidden from consumers by absence from Control.fsi.
+// Feature 105 (US1, FR-003): the per-kind `onChanged` builders below.
+// Feature 184 (US3): read the typed `Nav` outcome (via the `ControlEvent` accessors) instead of
+// parsing the retired stringly `Payload`. Hidden from consumers by absence from Control.fsi.
 module ChangeAdapters =
-    let tryParseFloat (value: string) : float option =
-        match Double.TryParse value with
-        | true, parsed -> Some parsed
-        | _ -> None
-
     let onChangedBool (map: bool -> 'msg) : Attr<'msg> =
-        Attr.onWith "onChanged" (fun event -> event.Payload |> Option.exists ((=) "true") |> map)
+        // Feature 184 (US3): a boolean toggle reports its new state typed as `SteppedValue 1.0/0.0`.
+        Attr.onWith "onChanged" (fun event -> ControlEvent.navValue event |> Option.exists (fun v -> v >= 0.5) |> map)
 
     let onChangedFloat (map: float -> 'msg) : Attr<'msg> =
-        Attr.onWith "onChanged" (fun event ->
-            event.Payload |> Option.bind tryParseFloat |> Option.defaultValue 0.0 |> map)
+        Attr.onWith "onChanged" (fun event -> ControlEvent.navValue event |> Option.defaultValue 0.0 |> map)
 
     let onChangedString (map: string -> 'msg) : Attr<'msg> =
-        Attr.onWith "onChanged" (fun event -> event.Payload |> Option.defaultValue "" |> map)
+        Attr.onWith "onChanged" (fun event -> ControlEvent.navText event |> Option.defaultValue "" |> map)
 
 module CheckBox =
     let create attrs = Control.create "check-box" attrs
@@ -3500,7 +3490,7 @@ module Tabs =
 module Menu =
     let create attrs = Control.create "menu" attrs
     let items values = Attr.items values
-    let onSelected map = Attr.onWith "onSelected" (fun event -> event.Payload |> Option.defaultValue "" |> map)
+    let onSelected map = Attr.onWith "onSelected" (fun event -> ControlEvent.navText event |> Option.defaultValue "" |> map)
 
 module Toolbar =
     let create attrs = Control.create "toolbar" attrs

@@ -243,7 +243,7 @@ let compose =
               let icon = Button.view { Button.defaults with Id = Some "leadIcon"; Text = "icon"; OnClick = Some 99 }
               let host = Button.view { Button.defaults with Id = Some "host"; Text = "Save"; Leading = Some icon } |> Widget.toControl
 
-              let dispatched = Control.dispatch { Kind = "click"; ControlId = Some "leadIcon"; Origin = ControlEventOrigin.Pointer; Payload = None; Nav = None } host
+              let dispatched = Control.dispatch { Kind = "click"; ControlId = Some "leadIcon"; Origin = ControlEventOrigin.Pointer; Nav = None } host
               Expect.equal dispatched [ 99 ] "the slotted child's authored binding dispatches its message (E1)"
           }
 

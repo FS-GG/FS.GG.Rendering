@@ -413,7 +413,6 @@ module ControlsElmish =
         (origin: ControlEventOrigin)
         (controlId: ControlId)
         (kind: string)
-        (payload: string option)
         (nav: NavPayload option)
         (bindings: ControlEventBinding<'msg> list)
         : 'msg list =
@@ -423,7 +422,6 @@ module ControlsElmish =
                 { Kind = kind
                   ControlId = Some controlId
                   Origin = origin
-                  Payload = payload
                   Nav = nav })
 
     let private sliderChangedMessages
@@ -444,9 +442,8 @@ module ControlsElmish =
             | _, None -> None
             | _, Some(_, bounds) ->
                 let value = Math.Clamp((x - bounds.X) / max 1.0 bounds.Width, 0.0, 1.0)
-                let payload = value.ToString("0.###", Globalization.CultureInfo.InvariantCulture)
 
-                dispatchBindings origin authored "changed" (Some payload) (Some(SteppedValue value)) bindings
+                dispatchBindings origin authored "changed" (Some(SteppedValue value)) bindings
                 |> Some
         | _ -> None
 
@@ -487,8 +484,10 @@ module ControlsElmish =
                             None)
                     |> Option.defaultValue false
 
-                let payload = if not current then "true" else "false"
-                dispatchBindings origin authored "changed" (Some payload) None bindings |> Some
+                // Feature 184 (US3): report the new boolean state typed as `SteppedValue 1.0/0.0`
+                // (read back by `ChangeAdapters.onChangedBool` as `>= 0.5`).
+                let newState = if not current then 1.0 else 0.0
+                dispatchBindings origin authored "changed" (Some(SteppedValue newState)) bindings |> Some
         | _ -> None
 
     /// F3 — the activation-value contract: how a control kind computes its `changed` payload from a
@@ -555,7 +554,6 @@ module ControlsElmish =
                                 { Kind = binding.EventKind
                                   ControlId = Some authored
                                   Origin = ControlEventOrigin.Pointer
-                                  Payload = None
                                   Nav = None })
                         |> Some
             | None -> None
@@ -860,8 +858,8 @@ module ControlsElmish =
                             { Kind = "changed"
                               ControlId = Some binding.ControlId
                               Origin = ControlEventOrigin.Text
-                              Payload = Some model'.DraftText
-                              Nav = None })
+                              // Feature 184 (US3): edited text now rides the typed `Nav` as `EditedText`.
+                              Nav = Some(EditedText model'.DraftText) })
 
                 retained', productMessages
             | None -> retained, []
@@ -942,7 +940,6 @@ module ControlsElmish =
         (bindings: ControlEventBinding<'msg> list)
         (nodeId: ControlId)
         (kind: string)
-        (payload: string option)
         (nav: NavPayload)
         : 'msg list =
         bindings
@@ -951,7 +948,6 @@ module ControlsElmish =
                 { Kind = kind
                   ControlId = Some nodeId
                   Origin = ControlEventOrigin.Keyboard
-                  Payload = payload
                   Nav = Some nav })
 
     // FR-002/FR-007: a value/range role's step. `delta` is the signed step (or a Home/End jump) from
@@ -970,13 +966,10 @@ module ControlsElmish =
         if target = current then
             []
         else
-            let payload = target.ToString(Globalization.CultureInfo.InvariantCulture)
-
             dispatchNav
                 (ownBindings |> List.filter (fun b -> b.EventKind = "changed"))
                 nodeId
                 "changed"
-                (Some payload)
                 (SteppedValue target)
 
     // FR-003/FR-009: a linear-selection role's move. Reads the item count + current index; an empty
@@ -1005,7 +998,7 @@ module ControlsElmish =
                     []
                 else
                     let itemId = List.item clamped items
-                    dispatchNav (selectionBindings ownBindings) nodeId "selected" (Some itemId) (MovedSelection(clamped, Some itemId))
+                    dispatchNav (selectionBindings ownBindings) nodeId "selected" (MovedSelection(clamped, Some itemId))
 
     // FR-004/FR-009: a grid role's 2-D move. Reads dims (row/column counts) + current cell; an empty
     // grid or an unresolvable current cell dispatches NOTHING; the new cell is clamped to the grid
@@ -1030,8 +1023,7 @@ module ControlsElmish =
                     if newRow = r && newCol = col then
                         []
                     else
-                        let cellId = sprintf "%s:%s" (List.item newRow rowKeys) (List.item newCol colKeys)
-                        dispatchNav (selectionBindings ownBindings) nodeId "selected" (Some cellId) (MovedCell(newRow, newCol))
+                        dispatchNav (selectionBindings ownBindings) nodeId "selected" (MovedCell(newRow, newCol))
                 | _ -> []
 
     // FR-006: the uniform per-intent resolver. Branches on the INTENT (not the control kind) — the
@@ -1126,7 +1118,6 @@ module ControlsElmish =
                                 { Kind = b.EventKind
                                   ControlId = Some nodeId
                                   Origin = ControlEventOrigin.Keyboard
-                                  Payload = None
                                   Nav = None })
 
                     retained, [], messages

@@ -121,19 +121,3 @@ module internal Composition =
         inFlow: OrderedContribution list ->
         portals: Portal list ->
             LayerComposition
-
-    type LegacyForm =
-        | LegacyClipping of Clip
-        | LegacyTranslation of dx: float * dy: float
-        | LegacyPerspective of PerspectiveTransform
-        | LegacyCachedSubtree of cacheId: uint64
-        | LegacyText
-        | LegacyOverlay
-
-    type LegacyCompatibilityStatus =
-        | SupportedUnchanged
-        | DeprecatedWithMigration of note: string
-        | IntentionallyChanged of note: string
-
-    val legacyLower: form: LegacyForm -> ModifierEntry list
-    val compatibilityEvidence: form: LegacyForm -> LegacyCompatibilityStatus * string

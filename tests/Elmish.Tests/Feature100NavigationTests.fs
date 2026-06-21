@@ -104,13 +104,12 @@ let selectionTests =
             Expect.equal (route r focused ViewerKey.ArrowUp) [ RadioChanged "A" ] "Up: B -> A"
         }
 
-        test "the selection dispatch DUAL-SETS Payload (moved item) and the closed Nav (MovedSelection)" {
+        test "the selection dispatch carries the closed Nav (MovedSelection)" {
             let r = radioCaptureView "B" [ "A"; "B"; "C" ] |> rinit
             let focused = idOfKey "rg" r
 
             match route r focused ViewerKey.ArrowDown with
             | [ Captured ev ] ->
-                Expect.equal ev.Payload (Some "C") "Payload carries the moved item id"
                 Expect.equal ev.Nav (Some(MovedSelection(2, Some "C"))) "Nav carries the closed MovedSelection (newIndex, item)"
                 Expect.equal ev.Origin ControlEventOrigin.Keyboard "navigation dispatches carry Origin = Keyboard"
             | other -> failtestf "expected one Captured selection event, got %A" other
@@ -167,14 +166,12 @@ let valueStepTests =
             let r = defaultSliderView 0.5 |> rinit
             let focused = idOfKey "sld" r
 
-            // The pre-R5 path computed exactly Math.Clamp(current + 0.1, 0.0, 1.0) and dispatched its
-            // InvariantCulture string. Recompute it with the SAME operations as the golden reference.
+            // The pre-R5 path computed exactly Math.Clamp(current + 0.1, 0.0, 1.0). Recompute it with the
+            // SAME operations as the golden reference.
             let preR5Value = Math.Clamp(0.5 + 0.1, 0.0, 1.0)
-            let preR5Payload = preR5Value.ToString(Globalization.CultureInfo.InvariantCulture)
 
             match route r focused ViewerKey.ArrowRight with
             | [ Captured ev ] ->
-                Expect.equal ev.Payload (Some preR5Payload) "the dispatched Payload string equals the pre-R5 steppedValue path byte-for-byte"
                 Expect.equal ev.Nav (Some(SteppedValue preR5Value)) "Nav carries the closed SteppedValue equal to the pre-R5 value"
             | other -> failtestf "expected one Captured changed event, got %A" other
         }
@@ -194,7 +191,6 @@ let gridTests =
             match route r focused ViewerKey.ArrowDown with
             | [ Captured ev ] ->
                 Expect.equal ev.Nav (Some(MovedCell(2, 0))) "ArrowDown: (1,0) -> (2,0)"
-                Expect.equal ev.Payload (Some "r2:c0") "Payload carries the resulting cell id"
             | other -> failtestf "expected one Captured cell event, got %A" other
 
             match route r focused ViewerKey.ArrowRight with

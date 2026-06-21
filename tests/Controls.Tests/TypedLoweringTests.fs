@@ -39,8 +39,7 @@ let sampleEvent: ControlEvent =
     { Kind = "sample"
       ControlId = None
       Origin = ControlEventOrigin.Pointer
-      Payload = Some "true"
-      Nav = None }
+      Nav = Some(EditedText "true") }
 
 let rec normControl (control: Control<'msg>) : Control<'msg> =
     { control with

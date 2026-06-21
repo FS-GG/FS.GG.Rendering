@@ -59,8 +59,10 @@ let private rowsById = Catalog.supportedControls |> List.map (fun r -> r.Id, r) 
 let private standardStates =
     set [ "normal"; "disabled"; "hover"; "pressed"; "focused"; "selected"; "validation"; "loading" ]
 
-let private mkEvent kind payload : ControlEvent =
-    { Kind = kind; ControlId = None; Origin = ControlEventOrigin.Pointer; Payload = payload; Nav = None }
+// Feature 184 (US3): the string payload now rides the typed `Nav` as `EditedText` (read back via
+// `navText` by the onChange adapters); call sites keep passing a `string option`.
+let private mkEvent kind (payload: string option) : ControlEvent =
+    { Kind = kind; ControlId = None; Origin = ControlEventOrigin.Pointer; Nav = payload |> Option.map EditedText }
 
 [<Tests>]
 let feature132NewControlContractTests =

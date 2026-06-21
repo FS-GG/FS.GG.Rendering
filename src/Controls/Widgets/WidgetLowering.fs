@@ -16,14 +16,15 @@ module internal WidgetLowering =
         | Some key -> FS.GG.UI.Controls.Control.withKey key control
         | None -> control
 
-    // A string-payload event adapter: bind `eventKind`, defaulting an absent payload to "".
+    // A string-event adapter: bind `eventKind`, reading the event's typed `Nav` string (free-text
+    // edit or moved-selection item via `navText`), defaulting an absent value to "".
     let onString (eventKind: string) (map: string -> 'msg) : Attr<'msg> =
-        Attr.onWith eventKind (fun event -> event.Payload |> Option.defaultValue "" |> map)
+        Attr.onWith eventKind (fun event -> ControlEvent.navText event |> Option.defaultValue "" |> map)
 
-    // A string-list-payload event adapter (a single payload lifted to a one-element list).
+    // A string-list event adapter (a single typed `Nav` string lifted to a one-element list).
     let onStringList (eventKind: string) (map: string list -> 'msg) : Attr<'msg> =
         Attr.onWith eventKind (fun event ->
-            event.Payload
+            ControlEvent.navText event
             |> Option.map (fun value -> [ value ])
             |> Option.defaultValue []
             |> map)

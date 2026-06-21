@@ -103,7 +103,6 @@
     <Compile Include="Feature140ModifierNormalizationTests.fs" />
     <Compile Include="Feature140ZOrderTests.fs" />
     <Compile Include="Feature140PortalLayerTests.fs" />
-    <Compile Include="Feature140LegacyCompatibilityTests.fs" />
     <Compile Include="Feature140LegacyCacheTextOverlayTests.fs" />
     <Compile Include="Feature141RetainedRendererUnificationTests.fs" />
     <Compile Include="Feature142ControlsTextShapingTests.fs" />
@@ -162,6 +161,7 @@
     <Compile Include="Feature175HoverFocusTests.fs" />
     <Compile Include="Feature175UnkeyedSiblingDiagnosticTests.fs" />
     <Compile Include="Feature183KindRegistryTests.fs" />
+    <Compile Include="Feature184OverlayByteStabilityTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

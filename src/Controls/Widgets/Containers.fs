@@ -54,16 +54,7 @@ module ContainerLowering =
         Attr.create AttrKeys.LayoutSpacing Layout (FloatValue spacing)
 
     let onFloat (eventKind: string) (map: float -> 'msg) : Attr<'msg> =
-        Attr.onWith eventKind (fun event ->
-            let value =
-                match event.Payload with
-                | Some text ->
-                    match System.Double.TryParse text with
-                    | true, parsed -> parsed
-                    | _ -> 0.0
-                | None -> 0.0
-
-            map value)
+        Attr.onWith eventKind (fun event -> ControlEvent.navValue event |> Option.defaultValue 0.0 |> map)
 
 module Grid =
     let defaults: GridProps<'msg> = { Id = None; Children = [] }

@@ -114,7 +114,6 @@ let private eventSample =
     { Kind = "click"
       ControlId = Some "go"
       Origin = ControlEventOrigin.Pointer
-      Payload = None
       Nav = None }
 
 let private bindingShape (result: ControlRenderResult<Msg>) =

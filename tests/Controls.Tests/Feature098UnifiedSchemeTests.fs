@@ -107,10 +107,10 @@ let unifiedSchemeTests =
               Expect.equal (Control.nearestAuthored result firstId) (Some firstId) "the first sibling recovers itself (bound)"
 
               // Dispatch a click targeted at the second id → only Second fires.
-              let clickSecond = { Kind = "click"; ControlId = Some secondId; Origin = ControlEventOrigin.Pointer; Payload = None; Nav = None }
+              let clickSecond = { Kind = "click"; ControlId = Some secondId; Origin = ControlEventOrigin.Pointer; Nav = None }
               Expect.equal (Control.dispatch clickSecond siblings) [ Second ] "a click on the second sibling dispatches ONLY its own message"
 
-              let clickFirst = { Kind = "click"; ControlId = Some firstId; Origin = ControlEventOrigin.Pointer; Payload = None; Nav = None }
+              let clickFirst = { Kind = "click"; ControlId = Some firstId; Origin = ControlEventOrigin.Pointer; Nav = None }
               Expect.equal (Control.dispatch clickFirst siblings) [ First ] "a click on the first sibling dispatches ONLY its own message"
           }
 

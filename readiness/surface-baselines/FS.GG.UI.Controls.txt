@@ -211,6 +211,7 @@ FS.GG.UI.Controls.NavIntent+SelectionMove
 FS.GG.UI.Controls.NavIntent+Tags
 FS.GG.UI.Controls.NavIntent+ValueStep
 FS.GG.UI.Controls.NavPayload
+FS.GG.UI.Controls.NavPayload+EditedText
 FS.GG.UI.Controls.NavPayload+MovedCell
 FS.GG.UI.Controls.NavPayload+MovedSelection
 FS.GG.UI.Controls.NavPayload+SteppedValue

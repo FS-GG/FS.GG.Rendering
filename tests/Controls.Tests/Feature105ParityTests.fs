@@ -31,17 +31,18 @@ type Msg =
     | Str of string
     | Strs of string list
 
-let private eventWith (payload: string option) : ControlEvent =
+// Feature 184 (US3): the adapters now read the typed `Nav` outcome, so the parity driver feeds a
+// `NavPayload option` instead of the retired stringly `Payload`.
+let private eventWith (nav: NavPayload option) : ControlEvent =
     { Kind = "sample"
       ControlId = None
       Origin = ControlEventOrigin.Pointer
-      Payload = payload
-      Nav = None }
+      Nav = nav }
 
-// Pull the bound event function out of an event attribute, then run it for a payload.
-let private runEvent (payload: string option) (attr: Attr<'msg>) : 'msg =
+// Pull the bound event function out of an event attribute, then run it for a typed outcome.
+let private runEvent (nav: NavPayload option) (attr: Attr<'msg>) : 'msg =
     match attr.Value with
-    | EventValue f -> f (eventWith payload)
+    | EventValue f -> f (eventWith nav)
     | _ -> failwithf "expected an event attribute, got %A" attr.Value
 
 let private repr (x: 'a) = sprintf "%A" x
@@ -65,18 +66,19 @@ let feature105ParityTests =
         }
 
         // --- WidgetLowering.onString / onStringList (FR-002) ----------------
-        test "onString binds the event kind and defaults an absent payload to empty" {
+        test "onString binds the event kind and defaults an absent outcome to empty" {
             let attr: Attr<Msg> = WidgetLowering.onString "onSelected" Str
             Expect.equal attr.Name "onSelected" "binds the requested event kind"
             Expect.equal attr.Category Event "is an event attribute"
-            Expect.equal (runEvent (Some "hi") attr) (Str "hi") "payload passes through"
-            Expect.equal (runEvent None attr) (Str "") "absent payload defaults to empty string"
+            Expect.equal (runEvent (Some(EditedText "hi")) attr) (Str "hi") "edited-text outcome passes through"
+            Expect.equal (runEvent (Some(MovedSelection(0, Some "hi"))) attr) (Str "hi") "selection item passes through"
+            Expect.equal (runEvent None attr) (Str "") "absent outcome defaults to empty string"
         }
 
-        test "onStringList lifts a single payload to a one-element list" {
+        test "onStringList lifts a single typed outcome to a one-element list" {
             let attr: Attr<Msg> = WidgetLowering.onStringList "onChanged" Strs
-            Expect.equal (runEvent (Some "a") attr) (Strs [ "a" ]) "single payload => one-element list"
-            Expect.equal (runEvent None attr) (Strs []) "absent payload => empty list"
+            Expect.equal (runEvent (Some(EditedText "a")) attr) (Strs [ "a" ]) "single outcome => one-element list"
+            Expect.equal (runEvent None attr) (Strs []) "absent outcome => empty list"
         }
 
         // --- WidgetLowering.a11y (FR-004/FR-009) ----------------------------
@@ -98,34 +100,33 @@ let feature105ParityTests =
         }
 
         // --- onChanged adapters in Control.fs (FR-003) ----------------------
-        test "bool onChanged maps 'true'/'false'/absent (CheckBox, Switch)" {
+        // Feature 184 (US3): a boolean toggle reports its new state as `SteppedValue 1.0/0.0`.
+        test "bool onChanged reads the typed stepped value (CheckBox, Switch)" {
             let attr: Attr<Msg> = LCheckBox.onChanged Bool
-            Expect.equal (runEvent (Some "true") attr) (Bool true) "'true' => true"
-            Expect.equal (runEvent (Some "false") attr) (Bool false) "'false' => false"
+            Expect.equal (runEvent (Some(SteppedValue 1.0)) attr) (Bool true) "1.0 => true"
+            Expect.equal (runEvent (Some(SteppedValue 0.0)) attr) (Bool false) "0.0 => false"
             Expect.equal (runEvent None attr) (Bool false) "absent => false"
 
             let switchAttr: Attr<Msg> = LSwitch.onChanged Bool
-            Expect.equal (runEvent (Some "true") switchAttr) (Bool true) "Switch 'true' => true"
+            Expect.equal (runEvent (Some(SteppedValue 1.0)) switchAttr) (Bool true) "Switch 1.0 => true"
         }
 
-        test "float onChanged parses valid and falls back to 0.0 (Slider, NumericInput)" {
+        test "float onChanged reads the typed stepped value and falls back to 0.0 (Slider, NumericInput)" {
             let attr: Attr<Msg> = LSlider.onChanged Num
-            Expect.equal (runEvent (Some "1.5") attr) (Num 1.5) "valid number parses"
-            Expect.equal (runEvent (Some "abc") attr) (Num 0.0) "unparseable => 0.0"
+            Expect.equal (runEvent (Some(SteppedValue 1.5)) attr) (Num 1.5) "stepped value passes"
             Expect.equal (runEvent None attr) (Num 0.0) "absent => 0.0"
 
             let numericAttr: Attr<Msg> = LNumericInput.onChanged Num
-            Expect.equal (runEvent (Some "2.25") numericAttr) (Num 2.25) "NumericInput parses"
-            Expect.equal (runEvent (Some "") numericAttr) (Num 0.0) "empty => 0.0"
+            Expect.equal (runEvent (Some(SteppedValue 2.25)) numericAttr) (Num 2.25) "NumericInput reads stepped value"
         }
 
-        test "string onChanged passes the payload through (TextBox, TextArea, RadioGroup, Tabs)" {
+        test "string onChanged reads the typed text outcome (TextBox, TextArea, RadioGroup, Tabs)" {
             for attr in
                 [ LTextBox.onChanged Str
                   LTextArea.onChanged Str
                   LRadioGroup.onChanged Str
                   LTabs.onChanged Str ] do
-                Expect.equal (runEvent (Some "hi") attr) (Str "hi") "payload passes through"
+                Expect.equal (runEvent (Some(EditedText "hi")) attr) (Str "hi") "edited text passes through"
                 Expect.equal (runEvent None attr) (Str "") "absent => empty string"
         }
     ]

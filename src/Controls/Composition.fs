@@ -363,36 +363,3 @@ module internal Composition =
         { Paint = layerPaint
           Hit = layerHit
           Diagnostics = diagnostics }
-
-    type LegacyForm =
-        | LegacyClipping of Clip
-        | LegacyTranslation of dx: float * dy: float
-        | LegacyPerspective of PerspectiveTransform
-        | LegacyCachedSubtree of cacheId: uint64
-        | LegacyText
-        | LegacyOverlay
-
-    type LegacyCompatibilityStatus =
-        | SupportedUnchanged
-        | DeprecatedWithMigration of note: string
-        | IntentionallyChanged of note: string
-
-    let legacyLower form =
-        let entry source effect = { Source = source; Effect = effect }
-
-        match form with
-        | LegacyClipping clip -> [ entry LegacyClipSource (Clip clip) ]
-        | LegacyTranslation(dx, dy) -> [ entry LegacyTranslateSource (Offset(dx, dy)) ]
-        | LegacyPerspective transform -> [ entry LegacyPerspectiveSource (Transform transform) ]
-        | LegacyCachedSubtree cacheId -> [ entry LegacyCacheSource (CacheBoundary cacheId) ]
-        | LegacyText -> [ entry LegacyTextSource (LayerHint "content") ]
-        | LegacyOverlay -> [ entry LegacyOverlaySource (LayerHint "overlay") ]
-
-    let compatibilityEvidence form =
-        match form with
-        | LegacyClipping _ -> SupportedUnchanged, "Legacy ClipNode lowers to a clip modifier and preserves clipped output."
-        | LegacyTranslation _ -> SupportedUnchanged, "Legacy Translate lowers to an offset modifier and preserves paint placement."
-        | LegacyPerspective _ -> SupportedUnchanged, "Legacy PerspectiveNode lowers to a transform modifier and preserves projection."
-        | LegacyCachedSubtree _ -> SupportedUnchanged, "Legacy CachedSubtree lowers to a cache-boundary modifier with deterministic fingerprint input."
-        | LegacyText -> SupportedUnchanged, "Legacy text and text-run nodes remain Scene text forms unless glyph-run proof is explicitly authored."
-        | LegacyOverlay -> SupportedUnchanged, "Legacy Overlay control output is modeled as portal/layer routing while preserving z-top paint order."

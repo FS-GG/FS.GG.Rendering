@@ -11,7 +11,7 @@ type Msg =
     | Changed of string
 
 let click id =
-    { Kind = "click"; ControlId = Some id; Origin = ControlEventOrigin.Pointer; Payload = None; Nav = None }
+    { Kind = "click"; ControlId = Some id; Origin = ControlEventOrigin.Pointer; Nav = None }
 
 [<Tests>]
 let interactionTests =
@@ -48,7 +48,7 @@ let interactionTests =
             Expect.equal (Control.dispatch (click "save-button") disabled) [] "disabled button suppresses click"
 
             let changed =
-                { Kind = "changed"; ControlId = Some "name"; Origin = ControlEventOrigin.Text; Payload = Some "Grace"; Nav = None }
+                { Kind = "changed"; ControlId = Some "name"; Origin = ControlEventOrigin.Text; Nav = Some(EditedText "Grace") }
 
             Expect.equal (Control.dispatch changed readOnly) [] "read-only text box suppresses change"
         }
@@ -59,7 +59,7 @@ let interactionTests =
                 |> Control.withKey "save-button"
 
             let key =
-                { Kind = "click"; ControlId = Some "save-button"; Origin = ControlEventOrigin.Keyboard; Payload = Some "Enter"; Nav = None }
+                { Kind = "click"; ControlId = Some "save-button"; Origin = ControlEventOrigin.Keyboard; Nav = None }
 
             Expect.equal (Control.dispatch key button) [ Save 7 ] "keyboard activation dispatches through current event binding"
         }
@@ -112,7 +112,7 @@ let typedInteractionTests =
                 |> Widget.toControl
 
             let changed =
-                { Kind = "changed"; ControlId = Some "agree"; Origin = ControlEventOrigin.Text; Payload = Some "true"; Nav = None }
+                { Kind = "changed"; ControlId = Some "agree"; Origin = ControlEventOrigin.Text; Nav = Some(SteppedValue 1.0) }
 
             Expect.equal (Control.dispatch changed typed) [ Changed "on" ] "typed CheckBox maps the boolean payload identically"
         }
@@ -132,10 +132,10 @@ type ExpansionMsg =
     | ColorPicked of ColorSwatch
 
 let private clickAt id =
-    { Kind = "click"; ControlId = Some id; Origin = ControlEventOrigin.Pointer; Payload = None; Nav = None }
+    { Kind = "click"; ControlId = Some id; Origin = ControlEventOrigin.Pointer; Nav = None }
 
 let private selectedWith payload =
-    { Kind = "selected"; ControlId = None; Origin = ControlEventOrigin.Selection; Payload = Some payload; Nav = None }
+    { Kind = "selected"; ControlId = None; Origin = ControlEventOrigin.Selection; Nav = Some(MovedSelection(0, Some payload)) }
 
 let private eventAttrs (control: Control<'msg>) =
     let rec all (c: Control<'msg>) =
@@ -214,7 +214,7 @@ let typedExpansionInteractionTests =
                         OnSelected = Some KeyPicked }
                 |> Widget.toControl
 
-            let clickAnywhere = { Kind = "click"; ControlId = None; Origin = ControlEventOrigin.Pointer; Payload = None; Nav = None }
+            let clickAnywhere = { Kind = "click"; ControlId = None; Origin = ControlEventOrigin.Pointer; Nav = None }
             Expect.equal (Control.dispatch clickAnywhere split) [ Clicked ] "primary action dispatches OnClick"
             Expect.equal (Control.dispatch (selectedWith "copy") split) [ KeyPicked "copy" ] "menu item dispatches OnSelected with its key"
         }

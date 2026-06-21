@@ -53,7 +53,7 @@ let private standardStates =
     set [ "normal"; "disabled"; "hover"; "pressed"; "focused"; "selected"; "validation"; "loading" ]
 
 let private mkEvent kind : ControlEvent =
-    { Kind = kind; ControlId = None; Origin = ControlEventOrigin.Pointer; Payload = None; Nav = None }
+    { Kind = kind; ControlId = None; Origin = ControlEventOrigin.Pointer; Nav = None }
 
 [<Tests>]
 let feature133NewChartControlContractTests =

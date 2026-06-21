@@ -33,7 +33,6 @@ let tests =
                     Expect.isGreaterThanOrEqual viewport.MaxHorizontalOffset 0.0 $"{item.CaseId}: horizontal offset"
                     Expect.isGreaterThanOrEqual viewport.MaxVerticalOffset 0.0 $"{item.CaseId}: vertical offset"
                     Expect.equal viewport.Offset viewport.OffsetY $"{item.CaseId}: legacy offset alias"
-                    Expect.equal viewport.MaxOffset viewport.MaxVerticalOffset $"{item.CaseId}: legacy max alias"
                 | None -> failtestf "missing scroll viewport for %s" item.CaseId
         }
 

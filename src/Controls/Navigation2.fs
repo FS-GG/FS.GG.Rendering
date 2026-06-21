@@ -3,7 +3,7 @@ namespace FS.GG.UI.Controls
 module Navigation2 =
 
     let private onPayload eventKind (map: string -> 'msg) : Attr<'msg> =
-        Attr.onWith eventKind (fun ev -> map (ev.Payload |> Option.defaultValue ""))
+        Attr.onWith eventKind (fun ev -> map (ControlEvent.navText ev |> Option.defaultValue ""))
 
     module Breadcrumb =
         let create attrs = Control.create "breadcrumb" attrs

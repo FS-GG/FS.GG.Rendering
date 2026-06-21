@@ -13,7 +13,6 @@ let tests =
             | Some viewport ->
                 Expect.equal viewport.ExtentSource IntrinsicContentExtent "extent source is intrinsic"
                 Expect.isTrue (viewport.ContentHeight > viewport.Viewport.Height) "content overflows vertically"
-                Expect.equal viewport.MaxOffset viewport.MaxVerticalOffset "legacy max offset mirrors vertical offset"
                 Expect.isTrue (viewport.MaxVerticalOffset > 0.0) "vertical scroll range is positive"
             | None -> failtest "scroll viewport not found"
         }
