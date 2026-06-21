@@ -6,17 +6,9 @@ open FS.GG.UI.Controls
 open FS.GG.UI.Controls.Elmish
 open FS.GG.UI.Themes.Default
 open FS.GG.UI.DesignSystem
+open FS.GG.TestSupport
 
-let repositoryRoot =
-    let rec find dir =
-        if File.Exists(Path.Combine(dir, "FS.GG.Rendering.slnx")) then
-            dir
-        else
-            match Directory.GetParent dir |> Option.ofObj with
-            | Some parent -> find parent.FullName
-            | None -> dir
-
-    find __SOURCE_DIRECTORY__
+let repositoryRoot = RepositoryRoot.find __SOURCE_DIRECTORY__
 
 type Msg = Save
 

@@ -42,8 +42,8 @@ type TextInputEffect =
     | ReportTextInputDiagnostic of ControlDiagnostic
 
 module TextInput =
-    let clamp low high value =
-        value |> max low |> min high
+    // Feature 178 (US3): clamp now comes from the shared Numeric.clamp (same (lo, hi, value)
+    // order; `value |> max low |> min high` = `min high (max low value)`, identical semantics).
 
     let normalizeNewlines (mode: TextInputMode) (value: string) =
         match mode with
@@ -71,8 +71,8 @@ module TextInput =
             |> Option.map (fun range -> min range.Start range.End, max range.Start range.End)
             |> Option.defaultValue (model.CaretIndex, model.CaretIndex)
 
-        let prefix = model.DraftText.Substring(0, clamp 0 model.DraftText.Length startIndex)
-        let suffix = model.DraftText.Substring(clamp 0 model.DraftText.Length endIndex)
+        let prefix = model.DraftText.Substring(0, Numeric.clamp 0 model.DraftText.Length startIndex)
+        let suffix = model.DraftText.Substring(Numeric.clamp 0 model.DraftText.Length endIndex)
         let next = prefix + value + suffix
 
         { model with
@@ -87,15 +87,15 @@ module TextInput =
         | InsertText value -> insertAt model value, []
         | MoveCaret offset ->
             { model with
-                CaretIndex = clamp 0 model.DraftText.Length (model.CaretIndex + offset)
+                CaretIndex = Numeric.clamp 0 model.DraftText.Length (model.CaretIndex + offset)
                 Selection = None },
             []
         | SelectRange(startIndex, endIndex) ->
             { model with
                 Selection =
                     Some
-                        { Start = clamp 0 model.DraftText.Length startIndex
-                          End = clamp 0 model.DraftText.Length endIndex } },
+                        { Start = Numeric.clamp 0 model.DraftText.Length startIndex
+                          End = Numeric.clamp 0 model.DraftText.Length endIndex } },
             []
         | RequestClipboardPaste -> model, [ RequestClipboardText model.ControlId ]
         | ClipboardTextReceived value -> insertAt model value, []

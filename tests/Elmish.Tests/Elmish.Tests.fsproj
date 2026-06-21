@@ -75,6 +75,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\TestSupport\TestSupport.fsproj" />
     <ProjectReference Include="..\..\src\Elmish\Elmish.fsproj" />
     <ProjectReference Include="..\..\src\Controls.Elmish\Controls.Elmish.fsproj" />
     <ProjectReference Include="..\..\src\Diagnostics\Diagnostics.fsproj" />

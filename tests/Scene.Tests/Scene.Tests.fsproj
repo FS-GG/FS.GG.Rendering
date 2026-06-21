@@ -31,6 +31,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\TestSupport\TestSupport.fsproj" />
     <ProjectReference Include="..\..\src\Scene\Scene.fsproj" />
     <PackageReference Include="Expecto" />
     <PackageReference Include="FsCheck" />

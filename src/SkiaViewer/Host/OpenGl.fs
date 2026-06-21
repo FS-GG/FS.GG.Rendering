@@ -458,14 +458,13 @@ module GlHost =
           EnvironmentStatus = status }
 
     let normalizeScissorRects frameWidth frameHeight (rects: ScissorRect list) =
-        let clamp lo hi value = min hi (max lo value)
-
+        // Feature 178 (US3): shared Numeric.clamp (same (lo, hi, value) order, identical semantics).
         rects
         |> List.choose (fun rect ->
-            let x0 = clamp 0 frameWidth rect.X
-            let y0 = clamp 0 frameHeight rect.Y
-            let x1 = clamp 0 frameWidth (rect.X + rect.Width)
-            let y1 = clamp 0 frameHeight (rect.Y + rect.Height)
+            let x0 = Numeric.clamp 0 frameWidth rect.X
+            let y0 = Numeric.clamp 0 frameHeight rect.Y
+            let x1 = Numeric.clamp 0 frameWidth (rect.X + rect.Width)
+            let y1 = Numeric.clamp 0 frameHeight (rect.Y + rect.Height)
             let width = x1 - x0
             let height = y1 - y0
 

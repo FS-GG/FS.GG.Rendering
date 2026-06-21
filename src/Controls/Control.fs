@@ -2451,9 +2451,10 @@ module internal ControlInternals =
     // Feature 120/141: the exact structural scene fingerprint lives with Controls, and retained rendering
     // aliases it for replay/cache boundaries that need byte-sensitive content keys.
     let hashScene (scenes: Scene list) : uint64 =
-        let mutable h = 0xcbf29ce484222325UL // mutable: hot path / FNV-1a accumulator
-        let prime = 0x100000001b3UL
-        let mix (x: uint64) = h <- (h ^^^ x) * prime
+        // Feature 178 (US2): constants + core step from the shared Hashing primitive; the typed
+        // `uint64` mixers below are unchanged, so the fingerprint is byte-identical.
+        let mutable h = Hashing.offsetBasis // mutable: hot path / FNV-1a accumulator
+        let mix (x: uint64) = h <- Hashing.step h x
         let bits (d: float) = uint64 (System.BitConverter.DoubleToInt64Bits d)
         let mixTag (t: int) = mix (uint64 (uint32 t))
         let mixBool (v: bool) = mix (if v then 1UL else 0UL)
@@ -2827,20 +2828,19 @@ module internal ControlInternals =
         scenes |> List.iter goScene
         h
 
-    let private fnvOffset = 0xcbf29ce484222325UL
-    let private fnvPrime = 0x100000001b3UL
-
+    // Feature 178 (US2): the local fnvOffset/fnvPrime constants now come from the shared Hashing
+    // primitive; the fingerprint folds below mix exactly as before (byte-identical output).
     let private fingerprintParts (domain: int) (parts: uint64 list) =
-        let mutable h = fnvOffset
-        let mix x = h <- (h ^^^ x) * fnvPrime
+        let mutable h = Hashing.offsetBasis
+        let mix x = h <- Hashing.step h x
         mix (uint64 (uint32 domain))
         mix (uint64 (List.length parts))
         parts |> List.iter mix
         h
 
     let private fingerprintString (value: string) =
-        let mutable h = fnvOffset
-        let mix x = h <- (h ^^^ x) * fnvPrime
+        let mutable h = Hashing.offsetBasis
+        let mix x = h <- Hashing.step h x
         mix 0x535452494E47UL
         mix (uint64 value.Length)
 
@@ -2864,8 +2864,8 @@ module internal ControlInternals =
                   fingerprintFloat box.Height ]
 
     let private fingerprintChildList domain children select =
-        let mutable h = fnvOffset
-        let mix x = h <- (h ^^^ x) * fnvPrime
+        let mutable h = Hashing.offsetBasis
+        let mix x = h <- Hashing.step h x
         mix (uint64 (uint32 domain))
         mix (uint64 (List.length children))
 

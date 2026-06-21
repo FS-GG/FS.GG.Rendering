@@ -4,23 +4,9 @@ open System
 open System.Diagnostics
 open System.IO
 open Expecto
+open FS.GG.TestSupport
 
-let rec findRepositoryRoot (directory: string) =
-    // The repo migrated to FS.GG.Rendering.slnx (no *.sln, no build.fsx). On net10.0 the legacy
-    // "*.sln" search pattern no longer matches ".slnx", so detect .sln/.slnx (and the historical
-    // build.fsx marker) — matching the fix Feature 045 already applied in Elmish.Tests.
-    if
-        Directory.GetFiles(directory, "*.sln").Length > 0
-        || Directory.GetFiles(directory, "*.slnx").Length > 0
-        || File.Exists(Path.Combine(directory, "build.fsx"))
-    then
-        directory
-    else
-        match Directory.GetParent directory |> Option.ofObj with
-        | Some parent -> findRepositoryRoot parent.FullName
-        | None -> failwithf "Could not locate repository root from %s" directory
-
-let repositoryRoot = findRepositoryRoot AppContext.BaseDirectory
+let repositoryRoot = RepositoryRoot.value
 
 // The parity samples/ tree was not imported at migration Stage R4. Each parity smoke test below
 // exercises a parity samples/* project, so when that tree is absent they skip-with-reason (Ignored)

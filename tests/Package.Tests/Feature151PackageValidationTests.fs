@@ -3,16 +3,9 @@ module Feature151PackageValidationTests
 open System
 open System.IO
 open Expecto
+open FS.GG.TestSupport
 
-let rec private findRepositoryRoot directory =
-    if Directory.GetFiles(directory, "*.sln").Length > 0 || Directory.GetFiles(directory, "*.slnx").Length > 0 then
-        directory
-    else
-        match Directory.GetParent directory |> Option.ofObj with
-        | Some parent -> findRepositoryRoot parent.FullName
-        | None -> failwithf "Could not locate repository root from %s" directory
-
-let private root = findRepositoryRoot AppContext.BaseDirectory
+let private root = RepositoryRoot.value
 let private repo (path: string) = Path.Combine(root, path.Replace('/', Path.DirectorySeparatorChar))
 
 [<Tests>]

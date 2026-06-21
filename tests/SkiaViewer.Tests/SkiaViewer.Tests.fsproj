@@ -72,6 +72,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\TestSupport\TestSupport.fsproj" />
     <ProjectReference Include="..\..\src\SkiaViewer\SkiaViewer.fsproj" />
     <ProjectReference Include="..\..\src\Diagnostics\Diagnostics.fsproj" />
     <!-- Feature 085: the interactive pointer/size-aware host (InteractiveAppHost +

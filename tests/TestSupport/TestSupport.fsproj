@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Feature 178 (US1, R4): non-packed shared test-support assembly. Holds the single
+       repository-root finder consumed by every test/harness project. IsPackable=false guarantees
+       it never becomes an FS.GG.UI.* package; IsTestProject=false keeps it off the test runner
+       (it ships helpers, not tests). -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>false</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="RepositoryRoot.fs" />
+  </ItemGroup>
+
+</Project>

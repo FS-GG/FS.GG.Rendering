@@ -14,6 +14,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Scene\Scene.fsproj" />
     <ProjectReference Include="..\..\src\SkiaViewer\SkiaViewer.fsproj" />
+    <ProjectReference Include="..\TestSupport\TestSupport.fsproj" />
   </ItemGroup>
 
   <ItemGroup>

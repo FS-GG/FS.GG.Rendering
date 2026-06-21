@@ -4,20 +4,9 @@ open System
 open System.IO
 open Expecto
 open Rendering.Harness
+open FS.GG.TestSupport
 
-let private repoRoot () =
-    AppContext.BaseDirectory
-    |> fun dir -> DirectoryInfo(dir)
-    |> fun dir ->
-        let rec walk (current: DirectoryInfo) =
-            if File.Exists(Path.Combine(current.FullName, "FS.GG.Rendering.slnx")) then
-                current.FullName
-            else
-                match current.Parent with
-                | null -> Directory.GetCurrentDirectory()
-                | parent -> walk parent
-
-        walk dir
+let private repoRoot () = RepositoryRoot.value
 
 let private surfaceLines (path: string) =
     File.ReadAllLines path

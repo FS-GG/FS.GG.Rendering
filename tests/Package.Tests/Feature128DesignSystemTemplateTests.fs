@@ -15,16 +15,9 @@ module Feature128DesignSystemTemplateTests
 open System
 open System.IO
 open Expecto
+open FS.GG.TestSupport
 
-let rec private findRepositoryRoot (directory: string) =
-    if File.Exists(Path.Combine(directory, "FS.GG.Rendering.slnx")) then
-        directory
-    else
-        match Directory.GetParent directory |> Option.ofObj with
-        | Some parent -> findRepositoryRoot parent.FullName
-        | None -> failwithf "Could not locate repository root from %s" directory
-
-let private repositoryRoot = findRepositoryRoot AppContext.BaseDirectory
+let private repositoryRoot = RepositoryRoot.value
 
 let private repositoryPath (relativePath: string) =
     Path.Combine(repositoryRoot, relativePath.Replace('/', Path.DirectorySeparatorChar))

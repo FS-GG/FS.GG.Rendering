@@ -5,16 +5,9 @@ open System.IO
 open Expecto
 open FS.GG.UI.Scene
 open FS.GG.UI.SkiaViewer
+open FS.GG.TestSupport
 
-let rec private repoRoot (dir: DirectoryInfo) =
-    if File.Exists(Path.Combine(dir.FullName, "Directory.Packages.props")) then
-        dir.FullName
-    else
-        match dir.Parent with
-        | null -> Directory.GetCurrentDirectory()
-        | parent -> repoRoot parent
-
-let private root = repoRoot (DirectoryInfo(AppContext.BaseDirectory))
+let private root = RepositoryRoot.value
 
 [<Tests>]
 let tests =

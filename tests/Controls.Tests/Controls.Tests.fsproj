@@ -178,6 +178,8 @@
          against the WCAG reference pairs. Test-only reference — Controls itself does not depend on
          the Color package (no package-graph change). -->
     <ProjectReference Include="..\..\src\Color\Color.fsproj" />
+    <!-- Feature 178 (US1): the shared repository-root finder lives in the non-packed TestSupport assembly. -->
+    <ProjectReference Include="..\TestSupport\TestSupport.fsproj" />
     <!-- R4 import: the Feature-066 typed-catalog drift suite (CatalogTests.fs) referenced the
          governance engine (FS.GG.UI.Build); removed per FR-006 (no governance runtime). The
          typed-catalog drift check belongs to the governance repo, not the rendering product. -->

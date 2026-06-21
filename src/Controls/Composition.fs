@@ -154,11 +154,9 @@ module internal Composition =
         |> String.concat "|"
 
     let private fnv1a (text: string) =
-        let mutable h = 0xcbf29ce484222325UL // mutable: compact deterministic hash accumulator
-        let prime = 0x100000001b3UL
-        for b in Encoding.UTF8.GetBytes text do
-            h <- (h ^^^ uint64 b) * prime
-        h
+        // Feature 178 (US2): constants + core step from the shared Hashing primitive; the UTF-8
+        // byte fold is preserved byte-for-byte (including the empty-string case).
+        Hashing.foldBytes Hashing.offsetBasis (Encoding.UTF8.GetBytes text)
 
     let normalize effects =
         let diagnostics = effects |> List.choose diagnosticFor

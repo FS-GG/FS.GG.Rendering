@@ -711,11 +711,11 @@ module internal RetainedRender =
           Height = float damage.DamageHeight }
 
     let private damageOfRect frameWidth frameHeight (rect: Rect) : CompositorDamageRegion option =
-        let clamp lo hi value = min hi (max lo value)
-        let x0 = clamp 0 frameWidth (int (System.Math.Floor rect.X))
-        let y0 = clamp 0 frameHeight (int (System.Math.Floor rect.Y))
-        let x1 = clamp 0 frameWidth (int (System.Math.Ceiling(rect.X + rect.Width)))
-        let y1 = clamp 0 frameHeight (int (System.Math.Ceiling(rect.Y + rect.Height)))
+        // Feature 178 (US3): shared Numeric.clamp (same (lo, hi, value) order, identical semantics).
+        let x0 = Numeric.clamp 0 frameWidth (int (System.Math.Floor rect.X))
+        let y0 = Numeric.clamp 0 frameHeight (int (System.Math.Floor rect.Y))
+        let x1 = Numeric.clamp 0 frameWidth (int (System.Math.Ceiling(rect.X + rect.Width)))
+        let y1 = Numeric.clamp 0 frameHeight (int (System.Math.Ceiling(rect.Y + rect.Height)))
         let width = x1 - x0
         let height = y1 - y0
 
@@ -848,13 +848,14 @@ module internal RetainedRender =
         | Feature159ReuseStatus.ReuseEnvironmentLimited -> "environment-limited"
 
     let private feature159Hash (parts: string list) =
-        let mutable hash = 0xcbf29ce484222325UL // mutable: compact deterministic FNV-1a fold.
+        // Feature 178 (US2): constants + core step from the shared Hashing primitive. Keeps the
+        // per-char `int ch` widening and `'|'` separator; Hashing.step h x = (h ^^^ x) * prime is
+        // exactly the prior xor-then-multiply pair, so the fold is byte-identical.
+        let mutable hash = Hashing.offsetBasis // mutable: compact deterministic FNV-1a fold.
         for part in parts do
             for ch in part do
-                hash <- hash ^^^ uint64 (int ch)
-                hash <- hash * 1099511628211UL
-            hash <- hash ^^^ uint64 (int '|')
-            hash <- hash * 1099511628211UL
+                hash <- Hashing.step hash (uint64 (int ch))
+            hash <- Hashing.step hash (uint64 (int '|'))
         hash
 
     let private rectToken (rect: Rect option) =

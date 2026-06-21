@@ -44,6 +44,7 @@
     <ProjectReference Include="..\..\src\Testing\Testing.fsproj" Condition="Exists('..\..\src\Testing\Testing.fsproj')" />
     <ProjectReference Include="..\..\src\Layout\Layout.fsproj" Condition="Exists('..\..\src\Layout\Layout.fsproj')" />
     <ProjectReference Include="..\..\src\Controls\Controls.fsproj" Condition="Exists('..\..\src\Controls\Controls.fsproj')" />
+    <ProjectReference Include="..\TestSupport\TestSupport.fsproj" />
   </ItemGroup>
 
   <ItemGroup>

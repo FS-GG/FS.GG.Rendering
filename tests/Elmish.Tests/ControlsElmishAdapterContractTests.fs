@@ -5,20 +5,9 @@ open System.IO
 open Expecto
 open FS.GG.UI.Controls
 open FS.GG.UI.Controls.Elmish
+open FS.GG.TestSupport
 
-let repositoryRoot =
-    // Feature 045 deleted build.fsx; locate the repo root by the solution file instead, and
-    // terminate at the filesystem root (the old build.fsx-marker walk looped forever once the
-    // marker was gone, hanging this test's module init — and thus Expecto discovery — headless).
-    let rec find dir =
-        if File.Exists(Path.Combine(dir, "FS.GG.Rendering.slnx")) then
-            dir
-        else
-            match Directory.GetParent dir |> Option.ofObj with
-            | Some parent -> find parent.FullName
-            | None -> dir
-
-    find __SOURCE_DIRECTORY__
+let repositoryRoot = RepositoryRoot.find __SOURCE_DIRECTORY__
 
 let adapterProject =
     Path.Combine(repositoryRoot, "src", "Controls.Elmish", "Controls.Elmish.fsproj")

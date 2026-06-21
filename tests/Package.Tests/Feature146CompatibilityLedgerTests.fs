@@ -4,16 +4,9 @@ open System.IO
 open Expecto
 open FS.GG.UI.Scene
 open FS.GG.UI.Testing
+open FS.GG.TestSupport
 
-let rec private findRepositoryRoot (directory: string) =
-    if Directory.GetFiles(directory, "*.sln").Length > 0 || Directory.GetFiles(directory, "*.slnx").Length > 0 || File.Exists(Path.Combine(directory, "build.fsx")) then
-        directory
-    else
-        match Directory.GetParent directory |> Option.ofObj with
-        | Some parent -> findRepositoryRoot parent.FullName
-        | None -> failwithf "Could not locate repository root from %s" directory
-
-let private repositoryRoot = findRepositoryRoot System.AppContext.BaseDirectory
+let private repositoryRoot = RepositoryRoot.value
 let private path (relative: string) = Path.Combine(repositoryRoot, relative.Replace('/', Path.DirectorySeparatorChar))
 
 [<Tests>]

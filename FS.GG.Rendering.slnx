@@ -29,6 +29,7 @@
     <Project Path="tests/Scene.Tests/Scene.Tests.fsproj" />
     <Project Path="tests/SkiaViewer.Tests/SkiaViewer.Tests.fsproj" />
     <Project Path="tests/Smoke.Tests/Smoke.Tests.fsproj" />
+    <Project Path="tests/TestSupport/TestSupport.fsproj" />
     <Project Path="tests/Testing.Tests/Testing.Tests.fsproj" />
   </Folder>
 </Solution>

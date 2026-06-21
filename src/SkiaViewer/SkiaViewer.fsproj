@@ -25,6 +25,11 @@
     <Compile Include="SceneRenderer.fs" />
     <Compile Include="ReferenceRendering.fsi" />
     <Compile Include="ReferenceRendering.fs" />
+    <!-- Feature 178 (US3): shared clamp, linked source (no project edge), compiled before the
+         Host/OpenGl.fs consumer. -->
+    <Compile Include="..\Shared\Numeric.fs">
+      <Link>Shared/Numeric.fs</Link>
+    </Compile>
     <Compile Include="Host/OpenGl.fsi" />
     <Compile Include="Host/OpenGl.fs" />
     <Compile Include="Host/Viewer.fsi" />

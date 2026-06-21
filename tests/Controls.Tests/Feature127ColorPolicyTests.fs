@@ -21,17 +21,9 @@ open Expecto
 open FS.GG.UI.Scene
 open FS.GG.UI.Color
 open FS.GG.UI.DesignSystem
+open FS.GG.TestSupport
 
-let private repositoryRoot =
-    let rec find dir =
-        if File.Exists(Path.Combine(dir, "FS.GG.Rendering.slnx")) then
-            dir
-        else
-            match Directory.GetParent dir |> Option.ofObj with
-            | Some p -> find p.FullName
-            | None -> dir
-
-    find __SOURCE_DIRECTORY__
+let private repositoryRoot = RepositoryRoot.value
 
 let private pairing name fg bg role : ColorPolicy.Pairing =
     { Name = name

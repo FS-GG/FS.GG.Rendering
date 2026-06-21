@@ -3,6 +3,7 @@ module Feature168ParityFindingTests
 open System.IO
 open Expecto
 open Rendering.Harness
+open FS.GG.TestSupport
 
 [<Tests>]
 let tests =
@@ -26,16 +27,7 @@ let tests =
         }
 
         test "repository parity check does not rewrite existing skill files" {
-            let root =
-                let rec walk (dir: DirectoryInfo) =
-                    if File.Exists(Path.Combine(dir.FullName, "FS.GG.Rendering.slnx")) then
-                        dir.FullName
-                    else
-                        match dir.Parent with
-                        | null -> Directory.GetCurrentDirectory()
-                        | parent -> walk parent
-
-                walk (DirectoryInfo(System.AppContext.BaseDirectory))
+            let root = RepositoryRoot.value
 
             let skillPath = Path.Combine(root, ".agents", "skills", "fs-gg-testing", "SKILL.md")
             let before = Feature168SkillParityFixtures.fileHash skillPath

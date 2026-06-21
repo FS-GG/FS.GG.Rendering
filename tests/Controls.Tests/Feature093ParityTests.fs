@@ -15,6 +15,7 @@ open FS.GG.UI.Scene
 open FS.GG.UI.Controls
 open FS.GG.UI.Themes.Default
 open FS.GG.UI.DesignSystem
+open FS.GG.TestSupport
 
 let private box: Rect = { X = 10.0; Y = 40.0; Width = 284.0; Height = 92.0 }
 
@@ -56,11 +57,7 @@ let private themes = [ "light", Theme.light; "dark", Theme.dark ]
 
 // Capture the frozen-oracle baselines to readiness/parity/<kind>.<theme>.scene.txt (T020).
 let private captureBaselines () =
-    let repoRoot =
-        let rec find dir =
-            if File.Exists(Path.Combine(dir, "FS.GG.Rendering.slnx")) then dir
-            else match Directory.GetParent dir |> Option.ofObj with Some p -> find p.FullName | None -> dir
-        find __SOURCE_DIRECTORY__
+    let repoRoot = RepositoryRoot.value
     let dir = Path.Combine(repoRoot, "specs", "093-visual-state-style-layer", "readiness", "parity")
     Directory.CreateDirectory dir |> ignore
     // Returns the list of baseline files written, so callers can assert they actually landed on disk.

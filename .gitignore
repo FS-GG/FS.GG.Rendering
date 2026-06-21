@@ -95,6 +95,9 @@ specs/174-fix-render-lag/readiness/**/nuget-cache/
 !specs/175-fix-showcase-controls/readiness/
 !specs/175-fix-showcase-controls/readiness/**
 specs/175-fix-showcase-controls/readiness/**/nuget-cache/
+!specs/178-shared-test-util-helpers/readiness/
+!specs/178-shared-test-util-helpers/readiness/**
+specs/178-shared-test-util-helpers/readiness/**/nuget-cache/
 
 # macOS / Linux cruft
 .DS_Store

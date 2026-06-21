@@ -16,6 +16,7 @@
          tests moved to tests/Input.Tests (FS.GG.UI.Input); no reference to the retiring Lib monolith. -->
     <ProjectReference Include="..\..\src\Scene\Scene.fsproj" />
     <ProjectReference Include="..\..\src\SkiaViewer\SkiaViewer.fsproj" />
+    <ProjectReference Include="..\TestSupport\TestSupport.fsproj" />
   </ItemGroup>
 
   <ItemGroup>

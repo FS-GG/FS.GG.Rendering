@@ -6,6 +6,7 @@ open Expecto
 open FS.GG.UI.Scene
 open FS.GG.UI.Controls
 open FS.GG.UI.Themes.Default
+open FS.GG.TestSupport
 
 type private Msg =
     | Clicked
@@ -81,16 +82,7 @@ let private collectEvidence (root: RetainedNode<Msg>) =
 
     walk root
 
-let private repoRoot () =
-    let rec walk (dir: DirectoryInfo) =
-        if File.Exists(Path.Combine(dir.FullName, "FS.GG.Rendering.slnx")) then
-            dir.FullName
-        else
-            match dir.Parent with
-            | null -> Directory.GetCurrentDirectory()
-            | parent -> walk parent
-
-    walk (DirectoryInfo(AppContext.BaseDirectory))
+let private repoRoot () = RepositoryRoot.value
 
 let private readRepo path = File.ReadAllText(Path.Combine(repoRoot (), path))
 

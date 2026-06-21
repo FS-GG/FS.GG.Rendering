@@ -44,6 +44,13 @@
     <Compile Include="Accessibility.fsi" />
     <Compile Include="Accessibility.fs" />
     <Compile Include="Internal/AttrKeys.fs" />
+    <!-- Feature 178 (US2): shared FNV-1a primitive, compiled before the four hash folds. -->
+    <Compile Include="Internal/Hashing.fs" />
+    <!-- Feature 178 (US3): shared clamp, linked source (no project edge), compiled before its
+         TextInput.fs / RetainedRender.fs consumers. -->
+    <Compile Include="..\Shared\Numeric.fs">
+      <Link>Shared/Numeric.fs</Link>
+    </Compile>
     <Compile Include="Attributes.fsi" />
     <Compile Include="Attributes.fs" />
     <Compile Include="Composition.fsi" />

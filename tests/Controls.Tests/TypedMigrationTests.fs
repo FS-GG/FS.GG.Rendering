@@ -8,6 +8,7 @@ open FS.GG.UI.Controls
 open FS.GG.UI.Controls.Typed
 open FS.GG.UI.Themes.Default
 open FS.GG.UI.DesignSystem
+open FS.GG.TestSupport
 
 // ---------------------------------------------------------------------------
 // Feature 070 — migrate the remaining 41 catalog controls to the typed front
@@ -95,11 +96,7 @@ let parityEqual (typed: Widget<'msg>) (legacy: Control<'msg>) message =
 let eventAttrs (control: Control<'msg>) =
     control.Attributes |> List.filter (fun attr -> attr.Category = Event)
 
-let repositoryRoot =
-    let rec find dir =
-        if File.Exists(Path.Combine(dir, "FS.GG.Rendering.slnx")) then dir
-        else (match Directory.GetParent dir |> Option.ofObj with Some p -> find p.FullName | None -> dir)
-    find __SOURCE_DIRECTORY__
+let repositoryRoot = RepositoryRoot.value
 
 let read (relativePath: string) =
     File.ReadAllText(Path.Combine(repositoryRoot, relativePath.Replace("/", string Path.DirectorySeparatorChar)))

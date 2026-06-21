@@ -13,19 +13,13 @@ open Expecto
 open FS.GG.UI.Controls
 open FS.GG.UI.DesignSystem
 open FS.GG.UI.Color
+open FS.GG.TestSupport
 
 // ---------------------------------------------------------------------------
 // Repo root + doc locations (slnx marker; the established Feature126/127 pattern)
 // ---------------------------------------------------------------------------
 
-let private repositoryRoot =
-    let rec find dir =
-        if File.Exists(Path.Combine(dir, "FS.GG.Rendering.slnx")) then dir
-        else
-            match Directory.GetParent dir |> Option.ofObj with
-            | Some p -> find p.FullName
-            | None -> dir
-    find __SOURCE_DIRECTORY__
+let private repositoryRoot = RepositoryRoot.value
 
 let private antRoot = Path.Combine(repositoryRoot, "docs", "product", "ant-design")
 let private patternsDir = Path.Combine(antRoot, "patterns")

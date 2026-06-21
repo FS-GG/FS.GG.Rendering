@@ -2,16 +2,9 @@ module Feature144FsiSemanticTests
 
 open System.IO
 open Expecto
+open FS.GG.TestSupport
 
-let private repositoryRoot =
-    let rec find dir =
-        if File.Exists(Path.Combine(dir, "FS.GG.Rendering.slnx")) then dir
-        else
-            match Directory.GetParent dir |> Option.ofObj with
-            | Some parent -> find parent.FullName
-            | None -> dir
-
-    find __SOURCE_DIRECTORY__
+let private repositoryRoot = RepositoryRoot.find __SOURCE_DIRECTORY__
 
 [<Tests>]
 let tests =

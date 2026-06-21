@@ -7,6 +7,7 @@ open FS.GG.UI.Scene
 open FS.GG.UI.Controls
 open FS.GG.UI.Themes.Default
 open FS.GG.UI.DesignSystem
+open FS.GG.TestSupport
 
 type private Msg =
     | Clicked
@@ -137,16 +138,7 @@ let private assertRetainedMatches (name: string) (tree: Control<Msg>) =
     Expect.equal warm.Render.BoundIds full.BoundIds (name + ": warm retained bound ids match")
     Expect.equal warm.Render.NodeCount full.NodeCount (name + ": retained node count matches")
 
-let private repoRoot () =
-    let rec walk (dir: DirectoryInfo) =
-        if File.Exists(Path.Combine(dir.FullName, "FS.GG.Rendering.slnx")) then
-            dir.FullName
-        else
-            match dir.Parent with
-            | null -> Directory.GetCurrentDirectory()
-            | parent -> walk parent
-
-    walk (DirectoryInfo(AppContext.BaseDirectory))
+let private repoRoot () = RepositoryRoot.value
 
 let private readRepo path = File.ReadAllText(Path.Combine(repoRoot (), path))
 
