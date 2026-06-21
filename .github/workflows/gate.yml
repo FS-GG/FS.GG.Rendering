@@ -57,7 +57,7 @@ jobs:
       - name: Default local tier (deterministic)
         run: |
           set -euo pipefail
-          for p in Color Scene Layout Input KeyboardInput Elmish Controls Testing Lib; do
+          for p in Scene Layout KeyboardInput Elmish Controls Diagnostics Testing Lib; do
             echo "::group::dotnet test tests/${p}.Tests"
             dotnet test "tests/${p}.Tests/${p}.Tests.fsproj" -c Debug --no-build
             echo "::endgroup::"

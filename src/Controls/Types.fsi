@@ -323,8 +323,13 @@ type ControlEvent =
 /// (free-text edit or moved-selection item); `navValue` the stepped float (slider / numeric /
 /// boolean-as-0/1); `navCell` the moved grid cell indices.
 module ControlEvent =
+    /// The stepped float an event carries (`SteppedValue` — slider / numeric / boolean-as-0/1); `None`
+    /// when the event's `Nav` outcome is not a value change.
     val navValue: ev: ControlEvent -> float option
+    /// The string an event carries (`EditedText` for a free-text edit, or the item of a
+    /// `MovedSelection`); `None` when the event's `Nav` outcome carries no string.
     val navText: ev: ControlEvent -> string option
+    /// The moved grid cell `(row, col)` indices an event carries (`MovedCell`); `None` otherwise.
     val navCell: ev: ControlEvent -> (int * int) option
 
 /// Classification (`AttrCategory`) of what an attribute affects — `Content`, `Children`,
