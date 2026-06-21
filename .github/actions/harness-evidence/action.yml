@@ -79,7 +79,7 @@ runs:
         out='${{ steps.paths.outputs.out }}'
         mkdir -p "$out"
         echo "::group::harness ${{ inputs.subcommand }} ${{ inputs.args }}"
-        dotnet run --project tests/Rendering.Harness/Rendering.Harness.fsproj -- \
+        dotnet run --project tools/Rendering.Harness/Rendering.Harness.fsproj -- \
           ${{ inputs.subcommand }} ${{ inputs.args }} --out "$out"
         code=$?
         echo "::endgroup::"
