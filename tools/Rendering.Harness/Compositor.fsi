@@ -954,11 +954,14 @@ module Compositor =
     val renderFeature155CompatibilityLedger: model: ReadinessModel -> string
     val renderFeature155PackageValidation: unit -> string
     val renderFeature155RegressionValidation: unit -> string
+    /// Feature 181: catalog-collapsed package/regression validation renderers for features 156-161
+    /// (byte-identical to the per-feature bodies they replace). `featureNum` selects the per-feature
+    /// section headers and bullets.
+    val renderPackageValidation: featureNum: int -> validationLines: string list -> string
+    val renderRegressionValidation: featureNum: int -> validationLines: string list -> string
     val renderFeature156ScenarioReport: report: Feature156ScenarioReport -> string
     val renderFeature156TimingSummary: summary: Feature156TimingSummary -> string
     val renderFeature156CompatibilityLedger: unit -> string
-    val renderFeature156PackageValidation: validationLines: string list -> string
-    val renderFeature156RegressionValidation: validationLines: string list -> string
     val renderFeature156ValidationSummary: summary: Feature156TimingSummary -> string
     val renderFeature156UnsupportedHostReport: reason: string -> string
     val renderFeature157AttemptReport: attempt: Feature157DamageAttempt -> string
@@ -967,8 +970,6 @@ module Compositor =
     val renderFeature157DamageSummary: summary: Feature157DamageSummary -> string
     val renderFeature157DamageSummaryJson: summary: Feature157DamageSummary -> string
     val renderFeature157CompatibilityLedger: unit -> string
-    val renderFeature157PackageValidation: validationLines: string list -> string
-    val renderFeature157RegressionValidation: validationLines: string list -> string
     val renderFeature157ValidationSummary: summary: Feature157DamageSummary -> string
     val renderFeature157UnsupportedHostReport: reason: string -> string
     val renderFeature158ScenarioReport: report: Feature158ScenarioReport -> string
@@ -977,16 +978,12 @@ module Compositor =
     val renderFeature158TimingSummary: summary: Feature158TimingSummary -> string
     val renderFeature158TimingSummaryJson: summary: Feature158TimingSummary -> string
     val renderFeature158CompatibilityLedger: unit -> string
-    val renderFeature158PackageValidation: validationLines: string list -> string
-    val renderFeature158RegressionValidation: validationLines: string list -> string
     val renderFeature158ValidationSummary: summary: Feature158TimingSummary -> string
     val renderFeature158UnsupportedHostReport: reason: string -> string
     val renderFeature159AttemptReport: attempt: Feature159Attempt -> string
     val renderFeature159PromotionSummary: summary: Feature159Summary -> string
     val renderFeature159CounterReport: summary: Feature159Summary -> string
     val renderFeature159CompatibilityLedger: unit -> string
-    val renderFeature159PackageValidation: validationLines: string list -> string
-    val renderFeature159RegressionValidation: validationLines: string list -> string
     val renderFeature159ValidationSummary: summary: Feature159Summary -> string
     val renderFeature159UnsupportedHostReport: reason: string -> string
     val renderFeature160IterationReport: iteration: Feature160Iteration -> string
@@ -994,8 +991,6 @@ module Compositor =
     val renderFeature160ThroughputSummary: summary: Feature160ThroughputSummary -> string
     val renderFeature160ThroughputSummaryJson: summary: Feature160ThroughputSummary -> string
     val renderFeature160CompatibilityLedger: unit -> string
-    val renderFeature160PackageValidation: validationLines: string list -> string
-    val renderFeature160RegressionValidation: validationLines: string list -> string
     val renderFeature160FullValidationRecord: record: Feature160FullValidationRecord option -> string
     val renderFeature160ValidationSummary: summary: Feature160ThroughputSummary -> string
     val renderFeature160UnsupportedHostReport: reason: string -> string
@@ -1005,8 +1000,6 @@ module Compositor =
     val renderFeature161LaneLedgerSummary: summary: Feature161Summary -> string
     val renderFeature161LaneLedgerSummaryJson: summary: Feature161Summary -> string
     val renderFeature161CompatibilityLedger: unit -> string
-    val renderFeature161PackageValidation: validationLines: string list -> string
-    val renderFeature161RegressionValidation: validationLines: string list -> string
     val renderFeature161FullValidationRecord: status: string -> string
     val renderFeature161ValidationSummary: summary: Feature161Summary -> string
     val renderFeature161UnsupportedHostReport: reason: string -> string

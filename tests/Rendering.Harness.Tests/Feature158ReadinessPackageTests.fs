@@ -117,7 +117,7 @@ let tests =
 
         test "compatibility package documents no new Testing or SkiaViewer helper surface" {
             let ledger = Compositor.renderFeature158CompatibilityLedger ()
-            let package = Compositor.renderFeature158PackageValidation [ "`dotnet build FS.GG.Rendering.slnx --no-restore`: passed." ]
+            let package = Compositor.renderPackageValidation 158 [ "`dotnet build FS.GG.Rendering.slnx --no-restore`: passed." ]
             Expect.stringContains ledger "No new `FS.GG.UI.Testing` public helper surface" "Testing no helper"
             Expect.stringContains ledger "No new `FS.GG.UI.SkiaViewer` public helper surface" "SkiaViewer no helper"
             Expect.stringContains package "No Testing or SkiaViewer package-visible helper surface" "package no helper"

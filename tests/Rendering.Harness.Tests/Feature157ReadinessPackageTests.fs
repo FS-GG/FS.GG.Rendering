@@ -78,8 +78,8 @@ let tests =
           }
 
           test "package and regression validation render the current status and no universal performance claim" {
-              let package = Compositor.renderFeature157PackageValidation [ "`dotnet build FS.GG.Rendering.slnx --no-restore`: passed." ]
-              let regression = Compositor.renderFeature157RegressionValidation [ "`dotnet test FS.GG.Rendering.slnx --no-restore`: passed." ]
+              let package = Compositor.renderPackageValidation 157 [ "`dotnet build FS.GG.Rendering.slnx --no-restore`: passed." ]
+              let regression = Compositor.renderRegressionValidation 157 [ "`dotnet test FS.GG.Rendering.slnx --no-restore`: passed." ]
               Expect.stringContains package "Status: `accepted-with-recorded-limitations`" "package status"
               Expect.stringContains regression "Feature 156 timing remains context-only" "timing boundary"
               Expect.stringContains regression "performance-not-accepted" "performance boundary"

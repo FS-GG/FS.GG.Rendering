@@ -23,6 +23,8 @@
     <Compile Include="Evidence.fs" />
     <Compile Include="Perf.fsi" />
     <Compile Include="Perf.fs" />
+    <Compile Include="FeatureCatalog.fsi" />
+    <Compile Include="FeatureCatalog.fs" />
     <Compile Include="Compositor.fsi" />
     <Compile Include="Compositor.fs" />
     <Compile Include="PackageFeed.fsi" />

@@ -57,104 +57,28 @@ let private flagValue (flag: string) (rest: string list) =
         | [] -> None
     find rest
 
-let private isFeature148 (rest: string list) =
-    match flagValue "--feature" rest with
-    | Some value ->
-        value = "148"
-        || value = "feature148"
-        || String.Equals(value, Compositor.feature148Id, StringComparison.OrdinalIgnoreCase)
-    | _ -> false
+// Feature 181 (US2): feature selection routes through the single FeatureCatalog descriptor table
+// instead of 12 hand-duplicated alias predicates. `tryByAlias` accepts the same "NNN"/"featureNNN"/
+// slug forms the old isFeature### predicates accepted (C-CT-3/C-FD-4; locked by FeatureCatalogTests).
+let private selectFeature (rest: string list) =
+    flagValue "--feature" rest
+    |> Option.bind FeatureCatalog.FeatureDescriptor.tryByAlias
 
-let private isFeature149 (rest: string list) =
-    match flagValue "--feature" rest with
-    | Some value ->
-        value = "149"
-        || value = "feature149"
-        || String.Equals(value, Compositor.feature149Id, StringComparison.OrdinalIgnoreCase)
-    | _ -> false
+let private isFeatureId (id: int) (rest: string list) =
+    selectFeature rest |> Option.exists (fun d -> d.Id = id)
 
-let private isFeature152 (rest: string list) =
-    match flagValue "--feature" rest with
-    | Some value ->
-        value = "152"
-        || value = "feature152"
-        || String.Equals(value, Compositor.feature152Id, StringComparison.OrdinalIgnoreCase)
-    | _ -> false
-
-let private isFeature153 (rest: string list) =
-    match flagValue "--feature" rest with
-    | Some value ->
-        value = "153"
-        || value = "feature153"
-        || String.Equals(value, Compositor.feature153Id, StringComparison.OrdinalIgnoreCase)
-    | _ -> false
-
-let private isFeature154 (rest: string list) =
-    match flagValue "--feature" rest with
-    | Some value ->
-        value = "154"
-        || value = "feature154"
-        || String.Equals(value, Compositor.feature154Id, StringComparison.OrdinalIgnoreCase)
-    | _ -> false
-
-let private isFeature155 (rest: string list) =
-    match flagValue "--feature" rest with
-    | Some value ->
-        value = "155"
-        || value = "feature155"
-        || String.Equals(value, Compositor.feature155Id, StringComparison.OrdinalIgnoreCase)
-    | _ -> false
-
-let private isFeature156 (rest: string list) =
-    match flagValue "--feature" rest with
-    | Some value ->
-        value = "156"
-        || value = "feature156"
-        || String.Equals(value, Compositor.feature156Id, StringComparison.OrdinalIgnoreCase)
-    | _ -> false
-
-let private isFeature157 (rest: string list) =
-    match flagValue "--feature" rest with
-    | Some value ->
-        value = "157"
-        || value = "feature157"
-        || String.Equals(value, Compositor.feature157Id, StringComparison.OrdinalIgnoreCase)
-    | _ -> false
-
-let private isFeature158 (rest: string list) =
-    match flagValue "--feature" rest with
-    | Some value ->
-        value = "158"
-        || value = "feature158"
-        || String.Equals(value, Compositor.feature158Id, StringComparison.OrdinalIgnoreCase)
-    | _ -> false
-
-let private isFeature159 (rest: string list) =
-    match flagValue "--feature" rest with
-    | Some value ->
-        value = "159"
-        || value = "feature159"
-        || value = "159-layer-promotion-keys"
-        || String.Equals(value, Compositor.feature159Id, StringComparison.OrdinalIgnoreCase)
-    | _ -> false
-
-let private isFeature160 (rest: string list) =
-    match flagValue "--feature" rest with
-    | Some value ->
-        value = "160"
-        || value = "feature160"
-        || value = "160-performance-validation-throughput"
-        || String.Equals(value, Compositor.feature160Id, StringComparison.OrdinalIgnoreCase)
-    | _ -> false
-
-let private isFeature161 (rest: string list) =
-    match flagValue "--feature" rest with
-    | Some value ->
-        value = "161"
-        || value = "feature161"
-        || value = "161-host-performance-lane-ledger"
-        || String.Equals(value, Compositor.feature161Id, StringComparison.OrdinalIgnoreCase)
-    | _ -> false
+let private isFeature148 rest = isFeatureId 148 rest
+let private isFeature149 rest = isFeatureId 149 rest
+let private isFeature152 rest = isFeatureId 152 rest
+let private isFeature153 rest = isFeatureId 153 rest
+let private isFeature154 rest = isFeatureId 154 rest
+let private isFeature155 rest = isFeatureId 155 rest
+let private isFeature156 rest = isFeatureId 156 rest
+let private isFeature157 rest = isFeatureId 157 rest
+let private isFeature158 rest = isFeatureId 158 rest
+let private isFeature159 rest = isFeatureId 159 rest
+let private isFeature160 rest = isFeatureId 160 rest
+let private isFeature161 rest = isFeatureId 161 rest
 
 let private attemptCount (rest: string list) =
     match flagValue "--attempt-count" rest with
@@ -2649,8 +2573,8 @@ let private runFeature156ReadinessCmd (rest: string list) =
         File.WriteAllText(unsupportedPath, Compositor.renderFeature156UnsupportedHostReport "not run in this readiness invocation")
 
     File.WriteAllText(Path.Combine(out, "compatibility-ledger.md"), Compositor.renderFeature156CompatibilityLedger ())
-    File.WriteAllText(Path.Combine(out, "package-validation.md"), Compositor.renderFeature156PackageValidation [ "`compositor-readiness --feature 156`: package assembled." ])
-    File.WriteAllText(Path.Combine(out, "regression-validation.md"), Compositor.renderFeature156RegressionValidation [ "`compositor-readiness --feature 156`: package assembled." ])
+    File.WriteAllText(Path.Combine(out, "package-validation.md"), Compositor.renderPackageValidation 156 [ "`compositor-readiness --feature 156`: package assembled." ])
+    File.WriteAllText(Path.Combine(out, "regression-validation.md"), Compositor.renderRegressionValidation 156 [ "`compositor-readiness --feature 156`: package assembled." ])
     File.WriteAllText(Path.Combine(out, "validation-summary.md"), Compositor.renderFeature156ValidationSummary validationSummary)
     printfn "%s" (Path.Combine(out, "validation-summary.md"))
     0
@@ -2761,8 +2685,8 @@ let private runFeature157ReadinessCmd (rest: string list) =
     writeFeature157DamagePackage damageOut summary
     ensureFeature157FsiEvidence out
     File.WriteAllText(Path.Combine(out, "compatibility-ledger.md"), Compositor.renderFeature157CompatibilityLedger ())
-    File.WriteAllText(Path.Combine(out, "package-validation.md"), Compositor.renderFeature157PackageValidation [ "`compositor-readiness --feature 157`: package assembled." ])
-    File.WriteAllText(Path.Combine(out, "regression-validation.md"), Compositor.renderFeature157RegressionValidation [ "`compositor-readiness --feature 157`: package assembled." ])
+    File.WriteAllText(Path.Combine(out, "package-validation.md"), Compositor.renderPackageValidation 157 [ "`compositor-readiness --feature 157`: package assembled." ])
+    File.WriteAllText(Path.Combine(out, "regression-validation.md"), Compositor.renderRegressionValidation 157 [ "`compositor-readiness --feature 157`: package assembled." ])
     File.WriteAllText(Path.Combine(out, "validation-summary.md"), Compositor.renderFeature157ValidationSummary summary)
     printfn "%s" (Path.Combine(out, "validation-summary.md"))
     0
@@ -2896,8 +2820,8 @@ let private runFeature158ReadinessCmd (rest: string list) =
     ensureFeature158FsiEvidence out
     File.WriteAllText(Path.Combine(proofProbeDir, "README.md"), Compositor.renderFeature158ProofProbeReport summary.ProofProbeEvidence)
     File.WriteAllText(Path.Combine(out, "compatibility-ledger.md"), Compositor.renderFeature158CompatibilityLedger ())
-    File.WriteAllText(Path.Combine(out, "package-validation.md"), Compositor.renderFeature158PackageValidation [ "`compositor-readiness --feature 158`: package assembled." ])
-    File.WriteAllText(Path.Combine(out, "regression-validation.md"), Compositor.renderFeature158RegressionValidation [ "`compositor-readiness --feature 158`: package assembled." ])
+    File.WriteAllText(Path.Combine(out, "package-validation.md"), Compositor.renderPackageValidation 158 [ "`compositor-readiness --feature 158`: package assembled." ])
+    File.WriteAllText(Path.Combine(out, "regression-validation.md"), Compositor.renderRegressionValidation 158 [ "`compositor-readiness --feature 158`: package assembled." ])
     File.WriteAllText(Path.Combine(out, "validation-summary.md"), Compositor.renderFeature158ValidationSummary summary)
 
     if not (File.Exists(Path.Combine(unsupportedDir, "README.md"))) then
@@ -3202,8 +3126,8 @@ let private runFeature159ReadinessCmd (rest: string list) =
     File.WriteAllText(Path.Combine(countersDir, "README.md"), Compositor.renderFeature159CounterReport summary)
     File.WriteAllText(Path.Combine(countersDir, "promotion.md"), Compositor.renderFeature159CounterReport summary)
     File.WriteAllText(Path.Combine(out, "compatibility-ledger.md"), Compositor.renderFeature159CompatibilityLedger ())
-    File.WriteAllText(Path.Combine(out, "package-validation.md"), Compositor.renderFeature159PackageValidation [ "`compositor-readiness --feature 159`: package assembled." ])
-    File.WriteAllText(Path.Combine(out, "regression-validation.md"), Compositor.renderFeature159RegressionValidation [ "`compositor-readiness --feature 159`: package assembled." ])
+    File.WriteAllText(Path.Combine(out, "package-validation.md"), Compositor.renderPackageValidation 159 [ "`compositor-readiness --feature 159`: package assembled." ])
+    File.WriteAllText(Path.Combine(out, "regression-validation.md"), Compositor.renderRegressionValidation 159 [ "`compositor-readiness --feature 159`: package assembled." ])
     File.WriteAllText(Path.Combine(out, "validation-summary.md"), Compositor.renderFeature159ValidationSummary summary)
     printfn "%s" (Path.Combine(out, "validation-summary.md"))
     0
@@ -3583,13 +3507,13 @@ let private runFeature160ReadinessCmd (rest: string list) =
     File.WriteAllText(Path.Combine(out, "compatibility-ledger.md"), Compositor.renderFeature160CompatibilityLedger ())
     File.WriteAllText(
         Path.Combine(out, "package-validation.md"),
-        Compositor.renderFeature160PackageValidation
+        Compositor.renderPackageValidation 160
             [ "`compositor-readiness --feature 160`: package assembled."
               "`Feature160ThroughputReadiness`: helper surface available."
               "`compositor-performance --feature 160 --lane focused`: focused lane available." ])
     File.WriteAllText(
         Path.Combine(out, "regression-validation.md"),
-        Compositor.renderFeature160RegressionValidation
+        Compositor.renderRegressionValidation 160
             [ "`compositor-readiness --feature 160`: package assembled."
               "Feature 155, 157, 158, and 159 preservation evidence remains linked."
               "Unsupported-host validation records zero accepted same-profile performance artifacts." ])
@@ -3756,13 +3680,13 @@ let runFeature161ReadinessCmd (rest: string list) =
     File.WriteAllText(Path.Combine(out, "compatibility-ledger.md"), Compositor.renderFeature161CompatibilityLedger ())
     File.WriteAllText(
         Path.Combine(out, "package-validation.md"),
-        Compositor.renderFeature161PackageValidation
+        Compositor.renderPackageValidation 161
             [ "`compositor-readiness --feature 161`: package assembled."
               "`Feature161HostLaneReadiness`: helper surface available."
               "`compositor-performance --feature 161 --lane host-ledger`: host lane ledger available." ])
     File.WriteAllText(
         Path.Combine(out, "regression-validation.md"),
-        Compositor.renderFeature161RegressionValidation
+        Compositor.renderRegressionValidation 161
             [ "`compositor-readiness --feature 161`: package assembled."
               "Feature 155, 157, 158, 159, and 160 preservation evidence remains linked."
               "Unsupported-host validation records zero accepted lane-scoped performance artifacts." ])

@@ -3278,28 +3278,124 @@ module Compositor =
               "- Synthetic evidence is rejection-path coverage only."
               "" ]
 
-    let renderFeature153PackageValidation () =
+    // Feature 181: shared package/regression validation skeleton. `renderValidationDoc` owns the
+    // invariant `# Feature N <kind>` / `Status:` frame; the divergent section headers and bullets are
+    // passed as `body` data. The per-feature wrappers (153-155) and the catalog-collapsed
+    // `renderPackageValidation`/`renderRegressionValidation` (156-161) emit byte-identical output to the
+    // hand-written bodies they replace.
+    let private renderValidationDoc (featureNum: int) (kind: string) (status: string) (body: string list) =
         String.concat
             "\n"
-            [ "# Feature 153 Package Validation"
-              ""
-              "Status: `pending-local-validation`"
-              ""
-              "- SkiaViewer surface baseline is refreshed for selected proof-set ids, host readiness facts, and viewer proof support."
+            ([ $"# Feature {featureNum} {kind}"
+               ""
+               $"Status: `{status}`"
+               "" ]
+             @ body
+             @ [ "" ])
+
+    let private validationRunsBlock (validationLines: string list) =
+        if List.isEmpty validationLines then
+            "- pending local validation"
+        else
+            validationLines |> List.map (sprintf "- %s") |> String.concat "\n"
+
+    let renderPackageValidation (featureNum: int) (validationLines: string list) =
+        let checksHeader, surfaceHeader, surfaceBullets =
+            match featureNum with
+            | 156 ->
+                "## Surface and Package Checks", "## Public Surface",
+                [ "- SkiaViewer and Testing surface baselines are refreshed when `.fsi` public timing helpers change."
+                  "- Package FSI transcript coverage is recorded under `readiness/fsi/`." ]
+            | 157 ->
+                "## Validation Runs", "## Public Surface",
+                [ "- SkiaViewer, Testing, and harness signatures include the Feature 157 damage-readiness surface."
+                  "- FSI authoring evidence is recorded under `fsi/`." ]
+            | 158 ->
+                "## Validation Runs", "## Package Surface",
+                [ "- No Testing or SkiaViewer package-visible helper surface was added for Feature 158."
+                  "- Feature 158 FSI evidence exercises observable harness command authoring and no-new-helper compatibility notes."
+                  "- Package identity remains unchanged." ]
+            | 159 ->
+                "## Validation Runs", "## Package Surface",
+                [ "- Controls and SkiaViewer Feature 159 implementation details remain internal."
+                  "- Testing package exposes `Feature159Readiness` for generated-product/package validation."
+                  "- FSI transcripts cover content/placement identity, promotion command authoring, and readiness helper authoring." ]
+            | 160 ->
+                "## Validation Runs", "## Package Surface",
+                [ "- Rendering.Harness exposes Feature 160 focused-lane and readiness signatures."
+                  "- Testing package exposes `Feature160ThroughputReadiness` for package validation."
+                  "- FSI transcripts cover compositor performance authoring and throughput readiness helper authoring." ]
+            | 161 ->
+                "## Validation Runs", "## Package Surface",
+                [ "- Rendering.Harness exposes Feature 161 host-lane ledger signatures, command, and readiness rendering."
+                  "- Testing package exposes `Feature161HostLaneReadiness` for package validation."
+                  "- FSI transcripts cover compositor host-lane authoring and host-lane readiness helper authoring."
+                  "- FSI compositor transcript: `compositor-host-lane-authoring.fsx`."
+                  "- FSI helper transcript: `feature161-host-lane-readiness-authoring.fsx`." ]
+            | other -> failwithf "renderPackageValidation: feature %d is not catalog-collapsed" other
+
+        renderValidationDoc featureNum "Package Validation" "accepted-with-recorded-limitations"
+            ([ checksHeader; ""; validationRunsBlock validationLines; ""; surfaceHeader; "" ] @ surfaceBullets)
+
+    let renderRegressionValidation (featureNum: int) (validationLines: string list) =
+        let sectionHeader, bullets =
+            match featureNum with
+            | 156 ->
+                "## Safety Boundary",
+                [ "- Feature 155 correctness acceptance remains the P7 safety baseline."
+                  "- Unsupported-host validation remains fail-closed with zero accepted performance artifacts."
+                  "- Shipped P7 performance claim remains `performance-not-accepted`." ]
+            | 157 ->
+                "## Preservation",
+                [ "- Feature 155 proof and parity acceptance remains the correctness gate."
+                  "- Feature 156 timing remains context-only and `performance-not-accepted`."
+                  "- Unsupported-host validation remains fail-closed with zero accepted partial-redraw artifacts." ]
+            | 158 ->
+                "## Preservation",
+                [ "- Feature 155 proof and parity acceptance remains the correctness gate."
+                  "- Feature 156 timing remains context-only and available for comparison."
+                  "- Feature 157 damage-scissored no-clear readiness remains accepted for the current stable profile."
+                  "- Unsupported-host validation remains fail-closed with zero accepted proof artifacts and zero accepted performance artifacts."
+                  "- Shipped P7 performance claim remains `performance-not-accepted`." ]
+            | 159 ->
+                "## Preservation",
+                [ "- Feature 155 proof capture remains the correctness gate."
+                  "- Feature 157 no-clear damage readiness remains preserved."
+                  "- Feature 158 readback-free timing separation remains preserved."
+                  "- Unsupported-host output remains fail-closed with zero accepted Feature 159 reuse or promotion artifacts."
+                  "- Shipped P7 performance claim remains `performance-not-accepted`." ]
+            | 160 ->
+                "## Preservation",
+                [ "- Feature 155 proof correctness remains preserved."
+                  "- Feature 157 no-clear damage readiness remains preserved."
+                  "- Feature 158 readback-free timing separation and required scenario set remain preserved."
+                  "- Feature 159 reuse/promotion readiness remains a separate performance-claim gate."
+                  "- Unsupported-host output remains fail-closed with zero accepted same-profile performance artifacts."
+                  "- Public-surface drift is recorded in Feature 160 FSI evidence." ]
+            | 161 ->
+                "## Preservation",
+                [ "- Feature 155 proof correctness remains preserved."
+                  "- Feature 157 no-clear damage-scissored readiness remains preserved."
+                  "- Feature 158 readback-free timing separation remains preserved."
+                  "- Feature 159 reuse/promotion evidence remains a separate performance-claim gate."
+                  "- Feature 160 throughput evidence remains accepted only within its focused validation boundary."
+                  "- Full-redraw fallback and unsupported-host fail-closed behavior remain unchanged."
+                  "- Public-surface drift is recorded in Feature 161 FSI evidence." ]
+            | other -> failwithf "renderRegressionValidation: feature %d is not catalog-collapsed" other
+
+        renderValidationDoc featureNum "Regression Validation" "accepted-with-recorded-limitations"
+            ([ "## Validation Runs"; ""; validationRunsBlock validationLines; ""; sectionHeader; "" ] @ bullets)
+
+    let renderFeature153PackageValidation () =
+        renderValidationDoc 153 "Package Validation" "pending-local-validation"
+            [ "- SkiaViewer surface baseline is refreshed for selected proof-set ids, host readiness facts, and viewer proof support."
               "- Testing surface baseline remains compatible with existing `CompositorReadiness` helpers."
-              "- Package FSI transcript coverage is recorded in `fsi/compositor-proof-interpreter-authoring.fsx`."
-              "" ]
+              "- Package FSI transcript coverage is recorded in `fsi/compositor-proof-interpreter-authoring.fsx`." ]
 
     let renderFeature153RegressionValidation () =
-        String.concat
-            "\n"
-            [ "# Feature 153 Regression Validation"
-              ""
-              "Status: `pending-local-validation`"
-              ""
-              "- Focused Feature153 tests must pass for SkiaViewer, Rendering.Harness, Testing, and Package suites."
-              "- Broad solution validation must preserve Feature 152 proof-set behavior and adjacent compositor readiness checks."
-              "" ]
+        renderValidationDoc 153 "Regression Validation" "pending-local-validation"
+            [ "- Focused Feature153 tests must pass for SkiaViewer, Rendering.Harness, Testing, and Package suites."
+              "- Broad solution validation must preserve Feature 152 proof-set behavior and adjacent compositor readiness checks." ]
 
     let renderFeature154LiveProof (proof: PresentProof) =
         let renderer = proof.HostProfile.Renderer |> Option.defaultValue "unknown"
@@ -3522,28 +3618,16 @@ module Compositor =
               "" ]
 
     let renderFeature154PackageValidation () =
-        String.concat
-            "\n"
-            [ "# Feature 154 Package Validation"
-              ""
-              "Status: `pending-local-validation`"
-              ""
-              "- SkiaViewer surface baseline remains compatible with Feature 153 proof-set vocabulary."
+        renderValidationDoc 154 "Package Validation" "pending-local-validation"
+            [ "- SkiaViewer surface baseline remains compatible with Feature 153 proof-set vocabulary."
               "- Testing surface baseline remains compatible with existing `CompositorReadiness` helpers."
               "- Controls and Controls.Elmish surface baselines remain compatible; no new public diagnostic surface is required."
-              "- Package FSI transcript coverage is recorded in `fsi/compositor-proof-acceptance-authoring.fsx` and `fsi/compositor-readiness-authoring.fsx`."
-              "" ]
+              "- Package FSI transcript coverage is recorded in `fsi/compositor-proof-acceptance-authoring.fsx` and `fsi/compositor-readiness-authoring.fsx`." ]
 
     let renderFeature154RegressionValidation () =
-        String.concat
-            "\n"
-            [ "# Feature 154 Regression Validation"
-              ""
-              "Status: `pending-local-validation`"
-              ""
-              "- Focused Feature154 tests must pass for SkiaViewer, Rendering.Harness, Controls, Elmish, Testing, and Package suites."
-              "- Broad solution validation must preserve Feature 153 proof interpreter behavior and adjacent layout, render-anywhere, text-shaping, overlay, package, and public-surface checks."
-              "" ]
+        renderValidationDoc 154 "Regression Validation" "pending-local-validation"
+            [ "- Focused Feature154 tests must pass for SkiaViewer, Rendering.Harness, Controls, Elmish, Testing, and Package suites."
+              "- Broad solution validation must preserve Feature 153 proof interpreter behavior and adjacent layout, render-anywhere, text-shaping, overlay, package, and public-surface checks." ]
 
     let renderFeature155LiveProof (proof: PresentProof) =
         let renderer = proof.HostProfile.Renderer |> Option.defaultValue "unknown"
@@ -3795,30 +3879,18 @@ module Compositor =
               "" ]
 
     let renderFeature155PackageValidation () =
-        String.concat
-            "\n"
-            [ "# Feature 155 Package Validation"
-              ""
-              "Status: `accepted`"
-              ""
-              "- Package compatibility validation passes for Feature155 readiness artifacts."
+        renderValidationDoc 155 "Package Validation" "accepted"
+            [ "- Package compatibility validation passes for Feature155 readiness artifacts."
               "- SkiaViewer surface baseline remains compatible with Feature 154 proof-set vocabulary."
               "- Rendering.Harness routes Feature155 proof, parity, timing, and readiness evidence without changing package identities."
               "- No public package identity change is required for Feature 155."
-              "- Package FSI transcript coverage is recorded in `fsi/native-proof-capture-authoring.fsx`."
-              "" ]
+              "- Package FSI transcript coverage is recorded in `fsi/native-proof-capture-authoring.fsx`." ]
 
     let renderFeature155RegressionValidation () =
-        String.concat
-            "\n"
-            [ "# Feature 155 Regression Validation"
-              ""
-              "Status: `accepted`"
-              ""
-              "- Focused Feature155 tests pass for SkiaViewer, Rendering.Harness, and Package suites."
+        renderValidationDoc 155 "Regression Validation" "accepted"
+            [ "- Focused Feature155 tests pass for SkiaViewer, Rendering.Harness, and Package suites."
               "- Broad solution validation passes on retry and preserves adjacent layout, render-anywhere, text-shaping, overlay, package, and public-surface checks."
-              "- Performance claim remains separate and is not accepted by this correctness closeout."
-              "" ]
+              "- Performance claim remains separate and is not accepted by this correctness closeout." ]
 
     let private feature156Reasons report =
         match report.RejectionReasons with
@@ -3969,41 +4041,6 @@ module Compositor =
               ""
               "- Consumers should treat `noisy`, `non-beneficial`, `incomplete`, `rejected`, `limited`, and `environment-limited` as non-accepting timing states."
               "- Positive Feature 156 timing is scoped to `probe-08a47c01` and is not a universal host performance claim."
-              "" ]
-
-    let renderFeature156PackageValidation validationLines =
-        String.concat
-            "\n"
-            [ "# Feature 156 Package Validation"
-              ""
-              "Status: `accepted-with-recorded-limitations`"
-              ""
-              "## Surface and Package Checks"
-              ""
-              if List.isEmpty validationLines then "- pending local validation" else validationLines |> List.map (sprintf "- %s") |> String.concat "\n"
-              ""
-              "## Public Surface"
-              ""
-              "- SkiaViewer and Testing surface baselines are refreshed when `.fsi` public timing helpers change."
-              "- Package FSI transcript coverage is recorded under `readiness/fsi/`."
-              "" ]
-
-    let renderFeature156RegressionValidation validationLines =
-        String.concat
-            "\n"
-            [ "# Feature 156 Regression Validation"
-              ""
-              "Status: `accepted-with-recorded-limitations`"
-              ""
-              "## Validation Runs"
-              ""
-              if List.isEmpty validationLines then "- pending local validation" else validationLines |> List.map (sprintf "- %s") |> String.concat "\n"
-              ""
-              "## Safety Boundary"
-              ""
-              "- Feature 155 correctness acceptance remains the P7 safety baseline."
-              "- Unsupported-host validation remains fail-closed with zero accepted performance artifacts."
-              "- Shipped P7 performance claim remains `performance-not-accepted`."
               "" ]
 
     let renderFeature156ValidationSummary (summary: Feature156TimingSummary) =
@@ -4237,41 +4274,6 @@ module Compositor =
               "- Existing Feature 155 proof-set and Feature 156 timing contracts remain source-compatible."
               "- Full redraw remains the default fallback unless all Feature 157 gates pass."
               "- The shipped P7 performance claim remains `performance-not-accepted`."
-              "" ]
-
-    let renderFeature157PackageValidation validationLines =
-        String.concat
-            "\n"
-            [ "# Feature 157 Package Validation"
-              ""
-              "Status: `accepted-with-recorded-limitations`"
-              ""
-              "## Validation Runs"
-              ""
-              if List.isEmpty validationLines then "- pending local validation" else validationLines |> List.map (sprintf "- %s") |> String.concat "\n"
-              ""
-              "## Public Surface"
-              ""
-              "- SkiaViewer, Testing, and harness signatures include the Feature 157 damage-readiness surface."
-              "- FSI authoring evidence is recorded under `fsi/`."
-              "" ]
-
-    let renderFeature157RegressionValidation validationLines =
-        String.concat
-            "\n"
-            [ "# Feature 157 Regression Validation"
-              ""
-              "Status: `accepted-with-recorded-limitations`"
-              ""
-              "## Validation Runs"
-              ""
-              if List.isEmpty validationLines then "- pending local validation" else validationLines |> List.map (sprintf "- %s") |> String.concat "\n"
-              ""
-              "## Preservation"
-              ""
-              "- Feature 155 proof and parity acceptance remains the correctness gate."
-              "- Feature 156 timing remains context-only and `performance-not-accepted`."
-              "- Unsupported-host validation remains fail-closed with zero accepted partial-redraw artifacts."
               "" ]
 
     let renderFeature157ValidationSummary (summary: Feature157DamageSummary) =
@@ -4568,44 +4570,6 @@ module Compositor =
               "- Harness command output shape is additive and documented through readiness artifacts."
               "" ]
 
-    let renderFeature158PackageValidation validationLines =
-        String.concat
-            "\n"
-            [ "# Feature 158 Package Validation"
-              ""
-              "Status: `accepted-with-recorded-limitations`"
-              ""
-              "## Validation Runs"
-              ""
-              if List.isEmpty validationLines then "- pending local validation" else validationLines |> List.map (sprintf "- %s") |> String.concat "\n"
-              ""
-              "## Package Surface"
-              ""
-              "- No Testing or SkiaViewer package-visible helper surface was added for Feature 158."
-              "- Feature 158 FSI evidence exercises observable harness command authoring and no-new-helper compatibility notes."
-              "- Package identity remains unchanged."
-              "" ]
-
-    let renderFeature158RegressionValidation validationLines =
-        String.concat
-            "\n"
-            [ "# Feature 158 Regression Validation"
-              ""
-              "Status: `accepted-with-recorded-limitations`"
-              ""
-              "## Validation Runs"
-              ""
-              if List.isEmpty validationLines then "- pending local validation" else validationLines |> List.map (sprintf "- %s") |> String.concat "\n"
-              ""
-              "## Preservation"
-              ""
-              "- Feature 155 proof and parity acceptance remains the correctness gate."
-              "- Feature 156 timing remains context-only and available for comparison."
-              "- Feature 157 damage-scissored no-clear readiness remains accepted for the current stable profile."
-              "- Unsupported-host validation remains fail-closed with zero accepted proof artifacts and zero accepted performance artifacts."
-              "- Shipped P7 performance claim remains `performance-not-accepted`."
-              "" ]
-
     let renderFeature158ValidationSummary (summary: Feature158TimingSummary) =
         let status = feature158OverallStatus summary
         String.concat
@@ -4817,44 +4781,6 @@ module Compositor =
               "- `readiness/fsi/FS.GG.UI.Controls.txt`"
               "- `readiness/fsi/FS.GG.UI.SkiaViewer.txt`"
               "- `readiness/fsi/FS.GG.UI.Testing.txt`"
-              "" ]
-
-    let renderFeature159PackageValidation validationLines =
-        String.concat
-            "\n"
-            [ "# Feature 159 Package Validation"
-              ""
-              "Status: `accepted-with-recorded-limitations`"
-              ""
-              "## Validation Runs"
-              ""
-              if List.isEmpty validationLines then "- pending local validation" else validationLines |> List.map (sprintf "- %s") |> String.concat "\n"
-              ""
-              "## Package Surface"
-              ""
-              "- Controls and SkiaViewer Feature 159 implementation details remain internal."
-              "- Testing package exposes `Feature159Readiness` for generated-product/package validation."
-              "- FSI transcripts cover content/placement identity, promotion command authoring, and readiness helper authoring."
-              "" ]
-
-    let renderFeature159RegressionValidation validationLines =
-        String.concat
-            "\n"
-            [ "# Feature 159 Regression Validation"
-              ""
-              "Status: `accepted-with-recorded-limitations`"
-              ""
-              "## Validation Runs"
-              ""
-              if List.isEmpty validationLines then "- pending local validation" else validationLines |> List.map (sprintf "- %s") |> String.concat "\n"
-              ""
-              "## Preservation"
-              ""
-              "- Feature 155 proof capture remains the correctness gate."
-              "- Feature 157 no-clear damage readiness remains preserved."
-              "- Feature 158 readback-free timing separation remains preserved."
-              "- Unsupported-host output remains fail-closed with zero accepted Feature 159 reuse or promotion artifacts."
-              "- Shipped P7 performance claim remains `performance-not-accepted`."
               "" ]
 
     let renderFeature159ValidationSummary (summary: Feature159Summary) =
@@ -5131,45 +5057,6 @@ module Compositor =
               ""
               "- `readiness/fsi/FS.GG.UI.Testing.txt`"
               "- `readiness/fsi/Rendering.Harness.Compositor.txt`"
-              "" ]
-
-    let renderFeature160PackageValidation validationLines =
-        String.concat
-            "\n"
-            [ "# Feature 160 Package Validation"
-              ""
-              "Status: `accepted-with-recorded-limitations`"
-              ""
-              "## Validation Runs"
-              ""
-              if List.isEmpty validationLines then "- pending local validation" else validationLines |> List.map (sprintf "- %s") |> String.concat "\n"
-              ""
-              "## Package Surface"
-              ""
-              "- Rendering.Harness exposes Feature 160 focused-lane and readiness signatures."
-              "- Testing package exposes `Feature160ThroughputReadiness` for package validation."
-              "- FSI transcripts cover compositor performance authoring and throughput readiness helper authoring."
-              "" ]
-
-    let renderFeature160RegressionValidation validationLines =
-        String.concat
-            "\n"
-            [ "# Feature 160 Regression Validation"
-              ""
-              "Status: `accepted-with-recorded-limitations`"
-              ""
-              "## Validation Runs"
-              ""
-              if List.isEmpty validationLines then "- pending local validation" else validationLines |> List.map (sprintf "- %s") |> String.concat "\n"
-              ""
-              "## Preservation"
-              ""
-              "- Feature 155 proof correctness remains preserved."
-              "- Feature 157 no-clear damage readiness remains preserved."
-              "- Feature 158 readback-free timing separation and required scenario set remain preserved."
-              "- Feature 159 reuse/promotion readiness remains a separate performance-claim gate."
-              "- Unsupported-host output remains fail-closed with zero accepted same-profile performance artifacts."
-              "- Public-surface drift is recorded in Feature 160 FSI evidence."
               "" ]
 
     let renderFeature160FullValidationRecord record =
@@ -5535,48 +5422,6 @@ module Compositor =
               "- `readiness/fsi/FS.GG.UI.Testing.txt`"
               "- `readiness/fsi/Rendering.Harness.Compositor.txt`"
               "- `readiness/fsi/Rendering.Harness.Perf.txt`"
-              "" ]
-
-    let renderFeature161PackageValidation validationLines =
-        String.concat
-            "\n"
-            [ "# Feature 161 Package Validation"
-              ""
-              "Status: `accepted-with-recorded-limitations`"
-              ""
-              "## Validation Runs"
-              ""
-              if List.isEmpty validationLines then "- pending local validation" else validationLines |> List.map (sprintf "- %s") |> String.concat "\n"
-              ""
-              "## Package Surface"
-              ""
-              "- Rendering.Harness exposes Feature 161 host-lane ledger signatures, command, and readiness rendering."
-              "- Testing package exposes `Feature161HostLaneReadiness` for package validation."
-              "- FSI transcripts cover compositor host-lane authoring and host-lane readiness helper authoring."
-              "- FSI compositor transcript: `compositor-host-lane-authoring.fsx`."
-              "- FSI helper transcript: `feature161-host-lane-readiness-authoring.fsx`."
-              "" ]
-
-    let renderFeature161RegressionValidation validationLines =
-        String.concat
-            "\n"
-            [ "# Feature 161 Regression Validation"
-              ""
-              "Status: `accepted-with-recorded-limitations`"
-              ""
-              "## Validation Runs"
-              ""
-              if List.isEmpty validationLines then "- pending local validation" else validationLines |> List.map (sprintf "- %s") |> String.concat "\n"
-              ""
-              "## Preservation"
-              ""
-              "- Feature 155 proof correctness remains preserved."
-              "- Feature 157 no-clear damage-scissored readiness remains preserved."
-              "- Feature 158 readback-free timing separation remains preserved."
-              "- Feature 159 reuse/promotion evidence remains a separate performance-claim gate."
-              "- Feature 160 throughput evidence remains accepted only within its focused validation boundary."
-              "- Full-redraw fallback and unsupported-host fail-closed behavior remain unchanged."
-              "- Public-surface drift is recorded in Feature 161 FSI evidence."
               "" ]
 
     let renderFeature161FullValidationRecord status =
