@@ -5,13 +5,23 @@
     <IsPackable>true</IsPackable>
     <PackageId>FS.GG.UI.Testing</PackageId>
     <AssemblyName>FS.GG.UI.Testing</AssemblyName>
-    <Version>0.1.36-preview.1</Version>
+    <Version>0.1.37-preview.1</Version>
     <Title>FS.GG.UI.Testing</Title>
     <Description>Generated product and package validation helpers for FS.GG.UI V3 products.</Description>
     <PackageTags>fsharp;testing;governance;template</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="TestingTypes.fsi" />
+    <Compile Include="TestingTypes.fs" />
+    <Compile Include="TestingVisual.fsi" />
+    <Compile Include="TestingVisual.fs" />
+    <Compile Include="TestingRetainedInspection.fsi" />
+    <Compile Include="TestingRetainedInspection.fs" />
+    <Compile Include="TestingEvidence.fsi" />
+    <Compile Include="TestingEvidence.fs" />
+    <Compile Include="TestingCompositor.fsi" />
+    <Compile Include="TestingCompositor.fs" />
     <Compile Include="Testing.fsi" />
     <Compile Include="Testing.fs" />
   </ItemGroup>

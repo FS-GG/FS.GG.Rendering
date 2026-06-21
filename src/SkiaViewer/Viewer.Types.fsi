@@ -1,0 +1,804 @@
+namespace FS.GG.UI.SkiaViewer
+
+open System
+open FS.GG.UI.KeyboardInput
+open FS.GG.UI.Scene
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerOptions =
+    { Title: string
+      InitialSize: Size
+      /// Live present mechanism. Defaults to `ViewerPresentMode.DirectToSwapchain` (feature 119) — the
+      /// readback-free direct present on the OpenGL backend (the scene is drawn straight onto the default
+      /// framebuffer and presented by the toolkit buffer swap, no per-frame GPU→CPU readback). Set to
+      /// `ViewerPresentMode.OffscreenReadback` only for evidence/screenshot capture that needs a readback.
+      /// (Feature 120, FR-016: corrects stale feature-118 text that named `OffscreenReadback` as the
+      /// default; the shipped default lives at `Viewer.defaultConfiguration`, which uses
+      /// `DirectToSwapchain` — the docstring is brought into agreement with it.)
+      PresentMode: ViewerPresentMode
+      /// Optional consumer frame-rate cap for the live persistent interactive loop (feature 121,
+      /// FR-001/FR-002). `None` keeps the default 60 FPS — the exact pre-feature-121 behaviour. `Some n`
+      /// (n > 0) bounds BOTH the update and the present cadence of the native event loop, so a host
+      /// without a blocking compositor does not free-run the present loop; `Some n` with n <= 0 is
+      /// rejected at startup validation. Ignored by the offscreen/evidence (`runBounded`) path, which
+      /// does not use the persistent event loop.
+      FrameRateCap: int option }
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerLaunchMode =
+    | InteractiveWindow
+    | PersistentEvidence
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerCloseReason =
+    | UserClose
+    | AppRequestedClose
+    | EvidenceRequestedClose
+    | FrameworkRequestedClose
+    | HostSystemClose
+    | TimeoutClose
+    | FailureDrivenClose
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerObservedValue =
+    | Observed of bool
+    | Unsupported
+    | Unavailable
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerWindowResizePolicy =
+    | Resizable
+    | FixedSize
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerWindowMaximizePolicy =
+    | Maximizable
+    | NotMaximizable
+
+[<RequireQualifiedAccess>]
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerWindowStartupState =
+    | Normal
+    | Maximized
+    | Minimized
+    | Fullscreen
+    /// Borderless coverage of the monitor work area (no title bar / resize chrome,
+    /// no exclusive-mode resolution change). Distinct from exclusive `Fullscreen`.
+    | WindowedFullscreen
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerWindowPosition =
+    | Centered
+    | Coordinates of x: int * y: int
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerBackendPreference =
+    | DefaultBackend
+    | Vulkan
+    | OpenGL
+    | Software
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerWindowOptionStatus =
+    | Honored
+    | Degraded
+    | UnsupportedOption
+    | FailedOption
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerWindowBehaviorRequest =
+    { ResizePolicy: ViewerWindowResizePolicy
+      MaximizePolicy: ViewerWindowMaximizePolicy
+      StartupState: ViewerWindowStartupState
+      StartupPosition: ViewerWindowPosition option
+      BackendPreference: ViewerBackendPreference option }
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerWindowOptionResult =
+    { Option: string
+      Requested: string
+      Observed: string option
+      Status: ViewerWindowOptionStatus
+      Message: string }
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerWindowStateDiagnostic =
+    { WindowInitialized: bool
+      NativeHandle: ViewerObservedValue
+      Visible: ViewerObservedValue
+      Focusable: ViewerObservedValue
+      Focused: ViewerObservedValue
+      Minimized: ViewerObservedValue
+      Maximized: ViewerObservedValue
+      ClientSize: string option
+      RenderableSurfaceAvailable: ViewerObservedValue
+      Backend: string option
+      InputDevicesAvailable: ViewerObservedValue
+      FailureClass: string option
+      Message: string }
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerVisualEvidenceKind =
+    | Image
+    | PixelReadback
+    | MetadataHash
+    | UnsupportedHost
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerVisualEvidenceArtifact =
+    { Kind: ViewerVisualEvidenceKind
+      Path: string option
+      ImageDecodable: bool option
+      ProvesSceneRendering: bool
+      ProvesDesktopVisibility: bool
+      Message: string }
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerFailureClass =
+    | EnvironmentSession
+    | WindowVisibility
+    | WindowOptions
+    | VisualEvidence
+    | PackageVerification
+    | VerificationDepthFailure
+    | AppLifecycle
+    | ProductDefectFailure
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerInputDispatchStatus =
+    | Verified
+    | NotVerified
+    | NotRequired
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerDiagnosticLevel =
+    | Error
+    | Warning
+    | Info
+    | Debug
+    | Trace
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerDiagnosticCategory =
+    | Startup
+    | EnvironmentSession
+    | Input
+    | Frame
+    | Renderer
+    | OpenGl
+    | Skia
+    | Framebuffer
+    | Scene
+    | Screenshot
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerRunBlockedStage =
+    | DesktopPrerequisite
+    | ProcessLaunch
+    | WindowCreation
+    | FirstFrameRender
+    | Observation
+    | Capture
+    | InputVerification
+    | ControlledExit
+    | ArtifactWrite
+    | Window
+    | Surface
+    | Renderer
+    | GlContext
+    | Scene
+    | Readback
+    | App
+    | Timeout
+    | Unknown
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerRunFailureClassification =
+    | UnsupportedEnvironment
+    | PackageResolution
+    | VerificationDepth
+    | AppLifecycle
+    | ProductDefect
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerDiagnosticEvent =
+    { Level: ViewerDiagnosticLevel
+      Category: ViewerDiagnosticCategory
+      Message: string
+      FrameIndex: int option
+      Stage: ViewerRunBlockedStage option
+      Elapsed: TimeSpan option }
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerDiagnosticsOptions =
+    { MinimumLevel: ViewerDiagnosticLevel
+      Categories: Set<ViewerDiagnosticCategory>
+      FrameLogLimit: int option
+      Sink: (ViewerDiagnosticEvent -> unit) option
+      Verbose: bool }
+
+[<RequireQualifiedAccess>]
+/// Stable input-kind tokens used by responsiveness latency records.
+type ViewerResponsivenessInputKind =
+    | PointerMove
+    | PointerDiscrete
+    | KeyDown
+    | KeyUp
+    | Wheel
+    | Resize
+    | Tick
+    | Lifecycle
+
+[<RequireQualifiedAccess>]
+/// Stable visible-response classification for one input latency record.
+type ViewerResponsivenessVisibleResponse =
+    | PresentedFrame
+    | NoVisibleResponse
+    | Failed
+    | EnvironmentLimited
+    | NotRun
+
+[<RequireQualifiedAccess>]
+/// Stable environment/timing status for responsiveness evidence.
+type ViewerResponsivenessEnvironmentStatus =
+    | Measured
+    | MissingBoundary
+    | LowPrecisionTimestamp
+    | NonMonotonicTimestamp
+    | NoVisibleSurface
+    | HeadlessSubstitute
+    | WriteFailed
+    | Failed
+
+[<RequireQualifiedAccess>]
+/// Stable run-level readiness token for responsiveness summaries.
+type ViewerResponsivenessReadiness =
+    | Accepted
+    | Rejected
+    | Blocked
+    | Incomplete
+    | EnvironmentLimited
+    | Failed
+
+/// Per-phase timing for an input-to-visible-response record.
+type ViewerResponsivenessPhaseTiming =
+    { ReceiptDuration: TimeSpan option
+      QueueDelay: TimeSpan option
+      RoutingDuration: TimeSpan option
+      UpdateDuration: TimeSpan option
+      ViewDuration: TimeSpan option
+      RetainedStepDuration: TimeSpan option
+      LayoutDuration: TimeSpan option
+      TextDuration: TimeSpan option
+      PaintDuration: TimeSpan option
+      PresentDuration: TimeSpan option
+      TotalInputToVisibleDuration: TimeSpan option }
+
+/// Dirty-region summary associated with a latency record.
+type ViewerResponsivenessDirtyRegion =
+    { DirtyRectCount: int option
+      DirtyArea: int option
+      RepaintedNodeCount: int option
+      Status: ViewerResponsivenessEnvironmentStatus }
+
+/// Machine-readable latency record for one processed input.
+type ViewerLatencyRecord =
+    { RecordId: string
+      RunId: string
+      InputSequenceId: int64
+      InputKind: ViewerResponsivenessInputKind
+      InputName: string option
+      Page: string option
+      ControlGroup: string option
+      ReceiptTimestamp: DateTimeOffset
+      QueueDepthAtReceipt: int
+      QueueDepthAtDrain: int
+      CoalescedMovementCount: int
+      ProductMessageCount: int
+      ProductStateChanged: bool
+      RuntimeStateChanged: bool
+      VisibleResponse: ViewerResponsivenessVisibleResponse
+      PresentedFrameId: int64 option
+      EnvironmentStatus: ViewerResponsivenessEnvironmentStatus
+      PhaseTiming: ViewerResponsivenessPhaseTiming
+      DirtyRegion: ViewerResponsivenessDirtyRegion option
+      LongFrame: bool
+      Diagnostics: string list }
+
+/// Default latency budgets used by readiness summaries unless a caller overrides them.
+type ViewerResponsivenessBudget =
+    { InputReceiptP95: TimeSpan
+      InputReceiptMax: TimeSpan
+      InputToVisibleP95: TimeSpan
+      InputToVisibleMax: TimeSpan
+      LongFrameThreshold: TimeSpan }
+
+/// First failed budget in a responsiveness summary.
+type ViewerResponsivenessFailedBudget =
+    { Kind: string
+      Scope: string option
+      InputKind: ViewerResponsivenessInputKind option
+      Measured: TimeSpan
+      Budget: TimeSpan }
+
+/// Per-page/input/control rollup in a responsiveness summary.
+type ViewerResponsivenessGroupSummary =
+    { Page: string option
+      InputKind: ViewerResponsivenessInputKind
+      ControlGroup: string option
+      Count: int
+      P50: TimeSpan option
+      P95: TimeSpan option
+      Max: TimeSpan option
+      LongFrameCount: int
+      Readiness: ViewerResponsivenessReadiness }
+
+/// A slow interaction entry in a responsiveness summary.
+type ViewerResponsivenessSlowInteraction =
+    { RecordId: string
+      InputSequenceId: int64
+      TotalInputToVisible: TimeSpan option
+      DominantPhase: string option }
+
+/// Run-level machine-readable and Markdown-friendly responsiveness summary.
+type ViewerResponsivenessSummary =
+    { RunId: string
+      Scope: string
+      OverallReadiness: ViewerResponsivenessReadiness
+      StartedUtc: DateTimeOffset
+      CompletedUtc: DateTimeOffset
+      RecordsPath: string
+      Budgets: ViewerResponsivenessBudget
+      FirstFailedBudget: ViewerResponsivenessFailedBudget option
+      Groups: ViewerResponsivenessGroupSummary list
+      SlowestInteractions: ViewerResponsivenessSlowInteraction list
+      EnvironmentLimitations: string list
+      Diagnostics: string list }
+
+/// Optional responsiveness capture settings for app edges that emit records.
+type ViewerResponsivenessOptions =
+    { Enabled: bool
+      RunId: string option
+      OutputRoot: string option
+      Budget: ViewerResponsivenessBudget
+      Sink: (ViewerLatencyRecord -> unit) option }
+
+/// Priority lane assigned before the frame/update loop drains inputs.
+type ViewerInputPriorityLane =
+    | Discrete
+    | Continuous
+    | Lifecycle
+    | Background
+
+/// Normalized input envelope recorded at receipt time.
+type ViewerInputEnvelope =
+    { SequenceId: int64
+      ReceivedAt: DateTimeOffset
+      InputKind: ViewerResponsivenessInputKind
+      PriorityLane: ViewerInputPriorityLane
+      ReceiptQueueDepth: int
+      Payload: string }
+
+/// Pure queue state for pending viewer input.
+type ViewerInputQueue =
+    { Discrete: ViewerInputEnvelope list
+      LatestContinuousPointer: ViewerInputEnvelope option
+      ContinuousCoalescedCount: int
+      Lifecycle: ViewerInputEnvelope list
+      NextSequenceId: int64
+      MaxObservedDepth: int }
+
+/// One frame/update-loop drain batch.
+type ViewerFrameDrain =
+    { BatchId: int64
+      DiscreteInputs: ViewerInputEnvelope list
+      CoalescedPointer: ViewerInputEnvelope option
+      CoalescedMovementCount: int
+      QueueDepthBeforeDrain: int
+      QueueDepthAfterDrain: int
+      DrainReason: string }
+
+/// Dirty-state decision after a frame drain.
+type ViewerDirtyState =
+    { ProductModelChanged: bool
+      RuntimeStateChanged: bool
+      SizeChanged: bool
+      ThemeChanged: bool
+      SceneDirty: bool
+      DirtyRegionSummary: ViewerResponsivenessDirtyRegion option
+      Reason: string list }
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerEvidenceTarget =
+    | FirstFrame
+    | FrameCount of int
+    | Duration of TimeSpan
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerRunRequest =
+    { Target: ViewerEvidenceTarget
+      Timeout: TimeSpan
+      Diagnostics: ViewerDiagnosticsOptions
+      RendererMode: string
+      EvidencePath: string option }
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerRunEvidence =
+    { FramesRendered: int
+      Elapsed: TimeSpan
+      InitialOutputSize: Size
+      RendererMode: string
+      LastDiagnosticSummary: string option
+      EvidencePath: string option }
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerRunFailure =
+    { BlockedStage: ViewerRunBlockedStage
+      Classification: ViewerRunFailureClassification
+      DiagnosticCategory: ViewerDiagnosticCategory
+      Message: string
+      LastDiagnosticSummary: string option }
+
+[<RequireQualifiedAccess>]
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerTimingPath =
+    | FullRedraw
+    | DamageScoped
+
+[<RequireQualifiedAccess>]
+/// Feature 157: public decision vocabulary for no-clear damage-scoped readiness diagnostics.
+type ViewerDamageDecision =
+    | DamageScopedAccepted
+    | FullRedraw
+    | SkipNoChange
+    | Rejected
+    | EnvironmentLimited
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ScreenshotEvidenceStatus =
+    | ScreenshotOk
+    | ScreenshotUnsupported
+    | ScreenshotFailed
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ScreenshotEvidenceRequest =
+    { Command: string
+      AppOrSample: string
+      OutputPath: string
+      Width: int
+      Height: int
+      RendererMode: string
+      CaptureMode: ScreenshotCaptureMode
+      HostFacts: string list
+      Timeout: TimeSpan }
+
+and ScreenshotCaptureMode =
+    | ViewerRenderTargetPng
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerOpenStatus =
+    | ViewerOpenConfirmed
+    | ViewerOpenUnsupported
+    | ViewerOpenFailed
+    | ViewerOpenUnknown
+
+/// Public contract type exposed by this FS.GG.UI package.
+type FirstFrameStatus =
+    | FirstFramePresentedStatus
+    | FirstFrameNotPresentedStatus
+    | FirstFrameUnknownStatus
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ScreenshotCaptureAvailability =
+    | CaptureAvailable
+    | CaptureUnavailable of reason: string
+    | CaptureAvailabilityUnknown of reason: string
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ScreenshotCaptureSource =
+    | LiveViewerWindow
+    | DeterministicSceneRender
+    | PixelReadbackSource
+    | NoCaptureSource
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ScreenshotPixelContentValidation =
+    | PixelContentNonBlank
+    | PixelContentBlank
+    | PixelContentUnreadable of reason: string
+    | PixelContentNotValidated of reason: string
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ScreenshotEvidenceResult =
+    { Status: ScreenshotEvidenceStatus
+      Command: string
+      AppOrSample: string
+      HostFacts: string list
+      CaptureMode: ScreenshotCaptureMode
+      EvidenceKind: string
+      OutputPath: string option
+      ScreenshotPath: string option
+      Width: int option
+      Height: int option
+      PixelContentValidation: ScreenshotPixelContentValidation
+      RendererMode: string
+      FramesRendered: int option
+      ViewerOpenStatus: ViewerOpenStatus
+      FirstFrameStatus: FirstFrameStatus
+      CaptureAvailability: ScreenshotCaptureAvailability
+      CaptureSource: ScreenshotCaptureSource
+      DeterministicFallbackKind: string option
+      ProvesScreenshot: bool
+      BlockedStage: ViewerRunBlockedStage option
+      Classification: ViewerRunFailureClassification option
+      Category: ViewerDiagnosticCategory option
+      Message: string
+      Timestamp: DateTimeOffset
+      UnsupportedHostReason: string option
+      Fallback: string option
+      Diagnostics: string list }
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerRuntimeCapability =
+    { PersistentWindow: bool
+      BoundedSmoke: bool
+      KeyboardInput: bool
+      RendererMode: string
+      UnsupportedHostReasons: string list
+      MissingPackageCapabilities: string list }
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerDesktopSessionDiagnostic =
+    { RuntimeDirectory: string option
+      RuntimeDirectoryExists: bool
+      RuntimeDirectoryOwnerSuitable: bool
+      RuntimeDirectoryPermissionsSuitable: bool
+      DisplayVariable: string option
+      DisplaySocket: string option
+      DisplaySocketExists: bool
+      SessionBus: string option
+      FallbackRuntimeDirectory: string option
+      FallbackIsFullDesktopSession: bool
+      DiagnosticClass: string
+      Message: string }
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerLaunchOutcome =
+    { Status: string
+      Mode: string
+      Command: string option
+      RendererMode: string
+      WindowOpened: bool
+      WindowVisible: ViewerObservedValue
+      FirstFramePresented: bool
+      CloseReason: ViewerCloseReason option
+      UserCloseObserved: bool
+      AppCloseObserved: bool
+      EvidenceCloseObserved: bool
+      SelfClosedForEvidence: bool
+      InputDispatch: string
+      ExitPath: bool
+      WindowDiagnostics: ViewerWindowStateDiagnostic list
+      OptionResults: ViewerWindowOptionResult list
+      VisualEvidence: ViewerVisualEvidenceArtifact list
+      FailureClass: ViewerFailureClass option
+      BlockedStage: ViewerRunBlockedStage option
+      Classification: ViewerRunFailureClassification option
+      Category: ViewerDiagnosticCategory option
+      Message: string }
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerWindowObservationResult =
+    { DiagnosticSource: string
+      Command: string option
+      HostFacts: string list
+      ViewerFacts: string list
+      ViewerWindowOpened: bool
+      ViewerFirstFramePresented: bool
+      ViewerWindowVisible: ViewerObservedValue
+      ExternalObservationAttempted: bool
+      ExternalWindowMatched: bool option
+      CaptureAttempted: bool
+      CaptureSucceeded: bool option
+      BlockedStage: ViewerRunBlockedStage option
+      Classification: ViewerRunFailureClassification option
+      MissingFacts: string list
+      Message: string }
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerLifecycleState =
+    | NotStarted
+    | CheckingDesktopSession
+    | StartingWindow
+    | WindowCreated
+    | VisibilityChecking
+    | InteractiveRunning
+    | EvidenceRunning
+    | FirstFramePresented
+    | CloseRequested
+    | Closing
+    | UserCloseObservedState
+    | AppCloseObservedState
+    | EvidenceCloseObservedState
+    | InaccessibleWindow
+    | Failed
+    | Unsupported
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerModel =
+    { Options: ViewerOptions
+      WindowBehavior: ViewerWindowBehaviorRequest
+      IsRunning: bool
+      LifecycleState: ViewerLifecycleState
+      FirstFramePresented: bool
+      UserCloseObserved: bool
+      InputDispatch: ViewerInputDispatchStatus
+      LastScene: SceneNode option }
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerRunModel =
+    { Request: ViewerRunRequest
+      FramesRendered: int
+      StartedAt: DateTimeOffset option
+      LastDiagnostic: ViewerDiagnosticEvent option
+      Completed: Result<ViewerRunEvidence, ViewerRunFailure> option }
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerMsg =
+    | Start
+    | StartInteractive
+    | StartEvidence of ViewerRunRequest
+    | Stop
+    | DesktopSessionChecked of ViewerDesktopSessionDiagnostic
+    | WindowCreated of ViewerWindowStateDiagnostic
+    | VisibilityCheckStarted of ViewerWindowStateDiagnostic
+    | VisibilityObserved of ViewerWindowStateDiagnostic
+    | Render of SceneNode
+    | KeyEvent of ViewerKeyEvent
+    | DiagnosticCaptured of ViewerDiagnosticEvent
+    | FramePresented of Size
+    | UserCloseObserved
+    | AppCloseRequested
+    | EvidenceCloseRequested
+    | HostCloseObserved
+    | EvidenceTargetReached
+    | RunFailed of ViewerRunFailure
+    | RunTimedOut
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerRunMsg =
+    | BeginRun
+    | RunStarted of DateTimeOffset
+    | RecordFrame of Size
+    | RecordDiagnostic of ViewerDiagnosticEvent
+    | CompleteRun
+    | FailRun of ViewerRunFailure
+    | TimeoutRun
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerEffect =
+    | OpenWindow of title: string * size: Size
+    | ApplyWindowOptions of ViewerWindowBehaviorRequest
+    | QueryNativeWindowState
+    | RenderScene of SceneNode
+    | CloseWindow
+    | DispatchInput of ViewerKey * isDown: bool
+    | EmitDiagnostic of ViewerDiagnosticEvent
+    | CheckDesktopSession
+    | StartBoundedRun of ViewerRunRequest
+    | CaptureScreenshot of path: string
+    | CaptureImageEvidence of path: string
+    | ReadPixels
+    | WriteVisualEvidence of path: string * artifact: ViewerVisualEvidenceArtifact
+    | WriteRunEvidence of path: string * evidence: ViewerRunEvidence
+
+/// Public contract type exposed by this FS.GG.UI package.
+type ViewerRunEffect =
+    | OpenBoundedWindow of ViewerRunRequest
+    | RequestFrame
+    | CaptureOutputSize
+    | StopBoundedRun
+    | PersistRunEvidence of ViewerRunEvidence
+
+/// Public contract type exposed by this FS.GG.UI package.
+type EvidenceWorkflowModel =
+    { Request: ScreenshotEvidenceRequest
+      ViewerOpenStatus: ViewerOpenStatus
+      FirstFrameStatus: FirstFrameStatus
+      CaptureAvailability: ScreenshotCaptureAvailability
+      OutputPath: string option
+      Result: ScreenshotEvidenceResult option
+      Diagnostics: string list }
+
+/// Public contract type exposed by this FS.GG.UI package.
+type EvidenceWorkflowMsg =
+    | LaunchStarted
+    | LaunchCompleted of ViewerOpenStatus
+    | FirstFrameObserved of FirstFrameStatus
+    | CaptureCapabilityKnown of ScreenshotCaptureAvailability
+    | CaptureSucceeded of path: string * width: int * height: int * source: ScreenshotCaptureSource
+    | CaptureUnsupported of reason: string * fallbackKind: string option
+    | CaptureFailed of message: string
+    | EvidenceReportWritten of path: string
+
+/// Public contract type exposed by this FS.GG.UI package.
+type EvidenceWorkflowEffect =
+    | LaunchViewerForEvidence of ScreenshotEvidenceRequest
+    | CaptureViewerScreenshot of outputPath: string
+    | ValidateScreenshotArtifact of path: string
+    | WriteScreenshotEvidenceReport of ScreenshotEvidenceResult
+    | CleanupEvidenceViewer
+    | CollectProcessOutput
+    | ValidateGeneratedGuidance
+
+/// Public contract type exposed by this FS.GG.UI package.
+type GeneratedAppHost<'model,'msg> =
+    { Init: unit -> 'model * ViewerEffect list
+      Update: 'msg -> 'model -> 'model * ViewerEffect list
+      View: 'model -> SceneNode
+      MapKey: ViewerKey -> bool -> 'msg option
+      Tick: TimeSpan -> 'msg option
+      Diagnostics: ViewerDiagnosticsOptions }
+
+[<RequireQualifiedAccess>]
+/// Framework-neutral pointer button identity surfaced to the interactive host (085).
+type ViewerPointerButtonKind =
+    | Primary
+    | Secondary
+    | Middle
+
+[<RequireQualifiedAccess>]
+/// The kind of raw pointer sample the interactive host delivers (085).
+type ViewerPointerPhaseKind =
+    | Moved
+    | Pressed
+    | Released
+    | Wheel
+    | Exited
+
+/// A host-independent pointer sample raised by the live window for the interactive host
+/// (085). X/Y are in the swapchain/scene coordinate space.
+type ViewerPointerInput =
+    { Phase: ViewerPointerPhaseKind
+      X: float
+      Y: float
+      Button: ViewerPointerButtonKind option
+      DeltaX: float
+      DeltaY: float }
+
+/// Pointer-aware, size-aware durable host variant (feature 085). Mirrors `GeneratedAppHost`
+/// field-for-field PLUS a model-aware pointer seam (`MapPointer`) and a size-carrying `View`.
+/// Controls-free lower runner; the Control/PointerInteraction-aware `InteractiveAppHost`
+/// (FS.GG.UI.Controls.Elmish) adapts onto it (research D3-AMEND). `GeneratedAppHost` and
+/// `Viewer.runApp` are left intact (FR-006).
+/// Feature 091 (E2, behavioral note — signature unchanged): the per-message repaint stores the
+/// `SceneNode` the host's `View` produces (the existing `currentScene <- host.View …` seam). The
+/// viewer is framework-neutral and does not itself diff (its `View` yields an opaque `SceneNode`,
+/// not a `Control<'msg>` tree); the keyed-reconciliation retained path lives at the controls
+/// adapter edge (`Controls.Elmish.runInteractiveApp`), whose `View` produces each frame by diffing
+/// the next tree against a retained previous tree (`module internal RetainedRender`). So when the
+/// host is the controls adapter, this repaint is already O(changed-subtree) and byte-identical to a
+/// full rebuild (FR-004/FR-005); a generic host that supplies its own `View` is unchanged.
+///
+/// Feature 092 (FR-006): `MapKey` returns `'msg list` (was `'msg option`) so one key can dispatch
+/// SEVERAL product messages in order — e.g. a focused control with more than one `onChanged`
+/// binding. `[]` = the key is unhandled by the host seam (was `None`); a non-empty list is folded
+/// through `Update` in order. Migration is mechanical: `Some m` → `[ m ]`, `None` → `[]`. The
+/// sibling `GeneratedAppHost.MapKey` is DELIBERATELY left at `'msg option`: it backs the
+/// non-interactive `Viewer.runApp` path (generated projects, samples) where multi-message keys are
+/// not needed, and widening it would churn the template/generated host for no behavioral gain.
+type InteractiveViewerHost<'model,'msg> =
+    { Init: unit -> 'model * ViewerEffect list
+      Update: 'msg -> 'model -> 'model * ViewerEffect list
+      View: Size -> 'model -> SceneNode
+      MapKey: ViewerKey -> bool -> 'msg list
+      MapPointer: ViewerPointerInput -> Size -> 'model -> 'msg list
+      Tick: TimeSpan -> 'msg option
+      Diagnostics: ViewerDiagnosticsOptions }
+
+[<RequireQualifiedAccess>]
+/// Scripted input delivered through the live persistent viewer event loop.
+type ViewerScriptInput =
+    | Key of key: ViewerKey * isDown: bool
+    | Pointer of ViewerPointerInput
+    | WaitFrame

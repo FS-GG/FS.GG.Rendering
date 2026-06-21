@@ -1179,6 +1179,41 @@ module ControlsElmish =
         | Space -> Some(InsertText " ")
         | _ -> None
 
+    /// Feature 182 (US6): the interactive frame-loop's mutable interpreter-edge state, promoted from
+    /// ~12 ad-hoc `ref` cells to one typed record. This is NOT the Elmish `Model` (constitution IV) —
+    /// `update` stays pure and I/O stays at the edge; mutation is retained per-frame (constitution III).
+    /// Internal (`type private`): absent from `ControlsElmish.fsi` and the public surface.
+    type private FrameLoopState<'model, 'msg> =
+        { /// Durable pointer coordination state (hover/press/4px-fold), threaded across samples.
+          mutable PointerState: PointerState
+          /// Feature 092/094: the single focus identity (stable `RetainedId`); the E1 text seam,
+          /// `routeFocusedKey` activation/navigation, and Tab-traversal all read/write this.
+          mutable Focused: RetainedId option
+          /// The retained render structure (wired keyed reconciler, 067) — the single home of
+          /// per-control UI state; mutation confined to the interpreter edge (constitution III).
+          mutable Retained: RetainedRender<'msg> option
+          /// Feature 110: the most recent retained frame's `ControlRenderResult` so pointer routing
+          /// reads the frame's bindings WITHOUT a fresh `Control.renderTree`.
+          mutable LastRender: ControlRenderResult<'msg> option
+          /// Feature 111: cached un-stamped `host.View size model` so a model-unchanged repaint reuses
+          /// it and SKIPS `host.View` (byte-identical; keyed by model reference identity).
+          mutable LastView: (Size * 'model * Control<'msg>) option // mutable: hot path / per frame
+          /// Feature 112: the previous frame's runtime model, so a model-unchanged repaint re-stamps
+          /// only the identities that changed hover/focus/press (the targeted stamp).
+          mutable LastRuntimeModel: ControlRuntimeModel option // mutable: hot path / per frame
+          /// Feature 175: persistent per-`scroll-viewer` offset, surviving across frames.
+          mutable ScrollOffsets: Map<ControlId, ScrollState> // mutable: hot path / per frame
+          /// Diff/first-frame diagnostics surfaced once through the host's stderr channel (de-duped).
+          mutable SurfacedDiagnostics: Set<string>
+          /// Feature 108 (US4): per-frame pointer-move coalescing accumulator (latest wins), processed
+          /// at the next sample boundary; discrete interactions are never coalesced.
+          mutable PendingMove: ViewerPointerInput option // mutable: hot path / per frame
+          mutable PointerSampleCount: int // mutable: hot path / per frame
+          /// Feature 108 (US2): the most recent retained-step work record for `OnFrameMetrics`.
+          mutable LastWorkReduction: WorkReductionRecord option
+          /// Feature 120 (US1): most recent backend present timing (paint-walk, flush+swap), live-only.
+          mutable LastPresentTiming: TimeSpan * TimeSpan } // mutable: hot path / per frame
+
     // Feature 122 (FR-005): the shared interactive-host body, parameterized by the terminal viewer
     // launcher so `runInteractiveApp` (default windowed-fullscreen) and
     // `runInteractiveAppWithWindowBehavior` (explicit window behavior) reuse the EXACT same
@@ -1188,69 +1223,30 @@ module ControlsElmish =
         (options: ViewerOptions)
         (host: InteractiveAppHost<'model, 'msg>)
         =
-        // Durable pointer coordination state (hover/press/4px-fold), threaded across samples.
-        let pointerState = ref (Pointer.init ())
-        // Feature 092 (E2): focus is now keyed by the STABLE `RetainedId` (was `ControlId`), and the
-        // focused control's `TextInput` state lives in `RetainedRender.StateByIdentity[id].Text` — no
-        // parallel `ControlId`-keyed text-model map. Because `step` carries `StateByIdentity` to the
-        // matched identity across the diff, focus + in-progress text + the per-control animation clock
-        // survive an unrelated re-render even when the control's position shifts (FR-001/2/3). This is
-        // the half 091 left unwired: 091 carried the map but the host never read/wrote it.
-        // Feature 094 (E4): generalized from the 092 text-only `focusedText` to the host's single
-        // focus identity (still a stable `RetainedId`). The E1 text seam, `routeFocusedKey`
-        // activation/navigation, and Tab-traversal all read/write this one ref.
-        let focused = ref (None: RetainedId option)
-        // The retained render structure (the wired keyed reconciler, 067), the single home of
-        // per-control UI state. Mutation is confined to this closure at the interpreter edge
-        // (constitution III); the consumer `view` stays pure.
-        let retained = ref (None: RetainedRender<'msg> option)
-        // Feature 110 (FR-002): the most recent retained frame's `ControlRenderResult`
-        // (`EventBindings`/`BoundIds`/`Bounds`), retained so pointer routing reads the frame's bindings
-        // WITHOUT a fresh `Control.renderTree`. Seeded from `r0.Render` on the first paint and updated to
-        // `s.Render` each step; only `s.Render.Scene` was consumed before — `s.Render` itself was dropped.
-        let lastRender = ref (None: ControlRenderResult<'msg> option)
-        // Feature 111 (FR-003): the un-stamped `host.View size model` output for the current `(model,
-        // size)`, cached so a model-unchanged repaint (a host-owned hover/focus/animation change) reuses
-        // it and SKIPS `host.View`. `host.View` is pure in `(model, size)`, so the reused tree equals a
-        // fresh call — the full-tree visual-state stamp + `step` still run, only the view call is skipped
-        // (FR-009, byte-identical). Keyed by reference identity of the model: a reference-type model that
-        // did not change is the same instance (reuse); a value-type model is never `ReferenceEquals` so it
-        // re-views (a safe, byte-identical fallback — the deterministic view-skip surface is `Perf.runScript`).
-        let lastView = ref (None: (Size * 'model * Control<'msg>) option) // mutable: hot path / per frame
-        // Feature 112 (FR-001/FR-002): the previous frame's runtime model, so a model-unchanged repaint
-        // can compute which identities left a hover/focus/press state and re-stamp only those (the
-        // targeted stamp). Updated each paint; `None` until the first stamp.
-        let lastRuntimeModel = ref (None: ControlRuntimeModel option) // mutable: hot path / per frame
-        // Feature 175 (FR-001): persistent per-`scroll-viewer` scroll offset, advanced by Scroll/scroll-key
-        // interactions and read back into the runtime model + stamped onto the tree each frame. Lives here
-        // (not in the per-frame rebuilt runtime model) so the offset survives across frames.
-        let scrollOffsets = ref (Map.empty: Map<ControlId, ScrollState>) // mutable: hot path / per frame
-        // Diff/first-frame diagnostics (e.g. KeyCollision from duplicate sibling keys) surfaced
-        // through the host's diagnostics stderr channel — never silently dropped; de-duped so a
-        // standing collision is reported once, not every frame. The path stays total in their presence.
-        let surfacedDiagnostics = ref (Set.empty: Set<string>)
-
-        // Feature 108 (US4, FR-011/012): the per-frame pointer-move coalescing accumulator. A native
-        // MOVE sample (hover/drag) is buffered here (latest wins) and processed at the NEXT sample
-        // boundary, collapsing a burst of moves to at most one PROCESSED move (one render + hit-test)
-        // while discrete interactions are never coalesced or dropped. Mutation is confined to this
-        // interpreter closure (constitution III); the consumer `view`/`update` stay pure.
-        let pendingMove = ref (None: ViewerPointerInput option) // mutable: hot path / per frame
-        let pointerSampleCount = ref 0 // mutable: hot path / per frame
-        // Feature 108 (US2, FR-006): the most recent retained-step work record, so `OnFrameMetrics`
-        // can report the frame's `RemeasuredNodeCount` (the live observability sink; the byte-stable
-        // determinism surface is `Perf.runScript`).
-        let lastWorkReduction = ref (None: WorkReductionRecord option)
-        // Feature 120 (US1): the most recent backend present timing (paint-walk, flush+swap) captured by the
-        // OpenGL host and reported as live-only, non-golden `FrameMetrics.PaintDuration`/`ComposeDuration`.
-        let lastPresentTiming = ref (TimeSpan.Zero, TimeSpan.Zero) // mutable: hot path / per frame
+        // Feature 182 (US6): the ~12 ad-hoc `ref` cells above are promoted to one typed
+        // `FrameLoopState` record (per-field docs on the type). Same heap-mutable-cell semantics as the
+        // refs (`loopState.X <- …` ≡ `x.Value <- …`), so frame-loop behavior is byte-identical; this is
+        // interpreter-edge state, NOT the Elmish `Model` (constitution IV).
+        let loopState: FrameLoopState<'model, 'msg> =
+            { PointerState = Pointer.init ()
+              Focused = None
+              Retained = None
+              LastRender = None
+              LastView = None
+              LastRuntimeModel = None
+              ScrollOffsets = Map.empty
+              SurfacedDiagnostics = Set.empty
+              PendingMove = None
+              PointerSampleCount = 0
+              LastWorkReduction = None
+              LastPresentTiming = (TimeSpan.Zero, TimeSpan.Zero) }
 
         let surface (diags: ControlDiagnostic list) =
             for d in diags do
                 let key = sprintf "%A|%A|%s" d.Code d.ControlId d.Message
 
-                if not (Set.contains key surfacedDiagnostics.Value) then
-                    surfacedDiagnostics.Value <- Set.add key surfacedDiagnostics.Value
+                if not (Set.contains key loopState.SurfacedDiagnostics) then
+                    loopState.SurfacedDiagnostics <- Set.add key loopState.SurfacedDiagnostics
                     eprintfn "[ControlDiagnostic %A] %s" d.Severity d.Message
 
         // Feature 096 (R1): assemble a READ-ONLY `ControlRuntimeModel` from the host's live pointer +
@@ -1263,23 +1259,23 @@ module ControlsElmish =
         // (text-range) concern — the host derives none, so the bridge fills only the runtime tail.
         let assembleRuntimeModel (prior: RetainedRender<'msg> option) : ControlRuntimeModel =
             let focusedControlId =
-                match focused.Value, prior with
+                match loopState.Focused, prior with
                 | Some rid, Some r ->
                     tryFindNode rid r.Root
                     |> Option.map (fun node -> node.Control.Key |> Option.defaultValue node.Control.Kind)
                 | _ -> None
 
             { fst (ControlRuntime.init ()) with
-                HoveredControl = pointerState.Value.Hover
+                HoveredControl = loopState.PointerState.Hover
                 PressedControls =
-                    pointerState.Value.Presses
+                    loopState.PointerState.Presses
                     |> Map.toList
                     |> List.map (fun (_, candidate) -> candidate.Control)
                     |> Set.ofList
                 FocusedControl = focusedControlId
                 // Feature 175: carry the host's persistent scroll offsets into the runtime model so the
                 // scroll bridge (`applyScrollOffsets`) can stamp them onto the tree this frame.
-                ScrollOffsets = scrollOffsets.Value }
+                ScrollOffsets = loopState.ScrollOffsets }
 
         // Produce the production scene for (size, model) through the retained reconciler. The first
         // frame seeds the retained structure and paints ONCE (FR-009 — no second `Control.renderTree`,
@@ -1293,7 +1289,7 @@ module ControlsElmish =
         // hover/focus/animation repaint. The runtime visual-state stamp is applied to the reused tree by
         // the caller (it always runs — FR-009), so output is byte-identical.
         let viewFor (size: Size) (model: 'model) : Control<'msg> =
-            match lastView.Value with
+            match loopState.LastView with
             | Some(cachedSize, cachedModel, cachedView) when cachedSize = size && obj.ReferenceEquals(model, cachedModel) ->
                 RenderLagTrace.emit "elmish-product-view-cache-hit" []
                 cachedView
@@ -1305,11 +1301,11 @@ module ControlsElmish =
                 RenderLagTrace.emit
                     "elmish-product-view-end"
                     [ "durationMs", sw.Elapsed.TotalMilliseconds.ToString("0.###", Globalization.CultureInfo.InvariantCulture) ]
-                lastView.Value <- Some(size, model, v)
+                loopState.LastView <- Some(size, model, v)
                 v
 
         let renderRetained (size: Size) (model: 'model) : Scene =
-            match retained.Value with
+            match loopState.Retained with
             | None ->
                 let totalSw = System.Diagnostics.Stopwatch.StartNew()
                 RenderLagTrace.emit "elmish-render-retained-start" [ "path", "init" ]
@@ -1322,7 +1318,7 @@ module ControlsElmish =
                     "elmish-runtime-stamp-end"
                     [ "path", "init"
                       "durationMs", stampSw.Elapsed.TotalMilliseconds.ToString("0.###", Globalization.CultureInfo.InvariantCulture) ]
-                lastRuntimeModel.Value <- Some runtimeModel
+                loopState.LastRuntimeModel <- Some runtimeModel
                 // Feature 175: stamp live scroll offsets after the visual-state stamp (identity at rest).
                 let stampedScene = ControlRuntime.applyScrollOffsets runtimeModel stamp.Stamped
                 let initSw = System.Diagnostics.Stopwatch.StartNew()
@@ -1332,8 +1328,8 @@ module ControlsElmish =
                     "elmish-retained-init-end"
                     [ "durationMs", initSw.Elapsed.TotalMilliseconds.ToString("0.###", Globalization.CultureInfo.InvariantCulture) ]
                 surface r0.Diagnostics
-                retained.Value <- Some r0.Retained
-                lastRender.Value <- Some r0.Render
+                loopState.Retained <- Some r0.Retained
+                loopState.LastRender <- Some r0.Render
                 totalSw.Stop()
                 RenderLagTrace.emit
                     "elmish-render-retained-end"
@@ -1348,7 +1344,7 @@ module ControlsElmish =
                 // reusing `prev.Root.Control` (the previous stamped tree). On a model-changing frame the
                 // whole view is rebuilt anyway, so use the full-tree oracle (`prior = None`).
                 let modelUnchanged =
-                    match lastView.Value with
+                    match loopState.LastView with
                     | Some(cachedSize, cachedModel, _) -> cachedSize = size && obj.ReferenceEquals(model, cachedModel)
                     | None -> false
 
@@ -1360,7 +1356,7 @@ module ControlsElmish =
 
                 let prior =
                     if modelUnchanged then
-                        lastRuntimeModel.Value |> Option.map (fun pm -> pm, prev.Root.Control)
+                        loopState.LastRuntimeModel |> Option.map (fun pm -> pm, prev.Root.Control)
                     else
                         None
 
@@ -1371,7 +1367,7 @@ module ControlsElmish =
                     "elmish-runtime-stamp-end"
                     [ "path", "step"
                       "durationMs", stampSw.Elapsed.TotalMilliseconds.ToString("0.###", Globalization.CultureInfo.InvariantCulture) ]
-                lastRuntimeModel.Value <- Some runtimeModel
+                loopState.LastRuntimeModel <- Some runtimeModel
                 // Feature 175: stamp live scroll offsets after the visual-state stamp (identity at rest).
                 let stampedScene = ControlRuntime.applyScrollOffsets runtimeModel stamp.Stamped
                 let stepSw = System.Diagnostics.Stopwatch.StartNew()
@@ -1386,9 +1382,9 @@ module ControlsElmish =
                       "replayHits", string s.WorkReduction.ReplayHits
                       "replayMisses", string s.WorkReduction.ReplayMisses ]
                 surface s.Diagnostics
-                lastWorkReduction.Value <- Some s.WorkReduction
-                retained.Value <- Some s.Retained
-                lastRender.Value <- Some s.Render
+                loopState.LastWorkReduction <- Some s.WorkReduction
+                loopState.Retained <- Some s.Retained
+                loopState.LastRender <- Some s.Render
                 totalSw.Stop()
                 RenderLagTrace.emit
                     "elmish-render-retained-end"
@@ -1436,24 +1432,24 @@ module ControlsElmish =
                 { ProductModelChanged = productModelChanged
                   ViewCalled = fullRenderFallbackCount > 0
                   FullRenderCount = fullRenderFallbackCount
-                  RemeasuredNodeCount = lastWorkReduction.Value |> Option.map (fun w -> w.RemeasuredNodeCount) |> Option.defaultValue 0
+                  RemeasuredNodeCount = loopState.LastWorkReduction |> Option.map (fun w -> w.RemeasuredNodeCount) |> Option.defaultValue 0
                   // Feature 113 (Phase 5): the last retained-step's memo tally (live `OnFrameMetrics` sink).
-                  MemoHitCount = lastWorkReduction.Value |> Option.map (fun w -> w.MemoHits) |> Option.defaultValue 0
-                  MemoMissCount = lastWorkReduction.Value |> Option.map (fun w -> w.MemoMisses) |> Option.defaultValue 0
+                  MemoHitCount = loopState.LastWorkReduction |> Option.map (fun w -> w.MemoHits) |> Option.defaultValue 0
+                  MemoMissCount = loopState.LastWorkReduction |> Option.map (fun w -> w.MemoMisses) |> Option.defaultValue 0
                   // Feature 114 (Phase 6): the last retained-step's virtualization tally (live sink).
-                  VirtualItemsMaterialized = lastWorkReduction.Value |> Option.map (fun w -> w.VirtualMaterialized) |> Option.defaultValue 0
-                  VirtualItemsTotal = lastWorkReduction.Value |> Option.map (fun w -> w.VirtualTotal) |> Option.defaultValue 0
+                  VirtualItemsMaterialized = loopState.LastWorkReduction |> Option.map (fun w -> w.VirtualMaterialized) |> Option.defaultValue 0
+                  VirtualItemsTotal = loopState.LastWorkReduction |> Option.map (fun w -> w.VirtualTotal) |> Option.defaultValue 0
                   // Feature 116 (Phase 7): the last retained-step's damage + picture-cache tallies (live sink).
-                  RepaintedNodeCount = lastWorkReduction.Value |> Option.map (fun w -> w.RepaintedNodeCount) |> Option.defaultValue 0
-                  DirtyRectCount = lastWorkReduction.Value |> Option.map (fun w -> w.DirtyRectCount) |> Option.defaultValue 0
-                  DirtyArea = lastWorkReduction.Value |> Option.map (fun w -> w.DirtyArea) |> Option.defaultValue 0
-                  PictureCacheHitCount = lastWorkReduction.Value |> Option.map (fun w -> w.PictureCacheHits) |> Option.defaultValue 0
-                  PictureCacheMissCount = lastWorkReduction.Value |> Option.map (fun w -> w.PictureCacheMisses) |> Option.defaultValue 0
-                  PictureCacheEntryCount = lastWorkReduction.Value |> Option.map (fun w -> w.PictureCacheEntryCount) |> Option.defaultValue 0
+                  RepaintedNodeCount = loopState.LastWorkReduction |> Option.map (fun w -> w.RepaintedNodeCount) |> Option.defaultValue 0
+                  DirtyRectCount = loopState.LastWorkReduction |> Option.map (fun w -> w.DirtyRectCount) |> Option.defaultValue 0
+                  DirtyArea = loopState.LastWorkReduction |> Option.map (fun w -> w.DirtyArea) |> Option.defaultValue 0
+                  PictureCacheHitCount = loopState.LastWorkReduction |> Option.map (fun w -> w.PictureCacheHits) |> Option.defaultValue 0
+                  PictureCacheMissCount = loopState.LastWorkReduction |> Option.map (fun w -> w.PictureCacheMisses) |> Option.defaultValue 0
+                  PictureCacheEntryCount = loopState.LastWorkReduction |> Option.map (fun w -> w.PictureCacheEntryCount) |> Option.defaultValue 0
                   // Feature 117 (Phase 8): the last retained-step's text-cache tally + dirty-set size (live sink).
-                  TextMeasureCacheHitCount = lastWorkReduction.Value |> Option.map (fun w -> w.TextMeasureCacheHits) |> Option.defaultValue 0
-                  TextMeasureCacheMissCount = lastWorkReduction.Value |> Option.map (fun w -> w.TextMeasureCacheMisses) |> Option.defaultValue 0
-                  LayoutInvalidatedNodeCount = lastWorkReduction.Value |> Option.map (fun w -> w.LayoutInvalidatedNodeCount) |> Option.defaultValue 0
+                  TextMeasureCacheHitCount = loopState.LastWorkReduction |> Option.map (fun w -> w.TextMeasureCacheHits) |> Option.defaultValue 0
+                  TextMeasureCacheMissCount = loopState.LastWorkReduction |> Option.map (fun w -> w.TextMeasureCacheMisses) |> Option.defaultValue 0
+                  LayoutInvalidatedNodeCount = loopState.LastWorkReduction |> Option.map (fun w -> w.LayoutInvalidatedNodeCount) |> Option.defaultValue 0
                   PointerSamplesReceived = samples
                   PointerMovesProcessed = movesProcessed
                   FullRenderFallbackCount = fullRenderFallbackCount
@@ -1464,13 +1460,13 @@ module ControlsElmish =
                   FrameDuration = duration
                   // Feature 120 (US1): live backend present timing (non-golden), read from the OpenGL host's
                   // last present (one-frame lag, live diagnostic only); (US3) replay model counts.
-                  PaintDuration = (lastPresentTiming.Value <- FS.GG.UI.SkiaViewer.Host.GlHost.lastPresentTiming(); fst lastPresentTiming.Value)
-                  ComposeDuration = snd lastPresentTiming.Value
-                  ReplayHitCount = lastWorkReduction.Value |> Option.map (fun w -> w.ReplayHits) |> Option.defaultValue 0
-                  ReplayMissCount = lastWorkReduction.Value |> Option.map (fun w -> w.ReplayMisses) |> Option.defaultValue 0
-                  ReplayRecordCount = lastWorkReduction.Value |> Option.map (fun w -> w.ReplayRecords) |> Option.defaultValue 0
-                  ReplaySkippedNodeCount = lastWorkReduction.Value |> Option.map (fun w -> w.ReplaySkippedNodes) |> Option.defaultValue 0
-                  ReplayCacheNativeBytes = lastWorkReduction.Value |> Option.map (fun w -> w.ReplayCacheNativeBytes) |> Option.defaultValue 0 }
+                  PaintDuration = (loopState.LastPresentTiming <- FS.GG.UI.SkiaViewer.Host.GlHost.lastPresentTiming(); fst loopState.LastPresentTiming)
+                  ComposeDuration = snd loopState.LastPresentTiming
+                  ReplayHitCount = loopState.LastWorkReduction |> Option.map (fun w -> w.ReplayHits) |> Option.defaultValue 0
+                  ReplayMissCount = loopState.LastWorkReduction |> Option.map (fun w -> w.ReplayMisses) |> Option.defaultValue 0
+                  ReplayRecordCount = loopState.LastWorkReduction |> Option.map (fun w -> w.ReplayRecords) |> Option.defaultValue 0
+                  ReplaySkippedNodeCount = loopState.LastWorkReduction |> Option.map (fun w -> w.ReplaySkippedNodes) |> Option.defaultValue 0
+                  ReplayCacheNativeBytes = loopState.LastWorkReduction |> Option.map (fun w -> w.ReplayCacheNativeBytes) |> Option.defaultValue 0 }
 
         // The single pointer-routing step (the pre-108 `mapPointer` body): focus-on-click + the feature-
         // 110 RETAINED route (`routeRetainedPointer`) — no per-sample `host.View` + `Control.renderTree`.
@@ -1483,7 +1479,7 @@ module ControlsElmish =
             // control is FOCUSABLE (per its accessibility metadata) it becomes the focus target, so a
             // later key reaches it through the text seam or `routeFocusedKey`. A press on a
             // non-focusable region leaves the current focus UNCHANGED (it is not silently cleared).
-            (match input.Phase, retained.Value with
+            (match input.Phase, loopState.Retained with
              | ViewerPointerPhaseKind.Pressed, Some r ->
                  match resolveFocus r input.X input.Y with
                  | Some id ->
@@ -1491,34 +1487,34 @@ module ControlsElmish =
                      | Some node when
                          node.Control.Accessibility
                          |> Option.exists (fun m -> m.Keyboard.Focusable)
-                         -> focused.Value <- Some id
+                         -> loopState.Focused <- Some id
                      | _ -> ()
                  | None -> ()
              | _ -> ())
 
-            match retained.Value, lastRender.Value with
+            match loopState.Retained, loopState.LastRender with
             | Some r, Some render ->
-                let state', messages, fallbacks, scrollDeltas = routeRetainedPointer host r render pointerState.Value size model input
-                pointerState.Value <- state'
+                let state', messages, fallbacks, scrollDeltas = routeRetainedPointer host r render loopState.PointerState size model input
+                loopState.PointerState <- state'
                 // Feature 175 (FR-001/FR-002): advance the persistent scroll offset for each scrolled
                 // viewer (re-clamped against the measured extent; wheel-down increases the offset). The
                 // raw wheel delta is only a few units per notch, so scale it to a usable pixel step
                 // (~3 units → ~48 px) — otherwise scrolling crawls.
                 for (svId, deltaY, contentHeight, viewportHeight) in scrollDeltas do
                     let next =
-                        scrollOffsets.Value
+                        loopState.ScrollOffsets
                         |> Map.tryFind svId
                         |> Option.defaultValue ScrollState.empty
                         |> ScrollState.withExtent contentHeight viewportHeight
                         |> ScrollState.applyScrollDelta (-deltaY * wheelScrollStep)
-                    scrollOffsets.Value <- Map.add svId next scrollOffsets.Value
+                    loopState.ScrollOffsets <- Map.add svId next loopState.ScrollOffsets
                 messages, fallbacks
             | _ ->
                 // No retained frame yet (a pointer sample before the first paint seeded the frame, not
                 // expected in the live loop where paint precedes input): fall back to the preserved
                 // oracle so routing is still correct, counting the full render it performs.
-                let state', messages = routeInteractivePointer host pointerState.Value size model input
-                pointerState.Value <- state'
+                let state', messages = routeInteractivePointer host loopState.PointerState size model input
+                loopState.PointerState <- state'
                 messages, 1
 
         // Feature 108 (US4, FR-011/012): pointer-move coalescing on the live loop. A MOVE sample is
@@ -1529,7 +1525,7 @@ module ControlsElmish =
         // dropped. The authoritative, byte-stable coalescing surface is `Perf.runScript`; here the
         // identical predicate drives the live loop and feeds best-effort `OnFrameMetrics`.
         let mapPointer (input: ViewerPointerInput) (size: Size) (model: 'model) : 'msg list =
-            pointerSampleCount.Value <- pointerSampleCount.Value + 1
+            loopState.PointerSampleCount <- loopState.PointerSampleCount + 1
 
             match input.Phase with
             | ViewerPointerPhaseKind.Moved ->
@@ -1540,18 +1536,18 @@ module ControlsElmish =
                 let sw = System.Diagnostics.Stopwatch.StartNew()
 
                 let flushedMsgs, flushedFallbacks =
-                    match pendingMove.Value with
+                    match loopState.PendingMove with
                     | Some prev ->
-                        pendingMove.Value <- None
+                        loopState.PendingMove <- None
                         processInput prev size model
                     | None -> [], 0
 
                 sw.Stop()
-                pendingMove.Value <- Some input
+                loopState.PendingMove <- Some input
 
                 // This Moved sample carries into the next frame's count; report the flushed move now.
-                let samples = pointerSampleCount.Value - 1
-                pointerSampleCount.Value <- 1
+                let samples = loopState.PointerSampleCount - 1
+                loopState.PointerSampleCount <- 1
 
                 if samples > 0 then
                     emitFrameMetrics FrameCause.PointerMove samples 1 (not (List.isEmpty flushedMsgs)) flushedFallbacks sw.Elapsed
@@ -1565,16 +1561,16 @@ module ControlsElmish =
                 let sw = System.Diagnostics.Stopwatch.StartNew()
 
                 let moveFlushed, (moveMsgs, moveFallbacks) =
-                    match pendingMove.Value with
+                    match loopState.PendingMove with
                     | Some prev ->
-                        pendingMove.Value <- None
+                        loopState.PendingMove <- None
                         true, processInput prev size model
                     | None -> false, ([], 0)
 
                 let discreteMsgs, discreteFallbacks = processInput input size model
                 sw.Stop()
-                let samples = pointerSampleCount.Value
-                pointerSampleCount.Value <- 0
+                let samples = loopState.PointerSampleCount
+                loopState.PointerSampleCount <- 0
                 let msgs = moveMsgs @ discreteMsgs
                 let fallbackCount = moveFallbacks + discreteFallbacks
                 emitFrameMetrics FrameCause.PointerDiscrete samples (if moveFlushed then 1 else 0) (not (List.isEmpty msgs)) fallbackCount sw.Elapsed
@@ -1610,17 +1606,17 @@ module ControlsElmish =
                 if not pressed then
                     host.MapKey key false |> Option.toList
                 else
-                    match retained.Value with
+                    match loopState.Retained with
                     | None -> chordFallthrough key
                     | Some r ->
-                        let focusedNode = focused.Value |> Option.bind (fun id -> tryFindNode id r.Root)
+                        let focusedNode = loopState.Focused |> Option.bind (fun id -> tryFindNode id r.Root)
 
                         // (1) E1 text seam — unchanged delivery for a focused text control's printable keys.
                         let textHandled =
-                            match textMsgOfKey key, focused.Value, focusedNode with
+                            match textMsgOfKey key, loopState.Focused, focusedNode with
                             | Some textMsg, Some id, Some node when isTextNode node ->
                                 let r', msgs = routeFocusedText r (Some id) textMsg
-                                retained.Value <- Some r'
+                                loopState.Retained <- Some r'
                                 Some msgs
                             | _ -> None
 
@@ -1636,15 +1632,15 @@ module ControlsElmish =
                                 | ViewerKey.Unknown raw -> raw.StartsWith("Shift+", StringComparison.OrdinalIgnoreCase)
                                 | _ -> false
 
-                            let r', controlMsgs, productMsgs = routeFocusedKey r focused.Value order key shift
-                            retained.Value <- Some r'
+                            let r', controlMsgs, productMsgs = routeFocusedKey r loopState.Focused order key shift
+                            loopState.Retained <- Some r'
 
                             // Apply focus-update messages to the host's focus identity (map the next
                             // ControlId back to its stable RetainedId).
                             for cm in controlMsgs do
                                 match cm with
                                 | FocusControl next ->
-                                    focused.Value <- next |> Option.bind (retainedIdOfControl r')
+                                    loopState.Focused <- next |> Option.bind (retainedIdOfControl r')
                                 | _ -> ()
 
                             // (3) Fall through to the chord/`host.MapKey` seam only when nothing was consumed.
@@ -1658,7 +1654,7 @@ module ControlsElmish =
 
         // Feature 099 (R4): the host animation seam (contract C1). Each frame the viewer hands us the
         // injected per-frame `delta`; we ADVANCE every live per-identity clock in
-        // `retained.Value.StateByIdentity` by it BEFORE the next `renderRetained` (which then paints
+        // `loopState.Retained.StateByIdentity` by it BEFORE the next `renderRetained` (which then paints
         // the already-advanced clocks and applies the stamped-VisualState retarget via
         // `RetainedRender.step`). The advance is the ONLY writer of the carried clock from the host
         // loop — a pure function of the injected delta (no `Date.now`/wall-clock). We then DELEGATE to
@@ -1669,12 +1665,12 @@ module ControlsElmish =
             // `advanceStateClocks` returns the map reference-equal when nothing is animating, so we skip
             // even the record copy — an idle live tick allocates nothing (the prior `Map.map` made a
             // fresh map every tick). Active clocks advance exactly as before (features 099/103 unchanged).
-            match retained.Value with
+            match loopState.Retained with
             | Some r ->
                 let advanced = RetainedRender.advanceStateClocks delta r.StateByIdentity
 
                 if not (obj.ReferenceEquals(advanced, r.StateByIdentity)) then
-                    retained.Value <- Some { r with StateByIdentity = advanced }
+                    loopState.Retained <- Some { r with StateByIdentity = advanced }
             | None -> ()
 
             host.Tick delta
