@@ -81,6 +81,32 @@ type DiagnosticSummary =
       Exceptions: DiagnosticException list
       ArtifactWriteDiagnostics: RuntimeDiagnostic list }
 
+/// Single canonical readiness vocabulary shared by every readiness consumer (Feature 180).
+/// Tokens match the existing per-domain statusText tables byte-for-byte; the few domains whose
+/// accept/block rule diverges from the canonical default keep a documented per-domain override.
+[<RequireQualifiedAccess>]
+type ReadinessStatus =
+    | Accepted
+    | Rejected
+    | Blocked
+    | Missing
+    | Unsupported
+    | EnvironmentLimited
+    | Degraded
+    | Incomplete
+    | Failed
+    | FallbackOnly
+    | Pending
+    | Unknown
+
+module ReadinessStatus =
+    /// The one display-text projection (SC-001). Tokens equal the existing per-domain statusText byte-for-byte.
+    val statusToken: status: ReadinessStatus -> string
+    /// The one canonical accept/block rule (SC-001). Accepted & EnvironmentLimited are non-blocking by default.
+    val blocksAcceptance: status: ReadinessStatus -> bool
+    /// Inverse of statusToken; subsumes the existing tryParseReadinessStatus. Unknown tokens -> None.
+    val tryParse: token: string -> ReadinessStatus option
+
 module RuntimeDiagnostics =
     val source:
         packageId: string option ->

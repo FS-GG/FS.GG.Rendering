@@ -11,5 +11,7 @@ FS.GG.UI.Diagnostics.DiagnosticSource
 FS.GG.UI.Diagnostics.DiagnosticSummary
 FS.GG.UI.Diagnostics.ReadinessDiagnosticStatus
 FS.GG.UI.Diagnostics.ReadinessDiagnosticStatus+Tags
+FS.GG.UI.Diagnostics.ReadinessStatus
+FS.GG.UI.Diagnostics.ReadinessStatus+Tags
 FS.GG.UI.Diagnostics.RuntimeDiagnostic
 FS.GG.UI.Diagnostics.RuntimeDiagnostics

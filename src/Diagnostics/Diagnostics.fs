@@ -87,6 +87,62 @@ type DiagnosticSummary =
       Exceptions: DiagnosticException list
       ArtifactWriteDiagnostics: RuntimeDiagnostic list }
 
+/// Single canonical readiness vocabulary shared by every readiness consumer (Feature 180).
+[<RequireQualifiedAccess>]
+type ReadinessStatus =
+    | Accepted
+    | Rejected
+    | Blocked
+    | Missing
+    | Unsupported
+    | EnvironmentLimited
+    | Degraded
+    | Incomplete
+    | Failed
+    | FallbackOnly
+    | Pending
+    | Unknown
+
+module ReadinessStatus =
+    let statusToken status =
+        match status with
+        | ReadinessStatus.Accepted -> "accepted"
+        | ReadinessStatus.Rejected -> "rejected"
+        | ReadinessStatus.Blocked -> "blocked"
+        | ReadinessStatus.Missing -> "missing-evidence"
+        | ReadinessStatus.Unsupported -> "unsupported"
+        | ReadinessStatus.EnvironmentLimited -> "environment-limited"
+        | ReadinessStatus.Degraded -> "degraded"
+        | ReadinessStatus.Incomplete -> "incomplete"
+        | ReadinessStatus.Failed -> "failed"
+        | ReadinessStatus.FallbackOnly -> "fallback-only"
+        | ReadinessStatus.Pending -> "pending"
+        | ReadinessStatus.Unknown -> "unknown"
+
+    let blocksAcceptance status =
+        // Canonical default: only Accepted and EnvironmentLimited are non-blocking. Domains whose rule
+        // diverges (e.g. Feature159, where EnvironmentLimited blocks) keep a documented per-domain override.
+        match status with
+        | ReadinessStatus.Accepted -> false
+        | ReadinessStatus.EnvironmentLimited -> false
+        | _ -> true
+
+    let tryParse (token: string) =
+        match (if String.IsNullOrWhiteSpace token then "" else token.Trim().ToLowerInvariant()) with
+        | "accepted" -> Some ReadinessStatus.Accepted
+        | "rejected" -> Some ReadinessStatus.Rejected
+        | "blocked" -> Some ReadinessStatus.Blocked
+        | "missing-evidence" -> Some ReadinessStatus.Missing
+        | "unsupported" -> Some ReadinessStatus.Unsupported
+        | "environment-limited" -> Some ReadinessStatus.EnvironmentLimited
+        | "degraded" -> Some ReadinessStatus.Degraded
+        | "incomplete" -> Some ReadinessStatus.Incomplete
+        | "failed" -> Some ReadinessStatus.Failed
+        | "fallback-only" -> Some ReadinessStatus.FallbackOnly
+        | "pending" -> Some ReadinessStatus.Pending
+        | "unknown" -> Some ReadinessStatus.Unknown
+        | _ -> None
+
 module RuntimeDiagnostics =
     let private trimOption value =
         value
@@ -132,19 +188,25 @@ module RuntimeDiagnostics =
         | DeveloperAction -> "developer-action"
 
     let readinessStatusToken status =
+        // Routes through the shared ReadinessStatus.statusToken (Feature 180); review-required has no shared
+        // case and stays a domain projection. Output tokens are byte-identical to the prior table.
         match status with
-        | Accepted -> "accepted"
-        | Blocked -> "blocked"
         | ReviewRequired -> "review-required"
-        | EnvironmentLimitedStatus -> "environment-limited"
+        | Accepted -> ReadinessStatus.statusToken ReadinessStatus.Accepted
+        | Blocked -> ReadinessStatus.statusToken ReadinessStatus.Blocked
+        | EnvironmentLimitedStatus -> ReadinessStatus.statusToken ReadinessStatus.EnvironmentLimited
 
     let tryParseReadinessStatus token =
+        // Subsumes the duplicate parse table via ReadinessStatus.tryParse; review-required stays a domain
+        // projection and only the three shared cases this domain uses are accepted (others -> None, as before).
         match nonEmpty "" token |> fun text -> text.ToLowerInvariant() with
-        | "accepted" -> Some Accepted
-        | "blocked" -> Some Blocked
         | "review-required" -> Some ReviewRequired
-        | "environment-limited" -> Some EnvironmentLimitedStatus
-        | _ -> None
+        | other ->
+            match ReadinessStatus.tryParse other with
+            | Some ReadinessStatus.Accepted -> Some Accepted
+            | Some ReadinessStatus.Blocked -> Some Blocked
+            | Some ReadinessStatus.EnvironmentLimited -> Some EnvironmentLimitedStatus
+            | _ -> None
 
     let private sourceKey source =
         [ source.PackageId |> Option.defaultValue ""
@@ -369,6 +431,10 @@ module RuntimeDiagnostics =
         |> Option.map (fun (date: DateOnly) -> json (date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)))
         |> Option.defaultValue "null"
 
+    // NOTE (Feature 180, US3 / C-FH-3): this RuntimeDiagnostics JSON family is intentionally NOT merged with
+    // the shared FS.GG.UI.Testing.ReadinessFormatting helpers — it is behaviorally distinct
+    // (System.Text.Json-based `json`; NO comma-space separator here; jsonCounts/countsText carry a `tokenOf`
+    // projection). Forcing reconciliation would change emitted bytes, so it is left intact.
     let private jsonStringArray values =
         "[" + (values |> List.map json |> String.concat ",") + "]"
 
