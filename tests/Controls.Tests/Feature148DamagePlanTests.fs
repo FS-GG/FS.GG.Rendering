@@ -13,13 +13,14 @@ let tests =
         test "clipped overlapping edge damage has true union area and source cause" {
             let damage =
                 RetainedRender.damageRegionSet
-                    100
-                    80
-                    false
-                    "damage/frame-edge"
-                    [ rect -5.0 -5.0 20.0 20.0
-                      rect 10.0 10.0 20.0 20.0
-                      rect 90.0 70.0 20.0 20.0 ]
+                    { FrameWidth = 100
+                      FrameHeight = 80
+                      FullFrameInvalidation = false
+                      Cause = "damage/frame-edge"
+                      Boxes =
+                        [ rect -5.0 -5.0 20.0 20.0
+                          rect 10.0 10.0 20.0 20.0
+                          rect 90.0 70.0 20.0 20.0 ] }
 
             Expect.equal damage.Cause "damage/frame-edge" "cause/source boundary"
             Expect.equal damage.Regions.Length 3 "visible clipped regions"
@@ -35,9 +36,9 @@ let tests =
         }
 
         test "fallback classification covers missing, failed, environment-limited, empty, and full-frame cases" {
-            let empty = RetainedRender.damageRegionSet 100 80 false "damage/idle" []
-            let localized = RetainedRender.damageRegionSet 100 80 false "damage/localized-update" [ rect 10.0 10.0 20.0 20.0 ]
-            let full = RetainedRender.damageRegionSet 100 80 true "damage/theme-global" [ rect 10.0 10.0 20.0 20.0 ]
+            let empty = RetainedRender.damageRegionSet { FrameWidth = 100; FrameHeight = 80; FullFrameInvalidation = false; Cause = "damage/idle"; Boxes = [] }
+            let localized = RetainedRender.damageRegionSet { FrameWidth = 100; FrameHeight = 80; FullFrameInvalidation = false; Cause = "damage/localized-update"; Boxes = [ rect 10.0 10.0 20.0 20.0 ] }
+            let full = RetainedRender.damageRegionSet { FrameWidth = 100; FrameHeight = 80; FullFrameInvalidation = true; Cause = "damage/theme-global"; Boxes = [ rect 10.0 10.0 20.0 20.0 ] }
 
             Expect.equal (RetainedRender.classifyDamageFallback false None localized) (Some MissingProof) "missing proof"
             Expect.equal (RetainedRender.classifyDamageFallback false (Some "environment-limited readback") localized) (Some(EnvironmentLimited "environment-limited readback")) "environment"

@@ -11,15 +11,15 @@ let private rect x y w h : Rect =
 let tests =
     testList "Feature147 promotion and placement reuse policy" [
         test "stable beneficial parity-clean boundary promotes" {
-            let decision = RetainedRender.promotionDecision "panel" 4 3 120 12 true
+            let decision = RetainedRender.promotionDecision { BoundaryId = "panel"; ObservedStabilityFrames = 4; ObservationWindow = 3; ExpectedSavedWork = 120; MeasuredOverhead = 12; ParityPassed = true }
             Expect.equal decision.Decision Promote "promoted"
             Expect.equal decision.Tier ReplayTier "replay tier"
         }
 
         test "incomplete stability observes, parity failure rejects, overhead demotes" {
-            Expect.equal (RetainedRender.promotionDecision "a" 1 3 100 10 true).Decision Observe "wait for stability"
-            Expect.equal (RetainedRender.promotionDecision "b" 3 3 100 10 false).Decision Reject "parity failure rejects"
-            Expect.equal (RetainedRender.promotionDecision "c" 3 3 20 25 true).Decision Demote "overhead demotes"
+            Expect.equal (RetainedRender.promotionDecision { BoundaryId = "a"; ObservedStabilityFrames = 1; ObservationWindow = 3; ExpectedSavedWork = 100; MeasuredOverhead = 10; ParityPassed = true }).Decision Observe "wait for stability"
+            Expect.equal (RetainedRender.promotionDecision { BoundaryId = "b"; ObservedStabilityFrames = 3; ObservationWindow = 3; ExpectedSavedWork = 100; MeasuredOverhead = 10; ParityPassed = false }).Decision Reject "parity failure rejects"
+            Expect.equal (RetainedRender.promotionDecision { BoundaryId = "c"; ObservedStabilityFrames = 3; ObservationWindow = 3; ExpectedSavedWork = 20; MeasuredOverhead = 25; ParityPassed = true }).Decision Demote "overhead demotes"
         }
 
         test "placement-only movement damages old and new regions" {

@@ -13,12 +13,13 @@ let tests =
         test "overlapping damage uses true union area and stays inside the frame" {
             let damage =
                 RetainedRender.damageRegionSet
-                    100
-                    80
-                    false
-                    "damage/overlap"
-                    [ rect 0.0 0.0 40.0 40.0
-                      rect 20.0 20.0 40.0 40.0 ]
+                    { FrameWidth = 100
+                      FrameHeight = 80
+                      FullFrameInvalidation = false
+                      Cause = "damage/overlap"
+                      Boxes =
+                        [ rect 0.0 0.0 40.0 40.0
+                          rect 20.0 20.0 40.0 40.0 ] }
 
             Expect.equal damage.Cause "damage/overlap" "cause"
             Expect.equal damage.Regions.Length 2 "visible regions"
@@ -27,7 +28,7 @@ let tests =
         }
 
         test "resource and internal failures remain explicit fallback decisions" {
-            let localized = RetainedRender.damageRegionSet 100 80 false "damage/resource-failure" [ rect 10.0 10.0 20.0 20.0 ]
+            let localized = RetainedRender.damageRegionSet { FrameWidth = 100; FrameHeight = 80; FullFrameInvalidation = false; Cause = "damage/resource-failure"; Boxes = [ rect 10.0 10.0 20.0 20.0 ] }
 
             Expect.equal
                 (RetainedRender.classifyDamageFallback false (Some "resource failure") localized)

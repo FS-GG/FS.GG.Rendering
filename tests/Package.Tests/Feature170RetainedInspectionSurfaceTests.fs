@@ -41,7 +41,7 @@ let tests =
                     Diagnostics = [] }
 
               let damage =
-                  RetainedInspection.damageRegion "t" { X = 0.0; Y = 0.0; Width = 100.0; Height = 100.0 } [ rect ] [ "content" ] [ "node" ] 1 0 1 None (Some 25.0)
+                  RetainedInspection.damageRegion "t" { X = 0.0; Y = 0.0; Width = 100.0; Height = 100.0 } [ rect ] [ "content" ] [ "node" ] { Repainted = 1; Shifted = 0; Unaffected = 1 } None (Some 25.0)
 
               let artifact: RetainedInspectionArtifact =
                   { ArtifactId = "artifact"

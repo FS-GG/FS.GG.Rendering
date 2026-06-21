@@ -115,7 +115,7 @@ module Viewer =
     /// Public contract function exposed by this FS.GG.UI package.
     val failureFromDiagnostic: diagnostic: ViewerDiagnosticEvent -> ViewerRunFailure
     /// Public contract function exposed by this FS.GG.UI package.
-    val classifyWindowObservation: outcome: ViewerLaunchOutcome -> externalObservationAttempted: bool -> externalWindowMatched: bool option -> captureAttempted: bool -> captureSucceeded: bool option -> ViewerWindowObservationResult
+    val classifyWindowObservation: outcome: ViewerLaunchOutcome -> inputs: WindowObservationInputs -> ViewerWindowObservationResult
     /// Public contract function exposed by this FS.GG.UI package.
     val desktopSessionDiagnostic: unit -> ViewerDesktopSessionDiagnostic
     /// Public contract function exposed by this FS.GG.UI package.

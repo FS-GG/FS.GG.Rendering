@@ -41,6 +41,12 @@
     <Compile Include="Diagnostics.fs" />
     <Compile Include="OverlayState.fsi" />
     <Compile Include="OverlayState.fs" />
+    <!-- Feature 183 (US1): the single internal per-Kind dispatch registry, compiled before every
+         consumer (Accessibility/Control/Catalog/ControlRuntime/Inspection/RetainedRender) so they
+         reference it with no back-edge (FR-011). Internal (module internal + paired .fsi, mirroring
+         Reconcile/RetainedRender) — required by surface governance, never on the public surface. -->
+    <Compile Include="ControlKindRegistry.fsi" />
+    <Compile Include="ControlKindRegistry.fs" />
     <Compile Include="Accessibility.fsi" />
     <Compile Include="Accessibility.fs" />
     <Compile Include="Internal/AttrKeys.fs" />

@@ -21,6 +21,7 @@ FS.GG.UI.Scene.Colors
 FS.GG.UI.Scene.DamageInspectionStatus
 FS.GG.UI.Scene.DamageInspectionStatus+Tags
 FS.GG.UI.Scene.DamageLocalityFinding
+FS.GG.UI.Scene.DamageNodeCounts
 FS.GG.UI.Scene.DamageRegionInspection
 FS.GG.UI.Scene.DegradationPolicy
 FS.GG.UI.Scene.DegradationPolicy+Tags

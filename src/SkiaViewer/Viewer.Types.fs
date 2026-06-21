@@ -524,6 +524,14 @@ type ViewerLaunchOutcome =
       Category: ViewerDiagnosticCategory option
       Message: string }
 
+// Feature 183 (US3): named, transposition-safe grouping of the four window-observation inputs for
+// classifyWindowObservation (values/results unchanged).
+type WindowObservationInputs =
+    { ExternalObservationAttempted: bool
+      ExternalWindowMatched: bool option
+      CaptureAttempted: bool
+      CaptureSucceeded: bool option }
+
 type ViewerWindowObservationResult =
     { DiagnosticSource: string
       Command: string option

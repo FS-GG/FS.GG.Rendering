@@ -83,6 +83,7 @@ FS.GG.UI.SkiaViewer.Host.GlHost+DamageRenderDecision
 FS.GG.UI.SkiaViewer.Host.GlHost+DamageRenderDecisionKind
 FS.GG.UI.SkiaViewer.Host.GlHost+DamageRenderDecisionKind+Tags
 FS.GG.UI.SkiaViewer.Host.GlHost+DamageRenderEligibility
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageValidationFlags
 FS.GG.UI.SkiaViewer.Host.GlHost+DamageValidationResult
 FS.GG.UI.SkiaViewer.Host.GlHost+DamageValidationStatus
 FS.GG.UI.SkiaViewer.Host.GlHost+DamageValidationStatus+Tags
@@ -305,3 +306,4 @@ FS.GG.UI.SkiaViewer.ViewerWindowResizePolicy+Tags
 FS.GG.UI.SkiaViewer.ViewerWindowStartupState
 FS.GG.UI.SkiaViewer.ViewerWindowStartupState+Tags
 FS.GG.UI.SkiaViewer.ViewerWindowStateDiagnostic
+FS.GG.UI.SkiaViewer.WindowObservationInputs

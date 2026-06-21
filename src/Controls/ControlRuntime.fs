@@ -370,8 +370,11 @@ module ControlRuntime =
         let withChildren =
             { control with Children = control.Children |> List.map (applyScrollOffsets model) }
 
-        match control.Kind, model.ScrollOffsets |> Map.tryFind id with
-        | "scroll-viewer", Some scroll when scroll.Offset > 0.0 ->
+        // Feature 183 (US1): the scroll-affordance kind test reads the single ControlKindRegistry SSOT
+        // (byte-identical — only `scroll-viewer` carries it).
+        match (if ControlKindRegistry.hasScrollAffordance control.Kind then Some() else None),
+              model.ScrollOffsets |> Map.tryFind id with
+        | Some(), Some scroll when scroll.Offset > 0.0 ->
             { withChildren with
                 Attributes =
                     (withChildren.Attributes |> List.filter (fun a -> a.Name <> AttrKeys.ScrollOffset))

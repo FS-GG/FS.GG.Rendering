@@ -932,7 +932,11 @@ module Viewer =
           Message = message
           LastDiagnosticSummary = lastDiagnostic |> Option.map _.Message }
 
-    let classifyWindowObservation outcome externalObservationAttempted externalWindowMatched captureAttempted captureSucceeded =
+    let classifyWindowObservation outcome (inputs: WindowObservationInputs) =
+        let externalObservationAttempted = inputs.ExternalObservationAttempted
+        let externalWindowMatched = inputs.ExternalWindowMatched
+        let captureAttempted = inputs.CaptureAttempted
+        let captureSucceeded = inputs.CaptureSucceeded
         let viewerFactsPresent = outcome.WindowOpened && outcome.FirstFramePresented
 
         let externalObservationMissing =

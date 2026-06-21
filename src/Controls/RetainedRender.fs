@@ -728,7 +728,19 @@ module internal RetainedRender =
                   DamageWidth = width
                   DamageHeight = height }
 
-    let damageRegionSet frameWidth frameHeight fullFrameInvalidation cause boxes =
+    type DamageSetInputs =
+        { FrameWidth: int
+          FrameHeight: int
+          FullFrameInvalidation: bool
+          Cause: string
+          Boxes: FS.GG.UI.Scene.Rect list }
+
+    let damageRegionSet (inputs: DamageSetInputs) =
+        let frameWidth = inputs.FrameWidth
+        let frameHeight = inputs.FrameHeight
+        let fullFrameInvalidation = inputs.FullFrameInvalidation
+        let cause = inputs.Cause
+        let boxes = inputs.Boxes
         let frameArea = max 0 frameWidth * max 0 frameHeight
 
         let regions =
@@ -753,7 +765,12 @@ module internal RetainedRender =
           Cause = cause }
 
     let placementDamage frameWidth frameHeight oldBox newBox =
-        damageRegionSet frameWidth frameHeight false "placement-only movement" [ oldBox; newBox ]
+        damageRegionSet
+            { FrameWidth = frameWidth
+              FrameHeight = frameHeight
+              FullFrameInvalidation = false
+              Cause = "placement-only movement"
+              Boxes = [ oldBox; newBox ] }
 
     let classifyDamageFallback proofReady (proofReason: string option) (damage: CompositorDamageRegionSet) =
         match proofReady, proofReason, damage.FullFrameInvalidation, damage.Regions with
@@ -765,7 +782,21 @@ module internal RetainedRender =
         | true, _, false, _ when damage.UnionArea > damage.FrameWidth * damage.FrameHeight -> Some(UnsafeDamage "damage exceeds frame area")
         | _ -> None
 
-    let promotionDecision boundaryId observedStabilityFrames observationWindow expectedSavedWork measuredOverhead parityPassed =
+    type PromotionInputs =
+        { BoundaryId: string
+          ObservedStabilityFrames: int
+          ObservationWindow: int
+          ExpectedSavedWork: int
+          MeasuredOverhead: int
+          ParityPassed: bool }
+
+    let promotionDecision (inputs: PromotionInputs) =
+        let boundaryId = inputs.BoundaryId
+        let observedStabilityFrames = inputs.ObservedStabilityFrames
+        let observationWindow = inputs.ObservationWindow
+        let expectedSavedWork = inputs.ExpectedSavedWork
+        let measuredOverhead = inputs.MeasuredOverhead
+        let parityPassed = inputs.ParityPassed
         if not parityPassed then
             { BoundaryId = boundaryId
               Decision = Reject
@@ -1728,16 +1759,19 @@ module internal RetainedRender =
         let mutable virtualMaterialized = 0
         let mutable virtualTotal = 0
 
+        // Feature 183 (US1): the virtualization role per kind reads the single ControlKindRegistry SSOT
+        // (byte-identical: `data-grid-row` materializes a row, `data-grid` carries the logical total).
         let rec countVirtual (c: Control<'msg>) =
-            if c.Kind = "data-grid-row" then
-                virtualMaterialized <- virtualMaterialized + 1
-            elif c.Kind = "data-grid" then
+            match ControlKindRegistry.virtualizationOf c.Kind with
+            | Some ControlKindRegistry.GridRow -> virtualMaterialized <- virtualMaterialized + 1
+            | Some ControlKindRegistry.Grid ->
                 c.Attributes
                 |> List.tryFind (fun a -> a.Name = AttrKeys.nameOf AttrKeys.VisibleRange)
                 |> Option.iter (fun a ->
                     match a.Value with
                     | UntypedValue(:? VisibleRange as vr) -> virtualTotal <- virtualTotal + vr.Total
                     | _ -> ())
+            | None -> ()
 
             c.Children |> List.iter countVirtual
 

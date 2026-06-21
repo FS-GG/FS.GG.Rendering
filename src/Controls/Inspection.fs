@@ -41,39 +41,20 @@ module ControlInspection =
     let private controlId path (control: Control<'msg>) =
         control.Key |> Option.defaultValue path
 
+    // Feature 183 (US1): the non-root per-Kind inspection node-kind / surface-role dispatch now lives
+    // in the single ControlKindRegistry SSOT (byte-identical, incl. the `Custom value` / `Content`
+    // defaults). The root case (`path = "0"`) stays here — it is path-keyed, not kind-keyed.
     let private kindOf path (control: Control<'msg>) =
         if path = "0" then
             VisualInspectionNodeKind.Root
         else
-            match control.Kind with
-            | "text-block"
-            | "label"
-            | "button"
-            | "validation-message"
-            | "tooltip"
-            | "toast" -> VisualInspectionNodeKind.Text
-            | "image" -> VisualInspectionNodeKind.Image
-            | "overlay" -> VisualInspectionNodeKind.Overlay
-            | "popup" -> VisualInspectionNodeKind.Popup
-            | "stack"
-            | "panel"
-            | "scroll-viewer"
-            | "data-grid" -> VisualInspectionNodeKind.Container
-            | value -> VisualInspectionNodeKind.Custom value
+            ControlKindRegistry.inspectionNodeKind control.Kind
 
     let private surfaceRoleOf path (control: Control<'msg>) =
         if path = "0" then
             VisualInspectionSurfaceRole.Root
         else
-            match control.Kind with
-            | "overlay" -> VisualInspectionSurfaceRole.Overlay
-            | "popup"
-            | "tooltip" -> VisualInspectionSurfaceRole.Popup
-            | "toast"
-            | "validation-message" -> VisualInspectionSurfaceRole.Feedback
-            | "menu"
-            | "tabs" -> VisualInspectionSurfaceRole.Navigation
-            | _ -> VisualInspectionSurfaceRole.Content
+            ControlKindRegistry.surfaceRole control.Kind
 
     let private paintRoleOf path (control: Control<'msg>) =
         if path = "0" then
@@ -463,9 +444,9 @@ module ControlInspection =
                         (dirtyRects nodes)
                         transition.ExpectedAffectedRegionIds
                         affectedNodeIds
-                        repaintedCount
-                        shiftedCount
-                        unaffectedCount
+                        { Repainted = repaintedCount
+                          Shifted = shiftedCount
+                          Unaffected = unaffectedCount }
                         transition.InteractionId
                         transition.MaximumDirtyPercentage)
 

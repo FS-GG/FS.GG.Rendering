@@ -136,6 +136,15 @@ module GlHost =
           UnionArea: int
           Reason: string option }
 
+    /// Feature 183 (US3): the five damage-classification flags `validateDamage` takes, named so they
+    /// cannot be transposed at the call site (a swap is now a compile error). Values/results unchanged.
+    type DamageValidationFlags =
+        { VisibleChange: bool
+          FullFrameInvalidation: bool
+          StaleDamage: bool
+          IncompleteDamage: bool
+          AmbiguousDamage: bool }
+
     [<RequireQualifiedAccess>]
     /// Feature 157: host render decision for the no-clear damage-scissored branch.
     type DamageRenderDecisionKind =
@@ -300,11 +309,7 @@ module GlHost =
         damage: ScissorRect list ->
         frameWidth: int ->
         frameHeight: int ->
-        visibleChange: bool ->
-        fullFrameInvalidation: bool ->
-        staleDamage: bool ->
-        incompleteDamage: bool ->
-        ambiguousDamage: bool ->
+        flags: DamageValidationFlags ->
             DamageValidationResult
 
     /// Feature 157: decide if the real DirectToSwapchain no-clear path may be selected.

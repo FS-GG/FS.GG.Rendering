@@ -161,6 +161,7 @@
     <Compile Include="Feature175ScrollStateTests.fs" />
     <Compile Include="Feature175HoverFocusTests.fs" />
     <Compile Include="Feature175UnkeyedSiblingDiagnosticTests.fs" />
+    <Compile Include="Feature183KindRegistryTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

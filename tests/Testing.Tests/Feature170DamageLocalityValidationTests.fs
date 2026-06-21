@@ -62,7 +62,7 @@ let tests =
         "Feature170 retained damage locality validation"
         [ test "full-surface localized damage is blocked and true-union evidence is checked" {
               let damage =
-                  RetainedInspection.damageRegion "hover" frame [ rect 0.0 0.0 100.0 100.0 ] [ "button" ] [ "button" ] 1 0 0 None (Some 20.0)
+                  RetainedInspection.damageRegion "hover" frame [ rect 0.0 0.0 100.0 100.0 ] [ "button" ] [ "button" ] { Repainted = 1; Shifted = 0; Unaffected = 0 } None (Some 20.0)
 
               let result = artifact "fixture" damage [] |> validate
 
@@ -72,7 +72,7 @@ let tests =
 
           test "broad damage can be accepted by a scoped intentional exception" {
               let damage =
-                  RetainedInspection.damageRegion "hover" frame [ rect 0.0 0.0 80.0 80.0 ] [ "button" ] [ "button" ] 1 0 0 None (Some 20.0)
+                  RetainedInspection.damageRegion "hover" frame [ rect 0.0 0.0 80.0 80.0 ] [ "button" ] [ "button" ] { Repainted = 1; Shifted = 0; Unaffected = 0 } None (Some 20.0)
 
               let art = artifact "fixture" damage []
               let broad =
@@ -106,7 +106,7 @@ let tests =
           }
 
           test "unsupported required retained facts do not become accepted readiness" {
-              let damage = RetainedInspection.damageRegion "hover" frame [ rect 0.0 0.0 10.0 10.0 ] [ "button" ] [ "button" ] 1 0 0 None None
+              let damage = RetainedInspection.damageRegion "hover" frame [ rect 0.0 0.0 10.0 10.0 ] [ "button" ] [ "button" ] { Repainted = 1; Shifted = 0; Unaffected = 0 } None None
               let fact = RetainedInspection.unsupportedFact "damage-regions" (Some "button") true "not available" "fixture" false
               let result = artifact "fixture" damage [ fact ] |> validate
 
@@ -116,7 +116,7 @@ let tests =
 
           test "summary markdown json and managed section expose reviewer fields" {
               let damage =
-                  RetainedInspection.damageRegion "hover" frame [ rect 0.0 0.0 10.0 10.0 ] [ "button" ] [ "button" ] 1 0 1 None (Some 20.0)
+                  RetainedInspection.damageRegion "hover" frame [ rect 0.0 0.0 10.0 10.0 ] [ "button" ] [ "button" ] { Repainted = 1; Shifted = 0; Unaffected = 1 } None (Some 20.0)
 
               let art = artifact "fixture" damage []
               let result = validate art

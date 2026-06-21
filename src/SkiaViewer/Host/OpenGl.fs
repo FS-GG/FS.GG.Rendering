@@ -519,7 +519,19 @@ module GlHost =
           RetainedBacking = retainedBackingToken eligibility.RetainedBacking
           Parity = if eligibility.ParityAccepted then "accepted" else "not-accepted" }
 
-    let validateDamage damage frameWidth frameHeight visibleChange fullFrameInvalidation staleDamage incompleteDamage ambiguousDamage =
+    type DamageValidationFlags =
+        { VisibleChange: bool
+          FullFrameInvalidation: bool
+          StaleDamage: bool
+          IncompleteDamage: bool
+          AmbiguousDamage: bool }
+
+    let validateDamage damage frameWidth frameHeight (flags: DamageValidationFlags) =
+        let visibleChange = flags.VisibleChange
+        let fullFrameInvalidation = flags.FullFrameInvalidation
+        let staleDamage = flags.StaleDamage
+        let incompleteDamage = flags.IncompleteDamage
+        let ambiguousDamage = flags.AmbiguousDamage
         let normalized = normalizeScissorRects frameWidth frameHeight damage
         let outOfBounds =
             damage
@@ -563,11 +575,11 @@ module GlHost =
                 eligibility.Damage
                 eligibility.FrameWidth
                 eligibility.FrameHeight
-                eligibility.VisibleChange
-                eligibility.FullFrameInvalidation
-                eligibility.StaleDamage
-                eligibility.IncompleteDamage
-                eligibility.AmbiguousDamage
+                { VisibleChange = eligibility.VisibleChange
+                  FullFrameInvalidation = eligibility.FullFrameInvalidation
+                  StaleDamage = eligibility.StaleDamage
+                  IncompleteDamage = eligibility.IncompleteDamage
+                  AmbiguousDamage = eligibility.AmbiguousDamage }
 
         match eligibility.Proof, validation.Status with
         | CompositorProof.ProofReadiness.EnvironmentLimited reason, _ ->

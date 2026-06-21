@@ -450,28 +450,28 @@ type RenderDiagnostic =
 type SceneNode =
     | Empty
     | Group of Scene list
-    | Rectangle of (float * float * float * float) * Color
-    | PaintedRectangle of Rect * Paint
+    | Rectangle of bounds: (float * float * float * float) * fill: Color
+    | PaintedRectangle of bounds: Rect * paint: Paint
     | Circle of center: Point * radius: float * fill: Color
     | FilledEllipse of bounds: Rect * fill: Color
-    | Ellipse of Rect * Paint
-    | Line of Point * Point * Paint
-    | Path of PathSpec * Paint
-    | Points of Point list * Paint
-    | Vertices of VertexMode * Vertex list * Paint
-    | Arc of Rect * float * float * Paint
-    | Text of (float * float) * string * Color
-    | TextRun of TextRun
-    | Image of (float * float * float * float) * string
-    | ClipNode of Clip * Scene
-    | RegionNode of Region * Paint
-    | ColorSpaceNode of ColorSpace * Scene
-    | PerspectiveNode of PerspectiveTransform * Scene
-    | PictureNode of Picture
+    | Ellipse of bounds: Rect * paint: Paint
+    | Line of startPoint: Point * endPoint: Point * paint: Paint
+    | Path of path: PathSpec * paint: Paint
+    | Points of points: Point list * paint: Paint
+    | Vertices of mode: VertexMode * vertices: Vertex list * paint: Paint
+    | Arc of bounds: Rect * startAngle: float * sweepAngle: float * paint: Paint
+    | Text of position: (float * float) * text: string * fill: Color
+    | TextRun of run: TextRun
+    | Image of bounds: (float * float * float * float) * source: string
+    | ClipNode of clip: Clip * scene: Scene
+    | RegionNode of region: Region * paint: Paint
+    | ColorSpaceNode of colorSpace: ColorSpace * scene: Scene
+    | PerspectiveNode of transform: PerspectiveTransform * scene: Scene
+    | PictureNode of picture: Picture
     | Chart of values: float list
-    | Translate of (float * float) * Scene
-    | SizedText of (float * float) * string * float * Color
-    | GlyphRun of GlyphRun
+    | Translate of offset: (float * float) * scene: Scene
+    | SizedText of position: (float * float) * text: string * size: float * fill: Color
+    | GlyphRun of run: GlyphRun
     /// Feature 120 (FR-007): a reuse-stable subtree marked as a backend replay-cache boundary.
     /// TRANSPARENT to every Scene-IR consumer except the OpenGL backend painter — `describe`,
     /// diagnostics, `measure`, opacity scaling, and every retained walk recurse straight into
@@ -895,6 +895,15 @@ type RetainedNodeInspection =
 /// Dirty area values are expressed in visible frame coordinates. `UnionArea`
 /// is the true clipped union of dirty rectangles, not the area of the bounding
 /// rectangle.
+///
+/// Feature 183 (US3): the three transposable retained node counters `damageRegion` takes, grouped and
+/// named so a caller cannot silently swap repainted/shifted/unaffected (a transposition is now a
+/// compile error). Values and results are unchanged.
+type DamageNodeCounts =
+    { Repainted: int
+      Shifted: int
+      Unaffected: int }
+
 type DamageRegionInspection =
     { TransitionId: string
       DamageStatus: DamageInspectionStatus
@@ -1279,9 +1288,7 @@ module RetainedInspection =
         dirtyRectangles: Rect list ->
         expectedAffectedRegionIds: string list ->
         affectedNodeIds: string list ->
-        repaintedNodeCount: int ->
-        shiftedNodeCount: int ->
-        unaffectedNodeCount: int ->
+        nodeCounts: DamageNodeCounts ->
         cause: string option ->
         maximumDirtyPercentage: float option ->
             DamageRegionInspection

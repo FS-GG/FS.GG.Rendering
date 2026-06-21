@@ -398,10 +398,10 @@ let tests =
             let observation =
                 Viewer.classifyWindowObservation
                     outcome
-                    true
-                    (Some false)
-                    false
-                    None
+                    { ExternalObservationAttempted = true
+                      ExternalWindowMatched = Some false
+                      CaptureAttempted = false
+                      CaptureSucceeded = None }
 
             Expect.equal observation.ViewerWindowOpened true "viewer-owned window-opened fact is preserved"
             Expect.equal observation.ViewerFirstFramePresented true "viewer-owned first-frame fact is preserved"
@@ -443,10 +443,10 @@ let tests =
             let observation =
                 Viewer.classifyWindowObservation
                     outcome
-                    false
-                    None
-                    true
-                    (Some false)
+                    { ExternalObservationAttempted = false
+                      ExternalWindowMatched = None
+                      CaptureAttempted = true
+                      CaptureSucceeded = Some false }
 
             Expect.equal observation.BlockedStage (Some Capture) "capture failure is capture-blocked when viewer facts pass"
             Expect.equal observation.Classification (Some UnsupportedEnvironment) "capture failure is a host observation limitation"

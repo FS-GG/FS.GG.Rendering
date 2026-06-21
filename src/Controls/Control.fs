@@ -498,32 +498,14 @@ module internal ControlInternals =
 
         // Feature 136 (US3/T035): guard degenerate data — drop non-finite (NaN/Inf) points so a
         // chart never computes wild geometry; n=0 yields [] (the geoms render an empty state).
+        // Feature 183 (US1): the chart data-source routing now reads the single ControlKindRegistry
+        // SSOT (byte-identical: series/values attribute or graph nodes; any other kind ⇒ []).
         let raw =
-            match control.Kind with
-            | "line-chart"
-            | "bar-chart"
-            | "scatter-plot"
-            // series-shaped net-new charts
-            | "area-chart"
-            | "column-chart"
-            | "box-plot" ->
-                points "series" |> Option.defaultValue []
-            | "pie-chart"
-            // point-shaped net-new charts
-            | "histogram"
-            | "heatmap"
-            | "radar-chart"
-            | "rose-chart"
-            | "waterfall-chart"
-            | "funnel-chart"
-            | "gauge-chart"
-            | "treemap"
-            | "sunburst" ->
-                points "values" |> Option.defaultValue []
-            | "graph-view"
-            | "sankey-diagram"
-            | "chord-diagram" -> nodesAsPoints ()
-            | _ -> []
+            match ControlKindRegistry.chartSource control.Kind with
+            | Some ControlKindRegistry.Series -> points "series" |> Option.defaultValue []
+            | Some ControlKindRegistry.Values -> points "values" |> Option.defaultValue []
+            | Some ControlKindRegistry.GraphNodes -> nodesAsPoints ()
+            | None -> []
         raw |> List.filter (fun p -> System.Double.IsFinite p.X && System.Double.IsFinite p.Y)
 
     /// Read the field-name-free run projection (text, colour, size, weight) that `RichText.create`
@@ -547,41 +529,11 @@ module internal ControlInternals =
     // BELOW the title band so the fidelity gate's "coverage outside the title band" criterion is
     // met. Every other control (text/containers — `button`, `label`, `stack`, …) keeps the
     // 079 box+label: those controls ARE their text, so a label-on-a-box is already faithful.
-    let richFamilies =
-        Set.ofList
-            [ "line-chart"; "bar-chart"; "pie-chart"; "scatter-plot"; "graph-view"
-              "list-view"; "list-box"; "multi-select-list"; "combo-box"; "tree-view"; "data-grid"
-              "menu"; "context-menu"; "radio-group"; "tabs"
-              "slider"; "progress-bar"; "numeric-input"; "switch"; "check-box"
-              "button"; "icon-button"; "badge"; "toggle-button"; "split-button"
-              "date-picker"; "time-picker"; "color-picker"; "spinner"; "image"; "icon"
-              // layout / container families (built as single-Kind preview schematics, FR-001):
-              "stack"; "grid"; "dock"; "wrap"; "panel"; "border"; "scroll-viewer"
-              "split-view"; "toolbar"; "overlay"
-              // feature 082 — text-input / rich-text / divider controls. These were previously in
-              // the box+label fallback, which is faithful for static text (label/text-block) but
-              // hid an editable field's chrome (text-box/text-area read as plain labels), dropped
-              // rich-text's styled runs (it rendered its kind id), and drew `separator` as the word
-              // "separator" instead of a divider rule. They now lower to control-specific geometry.
-              "text-box"; "text-area"; "rich-text"; "separator"
-              // Feature 132 (D2.1) — net-new Ant-overview controls (control-specific schematics).
-              "tag"; "avatar"; "card"; "descriptions"; "statistic"; "timeline"; "empty"; "skeleton"
-              "qr-code"; "watermark"; "alert"; "result"; "drawer"; "popover"; "popconfirm"; "tour"
-              "float-button"; "breadcrumb"; "steps"; "pagination"; "segmented"; "anchor"; "affix"
-              "collapse"; "rate"; "carousel"; "calendar"; "cascader"; "auto-complete"; "upload"
-              // Feature 133 (D2C.1) — net-new generic chart controls (theme-role-driven schematics).
-              "area-chart"; "column-chart"; "histogram"; "box-plot"; "heatmap"; "radar-chart"
-              "rose-chart"; "waterfall-chart"; "funnel-chart"; "gauge-chart"; "sankey-diagram"
-              "chord-diagram"; "treemap"; "sunburst" ]
-
-    /// Feature 136 (US3/T035): the chart families whose render geometry is clipped to the control box
-    /// (so a chart body never overruns its bounds) and degenerate-data-guarded (via `chartValues`).
-    let chartFamilies =
-        Set.ofList
-            [ "line-chart"; "bar-chart"; "pie-chart"; "scatter-plot"; "graph-view"
-              "area-chart"; "column-chart"; "histogram"; "box-plot"; "heatmap"; "radar-chart"
-              "rose-chart"; "waterfall-chart"; "funnel-chart"; "gauge-chart"; "sankey-diagram"
-              "chord-diagram"; "treemap"; "sunburst" ]
+    // Feature 183 (US1): the `richFamilies` / `chartFamilies` membership sets moved into the single
+    // ControlKindRegistry SSOT (`isRich` / `isChart`); the sites below call those instead of a local
+    // `Set.contains`. The geometry-dispatch itself (`faithfulContent`) stays here — its arms call this
+    // module's private `*Geom` functions, which the earlier-compiled registry cannot reference without
+    // a back-edge (FR-010 / FR-011 retention; see readiness/post-change/retentions.md).
 
     /// A human caption for the rich-family title band: "date-picker" -> "Date picker".
     /// Used so the thumbnail's title is the control's NAME, not its sample content (which the
@@ -603,14 +555,14 @@ module internal ControlInternals =
     /// Preview node width: explicit `width` wins; rich families fill the preview canvas.
     let nodeWidth (control: Control<'msg>) =
         if hasAttr AttrWidth control.Attributes then floatValue AttrWidth 240.0 control.Attributes
-        elif Set.contains control.Kind richFamilies then 304.0
+        elif ControlKindRegistry.isRich control.Kind then 304.0
         else 240.0
 
     /// Preview node height: explicit `height` wins; rich families get a tall box so geometry
     /// sits below the title band (a 24-px box would put everything inside the band).
     let nodeHeight (control: Control<'msg>) =
         if hasAttr AttrHeight control.Attributes then max 20.0 (floatValue AttrHeight 24.0 control.Attributes)
-        elif Set.contains control.Kind richFamilies then 132.0
+        elif ControlKindRegistry.isRich control.Kind then 132.0
         else 24.0
 
     let private palette (theme: Theme) =
@@ -1752,7 +1704,14 @@ module internal ControlInternals =
           mkText theme (x + 10.0) (box.Y + 22.0) 13.0 theme.Foreground (if title = "" then "Drawer" else title) ]
 
     /// A small floating callout box — `popover` (and the base for popconfirm/tour).
-    let private popoverGeom theme (box: Rect) (label: string) (withActions: bool) : Scene list =
+    // Feature 183 (US3): `popoverGeom`'s `withActions: bool` becomes a 2-case kind so the 3 call sites
+    // read `Plain` / `WithActions` instead of an opaque `false` / `true` (geometry unchanged).
+    type private PopoverKind =
+        | Plain
+        | WithActions
+
+    let private popoverGeom theme (box: Rect) (label: string) (kind: PopoverKind) : Scene list =
+        let withActions = kind = WithActions
         let w = min box.Width 180.0
         let h = if withActions then 70.0 else 50.0
         let baseScene =
@@ -2006,9 +1965,9 @@ module internal ControlInternals =
         | "alert" -> alertGeom theme box label
         | "result" -> resultGeom theme box label
         | "drawer" -> drawerGeom theme box label
-        | "popover" -> popoverGeom theme box label false
-        | "popconfirm" -> popoverGeom theme box (if label = "" then "Confirm?" else label) true
-        | "tour" -> popoverGeom theme box (if label = "" then "Step 1 of 3" else label) true
+        | "popover" -> popoverGeom theme box label Plain
+        | "popconfirm" -> popoverGeom theme box (if label = "" then "Confirm?" else label) WithActions
+        | "tour" -> popoverGeom theme box (if label = "" then "Step 1 of 3" else label) WithActions
         | "float-button" -> floatButtonGeom theme box label
         | "breadcrumb" -> breadcrumbGeom theme box (stringListOf "items" control)
         | "steps" -> stepsGeom theme box (stringListOf "items" control)
@@ -2047,7 +2006,7 @@ module internal ControlInternals =
 
         if not visible then
             Scene.group [ Scene.rectangle (0.0, y, width, height) Colors.transparent ]
-        elif Set.contains control.Kind richFamilies then
+        elif ControlKindRegistry.isRich control.Kind then
             // Title band on top; control-specific geometry below it (within the canvas).
             let pad = 10.0
             let titleH = 30.0
@@ -2154,18 +2113,12 @@ module internal ControlInternals =
             | _ -> None)
 
     let private directionOf (c: Control<'msg>) =
-        match c.Kind with
-        // Feature 136 (US3/T031): a data-grid and its row/header lay out horizontally (Row) so cells
-        // sit side-by-side as a table, not stacked vertically.
-        | "data-grid"
-        | "data-grid-row"
-        | "data-grid-header"
-        | "toolbar"
-        | "split-view"
-        | "wrap"
-        | "grid"
-        | "dock" -> FS.GG.UI.Layout.Row
-        | _ ->
+        // Feature 183 (US1): the horizontal-layout kind set (data-grid + its row/header, toolbar,
+        // split-view, wrap, grid, dock — Feature 136 US3/T031) now reads the single ControlKindRegistry
+        // SSOT (byte-identical, incl. the non-catalog `data-grid-row`/`data-grid-header` arms).
+        if ControlKindRegistry.layoutRow c.Kind then
+            FS.GG.UI.Layout.Row
+        else
             match orientationOf c with
             | Some "horizontal" -> FS.GG.UI.Layout.Row
             | _ -> FS.GG.UI.Layout.Column
@@ -2348,12 +2301,12 @@ module internal ControlInternals =
         root, boundsByIdOf (applyScrollOffsets control result), result
 
     let private paintLeaf (theme: Theme) (box: Rect) (c: Control<'msg>) : Scene list =
-        if Set.contains c.Kind richFamilies then
+        if ControlKindRegistry.isRich c.Kind then
             let content = faithfulContent theme box c
             // Feature 136 (US3/T035): clip chart bodies to the control box so degenerate or
             // out-of-range data can never paint outside its bounds (the data is also finite-guarded
             // in `chartValues`). Non-chart rich families are unchanged.
-            if Set.contains c.Kind chartFamilies then
+            if ControlKindRegistry.isChart c.Kind then
                 [ Scene.clipped (RectClip box) (Scene.group content) ]
             else
                 content

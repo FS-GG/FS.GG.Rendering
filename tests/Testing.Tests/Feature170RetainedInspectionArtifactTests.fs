@@ -58,7 +58,7 @@ let tests =
         "Feature170 retained inspection artifact"
         [ test "normalization keeps stable node finding and unsupported-fact ordering" {
               let damage =
-                  RetainedInspection.damageRegion "t1" frame [ rect 20.0 0.0 20.0 20.0 ] [ "content" ] [ "b" ] 1 0 1 None (Some 50.0)
+                  RetainedInspection.damageRegion "t1" frame [ rect 20.0 0.0 20.0 20.0 ] [ "content" ] [ "b" ] { Repainted = 1; Shifted = 0; Unaffected = 1 } None (Some 50.0)
 
               let factA = RetainedInspection.unsupportedFact "zeta" None true "reason" "diagnostic" false
               let factB = RetainedInspection.unsupportedFact "alpha" None true "reason" "diagnostic" false
@@ -80,7 +80,7 @@ let tests =
           }
 
           test "artifact diagnostics report shifted nodes missing bounds and duplicate ids" {
-              let damage = RetainedInspection.damageRegion "t1" frame [] [] [] 0 1 0 None None
+              let damage = RetainedInspection.damageRegion "t1" frame [] [] [] { Repainted = 0; Shifted = 1; Unaffected = 0 } None None
               let shifted = node "dup" RetainedNodeStatus.Shifted None (Some(rect 1.0 1.0 10.0 10.0))
 
               let diagnostics =

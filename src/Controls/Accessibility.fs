@@ -25,46 +25,10 @@ module Accessibility =
           // virtualized control (DataGrid) sets it explicitly from its logical model at the build site.
           Collection = None }
 
-    let roleFor kind =
-        match kind with
-        | "text-block"
-        | "label"
-        | "badge"
-        | "validation-message" -> StaticText
-        | "button"
-        | "icon-button" -> Button
-        | "text-box"
-        | "text-area"
-        | "numeric-input" -> TextBox
-        | "check-box"
-        | "switch" -> CheckBox
-        | "radio-group" -> RadioGroup
-        | "slider" -> Slider
-        | "list-view"
-        | "list-box"
-        | "multi-select-list"
-        | "combo-box"
-        | "tree-view" -> List
-        | "data-grid"
-        | "table" -> Grid
-        | "menu"
-        | "context-menu"
-        | "toolbar" -> Menu
-        | "tabs" -> Tab
-        | "dialog"
-        | "overlay" -> Dialog
-        | "progress-bar"
-        | "spinner" -> Progress
-        | "image"
-        | "icon" -> Image
-        | "line-chart"
-        | "bar-chart"
-        | "pie-chart"
-        | "scatter-plot" -> Chart
-        | "graph-view" -> Graph
-        // Qualified: `Custom` now also names `StyleClass.Custom` (feature 093). This match
-        // returns an `AccessibilityRole`.
-        | _ -> AccessibilityRole.Custom
+    // Feature 183 (US1): the per-Kind a11y-role dispatch now lives in the single ControlKindRegistry
+    // SSOT (byte-identical mapping, incl. the non-catalog `table`/`dialog` arms and the `Custom`
+    // default); this is a thin lookup over it.
+    let roleFor kind = ControlKindRegistry.a11yRole kind
 
     // Feature 094 (E4), Research R1: traversal keys (Tab / Shift+Tab) are ENGINE-level — derived
     // from the computed tab order, NOT per-control `NavigationKeys`. Seeding every focusable control

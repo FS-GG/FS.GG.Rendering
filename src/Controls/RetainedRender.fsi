@@ -589,14 +589,16 @@ module internal RetainedRender =
     /// exceeds `frameArea`. Pure, total, deterministic (coordinate-compression over integer geometry).
     val internal unionArea: boxes: FS.GG.UI.Scene.Rect list -> frameArea: int -> int
 
+    /// Feature 183 (US3): named, transposition-safe inputs for `damageRegionSet` (internal — no bump).
+    type internal DamageSetInputs =
+        { FrameWidth: int
+          FrameHeight: int
+          FullFrameInvalidation: bool
+          Cause: string
+          Boxes: FS.GG.UI.Scene.Rect list }
+
     /// Feature 147: clip damage rectangles to the frame, deduplicate them, and compute true union area.
-    val internal damageRegionSet:
-        frameWidth: int ->
-        frameHeight: int ->
-        fullFrameInvalidation: bool ->
-        cause: string ->
-        boxes: FS.GG.UI.Scene.Rect list ->
-            CompositorDamageRegionSet
+    val internal damageRegionSet: inputs: DamageSetInputs -> CompositorDamageRegionSet
 
     /// Feature 147: placement-only reuse damages both old and new covered regions.
     val internal placementDamage:
@@ -613,16 +615,18 @@ module internal RetainedRender =
         damage: CompositorDamageRegionSet ->
             CompositorFallbackReason option
 
+    /// Feature 183 (US3): named, transposition-safe inputs for `promotionDecision` (internal — no bump).
+    type internal PromotionInputs =
+        { BoundaryId: string
+          ObservedStabilityFrames: int
+          ObservationWindow: int
+          ExpectedSavedWork: int
+          MeasuredOverhead: int
+          ParityPassed: bool }
+
     /// Feature 147: deterministic promotion/demotion policy over observed stability, benefit, overhead,
     /// and parity. Pure policy only; rendering remains byte-identical unless a caller accepts the decision.
-    val internal promotionDecision:
-        boundaryId: string ->
-        observedStabilityFrames: int ->
-        observationWindow: int ->
-        expectedSavedWork: int ->
-        measuredOverhead: int ->
-        parityPassed: bool ->
-            PromotionDecision
+    val internal promotionDecision: inputs: PromotionInputs -> PromotionDecision
 
     val internal feature159ReasonToken: reason: Feature159Reason -> string
     val internal feature159PromotionStatusToken: status: Feature159PromotionStatus -> string

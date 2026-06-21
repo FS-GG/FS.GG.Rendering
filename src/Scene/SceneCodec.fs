@@ -752,6 +752,17 @@ module SceneCodec =
         { Position = readPoint reader
           Color = readOption reader readColor }
 
+    /// Feature 183 (US2 / FR-002): one row per `SceneNode` case driving the **read** side of the frozen
+    /// wire format. The write side stays an exhaustive `match node` (`writeSceneNode` below) — `FS0025`
+    /// (incomplete match) escalated to error is the compile-time half of the symmetry gate; this table
+    /// is the read-side half. Together with the every-case round-trip test (`Feature183` in Scene.Tests:
+    /// 25 rows, contiguous tags 0..24, `deserialize (serialize x) = x` + bytes == baseline) a new case
+    /// is forced to add a write arm (compile) and a row (test). The `Read` closures read **payload only**
+    /// (the tag is consumed by the driver). Wire format frozen: tags 0..24, field order, encodings.
+    type private SceneNodeCodecRow =
+        { Tag: int
+          Read: BinaryReader -> SceneNode }
+
     let rec private writeScene (writer: BinaryWriter) (scene: Scene) =
         writeList writer writeSceneNode scene.Nodes
 
@@ -874,115 +885,172 @@ module SceneCodec =
             writer.Write(boundary.Fingerprint)
             writeScene writer boundary.Scene
 
+    /// The per-case read table (tags 0..24, frozen order). Payload-only readers — the tag is consumed
+    /// by `readSceneNode`. Constructed to read each case's bytes in the exact order `writeSceneNode`
+    /// emits them, so round-trips are byte-stable.
+    and private sceneNodeCodec : SceneNodeCodecRow list =
+        [ { Tag = 0; Read = fun _ -> Empty }
+          { Tag = 1
+            Read = fun reader -> Group(readList reader readScene) }
+          { Tag = 2
+            Read =
+                fun reader ->
+                    let x = reader.ReadDouble()
+                    let y = reader.ReadDouble()
+                    let width = reader.ReadDouble()
+                    let height = reader.ReadDouble()
+                    Rectangle((x, y, width, height), readColor reader) }
+          { Tag = 3
+            Read =
+                fun reader ->
+                    let bounds = readRect reader
+                    let paint = readPaint reader
+                    PaintedRectangle(bounds, paint) }
+          { Tag = 4
+            Read =
+                fun reader ->
+                    let center = readPoint reader
+                    let radius = reader.ReadDouble()
+                    let fill = readColor reader
+                    Circle(center, radius, fill) }
+          { Tag = 5
+            Read =
+                fun reader ->
+                    let bounds = readRect reader
+                    let fill = readColor reader
+                    FilledEllipse(bounds, fill) }
+          { Tag = 6
+            Read =
+                fun reader ->
+                    let bounds = readRect reader
+                    let paint = readPaint reader
+                    Ellipse(bounds, paint) }
+          { Tag = 7
+            Read =
+                fun reader ->
+                    let startPoint = readPoint reader
+                    let endPoint = readPoint reader
+                    let paint = readPaint reader
+                    Line(startPoint, endPoint, paint) }
+          { Tag = 8
+            Read =
+                fun reader ->
+                    let path = readPathSpec reader
+                    let paint = readPaint reader
+                    SceneNode.Path(path, paint) }
+          { Tag = 9
+            Read =
+                fun reader ->
+                    let points = readList reader readPoint
+                    let paint = readPaint reader
+                    Points(points, paint) }
+          { Tag = 10
+            Read =
+                fun reader ->
+                    let mode = readVertexMode reader
+                    let vertices = readList reader readVertex
+                    let paint = readPaint reader
+                    Vertices(mode, vertices, paint) }
+          { Tag = 11
+            Read =
+                fun reader ->
+                    let bounds = readRect reader
+                    let startAngle = reader.ReadDouble()
+                    let sweepAngle = reader.ReadDouble()
+                    let paint = readPaint reader
+                    Arc(bounds, startAngle, sweepAngle, paint) }
+          { Tag = 12
+            Read =
+                fun reader ->
+                    let x = reader.ReadDouble()
+                    let y = reader.ReadDouble()
+                    let text = readString reader
+                    let color = readColor reader
+                    Text((x, y), text, color) }
+          { Tag = 13; Read = fun reader -> TextRun(readTextRun reader) }
+          { Tag = 14
+            Read =
+                fun reader ->
+                    let x = reader.ReadDouble()
+                    let y = reader.ReadDouble()
+                    let width = reader.ReadDouble()
+                    let height = reader.ReadDouble()
+                    let source = readString reader
+                    Image((x, y, width, height), source) }
+          { Tag = 15
+            Read =
+                fun reader ->
+                    let clip = readClip reader
+                    let scene = readScene reader
+                    ClipNode(clip, scene) }
+          { Tag = 16
+            Read =
+                fun reader ->
+                    let region = readRegion reader
+                    let paint = readPaint reader
+                    RegionNode(region, paint) }
+          { Tag = 17
+            Read =
+                fun reader ->
+                    let colorSpace = readColorSpace reader
+                    let scene = readScene reader
+                    ColorSpaceNode(colorSpace, scene) }
+          { Tag = 18
+            Read =
+                fun reader ->
+                    let transform = readPerspectiveTransform reader
+                    let scene = readScene reader
+                    PerspectiveNode(transform, scene) }
+          { Tag = 19
+            Read =
+                fun reader ->
+                    let name = readString reader
+                    let scene = readScene reader
+                    PictureNode { Name = name; Scene = scene } }
+          { Tag = 20
+            Read = fun reader -> Chart(readList reader (fun (r: BinaryReader) -> r.ReadDouble())) }
+          { Tag = 21
+            Read =
+                fun reader ->
+                    let dx = reader.ReadDouble()
+                    let dy = reader.ReadDouble()
+                    let scene = readScene reader
+                    Translate((dx, dy), scene) }
+          { Tag = 22
+            Read =
+                fun reader ->
+                    let x = reader.ReadDouble()
+                    let y = reader.ReadDouble()
+                    let text = readString reader
+                    let size = reader.ReadDouble()
+                    let color = readColor reader
+                    SizedText((x, y), text, size, color) }
+          { Tag = 23
+            Read =
+                fun reader ->
+                    let data = readGlyphRunData reader
+                    let position = readPoint reader
+                    let paint = readPaint reader
+                    GlyphRun { Data = data; Position = position; Paint = paint } }
+          { Tag = 24
+            Read =
+                fun reader ->
+                    let cacheId = reader.ReadUInt64()
+                    let fingerprint = reader.ReadUInt64()
+                    let scene = readScene reader
+                    CachedSubtree { CacheId = cacheId; Fingerprint = fingerprint; Scene = scene } } ]
+
+    and private readerByTag : Map<int, BinaryReader -> SceneNode> =
+        sceneNodeCodec |> List.map (fun row -> row.Tag, row.Read) |> Map.ofList
+
     and private readSceneNode (reader: BinaryReader) : SceneNode =
-        match reader.ReadInt32() with
-        | 0 -> Empty
-        | 1 -> Group(readList reader readScene)
-        | 2 ->
-            let x = reader.ReadDouble()
-            let y = reader.ReadDouble()
-            let width = reader.ReadDouble()
-            let height = reader.ReadDouble()
-            Rectangle((x, y, width, height), readColor reader)
-        | 3 ->
-            let bounds = readRect reader
-            let paint = readPaint reader
-            PaintedRectangle(bounds, paint)
-        | 4 ->
-            let center = readPoint reader
-            let radius = reader.ReadDouble()
-            let fill = readColor reader
-            Circle(center, radius, fill)
-        | 5 ->
-            let bounds = readRect reader
-            let fill = readColor reader
-            FilledEllipse(bounds, fill)
-        | 6 ->
-            let bounds = readRect reader
-            let paint = readPaint reader
-            Ellipse(bounds, paint)
-        | 7 ->
-            let startPoint = readPoint reader
-            let endPoint = readPoint reader
-            let paint = readPaint reader
-            Line(startPoint, endPoint, paint)
-        | 8 ->
-            let path = readPathSpec reader
-            let paint = readPaint reader
-            SceneNode.Path(path, paint)
-        | 9 ->
-            let points = readList reader readPoint
-            let paint = readPaint reader
-            Points(points, paint)
-        | 10 ->
-            let mode = readVertexMode reader
-            let vertices = readList reader readVertex
-            let paint = readPaint reader
-            Vertices(mode, vertices, paint)
-        | 11 ->
-            let bounds = readRect reader
-            let startAngle = reader.ReadDouble()
-            let sweepAngle = reader.ReadDouble()
-            let paint = readPaint reader
-            Arc(bounds, startAngle, sweepAngle, paint)
-        | 12 ->
-            let x = reader.ReadDouble()
-            let y = reader.ReadDouble()
-            let text = readString reader
-            let color = readColor reader
-            Text((x, y), text, color)
-        | 13 -> TextRun(readTextRun reader)
-        | 14 ->
-            let x = reader.ReadDouble()
-            let y = reader.ReadDouble()
-            let width = reader.ReadDouble()
-            let height = reader.ReadDouble()
-            let source = readString reader
-            Image((x, y, width, height), source)
-        | 15 ->
-            let clip = readClip reader
-            let scene = readScene reader
-            ClipNode(clip, scene)
-        | 16 ->
-            let region = readRegion reader
-            let paint = readPaint reader
-            RegionNode(region, paint)
-        | 17 ->
-            let colorSpace = readColorSpace reader
-            let scene = readScene reader
-            ColorSpaceNode(colorSpace, scene)
-        | 18 ->
-            let transform = readPerspectiveTransform reader
-            let scene = readScene reader
-            PerspectiveNode(transform, scene)
-        | 19 ->
-            let name = readString reader
-            let scene = readScene reader
-            PictureNode { Name = name; Scene = scene }
-        | 20 -> Chart(readList reader (fun (r: BinaryReader) -> r.ReadDouble()))
-        | 21 ->
-            let dx = reader.ReadDouble()
-            let dy = reader.ReadDouble()
-            let scene = readScene reader
-            Translate((dx, dy), scene)
-        | 22 ->
-            let x = reader.ReadDouble()
-            let y = reader.ReadDouble()
-            let text = readString reader
-            let size = reader.ReadDouble()
-            let color = readColor reader
-            SizedText((x, y), text, size, color)
-        | 23 ->
-            let data = readGlyphRunData reader
-            let position = readPoint reader
-            let paint = readPaint reader
-            GlyphRun { Data = data; Position = position; Paint = paint }
-        | 24 ->
-            let cacheId = reader.ReadUInt64()
-            let fingerprint = reader.ReadUInt64()
-            let scene = readScene reader
-            CachedSubtree { CacheId = cacheId; Fingerprint = fingerprint; Scene = scene }
-        | tag -> failwithf "Unknown scene-node tag %d" tag
+        let tag = reader.ReadInt32()
+
+        match Map.tryFind tag readerByTag with
+        | Some read -> read reader
+        // Retained ONLY for genuinely-unknown/corrupt tags — never as a stand-in for a missing case
+        // (a missing case is caught by the round-trip symmetry test, FR-002).
+        | None -> failwithf "Unknown scene-node tag %d" tag
 
     let private writeRequirementLevel (writer: BinaryWriter) (level: RequirementLevel) =
         writer.Write(enumTag level [ Required; Optional ])
