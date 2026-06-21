@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Feature 179 (US3): non-packed home for the live color-policy engine. Relocated verbatim from
+       the retired src/Color package (which never shipped a baseline here). `Contrast` carries the
+       Role/Verdict/ContrastResult types depended on by ColorPolicy and Controls.Tests/Feature108,
+       so it moves with ColorPolicy; the dead Palettes modules were deleted with src/Color. The
+       FS.GG.UI.Color namespace is preserved so every consumer is edit-free (SC-006). -->
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <IsPackable>false</IsPackable>
+    <AssemblyName>ColorPolicy</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Contrast.fsi" />
+    <Compile Include="Contrast.fs" />
+    <!-- The internal color-policy engine. `module internal` with NO .fsi; reuses Contrast
+         in-assembly so the `wcag` policy stays byte-identical. Loads after Contrast. -->
+    <Compile Include="ColorPolicy.fs" />
+  </ItemGroup>
+
+  <!-- Expose the internal ColorPolicy engine to the test assembly that drives the design-system
+       pairing catalog + evaluation + drift gate (the IVT grant follows ColorPolicy to its new
+       home). Carries no public surface. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Controls.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Scene\Scene.fsproj" />
+  </ItemGroup>
+
+</Project>

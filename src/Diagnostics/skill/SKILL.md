@@ -30,7 +30,7 @@ Elmish, Scene, SkiaViewer, or Testing implementation work.
   render-lag probe.
 - `samples/SecondAntShowcase/SecondAntShowcase.App/VisualReadiness.fs`: visual
   readiness and review artifacts.
-- `tests/Rendering.Harness/SkillParity.fs` and
+- `tools/Rendering.Harness/SkillParity.fs` and
   `scripts/check-agent-skill-parity.fsx`: local skill inventory and parity
   diagnostics.
 - `scripts/refresh-local-feed-and-samples.fsx`: package-feed proof wrapper.
@@ -113,7 +113,7 @@ For package-consuming sample proof, include the sample explicitly:
 
 ```bash
 dotnet fsi scripts/refresh-local-feed-and-samples.fsx --sample samples/SecondAntShowcase --mode proof --out artifacts/package-feed/second-ant-showcase
-dotnet run --project tests/Rendering.Harness/Rendering.Harness.fsproj -- package-feed --sample samples/SecondAntShowcase --mode proof --out artifacts/package-feed/second-ant-showcase
+dotnet run --project tools/Rendering.Harness/Rendering.Harness.fsproj -- package-feed --sample samples/SecondAntShowcase --mode proof --out artifacts/package-feed/second-ant-showcase
 ```
 
 To test a LOCAL framework change live in a sample (Feature 175 T1), one invocation packs the whole

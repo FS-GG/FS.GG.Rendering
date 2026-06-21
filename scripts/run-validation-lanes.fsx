@@ -9,7 +9,7 @@ psi.WorkingDirectory <- repoRoot
 psi.UseShellExecute <- false
 psi.ArgumentList.Add("run")
 psi.ArgumentList.Add("--project")
-psi.ArgumentList.Add("tests/Rendering.Harness/Rendering.Harness.fsproj")
+psi.ArgumentList.Add("tools/Rendering.Harness/Rendering.Harness.fsproj")
 psi.ArgumentList.Add("--")
 psi.ArgumentList.Add("validation-lanes")
 

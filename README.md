@@ -44,7 +44,7 @@ DISPLAY=:1 dotnet test FS.GG.Rendering.slnx -c Release   # default local tier (G
 ```
 
 The offscreen/deterministic tiers run headless; live windowed rendering needs a GL/X11
-session. The tiered evidence CLI under `tests/Rendering.Harness/` declares what each run
+session. The tiered evidence CLI under `tools/Rendering.Harness/` declares what each run
 proves and what it does not.
 
 ## Status

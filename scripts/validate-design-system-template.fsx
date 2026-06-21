@@ -28,8 +28,8 @@
 //   FS_GG_RUN_DESIGN_SYSTEM_VALIDATION=1 dotnet fsi scripts/validate-design-system-template.fsx   # + live scaffold/build + write report
 
 #load "../src/Scene/Scene.fs"
-#load "../src/Color/Contrast.fs"
-#load "../src/Color/ColorPolicy.fs"
+#load "../src/ColorPolicy/Contrast.fs"
+#load "../src/ColorPolicy/ColorPolicy.fs"
 #load "../src/DesignSystem/DesignTokensExt.fs"
 
 open System

@@ -8,7 +8,7 @@
 
   <ItemGroup>
     <!-- Feature 136 (T006): shared Scene-only assertion helpers (canonical copy in Rendering.Harness). -->
-    <Compile Include="..\Rendering.Harness\TestAssertions.fs">
+    <Compile Include="..\..\tools\Rendering.Harness\TestAssertions.fs">
       <Link>TestAssertions.fs</Link>
     </Compile>
     <Compile Include="PublicSurfaceTests.fs" />
@@ -176,8 +176,10 @@
     <ProjectReference Include="..\..\src\Themes.AntDesign\Themes.AntDesign.fsproj" />
     <!-- Feature 108 (US6, T032): the theming-contrast suite reuses FS.GG.UI.Color.Contrast.ratio
          against the WCAG reference pairs. Test-only reference — Controls itself does not depend on
-         the Color package (no package-graph change). -->
-    <ProjectReference Include="..\..\src\Color\Color.fsproj" />
+         the ColorPolicy project (no package-graph change). Feature 179 (US3): retired src/Color;
+         Contrast + the internal ColorPolicy engine relocated to the non-packed src/ColorPolicy
+         (namespace + IVT preserved, so these suites are edit-free). -->
+    <ProjectReference Include="..\..\src\ColorPolicy\ColorPolicy.fsproj" />
     <!-- Feature 178 (US1): the shared repository-root finder lives in the non-packed TestSupport assembly. -->
     <ProjectReference Include="..\TestSupport\TestSupport.fsproj" />
     <!-- R4 import: the Feature-066 typed-catalog drift suite (CatalogTests.fs) referenced the

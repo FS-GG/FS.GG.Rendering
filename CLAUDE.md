@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/178-shared-test-util-helpers/plan.md
+at specs/179-placement-orphan-decisions/plan.md
 <!-- SPECKIT END -->
 
 ## Ant Design — source of truth

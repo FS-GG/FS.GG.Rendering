@@ -30,7 +30,6 @@ let packages =
       "FS.GG.UI.Themes.AntDesign", "Themes.AntDesign"
       "FS.GG.UI.Themes.Default", "Themes.Default"
       "FS.GG.UI.Elmish", "Elmish"
-      "FS.GG.UI.Input", "Input"
       "FS.GG.UI.Scene", "Scene"
       "FS.GG.UI.SkiaViewer", "SkiaViewer"
       "FS.GG.UI.Testing", "Testing" ]

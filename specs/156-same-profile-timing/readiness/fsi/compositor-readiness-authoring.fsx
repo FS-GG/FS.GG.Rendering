@@ -1,4 +1,4 @@
-#r "../../../../tests/Rendering.Harness/bin/Debug/net10.0/Rendering.Harness.dll"
+#r "../../../../tools/Rendering.Harness/bin/Debug/net10.0/Rendering.Harness.dll"
 #r "../../../../src/Testing/bin/Debug/net10.0/FS.GG.UI.Testing.dll"
 
 open FS.GG.UI.Testing

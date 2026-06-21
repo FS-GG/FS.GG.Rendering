@@ -167,7 +167,7 @@ module Live =
           sprintf "refresh-hz=%s" (facts.RefreshHz |> Option.map string |> Option.defaultValue "none") ]
 
     let overlayProofNextPath =
-        "dotnet run --project tests/Rendering.Harness/Rendering.Harness.fsproj -- overlay-visual-proof --out specs/145-overlay-visual-proof/readiness"
+        "dotnet run --project tools/Rendering.Harness/Rendering.Harness.fsproj -- overlay-visual-proof --out specs/145-overlay-visual-proof/readiness"
 
     let classifyOverlayVisualProofHost (facts: ProbeFacts) : Evidence.HostCapabilityResult =
         let common

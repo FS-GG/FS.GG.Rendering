@@ -9,7 +9,7 @@
 
 | Field | Value |
 |---|---|
-| Item | Rendering test harness (`tests/Rendering.Harness/`, planned) |
+| Item | Rendering test harness (`tools/Rendering.Harness/`, planned) |
 | Classification | **Deliberate infrastructure** — not an imported legacy test |
 | Decision | **Build at Stage R5.** Its display-agnostic parts — environment probe, CLI skeleton, evidence schema — MAY scaffold earlier (as early as R3). Live (T2) and performance (T3) tiers come online once the viewer is imported (Stage R4). |
 | Owner | rendering maintainer |

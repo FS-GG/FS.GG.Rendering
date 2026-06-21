@@ -84,7 +84,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Rendering.Harness\Rendering.Harness.fsproj" />
+    <ProjectReference Include="..\..\tools\Rendering.Harness\Rendering.Harness.fsproj" />
     <ProjectReference Include="..\..\src\Diagnostics\Diagnostics.fsproj" />
     <ProjectReference Include="..\TestSupport\TestSupport.fsproj" />
   </ItemGroup>

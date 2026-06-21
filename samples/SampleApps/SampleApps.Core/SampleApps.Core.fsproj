@@ -26,7 +26,6 @@
 
   <ItemGroup>
     <PackageReference Include="FS.GG.UI.Controls" Version="0.1.0-preview.1" />
-    <PackageReference Include="FS.GG.UI.Color" Version="0.1.0-preview.1" />
     <PackageReference Include="FS.GG.UI.Controls.Elmish" Version="0.1.0-preview.1" />
     <PackageReference Include="FS.GG.UI.SkiaViewer" Version="0.1.0-preview.1" />
     <PackageReference Include="FS.GG.UI.DesignSystem" Version="0.1.0-preview.1" />

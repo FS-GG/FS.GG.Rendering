@@ -3,7 +3,7 @@
 // implemented. The checked surface remains in SkillParity.fsi and the baseline
 // file under readiness/surface-baselines.
 
-#r "../../../../../tests/Rendering.Harness/bin/Release/net10.0/Rendering.Harness.dll"
+#r "../../../../../tools/Rendering.Harness/bin/Release/net10.0/Rendering.Harness.dll"
 
 open Rendering.Harness
 

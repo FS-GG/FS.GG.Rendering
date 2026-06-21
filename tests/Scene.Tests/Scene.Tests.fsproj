@@ -8,7 +8,7 @@
 
   <ItemGroup>
     <!-- Feature 136 (T006): shared Scene-only assertion helpers (canonical copy in Rendering.Harness). -->
-    <Compile Include="..\Rendering.Harness\TestAssertions.fs">
+    <Compile Include="..\..\tools\Rendering.Harness\TestAssertions.fs">
       <Link>TestAssertions.fs</Link>
     </Compile>
     <Compile Include="Tests.fs" />

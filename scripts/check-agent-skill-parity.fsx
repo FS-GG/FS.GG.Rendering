@@ -9,7 +9,7 @@ let psi = ProcessStartInfo()
 psi.FileName <- "dotnet"
 psi.ArgumentList.Add("run")
 psi.ArgumentList.Add("--project")
-psi.ArgumentList.Add("tests/Rendering.Harness/Rendering.Harness.fsproj")
+psi.ArgumentList.Add("tools/Rendering.Harness/Rendering.Harness.fsproj")
 psi.ArgumentList.Add("--")
 psi.ArgumentList.Add("skill-parity")
 

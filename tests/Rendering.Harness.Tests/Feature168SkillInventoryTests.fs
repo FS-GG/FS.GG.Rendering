@@ -30,7 +30,7 @@ let tests =
     testList "Feature168 SkillInventory" [
         test "SkillParity FSI surface matches the readiness baseline" {
             let root = repoRoot ()
-            let fsi = Path.Combine(root, "tests", "Rendering.Harness", "SkillParity.fsi")
+            let fsi = Path.Combine(root, "tools", "Rendering.Harness", "SkillParity.fsi")
             let baseline = Path.Combine(root, "specs", "168-skill-parity-evidence", "readiness", "surface-baselines", "Rendering.Harness.SkillParity.txt")
 
             Expect.equal (surfaceLines fsi) (File.ReadAllLines baseline |> Array.toList) "surface drift"

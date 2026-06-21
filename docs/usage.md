@@ -60,9 +60,8 @@ consume them one of these ways:
 | Package | What it gives you |
 |---|---|
 | `FS.GG.UI.Scene` | Retained scene graph, drawing primitives, animation |
-| `FS.GG.UI.Color` | Color primitives — contrast, palettes, color roles |
 | `FS.GG.UI.Layout` | Layout engine and layout graph |
-| `FS.GG.UI.Input` / `FS.GG.UI.KeyboardInput` | Pointer + keyboard models and dispatch |
+| `FS.GG.UI.KeyboardInput` | Pointer + keyboard models and dispatch |
 | `FS.GG.UI.SkiaViewer` | The SkiaSharp-over-OpenGL viewer/host and render loop |
 | `FS.GG.UI.Controls` | Semantic control set (Button, TextBox, ComboBox, DataGrid, Dialog…), theming |
 | `FS.GG.UI.Elmish` / `FS.GG.UI.Controls.Elmish` | **Optional** Elmish adapters (Cmd/subscriptions/program) |
