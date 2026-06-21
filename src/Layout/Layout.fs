@@ -829,6 +829,12 @@ module Layout =
           node.Children |> List.map layoutInputKey |> String.concat "[" ]
         |> String.concat "|"
 
+    // Single source of truth for the layout-cache version: feeds both the `rev=…` identity token and
+    // the `Revision` field on every cache record, so a future bump is one edit. Private by omission
+    // from Layout.fsi. Renders to the exact bytes `rev=150` (invariant integer formatting).
+    [<Literal>]
+    let layoutCacheRevision = 150
+
     let intrinsicQuery participantId axis crossAxisConstraint layoutInputKey source : IntrinsicQuery =
         let cross =
             crossAxisConstraint
@@ -836,7 +842,7 @@ module Layout =
             |> Option.map (fun value -> value.ToString("R", Globalization.CultureInfo.InvariantCulture))
             |> Option.defaultValue "unbounded"
 
-        let identity = $"{participantId}|{axis}|cross={cross}|input={layoutInputKey}|source={source}|rev=150"
+        let identity = $"{participantId}|{axis}|cross={cross}|input={layoutInputKey}|source={source}|rev={layoutCacheRevision}"
 
         { ParticipantId = participantId
           Axis = axis
@@ -844,7 +850,7 @@ module Layout =
           LayoutInputKey = layoutInputKey
           QuerySource = source
           QueryIdentity = identity
-          Revision = 150 }
+          Revision = layoutCacheRevision }
 
     let private resultIdentity size (diagnostics: LayoutDiagnostic list) =
         let diagnosticKey =
@@ -961,7 +967,7 @@ module Layout =
               layoutInputKey
               childDependencyKeys |> String.concat ","
               resultIdentity
-              "rev=150" ]
+              $"rev={layoutCacheRevision}" ]
             |> String.concat "|"
 
         { EntryId = id
@@ -971,7 +977,7 @@ module Layout =
           LayoutInputKey = layoutInputKey
           ChildDependencyKeys = childDependencyKeys
           ResultIdentity = resultIdentity
-          Revision = 150 }
+          Revision = layoutCacheRevision }
 
     let measureProtocol (constraints: LayoutConstraints) (node: LayoutNode) : MeasuredLayoutResult =
         let width = max constraints.MinWidth (maxBoundValue constraints.MinWidth constraints.MaxWidth)

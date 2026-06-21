@@ -54,4 +54,20 @@ let tests =
             Expect.equal entry.Revision 150 "revision"
             Expect.stringContains entry.EntryId query.QueryIdentity "query participates in cache identity"
         }
+
+        // FR-006 byte-identity guard: the single-source `layoutCacheRevision` constant MUST still
+        // render the exact bytes `rev=150` into both the query identity and the cache entry id, and
+        // the `Revision` int field MUST agree. Fails if the token format drifts (e.g. `rev:150`) or
+        // the constant diverges from the field — either of which would silently invalidate caches.
+        test "layout cache version renders byte-identical rev=150 across all sites (FR-006)" {
+            let node = Feature151CorpusFixtures.dynamicContent 24.0
+            let query = queryFor IntrinsicMaxHeight (Some 120.0) node
+            let result = Layout.evaluateIntrinsic query node
+            let entry = Layout.cacheEntry IntrinsicLayoutEntry node.Id query.QueryIdentity query.LayoutInputKey (result.Dependencies |> List.map _.ResultIdentity) $"{result.Size:R}"
+
+            Expect.stringContains query.QueryIdentity "|rev=150" "query identity ends with the rev token"
+            Expect.stringContains entry.EntryId "|rev=150" "cache entry id carries the rev token"
+            Expect.equal query.Revision 150 "query revision field"
+            Expect.equal entry.Revision 150 "entry revision field"
+        }
     ]

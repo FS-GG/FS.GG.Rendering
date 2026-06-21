@@ -63,18 +63,29 @@ let private captureBaselines () =
         find __SOURCE_DIRECTORY__
     let dir = Path.Combine(repoRoot, "specs", "093-visual-state-style-layer", "readiness", "parity")
     Directory.CreateDirectory dir |> ignore
-    for (tname, theme) in themes do
-        File.WriteAllText(Path.Combine(dir, sprintf "button.%s.normal.scene.txt" tname), sprintf "%A" (frozenButtonGeom theme "Save"))
-        File.WriteAllText(Path.Combine(dir, sprintf "check-box.%s.normal.scene.txt" tname), sprintf "%A" (frozenCheckboxGeom theme false "Enabled"))
-        File.WriteAllText(Path.Combine(dir, sprintf "check-box-checked.%s.normal.scene.txt" tname), sprintf "%A" (frozenCheckboxGeom theme true "Enabled"))
+    // Returns the list of baseline files written, so callers can assert they actually landed on disk.
+    [ for (tname, theme) in themes do
+        let buttonPath = Path.Combine(dir, sprintf "button.%s.normal.scene.txt" tname)
+        File.WriteAllText(buttonPath, sprintf "%A" (frozenButtonGeom theme "Save"))
+        yield buttonPath
+        let checkPath = Path.Combine(dir, sprintf "check-box.%s.normal.scene.txt" tname)
+        File.WriteAllText(checkPath, sprintf "%A" (frozenCheckboxGeom theme false "Enabled"))
+        yield checkPath
+        let checkedPath = Path.Combine(dir, sprintf "check-box-checked.%s.normal.scene.txt" tname)
+        File.WriteAllText(checkedPath, sprintf "%A" (frozenCheckboxGeom theme true "Enabled"))
+        yield checkedPath ]
 
 [<Tests>]
 let feature093ParityTests =
     testList "Feature 093 migration parity (SC-003/SC-007)" [
 
         test "T020 — capture the pre-refactor procedural baselines for the migrated kinds" {
-            captureBaselines ()
-            Expect.isTrue true "frozen-oracle baselines written under readiness/parity/"
+            let written = captureBaselines ()
+            // Falsifiable: fails if captureBaselines writes nothing, to the wrong path, or empty files.
+            Expect.isNonEmpty written "captureBaselines wrote at least one frozen-oracle baseline"
+            for path in written do
+                Expect.isTrue (File.Exists path) (sprintf "baseline written under readiness/parity/: %s" path)
+                Expect.isTrue (FileInfo(path).Length > 0L) (sprintf "baseline is non-empty: %s" path)
         }
 
         test "Button no-class paint is structurally-Scene-equal to the procedural baseline, both themes (SC-003)" {

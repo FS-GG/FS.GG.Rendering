@@ -848,7 +848,7 @@ module internal RetainedRender =
         | Feature159ReuseStatus.ReuseEnvironmentLimited -> "environment-limited"
 
     let private feature159Hash (parts: string list) =
-        let mutable hash = 1469598103934665603UL // mutable: compact deterministic FNV-1a fold.
+        let mutable hash = 0xcbf29ce484222325UL // mutable: compact deterministic FNV-1a fold.
         for part in parts do
             for ch in part do
                 hash <- hash ^^^ uint64 (int ch)

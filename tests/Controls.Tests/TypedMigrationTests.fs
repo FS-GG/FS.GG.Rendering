@@ -546,12 +546,20 @@ let typedMigrationDelegationTests =
         }
 
         test "stateful facades introduce no parallel model type (SC-003)" {
-            // The init/update signatures return the existing model/effect types — proven
-            // by these bindings type-checking against the reused types.
+            // Compile-time proof: the typed init signatures return the EXISTING model/effect types.
             let taInit: TextAreaProps<Msg> -> TextInputModel * TextInputEffect list = TextArea.init
             let lvInit: ListViewProps<Msg> -> CollectionModel * CollectionEffect list = ListView.init
-            ignore taInit
-            ignore lvInit
-            Expect.isTrue true "no forked model type"
+
+            // Run-time proof (falsifiable): each typed init produces a value byte-equal to the
+            // canonical underlying init — so the facade reuses the type, it does not fork it.
+            let taModel, taEffects = taInit { TextArea.defaults "note" with Value = "hi" }
+            let lTaModel, lTaEffects = LTextInput.init "note" MultiLine "hi"
+            Expect.equal taModel lTaModel "TextArea.init reuses the TextInput model (no fork)"
+            Expect.equal taEffects lTaEffects "TextArea.init reuses the TextInput effects (no fork)"
+
+            let lvModel, lvEffects = lvInit (ListView.defaults "a")
+            let lLvModel, lLvEffects = LCollections.init "a" 0 24.0 240.0
+            Expect.equal lvModel lLvModel "ListView.init reuses the Collections model (no fork)"
+            Expect.equal lvEffects lLvEffects "ListView.init reuses the Collections effects (no fork)"
         }
     ]
