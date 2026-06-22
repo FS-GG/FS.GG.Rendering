@@ -8,16 +8,16 @@ open Rendering.Harness
 let tests =
     testList "Feature153 live proof evidence" [
         test "formatter records exact-three proof gate and unsupported-host zero-acceptance rule" {
-            let proof: Compositor.PresentProof =
+            let proof: Compositor.Types.PresentProof =
                 { ProofId = "proof-153"
-                  HostProfile = Compositor.feature153TargetHostProfiles.Head
+                  HostProfile = Compositor.Config.feature153TargetHostProfiles.Head
                   ScenarioId = "proof/live-sentinel-damage-v1"
-                  Verdict = Compositor.ProofEnvironmentLimited "missing display"
+                  Verdict = Compositor.Types.ProofEnvironmentLimited "missing display"
                   CreatedAt = DateTimeOffset.UnixEpoch
                   EvidenceArtifacts = [ "proof.md"; "limitations.md"; "attempts/README.md"; "unsupported/README.md" ]
                   Diagnostics = [ "verdict=environment-limited" ] }
 
-            let rendered = Compositor.renderFeature153LiveProof proof
+            let rendered = Compositor.Render.emitFeature153LiveProof proof
 
             [ "# Feature 153 Live Proof Interpreter"
               "exactly three selected fresh matching capable-host attempts"
@@ -34,6 +34,6 @@ let tests =
               "proof/readback-limited"
               "proof/proof-method-mismatch"
               "proof/selected-trio" ]
-            |> List.iter (fun scenario -> Expect.contains Compositor.feature153ScenarioIds scenario scenario)
+            |> List.iter (fun scenario -> Expect.contains Compositor.Config.feature153ScenarioIds scenario scenario)
         }
     ]

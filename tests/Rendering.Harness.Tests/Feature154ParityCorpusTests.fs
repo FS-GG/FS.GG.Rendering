@@ -17,11 +17,11 @@ let tests =
               "damage/invalid-damage"
               "damage/unsupported-host"
               "damage/resource-failure" ]
-            |> List.iter (fun scenario -> Expect.contains Compositor.feature154ScenarioIds scenario scenario)
+            |> List.iter (fun scenario -> Expect.contains Compositor.Config.feature154ScenarioIds scenario scenario)
         }
 
         test "parity report records same-profile proof gate and fallback reasons" {
-            let rendered = Compositor.renderFeature154ParityReport ()
+            let rendered = Compositor.Render2.emitFeature154ParityReport ()
 
             [ "Status: `fallback-gated`"
               "Host profile binding: `same-profile-required`"

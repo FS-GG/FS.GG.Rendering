@@ -105,3 +105,6 @@ Thumbs.db
 *.tmp
 *.swp
 .env*
+.claude/worktrees/
+!specs/185-harness-data-table-refactor/readiness/
+!specs/185-harness-data-table-refactor/readiness/**

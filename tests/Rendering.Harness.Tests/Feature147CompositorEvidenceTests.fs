@@ -20,31 +20,31 @@ let private facts =
 let tests =
     testList "Feature147 compositor evidence contracts" [
         test "host profile is deterministic from probe facts" {
-            let a = Compositor.hostProfileFromFacts facts
-            let b = Compositor.hostProfileFromFacts facts
+            let a = Compositor.Config.hostProfileFromFacts facts
+            let b = Compositor.Config.hostProfileFromFacts facts
             Expect.equal a b "same facts produce same host profile"
             Expect.equal a.DisplayEnvironment "x11" "display environment"
         }
 
         test "present proof formatter includes verdict, scenario, and host" {
-            let profile = Compositor.hostProfileFromFacts facts
-            let proof: Compositor.PresentProof =
+            let profile = Compositor.Config.hostProfileFromFacts facts
+            let proof: Compositor.Types.PresentProof =
                 { ProofId = "proof"
                   HostProfile = profile
                   ScenarioId = "proof/sentinel-damage-v1"
-                  Verdict = Compositor.ProofPassed
+                  Verdict = Compositor.Types.ProofPassed
                   CreatedAt = DateTimeOffset.UnixEpoch
                   EvidenceArtifacts = [ "proof.md" ]
                   Diagnostics = [ "ok" ] }
 
-            let rendered = Compositor.renderPresentProof proof
+            let rendered = Compositor.Render.renderPresentProof proof
             Expect.stringContains rendered "Verdict: `passed`" "verdict"
             Expect.stringContains rendered "proof/sentinel-damage-v1" "scenario"
             Expect.stringContains rendered profile.ProfileId "host"
         }
 
         test "tier evaluator rejects failed parity even with passed proof" {
-            let verdict = Compositor.evaluateTier Compositor.Ready (Some(Compositor.ParityFailed "pixel mismatch")) (Some true)
-            Expect.equal verdict (Compositor.Rejected "pixel mismatch") "parity failure dominates"
+            let verdict = Compositor.Config.evaluateTier Compositor.Types.Ready (Some(Compositor.Types.ParityFailed "pixel mismatch")) (Some true)
+            Expect.equal verdict (Compositor.Types.Rejected "pixel mismatch") "parity failure dominates"
         }
     ]

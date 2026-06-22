@@ -7,11 +7,11 @@ open Rendering.Harness
 let tests =
     testList "Feature148 readiness package" [
         test "readiness summary links proof, parity, reuse, snapshot, and timing evidence" {
-            let model0, _ = Compositor.initReadiness ()
-            let model1, _ = Compositor.updateReadiness (Compositor.TierEvaluated(Compositor.PlacementReuseTier, Compositor.Ready)) model0
-            let model2, _ = Compositor.updateReadiness (Compositor.TierEvaluated(Compositor.SnapshotTier, Compositor.Limited "missing timing")) model1
+            let model0, _ = Compositor.FeatureState.initReadiness ()
+            let model1, _ = Compositor.FeatureState.updateReadiness (Compositor.Types.TierEvaluated(Compositor.Types.PlacementReuseTier, Compositor.Types.Ready)) model0
+            let model2, _ = Compositor.FeatureState.updateReadiness (Compositor.Types.TierEvaluated(Compositor.Types.SnapshotTier, Compositor.Types.Limited "missing timing")) model1
 
-            let rendered = Compositor.renderFeature148ValidationSummary model2
+            let rendered = Compositor.Render.emitFeature148ValidationSummary model2
 
             [ "Live proof"
               "Damage scissor"
@@ -27,8 +27,8 @@ let tests =
         }
 
         test "compatibility ledger discloses public metrics, baselines, migration, and synthetic limitations" {
-            let model, _ = Compositor.initReadiness ()
-            let rendered = Compositor.renderFeature148CompatibilityLedger model
+            let model, _ = Compositor.FeatureState.initReadiness ()
+            let rendered = Compositor.Render.emitFeature148CompatibilityLedger model
 
             [ "## Public Metrics and Diagnostics"
               "## Baseline References"

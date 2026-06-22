@@ -7,7 +7,7 @@ open Rendering.Harness
 let tests =
     testList "Feature148 damage parity evidence" [
         test "parity report lists the required damage corpus and fallback cases" {
-            let rendered = Compositor.renderFeature148ParityReport ()
+            let rendered = Compositor.Render.emitFeature148ParityReport ()
 
             [ "damage/localized-update"
               "damage/overlap"
@@ -25,7 +25,7 @@ let tests =
         }
 
         test "Feature148 readiness paths stay inside the feature readiness tree" {
-            let path = Compositor.feature148ArtifactPath "parity" "parity.md"
+            let path = Compositor.FeatureState.feature148ArtifactPath "parity" "parity.md"
             Expect.isTrue (TestAssertions.feature148ReadinessPath path) "readiness path"
         }
     ]

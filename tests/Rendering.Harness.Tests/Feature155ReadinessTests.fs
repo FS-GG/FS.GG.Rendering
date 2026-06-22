@@ -4,25 +4,25 @@ open System
 open Expecto
 open Rendering.Harness
 
-let private proof id : Compositor.PresentProof =
+let private proof id : Compositor.Types.PresentProof =
     { ProofId = id
-      HostProfile = Compositor.feature155TargetHostProfiles.Head
+      HostProfile = Compositor.Config.feature155TargetHostProfiles.Head
       ScenarioId = "proof/live-sentinel-damage-v1"
-      Verdict = Compositor.ProofPassed
+      Verdict = Compositor.Types.ProofPassed
       CreatedAt = DateTimeOffset.UnixEpoch.AddMinutes 55.0
       EvidenceArtifacts = [ $"{id}/sentinel-frame.png"; $"{id}/damage-frame.png"; $"{id}/proof.md" ]
       Diagnostics = [ "feature=155"; "workflow=DetectProfile>PresentSentinelFrame>PresentDamageFrame>ObservePixels>WriteProofArtifact" ] }
 
 let private acceptedModel () =
-    let model0, _ = Compositor.initReadiness ()
+    let model0, _ = Compositor.FeatureState.initReadiness ()
     [ proof "feature155-run-1"; proof "feature155-run-2"; proof "feature155-run-3" ]
-    |> List.fold (fun model item -> Compositor.updateReadiness (Compositor.ProofLoaded item) model |> fst) model0
+    |> List.fold (fun model item -> Compositor.FeatureState.updateReadiness (Compositor.Types.ProofLoaded item) model |> fst) model0
 
 [<Tests>]
 let tests =
     testList "Feature155 readiness package" [
         test "live proof formatter records native capture gate and artifacts" {
-            let rendered = Compositor.renderFeature155LiveProof (proof "feature155-run-1")
+            let rendered = Compositor.Render2.emitFeature155LiveProof (proof "feature155-run-1")
 
             [ "# Feature 155 Native Proof Capture"
               "exactly three selected fresh matching attempts"
@@ -35,7 +35,7 @@ let tests =
         }
 
         test "proof set accepts three selected capable-host attempts" {
-            let rendered = Compositor.renderFeature155ProofSet (acceptedModel ())
+            let rendered = Compositor.Render2.emitFeature155ProofSet (acceptedModel ())
 
             [ "Status: `accepted`"
               "Selected attempts: `3/3`"
@@ -45,7 +45,7 @@ let tests =
         }
 
         test "final closeout separates correctness readiness from performance claim" {
-            let rendered = Compositor.renderFeature155ValidationSummary (acceptedModel ())
+            let rendered = Compositor.Render2.emitFeature155ValidationSummary (acceptedModel ())
 
             [ "Status: `accepted`"
               "Proof set: `accepted`"
@@ -63,6 +63,6 @@ let tests =
               "proof/artifact-write-failure"
               "damage/localized-update"
               "readiness/final-p7-closeout" ]
-            |> List.iter (fun scenario -> Expect.contains Compositor.feature155ScenarioIds scenario scenario)
+            |> List.iter (fun scenario -> Expect.contains Compositor.Config.feature155ScenarioIds scenario scenario)
         }
     ]

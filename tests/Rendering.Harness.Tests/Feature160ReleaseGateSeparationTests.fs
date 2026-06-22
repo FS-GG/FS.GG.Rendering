@@ -4,8 +4,8 @@ open System
 open Expecto
 open Rendering.Harness
 
-let private profile : Compositor.HostProfile =
-    { ProfileId = Compositor.feature160AcceptedProfileId
+let private profile : Compositor.Types.HostProfile =
+    { ProfileId = Compositor.Config.feature160AcceptedProfileId
       Backend = "OpenGL"
       Renderer = Some "test-renderer"
       PresentMode = "DirectToSwapchain"
@@ -14,22 +14,22 @@ let private profile : Compositor.HostProfile =
       DisplayEnvironment = "x11"
       ProofAlgorithmVersion = "sentinel-damage-v1" }
 
-let private sample scenario : Compositor.Feature158TimingSample =
+let private sample scenario : Compositor.Types.Feature158TimingSample =
     { SampleId = $"feature160-release-{scenario}"
       SampleIndex = 1
       ScenarioId = scenario
       ScenarioDefinitionId = "feature156-required-v1:" + scenario.Replace("/", "-")
       Path = Perf.FullRedraw
       RunId = "feature160-release"
-      HostProfileId = Compositor.feature160AcceptedProfileId
-      PackageVersion = Compositor.feature156PackageVersion
+      HostProfileId = Compositor.Config.feature160AcceptedProfileId
+      PackageVersion = Compositor.Config.feature156PackageVersion
       DurationMs = 1.0
       MeasurementPolicy = Perf.ReadbackFree
       InclusionStatus = Perf.Included
       ExclusionReason = None
-      ArtifactPath = $"throughput/raw/{Compositor.feature160ScenarioFileName scenario}.csv" }
+      ArtifactPath = $"throughput/raw/{Compositor.FeatureState.feature160ScenarioFileName scenario}.csv" }
 
-let private scenarioReport scenario : Compositor.Feature158ScenarioReport =
+let private scenarioReport scenario : Compositor.Types.Feature158ScenarioReport =
     { ScenarioId = scenario
       ScenarioDefinitionId = "feature156-required-v1:" + scenario.Replace("/", "-")
       FullRedraw = None
@@ -39,33 +39,33 @@ let private scenarioReport scenario : Compositor.Feature158ScenarioReport =
       IncludedSamples = [ sample scenario ]
       ExcludedSamples = []
       ProofProbeArtifacts = []
-      Status = Compositor.Feature158ReadinessStatus.Accepted
-      ArtifactPaths = [ $"throughput/iterations/{Compositor.feature160ScenarioFileName scenario}" ]
+      Status = Compositor.Types.Feature158ReadinessStatus.Accepted
+      ArtifactPaths = [ $"throughput/iterations/{Compositor.FeatureState.feature160ScenarioFileName scenario}" ]
       Diagnostics = [] }
 
-let private iteration index : Compositor.Feature160Iteration =
+let private iteration index : Compositor.Types.Feature160Iteration =
     let iterationId = sprintf "feature160-release-%03i" index
-    let reports = Compositor.feature160RequiredScenarioIds |> List.map scenarioReport
+    let reports = Compositor.Config.feature160RequiredScenarioIds |> List.map scenarioReport
     { IterationId = iterationId
       RunId = "feature160-release"
       HostProfile = profile
-      LaneId = Compositor.feature160FocusedLaneId
-      PolicyId = Compositor.feature160PolicyId
+      LaneId = Compositor.Config.feature160FocusedLaneId
+      PolicyId = Compositor.Config.feature160PolicyId
       DeclaredBoundMinutes = 10
       ActualDuration = TimeSpan.FromMinutes 1.0
       WarmupCount = 3
       MeasuredRepetitions = 5
       ScenarioReports = reports
-      ScenarioCoverage = Compositor.feature160RequiredScenarioIds
+      ScenarioCoverage = Compositor.Config.feature160RequiredScenarioIds
       IncludedSamples = reports |> List.collect _.IncludedSamples
       ExcludedSamples = []
-      Status = Compositor.Feature160ReadinessStatus.Accepted
+      Status = Compositor.Types.Feature160ReadinessStatus.Accepted
       ExclusionReason = None
-      ArtifactPaths = [ $"throughput/iterations/{Compositor.feature160IterationFileName iterationId}" ]
+      ArtifactPaths = [ $"throughput/iterations/{Compositor.FeatureState.feature160IterationFileName iterationId}" ]
       RestrictedScenario = None
       Diagnostics = [] }
 
-let private fullValidation status command : Compositor.Feature160FullValidationRecord =
+let private fullValidation status command : Compositor.Types.Feature160FullValidationRecord =
     { Command = command
       StartedAt = Some DateTimeOffset.UnixEpoch
       CompletedAt = Some(DateTimeOffset.UnixEpoch.AddMinutes 1.0)
@@ -76,11 +76,11 @@ let private fullValidation status command : Compositor.Feature160FullValidationR
       ArtifactPaths = [ "full-validation/validation.md" ]
       Diagnostics = [] }
 
-let private summary validation : Compositor.Feature160ThroughputSummary =
+let private summary validation : Compositor.Types.Feature160ThroughputSummary =
     { RunId = "feature160-release"
       HostProfile = profile
-      LaneId = Compositor.feature160FocusedLaneId
-      PolicyId = Compositor.feature160PolicyId
+      LaneId = Compositor.Config.feature160FocusedLaneId
+      PolicyId = Compositor.Config.feature160PolicyId
       DeclaredBoundMinutes = 10
       RequiredAttempts = 3
       WarmupCount = 3
@@ -91,7 +91,7 @@ let private summary validation : Compositor.Feature160ThroughputSummary =
       CompatibilityImpact = "accepted"
       PackageValidationStatus = "accepted"
       RegressionValidationStatus = "accepted"
-      Status = Compositor.Feature160ReadinessStatus.Accepted
+      Status = Compositor.Types.Feature160ReadinessStatus.Accepted
       ReleaseReadyStatus = "pending"
       PerformanceClaim = "performance-not-accepted"
       Diagnostics = [] }
@@ -101,9 +101,9 @@ let tests =
     testList "Feature160 ReleaseGate separation" [
         test "focused throughput can pass while missing full validation blocks release ready" {
             let package = summary None
-            Expect.equal (Compositor.feature160FocusedThroughputStatus package) Compositor.Feature160ReadinessStatus.Accepted "focused accepted"
-            Expect.equal (Compositor.feature160OverallStatus package) Compositor.Feature160ReadinessStatus.Blocked "overall blocked"
-            Expect.equal (Compositor.feature160FullValidationStatus package.FullValidation) "missing" "missing"
+            Expect.equal (Compositor.FeatureState.feature160FocusedThroughputStatus package) Compositor.Types.Feature160ReadinessStatus.Accepted "focused accepted"
+            Expect.equal (Compositor.FeatureState.feature160OverallStatus package) Compositor.Types.Feature160ReadinessStatus.Blocked "overall blocked"
+            Expect.equal (Compositor.FeatureState.feature160FullValidationStatus package.FullValidation) "missing" "missing"
         }
 
         test "failing interrupted stale or wrong-command full validation blocks release ready" {
@@ -113,14 +113,14 @@ let tests =
               "stale", "dotnet test FS.GG.Rendering.slnx --no-restore", "stale" ]
             |> List.iter (fun (status, command, expected) ->
                 let package = summary (Some(fullValidation status command))
-                Expect.equal (Compositor.feature160FullValidationStatus package.FullValidation) expected expected
-                Expect.equal (Compositor.feature160OverallStatus package) Compositor.Feature160ReadinessStatus.Blocked $"blocked {expected}")
+                Expect.equal (Compositor.FeatureState.feature160FullValidationStatus package.FullValidation) expected expected
+                Expect.equal (Compositor.FeatureState.feature160OverallStatus package) Compositor.Types.Feature160ReadinessStatus.Blocked $"blocked {expected}")
         }
 
         test "current passing full validation unblocks release-ready status while claim remains separate" {
             let package = summary (Some(fullValidation "passed" "dotnet test FS.GG.Rendering.slnx --no-restore"))
-            Expect.equal (Compositor.feature160OverallStatus package) Compositor.Feature160ReadinessStatus.Accepted "accepted"
-            let rendered = Compositor.renderFeature160ValidationSummary package
+            Expect.equal (Compositor.FeatureState.feature160OverallStatus package) Compositor.Types.Feature160ReadinessStatus.Accepted "accepted"
+            let rendered = Compositor.Render4.emitFeature160ValidationSummary package
             Expect.stringContains rendered "Full validation status: `passed`" "full validation"
             Expect.stringContains rendered "Performance claim: `performance-not-accepted`" "claim boundary"
         }

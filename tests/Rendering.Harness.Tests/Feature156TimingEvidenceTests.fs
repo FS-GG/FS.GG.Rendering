@@ -42,19 +42,19 @@ let tests =
         }
 
         test "Feature156 constants declare accepted profile policy and required scenarios" {
-            Expect.equal Compositor.feature156AcceptedProfileId "probe-08a47c01" "accepted host profile"
-            Expect.equal Compositor.feature156PolicyId "same-profile-live-threshold-v2" "policy id"
-            Expect.equal Compositor.feature156RequiredScenarioIds.Length 5 "five required scenarios"
-            Expect.contains Compositor.feature156RequiredScenarioIds "timing/edge-clipping" "edge clipping scenario"
+            Expect.equal Compositor.Config.feature156AcceptedProfileId "probe-08a47c01" "accepted host profile"
+            Expect.equal Compositor.Config.feature156PolicyId "same-profile-live-threshold-v2" "policy id"
+            Expect.equal Compositor.Config.feature156RequiredScenarioIds.Length 5 "five required scenarios"
+            Expect.contains Compositor.Config.feature156RequiredScenarioIds "timing/edge-clipping" "edge clipping scenario"
         }
 
         test "MVU workflow records host policy scenario and summary publication" {
-            let model0, effects0 = Compositor.initFeature156 3 5
-            Expect.contains effects0 Compositor.Feature156DetectHostProfile "host detection"
-            Expect.contains effects0 (Compositor.Feature156DeclarePolicy Compositor.feature156PolicyId) "policy declaration"
+            let model0, effects0 = Compositor.FeatureState.initFeature156 3 5
+            Expect.contains effects0 Compositor.Types.Feature156DetectHostProfile "host detection"
+            Expect.contains effects0 (Compositor.Types.Feature156DeclarePolicy Compositor.Config.feature156PolicyId) "policy declaration"
 
-            let profile : Compositor.HostProfile =
-                { ProfileId = Compositor.feature156AcceptedProfileId
+            let profile : Compositor.Types.HostProfile =
+                { ProfileId = Compositor.Config.feature156AcceptedProfileId
                   Backend = "OpenGL"
                   Renderer = Some "test-renderer"
                   PresentMode = "DirectToSwapchain"
@@ -63,27 +63,27 @@ let tests =
                   DisplayEnvironment = "x11"
                   ProofAlgorithmVersion = "sentinel-damage-v1" }
 
-            let report : Compositor.Feature156ScenarioReport =
+            let report : Compositor.Types.Feature156ScenarioReport =
                 { ScenarioId = "timing/localized-update"
                   FullRedraw = None
                   DamageScoped = None
                   WarmupCount = 3
                   MeasuredRepetitions = 5
                   NoiseBandMs = 0.0
-                  Verdict = Compositor.Feature156Incomplete
+                  Verdict = Compositor.Types.Feature156Incomplete
                   ConfidenceDecision = "incomplete"
                   ArtifactPaths = [ "scenarios/timing-localized-update.md" ]
                   RejectionReasons = [ "missing samples" ]
                   ProofOverheadIncluded = false }
 
-            let model1, _ = Compositor.updateFeature156 (Compositor.Feature156HostProfileDetected profile) model0
-            let model2, _ = Compositor.updateFeature156 (Compositor.Feature156PolicyDeclared Compositor.feature156PolicyId) model1
-            let model3, _ = Compositor.updateFeature156 (Compositor.Feature156ScenarioEvaluated report) model2
-            let model4, _ = Compositor.updateFeature156 (Compositor.Feature156SummaryPublished "timing/summary.md") model3
+            let model1, _ = Compositor.FeatureState.updateFeature156 (Compositor.Types.Feature156HostProfileDetected profile) model0
+            let model2, _ = Compositor.FeatureState.updateFeature156 (Compositor.Types.Feature156PolicyDeclared Compositor.Config.feature156PolicyId) model1
+            let model3, _ = Compositor.FeatureState.updateFeature156 (Compositor.Types.Feature156ScenarioEvaluated report) model2
+            let model4, _ = Compositor.FeatureState.updateFeature156 (Compositor.Types.Feature156SummaryPublished "timing/summary.md") model3
 
             Expect.equal model4.ActiveProfile (Some profile) "active profile"
-            Expect.equal model4.PolicyId (Some Compositor.feature156PolicyId) "policy"
-            Expect.equal model4.Verdict Compositor.Feature156Incomplete "overall incomplete until all required scenarios are positive"
+            Expect.equal model4.PolicyId (Some Compositor.Config.feature156PolicyId) "policy"
+            Expect.equal model4.Verdict Compositor.Types.Feature156Incomplete "overall incomplete until all required scenarios are positive"
             Expect.contains model4.PublishedArtifacts "timing/summary.md" "published artifact"
         }
     ]

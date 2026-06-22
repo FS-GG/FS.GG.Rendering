@@ -200,6 +200,38 @@ module ValidationLanes =
 
     val update: msg: Msg -> model: Model -> Model * Effect list
 
+    /// Thread-safe captured-output accumulation with last-activity tracking (T035).
+    type OutputBuffer =
+        new: started: DateTime -> OutputBuffer
+        member Append: line: string -> unit
+        member LastActivityUtc: DateTime
+        member LastActivityText: string
+        member Snapshot: unit -> string * DateTime * string
+
+    /// Process spawn plus stdout/stderr capture and exit-code access (T033).
+    /// Spawn (Start) is the MVU interpreter edge; capture is wired to the supplied OutputBuffer.
+    type ProcessRunner =
+        new: lane: LaneDefinition * output: OutputBuffer -> ProcessRunner
+        member Start: unit -> bool
+        member WaitForExit: milliseconds: int -> bool
+        member WaitForExit: unit -> unit
+        member ExitCode: int
+        member Kill: unit -> unit
+        interface IDisposable
+
+    /// Wall-clock and no-progress timeout budgets that terminate a running lane (T034).
+    /// Preserves the TimedOut vs NoProgressTimedOut distinction (contract C-4).
+    /// Monitor returns the terminal (status, exitCode, reason, diagnostics).
+    type TimeoutManager =
+        { LaneId: string
+          WallClock: TimeSpan
+          NoProgress: TimeSpan option
+          ProgressInterval: TimeSpan }
+
+        member Monitor:
+            runner: ProcessRunner * output: OutputBuffer * started: DateTime ->
+                LaneStatus * int option * string option * string list
+
     val runLane: lane: LaneDefinition -> LaneResult
 
     val runRequest: repositoryRoot: string -> request: RunRequest -> Result<ValidationSummary, PreflightDiagnostic list>

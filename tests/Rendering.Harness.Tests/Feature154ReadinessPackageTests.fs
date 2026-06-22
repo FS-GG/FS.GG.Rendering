@@ -7,8 +7,8 @@ open Rendering.Harness
 let tests =
     testList "Feature154 readiness package" [
         test "validation summary links proof parity timing fallback compatibility package and regression evidence" {
-            let model, _ = Compositor.initReadiness ()
-            let rendered = Compositor.renderFeature154ValidationSummary model
+            let model, _ = Compositor.FeatureState.initReadiness ()
+            let rendered = Compositor.Render2.emitFeature154ValidationSummary model
 
             [ "Status: `environment-limited`"
               "Proof set: `environment-limited`"
@@ -27,8 +27,8 @@ let tests =
         }
 
         test "compatibility ledger records no new public surface and migration guidance" {
-            let model, _ = Compositor.initReadiness ()
-            let rendered = Compositor.renderFeature154CompatibilityLedger model
+            let model, _ = Compositor.FeatureState.initReadiness ()
+            let rendered = Compositor.Render2.emitFeature154CompatibilityLedger model
 
             [ "CompositorProof.AcceptedProofSet"
               "CompositorReadiness"
@@ -40,13 +40,13 @@ let tests =
         }
 
         test "MVU publication contract records proof parity timing and artifact effects" {
-            let model0, effects0 = Compositor.initFeature154 ()
-            Expect.exists effects0 (function Compositor.WriteFeature154Artifact path -> path.EndsWith("validation-summary.md")) "initial summary effect"
+            let model0, effects0 = Compositor.FeatureState.initFeature154 ()
+            Expect.exists effects0 (function Compositor.Types.WriteFeature154Artifact path -> path.EndsWith("validation-summary.md")) "initial summary effect"
 
-            let model1, _ = Compositor.updateFeature154 (Compositor.ProofEvidenceRecorded "environment-limited") model0
-            let model2, _ = Compositor.updateFeature154 (Compositor.ParityEvidenceRecorded "fallback-gated") model1
-            let model3, _ = Compositor.updateFeature154 (Compositor.TimingEvidenceRecorded "inconclusive") model2
-            let model4, _ = Compositor.updateFeature154 (Compositor.ArtifactPublished "proof-set.md") model3
+            let model1, _ = Compositor.FeatureState.updateFeature154 (Compositor.Types.ProofEvidenceRecorded "environment-limited") model0
+            let model2, _ = Compositor.FeatureState.updateFeature154 (Compositor.Types.ParityEvidenceRecorded "fallback-gated") model1
+            let model3, _ = Compositor.FeatureState.updateFeature154 (Compositor.Types.TimingEvidenceRecorded "inconclusive") model2
+            let model4, _ = Compositor.FeatureState.updateFeature154 (Compositor.Types.ArtifactPublished "proof-set.md") model3
 
             Expect.equal model4.ProofStatus "environment-limited" "proof"
             Expect.equal model4.ParityStatus "fallback-gated" "parity"

@@ -7,7 +7,7 @@ open Rendering.Harness
 let tests =
     testList "Feature149 reuse evidence" [
         test "reuse report records placement-only, mixed-change, no-change, churn, and parity cases" {
-            let rendered = Compositor.renderFeature149ReuseReport ()
+            let rendered = Compositor.Render.emitFeature149ReuseReport ()
 
             [ "reuse/stable-boundary"
               "reuse/placement-only"

@@ -38,30 +38,33 @@ let tests =
         }
 
         test "tryByAlias returns None for a feature not in the catalog (legacy fall-through, C-CT-4)" {
-            Expect.equal (FeatureDescriptor.tryByAlias "147") None "147 is not in the catalog"
-            Expect.equal (FeatureDescriptor.tryByAlias "999") None "unknown feature resolves to None"
+            Expect.isNone (FeatureDescriptor.tryByAlias "147") "147 is not in the catalog"
+            Expect.isNone (FeatureDescriptor.tryByAlias "999") "unknown feature resolves to None"
         }
 
         test "derived paths reproduce the hand-declared Compositor constants byte-for-byte (C-FD-2)" {
             let byId id = catalog |> List.find (fun d -> d.Id = id)
             let d148 = byId 148
-            Expect.equal (FeatureDescriptor.readinessDirectory d148) Compositor.feature148ReadinessDirectory "148 readiness dir"
-            Expect.equal (FeatureDescriptor.variantDirectory LiveProof d148) Compositor.feature148LiveProofDirectory "148 live-proof dir"
-            Expect.equal (FeatureDescriptor.variantDirectory Parity d148) Compositor.feature148ParityDirectory "148 parity dir"
-            Expect.equal (FeatureDescriptor.variantDirectory Reuse d148) Compositor.feature148ReuseDirectory "148 reuse dir"
-            Expect.equal (FeatureDescriptor.variantDirectory Snapshot d148) Compositor.feature148SnapshotsDirectory "148 snapshots dir"
-            Expect.equal (FeatureDescriptor.variantDirectory Timing d148) Compositor.feature148TimingDirectory "148 timing dir"
-            Expect.equal (FeatureDescriptor.compatibilityLedgerPath d148) Compositor.feature148CompatibilityLedgerPath "148 ledger path"
-            Expect.equal (FeatureDescriptor.validationSummaryPath d148) Compositor.feature148ValidationSummaryPath "148 summary path"
+            // The hand-declared `Compositor.feature148ReadinessDirectory` constant was removed in
+            // feature 185 (US1) — the descriptor helper is now the single source. Assert the exact
+            // prior byte-string directly (FR-010: equivalent coverage, not weakened).
+            Expect.equal (FeatureDescriptor.readinessDirectory d148) (System.IO.Path.Combine("specs", Compositor.Config.feature148Id, "readiness")) "148 readiness dir"
+            Expect.equal (FeatureDescriptor.variantDirectory LiveProof d148) Compositor.Config.feature148LiveProofDirectory "148 live-proof dir"
+            Expect.equal (FeatureDescriptor.variantDirectory Parity d148) Compositor.Config.feature148ParityDirectory "148 parity dir"
+            Expect.equal (FeatureDescriptor.variantDirectory Reuse d148) Compositor.Config.feature148ReuseDirectory "148 reuse dir"
+            Expect.equal (FeatureDescriptor.variantDirectory Snapshot d148) Compositor.Config.feature148SnapshotsDirectory "148 snapshots dir"
+            Expect.equal (FeatureDescriptor.variantDirectory Timing d148) Compositor.Config.feature148TimingDirectory "148 timing dir"
+            Expect.equal (FeatureDescriptor.compatibilityLedgerPath d148) Compositor.Config.feature148CompatibilityLedgerPath "148 ledger path"
+            Expect.equal (FeatureDescriptor.validationSummaryPath d148) Compositor.Config.feature148ValidationSummaryPath "148 summary path"
             let d156 = byId 156
-            Expect.equal (FeatureDescriptor.packageValidationPath d156) Compositor.feature156PackageValidationPath "156 package-validation path"
-            Expect.equal (FeatureDescriptor.regressionValidationPath d156) Compositor.feature156RegressionValidationPath "156 regression-validation path"
+            Expect.equal (FeatureDescriptor.packageValidationPath d156) Compositor.Config.feature156PackageValidationPath "156 package-validation path"
+            Expect.equal (FeatureDescriptor.regressionValidationPath d156) Compositor.Config.feature156RegressionValidationPath "156 regression-validation path"
         }
 
         test "config carries shared policy/profile scalars where they exist" {
             let byId id = catalog |> List.find (fun d -> d.Id = id)
-            Expect.equal ((byId 156).Config.PolicyId) (Some Compositor.feature156PolicyId) "156 policy id"
-            Expect.equal ((byId 158).Config.PolicyId) (Some Compositor.feature158PolicyId) "158 policy id"
-            Expect.equal ((byId 156).Config.AcceptedProfileId) (Some Compositor.feature156AcceptedProfileId) "156 accepted profile id"
+            Expect.equal ((byId 156).Config.PolicyId) (Some Compositor.Config.feature156PolicyId) "156 policy id"
+            Expect.equal ((byId 158).Config.PolicyId) (Some Compositor.Config.feature158PolicyId) "158 policy id"
+            Expect.equal ((byId 156).Config.AcceptedProfileId) (Some Compositor.Config.feature156AcceptedProfileId) "156 accepted profile id"
         }
     ]

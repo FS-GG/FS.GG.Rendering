@@ -3,8 +3,8 @@ module Feature158ReadinessPackageTests
 open Expecto
 open Rendering.Harness
 
-let private profile : Compositor.HostProfile =
-    { ProfileId = Compositor.feature158AcceptedProfileId
+let private profile : Compositor.Types.HostProfile =
+    { ProfileId = Compositor.Config.feature158AcceptedProfileId
       Backend = "OpenGL"
       Renderer = Some "Mesa"
       PresentMode = "DirectToSwapchain"
@@ -13,7 +13,7 @@ let private profile : Compositor.HostProfile =
       DisplayEnvironment = "x11"
       ProofAlgorithmVersion = "sentinel-damage-v1" }
 
-let private dist path : Compositor.Feature158PathDistribution =
+let private dist path : Compositor.Types.Feature158PathDistribution =
     { SampleCount = 5
       P50Ms = 4.0
       P95Ms = 5.0
@@ -22,42 +22,42 @@ let private dist path : Compositor.Feature158PathDistribution =
       MaxMs = 6.0
       RawSamplePath = path }
 
-let private timingSample scenario index policy status reason : Compositor.Feature158TimingSample =
+let private timingSample scenario index policy status reason : Compositor.Types.Feature158TimingSample =
     { SampleId = $"feature158-{index}"
       SampleIndex = index
       ScenarioId = scenario
-      ScenarioDefinitionId = "feature156-required-v1:" + (Compositor.feature158ScenarioFileName scenario).Replace(".md", "")
+      ScenarioDefinitionId = "feature156-required-v1:" + (Compositor.FeatureState.feature158ScenarioFileName scenario).Replace(".md", "")
       Path = Perf.DamageScoped
       RunId = "feature158-test"
       HostProfileId = profile.ProfileId
-      PackageVersion = Compositor.feature156PackageVersion
+      PackageVersion = Compositor.Config.feature156PackageVersion
       DurationMs = 3.5
       MeasurementPolicy = policy
       InclusionStatus = status
       ExclusionReason = reason
-      ArtifactPath = $"raw/{Compositor.feature158ScenarioFileName scenario}.csv" }
+      ArtifactPath = $"raw/{Compositor.FeatureState.feature158ScenarioFileName scenario}.csv" }
 
-let private report scenario : Compositor.Feature158ScenarioReport =
+let private report scenario : Compositor.Types.Feature158ScenarioReport =
     let included = [ for i in 1..5 -> timingSample scenario i Perf.ReadbackFree Perf.Included None ]
     let excluded = [ timingSample scenario 99 Perf.ProbeReadbackIncluded Perf.Probe (Some Perf.ProbeRunExcluded) ]
     { ScenarioId = scenario
-      ScenarioDefinitionId = "feature156-required-v1:" + (Compositor.feature158ScenarioFileName scenario).Replace(".md", "")
-      FullRedraw = Some(dist $"raw/{Compositor.feature158ScenarioFileName scenario}-full.csv")
-      DamageScoped = Some(dist $"raw/{Compositor.feature158ScenarioFileName scenario}-damage.csv")
+      ScenarioDefinitionId = "feature156-required-v1:" + (Compositor.FeatureState.feature158ScenarioFileName scenario).Replace(".md", "")
+      FullRedraw = Some(dist $"raw/{Compositor.FeatureState.feature158ScenarioFileName scenario}-full.csv")
+      DamageScoped = Some(dist $"raw/{Compositor.FeatureState.feature158ScenarioFileName scenario}-damage.csv")
       WarmupCount = 3
       MeasuredRepetitions = 5
       IncludedSamples = included
       ExcludedSamples = excluded
       ProofProbeArtifacts = [ "proof-probes/README.md" ]
-      Status = Compositor.Feature158ReadinessStatus.Accepted
-      ArtifactPaths = [ $"scenarios/{Compositor.feature158ScenarioFileName scenario}" ]
+      Status = Compositor.Types.Feature158ReadinessStatus.Accepted
+      ArtifactPaths = [ $"scenarios/{Compositor.FeatureState.feature158ScenarioFileName scenario}" ]
       Diagnostics = [] }
 
-let private summary : Compositor.Feature158TimingSummary =
-    let reports = Compositor.feature158RequiredScenarioIds |> List.map report
+let private summary : Compositor.Types.Feature158TimingSummary =
+    let reports = Compositor.Config.feature158RequiredScenarioIds |> List.map report
     { RunId = "feature158-test"
       HostProfile = profile
-      PolicyId = Compositor.feature158PolicyId
+      PolicyId = Compositor.Config.feature158PolicyId
       WarmupCount = 3
       MeasuredRepetitions = 5
       ScenarioReports = reports
@@ -66,14 +66,14 @@ let private summary : Compositor.Feature158TimingSummary =
       ProofProbeEvidence =
         [ { ProbeId = "probe"
             HostProfile = profile
-            ScenarioIds = Compositor.feature158RequiredScenarioIds
+            ScenarioIds = Compositor.Config.feature158RequiredScenarioIds
             ReadbackArtifacts = [ "proof-probes/probe.png" ]
             ProbeSampleIds = [ "probe-sample" ]
             ExclusionReason = Perf.ProbeRunExcluded
             Diagnostics = [] } ]
       UnsupportedHostReason = None
       Feature156Comparison = "contextualizes"
-      Status = Compositor.Feature158ReadinessStatus.Accepted
+      Status = Compositor.Types.Feature158ReadinessStatus.Accepted
       PerformanceClaim = "performance-not-accepted"
       Diagnostics = [ "under-5-minute reviewer inspection evidence" ] }
 
@@ -81,7 +81,7 @@ let private summary : Compositor.Feature158TimingSummary =
 let tests =
     testList "Feature158 readiness package" [
         test "timing summary exposes policy samples exclusions proof links and remaining gates" {
-            let rendered = Compositor.renderFeature158TimingSummary summary
+            let rendered = Compositor.Render3.emitFeature158TimingSummary summary
             [ "Feature 158 measurement-separation status: `accepted`"
               "Policy id: `readback-free-timing-v1`"
               "Included timing samples: `25`"
@@ -95,7 +95,7 @@ let tests =
         }
 
         test "scenario report separates included timing from excluded probe readback" {
-            let rendered = Compositor.renderFeature158ScenarioReport (report "timing/localized-update")
+            let rendered = Compositor.Render3.emitFeature158ScenarioReport (report "timing/localized-update")
             Expect.stringContains rendered "Measurement-separation status: `accepted`" "accepted"
             Expect.stringContains rendered "`readback-free`" "included policy"
             Expect.stringContains rendered "`probe-readback-included`" "probe policy"
@@ -103,7 +103,7 @@ let tests =
         }
 
         test "validation summary links the reviewer entry package and preserves claim boundary" {
-            let rendered = Compositor.renderFeature158ValidationSummary summary
+            let rendered = Compositor.Render3.emitFeature158ValidationSummary summary
             [ "timing/summary.md"
               "timing/summary.json"
               "timing/excluded/"
@@ -116,8 +116,8 @@ let tests =
         }
 
         test "compatibility package documents no new Testing or SkiaViewer helper surface" {
-            let ledger = Compositor.renderFeature158CompatibilityLedger ()
-            let package = Compositor.renderPackageValidation 158 [ "`dotnet build FS.GG.Rendering.slnx --no-restore`: passed." ]
+            let ledger = Compositor.Render3.emitFeature158CompatibilityLedger ()
+            let package = Compositor.Render.renderPackageValidation 158 [ "`dotnet build FS.GG.Rendering.slnx --no-restore`: passed." ]
             Expect.stringContains ledger "No new `FS.GG.UI.Testing` public helper surface" "Testing no helper"
             Expect.stringContains ledger "No new `FS.GG.UI.SkiaViewer` public helper surface" "SkiaViewer no helper"
             Expect.stringContains package "No Testing or SkiaViewer package-visible helper surface" "package no helper"

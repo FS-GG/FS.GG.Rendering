@@ -25,8 +25,20 @@
     <Compile Include="Perf.fs" />
     <Compile Include="FeatureCatalog.fsi" />
     <Compile Include="FeatureCatalog.fs" />
-    <Compile Include="Compositor.fsi" />
-    <Compile Include="Compositor.fs" />
+    <Compile Include="Compositor.Types.fsi" />
+    <Compile Include="Compositor.Types.fs" />
+    <Compile Include="Compositor.Config.fsi" />
+    <Compile Include="Compositor.Config.fs" />
+    <Compile Include="Compositor.FeatureState.fsi" />
+    <Compile Include="Compositor.FeatureState.fs" />
+    <Compile Include="Compositor.Render.fsi" />
+    <Compile Include="Compositor.Render.fs" />
+    <Compile Include="Compositor.Render2.fsi" />
+    <Compile Include="Compositor.Render2.fs" />
+    <Compile Include="Compositor.Render3.fsi" />
+    <Compile Include="Compositor.Render3.fs" />
+    <Compile Include="Compositor.Render4.fsi" />
+    <Compile Include="Compositor.Render4.fs" />
     <Compile Include="PackageFeed.fsi" />
     <Compile Include="PackageFeed.fs" />
     <Compile Include="ValidationLanes.fsi" />
@@ -43,6 +55,10 @@
     <Compile Include="Input.fs" />
     <Compile Include="SkillParity.fsi" />
     <Compile Include="SkillParity.fs" />
+    <Compile Include="Cli.Shared.fs" />
+    <Compile Include="Cli.FeatureBuilders.fs" />
+    <Compile Include="Cli.Performance.fs" />
+    <Compile Include="Cli.Readiness.fs" />
     <Compile Include="Cli.fs" />
   </ItemGroup>
 

@@ -7,11 +7,11 @@ open Rendering.Harness
 let tests =
     testList "Feature148 timing evidence" [
         test "timing tiers include damage, placement, replay, and snapshot" {
-            Expect.equal Compositor.feature148TimingTiers [ "damage"; "placement"; "replay"; "snapshot" ] "tier order"
+            Expect.equal Compositor.Config.feature148TimingTiers [ "damage"; "placement"; "replay"; "snapshot" ] "tier order"
         }
 
         test "timing report includes lower-tier baseline and warmup disclosure" {
-            let rendered = Compositor.renderFeature148TimingReport "snapshot"
+            let rendered = Compositor.Render.emitFeature148TimingReport "snapshot"
             Expect.stringContains rendered "Tier: `snapshot`" "tier"
             Expect.stringContains rendered "replay/lower tier" "baseline"
             Expect.stringContains rendered "Warmup frames" "warmup"
@@ -19,7 +19,7 @@ let tests =
         }
 
         test "replay timing tier is accepted by the formatter" {
-            let rendered = Compositor.renderFeature148TimingReport "replay"
+            let rendered = Compositor.Render.emitFeature148TimingReport "replay"
             Expect.stringContains rendered "Tier: `replay`" "replay tier"
         }
     ]

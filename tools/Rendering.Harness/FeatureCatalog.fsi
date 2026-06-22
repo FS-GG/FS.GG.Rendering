@@ -32,6 +32,19 @@ module FeatureCatalog =
           AcceptedProfileId: string option
           RequiredScenarioIds: string list }
 
+    /// Per-descriptor override points for the genuinely divergent variant bodies (US2, FR-003).
+    /// `None` = the generic template suffices; `Some f` = this feature/variant needs a bespoke body.
+    /// Each hook returns only the feature-specific report fragments; the generic renderer
+    /// (`Compositor.Render`) assembles them with the shared frame, so output stays byte-identical to
+    /// the prior per-feature function. Functions are concrete over plain string fragments (Principle
+    /// III — no SRTP, and no dependency on the `Compositor.Types` records that compile after this).
+    type FeatureRenderHooks =
+        { PackageValidation: (unit -> string * string * string list) option
+          RegressionValidation: (unit -> string * string list) option }
+
+    /// All-`None` hooks — the default for a descriptor whose variants all use the generic template.
+    val noRenderHooks: FeatureRenderHooks
+
     /// One harness feature, the unit the renderer/CLI table/tests all iterate.
     type FeatureDescriptor =
         { Id: int
@@ -39,7 +52,8 @@ module FeatureCatalog =
           CliAliases: string list
           Variants: Set<ReportVariant>
           RequiredHeaders: string list
-          Config: FeatureConfig }
+          Config: FeatureConfig
+          Renderers: FeatureRenderHooks }
 
     /// Path/predicate helpers derived from the descriptor. The path helpers reproduce the exact
     /// byte-strings the hand-declared `feature###…` constants produced today (C-FD-2).
@@ -56,3 +70,16 @@ module FeatureCatalog =
     /// The 12 features at HEAD (148,149,152,153,154,155,156,157,158,159,160,161) in
     /// `Compositor.fs` declaration order.
     val catalog: FeatureDescriptor list
+
+    /// Raised when the catalog violates an SSOT invariant (duplicate alias) or a lookup misses (FR-011).
+    exception CatalogError of string
+
+    /// CLI aliases shared by ≥2 descriptors (case-insensitive); empty when well-formed. Checked at
+    /// module load — a duplicate fails loud before any feature runs.
+    val duplicateAliases: unit -> string list
+
+    /// Exhaustive lookup by feature id; throws `CatalogError` on a missing row (never a placeholder).
+    val descriptorById: int -> FeatureDescriptor
+
+    /// Exhaustive lookup by any CLI alias (id / `feature<N>` / slug); throws `CatalogError` if unknown.
+    val descriptorByAlias: string -> FeatureDescriptor

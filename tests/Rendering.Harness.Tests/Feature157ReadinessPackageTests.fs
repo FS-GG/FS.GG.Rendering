@@ -3,8 +3,8 @@ module Feature157ReadinessPackageTests
 open Expecto
 open Rendering.Harness
 
-let private profile : Compositor.HostProfile =
-    { ProfileId = Compositor.feature157AcceptedProfileId
+let private profile : Compositor.Types.HostProfile =
+    { ProfileId = Compositor.Config.feature157AcceptedProfileId
       Backend = "OpenGL"
       Renderer = None
       PresentMode = "DirectToSwapchain"
@@ -13,8 +13,8 @@ let private profile : Compositor.HostProfile =
       DisplayEnvironment = "x11"
       ProofAlgorithmVersion = "sentinel-damage-v1" }
 
-let private attempt scenario : Compositor.Feature157DamageAttempt =
-    { AttemptId = $"feature157-{Compositor.feature157ScenarioFileName scenario}"
+let private attempt scenario : Compositor.Types.Feature157DamageAttempt =
+    { AttemptId = $"feature157-{Compositor.FeatureState.feature157ScenarioFileName scenario}"
       RunId = "feature157-test"
       ScenarioId = scenario
       HostProfile = profile
@@ -26,14 +26,14 @@ let private attempt scenario : Compositor.Feature157DamageAttempt =
       PreservedPixelEvidence = "preserved"
       DamagedPixelEvidence = "updated"
       ParityStatus = "accepted"
-      ArtifactPaths = [ $"attempts/{Compositor.feature157ScenarioFileName scenario}" ]
+      ArtifactPaths = [ $"attempts/{Compositor.FeatureState.feature157ScenarioFileName scenario}" ]
       Diagnostics = [] }
 
-let private summary : Compositor.Feature157DamageSummary =
-    let attempts = Compositor.feature157RequiredScenarioIds |> List.map attempt
+let private summary : Compositor.Types.Feature157DamageSummary =
+    let attempts = Compositor.Config.feature157RequiredScenarioIds |> List.map attempt
     { RunId = "feature157-test"
       HostProfile = profile
-      Status = Compositor.Feature157DamageStatus.Accepted
+      Status = Compositor.Types.Feature157DamageStatus.Accepted
       AcceptedAttempts = attempts
       Fallbacks = []
       UnsupportedHostReason = None
@@ -46,7 +46,7 @@ let tests =
     testList
         "Feature157 readiness package"
         [ test "validation summary links every reviewer-facing artifact class" {
-              let rendered = Compositor.renderFeature157ValidationSummary summary
+              let rendered = Compositor.Render3.emitFeature157ValidationSummary summary
               [ "damage/summary.md"
                 "damage/summary.json"
                 "damage/attempts/"
@@ -62,14 +62,14 @@ let tests =
           }
 
           test "compatibility ledger preserves Feature155 and Feature156 boundaries" {
-              let ledger = Compositor.renderFeature157CompatibilityLedger ()
+              let ledger = Compositor.Render3.emitFeature157CompatibilityLedger ()
               Expect.stringContains ledger "Feature 155 proof-set" "Feature155 boundary"
               Expect.stringContains ledger "Feature 156 timing" "Feature156 boundary"
               Expect.stringContains ledger "performance-not-accepted" "performance claim boundary"
           }
 
           test "summary JSON exposes status, attempts, fallback counts, profile, and performance claim" {
-              let json = Compositor.renderFeature157DamageSummaryJson summary
+              let json = Compositor.Render3.emitFeature157DamageSummaryJson summary
               Expect.stringContains json "\"status\": \"accepted\"" "status"
               Expect.stringContains json "\"acceptedAttemptCount\": 5" "attempt count"
               Expect.stringContains json "\"fallbackCount\": 0" "fallback count"
@@ -78,8 +78,8 @@ let tests =
           }
 
           test "package and regression validation render the current status and no universal performance claim" {
-              let package = Compositor.renderPackageValidation 157 [ "`dotnet build FS.GG.Rendering.slnx --no-restore`: passed." ]
-              let regression = Compositor.renderRegressionValidation 157 [ "`dotnet test FS.GG.Rendering.slnx --no-restore`: passed." ]
+              let package = Compositor.Render.renderPackageValidation 157 [ "`dotnet build FS.GG.Rendering.slnx --no-restore`: passed." ]
+              let regression = Compositor.Render.renderRegressionValidation 157 [ "`dotnet test FS.GG.Rendering.slnx --no-restore`: passed." ]
               Expect.stringContains package "Status: `accepted-with-recorded-limitations`" "package status"
               Expect.stringContains regression "Feature 156 timing remains context-only" "timing boundary"
               Expect.stringContains regression "performance-not-accepted" "performance boundary"

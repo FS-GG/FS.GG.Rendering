@@ -7,7 +7,7 @@ open Rendering.Harness
 let tests =
     testList "Feature154 timing decision" [
         test "timing report declares threshold noise policy scenario count and repetitions" {
-            let rendered = Compositor.renderFeature154TimingReport "damage" 5 5
+            let rendered = Compositor.Render2.emitFeature154TimingReport "damage" 5 5
 
             [ "Decision: `inconclusive`"
               "Performance claim: `not-accepted`"
@@ -19,6 +19,6 @@ let tests =
         }
 
         test "timing tier inventory keeps damage claim separate from safety readiness" {
-            Expect.contains Compositor.feature154TimingTiers "damage" "damage timing tier"
+            Expect.contains Compositor.Config.feature154TimingTiers "damage" "damage timing tier"
         }
     ]

@@ -1060,24 +1060,30 @@ module ValidationLanes =
         writeDiagnostics result
         writeAllText result.ResultPath (renderLaneResultJson result + Environment.NewLine)
 
-    let runLane (lane: LaneDefinition) : LaneResult =
-        let started = DateTime.UtcNow
-        let output = StringBuilder()
-        let gate = obj()
+    // T035 OutputBuffer: thread-safe captured-output accumulation plus last-activity tracking.
+    type OutputBuffer(started: DateTime) =
+        let buffer = StringBuilder()
+        let gate = obj ()
         let mutable lastActivityUtc = started
         let mutable lastActivityText = "process starting"
 
-        let appendLine (line: string) =
+        member _.Append(line: string) =
             lock gate (fun () ->
-                output.AppendLine(line) |> ignore
+                buffer.AppendLine(line) |> ignore
                 lastActivityUtc <- DateTime.UtcNow
                 lastActivityText <- line)
 
-        try
-            Directory.CreateDirectory lane.EvidenceDirectory |> ignore
-            Directory.CreateDirectory lane.OutputRoot |> ignore
-            writeAllText lane.LogPath ""
+        member _.LastActivityUtc = lock gate (fun () -> lastActivityUtc)
 
+        member _.LastActivityText = lock gate (fun () -> lastActivityText)
+
+        member _.Snapshot() =
+            lock gate (fun () -> buffer.ToString(), lastActivityUtc, lastActivityText)
+
+    // T033 ProcessRunner: process spawn plus stdout/stderr capture and exit-code access.
+    // Spawn is the MVU interpreter edge; capture is wired to the supplied OutputBuffer.
+    type ProcessRunner(lane: LaneDefinition, output: OutputBuffer) =
+        let proc =
             let psi = ProcessStartInfo(lane.Command.FileName)
             psi.WorkingDirectory <- lane.WorkingDirectory
             psi.UseShellExecute <- false
@@ -1087,125 +1093,138 @@ module ValidationLanes =
             for argument in lane.Command.Arguments do
                 psi.ArgumentList.Add argument
 
-            use proc = new Process()
-            proc.StartInfo <- psi
-            proc.OutputDataReceived.Add(fun args ->
+            let p = new Process()
+            p.StartInfo <- psi
+
+            p.OutputDataReceived.Add(fun args ->
                 match args.Data with
                 | null -> ()
-                | line -> appendLine line)
-            proc.ErrorDataReceived.Add(fun args ->
+                | line -> output.Append line)
+
+            p.ErrorDataReceived.Add(fun args ->
                 match args.Data with
                 | null -> ()
-                | line -> appendLine line)
+                | line -> output.Append line)
 
-            if not (proc.Start()) then
-                let completed = DateTime.UtcNow
-                let result =
-                    resultForLane
-                        lane
-                        InfrastructureError
-                        (Some started)
-                        (Some completed)
-                        (Some(completed - started))
-                        (Some lastActivityUtc)
-                        (Some lastActivityText)
-                        None
-                        (Some "process did not start")
-                        [ "process did not start" ]
-                        []
-                    |> withDiscoveredArtifacts lane
+            p
 
-                writeLaneResult result
-                result
-            else
+        member _.Start() =
+            if proc.Start() then
                 proc.BeginOutputReadLine()
                 proc.BeginErrorReadLine()
-                let mutable finalStatus = NotRun
-                let mutable exitCode = None
-                let mutable reason = None
-                let mutable diagnostics = []
-                let mutable nextHeartbeatUtc = started + lane.ProgressInterval
+                true
+            else
+                false
 
-                while finalStatus = NotRun do
-                    if proc.WaitForExit(200) then
-                        proc.WaitForExit()
-                        exitCode <- Some proc.ExitCode
-                        finalStatus <- if proc.ExitCode = 0 then Passed else Failed
-                        if proc.ExitCode <> 0 then
-                            reason <- Some $"lane exited with code {proc.ExitCode}"
+        member _.WaitForExit(milliseconds: int) = proc.WaitForExit(milliseconds)
+
+        member _.WaitForExit() = proc.WaitForExit()
+
+        member _.ExitCode = proc.ExitCode
+
+        member _.Kill() = proc.Kill(true)
+
+        interface IDisposable with
+            member _.Dispose() = proc.Dispose()
+
+    // T034 TimeoutManager: wall-clock and no-progress budgets that terminate a running lane.
+    // The TimedOut vs NoProgressTimedOut distinction (contract C-4) is preserved here.
+    // Monitor returns (status, exitCode, reason, diagnostics).
+    type TimeoutManager =
+        { LaneId: string
+          WallClock: TimeSpan
+          NoProgress: TimeSpan option
+          ProgressInterval: TimeSpan }
+
+        member this.Monitor
+            (runner: ProcessRunner, output: OutputBuffer, started: DateTime)
+            : LaneStatus * int option * string option * string list =
+            let mutable status = NotRun
+            let mutable exitCode = None
+            let mutable reason = None
+            let mutable diagnostics = []
+            let mutable nextHeartbeatUtc = started + this.ProgressInterval
+
+            while status = NotRun do
+                if runner.WaitForExit(200) then
+                    runner.WaitForExit()
+                    exitCode <- Some runner.ExitCode
+                    status <- if runner.ExitCode = 0 then Passed else Failed
+
+                    if runner.ExitCode <> 0 then
+                        reason <- Some $"lane exited with code {runner.ExitCode}"
+                else
+                    let now = DateTime.UtcNow
+
+                    if now >= nextHeartbeatUtc then
+                        let heartbeat =
+                            $"heartbeat lane={this.LaneId} elapsed={now - started} timeout={this.WallClock} lastActivity={output.LastActivityText}"
+
+                        printfn "%s" heartbeat
+                        nextHeartbeatUtc <- now + this.ProgressInterval
+
+                    if now - started > this.WallClock then
+                        status <- TimedOut
+                        reason <- Some $"lane exceeded timeout {this.WallClock}"
+                        diagnostics <- diagnostics @ [ reason.Value ]
+
+                        try
+                            runner.Kill()
+                        with ex ->
+                            diagnostics <- diagnostics @ [ $"failed to stop timed-out process: {ex.Message}" ]
                     else
-                        let now = DateTime.UtcNow
-
-                        if now >= nextHeartbeatUtc then
-                            let heartbeat =
-                                lock gate (fun () ->
-                                    $"heartbeat lane={lane.Id} elapsed={now - started} timeout={lane.Timeout} lastActivity={lastActivityText}")
-
-                            printfn "%s" heartbeat
-                            nextHeartbeatUtc <- now + lane.ProgressInterval
-
-                        if now - started > lane.Timeout then
-                            finalStatus <- TimedOut
-                            reason <- Some $"lane exceeded timeout {lane.Timeout}"
+                        match this.NoProgress with
+                        | Some noProgress when now - output.LastActivityUtc > noProgress ->
+                            status <- NoProgressTimedOut
+                            reason <- Some $"lane exceeded no-progress timeout {noProgress}"
                             diagnostics <- diagnostics @ [ reason.Value ]
 
                             try
-                                proc.Kill(true)
+                                runner.Kill()
                             with ex ->
-                                diagnostics <- diagnostics @ [ $"failed to stop timed-out process: {ex.Message}" ]
-                        else
-                            match lane.NoProgressTimeout with
-                            | Some noProgress when now - lastActivityUtc > noProgress ->
-                                finalStatus <- NoProgressTimedOut
-                                reason <- Some $"lane exceeded no-progress timeout {noProgress}"
-                                diagnostics <- diagnostics @ [ reason.Value ]
+                                diagnostics <- diagnostics @ [ $"failed to stop no-progress process: {ex.Message}" ]
+                        | _ -> ()
 
-                                try
-                                    proc.Kill(true)
-                                with ex ->
-                                    diagnostics <- diagnostics @ [ $"failed to stop no-progress process: {ex.Message}" ]
-                            | _ -> ()
+            status, exitCode, reason, diagnostics
 
-                let completed = DateTime.UtcNow
-                let text, activityUtc, activityText =
-                    lock gate (fun () -> output.ToString(), lastActivityUtc, lastActivityText)
+    // T036 runLane: thin orchestrator composing OutputBuffer + ProcessRunner + TimeoutManager.
+    let runLane (lane: LaneDefinition) : LaneResult =
+        let started = DateTime.UtcNow
+        let output = OutputBuffer(started)
 
+        let completion status exitCode reason diagnostics =
+            let completed = DateTime.UtcNow
+
+            resultForLane
+                lane status (Some started) (Some completed) (Some(completed - started))
+                (Some output.LastActivityUtc) (Some output.LastActivityText) exitCode reason diagnostics []
+            |> withDiscoveredArtifacts lane
+
+        try
+            Directory.CreateDirectory lane.EvidenceDirectory |> ignore
+            Directory.CreateDirectory lane.OutputRoot |> ignore
+            writeAllText lane.LogPath ""
+            use runner = new ProcessRunner(lane, output)
+
+            if not (runner.Start()) then
+                let result = completion InfrastructureError None (Some "process did not start") [ "process did not start" ]
+                writeLaneResult result
+                result
+            else
+                let manager =
+                    { LaneId = lane.Id
+                      WallClock = lane.Timeout
+                      NoProgress = lane.NoProgressTimeout
+                      ProgressInterval = lane.ProgressInterval }
+
+                let status, exitCode, reason, diagnostics = manager.Monitor(runner, output, started)
+                let text, _, _ = output.Snapshot()
                 writeAllText lane.LogPath text
-
-                let result =
-                    resultForLane
-                        lane
-                        finalStatus
-                        (Some started)
-                        (Some completed)
-                        (Some(completed - started))
-                        (Some activityUtc)
-                        (Some activityText)
-                        exitCode
-                        reason
-                        diagnostics
-                        []
-                    |> withDiscoveredArtifacts lane
-
+                let result = completion status exitCode reason diagnostics
                 writeLaneResult result
                 result
         with ex ->
-            let completed = DateTime.UtcNow
-
-            let result =
-                resultForLane
-                    lane
-                    InfrastructureError
-                    (Some started)
-                    (Some completed)
-                    (Some(completed - started))
-                    (Some lastActivityUtc)
-                    (Some lastActivityText)
-                    None
-                    (Some ex.Message)
-                    [ ex.Message ]
-                    []
-                |> withDiscoveredArtifacts lane
+            let result = completion InfrastructureError None (Some ex.Message) [ ex.Message ]
 
             try
                 writeLaneResult result

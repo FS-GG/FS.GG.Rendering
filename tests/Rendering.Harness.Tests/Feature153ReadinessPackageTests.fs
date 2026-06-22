@@ -7,9 +7,9 @@ open Rendering.Harness
 let tests =
     testList "Feature153 readiness package" [
         test "validation summary links attempts proof set fallback compatibility package and regression evidence" {
-            let model0, _ = Compositor.initReadiness ()
-            let model1, _ = Compositor.updateReadiness (Compositor.TierEvaluated(Compositor.DamageScissorTier, Compositor.Limited "missing proof")) model0
-            let rendered = Compositor.renderFeature153ValidationSummary model1
+            let model0, _ = Compositor.FeatureState.initReadiness ()
+            let model1, _ = Compositor.FeatureState.updateReadiness (Compositor.Types.TierEvaluated(Compositor.Types.DamageScissorTier, Compositor.Types.Limited "missing proof")) model0
+            let rendered = Compositor.Render.emitFeature153ValidationSummary model1
 
             [ "Status: `environment-limited`"
               "Proof set: `environment-limited`"
@@ -25,8 +25,8 @@ let tests =
         }
 
         test "proof-set renderer keeps selected attempts explicit and non-accepting when evidence is missing" {
-            let model, _ = Compositor.initReadiness ()
-            let rendered = Compositor.renderFeature153ProofSet model
+            let model, _ = Compositor.FeatureState.initReadiness ()
+            let rendered = Compositor.Render.emitFeature153ProofSet model
 
             [ "Status: `environment-limited`"
               "Selected attempts: `0/3`"
@@ -36,8 +36,8 @@ let tests =
         }
 
         test "compatibility ledger documents public proof and fallback behavior" {
-            let model, _ = Compositor.initReadiness ()
-            let rendered = Compositor.renderFeature153CompatibilityLedger model
+            let model, _ = Compositor.FeatureState.initReadiness ()
+            let rendered = Compositor.Render.emitFeature153CompatibilityLedger model
 
             [ "CompositorProof.AcceptedProofSet"
               "GlHost.LiveProofHostFacts"

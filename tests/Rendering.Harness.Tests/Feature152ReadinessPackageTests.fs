@@ -7,9 +7,9 @@ open Rendering.Harness
 let tests =
     testList "Feature152 readiness package" [
         test "validation summary links proof, parity, timing, compatibility, package, and regression evidence" {
-            let model0, _ = Compositor.initReadiness ()
-            let model1, _ = Compositor.updateReadiness (Compositor.TierEvaluated(Compositor.DamageScissorTier, Compositor.Limited "missing proof")) model0
-            let rendered = Compositor.renderFeature152ValidationSummary model1
+            let model0, _ = Compositor.FeatureState.initReadiness ()
+            let model1, _ = Compositor.FeatureState.updateReadiness (Compositor.Types.TierEvaluated(Compositor.Types.DamageScissorTier, Compositor.Types.Limited "missing proof")) model0
+            let rendered = Compositor.Render.emitFeature152ValidationSummary model1
 
             [ "Status: `environment-limited`"
               "Performance claim: `environment-limited`"
@@ -24,8 +24,8 @@ let tests =
         }
 
         test "compatibility ledger documents public helper surface and fallback behavior" {
-            let model, _ = Compositor.initReadiness ()
-            let rendered = Compositor.renderFeature152CompatibilityLedger model
+            let model, _ = Compositor.FeatureState.initReadiness ()
+            let rendered = Compositor.Render.emitFeature152CompatibilityLedger model
 
             [ "CompositorProof"
               "CompositorReadiness"

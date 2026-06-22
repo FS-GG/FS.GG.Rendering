@@ -20,17 +20,17 @@ let private facts =
 let tests =
     testList "Feature149 live proof evidence" [
         test "Feature149 formatter records host facts, package version, and acceptance gate" {
-            let profile = Compositor.hostProfileFromFacts facts
-            let proof: Compositor.PresentProof =
+            let profile = Compositor.Config.hostProfileFromFacts facts
+            let proof: Compositor.Types.PresentProof =
                 { ProofId = "proof-149"
                   HostProfile = profile
                   ScenarioId = "proof/live-sentinel-damage-v1"
-                  Verdict = Compositor.ProofEnvironmentLimited "missing display"
+                  Verdict = Compositor.Types.ProofEnvironmentLimited "missing display"
                   CreatedAt = DateTimeOffset.UnixEpoch
                   EvidenceArtifacts = [ "proof.md"; "limitations.md" ]
                   Diagnostics = [ "verdict=environment-limited" ] }
 
-            let rendered = Compositor.renderFeature149LiveProof proof
+            let rendered = Compositor.Render.emitFeature149LiveProof proof
 
             Expect.stringContains rendered "# Feature 149 Live Compositor Proof" "title"
             Expect.stringContains rendered "Scenario: `proof/live-sentinel-damage-v1`" "scenario"
@@ -50,16 +50,16 @@ let tests =
               "proof/missing-display"
               "proof/host-error" ]
             |> List.iter (fun scenario ->
-                Expect.contains Compositor.feature149ScenarioIds scenario $"scenario {scenario}")
+                Expect.contains Compositor.Config.feature149ScenarioIds scenario $"scenario {scenario}")
 
             Expect.isTrue
-                (Compositor.feature149TargetHostProfiles |> List.exists (fun profile -> profile.ProfileId = "feature149-capable-host-candidate"))
+                (Compositor.Config.feature149TargetHostProfiles |> List.exists (fun profile -> profile.ProfileId = "feature149-capable-host-candidate"))
                 "capable-host candidate profile is present"
         }
 
         test "Feature149 Synthetic simulated host evidence remains environment-limited" {
             // SYNTHETIC: this exercises disclosure semantics without pretending a real host readback occurred.
-            let token = Compositor.proofVerdictToken (Compositor.ProofEnvironmentLimited "synthetic host")
+            let token = Compositor.Config.proofVerdictToken (Compositor.Types.ProofEnvironmentLimited "synthetic host")
             Expect.isTrue (TestAssertions.feature149EnvironmentLimited token) "synthetic proof remains diagnostic-only"
         }
     ]

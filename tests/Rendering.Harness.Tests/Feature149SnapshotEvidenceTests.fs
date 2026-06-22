@@ -7,7 +7,7 @@ open Rendering.Harness
 let tests =
     testList "Feature149 snapshot evidence" [
         test "snapshot report records lifecycle, budget, unsupported, stale, and parity gates" {
-            let rendered = Compositor.renderFeature149SnapshotReport ()
+            let rendered = Compositor.Render.emitFeature149SnapshotReport ()
 
             [ "snapshot/expensive-stable"
               "snapshot/create-reuse-refresh"
@@ -19,8 +19,8 @@ let tests =
               "snapshot/parity-failure" ]
             |> List.iter (fun required -> Expect.stringContains rendered required required)
 
-            Expect.stringContains rendered (string Compositor.snapshotBudget.MaxEntries) "entry budget"
-            Expect.stringContains rendered (string Compositor.snapshotBudget.MaxBytes) "byte budget"
+            Expect.stringContains rendered (string Compositor.Config.snapshotBudget.MaxEntries) "entry budget"
+            Expect.stringContains rendered (string Compositor.Config.snapshotBudget.MaxBytes) "byte budget"
             Expect.stringContains rendered "20%" "benefit threshold"
         }
     ]
