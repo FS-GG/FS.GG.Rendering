@@ -61,6 +61,13 @@
     <Compile Include="Attributes.fs" />
     <Compile Include="Composition.fsi" />
     <Compile Include="Composition.fs" />
+    <Compile Include="Internal/ControlPrimitives.fs" />
+    <Compile Include="Internal/ChartGeometry.fs" />
+    <Compile Include="Internal/WidgetGeometry.fs" />
+    <Compile Include="Internal/SceneHash.fs" />
+    <Compile Include="Internal/ContentRender.fs" />
+    <Compile Include="Internal/LayoutEval.fs" />
+    <Compile Include="Internal/NodeAssembly.fs" />
     <Compile Include="Control.fsi" />
     <Compile Include="Control.fs" />
     <Compile Include="Reconcile.fsi" />
