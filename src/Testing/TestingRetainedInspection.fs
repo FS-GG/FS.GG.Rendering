@@ -383,59 +383,59 @@ module RetainedInspectionValidation =
             |> List.sortBy _.FindingId
 
         let validExceptions = check.Exceptions |> List.filter exceptionValid
-        let applied = ResizeArray<string>()
 
-        let findings =
-            initialFindings
-            |> List.map (fun f ->
-                match validExceptions |> List.tryFind (exceptionMatches f) with
-                | Some ex when f.Severity = VisualInspectionSeverity.Blocking || f.Severity = VisualInspectionSeverity.Warning ->
-                    applied.Add ex.ExceptionId
+        // Feature 186 (US3): delegate to the one shared algorithm with the RETAINED knobs — accept
+        // `Blocking || Warning` (line 392 of the former copy) and derive `ReviewRequired` when a
+        // `Warning` is present (the severity asymmetry the visual family lacks, FR-005). Byte-identical
+        // to the former hand-spelled body.
+        let knobs: SharedTesting.InspectionValidationKnobs<DamageLocalityFinding, IntentionalDamageException, RetainedInspectionStatus, RetainedInspectionValidationResult> =
+            { SeverityOf = _.Severity
+              FindingIdOf = _.FindingId
+              MatchException = exceptionMatches
+              ExceptionIdOf = _.ExceptionId
+              Accept =
+                fun severity ->
+                    severity = VisualInspectionSeverity.Blocking
+                    || severity = VisualInspectionSeverity.Warning
+              AcceptFinding =
+                fun f ex ->
                     { f with
                         Severity = VisualInspectionSeverity.Pass
                         ExceptionId = Some ex.ExceptionId
                         Diagnostics = f.Diagnostics @ [ $"accepted by retained inspection exception `{ex.ExceptionId}`: {ex.Reason}" ] }
-                | _ -> f)
-            |> List.distinctBy _.FindingId
-            |> List.sortBy _.FindingId
+              InvalidWording = fun id -> $"invalid retained inspection exception: {id}"
+              UnusedWording = fun id -> $"unused retained inspection exception: {id}"
+              DeriveStatus =
+                fun has ->
+                    if not invalidExceptions.IsEmpty || has VisualInspectionSeverity.Blocking then
+                        RetainedInspectionStatus.Blocked
+                    elif has VisualInspectionSeverity.EnvironmentLimited then
+                        RetainedInspectionStatus.EnvironmentLimited
+                    elif has VisualInspectionSeverity.Unsupported then
+                        if check.EnvironmentLimitations.IsEmpty then
+                            RetainedInspectionStatus.Unsupported
+                        else
+                            RetainedInspectionStatus.EnvironmentLimited
+                    elif has VisualInspectionSeverity.Warning then
+                        RetainedInspectionStatus.ReviewRequired
+                    else
+                        check.Artifact.ReadinessStatus
+              MkResult =
+                fun status findings appliedIds invalidIds unused diagnostics ->
+                    { ArtifactId = check.Artifact.ArtifactId
+                      ReadinessStatus = status
+                      Findings = findings
+                      AppliedExceptions = appliedIds
+                      InvalidExceptions = invalidIds
+                      UnusedExceptions = unused
+                      Diagnostics = diagnostics } }
 
-        let appliedIds = applied |> Seq.distinct |> Seq.toList
-        let unused =
-            validExceptions
-            |> List.map _.ExceptionId
-            |> List.filter (fun id -> not (List.contains id appliedIds))
-
-        let diagnostics =
+        SharedTesting.validateCheck
+            knobs
             (RetainedInspection.artifactDiagnostics check.Artifact)
-            @ (invalidExceptions |> List.map (fun id -> $"invalid retained inspection exception: {id}"))
-            @ (unused |> List.map (fun id -> $"unused retained inspection exception: {id}"))
-            |> List.distinct
-
-        let has severity =
-            findings |> List.exists (fun f -> f.Severity = severity)
-
-        let status =
-            if not invalidExceptions.IsEmpty || has VisualInspectionSeverity.Blocking then
-                RetainedInspectionStatus.Blocked
-            elif has VisualInspectionSeverity.EnvironmentLimited then
-                RetainedInspectionStatus.EnvironmentLimited
-            elif has VisualInspectionSeverity.Unsupported then
-                if check.EnvironmentLimitations.IsEmpty then
-                    RetainedInspectionStatus.Unsupported
-                else
-                    RetainedInspectionStatus.EnvironmentLimited
-            elif has VisualInspectionSeverity.Warning then
-                RetainedInspectionStatus.ReviewRequired
-            else
-                check.Artifact.ReadinessStatus
-
-        { ArtifactId = check.Artifact.ArtifactId
-          ReadinessStatus = status
-          Findings = findings
-          AppliedExceptions = appliedIds
-          InvalidExceptions = invalidExceptions
-          UnusedExceptions = unused
-          Diagnostics = diagnostics }
+            initialFindings
+            validExceptions
+            invalidExceptions
 
     let validate (artifact: RetainedInspectionArtifact) (rules: RetainedInspectionRule list) (exceptions: IntentionalDamageException list) : RetainedInspectionValidationResult =
         validateCheck
@@ -636,60 +636,19 @@ module RetainedInspectionMarkdown =
               "}" ]
         + "\n"
 
-    let private countOccurrences (text: string) (pattern: string) =
-        let mutable count = 0
-        let mutable start = 0
-        let mutable finished = false
-
-        while not finished do
-            let index = text.IndexOf(pattern, start, StringComparison.Ordinal)
-            if index < 0 then
-                finished <- true
-            else
-                count <- count + 1
-                start <- index + pattern.Length
-
-        count
-
+    // Feature 186 (US4): delegate to the one shared managed-section updater; byte-identical to the
+    // former per-writer copy (FR-006/FR-011).
     let updateManagedSection (existingText: string) (generatedMarkdown: string) =
-        let startCount = countOccurrences existingText startMarker
-        let endCount = countOccurrences existingText endMarker
-        let sectionText = startMarker + Environment.NewLine + generatedMarkdown.TrimEnd() + Environment.NewLine + endMarker
-
-        match startCount, endCount with
-        | 0, 0 ->
-            let separator =
-                if String.IsNullOrEmpty existingText then
-                    ""
-                elif existingText.EndsWith(Environment.NewLine, StringComparison.Ordinal) then
-                    Environment.NewLine
-                else
-                    Environment.NewLine + Environment.NewLine
-
-            { UpdatedText = existingText + separator + sectionText + Environment.NewLine
-              SafeToWrite = true
-              InsertedMarkers = true
-              Diagnostics = [] }
-        | 1, 1 ->
-            let startIndex = existingText.IndexOf(startMarker, StringComparison.Ordinal)
-            let endIndex = existingText.IndexOf(endMarker, StringComparison.Ordinal)
-
-            if startIndex > endIndex then
-                { UpdatedText = existingText
-                  SafeToWrite = false
-                  InsertedMarkers = false
-                  Diagnostics = [ "retained inspection managed markers are reversed" ] }
-            else
-                let prefix = existingText.Substring(0, startIndex)
-                let suffix = existingText.Substring(endIndex + endMarker.Length)
-
-                { UpdatedText = prefix + sectionText + suffix
-                  SafeToWrite = true
-                  InsertedMarkers = false
-                  Diagnostics = [] }
-        | _ ->
-            { UpdatedText = existingText
-              SafeToWrite = false
-              InsertedMarkers = false
-              Diagnostics = [ "retained inspection managed section must contain exactly one start marker and one end marker" ] }
+        SharedTesting.updateManagedSection
+            startMarker
+            endMarker
+            "retained inspection managed markers are reversed"
+            "retained inspection managed section must contain exactly one start marker and one end marker"
+            (fun text safe inserted diagnostics ->
+                { UpdatedText = text
+                  SafeToWrite = safe
+                  InsertedMarkers = inserted
+                  Diagnostics = diagnostics })
+            existingText
+            generatedMarkdown
 

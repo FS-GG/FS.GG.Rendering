@@ -193,6 +193,74 @@ module ControlsElmish =
           Code = code
           Message = message }
 
+    // Feature 186 (US1, FR-001/SC-001/SC-007): the SINGLE site that names all 32 `FrameMetrics`
+    // fields. Every full-construction caller delegates here, so adding a new per-frame metric is a
+    // one-site edit and it appears on every frame-emit path. Values are byte-identical to the former
+    // hand-spelled records (FR-007). Internal by absence from `ControlsElmish.fsi`. The grouped
+    // tuple inputs mirror the per-frame work-reduction carriers threaded by `runScriptCore` (US2).
+    let private buildFrameMetrics
+        (frameCause: FrameCause)
+        (productModelChanged: bool)
+        (viewCalled: bool)
+        (fullRenderCount: int)
+        (remeasuredNodeCount: int)
+        (diffRan: bool)
+        (layoutRan: bool)
+        (paintRan: bool)
+        (pointerSamplesReceived: int)
+        (pointerMovesProcessed: int)
+        (fullRenderFallbackCount: int)
+        (frameDuration: TimeSpan)
+        (paintDuration: TimeSpan)
+        (composeDuration: TimeSpan)
+        (memo: int * int)
+        (virtual': int * int)
+        (damage: int * int * int)
+        (picture: int * int * int)
+        (replay: int * int * int * int * int)
+        (textCache: int * int)
+        (layoutInvalidatedNodeCount: int)
+        : FrameMetrics =
+        let memoHits, memoMisses = memo
+        let virtualMaterialized, virtualTotal = virtual'
+        let repaintedNodeCount, dirtyRectCount, dirtyArea = damage
+        let pictureHits, pictureMisses, pictureEntries = picture
+        let replayHits, replayMisses, replayRecords, replaySkipped, replayBytes = replay
+        let textHits, textMisses = textCache
+
+        { ProductModelChanged = productModelChanged
+          ViewCalled = viewCalled
+          FullRenderCount = fullRenderCount
+          RemeasuredNodeCount = remeasuredNodeCount
+          MemoHitCount = memoHits
+          MemoMissCount = memoMisses
+          VirtualItemsMaterialized = virtualMaterialized
+          VirtualItemsTotal = virtualTotal
+          RepaintedNodeCount = repaintedNodeCount
+          DirtyRectCount = dirtyRectCount
+          DirtyArea = dirtyArea
+          PictureCacheHitCount = pictureHits
+          PictureCacheMissCount = pictureMisses
+          PictureCacheEntryCount = pictureEntries
+          TextMeasureCacheHitCount = textHits
+          TextMeasureCacheMissCount = textMisses
+          LayoutInvalidatedNodeCount = layoutInvalidatedNodeCount
+          PointerSamplesReceived = pointerSamplesReceived
+          PointerMovesProcessed = pointerMovesProcessed
+          FullRenderFallbackCount = fullRenderFallbackCount
+          FrameCause = frameCause
+          DiffRan = diffRan
+          LayoutRan = layoutRan
+          PaintRan = paintRan
+          FrameDuration = frameDuration
+          PaintDuration = paintDuration
+          ComposeDuration = composeDuration
+          ReplayHitCount = replayHits
+          ReplayMissCount = replayMisses
+          ReplayRecordCount = replayRecords
+          ReplaySkippedNodeCount = replaySkipped
+          ReplayCacheNativeBytes = replayBytes }
+
     let interpretKeyboardEffect mapCommand effect =
         match effect with
         | CommandResolved command -> [ DispatchProductMessage(mapCommand command) ]
@@ -1419,45 +1487,52 @@ module ControlsElmish =
         // model-driven repaint is the viewer's SEPARATE `renderRetained` cycle (not observed here), so
         // `PaintRan`/`LayoutRan` stay `false`. The authoritative, full per-phase record is `Perf.runScript`.
         let emitFrameMetrics (cause: FrameCause) (samples: int) (movesProcessed: int) (productModelChanged: bool) (fullRenderFallbackCount: int) (duration: TimeSpan) =
-            host.OnFrameMetrics
-                { ProductModelChanged = productModelChanged
-                  ViewCalled = fullRenderFallbackCount > 0
-                  FullRenderCount = fullRenderFallbackCount
-                  RemeasuredNodeCount = loopState.LastWorkReduction |> Option.map (fun w -> w.RemeasuredNodeCount) |> Option.defaultValue 0
-                  // Feature 113 (Phase 5): the last retained-step's memo tally (live `OnFrameMetrics` sink).
-                  MemoHitCount = loopState.LastWorkReduction |> Option.map (fun w -> w.MemoHits) |> Option.defaultValue 0
-                  MemoMissCount = loopState.LastWorkReduction |> Option.map (fun w -> w.MemoMisses) |> Option.defaultValue 0
-                  // Feature 114 (Phase 6): the last retained-step's virtualization tally (live sink).
-                  VirtualItemsMaterialized = loopState.LastWorkReduction |> Option.map (fun w -> w.VirtualMaterialized) |> Option.defaultValue 0
-                  VirtualItemsTotal = loopState.LastWorkReduction |> Option.map (fun w -> w.VirtualTotal) |> Option.defaultValue 0
-                  // Feature 116 (Phase 7): the last retained-step's damage + picture-cache tallies (live sink).
-                  RepaintedNodeCount = loopState.LastWorkReduction |> Option.map (fun w -> w.RepaintedNodeCount) |> Option.defaultValue 0
-                  DirtyRectCount = loopState.LastWorkReduction |> Option.map (fun w -> w.DirtyRectCount) |> Option.defaultValue 0
-                  DirtyArea = loopState.LastWorkReduction |> Option.map (fun w -> w.DirtyArea) |> Option.defaultValue 0
-                  PictureCacheHitCount = loopState.LastWorkReduction |> Option.map (fun w -> w.PictureCacheHits) |> Option.defaultValue 0
-                  PictureCacheMissCount = loopState.LastWorkReduction |> Option.map (fun w -> w.PictureCacheMisses) |> Option.defaultValue 0
-                  PictureCacheEntryCount = loopState.LastWorkReduction |> Option.map (fun w -> w.PictureCacheEntryCount) |> Option.defaultValue 0
-                  // Feature 117 (Phase 8): the last retained-step's text-cache tally + dirty-set size (live sink).
-                  TextMeasureCacheHitCount = loopState.LastWorkReduction |> Option.map (fun w -> w.TextMeasureCacheHits) |> Option.defaultValue 0
-                  TextMeasureCacheMissCount = loopState.LastWorkReduction |> Option.map (fun w -> w.TextMeasureCacheMisses) |> Option.defaultValue 0
-                  LayoutInvalidatedNodeCount = loopState.LastWorkReduction |> Option.map (fun w -> w.LayoutInvalidatedNodeCount) |> Option.defaultValue 0
-                  PointerSamplesReceived = samples
-                  PointerMovesProcessed = movesProcessed
-                  FullRenderFallbackCount = fullRenderFallbackCount
-                  FrameCause = cause
-                  DiffRan = fullRenderFallbackCount > 0
-                  LayoutRan = false
-                  PaintRan = false
-                  FrameDuration = duration
-                  // Feature 120 (US1): live backend present timing (non-golden), read from the OpenGL host's
-                  // last present (one-frame lag, live diagnostic only); (US3) replay model counts.
-                  PaintDuration = (loopState.LastPresentTiming <- FS.GG.UI.SkiaViewer.Host.GlHost.lastPresentTiming(); fst loopState.LastPresentTiming)
-                  ComposeDuration = snd loopState.LastPresentTiming
-                  ReplayHitCount = loopState.LastWorkReduction |> Option.map (fun w -> w.ReplayHits) |> Option.defaultValue 0
-                  ReplayMissCount = loopState.LastWorkReduction |> Option.map (fun w -> w.ReplayMisses) |> Option.defaultValue 0
-                  ReplayRecordCount = loopState.LastWorkReduction |> Option.map (fun w -> w.ReplayRecords) |> Option.defaultValue 0
-                  ReplaySkippedNodeCount = loopState.LastWorkReduction |> Option.map (fun w -> w.ReplaySkippedNodes) |> Option.defaultValue 0
-                  ReplayCacheNativeBytes = loopState.LastWorkReduction |> Option.map (fun w -> w.ReplayCacheNativeBytes) |> Option.defaultValue 0 }
+            // Feature 186 (US1): delegate the 32-field construction to `buildFrameMetrics`. Values are
+            // read into locals in the SAME order as the former record-field initialisation so the
+            // live present-timing side effect (Feature 120) still runs between the work-reduction reads
+            // and the replay reads — byte-identical to the hand-spelled record (FR-007).
+            let geti (f: WorkReductionRecord -> int) = loopState.LastWorkReduction |> Option.map f |> Option.defaultValue 0
+            let viewCalled = fullRenderFallbackCount > 0
+            let remeasured = geti (fun w -> w.RemeasuredNodeCount)
+            // Feature 113 (Phase 5): the last retained-step's memo tally (live `OnFrameMetrics` sink).
+            let memo = geti (fun w -> w.MemoHits), geti (fun w -> w.MemoMisses)
+            // Feature 114 (Phase 6): the last retained-step's virtualization tally (live sink).
+            let virtual' = geti (fun w -> w.VirtualMaterialized), geti (fun w -> w.VirtualTotal)
+            // Feature 116 (Phase 7): the last retained-step's damage + picture-cache tallies (live sink).
+            let damage = geti (fun w -> w.RepaintedNodeCount), geti (fun w -> w.DirtyRectCount), geti (fun w -> w.DirtyArea)
+            let picture = geti (fun w -> w.PictureCacheHits), geti (fun w -> w.PictureCacheMisses), geti (fun w -> w.PictureCacheEntryCount)
+            // Feature 117 (Phase 8): the last retained-step's text-cache tally + dirty-set size (live sink).
+            let textCache = geti (fun w -> w.TextMeasureCacheHits), geti (fun w -> w.TextMeasureCacheMisses)
+            let layoutInvalidated = geti (fun w -> w.LayoutInvalidatedNodeCount)
+            // Feature 120 (US1): live backend present timing (non-golden), read from the OpenGL host's
+            // last present (one-frame lag, live diagnostic only); (US3) replay model counts.
+            let paintDuration = (loopState.LastPresentTiming <- FS.GG.UI.SkiaViewer.Host.GlHost.lastPresentTiming(); fst loopState.LastPresentTiming)
+            let composeDuration = snd loopState.LastPresentTiming
+            let replay = geti (fun w -> w.ReplayHits), geti (fun w -> w.ReplayMisses), geti (fun w -> w.ReplayRecords), geti (fun w -> w.ReplaySkippedNodes), geti (fun w -> w.ReplayCacheNativeBytes)
+
+            host.OnFrameMetrics(
+                buildFrameMetrics
+                    cause
+                    productModelChanged
+                    viewCalled
+                    fullRenderFallbackCount
+                    remeasured
+                    viewCalled
+                    false
+                    false
+                    samples
+                    movesProcessed
+                    fullRenderFallbackCount
+                    duration
+                    paintDuration
+                    composeDuration
+                    memo
+                    virtual'
+                    damage
+                    picture
+                    replay
+                    textCache
+                    layoutInvalidated)
 
         // The single pointer-routing step (the pre-108 `mapPointer` body): focus-on-click + the feature-
         // 110 RETAINED route (`routeRetainedPointer`) — no per-sample `host.View` + `Control.renderTree`.
@@ -1832,6 +1907,20 @@ module ControlsElmish =
             flush ()
             List.ofSeq frames
 
+        /// Feature 186 (US2, FR-004/C-SCRIPT-STATE): the named per-frame metric carriers that
+        /// `runScriptCore` threads from the last retained `step` into each frame's `FrameMetrics`
+        /// (via `buildFrameMetrics`). Replaces the 7 loose `let mutable last*` bindings. `mutable`
+        /// fields preserve the exact set/clear order (a frame that runs no render reports zeros).
+        /// Internal by absence from `ControlsElmish.fsi`.
+        type private FrameScriptState =
+            { mutable LastMemo: int * int // mutable: hot path
+              mutable LastVirtual: int * int // mutable: hot path
+              mutable LastDamage: int * int * int // mutable: hot path
+              mutable LastPicture: int * int * int // mutable: hot path
+              mutable LastReplay: int * int * int * int * int // mutable: hot path
+              mutable LastTextCache: int * int // mutable: hot path
+              mutable LastInvalidated: int } // mutable: hot path
+
         let private runScriptCore
             (host: InteractiveAppHost<'model, 'msg>)
             (size: Size)
@@ -1843,26 +1932,22 @@ module ControlsElmish =
             // threaded retained value, so a routed interaction reads `EventBindings`/`BoundIds` without a
             // fresh render. Kept in lock-step with `retained` by `renderStep`/`ensureRetained`.
             let mutable lastRender: ControlRenderResult<'msg> option = None
-            // Feature 113 (Phase 5): the last retained-step's memo tally (hits, misses), captured by
-            // `renderStep`/`repaintCached` so each per-frame `FrameMetrics` reports it. The first frame
-            // seeds via `init` (no work record), so it stays (0, 0) until a `step` runs.
-            let mutable lastMemo: int * int = 0, 0
-            // Feature 114 (Phase 6): the last retained-step's virtualization tally (materialized, total),
-            // captured by `renderStep`/`repaintCached` so each per-frame `FrameMetrics` reports it. Stays
-            // (0, 0) until a `step` runs (the first frame seeds via `init`, which has no work record).
-            let mutable lastVirtual: int * int = 0, 0
-            // Feature 116 (Phase 7): the last retained-step's damage tally (repainted-node, dirty-rect,
-            // dirty-area) and picture-cache tally (hits, misses, entry-count), captured by
-            // `renderStep`/`repaintCached`. Stay zero until a `step` runs.
-            let mutable lastDamage: int * int * int = 0, 0, 0
-            let mutable lastPicture: int * int * int = 0, 0, 0
-            // Feature 120 (US3): replay hits, misses, records, skipped-nodes, native-bytes (deterministic model).
-            let mutable lastReplay: int * int * int * int * int = 0, 0, 0, 0, 0
-            // Feature 117 (Phase 8): the last retained-step's text-cache tally (hits, misses) and the
-            // layout dirty-set size, captured by `renderStep`/`repaintCached`. Stay zero until a `step`
-            // runs (the first frame seeds via `init`, which has no work record).
-            let mutable lastTextCache: int * int = 0, 0
-            let mutable lastInvalidated: int = 0
+            // Feature 186 (US2): the last retained-step's metric carriers, named on `fs`. Each is
+            // captured by `renderStep`/`repaintCached` and feeds the per-frame `buildFrameMetrics`;
+            // all stay zero until a `step` runs (the first frame seeds via `init`, no work record):
+            //   LastMemo (hits, misses) — Feature 113; LastVirtual (materialized, total) — Feature 114;
+            //   LastDamage (repainted-node, dirty-rect, dirty-area) + LastPicture (hits, misses,
+            //   entry-count) — Feature 116; LastReplay (hits, misses, records, skipped-nodes,
+            //   native-bytes) — Feature 120; LastTextCache (hits, misses) + LastInvalidated
+            //   (layout dirty-set size) — Feature 117.
+            let fs =
+                { LastMemo = 0, 0
+                  LastVirtual = 0, 0
+                  LastDamage = 0, 0, 0
+                  LastPicture = 0, 0, 0
+                  LastReplay = 0, 0, 0, 0, 0
+                  LastTextCache = 0, 0
+                  LastInvalidated = 0 }
 
             // Render the retained step for the current model, returning the frame's
             // RemeasuredNodeCount (the first frame seeds via `init`, which has no work record -> 0).
@@ -1874,20 +1959,20 @@ module ControlsElmish =
                     let r0 = RetainedRender.init host.Theme size next
                     retained <- Some r0.Retained
                     lastRender <- Some r0.Render
-                    lastMemo <- 0, 0
-                    lastVirtual <- 0, 0
+                    fs.LastMemo <- 0, 0
+                    fs.LastVirtual <- 0, 0
                     0
                 | Some prev ->
                     let s = RetainedRender.step host.Theme size prev next
                     retained <- Some s.Retained
                     lastRender <- Some s.Render
-                    lastMemo <- s.WorkReduction.MemoHits, s.WorkReduction.MemoMisses
-                    lastVirtual <- s.WorkReduction.VirtualMaterialized, s.WorkReduction.VirtualTotal
-                    lastDamage <- s.WorkReduction.RepaintedNodeCount, s.WorkReduction.DirtyRectCount, s.WorkReduction.DirtyArea
-                    lastPicture <- s.WorkReduction.PictureCacheHits, s.WorkReduction.PictureCacheMisses, s.WorkReduction.PictureCacheEntryCount
-                    lastReplay <- s.WorkReduction.ReplayHits, s.WorkReduction.ReplayMisses, s.WorkReduction.ReplayRecords, s.WorkReduction.ReplaySkippedNodes, s.WorkReduction.ReplayCacheNativeBytes
-                    lastTextCache <- s.WorkReduction.TextMeasureCacheHits, s.WorkReduction.TextMeasureCacheMisses
-                    lastInvalidated <- s.WorkReduction.LayoutInvalidatedNodeCount
+                    fs.LastMemo <- s.WorkReduction.MemoHits, s.WorkReduction.MemoMisses
+                    fs.LastVirtual <- s.WorkReduction.VirtualMaterialized, s.WorkReduction.VirtualTotal
+                    fs.LastDamage <- s.WorkReduction.RepaintedNodeCount, s.WorkReduction.DirtyRectCount, s.WorkReduction.DirtyArea
+                    fs.LastPicture <- s.WorkReduction.PictureCacheHits, s.WorkReduction.PictureCacheMisses, s.WorkReduction.PictureCacheEntryCount
+                    fs.LastReplay <- s.WorkReduction.ReplayHits, s.WorkReduction.ReplayMisses, s.WorkReduction.ReplayRecords, s.WorkReduction.ReplaySkippedNodes, s.WorkReduction.ReplayCacheNativeBytes
+                    fs.LastTextCache <- s.WorkReduction.TextMeasureCacheHits, s.WorkReduction.TextMeasureCacheMisses
+                    fs.LastInvalidated <- s.WorkReduction.LayoutInvalidatedNodeCount
                     s.WorkReduction.RemeasuredNodeCount
 
             // Feature 111 (FR-003/FR-004): re-sample the overlay for an animation-only tick WITHOUT
@@ -1902,13 +1987,13 @@ module ControlsElmish =
                     let s = RetainedRender.step host.Theme size prev prev.Root.Control
                     retained <- Some s.Retained
                     lastRender <- Some s.Render
-                    lastMemo <- s.WorkReduction.MemoHits, s.WorkReduction.MemoMisses
-                    lastVirtual <- s.WorkReduction.VirtualMaterialized, s.WorkReduction.VirtualTotal
-                    lastDamage <- s.WorkReduction.RepaintedNodeCount, s.WorkReduction.DirtyRectCount, s.WorkReduction.DirtyArea
-                    lastPicture <- s.WorkReduction.PictureCacheHits, s.WorkReduction.PictureCacheMisses, s.WorkReduction.PictureCacheEntryCount
-                    lastReplay <- s.WorkReduction.ReplayHits, s.WorkReduction.ReplayMisses, s.WorkReduction.ReplayRecords, s.WorkReduction.ReplaySkippedNodes, s.WorkReduction.ReplayCacheNativeBytes
-                    lastTextCache <- s.WorkReduction.TextMeasureCacheHits, s.WorkReduction.TextMeasureCacheMisses
-                    lastInvalidated <- s.WorkReduction.LayoutInvalidatedNodeCount
+                    fs.LastMemo <- s.WorkReduction.MemoHits, s.WorkReduction.MemoMisses
+                    fs.LastVirtual <- s.WorkReduction.VirtualMaterialized, s.WorkReduction.VirtualTotal
+                    fs.LastDamage <- s.WorkReduction.RepaintedNodeCount, s.WorkReduction.DirtyRectCount, s.WorkReduction.DirtyArea
+                    fs.LastPicture <- s.WorkReduction.PictureCacheHits, s.WorkReduction.PictureCacheMisses, s.WorkReduction.PictureCacheEntryCount
+                    fs.LastReplay <- s.WorkReduction.ReplayHits, s.WorkReduction.ReplayMisses, s.WorkReduction.ReplayRecords, s.WorkReduction.ReplaySkippedNodes, s.WorkReduction.ReplayCacheNativeBytes
+                    fs.LastTextCache <- s.WorkReduction.TextMeasureCacheHits, s.WorkReduction.TextMeasureCacheMisses
+                    fs.LastInvalidated <- s.WorkReduction.LayoutInvalidatedNodeCount
                     s.WorkReduction.RemeasuredNodeCount
                 | None -> 0
 
@@ -1953,54 +2038,46 @@ module ControlsElmish =
             let productModelChanged (before: 'model) (after: 'model) (msgs: 'msg list) : bool =
                 not (List.isEmpty msgs) && not (obj.ReferenceEquals(before, after))
 
+            // Feature 186 (US1): the all-zero seed for the per-frame `{ zero with … }` partials below.
+            // Built via the single `buildFrameMetrics` site (FR-001); timing is live-only (Zero on the
+            // deterministic path) and replay counts come from the per-frame `fs.LastReplay` model set by
+            // `renderStep`/`repaintCached`. Byte-identical to the former hand-spelled record (FR-007).
             let zero =
-                { ProductModelChanged = false
-                  ViewCalled = false
-                  FullRenderCount = 0
-                  RemeasuredNodeCount = 0
-                  MemoHitCount = 0
-                  MemoMissCount = 0
-                  VirtualItemsMaterialized = 0
-                  VirtualItemsTotal = 0
-                  RepaintedNodeCount = 0
-                  DirtyRectCount = 0
-                  DirtyArea = 0
-                  PictureCacheHitCount = 0
-                  PictureCacheMissCount = 0
-                  PictureCacheEntryCount = 0
-                  TextMeasureCacheHitCount = 0
-                  TextMeasureCacheMissCount = 0
-                  LayoutInvalidatedNodeCount = 0
-                  PointerSamplesReceived = 0
-                  PointerMovesProcessed = 0
-                  FullRenderFallbackCount = 0
-                  FrameCause = FrameCause.Idle
-                  DiffRan = false
-                  LayoutRan = false
-                  PaintRan = false
-                  FrameDuration = TimeSpan.Zero
-                  // Feature 120: timing is live-only (Zero on the deterministic path); replay counts come
-                  // from the per-frame `lastReplay` model set by `renderStep`/`repaintCached`.
-                  PaintDuration = TimeSpan.Zero
-                  ComposeDuration = TimeSpan.Zero
-                  ReplayHitCount = 0
-                  ReplayMissCount = 0
-                  ReplayRecordCount = 0
-                  ReplaySkippedNodeCount = 0
-                  ReplayCacheNativeBytes = 0 }
+                buildFrameMetrics
+                    FrameCause.Idle
+                    false
+                    false
+                    0
+                    0
+                    false
+                    false
+                    false
+                    0
+                    0
+                    0
+                    TimeSpan.Zero
+                    TimeSpan.Zero
+                    TimeSpan.Zero
+                    (0, 0)
+                    (0, 0)
+                    (0, 0, 0)
+                    (0, 0, 0)
+                    (0, 0, 0, 0, 0)
+                    (0, 0)
+                    0
 
             toFrames script
             |> List.map (fun frame ->
                 // Feature 113 (Phase 5): clear the per-frame memo tally before processing this frame, so a
                 // frame that runs no render reports 0/0 (the previous frame's render must not bleed
                 // through). `renderStep`/`repaintCached` overwrite it when they actually run.
-                lastMemo <- 0, 0
-                lastVirtual <- 0, 0
-                lastDamage <- 0, 0, 0
-                lastPicture <- 0, 0, 0
-                lastReplay <- 0, 0, 0, 0, 0
-                lastTextCache <- 0, 0
-                lastInvalidated <- 0
+                fs.LastMemo <- 0, 0
+                fs.LastVirtual <- 0, 0
+                fs.LastDamage <- 0, 0, 0
+                fs.LastPicture <- 0, 0, 0
+                fs.LastReplay <- 0, 0, 0, 0, 0
+                fs.LastTextCache <- 0, 0
+                fs.LastInvalidated <- 0
 
                 match frame with
                 | FrameInput.Pointer _ :: _ when frame |> List.forall (function
@@ -2028,24 +2105,24 @@ module ControlsElmish =
                         ViewCalled = fullRenderCount > 0
                         FullRenderCount = fullRenderCount
                         RemeasuredNodeCount = remeasured
-                        MemoHitCount = fst lastMemo
-                        MemoMissCount = snd lastMemo
-                        VirtualItemsMaterialized = fst lastVirtual
-                        VirtualItemsTotal = snd lastVirtual
-                        RepaintedNodeCount = (let (r, _, _) = lastDamage in r)
-                        DirtyRectCount = (let (_, rc, _) = lastDamage in rc)
-                        DirtyArea = (let (_, _, da) = lastDamage in da)
-                        PictureCacheHitCount = (let (h, _, _) = lastPicture in h)
-                        PictureCacheMissCount = (let (_, m, _) = lastPicture in m)
-                        PictureCacheEntryCount = (let (_, _, e) = lastPicture in e)
-                        ReplayHitCount = (let (h, _, _, _, _) = lastReplay in h)
-                        ReplayMissCount = (let (_, m, _, _, _) = lastReplay in m)
-                        ReplayRecordCount = (let (_, _, r, _, _) = lastReplay in r)
-                        ReplaySkippedNodeCount = (let (_, _, _, s, _) = lastReplay in s)
-                        ReplayCacheNativeBytes = (let (_, _, _, _, b) = lastReplay in b)
-                        TextMeasureCacheHitCount = fst lastTextCache
-                        TextMeasureCacheMissCount = snd lastTextCache
-                        LayoutInvalidatedNodeCount = lastInvalidated
+                        MemoHitCount = fst fs.LastMemo
+                        MemoMissCount = snd fs.LastMemo
+                        VirtualItemsMaterialized = fst fs.LastVirtual
+                        VirtualItemsTotal = snd fs.LastVirtual
+                        RepaintedNodeCount = (let (r, _, _) = fs.LastDamage in r)
+                        DirtyRectCount = (let (_, rc, _) = fs.LastDamage in rc)
+                        DirtyArea = (let (_, _, da) = fs.LastDamage in da)
+                        PictureCacheHitCount = (let (h, _, _) = fs.LastPicture in h)
+                        PictureCacheMissCount = (let (_, m, _) = fs.LastPicture in m)
+                        PictureCacheEntryCount = (let (_, _, e) = fs.LastPicture in e)
+                        ReplayHitCount = (let (h, _, _, _, _) = fs.LastReplay in h)
+                        ReplayMissCount = (let (_, m, _, _, _) = fs.LastReplay in m)
+                        ReplayRecordCount = (let (_, _, r, _, _) = fs.LastReplay in r)
+                        ReplaySkippedNodeCount = (let (_, _, _, s, _) = fs.LastReplay in s)
+                        ReplayCacheNativeBytes = (let (_, _, _, _, b) = fs.LastReplay in b)
+                        TextMeasureCacheHitCount = fst fs.LastTextCache
+                        TextMeasureCacheMissCount = snd fs.LastTextCache
+                        LayoutInvalidatedNodeCount = fs.LastInvalidated
                         PointerSamplesReceived = k
                         PointerMovesProcessed = 1
                         FullRenderFallbackCount = fallbacks
@@ -2093,24 +2170,24 @@ module ControlsElmish =
                         ViewCalled = viewRan
                         FullRenderCount = (if viewRan then 1 else 0)
                         RemeasuredNodeCount = remeasured
-                        MemoHitCount = fst lastMemo
-                        MemoMissCount = snd lastMemo
-                        VirtualItemsMaterialized = fst lastVirtual
-                        VirtualItemsTotal = snd lastVirtual
-                        RepaintedNodeCount = (let (r, _, _) = lastDamage in r)
-                        DirtyRectCount = (let (_, rc, _) = lastDamage in rc)
-                        DirtyArea = (let (_, _, da) = lastDamage in da)
-                        PictureCacheHitCount = (let (h, _, _) = lastPicture in h)
-                        PictureCacheMissCount = (let (_, m, _) = lastPicture in m)
-                        PictureCacheEntryCount = (let (_, _, e) = lastPicture in e)
-                        ReplayHitCount = (let (h, _, _, _, _) = lastReplay in h)
-                        ReplayMissCount = (let (_, m, _, _, _) = lastReplay in m)
-                        ReplayRecordCount = (let (_, _, r, _, _) = lastReplay in r)
-                        ReplaySkippedNodeCount = (let (_, _, _, s, _) = lastReplay in s)
-                        ReplayCacheNativeBytes = (let (_, _, _, _, b) = lastReplay in b)
-                        TextMeasureCacheHitCount = fst lastTextCache
-                        TextMeasureCacheMissCount = snd lastTextCache
-                        LayoutInvalidatedNodeCount = lastInvalidated
+                        MemoHitCount = fst fs.LastMemo
+                        MemoMissCount = snd fs.LastMemo
+                        VirtualItemsMaterialized = fst fs.LastVirtual
+                        VirtualItemsTotal = snd fs.LastVirtual
+                        RepaintedNodeCount = (let (r, _, _) = fs.LastDamage in r)
+                        DirtyRectCount = (let (_, rc, _) = fs.LastDamage in rc)
+                        DirtyArea = (let (_, _, da) = fs.LastDamage in da)
+                        PictureCacheHitCount = (let (h, _, _) = fs.LastPicture in h)
+                        PictureCacheMissCount = (let (_, m, _) = fs.LastPicture in m)
+                        PictureCacheEntryCount = (let (_, _, e) = fs.LastPicture in e)
+                        ReplayHitCount = (let (h, _, _, _, _) = fs.LastReplay in h)
+                        ReplayMissCount = (let (_, m, _, _, _) = fs.LastReplay in m)
+                        ReplayRecordCount = (let (_, _, r, _, _) = fs.LastReplay in r)
+                        ReplaySkippedNodeCount = (let (_, _, _, s, _) = fs.LastReplay in s)
+                        ReplayCacheNativeBytes = (let (_, _, _, _, b) = fs.LastReplay in b)
+                        TextMeasureCacheHitCount = fst fs.LastTextCache
+                        TextMeasureCacheMissCount = snd fs.LastTextCache
+                        LayoutInvalidatedNodeCount = fs.LastInvalidated
                         FrameCause = FrameCause.Tick
                         DiffRan = viewRan
                         LayoutRan = remeasured > 0
@@ -2133,24 +2210,24 @@ module ControlsElmish =
                         ViewCalled = fullRenderCount > 0
                         FullRenderCount = fullRenderCount
                         RemeasuredNodeCount = remeasured
-                        MemoHitCount = fst lastMemo
-                        MemoMissCount = snd lastMemo
-                        VirtualItemsMaterialized = fst lastVirtual
-                        VirtualItemsTotal = snd lastVirtual
-                        RepaintedNodeCount = (let (r, _, _) = lastDamage in r)
-                        DirtyRectCount = (let (_, rc, _) = lastDamage in rc)
-                        DirtyArea = (let (_, _, da) = lastDamage in da)
-                        PictureCacheHitCount = (let (h, _, _) = lastPicture in h)
-                        PictureCacheMissCount = (let (_, m, _) = lastPicture in m)
-                        PictureCacheEntryCount = (let (_, _, e) = lastPicture in e)
-                        ReplayHitCount = (let (h, _, _, _, _) = lastReplay in h)
-                        ReplayMissCount = (let (_, m, _, _, _) = lastReplay in m)
-                        ReplayRecordCount = (let (_, _, r, _, _) = lastReplay in r)
-                        ReplaySkippedNodeCount = (let (_, _, _, s, _) = lastReplay in s)
-                        ReplayCacheNativeBytes = (let (_, _, _, _, b) = lastReplay in b)
-                        TextMeasureCacheHitCount = fst lastTextCache
-                        TextMeasureCacheMissCount = snd lastTextCache
-                        LayoutInvalidatedNodeCount = lastInvalidated
+                        MemoHitCount = fst fs.LastMemo
+                        MemoMissCount = snd fs.LastMemo
+                        VirtualItemsMaterialized = fst fs.LastVirtual
+                        VirtualItemsTotal = snd fs.LastVirtual
+                        RepaintedNodeCount = (let (r, _, _) = fs.LastDamage in r)
+                        DirtyRectCount = (let (_, rc, _) = fs.LastDamage in rc)
+                        DirtyArea = (let (_, _, da) = fs.LastDamage in da)
+                        PictureCacheHitCount = (let (h, _, _) = fs.LastPicture in h)
+                        PictureCacheMissCount = (let (_, m, _) = fs.LastPicture in m)
+                        PictureCacheEntryCount = (let (_, _, e) = fs.LastPicture in e)
+                        ReplayHitCount = (let (h, _, _, _, _) = fs.LastReplay in h)
+                        ReplayMissCount = (let (_, m, _, _, _) = fs.LastReplay in m)
+                        ReplayRecordCount = (let (_, _, r, _, _) = fs.LastReplay in r)
+                        ReplaySkippedNodeCount = (let (_, _, _, s, _) = fs.LastReplay in s)
+                        ReplayCacheNativeBytes = (let (_, _, _, _, b) = fs.LastReplay in b)
+                        TextMeasureCacheHitCount = fst fs.LastTextCache
+                        TextMeasureCacheMissCount = snd fs.LastTextCache
+                        LayoutInvalidatedNodeCount = fs.LastInvalidated
                         FrameCause = FrameCause.Key
                         DiffRan = hasMsgs
                         LayoutRan = remeasured > 0
@@ -2172,24 +2249,24 @@ module ControlsElmish =
                         ViewCalled = fullRenderCount > 0
                         FullRenderCount = fullRenderCount
                         RemeasuredNodeCount = remeasured
-                        MemoHitCount = fst lastMemo
-                        MemoMissCount = snd lastMemo
-                        VirtualItemsMaterialized = fst lastVirtual
-                        VirtualItemsTotal = snd lastVirtual
-                        RepaintedNodeCount = (let (r, _, _) = lastDamage in r)
-                        DirtyRectCount = (let (_, rc, _) = lastDamage in rc)
-                        DirtyArea = (let (_, _, da) = lastDamage in da)
-                        PictureCacheHitCount = (let (h, _, _) = lastPicture in h)
-                        PictureCacheMissCount = (let (_, m, _) = lastPicture in m)
-                        PictureCacheEntryCount = (let (_, _, e) = lastPicture in e)
-                        ReplayHitCount = (let (h, _, _, _, _) = lastReplay in h)
-                        ReplayMissCount = (let (_, m, _, _, _) = lastReplay in m)
-                        ReplayRecordCount = (let (_, _, r, _, _) = lastReplay in r)
-                        ReplaySkippedNodeCount = (let (_, _, _, s, _) = lastReplay in s)
-                        ReplayCacheNativeBytes = (let (_, _, _, _, b) = lastReplay in b)
-                        TextMeasureCacheHitCount = fst lastTextCache
-                        TextMeasureCacheMissCount = snd lastTextCache
-                        LayoutInvalidatedNodeCount = lastInvalidated
+                        MemoHitCount = fst fs.LastMemo
+                        MemoMissCount = snd fs.LastMemo
+                        VirtualItemsMaterialized = fst fs.LastVirtual
+                        VirtualItemsTotal = snd fs.LastVirtual
+                        RepaintedNodeCount = (let (r, _, _) = fs.LastDamage in r)
+                        DirtyRectCount = (let (_, rc, _) = fs.LastDamage in rc)
+                        DirtyArea = (let (_, _, da) = fs.LastDamage in da)
+                        PictureCacheHitCount = (let (h, _, _) = fs.LastPicture in h)
+                        PictureCacheMissCount = (let (_, m, _) = fs.LastPicture in m)
+                        PictureCacheEntryCount = (let (_, _, e) = fs.LastPicture in e)
+                        ReplayHitCount = (let (h, _, _, _, _) = fs.LastReplay in h)
+                        ReplayMissCount = (let (_, m, _, _, _) = fs.LastReplay in m)
+                        ReplayRecordCount = (let (_, _, r, _, _) = fs.LastReplay in r)
+                        ReplaySkippedNodeCount = (let (_, _, _, s, _) = fs.LastReplay in s)
+                        ReplayCacheNativeBytes = (let (_, _, _, _, b) = fs.LastReplay in b)
+                        TextMeasureCacheHitCount = fst fs.LastTextCache
+                        TextMeasureCacheMissCount = snd fs.LastTextCache
+                        LayoutInvalidatedNodeCount = fs.LastInvalidated
                         PointerSamplesReceived = 1
                         FullRenderFallbackCount = fallbacks
                         FrameCause = FrameCause.PointerDiscrete

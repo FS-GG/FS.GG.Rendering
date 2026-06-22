@@ -511,6 +511,124 @@ module ReadinessFormatting =
         else
             values |> List.map (fun (name, count) -> $"{name}={count}") |> String.concat ", "
 
+/// Feature 186 (US3/US4): cross-cutting Testing-layer algorithms written once and delegated to by
+/// the per-family public functions. Hosted here because `TestingVisual` compiles before
+/// `TestingRetainedInspection`, so both families can reach it without a back-edge (research
+/// Decision 3). `internal` + declared in `TestingVisual.fsi` (absent from the public surface
+/// baseline; the precedent is `ReadinessFormatting`).
+module internal SharedTesting =
+
+    /// Family-specific knobs for the one shared inspection-validation algorithm (US3, FR-005). The
+    /// `Accept` predicate carries the severity asymmetry (visual accepts `Blocking` only; retained
+    /// accepts `Blocking || Warning`); `DeriveStatus` carries the per-family status policy (retained
+    /// derives `ReviewRequired` on a `Warning`; visual neither accepts nor emits it).
+    type InspectionValidationKnobs<'finding, 'exn, 'status, 'result> =
+        { SeverityOf: 'finding -> VisualInspectionSeverity
+          FindingIdOf: 'finding -> string
+          MatchException: 'finding -> 'exn -> bool
+          ExceptionIdOf: 'exn -> string
+          Accept: VisualInspectionSeverity -> bool
+          AcceptFinding: 'finding -> 'exn -> 'finding
+          InvalidWording: string -> string
+          UnusedWording: string -> string
+          DeriveStatus: (VisualInspectionSeverity -> bool) -> 'status
+          MkResult: 'status -> 'finding list -> string list -> string list -> string list -> string list -> 'result }
+
+    /// The one validate-exceptions → compute unused/invalid → diagnostics → derive-status algorithm
+    /// behind both public `validateCheck` functions. Byte-identical to the former per-family copies.
+    let validateCheck
+        (knobs: InspectionValidationKnobs<'finding, 'exn, 'status, 'result>)
+        (artifactDiagnostics: string list)
+        (initialFindings: 'finding list)
+        (validExceptions: 'exn list)
+        (invalidExceptionIds: string list)
+        : 'result =
+        let applied = ResizeArray<string>()
+
+        let findings =
+            initialFindings
+            |> List.map (fun f ->
+                match validExceptions |> List.tryFind (knobs.MatchException f) with
+                | Some ex when knobs.Accept(knobs.SeverityOf f) ->
+                    applied.Add(knobs.ExceptionIdOf ex)
+                    knobs.AcceptFinding f ex
+                | _ -> f)
+            |> List.distinctBy knobs.FindingIdOf
+            |> List.sortBy knobs.FindingIdOf
+
+        let appliedIds = applied |> Seq.distinct |> Seq.toList
+
+        let unused =
+            validExceptions
+            |> List.map knobs.ExceptionIdOf
+            |> List.filter (fun id -> not (List.contains id appliedIds))
+
+        let diagnostics =
+            artifactDiagnostics
+            @ (invalidExceptionIds |> List.map knobs.InvalidWording)
+            @ (unused |> List.map knobs.UnusedWording)
+            |> List.distinct
+
+        let has severity = findings |> List.exists (fun f -> knobs.SeverityOf f = severity)
+        let status = knobs.DeriveStatus has
+        knobs.MkResult status findings appliedIds invalidExceptionIds unused diagnostics
+
+    let private countOccurrences (text: string) (pattern: string) =
+        let mutable count = 0
+        let mutable start = 0
+        let mutable finished = false
+
+        while not finished do
+            let index = text.IndexOf(pattern, start, StringComparison.Ordinal)
+            if index < 0 then
+                finished <- true
+            else
+                count <- count + 1
+                start <- index + pattern.Length
+
+        count
+
+    /// The one managed-section updater behind all three `updateManagedSection` writers (US4,
+    /// FR-006/FR-011): count the `(start,end)` marker pair → `(0,0)` append (with separator) /
+    /// `(1,1)` replace between markers / **else** fail loud (refuse to write, never silent
+    /// last-wins). The per-writer result type + diagnostic wording are injected via `mk` and the two
+    /// diagnostic strings. Byte-identical to the former per-writer copies.
+    let updateManagedSection
+        (startMarker: string)
+        (endMarker: string)
+        (reversedDiagnostic: string)
+        (cardinalityDiagnostic: string)
+        (mk: string -> bool -> bool -> string list -> 'result)
+        (existingText: string)
+        (generatedMarkdown: string)
+        : 'result =
+        let startCount = countOccurrences existingText startMarker
+        let endCount = countOccurrences existingText endMarker
+        let sectionText = startMarker + Environment.NewLine + generatedMarkdown.TrimEnd() + Environment.NewLine + endMarker
+
+        match startCount, endCount with
+        | 0, 0 ->
+            let separator =
+                if String.IsNullOrEmpty existingText then
+                    ""
+                elif existingText.EndsWith(Environment.NewLine, StringComparison.Ordinal) then
+                    Environment.NewLine
+                else
+                    Environment.NewLine + Environment.NewLine
+
+            mk (existingText + separator + sectionText + Environment.NewLine) true true []
+        | 1, 1 ->
+            let startIndex = existingText.IndexOf(startMarker, StringComparison.Ordinal)
+            let endIndex = existingText.IndexOf(endMarker, StringComparison.Ordinal)
+
+            if startIndex > endIndex then
+                mk existingText false false [ reversedDiagnostic ]
+            else
+                let prefix = existingText.Substring(0, startIndex)
+                let suffix = existingText.Substring(endIndex + endMarker.Length)
+                mk (prefix + sectionText + suffix) true false []
+        | _ -> mk existingText false false [ cardinalityDiagnostic ]
+
 module VisualReadinessMarkdown =
     open ReadinessFormatting
 
@@ -624,68 +742,22 @@ module VisualReadinessMarkdown =
               "}" ]
         + "\n"
 
-    let private countOccurrences (text: string) (pattern: string) =
-        let mutable count = 0
-        let mutable start = 0
-        let mutable finished = false
-
-        while not finished do
-            let index = text.IndexOf(pattern, start, StringComparison.Ordinal)
-            if index < 0 then
-                finished <- true
-            else
-                count <- count + 1
-                start <- index + pattern.Length
-
-        count
-
+    // Feature 186 (US4): delegate to the one shared managed-section updater (append / replace /
+    // fail-loud). The visual-readiness result type + diagnostic wording are injected; byte-identical
+    // to the former per-writer copy (FR-006/FR-011).
     let updateManagedSection (existingText: string) (generatedMarkdown: string) : VisualSummarySectionUpdate =
-        let startCount = countOccurrences existingText startMarker
-        let endCount = countOccurrences existingText endMarker
-
-        let sectionText =
+        SharedTesting.updateManagedSection
             startMarker
-            + Environment.NewLine
-            + generatedMarkdown.TrimEnd()
-            + Environment.NewLine
-            + endMarker
-
-        match startCount, endCount with
-        | 0, 0 ->
-            let separator =
-                if String.IsNullOrEmpty existingText then
-                    ""
-                elif existingText.EndsWith(Environment.NewLine, StringComparison.Ordinal) then
-                    Environment.NewLine
-                else
-                    Environment.NewLine + Environment.NewLine
-
-            { UpdatedText = existingText + separator + sectionText + Environment.NewLine
-              SafeToWrite = true
-              InsertedMarkers = true
-              Diagnostics = [] }
-        | 1, 1 ->
-            let startIndex = existingText.IndexOf(startMarker, StringComparison.Ordinal)
-            let endIndex = existingText.IndexOf(endMarker, StringComparison.Ordinal)
-
-            if startIndex > endIndex then
-                { UpdatedText = existingText
-                  SafeToWrite = false
-                  InsertedMarkers = false
-                  Diagnostics = [ "visual readiness managed markers are reversed" ] }
-            else
-                let prefix = existingText.Substring(0, startIndex)
-                let suffix = existingText.Substring(endIndex + endMarker.Length)
-
-                { UpdatedText = prefix + sectionText + suffix
-                  SafeToWrite = true
-                  InsertedMarkers = false
-                  Diagnostics = [] }
-        | _ ->
-            { UpdatedText = existingText
-              SafeToWrite = false
-              InsertedMarkers = false
-              Diagnostics = [ "visual readiness managed section must contain exactly one start marker and one end marker" ] }
+            endMarker
+            "visual readiness managed markers are reversed"
+            "visual readiness managed section must contain exactly one start marker and one end marker"
+            (fun text safe inserted diagnostics ->
+                { UpdatedText = text
+                  SafeToWrite = safe
+                  InsertedMarkers = inserted
+                  Diagnostics = diagnostics })
+            existingText
+            generatedMarkdown
 
 module VisualInspectionValidation =
     let rule (ruleId: string) : VisualInspectionRule = { RuleId = ruleId; Required = true }
@@ -1005,64 +1077,60 @@ module VisualInspectionValidation =
             |> List.sortBy _.FindingId
 
         let validExceptions = check.Exceptions |> List.filter exceptionValid
-        let applied = ResizeArray<string>()
 
-        let findings =
-            initialFindings
-            |> List.map (fun f ->
-                match validExceptions |> List.tryFind (exceptionMatches f) with
-                | Some ex when f.Severity = VisualInspectionSeverity.Blocking ->
-                    applied.Add ex.ExceptionId
+        // Feature 186 (US3): delegate to the one shared algorithm with the VISUAL knobs — accept
+        // `Blocking` only (line 1014 of the former copy), and a status policy that neither accepts nor
+        // emits `Warning`/`ReviewRequired` (FR-005). Byte-identical to the former hand-spelled body.
+        let knobs: SharedTesting.InspectionValidationKnobs<VisualInspectionFinding, VisualInspectionException, VisualInspectionStatus, VisualInspectionValidationResult> =
+            { SeverityOf = _.Severity
+              FindingIdOf = _.FindingId
+              MatchException = exceptionMatches
+              ExceptionIdOf = _.ExceptionId
+              Accept = fun severity -> severity = VisualInspectionSeverity.Blocking
+              AcceptFinding =
+                fun f ex ->
                     { f with
                         Severity = VisualInspectionSeverity.Pass
                         ExceptionId = Some ex.ExceptionId
                         Diagnostics = f.Diagnostics @ [ $"accepted by visual inspection exception `{ex.ExceptionId}`: {ex.Reason}" ] }
-                | _ -> f)
-            |> List.distinctBy _.FindingId
-            |> List.sortBy _.FindingId
+              InvalidWording = fun id -> $"invalid visual inspection exception: {id}"
+              UnusedWording = fun id -> $"unused visual inspection exception: {id}"
+              DeriveStatus =
+                fun has ->
+                    if not invalidExceptions.IsEmpty || has VisualInspectionSeverity.Blocking then
+                        VisualInspectionStatus.Blocked
+                    elif has VisualInspectionSeverity.EnvironmentLimited then
+                        VisualInspectionStatus.EnvironmentLimited
+                    elif has VisualInspectionSeverity.Unsupported then
+                        if check.EnvironmentLimitations.IsEmpty then
+                            VisualInspectionStatus.Unsupported
+                        else
+                            VisualInspectionStatus.EnvironmentLimited
+                    else
+                        match check.Artifact.ReadinessStatus with
+                        | VisualInspectionStatus.NotRun
+                        | VisualInspectionStatus.NotInspected
+                        | VisualInspectionStatus.Incomplete -> VisualInspectionStatus.Incomplete
+                        | VisualInspectionStatus.Blocked -> VisualInspectionStatus.Blocked
+                        | VisualInspectionStatus.Unsupported -> VisualInspectionStatus.Unsupported
+                        | VisualInspectionStatus.EnvironmentLimited -> VisualInspectionStatus.EnvironmentLimited
+                        | VisualInspectionStatus.Accepted -> VisualInspectionStatus.Accepted
+              MkResult =
+                fun status findings appliedIds invalidIds unused diagnostics ->
+                    { ArtifactId = check.Artifact.ArtifactId
+                      ReadinessStatus = status
+                      Findings = findings
+                      AppliedExceptions = appliedIds
+                      InvalidExceptions = invalidIds
+                      UnusedExceptions = unused
+                      Diagnostics = diagnostics } }
 
-        let appliedIds = applied |> Seq.distinct |> Seq.toList
-        let unused =
-            validExceptions
-            |> List.map _.ExceptionId
-            |> List.filter (fun id -> not (List.contains id appliedIds))
-
-        let diagnostics =
+        SharedTesting.validateCheck
+            knobs
             (VisualInspection.artifactDiagnostics check.Artifact)
-            @ (invalidExceptions |> List.map (fun id -> $"invalid visual inspection exception: {id}"))
-            @ (unused |> List.map (fun id -> $"unused visual inspection exception: {id}"))
-            |> List.distinct
-
-        let has severity =
-            findings |> List.exists (fun f -> f.Severity = severity)
-
-        let status =
-            if not invalidExceptions.IsEmpty || has VisualInspectionSeverity.Blocking then
-                VisualInspectionStatus.Blocked
-            elif has VisualInspectionSeverity.EnvironmentLimited then
-                VisualInspectionStatus.EnvironmentLimited
-            elif has VisualInspectionSeverity.Unsupported then
-                if check.EnvironmentLimitations.IsEmpty then
-                    VisualInspectionStatus.Unsupported
-                else
-                    VisualInspectionStatus.EnvironmentLimited
-            else
-                match check.Artifact.ReadinessStatus with
-                | VisualInspectionStatus.NotRun
-                | VisualInspectionStatus.NotInspected
-                | VisualInspectionStatus.Incomplete -> VisualInspectionStatus.Incomplete
-                | VisualInspectionStatus.Blocked -> VisualInspectionStatus.Blocked
-                | VisualInspectionStatus.Unsupported -> VisualInspectionStatus.Unsupported
-                | VisualInspectionStatus.EnvironmentLimited -> VisualInspectionStatus.EnvironmentLimited
-                | VisualInspectionStatus.Accepted -> VisualInspectionStatus.Accepted
-
-        { ArtifactId = check.Artifact.ArtifactId
-          ReadinessStatus = status
-          Findings = findings
-          AppliedExceptions = appliedIds
-          InvalidExceptions = invalidExceptions
-          UnusedExceptions = unused
-          Diagnostics = diagnostics }
+            initialFindings
+            validExceptions
+            invalidExceptions
 
     let validate (artifact: VisualInspectionArtifact) (rules: VisualInspectionRule list) (exceptions: VisualInspectionException list) : VisualInspectionValidationResult =
         validateCheck
@@ -1253,60 +1321,19 @@ module VisualInspectionMarkdown =
               "}" ]
         + "\n"
 
-    let private countOccurrences (text: string) (pattern: string) =
-        let mutable count = 0
-        let mutable start = 0
-        let mutable finished = false
-
-        while not finished do
-            let index = text.IndexOf(pattern, start, StringComparison.Ordinal)
-            if index < 0 then
-                finished <- true
-            else
-                count <- count + 1
-                start <- index + pattern.Length
-
-        count
-
+    // Feature 186 (US4): delegate to the one shared managed-section updater; byte-identical to the
+    // former per-writer copy (FR-006/FR-011).
     let updateManagedSection (existingText: string) (generatedMarkdown: string) : VisualInspectionSummarySectionUpdate =
-        let startCount = countOccurrences existingText startMarker
-        let endCount = countOccurrences existingText endMarker
-        let sectionText = startMarker + Environment.NewLine + generatedMarkdown.TrimEnd() + Environment.NewLine + endMarker
-
-        match startCount, endCount with
-        | 0, 0 ->
-            let separator =
-                if String.IsNullOrEmpty existingText then
-                    ""
-                elif existingText.EndsWith(Environment.NewLine, StringComparison.Ordinal) then
-                    Environment.NewLine
-                else
-                    Environment.NewLine + Environment.NewLine
-
-            { UpdatedText = existingText + separator + sectionText + Environment.NewLine
-              SafeToWrite = true
-              InsertedMarkers = true
-              Diagnostics = [] }
-        | 1, 1 ->
-            let startIndex = existingText.IndexOf(startMarker, StringComparison.Ordinal)
-            let endIndex = existingText.IndexOf(endMarker, StringComparison.Ordinal)
-
-            if startIndex > endIndex then
-                { UpdatedText = existingText
-                  SafeToWrite = false
-                  InsertedMarkers = false
-                  Diagnostics = [ "visual inspection managed markers are reversed" ] }
-            else
-                let prefix = existingText.Substring(0, startIndex)
-                let suffix = existingText.Substring(endIndex + endMarker.Length)
-
-                { UpdatedText = prefix + sectionText + suffix
-                  SafeToWrite = true
-                  InsertedMarkers = false
-                  Diagnostics = [] }
-        | _ ->
-            { UpdatedText = existingText
-              SafeToWrite = false
-              InsertedMarkers = false
-              Diagnostics = [ "visual inspection managed section must contain exactly one start marker and one end marker" ] }
+        SharedTesting.updateManagedSection
+            startMarker
+            endMarker
+            "visual inspection managed markers are reversed"
+            "visual inspection managed section must contain exactly one start marker and one end marker"
+            (fun text safe inserted diagnostics ->
+                { UpdatedText = text
+                  SafeToWrite = safe
+                  InsertedMarkers = inserted
+                  Diagnostics = diagnostics })
+            existingText
+            generatedMarkdown
 

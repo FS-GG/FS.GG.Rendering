@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/185-harness-data-table-refactor/plan.md
+at specs/186-cross-cutting-dedup-state-records/plan.md
 <!-- SPECKIT END -->
 
 ## Ant Design — source of truth

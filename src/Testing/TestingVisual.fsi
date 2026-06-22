@@ -57,6 +57,43 @@ module internal ReadinessFormatting =
     val jsonCounts: values: (string * 'a) list -> string
     val countsText: values: ('a * 'b) list -> string
 
+/// Feature 186 (US3/US4): cross-cutting Testing-layer algorithms shared by both inspection families.
+/// `internal` (absent from the public surface baseline); hosted here because `TestingVisual` compiles
+/// before `TestingRetainedInspection`.
+module internal SharedTesting =
+    /// Family-specific knobs for the one shared inspection-validation algorithm.
+    type InspectionValidationKnobs<'finding, 'exn, 'status, 'result> =
+        { SeverityOf: 'finding -> VisualInspectionSeverity
+          FindingIdOf: 'finding -> string
+          MatchException: 'finding -> 'exn -> bool
+          ExceptionIdOf: 'exn -> string
+          Accept: VisualInspectionSeverity -> bool
+          AcceptFinding: 'finding -> 'exn -> 'finding
+          InvalidWording: string -> string
+          UnusedWording: string -> string
+          DeriveStatus: (VisualInspectionSeverity -> bool) -> 'status
+          MkResult: 'status -> 'finding list -> string list -> string list -> string list -> string list -> 'result }
+
+    /// The one validate-exceptions → unused/invalid → diagnostics → derive-status algorithm.
+    val validateCheck:
+        knobs: InspectionValidationKnobs<'finding, 'exn, 'status, 'result> ->
+        artifactDiagnostics: string list ->
+        initialFindings: 'finding list ->
+        validExceptions: 'exn list ->
+        invalidExceptionIds: string list ->
+            'result
+
+    /// The one managed-section updater behind all three writers: append / replace / fail-loud.
+    val updateManagedSection:
+        startMarker: string ->
+        endMarker: string ->
+        reversedDiagnostic: string ->
+        cardinalityDiagnostic: string ->
+        mk: (string -> bool -> bool -> string list -> 'result) ->
+        existingText: string ->
+        generatedMarkdown: string ->
+            'result
+
 /// Shared visual-readiness Markdown, JSON, and managed-section helpers.
 module VisualReadinessMarkdown =
     /// Managed-section start marker used in human summaries.

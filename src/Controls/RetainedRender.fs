@@ -1282,21 +1282,69 @@ module internal RetainedRender =
         walk control
         List.ofSeq diags
 
+    /// Feature 186 (US2, FR-002/FR-003/C-STEP-STATE): the named per-frame accumulator state that
+    /// replaces `step`'s ~19 loose `let mutable` bindings and seeds `init`'s cold start onto the same
+    /// shape. `mutable` fields preserve the exact accumulation order + allocation profile of the
+    /// former loose mutables (Edge Cases / research Decision 6) — byte-identity is the gate. The
+    /// `RepaintedBoxes` damage accumulator is held by reference (mutated in place, never reassigned).
+    /// Internal by absence from `RetainedRender.fsi` (the whole module is internal).
+    type private FrameState =
+        { mutable Tc: TextMeasureCache // mutable: hot path
+          mutable TextHits: int // mutable: hot path
+          mutable TextMisses: int // mutable: hot path
+          mutable NextId: uint64 // mutable: hot path
+          mutable Recomputed: int // mutable: hot path
+          mutable ChangedBound: int // mutable: hot path
+          mutable Shifted: int // mutable: hot path
+          mutable Memo: MemoCache // mutable: hot path
+          mutable MemoHits: int // mutable: hot path
+          mutable MemoMisses: int // mutable: hot path
+          mutable MetadataVisited: int // mutable: hot path
+          mutable VirtualMaterialized: int // mutable: hot path
+          mutable VirtualTotal: int // mutable: hot path
+          mutable PcEntries: Map<RetainedId, int * PictureCacheKey> // mutable: hot path
+          mutable PcClock: int // mutable: hot path
+          mutable PictureHits: int // mutable: hot path
+          mutable PictureMisses: int // mutable: hot path
+          mutable ReplaySkippedNodes: int // mutable: hot path
+          mutable ReplayNativeBytes: int // mutable: hot path
+          RepaintedBoxes: ResizeArray<Rect> }
+
     let init (theme: Theme) (size: FS.GG.UI.Scene.Size) (control: Control<'msg>) : RetainedInit<'msg> =
         let layoutRoot, boundsById, layoutResult =
             RetainedRenderTrace.time "retained-init-layout" [] (fun () -> ControlInternals.evaluateLayout size control)
 
-        let mutable nextId = 0UL
+        // Feature 186 (US2): cold-start seeding onto the SAME `FrameState` shape `step` uses — id
+        // counter at 0, empty memo/picture/text caches. The first frame carries no work record, so the
+        // hit/miss accumulators stay 0; only `NextId`/`Memo`/`PcEntries`/`PcClock` are exercised here.
+        // Feature 113 (Phase 5): every memoizable node is a cold miss against the empty memo cache —
+        // the projection runs once and is stored so subsequent `step` frames consult it.
+        let st =
+            { Tc = { Entries = Map.empty; Clock = 0 }
+              TextHits = 0
+              TextMisses = 0
+              NextId = 0UL
+              Recomputed = 0
+              ChangedBound = 0
+              Shifted = 0
+              Memo = Map.empty
+              MemoHits = 0
+              MemoMisses = 0
+              MetadataVisited = 0
+              VirtualMaterialized = 0
+              VirtualTotal = 0
+              PcEntries = Map.empty
+              PcClock = 0
+              PictureHits = 0
+              PictureMisses = 0
+              ReplaySkippedNodes = 0
+              ReplayNativeBytes = 0
+              RepaintedBoxes = ResizeArray<Rect>() }
 
         let mint () =
-            let id = RetainedId nextId
-            nextId <- nextId + 1UL
+            let id = RetainedId st.NextId
+            st.NextId <- st.NextId + 1UL
             id
-
-        // Feature 113 (Phase 5): seed the memo cache on the first frame. Every memoizable node is a
-        // cold miss here (an empty cache), so the projection runs once and is stored; subsequent
-        // `step` frames consult it. The first frame reports no metrics (init carries no work record).
-        let mutable memo: MemoCache = Map.empty
 
         let paintOwn (path: string) (nc: Control<'msg>) : Scene list =
             RetainedRenderTrace.time
@@ -1307,8 +1355,8 @@ module internal RetainedRender =
                     if isMemoizable nc then
                         let dep = memoDependency theme boundsById path nc
                         let id = nc.Key |> Option.defaultValue path
-                        let subtree, memo', _ = memoize id dep (fun () -> ControlInternals.paintNode theme boundsById path nc) memo
-                        memo <- memo'
+                        let subtree, memo', _ = memoize id dep (fun () -> ControlInternals.paintNode theme boundsById path nc) st.Memo
+                        st.Memo <- memo'
                         subtree
                     else
                         ControlInternals.paintNode theme boundsById path nc)
@@ -1336,18 +1384,15 @@ module internal RetainedRender =
         // boundaries (every data-grid row) — all cold here, so a subsequent `step` whose row pictures
         // are unchanged finds them resident and reports hits. Bounded from creation (FR-009): a
         // first tree with more than the cap of cacheable rows evicts LRU (by deterministic
-        // first-seen/traversal order) immediately.
-        let mutable pcEntries: Map<RetainedId, int * PictureCacheKey> = Map.empty
-        let mutable pcClock = 0
-
+        // first-seen/traversal order) immediately. Carried on `st` (Feature 186 US2).
         let rec seedPictures (n: RetainedNode<'msg>) =
             if isCacheablePicture n.Control then
-                pcClock <- pcClock + 1
-                pcEntries <- Map.add n.Identity (pcClock, pictureKeyOf n) pcEntries
+                st.PcClock <- st.PcClock + 1
+                st.PcEntries <- Map.add n.Identity (st.PcClock, pictureKeyOf n) st.PcEntries
 
-                while pcEntries.Count > PictureCacheCap do
-                    let lruId, _ = pcEntries |> Map.toSeq |> Seq.minBy (fun (_, (stamp, _)) -> stamp)
-                    pcEntries <- Map.remove lruId pcEntries
+                while st.PcEntries.Count > PictureCacheCap do
+                    let lruId, _ = st.PcEntries |> Map.toSeq |> Seq.minBy (fun (_, (stamp, _)) -> stamp)
+                    st.PcEntries <- Map.remove lruId st.PcEntries
 
             n.Children |> List.iter seedPictures
 
@@ -1364,13 +1409,13 @@ module internal RetainedRender =
 
         { Retained =
             { Root = root
-              NextId = nextId
+              NextId = st.NextId
               StateByIdentity = Map.empty
               Theme = theme
-              Memo = memo
+              Memo = st.Memo
               MemoEnabled = true
               Layout = layoutResult
-              PictureCache = { Entries = pcEntries; Clock = pcClock }
+              PictureCache = { Entries = st.PcEntries; Clock = st.PcClock }
               PictureCacheEnabled = true
               // Feature 117 (Phase 8): seed the text-measure cache EMPTY. `init` measures uncached (no
               // hook installed), byte-identical to pre-117, so the FIRST `step` starts cold (misses) and a
@@ -1480,10 +1525,33 @@ module internal RetainedRender =
         // measurement. The cache still reuses same-frame inserts, but metric hits mean prior-frame reuse:
         // only keys resident before this frame began count as hits. A cold repeated text therefore records
         // the first insert as a miss and the same-frame reuse as neither a hit nor another miss.
-        let mutable tc = prev.TextCache
+        // Feature 186 (US2): the per-frame accumulator state, seeded from `prev` (text/memo/picture
+        // caches carried forward) with all work counters at zero. Replaces the former ~19 loose
+        // `let mutable` bindings; every read/write below threads through `st`, in the SAME order, so
+        // the float/integer accumulation and allocation profile are byte-identical (FR-002).
+        let st =
+            { Tc = prev.TextCache
+              TextHits = 0
+              TextMisses = 0
+              NextId = prev.NextId
+              Recomputed = 0
+              ChangedBound = 0
+              Shifted = 0
+              Memo = prev.Memo
+              MemoHits = 0
+              MemoMisses = 0
+              MetadataVisited = 0
+              VirtualMaterialized = 0
+              VirtualTotal = 0
+              PcEntries = prev.PictureCache.Entries
+              PcClock = prev.PictureCache.Clock
+              PictureHits = 0
+              PictureMisses = 0
+              ReplaySkippedNodes = 0
+              ReplayNativeBytes = 0
+              RepaintedBoxes = ResizeArray<Rect>() }
+
         let frameStartTextKeys = prev.TextCache.Entries |> Map.toSeq |> Seq.map fst |> Set.ofSeq
-        let mutable textHits = 0
-        let mutable textMisses = 0
 
         let measureCached (text: string) (font: FS.GG.UI.Scene.FontSpec) : FS.GG.UI.Scene.TextMetrics =
             let key: TextMeasureKey =
@@ -1493,15 +1561,15 @@ module internal RetainedRender =
                   Weight = font.Weight
                   MeasurementVersionBucket = FS.GG.UI.Scene.Scene.textMeasurementVersionBucket () }
 
-            let metrics, tc', wasHit = measureTextCached tc prev.TextCacheEnabled text font
-            tc <- tc'
+            let metrics, tc', wasHit = measureTextCached st.Tc prev.TextCacheEnabled text font
+            st.Tc <- tc'
             if not prev.TextCacheEnabled then
-                textMisses <- textMisses + 1
+                st.TextMisses <- st.TextMisses + 1
             elif wasHit then
                 if Set.contains key frameStartTextKeys then
-                    textHits <- textHits + 1
+                    st.TextHits <- st.TextHits + 1
             else
-                textMisses <- textMisses + 1
+                st.TextMisses <- st.TextMisses + 1
             metrics
 
         // Active for the WHOLE measurement window of this frame — the incremental layout pass AND the
@@ -1525,35 +1593,24 @@ module internal RetainedRender =
         let themeChanged = prev.Theme <> theme
 
         // Mutation confined to this interpreter-edge step (constitution III): a monotonic id
-        // counter and the measured work counters. The consumer `view`/`update` stay pure.
-        let mutable nextId = prev.NextId
-        let mutable recomputed = 0
-        let mutable changedBound = 0
-        // FR-007: nodes recomputed ONLY because an upstream change relaid a structurally-unchanged
-        // subtree out (a shifted `Keep`) or a theme change forced a repaint — counted distinctly
-        // from genuinely-changed work so `RecomputedNodeCount = ChangedSubtreeBound + ShiftedNodeCount`.
-        let mutable shifted = 0
-        // Feature 113 (Phase 5): the memo cache carried from `prev`, advanced as memoizable nodes are
-        // (re)painted this frame, plus the frame's hit/miss tally (FR-009/FR-010).
-        let mutable memo = prev.Memo
-        let mutable memoHits = 0
-        let mutable memoMisses = 0
-        // Feature 116 (Phase 7): the per-frame DAMAGE set — each repainted node (every `paintFresh`)
-        // contributes its evaluated box (FR-001/FR-002). `RepaintedNodeCount` = repaint count;
-        // `DirtyRectCount` = distinct boxes; `DirtyArea` = summed integer w*h over distinct boxes. An
-        // idle (all-`Keep`) frame repaints nothing → `0/0/0`; a theme switch repaints every node.
-        let repaintedBoxes = ResizeArray<Rect>()
-        // Feature 174: retained render-result metadata visits. Reused `Keep` subtrees keep their
-        // snapshot and add no per-frame metadata work.
-        let mutable metadataVisited = 0
+        // counter and the measured work counters — all now carried on `st` (Feature 186 US2). The
+        // consumer `view`/`update` stay pure. `st.NextId` seeds from `prev.NextId`; `st.Recomputed`/
+        // `st.ChangedBound`/`st.Shifted` start at 0. FR-007: nodes recomputed ONLY because an upstream
+        // change relaid a structurally-unchanged subtree out (a shifted `Keep`) or a theme change
+        // forced a repaint — counted distinctly so `RecomputedNodeCount = ChangedSubtreeBound +
+        // ShiftedNodeCount`. `st.Memo` is the memo cache carried from `prev`, advanced as memoizable
+        // nodes are (re)painted, plus the frame's hit/miss tally (FR-009/FR-010). `st.RepaintedBoxes`
+        // (Feature 116) is the per-frame DAMAGE set — each repainted node (every `paintFresh`)
+        // contributes its evaluated box (FR-001/FR-002). `st.MetadataVisited` (Feature 174) counts
+        // retained render-result metadata visits (reused `Keep` subtrees add none).
 
         let mint () =
-            let id = RetainedId nextId
-            nextId <- nextId + 1UL
+            let id = RetainedId st.NextId
+            st.NextId <- st.NextId + 1UL
             id
 
         let metadataFor path control box children =
-            metadataVisited <- metadataVisited + 1
+            st.MetadataVisited <- st.MetadataVisited + 1
             retainedMetadata path control box children
 
         // Feature 113 (Phase 5): paint a node's OWN scene, routing the sole memoized site (the DataGrid
@@ -1570,23 +1627,23 @@ module internal RetainedRender =
                     if prev.MemoEnabled && isMemoizable nc then
                         let dep = memoDependency theme boundsById path nc
                         let id = nc.Key |> Option.defaultValue path
-                        let subtree, memo', outcome = memoize id dep (fun () -> ControlInternals.paintNode theme boundsById path nc) memo
-                        memo <- memo'
+                        let subtree, memo', outcome = memoize id dep (fun () -> ControlInternals.paintNode theme boundsById path nc) st.Memo
+                        st.Memo <- memo'
 
                         match outcome with
-                        | Hit -> memoHits <- memoHits + 1
-                        | Miss -> memoMisses <- memoMisses + 1
+                        | Hit -> st.MemoHits <- st.MemoHits + 1
+                        | Miss -> st.MemoMisses <- st.MemoMisses + 1
 
                         subtree
                     else
                         ControlInternals.paintNode theme boundsById path nc)
 
         let paintFresh (path: string) (nc: Control<'msg>) : FS.GG.UI.Scene.Scene list =
-            recomputed <- recomputed + 1
+            st.Recomputed <- st.Recomputed + 1
             // FR-001: a repainted node contributes its evaluated box to the damage set (`None` boxes
             // contribute no rectangle).
             match ControlInternals.nodeBox boundsById path nc with
-            | Some b -> repaintedBoxes.Add b
+            | Some b -> st.RepaintedBoxes.Add b
             | None -> ()
 
             paintOwn path nc
@@ -1609,7 +1666,7 @@ module internal RetainedRender =
         // Recompute a structurally-identical subtree whose box SHIFTED (a `Keep` relaid out by an
         // upstream change) while CARRYING every node's prior identity — it is the same node.
         let rec carry (path: string) (pr: RetainedNode<'msg>) (nc: Control<'msg>) : RetainedNode<'msg> =
-            shifted <- shifted + 1
+            st.Shifted <- st.Shifted + 1
             let own = paintFresh path nc
 
             let children =
@@ -1651,7 +1708,7 @@ module internal RetainedRender =
             | Reconcile.NodePatch.Replace _ ->
                 // Kind/Key changed -> a different node. Mint a fresh identity; the old identity
                 // (and its UI state) is dropped — no false identity across a Replace (SC-001 -).
-                changedBound <- changedBound + Control.count nc
+                st.ChangedBound <- st.ChangedBound + Control.count nc
                 buildFresh ExplicitIdentity path nc
 
             | Reconcile.NodePatch.Update u ->
@@ -1671,7 +1728,7 @@ module internal RetainedRender =
                     if ownUnchanged then
                         pr.Fragment.OwnScene
                     else
-                        changedBound <- changedBound + 1
+                        st.ChangedBound <- st.ChangedBound + 1
                         paintFresh path nc
 
                 // Producing ops (every op except ChildRemove) are emitted one-per-next-child in
@@ -1692,7 +1749,7 @@ module internal RetainedRender =
                         | Reconcile.ChildKeep (j, p) -> build cp pr.Children.[j] p c
                         | Reconcile.ChildMove (f, _, p) -> build cp pr.Children.[f] p c
                         | Reconcile.ChildInsert (_, node) ->
-                            changedBound <- changedBound + Control.count node
+                            st.ChangedBound <- st.ChangedBound + Control.count node
                             buildFresh ChildInsertion cp node
                         // Unreachable (ChildRemove is filtered out of `producing`); kept total —
                         // paint the next child fresh rather than throw.
@@ -1755,21 +1812,19 @@ module internal RetainedRender =
         // walk of the lowered `next` tree (no render effect). `VirtualMaterialized` counts materialized
         // `data-grid-row` nodes (the realized window); `VirtualTotal` sums the logical `Total` carried on
         // each `data-grid` node's `visibleRange` attr. Both stay 0 when no `data-grid` is present, and
-        // aggregate across multiple grids in a frame.
-        let mutable virtualMaterialized = 0
-        let mutable virtualTotal = 0
+        // aggregate across multiple grids in a frame (Feature 186 US2: carried on `st`).
 
         // Feature 183 (US1): the virtualization role per kind reads the single ControlKindRegistry SSOT
         // (byte-identical: `data-grid-row` materializes a row, `data-grid` carries the logical total).
         let rec countVirtual (c: Control<'msg>) =
             match ControlKindRegistry.virtualizationOf c.Kind with
-            | Some ControlKindRegistry.GridRow -> virtualMaterialized <- virtualMaterialized + 1
+            | Some ControlKindRegistry.GridRow -> st.VirtualMaterialized <- st.VirtualMaterialized + 1
             | Some ControlKindRegistry.Grid ->
                 c.Attributes
                 |> List.tryFind (fun a -> a.Name = AttrKeys.nameOf AttrKeys.VisibleRange)
                 |> Option.iter (fun a ->
                     match a.Value with
-                    | UntypedValue(:? VisibleRange as vr) -> virtualTotal <- virtualTotal + vr.Total
+                    | UntypedValue(:? VisibleRange as vr) -> st.VirtualTotal <- st.VirtualTotal + vr.Total
                     | _ -> ())
             | None -> ()
 
@@ -1780,13 +1835,13 @@ module internal RetainedRender =
         // Feature 116 (Phase 7, FR-001/FR-004): reduce the accumulated damage set to its three integer
         // carriers — repainted-node count, count of DISTINCT repainted boxes, and summed integer area
         // over the distinct boxes. Deterministic (integer geometry → reproducible across runs).
-        let repaintedNodeCount = recomputed
+        let repaintedNodeCount = st.Recomputed
         let distinctBoxes, dirtyRectCount, dirtyArea =
             RetainedRenderTrace.time
                 "retained-step-damage-reduce"
-                [ "repaintedBoxes", string repaintedBoxes.Count ]
+                [ "repaintedBoxes", string st.RepaintedBoxes.Count ]
                 (fun () ->
-                    let distinctBoxes = repaintedBoxes |> Seq.distinct |> List.ofSeq
+                    let distinctBoxes = st.RepaintedBoxes |> Seq.distinct |> List.ofSeq
                     let dirtyRectCount = List.length distinctBoxes
                     // Feature 120 (US4, FR-015): the damage area is the area of the UNION of the distinct damage
                     // rectangles (no longer the sum), so overlapping damage is counted once and the value never
@@ -1803,10 +1858,8 @@ module internal RetainedRender =
         // recency and may evict the least-recently-accessed entry over the cap. This OBSERVES the row
         // pictures the step already built — it never changes the emitted scene (byte-identical at rest)
         // nor any 091–114 work count.
-        let mutable pcEntries = prev.PictureCache.Entries
-        let mutable pcClock = prev.PictureCache.Clock
-        let mutable pictureHits = 0
-        let mutable pictureMisses = 0
+        // Feature 186 (US2): the picture cache (`st.PcEntries`/`st.PcClock`, seeded from `prev`) and
+        // the per-frame hit/miss + replay tallies are carried on `st`.
         // Feature 120 (US3, FR-007/FR-012/FR-014): the backend replay cache is the load-bearing
         // realization of this same picture cache, so its hit/miss/record counts coincide with the
         // picture-cache outcomes by construction (same boundaries, same residency + new structural
@@ -1817,51 +1870,49 @@ module internal RetainedRender =
         // model native-byte estimate of resident recorded pictures.
         let bytesPerNode = 64
         let replayHitIds = System.Collections.Generic.HashSet<RetainedId>()
-        let mutable replaySkippedNodes = 0
-        let mutable replayNativeBytes = 0
 
         let countNodes (scenes: FS.GG.UI.Scene.Scene list) =
             scenes |> List.sumBy (fun s -> List.length (FS.GG.UI.Scene.Scene.describe s))
 
         let rec walkPictures (n: RetainedNode<'msg>) =
             if isCacheablePicture n.Control then
-                pcClock <- pcClock + 1
+                st.PcClock <- st.PcClock + 1
                 let key = pictureKeyOf n
 
                 let isHit =
                     prev.PictureCacheEnabled
-                    && (match Map.tryFind n.Identity pcEntries with
+                    && (match Map.tryFind n.Identity st.PcEntries with
                         | Some(_, prevKey) -> prevKey = key
                         | None -> false)
 
                 if isHit then
-                    pictureHits <- pictureHits + 1
+                    st.PictureHits <- st.PictureHits + 1
                     // Reuse-stable boundary → emit + replay; tally the skipped painted nodes (SC-004).
                     replayHitIds.Add n.Identity |> ignore
-                    replaySkippedNodes <- replaySkippedNodes + countNodes n.Fragment.Assembly.InFlowScene
+                    st.ReplaySkippedNodes <- st.ReplaySkippedNodes + countNodes n.Fragment.Assembly.InFlowScene
                 else
-                    pictureMisses <- pictureMisses + 1
+                    st.PictureMisses <- st.PictureMisses + 1
 
                 // Native-byte model: every cacheable boundary resident after this frame holds a recorded
                 // picture proportional to its subtree node count (bounded by the cap).
                 if prev.PictureCacheEnabled then
-                    replayNativeBytes <- replayNativeBytes + countNodes n.Fragment.Assembly.InFlowScene * bytesPerNode
+                    st.ReplayNativeBytes <- st.ReplayNativeBytes + countNodes n.Fragment.Assembly.InFlowScene * bytesPerNode
 
-                pcEntries <- Map.add n.Identity (pcClock, key) pcEntries
+                st.PcEntries <- Map.add n.Identity (st.PcClock, key) st.PcEntries
 
-                while pcEntries.Count > PictureCacheCap do
-                    let lruId, _ = pcEntries |> Map.toSeq |> Seq.minBy (fun (_, (stamp, _)) -> stamp)
-                    pcEntries <- Map.remove lruId pcEntries
+                while st.PcEntries.Count > PictureCacheCap do
+                    let lruId, _ = st.PcEntries |> Map.toSeq |> Seq.minBy (fun (_, (stamp, _)) -> stamp)
+                    st.PcEntries <- Map.remove lruId st.PcEntries
 
             n.Children |> List.iter walkPictures
 
         RetainedRenderTrace.time "retained-step-picture-walk" [] (fun () -> walkPictures newRoot)
-        let pictureEntryCount = pcEntries.Count
+        let pictureEntryCount = st.PcEntries.Count
         // Bound the modeled native bytes by the cap (residency never exceeds PictureCacheCap entries).
-        let replayCacheNativeBytes = min replayNativeBytes (PictureCacheCap * bytesPerNode * 64)
-        let pictureCache: PictureCache = { Entries = pcEntries; Clock = pcClock }
-        let avoidedContentWork = max 0 (Control.count next - recomputed) + replaySkippedNodes
-        let promotionOverhead = pictureHits + pictureMisses
+        let replayCacheNativeBytes = min st.ReplayNativeBytes (PictureCacheCap * bytesPerNode * 64)
+        let pictureCache: PictureCache = { Entries = st.PcEntries; Clock = st.PcClock }
+        let avoidedContentWork = max 0 (Control.count next - st.Recomputed) + st.ReplaySkippedNodes
+        let promotionOverhead = st.PictureHits + st.PictureMisses
         let netSavedWork = avoidedContentWork - promotionOverhead
 
         // Feature 116 (Phase 7, FR-011): the advisory offscreen-effect diagnostic. A read-only walk
@@ -2001,7 +2052,7 @@ module internal RetainedRender =
             RetainedRenderTrace.time
                 "retained-step-render-result"
                 [ "sceneListCount", string (List.length sceneList)
-                  "metadataVisitedNodeCount", string metadataVisited
+                  "metadataVisitedNodeCount", string st.MetadataVisited
                   "metadataNodeCount", string newRoot.Metadata.NodeCount ]
                 (fun () -> renderFromRetainedMetadata theme size root sceneList newRoot.Metadata)
 
@@ -2010,55 +2061,55 @@ module internal RetainedRender =
 
         { Retained =
             { Root = newRoot
-              NextId = nextId
+              NextId = st.NextId
               StateByIdentity = stateById
               Theme = theme
-              Memo = memo
+              Memo = st.Memo
               MemoEnabled = prev.MemoEnabled
               Layout = layoutResult
               PictureCache = pictureCache
               PictureCacheEnabled = prev.PictureCacheEnabled
               // Feature 117 (Phase 8): carry the advanced text-measure cache forward (the working copy the
               // hook populated this frame); the always-miss oracle flag threads through unchanged.
-              TextCache = tc
+              TextCache = st.Tc
               TextCacheEnabled = prev.TextCacheEnabled }
           Render = render
           Diagnostics = result.Diagnostics @ List.ofSeq offscreenDiags
           WorkReduction =
             { BaselineNodeCount = baselineNodeCount
-              MetadataVisitedNodeCount = metadataVisited
+              MetadataVisitedNodeCount = st.MetadataVisited
               MetadataFallbackCount = 0
-              RecomputedNodeCount = recomputed
-              ChangedSubtreeBound = changedBound
-              ShiftedNodeCount = shifted
+              RecomputedNodeCount = st.Recomputed
+              ChangedSubtreeBound = st.ChangedBound
+              ShiftedNodeCount = st.Shifted
               RemeasuredNodeCount = remeasured
-              MemoHits = memoHits
-              MemoMisses = memoMisses
-              VirtualMaterialized = virtualMaterialized
-              VirtualTotal = virtualTotal
+              MemoHits = st.MemoHits
+              MemoMisses = st.MemoMisses
+              VirtualMaterialized = st.VirtualMaterialized
+              VirtualTotal = st.VirtualTotal
               RepaintedNodeCount = repaintedNodeCount
               DirtyRectCount = dirtyRectCount
               DirtyArea = dirtyArea
-              PictureCacheHits = pictureHits
-              PictureCacheMisses = pictureMisses
+              PictureCacheHits = st.PictureHits
+              PictureCacheMisses = st.PictureMisses
               PictureCacheEntryCount = pictureEntryCount
-              TextMeasureCacheHits = textHits
-              TextMeasureCacheMisses = textMisses
+              TextMeasureCacheHits = st.TextHits
+              TextMeasureCacheMisses = st.TextMisses
               LayoutInvalidatedNodeCount = invalidated
               // Feature 120 (US3, FR-014): replay hits/misses/records coincide with the picture-cache
               // outcomes (the replay cache is its load-bearing realization); the node-skip + native-byte
               // model are the new signals.
-              ReplayHits = pictureHits
-              ReplayMisses = pictureMisses
-              ReplayRecords = pictureMisses
-              ReplaySkippedNodes = replaySkippedNodes
+              ReplayHits = st.PictureHits
+              ReplayMisses = st.PictureMisses
+              ReplayRecords = st.PictureMisses
+              ReplaySkippedNodes = st.ReplaySkippedNodes
               ReplayCacheNativeBytes = replayCacheNativeBytes
               AvoidedContentWork = avoidedContentWork
-              PlacementOnlyReuseCount = pictureHits
-              ContentRecordCount = pictureMisses
-              ContentRerecordCount = if changedBound > 0 then pictureMisses else 0
-              PromotionCount = if pictureHits > 0 && netSavedWork > 0 then 1 else 0
-              DemotionCount = if pictureHits = 0 && pictureMisses > 0 && netSavedWork <= 0 then 1 else 0
+              PlacementOnlyReuseCount = st.PictureHits
+              ContentRecordCount = st.PictureMisses
+              ContentRerecordCount = if st.ChangedBound > 0 then st.PictureMisses else 0
+              PromotionCount = if st.PictureHits > 0 && netSavedWork > 0 then 1 else 0
+              DemotionCount = if st.PictureHits = 0 && st.PictureMisses > 0 && netSavedWork <= 0 then 1 else 0
               FallbackCount = 0
               PromotionOverhead = promotionOverhead
               NetSavedWork = netSavedWork } }
