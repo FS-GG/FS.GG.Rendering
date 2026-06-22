@@ -47,6 +47,23 @@ let private artifact nodes facts : VisualInspectionArtifact =
       Diagnostics = []
       GeneratedAtUtc = "2026-06-19T00:00:00Z" }
 
+let private retainedArtifact findings : RetainedInspectionArtifact =
+    { ArtifactId = "artifact"
+      RunId = "run"
+      Scope = scope
+      OutputSize = size
+      Presentation = "light"
+      Transition = None
+      FinalVisualArtifact = None
+      RetainedNodes = []
+      Damage = None
+      Findings = findings
+      UnsupportedFacts = []
+      RelatedVisualEvidence = []
+      ReadinessStatus = RetainedInspectionStatus.Accepted
+      Diagnostics = []
+      GeneratedAtUtc = "2026-06-19T00:00:00Z" }
+
 [<Tests>]
 let tests =
     testList
@@ -96,4 +113,27 @@ let tests =
               Expect.equal (normalized.Nodes |> List.map _.NodeId) [ "first"; "second" ] "nodes sorted by order and id"
               Expect.equal (normalized.Findings |> List.map _.RuleId) [ "rule-a"; "rule-b" ] "findings sorted"
               Expect.equal (normalized.UnsupportedFacts |> List.map _.Fact) [ "alpha"; "zeta" ] "facts sorted"
+          }
+
+          test "normalizeArtifact collapses duplicate visual finding ids keeping first occurrence (FR-006)" {
+              // Two findings share rule + affected ids => identical FindingId => duplicates; a third is unique.
+              let dupFirst = VisualInspection.finding "overlap" VisualInspectionSeverity.Blocking [ "a" ] [] "first" "expected" "actual"
+              let dupSecond = VisualInspection.finding "overlap" VisualInspectionSeverity.Warning [ "a" ] [] "second" "expected" "actual"
+              let unique = VisualInspection.finding "contrast" VisualInspectionSeverity.Info [ "b" ] [] "u" "expected" "actual"
+              Expect.equal dupFirst.FindingId dupSecond.FindingId "precondition: the duplicates share a FindingId"
+              let input = { artifact [] [] with Findings = [ dupFirst; dupSecond; unique ] }
+              let normalized = VisualInspection.normalizeArtifact input
+              Expect.equal (normalized.Findings |> List.map _.FindingId) [ unique.FindingId; dupFirst.FindingId ] "one per FindingId, sorted, unique preserved"
+              Expect.equal (normalized.Findings |> List.map _.Message) [ "u"; "first" ] "first occurrence of the duplicate is kept"
+          }
+
+          test "retained normalizeArtifact collapses duplicate finding ids uniformly (FR-006/SC-003)" {
+              // Same collapse rule on the retained path (its identity scope keeps transitionId).
+              let dupFirst = RetainedInspection.finding "damage-localized" VisualInspectionSeverity.Blocking "t1" [ "a" ] [] "first" "expected" "actual"
+              let dupSecond = RetainedInspection.finding "damage-localized" VisualInspectionSeverity.Warning "t1" [ "a" ] [] "second" "expected" "actual"
+              let unique = RetainedInspection.finding "damage-broad" VisualInspectionSeverity.Info "t1" [ "b" ] [] "u" "expected" "actual"
+              Expect.equal dupFirst.FindingId dupSecond.FindingId "precondition: the duplicates share a FindingId"
+              let normalized = RetainedInspection.normalizeArtifact (retainedArtifact [ dupFirst; dupSecond; unique ])
+              Expect.equal (normalized.Findings |> List.length) 2 "collapsed to one per FindingId"
+              Expect.equal (normalized.Findings |> List.map _.Message) [ "u"; "first" ] "first occurrence kept, unique preserved"
           } ]

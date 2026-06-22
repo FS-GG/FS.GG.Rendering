@@ -12,8 +12,16 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Types.fsi" />
+    <Compile Include="Types.fs" />
+    <Compile Include="TextShaping.fsi" />
+    <Compile Include="TextShaping.fs" />
     <Compile Include="Scene.fsi" />
     <Compile Include="Scene.fs" />
+    <Compile Include="Inspection.fsi" />
+    <Compile Include="Inspection.fs" />
+    <Compile Include="Evidence.fsi" />
+    <Compile Include="Evidence.fs" />
     <Compile Include="SceneWire.fs" />
     <Compile Include="SceneCodec.fsi" />
     <Compile Include="SceneCodec.fs" />
