@@ -12,7 +12,7 @@ let tests =
     testList "Feature148 damage plan policy" [
         test "clipped overlapping edge damage has true union area and source cause" {
             let damage =
-                RetainedRender.damageRegionSet
+                CompositorPolicy.damageRegionSet
                     { FrameWidth = 100
                       FrameHeight = 80
                       FullFrameInvalidation = false
@@ -29,21 +29,21 @@ let tests =
         }
 
         test "movement damage covers old and new placement regions" {
-            let damage = RetainedRender.placementDamage 120 100 (rect 0.0 0.0 30.0 20.0) (rect 20.0 5.0 30.0 20.0)
+            let damage = CompositorPolicy.placementDamage 120 100 (rect 0.0 0.0 30.0 20.0) (rect 20.0 5.0 30.0 20.0)
             Expect.equal damage.Cause "placement-only movement" "movement cause"
             Expect.equal damage.Regions.Length 2 "old and new regions"
             Expect.isGreaterThan damage.UnionArea 0 "movement damages non-zero area"
         }
 
         test "fallback classification covers missing, failed, environment-limited, empty, and full-frame cases" {
-            let empty = RetainedRender.damageRegionSet { FrameWidth = 100; FrameHeight = 80; FullFrameInvalidation = false; Cause = "damage/idle"; Boxes = [] }
-            let localized = RetainedRender.damageRegionSet { FrameWidth = 100; FrameHeight = 80; FullFrameInvalidation = false; Cause = "damage/localized-update"; Boxes = [ rect 10.0 10.0 20.0 20.0 ] }
-            let full = RetainedRender.damageRegionSet { FrameWidth = 100; FrameHeight = 80; FullFrameInvalidation = true; Cause = "damage/theme-global"; Boxes = [ rect 10.0 10.0 20.0 20.0 ] }
+            let empty = CompositorPolicy.damageRegionSet { FrameWidth = 100; FrameHeight = 80; FullFrameInvalidation = false; Cause = "damage/idle"; Boxes = [] }
+            let localized = CompositorPolicy.damageRegionSet { FrameWidth = 100; FrameHeight = 80; FullFrameInvalidation = false; Cause = "damage/localized-update"; Boxes = [ rect 10.0 10.0 20.0 20.0 ] }
+            let full = CompositorPolicy.damageRegionSet { FrameWidth = 100; FrameHeight = 80; FullFrameInvalidation = true; Cause = "damage/theme-global"; Boxes = [ rect 10.0 10.0 20.0 20.0 ] }
 
-            Expect.equal (RetainedRender.classifyDamageFallback false None localized) (Some MissingProof) "missing proof"
-            Expect.equal (RetainedRender.classifyDamageFallback false (Some "environment-limited readback") localized) (Some(EnvironmentLimited "environment-limited readback")) "environment"
-            Expect.equal (RetainedRender.classifyDamageFallback false (Some "stale proof") localized) (Some(FailedProof "stale proof")) "failed proof"
-            Expect.equal (RetainedRender.classifyDamageFallback true None empty) (Some EmptyDamage) "empty idle"
-            Expect.equal (RetainedRender.classifyDamageFallback true None full) (Some FullFrameInvalidation) "full frame"
+            Expect.equal (CompositorPolicy.classifyDamageFallback false None localized) (Some MissingProof) "missing proof"
+            Expect.equal (CompositorPolicy.classifyDamageFallback false (Some "environment-limited readback") localized) (Some(EnvironmentLimited "environment-limited readback")) "environment"
+            Expect.equal (CompositorPolicy.classifyDamageFallback false (Some "stale proof") localized) (Some(FailedProof "stale proof")) "failed proof"
+            Expect.equal (CompositorPolicy.classifyDamageFallback true None empty) (Some EmptyDamage) "empty idle"
+            Expect.equal (CompositorPolicy.classifyDamageFallback true None full) (Some FullFrameInvalidation) "full frame"
         }
     ]

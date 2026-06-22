@@ -44,19 +44,19 @@ let tests =
                   PromotionOverhead = 3
                   NetSavedWork = 5 }
 
-            let counters = RetainedRender.feature159CountersFromWork work
+            let counters = CompositorPolicy.feature159CountersFromWork work
             Expect.equal counters.PlacementOnlyReuseCount 2 "placement reuse"
             Expect.equal counters.ContentRerecordCount 1 "content re-record"
             Expect.equal counters.NetSavedWork 5 "net saved work"
         }
 
         test "Synthetic cross-profile reuse is rejected with zero accepted counters" {
-            let content = RetainedRender.feature159ContentIdentity "row-1" "run-1" 42UL None
-            let placement = RetainedRender.feature159PlacementIdentity "row-1" None 0.0 0.0 1.0 []
-            let decision = RetainedRender.feature159ClassifyReuse (Some content) content (Some placement) placement true false true false
+            let content = CompositorPolicy.feature159ContentIdentity "row-1" "run-1" 42UL None
+            let placement = CompositorPolicy.feature159PlacementIdentity "row-1" None 0.0 0.0 1.0 []
+            let decision = CompositorPolicy.feature159ClassifyReuse (Some content) content (Some placement) placement true false true false
 
-            Expect.equal (RetainedRender.feature159ReuseStatusToken decision.Status) "reuse-rejected" "rejected"
-            Expect.equal (decision.PrimaryReason |> Option.map RetainedRender.feature159ReasonToken) (Some "cross-profile-evidence") "cross-profile"
+            Expect.equal (CompositorPolicy.feature159ReuseStatusToken decision.Status) "reuse-rejected" "rejected"
+            Expect.equal (decision.PrimaryReason |> Option.map CompositorPolicy.feature159ReasonToken) (Some "cross-profile-evidence") "cross-profile"
             Expect.equal decision.CounterDelta.PlacementOnlyReuseCount 0 "no accepted reuse"
         }
     ]

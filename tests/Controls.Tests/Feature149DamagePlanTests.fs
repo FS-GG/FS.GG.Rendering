@@ -12,7 +12,7 @@ let tests =
     testList "Feature149 damage plan policy" [
         test "overlapping damage uses true union area and stays inside the frame" {
             let damage =
-                RetainedRender.damageRegionSet
+                CompositorPolicy.damageRegionSet
                     { FrameWidth = 100
                       FrameHeight = 80
                       FullFrameInvalidation = false
@@ -28,15 +28,15 @@ let tests =
         }
 
         test "resource and internal failures remain explicit fallback decisions" {
-            let localized = RetainedRender.damageRegionSet { FrameWidth = 100; FrameHeight = 80; FullFrameInvalidation = false; Cause = "damage/resource-failure"; Boxes = [ rect 10.0 10.0 20.0 20.0 ] }
+            let localized = CompositorPolicy.damageRegionSet { FrameWidth = 100; FrameHeight = 80; FullFrameInvalidation = false; Cause = "damage/resource-failure"; Boxes = [ rect 10.0 10.0 20.0 20.0 ] }
 
             Expect.equal
-                (RetainedRender.classifyDamageFallback false (Some "resource failure") localized)
+                (CompositorPolicy.classifyDamageFallback false (Some "resource failure") localized)
                 (Some(FailedProof "resource failure"))
                 "resource fallback"
 
             Expect.equal
-                (RetainedRender.classifyDamageFallback false (Some "internal error") localized)
+                (CompositorPolicy.classifyDamageFallback false (Some "internal error") localized)
                 (Some(FailedProof "internal error"))
                 "internal fallback"
         }

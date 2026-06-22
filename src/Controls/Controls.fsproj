@@ -85,6 +85,12 @@
          total for the `VirtualMaterialized`/`VirtualTotal` counts. Depends only on `Types`. -->
     <Compile Include="Collections.fsi" />
     <Compile Include="Collections.fs" />
+    <!-- Feature 190 (Pattern E, research R3): the step-INDEPENDENT compositor/reuse policy
+         cluster (feature-147 damage/snapshot + feature-159 identity/reuse/promotion +
+         WorkReductionRecord and their types), relocated out of RetainedRender.fs so it meets
+         the SC-001 size goal. No back-edge: references no retained type or stage. Compiled
+         BEFORE RetainedRender so its namespace types resolve for the step pipeline. -->
+    <Compile Include="Internal/CompositorPolicy.fs" />
     <!-- Feature 091 (E2): the retained render structure that wires the parked keyed
          reconciler (067) onto the live render path. `module internal` (no public-surface
          entry, mirrors Reconcile); reached by Controls.Tests via InternalsVisibleTo.

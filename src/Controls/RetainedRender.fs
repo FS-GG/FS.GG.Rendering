@@ -183,240 +183,6 @@ type internal RetainedRender<'msg> =
       // Feature 117 (Phase 8): the text-cache always-miss switch (FR-004); `true` on the live path.
       TextCacheEnabled: bool }
 
-type internal WorkReductionRecord =
-    { BaselineNodeCount: int
-      MetadataVisitedNodeCount: int
-      MetadataFallbackCount: int
-      RecomputedNodeCount: int
-      ChangedSubtreeBound: int
-      ShiftedNodeCount: int
-      // Feature 097 (R2, FR-006): nodes actually re-measured this frame (post-propagation dirty set).
-      RemeasuredNodeCount: int
-      // Feature 113 (Phase 5, FR-009/FR-010): memoizable-control reuse outcomes this frame.
-      MemoHits: int
-      MemoMisses: int
-      // Feature 114 (Phase 6, FR-013): materialized data-grid-row nodes + logical row total this frame.
-      VirtualMaterialized: int
-      VirtualTotal: int
-      // Feature 116 (Phase 7, FR-001/FR-004): the damage set — repainted-node count, distinct dirty-rect
-      // count, summed integer dirty area.
-      RepaintedNodeCount: int
-      DirtyRectCount: int
-      DirtyArea: int
-      // Feature 116 (Phase 7, FR-005/FR-009/FR-010): picture-cache hits, misses, and live entry count.
-      PictureCacheHits: int
-      PictureCacheMisses: int
-      PictureCacheEntryCount: int
-      // Feature 117 (Phase 8, FR-001/FR-005): per-frame text-measure cache hits + misses.
-      TextMeasureCacheHits: int
-      TextMeasureCacheMisses: int
-      // Feature 117 (Phase 8, FR-006): the pre-pinning layout dirty-set size (<= RemeasuredNodeCount).
-      LayoutInvalidatedNodeCount: int
-      // Feature 120 (US3, FR-014): backend replay-cache per-frame outcomes (deterministic model).
-      ReplayHits: int
-      ReplayMisses: int
-      ReplayRecords: int
-      ReplaySkippedNodes: int
-      ReplayCacheNativeBytes: int
-      AvoidedContentWork: int
-      PlacementOnlyReuseCount: int
-      ContentRecordCount: int
-      ContentRerecordCount: int
-      PromotionCount: int
-      DemotionCount: int
-      FallbackCount: int
-      PromotionOverhead: int
-      NetSavedWork: int }
-
-type internal CompositorDamageRegion =
-    { DamageX: int
-      DamageY: int
-      DamageWidth: int
-      DamageHeight: int }
-
-type internal CompositorDamageRegionSet =
-    { FrameWidth: int
-      FrameHeight: int
-      Regions: CompositorDamageRegion list
-      UnionArea: int
-      FullFrameInvalidation: bool
-      Cause: string }
-
-type internal CompositorFallbackReason =
-    | MissingProof
-    | FailedProof of reason: string
-    | EnvironmentLimited of reason: string
-    | FullFrameInvalidation
-    | EmptyDamage
-    | UnsafeDamage of reason: string
-
-type internal CompositorTier =
-    | NoCompositorTier
-    | RetainedTier
-    | ReplayTier
-    | SnapshotTier
-    | DemotedTier
-
-type internal PromotionDecisionKind =
-    | Promote
-    | Keep
-    | Demote
-    | Reject
-    | Observe
-
-type internal PromotionDecision =
-    { BoundaryId: string
-      Decision: PromotionDecisionKind
-      Reason: string
-      ObservedStabilityFrames: int
-      ExpectedSavedWork: int
-      MeasuredOverhead: int
-      Tier: CompositorTier }
-
-[<RequireQualifiedAccess>]
-type internal Feature159Reason =
-    | Instability
-    | LowCost
-    | OverheadExceedsSavedWork
-    | StaleContentIdentity
-    | StalePlacementIdentity
-    | AmbiguousIdentity
-    | CrossProfileEvidence
-    | MissingRetainedContent
-    | ResourceLimited
-    | UnsupportedHost
-    | ParityMismatch
-    | NonBeneficialCounters
-    | RunIdentityMismatch
-    | ScenarioDefinitionMismatch
-    | MissingPolicy
-    | EnvironmentLimited
-
-[<RequireQualifiedAccess>]
-type internal Feature159PromotionStatus =
-    | Promoted
-    | Observing
-    | Kept
-    | Demoted
-    | Rejected
-    | Bypassed
-    | NonBeneficial
-    | FallbackOnly
-    | PromotionEnvironmentLimited
-
-[<RequireQualifiedAccess>]
-type internal Feature159ReuseStatus =
-    | ContentReusedPlacementUpdated
-    | ContentRecorded
-    | ContentRerecorded
-    | FallbackFullRedraw
-    | ReuseRejected
-    | ReuseEnvironmentLimited
-
-[<RequireQualifiedAccess>]
-type internal Feature159RetainedLayerState =
-    | Recorded
-    | Reused
-    | Refreshed
-    | Bypassed
-    | Evicted
-    | Demoted
-    | Invalid
-    | Unavailable
-
-type internal Feature159ContentIdentity =
-    { BoundaryId: string
-      ContentId: uint64
-      LocalContentFingerprint: uint64
-      AlgorithmVersion: string
-      RunId: string
-      ArtifactPath: string option }
-
-type internal Feature159PlacementIdentity =
-    { BoundaryId: string
-      PlacementId: uint64
-      Box: FS.GG.UI.Scene.Rect option
-      ScrollOffsetX: float
-      ScrollOffsetY: float
-      Scale: float
-      Coverage: FS.GG.UI.Scene.Rect list
-      AlgorithmVersion: string }
-
-type internal Feature159ReuseCounters =
-    { AvoidedContentWork: int
-      PlacementOnlyReuseCount: int
-      ContentRecordCount: int
-      ContentRerecordCount: int
-      PromotionCount: int
-      DemotionCount: int
-      FallbackCount: int
-      ReplayHits: int
-      ReplayMisses: int
-      ReplayRecords: int
-      PromotionOverhead: int
-      NetSavedWork: int }
-
-type internal Feature159ReuseDecision =
-    { BoundaryId: string
-      Status: Feature159ReuseStatus
-      PrimaryReason: Feature159Reason option
-      PriorContentIdentity: Feature159ContentIdentity option
-      CurrentContentIdentity: Feature159ContentIdentity option
-      PriorPlacementIdentity: Feature159PlacementIdentity option
-      CurrentPlacementIdentity: Feature159PlacementIdentity option
-      CounterDelta: Feature159ReuseCounters
-      ArtifactPaths: string list }
-
-type internal Feature159PromotionCandidate =
-    { BoundaryId: string
-      ScenarioId: string
-      HostProfileId: string
-      ObservationWindow: int
-      ObservedStabilityFrames: int
-      ExpectedSavedWork: int
-      MeasuredOverhead: int
-      ReductionPercent: float
-      ContentStable: bool
-      ParityPassed: bool
-      ResourceLimited: bool
-      CurrentTier: CompositorTier }
-
-type internal Feature159ParityResult =
-    { ScenarioId: string
-      AttemptId: string
-      Verdict: string
-      OutsideDamageDriftCount: int
-      ArtifactPaths: string list
-      Diagnostics: string list }
-
-type internal Feature159PromotionDecision =
-    { BoundaryId: string
-      Status: Feature159PromotionStatus
-      PrimaryReason: Feature159Reason option
-      ObservedStabilityFrames: int
-      ExpectedSavedWork: int
-      MeasuredOverhead: int
-      ReductionPercent: float
-      TargetTier: CompositorTier
-      Parity: Feature159ParityResult option
-      ArtifactPaths: string list }
-
-type internal Feature159RetainedLayer =
-    { LayerId: string
-      BoundaryId: string
-      ContentIdentity: Feature159ContentIdentity
-      LastPlacementIdentity: Feature159PlacementIdentity
-      HostProfileId: string
-      RunId: string
-      State: Feature159RetainedLayerState
-      ResourceEstimate: int
-      Diagnostics: string list }
-
-type internal SnapshotResourceVerdict =
-    | SnapshotReady
-    | SnapshotDemoted of reason: string
-    | SnapshotLimited of reason: string
-
 type internal RetainedRenderStep<'msg> =
     { Retained: RetainedRender<'msg>
       Render: ControlRenderResult<'msg>
@@ -676,396 +442,6 @@ module internal RetainedRender =
         { Box = n.Fragment.Box
           Fingerprint = n.Fragment.Assembly.Fingerprint }
 
-    // Feature 120 (US4, FR-015): the integer area of the UNION of a set of damage rectangles (no longer
-    // the sum), clamped to the frame area. Coordinate-compression over the distinct boxes: each elementary
-    // cell of the x/y grid is counted once iff any box covers it — so overlapping damage is not
-    // double-counted and the result never exceeds the frame. `n` is the small dirty-rect count; integer
-    // control geometry → deterministic.
-    let unionArea (boxes: FS.GG.UI.Scene.Rect list) (frameArea: int) : int =
-        match boxes with
-        | [] -> 0
-        | boxes ->
-            let xs = boxes |> List.collect (fun b -> [ b.X; b.X + b.Width ]) |> List.distinct |> List.sort
-            let ys = boxes |> List.collect (fun b -> [ b.Y; b.Y + b.Height ]) |> List.distinct |> List.sort
-            let mutable area = 0.0 // mutable: hot path / union accumulator
-
-            for i in 0 .. xs.Length - 2 do
-                let x0, x1 = xs.[i], xs.[i + 1]
-
-                for j in 0 .. ys.Length - 2 do
-                    let y0, y1 = ys.[j], ys.[j + 1]
-
-                    let covered =
-                        boxes
-                        |> List.exists (fun b -> b.X <= x0 && x1 <= b.X + b.Width && b.Y <= y0 && y1 <= b.Y + b.Height)
-
-                    if covered then
-                        area <- area + (x1 - x0) * (y1 - y0)
-
-            min (int area) frameArea
-
-    let private rectOfDamage (damage: CompositorDamageRegion) : Rect =
-        { X = float damage.DamageX
-          Y = float damage.DamageY
-          Width = float damage.DamageWidth
-          Height = float damage.DamageHeight }
-
-    let private damageOfRect frameWidth frameHeight (rect: Rect) : CompositorDamageRegion option =
-        // Feature 178 (US3): shared Numeric.clamp (same (lo, hi, value) order, identical semantics).
-        let x0 = Numeric.clamp 0 frameWidth (int (System.Math.Floor rect.X))
-        let y0 = Numeric.clamp 0 frameHeight (int (System.Math.Floor rect.Y))
-        let x1 = Numeric.clamp 0 frameWidth (int (System.Math.Ceiling(rect.X + rect.Width)))
-        let y1 = Numeric.clamp 0 frameHeight (int (System.Math.Ceiling(rect.Y + rect.Height)))
-        let width = x1 - x0
-        let height = y1 - y0
-
-        if width <= 0 || height <= 0 then
-            None
-        else
-            Some
-                { DamageX = x0
-                  DamageY = y0
-                  DamageWidth = width
-                  DamageHeight = height }
-
-    type DamageSetInputs =
-        { FrameWidth: int
-          FrameHeight: int
-          FullFrameInvalidation: bool
-          Cause: string
-          Boxes: FS.GG.UI.Scene.Rect list }
-
-    let damageRegionSet (inputs: DamageSetInputs) =
-        let frameWidth = inputs.FrameWidth
-        let frameHeight = inputs.FrameHeight
-        let fullFrameInvalidation = inputs.FullFrameInvalidation
-        let cause = inputs.Cause
-        let boxes = inputs.Boxes
-        let frameArea = max 0 frameWidth * max 0 frameHeight
-
-        let regions =
-            if fullFrameInvalidation then
-                if frameArea = 0 then
-                    []
-                else
-                    [ { DamageX = 0
-                        DamageY = 0
-                        DamageWidth = max 0 frameWidth
-                        DamageHeight = max 0 frameHeight } ]
-            else
-                boxes
-                |> List.choose (damageOfRect frameWidth frameHeight)
-                |> List.distinct
-
-        { FrameWidth = frameWidth
-          FrameHeight = frameHeight
-          Regions = regions
-          UnionArea = unionArea (regions |> List.map rectOfDamage) frameArea
-          FullFrameInvalidation = fullFrameInvalidation
-          Cause = cause }
-
-    let placementDamage frameWidth frameHeight oldBox newBox =
-        damageRegionSet
-            { FrameWidth = frameWidth
-              FrameHeight = frameHeight
-              FullFrameInvalidation = false
-              Cause = "placement-only movement"
-              Boxes = [ oldBox; newBox ] }
-
-    let classifyDamageFallback proofReady (proofReason: string option) (damage: CompositorDamageRegionSet) =
-        match proofReady, proofReason, damage.FullFrameInvalidation, damage.Regions with
-        | false, Some reason, _, _ when reason.Contains("environment", System.StringComparison.OrdinalIgnoreCase) -> Some(CompositorFallbackReason.EnvironmentLimited reason)
-        | false, Some reason, _, _ -> Some(FailedProof reason)
-        | false, None, _, _ -> Some MissingProof
-        | true, _, true, _ -> Some FullFrameInvalidation
-        | true, _, false, [] -> Some EmptyDamage
-        | true, _, false, _ when damage.UnionArea > damage.FrameWidth * damage.FrameHeight -> Some(UnsafeDamage "damage exceeds frame area")
-        | _ -> None
-
-    type PromotionInputs =
-        { BoundaryId: string
-          ObservedStabilityFrames: int
-          ObservationWindow: int
-          ExpectedSavedWork: int
-          MeasuredOverhead: int
-          ParityPassed: bool }
-
-    let promotionDecision (inputs: PromotionInputs) =
-        let boundaryId = inputs.BoundaryId
-        let observedStabilityFrames = inputs.ObservedStabilityFrames
-        let observationWindow = inputs.ObservationWindow
-        let expectedSavedWork = inputs.ExpectedSavedWork
-        let measuredOverhead = inputs.MeasuredOverhead
-        let parityPassed = inputs.ParityPassed
-        if not parityPassed then
-            { BoundaryId = boundaryId
-              Decision = Reject
-              Reason = "parity failed"
-              ObservedStabilityFrames = observedStabilityFrames
-              ExpectedSavedWork = expectedSavedWork
-              MeasuredOverhead = measuredOverhead
-              Tier = NoCompositorTier }
-        elif observedStabilityFrames < observationWindow then
-            { BoundaryId = boundaryId
-              Decision = Observe
-              Reason = "stability window incomplete"
-              ObservedStabilityFrames = observedStabilityFrames
-              ExpectedSavedWork = expectedSavedWork
-              MeasuredOverhead = measuredOverhead
-              Tier = NoCompositorTier }
-        elif expectedSavedWork <= 0 then
-            { BoundaryId = boundaryId
-              Decision = Reject
-              Reason = "no expected saved work"
-              ObservedStabilityFrames = observedStabilityFrames
-              ExpectedSavedWork = expectedSavedWork
-              MeasuredOverhead = measuredOverhead
-              Tier = NoCompositorTier }
-        elif measuredOverhead >= expectedSavedWork then
-            { BoundaryId = boundaryId
-              Decision = Demote
-              Reason = "bookkeeping overhead exceeds saved work"
-              ObservedStabilityFrames = observedStabilityFrames
-              ExpectedSavedWork = expectedSavedWork
-              MeasuredOverhead = measuredOverhead
-              Tier = DemotedTier }
-        else
-            { BoundaryId = boundaryId
-              Decision = Promote
-              Reason = "stable and beneficial"
-              ObservedStabilityFrames = observedStabilityFrames
-              ExpectedSavedWork = expectedSavedWork
-              MeasuredOverhead = measuredOverhead
-              Tier = ReplayTier }
-
-    let feature159ReasonToken reason =
-        match reason with
-        | Feature159Reason.Instability -> "instability"
-        | Feature159Reason.LowCost -> "low-cost"
-        | Feature159Reason.OverheadExceedsSavedWork -> "overhead-exceeds-saved-work"
-        | Feature159Reason.StaleContentIdentity -> "stale-content-identity"
-        | Feature159Reason.StalePlacementIdentity -> "stale-placement-identity"
-        | Feature159Reason.AmbiguousIdentity -> "ambiguous-identity"
-        | Feature159Reason.CrossProfileEvidence -> "cross-profile-evidence"
-        | Feature159Reason.MissingRetainedContent -> "missing-retained-content"
-        | Feature159Reason.ResourceLimited -> "resource-limited"
-        | Feature159Reason.UnsupportedHost -> "unsupported-host"
-        | Feature159Reason.ParityMismatch -> "parity-mismatch"
-        | Feature159Reason.NonBeneficialCounters -> "non-beneficial-counters"
-        | Feature159Reason.RunIdentityMismatch -> "run-identity-mismatch"
-        | Feature159Reason.ScenarioDefinitionMismatch -> "scenario-definition-mismatch"
-        | Feature159Reason.MissingPolicy -> "missing-policy"
-        | Feature159Reason.EnvironmentLimited -> "environment-limited"
-
-    let feature159PromotionStatusToken status =
-        match status with
-        | Feature159PromotionStatus.Promoted -> "promoted"
-        | Feature159PromotionStatus.Observing -> "observing"
-        | Feature159PromotionStatus.Kept -> "kept"
-        | Feature159PromotionStatus.Demoted -> "demoted"
-        | Feature159PromotionStatus.Rejected -> "rejected"
-        | Feature159PromotionStatus.Bypassed -> "bypassed"
-        | Feature159PromotionStatus.NonBeneficial -> "non-beneficial"
-        | Feature159PromotionStatus.FallbackOnly -> "fallback-only"
-        | Feature159PromotionStatus.PromotionEnvironmentLimited -> "environment-limited"
-
-    let feature159ReuseStatusToken status =
-        match status with
-        | Feature159ReuseStatus.ContentReusedPlacementUpdated -> "content-reused-placement-updated"
-        | Feature159ReuseStatus.ContentRecorded -> "content-recorded"
-        | Feature159ReuseStatus.ContentRerecorded -> "content-re-recorded"
-        | Feature159ReuseStatus.FallbackFullRedraw -> "fallback-full-redraw"
-        | Feature159ReuseStatus.ReuseRejected -> "reuse-rejected"
-        | Feature159ReuseStatus.ReuseEnvironmentLimited -> "environment-limited"
-
-    let private feature159Hash (parts: string list) =
-        // Feature 178 (US2): constants + core step from the shared Hashing primitive. Keeps the
-        // per-char `int ch` widening and `'|'` separator; Hashing.step h x = (h ^^^ x) * prime is
-        // exactly the prior xor-then-multiply pair, so the fold is byte-identical.
-        let mutable hash = Hashing.offsetBasis // mutable: compact deterministic FNV-1a fold.
-        for part in parts do
-            for ch in part do
-                hash <- Hashing.step hash (uint64 (int ch))
-            hash <- Hashing.step hash (uint64 (int '|'))
-        hash
-
-    let private rectToken (rect: Rect option) =
-        match rect with
-        | None -> "none"
-        | Some r -> sprintf "%.3f,%.3f,%.3f,%.3f" r.X r.Y r.Width r.Height
-
-    let feature159ContentIdentity boundaryId runId localContentFingerprint artifactPath =
-        { BoundaryId = boundaryId
-          ContentId = feature159Hash [ boundaryId; runId; string localContentFingerprint; "content-v1" ]
-          LocalContentFingerprint = localContentFingerprint
-          AlgorithmVersion = "content-identity-v1"
-          RunId = runId
-          ArtifactPath = artifactPath }
-
-    let feature159PlacementIdentity boundaryId box scrollOffsetX scrollOffsetY scale coverage =
-        let coverageToken =
-            coverage
-            |> List.map (Some >> rectToken)
-            |> String.concat ";"
-
-        { BoundaryId = boundaryId
-          PlacementId =
-            feature159Hash
-                [ boundaryId
-                  rectToken box
-                  sprintf "%.3f" scrollOffsetX
-                  sprintf "%.3f" scrollOffsetY
-                  sprintf "%.3f" scale
-                  coverageToken
-                  "placement-v1" ]
-          Box = box
-          ScrollOffsetX = scrollOffsetX
-          ScrollOffsetY = scrollOffsetY
-          Scale = scale
-          Coverage = coverage
-          AlgorithmVersion = "placement-identity-v1" }
-
-    let private zeroFeature159Counters =
-        { AvoidedContentWork = 0
-          PlacementOnlyReuseCount = 0
-          ContentRecordCount = 0
-          ContentRerecordCount = 0
-          PromotionCount = 0
-          DemotionCount = 0
-          FallbackCount = 0
-          ReplayHits = 0
-          ReplayMisses = 0
-          ReplayRecords = 0
-          PromotionOverhead = 0
-          NetSavedWork = 0 }
-
-    let private feature159ReuseDecision
-        status
-        reason
-        (priorContent: Feature159ContentIdentity option)
-        (currentContent: Feature159ContentIdentity)
-        (priorPlacement: Feature159PlacementIdentity option)
-        (currentPlacement: Feature159PlacementIdentity)
-        counters =
-        { BoundaryId = currentContent.BoundaryId
-          Status = status
-          PrimaryReason = reason
-          PriorContentIdentity = priorContent
-          CurrentContentIdentity = Some currentContent
-          PriorPlacementIdentity = priorPlacement
-          CurrentPlacementIdentity = Some currentPlacement
-          CounterDelta = counters
-          ArtifactPaths = [] }
-
-    let feature159ClassifyReuse
-        (priorContent: Feature159ContentIdentity option)
-        (currentContent: Feature159ContentIdentity)
-        (priorPlacement: Feature159PlacementIdentity option)
-        (currentPlacement: Feature159PlacementIdentity)
-        retainedResident
-        sameProfile
-        parityPassed
-        resourceLimited =
-        let recordCounters =
-            { zeroFeature159Counters with
-                ContentRecordCount = 1
-                ReplayMisses = 1
-                ReplayRecords = 1
-                NetSavedWork = -1 }
-
-        let rerecordCounters =
-            { zeroFeature159Counters with
-                ContentRerecordCount = 1
-                ReplayMisses = 1
-                ReplayRecords = 1
-                NetSavedWork = -1 }
-
-        if resourceLimited then
-            feature159ReuseDecision Feature159ReuseStatus.FallbackFullRedraw (Some Feature159Reason.ResourceLimited) priorContent currentContent priorPlacement currentPlacement { zeroFeature159Counters with FallbackCount = 1 }
-        elif not sameProfile then
-            feature159ReuseDecision Feature159ReuseStatus.ReuseRejected (Some Feature159Reason.CrossProfileEvidence) priorContent currentContent priorPlacement currentPlacement zeroFeature159Counters
-        elif not parityPassed then
-            feature159ReuseDecision Feature159ReuseStatus.ReuseRejected (Some Feature159Reason.ParityMismatch) priorContent currentContent priorPlacement currentPlacement zeroFeature159Counters
-        elif not retainedResident then
-            feature159ReuseDecision Feature159ReuseStatus.FallbackFullRedraw (Some Feature159Reason.MissingRetainedContent) priorContent currentContent priorPlacement currentPlacement { zeroFeature159Counters with FallbackCount = 1 }
-        else
-            match priorContent, priorPlacement with
-            | None, _ ->
-                feature159ReuseDecision Feature159ReuseStatus.ContentRecorded None priorContent currentContent priorPlacement currentPlacement recordCounters
-            | Some prior, _ when prior.ContentId <> currentContent.ContentId ->
-                feature159ReuseDecision Feature159ReuseStatus.ContentRerecorded None priorContent currentContent priorPlacement currentPlacement rerecordCounters
-            | Some _, None ->
-                feature159ReuseDecision Feature159ReuseStatus.ContentRecorded (Some Feature159Reason.StalePlacementIdentity) priorContent currentContent priorPlacement currentPlacement recordCounters
-            | Some _, Some placement when placement.PlacementId <> currentPlacement.PlacementId ->
-                let counters =
-                    { zeroFeature159Counters with
-                        AvoidedContentWork = 1
-                        PlacementOnlyReuseCount = 1
-                        ReplayHits = 1
-                        NetSavedWork = 1 }
-
-                feature159ReuseDecision Feature159ReuseStatus.ContentReusedPlacementUpdated None priorContent currentContent priorPlacement currentPlacement counters
-            | Some _, Some _ ->
-                let counters =
-                    { zeroFeature159Counters with
-                        AvoidedContentWork = 1
-                        ReplayHits = 1
-                        NetSavedWork = 1 }
-
-                feature159ReuseDecision Feature159ReuseStatus.ContentReusedPlacementUpdated None priorContent currentContent priorPlacement currentPlacement counters
-
-    let feature159EvaluatePromotion (candidate: Feature159PromotionCandidate) parity =
-        let status, reason =
-            if candidate.ResourceLimited then
-                Feature159PromotionStatus.Bypassed, Some Feature159Reason.ResourceLimited
-            elif not candidate.ParityPassed then
-                Feature159PromotionStatus.Rejected, Some Feature159Reason.ParityMismatch
-            elif not candidate.ContentStable then
-                Feature159PromotionStatus.Demoted, Some Feature159Reason.Instability
-            elif candidate.ObservedStabilityFrames < candidate.ObservationWindow then
-                Feature159PromotionStatus.Observing, Some Feature159Reason.Instability
-            elif candidate.ExpectedSavedWork <= candidate.MeasuredOverhead then
-                Feature159PromotionStatus.NonBeneficial, Some Feature159Reason.OverheadExceedsSavedWork
-            elif candidate.ReductionPercent < 30.0 then
-                Feature159PromotionStatus.Kept, Some Feature159Reason.LowCost
-            else
-                Feature159PromotionStatus.Promoted, None
-
-        { BoundaryId = candidate.BoundaryId
-          Status = status
-          PrimaryReason = reason
-          ObservedStabilityFrames = candidate.ObservedStabilityFrames
-          ExpectedSavedWork = candidate.ExpectedSavedWork
-          MeasuredOverhead = candidate.MeasuredOverhead
-          ReductionPercent = candidate.ReductionPercent
-          TargetTier = ReplayTier
-          Parity = parity
-          ArtifactPaths = [] }
-
-    let feature159CountersFromWork (work: WorkReductionRecord) =
-        { AvoidedContentWork = work.AvoidedContentWork
-          PlacementOnlyReuseCount = work.PlacementOnlyReuseCount
-          ContentRecordCount = work.ContentRecordCount
-          ContentRerecordCount = work.ContentRerecordCount
-          PromotionCount = work.PromotionCount
-          DemotionCount = work.DemotionCount
-          FallbackCount = work.FallbackCount
-          ReplayHits = work.ReplayHits
-          ReplayMisses = work.ReplayMisses
-          ReplayRecords = work.ReplayRecords
-          PromotionOverhead = work.PromotionOverhead
-          NetSavedWork = work.NetSavedWork }
-
-    let snapshotVerdict supported (byteEstimate: int64) (byteBudget: int64) (benefitPercent: float) (thresholdPercent: float) =
-        if not supported then
-            SnapshotLimited "snapshot host unsupported"
-        elif byteEstimate > byteBudget then
-            SnapshotDemoted "snapshot budget exceeded"
-        elif benefitPercent < thresholdPercent then
-            SnapshotDemoted "snapshot benefit below threshold"
-        else
-            SnapshotReady
-
     /// Feature 116 (FR-011): scan a node's own painted scene for an effect that forces OFFSCREEN
     /// composition (a separate layer + composite). In THIS renderer that is: a drop-shadow / image
     /// filter (`DropShadow`, lowered to `SKImageFilter.CreateDropShadow`); a path clip (`PathClip` — a
@@ -1288,7 +664,7 @@ module internal RetainedRender =
     /// former loose mutables (Edge Cases / research Decision 6) — byte-identity is the gate. The
     /// `RepaintedBoxes` damage accumulator is held by reference (mutated in place, never reassigned).
     /// Internal by absence from `RetainedRender.fsi` (the whole module is internal).
-    type private FrameState =
+    type FrameState =
         { mutable Tc: TextMeasureCache // mutable: hot path
           mutable TextHits: int // mutable: hot path
           mutable TextMisses: int // mutable: hot path
@@ -1309,6 +685,27 @@ module internal RetainedRender =
           mutable ReplaySkippedNodes: int // mutable: hot path
           mutable ReplayNativeBytes: int // mutable: hot path
           RepaintedBoxes: ResizeArray<Rect> }
+
+    /// Feature 190 (Pattern B): the immutable per-frame inputs the four `step` stages share, lifted
+    /// out of the former `step` closure environment (research R2). Generic over 'msg exactly as the
+    /// retained types are. `ThemeChanged` (`prev.Theme <> theme`) is computed once by the orchestrator
+    /// and read by `paintStage` (it gates fragment reuse) — a pure boolean with no side effect, so its
+    /// placement does not affect the byte-identical accumulation order (FR-002).
+    type FrameContext<'msg> =
+        { Theme: Theme
+          Size: FS.GG.UI.Scene.Size
+          Prev: RetainedRender<'msg>
+          ThemeChanged: bool }
+
+    /// Feature 190 (Pattern B): the explicit value `layoutStage` produces and threads to `paintStage`
+    /// (`BoundsById`) and `assemblyStage` (`Root`/`LayoutResult`/`Remeasured`). Names preserved from the
+    /// former `step` locals; non-generic (the layout types are not 'msg-parameterized).
+    type LayoutStageResult =
+        { Root: FS.GG.UI.Layout.LayoutNode
+          BoundsById: Map<string, FS.GG.UI.Layout.LayoutBounds>
+          LayoutResult: FS.GG.UI.Layout.LayoutResult
+          Remeasured: int
+          ThemeChanged: bool }
 
     let init (theme: Theme) (size: FS.GG.UI.Scene.Size) (control: Control<'msg>) : RetainedInit<'msg> =
         let layoutRoot, boundsById, layoutResult =
@@ -1497,112 +894,64 @@ module internal RetainedRender =
         walk "0" prev patch next
         Set.ofSeq acc
 
-    let step
-        (theme: Theme)
-        (size: FS.GG.UI.Scene.Size)
-        (prev: RetainedRender<'msg>)
-        (next: Control<'msg>)
-        : RetainedRenderStep<'msg> =
+    /// Feature 190 — Stage 1 (diff). Total; never throws; duplicate keys surface a `KeyCollision`
+    /// diagnostic in the result (FR-010). Pure over (prev tree, next). Produces the reconcile result,
+    /// the layout dirty set, and its pre-propagation size. Preserves `retained-step-diff` +
+    /// `retained-step-layout-dirty-set`.
+    let internal diffStage (prev: RetainedRender<'msg>) (next: Control<'msg>) : Reconcile.ReconcileResult<'msg> * Set<string> * int =
         // (1) the diff — total; never throws; duplicate keys -> KeyCollision diagnostic (C1/C4).
         let result =
             RetainedRenderTrace.time "retained-step-diff" [] (fun () -> Reconcile.diff prev.Root.Control next)
 
-        // (2) layout of `next` via the INCREMENTAL evaluator (R2, FR-005): re-measure only the
-        //     patch-derived dirty set (conservatively propagated to its flex line / fixed-size
-        //     ancestor) and reuse the previous frame's cached bounds for everything else. The result
-        //     `Bounds` are byte-identical to a full `evaluateLayout` (INV-1), so the reuse-driven paint
-        //     walk below (`box = pr.Fragment.Box`) and the surfaced Bounds are unchanged.
+        // (2) the layout-dirty set in the `LayoutNodeId` domain `evaluateIncremental` consumes.
         let dirty =
             RetainedRenderTrace.time "retained-step-layout-dirty-set" [] (fun () -> layoutDirtySet prev.Root.Control result.Patch next)
+
         // FR-006: the size of the layout dirty set fed into incremental layout this frame (the
-        // patch-derived self-dirty nodes BEFORE fixed-size-ancestor propagation). Distinct from the
-        // post-pinning `remeasured` below; `invalidated <= remeasured` because propagation expands each
-        // dirty node to its first fixed-size ancestor's whole subtree (a superset). `0` on an idle /
-        // style-only / visual-state-only frame (no layout-affecting attr changed → empty dirty set).
+        // patch-derived self-dirty nodes BEFORE fixed-size-ancestor propagation). `0` on an idle frame.
         let invalidated = Set.count dirty
+        result, dirty, invalidated
 
-        // Feature 117/138: install the per-frame text-measure cache over THIS frame's layout + paint
-        // measurement. The cache still reuses same-frame inserts, but metric hits mean prior-frame reuse:
-        // only keys resident before this frame began count as hits. A cold repeated text therefore records
-        // the first insert as a miss and the same-frame reuse as neither a hit nor another miss.
-        // Feature 186 (US2): the per-frame accumulator state, seeded from `prev` (text/memo/picture
-        // caches carried forward) with all work counters at zero. Replaces the former ~19 loose
-        // `let mutable` bindings; every read/write below threads through `st`, in the SAME order, so
-        // the float/integer accumulation and allocation profile are byte-identical (FR-002).
-        let st =
-            { Tc = prev.TextCache
-              TextHits = 0
-              TextMisses = 0
-              NextId = prev.NextId
-              Recomputed = 0
-              ChangedBound = 0
-              Shifted = 0
-              Memo = prev.Memo
-              MemoHits = 0
-              MemoMisses = 0
-              MetadataVisited = 0
-              VirtualMaterialized = 0
-              VirtualTotal = 0
-              PcEntries = prev.PictureCache.Entries
-              PcClock = prev.PictureCache.Clock
-              PictureHits = 0
-              PictureMisses = 0
-              ReplaySkippedNodes = 0
-              ReplayNativeBytes = 0
-              RepaintedBoxes = ResizeArray<Rect>() }
+    /// Feature 190 — Stage 2 (layout). Runs the INCREMENTAL evaluator over `dirty` against the prev
+    /// frame's `LayoutResult`, reporting the re-measured count and the theme-change flag. Measures
+    /// through the text-measure hook the orchestrator installs (research R4), which mutates the threaded
+    /// `st`; this stage holds no other mutable state. Preserves `retained-step-layout-incremental`.
+    let internal layoutStage (ctx: FrameContext<'msg>) (st: FrameState) (next: Control<'msg>) (dirty: Set<string>) : LayoutStageResult =
+        let prev = ctx.Prev
+        let size = ctx.Size
 
-        let frameStartTextKeys = prev.TextCache.Entries |> Map.toSeq |> Seq.map fst |> Set.ofSeq
-
-        let measureCached (text: string) (font: FS.GG.UI.Scene.FontSpec) : FS.GG.UI.Scene.TextMetrics =
-            let key: TextMeasureKey =
-                { Text = text
-                  Family = font.Family
-                  Size = font.Size
-                  Weight = font.Weight
-                  MeasurementVersionBucket = FS.GG.UI.Scene.Scene.textMeasurementVersionBucket () }
-
-            let metrics, tc', wasHit = measureTextCached st.Tc prev.TextCacheEnabled text font
-            st.Tc <- tc'
-            if not prev.TextCacheEnabled then
-                st.TextMisses <- st.TextMisses + 1
-            elif wasHit then
-                if Set.contains key frameStartTextKeys then
-                    st.TextHits <- st.TextHits + 1
-            else
-                st.TextMisses <- st.TextMisses + 1
-            metrics
-
-        // Active for the WHOLE measurement window of this frame — the incremental layout pass AND the
-        // reuse-driven paint walk below (`build` → `paintNode`/geom). Cleared right after `build` (nothing
-        // past it measures text). `step` is total (the diff/layout/paint paths never throw), so the
-        // explicit clear always runs; `ThreadStatic` isolates concurrent test `step`s.
-        ControlInternals.setMeasureTextHook (Some measureCached)
-
+        // layout of `next` via the INCREMENTAL evaluator (R2, FR-005): re-measure only the dirty set
+        // (conservatively propagated inside `evaluateIncremental`) and reuse cached bounds otherwise.
+        // The `Bounds` are byte-identical to a full `evaluateLayout` (INV-1).
         let root, boundsById, layoutResult =
             RetainedRenderTrace.time
                 "retained-step-layout-incremental"
-                [ "dirtyCount", string invalidated ]
+                [ "dirtyCount", string (Set.count dirty) ]
                 (fun () -> ControlInternals.evaluateLayoutIncremental size next prev.Layout dirty)
         // FR-006: nodes actually re-measured this frame = the honest post-propagation set.
         let remeasured = layoutResult.Invalidated |> List.length
 
-        // FR-008: a fragment caches paint produced under a specific theme. When the per-loop theme
-        // changes between frames, NO cached fragment may be reused (it would show stale-theme
-        // paint); every node repaints under the new theme. Theme is uniform per frame, so one
-        // top-level comparison suffices — no per-fragment theme storage.
-        let themeChanged = prev.Theme <> theme
+        { Root = root
+          BoundsById = boundsById
+          LayoutResult = layoutResult
+          Remeasured = remeasured
+          ThemeChanged = ctx.ThemeChanged }
 
-        // Mutation confined to this interpreter-edge step (constitution III): a monotonic id
-        // counter and the measured work counters — all now carried on `st` (Feature 186 US2). The
-        // consumer `view`/`update` stay pure. `st.NextId` seeds from `prev.NextId`; `st.Recomputed`/
-        // `st.ChangedBound`/`st.Shifted` start at 0. FR-007: nodes recomputed ONLY because an upstream
-        // change relaid a structurally-unchanged subtree out (a shifted `Keep`) or a theme change
-        // forced a repaint — counted distinctly so `RecomputedNodeCount = ChangedSubtreeBound +
-        // ShiftedNodeCount`. `st.Memo` is the memo cache carried from `prev`, advanced as memoizable
-        // nodes are (re)painted, plus the frame's hit/miss tally (FR-009/FR-010). `st.RepaintedBoxes`
-        // (Feature 116) is the per-frame DAMAGE set — each repainted node (every `paintFresh`)
-        // contributes its evaluated box (FR-001/FR-002). `st.MetadataVisited` (Feature 174) counts
-        // retained render-result metadata visits (reused `Keep` subtrees add none).
+    /// Feature 190 — Stage 3 (paint). The reuse-driven reconciliation walk (Keep/Replace/Update + child
+    /// ops) with `build`/`carry`/`buildFresh` as local `let rec` and `mint`/`metadataFor`/`paintOwn`/
+    /// `paintFresh` taking the frame context explicitly. Routes memoizable sites through the memo seam
+    /// and contributes each repainted node's box to the damage set. Mutates only the threaded `st`
+    /// (FR-002). Preserves `retained-build-paint-own` + `retained-step-build`.
+    let internal paintStage
+        (ctx: FrameContext<'msg>)
+        (st: FrameState)
+        (patch: Reconcile.NodePatch<'msg>)
+        (boundsById: Map<string, FS.GG.UI.Layout.LayoutBounds>)
+        (next: Control<'msg>)
+        : RetainedNode<'msg> =
+        let theme = ctx.Theme
+        let prev = ctx.Prev
+        let themeChanged = ctx.ThemeChanged
 
         let mint () =
             let id = RetainedId st.NextId
@@ -1800,13 +1149,29 @@ module internal RetainedRender =
                   Metadata = metadataFor path nc box children
                   Children = children }
 
-        let newRoot =
-            RetainedRenderTrace.time "retained-step-build" [] (fun () -> build "0" prev.Root result.Patch next)
+        RetainedRenderTrace.time "retained-step-build" [] (fun () -> build "0" prev.Root patch next)
 
-        // Feature 117 (Phase 8): the measurement window is closed — nothing past the paint walk measures
-        // text (the virtualization tally and picture-cache pass below read counts/digests only). Clear the
-        // hook so any later `Control.renderTree` on this thread measures uncached again.
-        ControlInternals.setMeasureTextHook None
+    /// Feature 190 — Stage 4 (assembly). The read-only post-build walks (virtualization tally, damage
+    /// reduce, picture/replay cache, offscreen diagnostics, UI-state/clock collect, scene assembly,
+    /// render result) and the `WorkReductionRecord` + `RetainedRenderStep` construction. Mutates only
+    /// `st` (the cache/replay tallies). Preserves the nine `retained-step-*` post-build spans.
+    let internal assemblyStage
+        (ctx: FrameContext<'msg>)
+        (st: FrameState)
+        (layout: LayoutStageResult)
+        (diff: Reconcile.ReconcileResult<'msg>)
+        (dirtyInvalidated: int)
+        (newRoot: RetainedNode<'msg>)
+        (next: Control<'msg>)
+        : RetainedRenderStep<'msg> =
+        let theme = ctx.Theme
+        let size = ctx.Size
+        let prev = ctx.Prev
+        let result = diff
+        let root = layout.Root
+        let layoutResult = layout.LayoutResult
+        let remeasured = layout.Remeasured
+        let invalidated = dirtyInvalidated
 
         // Feature 114 (Phase 6, FR-013/FR-014): tally the frame's virtualization counts by a read-only
         // walk of the lowered `next` tree (no render effect). `VirtualMaterialized` counts materialized
@@ -1848,7 +1213,7 @@ module internal RetainedRender =
                     // exceeds the frame area. Computed by coordinate-compression over the distinct boxes (n is the
                     // small dirty-rect count, integer control geometry → deterministic), then clamped to the frame.
                     let frameArea = size.Width * size.Height
-                    distinctBoxes, dirtyRectCount, unionArea distinctBoxes frameArea)
+                    distinctBoxes, dirtyRectCount, CompositorPolicy.unionArea distinctBoxes frameArea)
 
         // Feature 116 (Phase 7, FR-005/FR-006/FR-007/FR-009/FR-010): the bounded picture cache. A
         // read-only walk over the new retained tree visits each cacheable boundary (a data-grid row)
@@ -2113,6 +1478,89 @@ module internal RetainedRender =
               FallbackCount = 0
               PromotionOverhead = promotionOverhead
               NetSavedWork = netSavedWork } }
+
+    /// Feature 190 (Pattern B): `step` is the composition `diffStage >> layoutStage >> paintStage >>
+    /// assemblyStage`, threading the mutable `FrameState` and the immutable `FrameContext`. The
+    /// orchestrator owns the per-frame state seed and the text-measure-hook lifetime across layout+paint
+    /// (research R4): it installs the hook before `layoutStage` and clears it after `paintStage`, always
+    /// on the total (never-throwing) path. The stage bodies are byte-identical liftings of the former
+    /// inline closures — the operation order, accumulation, and allocation profile are preserved (FR-002).
+    let step
+        (theme: Theme)
+        (size: FS.GG.UI.Scene.Size)
+        (prev: RetainedRender<'msg>)
+        (next: Control<'msg>)
+        : RetainedRenderStep<'msg> =
+        let result, dirty, invalidated = diffStage prev next
+
+        // Feature 117/138: the per-frame text-measure cache over THIS frame's layout + paint measurement.
+        // Feature 186 (US2): the per-frame accumulator state, seeded from `prev` (text/memo/picture
+        // caches carried forward) with all work counters at zero. Every read/write below threads through
+        // `st`, in the SAME order, so the float/integer accumulation and allocation profile are
+        // byte-identical (FR-002).
+        let st =
+            { Tc = prev.TextCache
+              TextHits = 0
+              TextMisses = 0
+              NextId = prev.NextId
+              Recomputed = 0
+              ChangedBound = 0
+              Shifted = 0
+              Memo = prev.Memo
+              MemoHits = 0
+              MemoMisses = 0
+              MetadataVisited = 0
+              VirtualMaterialized = 0
+              VirtualTotal = 0
+              PcEntries = prev.PictureCache.Entries
+              PcClock = prev.PictureCache.Clock
+              PictureHits = 0
+              PictureMisses = 0
+              ReplaySkippedNodes = 0
+              ReplayNativeBytes = 0
+              RepaintedBoxes = ResizeArray<Rect>() }
+
+        let frameStartTextKeys = prev.TextCache.Entries |> Map.toSeq |> Seq.map fst |> Set.ofSeq
+
+        let measureCached (text: string) (font: FS.GG.UI.Scene.FontSpec) : FS.GG.UI.Scene.TextMetrics =
+            let key: TextMeasureKey =
+                { Text = text
+                  Family = font.Family
+                  Size = font.Size
+                  Weight = font.Weight
+                  MeasurementVersionBucket = FS.GG.UI.Scene.Scene.textMeasurementVersionBucket () }
+
+            let metrics, tc', wasHit = measureTextCached st.Tc prev.TextCacheEnabled text font
+            st.Tc <- tc'
+            if not prev.TextCacheEnabled then
+                st.TextMisses <- st.TextMisses + 1
+            elif wasHit then
+                if Set.contains key frameStartTextKeys then
+                    st.TextHits <- st.TextHits + 1
+            else
+                st.TextMisses <- st.TextMisses + 1
+            metrics
+
+        // FR-008: theme is uniform per frame; one top-level comparison gates all fragment reuse. Pure —
+        // computed here so it lives in the immutable `FrameContext`.
+        let themeChanged = prev.Theme <> theme
+
+        let ctx: FrameContext<'msg> =
+            { Theme = theme
+              Size = size
+              Prev = prev
+              ThemeChanged = themeChanged }
+
+        // Active for the WHOLE measurement window of this frame — the incremental layout pass AND the
+        // reuse-driven paint walk. Cleared right after paint (nothing past it measures text). `step` is
+        // total (the diff/layout/paint paths never throw), so the explicit clear always runs;
+        // `ThreadStatic` isolates concurrent test `step`s (research R4).
+        ControlInternals.setMeasureTextHook (Some measureCached)
+        let layout = layoutStage ctx st next dirty
+        let newRoot = paintStage ctx st result.Patch layout.BoundsById next
+        ControlInternals.setMeasureTextHook None
+
+        assemblyStage ctx st layout result invalidated newRoot next
 
     let retainedHitTest (x: float) (y: float) (retained: RetainedRender<'msg>) : RetainedId option =
         // The deepest node whose cached box contains the point. Each node — including unkeyed

@@ -12,7 +12,7 @@ let tests =
     testList "Feature152 damage plan policy" [
         test "edge-clipped and overlapping damage stays bounded" {
             let damage =
-                RetainedRender.damageRegionSet
+                CompositorPolicy.damageRegionSet
                     { FrameWidth = 100
                       FrameHeight = 80
                       FullFrameInvalidation = false
@@ -27,16 +27,16 @@ let tests =
         }
 
         test "resource failure and full invalidation are explicit fallbacks" {
-            let fullFrame = RetainedRender.damageRegionSet { FrameWidth = 100; FrameHeight = 80; FullFrameInvalidation = true; Cause = "damage/full-frame-invalidation"; Boxes = [ rect 0.0 0.0 100.0 80.0 ] }
-            let localized = RetainedRender.damageRegionSet { FrameWidth = 100; FrameHeight = 80; FullFrameInvalidation = false; Cause = "damage/resource-failure"; Boxes = [ rect 10.0 10.0 20.0 20.0 ] }
+            let fullFrame = CompositorPolicy.damageRegionSet { FrameWidth = 100; FrameHeight = 80; FullFrameInvalidation = true; Cause = "damage/full-frame-invalidation"; Boxes = [ rect 0.0 0.0 100.0 80.0 ] }
+            let localized = CompositorPolicy.damageRegionSet { FrameWidth = 100; FrameHeight = 80; FullFrameInvalidation = false; Cause = "damage/resource-failure"; Boxes = [ rect 10.0 10.0 20.0 20.0 ] }
 
             Expect.equal
-                (RetainedRender.classifyDamageFallback true None fullFrame)
+                (CompositorPolicy.classifyDamageFallback true None fullFrame)
                 (Some FullFrameInvalidation)
                 "full-frame fallback"
 
             Expect.equal
-                (RetainedRender.classifyDamageFallback false (Some "resource failure") localized)
+                (CompositorPolicy.classifyDamageFallback false (Some "resource failure") localized)
                 (Some(FailedProof "resource failure"))
                 "resource fallback"
         }

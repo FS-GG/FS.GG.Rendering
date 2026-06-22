@@ -162,6 +162,8 @@
     <Compile Include="Feature175UnkeyedSiblingDiagnosticTests.fs" />
     <Compile Include="Feature183KindRegistryTests.fs" />
     <Compile Include="Feature184OverlayByteStabilityTests.fs" />
+    <Compile Include="Feature190StagePipelineTests.fs" />
+    <Compile Include="Feature190GateTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

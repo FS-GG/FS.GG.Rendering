@@ -71,19 +71,19 @@ let tests =
             let a = rect 0.0 0.0 100.0 100.0
             let b = rect 50.0 50.0 100.0 100.0
             let frameArea = 1000 * 1000
-            let union = RetainedRender.unionArea [ a; b ] frameArea
+            let union = CompositorPolicy.unionArea [ a; b ] frameArea
             Expect.equal union 17500 "union area counts the overlap once (not the 20000 sum)"
 
             // disjoint boxes: union = sum
             let c = rect 0.0 0.0 10.0 10.0
             let d = rect 100.0 100.0 10.0 10.0
-            Expect.equal (RetainedRender.unionArea [ c; d ] frameArea) 200 "disjoint boxes union = sum"
+            Expect.equal (CompositorPolicy.unionArea [ c; d ] frameArea) 200 "disjoint boxes union = sum"
 
             // clamp to frame area
             let huge = rect 0.0 0.0 5000.0 5000.0
-            Expect.equal (RetainedRender.unionArea [ huge ] frameArea) frameArea "union never exceeds the frame area"
+            Expect.equal (CompositorPolicy.unionArea [ huge ] frameArea) frameArea "union never exceeds the frame area"
 
             // empty
-            Expect.equal (RetainedRender.unionArea [] frameArea) 0 "no damage ⇒ 0"
+            Expect.equal (CompositorPolicy.unionArea [] frameArea) 0 "no damage ⇒ 0"
         }
     ]

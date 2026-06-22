@@ -2,7 +2,7 @@ module Audit_DamageTracking
 
 // AUDIT (feature 006-verify-imported-mechanisms) — damage-rect mechanism.
 //   * T007 sanity: the union-area helper + the `FrameMetrics` damage counters are reachable.
-//   * T026 US2 correctness: `RetainedRender.unionArea` counts overlapping dirty rects ONCE — the result
+//   * T026 US2 correctness: `CompositorPolicy.unionArea` counts overlapping dirty rects ONCE — the result
 //     equals the true union (independently computed), is < the naive per-rect sum when rects overlap,
 //     and never exceeds `frameArea`. Discriminating: a constructed genuine-overlap case where the naive
 //     sum strictly exceeds the union and `unionArea` returns the union (not the sum).
@@ -97,7 +97,7 @@ let tests =
 
         // ---- T007 sanity --------------------------------------------------------------------------
         test "Audit: damage seam reachable — unionArea + DirtyArea/DirtyRectCount counters touchable (T007)" {
-            Expect.equal (RetainedRender.unionArea [] 1000) 0 "unionArea of no boxes is 0 (helper reachable)"
+            Expect.equal (CompositorPolicy.unionArea [] 1000) 0 "unionArea of no boxes is 0 (helper reachable)"
             let f = (runWith localizedGrid [ key () ]) |> List.last
             Expect.isTrue (f.DirtyRectCount >= 0 && f.DirtyArea >= 0) "FrameMetrics damage counters are reachable"
         }
@@ -109,7 +109,7 @@ let tests =
             let b = rect 50 0 100 100
             let boxes = [ a; b ]
             let frameArea = 1000 * 1000
-            let union = RetainedRender.unionArea boxes frameArea
+            let union = CompositorPolicy.unionArea boxes frameArea
             let sum = naiveSum boxes // 10000 + 10000 = 20000
             let expectedUnion = 150 * 100 // bounding strip [0,150]x[0,100] = 15000
 
@@ -122,7 +122,7 @@ let tests =
         test "Audit: unionArea is clamped to frameArea (never exceeds the frame) (T026)" {
             let boxes = [ rect 0 0 100 100; rect 30 30 100 100 ]
             let frameArea = 500 // far smaller than any plausible union
-            Expect.equal (RetainedRender.unionArea boxes frameArea) frameArea "clamped to the frame area"
+            Expect.equal (CompositorPolicy.unionArea boxes frameArea) frameArea "clamped to the frame area"
         }
 
         test "Audit: unionArea matches an independent brute-force union across 200 generated rect sets (T026)" {
@@ -130,7 +130,7 @@ let tests =
             let mismatches =
                 generatedCases ()
                 |> List.choose (fun boxes ->
-                    let got = RetainedRender.unionArea boxes frameArea
+                    let got = CompositorPolicy.unionArea boxes frameArea
                     let expected = bruteUnionArea boxes frameArea
                     let sum = naiveSum boxes
                     if got <> expected then Some (boxes, got, expected)
@@ -142,7 +142,7 @@ let tests =
             // property has real discriminating power, not vacuous agreement on disjoint rects.
             let overlapping =
                 generatedCases ()
-                |> List.filter (fun boxes -> RetainedRender.unionArea boxes frameArea < naiveSum boxes)
+                |> List.filter (fun boxes -> CompositorPolicy.unionArea boxes frameArea < naiveSum boxes)
             Expect.isNonEmpty overlapping "the corpus contains genuine overlaps (union strictly below the naive sum)"
         }
 

@@ -231,306 +231,6 @@ type internal RetainedRender<'msg> =
       /// rendered scene and layout are byte-identical with the cache disabled (cache-on ≡ cache-off).
       TextCacheEnabled: bool }
 
-/// Measured per-frame work reduction (SC-003). `BaselineNodeCount` is what a full rebuild
-/// re-measures/re-paints (== N); `RecomputedNodeCount` is what the wired path actually
-/// recomputed; `ChangedSubtreeBound` is the genuinely-changed work (Replace/own-change/insert);
-/// `ShiftedNodeCount` (092) is work recomputed ONLY because an upstream change relaid a
-/// structurally-unchanged subtree out (a `Keep` whose box moved, or a theme repaint). For any
-/// localized change:
-///   `RecomputedNodeCount = ChangedSubtreeBound + ShiftedNodeCount`
-///   `RecomputedNodeCount < BaselineNodeCount`
-/// (091 documented `RecomputedNodeCount ≤ ChangedSubtreeBound`, which a sibling-shifting change
-/// violates — the shifted work was recomputed but uncounted; FR-007 splits it out.)
-type internal WorkReductionRecord =
-    { BaselineNodeCount: int
-      /// Feature 174: number of retained nodes whose render-result metadata was recomputed this frame.
-      MetadataVisitedNodeCount: int
-      /// Feature 174: number of full metadata fallbacks required this frame. Normal retained paths keep
-      /// this at zero and use retained subtree metadata snapshots instead.
-      MetadataFallbackCount: int
-      RecomputedNodeCount: int
-      ChangedSubtreeBound: int
-      ShiftedNodeCount: int
-      /// Feature 097 (R2, FR-006): nodes actually RE-MEASURED this frame (the post-propagation dirty
-      /// set `Layout.evaluateIncremental` reports in `Invalidated`). For a localized update this is
-      /// strictly below `BaselineNodeCount`; for a genuine whole-tree relayout it equals it; for an
-      /// empty patch it is 0. Measures partial MEASURE work, distinct from partial PAINT above.
-      RemeasuredNodeCount: int
-      /// Feature 113 (Phase 5, FR-009/FR-010): memoizable-control reuse outcomes while building this
-      /// frame — `MemoHits` reused a stored subtree (its dependency was unchanged), `MemoMisses`
-      /// recomputed one (a changed or cold dependency). Summed over every memoized site evaluated
-      /// this frame; both 0 on a frame that evaluates no memoizable control. Surfaced as the public
-      /// `FrameMetrics.MemoHitCount` / `MemoMissCount`.
-      MemoHits: int
-      MemoMisses: int
-      /// Feature 114 (Phase 6, FR-013): the virtualization counts read off the lowered tree this frame —
-      /// `VirtualMaterialized` is the number of materialized `data-grid-row` nodes (the realized window),
-      /// `VirtualTotal` is the sum of the logical `Total` over every `data-grid` node present. The walk is
-      /// read-only (render output unchanged); both `0` on a frame with no virtualized control. Aggregated
-      /// across multiple virtualized controls. Surfaced as the public `FrameMetrics.VirtualItemsMaterialized`
-      /// / `VirtualItemsTotal`.
-      VirtualMaterialized: int
-      VirtualTotal: int
-      /// Feature 116 (Phase 7, FR-001/FR-002/FR-003/FR-004): the per-frame DAMAGE set, accumulated from
-      /// the step's own repaint decisions (each `paintFresh` — `carry`/`buildFresh`/`Update`-own-repaint —
-      /// contributes the repainted node's evaluated `Fragment.Box`). `RepaintedNodeCount` is the count of
-      /// repainted nodes (the changed node(s) + genuinely-shifted nodes); `DirtyRectCount` is the count of
-      /// DISTINCT repainted boxes (deduped; `None` boxes contribute none); `DirtyArea` is the summed integer
-      /// `w*h` over the distinct boxes. A localized hover reports a small region, a theme switch
-      /// frame-spanning, an idle frame `0/0/0`. Deterministic (integer geometry). Surfaced as the public
-      /// `FrameMetrics.RepaintedNodeCount` / `DirtyRectCount` / `DirtyArea`.
-      RepaintedNodeCount: int
-      DirtyRectCount: int
-      DirtyArea: int
-      /// Feature 116 (Phase 7, FR-005/FR-006/FR-007/FR-009/FR-010): the bounded picture cache's per-frame
-      /// reuse outcomes over the cacheable picture boundary (a `data-grid-row` identity, the natural analog
-      /// of the feature-113 data-grid-only memo cache). `PictureCacheHits` reused a cached picture whose
-      /// full correctness key (theme/box/clip/opacity/transform/font-text/visual-state, by construction the
-      /// painted picture's structural digest) was unchanged AND whose entry was still resident (not evicted);
-      /// `PictureCacheMisses` recomputed a picture (a changed key, a cold identity, or an evicted entry).
-      /// `PictureCacheEntryCount` is the live bounded-LRU entry count after this frame (`<= PictureCacheCap`).
-      /// All three `0` on a frame with no cacheable picture; with the `PictureCacheEnabled` oracle `false`
-      /// every picture re-misses (`PictureCacheHits = 0`). Surfaced as the public
-      /// `FrameMetrics.PictureCacheHitCount` / `PictureCacheMissCount` / `PictureCacheEntryCount`.
-      PictureCacheHits: int
-      PictureCacheMisses: int
-      PictureCacheEntryCount: int
-      /// Feature 117/138: the per-frame text-measure cache outcomes over every `(text, font)` measured
-      /// while laying out and painting this frame. `TextMeasureCacheHits` means prior-frame reuse: the key
-      /// was resident before the frame's measurement window began. Same-frame duplicate text can still
-      /// reuse the cache internally, but it is not reported as a hit. `TextMeasureCacheMisses` counts fresh
-      /// measurements for keys not resident at frame start. Both `0` on a frame that measures no text;
-      /// under the `TextCacheEnabled` oracle `false` every measurement re-misses (`TextMeasureCacheHits =
-      /// 0`). Surfaced as the public `FrameMetrics.TextMeasureCacheHitCount` / `TextMeasureCacheMissCount`.
-      TextMeasureCacheHits: int
-      TextMeasureCacheMisses: int
-      /// Feature 117 (Phase 8, FR-006): the size of the layout dirty set fed into incremental layout this
-      /// frame — `Set.count` of `layoutDirtySet` (the patch-derived self-dirty nodes BEFORE
-      /// fixed-size-ancestor propagation). Distinct from `RemeasuredNodeCount`, which is the POST-pinning
-      /// set `Layout.evaluateIncremental` actually re-measured (the dirty nodes' boundary subtrees). Because
-      /// propagation expands a self-dirty node up to its first fixed-size ancestor's whole subtree,
-      /// `LayoutInvalidatedNodeCount <= RemeasuredNodeCount` (the pre-pinning set is a subset of the
-      /// re-measured boundary subtrees). `0` on an idle / style-only / visual-state-only frame (no
-      /// layout-affecting attribute changed, so the dirty set is empty).
-      LayoutInvalidatedNodeCount: int
-      /// Feature 120 (US3, FR-014): the backend replay cache's per-frame reuse outcomes over the
-      /// `CachedSubtree` replay boundaries emitted this frame (prior-frame-stable cacheable subtrees,
-      /// FR-012), modeled deterministically with the same cross-frame LRU + new structural fingerprint as
-      /// `PictureCache`. `ReplayHits` replayed a recorded picture (resident + matching fingerprint + enabled);
-      /// `ReplayMisses` (re)recorded one (cold / changed fingerprint / evicted); `ReplayRecords` equals the
-      /// misses (one record per miss); `ReplaySkippedNodes` sums the painted node count of every replayed
-      /// boundary's subtree (the draw-call walk avoided); `ReplayCacheNativeBytes` is the deterministic
-      /// model native-byte estimate of resident recorded pictures (bounded by the cap). All `0` on a frame
-      /// with no replay boundary or under the replay-disable oracle. Surfaced as the public
-      /// `FrameMetrics.ReplayHitCount` / `ReplayMissCount` / `ReplayRecordCount` / `ReplaySkippedNodeCount` /
-      /// `ReplayCacheNativeBytes`.
-      ReplayHits: int
-      ReplayMisses: int
-      ReplayRecords: int
-      ReplaySkippedNodes: int
-      ReplayCacheNativeBytes: int
-      /// Feature 159: content/placement split-key counters used by promotion readiness.
-      AvoidedContentWork: int
-      PlacementOnlyReuseCount: int
-      ContentRecordCount: int
-      ContentRerecordCount: int
-      PromotionCount: int
-      DemotionCount: int
-      FallbackCount: int
-      PromotionOverhead: int
-      NetSavedWork: int }
-
-/// Feature 147: clipped compositor damage expressed in frame-pixel coordinates.
-type internal CompositorDamageRegion =
-    { DamageX: int
-      DamageY: int
-      DamageWidth: int
-      DamageHeight: int }
-
-type internal CompositorDamageRegionSet =
-    { FrameWidth: int
-      FrameHeight: int
-      Regions: CompositorDamageRegion list
-      UnionArea: int
-      FullFrameInvalidation: bool
-      Cause: string }
-
-type internal CompositorFallbackReason =
-    | MissingProof
-    | FailedProof of reason: string
-    | EnvironmentLimited of reason: string
-    | FullFrameInvalidation
-    | EmptyDamage
-    | UnsafeDamage of reason: string
-
-type internal CompositorTier =
-    | NoCompositorTier
-    | RetainedTier
-    | ReplayTier
-    | SnapshotTier
-    | DemotedTier
-
-type internal PromotionDecisionKind =
-    | Promote
-    | Keep
-    | Demote
-    | Reject
-    | Observe
-
-type internal PromotionDecision =
-    { BoundaryId: string
-      Decision: PromotionDecisionKind
-      Reason: string
-      ObservedStabilityFrames: int
-      ExpectedSavedWork: int
-      MeasuredOverhead: int
-      Tier: CompositorTier }
-
-/// Feature 159: stable primary reason token for non-accepted promotion or reuse evidence.
-[<RequireQualifiedAccess>]
-type internal Feature159Reason =
-    | Instability
-    | LowCost
-    | OverheadExceedsSavedWork
-    | StaleContentIdentity
-    | StalePlacementIdentity
-    | AmbiguousIdentity
-    | CrossProfileEvidence
-    | MissingRetainedContent
-    | ResourceLimited
-    | UnsupportedHost
-    | ParityMismatch
-    | NonBeneficialCounters
-    | RunIdentityMismatch
-    | ScenarioDefinitionMismatch
-    | MissingPolicy
-    | EnvironmentLimited
-
-[<RequireQualifiedAccess>]
-type internal Feature159PromotionStatus =
-    | Promoted
-    | Observing
-    | Kept
-    | Demoted
-    | Rejected
-    | Bypassed
-    | NonBeneficial
-    | FallbackOnly
-    | PromotionEnvironmentLimited
-
-[<RequireQualifiedAccess>]
-type internal Feature159ReuseStatus =
-    | ContentReusedPlacementUpdated
-    | ContentRecorded
-    | ContentRerecorded
-    | FallbackFullRedraw
-    | ReuseRejected
-    | ReuseEnvironmentLimited
-
-[<RequireQualifiedAccess>]
-type internal Feature159RetainedLayerState =
-    | Recorded
-    | Reused
-    | Refreshed
-    | Bypassed
-    | Evicted
-    | Demoted
-    | Invalid
-    | Unavailable
-
-type internal Feature159ContentIdentity =
-    { BoundaryId: string
-      ContentId: uint64
-      LocalContentFingerprint: uint64
-      AlgorithmVersion: string
-      RunId: string
-      ArtifactPath: string option }
-
-type internal Feature159PlacementIdentity =
-    { BoundaryId: string
-      PlacementId: uint64
-      Box: FS.GG.UI.Scene.Rect option
-      ScrollOffsetX: float
-      ScrollOffsetY: float
-      Scale: float
-      Coverage: FS.GG.UI.Scene.Rect list
-      AlgorithmVersion: string }
-
-type internal Feature159ReuseCounters =
-    { AvoidedContentWork: int
-      PlacementOnlyReuseCount: int
-      ContentRecordCount: int
-      ContentRerecordCount: int
-      PromotionCount: int
-      DemotionCount: int
-      FallbackCount: int
-      ReplayHits: int
-      ReplayMisses: int
-      ReplayRecords: int
-      PromotionOverhead: int
-      NetSavedWork: int }
-
-type internal Feature159ReuseDecision =
-    { BoundaryId: string
-      Status: Feature159ReuseStatus
-      PrimaryReason: Feature159Reason option
-      PriorContentIdentity: Feature159ContentIdentity option
-      CurrentContentIdentity: Feature159ContentIdentity option
-      PriorPlacementIdentity: Feature159PlacementIdentity option
-      CurrentPlacementIdentity: Feature159PlacementIdentity option
-      CounterDelta: Feature159ReuseCounters
-      ArtifactPaths: string list }
-
-type internal Feature159PromotionCandidate =
-    { BoundaryId: string
-      ScenarioId: string
-      HostProfileId: string
-      ObservationWindow: int
-      ObservedStabilityFrames: int
-      ExpectedSavedWork: int
-      MeasuredOverhead: int
-      ReductionPercent: float
-      ContentStable: bool
-      ParityPassed: bool
-      ResourceLimited: bool
-      CurrentTier: CompositorTier }
-
-type internal Feature159ParityResult =
-    { ScenarioId: string
-      AttemptId: string
-      Verdict: string
-      OutsideDamageDriftCount: int
-      ArtifactPaths: string list
-      Diagnostics: string list }
-
-type internal Feature159PromotionDecision =
-    { BoundaryId: string
-      Status: Feature159PromotionStatus
-      PrimaryReason: Feature159Reason option
-      ObservedStabilityFrames: int
-      ExpectedSavedWork: int
-      MeasuredOverhead: int
-      ReductionPercent: float
-      TargetTier: CompositorTier
-      Parity: Feature159ParityResult option
-      ArtifactPaths: string list }
-
-type internal Feature159RetainedLayer =
-    { LayerId: string
-      BoundaryId: string
-      ContentIdentity: Feature159ContentIdentity
-      LastPlacementIdentity: Feature159PlacementIdentity
-      HostProfileId: string
-      RunId: string
-      State: Feature159RetainedLayerState
-      ResourceEstimate: int
-      Diagnostics: string list }
-
-type internal SnapshotResourceVerdict =
-    | SnapshotReady
-    | SnapshotDemoted of reason: string
-    | SnapshotLimited of reason: string
-
 /// The result of one wired frame: the next retained structure, the render result (byte-identical
 /// to a full rebuild of `next`), the diagnostics surfaced from the diff (e.g. `KeyCollision`), and
 /// the measured work reduction.
@@ -583,99 +283,6 @@ module internal RetainedRender =
     val internal classifyModifierEffect:
         effect: Composition.ModifierEffect ->
             Composition.EffectInvalidation
-
-    /// Feature 120 (US4, FR-015): the integer area of the UNION of a set of damage rectangles, clamped to
-    /// the frame area. Overlapping rectangles are counted once (never the sum), and the result never
-    /// exceeds `frameArea`. Pure, total, deterministic (coordinate-compression over integer geometry).
-    val internal unionArea: boxes: FS.GG.UI.Scene.Rect list -> frameArea: int -> int
-
-    /// Feature 183 (US3): named, transposition-safe inputs for `damageRegionSet` (internal — no bump).
-    type internal DamageSetInputs =
-        { FrameWidth: int
-          FrameHeight: int
-          FullFrameInvalidation: bool
-          Cause: string
-          Boxes: FS.GG.UI.Scene.Rect list }
-
-    /// Feature 147: clip damage rectangles to the frame, deduplicate them, and compute true union area.
-    val internal damageRegionSet: inputs: DamageSetInputs -> CompositorDamageRegionSet
-
-    /// Feature 147: placement-only reuse damages both old and new covered regions.
-    val internal placementDamage:
-        frameWidth: int ->
-        frameHeight: int ->
-        oldBox: FS.GG.UI.Scene.Rect ->
-        newBox: FS.GG.UI.Scene.Rect ->
-            CompositorDamageRegionSet
-
-    /// Feature 147: classify why a frame must fall back to full redraw.
-    val internal classifyDamageFallback:
-        proofReady: bool ->
-        proofReason: string option ->
-        damage: CompositorDamageRegionSet ->
-            CompositorFallbackReason option
-
-    /// Feature 183 (US3): named, transposition-safe inputs for `promotionDecision` (internal — no bump).
-    type internal PromotionInputs =
-        { BoundaryId: string
-          ObservedStabilityFrames: int
-          ObservationWindow: int
-          ExpectedSavedWork: int
-          MeasuredOverhead: int
-          ParityPassed: bool }
-
-    /// Feature 147: deterministic promotion/demotion policy over observed stability, benefit, overhead,
-    /// and parity. Pure policy only; rendering remains byte-identical unless a caller accepts the decision.
-    val internal promotionDecision: inputs: PromotionInputs -> PromotionDecision
-
-    val internal feature159ReasonToken: reason: Feature159Reason -> string
-    val internal feature159PromotionStatusToken: status: Feature159PromotionStatus -> string
-    val internal feature159ReuseStatusToken: status: Feature159ReuseStatus -> string
-
-    val internal feature159ContentIdentity:
-        boundaryId: string ->
-        runId: string ->
-        localContentFingerprint: uint64 ->
-        artifactPath: string option ->
-            Feature159ContentIdentity
-
-    val internal feature159PlacementIdentity:
-        boundaryId: string ->
-        box: FS.GG.UI.Scene.Rect option ->
-        scrollOffsetX: float ->
-        scrollOffsetY: float ->
-        scale: float ->
-        coverage: FS.GG.UI.Scene.Rect list ->
-            Feature159PlacementIdentity
-
-    val internal feature159ClassifyReuse:
-        priorContent: Feature159ContentIdentity option ->
-        currentContent: Feature159ContentIdentity ->
-        priorPlacement: Feature159PlacementIdentity option ->
-        currentPlacement: Feature159PlacementIdentity ->
-        retainedResident: bool ->
-        sameProfile: bool ->
-        parityPassed: bool ->
-        resourceLimited: bool ->
-            Feature159ReuseDecision
-
-    val internal feature159EvaluatePromotion:
-        candidate: Feature159PromotionCandidate ->
-        parity: Feature159ParityResult option ->
-            Feature159PromotionDecision
-
-    val internal feature159CountersFromWork:
-        work: WorkReductionRecord ->
-            Feature159ReuseCounters
-
-    /// Feature 147: snapshot tier verdict for host support, byte budget, and measured benefit.
-    val internal snapshotVerdict:
-        supported: bool ->
-        byteEstimate: int64 ->
-        byteBudget: int64 ->
-        benefitPercent: float ->
-        thresholdPercent: float ->
-            SnapshotResourceVerdict
 
     /// Feature 117 (Phase 8, FR-003): the fixed text-measure-cache entry cap (aligned with
     /// `PictureCacheCap`). `TextCache.Entries.Count` never exceeds this; the eviction-pressure scenario
@@ -759,6 +366,91 @@ module internal RetainedRender =
     /// a settled/absent clock paints `ownScene` unchanged (the settle path is untouched, so the final
     /// frame stays byte-identical, FR-005).
     val internal sampleOnPaint: clock: AnimationClock -> ownScene: FS.GG.UI.Scene.Scene list -> FS.GG.UI.Scene.Scene list
+
+    /// Feature 190 (Pattern C, promoted from `type private`): the per-frame mutable accumulator threaded
+    /// through every stage. Listed here so the stage suites can construct a crafted instance and assert a
+    /// single stage's mutations in isolation (FR-003). Fields and `// mutable: hot path` discipline are
+    /// unchanged from feature 186; declaring it here adds nothing to the public surface (internal).
+    type internal FrameState =
+        { mutable Tc: TextMeasureCache
+          mutable TextHits: int
+          mutable TextMisses: int
+          mutable NextId: uint64
+          mutable Recomputed: int
+          mutable ChangedBound: int
+          mutable Shifted: int
+          mutable Memo: MemoCache
+          mutable MemoHits: int
+          mutable MemoMisses: int
+          mutable MetadataVisited: int
+          mutable VirtualMaterialized: int
+          mutable VirtualTotal: int
+          mutable PcEntries: Map<RetainedId, int * PictureCacheKey>
+          mutable PcClock: int
+          mutable PictureHits: int
+          mutable PictureMisses: int
+          mutable ReplaySkippedNodes: int
+          mutable ReplayNativeBytes: int
+          RepaintedBoxes: ResizeArray<FS.GG.UI.Scene.Rect> }
+
+    /// Feature 190 (Pattern B): the immutable per-frame inputs shared by the four stages (lifted out of
+    /// the former `step` closure environment). Generic over 'msg exactly as the retained types are.
+    type internal FrameContext<'msg> =
+        { Theme: Theme
+          Size: FS.GG.UI.Scene.Size
+          Prev: RetainedRender<'msg>
+          ThemeChanged: bool }
+
+    /// Feature 190 (Pattern B): the value `layoutStage` produces and threads to `paintStage`/`assemblyStage`.
+    type internal LayoutStageResult =
+        { Root: FS.GG.UI.Layout.LayoutNode
+          BoundsById: Map<string, FS.GG.UI.Layout.LayoutBounds>
+          LayoutResult: FS.GG.UI.Layout.LayoutResult
+          Remeasured: int
+          ThemeChanged: bool }
+
+    /// Feature 190 — Stage 1 (diff). Total; never throws; duplicate keys surface a `KeyCollision`
+    /// diagnostic in the result (FR-010). Produces the reconcile result, the layout dirty set, and its
+    /// pre-propagation size. Preserves `retained-step-diff` + `retained-step-layout-dirty-set`.
+    val internal diffStage:
+        prev: RetainedRender<'msg> ->
+        next: Control<'msg> ->
+            Reconcile.ReconcileResult<'msg> * Set<string> * int
+
+    /// Feature 190 — Stage 2 (layout). Runs the INCREMENTAL evaluator over `dirty` and reports the
+    /// re-measured count + theme-change flag. Measures via the orchestrator-installed text hook (R4),
+    /// which mutates the threaded `st`. Preserves `retained-step-layout-incremental`.
+    val internal layoutStage:
+        ctx: FrameContext<'msg> ->
+        st: FrameState ->
+        next: Control<'msg> ->
+        dirty: Set<string> ->
+            LayoutStageResult
+
+    /// Feature 190 — Stage 3 (paint). The reuse-driven reconciliation walk (Keep/Replace/Update + child
+    /// ops), routing memoizable sites through the memo seam and contributing each repainted node's box to
+    /// the damage set. Mutates only `st` (FR-002). Preserves `retained-build-paint-own`/`retained-step-build`.
+    val internal paintStage:
+        ctx: FrameContext<'msg> ->
+        st: FrameState ->
+        patch: Reconcile.NodePatch<'msg> ->
+        boundsById: Map<string, FS.GG.UI.Layout.LayoutBounds> ->
+        next: Control<'msg> ->
+            RetainedNode<'msg>
+
+    /// Feature 190 — Stage 4 (assembly). The read-only post-build walks (virtualization tally, damage
+    /// reduce, picture/replay cache, offscreen diagnostics, UI-state/clock collect, scene assembly,
+    /// render result) and the `WorkReductionRecord` + `RetainedRenderStep` construction. Mutates only
+    /// `st`. Preserves the nine `retained-step-*` post-build spans.
+    val internal assemblyStage:
+        ctx: FrameContext<'msg> ->
+        st: FrameState ->
+        layout: LayoutStageResult ->
+        diff: Reconcile.ReconcileResult<'msg> ->
+        dirtyInvalidated: int ->
+        newRoot: RetainedNode<'msg> ->
+        next: Control<'msg> ->
+            RetainedRenderStep<'msg>
 
     /// Build the initial retained structure from the first frame's lowered tree, painting it
     /// ONCE. The returned `Render` is byte-identical to `Control.renderTree theme size control`

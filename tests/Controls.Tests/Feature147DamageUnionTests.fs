@@ -12,7 +12,7 @@ let tests =
     testList "Feature147 damage union policy" [
         test "overlapping damage is clipped, deduplicated, and counted once" {
             let damage =
-                RetainedRender.damageRegionSet
+                CompositorPolicy.damageRegionSet
                     { FrameWidth = 100
                       FrameHeight = 100
                       FullFrameInvalidation = false
@@ -29,18 +29,18 @@ let tests =
         }
 
         test "full-frame invalidation produces a full-frame damage region" {
-            let damage = RetainedRender.damageRegionSet { FrameWidth = 80; FrameHeight = 60; FullFrameInvalidation = true; Cause = "theme"; Boxes = [ rect 10.0 10.0 5.0 5.0 ] }
+            let damage = CompositorPolicy.damageRegionSet { FrameWidth = 80; FrameHeight = 60; FullFrameInvalidation = true; Cause = "theme"; Boxes = [ rect 10.0 10.0 5.0 5.0 ] }
             Expect.equal damage.Regions.Length 1 "one full-frame region"
             Expect.equal damage.UnionArea (80 * 60) "full frame area"
             Expect.isTrue damage.FullFrameInvalidation "flag preserved"
         }
 
         test "fallback classification rejects missing proof and full-frame invalidation" {
-            let localized = RetainedRender.damageRegionSet { FrameWidth = 80; FrameHeight = 60; FullFrameInvalidation = false; Cause = "localized"; Boxes = [ rect 1.0 1.0 10.0 10.0 ] }
-            let full = RetainedRender.damageRegionSet { FrameWidth = 80; FrameHeight = 60; FullFrameInvalidation = true; Cause = "resize"; Boxes = [] }
+            let localized = CompositorPolicy.damageRegionSet { FrameWidth = 80; FrameHeight = 60; FullFrameInvalidation = false; Cause = "localized"; Boxes = [ rect 1.0 1.0 10.0 10.0 ] }
+            let full = CompositorPolicy.damageRegionSet { FrameWidth = 80; FrameHeight = 60; FullFrameInvalidation = true; Cause = "resize"; Boxes = [] }
 
-            Expect.equal (RetainedRender.classifyDamageFallback false None localized) (Some MissingProof) "missing proof blocks scissor"
-            Expect.equal (RetainedRender.classifyDamageFallback true None full) (Some FullFrameInvalidation) "full-frame invalidation blocks scissor"
-            Expect.equal (RetainedRender.classifyDamageFallback true None localized) None "ready proof + localized damage may scissor"
+            Expect.equal (CompositorPolicy.classifyDamageFallback false None localized) (Some MissingProof) "missing proof blocks scissor"
+            Expect.equal (CompositorPolicy.classifyDamageFallback true None full) (Some FullFrameInvalidation) "full-frame invalidation blocks scissor"
+            Expect.equal (CompositorPolicy.classifyDamageFallback true None localized) None "ready proof + localized damage may scissor"
         }
     ]
