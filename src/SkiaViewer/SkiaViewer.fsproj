@@ -36,6 +36,8 @@
     <Compile Include="Host/Viewer.fs" />
     <Compile Include="Viewer.Types.fsi" />
     <Compile Include="Viewer.Types.fs" />
+    <Compile Include="ViewerInputQueue.fs" />
+    <Compile Include="ViewerResponsiveness.fs" />
     <Compile Include="SkiaViewer.fsi" />
     <Compile Include="SkiaViewer.fs" />
   </ItemGroup>

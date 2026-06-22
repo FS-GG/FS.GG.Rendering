@@ -169,135 +169,25 @@ module Viewer =
           Budget = defaultResponsivenessBudget
           Sink = None }
 
-    let responsivenessInputKindToken kind =
-        match kind with
-        | ViewerResponsivenessInputKind.PointerMove -> "pointer-move"
-        | ViewerResponsivenessInputKind.PointerDiscrete -> "pointer-discrete"
-        | ViewerResponsivenessInputKind.KeyDown -> "key-down"
-        | ViewerResponsivenessInputKind.KeyUp -> "key-up"
-        | ViewerResponsivenessInputKind.Wheel -> "wheel"
-        | ViewerResponsivenessInputKind.Resize -> "resize"
-        | ViewerResponsivenessInputKind.Tick -> "tick"
-        | ViewerResponsivenessInputKind.Lifecycle -> "lifecycle"
+    let responsivenessInputKindToken kind = ViewerResponsiveness.responsivenessInputKindToken kind
 
     let responsivenessVisibleResponseToken response =
-        match response with
-        | ViewerResponsivenessVisibleResponse.PresentedFrame -> "presented-frame"
-        | ViewerResponsivenessVisibleResponse.NoVisibleResponse -> "no-visible-response"
-        | ViewerResponsivenessVisibleResponse.Failed -> "failed"
-        | ViewerResponsivenessVisibleResponse.EnvironmentLimited -> "environment-limited"
-        | ViewerResponsivenessVisibleResponse.NotRun -> "not-run"
+        ViewerResponsiveness.responsivenessVisibleResponseToken response
 
     let responsivenessEnvironmentStatusToken status =
-        match status with
-        | ViewerResponsivenessEnvironmentStatus.Measured -> "measured"
-        | ViewerResponsivenessEnvironmentStatus.MissingBoundary -> "missing-boundary"
-        | ViewerResponsivenessEnvironmentStatus.LowPrecisionTimestamp -> "low-precision-timestamp"
-        | ViewerResponsivenessEnvironmentStatus.NonMonotonicTimestamp -> "non-monotonic-timestamp"
-        | ViewerResponsivenessEnvironmentStatus.NoVisibleSurface -> "no-visible-surface"
-        | ViewerResponsivenessEnvironmentStatus.HeadlessSubstitute -> "headless-substitute"
-        | ViewerResponsivenessEnvironmentStatus.WriteFailed -> "write-failed"
-        | ViewerResponsivenessEnvironmentStatus.Failed -> "failed"
+        ViewerResponsiveness.responsivenessEnvironmentStatusToken status
 
-    let responsivenessReadinessToken readiness =
-        match readiness with
-        | ViewerResponsivenessReadiness.Accepted -> "accepted"
-        | ViewerResponsivenessReadiness.Rejected -> "rejected"
-        | ViewerResponsivenessReadiness.Blocked -> "blocked"
-        | ViewerResponsivenessReadiness.Incomplete -> "incomplete"
-        | ViewerResponsivenessReadiness.EnvironmentLimited -> "environment-limited"
-        | ViewerResponsivenessReadiness.Failed -> "failed"
+    let responsivenessReadinessToken readiness = ViewerResponsiveness.responsivenessReadinessToken readiness
 
-    let emptyInputQueue =
-        { Discrete = []
-          LatestContinuousPointer = None
-          ContinuousCoalescedCount = 0
-          Lifecycle = []
-          NextSequenceId = 1L
-          MaxObservedDepth = 0 }
+    let emptyInputQueue = ViewerInputQueueOps.emptyInputQueue
 
-    let inputQueueDepth queue =
-        queue.Discrete.Length
-        + queue.Lifecycle.Length
-        + (match queue.LatestContinuousPointer with
-           | Some _ -> 1
-           | None -> 0)
-
-    let private priorityForInput kind =
-        match kind with
-        | ViewerResponsivenessInputKind.PointerMove -> Continuous
-        | ViewerResponsivenessInputKind.Resize
-        | ViewerResponsivenessInputKind.Lifecycle -> Lifecycle
-        | ViewerResponsivenessInputKind.Tick -> Background
-        | ViewerResponsivenessInputKind.PointerDiscrete
-        | ViewerResponsivenessInputKind.KeyDown
-        | ViewerResponsivenessInputKind.KeyUp
-        | ViewerResponsivenessInputKind.Wheel -> Discrete
+    let inputQueueDepth queue = ViewerInputQueueOps.inputQueueDepth queue
 
     let enqueueInput receivedAt inputKind payload queue =
-        let depthBefore = inputQueueDepth queue
-
-        let envelope =
-            { SequenceId = queue.NextSequenceId
-              ReceivedAt = receivedAt
-              InputKind = inputKind
-              PriorityLane = priorityForInput inputKind
-              ReceiptQueueDepth = depthBefore
-              Payload = payload }
-
-        let next =
-            match envelope.PriorityLane with
-            | Continuous ->
-                { queue with
-                    LatestContinuousPointer = Some envelope
-                    ContinuousCoalescedCount =
-                        queue.ContinuousCoalescedCount
-                        + (if Option.isSome queue.LatestContinuousPointer then 1 else 0) }
-            | Lifecycle ->
-                { queue with Lifecycle = queue.Lifecycle @ [ envelope ] }
-            | Discrete
-            | Background ->
-                { queue with Discrete = queue.Discrete @ [ envelope ] }
-
-        let observedDepth = max (depthBefore + 1) (inputQueueDepth next)
-
-        envelope,
-        { next with
-            NextSequenceId = queue.NextSequenceId + 1L
-            MaxObservedDepth = max queue.MaxObservedDepth observedDepth }
+        ViewerInputQueueOps.enqueueInput receivedAt inputKind payload queue
 
     let drainInputQueue batchId drainReason queue =
-        let before = inputQueueDepth queue
-        let orderedNonContinuous =
-            let laneRank envelope =
-                match envelope.PriorityLane with
-                | Discrete -> 0
-                | Lifecycle -> 1
-                | Continuous -> 2
-                | Background -> 3
-
-            (queue.Lifecycle @ queue.Discrete)
-            |> List.mapi (fun index envelope -> laneRank envelope, index, envelope)
-            |> List.sortBy (fun (rank, index, _) -> rank, index)
-            |> List.map (fun (_, _, envelope) -> envelope)
-
-        let drain =
-            { BatchId = batchId
-              DiscreteInputs = orderedNonContinuous
-              CoalescedPointer = queue.LatestContinuousPointer
-              CoalescedMovementCount = queue.ContinuousCoalescedCount
-              QueueDepthBeforeDrain = before
-              QueueDepthAfterDrain = 0
-              DrainReason = drainReason }
-
-        let queue' =
-            { queue with
-                Discrete = []
-                LatestContinuousPointer = None
-                ContinuousCoalescedCount = 0
-                Lifecycle = [] }
-
-        drain, queue'
+        ViewerInputQueueOps.drainInputQueue batchId drainReason queue
 
     let dirtyState
         productModelChanged
@@ -307,23 +197,9 @@ module Viewer =
         (dirtyRegion: ViewerResponsivenessDirtyRegion option)
         reason
         =
-        let sceneDirty =
-            productModelChanged
-            || runtimeStateChanged
-            || sizeChanged
-            || themeChanged
-            || Option.isSome dirtyRegion
+        ViewerInputQueueOps.dirtyState productModelChanged runtimeStateChanged sizeChanged themeChanged dirtyRegion reason
 
-        { ProductModelChanged = productModelChanged
-          RuntimeStateChanged = runtimeStateChanged
-          SizeChanged = sizeChanged
-          ThemeChanged = themeChanged
-          SceneDirty = sceneDirty
-          DirtyRegionSummary = dirtyRegion
-          Reason = reason }
-
-    let dirtyStateRequiresRecompose dirty =
-        dirty.SceneDirty
+    let dirtyStateRequiresRecompose dirty = ViewerInputQueueOps.dirtyStateRequiresRecompose dirty
 
     /// F1 (Feature 175 general repaint signal): the single "runtime-state changed → repaint" policy,
     /// shared by EVERY viewer loop. After an input, if it produced product messages then
@@ -348,187 +224,10 @@ module Viewer =
         RenderLagTrace.drainCapture () |> List.map (fun e -> e.Event, e.Fields)
     let internal traceEmit (eventName: string) (fields: (string * string) list) = RenderLagTrace.emit eventName fields
 
-    let createResponsivenessRunId () =
-        let stamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture)
-        let suffix = Guid.NewGuid().ToString("N").Substring(0, 6)
-        $"resp-{stamp}-{suffix}"
-
-    let private nullableFloat (value: TimeSpan option) : Nullable<float> =
-        match value with
-        | Some duration -> Nullable duration.TotalMilliseconds
-        | None -> Nullable<float>()
-
-    let private nullableInt (value: int option) : Nullable<int> =
-        match value with
-        | Some n -> Nullable n
-        | None -> Nullable<int>()
-
-    let private nullableInt64 (value: int64 option) : Nullable<int64> =
-        match value with
-        | Some n -> Nullable n
-        | None -> Nullable<int64>()
-
-    let private jsonOptions =
-        JsonSerializerOptions(WriteIndented = false)
-
-    let private jsonOptionsIndented =
-        JsonSerializerOptions(WriteIndented = true)
-
-    let private jsonNull =
-        use document = JsonDocument.Parse("null")
-        document.RootElement.Clone()
-
-    let private optionJsonString (value: string option) : JsonElement =
-        match value with
-        | Some text -> JsonSerializer.SerializeToElement(text, jsonOptions)
-        | None -> jsonNull
+    let createResponsivenessRunId () = ViewerResponsiveness.createResponsivenessRunId ()
 
     let latencyRecordToJsonLine (latency: ViewerLatencyRecord) =
-        let timing = latency.PhaseTiming
-
-        let dirty: JsonElement =
-            match latency.DirtyRegion with
-            | Some region ->
-                JsonSerializer.SerializeToElement(
-                    {| dirtyRectCount = nullableInt region.DirtyRectCount
-                       dirtyArea = nullableInt region.DirtyArea
-                       repaintedNodeCount = nullableInt region.RepaintedNodeCount
-                       status = responsivenessEnvironmentStatusToken region.Status |},
-                    jsonOptions
-                )
-            | None -> jsonNull
-
-        JsonSerializer.Serialize(
-            {| recordId = latency.RecordId
-               runId = latency.RunId
-               inputSequenceId = latency.InputSequenceId
-               inputKind = responsivenessInputKindToken latency.InputKind
-               inputName = optionJsonString latency.InputName
-               page = optionJsonString latency.Page
-               controlGroup = optionJsonString latency.ControlGroup
-               receiptTimestamp = latency.ReceiptTimestamp
-               queueDepthAtReceipt = latency.QueueDepthAtReceipt
-               queueDepthAtDrain = latency.QueueDepthAtDrain
-               coalescedMovementCount = latency.CoalescedMovementCount
-               productMessageCount = latency.ProductMessageCount
-               productStateChanged = latency.ProductStateChanged
-               runtimeStateChanged = latency.RuntimeStateChanged
-               visibleResponse = responsivenessVisibleResponseToken latency.VisibleResponse
-               presentedFrameId = nullableInt64 latency.PresentedFrameId
-               environmentStatus = responsivenessEnvironmentStatusToken latency.EnvironmentStatus
-               phaseTiming =
-                {| receiptDurationMs = nullableFloat timing.ReceiptDuration
-                   queueDelayMs = nullableFloat timing.QueueDelay
-                   routingDurationMs = nullableFloat timing.RoutingDuration
-                   updateDurationMs = nullableFloat timing.UpdateDuration
-                   viewDurationMs = nullableFloat timing.ViewDuration
-                   retainedStepDurationMs = nullableFloat timing.RetainedStepDuration
-                   layoutDurationMs = nullableFloat timing.LayoutDuration
-                   textDurationMs = nullableFloat timing.TextDuration
-                   paintDurationMs = nullableFloat timing.PaintDuration
-                   presentDurationMs = nullableFloat timing.PresentDuration
-                   totalInputToVisibleMs = nullableFloat timing.TotalInputToVisibleDuration |}
-               dirtyRegion = dirty
-               longFrame = latency.LongFrame
-               diagnostics = latency.Diagnostics |},
-            jsonOptions
-        )
-
-    let private percentile percentileValue (values: TimeSpan list) =
-        match values |> List.sortBy _.Ticks with
-        | [] -> None
-        | sorted ->
-            let rank =
-                Math.Ceiling((percentileValue / 100.0) * float sorted.Length)
-                |> int
-                |> max 1
-                |> min sorted.Length
-
-            Some sorted.[rank - 1]
-
-    let private maxTime (values: TimeSpan list) =
-        values |> List.sortBy (fun value -> value.Ticks) |> List.tryLast
-
-    let private failedBudget kind scope inputKind measured budget : ViewerResponsivenessFailedBudget =
-        { Kind = kind
-          Scope = scope
-          InputKind = inputKind
-          Measured = measured
-          Budget = budget }
-
-    let private firstFailedBudget (scope: string) (budget: ViewerResponsivenessBudget) (records: ViewerLatencyRecord list) =
-        let environmentBoundaryFailure =
-            records
-            |> List.tryFind (fun record ->
-                record.EnvironmentStatus <> ViewerResponsivenessEnvironmentStatus.Measured
-                || record.VisibleResponse = ViewerResponsivenessVisibleResponse.EnvironmentLimited
-                || record.VisibleResponse = ViewerResponsivenessVisibleResponse.NotRun)
-            |> Option.map (fun record ->
-                failedBudget
-                    "environment-boundary"
-                    (record.Page |> Option.orElse (Some scope))
-                    (Some record.InputKind)
-                    (TimeSpan.FromMilliseconds 1.0)
-                    TimeSpan.Zero)
-
-        let receiptDurations =
-            records |> List.choose (fun record -> record.PhaseTiming.ReceiptDuration)
-
-        let visibleDurations =
-            records
-            |> List.choose (fun record ->
-                match record.VisibleResponse, record.PhaseTiming.TotalInputToVisibleDuration with
-                | ViewerResponsivenessVisibleResponse.PresentedFrame, Some duration -> Some duration
-                | _ -> None)
-
-        match environmentBoundaryFailure with
-        | Some failure -> Some failure
-        | None ->
-            match percentile 95.0 receiptDurations with
-            | Some p95 when p95 > budget.InputReceiptP95 ->
-                Some(failedBudget "input-receipt-p95" (Some scope) None p95 budget.InputReceiptP95)
-            | _ ->
-                match maxTime receiptDurations with
-                | Some maxReceipt when maxReceipt > budget.InputReceiptMax ->
-                    Some(failedBudget "input-receipt-max" (Some scope) None maxReceipt budget.InputReceiptMax)
-                | _ ->
-                    match percentile 95.0 visibleDurations with
-                    | Some p95 when p95 > budget.InputToVisibleP95 ->
-                        Some(failedBudget "input-to-visible-p95" (Some scope) None p95 budget.InputToVisibleP95)
-                    | _ ->
-                        match maxTime visibleDurations with
-                        | Some maxVisible when maxVisible > budget.InputToVisibleMax ->
-                            Some(failedBudget "input-to-visible-max" (Some scope) None maxVisible budget.InputToVisibleMax)
-                        | _ ->
-                            records
-                            |> List.tryFind (fun record -> record.LongFrame)
-                            |> Option.map (fun record ->
-                                let measured =
-                                    [ record.PhaseTiming.RetainedStepDuration
-                                      record.PhaseTiming.PaintDuration
-                                      record.PhaseTiming.PresentDuration
-                                      record.PhaseTiming.TotalInputToVisibleDuration ]
-                                    |> List.choose id
-                                    |> maxTime
-                                    |> Option.defaultValue (budget.LongFrameThreshold + TimeSpan.FromMilliseconds 1.0)
-
-                                failedBudget "long-frame" (record.Page |> Option.orElse (Some scope)) (Some record.InputKind) measured budget.LongFrameThreshold)
-
-    let private dominantPhase (timing: ViewerResponsivenessPhaseTiming) =
-        [ "receipt", timing.ReceiptDuration
-          "queue", timing.QueueDelay
-          "routing", timing.RoutingDuration
-          "update", timing.UpdateDuration
-          "view", timing.ViewDuration
-          "retained-step", timing.RetainedStepDuration
-          "layout", timing.LayoutDuration
-          "text", timing.TextDuration
-          "paint", timing.PaintDuration
-          "present", timing.PresentDuration ]
-        |> List.choose (fun (name, value) -> value |> Option.map (fun duration -> name, duration))
-        |> List.sortByDescending (fun (_, duration) -> duration.Ticks)
-        |> List.tryHead
-        |> Option.map fst
+        ViewerResponsiveness.latencyRecordToJsonLine latency
 
     let summarizeResponsivenessRecords
         (runId: string)
@@ -540,245 +239,16 @@ module Viewer =
         (records: ViewerLatencyRecord list)
         : ViewerResponsivenessSummary
         =
-        let environmentLimitations =
-            records
-            |> List.choose (fun record ->
-                if record.EnvironmentStatus = ViewerResponsivenessEnvironmentStatus.Measured then
-                    None
-                else
-                    Some $"{responsivenessEnvironmentStatusToken record.EnvironmentStatus}:{record.RecordId}")
-            |> List.distinct
-
-        let firstFailed = firstFailedBudget scope budget records
-
-        let groups =
-            records
-            |> List.groupBy (fun record -> record.Page, record.InputKind, record.ControlGroup)
-            |> List.map (fun ((page, inputKind, controlGroup), groupRecords) ->
-                let measured =
-                    groupRecords
-                    |> List.choose (fun record ->
-                        match record.VisibleResponse, record.PhaseTiming.TotalInputToVisibleDuration with
-                        | ViewerResponsivenessVisibleResponse.PresentedFrame, Some duration -> Some duration
-                        | _ -> None)
-
-                let p95 = percentile 95.0 measured
-                let longFrames = groupRecords |> List.filter (fun record -> record.LongFrame) |> List.length
-
-                let readiness =
-                    if
-                        groupRecords
-                        |> List.exists (fun record ->
-                            record.VisibleResponse = ViewerResponsivenessVisibleResponse.Failed
-                            || record.EnvironmentStatus = ViewerResponsivenessEnvironmentStatus.Failed
-                            || record.EnvironmentStatus = ViewerResponsivenessEnvironmentStatus.WriteFailed)
-                    then
-                        ViewerResponsivenessReadiness.Failed
-                    elif
-                        p95 |> Option.exists (fun value -> value > budget.InputToVisibleP95)
-                        || measured |> maxTime |> Option.exists (fun value -> value > budget.InputToVisibleMax)
-                        || longFrames > 0
-                    then
-                        ViewerResponsivenessReadiness.Rejected
-                    elif
-                        groupRecords
-                        |> List.exists (fun record ->
-                            record.VisibleResponse = ViewerResponsivenessVisibleResponse.EnvironmentLimited
-                            || record.EnvironmentStatus = ViewerResponsivenessEnvironmentStatus.NoVisibleSurface
-                            || record.EnvironmentStatus = ViewerResponsivenessEnvironmentStatus.HeadlessSubstitute
-                            || record.EnvironmentStatus = ViewerResponsivenessEnvironmentStatus.MissingBoundary)
-                    then
-                        ViewerResponsivenessReadiness.EnvironmentLimited
-                    elif List.isEmpty measured then
-                        ViewerResponsivenessReadiness.Incomplete
-                    else
-                        ViewerResponsivenessReadiness.Accepted
-
-                { Page = page
-                  InputKind = inputKind
-                  ControlGroup = controlGroup
-                  Count = groupRecords.Length
-                  P50 = percentile 50.0 measured
-                  P95 = p95
-                  Max = maxTime measured
-                  LongFrameCount = longFrames
-                  Readiness = readiness })
-
-        let slowest =
-            records
-            |> List.choose (fun record ->
-                record.PhaseTiming.TotalInputToVisibleDuration
-                |> Option.map (fun duration -> duration, record))
-            |> List.sortByDescending (fun (duration, _) -> duration.Ticks)
-            |> List.truncate 5
-            |> List.map (fun (_, record) ->
-                { RecordId = record.RecordId
-                  InputSequenceId = record.InputSequenceId
-                  TotalInputToVisible = record.PhaseTiming.TotalInputToVisibleDuration
-                  DominantPhase = dominantPhase record.PhaseTiming })
-
-        let failedRecord =
-            records
-            |> List.exists (fun record ->
-                record.VisibleResponse = ViewerResponsivenessVisibleResponse.Failed
-                || record.EnvironmentStatus = ViewerResponsivenessEnvironmentStatus.Failed
-                || record.EnvironmentStatus = ViewerResponsivenessEnvironmentStatus.WriteFailed)
-
-        let overall =
-            if List.isEmpty records then ViewerResponsivenessReadiness.Incomplete
-            elif failedRecord then ViewerResponsivenessReadiness.Failed
-            elif not (List.isEmpty environmentLimitations) then ViewerResponsivenessReadiness.EnvironmentLimited
-            elif Option.isSome firstFailed then ViewerResponsivenessReadiness.Rejected
-            elif groups |> List.exists (fun group -> group.Readiness = ViewerResponsivenessReadiness.Incomplete) then ViewerResponsivenessReadiness.Incomplete
-            else ViewerResponsivenessReadiness.Accepted
-
-        { RunId = runId
-          Scope = scope
-          OverallReadiness = overall
-          StartedUtc = startedUtc
-          CompletedUtc = completedUtc
-          RecordsPath = recordsPath
-          Budgets = budget
-          FirstFailedBudget = firstFailed
-          Groups = groups
-          SlowestInteractions = slowest
-          EnvironmentLimitations = environmentLimitations
-          Diagnostics = records |> List.collect (fun record -> record.Diagnostics) |> List.distinct }
-
-    let private timeMs (value: TimeSpan) = value.TotalMilliseconds
-    let private nullableMs value = value |> Option.map timeMs |> function Some n -> Nullable n | None -> Nullable<float>()
+        ViewerResponsiveness.summarizeResponsivenessRecords runId scope recordsPath startedUtc completedUtc budget records
 
     let responsivenessSummaryToJson (summary: ViewerResponsivenessSummary) =
-        let failed: JsonElement =
-            match summary.FirstFailedBudget with
-            | Some budget ->
-                JsonSerializer.SerializeToElement(
-                    {| kind = budget.Kind
-                       scope = optionJsonString budget.Scope
-                       inputKind = budget.InputKind |> Option.map responsivenessInputKindToken |> optionJsonString
-                       measuredMs = timeMs budget.Measured
-                       budgetMs = timeMs budget.Budget |},
-                    jsonOptions
-                )
-            | None -> jsonNull
-
-        JsonSerializer.Serialize(
-            {| runId = summary.RunId
-               scope = summary.Scope
-               overallReadiness = responsivenessReadinessToken summary.OverallReadiness
-               startedUtc = summary.StartedUtc
-               completedUtc = summary.CompletedUtc
-               recordsPath = summary.RecordsPath
-               budgets =
-                {| inputReceiptP95Ms = timeMs summary.Budgets.InputReceiptP95
-                   inputReceiptMaxMs = timeMs summary.Budgets.InputReceiptMax
-                   inputToVisibleP95Ms = timeMs summary.Budgets.InputToVisibleP95
-                   inputToVisibleMaxMs = timeMs summary.Budgets.InputToVisibleMax
-                   longFrameThresholdMs = timeMs summary.Budgets.LongFrameThreshold |}
-               firstFailedBudget = failed
-               groups =
-                (summary.Groups
-                 |> List.map (fun group ->
-                     {| page = optionJsonString group.Page
-                        inputKind = responsivenessInputKindToken group.InputKind
-                        controlGroup = optionJsonString group.ControlGroup
-                        count = group.Count
-                        p50Ms = nullableMs group.P50
-                        p95Ms = nullableMs group.P95
-                        maxMs = nullableMs group.Max
-                        longFrameCount = group.LongFrameCount
-                        readiness = responsivenessReadinessToken group.Readiness |})
-                 |> List.toArray)
-               slowestInteractions =
-                (summary.SlowestInteractions
-                 |> List.map (fun interaction ->
-                     {| recordId = interaction.RecordId
-                        inputSequenceId = interaction.InputSequenceId
-                        totalInputToVisibleMs = nullableMs interaction.TotalInputToVisible
-                        dominantPhase = optionJsonString interaction.DominantPhase |})
-                 |> List.toArray)
-               environmentLimitations = summary.EnvironmentLimitations
-               diagnostics = summary.Diagnostics |},
-            jsonOptionsIndented
-        )
+        ViewerResponsiveness.responsivenessSummaryToJson summary
 
     let responsivenessSummaryToMarkdown (summary: ViewerResponsivenessSummary) =
-        let fmt (value: TimeSpan option) =
-            value
-            |> Option.map (fun duration -> duration.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture) + " ms")
-            |> Option.defaultValue "n/a"
-
-        let budgetLine =
-            match summary.FirstFailedBudget with
-            | Some budget ->
-                let measured = budget.Measured.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture)
-                let budgetMs = budget.Budget.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture)
-                $"- first failed budget: {budget.Kind} measured={measured} ms budget={budgetMs} ms"
-            | None -> "- first failed budget: none"
-
-        let groupLines =
-            summary.Groups
-            |> List.map (fun group ->
-                let page = group.Page |> Option.defaultValue "unknown"
-                let control = group.ControlGroup |> Option.defaultValue "unknown"
-                $"| {page} | {responsivenessInputKindToken group.InputKind} | {control} | {group.Count} | {fmt group.P50} | {fmt group.P95} | {fmt group.Max} | {group.LongFrameCount} | {responsivenessReadinessToken group.Readiness} |")
-
-        let slowLines =
-            summary.SlowestInteractions
-            |> List.map (fun item ->
-                let dominant = item.DominantPhase |> Option.defaultValue "unknown"
-                $"- {item.RecordId}: seq={item.InputSequenceId}, total={fmt item.TotalInputToVisible}, dominant={dominant}")
-
-        let envLines =
-            match summary.EnvironmentLimitations with
-            | [] -> [ "- environment limitations: none" ]
-            | values -> values |> List.map (fun value -> $"- environment limitation: {value}")
-
-        String.concat
-            Environment.NewLine
-            ([ $"# Responsiveness summary {summary.RunId}"
-               ""
-               $"- scope: {summary.Scope}"
-               $"- overall readiness: {responsivenessReadinessToken summary.OverallReadiness}"
-               $"- records: {summary.RecordsPath}"
-               budgetLine
-               ""
-               "| Page | Input | Control | Count | p50 | p95 | max | long frames | readiness |"
-               "|------|-------|---------|-------|-----|-----|-----|-------------|-----------|" ]
-             @ groupLines
-             @ [ ""; "## Slowest interactions" ]
-             @ (if List.isEmpty slowLines then [ "- none" ] else slowLines)
-             @ [ ""; "## Environment" ]
-             @ envLines
-             @ [ "" ])
+        ViewerResponsiveness.responsivenessSummaryToMarkdown summary
 
     let writeResponsivenessRun (outputRoot: string) (summary: ViewerResponsivenessSummary) (records: ViewerLatencyRecord list) =
-        let runRoot = Path.Combine(outputRoot, summary.RunId)
-        Directory.CreateDirectory runRoot |> ignore
-
-        let recordsPath = Path.Combine(runRoot, "records.jsonl")
-        let summaryJsonPath = Path.Combine(runRoot, "summary.json")
-        let summaryMarkdownPath = Path.Combine(runRoot, "summary.md")
-        let environmentPath = Path.Combine(runRoot, "environment.md")
-
-        File.WriteAllLines(recordsPath, records |> List.map latencyRecordToJsonLine)
-        File.WriteAllText(summaryJsonPath, responsivenessSummaryToJson summary)
-        File.WriteAllText(summaryMarkdownPath, responsivenessSummaryToMarkdown summary)
-
-        let environmentLines =
-            [ "# Responsiveness environment"
-              ""
-              $"- readiness: {responsivenessReadinessToken summary.OverallReadiness}"
-              $"- startedUtc: {summary.StartedUtc:O}"
-              $"- completedUtc: {summary.CompletedUtc:O}" ]
-            @ (match summary.EnvironmentLimitations with
-               | [] -> [ "- limitations: none" ]
-               | values -> values |> List.map (fun value -> $"- limitation: {value}"))
-
-        File.WriteAllText(environmentPath, String.concat Environment.NewLine environmentLines + Environment.NewLine)
-
-        [ recordsPath; summaryJsonPath; summaryMarkdownPath; environmentPath ]
-
+        ViewerResponsiveness.writeResponsivenessRun outputRoot summary records
     let defaultWindowBehavior =
         { ResizePolicy = Resizable
           MaximizePolicy = Maximizable

@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/186-cross-cutting-dedup-state-records/plan.md
+at specs/187-viewer-glhost-codec-splits/plan.md
 <!-- SPECKIT END -->
 
 ## Ant Design — source of truth
