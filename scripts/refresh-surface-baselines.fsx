@@ -33,6 +33,8 @@ let packages =
       "FS.GG.UI.Elmish", "Elmish"
       "FS.GG.UI.Scene", "Scene"
       "FS.GG.UI.SkiaViewer", "SkiaViewer"
+      "FS.GG.UI.Symbology", "Symbology"
+      "FS.GG.UI.Symbology.Render", "Symbology.Render"
       "FS.GG.UI.Testing", "Testing" ]
 
 let binDir proj = Path.Combine(repoRoot, "src", proj, "bin", "Debug", "net10.0")

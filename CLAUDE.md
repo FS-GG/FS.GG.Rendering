@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at docs/reports/2026-06-25-12-48-agent-symbology-design-system-analysis-and-plan.md
+at specs/192-agent-unit-symbology/plan.md
 <!-- SPECKIT END -->
 
 ## Ant Design — source of truth

@@ -1,0 +1,3 @@
+golden board SceneCodec identity: sha256:17a8f1ea82c8f7f7f6ebff14d2c0cbaa461a7ea0b1f7b891bb1d2c5e63a08631
+re-export identity: sha256:17a8f1ea82c8f7f7f6ebff14d2c0cbaa461a7ea0b1f7b891bb1d2c5e63a08631
+byte-stable: true

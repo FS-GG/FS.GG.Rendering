@@ -11,6 +11,8 @@
     <Project Path="src/Layout/Layout.fsproj" />
     <Project Path="src/Scene/Scene.fsproj" />
     <Project Path="src/SkiaViewer/SkiaViewer.fsproj" />
+    <Project Path="src/Symbology/Symbology.fsproj" />
+    <Project Path="src/Symbology.Render/Symbology.Render.fsproj" />
     <Project Path="src/Testing/Testing.fsproj" />
     <Project Path="src/Themes.AntDesign/Themes.AntDesign.fsproj" />
     <Project Path="src/Themes.Default/Themes.Default.fsproj" />
@@ -27,6 +29,8 @@
     <Project Path="tests/Scene.Tests/Scene.Tests.fsproj" />
     <Project Path="tests/SkiaViewer.Tests/SkiaViewer.Tests.fsproj" />
     <Project Path="tests/Smoke.Tests/Smoke.Tests.fsproj" />
+    <Project Path="tests/Symbology.Tests/Symbology.Tests.fsproj" />
+    <Project Path="tests/Symbology.Render.Tests/Symbology.Render.Tests.fsproj" />
     <Project Path="tests/TestSupport/TestSupport.fsproj" />
     <Project Path="tests/Testing.Tests/Testing.Tests.fsproj" />
   </Folder>

@@ -538,3 +538,20 @@ let evidence =
           OutputDirectory = outDir; OutputSize = { Width = 920; Height = 660 }; Resources = [] }
 // evidence.ImagePath -> content-hash-named PNG; evidence.Verdict = ReferencePassed
 ```
+
+## 11. Gate decision record (resolved at M0 — implemented 2026-06-25)
+
+The four M0 decision gates from §10.4 were resolved during planning (research.md "Gate decision
+record") and confirmed by the M1–M5 implementation:
+
+- **G1 — Library home = dedicated `FS.GG.UI.Symbology`** (Scene-only), not folded into Canvas/Controls
+  (R1/D1). Shipped: `src/Symbology/` references `FS.GG.UI.Scene` alone.
+- **G2 — Render bridge = `ReferenceRendering.run` round-trip, fail-loud on the real 3-case verdict**
+  (R2/D2). Shipped: `src/Symbology.Render/` returns the image path only on `ReferencePassed` + a real
+  `ImagePath`; raises with joined diagnostics otherwise. Direct-raster entry deferred (no measured
+  latency problem). M0 spike confirmed `ReferencePassed` + non-blank PNG in this checkout.
+- **G3 — v1 grammar = Directional Token only** (R3); Badge/Ring deferred to M7. Shipped: one `Token`
+  record + `Faction`/`Klass`/`Sigil`/`TokenState`/`Motion` enums.
+- **G4 — Skill mirroring = all three trees** (`.claude`, `.agents`, `template/product-skills`) plus the
+  package-canonical under `src/Symbology/skill/` (R4). Shipped: `fs-gg-symbology` authored once + mirrored;
+  `scripts/check-agent-skill-parity.fsx --fail-on high` is green (critical=0 high=0 warning=0).

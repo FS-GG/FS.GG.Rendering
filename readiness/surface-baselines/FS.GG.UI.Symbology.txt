@@ -1,0 +1,14 @@
+FS.GG.UI.Symbology.Faction
+FS.GG.UI.Symbology.Faction+Custom
+FS.GG.UI.Symbology.Faction+Tags
+FS.GG.UI.Symbology.Klass
+FS.GG.UI.Symbology.Klass+Tags
+FS.GG.UI.Symbology.Motion
+FS.GG.UI.Symbology.Motion+Tags
+FS.GG.UI.Symbology.Sigil
+FS.GG.UI.Symbology.Sigil+Mark
+FS.GG.UI.Symbology.Sigil+Tags
+FS.GG.UI.Symbology.Symbology
+FS.GG.UI.Symbology.Token
+FS.GG.UI.Symbology.TokenState
+FS.GG.UI.Symbology.TokenState+Tags

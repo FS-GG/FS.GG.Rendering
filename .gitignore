@@ -108,3 +108,5 @@ Thumbs.db
 .claude/worktrees/
 !specs/185-harness-data-table-refactor/readiness/
 !specs/185-harness-data-table-refactor/readiness/**
+!specs/192-agent-unit-symbology/readiness/
+!specs/192-agent-unit-symbology/readiness/**
