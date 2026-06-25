@@ -46,6 +46,28 @@ with zero drift on the existing `Scene` / `SkiaViewer` / `Controls` / `Canvas` b
 
 A zero/empty-area `Token` (`R <= 0`) renders a visible **placeholder**, never a blank or a crash.
 
+## Selectable grammars (form factors) — one channel set, three drawings
+
+The **same fixed channel set above** drives three interchangeable symbol **grammars**. The choice is a
+first-class value `Grammar = Token | Badge | Ring`; one `'stats -> Token` ChannelMap feeds any of them
+**unchanged** — switching grammar changes only the *drawing*, never the per-game mapping.
+
+| Grammar | `Symbology.badge` / `ring` / `token` | Shape | Prefer when |
+|---|---|---|---|
+| **Token** (`Grammar.Token`) | `token` | heading-rotated silhouette | motion/heading is primary; the v1 default |
+| **Badge** (`Grammar.Badge`) | `badge` | compact, **screen-aligned** framed emblem (class-driven frame, bottom health bar, speed-pip row, edge heading pip) | dense rosters / insignia walls where a stable upright frame reads faster than a rotating body |
+| **Ring** (`Grammar.Ring`) | `ring` | centred **radial gauge** (outer ring hue/threat/state, health **arc sweep** monotone in health, rim speed beads, heading needle) | continuous channels (health, charge) should read as radial quantities at a glance |
+
+- Render a selected grammar with `Symbology.render grammar token`; build review boards with
+  `galleryIn grammar …`, `filmstripIn grammar …`, `animateIn grammar …` to A/B form factors.
+- **Screen-aligned (Badge/Ring)**: the frame/ring never rotate with heading — heading is a discrete edge
+  pip (Badge) or centre needle (Ring), so upright legibility holds at any heading.
+- **Grammar-agnostic motion only** on Badge/Ring: `animateIn` applies the centre/radius rhythms
+  (Pulse/Blink/Damage); directional rhythms (Spin/Moving) degrade to the static base symbol there.
+- The **ChannelMap is identical across grammars**, so the legibility linter's verdict is
+  **grammar-independent** — it scores the `Token` channel values, never which grammar draws them.
+- `Grammar.Token` reproduces the existing `token`/`gallery`/`filmstrip`/`animate` **byte-for-byte**.
+
 ## Legibility rules — encode these and CRITIQUE every board against them at the target size
 
 - **Assign-by-urgency**: the most urgent state goes on the most salient channels (hue, motion, size).
@@ -97,7 +119,7 @@ See `reference.fsx` in this skill folder for a runnable in-tree version.
 ## The fixed feedback loop (FR-014 / FR-016 — the unit of change is the mapping, never the grammar)
 
 ```
-1. INTAKE   read roster + stats; pick grammar (default + only v1: Directional Token).
+1. INTAKE   read roster + stats; pick grammar — Token (default), Badge, or Ring (all share the ChannelMap).
 2. MAP      draft ChannelMap : 'stats -> Token  (assign-by-urgency; redundancy on critical state).
 3. RENDER   FSI: build `Symbology.gallery ...`; `Render.toPng size scene dir`; READ THE PNG BACK.
 4. CRITIQUE two complementary checks against the legibility rules at the target size:

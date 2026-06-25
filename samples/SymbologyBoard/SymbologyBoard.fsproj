@@ -17,6 +17,7 @@
        Controls surface, so it behaves identically either way. -->
   <ItemGroup>
     <Compile Include="Roster.fs" />
+    <Compile Include="GrammarCompare.fs" />
     <Compile Include="Board.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

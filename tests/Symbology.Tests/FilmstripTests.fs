@@ -26,3 +26,26 @@ let tests =
           test "sample count drives the number of frames (more samples => richer board)" {
               Expect.notEqual (bytesOf (Symbology.filmstrip 3 entries)) (bytesOf (Symbology.filmstrip 7 entries)) "schedule length matters"
           } ]
+
+// T019 [US3] Grammar-parameterized filmstrip `filmstripIn` (FR-014/FR-010): byte-reproducible per grammar;
+// Grammar.Token reproduces `filmstrip` byte-for-byte; a different grammar yields a different filmstrip.
+[<Tests>]
+let filmstripInTests =
+    let grammars = [ Grammar.Token; Grammar.Badge; Grammar.Ring ]
+
+    testList
+        "US3 filmstripIn"
+        [ yield!
+              grammars
+              |> List.map (fun g ->
+                  test (sprintf "filmstripIn %A is byte-reproducible" g) {
+                      Expect.equal (bytesOf (Symbology.filmstripIn g 5 entries)) (bytesOf (Symbology.filmstripIn g 5 entries)) "frames reproducible per grammar"
+                  })
+
+          test "filmstripIn Grammar.Token reproduces `filmstrip` byte-for-byte (FR-010)" {
+              Expect.equal (bytesOf (Symbology.filmstripIn Grammar.Token 5 entries)) (bytesOf (Symbology.filmstrip 5 entries)) "Token path is the existing filmstrip"
+          }
+
+          test "a different grammar yields a different filmstrip" {
+              Expect.notEqual (bytesOf (Symbology.filmstripIn Grammar.Token 5 entries)) (bytesOf (Symbology.filmstripIn Grammar.Ring 5 entries)) "grammar selection changes the strip"
+          } ]

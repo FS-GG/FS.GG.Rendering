@@ -1,6 +1,8 @@
 FS.GG.UI.Symbology.Faction
 FS.GG.UI.Symbology.Faction+Custom
 FS.GG.UI.Symbology.Faction+Tags
+FS.GG.UI.Symbology.Grammar
+FS.GG.UI.Symbology.Grammar+Tags
 FS.GG.UI.Symbology.Klass
 FS.GG.UI.Symbology.Klass+Tags
 FS.GG.UI.Symbology.Legibility

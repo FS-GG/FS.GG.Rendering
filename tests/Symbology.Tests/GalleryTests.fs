@@ -47,3 +47,47 @@ let tests =
               let allHeavy = Symbology.gallery 2 80.0 [ roster Ally Heavy; roster Enemy Heavy ]
               Expect.notEqual (bytesOf allMobile) (bytesOf allHeavy) "class silhouette is separable"
           } ]
+
+// T018 [US3] Grammar-parameterized gallery (FR-008/FR-010): `galleryIn g` lays out a reproducible grid in
+// the selected grammar; Grammar.Token reproduces the existing `gallery` byte-for-byte; empty and single
+// rosters render reproducibly; selecting a different grammar produces a different board.
+[<Tests>]
+let galleryInTests =
+    let grammars = [ Grammar.Token; Grammar.Badge; Grammar.Ring ]
+
+    testList
+        "US3 galleryIn"
+        [ yield!
+              grammars
+              |> List.map (fun g ->
+                  test (sprintf "galleryIn %A is byte-reproducible" g) {
+                      Expect.equal (bytesOf (Symbology.galleryIn g 2 80.0 mixed)) (bytesOf (Symbology.galleryIn g 2 80.0 mixed)) "pure grid layout per grammar"
+                  })
+
+          test "galleryIn Grammar.Token reproduces `gallery` byte-for-byte (FR-010)" {
+              Expect.equal
+                  (bytesOf (Symbology.galleryIn Grammar.Token 2 80.0 mixed))
+                  (bytesOf (Symbology.gallery 2 80.0 mixed))
+                  "the Token path is the existing gallery, unchanged"
+          }
+
+          test "selecting a different grammar produces a different board" {
+              let tok = bytesOf (Symbology.galleryIn Grammar.Token 2 80.0 mixed)
+              let bdg = bytesOf (Symbology.galleryIn Grammar.Badge 2 80.0 mixed)
+              let rng = bytesOf (Symbology.galleryIn Grammar.Ring 2 80.0 mixed)
+              Expect.notEqual tok bdg "Badge board differs from Token board"
+              Expect.notEqual tok rng "Ring board differs from Token board"
+              Expect.notEqual bdg rng "Badge board differs from Ring board"
+          }
+
+          test "empty roster renders reproducibly in every grammar" {
+              for g in grammars do
+                  Expect.equal (bytesOf (Symbology.galleryIn g 2 80.0 [])) (bytesOf (Symbology.galleryIn g 2 80.0 [])) "empty roster is reproducible"
+          }
+
+          test "single-unit roster renders reproducibly in every grammar" {
+              let one = [ roster Ally Mobile ]
+
+              for g in grammars do
+                  Expect.equal (bytesOf (Symbology.galleryIn g 2 80.0 one)) (bytesOf (Symbology.galleryIn g 2 80.0 one)) "single roster is reproducible"
+          } ]

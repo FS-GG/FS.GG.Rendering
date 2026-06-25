@@ -42,6 +42,23 @@ let png   = Render.toPng { Width = 920; Height = 660 } board "./readiness/symbol
 // -> read `png` back, critique at the target size, TWEAK mapUnit ONLY, repeat.
 ```
 
+## Selectable grammars (form factors) — one mapping, three drawings
+
+The same `'stats -> Token` mapping drives three interchangeable **grammars**, chosen as a value
+`Grammar = Token | Badge | Ring`. Switching grammar changes only the drawing — the ChannelMap is
+**unchanged**:
+
+- **Token** (`Grammar.Token`) — heading-rotated silhouette; the v1 default; prefer when motion/heading is primary.
+- **Badge** (`Grammar.Badge`) — compact, **screen-aligned** framed emblem (class-driven frame, bottom health bar, speed pips, edge heading pip); prefer for dense insignia walls where an upright frame reads faster.
+- **Ring** (`Grammar.Ring`) — centred **radial gauge** (outer ring hue/threat/state, health **arc sweep** monotone in health, rim speed beads, heading needle); prefer when continuous channels should read radially.
+
+Render a selected grammar with `Symbology.render grammar token`; build boards with `galleryIn` /
+`filmstripIn` / `animateIn` (the `gallery`/`filmstrip`/`animate` args, plus a leading `Grammar`).
+Badge/Ring are screen-aligned (heading is a discrete indicator) and take only grammar-agnostic motion
+overlays (Pulse/Blink/Damage; directional rhythms degrade to the static base). Because the mapping is
+identical across grammars, the legibility linter's verdict is **grammar-independent**. `Grammar.Token`
+reproduces the existing functions byte-for-byte.
+
 ## Legibility rules to critique against
 
 Assign-by-urgency (urgent state on hue/motion/size); redundancy on critical state; one active motion at

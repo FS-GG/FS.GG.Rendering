@@ -52,3 +52,37 @@ let tests =
           channelChanges "health-belly-arc" { baseT with Health = 0.2 } { baseT with Health = 0.95 }
           channelChanges "heading-rotation" { baseT with Heading = 0.0 } { baseT with Heading = 1.2 }
           channelChanges "shield-mount" baseT { baseT with Shield = true } ]
+
+// Grammar-parameterized channel-presence battery (SC-002/FR-003). For each grammar, varying ONE channel
+// at a time (incl. a distinct `Custom` faction) must change the canonical bytes. Asserts every channel is
+// sited — no silently-dropped channel in Badge or Ring.
+let private bytesOfG (render: Token -> Scene) (t: Token) =
+    (SceneCodec.export (render t)).CanonicalBytes
+
+let private grammarChannelChanges (gname: string) (render: Token -> Scene) =
+    let changes name (a: Token) (b: Token) =
+        test (sprintf "[%s] channel '%s' observably alters output" gname name) {
+            Expect.notEqual (bytesOfG render a) (bytesOfG render b) (sprintf "%s changes the %s render (canonical-bytes identity)" name gname)
+        }
+
+    [ changes "faction-hue" baseT { baseT with Faction = Enemy }
+      changes "faction-custom" baseT { baseT with Faction = Custom(Colors.rgb 200uy 20uy 200uy) }
+      changes "class-glyph" baseT { baseT with Klass = Heavy }
+      changes "sigil" baseT { baseT with Sigil = Ring }
+      changes "state-dash" baseT { baseT with State = Suspected }
+      changes "threat-stroke-width" { baseT with Threat = 0.2 } { baseT with Threat = 0.95 }
+      changes "charge-interior-gradient" { baseT with Charge = 0.1 } { baseT with Charge = 0.95 }
+      changes "speed-pips" { baseT with Speed = 0 } { baseT with Speed = 4 }
+      changes "health" { baseT with Health = 0.2 } { baseT with Health = 0.95 }
+      changes "heading-indicator" { baseT with Heading = 0.0 } { baseT with Heading = 1.2 }
+      changes "shield-mount" baseT { baseT with Shield = true } ]
+
+// T007 [US1] Badge channel-presence battery.
+[<Tests>]
+let badgeChannelTests =
+    testList "US1 badge channel presence" (grammarChannelChanges "badge" Symbology.badge)
+
+// T012 [US2] Ring channel-presence battery.
+[<Tests>]
+let ringChannelTests =
+    testList "US2 ring channel presence" (grammarChannelChanges "ring" Symbology.ring)
