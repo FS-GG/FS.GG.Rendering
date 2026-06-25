@@ -110,3 +110,6 @@ Thumbs.db
 !specs/185-harness-data-table-refactor/readiness/**
 !specs/192-agent-unit-symbology/readiness/
 !specs/192-agent-unit-symbology/readiness/**
+!specs/193-symbology-live-board/readiness/
+!specs/193-symbology-live-board/readiness/**
+specs/193-symbology-live-board/readiness/*-run.log

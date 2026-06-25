@@ -31,11 +31,13 @@
     <Project Path="tests/Smoke.Tests/Smoke.Tests.fsproj" />
     <Project Path="tests/Symbology.Tests/Symbology.Tests.fsproj" />
     <Project Path="tests/Symbology.Render.Tests/Symbology.Render.Tests.fsproj" />
+    <Project Path="tests/SymbologyBoard.Tests/SymbologyBoard.Tests.fsproj" />
     <Project Path="tests/TestSupport/TestSupport.fsproj" />
     <Project Path="tests/Testing.Tests/Testing.Tests.fsproj" />
   </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/CanvasDemo/CanvasDemo.fsproj" />
+    <Project Path="samples/SymbologyBoard/SymbologyBoard.fsproj" />
   </Folder>
   <Folder Name="/tools/">
     <Project Path="tools/Rendering.Harness/Rendering.Harness.fsproj" />
