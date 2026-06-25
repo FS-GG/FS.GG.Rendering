@@ -146,6 +146,8 @@ module internal ControlInternals =
     let accessibility kind attrs text = ControlPrimitives.accessibility kind attrs text
     let childrenFrom attrs = ControlPrimitives.childrenFrom attrs
     let disabledOrReadOnly control = ControlPrimitives.disabledOrReadOnly control
+    // Feature 191 (US2, D4): the volatile/no-cache marker reader, surfaced for the retained step.
+    let isVolatileCanvas control = ControlPrimitives.isVolatileCanvas control
     let eventBindings path control = ControlPrimitives.eventBindings path control
     let recursively collect control = ControlPrimitives.recursively collect control
     let ellipsize family size maxWidth label = ControlPrimitives.ellipsize family size maxWidth label
@@ -594,6 +596,7 @@ module Control =
         | StyleClassesValue v -> StyleClassesValue v
         | VisualStateValue v -> VisualStateValue v
         | SlotFillsValue fills -> SlotFillsValue(fills |> List.map (fun (name, child) -> name, mapControl f child))
+        | SceneValue v -> SceneValue v
         | AccessibilityValue v -> AccessibilityValue v
         | ThemeValue v -> ThemeValue v
         | ChildValue child -> ChildValue(mapControl f child)

@@ -70,7 +70,28 @@ module internal NodeAssembly =
 
 
     let paintLeaf (theme: Theme) (box: Rect) (c: Control<'msg>) : Scene list =
-        if ControlKindRegistry.isRich c.Kind then
+        // Feature 191 (US1, D1/D5/FR-001/FR-002/FR-013/FR-016): the `canvas` kind paints an
+        // application-supplied immutable Scene into its laid-out box — authored in canvas-local
+        // coordinates, translated to the box origin and clipped to the box; an optional viewport
+        // transform pans/zooms the CONTENT only (layout size and hit-test box unchanged). Branches
+        // BEFORE the rich-family check (the canvas is neither a rich widget nor a text leaf).
+        if c.Kind = "canvas" then
+            if box.Width <= 0.0 || box.Height <= 0.0 then
+                // Zero-area / unmeasured box: paint nothing and never error (FR-013 safe failure).
+                []
+            else
+                match sceneValueOf c with
+                | Some content ->
+                    let viewed =
+                        match viewportOf c with
+                        | Some vp -> Scene.withPerspective vp content
+                        | None -> content
+
+                    [ Scene.clipped (RectClip box) (Scene.translate box.X box.Y viewed) ]
+                | None ->
+                    // No scene supplied ⇒ a clear design-time placeholder (FR-013).
+                    emptyState theme box "canvas"
+        elif ControlKindRegistry.isRich c.Kind then
             let content = faithfulContent theme box c
             // Feature 136 (US3/T035): clip chart bodies to the control box so degenerate or
             // out-of-range data can never paint outside its bounds (the data is also finite-guarded

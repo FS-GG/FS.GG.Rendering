@@ -312,6 +312,7 @@ and AttrValue<'msg> =
     | StyleClassesValue of StyleClass list
     | VisualStateValue of VisualState
     | SlotFillsValue of (string * Control<'msg>) list
+    | SceneValue of FS.GG.UI.Scene.Scene
     | AccessibilityValue of AccessibilityMetadata
     | ThemeValue of Theme
     | ChildValue of Control<'msg>

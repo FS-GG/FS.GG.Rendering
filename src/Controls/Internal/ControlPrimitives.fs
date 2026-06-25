@@ -510,3 +510,38 @@ module internal ControlPrimitives =
             match attr.Value with
             | TextValue value -> Some value
             | _ -> None)
+
+    // Feature 191 attribute names — the canvas control's scene carrier, optional viewport transform,
+    // and the volatile/no-cache marker (US1/US2). Kept as literals here (the single read site) so the
+    // public `Canvas` constructor module and these readers agree by construction.
+    [<Literal>]
+    let CanvasSceneAttr = "canvasScene"
+
+    [<Literal>]
+    let CanvasViewportAttr = "canvasViewport"
+
+    [<Literal>]
+    let CanvasVolatileAttr = "canvasVolatile"
+
+    /// Feature 191 (US1, C1): the immutable `Scene` carried by a `canvas` control's attributes, if any.
+    let sceneValueOf (control: Control<'msg>) : Scene option =
+        tryLast CanvasSceneAttr control.Attributes
+        |> Option.bind (fun attr ->
+            match attr.Value with
+            | SceneValue scene -> Some scene
+            | _ -> None)
+
+    /// Feature 191 (US1, FR-016): the optional content viewport (pan/zoom) transform on a `canvas`.
+    let viewportOf (control: Control<'msg>) : PerspectiveTransform option =
+        tryLast CanvasViewportAttr control.Attributes
+        |> Option.bind (fun attr ->
+            match attr.Value with
+            | UntypedValue v ->
+                match v with
+                | :? PerspectiveTransform as t -> Some t
+                | _ -> None
+            | _ -> None)
+
+    /// Feature 191 (US2, D4/FR-004): whether this control is a `canvas` marked `volatile'` (no-cache).
+    let isVolatileCanvas (control: Control<'msg>) : bool =
+        control.Kind = "canvas" && boolValue CanvasVolatileAttr false control.Attributes

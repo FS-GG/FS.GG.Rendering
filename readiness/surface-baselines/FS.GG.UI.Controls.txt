@@ -17,6 +17,7 @@ FS.GG.UI.Controls.AttrValue`1+ChildrenValue
 FS.GG.UI.Controls.AttrValue`1+EventValue
 FS.GG.UI.Controls.AttrValue`1+FloatValue
 FS.GG.UI.Controls.AttrValue`1+MessageValue
+FS.GG.UI.Controls.AttrValue`1+SceneValue
 FS.GG.UI.Controls.AttrValue`1+SlotFillsValue
 FS.GG.UI.Controls.AttrValue`1+StringListValue
 FS.GG.UI.Controls.AttrValue`1+StyleClassesValue
@@ -32,6 +33,7 @@ FS.GG.UI.Controls.BarChart
 FS.GG.UI.Controls.Border
 FS.GG.UI.Controls.BoxPlot
 FS.GG.UI.Controls.Button
+FS.GG.UI.Controls.Canvas
 FS.GG.UI.Controls.Catalog
 FS.GG.UI.Controls.CatalogAccessibility
 FS.GG.UI.Controls.ChartPoint

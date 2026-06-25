@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Canvas/Canvas.Lib.fsproj" />
     <Project Path="src/ColorPolicy/ColorPolicy.fsproj" />
     <Project Path="src/Controls.Elmish/Controls.Elmish.fsproj" />
     <Project Path="src/Controls/Controls.fsproj" />
@@ -15,6 +16,7 @@
     <Project Path="src/Themes.Default/Themes.Default.fsproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Canvas.Tests/Canvas.Tests.fsproj" />
     <Project Path="tests/Controls.Tests/Controls.Tests.fsproj" />
     <Project Path="tests/Diagnostics.Tests/Diagnostics.Tests.fsproj" />
     <Project Path="tests/Elmish.Tests/Elmish.Tests.fsproj" />
@@ -27,6 +29,9 @@
     <Project Path="tests/Smoke.Tests/Smoke.Tests.fsproj" />
     <Project Path="tests/TestSupport/TestSupport.fsproj" />
     <Project Path="tests/Testing.Tests/Testing.Tests.fsproj" />
+  </Folder>
+  <Folder Name="/samples/">
+    <Project Path="samples/CanvasDemo/CanvasDemo.fsproj" />
   </Folder>
   <Folder Name="/tools/">
     <Project Path="tools/Rendering.Harness/Rendering.Harness.fsproj" />

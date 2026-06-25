@@ -202,6 +202,10 @@ module internal ControlInternals =
         control: Control<'msg> ->
             (ControlId * FS.GG.UI.Scene.Rect) list
 
+    /// Feature 191 (US2, D4): whether this control is a `canvas` marked `volatile'` (always-dirty /
+    /// no-cache), so the retained step excludes it from reuse and repaints it every frame.
+    val isVolatileCanvas: control: Control<'msg> -> bool
+
     /// Feature 091 — the recursive `EventBindings` list `renderTree` surfaces, factored so the
     /// retained path emits the identical list.
     val eventBindingsOf: control: Control<'msg> -> ControlEventBinding<'msg> list

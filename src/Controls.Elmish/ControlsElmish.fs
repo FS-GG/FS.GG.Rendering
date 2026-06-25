@@ -658,6 +658,66 @@ module ControlsElmish =
           DeltaX = input.DeltaX
           DeltaY = input.DeltaY }
 
+    // Feature 191 (US2, C6/FR-006): a `canvas` bound via `Canvas.onPointer` carries its raw-sample
+    // handler as a boxed `UntypedValue` under the "onPointer" attribute (it forwards the RAW
+    // PointerSample, not an interpreted Click, so it rides a dedicated channel rather than EventBindings).
+    let private canvasPointerHandler (control: Control<'msg>) : (PointerSample -> 'msg) option =
+        control.Attributes
+        |> List.rev
+        |> List.tryPick (fun attr ->
+            if attr.Name = "onPointer" then
+                match attr.Value with
+                | UntypedValue v ->
+                    match v with
+                    | :? (PointerSample -> 'msg) as f -> Some f
+                    | _ -> None
+                | _ -> None
+            else
+                None)
+
+    // Feature 191 (US2, C6/FR-007): a focused `canvas` bound via `Canvas.onKey` carries its raw-key
+    // handler as a boxed `UntypedValue` under the "onKey" attribute.
+    let private canvasKeyHandler (control: Control<'msg>) : (ViewerKey -> KeyModifiers -> 'msg) option =
+        control.Attributes
+        |> List.rev
+        |> List.tryPick (fun attr ->
+            if attr.Name = "onKey" then
+                match attr.Value with
+                | UntypedValue v ->
+                    match v with
+                    | :? (ViewerKey -> KeyModifiers -> 'msg) as f -> Some f
+                    | _ -> None
+                | _ -> None
+            else
+                None)
+
+    let rec private collectControls (c: Control<'msg>) : Control<'msg> list =
+        c :: (c.Children |> List.collect collectControls)
+
+    // Forward the raw pointer sample (in canvas-local coordinates) to every keyed `canvas` bound to
+    // `onPointer` whose laid-out box contains the sample. An out-of-box sample dispatches nothing
+    // (FR-006). Keyed canvases only — the canvas id (its `Key`) joins the sample to its `Bounds` box.
+    let private canvasPointerMessages (rendered: ControlRenderResult<'msg>) (root: Control<'msg>) (sample: PointerSample) : 'msg list =
+        collectControls root
+        |> List.choose (fun c ->
+            match c.Kind, c.Key with
+            | "canvas", Some key ->
+                canvasPointerHandler c
+                |> Option.bind (fun handler ->
+                    rendered.Bounds
+                    |> List.tryFind (fun (id, _) -> id = key)
+                    |> Option.bind (fun (_, box) ->
+                        if
+                            sample.X >= box.X
+                            && sample.X <= box.X + box.Width
+                            && sample.Y >= box.Y
+                            && sample.Y <= box.Y + box.Height
+                        then
+                            Some(handler { sample with X = sample.X - box.X; Y = sample.Y - box.Y })
+                        else
+                            None))
+            | _ -> None)
+
     // The single pointer-routing step the interactive host performs per native sample: render the
     // current Control tree at the live extent, hit-test the laid-out bounds via the shipped 075
     // pipeline (Pointer.update over the LayoutResult, incl. the 4px click/drag fold), then route the
@@ -709,7 +769,10 @@ module ControlsElmish =
                         interpretPointerEffect host.MapPointer interaction
                         |> AdapterCmd.productMessages)
 
-            state', messages
+            // Feature 191 (US2, FR-006): forward the raw sample (canvas-local) to an in-box canvas bound
+            // to onPointer. Independent of the gesture fold so move/wheel reach the canvas too; appended
+            // so existing EventBinding/MapPointer routing is bit-for-bit unchanged (additive).
+            state', messages @ canvasPointerMessages rendered current (pointerSampleOf input)
 
     // Feature 110 (FR-002/FR-003): resolve a single interaction's authored bindings from the RETAINED
     // frame — the mirror of `bindingMessagesFor`, reading the retained frame's `EventBindings` instead
@@ -1146,6 +1209,13 @@ module ControlsElmish =
         | Some id ->
             match tryFindNode id retained.Root with
             | None -> retained, [], []
+            | Some node when node.Control.Kind = "canvas" && (canvasKeyHandler node.Control).IsSome ->
+                // Feature 191 (US2, FR-007): a focused canvas bound to onKey receives the raw key +
+                // modifiers BEFORE default navigation. routeFocusedKey carries only `shift`, so the other
+                // modifiers are reported false here (the chord path carries the full set when wired).
+                let handler = (canvasKeyHandler node.Control).Value
+                let mods: KeyModifiers = { Ctrl = false; Alt = false; Shift = shift; Meta = false }
+                retained, [], [ handler key mods ]
             | Some node ->
                 let nodeId = node.Control.Key |> Option.defaultValue node.Control.Kind
 

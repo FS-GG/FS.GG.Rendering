@@ -164,6 +164,7 @@
     <Compile Include="Feature184OverlayByteStabilityTests.fs" />
     <Compile Include="Feature190StagePipelineTests.fs" />
     <Compile Include="Feature190GateTests.fs" />
+    <Compile Include="Feature191CanvasTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

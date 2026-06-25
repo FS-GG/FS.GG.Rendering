@@ -221,7 +221,7 @@ module internal ControlKindRegistry =
     /// (SC-001) asserts this set equals the live catalog both directions, so an omission fails the build.
     let private catalogKinds =
         [ "affix"; "alert"; "anchor"; "area-chart"; "auto-complete"; "avatar"; "badge"; "bar-chart"
-          "border"; "box-plot"; "breadcrumb"; "button"; "calendar"; "card"; "carousel"; "cascader"
+          "border"; "box-plot"; "breadcrumb"; "button"; "calendar"; "canvas"; "card"; "carousel"; "cascader"
           "check-box"; "chord-diagram"; "collapse"; "color-picker"; "column-chart"; "combo-box"
           "context-menu"; "custom-control"; "data-grid"; "date-picker"; "descriptions"; "dialog"
           "dock"; "drawer"; "empty"; "float-button"; "funnel-chart"; "gauge-chart"; "graph-view"

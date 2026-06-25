@@ -1040,9 +1040,12 @@ module internal RetainedRender =
             | Reconcile.NodePatch.Keep ->
                 let box = ControlInternals.nodeBox boundsById path nc
 
-                if box = pr.Fragment.Box && not themeChanged then
+                if box = pr.Fragment.Box && not themeChanged && not (ControlInternals.isVolatileCanvas nc) then
                     // unchanged AND unshifted AND same theme: reuse the cached subtree verbatim
                     // (identity-at-rest: zero re-measure/re-paint, zero id churn, same RetainedId).
+                    // Feature 191 (US2, D4/FR-004): a `volatile'` canvas is excluded from this reuse —
+                    // it is treated as always-dirty (repainted every frame, carrying identity) so a
+                    // per-frame animation never relies on cache reuse; surrounding chrome is untouched.
                     { pr with
                         Control = nc
                         Fragment =
@@ -1072,6 +1075,8 @@ module internal RetainedRender =
                     && (List.isEmpty nc.Children = List.isEmpty pr.Control.Children)
                     && box = pr.Fragment.Box
                     && not themeChanged
+                    // Feature 191 (US2, D4/FR-004): a `volatile'` canvas always repaints its own scene.
+                    && not (ControlInternals.isVolatileCanvas nc)
 
                 let own =
                     if ownUnchanged then

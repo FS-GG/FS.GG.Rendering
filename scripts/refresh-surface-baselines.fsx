@@ -23,6 +23,7 @@ let repoRoot = Path.GetFullPath(Path.Combine(scriptDir, ".."))
 let packages =
     [ "FS.GG.UI.Layout", "Layout"
       "FS.GG.UI.KeyboardInput", "KeyboardInput"
+      "FS.GG.UI.Canvas", "Canvas"
       "FS.GG.UI.Controls", "Controls"
       "FS.GG.UI.Controls.Elmish", "Controls.Elmish"
       "FS.GG.UI.DesignSystem", "DesignSystem"

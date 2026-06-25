@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/190-retained-render-step-pipeline/plan.md
+at specs/191-embedded-canvas-control/plan.md
 <!-- SPECKIT END -->
 
 ## Ant Design — source of truth

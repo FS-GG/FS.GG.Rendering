@@ -85,6 +85,9 @@ module Catalog =
           // BEGIN GENERATED: typed-catalog/icon
           definition "icon" "Icon" "display" "Icon" "Named icon glyph or product symbol." [ "text" ] common [] states "Image"
           // END GENERATED: typed-catalog/icon
+          // BEGIN GENERATED: typed-catalog/canvas
+          definition "canvas" "Canvas" "display" "Canvas" "Embedded drawing surface painting an application-supplied Scene into its laid-out box; forwards raw pointer/keyboard input." [] common [ "onPointer"; "onKey" ] states "Image"
+          // END GENERATED: typed-catalog/canvas
           // BEGIN GENERATED: typed-catalog/separator
           definition "separator" "Separator" "display" "Separator" "Visual divider between regions." [] common [] states "StaticText"
           // END GENERATED: typed-catalog/separator

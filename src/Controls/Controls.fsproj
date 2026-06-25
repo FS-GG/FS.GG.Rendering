@@ -162,6 +162,10 @@
     <Compile Include="Interactive2.fs" />
     <Compile Include="DataEntry2.fsi" />
     <Compile Include="DataEntry2.fs" />
+    <!-- Feature 191 (US1/US2): the embedded `canvas` control kind's public constructor surface.
+         After Pointer (PointerSample) / Control (Control.create) / ControlPrimitives (attr keys). -->
+    <Compile Include="Canvas.fsi" />
+    <Compile Include="Canvas.fs" />
   </ItemGroup>
 
   <ItemGroup>

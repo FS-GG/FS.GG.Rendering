@@ -58,6 +58,10 @@ module internal Reconcile =
         // would defeat the at-rest fast path and the scoped-repaint guarantee (SC-006/FR-010).
         // VisualState is an equatable DU, so this is a value comparison, not a reference one.
         | VisualStateValue a, VisualStateValue b -> a = b
+        // Feature 191 (US1/US2): an immutable canvas Scene compares structurally, so an unchanged scene
+        // does NOT re-diff (and re-paint) every frame — the at-rest reuse fast path holds for a static
+        // canvas, and `volatile'` (not this equality) is what forces a per-frame repaint.
+        | SceneValue a, SceneValue b -> a = b
         | ChildValue a, ChildValue b -> obj.ReferenceEquals(a, b)
         | ChildrenValue a, ChildrenValue b -> obj.ReferenceEquals(a, b)
         | MessageValue a, MessageValue b -> obj.Equals(box a, box b)

@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <IsPackable>true</IsPackable>
+    <PackageId>FS.GG.UI.Canvas</PackageId>
+    <AssemblyName>FS.GG.UI.Canvas</AssemblyName>
+    <Version>0.1.0-preview.1</Version>
+    <Title>FS.GG.UI.Canvas</Title>
+    <Description>Dependency-light pure element library and deterministic fixed-timestep game loop for FS.GG.UI canvas controls.</Description>
+    <PackageTags>fsharp;skia;scene;canvas;game-loop;ui</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Canvas.Tests" />
+  </ItemGroup>
+
+  <!-- Pure element/loop helpers. Scene-only dependency (plan Structure Decision):
+       keeps game/element content off the core control surface and headlessly testable. -->
+  <ItemGroup>
+    <Compile Include="Elements.fsi" />
+    <Compile Include="Elements.fs" />
+    <Compile Include="Loop.fsi" />
+    <Compile Include="Loop.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Scene\Scene.fsproj" />
+  </ItemGroup>
+
+</Project>

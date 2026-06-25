@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>CanvasDemo</AssemblyName>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <!-- Feature 191 (US3, T037): a runnable embedded-canvas sample — a bouncing ball + paddle composed
+       from FS.GG.UI.Canvas `Elements`, advanced by the deterministic `Loop.advance` fixed-timestep on
+       the host tick, painted into a `Canvas.volatile'` control with raw onPointer/onKey input.
+
+       NOTE (FR-015 caveat): the shipped consumer path is package references against the local feed
+       (like samples/ControlsGallery). This in-repo copy uses ProjectReferences so the sample is
+       buildable/verifiable in-tree before the new FS.GG.UI.Canvas package is packed; the publish step
+       (scripts/refresh-local-feed-and-samples.fsx) swaps these for PackageReferences. The deterministic
+       game core is identical either way (it touches only the public Canvas/Controls surface). -->
+  <ItemGroup>
+    <Compile Include="Game.fs" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Canvas\Canvas.Lib.fsproj" />
+    <ProjectReference Include="..\..\src\Scene\Scene.fsproj" />
+    <ProjectReference Include="..\..\src\Controls\Controls.fsproj" />
+    <ProjectReference Include="..\..\src\Controls.Elmish\Controls.Elmish.fsproj" />
+    <ProjectReference Include="..\..\src\SkiaViewer\SkiaViewer.fsproj" />
+    <ProjectReference Include="..\..\src\Themes.Default\Themes.Default.fsproj" />
+  </ItemGroup>
+
+</Project>

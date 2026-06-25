@@ -391,6 +391,11 @@ and AttrValue<'msg> =
     /// template (FR-008). Lowering injects the fills into the control's `Children`, so they inherit
     /// E1–E4 + E2 retained identity by construction (FR-004, FR-005).
     | SlotFillsValue of (string * Control<'msg>) list
+    /// Feature 191 (US1, C1/FR-001): an application-supplied immutable `Scene` carried by a `canvas`
+    /// control and painted into its laid-out box (box-origin local coordinates, clipped). Rides the
+    /// existing `Attr` mechanism rather than adding a `Control<'msg>` field, so every existing
+    /// construction/clone/test site is untouched and `hashScene` already fingerprints the content.
+    | SceneValue of FS.GG.UI.Scene.Scene
     | AccessibilityValue of AccessibilityMetadata
     | ThemeValue of Theme
     | ChildValue of Control<'msg>
