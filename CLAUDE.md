@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/191-embedded-canvas-control/plan.md
+at docs/reports/2026-06-25-12-48-agent-symbology-design-system-analysis-and-plan.md
 <!-- SPECKIT END -->
 
 ## Ant Design — source of truth
