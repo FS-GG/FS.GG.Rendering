@@ -36,6 +36,31 @@ type Motion =
     | Damage
     | Moving
 
+/// One styled span of identity-label text (feature 198 — rich-text runs). Inspection-detail: each run
+/// may carry its own colour / weight / size; an omitted (`None`) attribute inherits the default label
+/// style for that attribute, so an all-default run reproduces the spec-196/197 uniform style exactly
+/// (FR-002/FR-003). Rendered tofu-free at the render edge (FR-005); the pure library never requires a
+/// measurer (FR-010). `Text` may embed `\n`/`\r\n` hard breaks; empty/whitespace runs drop (FR-007).
+type LabelRun =
+    { Text: string
+      /// `None` ⇒ default label ink (the spec-196 ink). Author-supplied from the scene `Color`
+      /// vocabulary; used as-is, never re-mapped or rejected at runtime (FR-013).
+      Color: Color option
+      /// `None` ⇒ default weight. Maps directly onto `FontSpec.Weight : int option`.
+      Weight: int option
+      /// `None` ⇒ `1.0`. Multiplies the grammar's base label size (keeps grammar-independence — FR-001).
+      Scale: float option }
+
+/// The optional identity label's content (feature 198). `Plain` is the spec-197 channel verbatim
+/// (single- or multi-line via embedded `\n`); `Rich` carries an ordered sequence of styled runs. A
+/// `Plain` label, and a `Rich` label whose runs are all default-styled, render BYTE-IDENTICALLY to the
+/// equivalent spec-197 label (layered zero-drift — FR-002/SC-003). `[<RequireQualifiedAccess>]` matches
+/// the `Grammar` convention: written `LabelText.Plain` / `LabelText.Rich`.
+[<RequireQualifiedAccess>]
+type LabelText =
+    | Plain of string
+    | Rich of LabelRun list
+
 /// The symbol description: the full fixed channel set as typed fields (FR-002).
 /// Pure over this value (FR-003): equal Token => equal Scene => equal SceneCodec canonical bytes
 /// (under a fixed text-measurement provider; FR-008).
@@ -53,13 +78,15 @@ type Token =
       Speed: int
       Health: float
       Shield: bool
-      /// Optional short identity string (name / callsign / code). `None` = no label (default) and
-      /// renders byte-identically to the pre-feature symbol (FR-002). An empty/whitespace `Some`
-      /// is treated as no label (FR-006). When present it is drawn screen-aligned in the grammar's
-      /// label region, fitted to that region via real text measurement (FR-005), and tofu-free when
-      /// rendered through the headless render bridge's real measurer (FR-004). Inspection-detail:
-      /// it does NOT enter the legibility capacity table (FR-011).
-      Label: string option }
+      /// Optional identity label (name / callsign / code), now a `LabelText` (feature 198). `None` = no
+      /// label (default) and renders byte-identically to the pre-feature symbol (FR-002). A
+      /// `Some (LabelText.Plain s)` is the spec-197 single-/multi-line label verbatim; a
+      /// `Some (LabelText.Rich runs)` carries per-run styled spans. Empty/whitespace/empty-run content is
+      /// treated as no label (FR-007). When present it is drawn screen-aligned in the grammar's label
+      /// region, fitted per run to that region via real text measurement (FR-006), and tofu-free when
+      /// rendered through the headless render bridge's real measurer (FR-005). Inspection-detail:
+      /// it does NOT enter the legibility capacity table (FR-012).
+      Label: LabelText option }
 
 /// The selectable symbol form factor (FR-001/FR-002). All three consume the SAME fixed Token channel
 /// set: one `'stats -> Token` mapping drives any grammar unchanged. The choice changes the DRAWING,
@@ -77,6 +104,19 @@ module Symbology =
 
     /// Fully-populated baseline so a ChannelMap overrides only the fields a game encodes.
     val defaultToken: Token
+
+    // ---- Rich-text label constructors (feature 198, FR-001/FR-003) ----
+
+    /// An unstyled (plain) label — `= LabelText.Plain`. Single- or multi-line via embedded `\n`.
+    val plainLabel: text: string -> LabelText
+
+    /// A default-styled run (no per-run colour/weight/size override). Style by record-copying, e.g.
+    /// `{ Symbology.run "BRAVO-6" with Weight = Some 700; Color = Some teamBlue }`.
+    val run: text: string -> LabelRun
+
+    /// A rich (styled-run) label — `= LabelText.Rich`. An all-default run list renders byte-identically
+    /// to the equivalent `plainLabel` (FR-002).
+    val richLabel: runs: LabelRun list -> LabelText
 
     /// The Directional-Token element: renders every channel so each observably alters output (SC-002).
     /// Pure & deterministic (FR-003). Zero/empty area degrades to a visible placeholder (FR-020).

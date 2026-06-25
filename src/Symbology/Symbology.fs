@@ -32,6 +32,17 @@ type Motion =
     | Damage
     | Moving
 
+type LabelRun =
+    { Text: string
+      Color: Color option
+      Weight: int option
+      Scale: float option }
+
+[<RequireQualifiedAccess>]
+type LabelText =
+    | Plain of string
+    | Rich of LabelRun list
+
 type Token =
     { Cx: float
       Cy: float
@@ -46,7 +57,7 @@ type Token =
       Speed: int
       Health: float
       Shield: bool
-      Label: string option }
+      Label: LabelText option }
 
 [<RequireQualifiedAccess>]
 type Grammar =
@@ -250,6 +261,14 @@ module Symbology =
           Shield = false
           Label = None }
 
+    // ---- Rich-text label constructors (feature 198) ----
+    let plainLabel (text: string) : LabelText = LabelText.Plain text
+
+    let run (text: string) : LabelRun =
+        { Text = text; Color = None; Weight = None; Scale = None }
+
+    let richLabel (runs: LabelRun list) : LabelText = LabelText.Rich runs
+
     // ---- Optional identity-label channel (FR-001..FR-009) -------------------------------------
     // Screen-aligned short text drawn in a per-grammar label region. The node is emitted ONLY when a
     // label is present and non-blank, so a `Label = None` (or empty/whitespace) token's element list is
@@ -260,44 +279,58 @@ module Symbology =
     let private labelInk = Colors.rgb 235uy 235uy 235uy
     let private ellipsis = "…"
 
-    let private labelFontOf (size: float) : FontSpec =
-        { Family = None; Size = max 1.0 size; Weight = None }
+    // Weight-aware label font (feature 198). `labelFontWith None size` reproduces the pre-198
+    // `labelFontOf` exactly (`{ Family = None; Size; Weight = None }`), so the plain/all-default path
+    // stays BYTE-IDENTICAL; a styled run passes its own `Weight` through to `FontSpec.Weight` (FR-003).
+    let private labelFontWith (weight: int option) (size: float) : FontSpec =
+        { Family = None; Size = max 1.0 size; Weight = weight }
 
-    let private labelWidth (text: string) (size: float) : float =
-        (Scene.measureTextResolved text (labelFontOf size)).Width
+    let private labelFontOf (size: float) : FontSpec = labelFontWith None size
+
+    let private labelWidthW (weight: int option) (text: string) (size: float) : float =
+        (Scene.measureTextResolved text (labelFontWith weight size)).Width
+
+    let private labelWidth (text: string) (size: float) : float = labelWidthW None text size
 
     // Measured line-height for stacking (FR-003 / research.md R4): the resolved `TextMetrics.Height` of the
     // base font, falling back to `baseSize * 1.15` when the provider reports a non-positive height. Pure and
     // deterministic for a fixed measurement provider; only affects lines below the first (i >= 1), so a
     // single-line label is unaffected (its baseline stays the spec-196 anchor — zero drift).
-    let private lineHeightOf (baseSize: float) : float =
-        let h = (Scene.measureTextResolved "Mg" (labelFontOf baseSize)).Height
+    let private lineHeightOfW (weight: int option) (baseSize: float) : float =
+        let h = (Scene.measureTextResolved "Mg" (labelFontWith weight baseSize)).Height
         if h > 0.0 then h else baseSize * 1.15
+
+    let private lineHeightOf (baseSize: float) : float = lineHeightOfW None baseSize
 
     // Fit the trimmed label to `regionWidth` via real text measurement (FR-005): empty/whitespace => None;
     // else shrink the font toward a floor, and if still over at the floor, ellipsis-truncate at a measured
     // glyph boundary (re-measuring the candidate incl. the ellipsis). The result is always within the
     // region width and never cut mid-glyph (research.md R3). Deterministic for a fixed measurement provider.
-    let private fitLabel (regionWidth: float) (baseSize: float) (raw: string) : (string * FontSpec) option =
+    // Weight-aware fit (feature 198): identical to the pre-198 `fitLabel` for `weight = None` (it routes
+    // through `labelFontWith None`/`labelWidthW None`, byte-identical to the old `labelFontOf`/`labelWidth`),
+    // so the plain path is unchanged; a styled segment fits in ITS OWN weight + scaled size (FR-006). A
+    // single over-wide run with no wrap point degrades through exactly this shrink → ellipsis path per
+    // segment, so no segment ever clips mid-glyph or overflows the region (research.md R3).
+    let private fitLabelW (weight: int option) (regionWidth: float) (baseSize: float) (raw: string) : (string * FontSpec) option =
         if String.IsNullOrWhiteSpace raw then
             None
         else
             let text = raw.Trim()
-            let wBase = labelWidth text baseSize
+            let wBase = labelWidthW weight text baseSize
 
             if wBase <= regionWidth || regionWidth <= 0.0 then
-                Some(text, labelFontOf baseSize)
+                Some(text, labelFontWith weight baseSize)
             else
                 let floor = baseSize * 0.62
                 // Linear-measure estimate of the size that fits the whole string; verify before using it,
                 // so a non-linear real measurer can never push the drawn label past the region.
                 let est = baseSize * regionWidth / wBase
 
-                if est >= floor && labelWidth text est <= regionWidth then
-                    Some(text, labelFontOf est)
+                if est >= floor && labelWidthW weight text est <= regionWidth then
+                    Some(text, labelFontWith weight est)
                 else
                     // Truncate at the floor size: longest prefix whose `prefix + ellipsis` measures within.
-                    let fits (s: string) = labelWidth (s + ellipsis) floor <= regionWidth
+                    let fits (s: string) = labelWidthW weight (s + ellipsis) floor <= regionWidth
 
                     let rec longest (n: int) =
                         if n <= 0 then ""
@@ -305,8 +338,11 @@ module Symbology =
                         else longest (n - 1)
 
                     match longest (text.Length - 1) with
-                    | "" -> Some(ellipsis, labelFontOf floor) // even one glyph + ellipsis overflows: the ellipsis alone
-                    | prefix -> Some(prefix + ellipsis, labelFontOf floor)
+                    | "" -> Some(ellipsis, labelFontWith weight floor) // even one glyph + ellipsis overflows: the ellipsis alone
+                    | prefix -> Some(prefix + ellipsis, labelFontWith weight floor)
+
+    let private fitLabel (regionWidth: float) (baseSize: float) (raw: string) : (string * FontSpec) option =
+        fitLabelW None regionWidth baseSize raw
 
     // ---- Multi-line widening (feature 197, FR-001/FR-003/FR-005/FR-006) ----------------------------
     // The label is interpreted as possibly multi-line: embedded `\n`/`\r\n` are hard breaks; a long line
@@ -387,21 +423,201 @@ module Symbology =
                 let pos = { X = centerX - w / 2.0; Y = baselineY + lineHeight * float i }
                 Scene.glyphRunProof pos text font (Paint.fill labelInk))
 
-    // Per-grammar label region (provisional geometry — the contract is FR-003: sited, observable,
+    // ---- Rich-text runs (feature 198, FR-001..FR-013) -----------------------------------------------
+    // Per-run colour / weight / size styling of the SAME label channel. The zero-drift cases (no label,
+    // plain, all-default `Rich`) delegate to the VERBATIM spec-197 path above (`labelNodes`), so every
+    // pinned golden stays byte-identical (FR-002/SC-003); only a `Rich` label with ≥1 non-default run
+    // reaches `richLabelNodes`. Pure scene-only: reuses `measureTextResolved`/`glyphRunProof`/`FontSpec`/
+    // `Color` — no new vocabulary, no raster/GL/IO, never installs/requires a measurer (FR-016/FR-010).
+
+    // A run is "default-styled" when every attribute is unset (Scale = Some 1.0 is also the default).
+    let private isDefaultRun (r: LabelRun) =
+        r.Color = None && r.Weight = None && (r.Scale = None || r.Scale = Some 1.0)
+
+    // The plain-equivalent of an all-default run list: concatenate the run texts (each run keeps its own
+    // interior spacing). `Rich [ run "HMR-7" ]` ⇒ "HMR-7"; `Rich []`/all-empty ⇒ "" ⇒ no label (FR-007).
+    let private joinRuns (runs: LabelRun list) =
+        runs |> List.map (fun r -> r.Text) |> String.concat ""
+
+    // A run resolved to its drawable style at a grammar base size: colour defaults to `labelInk`, size is
+    // `base * scale` (floored at 1.0), weight passes straight through (FR-003 / research.md R4).
+    type private RunStyle =
+        { Color: Color
+          Weight: int option
+          Size: float }
+
+    let private resolveStyle (baseSize: float) (r: LabelRun) : RunStyle =
+        { Color = r.Color |> Option.defaultValue labelInk
+          Weight = r.Weight
+          Size = max 1.0 (baseSize * (r.Scale |> Option.defaultValue 1.0)) }
+
+    // An atom of the inline stream: a styled word, or a hard line break (research.md R2).
+    type private Atom =
+        | Word of string * RunStyle
+        | LineBreak
+
+    // Atomise the run sequence in reading order: split each run's `Text` on `\n`/`\r\n` (hard breaks),
+    // then on whitespace into words carrying the run's resolved style; empty/whitespace runs and words
+    // drop (FR-007). A `\n` between two segments of a run becomes a `LineBreak` atom.
+    let private atomsOf (baseSize: float) (runs: LabelRun list) : Atom list =
+        runs
+        |> List.collect (fun r ->
+            let style = resolveStyle baseSize r
+
+            r.Text.Replace("\r\n", "\n").Split('\n')
+            |> Array.toList
+            |> List.mapi (fun i seg ->
+                let words =
+                    seg.Split([| ' '; '\t' |], StringSplitOptions.RemoveEmptyEntries)
+                    |> Array.toList
+                    |> List.map (fun w -> Word(w, style))
+
+                if i = 0 then words else LineBreak :: words)
+            |> List.concat)
+
+    // Greedy inline break: pack words while the running line width (each word measured in its OWN resolved
+    // font, plus a base-size inter-word space) ≤ region; a `LineBreak` forces a new line; never break inside
+    // a word (research.md R2). Pure fold (no mutable), mirroring `wrapSegment`. Empty lines are dropped.
+    let private breakLines (regionWidth: float) (baseSize: float) (atoms: Atom list) : (string * RunStyle) list list =
+        let spaceW = labelWidth " " baseSize
+
+        let completed, current, _ =
+            atoms
+            |> List.fold
+                (fun (lines, cur, w) atom ->
+                    match atom with
+                    | LineBreak -> (List.rev cur :: lines, [], 0.0)
+                    | Word(text, style) ->
+                        let ww = labelWidthW style.Weight text style.Size
+
+                        if List.isEmpty cur then
+                            (lines, [ (text, style) ], ww)
+                        else
+                            let nw = w + spaceW + ww
+
+                            if regionWidth <= 0.0 || nw <= regionWidth then
+                                (lines, (text, style) :: cur, nw)
+                            else
+                                (List.rev cur :: lines, [ (text, style) ], ww))
+                ([], [], 0.0)
+
+        List.rev (List.rev current :: completed)
+        |> List.filter (List.isEmpty >> not)
+
+    // Cap to the grammar budget; when lines are dropped, append the ellipsis to the LAST word of the last
+    // kept line (re-fitted ≤ region downstream) so the surplus is signalled (FR-006/SC-005).
+    let private capLines (budget: int) (lines: (string * RunStyle) list list) =
+        let budget = max 1 budget
+
+        if List.length lines <= budget then
+            lines
+        else
+            let kept = lines |> List.truncate (budget - 1)
+
+            let lastKept =
+                match lines |> List.item (budget - 1) |> List.rev with
+                | (t, st) :: restRev -> List.rev ((t + ellipsis, st) :: restRev)
+                | [] -> []
+
+            kept @ [ lastKept ]
+
+    // Group a line's words into contiguous same-style segments; each segment's words rejoin with a space.
+    let private segmentsOf (line: (string * RunStyle) list) : (string * RunStyle) list =
+        line
+        |> List.fold
+            (fun acc (t, st) ->
+                match acc with
+                | (pt, pst) :: rest when pst = st -> (pt + " " + t, st) :: rest
+                | _ -> (t, st) :: acc)
+            []
+        |> List.rev
+
+    // Inline-run layout (FR-004/FR-006): atomise → greedy break → cap+ellipsis → per line emit one centred
+    // `glyphRunProof` per contiguous same-style segment, fitted in its own weight+size; the first line at
+    // the spec-197 baseline, subsequent lines stacked downward by the per-line max run height (common
+    // baseline). Returns [] for an empty/all-whitespace run set — no node, no throw (FR-007).
+    let private richLabelNodes
+        (centerX: float)
+        (baselineY: float)
+        (regionWidth: float)
+        (baseSize: float)
+        (budget: int)
+        (runs: LabelRun list)
+        : Scene list =
+        let spaceW = labelWidth " " baseSize
+
+        let lines = atomsOf baseSize runs |> breakLines regionWidth baseSize |> capLines budget
+
+        // Per-line height = tallest run on the line; baseline offsets are cumulative prefix sums.
+        let heights =
+            lines
+            |> List.map (fun line -> line |> List.map (fun (_, st) -> lineHeightOfW st.Weight st.Size) |> List.fold max 0.0)
+
+        let offsets = heights |> List.scan (+) 0.0 // [0; h0; h0+h1; …]; entry i is the offset of line i
+
+        lines
+        |> List.mapi (fun i line ->
+            let y = baselineY + List.item i offsets
+
+            // Fit each segment in its own weight+size (≤ region, never clipped mid-glyph).
+            let segs =
+                segmentsOf line
+                |> List.choose (fun (text, st) ->
+                    match fitLabelW st.Weight regionWidth st.Size text with
+                    | Some(ftext, font) -> Some(ftext, font, st.Color)
+                    | None -> None)
+
+            let widths = segs |> List.map (fun (t, font, _) -> (Scene.measureTextResolved t font).Width)
+            let total = List.sum widths + spaceW * float (max 0 (List.length segs - 1))
+            let startX = centerX - total / 2.0
+
+            // Place left-to-right from the centred start; one node per segment at the shared baseline.
+            (List.zip segs widths
+             |> List.fold
+                 (fun (x, acc) ((t, font, color), w) ->
+                     let node = Scene.glyphRunProof { X = x; Y = y } t font (Paint.fill color)
+                     (x + w + spaceW, node :: acc))
+                 (startX, []))
+            |> snd
+            |> List.rev)
+        |> List.concat
+
+    // Per-grammar label dispatch (research.md R6): the structural zero-drift router. `None` and the
+    // plain / all-default cases delegate to the VERBATIM `labelNodes` (byte-identical to spec 197); only a
+    // `Rich` label with a non-default run takes `richLabelNodes`. `lineHeight`/`budget` mirror spec 197.
+    let private labelDispatch
+        (centerX: float)
+        (baselineY: float)
+        (regionWidth: float)
+        (baseSize: float)
+        (lineHeight: float)
+        (budget: int)
+        (label: LabelText option)
+        : Scene list =
+        match label with
+        | None -> []
+        | Some(LabelText.Plain s) -> labelNodes centerX baselineY regionWidth baseSize lineHeight budget (Some s)
+        | Some(LabelText.Rich runs) ->
+            if List.forall isDefaultRun runs then
+                labelNodes centerX baselineY regionWidth baseSize lineHeight budget (Some(joinRuns runs))
+            else
+                richLabelNodes centerX baselineY regionWidth baseSize budget runs
+
+    // Per-grammar label region (provisional geometry — the contract is FR-004: sited, observable,
     // non-overlapping; coordinates + per-grammar line budgets are a design-loop detail, see data-model.md).
     // Each sits in the one uncrowded zone of its grammar, screen-aligned (never rotates with Heading); the
     // FIRST line keeps spec 196's exact baseline / region width / base size (the zero-drift anchor).
     let private tokenLabelNodes (t: Token) : Scene list =
         let baseSize = t.R * 0.5
-        labelNodes t.Cx (t.Cy + t.R * 1.5) (t.R * 1.9) baseSize (lineHeightOf baseSize) 3 t.Label // caption strip below the health arc (≤ 3 lines)
+        labelDispatch t.Cx (t.Cy + t.R * 1.5) (t.R * 1.9) baseSize (lineHeightOf baseSize) 3 t.Label // caption strip below the health arc (≤ 3 lines)
 
     let private badgeLabelNodes (t: Token) : Scene list =
         let baseSize = t.R * 0.42
-        labelNodes t.Cx (t.Cy + t.R * 1.42) (t.R * 1.7) baseSize (lineHeightOf baseSize) 2 t.Label // band below the health bar / pips (≤ 2 lines)
+        labelDispatch t.Cx (t.Cy + t.R * 1.42) (t.R * 1.7) baseSize (lineHeightOf baseSize) 2 t.Label // band below the health bar / pips (≤ 2 lines)
 
     let private ringLabelNodes (t: Token) : Scene list =
         let baseSize = t.R * 0.34
-        labelNodes t.Cx (t.Cy + t.R * 0.52) (t.R * 1.05) baseSize (lineHeightOf baseSize) 2 t.Label // caption beneath the sigil, inner disc (≤ 2 lines)
+        labelDispatch t.Cx (t.Cy + t.R * 0.52) (t.R * 1.05) baseSize (lineHeightOf baseSize) 2 t.Label // caption beneath the sigil, inner disc (≤ 2 lines)
 
     // Append the label line nodes to a grammar's child list as bare siblings (research.md R5): `[]` ⇒
     // `Scene.group nodes` (byte-identical to no-label), `[one]` ⇒ `nodes @ [one]` (byte-identical to the

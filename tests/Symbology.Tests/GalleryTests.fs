@@ -101,7 +101,7 @@ let labelledBoardTests =
     let grammars = [ Grammar.Token; Grammar.Badge; Grammar.Ring ]
 
     let labelledRoster =
-        mixed |> List.mapi (fun i t -> { t with Label = Some(sprintf "U-%d" i) })
+        mixed |> List.mapi (fun i t -> { t with Label = Some(LabelText.Plain(sprintf "U-%d" i)) })
 
     testList
         "US3 labelled gallery"
@@ -132,10 +132,10 @@ let multilineBoardTests =
     let grammars = [ Grammar.Token; Grammar.Badge; Grammar.Ring ]
 
     let multilineRoster =
-        mixed |> List.mapi (fun i t -> { t with R = 40.0; Label = Some(sprintf "U-%d\nLINE-B" i) })
+        mixed |> List.mapi (fun i t -> { t with R = 40.0; Label = Some(LabelText.Plain(sprintf "U-%d\nLINE-B" i)) })
 
     let singleLineRoster =
-        mixed |> List.mapi (fun i t -> { t with R = 40.0; Label = Some(sprintf "U-%d" i) })
+        mixed |> List.mapi (fun i t -> { t with R = 40.0; Label = Some(LabelText.Plain(sprintf "U-%d" i)) })
 
     let strip =
         multilineRoster |> List.map (fun t -> Pulse, t)
@@ -168,4 +168,59 @@ let multilineBoardTests =
                       (bytesOf (Symbology.galleryIn g 2 120.0 multilineRoster))
                       (bytesOf (Symbology.galleryIn g 2 120.0 singleLineRoster))
                       "the extra label lines reach the review board"
+          } ]
+
+// Feature 198 [US3] STYLED-run-labelled roster on review boards (FR-011/SC-001/B12): a roster carrying
+// per-run colour/weight/size labels renders byte-reproducibly via `render`/`galleryIn`/`filmstripIn` in
+// every grammar under a fixed measurement provider, with NO signature change (the boards thread the whole
+// Token). A styled board also differs from its plain-labelled twin (the run styling reaches the board).
+[<Tests>]
+let styledBoardTests =
+    let grammars = [ Grammar.Token; Grammar.Badge; Grammar.Ring ]
+
+    let styledRoster =
+        mixed
+        |> List.mapi (fun i t ->
+            { t with
+                R = 40.0
+                Label =
+                    Some(
+                        LabelText.Rich
+                            [ { Symbology.run (sprintf "U-%d" i) with Weight = Some 700; Color = Some(Colors.rgb 24uy 144uy 255uy) }
+                              { Symbology.run " ac" with Scale = Some 0.6 } ]
+                    ) })
+
+    let plainRoster =
+        mixed |> List.mapi (fun i t -> { t with R = 40.0; Label = Some(LabelText.Plain(sprintf "U-%d ac" i)) })
+
+    let strip = styledRoster |> List.map (fun t -> Pulse, t)
+
+    testList
+        "US3 styled-run labelled boards"
+        [ yield!
+              grammars
+              |> List.map (fun g ->
+                  test (sprintf "styled galleryIn %A is byte-reproducible (every unit's runs drawn)" g) {
+                      Expect.equal
+                          (bytesOf (Symbology.galleryIn g 2 120.0 styledRoster))
+                          (bytesOf (Symbology.galleryIn g 2 120.0 styledRoster))
+                          "a styled-labelled board is reproducible per grammar (FR-011/SC-001)"
+                  })
+
+          yield!
+              grammars
+              |> List.map (fun g ->
+                  test (sprintf "styled filmstripIn %A is byte-reproducible" g) {
+                      Expect.equal
+                          (bytesOf (Symbology.filmstripIn g 3 strip))
+                          (bytesOf (Symbology.filmstripIn g 3 strip))
+                          "a styled-labelled motion board is reproducible per grammar (FR-011)"
+                  })
+
+          test "a styled board differs from its plain-labelled twin in every grammar" {
+              for g in grammars do
+                  Expect.notEqual
+                      (bytesOf (Symbology.galleryIn g 2 120.0 styledRoster))
+                      (bytesOf (Symbology.galleryIn g 2 120.0 plainRoster))
+                      "the run styling reaches the review board (B12)"
           } ]

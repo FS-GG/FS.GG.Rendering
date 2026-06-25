@@ -91,7 +91,7 @@ let ringPlaceholder =
 // degrades to the existing visible placeholder and never throws — the placeholder rule WINS over the label
 // (no label is drawn on a placeholder). Asserted in every grammar.
 let private degenLabelled render =
-    render { Symbology.defaultToken with Cx = 10.0; Cy = 10.0; R = 0.0; Label = Some "OVERLONG-CALLSIGN" }
+    render { Symbology.defaultToken with Cx = 10.0; Cy = 10.0; R = 0.0; Label = Some (LabelText.Plain "OVERLONG-CALLSIGN") }
 
 [<Tests>]
 let degenerateWithLabel =
@@ -106,7 +106,7 @@ let degenerateWithLabel =
               }
 
               test (sprintf "[%s] degenerate-with-label equals degenerate-without-label (placeholder wins)" gname) {
-                  let withLabel = render { Symbology.defaultToken with R = 0.0; Label = Some "X" }
+                  let withLabel = render { Symbology.defaultToken with R = 0.0; Label = Some (LabelText.Plain "X") }
                   let without = render { Symbology.defaultToken with R = 0.0; Label = None }
                   Expect.equal withLabel without "the label never alters a placeholder (FR-007)"
               }
@@ -114,11 +114,30 @@ let degenerateWithLabel =
               // T012 [US2] explicit MULTI-LINE variant: a `\n`-bearing / over-budget label on a degenerate
               // token still yields the placeholder, draws no label glyph, and equals the no-label placeholder.
               test (sprintf "[%s] R <= 0 with a MULTI-LINE label => placeholder, no throw, no label glyph" gname) {
-                  let scene = render { Symbology.defaultToken with Cx = 10.0; Cy = 10.0; R = 0.0; Label = Some "ALPHA\nBRAVO\nCHARLIE\nDELTA" }
+                  let scene = render { Symbology.defaultToken with Cx = 10.0; Cy = 10.0; R = 0.0; Label = Some (LabelText.Plain "ALPHA\nBRAVO\nCHARLIE\nDELTA") }
                   let kinds = scene |> Scene.describe |> List.distinct
                   Expect.contains kinds PathElement "the visible placeholder is drawn (FR-007)"
                   Expect.isFalse (List.contains GlyphRunElement kinds) "the placeholder rule wins over a multi-line label"
 
                   let without = render { Symbology.defaultToken with Cx = 10.0; Cy = 10.0; R = 0.0; Label = None }
                   Expect.equal scene without "a multi-line label never alters a placeholder (FR-007)"
+              }
+
+              // Feature 198 (B9/FR-008): a degenerate token carrying a STYLED `Rich` label still yields the
+              // placeholder, draws no label glyph, and equals the no-label placeholder — placeholder wins.
+              test (sprintf "[%s] R <= 0 with a STYLED rich label => placeholder, no throw, no label glyph" gname) {
+                  let styled =
+                      render
+                          { Symbology.defaultToken with
+                              Cx = 10.0
+                              Cy = 10.0
+                              R = 0.0
+                              Label = Some(LabelText.Rich [ { Symbology.run "BRAVO" with Weight = Some 700; Color = Some(Colors.rgb 24uy 144uy 255uy) } ]) }
+
+                  let kinds = styled |> Scene.describe |> List.distinct
+                  Expect.contains kinds PathElement "the visible placeholder is drawn (FR-008)"
+                  Expect.isFalse (List.contains GlyphRunElement kinds) "the placeholder rule wins over a styled label (B9)"
+
+                  let without = render { Symbology.defaultToken with Cx = 10.0; Cy = 10.0; R = 0.0; Label = None }
+                  Expect.equal styled without "a styled label never alters a placeholder (FR-008)"
               } ]

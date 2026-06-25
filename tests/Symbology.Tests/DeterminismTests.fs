@@ -127,7 +127,7 @@ let ringDeterminism =
 // `measureText` heuristic), and the existing `Label = None` goldens above stay byte-UNCHANGED (the
 // zero-drift tripwire — proven by `canonicalSha (token defaultToken)` still matching the pinned default).
 let private labelled =
-    { sample with Label = Some "HMR-7" }
+    { sample with Label = Some (LabelText.Plain "HMR-7") }
 
 [<Tests>]
 let labelDeterminism =
@@ -164,7 +164,7 @@ let labelDeterminism =
 // The pre-feature `0dda10bd…` / single-line `6710215b…` goldens above stay UNCHANGED in this same file —
 // multi-line is engaged only by whitespace/`\n` content too wide for one line (layered zero-drift).
 let private multiline =
-    { sample with Label = Some "ALPHA\nBRAVO" }
+    { sample with Label = Some (LabelText.Plain "ALPHA\nBRAVO") }
 
 [<Tests>]
 let multilineDeterminism =
@@ -183,4 +183,34 @@ let multilineDeterminism =
                   (canonicalSha (Symbology.token multiline))
                   "b41c9626e42661b672e11db54d75bb4ff57cc76787d4dfdd0731e0c055df182e"
                   "multi-line canonical bytes drifted from the pinned cross-process golden (SC-004)"
+          } ]
+
+// Feature 198 [US1] Styled-run label determinism (FR-009/SC-004/B10). A representative two-run styled
+// label is byte-stable in-process AND pinned as a cross-process anchor (purity under a fixed measurement
+// provider ⇒ the same bytes in any process running that provider — the same proxy the goldens above use).
+// The pre-feature / plain goldens in this file stay UNCHANGED (layered zero-drift).
+let private styled =
+    { sample with
+        Label =
+            Some(
+                LabelText.Rich
+                    [ { Symbology.run "BRAVO" with Weight = Some 700; Color = Some(Colors.rgb 24uy 144uy 255uy) }
+                      { Symbology.run " ac12" with Scale = Some 0.6 } ]
+            ) }
+
+[<Tests>]
+let styledDeterminism =
+    testList
+        "US1 styled-run label determinism"
+        [ test "same styled Token => byte-equal canonical bytes (render twice, same process)" {
+              let a = (SceneCodec.export (Symbology.token styled)).CanonicalBytes
+              let b = (SceneCodec.export (Symbology.token styled)).CanonicalBytes
+              Expect.equal a b "the styled-run label is a pure function of Token (FR-009/SC-004 same-process)"
+          }
+
+          test "styled cross-process golden: fixed styled Token canonical bytes are pinned" {
+              Expect.equal
+                  (canonicalSha (Symbology.token styled))
+                  "2fd5ea98e288cfc3634593002ca333ad690a97c04adf5a38d603de595b02e9fc"
+                  "styled-run canonical bytes drifted from the pinned cross-process golden (SC-004/B10)"
           } ]

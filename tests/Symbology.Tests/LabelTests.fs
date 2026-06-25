@@ -65,7 +65,7 @@ let fitTests =
         [ for gname, render in grammars do
               test (sprintf "[%s] an overlong label is fitted within the region width (no overflow)" gname) {
                   let overlong = "THIS-CALLSIGN-IS-FAR-TOO-LONG-TO-FIT-1234567890"
-                  let scene = render { baseT with Label = Some overlong }
+                  let scene = render { baseT with Label = Some (LabelText.Plain overlong) }
 
                   match labelGlyphRun scene with
                   | None -> failtest "an overlong label must still draw a (fitted) glyph run"
@@ -76,7 +76,7 @@ let fitTests =
               }
 
               test (sprintf "[%s] a label that already fits is drawn whole (not truncated)" gname) {
-                  let scene = render { baseT with Label = Some "A7" }
+                  let scene = render { baseT with Label = Some (LabelText.Plain "A7") }
 
                   match labelGlyphRun scene with
                   | None -> failtest "a fitting label must draw a glyph run"
@@ -88,7 +88,7 @@ let emptyWhitespaceTests =
     testList
         "US2 empty/whitespace label => no label"
         [ for gname, render in grammars do
-              for label in [ Some ""; Some "   "; Some "\t \n" ] do
+              for label in [ Some (LabelText.Plain ""); Some (LabelText.Plain "   "); Some (LabelText.Plain "\t \n") ] do
                   test (sprintf "[%s] label %A emits no glyph node and does not throw" gname label) {
                       let scene = render { baseT with Label = label }
                       let kinds = scene |> Scene.describe
@@ -96,7 +96,7 @@ let emptyWhitespaceTests =
                   }
 
               test (sprintf "[%s] whitespace label is byte-identical to no label" gname) {
-                  let ws = (SceneCodec.export (render { baseT with Label = Some "   " })).CanonicalBytes
+                  let ws = (SceneCodec.export (render { baseT with Label = Some (LabelText.Plain "   ") })).CanonicalBytes
                   let none = (SceneCodec.export (render { baseT with Label = None })).CanonicalBytes
                   Expect.equal ws none "whitespace == no label (FR-006)"
               } ]
@@ -109,7 +109,7 @@ let pureFallbackTests =
         "US2 measurer-optional pure library (FR-009)"
         [ for gname, render in grammars do
               test (sprintf "[%s] labelled token on the no-measurer path emits a node and does not throw" gname) {
-                  let scene = render { baseT with Label = Some "PURE-1" }
+                  let scene = render { baseT with Label = Some (LabelText.Plain "PURE-1") }
                   // No throw is implied by reaching here; assert the node is present and carries the text.
                   match labelGlyphRun scene with
                   | None -> failtest "the pure library must still emit the label node with no measurer installed"

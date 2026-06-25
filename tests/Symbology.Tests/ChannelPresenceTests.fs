@@ -100,21 +100,21 @@ let labelChannelTests =
         [ for gname, render in labelGrammars do
               test (sprintf "[%s] label observably alters output" gname) {
                   let bare = { baseT with Label = None }
-                  let lab = { baseT with Label = Some "A-7" }
+                  let lab = { baseT with Label = Some (LabelText.Plain "A-7") }
                   Expect.notEqual (bytesOfG render bare) (bytesOfG render lab) (sprintf "the label changes the %s render" gname)
               }
 
               test (sprintf "[%s] a label adds a glyph-run node; a bare token has none" gname) {
                   let bareKinds = render { baseT with Label = None } |> Scene.describe
-                  let labKinds = render { baseT with Label = Some "A-7" } |> Scene.describe
+                  let labKinds = render { baseT with Label = Some (LabelText.Plain "A-7") } |> Scene.describe
                   Expect.isFalse (List.contains GlyphRunElement bareKinds) "no label => no glyph run"
                   Expect.isTrue (List.contains GlyphRunElement labKinds) "a label => a glyph-run node"
               }
 
               test (sprintf "[%s] two distinct labels render distinguishably" gname) {
                   Expect.notEqual
-                      (bytesOfG render { baseT with Label = Some "A-7" })
-                      (bytesOfG render { baseT with Label = Some "B-9" })
+                      (bytesOfG render { baseT with Label = Some (LabelText.Plain "A-7") })
+                      (bytesOfG render { baseT with Label = Some (LabelText.Plain "B-9") })
                       "distinct labels are mutually distinguishable (SC-002)"
               } ]
 
@@ -132,7 +132,40 @@ let multilineChannelTests =
         "US1 multi-line channel presence"
         [ for gname, render in labelGrammars do
               test (sprintf "[%s] one-line vs embedded-\\n of the same text differ; neither throws" gname) {
-                  let oneLine = bytesOfG render { bigT with Label = Some "A B" }
-                  let twoLine = bytesOfG render { bigT with Label = Some "A\nB" }
+                  let oneLine = bytesOfG render { bigT with Label = Some (LabelText.Plain "A B") }
+                  let twoLine = bytesOfG render { bigT with Label = Some (LabelText.Plain "A\nB") }
                   Expect.notEqual oneLine twoLine (sprintf "an embedded line break observably alters the %s render (FR-001)" gname)
+              } ]
+
+// Feature 198 — rich-text run styling is a CHANNEL (B5/SC-002): the same characters carried as styled runs
+// vs a plain string produce differing canonical bytes in every grammar, and a ≥2-run styled label emits
+// ≥2 glyph-run nodes (one per contiguous same-style segment) — neither raises.
+[<Tests>]
+let richChannelTests =
+    let bigT = { baseT with R = 40.0 }
+    let blue = Colors.rgb 24uy 144uy 255uy
+
+    let rec runCount (scene: Scene) =
+        scene.Nodes
+        |> List.sumBy (function
+            | GlyphRun _ -> 1
+            | Group g -> g |> List.sumBy (fun s -> runCount s)
+            | ClipNode(_, s)
+            | ColorSpaceNode(_, s)
+            | PerspectiveNode(_, s)
+            | Translate(_, s) -> runCount s
+            | _ -> 0)
+
+    testList
+        "US1 rich-text channel presence"
+        [ for gname, render in labelGrammars do
+              test (sprintf "[%s] same chars as styled runs vs plain ⇒ differing bytes" gname) {
+                  let styled = (SceneCodec.export (render { bigT with Label = Some(LabelText.Rich [ { Symbology.run "AB" with Weight = Some 700; Color = Some blue } ]) })).CanonicalBytes
+                  let plain = (SceneCodec.export (render { bigT with Label = Some(LabelText.Plain "AB") })).CanonicalBytes
+                  Expect.notEqual styled plain (sprintf "run styling observably alters the %s render (B5/SC-002)" gname)
+              }
+
+              test (sprintf "[%s] a 2-run styled label emits ≥2 glyph-run nodes in reading order" gname) {
+                  let scene = render { bigT with Label = Some(LabelText.Rich [ { Symbology.run "AL" with Weight = Some 700 }; { Symbology.run "fa" with Scale = Some 0.6 } ]) }
+                  Expect.isGreaterThanOrEqual (runCount scene) 2 "≥2 contiguous-style segments ⇒ ≥2 nodes (B4)"
               } ]

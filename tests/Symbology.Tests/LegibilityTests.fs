@@ -240,7 +240,7 @@ let labelInvariance =
           { baseUnit with Faction = Neutral; Klass = Mobile; Sigil = Bolt; Speed = 3 } ]
 
     let labelled =
-        roster |> List.mapi (fun i t -> { t with Label = Some(sprintf "U-%d" i) })
+        roster |> List.mapi (fun i t -> { t with Label = Some(LabelText.Plain(sprintf "U-%d" i)) })
 
     testList
         "US3 label linter-invariance"
@@ -255,7 +255,7 @@ let labelInvariance =
           }
 
           test "even a roster of all-identical labels leaves the verdict unchanged" {
-              let sameLabel = roster |> List.map (fun t -> { t with Label = Some "SAME" })
+              let sameLabel = roster |> List.map (fun t -> { t with Label = Some (LabelText.Plain "SAME") })
               Expect.equal (Legibility.score sameLabel) (Legibility.score roster) "the label channel is never governed (SC-006)"
           }
 
@@ -264,13 +264,42 @@ let labelInvariance =
           // multi-line content never enters the capacity table, so the verdict is unchanged and (since
           // `score` takes `Token list` with no grammar parameter) grammar-independent by construction.
           test "multi-line label presence does not change the roster's Report (score)" {
-              let multiline = roster |> List.mapi (fun i t -> { t with Label = Some(sprintf "U-%d\nLINE-B\nLINE-C\nLINE-D" i) })
+              let multiline = roster |> List.mapi (fun i t -> { t with Label = Some(LabelText.Plain(sprintf "U-%d\nLINE-B\nLINE-C\nLINE-D" i)) })
               Expect.equal (Legibility.score multiline) (Legibility.score roster) "a multi-line label is inspection-detail; it does not enter governance (FR-011)"
           }
 
           test "multi-line label presence does not change the animated Report (scoreAnimated)" {
-              let multiline = roster |> List.mapi (fun i t -> { t with Label = Some(sprintf "U-%d\nLINE-B" i) })
+              let multiline = roster |> List.mapi (fun i t -> { t with Label = Some(LabelText.Plain(sprintf "U-%d\nLINE-B" i)) })
               let board = roster |> List.map (fun t -> Spin, t)
               let boardL = multiline |> List.map (fun t -> Spin, t)
               Expect.equal (Legibility.scoreAnimated boardL) (Legibility.scoreAnimated board) "multi-line labels do not alter animated governance (FR-011)"
+          }
+
+          // Feature 198 [US3] STYLED-run labels are inspection-detail too (FR-012/SC-006/B13): a roster
+          // carrying per-run colour/weight/size labels yields an IDENTICAL Report to (a) the same roster
+          // with no labels and (b) the same roster with PLAIN labels — run styling never enters the
+          // pre-attentive capacity table, so the verdict is unchanged and grammar-independent.
+          let styled =
+              roster
+              |> List.mapi (fun i t ->
+                  { t with
+                      Label =
+                          Some(
+                              LabelText.Rich
+                                  [ { Symbology.run (sprintf "U-%d" i) with Weight = Some 700; Color = Some(Colors.rgb 24uy 144uy 255uy) }
+                                    { Symbology.run " tag" with Scale = Some 0.6 } ]
+                          ) })
+
+          test "styled-run label presence does not change the roster's Report (vs no labels)" {
+              Expect.equal (Legibility.score styled) (Legibility.score roster) "styled labels are inspection-detail; pre-attentive governance is unchanged (FR-012)"
+          }
+
+          test "styled-run label Report equals the PLAIN-label Report (styling never governs)" {
+              Expect.equal (Legibility.score styled) (Legibility.score labelled) "swapping plain labels for styled runs does not alter the verdict (B13/SC-006)"
+          }
+
+          test "styled-run label presence does not change the animated Report (scoreAnimated)" {
+              let board = roster |> List.map (fun t -> Pulse, t)
+              let boardS = styled |> List.map (fun t -> Pulse, t)
+              Expect.equal (Legibility.scoreAnimated boardS) (Legibility.scoreAnimated board) "styled labels do not alter animated governance (FR-012)"
           } ]

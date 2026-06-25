@@ -72,7 +72,7 @@ let stackingTests =
         "US1 multi-line stacking"
         [ for gname, render in grammars do
               test (sprintf "[%s] a `\\n`-bearing label emits N stacked nodes, first at the 196 baseline" gname) {
-                  let runs = render { baseT with Label = Some "AL\nBR" } |> collectRuns
+                  let runs = render { baseT with Label = Some (LabelText.Plain "AL\nBR") } |> collectRuns
                   Expect.equal runs.Length 2 "two short lines ⇒ two stacked glyph-run nodes"
                   let ys = runs |> List.map (fun r -> r.Position.Y)
                   Expect.floatClose Accuracy.high (List.head ys) (firstBaseline gname baseT) "first line sits at the spec-196 baseline (zero-drift anchor)"
@@ -81,7 +81,7 @@ let stackingTests =
               }
 
               test (sprintf "[%s] a one-line-fitting label is a SINGLE node at the 196 baseline" gname) {
-                  let runs = render { baseT with Label = Some "A7" } |> collectRuns
+                  let runs = render { baseT with Label = Some (LabelText.Plain "A7") } |> collectRuns
                   Expect.equal runs.Length 1 "a single fitting line ⇒ exactly one node (byte-identity anchor)"
                   Expect.floatClose Accuracy.high (List.head runs).Position.Y (firstBaseline gname baseT) "the single line keeps spec-196's baseline"
               }
@@ -89,7 +89,7 @@ let stackingTests =
               // FR-009 — the pure library never installs/requires a measurer: a multi-line token still emits
               // its nodes deterministically (render-twice byte-equal) and never throws on the pure path.
               test (sprintf "[%s] multi-line on the no-measurer pure path: nodes emitted, deterministic, no throw (FR-009)" gname) {
-                  let mk () = render { baseT with Label = Some "AL\nBR" }
+                  let mk () = render { baseT with Label = Some (LabelText.Plain "AL\nBR") }
                   Expect.isGreaterThan (mk () |> collectRuns |> List.length) 0 "the pure path still emits the line nodes"
                   Expect.equal (bytesOf (mk ())) (bytesOf (mk ())) "multi-line layout is a deterministic function of Token (FR-009)"
               } ]
@@ -101,7 +101,7 @@ let wrapCapTests =
         [ for gname, render in grammars do
               test (sprintf "[%s] a too-wide whitespace label wraps to multiple lines, each ≤ region width" gname) {
                   let wide = "ALPHA BRAVO CHARLIE DELTA ECHO FOXTROT GOLF HOTEL"
-                  let runs = render { baseT with Label = Some wide } |> collectRuns
+                  let runs = render { baseT with Label = Some (LabelText.Plain wide) } |> collectRuns
                   Expect.isGreaterThan runs.Length 1 "a long whitespace label wraps to more than one line"
 
                   let region = regionWidth gname baseT.R
@@ -113,23 +113,23 @@ let wrapCapTests =
 
               test (sprintf "[%s] an over-budget label is capped to the budget; the last drawn line ends with the ellipsis" gname) {
                   let many = "L1\nL2\nL3\nL4\nL5\nL6"
-                  let runs = render { baseT with Label = Some many } |> collectRuns
+                  let runs = render { baseT with Label = Some (LabelText.Plain many) } |> collectRuns
                   Expect.equal runs.Length (budget gname) (sprintf "drawn line count is capped to the %s budget (FR-005)" gname)
                   Expect.stringEnds (List.last runs).Data.Text "…" "the last drawn line is ellipsised to signal dropped content (SC-005)"
               }
 
               test (sprintf "[%s] interior blank/whitespace segments collapse (\"A\\n\\n\\nB\" ⇒ two lines)" gname) {
-                  let runs = render { baseT with Label = Some "A\n\n\nB" } |> collectRuns
+                  let runs = render { baseT with Label = Some (LabelText.Plain "A\n\n\nB") } |> collectRuns
                   Expect.equal runs.Length 2 "blank interior segments are dropped — no wasted gap (FR-006)"
               }
 
               test (sprintf "[%s] a blank-lines-only label (\"\\n  \\n\") draws no label and does not throw" gname) {
-                  let kinds = render { baseT with Label = Some "\n  \n" } |> Scene.describe
+                  let kinds = render { baseT with Label = Some (LabelText.Plain "\n  \n") } |> Scene.describe
                   Expect.isFalse (List.contains GlyphRunElement kinds) "a blank-lines-only label is equivalent to None (FR-006)"
               }
 
               test (sprintf "[%s] a single unbroken word wider than the region degrades to one fitted line (no overflow)" gname) {
-                  let runs = render { baseT with Label = Some "THIS-CALLSIGN-IS-FAR-TOO-LONG-TO-FIT-1234567890" } |> collectRuns
+                  let runs = render { baseT with Label = Some (LabelText.Plain "THIS-CALLSIGN-IS-FAR-TOO-LONG-TO-FIT-1234567890") } |> collectRuns
                   Expect.equal runs.Length 1 "no whitespace ⇒ no wrap point ⇒ one fitted line"
                   let drawn = (Scene.measureGlyphRun (List.head runs).Data).Width
                   let region = regionWidth gname baseT.R

@@ -44,11 +44,11 @@ let png   = Render.toPng { Width = 920; Height = 660 } board "./readiness/symbol
 
 ## Identity label (opt-in inspection-detail channel)
 
-`Token` carries an optional `Label : string option` — a short callsign/code drawn screen-aligned in a
+`Token` carries an optional `Label : LabelText option` — a short callsign/code drawn screen-aligned in a
 per-grammar region. Set it in `mapUnit` only when the abstract sigil cannot disambiguate identity:
 
 ```fsharp
-{ Symbology.defaultToken with R = 28.0; Faction = Ally; Label = Some u.Callsign }
+{ Symbology.defaultToken with R = 28.0; Faction = Ally; Label = Some (Symbology.plainLabel u.Callsign) }
 ```
 
 - **Inspection-detail, not pop-out.** It complements — never replaces — the vector `Sigil`; keep strings
@@ -67,7 +67,29 @@ per-grammar region. Set it in `mapUnit` only when the abstract sigil cannot disa
 
 ```fsharp
 // A callsign over a code — two lines in the one field:
-{ Symbology.defaultToken with R = 28.0; Faction = Ally; Label = Some (u.Callsign + "\n" + u.Code) }
+{ Symbology.defaultToken with R = 28.0; Faction = Ally; Label = Some (Symbology.plainLabel (u.Callsign + "\n" + u.Code)) }
+```
+
+- **Rich-text runs — per-run colour / weight / size (same channel).** `LabelText.Rich` carries a short
+  ordered sequence of `LabelRun { Text; Color; Weight; Scale }` spans; each attribute is optional and
+  inherits the default when `None`, so an all-default `Rich` ≡ the equivalent `plainLabel` byte-for-byte.
+  Use it for an **emphasis hierarchy** (a loud bold callsign + a dim small code); attributes are exactly
+  **colour / weight / size** (italic/underline/strike/family are out of scope). Keep runs **few** and the
+  palette **restrained**, and **do not colour a run to impersonate the faction/state pre-attentive
+  encodings** — author colours are used as-is (never re-mapped) and the linter is unchanged, so this is a
+  loop caveat, not a runtime rule. Each run is fitted in its own style, lines cap to the grammar budget and
+  ellipsise surplus, and tofu-free output is a **render-edge** property (verify through `Symbology.Render`).
+
+```fsharp
+// A loud bold callsign next to a dim, smaller code — one styled label:
+{ Symbology.defaultToken with
+    R = 28.0
+    Faction = Ally
+    Label =
+        Some(
+            Symbology.richLabel
+                [ { Symbology.run u.Callsign with Weight = Some 700 }
+                  { Symbology.run ("  " + u.Code) with Scale = Some 0.7; Color = Some (Colors.rgb 150uy 150uy 150uy) } ]) }
 ```
 
 ## Selectable grammars (form factors) — one mapping, three drawings

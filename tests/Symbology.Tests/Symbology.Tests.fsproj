@@ -18,6 +18,7 @@
     <Compile Include="LegibilityTests.fs" />
     <Compile Include="LabelTests.fs" />
     <Compile Include="MultilineLabelTests.fs" />
+    <Compile Include="RichLabelTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

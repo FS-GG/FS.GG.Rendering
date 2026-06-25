@@ -15,8 +15,10 @@ unit roster into legible abstract vector symbols. The per-game stat-to-channel m
 ## Public Contract
 
 - Pure library `FS.GG.UI.Symbology` (`src/Symbology/Symbology.fsi`): the `Token` record (the full
-  fixed channel set), the channel enums `Faction` / `Klass` / `Sigil` / `TokenState` / `Motion`, and
-  `module Symbology` with `defaultToken`, `token : Token -> Scene`, `animate : Motion -> Token ->
+  fixed channel set, whose `Label : LabelText option` is the opt-in identity label), the channel enums
+  `Faction` / `Klass` / `Sigil` / `TokenState` / `Motion`, the label types `LabelRun` /
+  `LabelText` (`Plain` | `Rich`), and `module Symbology` with `defaultToken`, the label ctors
+  `plainLabel` / `run` / `richLabel`, `token : Token -> Scene`, `animate : Motion -> Token ->
   phase:float -> Scene`, `gallery : cols -> spacing -> Token list -> Scene`, and `filmstrip : samples
   -> (Motion * Token) list -> Scene`. References **only** `FS.GG.UI.Scene` — no IO, no GL, no codec call.
 - Render bridge `FS.GG.UI.Symbology.Render` (`src/Symbology.Render/Render.fsi`): `Render.toPng : Size
@@ -48,7 +50,7 @@ A zero/empty-area `Token` (`R <= 0`) renders a visible **placeholder**, never a 
 
 ## Identity label (opt-in inspection-detail channel)
 
-The `Token` carries an **optional** `Label : string option` — a short identity string (name / callsign /
+The `Token` carries an **optional** `Label : LabelText option` — a short identity (name / callsign /
 code) drawn screen-aligned in a per-grammar label region. It is an **inspection-detail** channel: read
 **after** attention lands, complementary to — never a replacement for — the vector `Sigil` and the
 pre-attentive channels above. Use it only when the abstract sigil alone cannot disambiguate identity
@@ -82,6 +84,37 @@ pre-attentive channels above. Use it only when the abstract sigil alone cannot d
 - **Not governed by the linter.** The label is **not** in the legibility capacity table — `Legibility.score`
   ignores it, so its verdict is unchanged and grammar-independent. Do not use the label to dodge a
   channel-overload warning; fix the pre-attentive encoding instead.
+
+### Rich-text runs — per-run colour / weight / size (still the SAME channel)
+
+The label's content is a `LabelText`: **`LabelText.Plain s`** (the unstyled single-/multi-line label
+above, verbatim) or **`LabelText.Rich runs`** — a short ordered sequence of styled spans. Each `LabelRun`
+carries `{ Text; Color; Weight; Scale }`, where **`Color` / `Weight` / `Scale` are each optional** and
+inherit the default label style when `None` (so an all-default run reproduces the plain label exactly).
+Construct with `Symbology.plainLabel`, `Symbology.run` (a default span), and `Symbology.richLabel`; style
+by record-copy, e.g. `{ Symbology.run "BRAVO-6" with Weight = Some 700; Color = Some teamBlue }`.
+
+- **When to use.** Express an **emphasis hierarchy** inside one identity — a loud, bold callsign next to a
+  dim, smaller code — so two pieces of identity can be triaged at a glance. It is still **inspection-detail**
+  and still **complements, never replaces**, the vector `Sigil`.
+- **Supported attributes are exactly colour / weight / size.** `Color` is any scene `Color`; `Weight` maps
+  onto `FontSpec.Weight`; `Scale` multiplies the grammar's base label size. Italic / underline / strike /
+  letter-spacing / per-glyph styling / per-run font family are **out of scope** (use the sigil/geometry for
+  anything louder).
+- **Keep runs few and the palette restrained.** A couple of short runs with one or two deliberate styles
+  reads; a rainbow of runs is noise. **Do NOT colour a run to impersonate the faction or state
+  pre-attentive encodings** — those palettes are reserved for the pop-out channels; a label that mimics them
+  misleads. This is a **loop guidance caveat**, not a runtime rule: author colours are used **as-is**, never
+  re-mapped or rejected, and the linter's pre-attentive governance is unchanged.
+- **Layered zero-drift.** `None` ≡ the pre-feature symbol; `Plain` ≡ the spec-197 label byte-for-byte; a
+  `Rich` label whose runs are all default-styled ≡ the equivalent `Plain` label byte-for-byte. Only a run
+  with a real colour/weight/size override changes the bytes.
+- **Fitted per run, capped, tofu-free at the edge.** Each run is measured and fitted **in its own style**;
+  runs flow and wrap to the region, each line's height follows its **tallest** run on a common baseline, the
+  line count is **capped** to the grammar budget, and surplus ends in `…`. A run that is empty/whitespace
+  drops; `Rich []` ⇒ no label. As with the plain label, **tofu-free is a render-edge property** — verify
+  every run draws real glyphs through `Symbology.Render`, not from a pure unit test; the pure library
+  requires no measurer and never throws without one.
 
 ## Selectable grammars (form factors) — one channel set, three drawings
 

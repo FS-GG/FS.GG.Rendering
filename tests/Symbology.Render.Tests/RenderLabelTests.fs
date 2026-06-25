@@ -40,7 +40,7 @@ let private labelledBoard labels =
             Klass = Mobile
             Sigil = Bolt
             Health = 0.8
-            Label = Some lbl })
+            Label = Some (LabelText.Plain lbl) })
     |> Symbology.gallery 4 96.0
 
 let private size = { Width = 384; Height = 96 }
@@ -79,7 +79,7 @@ let private multilineToken lbl =
         Klass = Mobile
         Sigil = Bolt
         Health = 0.8
-        Label = Some lbl }
+        Label = Some (LabelText.Plain lbl) }
 
 [<Tests>]
 let multilineTests =
@@ -97,4 +97,62 @@ let multilineTests =
               for line in [ "ALPHA"; "BRAVO"; "CHARLIE"; "HOTEL-1"; "K9" ] do
                   let report = Fonts.resolveText labelFont line |> Fonts.report
                   Expect.equal report.TofuCount 0 (sprintf "multi-line line %s draws real glyphs (no tofu) under the bundled font" line)
+          } ]
+
+// Feature 198 [US1] Styled-run label tofu-free at the render edge (FR-005/SC-002/B4). A MULTI-RUN styled
+// token (per-run colour / weight / size) rasterises to a non-blank PNG, and EVERY run resolves NON-TOFU
+// under the same real `Fonts` registry the renderer draws through — each styled run draws real glyphs in
+// its own weight/size, never a tofu box. Two same-character / different-styling labels differ in output.
+let private blue = Colors.rgb 24uy 144uy 255uy
+let private amber = Colors.rgb 250uy 173uy 20uy
+
+let private styledToken (runs: LabelRun list) =
+    { Symbology.defaultToken with
+        R = 40.0
+        Faction = Ally
+        Klass = Mobile
+        Sigil = Bolt
+        Health = 0.8
+        Label = Some(LabelText.Rich runs) }
+
+[<Tests>]
+let styledTests =
+    testList
+        "US1 render styled-run label tofu-free"
+        [ test "a styled multi-run labelled token rasterises to a non-blank PNG" {
+              let board =
+                  Symbology.gallery
+                      1
+                      140.0
+                      [ styledToken
+                            [ { Symbology.run "BRAVO" with Weight = Some 700; Color = Some blue }
+                              { Symbology.run " ac12" with Scale = Some 0.7; Color = Some amber } ] ]
+
+              let path = Render.toPng { Width = 200; Height = 160 } board (outDir "styled-pass")
+              Expect.isTrue (File.Exists path) "image file was written"
+              Expect.isTrue ((FileInfo path).Length > 0L) "the styled board is non-blank (real glyphs drawn)"
+          }
+
+          test "EVERY styled run resolves non-tofu in its own weight/size under the real font registry (FR-005)" {
+              // base label size for the Token grammar is R * 0.5 = 20.0; each run is measured in its resolved font.
+              let runs =
+                  [ "BRAVO", Some 700, 1.0
+                    "ac12", None, 0.7
+                    "HOTEL-1", Some 600, 1.0
+                    "K9", None, 0.5 ]
+
+              for text, weight, scale in runs do
+                  let font = { Family = None; Size = max 1.0 (20.0 * scale); Weight = weight }
+                  let report = Fonts.resolveText font text |> Fonts.report
+                  Expect.equal report.TofuCount 0 (sprintf "styled run %s (weight=%A scale=%f) draws real glyphs, no tofu" text weight scale)
+          }
+
+          test "same characters / different run styling produce distinguishable rasterised output (SC-002)" {
+              let styled =
+                  Symbology.gallery 1 140.0 [ styledToken [ { Symbology.run "ALFA" with Weight = Some 700; Color = Some blue } ] ]
+
+              let plain =
+                  Symbology.gallery 1 140.0 [ { Symbology.defaultToken with R = 40.0; Faction = Ally; Klass = Mobile; Sigil = Bolt; Health = 0.8; Label = Some(LabelText.Plain "ALFA") } ]
+
+              Expect.notEqual (SceneCodec.export styled).CanonicalBytes (SceneCodec.export plain).CanonicalBytes "run styling observably changes the output (B5/SC-002)"
           } ]
