@@ -140,4 +140,29 @@ let degenerateWithLabel =
 
                   let without = render { Symbology.defaultToken with Cx = 10.0; Cy = 10.0; R = 0.0; Label = None }
                   Expect.equal styled without "a styled label never alters a placeholder (FR-008)"
+              }
+
+              // Feature 199 (T028/B14/FR-010): a degenerate token carrying a LAID-OUT / decorated label still
+              // yields the placeholder, draws no label glyph, and equals the no-label placeholder — the
+              // placeholder rule WINS over an aligned/decorated label.
+              test (sprintf "[%s] R <= 0 with a LAID-OUT / decorated label => placeholder, no throw, no glyph" gname) {
+                  let laidOut =
+                      render
+                          { Symbology.defaultToken with
+                              Cx = 10.0
+                              Cy = 10.0
+                              R = 0.0
+                              Label =
+                                  Some(
+                                      Symbology.laidLabel
+                                          [ Symbology.align Justify [ { Symbology.run "ALPHA BRAVO" with Italic = Some true; Color = Some(Colors.rgb 24uy 144uy 255uy) } ]
+                                            Symbology.align Trailing [ { Symbology.run "OLD" with Strike = Some true } ] ]
+                                  ) }
+
+                  let kinds = laidOut |> Scene.describe |> List.distinct
+                  Expect.contains kinds PathElement "the visible placeholder is drawn (FR-010)"
+                  Expect.isFalse (List.contains GlyphRunElement kinds) "the placeholder rule wins over a laid-out label (B14)"
+
+                  let without = render { Symbology.defaultToken with Cx = 10.0; Cy = 10.0; R = 0.0; Label = None }
+                  Expect.equal laidOut without "a laid-out / decorated label never alters a placeholder (FR-010)"
               } ]

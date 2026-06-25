@@ -256,3 +256,107 @@ let safeDegenerateTests =
                       |> collectRuns
                   Expect.isGreaterThan runs.Length 0 "non-empty styled runs still draw with interior empties dropped (FR-007)"
               } ]
+
+// ---- Feature 199 US1: per-run typography (italic / underline / strike / tracking) -------------------
+// Ordered Line nodes (underline / strike rules), preserving draw order.
+let rec private collectLines (scene: Scene) : (Point * Point * Paint) list =
+    scene.Nodes
+    |> List.collect (fun node ->
+        match node with
+        | Line(s, e, p) -> [ (s, e, p) ]
+        | Group scenes -> scenes |> List.collect collectLines
+        | ClipNode(_, s) -> collectLines s
+        | ColorSpaceNode(_, s) -> collectLines s
+        | PerspectiveNode(_, s) -> collectLines s
+        | Translate(_, s) -> collectLines s
+        | _ -> [])
+
+let rec private hasPerspective (scene: Scene) : bool =
+    scene.Nodes
+    |> List.exists (fun node ->
+        match node with
+        | PerspectiveNode _ -> true
+        | Group scenes -> scenes |> List.exists hasPerspective
+        | ClipNode(_, s) -> hasPerspective s
+        | ColorSpaceNode(_, s) -> hasPerspective s
+        | Translate(_, s) -> hasPerspective s
+        | _ -> false)
+
+[<Tests>]
+let typographyPresenceTests =
+    testList
+        "US1.199 per-run typography presence"
+        [ for gname, render in grammars do
+              // B5/B6 / SC-002: each new attribute is a channel — setting it changes the bytes. Both the
+              // baseline and the variant route through `richLabelNodes` (the base run sets a Colour) so the
+              // ONLY difference is the new attribute, never the rich-vs-plain path. Neither raises.
+              for attrName, mk in
+                  [ "italic", (fun (r: LabelRun) -> { r with Italic = Some true })
+                    "underline", (fun r -> { r with Underline = Some true })
+                    "strike", (fun r -> { r with Strike = Some true })
+                    "tracking", (fun r -> { r with Tracking = Some 0.3 }) ] do
+                  test (sprintf "[%s] a run setting %s differs in bytes from the same styled run without it (T010)" gname attrName) {
+                      let baseRun = { Symbology.run "BRAVO" with Color = Some blue }
+                      let plain = render { baseT with Label = Some(LabelText.Rich [ baseRun ]) }
+                      let dec = render { baseT with Label = Some(LabelText.Rich [ mk baseRun ]) }
+                      Expect.notEqual (bytesOf dec) (bytesOf plain) (sprintf "%s is a per-run channel (B5/SC-002)" attrName)
+                  }
+
+              // B3 / FR-004: a run that sets the new attrs to their no-op defaults (None / Some false /
+              // Some 0.0) is STILL all-default — byte-identical to the equivalent plain label (zero drift).
+              test (sprintf "[%s] new attrs set to no-op defaults ≡ Plain (all-default, T011)" gname) {
+                  let explicit =
+                      { Symbology.run "HMR-7" with Italic = Some false; Underline = Some false; Strike = Some false; Tracking = Some 0.0 }
+                  let rich = render { baseT with Label = Some(LabelText.Rich [ explicit ]) }
+                  let plain = render { baseT with Label = Some(LabelText.Plain "HMR-7") }
+                  Expect.equal (bytesOf rich) (bytesOf plain) "explicit no-op 199 attrs stay all-default (FR-004/SC-003)"
+              }
+
+              // Italic emits a synthetic-slant (perspective) wrapper; an upright run emits none (zero drift).
+              test (sprintf "[%s] italic emits a perspective (synthetic-slant) node; upright emits none (T019)" gname) {
+                  let upright = render { baseT with Label = Some(LabelText.Rich [ { Symbology.run "Q" with Color = Some blue } ]) }
+                  let italic = render { baseT with Label = Some(LabelText.Rich [ { Symbology.run "Q" with Color = Some blue; Italic = Some true } ]) }
+                  Expect.isFalse (hasPerspective upright) "an upright run is not sheared (zero drift)"
+                  Expect.isTrue (hasPerspective italic) "an italic run is drawn with a baseline shear (FR-003)"
+              } ]
+
+[<Tests>]
+let trackingTests =
+    testList
+        "US1.199 tracking in measurement / fit"
+        [ for gname, render in grammars do
+              // B12 / FR-007: tracking is realised per-glyph (one node per character) AND folded into the fit
+              // so every tracked glyph stays within the region (tracking never pushes the block past it).
+              test (sprintf "[%s] a tracked run spaces glyphs per-character and stays ≤ region (T012)" gname) {
+                  let word = "ABCDE"
+                  let untr = render { baseT with Label = Some(LabelText.Rich [ { Symbology.run word with Color = Some blue } ]) } |> collectRuns
+                  let tr = render { baseT with Label = Some(LabelText.Rich [ { Symbology.run word with Color = Some blue; Tracking = Some 0.3 } ]) } |> collectRuns
+                  Expect.isGreaterThan tr.Length untr.Length "tracking is realised as per-glyph positioning (folded into layout, FR-007)"
+
+                  let region = regionWidth gname baseT.R
+                  let left = baseT.Cx - region / 2.0
+                  let right = baseT.Cx + region / 2.0
+
+                  for r in tr do
+                      let w = (Scene.measureGlyphRun r.Data).Width
+                      Expect.isGreaterThanOrEqual r.Position.X (left - 1e-6) "tracked glyph not left of the region"
+                      Expect.isLessThanOrEqual (r.Position.X + w) (right + 1e-6) "tracked glyph not past the region right edge (no overflow, FR-007)"
+              } ]
+
+[<Tests>]
+let decorationGeometryTests =
+    testList
+        "US1.199 decoration follows wrapped geometry"
+        [ for gname, render in grammars do
+              // B11 / FR-008: an underlined run that wraps to N drawn lines gets a decoration `line` per
+              // drawn fragment. Isolate the decoration lines as the DELTA vs the same content undecorated
+              // (the base symbol also draws non-label lines), and confirm one rule per drawn text line.
+              test (sprintf "[%s] an underlined wrapped run gets one decoration line per drawn fragment (T013)" gname) {
+                  let content = "ALPHA BRAVO CHARLIE DELTA ECHO FOXTROT"
+                  let undecorated = render { baseT with Label = Some(LabelText.Rich [ { Symbology.run content with Color = Some blue } ]) }
+                  let underlined = render { baseT with Label = Some(LabelText.Rich [ { Symbology.run content with Color = Some blue; Underline = Some true } ]) }
+
+                  let drawnTextLines = collectRuns underlined |> List.map (fun r -> r.Position.Y) |> List.distinct |> List.length
+                  let delta = (collectLines underlined |> List.length) - (collectLines undecorated |> List.length)
+                  Expect.equal delta drawnTextLines "one underline rule per drawn text line — decoration follows each fragment (B11/FR-008)"
+              } ]

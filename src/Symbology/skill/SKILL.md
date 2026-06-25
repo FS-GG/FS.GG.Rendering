@@ -97,10 +97,11 @@ by record-copy, e.g. `{ Symbology.run "BRAVO-6" with Weight = Some 700; Color = 
 - **When to use.** Express an **emphasis hierarchy** inside one identity — a loud, bold callsign next to a
   dim, smaller code — so two pieces of identity can be triaged at a glance. It is still **inspection-detail**
   and still **complements, never replaces**, the vector `Sigil`.
-- **Supported attributes are exactly colour / weight / size.** `Color` is any scene `Color`; `Weight` maps
-  onto `FontSpec.Weight`; `Scale` multiplies the grammar's base label size. Italic / underline / strike /
-  letter-spacing / per-glyph styling / per-run font family are **out of scope** (use the sigil/geometry for
-  anything louder).
+- **Supported attributes here are colour / weight / size.** `Color` is any scene `Color`; `Weight` maps
+  onto `FontSpec.Weight`; `Scale` multiplies the grammar's base label size. **Italic / underline /
+  strike-through / letter-spacing** are added by **full rich-text layout** (feature 199, see below);
+  **per-glyph styling and per-run font family remain out of scope** (use the sigil/geometry for anything
+  louder).
 - **Keep runs few and the palette restrained.** A couple of short runs with one or two deliberate styles
   reads; a rainbow of runs is noise. **Do NOT colour a run to impersonate the faction or state
   pre-attentive encodings** — those palettes are reserved for the pop-out channels; a label that mimics them
@@ -115,6 +116,52 @@ by record-copy, e.g. `{ Symbology.run "BRAVO-6" with Weight = Some 700; Color = 
   drops; `Rich []` ⇒ no label. As with the plain label, **tofu-free is a render-edge property** — verify
   every run draws real glyphs through `Symbology.Render`, not from a pure unit test; the pure library
   requires no measurer and never throws without one.
+
+### Full rich-text layout — alignment / justification / explicit breaks + decoration (feature 199, still the SAME channel)
+
+This completes the rich-text label with the two things spec 198 deferred: **paragraph layout** and the
+**typographic run attributes beyond colour/weight/size**. It is still one opt-in inspection-detail channel,
+still fitted to the per-grammar region, still tofu-free at the render edge, still byte-identical to 198 when
+unused.
+
+- **Per-run decoration / slant / tracking.** Each `LabelRun` gains four optional attributes on top of
+  colour/weight/size — **`Italic`** (synthetic slant), **`Underline`**, **`Strike`**, **`Tracking`**
+  (letter-spacing, an em-fraction of the run size) — each `None`/`false`/`0.0`-defaulted. Set them by
+  record-copy, e.g. `{ Symbology.run "quoted" with Italic = Some true }`. Use them to let a run read as
+  *quoted*, deleted, tagged, or spaced **without** spending the weight/colour budget.
+- **Paragraph layout — `LabelText.Laid of LabelParagraph list`.** Each `LabelParagraph` is
+  `{ Runs; Align }` with **`Align = Leading | Center | Trailing | Justify`**. Construct with
+  `Symbology.paragraph` (a `Center` paragraph), `Symbology.align alignment runs`, and `Symbology.laidLabel`.
+  Paragraph breaks are the list boundaries; hard line breaks inside a paragraph use the runs' embedded `\n`.
+  Each paragraph carries its own alignment.
+- **When to use.** Reach for `Laid` when a label needs **document structure** — a centred callsign over a
+  justified descriptor, a trailing retired-code line — beyond 198's flush flow. Reach for the decoration
+  attributes when a run must read as distinct in *kind* (quoted/deleted/tagged), not just louder.
+- **`Center` is the default and reproduces the 198 flow.** A single `Center` paragraph of all-default runs
+  is **byte-identical** to the equivalent `richLabel`/`plainLabel` (layered zero drift: `None` ≡ pre-feature,
+  `Plain` ≡ 197, all-default `Rich` ≡ `Plain`, default `Center` `Laid` ≡ 198). Only a non-default alignment,
+  >1 paragraph, or a set decoration/slant/tracking attribute changes the bytes.
+- **Justify fills the width; the last line never stretches.** `Justify` distributes measured inter-word
+  space so each **wrapped** line fills the region; the **last line of each paragraph** and any **single-token
+  line** fall back to leading (un-justified) — never a stretched final line, never a stretched glyph.
+- **Keep it restrained — same governance caveat.** Keep paragraphs short, use a restrained alignment +
+  decoration set, and **do NOT** let underline/strike/italic/justification crowd the region or **impersonate
+  the faction/state pre-attentive encodings**. This is a **loop guidance caveat**, not a runtime rule:
+  alignment / decoration / colours are author-supplied and used **as-is**, never re-mapped or rejected, and
+  the legibility linter's pre-attentive governance is unchanged (the label — however laid out — stays
+  inspection-detail, grammar-independent).
+- **Fitted, capped, tofu-free — under every alignment.** Letter-spacing is folded into measurement so it
+  never pushes the block past the region; underline/strike follow each **drawn fragment's** geometry (a
+  wrapped run is decorated per line) and never extend past a clipped glyph; lines wrap/shrink at measured
+  boundaries, the count is **capped** to the grammar budget, and surplus ends in `…`. Empty/whitespace
+  paragraphs and runs drop; `Laid []` ⇒ no label. A degenerate token (`R <= 0`) still shows the placeholder
+  (placeholder wins over the label). **Tofu-free is a render-edge property** — slant wraps real glyphs,
+  decoration is a non-text rule, tracking splits into per-glyph real glyphs; verify through
+  `Symbology.Render`, never from a pure unit test. The pure library requires no measurer and never throws
+  without one. It **complements, never replaces, the vector `Sigil`**.
+- **Still out of scope** (use geometry/the sigil instead): inline images, hyperlinks, bullet/numbered lists,
+  per-glyph styling, per-run font family, auto-label-from-stats, label-bound motion, advanced bidi, any new
+  GPU/compute path, and new font files (slant/underline/strike are synthesised from existing primitives).
 
 ## Selectable grammars (form factors) — one channel set, three drawings
 

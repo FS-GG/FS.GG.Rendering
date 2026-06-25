@@ -156,3 +156,71 @@ let styledTests =
 
               Expect.notEqual (SceneCodec.export styled).CanonicalBytes (SceneCodec.export plain).CanonicalBytes "run styling observably changes the output (B5/SC-002)"
           } ]
+
+// Feature 199 [US1] (T015) Decorated-run label tofu-free at the render edge (FR-006/SC-002/B5). A token whose
+// runs set italic / underline / strike / tracking rasterises to a non-blank PNG, and EVERY run resolves
+// NON-TOFU under the same real `Fonts` registry the renderer draws through — synthetic slant wraps real
+// glyphs, decoration is a non-text rule, tracking splits into per-char real glyphs: never a tofu box.
+[<Tests>]
+let decoratedTests =
+    testList
+        "US1.199 render decorated-run label tofu-free"
+        [ test "a decorated (italic/underline/strike/tracking) labelled token rasterises to a non-blank PNG" {
+              let board =
+                  Symbology.gallery
+                      1
+                      160.0
+                      [ styledToken
+                            [ { Symbology.run "QUOTED" with Italic = Some true; Color = Some blue }
+                              { Symbology.run " TAG" with Underline = Some true }
+                              { Symbology.run " OLD" with Strike = Some true; Color = Some amber }
+                              { Symbology.run " S P A C E D" with Tracking = Some 0.25 } ] ]
+
+              let path = Render.toPng { Width = 240; Height = 180 } board (outDir "decorated-pass")
+              Expect.isTrue (File.Exists path) "image file was written"
+              Expect.isTrue ((FileInfo path).Length > 0L) "the decorated board is non-blank (real glyphs drawn)"
+          }
+
+          test "EVERY decorated run resolves non-tofu under the real font registry (FR-006)" {
+              // Each run's characters must draw as real glyphs regardless of slant/decoration/tracking.
+              for text in [ "QUOTED"; "TAG"; "OLD"; "SPACED"; "K9-1" ] do
+                  let report = Fonts.resolveText labelFont text |> Fonts.report
+                  Expect.equal report.TofuCount 0 (sprintf "decorated run %s draws real glyphs (no tofu) under the bundled font" text)
+          } ]
+
+// Feature 199 [US3] (T036) Full-layout render-bridge tofu test (FR-006/SC-002). EXTENDS the decorated-run
+// case above with paragraph layout + justification: a LAID-OUT (justified, multi-paragraph) + DECORATED
+// (italic/underline/strike/tracking) labelled token rasterises to a non-blank PNG and EVERY run resolves
+// NON-TOFU under the real font registry — alignment / justification / decoration never produce a tofu box.
+let private laidToken paragraphs =
+    { Symbology.defaultToken with
+        R = 44.0
+        Faction = Ally
+        Klass = Mobile
+        Sigil = Bolt
+        Health = 0.8
+        Label = Some(Symbology.laidLabel paragraphs) }
+
+[<Tests>]
+let laidLayoutTests =
+    testList
+        "US3.199 render laid-out label tofu-free"
+        [ test "a laid-out (justified, multi-paragraph, decorated) labelled token rasterises to a non-blank PNG" {
+              let board =
+                  Symbology.gallery
+                      1
+                      200.0
+                      [ laidToken
+                            [ Symbology.align Justify [ { Symbology.run "ALPHA BRAVO CHARLIE" with Italic = Some true; Color = Some blue } ]
+                              Symbology.align Trailing [ { Symbology.run "RETIRED" with Strike = Some true; Underline = Some true }; { Symbology.run " S P" with Tracking = Some 0.2 } ] ] ]
+
+              let path = Render.toPng { Width = 240; Height = 220 } board (outDir "laid-pass")
+              Expect.isTrue (File.Exists path) "image file was written"
+              Expect.isTrue ((FileInfo path).Length > 0L) "the laid-out board is non-blank (real glyphs drawn)"
+          }
+
+          test "EVERY run of a justified / multi-paragraph / decorated label resolves non-tofu (FR-006)" {
+              for text in [ "ALPHA"; "BRAVO"; "CHARLIE"; "RETIRED"; "SP" ] do
+                  let report = Fonts.resolveText labelFont text |> Fonts.report
+                  Expect.equal report.TofuCount 0 (sprintf "laid-out run %s draws real glyphs (no tofu) under the bundled font" text)
+          } ]

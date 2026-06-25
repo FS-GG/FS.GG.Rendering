@@ -19,6 +19,7 @@
     <Compile Include="LabelTests.fs" />
     <Compile Include="MultilineLabelTests.fs" />
     <Compile Include="RichLabelTests.fs" />
+    <Compile Include="LaidLabelTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

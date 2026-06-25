@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/198-symbology-rich-text-label/plan.md
+at specs/199-rich-text-layout/plan.md
 <!-- SPECKIT END -->
 
 ## Ant Design — source of truth

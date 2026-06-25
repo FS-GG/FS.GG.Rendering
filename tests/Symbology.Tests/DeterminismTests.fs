@@ -214,3 +214,71 @@ let styledDeterminism =
                   "2fd5ea98e288cfc3634593002ca333ad690a97c04adf5a38d603de595b02e9fc"
                   "styled-run canonical bytes drifted from the pinned cross-process golden (SC-004/B10)"
           } ]
+
+// Feature 199 [US1] (T022) Decorated-run determinism (FR-011). An italic / underlined / tracked styled
+// label is a deterministic function of the Token — render-twice byte-equal in-process — covering the new
+// slant / decoration / tracking emission before US2's cross-process laid-out golden.
+let private decorated =
+    { sample with
+        Label =
+            Some(
+                LabelText.Rich
+                    [ { Symbology.run "QUOTED" with Italic = Some true; Color = Some(Colors.rgb 24uy 144uy 255uy) }
+                      { Symbology.run " TAG" with Underline = Some true }
+                      { Symbology.run " S P" with Tracking = Some 0.25 } ]
+            ) }
+
+[<Tests>]
+let decoratedDeterminism =
+    testList
+        "US1.199 decorated-run determinism"
+        [ test "same decorated Token => byte-equal canonical bytes (render twice, same process)" {
+              let a = (SceneCodec.export (Symbology.token decorated)).CanonicalBytes
+              let b = (SceneCodec.export (Symbology.token decorated)).CanonicalBytes
+              Expect.equal a b "the decorated styled-run label is a pure function of Token (FR-011)"
+          } ]
+
+// Feature 199 [US2] (T029) Laid-out label determinism + cross-process golden + pure-fallback (B15/B16).
+// A justified, multi-paragraph, decorated label is a deterministic function of the Token (render-twice
+// byte-equal) AND pinned as a cross-process anchor (purity under a fixed provider ⇒ same bytes in any
+// process). B16: the pure Symbology.Tests env installs NO real measurer, so this also proves the
+// pure-fallback path emits the laid-out label deterministically and never throws.
+let private laidSample =
+    { sample with
+        Label =
+            Some(
+                Symbology.laidLabel
+                    [ Symbology.align Justify [ { Symbology.run "ALPHA BRAVO CHARLIE DELTA" with Color = Some(Colors.rgb 24uy 144uy 255uy) } ]
+                      Symbology.align Trailing
+                          [ { Symbology.run "RETIRED" with Strike = Some true }
+                            { Symbology.run " S P" with Tracking = Some 0.2; Italic = Some true } ] ]
+            ) }
+
+[<Tests>]
+let laidDeterminism =
+    testList
+        "US2.199 laid-out label determinism"
+        [ test "same laid-out Token => byte-equal canonical bytes (render twice, same process)" {
+              let a = (SceneCodec.export (Symbology.token laidSample)).CanonicalBytes
+              let b = (SceneCodec.export (Symbology.token laidSample)).CanonicalBytes
+              Expect.equal a b "the laid-out label is a pure function of Token (FR-011/SC-004 same-process)"
+          }
+
+          test "laid-out cross-process golden: fixed laid-out Token canonical bytes are pinned" {
+              Expect.equal
+                  (canonicalSha (Symbology.token laidSample))
+                  "30b1fa570dc34db42e770c73c9a8b13de312ee14f2458c2603fb1f70766dbf74"
+                  "laid-out canonical bytes drifted from the pinned cross-process golden (SC-004)"
+          }
+
+          // B16 / FR-012: no measurer installed in this project — the laid-out label still emits its glyph
+          // nodes, deterministically, never throws (the pure-fallback path).
+          test "pure-fallback (no measurer): laid-out label emits a deterministic scene, never throws (B16)" {
+              let scene = Symbology.token laidSample
+              let kinds = Scene.describe scene |> List.distinct
+              Expect.contains kinds GlyphRunElement "the pure path still emits the laid-out label glyph nodes (FR-012)"
+              Expect.equal
+                  (SceneCodec.export scene).CanonicalBytes
+                  (SceneCodec.export (Symbology.token laidSample)).CanonicalBytes
+                  "the laid-out layout is a deterministic function of Token on the pure path (FR-011/FR-012)"
+          } ]

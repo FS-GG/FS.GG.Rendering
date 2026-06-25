@@ -73,8 +73,9 @@ per-grammar region. Set it in `mapUnit` only when the abstract sigil cannot disa
 - **Rich-text runs — per-run colour / weight / size (same channel).** `LabelText.Rich` carries a short
   ordered sequence of `LabelRun { Text; Color; Weight; Scale }` spans; each attribute is optional and
   inherits the default when `None`, so an all-default `Rich` ≡ the equivalent `plainLabel` byte-for-byte.
-  Use it for an **emphasis hierarchy** (a loud bold callsign + a dim small code); attributes are exactly
-  **colour / weight / size** (italic/underline/strike/family are out of scope). Keep runs **few** and the
+  Use it for an **emphasis hierarchy** (a loud bold callsign + a dim small code); colour / weight / size
+  here, with **italic / underline / strike / letter-spacing** added by full rich-text layout below
+  (per-glyph styling and per-run font family stay out of scope). Keep runs **few** and the
   palette **restrained**, and **do not colour a run to impersonate the faction/state pre-attentive
   encodings** — author colours are used as-is (never re-mapped) and the linter is unchanged, so this is a
   loop caveat, not a runtime rule. Each run is fitted in its own style, lines cap to the grammar budget and
@@ -90,6 +91,32 @@ per-grammar region. Set it in `mapUnit` only when the abstract sigil cannot disa
             Symbology.richLabel
                 [ { Symbology.run u.Callsign with Weight = Some 700 }
                   { Symbology.run ("  " + u.Code) with Scale = Some 0.7; Color = Some (Colors.rgb 150uy 150uy 150uy) } ]) }
+```
+
+- **Full rich-text layout — alignment / justification / explicit breaks + decoration (feature 199, same
+  channel).** Each `LabelRun` also takes optional **`Italic` / `Underline` / `Strike` / `Tracking`**
+  (each `None`/`false`/`0.0`-defaulted), and `LabelText.Laid of LabelParagraph list` carries explicit
+  paragraphs, each `{ Runs; Align }` with **`Align = Leading | Center | Trailing | Justify`** (build with
+  `Symbology.paragraph` / `align` / `laidLabel`). **`Center` is the default and reproduces the 198 flow
+  byte-for-byte** (a single `Center` all-default paragraph ≡ the equivalent `richLabel`/`plainLabel`).
+  `Justify` fills wrapped lines; the **last line of each paragraph** and any **single-token line** stay
+  un-justified. Tracking is folded into measurement (never overflows); underline/strike follow each drawn
+  fragment; lines cap+ellipsise under every alignment; empty paragraphs/runs drop and a degenerate token
+  shows the placeholder. Keep paragraphs **short** and the alignment/decoration set **restrained** — don't
+  let it crowd the region or impersonate the faction/state encodings (loop caveat, not a runtime rule);
+  it stays **inspection-detail**, the linter is unchanged, and tofu-free is a **render-edge** property.
+
+```fsharp
+// A centred callsign over a justified descriptor and a struck-through retired code:
+{ Symbology.defaultToken with
+    R = 28.0
+    Faction = Ally
+    Label =
+        Some(
+            Symbology.laidLabel
+                [ Symbology.align Center [ { Symbology.run u.Callsign with Weight = Some 700 } ]
+                  Symbology.align Justify [ Symbology.run u.Descriptor ]
+                  Symbology.align Trailing [ { Symbology.run u.RetiredCode with Strike = Some true } ] ]) }
 ```
 
 ## Selectable grammars (form factors) — one mapping, three drawings

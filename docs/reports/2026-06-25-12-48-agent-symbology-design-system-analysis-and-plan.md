@@ -441,8 +441,21 @@ the `setRealTextMeasurer` path (`fs-gg-scene`) once tofu-free text is needed.
 - ✅ **Optional identity label** — [spec 196](../../specs/196-symbology-label-text/spec.md): one optional
   `Token.Label : string option`, sited per grammar, tofu-free at the render edge, opt-in byte-identical
   when unused; the §9-risk-1 "identity = vector sigils only" open item is now resolved (label is an
-  opt-in inspection-detail channel that complements, never replaces, the sigil). **M7 (and the M0–M7
-  roadmap) is complete.**
+  opt-in inspection-detail channel that complements, never replaces, the sigil).
+- ✅ **Multi-line / paragraph label** — [spec 197](../../specs/197-symbology-multiline-label/spec.md):
+  the same `Label` field carries several short lines (hard `\n` breaks + measured soft-wrap), capped and
+  fitted per grammar; a one-line-fitting label stays byte-identical to 196.
+- ✅ **Rich-text label runs** — [spec 198](../../specs/198-symbology-rich-text-label/spec.md):
+  `Token.Label : LabelText option` with `LabelText.Rich of LabelRun list` carrying per-run
+  **colour / weight / size**; an all-default run is byte-identical to the plain label.
+- ✅ **Full rich-text layout** — [spec 199](../../specs/199-rich-text-layout/spec.md): completes the two
+  items 198 deferred — **paragraph layout** (`LabelText.Laid of LabelParagraph list`, per-paragraph
+  `LabelAlign = Leading | Center | Trailing | Justify` incl. measured justification + explicit breaks)
+  and the **typographic run attributes** (`Italic` / `Underline` / `Strike` / `Tracking`). Pure
+  scene-only (synthetic slant via `withPerspective`, decoration via `Scene.line`, tracking via per-glyph
+  `glyphRunProof` — no new primitive / font / GPU path); `Center` default reproduces the 198 flow
+  byte-for-byte (layered zero drift). **The rich-text identity-label thread, M7, and the M0–M7 roadmap
+  are complete.**
 
 ### 10.4 Decision gates (resolve at M0)
 - **G1 — Library home.** Dedicated `FS.GG.UI.Symbology` vs folding into `FS.GG.UI.Canvas`. *Default:

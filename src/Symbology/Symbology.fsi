@@ -49,7 +49,35 @@ type LabelRun =
       /// `None` ⇒ default weight. Maps directly onto `FontSpec.Weight : int option`.
       Weight: int option
       /// `None` ⇒ `1.0`. Multiplies the grammar's base label size (keeps grammar-independence — FR-001).
-      Scale: float option }
+      Scale: float option
+      /// Feature 199 (FR-003) — synthetic italic/slant. `None`/`Some false` ⇒ upright. An all-default
+      /// run (every 199 attribute unset/false/0) renders byte-identically to the spec-198 run (FR-004).
+      Italic: bool option
+      /// Feature 199 (FR-003/FR-008) — underline rule below the baseline. `None`/`Some false` ⇒ none.
+      Underline: bool option
+      /// Feature 199 (FR-003/FR-008) — strike-through rule at mid-x-height. `None`/`Some false` ⇒ none.
+      Strike: bool option
+      /// Feature 199 (FR-003/FR-007) — letter-spacing (tracking), an em-fraction of the resolved size,
+      /// folded into measurement so it never pushes the block past the region. `None`/`Some 0.0` ⇒ none.
+      Tracking: float option }
+
+/// Per-paragraph horizontal alignment of a laid-out (`Laid`) label within its per-grammar region
+/// (feature 199, FR-001). `Center` is the DEFAULT and reproduces the spec-198 flow byte-for-byte;
+/// `Justify` distributes measured inter-word space to fill the region width, leaving the last line of
+/// each paragraph (and any single-token line) un-justified (FR-007/FR-008).
+type LabelAlign =
+    | Leading
+    | Center
+    | Trailing
+    | Justify
+
+/// One explicit paragraph of a laid-out (`Laid`) label (feature 199, FR-002): an ordered run list plus
+/// its alignment. Paragraph breaks are the list boundaries; hard line breaks inside a paragraph use the
+/// runs' embedded `\n`/`\r\n`. An empty / all-whitespace / all-empty-run paragraph contributes no line
+/// (FR-009). Each paragraph may carry its own alignment.
+type LabelParagraph =
+    { Runs: LabelRun list
+      Align: LabelAlign }
 
 /// The optional identity label's content (feature 198). `Plain` is the spec-197 channel verbatim
 /// (single- or multi-line via embedded `\n`); `Rich` carries an ordered sequence of styled runs. A
@@ -60,6 +88,10 @@ type LabelRun =
 type LabelText =
     | Plain of string
     | Rich of LabelRun list
+    /// Feature 199 (FR-001/FR-002) — explicit, individually-alignable paragraphs. A single `Center`
+    /// paragraph of all-default runs renders BYTE-IDENTICALLY to the equivalent `Rich`/`Plain` label
+    /// (default alignment = the spec-198 flow — layered zero-drift, FR-004/SC-003).
+    | Laid of LabelParagraph list
 
 /// The symbol description: the full fixed channel set as typed fields (FR-002).
 /// Pure over this value (FR-003): equal Token => equal Scene => equal SceneCodec canonical bytes
@@ -117,6 +149,20 @@ module Symbology =
     /// A rich (styled-run) label — `= LabelText.Rich`. An all-default run list renders byte-identically
     /// to the equivalent `plainLabel` (FR-002).
     val richLabel: runs: LabelRun list -> LabelText
+
+    // ---- Laid-out label constructors (feature 199, FR-001/FR-002) ----
+
+    /// A `Center`-aligned paragraph of styled runs — `= { Runs = runs; Align = Center }`. Slant /
+    /// decoration / tracking are set by record-copying a `run`, e.g.
+    /// `{ Symbology.run "quoted" with Italic = Some true }`.
+    val paragraph: runs: LabelRun list -> LabelParagraph
+
+    /// A paragraph of styled runs with an explicit alignment (feature 199, FR-001).
+    val align: alignment: LabelAlign -> runs: LabelRun list -> LabelParagraph
+
+    /// A laid-out (paragraph) label — `= LabelText.Laid`. A single `Center` paragraph of all-default
+    /// runs renders byte-identically to the equivalent `richLabel`/`plainLabel` (FR-004/SC-003).
+    val laidLabel: paragraphs: LabelParagraph list -> LabelText
 
     /// The Directional-Token element: renders every channel so each observably alters output (SC-002).
     /// Pure & deterministic (FR-003). Zero/empty area degrades to a visible placeholder (FR-020).

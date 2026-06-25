@@ -302,4 +302,34 @@ let labelInvariance =
               let board = roster |> List.map (fun t -> Pulse, t)
               let boardS = styled |> List.map (fun t -> Pulse, t)
               Expect.equal (Legibility.scoreAnimated boardS) (Legibility.scoreAnimated board) "styled labels do not alter animated governance (FR-012)"
+          }
+
+          // Feature 199 [US3] (T035/B18/SC-006): LAID-OUT / decorated labels are inspection-detail too. A
+          // roster carrying aligned / justified / italic / underlined / tracked labels yields an IDENTICAL
+          // Report to the same roster with (a) no labels, (b) plain labels, and (c) 198-era styled labels —
+          // layout/decoration never enters the pre-attentive capacity table; the verdict is unchanged.
+          let laidOut =
+              roster
+              |> List.mapi (fun i t ->
+                  { t with
+                      Label =
+                          Some(
+                              Symbology.laidLabel
+                                  [ Symbology.align Justify [ { Symbology.run (sprintf "UNIT %d alpha bravo" i) with Italic = Some true; Color = Some(Colors.rgb 24uy 144uy 255uy) } ]
+                                    Symbology.align Trailing [ { Symbology.run "OLD" with Strike = Some true; Underline = Some true }; { Symbology.run " S P" with Tracking = Some 0.2 } ] ]
+                          ) })
+
+          test "laid-out / decorated label presence does not change the roster's Report (vs no labels, B18)" {
+              Expect.equal (Legibility.score laidOut) (Legibility.score roster) "layout/decoration is inspection-detail; pre-attentive governance is unchanged (FR-014)"
+          }
+
+          test "laid-out label Report equals the styled-run and plain Reports (layout never governs, SC-006)" {
+              Expect.equal (Legibility.score laidOut) (Legibility.score styled) "swapping styled runs for a laid-out label does not alter the verdict (B18)"
+              Expect.equal (Legibility.score laidOut) (Legibility.score labelled) "and equals the plain-label verdict (grammar-independent, SC-006)"
+          }
+
+          test "laid-out label presence does not change the animated Report (scoreAnimated)" {
+              let board = roster |> List.map (fun t -> Pulse, t)
+              let boardL = laidOut |> List.map (fun t -> Pulse, t)
+              Expect.equal (Legibility.scoreAnimated boardL) (Legibility.scoreAnimated board) "laid-out labels do not alter animated governance (FR-014)"
           } ]

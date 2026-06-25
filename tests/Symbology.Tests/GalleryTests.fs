@@ -224,3 +224,74 @@ let styledBoardTests =
                       (bytesOf (Symbology.galleryIn g 2 120.0 plainRoster))
                       "the run styling reaches the review board (B12)"
           } ]
+
+// Feature 199 [US3] (T034/B17/B19) Laid-out / decorated review boards. A fully-laid-out roster renders via
+// `galleryIn` (and `render`) in every grammar, byte-reproducibly under a fixed provider, with NO signature
+// change to the board entry points; and author-supplied `Color` / `Align` / decoration are used as-is —
+// never silently re-mapped or rejected at runtime (FR-013/FR-015/SC-001).
+[<Tests>]
+let laidBoardTests =
+    let grammars = [ Grammar.Token; Grammar.Badge; Grammar.Ring ]
+    let authorBlue = Colors.rgb 17uy 99uy 211uy
+
+    let laidRoster =
+        mixed
+        |> List.mapi (fun i t ->
+            { t with
+                R = 40.0
+                Label =
+                    Some(
+                        Symbology.laidLabel
+                            [ Symbology.align Center [ { Symbology.run (sprintf "U-%d" i) with Weight = Some 700; Color = Some authorBlue } ]
+                              Symbology.align Justify [ Symbology.run "alpha bravo charlie"; { Symbology.run " old" with Strike = Some true } ] ]
+                    ) })
+
+    let rec collectFills (scene: Scene) =
+        scene.Nodes
+        |> List.collect (fun node ->
+            match node with
+            | GlyphRun r -> r.Paint.Fill |> Option.toList
+            | Group s -> s |> List.collect collectFills
+            | ClipNode(_, s)
+            | ColorSpaceNode(_, s)
+            | PerspectiveNode(_, s)
+            | Translate(_, s) -> collectFills s
+            | _ -> [])
+
+    testList
+        "US3.199 laid-out labelled boards"
+        [ yield!
+              grammars
+              |> List.map (fun g ->
+                  test (sprintf "laid-out galleryIn %A is byte-reproducible (B17)" g) {
+                      Expect.equal
+                          (bytesOf (Symbology.galleryIn g 2 140.0 laidRoster))
+                          (bytesOf (Symbology.galleryIn g 2 140.0 laidRoster))
+                          "a laid-out / decorated board is reproducible per grammar (FR-013/SC-001)"
+                  })
+
+          test "the laid-out board differs per grammar from its plain twin (layout/decoration reaches the board)" {
+              let plain = mixed |> List.mapi (fun i t -> { t with R = 40.0; Label = Some(LabelText.Plain(sprintf "U-%d" i)) })
+
+              for g in grammars do
+                  Expect.notEqual
+                      (bytesOf (Symbology.galleryIn g 2 140.0 laidRoster))
+                      (bytesOf (Symbology.galleryIn g 2 140.0 plain))
+                      "the alignment/decoration reaches the review board (B17)"
+          }
+
+          test "author-supplied colour is used as-is in the laid-out board (B19/FR-015)" {
+              let fills = Symbology.galleryIn Grammar.Token 2 140.0 laidRoster |> collectFills
+              Expect.contains fills authorBlue "the exact author colour reaches the node — never re-mapped/rejected (FR-015)"
+          }
+
+          test "author-supplied alignment is honoured as-is (Trailing ≠ Leading) (B19/FR-015)" {
+              let one a =
+                  bytesOf (
+                      Symbology.token
+                          { Symbology.defaultToken with R = 40.0; Faction = Ally; Health = 0.6
+                                                        Label = Some(Symbology.laidLabel [ Symbology.align a [ { Symbology.run "A B" with Color = Some authorBlue } ] ]) }
+                  )
+
+              Expect.notEqual (one Leading) (one Trailing) "the author's alignment choice is applied, not normalised away (FR-015)"
+          } ]

@@ -168,4 +168,16 @@ let richChannelTests =
               test (sprintf "[%s] a 2-run styled label emits ≥2 glyph-run nodes in reading order" gname) {
                   let scene = render { bigT with Label = Some(LabelText.Rich [ { Symbology.run "AL" with Weight = Some 700 }; { Symbology.run "fa" with Scale = Some 0.6 } ]) }
                   Expect.isGreaterThanOrEqual (runCount scene) 2 "≥2 contiguous-style segments ⇒ ≥2 nodes (B4)"
-              } ]
+              }
+
+              // Feature 199 (T014, B6/SC-002): two labels with the SAME characters differing only in a new
+              // typographic attribute (italic / tracking) yield differing bytes — the attribute is a channel.
+              for attrName, mk in
+                  [ "italic", (fun (r: LabelRun) -> { r with Italic = Some true })
+                    "tracking", (fun r -> { r with Tracking = Some 0.3 }) ] do
+                  test (sprintf "[%s] same chars differing only in %s ⇒ differing bytes (T014)" gname attrName) {
+                      let baseRun = { Symbology.run "AB" with Color = Some blue }
+                      let a = (SceneCodec.export (render { bigT with Label = Some(LabelText.Rich [ baseRun ]) })).CanonicalBytes
+                      let b = (SceneCodec.export (render { bigT with Label = Some(LabelText.Rich [ mk baseRun ]) })).CanonicalBytes
+                      Expect.notEqual a b (sprintf "%s is a per-run channel (B6/SC-002)" attrName)
+                  } ]
