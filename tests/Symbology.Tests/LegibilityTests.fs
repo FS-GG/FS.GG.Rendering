@@ -227,3 +227,34 @@ let tests =
               Expect.equal report.Verdict Legibility.HasWarnings "an overloaded set scores HasWarnings, not an exception"
               Expect.isNonEmpty report.Findings "the overload is reported as data"
           } ]
+
+// T024 [US3] Label is inspection-detail, NOT a pre-attentive channel (FR-011/SC-006). Adding labels to a
+// roster must NOT change the linter's `Report` — the label is not in the capacity table, so the verdict and
+// every channel-usage count are identical with and without labels. (`Legibility.score` takes `Token list`
+// and has no grammar parameter, so the verdict is grammar-independent by construction.)
+[<Tests>]
+let labelInvariance =
+    let roster =
+        [ { baseUnit with Faction = Ally; Klass = Heavy; Sigil = Ring; Speed = 1 }
+          { baseUnit with Faction = Enemy; Klass = Scout; Sigil = Fang; Speed = 2 }
+          { baseUnit with Faction = Neutral; Klass = Mobile; Sigil = Bolt; Speed = 3 } ]
+
+    let labelled =
+        roster |> List.mapi (fun i t -> { t with Label = Some(sprintf "U-%d" i) })
+
+    testList
+        "US3 label linter-invariance"
+        [ test "label presence does not change the roster's Report (score)" {
+              Expect.equal (Legibility.score labelled) (Legibility.score roster) "the label is inspection-detail; it does not enter pop-out governance (FR-011)"
+          }
+
+          test "label presence does not change the animated Report (scoreAnimated)" {
+              let board = roster |> List.map (fun t -> Pulse, t)
+              let boardL = labelled |> List.map (fun t -> Pulse, t)
+              Expect.equal (Legibility.scoreAnimated boardL) (Legibility.scoreAnimated board) "labels do not alter animated governance (FR-011)"
+          }
+
+          test "even a roster of all-identical labels leaves the verdict unchanged" {
+              let sameLabel = roster |> List.map (fun t -> { t with Label = Some "SAME" })
+              Expect.equal (Legibility.score sameLabel) (Legibility.score roster) "the label channel is never governed (SC-006)"
+          } ]

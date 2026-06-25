@@ -86,3 +86,27 @@ let ringPlaceholder =
               let real = Symbology.ring { Symbology.defaultToken with R = 20.0 }
               Expect.notEqual blankish real "a real ring is a distinct rendering from its placeholder"
           } ]
+
+// T018 [US2] Degenerate-token-with-label (FR-007/SC-005): a `R <= 0` token carrying a `Some label` still
+// degrades to the existing visible placeholder and never throws — the placeholder rule WINS over the label
+// (no label is drawn on a placeholder). Asserted in every grammar.
+let private degenLabelled render =
+    render { Symbology.defaultToken with Cx = 10.0; Cy = 10.0; R = 0.0; Label = Some "OVERLONG-CALLSIGN" }
+
+[<Tests>]
+let degenerateWithLabel =
+    testList
+        "US2 degenerate token with label"
+        [ for gname, render in [ "token", Symbology.token; "badge", Symbology.badge; "ring", Symbology.ring ] do
+              test (sprintf "[%s] R <= 0 with a label => placeholder, no throw, no label glyph" gname) {
+                  let scene = degenLabelled render
+                  let kinds = scene |> Scene.describe |> List.distinct
+                  Expect.contains kinds PathElement "the visible placeholder is drawn"
+                  Expect.isFalse (List.contains GlyphRunElement kinds) "the placeholder rule wins: no label on a degenerate token"
+              }
+
+              test (sprintf "[%s] degenerate-with-label equals degenerate-without-label (placeholder wins)" gname) {
+                  let withLabel = render { Symbology.defaultToken with R = 0.0; Label = Some "X" }
+                  let without = render { Symbology.defaultToken with R = 0.0; Label = None }
+                  Expect.equal withLabel without "the label never alters a placeholder (FR-007)"
+              } ]

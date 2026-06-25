@@ -9,12 +9,14 @@
   <ItemGroup>
     <Compile Include="RenderPassTests.fs" />
     <Compile Include="RenderFailLoudTests.fs" />
+    <Compile Include="RenderLabelTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Symbology.Render\Symbology.Render.fsproj" />
     <ProjectReference Include="..\..\src\Symbology\Symbology.fsproj" />
+    <ProjectReference Include="..\..\src\SkiaViewer\SkiaViewer.fsproj" />
     <ProjectReference Include="..\..\src\Scene\Scene.fsproj" />
     <PackageReference Include="Expecto" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />

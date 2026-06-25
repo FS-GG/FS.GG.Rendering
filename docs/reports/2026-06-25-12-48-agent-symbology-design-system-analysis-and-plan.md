@@ -431,10 +431,18 @@ Resolve the four gates (§10.4). Spike (T0.1): a ~20-line throwaway confirming `
 
 **Exit:** runnable board; deterministic seeded evidence.
 
-#### M7 — Governance & breadth  *(backlog)*
+#### M7 — Governance & breadth  *(COMPLETE — all three threads shipped 2026-06-25)*
 Legibility **linter** (score a `ChannelMap` against §4 channel capacities; warn on overload);
 **Badge** and **Ring** grammars (§4) behind the same channel vocabulary; optional **label text** via
 the `setRealTextMeasurer` path (`fs-gg-scene`) once tofu-free text is needed.
+
+- ✅ **Legibility linter** — [spec 194](../../specs/194-symbology-legibility-linter/spec.md) (`Legibility.score`/`scoreAnimated`).
+- ✅ **Badge / Ring grammars** — [spec 195](../../specs/195-symbology-badge-ring-grammars/spec.md) (`Grammar.Token|Badge|Ring`, `render`/`galleryIn`/`filmstripIn`/`animateIn`).
+- ✅ **Optional identity label** — [spec 196](../../specs/196-symbology-label-text/spec.md): one optional
+  `Token.Label : string option`, sited per grammar, tofu-free at the render edge, opt-in byte-identical
+  when unused; the §9-risk-1 "identity = vector sigils only" open item is now resolved (label is an
+  opt-in inspection-detail channel that complements, never replaces, the sigil). **M7 (and the M0–M7
+  roadmap) is complete.**
 
 ### 10.4 Decision gates (resolve at M0)
 - **G1 — Library home.** Dedicated `FS.GG.UI.Symbology` vs folding into `FS.GG.UI.Canvas`. *Default:

@@ -46,6 +46,28 @@ with zero drift on the existing `Scene` / `SkiaViewer` / `Controls` / `Canvas` b
 
 A zero/empty-area `Token` (`R <= 0`) renders a visible **placeholder**, never a blank or a crash.
 
+## Identity label (opt-in inspection-detail channel)
+
+The `Token` carries an **optional** `Label : string option` — a short identity string (name / callsign /
+code) drawn screen-aligned in a per-grammar label region. It is an **inspection-detail** channel: read
+**after** attention lands, complementary to — never a replacement for — the vector `Sigil` and the
+pre-attentive channels above. Use it only when the abstract sigil alone cannot disambiguate identity
+(e.g. eight infantry variants that share a silhouette, or a board that wants callsigns).
+
+- **Opt-in, zero-drift.** `Label = None` is the default and renders **byte-identically** to the
+  pre-feature symbol — the same `'stats -> Token` mapping drives all three grammars with no per-grammar
+  mapping. An empty/whitespace label is treated as no label.
+- **Requires the real measurer to be tofu-free.** The pure library emits a deterministic glyph-run proof
+  node and **never installs or requires a measurer**; legible, **tofu-free** glyphs come from the real
+  bundled-font registry the render bridge installs. Verify tofu-free output through `Symbology.Render`,
+  not from a pure unit test.
+- **Keep strings short.** Overlong labels are fitted to the region (shrink, then ellipsis-truncate at a
+  measured glyph boundary), so a long string degrades rather than overflowing — but short callsigns read
+  best. A degenerate (`R <= 0`) labelled token still degrades to the placeholder (placeholder wins).
+- **Not governed by the linter.** The label is **not** in the legibility capacity table — `Legibility.score`
+  ignores it, so its verdict is unchanged and grammar-independent. Do not use the label to dodge a
+  channel-overload warning; fix the pre-attentive encoding instead.
+
 ## Selectable grammars (form factors) — one channel set, three drawings
 
 The **same fixed channel set above** drives three interchangeable symbol **grammars**. The choice is a

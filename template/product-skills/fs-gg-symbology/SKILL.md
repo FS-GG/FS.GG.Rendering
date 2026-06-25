@@ -42,6 +42,23 @@ let png   = Render.toPng { Width = 920; Height = 660 } board "./readiness/symbol
 // -> read `png` back, critique at the target size, TWEAK mapUnit ONLY, repeat.
 ```
 
+## Identity label (opt-in inspection-detail channel)
+
+`Token` carries an optional `Label : string option` — a short callsign/code drawn screen-aligned in a
+per-grammar region. Set it in `mapUnit` only when the abstract sigil cannot disambiguate identity:
+
+```fsharp
+{ Symbology.defaultToken with R = 28.0; Faction = Ally; Label = Some u.Callsign }
+```
+
+- **Inspection-detail, not pop-out.** It complements — never replaces — the vector `Sigil`; keep strings
+  short. It is **not** in the legibility capacity table, so the linter's verdict is unchanged by labels.
+- **Opt-in, zero-drift.** `Label = None` (the default) and empty/whitespace render byte-identically to the
+  pre-feature symbol; the one mapping still drives all three grammars unchanged.
+- **Tofu-free is a render-edge property.** The pure library emits a deterministic glyph-run node and never
+  requires a measurer; legible non-tofu glyphs come from the render bridge. Overlong labels are fitted
+  (shrink, then ellipsis-truncate); a degenerate (`R <= 0`) labelled token still degrades to the placeholder.
+
 ## Selectable grammars (form factors) — one mapping, three drawings
 
 The same `'stats -> Token` mapping drives three interchangeable **grammars**, chosen as a value

@@ -86,3 +86,34 @@ let badgeChannelTests =
 [<Tests>]
 let ringChannelTests =
     testList "US2 ring channel presence" (grammarChannelChanges "ring" Symbology.ring)
+
+// T010 [US1] Identity-label channel presence (FR-003/US1 acceptance #3): two tokens differing ONLY in
+// `Label` produce differing canonical bytes in EVERY grammar — the label is sited and observably alters
+// output. The labelled scene additionally carries a `GlyphRunElement` the unlabelled scene does not.
+let private labelGrammars =
+    [ "token", Symbology.token; "badge", Symbology.badge; "ring", Symbology.ring ]
+
+[<Tests>]
+let labelChannelTests =
+    testList
+        "US1 label channel presence"
+        [ for gname, render in labelGrammars do
+              test (sprintf "[%s] label observably alters output" gname) {
+                  let bare = { baseT with Label = None }
+                  let lab = { baseT with Label = Some "A-7" }
+                  Expect.notEqual (bytesOfG render bare) (bytesOfG render lab) (sprintf "the label changes the %s render" gname)
+              }
+
+              test (sprintf "[%s] a label adds a glyph-run node; a bare token has none" gname) {
+                  let bareKinds = render { baseT with Label = None } |> Scene.describe
+                  let labKinds = render { baseT with Label = Some "A-7" } |> Scene.describe
+                  Expect.isFalse (List.contains GlyphRunElement bareKinds) "no label => no glyph run"
+                  Expect.isTrue (List.contains GlyphRunElement labKinds) "a label => a glyph-run node"
+              }
+
+              test (sprintf "[%s] two distinct labels render distinguishably" gname) {
+                  Expect.notEqual
+                      (bytesOfG render { baseT with Label = Some "A-7" })
+                      (bytesOfG render { baseT with Label = Some "B-9" })
+                      "distinct labels are mutually distinguishable (SC-002)"
+              } ]

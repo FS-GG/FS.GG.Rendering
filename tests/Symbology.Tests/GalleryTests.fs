@@ -91,3 +91,34 @@ let galleryInTests =
               for g in grammars do
                   Expect.equal (bytesOf (Symbology.galleryIn g 2 80.0 one)) (bytesOf (Symbology.galleryIn g 2 80.0 one)) "single roster is reproducible"
           } ]
+
+// T023 [US3] Labelled-roster board reproducibility (FR-010): a roster carrying identity labels renders on a
+// review board (`galleryIn g`) byte-reproducibly per grammar, with no signature change — the boards already
+// thread the whole Token, so the label flows through by construction. A labelled board also differs from its
+// unlabelled twin (the label reaches the board), and Grammar.Token still reproduces `gallery` for label-free.
+[<Tests>]
+let labelledBoardTests =
+    let grammars = [ Grammar.Token; Grammar.Badge; Grammar.Ring ]
+
+    let labelledRoster =
+        mixed |> List.mapi (fun i t -> { t with Label = Some(sprintf "U-%d" i) })
+
+    testList
+        "US3 labelled gallery"
+        [ yield!
+              grammars
+              |> List.map (fun g ->
+                  test (sprintf "labelled galleryIn %A is byte-reproducible" g) {
+                      Expect.equal
+                          (bytesOf (Symbology.galleryIn g 2 80.0 labelledRoster))
+                          (bytesOf (Symbology.galleryIn g 2 80.0 labelledRoster))
+                          "a labelled board is reproducible per grammar (FR-010)"
+                  })
+
+          test "a labelled board differs from its unlabelled twin in every grammar" {
+              for g in grammars do
+                  Expect.notEqual
+                      (bytesOf (Symbology.galleryIn g 2 80.0 labelledRoster))
+                      (bytesOf (Symbology.galleryIn g 2 80.0 mixed))
+                      "the label reaches the review board"
+          } ]

@@ -121,3 +121,39 @@ let ringDeterminism =
                   "70a04792c94bd03a69d21d78480a38a29d6e451f8500919fc5e329ea88920c0f"
                   "ring canonical bytes drifted from the pinned cross-process golden (SC-003)"
           } ]
+
+// T009 [US1] Identity-label determinism (FR-002/FR-008/SC-003/SC-004). The label channel is byte-stable
+// under a fixed measurement provider (the pure Symbology.Tests env installs no measurer => the pure
+// `measureText` heuristic), and the existing `Label = None` goldens above stay byte-UNCHANGED (the
+// zero-drift tripwire — proven by `canonicalSha (token defaultToken)` still matching the pinned default).
+let private labelled =
+    { sample with Label = Some "HMR-7" }
+
+[<Tests>]
+let labelDeterminism =
+    testList
+        "US1 label determinism"
+        [ test "same labelled Token => byte-equal canonical bytes (render twice)" {
+              let a = (SceneCodec.export (Symbology.token labelled)).CanonicalBytes
+              let b = (SceneCodec.export (Symbology.token labelled)).CanonicalBytes
+              Expect.equal a b "the label channel is a pure function of Token (FR-008)"
+          }
+
+          // Cross-process proxy (SC-004 "separate process"): a fixed SHA computed in a prior process trips
+          // on any process-dependent drift — purity under a fixed provider guarantees byte-identity in any
+          // process running that provider. Same proxy the label-free goldens above use.
+          test "labelled cross-process golden: fixed labelled Token canonical bytes are pinned" {
+              Expect.equal
+                  (canonicalSha (Symbology.token labelled))
+                  "6710215bcb3bf6dd3ec3eba7cb0eb1067921a2ed35ae3ff1801f6ef9f0ac8901"
+                  "labelled canonical bytes drifted from the pinned cross-process golden (SC-004)"
+          }
+
+          // FR-002/SC-003 restated at the label seam: a bare token is byte-identical to the pre-feature
+          // default symbol — adding the `Label` record field changes the Token VALUE but not the emitted Scene.
+          test "Label = None is byte-identical to the pre-feature default symbol (zero drift)" {
+              Expect.equal
+                  (canonicalSha (Symbology.token { Symbology.defaultToken with Label = None }))
+                  "0dda10bd2c3d018b10f759dc82c346b8c2575f9220ce477da25b2bc58e596c87"
+                  "a label-free token must match the pinned pre-feature default golden (FR-002)"
+          } ]

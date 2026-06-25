@@ -37,7 +37,8 @@ type Motion =
     | Moving
 
 /// The symbol description: the full fixed channel set as typed fields (FR-002).
-/// Pure over this value (FR-003): equal Token => equal Scene => equal SceneCodec canonical bytes.
+/// Pure over this value (FR-003): equal Token => equal Scene => equal SceneCodec canonical bytes
+/// (under a fixed text-measurement provider; FR-008).
 type Token =
     { Cx: float
       Cy: float
@@ -51,7 +52,14 @@ type Token =
       Charge: float
       Speed: int
       Health: float
-      Shield: bool }
+      Shield: bool
+      /// Optional short identity string (name / callsign / code). `None` = no label (default) and
+      /// renders byte-identically to the pre-feature symbol (FR-002). An empty/whitespace `Some`
+      /// is treated as no label (FR-006). When present it is drawn screen-aligned in the grammar's
+      /// label region, fitted to that region via real text measurement (FR-005), and tofu-free when
+      /// rendered through the headless render bridge's real measurer (FR-004). Inspection-detail:
+      /// it does NOT enter the legibility capacity table (FR-011).
+      Label: string option }
 
 /// The selectable symbol form factor (FR-001/FR-002). All three consume the SAME fixed Token channel
 /// set: one `'stats -> Token` mapping drives any grammar unchanged. The choice changes the DRAWING,

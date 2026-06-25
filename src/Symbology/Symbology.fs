@@ -45,7 +45,8 @@ type Token =
       Charge: float
       Speed: int
       Health: float
-      Shield: bool }
+      Shield: bool
+      Label: string option }
 
 [<RequireQualifiedAccess>]
 type Grammar =
@@ -246,13 +247,97 @@ module Symbology =
           Charge = 0.5
           Speed = 0
           Health = 0.5
-          Shield = false }
+          Shield = false
+          Label = None }
+
+    // ---- Optional identity-label channel (FR-001..FR-009) -------------------------------------
+    // Screen-aligned short text drawn in a per-grammar label region. The node is emitted ONLY when a
+    // label is present and non-blank, so a `Label = None` (or empty/whitespace) token's element list is
+    // byte-IDENTICAL to the pre-feature symbol (FR-002/SC-003) — the helpers return `Scene option` and
+    // the grammars append the node only on `Some`. Pure scene-only: consumes the already-referenced
+    // FS.GG.UI.Scene text vocabulary (measureTextResolved / glyphRunProof), no raster/GL/IO (FR-014).
+
+    let private labelInk = Colors.rgb 235uy 235uy 235uy
+    let private ellipsis = "…"
+
+    let private labelFontOf (size: float) : FontSpec =
+        { Family = None; Size = max 1.0 size; Weight = None }
+
+    let private labelWidth (text: string) (size: float) : float =
+        (Scene.measureTextResolved text (labelFontOf size)).Width
+
+    // Fit the trimmed label to `regionWidth` via real text measurement (FR-005): empty/whitespace => None;
+    // else shrink the font toward a floor, and if still over at the floor, ellipsis-truncate at a measured
+    // glyph boundary (re-measuring the candidate incl. the ellipsis). The result is always within the
+    // region width and never cut mid-glyph (research.md R3). Deterministic for a fixed measurement provider.
+    let private fitLabel (regionWidth: float) (baseSize: float) (raw: string) : (string * FontSpec) option =
+        if String.IsNullOrWhiteSpace raw then
+            None
+        else
+            let text = raw.Trim()
+            let wBase = labelWidth text baseSize
+
+            if wBase <= regionWidth || regionWidth <= 0.0 then
+                Some(text, labelFontOf baseSize)
+            else
+                let floor = baseSize * 0.62
+                // Linear-measure estimate of the size that fits the whole string; verify before using it,
+                // so a non-linear real measurer can never push the drawn label past the region.
+                let est = baseSize * regionWidth / wBase
+
+                if est >= floor && labelWidth text est <= regionWidth then
+                    Some(text, labelFontOf est)
+                else
+                    // Truncate at the floor size: longest prefix whose `prefix + ellipsis` measures within.
+                    let fits (s: string) = labelWidth (s + ellipsis) floor <= regionWidth
+
+                    let rec longest (n: int) =
+                        if n <= 0 then ""
+                        elif fits (text.Substring(0, n)) then text.Substring(0, n)
+                        else longest (n - 1)
+
+                    match longest (text.Length - 1) with
+                    | "" -> Some(ellipsis, labelFontOf floor) // even one glyph + ellipsis overflows: the ellipsis alone
+                    | prefix -> Some(prefix + ellipsis, labelFontOf floor)
+
+    // Emit the fitted label centred on `centerX` with its baseline at `baselineY`, or None when there is no
+    // drawable label. `glyphRunProof` carries per-glyph `Missing`/`FallbackMode` evidence so the render edge
+    // can verify tofu-free output (FR-004); the pure library never installs/requires a measurer (FR-009).
+    let private labelNode (centerX: float) (baselineY: float) (regionWidth: float) (baseSize: float) (label: string option) : Scene option =
+        match label with
+        | None -> None
+        | Some raw ->
+            match fitLabel regionWidth baseSize raw with
+            | None -> None
+            | Some(text, font) ->
+                let w = (Scene.measureTextResolved text font).Width
+                let pos = { X = centerX - w / 2.0; Y = baselineY }
+                Some(Scene.glyphRunProof pos text font (Paint.fill labelInk))
+
+    // Per-grammar label region (provisional geometry — the contract is FR-003: sited, observable,
+    // non-overlapping; coordinates are a design-loop detail, see data-model.md). Each sits in the one
+    // uncrowded zone of its grammar, screen-aligned (never rotates with Heading).
+    let private tokenLabelNode (t: Token) : Scene option =
+        labelNode t.Cx (t.Cy + t.R * 1.5) (t.R * 1.9) (t.R * 0.5) t.Label // caption strip below the health arc
+
+    let private badgeLabelNode (t: Token) : Scene option =
+        labelNode t.Cx (t.Cy + t.R * 1.42) (t.R * 1.7) (t.R * 0.42) t.Label // band below the health bar / pips
+
+    let private ringLabelNode (t: Token) : Scene option =
+        labelNode t.Cx (t.Cy + t.R * 0.52) (t.R * 1.05) (t.R * 0.34) t.Label // caption beneath the sigil, inner disc
+
+    // Append a label node to a grammar's child list only when present, so label-free output is unchanged.
+    let private withLabel (label: Scene option) (nodes: Scene list) : Scene =
+        match label with
+        | Some node -> Scene.group (nodes @ [ node ])
+        | None -> Scene.group nodes
 
     let private drawSymbol (t: Token) : Scene =
         if t.R <= 0.0 then
-            placeholder t
+            placeholder t // placeholder rule wins over the label (FR-007); no label on a degenerate token
         else
-            Scene.group
+            withLabel
+                (tokenLabelNode t)
                 [ chargeFill t
                   Scene.path (bodyPath t) (strokePaint t)
                   sigilScene t
@@ -421,9 +506,10 @@ module Symbology =
 
     let private drawBadge (t: Token) : Scene =
         if t.R <= 0.0 then
-            placeholder t
+            placeholder t // placeholder rule wins over the label (FR-007)
         else
-            Scene.group
+            withLabel
+                (badgeLabelNode t)
                 [ chargeFill t
                   Scene.path (polyPath (badgeFramePoints t.Klass t.Cx t.Cy t.R)) (strokePaint t)
                   sigilScene { t with Heading = 0.0 } // screen-aligned centre identity (heading is the edge pip)
@@ -502,7 +588,8 @@ module Symbology =
         else
             let bounds = { X = t.Cx - t.R; Y = t.Cy - t.R; Width = t.R * 2.0; Height = t.R * 2.0 }
 
-            Scene.group
+            withLabel
+                (ringLabelNode t)
                 [ chargeFill t
                   Scene.ellipse bounds (strokePaint t) // outer ring: hue=faction, width=threat, dash=state
                   ringClassGlyph t
