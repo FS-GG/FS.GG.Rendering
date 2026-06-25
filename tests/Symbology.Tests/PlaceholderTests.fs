@@ -109,4 +109,16 @@ let degenerateWithLabel =
                   let withLabel = render { Symbology.defaultToken with R = 0.0; Label = Some "X" }
                   let without = render { Symbology.defaultToken with R = 0.0; Label = None }
                   Expect.equal withLabel without "the label never alters a placeholder (FR-007)"
+              }
+
+              // T012 [US2] explicit MULTI-LINE variant: a `\n`-bearing / over-budget label on a degenerate
+              // token still yields the placeholder, draws no label glyph, and equals the no-label placeholder.
+              test (sprintf "[%s] R <= 0 with a MULTI-LINE label => placeholder, no throw, no label glyph" gname) {
+                  let scene = render { Symbology.defaultToken with Cx = 10.0; Cy = 10.0; R = 0.0; Label = Some "ALPHA\nBRAVO\nCHARLIE\nDELTA" }
+                  let kinds = scene |> Scene.describe |> List.distinct
+                  Expect.contains kinds PathElement "the visible placeholder is drawn (FR-007)"
+                  Expect.isFalse (List.contains GlyphRunElement kinds) "the placeholder rule wins over a multi-line label"
+
+                  let without = render { Symbology.defaultToken with Cx = 10.0; Cy = 10.0; R = 0.0; Label = None }
+                  Expect.equal scene without "a multi-line label never alters a placeholder (FR-007)"
               } ]

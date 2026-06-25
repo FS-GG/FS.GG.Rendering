@@ -122,3 +122,50 @@ let labelledBoardTests =
                       (bytesOf (Symbology.galleryIn g 2 80.0 mixed))
                       "the label reaches the review board"
           } ]
+
+// T014 [US3] Multi-line-labelled roster on review boards (FR-010/SC-001): a roster carrying `\n`-bearing
+// labels renders byte-reproducibly via `galleryIn`/`filmstripIn` per grammar under a fixed measurement
+// provider, with NO signature change (the boards already thread the whole Token). A multi-line board also
+// differs from its single-line twin (the extra lines reach the board).
+[<Tests>]
+let multilineBoardTests =
+    let grammars = [ Grammar.Token; Grammar.Badge; Grammar.Ring ]
+
+    let multilineRoster =
+        mixed |> List.mapi (fun i t -> { t with R = 40.0; Label = Some(sprintf "U-%d\nLINE-B" i) })
+
+    let singleLineRoster =
+        mixed |> List.mapi (fun i t -> { t with R = 40.0; Label = Some(sprintf "U-%d" i) })
+
+    let strip =
+        multilineRoster |> List.map (fun t -> Pulse, t)
+
+    testList
+        "US3 multi-line labelled boards"
+        [ yield!
+              grammars
+              |> List.map (fun g ->
+                  test (sprintf "multi-line galleryIn %A is byte-reproducible" g) {
+                      Expect.equal
+                          (bytesOf (Symbology.galleryIn g 2 120.0 multilineRoster))
+                          (bytesOf (Symbology.galleryIn g 2 120.0 multilineRoster))
+                          "a multi-line-labelled board is reproducible per grammar (FR-010/SC-001)"
+                  })
+
+          yield!
+              grammars
+              |> List.map (fun g ->
+                  test (sprintf "multi-line filmstripIn %A is byte-reproducible" g) {
+                      Expect.equal
+                          (bytesOf (Symbology.filmstripIn g 3 strip))
+                          (bytesOf (Symbology.filmstripIn g 3 strip))
+                          "a multi-line-labelled motion board is reproducible per grammar (FR-010)"
+                  })
+
+          test "a multi-line board differs from its single-line twin in every grammar" {
+              for g in grammars do
+                  Expect.notEqual
+                      (bytesOf (Symbology.galleryIn g 2 120.0 multilineRoster))
+                      (bytesOf (Symbology.galleryIn g 2 120.0 singleLineRoster))
+                      "the extra label lines reach the review board"
+          } ]

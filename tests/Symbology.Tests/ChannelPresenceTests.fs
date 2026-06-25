@@ -117,3 +117,22 @@ let labelChannelTests =
                       (bytesOfG render { baseT with Label = Some "B-9" })
                       "distinct labels are mutually distinguishable (SC-002)"
               } ]
+
+// T007 [US1] Multi-line channel presence (FR-001/US1 acceptance #3): the SAME text expressed on one line
+// vs with an embedded `\n` produces DIFFERING canonical bytes in every grammar (the hard break is an
+// observable layout input), and neither raises. The text is short enough to FIT on one line in every
+// grammar, so the one-line spelling does NOT soft-wrap — the only difference is the explicit break, which
+// stacks it into two nodes. (A long two-word label would soft-wrap to the same two lines as the break,
+// which is the intended wrap behaviour, not a channel-presence signal — hence the deliberately short text.)
+[<Tests>]
+let multilineChannelTests =
+    let bigT = { baseT with R = 40.0 }
+
+    testList
+        "US1 multi-line channel presence"
+        [ for gname, render in labelGrammars do
+              test (sprintf "[%s] one-line vs embedded-\\n of the same text differ; neither throws" gname) {
+                  let oneLine = bytesOfG render { bigT with Label = Some "A B" }
+                  let twoLine = bytesOfG render { bigT with Label = Some "A\nB" }
+                  Expect.notEqual oneLine twoLine (sprintf "an embedded line break observably alters the %s render (FR-001)" gname)
+              } ]

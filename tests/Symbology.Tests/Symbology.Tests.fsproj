@@ -17,6 +17,7 @@
     <Compile Include="GrammarTests.fs" />
     <Compile Include="LegibilityTests.fs" />
     <Compile Include="LabelTests.fs" />
+    <Compile Include="MultilineLabelTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

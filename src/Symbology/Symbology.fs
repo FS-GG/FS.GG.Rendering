@@ -266,6 +266,14 @@ module Symbology =
     let private labelWidth (text: string) (size: float) : float =
         (Scene.measureTextResolved text (labelFontOf size)).Width
 
+    // Measured line-height for stacking (FR-003 / research.md R4): the resolved `TextMetrics.Height` of the
+    // base font, falling back to `baseSize * 1.15` when the provider reports a non-positive height. Pure and
+    // deterministic for a fixed measurement provider; only affects lines below the first (i >= 1), so a
+    // single-line label is unaffected (its baseline stays the spec-196 anchor — zero drift).
+    let private lineHeightOf (baseSize: float) : float =
+        let h = (Scene.measureTextResolved "Mg" (labelFontOf baseSize)).Height
+        if h > 0.0 then h else baseSize * 1.15
+
     // Fit the trimmed label to `regionWidth` via real text measurement (FR-005): empty/whitespace => None;
     // else shrink the font toward a floor, and if still over at the floor, ellipsis-truncate at a measured
     // glyph boundary (re-measuring the candidate incl. the ellipsis). The result is always within the
@@ -300,44 +308,113 @@ module Symbology =
                     | "" -> Some(ellipsis, labelFontOf floor) // even one glyph + ellipsis overflows: the ellipsis alone
                     | prefix -> Some(prefix + ellipsis, labelFontOf floor)
 
-    // Emit the fitted label centred on `centerX` with its baseline at `baselineY`, or None when there is no
-    // drawable label. `glyphRunProof` carries per-glyph `Missing`/`FallbackMode` evidence so the render edge
-    // can verify tofu-free output (FR-004); the pure library never installs/requires a measurer (FR-009).
-    let private labelNode (centerX: float) (baselineY: float) (regionWidth: float) (baseSize: float) (label: string option) : Scene option =
+    // ---- Multi-line widening (feature 197, FR-001/FR-003/FR-005/FR-006) ----------------------------
+    // The label is interpreted as possibly multi-line: embedded `\n`/`\r\n` are hard breaks; a long line
+    // soft-wraps to the region width. No new public surface — multi-line rides the existing
+    // `Label : string option`. A no-label token and a one-line-fitting label stay byte-identical to the
+    // pre-feature / spec-196 renders (layered zero-drift), because both reduce to the exact 196 child list.
+
+    // Greedy WHITESPACE word-wrap of one segment to `regionWidth` (measured at `baseSize`): pack words while
+    // `prefix + " " + word` fits, else start a new line; NEVER break inside a word (research.md R2). A single
+    // word wider than the region has no wrap point and becomes its own (over-wide) line — handled downstream
+    // by the per-line `fitLabel` (shrink → ellipsis). Pure fold (no mutable); deterministic per provider.
+    let private wrapSegment (regionWidth: float) (baseSize: float) (segment: string) : string list =
+        match segment.Split([| ' '; '\t' |], StringSplitOptions.RemoveEmptyEntries) |> List.ofArray with
+        | [] -> []
+        | first :: rest ->
+            let completed, current =
+                rest
+                |> List.fold
+                    (fun (acc, cur) (w: string) ->
+                        let candidate = cur + " " + w
+
+                        if regionWidth <= 0.0 || labelWidth candidate baseSize <= regionWidth then
+                            (acc, candidate)
+                        else
+                            (cur :: acc, w))
+                    ([], first)
+
+            List.rev (current :: completed)
+
+    // Normalise a raw label into the ordered set of lines to draw (FR-001/FR-005/FR-006): split on hard
+    // breaks, trim, drop empty/whitespace segments (deterministic collapse), greedy-wrap each to the region,
+    // then CAP to the grammar's `budget`; when the cap drops lines, the last kept line gains an ellipsis to
+    // signal the surplus (re-fitted ≤ region by the per-line `fitLabel`). Result length is `0 … budget`.
+    let private wrapLabel (regionWidth: float) (baseSize: float) (budget: int) (raw: string) : string list =
+        if String.IsNullOrWhiteSpace raw then
+            []
+        else
+            let wrapped =
+                raw.Replace("\r\n", "\n").Split('\n')
+                |> Array.map (fun s -> s.Trim())
+                |> Array.filter (fun s -> s.Length > 0)
+                |> List.ofArray
+                |> List.collect (wrapSegment regionWidth baseSize)
+
+            let budget = max 1 budget
+
+            if wrapped.Length <= budget then
+                wrapped
+            else
+                // Drop the surplus; mark the last KEPT line with an ellipsis (FR-005 / SC-005).
+                let kept = wrapped |> List.truncate (budget - 1)
+                let lastKept = wrapped |> List.item (budget - 1)
+                kept @ [ lastKept + ellipsis ]
+
+    // Emit one centred glyph-run node per wrapped line: the first at `baselineY` (the spec-196 anchor) and
+    // each subsequent line a measured `lineHeight` lower (downward stacking, FR-003). Each line passes
+    // through the existing `fitLabel` so it is guaranteed ≤ region width and never clipped mid-glyph
+    // (FR-005). Returns [] when there is no drawable line — byte-identical to no-label; a single fitting
+    // line reproduces spec 196 exactly (one node, same baseline — FR-002/SC-003). `glyphRunProof` carries
+    // per-glyph `Missing`/`FallbackMode` evidence so the render edge can verify tofu-free output (FR-004);
+    // the pure library never installs/requires a measurer and never throws without one (FR-009).
+    let private labelNodes
+        (centerX: float)
+        (baselineY: float)
+        (regionWidth: float)
+        (baseSize: float)
+        (lineHeight: float)
+        (budget: int)
+        (label: string option)
+        : Scene list =
         match label with
-        | None -> None
+        | None -> []
         | Some raw ->
-            match fitLabel regionWidth baseSize raw with
-            | None -> None
-            | Some(text, font) ->
+            wrapLabel regionWidth baseSize budget raw
+            |> List.choose (fitLabel regionWidth baseSize)
+            |> List.mapi (fun i (text, font) ->
                 let w = (Scene.measureTextResolved text font).Width
-                let pos = { X = centerX - w / 2.0; Y = baselineY }
-                Some(Scene.glyphRunProof pos text font (Paint.fill labelInk))
+                let pos = { X = centerX - w / 2.0; Y = baselineY + lineHeight * float i }
+                Scene.glyphRunProof pos text font (Paint.fill labelInk))
 
     // Per-grammar label region (provisional geometry — the contract is FR-003: sited, observable,
-    // non-overlapping; coordinates are a design-loop detail, see data-model.md). Each sits in the one
-    // uncrowded zone of its grammar, screen-aligned (never rotates with Heading).
-    let private tokenLabelNode (t: Token) : Scene option =
-        labelNode t.Cx (t.Cy + t.R * 1.5) (t.R * 1.9) (t.R * 0.5) t.Label // caption strip below the health arc
+    // non-overlapping; coordinates + per-grammar line budgets are a design-loop detail, see data-model.md).
+    // Each sits in the one uncrowded zone of its grammar, screen-aligned (never rotates with Heading); the
+    // FIRST line keeps spec 196's exact baseline / region width / base size (the zero-drift anchor).
+    let private tokenLabelNodes (t: Token) : Scene list =
+        let baseSize = t.R * 0.5
+        labelNodes t.Cx (t.Cy + t.R * 1.5) (t.R * 1.9) baseSize (lineHeightOf baseSize) 3 t.Label // caption strip below the health arc (≤ 3 lines)
 
-    let private badgeLabelNode (t: Token) : Scene option =
-        labelNode t.Cx (t.Cy + t.R * 1.42) (t.R * 1.7) (t.R * 0.42) t.Label // band below the health bar / pips
+    let private badgeLabelNodes (t: Token) : Scene list =
+        let baseSize = t.R * 0.42
+        labelNodes t.Cx (t.Cy + t.R * 1.42) (t.R * 1.7) baseSize (lineHeightOf baseSize) 2 t.Label // band below the health bar / pips (≤ 2 lines)
 
-    let private ringLabelNode (t: Token) : Scene option =
-        labelNode t.Cx (t.Cy + t.R * 0.52) (t.R * 1.05) (t.R * 0.34) t.Label // caption beneath the sigil, inner disc
+    let private ringLabelNodes (t: Token) : Scene list =
+        let baseSize = t.R * 0.34
+        labelNodes t.Cx (t.Cy + t.R * 0.52) (t.R * 1.05) baseSize (lineHeightOf baseSize) 2 t.Label // caption beneath the sigil, inner disc (≤ 2 lines)
 
-    // Append a label node to a grammar's child list only when present, so label-free output is unchanged.
-    let private withLabel (label: Scene option) (nodes: Scene list) : Scene =
-        match label with
-        | Some node -> Scene.group (nodes @ [ node ])
-        | None -> Scene.group nodes
+    // Append the label line nodes to a grammar's child list as bare siblings (research.md R5): `[]` ⇒
+    // `Scene.group nodes` (byte-identical to no-label), `[one]` ⇒ `nodes @ [one]` (byte-identical to the
+    // spec-196 single-line label). Never wraps the lines in an extra group — that would drift the goldens.
+    let private withLabel (lineNodes: Scene list) (nodes: Scene list) : Scene =
+        Scene.group (nodes @ lineNodes)
 
     let private drawSymbol (t: Token) : Scene =
         if t.R <= 0.0 then
             placeholder t // placeholder rule wins over the label (FR-007); no label on a degenerate token
         else
             withLabel
-                (tokenLabelNode t)
+                (tokenLabelNodes t)
                 [ chargeFill t
                   Scene.path (bodyPath t) (strokePaint t)
                   sigilScene t
@@ -509,7 +586,7 @@ module Symbology =
             placeholder t // placeholder rule wins over the label (FR-007)
         else
             withLabel
-                (badgeLabelNode t)
+                (badgeLabelNodes t)
                 [ chargeFill t
                   Scene.path (polyPath (badgeFramePoints t.Klass t.Cx t.Cy t.R)) (strokePaint t)
                   sigilScene { t with Heading = 0.0 } // screen-aligned centre identity (heading is the edge pip)
@@ -589,7 +666,7 @@ module Symbology =
             let bounds = { X = t.Cx - t.R; Y = t.Cy - t.R; Width = t.R * 2.0; Height = t.R * 2.0 }
 
             withLabel
-                (ringLabelNode t)
+                (ringLabelNodes t)
                 [ chargeFill t
                   Scene.ellipse bounds (strokePaint t) // outer ring: hue=faction, width=threat, dash=state
                   ringClassGlyph t

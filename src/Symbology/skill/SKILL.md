@@ -64,6 +64,21 @@ pre-attentive channels above. Use it only when the abstract sigil alone cannot d
 - **Keep strings short.** Overlong labels are fitted to the region (shrink, then ellipsis-truncate at a
   measured glyph boundary), so a long string degrades rather than overflowing — but short callsigns read
   best. A degenerate (`R <= 0`) labelled token still degrades to the placeholder (placeholder wins).
+- **Multi-line is the SAME field — opt-in, still inspection-detail.** The one `Label : string option`
+  carries more than one line: embedded `\n` (and `\r\n`) are **hard breaks**, and a long line **soft-wraps**
+  at whitespace to the region width. No new field, no second channel, no per-grammar mapping. Use it only
+  when one line cannot carry the identity (a callsign over a code); it **complements, never replaces**, the
+  vector `Sigil`. Keep to a **few short lines** — the per-grammar budget is **Token ≤ 3, Badge ≤ 2,
+  Ring ≤ 2** (the ring's inner disc is tightest). Lines stack **downward** from the same spec-196 baseline,
+  screen-aligned (the block never rotates with heading).
+- **How multi-line surplus degrades: wrap → cap → ellipsis.** A long line **wraps** at whitespace (a single
+  unbroken word too wide just shrinks/ellipsis-truncates on its own line — no mid-word break); the drawn
+  line count is **capped** to the grammar budget; when lines are dropped, the **last drawn line ends with
+  `…`**. Empty / whitespace / blank-lines-only ⇒ no label (interior blanks collapse, no wasted gap). A
+  one-line-fitting label stays **byte-identical** to the single-line render, so adding `\n` is the only way
+  to force a break. Tofu-free is still a **render-edge** property — **every** line draws real glyphs only
+  through the real measurer the render bridge installs; the pure library emits the line nodes but requires
+  no measurer.
 - **Not governed by the linter.** The label is **not** in the legibility capacity table — `Legibility.score`
   ignores it, so its verdict is unchanged and grammar-independent. Do not use the label to dodge a
   channel-overload warning; fix the pre-attentive encoding instead.

@@ -58,6 +58,17 @@ per-grammar region. Set it in `mapUnit` only when the abstract sigil cannot disa
 - **Tofu-free is a render-edge property.** The pure library emits a deterministic glyph-run node and never
   requires a measurer; legible non-tofu glyphs come from the render bridge. Overlong labels are fitted
   (shrink, then ellipsis-truncate); a degenerate (`R <= 0`) labelled token still degrades to the placeholder.
+- **Multi-line rides the same field.** `Label` may carry more than one line: embedded `\n` are hard breaks,
+  and a long line soft-wraps at whitespace to the region width — no new field, no second channel. Keep to a
+  few short lines (budget **Token ≤ 3, Badge ≤ 2, Ring ≤ 2**); lines stack downward from the spec-196
+  baseline, screen-aligned. Surplus degrades **wrap → cap → ellipsis** (the last drawn line ends with `…`);
+  empty/whitespace/blank-lines collapse to no label. A one-line-fitting label stays byte-identical, so `\n`
+  is the only way to force a break; every line is tofu-free only through the render bridge's real measurer.
+
+```fsharp
+// A callsign over a code — two lines in the one field:
+{ Symbology.defaultToken with R = 28.0; Faction = Ally; Label = Some (u.Callsign + "\n" + u.Code) }
+```
 
 ## Selectable grammars (form factors) — one mapping, three drawings
 

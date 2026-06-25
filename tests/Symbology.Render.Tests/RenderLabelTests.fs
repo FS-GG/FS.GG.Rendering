@@ -68,3 +68,33 @@ let tests =
               let b = (SceneCodec.export (labelledBoard [ "C-1"; "D-2" ])).CanonicalBytes
               Expect.notEqual a b "distinct labels produce observably distinct output (SC-002)"
           } ]
+
+// T009 [US1] Multi-line label tofu-free at the render edge (FR-004/SC-002). A `\n`-bearing labelled token
+// rasterises to a non-blank PNG, and EVERY line (not just the first) resolves NON-TOFU under the same real
+// font registry the renderer draws through — multi-line draws real glyphs on every line, never a tofu box.
+let private multilineToken lbl =
+    { Symbology.defaultToken with
+        R = 40.0
+        Faction = Ally
+        Klass = Mobile
+        Sigil = Bolt
+        Health = 0.8
+        Label = Some lbl }
+
+[<Tests>]
+let multilineTests =
+    testList
+        "US1 render multi-line label tofu-free"
+        [ test "a multi-line labelled token rasterises to a non-blank PNG" {
+              let board = Symbology.gallery 1 120.0 [ multilineToken "ALPHA\nBRAVO\nCHARLIE" ]
+              let path = Render.toPng { Width = 160; Height = 160 } board (outDir "multiline-pass")
+              Expect.isTrue (File.Exists path) "image file was written"
+              Expect.isTrue ((FileInfo path).Length > 0L) "the multi-line labelled board is non-blank"
+          }
+
+          test "EVERY line of a multi-line label resolves non-tofu under the renderer's real font registry (FR-004)" {
+              // Each `\n`-delimited line is shaped/drawn independently; assert each draws real glyphs, no tofu.
+              for line in [ "ALPHA"; "BRAVO"; "CHARLIE"; "HOTEL-1"; "K9" ] do
+                  let report = Fonts.resolveText labelFont line |> Fonts.report
+                  Expect.equal report.TofuCount 0 (sprintf "multi-line line %s draws real glyphs (no tofu) under the bundled font" line)
+          } ]

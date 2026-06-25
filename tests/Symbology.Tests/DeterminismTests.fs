@@ -157,3 +157,30 @@ let labelDeterminism =
                   "0dda10bd2c3d018b10f759dc82c346b8c2575f9220ce477da25b2bc58e596c87"
                   "a label-free token must match the pinned pre-feature default golden (FR-002)"
           } ]
+
+// T006 [US1] Multi-line label determinism (FR-001/FR-008/SC-004). A `\n`-bearing label is byte-stable
+// in-process AND pinned as a cross-process anchor (purity under a fixed measurement provider ⇒ the same
+// bytes in any process running that provider — the same proxy the `6710215b…` single-line golden uses).
+// The pre-feature `0dda10bd…` / single-line `6710215b…` goldens above stay UNCHANGED in this same file —
+// multi-line is engaged only by whitespace/`\n` content too wide for one line (layered zero-drift).
+let private multiline =
+    { sample with Label = Some "ALPHA\nBRAVO" }
+
+[<Tests>]
+let multilineDeterminism =
+    testList
+        "US1 multi-line label determinism"
+        [ test "same multi-line Token => byte-equal canonical bytes (render twice, same process)" {
+              let a = (SceneCodec.export (Symbology.token multiline)).CanonicalBytes
+              let b = (SceneCodec.export (Symbology.token multiline)).CanonicalBytes
+              Expect.equal a b "the multi-line label channel is a pure function of Token (FR-008/SC-004 same-process)"
+          }
+
+          // Cross-process anchor (SC-004 "separate process"): a fixed SHA computed in a prior process trips
+          // on any process-dependent drift — purity under a fixed provider guarantees byte-identity.
+          test "multi-line cross-process golden: fixed `\\n`-bearing Token canonical bytes are pinned" {
+              Expect.equal
+                  (canonicalSha (Symbology.token multiline))
+                  "b41c9626e42661b672e11db54d75bb4ff57cc76787d4dfdd0731e0c055df182e"
+                  "multi-line canonical bytes drifted from the pinned cross-process golden (SC-004)"
+          } ]

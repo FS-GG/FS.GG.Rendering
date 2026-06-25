@@ -257,4 +257,20 @@ let labelInvariance =
           test "even a roster of all-identical labels leaves the verdict unchanged" {
               let sameLabel = roster |> List.map (fun t -> { t with Label = Some "SAME" })
               Expect.equal (Legibility.score sameLabel) (Legibility.score roster) "the label channel is never governed (SC-006)"
+          }
+
+          // T015 [US3] MULTI-LINE labels are inspection-detail too (FR-011/SC-006): a roster carrying
+          // `\n`-bearing / over-budget labels yields an IDENTICAL Report to the same roster with no labels —
+          // multi-line content never enters the capacity table, so the verdict is unchanged and (since
+          // `score` takes `Token list` with no grammar parameter) grammar-independent by construction.
+          test "multi-line label presence does not change the roster's Report (score)" {
+              let multiline = roster |> List.mapi (fun i t -> { t with Label = Some(sprintf "U-%d\nLINE-B\nLINE-C\nLINE-D" i) })
+              Expect.equal (Legibility.score multiline) (Legibility.score roster) "a multi-line label is inspection-detail; it does not enter governance (FR-011)"
+          }
+
+          test "multi-line label presence does not change the animated Report (scoreAnimated)" {
+              let multiline = roster |> List.mapi (fun i t -> { t with Label = Some(sprintf "U-%d\nLINE-B" i) })
+              let board = roster |> List.map (fun t -> Spin, t)
+              let boardL = multiline |> List.map (fun t -> Spin, t)
+              Expect.equal (Legibility.scoreAnimated boardL) (Legibility.scoreAnimated board) "multi-line labels do not alter animated governance (FR-011)"
           } ]
