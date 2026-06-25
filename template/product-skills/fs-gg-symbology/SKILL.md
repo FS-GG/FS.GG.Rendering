@@ -48,6 +48,15 @@ Assign-by-urgency (urgent state on hue/motion/size); redundancy on critical stat
 a time; never critical state on dash alone; faction (saturated hue) and inspection state (dash) never
 share the hue channel. Check: faction separable? class distinct? health readable at the target size?
 
+CRITIQUE with two complementary checks: (a) LINT — run the linter on the produced symbol set
+(`Legibility.score (roster |> List.map mapUnit)`; animated boards use `scoreAnimated` over the
+`(motion, token)` pairs) and read `report.Verdict` / `report.Findings`. The linter is pure/deterministic
+and the mechanical backstop: a `Warning`/`Error` names the overloaded or out-of-domain `Channel`,
+used-vs-capacity, and the contributing unit indices. A non-`Clean` verdict is a TWEAK trigger — the unit
+of change stays the mapping, never the grammar. (b) EYE — the human-style self-check of the PNG vs the
+rules above stays (the linter cannot see crowding, contrast, or label collisions). The approved roster
+lints `Clean`, so a fresh finding is a real signal to re-tune the mapping.
+
 ## Build Commands
 
 Run `./fake.sh build -t Dev` then `./fake.sh build -t Verify` in this product.

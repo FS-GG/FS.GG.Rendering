@@ -20,6 +20,8 @@
   <ItemGroup>
     <Compile Include="Symbology.fsi" />
     <Compile Include="Symbology.fs" />
+    <Compile Include="Legibility.fsi" />
+    <Compile Include="Legibility.fs" />
   </ItemGroup>
 
   <ItemGroup>

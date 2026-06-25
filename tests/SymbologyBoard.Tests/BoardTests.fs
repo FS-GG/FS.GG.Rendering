@@ -12,6 +12,7 @@ open FS.GG.UI.Scene
 open FS.GG.UI.Canvas
 open FS.GG.UI.Symbology
 open SymbologyBoard.Board
+open SymbologyBoard.Roster
 
 /// The canonical 120-Tick evidence script (mirrors Program.fs).
 let private script: Msg list = [ for _ in 1..120 -> Tick dt ]
@@ -80,3 +81,37 @@ let tests =
               Expect.isGreaterThan bytes.Length 0 "a zero-area symbol must still produce non-empty canonical bytes"
               Expect.isNonEmpty (Scene.describe (renderScene model)) "the zero-area placeholder must describe ≥1 element"
           } ]
+
+// Feature 194 (M7 — legibility linter), US2: the mechanical backstop agrees with prior human approval.
+// The approved M5/M6 roster — the symbol set a human already signed off on — must lint clean (C13/FR-014/
+// SC-005); a deliberately overloaded derivative of the same mapping must surface a concrete, actionable
+// finding (proves the check is not vacuous).
+[<Tests>]
+let legibilityTests =
+    testList
+        "SymbologyBoard.Legibility"
+        [ test "C13 — the approved M5/M6 roster lints clean (FR-014/SC-005)" {
+              let symbolSet = roster |> List.map mapUnit
+              let report = Legibility.score symbolSet
+              Expect.equal report.Findings [] "the approved roster produces no findings"
+              Expect.equal report.Verdict Legibility.Clean "the approved roster lints Clean — the linter agrees with the human approval"
+          }
+
+          test "overloaded variant — a remap to > 7 distinct factions surfaces a concrete Warning" {
+              // Take the approved mapping's output and overload one channel an agent could fix by tweaking
+              // the per-game mapping (here: give every unit a distinct faction hue → 8 distinct > capacity 7).
+              let overloaded =
+                  roster
+                  |> List.mapi (fun i u ->
+                      { mapUnit u with Faction = Custom { Red = byte i; Green = 0uy; Blue = 0uy; Alpha = 255uy } })
+
+              let report = Legibility.score overloaded
+              Expect.equal report.Verdict Legibility.HasWarnings "the overloaded variant is not Clean"
+
+              let factionWarnings =
+                  report.Findings
+                  |> List.filter (fun f -> f.Channel = Legibility.Faction && f.Severity = Legibility.Warning)
+
+              Expect.equal factionWarnings.Length 1 "exactly one actionable Warning on the overloaded Faction channel"
+          } ]
+

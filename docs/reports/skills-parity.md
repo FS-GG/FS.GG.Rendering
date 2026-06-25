@@ -1,10 +1,10 @@
 <!-- SKILL-PARITY:START -->
 # Skill Parity Report
 
-Checked at UTC: `2026-06-19T16:14:24.9538632Z`
+Checked at UTC: `2026-06-25T13:35:51.6911795Z`
 Overall status: `passed`
-Canonical sources: `17`
-Wrappers: `35`
+Canonical sources: `20`
+Wrappers: `39`
 
 ## Supported Surfaces
 | Surface | Kind | Agent | Root | Required |
@@ -24,13 +24,13 @@ Wrappers: `35`
 ## Guidance Coverage
 | Rule | Covered | Partial | Missing | Excepted | Not applicable |
 | --- | --- | --- | --- | --- | --- |
-| package-pin-drift | 9 | 0 | 0 | 0 | 40 |
-| readiness-allowlisting | 6 | 0 | 0 | 0 | 43 |
-| validation-output-isolation | 4 | 0 | 0 | 0 | 45 |
-| visual-readiness | 11 | 0 | 0 | 0 | 38 |
-| responsiveness-diagnostics | 7 | 0 | 0 | 0 | 42 |
-| post-merge-package-bump | 2 | 0 | 0 | 0 | 47 |
-| evidence-honesty | 12 | 0 | 0 | 0 | 37 |
+| package-pin-drift | 9 | 0 | 0 | 0 | 43 |
+| readiness-allowlisting | 6 | 0 | 0 | 0 | 46 |
+| validation-output-isolation | 4 | 0 | 0 | 0 | 48 |
+| visual-readiness | 11 | 0 | 0 | 0 | 41 |
+| responsiveness-diagnostics | 7 | 0 | 0 | 0 | 45 |
+| post-merge-package-bump | 2 | 0 | 0 | 0 | 50 |
+| evidence-honesty | 12 | 0 | 0 | 0 | 40 |
 
 ## Findings
 No unresolved parity findings.
@@ -44,6 +44,6 @@ No intentional exceptions were applied.
 ## Regenerate
 
 ```sh
-dotnet fsi scripts/check-agent-skill-parity.fsx --out specs/168-skill-parity-evidence/readiness/parity --report docs/reports/skills-parity.md --summary-json specs/168-skill-parity-evidence/readiness/skill-parity-summary.json --fail-on high
+dotnet fsi scripts/check-agent-skill-parity.fsx --out /home/developer/projects/FS.GG.Rendering/artifacts/skill-parity --report /home/developer/projects/FS.GG.Rendering/docs/reports/skills-parity.md --summary-json /home/developer/projects/FS.GG.Rendering/artifacts/skill-parity/skill-parity-summary.json --fail-on high
 ```
 <!-- SKILL-PARITY:END -->

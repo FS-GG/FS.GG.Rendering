@@ -100,11 +100,23 @@ See `reference.fsx` in this skill folder for a runnable in-tree version.
 1. INTAKE   read roster + stats; pick grammar (default + only v1: Directional Token).
 2. MAP      draft ChannelMap : 'stats -> Token  (assign-by-urgency; redundancy on critical state).
 3. RENDER   FSI: build `Symbology.gallery ...`; `Render.toPng size scene dir`; READ THE PNG BACK.
-4. CRITIQUE self-check vs the legibility rules above at the target size.
+4. CRITIQUE two complementary checks against the legibility rules at the target size:
+            (a) LINT   `Legibility.score (roster |> List.map mapUnit)` (animated boards: `scoreAnimated`
+                       over the `(motion, token)` pairs) — the mechanical backstop. Inspect `report.Verdict`
+                       and `report.Findings`: any `Warning`/`Error` names the overloaded/out-of-domain
+                       `Channel`, used-vs-capacity, and the contributing unit indices. Treat a non-`Clean`
+                       verdict as a TWEAK trigger (the unit of change stays the mapping — never the grammar).
+            (b) EYE    human-style self-check of the PNG vs the rules (the linter cannot see crowding,
+                       contrast, or label collisions — the eyeball check stays).
 5. REVIEW   present the PNG to the human; capture feedback.
-6. TWEAK    adjust the ChannelMap / Token params ONLY (never library internals); goto 3.
+6. TWEAK    adjust the ChannelMap / Token params ONLY (never library internals) until the linter is `Clean`
+            and the eyeball check passes; goto 3.
 7. APPROVE  on satisfaction: emit final symbol-set module + rationale; pin a golden board.
 ```
+
+> The linter (`FS.GG.UI.Symbology.Legibility`) is pure/deterministic and scores the *produced symbol set*
+> against the fixed §4 capacities — it is the mechanical complement to the eyeball check, not a replacement.
+> The approved M5/M6 roster lints `Clean`, so a fresh `Warning` is a real signal to re-tune the mapping.
 
 ## Provenance the loop MUST write (FR-017 / FR-018)
 
