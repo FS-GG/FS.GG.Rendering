@@ -22,9 +22,13 @@ unit roster into legible abstract vector symbols. The per-game stat-to-channel m
   `LabelText` (`Plain` | `Rich` | `Laid`), the auto-label / motion types `AutoField` / `AutoLabelSpec` /
   `LabelMotion`, and `module Symbology` with `defaultToken`, the label ctors
   `plainLabel` / `run` / `richLabel` / `paragraph` / `align` / `laidLabel` / `autoLabel` / `autoLabelSep`
-  / `labelMotion`, `token : Token -> Scene`, `animate : Motion -> Token ->
-  phase:float -> Scene`, `gallery : cols -> spacing -> Token list -> Scene`, and `filmstrip : samples
-  -> (Motion * Token) list -> Scene`. References **only** `FS.GG.UI.Scene` — no IO, no GL, no codec call.
+  / `labelMotion`, the default-`Token` (`Grammar.Token`) renderers `token : Token -> Scene`, `animate :
+  Motion -> Token -> phase:float -> Scene`, `gallery : cols -> spacing -> Token list -> Scene` and
+  `filmstrip : samples -> (Motion * Token) list -> Scene`, and the **grammar-selecting** renderers
+  `badge : Token -> Scene`, `ring : Token -> Scene`, `render : Grammar -> Token -> Scene`,
+  `galleryIn : Grammar -> cols -> spacing -> Token list -> Scene`, `filmstripIn : Grammar -> samples ->
+  (Motion * Token) list -> Scene` and `animateIn : Grammar -> Motion -> Token -> phase:float -> Scene`.
+  References **only** `FS.GG.UI.Scene` — no IO, no GL, no codec call.
 - Render bridge `FS.GG.UI.Symbology.Render` (`src/Symbology.Render/Render.fsi`): `Render.toPng : Size
   -> Scene -> dir:string -> string`. Wraps the public `SkiaViewer.ReferenceRendering.run` via a
   `SceneCodec` round-trip and **fails loud** (raises with joined diagnostics) on any verdict that is
@@ -70,7 +74,7 @@ pre-attentive channels above. Use it only when the abstract sigil alone cannot d
 - **Keep strings short.** Overlong labels are fitted to the region (shrink, then ellipsis-truncate at a
   measured glyph boundary), so a long string degrades rather than overflowing — but short callsigns read
   best. A degenerate (`R <= 0`) labelled token still degrades to the placeholder (placeholder wins).
-- **Multi-line is the SAME field — opt-in, still inspection-detail.** The one `Label : string option`
+- **Multi-line is the SAME field — opt-in, still inspection-detail.** The one `Label : LabelText option`
   carries more than one line: embedded `\n` (and `\r\n`) are **hard breaks**, and a long line **soft-wraps**
   at whitespace to the region width. No new field, no second channel, no per-grammar mapping. Use it only
   when one line cannot carry the identity (a callsign over a code); it **complements, never replaces**, the
@@ -93,8 +97,10 @@ pre-attentive channels above. Use it only when the abstract sigil alone cannot d
 
 The label's content is a `LabelText`: **`LabelText.Plain s`** (the unstyled single-/multi-line label
 above, verbatim) or **`LabelText.Rich runs`** — a short ordered sequence of styled spans. Each `LabelRun`
-carries `{ Text; Color; Weight; Scale }`, where **`Color` / `Weight` / `Scale` are each optional** and
-inherit the default label style when `None` (so an all-default run reproduces the plain label exactly).
+carries `{ Text; Color; Weight; Scale }` (plus the four feature-199 decoration/slant/tracking attributes
+`Italic` / `Underline` / `Strike` / `Tracking` documented in the next section — eight fields in all), where
+**`Color` / `Weight` / `Scale` are each optional** and inherit the default label style when `None` (so an
+all-default run reproduces the plain label exactly).
 Construct with `Symbology.plainLabel`, `Symbology.run` (a default span), and `Symbology.richLabel`; style
 by record-copy, e.g. `{ Symbology.run "BRAVO-6" with Weight = Some 700; Color = Some teamBlue }`.
 
