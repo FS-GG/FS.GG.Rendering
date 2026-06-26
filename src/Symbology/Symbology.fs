@@ -58,6 +58,30 @@ type LabelText =
     | Rich of LabelRun list
     | Laid of LabelParagraph list
 
+/// Feature 200 — auto-label channel selectors (each reads ONLY the named Token channel, FR-002).
+type AutoField =
+    | FactionCode
+    | KlassCode
+    | StateCode
+    | HealthTier
+    | ThreatTier
+    | SpeedPips
+    | ShieldFlag
+
+/// Feature 200 — an opt-in auto-label projection request (FR-001).
+type AutoLabelSpec =
+    { Fields: AutoField list
+      Separator: string }
+
+/// Feature 200 — opt-in label-bound motion kind (FR-005). RQA so `LabelMotion.Pulse` never collides
+/// with `Motion.Pulse`.
+[<RequireQualifiedAccess>]
+type LabelMotion =
+    | TypeOn
+    | Fade
+    | Pulse
+    | Scroll
+
 type Token =
     { Cx: float
       Cy: float
@@ -72,7 +96,9 @@ type Token =
       Speed: int
       Health: float
       Shield: bool
-      Label: LabelText option }
+      Label: LabelText option
+      AutoLabel: AutoLabelSpec option
+      LabelMotion: LabelMotion option }
 
 [<RequireQualifiedAccess>]
 type Grammar =
@@ -274,7 +300,9 @@ module Symbology =
           Speed = 0
           Health = 0.5
           Shield = false
-          Label = None }
+          Label = None
+          AutoLabel = None
+          LabelMotion = None }
 
     // ---- Rich-text label constructors (feature 198) ----
     let plainLabel (text: string) : LabelText = LabelText.Plain text
@@ -297,6 +325,14 @@ module Symbology =
     let align (alignment: LabelAlign) (runs: LabelRun list) : LabelParagraph = { Runs = runs; Align = alignment }
 
     let laidLabel (paragraphs: LabelParagraph list) : LabelText = LabelText.Laid paragraphs
+
+    // ---- Auto-label / label-motion constructors (feature 200) ----
+    let autoLabel (fields: AutoField list) : AutoLabelSpec = { Fields = fields; Separator = " " }
+
+    let autoLabelSep (separator: string) (fields: AutoField list) : AutoLabelSpec =
+        { Fields = fields; Separator = separator }
+
+    let labelMotion (kind: LabelMotion) : LabelMotion = kind
 
     // ---- Optional identity-label channel (FR-001..FR-009) -------------------------------------
     // Screen-aligned short text drawn in a per-grammar label region. The node is emitted ONLY when a
@@ -843,21 +879,187 @@ module Symbology =
                 labelNodes centerX baselineY regionWidth baseSize lineHeight budget (Some(joinRuns runs))
             | _ -> laidLabelNodes centerX baselineY regionWidth baseSize budget nonEmpty
 
+    // ---- Auto-label projection (feature 200, FR-001/FR-002/FR-004) ----------------------------------
+    // Render one AutoField as its fixed, game-agnostic, compact code, reading ONLY the named Token channel
+    // (never a game's raw stats — FR-002). `ShieldFlag` with `Shield = false` contributes NOTHING (None);
+    // every other selector always renders a code. Pure: no wall-clock / randomness / IO (FR-015).
+    let private renderAutoField (t: Token) (field: AutoField) : string option =
+        match field with
+        | FactionCode ->
+            Some(
+                match t.Faction with
+                | Ally -> "ALY"
+                | Enemy -> "ENY"
+                | Neutral -> "NEU"
+                | Custom _ -> "CUS"
+            )
+        | KlassCode ->
+            Some(
+                match t.Klass with
+                | Mobile -> "MOB"
+                | Heavy -> "HVY"
+                | Scout -> "SCT"
+            )
+        | StateCode ->
+            Some(
+                match t.State with
+                | Confirmed -> "CFM"
+                | Suspected -> "SUS"
+            )
+        | HealthTier -> Some(sprintf "H%d" (int (round (clamp01 t.Health * 100.0))))
+        | ThreatTier -> Some(sprintf "T%d" (min 4 (int (clamp01 t.Threat * 5.0)))) // [0,1] -> T0..T4
+        | SpeedPips -> Some(sprintf "S%d" (max 0 (min 4 t.Speed)))
+        | ShieldFlag -> if t.Shield then Some "SHD" else None
+
+    // Project a styled label from the Token's OWN channels (FR-002): a pure fold over `spec.Fields`, each
+    // arm reading one channel; the rendered codes join with `spec.Separator`. Empty `Fields`, or a joined
+    // text that is empty/all-whitespace, yields `None` — no label, exactly like an empty hand-authored
+    // label (FR-004/FR-012). The result rides the existing `LabelText.Plain` path (zero new vocabulary).
+    let private projectAutoLabel (t: Token) (spec: AutoLabelSpec) : LabelText option =
+        let joined =
+            spec.Fields
+            |> List.choose (renderAutoField t)
+            |> String.concat spec.Separator
+
+        if String.IsNullOrWhiteSpace joined then
+            None
+        else
+            Some(LabelText.Plain joined)
+
+    // Resolution order (FR-003): an explicit `Label` ALWAYS wins; else the projected `AutoLabel`; else
+    // none. Exactly one resolved label or none — never two stacked. A Token opting into neither reaches
+    // `labelDispatch` with `resolveLabel t = t.Label`, hitting the EXACT spec-199 path (zero drift, FR-008).
+    let private resolveLabel (t: Token) : LabelText option =
+        t.Label |> Option.orElseWith (fun () -> t.AutoLabel |> Option.bind (projectAutoLabel t))
+
+    // ---- Label-bound motion (feature 200, FR-005/FR-006/FR-007) -------------------------------------
+    // The motion is a pure per-phase transform of the ALREADY-RESOLVED, ALREADY-FITTED label nodes. At
+    // `restPhase` every kind is the identity transform, so a motion-bound label at rest is byte-identical
+    // to the static spec-199 label (FR-007); `LabelMotion = None` skips the transform entirely (FR-008).
+    let private restPhase = 0.0
+
+    // Rebuild a label sub-scene, mapping every GlyphRun via `glyph` (return `None` to drop it) and every
+    // leaf paint via `paint`. Recurses through exactly the wrapper nodes the label emitter can produce
+    // (Group / italic PerspectiveNode / Translate / Clip). Glyphs stay real `glyphRunProof` nodes ⇒
+    // tofu-freeness is preserved across phases (FR-010).
+    let rec private rebuildLabel (glyph: GlyphRun -> SceneNode option) (paint: Paint -> Paint) (s: Scene) : Scene =
+        { Nodes = s.Nodes |> List.choose (rebuildLabelNode glyph paint) }
+
+    and private rebuildLabelNode (glyph: GlyphRun -> SceneNode option) (paint: Paint -> Paint) (node: SceneNode) : SceneNode option =
+        match node with
+        | Group scenes -> Some(Group(scenes |> List.map (rebuildLabel glyph paint)))
+        | PerspectiveNode(tf, sc) -> Some(PerspectiveNode(tf, rebuildLabel glyph paint sc))
+        | Translate(o, sc) -> Some(Translate(o, rebuildLabel glyph paint sc))
+        | ClipNode(c, sc) -> Some(ClipNode(c, rebuildLabel glyph paint sc))
+        | GlyphRun g -> glyph g
+        | Line(a, b, p) -> Some(Line(a, b, paint p))
+        | other -> Some other
+
+    // Apply the bound `LabelMotion` to the static label node list as a pure function of the normalised
+    // phase `ph` (FR-006). Each kind's rest value (`ph = restPhase`) is the identity transform, so the
+    // rest frame returns the static nodes VERBATIM (FR-007); non-rest frames stay fitted within the region
+    // (FR-011): TypeOn reveals a measured whole-glyph prefix (never mid-glyph); Fade ramps paint alpha
+    // (geometry unchanged); Pulse scales by a factor capped to ≤ 1 about the region centre (never grows
+    // past the region); Scroll offsets the line and CLIPS to the region extent (no overflow into adjacent
+    // channels). Reuses existing primitives only — no new scene primitive (FR-019).
+    let private motionLabelNodes
+        (kind: LabelMotion)
+        (ph: float)
+        (centerX: float)
+        (baselineY: float)
+        (regionWidth: float)
+        (staticNodes: unit -> Scene list)
+        : Scene list =
+        if ph = restPhase then
+            staticNodes () // identity at rest ⇒ byte-identical to the static spec-199 label (FR-007)
+        else
+            let nodes = staticNodes ()
+
+            if List.isEmpty nodes then
+                [] // a motion-bound label resolving to no glyphs draws nothing, every phase (FR-012)
+            else
+
+            match kind with
+            | LabelMotion.Fade ->
+                let fade = Paint.withOpacity ph
+                nodes
+                |> List.map (rebuildLabel (fun g -> Some(GlyphRun { g with Paint = fade g.Paint })) fade)
+            | LabelMotion.TypeOn ->
+                // Reveal a whole-glyph PREFIX sized by `ph` (char boundary ⇒ never mid-glyph). The prefix is
+                // re-emitted as a real `glyphRunProof` (tofu-free); `k = 0` drops the run for this frame.
+                let reveal (g: GlyphRun) : SceneNode option =
+                    let text = g.Data.Text
+                    let k = min text.Length (max 0 (int (floor (ph * float text.Length + 1e-9))))
+
+                    if k <= 0 then None
+                    elif k >= text.Length then Some(GlyphRun g)
+                    else (Scene.glyphRunProof g.Position (text.Substring(0, k)) g.Data.Font g.Paint).Nodes |> List.tryHead
+
+                nodes |> List.map (rebuildLabel reveal id)
+            | LabelMotion.Pulse ->
+                // Size oscillation about the region centre; factor in [1-k, 1] ⇒ never larger than the
+                // already-fitted label ⇒ always within the region (FR-011). Rest (ph=0) ⇒ factor 1 (identity).
+                let f = 1.0 - 0.18 * (0.5 - 0.5 * cos (ph * 2.0 * Math.PI))
+
+                let m =
+                    { M11 = f
+                      M12 = 0.0
+                      M13 = centerX * (1.0 - f)
+                      M21 = 0.0
+                      M22 = f
+                      M23 = baselineY * (1.0 - f)
+                      M31 = 0.0
+                      M32 = 0.0
+                      M33 = 1.0 }
+
+                [ Scene.withPerspective m (Scene.group nodes) ]
+            | LabelMotion.Scroll ->
+                // Overflow ticker: translate the line by an X offset and CLIP to the region span so nothing
+                // ever draws outside [centerX ± regionWidth/2] (no overflow into adjacent channels — FR-011).
+                let region =
+                    { X = centerX - regionWidth / 2.0
+                      Y = baselineY - regionWidth
+                      Width = regionWidth
+                      Height = regionWidth * 2.0 }
+
+                let offset = regionWidth * 0.5 * sin (ph * 2.0 * Math.PI)
+                [ Scene.clipped (RectClip region) (Scene.translate offset 0.0 (Scene.group nodes)) ]
+
     // Per-grammar label region (provisional geometry — the contract is FR-004: sited, observable,
     // non-overlapping; coordinates + per-grammar line budgets are a design-loop detail, see data-model.md).
     // Each sits in the one uncrowded zone of its grammar, screen-aligned (never rotates with Heading); the
     // FIRST line keeps spec 196's exact baseline / region width / base size (the zero-drift anchor).
-    let private tokenLabelNodes (t: Token) : Scene list =
+    // Route the resolved label through the existing fit/wrap/cap dispatch, then — only when motion is bound
+    // AND the phase is off-rest — apply the per-phase transform. `LabelMotion = None` or `labelPhase = rest`
+    // calls `labelDispatch` DIRECTLY (zero drift — FR-008); the rest-phase identity gives FR-007.
+    let private labelNodesAt
+        (centerX: float)
+        (baselineY: float)
+        (regionWidth: float)
+        (baseSize: float)
+        (lineHeight: float)
+        (budget: int)
+        (t: Token)
+        (labelPhase: float)
+        : Scene list =
+        let staticNodes () =
+            labelDispatch centerX baselineY regionWidth baseSize lineHeight budget (resolveLabel t)
+
+        match t.LabelMotion with
+        | Some kind when labelPhase <> restPhase -> motionLabelNodes kind labelPhase centerX baselineY regionWidth staticNodes
+        | _ -> staticNodes ()
+
+    let private tokenLabelNodes (t: Token) (labelPhase: float) : Scene list =
         let baseSize = t.R * 0.5
-        labelDispatch t.Cx (t.Cy + t.R * 1.5) (t.R * 1.9) baseSize (lineHeightOf baseSize) 3 t.Label // caption strip below the health arc (≤ 3 lines)
+        labelNodesAt t.Cx (t.Cy + t.R * 1.5) (t.R * 1.9) baseSize (lineHeightOf baseSize) 3 t labelPhase // caption strip below the health arc (≤ 3 lines)
 
-    let private badgeLabelNodes (t: Token) : Scene list =
+    let private badgeLabelNodes (t: Token) (labelPhase: float) : Scene list =
         let baseSize = t.R * 0.42
-        labelDispatch t.Cx (t.Cy + t.R * 1.42) (t.R * 1.7) baseSize (lineHeightOf baseSize) 2 t.Label // band below the health bar / pips (≤ 2 lines)
+        labelNodesAt t.Cx (t.Cy + t.R * 1.42) (t.R * 1.7) baseSize (lineHeightOf baseSize) 2 t labelPhase // band below the health bar / pips (≤ 2 lines)
 
-    let private ringLabelNodes (t: Token) : Scene list =
+    let private ringLabelNodes (t: Token) (labelPhase: float) : Scene list =
         let baseSize = t.R * 0.34
-        labelDispatch t.Cx (t.Cy + t.R * 0.52) (t.R * 1.05) baseSize (lineHeightOf baseSize) 2 t.Label // caption beneath the sigil, inner disc (≤ 2 lines)
+        labelNodesAt t.Cx (t.Cy + t.R * 0.52) (t.R * 1.05) baseSize (lineHeightOf baseSize) 2 t labelPhase // caption beneath the sigil, inner disc (≤ 2 lines)
 
     // Append the label line nodes to a grammar's child list as bare siblings (research.md R5): `[]` ⇒
     // `Scene.group nodes` (byte-identical to no-label), `[one]` ⇒ `nodes @ [one]` (byte-identical to the
@@ -865,12 +1067,13 @@ module Symbology =
     let private withLabel (lineNodes: Scene list) (nodes: Scene list) : Scene =
         Scene.group (nodes @ lineNodes)
 
-    let private drawSymbol (t: Token) : Scene =
+    // The placeholder guard (`R <= 0`) stays BEFORE label resolution/animation so it always wins (FR-014).
+    let private drawSymbolAt (labelPhase: float) (t: Token) : Scene =
         if t.R <= 0.0 then
             placeholder t // placeholder rule wins over the label (FR-007); no label on a degenerate token
         else
             withLabel
-                (tokenLabelNodes t)
+                (tokenLabelNodes t labelPhase)
                 [ chargeFill t
                   Scene.path (bodyPath t) (strokePaint t)
                   sigilScene t
@@ -878,12 +1081,14 @@ module Symbology =
                   healthArc t
                   shieldMount t ]
 
+    let private drawSymbol (t: Token) : Scene = drawSymbolAt restPhase t
+
     let token (token: Token) : Scene = drawSymbol token
 
     let animate (motion: Motion) (token: Token) (phase: float) : Scene =
         let t = token
         let ph = phase - floor phase
-        let baseSymbol = drawSymbol t
+        let baseSymbol = drawSymbolAt ph t // the label animates at `ph` alongside the existing overlay (FR-005)
 
         match motion with
         | Idle -> baseSymbol
@@ -1037,12 +1242,12 @@ module Symbology =
             let p = { X = t.Cx + sin t.Heading * r; Y = t.Cy - cos t.Heading * r }
             Scene.circle p (max 1.5 (t.R * 0.12)) (factionColor t.Faction)
 
-    let private drawBadge (t: Token) : Scene =
+    let private drawBadgeAt (labelPhase: float) (t: Token) : Scene =
         if t.R <= 0.0 then
             placeholder t // placeholder rule wins over the label (FR-007)
         else
             withLabel
-                (badgeLabelNodes t)
+                (badgeLabelNodes t labelPhase)
                 [ chargeFill t
                   Scene.path (polyPath (badgeFramePoints t.Klass t.Cx t.Cy t.R)) (strokePaint t)
                   sigilScene { t with Heading = 0.0 } // screen-aligned centre identity (heading is the edge pip)
@@ -1050,6 +1255,8 @@ module Symbology =
                   badgeHealthBar t
                   shieldMount t
                   badgeHeadingPip t ]
+
+    let private drawBadge (t: Token) : Scene = drawBadgeAt restPhase t
 
     let badge (token: Token) : Scene = drawBadge token
 
@@ -1115,14 +1322,14 @@ module Symbology =
             let p2 = { X = t.Cx + sin t.Heading * outer; Y = t.Cy - cos t.Heading * outer }
             Scene.line p1 p2 (Paint.stroke (factionColor t.Faction) 2.0 |> Paint.withStrokeCap Round)
 
-    let private drawRing (t: Token) : Scene =
+    let private drawRingAt (labelPhase: float) (t: Token) : Scene =
         if t.R <= 0.0 then
             placeholder t
         else
             let bounds = { X = t.Cx - t.R; Y = t.Cy - t.R; Width = t.R * 2.0; Height = t.R * 2.0 }
 
             withLabel
-                (ringLabelNodes t)
+                (ringLabelNodes t labelPhase)
                 [ chargeFill t
                   Scene.ellipse bounds (strokePaint t) // outer ring: hue=faction, width=threat, dash=state
                   ringClassGlyph t
@@ -1132,6 +1339,8 @@ module Symbology =
                   shieldMount t
                   ringHeadingNeedle t ]
 
+    let private drawRing (t: Token) : Scene = drawRingAt restPhase t
+
     let ring (token: Token) : Scene = drawRing token
 
     let render (grammar: Grammar) (token: Token) : Scene =
@@ -1139,6 +1348,14 @@ module Symbology =
         | Grammar.Token -> drawSymbol token
         | Grammar.Badge -> badge token
         | Grammar.Ring -> ring token
+
+    // Render in the selected grammar with the label animated at `labelPhase` (FR-005). `render` is the
+    // rest-phase specialisation (`renderAt restPhase`).
+    let private renderAt (labelPhase: float) (grammar: Grammar) (t: Token) : Scene =
+        match grammar with
+        | Grammar.Token -> drawSymbolAt labelPhase t
+        | Grammar.Badge -> drawBadgeAt labelPhase t
+        | Grammar.Ring -> drawRingAt labelPhase t
 
     let galleryIn (grammar: Grammar) (cols: int) (spacing: float) (tokens: Token list) : Scene =
         match grammar with
@@ -1192,8 +1409,8 @@ module Symbology =
         match grammar with
         | Grammar.Token -> animate motion token phase // byte-identical to the existing animate (FR-010)
         | g ->
-            let baseSymbol = render g token
             let ph = phase - floor phase
+            let baseSymbol = renderAt ph g token // the label animates at `ph` on Badge/Ring too (FR-005)
 
             match agnosticOverlay token motion ph with
             | Some overlay -> Scene.group [ baseSymbol; overlay ]

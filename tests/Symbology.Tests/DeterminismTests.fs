@@ -282,3 +282,61 @@ let laidDeterminism =
                   (SceneCodec.export (Symbology.token laidSample)).CanonicalBytes
                   "the laid-out layout is a deterministic function of Token on the pure path (FR-011/FR-012)"
           } ]
+
+// Feature 200 [US1] (T019) Auto-label projection determinism (FR-015). The channel projection is a pure
+// function of the Token's channels, so an auto-labelled Token renders byte-identically twice in-process
+// (covers projection determinism before US2's cross-process motion-frame golden). The pre-feature
+// `0dda10bd…` default golden above stays UNCHANGED — auto-projection engages only when AutoLabel = Some.
+let private autoLabelled =
+    { sample with
+        Label = None
+        AutoLabel = Some(Symbology.autoLabel [ FactionCode; HealthTier; SpeedPips ]) }
+
+[<Tests>]
+let autoLabelDeterminism =
+    testList
+        "US1.200 auto-label determinism"
+        [ test "same auto-labelled Token => byte-equal canonical bytes (render twice)" {
+              let a = (SceneCodec.export (Symbology.token autoLabelled)).CanonicalBytes
+              let b = (SceneCodec.export (Symbology.token autoLabelled)).CanonicalBytes
+              Expect.equal a b "the auto-label projection is a pure function of the Token's channels (FR-015)"
+          }
+
+          test "an auto-labelled Token draws an observable label (differs from no-auto-label)" {
+              let off = { autoLabelled with AutoLabel = None }
+              Expect.notEqual
+                  ((SceneCodec.export (Symbology.token autoLabelled)).CanonicalBytes)
+                  ((SceneCodec.export (Symbology.token off)).CanonicalBytes)
+                  "the projected label is drawn through the existing dispatch"
+          } ]
+
+// Feature 200 [US2] (T029) Pure-fallback motion path (FR-016). The Symbology.Tests env installs NO real
+// measurer, so this is the pure-fallback path. A motion-bound / auto token still yields a deterministic
+// scene carrying the resolved label's styled glyph nodes at the recorded phase, and NEVER throws.
+let private autoMotionT =
+    { sample with
+        Label = None
+        AutoLabel = Some(Symbology.autoLabel [ FactionCode; HealthTier ])
+        LabelMotion = Some LabelMotion.TypeOn }
+
+[<Tests>]
+let pureFallbackMotion =
+    testList
+        "US2.200 pure-fallback motion determinism"
+        [ test "an auto+motion token at a non-rest phase renders byte-identically twice (no measurer, FR-016)" {
+              let a = (SceneCodec.export (Symbology.animate Idle autoMotionT 0.5)).CanonicalBytes
+              let b = (SceneCodec.export (Symbology.animate Idle autoMotionT 0.5)).CanonicalBytes
+              Expect.equal a b "deterministic on the pure-fallback path"
+          }
+
+          test "the resolved (projected) label still emits glyph nodes on the pure path" {
+              let kinds = Symbology.animate Idle autoMotionT 0.5 |> Scene.describe |> List.distinct
+              Expect.contains kinds GlyphRunElement "the projected, animated label draws glyph-run nodes (no measurer required)"
+          }
+
+          test "a non-rest motion frame differs from the rest frame on the pure path" {
+              Expect.notEqual
+                  ((SceneCodec.export (Symbology.animate Idle autoMotionT 0.5)).CanonicalBytes)
+                  ((SceneCodec.export (Symbology.animate Idle autoMotionT 0.0)).CanonicalBytes)
+                  "the recorded phase changes the frame (FR-006)"
+          } ]

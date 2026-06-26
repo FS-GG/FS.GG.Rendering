@@ -224,3 +224,88 @@ let laidLayoutTests =
                   let report = Fonts.resolveText labelFont text |> Fonts.report
                   Expect.equal report.TofuCount 0 (sprintf "laid-out run %s draws real glyphs (no tofu) under the bundled font" text)
           } ]
+
+// Feature 200 [US1] (T015) Auto-label tofu-free at the render edge (FR-010/SC-002). A Token with
+// AutoLabel = Some _ and Label = None projects a channel-derived label; rasterise it through Render.toPng
+// under the real measurer and assert the board is non-blank and EVERY character the projection can emit
+// resolves NON-TOFU under the same `Fonts` registry the renderer draws through.
+let private autoToken fields =
+    { Symbology.defaultToken with
+        R = 36.0
+        Faction = Enemy
+        Klass = Heavy
+        State = Suspected
+        Threat = 0.7
+        Speed = 3
+        Health = 0.87
+        Shield = true
+        Label = None
+        AutoLabel = Some(Symbology.autoLabel fields) }
+
+[<Tests>]
+let autoLabelTofuTests =
+    testList
+        "US1.200 render auto-label tofu-free"
+        [ test "an auto-labelled token (AutoLabel=Some, Label=None) rasterises to a non-blank PNG" {
+              let board =
+                  Symbology.gallery 1 140.0 [ autoToken [ FactionCode; KlassCode; HealthTier; SpeedPips; ShieldFlag ] ]
+
+              let path = Render.toPng { Width = 200; Height = 160 } board (outDir "auto-label-pass")
+              Expect.isTrue (File.Exists path) "image file was written"
+              Expect.isTrue ((FileInfo path).Length > 0L) "the auto-labelled board is non-blank (projected glyphs drawn)"
+          }
+
+          test "every code the projection can emit resolves non-tofu under the real font registry (FR-010)" {
+              // The full game-agnostic code alphabet the projection draws: faction / class / state codes,
+              // tier prefixes, and digits. All Latin/ASCII ⇒ fully covered ⇒ zero tofu.
+              let codes =
+                  [ "ALY"; "ENY"; "NEU"; "CUS"; "MOB"; "HVY"; "SCT"; "CFM"; "SUS"; "SHD"; "H87"; "T4"; "S3"; "ENY H87 HVY" ]
+
+              for code in codes do
+                  let report = Fonts.resolveText labelFont code |> Fonts.report
+                  Expect.equal report.TofuCount 0 (sprintf "projected code %s draws real glyphs (no tofu)" code)
+          } ]
+
+// Feature 200 [US3] (T033) Auto + motion render-bridge tofu test (FR-010/SC-002). EXTENDS the US1 auto-label
+// case (T015) with a BOUND LabelMotion sampled at NON-REST phases: rasterise an auto-derived + motion-bound
+// token through `animateIn` → Render.toPng under the real measurer at sampled phases; assert the board is
+// non-blank and EVERY projected code resolves NON-TOFU under the same font registry the renderer draws through.
+let private autoMotionToken =
+    { Symbology.defaultToken with
+        R = 36.0
+        Faction = Enemy
+        Klass = Heavy
+        State = Suspected
+        Threat = 0.7
+        Speed = 3
+        Health = 0.87
+        Shield = true
+        Label = None
+        AutoLabel = Some(Symbology.autoLabel [ FactionCode; KlassCode; HealthTier ])
+        LabelMotion = Some LabelMotion.TypeOn }
+
+[<Tests>]
+let autoMotionTofuTests =
+    testList
+        "US3.200 render auto+motion tofu-free"
+        [ test "an auto+motion token rasterises to a non-blank PNG at sampled non-rest phases" {
+              for i, phase in List.indexed [ 0.25; 0.5; 0.75 ] do
+                  let board = Symbology.filmstripIn Grammar.Token 4 [ Idle, autoMotionToken ]
+                  let path = Render.toPng { Width = 240; Height = 120 } board (outDir (sprintf "auto-motion-%d" i))
+                  Expect.isTrue (File.Exists path) "image file was written"
+                  Expect.isTrue ((FileInfo path).Length > 0L) (sprintf "the auto+motion filmstrip is non-blank (phase sample %f)" phase)
+          }
+
+          test "a single non-rest animateIn frame of an auto+motion token is non-blank" {
+              let centred = { autoMotionToken with Cx = 80.0; Cy = 60.0 }
+              let scene = Symbology.animateIn Grammar.Token Idle centred 0.5
+              let path = Render.toPng { Width = 160; Height = 120 } scene (outDir "auto-motion-frame")
+              Expect.isTrue ((FileInfo path).Length > 0L) "the animated projected label draws real pixels at a non-rest phase"
+          }
+
+          test "every projected code the auto+motion label can reveal resolves non-tofu (FR-010)" {
+              // TypeOn reveals whole-glyph PREFIXES of the projected codes; every prefix is still Latin/ASCII.
+              for code in [ "ENY"; "HVY"; "H87"; "E"; "EN"; "ENY HVY"; "ENY HVY H8" ] do
+                  let report = Fonts.resolveText labelFont code |> Fonts.report
+                  Expect.equal report.TofuCount 0 (sprintf "revealed prefix %s draws real glyphs (no tofu)" code)
+          } ]

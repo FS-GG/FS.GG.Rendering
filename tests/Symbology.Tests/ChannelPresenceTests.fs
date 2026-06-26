@@ -181,3 +181,44 @@ let richChannelTests =
                       let b = (SceneCodec.export (render { bigT with Label = Some(LabelText.Rich [ mk baseRun ]) })).CanonicalBytes
                       Expect.notEqual a b (sprintf "%s is a per-run channel (B6/SC-002)" attrName)
                   } ]
+
+// ---- Feature 200 (T014/US1) — auto-label channel observability ---------------------------------------
+// Two Tokens whose ONLY difference is a projected channel value yield differing canonical bytes via the
+// auto-label (the projection is observable through the existing render path). Complements the explicit-run
+// channel tests above: here the SAME `AutoLabel` spec reads a single channel, so a one-channel delta is
+// the only thing that can move the bytes.
+[<Tests>]
+let autoLabelChannelTests =
+    let projT =
+        { baseT with
+            R = 40.0
+            AutoLabel = None
+            Label = None }
+
+    testList
+        "US1.200 auto-label channel observability"
+        [ test "HealthTier auto-label reads Health (differing Health ⇒ differing bytes)" {
+              let spec = Some(Symbology.autoLabel [ HealthTier ])
+              Expect.notEqual
+                  (bytesOf { projT with AutoLabel = spec; Health = 0.20 })
+                  (bytesOf { projT with AutoLabel = spec; Health = 0.95 })
+                  "HealthTier is a projected channel"
+          }
+          test "FactionCode auto-label reads Faction (differing Faction ⇒ differing bytes)" {
+              let spec = Some(Symbology.autoLabel [ FactionCode ])
+              Expect.notEqual
+                  (bytesOf { projT with AutoLabel = spec; Faction = Ally })
+                  (bytesOf { projT with AutoLabel = spec; Faction = Enemy })
+                  "FactionCode is a projected channel"
+          }
+          test "SpeedPips auto-label reads Speed (differing Speed ⇒ differing bytes)" {
+              let spec = Some(Symbology.autoLabel [ SpeedPips ])
+              Expect.notEqual
+                  (bytesOf { projT with AutoLabel = spec; Speed = 1 })
+                  (bytesOf { projT with AutoLabel = spec; Speed = 4 })
+                  "SpeedPips is a projected channel"
+          }
+          test "identical channels ⇒ byte-identical auto-label (deterministic projection)" {
+              let spec = Some(Symbology.autoLabel [ FactionCode; HealthTier; SpeedPips ])
+              Expect.equal (bytesOf { projT with AutoLabel = spec }) (bytesOf { projT with AutoLabel = spec }) "pure projection"
+          } ]

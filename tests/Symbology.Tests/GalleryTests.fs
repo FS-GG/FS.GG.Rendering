@@ -295,3 +295,41 @@ let laidBoardTests =
 
               Expect.notEqual (one Leading) (one Trailing) "the author's alignment choice is applied, not normalised away (FR-015)"
           } ]
+
+// Feature 200 [US3] (T031) Auto-labelled / motion-bound rosters on boards (FR-002/FR-017/SC-001). A roster
+// mixing AutoLabel and LabelMotion tokens renders on galleryIn / filmstripIn in every grammar, byte-
+// reproducible per grammar under a fixed provider + fixed phase sampling, with NO signature change to the
+// board/motion entry points; and the projection reads ONLY Token channels — never a game's raw stats.
+let private autoMotionRoster =
+    [ { roster Ally Mobile with AutoLabel = Some(Symbology.autoLabel [ FactionCode; HealthTier ]); LabelMotion = Some LabelMotion.TypeOn }
+      { roster Enemy Heavy with AutoLabel = Some(Symbology.autoLabel [ KlassCode; SpeedPips ]); LabelMotion = Some LabelMotion.Fade; Speed = 3 }
+      { roster Neutral Scout with Label = Some(Symbology.plainLabel "ZULU"); LabelMotion = Some LabelMotion.Pulse }
+      { roster Ally Scout with AutoLabel = Some(Symbology.autoLabel [ StateCode; ThreatTier ]); State = Suspected } ]
+
+[<Tests>]
+let autoMotionBoardTests =
+    testList
+        "US3.200 auto/motion rosters on boards"
+        [ for grammar in [ Grammar.Token; Grammar.Badge; Grammar.Ring ] do
+              test (sprintf "[%A] galleryIn of an auto/motion roster is byte-reproducible" grammar) {
+                  let a = Symbology.galleryIn grammar 2 80.0 autoMotionRoster
+                  let b = Symbology.galleryIn grammar 2 80.0 autoMotionRoster
+                  Expect.equal (bytesOf a) (bytesOf b) "the board is reproducible per grammar (FR-017)"
+                  Expect.contains (a |> Scene.describe |> List.distinct) GlyphRunElement "the roster draws labels (projected and/or hand-authored)"
+              }
+
+              test (sprintf "[%A] filmstripIn of an auto/motion roster is byte-reproducible under fixed sampling" grammar) {
+                  let a = Symbology.filmstripIn grammar 4 [ Idle, autoMotionRoster.[0]; Idle, autoMotionRoster.[1] ]
+                  let b = Symbology.filmstripIn grammar 4 [ Idle, autoMotionRoster.[0]; Idle, autoMotionRoster.[1] ]
+                  Expect.equal (bytesOf a) (bytesOf b) "fixed phase sampling ⇒ byte-reproducible frames (SC-004)"
+              }
+
+          test "the projection reads ONLY Token channels (a channel delta moves the board; nothing else does)" {
+              let spec = Some(Symbology.autoLabel [ HealthTier ])
+              let lo = [ { roster Ally Mobile with AutoLabel = spec; Health = 0.2 } ]
+              let hi = [ { roster Ally Mobile with AutoLabel = spec; Health = 0.9 } ]
+              Expect.notEqual (bytesOf (Symbology.galleryIn Grammar.Token 1 80.0 lo)) (bytesOf (Symbology.galleryIn Grammar.Token 1 80.0 hi)) "auto-label projects the Token's own Health channel (FR-002)"
+              let same1 = [ { roster Ally Mobile with AutoLabel = spec; Health = 0.5 } ]
+              let same2 = [ { roster Ally Mobile with AutoLabel = spec; Health = 0.5 } ]
+              Expect.equal (bytesOf (Symbology.galleryIn Grammar.Token 1 80.0 same1)) (bytesOf (Symbology.galleryIn Grammar.Token 1 80.0 same2)) "identical channels ⇒ identical projection (per-game stats stay the caller's, FR-021)"
+          } ]

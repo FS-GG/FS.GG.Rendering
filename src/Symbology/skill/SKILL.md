@@ -15,10 +15,14 @@ unit roster into legible abstract vector symbols. The per-game stat-to-channel m
 ## Public Contract
 
 - Pure library `FS.GG.UI.Symbology` (`src/Symbology/Symbology.fsi`): the `Token` record (the full
-  fixed channel set, whose `Label : LabelText option` is the opt-in identity label), the channel enums
+  fixed channel set, whose `Label : LabelText option` is the opt-in explicit identity label, plus the
+  opt-in `AutoLabel : AutoLabelSpec option` channel-projection request and `LabelMotion : LabelMotion
+  option` label-bound motion — both `None` by default), the channel enums
   `Faction` / `Klass` / `Sigil` / `TokenState` / `Motion`, the label types `LabelRun` /
-  `LabelText` (`Plain` | `Rich`), and `module Symbology` with `defaultToken`, the label ctors
-  `plainLabel` / `run` / `richLabel`, `token : Token -> Scene`, `animate : Motion -> Token ->
+  `LabelText` (`Plain` | `Rich` | `Laid`), the auto-label / motion types `AutoField` / `AutoLabelSpec` /
+  `LabelMotion`, and `module Symbology` with `defaultToken`, the label ctors
+  `plainLabel` / `run` / `richLabel` / `paragraph` / `align` / `laidLabel` / `autoLabel` / `autoLabelSep`
+  / `labelMotion`, `token : Token -> Scene`, `animate : Motion -> Token ->
   phase:float -> Scene`, `gallery : cols -> spacing -> Token list -> Scene`, and `filmstrip : samples
   -> (Motion * Token) list -> Scene`. References **only** `FS.GG.UI.Scene` — no IO, no GL, no codec call.
 - Render bridge `FS.GG.UI.Symbology.Render` (`src/Symbology.Render/Render.fsi`): `Render.toPng : Size
@@ -160,8 +164,60 @@ unused.
   `Symbology.Render`, never from a pure unit test. The pure library requires no measurer and never throws
   without one. It **complements, never replaces, the vector `Sigil`**.
 - **Still out of scope** (use geometry/the sigil instead): inline images, hyperlinks, bullet/numbered lists,
-  per-glyph styling, per-run font family, auto-label-from-stats, label-bound motion, advanced bidi, any new
-  GPU/compute path, and new font files (slant/underline/strike are synthesised from existing primitives).
+  per-glyph styling, per-run font family, **per-game stat → label semantics inside the library** (the
+  `'stats -> Token` mapping stays the caller's), advanced bidi, any new GPU/compute path, and new font files
+  (slant/underline/strike are synthesised from existing primitives).
+
+### Auto-label — derive the label from the Token's own channels (feature 200, still the SAME channel)
+
+Instead of hand-authoring every `Label`, a `Token` can **opt into** an auto-derived one: set
+`AutoLabel : AutoLabelSpec option` and the library projects a compact, game-agnostic readout from **that
+`Token`'s own encoded channels** — never a game's raw stats. Build the spec with
+`Symbology.autoLabel fields` (space-joined) or `Symbology.autoLabelSep sep fields`.
+
+- **Channel-only projection.** `AutoField` selects which channel to read and emits a fixed code:
+  `FactionCode` → `ALY/ENY/NEU/CUS`, `KlassCode` → `MOB/HVY/SCT`, `StateCode` → `CFM/SUS`,
+  `HealthTier` → `H`+`round(Health*100)`, `ThreatTier` → `T0..T4`, `SpeedPips` → `S0..S4`,
+  `ShieldFlag` → `SHD` (dropped when `Shield = false`). The per-game `'stats -> Token` mapping stays the
+  caller's — auto-label reads only the **encoded** channels (FR-002).
+- **Explicit always wins.** When both an explicit `Label` and an `AutoLabel` are present, the **explicit**
+  label is drawn and the projection is ignored — there is always **exactly one** resolved label or none.
+- **Deterministic & degrade-safe.** Identical channels ⇒ byte-identical projection; an empty `Fields`, or a
+  projection that renders to nothing (e.g. only a dropped `ShieldFlag`), ⇒ **no label** (treated exactly
+  like an empty hand-authored label, no throw). The projected label rides the **same** fit/wrap/cap/decoration
+  path as a hand-authored label, in every grammar.
+- **When to auto-derive vs hand-author.** Auto-label for at-a-glance state readouts on a roster (faction +
+  health tier + speed) where typing a callsign per unit is noise; hand-author for names / callsigns / any
+  text not derivable from a channel. **Keep auto-projections compact** — the Ring region is the tightest;
+  pick 2–3 fields, not the whole set. Don't **impersonate** the faction/state pre-attentive encodings or
+  crowd the region. `AutoLabel = None` is the default and is **byte-identical to the pre-200 symbol**.
+
+### Label-bound motion — animate the resolved label over the existing timeline (feature 200, no new clock)
+
+A `Token` can bind its **resolved** label (explicit or auto-derived) to the symbology motion timeline by
+setting `LabelMotion : LabelMotion option` — `LabelMotion.TypeOn | Fade | Pulse | Scroll`. The label
+animates as a **pure function of the motion phase the board already supplies** (`animate`/`animateIn`/
+`filmstrip`/`filmstripIn`) — **no new entry point, no signature change, no wall-clock.**
+
+- **The four kinds.** `TypeOn` reveals a whole-glyph **prefix** (never mid-glyph); `Fade` ramps run alpha;
+  `Pulse` oscillates size about the region centre (capped so the scaled label **still fits**); `Scroll`
+  offsets an overlong line and **clips to the region** (no overflow into adjacent channels). Each stays
+  **fitted at every phase** and **tofu-free** (glyphs are unchanged or re-emitted as real glyph runs).
+- **Rest = static.** At the rest phase (`phase ⇒ 0`) every kind is the **identity** transform, so a
+  motion-bound label at rest is **byte-identical to the static spec-199 label**. The static entry points
+  (`token`/`badge`/`ring`/`render`/`gallery`/`galleryIn`) always draw the rest frame.
+- **Auto + motion compose.** Set both: the projection resolves **first**, then the resolved label animates —
+  deterministic, fitted, tofu-free.
+- **Restraint + degrade-safe.** Keep motion **restrained** (it is inspection-detail, not a pop-out channel —
+  don't let it compete with the faction/state encodings). `LabelMotion = None` is the default and is
+  **byte-identical to the pre-200 symbol across the whole timeline**. A motion bound to an empty label draws
+  nothing; a degenerate (`R <= 0`) token shows the **placeholder** (placeholder wins over auto/motion); the
+  pure library needs no measurer and never throws.
+- **Tofu-free is a render-edge property** — verify auto-derived + motion-bound output through
+  `Symbology.Render` under the real measurer (every run non-tofu at sampled phases), never from a pure unit
+  test. Auto-label and label-bound motion **complement, never replace, the vector `Sigil`**, and the
+  legibility linter's pre-attentive governance is **unchanged** (the label, however derived or animated,
+  stays inspection-detail and out of the capacity table).
 
 ## Selectable grammars (form factors) — one channel set, three drawings
 

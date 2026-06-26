@@ -93,6 +93,38 @@ type LabelText =
     /// (default alignment = the spec-198 flow — layered zero-drift, FR-004/SC-003).
     | Laid of LabelParagraph list
 
+/// Channel selectors a `Token`'s auto-label projection may read (feature 200, FR-002). Each reads
+/// ONLY the named encoded channel — never a game's raw stats — and renders a fixed, game-agnostic,
+/// compact code suited to the tight per-grammar label regions.
+type AutoField =
+    | FactionCode   // Ally->"ALY" | Enemy->"ENY" | Neutral->"NEU" | Custom _ ->"CUS"
+    | KlassCode     // Mobile->"MOB" | Heavy->"HVY" | Scout->"SCT"
+    | StateCode     // Confirmed->"CFM" | Suspected->"SUS"
+    | HealthTier    // round(Health*100) -> "H"+nn
+    | ThreatTier    // bucket Threat [0,1] -> "T0".."T4"
+    | SpeedPips     // Speed (0..4) -> "S0".."S4"
+    | ShieldFlag    // Shield=true -> "SHD"; false -> contributes nothing
+
+/// An opt-in auto-label projection request (feature 200, FR-001). The library projects a styled label
+/// from the `Token`'s OWN encoded channels — a pure, deterministic function of those channels (FR-002),
+/// overridable by an explicit `Label` (FR-003), yielding NO label when it projects to no drawable
+/// glyphs (FR-004). The rendered field codes are joined by `Separator`.
+type AutoLabelSpec =
+    { Fields: AutoField list   // ordered selectors; [] -> projects to nothing -> no label
+      Separator: string }      // joins the rendered field codes (e.g. " " or "·")
+
+/// An opt-in binding of the RESOLVED label to the existing symbology motion timeline (feature 200,
+/// FR-005). Sampled as a deterministic function of the motion phase the board already supplies
+/// (`animateIn`/`filmstripIn`); byte-identical to the static spec-199 label at the rest phase (FR-007);
+/// fitted at every phase (FR-011). `[<RequireQualifiedAccess>]` (like `Grammar`/`LabelText`) so
+/// `LabelMotion.Pulse` never collides with `Motion.Pulse`.
+[<RequireQualifiedAccess>]
+type LabelMotion =
+    | TypeOn   // whole-glyph prefix reveal; rest = fully revealed
+    | Fade     // run paint alpha ramp; rest = full alpha
+    | Pulse    // size/alpha oscillation; rest = unscaled
+    | Scroll   // overflow ticker within the region; rest = offset 0
+
 /// The symbol description: the full fixed channel set as typed fields (FR-002).
 /// Pure over this value (FR-003): equal Token => equal Scene => equal SceneCodec canonical bytes
 /// (under a fixed text-measurement provider; FR-008).
@@ -118,7 +150,15 @@ type Token =
       /// region, fitted per run to that region via real text measurement (FR-006), and tofu-free when
       /// rendered through the headless render bridge's real measurer (FR-005). Inspection-detail:
       /// it does NOT enter the legibility capacity table (FR-012).
-      Label: LabelText option }
+      Label: LabelText option
+      /// Feature 200 (FR-001) — opt-in channel projection. `None` = off (default); a no-`AutoLabel`
+      /// token is byte-identical to spec 199. When `Some spec` AND `Label = None`, the library projects a
+      /// styled label from this `Token`'s own channels (FR-002); an explicit `Label` always wins (FR-003).
+      AutoLabel: AutoLabelSpec option
+      /// Feature 200 (FR-005) — opt-in binding of the resolved label to the existing motion timeline.
+      /// `None` = off (default); a no-`LabelMotion` token is byte-identical to spec 199 across the whole
+      /// timeline. At the rest phase a motion-bound label equals the static spec-199 label (FR-007).
+      LabelMotion: LabelMotion option }
 
 /// The selectable symbol form factor (FR-001/FR-002). All three consume the SAME fixed Token channel
 /// set: one `'stats -> Token` mapping drives any grammar unchanged. The choice changes the DRAWING,
@@ -163,6 +203,18 @@ module Symbology =
     /// A laid-out (paragraph) label — `= LabelText.Laid`. A single `Center` paragraph of all-default
     /// runs renders byte-identically to the equivalent `richLabel`/`plainLabel` (FR-004/SC-003).
     val laidLabel: paragraphs: LabelParagraph list -> LabelText
+
+    // ---- Auto-label / label-motion constructors (feature 200, FR-001/FR-005) ----
+
+    /// An auto-label projection request over the given channel selectors, joined by a single space
+    /// — `= { Fields = fields; Separator = " " }`. Set on a `Token` via `AutoLabel = Some (Symbology.autoLabel [...])`.
+    val autoLabel: fields: AutoField list -> AutoLabelSpec
+
+    /// An auto-label projection request with an explicit separator (e.g. `"·"`).
+    val autoLabelSep: separator: string -> fields: AutoField list -> AutoLabelSpec
+
+    /// Identity helper for readable `LabelMotion = Some (Symbology.labelMotion LabelMotion.TypeOn)` call sites.
+    val labelMotion: kind: LabelMotion -> LabelMotion
 
     /// The Directional-Token element: renders every channel so each observably alters output (SC-002).
     /// Pure & deterministic (FR-003). Zero/empty area degrades to a visible placeholder (FR-020).

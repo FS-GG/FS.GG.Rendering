@@ -333,3 +333,42 @@ let labelInvariance =
               let boardL = laidOut |> List.map (fun t -> Pulse, t)
               Expect.equal (Legibility.scoreAnimated boardL) (Legibility.scoreAnimated board) "laid-out labels do not alter animated governance (FR-014)"
           } ]
+
+// Feature 200 [US3] (T032) Auto/motion labels are inspection-detail (FR-018/SC-006). The linter does NOT
+// read Token.Label / AutoLabel / LabelMotion, so a roster with auto-derived and/or motion-bound labels
+// scores byte-identically to the SAME roster with 199-era static hand-authored labels — and, since
+// `Legibility.score`/`scoreAnimated` take `Token list` with no grammar parameter, the verdict is identical
+// across grammars by construction. Auto/motion does NOT change pre-attentive governance.
+[<Tests>]
+let autoMotionLinterInvariance =
+    let roster =
+        [ { baseUnit with Faction = Ally; Klass = Heavy; Sigil = Ring; Speed = 1; Health = 0.9 }
+          { baseUnit with Faction = Enemy; Klass = Scout; Sigil = Fang; Speed = 2; Threat = 0.8 }
+          { baseUnit with Faction = Neutral; Klass = Mobile; Sigil = Bolt; Speed = 3; Shield = true } ]
+
+    // Same NON-label channels; only the label-channel fields differ between the two versions.
+    let staticLabelled =
+        roster |> List.mapi (fun i t -> { t with Label = Some(LabelText.Plain(sprintf "U-%d" i)) })
+
+    let autoMotion =
+        roster
+        |> List.map (fun t ->
+            { t with
+                Label = None
+                AutoLabel = Some(Symbology.autoLabel [ FactionCode; HealthTier; SpeedPips ])
+                LabelMotion = Some LabelMotion.TypeOn })
+
+    testList
+        "US3.200 auto/motion linter-invariance"
+        [ test "auto/motion labels do not change the static Report (score) — equals the hand-authored verdict" {
+              Expect.equal (Legibility.score autoMotion) (Legibility.score staticLabelled) "auto/motion is inspection-detail (FR-018)"
+              Expect.equal (Legibility.score autoMotion) (Legibility.score roster) "and equals the no-label verdict (grammar-independent, SC-006)"
+          }
+
+          test "auto/motion labels do not change the animated Report (scoreAnimated)" {
+              let board = roster |> List.map (fun t -> Pulse, t)
+              let boardAM = autoMotion |> List.map (fun t -> Pulse, t)
+              let boardStatic = staticLabelled |> List.map (fun t -> Pulse, t)
+              Expect.equal (Legibility.scoreAnimated boardAM) (Legibility.scoreAnimated boardStatic) "auto/motion does not alter animated governance (FR-018)"
+              Expect.equal (Legibility.scoreAnimated boardAM) (Legibility.scoreAnimated board) "and equals the no-label animated verdict"
+          } ]

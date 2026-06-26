@@ -454,8 +454,19 @@ the `setRealTextMeasurer` path (`fs-gg-scene`) once tofu-free text is needed.
   and the **typographic run attributes** (`Italic` / `Underline` / `Strike` / `Tracking`). Pure
   scene-only (synthetic slant via `withPerspective`, decoration via `Scene.line`, tracking via per-glyph
   `glyphRunProof` — no new primitive / font / GPU path); `Center` default reproduces the 198 flow
-  byte-for-byte (layered zero drift). **The rich-text identity-label thread, M7, and the M0–M7 roadmap
-  are complete.**
+  byte-for-byte (layered zero drift). Deferred the two completion items below to a dedicated thread.
+- ✅ **Auto-label & label-bound motion** — [spec 200](../../specs/200-auto-label-bound-motion/spec.md):
+  lifts the two items 199 deferred. **Auto-label** — `Token.AutoLabel : AutoLabelSpec option` projects a
+  compact, game-agnostic label from the `Token`'s OWN encoded channels (`AutoField` selectors:
+  faction/class/state codes, health/threat tiers, speed pips, shield flag), explicit `Label` always wins,
+  per-game stats stay the caller's. **Label-bound motion** — `Token.LabelMotion : LabelMotion option`
+  (`TypeOn | Fade | Pulse | Scroll`) animates the resolved label as a pure function of the phase the board
+  already supplies — no new clock, no board/motion signature change. Pure scene-only (prefix reveal via
+  `glyphRunProof`, alpha via `Paint.withOpacity`, scale via `withPerspective`, in-region offset via
+  `Scene.clipped`/`translate` — no new primitive / font / GPU path); `None`/rest-phase reproduces the 199
+  symbol byte-for-byte (layered zero drift); tofu-free verified at the render edge; the legibility linter
+  is unchanged (label stays inspection-detail). **The rich-text identity-label thread, M7, and the M0–M7
+  roadmap are complete.**
 
 ### 10.4 Decision gates (resolve at M0)
 - **G1 — Library home.** Dedicated `FS.GG.UI.Symbology` vs folding into `FS.GG.UI.Canvas`. *Default:

@@ -166,3 +166,41 @@ let degenerateWithLabel =
                   let without = render { Symbology.defaultToken with Cx = 10.0; Cy = 10.0; R = 0.0; Label = None }
                   Expect.equal laidOut without "a laid-out / decorated label never alters a placeholder (FR-010)"
               } ]
+
+// Feature 200 [US2] (T025) Degenerate token WITH auto / motion (FR-014). A token with R <= 0 carrying an
+// AutoLabel and/or LabelMotion renders the VISIBLE placeholder, with auto/motion suppressed, and never
+// throws at ANY phase — the placeholder guard runs BEFORE label resolution/animation (placeholder wins).
+[<Tests>]
+let autoMotionPlaceholderTests =
+    let degenerate =
+        { Symbology.defaultToken with
+            Cx = 10.0
+            Cy = 10.0
+            R = 0.0
+            Faction = Enemy
+            Health = 0.8
+            Shield = true
+            AutoLabel = Some(Symbology.autoLabel [ FactionCode; HealthTier; ShieldFlag ])
+            LabelMotion = Some LabelMotion.Pulse }
+
+    testList
+        "US2.200 degenerate token with auto/motion ⇒ placeholder"
+        [ test "a degenerate auto+motion token renders the placeholder, no glyph run (C11/FR-014)" {
+              let kinds = Symbology.token degenerate |> Scene.describe |> List.distinct
+              Expect.contains kinds PathElement "the visible placeholder is drawn"
+              Expect.isFalse (List.contains GlyphRunElement kinds) "auto/motion suppressed on a degenerate token (placeholder wins)"
+          }
+
+          test "the degenerate auto+motion token is byte-identical to the bare placeholder (auto/motion inert)" {
+              let bare = { degenerate with AutoLabel = None; LabelMotion = None }
+              Expect.equal
+                  ((SceneCodec.export (Symbology.token degenerate)).CanonicalBytes)
+                  ((SceneCodec.export (Symbology.token bare)).CanonicalBytes)
+                  "auto/motion never alter a placeholder (FR-014)"
+          }
+
+          test "a degenerate motion token never throws at any phase" {
+              for ph in [ 0.0; 0.25; 0.5; 0.75; 1.0 ] do
+                  let scene = Symbology.animate Pulse degenerate ph
+                  Expect.isNonEmpty (scene |> Scene.describe) (sprintf "placeholder drawn without throwing at phase %f" ph)
+          } ]

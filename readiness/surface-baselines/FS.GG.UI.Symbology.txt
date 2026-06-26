@@ -1,3 +1,6 @@
+FS.GG.UI.Symbology.AutoField
+FS.GG.UI.Symbology.AutoField+Tags
+FS.GG.UI.Symbology.AutoLabelSpec
 FS.GG.UI.Symbology.Faction
 FS.GG.UI.Symbology.Faction+Custom
 FS.GG.UI.Symbology.Faction+Tags
@@ -7,6 +10,8 @@ FS.GG.UI.Symbology.Klass
 FS.GG.UI.Symbology.Klass+Tags
 FS.GG.UI.Symbology.LabelAlign
 FS.GG.UI.Symbology.LabelAlign+Tags
+FS.GG.UI.Symbology.LabelMotion
+FS.GG.UI.Symbology.LabelMotion+Tags
 FS.GG.UI.Symbology.LabelParagraph
 FS.GG.UI.Symbology.LabelRun
 FS.GG.UI.Symbology.LabelText

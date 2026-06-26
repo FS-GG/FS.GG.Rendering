@@ -20,6 +20,8 @@
     <Compile Include="MultilineLabelTests.fs" />
     <Compile Include="RichLabelTests.fs" />
     <Compile Include="LaidLabelTests.fs" />
+    <Compile Include="AutoLabelTests.fs" />
+    <Compile Include="LabelMotionTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

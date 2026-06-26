@@ -119,6 +119,29 @@ per-grammar region. Set it in `mapUnit` only when the abstract sigil cannot disa
                   Symbology.align Trailing [ { Symbology.run u.RetiredCode with Strike = Some true } ] ]) }
 ```
 
+- **Auto-label — derive the label from channels (feature 200, same channel).** Instead of hand-authoring a
+  callsign, set `AutoLabel : AutoLabelSpec option` (`Symbology.autoLabel fields` / `autoLabelSep sep fields`)
+  and the library projects a compact game-agnostic readout from the **`Token`'s own encoded channels**:
+  `FactionCode` (ALY/ENY/NEU/CUS), `KlassCode` (MOB/HVY/SCT), `StateCode` (CFM/SUS), `HealthTier` (H+nn),
+  `ThreatTier` (T0..T4), `SpeedPips` (S0..S4), `ShieldFlag` (SHD, dropped when off). An explicit `Label`
+  **always wins**; identical channels ⇒ identical label; an empty/dropped projection ⇒ no label. Keep
+  projections compact (2–3 fields — Ring is tightest) and don't impersonate the faction/state encodings.
+  The per-game `'stats -> Token` mapping stays yours; auto-label reads only the encoded channels.
+
+```fsharp
+// A state readout projected from the unit's own channels — no callsign typed:
+{ Symbology.defaultToken with R = 28.0; Faction = Ally; Health = 0.9; Speed = 2
+                              AutoLabel = Some(Symbology.autoLabel [ FactionCode; HealthTier; SpeedPips ]) }
+```
+
+- **Label-bound motion — animate the resolved label (feature 200, no new clock).** Set
+  `LabelMotion : LabelMotion option` (`LabelMotion.TypeOn | Fade | Pulse | Scroll`) and the resolved label
+  (explicit or auto-derived) animates as a pure function of the **phase the board already supplies**
+  (`animate`/`filmstrip`/`animateIn`/`filmstripIn`) — no signature change. At the rest phase it is
+  **byte-identical to the static label**; it stays fitted and tofu-free at every phase; `Scroll` clips to
+  the region (no overflow). Keep motion **restrained** — it is inspection-detail, the linter is unchanged.
+  `AutoLabel = None` / `LabelMotion = None` are the defaults and are byte-identical to the pre-200 symbol.
+
 ## Selectable grammars (form factors) — one mapping, three drawings
 
 The same `'stats -> Token` mapping drives three interchangeable **grammars**, chosen as a value

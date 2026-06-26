@@ -360,3 +360,35 @@ let decorationGeometryTests =
                   let delta = (collectLines underlined |> List.length) - (collectLines undecorated |> List.length)
                   Expect.equal delta drawnTextLines "one underline rule per drawn text line — decoration follows each fragment (B11/FR-008)"
               } ]
+
+// ---- Feature 200 (T014/US1) — opt-out layered zero-drift -------------------------------------------------
+// A Token that opts into NEITHER capability (AutoLabel = None, LabelMotion = None) carrying a
+// Plain / Rich / Laid / no label is byte-identical to the spec-199 render — adding the two new fields is
+// inert when off. Teeth: (1) explicitly-None fields reproduce the default-None render; (2) setting an
+// AutoLabel is fully overridden by an explicit Label (the feature is inert for an explicit-label token);
+// (3) a no-label opt-out token is byte-identical to a bare token. EXTENDS, never weakens, the 199 identity.
+[<Tests>]
+let optOutZeroDriftTests =
+    let labels =
+        [ "Plain", Some(LabelText.Plain "HMR-7")
+          "Rich", Some(LabelText.Rich [ { Symbology.run "BRAVO" with Color = Some blue }; Symbology.run " 6" ])
+          "Laid", Some(Symbology.laidLabel [ Symbology.align Trailing [ Symbology.run "ALPHA BRAVO" ] ])
+          "None", None ]
+
+    testList
+        "US1.200 opt-out zero-drift"
+        [ for gname, render in grammars do
+              for lname, lbl in labels do
+                  test (sprintf "[%s] opt-out (AutoLabel=None,LabelMotion=None) with %s label is inert" gname lname) {
+                      let off = { baseT with Label = lbl; AutoLabel = None; LabelMotion = None }
+                      // explicitly setting the fields to their default None must not move a single byte.
+                      let explicitNone = { baseT with Label = lbl }
+                      Expect.equal (bytesOf (render off)) (bytesOf (render explicitNone)) "the two new None fields are inert (C5/SC-003)"
+                  }
+
+              // An explicit Label is byte-identical whether or not an AutoLabel is also present (explicit wins).
+              test (sprintf "[%s] explicit label unchanged by a present-but-overridden AutoLabel (C2)" gname) {
+                  let explicit = { baseT with Label = Some(LabelText.Plain "HMR-7"); AutoLabel = None }
+                  let alsoAuto = { explicit with AutoLabel = Some(Symbology.autoLabel [ FactionCode; HealthTier ]) }
+                  Expect.equal (bytesOf (render explicit)) (bytesOf (render alsoAuto)) "AutoLabel is inert when an explicit Label is present (FR-003)"
+              } ]
