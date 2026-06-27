@@ -53,6 +53,26 @@
         }
       ]
     },
+    "lifecycle": {
+      "type": "parameter",
+      "datatype": "choice",
+      "defaultValue": "spec-kit",
+      "description": "Lifecycle scaffolding to emit alongside the generated product. 'spec-kit' (default) is byte-identical to today: it emits the full Spec Kit lifecycle workspace (.specify/, the project constitution, the .agents/ + .claude/ agent skill/context files, and the generated AGENTS.md/CLAUDE.md agent-context tree). 'sdd' and 'none' suppress that entire gated lifecycle set while leaving the generated product (source, projects, product tests, docs, samples, and the designSystem overlay) untouched. Unknown values are rejected.",
+      "choices": [
+        {
+          "choice": "spec-kit",
+          "description": "Emit the full Spec Kit lifecycle workspace: .specify/, the project constitution, the .agents/ and .claude/ skill/context files, and the generated AGENTS.md/CLAUDE.md agent-context tree (default; no diff vs today's template)."
+        },
+        {
+          "choice": "sdd",
+          "description": "Suppress the gated lifecycle set; emit only the generated product. Intent: an external SDD lifecycle owner re-supplies the lifecycle scaffolding."
+        },
+        {
+          "choice": "none",
+          "description": "Suppress the gated lifecycle set; emit only the generated product. Intent: no lifecycle scaffolding is wanted. Same template-level output as 'sdd'."
+        }
+      ]
+    },
     "rootNamespace": {
       "type": "parameter",
       "datatype": "text",
@@ -116,9 +136,12 @@
         "bin/**",
         "obj/**",
         "**/bin/**",
-        "**/obj/**"
+        "**/obj/**",
+        ".agents/**",
+        ".claude/**",
+        "CLAUDE.md"
       ],
-      "comment": "Feature 060 (FR-003): the emitted docs/api-surface/**/*.fsi tree is the authoritative framework contract surface; copy it verbatim so the sourceName ('Product') substitution does not rewrite framework signatures (e.g. ProductDefect) in the generated reference. Feature 062 (FR-003/005/006): the generated docs/evidence-formats.md and docs/skillist-reference.md references and the authored docs/scaffold-map.md are copied verbatim (no sourceName substitution) so their governance tokens are not rewritten. Feature 108 (FR-020): docs/interactive-readiness.md is copied verbatim for the same reason (its skill names / readiness tokens must not be rewritten).",
+      "comment": "Feature 204 (FR-004): the base product is UNGATED, but its bundled lifecycle agent-context content — `.agents/`, `.claude/`, and the agent-context `CLAUDE.md` (which the generated tree overwrites under spec-kit) — is part of the gated lifecycle set, so it is excluded here and re-emitted only under `lifecycle == \"spec-kit\"` by the two gated `template/base/.agents/`+`.claude/` sources below (preserving today's emit order: base agent-context first, then the repo-root `.agents/skills/` overwrites). README.md stays ungated but is made lifecycle-neutral (the spec-kit copy is re-supplied by the generated tree). Feature 060 (FR-003): the emitted docs/api-surface/**/*.fsi tree is the authoritative framework contract surface; copy it verbatim so the sourceName ('Product') substitution does not rewrite framework signatures (e.g. ProductDefect) in the generated reference. Feature 062 (FR-003/005/006): the generated docs/evidence-formats.md and docs/skillist-reference.md references and the authored docs/scaffold-map.md are copied verbatim (no sourceName substitution) so their governance tokens are not rewritten. Feature 108 (FR-020): docs/interactive-readiness.md is copied verbatim for the same reason (its skill names / readiness tokens must not be rewritten).",
       "copyOnly": [
         "docs/api-surface/**",
         "docs/evidence-formats.md",
@@ -128,6 +151,19 @@
       ]
     },
     {
+      "condition": "(lifecycle == \"spec-kit\")",
+      "source": "template/base/.agents/",
+      "target": ".agents/",
+      "comment": "Feature 204: gated re-emit of the base agent skill/context tree (excluded from the ungated base source above). Placed before the repo-root `.agents/skills/` source so root still overwrites the base `fs-gg-project` skill exactly as today (byte-identical under spec-kit)."
+    },
+    {
+      "condition": "(lifecycle == \"spec-kit\")",
+      "source": "template/base/.claude/",
+      "target": ".claude/",
+      "comment": "Feature 204: gated re-emit of the base .claude/ settings, hooks, and fs-gg-project skill (excluded from the ungated base source above). Placed before the repo-root `.agents/skills/`->.claude/skills/ source so root still overwrites the base `fs-gg-project` skill exactly as today."
+    },
+    {
+      "condition": "(lifecycle == \"spec-kit\")",
       "source": ".specify/",
       "target": ".specify/",
       "copyOnly": [
@@ -140,6 +176,7 @@
       ]
     },
     {
+      "condition": "(lifecycle == \"spec-kit\")",
       "source": ".agents/skills/",
       "target": ".agents/skills/",
       "copyOnly": [
@@ -147,6 +184,7 @@
       ]
     },
     {
+      "condition": "(lifecycle == \"spec-kit\")",
       "source": ".agents/skills/",
       "target": ".claude/skills/",
       "copyOnly": [
@@ -154,66 +192,67 @@
       ]
     },
     {
+      "condition": "(lifecycle == \"spec-kit\")",
       "source": ".template.config/generated/",
       "target": "./"
     },
     {
-      "condition": "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\")",
+      "condition": "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\") && lifecycle == \"spec-kit\"",
       "source": "template/product-skills/fs-gg-scene/",
       "target": ".agents/skills/fs-gg-scene/"
     },
     {
-      "condition": "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\")",
+      "condition": "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\") && lifecycle == \"spec-kit\"",
       "source": "template/product-skills/fs-gg-scene/",
       "target": ".claude/skills/fs-gg-scene/"
     },
     {
-      "condition": "(profile == \"app\" || profile == \"sample-pack\")",
+      "condition": "(profile == \"app\" || profile == \"sample-pack\") && lifecycle == \"spec-kit\"",
       "source": "template/product-skills/fs-gg-skiaviewer/",
       "target": ".agents/skills/fs-gg-skiaviewer/"
     },
     {
-      "condition": "(profile == \"app\" || profile == \"sample-pack\")",
+      "condition": "(profile == \"app\" || profile == \"sample-pack\") && lifecycle == \"spec-kit\"",
       "source": "template/product-skills/fs-gg-skiaviewer/",
       "target": ".claude/skills/fs-gg-skiaviewer/"
     },
     {
-      "condition": "(profile == \"app\" || profile == \"sample-pack\")",
+      "condition": "(profile == \"app\" || profile == \"sample-pack\") && lifecycle == \"spec-kit\"",
       "source": "template/product-skills/fs-gg-elmish/",
       "target": ".agents/skills/fs-gg-elmish/"
     },
     {
-      "condition": "(profile == \"app\" || profile == \"sample-pack\")",
+      "condition": "(profile == \"app\" || profile == \"sample-pack\") && lifecycle == \"spec-kit\"",
       "source": "template/product-skills/fs-gg-elmish/",
       "target": ".claude/skills/fs-gg-elmish/"
     },
     {
-      "condition": "(profile == \"app\")",
+      "condition": "(profile == \"app\") && lifecycle == \"spec-kit\"",
       "source": "template/product-skills/fs-gg-keyboard-input/",
       "target": ".agents/skills/fs-gg-keyboard-input/"
     },
     {
-      "condition": "(profile == \"app\")",
+      "condition": "(profile == \"app\") && lifecycle == \"spec-kit\"",
       "source": "template/product-skills/fs-gg-keyboard-input/",
       "target": ".claude/skills/fs-gg-keyboard-input/"
     },
     {
-      "condition": "(profile == \"app\")",
+      "condition": "(profile == \"app\") && lifecycle == \"spec-kit\"",
       "source": "template/product-skills/fs-gg-ui-widgets/",
       "target": ".agents/skills/fs-gg-ui-widgets/"
     },
     {
-      "condition": "(profile == \"app\")",
+      "condition": "(profile == \"app\") && lifecycle == \"spec-kit\"",
       "source": "template/product-skills/fs-gg-ui-widgets/",
       "target": ".claude/skills/fs-gg-ui-widgets/"
     },
     {
-      "condition": "(profile == \"governed\")",
+      "condition": "(profile == \"governed\") && lifecycle == \"spec-kit\"",
       "source": "template/product-skills/fs-gg-testing/",
       "target": ".agents/skills/fs-gg-testing/"
     },
     {
-      "condition": "(profile == \"governed\")",
+      "condition": "(profile == \"governed\") && lifecycle == \"spec-kit\"",
       "source": "template/product-skills/fs-gg-testing/",
       "target": ".claude/skills/fs-gg-testing/"
     },
@@ -226,27 +265,27 @@
       ]
     },
     {
-      "condition": "(profile == \"sample-pack\")",
+      "condition": "(profile == \"sample-pack\") && lifecycle == \"spec-kit\"",
       "source": "template/fragments/samples/skill/",
       "target": ".agents/skills/fs-gg-samples/"
     },
     {
-      "condition": "(profile == \"sample-pack\")",
+      "condition": "(profile == \"sample-pack\") && lifecycle == \"spec-kit\"",
       "source": "template/fragments/samples/skill/",
       "target": ".claude/skills/fs-gg-samples/"
     },
     {
-      "condition": "(feedback == true)",
+      "condition": "(feedback == true) && lifecycle == \"spec-kit\"",
       "source": "template/feedback/skill/",
       "target": ".agents/skills/fs-gg-feedback-capture/"
     },
     {
-      "condition": "(feedback == true)",
+      "condition": "(feedback == true) && lifecycle == \"spec-kit\"",
       "source": "template/feedback/skill/",
       "target": ".claude/skills/fs-gg-feedback-capture/"
     },
     {
-      "condition": "(feedback == true)",
+      "condition": "(feedback == true) && lifecycle == \"spec-kit\"",
       "source": "template/feedback/extensions/",
       "target": ".specify/extensions/feedback/"
     },

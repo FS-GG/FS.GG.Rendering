@@ -73,11 +73,9 @@ only `#r`s the assemblies and `open`s `Product` — it launches nothing, so it
 neither emits nor suppresses host warnings, and a missing assembly surfaces as a
 normal load failure.
 
-This product is generated without a bundled lifecycle workspace
-(`--lifecycle sdd` / `--lifecycle none`). Governed feature work is driven by the
-lifecycle owner you compose this product under, which supplies the workspace and
-the governance skills. To generate the product with the Spec Kit lifecycle
-workspace bundled in instead, scaffold with the default `--lifecycle spec-kit`.
+Spec Kit is installed in this repo through `.specify/` and the project-local
+`speckit-*` skills under `.agents/skills/`. Use `$speckit-specify`,
+`$speckit-plan`, and `$speckit-tasks` to start governed feature work.
 
 The product references FS.GG.UI packages from **public nuget.org** — the generated
 `NuGet.config` references that feed only, with no machine-local path, so `dotnet restore`

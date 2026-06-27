@@ -22,6 +22,7 @@
     <Compile Include="Feature170CompatibilityTests.fs" />
     <Compile Include="Feature151PackageValidationTests.fs" />
     <Compile Include="Feature128DesignSystemTemplateTests.fs" />
+    <Compile Include="Feature204LifecycleTemplateTests.fs" />
     <Compile Include="Tests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

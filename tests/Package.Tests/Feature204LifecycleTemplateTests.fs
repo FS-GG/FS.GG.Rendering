@@ -1,0 +1,196 @@
+module Feature204LifecycleTemplateTests
+
+// Feature 204 — the always-on gate for the `lifecycle` template option (validation contract Layer 1).
+//
+// Deterministic, GL-free, NO `dotnet new`: it asserts the gitignored lifecycle validation report that
+// the env-gated regenerator (scripts/validate-lifecycle-template.fsx) writes, AND independently
+// re-derives the env-free verdict-core fact (every gated `source` entry in template.json carries
+// `lifecycle == "spec-kit"`) so the gate proves the gating itself, not just a self-written line.
+// The heavy live work — real `dotnet new` per lifecycle x profile + byte-diff + suppression checks —
+// runs behind FS_GG_RUN_LIFECYCLE_VALIDATION=1, mirroring Feature128DesignSystemTemplateTests +
+// validate-design-system-template.fsx.
+//
+// Authored failing-first (Principle V): the report is self-provisioned from the validator's env-free
+// `--emit-report` verdict-core path (no `dotnet new`/build/GL/network) before the GV gates evaluate,
+// so a fresh checkout (gitignored readiness/ absent) is green-by-construction — but only if the
+// verdict core PASSES; if the gating is wrong the verdict core throws, no report is written, and the
+// gate fails loudly. Coverage (TP-7) is checked against the template's own `lifecycle` choice set, so
+// a new value left unvalidated fails the gate.
+
+open System
+open System.Diagnostics
+open System.IO
+open System.Text.Json
+open Expecto
+open FS.GG.TestSupport
+
+let private repositoryRoot = RepositoryRoot.value
+
+let private repositoryPath (relativePath: string) =
+    Path.Combine(repositoryRoot, relativePath.Replace('/', Path.DirectorySeparatorChar))
+
+let private validationReportPath =
+    repositoryPath "specs/204-template-lifecycle-symbol/readiness/lifecycle-template-validation.md"
+
+let private templateJsonPath = repositoryPath ".template.config/template.json"
+
+let private profiles = [ "app"; "headless-scene"; "governed"; "sample-pack" ]
+
+// ---- self-provisioning (mirrors Feature128) ---------------------------------------------------
+
+let private selfProvisionReport () =
+    if not (File.Exists validationReportPath) then
+        let psi = ProcessStartInfo("dotnet")
+        psi.WorkingDirectory <- repositoryRoot
+        psi.UseShellExecute <- false
+        psi.RedirectStandardOutput <- true
+        psi.RedirectStandardError <- true
+        [ "fsi"; "scripts/validate-lifecycle-template.fsx"; "--emit-report" ]
+        |> List.iter psi.ArgumentList.Add
+        match Process.Start psi with
+        | null -> ()
+        | started ->
+            use proc = started
+            proc.StandardOutput.ReadToEnd() |> ignore
+            proc.StandardError.ReadToEnd() |> ignore
+            proc.WaitForExit()
+
+let private reportProvisioned = selfProvisionReport ()
+
+let private readValidationReport () =
+    Expect.isTrue
+        (File.Exists validationReportPath)
+        (sprintf
+            "lifecycle validation report missing at %s — regenerate via FS_GG_RUN_LIFECYCLE_VALIDATION=1 dotnet fsi scripts/validate-lifecycle-template.fsx"
+            validationReportPath)
+    File.ReadAllText validationReportPath
+
+// ---- env-free verdict-core facts re-derived in-test -------------------------------------------
+
+let private elemStr (e: JsonElement) : string =
+    e.GetString() |> Option.ofObj |> Option.defaultValue ""
+
+/// The accepted lifecycle choice set, parsed from the template (single coverage source, TP-7).
+let private enumeratedChoices () =
+    use doc = JsonDocument.Parse(File.ReadAllText templateJsonPath)
+    [ for c in
+          doc.RootElement.GetProperty("symbols").GetProperty("lifecycle").GetProperty("choices").EnumerateArray() ->
+          elemStr (c.GetProperty("choice")) ]
+
+/// The values listed on the report's `covered-values:` line.
+let private coveredValues (report: string) =
+    report.Split('\n')
+    |> Array.tryFind (fun l -> l.StartsWith "covered-values:")
+    |> Option.map (fun l ->
+        l.Substring("covered-values:".Length).Split(',')
+        |> Array.map (fun s -> s.Trim())
+        |> Array.filter (fun s -> s <> "")
+        |> Array.toList)
+    |> Option.defaultValue []
+
+let private SPEC_KIT_COND = "lifecycle == \"spec-kit\""
+
+/// Re-derive the gating invariant directly from template.json: every gated `source` (target under
+/// .specify/ | .agents/ | .claude/, or the generated agent-context tree) carries the spec-kit
+/// condition, and the ungated PRODUCT sources do not.
+let private gatedSourceAudit () =
+    use doc = JsonDocument.Parse(File.ReadAllText templateJsonPath)
+    let mutable gated = 0
+    let mutable product = 0
+    let mutable violations = []
+    for s in doc.RootElement.GetProperty("sources").EnumerateArray() do
+        let str (prop: string) : string =
+            match s.TryGetProperty prop with
+            | true, v -> elemStr v
+            | _ -> ""
+        let source = str "source"
+        let target = (str "target").Replace('\\', '/')
+        let condition = str "condition"
+        let isGeneratedTree = source = ".template.config/generated/"
+        let isGatedTarget =
+            target.StartsWith ".specify" || target.StartsWith ".agents" || target.StartsWith ".claude"
+        if isGatedTarget || isGeneratedTree then
+            gated <- gated + 1
+            if not (condition.Contains SPEC_KIT_COND) then
+                violations <- (sprintf "gated %s -> %s missing condition" source target) :: violations
+        else
+            product <- product + 1
+            if condition.Contains SPEC_KIT_COND then
+                violations <- (sprintf "product %s -> %s wrongly gated" source target) :: violations
+    gated, product, List.rev violations
+
+[<Tests>]
+let feature204LifecycleTemplateTests =
+    testList
+        "Feature204 lifecycle template validation"
+        [
+          // GV-1 (TP-7 / SC-005): covered-values equals the enumerated lifecycle choice set.
+          test "GV-1 coverage equals the template's lifecycle choice set" {
+              let report = readValidationReport ()
+              let covered = coveredValues report |> List.sort
+              let expected = enumeratedChoices () |> List.sort
+              Expect.equal covered expected "covered-values must equal the template's lifecycle choices"
+              Expect.stringContains report "covered-values: spec-kit, sdd, none" "covered-values lists the 3 values in declaration order"
+          }
+
+          // GV-2 (FR-003/FR-004, env-free verdict-core fact re-derived in-test): the gated source
+          // entries carry the spec-kit condition; the ungated product sources do not.
+          test "GV-2 every gated source carries lifecycle == \"spec-kit\" (and no product source does)" {
+              let gated, product, violations = gatedSourceAudit ()
+              Expect.isEmpty violations (sprintf "gating violations: %s" (String.concat "; " violations))
+              Expect.isTrue (gated >= 18) (sprintf "expected >=18 gated sources, found %d" gated)
+              Expect.isTrue (product >= 3) (sprintf "expected >=3 ungated product sources, found %d" product)
+              let report = readValidationReport ()
+              Expect.stringContains report "gated-condition: all gated source entries carry lifecycle == \"spec-kit\"" "report records the gated-condition fact"
+          }
+
+          // GV-3 (US1 / FR-002 / SC-001): spec-kit is byte-identical to today, every profile.
+          test "GV-3 spec-kit is byte-identical (diff-vs-today=none) for every profile" {
+              let report = readValidationReport ()
+              for p in profiles do
+                  Expect.stringContains report (sprintf "spec-kit/%s: generate=pass diff-vs-today=none" p) (sprintf "spec-kit/%s byte-identical" p)
+          }
+
+          // GV-4 (US2 / FR-004/FR-005/FR-009 / SC-003): sdd suppresses exactly the gated set, product intact.
+          test "GV-4 sdd suppresses exactly the gated set with the product intact" {
+              let report = readValidationReport ()
+              for p in profiles do
+                  Expect.stringContains
+                      report
+                      (sprintf "sdd/%s: generate=pass gated-absent=ok product-present=ok diff-vs-default=gated-only" p)
+                      (sprintf "sdd/%s gated-only suppression" p)
+              Expect.stringContains report "dangling-refs: none" "no directive agent-context doc references a suppressed path (CC-1)"
+          }
+
+          // GV-5 (US3 / FR-004 / SC-003): none suppresses the gated set, product intact (same as sdd).
+          test "GV-5 none suppresses the gated set with the product intact" {
+              let report = readValidationReport ()
+              for p in profiles do
+                  Expect.stringContains
+                      report
+                      (sprintf "none/%s: generate=pass gated-absent=ok product-present=ok" p)
+                      (sprintf "none/%s suppression" p)
+          }
+
+          // GV-6 (Polish / FR-006/FR-007/FR-008 / SC-004): composition matrix + fail-fast.
+          test "GV-6 composition matrix generates and unknown value is rejected" {
+              let report = readValidationReport ()
+              Expect.stringContains report "composition-matrix: 12/12 generate; ant-overlay-present=ok; feedback-gated-under-non-speckit=ok" "12-combo composition matrix holds"
+              Expect.stringContains report "unknown-value: rejected" "unknown lifecycle value fails fast"
+          }
+
+          // GV-7 (Constitution V): provenance is disclosed (verdict-core env-free OR live).
+          test "GV-7 provenance is disclosed" {
+              let report = readValidationReport ()
+              Expect.isTrue
+                  (report.Contains "provenance: live"
+                   || report.Contains "provenance: verdict-core (env-free; full live proof gated behind FS_GG_RUN_LIFECYCLE_VALIDATION=1)")
+                  "report discloses whether it was self-provisioned env-free or written from the live run"
+          }
+
+          // GV-8 (Principle VI): result: pass only when GV-1..GV-7 hold.
+          test "GV-8 overall result is pass" {
+              let report = readValidationReport ()
+              Expect.stringContains report "result: pass" "validation result is pass"
+          }
+        ]
