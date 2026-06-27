@@ -29,6 +29,26 @@ let private renderToPng (width: int) (height: int) (scene: SceneNode) =
 
     Viewer.captureScreenshotEvidence request options scene, path
 
+/// Tier-T1 raster capability probe (mirrors Audit_ReplayCache, feature 203 US4): `SKSurface.Create`
+/// returns null (does not throw) when the native raster backend is unavailable on a headless host.
+let private rasterAvailable: bool =
+    try
+        use s = SKSurface.Create(SKImageInfo(8, 8))
+        not (isNull s)
+    with _ -> false
+
+/// Run the raster body when the surface tier is present; otherwise record a deterministic skip-with-tier
+/// (Constitution VI) — never an intermittent red, never a faked pass. A genuine defect on a raster-capable
+/// host still fails loudly inside `body`. (The measurement/structural tests need no surface and are not
+/// guarded.)
+let private withRaster (what: string) (body: unit -> unit) =
+    if rasterAvailable then body ()
+    else
+        skiptest (
+            sprintf
+                "SKIPPED(tier=T1 raster/pixel GL): offscreen SKSurface unavailable on this host (SkiaSharp native/headless) — %s requires the raster/pixel render tier; recorded skipped-with-tier, not a pass (Constitution VI)."
+                what)
+
 let private litPixelCount (path: string) =
     use bitmap = SKBitmap.Decode path
     Expect.isNotNull bitmap "screenshot PNG decodes"
@@ -41,9 +61,11 @@ let private litPixelCount (path: string) =
     }
     |> Seq.length
 
+// Sequenced (feature 203, US4/T024): renders through the shared, single-threaded SceneRenderer.
 [<Tests>]
 let tests =
-    testList
+    testSequenced
+    <| testList
         "Feature140 glyph-run rendering proof"
         [ test "bundled-font glyph-run proof measures the same advance it draws" {
               let data = Fonts.buildGlyphRunData "Stable" font
@@ -55,12 +77,13 @@ let tests =
           }
 
           test "glyph-run proof paints visible pixels through the shared SceneRenderer" {
+              withRaster "glyph-run pixel proof" (fun () ->
               let data = Fonts.buildGlyphRunData "GlyphRun" font
               let scene = Scene.glyphRun { X = 24.0; Y = 48.0 } data (Paint.fill Colors.white)
               let result, path = renderToPng 220 90 (Group [ scene ])
 
               Expect.equal result.Status ScreenshotOk "image evidence captured"
-              Expect.isGreaterThan (litPixelCount path) 0 "glyph-run proof renders visible pixels"
+              Expect.isGreaterThan (litPixelCount path) 0 "glyph-run proof renders visible pixels")
           }
 
           test "non-opt-in text fallback compatibility is unchanged" {

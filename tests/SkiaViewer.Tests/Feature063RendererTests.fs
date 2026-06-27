@@ -56,10 +56,34 @@ let private litPixels (lit: bool[,]) =
                     yield x, y
     }
 
+/// Tier-T1 raster capability probe (mirrors Audit_ReplayCache, feature 203 US4): can we stand up an
+/// offscreen raster surface at all? `SKSurface.Create` returns null (it does not throw) when the native
+/// raster backend is unavailable on a headless host.
+let private rasterAvailable: bool =
+    try
+        use s = SKSurface.Create(SKImageInfo(8, 8))
+        not (isNull s)
+    with _ -> false
+
+/// Run the raster body when the surface tier is present; otherwise record a deterministic skip-with-tier
+/// (Constitution VI) — never an intermittent red, never a faked pass. A genuine renderer defect on a
+/// host where raster IS available still fails loudly inside `body`.
+let private withRaster (what: string) (body: unit -> unit) =
+    if rasterAvailable then body ()
+    else
+        skiptest (
+            sprintf
+                "SKIPPED(tier=T1 raster/pixel GL): offscreen SKSurface unavailable on this host (SkiaSharp native/headless) — %s requires the raster/pixel render tier; recorded skipped-with-tier, not a pass (Constitution VI)."
+                what)
+
+// Sequenced (feature 203, US4/T024): renders through the shared, single-threaded SceneRenderer; every
+// renderer is sequenced so no two paints overlap and the pass set stays deterministic.
 [<Tests>]
 let tests =
-    testList "Feature063 image-evidence renderer" [
+    testSequenced
+    <| testList "Feature063 image-evidence renderer" [
         test "Line and Path render to pixels beyond the placeholder box (SC-001)" {
+          withRaster "Line/Path pixel rendering" (fun () ->
             // Terrain polyline + filled ground, both well to the right of (8,8)-(48,48).
             let terrain = Scene.line { X = 20.0; Y = 180.0 } { X = 300.0; Y = 190.0 } (Paint.stroke (Colors.rgb 210uy 210uy 70uy) 3.0)
 
@@ -87,10 +111,11 @@ let tests =
             Expect.isGreaterThan
                 rightOfPlaceholder
                 0
-                "Line/Path must render real pixels well to the right of the old 40x40 placeholder box, not collapse onto it"
+                "Line/Path must render real pixels well to the right of the old 40x40 placeholder box, not collapse onto it")
         }
 
         test "Text renders real glyphs, not a solid filled block (SC-001)" {
+          withRaster "Text glyph rendering" (fun () ->
             let scene = Group [ Scene.textAt { X = 120.0; Y = 120.0 } "HUD" Colors.white ]
             let result, path = renderToPng 320 160 scene
             Expect.equal result.Status ScreenshotOk "image evidence captured"
@@ -111,10 +136,11 @@ let tests =
             Expect.isLessThan
                 fillFraction
                 0.85
-                "Text must render as glyphs (interior gaps) rather than a solid filled rectangle"
+                "Text must render as glyphs (interior gaps) rather than a solid filled rectangle")
         }
 
         test "node count is structural; the image is the visual proof on a Line-only scene (SC-002)" {
+          withRaster "Line-only visual proof" (fun () ->
             let line = Scene.line { X = 20.0; Y = 180.0 } { X = 300.0; Y = 185.0 } (Paint.stroke Colors.white 2.0)
             let scene = Group [ line ]
 
@@ -133,6 +159,6 @@ let tests =
             Expect.isGreaterThan
                 rightOfPlaceholder
                 0
-                "a Line-only scene must prove visibility through rendered pixels, not a placeholder substitution that node-count checks accept"
+                "a Line-only scene must prove visibility through rendered pixels, not a placeholder substitution that node-count checks accept")
         }
     ]

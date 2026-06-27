@@ -58,9 +58,11 @@ let private capture (outPath: string) (scene: SceneNode) : ScreenshotEvidenceRes
           FrameRateCap = None }
     Viewer.captureScreenshotEvidence request options scene
 
+// Sequenced (feature 203, US4/T024): captures real frames through the shared, single-threaded SceneRenderer.
 [<Tests>]
 let tests =
-    testList "Feature175InteractionCapture" [
+    testSequenced
+    <| testList "Feature175InteractionCapture" [
         test "driving a click script changes the model, and the resulting frame is captured (or disclosed)" {
             // Locate the button in the initial frame so the script's click lands on it.
             let initial = Control.renderTree theme size (view size 0)

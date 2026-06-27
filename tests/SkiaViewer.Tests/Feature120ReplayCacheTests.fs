@@ -30,9 +30,13 @@ let private withCanvas (f: SKCanvas -> unit) =
     use surface = SKSurface.Create(SKImageInfo(64, 64))
     f surface.Canvas
 
+// Sequenced (feature 203, US4/T024): mutates the process-wide `activeReplayCache` and renders through
+// the shared, single-threaded SceneRenderer; sequencing isolates both so it cannot poison a concurrent
+// render's pixels or cache state.
 [<Tests>]
 let tests =
-    testList "Feature 120 backend replay cache (US3, FR-007/011/013)" [
+    testSequenced
+    <| testList "Feature 120 backend replay cache (US3, FR-007/011/013)" [
 
         test "a matching fingerprint is a HIT: the picture is replayed, the direct walk is skipped (FR-007)" {
             withCanvas (fun canvas ->

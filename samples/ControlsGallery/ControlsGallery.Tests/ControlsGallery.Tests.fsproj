@@ -1,11 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
     <GenerateProgramFile>false</GenerateProgramFile>
   </PropertyGroup>
-
   <!-- Expecto suite. Lives OUTSIDE the default test tier (not in FS.GG.Rendering.slnx);
        its deterministic suites (coverage, determinism, theme-invariance, degrade) are
        the CI-facing signal and never depend on a display (FR-016). -->
@@ -18,18 +17,15 @@
     <Compile Include="InteractionTests.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\ControlsGallery.Core\ControlsGallery.Core.fsproj" />
   </ItemGroup>
-
   <ItemGroup>
-    <PackageReference Include="FS.GG.UI.Controls" Version="0.1.0-preview.1" />
-    <PackageReference Include="FS.GG.UI.Controls.Elmish" Version="0.1.0-preview.1" />
-    <PackageReference Include="FS.GG.UI.SkiaViewer" Version="0.1.0-preview.1" />
+    <PackageReference Include="FS.GG.UI.Controls" Version="0.1.46-preview.1" />
+    <PackageReference Include="FS.GG.UI.Controls.Elmish" Version="0.1.46-preview.1" />
+    <PackageReference Include="FS.GG.UI.SkiaViewer" Version="0.1.47-preview.1" />
     <PackageReference Include="Expecto" Version="10.2.2" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.15.3" />
   </ItemGroup>
-
 </Project>

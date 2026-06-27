@@ -7,7 +7,7 @@ module AntShowcase.Core.CoverageMap
 open FS.GG.UI.Controls
 open AntShowcase.Core.Model
 
-/// All catalog control ids (the domain of the map) — the live 96 after the R1 feed refresh.
+/// All catalog control ids (the domain of the map) — the live 97 after the R1 feed refresh.
 let catalogIds (): string list =
     Catalog.supportedControls |> List.map (fun d -> d.Id)
 

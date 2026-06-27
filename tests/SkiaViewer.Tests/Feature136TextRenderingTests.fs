@@ -48,9 +48,35 @@ let private textScene (text: string) =
         .Nodes
     |> List.head
 
+/// Tier-T1 raster capability probe (mirrors Audit_ReplayCache, feature 203 US4): `SKSurface.Create`
+/// returns null (does not throw) when the native raster backend is unavailable on a headless host.
+let private rasterAvailable: bool =
+    try
+        use s = SKSurface.Create(SKImageInfo(8, 8))
+        not (isNull s)
+    with _ -> false
+
+/// Run the raster body when the surface tier is present; otherwise record a deterministic skip-with-tier
+/// (Constitution VI) — never an intermittent red, never a faked pass. A genuine defect on a raster-capable
+/// host still fails loudly inside `body`. (The pure font-resolution test above needs no surface and is
+/// not guarded.)
+let private withRaster (what: string) (body: unit -> unit) =
+    if rasterAvailable then body ()
+    else
+        skiptest (
+            sprintf
+                "SKIPPED(tier=T1 raster/pixel GL): offscreen SKSurface unavailable on this host (SkiaSharp native/headless) — %s requires the raster/pixel render tier; recorded skipped-with-tier, not a pass (Constitution VI)."
+                what)
+
+// Sequenced (feature 203, US4/T024): the byte-identical render proof and the tofu-disclosure render
+// read the shared, non-thread-safe `SceneRenderer` (and the process-wide fallback accumulator). Running
+// the whole list in the sequenced (non-parallel) phase keeps two same-seed renders byte-identical
+// regardless of what else is rendering — converting the disclosed shared-state flakiness into a stable
+// pass. (The pure font-resolution test needs no render but rides along harmlessly.)
 [<Tests>]
 let tests =
-    testList
+    testSequenced
+    <| testList
         "Feature136 text rendering (US1)"
         [ // T007
           test "@ renders as @ (not 7), mixed case preserved, decoratives authored-or-deliberate" {
@@ -76,16 +102,18 @@ let tests =
 
           // T009
           test "two same-seed headless text renders are byte-identical (SC-005)" {
+              withRaster "byte-identical headless text render" (fun () ->
               let scene = textScene "ada@example.com Stable —#▸·"
               let b1 = renderToPngBytes 360 80 scene
               let b2 = renderToPngBytes 360 80 scene
               Expect.isGreaterThan b1.Length 0 "rendered PNG is non-empty"
-              Expect.equal b1 b2 "byte-identical across two same-seed renders (host-independent fonts)"
+              Expect.equal b1 b2 "byte-identical across two same-seed renders (host-independent fonts)")
           }
 
-          // T010 — sequenced because it reads the process-wide disclosure accumulator after a render.
-          testSequenced
-          <| test "tofu disclosed; no plausible-wrong glyph is ever produced (FR-001)" {
+          // T010 — reads the process-wide disclosure accumulator after a render (the whole list is
+          // already sequenced above, so this no longer needs its own sequencing).
+          test "tofu disclosed; no plausible-wrong glyph is ever produced (FR-001)" {
+              withRaster "tofu disclosure after a live render" (fun () ->
               let tofu = Char.ConvertFromUtf32 0x4E00 // 一 — no bundled coverage in any face
               let resolved = Fonts.resolveText font (sprintf "A%sB" tofu)
 
@@ -107,5 +135,5 @@ let tests =
               renderToPngBytes 140 50 (textScene (sprintf "x%sy" tofu)) |> ignore
               let report = Text.fallbackReport ()
               Expect.isTrue (report.TofuCount >= 1) "tofu disclosed in the per-page report"
-              Expect.isNonEmpty (Text.fallbackDiagnostics ()) "structured fallback diagnostics emitted"
+              Expect.isNonEmpty (Text.fallbackDiagnostics ()) "structured fallback diagnostics emitted")
           } ]

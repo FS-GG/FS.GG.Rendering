@@ -45,40 +45,49 @@ let private packageReferences (project: string) : (string * string) list =
         | _ -> None)
     |> Seq.toList
 
+// The samples whose FS.GG.UI pins this gate guards. Originally AntShowcase-only; extended (feature 203,
+// US1/T008) to every package-consuming sample so pin coherence cannot drift unguarded in any of them.
+let private guardedSamples =
+    [ "samples/AntShowcase"; "samples/SampleApps"; "samples/SecondAntShowcase"; "samples/ControlsGallery" ]
+
 [<Tests>]
 let tests =
     testList "Feature163 package feed validation" [
-        test "AntShowcase FS.GG.UI package pins match source-controlled package versions" {
+        test "all package-consuming samples' FS.GG.UI pins match source-controlled package versions" {
             let versions = packageVersions ()
-            let projects = Directory.GetFiles(repo "samples/AntShowcase", "*.fsproj", SearchOption.AllDirectories)
 
-            let pins =
-                projects
-                |> Array.collect (fun project -> packageReferences project |> List.map (fun pin -> project, pin) |> List.toArray)
+            for sample in guardedSamples do
+                let projects = Directory.GetFiles(repo sample, "*.fsproj", SearchOption.AllDirectories)
 
-            Expect.isGreaterThan pins.Length 0 "AntShowcase package pins exist"
+                let pins =
+                    projects
+                    |> Array.collect (fun project -> packageReferences project |> List.map (fun pin -> project, pin) |> List.toArray)
 
-            for project, (packageId, declared) in pins do
-                Expect.isTrue (versions.ContainsKey packageId) $"{packageId} has a source version"
-                Expect.equal declared versions[packageId] $"{packageId} pin in {project}"
+                Expect.isGreaterThan pins.Length 0 $"{sample} package pins exist"
+
+                for project, (packageId, declared) in pins do
+                    Expect.isTrue (versions.ContainsKey packageId) $"{packageId} has a source version"
+                    Expect.equal declared versions[packageId] $"{packageId} pin in {project}"
         }
 
-        test "AntShowcase selected sample does not directly reference framework src projects" {
-            let projects = Directory.GetFiles(repo "samples/AntShowcase", "*.fsproj", SearchOption.AllDirectories)
+        test "package-consuming samples do not directly reference framework src projects" {
+            for sample in guardedSamples do
+                let projects = Directory.GetFiles(repo sample, "*.fsproj", SearchOption.AllDirectories)
 
-            for project in projects do
-                let text = File.ReadAllText project
-                Expect.isFalse (text.Contains("..\\..\\..\\src\\", StringComparison.OrdinalIgnoreCase)) $"no source ProjectReference in {project}"
-                Expect.isFalse (text.Contains("../../../src/", StringComparison.OrdinalIgnoreCase)) $"no source ProjectReference in {project}"
+                for project in projects do
+                    let text = File.ReadAllText project
+                    Expect.isFalse (text.Contains("..\\..\\..\\src\\", StringComparison.OrdinalIgnoreCase)) $"no source ProjectReference in {project}"
+                    Expect.isFalse (text.Contains("../../../src/", StringComparison.OrdinalIgnoreCase)) $"no source ProjectReference in {project}"
         }
 
         test "package source mapping keeps FS.GG.UI packages on the local feed" {
-            let text = File.ReadAllText(repo "samples/AntShowcase/nuget.config")
+            for sample in guardedSamples do
+                let text = File.ReadAllText(repo (sample + "/nuget.config"))
 
-            Expect.stringContains text "<packageSourceMapping>" "source mapping"
-            Expect.stringContains text "key=\"nuget-local\"" "local feed"
-            Expect.stringContains text "pattern=\"FS.GG.UI.*\"" "framework packages"
-            Expect.stringContains text "key=\"nuget.org\"" "third-party source"
+                Expect.stringContains text "<packageSourceMapping>" $"{sample} source mapping"
+                Expect.stringContains text "key=\"nuget-local\"" $"{sample} local feed"
+                Expect.stringContains text "pattern=\"FS.GG.UI.*\"" $"{sample} framework packages"
+                Expect.stringContains text "key=\"nuget.org\"" $"{sample} third-party source"
         }
 
         test "source-controlled readiness evidence links package proof lanes and validation records" {

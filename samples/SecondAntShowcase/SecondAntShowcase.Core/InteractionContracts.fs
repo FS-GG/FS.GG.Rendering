@@ -55,7 +55,7 @@ let all: InteractionContract list =
       contract "upload" [ "upload" ] "select" "pointer-discrete" "select upload artifact" "UploadValue changes" "selected file name changes" (UploadChanged "contract.pdf")
       contract "data-collection" [ "list-view"; "data-grid" ] "select" "pointer-discrete" "select or page collection" "PaginationPage changes" "visible row/page state changes" (PageChanged 2)
       contract "form-validation" [ "validation-message" ] "click" "pointer-discrete" "submit invalid form" "Form.Phase becomes Invalid" "validation message appears" FormSubmitted
-      contract "graph-custom" [ "graph-view"; "custom-control" ] "click" "pointer-discrete" "script pointer/keyboard action" "interaction event is recorded" "custom/graph status changes" ButtonClicked ]
+      contract "graph-custom" [ "graph-view"; "canvas"; "custom-control" ] "click" "pointer-discrete" "script pointer/keyboard action" "interaction event is recorded" "custom/graph status changes" ButtonClicked ]
 
 let displayOnlyReasons: Map<string, string> =
     [ "text-block", "static typography sample"

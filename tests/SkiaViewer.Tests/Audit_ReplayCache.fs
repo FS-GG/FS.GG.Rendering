@@ -79,9 +79,16 @@ let private boundaryScene (cacheId: uint64) (yOff: float) : SceneNode =
                 [ Rectangle((4.0, yOff, 40.0, 14.0), { Red = 30uy; Green = 144uy; Blue = 255uy; Alpha = 255uy })
                   SceneNode.Text((6.0, yOff + 11.0), "row", { Red = 240uy; Green = 240uy; Blue = 245uy; Alpha = 255uy }) ] } }
 
+// Sequenced (feature 203, US4/T024): the byte-identical cache-vs-direct parity proof renders through the
+// shared, single-threaded SceneRenderer; a concurrent render in another suite would tear its pixels and
+// flip this red intermittently (the disclosed feature-202 "GL flakiness" — a shared-state race, not a
+// missing window system). Running it in the non-parallel phase — together with every other renderer,
+// all likewise sequenced — keeps the pass set deterministic. The canonical `rasterAvailable`/`tierSkip`
+// idiom below is unchanged; only the list's scheduling is.
 [<Tests>]
 let tests =
-    testList "Audit ReplayCache (Feature 006: verify imported mechanisms)" [
+    testSequenced
+    <| testList "Audit ReplayCache (Feature 006: verify imported mechanisms)" [
 
         // ---- T008 scaffold sanity (CPU-only; no surface/GL) ----------------------------------------
         test "Audit: scaffold sanity — create/stats reachable, disabled cache reports zeroed counters (T008)" {

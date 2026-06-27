@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/202-fix-build-fsx-engine/plan.md
+at specs/203-fix-disclosed-test-reds/plan.md
 <!-- SPECKIT END -->
 
 ## Ant Design — source of truth

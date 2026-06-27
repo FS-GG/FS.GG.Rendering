@@ -18,6 +18,23 @@ type HostMsg =
 let livePersistentTestsEnabled () =
     String.Equals(Environment.GetEnvironmentVariable "FS_SKIA_RUN_LIVE_PERSISTENT_TESTS", "1", StringComparison.Ordinal)
 
+// US4 (feature 203, T019): a host with no desktop session cannot open a native window, so the live
+// `Viewer.runApp`/`Viewer.run` path would fail or hang nondeterministically there (the disclosed GL
+// flakiness). `desktopSessionDiagnostic` classifies such hosts as "unsupported-host" deterministically,
+// so we probe it BEFORE invoking the live path and record a deterministic skip-with-tier (Constitution
+// VI) when the window system is absent. This does not always-skip (a host WITH a session still runs the
+// live path, where a genuine defect still surfaces via the `Result.Error` arm) and does not swallow
+// failures — it only converts the irreducible "no window-system here" case from an intermittent red into
+// an explicit skip.
+let nativeWindowAvailable () =
+    Viewer.desktopSessionDiagnostic().DiagnosticClass <> "unsupported-host"
+
+let private liveWindowSkip (what: string) =
+    skiptest (
+        sprintf
+            "SKIPPED(tier=T2 native-window/GL): no desktop session on this host (desktopSessionDiagnostic=unsupported-host) — %s requires a live window/GL context; recorded skipped-with-tier, not a pass (Constitution VI)."
+            what)
+
 let environmentOverrideLock = obj()
 
 let withEnvironment variables action =
@@ -42,9 +59,12 @@ let isPngFile path =
         let signature = IO.File.ReadAllBytes(path) |> Array.truncate 8
         signature = [| 0x89uy; 0x50uy; 0x4Euy; 0x47uy; 0x0Duy; 0x0Auy; 0x1Auy; 0x0Auy |]
 
+// Sequenced (feature 203, US4/T024): several cases capture screenshot evidence / drive the live host
+// through the shared, single-threaded SceneRenderer; sequencing every renderer keeps the suite deterministic.
 [<Tests>]
 let tests =
-    testList "SkiaViewer MVU contract" [
+    testSequenced
+    <| testList "SkiaViewer MVU contract" [
         test "init emits window-open effect" {
             let model, effects = Viewer.init { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None }
             Expect.isFalse model.IsRunning "viewer starts stopped"
@@ -846,6 +866,9 @@ let tests =
                   Diagnostics = Viewer.defaultDiagnostics }
 
             if livePersistentTestsEnabled() then
+                if not (nativeWindowAvailable()) then
+                    liveWindowSkip "runApp interactive semantic-outcome launch"
+                else
                 match Viewer.runApp { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None } host with
                 | Result.Ok outcome ->
                     Expect.equal outcome.Mode "interactive-window" "runApp reports the interactive launch mode"

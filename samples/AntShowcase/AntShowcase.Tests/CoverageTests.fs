@@ -5,7 +5,7 @@ open AntShowcase.Core
 open AntShowcase.Core.Model
 
 /// FR-003 / SC-001: every catalog control maps to exactly one Catalog-kind page, and the
-/// assigned ids equal `Catalog.supportedControls` (96), with zero unreferenced/duplicated.
+/// assigned ids equal `Catalog.supportedControls` (97), with zero unreferenced/duplicated.
 [<Tests>]
 let coverageTests =
     testList "Coverage" [
@@ -19,7 +19,7 @@ let coverageTests =
         test "the catalog (live count) maps bijectively onto the Catalog pages" {
             let catalog = CoverageMap.catalogIds ()
             let assigned = CoverageMap.assignedIds ()
-            Expect.equal (List.length catalog) 96 "96 catalog controls"
+            Expect.equal (List.length catalog) 97 "97 catalog controls"
             Expect.equal (List.length assigned) (List.length catalog) "assigned slots == catalog count"
             Expect.equal (List.length (List.distinct assigned)) (List.length assigned) "all assigned ids distinct"
             Expect.equal (Set.ofList catalog) (Set.ofList assigned) "catalog set equals assigned set"

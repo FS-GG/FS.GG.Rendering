@@ -20,10 +20,10 @@
     <ProjectReference Include="..\AntShowcase.Core\AntShowcase.Core.fsproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="FS.GG.UI.Controls.Elmish" Version="0.1.32-preview.1" />
-    <PackageReference Include="FS.GG.UI.Diagnostics" Version="0.1.32-preview.1" />
-    <PackageReference Include="FS.GG.UI.SkiaViewer" Version="0.1.32-preview.1" />
-    <PackageReference Include="FS.GG.UI.Testing" Version="0.1.32-preview.1" />
+    <PackageReference Include="FS.GG.UI.Controls.Elmish" Version="0.1.46-preview.1" />
+    <PackageReference Include="FS.GG.UI.Diagnostics" Version="0.1.36-preview.1" />
+    <PackageReference Include="FS.GG.UI.SkiaViewer" Version="0.1.47-preview.1" />
+    <PackageReference Include="FS.GG.UI.Testing" Version="0.1.37-preview.1" />
     <PackageReference Include="SkiaSharp" Version="4.147.0-preview.3.1" />
   </ItemGroup>
 </Project>

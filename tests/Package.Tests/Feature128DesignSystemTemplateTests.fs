@@ -13,6 +13,7 @@ module Feature128DesignSystemTemplateTests
 // set, so a new accepted value left unvalidated fails the gate (FR-009/SC-006).
 
 open System
+open System.Diagnostics
 open System.IO
 open Expecto
 open FS.GG.TestSupport
@@ -24,6 +25,33 @@ let private repositoryPath (relativePath: string) =
 
 let private validationReportPath =
     repositoryPath "specs/128-design-system-template-param/readiness/design-system-template-validation.md"
+
+// Self-provisioning (feature 203, US2/T011): `readiness/` is gitignored, so a fresh checkout has no
+// report and the gate would be red-by-default through no fault of the release surface (FR-002). Before
+// the GV gates evaluate, produce the report from the validator's env-free verdict-core path
+// (`--emit-report`: no `dotnet new`, build, GL, or network). The heavy live scaffold+build proof stays
+// opt-in behind FS_GG_RUN_DESIGN_SYSTEM_VALIDATION=1; this only guarantees the report's *presence* from
+// a current verdict-core run — it does not weaken any GV assertion (GV-8 still fails loudly if the
+// report cannot be produced). This runs once at module initialization, before the `[<Tests>]` value.
+let private selfProvisionReport () =
+    if not (File.Exists validationReportPath) then
+        let psi = ProcessStartInfo("dotnet")
+        psi.WorkingDirectory <- repositoryRoot
+        psi.UseShellExecute <- false
+        psi.RedirectStandardOutput <- true
+        psi.RedirectStandardError <- true
+        [ "fsi"; "scripts/validate-design-system-template.fsx"; "--emit-report" ]
+        |> List.iter psi.ArgumentList.Add
+        match Process.Start psi with
+        | null -> ()
+        | started ->
+            use proc = started
+            proc.StandardOutput.ReadToEnd() |> ignore
+            proc.StandardError.ReadToEnd() |> ignore
+            proc.WaitForExit()
+    // Whether or not provisioning ran, GV-8 (readValidationReport) asserts the report now exists.
+
+let private reportProvisioned = selfProvisionReport ()
 
 // GV-8: the report MUST exist; its absence is a loud failure (failing-first before the regenerator).
 let private readValidationReport () =

@@ -59,11 +59,33 @@ let private trianglePath =
 
     Path(spec, Paint.fill (Colors.rgb 220uy 80uy 60uy))
 
+/// Tier-T1 raster capability probe (mirrors Audit_ReplayCache, feature 203 US4): `SKSurface.Create`
+/// returns null (does not throw) when the native raster backend is unavailable on a headless host.
+let private rasterAvailable: bool =
+    try
+        use s = SKSurface.Create(SKImageInfo(8, 8))
+        not (isNull s)
+    with _ -> false
+
+/// Run the raster body when the surface tier is present; otherwise record a deterministic skip-with-tier
+/// (Constitution VI) — never an intermittent red, never a faked pass. A genuine defect on a raster-capable
+/// host still fails loudly inside `body`.
+let private withRaster (what: string) (body: unit -> unit) =
+    if rasterAvailable then body ()
+    else
+        skiptest (
+            sprintf
+                "SKIPPED(tier=T1 raster/pixel GL): offscreen SKSurface unavailable on this host (SkiaSharp native/headless) — %s requires the raster/pixel render tier; recorded skipped-with-tier, not a pass (Constitution VI)."
+                what)
+
+// Sequenced (feature 203, US4/T024): renders through the shared, single-threaded SceneRenderer.
 [<Tests>]
 let feature086SceneTranslateTests =
-    testList "Feature 086 Scene.translate / sizedText (US5)" [
+    testSequenced
+    <| testList "Feature 086 Scene.translate / sizedText (US5)" [
 
         test "translate shifts every painted pixel of a Path sub-scene by exactly (dx,dy) (FR-013)" {
+          withRaster "translate pixel-shift proof" (fun () ->
             let baseScene = trianglePath
             let dx, dy = 50, 30
             let translated = Translate((float dx, float dy), { Nodes = [ baseScene ] })
@@ -77,10 +99,11 @@ let feature086SceneTranslateTests =
             Expect.equal (sMinX - bMinX) dx "left edge shifts by dx"
             Expect.equal (sMaxX - bMaxX) dx "right edge shifts by dx"
             Expect.equal (sMinY - bMinY) dy "top edge shifts by dy"
-            Expect.equal (sMaxY - bMaxY) dy "bottom edge shifts by dy"
+            Expect.equal (sMaxY - bMaxY) dy "bottom edge shifts by dy")
         }
 
         test "nested translate composes additively (sum of offsets) (FR-013)" {
+          withRaster "nested translate additivity" (fun () ->
             let nested =
                 Translate((20.0, 0.0), { Nodes = [ Translate((35.0, 0.0), { Nodes = [ trianglePath ] }) ] })
 
@@ -89,10 +112,11 @@ let feature086SceneTranslateTests =
             let _, nestedPath = renderToPng 200 200 nested
             let _, combinedPath = renderToPng 200 200 combined
 
-            Expect.equal (bbox (litPoints nestedPath)) (bbox (litPoints combinedPath)) "translate a then b == translate (a+b)"
+            Expect.equal (bbox (litPoints nestedPath)) (bbox (litPoints combinedPath)) "translate a then b == translate (a+b)")
         }
 
         test "sizedText renders larger glyphs at a larger explicit size; bare Text still renders (FR-014)" {
+          withRaster "sizedText glyph extent" (fun () ->
             let small = SizedText((40.0, 90.0), "WWWW", 12.0, Colors.white)
             let large = SizedText((40.0, 90.0), "WWWW", 36.0, Colors.white)
             let bare = Text((40.0, 90.0), "WWWW", Colors.white)
@@ -112,7 +136,7 @@ let feature086SceneTranslateTests =
                 let minX, _, maxX, _ = bbox pts
                 maxX - minX
 
-            Expect.isGreaterThan (width largePts) (width smallPts) "a larger explicit size yields wider glyph extent"
+            Expect.isGreaterThan (width largePts) (width smallPts) "a larger explicit size yields wider glyph extent")
         }
 
         test "sizedText is structurally a SizedTextElement; translate wraps as TranslateElement" {

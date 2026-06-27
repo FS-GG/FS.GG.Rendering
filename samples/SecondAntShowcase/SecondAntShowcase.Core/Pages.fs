@@ -1,4 +1,4 @@
-/// The 13 family pages composing all 96 catalog controls under the Ant theme
+/// The 13 family pages composing all 97 catalog controls under the Ant theme
 /// (contracts/page-registry.md, FR-001/FR-004). Legacy builders come from
 /// `FS.GG.UI.Controls` (opened); the net-new Ant primitives live in the feature-132
 /// `Display2`/`Navigation2`/`Feedback2`/`DataEntry2`/`Interactive2` modules and the
@@ -319,10 +319,17 @@ let private graphsPage (_s: DemoState): Control<SecondAntShowcaseMsg> =
           Event = fun _ -> None
           Accessibility = None
           Diagnostics = [] }
+    // A small author-supplied scene for the embedded `canvas` control (Feature 191): a filled box
+    // with a label, painted in canvas-local coordinates.
+    let canvasScene: Scene =
+        { Nodes =
+            [ Rectangle((0.0, 0.0, 160.0, 90.0), { Red = 22uy; Green = 119uy; Blue = 255uy; Alpha = 255uy })
+              SceneNode.Text((12.0, 50.0), "canvas", { Red = 255uy; Green = 255uy; Blue = 255uy; Alpha = 255uy }) ] }
     group
         [ largeSection "graph-view" (GraphView.create [ GraphView.nodes [ "Alpha"; "Beta"; "Gamma" ] ])
           largeSection "sankey-diagram" (SankeyDiagram.create [ SankeyDiagram.nodes [ "Source"; "Stage"; "Target" ] ])
           largeSection "chord-diagram" (ChordDiagram.create [ ChordDiagram.nodes [ "A"; "B"; "C" ] ])
+          largeSection "canvas" (Canvas.create [ Canvas.scene canvasScene ])
           section "custom-control" (CustomControl.create customDef []) ]
 
 /// The 13 family pages, tagged `Catalog`, in nav order. The control→page assignment is
@@ -365,5 +372,5 @@ let familyPages: Page list =
         ControlIds = [ "heatmap"; "radar-chart"; "rose-chart"; "waterfall-chart"; "funnel-chart"; "gauge-chart"; "treemap"; "sunburst" ]
         View = chartsAdvPage }
       { Id = "graphs-custom"; Title = "Graphs & Custom"; Kind = Catalog
-        ControlIds = [ "graph-view"; "sankey-diagram"; "chord-diagram"; "custom-control" ]
+        ControlIds = [ "graph-view"; "sankey-diagram"; "chord-diagram"; "canvas"; "custom-control" ]
         View = graphsPage } ]

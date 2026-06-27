@@ -1,9 +1,8 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <OutputType>Library</OutputType>
   </PropertyGroup>
-
   <!-- Pure, testable sample cores + shared harness. Consumes the framework as packed
        FS.GG.UI.* packages only (no ProjectReference into src/ — FR-010 / SC-006).
        <Compile Include> order is dependency order:
@@ -23,14 +22,12 @@
     <Compile Include="Registry.fs" />
     <Compile Include="Coverage.fs" />
   </ItemGroup>
-
   <ItemGroup>
-    <PackageReference Include="FS.GG.UI.Controls" Version="0.1.0-preview.1" />
-    <PackageReference Include="FS.GG.UI.Controls.Elmish" Version="0.1.0-preview.1" />
-    <PackageReference Include="FS.GG.UI.SkiaViewer" Version="0.1.0-preview.1" />
-    <PackageReference Include="FS.GG.UI.DesignSystem" Version="0.1.0-preview.1" />
-    <PackageReference Include="FS.GG.UI.Themes.Default" Version="0.1.0-preview.1" />
-    <PackageReference Include="FS.GG.UI.KeyboardInput" Version="0.1.0-preview.1" />
+    <PackageReference Include="FS.GG.UI.Controls" Version="0.1.46-preview.1" />
+    <PackageReference Include="FS.GG.UI.Controls.Elmish" Version="0.1.46-preview.1" />
+    <PackageReference Include="FS.GG.UI.SkiaViewer" Version="0.1.47-preview.1" />
+    <PackageReference Include="FS.GG.UI.DesignSystem" Version="0.1.44-preview.1" />
+    <PackageReference Include="FS.GG.UI.Themes.Default" Version="0.1.36-preview.1" />
+    <PackageReference Include="FS.GG.UI.KeyboardInput" Version="0.1.36-preview.1" />
   </ItemGroup>
-
 </Project>

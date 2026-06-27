@@ -13,9 +13,11 @@ module Feature175RepaintSignalTests
 open Expecto
 open FS.GG.UI.SkiaViewer
 
+// Sequenced (feature 203, US4/T024): re-derives and renders through the shared, single-threaded SceneRenderer.
 [<Tests>]
 let tests =
-    testList "Feature175RepaintSignal" [
+    testSequenced
+    <| testList "Feature175RepaintSignal" [
         test "no product message → the scene is re-derived from host.View (renders THIS input)" {
             let derivations = ref 0
             let result = Viewer.runtimeStateRepaint false "stale" (fun () -> incr derivations; "fresh")

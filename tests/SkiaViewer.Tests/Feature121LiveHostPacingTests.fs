@@ -17,9 +17,11 @@ let private options cap : ViewerOptions =
       PresentMode = ViewerPresentMode.OffscreenReadback
       FrameRateCap = cap }
 
+// Sequenced (feature 203, US4/T024): drives the live host render path through the shared, single-threaded SceneRenderer.
 [<Tests>]
 let tests =
-    testList
+    testSequenced
+    <| testList
         "Feature 121 live host pacing (US1, FR-001/002/003)"
         [ test "shouldAdvanceFrame advances only once the frame interval has elapsed (SC-001)" {
               let interval = 1.0 / 60.0
