@@ -111,8 +111,8 @@ version-conflict; two installs at different times resolve identically.
 
 - [X] T012 [US2] **PV-6a (profiles restore & build from the package, pre-tag)**: for each of `app`, `headless-scene`, `governed`, `sample-pack` — `dotnet new fs-gg-ui --profile <p> -o /tmp/fsgg-<p>` → `dotnet restore` → `dotnet build`; assert zero missing-package (NU1101) and zero version-conflict errors against one consistent `FS.GG.UI.* 0.1.50-preview.1`; record per-profile evidence in `readiness/profile-<p>.md` (FR-009, SC-004)
 - [X] T013 [P] [US2] **Reproducibility (double-restore)**: restore one scaffolded profile into two clean caches (`dotnet restore /tmp/fsgg-app --packages /tmp/cacheA`; `… --packages /tmp/cacheB`) and diff the resulting `packages.lock.json`; confirm identical resolution at two times; record in `readiness/reproducibility.md` (SC-005)
-- [ ] T014 [US2] **Tag the coherent set** (only after T012–T013 green): `git tag -a fs-gg-ui-template/v0.1.50-preview.1 -m "coherent fs-gg-ui template snapshot: FS.GG.UI.Template 0.1.50-preview.1 over FS.GG.UI.* 0.1.50-preview.1"` then `git push origin fs-gg-ui-template/v0.1.50-preview.1`; never move an existing tag (FR-002, FR-003)
-- [ ] T015 [US2] **PV-6b (from-tag repack reproduces the package, post-tag)** (FR-009 / invariant I1): from a clean checkout of the tag confirm `grep '<Version>' .template.package/FS.GG.UI.Template.fsproj` shows `0.1.50-preview.1` and a re-`dotnet pack` reproduces `FS.GG.UI.Template.0.1.50-preview.1.nupkg`; confirm version-agreement across package + tag + (pending) registry; record in `readiness/reproducibility.md`
+- [X] T014 [US2] **Tag the coherent set** (only after T012–T013 green): `git tag -a fs-gg-ui-template/v0.1.50-preview.1 -m "coherent fs-gg-ui template snapshot: FS.GG.UI.Template 0.1.50-preview.1 over FS.GG.UI.* 0.1.50-preview.1"` then `git push origin fs-gg-ui-template/v0.1.50-preview.1`; never move an existing tag (FR-002, FR-003)
+- [X] T015 [US2] **PV-6b (from-tag repack reproduces the package, post-tag)** (FR-009 / invariant I1): from a clean checkout of the tag confirm `grep '<Version>' .template.package/FS.GG.UI.Template.fsproj` shows `0.1.50-preview.1` and a re-`dotnet pack` reproduces `FS.GG.UI.Template.0.1.50-preview.1.nupkg`; confirm version-agreement across package + tag + (pending) registry; record in `readiness/reproducibility.md`
 
 **Checkpoint (state TAGGED)**: The coherent set is named, pushed, and reproducible from the tag. US1+US2
 both independently verifiable. Do NOT reconcile the cross-repo record until the tag is pushed (FR-010).
@@ -134,10 +134,10 @@ version + tag — all verifiable without reading code.
 > repo's files directly. On any partial failure, the record stays **in-progress / not-yet-coherent**
 > (FR-010), recorded in `readiness/cross-repo-resolution.md`.
 
-- [ ] T016 [US3] **XR-A (registry row)**: via the coordination protocol, update the `fs-gg-ui-template` row in `FS-GG/.github` `registry/dependencies.yml` — recorded version `0.1.50-preview.1`, coherent state recorded, tag reference `fs-gg-ui-template/v0.1.50-preview.1`, `resolved_by` (publishing commit + tag), `tracking` link to this feature; commit prefix `registry:` (FR-007)
-- [ ] T017 [US3] **XR-B (compatibility projection)**: update the `fs-gg-ui-template` row in `FS-GG/.github` `docs/registry/compatibility.md` to state the **same** version/tag/coherent state as XR-A (authoritative row and projection must agree — FR-007)
-- [ ] T018 [US3] **XR-C (dependent request response)**: post a `## Response` on `FS-GG/FS.GG.SDD#1` via `gh issue comment 1 --repo FS-GG/FS.GG.SDD` citing the published `FS.GG.UI.Template 0.1.50-preview.1`, the tag `fs-gg-ui-template/v0.1.50-preview.1`, and the published §5 generation contract the scaffold path fulfils; close if SDD confirms, else leave open with the response (FR-008); record in `readiness/cross-repo-resolution.md`
-- [ ] T019 [US3] **XR-D (board transition)**: move the P1 Rendering Coordination item "Publish FS.GG.UI.Template carrying the new parameter; tag the coherent set" to **Done** and clear the "blocked by lifecycle symbol" relationship — only once XR-A..XR-C and PV-1..PV-6 hold (FR-011)
+- [X] T016 [US3] **XR-A (registry row)**: via the coordination protocol, update the `fs-gg-ui-template` row in `FS-GG/.github` `registry/dependencies.yml` — recorded version `0.1.50-preview.1`, coherent state recorded, tag reference `fs-gg-ui-template/v0.1.50-preview.1`, `resolved_by` (publishing commit + tag), `tracking` link to this feature; commit prefix `registry:` (FR-007)
+- [X] T017 [US3] **XR-B (compatibility projection)**: update the `fs-gg-ui-template` row in `FS-GG/.github` `docs/registry/compatibility.md` to state the **same** version/tag/coherent state as XR-A (authoritative row and projection must agree — FR-007)
+- [X] T018 [US3] **XR-C (dependent request response)**: post a `## Response` on `FS-GG/FS.GG.SDD#1` via `gh issue comment 1 --repo FS-GG/FS.GG.SDD` citing the published `FS.GG.UI.Template 0.1.50-preview.1`, the tag `fs-gg-ui-template/v0.1.50-preview.1`, and the published §5 generation contract the scaffold path fulfils; close if SDD confirms, else leave open with the response (FR-008); record in `readiness/cross-repo-resolution.md`
+- [X] T019 [US3] **XR-D (board transition)**: move the P1 Rendering Coordination item "Publish FS.GG.UI.Template carrying the new parameter; tag the coherent set" to **Done** and clear the "blocked by lifecycle symbol" relationship — only once XR-A..XR-C and PV-1..PV-6 hold (FR-011)
 
 **Checkpoint (state COHERENT)**: Package + tag + registry/projection + request response all agree. The
 release is coherent and the board item is Done.
@@ -148,9 +148,9 @@ release is coherent and the board item is Done.
 
 **Purpose**: Final coherence proof and non-regression backstop.
 
-- [ ] T020 **Non-regression backstop**: re-run `dotnet fsi scripts/baseline-tests.fsx --out specs/206-publish-template-coherent-set/readiness/baseline-after.md`; confirm no project flipped green→red vs T002 (mirrors 204 T001/T025); disclose any change
-- [ ] T021 [P] Run the full `quickstart.md` end-to-end (Steps 0–8) and confirm every "Done when" bullet (SC-001..SC-006) is satisfiable from the recorded evidence
-- [ ] T022 Final FR-010 audit: confirm the cross-repo record reads **coherent** only because all of publish/tag/registry/projection/response agree, and that no intermediate failure left it falsely coherent; summarize the release in `readiness/cross-repo-resolution.md`
+- [X] T020 **Non-regression backstop**: re-run `dotnet fsi scripts/baseline-tests.fsx --out specs/206-publish-template-coherent-set/readiness/baseline-after.md`; confirm no project flipped green→red vs T002 (mirrors 204 T001/T025); disclose any change
+- [X] T021 [P] Run the full `quickstart.md` end-to-end (Steps 0–8) and confirm every "Done when" bullet (SC-001..SC-006) is satisfiable from the recorded evidence
+- [X] T022 Final FR-010 audit: confirm the cross-repo record reads **coherent** only because all of publish/tag/registry/projection/response agree, and that no intermediate failure left it falsely coherent; summarize the release in `readiness/cross-repo-resolution.md`
 
 ---
 
