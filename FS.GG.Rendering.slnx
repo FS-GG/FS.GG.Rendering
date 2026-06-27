@@ -10,6 +10,7 @@
     <Project Path="src/Elmish/Elmish.fsproj" />
     <Project Path="src/KeyboardInput/KeyboardInput.fsproj" />
     <Project Path="src/Layout/Layout.fsproj" />
+    <Project Path="src/Meta/FS.GG.UI.fsproj" />
     <Project Path="src/Scene/Scene.fsproj" />
     <Project Path="src/SkiaViewer/SkiaViewer.fsproj" />
     <Project Path="src/Symbology/Symbology.fsproj" />

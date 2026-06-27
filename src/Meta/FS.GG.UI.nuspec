@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Feature 207 — Optional FS.GG.UI BOM / metapackage.
+
+  This is the single hand-authored membership list: one <dependency> per packable FS.GG.UI.*
+  member, each pinned at the EXACT version [$version$]. Exact brackets are what make any
+  deviation (a stale Y<V downgrade OR a newer Y>V upgrade) fail loudly at restore/build
+  (NU1605/NU1107) instead of silently resolving to a mixed graph — a floating [$version$,)
+  lower bound would only catch the downgrade. The $version$ token is supplied by the same
+  -p:Version=V that packs the members (NuspecProperties=version=$(Version)), so there is no
+  second version literal anywhere (INV-1 / FR-009). The metapackage ships NO assembly
+  (IncludeBuildOutput=false): it is dependencies only.
+
+  Membership drift is guarded by Feature207BomMembershipTests: this dependency-id set MUST
+  equal the discovered IsPackable=true FS.GG.UI.* project set under src/** (template excluded).
+  Add/remove a member here in lockstep with src/** or the parity test goes red.
+-->
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>FS.GG.UI</id>
+    <version>$version$</version>
+    <authors>FS.GG Contributors</authors>
+    <owners>FS.GG Contributors</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <license type="expression">MIT</license>
+    <projectUrl>https://github.com/FS-GG/FS.GG.Rendering</projectUrl>
+    <repository type="git" url="https://github.com/FS-GG/FS.GG.Rendering.git" />
+    <description>Optional BOM / metapackage for the FS.GG.UI framework. Reference this single package at one version to pin the entire coherent FS.GG.UI.* set to that version; any attempt to mix a member at a different version fails loudly at restore/build. Ships no assembly — dependencies only.</description>
+    <tags>fsharp skia ui bom metapackage coherent-set</tags>
+    <dependencies>
+      <dependency id="FS.GG.UI.Build" version="[$version$]" />
+      <dependency id="FS.GG.UI.Canvas" version="[$version$]" />
+      <dependency id="FS.GG.UI.Controls" version="[$version$]" />
+      <dependency id="FS.GG.UI.Controls.Elmish" version="[$version$]" />
+      <dependency id="FS.GG.UI.DesignSystem" version="[$version$]" />
+      <dependency id="FS.GG.UI.Diagnostics" version="[$version$]" />
+      <dependency id="FS.GG.UI.Elmish" version="[$version$]" />
+      <dependency id="FS.GG.UI.KeyboardInput" version="[$version$]" />
+      <dependency id="FS.GG.UI.Layout" version="[$version$]" />
+      <dependency id="FS.GG.UI.Scene" version="[$version$]" />
+      <dependency id="FS.GG.UI.SkiaViewer" version="[$version$]" />
+      <dependency id="FS.GG.UI.Symbology" version="[$version$]" />
+      <dependency id="FS.GG.UI.Symbology.Render" version="[$version$]" />
+      <dependency id="FS.GG.UI.Testing" version="[$version$]" />
+      <dependency id="FS.GG.UI.Themes.AntDesign" version="[$version$]" />
+      <dependency id="FS.GG.UI.Themes.Default" version="[$version$]" />
+    </dependencies>
+  </metadata>
+  <!-- Explicit empty <files>: this is a dependencies-only metapackage. Without it, NuGet
+       convention-includes the whole project directory (bin/, obj/, sources) into the package;
+       the empty node tells NuGet to include exactly nothing but the <dependencies> above. -->
+  <files />
+</package>

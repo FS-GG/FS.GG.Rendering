@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Feature 207 — the FS.GG.UI BOM / metapackage project.
+
+    Produces the bare `FS.GG.UI` package from the hand-authored FS.GG.UI.nuspec. It carries NO
+    compiled assembly (IncludeBuildOutput=false): the package is the nuspec's 16 exact-version
+    member dependencies and nothing else. Meta.fs exists only so the F# compiler has an input;
+    it is never packed.
+
+    NOTE (Feature 207 implementation deviation): plan/tasks named this file
+    `src/Meta/FS.GG.UI.metaproj`, but the `.metaproj` extension is not restorable by the dotnet
+    CLI ("Unable to find a project to restore"), so it is authored as a normal `.fsproj`. The
+    artifact, membership, and one-command pack are unchanged; the membership parity test keys off
+    the nuspec, not this filename.
+
+    Packed in the SAME one-command coherent pack as the 16 members
+    (`dotnet pack FS.GG.Rendering.slnx -c Release -p:Version=V`): the single `-p:Version=V`
+    flows to `$version$` via NuspecProperties, so the BOM's own version and every member
+    dependency derive from one literal (INV-1 / FR-009). Wired into FS.GG.Rendering.slnx under
+    /src/ so it ships in the same snapshot/tag as the members (FR-006).
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>true</IsPackable>
+    <PackageId>FS.GG.UI</PackageId>
+    <AssemblyName>FS.GG.UI.Meta</AssemblyName>
+
+    <!-- Dependencies-only metapackage: no assembly, no doc xml, no symbols shipped. -->
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <IncludeSymbols>false</IncludeSymbols>
+
+    <!-- The nuspec IS the artifact; $version$ comes from the coherent pack's -p:Version. -->
+    <NuspecFile>FS.GG.UI.nuspec</NuspecFile>
+    <NuspecProperties>version=$(Version)</NuspecProperties>
+
+    <!-- A dependencies-only package legitimately has no lib/ for its target framework
+         (NU5128) and intentionally does not ship its (empty) build assembly in lib/ (NU5100).
+         Both are by-design for a metapackage; suppressed so they don't trip the repo-wide
+         TreatWarningsAsErrors. -->
+    <NoWarn>$(NoWarn);NU5128;NU5100</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Meta.fs" />
+  </ItemGroup>
+
+</Project>
