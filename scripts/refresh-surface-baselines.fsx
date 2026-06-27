@@ -21,7 +21,8 @@ let repoRoot = Path.GetFullPath(Path.Combine(scriptDir, ".."))
 
 // Every package → its src project folder (assembly name == package name). One row per committed baseline.
 let packages =
-    [ "FS.GG.UI.Layout", "Layout"
+    [ "FS.GG.UI.Build", "Build"
+      "FS.GG.UI.Layout", "Layout"
       "FS.GG.UI.KeyboardInput", "KeyboardInput"
       "FS.GG.UI.Canvas", "Canvas"
       "FS.GG.UI.Controls", "Controls"

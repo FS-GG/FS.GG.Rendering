@@ -20,6 +20,24 @@ let productSource file =
 let productSources files =
     files |> List.map productSource |> String.concat "\n"
 
+let buildScript () =
+    System.IO.File.ReadAllText(System.IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "build.fsx"))
+
+// Feature 202 (US2, FR-002 / SC-004): the generated build.fsx must carry NO pre-rebrand engine
+// identifier — neither the `fs.skia.ui.build` NuGet cache folder nor the `FS.Skia.UI` package name —
+// so the corrected `fs.gg.ui.build` cache probe cannot silently regress. Scoped to the engine
+// package identity + cache path; the deliberately-retained `FsSkiaUiVersion` property is unaffected.
+let assertNoPreRebrandEngineIdentifier () =
+    let build = buildScript ()
+
+    Expect.isFalse
+        (build.Contains("fs.skia.ui.build", StringComparison.OrdinalIgnoreCase))
+        "build.fsx carries no pre-rebrand fs.skia.ui.build cache path"
+
+    Expect.isFalse
+        (build.Contains("FS.Skia.UI", StringComparison.OrdinalIgnoreCase))
+        "build.fsx carries no pre-rebrand FS.Skia.UI package name"
+
 //#if (profile == "governed" || profile == "headless-scene")
 [<Tests>]
 let governanceTests =
@@ -32,6 +50,10 @@ let governanceTests =
             Expect.stringContains source "RendererMode = \"deterministic-scene\"" "scene evidence is deterministic"
             Expect.isFalse (source.Contains("Viewer.runApp")) "headless profile does not require the viewer runtime"
             Expect.isFalse (source.Contains("ControlsElmish")) "headless profile does not require Controls Elmish adapters"
+        }
+
+        test "generated build.fsx carries no pre-rebrand engine identifier" {
+            assertNoPreRebrandEngineIdentifier ()
         }
     ]
 //#else
@@ -291,6 +313,10 @@ let governanceTests =
                 (Text.RegularExpressions.Regex.IsMatch(build, "#r\\s+\"nuget:\\s*FS\\.Skia\\.UI\\.Build\\s*,"))
                 "build carries no literal engine #r version"
             Expect.isFalse (build.Contains("| \"EvidenceGraph\"\n    | \"EvidenceAudit\" -> writeLog target")) "evidence commands are not completion-only logs"
+        }
+
+        test "generated build.fsx carries no pre-rebrand engine identifier" {
+            assertNoPreRebrandEngineIdentifier ()
         }
 
         test "generated evidence graph and audit do not shell the decommissioned scripts" {

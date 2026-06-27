@@ -81,8 +81,19 @@ let surfaceAreaTests =
             assertBaseline "FS.GG.UI.Controls" typeof<FS.GG.UI.Controls.Control<int>>.Assembly
         }
 
+        test "FS.GG.UI.Build engine baseline exports expected contract names" {
+            // Feature 202: the in-repo governance engine is a public package → its curated .fsi is
+            // governed by the same surface-drift baseline as every other FS.GG.UI.* package.
+            let assemblyPath =
+                Path.Combine(repositoryRoot, "src", "Build", "bin", "Debug", "net10.0", "FS.GG.UI.Build.dll")
+
+            Expect.isTrue (File.Exists assemblyPath) "FS.GG.UI.Build assembly has been built"
+            assertBaseline "FS.GG.UI.Build" (Assembly.LoadFrom assemblyPath)
+        }
+
         test "V3 capability packages declare package-specific contracts and baselines" {
-            [ "Scene", "src/Scene/Scene.fsproj", "src/Scene/Scene.fsi", "readiness/surface-baselines/FS.GG.UI.Scene.txt"
+            [ "Build", "src/Build/FS.GG.UI.Build.fsproj", "src/Build/Evidence.fsi", "readiness/surface-baselines/FS.GG.UI.Build.txt"
+              "Scene", "src/Scene/Scene.fsproj", "src/Scene/Scene.fsi", "readiness/surface-baselines/FS.GG.UI.Scene.txt"
               "SkiaViewer", "src/SkiaViewer/SkiaViewer.fsproj", "src/SkiaViewer/SkiaViewer.fsi", "readiness/surface-baselines/FS.GG.UI.SkiaViewer.txt"
               "Elmish", "src/Elmish/Elmish.fsproj", "src/Elmish/Elmish.fsi", "readiness/surface-baselines/FS.GG.UI.Elmish.txt"
               "KeyboardInput", "src/KeyboardInput/KeyboardInput.fsproj", "src/KeyboardInput/KeyboardInput.fsi", "readiness/surface-baselines/FS.GG.UI.KeyboardInput.txt"

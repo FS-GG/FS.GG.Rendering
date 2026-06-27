@@ -123,7 +123,7 @@ let private engineAssembly =
         (let version = fsSkiaUiVersion ()
          let nugetPackages = nugetPackagesRoot ()
          // NuGet lowercases package-id folders in the global-packages cache.
-         let dll = path [ nugetPackages; "fs.skia.ui.build"; version; "lib"; "net10.0"; "FS.GG.UI.Build.dll" ]
+         let dll = path [ nugetPackages; "fs.gg.ui.build"; version; "lib"; "net10.0"; "FS.GG.UI.Build.dll" ]
 
          if not (File.Exists dll) then
              restoreEngine version

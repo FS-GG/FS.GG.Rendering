@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Build/FS.GG.UI.Build.fsproj" />
     <Project Path="src/Canvas/Canvas.Lib.fsproj" />
     <Project Path="src/ColorPolicy/ColorPolicy.fsproj" />
     <Project Path="src/Controls.Elmish/Controls.Elmish.fsproj" />
@@ -18,6 +19,7 @@
     <Project Path="src/Themes.Default/Themes.Default.fsproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Build.Tests/Build.Tests.fsproj" />
     <Project Path="tests/Canvas.Tests/Canvas.Tests.fsproj" />
     <Project Path="tests/Controls.Tests/Controls.Tests.fsproj" />
     <Project Path="tests/Diagnostics.Tests/Diagnostics.Tests.fsproj" />

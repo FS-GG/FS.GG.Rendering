@@ -65,6 +65,16 @@ intentionally have no import path-map row:
 
 - `tests/Rendering.Harness`, `tests/Rendering.Harness.Tests` — the tiered evidence CLI and its unit
   tests, authored at Stage R5 (feature `004-rendering-harness`).
+- `src/Build` (`FS.GG.UI.Build`), `tests/Build.Tests` — the in-process governance engine
+  (`EvidenceGraph`/`EvidenceAudit` gates the generated `build.fsx` binds by reflection) and its
+  semantic tests, **authored fresh** in this repository at feature `202-fix-build-fsx-engine`. The
+  source-repo `FS.Skia.UI.Build` engine was *excluded at import* (see Adaptations above) and its
+  source is unrecoverable; the re-authored engine honors the recoverable contract documented in
+  `template/base/docs/evidence-formats.md` and `specs/202-fix-build-fsx-engine/contracts/`. It is a
+  normal `FS.GG.UI.*` package: dependency-minimal (FSharp.Core only), packed in lock-step with every
+  other package from the single `$(FsSkiaUiVersion)` pin. This supersedes the historical "Governance
+  excluded" gap for the build engine — the engine is now **produced in-repo**, not merely referenced
+  as excluded history.
 - `FS.GG.Rendering.slnx` — the solution, authored here (see *Build format* under Adaptations).
 - `specs/**`, `docs/**` other than `docs/imported/` — this repository's own Spec Kit + product docs.
 

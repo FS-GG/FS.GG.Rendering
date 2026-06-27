@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Feature 202: the in-repo, in-process governance engine the generated build.fsx binds
+       by reflection to run the EvidenceGraph / EvidenceAudit gates. Authored fresh to honor
+       the recovered contract (contracts/engine-invocation-contract.md +
+       template/base/docs/evidence-formats.md); dependency-minimal by constitutional mandate
+       (no external governance platform — FSharp.Core only). Packed into the coherent local
+       feed automatically by the Rendering.Harness pack discovery (FS.GG.UI.* + IsPackable),
+       so a single -p:Version pack moves it in lock-step with every other FS.GG.UI.* package. -->
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <IsPackable>true</IsPackable>
+    <PackageId>FS.GG.UI.Build</PackageId>
+    <AssemblyName>FS.GG.UI.Build</AssemblyName>
+    <Version>0.1.48-preview.1</Version>
+    <TargetFramework>net10.0</TargetFramework>
+    <Title>FS.GG.UI.Build</Title>
+    <Description>In-process governance engine (EvidenceGraph / EvidenceAudit gates) for generated FS.GG.UI products.</Description>
+    <PackageTags>fsharp;governance;evidence;build;ui</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Evidence.fsi" />
+    <Compile Include="Evidence.fs" />
+  </ItemGroup>
+
+</Project>
