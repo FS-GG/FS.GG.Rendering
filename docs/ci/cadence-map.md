@@ -141,6 +141,32 @@ re-baseline was therefore purely additive (365 net-new public types recorded, 0 
 Verified locally on 2026-06-14: after the re-baseline, a fresh regenerate produces no `git diff`
 (clean on a current checkout).
 
+## 4a. Version-coherence guard — chosen gate behavior (Feature 209)
+
+A sibling merge-blocking step, **Version coherence guard**, makes the FS.GG.UI version-staleness bug
+class (Feature 204) a loud, local, automatic failure instead of a downstream consumer's broken build.
+It runs `scripts/validate-version-coherence.fsx` in two layers, both merge-blocking:
+
+- **Structural verdict-core (env-free).** Re-derives, from the repo + pushed `fs-gg-ui/v*` tags, that
+  the single `<FsGgUiVersion>` literal is present exactly once and matches an existing snapshot tag and
+  does **not lag** the latest (preview-aware SemVer compare, not string); the BOM uses the single
+  `[$version$]` exact-bracket token with `B.ids == P.members`; the template's consumed pins all derive
+  through `$(FsGgUiVersion)` and equal the documented 11-member manifest; and `build.fsx`'s runtime
+  regex still resolves the literal. It compares pins **directly** — independent of any
+  `WarningsAsErrors=NU1605;NU1608` consumer policy (FR-004).
+- **Scoped restore-grounded proof (`FS_GG_RUN_VERSION_COHERENCE_SMOKE=1`).** One Release pack + one
+  clean restore of `FS.GG.UI@V` asserting the **complete** 16-member set resolves to exactly `V`
+  (FR-008, anti-text-grep). The deeper full generate→restore→build of a product from the template
+  stays on the release lane (`release.yml` `template-product-tests`), not duplicated in the gate.
+
+Exit codes: `0` coherent · `1` drift (names the location expected-vs-actual) · `2` guard error (inputs
+unreadable / tags not fetched) — **fails closed**, never green-by-absence. On drift the `DRIFT […]`
+lines are echoed to `$GITHUB_STEP_SUMMARY` (SC-006). The gate's `actions/checkout@v4` uses
+`fetch-depth: 0` so `git tag` sees the `fs-gg-ui/v*` snapshot tags (otherwise the guard fails closed).
+
+Note: the repo-root `<Version>` (`Directory.Build.props`) is **decoupled by default** (D5) and is not
+compared by the guard.
+
 ## 5. Branch protection (one-time maintainer step)
 
 The spec defines which checks are required; **enabling** branch protection is the maintainer's

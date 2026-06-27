@@ -126,3 +126,6 @@ specs/207-ui-bom-metapackage/readiness/**/nuget-cache/
 !specs/208-fs-gg-ui-version-rename/readiness/
 !specs/208-fs-gg-ui-version-rename/readiness/**
 specs/208-fs-gg-ui-version-rename/readiness/**/nuget-cache/
+!specs/209-version-staleness-guard/readiness/
+!specs/209-version-staleness-guard/readiness/**
+specs/209-version-staleness-guard/readiness/**/nuget-cache/

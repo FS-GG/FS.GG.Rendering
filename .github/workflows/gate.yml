@@ -26,6 +26,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        # T015/T029 (Feature 209, D2) — the version-coherence guard reads `git tag --list
+        # 'fs-gg-ui/v*'`; without full history/tags `git tag` is empty and the guard fails
+        # closed (exit 2). fetch-depth: 0 makes the snapshot tags visible.
+        with:
+          fetch-depth: 0
 
       # SDK pinning decision: docs/ci/cadence-map.md §1 (no global.json in repo).
       - name: Set up .NET
@@ -85,6 +90,23 @@ jobs:
             exit 1
           fi
           echo "no .fsi surface drift across $(ls readiness/surface-baselines/*.txt | wc -l) committed baselines"
+
+      # Feature 209 (T015/T029/T031, FR-001..009) — version-staleness / coherence guard. Mirrors the
+      # surface-baseline "regenerate-and-fail-on-drift" pattern above. Runs BOTH layers merge-blocking:
+      #   * structural verdict-core (env-free): pin matches an existing fs-gg-ui/v* tag and does not lag
+      #     the latest (preview-aware), single [$version$] BOM token, B.ids==P.members, template pins all
+      #     derive through $(FsGgUiVersion) == the 11-member manifest, build.fsx regex still resolves —
+      #     independent of any warnings-as-errors policy (FR-004).
+      #   * scoped restore-grounded proof (FS_GG_RUN_VERSION_COHERENCE_SMOKE=1): one Release pack + one
+      #     clean restore of FS.GG.UI@V asserting the COMPLETE 16-member set resolves to exactly V
+      #     (FR-008, anti-text-grep). The deeper product-from-template build stays on release.yml.
+      # Non-zero exit (1 drift / 2 guard-error) fails the gate ⇒ PR blocked from merging to main. The
+      # script echoes the DRIFT lines to $GITHUB_STEP_SUMMARY on failure (SC-006).
+      - name: Version coherence guard
+        run: |
+          set -euo pipefail
+          dotnet fsi scripts/validate-version-coherence.fsx
+          FS_GG_RUN_VERSION_COHERENCE_SMOKE=1 dotnet fsi scripts/validate-version-coherence.fsx
 
       # T010 (FR-003) — fsdocs site build in STRICT mode so FsDocsWarnOnMissingDocs (Directory.Build.props)
       # is fatal: a broken docs build OR a missing-doc stub fails the gate. Build only, no publish.

@@ -26,6 +26,7 @@
     <Compile Include="Feature205TemplateSideEffectTests.fs" />
     <Compile Include="Feature207BomMembershipTests.fs" />
     <Compile Include="Feature207BomConsumerTests.fs" />
+    <Compile Include="Feature209VersionCoherenceTests.fs" />
     <Compile Include="Tests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
