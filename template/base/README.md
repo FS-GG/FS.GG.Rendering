@@ -98,7 +98,7 @@ workspace bundled in instead, scaffold with the default `--lifecycle spec-kit`.
 The product references FS.GG.UI packages from **public nuget.org** — the generated
 `NuGet.config` references that feed only, with no machine-local path, so `dotnet restore`
 works on any machine. All `FS.GG.UI.*` packages and the build engine are pinned by a single
-`<FsSkiaUiVersion>` in `Directory.Packages.props`; upgrading is one edit + `dotnet restore`
+`<FsGgUiVersion>` in `Directory.Packages.props`; upgrading is one edit + `dotnet restore`
 (see `docs/UPGRADING.md`). _Framework developers_ working from a clone of the FS.GG.UI
 repository instead pack the source with `./fake.sh build -t PackLocal` and add
 `~/.local/share/nuget-local` as a NuGet source before restoring.

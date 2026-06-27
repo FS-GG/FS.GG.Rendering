@@ -2,33 +2,33 @@
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <!-- 064 (FR-004): the SINGLE source of FS.GG.UI version truth. Every FS.GG.UI.*
-         pin below references $(FsSkiaUiVersion), and build.fsx reads this property at
+         pin below references $(FsGgUiVersion), and build.fsx reads this property at
          runtime to bind the engine assembly — so a consumer upgrade is ONE edit to this
          value + `dotnet restore`. Preview vs stable is explicit in the value
          (`-preview.N` => preview channel; a bare `x.y.z` => stable). See docs/UPGRADING.md. -->
-    <FsSkiaUiVersion>0.1.50-preview.1</FsSkiaUiVersion>
+    <FsGgUiVersion>0.1.50-preview.1</FsGgUiVersion>
   </PropertyGroup>
   <ItemGroup>
     <!-- 043 (FR-013): the published governance engine consumed in-process by the
          generated build.fsx; pinned for every profile and bumped with the other
-         FS.GG.UI.* packages via the single $(FsSkiaUiVersion) above. -->
-    <PackageVersion Include="FS.GG.UI.Build" Version="$(FsSkiaUiVersion)" />
-    <PackageVersion Include="FS.GG.UI.Scene" Version="$(FsSkiaUiVersion)" />
+         FS.GG.UI.* packages via the single $(FsGgUiVersion) above. -->
+    <PackageVersion Include="FS.GG.UI.Build" Version="$(FsGgUiVersion)" />
+    <PackageVersion Include="FS.GG.UI.Scene" Version="$(FsGgUiVersion)" />
     <!--#if (profile == "app" || profile == "sample-pack") -->
-    <PackageVersion Include="FS.GG.UI.SkiaViewer" Version="$(FsSkiaUiVersion)" />
-    <PackageVersion Include="FS.GG.UI.Elmish" Version="$(FsSkiaUiVersion)" />
+    <PackageVersion Include="FS.GG.UI.SkiaViewer" Version="$(FsGgUiVersion)" />
+    <PackageVersion Include="FS.GG.UI.Elmish" Version="$(FsGgUiVersion)" />
     <!--#endif -->
     <!--#if (profile == "app" || profile == "sample-pack") -->
-    <PackageVersion Include="FS.GG.UI.KeyboardInput" Version="$(FsSkiaUiVersion)" />
-    <PackageVersion Include="FS.GG.UI.Layout" Version="$(FsSkiaUiVersion)" />
-    <PackageVersion Include="FS.GG.UI.Controls" Version="$(FsSkiaUiVersion)" />
-    <PackageVersion Include="FS.GG.UI.Controls.Elmish" Version="$(FsSkiaUiVersion)" />
+    <PackageVersion Include="FS.GG.UI.KeyboardInput" Version="$(FsGgUiVersion)" />
+    <PackageVersion Include="FS.GG.UI.Layout" Version="$(FsGgUiVersion)" />
+    <PackageVersion Include="FS.GG.UI.Controls" Version="$(FsGgUiVersion)" />
+    <PackageVersion Include="FS.GG.UI.Controls.Elmish" Version="$(FsGgUiVersion)" />
     <!-- Feature 125: design-system primitives + default theme carved out of Controls. -->
-    <PackageVersion Include="FS.GG.UI.DesignSystem" Version="$(FsSkiaUiVersion)" />
-    <PackageVersion Include="FS.GG.UI.Themes.Default" Version="$(FsSkiaUiVersion)" />
+    <PackageVersion Include="FS.GG.UI.DesignSystem" Version="$(FsGgUiVersion)" />
+    <PackageVersion Include="FS.GG.UI.Themes.Default" Version="$(FsGgUiVersion)" />
     <!--#endif -->
     <!--#if (profile == "governed") -->
-    <PackageVersion Include="FS.GG.UI.Testing" Version="$(FsSkiaUiVersion)" />
+    <PackageVersion Include="FS.GG.UI.Testing" Version="$(FsGgUiVersion)" />
     <!--#endif -->
     <PackageVersion Include="Expecto" Version="10.2.2" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />

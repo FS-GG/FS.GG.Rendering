@@ -11,5 +11,5 @@ target binds by reflection (`FS.GG.UI.Build.Evidence.GeneratedRunner.run target 
 
 The engine is dependency-minimal (FSharp.Core only), runs entirely in-process (no external
 process), and is packed in lock-step with every other `FS.GG.UI.*` package from the single
-`$(FsSkiaUiVersion)` version pin. See `specs/202-fix-build-fsx-engine/` for the contract and
+`$(FsGgUiVersion)` version pin. See `specs/202-fix-build-fsx-engine/` for the contract and
 design.

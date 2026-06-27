@@ -123,3 +123,6 @@ specs/204-fs-skia-ui-version-coherence/readiness/**/nuget-cache/
 !specs/207-ui-bom-metapackage/readiness/
 !specs/207-ui-bom-metapackage/readiness/**
 specs/207-ui-bom-metapackage/readiness/**/nuget-cache/
+!specs/208-fs-gg-ui-version-rename/readiness/
+!specs/208-fs-gg-ui-version-rename/readiness/**
+specs/208-fs-gg-ui-version-rename/readiness/**/nuget-cache/

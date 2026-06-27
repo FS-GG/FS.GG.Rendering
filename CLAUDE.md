@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/207-ui-bom-metapackage/plan.md
+at specs/208-fs-gg-ui-version-rename/plan.md
 <!-- SPECKIT END -->
 
 ## Ant Design — source of truth

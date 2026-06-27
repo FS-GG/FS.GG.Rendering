@@ -73,7 +73,7 @@ they are performed for you.
 ## Single-source versioning
 
 Every generated project pins all `FS.GG.UI.*` packages **and** the in-process build engine to
-one `<FsSkiaUiVersion>` value in `Directory.Packages.props`. Upgrading is a single edit + `dotnet
+one `<FsGgUiVersion>` value in `Directory.Packages.props`. Upgrading is a single edit + `dotnet
 restore`; see the generated `docs/UPGRADING.md`. Preview vs stable is explicit in the value
 (`-preview.N` ⇒ preview channel).
 

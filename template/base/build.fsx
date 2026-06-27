@@ -12,11 +12,11 @@ open System.Text.RegularExpressions
 // Feature 064 (FR-004 / research R1): there is NO versioned engine reference directive here.
 // F# script reference arguments must be string literals, so the engine version cannot be
 // interpolated. Instead this script reads the SINGLE source of version truth —
-// `<FsSkiaUiVersion>` in Directory.Packages.props — at runtime, loads the matching, already
+// `<FsGgUiVersion>` in Directory.Packages.props — at runtime, loads the matching, already
 // `dotnet restore`-d engine assembly from the NuGet global-packages folder, and invokes the
 // generated-evidence façade by reflection (so no typed `open` pins a version). The result:
 // exactly ONE literal FS.GG.UI version value in the whole generated project, and a consumer
-// upgrade is a single edit to <FsSkiaUiVersion> + `dotnet restore` — libraries AND the build
+// upgrade is a single edit to <FsGgUiVersion> + `dotnet restore` — libraries AND the build
 // engine move together. See docs/UPGRADING.md.
 
 let path parts = Path.Combine(Array.ofList parts)
@@ -49,7 +49,7 @@ let tryWriteTextLog (filePath: string) (content: string) =
     with ex ->
         Some $"unreadable readiness log: {filePath}; diagnostics={ex.Message}"
 
-// ----- engine binding: resolve <FsSkiaUiVersion> at runtime (FR-004, R1) -----
+// ----- engine binding: resolve <FsGgUiVersion> at runtime (FR-004, R1) -----
 
 let private fsSkiaUiVersion () =
     let propsPath = path [ Directory.GetCurrentDirectory(); "Directory.Packages.props" ]
@@ -57,12 +57,12 @@ let private fsSkiaUiVersion () =
     if not (File.Exists propsPath) then
         failwithf "Cannot resolve the FS.GG.UI engine version: %s is missing." propsPath
 
-    let m = Regex.Match(File.ReadAllText propsPath, "<FsSkiaUiVersion>([^<]+)</FsSkiaUiVersion>")
+    let m = Regex.Match(File.ReadAllText propsPath, "<FsGgUiVersion>([^<]+)</FsGgUiVersion>")
 
     if m.Success then
         m.Groups.[1].Value.Trim()
     else
-        failwithf "Cannot resolve <FsSkiaUiVersion> from %s; it is the single source of FS.GG.UI version truth." propsPath
+        failwithf "Cannot resolve <FsGgUiVersion> from %s; it is the single source of FS.GG.UI version truth." propsPath
 
 let private nugetPackagesRoot () =
     match Environment.GetEnvironmentVariable "NUGET_PACKAGES" with
@@ -90,7 +90,7 @@ let private probeCachedAssembly (nugetPackages: string) (simpleName: string) : s
 // Restore the pinned engine (+ its dependency closure) into the global cache when absent, using
 // a throwaway project under TEMP so default/user NuGet config resolution applies — that has the
 // local feed for in-repo framework development and nuget.org for a published consumer. The exact
-// <FsSkiaUiVersion> is restored (not "latest"), so the engine and libraries stay in lock-step.
+// <FsGgUiVersion> is restored (not "latest"), so the engine and libraries stay in lock-step.
 let private restoreEngine (version: string) =
     let tmp = path [ Path.GetTempPath(); "fsskia-engine-restore-" + version ]
     Directory.CreateDirectory tmp |> ignore

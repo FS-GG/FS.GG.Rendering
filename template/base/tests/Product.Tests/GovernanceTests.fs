@@ -26,7 +26,7 @@ let buildScript () =
 // Feature 202 (US2, FR-002 / SC-004): the generated build.fsx must carry NO pre-rebrand engine
 // identifier — neither the `fs.skia.ui.build` NuGet cache folder nor the `FS.Skia.UI` package name —
 // so the corrected `fs.gg.ui.build` cache probe cannot silently regress. Scoped to the engine
-// package identity + cache path; the deliberately-retained `FsSkiaUiVersion` property is unaffected.
+// package identity + cache path; the deliberately-retained `FsGgUiVersion` property is unaffected.
 let assertNoPreRebrandEngineIdentifier () =
     let build = buildScript ()
 
@@ -301,13 +301,13 @@ let governanceTests =
             // Feature 043 (FR-013): generated evidence runs in-process through the packaged
             // FS.GG.UI.Build engine — no copied Python / run-audit.sh.
             // Feature 064 (FR-004 / R1): the in-process orchestration lives in the engine's
-            // GeneratedRunner; build.fsx resolves the engine from <FsSkiaUiVersion> at runtime
+            // GeneratedRunner; build.fsx resolves the engine from <FsGgUiVersion> at runtime
             // (no version literal) and delegates the two evidence targets to it by reflection.
             Expect.stringContains build "runGeneratedEvidence \"EvidenceGraph\"" "build delegates the graph command to the engine runner"
             Expect.stringContains build "runGeneratedEvidence \"EvidenceAudit\"" "build delegates the audit command to the engine runner"
             Expect.stringContains build "GeneratedRunner" "build invokes the engine's generated-evidence runner by reflection"
             Expect.stringContains build "Assembly.LoadFrom" "build binds the property-resolved engine assembly at runtime"
-            Expect.stringContains build "FsSkiaUiVersion" "build resolves the engine from the single-source version property"
+            Expect.stringContains build "FsGgUiVersion" "build resolves the engine from the single-source version property"
             // No engine version literal (single-source, FR-004).
             Expect.isFalse
                 (Text.RegularExpressions.Regex.IsMatch(build, "#r\\s+\"nuget:\\s*FS\\.Skia\\.UI\\.Build\\s*,"))

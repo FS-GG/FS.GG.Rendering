@@ -97,7 +97,7 @@ machine-readable evidence.
 ## Versioning
 
 All `FS.GG.UI.*` libraries share one version and move together. In a generated project a
-single `<FsSkiaUiVersion>` in `Directory.Packages.props` pins every package — upgrading is one
+single `<FsGgUiVersion>` in `Directory.Packages.props` pins every package — upgrading is one
 edit; see `docs/UPGRADING.md`. Pre-release versions use a `-preview.N` suffix.
 
 ## Links

@@ -72,7 +72,7 @@ intentionally have no import path-map row:
   source is unrecoverable; the re-authored engine honors the recoverable contract documented in
   `template/base/docs/evidence-formats.md` and `specs/202-fix-build-fsx-engine/contracts/`. It is a
   normal `FS.GG.UI.*` package: dependency-minimal (FSharp.Core only), packed in lock-step with every
-  other package from the single `$(FsSkiaUiVersion)` pin. This supersedes the historical "Governance
+  other package from the single `$(FsGgUiVersion)` pin. This supersedes the historical "Governance
   excluded" gap for the build engine — the engine is now **produced in-repo**, not merely referenced
   as excluded history.
 - `FS.GG.Rendering.slnx` — the solution, authored here (see *Build format* under Adaptations).
