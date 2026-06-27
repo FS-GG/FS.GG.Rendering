@@ -113,3 +113,5 @@ Thumbs.db
 !specs/193-symbology-live-board/readiness/
 !specs/193-symbology-live-board/readiness/**
 specs/193-symbology-live-board/readiness/*-run.log
+!specs/201-refresh-template-scene-api/readiness/
+!specs/201-refresh-template-scene-api/readiness/**

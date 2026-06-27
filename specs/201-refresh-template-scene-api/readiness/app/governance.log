@@ -1,0 +1,10 @@
+  Determining projects to restore...
+  Restored /tmp/claude-1000/-home-developer-projects-FS-GG-Rendering/3aaf2b6f-c0aa-498e-8200-037047ae7fe6/scratchpad/gen/Product-app/tests/Product.Tests/Product.Tests.fsproj (in 177 ms).
+  1 of 2 projects are up-to-date for restore.
+  Product -> /tmp/claude-1000/-home-developer-projects-FS-GG-Rendering/3aaf2b6f-c0aa-498e-8200-037047ae7fe6/scratchpad/gen/Product-app/src/Product/bin/Release/net10.0/Product.dll
+  Product.Tests -> /tmp/claude-1000/-home-developer-projects-FS-GG-Rendering/3aaf2b6f-c0aa-498e-8200-037047ae7fe6/scratchpad/gen/Product-app/tests/Product.Tests/bin/Release/net10.0/Product.Tests.dll
+Test run for /tmp/claude-1000/-home-developer-projects-FS-GG-Rendering/3aaf2b6f-c0aa-498e-8200-037047ae7fe6/scratchpad/gen/Product-app/tests/Product.Tests/bin/Release/net10.0/Product.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:    29, Skipped:     0, Total:    29, Duration: 110 ms - Product.Tests.dll (net10.0)
+test exit=0

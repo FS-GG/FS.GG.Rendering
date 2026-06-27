@@ -1,0 +1,45 @@
+==================== PROFILE: headless-scene ====================
+--- generate ---
+The template "FS GG UI Governed Project" was created successfully.
+
+Processing post-creation actions...
+Template is configured to run the following action:
+Description: Make generated shell scripts executable.
+Actual command: bash -c "find . -type f \( -name '*.sh' -o -name 'fake.sh' \) -exec chmod +x {} +"
+Do you want to run this action [Y(yes)|N(no)]?
+Running command 'bash -c "find . -type f \( -name '*.sh' -o -name 'fake.sh' \) -exec chmod +x {} +"'...
+Command succeeded.
+
+
+generate exit=0
+--- restore ---
+  Determining projects to restore...
+  Restored /tmp/claude-1000/-home-developer-projects-FS-GG-Rendering/3aaf2b6f-c0aa-498e-8200-037047ae7fe6/scratchpad/gen/Product-headless-scene/src/Product/Product.fsproj (in 122 ms).
+restore exit=0
+--- build -c Release ---
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  Product -> /tmp/claude-1000/-home-developer-projects-FS-GG-Rendering/3aaf2b6f-c0aa-498e-8200-037047ae7fe6/scratchpad/gen/Product-headless-scene/src/Product/bin/Release/net10.0/Product.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:01.42
+build exit=0
+--- --scene-evidence ---
+status=ok scene-evidence renderer-mode=deterministic-scene evidence=out/scene-evidence.txt value=size=320x200;capabilities=3;hash=dff00c277aaa30c072d2b0b99d4806537a22b7f9ee2c00aabf9b8ba8d184cb90
+scene-evidence exit=0
+--- --layout-evidence ---
+status=ok
+command=--layout-evidence
+profile=headless-governed
+scene=Product.Program.view
+output-size=640x480
+proof-level=ReadableLayout
+text-bounds=1
+gameplay-bounds=1
+overlap-status=NoLayoutOverlap
+measurement-mode=ApproximateTextBounds
+layout-evidence exit=0
+==================== DONE: headless-scene ====================

@@ -1,0 +1,36 @@
+Produced feed version V = 0.1.48-preview.1
+
+How packed (T003):
+  dotnet pack FS.GG.Rendering.slnx -c Release -p:Version=0.1.48-preview.1 -o ~/.local/share/nuget-local
+
+Rationale for V:
+  The template pins EVERY FS.GG.UI.* package to a single $(FsSkiaUiVersion), so the feed must be
+  COHERENT (one version for all packages). A bare `dotnet pack` (no -p:Version) honours each src
+  project's own <Version> and produces a MIXED set (Scene 0.1.37, Controls 0.1.46, SkiaViewer 0.1.47,
+  Canvas/Symbology 0.1.0, …) that a single pin cannot resolve. Packing with -p:Version=V overrides all
+  projects to one coherent V (the dev-repack mechanism; matches the historical single-version pin, e.g.
+  the prior 0.1.129-preview.1).
+  V chosen = 0.1.48-preview.1: one above the current max per-project version (0.1.47-preview.1, SkiaViewer),
+  follows the repo 0.1.N-preview.1 scheme, and is FRESH (absent from the global NuGet cache, which already
+  holds 0.1.37/0.1.46/0.1.47 — packing at an existing version risks serving stale cached bits and would
+  invalidate the drift signal). No src/**/*.fsproj <Version> nor Directory.Build.props <Version> was
+  edited (research Decision 3: version bumps are owned by the merge process, not this task).
+
+Packages produced at V (15): Canvas, Controls, Controls.Elmish, DesignSystem, Diagnostics, Elmish,
+  KeyboardInput, Layout, Scene, SkiaViewer, Symbology, Symbology.Render, Testing, Themes.AntDesign,
+  Themes.Default.
+
+NOT producible by this repo (no producer project, absent from feed + global cache):
+  FS.GG.UI.Build, FS.GG.UI.SkillSupport, FS.GG.UI.Color.
+  - These are declared as PackageVersion entries in template/base/Directory.Packages.props but are NOT
+    PackageReference'd by the generated Product.fsproj, so they do NOT block product restore/build.
+  - FS.GG.UI.Build is restored at runtime by the generated build.fsx (Verify target). Because no
+    FS.GG.UI.Build package exists at any version, `dotnet fsi build.fsx target Verify` is
+    ENVIRONMENT-LIMITED here (engine restore fails) — recorded as a caveat, never reported green.
+    The GovernanceTests (text/structure assertions) do not need the engine and DO run.
+
+Pre-refresh <FsSkiaUiVersion> literal (candidate "superseded" literal for C4): 0.1.0-preview.1
+
+T004a branch taken: V (0.1.48-preview.1) != current pin (0.1.0-preview.1) -> RE-PIN performed now so the
+  smoke run's `dotnet restore` resolves FS.GG.UI.* from the feed (otherwise restore fails on NU16xx
+  version resolution, not API drift). T017 therefore becomes a verification-only no-op.

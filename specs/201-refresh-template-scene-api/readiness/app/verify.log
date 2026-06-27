@@ -1,0 +1,16 @@
+Dev completed for generated product
+GeneratedGuidanceCheck completed for generated product
+TemplateDrift completed for generated product
+System.Exception: FS.GG.UI.Build 0.1.48-preview.1 could not be restored to /home/developer/.nuget/packages/fs.skia.ui.build/0.1.48-preview.1/lib/net10.0/FS.GG.UI.Build.dll. Ensure the version exists on a configured feed (`dotnet restore`).
+   at Microsoft.FSharp.Core.PrintfModule.PrintFormatToStringThenFail@1447.Invoke(String message)
+   at FSI_0001.engineAssembly@122.Invoke(Unit unitVar) in /tmp/claude-1000/-home-developer-projects-FS-GG-Rendering/3aaf2b6f-c0aa-498e-8200-037047ae7fe6/scratchpad/gen/Product-app/build.fsx:line 132
+   at System.Lazy`1.ViaFactory(LazyThreadSafetyMode mode)
+   at System.Lazy`1.ExecutionAndPublication(LazyHelper executionAndPublication, Boolean useDefaultConstructor)
+   at System.Lazy`1.CreateValue()
+   at FSI_0001.runGeneratedEvidence(String target) in /tmp/claude-1000/-home-developer-projects-FS-GG-Rendering/3aaf2b6f-c0aa-498e-8200-037047ae7fe6/scratchpad/gen/Product-app/build.fsx:line 151
+   at FSI_0001.run(String target) in /tmp/claude-1000/-home-developer-projects-FS-GG-Rendering/3aaf2b6f-c0aa-498e-8200-037047ae7fe6/scratchpad/gen/Product-app/build.fsx:line 227
+   at <StartupCode$FSI_0001>.$FSI_0001.main@() in /tmp/claude-1000/-home-developer-projects-FS-GG-Rendering/3aaf2b6f-c0aa-498e-8200-037047ae7fe6/scratchpad/gen/Product-app/build.fsx:line 239
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+Stopped due to error
+verify exit=1

@@ -22,7 +22,7 @@
     <PackageReference Include="FS.GG.UI.SkiaViewer" />
     <PackageReference Include="FS.GG.UI.Elmish" />
     <!--#endif -->
-    <!--#if (profile == "app") -->
+    <!--#if (profile == "app" || profile == "sample-pack") -->
     <PackageReference Include="FS.GG.UI.KeyboardInput" />
     <PackageReference Include="FS.GG.UI.Layout" />
     <PackageReference Include="FS.GG.UI.Controls" />

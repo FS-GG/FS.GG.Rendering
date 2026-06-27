@@ -113,7 +113,7 @@ let private hudTextBounds (size: Size) model =
       text 96.0 296.0 16.0 "next" $"next: {model.NextLabel}"
       text 152.0 (float size.Width - 184.0) 16.0 "status" $"page: {pageName model.Page}" ]
 
-let private overlapDiagnostics report =
+let private overlapDiagnostics (report: LayoutEvidenceReport) =
     let hudTextOverlaps =
         report.TextBounds
         |> List.mapi (fun index first ->
@@ -173,7 +173,7 @@ let layoutEvidenceForSize size model : LayoutEvidenceReport =
             OverlapStatus = LayoutOverlaps overlaps
             Diagnostics = report.Diagnostics @ (overlaps |> List.map _.Message) }
 
-let validateGeneratedLayout report =
+let validateGeneratedLayout (report: LayoutEvidenceReport) =
     let overlaps = overlapDiagnostics report
 
     let diagnostics =
