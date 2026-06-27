@@ -1,5 +1,13 @@
 <Project>
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
+    <!-- 204 (US2/SM-3): byte-reproducible restore for the pinned FS.GG.UI.* snapshot. The single
+         host applies to every generated project, so each profile writes its own profile-correct
+         packages.lock.json on first restore and resolves the identical graph on every later restore
+         (SC-002). RestoreLockedMode is gated to CI/verify AND to an existing lockfile, so a
+         consumer's first local restore (no lockfile yet) is never blocked — once they commit the
+         generated lockfile, CI restores are locked to it. -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <RestoreLockedMode Condition="'$(ContinuousIntegrationBuild)' == 'true' And Exists('$(MSBuildProjectDirectory)/packages.lock.json')">true</RestoreLockedMode>
   </PropertyGroup>
 </Project>

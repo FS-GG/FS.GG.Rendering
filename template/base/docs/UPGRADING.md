@@ -9,7 +9,7 @@ Open `Directory.Packages.props` and change the single `<FsSkiaUiVersion>` value:
 
 ```xml
 <PropertyGroup>
-  <FsSkiaUiVersion>0.1.68-preview.1</FsSkiaUiVersion>   <!-- the ONLY FS.GG.UI version literal -->
+  <FsSkiaUiVersion>X.Y.Z-preview.N</FsSkiaUiVersion>   <!-- the ONLY FS.GG.UI version literal (illustrative placeholder) -->
 </PropertyGroup>
 ```
 
@@ -42,7 +42,7 @@ feed your `NuGet.config` references — pick a version that exists on the channe
 
 The channel is **explicit in the value** — you never silently cross channels:
 
-- `0.1.68-preview.1` (or any `-preview.N` / `-rc.N` suffix) ⇒ a **preview** release.
+- `X.Y.Z-preview.N` (or any `-preview.N` / `-rc.N` suffix) ⇒ a **preview** release.
 - `1.0.0` (a bare `MAJOR.MINOR.PATCH`, no suffix) ⇒ a **stable** release.
 
 Pins stay **exact** — there are no floating ranges. Upgrading is always a deliberate single

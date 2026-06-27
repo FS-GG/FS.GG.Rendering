@@ -117,3 +117,6 @@ specs/193-symbology-live-board/readiness/*-run.log
 !specs/201-refresh-template-scene-api/readiness/**
 !specs/202-fix-build-fsx-engine/readiness/
 !specs/202-fix-build-fsx-engine/readiness/**
+!specs/204-fs-skia-ui-version-coherence/readiness/
+!specs/204-fs-skia-ui-version-coherence/readiness/**
+specs/204-fs-skia-ui-version-coherence/readiness/**/nuget-cache/
