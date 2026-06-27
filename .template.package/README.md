@@ -31,8 +31,15 @@ dotnet restore
 ```
 
 Pass `--profile <p>` to pick what to scaffold, and add `--feedback true` or
-`--skipGitInit true` as needed (see **Options**). Every profile carries the Spec Kit
+`--initGit true` as needed (see **Options**). Every profile carries the Spec Kit
 install and `speckit-*` skills, so you drive features through a governed agent loop.
+
+Generation is **side-effect-free by default**: it emits files only — it starts no process,
+creates no Git repository, and never hangs in CI or IDE "new project" hosts. To initialize a
+repository and mark the generated shell scripts executable, either pass `--initGit true` (and
+`--allow-scripts yes` for a non-interactive run) or run the steps by hand (see **Manual setup**).
+Under the SDD scaffold path (`fsgg-sdd scaffold --provider rendering`) these steps are performed
+for you, so `--initGit` is unnecessary there.
 
 ## Options
 
@@ -40,7 +47,7 @@ install and `speckit-*` skills, so you drive features through a governed agent l
 |--------|---------|--------|
 | `--profile <p>` | `app` | Which product to scaffold (see profile table below). |
 | `--feedback true` | `false` | Capture per-phase Spec Kit feedback into `specs/<feature>/feedback/` — adds the `after_*` feedback hooks and the `fs-gg-feedback-capture` skill. Default `false` induces no diff. |
-| `--skipGitInit true` | `false` | Don't create the initial Git commit (use when generating inside an existing repo). |
+| `--initGit true` | `false` | Opt in to initialize a Git repository with a `[Spec Kit] Initial commit` **and** mark generated shell scripts executable. Skipped when already inside a repository; non-fatal if `git` is absent. Pair with `--allow-scripts yes` for non-interactive runs. Default `false` is side-effect-free. Unnecessary under the SDD scaffold path. |
 
 | Profile | Scaffolds |
 |---------|-----------|
@@ -48,6 +55,20 @@ install and `speckit-*` skills, so you drive features through a governed agent l
 | `headless-scene` | Headless Scene-only product for scene/widget authoring (no live window). |
 | `governed` | Scene plus Testing helpers, governance-focused. |
 | `sample-pack` | Scene, SkiaViewer, Elmish + sample-pack gallery content. |
+
+## Manual setup (standalone use)
+
+Because generation is side-effect-free, a standalone (non-scaffold) caller who wants a Git
+repository and executable scripts can either pass `--initGit true --allow-scripts yes`, or perform
+the steps by hand from the generated project root:
+
+```bash
+find . -type f \( -name "*.sh" -o -name "fake.sh" \) -exec chmod +x {} +
+git init && git add . && git commit -m "[Spec Kit] Initial commit"   # skip if already in a repo
+```
+
+These same instructions ship in the generated product's `README.md`. Under the SDD scaffold path
+they are performed for you.
 
 ## Single-source versioning
 

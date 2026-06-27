@@ -10,6 +10,22 @@ The selected capabilities are controlled by `--profile`:
 - `governed`: Scene, Testing
 - `sample-pack`: Scene, SkiaViewer, Elmish, Samples
 
+## First-time setup (Git + executable scripts)
+
+This product was generated **side-effect-free**: no Git repository was created and the generated
+shell scripts may not carry the executable bit. Before the FAKE-backed commands below, either
+re-generate with `--initGit true --allow-scripts yes`, or run these steps once by hand from the
+project root (skip the `git` step if you are already inside a repository):
+
+```bash
+find . -type f \( -name "*.sh" -o -name "fake.sh" \) -exec chmod +x {} +
+git init && git add . && git commit -m "[Spec Kit] Initial commit"
+```
+
+On Windows the executable-bit step is unnecessary (there is no executable mode); just run the
+`git` step. If this product was produced by the SDD scaffold path, these steps were already done
+for you.
+
 ## Quickstart
 
 Run the generated product governance checks:

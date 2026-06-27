@@ -267,27 +267,10 @@ let private scaffold (tmpRoot: string) (designSystem: string option) (outSubdir:
         && (match designSystem with
             | Some "ant" -> File.Exists(Path.Combine(outDir, "design-system.json"))
             | _ -> true)
-    let countFiles () =
-        if Directory.Exists outDir then
-            Directory.EnumerateFiles(outDir, "*", SearchOption.AllDirectories) |> Seq.length
-        else
-            0
-
-    let sw = Stopwatch.StartNew()
-    let mutable prev = -1
-    let mutable stableTicks = 0
-    while not proc.HasExited && sw.Elapsed.TotalSeconds < 900.0 && stableTicks < 2 do
-        System.Threading.Thread.Sleep 3000
-        let c = countFiles ()
-        if treeComplete () && c = prev && c > 100 then
-            stableTicks <- stableTicks + 1
-        else
-            stableTicks <- 0
-        prev <- c
-
-    if not proc.HasExited then
-        // tree settled (or we hit the ceiling) — stop the spinning post-action.
-        (try proc.Kill true with _ -> ())
+    // Feature 205: default generation is side-effect-free — no auto-run post-action spins, so the
+    // process exits promptly on its own. The old 900 s wait/`Kill` loop that defended against the
+    // trailing auto-init post-action is reduced to a short sanity bound.
+    if not (proc.WaitForExit 60000) then (try proc.Kill true with _ -> ())
 
     if proc.HasExited && proc.ExitCode <> 0 && not (treeComplete ()) then
         failwithf "dotnet new failed for %A (exit %d):\n%s\n%s" designSystem proc.ExitCode outTask.Result errTask.Result

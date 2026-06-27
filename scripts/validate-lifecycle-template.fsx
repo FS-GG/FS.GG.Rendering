@@ -200,7 +200,7 @@ let private scaffold (tmpRoot: string) (profile: string) (extra: string list) (o
     let outDir = Path.Combine(tmpRoot, outSubdir)
     if Directory.Exists outDir then Directory.Delete(outDir, true)
     let args =
-        [ "new"; "fs-gg-ui"; "--name"; productName; "--profile"; profile; "--skipGitInit"; "true"; "-o"; outDir ]
+        [ "new"; "fs-gg-ui"; "--name"; productName; "--profile"; profile; "-o"; outDir ]
         @ extra
     let psi = ProcessStartInfo("dotnet")
     psi.WorkingDirectory <- repoRoot
@@ -216,18 +216,11 @@ let private scaffold (tmpRoot: string) (profile: string) (extra: string list) (o
         File.Exists(Path.Combine(outDir, "Directory.Build.props"))
         && (Directory.Exists outDir
             && Directory.EnumerateFiles(outDir, "*.fsproj", SearchOption.AllDirectories) |> Seq.isEmpty |> not)
-    let countFiles () =
-        if Directory.Exists outDir then Directory.EnumerateFiles(outDir, "*", SearchOption.AllDirectories) |> Seq.length else 0
-
-    let sw = Stopwatch.StartNew()
-    let mutable prev = -1
-    let mutable stable = 0
-    while not proc.HasExited && sw.Elapsed.TotalSeconds < 300.0 && stable < 2 do
-        System.Threading.Thread.Sleep 2000
-        let c = countFiles ()
-        if treeComplete () && c = prev && c > 40 then stable <- stable + 1 else stable <- 0
-        prev <- c
-    if not proc.HasExited then (try proc.Kill true with _ -> ())
+    // Feature 205: default generation is side-effect-free — no auto-run post-action, so the process
+    // exits promptly on its own. The old 300 s wait/`Kill` loop existed only to defend against the
+    // spinning auto-init post-action (the allow-scripts prompt looping on empty stdin); it is now
+    // reduced to a short sanity bound that fires only if something unexpected blocks.
+    if not (proc.WaitForExit 60000) then (try proc.Kill true with _ -> ())
 
     if proc.HasExited && proc.ExitCode <> 0 && not (treeComplete ()) then
         failwithf "dotnet new failed for profile=%s %A (exit %d):\n%s\n%s" profile extra proc.ExitCode outTask.Result errTask.Result
@@ -239,7 +232,7 @@ let private scaffold (tmpRoot: string) (profile: string) (extra: string list) (o
 let private scaffoldExpectFail (tmpRoot: string) (outSubdir: string) (extra: string list) =
     let outDir = Path.Combine(tmpRoot, outSubdir)
     if Directory.Exists outDir then Directory.Delete(outDir, true)
-    let args = [ "new"; "fs-gg-ui"; "--name"; productName; "--profile"; "app"; "--skipGitInit"; "true"; "-o"; outDir ] @ extra
+    let args = [ "new"; "fs-gg-ui"; "--name"; productName; "--profile"; "app"; "-o"; outDir ] @ extra
     let code, _, _ = runProc repoRoot "dotnet" args
     let treeExists = File.Exists(Path.Combine(outDir, "Directory.Build.props"))
     code, treeExists
