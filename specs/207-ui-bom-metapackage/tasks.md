@@ -122,8 +122,8 @@ two clean restores yield an identical resolved set, the channel matches, and `FS
 the BOM (quickstart Scenarios 1, 4, 7; BM-B/BM-C; SC-004; XR-A).
 
 - [X] T014 [US3] Extend `tests/Package.Tests/Feature207BomConsumerTests.fs` env-gated arm with reproducibility + channel evidence: clear caches and restore the clean consumer **twice**, assert the two resolved member sets are identical, and assert `FS.GG.UI@V` channel matches the members (`-preview` ⇒ preview); record into `bom-consumer-validation.md` (BM-C; SC-004; quickstart Scenario 4)
-- [ ] T015 [US3] Cut/extend the annotated snapshot tag `fs-skia-ui/v<V>` (feature 204 mechanism) at the resolution commit so the tagged snapshot includes `FS.GG.UI@V` alongside the 16 members at `V` (BM-B; FR-006; data-model E3)
-- [ ] T016 [US3] **Gated on US1+US2 passing (T010 + T013 green)** — record the `FS.GG.UI` BOM in the `fs-skia-ui-version` compatibility registry in `FS-GG/.github` (`registry/dependencies.yml` + `docs/registry/compatibility.md`) via the `cross-repo-coordination` skill / `gh` (NOT files in this repo), consistent with the verified US1/US2/SC-004 evidence; if a tracking issue exists, post a `## Response` linking the evidence. Do NOT record on a hypothesis (XR-A/XR-B/XR-C; FR-008)
+- [X] T015 [US3] Cut/extend the annotated snapshot tag `fs-skia-ui/v<V>` (feature 204 mechanism) at the resolution commit so the tagged snapshot includes `FS.GG.UI@V` alongside the 16 members at `V` (BM-B; FR-006; data-model E3)
+- [X] T016 [US3] **Gated on US1+US2 passing (T010 + T013 green)** — record the `FS.GG.UI` BOM in the `fs-skia-ui-version` compatibility registry in `FS-GG/.github` (`registry/dependencies.yml` + `docs/registry/compatibility.md`) via the `cross-repo-coordination` skill / `gh` (NOT files in this repo), consistent with the verified US1/US2/SC-004 evidence; if a tracking issue exists, post a `## Response` linking the evidence. Do NOT record on a hypothesis (XR-A/XR-B/XR-C; FR-008)
 
 **Checkpoint**: All three stories verified; the published BOM is a recorded, discoverable member of the
 coherent set with no second version literal introduced anywhere (INV-1; XR-C).
