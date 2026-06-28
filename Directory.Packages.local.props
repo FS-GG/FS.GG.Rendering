@@ -21,7 +21,7 @@
     <PackageVersion Include="SkiaSharp.HarfBuzz" Version="4.147.0-preview.3.1" />
     <PackageVersion Include="SkiaSharp.NativeAssets.Linux" Version="4.147.0-preview.3.1" />
     <PackageVersion Include="SkiaSharp.NativeAssets.Win32" Version="4.147.0-preview.3.1" />
-    <PackageVersion Include="YamlDotNet" Version="18.0.0" />
+    <PackageVersion Include="YamlDotNet" Version="18.1.0" />
     <PackageVersion Include="Yoga.Net" Version="3.2.3" />
   </ItemGroup>
   <!-- Test-only dependencies. Repo-owned FS.Skia.UI package versions are not declared here. -->
