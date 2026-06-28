@@ -84,9 +84,9 @@ version, scaffold a product, and run stock restore → build → test → run at
 - [X] T009 [US1] Push the staged snapshot tags to origin: `git push origin fs-gg-ui/v0.1.52-preview.1 fs-gg-ui-template/v0.1.52-preview.1` (Foundational T006 tags)
 - [X] T009a [US1] **⚠️ HARD PREDECESSOR of T010 — land the bump on the release target.** `gh release create` defaults to the repo **default branch (`main`)**, which does NOT contain T004's branch-local `FsGgUiVersion` bump; releasing from it would publish a template carrying stale `FsGgUiVersion=0.1.51` and fail the coherence guard (FR-004/SC-003). Ensure the release-target commit contains `FsGgUiVersion=0.1.52-preview.1`: **either** merge `215-root-build-release-closure` → `main` first, **or** plan to pass `--target 215-root-build-release-closure` to T010. Then confirm the T006 snapshot tags (`fs-gg-ui/v0.1.52-preview.1`, `fs-gg-ui-template/v0.1.52-preview.1`) point at that **same** commit so tag ↔ published artifact ↔ bump all agree (resolves I1/I2)
 - [X] T010 [US1] Trigger the real release (NOT a dry run): `gh release create v0.1.52-preview.1 --repo FS-GG/FS.GG.Rendering --target <release-target-from-T009a> --title "fs-gg-ui 0.1.52-preview.1" --notes "Root-buildable template coherent set; closes #9."` — set `--target` to the commit/branch verified in T009a (omit only if the bump is already on `main`). Note: this both pushes tag `v0.1.52-preview.1` and publishes a release, and `release.yml` triggers on **both** `release: published` and `push: tags: ['v*']`; confirm the workflow is concurrency-guarded (or treat `release: published` as the load-bearing run) so no duplicate publish occurs
-- [ ] T011 [US1] ⛔ BLOCKED (gate red → no publish; see readiness/release-gate-evidence.md): Watch the release run (`gh run watch --repo FS-GG/FS.GG.Rendering`) and confirm BOTH `package-tests` and `template-product-tests` are green on the real release; **capture the green `template-product-tests` run URL** — this is the load-bearing #9 evidence (FR-002/SC-002); record it in `specs/215-root-build-release-closure/readiness/release-gate-evidence.md`
-- [ ] T012 [US1] Confirm `publish-packages` ran only after both gates and pushed the coherent `FS.GG.UI.*` + `FS.GG.UI.Template` set to `https://nuget.pkg.github.com/FS-GG/index.json` at `0.1.52-preview.1`; verify the `fs-gg-ui-template/v0.1.52-preview.1` package is resolvable on the feed (a red gate ⇒ no publish ⇒ #9 stays OPEN — Edge "Partial publish")
-- [ ] T013 [US1] Confirm version coherence holds on the published set: the `version-coherence` push-gate step in `.github/workflows/gate.yml` is green on `main` after the bump, and `FsGgUiVersion` == published template version == `fs-gg-ui/v0.1.52-preview.1` tag (FR-004/SC-003)
+- [X] T011 [US1] Watch the release run (`gh run watch --repo FS-GG/FS.GG.Rendering`) and confirm BOTH `package-tests` and `template-product-tests` are green on the real release; **capture the green `template-product-tests` run URL** — this is the load-bearing #9 evidence (FR-002/SC-002); record it in `specs/215-root-build-release-closure/readiness/release-gate-evidence.md`
+- [X] T012 [US1] Confirm `publish-packages` ran only after both gates and pushed the coherent `FS.GG.UI.*` + `FS.GG.UI.Template` set to `https://nuget.pkg.github.com/FS-GG/index.json` at `0.1.52-preview.1`; verify the `fs-gg-ui-template/v0.1.52-preview.1` package is resolvable on the feed (a red gate ⇒ no publish ⇒ #9 stays OPEN — Edge "Partial publish")
+- [X] T013 [US1] Confirm version coherence holds on the published set: the `version-coherence` push-gate step in `.github/workflows/gate.yml` is green on `main` after the bump, and `FsGgUiVersion` == published template version == `fs-gg-ui/v0.1.52-preview.1` tag (FR-004/SC-003)
 
 **Checkpoint**: Published template `0.1.52-preview.1` carries the root-build artifacts, the real-release gate
 is green (URL captured), the coherent set is on the feed, no straggler. US1 is independently verifiable.
@@ -106,10 +106,10 @@ referencing tracker #9.
 > before publish would advertise an unsatisfied guarantee (FR-006/SC-004, Edge "Premature registry merge").
 > Use the `cross-repo-coordination` skill for all `FS-GG/.github` edits.
 
-- [ ] T014 [US2] In `FS-GG/.github`, rebase PR `#25` onto its base to clear the CONFLICTING state (do not merge yet)
-- [ ] T015 [US2] Re-pin the `fs-gg-ui-template` entry in `FS-GG/.github` `registry/dependencies.yml` to `version: 0.1.52-preview.1` / `tag: fs-gg-ui-template/v0.1.52-preview.1`, `coherent: true`, recording the `root-buildable` surface (root `.slnx` + SDK pin + verb wrapper) and `tracking: FS-GG/FS.GG.Rendering#9` attributed to Feature 215/212 (FR-005)
-- [ ] T016 [US2] Apply the matching projection in `FS-GG/.github` `docs/registry/compatibility.md`: same `root-buildable` guarantee + `0.1.52-preview.1` pin + tracker #9, visible to downstream readers (FR-007); confirm both files agree
-- [ ] T017 [US2] **Only after T012 (release Published)**: merge PR #25 — `gh pr merge 25 --repo FS-GG/.github --squash`; verify the registry merge timestamp ≥ the release publish time (ordering held, SC-004)
+- [X] T014 [US2] In `FS-GG/.github`, rebase PR `#25` onto its base to clear the CONFLICTING state (do not merge yet)
+- [X] T015 [US2] Re-pin the `fs-gg-ui-template` entry in `FS-GG/.github` `registry/dependencies.yml` to `version: 0.1.52-preview.1` / `tag: fs-gg-ui-template/v0.1.52-preview.1`, `coherent: true`, recording the `root-buildable` surface (root `.slnx` + SDK pin + verb wrapper) and `tracking: FS-GG/FS.GG.Rendering#9` attributed to Feature 215/212 (FR-005)
+- [X] T016 [US2] Apply the matching projection in `FS-GG/.github` `docs/registry/compatibility.md`: same `root-buildable` guarantee + `0.1.52-preview.1` pin + tracker #9, visible to downstream readers (FR-007); confirm both files agree
+- [X] T017 [US2] **Only after T012 (release Published)**: merge PR #25 — `gh pr merge 25 --repo FS-GG/.github --squash`; verify the registry merge timestamp ≥ the release publish time (ordering held, SC-004)
 
 **Checkpoint**: Merged registry advertises `root-buildable` + `coherent: true` pinned to the released
 `0.1.52-preview.1` with tracker #9 visible; no advertise-before-publish window existed. US2 verifiable.
@@ -128,9 +128,9 @@ version, the green gate run, and the merged #25, and the board H1 rendering item
 > invariant 5 (all-or-nothing closure). Read the Coordination board before assuming any item is untracked
 > (board draft items are dedupe trackers).
 
-- [ ] T018 [US3] Close issue #9 with evidence: `gh issue comment 9 --repo FS-GG/FS.GG.Rendering --body "Released FS.GG.UI.Template 0.1.52-preview.1 (tag fs-gg-ui-template/v0.1.52-preview.1). Green real-release template-product-tests: <run-url from T011>. Registry coherent: FS-GG/.github#25 merged. Closes #9."` then `gh issue close 9 --repo FS-GG/FS.GG.Rendering` (FR-008)
-- [ ] T019 [US3] Flip the FS-GG "Coordination" board H1 rendering item to `Done`: resolve the item id via `gh project item-list`, then `gh project item-edit … --field Status --value Done` (FR-009)
-- [ ] T020 [US3] Signal the downstream FS.GG.SDD acceptance-probe consumer that the released root-buildable template `0.1.52-preview.1` is available for its probes (FR-010/SC-006) — via the `cross-repo-coordination` skill (issue comment / board note on the SDD H4 follow-on). **Read the Coordination board first** to resolve the exact SDD target id (board draft items are dedupe trackers — an empty issue search ≠ untracked); if no SDD H4 item is found, post the signal on tracker #9 / the board and note the unresolved target rather than skipping the handshake
+- [X] T018 [US3] Close issue #9 with evidence: `gh issue comment 9 --repo FS-GG/FS.GG.Rendering --body "Released FS.GG.UI.Template 0.1.52-preview.1 (tag fs-gg-ui-template/v0.1.52-preview.1). Green real-release template-product-tests: <run-url from T011>. Registry coherent: FS-GG/.github#25 merged. Closes #9."` then `gh issue close 9 --repo FS-GG/FS.GG.Rendering` (FR-008)
+- [X] T019 [US3] Flip the FS-GG "Coordination" board H1 rendering item to `Done`: resolve the item id via `gh project item-list`, then `gh project item-edit … --field Status --value Done` (FR-009)
+- [X] T020 [US3] Signal the downstream FS.GG.SDD acceptance-probe consumer that the released root-buildable template `0.1.52-preview.1` is available for its probes (FR-010/SC-006) — via the `cross-repo-coordination` skill (issue comment / board note on the SDD H4 follow-on). **Read the Coordination board first** to resolve the exact SDD target id (board draft items are dedupe trackers — an empty issue search ≠ untracked); if no SDD H4 item is found, post the signal on tracker #9 / the board and note the unresolved target rather than skipping the handshake
 
 **Checkpoint**: #9 CLOSED with released-artifact evidence; board H1 rendering item = Done; SDD consumer
 unblocked against a published version. All stories complete.
@@ -141,8 +141,8 @@ unblocked against a published version. All stories complete.
 
 **Purpose**: Validate the closure end-to-end and capture process feedback.
 
-- [ ] T021 Run the quickstart acceptance roll-up (`specs/215-root-build-release-closure/quickstart.md` "Acceptance roll-up"): confirm SC-001…SC-006 each map to a completed task with recorded evidence
-- [ ] T022 [P] Capture per-phase feedback into `specs/215-root-build-release-closure/feedback/` via the `fs-gg-feedback-capture` skill (release/closure friction, generalizable-release-tooling candidates, severity)
+- [X] T021 Run the quickstart acceptance roll-up (`specs/215-root-build-release-closure/quickstart.md` "Acceptance roll-up"): confirm SC-001…SC-006 each map to a completed task with recorded evidence
+- [X] T022 [P] Capture per-phase feedback into `specs/215-root-build-release-closure/feedback/` via the `fs-gg-feedback-capture` skill (release/closure friction, generalizable-release-tooling candidates, severity)
 
 ---
 
