@@ -31,10 +31,21 @@ jobs:
     if: github.repository == 'FS-GG/FS.GG.Rendering'
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The Feature 209 coherence mirror in Package.Tests re-derives the verdict from the
+          # fs-gg-ui/v* snapshot tags (git tag --list). Default shallow checkout has no tags ⇒ the
+          # guard fails CLOSED ("tags must be visible (fetch-depth: 0)"). Fetch full history + tags.
+          fetch-depth: 0
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
-      # Package.Tests is an exe test project outside the slnx; restore+build it directly.
+      # The Surface-baseline tests reflect over the BUILT FS.GG.UI.* assemblies on disk
+      # (src/<Pkg>/bin/Debug/net10.0/*.dll — e.g. SkiaViewer, Build). They are not packed/restored
+      # by Package.Tests itself, so the solution must be built (default Debug config) first or those
+      # tests fail with "assembly has been built = false".
+      - name: Build solution (Debug) for surface-baseline assemblies
+        run: dotnet build FS.GG.Rendering.slnx
+      # Package.Tests is an exe test project outside the slnx; run it directly.
       - name: Run Package.Tests
         run: dotnet test tests/Package.Tests/Package.Tests.fsproj -c Release
 
@@ -44,9 +55,45 @@ jobs:
     if: github.repository == 'FS-GG/FS.GG.Rendering'
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+      # The generated product consumes FS.GG.UI.* as PACKAGES at $(FsGgUiVersion). On a release the
+      # coherent set is not on any feed yet — publish-packages runs AFTER this gate (needs: this job),
+      # so a stock restore hits NU1101. Pack the whole solution + template to a runner-local feed at
+      # the SAME version the template pins, and add it as a source. This mirrors the local pre-flight
+      # (scripts/dev-repack.fsx) and is throwaway (RUNNER_TEMP); it does not publish anything.
+      - name: Resolve coherent-set version (from tag/input, else the template pin)
+        id: ver
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "${{ github.event_name }}" in
+            release)           raw="${{ github.event.release.tag_name }}" ;;
+            push)              raw="${GITHUB_REF_NAME}" ;;
+            workflow_dispatch) raw="${{ inputs.version }}" ;;
+            *)                 raw="" ;;
+          esac
+          ver="${raw#v}"
+          if [[ -z "$ver" ]]; then
+            ver="$(grep -oP '(?<=<FsGgUiVersion>)[^<]+' template/base/Directory.Packages.props)"
+          fi
+          echo "version=$ver" >> "$GITHUB_OUTPUT"
+          echo "Coherent-set version for the gate feed: $ver"
+      - name: Pack the coherent set to a runner-local feed
+        shell: bash
+        env:
+          VER: ${{ steps.ver.outputs.version }}
+        run: |
+          set -euo pipefail
+          feed="$RUNNER_TEMP/release-local-feed"
+          mkdir -p "$feed"
+          dotnet restore FS.GG.Rendering.slnx
+          dotnet pack FS.GG.Rendering.slnx -c Release -p:Version="$VER" -o "$feed"
+          dotnet nuget add source "$feed" --name release-local-feed
+          echo "Packed FS.GG.UI.* $VER to $feed"; ls -1 "$feed"/*.nupkg
       # Exercise the real consumer path: install the in-repo `dotnet new` template, instantiate a
       # product, and run THAT generated product's tests (template/base/tests/Product.Tests becomes
       # the generated product's tests). This is gated on the instantiation tooling actually working
