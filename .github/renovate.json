@@ -1,4 +1,12 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["github>FS-GG/.github"]
+  "extends": ["github>FS-GG/.github"],
+  "hostRules": [
+    {
+      "description": "read:packages auth for the private org GitHub Packages NuGet feed (FS.GG.* are not on nuget.org). Lives in this repo's own config — NOT the shared preset — because Renovate does not substitute {{ secrets }} inside presets pulled via extends. Value = org-level Mend App Secret FSGG_PACKAGES_READ_TOKEN.",
+      "matchHost": "nuget.pkg.github.com",
+      "hostType": "nuget",
+      "token": "{{ secrets.FSGG_PACKAGES_READ_TOKEN }}"
+    }
+  ]
 }
