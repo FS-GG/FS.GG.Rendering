@@ -1,17 +1,24 @@
 name: template-dispatch
 
-# Sender half of the `fs-gg-ui-template` cross-repo contract (Feature 214).
+# Sender half of the `fs-gg-ui-template` cross-repo contract (Feature 216 — adopts the org reusable
+# App-token dispatch-sender, superseding the Feature 214 bespoke stored-PAT send).
 #
 # When Rendering publishes a FS.GG.UI.Template coherent-set release — the template-scoped tag
-# `fs-gg-ui-template/v<version>` (Feature 206) — notify FS-GG/FS.GG.Templates so its
-# upstream-bump.yml opens a pin-bump PR for that version. No manual step (US1).
+# `fs-gg-ui-template/v<version>` (Feature 206) — notify FS-GG/FS.GG.Templates so its upstream-bump.yml
+# opens a pin-bump PR for that version. No manual step (US1).
 #
-# Disjoint from release.yml: that workflow triggers on `v*` (and release/dispatch); this one triggers
-# ONLY on `fs-gg-ui-template/v*`. The patterns cannot match the same tag, so release.yml is untouched
-# (FR-008) and the trigger pattern itself is the "only genuine template releases" guard (FR-007).
+# Two jobs (research R4): `derive` owns what is uniquely Rendering's (canonical-repo guard + version
+# derivation/validation from the tag); `dispatch` `uses:` the org reusable workflow, which mints a
+# run-time GitHub App installation token scoped to the target and POSTs the repository_dispatch. No
+# long-lived cross-repo secret remains on Rendering (US2). A `uses:` job cannot also run `steps:`, so
+# derivation must be its own preceding job (research R4).
+#
+# Disjoint from release.yml: that workflow triggers on `v*`; this one triggers ONLY on
+# `fs-gg-ui-template/v*`. The slash makes the globs unable to match the same tag, so release.yml is
+# untouched (FR-006) and the trigger pattern itself is the "only genuine template releases" guard.
 #
 # The manual workflow_dispatch entry is for operator inspection only: a manual run lands on a non-tag
-# ref, so version derivation fails and the job fails loudly rather than sending (FR-006/FR-007).
+# ref, so version derivation fails and `derive` fails loudly rather than sending (FR-005).
 on:
   push:
     tags: ['fs-gg-ui-template/v*']
@@ -25,18 +32,37 @@ permissions:
   contents: read
 
 jobs:
-  dispatch:
-    name: Notify FS.GG.Templates of template release
+  derive:
+    name: Derive released template version
     runs-on: ubuntu-latest
-    # Canonical-repo guard (FR-005, US3): forks never send, never expose a fork secret. Mirrors
-    # release.yml's gate.
+    # Canonical-repo guard (FR-004, US3): forks never reach the sender. Because `dispatch` needs this
+    # job, a fork (where `derive` is skipped) never starts `dispatch` — no send, no credential exposure.
     if: github.repository == 'FS-GG/FS.GG.Rendering'
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.v.outputs.version }}
     steps:
       - uses: actions/checkout@v4
-      - name: Dispatch template-released to FS.GG.Templates
+      - id: v
+        name: Derive + validate version from the tag ref
         env:
           GITHUB_REF: ${{ github.ref }}
-          # Cross-repo credential (org-provisioned; FS-GG/.github#21/#22). The script fails loudly if
-          # this is empty/unset (FR-004/FR-006) — it never sends unauthenticated.
-          GH_TOKEN: ${{ secrets.TEMPLATES_DISPATCH_TOKEN }}
-        run: bash scripts/template-released-dispatch.sh
+        run: bash scripts/derive-template-version.sh
+
+  dispatch:
+    name: Notify FS.GG.Templates of template release
+    needs: derive
+    # Delegates credential minting + the cross-repo POST to the org reusable workflow (App-token,
+    # run-time-minted, scoped to the target). Pinned by commit SHA (research R2).
+    uses: FS-GG/.github/.github/workflows/dispatch-sender.yml@5fed2838f9ed085ffca09f4cc18b4f7bc59c1294  # main as of 2026-06-28
+    with:
+      target-repo: FS-GG/FS.GG.Templates
+      event-type: fs-gg-ui-template-released
+      version: ${{ needs.derive.outputs.version }}
+    # Explicit mapping is mandatory: `secrets: inherit` cannot bind the hyphenated callee ports
+    # `app-id`/`app-private-key` (real secret names have no hyphens) — research R1. The source names
+    # `APP_ID`/`APP_PRIVATE_KEY` are the working assumption until org-admin confirms (FS-GG/.github#22).
+    secrets:
+      app-id: ${{ secrets.APP_ID }}
+      app-private-key: ${{ secrets.APP_PRIVATE_KEY }}

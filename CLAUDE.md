@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/215-root-build-release-closure/plan.md
+at specs/216-adopt-reusable-dispatch-sender/plan.md
 <!-- SPECKIT END -->
 
 ## Ant Design — source of truth
