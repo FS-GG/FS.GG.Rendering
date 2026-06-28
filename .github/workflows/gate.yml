@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         # T015/T029 (Feature 209, D2) — the version-coherence guard reads `git tag --list
         # 'fs-gg-ui/v*'`; without full history/tags `git tag` is empty and the guard fails
         # closed (exit 2). fetch-depth: 0 makes the snapshot tags visible.
@@ -206,7 +206,7 @@ jobs:
       packages: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v4

@@ -30,7 +30,7 @@ jobs:
     # Restrict to the canonical repo: fork tags/dispatch never run this (no fork secret exposure, FR-013).
     if: github.repository == 'FS-GG/FS.GG.Rendering'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # The Feature 209 coherence mirror in Package.Tests re-derives the verdict from the
           # fs-gg-ui/v* snapshot tags (git tag --list). Default shallow checkout has no tags ⇒ the
@@ -54,7 +54,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.repository == 'FS-GG/FS.GG.Rendering'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: actions/setup-dotnet@v4
@@ -135,7 +135,7 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
