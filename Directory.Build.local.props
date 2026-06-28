@@ -61,6 +61,21 @@
     <FsDocsFaviconSource>img/logo.svg</FsDocsFaviconSource>
   </PropertyGroup>
 
+  <!-- api-breaking-change-gate (H3 / FS-GG/.github#20, epic #16 Pillar 5). The FS.GG.UI.* packages
+       are F#, so the operative breaking-change detector is the .NET SDK's Package Validation /
+       ApiCompat (assembly+package level) — Microsoft.CodeAnalysis.PublicApiAnalyzers is a Roslyn/C#
+       source analyzer and does not analyze F# (registry coherence id apicompat-publicapi-gate;
+       FS.GG.Governance spec 088 D1). The source-level public-surface record stays the committed .fsi
+       baselines under readiness/surface-baselines/ (a separate gate).
+       Package Validation is left OFF for the normal build/release pack on purpose: it emits MSBuild
+       ERRORS on a break, which would redden `dotnet pack` and split enforcement from the advisory
+       signal. The detector runs as a SEPARATE, advisory step — scripts/apicompat-check.sh, wired as
+       the non-required `api-compatibility-gate` job in gate.yml — which turns Package Validation on
+       per-pack against the feed baseline and reports breaks without blocking the merge. -->
+  <PropertyGroup>
+    <EnablePackageValidation>false</EnablePackageValidation>
+  </PropertyGroup>
+
   <!-- FSharp.Core resolves its version from the org baseline in the canonical
        Directory.Packages.props (CPM); this version-less reference just adds the package. -->
   <ItemGroup>
