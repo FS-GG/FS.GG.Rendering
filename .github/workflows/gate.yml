@@ -191,16 +191,18 @@ jobs:
   # (Microsoft.CodeAnalysis.PublicApiAnalyzers is C#-only). A removed/changed public member is a
   # break that must force a SemVer major (registry coherence id `apicompat-publicapi-gate`).
   #
-  # ADVISORY: a SEPARATE, non-required job (continue-on-error) — it never blocks the merge or
-  # reddens the required `gate` job above (Package Validation stays OFF in the normal build/release).
-  # The detector script exits non-zero on a real break, so promotion to REQUIRED is a one-line flip:
-  # drop `continue-on-error` and add this job to branch-protection required checks (once the surface
-  # is stable). It reads the feed with GITHUB_TOKEN (packages: read); on a fork PR (no token) the
-  # script degrades to advisory-clean.
+  # ENFORCING (ratcheted from advisory, FS-GG/.github#20 resolved): a SEPARATE job whose run FAILS
+  # on a real public-API break (Package Validation stays OFF in the normal build/release, so the
+  # required `gate` job above is unaffected). The detector script exits non-zero ONLY on a genuine
+  # CP#### break — NoBaselineYet / Indeterminate (e.g. a feed hiccup) do not fail it — so this is a
+  # robust hard gate, not a flaky one. It reads the feed with GITHUB_TOKEN (packages: read); on a
+  # fork PR (no token) the script degrades to clean (exit 0) so forks still merge.
+  # (These repos have no branch protection; enforcement is at the workflow level, the same model as
+  # the lockfile-restore-enforcement gate. Add to branch-protection required checks to also hard-block
+  # the merge button if/when the org adopts branch protection.)
   api-compatibility-gate:
-    name: API compatibility gate (breaking-change → SemVer major) [advisory]
+    name: API compatibility gate (breaking-change → SemVer major)
     runs-on: ubuntu-latest
-    continue-on-error: true
     permissions:
       contents: read
       packages: read
@@ -213,7 +215,7 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: ApiCompat vs feed baseline (advisory)
+      - name: ApiCompat vs feed baseline
         env:
           NUGET_FEED_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NUGET_FEED_USER: ${{ github.actor }}
