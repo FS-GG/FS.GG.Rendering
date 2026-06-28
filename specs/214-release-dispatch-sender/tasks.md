@@ -8,133 +8,113 @@ description: "Task list for Release → Templates Dispatch Sender"
 
 **Prerequisites**: plan.md ✓, spec.md ✓, research.md ✓, data-model.md ✓, contracts/template-released-dispatch.md ✓, quickstart.md ✓
 
-**Tests**: No F# test projects are added (this feature adds no F# code). The mandated test evidence is
-`actionlint` + a `DRY_RUN=1` harness for the dispatch script — these are tracked as first-class tasks,
-not optional extras, per plan.md "Standing assumption" and research R8.
+**Tests**: This feature has **no F# / running app**. Per plan.md, the standing "live smoke run" is
+substituted by the strongest available local proof — `actionlint` on the new workflow plus a
+`DRY_RUN=1` exercise of the dispatch script (derivation, payload shape, fail-loud branches). The real
+cross-repo `repository_dispatch` send is **BLOCKED** by the org cross-repo credential
+(`secrets.TEMPLATES_DISPATCH_TOKEN`, FS-GG/.github#21/#22) and is recorded as a disclosed deferred
+verification — never faked green.
 
-**Organization**: Tasks are grouped by user story. NOTE: all three stories are realized inside the
-**same two files** (`.github/workflows/template-dispatch.yml` and `scripts/template-released-dispatch.sh`).
-They are still independently *testable* (each maps to a distinct, separately-verifiable behavior), but
-tasks touching the same file are **not** parallelizable — `[P]` is used sparingly and only across
-genuinely distinct files.
+**Organization**: Tasks grouped by user story. US1 (the send) creates the two shared files
+(`scripts/template-released-dispatch.sh`, `.github/workflows/template-dispatch.yml`); US2
+(observability) and US3 (fork/non-template safety) layer onto those same files, so tasks touching a
+shared file are sequential within that file.
 
 ## Format: `[ID] [P?] [Story] Description`
 
-- **[P]**: Can run in parallel (different files, no dependencies)
-- **[Story]**: US1 / US2 / US3 (Setup / Foundational / Polish carry no story label)
-- Exact file paths are included in each task.
+- **[P]**: Can run in parallel (different files, no dependencies on incomplete tasks)
+- **[Story]**: US1, US2, US3 (maps to spec.md user stories)
 
 ## Path Conventions
 
-This is a CI / release-automation feature in a single repository. Artifacts live at the repo root:
-
-- `.github/workflows/template-dispatch.yml` — NEW sender workflow
-- `scripts/template-released-dispatch.sh` — NEW dispatch script (`DRY_RUN=1` testable)
-- `specs/214-release-dispatch-sender/readiness/` — evidence/baseline output
+CI / release automation, single repository. New artifacts live at the repo root:
+`.github/workflows/template-dispatch.yml`, `scripts/template-released-dispatch.sh`,
+`scripts/test-template-released-dispatch.sh`; evidence under
+`specs/214-release-dispatch-sender/readiness/`.
 
 ---
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-**Purpose**: Tooling and a recorded pre-change baseline so FR-008 (no release regression) is provable.
+**Purpose**: Evidence scaffolding, baseline, and reproducible tooling.
 
-> **⚠️ Baseline scope (adapted, honest).** This feature adds **no F# code** and touches no module
-> surface, so the .NET `*.Tests.fsproj` suite is *not* the regression surface here — `release.yml`
-> byte-equality is (FR-008). The baseline below therefore (a) records the current `release.yml`
-> content hash as the regression anchor and (b) confirms the workflow-lint toolchain. We do **not**
-> claim a full red/green .NET baseline that this change cannot affect.
-
-- [X] T001 Create the readiness output dir `specs/214-release-dispatch-sender/readiness/` and record the FR-008 regression anchor: `git rev-parse HEAD:.github/workflows/release.yml` (or `git hash-object .github/workflows/release.yml`) into `specs/214-release-dispatch-sender/readiness/release-yml-baseline.txt`
-- [X] T002 [P] Confirm `actionlint` is available (`actionlint -version`); if absent, install per quickstart.md Prerequisites pinned to a fixed version (`go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.7`, not `@latest`, for reproducible lint evidence) and record the exact version in `specs/214-release-dispatch-sender/readiness/baseline.md`
-- [X] T003 [P] Confirm `gh` CLI is available (`gh --version`) and POSIX `bash` (`bash --version`) for local script execution; record in `specs/214-release-dispatch-sender/readiness/baseline.md`
+- [X] T001 Create the evidence directory `specs/214-release-dispatch-sender/readiness/` and confirm the target dirs `.github/workflows/` and `scripts/` exist for the new sender artifacts
+- [X] T002 Establish the no-regression baseline: `dotnet fsi scripts/baseline-tests.fsx --out specs/214-release-dispatch-sender/readiness/baseline.md` (runs EVERY test project — solution + Package.Tests + samples — and records the full red/green set; this feature adds no F#, so the set MUST be unchanged at merge) AND capture the FR-008 anchor `git diff --stat origin/main -- .github/workflows/release.yml` (expect empty) into the readiness log
+- [X] T003 [P] Pin the workflow linter for reproducible evidence: install `actionlint` at a fixed version (`go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.7`, not `@latest`) and record the resolved version in `specs/214-release-dispatch-sender/readiness/`. **Dependency note (constitution §Engineering Constraints):** dev/test-only linter (not shipped, not a package reference); need = reproducible structural/semantic check of `template-dispatch.yml`; pinning = fixed `@v1.7.7`; owner = this feature's CI evidence (release-automation), removable without affecting the product surface
 
 ---
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-**Purpose**: Pin the exact contract the sender must realize, and establish the local proof harness,
-BEFORE writing the workflow/script — so US1–US3 build on a verified target, not a hypothesis.
+**Purpose**: Confirm the fixed contract, prove derivation/payload locally before fleshing out the sender.
 
-**⚠️ CRITICAL**: No user story work begins until this phase is complete.
+**⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-> **⚠️ Early live proof (adapted per plan.md, lines 24–30 + research R8).** This feature has no
-> running "app"; the equivalent live check is the end-to-end cross-repo dispatch, which is **BLOCKED**
-> by the org credential (FS-GG/.github#21/#22). The strongest *available* proof — and the standing
-> substitute for the live smoke run — is `actionlint` on the workflow + a `DRY_RUN=1` exercise of the
-> script that confirms derived version, payload shape, and the fail-loud paths. T006 schedules that
-> harness skeleton up front; the real send is a **disclosed deferred verification** (Phase 6 / T021),
-> never a silent assumption.
+> **⚠️ Early local proof (STANDING requirement, adapted — the live cross-repo send is BLOCKED).**
+> This feature has no running app; the live equivalent (end-to-end dispatch → receiver PR) is blocked
+> by the org credential. Per plan.md, T005 substitutes it with the strongest available local
+> evidence — `actionlint` + a `DRY_RUN=1` derivation/payload check — run on a minimal scaffold BEFORE
+> any guard/observability work. Treat the plan's derivation and trigger hypotheses (R1/R2) as
+> unverified assumptions until T005 passes.
 
-- [X] T004 Re-read the receiver contract source of truth `specs/214-release-dispatch-sender/contracts/template-released-dispatch.md` and `data-model.md`; capture in `specs/214-release-dispatch-sender/readiness/contract-pin.md` the exact non-negotiables the sender must hit: `event_type=fs-gg-ui-template-released`, `client_payload.version` form `^[0-9]+\.[0-9]+\.[0-9]+(-preview\.[0-9]+)?$`, target `FS-GG/FS.GG.Templates`, tag-prefix `refs/tags/fs-gg-ui-template/v`
-- [X] T005 [P] Verify the trigger signal exists and is distinct from `release.yml`: `git tag -l 'fs-gg-ui-template/*'` shows `fs-gg-ui-template/v0.1.50-preview.1`, and confirm `release.yml`'s full trigger set — `release: types:[published]` + `push: tags:['v*']` + `workflow_dispatch` — produces NO `fs-gg-ui-template/v*` push (`v*` does NOT glob-match `fs-gg-ui-template/v…`, and neither the release nor manual entry creates that tag); note this in `readiness/contract-pin.md` as the FR-007/FR-008 basis
-- [X] T006 Create the dry-run proof harness `scripts/test-template-released-dispatch.sh` (a small POSIX driver invoking the not-yet-written `scripts/template-released-dispatch.sh` with the four quickstart scenarios: happy path, empty version, malformed version, missing token) — assertions defined now, run in each user-story phase as that behavior lands
+- [X] T004 Build the contract / root-cause map every story depends on — record in `specs/214-release-dispatch-sender/readiness/` the verified facts: (a) the live template tag exists (`git tag -l 'fs-gg-ui-template/v*'` → `fs-gg-ui-template/v0.1.50-preview.1`); (b) `release.yml`'s `v*` trigger does NOT match `fs-gg-ui-template/v*` (R1, FR-008); (c) the receiver's event id `fs-gg-ui-template-released` and `client_payload.version` shape from `contracts/template-released-dispatch.md`
+- [X] T005 **Early local proof (substitute live smoke run)**: scaffold minimal `scripts/template-released-dispatch.sh` + `.github/workflows/template-dispatch.yml`, then run `actionlint .github/workflows/template-dispatch.yml` (exit 0) and one `DRY_RUN=1 GH_TOKEN=dummy GITHUB_REF=refs/tags/fs-gg-ui-template/v0.1.50-preview.1 scripts/template-released-dispatch.sh` confirming derived version `0.1.50-preview.1` and payload shape; capture both logs to `specs/214-release-dispatch-sender/readiness/`
+- [X] T006 [P] Create the dry-run test-harness seam `scripts/test-template-released-dispatch.sh` (POSIX) stubbing the four quickstart Layer-2 scenarios (happy / empty-version / malformed-version / missing-token) so each story asserts against it
+- [X] T007 Confirm the sender contract seam is coherent with the receiver: reconcile `specs/214-release-dispatch-sender/contracts/template-released-dispatch.md` event id + payload against the `fs-gg-ui-template` cross-repo registry entry (FR-009) before implementation
 
-**Checkpoint**: Contract pinned, trigger signal confirmed, dry-run harness ready — sender implementation can begin.
+**Checkpoint**: Contract facts recorded, derivation/payload proven locally on a scaffold — user-story implementation can begin.
 
 ---
 
 ## Phase 3: User Story 1 - Downstream pin updates automatically on a template release (Priority: P1) 🎯 MVP
 
-**Goal**: A canonical template tag push derives the released version from the tag and dispatches
-`fs-gg-ui-template-released` with `client_payload.version` to `FS-GG/FS.GG.Templates`, with zero
-manual steps (FR-001, FR-002, FR-003, SC-001, SC-002).
+**Goal**: A canonical `fs-gg-ui-template/v*` tag push sends exactly one `fs-gg-ui-template-released` dispatch to FS.GG.Templates carrying the released version.
 
-**Independent Test**: `DRY_RUN=1 GH_TOKEN=dummy GITHUB_REF=refs/tags/fs-gg-ui-template/v0.1.50-preview.1 scripts/template-released-dispatch.sh`
-prints `event_type=fs-gg-ui-template-released` and `client_payload.version=0.1.50-preview.1`, exit 0
-(quickstart Layer 2 happy path). Live round-trip is the deferred check in T021.
+**Independent Test**: `DRY_RUN=1` with `GITHUB_REF=refs/tags/fs-gg-ui-template/v0.1.50-preview.1` prints `event_type=fs-gg-ui-template-released` and `client_payload.version=0.1.50-preview.1` and exits 0 (the live end-to-end send is the deferred Layer-3 check, T019).
 
-- [X] T007 [US1] Create `scripts/template-released-dispatch.sh`: derive version by stripping `refs/tags/fs-gg-ui-template/v` from `GITHUB_REF`, build the JSON payload, and dispatch via `gh api -X POST /repos/FS-GG/FS.GG.Templates/dispatches -f event_type=fs-gg-ui-template-released -F 'client_payload[version]=<version>'`; honor `DRY_RUN=1` to print `event_type=` / `client_payload.version=` and skip the network call (FR-001, FR-002, FR-003, R3)
-- [X] T008 [US1] Create `.github/workflows/template-dispatch.yml` with `on: push: tags: ['fs-gg-ui-template/v*']` (plus `workflow_dispatch`), a single job that checks out and runs `scripts/template-released-dispatch.sh`, passing `GITHUB_REF` and `GH_TOKEN: ${{ secrets.TEMPLATES_DISPATCH_TOKEN }}` (FR-001, R1, R4)
-- [X] T009 [US1] Run the happy-path proof: `DRY_RUN=1 GH_TOKEN=dummy GITHUB_REF=refs/tags/fs-gg-ui-template/v0.1.50-preview.1 scripts/template-released-dispatch.sh` via `scripts/test-template-released-dispatch.sh`; confirm payload `{"version":"0.1.50-preview.1"}` and exit 0; capture output to `specs/214-release-dispatch-sender/readiness/dry-run-us1.txt` (SC-002 no drift)
+- [X] T008 [US1] Implement version derivation in `scripts/template-released-dispatch.sh`: strip the literal prefix `refs/tags/fs-gg-ui-template/v` from `GITHUB_REF`, validate non-empty and matching `^[0-9]+\.[0-9]+\.[0-9]+(-preview\.[0-9]+)?$` (FR-002, FR-003, R2)
+- [X] T009 [US1] Build payload + send in `scripts/template-released-dispatch.sh`: `gh api -X POST /repos/FS-GG/FS.GG.Templates/dispatches -f event_type=fs-gg-ui-template-released -F 'client_payload[version]=<version>'`, with `DRY_RUN=1` printing the exact payload and skipping the network call (FR-001, FR-002, R3) — depends on T008
+- [X] T010 [US1] Implement the sender workflow `.github/workflows/template-dispatch.yml`: `on: push: tags: ['fs-gg-ui-template/v*']` plus a `workflow_dispatch` manual entry; a single job that passes `GITHUB_REF` and `GH_TOKEN` (`secrets.TEMPLATES_DISPATCH_TOKEN`) into `scripts/template-released-dispatch.sh` (FR-001, FR-003, R1) — depends on T009 (script interface)
+- [X] T011 [P] [US1] Assert the happy path in `scripts/test-template-released-dispatch.sh`: DRY_RUN happy-path → exit 0 with `event_type=fs-gg-ui-template-released` and `client_payload.version=0.1.50-preview.1` (quickstart Layer 2; SC-001, SC-002)
 
-**Checkpoint**: The sender derives and (dry-run) emits the correct payload — MVP behavior provable without the credential.
+**Checkpoint**: The send (derivation + payload + dispatch + workflow trigger) is functional and dry-run-provable end of US1 — MVP.
 
 ---
 
 ## Phase 4: User Story 2 - Release operators can see whether the notification was sent (Priority: P2)
 
-**Goal**: Success and failure of the send are visible/attributable in the run; no failure (missing
-credential, network/receiver error, undeterminable version) is silently swallowed (FR-006, US2, SC-004).
+**Goal**: Every send outcome (success or any failure) is a visible, attributable step result — never silently swallowed.
 
-**Independent Test**: Force each failure mode in dry-run and confirm a non-zero exit with a clear
-message and NO payload sent: empty version ref, malformed version, empty `GH_TOKEN`
-(quickstart Layer 2 edge cases).
+**Independent Test**: Force each failure path under `DRY_RUN=1` (undeterminable version, empty `GH_TOKEN`) and confirm a non-zero exit with a clear message and no payload printed.
 
-- [X] T010 [US2] Harden `scripts/template-released-dispatch.sh` for fail-loud: run under `set -euo pipefail`, echo target repo + event type + derived version BEFORE sending (attributable record), and exit non-zero on `gh` error (FR-006, R6, US2 AS1)
-- [X] T011 [US2] Add the undeterminable-version guard in `scripts/template-released-dispatch.sh`: if the stripped version is empty OR fails `^[0-9]+\.[0-9]+\.[0-9]+(-preview\.[0-9]+)?$`, print a message naming the bad ref and exit non-zero WITHOUT printing/sending a payload (FR-006, edge "version cannot be determined")
-- [X] T012 [US2] Add the credential-present guard in `scripts/template-released-dispatch.sh`: if `GH_TOKEN` (from `TEMPLATES_DISPATCH_TOKEN`) is empty/unset, fail non-zero with a message naming the missing token, even under `DRY_RUN=1` (FR-004, FR-006, edge "credential missing")
-- [X] T013 [US2] Run the fail-loud proofs via `scripts/test-template-released-dispatch.sh`: empty-version ref, `vNOPE` malformed, and empty `GH_TOKEN` each yield non-zero + no payload; capture to `specs/214-release-dispatch-sender/readiness/dry-run-us2.txt` (SC-004)
+- [X] T012 [US2] Harden `scripts/template-released-dispatch.sh`: run under `set -euo pipefail`; echo target repo / event type / derived version before sending; non-zero exit and NO payload on undeterminable version and on empty `GH_TOKEN` — no `|| true` masking (FR-006, FR-004, R6, edge cases) — same file as T008/T009, sequential
+- [X] T013 [US2] Surface the outcome in `.github/workflows/template-dispatch.yml`: confirm no `continue-on-error` / `|| true` masks the send step and the step reports success/failure attributably (FR-006, US2 AS1/AS2); **also assert the negative for FR-004** — the send step's `GH_TOKEN` is wired ONLY to `secrets.TEMPLATES_DISPATCH_TOKEN` and never falls back to the default per-repo `GITHUB_TOKEN` — same file as T010, sequential
+- [X] T014 [P] [US2] Assert the fail-loud branches in `scripts/test-template-released-dispatch.sh`: empty-version ref → non-zero & no payload; malformed version → non-zero; empty token → non-zero naming the missing `TEMPLATES_DISPATCH_TOKEN`/`GH_TOKEN` (quickstart Layer 2 edges; SC-004)
 
-**Checkpoint**: Every controllable failure mode surfaces visibly; happy path (US1) still passes.
+**Checkpoint**: Happy path AND every failure path are visibly surfaced and asserted; US1 still passes.
 
 ---
 
 ## Phase 5: User Story 3 - Notifications fire only for genuine canonical template releases (Priority: P3)
 
-**Goal**: The send fires only for real template tags on the canonical repo — never from forks, never
-for non-template events (FR-005, FR-007, US3, SC-003).
+**Goal**: No fork and no non-template event ever sends — the trigger pattern and canonical-repo guard are the boundary.
 
-**Independent Test**: `actionlint` confirms the `on: push: tags: ['fs-gg-ui-template/v*']` trigger and
-the `if: github.repository == 'FS-GG/FS.GG.Rendering'` guard parse; reason about the negative cases
-(fork → guard skips; non-template tag → trigger doesn't match) per quickstart Layer 3 negative checks.
+**Independent Test**: Static/deferred reasoning (live fork run needs the credential): confirm the `if` guard skips on a non-canonical `github.repository`, and that a `v*` release tag does not match the `fs-gg-ui-template/v*` trigger.
 
-- [X] T014 [US3] Add the canonical-repo guard to `.github/workflows/template-dispatch.yml`: `if: github.repository == 'FS-GG/FS.GG.Rendering'` on the send job, mirroring `release.yml` (FR-005, R5, US3 AS1)
-- [X] T015 [US3] Confirm the trigger pattern in `.github/workflows/template-dispatch.yml` is exactly `fs-gg-ui-template/v*` (not `v*`), so non-template release events never match (FR-007, R1, US3 AS2); note the distinction from `release.yml`'s `v*` in `readiness/contract-pin.md`
-- [X] T016 [US3] Run `actionlint .github/workflows/template-dispatch.yml` (quickstart Layer 1); confirm exit 0 and that trigger + guard + step expressions parse; capture to `specs/214-release-dispatch-sender/readiness/actionlint.txt` (SC-003 basis)
+- [X] T015 [US3] Add the canonical-repo guard to `.github/workflows/template-dispatch.yml`: `if: github.repository == 'FS-GG/FS.GG.Rendering'` on the send job, mirroring `release.yml` (FR-005, US3, R5) — same file as T010/T013, sequential
+- [X] T016 [US3] Confirm the trigger IS the genuine-template guard: the `on: push: tags: ['fs-gg-ui-template/v*']` filter means non-template (`v*`) events never match; document in the contract note that a `workflow_dispatch` manual run lands on a non-tag ref → version-derivation fails loud, never a spurious send (FR-007) — `.github/workflows/template-dispatch.yml` + `specs/214-release-dispatch-sender/contracts/template-released-dispatch.md`
+- [X] T017 [P] [US3] Record the negative-path reasoning in `specs/214-release-dispatch-sender/readiness/`: fork push skips via the `if` guard (and forks lack the secret); a `v*` tag does not match the trigger (SC-003) — disclosed as static/deferred (not live-runnable without a fork + credential)
 
-**Checkpoint**: All three stories independently provable in dry-run/lint; sender complete pending live credential.
+**Checkpoint**: Fork/non-template boundary in place and reasoned; US1 and US2 still pass.
 
 ---
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-**Purpose**: Contract coherence, regression proof (FR-008), and disclosure of the deferred live path.
-
-- [X] T017 [P] Update the `fs-gg-ui-template` cross-repo registry/contract entry to record the sender half as realized (FR-009); use the `cross-repo-coordination` skill — keep the registry the source of truth and coherent with the receiver
-- [X] T018 [P] Confirm FR-008 regression guard: `git diff --stat origin/main -- .github/workflows/release.yml` produces NO output, and the content hash matches `specs/214-release-dispatch-sender/readiness/release-yml-baseline.txt` (T001); record in `readiness/baseline.md`
-- [X] T019 [P] Run the full quickstart.md Layer 1 + Layer 2 sequence end-to-end one more time and confirm every expected exit code/message; record the consolidated result in `specs/214-release-dispatch-sender/readiness/quickstart-run.md`
-- [X] T020 Update the Coordination board item FS-GG/FS.GG.Rendering#10 (and parent FS-GG/.github#16) noting the sender is authored + locally proven, still blocked on the live credential (FS-GG/.github#21/#22), via the `cross-repo-coordination` skill
-- [X] T021 Record the **disclosed deferred verification** in `specs/214-release-dispatch-sender/readiness/deferred-live-check.md`: the end-to-end cross-repo send (sender → receiver pin-bump PR, SC-001/SC-002/SC-005) is BLOCKED by the org credential and MUST be run per quickstart Layer 3 once FS-GG/.github#21 lands — explicitly NOT faked green
+- [X] T018 [P] Run the full quickstart Layers 1+2 and capture evidence into `specs/214-release-dispatch-sender/readiness/`: `actionlint .github/workflows/template-dispatch.yml` clean + all four `scripts/test-template-released-dispatch.sh` scenarios green; include a one-line confirmation that the send step references `secrets.TEMPLATES_DISPATCH_TOKEN` and not `GITHUB_TOKEN` (FR-004 negative check)
+- [X] T019 [P] Record the deferred live check (quickstart Layer 3) as a disclosed, BLOCKED verification in `specs/214-release-dispatch-sender/readiness/` AND state it in the PR description: **SC-001 and SC-005 (zero-manual, 100%-of-releases) remain PENDING-CREDENTIAL** — the end-to-end cross-repo send + receiver pin-bump PR awaits `secrets.TEMPLATES_DISPATCH_TOKEN` (FS-GG/.github#21/#22). Local dry-run green ≠ live SC-001/SC-005 proven; do NOT fake it green
+- [X] T020 Verify the FR-008 regression guard: `git diff --stat origin/main -- .github/workflows/release.yml` returns no output (release.yml byte-unchanged; Package.Tests / template-instantiation / Feature-212 stock-root gating intact)
+- [X] T021 [P] Update the cross-repo `fs-gg-ui-template` registry/contract entry to mark the sender half realized (FR-009) via the `cross-repo-coordination` protocol, and reflect closure on board item FS-GG/FS.GG.Rendering#10
 
 ---
 
@@ -143,78 +123,61 @@ the `if: github.repository == 'FS-GG/FS.GG.Rendering'` guard parse; reason about
 ### Phase Dependencies
 
 - **Setup (Phase 1)**: No dependencies — start immediately.
-- **Foundational (Phase 2)**: Depends on Setup. BLOCKS all user stories (pins the contract + builds the proof harness).
-- **User Stories (Phase 3–5)**: All depend on Foundational. They share two files, so:
-  - **US1 (P1)** creates the script + workflow — it is the structural prerequisite for US2/US3 edits to those same files.
-  - **US2 (P2)** and **US3 (P3)** harden the files US1 created; they are independently *testable* but, because they edit the same two files, must be sequenced (not run in parallel against each other).
+- **Foundational (Phase 2)**: Depends on Setup — BLOCKS all user stories. T005 (early local proof) must pass before US implementation.
+- **User Stories (Phase 3–5)**: All depend on Foundational. US1 creates the shared files; US2 and US3 layer onto them (so they are sequenced after US1 on the shared files, not parallel to it).
 - **Polish (Phase 6)**: Depends on US1–US3 complete.
 
 ### User Story Dependencies
 
-- **US1 (P1)**: After Foundational. No dependency on other stories — the MVP.
-- **US2 (P2)**: Edits the script US1 created (observability/fail-loud). Independently testable via the edge-case dry-runs.
-- **US3 (P3)**: Edits the workflow US1 created (guards/trigger). Independently testable via `actionlint` + negative reasoning.
+- **US1 (P1)**: After Foundational — authors `template-released-dispatch.sh` + `template-dispatch.yml`. The MVP.
+- **US2 (P2)**: After US1 — hardens the same script/workflow for fail-loud observability. Independently testable via the failure scenarios.
+- **US3 (P3)**: After US1 — adds the canonical-repo guard and documents the trigger boundary on the same workflow. Independently testable via static guard reasoning.
 
-### Within Each User Story
+### Within / Across Stories — shared-file note
 
-- Implementation lands, then its dry-run/lint proof runs (T009 for US1, T013 for US2, T016 for US3).
+`scripts/template-released-dispatch.sh` is touched by T008, T009 (US1) and T012 (US2): sequential.
+`.github/workflows/template-dispatch.yml` is touched by T010 (US1), T013 (US2), T015/T016 (US3): sequential.
+The test harness `scripts/test-template-released-dispatch.sh` is a different file: its assertion
+tasks (T011, T014) are `[P]` relative to the implementation tasks.
 
 ### Parallel Opportunities
 
-- Setup: T002 and T003 in parallel (different checks).
-- Foundational: T005 parallel with T004; T006 after the contract is pinned.
-- Polish: T017, T018, T019 in parallel (registry / git-diff / quickstart — distinct artifacts).
-- **NOT parallel**: any two tasks editing `scripts/template-released-dispatch.sh` (T007, T010, T011, T012) or `.github/workflows/template-dispatch.yml` (T008, T014, T015) — same file, sequence them.
+- T003 (tooling) parallel with T001/T002 setup.
+- T006 (test-harness seam) parallel with T004/T005/T007 within Foundational.
+- T011, T014, T017 (assertions/evidence in separate files) parallel within their phases.
+- Polish: T018, T019, T021 parallel ([P]); T020 is a standalone verification.
 
 ---
 
-## Parallel Example: Setup Phase
+## Parallel Example: Foundational
 
 ```bash
-# T002 and T003 touch different tooling — run together:
-Task: "Confirm actionlint is available and record version"
-Task: "Confirm gh CLI + bash available and record versions"
-```
-
-## Parallel Example: Polish Phase
-
-```bash
-# Distinct artifacts — run together:
-Task: "Update fs-gg-ui-template registry contract entry (FR-009)"
-Task: "Confirm release.yml byte-unchanged vs origin/main (FR-008)"
-Task: "Re-run quickstart Layer 1+2 and record consolidated result"
+# After T004/T005 land the scaffold, the harness seam is independent:
+Task: "T006 Create POSIX dry-run harness scripts/test-template-released-dispatch.sh"
+Task: "T007 Reconcile contract doc against the fs-gg-ui-template registry entry"
 ```
 
 ---
 
 ## Implementation Strategy
 
-### MVP First (User Story 1 Only)
+### MVP First (User Story 1 only)
 
-1. Phase 1: Setup (baseline anchor + tooling).
-2. Phase 2: Foundational (pin contract, build dry-run harness) — the **early proof** substitute for the live smoke run.
-3. Phase 3: User Story 1 — script + workflow emit the correct payload (dry-run).
-4. **STOP and VALIDATE**: T009 happy-path dry-run is green; payload shape matches the contract.
-5. The sender is functionally complete for the credentialed path; demo via dry-run.
+1. Phase 1 Setup → 2. Phase 2 Foundational (incl. the **early local proof** T005 that validates
+derivation/payload on a scaffold before guard/observability work) → 3. Phase 3 US1 → **STOP & VALIDATE**
+the dry-run happy path → the sender is demonstrably correct locally (live send deferred, T019).
 
 ### Incremental Delivery
 
-1. Setup + Foundational → harness ready.
-2. US1 → correct payload derivation/emit (MVP, dry-run proven).
-3. US2 → fail-loud/observability proven across all edge cases.
-4. US3 → fork/non-template guards proven via actionlint.
-5. Polish → registry coherence, FR-008 regression proof, deferred-live-check disclosure.
-
-### Deferred (disclosed) — NOT in scope to make green here
-
-- Live end-to-end cross-repo dispatch (SC-001/SC-002/SC-005) is BLOCKED by the org credential
-  (FS-GG/.github#21/#22). Tracked in T021; run per quickstart Layer 3 once provisioned.
+US1 (the send) → US2 (make every outcome visible) → US3 (lock the fork/non-template boundary) →
+Polish (full quickstart evidence + FR-008 regression guard + registry coherence). Each story is an
+independently testable increment that does not break the previous.
 
 ---
 
 ## Notes
 
-- `[P]` = different files, no dependencies. The two product files are shared across all three stories, so most story tasks are intentionally sequential.
-- `[Story]` label maps each task to US1/US2/US3 for traceability.
-- This feature adds no F# code; "test evidence" = `actionlint` + `DRY_RUN=1` script proofs (real, runnable) plus one disclosed deferred live check.
-- Commit after each task or logical group.
+- This feature touches **zero F#** and no public module surface — the `.fsi`/surface obligations are N/A; the contract obligation (FR-009) is met via the contract doc + registry update (T007, T021).
+- The real cross-repo send is BLOCKED (org credential FS-GG/.github#21/#22) and is a **disclosed deferred** check (T019) — never reported green without the credential. **SC-001 / SC-005 are therefore PENDING-CREDENTIAL at merge** and MUST be flagged as such in the PR/readiness, not implied green by the local dry-run.
+- FR-008 is the hard regression guard: `release.yml` MUST stay byte-unchanged (T002 anchor, T020 verify).
+- Commit after each task or logical group; stop at any checkpoint to validate the story independently.
