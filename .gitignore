@@ -138,3 +138,6 @@ specs/211-lockfile-locked-restore/readiness/**/nuget-cache/
 !specs/212-template-root-build/readiness/
 !specs/212-template-root-build/readiness/**
 specs/212-template-root-build/readiness/**/nuget-cache/
+!specs/213-adopt-shared-build-config/readiness/
+!specs/213-adopt-shared-build-config/readiness/**
+specs/213-adopt-shared-build-config/readiness/**/nuget-cache/

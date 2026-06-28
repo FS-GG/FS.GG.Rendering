@@ -13,7 +13,10 @@ let private root = RepositoryRoot.value
 let tests =
     testList "Feature142 surface and dependency guards" [
         test "SkiaViewer references SkiaSharp.HarfBuzz through central package management" {
-            let central = File.ReadAllText(Path.Combine(root, "Directory.Packages.props"))
+            // Feature 213: repo-owned PackageVersion items now live in Directory.Packages.local.props
+            // (the canonical Directory.Packages.props is the synced org baseline; the SkiaSharp.HarfBuzz
+            // pin is repo-specific, so it moved to the local override file).
+            let central = File.ReadAllText(Path.Combine(root, "Directory.Packages.local.props"))
             let fsproj = File.ReadAllText(Path.Combine(root, "src", "SkiaViewer", "SkiaViewer.fsproj"))
 
             Expect.stringContains central "SkiaSharp.HarfBuzz" "central package pin is present"

@@ -79,8 +79,13 @@ let restoreLockTests =
                 "root props must enable lockfile restore (FR-001)"
             Expect.stringContains props "<RestoreLockedMode"
                 "root props must declare the gated RestoreLockedMode (FR-002)"
-            Expect.stringContains props "ContinuousIntegrationBuild"
-                "RestoreLockedMode must be gated to CI so a fresh local clone is never blocked (FR-003)"
+            // Feature 213 (H3 / ADR-0006): the unified gate is spelled GITHUB_ACTIONS, not
+            // ContinuousIntegrationBuild. Assert the actual gate CONDITION fragment (not a bare
+            // substring — the canonical file mentions ContinuousIntegrationBuild only in a comment
+            // explaining the migration; the Feature 175 lesson is that a substring can pass while the
+            // effective gate differs).
+            Expect.stringContains props "'$(GITHUB_ACTIONS)' == 'true'"
+                "RestoreLockedMode must be gated on the GITHUB_ACTIONS CI signal so a fresh local clone is never blocked (FR-003)"
             // NU1603 (silent substitution) promoted to error backs US2's enforcement contract (FR-004).
             let warnAsErrorsHasNu1603 =
                 Regex.IsMatch(props, "<WarningsAsErrors>[^<]*NU1603")

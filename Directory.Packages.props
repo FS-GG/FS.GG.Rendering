@@ -1,53 +1,30 @@
 <Project>
+
+  <!-- ════════════════════════════════════════════════════════════════════════════
+       FS-GG ORG-SHARED CENTRAL PACKAGE MANAGEMENT BASELINE
+       Source of truth: FS-GG/.github → dist/dotnet/Directory.Packages.props
+       Distributed by scripts/sync-build-config.sh. DO NOT EDIT in a consumer repo.
+       Repo-specific PackageVersion items go in Directory.Packages.local.props,
+       imported at the end. A package pinned here MUST NOT be re-declared locally
+       (CPM raises NU1504/NU1011 on a duplicate PackageVersion).
+       Contract: shared-build-config (registry/dependencies.yml).
+       ════════════════════════════════════════════════════════════════════════════ -->
+
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
-  <!-- External runtime dependencies used by packable source projects. -->
-  <ItemGroup>
-    <PackageVersion Include="Fable.Elmish" Version="5.0.2" />
+
+  <!-- Org-wide baseline: versions every FS-GG repo MUST agree on. This is the cross-repo
+       coherence point — one place that pins the runtime/language floor shared by all repos.
+       FSharp.Core 10.1.301 is currently the common pin in Rendering, SDD, and Governance;
+       centralising it here keeps the F# core in lockstep across the org. Adopting repos
+       remove their local FSharp.Core PackageVersion (see docs/build/README.md). -->
+  <ItemGroup Label="org-baseline">
     <PackageVersion Include="FSharp.Core" Version="10.1.301" />
-    <PackageVersion Include="HarfBuzzSharp.NativeAssets.Linux" Version="8.3.1.6-preview.3.1" />
-    <PackageVersion Include="HarfBuzzSharp.NativeAssets.Win32" Version="8.3.1.6-preview.3.1" />
-    <PackageVersion Include="Silk.NET.Input" Version="2.23.0" />
-    <PackageVersion Include="Silk.NET.OpenGL" Version="2.23.0" />
-    <PackageVersion Include="Silk.NET.GLFW" Version="2.23.0" />
-    <PackageVersion Include="Silk.NET.Windowing" Version="2.23.0" />
-    <PackageVersion Include="Silk.NET.Windowing.Glfw" Version="2.23.0" />
-    <PackageVersion Include="Silk.NET.Windowing.Extensions" Version="2.23.0" />
-    <PackageVersion Include="SkiaSharp" Version="4.147.0-preview.3.1" />
-    <PackageVersion Include="SkiaSharp.HarfBuzz" Version="4.147.0-preview.3.1" />
-    <PackageVersion Include="SkiaSharp.NativeAssets.Linux" Version="4.147.0-preview.3.1" />
-    <PackageVersion Include="SkiaSharp.NativeAssets.Win32" Version="4.147.0-preview.3.1" />
-    <PackageVersion Include="YamlDotNet" Version="18.0.0" />
-    <PackageVersion Include="Yoga.Net" Version="3.2.3" />
   </ItemGroup>
-  <!-- Test-only dependencies. Repo-owned FS.Skia.UI package versions are not declared here. -->
-  <ItemGroup>
-    <PackageVersion Include="Expecto" Version="10.2.2" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
-    <PackageVersion Include="YoloDev.Expecto.TestSdk" Version="0.15.3" />
-  </ItemGroup>
-  <!-- Build-tooling only (build/** projects, NOT src/** and NOT shipped in any
-       generated product). Consumed as ordinary NuGet libraries by the compiled
-       FAKE build front-end (build/Build.fsproj) via `dotnet run`, NOT via the
-       FSX script runner. Version matches the pinned fake-cli tool
-       (.config/dotnet-tools.json) and build.fsx.lock (6.1.4). No
-       FSharp.Compiler.Service (FR-012). See docs/reports/dependencies.md. -->
-  <ItemGroup>
-    <PackageVersion Include="Fake.Core.Target" Version="6.1.4" />
-  </ItemGroup>
-  <!-- Build-tooling adopt-set (feature 040). Referenced ONLY by the tangle
-       examples project (build/SkillExamples) and tests/Governance.Tests so the
-       capability-skill cookbook snippets compile against the real pinned APIs.
-       NOT shipped in any generated product; NO FSharp.Compiler.Service (FR-008).
-       See docs/reports/dependencies.md and the capability report §9. -->
-  <ItemGroup>
-    <PackageVersion Include="FSharp.SystemTextJson" Version="1.4.36" />
-    <PackageVersion Include="XParsec" Version="1.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.FileSystemGlobbing" Version="10.0.9" />
-    <PackageVersion Include="Fake.IO.FileSystem" Version="6.1.4" />
-    <PackageVersion Include="Fake.Tools.Git" Version="6.1.4" />
-    <PackageVersion Include="DiffPlex" Version="1.9.0" />
-    <PackageVersion Include="FsCheck" Version="3.3.3" />
-  </ItemGroup>
+
+  <!-- Repo-specific package versions. -->
+  <Import Project="Directory.Packages.local.props" Condition="Exists('$(MSBuildThisFileDirectory)Directory.Packages.local.props')" />
+
 </Project>
