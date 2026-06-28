@@ -9,7 +9,12 @@ on:
     types: [published]
   push:
     tags: ['v*']
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to pack+publish (e.g. 0.1.51-preview.1). Required to actually push on a manual run; omit for a pack-only dry run."
+        type: string
+        required: false
 
 concurrency:
   group: release-${{ github.ref }}
@@ -67,3 +72,69 @@ jobs:
           dotnet build "$PRODUCT_DIR"
           dotnet test "$PRODUCT_DIR"
           dotnet run --project "$PRODUCT_DIR/src/GeneratedProduct"
+
+  # DRAFT (FS-GG/.github#21/#22, epic #16 Pillar 4): the missing producer half of the auto-update
+  # fabric. Renovate + org preset + read:packages auth are all wired and verified, but the org
+  # GitHub Packages feed (nuget.pkg.github.com/FS-GG) is EMPTY — nothing ever publishes FS.GG.UI.*
+  # to it, so every downstream lookup is "no-result". This job publishes the coherent set on a
+  # release. GITHUB_TOKEN (packages: write) is sufficient to push to the same org's feed; no PAT.
+  publish-packages:
+    name: Publish FS.GG.UI.* to org GitHub Packages (release-only)
+    runs-on: ubuntu-latest
+    if: github.repository == 'FS-GG/FS.GG.Rendering'
+    # Only publish a set that passed the release-only consumption checks above.
+    needs: [package-tests, template-product-tests]
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Resolve coherent-set version from the release tag
+        id: ver
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "${{ github.event_name }}" in
+            release)           raw="${{ github.event.release.tag_name }}" ;;
+            push)              raw="${GITHUB_REF_NAME}" ;;
+            workflow_dispatch) raw="${{ inputs.version }}" ;;
+            *)                 raw="" ;;
+          esac
+          ver="${raw#v}"   # v0.1.51-preview.1 -> 0.1.51-preview.1
+          if [[ -z "$ver" ]]; then
+            echo "::notice::No version (manual run without input) — pack-only dry run, no push."
+            echo "push=false" >> "$GITHUB_OUTPUT"
+            ver="0.0.0-dryrun.${GITHUB_RUN_ID}"
+          else
+            echo "push=true" >> "$GITHUB_OUTPUT"
+          fi
+          echo "version=$ver" >> "$GITHUB_OUTPUT"
+          echo "Coherent-set version: $ver"
+
+      # One coherent set: pack the whole solution + the template at the SAME version, exactly as
+      # scripts/dev-repack.fsx does for the local feed (every FS.GG.UI.* + inter-package dep = V).
+      - name: Pack FS.GG.UI.* (libraries + template)
+        shell: bash
+        env:
+          VER: ${{ steps.ver.outputs.version }}
+        run: |
+          set -euo pipefail
+          dotnet restore FS.GG.Rendering.slnx
+          dotnet pack FS.GG.Rendering.slnx -c Release -p:Version="$VER" -o artifacts/packages
+          dotnet pack .template.package/FS.GG.UI.Template.fsproj -c Release -p:Version="$VER" -o artifacts/packages
+          echo "Packed:"; ls -1 artifacts/packages/*.nupkg
+
+      - name: Push coherent set to nuget.pkg.github.com/FS-GG
+        if: steps.ver.outputs.push == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet nuget push "artifacts/packages/*.nupkg" \
+            --source https://nuget.pkg.github.com/FS-GG/index.json \
+            --api-key "${{ secrets.GITHUB_TOKEN }}" \
+            --skip-duplicate
+          echo "Published coherent set ${{ steps.ver.outputs.version }} to the org feed."
