@@ -22,10 +22,14 @@ flaked one sample lane (`ControlsGallery.Tests`) on `System.OutOfMemoryException
 parallelism on this dev box; that project is **34/34 green on isolated re-run** (`baseline-diff.md`).
 The full slnx build is run with `-m:1` for the same reason. No correctness regression.
 
-## Producer-defect note (raised, not forked)
+## Producer-defect note (already fixed upstream; not forked)
 
 Adoption surfaced an XML-illegal comment (`` `--check` `` → `--` inside an XML comment) in the
-canonical `Directory.Build.props`, byte-identical to the FS-GG/.github source, which MSBuild rejects
-(`MSB4024`). Fixed at the **source** (`FS-GG/.github dist/dotnet/`) and re-synced — the managed file in
-Rendering stays drift-clean and unforked. The byte-level `diff` drift check cannot detect this class of
-defect (bytes match); flagged to the producer for a parse-level check. See completion record / board #11.
+canonical `Directory.Build.props`, which MSBuild rejects (`MSB4024`). The **producer had already fixed
+this on `main`** — `FS-GG/.github` `b00433c` (PR #30, closes #29, surfaced by FS.GG.Templates#16):
+identical reword **plus** an XML-wellformedness guard added to `sync-build-config.sh` (a byte-`diff`
+drift check cannot detect a parse-level defect). The local `.github` checkout used during adoption was
+on a pre-fix branch (`registry-fsgg-contracts-1.0.0`, props last touched by `236c157`), so the broken
+file was hit before the upstream fix was noticed. Rendering's three managed files are **byte-identical
+to producer `main`** (post-fix), so the adoption is coherent and unforked. A duplicate issue I opened
+(#31) was closed in favour of #29.

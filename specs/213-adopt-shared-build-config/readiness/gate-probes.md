@@ -37,6 +37,7 @@ outlier (ADR-0006).
 
 > Producer note: adopting this canonical file surfaced a producer-side defect — its XML header comment
 > contained `` `--check` `` (an illegal `--` inside an XML comment), which MSBuild rejects (`MSB4024`),
-> blocking every restore/build. Fixed at the source (`FS-GG/.github dist/dotnet/Directory.Build.props`)
-> and re-synced; the drift check (`diff`) could not catch it because the bytes matched. Raised to the
-> producer (see coordination note in the completion record).
+> blocking every restore/build. This was **already fixed upstream** on `FS-GG/.github` `main` (b00433c /
+> PR #30 / closes #29), which also hardened `sync-build-config.sh` to parse, not just `diff`. The local
+> `.github` checkout used here was on a pre-fix branch, so the broken file was hit first; Rendering's
+> managed files are byte-identical to producer `main` (post-fix). My duplicate #31 was closed → #29.
