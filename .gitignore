@@ -129,3 +129,6 @@ specs/208-fs-gg-ui-version-rename/readiness/**/nuget-cache/
 !specs/209-version-staleness-guard/readiness/
 !specs/209-version-staleness-guard/readiness/**
 specs/209-version-staleness-guard/readiness/**/nuget-cache/
+!specs/210-lifecycle-template-closure/readiness/
+!specs/210-lifecycle-template-closure/readiness/**
+specs/210-lifecycle-template-closure/readiness/**/nuget-cache/

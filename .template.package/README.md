@@ -46,6 +46,7 @@ for you, so `--initGit` is unnecessary there.
 | Option | Default | Effect |
 |--------|---------|--------|
 | `--profile <p>` | `app` | Which product to scaffold (see profile table below). |
+| `--lifecycle <l>` | `spec-kit` | Which lifecycle scaffolding to emit alongside the product: `spec-kit` (full Spec Kit workspace), `sdd` (product only, external orchestrator), or `none` (product only, nothing attached). See **Lifecycle** below. The default is byte-identical to the pre-lifecycle template. |
 | `--feedback true` | `false` | Capture per-phase Spec Kit feedback into `specs/<feature>/feedback/` — adds the `after_*` feedback hooks and the `fs-gg-feedback-capture` skill. Default `false` induces no diff. |
 | `--initGit true` | `false` | Opt in to initialize a Git repository with a `[Spec Kit] Initial commit` **and** mark generated shell scripts executable. Skipped when already inside a repository; non-fatal if `git` is absent. Pair with `--allow-scripts yes` for non-interactive runs. Default `false` is side-effect-free. Unnecessary under the SDD scaffold path. |
 
@@ -55,6 +56,47 @@ for you, so `--initGit` is unnecessary there.
 | `headless-scene` | Headless Scene-only product for scene/widget authoring (no live window). |
 | `governed` | Scene plus Testing helpers, governance-focused. |
 | `sample-pack` | Scene, SkiaViewer, Elmish + sample-pack gallery content. |
+
+## Lifecycle
+
+`--lifecycle` selects whether the generated product ships with a governance/orchestration surface
+attached. It is **orthogonal to `--profile`**: `--profile` picks the product *shape*; `--lifecycle`
+picks whether the Spec Kit lifecycle *workspace* is emitted alongside it. Every combination is valid.
+
+### Which value do I want?
+
+```text
+What do you want to scaffold?
+├─ A governed product with the Spec Kit lifecycle (specify/plan/tasks, constitution, agent context)
+│     → --lifecycle spec-kit   (default; omit the flag for the same result)
+├─ An app-only product to be composed by the SDD scaffold (external orchestrator supplies governance)
+│     → --lifecycle sdd
+└─ A bare standalone product with nothing attached
+      → --lifecycle none
+```
+
+### Per-value include / exclude
+
+| value | includes | excludes |
+|-------|----------|----------|
+| `spec-kit` (default) | the full Spec Kit lifecycle surface: `.specify/`, the generated constitution, the `.agents/` + `.claude/` skill/context trees, and the generated `AGENTS.md`/`CLAUDE.md` agent-context tree | — (full surface) |
+| `sdd` | the generated product (app-only) | the entire gated lifecycle surface — an **external orchestrator** (the SDD scaffold) re-supplies lifecycle/governance |
+| `none` | the generated product only | the gated lifecycle surface **and** any orchestrator expectation |
+
+### Standalone `none`
+
+With `--lifecycle none`, **no governance and no orchestrator are attached, and none is expected** —
+nothing will be added later. Pick `none` when you want only the generated product with no lifecycle
+surface; do not expect a scaffold or governance layer to fill it in afterward.
+
+### Migrating from the pre-lifecycle template
+
+The lifecycle-aware template is a **drop-in upgrade** from the pre-lifecycle template:
+
+- **Select the default (`spec-kit`, or omit `--lifecycle`) to reproduce prior output byte-for-byte** —
+  the default emits exactly what the pre-lifecycle template did.
+- Choose `sdd` or `none` only when you want to **opt out** of the emitted lifecycle surface (e.g. the
+  SDD scaffold owns governance, or you want a bare standalone product).
 
 ## Manual setup (standalone use)
 
