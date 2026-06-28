@@ -62,7 +62,10 @@ jobs:
       version: ${{ needs.derive.outputs.version }}
     # Explicit mapping is mandatory: `secrets: inherit` cannot bind the hyphenated callee ports
     # `app-id`/`app-private-key` (real secret names have no hyphens) — research R1. The source names
-    # `APP_ID`/`APP_PRIVATE_KEY` are the working assumption until org-admin confirms (FS-GG/.github#22).
+    # are the org Actions secrets `FSGG_DISPATCH_APP_ID`/`FSGG_DISPATCH_APP_PRIVATE_KEY`, confirmed by
+    # org-admin 2026-06-28 (FS-GG/.github#22; the earlier `APP_ID`/`APP_PRIVATE_KEY` assumption was
+    # wrong — proven by the live run on tag fs-gg-ui-template/v0.1.52-preview.1 which read them empty).
+    # Both repos are public, so org secrets are consumable on the free org plan.
     secrets:
-      app-id: ${{ secrets.APP_ID }}
-      app-private-key: ${{ secrets.APP_PRIVATE_KEY }}
+      app-id: ${{ secrets.FSGG_DISPATCH_APP_ID }}
+      app-private-key: ${{ secrets.FSGG_DISPATCH_APP_PRIVATE_KEY }}
