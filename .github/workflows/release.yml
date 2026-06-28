@@ -54,7 +54,16 @@ jobs:
           work="$(mktemp -d)"
           dotnet new fs-gg-ui --name GeneratedProduct --output "$work/GeneratedProduct"
           echo "PRODUCT_DIR=$work/GeneratedProduct" >> "$GITHUB_ENV"
-      - name: Test generated product
+      # Feature 212 (contract C4 / SC-005): prove the freshly scaffolded product is root-buildable
+      # with the STOCK .NET CLI — no FAKE, no build.fsx knowledge — via the root <Name>.slnx, so a
+      # future change that breaks stock dotnet build/test/run is caught at release time and blocks
+      # the release. One config for all three (stock default/Debug), matching quickstart.md and what
+      # an SDD composition-acceptance probe runs (stock declared-or-default commands); the live US1
+      # smoke confirmed the stock default path. `dotnet run` exits 0 in this headless runner via the
+      # entrypoint's UnsupportedEnvironment safe-degrade (research R4); `set -e` blocks on any failure.
+      - name: Build, test, and run generated product (stock root, Feature 212)
         run: |
           set -euo pipefail
-          dotnet test "$PRODUCT_DIR" -c Release
+          dotnet build "$PRODUCT_DIR"
+          dotnet test "$PRODUCT_DIR"
+          dotnet run --project "$PRODUCT_DIR/src/GeneratedProduct"

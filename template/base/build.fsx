@@ -207,6 +207,23 @@ let runGeneratedTests () =
     runProcess "Test" "dotnet" "test tests/Product.Tests/Product.Tests.fsproj -m:1 --disable-build-servers"
     printfn "Test completed for generated product"
 
+// Feature 212 (R3): name-agnostic locators so the new pass-through targets (and the verb wrapper)
+// need no literal <Name>. The product root holds exactly one root solution and exactly one src
+// project; both are discovered at runtime so the same script works for any scaffolded name.
+let private singleRootSolution () =
+    match Directory.GetFiles(Directory.GetCurrentDirectory(), "*.slnx") with
+    | [| f |] -> Path.GetFileName f
+    | [||] -> failwith "No root *.slnx found in the product root (Feature 212 root solution missing)."
+    | many -> failwithf "Expected exactly one root *.slnx; found %d." many.Length
+
+let private singleSrcProject () =
+    let srcRoot = path [ Directory.GetCurrentDirectory(); "src" ]
+
+    match (if Directory.Exists srcRoot then Directory.GetDirectories srcRoot else [||]) with
+    | [| d |] -> Path.GetFileName d
+    | [||] -> failwith "No src/<project> directory found in the product root."
+    | many -> failwithf "Expected exactly one src/<project>; found %d." many.Length
+
 let run target =
     match target with
     | "Dev"
@@ -220,6 +237,13 @@ let run target =
         let exitCode = runGeneratedEvidence "EvidenceAudit"
         if exitCode <> 0 then
             failwithf "EvidenceAudit failed with exit code %d; see readiness/evidence-audit.md" exitCode
+    // Feature 212 (R3 / FR-007): pass-through build-graph targets over the single root .slnx. These
+    // shell to stock `dotnet` so the FAKE path and the stock root path build the SAME project set
+    // (FR-010, no divergence). Test/Verify below are FROZEN — their bodies are unchanged.
+    | "Restore" -> runProcess "Restore" "dotnet" (sprintf "restore \"%s\"" (singleRootSolution ()))
+    | "Build" -> runProcess "Build" "dotnet" (sprintf "build \"%s\"" (singleRootSolution ()))
+    | "Run" -> runProcess "Run" "dotnet" (sprintf "run --project src/%s" (singleSrcProject ()))
+    | "Pack" -> runProcess "Pack" "dotnet" (sprintf "pack \"%s\" -c Release" (singleRootSolution ()))
     | "Test" -> runGeneratedTests ()
     | "Verify" ->
         [ "Dev"; "GeneratedGuidanceCheck"; "TemplateDrift" ]

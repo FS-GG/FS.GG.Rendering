@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="src/Product/Product.fsproj" />
+  <Project Path="tests/Product.Tests/Product.Tests.fsproj" />
+</Solution>

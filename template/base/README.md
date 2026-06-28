@@ -10,6 +10,45 @@ The selected capabilities are controlled by `--profile`:
 - `governed`: Scene, Testing
 - `sample-pack`: Scene, SkiaViewer, Elmish, Samples
 
+## Build, test, and run at the root (stock .NET CLI — no FAKE required)
+
+This product is **root-buildable with the stock .NET CLI**. From the product root, with only a
+.NET 10 SDK installed (the band is pinned by the generated `global.json`), you can go from
+"just scaffolded" to "built and tested" with no knowledge of FAKE or `build.fsx`, and **no
+executable-bit setup**:
+
+```bash
+dotnet restore                   # restores the root <Name>.slnx
+dotnet build                     # builds src + tests via <Name>.slnx
+dotnet test                      # runs the product tests
+dotnet run --project src/<Name>  # runs the app (headless hosts exit 0; a desktop opens the window)
+```
+
+`<Name>` is the `--name` you scaffolded with (e.g. `src/Acme`). The single root `<Name>.slnx` lets
+`dotnet build`/`test` resolve the whole product with no project argument, and `global.json` pins the
+`net10.0` SDK band so the build is reproducible even when the machine's default SDK differs (a host
+missing the band fails fast with a clear SDK-resolution error rather than building against the wrong
+SDK).
+
+### Uniform verb wrapper (`build.sh` / `build.cmd`)
+
+A `build.sh` (POSIX) / `build.cmd` (Windows) wrapper exposes one predictable verb surface; **every**
+verb delegates to the single governed FAKE entry (`dotnet fsi build.fsx -t <Target>`):
+
+```bash
+./build.sh restore     #  build.cmd restore   on Windows
+./build.sh build
+./build.sh test        #  ≡ FAKE Test
+./build.sh run
+./build.sh verify      #  ≡ FAKE Verify (full merge-gate evidence + tests)
+./build.sh pack
+```
+
+An unknown or missing verb prints the supported-verb list and exits non-zero. Reach for stock
+`dotnet build/test/run` for an ordinary build/test/run; use `./build.sh verify` for the governed
+evidence+audit path described in the FAKE quickstart below. (The shell wrappers need the executable
+bit — see *First-time setup* — but the stock `dotnet` commands above do not.)
+
 ## First-time setup (Git + executable scripts)
 
 This product was generated **side-effect-free**: no Git repository was created and the generated
