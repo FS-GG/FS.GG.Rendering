@@ -1,0 +1,7 @@
+# US1 happy-path dry-run (T009) — 2026-06-28T11:53:58Z
+$ DRY_RUN=1 GH_TOKEN=dummy GITHUB_REF=refs/tags/fs-gg-ui-template/v0.1.50-preview.1 scripts/template-released-dispatch.sh
+template-released-dispatch: target=FS-GG/FS.GG.Templates event_type=fs-gg-ui-template-released client_payload.version=0.1.50-preview.1
+DRY_RUN=1 — skipping network dispatch. Would POST /repos/FS-GG/FS.GG.Templates/dispatches:
+event_type=fs-gg-ui-template-released
+client_payload.version=0.1.50-preview.1
+exit=0

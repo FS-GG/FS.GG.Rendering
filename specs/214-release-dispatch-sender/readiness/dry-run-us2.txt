@@ -1,0 +1,13 @@
+# US2 fail-loud dry-run proofs (T013) — 2026-06-28T11:53:58Z
+
+## empty version  (GITHUB_REF=refs/tags/fs-gg-ui-template/v)
+template-released-dispatch: ERROR: version is empty after stripping prefix from ref 'refs/tags/fs-gg-ui-template/v'; refusing to send.
+exit=1
+
+## malformed version  (GITHUB_REF=refs/tags/fs-gg-ui-template/vNOPE)
+template-released-dispatch: ERROR: derived version 'NOPE' (from ref 'refs/tags/fs-gg-ui-template/vNOPE') is malformed; expected ^[0-9]+\.[0-9]+\.[0-9]+(-preview\.[0-9]+)?$; refusing to send.
+exit=1
+
+## missing credential  (GH_TOKEN=)
+template-released-dispatch: ERROR: GH_TOKEN (from secrets.TEMPLATES_DISPATCH_TOKEN) is empty/unset; cannot dispatch to FS-GG/FS.GG.Templates.
+exit=1

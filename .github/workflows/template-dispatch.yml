@@ -1,0 +1,42 @@
+name: template-dispatch
+
+# Sender half of the `fs-gg-ui-template` cross-repo contract (Feature 214).
+#
+# When Rendering publishes a FS.GG.UI.Template coherent-set release — the template-scoped tag
+# `fs-gg-ui-template/v<version>` (Feature 206) — notify FS-GG/FS.GG.Templates so its
+# upstream-bump.yml opens a pin-bump PR for that version. No manual step (US1).
+#
+# Disjoint from release.yml: that workflow triggers on `v*` (and release/dispatch); this one triggers
+# ONLY on `fs-gg-ui-template/v*`. The patterns cannot match the same tag, so release.yml is untouched
+# (FR-008) and the trigger pattern itself is the "only genuine template releases" guard (FR-007).
+#
+# The manual workflow_dispatch entry is for operator inspection only: a manual run lands on a non-tag
+# ref, so version derivation fails and the job fails loudly rather than sending (FR-006/FR-007).
+on:
+  push:
+    tags: ['fs-gg-ui-template/v*']
+  workflow_dispatch: {}
+
+concurrency:
+  group: template-dispatch-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  dispatch:
+    name: Notify FS.GG.Templates of template release
+    runs-on: ubuntu-latest
+    # Canonical-repo guard (FR-005, US3): forks never send, never expose a fork secret. Mirrors
+    # release.yml's gate.
+    if: github.repository == 'FS-GG/FS.GG.Rendering'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dispatch template-released to FS.GG.Templates
+        env:
+          GITHUB_REF: ${{ github.ref }}
+          # Cross-repo credential (org-provisioned; FS-GG/.github#21/#22). The script fails loudly if
+          # this is empty/unset (FR-004/FR-006) — it never sends unauthenticated.
+          GH_TOKEN: ${{ secrets.TEMPLATES_DISPATCH_TOKEN }}
+        run: bash scripts/template-released-dispatch.sh
