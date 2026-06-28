@@ -184,3 +184,37 @@ jobs:
             echo "- SkiaViewer.Tests, Smoke.Tests (GL present on this runner)"
             echo ""
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # API compatibility gate (H3 / FS-GG/.github#20, epic FS-GG/.github#16 Pillar 5). Packs each
+  # IsPackable FS.GG.UI.* project and compares it against its published baseline on the org GitHub
+  # Packages feed via the .NET SDK's Package Validation / ApiCompat — the F#-viable detector
+  # (Microsoft.CodeAnalysis.PublicApiAnalyzers is C#-only). A removed/changed public member is a
+  # break that must force a SemVer major (registry coherence id `apicompat-publicapi-gate`).
+  #
+  # ADVISORY: a SEPARATE, non-required job (continue-on-error) — it never blocks the merge or
+  # reddens the required `gate` job above (Package Validation stays OFF in the normal build/release).
+  # The detector script exits non-zero on a real break, so promotion to REQUIRED is a one-line flip:
+  # drop `continue-on-error` and add this job to branch-protection required checks (once the surface
+  # is stable). It reads the feed with GITHUB_TOKEN (packages: read); on a fork PR (no token) the
+  # script degrades to advisory-clean.
+  api-compatibility-gate:
+    name: API compatibility gate (breaking-change → SemVer major) [advisory]
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: ApiCompat vs feed baseline (advisory)
+        env:
+          NUGET_FEED_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NUGET_FEED_USER: ${{ github.actor }}
+        run: bash scripts/apicompat-check.sh
