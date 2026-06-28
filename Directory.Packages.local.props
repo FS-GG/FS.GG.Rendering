@@ -17,10 +17,10 @@
     <PackageVersion Include="Silk.NET.Windowing" Version="2.23.0" />
     <PackageVersion Include="Silk.NET.Windowing.Glfw" Version="2.23.0" />
     <PackageVersion Include="Silk.NET.Windowing.Extensions" Version="2.23.0" />
-    <PackageVersion Include="SkiaSharp" Version="4.147.0-preview.3.1" />
-    <PackageVersion Include="SkiaSharp.HarfBuzz" Version="4.147.0-preview.3.1" />
-    <PackageVersion Include="SkiaSharp.NativeAssets.Linux" Version="4.147.0-preview.3.1" />
-    <PackageVersion Include="SkiaSharp.NativeAssets.Win32" Version="4.147.0-preview.3.1" />
+    <PackageVersion Include="SkiaSharp" Version="4.148.0" />
+    <PackageVersion Include="SkiaSharp.HarfBuzz" Version="4.148.0" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Linux" Version="4.148.0" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Win32" Version="4.148.0" />
     <PackageVersion Include="YamlDotNet" Version="18.0.0" />
     <PackageVersion Include="Yoga.Net" Version="3.2.3" />
   </ItemGroup>
