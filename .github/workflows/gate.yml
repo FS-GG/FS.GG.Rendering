@@ -38,11 +38,26 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      # 211 (FR-002/FR-004) — locked restore against committed packages.lock.json. On a graph that
+      # differs from the lockfile (or an un-pinnable version, NU1603) restore fails and the gate
+      # blocks. The RestoreLockedMode property (Directory.Build.props) makes the repo behave like the
+      # generated products; --locked-mode here forces it explicitly and gives one clear place to point
+      # at the regenerate command. This is the single restore enforcement point (the build below uses
+      # --no-restore), so NU1603/NU1608 promotion is anchored here.
+      - name: Restore (locked)
+        run: |
+          set -euo pipefail
+          if ! dotnet restore FS.GG.Rendering.slnx --locked-mode; then
+            echo "::error::locked restore failed — the resolved graph does not match the committed packages.lock.json (or a version was substituted, NU1603). If this is an intentional dependency change, run: dotnet restore FS.GG.Rendering.slnx --force-evaluate  and commit the updated lockfiles."
+            exit 1
+          fi
+
       # T007 (FR-002) — a build failure MUST fail the gate. Debug so test/harness steps reuse it
       # with --no-build. The slnx contains src + all local-tier tests + the harness; it does NOT
       # contain Package.Tests (release-only), so no release check can leak into the gate.
+      # --no-restore: restore already happened in the locked step above (FR-002, GR3) — exactly once.
       - name: Build solution (net10.0)
-        run: dotnet build FS.GG.Rendering.slnx -c Debug
+        run: dotnet build FS.GG.Rendering.slnx -c Debug --no-restore
 
       # T013 (US2, FR-005/FR-010) — classify the runner (display? GL?) up front; the GL-dependent
       # steps key off this output rather than guessing. Informational: probe never gates.

@@ -1,0 +1,46 @@
+{
+  "version": 2,
+  "dependencies": {
+    "net10.0": {
+      "FSharp.Core": {
+        "type": "Direct",
+        "requested": "[10.1.301, )",
+        "resolved": "10.1.301",
+        "contentHash": "FwQFuqOA1+qQnFl6Vqg6piS83ZRuKJqXJQxOM52M5tNarT2XQ/pMvw8fOOlnhcOYvdZyje2PJ8rK/J64ZI729Q=="
+      },
+      "SkiaSharp": {
+        "type": "Direct",
+        "requested": "[4.147.0-preview.3.1, )",
+        "resolved": "4.147.0-preview.3.1",
+        "contentHash": "qNKT1BjZ1QLQVc2VjZHfu4zJECEjGns1+9NdPkWXiakr1V0w7q0L22pc3uUHKMxlZrztqlqYR8AnjVTnK5yFAQ==",
+        "dependencies": {
+          "SkiaSharp.NativeAssets.Win32": "4.147.0-preview.3.1",
+          "SkiaSharp.NativeAssets.macOS": "4.147.0-preview.3.1"
+        }
+      },
+      "SkiaSharp.NativeAssets.macOS": {
+        "type": "Transitive",
+        "resolved": "4.147.0-preview.3.1",
+        "contentHash": "KT1BHSqtDbSxScEGBL3/jZng0LyYWeaCj165rR0I5zhcBGc0JtCbGEmigwTPlQyCz4HSvRRlfcIZX9qtb5EbMQ=="
+      },
+      "FS.GG.UI.Diagnostics": {
+        "type": "Project",
+        "dependencies": {
+          "FSharp.Core": "[10.1.301, )"
+        }
+      },
+      "FS.GG.UI.Scene": {
+        "type": "Project",
+        "dependencies": {
+          "FSharp.Core": "[10.1.301, )"
+        }
+      },
+      "SkiaSharp.NativeAssets.Win32": {
+        "type": "CentralTransitive",
+        "requested": "[4.147.0-preview.3.1, )",
+        "resolved": "4.147.0-preview.3.1",
+        "contentHash": "TayryUC2cbVugLGwzMBYGuthvBj8gNGFj6EL7qDTJB3QGSPxK9iw3aV5Dt9BgKdxqvBFbKAYn7yIXK8z8XDoTg=="
+      }
+    }
+  }
+}

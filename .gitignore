@@ -132,3 +132,6 @@ specs/209-version-staleness-guard/readiness/**/nuget-cache/
 !specs/210-lifecycle-template-closure/readiness/
 !specs/210-lifecycle-template-closure/readiness/**
 specs/210-lifecycle-template-closure/readiness/**/nuget-cache/
+!specs/211-lockfile-locked-restore/readiness/
+!specs/211-lockfile-locked-restore/readiness/**
+specs/211-lockfile-locked-restore/readiness/**/nuget-cache/

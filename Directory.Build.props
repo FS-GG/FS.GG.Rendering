@@ -13,6 +13,18 @@
     <WarningsAsErrors>$(WarningsAsErrors);FS0078</WarningsAsErrors>
   </PropertyGroup>
 
+  <PropertyGroup Label="Restore (211)">
+    <!-- 211 (FR-001/FR-002/FR-003): mirror template/base/Directory.Build.props (Feature 204) so the
+         repo locks restore exactly like the products it generates (FR-007). RestoreLockedMode is gated
+         to CI AND an existing lockfile, so a fresh clone / first restore is never blocked locally and
+         bootstrap generates the lockfile instead of failing. -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <RestoreLockedMode Condition="'$(ContinuousIntegrationBuild)' == 'true' And Exists('$(MSBuildProjectDirectory)/packages.lock.json')">true</RestoreLockedMode>
+    <!-- 211 (FR-004): silent version substitution (NU1603) and out-of-range (NU1608) become errors.
+         VERIFY empirically — restore-phase NU16xx are not reliably promoted by TreatWarningsAsErrors. -->
+    <WarningsAsErrors>$(WarningsAsErrors);NU1603;NU1608</WarningsAsErrors>
+  </PropertyGroup>
+
   <PropertyGroup Label="Package">
     <Version>0.1.0-preview.1</Version>
     <Authors>FS.GG Contributors</Authors>

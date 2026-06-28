@@ -1,0 +1,16 @@
+# Lockfiles before — pre-change inventory (T002)
+
+Date: 2026-06-28
+
+## git ls-files '*packages.lock.json' (all tracked)
+specs/204-fs-skia-ui-version-coherence/readiness/app-packages.lock.json
+
+## LOCKED-set lockfiles (excluding specs/ readiness evidence) — expected EMPTY today
+(none — confirmed empty)
+
+## SDK (confirms 10.0.x prereq)
+ Version:           10.0.301
+ OS Version:  20260621.0.546891
+ RID:         linux-x64
+ Base Path:   /usr/share/dotnet/sdk/10.0.301/
+  Version:      10.0.9
