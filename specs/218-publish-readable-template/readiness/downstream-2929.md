@@ -1,35 +1,40 @@
-# T025 — Downstream unblock (SC-004, INV-16) — PARTIAL (dispatch landed; full unblock awaits visibility)
+# T025 — Downstream unblock (SC-004, INV-16) — 🟢 PROVEN (composition green on 0.1.53)
 
-**Captured**: 2026-06-30. This feature **confirms and links** the downstream; it does not perform the
-Templates re-pin (spec Assumption, contract §4).
+**Captured**: 2026-06-30. This feature **confirms and links** the downstream; the Templates re-pin is
+Templates-owned (spec Assumption, contract §4).
 
-## What landed automatically ✅
+## Dispatch → pin-bump PR (auto)
 
 The `fs-gg-ui-template/v0.1.53-preview.1` dispatch (run `28404668533`, green) notified
-`FS-GG/FS.GG.Templates`, whose `upstream-bump.yml` **auto-opened a pin-bump PR**:
+`FS-GG/FS.GG.Templates`; its `upstream-bump.yml` auto-opened **FS.GG.Templates#33**
+"chore: bump FS.GG.UI.Template to 0.1.53-preview.1" (branch `chore/bump-fs-gg-ui-template`).
+Diff: `providers/rendering.providers.yml` `source: FS.GG.UI.Template::0.1.53-preview.1` + README/comment.
 
-- **FS.GG.Templates#33** — "chore: bump FS.GG.UI.Template to 0.1.53-preview.1"
-  (branch `chore/bump-fs-gg-ui-template`).
+## Composition CI — GREEN against 0.1.53 + the public set ✅
 
-So the producer→consumer notification path is proven working end-to-end (Feature 216 sender +
-Templates receiver).
+**Run**: https://github.com/FS-GG/FS.GG.Templates/actions/runs/28407366769 — **success**
 
-## What is still blocked ❌
-
-- **FS.GG.Templates#32** ("Bump FS.GG.UI.Template pin … unblocks full composition path") is still
-  `state: OPEN`, labels `blocked`, `roadmap`.
-- It cannot fully unblock until `FS.GG.UI.Template` is **org-readable** — the composition CI
-  (`FSGG_COMPOSITION_FULL=1 tests/composition/run.sh`) installs the template with a consumer token and
-  would still hit **exit 103** while the package is `private` (see `no-103-install.md`,
-  `visibility-internal.md`). PR #33 can be opened, but the composition gate it must pass is the very
-  `packages: read` install that 103s.
-
-## Acceptance (Templates-owned, after the visibility flip)
-
-```bash
-# in FS.GG.Templates, once FS.GG.UI.Template is internal:
-gh pr checks 33 --repo FS-GG/FS.GG.Templates      # composition install no longer 103s
-# FSGG_COMPOSITION_FULL=1 tests/composition/run.sh -> 29/29
 ```
-Link that `29/29` run here when Templates re-pins (SC-004). **Until visibility flips, this stays
-`environment-limited`.**
+✓ provider pins FS.GG.UI.Template::0.1.53-preview.1
+== summary == 33 passed, 0 failed
+– SKIP: fsgg-sdd ship emitted no handoff (no ship-ready work item in a bare scaffold)
+        — producer seam not exercised; the consumer/enforcement matrix still runs.
+```
+
+The composition harness does the real consumer path — install the published template + restore the
+whole `FS.GG.UI.*` closure from the org feed + instantiate + build + run the govern/enforcement
+matrix. **33 passed / 0 failed** confirms the now-**public** coherent set is consumer-installable with
+no exit-103 and the `0.1.53-preview.1` pin is honored end-to-end (SC-004). The one SKIP is honest (the
+producer `ship` seam isn't exercised by a bare scaffold), not a false-green.
+
+> **CI-trigger note (review finding):** PR #33 was opened by `github-actions[bot]` via `GITHUB_TOKEN`,
+> so by GitHub's recursion guard its `pull_request` events did **not** trigger workflows — the run sat
+> `action_required` with zero jobs, and the only prior green run was stale (an old pre-0.1.53 sha).
+> Re-opening the PR under a real identity triggered the `reopened` event and produced the green run
+> above. Templates should make `upstream-bump.yml` open the PR with an App/PAT token (or auto-rerun) so
+> this is not a manual step each release.
+
+## Remaining (Templates-owned)
+
+- Merge **#33** to land the pin on Templates `main` (CI is green). Then **#32** → Done.
+- Registry PR **FS-GG/.github#66** awaits review/merge (contract-coherence check passing).
