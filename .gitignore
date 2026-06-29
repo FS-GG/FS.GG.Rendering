@@ -145,3 +145,6 @@ specs/213-adopt-shared-build-config/readiness/**/nuget-cache/
 !specs/214-release-dispatch-sender/readiness/**
 !specs/216-adopt-reusable-dispatch-sender/readiness/
 !specs/216-adopt-reusable-dispatch-sender/readiness/**
+!specs/218-publish-readable-template/readiness/
+!specs/218-publish-readable-template/readiness/**
+specs/218-publish-readable-template/readiness/**/nuget-cache/
