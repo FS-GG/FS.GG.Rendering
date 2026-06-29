@@ -1,27 +1,24 @@
-# T019 — Combined gate (FR-004, INV-15) — ⛔ NOT YET SATISFIED (half-landed)
+# T019 — Combined gate (FR-004, INV-15) — 🟢 SATISFIED
 
-**Verdict (2026-06-29):** **One of the two binding conditions holds.** Per FR-004 "no half-landing",
-the feature is **NOT done** until both hold for the same `V`.
+**Verdict (2026-06-30):** **Both binding conditions hold for the same `V = 0.1.53-preview.1`.** The
+no-half-landing requirement is met — the feature's coherent landing is achieved.
 
 | Condition | For `V = 0.1.53-preview.1` | Evidence |
 |---|---|---|
-| **A. No exit 127** (`--productName` honored) | ✅ **PROVEN** | `no-127-scaffold.md` — clean feed install + scaffold, exit 0 |
-| **B. No exit 103** (consumer token can install) | ❌ **BLOCKED** | `no-103-install.md` — package still `private`; needs org-admin visibility flip |
+| **A. No exit 127** (`--productName` honored) | ✅ PASS | `no-127-scaffold.md` — clean feed install + scaffold, exit 0 |
+| **B. No exit 103** (consumer can install + build) | ✅ PASS | `no-103-install.md` — whole set public; install+scaffold+restore+build green |
 
-**Binding invariant**: a version published-but-private (current state) is **not** done. `V` is
-Feature-217-bearing and feed-served (Gate A ✅), but not yet org-readable (Gate B ❌). The conjunction
-fails on Gate B alone.
+A version published-but-private (the earlier state) was **not** done; a version readable-but-old
+would **not** be done. `V` is now **both** Feature-217-bearing (Gate A) **and** feed-readable by any
+authenticated consumer (Gate B), proven by a full pack→install→instantiate→build chain from the org
+feed. ✅ **FR-004 satisfied.**
 
-## The one action that closes the gate
+## Resolution path actually taken (corrected from the plan)
 
-An org admin flips `FS.GG.UI.Template` visibility `private → internal` (or grants `FS-GG/FS.GG.Templates`
-Read) at `https://github.com/orgs/FS-GG/packages/nuget/package/FS.GG.UI.Template/settings`. After
-that:
-```bash
-gh api orgs/FS-GG/packages/nuget/FS.GG.UI.Template --jq .visibility   # -> internal
-# then a foreign packages:read token:
-dotnet new install FS.GG.UI.Template@0.1.53-preview.1                 # -> exit 0 (no 103)
-```
-Both ✅ ⇒ FR-004 satisfied ⇒ close #29/#26, advance the board to Done, land the registry PR.
+- The plan/research preferred visibility `internal`, but **`internal` is unavailable on the `FS-GG`
+  org** (it requires a GitHub Enterprise account; the org is on the `free` plan). The available
+  org-wide-read option is **`public`**, matching the already-public `FS.GG.*.Cli` packages.
+- The flip had to cover the **whole coherent set** (template + 16 libraries), not just the template,
+  because the scaffolded build restores all of them. All 17 `FS.GG.UI.*` are now `public`.
 
-**Until then the producer half is complete and the feature is one operator action from done.**
+⇒ #29 and #26 close; the registry PR lands; the board moves to Done; Templates#33 unblocks.

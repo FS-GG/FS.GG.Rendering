@@ -1,40 +1,23 @@
-# T015 / T016 — Visibility flip (#26) — OPERATOR STEP, environment-limited
+# T015 / T016 — Visibility flip (#26) — 🟢 DONE (public, whole set)
 
-**Status (2026-06-29):** ⛔ **NOT performed in-session — requires an org admin.** Disclosed, not
-faked (Principle V).
+**Status (2026-06-30):** ✅ **Resolved by org admin.** The whole coherent set (template + 16
+libraries) was flipped `private → public`.
 
-## Why this cannot be scripted
+## Corrected mechanism (the plan said `internal`; that wasn't available)
 
-GitHub exposes **no REST/`gh api` endpoint** to *change* a package's visibility (research R3). The API
-can only **read** it:
-```
-$ gh api orgs/FS-GG/packages/nuget/FS.GG.UI.Template --jq .visibility
-private
-```
-Changing visibility is an **admin-only GitHub UI action**. The in-session token (`EHotwagner`) holds
-`read:packages` only — it cannot flip visibility even if an endpoint existed.
+- `internal` visibility (org-wide read) requires the org to be owned by a **GitHub Enterprise**
+  account. `FS-GG` is on the **`free` plan** (`gh api orgs/FS-GG --jq .plan.name → free`,
+  `is_enterprise_managed: false`), so `internal` is **not offered** — the only org-wide-read option is
+  **`public`** (matching the already-public `FS.GG.*.Cli`).
+- The flip had to cover the **whole set**, not just `FS.GG.UI.Template`: the scaffolded product
+  restores all 17 `FS.GG.UI.*` libraries, so leaving any one private re-introduces exit-103 at build.
 
-## Operator action required (one of)
-
-1. **Preferred — flip `private → internal`** (org-wide read, matches the public `FS.GG.*.Cli` norm):
-   - Go to `https://github.com/orgs/FS-GG/packages/nuget/package/FS.GG.UI.Template/settings`
-   - **Change visibility → Internal**
-2. **Fallback (FR-003 equal)** — grant `FS-GG/FS.GG.Templates` repo **Read** on the same settings page
-   (Manage Actions access).
-
-## Machine-checkable acceptance (run after the operator acts)
-
-```bash
-gh api orgs/FS-GG/packages/nuget/FS.GG.UI.Template --jq .visibility   # expect: internal
-```
-- **Pass** when this returns `internal` (or the Templates Read grant is confirmed). (INV-8)
-
-Until then, an ordinary org-consumer token (`packages: read`, no special grant) still gets **exit 103**
-on `dotnet new install FS.GG.UI.Template@0.1.53-preview.1`, so the FR-004 combined gate (US1) cannot
-pass. This is the **single remaining blocker** after the publish lands.
-
-## Current observed state
+## Acceptance — verified
 
 ```
-visibility: private   (unchanged — awaiting operator)
+$ for p in <all 17 FS.GG.UI.*>; do gh api orgs/FS-GG/packages/nuget/$p --jq .visibility; done
+  → public ×17   (private remaining: 0)
 ```
+✅ INV-8 satisfied. Note: GitHub Packages still requires an *authenticated* token even for public
+packages (anonymous requests 103 by design); `public` means any authenticated GitHub identity can
+read — which is the consumer-CI case #26 needed. See `no-103-install.md`.

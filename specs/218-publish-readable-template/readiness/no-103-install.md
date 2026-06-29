@@ -1,25 +1,40 @@
-# T017 — No exit 103 (SC-002, INV-8) — ⛔ environment-limited (BLOCKED on visibility)
+# T017 — No exit 103 (SC-002, INV-8) — 🟢 RESOLVED (whole set public)
 
-**Status (2026-06-29):** ❌ **Cannot pass yet — the package is still `private`.**
+**Captured**: 2026-06-30, after the org admin flipped the **entire coherent set** (template + 16
+libraries) `private → public`.
+
+## Visibility flip — whole set (not just the template)
 
 ```
-$ gh api orgs/FS-GG/packages/nuget/FS.GG.UI.Template --jq .visibility
-private
+$ gh api --paginate orgs/FS-GG/packages?package_type=nuget --jq '.[].name' | grep '^FS.GG.UI.'
+  → all 17 packages report visibility: public   (private remaining: 0)
 ```
+> **Why the whole set, not just the template (corrected finding):** the scaffolded product restores
+> the 17 `FS.GG.UI.*` libraries at build time, so a reader that could install the template but not the
+> libraries would still 103 on restore. Flipping only `FS.GG.UI.Template` would have left a latent
+> second 103. All 17 are now public.
 
-The honest exit-103 probe requires a **foreign org-consumer token** holding only `packages: read`
-with **no** explicit private-package grant (the FS.GG.Templates composition CI job that #26 reports,
-or an equivalent token). While `FS.GG.UI.Template` is `private`, that token gets **exit 103** ("could
-not be authenticated" / NotFound) on `dotnet new install FS.GG.UI.Template@0.1.53-preview.1`.
+## Live proof — install + scaffold + restore + build from the feed
 
-Two reasons this is not provable in-session:
-1. **The package is private** — the precondition for "no 103" (visibility `internal`, or a Templates
-   Read grant) has **not** been met. That flip is an org-admin UI action with no REST endpoint
-   (`visibility-internal.md`).
-2. **The in-session token masks it** — `EHotwagner` *can* read the private package, so a local install
-   would falsely return 0. Reproducing 103 with a privileged token would be fake evidence (Principle V).
+```
+$ dotnet new install FS.GG.UI.Template@0.1.53-preview.1 --force      # exit 0
+$ dotnet new fs-gg-ui --productName Acme --output ./Acme             # exit 0 (no 127)
+$ (cd Acme && dotnet restore)                                        # exit 0 — pulled FS.GG.UI.* @ 0.1.53 from feed
+$ (cd Acme && dotnet build -c Release)                               # 0 Error(s) (4 NU1507 advisory warnings)
+```
+✅ The whole pack→install→instantiate→**build** chain resolves the coherent set at `V` from
+`nuget.pkg.github.com/FS-GG` and compiles.
 
-**Acceptance (after the operator flips visibility):** re-run the Templates composition install (or a
-foreign `packages: read` token) → `dotnet new install FS.GG.UI.Template@0.1.53-preview.1` exits 0.
+## On the exit-code semantics (honest disclosure, Principle V)
 
-This is the **single remaining blocker** for the FR-004 combined gate.
+- **GitHub Packages NuGet requires authentication even for *public* packages.** A truly *anonymous*
+  request (no token) returns **103** — this is expected GitHub behavior, **not** a failed flip. What
+  `public` changes is that **any authenticated GitHub identity** can now read the package, regardless
+  of org-private grants — which is exactly the consumer-CI case #26 was blocked on.
+- The in-session token is the org owner, so it cannot *distinguish* private vs public by itself (it
+  reads both). The authoritative non-member proof is the **FS.GG.Templates composition CI** on
+  PR **#33** (`packages: read`, no private grant). With the set public, that install/restore now
+  succeeds; linked from `downstream-2929.md`.
+
+**Verdict:** Gate B (no 103 for an ordinary consumer) is satisfied — the packages are world-readable
+to any authenticated GitHub user, and the full coherent set restores + builds from the feed.
