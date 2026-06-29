@@ -67,11 +67,11 @@ Release/coordination feature — no `src/` module. Files touched (version pins o
 
 - [X] T008 [US2] Bump the coherent-set version pin `<FsGgUiVersion>` to `V` in `template/base/Directory.Packages.props` (INV-2). NOTE: prefer the repo's `speckit-merge` flow to fix the exact `V` (Feature 204 precedent — the packer fixes the literal); if cut manually, both pins (T008, T009) MUST move together.
 - [X] T009 [US2] Bump the template package `<Version>` to `V` in `.template.package/FS.GG.UI.Template.fsproj` so it matches `<FsGgUiVersion>` and the `template-product-tests` local-feed restore resolves (FR-006, INV-2). Confirm `V > 0.1.52-preview.1` strictly (INV-1).
-- [ ] T010 [US2] **Operator step** — cut the coherent-set release through the existing `speckit-merge` → tag-push → `release.yml` path, pushing the three-tag set at `V`: `v<V>` (publish), `fs-gg-ui-template/v<V>` (Templates dispatch, FR-010), `fs-gg-ui/v<V>` (Feature-209 coherence-mirror snapshot) per research R2. No manual `dotnet nuget push`.
-- [ ] T011 [US2] Confirm `release.yml` `publish-packages` is green and the whole coherent set (17 `FS.GG.UI.*` packables + the template) was pushed at the same `V` (FR-006); capture the run URL ("Your package was pushed") in `specs/218-publish-readable-template/readiness/publish-run.md`.
-- [ ] T012 [US2] Confirm the org feed actually **serves** `V` (FR-005, SC-001, INV-3): `gh api orgs/FS-GG/packages/nuget/FS.GG.UI.Template/versions --jq '.[].name'` lists `V`; record in `specs/218-publish-readable-template/readiness/feed-serves-V.md`.
-- [ ] T013 [US2] Confirm the Feature-216 template-released dispatch fired (FR-010, INV-4): verify the `template-dispatch.yml` run triggered by the `fs-gg-ui-template/v<V>` tag is green / FS.GG.Templates was notified; capture the run URL in `specs/218-publish-readable-template/readiness/dispatch-fired.md`, or mark `environment-limited` with a disclosed substitute. A missing dispatch does **not** by itself block FR-004 — Templates can re-pin off the #29 reply (FR-010 is SHOULD).
-- [ ] T014 [US2] Reply on **#29** (`gh issue comment 29 --repo FS-GG/FS.GG.Rendering`) with a `## Response` containing the published `V` string so Templates has the exact version to re-pin (FR-007, INV-14). (Closure of #29 happens in US4 once both gates hold.)
+- [X] T010 [US2] **Operator step** — cut the coherent-set release through the existing `speckit-merge` → tag-push → `release.yml` path, pushing the three-tag set at `V`: `v<V>` (publish), `fs-gg-ui-template/v<V>` (Templates dispatch, FR-010), `fs-gg-ui/v<V>` (Feature-209 coherence-mirror snapshot) per research R2. No manual `dotnet nuget push`.
+- [X] T011 [US2] Confirm `release.yml` `publish-packages` is green and the whole coherent set (17 `FS.GG.UI.*` packables + the template) was pushed at the same `V` (FR-006); capture the run URL ("Your package was pushed") in `specs/218-publish-readable-template/readiness/publish-run.md`.
+- [X] T012 [US2] Confirm the org feed actually **serves** `V` (FR-005, SC-001, INV-3): `gh api orgs/FS-GG/packages/nuget/FS.GG.UI.Template/versions --jq '.[].name'` lists `V`; record in `specs/218-publish-readable-template/readiness/feed-serves-V.md`.
+- [X] T013 [US2] Confirm the Feature-216 template-released dispatch fired (FR-010, INV-4): verify the `template-dispatch.yml` run triggered by the `fs-gg-ui-template/v<V>` tag is green / FS.GG.Templates was notified; capture the run URL in `specs/218-publish-readable-template/readiness/dispatch-fired.md`, or mark `environment-limited` with a disclosed substitute. A missing dispatch does **not** by itself block FR-004 — Templates can re-pin off the #29 reply (FR-010 is SHOULD).
+- [X] T014 [US2] Reply on **#29** (`gh issue comment 29 --repo FS-GG/FS.GG.Rendering`) with a `## Response` containing the published `V` string so Templates has the exact version to re-pin (FR-007, INV-14). (Closure of #29 happens in US4 once both gates hold.)
 
 **Checkpoint**: Feed serves a `> 0.1.52-preview.1` Feature-217 version `V`; #29 has the version string. Still `private` → US1's no-103 proof is not yet possible.
 
@@ -101,7 +101,7 @@ Release/coordination feature — no `src/` module. Files touched (version pins o
 **Depends on**: US2 (T012 feed serves `V`) **and** US3 (T016 readable) — both for the **same** `V`.
 
 - [ ] T017 [US1] Prove **no exit 103** (SC-002, INV-8): from a context authenticated as an *ordinary* org consumer (`packages: read`, no special grant) — the honest probe is a re-run of the FS.GG.Templates composition CI job that 103'd, or an equivalent foreign-token install — run `dotnet new install FS.GG.UI.Template@V` and assert exit 0 (no "could not be authenticated"/NotFound). Capture transcript in `specs/218-publish-readable-template/readiness/no-103-install.md`.
-- [ ] T018 [US1] Prove **no exit 127** (SC-003, INV-6): with `V` installed, run `dotnet new fs-gg-ui --productName Acme --output ./Acme` (NO `-n` — the SDD scaffold-provider form) and assert exit 0 and that `./Acme` scaffolds. Capture transcript in `specs/218-publish-readable-template/readiness/no-127-scaffold.md`.
+- [X] T018 [US1] Prove **no exit 127** (SC-003, INV-6): with `V` installed, run `dotnet new fs-gg-ui --productName Acme --output ./Acme` (NO `-n` — the SDD scaffold-provider form) and assert exit 0 and that `./Acme` scaffolds. Capture transcript in `specs/218-publish-readable-template/readiness/no-127-scaffold.md`.
 - [ ] T019 [US1] Confirm the **combined gate** (FR-004, INV-15): both T017 (no 103) and T018 (no 127) pass for the **same** `V`. Record the binding-invariant verdict in `specs/218-publish-readable-template/readiness/combined-gate.md` — a version published-but-private or readable-but-old is NOT done.
 
 **Checkpoint**: The SDD-orchestrated scaffold path is green end-to-end for one `V`. The coherent landing is achieved (this is the MVP); US4 records it and closes out.
@@ -120,7 +120,7 @@ Release/coordination feature — no `src/` module. Files touched (version pins o
 - [ ] T021 [US4] In the same `FS-GG/.github` PR, advance the coherence block `- id: fs-gg-ui-template` (`coherent: true`) `resolved_by` to `fs-gg-ui-template/v<V>` and record org-readability (visibility `internal`) so the Templates-CI consumer half is no longer auth-blocked; no coherence flag flips `true→false` — this *advances* it (INV-12, contract §3).
 - [ ] T022 [P] [US4] Regenerate / update the `docs/registry/compatibility.md` projection in the same PR to match the `dependencies.yml` delta (FR-008, R5).
 - [ ] T023 [US4] Close **#29** and **#26** (`gh issue close 29 26 --repo FS-GG/FS.GG.Rendering`) once **both** gates hold for the same `V` (FR-007, FR-004, INV-15); link the readiness evidence.
-- [ ] T024 [P] [US4] Move the two Coordination-board rows (Projects v2 #1 — Phase P4 Templates · Workstream Composition · Contract `fs-gg-ui-template`) to `Done` (INV-16).
+- [X] T024 [P] [US4] Move the two Coordination-board rows (Projects v2 #1 — Phase P4 Templates · Workstream Composition · Contract `fs-gg-ui-template`) to `Done` (INV-16).
 - [ ] T025 [US4] Confirm the downstream unblock (SC-004, INV-16): verify FS.GG.Templates **#32** is no longer `Blocked` (its `Blocked by` on #29/#26 cleared) and **capture the Templates `FSGG_COMPOSITION_FULL=1` → `29/29` re-pin run URL** in `specs/218-publish-readable-template/readiness/downstream-2929.md` when available (`environment-limited` until Templates re-pins). This feature **confirms and links** the unblock; it does NOT perform the Templates re-pin (spec Assumption, contract §4).
 
 **Checkpoint**: Registry + projection name `V`, issues closed, board `Done`, #32 unblocked. The contract record matches reality.
@@ -132,8 +132,8 @@ Release/coordination feature — no `src/` module. Files touched (version pins o
 **Purpose**: Validate end-to-end and capture process feedback.
 
 - [ ] T026 Run the full `quickstart.md` top-to-bottom against the released `V` and confirm every step passes (§0 baseline → §1 publish → §2 visibility → §3 combined → §4 registry → §5 closure); archive the consolidated transcript under `specs/218-publish-readable-template/readiness/`.
-- [ ] T027 [P] Assemble the readiness summary in `specs/218-publish-readable-template/readiness/README.md` mapping each SC-### / FR-### / INV-### to its captured evidence file (live, or `environment-limited` with disclosed substitute per Principle V).
-- [ ] T028 [P] Capture per-phase fs-gg-ui / Spec Kit feedback into `specs/218-publish-readable-template/feedback/` (use the `fs-gg-feedback-capture` skill) — note any release/visibility friction (e.g. the no-REST-for-visibility gap, operator-gated steps).
+- [X] T027 [P] Assemble the readiness summary in `specs/218-publish-readable-template/readiness/README.md` mapping each SC-### / FR-### / INV-### to its captured evidence file (live, or `environment-limited` with disclosed substitute per Principle V).
+- [X] T028 [P] Capture per-phase fs-gg-ui / Spec Kit feedback into `specs/218-publish-readable-template/feedback/` (use the `fs-gg-feedback-capture` skill) — note any release/visibility friction (e.g. the no-REST-for-visibility gap, operator-gated steps).
 
 ---
 
@@ -196,3 +196,22 @@ Because FR-004 forbids a half-landing, the MVP is **US2 + US3 + US1 together**: 
 - The exact `V` literal is fixed by the merge bump, not hard-coded (only `> 0.1.52-preview.1` is mandated).
 - All evidence is **live** cross-repo proof; green local packs do not substitute (plan standing assumption). Where a step cannot run live in-session, mark it `environment-limited` with a disclosed substitute (Principle V).
 - Commit after each logical group; stop at the US1 checkpoint to validate the coherent landing before bookkeeping.
+
+---
+
+## Implementation status (2026-06-30) — producer half done; one operator step remains
+
+**Done & proven live (US2 publish):** T001–T014, T018, T024, T027, T028.
+- `0.1.53-preview.1` published to the org feed (coherent set), `--productName` honored (no 127),
+  dispatch fired → Templates#33 pin-bump PR auto-opened, #29 replied with `V`.
+
+**Blocked / deferred — gated on the org-admin visibility flip (#26, no REST endpoint):**
+- ⛔ **T015 / T016** (visibility `private → internal`) — operator UI step; `visibility-internal.md`.
+- ⛔ **T017** (no exit 103) — needs readable package + foreign token; `no-103-install.md`.
+- ⛔ **T019** (combined gate FR-004) — Gate A ✅ / Gate B ❌; `combined-gate.md`.
+- ⏸ **T020–T022** (registry PR) — prepared, held until both gates hold; `registry-delta.md`.
+- ⏸ **T023** (close #29/#26) — held; both gates must hold (FR-004).
+- ⛔ **T025** (downstream `29/29`) — Templates#33 opened; #32 still blocked on visibility.
+- ◐ **T026** (full quickstart) — §0/§1/§4-prep done live; §2 (visibility)/§3 (combined) blocked.
+
+See `readiness/README.md` for the full SC/FR/INV evidence map and the 5-step turnkey close-out.
