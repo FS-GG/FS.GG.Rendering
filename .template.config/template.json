@@ -10,7 +10,6 @@
   "identity": "FS.GG.UI.Template",
   "name": "FS GG UI Governed Project",
   "shortName": "fs-gg-ui",
-  "sourceName": "Product",
   "preferNameDirectory": true,
   "symbols": {
     "profile": {
@@ -79,6 +78,45 @@
       "defaultValue": "Product",
       "description": "Compatibility parameter accepted by the template; generated project names are derived from --name."
     },
+    "productName": {
+      "type": "parameter",
+      "datatype": "text",
+      "defaultValue": "",
+      "description": "Product name conforming to the SDD scaffold-provider convention. When supplied, names the generated product (overrides --name/-n). Empty/whitespace is treated as not supplied and falls back to --name/-n."
+    },
+    "productNameTrimmed": {
+      "type": "generated",
+      "generator": "regex",
+      "dataType": "string",
+      "parameters": {
+        "source": "productName",
+        "steps": [
+          {
+            "regex": "^\\s+|\\s+$",
+            "replacement": ""
+          }
+        ]
+      }
+    },
+    "effectiveName": {
+      "type": "generated",
+      "generator": "coalesce",
+      "parameters": {
+        "sourceVariableName": "productNameTrimmed",
+        "fallbackVariableName": "name"
+      },
+      "replaces": "Product",
+      "fileRename": "Product"
+    },
+    "effectiveNameLower": {
+      "type": "generated",
+      "generator": "casing",
+      "parameters": {
+        "source": "effectiveName",
+        "toLower": true
+      },
+      "replaces": "product"
+    },
     "packagePrefix": {
       "type": "parameter",
       "datatype": "text",
@@ -122,7 +160,7 @@
       "type": "generated",
       "generator": "casing",
       "parameters": {
-        "source": "name",
+        "source": "effectiveName",
         "toLower": true
       },
       "replaces": "fs-gg-ui"
