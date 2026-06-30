@@ -82,22 +82,23 @@ A control carries an ordered `StyleClass list`. Each entry is either a typed sem
 ```fsharp
 open FS.GG.UI.DesignSystem
 
-// Semantic variant — the compiler-checked common path:
+// Semantic variant — the compiler-checked common path.
+// StyleVariant is [<RequireQualifiedAccess>], so qualify the case: StyleVariant.Primary
 Button.create [
     Button.text "Save"
-    Attr.styleClasses [ StyleClass.Variant Primary ]
+    Attr.styleClasses [ StyleClass.Variant StyleVariant.Primary ]
 ]
 
 // Variant plus a product-owned class (attach order: variant, then product class):
 Button.create [
     Button.text "Delete"
-    Attr.styleClasses [ StyleClass.Variant Danger; StyleClass.Custom "compact" ]
+    Attr.styleClasses [ StyleClass.Variant StyleVariant.Danger; StyleClass.Custom "compact" ]
 ]
 
 // A single free-form class by name (counterpart to the typed builder):
 Button.create [
     Button.text "Cancel"
-    Attr.style "ghost"
+    Attr.style "toolbar-compact"
 ]
 ```
 
@@ -109,7 +110,7 @@ Reflect interaction and validity so the look follows state:
 TextBox.create [
     TextBox.value model.Email
     Attr.visualState (if model.Editing then VisualState.Focused else VisualState.Normal)
-    Attr.validation (if model.EmailValid then ValidationState.Valid else ValidationState.Invalid)
+    Attr.validation (if model.EmailValid then ValidationState.Valid else ValidationState.Invalid "Enter a valid email")
 ]
 ```
 
