@@ -5,8 +5,8 @@ module Feature219EmitFrameworkSkillsTests
 // Where Feature204LifecycleTemplateTests proves the *gating invariant* (the lifecycle workspace is
 // spec-kit-only), this gate proves the *emission* facts the workspace gate cannot: that the framework
 // `fs-gg-*` product skills ARE present under `sdd`/`none` per profile (G-EMIT / FR-001/FR-002), that
-// no scaffold emits a catalog listing absent skills (G-CATALOG / FR-005/FR-006), and that the
-// present-but-unwired `fs-gg-symbology` directory's status is resolved (G-NODANGLE-SYMB / FR-007).
+// no scaffold emits a catalog listing absent skills (G-CATALOG / FR-005/FR-006), and that every
+// `fs-gg-symbology` directory is wired — vendored as of Feature 223 (G-NODANGLE-SYMB / FR-007).
 //
 // Deterministic, GL-free, NO `dotnet new`: the positive emission set is re-derived directly from
 // template.json (a framework product-skill source emits for profile P under every lifecycle iff its
@@ -36,16 +36,23 @@ let private templateJsonPath = repositoryPath ".template.config/template.json"
 let private SPEC_KIT_COND = "lifecycle == \"spec-kit\""
 
 // The profile -> framework `fs-gg-*` skill-set contract (data-model.md matrix). `fs-gg-symbology` is
-// recorded NOT-VENDORED (research R5: its product-vendored variant is not byte-equal to the spec-kit
-// blanket-copy wrapper, so wiring it would change the byte-identical spec-kit output / red GV-3), so
-// it is intentionally absent from every row.
+// now VENDORED (Feature 223): it follows the `fs-gg-scene` profile set (app, headless-scene, governed,
+// sample-pack, game) with no `lifecycle` clause, so it appears in every one of those rows. The earlier
+// Feature 219 "not-vendored / would red GV-3" rationale was a misread of GV-3 (research R1): GV-3
+// compares explicit `--lifecycle spec-kit` against the no-flag default of the SAME template, which an
+// ungated source leaves byte-identical — so wiring symbology is GV-3-neutral.
 let private expectedFrameworkSkills =
-    [ "app", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-keyboard-input"; "fs-gg-ui-widgets" ]
-      "headless-scene", set [ "fs-gg-scene" ]
-      "governed", set [ "fs-gg-scene"; "fs-gg-testing" ]
-      "sample-pack", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish" ] ]
+    [ "app", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-keyboard-input"; "fs-gg-ui-widgets"; "fs-gg-symbology" ]
+      "headless-scene", set [ "fs-gg-scene"; "fs-gg-symbology" ]
+      "governed", set [ "fs-gg-scene"; "fs-gg-testing"; "fs-gg-symbology" ]
+      "sample-pack", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-symbology" ]
+      "game", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-keyboard-input"; "fs-gg-ui-widgets"; "fs-gg-symbology" ] ]
 
-let private profiles = expectedFrameworkSkills |> List.map fst
+// The env-free G-EMIT matrix above covers all five scene-bearing profiles (game's symbology emit is
+// proven directly from template.json). The live lifecycle-validation REPORT, however, only scaffolds
+// the four profiles the validator's loop covers (app, headless-scene, governed, sample-pack) — `game`
+// is not in that loop — so the report-backed assertions iterate that covered set, not every matrix key.
+let private profiles = [ "app"; "headless-scene"; "governed"; "sample-pack" ]
 
 // ---- self-provisioning (mirrors Feature204) ---------------------------------------------------
 
@@ -116,7 +123,7 @@ let feature219EmitFrameworkSkillsTests =
         "Feature219 emit framework skills on every lifecycle"
         [
           // G-EMIT (FR-001/FR-002, env-free): for each profile the framework `fs-gg-*` skills emitted
-          // under a non-spec-kit lifecycle equal the data-model matrix (symbology not-vendored).
+          // under a non-spec-kit lifecycle equal the data-model matrix (symbology vendored, Feature 223).
           test "G-EMIT framework skill set per profile is lifecycle-independent and matches the matrix" {
               let sources = frameworkSkillSources ()
               for profile, expected in expectedFrameworkSkills do
@@ -128,7 +135,8 @@ let feature219EmitFrameworkSkillsTests =
           // .agents/skills/ and .claude/skills/ destinations (so agents on either runtime find it).
           test "G-EMIT every framework skill source is lifecycle-independent with both agent destinations" {
               let sources = frameworkSkillSources ()
-              Expect.isTrue (sources.Length >= 12) (sprintf "expected >=12 framework skill sources, found %d" sources.Length)
+              // 7 product skills x 2 surfaces = 14 since Feature 223 wired symbology (was 6 x 2 = 12).
+              Expect.isTrue (sources.Length >= 14) (sprintf "expected >=14 framework skill sources, found %d" sources.Length)
               for s in sources do
                   Expect.isFalse (s.Condition.Contains SPEC_KIT_COND) (sprintf "%s -> %s must not be lifecycle-gated" s.Id s.Target)
                   Expect.stringContains s.Condition "profile ==" (sprintf "%s -> %s must carry a profile predicate" s.Id s.Target)
@@ -194,9 +202,9 @@ let feature219EmitFrameworkSkillsTests =
               Expect.stringContains report "catalog-dangling: none" "no scaffold emits a dangling catalog"
           }
 
-          // G-NODANGLE-SYMB (FR-007): every template/product-skills/<id> directory is either wired by a
-          // source or explicitly recorded; fs-gg-symbology is recorded not-vendored (research R5).
-          test "G-NODANGLE-SYMB no product-skill directory is silently unwired; symbology is recorded" {
+          // G-NODANGLE-SYMB (FR-007): every template/product-skills/<id> directory is wired by a source.
+          // Feature 223 wired fs-gg-symbology, so there is no longer any intentionally-unwired directory.
+          test "G-NODANGLE-SYMB no product-skill directory is silently unwired; symbology is vendored" {
               let productSkillsDir = repositoryPath "template/product-skills"
               let onDisk =
                   Directory.EnumerateDirectories productSkillsDir
@@ -204,9 +212,9 @@ let feature219EmitFrameworkSkillsTests =
                   |> Set.ofSeq
               let wired = frameworkSkillSources () |> List.map (fun s -> s.Id) |> Set.ofList
               let unwired = Set.difference onDisk wired
-              // the ONLY tolerated unwired directory is fs-gg-symbology, and only if recorded not-vendored.
-              Expect.equal unwired (set [ "fs-gg-symbology" ]) "fs-gg-symbology is the only intentionally-unwired product-skill directory"
+              // every product-skill directory is now wired — the unwired set is empty.
+              Expect.equal unwired Set.empty "no product-skill directory is left unwired (symbology vendored in Feature 223)"
               let report = readValidationReport ()
-              Expect.stringContains report "symbology: not-vendored" "symbology status is explicitly resolved as not-vendored"
+              Expect.stringContains report "symbology: vendored" "symbology status is explicitly resolved as vendored"
           }
         ]

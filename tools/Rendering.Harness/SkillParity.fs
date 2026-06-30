@@ -839,12 +839,15 @@ module SkillParity =
             |> List.choose (fun (surfaceId, names) ->
                 let canonicalName = normalizeText entry.SkillName
                 let productAliasName = canonicalName.Replace("fs-gg-", "fs-gg-product-")
-                let exposedAsAlias =
+                let isProductSkill =
                     entry.Path.Contains("template/product-skills", StringComparison.OrdinalIgnoreCase)
-                    && names.Contains productAliasName
+                let exposedAsAlias = isProductSkill && names.Contains productAliasName
+                // A product skill's wrapper requirement is satisfied ONLY by its fs-gg-product-* alias;
+                // a bare same-named framework wrapper must not mask a missing product wrapper (Feature 223).
+                let canonicalSatisfies = (not isProductSkill) && names.Contains(canonicalName)
                 let antCanonicalSelfExposed = entry.SurfaceId = "ant-canonical" && surfaceId = "claude"
 
-                if names.Contains(canonicalName) || exposedAsAlias || antCanonicalSelfExposed then
+                if canonicalSatisfies || exposedAsAlias || antCanonicalSelfExposed then
                     None
                 else
                     Some

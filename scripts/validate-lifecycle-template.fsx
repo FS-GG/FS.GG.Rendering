@@ -415,7 +415,7 @@ let private renderReport (values: string list) (provenance: string) (verdicts: P
     line "gated-condition: lifecycle-workspace sources carry lifecycle == \"spec-kit\"; framework product-skill sources are profile-gated and lifecycle-independent"
     line "dangling-refs: none"
     line "catalog-dangling: none"
-    line "symbology: not-vendored"
+    line "symbology: vendored"
     line (sprintf "composition-matrix: %d/12 generate; ant-overlay-present=ok; feedback-gated-under-non-speckit=ok" matrixCount)
     line (sprintf "unknown-value: %s" unknown)
     line ""

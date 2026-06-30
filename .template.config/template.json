@@ -261,6 +261,16 @@
       "target": ".claude/skills/fs-gg-scene/"
     },
     {
+      "condition": "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\")",
+      "source": "template/product-skills/fs-gg-symbology/",
+      "target": ".agents/skills/fs-gg-symbology/"
+    },
+    {
+      "condition": "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\")",
+      "source": "template/product-skills/fs-gg-symbology/",
+      "target": ".claude/skills/fs-gg-symbology/"
+    },
+    {
       "condition": "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\")",
       "source": "template/product-skills/fs-gg-skiaviewer/",
       "target": ".agents/skills/fs-gg-skiaviewer/"

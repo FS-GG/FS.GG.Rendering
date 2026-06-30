@@ -1,10 +1,10 @@
 <!-- SKILL-PARITY:START -->
 # Skill Parity Report
 
-Checked at UTC: `2026-06-26T04:13:58.6252732Z`
+Checked at UTC: `2026-06-30T20:08:39.0292212Z`
 Overall status: `passed`
 Canonical sources: `21`
-Wrappers: `41`
+Wrappers: `43`
 
 ## Supported Surfaces
 | Surface | Kind | Agent | Root | Required |
