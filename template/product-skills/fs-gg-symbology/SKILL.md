@@ -60,7 +60,7 @@ per-grammar region. Set it in `mapUnit` only when the abstract sigil cannot disa
   (shrink, then ellipsis-truncate); a degenerate (`R <= 0`) labelled token still degrades to the placeholder.
 - **Multi-line rides the same field.** `Label` may carry more than one line: embedded `\n` are hard breaks,
   and a long line soft-wraps at whitespace to the region width — no new field, no second channel. Keep to a
-  few short lines (budget **Token ≤ 3, Badge ≤ 2, Ring ≤ 2**); lines stack downward from the spec-196
+  few short lines (budget **Token ≤ 3, Badge ≤ 2, Ring ≤ 2**); lines stack downward from the label's
   baseline, screen-aligned. Surplus degrades **wrap → cap → ellipsis** (the last drawn line ends with `…`);
   empty/whitespace/blank-lines collapse to no label. A one-line-fitting label stays byte-identical, so `\n`
   is the only way to force a break; every line is tofu-free only through the render bridge's real measurer.
@@ -93,7 +93,7 @@ per-grammar region. Set it in `mapUnit` only when the abstract sigil cannot disa
                   { Symbology.run ("  " + u.Code) with Scale = Some 0.7; Color = Some (Colors.rgb 150uy 150uy 150uy) } ]) }
 ```
 
-- **Full rich-text layout — alignment / justification / explicit breaks + decoration (feature 199, same
+- **Full rich-text layout — alignment / justification / explicit breaks + decoration (same
   channel).** Each `LabelRun` also takes optional **`Italic` / `Underline` / `Strike` / `Tracking`**
   (each `None`/`false`/`0.0`-defaulted), and `LabelText.Laid of LabelParagraph list` carries explicit
   paragraphs, each `{ Runs; Align }` with **`Align = Leading | Center | Trailing | Justify`** (build with
@@ -119,7 +119,7 @@ per-grammar region. Set it in `mapUnit` only when the abstract sigil cannot disa
                   Symbology.align Trailing [ { Symbology.run u.RetiredCode with Strike = Some true } ] ]) }
 ```
 
-- **Auto-label — derive the label from channels (feature 200, same channel).** Instead of hand-authoring a
+- **Auto-label — derive the label from channels (same channel).** Instead of hand-authoring a
   callsign, set `AutoLabel : AutoLabelSpec option` (`Symbology.autoLabel fields` / `autoLabelSep sep fields`)
   and the library projects a compact game-agnostic readout from the **`Token`'s own encoded channels**:
   `FactionCode` (ALY/ENY/NEU/CUS), `KlassCode` (MOB/HVY/SCT), `StateCode` (CFM/SUS), `HealthTier` (H+nn),
@@ -134,7 +134,7 @@ per-grammar region. Set it in `mapUnit` only when the abstract sigil cannot disa
                               AutoLabel = Some(Symbology.autoLabel [ FactionCode; HealthTier; SpeedPips ]) }
 ```
 
-- **Label-bound motion — animate the resolved label (feature 200, no new clock).** Set
+- **Label-bound motion — animate the resolved label (no new clock).** Set
   `LabelMotion : LabelMotion option` (`LabelMotion.TypeOn | Fade | Pulse | Scroll`) and the resolved label
   (explicit or auto-derived) animates as a pure function of the **phase the board already supplies**
   (`animate`/`filmstrip`/`animateIn`/`filmstripIn`) — no signature change. At the rest phase it is
@@ -197,8 +197,10 @@ in `FS.GG.UI.Symbology.Render`. Keep the game-symbol vocabulary off the core con
 
 When a problem outlasts reasonable in-repo attempts, extensive external research is **mandatory** —
 consult **official online docs first** (the F#/.NET docs and the driven library's own documentation),
-then community sources. Record findings and resolving links in the feature's `specs/<feature>/feedback/`
-folder. Offline, the mandate degrades to recording "research blocked — <why>" rather than hard-failing.
+then community sources. If your product uses Spec Kit, record findings and resolving links under the
+feature's `specs/<feature>/feedback/` folder; otherwise record them in this skill's **Sources** /
+durable-lessons line (and any product-local `docs/` location). Offline, the mandate degrades to
+recording "research blocked — <why>" rather than hard-failing.
 
 ## Related
 

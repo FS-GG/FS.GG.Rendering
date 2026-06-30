@@ -50,17 +50,17 @@ Build and write evidence with `EvidenceReports.build` / `write` into this
 product's `readiness/` paths. Do not copy framework readiness reports into the
 product.
 
-## Feature 168 Evidence Rules
+## Evidence Rules
 
-- Package-consuming products must compare `FS.GG.UI.` package pins with the
-  current framework packages and use `scripts/refresh-local-feed-and-samples.fsx`
-  or the `package-feed` proof workflow when local feed validation is required;
-  stale package pins need an explicit caveat.
-- Framework readiness output under `specs/*/readiness/` is ignored until
-  `.gitignore` allowlists it; product evidence should still record
-  `git check-ignore` proof when committed.
+- Compare your product's `FS.GG.UI.` package pins against the versions you intend
+  to ship against; when you validate against a locally built package instead of a
+  released one, record that as an explicit caveat so a stale pin is never mistaken
+  for a passing check.
+- Keep evidence under your product's own `readiness/` paths. Treat generated
+  reports as transient: when a path is ignored by default, prove a committed file
+  is actually tracked rather than silently dropped.
 - Do not run `dotnet test` for the same project/configuration concurrently
-  unless each run uses isolated output or a distinct `BaseOutputPath`.
+  unless each run writes to its own isolated output path.
 - Prefer real screenshot evidence, disclose degraded capture, require reviewer
   accepted readiness, and keep manual caveats outside generated summary or
   managed section rewrites.
@@ -85,9 +85,10 @@ their own generated structure and package pins.
 When a problem outlasts reasonable in-repo attempts, extensive external research is
 **mandatory** — consult **official online docs first** (the F#/.NET docs and the driven
 library's own documentation/API reference), then community sources (forums, Reddit, Q&A
-sites, issue trackers and changelogs). Record the findings and resolving links in the
-feature's `specs/<feature>/feedback/` folder and, for durable lessons, in this skill's
-**Sources** line. Offline, the mandate degrades to recording "research blocked — <why>"
+sites, issue trackers and changelogs). If your product uses Spec Kit, record the findings
+and resolving links under the feature's `specs/<feature>/feedback/` folder; otherwise record
+them in this skill's **Sources** / durable-lessons line (and any product-local `docs/`
+location). Offline, the mandate degrades to recording "research blocked — <why>"
 rather than hard-failing the phase.
 
 ## Related

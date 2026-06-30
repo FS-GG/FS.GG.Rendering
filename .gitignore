@@ -160,3 +160,5 @@ specs/220-game-starter-scene/readiness/fr007-baseline/
 !specs/221-headless-image-evidence/readiness/**
 !specs/224-skill-catalog-currency/readiness/
 !specs/224-skill-catalog-currency/readiness/**
+!specs/225-deleak-product-skill-vocab/readiness/
+!specs/225-deleak-product-skill-vocab/readiness/**

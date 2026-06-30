@@ -1,0 +1,41 @@
+verdict-core OK: covered-values spec-kit, sdd, none; 12 lifecycle-workspace sources carry `lifecycle == "spec-kit"`; 14 framework product-skill sources profile-gated & lifecycle-independent; 3 product sources clean; directive agent-context docs lifecycle-safe
+wrote specs/204-template-lifecycle-symbol/readiness/lifecycle-template-validation.md
+# Lifecycle Template Validation — Feature 204
+
+> GENERATED — do not edit. Regenerate via:
+> FS_GG_RUN_LIFECYCLE_VALIDATION=1 dotnet fsi scripts/validate-lifecycle-template.fsx
+
+covered-values: spec-kit, sdd, none
+profiles: app, headless-scene, governed, sample-pack
+
+gated-condition: lifecycle-workspace sources carry lifecycle == "spec-kit"; framework product-skill sources are profile-gated and lifecycle-independent
+dangling-refs: none
+catalog-dangling: none
+symbology: vendored
+composition-matrix: 12/12 generate; ant-overlay-present=ok; feedback-gated-under-non-speckit=ok
+unknown-value: rejected
+
+spec-kit/app: generate=pass diff-vs-today=none
+spec-kit/headless-scene: generate=pass diff-vs-today=none
+spec-kit/governed: generate=pass diff-vs-today=none
+spec-kit/sample-pack: generate=pass diff-vs-today=none
+sdd/app: generate=pass gated-absent=ok product-present=ok diff-vs-default=gated-only
+sdd/headless-scene: generate=pass gated-absent=ok product-present=ok diff-vs-default=gated-only
+sdd/governed: generate=pass gated-absent=ok product-present=ok diff-vs-default=gated-only
+sdd/sample-pack: generate=pass gated-absent=ok product-present=ok diff-vs-default=gated-only
+sdd/app: framework-skills-present=ok (6 SKILL.md)
+sdd/headless-scene: framework-skills-present=ok (2 SKILL.md)
+sdd/governed: framework-skills-present=ok (3 SKILL.md)
+sdd/sample-pack: framework-skills-present=ok (4 SKILL.md)
+none/app: generate=pass gated-absent=ok product-present=ok
+none/headless-scene: generate=pass gated-absent=ok product-present=ok
+none/governed: generate=pass gated-absent=ok product-present=ok
+none/sample-pack: generate=pass gated-absent=ok product-present=ok
+none/app: framework-skills-present=ok (6 SKILL.md)
+none/headless-scene: framework-skills-present=ok (2 SKILL.md)
+none/governed: framework-skills-present=ok (3 SKILL.md)
+none/sample-pack: framework-skills-present=ok (4 SKILL.md)
+
+provenance: live
+result: pass
+

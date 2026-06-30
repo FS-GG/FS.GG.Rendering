@@ -39,6 +39,7 @@
     <Compile Include="Feature217ProductNameTemplateTests.fs" />
     <Compile Include="Feature219EmitFrameworkSkillsTests.fs" />
     <Compile Include="Feature224SkillCatalogCurrencyTests.fs" />
+    <Compile Include="Feature225ProductSkillVocabularyTests.fs" />
     <Compile Include="Tests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

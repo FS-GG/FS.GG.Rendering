@@ -50,11 +50,12 @@ Run `./fake.sh build -t Test` for product host-wiring coverage.
 Record window-visibility and screenshot evidence under this product's
 `readiness/` paths. Do not copy framework readiness reports into the product.
 
-## Feature 168 Viewer Evidence Rules
+## Viewer Evidence Rules
 
-- Package-consuming products must compare current `FS.GG.UI.` package pins and
-  use `scripts/refresh-local-feed-and-samples.fsx` or `package-feed` proof when
-  stale package pins or local feed restores affect viewer samples.
+- Compare your product's current `FS.GG.UI.` package pins against the versions you
+  intend to ship against; when a locally built package or a local restore affects
+  your viewer evidence, record it as an explicit caveat so a stale pin never
+  passes silently.
 - Prefer real screenshot evidence; disclose degraded capture, require reviewer
   accepted readiness, and preserve manual caveats outside generated summary or
   managed section rewrites.
@@ -102,9 +103,10 @@ host effect is needed).
 When a problem outlasts reasonable in-repo attempts, extensive external research is
 **mandatory** — consult **official online docs first** (the F#/.NET docs and the driven
 library's own documentation/API reference), then community sources (forums, Reddit, Q&A
-sites, issue trackers and changelogs). Record the findings and resolving links in the
-feature's `specs/<feature>/feedback/` folder and, for durable lessons, in this skill's
-**Sources** line. Offline, the mandate degrades to recording "research blocked — <why>"
+sites, issue trackers and changelogs). If your product uses Spec Kit, record the findings
+and resolving links under the feature's `specs/<feature>/feedback/` folder; otherwise record
+them in this skill's **Sources** / durable-lessons line (and any product-local `docs/`
+location). Offline, the mandate degrades to recording "research blocked — <why>"
 rather than hard-failing the phase.
 
 ## Related

@@ -97,9 +97,10 @@ through your pure reducer.
 When a problem outlasts reasonable in-repo attempts, extensive external research is
 **mandatory** — consult **official online docs first** (the F#/.NET docs and the driven
 library's own documentation/API reference), then community sources (forums, Reddit, Q&A
-sites, issue trackers and changelogs). Record the findings and resolving links in the
-feature's `specs/<feature>/feedback/` folder and, for durable lessons, in this skill's
-**Sources** line. Offline, the mandate degrades to recording "research blocked — <why>"
+sites, issue trackers and changelogs). If your product uses Spec Kit, record the findings
+and resolving links under the feature's `specs/<feature>/feedback/` folder; otherwise record
+them in this skill's **Sources** / durable-lessons line (and any product-local `docs/`
+location). Offline, the mandate degrades to recording "research blocked — <why>"
 rather than hard-failing the phase.
 
 ## Related

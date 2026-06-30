@@ -348,11 +348,13 @@ module SkillParity =
                   [ "stale package pins"; "package pins" ]
                   [ "local feed" ] ]
             ApplicablePatterns =
+                // Feature 225 de-leak: produced product skills must NOT carry framework-repo
+                // evidence-process references (the `refresh-local-feed-and-samples`/`package-feed`
+                // proof workflow), so the de-leaked `fs-gg-testing` product skill is no longer
+                // required to. This rule still governs the framework's own command/source skills.
                 [ "speckit-implement"
                   "speckit-merge"
-                  "fs-gg-testing"
                   "src/testing"
-                  "template/product-skills/fs-gg-testing"
                   "template/fragments/samples"
                   "src/controls"
                   "src/skiaviewer"
@@ -366,10 +368,12 @@ module SkillParity =
                   [ ".gitignore" ]
                   [ "git check-ignore" ] ]
             ApplicablePatterns =
+                // Feature 225 de-leak: `specs/*/readiness/` + `.gitignore` allowlisting is
+                // framework-only output, never a product-author location — so the de-leaked
+                // `fs-gg-testing` product skill is exempt. The rule still governs the framework's
+                // own command/source skills.
                 [ "speckit-implement"
-                  "fs-gg-testing"
                   "src/testing"
-                  "template/product-skills/fs-gg-testing"
                   "fs-gg-project"
                   "speckit-merge" ]
             MinimumCoverage = "required" }
