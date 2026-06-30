@@ -154,3 +154,5 @@ specs/218-publish-readable-template/readiness/**/nuget-cache/
 # FR-007 byte-diff target (T006); the diff outcome is recorded in fr007-diff.md, so the bulky
 # generated trees are not committed.
 specs/220-game-starter-scene/readiness/fr007-baseline/
+!specs/221-headless-image-evidence/readiness/
+!specs/221-headless-image-evidence/readiness/**

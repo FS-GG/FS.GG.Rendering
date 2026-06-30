@@ -1,7 +1,6 @@
 namespace FS.GG.UI.Scene
 
 open System
-open System.Text
 
 type SceneEvidenceFormat =
     | Hash
@@ -47,6 +46,18 @@ module SceneEvidence =
         match stage with
         | EvidenceStage.Scene -> "scene"
         | EvidenceStage.Renderer -> "renderer"
+
+    // Feature 221 (US1, FR-001/FR-004): the real headless PNG rasterizer seam, mirroring
+    // `Scene.setRealTextMeasurer`. `src/Scene` stays SkiaSharp-free; `SkiaViewer` injects a CPU
+    // rasterizer (`ReferenceRendering.renderScenePngResult`) here so `renderPng` returns real pixels.
+    // `None` (the default) ⇒ `renderPng` returns the typed `UnsupportedEnvironment` failure (FR-005),
+    // never the prior hash/stub bytes. Disclosed interpreter-edge mutation (constitution III/IV); the
+    // injected closure must be re-entrant so concurrent `renderPng` calls stay isolated (Edge Case).
+    let mutable private realPngRasterizer: (Size -> Scene -> Result<byte[], SceneEvidenceFailure>) option =
+        None
+
+    let setRealPngRasterizer (rasterizer: (Size -> Scene -> Result<byte[], SceneEvidenceFailure>) option) : unit =
+        realPngRasterizer <- rasterizer
 
     let supportedRendererMode mode =
         String.IsNullOrWhiteSpace mode
@@ -106,6 +117,11 @@ module SceneEvidence =
               EvidencePath = None }
 
     let renderPng size scene =
+        // Feature 221 (US1/US3): validate first through the existing `render` path so the size/mode
+        // rules and their classifications are preserved EXACTLY (zero/negative size → `ProductDefect`,
+        // unsupported mode → `UnsupportedEnvironment`; FR-007, contract C1.4). On success we DISCARD the
+        // hash-bearing record and source real pixels from the injected CPU rasterizer instead — the
+        // prior `Encoding.UTF8.GetBytes hash` stub is gone (FR-002/SC-005, contract C1.5).
         match
             render
                 { Scene = scene
@@ -114,8 +130,20 @@ module SceneEvidence =
                   RendererMode = "deterministic-scene"
                   EvidencePath = None }
         with
-        | Result.Ok evidence -> Result.Ok(Encoding.UTF8.GetBytes evidence.Value)
         | Result.Error failure -> Result.Error failure
+        | Result.Ok _ ->
+            match realPngRasterizer with
+            | Some rasterize -> rasterize size scene
+            | None ->
+                // FR-001/FR-005 (contract C1.3): no CPU rasterizer injected ⇒ real pixels genuinely
+                // cannot be produced here. Fail honestly, naming the blocked Renderer stage; write
+                // nothing, never a success-shaped non-image.
+                Result.Error
+                    { BlockedStage = stageName EvidenceStage.Renderer
+                      Classification = UnsupportedEnvironment
+                      DiagnosticCategory = stageName EvidenceStage.Renderer
+                      Message =
+                        "Headless PNG evidence requires the SkiaViewer CPU rasterizer to be injected via SceneEvidence.setRealPngRasterizer; no rasterizer is installed in this environment." }
 
 module LayoutEvidence =
     let private intersects (first: Rect) (second: Rect) =

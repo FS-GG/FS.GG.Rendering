@@ -99,17 +99,30 @@ let tests =
             | Result.Error failure -> failtestf "scene evidence should write metadata: %A" failure
         }
 
-        test "scene evidence PNG bytes are deterministic and do not require viewer startup" {
+        test "renderPng fails honestly (no stub) in the dependency-light Scene assembly with no rasterizer injected" {
+            // Feature 221 (US1/US3, FR-002/FR-005/SC-005): pre-221 `renderPng` returned the UTF-8 bytes
+            // of a capability HASH as a fake "PNG". That success-shaped non-image is eliminated. In the
+            // SkiaSharp-free `Scene` assembly nothing injects a CPU rasterizer, so `renderPng` now returns
+            // a typed `UnsupportedEnvironment` failure naming the blocked renderer stage — never a stub.
+            // The viewer-free DETERMINISTIC capability-hash guarantee lives on `renderHash` (asserted below).
             let scene = Scene.text (12.0, 24.0) "Generated app scene" Colors.white
 
-            let first = SceneEvidence.renderPng { Width = 80; Height = 40 } scene
-            let second = SceneEvidence.renderPng { Width = 80; Height = 40 } scene
+            match SceneEvidence.renderPng { Width = 80; Height = 40 } scene with
+            | Result.Error failure ->
+                Expect.equal failure.Classification UnsupportedEnvironment "no rasterizer ⇒ unsupported-environment"
+                Expect.equal failure.BlockedStage "renderer" "the blocked stage names the renderer"
+                Expect.isFalse (System.String.IsNullOrWhiteSpace failure.Message) "the failure carries a message"
+            | Result.Ok bytes -> failtestf "expected a typed failure, not a %d-byte stub (SC-005)" bytes.Length
+        }
 
-            match first, second with
-            | Result.Ok firstBytes, Result.Ok secondBytes ->
-                Expect.sequenceEqual firstBytes secondBytes "PNG evidence bytes are stable for the same scene"
-                Expect.isGreaterThan firstBytes.Length 0 "PNG evidence produces bytes"
-            | other -> failtestf "expected deterministic PNG evidence, got %A" other
+        test "renderHash bytes are deterministic and do not require viewer startup" {
+            let scene = Scene.text (12.0, 24.0) "Generated app scene" Colors.white
+
+            match SceneEvidence.renderHash { Width = 80; Height = 40 } scene, SceneEvidence.renderHash { Width = 80; Height = 40 } scene with
+            | Result.Ok first, Result.Ok second ->
+                Expect.equal first.Value second.Value "capability-hash evidence is stable for the same scene (no viewer startup)"
+                Expect.isGreaterThan first.Value.Length 0 "capability-hash evidence produces a value"
+            | other -> failtestf "expected deterministic capability-hash evidence, got %A" other
         }
 
         test "scene evidence reports unsupported renderer capabilities explicitly" {

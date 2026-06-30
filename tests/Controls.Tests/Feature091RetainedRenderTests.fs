@@ -416,12 +416,12 @@ module private Evidence =
         bytes.Length > 8 && bytes.[0] = 0x89uy && bytes.[1] = 0x50uy && bytes.[2] = 0x4Euy && bytes.[3] = 0x47uy
 
     /// HONEST image capture: writes a decodable `.png` ONLY when the bytes are a real PNG (magic
-    /// header). NOTE `SceneEvidence.renderPng` is a deterministic CAPABILITY-hash function, not a
-    /// pixel encoder (it returns the readback hash text as bytes — no rasterization), so it never
-    /// yields a decodable image regardless of GPU; the hash is written to a `.capability-hash`
-    /// sidecar and `decodable` is reported `false`. A real pixel PNG would need the windowed
-    /// render-target path (`SkiaViewer.captureScreenshotEvidence`), which is out of scope here
-    /// ([[fs-gg-evidence-mode]]: a hash must never be presented as a decodable image).
+    /// header). Since feature 221 `SceneEvidence.renderPng` IS a real pixel encoder when the SkiaViewer
+    /// CPU rasterizer is injected, but this Controls test does not reference/inject SkiaViewer, so
+    /// `renderPng` returns a typed `UnsupportedEnvironment` failure here (never a stub). We therefore
+    /// fall back to a `.capability-hash` sidecar and report `decodable = false`. A real pixel PNG in
+    /// this assembly would need the windowed render-target path (`SkiaViewer.captureScreenshotEvidence`)
+    /// or the injected rasterizer, both out of scope here ([[fs-gg-evidence-mode]]).
     let writeImage (basePath: string) (scene: Scene) : bool =
         match SceneEvidence.renderPng size scene with
         | Ok bytes when isPng bytes ->
@@ -453,8 +453,8 @@ let evidence =
               let sceneIdentical = (s.Render.Scene = full.Scene)
               Expect.isTrue sceneIdentical "wired Scene == full rebuild (zero diff)"
 
-              // Best-effort image: decodable PNG only if a real renderer is present; otherwise a
-              // capability-hash sidecar (renderPng is a capability-hash, not a pixel encoder).
+              // Best-effort image: decodable PNG only if a CPU rasterizer is injected (feature 221);
+              // this assembly injects none, so a capability-hash sidecar is written instead.
               let wiredPng = Evidence.writeImage (Path.Combine(dir, "wired")) s.Render.Scene
               let rebuildPng = Evidence.writeImage (Path.Combine(dir, "rebuild")) full.Scene
               let decodable = wiredPng && rebuildPng
@@ -473,7 +473,7 @@ let evidence =
                         sprintf "proves-scene-rendering=%b" decodable
                         "proves-desktop-visibility=false"
                         "readback-authoritative=false"
-                        "readback-note=SceneEvidence.renderPng/renderReadbackEvidence are deterministic CAPABILITY-hash functions (size + sorted scene-capability descriptors), NOT pixel encoders, so they emit no decodable PNG and equal hashes mean equal capability sets (not identical pixels) — this is independent of the GPU (the environment HAS one). The AUTHORITATIVE parity proof is the pure structural equality of the ControlRenderResult.Scene values (wired == full rebuild), asserted by the test. A real pixel PNG would require the windowed render-target path (SkiaViewer.captureScreenshotEvidence), out of scope here."
+                        "readback-note=SceneEvidence.renderReadbackEvidence is a deterministic CAPABILITY-hash function (size + sorted scene-capability descriptors), not a pixel encoder. Since feature 221 SceneEvidence.renderPng IS a real pixel encoder when the SkiaViewer CPU rasterizer is injected; this Controls assembly injects none, so renderPng returns a typed UnsupportedEnvironment failure and a capability-hash sidecar is written (decodable=false). The AUTHORITATIVE parity proof is the pure structural equality of the ControlRenderResult.Scene values (wired == full rebuild), asserted by the test, independent of any renderer."
                         "authoritative-test=Feature091RetainedRenderTests/091 US3 partial update + golden parity"
                         "note=wired Render.Scene is byte-identical to Control.renderTree next (zero diff); no live Vulkan window required ([[fs-gg-evidence-mode]])."
                         "" ]
@@ -550,7 +550,7 @@ let evidence =
                         "proves-scene-rendering=false"
                         "proves-desktop-visibility=false"
                         "readback-authoritative=false"
-                        "readback-note=no decodable PNG because SceneEvidence.renderPng is a deterministic capability-hash, not a pixel encoder (independent of the GPU — the environment HAS one). The AUTHORITATIVE proof is pure: the focused control's stable RetainedId is carried across the unrelated re-render (focus-survived), its clock advances rather than resets (clock-advanced), and a rebuild-every-frame baseline mints a new id so it loses the state (baseline-fails) — all asserted by the test."
+                        "readback-note=no decodable PNG because this Controls assembly injects no CPU rasterizer, so SceneEvidence.renderPng returns a typed UnsupportedEnvironment failure here (since feature 221 it IS a real pixel encoder when a rasterizer is injected). The AUTHORITATIVE proof is pure: the focused control's stable RetainedId is carried across the unrelated re-render (focus-survived), its clock advances rather than resets (clock-advanced), and a rebuild-every-frame baseline mints a new id so it loses the state (baseline-fails) — all asserted by the test."
                         "mechanism=RetainedRender.StateByIdentity keyed by the stable RetainedId carried across the diff"
                         "authoritative-test=Feature091RetainedRenderTests/091 US2 focus + animation survive an unrelated re-render"
                         "" ]

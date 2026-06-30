@@ -24,7 +24,8 @@ failure, without decompiling `FS.GG.UI.Build.dll` or copying a sibling project (
 
 ### `runtime-limitations.md`
 
-- required tokens: .NET 10 desktop, OpenGL, SkiaSharp preview, unsupported macOS/mobile/browser, no software-renderer fallback
+- required tokens: .NET 10 desktop, OpenGL, SkiaSharp preview, unsupported macOS/mobile/browser, headless CPU software-raster PNG evidence (live window still requires OpenGL)
+- note (feature 221): the prior `no software-renderer fallback` claim is retired — `SceneEvidence.renderPng` now produces a real, decodable, deterministic PNG with no GPU/GL/display via the SkiaSharp CPU raster path. The OpenGL requirement remains for the **live window** (direct-to-swapchain present); only the offscreen/deterministic image-evidence routine has a software-raster path.
 - blocking: true
 
 ## skill-loading-evidence
@@ -69,6 +70,7 @@ failure, without decompiling `FS.GG.UI.Build.dll` or copying a sibling project (
 
 - required tokens: evidence-kind, status, artifact-decodable, proves-scene-rendering, proves-desktop-visibility
 - ordering: decodable image/screenshot evidence; pixel-readback alone cannot prove desktop visibility
+- note (feature 221): `artifact-decodable=true` + `proves-scene-rendering=true` is now obtainable **headlessly** (no GPU/GL/display) via `SceneEvidence.renderPng`'s CPU raster path; `proves-desktop-visibility` stays `false` for that path (a CPU offscreen render is not proof the live GL window is visible — that still needs the offscreen-readback route on a GL/virtual-display host).
 - blocking: true
 
 ### `generated-validation.md`

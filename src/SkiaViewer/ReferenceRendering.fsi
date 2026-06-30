@@ -58,6 +58,11 @@ type ReferenceRenderingEffect =
 
 /// Skia-backed reference rendering workflow.
 module ReferenceRendering =
+    /// Feature 221 (US1, FR-001/FR-004): CPU-raster a scene description to a real, decodable PNG with
+    /// no GPU/GL/X/display, mapping surface/native failures onto the typed `SceneEvidenceFailure`. This
+    /// is the implementation injected into `SceneEvidence.setRealPngRasterizer` (re-entrant/thread-safe).
+    val renderScenePngResult: outputSize: Size -> scene: Scene -> Result<byte[], SceneEvidenceFailure>
+
     /// Create the initial model and startup effects.
     val init: request: ReferenceRenderingRequest -> ReferenceRenderingModel * ReferenceRenderingEffect list
 

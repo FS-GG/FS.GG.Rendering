@@ -172,6 +172,13 @@ module GeneratedAppHost =
 /// real-metrics measurer (so control box sizing equals draw width) and read back per-page text
 /// fallback/tofu disclosure after a render.
 module Text =
+    /// Feature 221 (US1): inject the headless CPU PNG rasterizer into `SceneEvidence.renderPng` so
+    /// scene→PNG evidence yields real pixels with no GPU/GL/display. Idempotent; wired into the
+    /// measurer/shaping installers so host startup gains the headless PNG path automatically.
+    val installPngRasterizer: unit -> unit
+    /// Clear the headless PNG rasterizer seam, restoring the typed `UnsupportedEnvironment` failure
+    /// (no success-shaped stub). Used to assert honest failure (US3).
+    val clearPngRasterizer: unit -> unit
     /// Install the bundled-font real-metrics measurer into the `Scene` measurement seam. Idempotent;
     /// call once at host startup before laying out control scenes.
     val installMeasurer: unit -> unit

@@ -24,7 +24,7 @@ host. Measured on the development container, 2026-06-14.
 | Tier | Status in this environment |
 |---|---|
 | **T0** (deterministic render + routing) | ✅ runs headless; byte-identical re-render |
-| **T1** (offscreen readback) | ✅ runs headless; non-blank PNG |
+| **T1** (offscreen readback) | ✅ runs headless; non-blank PNG. Feature 221 also exposes this through the dependency-light `SceneEvidence.renderPng` public surface (CPU raster, no GPU/GL/display) — decodable, non-blank, byte-deterministic |
 | **T2** (live window + input) | ✅ **runs fully** via a nested `Xvfb` + EGL viewer — window created, non-blank capture, XTEST mouse/keyboard, confirmed visible change |
 | **T3 perf — offscreen throughput** | ✅ runs headless; real per-frame timing, **not** vsync-faithful (`swapControl` absent), correctly withheld |
 | **T3 perf — faithful vsync/present timing** | ✅ **runs on the GPU** via a vsync-locked GL swap loop on `:1`; present interval **locks to the real vblank** (p50 **8.33 ms** = 119.93 Hz), so `vsync-faithful` is claimed with evidence |

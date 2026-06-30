@@ -262,7 +262,7 @@ let evidence =
                         "scenario=identical tree, theme changes light->dark between frames"
                         sprintf "frame1-byte-identical-to-dark-rebuild=%b" themeByteIdentical
                         sprintf "frame1-differs-from-light-rebuild=%b" (ts.Render.Scene <> (Control.renderTree Theme.light size tree).Scene)
-                        "readback-note=AUTHORITATIVE proof is pure structural equality of the ControlRenderResult.Scene values; SceneEvidence.renderPng is a capability-hash, not a pixel encoder ([[fs-gg-evidence-mode]])."
+                        "readback-note=AUTHORITATIVE proof is pure structural equality of the ControlRenderResult.Scene values; since feature 221 SceneEvidence.renderPng is a real pixel encoder when the SkiaViewer CPU rasterizer is injected, but this Controls assembly injects none, so it returns a typed UnsupportedEnvironment failure here (no stub) ([[fs-gg-evidence-mode]])."
                         "authoritative-test=Feature092RetainedRenderTests/092 US4 theme in the fragment reuse key"
                         "" ]
               )

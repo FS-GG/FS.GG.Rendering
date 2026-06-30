@@ -196,6 +196,50 @@ a visible change?). The offscreen path uses no GPU display and is deterministic,
 runs in headless CI. Set `PresentMode = ViewerPresentMode.OffscreenReadback` when you
 need a CPU-readable buffer for capture.
 
+### Headless deterministic PNG evidence — no GPU, no GL, no display (feature 221)
+
+`SceneEvidence.renderPng size scene : Result<byte[], SceneEvidenceFailure>` renders a scene
+description to a **real, decodable PNG** in a bare container — **no GPU, no OpenGL context,
+no X server, no virtual display**. The bytes decode to exactly the requested `Size` and show
+the scene's geometry, colour, and bundled-font text; the same `(scene, size)` renders
+**byte-for-byte identical** output across runs and machines, so the PNG can be committed or
+diffed as CI evidence.
+
+```fsharp
+// Once at host/test startup, inject the CPU rasterizer into the dependency-light Scene surface
+// (this is also wired automatically by Text.installMeasurer / Text.installShapingProvider):
+FS.GG.UI.SkiaViewer.Text.installPngRasterizer ()
+
+match SceneEvidence.renderPng { Width = 800; Height = 600 } scene with
+| Ok pngBytes -> System.IO.File.WriteAllBytes ("evidence.png", pngBytes)   // real, decodable PNG
+| Error failure -> eprintfn "no image evidence: %s (%A)" failure.Message failure.Classification
+```
+
+The pixels come from a SkiaSharp **CPU raster** surface (`SKSurface.Create(SKImageInfo)`, no
+`GRContext`) sharing the same exhaustive painter as the live viewer. When no rasterizer is
+injected, or a render genuinely cannot complete, `renderPng` returns a **typed
+`SceneEvidenceFailure`** naming the blocked stage and classifying it
+(`UnsupportedEnvironment` vs `ProductDefect`) — it never returns a success-shaped non-image.
+This is the supported headless image-evidence path: portability over speed (a representative
+scene renders in well under the 5 s CI budget).
+
+### Pixel proof of the live game window — GL/virtual-display required (feature 221, US2)
+
+The live viewer presents **direct-to-swapchain** (GPU present, no GPU→CPU readback), so an
+external X11 grab of the window region reads solid black. To obtain an image of the live
+frame, render the same scene through the offscreen-readback route, which **requires a GL
+context / virtual display** (e.g. `Xvfb` + EGL) — this is distinct from the no-GL headless
+PNG path above:
+
+1. Run the viewer with `PresentMode = ViewerPresentMode.OffscreenReadback`.
+2. The host's `renderSceneToPixels` (`src/SkiaViewer/Host/OpenGl.fs`) renders to an offscreen
+   GL surface over the `GRContext` and reads the pixels back to CPU.
+3. `Viewer.captureScreenshotEvidence` writes the decodable PNG of the current frame.
+
+No step requires inspecting compiled binaries or trial-and-error. On a bare no-GL runner this
+route is `environment-limited` (it needs the GL/virtual display); the no-GL deterministic
+`renderPng` path above is the portable alternative.
+
 ---
 
 ## Runtime requirements
@@ -208,7 +252,9 @@ need a CPU-readable buffer for capture.
   capability via `Viewer.runtimeCapability` / `Viewer.desktopSessionDiagnostic` and
   **fails-classified rather than crashing** when GL/display is unavailable.
 - **Headless/offscreen**: no display required (T0/T1 deterministic and offscreen-readback
-  paths).
+  paths). `SceneEvidence.renderPng` produces a real, decodable, deterministic PNG with **no
+  GPU/GL/display** via the injected CPU rasterizer (feature 221). Pixel proof of the **live
+  window** still needs a GL/virtual-display host (the offscreen-readback route above).
 
 ---
 

@@ -36,6 +36,14 @@ type SceneEvidence =
 
 /// Public contract module exposed by this FS.GG.UI package.
 module SceneEvidence =
+    /// Feature 221 (US1, FR-001/FR-004): install (`Some`) or clear (`None`) the real headless PNG
+    /// rasterizer used by `renderPng`. The rendering edge (`SkiaViewer`) injects a SkiaSharp CPU
+    /// rasterizer so `renderPng` gains real pixels while `src/Scene` stays SkiaSharp-free — mirroring
+    /// `Scene.setRealTextMeasurer`. The seam lives in this module (not `Scene`) because its signature
+    /// references `SceneEvidenceFailure`, declared here. Default (`None`) ⇒ `renderPng` returns the
+    /// typed `UnsupportedEnvironment` failure (FR-005), never a stub. Process-wide; the injected
+    /// function MUST be re-entrant/thread-safe (concurrent `renderPng` calls — Edge Case: concurrency).
+    val setRealPngRasterizer: rasterizer: (Size -> Scene -> Result<byte[], SceneEvidenceFailure>) option -> unit
     /// Public contract function exposed by this FS.GG.UI package.
     val render: request: SceneEvidenceRequest -> Result<SceneEvidence, SceneEvidenceFailure>
     /// Public contract function exposed by this FS.GG.UI package.

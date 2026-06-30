@@ -2812,12 +2812,30 @@ module GeneratedAppHost =
 /// width (no clip), and read back the per-page fallback/tofu disclosure after a render (T017).
 module Text =
 
+    /// Feature 221 (US1, FR-001/FR-004): inject the headless CPU PNG rasterizer into the
+    /// dependency-light `SceneEvidence.renderPng` seam so scene→PNG evidence yields real pixels with no
+    /// GPU/GL/X/display. Idempotent/last-wins (mirrors the measurer seam). Wired into the text-seam
+    /// installers below so every host that installs the measurer at startup also gains real headless
+    /// pixels. The injected entry is re-entrant (serialized in `ReferenceRendering`), so concurrent
+    /// `renderPng` calls stay isolated and deterministic.
+    let installPngRasterizer () =
+        SceneEvidence.setRealPngRasterizer (Some ReferenceRendering.renderScenePngResult)
+
+    /// Clear the headless PNG rasterizer seam, restoring the typed `UnsupportedEnvironment` failure of
+    /// the uninjected path (never a success-shaped stub). Used to assert honest failure (US3).
+    let clearPngRasterizer () =
+        SceneEvidence.setRealPngRasterizer None
+
     /// Install the bundled-font real-metrics measurer into the `Scene` measurement seam so control
     /// box sizing uses true advances. Idempotent; call once at host startup before layout.
-    let installMeasurer () = Fonts.installMeasurementSeam ()
+    let installMeasurer () =
+        Fonts.installMeasurementSeam ()
+        installPngRasterizer ()
 
     /// Install the HarfBuzz-backed shaping provider and matching shaped measurement seam.
-    let installShapingProvider () = Fonts.installShapingProvider ()
+    let installShapingProvider () =
+        installPngRasterizer ()
+        Fonts.installShapingProvider ()
 
     /// Clear the shaping provider and use explicit fallback text measurement/render evidence.
     let clearShapingProvider () = Fonts.clearShapingProvider ()

@@ -68,6 +68,7 @@
     <Compile Include="Feature175InteractionCaptureTests.fs" />
     <Compile Include="Feature175RepaintSignalTests.fs" />
     <Compile Include="Feature175TraceReadbackTests.fs" />
+    <Compile Include="HeadlessImageEvidenceTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

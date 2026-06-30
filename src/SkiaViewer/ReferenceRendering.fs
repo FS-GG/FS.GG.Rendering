@@ -136,6 +136,35 @@ module ReferenceRendering =
             else
                 Result.Ok(data.ToArray())
 
+    // Feature 221 (US1, FR-001/FR-002/FR-004): the public CPU-raster entry injected into
+    // `SceneEvidence.setRealPngRasterizer`. Reuses the existing no-`GRContext` `renderScenePng` donor
+    // (`SKSurface.Create` over an `SKImageInfo` — no GPU/GL/X/display) and the shared exhaustive
+    // `SceneRenderer.paintNode`, so `renderPng` returns real pixels in a bare container. Donor string
+    // and native-load failures are mapped onto the typed `SceneEvidenceFailure` so the PNG surface
+    // never returns a success-shaped non-image (FR-005/SC-005). Serialized via `rasterGate`:
+    // `SceneRenderer.paintNode` mutates the shared `fallbackEvents` disclosure accumulator, so
+    // concurrent calls are serialized to keep each render isolated and deterministic (contract
+    // C2.3/C1.7). The render surface is per-call/local, so output bytes depend only on (size, scene).
+    let private rasterGate = obj ()
+
+    let renderScenePngResult (outputSize: Size) (scene: Scene) : Result<byte[], SceneEvidenceFailure> =
+        let rendererFailure classification message : SceneEvidenceFailure =
+            { BlockedStage = "renderer"
+              Classification = classification
+              DiagnosticCategory = "renderer"
+              Message = message }
+
+        lock rasterGate (fun () ->
+            try
+                match renderScenePng outputSize scene with
+                | Result.Ok pngBytes -> Result.Ok pngBytes
+                | Result.Error message -> Result.Error(rendererFailure UnsupportedEnvironment message)
+            with
+            | :? DllNotFoundException as ex -> Result.Error(rendererFailure UnsupportedEnvironment $"Skia native library unavailable: {ex.Message}")
+            | :? EntryPointNotFoundException as ex -> Result.Error(rendererFailure UnsupportedEnvironment $"Skia native entry point unavailable: {ex.Message}")
+            | :? TypeInitializationException as ex -> Result.Error(rendererFailure UnsupportedEnvironment $"Skia initialization failed: {ex.Message}")
+            | ex -> Result.Error(rendererFailure ProductDefect ex.Message))
+
     let init request =
         { Request = request
           Inspection = None
