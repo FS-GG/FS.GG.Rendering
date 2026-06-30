@@ -1,0 +1,70 @@
+Running 21 test projects (config Debug)…
+
+  tests/Build.Tests/Build.Tests.fsproj                       FAIL
+  tests/Canvas.Tests/Canvas.Tests.fsproj                     FAIL
+  tests/Controls.Tests/Controls.Tests.fsproj                 PASS
+  tests/Diagnostics.Tests/Diagnostics.Tests.fsproj           FAIL
+  tests/Elmish.Tests/Elmish.Tests.fsproj                     FAIL
+  tests/KeyboardInput.Tests/KeyboardInput.Tests.fsproj       FAIL
+  tests/Layout.Tests/Layout.Tests.fsproj                     FAIL
+  tests/Lib.Tests/Lib.Tests.fsproj                           FAIL
+  tests/Package.Tests/Package.Tests.fsproj                   FAIL
+  tests/Rendering.Harness.Tests/Rendering.Harness.Tests.fsproj FAIL
+  tests/Scene.Tests/Scene.Tests.fsproj                       PASS
+  tests/SkiaViewer.Tests/SkiaViewer.Tests.fsproj             PASS
+  tests/Smoke.Tests/Smoke.Tests.fsproj                       FAIL
+  tests/Symbology.Render.Tests/Symbology.Render.Tests.fsproj FAIL
+  tests/Symbology.Tests/Symbology.Tests.fsproj               FAIL
+  tests/SymbologyBoard.Tests/SymbologyBoard.Tests.fsproj     FAIL
+  tests/Testing.Tests/Testing.Tests.fsproj                   FAIL
+  samples/AntShowcase/AntShowcase.Tests/AntShowcase.Tests.fsproj PASS
+  samples/ControlsGallery/ControlsGallery.Tests/ControlsGallery.Tests.fsproj PASS
+  samples/SampleApps/SampleApps.Tests/SampleApps.Tests.fsproj PASS
+  samples/SecondAntShowcase/SecondAntShowcase.Tests/SecondAntShowcase.Tests.fsproj PASS
+
+# Test baseline — full red/green set
+
+- Config: `Debug`
+- Projects: 21  ·  Green: 7  ·  Red: 14
+
+| Project | Result | Summary |
+|---|---|---|
+| `tests/Build.Tests/Build.Tests.fsproj` | 🔴 FAIL | (no summary line; build/restore failure) |
+| `tests/Canvas.Tests/Canvas.Tests.fsproj` | 🔴 FAIL | (no summary line; build/restore failure) |
+| `tests/Controls.Tests/Controls.Tests.fsproj` | 🟢 PASS | Passed!  - Failed:     0, Passed:   949, Skipped:     1, Total:   950, Duration: 19 s - Controls.Tests.dll (net10.0) |
+| `tests/Diagnostics.Tests/Diagnostics.Tests.fsproj` | 🔴 FAIL | (no summary line; build/restore failure) |
+| `tests/Elmish.Tests/Elmish.Tests.fsproj` | 🔴 FAIL | (no summary line; build/restore failure) |
+| `tests/KeyboardInput.Tests/KeyboardInput.Tests.fsproj` | 🔴 FAIL | (no summary line; build/restore failure) |
+| `tests/Layout.Tests/Layout.Tests.fsproj` | 🔴 FAIL | (no summary line; build/restore failure) |
+| `tests/Lib.Tests/Lib.Tests.fsproj` | 🔴 FAIL | (no summary line; build/restore failure) |
+| `tests/Package.Tests/Package.Tests.fsproj` | 🔴 FAIL | Failed!  - Failed:     1, Passed:   153, Skipped:     0, Total:   154, Duration: 89 ms - Package.Tests.dll (net10.0) |
+| `tests/Rendering.Harness.Tests/Rendering.Harness.Tests.fsproj` | 🔴 FAIL | (no summary line; build/restore failure) |
+| `tests/Scene.Tests/Scene.Tests.fsproj` | 🟢 PASS | Passed!  - Failed:     0, Passed:    78, Skipped:     0, Total:    78, Duration: 123 ms - Scene.Tests.dll (net10.0) |
+| `tests/SkiaViewer.Tests/SkiaViewer.Tests.fsproj` | 🟢 PASS | Passed!  - Failed:     0, Passed:   213, Skipped:     0, Total:   213, Duration: 969 ms - SkiaViewer.Tests.dll (net10.0) |
+| `tests/Smoke.Tests/Smoke.Tests.fsproj` | 🔴 FAIL | (no summary line; build/restore failure) |
+| `tests/Symbology.Render.Tests/Symbology.Render.Tests.fsproj` | 🔴 FAIL | (no summary line; build/restore failure) |
+| `tests/Symbology.Tests/Symbology.Tests.fsproj` | 🔴 FAIL | (no summary line; build/restore failure) |
+| `tests/SymbologyBoard.Tests/SymbologyBoard.Tests.fsproj` | 🔴 FAIL | (no summary line; build/restore failure) |
+| `tests/Testing.Tests/Testing.Tests.fsproj` | 🔴 FAIL | (no summary line; build/restore failure) |
+| `samples/AntShowcase/AntShowcase.Tests/AntShowcase.Tests.fsproj` | 🟢 PASS | Passed!  - Failed:     0, Passed:    88, Skipped:     0, Total:    88, Duration: 2 s - AntShowcase.Tests.dll (net10.0) |
+| `samples/ControlsGallery/ControlsGallery.Tests/ControlsGallery.Tests.fsproj` | 🟢 PASS | Passed!  - Failed:     0, Passed:    34, Skipped:     0, Total:    34, Duration: 660 ms - ControlsGallery.Tests.dll (net10.0) |
+| `samples/SampleApps/SampleApps.Tests/SampleApps.Tests.fsproj` | 🟢 PASS | Passed!  - Failed:     0, Passed:    25, Skipped:     0, Total:    25, Duration: 244 ms - SampleApps.Tests.dll (net10.0) |
+| `samples/SecondAntShowcase/SecondAntShowcase.Tests/SecondAntShowcase.Tests.fsproj` | 🟢 PASS | Passed!  - Failed:     0, Passed:   171, Skipped:     1, Total:   172, Duration: 1 s - SecondAntShowcase.Tests.dll (net10.0) |
+
+## Red projects (known pre-existing failures unless this is a regression)
+- `tests/Build.Tests/Build.Tests.fsproj` (exit 1): (no summary line; build/restore failure)
+- `tests/Canvas.Tests/Canvas.Tests.fsproj` (exit 1): (no summary line; build/restore failure)
+- `tests/Diagnostics.Tests/Diagnostics.Tests.fsproj` (exit 1): (no summary line; build/restore failure)
+- `tests/Elmish.Tests/Elmish.Tests.fsproj` (exit 1): (no summary line; build/restore failure)
+- `tests/KeyboardInput.Tests/KeyboardInput.Tests.fsproj` (exit 1): (no summary line; build/restore failure)
+- `tests/Layout.Tests/Layout.Tests.fsproj` (exit 1): (no summary line; build/restore failure)
+- `tests/Lib.Tests/Lib.Tests.fsproj` (exit 1): (no summary line; build/restore failure)
+- `tests/Package.Tests/Package.Tests.fsproj` (exit 1): Failed!  - Failed:     1, Passed:   153, Skipped:     0, Total:   154, Duration: 89 ms - Package.Tests.dll (net10.0)
+- `tests/Rendering.Harness.Tests/Rendering.Harness.Tests.fsproj` (exit 1): (no summary line; build/restore failure)
+- `tests/Smoke.Tests/Smoke.Tests.fsproj` (exit 1): (no summary line; build/restore failure)
+- `tests/Symbology.Render.Tests/Symbology.Render.Tests.fsproj` (exit 1): (no summary line; build/restore failure)
+- `tests/Symbology.Tests/Symbology.Tests.fsproj` (exit 1): (no summary line; build/restore failure)
+- `tests/SymbologyBoard.Tests/SymbologyBoard.Tests.fsproj` (exit 1): (no summary line; build/restore failure)
+- `tests/Testing.Tests/Testing.Tests.fsproj` (exit 1): (no summary line; build/restore failure)
+
+wrote baseline summary to specs/222-republish-game-template/readiness/baseline.md
