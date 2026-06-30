@@ -73,9 +73,9 @@ This feature has **no `src/` module**. The artifacts are: two in-repo version pi
 
 **Independent Test**: Tag the coherent set so `release.yml` `publish-packages` packs + pushes; then query the org feed and confirm a `FS.GG.UI.Template` version `> 0.1.53-preview.1` is served (verified in Phase 4).
 
-- [ ] T008 [US2] Bump BOTH in-repo pins to `V` (`> 0.1.53-preview.1`; expected `0.1.54-preview.1`) — owned by the `speckit-merge`/release flow: `<FsGgUiVersion>` in `template/base/Directory.Packages.props` and `<Version>` in `.template.package/FS.GG.UI.Template.fsproj` must both equal `V` (so `template-product-tests`' local-feed restore resolves). Verify against the T003 snapshot.
-- [ ] T009 [US2] Cut the release from a `main` commit containing `b78e72a` and push the release tag-set (`fs-gg-ui-template/v<V>` + sibling `v*` tags) so `release.yml` `publish-packages` packs + pushes the whole `FS.GG.UI.*` + template set at `V`. **Operator action** (release rights) — `environment-limited`/defer if unavailable. Record the tag(s) + run link to `specs/222-republish-game-template/readiness/publish.md`.
-- [ ] T010 [US2] Confirm the dispatch-sender propagated `V`: `scripts/derive-template-version.sh` derived the version from `fs-gg-ui-template/v<V>` and the Feature-216 reusable sender notified Templates (FR-010 / US2 AS2 — Templates re-pin half). Capture the dispatch evidence to `specs/222-republish-game-template/readiness/publish.md`.
+- [X] T008 [US2] Bump BOTH in-repo pins to `V` (`> 0.1.53-preview.1`; expected `0.1.54-preview.1`) — owned by the `speckit-merge`/release flow: `<FsGgUiVersion>` in `template/base/Directory.Packages.props` and `<Version>` in `.template.package/FS.GG.UI.Template.fsproj` must both equal `V` (so `template-product-tests`' local-feed restore resolves). Verify against the T003 snapshot.
+- [X] T009 [US2] Cut the release from a `main` commit containing `b78e72a` and push the release tag-set (`fs-gg-ui-template/v<V>` + sibling `v*` tags) so `release.yml` `publish-packages` packs + pushes the whole `FS.GG.UI.*` + template set at `V`. **Operator action** (release rights) — `environment-limited`/defer if unavailable. Record the tag(s) + run link to `specs/222-republish-game-template/readiness/publish.md`.
+- [X] T010 [US2] Confirm the dispatch-sender propagated `V`: `scripts/derive-template-version.sh` derived the version from `fs-gg-ui-template/v<V>` and the Feature-216 reusable sender notified Templates (FR-010 / US2 AS2 — Templates re-pin half). Capture the dispatch evidence to `specs/222-republish-game-template/readiness/publish.md`.
 
 **Checkpoint**: The coherent set is tagged and the publish workflow has run — the feed should now serve `V` (proven in Phase 4).
 
@@ -89,13 +89,13 @@ This feature has **no `src/` module**. The artifacts are: two in-repo version pi
 
 **Depends on**: Phase 3 (the feed must serve `V`).
 
-- [ ] T011 [US1] Confirm the org feed serves `V`: `gh api orgs/FS-GG/packages/nuget/FS.GG.UI.Template/versions --jq '.[].name' | grep -F "<V>"` (one new version `> 0.1.53-preview.1`). Capture to `specs/222-republish-game-template/readiness/feed-listing.md`. (SC-002)
-- [ ] T012 [US1] Coherent-set probe (edge case "incoherent set"): confirm ≥1 sibling `FS.GG.UI.*` package (e.g. `FS.GG.UI.Core` / `FS.GG.UI.Scene`) is served at the **same** `V` on the org feed and that the template version equals the sibling package versions — `gh api orgs/FS-GG/packages/nuget/<pkg>/versions --jq '.[].name' | grep -F "<V>"` for each — so FR-001 coherence is live-verified, not inferred from `publish-packages` packing. Capture to `specs/222-republish-game-template/readiness/coherent-set.md`. (FR-001, SC-002 — edge case spec.md "coherent set is incoherent")
-- [ ] T013 [US1] Content gate — `git merge-base --is-ancestor b78e72a fs-gg-ui-template/v<V>` true AND the packed `V` template actually exposes the `game` choice (inspect the packed artifact's `template.json`, not just the version string). Capture to `specs/222-republish-game-template/readiness/content-gate.md`. (FR-002, SC-002)
-- [ ] T014 [US1] Consumer install from a `packages: read`-only token: `dotnet new install FS.GG.UI.Template::<V>` → exit 0, **not** exit 103 (re-confirms Feature-218 org-readability for `V`). Capture transcript to `specs/222-republish-game-template/readiness/consumer-install.md`. (FR-003, SC-001)
-- [ ] T015 [US1] Scaffold the `game` profile: `dotnet new fs-gg-ui --profile game -o /tmp/game-probe` (confirm the exact profile flag against the packed `template.json`) → choice accepted, minimal Pong-style `Model`/`Msg`/`update`/`view` + tick starter generated, no missing-profile / unknown-choice error. Capture to `specs/222-republish-game-template/readiness/game-scaffold.md`. (FR-004, SC-001)
-- [ ] T016 [US1] Generated `game` product builds + passes governance with **zero** `GovernanceTests` edits: in `/tmp/game-probe` run `dotnet build` then `dotnet test`; no-flag launch renders a live interactive game scene (no `-- pong`-style flag). Capture to `specs/222-republish-game-template/readiness/game-governance.md`. (FR-004, SC-003)
-- [ ] T017 [P] [US1] Non-game parity: `dotnet new fs-gg-ui --profile app -o /tmp/app-probe` still scaffolds the controls showcase; regenerate `headless-scene`/`governed`/`sample-pack` and diff each against Feature 220's diff-verified baseline (byte-identical). Capture to `specs/222-republish-game-template/readiness/non-game-parity.md`. (FR-005, SC-003)
+- [X] T011 [US1] Confirm the org feed serves `V`: `gh api orgs/FS-GG/packages/nuget/FS.GG.UI.Template/versions --jq '.[].name' | grep -F "<V>"` (one new version `> 0.1.53-preview.1`). Capture to `specs/222-republish-game-template/readiness/feed-listing.md`. (SC-002)
+- [X] T012 [US1] Coherent-set probe (edge case "incoherent set"): confirm ≥1 sibling `FS.GG.UI.*` package (e.g. `FS.GG.UI.Core` / `FS.GG.UI.Scene`) is served at the **same** `V` on the org feed and that the template version equals the sibling package versions — `gh api orgs/FS-GG/packages/nuget/<pkg>/versions --jq '.[].name' | grep -F "<V>"` for each — so FR-001 coherence is live-verified, not inferred from `publish-packages` packing. Capture to `specs/222-republish-game-template/readiness/coherent-set.md`. (FR-001, SC-002 — edge case spec.md "coherent set is incoherent")
+- [X] T013 [US1] Content gate — `git merge-base --is-ancestor b78e72a fs-gg-ui-template/v<V>` true AND the packed `V` template actually exposes the `game` choice (inspect the packed artifact's `template.json`, not just the version string). Capture to `specs/222-republish-game-template/readiness/content-gate.md`. (FR-002, SC-002)
+- [X] T014 [US1] Consumer install from a `packages: read`-only token: `dotnet new install FS.GG.UI.Template::<V>` → exit 0, **not** exit 103 (re-confirms Feature-218 org-readability for `V`). Capture transcript to `specs/222-republish-game-template/readiness/consumer-install.md`. (FR-003, SC-001)
+- [X] T015 [US1] Scaffold the `game` profile: `dotnet new fs-gg-ui --profile game -o /tmp/game-probe` (confirm the exact profile flag against the packed `template.json`) → choice accepted, minimal Pong-style `Model`/`Msg`/`update`/`view` + tick starter generated, no missing-profile / unknown-choice error. Capture to `specs/222-republish-game-template/readiness/game-scaffold.md`. (FR-004, SC-001)
+- [X] T016 [US1] Generated `game` product builds + passes governance with **zero** `GovernanceTests` edits: in `/tmp/game-probe` run `dotnet build` then `dotnet test`; no-flag launch renders a live interactive game scene (no `-- pong`-style flag). Capture to `specs/222-republish-game-template/readiness/game-governance.md`. (FR-004, SC-003)
+- [X] T017 [P] [US1] Non-game parity: `dotnet new fs-gg-ui --profile app -o /tmp/app-probe` still scaffolds the controls showcase; regenerate `headless-scene`/`governed`/`sample-pack` and diff each against Feature 220's diff-verified baseline (byte-identical). Capture to `specs/222-republish-game-template/readiness/non-game-parity.md`. (FR-005, SC-003)
 
 **Checkpoint**: The `game` profile is provably installable + scaffold-selectable from the feed, the set is coherent at `V`, and the non-game profiles are unaffected — the registry may now flip (publish-before-flip satisfied).
 
@@ -109,9 +109,9 @@ This feature has **no `src/` module**. The artifacts are: two in-repo version pi
 
 **Depends on**: Phase 4 (FR-007 — the flip MUST follow a confirmed feed listing).
 
-- [ ] T018 [US3] In `FS-GG/.github` `registry/dependencies.yml` (`fs-gg-ui-template`): advance `version` / `package-version` / `package-tag` to `V`; flip the `game`-profile note **UNRELEASED → released @ V**; flip the coherence block (`- id: fs-gg-ui-template` → `resolved_by: fs-gg-ui-template/v<V>`). No coherence flag flips `true→false` — this advances a coherent contract.
-- [ ] T019 [US3] Regenerate the `FS-GG/.github` `docs/registry/compatibility.md` projection so it names `V` and reads `game` released (no stale `0.1.53-preview.1` for this surface). Do not hand-edit the projection beyond regeneration. (SC-004)
-- [ ] T020 [US3] Open + land the `contract-change` PR on `FS-GG/.github` carrying T018+T019 — **only after** T011/T012/T013 are green (publish-before-flip, FR-007). **Operator action** (merge rights) — `environment-limited`/defer if unavailable. Record the PR link to `specs/222-republish-game-template/readiness/registry-pr.md`.
+- [X] T018 [US3] In `FS-GG/.github` `registry/dependencies.yml` (`fs-gg-ui-template`): advance `version` / `package-version` / `package-tag` to `V`; flip the `game`-profile note **UNRELEASED → released @ V**; flip the coherence block (`- id: fs-gg-ui-template` → `resolved_by: fs-gg-ui-template/v<V>`). No coherence flag flips `true→false` — this advances a coherent contract.
+- [X] T019 [US3] Regenerate the `FS-GG/.github` `docs/registry/compatibility.md` projection so it names `V` and reads `game` released (no stale `0.1.53-preview.1` for this surface). Do not hand-edit the projection beyond regeneration. (SC-004)
+- [X] T020 [US3] Open + land the `contract-change` PR on `FS-GG/.github` carrying T018+T019 — **only after** T011/T012/T013 are green (publish-before-flip, FR-007). **Operator action** (merge rights) — `environment-limited`/defer if unavailable. Record the PR link to `specs/222-republish-game-template/readiness/registry-pr.md`.
 
 **Checkpoint**: The registry + compatibility projection are the source of contract truth for `V` with `game` released — the board can be closed.
 
@@ -125,9 +125,9 @@ This feature has **no `src/` module**. The artifacts are: two in-repo version pi
 
 **Depends on**: Phase 5 (a `contract-change` item's resolution includes the registry update).
 
-- [ ] T021 [US4] Close issue `FS-GG/FS.GG.Rendering#33` with the published `V` string + the registry PR link recorded on it, and move board item #33 to `Done` on the Coordination board (Projects v2 #1). (FR-008, SC-005)
-- [ ] T022 [P] [US4] Clear the `Blocked by: FS.GG.Rendering#33` mirror on board item `#31` (no longer blocked by an open #33). Capture state to `specs/222-republish-game-template/readiness/board-closure.md`. (FR-008, SC-005)
-- [ ] T023 [P] [US4] Notify downstream `FS-GG/FS.GG.SDD#44` (the `app → game` default-flip) of the published `V` via a cross-repo comment so the default-selection flip can proceed (the flip itself is out of scope). Capture to `specs/222-republish-game-template/readiness/board-closure.md`. (FR-009, SC-005)
+- [X] T021 [US4] Close issue `FS-GG/FS.GG.Rendering#33` with the published `V` string + the registry PR link recorded on it, and move board item #33 to `Done` on the Coordination board (Projects v2 #1). (FR-008, SC-005)
+- [X] T022 [P] [US4] Clear the `Blocked by: FS.GG.Rendering#33` mirror on board item `#31` (no longer blocked by an open #33). Capture state to `specs/222-republish-game-template/readiness/board-closure.md`. (FR-008, SC-005)
+- [X] T023 [P] [US4] Notify downstream `FS-GG/FS.GG.SDD#44` (the `app → game` default-flip) of the published `V` via a cross-repo comment so the default-selection flip can proceed (the flip itself is out of scope). Capture to `specs/222-republish-game-template/readiness/board-closure.md`. (FR-009, SC-005)
 
 **Checkpoint**: All user stories complete — producer side of #33 fully resolved and the downstream unblock recorded.
 
@@ -137,10 +137,10 @@ This feature has **no `src/` module**. The artifacts are: two in-repo version pi
 
 **Purpose**: Consolidate evidence, run the quickstart end-to-end, and prove no regression.
 
-- [ ] T024 Consolidate all live evidence under `specs/222-republish-game-template/readiness/` (feed-listing, coherent-set, content-gate, consumer-install, game-scaffold, game-governance, non-game-parity, registry-pr, board-closure) into a single `evidence-summary.md` mapping each artifact to its SC/FR.
-- [ ] T025 [P] Run `quickstart.md` end-to-end and check off its "Done When" list (steps 0–7) against the captured evidence.
-- [ ] T026 [P] Capture per-phase Spec Kit / fs-gg-ui feedback via the `fs-gg-feedback-capture` flow into `specs/222-republish-game-template/feedback/`.
-- [ ] T027 Re-run `dotnet fsi scripts/baseline-tests.fsx --out specs/222-republish-game-template/readiness/baseline-post.md` and diff against T002 — with zero `src/` changes, there must be **zero new reds**.
+- [X] T024 Consolidate all live evidence under `specs/222-republish-game-template/readiness/` (feed-listing, coherent-set, content-gate, consumer-install, game-scaffold, game-governance, non-game-parity, registry-pr, board-closure) into a single `evidence-summary.md` mapping each artifact to its SC/FR.
+- [X] T025 [P] Run `quickstart.md` end-to-end and check off its "Done When" list (steps 0–7) against the captured evidence.
+- [X] T026 [P] Capture per-phase Spec Kit / fs-gg-ui feedback via the `fs-gg-feedback-capture` flow into `specs/222-republish-game-template/feedback/`.
+- [X] T027 Re-run `dotnet fsi scripts/baseline-tests.fsx --out specs/222-republish-game-template/readiness/baseline-post.md` and diff against T002 — with zero `src/` changes, there must be **zero new reds**.
 
 ---
 
