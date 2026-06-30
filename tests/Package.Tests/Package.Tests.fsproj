@@ -38,6 +38,7 @@
     <Compile Include="Feature209VersionCoherenceTests.fs" />
     <Compile Include="Feature217ProductNameTemplateTests.fs" />
     <Compile Include="Feature219EmitFrameworkSkillsTests.fs" />
+    <Compile Include="Feature224SkillCatalogCurrencyTests.fs" />
     <Compile Include="Tests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
@@ -49,6 +50,7 @@
     <ProjectReference Include="..\..\src\Testing\Testing.fsproj" Condition="Exists('..\..\src\Testing\Testing.fsproj')" />
     <ProjectReference Include="..\..\src\Layout\Layout.fsproj" Condition="Exists('..\..\src\Layout\Layout.fsproj')" />
     <ProjectReference Include="..\..\src\Controls\Controls.fsproj" Condition="Exists('..\..\src\Controls\Controls.fsproj')" />
+    <ProjectReference Include="..\..\tools\Rendering.Harness\Rendering.Harness.fsproj" />
     <ProjectReference Include="..\TestSupport\TestSupport.fsproj" />
   </ItemGroup>
 

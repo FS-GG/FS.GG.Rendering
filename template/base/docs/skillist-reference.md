@@ -1,90 +1,64 @@
 # Skillist reference
 
-<!-- GENERATED from the live SkillRegistry + Audit.ownsVocabulary (feature 062, FR-006).
-     The valid `skillist` ids are the SKILL.md `name:` values (NOT the directory name),
-     resolved here so authors never grep '^name:' each file. Do not edit by hand;
-     regenerate with ./fake.sh build -t RefreshSurfaceBaselines. Currency-checked by
-     TargetMetadataDrift. -->
+<!-- HAND-MAINTAINED, enforced by the Feature 224 skill-catalog currency check
+     (tests/Package.Tests/Feature224SkillCatalogCurrencyTests.fs). This file is NOT generated:
+     there is no SkillRegistry, RefreshSurfaceBaselines target, or TargetMetadataDrift check — that
+     earlier provenance was fiction (research R0). Every `id` listed below must resolve to a real
+     SKILL.md (a SKILL.md whose `name:` equals the id) that this product actually carries, and every
+     path must be a consumer location (.agents/skills/<id>/ or .claude/skills/<id>/). To refresh:
+     edit the rows to match the skills the product ships, then run
+     `dotnet test tests/Package.Tests --filter Feature224SkillCatalogCurrency` until green. The
+     check fails — naming the id, doc, and line — if any row dangles. -->
 
-A task's declared `skillist` ids (and the `[skillist: …]` mirror in `tasks.md`) are the
-`name:` value from the owning `SKILL.md`, not the directory name. This page lists the valid
-ids resolved from the live registry and the closed `owns:`→implied-skill table.
+A task's declared `skillist` ids (and the `[skillist: …]` mirror in `tasks.md`) are the `name:`
+value from the owning `SKILL.md`, not the directory name. This page lists the skills a generated
+spec-kit product carries, with the path where each resolves **in your product**.
 
-## Valid `skillist` ids
+This catalog ships only under the **spec-kit** lifecycle (under `sdd`/`none` it is suppressed, since
+the spec-kit authoring skills it co-lists are absent there).
+
+## Product capability skills
+
+These vendor the FS.GG.UI capability guidance into your product. They are wired **per profile**, so
+not every one is present in every product — the "Profiles" column lists the profiles that vendor
+each. (Each also ships a `fs-gg-product-<name>` wrapper alias alongside it.)
+
+| skillist id (`name:`) | resolved SKILL.md path | Profiles |
+|---|---|---|
+| `fs-gg-scene` | .agents/skills/fs-gg-scene/SKILL.md | app, headless-scene, governed, sample-pack, game |
+| `fs-gg-symbology` | .agents/skills/fs-gg-symbology/SKILL.md | app, headless-scene, governed, sample-pack, game |
+| `fs-gg-skiaviewer` | .agents/skills/fs-gg-skiaviewer/SKILL.md | app, sample-pack, game |
+| `fs-gg-elmish` | .agents/skills/fs-gg-elmish/SKILL.md | app, sample-pack, game |
+| `fs-gg-keyboard-input` | .agents/skills/fs-gg-keyboard-input/SKILL.md | app, game |
+| `fs-gg-ui-widgets` | .agents/skills/fs-gg-ui-widgets/SKILL.md | app, game |
+| `fs-gg-testing` | .agents/skills/fs-gg-testing/SKILL.md | governed |
+
+> Under the spec-kit lifecycle the product additionally carries the framework agent-context skills
+> (e.g. `fs-gg-project`, `fs-gg-layout`, `fs-gg-diagnostics`, `fs-gg-generated-controls-guidance`)
+> at the same `.agents/skills/<id>/` and `.claude/skills/<id>/` locations; the rows above are the
+> per-profile capability set you reference from task `skillist:` fields.
+
+## Spec Kit command skills
+
+The `speckit-*` workflow command skills co-ship under the spec-kit lifecycle. Use these ids when a
+task `owns:` an authoring step (e.g. task generation → `speckit-tasks`, implementation loading →
+`speckit-implement`).
 
 | skillist id (`name:`) | resolved SKILL.md path |
 |---|---|
-| `fs-gg-controls-host` | .agents/skills/fs-gg-controls-host/SKILL.md |
-| `fs-gg-design-tokens` | .agents/skills/fs-gg-design-tokens/SKILL.md |
-| `fs-gg-elmish` | src/Elmish/skill/SKILL.md |
-| `fs-gg-evidence-mode` | .agents/skills/fs-gg-evidence-mode/SKILL.md |
-| `fs-gg-generated-controls-guidance` | template/fragments/controls/skill/SKILL.md |
-| `fs-gg-keyboard-input` | src/KeyboardInput/skill/SKILL.md |
-| `fs-gg-layout` | src/Layout/skill/SKILL.md |
-| `fs-gg-layout-readability` | .agents/skills/fs-gg-layout-readability/SKILL.md |
-| `fs-gg-reconciliation` | .agents/skills/fs-gg-reconciliation/SKILL.md |
-| `fs-gg-samples` | template/fragments/samples/skill/SKILL.md |
-| `fs-gg-scene` | src/Scene/skill/SKILL.md |
-| `fs-gg-skiaviewer` | src/SkiaViewer/skill/SKILL.md |
-| `fs-gg-template-update` | .agents/skills/fs-gg-template-update/SKILL.md |
-| `fs-gg-testing` | src/Testing/skill/SKILL.md |
-| `fs-gg-typed-controls` | .agents/skills/fs-gg-typed-controls/SKILL.md |
-| `fs-gg-ui-widgets` | src/Controls/skill/SKILL.md |
-| `fs-gg-viewer-host` | .agents/skills/fs-gg-viewer-host/SKILL.md |
-| `fsdocs-api-doc` | .agents/skills/fsdocs-api-doc/SKILL.md |
-| `fsdocs-build` | .agents/skills/fsdocs-build/SKILL.md |
-| `fsdocs-examples` | .agents/skills/fsdocs-examples/SKILL.md |
-| `fsdocs-setup` | .agents/skills/fsdocs-setup/SKILL.md |
-| `fsdocs-technical` | .agents/skills/fsdocs-technical/SKILL.md |
-| `fsharp-build-orchestration` | .agents/skills/fsharp-build-orchestration/SKILL.md |
-| `fsharp-code-generation` | .agents/skills/fsharp-code-generation/SKILL.md |
-| `fsharp-graph-algorithms` | .agents/skills/fsharp-graph-algorithms/SKILL.md |
-| `fsharp-io-globbing` | .agents/skills/fsharp-io-globbing/SKILL.md |
-| `fsharp-parsing` | .agents/skills/fsharp-parsing/SKILL.md |
-| `fsharp-shell-process` | .agents/skills/fsharp-shell-process/SKILL.md |
-| `speckit-analyze` | .agents/skills/speckit-analyze/SKILL.md |
-| `speckit-archive-readiness` | .agents/skills/speckit-archive-readiness/SKILL.md |
-| `speckit-checklist` | .agents/skills/speckit-checklist/SKILL.md |
+| `speckit-specify` | .agents/skills/speckit-specify/SKILL.md |
 | `speckit-clarify` | .agents/skills/speckit-clarify/SKILL.md |
+| `speckit-plan` | .agents/skills/speckit-plan/SKILL.md |
+| `speckit-tasks` | .agents/skills/speckit-tasks/SKILL.md |
+| `speckit-taskstoissues` | .agents/skills/speckit-taskstoissues/SKILL.md |
+| `speckit-analyze` | .agents/skills/speckit-analyze/SKILL.md |
+| `speckit-checklist` | .agents/skills/speckit-checklist/SKILL.md |
 | `speckit-constitution` | .agents/skills/speckit-constitution/SKILL.md |
-| `speckit-evidence-audit` | .agents/skills/speckit-evidence-audit/SKILL.md |
-| `speckit-evidence-graph` | .agents/skills/speckit-evidence-graph/SKILL.md |
+| `speckit-implement` | .agents/skills/speckit-implement/SKILL.md |
+| `speckit-merge` | .agents/skills/speckit-merge/SKILL.md |
+| `speckit-agent-context-update` | .agents/skills/speckit-agent-context-update/SKILL.md |
 | `speckit-git-commit` | .agents/skills/speckit-git-commit/SKILL.md |
 | `speckit-git-feature` | .agents/skills/speckit-git-feature/SKILL.md |
 | `speckit-git-initialize` | .agents/skills/speckit-git-initialize/SKILL.md |
 | `speckit-git-remote` | .agents/skills/speckit-git-remote/SKILL.md |
 | `speckit-git-validate` | .agents/skills/speckit-git-validate/SKILL.md |
-| `speckit-implement` | .agents/skills/speckit-implement/SKILL.md |
-| `speckit-merge` | .agents/skills/speckit-merge/SKILL.md |
-| `speckit-plan` | .agents/skills/speckit-plan/SKILL.md |
-| `speckit-specify` | .agents/skills/speckit-specify/SKILL.md |
-| `speckit-tasks` | .agents/skills/speckit-tasks/SKILL.md |
-| `speckit-taskstoissues` | .agents/skills/speckit-taskstoissues/SKILL.md |
-
-## Directory-name → accepted `skillist` id
-
-| directory-like name | accepted id (`name:`) | SKILL.md |
-|---|---|---|
-| `Controls` | `fs-gg-ui-widgets` | src/Controls/skill/SKILL.md |
-| `Elmish` | `fs-gg-elmish` | src/Elmish/skill/SKILL.md |
-| `KeyboardInput` | `fs-gg-keyboard-input` | src/KeyboardInput/skill/SKILL.md |
-| `Layout` | `fs-gg-layout` | src/Layout/skill/SKILL.md |
-| `Scene` | `fs-gg-scene` | src/Scene/skill/SKILL.md |
-| `SkiaViewer` | `fs-gg-skiaviewer` | src/SkiaViewer/skill/SKILL.md |
-| `Testing` | `fs-gg-testing` | src/Testing/skill/SKILL.md |
-| `controls` | `fs-gg-generated-controls-guidance` | template/fragments/controls/skill/SKILL.md |
-| `samples` | `fs-gg-samples` | template/fragments/samples/skill/SKILL.md |
-
-## Closed `owns:` vocabulary → implied skill
-
-An `owns:` value (in `tasks.deps.yml`) requires its implied skill in the task's `skillist`.
-The vocabulary is a closed set; an unknown value is a directive error.
-
-| `owns:` value | implied skill |
-|---|---|
-| `graph-validation` | `speckit-evidence-graph` |
-| `evidence-audit` | `speckit-evidence-audit` |
-| `task-generation` | `speckit-tasks` |
-| `implementation-loading` | `speckit-implement` |
-| `constitution` | `speckit-constitution` |
-

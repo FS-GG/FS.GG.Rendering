@@ -128,7 +128,7 @@ before you design against it; when they disagree, the `.fsi` wins.
 > enumerate the typed surface, read the **package** (`FS.GG.UI.Controls.dll` →
 > `FS.GG.UI.Controls.Typed` modules) or the catalog's per-control **`module:`** field in
 > `catalog.yml` (e.g. `module: TextBlock`) — that is the authoritative typed-front-door probe,
-> not `docs/api-surface/`. See the `fs-gg-typed-controls` skill's consumer note.
+> not `docs/api-surface/`. See the `fs-gg-ui-widgets` skill's consumer note.
 
 > **Interactive host seam is present in the package, not in `docs/api-surface/` (feature 108,
 > FR-019).** The persistent interactive launch seam — `Controls.Elmish.runInteractiveApp`, the
@@ -137,7 +137,7 @@ before you design against it; when they disagree, the `.fsi` wins.
 > in the **`FS.GG.UI.Controls.Elmish`** package and its `ControlsElmish.fsi`. It is **not** mirrored
 > under `docs/api-surface/` (which tracks the lower SkiaViewer / Controls surfaces), so "it's not in
 > `docs/api-surface/`" does **not** mean it's unavailable. The **authority** for this seam is the
-> `fs-gg-controls-host` skill + `ControlsElmish.fsi`; reconcile any summary against those. Focus
+> `fs-gg-ui-widgets` skill + `ControlsElmish.fsi`; reconcile any summary against those. Focus
 > visibility on this seam is the public `Focus.markFocused model.Focused (view …)` call inside `view`.
 
 ## Resolution-independent rendering: windowed-fullscreen blur (feature 085, FR-010)
@@ -146,7 +146,7 @@ The default window startup is **windowed fullscreen**, which scales a fixed-reso
 up to the monitor work area and **blurs** it. Two fixes: render with a **size-aware view**
 (`InteractiveAppHost.View: Size -> 'model -> Control<'msg>`, content laid out to the actual
 swapchain extent — the preferred path), **or** launch with exactly one flag —
-`--window-startup normal` — for a 1:1 sharp normal window. See the `fs-gg-viewer-host` skill.
+`--window-startup normal` — for a 1:1 sharp normal window. See the `fs-gg-skiaviewer` skill.
 
 ## Pre-design pointer: record-label collision (fs-gg-scene)
 
