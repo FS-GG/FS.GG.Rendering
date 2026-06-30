@@ -14,11 +14,11 @@
          FS.GG.UI.* packages via the single $(FsGgUiVersion) above. -->
     <PackageVersion Include="FS.GG.UI.Build" Version="$(FsGgUiVersion)" />
     <PackageVersion Include="FS.GG.UI.Scene" Version="$(FsGgUiVersion)" />
-    <!--#if (profile == "app" || profile == "sample-pack") -->
+    <!--#if (profile == "app" || profile == "sample-pack" || profile == "game") -->
     <PackageVersion Include="FS.GG.UI.SkiaViewer" Version="$(FsGgUiVersion)" />
     <PackageVersion Include="FS.GG.UI.Elmish" Version="$(FsGgUiVersion)" />
     <!--#endif -->
-    <!--#if (profile == "app" || profile == "sample-pack") -->
+    <!--#if (profile == "app" || profile == "sample-pack" || profile == "game") -->
     <PackageVersion Include="FS.GG.UI.KeyboardInput" Version="$(FsGgUiVersion)" />
     <PackageVersion Include="FS.GG.UI.Layout" Version="$(FsGgUiVersion)" />
     <PackageVersion Include="FS.GG.UI.Controls" Version="$(FsGgUiVersion)" />

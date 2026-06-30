@@ -9,7 +9,7 @@
     <Compile Include="Model.fs" />
     <Compile Include="View.fs" />
     <Compile Include="LayoutEvidence.fs" />
-    <!--#if (profile == "app" || profile == "sample-pack") -->
+    <!--#if (profile == "app" || profile == "sample-pack" || profile == "game") -->
     <Compile Include="WindowOptions.fs" />
     <!--#endif -->
     <Compile Include="EvidenceCommands.fs" />
@@ -18,11 +18,11 @@
 
   <ItemGroup>
     <PackageReference Include="FS.GG.UI.Scene" />
-    <!--#if (profile == "app" || profile == "sample-pack") -->
+    <!--#if (profile == "app" || profile == "sample-pack" || profile == "game") -->
     <PackageReference Include="FS.GG.UI.SkiaViewer" />
     <PackageReference Include="FS.GG.UI.Elmish" />
     <!--#endif -->
-    <!--#if (profile == "app" || profile == "sample-pack") -->
+    <!--#if (profile == "app" || profile == "sample-pack" || profile == "game") -->
     <PackageReference Include="FS.GG.UI.KeyboardInput" />
     <PackageReference Include="FS.GG.UI.Layout" />
     <PackageReference Include="FS.GG.UI.Controls" />

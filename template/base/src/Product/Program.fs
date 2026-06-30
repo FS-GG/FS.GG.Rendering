@@ -30,25 +30,33 @@ open FS.GG.UI.Controls.Elmish
 //#endif
 
 type Model = Product.Model.Model
+//#if (profile == "app" || profile == "sample-pack")
 type Page = Product.Model.Page
 type InputFlowDiagnostic = Product.Model.InputFlowDiagnostic
+//#endif
 type Msg = Product.Model.Msg
 type GeneratedLayoutValidationFailureClass = Product.Model.GeneratedLayoutValidationFailureClass
 type GeneratedLayoutValidationResult = Product.Model.GeneratedLayoutValidationResult
 type WindowBehaviorSettings = Product.WindowOptions.WindowBehaviorSettings
 
 let initialModel = Product.Model.initialModel
+//#if (profile == "app" || profile == "sample-pack")
 let pageName = Product.Model.pageName
+//#endif
 let keyName = Product.Model.keyName
+//#if (profile == "app" || profile == "sample-pack")
 let diagnostic = Product.Model.diagnostic
 let transitionViewerInput = Product.Model.transitionViewerInput
 let dispatchViewerKey = Product.Model.dispatchViewerKey
 let visibleRows = Product.View.visibleRows
+//#endif
 let init = Product.Model.init
 let update = Product.Model.update
 let subscriptions = Product.Model.subscriptions
+//#if (profile == "app" || profile == "sample-pack")
 let controlsExampleView = Product.View.controlsExampleView
 let adapterProgram = Product.View.adapterProgram
+//#endif
 let hudRegionForSize = Product.LayoutEvidence.hudRegionForSize
 let gameplayRegionForSize = Product.LayoutEvidence.gameplayRegionForSize
 let boundsInside = Product.LayoutEvidence.boundsInside

@@ -14,6 +14,25 @@ let view model =
     )
 
 //#else
+//#if (profile == "game")
+// GAME family (feature 220): draw the Pong playfield as a pure Scene. REPLACE ME alongside
+// Model.fs when you swap in your own game (see docs/scaffold-map.md). `Viewer.runApp` renders
+// this live via `generatedHost.View`.
+let private foreground: Color = { Red = 240uy; Green = 240uy; Blue = 240uy; Alpha = 255uy }
+let private accent: Color = { Red = 120uy; Green = 200uy; Blue = 255uy; Alpha = 255uy }
+let private playfieldFill: Color = { Red = 18uy; Green = 22uy; Blue = 30uy; Alpha = 255uy }
+
+let view (model: Model) : SceneNode =
+    let ball = model.Ball
+
+    Group
+        [ { Nodes = [ Rectangle((0.0, 0.0, model.PlayfieldWidth, model.PlayfieldHeight), playfieldFill) ] }
+          { Nodes = [ Rectangle((ball.CenterX - 6.0, ball.CenterY - 6.0, 12.0, 12.0), accent) ] }
+          { Nodes = [ Rectangle((16.0, model.LeftPaddleY, 8.0, model.PaddleHeight), foreground) ] }
+          { Nodes = [ Rectangle((model.PlayfieldWidth - 24.0, model.RightPaddleY, 8.0, model.PaddleHeight), foreground) ] }
+          { Nodes = [ Text((model.PlayfieldWidth / 2.0 - 28.0, 28.0), $"{model.LeftScore} : {model.RightScore}", foreground) ] } ]
+
+//#else
 open FS.GG.UI.Controls
 open FS.GG.UI.Controls.Elmish
 open FS.GG.UI.DesignSystem
@@ -115,4 +134,5 @@ let view (model: Model) : SceneNode =
     let rendered = Control.renderTree Theme.light contentArea (controlsExampleView model)
     Group [ rendered.Scene ]
 
+//#endif
 //#endif

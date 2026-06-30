@@ -75,6 +75,149 @@ let behaviorTests =
         //#endif
     ]
 //#else
+//#if (profile == "game")
+open FS.GG.UI.KeyboardInput
+open FS.GG.UI.SkiaViewer
+
+// GAME family (feature 220): replaceable scaffold-behaviour tests. These drive the Pong
+// skeleton's update/view/tick/host directly, so when you swap in your own game you rewrite THIS
+// file. GovernanceTests.fs stays model-agnostic and keeps passing across the swap (SC-004).
+[<Tests>]
+let behaviorTests =
+    testList "product-behavior" [
+        test "generated product test suite is wired" {
+            Expect.equal 1 1 "product tests run"
+        }
+
+        test "game default view renders the playfield, ball, paddles and score as a scene" {
+            let scene = Product.Program.view Product.Program.initialModel
+            let nodes = collectSceneNodes scene |> Seq.toList
+            let text = sceneText scene
+
+            Expect.isTrue (List.length nodes >= 5) "game view draws the playfield, ball, two paddles and a score HUD"
+            Expect.stringContains text "0 : 0" "the unmodified default renders the served 0:0 score"
+        }
+
+        test "game tick advances the ball and the tick count (the default is a live, moving product)" {
+            let before = Product.Program.initialModel
+            let after, effects = Product.Program.update Tick before
+
+            Expect.notEqual after.Ball before.Ball "a tick integrates the ball position"
+            Expect.equal after.TickCount (before.TickCount + 1) "a tick advances the tick count"
+            Expect.isEmpty effects "a pure game tick emits no host command"
+        }
+
+        test "game keyboard input moves the paddles and records the last input" {
+            let model0 = Product.Program.initialModel
+            let leftUp, _ = Product.Program.update (ViewerInput(Letter 'W', true)) model0
+            let rightDown, _ = Product.Program.update (ViewerInput(ArrowDown, true)) model0
+
+            Expect.isLessThan leftUp.LeftPaddleY model0.LeftPaddleY "W moves the left paddle up"
+            Expect.isGreaterThan rightDown.RightPaddleY model0.RightPaddleY "Down moves the right paddle down"
+            Expect.equal rightDown.LastInput (Some ArrowDown) "the last input key is recorded"
+        }
+
+        test "game MovePaddle clamps paddles inside the playfield" {
+            let model0 = Product.Program.initialModel
+
+            let raised =
+                List.replicate 100 (MovePaddle(LeftSide, PaddleUp))
+                |> List.fold (fun m msg -> fst (Product.Program.update msg m)) model0
+
+            Expect.isTrue (raised.LeftPaddleY >= 0.0) "the paddle never leaves the top of the playfield"
+        }
+
+        test "game scores and re-serves when the ball passes an undefended edge" {
+            let model0 = Product.Program.initialModel
+
+            let missed =
+                { model0 with
+                    Ball = { model0.Ball with CenterX = 18.0; CenterY = 10.0; VelocityX = -8.0 }
+                    LeftPaddleY = 300.0 }
+
+            let scored, _ = Product.Program.update Tick missed
+
+            Expect.equal scored.RightScore 1 "the right side scores when the ball passes the left edge"
+            Expect.equal scored.Ball.CenterX (model0.PlayfieldWidth / 2.0) "the ball re-serves to the centre"
+        }
+
+        test "generated game host exposes viewer input and tick mapping and advances the game" {
+            let host = Product.Program.generatedHost
+            let model0 = fst (host.Init())
+
+            Expect.isSome (host.MapKey ArrowUp true) "generatedHost maps viewer keys to messages"
+            Expect.isSome (host.Tick (TimeSpan.FromMilliseconds 16.0)) "generatedHost ticks at >=16ms"
+
+            let updated, effects = host.Update Tick model0
+            Expect.notEqual updated model0 "generatedHost.Update advances the game"
+            Expect.isNonEmpty effects "generatedHost returns a render effect to SkiaViewer"
+        }
+
+        test "generated game host boundary keeps app commands separate from viewer effects" {
+            let model0 = Product.Program.initialModel
+            let hosted, appCommands, viewerEffects = Product.Program.interpretAtHostBoundary Tick model0
+
+            Expect.notEqual hosted model0 "host boundary applies the pure update result"
+            Expect.isEmpty appCommands "the game tick produces no app command"
+            Expect.exists viewerEffects (function RenderScene _ -> true | _ -> false) "host boundary emits a render effect separately"
+        }
+
+        test "game layout evidence re-points HUD onto the score strip and gameplay onto the playfield" {
+            let report = Product.Program.layoutEvidenceForSize { Width = 640; Height = 480 } Product.Program.initialModel
+
+            Expect.equal report.ProofLevel ReadableLayout "game layout report proves readable layout"
+            Expect.isSome report.HudRegion "score region is named"
+            Expect.isSome report.GameplayRegion "playfield region is named"
+            Expect.isNonEmpty report.TextBounds "score text bounds are present"
+            Expect.isNonEmpty report.GameplayBounds "active ball bounds are present"
+            Expect.equal report.OverlapStatus NoLayoutOverlap "score and playfield bounds do not overlap"
+        }
+
+        test "game active item (the ball) stays inside the playfield region" {
+            let size: FS.GG.UI.Scene.Size = { Width = 640; Height = 480 }
+            let model0 = Product.Program.initialModel
+            let ticked = List.replicate 30 Tick |> List.fold (fun m msg -> fst (Product.Program.update msg m)) model0
+
+            let region = Product.Program.gameplayRegionForSize size
+            let bounds = Product.Program.activeGameplayBoundsForSize size ticked
+
+            Expect.isTrue (Product.Program.boundsInside region.Bounds bounds.Bounds) "the ball stays inside the playfield region"
+            Expect.isTrue (Product.Program.movementUsesGameplayRegion size ticked) "movement policy is region based"
+            Expect.isTrue (Product.Program.spawnUsesGameplayRegion size model0) "spawn policy is region based"
+            Expect.isTrue (Product.Program.collisionUsesGameplayRegion size ticked) "collision policy is region based"
+        }
+
+        test "game layout validation accepts a readable report and rejects a factless one" {
+            let good = Product.Program.layoutEvidenceForSize { Width = 640; Height = 480 } Product.Program.initialModel
+            let goodResult = Product.Program.validateGeneratedLayout good
+            let broken = { good with HudRegion = None; GameplayBounds = [] }
+            let brokenResult = Product.Program.validateGeneratedLayout broken
+
+            Expect.isTrue goodResult.Accepted "a readable game layout validates"
+            Expect.isFalse brokenResult.Accepted "a layout missing facts is rejected"
+            Expect.equal brokenResult.FailureClass (Some MissingLayoutFacts) "missing facts are classified"
+        }
+
+        test "generated default game dispatches input, advances over time, and keeps evidence flags opt-in" {
+            let model0 = Product.Program.initialModel
+            let moved, _ = Product.Program.update (ViewerInput(ArrowUp, true)) model0
+            Expect.notEqual moved model0 "keyboard input changes game state"
+
+            match Product.Program.tick (TimeSpan.FromMilliseconds 500.0) with
+            | Some tickMsg ->
+                let afterTick, _ = Product.Program.update tickMsg moved
+                Expect.notEqual afterTick moved "time-based tick advances game state"
+            | None -> failtest "generated tick must advance game state over time"
+
+            let source = System.IO.File.ReadAllText(System.IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "Product", "Program.fs"))
+            let defaultBranch = source.Substring(source.LastIndexOf("| None ->", StringComparison.Ordinal))
+            Expect.stringContains defaultBranch "Viewer.runApp viewerOptions generatedHost" "game-family normal launch uses the keyboard-only persistent host"
+            Expect.isFalse (defaultBranch.Contains("--launch-evidence")) "launch evidence flag stays out of normal launch branch"
+            Expect.isFalse (defaultBranch.Contains("--bounded-smoke")) "bounded smoke flag stays out of normal launch branch"
+            Expect.isFalse (defaultBranch.Contains("self-closed-for-evidence=true")) "normal launch does not report evidence self-close"
+        }
+    ]
+//#else
 open FS.GG.UI.Controls
 open FS.GG.UI.Controls.Elmish
 open FS.GG.UI.KeyboardInput
@@ -324,4 +467,5 @@ let behaviorTests =
             Expect.isFalse (defaultBranch.Contains("self-closed-for-evidence=true")) "normal launch does not report evidence self-close"
         }
     ]
+//#endif
 //#endif

@@ -1,0 +1,7 @@
+name: game
+description: Game/rendering default starter — a minimal, replaceable Pong-style interactive scene.
+capabilities: [scene, skiaviewer, elmish, keyboard-input, layout, controls, full-governance]
+governance: full
+samples: false
+sourceFrameworkMode: false
+validationCommands: [Dev, Test, Verify]

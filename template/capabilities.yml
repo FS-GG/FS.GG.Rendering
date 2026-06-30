@@ -14,6 +14,10 @@ catalogVersion: "2026-05-16"
 # appliesTo: deterministic-render-only-evidence, visual-proof-honesty,
 # host-warning-classification
 # evidence: specs/<feature>/readiness/skill-loading-evidence.md
+# Feature 220: the `game` profile is the game/rendering provider's default starter (a minimal,
+# replaceable Pong-style interactive scene). It shares this defaultApp capability set with `app`;
+# the `app → game` default-selection flip is owned by the SDD scaffold-provider (see
+# docs/product/decisions/0010-fs-gg-ui-template-default-starter.md).
 defaultApp:
   - scene
   - skiaviewer
@@ -33,7 +37,7 @@ capabilities:
     skill: template/product-skills/fs-gg-scene/SKILL.md
     templateFragment: template/fragments/scene
     dependencies: []
-    profiles: [app, headless-scene, governed, sample-pack]
+    profiles: [app, headless-scene, governed, sample-pack, game]
     defaultApp: true
     evidence: [capability-catalog, package-surface, generated-product]
     surfaceBaseline: readiness/surface-baselines/FS.GG.UI.Scene.txt
@@ -50,7 +54,7 @@ capabilities:
     skill: template/product-skills/fs-gg-skiaviewer/SKILL.md
     templateFragment: template/fragments/skiaviewer
     dependencies: [scene]
-    profiles: [app, governed, sample-pack]
+    profiles: [app, governed, sample-pack, game]
     defaultApp: true
     evidence: [capability-catalog, package-surface, generated-product]
     surfaceBaseline: readiness/surface-baselines/FS.GG.UI.SkiaViewer.txt
@@ -67,7 +71,7 @@ capabilities:
     skill: template/product-skills/fs-gg-elmish/SKILL.md
     templateFragment: template/fragments/elmish
     dependencies: [scene, skiaviewer]
-    profiles: [app, governed, sample-pack]
+    profiles: [app, governed, sample-pack, game]
     defaultApp: true
     evidence: [capability-catalog, package-surface, generated-product]
     surfaceBaseline: readiness/surface-baselines/FS.GG.UI.Elmish.txt
@@ -84,7 +88,7 @@ capabilities:
     skill: template/product-skills/fs-gg-keyboard-input/SKILL.md
     templateFragment: template/fragments/keyboard-input
     dependencies: [scene]
-    profiles: [app, governed, sample-pack]
+    profiles: [app, governed, sample-pack, game]
     defaultApp: true
     evidence: [capability-catalog, package-surface, generated-product]
     surfaceBaseline: readiness/surface-baselines/FS.GG.UI.KeyboardInput.txt
@@ -104,7 +108,7 @@ capabilities:
     skill: src/Layout/skill/SKILL.md
     templateFragment: template/fragments/layout
     dependencies: [scene]
-    profiles: [app, headless-scene, governed, sample-pack]
+    profiles: [app, headless-scene, governed, sample-pack, game]
     defaultApp: true
     evidence: [capability-catalog, package-surface, generated-product]
     surfaceBaseline: readiness/surface-baselines/FS.GG.UI.Layout.txt
@@ -153,7 +157,7 @@ capabilities:
     skill: template/product-skills/fs-gg-ui-widgets/SKILL.md
     templateFragment: template/fragments/controls
     dependencies: [scene, layout, keyboard-input]
-    profiles: [app, governed, sample-pack]
+    profiles: [app, governed, sample-pack, game]
     defaultApp: true
     evidence: [control-catalog, public-surface, semantic-tests, interaction-tests, layout-rendering, chart-datagrid-controls, generated-product]
     surfaceBaseline: readiness/surface-baselines/FS.GG.UI.Controls.txt

@@ -1,5 +1,5 @@
 name: app
-description: Default V3 product starter.
+description: Explicit, opt-in controls-showcase starter (no longer the default — the `game` profile is the game/rendering default; see docs/product/decisions/0010-fs-gg-ui-template-default-starter.md).
 capabilities: [scene, skiaviewer, elmish, keyboard-input, layout, controls, full-governance]
 governance: full
 samples: false

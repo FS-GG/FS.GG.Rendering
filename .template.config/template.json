@@ -33,6 +33,10 @@
         {
           "choice": "sample-pack",
           "description": "Sample-oriented V3 product with Scene, SkiaViewer, Elmish, and sample-pack content."
+        },
+        {
+          "choice": "game",
+          "description": "Game/rendering default starter: a minimal, replaceable Pong-style interactive scene with Scene, SkiaViewer, Elmish, KeyboardInput, Layout, and Controls."
         }
       ]
     },
@@ -247,52 +251,52 @@
       "comment": "Feature 219 (FR-005/FR-006): the docs/skillist-reference.md catalog enumerates the FULL skill registry (the live SkillRegistry + Audit.ownsVocabulary — including spec-kit-only authoring + speckit-* command skills and framework src/ skill paths), so it is coherent ONLY in the spec-kit authoring lane. It is excluded from the ungated base source above and re-emitted here gated on lifecycle == \"spec-kit\", so under sdd/none it is suppressed rather than shipped as a dangling table of contents (the #30 bug: sdd shipped the ~44-id catalog with 0 vendored skills present). copyOnly preserves its governance tokens verbatim (no sourceName rewrite), matching Features 062/108. Per-id scoping of the catalog to exactly the vendored fs-gg-* set is a deferred follow-up (research R4)."
     },
     {
-      "condition": "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\")",
+      "condition": "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\")",
       "source": "template/product-skills/fs-gg-scene/",
       "target": ".agents/skills/fs-gg-scene/"
     },
     {
-      "condition": "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\")",
+      "condition": "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\")",
       "source": "template/product-skills/fs-gg-scene/",
       "target": ".claude/skills/fs-gg-scene/"
     },
     {
-      "condition": "(profile == \"app\" || profile == \"sample-pack\")",
+      "condition": "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\")",
       "source": "template/product-skills/fs-gg-skiaviewer/",
       "target": ".agents/skills/fs-gg-skiaviewer/"
     },
     {
-      "condition": "(profile == \"app\" || profile == \"sample-pack\")",
+      "condition": "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\")",
       "source": "template/product-skills/fs-gg-skiaviewer/",
       "target": ".claude/skills/fs-gg-skiaviewer/"
     },
     {
-      "condition": "(profile == \"app\" || profile == \"sample-pack\")",
+      "condition": "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\")",
       "source": "template/product-skills/fs-gg-elmish/",
       "target": ".agents/skills/fs-gg-elmish/"
     },
     {
-      "condition": "(profile == \"app\" || profile == \"sample-pack\")",
+      "condition": "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\")",
       "source": "template/product-skills/fs-gg-elmish/",
       "target": ".claude/skills/fs-gg-elmish/"
     },
     {
-      "condition": "(profile == \"app\")",
+      "condition": "(profile == \"app\" || profile == \"game\")",
       "source": "template/product-skills/fs-gg-keyboard-input/",
       "target": ".agents/skills/fs-gg-keyboard-input/"
     },
     {
-      "condition": "(profile == \"app\")",
+      "condition": "(profile == \"app\" || profile == \"game\")",
       "source": "template/product-skills/fs-gg-keyboard-input/",
       "target": ".claude/skills/fs-gg-keyboard-input/"
     },
     {
-      "condition": "(profile == \"app\")",
+      "condition": "(profile == \"app\" || profile == \"game\")",
       "source": "template/product-skills/fs-gg-ui-widgets/",
       "target": ".agents/skills/fs-gg-ui-widgets/"
     },
     {
-      "condition": "(profile == \"app\")",
+      "condition": "(profile == \"app\" || profile == \"game\")",
       "source": "template/product-skills/fs-gg-ui-widgets/",
       "target": ".claude/skills/fs-gg-ui-widgets/"
     },

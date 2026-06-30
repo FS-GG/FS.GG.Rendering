@@ -6,7 +6,7 @@ open FS.GG.UI.Scene
 open FS.GG.UI.SkiaViewer
 open Product.Model
 open Product.View
-//#if (profile == "app" || profile == "sample-pack")
+//#if (profile == "app" || profile == "sample-pack" || profile == "game")
 
 type WindowBehaviorSettings =
     { Resize: string

@@ -1,7 +1,7 @@
 # Scaffold map — durable vs replaceable (read before you design)
 
-This generated product ships a **scaffold game model** plus a **durable governance
-spine**. When you replace the scaffold with your own UI, you rewrite only the
+This generated product ships a **minimal, replaceable Pong-style game starter** plus a **durable
+governance spine**. When you replace the starter with your own game/UI, you rewrite only the
 replaceable parts; the durable parts keep compiling and keep their source/evidence
 scans green across the swap. Read this map **before** you start designing, so you
 know what survives and what you own.
@@ -14,10 +14,12 @@ know what survives and what you own.
 
 ## Replaceable `<ProductDir>/**` (rewrite when you swap the scaffold model)
 
-These call/define the scaffold game model directly — they are yours to replace:
+These call/define the starter game model directly — they are yours to replace:
 
-- `<ProductDir>/Model.fs` — the scaffold `Model`/`Msg`/`update` (the game state machine).
-- `<ProductDir>/View.fs` — the scaffold `view` (`Model -> SceneNode`).
+- `<ProductDir>/Model.fs` — the starter `Model`/`Msg`/`update` (the Pong state machine).
+- `<ProductDir>/View.fs` — the starter `view` (`Model -> SceneNode`).
+- `tests/Product.Tests/BehaviorTests.fs` — the replaceable scaffold-behaviour tests that drive
+  the starter's `view`/`update`/`tick`/host directly (the test-split detail is below).
 
 ## Durable — model-agnostic (keep, do not touch)
 
@@ -26,9 +28,15 @@ unchanged across a model swap — do not rewrite them:
 
 - `<ProductDir>/Program.fs` — host/CLI entry point (`Viewer.runApp`, the
   `--scene-evidence` / evidence command wiring). Host wiring only.
+- `<ProductDir>/WindowOptions.fs` — window-options parsing/diagnostics. Model-agnostic; the
+  `game` profile is threaded into its package/compile gate once at template-authoring time, so
+  after instantiation it carries **no** model-field reads — you do not touch it on a swap.
+- `<ProductDir>/Product.fsproj` — compile order + package set. The profile conditionals are
+  already resolved in your generated tree, so there is nothing model-specific to re-point.
 - `tests/Product.Tests/GovernanceTests.fs` — reads the product **source text** and
   asserts structural / evidence / discoverability invariants; never calls the
-  product's `view`/`update`, so it **survives a scaffold-model swap**.
+  product's `view`/`update`, so it **survives a starter swap** (you never edit it to make a
+  replacement pass).
 
 ## Adding new source files is fine (keep the six scanned files' relative order)
 
@@ -52,10 +60,12 @@ it does **not** mean "do not touch":
   scaffold's HUD/gameplay regions. Re-point the region computations at your own
   layout, keeping the evidence tokens.
 - `<ProductDir>/EvidenceCommands.fs` — the deterministic `SceneEvidence.render`
-  evidence command (`RendererMode = "deterministic-scene"`); renders the scaffold
+  evidence command (`RendererMode = "deterministic-scene"`); renders the starter
   scene. Re-point it at your own `view`, keeping the command surface and tokens.
-- `<ProductDir>/WindowOptions.fs` — window-options parsing/diagnostics; mostly
-  model-agnostic but re-confirm any product-specific defaults after the swap.
+
+> You only touch the re-point files when your swap **changes the specific model fields they read**
+> (the starter's HUD/gameplay regions or `view`/`initialModel`). A purely additive swap — e.g.
+> adding a new model field — leaves them untouched, as the feature-220 swap evidence shows.
 
 ## The test split: `GovernanceTests.fs` durable, `BehaviorTests.fs` replaceable
 

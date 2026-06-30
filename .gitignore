@@ -148,3 +148,9 @@ specs/213-adopt-shared-build-config/readiness/**/nuget-cache/
 !specs/218-publish-readable-template/readiness/
 !specs/218-publish-readable-template/readiness/**
 specs/218-publish-readable-template/readiness/**/nuget-cache/
+!specs/220-game-starter-scene/readiness/
+!specs/220-game-starter-scene/readiness/**
+# fr007-baseline/ holds transient generated-product source snapshots used only as the live
+# FR-007 byte-diff target (T006); the diff outcome is recorded in fr007-diff.md, so the bulky
+# generated trees are not committed.
+specs/220-game-starter-scene/readiness/fr007-baseline/
