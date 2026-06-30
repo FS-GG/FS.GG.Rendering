@@ -32,6 +32,7 @@ let private expectedProductSkillIds =
           "fs-gg-keyboard-input"
           "fs-gg-scene"
           "fs-gg-skiaviewer"
+          "fs-gg-styling"
           "fs-gg-symbology"
           "fs-gg-testing"
           "fs-gg-ui-widgets" ]

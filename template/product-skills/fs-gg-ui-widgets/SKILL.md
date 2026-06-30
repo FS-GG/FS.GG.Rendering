@@ -154,6 +154,9 @@ rather than hard-failing the phase.
 
 ## Related
 
+- [[fs-gg-styling]] — to theme and style the controls above (pick a theme, set a
+  control's style variant and class, consume the resolved style), see the
+  `fs-gg-styling` skill.
 - [[fs-gg-elmish]] — wire control messages through the pure adapter at the edge.
 - [[fs-gg-scene]] — the primitive layer controls ultimately render into.
 
