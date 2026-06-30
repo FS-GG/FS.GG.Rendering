@@ -90,12 +90,17 @@ let private coveredValues (report: string) =
 
 let private SPEC_KIT_COND = "lifecycle == \"spec-kit\""
 
-/// Re-derive the gating invariant directly from template.json: every gated `source` (target under
-/// .specify/ | .agents/ | .claude/, or the generated agent-context tree) carries the spec-kit
-/// condition, and the ungated PRODUCT sources do not.
+/// Re-derive the 3-category gating invariant directly from template.json (Feature 219 R3 /
+/// data-model "Template source category"). Classification order is significant: framework
+/// product-skill FIRST (by `source` under template/product-skills/), then lifecycle-workspace
+/// (target under .specify/ | .agents/ | .claude/ | CLAUDE.md | AGENTS.md, the generated tree, or
+/// the named docs/skillist-reference.md catalog exception), then product. Framework product-skills
+/// carry a profile predicate and NO spec-kit clause; lifecycle-workspace sources carry the spec-kit
+/// clause; product sources carry neither.
 let private gatedSourceAudit () =
     use doc = JsonDocument.Parse(File.ReadAllText templateJsonPath)
-    let mutable gated = 0
+    let mutable framework = 0
+    let mutable workspace = 0
     let mutable product = 0
     let mutable violations = []
     for s in doc.RootElement.GetProperty("sources").EnumerateArray() do
@@ -103,21 +108,35 @@ let private gatedSourceAudit () =
             match s.TryGetProperty prop with
             | true, v -> elemStr v
             | _ -> ""
-        let source = str "source"
+        let includes =
+            match s.TryGetProperty "include" with
+            | true, arr -> [ for e in arr.EnumerateArray() -> elemStr e ]
+            | _ -> []
+        let source = (str "source").Replace('\\', '/')
         let target = (str "target").Replace('\\', '/')
         let condition = str "condition"
+        let isFrameworkSkill = source.StartsWith "template/product-skills/"
         let isGeneratedTree = source = ".template.config/generated/"
         let isGatedTarget =
             target.StartsWith ".specify" || target.StartsWith ".agents" || target.StartsWith ".claude"
-        if isGatedTarget || isGeneratedTree then
-            gated <- gated + 1
+            || target = "CLAUDE.md" || target = "AGENTS.md"
+        let isSkillistException =
+            target = "docs/skillist-reference.md" || List.contains "docs/skillist-reference.md" includes
+        if isFrameworkSkill then
+            framework <- framework + 1
+            if condition.Contains SPEC_KIT_COND then
+                violations <- (sprintf "framework-skill %s -> %s wrongly lifecycle-gated" source target) :: violations
+            if not (condition.Contains "profile ==") then
+                violations <- (sprintf "framework-skill %s -> %s missing profile predicate" source target) :: violations
+        elif isGatedTarget || isGeneratedTree || isSkillistException then
+            workspace <- workspace + 1
             if not (condition.Contains SPEC_KIT_COND) then
-                violations <- (sprintf "gated %s -> %s missing condition" source target) :: violations
+                violations <- (sprintf "lifecycle-workspace %s -> %s missing condition" source target) :: violations
         else
             product <- product + 1
             if condition.Contains SPEC_KIT_COND then
                 violations <- (sprintf "product %s -> %s wrongly gated" source target) :: violations
-    gated, product, List.rev violations
+    framework, workspace, product, List.rev violations
 
 [<Tests>]
 let feature204LifecycleTemplateTests =
@@ -133,15 +152,20 @@ let feature204LifecycleTemplateTests =
               Expect.stringContains report "covered-values: spec-kit, sdd, none" "covered-values lists the 3 values in declaration order"
           }
 
-          // GV-2 (FR-003/FR-004, env-free verdict-core fact re-derived in-test): the gated source
-          // entries carry the spec-kit condition; the ungated product sources do not.
-          test "GV-2 every gated source carries lifecycle == \"spec-kit\" (and no product source does)" {
-              let gated, product, violations = gatedSourceAudit ()
+          // GV-2 (FR-001/FR-002/FR-003, Feature 219 3-category verdict-core fact re-derived in-test):
+          // framework product-skill sources are profile-gated & lifecycle-INDEPENDENT; lifecycle-
+          // workspace sources carry the spec-kit condition; product sources carry neither.
+          test "GV-2 sources partition into framework-skill / lifecycle-workspace / product (3-category gating)" {
+              let framework, workspace, product, violations = gatedSourceAudit ()
               Expect.isEmpty violations (sprintf "gating violations: %s" (String.concat "; " violations))
-              Expect.isTrue (gated >= 18) (sprintf "expected >=18 gated sources, found %d" gated)
+              Expect.isTrue (framework >= 12) (sprintf "expected >=12 framework product-skill sources, found %d" framework)
+              Expect.isTrue (workspace >= 6) (sprintf "expected >=6 lifecycle-workspace sources, found %d" workspace)
               Expect.isTrue (product >= 3) (sprintf "expected >=3 ungated product sources, found %d" product)
               let report = readValidationReport ()
-              Expect.stringContains report "gated-condition: all gated source entries carry lifecycle == \"spec-kit\"" "report records the gated-condition fact"
+              Expect.stringContains
+                  report
+                  "gated-condition: lifecycle-workspace sources carry lifecycle == \"spec-kit\"; framework product-skill sources are profile-gated and lifecycle-independent"
+                  "report records the 3-category gated-condition fact"
           }
 
           // GV-3 (US1 / FR-002 / SC-001): spec-kit is byte-identical to today, every profile.
@@ -151,25 +175,35 @@ let feature204LifecycleTemplateTests =
                   Expect.stringContains report (sprintf "spec-kit/%s: generate=pass diff-vs-today=none" p) (sprintf "spec-kit/%s byte-identical" p)
           }
 
-          // GV-4 (US2 / FR-004/FR-005/FR-009 / SC-003): sdd suppresses exactly the gated set, product intact.
-          test "GV-4 sdd suppresses exactly the gated set with the product intact" {
+          // GV-4 (US2 / FR-004/FR-005/FR-009 / SC-003): sdd suppresses exactly the lifecycle WORKSPACE
+          // (not the framework skills, which are now PRESENT under sdd — Feature 219 FR-001), product intact.
+          test "GV-4 sdd suppresses the lifecycle workspace while the framework skills are present" {
               let report = readValidationReport ()
               for p in profiles do
                   Expect.stringContains
                       report
                       (sprintf "sdd/%s: generate=pass gated-absent=ok product-present=ok diff-vs-default=gated-only" p)
                       (sprintf "sdd/%s gated-only suppression" p)
+                  Expect.stringContains
+                      report
+                      (sprintf "sdd/%s: framework-skills-present=ok" p)
+                      (sprintf "sdd/%s framework fs-gg-* skills present (FR-001)" p)
               Expect.stringContains report "dangling-refs: none" "no directive agent-context doc references a suppressed path (CC-1)"
+              Expect.stringContains report "catalog-dangling: none" "no scaffold emits a catalog listing absent skills (FR-005/FR-006)"
           }
 
-          // GV-5 (US3 / FR-004 / SC-003): none suppresses the gated set, product intact (same as sdd).
-          test "GV-5 none suppresses the gated set with the product intact" {
+          // GV-5 (US3 / FR-004 / SC-003): none suppresses the workspace, framework skills present (same as sdd).
+          test "GV-5 none suppresses the lifecycle workspace while the framework skills are present" {
               let report = readValidationReport ()
               for p in profiles do
                   Expect.stringContains
                       report
                       (sprintf "none/%s: generate=pass gated-absent=ok product-present=ok" p)
                       (sprintf "none/%s suppression" p)
+                  Expect.stringContains
+                      report
+                      (sprintf "none/%s: framework-skills-present=ok" p)
+                      (sprintf "none/%s framework fs-gg-* skills present (FR-001)" p)
           }
 
           // GV-6 (Polish / FR-006/FR-007/FR-008 / SC-004): composition matrix + fail-fast.

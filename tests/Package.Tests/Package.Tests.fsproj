@@ -37,6 +37,7 @@
     <Compile Include="Feature207BomConsumerTests.fs" />
     <Compile Include="Feature209VersionCoherenceTests.fs" />
     <Compile Include="Feature217ProductNameTemplateTests.fs" />
+    <Compile Include="Feature219EmitFrameworkSkillsTests.fs" />
     <Compile Include="Tests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

@@ -69,11 +69,16 @@ let profiles = [ "app"; "headless-scene"; "governed"; "sample-pack" ]
 // see readiness/early-scaffold.md.)
 let directiveAgentDocs = [ "CLAUDE.md"; "AGENTS.md"; "README.md" ]
 
-// A relative path is "gated" iff it lives under one of the gated lifecycle roots.
+// A relative path is "gated" iff it lives under one of the gated lifecycle roots — i.e. it is part
+// of the lifecycle WORKSPACE, the set that differs between spec-kit and sdd/none. Feature 219: the
+// framework `fs-gg-*` product skills under `.agents/skills/`/`.claude/skills/` are present in BOTH
+// (so they never appear in the spec-kit−sdd diff), but the `docs/skillist-reference.md` catalog is
+// now lifecycle-workspace (spec-kit-only, the named exception), so its sdd removal is expected.
 let private isGatedPath (rel: string) =
     let p = rel.Replace('\\', '/')
     p.StartsWith ".specify/" || p.StartsWith ".agents/" || p.StartsWith ".claude/"
     || p = "CLAUDE.md" || p = "AGENTS.md"
+    || p = "docs/skillist-reference.md"
 
 let private assertTrue cond msg =
     if not cond then failwithf "VERDICT-CORE FAIL: %s" msg
@@ -97,11 +102,27 @@ let private enumerateLifecycleChoices () =
 
 let private SPEC_KIT_COND = "lifecycle == \"spec-kit\""
 
-/// Verify the gating invariant on every `source` entry (the env-free verdict-core fact).
+/// Feature 219: the source under `template/product-skills/` carries the framework PRODUCT skills.
+let private isFrameworkSkillSource (source: string) =
+    source.Replace('\\', '/').StartsWith "template/product-skills/"
+
+/// Feature 219 (R4): the `docs/skillist-reference.md` catalog is a lifecycle-coupled reference doc
+/// emitted under a `spec-kit`-gated source whose `target` is the product `./` tree but which is
+/// recognised here as lifecycle-workspace via a NAMED exception (it enumerates the full registry,
+/// coherent only under spec-kit). Detected by its `include`/`target` naming the catalog file.
+let private isSkillistCatalogSource (target: string) (includes: string list) =
+    target.Replace('\\', '/') = "docs/skillist-reference.md"
+    || List.contains "docs/skillist-reference.md" includes
+
+/// Verify the 3-category gating invariant on every `source` entry (the env-free verdict-core fact,
+/// Feature 219 R3 / data-model "Template source category"). Classification order is significant:
+/// framework-product-skill FIRST (by `source` prefix), then lifecycle-workspace (by `target` prefix
+/// / generated tree / the named skillist exception), then product.
 let private verifyGatedSources () =
     use doc = templateDoc ()
     let sources = doc.RootElement.GetProperty("sources")
-    let mutable gatedChecked = 0
+    let mutable frameworkChecked = 0
+    let mutable workspaceChecked = 0
     let mutable productChecked = 0
     for s in sources.EnumerateArray() do
         let source =
@@ -116,24 +137,41 @@ let private verifyGatedSources () =
             match s.TryGetProperty "condition" with
             | true, v -> v.GetString()
             | _ -> ""
+        let includes =
+            match s.TryGetProperty "include" with
+            | true, arr -> [ for e in arr.EnumerateArray() -> e.GetString() ]
+            | _ -> []
         let t = target.Replace('\\', '/')
         let isGeneratedTree = source = ".template.config/generated/"
         let isGatedTarget =
             t.StartsWith ".specify" || t.StartsWith ".agents" || t.StartsWith ".claude"
-        if isGatedTarget || isGeneratedTree then
+            || t = "CLAUDE.md" || t = "AGENTS.md"
+        if isFrameworkSkillSource source then
+            // FRAMEWORK PRODUCT-SKILL: lifecycle-independent, profile-gated (FR-001/FR-002).
+            assertTrue
+                (not (condition.Contains SPEC_KIT_COND))
+                (sprintf "framework product-skill source %s -> %s must NOT carry `%s` (it follows the profile, not the lifecycle)" source target SPEC_KIT_COND)
+            assertTrue
+                (condition.Contains "profile ==")
+                (sprintf "framework product-skill source %s -> %s must carry a profile predicate" source target)
+            frameworkChecked <- frameworkChecked + 1
+        elif isGatedTarget || isGeneratedTree || isSkillistCatalogSource target includes then
+            // LIFECYCLE WORKSPACE: spec-kit-only (.specify/, agent-context, blanket skills copy,
+            // generated tree, and the spec-kit-only skillist catalog — the named exception).
             assertTrue
                 (condition.Contains SPEC_KIT_COND)
-                (sprintf "gated source %s -> %s missing `%s` (condition=%A)" source target SPEC_KIT_COND condition)
-            gatedChecked <- gatedChecked + 1
+                (sprintf "lifecycle-workspace source %s -> %s missing `%s` (condition=%A)" source target SPEC_KIT_COND condition)
+            workspaceChecked <- workspaceChecked + 1
         else
-            // ungated PRODUCT source (base -> ./, samples -> samples/, ant overlay -> ./)
+            // PRODUCT source (base -> ./, samples -> samples/, ant overlay -> ./)
             assertTrue
                 (not (condition.Contains SPEC_KIT_COND))
                 (sprintf "ungated product source %s -> %s must NOT carry `%s`" source target SPEC_KIT_COND)
             productChecked <- productChecked + 1
-    assertTrue (gatedChecked >= 18) (sprintf "expected >=18 gated sources, checked %d" gatedChecked)
+    assertTrue (frameworkChecked >= 12) (sprintf "expected >=12 framework product-skill sources, checked %d" frameworkChecked)
+    assertTrue (workspaceChecked >= 6) (sprintf "expected >=6 lifecycle-workspace sources, checked %d" workspaceChecked)
     assertTrue (productChecked >= 3) (sprintf "expected >=3 ungated product sources, checked %d" productChecked)
-    gatedChecked, productChecked
+    frameworkChecked, workspaceChecked, productChecked
 
 /// Verify the directive agent-context docs are lifecycle-safe (CC-1, env-free).
 let private verifyBaseDocsNeutral () =
@@ -154,10 +192,10 @@ let private verifyBaseDocsNeutral () =
 
 let private verifyVerdictCore () =
     let values = enumerateLifecycleChoices ()
-    let gated, product = verifyGatedSources ()
+    let framework, workspace, product = verifyGatedSources ()
     verifyBaseDocsNeutral ()
-    printfn "verdict-core OK: covered-values %s; %d gated sources carry `%s`; %d ungated product sources clean; directive agent-context docs lifecycle-safe"
-        (String.concat ", " values) gated SPEC_KIT_COND product
+    printfn "verdict-core OK: covered-values %s; %d lifecycle-workspace sources carry `%s`; %d framework product-skill sources profile-gated & lifecycle-independent; %d product sources clean; directive agent-context docs lifecycle-safe"
+        (String.concat ", " values) workspace SPEC_KIT_COND framework product
     values
 
 // ---- live scaffold helpers (env-gated only) ---------------------------------------------------
@@ -241,13 +279,36 @@ let private scaffoldExpectFail (tmpRoot: string) (outSubdir: string) (extra: str
 
 type private ProfileVerdict =
     { Profile: string
-      SpecKitDiff: string   // "diff-vs-today=none"
-      Sdd: string           // "gated-absent=ok product-present=ok diff-vs-default=gated-only"
-      None_: string }       // "gated-absent=ok product-present=ok"
+      SpecKitDiff: string       // "diff-vs-today=none"
+      Sdd: string               // "gated-absent=ok product-present=ok diff-vs-default=gated-only"
+      None_: string             // "gated-absent=ok product-present=ok"
+      SddSkillCount: int        // framework `fs-gg-*` SKILL.md count under sdd (FR-001 positive fact)
+      NoneSkillCount: int }     // framework `fs-gg-*` SKILL.md count under none
 
-let private gatedAbsent (dir: string) =
-    [ ".specify"; ".claude"; ".agents"; "CLAUDE.md"; "AGENTS.md" ]
-    |> List.forall (fun f -> not (File.Exists(Path.Combine(dir, f)) || Directory.Exists(Path.Combine(dir, f))))
+/// Feature 219: the lifecycle WORKSPACE is absent (FR-003) even though the framework `fs-gg-*` product
+/// skills are now PRESENT under `.agents/skills/`/`.claude/skills/` (FR-001). "Absent" is therefore no
+/// longer "no `.agents` dir at all"; it is: no `.specify/`, no agent-context `CLAUDE.md`/`AGENTS.md`,
+/// no `speckit-*` command skills, and no base authoring skill (`fs-gg-project`, blanket-copy only).
+let private workspaceAbsent (dir: string) =
+    not (Directory.Exists(Path.Combine(dir, ".specify")))
+    && not (File.Exists(Path.Combine(dir, "CLAUDE.md")))
+    && not (File.Exists(Path.Combine(dir, "AGENTS.md")))
+    && not (Directory.Exists(Path.Combine(dir, ".agents", "skills", "fs-gg-project")))
+    && not (Directory.Exists(Path.Combine(dir, ".claude", "skills", "fs-gg-project")))
+    && (Directory.Exists dir
+        && (Directory.EnumerateDirectories(dir, "speckit-*", SearchOption.AllDirectories) |> Seq.isEmpty))
+
+/// Feature 219 positive fact: count of framework `fs-gg-*` SKILL.md emitted under `.agents/skills/`.
+let private frameworkSkillCount (dir: string) =
+    let skillsDir = Path.Combine(dir, ".agents", "skills")
+    if Directory.Exists skillsDir then
+        Directory.EnumerateDirectories(skillsDir, "fs-gg-*")
+        |> Seq.filter (fun d -> File.Exists(Path.Combine(d, "SKILL.md")))
+        |> Seq.length
+    else 0
+
+let private catalogAbsent (dir: string) =
+    not (File.Exists(Path.Combine(dir, "docs", "skillist-reference.md")))
 
 let private productPresent (dir: string) =
     File.Exists(Path.Combine(dir, "Directory.Build.props"))
@@ -261,8 +322,13 @@ let private validateProfileLive (tmpRoot: string) (profile: string) =
         failwithf "%s: explicit spec-kit scaffold differs from the no-value default (SC-001 broken)" profile
 
     let sdd = scaffold tmpRoot profile [ "--lifecycle"; "sdd" ] (sprintf "%s-sdd" profile)
-    if not (gatedAbsent sdd) then failwithf "%s/sdd: gated set not fully absent" profile
+    if not (workspaceAbsent sdd) then failwithf "%s/sdd: lifecycle workspace not fully absent" profile
     if not (productPresent sdd) then failwithf "%s/sdd: product missing" profile
+    // FR-001 (positive): the framework `fs-gg-*` product skills ARE present under sdd.
+    let sddSkills = frameworkSkillCount sdd
+    if sddSkills < 1 then failwithf "%s/sdd: no framework fs-gg-* skills present (FR-001 broken)" profile
+    // FR-006: the full-registry catalog is NOT emitted under sdd (it would dangle).
+    if not (catalogAbsent sdd) then failwithf "%s/sdd: docs/skillist-reference.md emitted (would dangle, FR-006 broken)" profile
     // FR-009: default-minus-sdd differs in ONLY gated paths, and sdd adds nothing.
     let defSet = relFilesSet def
     let sddSet = relFilesSet sdd
@@ -275,8 +341,11 @@ let private validateProfileLive (tmpRoot: string) (profile: string) =
         failwithf "%s/sdd: removed NON-gated files (FR-009 broken): %s" profile (String.concat ", " (Set.toList nonGatedRemoved))
 
     let none_ = scaffold tmpRoot profile [ "--lifecycle"; "none" ] (sprintf "%s-none" profile)
-    if not (gatedAbsent none_) then failwithf "%s/none: gated set not fully absent" profile
+    if not (workspaceAbsent none_) then failwithf "%s/none: lifecycle workspace not fully absent" profile
     if not (productPresent none_) then failwithf "%s/none: product missing" profile
+    let noneSkills = frameworkSkillCount none_
+    if noneSkills < 1 then failwithf "%s/none: no framework fs-gg-* skills present (FR-001 broken)" profile
+    if not (catalogAbsent none_) then failwithf "%s/none: docs/skillist-reference.md emitted (would dangle, FR-006 broken)" profile
     // none == sdd at the template level.
     if treeFingerprint none_ <> treeFingerprint sdd then
         failwithf "%s: none tree differs from sdd tree (research CC-3 broken)" profile
@@ -291,10 +360,21 @@ let private validateProfileLive (tmpRoot: string) (profile: string) =
                     if txt.Contains sp then
                         failwithf "%s: emitted %s references suppressed path %s (dangling ref)" tree d sp
 
+    // FR-005/FR-006 (R4): the full-registry catalog is a spec-kit authoring-lane artifact. It is
+    // PRESENT under spec-kit (where the full Spec Kit registry + tooling exist) and SUPPRESSED under
+    // sdd/none (verified above), so no scaffold emits a catalog enumerating skills it was meant to
+    // vendor but did not — the dangling bug (#30: sdd shipped the ~44-id catalog with 0 skills
+    // present). Per-id scoping of the catalog to exactly the vendored `fs-gg-*` set is the deferred
+    // R4 follow-up; this feature's guarantee is the emission gating.
+    if catalogAbsent explicit then
+        failwithf "%s/spec-kit: docs/skillist-reference.md missing (FR-005 broken)" profile
+
     { Profile = profile
       SpecKitDiff = "diff-vs-today=none"
       Sdd = "gated-absent=ok product-present=ok diff-vs-default=gated-only"
-      None_ = "gated-absent=ok product-present=ok" }
+      None_ = "gated-absent=ok product-present=ok"
+      SddSkillCount = sddSkills
+      NoneSkillCount = noneSkills }
 
 /// Composition matrix (FR-007/FR-008/SC-004): all 12 lifecycle x profile combos generate with the
 /// ungated ant overlay present; feedback=true emits no gated feedback skill under sdd/none.
@@ -332,8 +412,10 @@ let private renderReport (values: string list) (provenance: string) (verdicts: P
     line (sprintf "covered-values: %s" (String.concat ", " values))
     line (sprintf "profiles: %s" (String.concat ", " profiles))
     line ""
-    line "gated-condition: all gated source entries carry lifecycle == \"spec-kit\""
+    line "gated-condition: lifecycle-workspace sources carry lifecycle == \"spec-kit\"; framework product-skill sources are profile-gated and lifecycle-independent"
     line "dangling-refs: none"
+    line "catalog-dangling: none"
+    line "symbology: not-vendored"
     line (sprintf "composition-matrix: %d/12 generate; ant-overlay-present=ok; feedback-gated-under-non-speckit=ok" matrixCount)
     line (sprintf "unknown-value: %s" unknown)
     line ""
@@ -342,7 +424,11 @@ let private renderReport (values: string list) (provenance: string) (verdicts: P
     for v in verdicts do
         line (sprintf "sdd/%s: generate=pass %s" v.Profile v.Sdd)
     for v in verdicts do
+        line (sprintf "sdd/%s: framework-skills-present=ok (%d SKILL.md)" v.Profile v.SddSkillCount)
+    for v in verdicts do
         line (sprintf "none/%s: generate=pass %s" v.Profile v.None_)
+    for v in verdicts do
+        line (sprintf "none/%s: framework-skills-present=ok (%d SKILL.md)" v.Profile v.NoneSkillCount)
     line ""
     line (sprintf "provenance: %s" provenance)
     line "result: pass"
@@ -361,7 +447,10 @@ let private synthVerdicts () =
         { Profile = p
           SpecKitDiff = "diff-vs-today=none"
           Sdd = "gated-absent=ok product-present=ok diff-vs-default=gated-only"
-          None_ = "gated-absent=ok product-present=ok" })
+          None_ = "gated-absent=ok product-present=ok"
+          // env-free synth: the live framework-skill count is profile-specific; assert presence only.
+          SddSkillCount = 1
+          NoneSkillCount = 1 })
 
 // ---- entry point ------------------------------------------------------------------------------
 
