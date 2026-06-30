@@ -158,8 +158,8 @@ let feature204LifecycleTemplateTests =
           test "GV-2 sources partition into framework-skill / lifecycle-workspace / product (3-category gating)" {
               let framework, workspace, product, violations = gatedSourceAudit ()
               Expect.isEmpty violations (sprintf "gating violations: %s" (String.concat "; " violations))
-              // 14 since Feature 223 wired symbology (7 product skills x 2 surfaces); was 12 (6 x 2).
-              Expect.isTrue (framework >= 14) (sprintf "expected >=14 framework product-skill sources, found %d" framework)
+              // 16 since Feature 226 wired styling (8 product skills x 2 surfaces); was 14 (7 x 2).
+              Expect.isTrue (framework >= 16) (sprintf "expected >=16 framework product-skill sources, found %d" framework)
               Expect.isTrue (workspace >= 6) (sprintf "expected >=6 lifecycle-workspace sources, found %d" workspace)
               Expect.isTrue (product >= 3) (sprintf "expected >=3 ungated product sources, found %d" product)
               let report = readValidationReport ()
