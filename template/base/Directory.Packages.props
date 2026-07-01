@@ -6,7 +6,7 @@
          runtime to bind the engine assembly — so a consumer upgrade is ONE edit to this
          value + `dotnet restore`. Preview vs stable is explicit in the value
          (`-preview.N` => preview channel; a bare `x.y.z` => stable). See docs/UPGRADING.md. -->
-    <FsGgUiVersion>0.1.57-preview.1</FsGgUiVersion>
+    <FsGgUiVersion>0.1.58-preview.1</FsGgUiVersion>
   </PropertyGroup>
   <ItemGroup>
     <!-- 043 (FR-013): the published governance engine consumed in-process by the
