@@ -135,33 +135,32 @@ let feature219EmitFrameworkSkillsTests =
                   Expect.equal actual expected (sprintf "profile %s framework skill set" profile)
           }
 
-          // G-EMIT (FR-001, Feature 229 / ADR-0011): each framework product-skill source carries a profile
-          // predicate AND targets `.agents/skills/` ONLY. ADR-0011 §3/§4 confines the provider to
-          // `.agents/skills/` (the orchestrator, fsgg-sdd/SDD#57, owns the `.claude/`+`.codex/` mirror), so
-          // NO product-skill source may target `.claude/skills/` or `.codex/skills/` under ANY lifecycle.
-          // This supersedes Feature 228's spec-kit-gated `.claude/skills/` mirror (which this feature deleted).
-          test "G-EMIT framework skill sources are profile-gated and target .agents/skills/ only (ADR-0011)" {
+          // G-EMIT (FR-001, Feature 230 / ADR-0011 §1): each framework product-skill emits to ALL THREE
+          // agent-skill roots so a standalone product's roots mirror. The `.agents/skills/` source is the
+          // provider surface (profile-gated, EVERY lifecycle — the orchestrator reads it under sdd/none);
+          // the `.claude/skills/` and `.codex/skills/` twins are `spec-kit`-only (standalone self-mirror —
+          // under sdd/none the orchestrator, SDD#57, owns those roots so the provider must not write them).
+          test "G-EMIT framework skill sources emit to .agents (all lifecycles) + .claude/.codex (spec-kit)" {
               let sources = frameworkSkillSources ()
-              // 9 product skills x 1 surface (.agents/skills/) = 9 (was 18 = both surfaces, pre-Feature-229).
-              Expect.isTrue (sources.Length >= 9) (sprintf "expected >=9 framework skill sources, found %d" sources.Length)
+              // 9 product skills x 3 roots = 27 (Feature 230 restored .claude and added .codex twins).
+              Expect.isTrue (sources.Length >= 27) (sprintf "expected >=27 framework skill sources (9 x 3 roots), found %d" sources.Length)
               for s in sources do
                   Expect.stringContains s.Condition "profile ==" (sprintf "%s -> %s must carry a profile predicate" s.Id s.Target)
-                  // provider surface only: follows the profile, present under every lifecycle, never lifecycle-gated.
-                  Expect.stringStarts s.Target ".agents/skills/" (sprintf "%s -> %s: product-skill sources must target .agents/skills/ only (ADR-0011: providers never write .claude/skills/ or .codex/skills/)" s.Id s.Target)
-                  Expect.isFalse (s.Condition.Contains SPEC_KIT_COND) (sprintf "%s -> %s (provider surface) must NOT be lifecycle-gated" s.Id s.Target)
-              // No product-skill source targets an orchestrator-owned tree.
-              Expect.isFalse
-                  (sources |> List.exists (fun s -> s.Target.StartsWith ".claude/skills/" || s.Target.StartsWith ".codex/skills/"))
-                  "no framework product-skill source may target .claude/skills/ or .codex/skills/ (ADR-0011 §3/§4)"
-              // Each distinct id emits under .agents/skills/ (and nowhere else in the skill trees).
+                  if s.Target.StartsWith ".agents/skills/" then
+                      // provider surface: follows the profile, present under EVERY lifecycle.
+                      Expect.isFalse (s.Condition.Contains SPEC_KIT_COND) (sprintf "%s -> %s (.agents/ provider surface) must NOT be lifecycle-gated" s.Id s.Target)
+                  elif s.Target.StartsWith ".claude/skills/" || s.Target.StartsWith ".codex/skills/" then
+                      // standalone self-mirror: spec-kit only (orchestrator owns these roots under sdd/none).
+                      Expect.stringContains s.Condition SPEC_KIT_COND (sprintf "%s -> %s (standalone mirror) must be spec-kit-gated" s.Id s.Target)
+                  else
+                      failtestf "unexpected product-skill target root: %s -> %s" s.Id s.Target
+              // Each distinct id emits under ALL THREE roots (mirror completeness).
               for id in sources |> List.map (fun s -> s.Id) |> List.distinct do
                   let targets = sources |> List.filter (fun s -> s.Id = id) |> List.map (fun s -> s.Target)
-                  Expect.isTrue
-                      (targets |> List.exists (fun t -> t.StartsWith ".agents/skills/"))
-                      (sprintf "%s must emit under .agents/skills/" id)
-                  Expect.isFalse
-                      (targets |> List.exists (fun t -> t.StartsWith ".claude/skills/"))
-                      (sprintf "%s must NOT emit under .claude/skills/ (ADR-0011)" id)
+                  for root in [ ".agents/skills/"; ".claude/skills/"; ".codex/skills/" ] do
+                      Expect.isTrue
+                          (targets |> List.exists (fun t -> t.StartsWith root))
+                          (sprintf "%s must emit under %s (three-root mirror, ADR-0011 §1)" id root)
           }
 
           // G-EMIT (FR-001 positive, report-backed): sdd and none carry the framework skills.

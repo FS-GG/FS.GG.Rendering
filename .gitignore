@@ -166,3 +166,5 @@ specs/220-game-starter-scene/readiness/fr007-baseline/
 !specs/228-fix-scaffold-skill-leak/readiness/**
 !specs/229-drop-claude-skills-mirror/readiness/
 !specs/229-drop-claude-skills-mirror/readiness/**
+!specs/230-standalone-skill-root-mirror/readiness/
+!specs/230-standalone-skill-root-mirror/readiness/**

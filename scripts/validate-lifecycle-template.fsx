@@ -77,6 +77,7 @@ let directiveAgentDocs = [ "CLAUDE.md"; "AGENTS.md"; "README.md" ]
 let private isGatedPath (rel: string) =
     let p = rel.Replace('\\', '/')
     p.StartsWith ".specify/" || p.StartsWith ".agents/" || p.StartsWith ".claude/"
+    || p.StartsWith ".codex/"
     || p = "CLAUDE.md" || p = "AGENTS.md"
     || p = "docs/skillist-reference.md"
 
@@ -145,18 +146,11 @@ let private verifyGatedSources () =
         let isGeneratedTree = source = ".template.config/generated/"
         let isGatedTarget =
             t.StartsWith ".specify" || t.StartsWith ".agents" || t.StartsWith ".claude"
+            || t.StartsWith ".codex"
             || t = "CLAUDE.md" || t = "AGENTS.md"
-        // Feature 229 / ADR-0011: a product-skill source may target .agents/skills/ ONLY (the provider
-        // surface); providers never write .claude/skills/ or .codex/skills/. A product-skill source with
-        // any other target is a hard violation (the .claude/skills/ mirror was deleted in Feature 229).
-        assertTrue
-            (not (isFrameworkSkillSource source) || t.StartsWith ".agents/skills")
-            (sprintf "product-skill source %s -> %s must target .agents/skills/ only (ADR-0011: providers never write .claude/skills/ or .codex/skills/)" source target)
-        // Full confinement (ADR-0011): NOTHING may target .claude/skills/ — not the per-skill product
-        // sources, not the base .agents/skills/->.claude/skills/ mirror, not the sample/feedback skills.
-        assertTrue
-            (not (t.StartsWith ".claude/skills/"))
-            (sprintf "no template source may target .claude/skills/ (ADR-0011 full confinement): %s -> %s" source target)
+        // Feature 230 / ADR-0011 §1: a product-skill source targets .agents/skills/ on EVERY lifecycle
+        // (provider surface, framework) OR .claude/skills/ / .codex/skills/ on spec-kit only (the standalone
+        // three-root self-mirror, classified as lifecycle-workspace below and asserted spec-kit-gated there).
         if isFrameworkSkillSource source && t.StartsWith ".agents/skills" then
             // FRAMEWORK PRODUCT-SKILL: lifecycle-independent, profile-gated (FR-001/FR-002).
             assertTrue
@@ -180,7 +174,7 @@ let private verifyGatedSources () =
                 (sprintf "ungated product source %s -> %s must NOT carry `%s`" source target SPEC_KIT_COND)
             productChecked <- productChecked + 1
     assertTrue (frameworkChecked >= 9) (sprintf "expected >=9 framework product-skill sources (.agents/skills/ provider surface), checked %d" frameworkChecked)
-    assertTrue (workspaceChecked >= 6) (sprintf "expected >=6 lifecycle-workspace sources, checked %d" workspaceChecked)
+    assertTrue (workspaceChecked >= 30) (sprintf "expected >=30 lifecycle-workspace sources (incl. .claude/.codex mirror twins), checked %d" workspaceChecked)
     assertTrue (productChecked >= 3) (sprintf "expected >=3 ungated product sources, checked %d" productChecked)
     frameworkChecked, workspaceChecked, productChecked
 
@@ -296,8 +290,10 @@ type private ProfileVerdict =
       SddSkillCount: int        // framework `fs-gg-*` SKILL.md count under sdd (FR-001 positive fact)
       NoneSkillCount: int       // framework `fs-gg-*` SKILL.md count under none
       SddClaudeProductSkills: int   // ADR-0011: .claude/skills/fs-gg-* product count under sdd (must be 0)
+      SddCodexProductSkills: int    // ADR-0011: .codex/skills/fs-gg-* product count under sdd (must be 0)
       NoneClaudeProductSkills: int  // ADR-0011: .claude/skills/fs-gg-* product count under none (must be 0)
-      SpecKitClaudeProductSkills: int } // Feature 229: .claude/skills/fs-gg-* product count under spec-kit (must be 0 — the deleted mirror)
+      NoneCodexProductSkills: int   // ADR-0011: .codex/skills/fs-gg-* product count under none (must be 0)
+      SpecKitMirror: string } // Feature 230: three-root-mirror=ok when spec-kit .agents==.claude==.codex
 
 /// Feature 219: the lifecycle WORKSPACE is absent (FR-003) even though the framework `fs-gg-*` product
 /// skills are now PRESENT under `.agents/skills/`/`.claude/skills/` (FR-001). "Absent" is therefore no
@@ -321,20 +317,25 @@ let private frameworkSkillCount (dir: string) =
         |> Seq.length
     else 0
 
-/// Feature 229 / ADR-0011 negative fact: count of `fs-gg-*` UI PRODUCT skills emitted under
-/// `.claude/skills/`. Under full provider confinement the template writes NO UI product skill into the
-/// orchestrator-owned `.claude/` tree under ANY lifecycle — sdd/none/spec-kit all 0 (a write under sdd
-/// is exactly the `scaffold.providerWroteSddTree` intrusion, #47/#55). The base authoring skill
-/// `fs-gg-project` is part of the standalone Spec Kit workspace (`template/base/.claude/`), not a UI
-/// product-skill mirror, so it is EXCLUDED from this count.
-let private claudeProductSkillCount (dir: string) =
-    let skillsDir = Path.Combine(dir, ".claude", "skills")
+/// Feature 230 / ADR-0011: the `fs-gg-*` skill dir set under a given agent-skill root (dirs with a
+/// SKILL.md). Under spec-kit the three roots MIRROR (equal sets); under sdd/none the .claude/.codex roots
+/// hold ZERO product skills (a write under sdd is the `scaffold.providerWroteSddTree` intrusion, #47/#55).
+let private skillSetUnder (dir: string) (root: string) =
+    let skillsDir = Path.Combine(dir, root, "skills")
     if Directory.Exists skillsDir then
         Directory.EnumerateDirectories(skillsDir, "fs-gg-*")
-        |> Seq.filter (fun d -> Path.GetFileName d <> "fs-gg-project")
         |> Seq.filter (fun d -> File.Exists(Path.Combine(d, "SKILL.md")))
-        |> Seq.length
-    else 0
+        |> Seq.map Path.GetFileName
+        |> Set.ofSeq
+    else Set.empty
+
+/// UI product-skill count under an orchestrator-owned root — the base authoring skill `fs-gg-project`
+/// (part of the standalone Spec Kit base workspace) is excluded so this reads 0 under sdd/none.
+let private orchestratorRootProductSkillCount (dir: string) (root: string) =
+    skillSetUnder dir root |> Set.remove "fs-gg-project" |> Set.count
+
+let private claudeProductSkillCount (dir: string) = orchestratorRootProductSkillCount dir ".claude"
+let private codexProductSkillCount (dir: string) = orchestratorRootProductSkillCount dir ".codex"
 
 let private catalogAbsent (dir: string) =
     not (File.Exists(Path.Combine(dir, "docs", "skillist-reference.md")))
@@ -349,10 +350,17 @@ let private validateProfileLive (tmpRoot: string) (profile: string) =
     // SC-001 (operational): explicit spec-kit == no-value default, byte for byte.
     if treeFingerprint def <> treeFingerprint explicit then
         failwithf "%s: explicit spec-kit scaffold differs from the no-value default (SC-001 broken)" profile
-    // Feature 229 / ADR-0011 (negative): the template authors ZERO fs-gg-* UI product skills into
-    // .claude/skills/ even under spec-kit — the mirror was deleted (supersedes Feature 228 FR-003).
-    let specKitClaudeProduct = claudeProductSkillCount def
-    if specKitClaudeProduct <> 0 then failwithf "%s/spec-kit: %d fs-gg-* product skills authored into .claude/skills/ (ADR-0011: provider confined to .agents/skills/)" profile specKitClaudeProduct
+    // Feature 230 / ADR-0011 §1 (positive): under spec-kit (standalone, no orchestrator) the template
+    // materializes the skill union into ALL THREE roots so they MIRROR — the .agents/.claude/.codex
+    // `fs-gg-*` skill sets are equal.
+    let specKitAgents = skillSetUnder def ".agents"
+    let specKitClaude = skillSetUnder def ".claude"
+    let specKitCodex = skillSetUnder def ".codex"
+    if specKitAgents <> specKitClaude then
+        failwithf "%s/spec-kit: .claude/skills/ set differs from .agents/skills/ (three-root mirror broken, ADR-0011 §1): only-in-agents=%A only-in-claude=%A" profile (Set.difference specKitAgents specKitClaude) (Set.difference specKitClaude specKitAgents)
+    if specKitAgents <> specKitCodex then
+        failwithf "%s/spec-kit: .codex/skills/ set differs from .agents/skills/ (three-root mirror broken, ADR-0011 §1): only-in-agents=%A only-in-codex=%A" profile (Set.difference specKitAgents specKitCodex) (Set.difference specKitCodex specKitAgents)
+    let specKitMirror = if specKitAgents = specKitClaude && specKitAgents = specKitCodex then "ok" else "broken"
 
     let sdd = scaffold tmpRoot profile [ "--lifecycle"; "sdd" ] (sprintf "%s-sdd" profile)
     if not (workspaceAbsent sdd) then failwithf "%s/sdd: lifecycle workspace not fully absent" profile
@@ -360,9 +368,11 @@ let private validateProfileLive (tmpRoot: string) (profile: string) =
     // FR-001 (positive): the framework `fs-gg-*` product skills ARE present under sdd.
     let sddSkills = frameworkSkillCount sdd
     if sddSkills < 1 then failwithf "%s/sdd: no framework fs-gg-* skills present (FR-001 broken)" profile
-    // Feature 228 (negative): NO fs-gg-* product skill leaks into the orchestrator-owned .claude/skills/.
+    // Feature 230 (negative): NO fs-gg-* product skill leaks into the orchestrator-owned .claude/ OR .codex/.
     let sddClaudeProduct = claudeProductSkillCount sdd
+    let sddCodexProduct = codexProductSkillCount sdd
     if sddClaudeProduct <> 0 then failwithf "%s/sdd: %d fs-gg-* product skills leaked into .claude/skills/ (providerWroteSddTree, #47)" profile sddClaudeProduct
+    if sddCodexProduct <> 0 then failwithf "%s/sdd: %d fs-gg-* product skills leaked into .codex/skills/ (providerWroteSddTree, #47)" profile sddCodexProduct
     // FR-006: the full-registry catalog is NOT emitted under sdd (it would dangle).
     if not (catalogAbsent sdd) then failwithf "%s/sdd: docs/skillist-reference.md emitted (would dangle, FR-006 broken)" profile
     // FR-009: default-minus-sdd differs in ONLY gated paths, and sdd adds nothing.
@@ -382,7 +392,9 @@ let private validateProfileLive (tmpRoot: string) (profile: string) =
     let noneSkills = frameworkSkillCount none_
     if noneSkills < 1 then failwithf "%s/none: no framework fs-gg-* skills present (FR-001 broken)" profile
     let noneClaudeProduct = claudeProductSkillCount none_
+    let noneCodexProduct = codexProductSkillCount none_
     if noneClaudeProduct <> 0 then failwithf "%s/none: %d fs-gg-* product skills leaked into .claude/skills/ (#47)" profile noneClaudeProduct
+    if noneCodexProduct <> 0 then failwithf "%s/none: %d fs-gg-* product skills leaked into .codex/skills/ (#47)" profile noneCodexProduct
     if not (catalogAbsent none_) then failwithf "%s/none: docs/skillist-reference.md emitted (would dangle, FR-006 broken)" profile
     // none == sdd at the template level.
     if treeFingerprint none_ <> treeFingerprint sdd then
@@ -414,8 +426,10 @@ let private validateProfileLive (tmpRoot: string) (profile: string) =
       SddSkillCount = sddSkills
       NoneSkillCount = noneSkills
       SddClaudeProductSkills = sddClaudeProduct
+      SddCodexProductSkills = sddCodexProduct
       NoneClaudeProductSkills = noneClaudeProduct
-      SpecKitClaudeProductSkills = specKitClaudeProduct }
+      NoneCodexProductSkills = noneCodexProduct
+      SpecKitMirror = specKitMirror }
 
 /// Composition matrix (FR-007/FR-008/SC-004): all 12 lifecycle x profile combos generate with the
 /// ungated ant overlay present; feedback=true emits no gated feedback skill under sdd/none.
@@ -453,7 +467,7 @@ let private renderReport (values: string list) (provenance: string) (verdicts: P
     line (sprintf "covered-values: %s" (String.concat ", " values))
     line (sprintf "profiles: %s" (String.concat ", " profiles))
     line ""
-    line "gated-condition: lifecycle-workspace sources carry lifecycle == \"spec-kit\"; framework product-skill sources target .agents/skills/ only (ADR-0011: providers never write .claude/skills/ or .codex/skills/) and are profile-gated, lifecycle-independent"
+    line "gated-condition: lifecycle-workspace sources (incl. the .claude/.codex product-skill mirror twins) carry lifecycle == \"spec-kit\"; framework product-skill sources target .agents/skills/ (present under every lifecycle) and are profile-gated, lifecycle-independent"
     line "dangling-refs: none"
     line "catalog-dangling: none"
     line "symbology: vendored"
@@ -463,19 +477,19 @@ let private renderReport (values: string list) (provenance: string) (verdicts: P
     for v in verdicts do
         line (sprintf "spec-kit/%s: generate=pass %s" v.Profile v.SpecKitDiff)
     for v in verdicts do
-        line (sprintf "spec-kit/%s: claude-product-skills=%d" v.Profile v.SpecKitClaudeProductSkills)
+        line (sprintf "spec-kit/%s: three-root-mirror=%s" v.Profile v.SpecKitMirror)
     for v in verdicts do
         line (sprintf "sdd/%s: generate=pass %s" v.Profile v.Sdd)
     for v in verdicts do
         line (sprintf "sdd/%s: framework-skills-present=ok (%d SKILL.md)" v.Profile v.SddSkillCount)
     for v in verdicts do
-        line (sprintf "sdd/%s: claude-product-skills=%d" v.Profile v.SddClaudeProductSkills)
+        line (sprintf "sdd/%s: claude-product-skills=%d codex-product-skills=%d" v.Profile v.SddClaudeProductSkills v.SddCodexProductSkills)
     for v in verdicts do
         line (sprintf "none/%s: generate=pass %s" v.Profile v.None_)
     for v in verdicts do
         line (sprintf "none/%s: framework-skills-present=ok (%d SKILL.md)" v.Profile v.NoneSkillCount)
     for v in verdicts do
-        line (sprintf "none/%s: claude-product-skills=%d" v.Profile v.NoneClaudeProductSkills)
+        line (sprintf "none/%s: claude-product-skills=%d codex-product-skills=%d" v.Profile v.NoneClaudeProductSkills v.NoneCodexProductSkills)
     line ""
     line (sprintf "provenance: %s" provenance)
     line "result: pass"
@@ -498,11 +512,13 @@ let private synthVerdicts () =
           // env-free synth: the live framework-skill count is profile-specific; assert presence only.
           SddSkillCount = 1
           NoneSkillCount = 1
-          // Feature 229 / ADR-0011: the .claude/skills/ product mirror was deleted, so it is 0 under
-          // EVERY lifecycle — spec-kit included (supersedes Feature 228's spec-kit-only mirror).
+          // Feature 230 / ADR-0011: under sdd/none the orchestrator owns .claude/.codex, so the template
+          // authors 0 product skills there; under spec-kit the three roots mirror (self-fan-out).
           SddClaudeProductSkills = 0
+          SddCodexProductSkills = 0
           NoneClaudeProductSkills = 0
-          SpecKitClaudeProductSkills = 0 })
+          NoneCodexProductSkills = 0
+          SpecKitMirror = "ok" })
 
 // ---- entry point ------------------------------------------------------------------------------
 
