@@ -146,9 +146,17 @@ let private verifyGatedSources () =
         let isGatedTarget =
             t.StartsWith ".specify" || t.StartsWith ".agents" || t.StartsWith ".claude"
             || t = "CLAUDE.md" || t = "AGENTS.md"
-        // Feature 228: only the .agents/skills/ provider surface is FRAMEWORK (profile-gated,
-        // lifecycle-independent); a product-skill source targeting .claude/skills/ is the orchestrator-
-        // owned workspace mirror and is spec-kit-gated (classifies as lifecycle-workspace below).
+        // Feature 229 / ADR-0011: a product-skill source may target .agents/skills/ ONLY (the provider
+        // surface); providers never write .claude/skills/ or .codex/skills/. A product-skill source with
+        // any other target is a hard violation (the .claude/skills/ mirror was deleted in Feature 229).
+        assertTrue
+            (not (isFrameworkSkillSource source) || t.StartsWith ".agents/skills")
+            (sprintf "product-skill source %s -> %s must target .agents/skills/ only (ADR-0011: providers never write .claude/skills/ or .codex/skills/)" source target)
+        // Full confinement (ADR-0011): NOTHING may target .claude/skills/ — not the per-skill product
+        // sources, not the base .agents/skills/->.claude/skills/ mirror, not the sample/feedback skills.
+        assertTrue
+            (not (t.StartsWith ".claude/skills/"))
+            (sprintf "no template source may target .claude/skills/ (ADR-0011 full confinement): %s -> %s" source target)
         if isFrameworkSkillSource source && t.StartsWith ".agents/skills" then
             // FRAMEWORK PRODUCT-SKILL: lifecycle-independent, profile-gated (FR-001/FR-002).
             assertTrue
@@ -172,7 +180,7 @@ let private verifyGatedSources () =
                 (sprintf "ungated product source %s -> %s must NOT carry `%s`" source target SPEC_KIT_COND)
             productChecked <- productChecked + 1
     assertTrue (frameworkChecked >= 9) (sprintf "expected >=9 framework product-skill sources (.agents/skills/ provider surface), checked %d" frameworkChecked)
-    assertTrue (workspaceChecked >= 15) (sprintf "expected >=15 lifecycle-workspace sources (incl. .claude/skills/ product mirror), checked %d" workspaceChecked)
+    assertTrue (workspaceChecked >= 6) (sprintf "expected >=6 lifecycle-workspace sources, checked %d" workspaceChecked)
     assertTrue (productChecked >= 3) (sprintf "expected >=3 ungated product sources, checked %d" productChecked)
     frameworkChecked, workspaceChecked, productChecked
 
@@ -287,8 +295,9 @@ type private ProfileVerdict =
       None_: string             // "gated-absent=ok product-present=ok"
       SddSkillCount: int        // framework `fs-gg-*` SKILL.md count under sdd (FR-001 positive fact)
       NoneSkillCount: int       // framework `fs-gg-*` SKILL.md count under none
-      SddClaudeProductSkills: int   // Feature 228: .claude/skills/fs-gg-* product mirror count under sdd (must be 0)
-      NoneClaudeProductSkills: int } // Feature 228: .claude/skills/fs-gg-* product mirror count under none (must be 0)
+      SddClaudeProductSkills: int   // ADR-0011: .claude/skills/fs-gg-* product count under sdd (must be 0)
+      NoneClaudeProductSkills: int  // ADR-0011: .claude/skills/fs-gg-* product count under none (must be 0)
+      SpecKitClaudeProductSkills: int } // Feature 229: .claude/skills/fs-gg-* product count under spec-kit (must be 0 — the deleted mirror)
 
 /// Feature 219: the lifecycle WORKSPACE is absent (FR-003) even though the framework `fs-gg-*` product
 /// skills are now PRESENT under `.agents/skills/`/`.claude/skills/` (FR-001). "Absent" is therefore no
@@ -312,13 +321,17 @@ let private frameworkSkillCount (dir: string) =
         |> Seq.length
     else 0
 
-/// Feature 228 negative fact: count of `fs-gg-*` product skills emitted under `.claude/skills/` (the
-/// orchestrator-owned workspace mirror). MUST be 0 under sdd/none — a product write into `.claude/`
-/// is exactly the `scaffold.providerWroteSddTree` intrusion (#47/#55).
+/// Feature 229 / ADR-0011 negative fact: count of `fs-gg-*` UI PRODUCT skills emitted under
+/// `.claude/skills/`. Under full provider confinement the template writes NO UI product skill into the
+/// orchestrator-owned `.claude/` tree under ANY lifecycle — sdd/none/spec-kit all 0 (a write under sdd
+/// is exactly the `scaffold.providerWroteSddTree` intrusion, #47/#55). The base authoring skill
+/// `fs-gg-project` is part of the standalone Spec Kit workspace (`template/base/.claude/`), not a UI
+/// product-skill mirror, so it is EXCLUDED from this count.
 let private claudeProductSkillCount (dir: string) =
     let skillsDir = Path.Combine(dir, ".claude", "skills")
     if Directory.Exists skillsDir then
         Directory.EnumerateDirectories(skillsDir, "fs-gg-*")
+        |> Seq.filter (fun d -> Path.GetFileName d <> "fs-gg-project")
         |> Seq.filter (fun d -> File.Exists(Path.Combine(d, "SKILL.md")))
         |> Seq.length
     else 0
@@ -336,6 +349,10 @@ let private validateProfileLive (tmpRoot: string) (profile: string) =
     // SC-001 (operational): explicit spec-kit == no-value default, byte for byte.
     if treeFingerprint def <> treeFingerprint explicit then
         failwithf "%s: explicit spec-kit scaffold differs from the no-value default (SC-001 broken)" profile
+    // Feature 229 / ADR-0011 (negative): the template authors ZERO fs-gg-* UI product skills into
+    // .claude/skills/ even under spec-kit — the mirror was deleted (supersedes Feature 228 FR-003).
+    let specKitClaudeProduct = claudeProductSkillCount def
+    if specKitClaudeProduct <> 0 then failwithf "%s/spec-kit: %d fs-gg-* product skills authored into .claude/skills/ (ADR-0011: provider confined to .agents/skills/)" profile specKitClaudeProduct
 
     let sdd = scaffold tmpRoot profile [ "--lifecycle"; "sdd" ] (sprintf "%s-sdd" profile)
     if not (workspaceAbsent sdd) then failwithf "%s/sdd: lifecycle workspace not fully absent" profile
@@ -397,7 +414,8 @@ let private validateProfileLive (tmpRoot: string) (profile: string) =
       SddSkillCount = sddSkills
       NoneSkillCount = noneSkills
       SddClaudeProductSkills = sddClaudeProduct
-      NoneClaudeProductSkills = noneClaudeProduct }
+      NoneClaudeProductSkills = noneClaudeProduct
+      SpecKitClaudeProductSkills = specKitClaudeProduct }
 
 /// Composition matrix (FR-007/FR-008/SC-004): all 12 lifecycle x profile combos generate with the
 /// ungated ant overlay present; feedback=true emits no gated feedback skill under sdd/none.
@@ -435,7 +453,7 @@ let private renderReport (values: string list) (provenance: string) (verdicts: P
     line (sprintf "covered-values: %s" (String.concat ", " values))
     line (sprintf "profiles: %s" (String.concat ", " profiles))
     line ""
-    line "gated-condition: lifecycle-workspace sources (incl. .claude/skills/ product mirror) carry lifecycle == \"spec-kit\"; framework product-skill sources (.agents/skills/) are profile-gated and lifecycle-independent"
+    line "gated-condition: lifecycle-workspace sources carry lifecycle == \"spec-kit\"; framework product-skill sources target .agents/skills/ only (ADR-0011: providers never write .claude/skills/ or .codex/skills/) and are profile-gated, lifecycle-independent"
     line "dangling-refs: none"
     line "catalog-dangling: none"
     line "symbology: vendored"
@@ -444,6 +462,8 @@ let private renderReport (values: string list) (provenance: string) (verdicts: P
     line ""
     for v in verdicts do
         line (sprintf "spec-kit/%s: generate=pass %s" v.Profile v.SpecKitDiff)
+    for v in verdicts do
+        line (sprintf "spec-kit/%s: claude-product-skills=%d" v.Profile v.SpecKitClaudeProductSkills)
     for v in verdicts do
         line (sprintf "sdd/%s: generate=pass %s" v.Profile v.Sdd)
     for v in verdicts do
@@ -478,9 +498,11 @@ let private synthVerdicts () =
           // env-free synth: the live framework-skill count is profile-specific; assert presence only.
           SddSkillCount = 1
           NoneSkillCount = 1
-          // Feature 228: the .claude/skills/ product mirror is spec-kit-only, so it is 0 under sdd/none.
+          // Feature 229 / ADR-0011: the .claude/skills/ product mirror was deleted, so it is 0 under
+          // EVERY lifecycle — spec-kit included (supersedes Feature 228's spec-kit-only mirror).
           SddClaudeProductSkills = 0
-          NoneClaudeProductSkills = 0 })
+          NoneClaudeProductSkills = 0
+          SpecKitClaudeProductSkills = 0 })
 
 // ---- entry point ------------------------------------------------------------------------------
 

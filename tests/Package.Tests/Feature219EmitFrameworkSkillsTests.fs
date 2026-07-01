@@ -135,32 +135,33 @@ let feature219EmitFrameworkSkillsTests =
                   Expect.equal actual expected (sprintf "profile %s framework skill set" profile)
           }
 
-          // G-EMIT (FR-001, Feature 228 surface-specific): each framework skill source carries a profile
-          // predicate AND is emitted to BOTH .agents/skills/ and .claude/skills/ destinations — but the
-          // lifecycle gating is SURFACE-SPECIFIC: the .agents/skills/ provider source is lifecycle-
-          // independent (profile-gated, follows the product), while the .claude/skills/ workspace mirror
-          // is spec-kit-only (it must never land in an SDD-orchestrated `.claude/` tree — #47/#55). The
-          // structural pairing (each id emits under both surfaces) is preserved.
-          test "G-EMIT framework skill sources are profile-gated; .claude/skills/ mirror is spec-kit-only" {
+          // G-EMIT (FR-001, Feature 229 / ADR-0011): each framework product-skill source carries a profile
+          // predicate AND targets `.agents/skills/` ONLY. ADR-0011 §3/§4 confines the provider to
+          // `.agents/skills/` (the orchestrator, fsgg-sdd/SDD#57, owns the `.claude/`+`.codex/` mirror), so
+          // NO product-skill source may target `.claude/skills/` or `.codex/skills/` under ANY lifecycle.
+          // This supersedes Feature 228's spec-kit-gated `.claude/skills/` mirror (which this feature deleted).
+          test "G-EMIT framework skill sources are profile-gated and target .agents/skills/ only (ADR-0011)" {
               let sources = frameworkSkillSources ()
-              // 9 product skills x 2 surfaces = 18 since Feature 227 wired layout (was 8 x 2 = 16).
-              Expect.isTrue (sources.Length >= 18) (sprintf "expected >=18 framework skill sources, found %d" sources.Length)
+              // 9 product skills x 1 surface (.agents/skills/) = 9 (was 18 = both surfaces, pre-Feature-229).
+              Expect.isTrue (sources.Length >= 9) (sprintf "expected >=9 framework skill sources, found %d" sources.Length)
               for s in sources do
                   Expect.stringContains s.Condition "profile ==" (sprintf "%s -> %s must carry a profile predicate" s.Id s.Target)
-                  if s.Target.StartsWith ".agents/skills/" then
-                      // provider surface: follows the profile, present under every lifecycle.
-                      Expect.isFalse (s.Condition.Contains SPEC_KIT_COND) (sprintf "%s -> %s (provider surface) must NOT be lifecycle-gated" s.Id s.Target)
-                  elif s.Target.StartsWith ".claude/skills/" then
-                      // orchestrator-owned workspace mirror: spec-kit lane only (Feature 228 / #47).
-                      Expect.stringContains s.Condition SPEC_KIT_COND (sprintf "%s -> %s (.claude/skills/ mirror) must be spec-kit-gated" s.Id s.Target)
+                  // provider surface only: follows the profile, present under every lifecycle, never lifecycle-gated.
+                  Expect.stringStarts s.Target ".agents/skills/" (sprintf "%s -> %s: product-skill sources must target .agents/skills/ only (ADR-0011: providers never write .claude/skills/ or .codex/skills/)" s.Id s.Target)
+                  Expect.isFalse (s.Condition.Contains SPEC_KIT_COND) (sprintf "%s -> %s (provider surface) must NOT be lifecycle-gated" s.Id s.Target)
+              // No product-skill source targets an orchestrator-owned tree.
+              Expect.isFalse
+                  (sources |> List.exists (fun s -> s.Target.StartsWith ".claude/skills/" || s.Target.StartsWith ".codex/skills/"))
+                  "no framework product-skill source may target .claude/skills/ or .codex/skills/ (ADR-0011 §3/§4)"
+              // Each distinct id emits under .agents/skills/ (and nowhere else in the skill trees).
               for id in sources |> List.map (fun s -> s.Id) |> List.distinct do
                   let targets = sources |> List.filter (fun s -> s.Id = id) |> List.map (fun s -> s.Target)
                   Expect.isTrue
                       (targets |> List.exists (fun t -> t.StartsWith ".agents/skills/"))
                       (sprintf "%s must emit under .agents/skills/" id)
-                  Expect.isTrue
+                  Expect.isFalse
                       (targets |> List.exists (fun t -> t.StartsWith ".claude/skills/"))
-                      (sprintf "%s must emit under .claude/skills/" id)
+                      (sprintf "%s must NOT emit under .claude/skills/ (ADR-0011)" id)
           }
 
           // G-EMIT (FR-001 positive, report-backed): sdd and none carry the framework skills.

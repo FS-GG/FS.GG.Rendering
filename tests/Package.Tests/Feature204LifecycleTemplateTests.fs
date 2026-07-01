@@ -91,14 +91,14 @@ let private coveredValues (report: string) =
 let private SPEC_KIT_COND = "lifecycle == \"spec-kit\""
 
 /// Re-derive the 3-category gating invariant directly from template.json (Feature 219 R3 /
-/// data-model "Template source category"; Feature 228 surface discrimination). Classification order
-/// is significant: framework product-skill FIRST — but ONLY the provider surface, i.e. a source under
-/// template/product-skills/ whose `target` is under .agents/skills/; a product-skill source whose
-/// `target` is under .claude/skills/ is the orchestrator-owned WORKSPACE mirror and falls through to
-/// lifecycle-workspace (target under .specify/ | .agents/ | .claude/ | CLAUDE.md | AGENTS.md, the
-/// generated tree, or the named docs/skillist-reference.md catalog exception), then product.
-/// Framework product-skills carry a profile predicate and NO spec-kit clause; lifecycle-workspace
-/// sources (incl. the .claude/skills/ product mirror) carry the spec-kit clause; product sources carry neither.
+/// data-model "Template source category"; Feature 229 / ADR-0011 provider confinement). Classification
+/// order is significant: framework product-skill FIRST — a source under template/product-skills/ whose
+/// `target` is under .agents/skills/. Per ADR-0011 §3/§4 a product-skill source may target .agents/skills/
+/// ONLY (providers never write .claude/skills/ or .codex/skills/), so a product-skill source with any other
+/// target is a hard VIOLATION. Then lifecycle-workspace (target under .specify/ | .agents/ | .claude/ |
+/// CLAUDE.md | AGENTS.md, the generated tree, or the named docs/skillist-reference.md catalog exception),
+/// then product. Framework product-skills carry a profile predicate and NO spec-kit clause; lifecycle-
+/// workspace sources carry the spec-kit clause; product sources carry neither.
 let private gatedSourceAudit () =
     use doc = JsonDocument.Parse(File.ReadAllText templateJsonPath)
     let mutable framework = 0
@@ -117,10 +117,18 @@ let private gatedSourceAudit () =
         let source = (str "source").Replace('\\', '/')
         let target = (str "target").Replace('\\', '/')
         let condition = str "condition"
-        // Feature 228: only the .agents/skills/ provider surface is FRAMEWORK; the .claude/skills/
-        // product mirror is the orchestrator-owned workspace (spec-kit-only) and classifies below.
-        let isFrameworkSkill =
-            source.StartsWith "template/product-skills/" && target.StartsWith ".agents/skills/"
+        // Feature 229 / ADR-0011: a product-skill source may target .agents/skills/ ONLY (the provider
+        // surface). Any product-skill source with a different target (e.g. .claude/skills/ or .codex/skills/)
+        // is a provider ownership-boundary violation, not a workspace member.
+        let isProductSkillSource = source.StartsWith "template/product-skills/"
+        let isFrameworkSkill = isProductSkillSource && target.StartsWith ".agents/skills/"
+        if isProductSkillSource && not (target.StartsWith ".agents/skills/") then
+            violations <- (sprintf "product-skill %s -> %s must target .agents/skills/ only (ADR-0011: providers never write .claude/skills/ or .codex/skills/)" source target) :: violations
+        // Feature 229 / ADR-0011 full confinement: NOTHING may target .claude/skills/ — not the per-skill
+        // product sources, not the base .agents/skills/->.claude/skills/ mirror, not the sample/feedback
+        // skills. Provider skills live in .agents/skills/; the orchestrator (fsgg-sdd) owns the .claude mirror.
+        if target.StartsWith ".claude/skills/" then
+            violations <- (sprintf "source %s -> %s: no template source may target .claude/skills/ (ADR-0011 full confinement)" source target) :: violations
         let isGeneratedTree = source = ".template.config/generated/"
         let isGatedTarget =
             target.StartsWith ".specify" || target.StartsWith ".agents" || target.StartsWith ".claude"
@@ -163,16 +171,16 @@ let feature204LifecycleTemplateTests =
           test "GV-2 sources partition into framework-skill / lifecycle-workspace / product (3-category gating)" {
               let framework, workspace, product, violations = gatedSourceAudit ()
               Expect.isEmpty violations (sprintf "gating violations: %s" (String.concat "; " violations))
-              // Feature 228: framework = the 9 .agents/skills/ provider sources (was 18 = both surfaces);
-              // the 9 .claude/skills/ product mirrors moved to lifecycle-workspace (spec-kit-gated), so
-              // workspace gained 9 (was >=6, now >=15). product unchanged.
+              // Feature 229 / ADR-0011: framework = the 9 .agents/skills/ provider sources; the 9
+              // .claude/skills/ product mirrors were DELETED (not re-classified), so workspace drops back
+              // to >=6 (was >=15 under Feature 228). product unchanged.
               Expect.isTrue (framework >= 9) (sprintf "expected >=9 framework product-skill sources, found %d" framework)
-              Expect.isTrue (workspace >= 15) (sprintf "expected >=15 lifecycle-workspace sources, found %d" workspace)
+              Expect.isTrue (workspace >= 6) (sprintf "expected >=6 lifecycle-workspace sources, found %d" workspace)
               Expect.isTrue (product >= 3) (sprintf "expected >=3 ungated product sources, found %d" product)
               let report = readValidationReport ()
               Expect.stringContains
                   report
-                  "gated-condition: lifecycle-workspace sources (incl. .claude/skills/ product mirror) carry lifecycle == \"spec-kit\"; framework product-skill sources (.agents/skills/) are profile-gated and lifecycle-independent"
+                  "gated-condition: lifecycle-workspace sources carry lifecycle == \"spec-kit\"; framework product-skill sources target .agents/skills/ only (ADR-0011: providers never write .claude/skills/ or .codex/skills/) and are profile-gated, lifecycle-independent"
                   "report records the 3-category gated-condition fact"
           }
 
@@ -196,12 +204,12 @@ let feature204LifecycleTemplateTests =
                       report
                       (sprintf "sdd/%s: framework-skills-present=ok" p)
                       (sprintf "sdd/%s framework fs-gg-* skills present (FR-001)" p)
-                  // Feature 228 (G-204.4): the .claude/skills/ product mirror is ABSENT under sdd — no
-                  // UI product skill leaks into the SDD-orchestrated `.claude/` tree (#47/providerWroteSddTree).
+                  // Feature 229 / ADR-0011 (G-204.4): the template authors zero UI product skills into the
+                  // orchestrator-owned `.claude/` tree under sdd (#47/providerWroteSddTree).
                   Expect.stringContains
                       report
                       (sprintf "sdd/%s: claude-product-skills=0" p)
-                      (sprintf "sdd/%s .claude/skills/ holds zero product skills (Feature 228)" p)
+                      (sprintf "sdd/%s .claude/skills/ holds zero product skills (ADR-0011)" p)
               Expect.stringContains report "dangling-refs: none" "no directive agent-context doc references a suppressed path (CC-1)"
               Expect.stringContains report "catalog-dangling: none" "no scaffold emits a catalog listing absent skills (FR-005/FR-006)"
           }
@@ -218,11 +226,11 @@ let feature204LifecycleTemplateTests =
                       report
                       (sprintf "none/%s: framework-skills-present=ok" p)
                       (sprintf "none/%s framework fs-gg-* skills present (FR-001)" p)
-                  // Feature 228 (G-204.4): .claude/skills/ product mirror absent under none (none ≡ sdd).
+                  // Feature 229 / ADR-0011 (G-204.4): zero UI product skills under none (none ≡ sdd).
                   Expect.stringContains
                       report
                       (sprintf "none/%s: claude-product-skills=0" p)
-                      (sprintf "none/%s .claude/skills/ holds zero product skills (Feature 228)" p)
+                      (sprintf "none/%s .claude/skills/ holds zero product skills (ADR-0011)" p)
           }
 
           // GV-6 (Polish / FR-006/FR-007/FR-008 / SC-004): composition matrix + fail-fast.

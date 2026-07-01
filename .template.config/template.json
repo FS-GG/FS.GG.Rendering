@@ -227,14 +227,6 @@
     },
     {
       "condition": "(lifecycle == \"spec-kit\")",
-      "source": ".agents/skills/",
-      "target": ".claude/skills/",
-      "copyOnly": [
-        "**/*"
-      ]
-    },
-    {
-      "condition": "(lifecycle == \"spec-kit\")",
       "source": ".template.config/generated/",
       "target": "./"
     },
@@ -256,19 +248,9 @@
       "target": ".agents/skills/fs-gg-scene/"
     },
     {
-      "condition": "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\") && lifecycle == \"spec-kit\"",
-      "source": "template/product-skills/fs-gg-scene/",
-      "target": ".claude/skills/fs-gg-scene/"
-    },
-    {
       "condition": "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\")",
       "source": "template/product-skills/fs-gg-symbology/",
       "target": ".agents/skills/fs-gg-symbology/"
-    },
-    {
-      "condition": "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\") && lifecycle == \"spec-kit\"",
-      "source": "template/product-skills/fs-gg-symbology/",
-      "target": ".claude/skills/fs-gg-symbology/"
     },
     {
       "condition": "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\")",
@@ -276,19 +258,9 @@
       "target": ".agents/skills/fs-gg-skiaviewer/"
     },
     {
-      "condition": "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\") && lifecycle == \"spec-kit\"",
-      "source": "template/product-skills/fs-gg-skiaviewer/",
-      "target": ".claude/skills/fs-gg-skiaviewer/"
-    },
-    {
       "condition": "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\")",
       "source": "template/product-skills/fs-gg-elmish/",
       "target": ".agents/skills/fs-gg-elmish/"
-    },
-    {
-      "condition": "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\") && lifecycle == \"spec-kit\"",
-      "source": "template/product-skills/fs-gg-elmish/",
-      "target": ".claude/skills/fs-gg-elmish/"
     },
     {
       "condition": "(profile == \"app\" || profile == \"game\")",
@@ -296,19 +268,9 @@
       "target": ".agents/skills/fs-gg-keyboard-input/"
     },
     {
-      "condition": "(profile == \"app\" || profile == \"game\") && lifecycle == \"spec-kit\"",
-      "source": "template/product-skills/fs-gg-keyboard-input/",
-      "target": ".claude/skills/fs-gg-keyboard-input/"
-    },
-    {
       "condition": "(profile == \"app\" || profile == \"game\")",
       "source": "template/product-skills/fs-gg-ui-widgets/",
       "target": ".agents/skills/fs-gg-ui-widgets/"
-    },
-    {
-      "condition": "(profile == \"app\" || profile == \"game\") && lifecycle == \"spec-kit\"",
-      "source": "template/product-skills/fs-gg-ui-widgets/",
-      "target": ".claude/skills/fs-gg-ui-widgets/"
     },
     {
       "condition": "(profile == \"app\" || profile == \"game\")",
@@ -316,29 +278,14 @@
       "target": ".agents/skills/fs-gg-styling/"
     },
     {
-      "condition": "(profile == \"app\" || profile == \"game\") && lifecycle == \"spec-kit\"",
-      "source": "template/product-skills/fs-gg-styling/",
-      "target": ".claude/skills/fs-gg-styling/"
-    },
-    {
       "condition": "(profile == \"app\" || profile == \"game\")",
       "source": "template/product-skills/fs-gg-layout/",
       "target": ".agents/skills/fs-gg-layout/"
     },
     {
-      "condition": "(profile == \"app\" || profile == \"game\") && lifecycle == \"spec-kit\"",
-      "source": "template/product-skills/fs-gg-layout/",
-      "target": ".claude/skills/fs-gg-layout/"
-    },
-    {
       "condition": "(profile == \"governed\")",
       "source": "template/product-skills/fs-gg-testing/",
       "target": ".agents/skills/fs-gg-testing/"
-    },
-    {
-      "condition": "(profile == \"governed\") && lifecycle == \"spec-kit\"",
-      "source": "template/product-skills/fs-gg-testing/",
-      "target": ".claude/skills/fs-gg-testing/"
     },
     {
       "condition": "(profile == \"sample-pack\")",
@@ -354,19 +301,9 @@
       "target": ".agents/skills/fs-gg-samples/"
     },
     {
-      "condition": "(profile == \"sample-pack\") && lifecycle == \"spec-kit\"",
-      "source": "template/fragments/samples/skill/",
-      "target": ".claude/skills/fs-gg-samples/"
-    },
-    {
       "condition": "(feedback == true) && lifecycle == \"spec-kit\"",
       "source": "template/feedback/skill/",
       "target": ".agents/skills/fs-gg-feedback-capture/"
-    },
-    {
-      "condition": "(feedback == true) && lifecycle == \"spec-kit\"",
-      "source": "template/feedback/skill/",
-      "target": ".claude/skills/fs-gg-feedback-capture/"
     },
     {
       "condition": "(feedback == true) && lifecycle == \"spec-kit\"",
