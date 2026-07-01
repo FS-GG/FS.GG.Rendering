@@ -134,6 +134,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write   # ADR-0013: mint the GitHub OIDC token for nuget.org Trusted Publishing
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -185,3 +186,25 @@ jobs:
             --api-key "${{ secrets.GITHUB_TOKEN }}" \
             --skip-duplicate
           echo "Published coherent set ${{ steps.ver.outputs.version }} to the org feed."
+
+      # Dual-publish the BYTE-IDENTICAL coherent set to public nuget.org (ADR-0012 §1–§5) via Trusted
+      # Publishing / OIDC (ADR-0013 — no stored key). Runs AFTER the org-feed push (gated ordering,
+      # ADR-0012 §4): if that step fails the job stops before this one. NuGet/login mints a single-use
+      # key from the org's Trusted Publishing policy (fs-gg-rendering-release); until the policy exists
+      # it 401s and fails the release loud. Same artifacts/packages/*.nupkg — no re-pack (§3).
+      - name: NuGet login (OIDC → short-lived nuget.org key)
+        if: steps.ver.outputs.push == 'true'
+        id: nuget-login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ secrets.NUGET_USER || 'Paradigma11' }}
+      - name: Push coherent set to nuget.org (public)
+        if: steps.ver.outputs.push == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet nuget push "artifacts/packages/*.nupkg" \
+            --source https://api.nuget.org/v3/index.json \
+            --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}" \
+            --skip-duplicate
+          echo "Published coherent set ${{ steps.ver.outputs.version }} to nuget.org."
