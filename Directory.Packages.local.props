@@ -28,7 +28,7 @@
   <ItemGroup>
     <PackageVersion Include="Expecto" Version="10.2.2" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
-    <PackageVersion Include="YoloDev.Expecto.TestSdk" Version="0.15.3" />
+    <PackageVersion Include="YoloDev.Expecto.TestSdk" Version="0.15.6" />
   </ItemGroup>
   <!-- Build-tooling only (build/** projects, NOT src/** and NOT shipped in any
        generated product). Consumed as ordinary NuGet libraries by the compiled
