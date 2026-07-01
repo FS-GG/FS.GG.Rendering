@@ -43,13 +43,14 @@ let private SPEC_KIT_COND = "lifecycle == \"spec-kit\""
 // ungated source leaves byte-identical — so wiring symbology is GV-3-neutral.
 // Feature 226 wired `fs-gg-styling` (consumer theming/styling) on the controls-bearing profiles
 // (app, game) — gated on product surface, not lifecycle — so it joins the app and game rows alongside
-// `fs-gg-ui-widgets` (the controls it themes).
+// `fs-gg-ui-widgets` (the controls it themes). Feature 227 wired the consumer `fs-gg-layout` (compute
+// HUD + gameplay region by output size) on the same (app, game) surface, so it joins those two rows too.
 let private expectedFrameworkSkills =
-    [ "app", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-keyboard-input"; "fs-gg-ui-widgets"; "fs-gg-styling"; "fs-gg-symbology" ]
+    [ "app", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-keyboard-input"; "fs-gg-ui-widgets"; "fs-gg-styling"; "fs-gg-layout"; "fs-gg-symbology" ]
       "headless-scene", set [ "fs-gg-scene"; "fs-gg-symbology" ]
       "governed", set [ "fs-gg-scene"; "fs-gg-testing"; "fs-gg-symbology" ]
       "sample-pack", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-symbology" ]
-      "game", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-keyboard-input"; "fs-gg-ui-widgets"; "fs-gg-styling"; "fs-gg-symbology" ] ]
+      "game", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-keyboard-input"; "fs-gg-ui-widgets"; "fs-gg-styling"; "fs-gg-layout"; "fs-gg-symbology" ] ]
 
 // The env-free G-EMIT matrix above covers all five scene-bearing profiles (game's symbology emit is
 // proven directly from template.json). The live lifecycle-validation REPORT, however, only scaffolds
@@ -138,8 +139,8 @@ let feature219EmitFrameworkSkillsTests =
           // .agents/skills/ and .claude/skills/ destinations (so agents on either runtime find it).
           test "G-EMIT every framework skill source is lifecycle-independent with both agent destinations" {
               let sources = frameworkSkillSources ()
-              // 8 product skills x 2 surfaces = 16 since Feature 226 wired styling (was 7 x 2 = 14).
-              Expect.isTrue (sources.Length >= 16) (sprintf "expected >=16 framework skill sources, found %d" sources.Length)
+              // 9 product skills x 2 surfaces = 18 since Feature 227 wired layout (was 8 x 2 = 16).
+              Expect.isTrue (sources.Length >= 18) (sprintf "expected >=18 framework skill sources, found %d" sources.Length)
               for s in sources do
                   Expect.isFalse (s.Condition.Contains SPEC_KIT_COND) (sprintf "%s -> %s must not be lifecycle-gated" s.Id s.Target)
                   Expect.stringContains s.Condition "profile ==" (sprintf "%s -> %s must carry a profile predicate" s.Id s.Target)

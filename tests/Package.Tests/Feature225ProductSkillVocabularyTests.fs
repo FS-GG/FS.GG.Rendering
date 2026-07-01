@@ -30,6 +30,7 @@ let private expectedProductSkillIds =
     set
         [ "fs-gg-elmish"
           "fs-gg-keyboard-input"
+          "fs-gg-layout"
           "fs-gg-scene"
           "fs-gg-skiaviewer"
           "fs-gg-styling"
@@ -184,7 +185,7 @@ let private gatedFeedbackBody =
 let tests =
     testList
         "Feature225ProductSkillVocabulary"
-        [ test "discovery surface did not narrow: the template/product-skills scan covers the 7 expected ids (FR-007 edge case)" {
+        [ test "discovery surface did not narrow: the template/product-skills scan covers the 9 expected ids (FR-007 edge case)" {
               let discovered =
                   discoveredProductSkills ()
                   |> List.map (fun e -> e.SkillName.Trim())

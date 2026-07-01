@@ -88,6 +88,7 @@ rather than hard-failing the phase.
 
 - [[fs-gg-skiaviewer]] — render the `SceneNode` this skill builds at the host boundary.
 - [[fs-gg-ui-widgets]] — compose higher-level controls that ultimately emit scenes.
+- [[fs-gg-layout]] — compute the HUD + gameplay regions the scene primitives are placed into.
 
 ## Sources / links
 

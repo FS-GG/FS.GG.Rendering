@@ -1,10 +1,10 @@
 <!-- SKILL-PARITY:START -->
 # Skill Parity Report
 
-Checked at UTC: `2026-06-30T22:21:20.0316820Z`
+Checked at UTC: `2026-07-01T05:55:09.7291739Z`
 Overall status: `passed`
-Canonical sources: `22`
-Wrappers: `45`
+Canonical sources: `23`
+Wrappers: `47`
 
 ## Supported Surfaces
 | Surface | Kind | Agent | Root | Required |
@@ -24,13 +24,13 @@ Wrappers: `45`
 ## Guidance Coverage
 | Rule | Covered | Partial | Missing | Excepted | Not applicable |
 | --- | --- | --- | --- | --- | --- |
-| package-pin-drift | 8 | 0 | 0 | 0 | 46 |
-| readiness-allowlisting | 5 | 0 | 0 | 0 | 49 |
-| validation-output-isolation | 4 | 0 | 0 | 0 | 50 |
-| visual-readiness | 11 | 0 | 0 | 0 | 43 |
-| responsiveness-diagnostics | 7 | 0 | 0 | 0 | 47 |
-| post-merge-package-bump | 2 | 0 | 0 | 0 | 52 |
-| evidence-honesty | 12 | 0 | 0 | 0 | 42 |
+| package-pin-drift | 8 | 0 | 0 | 0 | 47 |
+| readiness-allowlisting | 5 | 0 | 0 | 0 | 50 |
+| validation-output-isolation | 4 | 0 | 0 | 0 | 51 |
+| visual-readiness | 11 | 0 | 0 | 0 | 44 |
+| responsiveness-diagnostics | 7 | 0 | 0 | 0 | 48 |
+| post-merge-package-bump | 2 | 0 | 0 | 0 | 53 |
+| evidence-honesty | 12 | 0 | 0 | 0 | 43 |
 
 ## Findings
 No unresolved parity findings.

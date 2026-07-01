@@ -321,6 +321,16 @@
       "target": ".claude/skills/fs-gg-styling/"
     },
     {
+      "condition": "(profile == \"app\" || profile == \"game\")",
+      "source": "template/product-skills/fs-gg-layout/",
+      "target": ".agents/skills/fs-gg-layout/"
+    },
+    {
+      "condition": "(profile == \"app\" || profile == \"game\")",
+      "source": "template/product-skills/fs-gg-layout/",
+      "target": ".claude/skills/fs-gg-layout/"
+    },
+    {
       "condition": "(profile == \"governed\")",
       "source": "template/product-skills/fs-gg-testing/",
       "target": ".agents/skills/fs-gg-testing/"

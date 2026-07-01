@@ -32,6 +32,7 @@ each. (Each also ships a `fs-gg-product-<name>` wrapper alias alongside it.)
 | `fs-gg-keyboard-input` | .agents/skills/fs-gg-keyboard-input/SKILL.md | app, game |
 | `fs-gg-ui-widgets` | .agents/skills/fs-gg-ui-widgets/SKILL.md | app, game |
 | `fs-gg-styling` | .agents/skills/fs-gg-styling/SKILL.md | app, game |
+| `fs-gg-layout` | .agents/skills/fs-gg-layout/SKILL.md | app, game |
 | `fs-gg-testing` | .agents/skills/fs-gg-testing/SKILL.md | governed |
 
 > Under the spec-kit lifecycle the product additionally carries the framework agent-context skills
