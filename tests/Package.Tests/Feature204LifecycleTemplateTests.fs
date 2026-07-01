@@ -91,12 +91,14 @@ let private coveredValues (report: string) =
 let private SPEC_KIT_COND = "lifecycle == \"spec-kit\""
 
 /// Re-derive the 3-category gating invariant directly from template.json (Feature 219 R3 /
-/// data-model "Template source category"). Classification order is significant: framework
-/// product-skill FIRST (by `source` under template/product-skills/), then lifecycle-workspace
-/// (target under .specify/ | .agents/ | .claude/ | CLAUDE.md | AGENTS.md, the generated tree, or
-/// the named docs/skillist-reference.md catalog exception), then product. Framework product-skills
-/// carry a profile predicate and NO spec-kit clause; lifecycle-workspace sources carry the spec-kit
-/// clause; product sources carry neither.
+/// data-model "Template source category"; Feature 228 surface discrimination). Classification order
+/// is significant: framework product-skill FIRST — but ONLY the provider surface, i.e. a source under
+/// template/product-skills/ whose `target` is under .agents/skills/; a product-skill source whose
+/// `target` is under .claude/skills/ is the orchestrator-owned WORKSPACE mirror and falls through to
+/// lifecycle-workspace (target under .specify/ | .agents/ | .claude/ | CLAUDE.md | AGENTS.md, the
+/// generated tree, or the named docs/skillist-reference.md catalog exception), then product.
+/// Framework product-skills carry a profile predicate and NO spec-kit clause; lifecycle-workspace
+/// sources (incl. the .claude/skills/ product mirror) carry the spec-kit clause; product sources carry neither.
 let private gatedSourceAudit () =
     use doc = JsonDocument.Parse(File.ReadAllText templateJsonPath)
     let mutable framework = 0
@@ -115,7 +117,10 @@ let private gatedSourceAudit () =
         let source = (str "source").Replace('\\', '/')
         let target = (str "target").Replace('\\', '/')
         let condition = str "condition"
-        let isFrameworkSkill = source.StartsWith "template/product-skills/"
+        // Feature 228: only the .agents/skills/ provider surface is FRAMEWORK; the .claude/skills/
+        // product mirror is the orchestrator-owned workspace (spec-kit-only) and classifies below.
+        let isFrameworkSkill =
+            source.StartsWith "template/product-skills/" && target.StartsWith ".agents/skills/"
         let isGeneratedTree = source = ".template.config/generated/"
         let isGatedTarget =
             target.StartsWith ".specify" || target.StartsWith ".agents" || target.StartsWith ".claude"
@@ -158,14 +163,16 @@ let feature204LifecycleTemplateTests =
           test "GV-2 sources partition into framework-skill / lifecycle-workspace / product (3-category gating)" {
               let framework, workspace, product, violations = gatedSourceAudit ()
               Expect.isEmpty violations (sprintf "gating violations: %s" (String.concat "; " violations))
-              // 18 since Feature 227 wired layout (9 product skills x 2 surfaces); was 16 (8 x 2).
-              Expect.isTrue (framework >= 18) (sprintf "expected >=18 framework product-skill sources, found %d" framework)
-              Expect.isTrue (workspace >= 6) (sprintf "expected >=6 lifecycle-workspace sources, found %d" workspace)
+              // Feature 228: framework = the 9 .agents/skills/ provider sources (was 18 = both surfaces);
+              // the 9 .claude/skills/ product mirrors moved to lifecycle-workspace (spec-kit-gated), so
+              // workspace gained 9 (was >=6, now >=15). product unchanged.
+              Expect.isTrue (framework >= 9) (sprintf "expected >=9 framework product-skill sources, found %d" framework)
+              Expect.isTrue (workspace >= 15) (sprintf "expected >=15 lifecycle-workspace sources, found %d" workspace)
               Expect.isTrue (product >= 3) (sprintf "expected >=3 ungated product sources, found %d" product)
               let report = readValidationReport ()
               Expect.stringContains
                   report
-                  "gated-condition: lifecycle-workspace sources carry lifecycle == \"spec-kit\"; framework product-skill sources are profile-gated and lifecycle-independent"
+                  "gated-condition: lifecycle-workspace sources (incl. .claude/skills/ product mirror) carry lifecycle == \"spec-kit\"; framework product-skill sources (.agents/skills/) are profile-gated and lifecycle-independent"
                   "report records the 3-category gated-condition fact"
           }
 
@@ -189,6 +196,12 @@ let feature204LifecycleTemplateTests =
                       report
                       (sprintf "sdd/%s: framework-skills-present=ok" p)
                       (sprintf "sdd/%s framework fs-gg-* skills present (FR-001)" p)
+                  // Feature 228 (G-204.4): the .claude/skills/ product mirror is ABSENT under sdd — no
+                  // UI product skill leaks into the SDD-orchestrated `.claude/` tree (#47/providerWroteSddTree).
+                  Expect.stringContains
+                      report
+                      (sprintf "sdd/%s: claude-product-skills=0" p)
+                      (sprintf "sdd/%s .claude/skills/ holds zero product skills (Feature 228)" p)
               Expect.stringContains report "dangling-refs: none" "no directive agent-context doc references a suppressed path (CC-1)"
               Expect.stringContains report "catalog-dangling: none" "no scaffold emits a catalog listing absent skills (FR-005/FR-006)"
           }
@@ -205,6 +218,11 @@ let feature204LifecycleTemplateTests =
                       report
                       (sprintf "none/%s: framework-skills-present=ok" p)
                       (sprintf "none/%s framework fs-gg-* skills present (FR-001)" p)
+                  // Feature 228 (G-204.4): .claude/skills/ product mirror absent under none (none ≡ sdd).
+                  Expect.stringContains
+                      report
+                      (sprintf "none/%s: claude-product-skills=0" p)
+                      (sprintf "none/%s .claude/skills/ holds zero product skills (Feature 228)" p)
           }
 
           // GV-6 (Polish / FR-006/FR-007/FR-008 / SC-004): composition matrix + fail-fast.

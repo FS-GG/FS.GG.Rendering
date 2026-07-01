@@ -256,7 +256,7 @@
       "target": ".agents/skills/fs-gg-scene/"
     },
     {
-      "condition": "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\")",
+      "condition": "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\") && lifecycle == \"spec-kit\"",
       "source": "template/product-skills/fs-gg-scene/",
       "target": ".claude/skills/fs-gg-scene/"
     },
@@ -266,7 +266,7 @@
       "target": ".agents/skills/fs-gg-symbology/"
     },
     {
-      "condition": "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\")",
+      "condition": "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\") && lifecycle == \"spec-kit\"",
       "source": "template/product-skills/fs-gg-symbology/",
       "target": ".claude/skills/fs-gg-symbology/"
     },
@@ -276,7 +276,7 @@
       "target": ".agents/skills/fs-gg-skiaviewer/"
     },
     {
-      "condition": "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\")",
+      "condition": "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\") && lifecycle == \"spec-kit\"",
       "source": "template/product-skills/fs-gg-skiaviewer/",
       "target": ".claude/skills/fs-gg-skiaviewer/"
     },
@@ -286,7 +286,7 @@
       "target": ".agents/skills/fs-gg-elmish/"
     },
     {
-      "condition": "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\")",
+      "condition": "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\") && lifecycle == \"spec-kit\"",
       "source": "template/product-skills/fs-gg-elmish/",
       "target": ".claude/skills/fs-gg-elmish/"
     },
@@ -296,7 +296,7 @@
       "target": ".agents/skills/fs-gg-keyboard-input/"
     },
     {
-      "condition": "(profile == \"app\" || profile == \"game\")",
+      "condition": "(profile == \"app\" || profile == \"game\") && lifecycle == \"spec-kit\"",
       "source": "template/product-skills/fs-gg-keyboard-input/",
       "target": ".claude/skills/fs-gg-keyboard-input/"
     },
@@ -306,7 +306,7 @@
       "target": ".agents/skills/fs-gg-ui-widgets/"
     },
     {
-      "condition": "(profile == \"app\" || profile == \"game\")",
+      "condition": "(profile == \"app\" || profile == \"game\") && lifecycle == \"spec-kit\"",
       "source": "template/product-skills/fs-gg-ui-widgets/",
       "target": ".claude/skills/fs-gg-ui-widgets/"
     },
@@ -316,7 +316,7 @@
       "target": ".agents/skills/fs-gg-styling/"
     },
     {
-      "condition": "(profile == \"app\" || profile == \"game\")",
+      "condition": "(profile == \"app\" || profile == \"game\") && lifecycle == \"spec-kit\"",
       "source": "template/product-skills/fs-gg-styling/",
       "target": ".claude/skills/fs-gg-styling/"
     },
@@ -326,7 +326,7 @@
       "target": ".agents/skills/fs-gg-layout/"
     },
     {
-      "condition": "(profile == \"app\" || profile == \"game\")",
+      "condition": "(profile == \"app\" || profile == \"game\") && lifecycle == \"spec-kit\"",
       "source": "template/product-skills/fs-gg-layout/",
       "target": ".claude/skills/fs-gg-layout/"
     },
@@ -336,7 +336,7 @@
       "target": ".agents/skills/fs-gg-testing/"
     },
     {
-      "condition": "(profile == \"governed\")",
+      "condition": "(profile == \"governed\") && lifecycle == \"spec-kit\"",
       "source": "template/product-skills/fs-gg-testing/",
       "target": ".claude/skills/fs-gg-testing/"
     },

@@ -162,3 +162,5 @@ specs/220-game-starter-scene/readiness/fr007-baseline/
 !specs/224-skill-catalog-currency/readiness/**
 !specs/225-deleak-product-skill-vocab/readiness/
 !specs/225-deleak-product-skill-vocab/readiness/**
+!specs/228-fix-scaffold-skill-leak/readiness/
+!specs/228-fix-scaffold-skill-leak/readiness/**

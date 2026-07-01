@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/227-layout-product-skill/plan.md
+at specs/228-fix-scaffold-skill-leak/plan.md
 <!-- SPECKIT END -->
 
 ## Ant Design — source of truth

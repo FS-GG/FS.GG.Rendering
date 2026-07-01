@@ -146,7 +146,10 @@ let private verifyGatedSources () =
         let isGatedTarget =
             t.StartsWith ".specify" || t.StartsWith ".agents" || t.StartsWith ".claude"
             || t = "CLAUDE.md" || t = "AGENTS.md"
-        if isFrameworkSkillSource source then
+        // Feature 228: only the .agents/skills/ provider surface is FRAMEWORK (profile-gated,
+        // lifecycle-independent); a product-skill source targeting .claude/skills/ is the orchestrator-
+        // owned workspace mirror and is spec-kit-gated (classifies as lifecycle-workspace below).
+        if isFrameworkSkillSource source && t.StartsWith ".agents/skills" then
             // FRAMEWORK PRODUCT-SKILL: lifecycle-independent, profile-gated (FR-001/FR-002).
             assertTrue
                 (not (condition.Contains SPEC_KIT_COND))
@@ -168,8 +171,8 @@ let private verifyGatedSources () =
                 (not (condition.Contains SPEC_KIT_COND))
                 (sprintf "ungated product source %s -> %s must NOT carry `%s`" source target SPEC_KIT_COND)
             productChecked <- productChecked + 1
-    assertTrue (frameworkChecked >= 12) (sprintf "expected >=12 framework product-skill sources, checked %d" frameworkChecked)
-    assertTrue (workspaceChecked >= 6) (sprintf "expected >=6 lifecycle-workspace sources, checked %d" workspaceChecked)
+    assertTrue (frameworkChecked >= 9) (sprintf "expected >=9 framework product-skill sources (.agents/skills/ provider surface), checked %d" frameworkChecked)
+    assertTrue (workspaceChecked >= 15) (sprintf "expected >=15 lifecycle-workspace sources (incl. .claude/skills/ product mirror), checked %d" workspaceChecked)
     assertTrue (productChecked >= 3) (sprintf "expected >=3 ungated product sources, checked %d" productChecked)
     frameworkChecked, workspaceChecked, productChecked
 
@@ -283,7 +286,9 @@ type private ProfileVerdict =
       Sdd: string               // "gated-absent=ok product-present=ok diff-vs-default=gated-only"
       None_: string             // "gated-absent=ok product-present=ok"
       SddSkillCount: int        // framework `fs-gg-*` SKILL.md count under sdd (FR-001 positive fact)
-      NoneSkillCount: int }     // framework `fs-gg-*` SKILL.md count under none
+      NoneSkillCount: int       // framework `fs-gg-*` SKILL.md count under none
+      SddClaudeProductSkills: int   // Feature 228: .claude/skills/fs-gg-* product mirror count under sdd (must be 0)
+      NoneClaudeProductSkills: int } // Feature 228: .claude/skills/fs-gg-* product mirror count under none (must be 0)
 
 /// Feature 219: the lifecycle WORKSPACE is absent (FR-003) even though the framework `fs-gg-*` product
 /// skills are now PRESENT under `.agents/skills/`/`.claude/skills/` (FR-001). "Absent" is therefore no
@@ -301,6 +306,17 @@ let private workspaceAbsent (dir: string) =
 /// Feature 219 positive fact: count of framework `fs-gg-*` SKILL.md emitted under `.agents/skills/`.
 let private frameworkSkillCount (dir: string) =
     let skillsDir = Path.Combine(dir, ".agents", "skills")
+    if Directory.Exists skillsDir then
+        Directory.EnumerateDirectories(skillsDir, "fs-gg-*")
+        |> Seq.filter (fun d -> File.Exists(Path.Combine(d, "SKILL.md")))
+        |> Seq.length
+    else 0
+
+/// Feature 228 negative fact: count of `fs-gg-*` product skills emitted under `.claude/skills/` (the
+/// orchestrator-owned workspace mirror). MUST be 0 under sdd/none — a product write into `.claude/`
+/// is exactly the `scaffold.providerWroteSddTree` intrusion (#47/#55).
+let private claudeProductSkillCount (dir: string) =
+    let skillsDir = Path.Combine(dir, ".claude", "skills")
     if Directory.Exists skillsDir then
         Directory.EnumerateDirectories(skillsDir, "fs-gg-*")
         |> Seq.filter (fun d -> File.Exists(Path.Combine(d, "SKILL.md")))
@@ -327,6 +343,9 @@ let private validateProfileLive (tmpRoot: string) (profile: string) =
     // FR-001 (positive): the framework `fs-gg-*` product skills ARE present under sdd.
     let sddSkills = frameworkSkillCount sdd
     if sddSkills < 1 then failwithf "%s/sdd: no framework fs-gg-* skills present (FR-001 broken)" profile
+    // Feature 228 (negative): NO fs-gg-* product skill leaks into the orchestrator-owned .claude/skills/.
+    let sddClaudeProduct = claudeProductSkillCount sdd
+    if sddClaudeProduct <> 0 then failwithf "%s/sdd: %d fs-gg-* product skills leaked into .claude/skills/ (providerWroteSddTree, #47)" profile sddClaudeProduct
     // FR-006: the full-registry catalog is NOT emitted under sdd (it would dangle).
     if not (catalogAbsent sdd) then failwithf "%s/sdd: docs/skillist-reference.md emitted (would dangle, FR-006 broken)" profile
     // FR-009: default-minus-sdd differs in ONLY gated paths, and sdd adds nothing.
@@ -345,6 +364,8 @@ let private validateProfileLive (tmpRoot: string) (profile: string) =
     if not (productPresent none_) then failwithf "%s/none: product missing" profile
     let noneSkills = frameworkSkillCount none_
     if noneSkills < 1 then failwithf "%s/none: no framework fs-gg-* skills present (FR-001 broken)" profile
+    let noneClaudeProduct = claudeProductSkillCount none_
+    if noneClaudeProduct <> 0 then failwithf "%s/none: %d fs-gg-* product skills leaked into .claude/skills/ (#47)" profile noneClaudeProduct
     if not (catalogAbsent none_) then failwithf "%s/none: docs/skillist-reference.md emitted (would dangle, FR-006 broken)" profile
     // none == sdd at the template level.
     if treeFingerprint none_ <> treeFingerprint sdd then
@@ -374,7 +395,9 @@ let private validateProfileLive (tmpRoot: string) (profile: string) =
       Sdd = "gated-absent=ok product-present=ok diff-vs-default=gated-only"
       None_ = "gated-absent=ok product-present=ok"
       SddSkillCount = sddSkills
-      NoneSkillCount = noneSkills }
+      NoneSkillCount = noneSkills
+      SddClaudeProductSkills = sddClaudeProduct
+      NoneClaudeProductSkills = noneClaudeProduct }
 
 /// Composition matrix (FR-007/FR-008/SC-004): all 12 lifecycle x profile combos generate with the
 /// ungated ant overlay present; feedback=true emits no gated feedback skill under sdd/none.
@@ -412,7 +435,7 @@ let private renderReport (values: string list) (provenance: string) (verdicts: P
     line (sprintf "covered-values: %s" (String.concat ", " values))
     line (sprintf "profiles: %s" (String.concat ", " profiles))
     line ""
-    line "gated-condition: lifecycle-workspace sources carry lifecycle == \"spec-kit\"; framework product-skill sources are profile-gated and lifecycle-independent"
+    line "gated-condition: lifecycle-workspace sources (incl. .claude/skills/ product mirror) carry lifecycle == \"spec-kit\"; framework product-skill sources (.agents/skills/) are profile-gated and lifecycle-independent"
     line "dangling-refs: none"
     line "catalog-dangling: none"
     line "symbology: vendored"
@@ -426,9 +449,13 @@ let private renderReport (values: string list) (provenance: string) (verdicts: P
     for v in verdicts do
         line (sprintf "sdd/%s: framework-skills-present=ok (%d SKILL.md)" v.Profile v.SddSkillCount)
     for v in verdicts do
+        line (sprintf "sdd/%s: claude-product-skills=%d" v.Profile v.SddClaudeProductSkills)
+    for v in verdicts do
         line (sprintf "none/%s: generate=pass %s" v.Profile v.None_)
     for v in verdicts do
         line (sprintf "none/%s: framework-skills-present=ok (%d SKILL.md)" v.Profile v.NoneSkillCount)
+    for v in verdicts do
+        line (sprintf "none/%s: claude-product-skills=%d" v.Profile v.NoneClaudeProductSkills)
     line ""
     line (sprintf "provenance: %s" provenance)
     line "result: pass"
@@ -450,7 +477,10 @@ let private synthVerdicts () =
           None_ = "gated-absent=ok product-present=ok"
           // env-free synth: the live framework-skill count is profile-specific; assert presence only.
           SddSkillCount = 1
-          NoneSkillCount = 1 })
+          NoneSkillCount = 1
+          // Feature 228: the .claude/skills/ product mirror is spec-kit-only, so it is 0 under sdd/none.
+          SddClaudeProductSkills = 0
+          NoneClaudeProductSkills = 0 })
 
 // ---- entry point ------------------------------------------------------------------------------
 

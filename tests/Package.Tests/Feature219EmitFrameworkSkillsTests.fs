@@ -135,15 +135,24 @@ let feature219EmitFrameworkSkillsTests =
                   Expect.equal actual expected (sprintf "profile %s framework skill set" profile)
           }
 
-          // G-EMIT (FR-001): every framework skill source is lifecycle-independent AND emitted to BOTH
-          // .agents/skills/ and .claude/skills/ destinations (so agents on either runtime find it).
-          test "G-EMIT every framework skill source is lifecycle-independent with both agent destinations" {
+          // G-EMIT (FR-001, Feature 228 surface-specific): each framework skill source carries a profile
+          // predicate AND is emitted to BOTH .agents/skills/ and .claude/skills/ destinations — but the
+          // lifecycle gating is SURFACE-SPECIFIC: the .agents/skills/ provider source is lifecycle-
+          // independent (profile-gated, follows the product), while the .claude/skills/ workspace mirror
+          // is spec-kit-only (it must never land in an SDD-orchestrated `.claude/` tree — #47/#55). The
+          // structural pairing (each id emits under both surfaces) is preserved.
+          test "G-EMIT framework skill sources are profile-gated; .claude/skills/ mirror is spec-kit-only" {
               let sources = frameworkSkillSources ()
               // 9 product skills x 2 surfaces = 18 since Feature 227 wired layout (was 8 x 2 = 16).
               Expect.isTrue (sources.Length >= 18) (sprintf "expected >=18 framework skill sources, found %d" sources.Length)
               for s in sources do
-                  Expect.isFalse (s.Condition.Contains SPEC_KIT_COND) (sprintf "%s -> %s must not be lifecycle-gated" s.Id s.Target)
                   Expect.stringContains s.Condition "profile ==" (sprintf "%s -> %s must carry a profile predicate" s.Id s.Target)
+                  if s.Target.StartsWith ".agents/skills/" then
+                      // provider surface: follows the profile, present under every lifecycle.
+                      Expect.isFalse (s.Condition.Contains SPEC_KIT_COND) (sprintf "%s -> %s (provider surface) must NOT be lifecycle-gated" s.Id s.Target)
+                  elif s.Target.StartsWith ".claude/skills/" then
+                      // orchestrator-owned workspace mirror: spec-kit lane only (Feature 228 / #47).
+                      Expect.stringContains s.Condition SPEC_KIT_COND (sprintf "%s -> %s (.claude/skills/ mirror) must be spec-kit-gated" s.Id s.Target)
               for id in sources |> List.map (fun s -> s.Id) |> List.distinct do
                   let targets = sources |> List.filter (fun s -> s.Id = id) |> List.map (fun s -> s.Target)
                   Expect.isTrue
