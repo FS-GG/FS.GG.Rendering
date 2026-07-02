@@ -558,29 +558,137 @@ module ControlsElmish =
                 dispatchBindings origin authored "changed" (Some(SteppedValue newState)) bindings |> Some
         | _ -> None
 
+    // Feature 241 (Review P10 / C3): the value-from-position discrete-option kinds. `radio-group`
+    // (vertical) and `tabs` (horizontal) each lay their options out along one axis; a click reports the
+    // option UNDER the cursor as a `MovedSelection(index, Some value)` — read back by
+    // `ChangeAdapters.onChangedString` via `navText`. Without this a click fell through to
+    // `Payload = None`, so `onChangedString` saw `""`: a live wrong-value dispatch shipped as a KNOWN
+    // GAPS comment. `stringItemsOf`/`changedBindingsFor`/`boundsOf` factor the shared read; each kind
+    // supplies only its axis→index formula, which MUST mirror its geometry (`WidgetGeometry.radioGeom`
+    // caps the row height at 28; `tabsGeom` splits the width evenly).
+    let private stringItemsOf (control: Control<'msg>) : string list =
+        control.Attributes
+        |> List.tryPick (fun a ->
+            if a.Name = "items" then
+                match a.Value with
+                | StringListValue items -> Some items
+                | _ -> None
+            else
+                None)
+        |> Option.defaultValue []
+
+    let private changedBindingsFor (rendered: ControlRenderResult<'msg>) (authored: ControlId) =
+        rendered.EventBindings
+        |> List.filter (fun binding -> binding.ControlId = authored && binding.EventKind = "changed")
+
+    let private boundsOf (rendered: ControlRenderResult<'msg>) (authored: ControlId) : Rect option =
+        rendered.Bounds |> List.tryFind (fun (id, _) -> id = authored) |> Option.map snd
+
+    // `radio-group`: options stack vertically; the clicked option is `floor((y - top) / rowH)` with the
+    // SAME `rowH = min 28 (height / n)` `radioGeom` paints, clamped to a valid option index.
+    let private radioGroupChangedMessages
+        (rendered: ControlRenderResult<'msg>)
+        (root: Control<'msg>)
+        (authored: ControlId)
+        (y: float)
+        (origin: ControlEventOrigin)
+        : 'msg list option =
+        match tryFindControlById root authored with
+        | Some control when control.Kind = "radio-group" ->
+            match stringItemsOf control, changedBindingsFor rendered authored, boundsOf rendered authored with
+            | [], _, _
+            | _, [], _
+            | _, _, None -> None
+            | items, bindings, Some bounds ->
+                let n = List.length items
+                let rowH = min 28.0 (bounds.Height / float n)
+                let index = Math.Clamp(int (floor ((y - bounds.Y) / max 1.0 rowH)), 0, n - 1)
+                let value = List.item index items
+                dispatchBindings origin authored "changed" (Some(MovedSelection(index, Some value))) bindings
+                |> Some
+        | _ -> None
+
+    // `tabs`: tabs sit side by side; the clicked tab is `floor((x - left) / tabWidth)` with the SAME
+    // even `tabWidth = width / n` `tabsGeom` paints, clamped to a valid tab index.
+    let private tabsChangedMessages
+        (rendered: ControlRenderResult<'msg>)
+        (root: Control<'msg>)
+        (authored: ControlId)
+        (x: float)
+        (origin: ControlEventOrigin)
+        : 'msg list option =
+        match tryFindControlById root authored with
+        | Some control when control.Kind = "tabs" ->
+            match stringItemsOf control, changedBindingsFor rendered authored, boundsOf rendered authored with
+            | [], _, _
+            | _, [], _
+            | _, _, None -> None
+            | items, bindings, Some bounds ->
+                let n = List.length items
+                let tabWidth = bounds.Width / float n
+                let index = Math.Clamp(int (floor ((x - bounds.X) / max 1.0 tabWidth)), 0, n - 1)
+                let value = List.item index items
+                dispatchBindings origin authored "changed" (Some(MovedSelection(index, Some value))) bindings
+                |> Some
+        | _ -> None
+
+    // `numeric-input`: a click focuses the field, it does NOT edit the number (that is keyboard entry),
+    // so it must report the control's CURRENT `value` — NOT fabricate `0.0`. Reads the "value"
+    // `FloatValue` and echoes it as `SteppedValue` (read back by `onChangedFloat` via `navValue`),
+    // turning the P10 reset-to-0.0 dispatch into a faithful no-op change.
+    let private numericInputChangedMessages
+        (rendered: ControlRenderResult<'msg>)
+        (root: Control<'msg>)
+        (authored: ControlId)
+        (origin: ControlEventOrigin)
+        : 'msg list option =
+        match tryFindControlById root authored with
+        | Some control when control.Kind = "numeric-input" ->
+            match changedBindingsFor rendered authored with
+            | [] -> None
+            | bindings ->
+                let current =
+                    control.Attributes
+                    |> List.tryPick (fun a ->
+                        if a.Name = "value" then
+                            match a.Value with
+                            | FloatValue v -> Some v
+                            | _ -> None
+                        else
+                            None)
+                    |> Option.defaultValue 0.0
+
+                dispatchBindings origin authored "changed" (Some(SteppedValue current)) bindings |> Some
+        | _ -> None
+
     /// F3 — the activation-value contract: how a control kind computes its `changed` payload from a
-    /// click, given the rendered frame, the control tree, the authored id, the click x, and the origin.
-    /// `Some msgs` means the kind owns the click and reports its activated value; `None` falls through
-    /// to the generic `Payload = None` click bindings.
+    /// click, given the rendered frame, the control tree, the authored id, the click x AND y, and the
+    /// origin. `Some msgs` means the kind owns the click and reports its activated value; `None` falls
+    /// through to the generic `Payload = None` click bindings. (Feature 241 threads y so a vertically
+    /// laid-out kind — `radio-group` — can resolve the option under the cursor.)
     type private ActivationValueComputer<'msg> =
-        ControlRenderResult<'msg> -> Control<'msg> -> ControlId -> float -> ControlEventOrigin -> 'msg list option
+        ControlRenderResult<'msg> -> Control<'msg> -> ControlId -> float -> float -> ControlEventOrigin -> 'msg list option
 
     /// The activation-value REGISTRY: control kind → its activation-value computer. `bindingMessagesFor`
     /// consults this (keyed by the control's `Kind`) before the generic `Payload = None` fallback, so a
     /// value-bearing kind declares its click→payload computation in ONE place instead of growing an
-    /// `if kind = …` cascade in the router. Registered today: `slider` (value from x) and the boolean
-    /// toggles `switch`/`check-box` (flip `selected`).
+    /// `if kind = …` cascade in the router. Registered: `slider` (value from x), the boolean toggles
+    /// `switch`/`check-box` (flip `selected`), the discrete-option kinds `radio-group` (option from y)
+    /// and `tabs` (tab from x), and `numeric-input` (echo the current value).
     ///
-    /// KNOWN GAPS (audit — value-bearing kinds NOT yet registered, so a click still falls through to
-    /// `Payload = None` and the `onChanged` adapter sees its default): `radio-group`/`tabs`
-    /// (`onChangedString` → ""), `numeric-input` (`onChangedFloat` → 0.0), and `segmented`/`rate`
-    /// (no public `onChanged` binding yet). Each becomes correct by REGISTERING a computer here.
-    /// `toggle-button` is intentionally absent: it bakes `not IsOn` into an `onClick` at view time, so it
-    /// needs no payload (the toggle-authoring split is F6).
+    /// Feature 241 (Review P10 / C3) closed the former KNOWN GAPS: `radio-group`/`tabs` no longer
+    /// fall through to `onChangedString` → `""`, and `numeric-input` no longer resets `onChangedFloat`
+    /// to `0.0`. Still UNREGISTERED (deliberately): `segmented`/`rate` have no public `onChanged`
+    /// binding yet, so there is no payload to compute; `toggle-button` bakes `not IsOn` into an
+    /// `onClick` at view time, so it needs no payload (the toggle-authoring split is F6). Each becomes
+    /// correct by REGISTERING a computer here once it grows a `changed` binding.
     let private activationValueComputers () : (string * ActivationValueComputer<'msg>) list =
-        [ "slider", (fun rendered root authored x origin -> sliderChangedMessages rendered root authored x origin)
-          "switch", (fun rendered root authored _ origin -> toggleChangedMessages rendered root authored origin)
-          "check-box", (fun rendered root authored _ origin -> toggleChangedMessages rendered root authored origin) ]
+        [ "slider", (fun rendered root authored x _ origin -> sliderChangedMessages rendered root authored x origin)
+          "switch", (fun rendered root authored _ _ origin -> toggleChangedMessages rendered root authored origin)
+          "check-box", (fun rendered root authored _ _ origin -> toggleChangedMessages rendered root authored origin)
+          "radio-group", (fun rendered root authored _ y origin -> radioGroupChangedMessages rendered root authored y origin)
+          "tabs", (fun rendered root authored x _ origin -> tabsChangedMessages rendered root authored x origin)
+          "numeric-input", (fun rendered root authored _ _ origin -> numericInputChangedMessages rendered root authored origin) ]
 
     /// Consult the activation-value registry for the authored control's kind. The registry key is
     /// authoritative: an unregistered kind returns `None` (→ generic `Payload = None` click bindings).
@@ -589,22 +697,23 @@ module ControlsElmish =
         (root: Control<'msg>)
         (authored: ControlId)
         (x: float)
+        (y: float)
         (origin: ControlEventOrigin)
         : 'msg list option =
         tryFindControlById root authored
         |> Option.bind (fun control ->
             activationValueComputers ()
             |> List.tryFind (fun (kind, _) -> kind = control.Kind)
-            |> Option.bind (fun (_, compute) -> compute rendered root authored x origin))
+            |> Option.bind (fun (_, compute) -> compute rendered root authored x y origin))
 
     let bindingMessagesFor (rendered: ControlRenderResult<'msg>) (root: Control<'msg>) (interaction: PointerInteraction) : 'msg list option =
         match interaction with
-        | Click(control, _, x, _) ->
+        | Click(control, _, x, y) ->
             match Control.nearestAuthored rendered control with
             | Some authored ->
                 // F3: consult the activation-value registry (keyed by control kind) for the click's
                 // payload; fall through to the generic `Payload = None` click bindings when unregistered.
-                match activationValueFor rendered root authored x ControlEventOrigin.Pointer with
+                match activationValueFor rendered root authored x y ControlEventOrigin.Pointer with
                 | Some msgs -> Some msgs
                 | None ->
                     let matched =
