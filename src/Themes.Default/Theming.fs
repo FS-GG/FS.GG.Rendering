@@ -12,7 +12,8 @@ type ThemeMode =
     | Dark
 
 type RolePalette =
-    { Background: Color
+    { Mode: ThemeMode
+      Background: Color
       Foreground: Color
       Accent: Color
       Danger: Color
@@ -20,13 +21,16 @@ type RolePalette =
       FocusRing: Color }
 
 module Theming =
-    let resolve (mode: ThemeMode) (accent: Color) : RolePalette =
-        let baseTheme =
-            match mode with
-            | Light -> Theme.light
-            | Dark -> Theme.dark
+    let private baseThemeFor =
+        function
+        | Light -> Theme.light
+        | Dark -> Theme.dark
 
-        { Background = baseTheme.Background
+    let resolve (mode: ThemeMode) (accent: Color) : RolePalette =
+        let baseTheme = baseThemeFor mode
+
+        { Mode = mode
+          Background = baseTheme.Background
           Foreground = baseTheme.Foreground
           Accent = accent
           Danger = baseTheme.Danger
@@ -36,7 +40,11 @@ module Theming =
           FocusRing = accent }
 
     let toTheme (palette: RolePalette) : Theme =
-        { Theme.light with
+        // Seed from the palette's OWN mode base (Review P3 / #46): the earlier code always seeded from
+        // `Theme.light`, so a Dark palette projected a Theme carrying light `Success`/`Warning` (and a
+        // "light" `Name`). The neutral role colours below are overwritten from the palette; `Mode` now
+        // carries the correct `Success`/`Warning`/`Name` and the mode-appropriate non-colour fields.
+        { baseThemeFor palette.Mode with
             Foreground = palette.Foreground
             Background = palette.Background
             Accent = palette.Accent

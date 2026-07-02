@@ -9,16 +9,14 @@ open FS.GG.UI.Scene
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Style =
 
-    // The variant-only `success`/`warning` colours are NOT `Theme` fields; select the active
-    // DTCG token set by the theme's variant name (a custom theme keeps its `light`/`dark` name).
-    // FR-008: sourced from generated `DesignTokens`, never an inline literal.
-    let isDark (theme: Theme) = theme.Name = "dark"
+    // Feature 125 (FR-004) made `Success`/`Warning` first-class `Theme` role colours; read them
+    // directly (FR-008: every colour originates from the active `Theme`). The previous fold selected
+    // a DTCG token set by string-matching `theme.Name = "dark"`, which silently ignored the theme's
+    // own `Success`/`Warning` and mis-resolved every theme whose name was not literally "light"/"dark"
+    // (e.g. AntDesign's "AntDesign Dark", and `Theming.toTheme`'s output) to Default light tokens.
+    let successColor (theme: Theme) = theme.Success
 
-    let successColor (theme: Theme) =
-        if isDark theme then DesignTokens.Dark.success else DesignTokens.Light.success
-
-    let warningColor (theme: Theme) =
-        if isDark theme then DesignTokens.Dark.warning else DesignTokens.Light.warning
+    let warningColor (theme: Theme) = theme.Warning
 
     // ---- class layer ----------------------------------------------------------------------
     // Each StyleClass is a partial overwrite of the ResolvedStyle fields it owns. The closed
