@@ -19,8 +19,9 @@ It does **not** cover the Yoga layout **engine** — see [Boundary](#boundary).
 
 ## Consumer surface
 
-Layout for a product is reached through the starter's `Product.LayoutEvidence`
-module (re-exported at product top level in `Product/Program.fs`). The region and
+Layout for a product is reached through the starter's `LayoutEvidence` module
+(re-exported at the product's top-level namespace in the starter project's
+`Program.fs`). The region and
 evidence records come from `FS.GG.UI.Scene`.
 
 - `hudRegionForSize : Size -> LayoutRegionEvidence`
@@ -110,8 +111,8 @@ This skill stays in the consumer slice. It does **not** document:
 
 When you need behaviour beyond computing regions from a size and clamping the active
 item, you have reached the framework's layout engine, which is owned upstream by the
-framework-authoring `fs-gg-layout` skill (`src/Layout/skill/SKILL.md`) — not
-product-author surface. (That upstream skill shares this `name:`; it is the engine
+framework-authoring `fs-gg-layout` skill in the FS.GG.Rendering framework repository —
+not product-author surface. (That upstream skill shares this `name:`; it is the engine
 owner, this is the consumer slice.)
 
 ## Build & Test Commands

@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "skills": [
+    {
+      "id": "fs-gg-elmish",
+      "scope": "product",
+      "sha256": "30406f466a2a45341a2def8ddaa3bfe4627cf3aece83e0efef03282e1e0a450b",
+      "resolvablePath": ".agents/skills/fs-gg-elmish/SKILL.md"
+    },
+    {
+      "id": "fs-gg-feedback-capture",
+      "scope": "product",
+      "sha256": "e6c16f33a3f9b06995378952ba07408cee8a9f4eb4a9ce18bf2142602c40f499",
+      "resolvablePath": ".agents/skills/fs-gg-feedback-capture/SKILL.md"
+    },
+    {
+      "id": "fs-gg-keyboard-input",
+      "scope": "product",
+      "sha256": "09eab05c5ec59661632a70035f3b5f8b434a37301d660e81706ad5cd494942f1",
+      "resolvablePath": ".agents/skills/fs-gg-keyboard-input/SKILL.md"
+    },
+    {
+      "id": "fs-gg-layout",
+      "scope": "product",
+      "sha256": "85c55e26ee42bd8d54533abcf6cb955d53e02651901be3c0e91bfe92dac92d62",
+      "resolvablePath": ".agents/skills/fs-gg-layout/SKILL.md"
+    },
+    {
+      "id": "fs-gg-project",
+      "scope": "product",
+      "sha256": "3dc0b55b9681c99485c39cb0eabd1effaba70061d8a9e5eb57f270061c4aa16d",
+      "resolvablePath": ".agents/skills/fs-gg-project/SKILL.md"
+    },
+    {
+      "id": "fs-gg-samples",
+      "scope": "product",
+      "sha256": "9f07ccc3993b1d99313d36ce234d7586578e147011e074ca1ce267f6daef6484",
+      "resolvablePath": ".agents/skills/fs-gg-samples/SKILL.md"
+    },
+    {
+      "id": "fs-gg-scene",
+      "scope": "product",
+      "sha256": "37ef7800bcc6de7c9bd17e0594942e76fe543e379279dd54a5e6066f052a0da7",
+      "resolvablePath": ".agents/skills/fs-gg-scene/SKILL.md"
+    },
+    {
+      "id": "fs-gg-skiaviewer",
+      "scope": "product",
+      "sha256": "331b9986103d960e7a1400a7605f1f908e73b2dab321efa4aeb497cca29d2480",
+      "resolvablePath": ".agents/skills/fs-gg-skiaviewer/SKILL.md"
+    },
+    {
+      "id": "fs-gg-styling",
+      "scope": "product",
+      "sha256": "24754ec5cb931deb6fcaf7d4b9e5926c42f4325dc4f67cb4852295de8b405ac9",
+      "resolvablePath": ".agents/skills/fs-gg-styling/SKILL.md"
+    },
+    {
+      "id": "fs-gg-symbology",
+      "scope": "product",
+      "sha256": "7e576bd74b600dcbbe212c8ba4e690499917ff3d79b8cc0c4b2fa265157ef3a3",
+      "resolvablePath": ".agents/skills/fs-gg-symbology/SKILL.md"
+    },
+    {
+      "id": "fs-gg-testing",
+      "scope": "product",
+      "sha256": "b7661998e340c06c7d2fb3d44214e780de7c4cff7720fc730f7a39860cb6a01d",
+      "resolvablePath": ".agents/skills/fs-gg-testing/SKILL.md"
+    },
+    {
+      "id": "fs-gg-ui-widgets",
+      "scope": "product",
+      "sha256": "a0c0ce7acafdb1b99b574616fe2940108524bdd11b4eb93b664a8b41dd56650f",
+      "resolvablePath": ".agents/skills/fs-gg-ui-widgets/SKILL.md"
+    }
+  ]
+}

@@ -21,7 +21,8 @@ the spec-kit authoring skills it co-lists are absent there).
 
 These vendor the FS.GG.UI capability guidance into your product. They are wired **per profile**, so
 not every one is present in every product — the "Profiles" column lists the profiles that vendor
-each. (Each also ships a `fs-gg-product-<name>` wrapper alias alongside it.)
+each. Each is a self-contained canonical body declared (with its content digest) in
+`.agents/skills/skill-manifest.json`; no wrapper aliases ship (Feature 231 / ADR-0014).
 
 | skillist id (`name:`) | resolved SKILL.md path | Profiles |
 |---|---|---|
@@ -35,10 +36,13 @@ each. (Each also ships a `fs-gg-product-<name>` wrapper alias alongside it.)
 | `fs-gg-layout` | .agents/skills/fs-gg-layout/SKILL.md | app, game |
 | `fs-gg-testing` | .agents/skills/fs-gg-testing/SKILL.md | governed |
 
-> Under the spec-kit lifecycle the product additionally carries the framework agent-context skills
-> (e.g. `fs-gg-project`, `fs-gg-layout`, `fs-gg-diagnostics`, `fs-gg-generated-controls-guidance`)
-> at the same `.agents/skills/<id>/` and `.claude/skills/<id>/` locations; the rows above are the
-> per-profile capability set you reference from task `skillist:` fields.
+> Under the spec-kit lifecycle the product additionally carries the base authoring skill
+> `fs-gg-project` (and, when selected, `fs-gg-samples` for the sample-pack profile and
+> `fs-gg-feedback-capture` with `--feedback true`) at the same `.agents/skills/<id>/` locations.
+> The framework's own developer surface (`fs-gg-product-*` aliases, `fs-gg-diagnostics`,
+> `fs-gg-design-system`, …) stays in the FS.GG.Rendering repository and does not ship
+> (Feature 231 / ADR-0014). After the first build the same union is materialized byte-identically
+> into `.claude/skills/` and `.codex/skills/` — see `docs/scaffold-map.md`.
 
 ## Spec Kit command skills
 

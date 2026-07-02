@@ -7,7 +7,7 @@ description: Work on optional generated product sample-pack content.
 
 ## Scope
 
-Owns optional sample-pack template content under `template/fragments/samples/`.
+Owns the optional sample-pack content generated under this product's `samples/`.
 
 ## Public Contract
 
@@ -32,7 +32,8 @@ let sampleScene : Scene =
 
 ## Build Commands
 
-Run `./fake.sh build -t GeneratedProductCheck` and `./fake.sh build -t TemplateCheck`.
+Run `./fake.sh build -t Build` in this product to compile sample content with the rest
+of the product.
 
 ## Test Commands
 
@@ -47,9 +48,8 @@ Record sample-pack file lists under the active feature
 
 - Sample-pack and package-consuming samples must compare current `FS.GG.UI.`
   package pins before validation is claimed.
-- Use `scripts/refresh-local-feed-and-samples.fsx` or the `package-feed` proof
-  workflow to prove stale package pins are absent and the local feed is the
-  source of package-consuming sample restores.
+- Use the `package-feed` proof workflow to prove stale package pins are absent
+  and that the intended feed is the source of package-consuming sample restores.
 - When sample readiness uses screenshots, prefer real screenshot evidence,
   disclose degraded captures, require reviewer accepted readiness, and keep
   generated summary caveats visible.

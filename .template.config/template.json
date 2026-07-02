@@ -196,13 +196,19 @@
       "condition": "(lifecycle == \"spec-kit\")",
       "source": "template/base/.agents/",
       "target": ".agents/",
-      "comment": "Feature 204: gated re-emit of the base agent skill/context tree (excluded from the ungated base source above). Placed before the repo-root `.agents/skills/` source so root still overwrites the base `fs-gg-project` skill exactly as today (byte-identical under spec-kit)."
+      "copyOnly": [
+        "**/*"
+      ],
+      "comment": "Feature 204: gated re-emit of the base agent skill/context tree (excluded from the ungated base source above). Feature 231 (ADR-0014): the repo-root `.agents/skills/` source below is narrowed to `speckit-*` and no longer overwrites the base `fs-gg-project` body with a repo-routing wrapper; this canonical body now ships, verbatim (copyOnly) so it byte-matches its skill-manifest sha256."
     },
     {
       "condition": "(lifecycle == \"spec-kit\")",
       "source": "template/base/.claude/",
       "target": ".claude/",
-      "comment": "Feature 204: gated re-emit of the base .claude/ settings, hooks, and fs-gg-project skill (excluded from the ungated base source above). Placed before the repo-root `.agents/skills/`->.claude/skills/ source so root still overwrites the base `fs-gg-project` skill exactly as today."
+      "copyOnly": [
+        "**/*"
+      ],
+      "comment": "Feature 204: gated re-emit of the base .claude/ settings, hooks, and fs-gg-project skill (excluded from the ungated base source above). Feature 231: copyOnly keeps the fs-gg-project body byte-identical to the `.agents/` canonical copy (skill-manifest digest); the standalone materialize step re-asserts `.claude/skills/` ≡ `.agents/skills/` at first build."
     },
     {
       "condition": "(lifecycle == \"spec-kit\")",
@@ -221,25 +227,30 @@
       "condition": "(lifecycle == \"spec-kit\")",
       "source": ".agents/skills/",
       "target": ".agents/skills/",
+      "include": [
+        "speckit-*/**"
+      ],
       "copyOnly": [
         "**/*"
-      ]
+      ],
+      "comment": "Feature 231 (ADR-0014 §Decision 4, fixes audit F3): vendor ONLY the self-contained speckit-* process skills from the repo's `.agents/skills/` — never the whole dev surface. The dropped remainder (fs-gg-product-* aliases and framework wrappers) routes to repo-internal paths (`../../../src/**`, `../../../template/**`) that do not exist in a product. The former blanket `.claude/`/`.codex/` copies are replaced by the single standalone materialize step (`.specify/scripts/fs-gg/materialize-skill-roots.fsx`, run by the FsGgMaterializeSkillRoots build target)."
+    },
+    {
+      "source": "template/skill-manifest/",
+      "target": ".agents/skills/",
+      "copyOnly": [
+        "**/*"
+      ],
+      "comment": "Feature 231 (ADR-0014 §Decision 1): the provider's product skill-manifest (skill-manifest schema v1) — the full product-scope catalog with per-skill canonical-body sha256. UNGATED: it ships inside the provider-owned `.agents/skills/` subtree in every lifecycle, so both mirror authorities (the standalone materialize under spec-kit; the fsgg-sdd fan-out under sdd) propagate it to every agent-skill root and downstream gates can verify the union in both lanes."
     },
     {
       "condition": "(lifecycle == \"spec-kit\")",
-      "source": ".agents/skills/",
-      "target": ".claude/skills/",
+      "source": "template/lifecycle/",
+      "target": ".specify/scripts/fs-gg/",
       "copyOnly": [
         "**/*"
-      ]
-    },
-    {
-      "condition": "(lifecycle == \"spec-kit\")",
-      "source": ".agents/skills/",
-      "target": ".codex/skills/",
-      "copyOnly": [
-        "**/*"
-      ]
+      ],
+      "comment": "Feature 231 (ADR-0014 §Decision 2): the ONE standalone-lane materialize-and-verify step — a vendored copy of the FS.GG.Contracts Fsgg.SkillMirror algorithm plus its IO driver — replacing Feature 230's 24 per-skill `.claude`/`.codex` template.json twins and the blanket copies. spec-kit lane only: under sdd/none the orchestrator owns mirroring (ADR-0011 §2) and this script is not emitted. Invoked by the FsGgMaterializeSkillRoots target in Directory.Build.props on build; release gates run it with --enforce."
     },
     {
       "condition": "(lifecycle == \"spec-kit\")",
@@ -261,137 +272,75 @@
     {
       "condition": "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\")",
       "source": "template/product-skills/fs-gg-scene/",
-      "target": ".agents/skills/fs-gg-scene/"
-    },
-    {
-      "condition": "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\") && lifecycle == \"spec-kit\"",
-      "source": "template/product-skills/fs-gg-scene/",
-      "target": ".claude/skills/fs-gg-scene/"
-    },
-    {
-      "condition": "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\") && lifecycle == \"spec-kit\"",
-      "source": "template/product-skills/fs-gg-scene/",
-      "target": ".codex/skills/fs-gg-scene/"
+      "target": ".agents/skills/fs-gg-scene/",
+      "copyOnly": [
+        "**/*"
+      ],
+      "comment": "Feature 231 (ADR-0014): product skills emit to the provider source root `.agents/skills/` ONLY — Feature 230's per-skill `.claude`/`.codex` twins are superseded by the single standalone materialize step (spec-kit) / the orchestrator fan-out (sdd). copyOnly (fixes audit F5): canonical bodies ship verbatim so skill prose keeps the English word 'product' and each body byte-matches its skill-manifest sha256. Same rationale for every product-skill source below."
     },
     {
       "condition": "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\")",
       "source": "template/product-skills/fs-gg-symbology/",
-      "target": ".agents/skills/fs-gg-symbology/"
-    },
-    {
-      "condition": "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\") && lifecycle == \"spec-kit\"",
-      "source": "template/product-skills/fs-gg-symbology/",
-      "target": ".claude/skills/fs-gg-symbology/"
-    },
-    {
-      "condition": "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\") && lifecycle == \"spec-kit\"",
-      "source": "template/product-skills/fs-gg-symbology/",
-      "target": ".codex/skills/fs-gg-symbology/"
+      "target": ".agents/skills/fs-gg-symbology/",
+      "copyOnly": [
+        "**/*"
+      ]
     },
     {
       "condition": "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\")",
       "source": "template/product-skills/fs-gg-skiaviewer/",
-      "target": ".agents/skills/fs-gg-skiaviewer/"
-    },
-    {
-      "condition": "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\") && lifecycle == \"spec-kit\"",
-      "source": "template/product-skills/fs-gg-skiaviewer/",
-      "target": ".claude/skills/fs-gg-skiaviewer/"
-    },
-    {
-      "condition": "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\") && lifecycle == \"spec-kit\"",
-      "source": "template/product-skills/fs-gg-skiaviewer/",
-      "target": ".codex/skills/fs-gg-skiaviewer/"
+      "target": ".agents/skills/fs-gg-skiaviewer/",
+      "copyOnly": [
+        "**/*"
+      ]
     },
     {
       "condition": "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\")",
       "source": "template/product-skills/fs-gg-elmish/",
-      "target": ".agents/skills/fs-gg-elmish/"
-    },
-    {
-      "condition": "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\") && lifecycle == \"spec-kit\"",
-      "source": "template/product-skills/fs-gg-elmish/",
-      "target": ".claude/skills/fs-gg-elmish/"
-    },
-    {
-      "condition": "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\") && lifecycle == \"spec-kit\"",
-      "source": "template/product-skills/fs-gg-elmish/",
-      "target": ".codex/skills/fs-gg-elmish/"
+      "target": ".agents/skills/fs-gg-elmish/",
+      "copyOnly": [
+        "**/*"
+      ]
     },
     {
       "condition": "(profile == \"app\" || profile == \"game\")",
       "source": "template/product-skills/fs-gg-keyboard-input/",
-      "target": ".agents/skills/fs-gg-keyboard-input/"
-    },
-    {
-      "condition": "(profile == \"app\" || profile == \"game\") && lifecycle == \"spec-kit\"",
-      "source": "template/product-skills/fs-gg-keyboard-input/",
-      "target": ".claude/skills/fs-gg-keyboard-input/"
-    },
-    {
-      "condition": "(profile == \"app\" || profile == \"game\") && lifecycle == \"spec-kit\"",
-      "source": "template/product-skills/fs-gg-keyboard-input/",
-      "target": ".codex/skills/fs-gg-keyboard-input/"
+      "target": ".agents/skills/fs-gg-keyboard-input/",
+      "copyOnly": [
+        "**/*"
+      ]
     },
     {
       "condition": "(profile == \"app\" || profile == \"game\")",
       "source": "template/product-skills/fs-gg-ui-widgets/",
-      "target": ".agents/skills/fs-gg-ui-widgets/"
-    },
-    {
-      "condition": "(profile == \"app\" || profile == \"game\") && lifecycle == \"spec-kit\"",
-      "source": "template/product-skills/fs-gg-ui-widgets/",
-      "target": ".claude/skills/fs-gg-ui-widgets/"
-    },
-    {
-      "condition": "(profile == \"app\" || profile == \"game\") && lifecycle == \"spec-kit\"",
-      "source": "template/product-skills/fs-gg-ui-widgets/",
-      "target": ".codex/skills/fs-gg-ui-widgets/"
+      "target": ".agents/skills/fs-gg-ui-widgets/",
+      "copyOnly": [
+        "**/*"
+      ]
     },
     {
       "condition": "(profile == \"app\" || profile == \"game\")",
       "source": "template/product-skills/fs-gg-styling/",
-      "target": ".agents/skills/fs-gg-styling/"
-    },
-    {
-      "condition": "(profile == \"app\" || profile == \"game\") && lifecycle == \"spec-kit\"",
-      "source": "template/product-skills/fs-gg-styling/",
-      "target": ".claude/skills/fs-gg-styling/"
-    },
-    {
-      "condition": "(profile == \"app\" || profile == \"game\") && lifecycle == \"spec-kit\"",
-      "source": "template/product-skills/fs-gg-styling/",
-      "target": ".codex/skills/fs-gg-styling/"
+      "target": ".agents/skills/fs-gg-styling/",
+      "copyOnly": [
+        "**/*"
+      ]
     },
     {
       "condition": "(profile == \"app\" || profile == \"game\")",
       "source": "template/product-skills/fs-gg-layout/",
-      "target": ".agents/skills/fs-gg-layout/"
-    },
-    {
-      "condition": "(profile == \"app\" || profile == \"game\") && lifecycle == \"spec-kit\"",
-      "source": "template/product-skills/fs-gg-layout/",
-      "target": ".claude/skills/fs-gg-layout/"
-    },
-    {
-      "condition": "(profile == \"app\" || profile == \"game\") && lifecycle == \"spec-kit\"",
-      "source": "template/product-skills/fs-gg-layout/",
-      "target": ".codex/skills/fs-gg-layout/"
+      "target": ".agents/skills/fs-gg-layout/",
+      "copyOnly": [
+        "**/*"
+      ]
     },
     {
       "condition": "(profile == \"governed\")",
       "source": "template/product-skills/fs-gg-testing/",
-      "target": ".agents/skills/fs-gg-testing/"
-    },
-    {
-      "condition": "(profile == \"governed\") && lifecycle == \"spec-kit\"",
-      "source": "template/product-skills/fs-gg-testing/",
-      "target": ".claude/skills/fs-gg-testing/"
-    },
-    {
-      "condition": "(profile == \"governed\") && lifecycle == \"spec-kit\"",
-      "source": "template/product-skills/fs-gg-testing/",
-      "target": ".codex/skills/fs-gg-testing/"
+      "target": ".agents/skills/fs-gg-testing/",
+      "copyOnly": [
+        "**/*"
+      ]
     },
     {
       "condition": "(profile == \"sample-pack\")",
@@ -404,32 +353,18 @@
     {
       "condition": "(profile == \"sample-pack\") && lifecycle == \"spec-kit\"",
       "source": "template/fragments/samples/skill/",
-      "target": ".agents/skills/fs-gg-samples/"
-    },
-    {
-      "condition": "(profile == \"sample-pack\") && lifecycle == \"spec-kit\"",
-      "source": "template/fragments/samples/skill/",
-      "target": ".claude/skills/fs-gg-samples/"
-    },
-    {
-      "condition": "(profile == \"sample-pack\") && lifecycle == \"spec-kit\"",
-      "source": "template/fragments/samples/skill/",
-      "target": ".codex/skills/fs-gg-samples/"
+      "target": ".agents/skills/fs-gg-samples/",
+      "copyOnly": [
+        "**/*"
+      ]
     },
     {
       "condition": "(feedback == true) && lifecycle == \"spec-kit\"",
       "source": "template/feedback/skill/",
-      "target": ".agents/skills/fs-gg-feedback-capture/"
-    },
-    {
-      "condition": "(feedback == true) && lifecycle == \"spec-kit\"",
-      "source": "template/feedback/skill/",
-      "target": ".claude/skills/fs-gg-feedback-capture/"
-    },
-    {
-      "condition": "(feedback == true) && lifecycle == \"spec-kit\"",
-      "source": "template/feedback/skill/",
-      "target": ".codex/skills/fs-gg-feedback-capture/"
+      "target": ".agents/skills/fs-gg-feedback-capture/",
+      "copyOnly": [
+        "**/*"
+      ]
     },
     {
       "condition": "(feedback == true) && lifecycle == \"spec-kit\"",

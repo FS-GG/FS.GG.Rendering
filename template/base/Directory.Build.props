@@ -10,4 +10,29 @@
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <RestoreLockedMode Condition="'$(ContinuousIntegrationBuild)' == 'true' And Exists('$(MSBuildProjectDirectory)/packages.lock.json')">true</RestoreLockedMode>
   </PropertyGroup>
+
+  <!-- 231 (ADR-0014): the ONE standalone-lane skill-root materialize step. Present only when the
+       spec-kit lifecycle emitted the vendored script (sdd/none products never run it — the
+       orchestrator owns mirroring there). Fans .agents/skills/** into .claude/ + .codex/ as
+       byte-identical copies and verifies against .agents/skills/skill-manifest.json (advisory in
+       the product; release/composition gates rerun the script with the enforce flag). Incremental via the
+       stamp file, so multi-project builds run the fsi step once and re-run it only when the
+       union changes. dotnet fsi ships with the SDK; the script is pure BCL (no restore/network). -->
+  <PropertyGroup>
+    <FsGgSkillMaterializeScript>$(MSBuildThisFileDirectory).specify/scripts/fs-gg/materialize-skill-roots.fsx</FsGgSkillMaterializeScript>
+    <FsGgSkillRootsStamp>$(MSBuildThisFileDirectory).specify/.fs-gg/skill-roots.stamp</FsGgSkillRootsStamp>
+  </PropertyGroup>
+  <ItemGroup Condition="Exists('$(FsGgSkillMaterializeScript)')">
+    <FsGgAgentSkillFile Include="$(MSBuildThisFileDirectory).agents/skills/**/*" />
+  </ItemGroup>
+  <Target Name="FsGgMaterializeSkillRoots"
+          BeforeTargets="Build"
+          Condition="Exists('$(FsGgSkillMaterializeScript)')"
+          Inputs="@(FsGgAgentSkillFile);$(FsGgSkillMaterializeScript)"
+          Outputs="$(FsGgSkillRootsStamp)">
+    <Exec Command="dotnet fsi &quot;$(FsGgSkillMaterializeScript)&quot;"
+          WorkingDirectory="$(MSBuildThisFileDirectory)" />
+    <MakeDir Directories="$(MSBuildThisFileDirectory).specify/.fs-gg" />
+    <Touch Files="$(FsGgSkillRootsStamp)" AlwaysCreate="true" />
+  </Target>
 </Project>

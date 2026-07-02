@@ -60,8 +60,7 @@ readiness evidence into the product.
 ## Feature 168 Evidence Rules
 
 - Package-consuming generated products must compare current `FS.GG.UI.` package
-  pins and use `scripts/refresh-local-feed-and-samples.fsx` or `package-feed`
-  proof for stale package pins and local feed evidence.
+  pins and use `package-feed` proof for stale package pins and feed evidence.
 - Framework readiness output under `specs/*/readiness/` is ignored until
   `.gitignore` allowlists it; record `git check-ignore` proof before treating it
   as committed evidence.

@@ -26,7 +26,8 @@ open FS.GG.UI.Testing
 // Declare what this product expects of its own generated output.
 let expectation =
     { Profile = "governed"
-      RequiredFiles = [ "src/Product/Product.fsproj"; "docs/effects-boundary.md" ]
+      // <YourProduct> = this product's name (its src/ project directory).
+      RequiredFiles = [ "src/<YourProduct>/<YourProduct>.fsproj"; "docs/effects-boundary.md" ]
       ForbiddenPrefixes = [ "samples/" ]
       PackageReferences =
         [ { PackageId = "FS.GG.UI.Scene"; Required = true }

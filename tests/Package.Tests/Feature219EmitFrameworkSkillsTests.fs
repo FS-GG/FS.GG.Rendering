@@ -135,32 +135,55 @@ let feature219EmitFrameworkSkillsTests =
                   Expect.equal actual expected (sprintf "profile %s framework skill set" profile)
           }
 
-          // G-EMIT (FR-001, Feature 230 / ADR-0011 §1): each framework product-skill emits to ALL THREE
-          // agent-skill roots so a standalone product's roots mirror. The `.agents/skills/` source is the
-          // provider surface (profile-gated, EVERY lifecycle — the orchestrator reads it under sdd/none);
-          // the `.claude/skills/` and `.codex/skills/` twins are `spec-kit`-only (standalone self-mirror —
-          // under sdd/none the orchestrator, SDD#57, owns those roots so the provider must not write them).
-          test "G-EMIT framework skill sources emit to .agents (all lifecycles) + .claude/.codex (spec-kit)" {
+          // G-EMIT (FR-001, Feature 231 / ADR-0014): each framework product-skill emits to the provider
+          // source root `.agents/skills/` ONLY (profile-gated, EVERY lifecycle, copyOnly canonical body).
+          // Feature 230's 24 per-skill `.claude`/`.codex` twins are superseded by the SINGLE standalone
+          // materialize step (`.specify/scripts/fs-gg/materialize-skill-roots.fsx`, spec-kit) / the
+          // orchestrator fan-out (sdd) — a product-skill row targeting another root is a resurrected twin.
+          test "G-EMIT framework skill sources emit to .agents only (one materialize step owns the other roots)" {
+              use doc = JsonDocument.Parse(File.ReadAllText templateJsonPath)
               let sources = frameworkSkillSources ()
-              // 9 product skills x 3 roots = 27 (Feature 230 restored .claude and added .codex twins).
-              Expect.isTrue (sources.Length >= 27) (sprintf "expected >=27 framework skill sources (9 x 3 roots), found %d" sources.Length)
+              Expect.equal sources.Length 9 (sprintf "expected exactly 9 framework skill sources (.agents-only, no twins), found %d" sources.Length)
               for s in sources do
                   Expect.stringContains s.Condition "profile ==" (sprintf "%s -> %s must carry a profile predicate" s.Id s.Target)
-                  if s.Target.StartsWith ".agents/skills/" then
-                      // provider surface: follows the profile, present under EVERY lifecycle.
-                      Expect.isFalse (s.Condition.Contains SPEC_KIT_COND) (sprintf "%s -> %s (.agents/ provider surface) must NOT be lifecycle-gated" s.Id s.Target)
-                  elif s.Target.StartsWith ".claude/skills/" || s.Target.StartsWith ".codex/skills/" then
-                      // standalone self-mirror: spec-kit only (orchestrator owns these roots under sdd/none).
-                      Expect.stringContains s.Condition SPEC_KIT_COND (sprintf "%s -> %s (standalone mirror) must be spec-kit-gated" s.Id s.Target)
-                  else
-                      failtestf "unexpected product-skill target root: %s -> %s" s.Id s.Target
-              // Each distinct id emits under ALL THREE roots (mirror completeness).
-              for id in sources |> List.map (fun s -> s.Id) |> List.distinct do
-                  let targets = sources |> List.filter (fun s -> s.Id = id) |> List.map (fun s -> s.Target)
-                  for root in [ ".agents/skills/"; ".claude/skills/"; ".codex/skills/" ] do
-                      Expect.isTrue
-                          (targets |> List.exists (fun t -> t.StartsWith root))
-                          (sprintf "%s must emit under %s (three-root mirror, ADR-0011 §1)" id root)
+                  Expect.isTrue (s.Target.StartsWith ".agents/skills/") (sprintf "%s -> %s: product skills emit to .agents/skills/ ONLY (ADR-0014)" s.Id s.Target)
+                  Expect.isFalse (s.Condition.Contains SPEC_KIT_COND) (sprintf "%s -> %s (.agents/ provider surface) must NOT be lifecycle-gated" s.Id s.Target)
+              // The three structural ADR-0014 rows exist and are correctly gated:
+              let rows =
+                  [ for s in doc.RootElement.GetProperty("sources").EnumerateArray() ->
+                      let str (prop: string) =
+                          match s.TryGetProperty prop with
+                          | true, v -> elemStr v
+                          | _ -> ""
+                      let arr (prop: string) =
+                          match s.TryGetProperty prop with
+                          | true, a -> [ for e in a.EnumerateArray() -> elemStr e ]
+                          | _ -> []
+                      {| Source = (str "source").Replace('\\', '/')
+                         Target = (str "target").Replace('\\', '/')
+                         Condition = str "condition"
+                         Include = arr "include"
+                         CopyOnly = arr "copyOnly" |} ]
+              // 1. the repo-root blanket vendors ONLY the speckit-* process skills (audit F3 fix).
+              let speckit = rows |> List.filter (fun r -> r.Source = ".agents/skills/")
+              Expect.equal speckit.Length 1 "exactly one repo-root .agents/skills/ source"
+              Expect.equal speckit.Head.Include [ "speckit-*/**" ] "the repo-root blanket includes ONLY speckit-*/** (no dev-surface wrappers)"
+              Expect.stringContains speckit.Head.Condition SPEC_KIT_COND "the speckit process-skill copy is spec-kit-gated"
+              // 2. the ungated skill-manifest row ships provider data in every lifecycle.
+              let manifest = rows |> List.filter (fun r -> r.Source = "template/skill-manifest/")
+              Expect.equal manifest.Length 1 "exactly one skill-manifest source"
+              Expect.equal manifest.Head.Condition "" "the skill-manifest row is ungated (ships under sdd/none too)"
+              Expect.isTrue (manifest.Head.Target.StartsWith ".agents/skills/") "the manifest lands inside the provider-owned .agents/skills/"
+              // 3. the single spec-kit materialize step replaces the twins.
+              let materialize = rows |> List.filter (fun r -> r.Source = "template/lifecycle/")
+              Expect.equal materialize.Length 1 "exactly one materialize-step source"
+              Expect.equal materialize.Head.Target ".specify/scripts/fs-gg/" "the materialize step lands under .specify/scripts/fs-gg/"
+              Expect.stringContains materialize.Head.Condition SPEC_KIT_COND "the materialize step is spec-kit-gated (orchestrator owns sdd mirroring)"
+              // 4. no source anywhere writes a skill into .claude/ or .codex/ except the base
+              //    .claude/ agent-context tree (settings/hooks + the fs-gg-project base body).
+              for r in rows do
+                  if (r.Target.StartsWith ".claude/skills/" || r.Target.StartsWith ".codex/skills/") then
+                      failtestf "resurrected per-root skill row: %s -> %s (ADR-0014 forbids hand-written twins)" r.Source r.Target
           }
 
           // G-EMIT (FR-001 positive, report-backed): sdd and none carry the framework skills.

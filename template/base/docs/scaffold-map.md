@@ -156,3 +156,29 @@ the labels `X`/`Y`/`Width`/`Height`; if your own model declares a record with th
 same labels, a bare literal can infer to the wrong record type. Plan your record
 label names (or annotate/qualify) up front — it is far cheaper than reworking the
 model after the inference errors appear.
+
+## Agent-skill roots: one union, three roots, materialized on first build (feature 231, ADR-0014)
+
+Skill guidance for coding agents lives under three interchangeable roots —
+`.agents/skills/`, `.claude/skills/`, `.codex/skills/` — that carry the **same,
+byte-identical union** of the Spec Kit process skills (`speckit-*`) and the product
+capability skills (`fs-gg-*`). How they get there in this (standalone spec-kit) product:
+
+- **Generation** emits the full union into `.agents/skills/` (the provider source root),
+  plus `.agents/skills/skill-manifest.json` — the content-addressed catalog declaring each
+  product skill's canonical-body digest.
+- **The first build** (`dotnet build` or `./build.sh build`) runs the single materialize
+  step — the `FsGgMaterializeSkillRoots` target in `Directory.Build.props` invoking
+  `.specify/scripts/fs-gg/materialize-skill-roots.fsx` — which fans that union into
+  `.claude/skills/` and `.codex/skills/` and verifies all three roots against the manifest
+  (presence ∧ byte-identity ∧ digest match). It is incremental (a stamp under
+  `.specify/.fs-gg/`) and idempotent; rerun it any time with
+  `dotnet fsi .specify/scripts/fs-gg/materialize-skill-roots.fsx --enforce`.
+- **Durable**: the manifest, the materialize pair under `.specify/scripts/fs-gg/`, and the
+  target in `Directory.Build.props` are governance spine — keep them. Skill bodies are
+  verbatim, name-neutral canonical content (your product name is never substituted into
+  skill prose).
+
+Products scaffolded through the SDD orchestrator (`lifecycle=sdd`) do not carry the
+materialize step: there the `fsgg-sdd` CLI is the mirror authority for the non-`.agents`
+roots (ADR-0011 §2).

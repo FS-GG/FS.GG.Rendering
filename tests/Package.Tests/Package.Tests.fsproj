@@ -40,6 +40,11 @@
     <Compile Include="Feature219EmitFrameworkSkillsTests.fs" />
     <Compile Include="Feature224SkillCatalogCurrencyTests.fs" />
     <Compile Include="Feature225ProductSkillVocabularyTests.fs" />
+    <!-- Feature 231: the vendored standalone materialize algorithm (template CONTENT, compiled
+         here solely so the G-PARITY gate can compare it against the published FS.GG.Contracts
+         library — ADR-0014 / roadmap §6 "two lanes, one algorithm"). -->
+    <Compile Include="..\..\template\lifecycle\skill-mirror-vendored.fs" Link="skill-mirror-vendored.fs" />
+    <Compile Include="Feature231SkillManifestTests.fs" />
     <Compile Include="Tests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
@@ -57,6 +62,9 @@
 
   <ItemGroup>
     <PackageReference Include="Expecto" />
+    <!-- Feature 231: the published contract authority the G-PARITY gate compares the vendored
+         template/lifecycle copy against (test-only; exact central pin in Directory.Packages.local.props). -->
+    <PackageReference Include="FS.GG.Contracts" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" />
   </ItemGroup>

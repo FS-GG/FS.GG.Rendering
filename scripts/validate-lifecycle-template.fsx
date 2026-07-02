@@ -115,16 +115,29 @@ let private isSkillistCatalogSource (target: string) (includes: string list) =
     target.Replace('\\', '/') = "docs/skillist-reference.md"
     || List.contains "docs/skillist-reference.md" includes
 
-/// Verify the 3-category gating invariant on every `source` entry (the env-free verdict-core fact,
-/// Feature 219 R3 / data-model "Template source category"). Classification order is significant:
-/// framework-product-skill FIRST (by `source` prefix), then lifecycle-workspace (by `target` prefix
-/// / generated tree / the named skillist exception), then product.
+/// Feature 231 (ADR-0014 §Decision 1): the ungated provider skill-manifest row — provider DATA
+/// shipped inside `.agents/skills/` in every lifecycle so both mirror authorities propagate it.
+let private isManifestSource (source: string) =
+    source.Replace('\\', '/') = "template/skill-manifest/"
+
+/// Verify the gating invariant on every `source` entry (the env-free verdict-core fact,
+/// Feature 219 R3 / data-model "Template source category"; reworked by Feature 231 / ADR-0014).
+/// Classification order is significant: framework-product-skill FIRST (by `source` prefix), then
+/// the ungated skill-manifest row (named exception), then lifecycle-workspace (by `target` prefix
+/// / generated tree / the named skillist exception), then product. Feature 231 also proves the
+/// two structural ADR-0014 facts: the repo-root `.agents/skills/` source vendors ONLY the
+/// `speckit-*` process skills (no dev surface, F3), and exactly one spec-kit-gated materialize
+/// step (template/lifecycle/ -> .specify/scripts/fs-gg/) replaces the Feature 230 per-skill
+/// `.claude`/`.codex` twins (of which none may remain).
 let private verifyGatedSources () =
     use doc = templateDoc ()
     let sources = doc.RootElement.GetProperty("sources")
     let mutable frameworkChecked = 0
     let mutable workspaceChecked = 0
     let mutable productChecked = 0
+    let mutable manifestChecked = 0
+    let mutable materializeChecked = 0
+    let mutable speckitNarrowChecked = 0
     for s in sources.EnumerateArray() do
         let source =
             match s.TryGetProperty "source" with
@@ -142,30 +155,67 @@ let private verifyGatedSources () =
             match s.TryGetProperty "include" with
             | true, arr -> [ for e in arr.EnumerateArray() -> e.GetString() ]
             | _ -> []
+        let copyOnly =
+            match s.TryGetProperty "copyOnly" with
+            | true, arr -> [ for e in arr.EnumerateArray() -> e.GetString() ]
+            | _ -> []
         let t = target.Replace('\\', '/')
         let isGeneratedTree = source = ".template.config/generated/"
         let isGatedTarget =
             t.StartsWith ".specify" || t.StartsWith ".agents" || t.StartsWith ".claude"
             || t.StartsWith ".codex"
             || t = "CLAUDE.md" || t = "AGENTS.md"
-        // Feature 230 / ADR-0011 §1: a product-skill source targets .agents/skills/ on EVERY lifecycle
-        // (provider surface, framework) OR .claude/skills/ / .codex/skills/ on spec-kit only (the standalone
-        // three-root self-mirror, classified as lifecycle-workspace below and asserted spec-kit-gated there).
-        if isFrameworkSkillSource source && t.StartsWith ".agents/skills" then
-            // FRAMEWORK PRODUCT-SKILL: lifecycle-independent, profile-gated (FR-001/FR-002).
+        // Feature 231 (ADR-0014): product skills emit to `.agents/skills/` ONLY — a product-skill
+        // source targeting `.claude/skills/` or `.codex/skills/` is a resurrected Feature 230 twin.
+        if isFrameworkSkillSource source then
+            assertTrue
+                (t.StartsWith ".agents/skills")
+                (sprintf "product-skill source %s -> %s: product skills emit to .agents/skills/ ONLY (the standalone materialize step / orchestrator fan-out own the other roots, ADR-0014)" source target)
+            // FRAMEWORK PRODUCT-SKILL: lifecycle-independent, profile-gated (FR-001/FR-002),
+            // verbatim (copyOnly — canonical bytes must match the skill-manifest sha256, F5).
             assertTrue
                 (not (condition.Contains SPEC_KIT_COND))
                 (sprintf "framework product-skill source %s -> %s must NOT carry `%s` (it follows the profile, not the lifecycle)" source target SPEC_KIT_COND)
             assertTrue
                 (condition.Contains "profile ==")
                 (sprintf "framework product-skill source %s -> %s must carry a profile predicate" source target)
+            assertTrue
+                (List.contains "**/*" copyOnly)
+                (sprintf "framework product-skill source %s -> %s must be copyOnly (verbatim canonical body, ADR-0014/F5)" source target)
             frameworkChecked <- frameworkChecked + 1
+        elif isManifestSource source then
+            // SKILL-MANIFEST (Feature 231, named exception): ungated provider data in .agents/skills/.
+            assertTrue
+                (t.StartsWith ".agents/skills")
+                (sprintf "skill-manifest source %s -> %s must target .agents/skills/ (provider-owned in every lane)" source target)
+            assertTrue
+                (condition = "")
+                (sprintf "skill-manifest source %s -> %s must be UNGATED (ships in every lifecycle)" source target)
+            assertTrue
+                (List.contains "**/*" copyOnly)
+                (sprintf "skill-manifest source %s -> %s must be copyOnly" source target)
+            manifestChecked <- manifestChecked + 1
         elif isGatedTarget || isGeneratedTree || isSkillistCatalogSource target includes then
-            // LIFECYCLE WORKSPACE: spec-kit-only (.specify/, agent-context, blanket skills copy,
-            // generated tree, and the spec-kit-only skillist catalog — the named exception).
+            // LIFECYCLE WORKSPACE: spec-kit-only (.specify/ incl. the single materialize step,
+            // agent-context, the narrowed speckit-* skills copy, generated tree, and the
+            // spec-kit-only skillist catalog — the named exception).
             assertTrue
                 (condition.Contains SPEC_KIT_COND)
                 (sprintf "lifecycle-workspace source %s -> %s missing `%s` (condition=%A)" source target SPEC_KIT_COND condition)
+            // Feature 231 (F3): the repo-root `.agents/skills/` blanket must vendor ONLY speckit-*.
+            if source.Replace('\\', '/') = ".agents/skills/" then
+                assertTrue
+                    (t = ".agents/skills/")
+                    (sprintf "repo-root .agents/skills/ source must target .agents/skills/ only, found %s (Feature 230 blanket twin resurrected?)" target)
+                assertTrue
+                    (includes = [ "speckit-*/**" ])
+                    (sprintf ".agents/skills/ source must include ONLY speckit-*/** (no dev-surface vendoring, ADR-0014/F3); found include=%A" includes)
+                speckitNarrowChecked <- speckitNarrowChecked + 1
+            if source.Replace('\\', '/') = "template/lifecycle/" then
+                assertTrue
+                    (t = ".specify/scripts/fs-gg/")
+                    (sprintf "materialize source %s must target .specify/scripts/fs-gg/, found %s" source target)
+                materializeChecked <- materializeChecked + 1
             workspaceChecked <- workspaceChecked + 1
         else
             // PRODUCT source (base -> ./, samples -> samples/, ant overlay -> ./)
@@ -173,8 +223,11 @@ let private verifyGatedSources () =
                 (not (condition.Contains SPEC_KIT_COND))
                 (sprintf "ungated product source %s -> %s must NOT carry `%s`" source target SPEC_KIT_COND)
             productChecked <- productChecked + 1
-    assertTrue (frameworkChecked >= 9) (sprintf "expected >=9 framework product-skill sources (.agents/skills/ provider surface), checked %d" frameworkChecked)
-    assertTrue (workspaceChecked >= 30) (sprintf "expected >=30 lifecycle-workspace sources (incl. .claude/.codex mirror twins), checked %d" workspaceChecked)
+    assertTrue (frameworkChecked = 9) (sprintf "expected exactly 9 framework product-skill sources (.agents/skills/ provider surface, no twins), checked %d" frameworkChecked)
+    assertTrue (manifestChecked = 1) (sprintf "expected exactly 1 ungated skill-manifest source, checked %d" manifestChecked)
+    assertTrue (materializeChecked = 1) (sprintf "expected exactly 1 spec-kit-gated materialize source (template/lifecycle/), checked %d" materializeChecked)
+    assertTrue (speckitNarrowChecked = 1) (sprintf "expected exactly 1 narrowed repo-root .agents/skills/ source, checked %d" speckitNarrowChecked)
+    assertTrue (workspaceChecked >= 10) (sprintf "expected >=10 lifecycle-workspace sources, checked %d" workspaceChecked)
     assertTrue (productChecked >= 3) (sprintf "expected >=3 ungated product sources, checked %d" productChecked)
     frameworkChecked, workspaceChecked, productChecked
 
@@ -293,7 +346,89 @@ type private ProfileVerdict =
       SddCodexProductSkills: int    // ADR-0011: .codex/skills/fs-gg-* product count under sdd (must be 0)
       NoneClaudeProductSkills: int  // ADR-0011: .claude/skills/fs-gg-* product count under none (must be 0)
       NoneCodexProductSkills: int   // ADR-0011: .codex/skills/fs-gg-* product count under none (must be 0)
-      SpecKitMirror: string } // Feature 230: three-root-mirror=ok when spec-kit .agents==.claude==.codex
+      SpecKitMirror: string     // 231: three-root-mirror=ok (materialized) when the single materialize
+                                //      step yields byte-identical .agents==.claude==.codex roots
+      SpecKitDigests: string    // 231: manifest-digests=ok when --enforce verify exits 0 (ADR-0014 §3)
+      DanglingRoutes: int }     // 231: fs-gg-* skill-body path refs unresolvable in the product (must be 0)
+
+// Feature 231: the expected fs-gg-* skill-dir set per profile (mirrors the Feature 219 G-EMIT
+// matrix) + the spec-kit-only base authoring skill. Any OTHER fs-gg-* dir in a scaffold is a
+// vendored dev-surface wrapper (audit F3) and fails the run.
+let private expectedFrameworkSkills =
+    [ "app", Set.ofList [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-keyboard-input"; "fs-gg-ui-widgets"; "fs-gg-styling"; "fs-gg-layout"; "fs-gg-symbology" ]
+      "headless-scene", Set.ofList [ "fs-gg-scene"; "fs-gg-symbology" ]
+      "governed", Set.ofList [ "fs-gg-scene"; "fs-gg-testing"; "fs-gg-symbology" ]
+      "sample-pack", Set.ofList [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-symbology"; "fs-gg-samples" ] ]
+    |> Map.ofList
+
+// ---- Feature 231 live helpers -------------------------------------------------------------------
+
+/// Run the emitted standalone materialize step, enforcing (ADR-0014 §Decision 2/3). Returns the
+/// process output; a non-zero exit is a hard failure at the call sites unless `expectFail`.
+let private runMaterialize (dir: string) (expectFail: bool) =
+    let script = Path.Combine(dir, ".specify", "scripts", "fs-gg", "materialize-skill-roots.fsx")
+    if not (File.Exists script) then failwithf "%s: materialize script missing at %s" dir script
+    let code, out, err = runProc dir "dotnet" [ "fsi"; script; "--enforce" ]
+    if not expectFail && code <> 0 then
+        failwithf "%s: materialize --enforce failed (exit %d):\n%s\n%s" dir code out err
+    code, out + err
+
+/// Full byte-identity of the three agent-skill roots' skills trees (files, not just dir sets —
+/// covers extra skill files like fs-gg-symbology/reference.fsx and skill-manifest.json).
+let private assertRootsByteIdentical (dir: string) (label: string) =
+    let files root =
+        let d = Path.Combine(dir, root, "skills")
+        if Directory.Exists d then
+            Directory.EnumerateFiles(d, "*", SearchOption.AllDirectories)
+            |> Seq.map (fun f -> Path.GetRelativePath(d, f).Replace('\\', '/'))
+            |> Set.ofSeq
+        else Set.empty
+    let agents = files ".agents"
+    for root in [ ".claude"; ".codex" ] do
+        let other = files root
+        if agents <> other then
+            failwithf "%s: %s/skills file set differs from .agents/skills: only-in-agents=%A only-in-%s=%A"
+                label root (Set.difference agents other) root (Set.difference other agents)
+        for rel in agents do
+            let a = File.ReadAllBytes(Path.Combine(dir, ".agents", "skills", rel.Replace('/', Path.DirectorySeparatorChar)))
+            let b = File.ReadAllBytes(Path.Combine(dir, root, "skills", rel.Replace('/', Path.DirectorySeparatorChar)))
+            if a <> b then failwithf "%s: %s/skills/%s bytes diverge from .agents copy" label root rel
+
+/// Feature 231 (R2.4 / audit F3): extract path-like references from the fs-gg-* skill bodies and
+/// resolve each against the scaffold tree. Backtick-quoted tokens with a product-root path prefix
+/// (or any `../` escape) must resolve; placeholder tokens (`<`, `*`, `{`) are skipped.
+let private danglingSkillRoutes (dir: string) =
+    let skillsDir = Path.Combine(dir, ".agents", "skills")
+    if not (Directory.Exists skillsDir) then []
+    else
+        [ for skillDir in Directory.EnumerateDirectories(skillsDir, "fs-gg-*") do
+            for file in Directory.EnumerateFiles(skillDir, "*", SearchOption.AllDirectories) do
+                let body = File.ReadAllText file
+                let backticked =
+                    System.Text.RegularExpressions.Regex.Matches(body, "`([^`\n]+)`")
+                    |> Seq.map (fun m -> m.Groups.[1].Value.Trim())
+                for token in backticked do
+                    let isPlaceholder = token.Contains "<" || token.Contains "*" || token.Contains "{"
+                    // `readiness/` is the documented product evidence convention — the directory is
+                    // CREATED by the product's first build (build.fsx), so a reference to it in a
+                    // fresh scaffold is a forward convention, not a dangling repo route.
+                    let isProductConvention = token = "readiness/" || token.StartsWith "readiness/"
+                    let looksRooted =
+                        [ "docs/"; "src/"; "samples/"; "scripts/"; ".specify/"; ".agents/"; ".claude/"; ".codex/" ]
+                        |> List.exists token.StartsWith
+                    let isRelativeEscape = token.StartsWith "../"
+                    let looksRooted = looksRooted && not isProductConvention
+                    if not isPlaceholder && (looksRooted || isRelativeEscape) then
+                        // strip a trailing sentence period; tolerate dir-or-file targets
+                        let cleaned = token.TrimEnd('.', ':', ',').TrimEnd('/')
+                        let resolved =
+                            if isRelativeEscape then Path.GetFullPath(Path.Combine(Path.GetDirectoryName file, cleaned.Replace('/', Path.DirectorySeparatorChar)))
+                            else Path.Combine(dir, cleaned.Replace('/', Path.DirectorySeparatorChar))
+                        if not (File.Exists resolved || Directory.Exists resolved) then
+                            yield sprintf "%s -> `%s`" (Path.GetRelativePath(dir, file).Replace('\\', '/')) token ]
+
+let private manifestPresent (dir: string) =
+    File.Exists(Path.Combine(dir, ".agents", "skills", "skill-manifest.json"))
 
 /// Feature 219: the lifecycle WORKSPACE is absent (FR-003) even though the framework `fs-gg-*` product
 /// skills are now PRESENT under `.agents/skills/`/`.claude/skills/` (FR-001). "Absent" is therefore no
@@ -337,6 +472,25 @@ let private orchestratorRootProductSkillCount (dir: string) (root: string) =
 let private claudeProductSkillCount (dir: string) = orchestratorRootProductSkillCount dir ".claude"
 let private codexProductSkillCount (dir: string) = orchestratorRootProductSkillCount dir ".codex"
 
+/// Feature 231: the emitted fs-gg-* dir set must be EXACTLY the expected profile set (+ the
+/// spec-kit-only authoring/conditional skills) — any extra dir is a vendored wrapper (F3).
+let private assertNoWrapperDirs (dir: string) (profile: string) (specKit: bool) =
+    let allowedSpecKitExtras = Set.ofList [ "fs-gg-project"; "fs-gg-feedback-capture" ]
+    let expected =
+        let baseSet = Map.find profile expectedFrameworkSkills
+        // fs-gg-samples is spec-kit-gated (sample-pack only): drop it from the sdd/none expectation.
+        if specKit then baseSet else Set.remove "fs-gg-samples" baseSet
+    let actual = skillSetUnder dir ".agents"
+    let extras =
+        Set.difference actual expected
+        |> fun s -> if specKit then Set.difference s allowedSpecKitExtras else s
+    if not (Set.isEmpty extras) then
+        failwithf "%s/%s: unexpected fs-gg-* skill dirs vendored (dev-surface wrappers, audit F3): %A"
+            profile (if specKit then "spec-kit" else "sdd|none") extras
+    let missing = Set.difference expected actual
+    if not (Set.isEmpty missing) then
+        failwithf "%s/%s: expected fs-gg-* skills missing: %A" profile (if specKit then "spec-kit" else "sdd|none") missing
+
 let private catalogAbsent (dir: string) =
     not (File.Exists(Path.Combine(dir, "docs", "skillist-reference.md")))
 
@@ -347,20 +501,38 @@ let private productPresent (dir: string) =
 let private validateProfileLive (tmpRoot: string) (profile: string) =
     let def = scaffold tmpRoot profile [] (sprintf "%s-default" profile)
     let explicit = scaffold tmpRoot profile [ "--lifecycle"; "spec-kit" ] (sprintf "%s-speckit" profile)
-    // SC-001 (operational): explicit spec-kit == no-value default, byte for byte.
+    // SC-001 (operational): explicit spec-kit == no-value default, byte for byte (compared BEFORE
+    // the materialize step runs, so the comparison is of the raw template emission).
     if treeFingerprint def <> treeFingerprint explicit then
         failwithf "%s: explicit spec-kit scaffold differs from the no-value default (SC-001 broken)" profile
-    // Feature 230 / ADR-0011 §1 (positive): under spec-kit (standalone, no orchestrator) the template
-    // materializes the skill union into ALL THREE roots so they MIRROR — the .agents/.claude/.codex
-    // `fs-gg-*` skill sets are equal.
-    let specKitAgents = skillSetUnder def ".agents"
-    let specKitClaude = skillSetUnder def ".claude"
-    let specKitCodex = skillSetUnder def ".codex"
-    if specKitAgents <> specKitClaude then
-        failwithf "%s/spec-kit: .claude/skills/ set differs from .agents/skills/ (three-root mirror broken, ADR-0011 §1): only-in-agents=%A only-in-claude=%A" profile (Set.difference specKitAgents specKitClaude) (Set.difference specKitClaude specKitAgents)
-    if specKitAgents <> specKitCodex then
-        failwithf "%s/spec-kit: .codex/skills/ set differs from .agents/skills/ (three-root mirror broken, ADR-0011 §1): only-in-agents=%A only-in-codex=%A" profile (Set.difference specKitAgents specKitCodex) (Set.difference specKitCodex specKitAgents)
-    let specKitMirror = if specKitAgents = specKitClaude && specKitAgents = specKitCodex then "ok" else "broken"
+    // Feature 231 / ADR-0014 §Decision 2: under spec-kit (standalone, no orchestrator) the SINGLE
+    // materialize step — the vendored FS.GG.Contracts algorithm the product's build target invokes —
+    // fans .agents/skills/ into .claude/ + .codex/ and verifies content-addressed against the
+    // shipped skill-manifest (--enforce: digests + presence + cross-root identity, ADR-0014 §3).
+    if not (manifestPresent def) then
+        failwithf "%s/spec-kit: .agents/skills/skill-manifest.json missing (ADR-0014 §1)" profile
+    let _, materializeOut = runMaterialize def false
+    if not (materializeOut.Contains "fs-gg-skill-roots: ok") then
+        failwithf "%s/spec-kit: materialize did not report ok: %s" profile materializeOut
+    let specKitDigests = "ok"
+    // Idempotence: a second enforcing run mirrors nothing and stays green.
+    let _, secondRun = runMaterialize def false
+    if not (secondRun.Contains "0 files mirrored") then
+        failwithf "%s/spec-kit: materialize is not idempotent: %s" profile secondRun
+    // Byte-identical union across ALL THREE roots (files, incl. extra skill files + the manifest).
+    assertRootsByteIdentical def (sprintf "%s/spec-kit" profile)
+    let specKitMirror = "ok (materialized)"
+    // Audit F3: no dev-surface wrapper dirs; the emitted fs-gg-* set is exactly the profile set.
+    assertNoWrapperDirs def profile true
+    // R2.4: zero dangling path routes in the emitted fs-gg-* skill bodies.
+    let dangling = danglingSkillRoutes def
+    if not (List.isEmpty dangling) then
+        failwithf "%s/spec-kit: dangling skill routes (R2.4): %s" profile (String.concat "; " dangling)
+    // Feature 231 (F5, both directions): the --enforce digest pass above already proves emitted
+    // skill bodies are byte-verbatim (no name rewriting in skill prose); conversely the intended
+    // capital-Product rename outside skills must still fire (src/<Name>/ project dir).
+    if not (Directory.Exists(Path.Combine(def, "src", productName))) then
+        failwithf "%s/spec-kit: intended Product rename regressed — src/%s missing" profile productName
 
     let sdd = scaffold tmpRoot profile [ "--lifecycle"; "sdd" ] (sprintf "%s-sdd" profile)
     if not (workspaceAbsent sdd) then failwithf "%s/sdd: lifecycle workspace not fully absent" profile
@@ -368,6 +540,12 @@ let private validateProfileLive (tmpRoot: string) (profile: string) =
     // FR-001 (positive): the framework `fs-gg-*` product skills ARE present under sdd.
     let sddSkills = frameworkSkillCount sdd
     if sddSkills < 1 then failwithf "%s/sdd: no framework fs-gg-* skills present (FR-001 broken)" profile
+    // Feature 231: the ungated skill-manifest ships under sdd too (ADR-0014 §1 — the orchestrator
+    // fan-out mirrors it); the standalone materialize step must NOT (spec-kit-only mechanism).
+    if not (manifestPresent sdd) then failwithf "%s/sdd: .agents/skills/skill-manifest.json missing" profile
+    if File.Exists(Path.Combine(sdd, ".specify", "scripts", "fs-gg", "materialize-skill-roots.fsx")) then
+        failwithf "%s/sdd: standalone materialize script leaked into an orchestrated scaffold" profile
+    assertNoWrapperDirs sdd profile false
     // Feature 230 (negative): NO fs-gg-* product skill leaks into the orchestrator-owned .claude/ OR .codex/.
     let sddClaudeProduct = claudeProductSkillCount sdd
     let sddCodexProduct = codexProductSkillCount sdd
@@ -391,6 +569,8 @@ let private validateProfileLive (tmpRoot: string) (profile: string) =
     if not (productPresent none_) then failwithf "%s/none: product missing" profile
     let noneSkills = frameworkSkillCount none_
     if noneSkills < 1 then failwithf "%s/none: no framework fs-gg-* skills present (FR-001 broken)" profile
+    if not (manifestPresent none_) then failwithf "%s/none: .agents/skills/skill-manifest.json missing" profile
+    assertNoWrapperDirs none_ profile false
     let noneClaudeProduct = claudeProductSkillCount none_
     let noneCodexProduct = codexProductSkillCount none_
     if noneClaudeProduct <> 0 then failwithf "%s/none: %d fs-gg-* product skills leaked into .claude/skills/ (#47)" profile noneClaudeProduct
@@ -429,7 +609,9 @@ let private validateProfileLive (tmpRoot: string) (profile: string) =
       SddCodexProductSkills = sddCodexProduct
       NoneClaudeProductSkills = noneClaudeProduct
       NoneCodexProductSkills = noneCodexProduct
-      SpecKitMirror = specKitMirror }
+      SpecKitMirror = specKitMirror
+      SpecKitDigests = specKitDigests
+      DanglingRoutes = dangling.Length }
 
 /// Composition matrix (FR-007/FR-008/SC-004): all 12 lifecycle x profile combos generate with the
 /// ungated ant overlay present; feedback=true emits no gated feedback skill under sdd/none.
@@ -447,6 +629,21 @@ let private validateCompositionMatrix (tmpRoot: string) (values: string list) =
     if feedbackSkill then failwithf "feedback=true under sdd emitted the gated feedback skill (should be suppressed)"
     count
 
+/// Feature 231 (Constitution V red case): a corrupted canonical copy must turn the enforcing
+/// verify red and NAME the drifted skill — the property the whole apparatus exists to check.
+let private validateEnforceRedCase (tmpRoot: string) =
+    let dir = scaffold tmpRoot "app" [] "enforce-red-case"
+    // First materialize green, then corrupt the SOURCE-ROOT copy: the re-mirror propagates the
+    // corruption to every root, so the manifest digest check is what must catch it.
+    runMaterialize dir false |> ignore
+    let scene = Path.Combine(dir, ".agents", "skills", "fs-gg-scene", "SKILL.md")
+    File.AppendAllText(scene, "\n<!-- corrupted for the Feature 231 enforce red case -->\n")
+    let code, out = runMaterialize dir true
+    if code = 0 then failwith "enforce-red-case: corrupted fs-gg-scene body did NOT fail --enforce"
+    if not (out.Contains "fs-gg-scene") then
+        failwithf "enforce-red-case: drift output does not name the corrupted skill: %s" out
+    "ok"
+
 let private validateUnknownRejected (tmpRoot: string) =
     let code, treeExists = scaffoldExpectFail tmpRoot "bogus" [ "--lifecycle"; "bogus" ]
     if code = 0 then failwith "unknown --lifecycle value was accepted (should fail fast)"
@@ -456,7 +653,7 @@ let private validateUnknownRejected (tmpRoot: string) =
 // ---- report rendering -------------------------------------------------------------------------
 
 let private renderReport (values: string list) (provenance: string) (verdicts: ProfileVerdict list)
-                         (matrixCount: int) (unknown: string) =
+                         (matrixCount: int) (unknown: string) (enforceRedCase: string) =
     let sb = StringBuilder()
     let line (s: string) = sb.Append(s).Append('\n') |> ignore
     line "# Lifecycle Template Validation — Feature 204"
@@ -467,17 +664,24 @@ let private renderReport (values: string list) (provenance: string) (verdicts: P
     line (sprintf "covered-values: %s" (String.concat ", " values))
     line (sprintf "profiles: %s" (String.concat ", " profiles))
     line ""
-    line "gated-condition: lifecycle-workspace sources (incl. the .claude/.codex product-skill mirror twins) carry lifecycle == \"spec-kit\"; framework product-skill sources target .agents/skills/ (present under every lifecycle) and are profile-gated, lifecycle-independent"
+    line "gated-condition: lifecycle-workspace sources (incl. the single standalone materialize step at .specify/scripts/fs-gg/) carry lifecycle == \"spec-kit\"; framework product-skill sources target .agents/skills/ ONLY (present under every lifecycle, copyOnly canonical bodies) and are profile-gated, lifecycle-independent; the ungated skill-manifest row ships provider data inside .agents/skills/ in every lifecycle (ADR-0014)"
     line "dangling-refs: none"
     line "catalog-dangling: none"
     line "symbology: vendored"
     line (sprintf "composition-matrix: %d/12 generate; ant-overlay-present=ok; feedback-gated-under-non-speckit=ok" matrixCount)
     line (sprintf "unknown-value: %s" unknown)
+    line (sprintf "enforce-red-case: %s" enforceRedCase)
     line ""
     for v in verdicts do
         line (sprintf "spec-kit/%s: generate=pass %s" v.Profile v.SpecKitDiff)
     for v in verdicts do
         line (sprintf "spec-kit/%s: three-root-mirror=%s" v.Profile v.SpecKitMirror)
+    for v in verdicts do
+        line (sprintf "spec-kit/%s: manifest-digests=%s dangling-routes=%d" v.Profile v.SpecKitDigests v.DanglingRoutes)
+    for v in verdicts do
+        line (sprintf "sdd/%s: manifest-present=ok" v.Profile)
+    for v in verdicts do
+        line (sprintf "none/%s: manifest-present=ok" v.Profile)
     for v in verdicts do
         line (sprintf "sdd/%s: generate=pass %s" v.Profile v.Sdd)
     for v in verdicts do
@@ -518,7 +722,11 @@ let private synthVerdicts () =
           SddCodexProductSkills = 0
           NoneClaudeProductSkills = 0
           NoneCodexProductSkills = 0
-          SpecKitMirror = "ok" })
+          // Feature 231 / ADR-0014: the single materialize step yields byte-identical roots whose
+          // SKILL.md digests match the shipped manifest; zero dangling routes (verdict-core synth).
+          SpecKitMirror = "ok (materialized)"
+          SpecKitDigests = "ok"
+          DanglingRoutes = 0 })
 
 // ---- entry point ------------------------------------------------------------------------------
 
@@ -532,7 +740,7 @@ let private main () =
     let liveGate = Environment.GetEnvironmentVariable "FS_GG_RUN_LIFECYCLE_VALIDATION" = "1"
 
     if emitReport && not liveGate then
-        let report = renderReport values verdictCoreProvenance (synthVerdicts ()) 12 "rejected"
+        let report = renderReport values verdictCoreProvenance (synthVerdicts ()) 12 "rejected" "ok"
         writeReport report
         0
     elif not liveGate then
@@ -548,8 +756,9 @@ let private main () =
         let verdicts = profiles |> List.map (validateProfileLive tmpRoot)
         let matrixCount = validateCompositionMatrix tmpRoot values
         let unknown = validateUnknownRejected tmpRoot
+        let enforceRedCase = validateEnforceRedCase tmpRoot
 
-        let report = renderReport values "live" verdicts matrixCount unknown
+        let report = renderReport values "live" verdicts matrixCount unknown enforceRedCase
         writeReport report
         printfn "%s" report
         0

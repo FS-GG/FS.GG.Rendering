@@ -24,8 +24,12 @@
     <PackageVersion Include="YamlDotNet" Version="18.0.0" />
     <PackageVersion Include="Yoga.Net" Version="3.2.3" />
   </ItemGroup>
-  <!-- Test-only dependencies. Repo-owned FS.Skia.UI package versions are not declared here. -->
+  <!-- Test-only dependencies. Repo-owned FS.Skia.UI package versions are not declared here.
+       FS.GG.Contracts (Feature 231): the published skill-mirror contract authority the
+       Package.Tests parity gate compares the vendored template/lifecycle copy against
+       (ADR-0014 / roadmap §6). Exact pin; test-only; NOT shipped in any product. -->
   <ItemGroup>
+    <PackageVersion Include="FS.GG.Contracts" Version="[1.4.0]" />
     <PackageVersion Include="Expecto" Version="10.2.2" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageVersion Include="YoloDev.Expecto.TestSdk" Version="0.15.3" />

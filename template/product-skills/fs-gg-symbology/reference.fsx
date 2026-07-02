@@ -1,10 +1,11 @@
 // fs-gg-symbology reference recipe — roster -> ChannelMap -> gallery -> Render.toPng -> read PNG back.
-// In-tree variant: #r the built Debug DLLs (build the two projects first). For a packaged product,
-// replace the #r lines with `#r "nuget: FS.GG.UI.Symbology"` and `#r "nuget: FS.GG.UI.Symbology.Render"`.
-#r "../../../src/Scene/bin/Debug/net10.0/FS.GG.UI.Scene.dll"
-#r "../../../src/SkiaViewer/bin/Debug/net10.0/FS.GG.UI.SkiaViewer.dll"
-#r "../../../src/Symbology/bin/Debug/net10.0/FS.GG.UI.Symbology.dll"
-#r "../../../src/Symbology.Render/bin/Debug/net10.0/FS.GG.UI.Symbology.Render.dll"
+// Packaged-product recipe: reference the symbology packages from NuGet. For version coherence
+// with this product, pin each to your FsGgUiVersion (Directory.Packages.props), e.g.
+// `#r "nuget: FS.GG.UI.Symbology, <FsGgUiVersion>"`; unpinned resolves the latest published set.
+#r "nuget: FS.GG.UI.Scene"
+#r "nuget: FS.GG.UI.SkiaViewer"
+#r "nuget: FS.GG.UI.Symbology"
+#r "nuget: FS.GG.UI.Symbology.Render"
 
 open System.IO
 open FS.GG.UI.Scene
