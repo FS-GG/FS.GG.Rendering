@@ -867,9 +867,10 @@ let us3ElmishFlowTests =
 let us4SampleAndScreenshotTests =
     testList "US4 complete Elmish viewer examples" [
         test "BasicViewer contract smoke compiles and exercises scene and screenshot command" {
-            // Guarded like its InteractiveViewer/ScreenshotGallery siblings below: the samples/ tree
-            // was not imported at migration Stage R4, so when the project is absent this asserts the
-            // absence rather than failing. It self-restores to a full smoke assertion once samples land.
+            // Guarded like its InteractiveViewer/ScreenshotGallery siblings below: the parity samples/
+            // tree was not imported at migration Stage R4, so when the project is absent this records an
+            // honest SKIP (not a vacuous pass — see SKIPPED-TESTS.md). It self-restores to a full smoke
+            // assertion once the sample lands.
             let project = Path.Combine(repositoryRoot, "samples", "BasicViewer", "BasicViewer.fsproj")
 
             if File.Exists project then
@@ -885,7 +886,7 @@ let us4SampleAndScreenshotTests =
                 Expect.stringContains stdout "contains-chart=true" "basic sample has chart composition"
                 Expect.stringContains stdout "screenshot-format=Png" "basic sample requests PNG screenshot capture"
             else
-                Expect.isFalse (File.Exists project) "BasicViewer sample is absent until samples/ is imported (Stage R4 pending)"
+                skiptest "SKIPPED(Stage R4 import): samples/BasicViewer not imported — the BasicViewer contract smoke needs the sample project; recorded skipped, not vacuously passed (SKIPPED-TESTS.md). Self-restores once the sample lands."
         }
 
         test "InteractiveViewer contract smoke compiles and exercises input state and screenshot command" {
@@ -904,7 +905,7 @@ let us4SampleAndScreenshotTests =
                 Expect.stringContains stdout "initialize-effect=true" "sample requests renderer initialization through Elmish effect mapping"
                 Expect.stringContains stdout "screenshot-format=Jpeg" "interactive sample requests JPEG screenshot capture"
             else
-                Expect.isFalse (File.Exists project) "InteractiveViewer is optional and absent in the minimal template profile"
+                skiptest "SKIPPED(Stage R4 import): samples/InteractiveViewer not imported — the InteractiveViewer contract smoke needs the sample project; recorded skipped, not vacuously passed (SKIPPED-TESTS.md). Self-restores once the sample lands."
         }
 
         test "ScreenshotGallery contract smoke exercises screenshots diagnostics recovery and shutdown effects" {
@@ -923,7 +924,7 @@ let us4SampleAndScreenshotTests =
                 Expect.stringContains stdout "recovery-diagnostic-effect=true" "sample reports recoverable frame diagnostics"
                 Expect.stringContains stdout "shutdown-effect=true" "sample shuts down through Elmish effect mapping"
             else
-                Expect.isFalse (File.Exists project) "ScreenshotGallery is optional and absent in the minimal template profile"
+                skiptest "SKIPPED(Stage R4 import): samples/ScreenshotGallery not imported — the ScreenshotGallery contract smoke needs the sample project; recorded skipped, not vacuously passed (SKIPPED-TESTS.md). Self-restores once the sample lands."
         }
 
         test "screenshot diagnostics describe capture before a successful frame" {

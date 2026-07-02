@@ -1,0 +1,59 @@
+[{ Nodes = [Rectangle ((10.0, 72.0, 28.0, 28.0), { Red = 96uy
+                                                   Green = 165uy
+                                                   Blue = 250uy
+                                                   Alpha = 255uy })] };
+ { Nodes = [Line ({ X = 16.0
+                    Y = 87.0 }, { X = 22.0
+                                  Y = 93.0 }, { Fill = Some { Red = 17uy
+                                                              Green = 24uy
+                                                              Blue = 39uy
+                                                              Alpha = 255uy }
+                                                Stroke = Some { Width = 3.0
+                                                                Cap = Butt
+                                                                Join = Miter
+                                                                Miter = 4.0 }
+                                                Opacity = 1.0
+                                                Antialias = true
+                                                BlendMode = SrcOver
+                                                Shader = None
+                                                ColorFilter = NoColorFilter
+                                                MaskFilter = NoMaskFilter
+                                                ImageFilter = NoImageFilter
+                                                PathEffect = NoPathEffect })] };
+ { Nodes = [Line ({ X = 22.0
+                    Y = 93.0 }, { X = 33.0
+                                  Y = 79.0 }, { Fill = Some { Red = 17uy
+                                                              Green = 24uy
+                                                              Blue = 39uy
+                                                              Alpha = 255uy }
+                                                Stroke = Some { Width = 3.0
+                                                                Cap = Butt
+                                                                Join = Miter
+                                                                Miter = 4.0 }
+                                                Opacity = 1.0
+                                                Antialias = true
+                                                BlendMode = SrcOver
+                                                Shader = None
+                                                ColorFilter = NoColorFilter
+                                                MaskFilter = NoMaskFilter
+                                                ImageFilter = NoImageFilter
+                                                PathEffect = NoPathEffect })] };
+ { Nodes = [TextRun { Text = "Enabled"
+                      Position = { X = 48.0
+                                   Y = 91.0 }
+                      Font = { Family = None
+                               Size = 13.0
+                               Weight = None }
+                      Paint = { Fill = Some { Red = 241uy
+                                              Green = 245uy
+                                              Blue = 249uy
+                                              Alpha = 255uy }
+                                Stroke = None
+                                Opacity = 1.0
+                                Antialias = true
+                                BlendMode = SrcOver
+                                Shader = None
+                                ColorFilter = NoColorFilter
+                                MaskFilter = NoMaskFilter
+                                ImageFilter = NoImageFilter
+                                PathEffect = NoPathEffect } }] }]

@@ -1,0 +1,38 @@
+[{ Nodes = [PaintedRectangle ({ X = 10.0
+                                Y = 72.0
+                                Width = 28.0
+                                Height = 28.0 }, { Fill = Some { Red = 241uy
+                                                                 Green = 245uy
+                                                                 Blue = 249uy
+                                                                 Alpha = 255uy }
+                                                   Stroke = Some { Width = 2.0
+                                                                   Cap = Butt
+                                                                   Join = Miter
+                                                                   Miter = 4.0 }
+                                                   Opacity = 1.0
+                                                   Antialias = true
+                                                   BlendMode = SrcOver
+                                                   Shader = None
+                                                   ColorFilter = NoColorFilter
+                                                   MaskFilter = NoMaskFilter
+                                                   ImageFilter = NoImageFilter
+                                                   PathEffect = NoPathEffect })] };
+ { Nodes = [TextRun { Text = "Enabled"
+                      Position = { X = 48.0
+                                   Y = 91.0 }
+                      Font = { Family = None
+                               Size = 13.0
+                               Weight = None }
+                      Paint = { Fill = Some { Red = 241uy
+                                              Green = 245uy
+                                              Blue = 249uy
+                                              Alpha = 255uy }
+                                Stroke = None
+                                Opacity = 1.0
+                                Antialias = true
+                                BlendMode = SrcOver
+                                Shader = None
+                                ColorFilter = NoColorFilter
+                                MaskFilter = NoMaskFilter
+                                ImageFilter = NoImageFilter
+                                PathEffect = NoPathEffect } }] }]

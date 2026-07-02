@@ -55,34 +55,43 @@ let private frozenCheckboxGeom (theme: Theme) (on: bool) (label: string) : Scene
 
 let private themes = [ "light", Theme.light; "dark", Theme.dark ]
 
-// Capture the frozen-oracle baselines to readiness/parity/<kind>.<theme>.scene.txt (T020).
-let private captureBaselines () =
-    let repoRoot = RepositoryRoot.value
-    let dir = Path.Combine(repoRoot, "specs", "093-visual-state-style-layer", "readiness", "parity")
-    Directory.CreateDirectory dir |> ignore
-    // Returns the list of baseline files written, so callers can assert they actually landed on disk.
+// The frozen-oracle baselines are COMMITTED goldens under readiness/parity/, regenerated only when
+// PARITY_REGEN is set (then committed) — the Feature109 corpus pattern (env-gated regen + committed-
+// golden compare). T020 asserts the committed file still equals the frozen oracle, so drift in either
+// the oracle or the file fails loudly instead of being silently overwritten every run.
+let private parityDir =
+    Path.Combine(RepositoryRoot.value, "specs", "093-visual-state-style-layer", "readiness", "parity")
+
+let private parityRegen =
+    not (System.String.IsNullOrEmpty(System.Environment.GetEnvironmentVariable "PARITY_REGEN"))
+
+// Each baseline: its committed filename paired with the frozen-oracle serialization it must equal.
+let private parityBaselines () : (string * string) list =
     [ for (tname, theme) in themes do
-        let buttonPath = Path.Combine(dir, sprintf "button.%s.normal.scene.txt" tname)
-        File.WriteAllText(buttonPath, sprintf "%A" (frozenButtonGeom theme "Save"))
-        yield buttonPath
-        let checkPath = Path.Combine(dir, sprintf "check-box.%s.normal.scene.txt" tname)
-        File.WriteAllText(checkPath, sprintf "%A" (frozenCheckboxGeom theme false "Enabled"))
-        yield checkPath
-        let checkedPath = Path.Combine(dir, sprintf "check-box-checked.%s.normal.scene.txt" tname)
-        File.WriteAllText(checkedPath, sprintf "%A" (frozenCheckboxGeom theme true "Enabled"))
-        yield checkedPath ]
+        sprintf "button.%s.normal.scene.txt" tname, sprintf "%A" (frozenButtonGeom theme "Save")
+        sprintf "check-box.%s.normal.scene.txt" tname, sprintf "%A" (frozenCheckboxGeom theme false "Enabled")
+        sprintf "check-box-checked.%s.normal.scene.txt" tname, sprintf "%A" (frozenCheckboxGeom theme true "Enabled") ]
 
 [<Tests>]
 let feature093ParityTests =
     testList "Feature 093 migration parity (SC-003/SC-007)" [
 
-        test "T020 — capture the pre-refactor procedural baselines for the migrated kinds" {
-            let written = captureBaselines ()
-            // Falsifiable: fails if captureBaselines writes nothing, to the wrong path, or empty files.
-            Expect.isNonEmpty written "captureBaselines wrote at least one frozen-oracle baseline"
-            for path in written do
-                Expect.isTrue (File.Exists path) (sprintf "baseline written under readiness/parity/: %s" path)
-                Expect.isTrue (FileInfo(path).Length > 0L) (sprintf "baseline is non-empty: %s" path)
+        test "T020 — the pre-refactor procedural baselines are committed goldens the frozen oracle still matches" {
+            if parityRegen then
+                Directory.CreateDirectory parityDir |> ignore
+                for (name, content) in parityBaselines () do
+                    File.WriteAllText(Path.Combine(parityDir, name), content)
+
+            // Falsifiable AGAINST A COMMITTED FILE: fails if a golden was never regenerated+committed,
+            // or if the frozen oracle has drifted away from the committed file — not a file the test
+            // just wrote to itself. Run with PARITY_REGEN=1 and commit to (re)bless the goldens.
+            Expect.isNonEmpty (parityBaselines ()) "the migrated kinds define at least one parity baseline"
+            for (name, content) in parityBaselines () do
+                let path = Path.Combine(parityDir, name)
+                Expect.isTrue
+                    (File.Exists path)
+                    (sprintf "parity golden committed for %s (run PARITY_REGEN=1 to (re)generate, then commit)" name)
+                Expect.equal content (File.ReadAllText path) (sprintf "frozen-oracle %s matches its committed golden" name)
         }
 
         test "Button no-class paint is structurally-Scene-equal to the procedural baseline, both themes (SC-003)" {

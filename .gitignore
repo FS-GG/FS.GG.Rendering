@@ -43,6 +43,10 @@ coverage/
 # Per-feature readiness evidence is transient test output (written by the Feature0xx tests
 # into specs/<feature>/readiness/); regenerated on every run, never committed.
 specs/*/readiness/
+# 093 migration-parity oracle: committed goldens the Feature093 parity tests compare against
+# (env-gated regen via PARITY_REGEN), not transient per-run output.
+!specs/093-visual-state-style-layer/readiness/
+!specs/093-visual-state-style-layer/readiness/**
 !specs/152-compositor-live-proof/readiness/
 !specs/152-compositor-live-proof/readiness/**
 !specs/153-compositor-proof-interpreter/readiness/

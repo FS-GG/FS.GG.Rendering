@@ -1,0 +1,23 @@
+[{ Nodes = [Rectangle ((10.0, 67.0, 70.0, 38.0), { Red = 37uy
+                                                   Green = 99uy
+                                                   Blue = 235uy
+                                                   Alpha = 255uy })] };
+ { Nodes = [TextRun { Text = "Save"
+                      Position = { X = 26.0
+                                   Y = 91.0 }
+                      Font = { Family = None
+                               Size = 15.0
+                               Weight = None }
+                      Paint = { Fill = Some { Red = 248uy
+                                              Green = 250uy
+                                              Blue = 252uy
+                                              Alpha = 255uy }
+                                Stroke = None
+                                Opacity = 1.0
+                                Antialias = true
+                                BlendMode = SrcOver
+                                Shader = None
+                                ColorFilter = NoColorFilter
+                                MaskFilter = NoMaskFilter
+                                ImageFilter = NoImageFilter
+                                PathEffect = NoPathEffect } }] }]
