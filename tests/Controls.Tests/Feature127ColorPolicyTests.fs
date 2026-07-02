@@ -103,6 +103,32 @@ let feature127ColorPolicyTests =
                           (sprintf "wcag.Classify must delegate to Contrast.verdict (role %A, ratio %f)" role ratio)
           }
 
+          // T006b (Review P7 / D2): a normal-size Text pairing measuring in the WCAG large-text
+          // band (3.0 ≤ ratio < 4.5) must NOT count as a `wcag` pass. `Pairing` carries no font
+          // size, so the AaLarge (large-text-only) tier is never evidenced; counting it a pass
+          // overclaims a body-text pairing at 3.x:1 under WcagCertified authority. colorPrimary on
+          // white ≈ 4.10 lands in the band — wcag must gate it at the declared 4.5 Text threshold.
+          test "wcag does not pass a normal-size Text pairing in the large-text band (Review P7)" {
+              let bandPairing =
+                  pairing
+                      "primary-as-text-on-surface"
+                      DesignTokensExt.Seed.colorPrimary
+                      DesignTokensExt.Map.Light.colorBgContainer
+                      Text
+
+              let r = ColorPolicy.evaluatePairing ColorPolicy.wcag bandPairing
+              // the raw verdict stays AaLarge — Classify still delegates to Contrast.verdict…
+              Expect.isTrue
+                  (r.Measured >= 3.0 && r.Measured < 4.5)
+                  (sprintf "colorPrimary-on-white must land in the large-text band (measured %f)" r.Measured)
+              Expect.equal r.Verdict AaLarge "Contrast.verdict rates the large-text band AaLarge"
+              // …but with no size evidence it is not a certified pass, and it drags overall to fail.
+              Expect.equal r.Outcome ColorPolicy.Failed "no size evidence -> AaLarge is not a wcag pass"
+              Expect.isFalse
+                  (ColorPolicy.overall [ r ])
+                  "a large-text-band Text pairing must not count toward overall PASS"
+          }
+
           // T007 (FR-003): the default policy is wcag (same value).
           test "defaultPolicy is wcag (FR-003)" {
               Expect.isTrue

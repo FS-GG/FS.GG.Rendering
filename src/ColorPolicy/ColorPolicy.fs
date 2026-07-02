@@ -55,10 +55,15 @@ module internal ColorPolicy =
 
     // ---- shared evaluation machinery -------------------------------------------------------
 
-    /// Map an underlying verdict to a policy outcome (Exempt/Aaa/Aa/AaLarge are passes).
+    /// Map an underlying verdict to a policy outcome. Exempt/Aaa/Aa are passes; `AaLarge` is NOT.
+    /// `AaLarge` is WCAG's large-text-only tier (Text 3.0–4.5), but `Pairing` carries no font size,
+    /// so a "large text" exception is never evidenced — counting it a pass overclaims a normal-size
+    /// body-text pairing at 3.x:1 under WcagCertified authority (Review P7 / D2). With no size
+    /// dimension in scope, gate such pairings at the declared 4.5 Text threshold: AaLarge → Failed.
     let outcomeOfVerdict verdict =
         match verdict with
-        | Fail -> Failed
+        | Fail
+        | AaLarge -> Failed
         | Verdict.Indeterminate -> PolicyOutcome.Indeterminate
         | _ -> Passed
 
@@ -212,12 +217,14 @@ module internal ColorPolicy =
         | Role.GraphicOrUi -> "GraphicOrUi"
         | Role.Decorative -> "Decorative"
 
-    /// The disclosure column: out-of-scope / indeterminate take precedence over the verdict so a
-    /// pairing outside the policy's set is never shown as a pass (FR-011).
+    /// The disclosure column: out-of-scope / indeterminate / failed take precedence over the raw
+    /// verdict so a pairing outside the policy's set — or one whose only-passing tier (AaLarge) is
+    /// unevidenced — is never shown as a pass (FR-011, Review P7).
     let private disclosureText (r: PairingResult) =
         match r.Outcome with
         | OutOfScope -> "out-of-scope"
         | PolicyOutcome.Indeterminate -> "indeterminate"
+        | Failed -> "Fail"
         | _ ->
             match r.Verdict with
             | Aaa -> "Aaa"
