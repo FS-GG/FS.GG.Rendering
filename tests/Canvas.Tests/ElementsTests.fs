@@ -89,4 +89,63 @@ let tests =
             let idOf (s: Scene) = match s.Nodes with | [ CachedSubtree b ] -> b.CacheId | _ -> 0UL
             Expect.notEqual (idOf (Elements.cached "hud" frag)) (idOf (Elements.cached "bg" frag)) "distinct keys ⇒ distinct cache slots"
         }
+
+        // Review P2 / #45: the cache-boundary fingerprint MUST cover every render-affecting field —
+        // paint included. Before the fix these deltas hashed to an equal fingerprint under one `cached`
+        // key, so `PictureReplayCache.paintBoundary` replayed stale pixels. Each case is a scene whose
+        // ONLY change is a paint/shape field that the earlier paint-blind fold ignored or collapsed.
+        test "cached fingerprint is paint-aware: paint-only changes flip the fingerprint (#45)" {
+            let fpOf (s: Scene) = match s.Nodes with | [ CachedSubtree b ] -> b.Fingerprint | _ -> 0UL
+            let cachedFp (node: SceneNode) = fpOf (Elements.cached "k" { Nodes = [ node ] })
+            let flips label a b = Expect.notEqual (cachedFp a) (cachedFp b) label
+
+            let bounds = { X = 0.0; Y = 0.0; Width = 10.0; Height = 10.0 }
+            let red = Colors.rgb 220uy 40uy 40uy
+            let blue = Colors.rgb 40uy 40uy 220uy
+
+            // Stroke colour on a painted rectangle (paint was ignored entirely).
+            flips
+                "stroke colour change ⇒ fingerprint change"
+                (PaintedRectangle(bounds, Paint.stroke red 2.0))
+                (PaintedRectangle(bounds, Paint.stroke blue 2.0))
+
+            // Line paint (ignored) — same endpoints, different colour.
+            let a, z = { X = 0.0; Y = 0.0 }, { X = 5.0; Y = 5.0 }
+            flips "line paint change ⇒ fingerprint change" (Line(a, z, Paint.fill red)) (Line(a, z, Paint.fill blue))
+
+            // Dash pattern on a path (PathEffect was ignored).
+            let square =
+                { Commands = [ MoveTo a; LineTo z; Close ]
+                  FillType = Winding }
+            let dashed = { (Paint.stroke red 1.0) with PathEffect = Dash([ 4.0; 2.0 ], 0.0) }
+            flips "path dash change ⇒ fingerprint change" (Path(square, Paint.stroke red 1.0)) (Path(square, dashed))
+
+            // Path fill-type (was never hashed).
+            flips
+                "path fill-type change ⇒ fingerprint change"
+                (Path(square, Paint.fill red))
+                (Path({ square with FillType = EvenOdd }, Paint.fill red))
+
+            // Arc sweep (whole node collapsed to a constant before the fix).
+            flips
+                "arc sweep change ⇒ fingerprint change"
+                (Arc(bounds, 0.0, 90.0, Paint.fill red))
+                (Arc(bounds, 0.0, 180.0, Paint.fill red))
+
+            // Glyph-run text (whole node collapsed to a constant before the fix).
+            let glyphRun (text: string) =
+                { Data =
+                    { Text = text
+                      Font = { Family = None; Size = 12.0; Weight = None }
+                      Provider = { Availability = ProviderUnavailable; ProviderId = ""; VersionBucket = ""; Failure = None }
+                      Runs = []
+                      Glyphs = []
+                      Metrics = { Advance = 0.0; Height = 0.0; Baseline = 0.0 }
+                      Fingerprint = text
+                      FallbackMode = PureFallbackMode
+                      FallbackDiagnostics = [] }
+                  Position = a
+                  Paint = Paint.fill red }
+            flips "glyph-run text change ⇒ fingerprint change" (GlyphRun(glyphRun "hp")) (GlyphRun(glyphRun "mp"))
+        }
     ]
