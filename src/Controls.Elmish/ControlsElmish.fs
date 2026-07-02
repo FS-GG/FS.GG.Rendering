@@ -966,7 +966,11 @@ module ControlsElmish =
                     match priorState |> Option.bind (fun s -> s.Text) with
                     | Some existing -> existing
                     | None ->
-                        let controlId = node.Control.Key |> Option.defaultValue node.Control.Kind
+                        // Feature 232 (#44): the unified `Key ?? path` id (non-correctness label —
+                        // TextInput.init only echoes it in effect payloads — moved for scheme consistency).
+                        let controlId =
+                            RetainedRender.retainedCanonicalId id retained
+                            |> Option.defaultValue (node.Control.Key |> Option.defaultValue node.Control.Kind)
                         fst (TextInput.init controlId (lineModeOf node.Control) (controlTextValue node.Control))
 
                 let model', _effects = TextInput.update msg model0
@@ -1217,7 +1221,12 @@ module ControlsElmish =
                 let mods: KeyModifiers = { Ctrl = false; Alt = false; Shift = shift; Meta = false }
                 retained, [], [ handler key mods ]
             | Some node ->
-                let nodeId = node.Control.Key |> Option.defaultValue node.Control.Kind
+                // Feature 232 (#44): the focused node's UNIFIED full-tree id (`Key ?? path`), resolved
+                // from its durable `RetainedId`, so it matches `Focus.order`/`traverse` AND the full-tree
+                // event bindings below. Falls back to the node-local id only if the id is not resolvable.
+                let nodeId =
+                    RetainedRender.retainedCanonicalId id retained
+                    |> Option.defaultValue (node.Control.Key |> Option.defaultValue node.Control.Kind)
 
                 let keyboard =
                     node.Control.Accessibility
@@ -1230,9 +1239,13 @@ module ControlsElmish =
                 let keyName, isTab = normalizeFocusKey key
 
                 // The focused control's OWN authored bindings (a focusable composite is a single
-                // stop, so descendant bindings are excluded by the id filter).
+                // stop, so descendant bindings are excluded by the id filter). Feature 232 (#44): filter
+                // the FULL-TREE bindings (rooted at the real root "0") by the focused node's full-tree
+                // `Key ?? path` id — the node-re-rooted `eventBindingsOf node.Control` keyed an UNKEYED
+                // node's own binding at "0" while `nodeId` was its `Kind`, so nothing matched and the
+                // keypress dispatched nothing. Keyed nodes are unaffected (Key wins in both framings).
                 let ownBindings =
-                    ControlInternals.eventBindingsOf node.Control
+                    ControlInternals.eventBindingsOf retained.Root.Control
                     |> List.filter (fun b -> b.ControlId = nodeId)
 
                 // Feature 100 (R5): the focused control's role + declared NavRange drive the
@@ -1388,10 +1401,11 @@ module ControlsElmish =
         // (text-range) concern — the host derives none, so the bridge fills only the runtime tail.
         let assembleRuntimeModel (prior: RetainedRender<'msg> option) : ControlRuntimeModel =
             let focusedControlId =
+                // Feature 232 (#44): resolve the durable `RetainedId` to its unified `Key ?? path`
+                // (not `Key ?? Kind`), so `FocusedControl` matches the re-pointed visual-state bridge
+                // and an UNKEYED focused control gets the focus ring.
                 match loopState.Focused, prior with
-                | Some rid, Some r ->
-                    tryFindNode rid r.Root
-                    |> Option.map (fun node -> node.Control.Key |> Option.defaultValue node.Control.Kind)
+                | Some rid, Some r -> RetainedRender.retainedCanonicalId rid r
                 | _ -> None
 
             { fst (ControlRuntime.init ()) with
@@ -1533,15 +1547,18 @@ module ControlsElmish =
         // declares `Focusable = true`). Resolve a `FocusControl next` ControlId back to a stable
         // `RetainedId` so traversal keeps tracking the moved focus across frames.
         let retainedIdOfControl (r: RetainedRender<'msg>) (controlId: ControlId) : RetainedId option =
-            let rec find (n: RetainedNode<'msg>) =
-                let nId = n.Control.Key |> Option.defaultValue n.Control.Kind
+            // Feature 232 (#44): match each node by the unified `Key ?? path` (root "0", child i ->
+            // path + "." + i) — the scheme `Focus.order`/`traverse` now produce — not `Key ?? Kind`,
+            // so a traverse `next` id for an UNKEYED control resolves back to its `RetainedId`.
+            let rec find (path: string) (n: RetainedNode<'msg>) =
+                let nId = n.Control.Key |> Option.defaultValue path
 
                 if nId = controlId then
                     Some n.Identity
                 else
-                    n.Children |> List.tryPick find
+                    n.Children |> List.mapi (fun i c -> i, c) |> List.tryPick (fun (i, c) -> find (path + "." + string i) c)
 
-            find r.Root
+            find "0" r.Root
 
         // Feature 108/109/110 (US1, FR-001/007): emit one `OnFrameMetrics` for a processed pointer
         // frame. This is the live, BEST-EFFORT observability sink (the authoritative byte-stable surface

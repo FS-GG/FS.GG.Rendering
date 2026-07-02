@@ -1623,3 +1623,19 @@ module internal RetainedRender =
             |> List.fold (fun a (i, c) -> go (childPath path i) effective c a) acc
 
         go "0" None retained.Root Map.empty
+
+    /// Feature 232 (#44): resolve a stable `RetainedId` to its OWN full-tree canonical id
+    /// (`Key ?? path`, root "0", child i -> path + "." + i) — the unified scheme every other seam
+    /// (layout / hit-test / `eventBindingsOf` / `Focus.order`) uses. Used by the Controls.Elmish
+    /// focus host to bridge the durable `RetainedId` domain into the unified id scheme without
+    /// re-deriving `Key ?? Kind`. `None` when the id is not in the tree.
+    let retainedCanonicalId (target: RetainedId) (retained: RetainedRender<'msg>) : ControlId option =
+        let rec go (path: string) (n: RetainedNode<'msg>) : ControlId option =
+            if n.Identity = target then
+                Some(n.Control.Key |> Option.defaultValue path)
+            else
+                n.Children
+                |> List.mapi (fun i c -> i, c)
+                |> List.tryPick (fun (i, c) -> go (childPath path i) c)
+
+        go "0" retained.Root

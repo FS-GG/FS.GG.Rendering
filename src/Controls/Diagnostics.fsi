@@ -76,9 +76,10 @@ module Diagnostics =
     val stabilityReport: first: Control<'msg> -> second: Control<'msg> -> ControlDiagnostic list
 
     /// F4 diagnostic (report-only): warn when interactive controls of the same `Kind` share a parent and
-    /// are ALL unkeyed, so they collapse onto a single visual-state stamp id (`Key ?? Kind`) — hover /
-    /// focus / press then marks every one of them at once (the Feature-175 unkeyed-nav-button bleed),
-    /// while routing (stable `RetainedId`) still distinguishes them, making the failure silent. One
-    /// `MissingStableKey` warning per colliding (parent, kind) group; the fix is a `Control.withKey` on
-    /// each. Pure, total, deterministic.
+    /// are ALL unkeyed. Feature 232 (#44) unified every seam onto `Key ?? path`, so such siblings no
+    /// longer collapse onto one `Kind` visual-state id (each gets its distinct positional path); the
+    /// remaining risk is STABILITY — a positional id shifts when a structural insert/remove reorders the
+    /// siblings, so an unkeyed control's hover / focus / press identity is not stable across such a
+    /// change, whereas a `Key` is. One `MissingStableKey` warning per (parent, kind) group; the fix is a
+    /// `Control.withKey` on each for stable identity. Pure, total, deterministic.
     val unkeyedInteractiveSiblings: root: Control<'msg> -> ControlDiagnostic list

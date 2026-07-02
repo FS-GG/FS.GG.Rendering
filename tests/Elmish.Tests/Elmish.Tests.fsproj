@@ -72,6 +72,7 @@
     <Compile Include="Feature175ActivationValueTests.fs" />
     <Compile Include="Feature175ScrollViewerBehaviourTests.fs" />
     <Compile Include="Feature191CanvasInputTests.fs" />
+    <Compile Include="Feature232FocusDispatchTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

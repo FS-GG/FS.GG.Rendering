@@ -174,7 +174,9 @@ let datePickerParityTests =
                         OnChange = Some DateChosen }
 
             let field = LTextBox.create [ LTextBox.value "2026-06-15"; LTextBox.readOnly true ]
-            let trigger = LButton.create [ LButton.text "Open calendar"; LButton.enabled true ]
+            // Feature 232 (#44): the trigger is keyed with its declared `triggerId` so the overlay
+            // anchor resolves — the legacy golden mirrors the typed lowering.
+            let trigger = LButton.create [ LButton.text "Open calendar"; LButton.enabled true ] |> LControl.withKey "d-trigger"
 
             let dayButtons =
                 [ for day in 1..30 ->
@@ -210,7 +212,9 @@ let datePickerParityTests =
                 DatePicker.view { DatePicker.defaults with Id = Some "d"; OnChange = Some DateChosen }
 
             let field = LTextBox.create [ LTextBox.value ""; LTextBox.readOnly true ]
-            let trigger = LButton.create [ LButton.text "Open calendar"; LButton.enabled true ]
+            // Feature 232 (#44): the trigger is keyed with its declared `triggerId` so the overlay
+            // anchor resolves — the legacy golden mirrors the typed lowering.
+            let trigger = LButton.create [ LButton.text "Open calendar"; LButton.enabled true ] |> LControl.withKey "d-trigger"
             let calendar = LGrid.create [ LGrid.children [] ]
             let overlay = LOverlay.create [ LOverlay.child calendar; Attr.selected false ]
 
@@ -274,7 +278,9 @@ let breadthParityTests =
                         OnSelected = Some Picked }
 
             let primary = LButton.create [ LButton.text "Save"; LButton.enabled true; LButton.onClick Save ]
-            let trigger = LButton.create [ LButton.text "More"; LButton.enabled true ]
+            // Feature 232 (#44): the trigger is keyed with its declared `triggerId` so the overlay
+            // anchor resolves — the legacy golden mirrors the typed lowering.
+            let trigger = LButton.create [ LButton.text "More"; LButton.enabled true ] |> LControl.withKey "s-trigger"
             let menu = LMenu.create [ LMenu.items [ "Cut"; "Copy" ]; LMenu.onSelected Picked ]
             let overlay = LOverlay.create [ LOverlay.child menu; Attr.selected true ]
 

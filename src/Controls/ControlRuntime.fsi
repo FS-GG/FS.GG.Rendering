@@ -132,7 +132,7 @@ module ControlRuntime =
     /// only the controls whose FINAL visual state changed between `prev` and `cur`, reusing every
     /// unchanged subtree from `prevStamped` (which, on the live model-unchanged path, has the same
     /// structure as `fresh`). `finalState M node = if visualStateOf node.Attributes <> Normal then that
-    /// consumer-set state else deriveVisualState M (node.Key ?? node.Kind)`, computed from the `fresh`
+    /// consumer-set state else deriveVisualState M (node.Key ?? node.path)`, computed from the `fresh`
     /// (un-stamped) node so the consumer state is unambiguous. A node is reused (touched 0) when its
     /// final state is unchanged and no descendant changed; else it is rebuilt from `fresh` with
     /// `finalState cur` stamped. Byte-identical to `applyRuntimeVisualState cur fresh` (the full oracle).
@@ -160,8 +160,8 @@ module ControlRuntime =
 
     /// Feature 175 (FR-001): internal host bridge — stamp the live scroll offset onto each
     /// `scroll-viewer` node whose id holds a positive offset (so `evaluateLayout` shifts its
-    /// descendants). Emits nothing at offset 0/absent (byte-identity at rest). Keyed by `Key ?? Kind`,
-    /// mirroring `applyRuntimeVisualState`. `internal`; reached by the Controls.Elmish host and tests
+    /// descendants). Emits nothing at offset 0/absent (byte-identity at rest). Keyed by the unified
+    /// `Key ?? path` (feature 232), mirroring `applyRuntimeVisualState`. `internal`; reached by the Controls.Elmish host and tests
     /// via InternalsVisibleTo.
     val internal applyScrollOffsets: model: ControlRuntimeModel -> control: Control<'msg> -> Control<'msg>
 

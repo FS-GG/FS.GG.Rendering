@@ -267,29 +267,37 @@ module ControlRuntime =
     // non-Normal attribute and emitting NOTHING at Normal (byte-identity at rest). Reached by
     // Controls.Tests / Elmish.Tests / the Controls.Elmish host via InternalsVisibleTo. NOT in the
     // .fsi → automatically internal.
-    let rec applyRuntimeVisualState (model: ControlRuntimeModel) (control: Control<'msg>) : Control<'msg> =
-        let id = control.Key |> Option.defaultValue control.Kind
-        // Recurse the structural Children channel first; the bridge is a pure tree walk.
-        let withChildren =
-            { control with Children = control.Children |> List.map (applyRuntimeVisualState model) }
+    let applyRuntimeVisualState (model: ControlRuntimeModel) (control: Control<'msg>) : Control<'msg> =
+        // Feature 232 (#44): key each node by the unified `Key ?? path` (root "0", child i ->
+        // path + "." + i) — the same id hit-test/bindings/layout use, so `model.HoveredControl` /
+        // `PressedControls` / `FocusedControl` (all path-keyed by the host) match unkeyed nodes too.
+        let rec go (path: string) (control: Control<'msg>) : Control<'msg> =
+            let id = control.Key |> Option.defaultValue path
+            // Recurse the structural Children channel first; the bridge is a pure tree walk.
+            let withChildren =
+                { control with
+                    Children = control.Children |> List.mapi (fun index child -> go (path + "." + string index) child) }
 
-        // Consumer-set non-Normal state wins and is returned unchanged (FR-003). A consumer Normal /
-        // absent attribute lets the derived interaction state fill the slot; a derived Normal emits
-        // NOTHING, so a Normal-and-unset node is byte-identical to the un-bridged build (FR-005).
-        if ControlInternals.visualStateOf control.Attributes <> Normal then
-            withChildren
-        else
-            match deriveVisualState model id with
-            | Normal -> withChildren
-            | derived -> setVisualState derived withChildren
+            // Consumer-set non-Normal state wins and is returned unchanged (FR-003). A consumer Normal /
+            // absent attribute lets the derived interaction state fill the slot; a derived Normal emits
+            // NOTHING, so a Normal-and-unset node is byte-identical to the un-bridged build (FR-005).
+            if ControlInternals.visualStateOf control.Attributes <> Normal then
+                withChildren
+            else
+                match deriveVisualState model id with
+                | Normal -> withChildren
+                | derived -> setVisualState derived withChildren
+
+        go "0" control
 
     // Feature 112 (FR-001..FR-005): the FINAL visual state of a control under `model`, read from the
     // FRESH (un-stamped) node so the consumer-set state is unambiguous (a consumer non-Normal attribute
     // wins; else the runtime-derived state). Mirrors `applyRuntimeVisualState`'s precedence exactly, so
     // the targeted stamp lands on the same per-node state the full oracle would.
-    let private finalVisualState (model: ControlRuntimeModel) (fresh: Control<'msg>) : VisualState =
+    let private finalVisualState (model: ControlRuntimeModel) (path: string) (fresh: Control<'msg>) : VisualState =
+        // Feature 232 (#44): key by the unified `Key ?? path`, matching `applyRuntimeVisualState`.
         match ControlInternals.visualStateOf fresh.Attributes with
-        | Normal -> deriveVisualState model (fresh.Key |> Option.defaultValue fresh.Kind)
+        | Normal -> deriveVisualState model (fresh.Key |> Option.defaultValue path)
         | consumerSet -> consumerSet
 
     // Feature 112 (FR-001/FR-004/FR-005/FR-007): the targeted parallel walk. Re-stamp only the controls
@@ -301,19 +309,26 @@ module ControlRuntime =
     let rec private targetedWalk
         (prev: ControlRuntimeModel)
         (cur: ControlRuntimeModel)
+        (path: string)
         (prevStamped: Control<'msg>)
         (fresh: Control<'msg>)
         : Control<'msg> * int * bool =
         if prevStamped.Children.Length <> fresh.Children.Length then
             // Structural misalignment (not expected on the model-unchanged path): oracle-stamp the
             // fresh subtree fully so the result is still byte-identical to the oracle (FR-006).
+            // `applyRuntimeVisualState` re-derives its own path from this subtree's root; that is
+            // acceptable for keyed nodes (Key wins) and for the self-heal fallback (FR-006).
             applyRuntimeVisualState cur fresh, Control.count fresh, true
         else
-            let finalCur = finalVisualState cur fresh
-            let finalPrev = finalVisualState prev fresh
+            // Feature 232 (#44): key by the unified `Key ?? path` (root "0", child i -> path + "." + i).
+            let finalCur = finalVisualState cur path fresh
+            let finalPrev = finalVisualState prev path fresh
 
             let childResults =
-                List.map2 (fun p f -> targetedWalk prev cur p f) prevStamped.Children fresh.Children
+                List.mapi2
+                    (fun index p f -> targetedWalk prev cur (path + "." + string index) p f)
+                    prevStamped.Children
+                    fresh.Children
 
             let anyChildChanged = childResults |> List.exists (fun (_, _, changed) -> changed)
             let touchedChildren = childResults |> List.sumBy (fun (_, t, _) -> t)
@@ -342,7 +357,7 @@ module ControlRuntime =
         (prevStamped: Control<'msg>)
         (fresh: Control<'msg>)
         : RuntimeStampResult<'msg> =
-        let stamped, touched, _ = targetedWalk prev cur prevStamped fresh
+        let stamped, touched, _ = targetedWalk prev cur "0" prevStamped fresh
 
         { Stamped = stamped
           RuntimeStateTouchedNodeCount = touched }
@@ -363,12 +378,16 @@ module ControlRuntime =
     // Feature 175 (FR-001): host bridge mirroring `applyRuntimeVisualState` — stamp the live scroll
     // offset onto each `scroll-viewer` node whose id holds a positive offset, so `evaluateLayout`'s
     // bounds transform shifts its descendants. Emits NOTHING when the offset is 0/absent (byte-identity
-    // at rest). Keyed by `Key ?? Kind` to match the visual-state bridge. `internal`; the host applies it
-    // in `renderRetained` and tests reach it via InternalsVisibleTo.
-    let rec applyScrollOffsets (model: ControlRuntimeModel) (control: Control<'msg>) : Control<'msg> =
-        let id = control.Key |> Option.defaultValue control.Kind
+    // at rest). Keyed by the unified `Key ?? path` (feature 232) to match the visual-state bridge.
+    // `internal`; the host applies it in `renderRetained` and tests reach it via InternalsVisibleTo.
+    let applyScrollOffsets (model: ControlRuntimeModel) (control: Control<'msg>) : Control<'msg> =
+      // Feature 232 (#44): key by the unified `Key ?? path` — `model.ScrollOffsets` is already
+      // path-keyed by the host (`collectScrollViewerIds "0"`), so unkeyed `scroll-viewer`s now match.
+      let rec go (path: string) (control: Control<'msg>) : Control<'msg> =
+        let id = control.Key |> Option.defaultValue path
         let withChildren =
-            { control with Children = control.Children |> List.map (applyScrollOffsets model) }
+            { control with
+                Children = control.Children |> List.mapi (fun index child -> go (path + "." + string index) child) }
 
         // Feature 183 (US1): the scroll-affordance kind test reads the single ControlKindRegistry SSOT
         // (byte-identical — only `scroll-viewer` carries it).
@@ -380,6 +399,8 @@ module ControlRuntime =
                     (withChildren.Attributes |> List.filter (fun a -> a.Name <> AttrKeys.ScrollOffset))
                     @ [ Attr.create AttrKeys.ScrollOffset Layout (FloatValue scroll.Offset) ] }
         | _ -> withChildren
+
+      go "0" control
 
     let attachOverlayEffects (overlay: OverlayState) (effects: OverlayEffect list) =
         { Overlay = overlay

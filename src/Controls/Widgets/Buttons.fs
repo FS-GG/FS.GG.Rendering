@@ -69,10 +69,14 @@ module SplitButton =
                   | Some msg -> yield FS.GG.UI.Controls.Button.onClick msg
                   | None -> () ]
 
+        // Feature 232 (#44): key the trigger with the SAME id the transient metadata declares
+        // (`AnchorId`/`TriggerId` = triggerId), so the overlay anchor resolves to a real control
+        // instead of a phantom id (was a structurally guaranteed `MissingOverlayAnchor`).
         let trigger =
             FS.GG.UI.Controls.Button.create
                 [ FS.GG.UI.Controls.Button.text "More"
                   FS.GG.UI.Controls.Button.enabled props.Enabled ]
+            |> FS.GG.UI.Controls.Control.withKey triggerId
 
         let menu =
             FS.GG.UI.Controls.Menu.create

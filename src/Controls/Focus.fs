@@ -47,20 +47,25 @@ type FocusRecoveryDecision =
 
 module Focus =
 
-    // The id scheme every host seam uses for a lowered control: the authored Key, else the Kind.
-    // (Matches `node.Control.Key |> Option.defaultValue node.Control.Kind` at the retained seam.)
-    let private controlId (c: Control<'msg>) : ControlId =
-        c.Key |> Option.defaultValue c.Kind
+    // Feature 232 (#44): the id scheme is the SINGLE unified `Key ?? structural-path` (root "0",
+    // child i -> parent + "." + i) — the same id `Control.eventBindingsOf`/`boundIdsOf`/`collectBoundsWith`
+    // and `Focus.markFocused` use — replacing the old divergent `Key ?? Kind`. Keyed nodes are unchanged;
+    // unkeyed ids shift `Kind -> path`, so unkeyed same-kind focusable siblings no longer collapse onto
+    // one stop and a focused unkeyed control's id matches its bindings for keyboard dispatch.
+    let private controlId (path: string) (c: Control<'msg>) : ControlId =
+        c.Key |> Option.defaultValue path
 
     // FR-001: pre-order walk that emits a FocusStop for each focusable control and does NOT descend
     // into a focusable control's subtree (a composite is a single tab stop, clarified). A
     // non-focusable container is descended so its focusable descendants are found. `docIndex` is the
-    // pre-order visit index, threaded so the sort tiebreak is stable document order.
+    // pre-order visit index, threaded so the sort tiebreak is stable document order. `path` is the
+    // positional structural path (feature 232); it advances by child index even across a focusable
+    // subtree the walk does not descend, so it matches the path every other seam computes.
     let order (control: Control<'msg>) : TabOrder =
         let stops = System.Collections.Generic.List<int * FocusStop>()
         let mutable docIndex = 0
 
-        let rec walk (c: Control<'msg>) =
+        let rec walk (path: string) (c: Control<'msg>) =
             let here = docIndex
             docIndex <- docIndex + 1
 
@@ -68,18 +73,19 @@ module Focus =
             | Some metadata when metadata.Keyboard.Focusable ->
                 stops.Add(
                     here,
-                    { Control = controlId c
+                    { Control = controlId path c
                       Role = metadata.Role
                       Keyboard = metadata.Keyboard
                       FocusOrder = metadata.FocusOrder }
                 )
             // Focusable -> single stop; do not descend into its subtree.
             | _ ->
-                // Non-focusable (or no metadata) -> descend to find focusable descendants.
-                for child in c.Children do
-                    walk child
+                // Non-focusable (or no metadata) -> descend to find focusable descendants, threading
+                // the child index into `path` (root "0", child i -> path + "." + i).
+                c.Children
+                |> List.iteri (fun index child -> walk (path + "." + string index) child)
 
-        walk control
+        walk "0" control
 
         // Stable sort by (FocusOrder ?? +inf, docIndex). List.sortBy is stable, and the docIndex
         // component makes the order fully deterministic even within an equal FocusOrder bucket.

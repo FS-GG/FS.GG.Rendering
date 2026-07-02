@@ -503,3 +503,11 @@ module internal RetainedRender =
     /// oracle — including composite controls whose binding is authored above the hit node — without
     /// re-rendering. A node with no authored ancestor has no entry. Pure / total / deterministic.
     val authoredControlIds: boundIds: Set<ControlId> -> retained: RetainedRender<'msg> -> Map<RetainedId, ControlId>
+
+    /// Feature 232 (#44): resolve a stable `RetainedId` to its OWN full-tree canonical id
+    /// (`Key ?? path`, root "0", child i -> path + "." + i) — the unified scheme every other seam
+    /// (layout / hit-test / `eventBindingsOf` / `Focus.order`) uses. Lets the Controls.Elmish focus
+    /// host bridge the durable `RetainedId` domain into the unified id scheme instead of re-deriving
+    /// the divergent `Key ?? Kind`. `None` when the id is not present. `internal`; reached by the
+    /// Controls.Elmish host and tests via InternalsVisibleTo.
+    val internal retainedCanonicalId: target: RetainedId -> retained: RetainedRender<'msg> -> ControlId option

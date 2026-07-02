@@ -54,10 +54,14 @@ module DatePicker =
                 [ FS.GG.UI.Controls.TextBox.value formatted
                   FS.GG.UI.Controls.TextBox.readOnly true ]
 
+        // Feature 232 (#44): key the trigger with the SAME id the transient metadata declares
+        // (`AnchorId`/`TriggerId` = triggerId), so the overlay anchor resolves to a real control
+        // instead of a phantom id (was a structurally guaranteed `MissingOverlayAnchor`).
         let trigger =
             FS.GG.UI.Controls.Button.create
                 [ FS.GG.UI.Controls.Button.text "Open calendar"
                   FS.GG.UI.Controls.Button.enabled props.Enabled ]
+            |> FS.GG.UI.Controls.Control.withKey triggerId
 
         // The popup calendar shows one day Button per day of the selected month; no
         // selection ⇒ an empty calendar (placeholder field, dispatches nothing).
