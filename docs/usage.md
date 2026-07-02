@@ -20,8 +20,8 @@ input routed back as messages.
 
 Three things are worth internalizing up front:
 
-- **The render core is Elmish-free.** `Scene`, `Layout`, `Color`, `Controls`,
-  `KeyboardInput`, and `Input` carry no dependency on the Elmish programming model.
+- **The render core is Elmish-free.** `Scene`, `Layout`, `Controls`, and `KeyboardInput`
+  carry no dependency on the Elmish programming model.
 - **Interactivity is MVU, but Elmish is optional.** The viewer exposes its own host
   record (`Init`/`Update`/`View`) generic over *your* `'model`/`'msg`. You can drive
   that directly, or opt into idiomatic [Elmish](https://elmish.github.io/elmish/)
@@ -33,14 +33,22 @@ Three things are worth internalizing up front:
 
 ## Getting the packages
 
-The libraries are published as `FS.GG.UI.*` packages targeting **`net10.0`**
-(current version `0.1.0-preview.1`). They are **not yet on a public NuGet feed**, so
-consume them one of these ways:
+The libraries are published as `FS.GG.UI.*` packages targeting **`net10.0`** (current
+framework version `0.1.58-preview.1`). Every release **dual-publishes** the byte-identical
+coherent set to public [nuget.org](https://www.nuget.org/packages?q=FS.GG.UI) (via GitHub
+OIDC Trusted Publishing) and the org [GitHub Packages](https://github.com/orgs/FS-GG/packages)
+feed (`nuget.pkg.github.com/FS-GG`). Consume them one of these ways:
 
-1. **Project reference** — clone this repo and reference the `src/*/*.fsproj` you need
-   directly. Most direct for development.
+1. **Public feed** — restore straight from nuget.org (no source configuration needed):
+   ```sh
+   dotnet add package FS.GG.UI.SkiaViewer --version 0.1.58-preview.1
+   dotnet add package FS.GG.UI.Controls   --version 0.1.58-preview.1
+   ```
 
-2. **Local pack** — produce packages and add a local feed:
+2. **Project reference** — clone this repo and reference the `src/*/*.fsproj` you need
+   directly. Most direct for framework development.
+
+3. **Local pack** — produce packages and add a local feed:
    ```sh
    dotnet pack FS.GG.Rendering.slnx -c Release -o ./nupkgs
    dotnet nuget add source "$(pwd)/nupkgs" --name fs-gg-local
@@ -49,7 +57,7 @@ consume them one of these ways:
    dotnet add package FS.GG.UI.Controls
    ```
 
-3. **Project template** — scaffold a ready-wired app:
+4. **Project template** — scaffold a ready-wired app:
    ```sh
    dotnet new install .          # from the repo root (installs FS.GG.UI.Template)
    dotnet new fs-gg-ui -n MyApp  # short name: fs-gg-ui
@@ -57,18 +65,31 @@ consume them one of these ways:
 
 ### Package map
 
+All 17 libraries plus the `FS.GG.UI` BOM metapackage (see [module map](product/module-map.md)
+for the owning source module of each):
+
 | Package | What it gives you |
 |---|---|
+| `FS.GG.UI` | BOM / metapackage — a single version-coherent reference to the whole set |
 | `FS.GG.UI.Scene` | Retained scene graph, drawing primitives, animation |
 | `FS.GG.UI.Layout` | Layout engine and layout graph |
 | `FS.GG.UI.KeyboardInput` | Pointer + keyboard models and dispatch |
 | `FS.GG.UI.SkiaViewer` | The SkiaSharp-over-OpenGL viewer/host and render loop |
-| `FS.GG.UI.Controls` | Semantic control set (Button, TextBox, ComboBox, DataGrid, Dialog…), theming |
+| `FS.GG.UI.Controls` | Semantic control set (Button, TextBox, ComboBox, DataGrid, Dialog…) |
+| `FS.GG.UI.DesignSystem` | Token model, `Theme` record, `ResolvedStyle`, and the pure `Style.resolve` resolver |
+| `FS.GG.UI.Themes.Default` | The default **Light**/**Dark** theme and mode+accent derivation |
+| `FS.GG.UI.Themes.AntDesign` | Opt-in **Ant Design** theme (`AntTheme.antLight`/`antDark`) + intent policy |
 | `FS.GG.UI.Elmish` / `FS.GG.UI.Controls.Elmish` | **Optional** Elmish adapters (Cmd/subscriptions/program) |
 | `FS.GG.UI.Testing` | Test helpers — capture, screenshot, responds/perf proof seams |
+| `FS.GG.UI.Diagnostics` | Runtime diagnostic taxonomy, aggregation, readiness, and artifact contracts |
+| `FS.GG.UI.Canvas` | Dependency-light element library + deterministic fixed-timestep game loop |
+| `FS.GG.UI.Symbology` | Pure unit-symbology vocabulary (stat→channel Token → legible vector symbols) |
+| `FS.GG.UI.Symbology.Render` | Headless Scene→PNG bridge for the symbology design loop |
+| `FS.GG.UI.Build` | In-process governance engine (evidence gates) for generated products |
 
-A windowed controls app typically references `FS.GG.UI.Controls` +
-`FS.GG.UI.SkiaViewer` (+ `FS.GG.UI.Controls.Elmish` if you want Elmish).
+A windowed controls app typically references `FS.GG.UI.Controls` + `FS.GG.UI.SkiaViewer`
+(+ a theme package, and `FS.GG.UI.Controls.Elmish` if you want Elmish) — or just the
+`FS.GG.UI` BOM to pull the coherent set at one version.
 
 > **Note:** referencing `FS.GG.UI.SkiaViewer` brings `Fable.Elmish.dll` onto your
 > dependency graph transitively — the viewer's window lifecycle is implemented on top
@@ -164,7 +185,9 @@ control and keyboard runtime effects flow through normal Elmish `Cmd`s.
 
 Controls own **behavior**; themes own **appearance**. A theme is a record of color
 roles, typography, density, and radius applied at render time — the *same* control
-tree renders under any theme. Today the framework ships **Light** and **Dark**:
+tree renders under any theme. The framework ships three themes: **Light** and **Dark** from
+`FS.GG.UI.Themes.Default`, plus an opt-in **Ant Design** theme from
+`FS.GG.UI.Themes.AntDesign`:
 
 ```fsharp
 open FS.GG.UI.Controls
@@ -173,8 +196,16 @@ let theme = Theme.dark
 let custom = Theme.light |> Theme.withAccent myAccent |> Theme.withDensity 1.25
 ```
 
+```fsharp
+open FS.GG.UI.Themes.AntDesign
+
+let ant = AntTheme.antLight   // or AntTheme.antDark — Ant's visual language, same controls
+```
+
+The Ant theme is a concrete `Theme` value plus an `AntIntentPolicy`, behaviour-neutral over
+the existing semantic controls (no control forks; [ADR-0006](product/decisions/0006-antdesign-theme-and-new-controls.md)).
 Dynamic composition (mode + accent → palette → theme) is available in the
-`FS.GG.UI.Controls.Theming` module. Named design languages (Ant/Fluent/Material) and
+`FS.GG.UI.Controls.Theming` module. Further named design languages (Fluent, Material) and
 design-specific kits are **not yet implemented** — see [Current limits](#current-limits).
 
 ---
@@ -260,11 +291,12 @@ route is `environment-limited` (it needs the GL/virtual display); the no-GL dete
 
 ## Current limits
 
-This is a `0.1.0-preview`; consume accordingly.
+This is a `0.1.x-preview`; consume accordingly.
 
-- **Not on a public feed yet** — use project reference, local pack, or the template.
-- **Themes**: only Light/Dark ship; Ant/Fluent/Material and design-kit compositions are
-  planned, not present.
+- **Preview cadence** — published on nuget.org and GitHub Packages, but the public surface
+  may move between previews (see the API-preview note below).
+- **Themes**: Light, Dark, and Ant Design ship; Fluent/Material and design-kit compositions
+  are planned, not present.
 - **API is preview** — public surface is drift-gated (stable within a build) but may
   move between previews.
 - **Live present timing / faithful-vsync perf and kernel-level input injection** are

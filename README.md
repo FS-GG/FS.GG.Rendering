@@ -30,11 +30,13 @@ For semantic controls (Button, TextBox, DataGrid…) with Elmish, use
 
 ## Consume it
 
-Published as `FS.GG.UI.*` packages on `net10.0` (`0.1.0-preview.1`). Not on a public
-feed yet — reference the projects directly, `dotnet pack` to a local feed, or scaffold
+Published as `FS.GG.UI.*` packages on `net10.0` — 17 libraries plus the `FS.GG.UI` BOM
+metapackage (current framework version `0.1.58-preview.1`). Each release **dual-publishes**
+the byte-identical set to public [nuget.org](https://www.nuget.org/packages?q=FS.GG.UI)
+(GitHub OIDC Trusted Publishing) and the org GitHub Packages feed. You can also reference
+the `src/*/*.fsproj` directly, `dotnet pack` to a local feed, or scaffold a ready-wired app
 from the template (`dotnet new install . && dotnet new fs-gg-ui`). See
-[`docs/usage.md`](docs/usage.md#getting-the-packages) for all three paths and the
-package map.
+[`docs/usage.md`](docs/usage.md#getting-the-packages) for every path and the full package map.
 
 ## Build & test
 
@@ -51,9 +53,11 @@ proves and what it does not.
 
 Active preview. This repository is the canonical home of the FS-GG rendering product,
 split out of the archived [`EHotwagner/FS-Skia-UI`](https://github.com/EHotwagner/FS-Skia-UI)
-(see [`PROVENANCE.md`](PROVENANCE.md)). Only Light/Dark themes ship today; named themes,
-design kits, and the remaining harness tiers are on the roadmap in
-[`docs/reports/`](docs/reports/).
+(see [`PROVENANCE.md`](PROVENANCE.md)). Three themes ship today: **Light** and **Dark**
+(`FS.GG.UI.Themes.Default`) plus an opt-in **Ant Design** theme (`FS.GG.UI.Themes.AntDesign`,
+`AntTheme.antLight`/`antDark`; [ADR-0006](docs/product/decisions/0006-antdesign-theme-and-new-controls.md)).
+Further design languages (Fluent, Material), design kits, and the remaining harness tiers are
+on the roadmap in [`docs/reports/`](docs/reports/).
 
 ## Learn more
 
