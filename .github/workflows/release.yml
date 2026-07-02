@@ -60,40 +60,35 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
-      # The generated product consumes FS.GG.UI.* as PACKAGES at $(FsGgUiVersion). On a release the
-      # coherent set is not on any feed yet — publish-packages runs AFTER this gate (needs: this job),
-      # so a stock restore hits NU1101. Pack the whole solution + template to a runner-local feed at
-      # the SAME version the template pins, and add it as a source. This mirrors the local pre-flight
-      # (scripts/dev-repack.fsx) and is throwaway (RUNNER_TEMP); it does not publish anything.
-      - name: Resolve coherent-set version (from tag/input, else the template pin)
-        id: ver
+      # The generated product consumes FS.GG.UI.* as PACKAGES at $(FsGgUiVersion) — the FRAMEWORK pin,
+      # which is DECOUPLED from the template-package release tag $VER (a template-only release, e.g.
+      # v0.1.61, ships new template content over an UNCHANGED framework pin 0.1.58; registry
+      # fs-gg-ui-template: version=pin vs package-version=tag). On a release the coherent framework set
+      # is not on any public feed yet — publish-packages runs AFTER this gate (needs: this job), so a
+      # stock restore hits NU1101. Pack the whole solution to a runner-local feed at the PIN (what the
+      # instantiated product actually restores — packing at $VER would leave a dead-weight feed the
+      # product never touches), and add it as a source. Throwaway (RUNNER_TEMP); it does not publish.
+      - name: Read the framework pin (FsGgUiVersion — what the product restores)
+        id: pin
         shell: bash
         run: |
           set -euo pipefail
-          case "${{ github.event_name }}" in
-            release)           raw="${{ github.event.release.tag_name }}" ;;
-            push)              raw="${GITHUB_REF_NAME}" ;;
-            workflow_dispatch) raw="${{ inputs.version }}" ;;
-            *)                 raw="" ;;
-          esac
-          ver="${raw#v}"
-          if [[ -z "$ver" ]]; then
-            ver="$(grep -oP '(?<=<FsGgUiVersion>)[^<]+' template/base/Directory.Packages.props)"
-          fi
-          echo "version=$ver" >> "$GITHUB_OUTPUT"
-          echo "Coherent-set version for the gate feed: $ver"
-      - name: Pack the coherent set to a runner-local feed
+          pin="$(grep -oP '(?<=<FsGgUiVersion>)[^<]+' template/base/Directory.Packages.props)"
+          [[ -n "$pin" ]] || { echo "::error::<FsGgUiVersion> not found in template/base/Directory.Packages.props"; exit 1; }
+          echo "version=$pin" >> "$GITHUB_OUTPUT"
+          echo "Framework pin for the gate feed: $pin"
+      - name: Pack the framework set (at the pin) to a runner-local feed
         shell: bash
         env:
-          VER: ${{ steps.ver.outputs.version }}
+          PIN: ${{ steps.pin.outputs.version }}
         run: |
           set -euo pipefail
           feed="$RUNNER_TEMP/release-local-feed"
           mkdir -p "$feed"
           dotnet restore FS.GG.Rendering.slnx
-          dotnet pack FS.GG.Rendering.slnx -c Release -p:Version="$VER" -o "$feed"
+          dotnet pack FS.GG.Rendering.slnx -c Release -p:Version="$PIN" -o "$feed"
           dotnet nuget add source "$feed" --name release-local-feed
-          echo "Packed FS.GG.UI.* $VER to $feed"; ls -1 "$feed"/*.nupkg
+          echo "Packed FS.GG.UI.* $PIN to $feed"; ls -1 "$feed"/*.nupkg
       # Exercise the real consumer path: install the in-repo `dotnet new` template, instantiate a
       # product, and run THAT generated product's tests (template/base/tests/Product.Tests becomes
       # the generated product's tests). This is gated on the instantiation tooling actually working
@@ -163,16 +158,25 @@ jobs:
           echo "version=$ver" >> "$GITHUB_OUTPUT"
           echo "Coherent-set version: $ver"
 
-      # One coherent set: pack the whole solution + the template at the SAME version, exactly as
-      # scripts/dev-repack.fsx does for the local feed (every FS.GG.UI.* + inter-package dep = V).
-      - name: Pack FS.GG.UI.* (libraries + template)
+      # TWO decoupled axes (registry fs-gg-ui-template: version=framework pin vs package-version=tag):
+      #   * the FRAMEWORK set FS.GG.UI.* is versioned by the template PIN ($(FsGgUiVersion)) — pack+push
+      #     it at the pin so a template-only release (pin != $VER) does NOT republish framework members
+      #     at the template version (that produced the orphaned FS.GG.UI.* 0.1.60/0.1.61 packages that
+      #     no product pins). --skip-duplicate keeps it idempotent; on a framework release pin == $VER.
+      #   * the TEMPLATE package FS.GG.UI.Template is versioned by the release tag $VER.
+      # .template.package is NOT a slnx member, so the two packs never overlap; the template pins
+      # FS.GG.UI.* at $(FsGgUiVersion)=pin, so template@$VER coherently depends on framework@pin.
+      - name: Pack FS.GG.UI.* (framework @pin) + the template (@tag)
         shell: bash
         env:
           VER: ${{ steps.ver.outputs.version }}
         run: |
           set -euo pipefail
+          pin="$(grep -oP '(?<=<FsGgUiVersion>)[^<]+' template/base/Directory.Packages.props)"
+          [[ -n "$pin" ]] || { echo "::error::<FsGgUiVersion> not found in template/base/Directory.Packages.props"; exit 1; }
+          echo "Framework pin: $pin · template package version: $VER"
           dotnet restore FS.GG.Rendering.slnx
-          dotnet pack FS.GG.Rendering.slnx -c Release -p:Version="$VER" -o artifacts/packages
+          dotnet pack FS.GG.Rendering.slnx -c Release -p:Version="$pin" -o artifacts/packages
           dotnet pack .template.package/FS.GG.UI.Template.fsproj -c Release -p:Version="$VER" -o artifacts/packages
           echo "Packed:"; ls -1 artifacts/packages/*.nupkg
 

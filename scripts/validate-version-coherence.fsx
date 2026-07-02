@@ -202,6 +202,41 @@ let runtimeRegexResolves =
     let pattern = "<FsGgUiVersion>([^<]+)</FsGgUiVersion>"
     m.Success && Regex.IsMatch(propsText, pattern)
 
+// ---- release lane (P5 / #48) ------------------------------------------------------------------
+// The FRAMEWORK set (FS.GG.UI.*, versioned by <FsGgUiVersion> above, snapshotted by fs-gg-ui/v*) is
+// DECOUPLED from the TEMPLATE PACKAGE (FS.GG.UI.Template, versioned by <Version> in .template.package,
+// snapshotted by the v* release trigger + fs-gg-ui-template/v* tags). The pin MAY lag the template
+// package (a template-only content release advances the package over an unchanged framework pin); it
+// must never LEAD it. Validate that release lane too, env-free, fail-closed, from repo + pushed tags.
+let templateFsprojRel = ".template.package/FS.GG.UI.Template.fsproj"
+let templateFsprojText = readFile (repo templateFsprojRel)
+let pkgVersionMatches = Regex.Matches(templateFsprojText, "<Version>([^<]*)</Version>")
+let pkgVersion =
+    if pkgVersionMatches.Count = 1 then pkgVersionMatches.[0].Groups.[1].Value.Trim()
+    elif pkgVersionMatches.Count = 0 then raise (GuardError(sprintf "<Version> not found in %s — template-package version source missing" templateFsprojRel))
+    else raise (GuardError(sprintf "<Version> appears %d times in %s — expected exactly one template-package version source" pkgVersionMatches.Count templateFsprojRel))
+let pkgVersionLoc = sprintf "%s:%d <Version>" templateFsprojRel (lineOf templateFsprojText "<Version>")
+
+/// Versions carried by tags matching `glob` whose ref starts with `prefix` (the prefix stripped).
+/// Fails closed if git errors — never green-by-absence.
+let tagVersionsOf (glob: string) (prefix: string) =
+    let ec, out = run repoRoot "git" [ "tag"; "--list"; glob ]
+    if ec <> 0 then raise (GuardError(sprintf "git tag --list %s failed" glob))
+    out.Replace("\r\n", "\n").Split('\n')
+    |> Array.map (fun s -> s.Trim())
+    |> Array.filter (fun s -> s.StartsWith(prefix, StringComparison.Ordinal))
+    |> Array.map (fun s -> s.Substring(prefix.Length))
+    |> Array.toList
+// `v*` matches only the release trigger tags (fs-gg-ui/v* and fs-gg-ui-template/v* do not start "v").
+let releaseTagVersions = tagVersionsOf "v*" "v"
+let templateTagVersions = tagVersionsOf "fs-gg-ui-template/v*" "fs-gg-ui-template/v"
+if releaseTagVersions.IsEmpty then
+    raise (GuardError "no v* release tags visible — CI must fetch tags (fetch-depth: 0 / fetch-tags); fail closed rather than green-by-absence")
+if templateTagVersions.IsEmpty then
+    raise (GuardError "no fs-gg-ui-template/v* tags visible — CI must fetch tags; fail closed rather than green-by-absence")
+let latestReleaseTag = releaseTagVersions |> List.sortWith (fun a b -> SemVer.cmp (SemVer.parse a) (SemVer.parse b)) |> List.last
+let latestTemplateTag = templateTagVersions |> List.sortWith (fun a b -> SemVer.cmp (SemVer.parse a) (SemVer.parse b)) |> List.last
+
 // ---- rules ------------------------------------------------------------------------------------
 
 // US1 — pin must resolve to a published snapshot tag and must not lag the latest (FR-001/002/009)
@@ -297,8 +332,44 @@ let invariantFailures : Failure list =
             Actual = "no match (renamed/half-renamed property breaks runtime engine resolution)"
             Fix = "keep the <FsGgUiVersion> element name in lockstep with build.fsx's regex" } ]
 
+// P5 (#48) — the template-package RELEASE lane vs the framework pin. The package must resolve to a
+// real release trigger tag (v*) AND its template-scoped snapshot (fs-gg-ui-template/v*), must not lag
+// the latest of either, and the framework pin must not LEAD it (pin <= package version).
+let releaseLaneFailures : Failure list =
+    [ if SemVer.lt pkgVersion latestReleaseTag then
+          { Rule = "pkg-lags-release-tag"
+            Location = pkgVersionLoc
+            Expected = sprintf ">= %s (latest v* release tag)" latestReleaseTag
+            Actual = pkgVersion
+            Fix = sprintf "bump <Version> to %s (the latest released template package), or cut a newer v%s release tag" latestReleaseTag pkgVersion }
+      elif not (List.contains pkgVersion releaseTagVersions) then
+          { Rule = "pkg-no-release-tag"
+            Location = pkgVersionLoc
+            Expected = sprintf "a release trigger tag v%s" pkgVersion
+            Actual = "none"
+            Fix = sprintf "cut & push the v%s release tag, or correct <Version> to a released version" pkgVersion }
+      if SemVer.lt pkgVersion latestTemplateTag then
+          { Rule = "pkg-lags-template-tag"
+            Location = pkgVersionLoc
+            Expected = sprintf ">= %s (latest fs-gg-ui-template/v* tag)" latestTemplateTag
+            Actual = pkgVersion
+            Fix = sprintf "bump <Version> to %s, or cut fs-gg-ui-template/v%s" latestTemplateTag pkgVersion }
+      elif not (List.contains pkgVersion templateTagVersions) then
+          { Rule = "pkg-no-template-tag"
+            Location = pkgVersionLoc
+            Expected = sprintf "a template-scoped tag fs-gg-ui-template/v%s" pkgVersion
+            Actual = "none"
+            Fix = sprintf "cut & push fs-gg-ui-template/v%s (the template coherent-set snapshot)" pkgVersion }
+      if SemVer.lt pkgVersion pinVersion then
+          { Rule = "pin-leads-package"
+            Location = propsLoc
+            Expected = sprintf "<= the released template package version %s" pkgVersion
+            Actual = sprintf "framework pin %s" pinVersion
+            Fix = sprintf "a framework bump requires a template release at >= the pin — cut the template package + tags at %s or higher, or lower the pin" pinVersion } ]
+
 let structuralFailures =
     us1Failures @ bomTokenFailures @ bomMemberSkewFailures @ templateFailures @ invariantFailures
+    @ releaseLaneFailures
 
 // ---- restore-grounded proof (live, US3/T027) --------------------------------------------------
 type LiveResult =
@@ -389,6 +460,9 @@ let writeReport (provenance: string) (failures: Failure list) (liveOpt: LiveResu
     line (sprintf "- latest-snapshot-tag: fs-gg-ui/v%s" latestTag)
     line (sprintf "- published-members: %d · bom-deps: %d · template-consumed-pins: %d" publishedMembers.Count bomIds.Count templateIds.Count)
     line (sprintf "- runtime-regex-resolves: %b" runtimeRegexResolves)
+    line (sprintf "- template-package-version: %s (`%s`)" pkgVersion pkgVersionLoc)
+    line (sprintf "- latest-release-tag: v%s · latest-template-tag: fs-gg-ui-template/v%s" latestReleaseTag latestTemplateTag)
+    line (sprintf "- framework-pin-vs-package: %s <= %s = %b" pinVersion pkgVersion (not (SemVer.lt pkgVersion pinVersion)))
     match liveOpt with
     | Some r ->
         line (sprintf "- resolved-members-at-version: %d/%d at %s" r.AtV r.MembersResolved r.V)

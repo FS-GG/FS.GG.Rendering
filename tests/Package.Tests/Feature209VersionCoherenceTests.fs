@@ -83,6 +83,36 @@ let private tagVersions () =
     |> Array.map (fun s -> s.Substring("fs-gg-ui/v".Length))
     |> Array.toList
 
+// P5 (#48) — release-lane readers: the template PACKAGE version-of-truth and the v* / template tag
+// lanes, decoupled from the framework pin above.
+let private templateFsprojText = File.ReadAllText(repo ".template.package/FS.GG.UI.Template.fsproj")
+
+let private pkgVersion =
+    Regex.Match(templateFsprojText, "<Version>([^<]+)</Version>").Groups.[1].Value.Trim()
+
+let private pkgOccurrences = Regex.Matches(templateFsprojText, "<Version>([^<]*)</Version>").Count
+
+/// Versions carried by tags matching `glob` whose ref starts with `prefix` (prefix stripped).
+let private gitTagVersions (glob: string) (prefix: string) =
+    let psi = ProcessStartInfo("git")
+    psi.WorkingDirectory <- root
+    psi.UseShellExecute <- false
+    psi.RedirectStandardOutput <- true
+    [ "tag"; "--list"; glob ] |> List.iter psi.ArgumentList.Add
+    let out =
+        match Process.Start psi with
+        | null -> failwith "git tag could not be started"
+        | p ->
+            use p = p
+            let o = p.StandardOutput.ReadToEnd()
+            p.WaitForExit()
+            o
+    out.Replace("\r\n", "\n").Split('\n')
+    |> Array.map (fun s -> s.Trim())
+    |> Array.filter (fun s -> s.StartsWith(prefix, StringComparison.Ordinal))
+    |> Array.map (fun s -> s.Substring(prefix.Length))
+    |> Array.toList
+
 let private discoveredMembers () =
     Directory.GetFiles(repo "src", "*.fsproj", SearchOption.AllDirectories)
     |> Array.choose (fun proj ->
@@ -142,6 +172,25 @@ let feature209VersionCoherenceTests =
         test "fixture: a phantom pin has no snapshot tag" {
             let tags = tagVersions ()
             Expect.isFalse (List.contains "0.1.99-preview.1" tags) "0.1.99-preview.1 is a phantom (no fs-gg-ui/v tag)"
+        }
+
+        // P5 (#48) — the template-package RELEASE lane vs the framework pin, mirroring the script's
+        // releaseLaneFailures: the package resolves to a v* trigger tag AND an fs-gg-ui-template/v*
+        // snapshot, does not lag the latest of either, and the framework pin does not LEAD it
+        // (pin <= package — a template-only release advances the package over an unchanged pin).
+        test "release lane: template package matches v*/template tags (no lag) and pin does not lead" {
+            Expect.equal pkgOccurrences 1 "exactly one <Version> in .template.package (release-lane source)"
+            let releaseTags = gitTagVersions "v*" "v"
+            let templateTags = gitTagVersions "fs-gg-ui-template/v*" "fs-gg-ui-template/v"
+            Expect.isNonEmpty releaseTags "v* release tags must be visible (fetch-depth: 0); empty ⇒ fail closed"
+            Expect.isNonEmpty templateTags "fs-gg-ui-template/v* tags must be visible; empty ⇒ fail closed"
+            let latestRelease = releaseTags |> List.sortWith cmp |> List.last
+            let latestTemplate = templateTags |> List.sortWith cmp |> List.last
+            Expect.isFalse (cmp pkgVersion latestRelease < 0) (sprintf "package %s must not lag latest v* tag %s (pkg-lags-release-tag)" pkgVersion latestRelease)
+            Expect.isTrue (List.contains pkgVersion releaseTags) (sprintf "package %s must match a v* release tag (pkg-no-release-tag)" pkgVersion)
+            Expect.isFalse (cmp pkgVersion latestTemplate < 0) (sprintf "package %s must not lag latest fs-gg-ui-template/v* tag %s (pkg-lags-template-tag)" pkgVersion latestTemplate)
+            Expect.isTrue (List.contains pkgVersion templateTags) (sprintf "package %s must match an fs-gg-ui-template/v* tag (pkg-no-template-tag)" pkgVersion)
+            Expect.isFalse (cmp pkgVersion pinVersion < 0) (sprintf "framework pin %s must not lead the released package %s (pin-leads-package)" pinVersion pkgVersion)
         }
 
         // US2 / FR-003/004 — BOM token + bracket + member parity (policy-independent, structural).
