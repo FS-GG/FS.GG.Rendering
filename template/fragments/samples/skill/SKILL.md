@@ -49,7 +49,7 @@ Record sample-pack file lists under the active feature
 - Sample-pack and package-consuming samples must compare current `FS.GG.UI.`
   package pins before validation is claimed.
 - Use the `package-feed` proof workflow to prove stale package pins are absent
-  and that the intended feed is the source of package-consuming sample restores.
+  and that the local feed is the source of package-consuming sample restores.
 - When sample readiness uses screenshots, prefer real screenshot evidence,
   disclose degraded captures, require reviewer accepted readiness, and keep
   generated summary caveats visible.

@@ -23,6 +23,12 @@ jobs:
   gate:
     name: Deterministic gate
     runs-on: ubuntu-latest
+    env:
+      # 235 (FR-002) — the SINGLE source of truth for GL-capability test projects. Both the
+      # deterministic tier (which excludes them) and the GL step (which runs them) read this one
+      # list, and the Build.Tests cadence meta-guard (CadenceCoverageTests) asserts it is a subset
+      # of the slnx test set. Keep the `GL_TEST_PROJECTS:` key stable — the meta-guard parses it.
+      GL_TEST_PROJECTS: "SkiaViewer Smoke"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -74,12 +80,21 @@ jobs:
 
       # T008 (FR-002/FR-003) — the default local deterministic tier (capability `none`). Any
       # failure MUST fail the gate. --no-build reuses the Debug build above.
-      - name: Default local tier (deterministic)
+      #
+      # 235 (FR-001/FR-003) — the project list is DERIVED from FS.GG.Rendering.slnx, not hardcoded:
+      # every slnx `tests/*.Tests` project except the GL-capability ones (which run in the GL step
+      # below) runs here. This closes the "test project in the solution but in no cadence" class by
+      # construction — a newly added test project is picked up automatically; the Build.Tests
+      # CadenceCoverageTests meta-guard asserts this coverage holds. A project that genuinely needs
+      # GL fails LOUDLY here (never a silent skip) until it is added to GL_TEST_PROJECTS.
+      - name: Default local tier (deterministic, slnx-derived)
         run: |
           set -euo pipefail
-          for p in Scene Layout KeyboardInput Elmish Controls Diagnostics Testing Lib; do
-            echo "::group::dotnet test tests/${p}.Tests"
-            dotnet test "tests/${p}.Tests/${p}.Tests.fsproj" -c Debug --no-build
+          for proj in $(grep -oE 'tests/[^"]+\.Tests\.fsproj' FS.GG.Rendering.slnx | sort -u); do
+            name="$(basename "$(dirname "$proj")" .Tests)"
+            case " $GL_TEST_PROJECTS " in *" $name "*) echo "skip (GL step): $proj"; continue;; esac
+            echo "::group::dotnet test $proj"
+            dotnet test "$proj" -c Debug --no-build
             echo "::endgroup::"
           done
 
@@ -172,7 +187,8 @@ jobs:
             exit 0
           fi
           echo "GL present; running GL-dependent local checks."
-          for p in SkiaViewer Smoke; do
+          # 235 (FR-002) — same GL_TEST_PROJECTS source of truth as the deterministic tier's exclude.
+          for p in $GL_TEST_PROJECTS; do
             echo "::group::dotnet test tests/${p}.Tests"
             dotnet test "tests/${p}.Tests/${p}.Tests.fsproj" -c Debug --no-build
             echo "::endgroup::"

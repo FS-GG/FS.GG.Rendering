@@ -55,17 +55,30 @@ Every validation-set member and every harness tier maps to **exactly one** caden
 labels are quoted from [`validation-set.md`](../validation/validation-set.md); harness tiers carry the
 R5 source label `infra (R5)` and are not validation-set members.
 
+> **Feature 235 — the gate's test list is derived, and the coverage is now machine-enforced.** The
+> gate's deterministic tier iterates every `tests/*.Tests` project in `FS.GG.Rendering.slnx` (skipping
+> the GL-capability `GL_TEST_PROJECTS`), so a new test project is in a cadence by construction rather
+> than by remembering to edit a hardcoded list. `tests/Build.Tests/CadenceCoverageTests.fs` asserts
+> `deterministic ∪ GL == the slnx test set` and that this table (and `validation-set.md`) name every
+> slnx test project and no retired one — closing the "test project runs in no cadence" class (#47) and
+> the map's earlier drift in both directions permanently.
+
 | Member | R3 / source label | Cadence | Capability | Headless-runner behavior | Wired at |
 |---|---|---|---|---|---|
-| `Color.Tests` | local | gate | none | runs | gate.yml local tier |
-| `Scene.Tests` | local | gate | none | runs | gate.yml local tier |
-| `Layout.Tests` | local | gate | none | runs | gate.yml local tier |
-| `Input.Tests` | local | gate | none | runs | gate.yml local tier |
-| `KeyboardInput.Tests` | local | gate | none | runs | gate.yml local tier |
-| `Elmish.Tests` | local | gate | none | runs | gate.yml local tier |
-| `Controls.Tests` | local | gate | none | runs | gate.yml local tier |
-| `Testing.Tests` | local | gate | none | runs | gate.yml local tier |
-| `Lib.Tests` (runtime subset) | local | gate | none | runs | gate.yml local tier |
+| `Build.Tests` | local | gate | none | runs | gate.yml local tier (slnx-derived) |
+| `Canvas.Tests` | local | gate | none | runs | gate.yml local tier (slnx-derived) |
+| `Controls.Tests` | local | gate | none | runs | gate.yml local tier (slnx-derived) |
+| `Diagnostics.Tests` | local | gate | none | runs | gate.yml local tier (slnx-derived) |
+| `Elmish.Tests` | local | gate | none | runs | gate.yml local tier (slnx-derived) |
+| `KeyboardInput.Tests` | local | gate | none | runs | gate.yml local tier (slnx-derived) |
+| `Layout.Tests` | local | gate | none | runs | gate.yml local tier (slnx-derived) |
+| `Lib.Tests` (runtime subset) | local | gate | none | runs | gate.yml local tier (slnx-derived) |
+| `Rendering.Harness.Tests` | local | gate | none | runs | gate.yml local tier (slnx-derived) |
+| `Scene.Tests` | local | gate | none | runs | gate.yml local tier (slnx-derived) |
+| `Symbology.Tests` | local | gate | none | runs | gate.yml local tier (slnx-derived) |
+| `Symbology.Render.Tests` | local | gate | none | runs | gate.yml local tier (slnx-derived) |
+| `SymbologyBoard.Tests` | local | gate | none | runs | gate.yml local tier (slnx-derived) |
+| `Testing.Tests` | local | gate | none | runs | gate.yml local tier (slnx-derived) |
 | `SkiaViewer.Tests` | local | gate | gl | degrade-and-disclose (skipped, disclosed) | gate.yml GL step |
 | `Smoke.Tests` | local | gate | gl | degrade-and-disclose (skipped, disclosed) | gate.yml GL step |
 | `surface-baselines` | ci (push/PR) | gate | none | runs (see §4 coverage) | gate.yml drift step |
@@ -92,15 +105,16 @@ The audit (FR-009) checks these invariants by inspection of this map against the
 ### 3.1 Audit result (T019)
 
 Cross-checked this map against `docs/validation/validation-set.md` and the actual triggers/steps in
-`gate.yml`, `release.yml`, `capability.yml` on 2026-06-14. **PASS** (SC-003, SC-007):
+`gate.yml`, `release.yml`, `capability.yml` on 2026-06-14; re-audited 2026-07-02 (Feature 235, #47)
+after the gate loop became slnx-derived and the coverage machine-enforced. **PASS** (SC-003, SC-007):
 
 1. **Exactly one cadence per member** — ✅ every row above appears once; no member is in two cadences.
-2. **No release-only member in `gate`** — ✅ `gate.yml` runs the 11 `local` members
-   (`Color, Scene, Layout, Input, KeyboardInput, Elmish, Controls, Testing, Lib` deterministic +
-   `SkiaViewer, Smoke` GL) plus `surface-baselines`, `fsdocs`, and harness `offscreen` (T0/T1) only.
-   `Package.Tests` and template `Product.Tests` appear **only** in `release.yml`. The slnx itself
-   excludes `Package.Tests`, so the gate's `dotnet build`/`--no-build` test loop physically cannot
-   reach it.
+   `CadenceCoverageTests` now asserts `deterministic ∪ GL == slnx test set` with no overlap.
+2. **No release-only member in `gate`** — ✅ `gate.yml` runs all 16 slnx test projects (the 14
+   deterministic members above + `SkiaViewer, Smoke` GL) plus `surface-baselines`, `fsdocs`, and
+   harness `offscreen` (T0/T1) only. `Package.Tests` and template `Product.Tests` appear **only** in
+   `release.yml`. The slnx itself excludes `Package.Tests`, so the gate's slnx-derived `--no-build`
+   test loop physically cannot reach it.
 3. **No trigger overlap** — ✅ `gate` = `push`/`pull_request` to `main`; `release` = `release:
    published` + `v*` **tag** push + manual; `capability` = weekly `schedule` + manual. The `release`
    `push` filter is tag-only, so it never fires on a branch push or PR. No event reaches two cadences
@@ -111,8 +125,11 @@ Cross-checked this map against `docs/validation/validation-set.md` and the actua
    `harness-evidence` action with no `required-tiers` and `continue-on-error: true`; absence/skip is
    disclosed, never a false pass and never blocking.
 
-The 11 local members above are exactly the `validation-set.md` "Local inner loop" list (1–11) — no
-addition, no omission.
+The 16 gate-run test members above (14 deterministic + `SkiaViewer`/`Smoke` GL) are exactly the
+`tests/*.Tests` set of `FS.GG.Rendering.slnx` and the `validation-set.md` "Local inner loop" list —
+no addition, no omission. This equality is asserted by `CadenceCoverageTests` (Feature 235), so it
+cannot silently drift again (the earlier staleness — retired `Color`/`Input` still listed while six
+projects were omitted — was the P4 finding #47).
 
 ## 4. Surface-baseline drift — chosen gate behavior
 
