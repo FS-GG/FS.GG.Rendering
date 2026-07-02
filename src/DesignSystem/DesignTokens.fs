@@ -1,5 +1,9 @@
-// GENERATED — do not edit. Source of truth: src/Themes.Default/design-tokens.tokens.json
-// Regenerate via: ./fake.sh build -t RefreshSurfaceBaselines
+// GENERATED — do not edit. Source: src/Themes.Default/design-tokens.tokens.json
+// Regenerate via: dotnet fsi scripts/generate-design-tokens.fsx
+//
+// Feature 069/125: the flat light/dark primitive blocks that feed Theme.light/dark. These VALUES are
+// generated from the DTCG source; the paired hand-curated DesignTokens.fsi is the sole public-surface
+// declaration. Currency of both files is enforced by this generator's --check (the Feature 126 gate).
 namespace FS.GG.UI.DesignSystem
 
 open FS.GG.UI.Scene

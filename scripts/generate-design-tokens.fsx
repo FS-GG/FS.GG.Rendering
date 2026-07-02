@@ -1,14 +1,16 @@
-// Generates the internal Ant-derived token taxonomy module from the DTCG source of truth.
+// Generates the DTCG-derived token modules from the design-token source of truth.
 //
-//   Input:  src/Themes.Default/design-tokens.tokens.json  (feature 069 + 126 groups)
-//   Output: src/DesignSystem/DesignTokensExt.fs            (module internal DesignTokensExt)
+//   Input:  src/Themes.Default/design-tokens.tokens.json  (feature 069 flat + 126 taxonomy groups)
+//   Output: src/DesignSystem/DesignTokens.fs               (module DesignTokens — flat light/dark primitives)
+//           src/DesignSystem/DesignTokensExt.fs            (module DesignTokensExt — Ant-derived taxonomy)
+//           src/DesignSystem/DesignTokensExt.fsi           (its paired public signature)
 //
-// Feature 126 (Workstream F, F1): the new seed/map/alias/component + spacing/density/type/elevation
-// groups are GENERATED here so they stay in lock-step with the DTCG source (no hand-coded values).
-// This script is build-time tooling run via `dotnet fsi`; it is NOT compiled into any product or test
-// assembly, so the framework's no-JSON-parser-dependency rule is preserved (System.Text.Json is used
-// here at script time only). The existing flat `light`/`dark` primitive blocks are NOT emitted here —
-// they remain the hand-curated public `DesignTokens` module; this generator only emits the new groups.
+// Feature 069/126 (Workstream F, F1): BOTH the flat `light`/`dark` primitives and the new
+// seed/map/alias/component + spacing/density/type/elevation groups are GENERATED here so they stay in
+// lock-step with the DTCG source (no hand-coded values). The flat block's paired DesignTokens.fsi stays
+// hand-curated — it is the sole public-surface declaration. This script is build-time tooling run via
+// `dotnet fsi`; it is NOT compiled into any product or test assembly, so the framework's
+// no-JSON-parser-dependency rule is preserved (System.Text.Json is used here at script time only).
 //
 // Usage:
 //   dotnet fsi scripts/generate-design-tokens.fsx            # regenerate the file in place
@@ -179,6 +181,39 @@ let generate () =
     // Normalize to LF and a single trailing newline for stable, OS-independent output.
     sb.ToString().Replace("\r\n", "\n").TrimEnd('\n') + "\n"
 
+// Emit the flat `light`/`dark` primitive module (feature 069): the public `DesignTokens` VALUES,
+// generated from the DTCG `light`/`dark` groups. The paired DesignTokens.fsi is the hand-curated public
+// signature (the sole public-surface declaration); this only emits the value-carrying `.fs`.
+let generateFlat () =
+    let json = File.ReadAllText sourcePath
+    use doc = JsonDocument.Parse json
+    let root = doc.RootElement
+    let groupOf (key: string) =
+        let mutable node = Unchecked.defaultof<JsonElement>
+        if not (root.TryGetProperty(key, &node)) then fail (sprintf "flat group '%s' missing from source" key)
+        node
+    let light = groupOf "light"
+    let dark = groupOf "dark"
+    // Flat-block mode parity: light and dark must expose the identical leaf set (they seed Theme.light/dark).
+    let keysOf (e: JsonElement) = e.EnumerateObject() |> Seq.map (fun p -> p.Name) |> Set.ofSeq
+    if keysOf light <> keysOf dark then fail "flat light/dark key sets differ (mode parity)"
+    let sb = StringBuilder()
+    sb.AppendLine(sprintf "// GENERATED — do not edit. Source: %s" sourceRel) |> ignore
+    sb.AppendLine("// Regenerate via: dotnet fsi scripts/generate-design-tokens.fsx") |> ignore
+    sb.AppendLine("//") |> ignore
+    sb.AppendLine("// Feature 069/125: the flat light/dark primitive blocks that feed Theme.light/dark. These VALUES are") |> ignore
+    sb.AppendLine("// generated from the DTCG source; the paired hand-curated DesignTokens.fsi is the sole public-surface") |> ignore
+    sb.AppendLine("// declaration. Currency of both files is enforced by this generator's --check (the Feature 126 gate).") |> ignore
+    sb.AppendLine("namespace FS.GG.UI.DesignSystem") |> ignore
+    sb.AppendLine() |> ignore
+    sb.AppendLine("open FS.GG.UI.Scene") |> ignore
+    sb.AppendLine() |> ignore
+    sb.AppendLine("module DesignTokens =") |> ignore
+    emitNode "    " "light" light sb
+    emitNode "    " "dark" dark sb
+    // Normalize to LF and a single trailing newline for stable, OS-independent output.
+    sb.ToString().Replace("\r\n", "\n").TrimEnd('\n') + "\n"
+
 // Emit the paired .fsi (F5/130): the curated PUBLIC signature, generated in lock-step with the .fs.
 let generateFsi () =
     let json = File.ReadAllText sourcePath
@@ -211,8 +246,10 @@ let generateFsi () =
 
 let generated = generate ()
 let generatedFsi = generateFsi ()
+let generatedFlat = generateFlat ()
 
 let fsiOutputPath = Path.Combine(repoRoot, "src", "DesignSystem", "DesignTokensExt.fsi")
+let flatOutputPath = Path.Combine(repoRoot, "src", "DesignSystem", "DesignTokens.fs")
 
 let rel (p: string) = Path.GetRelativePath(repoRoot, p)
 let currentOf (path: string) =
@@ -220,18 +257,21 @@ let currentOf (path: string) =
 
 let check = Array.contains "--check" (Environment.GetCommandLineArgs())
 if check then
-    // Drift mode covers BOTH committed files: the generated .fs AND the paired .fsi (R3, INV-2).
+    // Drift mode covers ALL committed generated files: the flat DesignTokens.fs (feature 069, P9), the
+    // taxonomy DesignTokensExt.fs, AND its paired .fsi (R3, INV-2).
     let drift =
-        [ outputPath, generated; fsiOutputPath, generatedFsi ]
+        [ flatOutputPath, generatedFlat; outputPath, generated; fsiOutputPath, generatedFsi ]
         |> List.filter (fun (path, gen) -> currentOf path <> gen)
     if List.isEmpty drift then
-        printfn "design-tokens: up to date (DesignTokensExt.fs + DesignTokensExt.fsi)"
+        printfn "design-tokens: up to date (DesignTokens.fs + DesignTokensExt.fs + DesignTokensExt.fsi)"
         exit 0
     else
         for (path, _) in drift do
             eprintfn "design-tokens: DRIFT — %s is stale; run: dotnet fsi scripts/generate-design-tokens.fsx" (rel path)
         exit 1
 else
+    File.WriteAllText(flatOutputPath, generatedFlat)
+    printfn "wrote %s" (rel flatOutputPath)
     File.WriteAllText(outputPath, generated)
     printfn "wrote %s" (rel outputPath)
     File.WriteAllText(fsiOutputPath, generatedFsi)

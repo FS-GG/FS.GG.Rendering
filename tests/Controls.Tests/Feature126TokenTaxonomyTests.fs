@@ -60,8 +60,9 @@ let feature126TokenTaxonomyTests =
             Expect.equal DesignTokensExt.Seed.colorTextBase DesignTokens.Light.foreground "seed.colorTextBase == DesignTokens.Light.foreground"
         }
 
-        // US3 (FR-003/FR-010): the committed generated module is in lock-step with the DTCG source.
-        test "DesignTokensExt is up to date with the DTCG source — generator --check passes (FR-010)" {
+        // US3 (FR-003/FR-010): the committed generated modules are in lock-step with the DTCG source.
+        // The gate covers the flat DesignTokens.fs (feature 069, P9) as well as DesignTokensExt.fs/.fsi.
+        test "the generated token modules are up to date with the DTCG source — generator --check passes (FR-010, P9)" {
             let psi = ProcessStartInfo("dotnet", "fsi scripts/generate-design-tokens.fsx --check")
             psi.WorkingDirectory <- repositoryRoot
             psi.RedirectStandardError <- true
@@ -79,5 +80,18 @@ let feature126TokenTaxonomyTests =
             let text = File.ReadAllText path
             Expect.stringStarts text "// GENERATED — do not edit." "carries the generated marker"
             Expect.stringContains text "design-tokens.tokens.json" "references the DTCG source"
+        }
+
+        // P9 (2026-07-02 review): the flat DesignTokens.fs is now genuinely generated (not merely
+        // labelled) — it is marked generated, names its DTCG source, and points at the real regenerate
+        // command (not the long-gone `./fake.sh … RefreshSurfaceBaselines`). The --check gate above
+        // proves the committed values match the generator; this proves the marker is honest.
+        test "DesignTokens.fs is marked generated and names the DTCG source and real regenerator (P9)" {
+            let path = Path.Combine(repositoryRoot, "src", "DesignSystem", "DesignTokens.fs")
+            let text = File.ReadAllText path
+            Expect.stringStarts text "// GENERATED — do not edit." "carries the generated marker"
+            Expect.stringContains text "design-tokens.tokens.json" "references the DTCG source"
+            Expect.stringContains text "generate-design-tokens.fsx" "names the real regenerate command"
+            Expect.isFalse (text.Contains "fake.sh") "no longer points at the non-existent fake.sh target"
         }
     ]
