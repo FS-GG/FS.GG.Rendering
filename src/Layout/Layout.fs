@@ -1242,6 +1242,64 @@ module Layout =
               Width = inner.Width
               Height = height })
 
-    let horizontalStack (_: StackConfig) (children: LayoutChild list) = content children
-    let verticalStack (_: StackConfig) (children: LayoutChild list) = content children
-    let dock (_: DockConfig) (children: LayoutChild list) = content children
+    // R6/P6: previously these three lowered every child at the origin via `content`, silently
+    // discarding `config` (bounds/padding/spacing) and `DockPosition`. They now place each child
+    // at its computed bounds through `Scene.translate`, so the config genuinely shapes the output.
+    let private placeChild (bounds: LayoutBounds) (child: LayoutChild) =
+        Scene.translate bounds.X bounds.Y child.Content
+
+    let horizontalStack (config: StackConfig) (children: LayoutChild list) =
+        List.map2 placeChild (measureHorizontal config children) children |> Scene.group
+
+    let verticalStack (config: StackConfig) (children: LayoutChild list) =
+        List.map2 placeChild (measureVertical config children) children |> Scene.group
+
+    // Classic edge-docking: Top/Bottom/Left/Right consume a slice off the shrinking inner rect
+    // (sized by the child's `DesiredHeight`/`DesiredWidth`, defaulting to an even share of the
+    // remaining extent), `Spacing` insets the next slice, and `Fill`/`None` children take the
+    // rectangle that survives after every explicit edge is consumed.
+    let dock (config: DockConfig) (children: LayoutChild list) =
+        let stepEdge (remaining: LayoutBounds) (desired: float option) (fraction: float) =
+            match desired with
+            | Some value -> max 0.0 (min value fraction)
+            | None -> fraction
+
+        let struct (placements, _) =
+            children
+            |> List.fold
+                (fun (struct (acc, remaining: LayoutBounds)) (child: LayoutChild) ->
+                    let spacing = config.Spacing
+
+                    match child.Dock with
+                    | Some Top ->
+                        let h = stepEdge remaining child.Sizing.DesiredHeight remaining.Height
+                        let placed = { remaining with Height = h }
+                        let next = { remaining with Y = remaining.Y + h + spacing; Height = max 0.0 (remaining.Height - h - spacing) }
+                        struct ((placed, child) :: acc, next)
+                    | Some Bottom ->
+                        let h = stepEdge remaining child.Sizing.DesiredHeight remaining.Height
+                        let placed = { remaining with Y = remaining.Y + max 0.0 (remaining.Height - h); Height = h }
+                        let next = { remaining with Height = max 0.0 (remaining.Height - h - spacing) }
+                        struct ((placed, child) :: acc, next)
+                    | Some Left ->
+                        let w = stepEdge remaining child.Sizing.DesiredWidth remaining.Width
+                        let placed = { remaining with Width = w }
+                        let next = { remaining with X = remaining.X + w + spacing; Width = max 0.0 (remaining.Width - w - spacing) }
+                        struct ((placed, child) :: acc, next)
+                    | Some Right ->
+                        let w = stepEdge remaining child.Sizing.DesiredWidth remaining.Width
+                        let placed = { remaining with X = remaining.X + max 0.0 (remaining.Width - w); Width = w }
+                        let next = { remaining with Width = max 0.0 (remaining.Width - w - spacing) }
+                        struct ((placed, child) :: acc, next)
+                    | Some Fill
+                    | None ->
+                        // Fill children share the current remaining rect (undivided — the last writer
+                        // wins z-order, matching `content`'s prior overlay behaviour but positioned).
+                        struct ((remaining, child) :: acc, remaining))
+                (let inner = innerBounds config.Bounds config.Padding
+                 struct ([], { LayoutBounds.X = inner.X; Y = inner.Y; Width = inner.Width; Height = inner.Height }))
+
+        placements
+        |> List.rev
+        |> List.map (fun (bounds, child) -> placeChild bounds child)
+        |> Scene.group

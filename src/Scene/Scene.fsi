@@ -62,9 +62,18 @@ module Path =
     /// Public contract function exposed by this FS.GG.UI package.
     val measure: path: PathSpec -> PathMeasure
     /// Public contract function exposed by this FS.GG.UI package.
+    /// Extracts the sub-path between two arc-length distances. The path is flattened to the polyline
+    /// of its vertex-bearing commands (MoveTo/LineTo and curve endpoints — the same points `measure`
+    /// accumulates chord length over), so distances share `measure`'s metric; this is a disclosed
+    /// polyline approximation, not a Skia arc-length reparameterisation of curves. Returns an
+    /// empty-command path when the window is empty or the path has fewer than two vertices.
     val segment: startDistance: float -> endDistance: float -> path: PathSpec -> PathSpec
     /// Public contract function exposed by this FS.GG.UI package.
-    val combine: operation: PathOperation -> left: PathSpec -> right: PathSpec -> PathSpec
+    /// `Union`/`Xor` compose overlapping subpaths under the nonzero-winding resp. even-odd fill rule
+    /// and return `Ok`; `Intersect`/`Difference` require boolean path clipping, absent from the
+    /// Skia-free Scene layer, and fail loud with `PathCombineError` rather than returning silently
+    /// wrong geometry (P6 / R2).
+    val combine: operation: PathOperation -> left: PathSpec -> right: PathSpec -> Result<PathSpec, PathCombineError>
 
 /// Public contract module exposed by this FS.GG.UI package.
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]

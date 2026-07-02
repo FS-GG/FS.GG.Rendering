@@ -201,6 +201,14 @@ module Animation =
         | Some tween -> Tween.sample Transform.lerp elapsed tween
         | None -> Transform.identity
 
+    // R5/P6: the `Color` tween used to be dead weight — it only fed `isSettled`. `applyAt` composes
+    // opacity + transform onto the scene structurally, and the frozen wire format has no scene-wide
+    // tint node to fold a colour into, so `applyAt` cannot honestly apply `Color`. Instead of leaving
+    // it a success-shaped stub, expose the sampled colour here so consumers can drive their own
+    // recolouring (e.g. a `Paint` fill) from the animated value; `None` when no colour tween is set.
+    let sampleColor (elapsed: TimeSpan) (animation: Animation) : Color option =
+        animation.Color |> Option.map (fun tween -> Tween.sample lerpColor elapsed tween)
+
     let applyAt (elapsed: TimeSpan) (animation: Animation) (target: Scene) : SceneNode =
         let opacity = sampleOpacity elapsed animation
         let transform = sampleTransform elapsed animation

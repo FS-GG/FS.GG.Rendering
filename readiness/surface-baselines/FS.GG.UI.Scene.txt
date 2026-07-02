@@ -69,6 +69,7 @@ FS.GG.UI.Scene.PackageInspectionStatus
 FS.GG.UI.Scene.PackageInspectionStatus+Tags
 FS.GG.UI.Scene.Paint
 FS.GG.UI.Scene.Path
+FS.GG.UI.Scene.PathCombineError
 FS.GG.UI.Scene.PathCommand
 FS.GG.UI.Scene.PathCommand+ArcTo
 FS.GG.UI.Scene.PathCommand+CubicTo

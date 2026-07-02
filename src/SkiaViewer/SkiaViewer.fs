@@ -1983,8 +1983,19 @@ module Viewer =
         let artifacts request options scene =
             visualEvidenceArtifacts request options scene
 
+    // R4/P6: a bounded run drives a real Silk.NET window and counts its frame callbacks, but it does
+    // NOT present `scene` on the live GL surface (that is `run`/`runApp`). It no longer `ignore`s the
+    // scene: when an evidence artifact is requested for a `.png` path the scene is rasterized to real
+    // pixels through the shared CPU painter, so the evidence genuinely depicts the scene instead of a
+    // window that drew nothing. Non-image evidence paths keep the textual run summary. Disclosed in
+    // SkiaViewer.fsi so callers do not read "frames rendered" as "scene presented on screen".
+    let private writeRunEvidence path (options: ViewerOptions) (scene: SceneNode) (evidence: ViewerRunEvidence) =
+        if isPngPath path then
+            writeSceneImageEvidence path options.InitialSize scene |> ignore
+        else
+            writeEvidence path evidence
+
     let runBounded (request: ViewerRunRequest) options (scene: SceneNode) =
-        ignore scene
         match validateRequest request with
         | Result.Error failure -> Result.Error failure
         | Result.Ok() ->
@@ -2087,7 +2098,7 @@ module Viewer =
 
                                     match current.Completed with
                                     | Some(Result.Ok evidence) ->
-                                        request.EvidencePath |> Option.iter (fun path -> writeEvidence path evidence)
+                                        request.EvidencePath |> Option.iter (fun path -> writeRunEvidence path options scene evidence)
                                         Result.Ok evidence
                                     | Some(Result.Error failure) -> Result.Error failure
                                     | None ->

@@ -149,10 +149,20 @@ module Viewer =
     /// Public contract function exposed by this FS.GG.UI package.
     val runAppEvidence: request: ViewerRunRequest -> options: ViewerOptions -> host: GeneratedAppHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
     /// Public contract function exposed by this FS.GG.UI package.
+    /// Drives a real bounded Silk.NET window and reports `FramesRendered` = the number of frame
+    /// callbacks the window fired. The window itself is NOT painted with `scene` (on-screen
+    /// presentation is `run`/`runApp`); instead, when the request's `EvidencePath` names a `.png`
+    /// the scene is rasterized to real pixels through the shared CPU painter, so image evidence
+    /// genuinely depicts `scene`. Read `FramesRendered` as window/frame-cadence proof, not as
+    /// "the scene was presented on screen" (P6 / R4).
     val runBounded: request: ViewerRunRequest -> options: ViewerOptions -> scene: SceneNode -> Result<ViewerRunEvidence, ViewerRunFailure>
     /// Public contract function exposed by this FS.GG.UI package.
+    /// Bounded run stopping at the first frame callback; see `runBounded` for what the evidence
+    /// proves (window/frame cadence; scene depicted only in `.png` evidence, not on the live surface).
     val runUntilFirstFrame: options: ViewerOptions -> scene: SceneNode -> Result<ViewerRunEvidence, ViewerRunFailure>
     /// Public contract function exposed by this FS.GG.UI package.
+    /// Bounded run stopping after `frameCount` frame callbacks; see `runBounded` for what the
+    /// evidence proves (window/frame cadence; scene depicted only in `.png` evidence).
     val runForFrames: frameCount: int -> options: ViewerOptions -> scene: SceneNode -> Result<ViewerRunEvidence, ViewerRunFailure>
     /// Public contract function exposed by this FS.GG.UI package.
     val captureScreenshotEvidence: request: ScreenshotEvidenceRequest -> options: ViewerOptions -> scene: SceneNode -> ScreenshotEvidenceResult

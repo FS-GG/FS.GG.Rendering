@@ -136,6 +136,12 @@ type PathOperation =
     | Difference
     | Xor
 
+/// Why `Path.combine` could not honestly produce a result. The Skia-free `Scene` layer has no
+/// boolean-geometry (clipping) kernel, so `Intersect`/`Difference` — which cannot be expressed by
+/// subpath concatenation plus a fill rule — fail loud with this instead of returning wrong-but-
+/// success-shaped geometry (P6 / R2).
+type PathCombineError = { Operation: PathOperation; Message: string }
+
 type PathMeasure =
     { Length: float
       IsClosed: bool }

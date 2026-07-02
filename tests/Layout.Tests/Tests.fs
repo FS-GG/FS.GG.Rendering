@@ -112,6 +112,67 @@ let contractTests =
             Expect.contains (Scene.describe scene) RectangleElement "dock returns child scene content"
         }
 
+        // P6/R6: the stack/dock builders used to lower every child at the origin (config ignored).
+        // These prove the child content is now actually POSITIONED at its computed bounds.
+        test "horizontalStack positions each child at its measured bounds (P6/R6)" {
+            let config =
+                { Defaults.stackConfig 300.0 120.0 with
+                    Padding = { Left = 10.0; Top = 8.0; Right = 20.0; Bottom = 12.0 }
+                    Spacing = 5.0 }
+
+            let children = [ child "a"; child "b"; child "c" ]
+            let expected = Layout.measureHorizontal config children
+
+            match (Layout.horizontalStack config children).Nodes with
+            | [ SceneNode.Group placed ] ->
+                Expect.equal placed.Length 3 "one positioned node per child"
+
+                let offsets =
+                    placed
+                    |> List.map (fun (node: Scene) ->
+                        match node.Nodes with
+                        | [ SceneNode.Translate((dx, dy), _) ] -> dx, dy
+                        | other -> failtestf "each child is wrapped in a Translate, got %A" other)
+
+                offsets
+                |> List.iteri (fun index (dx, dy) ->
+                    Expect.floatClose Accuracy.medium dx expected[index].X $"child {index} X matches its measured bounds"
+                    Expect.floatClose Accuracy.medium dy expected[index].Y $"child {index} Y matches its measured bounds")
+
+                // Not all at the origin — the config genuinely shapes the output.
+                Expect.isGreaterThan (fst offsets[1]) 0.0 "the second child is offset from the origin"
+            | other -> failtestf "horizontalStack returns a group of positioned children, got %A" other
+        }
+
+        test "dock consumes a left edge sized by the child's DesiredWidth (P6/R6)" {
+            let dockConfig =
+                { Defaults.dockConfig 640.0 480.0 with
+                    Padding = { Left = 4.0; Top = 6.0; Right = 8.0; Bottom = 10.0 } }
+
+            let sizing =
+                { DesiredWidth = Some 120.0
+                  DesiredHeight = Some 48.0
+                  HorizontalAlignment = HorizontalAlignment.Center
+                  VerticalAlignment = VerticalAlignment.Middle }
+
+            let left = { Content = Scene.rectangle (0.0, 0.0, 10.0, 10.0) Colors.white; Sizing = sizing; Dock = Some Left }
+            let fill = { Content = Scene.rectangle (0.0, 0.0, 10.0, 10.0) Colors.black; Sizing = sizing; Dock = None }
+
+            match (Layout.dock dockConfig [ left; fill ]).Nodes with
+            | [ SceneNode.Group [ leftPlaced; fillPlaced ] ] ->
+                let offset (node: Scene) =
+                    match node.Nodes with
+                    | [ SceneNode.Translate(o, _) ] -> o
+                    | other -> failtestf "docked child is wrapped in a Translate, got %A" other
+
+                let (leftX, _) = offset leftPlaced
+                let (fillX, _) = offset fillPlaced
+                Expect.floatClose Accuracy.medium leftX 4.0 "the left-docked child sits at the padding origin"
+                // Fill takes the remainder: origin.X (4) + consumed width (120).
+                Expect.floatClose Accuracy.medium fillX (4.0 + 120.0) "the fill child starts after the consumed left edge"
+            | other -> failtestf "dock returns a group of two positioned children, got %A" other
+        }
+
         test "zero and negative stack bounds clamp measured child sizes to non-negative values" {
             let zero = Layout.measureHorizontal (Defaults.stackConfig 0.0 0.0) [ child "zero" ]
             let negative = Layout.measureVertical (Defaults.stackConfig -20.0 -10.0) [ child "negative" ]

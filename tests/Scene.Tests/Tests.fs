@@ -99,6 +99,31 @@ let tests =
             | Result.Error failure -> failtestf "scene evidence should write metadata: %A" failure
         }
 
+        test "render with Format = Png fails loud instead of writing a hash to a .png (P6/R10)" {
+            // Pre-P6 `render` returned the deterministic capability HASH as the `Png` evidence value and
+            // wrote it to the EvidencePath — a success-shaped non-image, the very thing feature 221
+            // eliminated on `renderPng`. The string-valued `render` API cannot carry real pixels, so
+            // `Format = Png` now fails loud and routes callers to the byte-returning `renderPng` seam.
+            let scene = Scene.text (12.0, 24.0) "Generated app scene" Colors.white
+            let path = Path.Combine(Path.GetTempPath(), "fs-gg-scene-evidence-png-should-not-exist.png")
+            if File.Exists path then
+                File.Delete path
+
+            match
+                SceneEvidence.render
+                    { Scene = scene
+                      OutputSize = { Width = 80; Height = 40 }
+                      Format = Png
+                      RendererMode = "deterministic-scene"
+                      EvidencePath = Some path }
+            with
+            | Result.Error failure ->
+                Expect.equal failure.BlockedStage "renderer" "the blocked stage names the renderer"
+                Expect.stringContains failure.Message "renderPng" "the failure routes callers to the pixel seam"
+                Expect.isFalse (File.Exists path) "no success-shaped non-image is written to the .png path"
+            | Result.Ok evidence -> failtestf "expected a typed failure, not a hash-as-png value %A" evidence.Value
+        }
+
         test "renderPng fails honestly (no stub) in the dependency-light Scene assembly with no rasterizer injected" {
             // Feature 221 (US1/US3, FR-002/FR-005/SC-005): pre-221 `renderPng` returned the UTF-8 bytes
             // of a capability HASH as a fake "PNG". That success-shaped non-image is eliminated. In the

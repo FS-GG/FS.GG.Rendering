@@ -130,3 +130,45 @@ let auditSettledIdentity =
             Expect.isFalse (Animation.isSettled inFlightTime settledAnim) "isSettled false while in flight"
         }
     ]
+
+// P6/R5: the `Color` tween used to be dead weight (it fed only `isSettled`). `sampleColor` now makes
+// it a real, consumable value, and `applyAt` HONESTLY does not composite it (the wire format has no
+// scene-wide tint node) — the disclosure in Animation.fsi. These audits prove both halves.
+[<Tests>]
+let auditColorSampling =
+    testList "Audit: AnimationSampling colour tween (P6/R5)" [
+        let colorAnim: Animation =
+            { Animation.empty with
+                Color =
+                    Some
+                        { Start = Colors.rgb 0uy 0uy 0uy
+                          End = Colors.rgb 200uy 100uy 50uy
+                          Duration = ms 100.0
+                          Easing = Linear } }
+
+        test "Audit: sampleColor interpolates the colour tween and pins its endpoints" {
+            Expect.equal (Animation.sampleColor TimeSpan.Zero colorAnim) (Some(Colors.rgb 0uy 0uy 0uy)) "start pinned at t=0"
+            Expect.equal (Animation.sampleColor settledTime colorAnim) (Some(Colors.rgb 200uy 100uy 50uy)) "end pinned at duration"
+
+            match Animation.sampleColor inFlightTime colorAnim with
+            | Some mid ->
+                // Linear midpoint of 0->200 / 0->100 / 0->50 ⇒ (100,50,25).
+                Expect.equal mid (Colors.rgb 100uy 50uy 25uy) "mid-flight colour is the linear midpoint"
+            | None -> failtest "a colour tween is present, so sampleColor must return Some"
+        }
+
+        test "Audit: sampleColor is None when no colour tween is set" {
+            Expect.equal (Animation.sampleColor settledTime Animation.empty) None "no colour tween ⇒ None"
+        }
+
+        test "Audit: DISCRIMINATING — applyAt does NOT composite the colour tween" {
+            // A colour-only animation has opacity 1.0 + identity transform at every time, so applyAt
+            // must be byte-identical to the static scene — the colour tween is surfaced via
+            // `sampleColor`, never folded into the rendered node. If applyAt DID composite colour this
+            // would differ, exposing an undisclosed side effect.
+            for t in [ TimeSpan.Zero; inFlightTime; settledTime; afterTime ] do
+                let sample = Animation.applyAt t colorAnim staticScene
+                Expect.equal sample staticUnwrapped (sprintf "colour-only applyAt at %A is the static scene unwrapped (structural)" t)
+                Expect.equal (fingerprint sample) (fingerprint staticUnwrapped) (sprintf "colour-only applyAt at %A is byte-identical to static (render-hash)" t)
+        }
+    ]

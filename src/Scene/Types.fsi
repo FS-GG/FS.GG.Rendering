@@ -160,6 +160,12 @@ type PathOperation =
     | Xor
 
 /// Public contract type exposed by this FS.GG.UI package.
+/// Why `Path.combine` could not honestly produce a result: the Skia-free `Scene` layer has no
+/// boolean-geometry kernel, so `Intersect`/`Difference` fail loud with this rather than returning
+/// wrong-but-success-shaped geometry (P6 / R2).
+type PathCombineError = { Operation: PathOperation; Message: string }
+
+/// Public contract type exposed by this FS.GG.UI package.
 type PathMeasure =
     { Length: float
       IsClosed: bool }

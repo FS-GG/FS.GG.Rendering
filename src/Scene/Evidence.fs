@@ -85,22 +85,35 @@ module SceneEvidence =
                   DiagnosticCategory = stageName EvidenceStage.Renderer
                   Message = $"Scene evidence renderer mode '{request.RendererMode}' is not available for non-window deterministic evidence." }
         else
-            let readback = Scene.renderReadbackEvidence request.OutputSize request.Scene
+            match request.Format with
+            | Png ->
+                // R10/P6: a hash string is not a PNG. The string-valued `render`/`SceneEvidence.Value`
+                // API cannot carry real pixels, so `Format = Png` no longer writes a success-shaped
+                // non-image (a hash) to a `.png` path — it fails loud and routes callers to the
+                // byte-returning `SceneEvidence.renderPng` seam (feature 221's honest idiom).
+                Result.Error
+                    { BlockedStage = stageName EvidenceStage.Renderer
+                      Classification = ProductDefect
+                      DiagnosticCategory = stageName EvidenceStage.Renderer
+                      Message =
+                        "Scene evidence Format=Png is not producible through the string-valued render API; use SceneEvidence.renderPng for real PNG pixel bytes." }
+            | Hash
+            | Metadata ->
+                let readback = Scene.renderReadbackEvidence request.OutputSize request.Scene
 
-            let value =
-                match request.Format with
-                | Hash -> readback.DeterministicHash
-                | Metadata -> $"size={request.OutputSize.Width}x{request.OutputSize.Height};capabilities={readback.CapabilityCount};hash={readback.DeterministicHash}"
-                | Png -> readback.DeterministicHash
+                let value =
+                    match request.Format with
+                    | Metadata -> $"size={request.OutputSize.Width}x{request.OutputSize.Height};capabilities={readback.CapabilityCount};hash={readback.DeterministicHash}"
+                    | _ -> readback.DeterministicHash
 
-            request.EvidencePath |> Option.iter (fun path -> writeEvidence path value)
+                request.EvidencePath |> Option.iter (fun path -> writeEvidence path value)
 
-            Result.Ok
-                { Format = request.Format
-                  OutputSize = request.OutputSize
-                  RendererMode = "deterministic-scene"
-                  EvidencePath = request.EvidencePath
-                  Value = value }
+                Result.Ok
+                    { Format = request.Format
+                      OutputSize = request.OutputSize
+                      RendererMode = "deterministic-scene"
+                      EvidencePath = request.EvidencePath
+                      Value = value }
 
     /// A capability-set digest of `scene`: it hashes the sorted, DISTINCT set of element-type markers
     /// produced by `describe` (plus the output size), deliberately discarding every node PAYLOAD —
@@ -122,11 +135,13 @@ module SceneEvidence =
         // unsupported mode → `UnsupportedEnvironment`; FR-007, contract C1.4). On success we DISCARD the
         // hash-bearing record and source real pixels from the injected CPU rasterizer instead — the
         // prior `Encoding.UTF8.GetBytes hash` stub is gone (FR-002/SC-005, contract C1.5).
+        // P6/R10: validate with `Format = Hash` (format-independent size/mode rules) because
+        // `Format = Png` now fails loud through `render` — this is the pixel seam, not the string one.
         match
             render
                 { Scene = scene
                   OutputSize = size
-                  Format = Png
+                  Format = Hash
                   RendererMode = "deterministic-scene"
                   EvidencePath = None }
         with

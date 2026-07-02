@@ -108,11 +108,17 @@ module Animation =
     /// The no-op animation: every property absent. `applyAt` over `empty`
     /// returns the target unwrapped at every time sample.
     val empty: Animation
+    /// Samples the `Color` tween at the given time (`None` when unset). `applyAt` composes only
+    /// opacity + transform onto the scene — the frozen wire format has no scene-wide tint node — so
+    /// the animated colour is surfaced here for consumers to drive their own recolouring rather than
+    /// being silently dropped (P6 / R5).
+    val sampleColor: elapsed: TimeSpan -> animation: Animation -> Color option
     /// Pure sampling: produce the target scene transformed for the given time
     /// sample. Identity-at-rest rule (R5): when the sampled opacity is `1.0` and
     /// the sampled transform is identity, returns the target scene's node
     /// unwrapped (byte-identical to static); a non-identity transform lowers to
-    /// a `PerspectiveNode`.
+    /// a `PerspectiveNode`. Composes opacity + transform only; the `Color` tween is
+    /// sampled via `sampleColor`, not composited here (P6 / R5).
     val applyAt: elapsed: TimeSpan -> animation: Animation -> target: Scene -> SceneNode
     /// Samples the animation at explicit time points for deterministic evidence.
     val sampleFrames: times: TimeSpan list -> animation: Animation -> target: Scene -> Scene list

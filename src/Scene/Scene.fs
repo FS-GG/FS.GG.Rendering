@@ -140,22 +140,94 @@ module Path =
         { Length = length
           IsClosed = path.Commands |> List.exists ((=) Close) }
 
+    // R2/P6: the current point advances only for the vertex-bearing commands `measure` also uses to
+    // accumulate length (MoveTo/LineTo and the curve endpoints); ArcTo/Close never move it there, so a
+    // polyline of these points shares `measure`'s chord metric exactly. `segment` extracts along that
+    // same polyline — it is honest about the flattening (disclosed in Scene.fsi), not a Skia arc-length
+    // reparameterisation.
+    let private polyline (path: PathSpec) : Point list =
+        path.Commands
+        |> List.choose (function
+            | MoveTo p -> Some p
+            | LineTo p -> Some p
+            | QuadTo(_, p) -> Some p
+            | CubicTo(_, _, p) -> Some p
+            | ArcTo _
+            | Close -> None)
+
+    let private lerpPoint (a: Point) (b: Point) (t: float) : Point =
+        { X = a.X + (b.X - a.X) * t
+          Y = a.Y + (b.Y - a.Y) * t }
+
     let segment (startDistance: float) (endDistance: float) (path: PathSpec) =
-        if endDistance <= startDistance then
+        let points = polyline path
+
+        if endDistance <= startDistance || List.length points < 2 then
             { path with Commands = [] }
         else
-            path
+            // Walk the polyline once, accumulating chord length, emitting the vertices whose cumulative
+            // distance falls inside [startDistance, endDistance] plus the two interpolated boundary points.
+            let clampStart = max 0.0 startDistance
 
-    let combine operation (left: PathSpec) (right: PathSpec) =
-        let marker =
-            match operation with
-            | Union -> []
-            | Intersect -> []
-            | Difference -> []
-            | Xor -> []
+            let struct (extracted, _, _) =
+                List.pairwise points
+                |> List.fold
+                    (fun (struct (acc, travelled, _)) (a, b) ->
+                        let span = distance a b
+                        let segEnd = travelled + span
 
-        { FillType = left.FillType
-          Commands = left.Commands @ marker @ right.Commands }
+                        let acc =
+                            if span <= 0.0 then
+                                acc
+                            else
+                                // Interpolate the entry/exit points where the window boundaries cut this chord.
+                                let clip d = (d - travelled) / span
+
+                                let acc =
+                                    if travelled <= clampStart && clampStart < segEnd then
+                                        lerpPoint a b (clip clampStart) :: acc
+                                    else
+                                        acc
+
+                                let acc =
+                                    if travelled < endDistance && endDistance <= segEnd then
+                                        lerpPoint a b (clip endDistance) :: acc
+                                    elif segEnd < endDistance && segEnd > clampStart then
+                                        b :: acc
+                                    else
+                                        acc
+
+                                acc
+
+                        struct (acc, segEnd, ()))
+                    (struct ([], 0.0, ()))
+
+            match List.rev extracted with
+            | [] -> { path with Commands = [] }
+            | head :: tail ->
+                { path with
+                    Commands = MoveTo head :: (tail |> List.map LineTo) }
+
+    // R2/P6: true boolean geometry (Intersect/Difference) needs a clipping kernel the Skia-free `Scene`
+    // layer does not have, so `combine` no longer returns the same silent concatenation for all four
+    // operations. `Union`/`Xor` ARE expressible as overlapping subpaths filled by the nonzero-winding
+    // resp. even-odd rule, so they succeed with the matching fill type; `Intersect`/`Difference` fail
+    // loud with a typed `PathCombineError` (the `Evidence.renderPng` honest-failure idiom).
+    let combine operation (left: PathSpec) (right: PathSpec) : Result<PathSpec, PathCombineError> =
+        let concatenated fillType =
+            Result.Ok
+                { FillType = fillType
+                  Commands = left.Commands @ right.Commands }
+
+        match operation with
+        | Union -> concatenated Winding
+        | Xor -> concatenated EvenOdd
+        | Intersect
+        | Difference ->
+            Result.Error
+                { Operation = operation
+                  Message =
+                    $"Path.combine %A{operation} needs boolean path clipping, which the Skia-free Scene layer does not implement; use Union/Xor (fill-rule composition) or perform the clip in the SkiaViewer layer." }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Scene =

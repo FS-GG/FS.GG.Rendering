@@ -490,11 +490,27 @@ let us1ContractTests =
                     Close
                 ]
 
-            let combined = Path.combine Union first second
+            // P6/R2: Union composes under the nonzero-winding fill rule and succeeds; the boolean
+            // operations that need a clipping kernel fail loud instead of returning wrong geometry.
+            let combined =
+                match Path.combine Union first second with
+                | Result.Ok path -> path
+                | Result.Error error -> failtestf "Union combine should succeed, got %A" error
+
             let measured = Path.measure combined
             let segment = Path.segment 0.0 5.0 combined
 
-            Expect.equal combined.FillType Winding "combined path keeps the left fill type"
+            Expect.equal combined.FillType Winding "Union composes overlapping subpaths under the nonzero-winding rule"
+
+            match Path.combine Xor first second with
+            | Result.Ok path -> Expect.equal path.FillType EvenOdd "Xor composes under the even-odd fill rule"
+            | Result.Error error -> failtestf "Xor combine should succeed, got %A" error
+
+            for op in [ Intersect; Difference ] do
+                match Path.combine op first second with
+                | Result.Ok _ -> failtestf "%A must fail loud in the Skia-free Scene layer, not return silent geometry" op
+                | Result.Error error -> Expect.equal error.Operation op $"{op} failure names the unsupported operation"
+
             Expect.isGreaterThan measured.Length 20.0 "path measurement accounts for line and curve endpoints"
             Expect.isTrue measured.IsClosed "path measurement records closed paths"
             Expect.isSome (Path.bounds combined) "path bounds are available"
