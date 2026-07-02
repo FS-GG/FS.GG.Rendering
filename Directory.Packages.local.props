@@ -30,7 +30,7 @@
        (ADR-0014 / roadmap §6). Exact pin; test-only; NOT shipped in any product. -->
   <ItemGroup>
     <PackageVersion Include="FS.GG.Contracts" Version="[1.4.0]" />
-    <PackageVersion Include="Expecto" Version="10.2.2" />
+    <PackageVersion Include="Expecto" Version="11.1.0" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageVersion Include="YoloDev.Expecto.TestSdk" Version="0.15.3" />
   </ItemGroup>
