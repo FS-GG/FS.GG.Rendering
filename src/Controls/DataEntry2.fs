@@ -23,10 +23,13 @@ module DataEntry2 =
               AnchorId = triggerId
               LayerPriority = 50
               DismissalPolicy = OverlayState.defaultDismissalPolicy ()
+              // Issue #56: this helper lowers no keyed suggestion controls, so it can name no real
+              // focus stop — an honestly empty scope replaces the fabricated `surfaceId + "-item-N"`
+              // phantoms. Suggestions are product-supplied; keyed content would carry its own ids.
               FocusScope =
                 { SurfaceId = surfaceId
-                  Stops = [ surfaceId + "-item-1"; surfaceId + "-item-2" ]
-                  InitialFocus = Some(surfaceId + "-item-1")
+                  Stops = []
+                  InitialFocus = None
                   RecoveryTarget = Some triggerId
                   TrapMode = LocalScope }
               Modal = false

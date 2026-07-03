@@ -42,10 +42,15 @@ module internal WidgetLowering =
                 None
                 None)
 
-    let private focusScope surfaceId triggerId trapMode =
+    // Issue #56: the focus-scope stops are the ids of the surface's REAL lowered focusable
+    // content — passed by each caller, which is the only place that knows what it lowered — not
+    // the fabricated `surfaceId + "-item-N"` phantoms that no control ever carried (they made
+    // in-overlay focus land on non-existent ids). `InitialFocus` is the first such stop, so a
+    // surface with no nameable content declares an honestly empty scope rather than a fake target.
+    let private focusScope surfaceId triggerId trapMode (stops: ControlId list) =
         { SurfaceId = surfaceId
-          Stops = [ surfaceId + "-item-1"; surfaceId + "-item-2" ]
-          InitialFocus = Some(surfaceId + "-item-1")
+          Stops = stops
+          InitialFocus = List.tryHead stops
           RecoveryTarget = Some triggerId
           TrapMode = trapMode }
 
@@ -53,6 +58,7 @@ module internal WidgetLowering =
         (kind: TransientSurfaceKind)
         (surfaceId: ControlId)
         (triggerId: ControlId)
+        (contentStops: ControlId list)
         (isOpen: bool)
         (enabled: bool)
         (layerPriority: int)
@@ -69,7 +75,7 @@ module internal WidgetLowering =
               AnchorId = triggerId
               LayerPriority = layerPriority
               DismissalPolicy = if modal then OverlayState.modalDismissalPolicy () else OverlayState.defaultDismissalPolicy ()
-              FocusScope = focusScope surfaceId triggerId trapMode
+              FocusScope = focusScope surfaceId triggerId trapMode contentStops
               Modal = modal
               SelectionDispatchKey = dispatchKey
               VisibilityState = isOpen

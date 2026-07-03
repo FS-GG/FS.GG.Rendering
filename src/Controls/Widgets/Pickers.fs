@@ -80,6 +80,14 @@ module DatePicker =
                       |> FS.GG.UI.Controls.Control.withKey (sprintf "day-%d" day) ]
             | None -> []
 
+        // Issue #56: the overlay's real focus stops are the day Buttons' own ids — each is keyed
+        // `day-N` above, so under the unified `Key ?? path` scheme its NodeId IS `day-N`. No value
+        // ⇒ an empty calendar ⇒ an honestly empty stop list (no fabricated `-item-N`).
+        let dayStops =
+            match props.Value with
+            | Some date -> [ for day in 1 .. DateTime.DaysInMonth(date.Year, date.Month) -> sprintf "day-%d" day ]
+            | None -> []
+
         let calendar =
             FS.GG.UI.Controls.Grid.create [ FS.GG.UI.Controls.Grid.children dayButtons ]
 
@@ -94,6 +102,7 @@ module DatePicker =
                   TransientSurfaceKind.DatePickerCalendar
                   surfaceId
                   triggerId
+                  dayStops
                   props.IsOpen
                   props.Enabled
                   60
@@ -165,12 +174,17 @@ module ColorPicker =
                   | None -> () ]
             |> FS.GG.UI.Controls.Control.withKey (sprintf "swatch-%s" swatch.Name)
 
+        // Issue #56: the real focus stops are the swatch cells' own ids — each is keyed
+        // `swatch-<name>` above, so its NodeId IS `swatch-<name>` under `Key ?? path`.
+        let swatchStops = props.Swatches |> List.map (fun swatch -> sprintf "swatch-%s" swatch.Name)
+
         FS.GG.UI.Controls.Wrap.create
             [ FS.GG.UI.Controls.Wrap.children (props.Swatches |> List.map cell)
               WidgetLowering.transientMetadata
                   TransientSurfaceKind.ColorPickerPalette
                   surfaceId
                   triggerId
+                  swatchStops
                   true
                   true
                   70

@@ -167,6 +167,7 @@
     <Compile Include="Feature191CanvasTests.fs" />
     <Compile Include="Feature232IdSchemeTests.fs" />
     <Compile Include="Feature234ThemeRoleColorTests.fs" />
+    <Compile Include="Issue56FocusScopeStopsTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
