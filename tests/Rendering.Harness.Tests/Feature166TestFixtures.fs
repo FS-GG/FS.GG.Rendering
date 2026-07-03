@@ -54,7 +54,13 @@ let lane root id script =
         id
         ValidationLanes.Required
         script
-        (TimeSpan.FromSeconds 2.0)
+        // Generous ceiling, not a meaningful budget: the default-lane commands are
+        // instant (printf/short sleeps) asserting Passed/Failed/cancel, never TimedOut
+        // — the timeout-behaviour cases use laneWith with explicit tight budgets. A tight
+        // 2s here let real process spawn latency on a contended CI runner misclassify a
+        // trivially-passing lane as TimedOut (flaky Feature166LaneStatus). 30s removes
+        // that race without slowing the suite (these lanes still finish in ms).
+        (TimeSpan.FromSeconds 30.0)
         None
         (Some id)
         (Some id)
