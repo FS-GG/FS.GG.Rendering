@@ -8,5 +8,19 @@
       "hostType": "nuget",
       "token": "{{ secrets.FSGG_PACKAGES_READ_TOKEN }}"
     }
+  ],
+  "packageRules": [
+    {
+      "description": "Expecto is capped to the 10.x line because the only test-SDK adapter that runs Expecto under `dotnet test`, YoloDev.Expecto.TestSdk (latest 0.15.6, 2026-04-14), constrains Expecto to `< 11.0.0`. Renovate cannot see that transitive constraint on its own, so an Expecto 11.x bump resolves to an unmergeable graph (NU1608) and churns every cycle (see #24). ACTION WHEN YoloDev.Expecto.TestSdk ships a release supporting Expecto ≥ 11: delete this allowedVersions cap — the group rule below then bumps both in one PR.",
+      "matchDatasources": ["nuget"],
+      "matchPackageNames": ["Expecto"],
+      "allowedVersions": "<11.0.0"
+    },
+    {
+      "description": "Move Expecto and its test-SDK adapter as one unit — they must stay version-compatible, so once the cap above is lifted they should bump together in a single PR rather than as two PRs that momentarily conflict.",
+      "matchDatasources": ["nuget"],
+      "matchPackageNames": ["Expecto", "YoloDev.Expecto.TestSdk"],
+      "groupName": "Expecto + test-SDK adapter"
+    }
   ]
 }
