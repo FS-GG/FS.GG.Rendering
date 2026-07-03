@@ -100,10 +100,11 @@ let repositoryRoot = RepositoryRoot.value
 let read (relativePath: string) =
     File.ReadAllText(Path.Combine(repositoryRoot, relativePath.Replace("/", string Path.DirectorySeparatorChar)))
 
-let private focusScope surfaceId triggerId trapMode =
+// Issue #56: mirrors production `WidgetLowering.focusScope` — real content stops, no `-item-N`.
+let private focusScope surfaceId triggerId trapMode (stops: ControlId list) =
     { SurfaceId = surfaceId
-      Stops = [ surfaceId + "-item-1"; surfaceId + "-item-2" ]
-      InitialFocus = Some(surfaceId + "-item-1")
+      Stops = stops
+      InitialFocus = List.tryHead stops
       RecoveryTarget = Some triggerId
       TrapMode = trapMode }
 
@@ -111,6 +112,7 @@ let transientMetadata
     (kind: TransientSurfaceKind)
     (surfaceId: ControlId)
     (triggerId: ControlId)
+    (contentStops: ControlId list)
     (isOpen: bool)
     (enabled: bool)
     (layerPriority: int)
@@ -127,7 +129,7 @@ let transientMetadata
           AnchorId = triggerId
           LayerPriority = layerPriority
           DismissalPolicy = if modal then OverlayState.modalDismissalPolicy () else OverlayState.defaultDismissalPolicy ()
-          FocusScope = focusScope surfaceId triggerId trapMode
+          FocusScope = focusScope surfaceId triggerId trapMode contentStops
           Modal = modal
           SelectionDispatchKey = dispatchKey
           VisibilityState = isOpen
@@ -322,18 +324,22 @@ let typedMigrationParityTests =
                 "tabs"
             parityEqual
                 (Menu.view { Menu.defaults with Items = [ "file" ]; OnSelected = Some Picked })
+                // Issue #56: the menu is keyed with its surface id ("menu") — one real focus stop.
                 (LMenu.create
                     [ LMenu.items [ "file" ]
-                      transientMetadata TransientSurfaceKind.Menu "menu" "menu-trigger" true true 10 false (Some "onSelected")
-                      LMenu.onSelected Picked ])
+                      transientMetadata TransientSurfaceKind.Menu "menu" "menu-trigger" [ "menu" ] true true 10 false (Some "onSelected")
+                      LMenu.onSelected Picked ]
+                 |> LControl.withKey "menu")
                 "menu"
             parityEqual
                 (ContextMenu.view { ContextMenu.defaults with Items = [ "copy" ]; OnSelected = Some Picked })
+                // Issue #56: the context-menu is keyed with its surface id — one real focus stop.
                 (LControl.standard
                     (StandardControlKind.Custom "context-menu")
                     [ Attr.items [ "copy" ]
-                      transientMetadata TransientSurfaceKind.ContextMenu "context-menu" "context-menu-trigger" true true 20 false (Some "onSelected")
-                      Attr.onWith "onSelected" (fun e -> ControlEvent.navText e |> Option.defaultValue "" |> Picked) ])
+                      transientMetadata TransientSurfaceKind.ContextMenu "context-menu" "context-menu-trigger" [ "context-menu" ] true true 20 false (Some "onSelected")
+                      Attr.onWith "onSelected" (fun e -> ControlEvent.navText e |> Option.defaultValue "" |> Picked) ]
+                 |> LControl.withKey "context-menu")
                 "context-menu"
             let a = Label.view { Label.defaults with Text = "A" }
             parityEqual
@@ -352,7 +358,8 @@ let typedMigrationParityTests =
                     [ LDialog.children [ Widget.toControl a ]
                       Attr.create "title" Content (TextValue "T")
                       Attr.selected true
-                      transientMetadata TransientSurfaceKind.DialogModal "dialog" "dialog-trigger" true true 100 true (Some "onSelected")
+                      // Issue #56: the child label is unkeyed, so the modal names no real stop (honestly empty).
+                      transientMetadata TransientSurfaceKind.DialogModal "dialog" "dialog-trigger" [] true true 100 true (Some "onSelected")
                       Attr.onWith "onSelected" (fun e -> ControlEvent.navText e |> Option.defaultValue "" |> Picked) ])
                 "dialog"
             parityEqual

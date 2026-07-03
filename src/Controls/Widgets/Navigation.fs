@@ -59,6 +59,7 @@ module Menu =
                       TransientSurfaceKind.Menu
                       surfaceId
                       triggerId
+                      [ surfaceId ]
                       true
                       true
                       10
@@ -68,8 +69,11 @@ module Menu =
               | Some map -> yield FS.GG.UI.Controls.Menu.onSelected map
               | None -> () ]
 
+        // Issue #56: key the menu with the declared `surfaceId` (not `withKeyOpt props.Id`, which
+        // left the default-id menu unkeyed) so its NodeId IS `surfaceId` — the one real focus stop
+        // the transient metadata declares. Arrow-driven item movement stays inside the control.
         FS.GG.UI.Controls.Menu.create attrs
-        |> WidgetLowering.withKeyOpt props.Id
+        |> FS.GG.UI.Controls.Control.withKey surfaceId
         |> Widget.ofControl
 
 module ContextMenu =
@@ -86,6 +90,7 @@ module ContextMenu =
                       TransientSurfaceKind.ContextMenu
                       surfaceId
                       triggerId
+                      [ surfaceId ]
                       true
                       true
                       20
@@ -95,8 +100,10 @@ module ContextMenu =
               | Some map -> yield WidgetLowering.onString "onSelected" map
               | None -> () ]
 
+        // Issue #56: key the context-menu with `surfaceId` so its NodeId IS the one real focus
+        // stop the metadata declares (was `withKeyOpt props.Id`, unkeyed on the default id).
         Control.standard (StandardControlKind.Custom "context-menu") attrs
-        |> WidgetLowering.withKeyOpt props.Id
+        |> Control.withKey surfaceId
         |> Widget.ofControl
 
 module Toolbar =

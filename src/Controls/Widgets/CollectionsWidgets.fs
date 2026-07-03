@@ -127,10 +127,13 @@ module ComboBox =
             [ yield Attr.items props.Items
               yield! CollectionLowering.stateAttrs model
               yield
+                  // Issue #56: the combo-box control (keyed `props.Id` below) IS the surface's real
+                  // focus stop; the dropdown's item movement is arrow-driven inside it. No phantom.
                   WidgetLowering.transientMetadata
                       TransientSurfaceKind.ComboDropdown
                       surfaceId
                       triggerId
+                      [ props.Id ]
                       false
                       true
                       40

@@ -78,12 +78,17 @@ module SplitButton =
                   FS.GG.UI.Controls.Button.enabled props.Enabled ]
             |> FS.GG.UI.Controls.Control.withKey triggerId
 
+        // Issue #56: key the menu content with the declared `surfaceId` so the surface has ONE
+        // real focus stop (the menu control's NodeId = its key). The menu's per-item movement is
+        // arrow-driven inside the control, not Tab-cycled control ids — so a single real stop is
+        // the honest scope, replacing the fabricated `surfaceId + "-item-N"` phantoms.
         let menu =
             FS.GG.UI.Controls.Menu.create
                 [ yield FS.GG.UI.Controls.Menu.items (props.Items |> List.map (fun item -> item.Label))
                   match props.OnSelected with
                   | Some map -> yield FS.GG.UI.Controls.Menu.onSelected map
                   | None -> () ]
+            |> FS.GG.UI.Controls.Control.withKey surfaceId
 
         // Popup visibility is product-owned via `IsOpen`; the overlay is always present so
         // node counts stay stable across open/closed states (FR-009 stable node counts).
@@ -98,6 +103,7 @@ module SplitButton =
                   TransientSurfaceKind.SplitButtonMenu
                   surfaceId
                   triggerId
+                  [ surfaceId ]
                   props.IsOpen
                   props.Enabled
                   30

@@ -47,6 +47,12 @@ module Dialog =
         let triggerId = surfaceId + "-trigger"
         let children = props.Children |> List.map Widget.toControl
 
+        // Issue #56: the modal's focus stops are the product's own keyed children — the only
+        // real ids the widget can name (their NodeId = their `Key`). Unkeyed children resolve by
+        // positional path the widget can't predict, so they're omitted; a dialog whose children
+        // carry no keys declares an honestly empty scope instead of a fabricated `-item-N` target.
+        let childStops = children |> List.choose (fun child -> child.Key)
+
         let attrs =
             [ yield FS.GG.UI.Controls.Dialog.children children
               match props.Title with
@@ -58,6 +64,7 @@ module Dialog =
                       TransientSurfaceKind.DialogModal
                       surfaceId
                       triggerId
+                      childStops
                       props.IsOpen
                       true
                       100

@@ -81,10 +81,12 @@ let a11y (role: AccessibilityRole) (nameSource: string) (navigationKeys: string 
             None
             None)
 
-let private focusScope surfaceId triggerId trapMode =
+// Issue #56: mirrors production `WidgetLowering.focusScope` — the stops are the caller's real
+// lowered content ids (no fabricated `-item-N`), and `InitialFocus` is their head.
+let private focusScope surfaceId triggerId trapMode (stops: ControlId list) =
     { SurfaceId = surfaceId
-      Stops = [ surfaceId + "-item-1"; surfaceId + "-item-2" ]
-      InitialFocus = Some(surfaceId + "-item-1")
+      Stops = stops
+      InitialFocus = List.tryHead stops
       RecoveryTarget = Some triggerId
       TrapMode = trapMode }
 
@@ -92,6 +94,7 @@ let transientMetadata
     (kind: TransientSurfaceKind)
     (surfaceId: ControlId)
     (triggerId: ControlId)
+    (contentStops: ControlId list)
     (isOpen: bool)
     (enabled: bool)
     (layerPriority: int)
@@ -108,7 +111,7 @@ let transientMetadata
           AnchorId = triggerId
           LayerPriority = layerPriority
           DismissalPolicy = if modal then OverlayState.modalDismissalPolicy () else OverlayState.defaultDismissalPolicy ()
-          FocusScope = focusScope surfaceId triggerId trapMode
+          FocusScope = focusScope surfaceId triggerId trapMode contentStops
           Modal = modal
           SelectionDispatchKey = dispatchKey
           VisibilityState = isOpen
@@ -196,6 +199,7 @@ let datePickerParityTests =
                           TransientSurfaceKind.DatePickerCalendar
                           "d-calendar"
                           "d-trigger"
+                          [ for day in 1..30 -> sprintf "day-%d" day ]
                           true
                           true
                           60
@@ -225,6 +229,7 @@ let datePickerParityTests =
                           TransientSurfaceKind.DatePickerCalendar
                           "d-calendar"
                           "d-trigger"
+                          []
                           false
                           true
                           60
@@ -281,7 +286,8 @@ let breadthParityTests =
             // Feature 232 (#44): the trigger is keyed with its declared `triggerId` so the overlay
             // anchor resolves — the legacy golden mirrors the typed lowering.
             let trigger = LButton.create [ LButton.text "More"; LButton.enabled true ] |> LControl.withKey "s-trigger"
-            let menu = LMenu.create [ LMenu.items [ "Cut"; "Copy" ]; LMenu.onSelected Picked ]
+            // Issue #56: the menu content is keyed with the surface id so the focus scope has one real stop.
+            let menu = LMenu.create [ LMenu.items [ "Cut"; "Copy" ]; LMenu.onSelected Picked ] |> LControl.withKey "s-menu"
             let overlay = LOverlay.create [ LOverlay.child menu; Attr.selected true ]
 
             let legacy =
@@ -291,6 +297,7 @@ let breadthParityTests =
                           TransientSurfaceKind.SplitButtonMenu
                           "s-menu"
                           "s-trigger"
+                          [ "s-menu" ]
                           true
                           true
                           30
@@ -358,6 +365,7 @@ let breadthParityTests =
                           TransientSurfaceKind.ColorPickerPalette
                           "c-palette"
                           "c-trigger"
+                          [ "swatch-Red"; "swatch-Blue" ]
                           true
                           true
                           70
