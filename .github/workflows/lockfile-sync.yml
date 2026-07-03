@@ -40,7 +40,7 @@ jobs:
       startsWith(github.event.pull_request.head.ref, 'renovate/') &&
       github.event.pull_request.head.repo.full_name == github.repository
     steps:
-      - uses: actions/create-github-app-token@v1
+      - uses: actions/create-github-app-token@v3
         id: app-token
         with:
           app-id: ${{ secrets.FSGG_DISPATCH_APP_ID }}
