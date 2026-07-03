@@ -1,0 +1,77 @@
+# Regenerate committed packages.lock.json on Renovate dependency PRs.
+#
+# The gap this closes: gate.yml enforces `dotnet restore --locked-mode` against the
+# committed packages.lock.json (Feature 211, FR-002 / board .github#7), but nothing
+# REGENERATES those lockfiles when a dependency version moves. Renovate edits the
+# central PackageVersion (Directory.Packages.local.props) without running restore, so
+# every Renovate NuGet PR fails the gate with NU1004 until a human runs
+# --force-evaluate by hand. This job does that automatically and pushes the result
+# back to the PR branch — the .github#6 "auto-PR" half made real.
+#
+# Re-trigger: the commit is authored with the existing FSGG_DISPATCH GitHub *App*
+# installation token, NOT GITHUB_TOKEN. App-token pushes DO re-run `on: pull_request`
+# workflows, so the gate re-evaluates the freshened lockfile. On the second pass
+# --force-evaluate finds no drift → no commit → no push, so this is self-limiting
+# (no infinite loop).
+#
+# PREREQUISITE: the FSGG_DISPATCH app must have `contents: write` on this repo. It is
+# currently used only for repository_dispatch; if its scope is dispatch-only, grant
+# contents:write (or this job will fail at push with a 403).
+#
+# Restore mirrors gate.yml exactly (setup-dotnet + plain restore, no NuGet auth): the
+# gate's locked restore already resolves every feed — it reaches NU1004, a lockfile
+# mismatch, not a 404 — so --force-evaluate needs nothing more.
+name: lockfile-sync
+
+on:
+  pull_request:
+    branches: [main]
+
+# Elevated to write via the App token below — the default GITHUB_TOKEN stays read-only.
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    name: Sync packages.lock.json
+    runs-on: ubuntu-latest
+    # Renovate branches only, same-repo only (never fork PRs).
+    if: >-
+      startsWith(github.event.pull_request.head.ref, 'renovate/') &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ secrets.FSGG_DISPATCH_APP_ID }}
+          private-key: ${{ secrets.FSGG_DISPATCH_APP_PRIVATE_KEY }}
+
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          token: ${{ steps.app-token.outputs.token }}
+          persist-credentials: true
+
+      # Match gate.yml: same SDK, no global.json in repo.
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      # --force-evaluate rewrites every packages.lock.json to match the bumped graph.
+      - name: Regenerate lockfiles
+        run: dotnet restore FS.GG.Rendering.slnx --force-evaluate
+
+      - name: Commit and push if changed
+        run: |
+          set -euo pipefail
+          if [ -z "$(git status --porcelain -- '*packages.lock.json')" ]; then
+            echo "No lockfile drift — nothing to sync."
+            exit 0
+          fi
+          git config user.name  'fsgg-dispatch[bot]'
+          git config user.email '${{ secrets.FSGG_DISPATCH_APP_ID }}+fsgg-dispatch[bot]@users.noreply.github.com'
+          git add -- '*packages.lock.json'
+          git commit -m 'chore: sync packages.lock.json (dotnet restore --force-evaluate)'
+          git push
