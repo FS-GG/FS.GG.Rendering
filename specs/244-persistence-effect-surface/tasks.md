@@ -126,8 +126,8 @@ confirm manifest/template/parity coherence and that references resolve to shippe
 ## Phase 6: Polish & Cross-Cutting Concerns
 
 - [X] T018 [P] Ship the doc copy `template/base/docs/api-surface/Canvas/Persistence.fsi` alongside the existing `Loop.fsi`/`Rng.fsi`/`Audio.fsi` doc copies (kept in sync with the shipped `src/Canvas/Persistence.fsi`).
-- [ ] T019 [P] Capture per-phase feedback via the `fs-gg-feedback-capture` convention into `specs/244-persistence-effect-surface/feedback/` (process friction, generalizable-code candidates).
-- [ ] T020 Run the full `quickstart.md` validation end-to-end (§1–§5) and confirm every expected outcome; note any `environment-limited` substitutions.
+- [X] T019 [P] Capture per-phase feedback via the `fs-gg-feedback-capture` convention into `specs/244-persistence-effect-surface/feedback/` (process friction, generalizable-code candidates).
+- [X] T020 Run the full `quickstart.md` validation end-to-end (§1–§5) and confirm every expected outcome; note any `environment-limited` substitutions.
 - [ ] T021 On merge readiness: comment implementation status on FS-GG/FS.GG.Rendering#93 and move its Coordination board item to `In review` → `Done`.
 
 ---
