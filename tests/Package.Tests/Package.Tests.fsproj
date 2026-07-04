@@ -46,6 +46,7 @@
     <Compile Include="..\..\template\lifecycle\skill-mirror-vendored.fs" Link="skill-mirror-vendored.fs" />
     <Compile Include="Feature231SkillManifestTests.fs" />
     <Compile Include="Feature238SkillMaterializesWhenTests.fs" />
+    <Compile Include="Feature240GameCoreSkillTests.fs" />
     <Compile Include="Tests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

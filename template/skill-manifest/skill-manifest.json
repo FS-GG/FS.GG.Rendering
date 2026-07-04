@@ -18,6 +18,14 @@
       "supplied-by": "template/feedback/skill/"
     },
     {
+      "id": "fs-gg-game-core",
+      "scope": "product",
+      "sha256": "87b9c55cc67bb0a25bc0fba6e7eb08d851a703ac253d6b99c6b517ebb9e5c866",
+      "resolvablePath": ".agents/skills/fs-gg-game-core/SKILL.md",
+      "materializes-when": "(profile == \"game\" || profile == \"sample-pack\")",
+      "supplied-by": "template/product-skills/fs-gg-game-core/"
+    },
+    {
       "id": "fs-gg-keyboard-input",
       "scope": "product",
       "sha256": "09eab05c5ec59661632a70035f3b5f8b434a37301d660e81706ad5cd494942f1",

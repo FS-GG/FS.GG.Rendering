@@ -37,10 +37,11 @@ let private manifestPath = repositoryPath "template/skill-manifest/skill-manifes
 let private templateJsonPath = repositoryPath ".template.config/template.json"
 
 /// The catalog contract: id -> canonical body source (mirrors scripts/generate-skill-manifest.fsx;
-/// data-model.md "Catalog (12 entries)").
+/// data-model.md "Catalog (13 entries)" — Feature 240 (#73) added fs-gg-game-core).
 let private canonicalSources =
     [ "fs-gg-elmish", "template/product-skills/fs-gg-elmish/SKILL.md"
       "fs-gg-feedback-capture", "template/feedback/skill/SKILL.md"
+      "fs-gg-game-core", "template/product-skills/fs-gg-game-core/SKILL.md"
       "fs-gg-keyboard-input", "template/product-skills/fs-gg-keyboard-input/SKILL.md"
       "fs-gg-layout", "template/product-skills/fs-gg-layout/SKILL.md"
       "fs-gg-project", "template/base/.agents/skills/fs-gg-project/SKILL.md"

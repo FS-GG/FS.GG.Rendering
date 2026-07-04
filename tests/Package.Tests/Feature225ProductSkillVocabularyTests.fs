@@ -2,7 +2,7 @@ module Feature225ProductSkillVocabularyTests
 
 // Feature 225 — the product-skill leak guard.
 //
-// The 7 shipped product skills (`template/product-skills/fs-gg-*/SKILL.md`) carry good bodies with
+// The shipped product skills (`template/product-skills/fs-gg-*/SKILL.md`) carry good bodies with
 // leaky framing: framework-repo evidence process (`refresh-local-feed-and-samples`, `package-feed`,
 // `specs/*/readiness/` + `.gitignore` allowlist, `BaseOutputPath`), unconditional
 // `specs/<feature>/feedback/` references, and framework feature/spec-number stamps ("Feature 168",
@@ -23,12 +23,14 @@ open Rendering.Harness
 
 let private repositoryRoot = RepositoryRoot.value
 
-// The 7 product skills shipped today (research R0 / produced-surface T004). The guard scans whatever
+// The product skills shipped today (research R0 / produced-surface T004; + fs-gg-game-core, Feature 240).
+// The guard scans whatever
 // discovery actually finds; this set only backstops the "scan must not silently narrow" assertion —
 // a regression that drops skills from the discovery surface is caught, not masked by a fixed list.
 let private expectedProductSkillIds =
     set
         [ "fs-gg-elmish"
+          "fs-gg-game-core"
           "fs-gg-keyboard-input"
           "fs-gg-layout"
           "fs-gg-scene"
@@ -185,7 +187,7 @@ let private gatedFeedbackBody =
 let tests =
     testList
         "Feature225ProductSkillVocabulary"
-        [ test "discovery surface did not narrow: the template/product-skills scan covers the 9 expected ids (FR-007 edge case)" {
+        [ test "discovery surface did not narrow: the template/product-skills scan covers the 10 expected ids (FR-007 edge case)" {
               let discovered =
                   discoveredProductSkills ()
                   |> List.map (fun e -> e.SkillName.Trim())

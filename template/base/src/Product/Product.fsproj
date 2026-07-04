@@ -18,6 +18,10 @@
 
   <ItemGroup>
     <PackageReference Include="FS.GG.UI.Scene" />
+    <!--#if (profile == "game" || profile == "sample-pack") -->
+    <!-- Feature 240 (#73): simulation primitives (FixedStep.drain, Rng) for the fs-gg-game-core skill. -->
+    <PackageReference Include="FS.GG.UI.Canvas" />
+    <!--#endif -->
     <!--#if (profile == "app" || profile == "sample-pack" || profile == "game") -->
     <PackageReference Include="FS.GG.UI.SkiaViewer" />
     <PackageReference Include="FS.GG.UI.Elmish" />

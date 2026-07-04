@@ -183,12 +183,13 @@ let feature204LifecycleTemplateTests =
           test "GV-2 sources partition into framework-skill / manifest / lifecycle-workspace / product (ADR-0014 gating)" {
               let framework, manifest, workspace, product, violations = gatedSourceAudit ()
               Expect.isEmpty violations (sprintf "gating violations: %s" (String.concat "; " violations))
-              // Feature 231 / ADR-0014: framework = EXACTLY the 9 .agents/skills/ provider sources
+              // Feature 231 / ADR-0014: framework = EXACTLY the 10 .agents/skills/ provider sources
               // (present under every lifecycle; zero .claude/.codex twins — the single materialize
-              // step owns the other roots). manifest = exactly the 1 ungated skill-manifest row.
+              // step owns the other roots). Feature 240 (#73) added the 10th, fs-gg-game-core.
+              // manifest = exactly the 1 ungated skill-manifest row.
               // workspace shrank from Feature 230's >=30 twin matrix to the ~10 genuine
               // lifecycle-workspace sources (incl. the materialize step). product unchanged.
-              Expect.equal framework 9 (sprintf "expected exactly 9 framework product-skill sources (no twins), found %d" framework)
+              Expect.equal framework 10 (sprintf "expected exactly 10 framework product-skill sources (no twins), found %d" framework)
               Expect.equal manifest 1 (sprintf "expected exactly 1 ungated skill-manifest source, found %d" manifest)
               Expect.isTrue (workspace >= 10) (sprintf "expected >=10 lifecycle-workspace sources, found %d" workspace)
               Expect.isTrue (product >= 3) (sprintf "expected >=3 ungated product sources, found %d" product)

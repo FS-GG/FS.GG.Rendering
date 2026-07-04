@@ -168,7 +168,7 @@ It runs `scripts/validate-version-coherence.fsx` in two layers, both merge-block
   the single `<FsGgUiVersion>` literal is present exactly once and matches an existing snapshot tag and
   does **not lag** the latest (preview-aware SemVer compare, not string); the BOM uses the single
   `[$version$]` exact-bracket token with `B.ids == P.members`; the template's consumed pins all derive
-  through `$(FsGgUiVersion)` and equal the documented 11-member manifest; and `build.fsx`'s runtime
+  through `$(FsGgUiVersion)` and equal the documented 12-member manifest; and `build.fsx`'s runtime
   regex still resolves the literal. It compares pins **directly** — independent of any
   `WarningsAsErrors=NU1605;NU1608` consumer policy (FR-004).
 - **Scoped restore-grounded proof (`FS_GG_RUN_VERSION_COHERENCE_SMOKE=1`).** One Release pack + one

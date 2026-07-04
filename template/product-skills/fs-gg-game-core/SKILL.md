@@ -1,0 +1,169 @@
+---
+name: fs-gg-game-core
+description: Simulate a generated FS.GG.UI product — deterministic fixed-step loop, seeded RNG, AABB collision, and entity culling.
+---
+
+# Game Core (Simulation) Capability
+
+## Scope
+
+Use this skill for the **simulation** half of a game/sim product: advancing world state on a
+deterministic fixed timestep, drawing seeded randomness without a shared mutable generator, testing
+axis-aligned collisions, and culling off-screen entities. These are pure helpers — they read no
+wall-clock and perform no I/O. Rendering the resulting world is `fs-gg-scene`'s job; wiring the loop to
+a window is `fs-gg-skiaviewer`'s. This skill materializes for the `game` and `sample-pack` profiles.
+
+## Public Contract
+
+The signatures you consume are bundled with this product:
+
+- `docs/api-surface/Scene/Scene.fsi` — the `Geometry` module (collision / containment / centering), on
+  the shared `Rect`/`Point`. Shipped in `FS.GG.UI.Scene` (already referenced by every profile).
+- `docs/api-surface/Canvas/Rng.fsi` and `docs/api-surface/Canvas/FixedStep.fsi` — the `Rng` value type
+  and the `FixedStep` accumulator drain. Shipped in `FS.GG.UI.Canvas`, referenced on the `game` and
+  `sample-pack` profiles.
+
+Every draw returns a `struct` tuple `(value, nextState)` — deconstruct with `let struct(v, next) = …`.
+All helpers are **total**: degenerate inputs return a documented value, they never throw.
+
+## Fixed-timestep march
+
+`FixedStep.drain interval frameTime accumulator` returns `struct(stepCount, newAccumulator)` — the whole
+number of fixed steps to run this frame and the carried remainder (all in seconds). It is pure: a
+scripted `frameTime` sequence reproduces identical results. A stalled frame is clamped to
+`defaultMaxFrameTime` (0.25 s) so the loop can't spiral; pass a tighter clamp with
+`drainWith maxFrameTime interval frameTime accumulator`.
+
+```fsharp
+open FS.GG.UI.Canvas
+
+// Run world-updates at a fixed 60 Hz regardless of render cadence.
+let stepHz = 1.0 / 60.0
+
+let advance (dt: float) (accumulator: float) (world: 'w) (stepWorld: 'w -> 'w) : 'w * float =
+    let struct (steps, carry) = FixedStep.drain stepHz dt accumulator
+    // mutable: single unaliased accumulator over a fixed step count — plainer than a fold.
+    let mutable w = world
+    for _ in 1 .. steps do
+        w <- stepWorld w
+    w, carry
+```
+
+## RNG determinism
+
+`Rng` is a value type (`{ State: uint64 }`) — a SplitMix64 generator you **store in your MVU `Model`**
+and thread through `update`. Because two `Rng` with equal state are equal and produce identical
+continuations, structural equality of a `Model` implies equal RNG state, so replay and clone stay
+deterministic. Never put a mutable `System.Random` in the `Model` — it breaks determinism and structural
+equality.
+
+```fsharp
+open FS.GG.UI.Canvas
+
+type Model = { Rng: Rng; Score: int }               // RNG state lives IN the model
+
+let init (seed: uint64) = { Rng = Rng.ofSeed seed; Score = 0 }
+
+// Draw and write the ADVANCED generator back into the model — never reuse the input Rng.
+let spawnLane (model: Model) : int * Model =
+    let struct (lane, rng') = Rng.nextInt 0 9 model.Rng
+    lane, { model with Rng = rng' }
+
+// `split` derives an independent sub-stream (e.g. per-entity) without disturbing the main one.
+let forkStream (model: Model) : Rng * Model =
+    let struct (child, rng') = Rng.split model.Rng
+    child, { model with Rng = rng' }
+```
+
+## Collision
+
+`Geometry` operates on the shared `Rect`/`Point` — no hand-rolled AABB, no duplicate bounds record.
+
+- `Geometry.intersects a b` — box-vs-box overlap on positive area (edge/corner touching is **not** an
+  intersection: strict edges).
+- `Geometry.containsPoint rect point` / `Geometry.contains outer inner` — inclusive of shared edges.
+- `Geometry.sweptIntersects moving velocity target` — for a fast projectile that would **tunnel** a thin
+  target in one step; tests the whole swept path, not just the endpoints.
+- `Geometry.center rect` / `Geometry.ofCenter center w h` — round-trip centering.
+
+```fsharp
+open FS.GG.UI.Scene
+
+let bullet : Rect = Geometry.ofCenter { X = 100.0; Y = 40.0 } 2.0 6.0
+let vel : Point = { X = 0.0; Y = 900.0 }            // fast — use the swept test
+let enemy : Rect = { X = 90.0; Y = 300.0; Width = 24.0; Height = 8.0 }
+
+let hit = Geometry.sweptIntersects bullet vel enemy
+```
+
+## Culling
+
+Keep only the entities whose bounds meet the visible region — an `intersects` (or `containsPoint`)
+test against the gameplay `Rect`, reusing the same shared type:
+
+```fsharp
+open FS.GG.UI.Scene
+
+let visible : Rect = { X = 0.0; Y = 0.0; Width = 1280.0; Height = 720.0 }
+
+let onScreen (bounds: Rect list) : Rect list =
+    bounds |> List.filter (fun b -> Geometry.intersects b visible)
+```
+
+## Common pitfalls
+
+- **Mutable `System.Random` in the `Model`.** Breaks determinism and structural equality; use the
+  value-type `Rng` and thread its returned state.
+- **Ignoring the returned generator.** `Rng.nextInt`/`nextFloat`/`split` return `struct(value, next)`;
+  drawing again from the *input* `Rng` repeats the value. Always keep `next`.
+- **Unbounded accumulator (spiral of death).** Don't run `while accumulator >= interval` by hand; let
+  `FixedStep.drain` clamp the catch-up, or pass a tighter `drainWith` clamp.
+- **Consumer geometry records colliding with framework `Point`/`Rect`.** As in `fs-gg-scene`: if your
+  product defines its own `{ X; Y }` record, F# binds a bare `{ X = …; Y = … }` to whichever record is
+  in scope last. Annotate the type or qualify fields at the boundary and convert into the framework type.
+
+## Build Commands
+
+Run `./fake.sh build -t Dev` then `./fake.sh build -t Verify` in this product.
+
+## Test Commands
+
+Run `./fake.sh build -t Test` to exercise product-owned simulation examples.
+
+## Evidence
+
+Record simulation evidence (determinism replays, collision/culling cases) under this product's
+`readiness/` paths. Do not copy framework readiness reports into the product.
+
+## Package Boundary
+
+`Geometry` is in `FS.GG.UI.Scene`; `Rng`/`FixedStep` are in `FS.GG.UI.Canvas` (referenced only on the
+`game`/`sample-pack` profiles). Canvas depends only on Scene — the simulation primitives pull in no
+viewer, layout, or widget machinery. Keep rendering in `fs-gg-scene` and host wiring in `fs-gg-skiaviewer`.
+
+## Generated Product
+
+Thread the `Rng` through your `Model`, drive `update` on the `FixedStep.drain` step count, run collision
+with `Geometry`, cull against the visible `Rect`, then hand the surviving world to your `View` as a
+`Scene`.
+
+## Persistent problems
+
+When a problem outlasts reasonable in-repo attempts, extensive external research is **mandatory** —
+consult **official online docs first** (the F#/.NET docs and the driven library's own reference), then
+community sources. If your product uses Spec Kit, record findings and resolving links under the feature's
+`specs/<feature>/feedback/`; otherwise record them in this skill's **Sources** line and any product-local
+`docs/`. Offline, the mandate degrades to recording "research blocked — <why>" rather than hard-failing.
+
+## Related
+
+- [[fs-gg-scene]] — build the `Scene` the simulated world renders into; owns the shared `Rect`/`Point`.
+- [[fs-gg-skiaviewer]] — drive the fixed-step loop from the host window.
+- [[fs-gg-layout]] — compute the gameplay region (the visible `Rect`) entities are culled against.
+- [[fs-gg-keyboard-input]] — map input to the `Msg` values your `update` steps the world with.
+
+## Sources / links
+
+- F#/.NET docs: https://learn.microsoft.com/en-us/dotnet/fsharp/
+- SplitMix64 (the RNG algorithm): https://prng.di.unimi.it/splitmix64.c
+- Fixed-timestep loop background: https://gafferongames.com/post/fix_your_timestep/
