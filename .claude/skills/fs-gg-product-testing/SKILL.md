@@ -1,6 +1,6 @@
 ---
 name: fs-gg-product-testing
-description: Assert generated-product expectations and evidence in a governed FS.GG.UI product.
+description: Assert generated-product expectations and evidence in a generated FS.GG.UI product.
 ---
 
 # FS.GG Product Testing

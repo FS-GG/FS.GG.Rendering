@@ -55,7 +55,7 @@ let catalog =
       "fs-gg-skiaviewer", "template/product-skills/fs-gg-skiaviewer/SKILL.md", "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\")"
       "fs-gg-styling", "template/product-skills/fs-gg-styling/SKILL.md", "(profile == \"app\" || profile == \"game\")"
       "fs-gg-symbology", "template/product-skills/fs-gg-symbology/SKILL.md", "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\")"
-      "fs-gg-testing", "template/product-skills/fs-gg-testing/SKILL.md", "(profile == \"governed\")"
+      "fs-gg-testing", "template/product-skills/fs-gg-testing/SKILL.md", "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\")"
       "fs-gg-ui-widgets", "template/product-skills/fs-gg-ui-widgets/SKILL.md", "(profile == \"app\" || profile == \"game\")" ]
 
 /// Provider source directory (trailing slash) that holds the canonical SKILL.md — supplied-by.

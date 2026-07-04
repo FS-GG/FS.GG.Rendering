@@ -47,12 +47,15 @@ let private SPEC_KIT_COND = "lifecycle == \"spec-kit\""
 // HUD + gameplay region by output size) on the same (app, game) surface, so it joins those two rows too.
 // Feature 240 (#73) wired the simulation `fs-gg-game-core` (fixed-step / RNG / collision / culling) on the
 // (game, sample-pack) surface — the sim profiles — so it joins those two rows and lifts the source count to 10.
+// Issue #90 widened `fs-gg-testing` from `governed`-only to every profile that ships the base `Product.Tests`
+// project + the `FS.GG.UI.Testing` package (all five): its `materializes-when` now mirrors `fs-gg-scene`, so it
+// joins the app, headless-scene, sample-pack, and game rows alongside the pre-existing governed row.
 let private expectedFrameworkSkills =
-    [ "app", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-keyboard-input"; "fs-gg-ui-widgets"; "fs-gg-styling"; "fs-gg-layout"; "fs-gg-symbology" ]
-      "headless-scene", set [ "fs-gg-scene"; "fs-gg-symbology" ]
+    [ "app", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-keyboard-input"; "fs-gg-ui-widgets"; "fs-gg-styling"; "fs-gg-layout"; "fs-gg-symbology"; "fs-gg-testing" ]
+      "headless-scene", set [ "fs-gg-scene"; "fs-gg-symbology"; "fs-gg-testing" ]
       "governed", set [ "fs-gg-scene"; "fs-gg-testing"; "fs-gg-symbology" ]
-      "sample-pack", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-symbology"; "fs-gg-game-core" ]
-      "game", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-keyboard-input"; "fs-gg-ui-widgets"; "fs-gg-styling"; "fs-gg-layout"; "fs-gg-symbology"; "fs-gg-game-core" ] ]
+      "sample-pack", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-symbology"; "fs-gg-game-core"; "fs-gg-testing" ]
+      "game", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-keyboard-input"; "fs-gg-ui-widgets"; "fs-gg-styling"; "fs-gg-layout"; "fs-gg-symbology"; "fs-gg-game-core"; "fs-gg-testing" ] ]
 
 // The env-free G-EMIT matrix above covers all five scene-bearing profiles (game's symbology emit is
 // proven directly from template.json). The live lifecycle-validation REPORT, however, only scaffolds

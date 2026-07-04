@@ -1,6 +1,6 @@
 ---
 name: fs-gg-testing
-description: Assert generated-product expectations and evidence in a governed FS.GG.UI product.
+description: Assert generated-product expectations and evidence in a generated FS.GG.UI product.
 ---
 
 # Testing Capability
@@ -25,7 +25,7 @@ open FS.GG.UI.Testing
 
 // Declare what this product expects of its own generated output.
 let expectation =
-    { Profile = "governed"
+    { Profile = "game" // your product's own profile
       // <YourProduct> = this product's name (its src/ project directory).
       RequiredFiles = [ "src/<YourProduct>/<YourProduct>.fsproj"; "docs/effects-boundary.md" ]
       ForbiddenPrefixes = [ "samples/" ]
@@ -78,7 +78,8 @@ and `Verify` target perform the actual file and process I/O.
 
 ## Generated Product
 
-The governed profile selects Testing alongside Scene so product tests can assert
+Every profile that ships a product test project (app, headless-scene, governed,
+sample-pack, game) selects Testing alongside Scene so product tests can assert
 their own generated structure and package pins.
 
 ## Persistent problems
