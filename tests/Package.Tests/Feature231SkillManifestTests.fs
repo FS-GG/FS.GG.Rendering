@@ -133,11 +133,10 @@ let feature231SkillManifestTests =
                           | true, v -> v.GetString() |> Option.ofObj |> Option.defaultValue ""
                           | _ -> ""
                       let target = (str "target").Replace('\\', '/')
-                      // an emission row for skill <id> targets .agents/skills/<id>/
+                      // an emission row for skill <id> targets .agents/skills/<id>/ — issue #91 gave
+                      // fs-gg-project its own such row, so the scan now recovers the whole catalog.
                       if target.StartsWith ".agents/skills/fs-gg-" then
                           yield target.Substring(".agents/skills/".Length).TrimEnd('/') ]
-                  // + the base agent tree carries fs-gg-project (source template/base/.agents/).
-                  |> fun rows -> "fs-gg-project" :: rows
                   |> Set.ofList
               Expect.equal emittedIds (canonicalSources |> List.map fst |> Set.ofList) "every catalogued skill has an emission row and every emitted fs-gg-* skill is catalogued"
           }

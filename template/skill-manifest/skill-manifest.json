@@ -46,7 +46,7 @@
       "scope": "product",
       "sha256": "3dc0b55b9681c99485c39cb0eabd1effaba70061d8a9e5eb57f270061c4aa16d",
       "resolvablePath": ".agents/skills/fs-gg-project/SKILL.md",
-      "materializes-when": "lifecycle == spec-kit",
+      "materializes-when": "profile in [app, headless-scene, governed, sample-pack, game]",
       "supplied-by": "template/base/.agents/skills/fs-gg-project/"
     },
     {

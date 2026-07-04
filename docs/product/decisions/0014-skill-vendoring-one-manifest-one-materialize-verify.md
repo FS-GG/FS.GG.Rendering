@@ -42,9 +42,14 @@ The manifest entry gained two **additive, optional** string fields (`schemaVersi
   suppression from a real supply failure.
 - `supplied-by` — the provider source directory holding the canonical `SKILL.md`.
 
-Motivating case: `fs-gg-project` is declared `scope:product` but emits only under
-`lifecycle == "spec-kit"`; recording that condition resolves the sdd-lane "supplied by nobody"
-gap ([`#71`](https://github.com/FS-GG/FS.GG.Rendering/issues/71)). `scripts/generate-skill-manifest.fsx`
+Motivating case: `fs-gg-project` was declared `scope:product` but emitted only under
+`lifecycle == "spec-kit"`; recording that condition resolved the sdd-lane "supplied by nobody"
+gap ([`#71`](https://github.com/FS-GG/FS.GG.Rendering/issues/71)) into an honest, typed absence.
+(Later, [`#91`](https://github.com/FS-GG/FS.GG.Rendering/issues/91) closed that gap outright: as the
+product-orientation umbrella with a lane-neutral body, `fs-gg-project` is now a profile-gated,
+lifecycle-independent product skill materializing on every lifecycle — its `materializes-when` is
+`profile in [app, headless-scene, governed, sample-pack, game]`. The manifest/`materializes-when`
+machinery this ADR introduced is exactly what made that widening verifiable.) `scripts/generate-skill-manifest.fsx`
 emits both fields; `tests/Package.Tests/Feature238SkillMaterializesWhenTests.fs` re-reads
 `template.json` and fails on any drift. The org-level `registry/skills.yml` + `skill-registry`
 contract and the `[missing]`/`[unexpected]` gate enforcement are owned by `FS-GG/.github#164`;

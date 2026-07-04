@@ -193,13 +193,13 @@
       ]
     },
     {
-      "condition": "(lifecycle == \"spec-kit\")",
-      "source": "template/base/.agents/",
-      "target": ".agents/",
+      "condition": "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\")",
+      "source": "template/base/.agents/skills/fs-gg-project/",
+      "target": ".agents/skills/fs-gg-project/",
       "copyOnly": [
         "**/*"
       ],
-      "comment": "Feature 204: gated re-emit of the base agent skill/context tree (excluded from the ungated base source above). Feature 231 (ADR-0014): the repo-root `.agents/skills/` source below is narrowed to `speckit-*` and no longer overwrites the base `fs-gg-project` body with a repo-routing wrapper; this canonical body now ships, verbatim (copyOnly) so it byte-matches its skill-manifest sha256."
+      "comment": "Issue #91 (ADR-0017 §C2): fs-gg-project is the product-orientation umbrella (\"here's your generated product and how its selected capabilities compose\"). Formerly it re-emitted only via a lifecycle == \"spec-kit\"-gated whole-`template/base/.agents/` source, so the DEFAULT sdd lane (profile=game, lifecycle=sdd) shipped capability skills with no top-level map — the §C2 seam. Its body is lane-neutral prose (no Spec Kit / framework-process vocabulary), so it now materializes on EVERY lifecycle via this dedicated profile-gated source, mirroring the other product-skill rows below. copyOnly: the canonical body ships verbatim so it byte-matches its skill-manifest sha256 and (under spec-kit) stays byte-identical to today's output. `template/base/.agents/` holds only this one skill, so no other base agent-context content is affected."
     },
     {
       "condition": "(lifecycle == \"spec-kit\")",

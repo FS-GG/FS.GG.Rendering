@@ -125,7 +125,12 @@ let private gatedSourceAudit () =
         let source = (str "source").Replace('\\', '/')
         let target = (str "target").Replace('\\', '/')
         let condition = str "condition"
-        let isProductSkillSource = source.StartsWith "template/product-skills/"
+        // A framework product-skill source ships a canonical SKILL.md body to .agents/skills/<id>/,
+        // profile-gated & lifecycle-independent. Most live under template/product-skills/; fs-gg-project
+        // (issue #91) keeps its canonical body under template/base/.agents/skills/ but is now the same
+        // shape (dedicated profile-gated source, no longer the lifecycle-gated whole-.agents/ blanket).
+        let isProductSkillSource =
+            source.StartsWith "template/product-skills/" || source.StartsWith "template/base/.agents/skills/"
         let isManifestSource = source = "template/skill-manifest/"
         let isGeneratedTree = source = ".template.config/generated/"
         let isGatedTarget =
@@ -183,15 +188,17 @@ let feature204LifecycleTemplateTests =
           test "GV-2 sources partition into framework-skill / manifest / lifecycle-workspace / product (ADR-0014 gating)" {
               let framework, manifest, workspace, product, violations = gatedSourceAudit ()
               Expect.isEmpty violations (sprintf "gating violations: %s" (String.concat "; " violations))
-              // Feature 231 / ADR-0014: framework = EXACTLY the 10 .agents/skills/ provider sources
+              // Feature 231 / ADR-0014: framework = EXACTLY the .agents/skills/ provider sources
               // (present under every lifecycle; zero .claude/.codex twins — the single materialize
-              // step owns the other roots). Feature 240 (#73) added the 10th, fs-gg-game-core.
+              // step owns the other roots). Feature 240 (#73) added fs-gg-game-core; issue #91 added
+              // the 11th, fs-gg-project — promoted from the former lifecycle-gated whole-.agents/
+              // blanket to a dedicated profile-gated source so it materializes on every lifecycle.
               // manifest = exactly the 1 ungated skill-manifest row.
-              // workspace shrank from Feature 230's >=30 twin matrix to the ~10 genuine
+              // workspace shrank from Feature 230's >=30 twin matrix to the genuine
               // lifecycle-workspace sources (incl. the materialize step). product unchanged.
-              Expect.equal framework 10 (sprintf "expected exactly 10 framework product-skill sources (no twins), found %d" framework)
+              Expect.equal framework 11 (sprintf "expected exactly 11 framework product-skill sources (no twins), found %d" framework)
               Expect.equal manifest 1 (sprintf "expected exactly 1 ungated skill-manifest source, found %d" manifest)
-              Expect.isTrue (workspace >= 10) (sprintf "expected >=10 lifecycle-workspace sources, found %d" workspace)
+              Expect.isTrue (workspace >= 9) (sprintf "expected >=9 lifecycle-workspace sources, found %d" workspace)
               Expect.isTrue (product >= 3) (sprintf "expected >=3 ungated product sources, found %d" product)
               let report = readValidationReport ()
               Expect.stringContains
