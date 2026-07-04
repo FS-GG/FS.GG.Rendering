@@ -4,7 +4,7 @@
     {
       "id": "fs-gg-elmish",
       "scope": "product",
-      "sha256": "30406f466a2a45341a2def8ddaa3bfe4627cf3aece83e0efef03282e1e0a450b",
+      "sha256": "4662d8ff96eb8b1d13995246acb660ff7dac8397b2d284e1f0a7e99f5d6ae10e",
       "resolvablePath": ".agents/skills/fs-gg-elmish/SKILL.md",
       "materializes-when": "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\")",
       "supplied-by": "template/product-skills/fs-gg-elmish/"
@@ -60,7 +60,7 @@
     {
       "id": "fs-gg-scene",
       "scope": "product",
-      "sha256": "37ef7800bcc6de7c9bd17e0594942e76fe543e379279dd54a5e6066f052a0da7",
+      "sha256": "df73cdca37c8b4d74ea507a128b972fc1ad092ea7dab1359e81a768d9d4fd6fe",
       "resolvablePath": ".agents/skills/fs-gg-scene/SKILL.md",
       "materializes-when": "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\")",
       "supplied-by": "template/product-skills/fs-gg-scene/"

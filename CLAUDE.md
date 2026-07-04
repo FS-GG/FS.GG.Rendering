@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/240-game-core-skill/plan.md
+at specs/241-runtime-ergonomics/plan.md
 <!-- SPECKIT END -->
 
 ## Ant Design — source of truth

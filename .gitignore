@@ -176,3 +176,5 @@ specs/220-game-starter-scene/readiness/fr007-baseline/
 !specs/231-skill-manifest-materialize/readiness/**
 !specs/238-skill-materializes-when/readiness/
 !specs/238-skill-materializes-when/readiness/**
+!specs/241-runtime-ergonomics/readiness/
+!specs/241-runtime-ergonomics/readiness/**

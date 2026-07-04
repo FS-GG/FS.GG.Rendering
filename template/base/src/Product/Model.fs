@@ -37,6 +37,7 @@ let update msg model =
 // ============================================================================================
 open FS.GG.UI.KeyboardInput
 open FS.GG.UI.Controls.Elmish
+open FS.GG.UI.Controls.Elmish.Authoring // Cmd.none / Sub.none (Elmish-convention no-ops for `[]`)
 
 type Ball =
     { CenterX: float
@@ -181,12 +182,12 @@ let private stepBall model =
                     CenterY = clampedY
                     VelocityY = velocityY } }
 
-let init () : Model * AdapterCommand<Msg> = initialModel, []
+let init () : Model * AdapterCommand<Msg> = initialModel, Cmd.none
 
 let update msg model : Model * AdapterCommand<Msg> =
     match msg with
-    | Tick -> { stepBall model with TickCount = model.TickCount + 1 }, []
-    | MovePaddle(side, direction) -> movePaddle side direction model, []
+    | Tick -> { stepBall model with TickCount = model.TickCount + 1 }, Cmd.none
+    | MovePaddle(side, direction) -> movePaddle side direction model, Cmd.none
     | ViewerInput(key, isDown) ->
         let moved =
             if isDown then
@@ -196,15 +197,15 @@ let update msg model : Model * AdapterCommand<Msg> =
             else
                 model
 
-        { moved with LastInput = Some key }, []
-    | NoOp -> model, []
+        { moved with LastInput = Some key }, Cmd.none
+    | NoOp -> model, Cmd.none
 
-let subscriptions _ : AdapterSubscription<Msg> list =
-    ControlsElmish.subscriptions [] []
+let subscriptions _ : AdapterSubscription<Msg> list = Sub.none
 
 //#else
 open FS.GG.UI.Controls
 open FS.GG.UI.Controls.Elmish
+open FS.GG.UI.Controls.Elmish.Authoring // Cmd.none / Sub.none (Elmish-convention no-ops for `[]`)
 open FS.GG.UI.DesignSystem
 open FS.GG.UI.Themes.Default
 open FS.GG.UI.KeyboardInput
@@ -380,13 +381,13 @@ let dispatchViewerKey event model =
     transitionViewerInput (Some event.RawKey) direction key isDown model
 
 let init () : Model * AdapterCommand<Msg> =
-    initialModel, []
+    initialModel, Cmd.none
 
 let update msg model : Model * AdapterCommand<Msg> =
     match msg with
-    | NameChanged value -> { model with Name = value }, []
+    | NameChanged value -> { model with Name = value }, Cmd.none
     | SaveRequested -> model, [ DispatchHostCommand $"save:{model.Name}" ]
-    | GridSelectionChanged _ -> model, []
+    | GridSelectionChanged _ -> model, Cmd.none
     | ViewerInput(key, isDown) -> transitionViewerInput None (if isDown then "down" else "up") key isDown model
     | ViewerKeyEventReceived event -> dispatchViewerKey event model
     | Tick ->
@@ -395,15 +396,14 @@ let update msg model : Model * AdapterCommand<Msg> =
                 TickCount = model.TickCount + 1
                 ContentRow = if model.ContentRow >= 19 then 0 else model.ContentRow + 1
                 ItemCount = model.ItemCount + 1 },
-            []
+            Cmd.none
         else
-            { model with TickCount = model.TickCount + 1 }, []
-    | Navigated page -> { model with Page = page }, []
-    | RuntimeMsg _ -> model, []
-    | NoOp -> model, []
+            { model with TickCount = model.TickCount + 1 }, Cmd.none
+    | Navigated page -> { model with Page = page }, Cmd.none
+    | RuntimeMsg _ -> model, Cmd.none
+    | NoOp -> model, Cmd.none
 
-let subscriptions _ : AdapterSubscription<Msg> list =
-    ControlsElmish.subscriptions [] []
+let subscriptions _ : AdapterSubscription<Msg> list = Sub.none
 
 //#endif
 //#endif

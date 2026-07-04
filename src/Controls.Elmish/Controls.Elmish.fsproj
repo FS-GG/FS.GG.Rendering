@@ -21,6 +21,8 @@
   <ItemGroup>
     <Compile Include="ControlsElmish.fsi" />
     <Compile Include="ControlsElmish.fs" />
+    <Compile Include="Authoring.fsi" />
+    <Compile Include="Authoring.fs" />
   </ItemGroup>
 
   <ItemGroup>
