@@ -32,7 +32,7 @@ interpreter, US3 skill materialization). US1 and US2 share `src/Canvas/Audio.fsi
 > `tests/Package.Tests` (release-only; owns the public-surface gate that this Tier-1 change trips)
 > and the `samples/**/*.Tests` feed consumers, which is exactly where Feature 175's surprises hid.
 
-- [ ] T001 Add `Audio.fsi` then `Audio.fs` (empty stubs) to the compile `<ItemGroup>` in `src/Canvas/Canvas.Lib.fsproj`, ordered after `Rng`/`FixedStep`, and create an empty `tests/Canvas.Tests/AudioTests.fs` wired into `tests/Canvas.Tests/Canvas.Tests.fsproj`; confirm the solution still builds.
+- [X] T001 Add `Audio.fsi` then `Audio.fs` (empty stubs) to the compile `<ItemGroup>` in `src/Canvas/Canvas.Lib.fsproj`, ordered after `Rng`/`FixedStep`, and create an empty `tests/Canvas.Tests/AudioTests.fs` wired into `tests/Canvas.Tests/Canvas.Tests.fsproj`; confirm the solution still builds.
 - [ ] T002 Establish the no-regression baseline: `dotnet fsi scripts/baseline-tests.fsx --out specs/243-audio-effect-surface/readiness/baseline.md` (runs EVERY `*.Tests.fsproj` — solution + Package.Tests + samples — and records the full red/green set so pre-existing reds are known now, not discovered at merge).
 
 ---
@@ -51,8 +51,8 @@ before building on it.
 > 228). T005 pulls that real instantiation forward as the pre-change baseline; do not rely on unit
 > tests alone for US3.
 
-- [ ] T003 Finalize the public surface `src/Canvas/Audio.fsi` from `specs/243-audio-effect-surface/contracts/Audio.fsi` (DUs `AudioEffect`/`SoundId`/`TrackId`, record `AudioEvidence`, module `Audio` with clamp/smart-ctors/`record`/`interpret`). No `.fs` body yet.
-- [ ] T004 FSI shape check (Principle I): build Canvas, `#r` the dll in `dotnet fsi`, and exercise the drafted surface per quickstart §1; save the transcript to `specs/243-audio-effect-surface/readiness/fsi-sketch.md`. Adjust `Audio.fsi` if the shape is awkward before any `.fs` exists.
+- [X] T003 Finalize the public surface `src/Canvas/Audio.fsi` from `specs/243-audio-effect-surface/contracts/Audio.fsi` (DUs `AudioEffect`/`SoundId`/`TrackId`, record `AudioEvidence`, module `Audio` with clamp/smart-ctors/`record`/`interpret`). No `.fs` body yet.
+- [X] T004 FSI shape check (Principle I): build Canvas, `#r` the dll in `dotnet fsi`, and exercise the drafted surface per quickstart §1; save the transcript to `specs/243-audio-effect-surface/readiness/fsi-sketch.md`. Adjust `Audio.fsi` if the shape is awkward before any `.fs` exists.
 - [ ] T005 **Live scaffold baseline**: run `dotnet new fs-gg-ui -o /tmp/243-base-game --profile game` and `--profile app` on the CURRENT (pre-audio) template; record the skill-root listing to `specs/243-audio-effect-surface/readiness/scaffold-baseline.md` so the post-wiring diff in US3 (T016) is trustworthy.
 
 **Checkpoint**: Surface signed off in FSI; current scaffold state captured. User stories can begin.
@@ -68,11 +68,11 @@ sequence of emitted `AudioEffect` values; confirm no IO in `update`.
 
 ### Tests for User Story 1 ⚠️ (write first, must FAIL)
 
-- [ ] T006 [US1] Semantic tests in `tests/Canvas.Tests/AudioTests.fs`: a pure model whose `update` maps events → `AudioEffect` requests; assert the exact emitted values (`PlaySfx`/`PlayMusic`/`StopMusic`/`SetMasterVolume`), assert volume clamping via smart ctors, assert `update` performs no IO. Test names carry no `Synthetic` token (evidence is real). Confirm RED.
+- [X] T006 [US1] Semantic tests in `tests/Canvas.Tests/AudioTests.fs`: a pure model whose `update` maps events → `AudioEffect` requests; assert the exact emitted values (`PlaySfx`/`PlayMusic`/`StopMusic`/`SetMasterVolume`), assert volume clamping via smart ctors, assert `update` performs no IO. Test names carry no `Synthetic` token (evidence is real). Confirm RED.
 
 ### Implementation for User Story 1
 
-- [ ] T007 [US1] Implement `src/Canvas/Audio.fs` — `SoundId`/`TrackId`/`AudioEffect` types, `minVolume`/`maxVolume`/`clampVolume`, and smart constructors `playSfx`/`playMusic`/`stopMusic`/`setMasterVolume` against `Audio.fsi`. Make T006 GREEN. No access modifiers in `.fs` (Principle II).
+- [X] T007 [US1] Implement `src/Canvas/Audio.fs` — `SoundId`/`TrackId`/`AudioEffect` types, `minVolume`/`maxVolume`/`clampVolume`, and smart constructors `playSfx`/`playMusic`/`stopMusic`/`setMasterVolume` against `Audio.fsi`. Make T006 GREEN. No access modifiers in `.fs` (Principle II).
 
 **Checkpoint**: US1 independently functional — pure code can request sound.
 
@@ -88,11 +88,11 @@ clamped volumes, `StopMusic`-when-idle no-op, and no exception — with no audio
 
 ### Tests for User Story 2 ⚠️ (write first, must FAIL)
 
-- [ ] T008 [US2] Extend `tests/Canvas.Tests/AudioTests.fs`: assert `Audio.emptyEvidence`, `record`, and `interpret [..]` produce `AudioEvidence.Requested` in dispatch order with normalized volumes; assert `StopMusic` with nothing playing is a well-defined no-op and out-of-range volume never throws (Principle VI). Confirm RED. (Same file as T006 → runs after US1, not parallel.)
+- [X] T008 [US2] Extend `tests/Canvas.Tests/AudioTests.fs`: assert `Audio.emptyEvidence`, `record`, and `interpret [..]` produce `AudioEvidence.Requested` in dispatch order with normalized volumes; assert `StopMusic` with nothing playing is a well-defined no-op and out-of-range volume never throws (Principle VI). Confirm RED. (Same file as T006 → runs after US1, not parallel.)
 
 ### Implementation for User Story 2
 
-- [ ] T009 [US2] Implement `AudioEvidence` + `Audio.emptyEvidence`/`record`/`interpret` (pure fold, total, clamps carried volumes) in `src/Canvas/Audio.fs`. Make T008 GREEN.
+- [X] T009 [US2] Implement `AudioEvidence` + `Audio.emptyEvidence`/`record`/`interpret` (pure fold, total, clamps carried volumes) in `src/Canvas/Audio.fs`. Make T008 GREEN.
 
 **Checkpoint**: US1 + US2 complete — the pure request surface and its headless-safe evidence boundary both work; this is the shippable library MVP.
 
