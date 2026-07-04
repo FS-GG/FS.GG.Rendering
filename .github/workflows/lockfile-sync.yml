@@ -16,6 +16,7 @@ on:
 
 permissions:
   contents: read   # the App token inside the reusable workflow performs the write
+  packages: read   # required ceiling for the reusable workflow's declared packages:read (else startup_failure)
 
 jobs:
   sync:
