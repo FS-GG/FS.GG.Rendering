@@ -33,7 +33,7 @@ interpreter, US3 skill materialization). US1 and US2 share `src/Canvas/Audio.fsi
 > and the `samples/**/*.Tests` feed consumers, which is exactly where Feature 175's surprises hid.
 
 - [X] T001 Add `Audio.fsi` then `Audio.fs` (empty stubs) to the compile `<ItemGroup>` in `src/Canvas/Canvas.Lib.fsproj`, ordered after `Rng`/`FixedStep`, and create an empty `tests/Canvas.Tests/AudioTests.fs` wired into `tests/Canvas.Tests/Canvas.Tests.fsproj`; confirm the solution still builds.
-- [ ] T002 Establish the no-regression baseline: `dotnet fsi scripts/baseline-tests.fsx --out specs/243-audio-effect-surface/readiness/baseline.md` (runs EVERY `*.Tests.fsproj` — solution + Package.Tests + samples — and records the full red/green set so pre-existing reds are known now, not discovered at merge).
+- [~] T002 (PARTIAL — see caveat) Establish the no-regression baseline: `dotnet fsi scripts/baseline-tests.fsx --out specs/243-audio-effect-surface/readiness/baseline.md` (runs EVERY `*.Tests.fsproj` — solution + Package.Tests + samples — and records the full red/green set so pre-existing reds are known now, not discovered at merge).
 
 ---
 
@@ -53,7 +53,7 @@ before building on it.
 
 - [X] T003 Finalize the public surface `src/Canvas/Audio.fsi` from `specs/243-audio-effect-surface/contracts/Audio.fsi` (DUs `AudioEffect`/`SoundId`/`TrackId`, record `AudioEvidence`, module `Audio` with clamp/smart-ctors/`record`/`interpret`). No `.fs` body yet.
 - [X] T004 FSI shape check (Principle I): build Canvas, `#r` the dll in `dotnet fsi`, and exercise the drafted surface per quickstart §1; save the transcript to `specs/243-audio-effect-surface/readiness/fsi-sketch.md`. Adjust `Audio.fsi` if the shape is awkward before any `.fs` exists.
-- [ ] T005 **Live scaffold baseline**: run `dotnet new fs-gg-ui -o /tmp/243-base-game --profile game` and `--profile app` on the CURRENT (pre-audio) template; record the skill-root listing to `specs/243-audio-effect-surface/readiness/scaffold-baseline.md` so the post-wiring diff in US3 (T016) is trustworthy.
+- [X] T005 **Live scaffold baseline**: run `dotnet new fs-gg-ui -o /tmp/243-base-game --profile game` and `--profile app` on the CURRENT (pre-audio) template; record the skill-root listing to `specs/243-audio-effect-surface/readiness/scaffold-baseline.md` so the post-wiring diff in US3 (T016) is trustworthy.
 
 **Checkpoint**: Surface signed off in FSI; current scaffold state captured. User stories can begin.
 
@@ -123,10 +123,10 @@ confirm manifest/template/parity coherence and that references resolve to shippe
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T018 [P] Ship the doc copy `template/base/docs/api-surface/Canvas/Audio.fsi` alongside the existing `Loop.fsi`/`Rng.fsi` doc copies (kept in sync with the shipped `src/Canvas/Audio.fsi`).
-- [ ] T019 [P] Capture per-phase feedback via the `fs-gg-feedback-capture` convention into `specs/243-audio-effect-surface/feedback/` (process friction, generalizable-code candidates).
-- [ ] T020 Run the full `quickstart.md` validation end-to-end (§1–§5) and confirm every expected outcome; note any `environment-limited` substitutions.
-- [ ] T021 On merge readiness: comment implementation status on FS-GG/FS.GG.Rendering#92 and move its Coordination board item to `In review` → `Done`; confirm #93 remains parked.
+- [X] T018 [P] Ship the doc copy `template/base/docs/api-surface/Canvas/Audio.fsi` alongside the existing `Loop.fsi`/`Rng.fsi` doc copies (kept in sync with the shipped `src/Canvas/Audio.fsi`).
+- [X] T019 [P] Capture per-phase feedback via the `fs-gg-feedback-capture` convention into `specs/243-audio-effect-surface/feedback/` (process friction, generalizable-code candidates).
+- [X] T020 Run the full `quickstart.md` validation end-to-end (§1–§5) and confirm every expected outcome; note any `environment-limited` substitutions.
+- [X] T021 On merge readiness: comment implementation status on FS-GG/FS.GG.Rendering#92 and move its Coordination board item to `In review` → `Done`; confirm #93 remains parked.
 
 ---
 
@@ -179,3 +179,17 @@ Task: "Add .agents + .claude fs-gg-product-audio wrapper pair (T012)"
 - The real audio-*output* backend (SkiaViewer host) is out of scope — an explicit deferral behind
   the seam (plan.md "Deferred"). Do not add a hollow SkiaViewer arm.
 - This is a **Tier 1** change: `.fsi` + surface baseline + tests + docs are all required for done.
+
+## Readiness caveats (honest disclosure — Feature 168)
+
+- **T002 comprehensive baseline: PARTIAL.** The prescribed `scripts/baseline-tests.fsx` wrapper was
+  not run. Instead the constituent test projects were run directly and are green: Canvas.Tests
+  (55/55), Package.Tests (196/196), Rendering.Harness.Tests (212/212), and the full `FS.GG.Rendering.slnx`
+  solution suite. **Not exercised:** the `samples/**/*.Tests` package-feed consumers — they pin a
+  published `FS.GG.UI.Canvas` version and would need a local-feed refresh (pack) of the new Canvas to
+  restore. That is a release-time step, deferred with the pack/publish; it is a stale-pin caveat, not a
+  code regression.
+- **specs/243-audio-effect-surface/readiness/ evidence (fsi-sketch.md, etc.) is git-ignored by default**
+  and was left uncommitted per the repo's readiness allowlist convention.
+- **Real audio output** is deferred behind the interpreter seam (no device/CI plays sound) — evidence is
+  the requested-effect values, as designed.
