@@ -32,8 +32,8 @@ against each other.
 > `tests/Package.Tests` (release-only; owns the public-surface gate that this Tier-1 change trips)
 > and the `samples/**/*.Tests` feed consumers, which is exactly where Feature 175's surprises hid.
 
-- [ ] T001 Add `Persistence.fsi` then `Persistence.fs` (empty stubs) to the compile `<ItemGroup>` in `src/Canvas/Canvas.Lib.fsproj`, ordered after `Audio.fs`, and create an empty `tests/Canvas.Tests/PersistenceTests.fs` wired into `tests/Canvas.Tests/Canvas.Tests.fsproj`; confirm the solution still builds.
-- [ ] T002 Establish the no-regression baseline: `dotnet fsi scripts/baseline-tests.fsx --out specs/244-persistence-effect-surface/readiness/baseline.md` (runs EVERY `*.Tests.fsproj` — solution + Package.Tests + samples — and records the full red/green set so pre-existing reds are known now, not discovered at merge).
+- [X] T001 Add `Persistence.fsi` then `Persistence.fs` (empty stubs) to the compile `<ItemGroup>` in `src/Canvas/Canvas.Lib.fsproj`, ordered after `Audio.fs`, and create an empty `tests/Canvas.Tests/PersistenceTests.fs` wired into `tests/Canvas.Tests/Canvas.Tests.fsproj`; confirm the solution still builds.
+- [X] T002 Establish the no-regression baseline: `dotnet fsi scripts/baseline-tests.fsx --out specs/244-persistence-effect-surface/readiness/baseline.md` (runs EVERY `*.Tests.fsproj` — solution + Package.Tests + samples — and records the full red/green set so pre-existing reds are known now, not discovered at merge).
 
 ---
 
@@ -51,9 +51,9 @@ before building on it.
 > 228 & 243). T005 pulls that real instantiation forward as the pre-change baseline; do not rely on
 > unit tests alone for US3.
 
-- [ ] T003 Finalize the public surface `src/Canvas/Persistence.fsi` from `specs/244-persistence-effect-surface/contracts/Persistence.fsi` (DUs `PersistenceEffect`/`SaveSlot`/`SavePayload`, record `SaveEnvelope`, record `PersistenceEvidence`, module `Persistence` with `minVersion`/`clampVersion`/smart-ctors/`record`/`interpret`). No `.fs` body yet.
-- [ ] T004 FSI shape check (Principle I): build Canvas, `#r` the dll in `dotnet fsi`, and exercise the drafted surface per quickstart §1; save the transcript to `specs/244-persistence-effect-surface/readiness/fsi-sketch.md`. Adjust `Persistence.fsi` if the shape is awkward before any `.fs` exists.
-- [ ] T005 **Live scaffold baseline**: run `dotnet new fs-gg-ui -o /tmp/244-base-game --profile game` and `--profile app` on the CURRENT (pre-persistence) template; record the skill-root listing to `specs/244-persistence-effect-surface/readiness/scaffold-baseline.md` so the post-wiring diff in US3 (T016) is trustworthy.
+- [X] T003 Finalize the public surface `src/Canvas/Persistence.fsi` from `specs/244-persistence-effect-surface/contracts/Persistence.fsi` (DUs `PersistenceEffect`/`SaveSlot`/`SavePayload`, record `SaveEnvelope`, record `PersistenceEvidence`, module `Persistence` with `minVersion`/`clampVersion`/smart-ctors/`record`/`interpret`). No `.fs` body yet.
+- [X] T004 FSI shape check (Principle I): build Canvas, `#r` the dll in `dotnet fsi`, and exercise the drafted surface per quickstart §1; save the transcript to `specs/244-persistence-effect-surface/readiness/fsi-sketch.md`. Adjust `Persistence.fsi` if the shape is awkward before any `.fs` exists.
+- [X] T005 **Live scaffold baseline**: run `dotnet new fs-gg-ui -o /tmp/244-base-game --profile game` and `--profile app` on the CURRENT (pre-persistence) template; record the skill-root listing to `specs/244-persistence-effect-surface/readiness/scaffold-baseline.md` so the post-wiring diff in US3 (T016) is trustworthy.
 
 **Checkpoint**: Surface signed off in FSI; current scaffold state captured. User stories can begin.
 
@@ -69,11 +69,11 @@ of emitted `PersistenceEffect` values (slot, version, opaque payload); confirm n
 
 ### Tests for User Story 1 ⚠️ (write first, must FAIL)
 
-- [ ] T006 [US1] Semantic tests in `tests/Canvas.Tests/PersistenceTests.fs`: a pure model whose `update` maps events → `PersistenceEffect` requests; assert the exact emitted values (`Save`/`Load`/`DeleteSlot`), assert the `saveEnvelope` smart ctor clamps a negative version to `minVersion` and carries the opaque payload verbatim, assert `update` performs no IO. Test names carry no `Synthetic` token (evidence is real). Confirm RED.
+- [X] T006 [US1] Semantic tests in `tests/Canvas.Tests/PersistenceTests.fs`: a pure model whose `update` maps events → `PersistenceEffect` requests; assert the exact emitted values (`Save`/`Load`/`DeleteSlot`), assert the `saveEnvelope` smart ctor clamps a negative version to `minVersion` and carries the opaque payload verbatim, assert `update` performs no IO. Test names carry no `Synthetic` token (evidence is real). Confirm RED.
 
 ### Implementation for User Story 1
 
-- [ ] T007 [US1] Implement `src/Canvas/Persistence.fs` — `SaveSlot`/`SavePayload`/`SaveEnvelope`/`PersistenceEffect` types, `minVersion`/`clampVersion`, and smart constructors `saveEnvelope`/`save`/`load`/`deleteSlot` against `Persistence.fsi`. Make T006 GREEN. No access modifiers in `.fs` (Principle II).
+- [X] T007 [US1] Implement `src/Canvas/Persistence.fs` — `SaveSlot`/`SavePayload`/`SaveEnvelope`/`PersistenceEffect` types, `minVersion`/`clampVersion`, and smart constructors `saveEnvelope`/`save`/`load`/`deleteSlot` against `Persistence.fsi`. Make T006 GREEN. No access modifiers in `.fs` (Principle II).
 
 **Checkpoint**: US1 independently functional — pure code can request save/load/delete.
 
@@ -90,11 +90,11 @@ and no exception — with no writable save location.
 
 ### Tests for User Story 2 ⚠️ (write first, must FAIL)
 
-- [ ] T008 [US2] Extend `tests/Canvas.Tests/PersistenceTests.fs`: assert `Persistence.emptyEvidence`, `record`, and `interpret [..]` produce `PersistenceEvidence.Requested` in dispatch order with normalized `Save` versions and payloads carried verbatim; assert an unknown-slot `Load`/`DeleteSlot` is recorded as a well-defined no-op-class request and never throws (Principle VI). Confirm RED. (Same file as T006 → runs after US1, not parallel.)
+- [X] T008 [US2] Extend `tests/Canvas.Tests/PersistenceTests.fs`: assert `Persistence.emptyEvidence`, `record`, and `interpret [..]` produce `PersistenceEvidence.Requested` in dispatch order with normalized `Save` versions and payloads carried verbatim; assert an unknown-slot `Load`/`DeleteSlot` is recorded as a well-defined no-op-class request and never throws (Principle VI). Confirm RED. (Same file as T006 → runs after US1, not parallel.)
 
 ### Implementation for User Story 2
 
-- [ ] T009 [US2] Implement `PersistenceEvidence` + `Persistence.emptyEvidence`/`record`/`interpret` (pure fold, total, normalizes carried `Save` versions, carries payload verbatim) in `src/Canvas/Persistence.fs`. Make T008 GREEN.
+- [X] T009 [US2] Implement `PersistenceEvidence` + `Persistence.emptyEvidence`/`record`/`interpret` (pure fold, total, normalizes carried `Save` versions, carries payload verbatim) in `src/Canvas/Persistence.fs`. Make T008 GREEN.
 
 **Checkpoint**: US1 + US2 complete — the pure request surface and its headless-safe evidence boundary both work; this is the shippable library MVP.
 
@@ -110,7 +110,7 @@ confirm manifest/template/parity coherence and that references resolve to shippe
 
 ### Implementation for User Story 3
 
-- [ ] T010 [US3] Regenerate the surface baseline: `dotnet fsi scripts/refresh-surface-baselines.fsx`; commit the new `readiness/surface-baselines/FS.GG.UI.Canvas.txt` rows (`Persistence`, `PersistenceEffect`, `SaveEnvelope`, `SaveSlot`, `SavePayload`, `PersistenceEvidence`). Depends on US1+US2 surface existing.
+- [X] T010 [US3] Regenerate the surface baseline: `dotnet fsi scripts/refresh-surface-baselines.fsx`; commit the new `readiness/surface-baselines/FS.GG.UI.Canvas.txt` rows (`Persistence`, `PersistenceEffect`, `SaveEnvelope`, `SaveSlot`, `SavePayload`, `PersistenceEvidence`). Depends on US1+US2 surface existing.
 - [ ] T011 [P] [US3] Author `template/product-skills/fs-gg-persistence/SKILL.md` mirroring `fs-gg-audio`/`fs-gg-game-core` (front-matter `name`/`description`; teach the request → record-only-interpret pattern and the versioned-envelope recipe — serialize the pure `Model`, stamp a version, keep I/O at the host, reuse the game-core seeded state as the snapshot target; cite the shipped `Persistence` surface via `docs/api-surface/Canvas/Persistence.fsi`; consumer vocabulary only — no framework-process terms).
 - [ ] T012 [P] [US3] Add the wrapper pair: `.agents/skills/fs-gg-product-persistence/SKILL.md` (Codex-active) and `.claude/skills/fs-gg-product-persistence/SKILL.md` (Claude-active), each a thin pointer to the canonical body (byte-identical except the Codex/Claude token), matching the other `fs-gg-product-*` wrappers.
 - [ ] T013 [US3] Add the `fs-gg-persistence` copy block to `.template.config/template.json`: `condition: "(profile == \"game\" || profile == \"sample-pack\")"`, `source: "template/product-skills/fs-gg-persistence/"`, `target: ".agents/skills/fs-gg-persistence/"`, `copyOnly: ["**/*"]`.

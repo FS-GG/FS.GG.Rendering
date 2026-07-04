@@ -28,6 +28,8 @@
     <Compile Include="FixedStep.fs" />
     <Compile Include="Audio.fsi" />
     <Compile Include="Audio.fs" />
+    <Compile Include="Persistence.fsi" />
+    <Compile Include="Persistence.fs" />
   </ItemGroup>
 
   <ItemGroup>
