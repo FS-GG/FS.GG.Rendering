@@ -31,3 +31,21 @@ roots.
 - `tests/Package.Tests/Feature219EmitFrameworkSkillsTests.fs` — asserts `.agents/skills/`-only
   emission and forbids resurrected per-root twins.
 - `specs/231-skill-manifest-materialize/` — the feature that implements it.
+
+## Condition-aware extension (Feature 238 / ADR-0017)
+
+The manifest entry gained two **additive, optional** string fields (`schemaVersion` stays `1`):
+
+- `materializes-when` — the **verbatim** `.template.config/template.json` `sources[].condition`
+  that gates the skill's body (single source of truth). Turns a `declared ∧ absent` gap into an
+  honest `declared ∧ condition-false ∧ absent`, so a downstream union gate can tell legitimate
+  suppression from a real supply failure.
+- `supplied-by` — the provider source directory holding the canonical `SKILL.md`.
+
+Motivating case: `fs-gg-project` is declared `scope:product` but emits only under
+`lifecycle == "spec-kit"`; recording that condition resolves the sdd-lane "supplied by nobody"
+gap ([`#71`](https://github.com/FS-GG/FS.GG.Rendering/issues/71)). `scripts/generate-skill-manifest.fsx`
+emits both fields; `tests/Package.Tests/Feature238SkillMaterializesWhenTests.fs` re-reads
+`template.json` and fails on any drift. The org-level `registry/skills.yml` + `skill-registry`
+contract and the `[missing]`/`[unexpected]` gate enforcement are owned by `FS-GG/.github#164`;
+see `specs/238-skill-materializes-when/`.

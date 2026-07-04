@@ -30,22 +30,33 @@ let repoRoot =
 let repoPath (rel: string) =
     Path.Combine(repoRoot, rel.Replace('/', Path.DirectorySeparatorChar))
 
-// The full product-scope catalog: id -> canonical SKILL.md source (data-model.md, Feature 231).
-// Profile/feedback conditionality lives in .template.config/template.json; the concrete
-// scaffold's union is the manifest ∩ the emitted `.agents/skills/` set.
+// The full product-scope catalog: id -> (canonical SKILL.md source, materializes-when condition).
+// Feature 238 (issue #71, ADR-0017): materializes-when is the VERBATIM .template.config/template.json
+// sources[].condition that gates this skill's body — the single source of truth. supplied-by is
+// derived from the source path (dirname + "/"). The concrete scaffold's union is the manifest,
+// filtered by these conditions, ∩ the emitted `.agents/skills/` set. Feature231/238 tests re-read
+// template.json and fail on any drift between these strings and the live conditions.
 let catalog =
-    [ "fs-gg-elmish", "template/product-skills/fs-gg-elmish/SKILL.md"
-      "fs-gg-feedback-capture", "template/feedback/skill/SKILL.md"
-      "fs-gg-keyboard-input", "template/product-skills/fs-gg-keyboard-input/SKILL.md"
-      "fs-gg-layout", "template/product-skills/fs-gg-layout/SKILL.md"
-      "fs-gg-project", "template/base/.agents/skills/fs-gg-project/SKILL.md"
-      "fs-gg-samples", "template/fragments/samples/skill/SKILL.md"
-      "fs-gg-scene", "template/product-skills/fs-gg-scene/SKILL.md"
-      "fs-gg-skiaviewer", "template/product-skills/fs-gg-skiaviewer/SKILL.md"
-      "fs-gg-styling", "template/product-skills/fs-gg-styling/SKILL.md"
-      "fs-gg-symbology", "template/product-skills/fs-gg-symbology/SKILL.md"
-      "fs-gg-testing", "template/product-skills/fs-gg-testing/SKILL.md"
-      "fs-gg-ui-widgets", "template/product-skills/fs-gg-ui-widgets/SKILL.md" ]
+    [ "fs-gg-elmish", "template/product-skills/fs-gg-elmish/SKILL.md", "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\")"
+      "fs-gg-feedback-capture", "template/feedback/skill/SKILL.md", "(feedback == true) && lifecycle == \"spec-kit\""
+      "fs-gg-keyboard-input", "template/product-skills/fs-gg-keyboard-input/SKILL.md", "(profile == \"app\" || profile == \"game\")"
+      "fs-gg-layout", "template/product-skills/fs-gg-layout/SKILL.md", "(profile == \"app\" || profile == \"game\")"
+      "fs-gg-project", "template/base/.agents/skills/fs-gg-project/SKILL.md", "(lifecycle == \"spec-kit\")"
+      "fs-gg-samples", "template/fragments/samples/skill/SKILL.md", "(profile == \"sample-pack\") && lifecycle == \"spec-kit\""
+      "fs-gg-scene", "template/product-skills/fs-gg-scene/SKILL.md", "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\")"
+      "fs-gg-skiaviewer", "template/product-skills/fs-gg-skiaviewer/SKILL.md", "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\")"
+      "fs-gg-styling", "template/product-skills/fs-gg-styling/SKILL.md", "(profile == \"app\" || profile == \"game\")"
+      "fs-gg-symbology", "template/product-skills/fs-gg-symbology/SKILL.md", "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\")"
+      "fs-gg-testing", "template/product-skills/fs-gg-testing/SKILL.md", "(profile == \"governed\")"
+      "fs-gg-ui-widgets", "template/product-skills/fs-gg-ui-widgets/SKILL.md", "(profile == \"app\" || profile == \"game\")" ]
+
+/// Provider source directory (trailing slash) that holds the canonical SKILL.md — supplied-by.
+let suppliedByOf (source: string) : string =
+    source.Substring(0, source.LastIndexOf '/') + "/"
+
+/// Minimal JSON string escape (conditions carry embedded double quotes around literals).
+let jsonEscape (s: string) : string =
+    s.Replace("\\", "\\\\").Replace("\"", "\\\"")
 
 let sha256Text (body: string) : string =
     Encoding.UTF8.GetBytes body
@@ -56,12 +67,12 @@ let sha256Text (body: string) : string =
 let manifestJson =
     let entries =
         catalog
-        |> List.sortBy fst
-        |> List.map (fun (id, source) ->
+        |> List.sortBy (fun (id, _, _) -> id)
+        |> List.map (fun (id, source, materializesWhen) ->
             let body = File.ReadAllText(repoPath source)
             sprintf
-                "    {\n      \"id\": \"%s\",\n      \"scope\": \"product\",\n      \"sha256\": \"%s\",\n      \"resolvablePath\": \".agents/skills/%s/SKILL.md\"\n    }"
-                id (sha256Text body) id)
+                "    {\n      \"id\": \"%s\",\n      \"scope\": \"product\",\n      \"sha256\": \"%s\",\n      \"resolvablePath\": \".agents/skills/%s/SKILL.md\",\n      \"materializes-when\": \"%s\",\n      \"supplied-by\": \"%s\"\n    }"
+                id (sha256Text body) id (jsonEscape materializesWhen) (jsonEscape (suppliedByOf source)))
         |> String.concat ",\n"
 
     sprintf "{\n  \"schemaVersion\": 1,\n  \"skills\": [\n%s\n  ]\n}\n" entries

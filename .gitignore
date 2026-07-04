@@ -174,3 +174,5 @@ specs/220-game-starter-scene/readiness/fr007-baseline/
 !specs/230-standalone-skill-root-mirror/readiness/**
 !specs/231-skill-manifest-materialize/readiness/
 !specs/231-skill-manifest-materialize/readiness/**
+!specs/238-skill-materializes-when/readiness/
+!specs/238-skill-materializes-when/readiness/**
