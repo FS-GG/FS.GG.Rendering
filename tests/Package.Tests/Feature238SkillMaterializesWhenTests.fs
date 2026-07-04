@@ -5,10 +5,13 @@ module Feature238SkillMaterializesWhenTests
 //   materializes-when — the predicate that gates the skill's body.
 //   supplied-by       — the provider source directory holding the canonical SKILL.md.
 //
-// The point is fs-gg-project: declared scope:product but emitted only under lifecycle == spec-kit,
-// so under the sdd lane it is declared-but-unsupplied. Recording its condition turns the sdd-lane
-// gap from an untyped `declared ∧ absent` into an honest `declared ∧ condition-false ∧ absent`, so
-// the downstream union gate (.github#164) can tell legitimate suppression from a real [missing].
+// The original point was fs-gg-project: declared scope:product but emitted only under
+// lifecycle == spec-kit, so under the sdd lane it was declared-but-unsupplied (ADR-0017 §C2, a
+// tolerated gap). Issue #91 CLOSED that seam: fs-gg-project is the product-orientation umbrella and
+// its body is lane-neutral, so it now ships via a dedicated profile-gated (lifecycle-agnostic)
+// source like every other product skill — materializing on the sdd/none lanes too. materializes-when
+// still lets the union gate (.github#164) tell legitimate profile-scoped suppression from a real
+// [missing], and G-HONESTY below now pins the widened (all-lifecycle) behaviour.
 //
 // GRAMMAR (issue #77) — the manifest ships materializes-when in the ADR-0017 CANONICAL grammar the
 // skill-union gate (.github scripts/skill-union-assert.sh) + the typed Fsgg.Registry validator
@@ -28,8 +31,9 @@ module Feature238SkillMaterializesWhenTests
 //                   so template.json stays the single source of truth and any un-anticipated
 //                   condition shape (that normalizeCondition mistranslates) fails here.
 //   G-SUPPLIEDBY  — supplied-by(id) == dirname(canonical source) + "/".
-//   G-HONESTY     — fs-gg-project's condition evaluates FALSE under {lifecycle=sdd} and TRUE under
-//                   {lifecycle=spec-kit}, evaluated with the canonical gate evaluator.
+//   G-HONESTY     — fs-gg-project's condition evaluates TRUE for a composed profile under EVERY
+//                   lifecycle (sdd/spec-kit/none — issue #91 closed the §C2 seam) and FALSE for an
+//                   off-list profile, evaluated with the canonical gate evaluator.
 
 open System
 open System.IO
@@ -83,8 +87,8 @@ let private readEntries () =
           SuppliedBy = optStr e "supplied-by" |> Option.defaultValue "" } ]
 
 /// The authoritative id -> body-source condition map, read live from template.json (C-style grammar):
-/// product/samples/feedback rows target .agents/skills/<id>/; fs-gg-project's body ships via the
-/// whole-tree template/base/.agents/ source (its condition is the gate for the one skill inside it).
+/// every product skill — fs-gg-project included (issue #91) — ships via a dedicated source targeting
+/// .agents/skills/<id>/, so a single target-prefix scan recovers the whole catalog's conditions.
 let private templateConditions () : Map<string, string> =
     use doc = JsonDocument.Parse(File.ReadAllText templateJsonPath)
     let str (s: JsonElement) (prop: string) =
@@ -93,12 +97,9 @@ let private templateConditions () : Map<string, string> =
         | _ -> ""
     [ for s in doc.RootElement.GetProperty("sources").EnumerateArray() do
         let target = (str s "target").Replace('\\', '/')
-        let source = (str s "source").Replace('\\', '/')
         let cond = str s "condition"
         if target.StartsWith ".agents/skills/fs-gg-" then
-            yield target.Substring(".agents/skills/".Length).TrimEnd('/'), cond
-        if source = "template/base/.agents/" then
-            yield "fs-gg-project", cond ]
+            yield target.Substring(".agents/skills/".Length).TrimEnd('/'), cond ]
     |> Map.ofList
 
 /// Provider source dir (trailing slash) that holds the canonical SKILL.md — supplied-by's contract.
@@ -255,15 +256,17 @@ let feature238SkillMaterializesWhenTests =
                   Expect.equal (Map.find id entries).SuppliedBy (suppliedByOf source) (sprintf "%s: supplied-by is the provider source dir" id)
           }
 
-          test "G-HONESTY fs-gg-project materializes only in the spec-kit lane (false@sdd, true@spec-kit)" {
+          test "G-HONESTY fs-gg-project materializes on every lifecycle for a composed profile (issue #91: §C2 seam closed)" {
               let entries = readEntries () |> List.map (fun e -> e.Id, e) |> Map.ofList
               let cond = (Map.find "fs-gg-project" entries).MaterializesWhen
-              // sdd lane params (new-sdd-fullstack default) — the skill legitimately does NOT emit.
-              let sdd = Map.ofList [ "profile", "game"; "lifecycle", "sdd"; "feedback", "false" ]
-              // spec-kit lane — the skill DOES emit (today's behaviour, unchanged).
-              let specKit = Map.ofList [ "profile", "game"; "lifecycle", "spec-kit"; "feedback", "false" ]
-              Expect.isFalse (evalCanonical sdd cond) "fs-gg-project is legitimately absent under lifecycle=sdd (issue #71: not a [missing] supply failure)"
-              Expect.isTrue (evalCanonical specKit cond) "fs-gg-project materializes under lifecycle=spec-kit (unchanged emission behaviour)"
+              // Issue #91 / ADR-0017 §C2: the product-orientation umbrella is now lifecycle-agnostic —
+              // it covers the DEFAULT sdd lane (was the tolerated gap) as well as spec-kit and none.
+              for lifecycle in [ "sdd"; "spec-kit"; "none" ] do
+                  let lane = Map.ofList [ "profile", "game"; "lifecycle", lifecycle; "feedback", "false" ]
+                  Expect.isTrue (evalCanonical lane cond) (sprintf "fs-gg-project materializes for profile=game under lifecycle=%s (§C2 seam closed — every composed product gets the top-level map)" lifecycle)
+              // Still profile-gated: an off-list profile (grid sentinel) does not get it.
+              let offProfile = Map.ofList [ "profile", "controls"; "lifecycle", "sdd"; "feedback", "false" ]
+              Expect.isFalse (evalCanonical offProfile cond) "fs-gg-project suppressed for an off-list profile (condition is profile-scoped, not `always`)"
           }
 
           test "G-HONESTY the canonical evaluator is faithful to the grammar (sanity over gated skills)" {
