@@ -85,7 +85,7 @@ for the owning source module of each):
 | `FS.GG.UI.Canvas` | Dependency-light element library + deterministic fixed-timestep game loop |
 | `FS.GG.UI.Symbology` | Pure unit-symbology vocabulary (stat→channel Token → legible vector symbols) |
 | `FS.GG.UI.Symbology.Render` | Headless Scene→PNG bridge for the symbology design loop |
-| `FS.GG.UI.Build` | In-process governance engine (evidence gates) for generated products |
+| `FS.GG.UI.Build` | In-process governance engine (evidence gates) for generated workspaces |
 
 A windowed controls app typically references `FS.GG.UI.Controls` + `FS.GG.UI.SkiaViewer`
 (+ a theme package, and `FS.GG.UI.Controls.Elmish` if you want Elmish) — or just the

@@ -9,6 +9,12 @@ deterministic offscreen path for tests.
 The render core is **Elmish-free**; idiomatic [Elmish](https://elmish.github.io/elmish/)
 (`Cmd`, subscriptions) is an **optional** adapter layer.
 
+> **Platform vs. workspace.** FS-GG is a **platform** — five repositories (the UI
+> framework is one **component** of it). What you scaffold *with* the platform is a
+> **workspace**: a generated repo with a runnable app, the `.fsgg/` lifecycle, skills,
+> and optional governance. See the
+> [vocabulary](https://github.com/FS-GG/.github/blob/main/docs/adr/0020-platform-workspace-component-vocabulary.md).
+
 ## Quick taste
 
 ```fsharp
@@ -51,7 +57,7 @@ proves and what it does not.
 
 ## Status
 
-Active preview. This repository is the canonical home of the FS-GG rendering product,
+Active preview. This repository is the canonical home of the FS-GG rendering component,
 split out of the archived [`EHotwagner/FS-Skia-UI`](https://github.com/EHotwagner/FS-Skia-UI)
 (see [`PROVENANCE.md`](PROVENANCE.md)). Three themes ship today: **Light** and **Dark**
 (`FS.GG.UI.Themes.Default`) plus an opt-in **Ant Design** theme (`FS.GG.UI.Themes.AntDesign`,
