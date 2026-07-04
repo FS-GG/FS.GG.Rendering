@@ -25,6 +25,15 @@ Captured during implementation of the `fs-gg-game-core` product skill. Severity 
   11→12). None of these is discoverable from the others; a grep for the literal counts was the only way to
   find Feature204. Easy to miss one and get a late red.
 
+- **A product skill needs two hand-written `.claude`/`.agents` alias wrappers, and this is only gated in
+  `Rendering.Harness.Tests`, not `Package.Tests` (high).** `Feature168 SkillParity` requires each
+  `template/product-skills/fs-gg-<name>/` canonical to be exposed as `fs-gg-product-<name>` wrappers under
+  `.claude/skills/` AND `.agents/skills/`, with the wrapper `description` matching the canonical **verbatim**
+  (else `MissingWrapper` / `StaleDescription` warnings fail the deterministic gate). I missed this locally
+  because I only re-ran `Package.Tests` after the skill edits — the parity gate lives in a different project
+  the solution DOES include, so CI caught it. Lesson: after any skill change, run **`Rendering.Harness.Tests`
+  (Feature168 SkillParity)** too, not just the `Package.Tests` skill suites.
+
 ## Generalizable-code candidates
 
 - **An api-surface regenerator + parity gate (high).** A script that emits `template/base/docs/api-surface/<Pkg>/*.fsi`
