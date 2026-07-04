@@ -68,13 +68,13 @@
 
 ### Tests for User Story 2 (write FIRST, must FAIL before impl)
 
-- [ ] T010 [P] [US2] Write `tests/Canvas.Tests/RngTests.fs` (Expecto + FsCheck) and register it in `tests/Canvas.Tests/Canvas.Tests.fsproj` before `Program.fs`. Cover: identical seed ⇒ byte-identical sequence; a draw leaves the input `Rng` unchanged (purity) and it reproduces its own next draw; `nextInt lo hi` stays in `[lo,hi]` inclusive incl. degenerate `lo=hi`→`lo`, `lo>hi`→`lo`; `nextFloat` in `[0.0,1.0)`; `split` yields two generators with differing streams; structural equality of `Rng` ⇒ identical continuation (SC-002). Run and confirm they FAIL
-- [ ] T011 [US2] Author `src/Canvas/Rng.fsi` — `[<Struct>] type Rng = { State: uint64 }` + `[<RequireQualifiedAccess>] module Rng` with the four `val`s and doc comments
+- [X] T010 [P] [US2] Write `tests/Canvas.Tests/RngTests.fs` (Expecto + FsCheck) and register it in `tests/Canvas.Tests/Canvas.Tests.fsproj` before `Program.fs`. Cover: identical seed ⇒ byte-identical sequence; a draw leaves the input `Rng` unchanged (purity) and it reproduces its own next draw; `nextInt lo hi` stays in `[lo,hi]` inclusive incl. degenerate `lo=hi`→`lo`, `lo>hi`→`lo`; `nextFloat` in `[0.0,1.0)`; `split` yields two generators with differing streams; structural equality of `Rng` ⇒ identical continuation (SC-002). Run and confirm they FAIL
+- [X] T011 [US2] Author `src/Canvas/Rng.fsi` — `[<Struct>] type Rng = { State: uint64 }` + `[<RequireQualifiedAccess>] module Rng` with the four `val`s and doc comments
 
 ### Implementation for User Story 2
 
-- [ ] T012 [US2] Implement `src/Canvas/Rng.fs` — SplitMix64 (`ofSeed` mixes the raw seed once so `0UL` is non-degenerate; `nextFloat` from the top 53 bits into `[0,1)`; `nextInt` inclusive-range mapping; `split` derives an independent seed via one extra mix). No access modifiers
-- [ ] T013 [US2] `dotnet test tests/Canvas.Tests/Canvas.Tests.fsproj` → all Rng tests green; re-run the `quickstart.md` §3 Rng FSI block
+- [X] T012 [US2] Implement `src/Canvas/Rng.fs` — SplitMix64 (`ofSeed` mixes the raw seed once so `0UL` is non-degenerate; `nextFloat` from the top 53 bits into `[0,1)`; `nextInt` inclusive-range mapping; `split` derives an independent seed via one extra mix). No access modifiers
+- [X] T013 [US2] `dotnet test tests/Canvas.Tests/Canvas.Tests.fsproj` → all Rng tests green; re-run the `quickstart.md` §3 Rng FSI block
 
 **Checkpoint**: US1 + US2 both work independently.
 
@@ -88,13 +88,13 @@
 
 ### Tests for User Story 3 (write FIRST, must FAIL before impl)
 
-- [ ] T014 [P] [US3] Write `tests/Canvas.Tests/FixedStepTests.fs` (Expecto + FsCheck) and register it in `tests/Canvas.Tests/Canvas.Tests.fsproj` before `Program.fs`. Cover: exact-N-intervals ⇒ N steps + expected remainder; sub-interval delta ⇒ 0 steps, accumulator grows; **huge delta ⇒ step count bounded by the clamp** (not unbounded); conservation `newAcc = (acc + clamp dt) - steps*interval` with `0 ≤ newAcc < interval` (FsCheck); `stepCount ≥ 0` always; degenerate `interval ≤ 0` and `frameTime ≤ 0` ⇒ `struct(0, accumulator)`; determinism over a scripted sequence; `drainWith 0.05` clamps tighter than the 0.25 default. Run and confirm they FAIL
-- [ ] T015 [US3] Author `src/Canvas/FixedStep.fsi` — `[<RequireQualifiedAccess>] module FixedStep` with `defaultMaxFrameTime`, `drain`, `drainWith`, documenting **seconds** units (research D5) and the 0.25 s default clamp reused from `Loop.advance`
+- [X] T014 [P] [US3] Write `tests/Canvas.Tests/FixedStepTests.fs` (Expecto + FsCheck) and register it in `tests/Canvas.Tests/Canvas.Tests.fsproj` before `Program.fs`. Cover: exact-N-intervals ⇒ N steps + expected remainder; sub-interval delta ⇒ 0 steps, accumulator grows; **huge delta ⇒ step count bounded by the clamp** (not unbounded); conservation `newAcc = (acc + clamp dt) - steps*interval` with `0 ≤ newAcc < interval` (FsCheck); `stepCount ≥ 0` always; degenerate `interval ≤ 0` and `frameTime ≤ 0` ⇒ `struct(0, accumulator)`; determinism over a scripted sequence; `drainWith 0.05` clamps tighter than the 0.25 default. Run and confirm they FAIL
+- [X] T015 [US3] Author `src/Canvas/FixedStep.fsi` — `[<RequireQualifiedAccess>] module FixedStep` with `defaultMaxFrameTime`, `drain`, `drainWith`, documenting **seconds** units (research D5) and the 0.25 s default clamp reused from `Loop.advance`
 
 ### Implementation for User Story 3
 
-- [ ] T016 [US3] Implement `src/Canvas/FixedStep.fs` — closed-form: `let t = accumulator + min maxFrameTime (max 0.0 frameTime); if interval <= 0.0 then struct(0, accumulator) else let steps = int (floor (t / interval)) in struct(steps, t - float steps * interval)`; `drain` = `drainWith defaultMaxFrameTime`. No loop, no access modifiers
-- [ ] T017 [US3] `dotnet test tests/Canvas.Tests/Canvas.Tests.fsproj` → all FixedStep tests green; re-run the `quickstart.md` §3 FixedStep FSI block
+- [X] T016 [US3] Implement `src/Canvas/FixedStep.fs` — closed-form: `let t = accumulator + min maxFrameTime (max 0.0 frameTime); if interval <= 0.0 then struct(0, accumulator) else let steps = int (floor (t / interval)) in struct(steps, t - float steps * interval)`; `drain` = `drainWith defaultMaxFrameTime`. No loop, no access modifiers
+- [X] T017 [US3] `dotnet test tests/Canvas.Tests/Canvas.Tests.fsproj` → all FixedStep tests green; re-run the `quickstart.md` §3 FixedStep FSI block
 
 **Checkpoint**: all three user stories independently functional.
 
