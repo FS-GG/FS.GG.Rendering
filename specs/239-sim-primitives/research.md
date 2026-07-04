@@ -30,7 +30,7 @@ Documented in each `.fsi` and in `data-model.md`. Point containment treats the r
 ## D3 — Degenerate-input totality
 
 **Decision**: All helpers are **total** — they return documented values instead of throwing.
-- Geometry on a zero/negative-size `Rect`: computed with the same inequalities; a zero-area rect never `intersects` (strict) and is trivially handled by `contains`. Follows the `isFiniteRect` spirit at `TestingVisual.fs:779` (`Width >= 0 && Height >= 0`, non-NaN) — NaN inputs yield `false`, not exceptions.
+- Geometry on a zero/negative-size `Rect`: computed with the same plain strict/inclusive inequalities as the existing repo helpers — no zero-area special-casing. A degenerate rect touching only the boundary does not `intersects` (strict); one lying strictly interior does (the documented consequence of the strict formula, not a separate rule). NaN inputs yield `false` (comparisons are false), never exceptions.
 - `Rng.nextInt lo hi` with `lo = hi` returns `lo`; with `lo > hi` returns `lo` (documented, non-throwing) and advances state.
 - `FixedStep.drain` with interval `<= 0` returns `struct(0, accumulator)` (no divide-by-zero, no unbounded loop). With `frameTime <= 0` it adds nothing and returns `struct(0, accumulator)` — never a negative step count.
 

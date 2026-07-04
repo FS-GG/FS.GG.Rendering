@@ -28,6 +28,7 @@
     <Compile Include="Feature165VisualInspectionModelTests.fs" />
     <Compile Include="Feature165VisualInspectionPaintTests.fs" />
     <Compile Include="Feature183CodecSymmetryTests.fs" />
+    <Compile Include="GeometryTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

@@ -14,6 +14,8 @@
   <ItemGroup>
     <Compile Include="Types.fsi" />
     <Compile Include="Types.fs" />
+    <Compile Include="Geometry.fsi" />
+    <Compile Include="Geometry.fs" />
     <Compile Include="TextShaping.fsi" />
     <Compile Include="TextShaping.fs" />
     <Compile Include="Scene.fsi" />
