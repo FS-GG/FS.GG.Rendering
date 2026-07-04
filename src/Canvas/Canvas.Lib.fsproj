@@ -5,7 +5,7 @@
     <IsPackable>true</IsPackable>
     <PackageId>FS.GG.UI.Canvas</PackageId>
     <AssemblyName>FS.GG.UI.Canvas</AssemblyName>
-    <Version>0.1.0-preview.1</Version>
+    <Version>0.1.58-preview.1</Version>
     <Title>FS.GG.UI.Canvas</Title>
     <Description>Dependency-light pure element library and deterministic fixed-timestep game loop for FS.GG.UI canvas controls.</Description>
     <PackageTags>fsharp;skia;scene;canvas;game-loop;ui</PackageTags>
