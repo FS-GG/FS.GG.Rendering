@@ -370,6 +370,14 @@
       ]
     },
     {
+      "condition": "(profile == \"game\" || profile == \"sample-pack\")",
+      "source": "template/product-skills/fs-gg-audio/",
+      "target": ".agents/skills/fs-gg-audio/",
+      "copyOnly": [
+        "**/*"
+      ]
+    },
+    {
       "condition": "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\")",
       "source": "template/product-skills/fs-gg-testing/",
       "target": ".agents/skills/fs-gg-testing/",

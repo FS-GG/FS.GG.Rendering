@@ -2,6 +2,14 @@
   "schemaVersion": 1,
   "skills": [
     {
+      "id": "fs-gg-audio",
+      "scope": "product",
+      "sha256": "64cbe6efbfb75af430906832e918d1bb07279a6ffbcb7f3096eafb2b0998803c",
+      "resolvablePath": ".agents/skills/fs-gg-audio/SKILL.md",
+      "materializes-when": "profile in [game, sample-pack]",
+      "supplied-by": "template/product-skills/fs-gg-audio/"
+    },
+    {
       "id": "fs-gg-elmish",
       "scope": "product",
       "sha256": "4662d8ff96eb8b1d13995246acb660ff7dac8397b2d284e1f0a7e99f5d6ae10e",
