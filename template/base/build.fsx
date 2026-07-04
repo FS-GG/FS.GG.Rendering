@@ -260,8 +260,35 @@ let run target =
     | other ->
         failwithf "Unknown generated product target: %s" other
 
-Environment.GetCommandLineArgs()
-|> Array.skip 1
-|> Array.toList
-|> targetFromArgs
-|> run
+// Feature 242 (spec 242-scaffold-discoverability, §2.3): surface the load-bearing build-target
+// semantics at the entry point, so a developer never mistakes a green `Dev` for a passing compile.
+// The banner phrasing is kept in sync with docs/product.md (a governance scan fails on drift).
+// `dotnet fsi` reserves --help/-h for itself on the script path (they never reach this script), so
+// the script-level trigger is the bare `help` token; ./build.sh handles --help/-h at the shell level.
+// Printing help runs no target and writes no readiness/logs/*, then exits 0.
+let helpBanner =
+    "FS.GG.UI generated product — build targets\n"
+    + "  Invoke: ./build.sh <verb> | dotnet fsi build.fsx -t <Target> | ./fake.sh -t <Target>\n\n"
+    + "  Dev      A completion-marker / log-writer only — writes readiness/logs/Dev.txt. It does not compile\n"
+    + "           your code; a green Dev is not evidence the build passes. Use Test for real feedback.\n"
+    + "  Test     The first real compile + `dotnet test` (audit-free). Use this mid-implementation.\n"
+    + "  Verify   Runs the merge-gate audit (EvidenceGraph -> EvidenceAudit) first — the audit hard-blocks\n"
+    + "           until every task is [X] — then runs the tests. Use only when the feature is complete.\n\n"
+    + "  Restore | Build | Run | Pack   Pass-through to stock `dotnet` over the single root .slnx.\n\n"
+    + "  Help:  ./build.sh --help   |   dotnet fsi build.fsx help   (fsi reserves --help/-h on the script path)"
+
+let private isHelpToken (token: string) =
+    match token.ToLowerInvariant() with
+    | "help"
+    | "--help"
+    | "-h"
+    | "-help"
+    | "/?" -> true
+    | _ -> false
+
+let args = Environment.GetCommandLineArgs() |> Array.skip 1 |> Array.toList
+
+if args |> List.exists isHelpToken then
+    printfn "%s" helpBanner
+else
+    args |> targetFromArgs |> run

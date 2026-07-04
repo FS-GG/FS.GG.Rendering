@@ -183,8 +183,10 @@ log-writer target — it records progress to `readiness/logs/Dev.txt` and does
 **not** surface real compiler or test feedback. The authoritative compile/test
 path is `./fake.sh build -t Test` / `./fake.sh build -t Verify` (which run
 `dotnet test`), or `dotnet build` / `dotnet test` directly; use those when you
-need actual compiler errors and test results. A green `Dev` is not evidence that
-the product compiles.
+need actual compiler errors and test results. `Dev` **does not compile** the
+product, so a green `Dev` is not evidence that the product builds. (This is the
+same wording the build entry's `help` banner surfaces — see
+`./build.sh --help` / `dotnet fsi build.fsx help`.)
 
 **`Verify` embeds the merge-gate audit — use `-t Test` mid-implementation.**
 `./fake.sh build -t Verify` runs the merge-gate audit (`EvidenceGraph` then
