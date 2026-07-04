@@ -50,6 +50,14 @@
       "supplied-by": "template/product-skills/fs-gg-layout/"
     },
     {
+      "id": "fs-gg-persistence",
+      "scope": "product",
+      "sha256": "af107dec4e0a3464bb39d2dadd3101872bdf47351945151854d52f17234d1619",
+      "resolvablePath": ".agents/skills/fs-gg-persistence/SKILL.md",
+      "materializes-when": "profile in [game, sample-pack]",
+      "supplied-by": "template/product-skills/fs-gg-persistence/"
+    },
+    {
       "id": "fs-gg-project",
       "scope": "product",
       "sha256": "3dc0b55b9681c99485c39cb0eabd1effaba70061d8a9e5eb57f270061c4aa16d",

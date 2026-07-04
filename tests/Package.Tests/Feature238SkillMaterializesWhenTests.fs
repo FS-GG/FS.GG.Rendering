@@ -57,6 +57,7 @@ let private canonicalSources =
       "fs-gg-game-core", "template/product-skills/fs-gg-game-core/SKILL.md"
       "fs-gg-keyboard-input", "template/product-skills/fs-gg-keyboard-input/SKILL.md"
       "fs-gg-layout", "template/product-skills/fs-gg-layout/SKILL.md"
+      "fs-gg-persistence", "template/product-skills/fs-gg-persistence/SKILL.md"
       "fs-gg-project", "template/base/.agents/skills/fs-gg-project/SKILL.md"
       "fs-gg-samples", "template/fragments/samples/skill/SKILL.md"
       "fs-gg-scene", "template/product-skills/fs-gg-scene/SKILL.md"
