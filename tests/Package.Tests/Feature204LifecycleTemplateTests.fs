@@ -193,10 +193,11 @@ let feature204LifecycleTemplateTests =
               // step owns the other roots). Feature 240 (#73) added fs-gg-game-core; issue #91 added
               // the 11th, fs-gg-project — promoted from the former lifecycle-gated whole-.agents/
               // blanket to a dedicated profile-gated source so it materializes on every lifecycle.
+              // Feature 243 (#92) added fs-gg-audio (12th); Feature 244 (#93) added fs-gg-persistence (13th).
               // manifest = exactly the 1 ungated skill-manifest row.
               // workspace shrank from Feature 230's >=30 twin matrix to the genuine
               // lifecycle-workspace sources (incl. the materialize step). product unchanged.
-              Expect.equal framework 12 (sprintf "expected exactly 12 framework product-skill sources (no twins), found %d" framework)
+              Expect.equal framework 13 (sprintf "expected exactly 13 framework product-skill sources (no twins), found %d" framework)
               Expect.equal manifest 1 (sprintf "expected exactly 1 ungated skill-manifest source, found %d" manifest)
               Expect.isTrue (workspace >= 9) (sprintf "expected >=9 lifecycle-workspace sources, found %d" workspace)
               Expect.isTrue (product >= 3) (sprintf "expected >=3 ungated product sources, found %d" product)

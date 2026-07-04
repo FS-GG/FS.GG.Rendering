@@ -52,12 +52,14 @@ let private SPEC_KIT_COND = "lifecycle == \"spec-kit\""
 // joins the app, headless-scene, sample-pack, and game rows alongside the pre-existing governed row.
 // Feature 243 (#92) wired the `fs-gg-audio` request surface (AudioEffect / record-only interpret) on the same
 // (game, sample-pack) sim surface as `fs-gg-game-core`, so it joins those two rows and lifts the count to 11.
+// Feature 244 (#93) wired the `fs-gg-persistence` request surface (PersistenceEffect / record-only interpret)
+// on the same (game, sample-pack) gate, so it joins those two rows and lifts game's count to 12.
 let private expectedFrameworkSkills =
     [ "app", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-keyboard-input"; "fs-gg-ui-widgets"; "fs-gg-styling"; "fs-gg-layout"; "fs-gg-symbology"; "fs-gg-testing" ]
       "headless-scene", set [ "fs-gg-scene"; "fs-gg-symbology"; "fs-gg-testing" ]
       "governed", set [ "fs-gg-scene"; "fs-gg-testing"; "fs-gg-symbology" ]
-      "sample-pack", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-symbology"; "fs-gg-game-core"; "fs-gg-audio"; "fs-gg-testing" ]
-      "game", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-keyboard-input"; "fs-gg-ui-widgets"; "fs-gg-styling"; "fs-gg-layout"; "fs-gg-symbology"; "fs-gg-game-core"; "fs-gg-audio"; "fs-gg-testing" ] ]
+      "sample-pack", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-symbology"; "fs-gg-game-core"; "fs-gg-audio"; "fs-gg-persistence"; "fs-gg-testing" ]
+      "game", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-keyboard-input"; "fs-gg-ui-widgets"; "fs-gg-styling"; "fs-gg-layout"; "fs-gg-symbology"; "fs-gg-game-core"; "fs-gg-audio"; "fs-gg-persistence"; "fs-gg-testing" ] ]
 
 // The env-free G-EMIT matrix above covers all five scene-bearing profiles (game's symbology emit is
 // proven directly from template.json). The live lifecycle-validation REPORT, however, only scaffolds
@@ -150,7 +152,7 @@ let feature219EmitFrameworkSkillsTests =
           test "G-EMIT framework skill sources emit to .agents only (one materialize step owns the other roots)" {
               use doc = JsonDocument.Parse(File.ReadAllText templateJsonPath)
               let sources = frameworkSkillSources ()
-              Expect.equal sources.Length 11 (sprintf "expected exactly 11 framework skill sources (.agents-only, no twins), found %d" sources.Length)
+              Expect.equal sources.Length 12 (sprintf "expected exactly 12 framework skill sources (.agents-only, no twins), found %d" sources.Length)
               for s in sources do
                   Expect.stringContains s.Condition "profile ==" (sprintf "%s -> %s must carry a profile predicate" s.Id s.Target)
                   Expect.isTrue (s.Target.StartsWith ".agents/skills/") (sprintf "%s -> %s: product skills emit to .agents/skills/ ONLY (ADR-0014)" s.Id s.Target)
