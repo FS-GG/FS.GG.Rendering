@@ -76,7 +76,16 @@ gates, next commands, and unsupported-host reason/fallback fields without
 forcing the default app profile to reference the Testing package.
 Game entities reuse shared Scene geometry for layout, containment, collision,
 and rendering evidence when the Scene model fits, rather than introducing local
-duplicate bounds records.
+duplicate bounds records. Containment and collision are shipped API on the shared
+`FS.GG.UI.Scene.Rect`: `Geometry.intersects` (box-vs-box, strict edges),
+`Geometry.contains`/`Geometry.containsPoint` (inclusive), `Geometry.center`/`ofCenter`,
+and `Geometry.sweptIntersects` for fast projectiles that would tunnel a thin target in
+one step — no hand-rolled AABB. For deterministic simulation, hold `FS.GG.UI.Canvas.Rng`
+(a value-type seeded PRNG: `Rng.ofSeed`/`nextInt`/`nextFloat`/`split`, each returning a
+new state) in the model instead of a mutable `System.Random`, and pace a fixed timestep
+with `FS.GG.UI.Canvas.FixedStep.drain interval frameTime accumulator` (returns
+`struct(steps, newAccumulator)`, clamping a stalled frame) rather than a hand-rolled
+accumulator loop.
 
 Visual evidence honesty keeps screenshot proof, rasterized scene proof, layout
 readability proof, fallback classification, and unsupported proof separate.

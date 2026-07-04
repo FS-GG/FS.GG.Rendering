@@ -8,6 +8,8 @@
 
   <ItemGroup>
     <Compile Include="LoopTests.fs" />
+    <Compile Include="RngTests.fs" />
+    <Compile Include="FixedStepTests.fs" />
     <Compile Include="ElementsTests.fs" />
     <Compile Include="CanvasDemoTests.fs" />
     <Compile Include="Program.fs" />

@@ -13,6 +13,13 @@ Owns `src/Scene/`, Scene package tests, `template/fragments/scene/`, and generat
 
 The supported API lives in `src/Scene/Scene.fsi`. Surface changes require `readiness/surface-baselines/FS.GG.UI.Scene.txt` and package-surface evidence.
 
+`Geometry` (`src/Scene/Geometry.fsi`) is the public AABB helper over the shared `Rect`/`Point`:
+`intersects` (strict edges — touching is not overlap), `contains`/`containsPoint` (inclusive),
+`center`/`ofCenter` (round-trip), and `sweptIntersects` (fast-projectile tunneling). All pure and
+total (NaN-safe). Consumers building games/simulations reuse it instead of hand-rolling collision or
+introducing a look-alike bounds type. (The seeded PRNG and fixed-timestep drain that pair with it ship
+in the Canvas package: `FS.GG.UI.Canvas.Rng` and `FS.GG.UI.Canvas.FixedStep`.)
+
 ## Retained Inspection
 
 Retained and damage-locality evidence is modeled in Scene, not in Controls or

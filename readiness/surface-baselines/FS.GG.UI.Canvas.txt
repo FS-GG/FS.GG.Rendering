@@ -1,3 +1,5 @@
 FS.GG.UI.Canvas.Elements
+FS.GG.UI.Canvas.FixedStep
 FS.GG.UI.Canvas.Loop
+FS.GG.UI.Canvas.Rng
 FS.GG.UI.Canvas.StepState`1

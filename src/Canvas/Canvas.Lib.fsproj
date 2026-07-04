@@ -22,6 +22,10 @@
     <Compile Include="Elements.fs" />
     <Compile Include="Loop.fsi" />
     <Compile Include="Loop.fs" />
+    <Compile Include="Rng.fsi" />
+    <Compile Include="Rng.fs" />
+    <Compile Include="FixedStep.fsi" />
+    <Compile Include="FixedStep.fs" />
   </ItemGroup>
 
   <ItemGroup>
