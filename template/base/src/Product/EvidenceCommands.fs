@@ -70,7 +70,6 @@ let tryRunEvidenceCommand args =
 //#else
 open FS.GG.UI.Controls
 open FS.GG.UI.Controls.Elmish
-open FS.GG.UI.Controls.Elmish.Authoring // Cmd.none no-op alias for `[]`
 open FS.GG.UI.DesignSystem
 open FS.GG.UI.Themes.Default
 open FS.GG.UI.KeyboardInput
@@ -275,7 +274,7 @@ let interpretAtHostBoundary msg model =
     next, appCommands, viewerEffectsForModel next
 
 let generatedHost =
-    { Init = fun () -> initialModel, Cmd.none
+    { Init = fun () -> initialModel, []
       Update =
         fun msg model ->
             let next, _, viewerEffects = interpretAtHostBoundary msg model
@@ -293,7 +292,7 @@ let generatedHost =
 // game family keeps the keyboard-only `Viewer.runApp ... generatedHost` (FR-006) — the
 // keyboard host is not removed, it is the per-family alternative.
 let interactiveHost: InteractiveAppHost<Model, Msg> =
-    { Init = fun () -> initialModel, Cmd.none
+    { Init = fun () -> initialModel, []
       Update =
         fun msg model ->
             let next, _, viewerEffects = interpretAtHostBoundary msg model
