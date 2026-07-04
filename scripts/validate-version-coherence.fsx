@@ -186,10 +186,11 @@ let templatePins =
     |> Seq.map (fun m -> m.Groups.[1].Value, m.Groups.[2].Value)
     |> Seq.toList
 let templateIds = templatePins |> List.map fst |> Set.ofList
-// The documented consumed manifest (data-model §5, surface-map T004) — 11 product-facing members.
+// The documented consumed manifest (data-model §5, surface-map T004) — 12 product-facing members.
+// Feature 240 (#73): FS.GG.UI.Canvas is consumed on the game/sample-pack profiles (FixedStep + Rng).
 let templateExpected =
     Set.ofList
-        [ "FS.GG.UI.Build"; "FS.GG.UI.Scene"; "FS.GG.UI.SkiaViewer"; "FS.GG.UI.Elmish"
+        [ "FS.GG.UI.Build"; "FS.GG.UI.Scene"; "FS.GG.UI.Canvas"; "FS.GG.UI.SkiaViewer"; "FS.GG.UI.Elmish"
           "FS.GG.UI.KeyboardInput"; "FS.GG.UI.Layout"; "FS.GG.UI.Controls"; "FS.GG.UI.Controls.Elmish"
           "FS.GG.UI.DesignSystem"; "FS.GG.UI.Themes.Default"; "FS.GG.UI.Testing" ]
 
