@@ -103,9 +103,14 @@ let private enumerateLifecycleChoices () =
 
 let private SPEC_KIT_COND = "lifecycle == \"spec-kit\""
 
-/// Feature 219: the source under `template/product-skills/` carries the framework PRODUCT skills.
+/// Feature 219: the sources under `template/product-skills/` carry the framework PRODUCT skills.
+/// Issue #91 (ADR-0017 §C2): `fs-gg-project` keeps its canonical body under
+/// `template/base/.agents/skills/` but is now the SAME shape — a dedicated profile-gated,
+/// lifecycle-independent source (promoted off the former lifecycle-gated whole-`.agents/`
+/// blanket so it materializes on every lifecycle), so it classifies as a framework skill too.
 let private isFrameworkSkillSource (source: string) =
-    source.Replace('\\', '/').StartsWith "template/product-skills/"
+    let s = source.Replace('\\', '/')
+    s.StartsWith "template/product-skills/" || s.StartsWith "template/base/.agents/skills/"
 
 /// Feature 219 (R4): the `docs/skillist-reference.md` catalog is a lifecycle-coupled reference doc
 /// emitted under a `spec-kit`-gated source whose `target` is the product `./` tree but which is
@@ -223,11 +228,11 @@ let private verifyGatedSources () =
                 (not (condition.Contains SPEC_KIT_COND))
                 (sprintf "ungated product source %s -> %s must NOT carry `%s`" source target SPEC_KIT_COND)
             productChecked <- productChecked + 1
-    assertTrue (frameworkChecked = 10) (sprintf "expected exactly 10 framework product-skill sources (.agents/skills/ provider surface, no twins), checked %d" frameworkChecked)
+    assertTrue (frameworkChecked = 13) (sprintf "expected exactly 13 framework product-skill sources (.agents/skills/ provider surface incl. fs-gg-project, no twins), checked %d" frameworkChecked)
     assertTrue (manifestChecked = 1) (sprintf "expected exactly 1 ungated skill-manifest source, checked %d" manifestChecked)
     assertTrue (materializeChecked = 1) (sprintf "expected exactly 1 spec-kit-gated materialize source (template/lifecycle/), checked %d" materializeChecked)
     assertTrue (speckitNarrowChecked = 1) (sprintf "expected exactly 1 narrowed repo-root .agents/skills/ source, checked %d" speckitNarrowChecked)
-    assertTrue (workspaceChecked >= 10) (sprintf "expected >=10 lifecycle-workspace sources, checked %d" workspaceChecked)
+    assertTrue (workspaceChecked >= 9) (sprintf "expected >=9 lifecycle-workspace sources, checked %d" workspaceChecked)
     assertTrue (productChecked >= 3) (sprintf "expected >=3 ungated product sources, checked %d" productChecked)
     frameworkChecked, workspaceChecked, productChecked
 
