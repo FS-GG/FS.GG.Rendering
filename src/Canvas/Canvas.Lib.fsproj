@@ -26,6 +26,8 @@
     <Compile Include="Rng.fs" />
     <Compile Include="FixedStep.fsi" />
     <Compile Include="FixedStep.fs" />
+    <Compile Include="Audio.fsi" />
+    <Compile Include="Audio.fs" />
   </ItemGroup>
 
   <ItemGroup>
