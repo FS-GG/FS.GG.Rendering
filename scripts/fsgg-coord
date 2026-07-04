@@ -1,0 +1,294 @@
+#!/usr/bin/env bash
+# fsgg-coord — GraphQL-budget-thrifty client for the FS-GG "Coordination" Projects v2 board.
+#
+# WHY THIS EXISTS. The cross-repo-coordination skill drives an org-level Projects v2 board, and
+# Projects v2 is GraphQL-only. GitHub's GraphQL *primary* rate limit (5,000 points/hr) is metered
+# by the NUMBER OF NODES A QUERY REQUESTS — not by the number of HTTP calls — so batching requests
+# saves nothing on it. The only levers that lower primary consumption are: (1) DON'T RE-FETCH
+# static data, (2) ask for FEWER NODES, (3) move reads that don't need Projects v2 onto REST
+# (a separate 5,000-*requests*/hr budget, 1 point each, and ETag 304s cost nothing). This helper
+# is those three levers made concrete:
+#
+#   1. CACHE THE STATIC BOARD MAP. Field ids and single-select option ids are stable for the life
+#      of the field; the project number/node-id never change. `bootstrap` introspects them ONCE
+#      into a user-level cache; every later `set-field` reads ids from cache instead of paying a
+#      `field-list` (and, worse, an all-items `item-list`) scan per session.
+#   2. NARROW ITEM LOOKUP. Resolve an issue's board item via issue -> projectItems (a handful of
+#      nodes) instead of scanning the whole board's items x fields (cost grows with the board).
+#   3. REST-FIRST READS. `issues` fetches cross-repo issues over REST with a stored ETag, so an
+#      unchanged list returns 304 at zero cost and never touches the GraphQL budget at all.
+#
+# Every GraphQL call also asks for `rateLimit { cost remaining }`; set FSGG_COORD_DEBUG=1 to log it
+# (and use `budget` to read the meters directly) so you can VERIFY the drop instead of guessing.
+#
+# It is deliberately a thin `gh` wrapper (no daemon, no state beyond a JSON cache) matching the
+# house style of scripts/apply-labels.sh / scripts/skill-union-assert.sh. The cache holds ONLY
+# stable identifiers (field/option/project/item ids) — never field *values* — so the worst
+# staleness a wrong cache can cause is "board schema changed": fixed by `bootstrap --refresh`.
+#
+# Usage:
+#   fsgg-coord bootstrap [--refresh]          # introspect + cache the board map (ids only)
+#   fsgg-coord board [--refresh]              # print the cached board map (bootstraps if absent)
+#   fsgg-coord field-id  <Field>              # print a field's node id (from cache)
+#   fsgg-coord option-id <Field> <Option>     # print a single-select option's id (from cache)
+#   fsgg-coord item-id   <issue> [--refresh]  # resolve an issue's board item id (narrow, cached)
+#   fsgg-coord set-field <issue> <Field> <Value> [--refresh]
+#                                             # set a board field, resolving all ids from cache,
+#                                             # auto-routing by the field's dataType
+#   fsgg-coord issues <repo> [--label L] [--state open|closed|all] [--refresh] [--jq EXPR]
+#                                             # list issues over REST with ETag revalidation
+#   fsgg-coord budget                         # print GraphQL + REST rate-limit meters (free)
+#
+#   <issue> is a full URL, `owner/repo#n`, or `repo#n` (owner defaults to FS-GG).
+#
+# Env:
+#   FSGG_COORD_OWNER    board owner org           (default: FS-GG)
+#   FSGG_COORD_PROJECT  board title               (default: Coordination)
+#   FSGG_COORD_CACHE    cache dir                 (default: ${XDG_CACHE_HOME:-~/.cache}/fsgg-coord)
+#   FSGG_COORD_BOARD_TTL_MIN  board-map freshness (default: 1440 min = 24h; schema changes are rare)
+#   FSGG_COORD_DEBUG    =1 -> log each GraphQL call's rateLimit cost/remaining to stderr
+#
+# See docs/coordination/graphql-budget.md for the cost model and when to reach for this.
+
+set -euo pipefail
+
+OWNER="${FSGG_COORD_OWNER:-FS-GG}"
+TITLE="${FSGG_COORD_PROJECT:-Coordination}"
+CACHE="${FSGG_COORD_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/fsgg-coord}"
+BOARD_TTL_MIN="${FSGG_COORD_BOARD_TTL_MIN:-1440}"
+
+die() { echo "fsgg-coord: $*" >&2; exit 1; }
+dbg() { [ -n "${FSGG_COORD_DEBUG:-}" ] && echo "fsgg-coord: $*" >&2 || true; }
+
+command -v gh >/dev/null 2>&1 || die "gh not found (GitHub CLI is required)."
+command -v jq >/dev/null 2>&1 || die "jq not found (required for JSON handling)."
+
+mkdir -p "$CACHE"
+
+# Filesystem-safe slug of the board identity, so multiple owners/boards don't collide in the cache.
+slug() { printf '%s' "$1" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9' '-' | sed 's/-\{2,\}/-/g; s/^-//; s/-$//'; }
+BOARD_FILE="$CACHE/board-$(slug "$OWNER")-$(slug "$TITLE").json"
+
+# ---- GraphQL wrapper: run a query, log its rateLimit cost when FSGG_COORD_DEBUG=1 ----------------
+# Every query passed here MUST select `rateLimit { cost remaining }` so the meter is observable.
+# Extra `-f k=v` / `-F k=v` variable bindings are forwarded to `gh api graphql`.
+gql() {
+  local query="$1"; shift
+  local out
+  out="$(gh api graphql -f query="$query" "$@")" \
+    || die "GraphQL call failed (see gh output above)."
+  if [ -n "${FSGG_COORD_DEBUG:-}" ]; then
+    dbg "graphql cost=$(jq -r '.data.rateLimit.cost // "?"' <<<"$out")" \
+        "remaining=$(jq -r '.data.rateLimit.remaining // "?"' <<<"$out")"
+  fi
+  printf '%s' "$out"
+}
+
+# ---- bootstrap: introspect project number/id + field/option ids, cache the map (ids only) -------
+bootstrap() {
+  local refresh="${1:-}"
+  if [ -z "$refresh" ] && [ -n "$(find "$BOARD_FILE" -mmin -"$BOARD_TTL_MIN" 2>/dev/null)" ]; then
+    return 0   # cached board map is present and fresh
+  fi
+  dbg "bootstrap: introspecting board '$TITLE' under '$OWNER' (this is the once-per-$BOARD_TTL_MIN-min cost)"
+
+  # (1) cheap: number + node id, by title. Only number/title/id selected -> few nodes.
+  local projq='query($owner:String!){
+    organization(login:$owner){ projectsV2(first:50){ nodes{ number title id } } }
+    rateLimit{ cost remaining }
+  }'
+  local projs num pid
+  projs="$(gql "$projq" -f owner="$OWNER")"
+  num="$(jq -r --arg t "$TITLE" '.data.organization.projectsV2.nodes[]? | select(.title==$t) | .number' <<<"$projs" | head -1)"
+  pid="$(jq -r --arg t "$TITLE" '.data.organization.projectsV2.nodes[]? | select(.title==$t) | .id'     <<<"$projs" | head -1)"
+  [ -n "$num" ] && [ -n "$pid" ] \
+    || die "board '$TITLE' not found under '$OWNER' (create it, or set FSGG_COORD_PROJECT/FSGG_COORD_OWNER)."
+
+  # (2) fields + single-select options for THAT project number. dataType lets set-field auto-route.
+  local fieldsq='query($owner:String!, $number:Int!){
+    organization(login:$owner){ projectV2(number:$number){ fields(first:50){ nodes{
+      __typename
+      ... on ProjectV2FieldCommon { id name dataType }
+      ... on ProjectV2SingleSelectField { options { id name } }
+    } } } }
+    rateLimit{ cost remaining }
+  }'
+  local fields
+  fields="$(gql "$fieldsq" -f owner="$OWNER" -F number="$num")"
+
+  jq --arg owner "$OWNER" --arg title "$TITLE" --argjson number "$num" --arg id "$pid" '
+    .data.organization.projectV2.fields.nodes as $nodes
+    | { owner:$owner, title:$title, number:$number, id:$id,
+        fields: ( $nodes | map(select(.name != null) | { (.name): {
+                    id: .id, dataType: .dataType,
+                    options: ( (.options // []) | map({ (.name): .id }) | add // {} ) } })
+                  | add // {} ) }
+  ' <<<"$fields" > "$BOARD_FILE"
+  dbg "bootstrap: cached $(jq '.fields | length' "$BOARD_FILE") field(s) -> $BOARD_FILE"
+}
+
+# Ensure a fresh-enough board map exists, then echo its path.
+ensure_board() { bootstrap "${1:-}"; printf '%s' "$BOARD_FILE"; }
+
+board_get()  { jq -r "$1" "$BOARD_FILE"; }   # read a jq expression from the cached board map
+
+field_id() {
+  ensure_board >/dev/null
+  local id; id="$(board_get ".fields[\"$1\"].id // empty")"
+  [ -n "$id" ] || die "no field named '$1' on board '$TITLE' (fields: $(board_get '.fields | keys | join(\", \")'))."
+  printf '%s\n' "$id"
+}
+
+option_id() {
+  ensure_board >/dev/null
+  local oid; oid="$(board_get ".fields[\"$1\"].options[\"$2\"] // empty")"
+  [ -n "$oid" ] || die "field '$1' has no option '$2' (options: $(board_get ".fields[\"$1\"].options | keys | join(\", \")"))."
+  printf '%s\n' "$oid"
+}
+
+# ---- parse an issue ref into R_OWNER / R_REPO / R_NUM --------------------------------------------
+parse_ref() {
+  local ref="$1"
+  if   [[ "$ref" =~ ^https?://github\.com/([^/]+)/([^/]+)/issues/([0-9]+) ]]; then
+    R_OWNER="${BASH_REMATCH[1]}"; R_REPO="${BASH_REMATCH[2]}"; R_NUM="${BASH_REMATCH[3]}"
+  elif [[ "$ref" =~ ^([^/#]+)/([^/#]+)#([0-9]+)$ ]]; then
+    R_OWNER="${BASH_REMATCH[1]}"; R_REPO="${BASH_REMATCH[2]}"; R_NUM="${BASH_REMATCH[3]}"
+  elif [[ "$ref" =~ ^([^/#]+)#([0-9]+)$ ]]; then
+    R_OWNER="$OWNER"; R_REPO="${BASH_REMATCH[1]}"; R_NUM="${BASH_REMATCH[2]}"
+  else
+    die "unrecognized issue ref '$ref' (use a URL, owner/repo#n, or repo#n)."
+  fi
+}
+
+# ---- item-id: narrow issue -> projectItems resolution, cached per issue (item ids are stable) ---
+item_id() {
+  local ref="$1" refresh="${2:-}"
+  parse_ref "$ref"
+  ensure_board >/dev/null
+  local boardnum; boardnum="$(board_get '.number')"
+  local itemfile="$CACHE/item-$(slug "$OWNER")-$(slug "$TITLE")-$(slug "$R_OWNER")-$(slug "$R_REPO")-$R_NUM.json"
+  if [ -z "$refresh" ] && [ -f "$itemfile" ]; then
+    jq -r '.itemId' "$itemfile"; return 0
+  fi
+  local q='query($owner:String!, $repo:String!, $num:Int!){
+    repository(owner:$owner, name:$repo){ issue(number:$num){ id title
+      projectItems(first:20){ nodes{ id project{ number title } } } } }
+    rateLimit{ cost remaining }
+  }'
+  local out iid
+  out="$(gql "$q" -f owner="$R_OWNER" -f repo="$R_REPO" -F num="$R_NUM")"
+  iid="$(jq -r --argjson pn "$boardnum" \
+    '.data.repository.issue.projectItems.nodes[]? | select(.project.number==$pn) | .id' <<<"$out" | head -1)"
+  [ -n "$iid" ] && [ "$iid" != "null" ] \
+    || die "issue $R_OWNER/$R_REPO#$R_NUM is not on board '$TITLE' — add it first: gh project item-add $boardnum --owner $OWNER --url https://github.com/$R_OWNER/$R_REPO/issues/$R_NUM"
+  jq -n --arg itemId "$iid" '{itemId:$itemId}' > "$itemfile"
+  printf '%s\n' "$iid"
+}
+
+# ---- set-field: resolve project/field/item/option ids from cache, one narrow mutation -----------
+set_field() {
+  local ref="$1" field="$2" value="$3" refresh="${4:-}"
+  ensure_board "$refresh" >/dev/null
+  local pid dtype fid item
+  pid="$(board_get '.id')"
+  dtype="$(board_get ".fields[\"$field\"].dataType // empty")"
+  [ -n "$dtype" ] || die "no field named '$field' on board '$TITLE' (fields: $(board_get '.fields | keys | join(\", \")'))."
+  fid="$(field_id "$field")"
+  item="$(item_id "$ref" "$refresh")"
+
+  local -a vflag
+  case "$dtype" in
+    SINGLE_SELECT) vflag=(--single-select-option-id "$(option_id "$field" "$value")") ;;
+    TEXT)          vflag=(--text   "$value") ;;
+    NUMBER)        vflag=(--number "$value") ;;
+    DATE)          vflag=(--date   "$value") ;;
+    ITERATION)     vflag=(--iteration-id "$value") ;;
+    *)             die "field '$field' has unsupported dataType '$dtype'." ;;
+  esac
+  dbg "set-field $ref $field='$value' -> item=$item field=$fid ($dtype)"
+  gh project item-edit --id "$item" --project-id "$pid" --field-id "$fid" "${vflag[@]}"
+}
+
+# ---- issues: REST list with ETag revalidation (GraphQL-budget-free; 304s are free) --------------
+issues() {
+  local repo="" label="" state="open" refresh="" jqexpr=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --label)   label="${2:?--label needs a value}"; shift 2 ;;
+      --state)   state="${2:?--state needs a value}"; shift 2 ;;
+      --jq)      jqexpr="${2:?--jq needs a value}"; shift 2 ;;
+      --refresh) refresh=1; shift ;;
+      -*)        die "issues: unknown flag '$1'." ;;
+      *)         [ -z "$repo" ] && repo="$1" || die "issues: unexpected argument '$1'."; shift ;;
+    esac
+  done
+  [ -n "$repo" ] || die "issues: a repo is required (short name or owner/repo)."
+  local O R
+  if [[ "$repo" == */* ]]; then O="${repo%%/*}"; R="${repo#*/}"; else O="$OWNER"; R="$repo"; fi
+
+  local path="repos/$O/$R/issues?state=$state&per_page=100"
+  [ -n "$label" ] && path="$path&labels=$(printf '%s' "$label" | jq -sRr @uri | sed 's/%0A$//')"
+  local key; key="$(slug "$path")"
+  local bodyfile="$CACHE/issues-$key.body" etagfile="$CACHE/issues-$key.etag"
+
+  local etag=""
+  [ -z "$refresh" ] && [ -f "$etagfile" ] && [ -f "$bodyfile" ] && etag="$(cat "$etagfile")"
+
+  local errf raw rc=0; errf="$(mktemp "$CACHE/.gh-err.XXXXXX")"
+  # shellcheck disable=SC2086
+  raw="$(gh api --include ${etag:+-H "If-None-Match: $etag"} "$path" 2>"$errf")" || rc=$?
+
+  if [ "$rc" -ne 0 ]; then
+    if { printf '%s' "$raw"; cat "$errf"; } | grep -qE 'HTTP[^0-9]*304|304 Not Modified'; then
+      rm -f "$errf"
+      [ -f "$bodyfile" ] || die "got 304 but no cached body for $O/$R — rerun with --refresh."
+      dbg "issues $O/$R: 304 Not Modified — served from cache (0 REST cost)."
+      emit_issues "$bodyfile" "$jqexpr"; return 0
+    fi
+    local msg; msg="$(tail -n1 "$errf" 2>/dev/null)"; rm -f "$errf"
+    die "gh api failed for $path: $msg"
+  fi
+  rm -f "$errf"
+
+  # Split gh --include output: headers, one blank (or bare-CR) line, then the JSON body.
+  local newetag body
+  newetag="$(printf '%s\n' "$raw" | grep -i '^etag:' | head -1 | sed 's/^[^:]*:[[:space:]]*//; s/[[:space:]]*$//')"
+  body="$(printf '%s\n' "$raw" | sed '1,/^\r\{0,1\}$/d')"
+  printf '%s' "$body" > "$bodyfile"
+  [ -n "$newetag" ] && printf '%s' "$newetag" > "$etagfile"
+  dbg "issues $O/$R: 200 OK — cached body + etag ($newetag)."
+  emit_issues "$bodyfile" "$jqexpr"
+}
+
+# Print an issues body, optionally projected through a jq expression (trims context/tokens).
+emit_issues() {
+  local file="$1" expr="$2"
+  if [ -n "$expr" ]; then jq -r "$expr" "$file"; else cat "$file"; fi
+}
+
+# ---- budget: read the GraphQL + REST meters. `gh api rate_limit` does not consume the core budget.
+budget() {
+  gh api rate_limit --jq '{
+    graphql: { remaining: .resources.graphql.remaining, limit: .resources.graphql.limit, resetAt: (.resources.graphql.reset|todate) },
+    rest:    { remaining: .resources.core.remaining,    limit: .resources.core.limit,    resetAt: (.resources.core.reset|todate) }
+  }'
+}
+
+usage() {
+  sed -n '2,60p' "$0" | sed 's/^# \{0,1\}//; s/^#$//'
+}
+
+# ---- dispatch -----------------------------------------------------------------------------------
+cmd="${1:-}"; [ $# -gt 0 ] && shift || true
+case "$cmd" in
+  bootstrap) case "${1:-}" in --refresh) bootstrap 1 ;; "") bootstrap ;; *) die "bootstrap: unknown arg '$1'." ;; esac ;;
+  board)     case "${1:-}" in --refresh) bootstrap 1 ;; "") ensure_board >/dev/null ;; *) die "board: unknown arg '$1'." ;; esac; cat "$BOARD_FILE" ;;
+  field-id)  [ $# -ge 1 ] || die "field-id: <Field> required.";  field_id "$1" ;;
+  option-id) [ $# -ge 2 ] || die "option-id: <Field> <Option> required."; option_id "$1" "$2" ;;
+  item-id)   [ $# -ge 1 ] || die "item-id: <issue> required.";  item_id "$1" "${2:-}" ;;
+  set-field) [ $# -ge 3 ] || die "set-field: <issue> <Field> <Value> required."; set_field "$1" "$2" "$3" "${4:-}" ;;
+  issues)    issues "$@" ;;
+  budget)    budget ;;
+  -h|--help|help|"") usage ;;
+  *)         die "unknown command '$cmd' (try: fsgg-coord --help)." ;;
+esac

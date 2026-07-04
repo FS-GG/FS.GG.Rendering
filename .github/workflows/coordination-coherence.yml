@@ -1,0 +1,18 @@
+name: coordination-coherence
+
+# ADR-0019 slice 2 — this repo is a `coordination-kit` receiver (FS-GG/.github registry/repos.yml).
+# This caller delegates to the reusable gate in FS-GG/.github, which checks out the canonical kit +
+# roster and fails CI if this repo's copy (the cross-repo-coordination skill + scripts/fsgg-coord) has
+# drifted from — or is missing against — canonical. Pure file comparison; no privileged scopes. Fix
+# drift by running `scripts/coordination-sync <this-checkout>` from a FS-GG/.github checkout.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  kit:
+    uses: FS-GG/.github/.github/workflows/coordination-coherence.yml@main

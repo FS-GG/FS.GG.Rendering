@@ -658,7 +658,13 @@ module SkillParity =
             |> List.filter (fun path ->
                 let normalized = normalizeSeparators path
                 not (containsIgnoreCase "/.claude/skills/fs-gg-ant-design/SKILL.md" normalized)
-                && not ((parentDirectoryName path).StartsWith("speckit-", StringComparison.OrdinalIgnoreCase)))
+                && not ((parentDirectoryName path).StartsWith("speckit-", StringComparison.OrdinalIgnoreCase))
+                // cross-repo-coordination is the ADR-0019 coordination kit: an externally-owned
+                // (FS-GG/.github) process skill synced verbatim, not a repo wrapper routing to an
+                // internal canonical. Its byte-coherence is enforced by the coordination-coherence
+                // gate, so exclude it from wrapper parity exactly like the Ant canonical and the
+                // externally-owned speckit-* command skills above.
+                && (parentDirectoryName path) <> "cross-repo-coordination")
         | _ ->
             if File.Exists rootPath then
                 [ rootPath ]
