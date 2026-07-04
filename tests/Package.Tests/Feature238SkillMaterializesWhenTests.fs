@@ -2,22 +2,34 @@ module Feature238SkillMaterializesWhenTests
 
 // Feature 238 (issue #71, ADR-0017 P1 Rendering) — the product skill-manifest records, per entry,
 // WHEN its body materializes and WHERE the body comes from:
-//   materializes-when — the VERBATIM template.json sources[].condition that gates the skill's body.
+//   materializes-when — the predicate that gates the skill's body.
 //   supplied-by       — the provider source directory holding the canonical SKILL.md.
 //
-// The point is fs-gg-project: declared scope:product but emitted only under lifecycle == "spec-kit",
+// The point is fs-gg-project: declared scope:product but emitted only under lifecycle == spec-kit,
 // so under the sdd lane it is declared-but-unsupplied. Recording its condition turns the sdd-lane
 // gap from an untyped `declared ∧ absent` into an honest `declared ∧ condition-false ∧ absent`, so
 // the downstream union gate (.github#164) can tell legitimate suppression from a real [missing].
 //
+// GRAMMAR (issue #77) — the manifest ships materializes-when in the ADR-0017 CANONICAL grammar the
+// skill-union gate (.github scripts/skill-union-assert.sh) + the typed Fsgg.Registry validator
+// evaluate:  always | <clause> [ (and|or) <clause> ]...  where a clause is  <param> == <value> |
+// <param> != <value> | <param> in [<v>, ...].  No parens, bare unquoted tokens, `and`/`or` (not
+// `&&`/`||`).  template.json keeps the C-style grammar the `dotnet new` engine requires; the
+// generator's normalizeCondition is the bridge.  Shipping the raw C-style predicate made the gate
+// read the whole thing as one always-false clause and red every real scaffold (issue #77).
+//
 // Guards (deterministic, GL-free, no `dotnet new`):
 //   G-PRESENT     — every entry carries non-empty materializes-when + supplied-by.
-//   G-CONDITION   — materializes-when(id) == the verbatim template.json condition for that skill's
-//                   body source (product/samples/feedback by target .agents/skills/<id>/;
-//                   fs-gg-project by the whole-tree template/base/.agents/ source). No drift.
+//   G-GRAMMAR     — every materializes-when is in the canonical grammar (no `&&`/`||`/parens/quotes)
+//                   and parses under the tiny gate evaluator.
+//   G-EQUIV       — materializes-when(id) is SEMANTICALLY EQUAL to the verbatim template.json
+//                   body-source condition: both evaluate identically over the full parameter grid.
+//                   This ties manifest → template.json without pinning the exact normalized string,
+//                   so template.json stays the single source of truth and any un-anticipated
+//                   condition shape (that normalizeCondition mistranslates) fails here.
 //   G-SUPPLIEDBY  — supplied-by(id) == dirname(canonical source) + "/".
 //   G-HONESTY     — fs-gg-project's condition evaluates FALSE under {lifecycle=sdd} and TRUE under
-//                   {lifecycle=spec-kit} (a minimal evaluator over the ==/&&/||/parens grammar).
+//                   {lifecycle=spec-kit}, evaluated with the canonical gate evaluator.
 
 open System
 open System.IO
@@ -70,7 +82,7 @@ let private readEntries () =
           MaterializesWhen = optStr e "materializes-when" |> Option.defaultValue ""
           SuppliedBy = optStr e "supplied-by" |> Option.defaultValue "" } ]
 
-/// The authoritative id -> body-source condition map, read live from template.json:
+/// The authoritative id -> body-source condition map, read live from template.json (C-style grammar):
 /// product/samples/feedback rows target .agents/skills/<id>/; fs-gg-project's body ships via the
 /// whole-tree template/base/.agents/ source (its condition is the gate for the one skill inside it).
 let private templateConditions () : Map<string, string> =
@@ -94,17 +106,17 @@ let private suppliedByOf (source: string) =
     let dir = source.Substring(0, source.LastIndexOf '/')
     dir + "/"
 
-// ---- Minimal evaluator for the template.json condition grammar --------------------------------
+// ---- Evaluator for the template.json C-style condition grammar --------------------------------
 // or := and ("||" and)* ; and := primary ("&&" primary)* ;
 // primary := "(" or ")" | operand "==" operand ; operand := ident | "string" | true | false
 // Operands resolve to strings: identifier -> params value; literal -> its text; bool -> "true"/"false".
 
-let private tokenize (s: string) : string list =
+let private tokenizeCStyle (s: string) : string list =
     let tokens = System.Text.RegularExpressions.Regex.Matches(s, "\"[^\"]*\"|==|&&|\\|\\||\\(|\\)|[A-Za-z0-9_\\-]+")
     [ for m in tokens -> m.Value ]
 
-let private evalCondition (parameters: Map<string, string>) (condition: string) : bool =
-    let toks = tokenize condition |> List.toArray
+let private evalCStyle (parameters: Map<string, string>) (condition: string) : bool =
+    let toks = tokenizeCStyle condition |> List.toArray
     let mutable pos = 0
     let peek () = if pos < toks.Length then Some toks.[pos] else None
     let next () = let t = toks.[pos] in pos <- pos + 1; t
@@ -134,10 +146,54 @@ let private evalCondition (parameters: Map<string, string>) (condition: string) 
             lhs = rhs
     parseOr ()
 
+// ---- Evaluator for the ADR-0017 CANONICAL grammar (mirror of skill-union-assert.sh) -----------
+// condition := clause [ (" and " | " or ") clause ]...  ; `and` binds tighter than `or`.
+// clause := "always" | "true" | "false" | <param> " in [" <v>, ... "]" | <param> "!=" <v> | <param> "==" <v>
+// A param absent from the map reads as "" so `== v` is false and `!= v` is true (gate semantics).
+
+let private evalCanonicalClause (parameters: Map<string, string>) (clause: string) : bool =
+    let c = clause.Trim()
+    let paramValue key = parameters |> Map.tryFind key |> Option.defaultValue ""
+    if c = "always" || c = "true" then true
+    elif c = "false" then false
+    elif c.Contains " in [" then
+        let key = c.Substring(0, c.IndexOf " in [").Trim()
+        let openBracket = c.IndexOf '['
+        let closeBracket = c.LastIndexOf ']'
+        Expect.isTrue (openBracket >= 0 && closeBracket > openBracket) (sprintf "balanced [] in canonical clause: '%s'" c)
+        let items =
+            c.Substring(openBracket + 1, closeBracket - openBracket - 1).Split(',')
+            |> Array.map (fun s -> s.Trim())
+            |> Array.filter (fun s -> s <> "")
+        Array.contains (paramValue key) items
+    elif c.Contains "!=" then
+        let i = c.IndexOf "!="
+        (paramValue (c.Substring(0, i).Trim())) <> c.Substring(i + 2).Trim()
+    elif c.Contains "==" then
+        let i = c.IndexOf "=="
+        (paramValue (c.Substring(0, i).Trim())) = c.Substring(i + 2).Trim()
+    else
+        failtestf "unparseable canonical materializes-when clause: '%s'" c
+
+let private evalCanonical (parameters: Map<string, string>) (condition: string) : bool =
+    condition.Split([| " or " |], StringSplitOptions.None)
+    |> Array.exists (fun conjunction ->
+        conjunction.Split([| " and " |], StringSplitOptions.None)
+        |> Array.forall (evalCanonicalClause parameters))
+
+/// The full scaffold-parameter grid the two evaluators are compared over. Covers every value the
+/// live conditions branch on plus an off-lane sentinel per param, so agreement across the grid is
+/// true semantic equivalence for these predicates.
+let private parameterGrid : Map<string, string> list =
+    [ for profile in [ "app"; "headless-scene"; "governed"; "sample-pack"; "game"; "controls" ] do
+        for lifecycle in [ "spec-kit"; "sdd"; "none" ] do
+            for feedback in [ "true"; "false" ] do
+                yield Map.ofList [ "profile", profile; "lifecycle", lifecycle; "feedback", feedback ] ]
+
 [<Tests>]
 let feature238SkillMaterializesWhenTests =
     testList
-        "Feature238 skill-manifest materializes-when + supplied-by (issue #71 / ADR-0017)"
+        "Feature238 skill-manifest materializes-when + supplied-by (issue #71 / #77 / ADR-0017)"
         [
           test "G-PRESENT every entry carries non-empty materializes-when + supplied-by" {
               let entries = readEntries ()
@@ -147,15 +203,31 @@ let feature238SkillMaterializesWhenTests =
                   Expect.isNotEmpty e.SuppliedBy (sprintf "%s: supplied-by present (additive field, FR-002)" e.Id)
           }
 
-          test "G-CONDITION materializes-when equals the verbatim template.json body-source condition (no drift)" {
+          test "G-GRAMMAR materializes-when is in the ADR-0017 canonical grammar (no C-style tokens)" {
+              // issue #77: the gate evaluator does not recognise `&&`/`||`/parens/quoted literals — a
+              // predicate carrying any of them reads as one always-false clause and reds every scaffold.
+              for e in readEntries () do
+                  for banned in [ "&&"; "||"; "("; ")"; "\"" ] do
+                      Expect.isFalse (e.MaterializesWhen.Contains banned) (sprintf "%s: materializes-when '%s' must not contain %s (not canonical grammar)" e.Id e.MaterializesWhen banned)
+                  // and it must parse+evaluate under the tiny gate evaluator for every grid point.
+                  for parameters in parameterGrid do
+                      evalCanonical parameters e.MaterializesWhen |> ignore
+          }
+
+          test "G-EQUIV materializes-when is semantically equal to the verbatim template.json condition" {
               let entries = readEntries () |> List.map (fun e -> e.Id, e) |> Map.ofList
               let conditions = templateConditions ()
               for id, _ in canonicalSources do
-                  let expected =
+                  let cStyle =
                       match Map.tryFind id conditions with
                       | Some c -> c
                       | None -> failwithf "%s: no template.json body-source condition found (mapping gap)" id
-                  Expect.equal (Map.find id entries).MaterializesWhen expected (sprintf "%s: materializes-when must equal the verbatim template.json condition — regenerate if template.json changed" id)
+                  let canonical = (Map.find id entries).MaterializesWhen
+                  for parameters in parameterGrid do
+                      Expect.equal
+                          (evalCanonical parameters canonical)
+                          (evalCStyle parameters cStyle)
+                          (sprintf "%s: canonical '%s' must mean the same as template.json '%s' at %A — regenerate the manifest if template.json changed" id canonical cStyle parameters)
           }
 
           test "G-SUPPLIEDBY supplied-by equals dirname(canonical source) + '/'" {
@@ -171,23 +243,25 @@ let feature238SkillMaterializesWhenTests =
               let sdd = Map.ofList [ "profile", "game"; "lifecycle", "sdd"; "feedback", "false" ]
               // spec-kit lane — the skill DOES emit (today's behaviour, unchanged).
               let specKit = Map.ofList [ "profile", "game"; "lifecycle", "spec-kit"; "feedback", "false" ]
-              Expect.isFalse (evalCondition sdd cond) "fs-gg-project is legitimately absent under lifecycle=sdd (issue #71: not a [missing] supply failure)"
-              Expect.isTrue (evalCondition specKit cond) "fs-gg-project materializes under lifecycle=spec-kit (unchanged emission behaviour)"
+              Expect.isFalse (evalCanonical sdd cond) "fs-gg-project is legitimately absent under lifecycle=sdd (issue #71: not a [missing] supply failure)"
+              Expect.isTrue (evalCanonical specKit cond) "fs-gg-project materializes under lifecycle=spec-kit (unchanged emission behaviour)"
           }
 
-          test "G-HONESTY the evaluator is faithful to the grammar (sanity over a profile-gated skill)" {
+          test "G-HONESTY the canonical evaluator is faithful to the grammar (sanity over gated skills)" {
               let entries = readEntries () |> List.map (fun e -> e.Id, e) |> Map.ofList
               let scene = (Map.find "fs-gg-scene" entries).MaterializesWhen
               let app = Map.ofList [ "profile", "app"; "lifecycle", "spec-kit"; "feedback", "false" ]
               let headless = Map.ofList [ "profile", "headless-scene"; "lifecycle", "sdd"; "feedback", "false" ]
-              let governedProfileMissing = Map.ofList [ "profile", "governed"; "lifecycle", "sdd"; "feedback", "false" ]
-              Expect.isTrue (evalCondition app scene) "fs-gg-scene emits for profile=app"
-              Expect.isTrue (evalCondition headless scene) "fs-gg-scene emits for profile=headless-scene"
-              Expect.isTrue (evalCondition governedProfileMissing scene) "fs-gg-scene emits for profile=governed"
+              let governed = Map.ofList [ "profile", "governed"; "lifecycle", "sdd"; "feedback", "false" ]
+              let controls = Map.ofList [ "profile", "controls"; "lifecycle", "sdd"; "feedback", "false" ]
+              Expect.isTrue (evalCanonical app scene) "fs-gg-scene emits for profile=app (in [..] membership)"
+              Expect.isTrue (evalCanonical headless scene) "fs-gg-scene emits for profile=headless-scene"
+              Expect.isTrue (evalCanonical governed scene) "fs-gg-scene emits for profile=governed"
+              Expect.isFalse (evalCanonical controls scene) "fs-gg-scene suppressed for an off-list profile"
               let feedback = (Map.find "fs-gg-feedback-capture" entries).MaterializesWhen
               let feedbackOn = Map.ofList [ "profile", "app"; "lifecycle", "spec-kit"; "feedback", "true" ]
               let feedbackOff = Map.ofList [ "profile", "app"; "lifecycle", "spec-kit"; "feedback", "false" ]
-              Expect.isTrue (evalCondition feedbackOn feedback) "fs-gg-feedback-capture emits when feedback=true && lifecycle=spec-kit"
-              Expect.isFalse (evalCondition feedbackOff feedback) "fs-gg-feedback-capture suppressed when feedback=false"
+              Expect.isTrue (evalCanonical feedbackOn feedback) "fs-gg-feedback-capture emits when feedback == true and lifecycle == spec-kit"
+              Expect.isFalse (evalCanonical feedbackOff feedback) "fs-gg-feedback-capture suppressed when feedback == false (conjunction)"
           }
         ]

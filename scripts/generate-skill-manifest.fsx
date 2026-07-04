@@ -30,12 +30,19 @@ let repoRoot =
 let repoPath (rel: string) =
     Path.Combine(repoRoot, rel.Replace('/', Path.DirectorySeparatorChar))
 
-// The full product-scope catalog: id -> (canonical SKILL.md source, materializes-when condition).
-// Feature 238 (issue #71, ADR-0017): materializes-when is the VERBATIM .template.config/template.json
+// The full product-scope catalog: id -> (canonical SKILL.md source, template.json body-source condition).
+// Feature 238 (issue #71, ADR-0017): the third element mirrors the VERBATIM .template.config/template.json
 // sources[].condition that gates this skill's body — the single source of truth. supplied-by is
 // derived from the source path (dirname + "/"). The concrete scaffold's union is the manifest,
 // filtered by these conditions, ∩ the emitted `.agents/skills/` set. Feature231/238 tests re-read
 // template.json and fail on any drift between these strings and the live conditions.
+//
+// NOTE (issue #77): template.json conditions use the C-style grammar the `dotnet new` engine requires
+// (`==`/`&&`/`||`/parens/quoted literals). The published manifest instead carries materializes-when in
+// the ADR-0017 CANONICAL grammar the skill-union gate (.github scripts/skill-union-assert.sh) + the
+// typed Fsgg.Registry validator evaluate: bare tokens, `in [..]` for same-param sets, `and`/`or`, no
+// parens/quotes. normalizeCondition (below) is the deterministic bridge; Feature238 proves manifest ≡
+// template.json semantically so the two grammars never drift.
 let catalog =
     [ "fs-gg-elmish", "template/product-skills/fs-gg-elmish/SKILL.md", "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\")"
       "fs-gg-feedback-capture", "template/feedback/skill/SKILL.md", "(feedback == true) && lifecycle == \"spec-kit\""
@@ -55,6 +62,70 @@ let catalog =
 let suppliedByOf (source: string) : string =
     source.Substring(0, source.LastIndexOf '/') + "/"
 
+// ---- C-style → ADR-0017 canonical materializes-when normalizer (issue #77) ---------------------
+// template.json speaks the engine's C-style grammar; the gate + typed validator speak a deliberately
+// tiny one:  always | <clause> [ (and|or) <clause> ]...  clause = <param> == <v> | <param> != <v> |
+// <param> in [<v>, ...].  No parens, bare tokens, no quotes.  The real template.json conditions are
+// an AND of conjuncts, each conjunct a (parenthesized) OR-chain of same-param equalities — so a
+// same-param `==` OR-chain collapses to `in [..]`, `&&`→`and`, quotes are stripped. Deterministic and
+// total over the shape template.json actually emits; Feature238 asserts the result is gate-evaluable
+// AND semantically equal to the source condition, catching any shape this doesn't anticipate.
+
+/// Split a C-style boolean on top-level (paren-depth-0) occurrences of `op` ("&&" / "||").
+let private splitTopLevel (op: string) (s: string) : string list =
+    let parts = ResizeArray<string>()
+    let sb = System.Text.StringBuilder()
+    let mutable depth = 0
+    let mutable i = 0
+    while i < s.Length do
+        let c = s.[i]
+        if c = '(' then depth <- depth + 1; sb.Append c |> ignore; i <- i + 1
+        elif c = ')' then depth <- depth - 1; sb.Append c |> ignore; i <- i + 1
+        elif depth = 0 && i + op.Length <= s.Length && s.Substring(i, op.Length) = op then
+            parts.Add(sb.ToString()); sb.Clear() |> ignore; i <- i + op.Length
+        else sb.Append c |> ignore; i <- i + 1
+    parts.Add(sb.ToString())
+    [ for p in parts -> p.Trim() ]
+
+/// Strip one layer of parens iff they wrap the whole expression.
+let private stripOuterParens (s: string) : string =
+    let t = s.Trim()
+    if t.StartsWith "(" && t.EndsWith ")" then
+        let mutable depth = 0
+        let mutable wrapsWhole = true
+        for i in 0 .. t.Length - 1 do
+            if t.[i] = '(' then depth <- depth + 1
+            elif t.[i] = ')' then
+                depth <- depth - 1
+                if depth = 0 && i <> t.Length - 1 then wrapsWhole <- false
+        if wrapsWhole then t.Substring(1, t.Length - 2).Trim() else t
+    else t
+
+/// Parse a single comparison `param (==|!=) value` → (param, op, value-without-quotes).
+let private parseClause (c: string) : string * string * string =
+    let op = if c.Contains "!=" then "!=" else "=="
+    let idx = c.IndexOf op
+    let param = c.Substring(0, idx).Trim()
+    let value = c.Substring(idx + op.Length).Trim().Trim('"')
+    param, op, value
+
+/// One AND-conjunct: an OR-chain of same-param `==` collapses to `in [..]`; length-1 stays `p == v`.
+let private normalizeConjunct (conj: string) : string =
+    let disjuncts = splitTopLevel "||" (stripOuterParens conj) |> List.map parseClause
+    match disjuncts with
+    | [ (p, op, v) ] -> sprintf "%s %s %s" p op v
+    | many ->
+        let paramsUsed = many |> List.map (fun (p, _, _) -> p) |> List.distinct
+        let allEq = many |> List.forall (fun (_, op, _) -> op = "==")
+        match paramsUsed, allEq with
+        | [ p ], true -> sprintf "%s in [%s]" p (many |> List.map (fun (_, _, v) -> v) |> String.concat ", ")
+        | _ -> many |> List.map (fun (p, op, v) -> sprintf "%s %s %s" p op v) |> String.concat " or "
+
+let normalizeCondition (condition: string) : string =
+    splitTopLevel "&&" condition
+    |> List.map normalizeConjunct
+    |> String.concat " and "
+
 /// Minimal JSON string escape (conditions carry embedded double quotes around literals).
 let jsonEscape (s: string) : string =
     s.Replace("\\", "\\\\").Replace("\"", "\\\"")
@@ -69,11 +140,11 @@ let manifestJson =
     let entries =
         catalog
         |> List.sortBy (fun (id, _, _) -> id)
-        |> List.map (fun (id, source, materializesWhen) ->
+        |> List.map (fun (id, source, condition) ->
             let body = File.ReadAllText(repoPath source)
             sprintf
                 "    {\n      \"id\": \"%s\",\n      \"scope\": \"product\",\n      \"sha256\": \"%s\",\n      \"resolvablePath\": \".agents/skills/%s/SKILL.md\",\n      \"materializes-when\": \"%s\",\n      \"supplied-by\": \"%s\"\n    }"
-                id (sha256Text body) id (jsonEscape materializesWhen) (jsonEscape (suppliedByOf source)))
+                id (sha256Text body) id (jsonEscape (normalizeCondition condition)) (jsonEscape (suppliedByOf source)))
         |> String.concat ",\n"
 
     sprintf "{\n  \"schemaVersion\": 1,\n  \"skills\": [\n%s\n  ]\n}\n" entries
