@@ -6,6 +6,11 @@ replaceable parts; the durable parts keep compiling and keep their source/eviden
 scans green across the swap. Read this map **before** you start designing, so you
 know what survives and what you own.
 
+> **Precise re-point to-do list.** This map explains *what* survives a swap and *why*. For the
+> exact, symbol-level checklist — every function in the must-re-point files that reads a `Model`
+> field — see the generated [`SWAP-CHECKLIST.md`](../SWAP-CHECKLIST.md) at the product root; it is
+> the actionable projection of this map, correct for your scaffolded profile.
+
 > **Project-named paths.** A generated tree puts the product under
 > `src/<ProjectName>/**` (e.g. `src/Invoice1/**`, `src/Spread1/**`), not a literal
 > `src/Product/**`. Below, `<ProductDir>` means that directory — `src/<ProjectName>`

@@ -23,6 +23,37 @@ let productSources files =
 let buildScript () =
     System.IO.File.ReadAllText(System.IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "build.fsx"))
 
+// Feature 242 (spec 242-scaffold-discoverability, roadmap #75): a generated product ships a
+// SWAP-CHECKLIST.md at its root — the precise model-swap to-do list (§2.2). This durable scan
+// asserts PRESENCE + STRUCTURE only (the file names it points at + the scaffold-map pointer), NOT
+// the exact per-symbol prose, so a legitimate model swap may rewrite the checklist freely without
+// failing the gate (FR-005). The per-symbol accuracy is a template-authoring gate
+// (tests/Package.Tests/SwapChecklistTemplateTests.fs), not a product scan.
+let productRootFile file =
+    System.IO.File.ReadAllText(System.IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", file))
+
+let assertSwapChecklistPresent () =
+    let checklist = productRootFile "SWAP-CHECKLIST.md"
+
+    for anchor in [ "LayoutEvidence.fs"; "EvidenceCommands.fs"; "Model.fs"; "View.fs"; "scaffold-map.md" ] do
+        Expect.stringContains checklist anchor $"SWAP-CHECKLIST.md points the developer at {anchor}"
+
+// Feature 242 (§2.3): the build-target help banner surfaces the load-bearing Dev/Test/Verify
+// semantics at the build entry. This durable scan asserts build.fsx carries the help branch + the
+// semantic phrases and is side-effect-free. fsi reserves --help/-h on the script path, so the
+// script trigger is the bare `help` token (T004 live check). The banner↔docs/product.md SYNC
+// (FR-009/SC-004) is a template-authoring gate (tests/Package.Tests/SwapChecklistTemplateTests.fs)
+// rather than a product scan — that gate reads the template docs verbatim, whereas here a generated
+// tree rewrites the `product` token, so it cannot honestly read docs/product.md by name.
+let assertBuildHelpBanner () =
+    let build = buildScript ()
+
+    Expect.stringContains build "\"help\"" "build.fsx recognizes the bare `help` token (fsi reserves --help/-h)"
+    Expect.isFalse (build.Contains("writeLog \"help\"", System.StringComparison.OrdinalIgnoreCase)) "help path is side-effect-free (writes no completion-marker log)"
+
+    for phrase in [ "completion-marker"; "does not compile"; "first real"; "merge-gate audit"; "hard-block" ] do
+        Expect.stringContains build phrase $"build.fsx help banner states: {phrase}"
+
 // Feature 202 (US2, FR-002 / SC-004): the generated build.fsx must carry NO pre-rebrand engine
 // identifier — neither the `fs.skia.ui.build` NuGet cache folder nor the `FS.Skia.UI` package name —
 // so the corrected `fs.gg.ui.build` cache probe cannot silently regress. Scoped to the engine
@@ -54,6 +85,14 @@ let governanceTests =
 
         test "generated build.fsx carries no pre-rebrand engine identifier" {
             assertNoPreRebrandEngineIdentifier ()
+        }
+
+        test "generated product ships the SWAP-CHECKLIST discoverability doc" {
+            assertSwapChecklistPresent ()
+        }
+
+        test "generated build.fsx surfaces the build-target help banner" {
+            assertBuildHelpBanner ()
         }
     ]
 //#else
@@ -340,6 +379,14 @@ let governanceTests =
             [ "File.WriteAllBytes"; "BinaryWriter"; "\\u0000"; "Array.zeroCreate" ]
             |> List.iter (fun forbidden ->
                 Expect.isFalse (build.Contains(forbidden, StringComparison.OrdinalIgnoreCase)) $"generated Verify excludes binary log writer {forbidden}")
+        }
+
+        test "generated product ships the SWAP-CHECKLIST discoverability doc" {
+            assertSwapChecklistPresent ()
+        }
+
+        test "generated build.fsx surfaces the build-target help banner" {
+            assertBuildHelpBanner ()
         }
     ]
 //#endif
