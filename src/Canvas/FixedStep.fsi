@@ -16,9 +16,10 @@ module FixedStep =
 
     /// Public contract function exposed by this FS.GG.UI package.
     /// Drain with the default clamp (`defaultMaxFrameTime`). Returns `struct(stepCount, newAccumulator)`
-    /// with `stepCount >= 0` and `0 <= newAccumulator < interval` for `interval > 0`. Total on
-    /// degenerate input: `interval <= 0` yields `struct(0, accumulator)`; `frameTime <= 0` contributes
-    /// nothing and yields `struct(0, accumulator)`.
+    /// with `stepCount >= 0` and `0 <= newAccumulator < interval` for `interval > 0`. Total on every
+    /// input: a non-positive or non-finite `interval` yields `struct(0, accumulator)`; a non-positive or
+    /// non-finite `frameTime` contributes nothing; a non-finite or negative `accumulator` is treated as
+    /// empty (so a stray NaN `dt` can never poison the loop); `stepCount` is capped at `Int32.MaxValue`.
     val drain: interval: float -> frameTime: float -> accumulator: float -> struct (int * float)
 
     /// Public contract function exposed by this FS.GG.UI package.

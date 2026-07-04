@@ -16,7 +16,8 @@ module Rng =
         let z2 = (z1 ^^^ (z1 >>> 27)) * 0x94D049BB133111EBUL
         z2 ^^^ (z2 >>> 31)
 
-    // One mixing step off the raw seed so a weak seed (e.g. 0UL) still produces a non-degenerate draw.
+    // Offset the raw seed by the SplitMix64 gamma; the first draw then mixes it, so even a weak seed
+    // (e.g. 0UL) yields a non-degenerate stream.
     let ofSeed (seed: uint64) : Rng = { State = seed + gamma }
 
     let private nextU64 (rng: Rng) : struct (uint64 * Rng) =

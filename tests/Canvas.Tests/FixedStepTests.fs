@@ -88,6 +88,35 @@ let tests =
                 && newAcc < interval + 1e-9
             Check.One(Config.QuickThrowOnFailure.WithMaxTest 1000, prop)
 
+        testList "totality — non-finite / nonsense inputs never throw, wedge, or go negative" [
+            test "a NaN frame time contributes nothing and does NOT poison the accumulator" {
+                // acc 1/32 preserved, no step, finite result — the loop is not wedged.
+                let struct (steps, rem) = FixedStep.drain 0.0625 nan 0.03125
+                Expect.equal steps 0 "NaN dt ⇒ no steps"
+                Expect.equal rem 0.03125 "accumulator preserved, not NaN"
+                // and the very next frame still advances normally (no permanent wedge).
+                let struct (steps2, _) = FixedStep.drain 0.0625 0.0625 rem
+                Expect.equal steps2 1 "the loop keeps working after a NaN frame"
+            }
+            test "a NaN or infinite interval is a no-op with a finite accumulator" {
+                Expect.equal (FixedStep.drain nan 0.1 0.1) (struct (0, 0.1)) "NaN interval ⇒ struct(0, acc)"
+                Expect.equal (FixedStep.drain infinity 0.1 0.1) (struct (0, 0.1)) "infinite interval ⇒ struct(0, acc)"
+            }
+            test "a negative or non-finite accumulator is treated as empty (never negative steps)" {
+                Expect.equal (FixedStep.drain 0.0625 0.0 -1.0) (struct (0, 0.0)) "negative acc ⇒ empty, 0 steps"
+                Expect.equal (FixedStep.drain 0.0625 0.0 nan) (struct (0, 0.0)) "NaN acc ⇒ empty, 0 steps"
+            }
+            test "drainWith a degenerate clamp cannot produce negative steps or a NaN accumulator" {
+                Expect.equal (FixedStep.drainWith -0.05 0.0625 1.0 0.0) (struct (0, 0.0)) "negative clamp ⇒ no time admitted"
+                Expect.equal (FixedStep.drainWith nan 0.0625 5.0 0.0) (struct (0, 0.0)) "NaN clamp ⇒ no time admitted, no poison"
+            }
+            test "a pathologically tiny interval caps steps at Int32.MaxValue instead of wrapping negative" {
+                let struct (steps, _) = FixedStep.drain 1e-10 0.25 0.0 // true count ~2.5e9 > Int32.MaxValue
+                Expect.equal steps System.Int32.MaxValue "step count saturates, never wraps negative"
+                Expect.isTrue (steps >= 0) "never negative"
+            }
+        ]
+
         testCase "clamp bound: steps never exceed floor((acc + maxClamp)/interval) (FsCheck ≥1000)"
         <| fun () ->
             let prop (i: int) (f: int) (a: int) =

@@ -75,7 +75,8 @@ let struct (spawnColumn, rng') = Rng.nextInt 0 (boardColumns - 1) model.Rng
 { model with Rng = rng' (* … place the entity at spawnColumn … *) }
 ```
 
-`ofSeed`/`nextInt`/`nextFloat`/`split` are pure `Rng -> struct(value, Rng)`. Because
+`nextInt`/`nextFloat` are pure draws (`… -> Rng -> struct(value, Rng)`); `ofSeed`
+(`uint64 -> Rng`) seeds and `split` (`Rng -> struct(Rng * Rng)`) branches. Because
 `Rng` is a `[<Struct>]` value, carrying it in the model keeps the whole simulation
 deterministic and replayable — structural model equality implies equal RNG state
 (a prerequisite for deterministic-replay evidence).
