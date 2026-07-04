@@ -570,3 +570,29 @@ module LayoutEvidence =
     val fromRenderEvidence: scene: Scene -> evidence: RenderReadbackEvidence -> LayoutEvidenceReport
     /// Public contract function exposed by this FS.GG.UI package.
     val unsupported: scene: Scene -> outputSize: Size -> reason: LayoutUnsupportedReason -> LayoutEvidenceReport
+
+/// Public contract module exposed by this FS.GG.UI package.
+/// Axis-aligned bounding-box helpers over the shared `Rect`/`Point` — collision, containment, and
+/// centering that generated products reuse instead of hand-rolling geometry. Pure and total (NaN-safe;
+/// degenerate rects never throw). `intersects` uses strict edges (touching is NOT overlap);
+/// `contains`/`containsPoint` are inclusive of shared edges.
+module Geometry =
+    /// Public contract function exposed by this FS.GG.UI package.
+    /// True when two rectangles overlap on a positive area (edge/corner touching is NOT intersection).
+    val intersects: a: Rect -> b: Rect -> bool
+    /// Public contract function exposed by this FS.GG.UI package.
+    /// True when `inner` lies entirely within `outer`, inclusive of shared edges.
+    val contains: outer: Rect -> inner: Rect -> bool
+    /// Public contract function exposed by this FS.GG.UI package.
+    /// True when `point` lies within `rect`, inclusive of the low and high edges.
+    val containsPoint: rect: Rect -> point: Point -> bool
+    /// Public contract function exposed by this FS.GG.UI package.
+    /// The geometric center of a rectangle.
+    val center: rect: Rect -> Point
+    /// Public contract function exposed by this FS.GG.UI package.
+    /// Build a rectangle centered on `center` with the given width and height (round-trips with `center`).
+    val ofCenter: center: Point -> width: float -> height: float -> Rect
+    /// Public contract function exposed by this FS.GG.UI package.
+    /// True when the swept path of `moving` displaced by `velocity` overlaps `target` anywhere along the
+    /// sweep — catches a fast projectile that would tunnel a thin `target` in one step.
+    val sweptIntersects: moving: Rect -> velocity: Point -> target: Rect -> bool

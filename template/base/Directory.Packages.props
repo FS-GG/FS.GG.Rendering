@@ -14,6 +14,11 @@
          FS.GG.UI.* packages via the single $(FsGgUiVersion) above. -->
     <PackageVersion Include="FS.GG.UI.Build" Version="$(FsGgUiVersion)" />
     <PackageVersion Include="FS.GG.UI.Scene" Version="$(FsGgUiVersion)" />
+    <!--#if (profile == "game" || profile == "sample-pack") -->
+    <!-- Feature 240 (#73): FixedStep + Rng simulation primitives (deterministic fixed-step loop, seeded
+         RNG). Consumed via the fs-gg-game-core product skill; simulation profiles only. -->
+    <PackageVersion Include="FS.GG.UI.Canvas" Version="$(FsGgUiVersion)" />
+    <!--#endif -->
     <!--#if (profile == "app" || profile == "sample-pack" || profile == "game") -->
     <PackageVersion Include="FS.GG.UI.SkiaViewer" Version="$(FsGgUiVersion)" />
     <PackageVersion Include="FS.GG.UI.Elmish" Version="$(FsGgUiVersion)" />

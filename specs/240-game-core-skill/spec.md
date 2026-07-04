@@ -42,16 +42,35 @@ knows the skill exists and can enforce its presence/absence honestly (Feature 23
 generator-catalog entry, and a regenerated `template/skill-manifest/skill-manifest.json` carrying the
 skill's `materializes-when` + `supplied-by`.
 
+### Packaging prerequisite (discovered during implementation — approved 2026-07-04)
+
+A skill is only honest if a scaffolded product can compile what it advises. The four patterns split by
+consumability in a **generated product**:
+
+- `Geometry` lives in `FS.GG.UI.Scene`, which the product template already references on every profile —
+  **consumable today** (collision + culling).
+- `Rng` and `FixedStep` live in `FS.GG.UI.Canvas`, which the product template does **not** reference and
+  `Directory.Packages.props` does **not** pin (Feature 239 shipped the library + `product.md` prose but
+  never wired Canvas into products). So `FixedStep.drain` / `Rng.ofSeed` are **not consumable** in a
+  fresh `profile=game` product.
+
+Delivering the full skill therefore requires wiring the Canvas package into the simulation profiles. Also,
+the bundled "authoritative framework contract surface" (`template/base/docs/api-surface/**`, copied
+verbatim into products, Feature 060) is stale: `Scene/Scene.fsi` predates `Geometry` and there is no
+`Canvas/` surface at all — the skill's "Public Contract" pointer would dangle without a refresh.
+
 ### Scope boundary
 
 - **In scope (Rendering, P1):** the `fs-gg-game-core` `SKILL.md` body; its `template.json` source + gate
   condition; its generator-catalog entry; the regenerated skill-manifest; the skill-manifest /
-  materialization tests updated to expect a 13th skill; product-doc cross-links (`template/base/docs/`)
-  so the skill is discoverable.
-- **Out of scope:** any change to the Feature 239 library surface (`Geometry` / `Rng` / `FixedStep` are
-  consumed as-is, not modified); the cross-repo `registry/skills.yml` / `skill-union-assert.sh`
-  tightening (owned by FS-GG/.github#164 — this feature only supplies the honest 13-entry input); any
-  new runtime code, sample game, or viewer wiring.
+  materialization tests updated to expect a 13th skill; **wiring `FS.GG.UI.Canvas` into the `game`/
+  `sample-pack` product template (pin + reference); bundling the `Canvas` api-surface docs and refreshing
+  the `Scene` packed doc with `Geometry`;** product-doc cross-links so the skill is discoverable.
+- **Out of scope:** any change to the Feature 239 *library* surface (`Geometry` / `Rng` / `FixedStep` are
+  consumed as-is, not modified — this feature adds no `.fs`/`.fsi` and no surface-area baseline change);
+  wiring Canvas into `app`/`headless-scene`/`governed` (only the simulation profiles gain it); the
+  cross-repo `registry/skills.yml` / `skill-union-assert.sh` tightening (owned by FS-GG/.github#164 —
+  this feature only supplies the honest 13-entry input); any new runtime code, sample game, or viewer wiring.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -190,6 +209,16 @@ addition is coherent rather than partial.
 - **FR-010 — discoverability.** Product-facing docs (`template/base/docs/product.md` collision/RNG/loop
   guidance) MUST cross-reference the `fs-gg-game-core` skill so a reader of the shipped docs is pointed
   at it, mirroring how existing capabilities cross-link their skills.
+- **FR-011 — Canvas consumable on simulation profiles.** `FS.GG.UI.Canvas` MUST be pinned in
+  `template/base/Directory.Packages.props` (via `$(FsGgUiVersion)`) and referenced in
+  `template/base/src/Product/Product.fsproj`, both gated `(profile == "game" || profile == "sample-pack")`
+  so a fresh `game`/`sample-pack` product compiles `FixedStep.drain` / `Rng.*`. Non-simulation profiles
+  do not gain Canvas. `Feature209VersionCoherenceTests.templateExpected` MUST be updated to include
+  `FS.GG.UI.Canvas` (its exact-equality pin manifest check must stay green).
+- **FR-012 — bundled surface refreshed.** The verbatim-copied api-surface (`template/base/docs/api-surface/`)
+  MUST gain a `Canvas/` directory carrying the `FS.GG.UI.Canvas` public `.fsi` surface (`Elements`,
+  `FixedStep`, `Loop`, `Rng` — mirroring `src/Canvas/`), and `Scene/Scene.fsi` MUST be refreshed to include
+  the `Geometry` module, so the skill's "Public Contract" pointer resolves in a generated product.
 
 ### Key Entities
 

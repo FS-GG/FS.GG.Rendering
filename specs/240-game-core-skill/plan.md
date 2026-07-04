@@ -124,18 +124,30 @@ template/product-skills/fs-gg-game-core/
 .template.config/template.json       # +1 source: product-skills/fs-gg-game-core → .agents/skills/, (game||sample-pack)
 
 scripts/generate-skill-manifest.fsx  # +1 catalog entry (kept sorted asc by id)
-
 template/skill-manifest/skill-manifest.json   # regenerated: 12 → 13 entries (new row only)
 
+# Packaging — make Canvas consumable on the simulation profiles (FR-011/FR-012)
+template/base/Directory.Packages.props        # +pin FS.GG.UI.Canvas (gated game||sample-pack)
+template/base/src/Product/Product.fsproj      # +PackageReference FS.GG.UI.Canvas (gated game||sample-pack)
+template/base/docs/api-surface/Canvas/        # NEW — Elements/FixedStep/Loop/Rng .fsi (verbatim from src/Canvas)
+template/base/docs/api-surface/Scene/Scene.fsi# refreshed: + the Geometry module (stale since R8 rebrand)
+
 tests/Package.Tests/
-├── Feature231SkillManifestTests.fs         # catalog 12 → 13 (+ "12 entries" comment)
+├── Feature231SkillManifestTests.fs         # catalog 12 → 13 (+ "12 entries" comment) + surface-referenced check
 ├── Feature238SkillMaterializesWhenTests.fs # catalog 12 → 13 (condition auto-derived from template.json)
 ├── Feature219EmitFrameworkSkillsTests.fs   # game & sample-pack rows gain fs-gg-game-core; sources 9 → 10
 ├── Feature225ProductSkillVocabularyTests.fs# expectedProductSkillIds 9 → 10 (+ vocabulary check on new body)
-└── Feature224SkillCatalogCurrencyTests.fs  # verify the real new id resolves (no catalog-doc dangle)
+├── Feature224SkillCatalogCurrencyTests.fs  # verify the real new id resolves (no catalog-doc dangle)
+└── Feature209VersionCoherenceTests.fs      # templateExpected += FS.GG.UI.Canvas (11 → 12-member pin manifest)
 
 template/base/docs/product.md        # cross-link the collision/RNG/fixed-step guidance to fs-gg-game-core
 ```
+
+> **Scope note (approved 2026-07-04).** The skill was originally scoped as docs-only. Implementation
+> revealed `FS.GG.UI.Canvas` (home of `Rng`/`FixedStep`) is not wired into generated products, so a
+> skill advising those APIs would dangle. The owner approved **wiring Canvas into the `game`/`sample-pack`
+> product template** (FR-011/FR-012). This makes it a **product-package contract change** for those two
+> profiles — the exact-equality pin manifest in `Feature209VersionCoherenceTests` is the gate that moves.
 
 **Structure Decision**: Reuse the established product-skill mechanism exactly — a single profile-gated
 `copyOnly` `template.json` source plus a generator-catalog tuple — rather than any new machinery. The skill

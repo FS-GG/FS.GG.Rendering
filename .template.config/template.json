@@ -335,6 +335,14 @@
       ]
     },
     {
+      "condition": "(profile == \"game\" || profile == \"sample-pack\")",
+      "source": "template/product-skills/fs-gg-game-core/",
+      "target": ".agents/skills/fs-gg-game-core/",
+      "copyOnly": [
+        "**/*"
+      ]
+    },
+    {
       "condition": "(profile == \"governed\")",
       "source": "template/product-skills/fs-gg-testing/",
       "target": ".agents/skills/fs-gg-testing/",

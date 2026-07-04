@@ -85,7 +85,10 @@ one step — no hand-rolled AABB. For deterministic simulation, hold `FS.GG.UI.C
 new state) in the model instead of a mutable `System.Random`, and pace a fixed timestep
 with `FS.GG.UI.Canvas.FixedStep.drain interval frameTime accumulator` (returns
 `struct(steps, newAccumulator)`, clamping a stalled frame) rather than a hand-rolled
-accumulator loop.
+accumulator loop. The `fs-gg-game-core` skill collects these simulation patterns
+(fixed-step march, RNG determinism, AABB/swept collision, entity culling) with worked
+examples; it materializes for the `game` and `sample-pack` profiles, which reference the
+`FS.GG.UI.Canvas` package that carries `Rng`/`FixedStep`.
 
 Visual evidence honesty keeps screenshot proof, rasterized scene proof, layout
 readability proof, fallback classification, and unsupported proof separate.

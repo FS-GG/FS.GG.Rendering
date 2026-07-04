@@ -45,12 +45,14 @@ let private SPEC_KIT_COND = "lifecycle == \"spec-kit\""
 // (app, game) — gated on product surface, not lifecycle — so it joins the app and game rows alongside
 // `fs-gg-ui-widgets` (the controls it themes). Feature 227 wired the consumer `fs-gg-layout` (compute
 // HUD + gameplay region by output size) on the same (app, game) surface, so it joins those two rows too.
+// Feature 240 (#73) wired the simulation `fs-gg-game-core` (fixed-step / RNG / collision / culling) on the
+// (game, sample-pack) surface — the sim profiles — so it joins those two rows and lifts the source count to 10.
 let private expectedFrameworkSkills =
     [ "app", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-keyboard-input"; "fs-gg-ui-widgets"; "fs-gg-styling"; "fs-gg-layout"; "fs-gg-symbology" ]
       "headless-scene", set [ "fs-gg-scene"; "fs-gg-symbology" ]
       "governed", set [ "fs-gg-scene"; "fs-gg-testing"; "fs-gg-symbology" ]
-      "sample-pack", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-symbology" ]
-      "game", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-keyboard-input"; "fs-gg-ui-widgets"; "fs-gg-styling"; "fs-gg-layout"; "fs-gg-symbology" ] ]
+      "sample-pack", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-symbology"; "fs-gg-game-core" ]
+      "game", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-keyboard-input"; "fs-gg-ui-widgets"; "fs-gg-styling"; "fs-gg-layout"; "fs-gg-symbology"; "fs-gg-game-core" ] ]
 
 // The env-free G-EMIT matrix above covers all five scene-bearing profiles (game's symbology emit is
 // proven directly from template.json). The live lifecycle-validation REPORT, however, only scaffolds
@@ -143,7 +145,7 @@ let feature219EmitFrameworkSkillsTests =
           test "G-EMIT framework skill sources emit to .agents only (one materialize step owns the other roots)" {
               use doc = JsonDocument.Parse(File.ReadAllText templateJsonPath)
               let sources = frameworkSkillSources ()
-              Expect.equal sources.Length 9 (sprintf "expected exactly 9 framework skill sources (.agents-only, no twins), found %d" sources.Length)
+              Expect.equal sources.Length 10 (sprintf "expected exactly 10 framework skill sources (.agents-only, no twins), found %d" sources.Length)
               for s in sources do
                   Expect.stringContains s.Condition "profile ==" (sprintf "%s -> %s must carry a profile predicate" s.Id s.Target)
                   Expect.isTrue (s.Target.StartsWith ".agents/skills/") (sprintf "%s -> %s: product skills emit to .agents/skills/ ONLY (ADR-0014)" s.Id s.Target)

@@ -135,7 +135,9 @@ let private templatePins () =
 
 let private templateExpected =
     Set.ofList
-        [ "FS.GG.UI.Build"; "FS.GG.UI.Scene"; "FS.GG.UI.SkiaViewer"; "FS.GG.UI.Elmish"
+        // Feature 240 (#73): FS.GG.UI.Canvas is pinned for the game/sample-pack profiles (FixedStep + Rng
+        // simulation primitives consumed via the fs-gg-game-core skill) — a 12-member manifest.
+        [ "FS.GG.UI.Build"; "FS.GG.UI.Scene"; "FS.GG.UI.Canvas"; "FS.GG.UI.SkiaViewer"; "FS.GG.UI.Elmish"
           "FS.GG.UI.KeyboardInput"; "FS.GG.UI.Layout"; "FS.GG.UI.Controls"; "FS.GG.UI.Controls.Elmish"
           "FS.GG.UI.DesignSystem"; "FS.GG.UI.Themes.Default"; "FS.GG.UI.Testing" ]
 
@@ -212,7 +214,7 @@ let feature209VersionCoherenceTests =
             for id, v in pins do
                 Expect.equal v "$(FsGgUiVersion)" (sprintf "%s must derive through $(FsGgUiVersion), not a hardcoded literal" id)
             Expect.isTrue (Set.isSubset ids members) "consumed pins ⊆ published members"
-            Expect.equal ids templateExpected "consumed set must equal the documented 11-member manifest"
+            Expect.equal ids templateExpected "consumed set must equal the documented 12-member manifest"
         }
 
         // FR-005 — build.fsx's runtime regex still matches the literal (208 half-rename class).
