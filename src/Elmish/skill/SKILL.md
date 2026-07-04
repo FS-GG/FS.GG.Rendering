@@ -59,51 +59,50 @@ Every arcade demo (Asteroids, Breakout, …) re-derives the same deterministic
 than re-implementing them per game. Each is a pure function of the model, so it
 lives inside `update`, never in the interpreter.
 
-**Shipped helper: deterministic seeded RNG (`FS.GG.UI.SkillSupport.Random`).**
-As of feature 062 (FR-010), the thrice-re-implemented seeded RNG is **shipped real
-API** — use it instead of ambient `System.Random` so your `update` stays pure and
-replayable. Thread the opaque `RngState` through your `Model`:
+**Shipped helper: deterministic seeded RNG (`FS.GG.UI.Canvas.Rng`).**
+As of feature 239, the thrice-re-implemented seeded RNG is **shipped real API** — a
+value-type SplitMix64 generator. Use it instead of ambient `System.Random` so your
+`update` stays pure and replayable. Thread the `Rng` value through your `Model`:
 
 ```fsharp
-open FS.GG.UI.SkillSupport
+open FS.GG.UI.Canvas
 
 // in init: seed once (same seed ⇒ identical replayable stream on any platform)
-let model0 = { model with Rng = Random.seedRng 42UL }
+let model0 = { model with Rng = Rng.ofSeed 42UL }
 
 // in update: thread the state — no ambient System.Random, no wall-clock
-let spawnColumn, rng' = Random.nextBelow boardColumns model.Rng
+let struct (spawnColumn, rng') = Rng.nextInt 0 (boardColumns - 1) model.Rng
 { model with Rng = rng' (* … place the entity at spawnColumn … *) }
 ```
 
-`seedRng`/`nextRng`/`nextBelow` are pure `state -> (value, nextState)`; carrying
-`RngState` in the model keeps the whole simulation deterministic and replayable
+`ofSeed`/`nextInt`/`nextFloat`/`split` are pure `Rng -> struct(value, Rng)`. Because
+`Rng` is a `[<Struct>]` value, carrying it in the model keeps the whole simulation
+deterministic and replayable — structural model equality implies equal RNG state
 (a prerequisite for deterministic-replay evidence).
 
-The three loop primitives below remain **documented conventions, not shipped
-`FS.GG.UI` API** (feature 062 D10/D11 defer them with rationale — not yet at the
-3-demo recurrence bar); each documented convention is the spec if a later feature
-ships it.
+Two of the three loop primitives below are now **shipped `FS.GG.UI` API** (feature 239);
+the third (paddle rebound) remains a documented per-game convention.
 
-1. **Fixed-step accumulator (deterministic `step` driver).** Decouple simulation
-   from frame cadence: accumulate real elapsed time and advance the simulation in
-   fixed `1/120 s` steps, capping the steps consumed per tick so a long stall
-   (debugger pause, GC) can never spiral into hundreds of catch-up steps. Pure in
-   `update`; the only input is the elapsed time carried on the tick `Msg`.
+1. **Fixed-step accumulator — shipped as `FS.GG.UI.Canvas.FixedStep.drain`.** Decouple
+   simulation from frame cadence: `drain interval frameTime accumulator` returns
+   `struct(steps, newAccumulator)`, clamping a long stall (debugger pause, GC) so it can
+   never spiral into hundreds of catch-up steps. Pure in `update`; the only input is the
+   elapsed time carried on the tick `Msg`.
    ```fsharp
-   let private dt = 1.0 / 120.0          // fixed simulation step
-   let private maxStepsPerTick = 5       // cap catch-up after a stall
-   let stepFixed (advance: Model -> Model) (elapsed: float) (m: Model) : Model =
-       let acc = m.Accumulator + elapsed
-       let steps = min maxStepsPerTick (int (acc / dt))
-       let m' = List.fold (fun s _ -> advance s) m [ 1 .. steps ]
-       { m' with Accumulator = acc - float steps * dt }
+   open FS.GG.UI.Canvas
+   let struct (steps, acc') = FixedStep.drain (1.0/120.0) elapsed model.Accumulator
+   let m' = List.fold (fun s _ -> advance s) model [ 1 .. steps ]
+   { m' with Accumulator = acc' }
    ```
-2. **Collision + single-reflection-per-step.** Use AABB for box-vs-box and
-   circle-vs-rect for a ball; resolve **at most one** reflection per fixed step,
-   choosing the axis by the **smaller normalized penetration** (penetration ÷
-   extent) so a corner hit flips exactly one component, not both. Reflect by
-   negating that one velocity component and pushing the body out by the
-   penetration depth.
+   (For a tighter catch-up cap than the 0.25 s default, use `FixedStep.drainWith maxFrameTime`.)
+2. **Collision — shipped AABB in `FS.GG.UI.Scene.Geometry`.** `Geometry.intersects`
+   (box-vs-box, strict edges), `Geometry.contains`/`Geometry.containsPoint` (inclusive),
+   and `Geometry.sweptIntersects moving velocity target` (catches a fast projectile that
+   would tunnel through a thin target in one step). Then resolve **at most one** reflection
+   per fixed step, choosing the axis by the **smaller normalized penetration** (penetration
+   ÷ extent) so a corner hit flips exactly one component, not both — reflect by negating
+   that one velocity component and pushing the body out by the penetration depth. (The
+   reflection resolution is per-game convention; the overlap tests are shipped.)
 3. **Paddle-rebound angle with a `|Dy|` floor.** Map the ball's contact offset
    from the paddle centre to a horizontal velocity, but clamp `|Dy|` to a minimum
    so the ball can never settle into a purely-horizontal loop:
