@@ -36,7 +36,7 @@ issue in the target repo; the board pulls that issue in and places it on the roa
 1. You need a change, decision, or release from **another** FS-GG repo.
 2. You are about to change a **versioned cross-repo contract** (`scaffold-provider`,
    `scaffold-provenance`, `governance-handoff`, the governance config schemas,
-   `fs-gg-ui-template`/`fs-skia-ui-version`).
+   `fs-gg-ui-template`/`fs-gg-ui-version`).
 3. You hit a **cross-repo incoherence** (a consumer can't build/run against an upstream).
 4. You need to **place or sequence work on the Coordination roadmap** (set a phase/target,
    surface a blocker, add an epic + child issues).
