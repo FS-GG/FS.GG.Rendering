@@ -138,6 +138,25 @@ jobs:
           dotnet fsi scripts/validate-version-coherence.fsx
           FS_GG_RUN_VERSION_COHERENCE_SMOKE=1 dotnet fsi scripts/validate-version-coherence.fsx
 
+      # #106 (refs #104/#105) — lifecycle-template verdict-core drift guard, PR-time. The Feature-204
+      # gating invariant is classified by TWO parallel sources: this fsx's env-free verdict-core
+      # (`verifyGatedSources`) and Package.Tests' independent `gatedSourceAudit`. A PR that adds/moves a
+      # template.json source under `template/product-skills/` or `.agents/skills/` and updates only ONE
+      # classifier desyncs them. That failure is RELEASE-ONLY (Package.Tests) and, worse, silent: the
+      # release test self-provisions its report by running THIS script, so a stale verdict-core throws,
+      # writes no report, and its stderr is swallowed — surfacing only as "lifecycle validation report
+      # missing" pointing at CI regeneration, not the real cause (it blocked the fs-gg-ui 0.1.64-preview.1
+      # set until #105). Run the env-free `--emit-report` path here so drift fails THIS PR loudly with the
+      # actual `VERDICT-CORE FAIL: …` exception. Env-free only (no dotnet new/build/GL/network; ~1s): the
+      # empty FS_GG_RUN_LIFECYCLE_VALIDATION keeps it off the live-loop path. Non-zero exit ⇒ gate blocks.
+      - name: Lifecycle-template verdict-core guard (env-free)
+        run: |
+          set -euo pipefail
+          if ! FS_GG_RUN_LIFECYCLE_VALIDATION= dotnet fsi scripts/validate-lifecycle-template.fsx --emit-report; then
+            echo "::error::lifecycle-template verdict-core drift — scripts/validate-lifecycle-template.fsx (verifyGatedSources) disagrees with the template.json gated-source classification. See the VERDICT-CORE FAIL line above; keep it in lockstep with Package.Tests' gatedSourceAudit (refs #104/#106)."
+            exit 1
+          fi
+
       # T010 (FR-003) — fsdocs site build in STRICT mode so FsDocsWarnOnMissingDocs (Directory.Build.props)
       # is fatal: a broken docs build OR a missing-doc stub fails the gate. Build only, no publish.
       - name: Docs build (fsdocs, strict)
