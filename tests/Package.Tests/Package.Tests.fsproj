@@ -45,6 +45,7 @@
          library — ADR-0014 / roadmap §6 "two lanes, one algorithm"). -->
     <Compile Include="..\..\template\lifecycle\skill-mirror-vendored.fs" Link="skill-mirror-vendored.fs" />
     <Compile Include="Feature231SkillManifestTests.fs" />
+    <Compile Include="Feature238SkillMaterializesWhenTests.fs" />
     <Compile Include="Tests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
