@@ -30,11 +30,20 @@ to qualify — a breaking public-surface change that violates FR-002's regressio
 
 ## D2 — §3.5: where the `Cmd.none` / `Sub.none` no-ops live
 
-**Decision**: Add two public no-op values on the **`FS.GG.UI.Controls.Elmish`** package —
-`module Cmd { val none : AdapterCommand<'msg> }` and
-`module Sub { val none : AdapterSubscription<'msg> list }`, each defined as `[]`. Consume them in the
-product template's `update`/`subscriptions`, and surface them in `docs/product.md` + the `fs-gg-elmish`
-product skill.
+**Decision (refined during implementation — approved 2026-07-04)**: Add two public no-op values in a
+dedicated sub-namespace **`FS.GG.UI.Controls.Elmish.Authoring`** (new files `Authoring.fsi`/`.fs`) —
+`module Cmd { val none : AdapterCommand<'msg> }` and `module Sub { val none : AdapterSubscription<'msg> list }`,
+each `[]`. Consume them in the product template's `update`/`subscriptions`, and surface in
+`docs/product.md` + the `fs-gg-elmish` product skill.
+
+> **Why the sub-namespace, not the root `FS.GG.UI.Controls.Elmish`.** Implementation revealed the
+> package's `ControlsElmish.fs` does `open Elmish` and depends on Fable's `Cmd` (e.g.
+> `let none: Cmd<'msg> = Cmd.none`, `toCmd ... : Cmd<'msg>`). A `module Cmd` declared in the ROOT
+> `FS.GG.UI.Controls.Elmish` namespace is visible to every same-namespace file and would shadow
+> Fable `Elmish.Cmd`, breaking the package build. Isolating the aliases in
+> `FS.GG.UI.Controls.Elmish.Authoring` (which does not `open Elmish`) leaves the package untouched;
+> a generated product opts in with `open FS.GG.UI.Controls.Elmish.Authoring` and — since it does not
+> `open Elmish` — gets `Cmd.none`/`Sub.none` unambiguously. Verified by build + FSI + Expecto.
 
 **Rationale**: `AdapterCommand<'msg> = AdapterEffect<'msg> list` and `AdapterSubscription<'msg>` are
 defined in `FS.GG.UI.Controls.Elmish` (`ControlsElmish.fsi:26`; baseline

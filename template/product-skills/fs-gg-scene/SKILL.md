@@ -34,6 +34,24 @@ let hud : Scene =
           Scene.textAt { X = 12.0; Y = 30.0 } "tally: 0" ink ]
 ```
 
+### Self-positioning HUD text — measure, don't guess
+
+`Scene.measureText : string -> FontSpec -> TextMetrics` is a **pure, host-independent**
+metric (distinct from the render-edge glyph shaping), so you can size and align HUD /
+overlay strings at authoring time instead of hard-coding coordinates. `TextMetrics` carries
+`Width` / `Height` / `Baseline`, and the heuristic is deliberately conservative — a box sized
+by it is never narrower than the renderer draws, so text never clips. Right-align a score
+label inside a HUD band without a literal x:
+
+```fsharp
+open FS.GG.UI.Scene
+
+// hudWidth comes from the layout region (see [[fs-gg-layout]]); no magic numbers.
+let placeScore (hudWidth: float) (font: FontSpec) (ink: Color) (scoreText: string) : Scene =
+    let m = Scene.measureText scoreText font
+    Scene.textAt { X = hudWidth - m.Width; Y = m.Baseline } scoreText ink
+```
+
 ## Common pitfalls
 
 - **Consumer geometry records colliding with framework `Point`/`Rect`.** Scene exposes

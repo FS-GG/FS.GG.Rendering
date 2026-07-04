@@ -33,6 +33,30 @@ let nextModel, effects =
     ElmishAdapter.update view (UserMsg productMsg) adapterModel
 ```
 
+### No-op command / subscription
+
+An `update` branch that issues no command returns `model, Cmd.none`, and a
+`subscriptions` with none returns `Sub.none` — the Elmish-convention no-ops, not a bare
+`[]`. Both are in `FS.GG.UI.Controls.Elmish.Authoring` (`Cmd.none = ([] :
+AdapterCommand<_>)`, `Sub.none = ([] : AdapterSubscription<_> list)`); `open` it in the
+product `Model`:
+
+```fsharp
+open FS.GG.UI.Controls.Elmish
+open FS.GG.UI.Controls.Elmish.Authoring
+
+let update msg model : Model * AdapterCommand<Msg> =
+    match msg with
+    | Tick -> step model, Cmd.none          // no command — reads as a deliberate no-op
+    | Save -> model, [ DispatchHostCommand "save" ]
+
+let subscriptions _ : AdapterSubscription<Msg> list = Sub.none
+```
+
+The names live in that dedicated sub-namespace so `Cmd`/`Sub` never shadow Fable
+`Elmish.Cmd`; a generated product does not `open Elmish`, so `Cmd.none` resolves
+unambiguously (qualify only if the product also opens Fable Elmish).
+
 ## Build Commands
 
 Run `./fake.sh build -t Dev` then `./fake.sh build -t Verify` in this product.

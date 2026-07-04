@@ -21,7 +21,13 @@ Reuse the shared `FS.GG.UI.Scene.Rect` bounds type rather than a look-alike
 record so record-field inference does not hijack resolution, and reference
 `ControlEventOrigin` cases qualified (`ControlEventOrigin.Text`) — it carries
 `[<RequireQualifiedAccess>]` so its `Text` case never shadows the scene `Text`
-constructor.
+constructor. The keyboard package's `FS.GG.UI.KeyboardInput.KeyboardMsg` likewise
+exports `KeyDown of KeyId` and `KeyUp of KeyId`; if the product defines its own
+`Msg.KeyDown`/`Msg.KeyUp`, an unqualified `open FS.GG.UI.KeyboardInput` makes the
+framework cases win name resolution and the consumer case fails to compile
+(`type 'KeyId' does not match 'ViewerKey'`). Qualify the framework cases
+(`KeyboardMsg.KeyDown`) — or do not `open FS.GG.UI.KeyboardInput` where the product
+declares input messages — regardless of open order.
 
 ## Load the app in FSI
 
@@ -151,6 +157,26 @@ message, not a viewer lifecycle shortcut. When product simulation state stores a
 domain vector, convert it explicitly with a helper such as `toScenePoint` before
 passing it to `Scene.Point`; the conversion from domain vector to scene point
 must be visible in the generated source or evidence notes as an explicit conversion.
+
+**No-op command / subscription.** An `update` branch that issues no command returns
+`model, Cmd.none`, and a `subscriptions` with none returns `Sub.none`, rather than a
+bare `[]` — the Elmish-convention aliases read as a deliberate no-op and are more
+discoverable. Both live in `FS.GG.UI.Controls.Elmish.Authoring` (`Cmd.none = ([] :
+AdapterCommand<_>)`, `Sub.none = ([] : AdapterSubscription<_> list)`); `open` it in the
+product `Model`. The names sit in that dedicated sub-namespace so `Cmd`/`Sub` never
+shadow Fable `Elmish.Cmd` inside the framework; a generated product does not `open
+Elmish`, so `Cmd.none` resolves unambiguously — if a product also opens Fable Elmish,
+qualify.
+
+**Placing HUD/overlay text — measure, don't guess.** `FS.GG.UI.Scene.measureText :
+string -> FontSpec -> TextMetrics` is a **pure, host-independent** metric (distinct from
+the render-edge glyph shaping): use it at authoring time to self-position HUD strings
+instead of magic-number coordinates. `TextMetrics` carries `Width`/`Height`/`Baseline`,
+and the heuristic is deliberately conservative (a box sized by it is never narrower than
+the renderer draws). For example, to right-align a score label inside the reserved HUD
+band, take `let m = Scene.measureText scoreText font` and place the label origin at
+`hudRegion.Width - m.Width` — no literal x. See the `fs-gg-scene` product skill for the
+worked idiom.
 
 **Build vs. test targets.** `./fake.sh build -t Dev` is a completion-marker /
 log-writer target — it records progress to `readiness/logs/Dev.txt` and does

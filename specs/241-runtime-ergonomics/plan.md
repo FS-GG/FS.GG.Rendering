@@ -17,9 +17,13 @@ Three additive, non-architectural ergonomics fixes to the FS.GG.UI runtime surfa
   FR-002's regression constraint).
 - **§3.5 no-op aliases (library + template + docs)** — the product `update` returns
   `model, []` (`AdapterCommand<'msg> = AdapterEffect<'msg> list`) and `subscriptions` returns `[]`
-  (`AdapterSubscription<'msg> list`). Add product-facing `Cmd.none`/`Sub.none` no-ops on the
-  **`FS.GG.UI.Controls.Elmish`** package (the adapter the product already references), consume them
-  in the product template, and surface them in `docs/product.md` + the `fs-gg-elmish` product skill.
+  (`AdapterSubscription<'msg> list`). Add product-facing `Cmd.none`/`Sub.none` no-ops in the
+  **`FS.GG.UI.Controls.Elmish.Authoring`** sub-namespace (new `Authoring.fsi`/`.fs` in the adapter
+  package the product already references), consume them in the product template, and surface them in
+  `docs/product.md` + the `fs-gg-elmish` product skill. **Sub-namespace, not the root
+  `FS.GG.UI.Controls.Elmish`** — see research D2: the package's own `open Elmish` means a root-level
+  `module Cmd` would shadow Fable `Elmish.Cmd` and break the package build; the sub-namespace is opt-in
+  and collision-free (a generated product does not `open Elmish`).
 - **§3.6 measureText (docs/skill only)** — the pure host-independent
   `FS.GG.UI.Scene.measureText : string -> FontSpec -> TextMetrics` **already ships and is already in
   the packed api-surface** (`api-surface/Scene/Scene.fsi:489`). The gap is discoverability: surface
@@ -121,11 +125,13 @@ specs/241-runtime-ergonomics/
 ### Source Code (repository root)
 
 ```text
-# §3.5 — product-facing no-op aliases (Tier 1 public surface)
-src/Controls.Elmish/ControlsElmish.fsi         # + module Cmd { val none: AdapterCommand<'msg> }
-                                               # + module Sub { val none: AdapterSubscription<'msg> list }
-src/Controls.Elmish/ControlsElmish.fs          # implementations: none = []  (paired, no access modifiers per Principle II)
-readiness/surface-baselines/FS.GG.UI.Controls.Elmish.txt   # refreshed: +FS.GG.UI.Controls.Elmish.Cmd, +.Sub
+# §3.5 — product-facing no-op aliases (Tier 1 public surface), in a collision-safe sub-namespace
+src/Controls.Elmish/Authoring.fsi              # NEW namespace FS.GG.UI.Controls.Elmish.Authoring:
+                                               #   module Cmd { val none: AdapterCommand<'msg> }
+                                               #   module Sub { val none: AdapterSubscription<'msg> list }
+src/Controls.Elmish/Authoring.fs               # implementations: none = []  (no access modifiers per Principle II)
+src/Controls.Elmish/Controls.Elmish.fsproj     # +Compile Authoring.fsi/.fs after ControlsElmish.fs
+readiness/surface-baselines/FS.GG.UI.Controls.Elmish.txt   # refreshed: +…Authoring.Cmd, +…Authoring.Sub
 
 template/base/src/Product/Model.fs             # update/subscriptions: model, [] -> model, Cmd.none ; [] -> Sub.none
 template/base/src/Product/EvidenceCommands.fs  # Init/adapter [] -> Cmd.none where it is the command no-op
@@ -140,9 +146,13 @@ template/product-skills/fs-gg-scene/SKILL.md   # + HUD-measure line pointing at 
 # Guidance for §3.5 aliases
 template/product-skills/fs-gg-elmish/SKILL.md  # show update returns model, Cmd.none and subscribe returns Sub.none
 
+# Skill-manifest digests (editing fs-gg-scene + fs-gg-elmish bodies restales their sha256)
+template/skill-manifest/skill-manifest.json    # regenerated via scripts/generate-skill-manifest.fsx (2 digests change)
+
 # Tests
-tests/Package.Tests/SurfaceAreaTests.fs        # baseline drift gate (reads refreshed .txt; no code edit expected)
-tests/Package.Tests/<new-or-existing>.fs       # NEW behavioral: Cmd.none = [] ; Sub.none = [] ; template snippet compiles
+tests/Package.Tests/SurfaceAreaTests.fs        # baseline drift gate (reads refreshed .txt; no code edit)
+tests/Elmish.Tests/AdapterCmdSubNoneTests.fs   # NEW behavioral: Cmd.none = [] ; Sub.none = [] ; identity with []
+                                               # (Elmish.Tests references Controls.Elmish; named by content — internal FeatureNNN 241 is taken)
 tests/Package.Tests/Feature224SkillCatalogCurrencyTests.fs  # only if a skill id/body currency check applies
 ```
 

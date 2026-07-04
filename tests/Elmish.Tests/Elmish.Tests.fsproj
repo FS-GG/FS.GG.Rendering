@@ -74,6 +74,7 @@
     <Compile Include="Feature191CanvasInputTests.fs" />
     <Compile Include="Feature232FocusDispatchTests.fs" />
     <Compile Include="Feature241ActivationValueGapsTests.fs" />
+    <Compile Include="AdapterCmdSubNoneTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
