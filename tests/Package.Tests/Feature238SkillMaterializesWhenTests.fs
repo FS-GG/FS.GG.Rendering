@@ -214,6 +214,25 @@ let feature238SkillMaterializesWhenTests =
                       evalCanonical parameters e.MaterializesWhen |> ignore
           }
 
+          test "G-GRID the parameter grid covers every identifier the conditions branch on (keeps G-EQUIV honest)" {
+              // G-EQUIV is only a real semantic-equivalence check while every param a condition
+              // references is varied by the grid: an ungridded param reads as the non-matching
+              // sentinel in BOTH evaluators at every point, so they agree vacuously and a
+              // mistranslation involving it would pass green. Enforce grid ⊇ condition-identifiers so
+              // adding a new scaffold param to a condition forces extending parameterGrid.
+              let gridKeys = parameterGrid |> List.collect (Map.toList >> List.map fst) |> Set.ofList
+              let identifierPattern = System.Text.RegularExpressions.Regex "^[A-Za-z][A-Za-z0-9_-]*$"
+              let conditionIdentifiers =
+                  templateConditions ()
+                  |> Map.toList
+                  |> List.collect (snd >> tokenizeCStyle)                       // quoted literals stay quoted → excluded
+                  |> List.filter (fun t -> identifierPattern.IsMatch t && t <> "true" && t <> "false")
+                  |> Set.ofList
+              Expect.isEmpty
+                  (Set.difference conditionIdentifiers gridKeys)
+                  (sprintf "parameterGrid must vary every param the conditions use; add the missing one(s) to keep G-EQUIV a real check (grid=%A, conditions use=%A)" gridKeys conditionIdentifiers)
+          }
+
           test "G-EQUIV materializes-when is semantically equal to the verbatim template.json condition" {
               let entries = readEntries () |> List.map (fun e -> e.Id, e) |> Map.ofList
               let conditions = templateConditions ()
