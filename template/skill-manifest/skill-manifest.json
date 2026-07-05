@@ -84,7 +84,7 @@
     {
       "id": "fs-gg-scene",
       "scope": "product",
-      "sha256": "df73cdca37c8b4d74ea507a128b972fc1ad092ea7dab1359e81a768d9d4fd6fe",
+      "sha256": "7cd388db3ce482978abb04b9c47fae119a4423cddbdf776ba08aacfdd31ed818",
       "resolvablePath": ".agents/skills/fs-gg-scene/SKILL.md",
       "materializes-when": "profile in [app, headless-scene, governed, sample-pack, game]",
       "supplied-by": "template/product-skills/fs-gg-scene/"
@@ -92,7 +92,7 @@
     {
       "id": "fs-gg-skiaviewer",
       "scope": "product",
-      "sha256": "331b9986103d960e7a1400a7605f1f908e73b2dab321efa4aeb497cca29d2480",
+      "sha256": "6ea4c582cf6d18ac048640af54040d451bfc2dd4b815f859d08963df65028900",
       "resolvablePath": ".agents/skills/fs-gg-skiaviewer/SKILL.md",
       "materializes-when": "profile in [app, sample-pack, game]",
       "supplied-by": "template/product-skills/fs-gg-skiaviewer/"
