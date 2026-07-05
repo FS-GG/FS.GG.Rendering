@@ -1,4 +1,4 @@
-namespace Product
+namespace AppRoot
 
 open FS.GG.UI.Scene
 open FS.GG.UI.Canvas

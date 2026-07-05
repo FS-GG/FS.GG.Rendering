@@ -2,12 +2,12 @@ module Canvas.Tests.CollisionHelperTests
 
 // Feature 246 (US1): the import-and-adapt collision helper source (template/fragments/collision/
 // src/Product/Collision.fs) is compiled here via the framework test project (its literal
-// `namespace Product` is the default sourceName). Detection reuses Geometry/SpatialGrid; the response
+// `namespace AppRoot` is the default sourceName). Detection reuses Geometry/SpatialGrid; the response
 // layer separates overlaps deterministically. All real pure computation — no synthetic evidence.
 
 open Expecto
 open FS.GG.UI.Scene
-open Product
+open AppRoot
 
 let private body x y w h tag : Collision.Body<int> =
     { Bounds = { X = x; Y = y; Width = w; Height = h }; Tag = tag }

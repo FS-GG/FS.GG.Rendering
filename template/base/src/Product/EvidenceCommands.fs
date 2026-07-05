@@ -1,11 +1,11 @@
-module Product.EvidenceCommands
+module AppRoot.EvidenceCommands
 
 open System
 open System.IO
 open FS.GG.UI.Scene
-open Product.Model
-open Product.View
-open Product.LayoutEvidence
+open AppRoot.Model
+open AppRoot.View
+open AppRoot.LayoutEvidence
 //#if (profile == "governed" || profile == "headless-scene")
 
 let private writeLines (path: string) (lines: string list) =
@@ -24,7 +24,7 @@ let layoutEvidenceCommand evidencePath width height =
         [ "status=ok"
           "command=--layout-evidence"
           "profile=headless-governed"
-          $"scene=Product.Program.view"
+          $"scene=AppRoot.Program.view"
           $"output-size={size.Width}x{size.Height}"
           $"proof-level={report.ProofLevel}"
           $"text-bounds={report.TextBounds.Length}"
@@ -74,7 +74,7 @@ open FS.GG.UI.DesignSystem
 open FS.GG.UI.Themes.Default
 open FS.GG.UI.KeyboardInput
 open FS.GG.UI.SkiaViewer
-open Product.WindowOptions
+open AppRoot.WindowOptions
 
 let writeGeneratedEvidenceLines (path: string) echoToStdout exitCode lines =
     let directory = Path.GetDirectoryName path
@@ -109,14 +109,14 @@ type GeneratedEvidenceWorkflowKind =
     | NormalLaunch
     | ExplicitEvidenceCommand
     | PolicyOwnedReport
-    | ProductOwnedFacts
+    | AppRootOwnedFacts
     | UnsupportedOutcome
 
 type GeneratedEvidenceWorkflow =
     { Command: string
       Kind: GeneratedEvidenceWorkflowKind
       Authority: string
-      ProductOwnedFacts: string list
+      AppRootOwnedFacts: string list
       PolicyOwnedReport: string
       SkippedGates: string list
       UnsupportedOutcome: string option
@@ -135,7 +135,7 @@ let availableEvidenceWorkflows =
     [ { Command = "dotnet run --project src/Product/Product.fsproj"
         Kind = NormalLaunch
         Authority = "product-owned interactive launch"
-        ProductOwnedFacts = [ "model"; "view"; "viewer-host" ]
+        AppRootOwnedFacts = [ "model"; "view"; "viewer-host" ]
         PolicyOwnedReport = "none"
         SkippedGates = []
         UnsupportedOutcome = None
@@ -143,7 +143,7 @@ let availableEvidenceWorkflows =
       { Command = "--launch-evidence"
         Kind = ExplicitEvidenceCommand
         Authority = "generated evidence command"
-        ProductOwnedFacts = [ "viewer run result"; "renderer mode"; "first frame" ]
+        AppRootOwnedFacts = [ "viewer run result"; "renderer mode"; "first frame" ]
         PolicyOwnedReport = "readiness/evidence-launch-mode.txt"
         SkippedGates = []
         UnsupportedOutcome = Some "unsupported host fixture reports fallback and reason"
@@ -151,7 +151,7 @@ let availableEvidenceWorkflows =
       { Command = "--image-evidence"
         Kind = PolicyOwnedReport
         Authority = "governed visual evidence report"
-        ProductOwnedFacts = [ "scene"; "viewer options"; "render outcome" ]
+        AppRootOwnedFacts = [ "scene"; "viewer options"; "render outcome" ]
         PolicyOwnedReport = "readiness/game-image-evidence.png.metadata.txt"
         SkippedGates = [ "interactive visible-window proof" ]
         UnsupportedOutcome = Some "missing generated artifact is classified as stale prerequisite"
@@ -218,7 +218,7 @@ let layoutEvidenceCommand evidencePath width height =
             evidencePath
             status
             "--layout-evidence"
-            [ evidenceField "scene" "Product.Program.view"
+            [ evidenceField "scene" "AppRoot.Program.view"
               evidenceField "output-size" $"{size.Width}x{size.Height}"
               evidenceField "proof-level" $"{report.ProofLevel}"
               evidenceField "hud-region" hud
@@ -270,7 +270,7 @@ let viewerEffectsForModel model =
     [ RenderScene(view model) ]
 
 let interpretAtHostBoundary msg model =
-    let next, appCommands = Product.Model.update msg model
+    let next, appCommands = AppRoot.Model.update msg model
     next, appCommands, viewerEffectsForModel next
 
 let generatedHost =

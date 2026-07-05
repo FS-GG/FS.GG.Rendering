@@ -1,4 +1,4 @@
-module Product.Model
+module AppRoot.Model
 
 open System
 //#if (profile == "governed" || profile == "headless-scene")
@@ -27,7 +27,7 @@ let update msg model =
 // GAME family — minimal, replaceable Pong-style starter (feature 220).
 //
 //   REPLACE ME. This Model/Msg/update is the developer-owned game seam. Swap in your own game
-//   by editing Model.fs + View.fs + tests/Product.Tests/BehaviorTests.fs (plus the documented
+//   by editing Model.fs + View.fs + tests/AppRoot.Tests/BehaviorTests.fs (plus the documented
 //   field re-points in LayoutEvidence.fs / EvidenceCommands.fs). The durable governance spine
 //   (GovernanceTests.fs, Program.fs, WindowOptions.fs) never calls update/view, so it keeps
 //   passing across the swap — see docs/scaffold-map.md.

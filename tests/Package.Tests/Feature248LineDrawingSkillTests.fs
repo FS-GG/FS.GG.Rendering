@@ -68,7 +68,7 @@ let feature248LineDrawingSkillTests =
           test "the helper fragment source exists with the intended surface" {
               Expect.isTrue (File.Exists helperSource) "LineDrawing.fs fragment exists"
               let src = File.ReadAllText helperSource
-              Expect.stringContains src "namespace Product" "literal Product namespace (default sourceName)"
+              Expect.stringContains src "namespace AppRoot" "literal AppRoot identifier namespace (the product-name identifier token, derived to the product namespace on scaffold)"
               Expect.stringContains src "module LineDrawing" "the LineDrawing module"
               Expect.stringContains src "open FS.GG.UI.Canvas" "reuses the shared Cell from FS.GG.UI.Canvas"
               for fn in [ "line"; "supercover"; "lineOfSight" ] do

@@ -1,8 +1,8 @@
-module Product.LayoutEvidence
+module AppRoot.LayoutEvidence
 
 open FS.GG.UI.Scene
-open Product.Model
-open Product.View
+open AppRoot.Model
+open AppRoot.View
 //#if (profile == "governed" || profile == "headless-scene")
 
 let layoutEvidenceForSize (size: Size) (model: Model) : LayoutEvidenceReport =

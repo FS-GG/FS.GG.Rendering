@@ -1,7 +1,7 @@
 module Canvas.Tests.GridsHelperTests
 
 // Feature 249 (US1): the import-and-adapt grid-parts helper source (template/fragments/grids/
-// src/Product/Grids.fs) is compiled here (literal `namespace Product`, the default sourceName). Faces
+// src/Product/Grids.fs) is compiled here (literal `namespace AppRoot`, the default sourceName). Faces
 // reuse FS.GG.UI.Canvas.Cell and pixels reuse FS.GG.UI.Scene.Point/Rect; the Edge/Vertex parts, the six
 // adjacency conversions, and the pixel mapping are the added layer. All real pure computation — no
 // synthetic evidence. Covers FR-008 (determinism), FR-009 (adjacency round-trips), FR-010 (totality),
@@ -11,7 +11,7 @@ open Expecto
 open FsCheck
 open FS.GG.UI.Scene
 open FS.GG.UI.Canvas
-open Product
+open AppRoot
 
 let private cell col row : Cell = { Col = col; Row = row }
 let private spec size ox oy : Grids.GridSpec = { CellSize = size; Origin = { X = ox; Y = oy } }

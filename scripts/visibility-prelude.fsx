@@ -9,7 +9,7 @@
 #load "../template/fragments/visibility/src/Product/Visibility.fs"
 
 open FS.GG.UI.Scene
-open Product
+open AppRoot
 
 let source: Point = { X = 0.0; Y = 0.0 }
 let target: Point = { X = 10.0; Y = 0.0 }

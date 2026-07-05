@@ -1,7 +1,7 @@
-module Product.View
+module AppRoot.View
 
 open FS.GG.UI.Scene
-open Product.Model
+open AppRoot.Model
 //#if (profile == "governed" || profile == "headless-scene")
 
 let view model =
@@ -122,7 +122,7 @@ let controlsExampleView (model: Model) : Control<Msg> =
 // (`Widget<'msg>`-returning) view directly, use `ControlsElmish.programOfWidget` (or
 // `ControlsElmish.widgetView`), which lowers via `Widget.toControl` for you.
 let adapterProgram =
-    ControlsElmish.program Product.Model.init Product.Model.update controlsExampleView Product.Model.subscriptions
+    ControlsElmish.program AppRoot.Model.init AppRoot.Model.update controlsExampleView AppRoot.Model.subscriptions
 
 // The default scaffold `view` rasterizes the REAL example control tree through the
 // production tree-render path (`Control.renderTree`) at the output extent, so the

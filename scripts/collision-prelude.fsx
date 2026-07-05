@@ -9,7 +9,7 @@
 #load "../template/fragments/collision/src/Product/Collision.fs"
 
 open FS.GG.UI.Scene
-open Product
+open AppRoot
 
 let body x y w h tag : Collision.Body<string> =
     { Bounds = { X = x; Y = y; Width = w; Height = h }; Tag = tag }
