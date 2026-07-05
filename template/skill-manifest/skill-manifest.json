@@ -60,7 +60,7 @@
     {
       "id": "fs-gg-model-swap",
       "scope": "product",
-      "sha256": "28ed439fe1968f5f51c3313ad55c03aea3a3cdb9d0e8e1e7d3a5e761b411b785",
+      "sha256": "3ec82b9557825f426cd019fb06134210f14fcb87fa39d3e4e6d98a053a18f069",
       "resolvablePath": ".agents/skills/fs-gg-model-swap/SKILL.md",
       "materializes-when": "profile in [game, sample-pack]",
       "supplied-by": "template/product-skills/fs-gg-model-swap/"
@@ -136,6 +136,14 @@
       "resolvablePath": ".agents/skills/fs-gg-ui-widgets/SKILL.md",
       "materializes-when": "profile in [app, game]",
       "supplied-by": "template/product-skills/fs-gg-ui-widgets/"
+    },
+    {
+      "id": "fs-gg-visibility",
+      "scope": "product",
+      "sha256": "bef35ca0b50cf4019c63779a0d7567c953a3ff072371bc5dd60540c4c6b64c16",
+      "resolvablePath": ".agents/skills/fs-gg-visibility/SKILL.md",
+      "materializes-when": "profile in [game, sample-pack]",
+      "supplied-by": "template/product-skills/fs-gg-visibility/"
     }
   ]
 }

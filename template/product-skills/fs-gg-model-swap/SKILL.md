@@ -51,6 +51,10 @@ From `docs/scaffold-map.md`, three classes — you only edit the last two:
   - `src/<ProductDir>/Collision.fs` *(game / sample-pack)* — the adaptable collision helper
     (see [[fs-gg-collision]]). Edit the response rule, add layers, or delete it entirely: its compile
     item is `Exists`-guarded, so the build stays green and `Product.fsproj` stays durable.
+  - `src/<ProductDir>/Visibility.fs` *(game / sample-pack)* — the adaptable 2D-visibility helper
+    (see [[fs-gg-visibility]]). Edit the sight radius, cone the field of view, swap the polygon for a
+    fog-of-war mask, or delete it entirely: its compile item is `Exists`-guarded, so the build stays
+    green and `Product.fsproj` stays durable.
   - `tests/Product.Tests/BehaviorTests.fs` — the replaceable behaviour tests that drive the
     starter's `view`/`update`/host directly. Rewrite these to drive **your** model.
 - **Re-point — keep the file + its scanned tokens, re-aim the model-field reads**:

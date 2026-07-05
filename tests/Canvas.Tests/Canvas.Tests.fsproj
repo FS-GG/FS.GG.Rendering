@@ -20,6 +20,10 @@
          `namespace Product`, the default sourceName) so its logic is tested framework-side. -->
     <Compile Include="..\..\template\fragments\collision\src\Product\Collision.fs" />
     <Compile Include="CollisionHelperTests.fs" />
+    <!-- Feature 247 (US1): compile the raw import-and-adapt visibility helper source (literal
+         `namespace Product`, the default sourceName) so its logic is tested framework-side. -->
+    <Compile Include="..\..\template\fragments\visibility\src\Product\Visibility.fs" />
+    <Compile Include="VisibilityHelperTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

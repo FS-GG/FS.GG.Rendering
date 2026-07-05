@@ -11,6 +11,10 @@
          adaptable source — compiled before Model.fs so your update can call Collision.step. The
          Exists guard keeps the build green if you delete the file (Product.fsproj stays "durable"). -->
     <Compile Include="Collision.fs" Condition="Exists('Collision.fs')" />
+    <!-- Feature 247: the import-and-adapt visibility helper (fs-gg-visibility skill). Consumer-owned,
+         adaptable source — compiled before Model.fs so your update/view can call Visibility.polygon.
+         The Exists guard keeps the build green if you delete the file (Product.fsproj stays "durable"). -->
+    <Compile Include="Visibility.fs" Condition="Exists('Visibility.fs')" />
     <!--#endif -->
     <Compile Include="Model.fs" />
     <Compile Include="View.fs" />

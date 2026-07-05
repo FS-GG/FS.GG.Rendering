@@ -86,7 +86,7 @@ let feature246CollisionSkillTests =
 
           test "both template.json sources (skill + fragment) are gated to game/sample-pack" {
               Expect.equal (sourceCondition "template/product-skills/fs-gg-collision/") (Some simGate) "skill source gated to sim profiles"
-              Expect.equal (sourceCondition "template/fragments/collision/src/Product/") (Some simGate) "fragment source gated to sim profiles"
+              Expect.equal (sourceCondition "template/fragments/collision/src/") (Some simGate) "fragment source gated to sim profiles"
           }
 
           // ---- US3: game-core points at the new skill (single source of truth) -------------------
