@@ -188,6 +188,16 @@ before you design against it; when they disagree, the `.fsi` wins.
 > `fs-gg-ui-widgets` skill + `ControlsElmish.fsi`; reconcile any summary against those. Focus
 > visibility on this seam is the public `Focus.markFocused model.Focused (view …)` call inside `view`.
 
+> **The game family's default host is keyboard-only (feature 139).** The `game` starter launches
+> through `Viewer.runApp` over `GeneratedAppHost`, whose only input seam is
+> `MapKey: ViewerKey -> bool -> _`; `ViewerKey` has **no mouse/pointer case** (input arrives as
+> `DispatchInput of ViewerKey * isDown`). A **mouse-aimed** control scheme therefore cannot be wired
+> at the `Model.fs` input-mapping site — reading the mouse needs the pointer-aware interactive host
+> seam above (`InteractiveAppHost` / `Controls.Elmish.runInteractiveApp`, `MapPointer`), a durable,
+> governance-scanned `Program.fs` host-wiring change, not a starter edit. Decide your control scheme
+> with this boundary in mind before wiring input. See the `fs-gg-keyboard-input` skill and the note
+> at the `paddleForKey` mapping in `Model.fs`.
+
 ## Resolution-independent rendering: windowed-fullscreen blur (feature 085, FR-010)
 
 The default window startup is **windowed fullscreen**, which scales a fixed-resolution scene

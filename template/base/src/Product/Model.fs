@@ -132,6 +132,17 @@ let movePaddle side direction model =
 
 // Keyboard → paddle moves. W/S drive the left paddle; Up/Down the right paddle. Replace this
 // mapping when you swap in your own game (EvidenceCommands.mapKey wraps it as ViewerInput).
+//
+// HOST INPUT BOUNDARY — the game family's default host is KEYBOARD-ONLY (feature 139).
+// This starter launches through `Viewer.runApp` over `GeneratedAppHost` (see Program.fs), whose
+// only input seam is `MapKey: ViewerKey -> bool -> _`. `ViewerKey` has NO mouse/pointer case — a
+// key press arrives at the host as `DispatchInput of ViewerKey * isDown`, which is what maps to
+// `ViewerInput` below. So a mouse-aimed control scheme (e.g. twin-stick WASD + mouse aim) CANNOT be
+// wired here: there is no mouse to read at this site. Reading the mouse requires the pointer-aware
+// interactive host — `InteractiveAppHost` driven by `Controls.Elmish.runInteractiveApp`, which adds
+// a `MapPointer: ViewerPointerInput -> Size -> _ -> _` seam (the same host the `app`/controls family
+// uses in Program.fs). Moving onto it is a durable, governance-scanned host-wiring change in
+// Program.fs, not an edit at this mapping — decide your control scheme with that in mind.
 let private paddleForKey key =
     match key with
     | Letter 'W' -> Some(LeftSide, PaddleUp)

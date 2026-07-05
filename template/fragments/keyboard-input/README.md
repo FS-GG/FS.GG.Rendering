@@ -25,3 +25,14 @@ let mapKey (key: ViewerKey) (isDown: bool) : Msg option =
     | Space, true -> Some PrimaryAction
     | _ -> None
 ```
+
+## Capability boundary — the default host is keyboard-only
+
+The game family's governed default host (`Viewer.runApp` over `GeneratedAppHost`) is
+**keyboard-only**: its only input seam is `MapKey: ViewerKey -> bool -> 'msg option`, and
+`ViewerKey` has **no mouse/pointer case** (input arrives as `DispatchInput of ViewerKey * isDown`).
+A mouse-aimed control scheme cannot be wired through `MapKey`. Reading the mouse requires the
+pointer-aware interactive host — `InteractiveAppHost` via `Controls.Elmish.runInteractiveApp`, which
+adds a `MapPointer: ViewerPointerInput -> Size -> 'model -> 'msg list` seam — a durable,
+governance-scanned host-wiring change in `Program.fs`, not an edit at the input-mapping site. Decide
+your control scheme with this boundary in mind (feature 139).

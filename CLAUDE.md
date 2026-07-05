@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/250-collision-safe-vec2/plan.md
+at specs/251-keyboard-host-boundary/plan.md
 <!-- SPECKIT END -->
 
 ## Ant Design — source of truth
