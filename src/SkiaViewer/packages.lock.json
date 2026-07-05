@@ -189,7 +189,7 @@
       "FS.GG.UI.KeyboardInput": {
         "type": "Project",
         "dependencies": {
-          "FS.GG.UI.Scene": "[0.1.37-preview.1, )",
+          "FS.GG.UI.Scene": "[0.1.63-preview.1, )",
           "FSharp.Core": "[10.1.301, )",
           "YamlDotNet": "[18.1.0, )"
         }
