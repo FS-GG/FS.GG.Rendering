@@ -66,9 +66,17 @@
       "supplied-by": "template/product-skills/fs-gg-layout/"
     },
     {
+      "id": "fs-gg-line-drawing",
+      "scope": "product",
+      "sha256": "e0d8ffd5a6628e847c8dd1bed000d7b1c41a5eff8be529e5f8bc72e7d09976bd",
+      "resolvablePath": ".agents/skills/fs-gg-line-drawing/SKILL.md",
+      "materializes-when": "profile in [game, sample-pack]",
+      "supplied-by": "template/product-skills/fs-gg-line-drawing/"
+    },
+    {
       "id": "fs-gg-model-swap",
       "scope": "product",
-      "sha256": "dc552edd8c8caf76e6539db52e0d501ed92212bdc30563640c6b59b6aa725eb3",
+      "sha256": "4d4ea2e6ec7526563acee7a6b6071e6cb6d58a3a1be3acb4664aa2cffa4c2775",
       "resolvablePath": ".agents/skills/fs-gg-model-swap/SKILL.md",
       "materializes-when": "profile in [game, sample-pack]",
       "supplied-by": "template/product-skills/fs-gg-model-swap/"

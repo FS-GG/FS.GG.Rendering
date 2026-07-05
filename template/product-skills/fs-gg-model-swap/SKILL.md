@@ -59,6 +59,10 @@ From `docs/scaffold-map.md`, three classes — you only edit the last two:
     (see [[fs-gg-grids]]). Edit the edge/vertex addressing, move the grid origin, extend it toward hex
     grids, or delete it entirely: its compile item is `Exists`-guarded, so the build stays green and
     `Product.fsproj` stays durable.
+  - `src/<ProductDir>/LineDrawing.fs` *(game / sample-pack)* — the adaptable grid line-drawing helper
+    (see [[fs-gg-line-drawing]]). Switch the thin line for the supercover, cap the length for a
+    limited-range beam, or delete it entirely: its compile item is `Exists`-guarded, so the build stays
+    green and `Product.fsproj` stays durable.
   - `tests/Product.Tests/BehaviorTests.fs` — the replaceable behaviour tests that drive the
     starter's `view`/`update`/host directly. Rewrite these to drive **your** model.
 - **Re-point — keep the file + its scanned tokens, re-aim the model-field reads**:

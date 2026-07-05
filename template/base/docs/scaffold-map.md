@@ -39,6 +39,11 @@ These call/define the starter game model directly — they are yours to replace:
   origin, add a diagonal-edge variant, extend it toward hex grids, or delete the file: its compile item
   is `Exists`-guarded, so deleting it keeps the build green and you never touch the durable
   `Product.fsproj`.
+- `<ProductDir>/LineDrawing.fs` *(game / sample-pack only)* — the adaptable grid line-drawing helper (see
+  the `fs-gg-line-drawing` skill). It compiles **before** `Model.fs` so your `update`/`view` can call
+  `LineDrawing.line`/`supercover`/`lineOfSight`. Switch the thin line for the supercover, cap the length
+  for a limited-range beam, or delete the file: its compile item is `Exists`-guarded, so deleting it keeps
+  the build green and you never touch the durable `Product.fsproj`.
 - `tests/Product.Tests/BehaviorTests.fs` — the replaceable scaffold-behaviour tests that drive
   the starter's `view`/`update`/`tick`/host directly (the test-split detail is below).
 

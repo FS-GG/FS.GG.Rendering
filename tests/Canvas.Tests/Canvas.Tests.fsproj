@@ -28,6 +28,10 @@
          `namespace Product`, the default sourceName) so its logic is tested framework-side. -->
     <Compile Include="..\..\template\fragments\grids\src\Product\Grids.fs" />
     <Compile Include="GridsHelperTests.fs" />
+    <!-- Feature 248 (US1): compile the raw import-and-adapt line-drawing helper source (literal
+         `namespace Product`, the default sourceName) so its logic is tested framework-side. -->
+    <Compile Include="..\..\template\fragments\line-drawing\src\Product\LineDrawing.fs" />
+    <Compile Include="LineDrawingHelperTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

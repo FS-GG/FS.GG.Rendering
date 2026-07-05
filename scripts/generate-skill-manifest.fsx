@@ -52,6 +52,7 @@ let catalog =
       "fs-gg-grids", "template/product-skills/fs-gg-grids/SKILL.md", "(profile == \"game\" || profile == \"sample-pack\")"
       "fs-gg-keyboard-input", "template/product-skills/fs-gg-keyboard-input/SKILL.md", "(profile == \"app\" || profile == \"game\")"
       "fs-gg-layout", "template/product-skills/fs-gg-layout/SKILL.md", "(profile == \"app\" || profile == \"game\")"
+      "fs-gg-line-drawing", "template/product-skills/fs-gg-line-drawing/SKILL.md", "(profile == \"game\" || profile == \"sample-pack\")"
       "fs-gg-model-swap", "template/product-skills/fs-gg-model-swap/SKILL.md", "(profile == \"game\" || profile == \"sample-pack\")"
       "fs-gg-persistence", "template/product-skills/fs-gg-persistence/SKILL.md", "(profile == \"game\" || profile == \"sample-pack\")"
       "fs-gg-project", "template/base/.agents/skills/fs-gg-project/SKILL.md", "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\")"

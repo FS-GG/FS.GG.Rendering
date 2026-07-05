@@ -19,6 +19,11 @@
          adaptable source — compiled before Model.fs so your update/view can call Grids.cellEdges etc.
          The Exists guard keeps the build green if you delete the file (Product.fsproj stays "durable"). -->
     <Compile Include="Grids.fs" Condition="Exists('Grids.fs')" />
+    <!-- Feature 248: the import-and-adapt line-drawing helper (fs-gg-line-drawing skill).
+         Consumer-owned, adaptable source — compiled before Model.fs so your update/view can call
+         LineDrawing.line / supercover / lineOfSight. The Exists guard keeps the build green if you
+         delete the file (Product.fsproj stays "durable"). -->
+    <Compile Include="LineDrawing.fs" Condition="Exists('LineDrawing.fs')" />
     <!--#endif -->
     <Compile Include="Model.fs" />
     <Compile Include="View.fs" />
