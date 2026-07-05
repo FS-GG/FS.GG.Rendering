@@ -53,6 +53,20 @@ A new file inserted **before, between, or after** them is safe as long as those 
 that relative order in the `.fsproj`. (You do not need to read the governance test body to
 confirm this.)
 
+The scan is **anchored** to each file's `<Compile Include="X.fs" />` item, so — unlike a
+bare substring match — an additive filename or a comment that *contains* one of the six scanned
+names is safe:
+
+- **Additive filenames may embed a scanned name.** A `BulwarkView.fs` (or `GameModel.fs`) added
+  anywhere is fine — the anchor binds to `Include="View.fs"`, which `Include="BulwarkView.fs"`
+  does not match. You do **not** need to rename additive files to avoid the six substrings.
+- **Comments may mention the six.** A `<!-- see View.fs -->` comment in `Product.fsproj` (or a
+  `// see Model.fs` note) does not carry the `Include="…"` anchor, so it never perturbs the
+  order scan.
+
+(This was the issue #111 footgun: an earlier bare-`IndexOf` scan flagged `BulwarkView.fs` — and
+even a `View.fs` mention in a comment — as "view before model" and broke the build.)
+
 ## Durable — must re-point (keep the file + its scanned tokens, re-point model fields)
 
 These are **durable** — keep the file and every must-survive source-scan token it
