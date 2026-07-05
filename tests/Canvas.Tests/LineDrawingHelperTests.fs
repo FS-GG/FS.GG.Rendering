@@ -2,14 +2,14 @@ module Canvas.Tests.LineDrawingHelperTests
 
 // Feature 248 (US1): the import-and-adapt grid line-drawing helper source (template/fragments/
 // line-drawing/src/Product/LineDrawing.fs) is compiled here via the framework test project (its literal
-// `namespace Product` is the default sourceName). The grid vocabulary reuses the shared `Cell`; the
+// `namespace AppRoot` is the default sourceName). The grid vocabulary reuses the shared `Cell`; the
 // Bresenham `line`, the `supercover` walk, and the `lineOfSight` query are the added layer. All real pure
 // computation — no synthetic evidence. Covers FR-006 (LOS), FR-008 (determinism), FR-010 (totality),
 // FR-011 (bounded / connected).
 
 open Expecto
 open FS.GG.UI.Canvas
-open Product
+open AppRoot
 
 let private c col row : Cell = { Col = col; Row = row }
 

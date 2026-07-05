@@ -9,7 +9,7 @@
 #load "../template/fragments/line-drawing/src/Product/LineDrawing.fs"
 
 open FS.GG.UI.Canvas
-open Product
+open AppRoot
 
 let a: Cell = { Col = 0; Row = 0 }
 let b: Cell = { Col = 5; Row = 2 }

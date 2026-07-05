@@ -65,7 +65,7 @@ let feature246CollisionSkillTests =
           test "the helper fragment source exists with the intended surface" {
               Expect.isTrue (File.Exists helperSource) "Collision.fs fragment exists"
               let src = File.ReadAllText helperSource
-              Expect.stringContains src "namespace Product" "literal Product namespace (default sourceName)"
+              Expect.stringContains src "namespace AppRoot" "literal AppRoot identifier namespace (the product-name identifier token, derived to the product namespace on scaffold)"
               Expect.stringContains src "module Collision" "the Collision module"
               for fn in [ "contact"; "collide"; "resolve"; "step" ] do
                   Expect.stringContains src (sprintf "let %s" fn) (sprintf "exposes %s" fn)

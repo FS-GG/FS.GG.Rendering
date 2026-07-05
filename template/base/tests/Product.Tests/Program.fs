@@ -1,4 +1,4 @@
-module Product.Tests.Program
+module AppRoot.Tests.Program
 
 open Expecto
 
