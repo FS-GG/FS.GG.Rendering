@@ -152,6 +152,79 @@ let grid = SpatialGrid.build 32.0 [ for e in enemies -> e.Pos, e.Id ]
 let splashed = SpatialGrid.queryRadius blast 48.0 grid            // ids to damage
 ```
 
+## Grid-sim recipe
+
+The primitives above compose into the loop a grid game actually runs each fixed step. Nothing here reads
+the clock or touches shared state, so the whole `stepWorld` stays pure and replay-identical — which is the
+point of keeping the `Rng`, the grid, and the effect table *in the `Model`*.
+
+A tower-defense-shaped step, start to finish:
+
+```fsharp
+open FS.GG.UI.Canvas
+open FS.GG.UI.Scene
+
+// 1. Route each creep across the map. The blocked set lives in the Model; the predicate IS the map, so
+//    recompute a path only when the walls change — not every step.
+let walkable (c: Cell) =
+    c.Col >= 0 && c.Col < cols && c.Row >= 0 && c.Row < rows && not (walls.Contains c)
+let path = Pathfinding.astar FourWay 8192 walkable spawn goal
+
+// 2. Bucket creeps once per step; each tower then asks "who is in range?" — no O(towers × creeps) scan.
+let grid = SpatialGrid.build cellPx [ for cr in creeps -> cr.Pos, cr ]
+let inRange (tower: Tower) = SpatialGrid.queryRadius tower.Pos tower.Range grid
+```
+
+Two decisions every step then makes — how a hit lands, and how effects pile up.
+
+### Instant vs projectile
+
+- **Instant (hitscan).** Resolve damage the same step you acquire the target: pick from `inRange tower`,
+  subtract HP now. Deterministic and cheap, but there is no travel time — a fast creep cannot outrun it.
+- **Projectile.** Spawn a moving entity, advance it on the fixed step, and test the hit with
+  `Geometry.sweptIntersects` so a fast shot cannot **tunnel** past a thin creep between steps. Costs extra
+  Model state and forces a decision on the mid-flight edge case: if the target dies before impact, choose
+  *re-acquire nearest* vs *fizzle* — and make that choice a pure function of the world, never of arrival
+  order.
+
+Pick instant for hitscan/beam towers; pick projectile when travel time or leading the target is part of
+the game feel.
+
+### Deterministic status-effect stacking
+
+Slows, poisons, and buffs must combine the *same way every replay*. Two rules keep them deterministic:
+
+- **Key by effect kind and fold with an explicit policy — don't iterate a `Dictionary`.** Hold active
+  effects as a `Map<EffectKind, Effect>` (or a list you sort by a total key before folding). Iterating a
+  `Dictionary`/`HashSet` leaks hash order into the result and breaks replay; a `Map` folds in key order.
+- **State the stacking policy per kind and keep magnitudes integer.** *Refresh* (reset duration, keep
+  magnitude), *stack-additive* (sum magnitude, cap the total), and *strongest-wins* (max magnitude) are all
+  valid — but pick one per kind and compute it in integers (e.g. slow as a *percent*, not `0.35`) so two
+  equal-strength effects can never tie-break through floating-point equality.
+
+```fsharp
+type EffectKind = Slow | Poison
+type Effect = { Kind: EffectKind; Magnitude: int; TicksLeft: int }   // integer magnitude — no float ties
+
+// Strongest-wins magnitude, refresh-duration on re-application — one explicit policy, applied in key order.
+let applyEffect (incoming: Effect) (active: Map<EffectKind, Effect>) : Map<EffectKind, Effect> =
+    match Map.tryFind incoming.Kind active with
+    | Some cur ->
+        active
+        |> Map.add incoming.Kind
+            { cur with
+                Magnitude = max cur.Magnitude incoming.Magnitude
+                TicksLeft = max cur.TicksLeft incoming.TicksLeft }
+    | None -> active |> Map.add incoming.Kind incoming
+
+// Age by folding the Map (key-ordered → deterministic), dropping any whose TicksLeft hit 0.
+let ageEffects (active: Map<EffectKind, Effect>) : Map<EffectKind, Effect> =
+    (Map.empty, active)
+    ||> Map.fold (fun acc kind e ->
+        let e' = { e with TicksLeft = e.TicksLeft - 1 }
+        if e'.TicksLeft > 0 then Map.add kind e' acc else acc)
+```
+
 ## Common pitfalls
 
 - **Mutable `System.Random` in the `Model`.** Breaks determinism and structural equality; use the
@@ -168,6 +241,15 @@ let splashed = SpatialGrid.queryRadius blast 48.0 grid            // ids to dama
 - **Consumer geometry records colliding with framework `Point`/`Rect`.** As in `fs-gg-scene`: if your
   product defines its own `{ X; Y }` record, F# binds a bare `{ X = …; Y = … }` to whichever record is
   in scope last. Annotate the type or qualify fields at the boundary and convert into the framework type.
+- **Two of *your own* records exposing `.Pos` (consumer-vs-consumer).** Distinct from the
+  framework-vs-consumer clash above: if both a `Creep` and a `Tower` record carry a `.Pos`, a bare
+  `let posOf x = x.Pos` makes F# infer the *last-declared* record for `x`, so the helper silently
+  type-checks against the wrong type. Annotate the parameter — `let posOf (c: Creep) = c.Pos` — at every
+  such `.Pos` (or `.Id`, `.Hp`, …) access shared by two consumer records.
+- **`=` read as a named argument inside a call/tuple.** In argument position, `Some (id, dmg, id = primary.Id)`
+  parses `id = primary.Id` as the *named argument* `id`, not the boolean equality you meant (and usually
+  fails to compile with a confusing message). Wrap the equality in parens to force the comparison:
+  `Some (id, dmg, (id = primary.Id))`.
 
 ## Build Commands
 
