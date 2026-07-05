@@ -197,7 +197,7 @@ let tests =
             let capability = Viewer.runtimeCapability()
             Expect.isTrue capability.BoundedSmoke "bounded smoke capability stays available for evidence runs"
             Expect.isTrue capability.KeyboardInput "keyboard input capability remains part of the viewer contract"
-            Expect.equal capability.RendererMode "skia" "renderer mode is reported as a host capability"
+            Expect.equal capability.RendererMode Host.GlHost.backendLabel "renderer mode names the backend that actually initializes (single source of truth), not a guessed label (#135)"
 
             let screenshot =
                 Viewer.captureScreenshotEvidence
@@ -229,6 +229,45 @@ let tests =
             Expect.exists windowResults (fun item -> item.Option = "initial-size" && item.Status = FailedOption && item.Message.Contains "positive") "window launch diagnostics keep positive-size validation"
             Expect.exists windowResults (fun item -> item.Option = "startup-state" && item.Status = Honored && item.Message.Contains "Fullscreen") "fullscreen startup is now honored, not host-unsupported"
             Expect.exists windowResults (fun item -> item.Option = "backend" && item.Status = UnsupportedOption && item.Message.Contains "not supported") "unsupported backend preferences remain explicit diagnostics"
+        }
+
+        test "runtime backend self-reports match the backend the real launch path initializes" {
+            // #135 root cause: the self-reported backend label was minted off a different path than
+            // the real launch, so it could disagree with what actually initialized (reporting
+            // "skia"/"vulkan" while the host presents through OpenGL). This asserts every backend
+            // self-report is the SAME value the real launch path (the GL host profile) names, so the
+            // label cannot drift from reality.
+            let realLaunchBackend =
+                (Host.GlHost.liveProofHostProfile
+                    { Display = Some ":0"
+                      WaylandDisplay = None
+                      SessionType = Some "x11"
+                      Renderer = Some "Mesa"
+                      ReadbackAvailable = true
+                      PermissionGranted = true
+                      TimedOut = false })
+                    .Backend
+
+            // The capability self-report names that same backend...
+            let capability = Viewer.runtimeCapability()
+            Expect.equal capability.RendererMode realLaunchBackend "capability backend self-report matches the real launch path's backend (#135)"
+
+            // ...and so does a completed bounded run's evidence, regardless of what was requested.
+            let request =
+                { Target = FirstFrame
+                  Timeout = TimeSpan.FromSeconds 2.0
+                  Diagnostics = Viewer.defaultDiagnostics
+                  RendererMode = "vulkan"
+                  EvidencePath = None }
+
+            let model, _ = Viewer.initRun request
+            let started, _ = Viewer.updateRun (RunStarted(DateTimeOffset.UnixEpoch)) model
+            let completed, _ = Viewer.updateRun (RecordFrame { Width = 320; Height = 200 }) started
+
+            match completed.Completed with
+            | Some(Ok evidence) ->
+                Expect.equal evidence.RendererMode realLaunchBackend "bounded-run evidence backend self-report matches the real launch path's backend (#135)"
+            | other -> failtestf "expected bounded-run evidence, got %A" other
         }
 
         test "bounded run init and update expose pure lifecycle effects" {
@@ -278,7 +317,11 @@ let tests =
                 Expect.equal evidence.FramesRendered 1 "first-frame target captures one frame"
                 Expect.isGreaterThan evidence.Elapsed TimeSpan.Zero "elapsed time is positive"
                 Expect.equal evidence.InitialOutputSize { Width = 320; Height = 200 } "output size is captured"
-                Expect.equal evidence.RendererMode "vulkan" "renderer mode is preserved"
+                // The request above asked for a bogus "vulkan" mode, but a completed bounded run
+                // rendered through the live OpenGL host — the evidence must name the backend that
+                // actually initialized, NOT echo the caller's requested label (#135).
+                Expect.equal evidence.RendererMode Host.GlHost.backendLabel "evidence names the real backend, not the requested renderer mode (#135)"
+                Expect.notEqual evidence.RendererMode request.RendererMode "a bogus requested renderer mode does not leak into the self-reported backend (#135)"
                 Expect.equal evidence.LastDiagnosticSummary (Some "frame 1 presented") "last diagnostic summary is preserved"
                 Expect.equal evidence.EvidencePath request.EvidencePath "evidence path is preserved"
             | other -> failtestf "expected first-frame evidence, got %A" other
@@ -1017,7 +1060,7 @@ let tests =
 
             Expect.isTrue capability.BoundedSmoke "bounded smoke remains available as explicit evidence helper"
             Expect.isTrue capability.KeyboardInput "keyboard input capability is reported"
-            Expect.equal capability.RendererMode "skia" "renderer mode is reported independently from host support"
+            Expect.equal capability.RendererMode Host.GlHost.backendLabel "renderer mode names the actual backend independently from host support (#135)"
             Expect.isEmpty capability.MissingPackageCapabilities "current package exposes the persistent contract and has no package-capability gap"
 
             if capability.PersistentWindow then

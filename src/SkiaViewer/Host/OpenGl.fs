@@ -226,6 +226,13 @@ module GlStartup =
         firstRelease @ secondRelease
 
 module GlHost =
+    /// The single source of truth for the graphics backend this viewer host actually initializes.
+    /// The live window is always created with `ContextAPI.OpenGL` (see `createWindow`) and Skia
+    /// wraps it through `GRContext.CreateGl` (see `createSkiaContext`); Vulkan/software preferences
+    /// are rejected (feature 119). Every runtime self-report that NAMES the backend derives its
+    /// label from here, so a self-report can never drift from what really initialized (#135).
+    let backendLabel = "OpenGL"
+
     type ScissorRect =
         { X: int
           Y: int
@@ -660,7 +667,7 @@ module GlHost =
             |> fun value -> value.ToLowerInvariant()
 
         { ProfileId = $"feature153-{environmentToken}-{readiness}"
-          Backend = "OpenGL"
+          Backend = backendLabel
           Renderer = renderer
           PresentMode = ViewerPresentMode.DirectToSwapchain
           FramebufferSize = { Width = 640; Height = 480 }

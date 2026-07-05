@@ -91,6 +91,12 @@ module GlStartup =
 
 /// The OpenGL/Skia presentation host body (internal helpers hidden; only `run` is reachable).
 module GlHost =
+    /// The single source of truth for the graphics backend this viewer host actually initializes
+    /// (always `ContextAPI.OpenGL` + Skia `GRContext.CreateGl`; Vulkan/software are rejected,
+    /// feature 119). Runtime self-reports name the backend from here so a label can never drift
+    /// from what really initialized (#135).
+    val backendLabel: string
+
     /// Feature 147: integer framebuffer scissor rectangle used by the proof and partial-redraw
     /// decision helpers. Coordinates are clamped to the framebuffer before use.
     type ScissorRect =
