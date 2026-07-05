@@ -71,7 +71,7 @@ seed it as the consumer path.
 
 ## Capability boundary — the default host is keyboard-only
 
-Know this **before** you design a control scheme (feature 139). The game family's governed
+Know this **before** you design a control scheme. The game family's governed
 default persistent host is **`Viewer.runApp`** over **`GeneratedAppHost`**, and its **only**
 input seam is `MapKey: ViewerKey -> bool -> 'msg option` — **keyboard only**. `ViewerKey`
 enumerates keyboard keys (`ArrowLeft`/…/`Letter`/`Digit`/…) and has **no mouse or pointer

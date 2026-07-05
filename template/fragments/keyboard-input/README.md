@@ -35,4 +35,4 @@ A mouse-aimed control scheme cannot be wired through `MapKey`. Reading the mouse
 pointer-aware interactive host — `InteractiveAppHost` via `Controls.Elmish.runInteractiveApp`, which
 adds a `MapPointer: ViewerPointerInput -> Size -> 'model -> 'msg list` seam — a durable,
 governance-scanned host-wiring change in `Program.fs`, not an edit at the input-mapping site. Decide
-your control scheme with this boundary in mind (feature 139).
+your control scheme with this boundary in mind.
