@@ -307,8 +307,16 @@ let governanceTests =
             Expect.isFalse (defaultBranch.Contains("--scene-evidence")) "scene evidence flag stays out of normal launch diagnostics"
         }
 
-        test "generated window diagnostics command reports failure classes and native facts before app debugging" {
+        // #136 (child of epic #134): the window-diagnostics probe reported a fabricated
+        // status=failed / visible=observed:false window failure REGARDLESS of the real environment,
+        // telling the reporter a live window was impossible while `Viewer.runApp` actually launched a
+        // visible one. This scan previously LOCKED IN that bug by asserting the source contained the
+        // fabricated `observed:*` window facts; it now asserts the truthful, single-source-of-truth
+        // shape — the probe derives its verdict from the same gate the real launch consults and never
+        // fabricates an observed window failure. (Mirrors #135's flip of its bug-locking assertions.)
+        test "generated window diagnostics command derives its verdict from the real launch gate, not fabricated failures" {
             let source = productSources [ "Program.fs"; "EvidenceCommands.fs" ]
+            let evidence = productSource "EvidenceCommands.fs"
             let program = productSource "Program.fs"
             let defaultBranch = program.Substring(program.LastIndexOf("| None ->", StringComparison.Ordinal))
 
@@ -317,15 +325,23 @@ let governanceTests =
             Expect.stringContains source "diagnostic-class=window-visibility" "diagnostics include window visibility class"
             Expect.stringContains source "diagnostic-class=app-lifecycle" "diagnostics include app lifecycle class"
             Expect.stringContains source "diagnostic-class=product-defect" "diagnostics include product defect class"
-            Expect.stringContains source "native-handle=observed:true" "diagnostics include native handle facts"
-            Expect.stringContains source "visible=observed:false" "diagnostics include visible observed-false facts"
-            Expect.stringContains source "focusable=observed:false" "diagnostics include focusable facts"
-            Expect.stringContains source "minimized=observed:false" "diagnostics include minimized facts"
-            Expect.stringContains source "maximized=observed:false" "diagnostics include maximized facts"
-            Expect.stringContains source "client-size=0x0" "diagnostics include zero-sized client facts"
-            Expect.stringContains source "renderable-surface=observed:false" "diagnostics include renderable-surface facts"
-            Expect.stringContains source "input-devices=unavailable" "diagnostics include input-device availability facts"
+            Expect.stringContains source "native-handle=" "diagnostics still enumerate the native-handle fact"
+            Expect.stringContains source "renderable-surface=" "diagnostics still enumerate the renderable-surface fact"
+            Expect.stringContains source "input-devices=" "diagnostics still enumerate the input-device fact"
             Expect.stringContains source "fallback-is-full-desktop-session=" "diagnostics disclose fallback session status"
+
+            // Single source of truth: the probe reads the same runtime gate the real launch consults.
+            Expect.stringContains evidence "Viewer.runtimeCapability()" "window diagnostics derive their verdict from the same gate the real launch consults"
+            Expect.stringContains evidence "Viewer.desktopSessionDiagnostic()" "window diagnostics reflect the real desktop-session determination"
+            Expect.stringContains evidence "persistent-window-supported=" "window diagnostics report the host's live-window capability from that gate"
+
+            // The fabricated observed-failure vocabulary is gone: the probe must never claim it SAW a
+            // window failure it never opened a window to observe.
+            Expect.isFalse (evidence.Contains "visible=observed:false") "window diagnostics no longer fabricate an observed window-invisibility (#136)"
+            Expect.isFalse (evidence.Contains "taskbar-only window has no accessible visible surface") "window diagnostics no longer fabricate a taskbar-only visibility failure (#136)"
+            Expect.isFalse (evidence.Contains "app lifecycle failed after visible window diagnostics") "window diagnostics no longer fabricate an app-lifecycle failure (#136)"
+            Expect.isFalse (evidence.Contains "product requested a zero-sized or surface-less window") "window diagnostics no longer fabricate a product-defect failure (#136)"
+
             Expect.isFalse (defaultBranch.Contains("--window-diagnostics")) "normal launch does not silently switch to diagnostics mode"
         }
 

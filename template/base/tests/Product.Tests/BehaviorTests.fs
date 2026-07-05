@@ -216,6 +216,34 @@ let behaviorTests =
             Expect.isFalse (defaultBranch.Contains("--bounded-smoke")) "bounded smoke flag stays out of normal launch branch"
             Expect.isFalse (defaultBranch.Contains("self-closed-for-evidence=true")) "normal launch does not report evidence self-close"
         }
+
+        // #136 (epic #134): the --window-diagnostics probe must agree with the real launch. Its
+        // verdict is derived from the SAME gate Viewer.runApp consults (Viewer.runtimeCapability()),
+        // so the reported live-window capability equals that gate and it never fabricates an observed
+        // window failure — the self-report/reality mismatch the reporter hit.
+        test "window diagnostics verdict matches the real runtime gate (#136 / epic #134)" {
+            let dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "window-diagnostics-" + System.Guid.NewGuid().ToString("N"))
+            let path = System.IO.Path.Combine(dir, "window-diagnostics.txt")
+            let exitCode = Product.EvidenceCommands.windowDiagnostics path
+            let output = System.IO.File.ReadAllText path
+            System.IO.Directory.Delete(dir, true)
+
+            let capability = Viewer.runtimeCapability ()
+            let supportedText = if capability.PersistentWindow then "true" else "false"
+
+            Expect.equal exitCode 0 "window diagnostics command succeeds"
+            Expect.stringContains output ("persistent-window-supported=" + supportedText) "probe reports the real runtime-capability gate verbatim, not a fabricated verdict"
+            Expect.stringContains output "diagnostic-class=window-visibility" "probe still enumerates the window-visibility class"
+
+            Expect.isFalse (output.Contains "visible=observed:false") "probe never fabricates an observed window-invisibility"
+            Expect.isFalse (output.Contains "status=failed") "probe never reports a failed status it did not observe"
+            Expect.isFalse (output.Contains "taskbar-only" && output.Contains "status=ok") "taskbar-only is never reported ok"
+
+            if capability.PersistentWindow then
+                Expect.isFalse (output.Contains "status=unsupported") "a window-capable host is never told a live window is impossible"
+            else
+                Expect.stringContains output "status=unsupported" "an unsupported host is reported unsupported (matching the real launch), not failed"
+        }
     ]
 //#else
 open FS.GG.UI.Controls
@@ -465,6 +493,34 @@ let behaviorTests =
             Expect.isFalse (defaultBranch.Contains("--launch-evidence")) "launch evidence flag stays out of normal launch branch"
             Expect.isFalse (defaultBranch.Contains("--bounded-smoke")) "bounded smoke flag stays out of normal launch branch"
             Expect.isFalse (defaultBranch.Contains("self-closed-for-evidence=true")) "normal launch does not report evidence self-close"
+        }
+
+        // #136 (epic #134): the --window-diagnostics probe must agree with the real launch. Its
+        // verdict is derived from the SAME gate ControlsElmish.runInteractiveApp/Viewer.runApp consult
+        // (Viewer.runtimeCapability()), so the reported live-window capability equals that gate and it
+        // never fabricates an observed window failure — the self-report/reality mismatch the reporter hit.
+        test "window diagnostics verdict matches the real runtime gate (#136 / epic #134)" {
+            let dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "window-diagnostics-" + System.Guid.NewGuid().ToString("N"))
+            let path = System.IO.Path.Combine(dir, "window-diagnostics.txt")
+            let exitCode = Product.EvidenceCommands.windowDiagnostics path
+            let output = System.IO.File.ReadAllText path
+            System.IO.Directory.Delete(dir, true)
+
+            let capability = Viewer.runtimeCapability ()
+            let supportedText = if capability.PersistentWindow then "true" else "false"
+
+            Expect.equal exitCode 0 "window diagnostics command succeeds"
+            Expect.stringContains output ("persistent-window-supported=" + supportedText) "probe reports the real runtime-capability gate verbatim, not a fabricated verdict"
+            Expect.stringContains output "diagnostic-class=window-visibility" "probe still enumerates the window-visibility class"
+
+            Expect.isFalse (output.Contains "visible=observed:false") "probe never fabricates an observed window-invisibility"
+            Expect.isFalse (output.Contains "status=failed") "probe never reports a failed status it did not observe"
+            Expect.isFalse (output.Contains "taskbar-only" && output.Contains "status=ok") "taskbar-only is never reported ok"
+
+            if capability.PersistentWindow then
+                Expect.isFalse (output.Contains "status=unsupported") "a window-capable host is never told a live window is impossible"
+            else
+                Expect.stringContains output "status=unsupported" "an unsupported host is reported unsupported (matching the real launch), not failed"
         }
     ]
 //#endif

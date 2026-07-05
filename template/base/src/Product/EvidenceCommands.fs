@@ -644,13 +644,53 @@ let sceneEvidence evidencePath =
         1
 
 let windowDiagnostics (evidencePath: string) =
+    // #135/#136 — single source of truth. Derive this probe's verdict from the SAME gate the real
+    // `Viewer.runApp` launch consults (`Viewer.runtimeCapability()` / `Viewer.desktopSessionDiagnostic()`),
+    // not from a hardcoded failure list. A headless evidence run opens NO live visible window, so the
+    // probe reports the host's live-window CAPABILITY (`persistent-window-supported`, straight from that
+    // gate) and marks the live-window classes as not observed here — it never fabricates an `observed:*`
+    // window failure it did not see, and never implies "a live window is impossible" on a host that
+    // actually supports one (the self-report/reality mismatch #136 fixes).
     let desktop = Viewer.desktopSessionDiagnostic()
+    let capability = Viewer.runtimeCapability()
+    let windowSupported = capability.PersistentWindow
+    let supportedText = if windowSupported then "true" else "false"
+
+    let unsupportedReasons =
+        match capability.UnsupportedHostReasons with
+        | [] -> "none"
+        | reasons -> String.Join("; ", reasons)
+
+    // The interactive live-window path is available exactly when the shared gate says so, so the
+    // environment-session line reports the real desktop-session verdict rather than a fixed status.
+    let environmentStatus =
+        if desktop.DiagnosticClass = "unsupported-host" then "unsupported" else "ok"
+
+    // The three live-window classes cannot be OBSERVED by a headless probe (no visible window is
+    // created here). On a host that supports the live window they are `degraded` (a check this probe
+    // does not exercise — NOT a failure it witnessed); on a host that cannot open one they are
+    // `unsupported`, carrying the real host reason. Neither path asserts an observed window failure.
+    let liveClassStatus = if windowSupported then "degraded" else "unsupported"
+
+    // No live window opened, so every window fact is not-observed here — never a fabricated `observed:*`.
+    let notObserved =
+        "native-handle=unsupported visible=unsupported focusable=unsupported focused=unsupported minimized=unsupported maximized=unsupported client-size=unavailable renderable-surface=unsupported input-devices=unsupported"
+
+    let liveClassMessage (className: string) =
+        if windowSupported then
+            $"{className} not exercised by headless window-diagnostics; interactive live-window path is supported on this host (persistent-window-supported=true) — this probe opens no live window and asserts no failure"
+        else
+            $"{className} unobservable: {unsupportedReasons}"
+
+    let visibilityMessage = liveClassMessage "window-visibility"
+    let lifecycleMessage = liveClassMessage "app-lifecycle"
+    let productDefectMessage = liveClassMessage "product-defect"
 
     let lines =
-        [ $"status=unsupported mode=interactive-window command=--window-diagnostics diagnostic-class=environment-session native-handle=unsupported visible=unsupported focusable=unsupported focused=unsupported minimized=unsupported maximized=unsupported client-size=unavailable renderable-surface=unsupported input-devices=unsupported fallback-is-full-desktop-session={desktop.FallbackIsFullDesktopSession} message={desktop.Message}"
-          "status=failed mode=interactive-window command=--window-diagnostics diagnostic-class=window-visibility native-handle=observed:true visible=observed:false focusable=observed:false focused=unsupported minimized=observed:false maximized=observed:false client-size=640x480 renderable-surface=observed:true input-devices=observed:false message=taskbar-only window has no accessible visible surface"
-          "status=failed mode=interactive-window command=--window-diagnostics diagnostic-class=app-lifecycle native-handle=observed:true visible=observed:true focusable=observed:true focused=observed:true minimized=observed:false maximized=observed:false client-size=640x480 renderable-surface=observed:true input-devices=observed:true message=app lifecycle failed after visible window diagnostics"
-          "status=failed mode=interactive-window command=--window-diagnostics diagnostic-class=product-defect native-handle=observed:true visible=observed:true focusable=observed:true focused=unsupported minimized=observed:false maximized=observed:false client-size=0x0 renderable-surface=observed:false input-devices=unavailable message=product requested a zero-sized or surface-less window" ]
+        [ $"status={environmentStatus} mode=interactive-window command=--window-diagnostics diagnostic-class=environment-session persistent-window-supported={supportedText} {notObserved} fallback-is-full-desktop-session={desktop.FallbackIsFullDesktopSession} message={desktop.Message}"
+          $"status={liveClassStatus} mode=interactive-window command=--window-diagnostics diagnostic-class=window-visibility persistent-window-supported={supportedText} {notObserved} message={visibilityMessage}"
+          $"status={liveClassStatus} mode=interactive-window command=--window-diagnostics diagnostic-class=app-lifecycle persistent-window-supported={supportedText} {notObserved} message={lifecycleMessage}"
+          $"status={liveClassStatus} mode=interactive-window command=--window-diagnostics diagnostic-class=product-defect persistent-window-supported={supportedText} {notObserved} message={productDefectMessage}" ]
 
     let directory = Path.GetDirectoryName evidencePath
 
