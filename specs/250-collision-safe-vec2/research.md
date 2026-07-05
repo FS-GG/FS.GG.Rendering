@@ -9,10 +9,13 @@ sibling helper features (246 collision, 247 visibility, 248 line-drawing, 249 gr
 
 ## Decision 1 — Placement: product-owned template helper, not a new framework public type
 
-**Decision**: Ship the collision-safe vector as a **product-owned, adaptable template file**
-`template/base/src/Product/Vec2.fs` (module `AppRoot.Geometry`), gated to `game`/`sample-pack`, `Exists`-guarded, and
-compiled **before** `Model.fs` — identical in kind to `Collision.fs` / `Visibility.fs` / `Grids.fs` / `LineDrawing.fs`.
-Do **not** add a public `FS.GG.UI.Canvas.Vec2` type in this feature.
+**Decision**: Ship the collision-safe vector as a **product-owned, adaptable template fragment**
+`template/fragments/vec2/src/Product/Vec2.fs` (module `AppRoot.Geometry`), sourced via `.template.config/template.json`
+gated to `game`/`sample-pack`, `Exists`-guarded, and compiled **before** `Model.fs` — identical in delivery to
+`Collision.fs` / `Visibility.fs` / `Grids.fs` / `LineDrawing.fs`. (During tasking, `template/base/ → ./` was confirmed
+to be copied **wholesale/ungated**, so the fragment mechanism — not `template/base/src/` — is required for per-profile
+presence. Unlike the additive siblings, the base starter `Model.fs` depends on this fragment per FR-003; it is always
+materialized for game/sample-pack.) Do **not** add a public `FS.GG.UI.Canvas.Vec2` type in this feature.
 
 **Rationale**:
 - Issue #138 says "in the **model template**"; the value is authoring-time trap prevention at the scaffold, not a new

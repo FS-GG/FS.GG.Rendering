@@ -111,9 +111,11 @@ specs/250-collision-safe-vec2/
 ### Source Code (repository root)
 
 ```text
+template/fragments/vec2/src/Product/
+└── Vec2.fs              # NEW — product-owned `AppRoot.Geometry` (collision-safe Vec2 + interop);
+                         #        game/sample-pack FRAGMENT (template.json-gated + Exists-guarded), like Grids.fs
+
 template/base/src/Product/
-├── Vec2.fs              # NEW — product-owned `AppRoot.Geometry` (collision-safe Vec2 + interop),
-│                        #        game/sample-pack only, Exists-guarded, compiled before Model.fs
 ├── Model.fs             # EDIT (replaceable) — game branch re-expressed in Vec2; accumulator + stepSim on Tick
 ├── View.fs              # EDIT (replaceable) — read positions via Vec2 (toPoint) instead of CenterX/CenterY
 ├── LayoutEvidence.fs    # EDIT (durable, re-point) — read Ball/entity position via Vec2; tokens unchanged
@@ -131,12 +133,14 @@ template/base/.claude/skills/fs-gg-project/…   # or the model-swap guidance no
 template/base/docs/scaffold-map.md             # add Vec2.fs to the replaceable "adaptable helper you own" list
 ```
 
-**Structure Decision**: Single generated-product template tree under `template/base/src/Product/` (the concrete
-generated path is `src/<ProjectName>/**`, module `Product.*`/`AppRoot.*`). `Vec2.fs` is a new **replaceable, adaptable
-helper you own**, gated to `game`/`sample-pack` and `Exists`-guarded, occupying the same fsproj slot family as
-`Collision.fs`/`Grids.fs`. It is used by the (replaceable) starter `Model.fs`; the durable spine keeps its scanned
-tokens and compile order. Whether a parallel `template/fragments/vec2/` mirror is emitted (as siblings do) is a
-Phase-0 delivery decision. No `src/**` framework library file changes.
+**Structure Decision**: `Vec2.fs` ships as a **game/sample-pack fragment** `template/fragments/vec2/src/Product/Vec2.fs`
+(sourced via `.template.config/template.json`, gated `(profile == "game" || "sample-pack")`, `Exists`-guarded fsproj
+item before `Model.fs`) — the confirmed sibling mechanism (`Collision.fs`/`Grids.fs`), **not** `template/base/src/`
+(which is copied wholesale/ungated). The generated path is `src/<ProjectName>/Vec2.fs`. Unlike the purely-additive
+siblings, the (replaceable) base starter `Model.fs` **depends on** this fragment (FR-003); it is always materialized for
+game/sample-pack (same condition as the game branch), an intentional base→fragment dependency documented in
+`scaffold-map.md`. The durable spine keeps its scanned tokens and compile order; no `src/**` framework library file
+changes; #138 adds no skill/manifest entry.
 
 ## Complexity Tracking
 
