@@ -18,6 +18,8 @@
     <Compile Include="CanvasDemoTests.fs" />
     <!-- Feature 246 (US1): compile the raw import-and-adapt collision helper source (literal
          `namespace Product`, the default sourceName) so its logic is tested framework-side. -->
+    <Compile Include="..\..\template\fragments\vec2\src\Product\Vec2.fs" />
+    <Compile Include="Feature250Vec2Tests.fs" />
     <Compile Include="..\..\template\fragments\collision\src\Product\Collision.fs" />
     <Compile Include="CollisionHelperTests.fs" />
     <!-- Feature 247 (US1): compile the raw import-and-adapt visibility helper source (literal

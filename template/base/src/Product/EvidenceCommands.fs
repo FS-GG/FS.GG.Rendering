@@ -234,9 +234,15 @@ let layoutEvidenceCommand evidencePath width height =
 let mapKey key isDown =
     Some(ViewerInput(key, isDown))
 
-let tick elapsed =
+let tick (elapsed: TimeSpan) =
     if elapsed >= TimeSpan.FromMilliseconds 16.0 then
+//#if (profile == "game")
+        // Feature 250: carry the host's REAL elapsed time into the game's fixed-step accumulator
+        // (Model.update drains whole sim steps from it), instead of discarding it. Host wiring only.
+        Some(Tick elapsed.TotalSeconds)
+//#else
         Some Tick
+//#endif
     else
         None
 

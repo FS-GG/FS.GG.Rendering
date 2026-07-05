@@ -7,6 +7,12 @@
 
   <ItemGroup>
     <!--#if (profile == "game" || profile == "sample-pack") -->
+    <!-- Feature 250: the collision-safe Vec2 helper (fs-gg-model-swap / fs-gg-game-core skills).
+         Consumer-owned, adaptable source — compiled before Model.fs so the starter (and your own model)
+         can express entity positions/velocities as Geometry.Vec2 without reusing Scene.Point/Rect field
+         labels. The Exists guard keeps the build green if you delete the file AFTER swapping Model.fs off
+         it (Product.fsproj stays "durable"). -->
+    <Compile Include="Vec2.fs" Condition="Exists('Vec2.fs')" />
     <!-- Feature 246: the import-and-adapt collision helper (fs-gg-collision skill). Consumer-owned,
          adaptable source — compiled before Model.fs so your update can call Collision.step. The
          Exists guard keeps the build green if you delete the file (Product.fsproj stays "durable"). -->

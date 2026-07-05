@@ -32,18 +32,22 @@ let update msg model =
 //   (GovernanceTests.fs, Program.fs, WindowOptions.fs) never calls update/view, so it keeps
 //   passing across the swap — see docs/scaffold-map.md.
 //
-//   Record-label note (fs-gg-scene pitfall): Scene literals use bare X/Y/Width/Height, so the
-//   game model qualifies its own fields (CenterX/CenterY/PlayfieldWidth/…) to avoid collision.
+//   Collision-safe positions (feature 250, fs-gg-scene pitfall): a game record that names its
+//   fields X/Y/Width/Height collides with FS.GG.UI.Scene.Point/Rect — because the durable
+//   LayoutEvidence.fs opens BOTH Scene and this model, its bare `{ X=…; Y=…; Width=…; Height=… }`
+//   Rect literals then mis-resolve to YOUR record (a wall of errors in a file you must not touch,
+//   surfacing only after a whole model is written). So DON'T put X/Y/Width/Height labels on a game
+//   record while Scene is open. Use the collision-safe `Geometry.Vec2` (Vx/Vy) for positions and
+//   velocities, and `Geometry.toPoint`/`toRect` to cross into the scene. See Vec2.fs and the
+//   `fs-gg-model-swap` / `fs-gg-game-core` skills.
 // ============================================================================================
 open FS.GG.UI.KeyboardInput
+open FS.GG.UI.Canvas // FixedStep.drain — the fixed-timestep accumulator drain
 open FS.GG.UI.Controls.Elmish
 open FS.GG.UI.Controls.Elmish.Authoring // Cmd.none / Sub.none (Elmish-convention no-ops for `[]`)
+open AppRoot.Geometry // Vec2 + vec2/add/scale/clamp/toPoint/toRect (collision-safe positions)
 
-type Ball =
-    { CenterX: float
-      CenterY: float
-      VelocityX: float
-      VelocityY: float }
+type Ball = { Pos: Vec2; Velocity: Vec2 }
 
 type PaddleSide =
     | LeftSide
@@ -60,13 +64,13 @@ type Model =
       PaddleHeight: float
       LeftScore: int
       RightScore: int
-      PlayfieldWidth: float
-      PlayfieldHeight: float
+      Playfield: Vec2 // width = Playfield.Vx, height = Playfield.Vy (no Width/Height labels)
+      SimAccumulator: float // seconds carried between Ticks for the fixed-step drain
       TickCount: int
       LastInput: ViewerKey option }
 
 type Msg =
-    | Tick
+    | Tick of dtSeconds: float
     | MovePaddle of PaddleSide * PaddleDirection
     | ViewerInput of ViewerKey * isDown: bool
     | NoOp
@@ -90,11 +94,14 @@ let leftPaddleX = 16.0
 let rightPaddleX = playfieldWidth - 24.0
 let paddleThickness = 8.0
 
+// One fixed simulation step is 1/60 s. `update` on `Tick dt` accumulates the host's real elapsed
+// time and drains WHOLE steps out of it (FixedStep.drain), so the sim advances deterministically
+// regardless of the host frame rate — the classic fixed-timestep accumulator.
+let simInterval = 1.0 / 60.0
+
 let private servedBall =
-    { CenterX = playfieldWidth / 2.0
-      CenterY = playfieldHeight / 2.0
-      VelocityX = 5.0
-      VelocityY = 3.0 }
+    { Pos = vec2 (playfieldWidth / 2.0) (playfieldHeight / 2.0)
+      Velocity = vec2 5.0 3.0 }
 
 let initialModel =
     { Ball = servedBall
@@ -103,15 +110,15 @@ let initialModel =
       PaddleHeight = paddleHeight
       LeftScore = 0
       RightScore = 0
-      PlayfieldWidth = playfieldWidth
-      PlayfieldHeight = playfieldHeight
+      Playfield = vec2 playfieldWidth playfieldHeight
+      SimAccumulator = 0.0
       TickCount = 0
       LastInput = None }
 
 let keyName key = ViewerKeyboard.toKeyId key
 
 let private clampPaddle model y =
-    y |> max 0.0 |> min (model.PlayfieldHeight - model.PaddleHeight)
+    y |> max 0.0 |> min (model.Playfield.Vy - model.PaddleHeight)
 
 let movePaddle side direction model =
     let delta =
@@ -133,43 +140,37 @@ let private paddleForKey key =
     | ArrowDown -> Some(RightSide, PaddleDown)
     | _ -> None
 
-// Pure step: integrate the ball, bounce off the top/bottom walls and the paddles, score and
-// re-serve on a miss. The ball always stays inside the playfield after update.
-let private stepBall model =
+// Pure fixed step: integrate the ball by one step, bounce off the top/bottom walls and the paddles,
+// score and re-serve on a miss. Positions/velocities are `Vec2`, advanced with `add`/`scale`; the
+// ball always stays inside the playfield after the step. This is your `stepSim` — edit it freely.
+let stepSim model =
     let ball = model.Ball
-    let nextX = ball.CenterX + ball.VelocityX
-    let nextY = ball.CenterY + ball.VelocityY
+    let next = add ball.Pos ball.Velocity // one unit step (dt folded into velocity units)
 
     let velocityY, clampedY =
-        if nextY < ballRadius then -ball.VelocityY, ballRadius
-        elif nextY > model.PlayfieldHeight - ballRadius then -ball.VelocityY, model.PlayfieldHeight - ballRadius
-        else ball.VelocityY, nextY
+        if next.Vy < ballRadius then -ball.Velocity.Vy, ballRadius
+        elif next.Vy > model.Playfield.Vy - ballRadius then -ball.Velocity.Vy, model.Playfield.Vy - ballRadius
+        else ball.Velocity.Vy, next.Vy
 
     let withinLeftPaddle = clampedY >= model.LeftPaddleY && clampedY <= model.LeftPaddleY + model.PaddleHeight
     let withinRightPaddle = clampedY >= model.RightPaddleY && clampedY <= model.RightPaddleY + model.PaddleHeight
 
-    if nextX < leftPaddleX + paddleThickness + ballRadius then
+    if next.Vx < leftPaddleX + paddleThickness + ballRadius then
         if withinLeftPaddle then
             { model with
                 Ball =
-                    { ball with
-                        CenterX = leftPaddleX + paddleThickness + ballRadius
-                        CenterY = clampedY
-                        VelocityX = abs ball.VelocityX
-                        VelocityY = velocityY } }
+                    { Pos = vec2 (leftPaddleX + paddleThickness + ballRadius) clampedY
+                      Velocity = vec2 (abs ball.Velocity.Vx) velocityY } }
         else
             { model with
                 RightScore = model.RightScore + 1
                 Ball = servedBall }
-    elif nextX > rightPaddleX - ballRadius then
+    elif next.Vx > rightPaddleX - ballRadius then
         if withinRightPaddle then
             { model with
                 Ball =
-                    { ball with
-                        CenterX = rightPaddleX - ballRadius
-                        CenterY = clampedY
-                        VelocityX = -(abs ball.VelocityX)
-                        VelocityY = velocityY } }
+                    { Pos = vec2 (rightPaddleX - ballRadius) clampedY
+                      Velocity = vec2 (-(abs ball.Velocity.Vx)) velocityY } }
         else
             { model with
                 LeftScore = model.LeftScore + 1
@@ -178,15 +179,32 @@ let private stepBall model =
         { model with
             Ball =
                 { ball with
-                    CenterX = nextX
-                    CenterY = clampedY
-                    VelocityY = velocityY } }
+                    Pos = vec2 next.Vx clampedY
+                    Velocity = vec2 ball.Velocity.Vx velocityY } }
+
+// Fixed-timestep advance: fold the host's real elapsed `dt` into the carried accumulator, drain the
+// whole number of `simInterval` steps out of it, and run `stepSim` that many times. `FixedStep.drain`
+// is a pure FS.GG.UI.Canvas primitive (no wall-clock read), so a scripted `dt` sequence replays
+// byte-identically. This is the accumulator + stepSim pattern — the shape most games want on Tick.
+let private advanceSim dtSeconds model =
+    let struct (steps, accumulator) = FixedStep.drain simInterval dtSeconds model.SimAccumulator
+
+    let stepped =
+        // mutable: a single unaliased accumulator over a fixed step count is plainer than a fold here.
+        let mutable m = model
+        for _ in 1..steps do
+            m <- stepSim m
+        m
+
+    { stepped with
+        SimAccumulator = accumulator
+        TickCount = model.TickCount + 1 }
 
 let init () : Model * AdapterCommand<Msg> = initialModel, Cmd.none
 
 let update msg model : Model * AdapterCommand<Msg> =
     match msg with
-    | Tick -> { stepBall model with TickCount = model.TickCount + 1 }, Cmd.none
+    | Tick dtSeconds -> advanceSim dtSeconds model, Cmd.none
     | MovePaddle(side, direction) -> movePaddle side direction model, Cmd.none
     | ViewerInput(key, isDown) ->
         let moved =

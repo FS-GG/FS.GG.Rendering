@@ -23,14 +23,17 @@ let private accent: Color = { Red = 120uy; Green = 200uy; Blue = 255uy; Alpha = 
 let private playfieldFill: Color = { Red = 18uy; Green = 22uy; Blue = 30uy; Alpha = 255uy }
 
 let view (model: Model) : SceneNode =
-    let ball = model.Ball
+    // Feature 250: positions are Geometry.Vec2 — read Vx/Vy (playfield extent, ball centre).
+    let ball = model.Ball.Pos
+    let w = model.Playfield.Vx
+    let h = model.Playfield.Vy
 
     Group
-        [ { Nodes = [ Rectangle((0.0, 0.0, model.PlayfieldWidth, model.PlayfieldHeight), playfieldFill) ] }
-          { Nodes = [ Rectangle((ball.CenterX - 6.0, ball.CenterY - 6.0, 12.0, 12.0), accent) ] }
+        [ { Nodes = [ Rectangle((0.0, 0.0, w, h), playfieldFill) ] }
+          { Nodes = [ Rectangle((ball.Vx - 6.0, ball.Vy - 6.0, 12.0, 12.0), accent) ] }
           { Nodes = [ Rectangle((16.0, model.LeftPaddleY, 8.0, model.PaddleHeight), foreground) ] }
-          { Nodes = [ Rectangle((model.PlayfieldWidth - 24.0, model.RightPaddleY, 8.0, model.PaddleHeight), foreground) ] }
-          { Nodes = [ Text((model.PlayfieldWidth / 2.0 - 28.0, 28.0), $"{model.LeftScore} : {model.RightScore}", foreground) ] } ]
+          { Nodes = [ Rectangle((w - 24.0, model.RightPaddleY, 8.0, model.PaddleHeight), foreground) ] }
+          { Nodes = [ Text((w / 2.0 - 28.0, 28.0), $"{model.LeftScore} : {model.RightScore}", foreground) ] } ]
 
 //#else
 open FS.GG.UI.Controls

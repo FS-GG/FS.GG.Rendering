@@ -52,6 +52,21 @@ let advance (dt: float) (accumulator: float) (world: 'w) (stepWorld: 'w -> 'w) :
     w, carry
 ```
 
+The scaffolded `game` starter ships exactly this shape: `Model.SimAccumulator` carries the remainder,
+`update` on `Tick dtSeconds` calls `FixedStep.drain simInterval dtSeconds` and runs `stepSim` that many
+times, and the host feeds the real elapsed time in (`EvidenceCommands.tick`). Edit `stepSim` to be your
+game step.
+
+## Collision-safe positions (`Geometry.Vec2`)
+
+Store entity positions/velocities in the scaffold's **collision-safe** `Geometry.Vec2` (`src/<ProductDir>/Vec2.fs`),
+**not** a record you name with `X`/`Y`/`Width`/`Height`. Those labels collide with `FS.GG.UI.Scene.Point`/`Rect`,
+and because the durable `LayoutEvidence.fs` opens both `Scene` and your model, the collision surfaces as a wall of
+errors in a file you must not touch — only after a whole model is written (see [[fs-gg-model-swap]]). `Vec2` uses
+`Vx`/`Vy` (zero overlap) and crosses into the scene with `toPoint`/`toRect` (express a size via `toRect`, never
+`Width`/`Height` labels). This is also the cheapest time to plan your *own* records' labels so two of them don't
+share one (the consumer-vs-consumer inference footgun below).
+
 ## RNG determinism
 
 `Rng` is a value type (`{ State: uint64 }`) — a SplitMix64 generator you **store in your MVU `Model`**

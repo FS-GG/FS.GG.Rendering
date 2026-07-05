@@ -78,6 +78,10 @@ let behaviorTests =
 //#if (profile == "game")
 open FS.GG.UI.KeyboardInput
 open FS.GG.UI.SkiaViewer
+open AppRoot.Geometry // Vec2 (Vx/Vy) — the collision-safe positions the starter uses (feature 250)
+
+// One fixed sim step's worth of elapsed time — enough for `update (Tick oneStep)` to drain a step.
+let private oneStep = 1.0 / 60.0
 
 // GAME family (feature 220): replaceable scaffold-behaviour tests. These drive the Pong
 // skeleton's update/view/tick/host directly, so when you swap in your own game you rewrite THIS
@@ -100,7 +104,7 @@ let behaviorTests =
 
         test "game tick advances the ball and the tick count (the default is a live, moving product)" {
             let before = AppRoot.Program.initialModel
-            let after, effects = AppRoot.Program.update Tick before
+            let after, effects = AppRoot.Program.update (Tick oneStep) before
 
             Expect.notEqual after.Ball before.Ball "a tick integrates the ball position"
             Expect.equal after.TickCount (before.TickCount + 1) "a tick advances the tick count"
@@ -132,13 +136,13 @@ let behaviorTests =
 
             let missed =
                 { model0 with
-                    Ball = { model0.Ball with CenterX = 18.0; CenterY = 10.0; VelocityX = -8.0 }
+                    Ball = { Pos = vec2 18.0 10.0; Velocity = vec2 -8.0 model0.Ball.Velocity.Vy }
                     LeftPaddleY = 300.0 }
 
-            let scored, _ = AppRoot.Program.update Tick missed
+            let scored, _ = AppRoot.Program.update (Tick oneStep) missed
 
             Expect.equal scored.RightScore 1 "the right side scores when the ball passes the left edge"
-            Expect.equal scored.Ball.CenterX (model0.PlayfieldWidth / 2.0) "the ball re-serves to the centre"
+            Expect.equal scored.Ball.Pos.Vx (model0.Playfield.Vx / 2.0) "the ball re-serves to the centre"
         }
 
         test "generated game host exposes viewer input and tick mapping and advances the game" {
@@ -148,14 +152,14 @@ let behaviorTests =
             Expect.isSome (host.MapKey ArrowUp true) "generatedHost maps viewer keys to messages"
             Expect.isSome (host.Tick (TimeSpan.FromMilliseconds 16.0)) "generatedHost ticks at >=16ms"
 
-            let updated, effects = host.Update Tick model0
+            let updated, effects = host.Update (Tick oneStep) model0
             Expect.notEqual updated model0 "generatedHost.Update advances the game"
             Expect.isNonEmpty effects "generatedHost returns a render effect to SkiaViewer"
         }
 
         test "generated game host boundary keeps app commands separate from viewer effects" {
             let model0 = AppRoot.Program.initialModel
-            let hosted, appCommands, viewerEffects = AppRoot.Program.interpretAtHostBoundary Tick model0
+            let hosted, appCommands, viewerEffects = AppRoot.Program.interpretAtHostBoundary (Tick oneStep) model0
 
             Expect.notEqual hosted model0 "host boundary applies the pure update result"
             Expect.isEmpty appCommands "the game tick produces no app command"
@@ -176,7 +180,7 @@ let behaviorTests =
         test "game active item (the ball) stays inside the playfield region" {
             let size: FS.GG.UI.Scene.Size = { Width = 640; Height = 480 }
             let model0 = AppRoot.Program.initialModel
-            let ticked = List.replicate 30 Tick |> List.fold (fun m msg -> fst (AppRoot.Program.update msg m)) model0
+            let ticked = List.replicate 30 (Tick oneStep) |> List.fold (fun m msg -> fst (AppRoot.Program.update msg m)) model0
 
             let region = AppRoot.Program.gameplayRegionForSize size
             let bounds = AppRoot.Program.activeGameplayBoundsForSize size ticked

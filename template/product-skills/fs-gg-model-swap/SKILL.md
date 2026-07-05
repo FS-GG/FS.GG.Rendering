@@ -47,6 +47,13 @@ From `docs/scaffold-map.md`, three classes — you only edit the last two:
 
 - **Replaceable — rewrite freely** (they define/return the starter model):
   - `src/<ProductDir>/Model.fs` — the starter `Model`/`Msg`/`update`. Your state machine goes here.
+    Entity positions/velocities are the collision-safe `Geometry.Vec2`; `stepSim` advances them via the
+    `FixedStep.drain` accumulator on `Tick` (see [[fs-gg-game-core]]).
+  - `src/<ProductDir>/Vec2.fs` *(game / sample-pack)* — the collision-safe vector helper (`Geometry.Vec2`,
+    `Vx`/`Vy`, `toPoint`/`toRect`). **Use it for your own positions/sizes so you never reuse `Scene`'s
+    `X`/`Y`/`Width`/`Height` labels** (see the record-label pitfall below). Rename/extend it freely; but
+    because the shipped starter `Model.fs` depends on it, delete it only together with (or after) swapping
+    the starter model off it — then its `Exists`-guarded compile item keeps the build green.
   - `src/<ProductDir>/View.fs` — the starter `view : Model -> SceneNode`. Your rendering goes here.
   - `src/<ProductDir>/Collision.fs` *(game / sample-pack)* — the adaptable collision helper
     (see [[fs-gg-collision]]). Edit the response rule, add layers, or delete it entirely: its compile
@@ -101,14 +108,19 @@ re-point files untouched too — then the swap is just `Model.fs` + `View.fs` + 
   and even a code comment mentioning `View.fs`/`Model.fs` are **safe**. You do not need to rename
   additive files or scrub comments to avoid the six substrings. (This closed an earlier
   bare-`IndexOf` footgun that flagged `BulwarkView.fs` as "view before model" and broke the build.)
-- **Framework-vs-consumer record-label collision.** `Scene` exposes
-  `Point = { X: float; Y: float }` and `Rect = { X; Y; Width; Height }`. If your model also
-  declares a `{ X; Y }` record, a bare `{ X = …; Y = … }` binds to whichever record is in scope
-  **last**, producing a misleading error cascade at unrelated call sites. Annotate or qualify at
-  the boundary and convert into the framework type:
+- **Framework-vs-consumer record-label collision — use the shipped `Geometry.Vec2`.** `Scene`
+  exposes `Point = { X: float; Y: float }` and `Rect = { X; Y; Width; Height }`. The durable
+  `LayoutEvidence.fs` opens **both** `Scene` and your model and builds `Rect` with bare labels, so if
+  your model also declares a record with `X`/`Y`/`Width`/`Height`, those bare `{ X = …; Y = …; Width = …;
+  Height = … }` literals mis-resolve to **your** record — a wall of errors in a durable file you were told
+  not to touch, surfacing only after a whole model is written. The scaffold ships the fix: the
+  collision-safe `Geometry.Vec2` (`Vx`/`Vy` — zero overlap with `Point`/`Rect`) in `src/<ProductDir>/Vec2.fs`.
+  Build your positions on it and cross into the scene with its `toPoint`/`toRect` (express a size via
+  `toRect`, never `Width`/`Height` labels on your record):
   ```fsharp
-  type Vec2 = { X: float; Y: float }                     // your geometry
-  let toPoint (v: Vec2) : Point = { X = v.X; Y = v.Y }   // explicit conversion
+  open Geometry                                          // Vec2 = { Vx: float; Vy: float } (collision-safe)
+  type Enemy = { Pos: Vec2; Velocity: Vec2 }             // NO X/Y/Width/Height labels on your record
+  let bounds (e: Enemy) : Rect = toRect e.Pos 24.0 24.0  // centered size, no Width/Height labels
   ```
 - **Consumer-vs-consumer record-label collision.** Distinct from the clash above: if two of
   *your own* records share a label (a `Creep` and a `Tower` both carrying `.Pos`/`.Id`/`.Hp`), a
