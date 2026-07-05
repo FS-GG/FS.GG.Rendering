@@ -24,12 +24,16 @@ let private skillBodyPath = repositoryPath "template/product-skills/fs-gg-game-c
 let private sceneFsiPath = repositoryPath "template/base/docs/api-surface/Scene/Scene.fsi"
 let private canvasRngFsiPath = repositoryPath "template/base/docs/api-surface/Canvas/Rng.fsi"
 let private canvasFixedStepFsiPath = repositoryPath "template/base/docs/api-surface/Canvas/FixedStep.fsi"
+let private canvasPathfindingFsiPath = repositoryPath "template/base/docs/api-surface/Canvas/Pathfinding.fsi"
+let private canvasSpatialGridFsiPath = repositoryPath "template/base/docs/api-surface/Canvas/SpatialGrid.fsi"
 
 /// The cited module -> the packed .fsi its members must resolve in.
 let private moduleSurface =
     [ "Geometry", sceneFsiPath
       "Rng", canvasRngFsiPath
-      "FixedStep", canvasFixedStepFsiPath ]
+      "FixedStep", canvasFixedStepFsiPath
+      "Pathfinding", canvasPathfindingFsiPath
+      "SpatialGrid", canvasSpatialGridFsiPath ]
     |> Map.ofList
 
 /// A packed .fsi declares a member `m` when it carries `val m:` or the type `type m` (for `Rng`).
@@ -51,7 +55,7 @@ let feature240GameCoreSkillTests =
               // Match `Module.member` in code position only: members are lowercase-initial F# values, and
               // the lookbehind rejects file-path / qualified contexts like `Canvas/Rng.fsi` or `X.Rng.y`.
               let cited =
-                  Regex.Matches(body, @"(?<![\w./])(Geometry|Rng|FixedStep)\.([a-z][A-Za-z0-9']*)")
+                  Regex.Matches(body, @"(?<![\w./])(Geometry|Rng|FixedStep|Pathfinding|SpatialGrid)\.([a-z][A-Za-z0-9']*)")
                   |> Seq.map (fun m -> m.Groups.[1].Value, m.Groups.[2].Value)
                   |> Seq.filter (fun (_, member') -> member' <> "fsi")
                   |> Seq.distinct
@@ -74,13 +78,13 @@ let feature240GameCoreSkillTests =
           // drop a primitive and still pass the resolve check above.
           test "SKILL.md names the key entry point of each of the four patterns" {
               let body = File.ReadAllText skillBodyPath
-              for token in [ "FixedStep.drain"; "Rng.ofSeed"; "Rng.split"; "Geometry.intersects"; "Geometry.sweptIntersects" ] do
+              for token in [ "FixedStep.drain"; "Rng.ofSeed"; "Rng.split"; "Geometry.intersects"; "Geometry.sweptIntersects"; "Pathfinding.astar"; "Pathfinding.bfs"; "SpatialGrid.build"; "SpatialGrid.queryRadius" ] do
                   Expect.stringContains body token (sprintf "SKILL.md must demonstrate %s" token)
           }
 
           // FR-012 — the bundled surface that makes the citations resolvable exists in the product tree.
           test "the packed Canvas surface is bundled and Scene carries the Geometry module (FR-012)" {
-              for path in [ canvasRngFsiPath; canvasFixedStepFsiPath ] do
+              for path in [ canvasRngFsiPath; canvasFixedStepFsiPath; canvasPathfindingFsiPath; canvasSpatialGridFsiPath ] do
                   Expect.isTrue (File.Exists path) (sprintf "packed Canvas surface missing: %s" path)
               let scene = File.ReadAllText sceneFsiPath
               Expect.stringContains scene "module Geometry =" "packed Scene.fsi must carry the refreshed Geometry module"

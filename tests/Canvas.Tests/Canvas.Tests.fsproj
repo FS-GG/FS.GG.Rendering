@@ -10,6 +10,8 @@
     <Compile Include="LoopTests.fs" />
     <Compile Include="RngTests.fs" />
     <Compile Include="FixedStepTests.fs" />
+    <Compile Include="PathfindingTests.fs" />
+    <Compile Include="SpatialGridTests.fs" />
     <Compile Include="ElementsTests.fs" />
     <Compile Include="AudioTests.fs" />
     <Compile Include="PersistenceTests.fs" />

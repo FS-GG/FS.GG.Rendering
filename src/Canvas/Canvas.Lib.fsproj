@@ -26,6 +26,10 @@
     <Compile Include="Rng.fs" />
     <Compile Include="FixedStep.fsi" />
     <Compile Include="FixedStep.fs" />
+    <Compile Include="Pathfinding.fsi" />
+    <Compile Include="Pathfinding.fs" />
+    <Compile Include="SpatialGrid.fsi" />
+    <Compile Include="SpatialGrid.fs" />
     <Compile Include="Audio.fsi" />
     <Compile Include="Audio.fs" />
     <Compile Include="Persistence.fsi" />
