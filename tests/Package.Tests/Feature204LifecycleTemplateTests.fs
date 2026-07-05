@@ -197,6 +197,7 @@ let feature204LifecycleTemplateTests =
               // Issue #113 added the docs-only fs-gg-model-swap (14th) on the (game, sample-pack) gate.
               // Feature 246 added fs-gg-collision (15th) on the same (game, sample-pack) gate.
               // Feature 247 added fs-gg-visibility (16th) on the same (game, sample-pack) gate.
+              // Feature 249 added fs-gg-grids (17th) on the same (game, sample-pack) gate.
               // manifest = exactly the 1 ungated skill-manifest row.
               // workspace shrank from Feature 230's >=30 twin matrix to the genuine
               // lifecycle-workspace sources (incl. the materialize step). product unchanged.

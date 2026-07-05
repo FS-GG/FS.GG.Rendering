@@ -19,7 +19,7 @@ Frontmatter (name + description only) and sections mirroring `fs-gg-visibility`:
 ```markdown
 ---
 name: fs-gg-grids
-description: Address the parts of a grid in a generated FS.GG.UI product — faces, edges, and vertices with one canonical coordinate each, the six adjacency conversions, and the pixel mapping, over an adaptable helper you own, reusing Cell/Point/Rect.
+description: Work with the parts of a grid in a generated FS.GG.UI product — faces (cells), edges, and vertices, their adjacency conversions and pixel mapping — over an adaptable helper you own, reusing Cell/Point/Rect.
 ---
 ```
 
