@@ -113,6 +113,9 @@ gh project item-add    $P --owner FS-GG --url https://github.com/FS-GG/<repo>/is
 gh project item-create $P --owner FS-GG --title "<draft item>" --body "<acceptance criteria>"
 # set fields (prefer the thrifty client): scripts/fsgg-coord set-field <issue> <Field> <Value>
 # raw form: gh project item-edit --id <itemId> --field-id <fid> --single-select-option-id <oid> ...
+# pick the next item to work (thrifty; do NOT use raw `gh project item-list` for this):
+scripts/fsgg-coord next  --repo .github            # the one most-startable item (Ready, else Backlog)
+scripts/fsgg-coord ready --repo .github            # all actionable items (not Done) for a repo
 ```
 
 > **Keep GraphQL cheap — route board work through `scripts/fsgg-coord`.** Projects v2 is
@@ -122,7 +125,10 @@ gh project item-create $P --owner FS-GG --title "<draft item>" --body "<acceptan
 > the project/field/option ids **once**; `set-field <issue> <Field> <Value>` resolves every id from
 > cache and auto-routes by the field's dataType (one mutation, no introspection); `item-id` resolves
 > via `issue → projectItems` (not a whole-board scan); `issues <repo> --label …` reads over REST with
-> an ETag (304s cost nothing). Watch the meters with `fsgg-coord budget` (and `FSGG_COORD_DEBUG=1`
+> an ETag (304s cost nothing); and `next`/`ready` answer "**what do I pick up next?**" by scanning the
+> board with only two fields per item (via `fieldValueByName`), so it costs ~1 point per 100 items
+> instead of the multi-point node scan raw `gh project item-list` pays — **use `next`/`ready` for
+> that, never `item-list`.** Watch the meters with `fsgg-coord budget` (and `FSGG_COORD_DEBUG=1`
 > logs each call's cost). Full cost model: `docs/coordination/graphql-budget.md`.
 
 **Manual steps (need org-admin in the UI, not the `project` scope):**
