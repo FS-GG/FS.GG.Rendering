@@ -436,6 +436,12 @@
     },
     {
       "condition": "(profile == \"game\" || profile == \"sample-pack\")",
+      "source": "template/fragments/vec2/src/",
+      "target": "src/",
+      "comment": "Feature 250: the collision-safe Vec2 helper source. Same delivery as the collision fragment below — source is the fragment `src/` root, target `src/`, so the `Product/` segment fileRename's to `src/<ProductDir>/` and NO copyOnly lets sourceName ('Product') substitution rewrite the namespace. Compiled by the Exists-guarded, profile-gated Compile item in Product.fsproj BEFORE Model.fs (delete-safe AFTER a Model.fs swap). Unlike the additive collision/grids fragments, the shipped starter Model.fs depends on this one (FR-003)."
+    },
+    {
+      "condition": "(profile == \"game\" || profile == \"sample-pack\")",
       "source": "template/fragments/collision/src/",
       "target": "src/",
       "comment": "Feature 246: the import-and-adapt collision helper source. Source is the fragment `src/` root and target is `src/` so the `Product/` path segment is source-relative and gets fileRename'd ('Product' -> productName) — landing the file in `src/<ProductDir>/` next to the project (an explicit `target: src/Product/` is NOT renamed, orphaning the file; fixed in Feature 247). NO copyOnly, so sourceName ('Product') substitution rewrites the namespace too. Compiled by the Exists-guarded, profile-gated Compile item in Product.fsproj (delete-safe)."

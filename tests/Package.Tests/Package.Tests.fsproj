@@ -51,6 +51,7 @@
     <Compile Include="Feature247VisibilitySkillTests.fs" />
     <Compile Include="Feature249GridsSkillTests.fs" />
     <Compile Include="Feature248LineDrawingSkillTests.fs" />
+    <Compile Include="Feature250CollisionSafeVec2Tests.fs" />
     <Compile Include="SwapChecklistTemplateTests.fs" />
     <Compile Include="Tests.fs" />
     <Compile Include="Program.fs" />
