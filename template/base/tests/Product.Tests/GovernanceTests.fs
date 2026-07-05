@@ -23,6 +23,15 @@ let productSources files =
 let buildScript () =
     System.IO.File.ReadAllText(System.IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "build.fsx"))
 
+// Issue #111 (TD1 *Bulwark* feedback §3.2, §4.2): the compile-order scan must anchor to the
+// `<Compile Include="X.fs" />` item form, NOT a bare `IndexOf` over the whole project text. A
+// bare substring finds "View.fs" inside an additive `BulwarkView.fs`, and even inside a code
+// comment mentioning `View.fs` — so scaffolding an extra file (or a comment) silently broke the
+// "model compiles before view" gate. The `Include="…"` anchor's opening quote binds the match to
+// the start of the filename, so `BulwarkView.fs` / a `// see View.fs` comment no longer match.
+let compileIncludeIndex (projectText: string) (file: string) =
+    projectText.IndexOf($"Compile Include=\"{file}\"", StringComparison.Ordinal)
+
 // Feature 242 (spec 242-scaffold-discoverability, roadmap #75): a generated product ships a
 // SWAP-CHECKLIST.md at its root — the precise model-swap to-do list (§2.2). This durable scan
 // asserts PRESENCE + STRUCTURE only (the file names it points at + the scaffold-map pointer), NOT
@@ -108,12 +117,12 @@ let governanceTests =
                 Expect.isTrue (System.IO.File.Exists(System.IO.Path.Combine(productDir, file))) $"{file} exists in generated product source"
                 Expect.stringContains project $"Compile Include=\"{file}\"" $"{file} is included in compile order")
 
-            let modelIndex = project.IndexOf("Model.fs", StringComparison.Ordinal)
-            let viewIndex = project.IndexOf("View.fs", StringComparison.Ordinal)
-            let layoutIndex = project.IndexOf("LayoutEvidence.fs", StringComparison.Ordinal)
-            let windowOptionsIndex = project.IndexOf("WindowOptions.fs", StringComparison.Ordinal)
-            let evidenceIndex = project.IndexOf("EvidenceCommands.fs", StringComparison.Ordinal)
-            let programIndex = project.IndexOf("Program.fs", StringComparison.Ordinal)
+            let modelIndex = compileIncludeIndex project "Model.fs"
+            let viewIndex = compileIncludeIndex project "View.fs"
+            let layoutIndex = compileIncludeIndex project "LayoutEvidence.fs"
+            let windowOptionsIndex = compileIncludeIndex project "WindowOptions.fs"
+            let evidenceIndex = compileIncludeIndex project "EvidenceCommands.fs"
+            let programIndex = compileIncludeIndex project "Program.fs"
 
             Expect.isLessThan modelIndex viewIndex "model compiles before view"
             Expect.isLessThan viewIndex layoutIndex "view compiles before layout evidence"
@@ -126,6 +135,34 @@ let governanceTests =
             Expect.stringContains program "tryRunEvidenceCommand (List.ofArray args)" "Program.fs delegates explicit evidence command dispatch"
             Expect.isFalse (program.Contains("let writeGeneratedEvidenceLines", StringComparison.Ordinal)) "Program.fs does not own report writing"
             Expect.isFalse (program.Contains("let layoutEvidenceForSize size model : LayoutEvidenceReport", StringComparison.Ordinal)) "Program.fs does not own layout evidence implementation"
+        }
+
+        test "compile-order scan anchors to Compile Include and survives additive filenames and comments" {
+            // Regression for issue #111 (TD1 *Bulwark* feedback §3.2, §4.2): an additive
+            // `BulwarkView.fs` and a `// see View.fs` code comment both carry the scanned
+            // substring "View.fs" earlier in the project text than "Model.fs" — a bare
+            // `IndexOf` scan is fooled into failing "model compiles before view", even though
+            // the six load-bearing files keep their relative compile order.
+            let synthetic =
+                String.concat "\n" [
+                    "<Project>"
+                    "  <ItemGroup>"
+                    "    <!-- additive render helper; see View.fs for the real view -->"
+                    "    <Compile Include=\"BulwarkView.fs\" />"
+                    "    <Compile Include=\"Model.fs\" />"
+                    "    <Compile Include=\"View.fs\" />"
+                    "    <Compile Include=\"LayoutEvidence.fs\" />"
+                    "  </ItemGroup>"
+                    "</Project>"
+                ]
+
+            // The anchored scan holds the true compile order despite the decoys.
+            Expect.isLessThan (compileIncludeIndex synthetic "Model.fs") (compileIncludeIndex synthetic "View.fs") "anchored scan keeps model before view despite an additive BulwarkView.fs and a `View.fs` comment appearing earlier"
+            Expect.isLessThan (compileIncludeIndex synthetic "View.fs") (compileIncludeIndex synthetic "LayoutEvidence.fs") "anchored scan keeps view before layout evidence"
+
+            // Guard the guard: the old bare-substring scan IS fooled here (view before model),
+            // so this test would regress the moment the anchor is dropped.
+            Expect.isLessThan (synthetic.IndexOf("View.fs", StringComparison.Ordinal)) (synthetic.IndexOf("Model.fs", StringComparison.Ordinal)) "the naive bare-substring scan is demonstrably fooled — the Include anchor is load-bearing"
         }
 
         test "generated graphical app exposes bounded smoke command" {
