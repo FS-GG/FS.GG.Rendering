@@ -349,7 +349,9 @@ let boundedSmoke includeFrameDiagnostics evidencePath =
                 Categories = diagnosticCategories
                 FrameLogLimit = if includeFrameDiagnostics then Some 1 else Some 0
                 Sink = Some capturedDiagnostics.Add }
-          RendererMode = "vulkan"
+          // The viewer host presents through OpenGL; the emitted evidence names the backend that
+          // actually initialized (single source of truth, #135) regardless of this field.
+          RendererMode = "opengl"
           EvidencePath = Some evidencePath }
 
     let scene =

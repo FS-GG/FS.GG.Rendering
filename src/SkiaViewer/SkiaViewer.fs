@@ -621,7 +621,9 @@ module Viewer =
             { PersistentWindow = List.isEmpty unsupportedReasons
               BoundedSmoke = true
               KeyboardInput = true
-              RendererMode = "skia"
+              // Name the backend that actually initializes (single source of truth), not a
+              // guessed label — this host always presents through OpenGL (#135).
+              RendererMode = Host.GlHost.backendLabel
               UnsupportedHostReasons = unsupportedReasons
               MissingPackageCapabilities = [] }
 
@@ -657,7 +659,9 @@ module Viewer =
         { Status = "ok"
           Mode = "interactive-window"
           Command = None
-          RendererMode = "skia"
+          // A successful interactive launch presented through the live OpenGL host; name that
+          // backend from the single source of truth rather than a fixed guess (#135).
+          RendererMode = Host.GlHost.backendLabel
           WindowOpened = windowOpened
           WindowVisible =
             if windowOpened && firstFramePresented then
@@ -844,10 +848,12 @@ module Viewer =
             | None -> ViewerObservedValue.Unavailable
           ClientSize = sizeText
           RenderableSurfaceAvailable = renderableSurface
+          // Name the real backend (single source of truth), not a fixed guess — this window was
+          // presented through the OpenGL host, so "skia" was an unreliable self-label (#135).
           Backend =
             match windowState with
-            | Some state -> Some $"skia;window-state={state}"
-            | None -> Some "skia"
+            | Some state -> Some $"{Host.GlHost.backendLabel};window-state={state}"
+            | None -> Some Host.GlHost.backendLabel
           InputDevicesAvailable = inputAvailable
           FailureClass = failureClass
           Message = message }
@@ -1184,7 +1190,9 @@ module Viewer =
                         ViewerObservedValue.Observed true
                     else
                         ViewerObservedValue.Unavailable
-                  Backend = Some "opengl-presenter"
+                  // Single source of truth for the backend label (#135); this path already
+                  // presented through the OpenGL/Skia framebuffer, as the message states.
+                  Backend = Some Host.GlHost.backendLabel
                   InputDevicesAvailable = ViewerObservedValue.Unsupported
                   FailureClass = None
                   Message = "persistent viewer presented frames through the OpenGL/Skia framebuffer" }
@@ -1639,7 +1647,12 @@ module Viewer =
         { FramesRendered = model.FramesRendered
           Elapsed = elapsedForCompletion model
           InitialOutputSize = size
-          RendererMode = model.Request.RendererMode
+          // A completed bounded run rendered its frames through the live OpenGL host, so the
+          // evidence names the backend that actually initialized — NOT the caller's requested
+          // `RendererMode` (which could be any label, e.g. a stale "vulkan"). Deriving from the
+          // single source of truth is what stops the self-report from disagreeing with the real
+          // launch path (#135).
+          RendererMode = Host.GlHost.backendLabel
           LastDiagnosticSummary = model.LastDiagnostic |> Option.map _.Message
           EvidencePath = model.Request.EvidencePath }
 
