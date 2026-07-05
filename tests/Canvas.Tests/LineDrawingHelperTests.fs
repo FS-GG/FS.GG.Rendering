@@ -103,4 +103,24 @@ let tests =
                 // supercover is 4-connected: length is the Manhattan step count + 1
                 Expect.equal (List.length sc) (abs b.Col + abs b.Row + 1) (sprintf "supercover length is Manhattan+1 for b=%A" b)
         }
+
+        test "large coordinates stay total and correct (delta/error arithmetic is int64, not int32)" {
+            // A dominant delta this large would have overflowed 32-bit `2*err` (stalling the walk into an
+            // infinite loop) had the arithmetic stayed int32; big enough to prove the int64 promotion,
+            // small enough to enumerate quickly. The truly degenerate billion-cell spans are total by the
+            // same promotion but too large to walk in a unit test.
+            let a = c 0 0
+            let b = c 100003 7
+            let ln = LineDrawing.line a b
+            Expect.equal (List.head ln) a "line starts at a"
+            Expect.equal (List.last ln) b "line ends at b (no stall / overflow)"
+            Expect.equal (List.length ln) (100003 + 1) "line length is Chebyshev+1 at scale"
+            let sc = LineDrawing.supercover a b
+            Expect.equal (List.last sc) b "supercover ends at b"
+            Expect.equal (List.length sc) (100003 + 7 + 1) "supercover length is Manhattan+1 at scale"
+            sc
+            |> List.pairwise
+            |> List.iter (fun (p, q) ->
+                Expect.equal (abs (p.Col - q.Col) + abs (p.Row - q.Row)) 1 "supercover stays strictly 4-connected at scale")
+        }
     ]

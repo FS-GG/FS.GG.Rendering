@@ -29,8 +29,13 @@ module LineDrawing =
     /// for drawing a road/beam; for sight through walls prefer `supercover` (a thin line can slip through
     /// a diagonal wall join). Pure, total, deterministic; integer-only.
     let line (a: Cell) (b: Cell) : Cell list =
-        let dx = abs (b.Col - a.Col)
-        let dy = abs (b.Row - a.Row)
+        // Deltas and the error term are `int64` so the arithmetic stays total across the WHOLE `int`
+        // coordinate domain: an `int` subtraction could wrap, `abs Int32.MinValue` throws, and `2 * err`
+        // overflows to negative once the dominant delta reaches ~2^30 (which would stall the axis and
+        // loop forever). Promoting to `int64` removes all three — still pure integer arithmetic, still
+        // byte-identical, and the walk always terminates. (x/y stay `int`: they only ever step by ±1.)
+        let dx = abs (int64 b.Col - int64 a.Col)
+        let dy = abs (int64 b.Row - int64 a.Row)
         let sx = if a.Col < b.Col then 1 else -1
         let sy = if a.Row < b.Row then 1 else -1
         let acc = ResizeArray<Cell>()
@@ -45,7 +50,7 @@ module LineDrawing =
             if x = b.Col && y = b.Row then
                 go <- false
             else
-                let e2 = 2 * err
+                let e2 = 2L * err
                 if e2 > -dy then
                     err <- err - dy
                     x <- x + sx
@@ -60,12 +65,15 @@ module LineDrawing =
     /// `a = b` returns `[a]`. This is the variant `lineOfSight` walks. Pure, total, deterministic;
     /// integer-only (exact diagonal crossings resolve by a fixed step-x-first tiebreak).
     let supercover (a: Cell) (b: Cell) : Cell list =
-        let dx = b.Col - a.Col
-        let dy = b.Row - a.Row
+        // Deltas and the tiebreak cross-product are `int64` for the same full-`int`-domain totality as
+        // `line` (wrap-free subtraction, `abs` that can't throw, and `(1 + 2*ix)*ny` that can't overflow
+        // for any sane tile range). Still pure integer arithmetic; x/y only step by ±1.
+        let dx = int64 b.Col - int64 a.Col
+        let dy = int64 b.Row - int64 a.Row
         let nx = abs dx
         let ny = abs dy
-        let sx = if dx > 0 then 1 else -1
-        let sy = if dy > 0 then 1 else -1
+        let sx = if dx > 0L then 1 else -1
+        let sy = if dy > 0L then 1 else -1
         let acc = ResizeArray<Cell>()
         let mutable x = a.Col
         let mutable y = a.Row
@@ -75,16 +83,16 @@ module LineDrawing =
         // cross-multiplied to stay in integers ⇒ (1 + 2*ix)*ny vs (1 + 2*iy)*nx. An exact tie (the line
         // passes through a lattice corner) steps in x first — a deterministic choice that keeps the walk
         // 4-connected rather than cutting the corner diagonally.
-        let mutable ix = 0
-        let mutable iy = 0
+        let mutable ix = 0L
+        let mutable iy = 0L
         while ix < nx || iy < ny do
-            let cmp = (1 + 2 * ix) * ny - (1 + 2 * iy) * nx
-            if iy >= ny || (ix < nx && cmp <= 0) then
+            let cmp = (1L + 2L * ix) * ny - (1L + 2L * iy) * nx
+            if iy >= ny || (ix < nx && cmp <= 0L) then
                 x <- x + sx
-                ix <- ix + 1
+                ix <- ix + 1L
             else
                 y <- y + sy
-                iy <- iy + 1
+                iy <- iy + 1L
             acc.Add { Col = x; Row = y }
         List.ofSeq acc
 
