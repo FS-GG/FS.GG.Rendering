@@ -67,6 +67,13 @@ let placeScore (hudWidth: float) (font: FontSpec) (ink: Color) (scoreText: strin
   let toPoint (v: Vec2) : Point = { X = v.X; Y = v.Y }   // explicit conversion
   let p : Point = { Point.X = 0.0; Point.Y = 0.0 }       // or qualify fields inline
   ```
+- **The same collision also happens consumer-vs-consumer, not just against the
+  framework.** Two of *your own* records sharing a field — a `Creep` and a `Tower`
+  both carrying `.Pos` (or `.Id`, `.Hp`) — make a bare accessor like
+  `let posOf x = x.Pos` infer the **last-declared** record for `x`, so it silently
+  type-checks against the wrong type. Annotate the parameter at each shared access
+  (`let posOf (c: Creep) = c.Pos`). The [[fs-gg-game-core]] grid-sim recipe walks
+  this `.Pos` case in full.
 
 ## Build Commands
 

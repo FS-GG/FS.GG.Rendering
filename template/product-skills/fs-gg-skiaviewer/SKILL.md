@@ -98,6 +98,17 @@ compositor free-runs toward the cap — an environment limitation, not a defect.
 exit gracefully, return `[ ViewerEffect.CloseWindow ]` from your `update` (no extra
 host effect is needed).
 
+## Launch noise: GTK `Failed to load module` is cosmetic
+
+On a Linux/GTK host the viewer can print `Failed to load module "…"` (e.g.
+`canberra-gtk-module`, `appmenu-gtk-module`) as the window opens. That is the
+platform GTK loader probing for optional desktop modules that are simply absent in a
+headless/sandbox host — the lines look alarming in the log but are **harmless**: they
+do not affect rendering, and they never change the `Ok`/`Error` outcome of
+`Viewer.runApp`. Do not read them as a failed launch or a missing dependency to
+install — the classified `Error` result is the real launch-failure signal, not stderr
+noise.
+
 ## Persistent problems
 
 When a problem outlasts reasonable in-repo attempts, extensive external research is
