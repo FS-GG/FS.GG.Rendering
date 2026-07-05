@@ -147,6 +147,36 @@ scripts/fsgg-coord ready --repo .github            # all actionable items (not D
   links**, and **built-in workflows** (auto-add — prefer label-scoped, e.g. a `roadmap`
   label; item closed → `Status: Done`).
 
+## Signal an item is finished (the done-stamp)
+
+An item is **finished** only when **both** are true: its closing PR is **merged** *and* its board
+`Status` is **`Done`**. Neither alone counts — a merged PR whose card never flipped is still open
+work on the roadmap, and a card dragged to `Done` with no merged PR is a lie. Don't *assert* done
+by printing a success line; **earn** it — have the tool confirm both facts first:
+
+```sh
+scripts/fsgg-coord done <issue>            # verify BOTH; green FSGG-DONE stamp (exit 0) or
+                                           # red FSGG-NOT-DONE stamp naming the failing check (exit 1)
+scripts/fsgg-coord done <issue> --flip     # once the PR is merged, also set Status=Done, then stamp
+scripts/fsgg-coord done <issue> --pr <N>   # name the closing PR explicitly (else the first merged closer)
+```
+
+- The **green** two-line stamp prints **only** after the merge and `Status: Done` are both confirmed
+  in one thrifty query (merge via `closedByPullRequestsReferences`, board state via the `Status`
+  resolver). Any failing check prints a **red** counter-stamp saying *which* check failed and exits
+  non-zero — so a half-finished item can't masquerade as "still working" by printing nothing.
+- Both stamps carry a greppable sentinel — **`FSGG-DONE`** / **`FSGG-NOT-DONE`** — so scrollback,
+  CI logs, and transcripts are searchable, not just eyeball-able by colour (which degrades to plain
+  text when output isn't a TTY or `NO_COLOR` is set).
+- **Close out an item with `done <issue> --flip`** — it merges the "flip the card" and "confirm it's
+  really merged" steps into one earned signal. Treat a green stamp as the definition of finished; a
+  red stamp is a to-do, not a done.
+- **Epics roll up automatically.** When `--flip` takes the **last** child of an epic to `Done`, the
+  command walks the parent chain **upward** and flips each parent epic whose children are now *all*
+  board-`Done`, stamping each one that rolls up (`… (epic)`) — transitively, so a grandparent closes
+  too. An epic that isn't complete yet prints a one-line `N/M children Done — holding` note instead
+  of flipping. So you never hand-flip a Phase epic: finish its last child and the epic stamps itself.
+
 ## Keep the registry coherent (required for contract changes)
 
 Before changing a versioned cross-repo contract, read
@@ -189,8 +219,10 @@ wrong and the registry advertises a version the feed can't serve. The universal 
    restore). **Provider/composition-pinned** consumers need a re-pin PR in the consuming repo
    (e.g. `FS.GG.Templates` → `providers/<provider>.providers.yml` `source: <PkgId>::<V>`); its
    own CI (e.g. `composition`) must pass.
-4. **Land + record.** Merge both PRs, confirm the producer issue closed, flip the board item(s)
-   and parent epic to `Done`.
+4. **Land + record.** Merge both PRs, confirm the producer issue closed, then close out each board
+   item with `scripts/fsgg-coord done <issue> --flip` (see *Signal an item is finished*) — it flips
+   `Status: Done` only after re-confirming the merge, the green stamp is your proof, and the parent
+   epic rolls up to `Done` on its own once the last child stamps green.
 
 > **Worked example — Rendering's `fs-gg-ui` coherent set.** Bump the two version-of-truth files
 > (`template/base/Directory.Packages.props` `<FsGgUiVersion>` + `.template.package/FS.GG.UI.Template.fsproj`
