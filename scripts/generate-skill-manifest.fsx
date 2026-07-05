@@ -45,6 +45,7 @@ let repoPath (rel: string) =
 // template.json semantically so the two grammars never drift.
 let catalog =
     [ "fs-gg-audio", "template/product-skills/fs-gg-audio/SKILL.md", "(profile == \"game\" || profile == \"sample-pack\")"
+      "fs-gg-collision", "template/product-skills/fs-gg-collision/SKILL.md", "(profile == \"game\" || profile == \"sample-pack\")"
       "fs-gg-elmish", "template/product-skills/fs-gg-elmish/SKILL.md", "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\")"
       "fs-gg-feedback-capture", "template/feedback/skill/SKILL.md", "(feedback == true) && lifecycle == \"spec-kit\""
       "fs-gg-game-core", "template/product-skills/fs-gg-game-core/SKILL.md", "(profile == \"game\" || profile == \"sample-pack\")"

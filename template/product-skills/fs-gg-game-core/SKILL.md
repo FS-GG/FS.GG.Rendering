@@ -80,24 +80,10 @@ let forkStream (model: Model) : Rng * Model =
 
 ## Collision
 
-`Geometry` operates on the shared `Rect`/`Point` — no hand-rolled AABB, no duplicate bounds record.
-
-- `Geometry.intersects a b` — box-vs-box overlap on positive area (edge/corner touching is **not** an
-  intersection: strict edges).
-- `Geometry.containsPoint rect point` / `Geometry.contains outer inner` — inclusive of shared edges.
-- `Geometry.sweptIntersects moving velocity target` — for a fast projectile that would **tunnel** a thin
-  target in one step; tests the whole swept path, not just the endpoints.
-- `Geometry.center rect` / `Geometry.ofCenter center w h` — round-trip centering.
-
-```fsharp
-open FS.GG.UI.Scene
-
-let bullet : Rect = Geometry.ofCenter { X = 100.0; Y = 40.0 } 2.0 6.0
-let vel : Point = { X = 0.0; Y = 900.0 }            // fast — use the swept test
-let enemy : Rect = { X = 90.0; Y = 300.0; Width = 24.0; Height = 8.0 }
-
-let hit = Geometry.sweptIntersects bullet vel enemy
-```
+Collision detection **and** response now have a dedicated skill — see **[[fs-gg-collision]]**. It covers
+narrow-phase (`Geometry` box/swept overlap on the shared `Rect`/`Point`), broad-phase over `SpatialGrid`,
+and the game-opinionated response layer shipped as adaptable `Collision.fs` source you own. Reach for it
+instead of hand-rolling AABB or a duplicate bounds record.
 
 ## Culling
 
@@ -287,6 +273,8 @@ community sources. If your product uses Spec Kit, record findings and resolving 
 
 ## Related
 
+- [[fs-gg-collision]] — detect and resolve collisions (broad-phase + narrow-phase + response); owns the
+  adaptable `Collision.fs` helper.
 - [[fs-gg-scene]] — build the `Scene` the simulated world renders into; owns the shared `Rect`/`Point`.
 - [[fs-gg-skiaviewer]] — drive the fixed-step loop from the host window.
 - [[fs-gg-layout]] — compute the gameplay region (the visible `Rect`) entities are culled against.
