@@ -439,6 +439,10 @@ type ScreenshotCaptureAvailability =
 
 type ScreenshotCaptureSource =
     | LiveViewerWindow
+    // #141: the offscreen CPU scene raster (`writeSceneImageEvidence` — an `SKBitmap`/`SKCanvas`
+    // with no GL context and no live window). Named so `--screenshot-evidence` reports the path it
+    // actually took instead of claiming a `LiveViewerWindow` that never opened.
+    | OffscreenSceneRaster
     | DeterministicSceneRender
     | PixelReadbackSource
     | NoCaptureSource

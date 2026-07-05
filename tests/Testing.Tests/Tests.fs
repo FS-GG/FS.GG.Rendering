@@ -168,6 +168,41 @@ let tests =
             Expect.isNone result.FailureClass "accepted report has no failure class"
         }
 
+        test "screenshot evidence report validator accepts offscreen-scene-raster success fields" {
+            // #141: the offscreen CPU scene raster produces a genuine non-blank artifact, so a
+            // successful capture that honestly names it (instead of fabricating live-viewer-window)
+            // must validate rather than be rejected for not claiming a live window.
+            let result =
+                EvidenceReports.validateScreenshotEvidence
+                    { Status = "ok"
+                      Command = Some "--screenshot-evidence"
+                      AppOrSample = Some "testing-sample"
+                      HostFacts = [ "host=test" ]
+                      CaptureMode = Some "viewer-render-target-png"
+                      EvidenceKind = Some "screenshot"
+                      ArtifactPath = Some "readiness/artifacts/screenshot.png"
+                      ScreenshotPath = Some "readiness/artifacts/screenshot.png"
+                      Width = Some 320
+                      Height = Some 200
+                      PixelContentValidation = Some "non-blank"
+                      CaptureSource = Some "offscreen-scene-raster"
+                      ProvesScreenshot = Some true
+                      BlockedStage = Some "none"
+                      Classification = Some "none"
+                      Category = Some "none"
+                      Message = Some "ok"
+                      Timestamp = Some DateTimeOffset.UnixEpoch
+                      ViewerOpenStatus = Some "confirmed"
+                      FirstFrameStatus = Some "presented"
+                      CaptureAvailability = Some "available"
+                      UnsupportedHostReason = None
+                      Fallback = None
+                      Diagnostics = [] }
+
+            Expect.isTrue result.Accepted "honest offscreen-scene-raster success proof is accepted"
+            Expect.isNone result.FailureClass "accepted offscreen report has no failure class"
+        }
+
         test "ScreenshotEvidenceReport_Synthetic rejects unsupported records that hide capability detail" {
             // SYNTHETIC: malformed unsupported screenshot report fixture approved by T024 SEH; real path is generated screenshot evidence command validation.
             let result =

@@ -1040,8 +1040,11 @@ module EvidenceReports =
               | "ok" ->
                   if not positiveDimensions then
                       "successful screenshot evidence requires positive dimensions"
-                  if normalizedSource <> Some "live-viewer-window" then
-                      "successful screenshot evidence requires capture-source=live-viewer-window"
+                  // #141: a successful capture must name the real path it took. Both a live viewer
+                  // window and the offscreen CPU scene raster produce a genuine non-blank artifact;
+                  // reject only sources that did not actually capture (fallback / none).
+                  if normalizedSource <> Some "live-viewer-window" && normalizedSource <> Some "offscreen-scene-raster" then
+                      "successful screenshot evidence requires capture-source to name the real capture path (live-viewer-window or offscreen-scene-raster)"
                   if check.ProvesScreenshot <> Some true then
                       "successful screenshot evidence requires proves-screenshot=true"
                   if normalizedPixelValidation <> Some "non-blank" && normalizedPixelValidation <> Some "pixel-content-non-blank" then
