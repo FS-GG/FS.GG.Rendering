@@ -200,7 +200,7 @@ let feature204LifecycleTemplateTests =
               // manifest = exactly the 1 ungated skill-manifest row.
               // workspace shrank from Feature 230's >=30 twin matrix to the genuine
               // lifecycle-workspace sources (incl. the materialize step). product unchanged.
-              Expect.equal framework 16 (sprintf "expected exactly 16 framework product-skill sources (no twins), found %d" framework)
+              Expect.equal framework 17 (sprintf "expected exactly 17 framework product-skill sources (no twins), found %d" framework)
               Expect.equal manifest 1 (sprintf "expected exactly 1 ungated skill-manifest source, found %d" manifest)
               Expect.isTrue (workspace >= 9) (sprintf "expected >=9 lifecycle-workspace sources, found %d" workspace)
               Expect.isTrue (product >= 3) (sprintf "expected >=3 ungated product sources, found %d" product)

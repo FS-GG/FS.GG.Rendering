@@ -424,6 +424,21 @@
       "comment": "Feature 247: the import-and-adapt visibility helper source. Source is the fragment `src/` root and target is `src/` so the `Product/` path segment is source-relative and gets fileRename'd ('Product' -> productName) — landing the file in `src/<ProductDir>/` next to the project. (An explicit `target: src/Product/` is NOT sourceName-renamed, orphaning the file in a stray `src/Product/` the renamed project never compiles.) NO copyOnly, so sourceName ('Product') substitution rewrites the namespace too. Compiled by the Exists-guarded, profile-gated Compile item in Product.fsproj (delete-safe)."
     },
     {
+      "condition": "(profile == \"game\" || profile == \"sample-pack\")",
+      "source": "template/product-skills/fs-gg-grids/",
+      "target": ".agents/skills/fs-gg-grids/",
+      "copyOnly": [
+        "**/*"
+      ],
+      "comment": "Feature 249: the fs-gg-grids skill (grid parts model + adjacency conversions + pixel mapping). copyOnly so the body byte-matches its skill-manifest sha256. Gated identically to its materializes-when."
+    },
+    {
+      "condition": "(profile == \"game\" || profile == \"sample-pack\")",
+      "source": "template/fragments/grids/src/",
+      "target": "src/",
+      "comment": "Feature 249: the import-and-adapt grid-parts helper source. Source is the fragment `src/` root and target is `src/` so the `Product/` path segment is source-relative and gets fileRename'd ('Product' -> productName) — landing the file in `src/<ProductDir>/` next to the project. (An explicit `target: src/Product/` is NOT sourceName-renamed, orphaning the file in a stray `src/Product/` the renamed project never compiles.) NO copyOnly, so sourceName ('Product') substitution rewrites the namespace too. Compiled by the Exists-guarded, profile-gated Compile item in Product.fsproj (delete-safe)."
+    },
+    {
       "condition": "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\")",
       "source": "template/product-skills/fs-gg-testing/",
       "target": ".agents/skills/fs-gg-testing/",

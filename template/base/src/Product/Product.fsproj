@@ -15,6 +15,10 @@
          adaptable source — compiled before Model.fs so your update/view can call Visibility.polygon.
          The Exists guard keeps the build green if you delete the file (Product.fsproj stays "durable"). -->
     <Compile Include="Visibility.fs" Condition="Exists('Visibility.fs')" />
+    <!-- Feature 249: the import-and-adapt grid-parts helper (fs-gg-grids skill). Consumer-owned,
+         adaptable source — compiled before Model.fs so your update/view can call Grids.cellEdges etc.
+         The Exists guard keeps the build green if you delete the file (Product.fsproj stays "durable"). -->
+    <Compile Include="Grids.fs" Condition="Exists('Grids.fs')" />
     <!--#endif -->
     <Compile Include="Model.fs" />
     <Compile Include="View.fs" />

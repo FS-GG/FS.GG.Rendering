@@ -42,6 +42,14 @@
       "supplied-by": "template/product-skills/fs-gg-game-core/"
     },
     {
+      "id": "fs-gg-grids",
+      "scope": "product",
+      "sha256": "137de138a82333cc0b5bf506a857e3bb5dac8984e498ec97424cc175eb962e91",
+      "resolvablePath": ".agents/skills/fs-gg-grids/SKILL.md",
+      "materializes-when": "profile in [game, sample-pack]",
+      "supplied-by": "template/product-skills/fs-gg-grids/"
+    },
+    {
       "id": "fs-gg-keyboard-input",
       "scope": "product",
       "sha256": "09eab05c5ec59661632a70035f3b5f8b434a37301d660e81706ad5cd494942f1",
@@ -60,7 +68,7 @@
     {
       "id": "fs-gg-model-swap",
       "scope": "product",
-      "sha256": "3ec82b9557825f426cd019fb06134210f14fcb87fa39d3e4e6d98a053a18f069",
+      "sha256": "dc552edd8c8caf76e6539db52e0d501ed92212bdc30563640c6b59b6aa725eb3",
       "resolvablePath": ".agents/skills/fs-gg-model-swap/SKILL.md",
       "materializes-when": "profile in [game, sample-pack]",
       "supplied-by": "template/product-skills/fs-gg-model-swap/"
