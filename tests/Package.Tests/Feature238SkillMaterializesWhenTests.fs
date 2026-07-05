@@ -59,6 +59,7 @@ let private canonicalSources =
       "fs-gg-grids", "template/product-skills/fs-gg-grids/SKILL.md"
       "fs-gg-keyboard-input", "template/product-skills/fs-gg-keyboard-input/SKILL.md"
       "fs-gg-layout", "template/product-skills/fs-gg-layout/SKILL.md"
+      "fs-gg-line-drawing", "template/product-skills/fs-gg-line-drawing/SKILL.md"
       "fs-gg-model-swap", "template/product-skills/fs-gg-model-swap/SKILL.md"
       "fs-gg-persistence", "template/product-skills/fs-gg-persistence/SKILL.md"
       "fs-gg-project", "template/base/.agents/skills/fs-gg-project/SKILL.md"

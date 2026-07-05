@@ -439,6 +439,21 @@
       "comment": "Feature 249: the import-and-adapt grid-parts helper source. Source is the fragment `src/` root and target is `src/` so the `Product/` path segment is source-relative and gets fileRename'd ('Product' -> productName) — landing the file in `src/<ProductDir>/` next to the project. (An explicit `target: src/Product/` is NOT sourceName-renamed, orphaning the file in a stray `src/Product/` the renamed project never compiles.) NO copyOnly, so sourceName ('Product') substitution rewrites the namespace too. Compiled by the Exists-guarded, profile-gated Compile item in Product.fsproj (delete-safe)."
     },
     {
+      "condition": "(profile == \"game\" || profile == \"sample-pack\")",
+      "source": "template/product-skills/fs-gg-line-drawing/",
+      "target": ".agents/skills/fs-gg-line-drawing/",
+      "copyOnly": [
+        "**/*"
+      ],
+      "comment": "Feature 248: the fs-gg-line-drawing skill (Cell model + Bresenham line + supercover + line-of-sight). copyOnly so the body byte-matches its skill-manifest sha256. Gated identically to its materializes-when."
+    },
+    {
+      "condition": "(profile == \"game\" || profile == \"sample-pack\")",
+      "source": "template/fragments/line-drawing/src/",
+      "target": "src/",
+      "comment": "Feature 248: the import-and-adapt line-drawing helper source. Source is the fragment `src/` root and target is `src/` so the `Product/` path segment is source-relative and gets fileRename'd ('Product' -> productName) — landing the file in `src/<ProductDir>/` next to the project. (An explicit `target: src/Product/` is NOT sourceName-renamed, orphaning the file in a stray `src/Product/` the renamed project never compiles.) NO copyOnly, so sourceName ('Product') substitution rewrites the namespace too. Compiled by the Exists-guarded, profile-gated Compile item in Product.fsproj (delete-safe)."
+    },
+    {
       "condition": "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\")",
       "source": "template/product-skills/fs-gg-testing/",
       "target": ".agents/skills/fs-gg-testing/",
