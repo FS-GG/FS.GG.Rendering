@@ -17,6 +17,11 @@
 #      nodes) instead of scanning the whole board's items x fields (cost grows with the board).
 #   3. REST-FIRST READS. `issues` fetches cross-repo issues over REST with a stored ETag, so an
 #      unchanged list returns 304 at zero cost and never touches the GraphQL budget at all.
+#   4. THRIFTY WHOLE-BOARD READ. Picking "the next item to start" needs the WHOLE board, which is a
+#      GraphQL-only full scan (Projects v2 has no server-side item filter). `ready`/`next` keep it
+#      cheap by selecting only two fields per item via `fieldValueByName` (a RESOLVER field, no node
+#      multiplication) — vs. `gh project item-list`, which nests `fieldValues(first:100)` inside
+#      `items(first:N)` for O(items × 100) ≈ 2,500 points. A 100-item page costs ~1 point (~3 total).
 #
 # Every GraphQL call also asks for `rateLimit { cost remaining }`; set FSGG_COORD_DEBUG=1 to log it
 # (and use `budget` to read the meters directly) so you can VERIFY the drop instead of guessing.
@@ -37,6 +42,12 @@
 #                                             # auto-routing by the field's dataType
 #   fsgg-coord issues <repo> [--label L] [--state open|closed|all] [--refresh] [--jq EXPR]
 #                                             # list issues over REST with ETag revalidation
+#   fsgg-coord ready [--repo R] [--status S] [--phase P] [--all] [--json|--jq EXPR]
+#                                             # list actionable board items (not Done by default);
+#                                             # thrifty full-board scan (2 fields/item). --repo takes
+#                                             # a registry short-id (sdd/rendering/governance/
+#                                             # templates/.github), owner/repo, or a literal repo name
+#   fsgg-coord next  [--repo R]               # print the one most-startable item (Ready, else Backlog)
 #   fsgg-coord budget                         # print GraphQL + REST rate-limit meters (free)
 #
 #   <issue> is a full URL, `owner/repo#n`, or `repo#n` (owner defaults to FS-GG).
@@ -266,6 +277,147 @@ emit_issues() {
   if [ -n "$expr" ]; then jq -r "$expr" "$file"; else cat "$file"; fi
 }
 
+# ---- board_items: paginate the board, emit a normalized JSON array (thrifty per-item selection) --
+# Projects v2 has NO server-side filter on the items connection, so "list the board" is inherently
+# a full scan — but the node COST is set by what we select PER ITEM. `gh project item-list` nests
+# `fieldValues(first:100){ ...fragments }` INSIDE `items(first:N)`, so its cost is O(items × 100)
+# (≈ 2,500 points for a ~100-item board) — a few of those exhaust the 5,000-pt/hr primary budget.
+# `fieldValueByName` is a RESOLVER field, not a connection: it returns ONE value with no node
+# multiplication. We read just the two fields a "what's next" decision needs (Status, Phase) that
+# way, plus the issue's own repository/number/title — a small constant per item. A 100-item page
+# costs ~1 point (a full board ~3), and the result is normalized once here.
+board_items() {
+  ensure_board >/dev/null
+  local num; num="$(board_get '.number')"
+  local q='query($owner:String!, $number:Int!, $cursor:String){
+    organization(login:$owner){ projectV2(number:$number){
+      items(first:100, after:$cursor){
+        pageInfo{ hasNextPage endCursor }
+        nodes{
+          status: fieldValueByName(name:"Status"){ ... on ProjectV2ItemFieldSingleSelectValue{ name } }
+          phase:  fieldValueByName(name:"Phase"){  ... on ProjectV2ItemFieldSingleSelectValue{ name } }
+          content{
+            __typename
+            ... on Issue{ number title url state repository{ nameWithOwner } }
+            ... on PullRequest{ number title url state repository{ nameWithOwner } }
+            ... on DraftIssue{ title }
+          }
+        }
+      }
+    } }
+    rateLimit{ cost remaining }
+  }'
+  local cursor="" hasNext="true" out tmp
+  tmp="$(mktemp "$CACHE/.items.XXXXXX")"; : > "$tmp"
+  while [ "$hasNext" = "true" ]; do
+    if [ -n "$cursor" ]; then
+      out="$(gql "$q" -f owner="$OWNER" -F number="$num" -f cursor="$cursor")"
+    else
+      out="$(gql "$q" -f owner="$OWNER" -F number="$num")"
+    fi
+    jq -c '.data.organization.projectV2.items.nodes[]?
+      | { number:(.content.number // null), repo:(.content.repository.nameWithOwner // null),
+          title:(.content.title // null),   url:(.content.url // null),
+          state:(.content.state // null),   type:(.content.__typename // null),
+          status:(.status.name // null),    phase:(.phase.name // null) }' <<<"$out" >> "$tmp"
+    hasNext="$(jq -r '.data.organization.projectV2.items.pageInfo.hasNextPage' <<<"$out")"
+    cursor="$(jq -r '.data.organization.projectV2.items.pageInfo.endCursor // empty' <<<"$out")"
+    [ "$hasNext" = "true" ] && [ -z "$cursor" ] && break   # defensive: stop if a page lies
+  done
+  jq -s '.' "$tmp"; rm -f "$tmp"
+}
+
+# Resolve a --repo value to the actual GitHub repo name the board items carry. Accepts the registry
+# short-id used everywhere else in the roster (sdd/rendering/governance/templates/.github — see
+# registry/repos.yml), an `owner/repo`, or the literal repo name. Without this, `--repo templates`
+# would silently match nothing (the repo is `FS.GG.Templates`, not `templates`) — a quiet footgun.
+resolve_repo() {
+  case "$1" in
+    */*)        printf '%s' "${1#*/}" ;;      # owner/repo -> repo part
+    sdd)        printf '%s' "FS.GG.SDD" ;;
+    rendering)  printf '%s' "FS.GG.Rendering" ;;
+    governance) printf '%s' "FS.GG.Governance" ;;
+    templates)  printf '%s' "FS.GG.Templates" ;;
+    *)          printf '%s' "$1" ;;           # .github or an already-literal repo name
+  esac
+}
+
+# Filter the normalized board array by repo/status/phase. Repo matches the issue's OWN repository:
+# a value with '/' is matched against `owner/repo` exactly; a bare value against the repo part
+# (both case-insensitive), so `--repo .github` selects `FS-GG/.github`.
+board_filter() {
+  local repo="$1" status="$2" phase="$3" exclude_done="$4"
+  jq --arg repo "$repo" --arg status "$status" --arg phase "$phase" --arg xd "$exclude_done" '
+    def repo_match($f): ($f|ascii_downcase) as $q
+      | (.repo // "" | ascii_downcase) as $r
+      | ($q=="") or ($r==$q) or (($r|split("/")|last // "")==$q);
+    map(
+      select($repo=="" or repo_match($repo))
+      | select($status=="" or ((.status // "")|ascii_downcase)==($status|ascii_downcase))
+      | select($phase=="" or ((.phase // "")|ascii_downcase|contains($phase|ascii_downcase)))
+      | select(($xd!="1") or ((.status // "")!="Done"))
+    )'
+}
+
+# Pretty TSV: STATUS | ITEM (repo#num, owner stripped) | PHASE | TITLE. Draft items show `draft`/`-`.
+board_table() {
+  jq -r '.[]
+    | ((.status // "—")) as $s
+    | (if .number then ((.repo // "" | sub("^[^/]+/";"")) + "#" + (.number|tostring)) else "draft" end) as $item
+    | [ $s, $item, (.phase // "—"), (.title // "") ] | @tsv' \
+  | { printf "STATUS\tITEM\tPHASE\tTITLE\n"; cat; } | column -t -s $'\t'
+}
+
+# ---- ready: list board items that are actionable (not Done by default), thrifty full-board read --
+ready() {
+  local repo="" status="" phase="" all="" json="" jqexpr=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --repo)    repo="${2:?--repo needs a value}"; shift 2 ;;
+      --status)  status="${2:?--status needs a value}"; shift 2 ;;
+      --phase)   phase="${2:?--phase needs a value}"; shift 2 ;;
+      --all)     all=1; shift ;;
+      --json)    json=1; shift ;;
+      --jq)      jqexpr="${2:?--jq needs a value}"; shift 2 ;;
+      -*)        die "ready: unknown flag '$1'." ;;
+      *)         die "ready: unexpected argument '$1'." ;;
+    esac
+  done
+  [ -n "$repo" ] && repo="$(resolve_repo "$repo")"
+  local xd="1"; { [ -n "$all" ] || [ -n "$status" ]; } && xd="0"   # --all / --status widen past 'not Done'
+  local items; items="$(board_items | board_filter "$repo" "$status" "$phase" "$xd")"
+  if   [ -n "$jqexpr" ]; then jq -r "$jqexpr" <<<"$items"
+  elif [ -n "$json" ];   then jq '.' <<<"$items"
+  else board_table <<<"$items"
+  fi
+}
+
+# ---- next: print the single most-startable item (Ready, else Backlog), optionally repo-scoped ----
+next() {
+  local repo=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --repo) repo="${2:?--repo needs a value}"; shift 2 ;;
+      -*)     die "next: unknown flag '$1'." ;;
+      *)      die "next: unexpected argument '$1'." ;;
+    esac
+  done
+  [ -n "$repo" ] && repo="$(resolve_repo "$repo")"
+  local items; items="$(board_items)"
+  local pick="" s
+  for s in Ready Backlog; do
+    pick="$(board_filter "$repo" "$s" "" "0" <<<"$items" | jq -c 'first(.[])? // empty')"
+    [ -n "$pick" ] && break
+  done
+  if [ -z "$pick" ]; then
+    echo "fsgg-coord: no startable item (Ready/Backlog)${repo:+ for repo '$repo'} on board '$TITLE'." >&2
+    return 0
+  fi
+  jq -r '"→ " + ((.repo // "" | sub("^[^/]+/";"")) + (if .number then "#"+(.number|tostring) else "" end))
+    + "  [" + (.status // "—") + (if .phase then " · "+.phase else "" end) + "]\n  "
+    + (.title // "") + (if .url then "\n  "+.url else "" end)' <<<"$pick"
+}
+
 # ---- budget: read the GraphQL + REST meters. `gh api rate_limit` does not consume the core budget.
 budget() {
   gh api rate_limit --jq '{
@@ -275,7 +427,7 @@ budget() {
 }
 
 usage() {
-  sed -n '2,60p' "$0" | sed 's/^# \{0,1\}//; s/^#$//'
+  sed -n '2,62p' "$0" | sed 's/^# \{0,1\}//; s/^#$//'
 }
 
 # ---- dispatch -----------------------------------------------------------------------------------
@@ -288,6 +440,8 @@ case "$cmd" in
   item-id)   [ $# -ge 1 ] || die "item-id: <issue> required.";  item_id "$1" "${2:-}" ;;
   set-field) [ $# -ge 3 ] || die "set-field: <issue> <Field> <Value> required."; set_field "$1" "$2" "$3" "${4:-}" ;;
   issues)    issues "$@" ;;
+  ready)     ready "$@" ;;
+  next)      next "$@" ;;
   budget)    budget ;;
   -h|--help|help|"") usage ;;
   *)         die "unknown command '$cmd' (try: fsgg-coord --help)." ;;
