@@ -2611,13 +2611,18 @@ module Viewer =
                   ViewerOpenStatus = ViewerOpenConfirmed
                   FirstFrameStatus = FirstFramePresentedStatus
                   CaptureAvailability = CaptureAvailable
-                  CaptureSource = LiveViewerWindow
+                  // #141: this path always rasterizes offscreen through `writeSceneImageEvidence`
+                  // (CPU `SKBitmap`, no GL context, no window), so it names the offscreen scene raster
+                  // it really performs — not a `LiveViewerWindow` that never opened. `ProvesScreenshot`
+                  // stays true: a real, non-blank pixel artifact genuinely was produced (only the
+                  // capture-source/message misled; renderer-mode=skia is honest — see the issue).
+                  CaptureSource = OffscreenSceneRaster
                   DeterministicFallbackKind = None
                   ProvesScreenshot = true
                   BlockedStage = None
                   Classification = None
                   Category = None
-                  Message = "Screenshot artifact captured from viewer render target."
+                  Message = "Screenshot artifact rendered by offscreen CPU scene raster (no live viewer window)."
                   Timestamp = DateTimeOffset.UtcNow
                   UnsupportedHostReason = None
                   Fallback = None
@@ -2628,7 +2633,7 @@ module Viewer =
                         $"image-width={width}"
                         $"image-height={height}"
                         "pixel-content-validation=non-blank"
-                        "capture-source=live-viewer-window"
+                        "capture-source=offscreen-scene-raster"
                         "proves-screenshot=true"
                         $"scene-capabilities={Scene.describe { Nodes = [ scene ] } |> List.length}" ] }
             | _ ->
@@ -2655,7 +2660,9 @@ module Viewer =
                   ViewerOpenStatus = ViewerOpenConfirmed
                   FirstFrameStatus = FirstFramePresentedStatus
                   CaptureAvailability = CaptureAvailable
-                  CaptureSource = LiveViewerWindow
+                  // #141: same offscreen CPU raster path as the success branch — name the raster it
+                  // actually ran, not a live viewer window.
+                  CaptureSource = OffscreenSceneRaster
                   DeterministicFallbackKind = None
                   ProvesScreenshot = false
                   BlockedStage = Some ViewerRunBlockedStage.Capture

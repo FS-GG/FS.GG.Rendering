@@ -254,6 +254,8 @@ module Live =
           CaptureSource =
             match result.CaptureSource with
             | LiveViewerWindow -> Evidence.VisualLiveViewerWindow
+            // #141: an offscreen CPU scene raster is an offscreen-host capture, not a live window.
+            | OffscreenSceneRaster
             | DeterministicSceneRender
             | PixelReadbackSource -> Evidence.VisualOffscreenHost
             | NoCaptureSource -> Evidence.VisualNoCapture

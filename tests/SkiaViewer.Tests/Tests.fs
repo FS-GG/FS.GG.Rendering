@@ -100,8 +100,13 @@ let tests =
             Expect.isSome result.ScreenshotPath "accepted result claims a screenshot artifact"
             Expect.equal result.ViewerOpenStatus ViewerOpenConfirmed "viewer open status is explicit"
             Expect.equal result.FirstFrameStatus FirstFramePresentedStatus "first-frame status is explicit"
-            Expect.equal result.CaptureSource LiveViewerWindow "capture source is live viewer render target"
-            Expect.isTrue result.ProvesScreenshot "live viewer render target proves screenshot"
+            // #141: the capture-source names the code path actually taken. This request rasterizes
+            // offscreen through `writeSceneImageEvidence` (CPU SKBitmap, no live window), so the
+            // self-report must say OffscreenSceneRaster, not fabricate a LiveViewerWindow.
+            Expect.equal result.CaptureSource OffscreenSceneRaster "capture source names the offscreen CPU scene raster the capture really performs (#141), not a fabricated live viewer window"
+            Expect.stringContains result.Message "offscreen" "capture message names the offscreen raster path, not a viewer render target"
+            Expect.contains result.Diagnostics "capture-source=offscreen-scene-raster" "serialized capture-source line matches the real code path"
+            Expect.isTrue result.ProvesScreenshot "offscreen scene raster still produced a real non-blank pixel artifact"
             Expect.equal result.PixelContentValidation PixelContentNonBlank "accepted screenshot is non-blank"
             Expect.isNone result.Fallback "accepted screenshot does not use deterministic fallback"
             Expect.isNone result.UnsupportedHostReason "accepted screenshot has no unsupported-host reason"

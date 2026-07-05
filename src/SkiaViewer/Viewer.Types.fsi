@@ -497,6 +497,8 @@ type ScreenshotCaptureAvailability =
 /// Public contract type exposed by this FS.GG.UI package.
 type ScreenshotCaptureSource =
     | LiveViewerWindow
+    /// #141: the offscreen CPU scene raster the capture really performs (no GL context, no live window).
+    | OffscreenSceneRaster
     | DeterministicSceneRender
     | PixelReadbackSource
     | NoCaptureSource
