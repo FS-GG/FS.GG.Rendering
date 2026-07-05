@@ -291,6 +291,7 @@ type ScreenshotCaptureAvailability =
 /// Public contract type exposed by this FS.GG.UI package.
 type ScreenshotCaptureSource =
     | LiveViewerWindow
+    | OffscreenSceneRaster
     | DeterministicSceneRender
     | PixelReadbackSource
     | NoCaptureSource

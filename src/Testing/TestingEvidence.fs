@@ -1058,8 +1058,11 @@ module EvidenceReports =
               | "unsupported" ->
                   if check.ScreenshotPath.IsSome || (check.ArtifactPath |> Option.exists (fun value -> value <> "none")) then
                       "unsupported screenshot evidence must not claim screenshot-path"
-                  if normalizedSource = Some "live-viewer-window" then
-                      "unsupported screenshot evidence must not claim live viewer capture"
+                  // #141: symmetric with the ok-branch guard — an unsupported host performed no
+                  // capture, so it must not claim EITHER real capture path (live viewer window or
+                  // offscreen scene raster), only a fallback/none source.
+                  if normalizedSource = Some "live-viewer-window" || normalizedSource = Some "offscreen-scene-raster" then
+                      "unsupported screenshot evidence must not claim a real capture path (live-viewer-window or offscreen-scene-raster)"
                   if check.ProvesScreenshot = Some true then
                       "unsupported screenshot evidence must not claim screenshot proof"
               | "failed" -> ()

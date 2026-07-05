@@ -203,6 +203,41 @@ let tests =
             Expect.isNone result.FailureClass "accepted offscreen report has no failure class"
         }
 
+        test "screenshot evidence report validator rejects unsupported records that claim the offscreen raster ran" {
+            // #141: an unsupported host performed no capture, so it must not claim a real capture path.
+            // The ok-branch now treats offscreen-scene-raster as a genuine capture, so the unsupported
+            // guard must reject that claim symmetrically (not only live-viewer-window).
+            let result =
+                EvidenceReports.validateScreenshotEvidence
+                    { Status = "unsupported"
+                      Command = Some "--screenshot-evidence"
+                      AppOrSample = Some "testing-sample"
+                      HostFacts = [ "host=test" ]
+                      CaptureMode = Some "viewer-render-target-png"
+                      EvidenceKind = Some "screenshot"
+                      ArtifactPath = Some "none"
+                      ScreenshotPath = None
+                      Width = None
+                      Height = None
+                      PixelContentValidation = Some "not-validated"
+                      CaptureSource = Some "offscreen-scene-raster"
+                      ProvesScreenshot = Some false
+                      BlockedStage = Some "capture"
+                      Classification = Some "unsupported"
+                      Category = Some "screenshot"
+                      Message = Some "unsupported"
+                      Timestamp = Some DateTimeOffset.UnixEpoch
+                      ViewerOpenStatus = Some "confirmed"
+                      FirstFrameStatus = Some "presented"
+                      CaptureAvailability = Some "unavailable"
+                      UnsupportedHostReason = Some "host exposes no capture surface"
+                      Fallback = Some "deterministic-scene-evidence"
+                      Diagnostics = [] }
+
+            Expect.isFalse result.Accepted "an unsupported host must not claim it ran the offscreen raster"
+            Expect.exists result.Diagnostics (fun item -> item.Contains("must not claim a real capture path", StringComparison.Ordinal)) "the offscreen capture claim is named as the contradiction"
+        }
+
         test "ScreenshotEvidenceReport_Synthetic rejects unsupported records that hide capability detail" {
             // SYNTHETIC: malformed unsupported screenshot report fixture approved by T024 SEH; real path is generated screenshot evidence command validation.
             let result =
