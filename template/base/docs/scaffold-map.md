@@ -28,6 +28,11 @@ These call/define the starter game model directly — they are yours to replace:
   `Collision.step`. Edit the response rule, add layers, or delete the file: its compile item is
   `Exists`-guarded, so deleting it keeps the build green and you never touch the durable
   `Product.fsproj`.
+- `<ProductDir>/Visibility.fs` *(game / sample-pack only)* — the adaptable 2D-visibility helper (see the
+  `fs-gg-visibility` skill). It compiles **before** `Model.fs` so your `update`/`view` can call
+  `Visibility.polygon`. Edit the sight radius, cone the field of view, swap the polygon output for a
+  fog-of-war mask, or delete the file: its compile item is `Exists`-guarded, so deleting it keeps the
+  build green and you never touch the durable `Product.fsproj`.
 - `tests/Product.Tests/BehaviorTests.fs` — the replaceable scaffold-behaviour tests that drive
   the starter's `view`/`update`/`tick`/host directly (the test-split detail is below).
 

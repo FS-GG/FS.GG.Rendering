@@ -67,7 +67,8 @@ let private canonicalSources =
       "fs-gg-styling", "template/product-skills/fs-gg-styling/SKILL.md"
       "fs-gg-symbology", "template/product-skills/fs-gg-symbology/SKILL.md"
       "fs-gg-testing", "template/product-skills/fs-gg-testing/SKILL.md"
-      "fs-gg-ui-widgets", "template/product-skills/fs-gg-ui-widgets/SKILL.md" ]
+      "fs-gg-ui-widgets", "template/product-skills/fs-gg-ui-widgets/SKILL.md"
+      "fs-gg-visibility", "template/product-skills/fs-gg-visibility/SKILL.md" ]
 
 type private ManifestEntry =
     { Id: string
