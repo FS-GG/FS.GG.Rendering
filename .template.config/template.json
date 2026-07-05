@@ -371,6 +371,14 @@
     },
     {
       "condition": "(profile == \"game\" || profile == \"sample-pack\")",
+      "source": "template/product-skills/fs-gg-model-swap/",
+      "target": ".agents/skills/fs-gg-model-swap/",
+      "copyOnly": [
+        "**/*"
+      ]
+    },
+    {
+      "condition": "(profile == \"game\" || profile == \"sample-pack\")",
       "source": "template/product-skills/fs-gg-audio/",
       "target": ".agents/skills/fs-gg-audio/",
       "copyOnly": [
