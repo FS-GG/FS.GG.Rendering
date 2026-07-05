@@ -24,6 +24,10 @@
          `namespace Product`, the default sourceName) so its logic is tested framework-side. -->
     <Compile Include="..\..\template\fragments\visibility\src\Product\Visibility.fs" />
     <Compile Include="VisibilityHelperTests.fs" />
+    <!-- Feature 249 (US1): compile the raw import-and-adapt grid-parts helper source (literal
+         `namespace Product`, the default sourceName) so its logic is tested framework-side. -->
+    <Compile Include="..\..\template\fragments\grids\src\Product\Grids.fs" />
+    <Compile Include="GridsHelperTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

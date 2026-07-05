@@ -49,6 +49,7 @@ let catalog =
       "fs-gg-elmish", "template/product-skills/fs-gg-elmish/SKILL.md", "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\")"
       "fs-gg-feedback-capture", "template/feedback/skill/SKILL.md", "(feedback == true) && lifecycle == \"spec-kit\""
       "fs-gg-game-core", "template/product-skills/fs-gg-game-core/SKILL.md", "(profile == \"game\" || profile == \"sample-pack\")"
+      "fs-gg-grids", "template/product-skills/fs-gg-grids/SKILL.md", "(profile == \"game\" || profile == \"sample-pack\")"
       "fs-gg-keyboard-input", "template/product-skills/fs-gg-keyboard-input/SKILL.md", "(profile == \"app\" || profile == \"game\")"
       "fs-gg-layout", "template/product-skills/fs-gg-layout/SKILL.md", "(profile == \"app\" || profile == \"game\")"
       "fs-gg-model-swap", "template/product-skills/fs-gg-model-swap/SKILL.md", "(profile == \"game\" || profile == \"sample-pack\")"
