@@ -48,6 +48,9 @@ From `docs/scaffold-map.md`, three classes — you only edit the last two:
 - **Replaceable — rewrite freely** (they define/return the starter model):
   - `src/<ProductDir>/Model.fs` — the starter `Model`/`Msg`/`update`. Your state machine goes here.
   - `src/<ProductDir>/View.fs` — the starter `view : Model -> SceneNode`. Your rendering goes here.
+  - `src/<ProductDir>/Collision.fs` *(game / sample-pack)* — the adaptable collision helper
+    (see [[fs-gg-collision]]). Edit the response rule, add layers, or delete it entirely: its compile
+    item is `Exists`-guarded, so the build stays green and `Product.fsproj` stays durable.
   - `tests/Product.Tests/BehaviorTests.fs` — the replaceable behaviour tests that drive the
     starter's `view`/`update`/host directly. Rewrite these to drive **your** model.
 - **Re-point — keep the file + its scanned tokens, re-aim the model-field reads**:

@@ -23,6 +23,11 @@ These call/define the starter game model directly — they are yours to replace:
 
 - `<ProductDir>/Model.fs` — the starter `Model`/`Msg`/`update` (the Pong state machine).
 - `<ProductDir>/View.fs` — the starter `view` (`Model -> SceneNode`).
+- `<ProductDir>/Collision.fs` *(game / sample-pack only)* — the adaptable collision helper (see the
+  `fs-gg-collision` skill). It compiles **before** `Model.fs` so your `update` can call
+  `Collision.step`. Edit the response rule, add layers, or delete the file: its compile item is
+  `Exists`-guarded, so deleting it keeps the build green and you never touch the durable
+  `Product.fsproj`.
 - `tests/Product.Tests/BehaviorTests.fs` — the replaceable scaffold-behaviour tests that drive
   the starter's `view`/`update`/`tick`/host directly (the test-split detail is below).
 

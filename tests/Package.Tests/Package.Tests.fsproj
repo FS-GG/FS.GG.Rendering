@@ -47,6 +47,7 @@
     <Compile Include="Feature231SkillManifestTests.fs" />
     <Compile Include="Feature238SkillMaterializesWhenTests.fs" />
     <Compile Include="Feature240GameCoreSkillTests.fs" />
+    <Compile Include="Feature246CollisionSkillTests.fs" />
     <Compile Include="SwapChecklistTemplateTests.fs" />
     <Compile Include="Tests.fs" />
     <Compile Include="Program.fs" />

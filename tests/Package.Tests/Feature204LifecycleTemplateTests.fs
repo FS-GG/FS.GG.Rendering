@@ -195,10 +195,11 @@ let feature204LifecycleTemplateTests =
               // blanket to a dedicated profile-gated source so it materializes on every lifecycle.
               // Feature 243 (#92) added fs-gg-audio (12th); Feature 244 (#93) added fs-gg-persistence (13th).
               // Issue #113 added the docs-only fs-gg-model-swap (14th) on the (game, sample-pack) gate.
+              // Feature 246 added fs-gg-collision (15th) on the same (game, sample-pack) gate.
               // manifest = exactly the 1 ungated skill-manifest row.
               // workspace shrank from Feature 230's >=30 twin matrix to the genuine
               // lifecycle-workspace sources (incl. the materialize step). product unchanged.
-              Expect.equal framework 14 (sprintf "expected exactly 14 framework product-skill sources (no twins), found %d" framework)
+              Expect.equal framework 15 (sprintf "expected exactly 15 framework product-skill sources (no twins), found %d" framework)
               Expect.equal manifest 1 (sprintf "expected exactly 1 ungated skill-manifest source, found %d" manifest)
               Expect.isTrue (workspace >= 9) (sprintf "expected >=9 lifecycle-workspace sources, found %d" workspace)
               Expect.isTrue (product >= 3) (sprintf "expected >=3 ungated product sources, found %d" product)

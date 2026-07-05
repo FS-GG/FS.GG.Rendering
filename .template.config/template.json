@@ -394,6 +394,21 @@
       ]
     },
     {
+      "condition": "(profile == \"game\" || profile == \"sample-pack\")",
+      "source": "template/product-skills/fs-gg-collision/",
+      "target": ".agents/skills/fs-gg-collision/",
+      "copyOnly": [
+        "**/*"
+      ],
+      "comment": "Feature 246: the fs-gg-collision skill (detection + broad-phase + response). copyOnly so the body byte-matches its skill-manifest sha256. Gated identically to its materializes-when."
+    },
+    {
+      "condition": "(profile == \"game\" || profile == \"sample-pack\")",
+      "source": "template/fragments/collision/src/Product/",
+      "target": "src/Product/",
+      "comment": "Feature 246: the import-and-adapt collision helper source. NO copyOnly, so sourceName ('Product') substitution rewrites the namespace/dir to the product name. Compiled by the Exists-guarded, profile-gated Compile item in Product.fsproj (delete-safe)."
+    },
+    {
       "condition": "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\")",
       "source": "template/product-skills/fs-gg-testing/",
       "target": ".agents/skills/fs-gg-testing/",

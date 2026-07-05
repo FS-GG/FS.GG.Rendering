@@ -52,6 +52,7 @@ let private templateJsonPath = repositoryPath ".template.config/template.json"
 /// id -> canonical body source (mirrors scripts/generate-skill-manifest.fsx / Feature231).
 let private canonicalSources =
     [ "fs-gg-audio", "template/product-skills/fs-gg-audio/SKILL.md"
+      "fs-gg-collision", "template/product-skills/fs-gg-collision/SKILL.md"
       "fs-gg-elmish", "template/product-skills/fs-gg-elmish/SKILL.md"
       "fs-gg-feedback-capture", "template/feedback/skill/SKILL.md"
       "fs-gg-game-core", "template/product-skills/fs-gg-game-core/SKILL.md"

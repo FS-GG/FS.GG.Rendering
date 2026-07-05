@@ -6,6 +6,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!--#if (profile == "game" || profile == "sample-pack") -->
+    <!-- Feature 246: the import-and-adapt collision helper (fs-gg-collision skill). Consumer-owned,
+         adaptable source — compiled before Model.fs so your update can call Collision.step. The
+         Exists guard keeps the build green if you delete the file (Product.fsproj stays "durable"). -->
+    <Compile Include="Collision.fs" Condition="Exists('Collision.fs')" />
+    <!--#endif -->
     <Compile Include="Model.fs" />
     <Compile Include="View.fs" />
     <Compile Include="LayoutEvidence.fs" />

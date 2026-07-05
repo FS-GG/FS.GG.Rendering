@@ -10,6 +10,14 @@
       "supplied-by": "template/product-skills/fs-gg-audio/"
     },
     {
+      "id": "fs-gg-collision",
+      "scope": "product",
+      "sha256": "8a80e72ecdf9c025d150e72d423b799c8cd85ec1ddcbd290b9a00883a0d8485b",
+      "resolvablePath": ".agents/skills/fs-gg-collision/SKILL.md",
+      "materializes-when": "profile in [game, sample-pack]",
+      "supplied-by": "template/product-skills/fs-gg-collision/"
+    },
+    {
       "id": "fs-gg-elmish",
       "scope": "product",
       "sha256": "4662d8ff96eb8b1d13995246acb660ff7dac8397b2d284e1f0a7e99f5d6ae10e",
@@ -28,7 +36,7 @@
     {
       "id": "fs-gg-game-core",
       "scope": "product",
-      "sha256": "47ee5dd3dac0ee90b84b31b2352156d8f1d68895b9776242d10b158a4b9d8cdb",
+      "sha256": "a5dd2f6ec888c2bd8119c80e167da516eba28ccbe8f499bf58d6aee73f453e0b",
       "resolvablePath": ".agents/skills/fs-gg-game-core/SKILL.md",
       "materializes-when": "profile in [game, sample-pack]",
       "supplied-by": "template/product-skills/fs-gg-game-core/"
@@ -52,7 +60,7 @@
     {
       "id": "fs-gg-model-swap",
       "scope": "product",
-      "sha256": "68edbe4684224bdbbe10ad71d6004adb0153b950b34dc7b8bae6118be6ab38fd",
+      "sha256": "28ed439fe1968f5f51c3313ad55c03aea3a3cdb9d0e8e1e7d3a5e761b411b785",
       "resolvablePath": ".agents/skills/fs-gg-model-swap/SKILL.md",
       "materializes-when": "profile in [game, sample-pack]",
       "supplied-by": "template/product-skills/fs-gg-model-swap/"
