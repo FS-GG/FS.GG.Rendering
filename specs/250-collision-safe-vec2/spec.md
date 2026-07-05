@@ -196,9 +196,12 @@ the safe type, and state the rule (do not reuse `Scene` field labels on a game r
 - **SC-003**: A fresh game scaffold builds and passes its behavior + governance tests with no author edits, and a
   starter swap to an author model expressed with the collision-safe type keeps the durable spine, evidence tokens, and
   governance scans passing.
-- **SC-004**: An author who reuses `Scene` field labels on a game record is told so at build/authoring time by a
-  message that names the field and the collision — not by a wall of downstream compiler errors in a file they were
-  told not to touch.
+- **SC-004**: The shipped starter and every scaffolded model built on the collision-safe type declare **no**
+  `Scene`-colliding labels, and the model-editing comment + swap/game-core guidance name the collision and the safe
+  type **up front** — so an author meets the constraint before writing a colliding record, not after. (An author who
+  bypasses the safe type and reuses `X`/`Y`/`Width`/`Height` anyway still receives the F# compiler's `FS3566`/`FS0039`
+  as the ultimate signal; a friendlier build-time author-record naming lint is an accepted, tracked follow-up per
+  FR-007's either/or, not part of this feature.)
 - **SC-005**: An author opening `Model.fs` can identify, without external docs, both the collision-safe position type
   and the accumulator + `stepSim` + `Tick` pattern from the starter code itself.
 - **SC-006**: Non-game profiles' output remains byte-identical and their governance posture unchanged.
