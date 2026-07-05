@@ -2,14 +2,14 @@ module Canvas.Tests.VisibilityHelperTests
 
 // Feature 247 (US1): the import-and-adapt 2D-visibility helper source (template/fragments/visibility/
 // src/Product/Visibility.fs) is compiled here via the framework test project (its literal
-// `namespace Product` is the default sourceName). The geometry vocabulary reuses Point/Rect/SpatialGrid;
+// `namespace AppRoot` is the default sourceName). The geometry vocabulary reuses Point/Rect/SpatialGrid;
 // the ray-segment intersection + angular sweep are the added layer. All real pure computation — no
 // synthetic evidence. Covers FR-006 (region + occlusion), FR-008 (determinism), FR-010 (totality),
 // FR-011 (bounded).
 
 open Expecto
 open FS.GG.UI.Scene
-open Product
+open AppRoot
 
 let private p x y : Point = { X = x; Y = y }
 let private seg ax ay bx by : Visibility.Segment = { A = p ax ay; B = p bx by }

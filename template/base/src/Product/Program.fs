@@ -1,21 +1,21 @@
-module Product.Program
+module AppRoot.Program
 
 open System
-open Product.Model
-open Product.View
-open Product.LayoutEvidence
+open AppRoot.Model
+open AppRoot.View
+open AppRoot.LayoutEvidence
 //#if (profile == "governed" || profile == "headless-scene")
 
-type Model = Product.Model.Model
-type Msg = Product.Model.Msg
-let initialModel = Product.Model.initialModel
-let update = Product.Model.update
-let view = Product.View.view
-let layoutEvidenceForSize = Product.LayoutEvidence.layoutEvidenceForSize
+type Model = AppRoot.Model.Model
+type Msg = AppRoot.Model.Msg
+let initialModel = AppRoot.Model.initialModel
+let update = AppRoot.Model.update
+let view = AppRoot.View.view
+let layoutEvidenceForSize = AppRoot.LayoutEvidence.layoutEvidenceForSize
 
 [<EntryPoint>]
 let main args =
-    match Product.EvidenceCommands.tryRunEvidenceCommand (List.ofArray args) with
+    match AppRoot.EvidenceCommands.tryRunEvidenceCommand (List.ofArray args) with
     | Some exitCode -> exitCode
     | None ->
         printfn "status=ok mode=headless-scene command=dotnet-run scene-nodes=1"
@@ -24,70 +24,70 @@ let main args =
 //#else
 open FS.GG.UI.SkiaViewer
 open System.IO
-open Product.WindowOptions
+open AppRoot.WindowOptions
 //#if (profile == "app")
 open FS.GG.UI.Controls.Elmish
 //#endif
 
-type Model = Product.Model.Model
+type Model = AppRoot.Model.Model
 //#if (profile == "app" || profile == "sample-pack")
-type Page = Product.Model.Page
-type InputFlowDiagnostic = Product.Model.InputFlowDiagnostic
+type Page = AppRoot.Model.Page
+type InputFlowDiagnostic = AppRoot.Model.InputFlowDiagnostic
 //#endif
-type Msg = Product.Model.Msg
-type GeneratedLayoutValidationFailureClass = Product.Model.GeneratedLayoutValidationFailureClass
-type GeneratedLayoutValidationResult = Product.Model.GeneratedLayoutValidationResult
-type WindowBehaviorSettings = Product.WindowOptions.WindowBehaviorSettings
+type Msg = AppRoot.Model.Msg
+type GeneratedLayoutValidationFailureClass = AppRoot.Model.GeneratedLayoutValidationFailureClass
+type GeneratedLayoutValidationResult = AppRoot.Model.GeneratedLayoutValidationResult
+type WindowBehaviorSettings = AppRoot.WindowOptions.WindowBehaviorSettings
 
-let initialModel = Product.Model.initialModel
+let initialModel = AppRoot.Model.initialModel
 //#if (profile == "app" || profile == "sample-pack")
-let pageName = Product.Model.pageName
+let pageName = AppRoot.Model.pageName
 //#endif
-let keyName = Product.Model.keyName
+let keyName = AppRoot.Model.keyName
 //#if (profile == "app" || profile == "sample-pack")
-let diagnostic = Product.Model.diagnostic
-let transitionViewerInput = Product.Model.transitionViewerInput
-let dispatchViewerKey = Product.Model.dispatchViewerKey
-let visibleRows = Product.View.visibleRows
+let diagnostic = AppRoot.Model.diagnostic
+let transitionViewerInput = AppRoot.Model.transitionViewerInput
+let dispatchViewerKey = AppRoot.Model.dispatchViewerKey
+let visibleRows = AppRoot.View.visibleRows
 //#endif
-let init = Product.Model.init
-let update = Product.Model.update
-let subscriptions = Product.Model.subscriptions
+let init = AppRoot.Model.init
+let update = AppRoot.Model.update
+let subscriptions = AppRoot.Model.subscriptions
 //#if (profile == "app" || profile == "sample-pack")
-let controlsExampleView = Product.View.controlsExampleView
-let adapterProgram = Product.View.adapterProgram
+let controlsExampleView = AppRoot.View.controlsExampleView
+let adapterProgram = AppRoot.View.adapterProgram
 //#endif
-let hudRegionForSize = Product.LayoutEvidence.hudRegionForSize
-let gameplayRegionForSize = Product.LayoutEvidence.gameplayRegionForSize
-let boundsInside = Product.LayoutEvidence.boundsInside
-let activeGameplayBoundsForSize = Product.LayoutEvidence.activeGameplayBoundsForSize
-let movementUsesGameplayRegion = Product.LayoutEvidence.movementUsesGameplayRegion
-let spawnUsesGameplayRegion = Product.LayoutEvidence.spawnUsesGameplayRegion
-let collisionUsesGameplayRegion = Product.LayoutEvidence.collisionUsesGameplayRegion
-let layoutEvidenceForSize = Product.LayoutEvidence.layoutEvidenceForSize
-let validateGeneratedLayout = Product.LayoutEvidence.validateGeneratedLayout
-let view = Product.View.view
-let mapKey = Product.EvidenceCommands.mapKey
-let tick = Product.EvidenceCommands.tick
-let viewerOptions = Product.EvidenceCommands.viewerOptions
-let appCommandName = Product.EvidenceCommands.appCommandName
-let viewerEffectsForModel = Product.EvidenceCommands.viewerEffectsForModel
-let interpretAtHostBoundary = Product.EvidenceCommands.interpretAtHostBoundary
-let generatedHost = Product.EvidenceCommands.generatedHost
+let hudRegionForSize = AppRoot.LayoutEvidence.hudRegionForSize
+let gameplayRegionForSize = AppRoot.LayoutEvidence.gameplayRegionForSize
+let boundsInside = AppRoot.LayoutEvidence.boundsInside
+let activeGameplayBoundsForSize = AppRoot.LayoutEvidence.activeGameplayBoundsForSize
+let movementUsesGameplayRegion = AppRoot.LayoutEvidence.movementUsesGameplayRegion
+let spawnUsesGameplayRegion = AppRoot.LayoutEvidence.spawnUsesGameplayRegion
+let collisionUsesGameplayRegion = AppRoot.LayoutEvidence.collisionUsesGameplayRegion
+let layoutEvidenceForSize = AppRoot.LayoutEvidence.layoutEvidenceForSize
+let validateGeneratedLayout = AppRoot.LayoutEvidence.validateGeneratedLayout
+let view = AppRoot.View.view
+let mapKey = AppRoot.EvidenceCommands.mapKey
+let tick = AppRoot.EvidenceCommands.tick
+let viewerOptions = AppRoot.EvidenceCommands.viewerOptions
+let appCommandName = AppRoot.EvidenceCommands.appCommandName
+let viewerEffectsForModel = AppRoot.EvidenceCommands.viewerEffectsForModel
+let interpretAtHostBoundary = AppRoot.EvidenceCommands.interpretAtHostBoundary
+let generatedHost = AppRoot.EvidenceCommands.generatedHost
 //#if (profile == "app")
-let interactiveHost = Product.EvidenceCommands.interactiveHost
+let interactiveHost = AppRoot.EvidenceCommands.interactiveHost
 //#endif
-let defaultCommand = Product.EvidenceCommands.defaultCommand
-let windowBehaviorArgsFromFile = Product.WindowOptions.windowBehaviorArgsFromFile
-let parseWindowBehavior = Product.WindowOptions.parseWindowBehavior
-let toViewerWindowBehavior = Product.WindowOptions.toViewerWindowBehavior
-let windowOptionStatusText = Product.WindowOptions.windowOptionStatusText
-let manualWindowOptionResults = Product.WindowOptions.manualWindowOptionResults
-let windowOptionsReport = Product.WindowOptions.windowOptionsReport
+let defaultCommand = AppRoot.EvidenceCommands.defaultCommand
+let windowBehaviorArgsFromFile = AppRoot.WindowOptions.windowBehaviorArgsFromFile
+let parseWindowBehavior = AppRoot.WindowOptions.parseWindowBehavior
+let toViewerWindowBehavior = AppRoot.WindowOptions.toViewerWindowBehavior
+let windowOptionStatusText = AppRoot.WindowOptions.windowOptionStatusText
+let manualWindowOptionResults = AppRoot.WindowOptions.manualWindowOptionResults
+let windowOptionsReport = AppRoot.WindowOptions.windowOptionsReport
 
 [<EntryPoint>]
 let main args =
-    match Product.EvidenceCommands.tryRunEvidenceCommand (List.ofArray args) with
+    match AppRoot.EvidenceCommands.tryRunEvidenceCommand (List.ofArray args) with
     | Some exitCode -> exitCode
     | None ->
         let args = List.ofArray args
@@ -165,8 +165,8 @@ let main args =
         // launch (feature 122, FR-005), so the scaffold-map remedy is effective instead of inert;
         // with no flag the default windowed-fullscreen path is preserved (byte-identical).
         let launchResult =
-            if Product.WindowOptions.windowFlagSupplied args then
-                ControlsElmish.runInteractiveAppWithWindowBehavior viewerOptions (Product.WindowOptions.toViewerLaunchRequest windowBehavior) interactiveHost
+            if AppRoot.WindowOptions.windowFlagSupplied args then
+                ControlsElmish.runInteractiveAppWithWindowBehavior viewerOptions (AppRoot.WindowOptions.toViewerLaunchRequest windowBehavior) interactiveHost
             else
                 ControlsElmish.runInteractiveApp viewerOptions interactiveHost
         //#else
@@ -174,8 +174,8 @@ let main args =
         // routes through runAppWithWindowBehavior; otherwise the durable runApp path stays
         // reachable and inherits the framework windowed-fullscreen default.
         let launchResult =
-            if Product.WindowOptions.windowFlagSupplied args then
-                Viewer.runAppWithWindowBehavior viewerOptions (Product.WindowOptions.toViewerLaunchRequest windowBehavior) generatedHost
+            if AppRoot.WindowOptions.windowFlagSupplied args then
+                Viewer.runAppWithWindowBehavior viewerOptions (AppRoot.WindowOptions.toViewerLaunchRequest windowBehavior) generatedHost
             else
                 Viewer.runApp viewerOptions generatedHost
         //#endif

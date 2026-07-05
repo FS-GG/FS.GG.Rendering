@@ -1,11 +1,11 @@
-module Product.WindowOptions
+module AppRoot.WindowOptions
 
 open System
 open System.IO
 open FS.GG.UI.Scene
 open FS.GG.UI.SkiaViewer
-open Product.Model
-open Product.View
+open AppRoot.Model
+open AppRoot.View
 //#if (profile == "app" || profile == "sample-pack" || profile == "game")
 
 type WindowBehaviorSettings =

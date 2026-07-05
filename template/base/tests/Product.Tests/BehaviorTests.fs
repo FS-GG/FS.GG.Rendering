@@ -1,9 +1,9 @@
-module ProductBehaviorTests
+module AppRootBehaviorTests
 
 open System
 open Expecto
-open Product.Program
-open Product.Model
+open AppRoot.Program
+open AppRoot.Model
 open FS.GG.UI.Scene
 
 // Feature 060 (FR-005): replaceable scaffold-BEHAVIOR tests. These call the scaffold
@@ -40,18 +40,18 @@ let sceneText node =
 let behaviorTests =
     testList "product-behavior" [
         test "generated headless product exposes scene contract" {
-            let scene: FS.GG.UI.Scene.Scene = { Nodes = [ Product.Program.view initialModel ] }
+            let scene: FS.GG.UI.Scene.Scene = { Nodes = [ AppRoot.Program.view initialModel ] }
             let text = scene.Nodes |> List.map sceneText |> String.concat " "
-            let updated, effects = Product.Program.update Rendered initialModel
+            let updated, effects = AppRoot.Program.update Rendered initialModel
 
-            Expect.isNonEmpty scene.Nodes "Product.Program.view returns a scene"
+            Expect.isNonEmpty scene.Nodes "AppRoot.Program.view returns a scene"
             Expect.stringContains text "Governed headless scene" "headless view renders scene text"
             Expect.equal updated.RenderCount 1 "headless update is callable"
             Expect.isEmpty effects "headless update has no host effects"
         }
 
         test "generated headless layout evidence is readable" {
-            let report = Product.Program.layoutEvidenceForSize { Width = 640; Height = 480 } initialModel
+            let report = AppRoot.Program.layoutEvidenceForSize { Width = 640; Height = 480 } initialModel
 
             Expect.equal report.ProofLevel ReadableLayout "headless layout report proves readable layout"
             Expect.isSome report.HudRegion "headless layout report has a named summary region"
@@ -63,7 +63,7 @@ let behaviorTests =
 
         //#if (profile == "governed")
         test "generated governed profile validates layout through Testing helpers" {
-            let report = Product.Program.layoutEvidenceForSize { Width = 640; Height = 480 } initialModel
+            let report = AppRoot.Program.layoutEvidenceForSize { Width = 640; Height = 480 } initialModel
             let result =
                 FS.GG.UI.Testing.GeneratedLayoutValidation.validate
                     { Report = report
@@ -90,7 +90,7 @@ let behaviorTests =
         }
 
         test "game default view renders the playfield, ball, paddles and score as a scene" {
-            let scene = Product.Program.view Product.Program.initialModel
+            let scene = AppRoot.Program.view AppRoot.Program.initialModel
             let nodes = collectSceneNodes scene |> Seq.toList
             let text = sceneText scene
 
@@ -99,8 +99,8 @@ let behaviorTests =
         }
 
         test "game tick advances the ball and the tick count (the default is a live, moving product)" {
-            let before = Product.Program.initialModel
-            let after, effects = Product.Program.update Tick before
+            let before = AppRoot.Program.initialModel
+            let after, effects = AppRoot.Program.update Tick before
 
             Expect.notEqual after.Ball before.Ball "a tick integrates the ball position"
             Expect.equal after.TickCount (before.TickCount + 1) "a tick advances the tick count"
@@ -108,9 +108,9 @@ let behaviorTests =
         }
 
         test "game keyboard input moves the paddles and records the last input" {
-            let model0 = Product.Program.initialModel
-            let leftUp, _ = Product.Program.update (ViewerInput(Letter 'W', true)) model0
-            let rightDown, _ = Product.Program.update (ViewerInput(ArrowDown, true)) model0
+            let model0 = AppRoot.Program.initialModel
+            let leftUp, _ = AppRoot.Program.update (ViewerInput(Letter 'W', true)) model0
+            let rightDown, _ = AppRoot.Program.update (ViewerInput(ArrowDown, true)) model0
 
             Expect.isLessThan leftUp.LeftPaddleY model0.LeftPaddleY "W moves the left paddle up"
             Expect.isGreaterThan rightDown.RightPaddleY model0.RightPaddleY "Down moves the right paddle down"
@@ -118,31 +118,31 @@ let behaviorTests =
         }
 
         test "game MovePaddle clamps paddles inside the playfield" {
-            let model0 = Product.Program.initialModel
+            let model0 = AppRoot.Program.initialModel
 
             let raised =
                 List.replicate 100 (MovePaddle(LeftSide, PaddleUp))
-                |> List.fold (fun m msg -> fst (Product.Program.update msg m)) model0
+                |> List.fold (fun m msg -> fst (AppRoot.Program.update msg m)) model0
 
             Expect.isTrue (raised.LeftPaddleY >= 0.0) "the paddle never leaves the top of the playfield"
         }
 
         test "game scores and re-serves when the ball passes an undefended edge" {
-            let model0 = Product.Program.initialModel
+            let model0 = AppRoot.Program.initialModel
 
             let missed =
                 { model0 with
                     Ball = { model0.Ball with CenterX = 18.0; CenterY = 10.0; VelocityX = -8.0 }
                     LeftPaddleY = 300.0 }
 
-            let scored, _ = Product.Program.update Tick missed
+            let scored, _ = AppRoot.Program.update Tick missed
 
             Expect.equal scored.RightScore 1 "the right side scores when the ball passes the left edge"
             Expect.equal scored.Ball.CenterX (model0.PlayfieldWidth / 2.0) "the ball re-serves to the centre"
         }
 
         test "generated game host exposes viewer input and tick mapping and advances the game" {
-            let host = Product.Program.generatedHost
+            let host = AppRoot.Program.generatedHost
             let model0 = fst (host.Init())
 
             Expect.isSome (host.MapKey ArrowUp true) "generatedHost maps viewer keys to messages"
@@ -154,8 +154,8 @@ let behaviorTests =
         }
 
         test "generated game host boundary keeps app commands separate from viewer effects" {
-            let model0 = Product.Program.initialModel
-            let hosted, appCommands, viewerEffects = Product.Program.interpretAtHostBoundary Tick model0
+            let model0 = AppRoot.Program.initialModel
+            let hosted, appCommands, viewerEffects = AppRoot.Program.interpretAtHostBoundary Tick model0
 
             Expect.notEqual hosted model0 "host boundary applies the pure update result"
             Expect.isEmpty appCommands "the game tick produces no app command"
@@ -163,7 +163,7 @@ let behaviorTests =
         }
 
         test "game layout evidence re-points HUD onto the score strip and gameplay onto the playfield" {
-            let report = Product.Program.layoutEvidenceForSize { Width = 640; Height = 480 } Product.Program.initialModel
+            let report = AppRoot.Program.layoutEvidenceForSize { Width = 640; Height = 480 } AppRoot.Program.initialModel
 
             Expect.equal report.ProofLevel ReadableLayout "game layout report proves readable layout"
             Expect.isSome report.HudRegion "score region is named"
@@ -175,23 +175,23 @@ let behaviorTests =
 
         test "game active item (the ball) stays inside the playfield region" {
             let size: FS.GG.UI.Scene.Size = { Width = 640; Height = 480 }
-            let model0 = Product.Program.initialModel
-            let ticked = List.replicate 30 Tick |> List.fold (fun m msg -> fst (Product.Program.update msg m)) model0
+            let model0 = AppRoot.Program.initialModel
+            let ticked = List.replicate 30 Tick |> List.fold (fun m msg -> fst (AppRoot.Program.update msg m)) model0
 
-            let region = Product.Program.gameplayRegionForSize size
-            let bounds = Product.Program.activeGameplayBoundsForSize size ticked
+            let region = AppRoot.Program.gameplayRegionForSize size
+            let bounds = AppRoot.Program.activeGameplayBoundsForSize size ticked
 
-            Expect.isTrue (Product.Program.boundsInside region.Bounds bounds.Bounds) "the ball stays inside the playfield region"
-            Expect.isTrue (Product.Program.movementUsesGameplayRegion size ticked) "movement policy is region based"
-            Expect.isTrue (Product.Program.spawnUsesGameplayRegion size model0) "spawn policy is region based"
-            Expect.isTrue (Product.Program.collisionUsesGameplayRegion size ticked) "collision policy is region based"
+            Expect.isTrue (AppRoot.Program.boundsInside region.Bounds bounds.Bounds) "the ball stays inside the playfield region"
+            Expect.isTrue (AppRoot.Program.movementUsesGameplayRegion size ticked) "movement policy is region based"
+            Expect.isTrue (AppRoot.Program.spawnUsesGameplayRegion size model0) "spawn policy is region based"
+            Expect.isTrue (AppRoot.Program.collisionUsesGameplayRegion size ticked) "collision policy is region based"
         }
 
         test "game layout validation accepts a readable report and rejects a factless one" {
-            let good = Product.Program.layoutEvidenceForSize { Width = 640; Height = 480 } Product.Program.initialModel
-            let goodResult = Product.Program.validateGeneratedLayout good
+            let good = AppRoot.Program.layoutEvidenceForSize { Width = 640; Height = 480 } AppRoot.Program.initialModel
+            let goodResult = AppRoot.Program.validateGeneratedLayout good
             let broken = { good with HudRegion = None; GameplayBounds = [] }
-            let brokenResult = Product.Program.validateGeneratedLayout broken
+            let brokenResult = AppRoot.Program.validateGeneratedLayout broken
 
             Expect.isTrue goodResult.Accepted "a readable game layout validates"
             Expect.isFalse brokenResult.Accepted "a layout missing facts is rejected"
@@ -199,13 +199,13 @@ let behaviorTests =
         }
 
         test "generated default game dispatches input, advances over time, and keeps evidence flags opt-in" {
-            let model0 = Product.Program.initialModel
-            let moved, _ = Product.Program.update (ViewerInput(ArrowUp, true)) model0
+            let model0 = AppRoot.Program.initialModel
+            let moved, _ = AppRoot.Program.update (ViewerInput(ArrowUp, true)) model0
             Expect.notEqual moved model0 "keyboard input changes game state"
 
-            match Product.Program.tick (TimeSpan.FromMilliseconds 500.0) with
+            match AppRoot.Program.tick (TimeSpan.FromMilliseconds 500.0) with
             | Some tickMsg ->
-                let afterTick, _ = Product.Program.update tickMsg moved
+                let afterTick, _ = AppRoot.Program.update tickMsg moved
                 Expect.notEqual afterTick moved "time-based tick advances game state"
             | None -> failtest "generated tick must advance game state over time"
 
@@ -224,7 +224,7 @@ let behaviorTests =
         test "window diagnostics verdict matches the real runtime gate (#136 / epic #134)" {
             let dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "window-diagnostics-" + System.Guid.NewGuid().ToString("N"))
             let path = System.IO.Path.Combine(dir, "window-diagnostics.txt")
-            let exitCode = Product.EvidenceCommands.windowDiagnostics path
+            let exitCode = AppRoot.EvidenceCommands.windowDiagnostics path
             let output = System.IO.File.ReadAllText path
             System.IO.Directory.Delete(dir, true)
 
@@ -259,13 +259,13 @@ let behaviorTests =
         }
 
         test "generated public contract exposes qualified app-owned names" {
-            let scene: FS.GG.UI.Scene.Scene = { Nodes = [ Product.Program.view initialModel ] }
-            let host = Product.Program.generatedHost
-            let updated, _ = Product.Program.update NoOp initialModel
+            let scene: FS.GG.UI.Scene.Scene = { Nodes = [ AppRoot.Program.view initialModel ] }
+            let host = AppRoot.Program.generatedHost
+            let updated, _ = AppRoot.Program.update NoOp initialModel
 
-            Expect.isNonEmpty scene.Nodes "Product.Program.view returns a scene"
-            Expect.equal updated initialModel "Product.Program.update is callable as the app reducer"
-            Expect.isSome (host.MapKey Enter true) "Product.Program.generatedHost exposes viewer input mapping"
+            Expect.isNonEmpty scene.Nodes "AppRoot.Program.view returns a scene"
+            Expect.equal updated initialModel "AppRoot.Program.update is callable as the app reducer"
+            Expect.isSome (host.MapKey Enter true) "AppRoot.Program.generatedHost exposes viewer input mapping"
         }
 
         test "product-owned controls example is wired" {
@@ -326,7 +326,7 @@ let behaviorTests =
         // through the EXACT step runInteractiveApp wires (ControlsElmish.routeInteractivePointer),
         // dispatches that control's bound message — proving the pointer host is interactive.
         test "pointer click on the Save control routes its bound message (SC-003)" {
-            let host = Product.Program.interactiveHost
+            let host = AppRoot.Program.interactiveHost
             let size: FS.GG.UI.Scene.Size = { Width = 640; Height = 480 }
             let model0 = fst (host.Init())
             let rendered = Control.renderTree host.Theme size (host.View size model0)
@@ -385,7 +385,7 @@ let behaviorTests =
             let backToBrowse, _ =
                 dispatchViewerKey { RawKey = "Esc"; Direction = ViewerKeyDirection.KeyDown } detail
 
-            let summary, _ = Product.Program.update (Navigated Summary) backToBrowse
+            let summary, _ = AppRoot.Program.update (Navigated Summary) backToBrowse
 
             let restarted, _ =
                 dispatchViewerKey { RawKey = "Enter"; Direction = ViewerKeyDirection.KeyDown } summary
@@ -398,8 +398,8 @@ let behaviorTests =
         }
 
         test "pure generated app transitions expose model message and effect behavior" {
-            let started, startEffects = Product.Program.update (ViewerInput(Enter, true)) initialModel
-            let interacted, interactionEffects = Product.Program.update (ViewerInput(ArrowLeft, true)) started
+            let started, startEffects = AppRoot.Program.update (ViewerInput(Enter, true)) initialModel
+            let interacted, interactionEffects = AppRoot.Program.update (ViewerInput(ArrowLeft, true)) started
 
             Expect.equal started.Page Browse "pure update opens the browse page"
             Expect.isEmpty startEffects "input transition has no host command"
@@ -408,24 +408,24 @@ let behaviorTests =
         }
 
         test "generated host boundary keeps app commands separate from viewer effects" {
-            let unchanged, appCommands = Product.Program.update SaveRequested initialModel
-            let hosted, observedAppCommands, viewerEffects = Product.Program.interpretAtHostBoundary SaveRequested initialModel
-            let hostUpdated, hostViewerEffects = Product.Program.generatedHost.Update SaveRequested initialModel
+            let unchanged, appCommands = AppRoot.Program.update SaveRequested initialModel
+            let hosted, observedAppCommands, viewerEffects = AppRoot.Program.interpretAtHostBoundary SaveRequested initialModel
+            let hostUpdated, hostViewerEffects = AppRoot.Program.generatedHost.Update SaveRequested initialModel
 
             Expect.equal unchanged initialModel "save command does not mutate the app model"
             Expect.equal hosted initialModel "host boundary preserves pure update result"
             Expect.equal hostUpdated initialModel "generated host uses the same pure update result"
             Expect.exists appCommands (function DispatchHostCommand "save:Product" -> true | _ -> false) "pure update emits an app command"
             Expect.equal observedAppCommands appCommands "host boundary exposes app commands before interpretation"
-            Expect.exists (observedAppCommands |> List.map Product.Program.appCommandName) ((=) "app-command:dispatch-host-command:save:Product") "app command category is named separately"
+            Expect.exists (observedAppCommands |> List.map AppRoot.Program.appCommandName) ((=) "app-command:dispatch-host-command:save:Product") "app command category is named separately"
             Expect.exists viewerEffects (function RenderScene _ -> true | _ -> false) "host boundary emits viewer render effect separately"
             Expect.equal hostViewerEffects.Length viewerEffects.Length "generated host returns the same number of viewer effects to SkiaViewer"
             Expect.exists hostViewerEffects (function RenderScene _ -> true | _ -> false) "generated host returns render effects to SkiaViewer"
         }
 
         test "generated layout evidence separates summary and content regions at default and constrained sizes" {
-            let defaultReport = Product.Program.layoutEvidenceForSize { Width = 1280; Height = 720 } initialModel
-            let constrainedReport = Product.Program.layoutEvidenceForSize { Width = 640; Height = 480 } initialModel
+            let defaultReport = AppRoot.Program.layoutEvidenceForSize { Width = 1280; Height = 720 } initialModel
+            let constrainedReport = AppRoot.Program.layoutEvidenceForSize { Width = 640; Height = 480 } initialModel
 
             [ defaultReport; constrainedReport ]
             |> List.iter (fun report ->
@@ -440,14 +440,14 @@ let behaviorTests =
         }
 
         test "generated layout validation fails broken summary and content layouts" {
-            let summaryOverlap = Product.Program.layoutEvidenceForSize { Width = 480; Height = 480 } initialModel
+            let summaryOverlap = AppRoot.Program.layoutEvidenceForSize { Width = 480; Height = 480 } initialModel
             let contentOverlap =
-                Product.Program.layoutEvidenceForSize
+                AppRoot.Program.layoutEvidenceForSize
                     { Width = 640; Height = 480 }
                     { initialModel with ContentRow = -6 }
 
-            let summaryResult = Product.Program.validateGeneratedLayout summaryOverlap
-            let contentResult = Product.Program.validateGeneratedLayout contentOverlap
+            let summaryResult = AppRoot.Program.validateGeneratedLayout summaryOverlap
+            let contentResult = AppRoot.Program.validateGeneratedLayout contentOverlap
 
             Expect.isFalse summaryResult.Accepted "summary/summary overlap fails validation"
             Expect.equal summaryResult.FailureClass (Some OverlappingLayoutBounds) "summary overlap is classified"
@@ -456,17 +456,17 @@ let behaviorTests =
         }
 
         test "generated content policies use the content region for the active item and bounds" {
-            let started, _ = Product.Program.update (ViewerInput(Enter, true)) initialModel
-            let moved, _ = Product.Program.update (ViewerInput(ArrowRight, true)) started
-            let ticked, _ = Product.Program.update Tick moved
+            let started, _ = AppRoot.Program.update (ViewerInput(Enter, true)) initialModel
+            let moved, _ = AppRoot.Program.update (ViewerInput(ArrowRight, true)) started
+            let ticked, _ = AppRoot.Program.update Tick moved
 
-            let region = Product.Program.gameplayRegionForSize { Width = 640; Height = 480 }
-            let bounds = Product.Program.activeGameplayBoundsForSize { Width = 640; Height = 480 } ticked
+            let region = AppRoot.Program.gameplayRegionForSize { Width = 640; Height = 480 }
+            let bounds = AppRoot.Program.activeGameplayBoundsForSize { Width = 640; Height = 480 } ticked
 
-            Expect.isTrue (Product.Program.boundsInside region.Bounds bounds.Bounds) "active item remains inside the content region"
-            Expect.isTrue (Product.Program.movementUsesGameplayRegion { Width = 640; Height = 480 } ticked) "movement policy is region based"
-            Expect.isTrue (Product.Program.spawnUsesGameplayRegion { Width = 640; Height = 480 } initialModel) "spawn policy is region based"
-            Expect.isTrue (Product.Program.collisionUsesGameplayRegion { Width = 640; Height = 480 } ticked) "collision policy is region based"
+            Expect.isTrue (AppRoot.Program.boundsInside region.Bounds bounds.Bounds) "active item remains inside the content region"
+            Expect.isTrue (AppRoot.Program.movementUsesGameplayRegion { Width = 640; Height = 480 } ticked) "movement policy is region based"
+            Expect.isTrue (AppRoot.Program.spawnUsesGameplayRegion { Width = 640; Height = 480 } initialModel) "spawn policy is region based"
+            Expect.isTrue (AppRoot.Program.collisionUsesGameplayRegion { Width = 640; Height = 480 } ticked) "collision policy is region based"
         }
 
         test "generated default app dispatches input, advances over time, and keeps evidence flags opt-in" {
@@ -478,7 +478,7 @@ let behaviorTests =
 
             match tick (TimeSpan.FromMilliseconds 500.0) with
             | Some tickMsg ->
-                let afterTick, _ = Product.Program.update tickMsg moved
+                let afterTick, _ = AppRoot.Program.update tickMsg moved
                 Expect.notEqual afterTick moved "time-based tick advances application state"
             | None -> failtest "generated tick must advance application state over time"
 
@@ -502,7 +502,7 @@ let behaviorTests =
         test "window diagnostics verdict matches the real runtime gate (#136 / epic #134)" {
             let dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "window-diagnostics-" + System.Guid.NewGuid().ToString("N"))
             let path = System.IO.Path.Combine(dir, "window-diagnostics.txt")
-            let exitCode = Product.EvidenceCommands.windowDiagnostics path
+            let exitCode = AppRoot.EvidenceCommands.windowDiagnostics path
             let output = System.IO.File.ReadAllText path
             System.IO.Directory.Delete(dir, true)
 

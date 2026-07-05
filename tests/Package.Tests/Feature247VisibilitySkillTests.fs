@@ -68,7 +68,7 @@ let feature247VisibilitySkillTests =
           test "the helper fragment source exists with the intended surface" {
               Expect.isTrue (File.Exists helperSource) "Visibility.fs fragment exists"
               let src = File.ReadAllText helperSource
-              Expect.stringContains src "namespace Product" "literal Product namespace (default sourceName)"
+              Expect.stringContains src "namespace AppRoot" "literal AppRoot identifier namespace (the product-name identifier token, derived to the product namespace on scaffold)"
               Expect.stringContains src "module Visibility" "the Visibility module"
               for fn in [ "raySegment"; "isVisible"; "polygon" ] do
                   Expect.stringContains src (sprintf "let %s" fn) (sprintf "exposes %s" fn)

@@ -10,7 +10,7 @@
 
 open FS.GG.UI.Scene
 open FS.GG.UI.Canvas
-open Product
+open AppRoot
 
 let c: Cell = { Col = 3; Row = 2 }
 let spec: Grids.GridSpec = { CellSize = 32.0; Origin = { X = 0.0; Y = 0.0 } }

@@ -1,4 +1,4 @@
-module ProductGovernanceTests
+module AppRootGovernanceTests
 
 open System
 open Expecto
@@ -14,11 +14,11 @@ open Expecto
 let visualEvidenceGuidance =
     "decodable image; image dimensions; non-trivial content; renderer mode; fallback classification; unsupported reason; metadata-only reports do not satisfy visual proof; 1x1 fallback images do not satisfy visual proof; layout-only bounds claims do not satisfy visual proof; framework runtime; generated template workflow; documentation discoverability; consumer authoring; persistent-window blocking; display/session availability; auto-close smoke; benign warning; blocking warning; deferred warning; name-collision guidance"
 
-let productSource file =
+let approotSource file =
     System.IO.File.ReadAllText(System.IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "Product", file))
 
-let productSources files =
-    files |> List.map productSource |> String.concat "\n"
+let approotSources files =
+    files |> List.map approotSource |> String.concat "\n"
 
 let buildScript () =
     System.IO.File.ReadAllText(System.IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "build.fsx"))
@@ -38,11 +38,11 @@ let compileIncludeIndex (projectText: string) (file: string) =
 // the exact per-symbol prose, so a legitimate model swap may rewrite the checklist freely without
 // failing the gate (FR-005). The per-symbol accuracy is a template-authoring gate
 // (tests/Package.Tests/SwapChecklistTemplateTests.fs), not a product scan.
-let productRootFile file =
+let approotRootFile file =
     System.IO.File.ReadAllText(System.IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", file))
 
 let assertSwapChecklistPresent () =
-    let checklist = productRootFile "SWAP-CHECKLIST.md"
+    let checklist = approotRootFile "SWAP-CHECKLIST.md"
 
     for anchor in [ "LayoutEvidence.fs"; "EvidenceCommands.fs"; "Model.fs"; "View.fs"; "scaffold-map.md" ] do
         Expect.stringContains checklist anchor $"SWAP-CHECKLIST.md points the developer at {anchor}"
@@ -83,7 +83,7 @@ let assertNoPreRebrandEngineIdentifier () =
 let governanceTests =
     testList "product-governance" [
         test "generated headless product exposes deterministic scene evidence command" {
-            let source = productSources [ "Program.fs"; "EvidenceCommands.fs" ]
+            let source = approotSources [ "Program.fs"; "EvidenceCommands.fs" ]
 
             Expect.stringContains source "--scene-evidence" "headless profile exposes scene evidence"
             Expect.stringContains source "SceneEvidence.render" "scene evidence uses public Scene evidence helper"
@@ -109,12 +109,12 @@ let governanceTests =
 let governanceTests =
     testList "product-governance" [
         test "generated product source is split by responsibility in compile order" {
-            let productDir = System.IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "Product")
-            let project = System.IO.File.ReadAllText(System.IO.Path.Combine(productDir, "Product.fsproj"))
+            let approotDir = System.IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "Product")
+            let project = System.IO.File.ReadAllText(System.IO.Path.Combine(approotDir, "Product.fsproj"))
 
             [ "Model.fs"; "View.fs"; "LayoutEvidence.fs"; "WindowOptions.fs"; "EvidenceCommands.fs"; "Program.fs" ]
             |> List.iter (fun file ->
-                Expect.isTrue (System.IO.File.Exists(System.IO.Path.Combine(productDir, file))) $"{file} exists in generated product source"
+                Expect.isTrue (System.IO.File.Exists(System.IO.Path.Combine(approotDir, file))) $"{file} exists in generated product source"
                 Expect.stringContains project $"Compile Include=\"{file}\"" $"{file} is included in compile order")
 
             let modelIndex = compileIncludeIndex project "Model.fs"
@@ -130,7 +130,7 @@ let governanceTests =
             Expect.isLessThan windowOptionsIndex evidenceIndex "window options compile before evidence commands"
             Expect.isLessThan evidenceIndex programIndex "evidence commands compile before entrypoint"
 
-            let program = System.IO.File.ReadAllText(System.IO.Path.Combine(productDir, "Program.fs"))
+            let program = System.IO.File.ReadAllText(System.IO.Path.Combine(approotDir, "Program.fs"))
             Expect.stringContains program "[<EntryPoint>]" "Program.fs keeps the entrypoint"
             Expect.stringContains program "tryRunEvidenceCommand (List.ofArray args)" "Program.fs delegates explicit evidence command dispatch"
             Expect.isFalse (program.Contains("let writeGeneratedEvidenceLines", StringComparison.Ordinal)) "Program.fs does not own report writing"
@@ -166,7 +166,7 @@ let governanceTests =
         }
 
         test "generated graphical app exposes bounded smoke command" {
-            let source = productSources [ "Program.fs"; "EvidenceCommands.fs" ]
+            let source = approotSources [ "Program.fs"; "EvidenceCommands.fs" ]
 
             Expect.stringContains source "--launch-evidence" "generated product exposes explicit launch evidence CLI"
             Expect.stringContains source "Viewer.runBounded" "launch evidence uses a bounded evidence entry point"
@@ -182,8 +182,8 @@ let governanceTests =
         }
 
         test "generated evidence commands are opt-in and not reported as ongoing interactive play" {
-            let source = productSources [ "Program.fs"; "EvidenceCommands.fs" ]
-            let program = productSource "Program.fs"
+            let source = approotSources [ "Program.fs"; "EvidenceCommands.fs" ]
+            let program = approotSource "Program.fs"
             let defaultBranch = program.Substring(program.LastIndexOf("| None ->", StringComparison.Ordinal))
 
             Expect.stringContains source "--launch-evidence" "first-frame launch evidence is exposed only by explicit CLI flag"
@@ -216,7 +216,7 @@ let governanceTests =
         }
 
         test "generated visual evidence commands require screenshot proof pixel fallback and unsupported diagnostics" {
-            let source = productSources [ "Program.fs"; "EvidenceCommands.fs" ]
+            let source = approotSources [ "Program.fs"; "EvidenceCommands.fs" ]
 
             Expect.stringContains source "--image-evidence" "generated product exposes image evidence command"
             Expect.stringContains source "--screenshot-evidence" "generated product exposes screenshot evidence command"
@@ -246,7 +246,7 @@ let governanceTests =
         }
 
         test "generated evidence commands share Testing report conventions" {
-            let source = productSources [ "Program.fs"; "EvidenceCommands.fs" ]
+            let source = approotSources [ "Program.fs"; "EvidenceCommands.fs" ]
 
             Expect.stringContains source "let writeEvidenceReport" "generated product defines one local report wrapper"
             Expect.stringContains source "generatedEvidenceStatusText" "generated product shares normalized report status vocabulary"
@@ -269,7 +269,7 @@ let governanceTests =
         }
 
         test "generated graphical app default executable path uses persistent host" {
-            let source = productSources [ "Program.fs"; "EvidenceCommands.fs" ]
+            let source = approotSources [ "Program.fs"; "EvidenceCommands.fs" ]
 
             Expect.stringContains source "let viewerOptions" "generated product declares viewer options"
             Expect.stringContains source "let generatedHost" "generated product declares generated host"
@@ -291,7 +291,7 @@ let governanceTests =
         }
 
         test "generated normal launch reports desktop session diagnostics without evidence fallback" {
-            let source = productSource "Program.fs"
+            let source = approotSource "Program.fs"
             let defaultBranch = source.Substring(source.LastIndexOf("| None ->", StringComparison.Ordinal))
 
             Expect.stringContains defaultBranch "Viewer.desktopSessionDiagnostic()" "normal launch captures desktop/session diagnostics before app lifecycle debugging"
@@ -315,9 +315,9 @@ let governanceTests =
         // shape — the probe derives its verdict from the same gate the real launch consults and never
         // fabricates an observed window failure. (Mirrors #135's flip of its bug-locking assertions.)
         test "generated window diagnostics command derives its verdict from the real launch gate, not fabricated failures" {
-            let source = productSources [ "Program.fs"; "EvidenceCommands.fs" ]
-            let evidence = productSource "EvidenceCommands.fs"
-            let program = productSource "Program.fs"
+            let source = approotSources [ "Program.fs"; "EvidenceCommands.fs" ]
+            let evidence = approotSource "EvidenceCommands.fs"
+            let program = approotSource "Program.fs"
             let defaultBranch = program.Substring(program.LastIndexOf("| None ->", StringComparison.Ordinal))
 
             Expect.stringContains source "--window-diagnostics" "generated product exposes an explicit window diagnostics command"
@@ -346,8 +346,8 @@ let governanceTests =
         }
 
         test "generated app Synthetic exposes window behavior flags and option diagnostics without leaving interactive launch" {
-            let source = productSources [ "Program.fs"; "WindowOptions.fs" ]
-            let program = productSource "Program.fs"
+            let source = approotSources [ "Program.fs"; "WindowOptions.fs" ]
+            let program = approotSource "Program.fs"
             let defaultBranch = program.Substring(program.LastIndexOf("| None ->", StringComparison.Ordinal))
 
             Expect.stringContains source "--window-resize" "resize policy is configurable"
@@ -379,7 +379,7 @@ let governanceTests =
         }
 
         test "generated graphical app exposes deterministic scene evidence command" {
-            let source = productSources [ "Program.fs"; "EvidenceCommands.fs" ]
+            let source = approotSources [ "Program.fs"; "EvidenceCommands.fs" ]
 
             Expect.stringContains source "--scene-evidence" "generated product exposes non-window scene evidence CLI"
             Expect.stringContains source "SceneEvidence.render" "scene evidence uses public Scene evidence helper"

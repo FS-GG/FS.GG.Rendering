@@ -79,8 +79,22 @@
     "rootNamespace": {
       "type": "parameter",
       "datatype": "text",
-      "defaultValue": "Product",
-      "description": "Compatibility parameter accepted by the template; generated project names are derived from --name."
+      "defaultValue": "",
+      "description": "SDD scaffold-provider identifierParameter SINK (feature 080): the derived valid-F# namespace/module identifier for the generated product. `fsgg-sdd scaffold` forwards a name already sanitized into a legal F# namespace here, so a raw product name that is an illegal F# identifier (e.g. a hyphenated 'Roquelike-DungeonCrawler') still compiles. Empty/whitespace falls back to the effective raw name (the derivation is a no-op on already-valid names), so a direct `dotnet new` without SDD is byte-identical to before."
+    },
+    "rootNamespaceTrimmed": {
+      "type": "generated",
+      "generator": "regex",
+      "dataType": "string",
+      "parameters": {
+        "source": "rootNamespace",
+        "steps": [
+          {
+            "regex": "^\\s+|\\s+$",
+            "replacement": ""
+          }
+        ]
+      }
     },
     "productName": {
       "type": "parameter",
@@ -120,6 +134,24 @@
         "toLower": true
       },
       "replaces": "product"
+    },
+    "effectiveIdentifier": {
+      "type": "generated",
+      "generator": "coalesce",
+      "parameters": {
+        "sourceVariableName": "rootNamespaceTrimmed",
+        "fallbackVariableName": "effectiveName"
+      },
+      "replaces": "AppRoot"
+    },
+    "effectiveIdentifierLower": {
+      "type": "generated",
+      "generator": "casing",
+      "parameters": {
+        "source": "effectiveIdentifier",
+        "toLower": true
+      },
+      "replaces": "approot"
     },
     "packagePrefix": {
       "type": "parameter",
