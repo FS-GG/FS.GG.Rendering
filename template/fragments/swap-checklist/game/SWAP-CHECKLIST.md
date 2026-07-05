@@ -13,10 +13,14 @@ projects it, so you don't have to rediscover the re-points from compiler errors.
 ## 1. Rewrite wholesale (replaceable — these define/call the starter model directly)
 
 - [ ] `<ProductDir>/Model.fs` — the starter `Model`/`Msg`/`update` (the Pong state machine:
-      `Ball`, paddles, scores; `movePaddle`, `paddleForKey`, `stepBall`, `keyName`). Replace with
-      your own model.
-- [ ] `<ProductDir>/View.fs` — the starter `view` (`Model -> SceneNode`) reading `model.Ball`,
-      `model.LeftPaddleY`/`RightPaddleY`, `model.PaddleHeight`, `model.PlayfieldWidth`/`Height`,
+      `Ball` = `{ Pos; Velocity }` as collision-safe `Geometry.Vec2`, paddles, scores; `movePaddle`,
+      `paddleForKey`, `stepSim` + `advanceSim` (fixed-step `FixedStep.drain` accumulator on `Tick`),
+      `keyName`). Replace with your own model — keep positions as `Geometry.Vec2` (Vx/Vy), NOT bare
+      `X`/`Y`/`Width`/`Height`, so `LayoutEvidence.fs` never collides (see `Vec2.fs`, `[[fs-gg-model-swap]]`).
+- [ ] `<ProductDir>/Vec2.fs` — the collision-safe `Geometry.Vec2` helper the starter is built on.
+      Yours to adapt (rename `Vx`/`Vy`, add a `Z`) or delete after you swap `Model.fs` off it.
+- [ ] `<ProductDir>/View.fs` — the starter `view` (`Model -> SceneNode`) reading `model.Ball.Pos`
+      (Vec2), `model.LeftPaddleY`/`RightPaddleY`, `model.PaddleHeight`, `model.Playfield` (Vec2),
       `model.LeftScore`/`RightScore`. Replace with your own view.
 - [ ] `tests/Product.Tests/BehaviorTests.fs` — the replaceable scaffold-behavior tests that drive
       the starter's `view`/`update`/`tick`/host directly. Rewrite for your model.
@@ -29,8 +33,8 @@ leaves them untouched — see §4.
 
 ### `<ProductDir>/LayoutEvidence.fs`
 
-- [ ] `activeGameplayBoundsForSize` — reads `model.Ball.CenterX`, `model.Ball.CenterY`,
-      `model.PlayfieldWidth`, `model.PlayfieldHeight` (maps the active item into the gameplay region)
+- [ ] `activeGameplayBoundsForSize` — reads `model.Ball.Pos.Vx`, `model.Ball.Pos.Vy`,
+      `model.Playfield.Vx`, `model.Playfield.Vy` (maps the active item into the gameplay region)
 - [ ] `spawnUsesGameplayRegion` — reads `initialModel.Ball`
 - [ ] `scoreTextBounds` — reads `model.TickCount`, `model.LeftScore`, `model.RightScore` (HUD text)
 - [ ] `layoutEvidenceForSize` — assembles the report from the readers above

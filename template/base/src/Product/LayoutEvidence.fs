@@ -76,10 +76,11 @@ let private ballExtent = 16.0
 // always inside the region (the durable movement/spawn/collision policies read this).
 let activeGameplayBoundsForSize (size: Size) (model: Model) : LayoutGameplayBounds =
     let region = gameplayRegionForSize size
-    let scaleX = region.Bounds.Width / model.PlayfieldWidth
-    let scaleY = region.Bounds.Height / model.PlayfieldHeight
-    let rawX = region.Bounds.X + model.Ball.CenterX * scaleX - ballExtent / 2.0
-    let rawY = region.Bounds.Y + model.Ball.CenterY * scaleY - ballExtent / 2.0
+    // Feature 250: model positions are Geometry.Vec2 (Playfield extent = Vx/Vy; ball centre = Pos.Vx/Vy).
+    let scaleX = region.Bounds.Width / model.Playfield.Vx
+    let scaleY = region.Bounds.Height / model.Playfield.Vy
+    let rawX = region.Bounds.X + model.Ball.Pos.Vx * scaleX - ballExtent / 2.0
+    let rawY = region.Bounds.Y + model.Ball.Pos.Vy * scaleY - ballExtent / 2.0
     let x = rawX |> max region.Bounds.X |> min (region.Bounds.X + region.Bounds.Width - ballExtent)
     let y = rawY |> max region.Bounds.Y |> min (region.Bounds.Y + region.Bounds.Height - ballExtent)
 
