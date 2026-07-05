@@ -228,7 +228,7 @@ let private verifyGatedSources () =
                 (not (condition.Contains SPEC_KIT_COND))
                 (sprintf "ungated product source %s -> %s must NOT carry `%s`" source target SPEC_KIT_COND)
             productChecked <- productChecked + 1
-    assertTrue (frameworkChecked = 13) (sprintf "expected exactly 13 framework product-skill sources (.agents/skills/ provider surface incl. fs-gg-project, no twins), checked %d" frameworkChecked)
+    assertTrue (frameworkChecked = 14) (sprintf "expected exactly 14 framework product-skill sources (.agents/skills/ provider surface incl. fs-gg-project, no twins), checked %d" frameworkChecked)
     assertTrue (manifestChecked = 1) (sprintf "expected exactly 1 ungated skill-manifest source, checked %d" manifestChecked)
     assertTrue (materializeChecked = 1) (sprintf "expected exactly 1 spec-kit-gated materialize source (template/lifecycle/), checked %d" materializeChecked)
     assertTrue (speckitNarrowChecked = 1) (sprintf "expected exactly 1 narrowed repo-root .agents/skills/ source, checked %d" speckitNarrowChecked)
