@@ -6,7 +6,12 @@
          runtime to bind the engine assembly — so a consumer upgrade is ONE edit to this
          value + `dotnet restore`. Preview vs stable is explicit in the value
          (`-preview.N` => preview channel; a bare `x.y.z` => stable). See docs/UPGRADING.md. -->
-    <FsGgUiVersion>0.1.64-preview.1</FsGgUiVersion>
+    <FsGgUiVersion>0.2.0-preview.1</FsGgUiVersion>
+    <!-- ADR-0022 P5: the deterministic sim primitives (Rng/FixedStep/Pathfinding/SpatialGrid/
+         Geometry) moved OUT of FS.GG.UI.Canvas/.Scene into FS.GG.Game.Core — the platform's
+         BCL-only bottom layer, released on its OWN axis (NOT $(FsGgUiVersion)). Game/sample-pack
+         products pin it here; simulation profiles only. -->
+    <FsGgGameVersion>0.1.0-preview.1</FsGgGameVersion>
   </PropertyGroup>
   <ItemGroup>
     <!-- 043 (FR-013): the published governance engine consumed in-process by the
@@ -15,8 +20,13 @@
     <PackageVersion Include="FS.GG.UI.Build" Version="$(FsGgUiVersion)" />
     <PackageVersion Include="FS.GG.UI.Scene" Version="$(FsGgUiVersion)" />
     <!--#if (profile == "game" || profile == "sample-pack") -->
-    <!-- Feature 240 (#73): FixedStep + Rng simulation primitives (deterministic fixed-step loop, seeded
-         RNG). Consumed via the fs-gg-game-core product skill; simulation profiles only. -->
+    <!-- ADR-0022 P5: the sim primitives (FixedStep/Rng/Pathfinding/SpatialGrid/Geometry) that the
+         fs-gg-game-core / -collision / -visibility / -line-drawing / -grids skills use now live in
+         FS.GG.Game.Core (the BCL-only bottom layer), consumed on its own $(FsGgGameVersion) axis. -->
+    <PackageVersion Include="FS.GG.Game.Core" Version="$(FsGgGameVersion)" />
+    <!-- FS.GG.UI.Canvas is still referenced on simulation profiles for the Audio request surface
+         (AudioEffect/Audio.interpret, fs-gg-audio; Feature 243) and the Persistence request surface
+         (fs-gg-persistence; Feature 244) — it no longer carries the sim primitives (ADR-0022 P5). -->
     <PackageVersion Include="FS.GG.UI.Canvas" Version="$(FsGgUiVersion)" />
     <!--#endif -->
     <!--#if (profile == "app" || profile == "sample-pack" || profile == "game") -->

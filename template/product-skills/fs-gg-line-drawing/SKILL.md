@@ -24,9 +24,9 @@ fixed step and routing agents is [[fs-gg-game-core]]'s job; the *continuous* (fl
 The grid vocabulary you consume is bundled framework surface; the line-drawing layer is your own product
 source:
 
-- `docs/api-surface/Canvas/Pathfinding.fsi` — the shared integer `Cell` (`{ Col; Row }`) every line is
+- `docs/api-surface/Game.Core/Pathfinding.fsi` — the shared integer `Cell` (`{ Col; Row }`) every line is
   expressed over, and the `Cell -> bool` walkability/transparency predicate convention. Shipped in
-  `FS.GG.UI.Canvas` (`game`/`sample-pack`).
+  `FS.GG.Game.Core` (`game`/`sample-pack`).
 - `src/<ProductDir>/LineDrawing.fs` — **product-owned, adaptable** source: `line`, `supercover`, and
   `lineOfSight`. Yours to edit or delete.
 
@@ -47,7 +47,7 @@ included; `a = b` → `[a]`). Each step advances one or both axes by 1, so conse
 most 1 in each axis.
 
 ```fsharp
-open FS.GG.UI.Canvas       // Cell
+open FS.GG.Game.Core       // Cell
 // LineDrawing lives in your product's own namespace (LineDrawing.fs).
 
 let a = { Col = 0; Row = 0 }
@@ -132,7 +132,7 @@ this product's `readiness/` paths. Do not copy framework readiness reports into 
 
 ## Package Boundary
 
-`Cell` and the `Pathfinding` predicate convention are in `FS.GG.UI.Canvas` (referenced only on the
+`Cell` and the `Pathfinding` predicate convention are in `FS.GG.Game.Core` (referenced only on the
 `game`/`sample-pack` profiles). `LineDrawing.fs` is **product-owned source with no backing package**. Keep
 rendering in [[fs-gg-scene]] and host wiring in [[fs-gg-skiaviewer]].
 

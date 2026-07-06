@@ -1,6 +1,6 @@
 namespace AppRoot
 
-open FS.GG.UI.Canvas
+open FS.GG.Game.Core // ADR-0022 P5: Cell (and Pathfinding's walkability shape) now live in the FS.GG.Game.Core bottom layer (moved from FS.GG.UI.Canvas)
 
 /// Product-owned grid line-drawing helper — THIS FILE IS YOURS TO ADAPT.
 ///

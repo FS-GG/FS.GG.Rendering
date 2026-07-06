@@ -9,9 +9,11 @@ module Canvas.Tests.GridsHelperTests
 
 open Expecto
 open FsCheck
-open FS.GG.UI.Scene
-open FS.GG.UI.Canvas
+open FS.GG.UI.Scene // Point/Rect stay in Scene (grids maps parts to/from pixels)
 open AppRoot
+
+// ADR-0022 P5: the grids fragment's FACES address type `Cell` moved to FS.GG.Game.Core; Point/Rect stay in Scene.
+type Cell = FS.GG.Game.Core.Cell
 
 let private cell col row : Cell = { Col = col; Row = row }
 let private spec size ox oy : Grids.GridSpec = { CellSize = size; Origin = { X = ox; Y = oy } }

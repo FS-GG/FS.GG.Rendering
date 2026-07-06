@@ -80,21 +80,21 @@ evidence commands use stable key ordering, stdout/file parity,
 parent-directory creation, normalized status vocabulary, explicit skipped
 gates, next commands, and unsupported-host reason/fallback fields without
 forcing the default app profile to reference the Testing package.
-Game entities reuse shared Scene geometry for layout, containment, collision,
-and rendering evidence when the Scene model fits, rather than introducing local
-duplicate bounds records. Containment and collision are shipped API on the shared
-`FS.GG.UI.Scene.Rect`: `Geometry.intersects` (box-vs-box, strict edges),
+Game entities reuse the shared sim geometry for layout, containment, collision,
+and rendering evidence when the model fits, rather than introducing local
+duplicate bounds records. Containment and collision are shipped API on the sim
+`FS.GG.Game.Core.Rect`: `Geometry.intersects` (box-vs-box, strict edges),
 `Geometry.contains`/`Geometry.containsPoint` (inclusive), `Geometry.center`/`ofCenter`,
 and `Geometry.sweptIntersects` for fast projectiles that would tunnel a thin target in
-one step — no hand-rolled AABB. For deterministic simulation, hold `FS.GG.UI.Canvas.Rng`
+one step — no hand-rolled AABB. For deterministic simulation, hold `FS.GG.Game.Core.Rng`
 (a value-type seeded PRNG: `Rng.ofSeed`/`nextInt`/`nextFloat`/`split`, each returning a
 new state) in the model instead of a mutable `System.Random`, and pace a fixed timestep
-with `FS.GG.UI.Canvas.FixedStep.drain interval frameTime accumulator` (returns
+with `FS.GG.Game.Core.FixedStep.drain interval frameTime accumulator` (returns
 `struct(steps, newAccumulator)`, clamping a stalled frame) rather than a hand-rolled
 accumulator loop. The `fs-gg-game-core` skill collects these simulation patterns
 (fixed-step march, RNG determinism, AABB/swept collision, entity culling) with worked
 examples; it materializes for the `game` and `sample-pack` profiles, which reference the
-`FS.GG.UI.Canvas` package that carries `Rng`/`FixedStep`.
+`FS.GG.Game.Core` package that carries `Geometry`/`Rng`/`FixedStep`.
 
 Visual evidence honesty keeps screenshot proof, rasterized scene proof, layout
 readability proof, fallback classification, and unsupported proof separate.

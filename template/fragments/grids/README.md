@@ -12,7 +12,7 @@ the corners, extend it toward hex/triangle grids, or delete the file entirely. I
 `Exists`-guarded, so deleting `Grids.fs` keeps the build green (`Product.fsproj` stays a "durable — do
 not touch" file).
 
-The face and pixel vocabulary still reuses the framework primitives — `FS.GG.UI.Canvas.Cell` is the
+The face and pixel vocabulary still reuses the framework primitives — `FS.GG.Game.Core.Cell` is the
 **face**, `FS.GG.UI.Scene.Point`/`Rect` are the pixels — the fragment adds only the `Edge`/`Vertex`
 parts and the conversions the shared vocabulary genuinely lacks and that do not belong in a frozen
 package.

@@ -5,13 +5,8 @@ FS.GG.UI.Canvas.AudioEffect+PlaySfx
 FS.GG.UI.Canvas.AudioEffect+SetMasterVolume
 FS.GG.UI.Canvas.AudioEffect+Tags
 FS.GG.UI.Canvas.AudioEvidence
-FS.GG.UI.Canvas.Cell
 FS.GG.UI.Canvas.Elements
-FS.GG.UI.Canvas.FixedStep
 FS.GG.UI.Canvas.Loop
-FS.GG.UI.Canvas.Neighbourhood
-FS.GG.UI.Canvas.Neighbourhood+Tags
-FS.GG.UI.Canvas.Pathfinding
 FS.GG.UI.Canvas.Persistence
 FS.GG.UI.Canvas.PersistenceEffect
 FS.GG.UI.Canvas.PersistenceEffect+DeleteSlot
@@ -19,12 +14,9 @@ FS.GG.UI.Canvas.PersistenceEffect+Load
 FS.GG.UI.Canvas.PersistenceEffect+Save
 FS.GG.UI.Canvas.PersistenceEffect+Tags
 FS.GG.UI.Canvas.PersistenceEvidence
-FS.GG.UI.Canvas.Rng
 FS.GG.UI.Canvas.SaveEnvelope
 FS.GG.UI.Canvas.SavePayload
 FS.GG.UI.Canvas.SaveSlot
 FS.GG.UI.Canvas.SoundId
-FS.GG.UI.Canvas.SpatialGrid
-FS.GG.UI.Canvas.SpatialGrid`1
 FS.GG.UI.Canvas.StepState`1
 FS.GG.UI.Canvas.TrackId

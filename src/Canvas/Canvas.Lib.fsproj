@@ -5,10 +5,14 @@
     <IsPackable>true</IsPackable>
     <PackageId>FS.GG.UI.Canvas</PackageId>
     <AssemblyName>FS.GG.UI.Canvas</AssemblyName>
-    <Version>0.1.63-preview.1</Version>
+    <Version>0.2.0-preview.1</Version>
     <Title>FS.GG.UI.Canvas</Title>
-    <Description>Dependency-light pure element library and deterministic fixed-timestep game loop for FS.GG.UI canvas controls.</Description>
-    <PackageTags>fsharp;skia;scene;canvas;game-loop;ui</PackageTags>
+    <!-- 0.2.0 major (ADR-0022 P5): the deterministic sim primitives (Rng/FixedStep/Pathfinding/
+         SpatialGrid) moved OUT to FS.GG.Game.Core (the new bottom layer). Canvas now carries only
+         the render-adjacent surfaces: pure Elements, the render Loop, and the Audio/Persistence
+         request vocabularies. -->
+    <Description>Dependency-light pure element library, render loop, and Audio/Persistence request surfaces for FS.GG.UI canvas products.</Description>
+    <PackageTags>fsharp;skia;scene;canvas;ui;audio;persistence</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,14 +26,6 @@
     <Compile Include="Elements.fs" />
     <Compile Include="Loop.fsi" />
     <Compile Include="Loop.fs" />
-    <Compile Include="Rng.fsi" />
-    <Compile Include="Rng.fs" />
-    <Compile Include="FixedStep.fsi" />
-    <Compile Include="FixedStep.fs" />
-    <Compile Include="Pathfinding.fsi" />
-    <Compile Include="Pathfinding.fs" />
-    <Compile Include="SpatialGrid.fsi" />
-    <Compile Include="SpatialGrid.fs" />
     <Compile Include="Audio.fsi" />
     <Compile Include="Audio.fs" />
     <Compile Include="Persistence.fsi" />

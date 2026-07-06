@@ -25,8 +25,8 @@ square-grid model from the Red Blob Games references (see **Sources**). This ski
 The face and pixel vocabulary you consume is bundled framework surface; the parts layer is your own
 product source:
 
-- `docs/api-surface/Canvas/Pathfinding.fsi` — the shared `Cell` (`{ Col; Row }`), the grid **face**.
-  Shipped in `FS.GG.UI.Canvas` (`game`/`sample-pack`). Reused as-is; **not** re-rolled.
+- `docs/api-surface/Game.Core/Pathfinding.fsi` — the shared `Cell` (`{ Col; Row }`), the grid **face**.
+  Shipped in `FS.GG.Game.Core` (`game`/`sample-pack`). Reused as-is; **not** re-rolled.
 - `docs/api-surface/Scene/Scene.fsi` — the shared `Point`/`Rect` (pixel positions, cell boxes, edge
   endpoints). Shipped in `FS.GG.UI.Scene` (every profile).
 - `src/<ProductDir>/Grids.fs` — **product-owned, adaptable** source: the `EdgeOrientation`/`Edge`/
@@ -58,7 +58,7 @@ Six pure, integer conversions walk between the parts. Each returns a fixed, docu
 **mutually consistent** — every edge or corner a cell reports, reports that cell back:
 
 ```fsharp
-open FS.GG.UI.Canvas       // Cell
+open FS.GG.Game.Core       // Cell
 // Grids lives in your product's own namespace (Grids.fs).
 
 let c : Cell = { Col = 3; Row = 2 }
@@ -154,7 +154,7 @@ this product's `readiness/` paths. Do not copy framework readiness reports into 
 
 ## Package Boundary
 
-`Cell` is in `FS.GG.UI.Canvas` (referenced only on the `game`/`sample-pack` profiles); `Point`/`Rect` are
+`Cell` is in `FS.GG.Game.Core` (referenced only on the `game`/`sample-pack` profiles); `Point`/`Rect` are
 in `FS.GG.UI.Scene`. `Grids.fs` is **product-owned source with no backing package**. Keep rendering in
 [[fs-gg-scene]] and host wiring in [[fs-gg-skiaviewer]].
 

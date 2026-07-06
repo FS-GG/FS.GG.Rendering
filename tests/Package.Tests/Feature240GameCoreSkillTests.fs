@@ -3,12 +3,13 @@ module Feature240GameCoreSkillTests
 // Feature 240 (#73) — the fs-gg-game-core product skill surface guard.
 //
 // The skill body advises the Feature-239 simulation primitives (Geometry / Rng / FixedStep). It is only
-// honest if every FS.GG.UI member it names actually exists in the surface a generated product bundles —
-// the verbatim-copied api-surface .fsi (Feature 060). This gate scans the shipped SKILL.md for every
-// `Geometry.<m>` / `Rng.<m>` / `FixedStep.<m>` token and fails the build if any does NOT resolve to a
-// `val`/member in the matching packed .fsi (SC-004: a renamed/hallucinated reference fails). It also
-// asserts the packaging that makes those APIs consumable exists (FR-011/FR-012): the bundled Canvas
-// surface, the refreshed Geometry module, and the Canvas package pin/reference on the sim profiles.
+// honest if every FS.GG.Game.Core member it names actually exists in the surface a generated product
+// bundles — the verbatim-copied api-surface .fsi (Feature 060). This gate scans the shipped SKILL.md for
+// every `Geometry.<m>` / `Rng.<m>` / `FixedStep.<m>` token and fails the build if any does NOT resolve to
+// a `val`/member in the matching packed .fsi (SC-004: a renamed/hallucinated reference fails). It also
+// asserts the packaging that makes those APIs consumable exists (FR-011/FR-012): the bundled
+// FS.GG.Game.Core surface (Rng/FixedStep/Pathfinding/SpatialGrid/Geometry) and the FS.GG.Game.Core
+// package pin/reference on the sim profiles.
 
 open System.IO
 open System.Text.RegularExpressions
@@ -21,19 +22,19 @@ let private repositoryPath (relativePath: string) =
     Path.Combine(repositoryRoot, relativePath.Replace('/', Path.DirectorySeparatorChar))
 
 let private skillBodyPath = repositoryPath "template/product-skills/fs-gg-game-core/SKILL.md"
-let private sceneFsiPath = repositoryPath "template/base/docs/api-surface/Scene/Scene.fsi"
-let private canvasRngFsiPath = repositoryPath "template/base/docs/api-surface/Canvas/Rng.fsi"
-let private canvasFixedStepFsiPath = repositoryPath "template/base/docs/api-surface/Canvas/FixedStep.fsi"
-let private canvasPathfindingFsiPath = repositoryPath "template/base/docs/api-surface/Canvas/Pathfinding.fsi"
-let private canvasSpatialGridFsiPath = repositoryPath "template/base/docs/api-surface/Canvas/SpatialGrid.fsi"
+let private gameCoreGeometryFsiPath = repositoryPath "template/base/docs/api-surface/Game.Core/Geometry.fsi"
+let private gameCoreRngFsiPath = repositoryPath "template/base/docs/api-surface/Game.Core/Rng.fsi"
+let private gameCoreFixedStepFsiPath = repositoryPath "template/base/docs/api-surface/Game.Core/FixedStep.fsi"
+let private gameCorePathfindingFsiPath = repositoryPath "template/base/docs/api-surface/Game.Core/Pathfinding.fsi"
+let private gameCoreSpatialGridFsiPath = repositoryPath "template/base/docs/api-surface/Game.Core/SpatialGrid.fsi"
 
 /// The cited module -> the packed .fsi its members must resolve in.
 let private moduleSurface =
-    [ "Geometry", sceneFsiPath
-      "Rng", canvasRngFsiPath
-      "FixedStep", canvasFixedStepFsiPath
-      "Pathfinding", canvasPathfindingFsiPath
-      "SpatialGrid", canvasSpatialGridFsiPath ]
+    [ "Geometry", gameCoreGeometryFsiPath
+      "Rng", gameCoreRngFsiPath
+      "FixedStep", gameCoreFixedStepFsiPath
+      "Pathfinding", gameCorePathfindingFsiPath
+      "SpatialGrid", gameCoreSpatialGridFsiPath ]
     |> Map.ofList
 
 /// A packed .fsi declares a member `m` when it carries `val m:` or the type `type m` (for `Rng`).
@@ -53,7 +54,7 @@ let feature240GameCoreSkillTests =
               let fsiText = moduleSurface |> Map.map (fun _ path -> File.ReadAllText path)
 
               // Match `Module.member` in code position only: members are lowercase-initial F# values, and
-              // the lookbehind rejects file-path / qualified contexts like `Canvas/Rng.fsi` or `X.Rng.y`.
+              // the lookbehind rejects file-path / qualified contexts like `Game.Core/Rng.fsi` or `X.Rng.y`.
               let cited =
                   Regex.Matches(body, @"(?<![\w./])(Geometry|Rng|FixedStep|Pathfinding|SpatialGrid)\.([a-z][A-Za-z0-9']*)")
                   |> Seq.map (fun m -> m.Groups.[1].Value, m.Groups.[2].Value)
@@ -83,20 +84,21 @@ let feature240GameCoreSkillTests =
           }
 
           // FR-012 — the bundled surface that makes the citations resolvable exists in the product tree.
-          test "the packed Canvas surface is bundled and Scene carries the Geometry module (FR-012)" {
-              for path in [ canvasRngFsiPath; canvasFixedStepFsiPath; canvasPathfindingFsiPath; canvasSpatialGridFsiPath ] do
-                  Expect.isTrue (File.Exists path) (sprintf "packed Canvas surface missing: %s" path)
-              let scene = File.ReadAllText sceneFsiPath
-              Expect.stringContains scene "module Geometry =" "packed Scene.fsi must carry the refreshed Geometry module"
+          test "the packed FS.GG.Game.Core surface is bundled with the Geometry module (FR-012)" {
+              for path in [ gameCoreRngFsiPath; gameCoreFixedStepFsiPath; gameCorePathfindingFsiPath; gameCoreSpatialGridFsiPath; gameCoreGeometryFsiPath ] do
+                  Expect.isTrue (File.Exists path) (sprintf "packed FS.GG.Game.Core surface missing: %s" path)
+              let geometry = File.ReadAllText gameCoreGeometryFsiPath
+              Expect.stringContains geometry "module Geometry =" "packed Game.Core/Geometry.fsi must carry the Geometry module"
           }
 
-          // FR-011 — Canvas is pinned and referenced so a game/sample-pack product can compile Rng/FixedStep.
-          test "Canvas is pinned in Directory.Packages.props and referenced by the product (FR-011)" {
+          // FR-011 — FS.GG.Game.Core is pinned and referenced so a game/sample-pack product can compile
+          // Rng/FixedStep/Pathfinding/SpatialGrid/Geometry.
+          test "FS.GG.Game.Core is pinned in Directory.Packages.props and referenced by the product (FR-011)" {
               let props = File.ReadAllText (repositoryPath "template/base/Directory.Packages.props")
               let proj = File.ReadAllText (repositoryPath "template/base/src/Product/Product.fsproj")
-              Expect.stringContains props "Include=\"FS.GG.UI.Canvas\"" "Directory.Packages.props must pin FS.GG.UI.Canvas"
-              Expect.stringContains proj "Include=\"FS.GG.UI.Canvas\"" "Product.fsproj must reference FS.GG.UI.Canvas"
+              Expect.stringContains props "Include=\"FS.GG.Game.Core\"" "Directory.Packages.props must pin FS.GG.Game.Core"
+              Expect.stringContains proj "Include=\"FS.GG.Game.Core\"" "Product.fsproj must reference FS.GG.Game.Core"
               // gated to the simulation profiles only (matches the skill's materializes-when).
-              Expect.stringContains proj "profile == \"game\" || profile == \"sample-pack\"" "Canvas reference is sim-profile gated"
+              Expect.stringContains proj "profile == \"game\" || profile == \"sample-pack\"" "Game.Core reference is sim-profile gated"
           }
         ]

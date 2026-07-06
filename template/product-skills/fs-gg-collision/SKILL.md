@@ -20,10 +20,10 @@ frozen package. Everything here is pure, total, and deterministic — safe to ca
 The detection signatures you consume are bundled framework surfaces; the response layer is your own
 product source:
 
-- `docs/api-surface/Scene/Scene.fsi` — the `Geometry` module (box overlap / containment / swept /
-  centering) on the shared `Rect`/`Point`. Shipped in `FS.GG.UI.Scene` (referenced by every profile).
-- `docs/api-surface/Canvas/SpatialGrid.fsi` — the uniform `SpatialGrid` for broad-phase bucketing and
-  range/splash queries. Shipped in `FS.GG.UI.Canvas` (`game`/`sample-pack` profiles).
+- `docs/api-surface/Game.Core/Geometry.fsi` — the `Geometry` module (box overlap / containment / swept /
+  centering) on the sim `Rect`/`Point`. Shipped in `FS.GG.Game.Core` (`game`/`sample-pack` profiles).
+- `docs/api-surface/Game.Core/SpatialGrid.fsi` — the uniform `SpatialGrid` for broad-phase bucketing and
+  range/splash queries. Also `FS.GG.Game.Core` (`game`/`sample-pack` profiles).
 - `src/<ProductDir>/Collision.fs` — **product-owned, adaptable** source: the `Body`/`Contact`/
   `Resolution`/`ResponseRule` shapes and `contact`/`collide`/`resolve`/`step`. Yours to edit or delete.
 
@@ -50,7 +50,7 @@ half-extent so no overlap is missed (**exact**, no false negatives). Pairs come 
 `(i, j)` insertion-index order, so the result is deterministic.
 
 ```fsharp
-open FS.GG.UI.Scene       // Rect, Point
+open FS.GG.Game.Core       // Rect, Point, Geometry, SpatialGrid
 // Collision lives in your product's own namespace (Collision.fs).
 
 let bodies =
@@ -119,8 +119,8 @@ Record collision evidence (overlap/resolution cases, determinism replays) under 
 
 ## Package Boundary
 
-`Geometry` is in `FS.GG.UI.Scene`; `SpatialGrid` is in `FS.GG.UI.Canvas` (referenced only on the
-`game`/`sample-pack` profiles). `Collision.fs` is **product-owned source with no backing package**. Keep
+`Geometry` and `SpatialGrid` (plus the sim `Rect`/`Point`) are in `FS.GG.Game.Core` (referenced only on
+the `game`/`sample-pack` profiles). `Collision.fs` is **product-owned source with no backing package**. Keep
 rendering in [[fs-gg-scene]] and host wiring in [[fs-gg-skiaviewer]].
 
 ## Generated Product

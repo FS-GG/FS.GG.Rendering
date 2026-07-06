@@ -12,7 +12,7 @@
     {
       "id": "fs-gg-collision",
       "scope": "product",
-      "sha256": "8a80e72ecdf9c025d150e72d423b799c8cd85ec1ddcbd290b9a00883a0d8485b",
+      "sha256": "3d4788ba9374b9d13bffbdee855b242ff2dab9b1b4426658b05aba40105d2b5d",
       "resolvablePath": ".agents/skills/fs-gg-collision/SKILL.md",
       "materializes-when": "profile in [game, sample-pack]",
       "supplied-by": "template/product-skills/fs-gg-collision/"
@@ -36,7 +36,7 @@
     {
       "id": "fs-gg-game-core",
       "scope": "product",
-      "sha256": "16fd32b71ecb0f43937158a9b359654af9ecc28f7793b5489e42ea7ba4a76169",
+      "sha256": "f9f732cdfa0198ee2529e31eba383ca258f4574321c1432d7b5d3d5a2c8afd45",
       "resolvablePath": ".agents/skills/fs-gg-game-core/SKILL.md",
       "materializes-when": "profile in [game, sample-pack]",
       "supplied-by": "template/product-skills/fs-gg-game-core/"
@@ -44,7 +44,7 @@
     {
       "id": "fs-gg-grids",
       "scope": "product",
-      "sha256": "137de138a82333cc0b5bf506a857e3bb5dac8984e498ec97424cc175eb962e91",
+      "sha256": "6c61e9469c821ba2c91fe8e34ad220288baa12e4a0570c33a5e6eff26d35c541",
       "resolvablePath": ".agents/skills/fs-gg-grids/SKILL.md",
       "materializes-when": "profile in [game, sample-pack]",
       "supplied-by": "template/product-skills/fs-gg-grids/"
@@ -68,7 +68,7 @@
     {
       "id": "fs-gg-line-drawing",
       "scope": "product",
-      "sha256": "e0d8ffd5a6628e847c8dd1bed000d7b1c41a5eff8be529e5f8bc72e7d09976bd",
+      "sha256": "70da6b04db6ae0204c01e71b4ebd10eb1edb839f19cde1ef2db1cf748b9fd087",
       "resolvablePath": ".agents/skills/fs-gg-line-drawing/SKILL.md",
       "materializes-when": "profile in [game, sample-pack]",
       "supplied-by": "template/product-skills/fs-gg-line-drawing/"
@@ -156,7 +156,7 @@
     {
       "id": "fs-gg-visibility",
       "scope": "product",
-      "sha256": "bef35ca0b50cf4019c63779a0d7567c953a3ff072371bc5dd60540c4c6b64c16",
+      "sha256": "09ca21571aa007f0806d2b1fd1430310f376af93d507670de69343adcc3b4e6c",
       "resolvablePath": ".agents/skills/fs-gg-visibility/SKILL.md",
       "materializes-when": "profile in [game, sample-pack]",
       "supplied-by": "template/product-skills/fs-gg-visibility/"

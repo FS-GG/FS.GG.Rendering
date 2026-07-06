@@ -1,7 +1,6 @@
 namespace AppRoot
 
-open FS.GG.UI.Scene
-open FS.GG.UI.Canvas
+open FS.GG.UI.Scene // Point/Rect stay in Scene — grids maps grid parts to/from pixels (render space)
 
 /// Product-owned grid-parts helper — THIS FILE IS YOURS TO ADAPT.
 ///
@@ -32,6 +31,10 @@ open FS.GG.UI.Canvas
 ///
 /// References: https://www.redblobgames.com/grids/parts/  and  https://www.redblobgames.com/grids/edges/
 module Grids =
+
+    /// ADR-0022 P5: the FACES address type `Cell` moved to the FS.GG.Game.Core bottom layer (from
+    /// FS.GG.UI.Canvas). Alias it so the signatures below read unchanged; `Point`/`Rect` stay in Scene.
+    type Cell = FS.GG.Game.Core.Cell
 
     /// Whether an `Edge` is a horizontal boundary (top/bottom of a cell) or a vertical one (left/right).
     type EdgeOrientation =
