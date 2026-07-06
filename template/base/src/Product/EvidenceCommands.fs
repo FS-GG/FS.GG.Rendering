@@ -690,13 +690,17 @@ let windowDiagnostics (evidencePath: string) =
 
     let visibilityMessage = liveClassMessage "window-visibility"
     let lifecycleMessage = liveClassMessage "app-lifecycle"
-    let productDefectMessage = liveClassMessage "product-defect"
+    // The diagnostic-class STRING stays product-slug-imprinted (`product` -> effectiveNameLower,
+    // consistent with every other `product` token in this file). The binding IDENTIFIER must not:
+    // a hyphenated product name is a legal name but an illegal F# identifier, so route it through
+    // `approot` (-> effectiveIdentifierLower, the hyphen-free derived namespace) instead. (#149)
+    let approotDefectMessage = liveClassMessage "product-defect"
 
     let lines =
         [ $"status={environmentStatus} mode=interactive-window command=--window-diagnostics diagnostic-class=environment-session persistent-window-supported={supportedText} {notObserved} fallback-is-full-desktop-session={desktop.FallbackIsFullDesktopSession} message={desktop.Message}"
           $"status={liveClassStatus} mode=interactive-window command=--window-diagnostics diagnostic-class=window-visibility persistent-window-supported={supportedText} {notObserved} message={visibilityMessage}"
           $"status={liveClassStatus} mode=interactive-window command=--window-diagnostics diagnostic-class=app-lifecycle persistent-window-supported={supportedText} {notObserved} message={lifecycleMessage}"
-          $"status={liveClassStatus} mode=interactive-window command=--window-diagnostics diagnostic-class=product-defect persistent-window-supported={supportedText} {notObserved} message={productDefectMessage}" ]
+          $"status={liveClassStatus} mode=interactive-window command=--window-diagnostics diagnostic-class=product-defect persistent-window-supported={supportedText} {notObserved} message={approotDefectMessage}" ]
 
     let directory = Path.GetDirectoryName evidencePath
 

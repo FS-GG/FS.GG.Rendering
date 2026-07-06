@@ -53,6 +53,7 @@
     <Compile Include="Feature248LineDrawingSkillTests.fs" />
     <Compile Include="Feature250CollisionSafeVec2Tests.fs" />
     <Compile Include="SwapChecklistTemplateTests.fs" />
+    <Compile Include="ScaffoldIdentifierLeakGuardTests.fs" />
     <Compile Include="Tests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
