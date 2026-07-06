@@ -1,7 +1,6 @@
 namespace AppRoot
 
-open FS.GG.UI.Scene
-open FS.GG.UI.Canvas
+open FS.GG.Game.Core // ADR-0022 P5: Point/Rect + SpatialGrid now live in the FS.GG.Game.Core bottom layer (moved from FS.GG.UI.Scene/.Canvas)
 
 /// Product-owned 2D-visibility helper — THIS FILE IS YOURS TO ADAPT.
 ///

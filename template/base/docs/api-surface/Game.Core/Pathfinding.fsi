@@ -1,15 +1,15 @@
-namespace FS.GG.UI.Canvas
+namespace FS.GG.Game.Core
 
-/// Public contract type exposed by this FS.GG.UI package.
+/// Public contract type exposed by the FS.GG.Game.Core package.
 /// An integer grid coordinate — the atom over which walkability, neighbours, and paths are expressed.
-/// Distinct from `FS.GG.UI.Scene.Point` (float): a `Cell` is a discrete tile index, not a pixel
+/// Distinct from `FS.GG.Game.Core.Point` (float): a `Cell` is a discrete tile index, not a continuous
 /// position. Structural equality gives a stable identity for the frontier/visited bookkeeping and, with
 /// `(Col, Row)` ordering, the total tie-break order that keeps paths byte-identical (no hash-set
 /// iteration-order leakage).
 [<Struct>]
 type Cell = { Col: int; Row: int }
 
-/// Public contract type exposed by this FS.GG.UI package.
+/// Public contract type exposed by the FS.GG.Game.Core package.
 /// Movement neighbourhood for grid pathfinding.
 type Neighbourhood =
     /// 4-connected: N/E/S/W only, no diagonals. Each move costs 1 (`bfs`) / 10 (`astar`).
@@ -19,7 +19,7 @@ type Neighbourhood =
     /// √2-scaled; never a float, so equal-cost ties can never leak through floating-point equality).
     | EightWay
 
-/// Public contract module exposed by this FS.GG.UI package.
+/// Public contract module exposed by the FS.GG.Game.Core package.
 /// Deterministic grid pathfinding over a caller-supplied walkability predicate. The framework holds no
 /// map: the predicate `isWalkable` (a pure `Cell -> bool`) IS the map, so pathfinding works over an
 /// unbounded integer cell space. Both functions are pure and **bit-identical across runs and
@@ -29,7 +29,7 @@ type Neighbourhood =
 [<RequireQualifiedAccess>]
 module Pathfinding =
 
-    /// Public contract function exposed by this FS.GG.UI package.
+    /// Public contract function exposed by the FS.GG.Game.Core package.
     /// A* shortest path from `start` to `goal` over walkable cells. Returns `Some path` where `path` is
     /// the cell sequence **including both `start` and `goal`** (a single-element `[start]` when
     /// `start = goal` and `start` is walkable), or `None` when no walkable path exists. Total on
@@ -44,7 +44,7 @@ module Pathfinding =
         goal: Cell ->
             Cell list option
 
-    /// Public contract function exposed by this FS.GG.UI package.
+    /// Public contract function exposed by the FS.GG.Game.Core package.
     /// Breadth-first (unweighted) shortest path from `start` to `goal`, same walkability predicate,
     /// neighbourhood, `maxVisited` bound, endpoint-inclusion, and determinism guarantee as `astar`.
     /// Equivalent to `astar` when every move costs the same; offered for callers who want the simplest

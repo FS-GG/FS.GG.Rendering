@@ -8,7 +8,7 @@ module Canvas.Tests.LineDrawingHelperTests
 // FR-011 (bounded / connected).
 
 open Expecto
-open FS.GG.UI.Canvas
+open FS.GG.Game.Core // ADR-0022 P5: the line-drawing fragment's Cell now comes from FS.GG.Game.Core
 open AppRoot
 
 let private c col row : Cell = { Col = col; Row = row }

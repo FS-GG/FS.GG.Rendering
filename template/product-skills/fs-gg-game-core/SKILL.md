@@ -17,14 +17,14 @@ a window is `fs-gg-skiaviewer`'s. This skill materializes for the `game` and `sa
 
 The signatures you consume are bundled with this product:
 
-- `docs/api-surface/Scene/Scene.fsi` — the `Geometry` module (collision / containment / centering), on
-  the shared `Rect`/`Point`. Shipped in `FS.GG.UI.Scene` (already referenced by every profile).
-- `docs/api-surface/Canvas/Rng.fsi` and `docs/api-surface/Canvas/FixedStep.fsi` — the `Rng` value type
-  and the `FixedStep` accumulator drain. Shipped in `FS.GG.UI.Canvas`, referenced on the `game` and
-  `sample-pack` profiles.
-- `docs/api-surface/Canvas/Pathfinding.fsi` and `docs/api-surface/Canvas/SpatialGrid.fsi` — deterministic
+- `docs/api-surface/Game.Core/Geometry.fsi` — the `Geometry` module (collision / containment / centering),
+  on the sim `Rect`/`Point`. Shipped in `FS.GG.Game.Core`, referenced on the `game` and `sample-pack`
+  profiles.
+- `docs/api-surface/Game.Core/Rng.fsi` and `docs/api-surface/Game.Core/FixedStep.fsi` — the `Rng` value type
+  and the `FixedStep` accumulator drain. Also `FS.GG.Game.Core`, same profiles.
+- `docs/api-surface/Game.Core/Pathfinding.fsi` and `docs/api-surface/Game.Core/SpatialGrid.fsi` — deterministic
   grid `Pathfinding` (A*/BFS over a walkability predicate) and the uniform `SpatialGrid` for range/splash
-  queries. Also `FS.GG.UI.Canvas`, same profiles — reuse these instead of hand-rolling BFS/A* or bucketing.
+  queries. Also `FS.GG.Game.Core`, same profiles — reuse these instead of hand-rolling BFS/A* or bucketing.
 
 Every draw returns a `struct` tuple `(value, nextState)` — deconstruct with `let struct(v, next) = …`.
 All helpers are **total**: degenerate inputs return a documented value, they never throw.
@@ -38,7 +38,7 @@ scripted `frameTime` sequence reproduces identical results. A stalled frame is c
 `drainWith maxFrameTime interval frameTime accumulator`.
 
 ```fsharp
-open FS.GG.UI.Canvas
+open FS.GG.Game.Core
 
 // Run world-updates at a fixed 60 Hz regardless of render cadence.
 let stepHz = 1.0 / 60.0
@@ -76,7 +76,7 @@ deterministic. Never put a mutable `System.Random` in the `Model` — it breaks 
 equality.
 
 ```fsharp
-open FS.GG.UI.Canvas
+open FS.GG.Game.Core
 
 type Model = { Rng: Rng; Score: int }               // RNG state lives IN the model
 
@@ -106,7 +106,7 @@ Keep only the entities whose bounds meet the visible region — an `intersects` 
 test against the gameplay `Rect`, reusing the same shared type:
 
 ```fsharp
-open FS.GG.UI.Scene
+open FS.GG.Game.Core
 
 let visible : Rect = { X = 0.0; Y = 0.0; Width = 1280.0; Height = 720.0 }
 
@@ -127,7 +127,7 @@ hand-rolled BFS/A*, no tie-break footgun.
 - `Pathfinding.bfs …` — same shape, unweighted (hop-minimal) path.
 
 ```fsharp
-open FS.GG.UI.Canvas
+open FS.GG.Game.Core
 
 let blocked = set [ (2, 0); (2, 1); (2, 2) ]                     // a wall your Model owns
 let walkable (c: Cell) = c.Col >= 0 && c.Col < 8 && c.Row >= 0 && c.Row < 8 && not (blocked.Contains(c.Col, c.Row))
@@ -138,16 +138,16 @@ let route = Pathfinding.astar EightWay 4096 walkable { Col = 0; Row = 0 } { Col 
 ## Spatial queries (range / splash)
 
 `SpatialGrid` buckets positioned items once and answers "what is near here" without an O(n²) scan — the
-uniform grid the perf guidance recommends, now shipped. Built from a cell size and `(Scene.Point * 'item)`
-pairs; queries are **exact** (no false positives/negatives) and return items in **insertion order**.
+uniform grid the perf guidance recommends, now shipped. Built from a cell size and `(Point * 'item)`
+pairs (the sim `FS.GG.Game.Core.Point`); queries are **exact** (no false positives/negatives) and return
+items in **insertion order**.
 
 - `SpatialGrid.build cellSize items` — bucket once (hold the grid in your `Model` or rebuild per frame).
 - `SpatialGrid.query region grid` — items inside a `Rect` (broad-phase collision / on-screen set).
 - `SpatialGrid.queryRadius center radius grid` — items within a radius (splash damage / proximity).
 
 ```fsharp
-open FS.GG.UI.Canvas
-open FS.GG.UI.Scene
+open FS.GG.Game.Core
 
 let grid = SpatialGrid.build 32.0 [ for e in enemies -> e.Pos, e.Id ]
 let splashed = SpatialGrid.queryRadius blast 48.0 grid            // ids to damage
@@ -162,8 +162,7 @@ point of keeping the `Rng`, the grid, and the effect table *in the `Model`*.
 A tower-defense-shaped step, start to finish:
 
 ```fsharp
-open FS.GG.UI.Canvas
-open FS.GG.UI.Scene
+open FS.GG.Game.Core
 
 // 1. Route each creep across the map. The blocked set lives in the Model; the predicate IS the map, so
 //    recompute a path only when the walls change — not every step.
@@ -267,10 +266,10 @@ Record simulation evidence (determinism replays, collision/culling cases) under 
 
 ## Package Boundary
 
-`Geometry` is in `FS.GG.UI.Scene`; `Rng`/`FixedStep`/`Pathfinding`/`SpatialGrid` are in `FS.GG.UI.Canvas`
-(referenced only on the `game`/`sample-pack` profiles). Canvas depends only on Scene — the simulation
-primitives pull in no viewer, layout, or widget machinery. Keep rendering in `fs-gg-scene` and host wiring
-in `fs-gg-skiaviewer`.
+`Geometry`, `Rng`, `FixedStep`, `Pathfinding`, and `SpatialGrid` (plus the sim `Point`/`Rect`/`Cell`) all
+live in `FS.GG.Game.Core` (referenced only on the `game`/`sample-pack` profiles). `FS.GG.Game.Core` is the
+BCL-only bottom layer — it depends on nothing and pulls in no viewer, layout, or widget machinery. Keep
+rendering in `fs-gg-scene` and host wiring in `fs-gg-skiaviewer`.
 
 ## Generated Product
 

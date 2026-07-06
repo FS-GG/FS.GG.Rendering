@@ -8,7 +8,7 @@ module Canvas.Tests.VisibilityHelperTests
 // FR-011 (bounded).
 
 open Expecto
-open FS.GG.UI.Scene
+open FS.GG.Game.Core // ADR-0022 P5: the visibility fragment's Point/Rect + SpatialGrid now come from FS.GG.Game.Core
 open AppRoot
 
 let private p x y : Point = { X = x; Y = y }

@@ -23,10 +23,11 @@ for the `game` and `sample-pack` profiles.
 The geometry vocabulary you consume is bundled framework surface; the visibility layer is your own
 product source:
 
-- `docs/api-surface/Scene/Scene.fsi` — the shared `Point`/`Rect` (positions, ray directions, hit
-  vertices, the bound box) and the `Geometry` helpers. Shipped in `FS.GG.UI.Scene` (every profile).
-- `docs/api-surface/Canvas/SpatialGrid.fsi` — the uniform `SpatialGrid` for broad-phase culling of
-  nearby occluders (`build`/`query`/`queryRadius`). Shipped in `FS.GG.UI.Canvas` (`game`/`sample-pack`).
+- `docs/api-surface/Game.Core/Primitives.fsi` — the sim `Point`/`Rect` (positions, ray directions, hit
+  vertices, the bound box), with the `Geometry` helpers in `docs/api-surface/Game.Core/Geometry.fsi`.
+  Shipped in `FS.GG.Game.Core` (`game`/`sample-pack` profiles).
+- `docs/api-surface/Game.Core/SpatialGrid.fsi` — the uniform `SpatialGrid` for broad-phase culling of
+  nearby occluders (`build`/`query`/`queryRadius`). Also `FS.GG.Game.Core` (`game`/`sample-pack`).
 - `src/<ProductDir>/Visibility.fs` — **product-owned, adaptable** source: the `Segment`/`Settings`/
   `VisibilityPolygon` shapes and `raySegment`/`isVisible`/`polygon`. Yours to edit or delete.
 
@@ -48,7 +49,7 @@ framework broad-phase, no hand-rolled bucketing. `Settings.Radius` is a single k
 region **and** the ray bound, so the two can never disagree.
 
 ```fsharp
-open FS.GG.UI.Scene       // Point, Rect
+open FS.GG.Game.Core       // Point, Rect, Geometry, SpatialGrid
 // Visibility lives in your product's own namespace (Visibility.fs).
 
 let walls =
@@ -124,7 +125,7 @@ Record visibility evidence (occlusion cases, determinism replays, bound/totality
 
 ## Package Boundary
 
-`Point`/`Rect`/`Geometry` are in `FS.GG.UI.Scene`; `SpatialGrid` is in `FS.GG.UI.Canvas` (referenced only
+`Point`/`Rect`/`Geometry` and `SpatialGrid` are in `FS.GG.Game.Core` (referenced only
 on the `game`/`sample-pack` profiles). `Visibility.fs` is **product-owned source with no backing
 package**. Keep rendering in [[fs-gg-scene]] and host wiring in [[fs-gg-skiaviewer]].
 

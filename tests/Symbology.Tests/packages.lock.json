@@ -139,7 +139,7 @@
       "FS.GG.UI.Symbology": {
         "type": "Project",
         "dependencies": {
-          "FS.GG.UI.Scene": "[0.1.37-preview.1, )",
+          "FS.GG.UI.Scene": "[0.2.0-preview.1, )",
           "FSharp.Core": "[10.1.301, )"
         }
       }

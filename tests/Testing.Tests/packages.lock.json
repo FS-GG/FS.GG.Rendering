@@ -147,8 +147,8 @@
       "FS.GG.UI.Testing": {
         "type": "Project",
         "dependencies": {
-          "FS.GG.UI.Diagnostics": "[0.1.36-preview.1, )",
-          "FS.GG.UI.Scene": "[0.1.37-preview.1, )",
+          "FS.GG.UI.Diagnostics": "[0.2.0-preview.1, )",
+          "FS.GG.UI.Scene": "[0.2.0-preview.1, )",
           "FSharp.Core": "[10.1.301, )",
           "SkiaSharp": "[4.148.0, )"
         }

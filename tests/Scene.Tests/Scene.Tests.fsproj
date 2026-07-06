@@ -28,7 +28,7 @@
     <Compile Include="Feature165VisualInspectionModelTests.fs" />
     <Compile Include="Feature165VisualInspectionPaintTests.fs" />
     <Compile Include="Feature183CodecSymmetryTests.fs" />
-    <Compile Include="GeometryTests.fs" />
+    <!-- ADR-0022 P5: Scene.Geometry moved to FS.GG.Game.Core; its unit suite lives in Game.Core.Tests. -->
     <Compile Include="Program.fs" />
   </ItemGroup>
 

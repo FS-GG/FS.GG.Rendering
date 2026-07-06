@@ -44,11 +44,13 @@
   <ItemGroup>
     <PackageReference Include="FS.GG.UI.Scene" />
     <!--#if (profile == "game" || profile == "sample-pack") -->
-    <!-- Feature 240 (#73): simulation primitives (FixedStep.drain, Rng) for the fs-gg-game-core skill.
-         Feature 243 (#92): also carries the Audio request surface (AudioEffect, Audio.interpret) for
-         the fs-gg-audio skill — same package, same gate, no separate reference.
-         Feature 244 (#93): also carries the Persistence request surface (PersistenceEffect,
-         Persistence.interpret) for the fs-gg-persistence skill — same package, same gate. -->
+    <!-- ADR-0022 P5: simulation primitives (FixedStep.drain, Rng, Pathfinding, SpatialGrid, Geometry)
+         for the fs-gg-game-core / -collision / -visibility / -line-drawing / -grids skills — now in
+         FS.GG.Game.Core, the BCL-only bottom layer (moved out of FS.GG.UI.Canvas/.Scene). -->
+    <PackageReference Include="FS.GG.Game.Core" />
+    <!-- FS.GG.UI.Canvas stays on simulation profiles for the Audio request surface (AudioEffect,
+         Audio.interpret; Feature 243, fs-gg-audio) and the Persistence request surface
+         (PersistenceEffect, Persistence.interpret; Feature 244, fs-gg-persistence). -->
     <PackageReference Include="FS.GG.UI.Canvas" />
     <!--#endif -->
     <!--#if (profile == "app" || profile == "sample-pack" || profile == "game") -->

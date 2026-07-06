@@ -32,7 +32,6 @@ FS.GG.UI.Scene.Easing
 FS.GG.UI.Scene.Easing+Tags
 FS.GG.UI.Scene.EllipseShapeEvidence
 FS.GG.UI.Scene.FontSpec
-FS.GG.UI.Scene.Geometry
 FS.GG.UI.Scene.GlyphRun
 FS.GG.UI.Scene.GlyphRunData
 FS.GG.UI.Scene.GlyphRunGlyph

@@ -42,7 +42,7 @@ let update msg model =
 //   `fs-gg-model-swap` / `fs-gg-game-core` skills.
 // ============================================================================================
 open FS.GG.UI.KeyboardInput
-open FS.GG.UI.Canvas // FixedStep.drain — the fixed-timestep accumulator drain
+open FS.GG.Game.Core // FixedStep.drain — the fixed-timestep accumulator drain (ADR-0022 P5: moved from FS.GG.UI.Canvas to the FS.GG.Game.Core bottom layer)
 open FS.GG.UI.Controls.Elmish
 open FS.GG.UI.Controls.Elmish.Authoring // Cmd.none / Sub.none (Elmish-convention no-ops for `[]`)
 open AppRoot.Geometry // Vec2 + vec2/add/scale/clamp/toPoint/toRect (collision-safe positions)
@@ -195,7 +195,7 @@ let stepSim model =
 
 // Fixed-timestep advance: fold the host's real elapsed `dt` into the carried accumulator, drain the
 // whole number of `simInterval` steps out of it, and run `stepSim` that many times. `FixedStep.drain`
-// is a pure FS.GG.UI.Canvas primitive (no wall-clock read), so a scripted `dt` sequence replays
+// is a pure FS.GG.Game.Core primitive (no wall-clock read), so a scripted `dt` sequence replays
 // byte-identically. This is the accumulator + stepSim pattern — the shape most games want on Tick.
 let private advanceSim dtSeconds model =
     let struct (steps, accumulator) = FixedStep.drain simInterval dtSeconds model.SimAccumulator

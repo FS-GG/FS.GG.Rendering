@@ -70,7 +70,7 @@ let feature248LineDrawingSkillTests =
               let src = File.ReadAllText helperSource
               Expect.stringContains src "namespace AppRoot" "literal AppRoot identifier namespace (the product-name identifier token, derived to the product namespace on scaffold)"
               Expect.stringContains src "module LineDrawing" "the LineDrawing module"
-              Expect.stringContains src "open FS.GG.UI.Canvas" "reuses the shared Cell from FS.GG.UI.Canvas"
+              Expect.stringContains src "open FS.GG.Game.Core" "reuses the shared Cell from FS.GG.Game.Core (ADR-0022 P5: moved from FS.GG.UI.Canvas)"
               for fn in [ "line"; "supercover"; "lineOfSight" ] do
                   Expect.stringContains src (sprintf "let %s" fn) (sprintf "exposes %s" fn)
           }

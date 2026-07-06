@@ -12,6 +12,15 @@
           "Mono.Cecil": "[0.11.4, 1.0.0)"
         }
       },
+      "FS.GG.Game.Core": {
+        "type": "Direct",
+        "requested": "[0.1.0-preview.1, )",
+        "resolved": "0.1.0-preview.1",
+        "contentHash": "gHJvf4NBNmYljqRSxQaiwY8IudjcXG/GgcgZQ44FhgnyA7oN0UlGrFaG7M+76RufMN9WM9331zU5nsYXKfTAug==",
+        "dependencies": {
+          "FSharp.Core": "10.1.301"
+        }
+      },
       "FsCheck": {
         "type": "Direct",
         "requested": "[3.3.3, )",
@@ -133,7 +142,7 @@
       "FS.GG.UI.Canvas": {
         "type": "Project",
         "dependencies": {
-          "FS.GG.UI.Scene": "[0.1.37-preview.1, )",
+          "FS.GG.UI.Scene": "[0.2.0-preview.1, )",
           "FSharp.Core": "[10.1.301, )"
         }
       },

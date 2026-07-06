@@ -6,7 +6,7 @@ module Canvas.Tests.CollisionHelperTests
 // layer separates overlaps deterministically. All real pure computation — no synthetic evidence.
 
 open Expecto
-open FS.GG.UI.Scene
+open FS.GG.Game.Core // ADR-0022 P5: the collision fragment's Point/Rect + Geometry/SpatialGrid now come from FS.GG.Game.Core
 open AppRoot
 
 let private body x y w h tag : Collision.Body<int> =
