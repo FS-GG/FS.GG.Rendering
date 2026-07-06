@@ -253,7 +253,7 @@ let behaviorTests =
         // (a comment at the input-mapping site) and must stay ACCURATE to the emitted host contract, so
         // it cannot silently rot if the seams change. Source/contract scan — no host launch needed.
         test "keyboard-only host boundary is surfaced at the input-wiring site and accurate to the host contract (#139)" {
-            let readProductFile parts =
+            let readAppRootFile parts =
                 System.IO.File.ReadAllText(System.IO.Path.Combine(Array.append [| __SOURCE_DIRECTORY__; ".."; ".." |] parts))
 
             let typeBlock (source: string) (name: string) =
@@ -263,14 +263,14 @@ let behaviorTests =
                 source.Substring(start, stop - start)
 
             // A1 — the boundary is present at the game input-wiring site (Model.fs, by paddleForKey).
-            let modelSource = readProductFile [| "src"; "Product"; "Model.fs" |]
+            let modelSource = readAppRootFile [| "src"; "Product"; "Model.fs" |]
             Expect.stringContains modelSource "HOST INPUT BOUNDARY" "Model.fs surfaces the keyboard-only host boundary at the input-wiring site"
             Expect.stringContains (modelSource.ToLowerInvariant()) "keyboard-only" "the boundary states the default host is keyboard-only"
             Expect.stringContains modelSource "runInteractiveApp" "the boundary names the pointer-aware interactive host path as the way to mouse-aim"
             Expect.stringContains modelSource "MapPointer" "the boundary names the pointer seam an author would need"
 
             // A2 — accurate: the emitted ViewerKey has NO mouse/pointer case (keyboard keys only).
-            let keyboardFsi = readProductFile [| "docs"; "api-surface"; "KeyboardInput"; "KeyboardInput.fsi" |]
+            let keyboardFsi = readAppRootFile [| "docs"; "api-surface"; "KeyboardInput"; "KeyboardInput.fsi" |]
             let viewerKeyBlock = typeBlock keyboardFsi "ViewerKey"
             Expect.stringContains viewerKeyBlock "ArrowLeft" "ViewerKey enumerates keyboard keys"
             Expect.isFalse (viewerKeyBlock.Contains "Mouse") "ViewerKey has no mouse case — the note's core claim"
@@ -278,7 +278,7 @@ let behaviorTests =
 
             // A3 — accurate: the default host (GeneratedAppHost) exposes MapKey but NOT MapPointer;
             // the pointer-aware InteractiveAppHost is where MapPointer lives.
-            let viewerFsi = readProductFile [| "docs"; "api-surface"; "SkiaViewer"; "SkiaViewer.fsi" |]
+            let viewerFsi = readAppRootFile [| "docs"; "api-surface"; "SkiaViewer"; "SkiaViewer.fsi" |]
             let generatedHostBlock = typeBlock viewerFsi "GeneratedAppHost"
             Expect.stringContains generatedHostBlock "MapKey:" "the default host exposes a keyboard MapKey seam"
             Expect.isFalse (generatedHostBlock.Contains "MapPointer") "the default host has NO pointer seam (keyboard-only) — the boundary is real"
