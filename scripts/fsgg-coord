@@ -56,6 +56,20 @@
 #                                             # the completion up to any parent epic whose children
 #                                             # are now all Done).
 #   fsgg-coord budget                         # print GraphQL + REST rate-limit meters (free)
+#   fsgg-coord claim <issue> [--force]        # claim an item for parallel intra-repo work
+#                                             # (ADR-0021): assign @me as the advisory lock +
+#                                             # set Status=In progress. Refuses an item already
+#                                             # assigned to someone else unless --force; on a true
+#                                             # simultaneous claim BOTH racers back off (safe).
+#                                             # Prints the suggested worktree branch to isolate on.
+#   fsgg-coord release <issue> [--status S]   # release a claim: unassign @me + set Status
+#                                             # (default Ready, so it returns to the pool).
+#   fsgg-coord overlap <a> <b>                # can items <a> and <b> run in parallel? Compares
+#                                             # their declared `Paths:` touch-sets (issue body,
+#                                             # ADR-0021) as subtrees. DISJOINT -> exit 0 (safe to
+#                                             # parallelize); OVERLAP -> exit 1 + the conflicting
+#                                             # globs (sequence them with the board's `Blocked by`).
+#                                             # Exit 2 if either item declares no `Paths:`.
 #
 #   <issue> is a full URL, `owner/repo#n`, or `repo#n` (owner defaults to FS-GG).
 #
@@ -602,8 +616,144 @@ done_cmd() {
   return 0
 }
 
+# ---- claim: the ADR-0021 intra-repo work lock. Assign @me (the advisory lock) + Status=In progress.
+# Assignment is check-then-set, so a genuine simultaneous claim has a TOCTOU window; we close it
+# honestly: after adding @me we RE-READ the assignees, and if anyone else also holds it we back off
+# (remove our own assignment) and fail. So two racers that both saw "unassigned" BOTH abort and retry
+# — never both proceed. --force steals an item already assigned to someone else. The Status flip is
+# best-effort: an item not yet on the board still claims (assignment is the lock), it just prints a note.
+me_login() { gh api user --jq '.login' 2>/dev/null || die "cannot resolve your GitHub login (gh auth?)."; }
+issue_assignees() {  # $1=owner $2=repo $3=num -> newline-separated logins (REST, cheap)
+  gh api "repos/$1/$2/issues/$3" --jq '.assignees[].login' 2>/dev/null
+}
+claim_cmd() {
+  local ref="" force=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --force) force=1; shift ;;
+      -*)      die "claim: unknown flag '$1'." ;;
+      *)       [ -z "$ref" ] && ref="$1" || die "claim: unexpected argument '$1'."; shift ;;
+    esac
+  done
+  [ -n "$ref" ] || die "claim: <issue> required (URL, owner/repo#n, or repo#n)."
+  parse_ref "$ref"
+  local me; me="$(me_login)"
+
+  local held; held="$(issue_assignees "$R_OWNER" "$R_REPO" "$R_NUM")"
+  local others; others="$(printf '%s\n' "$held" | grep -v -x "$me" | grep -v -x '' || true)"
+  if [ -n "$others" ] && [ -z "$force" ]; then
+    die "$R_REPO#$R_NUM is already claimed by: $(printf '%s' "$others" | paste -sd, -). Use --force to steal."
+  fi
+
+  gh issue edit "$R_NUM" --repo "$R_OWNER/$R_REPO" --add-assignee "$me" >/dev/null \
+    || die "claim: failed to assign @$me on $R_REPO#$R_NUM."
+
+  # Re-read: on a true race another worker may have landed between our check and our add.
+  held="$(issue_assignees "$R_OWNER" "$R_REPO" "$R_NUM")"
+  others="$(printf '%s\n' "$held" | grep -v -x "$me" | grep -v -x '' || true)"
+  if [ -n "$others" ] && [ -z "$force" ]; then
+    gh issue edit "$R_NUM" --repo "$R_OWNER/$R_REPO" --remove-assignee "$me" >/dev/null 2>&1 || true
+    die "lost a simultaneous claim on $R_REPO#$R_NUM (also held by $(printf '%s' "$others" | paste -sd, -)) — backed off. Retry."
+  fi
+
+  # Advisory lock is held. Flip Status best-effort (item may not be on the board yet).
+  local boardnote=""
+  if set_field "$ref" Status "In progress" >/dev/null 2>&1; then
+    boardnote="board: In progress"
+  else
+    boardnote="note: not on board '$TITLE' (assignment is the lock; add it to sequence it)"
+  fi
+
+  # Suggest the isolation branch (ADR-0021: one worktree per item). Slug the title.
+  local title slug branch
+  title="$(gh api "repos/$R_OWNER/$R_REPO/issues/$R_NUM" --jq '.title' 2>/dev/null || echo "")"
+  slug="$(printf '%s' "$title" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9' '-' | sed 's/-\{2,\}/-/g; s/^-//; s/-$//' | cut -c1-40 | sed 's/-$//')"
+  branch="item/$R_NUM${slug:+-$slug}"
+  printf 'claimed %s by @%s  ·  %s\n' "$R_REPO#$R_NUM" "$me" "$boardnote"
+  printf '  isolate:  git worktree add ../%s-%s -b %s\n' "$R_REPO" "$R_NUM" "$branch"
+}
+
+# ---- release: drop the claim. Unassign @me and set Status (default Ready -> back into the pool). ----
+release_cmd() {
+  local ref="" status="Ready"
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --status) status="${2:?--status needs a value}"; shift 2 ;;
+      -*)       die "release: unknown flag '$1'." ;;
+      *)        [ -z "$ref" ] && ref="$1" || die "release: unexpected argument '$1'."; shift ;;
+    esac
+  done
+  [ -n "$ref" ] || die "release: <issue> required (URL, owner/repo#n, or repo#n)."
+  parse_ref "$ref"
+  local me; me="$(me_login)"
+  gh issue edit "$R_NUM" --repo "$R_OWNER/$R_REPO" --remove-assignee "$me" >/dev/null 2>&1 || true
+  local boardnote=""
+  if set_field "$ref" Status "$status" >/dev/null 2>&1; then
+    boardnote="board: $status"
+  else
+    boardnote="note: not on board '$TITLE'"
+  fi
+  printf 'released %s (unassigned @%s)  ·  %s\n' "$R_REPO#$R_NUM" "$me" "$boardnote"
+}
+
+# ---- overlap: can two items run in parallel? Compare their declared `Paths:` touch-sets (ADR-0021).
+# Each item declares the file globs it touches as a `Paths:` line in its issue body, e.g.
+#   Paths: src/Scene/**, tests/Scene/**
+# We read both bodies over REST (cheap, no GraphQL budget) and treat each token as a SUBTREE: two
+# tokens conflict when they are equal or one is a path-prefix of the other. This is deliberately
+# file-existence-INDEPENDENT (a new feature adding files still has a declared touch-set) and
+# CONSERVATIVE — it errs toward reporting overlap. Disjoint -> exit 0; overlap -> exit 1 (+ the
+# conflicting globs); no declaration on either side -> exit 2.
+paths_of() {  # $1=owner $2=repo $3=num -> one normalized touch-set token per line
+  gh api "repos/$1/$2/issues/$3" --jq '.body // ""' 2>/dev/null \
+    | grep -iE '^[[:space:]]*Paths:' \
+    | sed -E 's/^[[:space:]]*[Pp]aths:[[:space:]]*//' \
+    | tr ',' ' ' | tr '\t' ' ' | tr -s ' ' '\n' | sed '/^$/d' \
+    | sed -E 's#^\./##; s#/\*\*$##; s#/\*$##; s#/+$##'   # normalize: strip ./ prefix, /** /* and trailing /
+}
+overlap_cmd() {
+  local a="" b=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      -*) die "overlap: unknown flag '$1'." ;;
+      *)  if   [ -z "$a" ]; then a="$1"
+          elif [ -z "$b" ]; then b="$1"
+          else die "overlap: unexpected argument '$1'."; fi; shift ;;
+    esac
+  done
+  { [ -n "$a" ] && [ -n "$b" ]; } || die "overlap: two issue refs required (overlap <a> <b>)."
+  parse_ref "$a"; local ao="$R_OWNER" ar="$R_REPO" an="$R_NUM"
+  parse_ref "$b"; local bo="$R_OWNER" br="$R_REPO" bn="$R_NUM"
+
+  local -a pa pb; mapfile -t pa < <(paths_of "$ao" "$ar" "$an"); mapfile -t pb < <(paths_of "$bo" "$br" "$bn")
+  if [ "${#pa[@]}" -eq 0 ] || [ "${#pb[@]}" -eq 0 ]; then
+    local which=""
+    [ "${#pa[@]}" -eq 0 ] && which="$ar#$an"
+    [ "${#pb[@]}" -eq 0 ] && which="${which:+$which and }$br#$bn"
+    echo "overlap: no 'Paths:' touch-set declared on $which — add one (e.g. 'Paths: src/Foo/**') to schedule it." >&2
+    return 2
+  fi
+
+  local -a hits=() ; local x y
+  for x in "${pa[@]}"; do
+    for y in "${pb[@]}"; do
+      if [ "$x" = "$y" ] || [ "${y#"$x"/}" != "$y" ] || [ "${x#"$y"/}" != "$x" ]; then
+        hits+=("$x  ⇄  $y")
+      fi
+    done
+  done
+
+  if [ "${#hits[@]}" -eq 0 ]; then
+    printf 'DISJOINT — %s and %s may run in parallel (own worktree each).\n' "$ar#$an" "$br#$bn"
+    return 0
+  fi
+  printf 'OVERLAP — %s and %s share touch-set; sequence them (board `Blocked by`), do NOT parallelize:\n' "$ar#$an" "$br#$bn"
+  printf '  %s\n' "$(printf '%s\n' "${hits[@]}" | sort -u)"
+  return 1
+}
+
 usage() {
-  sed -n '2,69p' "$0" | sed 's/^# \{0,1\}//; s/^#$//'
+  sed -n '2,83p' "$0" | sed 's/^# \{0,1\}//; s/^#$//'
 }
 
 # ---- dispatch -----------------------------------------------------------------------------------
@@ -619,6 +769,9 @@ case "$cmd" in
   ready)     ready "$@" ;;
   next)      next "$@" ;;
   done)      done_cmd "$@" ;;
+  claim)     claim_cmd "$@" ;;
+  release)   release_cmd "$@" ;;
+  overlap)   overlap_cmd "$@" ;;
   budget)    budget ;;
   -h|--help|help|"") usage ;;
   *)         die "unknown command '$cmd' (try: fsgg-coord --help)." ;;
