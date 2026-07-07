@@ -11,7 +11,6 @@
     <!-- ADR-0022 P5: Rng/FixedStep/Pathfinding/SpatialGrid moved to FS.GG.Game.Core; their unit
          suites live in FS.GG.Game's Game.Core.Tests now (removed here with the surfaces). -->
     <Compile Include="ElementsTests.fs" />
-    <Compile Include="AudioTests.fs" />
     <Compile Include="PersistenceTests.fs" />
     <Compile Include="CanvasDemoTests.fs" />
     <!-- Feature 246 (US1): compile the raw import-and-adapt collision helper source (literal

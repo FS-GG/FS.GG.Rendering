@@ -5,7 +5,7 @@
     <IsPackable>true</IsPackable>
     <PackageId>FS.GG.UI.Symbology</PackageId>
     <AssemblyName>FS.GG.UI.Symbology</AssemblyName>
-    <Version>0.2.0-preview.1</Version>
+    <Version>0.3.0-preview.1</Version>
     <Title>FS.GG.UI.Symbology</Title>
     <Description>Pure, deterministic unit-symbology vocabulary: a fixed channel grammar that turns a per-game stat-to-channel Token mapping into legible abstract vector symbols (Scene-only).</Description>
     <PackageTags>fsharp;skia;scene;symbology;game;ui</PackageTags>
