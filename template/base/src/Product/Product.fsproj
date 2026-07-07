@@ -52,6 +52,14 @@
          Audio.interpret; Feature 243, fs-gg-audio) and the Persistence request surface
          (PersistenceEffect, Persistence.interpret; Feature 244, fs-gg-persistence). -->
     <PackageReference Include="FS.GG.UI.Canvas" />
+    <!-- FS.GG.Audio (standalone repo, $(FsGgAudioVersion) axis): the real host-side realization of
+         the pure AudioEffect edge — buses, fades/ducking, 3D, and a device backend that degrades to
+         a headless Null/record path (so tests stay deterministic and hardware-free). Elmish is the
+         Audio.Cmd authoring bridge for the game's MVU loop. See ADR-0024 / fs-gg-audio skill. -->
+    <PackageReference Include="FS.GG.Audio.Core" />
+    <PackageReference Include="FS.GG.Audio.Host" />
+    <PackageReference Include="FS.GG.Audio.Engine" />
+    <PackageReference Include="FS.GG.Audio.Elmish" />
     <!--#endif -->
     <!--#if (profile == "app" || profile == "sample-pack" || profile == "game") -->
     <PackageReference Include="FS.GG.UI.SkiaViewer" />
