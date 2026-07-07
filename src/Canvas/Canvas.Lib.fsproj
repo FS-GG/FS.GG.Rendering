@@ -5,14 +5,17 @@
     <IsPackable>true</IsPackable>
     <PackageId>FS.GG.UI.Canvas</PackageId>
     <AssemblyName>FS.GG.UI.Canvas</AssemblyName>
-    <Version>0.2.0-preview.1</Version>
+    <Version>0.3.0-preview.1</Version>
     <Title>FS.GG.UI.Canvas</Title>
     <!-- 0.2.0 major (ADR-0022 P5): the deterministic sim primitives (Rng/FixedStep/Pathfinding/
          SpatialGrid) moved OUT to FS.GG.Game.Core (the new bottom layer). Canvas now carries only
-         the render-adjacent surfaces: pure Elements, the render Loop, and the Audio/Persistence
-         request vocabularies. -->
-    <Description>Dependency-light pure element library, render loop, and Audio/Persistence request surfaces for FS.GG.UI canvas products.</Description>
-    <PackageTags>fsharp;skia;scene;canvas;ui;audio;persistence</PackageTags>
+         the render-adjacent surfaces: pure Elements, the render Loop, and the Persistence request
+         vocabulary.
+         0.3.0 major (ADR-0024): the Audio request surface (AudioEffect/SoundId/TrackId/Audio.*) is
+         RETIRED from Canvas — its single vocabulary now lives in the standalone FS.GG.Audio.Core
+         (a breaking removal; the extraction completed under Rendering#158). -->
+    <Description>Dependency-light pure element library, render loop, and Persistence request surface for FS.GG.UI canvas products.</Description>
+    <PackageTags>fsharp;skia;scene;canvas;ui;persistence</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
@@ -26,8 +29,6 @@
     <Compile Include="Elements.fs" />
     <Compile Include="Loop.fsi" />
     <Compile Include="Loop.fs" />
-    <Compile Include="Audio.fsi" />
-    <Compile Include="Audio.fs" />
     <Compile Include="Persistence.fsi" />
     <Compile Include="Persistence.fs" />
   </ItemGroup>
