@@ -43,7 +43,8 @@ build/test/harness step.
 
 ## 2. Member → cadence map
 
-Three cadences, one workflow file each. Only `gate` is required (blocks merge).
+Three cadences, one workflow file each. Only `gate` is *intended* to be required; branch protection is
+not enabled today (§5), so today it informs a merge rather than blocking one.
 
 | Cadence | Trigger | Workflow | Required | Runner | Fork PRs |
 |---|---|---|---|---|---|
@@ -99,7 +100,8 @@ The audit (FR-009) checks these invariants by inspection of this map against the
 2. **No release-only member in `gate`** — `Package.Tests` / template `Product.Tests` never on push/PR.
 3. **Every row traces to a settled source** — validation-set members → `validation-set.md` (R3);
    harness tiers → `harness.md` (R5). Nothing is invented here.
-4. **Only `gate` is required** — release/capability never block merge.
+4. **Only `gate` is intended to be required** — release/capability never block merge. Branch protection
+   is not yet enabled (§5), so no check blocks a merge today.
 5. **Capability rows degrade-and-disclose** — never a silent drop, never a false pass.
 
 ### 3.1 Audit result (T019)

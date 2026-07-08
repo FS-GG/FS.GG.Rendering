@@ -48,7 +48,7 @@ Rule ids and example messages:
 | rule-id | Trigger | Example `expected` / `actual` |
 |---------|---------|-------------------------------|
 | `pin-lags-tag` | FsGgUiVersion < latest tag (204) | expected `>= 0.1.51-preview.1` (latest `fs-gg-ui/v…`); actual `0.1.50-preview.1` |
-| `pin-no-tag` | FsGgUiVersion has no `fs-gg-ui/v<V>` tag (phantom) | expected a tag `fs-gg-ui/v0.1.99-preview.1`; actual none |
+| `pin-no-tag` | FsGgUiVersion has no `fs-gg-ui/v<V>` tag (phantom), and it is not RELEASE-PENDING (§2.1) | expected a tag `fs-gg-ui/v0.1.99-preview.1`; actual none |
 | `bom-member-skew` | `B.ids != P.members` | expected `{…16…}`; actual missing `FS.GG.UI.Foo` / extra `FS.GG.UI.Bar` |
 | `bom-pin-not-token` | a BOM dep version != `[$version$]` | expected `[$version$]`; actual `[0.1.50-preview.1]` |
 | `template-pin-hardcoded` | a template pin not `$(FsGgUiVersion)` | expected `$(FsGgUiVersion)`; actual `0.1.50-preview.1` |
@@ -56,6 +56,90 @@ Rule ids and example messages:
 | `single-source-not-unique` | `occurrences != 1` | expected `1` `<FsGgUiVersion>`; actual `2` |
 | `runtime-regex-broken` | `build.fsx` regex no longer matches | expected a match for `<FsGgUiVersion>…`; actual none |
 | `restore-partial` | live: a member did not resolve to `V` | expected all members `@0.1.51-preview.1`; actual `FS.GG.UI.Scene @0.1.50-preview.1` |
+
+Release lane (P5 / #48 — the `.template.package` `<Version>` axis, decoupled from the framework pin):
+| rule-id | Trigger | Example `expected` / `actual` |
+|---------|---------|-------------------------------|
+| `pkg-lags-release-tag` | `<Version>` < latest `v*` tag | expected `>= 0.3.1-preview.1` (latest `v*`); actual `0.3.0-preview.1` |
+| `pkg-no-release-tag` | `<Version>` has no `v<V>` tag, and it is not RELEASE-PENDING (§2.1) | expected a release trigger tag `v0.3.2-preview.1`; actual none |
+| `pkg-lags-template-tag` | `<Version>` < latest `fs-gg-ui-template/v*` tag | expected `>= 0.3.1-preview.1`; actual `0.3.0-preview.1` |
+| `pkg-no-template-tag` | `<Version>` has no `fs-gg-ui-template/v<V>` tag, and it is not RELEASE-PENDING (§2.1) | expected `fs-gg-ui-template/v0.3.2-preview.1`; actual none — and `v0.3.2-preview.1` is already cut, so this tag was due BEFORE it (push order) |
+| `pin-leads-package` | `<Version>` < FsGgUiVersion | expected `<= 0.3.1-preview.1` (released package); actual framework pin `0.4.0-preview.1` |
+
+### 2.1 RELEASE-PENDING — the legal transient, and its push-order bound
+
+A version bump and the tag that publishes it cannot land atomically: the tag can only point at the
+commit carrying the bump. So the three no-tag rules above are **waived on the change that performs
+the bump** (`bumpedInCommitUnderTest`, which compares the element's *value* across `git diff HEAD~1
+HEAD` — a reindent must not silence a fail-closed rule). Three states, not two:
+
+| state | condition | verdict |
+|---|---|---|
+| `LAGS` | version < latest tag | always drift |
+| `RELEASED` | version has its tag | steady state |
+| `PENDING` | version > latest tag, no tag, **and this change bumped it** | legal here, due next |
+
+Two things bound the waiver.
+
+**(a) Successor tags, per the mandated push order.** Only the last tag triggers `release.yml`:
+
+    fs-gg-ui/v<pin>  →  fs-gg-ui-template/v<pkg>  →  v<pkg>
+
+A tag's waiver holds only while **no successor** — no tag to its right — has been cut. Once a
+successor exists the release is *under way*, so this tag is overdue, not pending.
+
+| tag | successors | waived iff |
+|---|---|---|
+| `fs-gg-ui/v<pin>` | `fs-gg-ui-template/v<pin>`, `v<pin>` | pin bumped here ∧ neither successor cut |
+| `fs-gg-ui-template/v<pkg>` | `v<pkg>` | `<Version>` bumped here ∧ `v<pkg>` uncut |
+| `v<pkg>` | *(none — lands last)* | `<Version>` bumped here |
+
+A tag is a successor only **within its own release**, so each rule asks about the version *it* is keyed
+on. Both successors carry the template package's version; a framework release bumps pin and package
+together (`pin-leads-package` forbids `pin > pkg`), so wherever a `fs-gg-ui/v<pin>` snapshot is pending,
+`pin = pkg`. Keying the pin's bound on `pkgVersion` instead would count the **previous** release's tags
+as successors of a new snapshot — a false red on every pin-only bump.
+
+Both mis-orderings are caught, and they are distinct failures:
+
+- `v*` pushed first → `pkg-no-template-tag`. `publish-packages` (`needs: package-tests`) is skipped, so
+  the set never ships; but `template-dispatch.yml` fires only on `fs-gg-ui-template/v*`. *Publish before
+  announce* — FS-GG/.github#250.
+- `fs-gg-ui-template/v*` pushed before `fs-gg-ui/v*` → `pin-no-tag`. The dispatch has already told
+  FS.GG.Templates to pin a framework snapshot that was never cut and never published. *Announce before
+  publish* — the same class, mirrored.
+
+**(b) `FS_GG_VERSION_COHERENCE_RELEASE_LANE=1`** disables all three waivers. Set by `release.yml`'s
+`package-tests` job — the job that gates `publish-packages`. The waivers exist because a tag cannot
+point at a commit that does not exist yet, which is only true *before* the merge; at publish time every
+tag is due. Successor-tag bounds can only see a mis-order that **left a tag behind**, and a publish need
+not leave one.
+
+> **Not covered.** The `workflow_dispatch (version:)` trigger publishes `inputs.version`, which this
+> guard never reads — it validates the repo's `<Version>`. A dispatch from a coherent `main` is green in
+> the release lane and ships an untagged version. Closing that requires a check on `inputs.version`
+> itself, or removing the publishing dispatch path.
+
+RELEASE-PENDING is **not silence**: the guard prints a greppable block naming the tags to cut, in push
+order, to stdout and `$GITHUB_STEP_SUMMARY`, on **every** verdict and before the live proof. It makes no
+claim about legality — the exit code carries that. (Suppressing it on red would leave `printDrift` as the
+only tag instruction, and that enumerates failures rather than a procedure; `releaseLaneFailures` is
+therefore emitted in push order too, so following it top-to-bottom never pushes `v*` first.)
+
+Both classifiers (`scripts/validate-version-coherence.fsx` and `Feature209VersionCoherenceTests.fs`)
+carry the bounds; a change to one that does not mirror the other desyncs the two independent verdicts.
+The mirror exposes them as pure predicates (`pinWaived` / `templateTagWaived` / `releaseTagWaived`) and
+table-tests all `2^n` states, because both classifiers read the *live* repo — which is always coherent,
+so every waiver branch is dead in every real run. That is exactly how `0c7e091` shipped a regression
+through a green suite. Deleting a bound now fails a test.
+
+**Known limitation.** `bumpedInCommitUnderTest` reads `HEAD~1..HEAD`, whose first parent is the base
+branch under a `pull_request` merge-ref checkout and the previous `main` commit under a squash/merge
+push. Under *Rebase and merge* a release lands as several commits and the bump is not at `HEAD`, so the
+package lane reds at the tip. Squash-merge and merge-commit both keep the whole release in one diff.
+
+**Also not enforced.** Tags are matched by **name**, never by the commit they point at. `git tag v<V>`
+run on a stale `main` tags `HEAD`, not the bump commit, and satisfies every rule.
 
 ## 3. Gate-step contract — `.github/workflows/gate.yml`
 

@@ -1,7 +1,9 @@
 # Contract: Deterministic Gate (Stage R6)
 
 Defines exactly what the required `gate` workflow runs, what makes it red, and what can never make it
-red. Branch protection requires **this gate and only this gate**.
+red. It is the only workflow **intended** to be a required check — branch protection is the
+maintainer's one-time action (cadence-map.md §5) and is **not enabled today** (`main` has no
+protection object and no rulesets). Until it is, a red run here informs a merge; it does not block one.
 
 ## Trigger
 
