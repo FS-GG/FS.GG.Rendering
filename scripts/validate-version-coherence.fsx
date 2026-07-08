@@ -593,7 +593,12 @@ let main () =
     else
         writeReport "verdict-core" structuralFailures None
         if structuralFailures.IsEmpty then
-            printfn "version coherence: COHERENT (structural verdict-core). pin %s == latest tag; wrote %s" pinVersion reportPath
+            // Don't claim "== latest tag" when the pin is RELEASE-PENDING: it is ahead of every tag,
+            // and a success line that misstates the state is the same class of lie as a red-that-means-ok.
+            let pinNote =
+                if pendingTags.IsEmpty then sprintf "pin %s == latest tag" pinVersion
+                else sprintf "pin %s; %d tag(s) RELEASE-PENDING" pinVersion pendingTags.Length
+            printfn "version coherence: COHERENT (structural verdict-core). %s; wrote %s" pinNote reportPath
             0
         else
             printDrift structuralFailures
