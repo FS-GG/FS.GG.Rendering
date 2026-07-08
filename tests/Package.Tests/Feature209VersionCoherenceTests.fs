@@ -113,15 +113,19 @@ let private gitTagVersions (glob: string) (prefix: string) =
     |> Array.map (fun s -> s.Substring(prefix.Length))
     |> Array.toList
 
-/// Did the commit under test change `token`'s line in `rel`? — mirrors the script's RELEASE-PENDING
-/// signal (scripts/validate-version-coherence.fsx `bumpedInCommitUnderTest`), and must stay in lockstep
-/// with it: these assertions are the second, independent classifier of the same invariant.
+/// Did the commit under test change the VALUE of `<element>` in `rel`? — mirrors the script's
+/// RELEASE-PENDING signal (scripts/validate-version-coherence.fsx `bumpedInCommitUnderTest`), and must
+/// stay in lockstep with it: these assertions are the second, independent classifier of the same
+/// invariant.
 ///
 /// A bump and the tag that publishes it cannot land atomically — the tag points at the commit carrying
 /// the bump — so "this version already has a tag" is unsatisfiable on the bump itself. `HEAD~1` is the
 /// first parent: the base branch under a `pull_request` merge-ref checkout, the previous `main` commit
 /// under a squash/merge push. Both answer "did THIS change bump it?" with no env var.
-let private bumpedInCommitUnderTest (rel: string) (token: string) =
+///
+/// Compares VALUES, not touched lines: this predicate waives a fail-closed assertion, so a reindent of
+/// the `<Version>` line must not silence it.
+let private bumpedInCommitUnderTest (rel: string) (element: string) =
     let psi = ProcessStartInfo("git")
     psi.WorkingDirectory <- root
     psi.UseShellExecute <- false
@@ -137,14 +141,21 @@ let private bumpedInCommitUnderTest (rel: string) (token: string) =
             p.ExitCode, o
     if ec <> 0 then
         failwithf "git diff HEAD~1 HEAD -- %s failed — need full history (fetch-depth: 0); fail closed" rel
-    out.Replace("\r\n", "\n").Split('\n')
-    |> Array.exists (fun l -> (l.StartsWith("+", StringComparison.Ordinal) || l.StartsWith("-", StringComparison.Ordinal))
-                              && not (l.StartsWith("+++", StringComparison.Ordinal))
-                              && not (l.StartsWith("---", StringComparison.Ordinal))
-                              && l.Contains token)
+    let rx = Regex(sprintf "<%s>([^<]*)</%s>" (Regex.Escape element) (Regex.Escape element))
+    let valuesOn (sign: char) =
+        let header = String(sign, 3)
+        out.Replace("\r\n", "\n").Split('\n')
+        |> Array.filter (fun l -> l.Length > 0 && l.[0] = sign && not (l.StartsWith(header, StringComparison.Ordinal)))
+        |> Array.choose (fun l ->
+            let m = rx.Match l
+            if m.Success then Some(m.Groups.[1].Value.Trim()) else None)
+        |> Set.ofArray
+    let removed = valuesOn '-'
+    let added = valuesOn '+'
+    not added.IsEmpty && added <> removed
 
-let private pinBumpedHere () = bumpedInCommitUnderTest "template/base/Directory.Packages.props" "<FsGgUiVersion>"
-let private pkgBumpedHere () = bumpedInCommitUnderTest ".template.package/FS.GG.UI.Template.fsproj" "<Version>"
+let private pinBumpedHere () = bumpedInCommitUnderTest "template/base/Directory.Packages.props" "FsGgUiVersion"
+let private pkgBumpedHere () = bumpedInCommitUnderTest ".template.package/FS.GG.UI.Template.fsproj" "Version"
 
 let private discoveredMembers () =
     Directory.GetFiles(repo "src", "*.fsproj", SearchOption.AllDirectories)

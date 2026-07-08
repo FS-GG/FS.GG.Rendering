@@ -52,7 +52,7 @@ let readFile (path: string) =
     if not (File.Exists path) then raise (GuardError(sprintf "required input missing: %s" path))
     File.ReadAllText path
 
-/// Did the commit under test change `token`'s line in `rel`? — the RELEASE-PENDING signal.
+/// Did the commit under test change the VALUE of `<element>` in `rel`? — the RELEASE-PENDING signal.
 ///
 /// A version bump and the tag that publishes it CANNOT land atomically: the tag can only point at
 /// the commit that carries the bump, so it is cut *after* that commit exists. Any "this version must
@@ -61,19 +61,30 @@ let readFile (path: string) =
 /// predicate distinguishes the legal transient (the bump is HERE, the tag comes next) from the real
 /// defect (an untagged version left behind by a release that was never cut).
 ///
+/// Compares the element's VALUE across the diff, not merely whether its line was touched: this
+/// predicate WAIVES a fail-closed rule, so a reindent or line-ending change to the `<Version>` line
+/// must not be able to silence it. Added values must exist and differ from removed ones.
+///
 /// Env-free by construction: `HEAD~1` is the first parent, which is the base branch for a
 /// `pull_request` merge-ref checkout AND the previous `main` commit for a squash/merge push — so the
 /// same diff answers both contexts without reading GITHUB_*. Fails closed if git cannot answer
 /// (e.g. a shallow clone with no HEAD~1): CI must use `fetch-depth: 0`, which it already does.
-let bumpedInCommitUnderTest (rel: string) (token: string) =
+let bumpedInCommitUnderTest (rel: string) (element: string) =
     let ec, out = run repoRoot "git" [ "diff"; "HEAD~1"; "HEAD"; "--unified=0"; "--"; rel ]
     if ec <> 0 then
         raise (GuardError(sprintf "git diff HEAD~1 HEAD -- %s failed — need full history (fetch-depth: 0); fail closed rather than green-by-absence" rel))
-    out.Replace("\r\n", "\n").Split('\n')
-    |> Array.exists (fun l -> (l.StartsWith("+", StringComparison.Ordinal) || l.StartsWith("-", StringComparison.Ordinal))
-                              && not (l.StartsWith("+++", StringComparison.Ordinal))
-                              && not (l.StartsWith("---", StringComparison.Ordinal))
-                              && l.Contains token)
+    let rx = Regex(sprintf "<%s>([^<]*)</%s>" (Regex.Escape element) (Regex.Escape element))
+    let valuesOn (sign: char) =
+        let header = String(sign, 3) // "+++" / "---" file headers are not content lines
+        out.Replace("\r\n", "\n").Split('\n')
+        |> Array.filter (fun l -> l.Length > 0 && l.[0] = sign && not (l.StartsWith(header, StringComparison.Ordinal)))
+        |> Array.choose (fun l ->
+            let m = rx.Match l
+            if m.Success then Some(m.Groups.[1].Value.Trim()) else None)
+        |> Set.ofArray
+    let removed = valuesOn '-'
+    let added = valuesOn '+'
+    not added.IsEmpty && added <> removed
 
 // ---- preview-aware SemVer comparator (D7, T008) -----------------------------------------------
 // Numeric major.minor.patch compared numerically; then dotted prerelease identifiers per SemVer §11
@@ -264,7 +275,7 @@ let latestTemplateTag = templateTagVersions |> List.sortWith (fun a b -> SemVer.
 // ---- rules ------------------------------------------------------------------------------------
 
 // The framework pin was bumped by THIS change ⇒ its fs-gg-ui/v* snapshot tag is cut next, not now.
-let pinBumpedHere = bumpedInCommitUnderTest propsRel "<FsGgUiVersion>"
+let pinBumpedHere = bumpedInCommitUnderTest propsRel "FsGgUiVersion"
 
 // US1 — pin must resolve to a published snapshot tag and must not lag the latest (FR-001/002/009).
 // `pin-no-tag` fires only when the pin is untagged AND this change did not bump it — i.e. a snapshot
@@ -382,7 +393,7 @@ let invariantFailures : Failure list =
 // So: keep the rule, and let it fire only when PENDING is NOT explained by a bump in this very change.
 // A release bump now goes green on the PR and on the merge commit; if the tag is never cut, the very
 // next commit to `main` turns it red and names the tags to cut. No race, no accepted red.
-let pkgBumpedHere = bumpedInCommitUnderTest templateFsprojRel "<Version>"
+let pkgBumpedHere = bumpedInCommitUnderTest templateFsprojRel "Version"
 
 let releaseLaneFailures : Failure list =
     [ if SemVer.lt pkgVersion latestReleaseTag then
