@@ -1,6 +1,6 @@
 ---
 name: fs-gg-product-audio
-description: Make a generated FS.GG.UI product request sound — audio as pure values (sfx/music/stop/volume) recorded at the host boundary, no device calls in update.
+description: Make a generated FS.GG.UI product request sound — audio as pure values (sfx/music/stop/volume/buses/3D) recorded at the host boundary, no device calls in update.
 ---
 
 # FS.GG Product Audio
