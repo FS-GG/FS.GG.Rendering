@@ -113,6 +113,39 @@ let private gitTagVersions (glob: string) (prefix: string) =
     |> Array.map (fun s -> s.Substring(prefix.Length))
     |> Array.toList
 
+/// Did the commit under test change `token`'s line in `rel`? — mirrors the script's RELEASE-PENDING
+/// signal (scripts/validate-version-coherence.fsx `bumpedInCommitUnderTest`), and must stay in lockstep
+/// with it: these assertions are the second, independent classifier of the same invariant.
+///
+/// A bump and the tag that publishes it cannot land atomically — the tag points at the commit carrying
+/// the bump — so "this version already has a tag" is unsatisfiable on the bump itself. `HEAD~1` is the
+/// first parent: the base branch under a `pull_request` merge-ref checkout, the previous `main` commit
+/// under a squash/merge push. Both answer "did THIS change bump it?" with no env var.
+let private bumpedInCommitUnderTest (rel: string) (token: string) =
+    let psi = ProcessStartInfo("git")
+    psi.WorkingDirectory <- root
+    psi.UseShellExecute <- false
+    psi.RedirectStandardOutput <- true
+    [ "diff"; "HEAD~1"; "HEAD"; "--unified=0"; "--"; rel ] |> List.iter psi.ArgumentList.Add
+    let ec, out =
+        match Process.Start psi with
+        | null -> failwith "git diff could not be started"
+        | p ->
+            use p = p
+            let o = p.StandardOutput.ReadToEnd()
+            p.WaitForExit()
+            p.ExitCode, o
+    if ec <> 0 then
+        failwithf "git diff HEAD~1 HEAD -- %s failed — need full history (fetch-depth: 0); fail closed" rel
+    out.Replace("\r\n", "\n").Split('\n')
+    |> Array.exists (fun l -> (l.StartsWith("+", StringComparison.Ordinal) || l.StartsWith("-", StringComparison.Ordinal))
+                              && not (l.StartsWith("+++", StringComparison.Ordinal))
+                              && not (l.StartsWith("---", StringComparison.Ordinal))
+                              && l.Contains token)
+
+let private pinBumpedHere () = bumpedInCommitUnderTest "template/base/Directory.Packages.props" "<FsGgUiVersion>"
+let private pkgBumpedHere () = bumpedInCommitUnderTest ".template.package/FS.GG.UI.Template.fsproj" "<Version>"
+
 let private discoveredMembers () =
     Directory.GetFiles(repo "src", "*.fsproj", SearchOption.AllDirectories)
     |> Array.choose (fun proj ->
@@ -153,14 +186,17 @@ let feature209VersionCoherenceTests =
         }
 
         // Scenario A / US1 #3 — the coherent baseline: single literal, pin == an existing tag and not
-        // lagging the latest.
+        // lagging the latest. `pin-no-tag` is waived when THIS change bumps the pin: the fs-gg-ui/v* tag
+        // can only be cut on the resulting commit, so requiring it here is unsatisfiable (that is why
+        // this assertion went red on every framework-major PR and was merged past as an "expected red").
         test "coherent baseline: single literal, pin matches latest snapshot tag (no lag, no phantom)" {
             let tags = tagVersions ()
             Expect.equal pinOccurrences 1 "exactly one <FsGgUiVersion> literal"
             Expect.isNonEmpty tags "fs-gg-ui/v* tags must be visible (fetch-depth: 0); empty ⇒ fail closed"
             let latest = tags |> List.sortWith cmp |> List.last
             Expect.isFalse (cmp pinVersion latest < 0) (sprintf "pin %s must not lag latest tag %s (pin-lags-tag)" pinVersion latest)
-            Expect.isTrue (List.contains pinVersion tags) (sprintf "pin %s must match an existing fs-gg-ui/v* tag (pin-no-tag)" pinVersion)
+            if not (pinBumpedHere ()) then
+                Expect.isTrue (List.contains pinVersion tags) (sprintf "pin %s is untagged and THIS change did not bump it ⇒ the fs-gg-ui/v%s snapshot tag was never cut (pin-no-tag)" pinVersion pinVersion)
         }
 
         // Scenario B / T013 — the forced 204-lag fixture goes red (preview-aware).
@@ -177,9 +213,13 @@ let feature209VersionCoherenceTests =
         }
 
         // P5 (#48) — the template-package RELEASE lane vs the framework pin, mirroring the script's
-        // releaseLaneFailures: the package resolves to a v* trigger tag AND an fs-gg-ui-template/v*
-        // snapshot, does not lag the latest of either, and the framework pin does not LEAD it
+        // releaseLaneFailures: the package does not LAG the latest v* / fs-gg-ui-template/v* tag, is not
+        // left UNTAGGED by a release that was never cut, and the framework pin does not LEAD it
         // (pin <= package — a template-only release advances the package over an unchanged pin).
+        //
+        // The no-tag conjuncts are waived when THIS change bumps <Version>: the tags point at the commit
+        // carrying the bump, so they cannot exist yet. That transient is RELEASE-PENDING, not drift. If
+        // the tags are never cut, the next commit to main no longer bumps <Version> and these fire.
         test "release lane: template package matches v*/template tags (no lag) and pin does not lead" {
             Expect.equal pkgOccurrences 1 "exactly one <Version> in .template.package (release-lane source)"
             let releaseTags = gitTagVersions "v*" "v"
@@ -188,10 +228,13 @@ let feature209VersionCoherenceTests =
             Expect.isNonEmpty templateTags "fs-gg-ui-template/v* tags must be visible; empty ⇒ fail closed"
             let latestRelease = releaseTags |> List.sortWith cmp |> List.last
             let latestTemplate = templateTags |> List.sortWith cmp |> List.last
+            let pending = pkgBumpedHere ()
             Expect.isFalse (cmp pkgVersion latestRelease < 0) (sprintf "package %s must not lag latest v* tag %s (pkg-lags-release-tag)" pkgVersion latestRelease)
-            Expect.isTrue (List.contains pkgVersion releaseTags) (sprintf "package %s must match a v* release tag (pkg-no-release-tag)" pkgVersion)
+            if not pending then
+                Expect.isTrue (List.contains pkgVersion releaseTags) (sprintf "package %s is untagged and THIS change did not bump <Version> ⇒ the v%s release tag was never cut (pkg-no-release-tag)" pkgVersion pkgVersion)
             Expect.isFalse (cmp pkgVersion latestTemplate < 0) (sprintf "package %s must not lag latest fs-gg-ui-template/v* tag %s (pkg-lags-template-tag)" pkgVersion latestTemplate)
-            Expect.isTrue (List.contains pkgVersion templateTags) (sprintf "package %s must match an fs-gg-ui-template/v* tag (pkg-no-template-tag)" pkgVersion)
+            if not pending then
+                Expect.isTrue (List.contains pkgVersion templateTags) (sprintf "package %s is untagged and THIS change did not bump <Version> ⇒ fs-gg-ui-template/v%s was never cut (pkg-no-template-tag)" pkgVersion pkgVersion)
             Expect.isFalse (cmp pkgVersion pinVersion < 0) (sprintf "framework pin %s must not lead the released package %s (pin-leads-package)" pinVersion pkgVersion)
         }
 
