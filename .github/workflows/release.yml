@@ -137,8 +137,11 @@ jobs:
           dotnet test "$work/GameProduct"
           # The pins resolving is not enough: assert the real audio realization lands in the built
           # product output, so a future gate/ref regression cannot pass by resolving-but-not-copying.
+          # `-print -quit` (not `| grep -q`): under `set -o pipefail`, grep -q closes the pipe on the
+          # first match, find dies of SIGPIPE (141), and the pipeline reports failure even though the
+          # assembly IS present — a spurious release block. No pipe, no race.
           for pkg in Core Host Engine Elmish; do
-            if ! find "$work/GameProduct" -name "FS.GG.Audio.$pkg.dll" | grep -q .; then
+            if [ -z "$(find "$work/GameProduct" -name "FS.GG.Audio.$pkg.dll" -print -quit)" ]; then
               echo "::error::FS.GG.Audio.$pkg.dll is missing from the built game product — the ADR-0024 consumer edge is broken."
               exit 1
             fi
