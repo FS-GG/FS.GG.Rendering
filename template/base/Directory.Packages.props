@@ -30,12 +30,14 @@
          fs-gg-game-core / -collision / -visibility / -line-drawing / -grids skills use now live in
          FS.GG.Game.Core (the BCL-only bottom layer), consumed on its own $(FsGgGameVersion) axis. -->
     <PackageVersion Include="FS.GG.Game.Core" Version="$(FsGgGameVersion)" />
-    <!-- FS.GG.UI.Canvas is still referenced on simulation profiles for the Audio request surface
-         (AudioEffect/Audio.interpret, fs-gg-audio; Feature 243) and the Persistence request surface
-         (fs-gg-persistence; Feature 244) — it no longer carries the sim primitives (ADR-0022 P5). -->
+    <!-- FS.GG.UI.Canvas is still referenced on simulation profiles for the Persistence request
+         surface (fs-gg-persistence; Feature 244) — it no longer carries the sim primitives
+         (ADR-0022 P5) nor, since the Canvas 0.3.0 major (ADR-0024, Rendering#158), the Audio
+         request surface, which moved to FS.GG.Audio.Core below. -->
     <PackageVersion Include="FS.GG.UI.Canvas" Version="$(FsGgUiVersion)" />
-    <!-- FS.GG.Audio: the real host-side realization of the pure AudioEffect edge (standalone repo,
-         $(FsGgAudioVersion) axis). Core = request vocabulary + record interpreter (headless default);
+    <!-- FS.GG.Audio: the single home of the pure AudioEffect vocabulary and its real host-side
+         realization (standalone repo, $(FsGgAudioVersion) axis).
+         Core = request vocabulary + record interpreter (headless default);
          Host = IAudioBackend device seam (Null/record + OpenAL, degrade-to-Null); Engine = buses /
          fades / ducking / 3D; Elmish = Audio.Cmd authoring bridge. See ADR-0024. -->
     <PackageVersion Include="FS.GG.Audio.Core" Version="$(FsGgAudioVersion)" />
