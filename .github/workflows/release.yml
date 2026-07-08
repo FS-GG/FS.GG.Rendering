@@ -114,6 +114,39 @@ jobs:
           dotnet build "$PRODUCT_DIR"
           dotnet test "$PRODUCT_DIR"
           dotnet run --project "$PRODUCT_DIR/src/GeneratedProduct"
+      # ADR-0024 (.github#234): the game/sample-pack profiles are the FIRST CONSUMER EDGE of the
+      # standalone FS.GG.Audio component ($(FsGgAudioVersion) axis) and of FS.GG.Game.Core
+      # ($(FsGgGameVersion), ADR-0022 P5). The instantiation above takes the template's DEFAULT
+      # profile (`app`), whose `#if (profile == "game" || profile == "sample-pack")` gate strips
+      # both — so before this step NO job in any workflow ever restored or built those packages.
+      # Package.Tests' AudioProfileWiringTests asserts the wiring SHAPE by reading the template
+      # text; only an instantiation proves the pins RESOLVE. Without it a broken consumer edge
+      # would first surface after the coherent-set release, once .github#238 has already flipped
+      # the registry edge asserting it works.
+      #
+      # Feeds: FS.GG.UI.* resolve from the runner-local packed feed at the pin (added above);
+      # FS.GG.Game.Core and FS.GG.Audio.* are separate components on their own published axes and
+      # restore from nuget.org (ADR-0012/0013 dual-publish), exactly as a real consumer does.
+      # No `dotnet run` here — the app profile above already covers the stock run path.
+      - name: Instantiate + build the game profile (audio consumer edge, ADR-0024)
+        run: |
+          set -euo pipefail
+          work="$(mktemp -d)"
+          dotnet new fs-gg-ui --name GameProduct --profile game --output "$work/GameProduct"
+          dotnet build "$work/GameProduct"
+          dotnet test "$work/GameProduct"
+          # The pins resolving is not enough: assert the real audio realization lands in the built
+          # product output, so a future gate/ref regression cannot pass by resolving-but-not-copying.
+          # `-print -quit` (not `| grep -q`): under `set -o pipefail`, grep -q closes the pipe on the
+          # first match, find dies of SIGPIPE (141), and the pipeline reports failure even though the
+          # assembly IS present — a spurious release block. No pipe, no race.
+          for pkg in Core Host Engine Elmish; do
+            if [ -z "$(find "$work/GameProduct" -name "FS.GG.Audio.$pkg.dll" -print -quit)" ]; then
+              echo "::error::FS.GG.Audio.$pkg.dll is missing from the built game product — the ADR-0024 consumer edge is broken."
+              exit 1
+            fi
+          done
+          echo "✓ game profile builds with all four FS.GG.Audio.* assemblies present"
 
   # DRAFT (FS-GG/.github#21/#22, epic #16 Pillar 4): the missing producer half of the auto-update
   # fabric. Renovate + org preset + read:packages auth are all wired and verified, but the org

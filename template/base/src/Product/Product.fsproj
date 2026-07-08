@@ -48,10 +48,20 @@
          for the fs-gg-game-core / -collision / -visibility / -line-drawing / -grids skills — now in
          FS.GG.Game.Core, the BCL-only bottom layer (moved out of FS.GG.UI.Canvas/.Scene). -->
     <PackageReference Include="FS.GG.Game.Core" />
-    <!-- FS.GG.UI.Canvas stays on simulation profiles for the Audio request surface (AudioEffect,
-         Audio.interpret; Feature 243, fs-gg-audio) and the Persistence request surface
-         (PersistenceEffect, Persistence.interpret; Feature 244, fs-gg-persistence). -->
+    <!-- FS.GG.UI.Canvas stays on simulation profiles for the Persistence request surface
+         (PersistenceEffect, Persistence.interpret; Feature 244, fs-gg-persistence). Its Audio
+         request surface was RETIRED at the Canvas 0.3.0 major (ADR-0024, Rendering#158) — the
+         AudioEffect vocabulary now lives in FS.GG.Audio.Core, referenced just below. -->
     <PackageReference Include="FS.GG.UI.Canvas" />
+    <!-- FS.GG.Audio (standalone repo, $(FsGgAudioVersion) axis): the single home of the pure
+         AudioEffect vocabulary (Core) AND its real host-side realization — buses, fades/ducking, 3D,
+         and a device backend that degrades to a headless Null/record path (so tests stay
+         deterministic and hardware-free). Elmish is the Audio.Cmd authoring bridge for the game's
+         MVU loop. See ADR-0024 / fs-gg-audio skill. -->
+    <PackageReference Include="FS.GG.Audio.Core" />
+    <PackageReference Include="FS.GG.Audio.Host" />
+    <PackageReference Include="FS.GG.Audio.Engine" />
+    <PackageReference Include="FS.GG.Audio.Elmish" />
     <!--#endif -->
     <!--#if (profile == "app" || profile == "sample-pack" || profile == "game") -->
     <PackageReference Include="FS.GG.UI.SkiaViewer" />
