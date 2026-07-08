@@ -1,7 +1,14 @@
 name: gate
 
-# The required pre-merge gate. Fast, deterministic, runs on every change. Branch protection
-# requires THIS workflow and only this one (see docs/ci/cadence-map.md §5).
+# The pre-merge gate. Fast, deterministic, runs on every change. It is the ONLY workflow intended to
+# be a required check (see docs/ci/cadence-map.md §5).
+#
+# NOT ENFORCED TODAY: `main` has no branch protection and no rulesets, so a red run here does not
+# block a merge — it only informs one. Making this a required check is a repo-policy decision; note
+# that it freezes every open PR during the window between a release bump landing on `main` and its
+# tags being pushed (`pkg-no-release-tag` / `pkg-no-template-tag` fire on PRs that did not bump).
+# That freeze is correct fail-closed behavior, not a bug, but it is a consequence worth choosing.
+#
 # Contracts: specs/005-ci-cadence-wiring/contracts/{gate-contract,run-summary.schema}.md
 on:
   push:

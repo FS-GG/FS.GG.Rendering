@@ -157,6 +157,18 @@ let private bumpedInCommitUnderTest (rel: string) (element: string) =
 let private pinBumpedHere () = bumpedInCommitUnderTest "template/base/Directory.Packages.props" "FsGgUiVersion"
 let private pkgBumpedHere () = bumpedInCommitUnderTest ".template.package/FS.GG.UI.Template.fsproj" "Version"
 
+/// The three release tags have a MANDATED PUSH ORDER — only the last triggers release.yml:
+///
+///     fs-gg-ui/v<pin>  →  fs-gg-ui-template/v<pkg>  →  v<pkg>
+///
+/// so `v<pkg>` existing means the release is UNDER WAY: every tag before it is due NOW, not "next".
+/// This bound is what keeps the RELEASE-PENDING waiver OUT of release.yml. That workflow triggers on
+/// `push: tags: ['v*']` and runs THIS mirror at the tag commit — which is the commit that bumped
+/// <Version>, so `pkgBumpedHere` is true here. Unbounded, the waiver let a `v*`-pushed-first release
+/// pass, `publish-packages` (needs: package-tests) ship the set, and template-dispatch.yml — which
+/// triggers ONLY on `fs-gg-ui-template/v*` — never fire: published, unannounced (FS-GG/.github#250).
+let private releaseTagCut () = List.contains pkgVersion (gitTagVersions "v*" "v")
+
 let private discoveredMembers () =
     Directory.GetFiles(repo "src", "*.fsproj", SearchOption.AllDirectories)
     |> Array.choose (fun proj ->
@@ -200,14 +212,21 @@ let feature209VersionCoherenceTests =
         // lagging the latest. `pin-no-tag` is waived when THIS change bumps the pin: the fs-gg-ui/v* tag
         // can only be cut on the resulting commit, so requiring it here is unsatisfiable (that is why
         // this assertion went red on every framework-major PR and was merged past as an "expected red").
+        // The waiver is bounded by `releaseTagCut ()`: once `v<pkg>` exists the snapshot tag was due
+        // BEFORE it (push order), so a mis-ordered release fails here rather than publishing.
         test "coherent baseline: single literal, pin matches latest snapshot tag (no lag, no phantom)" {
             let tags = tagVersions ()
             Expect.equal pinOccurrences 1 "exactly one <FsGgUiVersion> literal"
             Expect.isNonEmpty tags "fs-gg-ui/v* tags must be visible (fetch-depth: 0); empty ⇒ fail closed"
             let latest = tags |> List.sortWith cmp |> List.last
             Expect.isFalse (cmp pinVersion latest < 0) (sprintf "pin %s must not lag latest tag %s (pin-lags-tag)" pinVersion latest)
-            if not (pinBumpedHere ()) then
-                Expect.isTrue (List.contains pinVersion tags) (sprintf "pin %s is untagged and THIS change did not bump it ⇒ the fs-gg-ui/v%s snapshot tag was never cut (pin-no-tag)" pinVersion pinVersion)
+            // A pending fs-gg-ui/v<pin> snapshot exists only as part of a framework release, which bumps
+            // pin AND package together (pin-leads-package forbids pin > pkg). A pin bumped alone is
+            // pinning at a snapshot nobody is cutting — never pending. And once v<pkg> is cut the
+            // snapshot tag was due before it (push order), so the waiver is off.
+            let pinPending = pinBumpedHere () && pkgBumpedHere () && not (releaseTagCut ())
+            if not pinPending then
+                Expect.isTrue (List.contains pinVersion tags) (sprintf "pin %s is untagged and this is not a pending framework release (bump of pin+<Version> with v%s not yet cut) ⇒ the fs-gg-ui/v%s snapshot tag was never cut (pin-no-tag)" pinVersion pkgVersion pinVersion)
         }
 
         // Scenario B / T013 — the forced 204-lag fixture goes red (preview-aware).
@@ -231,6 +250,10 @@ let feature209VersionCoherenceTests =
         // The no-tag conjuncts are waived when THIS change bumps <Version>: the tags point at the commit
         // carrying the bump, so they cannot exist yet. That transient is RELEASE-PENDING, not drift. If
         // the tags are never cut, the next commit to main no longer bumps <Version> and these fire.
+        //
+        // `pkg-no-template-tag`'s waiver is additionally bounded by `releaseTagCut ()` — see its doc
+        // comment. `v*` lands LAST in the push order, so `pkg-no-release-tag` needs no such bound (it
+        // is only reached when `v<pkg>` is absent, which is exactly when its waiver is legitimate).
         test "release lane: template package matches v*/template tags (no lag) and pin does not lead" {
             Expect.equal pkgOccurrences 1 "exactly one <Version> in .template.package (release-lane source)"
             let releaseTags = gitTagVersions "v*" "v"
@@ -239,13 +262,14 @@ let feature209VersionCoherenceTests =
             Expect.isNonEmpty templateTags "fs-gg-ui-template/v* tags must be visible; empty ⇒ fail closed"
             let latestRelease = releaseTags |> List.sortWith cmp |> List.last
             let latestTemplate = templateTags |> List.sortWith cmp |> List.last
-            let pending = pkgBumpedHere ()
+            let bumped = pkgBumpedHere ()
+            let templateTagPending = bumped && not (releaseTagCut ())
             Expect.isFalse (cmp pkgVersion latestRelease < 0) (sprintf "package %s must not lag latest v* tag %s (pkg-lags-release-tag)" pkgVersion latestRelease)
-            if not pending then
+            if not bumped then
                 Expect.isTrue (List.contains pkgVersion releaseTags) (sprintf "package %s is untagged and THIS change did not bump <Version> ⇒ the v%s release tag was never cut (pkg-no-release-tag)" pkgVersion pkgVersion)
             Expect.isFalse (cmp pkgVersion latestTemplate < 0) (sprintf "package %s must not lag latest fs-gg-ui-template/v* tag %s (pkg-lags-template-tag)" pkgVersion latestTemplate)
-            if not pending then
-                Expect.isTrue (List.contains pkgVersion templateTags) (sprintf "package %s is untagged and THIS change did not bump <Version> ⇒ fs-gg-ui-template/v%s was never cut (pkg-no-template-tag)" pkgVersion pkgVersion)
+            if not templateTagPending then
+                Expect.isTrue (List.contains pkgVersion templateTags) (sprintf "package %s has no fs-gg-ui-template/v%s tag, and either THIS change did not bump <Version> or v%s is already cut so the template tag was due before it (push order) ⇒ template-dispatch.yml never fired (pkg-no-template-tag)" pkgVersion pkgVersion pkgVersion)
             Expect.isFalse (cmp pkgVersion pinVersion < 0) (sprintf "framework pin %s must not lead the released package %s (pin-leads-package)" pinVersion pkgVersion)
         }
 

@@ -274,12 +274,43 @@ let latestTemplateTag = templateTagVersions |> List.sortWith (fun a b -> SemVer.
 
 // ---- rules ------------------------------------------------------------------------------------
 
-// The framework pin was bumped by THIS change ⇒ its fs-gg-ui/v* snapshot tag is cut next, not now.
+// The framework pin / template package were bumped by THIS change ⇒ their tags are cut next, not now.
 let pinBumpedHere = bumpedInCommitUnderTest propsRel "FsGgUiVersion"
+let pkgBumpedHere = bumpedInCommitUnderTest templateFsprojRel "Version"
+
+// The three tags of a release have a MANDATED PUSH ORDER — only the last one triggers release.yml:
+//
+//     fs-gg-ui/v<pin>  →  fs-gg-ui-template/v<pkg>  →  v<pkg>
+//
+// so `v<pkg>` existing means the release is UNDER WAY, not pending: every tag that must precede it
+// is due NOW. This is what bounds the RELEASE-PENDING waiver.
+//
+// Without that bound the waiver leaks into `release.yml`. That workflow triggers on `push: tags:
+// ['v*']` and runs the Package.Tests coherence mirror at the TAG COMMIT — which IS the commit that
+// bumped <Version>, so `pkgBumpedHere` is true there and `pkg-no-template-tag` was waived. Pushing
+// `v*` before `fs-gg-ui-template/v*` then went green, `publish-packages` (needs: package-tests)
+// shipped the coherent set, and template-dispatch.yml — which triggers ONLY on
+// `fs-gg-ui-template/v*` — never fired, so FS.GG.Templates never got its pin-bump PR. Published,
+// unannounced: the exact half-executed publish-before-flip class of FS-GG/.github#250 that the
+// waiver was introduced to stop hiding. The waiver's premise ("the tag cannot exist yet — it points
+// at THIS commit") is simply false once a later tag in the order already exists.
+let releaseTagCut = List.contains pkgVersion releaseTagVersions
+
+/// A bump waives its own missing tag only while NO later tag in the push order has been cut.
+/// `v<pkg>` is that later tag for both `fs-gg-ui/v*` and `fs-gg-ui-template/v*`; `v*` itself lands
+/// last, so its own waiver needs no bound (and `pkg-no-release-tag` is only reached when it is absent).
+///
+/// The pin's waiver additionally requires that <Version> bumped HERE too. `releaseTagCut` is keyed on
+/// `pkgVersion`, so on a pin-only bump it names a tag cut long ago and would otherwise deny the waiver
+/// for a bogus reason. More to the point: a pending `fs-gg-ui/v<pin>` snapshot only exists as part of a
+/// framework release, and a framework release bumps pin AND package together (`pin-leads-package`
+/// forbids pin > pkg). A pin bumped alone is pinning at a snapshot nobody is cutting — never pending.
+let pinPending = pinBumpedHere && pkgBumpedHere && not releaseTagCut
 
 // US1 — pin must resolve to a published snapshot tag and must not lag the latest (FR-001/002/009).
 // `pin-no-tag` fires only when the pin is untagged AND this change did not bump it — i.e. a snapshot
-// tag that was never cut, not a bump awaiting one (see `bumpedInCommitUnderTest`).
+// tag that was never cut, not a bump awaiting one (see `bumpedInCommitUnderTest`) — AND the release
+// this bump belongs to has not already been triggered by its `v*` tag (see `releaseTagCut`).
 let us1Failures : Failure list =
     if SemVer.lt pinVersion latestTag then
         [ { Rule = "pin-lags-tag"
@@ -287,11 +318,14 @@ let us1Failures : Failure list =
             Expected = sprintf ">= %s (latest fs-gg-ui/v* tag)" latestTag
             Actual = pinVersion
             Fix = sprintf "bump <FsGgUiVersion> to %s (the latest coherent snapshot), or cut a newer fs-gg-ui/v* tag" latestTag } ]
-    elif not (List.contains pinVersion tagVersions) && not pinBumpedHere then
+    elif not (List.contains pinVersion tagVersions) && not pinPending then
         [ { Rule = "pin-no-tag"
             Location = propsLoc
             Expected = sprintf "a tag fs-gg-ui/v%s" pinVersion
-            Actual = "none — and this change did not bump the pin, so no tag is pending"
+            Actual =
+                if not pinBumpedHere then "none — and this change did not bump the pin, so no tag is pending"
+                elif not pkgBumpedHere then "none — and this change bumps the pin without a template release, so no framework snapshot is being cut"
+                else sprintf "none — and v%s is already cut, so this tag was due BEFORE it (push order)" pkgVersion
             Fix = sprintf "cut & push the fs-gg-ui/v%s snapshot tag (and feed), or correct <FsGgUiVersion> to a published version" pinVersion } ]
     else []
 
@@ -390,10 +424,14 @@ let invariantFailures : Failure list =
 // red whenever it matters teaches people to ignore it, which is how an unrelated half-executed
 // publish-before-flip (FS-GG/.github#250) sat unnoticed for a day.
 //
-// So: keep the rule, and let it fire only when PENDING is NOT explained by a bump in this very change.
-// A release bump now goes green on the PR and on the merge commit; if the tag is never cut, the very
+// So: keep the rule, and let it fire only when PENDING is NOT explained by a bump in this very change
+// AND the release has not already been triggered by its `v*` tag (`releaseTagCut` — the push-order
+// bound, without which this waiver green-lights a mis-ordered release inside release.yml itself).
+// A release bump goes green on the PR and on the merge commit; if the tag is never cut, the very
 // next commit to `main` turns it red and names the tags to cut. No race, no accepted red.
-let pkgBumpedHere = bumpedInCommitUnderTest templateFsprojRel "Version"
+/// `fs-gg-ui-template/v<pkg>` precedes `v<pkg>` in the push order, so once `v<pkg>` exists the
+/// template-scoped tag is overdue, not pending — this is what keeps the waiver out of release.yml.
+let templateTagPending = pkgBumpedHere && not releaseTagCut
 
 let releaseLaneFailures : Failure list =
     [ if SemVer.lt pkgVersion latestReleaseTag then
@@ -414,11 +452,14 @@ let releaseLaneFailures : Failure list =
             Expected = sprintf ">= %s (latest fs-gg-ui-template/v* tag)" latestTemplateTag
             Actual = pkgVersion
             Fix = sprintf "bump <Version> to %s, or cut fs-gg-ui-template/v%s" latestTemplateTag pkgVersion }
-      elif not (List.contains pkgVersion templateTagVersions) && not pkgBumpedHere then
+      elif not (List.contains pkgVersion templateTagVersions) && not templateTagPending then
           { Rule = "pkg-no-template-tag"
             Location = pkgVersionLoc
             Expected = sprintf "a template-scoped tag fs-gg-ui-template/v%s" pkgVersion
-            Actual = "none — and this change did not bump <Version>, so no tag is pending"
+            Actual =
+                if releaseTagCut then
+                    sprintf "none — and v%s is already cut, so this tag was due BEFORE it (push order); template-dispatch.yml never fired" pkgVersion
+                else "none — and this change did not bump <Version>, so no tag is pending"
             Fix = sprintf "cut & push fs-gg-ui-template/v%s (the template coherent-set snapshot)" pkgVersion }
       if SemVer.lt pkgVersion pinVersion then
           { Rule = "pin-leads-package"
@@ -557,13 +598,15 @@ let printDrift (failures: Failure list) =
         File.AppendAllText(summaryPath, s.ToString())
 
 /// The tags this change has made due but that do not exist yet (see `bumpedInCommitUnderTest`).
-/// `v*` is LAST: only it triggers release.yml, so the snapshot tags must already be pushed when it lands.
+/// `v*` is LAST: only it triggers release.yml, so the snapshot tags must already be pushed when it
+/// lands. Mirrors the waiver conditions exactly — a tag is PENDING iff its rule is being waived, so
+/// once `v<pkg>` is cut the earlier tags are reported as drift, never as "due next".
 let pendingTags : string list =
-    [ if pinBumpedHere && not (List.contains pinVersion tagVersions) then
+    [ if pinPending && not (List.contains pinVersion tagVersions) then
           sprintf "fs-gg-ui/v%s" pinVersion
-      if pkgBumpedHere && not (List.contains pkgVersion templateTagVersions) then
+      if templateTagPending && not (List.contains pkgVersion templateTagVersions) then
           sprintf "fs-gg-ui-template/v%s" pkgVersion
-      if pkgBumpedHere && not (List.contains pkgVersion releaseTagVersions) then
+      if pkgBumpedHere && not releaseTagCut then
           sprintf "v%s" pkgVersion ]
 
 /// A version bump with no tag yet is the legal transient, not drift — but it is not silence either.
@@ -588,13 +631,17 @@ let printReleasePending () =
             File.AppendAllText(summaryPath, s.ToString())
 
 // ---- main -------------------------------------------------------------------------------------
+// RELEASE-PENDING is announced only on a GREEN verdict. "legal here, due next" is a claim about the
+// state, and on a failing run it is a false one — the same class of defect as a success line that
+// misstates the state, or a red that means "fine". A red run names its drift; each Failure carries
+// the tag to cut in its `Fix`.
 let main () =
-    printReleasePending ()
     if live then
         let r = liveProof ()
         let allFailures = structuralFailures @ r.Partial
         writeReport "live" allFailures (Some r)
         if allFailures.IsEmpty then
+            printReleasePending ()
             printfn "version coherence: COHERENT (structural + live). %d/%d members @%s; wrote %s" r.AtV r.MembersResolved r.V reportPath
             0
         else
@@ -604,6 +651,7 @@ let main () =
     else
         writeReport "verdict-core" structuralFailures None
         if structuralFailures.IsEmpty then
+            printReleasePending ()
             // Don't claim "== latest tag" when the pin is RELEASE-PENDING: it is ahead of every tag,
             // and a success line that misstates the state is the same class of lie as a red-that-means-ok.
             let pinNote =
