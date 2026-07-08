@@ -29,6 +29,21 @@ jobs:
     runs-on: ubuntu-latest
     # Restrict to the canonical repo: fork tags/dispatch never run this (no fork secret exposure, FR-013).
     if: github.repository == 'FS-GG/FS.GG.Rendering'
+    env:
+      # Feature 209 — THE RELEASE LANE. This job gates `publish-packages` (needs:), so it is the last
+      # thing standing between a version bump and the public feeds. The coherence mirror's
+      # RELEASE-PENDING waivers exist because a tag cannot point at a commit that does not exist yet —
+      # true only BEFORE the merge. Here every tag is due, so nothing is pending and a missing tag is
+      # drift. Belt to the successor-tag braces: those bounds can only see a mis-order that LEFT A TAG
+      # BEHIND, and a publish need not leave one.
+      #
+      # This does NOT close the `workflow_dispatch (version:)` hole. The guard validates the REPO's
+      # `<Version>`, never `inputs.version`, so a dispatch from a coherent `main` with an arbitrary
+      # version is green here and `publish-packages` ships it untagged — template-dispatch.yml, which
+      # fires only on `fs-gg-ui-template/v*`, never runs. Closing that needs a check on `inputs.version`
+      # itself, or removing the publishing dispatch path. Tracked separately; do not read this flag as
+      # covering it.
+      FS_GG_VERSION_COHERENCE_RELEASE_LANE: "1"
     steps:
       - uses: actions/checkout@v4
         with:

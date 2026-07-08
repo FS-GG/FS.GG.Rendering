@@ -102,10 +102,65 @@ Constitution Principle V; not reported as a real restore.
 `.github/workflows/gate.yml` runs the **Version coherence guard** step (structural verdict-core +
 scoped restore-grounded proof, both merge-blocking) with `actions/checkout` `fetch-depth: 0` so
 `git tag` sees `fs-gg-ui/v*`. Non-zero exit fails the required gate ⇒ PR cannot merge to `main`. The
-script echoes the `DRIFT […]` lines to `$GITHUB_STEP_SUMMARY` on failure (SC-006).
+script echoes the `DRIFT […]` lines to `$GITHUB_STEP_SUMMARY` on failure (SC-006). Non-zero exit reds
+the gate; it blocks the merge only once branch protection is enabled (cadence-map.md §5).
 
 ## Done-when (quickstart) — status
 
 - A–E + hardcoded each go red on the named location; A passes clean after each restore — ✅
 - F resolves the full 16-member set to `V` — ✅
-- G blocks a drifting PR at the gate (wired; enforced by branch protection requiring `gate`) — ✅
+- G reds a drifting PR at the gate (wired) — ✅. It does **not** *block* the merge: branch protection is
+  not enabled on `main` (no protection object, no rulesets), so the red informs rather than blocks.
+  Enabling it is the maintainer step in docs/ci/cadence-map.md §5.
+
+---
+
+## Scenarios H–L — the RELEASE-PENDING waiver and its bounds
+
+Added with the successor-tag bound. These are the A1 canonical shell scenarios for the waiver states;
+`tests/Package.Tests/Feature209VersionCoherenceTests.fs` mirrors them (`waiverTruthTable`) and never
+replaces them. All are run in a throwaway clone with local tags manipulated — **never against a remote**:
+
+```sh
+SB=$(mktemp -d); git clone --no-hardlinks . "$SB" && cd "$SB" && git remote remove origin
+G() { dotnet fsi scripts/validate-version-coherence.fsx; echo "EXIT=$?"; }
+PKG=.template.package/FS.GG.UI.Template.fsproj
+PROPS=template/base/Directory.Packages.props
+```
+
+Let `P` = the current pin, `K` = the current `<Version>`, and `N` = the version being released.
+
+| # | State | Expect |
+|---|---|---|
+| **H** | Template-only release: bump `<Version>` → `N`, commit, **no tags** | `0` + `RELEASE-PENDING` naming `fs-gg-ui-template/vN`, `vN` |
+| **I** | H, then `git tag fs-gg-ui-template/vN` | `0` + `RELEASE-PENDING` naming `vN` |
+| **J** | H, then `git tag vN` **only** (trigger tag pushed first) | `1` — `pkg-no-template-tag`. *Publish before announce.* |
+| **K** | Framework release: bump pin **and** `<Version>` → `N`, commit, then `git tag fs-gg-ui-template/vN` **only** | `1` — `pin-no-tag`. *Announce before publish.* |
+| **L** | H, with `FS_GG_VERSION_COHERENCE_RELEASE_LANE=1` (as `release.yml` sets it) | `1` — no waivers at publish time |
+
+Reproductions:
+
+```sh
+# H — the state every release PR and merge commit sits in
+sed -i "s|<Version>$K</Version>|<Version>$N</Version>|" $PKG && git commit -qam release && G   # => 0
+
+# J — the FS-GG/.github#250 mis-order: `v*` before the template tag
+git tag "v$N" HEAD && G                                                                       # => 1
+
+# K — the mirror-image mis-order: template tag before the framework snapshot tag
+sed -i "s|<FsGgUiVersion>$P</FsGgUiVersion>|<FsGgUiVersion>$N</FsGgUiVersion>|" $PROPS
+sed -i "s|<Version>$K</Version>|<Version>$N</Version>|" $PKG && git commit -qam release
+git tag "fs-gg-ui-template/v$N" HEAD && G                                                     # => 1
+
+# L — the release lane: nothing is pending when a publish is being authorised
+FS_GG_VERSION_COHERENCE_RELEASE_LANE=1 dotnet fsi scripts/validate-version-coherence.fsx; echo "EXIT=$?"  # => 1
+```
+
+Also asserted, and easy to break by "simplifying" a predicate:
+
+- A **reindent** of the `<Version>` line does not waive anything — the bump predicate compares the
+  element's *value* across the diff, not whether its line was touched.
+- A **pin-only bump below the released package version** stays green (`fs-gg-ui/v<pin>` is pending, and
+  its own successors are uncut). Keying the pin's bound on `pkgVersion` reds this.
+- A **two-commit release** (pin in A, `<Version>` in B) reds at B: `HEAD~1..HEAD` sees one bump, not the
+  release. Squash-merge or merge-commit; not *Rebase and merge*.
