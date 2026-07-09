@@ -9,18 +9,18 @@
        Directory.Packages.props (Feature 213; a local duplicate raises NU1506). -->
   <ItemGroup>
     <PackageVersion Include="Fable.Elmish" Version="5.0.2" />
-    <PackageVersion Include="HarfBuzzSharp.NativeAssets.Linux" Version="14.2.0" />
-    <PackageVersion Include="HarfBuzzSharp.NativeAssets.Win32" Version="14.2.0" />
+    <PackageVersion Include="HarfBuzzSharp.NativeAssets.Linux" Version="14.2.1" />
+    <PackageVersion Include="HarfBuzzSharp.NativeAssets.Win32" Version="14.2.1" />
     <PackageVersion Include="Silk.NET.Input" Version="2.23.0" />
     <PackageVersion Include="Silk.NET.OpenGL" Version="2.23.0" />
     <PackageVersion Include="Silk.NET.GLFW" Version="2.23.0" />
     <PackageVersion Include="Silk.NET.Windowing" Version="2.23.0" />
     <PackageVersion Include="Silk.NET.Windowing.Glfw" Version="2.23.0" />
     <PackageVersion Include="Silk.NET.Windowing.Extensions" Version="2.23.0" />
-    <PackageVersion Include="SkiaSharp" Version="4.148.0" />
-    <PackageVersion Include="SkiaSharp.HarfBuzz" Version="4.148.0" />
-    <PackageVersion Include="SkiaSharp.NativeAssets.Linux" Version="4.148.0" />
-    <PackageVersion Include="SkiaSharp.NativeAssets.Win32" Version="4.148.0" />
+    <PackageVersion Include="SkiaSharp" Version="4.150.0" />
+    <PackageVersion Include="SkiaSharp.HarfBuzz" Version="4.150.0" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Linux" Version="4.150.0" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Win32" Version="4.150.0" />
     <PackageVersion Include="YamlDotNet" Version="18.1.0" />
     <PackageVersion Include="Yoga.Net" Version="3.2.3" />
   </ItemGroup>
