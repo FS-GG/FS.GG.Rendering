@@ -64,6 +64,15 @@ None required — the fix is fully specified by the review finding.
   (`template/skill-manifest/skill-manifest.json`) MUST be regenerated so its `fs-gg-samples` digest
   matches — restoring `Feature168` repository parity to `Passed` with zero findings.
 
+  **Mechanism superseded (2026-07-09, [#222](https://github.com/FS-GG/FS.GG.Rendering/issues/222)).**
+  The `package-pin-drift` *guidance rule* was deleted with the substring-matched guidance layer in
+  #189, so for a time FR-006's stated outcome held while nothing enforced it. The requirement is
+  unchanged and is now carried by the `package-pin-drift` **guarded theme**
+  (`SkillParity.defaultGuardedThemes`), which is satisfied only when the skill names the
+  `package-feed` harness verb or `scripts/refresh-local-feed-and-samples.fsx` **and that artifact
+  resolves** — deleting the guidance now fails the check. See
+  [`guidance-rule-disposition.md`](./guidance-rule-disposition.md) for all seven rules.
+
 ## Success Criteria
 
 - **SC-001** — The gate deterministic tier runs all 14 non-GL slnx test projects (was 8);

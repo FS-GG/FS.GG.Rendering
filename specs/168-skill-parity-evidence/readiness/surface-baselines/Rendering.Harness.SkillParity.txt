@@ -3,6 +3,10 @@ type SurfaceKind
 type AgentSurface
 type EntryKind
 type SymbolStatus
+type ArtifactRef
+type ArtifactStatus
+type GuardedTheme
+type ArtifactReference
 type FindingSeverity
 type FindingCategory
 type OverallStatus
@@ -14,6 +18,7 @@ type IntentionalException
 type ParityFinding
 type SeverityCounts
 type SkillSymbolSummary
+type ThemeArtifactSummary
 type ParityReport
 type ParityCheckRequest
 type Model
@@ -23,6 +28,8 @@ val surfaceKindToken
 val agentToken
 val entryKindToken
 val symbolStatusToken
+val artifactStatusToken
+val artifactRefToken
 val severityToken
 val categoryToken
 val overallStatusToken
@@ -33,6 +40,9 @@ val inventorySkills
 val loadSurfaceMembers
 val loadExercisedSymbols
 val evaluateApiSymbols
+val defaultGuardedThemes
+val loadHarnessCommands
+val evaluateArtifactReferences
 val runCheck
 val renderMarkdown
 val renderSummaryJson

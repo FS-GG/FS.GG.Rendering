@@ -40,6 +40,35 @@ module SkillParity =
         /// Absent from the public surface baseline — the skill documents an API that does not exist.
         | Unresolved
 
+    /// A repository-owned artifact that a skill's process guidance must point at. Both cases are
+    /// adjudicated by a closed world — the filesystem, or the harness dispatch table — never by the
+    /// skill's vocabulary.
+    type ArtifactRef =
+        | RepoPath of path: string
+        | HarnessCommand of verb: string
+
+    /// Verdict for one `GuardedTheme` against one skill in its scope.
+    type ArtifactStatus =
+        | ArtifactResolved
+        | ArtifactDangling
+        | ArtifactUnnamed
+
+    type GuardedTheme =
+        { ThemeId: string
+          Intent: string
+          Artifacts: ArtifactRef list
+          ApplicablePatterns: string list }
+
+    type ArtifactReference =
+        { ThemeId: string
+          Intent: string
+          SkillName: string
+          SurfaceId: string
+          Path: string
+          Reference: ArtifactRef option
+          Expected: ArtifactRef list
+          Status: ArtifactStatus }
+
     type FindingSeverity =
         | Info
         | Warning
@@ -54,6 +83,8 @@ module SkillParity =
         | CanonicalDrift
         | UnresolvedApiSymbol
         | UnexercisedApiSymbol
+        | UnresolvedArtifactReference
+        | MissingRequiredArtifact
         | MetadataDrift
         | IntentionalExceptionFinding
         | UnreadableSurface
@@ -136,6 +167,13 @@ module SkillParity =
           Unexercised: int
           Unresolved: int }
 
+    type ThemeArtifactSummary =
+        { ThemeId: string
+          Scoped: int
+          Resolved: int
+          Dangling: int
+          Unnamed: int }
+
     type ParityReport =
         { CheckedAtUtc: DateTime
           RepositoryRoot: string
@@ -145,6 +183,7 @@ module SkillParity =
           WrapperCount: int
           FindingCountsBySeverity: SeverityCounts
           ApiSymbolCoverage: SkillSymbolSummary list
+          GuardedThemeCoverage: ThemeArtifactSummary list
           Findings: ParityFinding list
           IntentionalExceptions: IntentionalException list
           GeneratedReportPath: string
@@ -170,6 +209,7 @@ module SkillParity =
           Entries: SkillEntry list
           Findings: ParityFinding list
           Symbols: ApiSymbol list
+          Artifacts: ArtifactReference list
           Report: ParityReport option
           Diagnostics: string list }
 
@@ -177,6 +217,7 @@ module SkillParity =
         | InventoryRequested
         | InventoryLoaded of SkillSurface list * SkillEntry list
         | SymbolsResolved of ApiSymbol list
+        | ArtifactsResolved of ArtifactReference list
         | FindingsClassified of ParityFinding list
         | ReportGenerated of ParityReport
         | WorkflowFailed of string
@@ -184,6 +225,7 @@ module SkillParity =
     type Effect =
         | ReadSkillSurfaces
         | ResolveApiSymbols
+        | ResolveArtifactReferences
         | ClassifyFindings
         | WriteMarkdownReport
         | WriteSummaryJson
@@ -217,6 +259,17 @@ module SkillParity =
         | Unexercised -> "unexercised"
         | Unresolved -> "unresolved"
 
+    let artifactStatusToken status =
+        match status with
+        | ArtifactResolved -> "resolved"
+        | ArtifactDangling -> "dangling"
+        | ArtifactUnnamed -> "unnamed"
+
+    let artifactRefToken reference =
+        match reference with
+        | RepoPath path -> path
+        | HarnessCommand verb -> verb
+
     let severityToken severity =
         match severity with
         | Info -> "info"
@@ -233,6 +286,8 @@ module SkillParity =
         | CanonicalDrift -> "canonical-drift"
         | UnresolvedApiSymbol -> "unresolved-api-symbol"
         | UnexercisedApiSymbol -> "unexercised-api-symbol"
+        | UnresolvedArtifactReference -> "unresolved-artifact-reference"
+        | MissingRequiredArtifact -> "missing-required-artifact"
         | MetadataDrift -> "metadata-drift"
         | IntentionalExceptionFinding -> "intentional-exception"
         | UnreadableSurface -> "unreadable-surface"
@@ -478,6 +533,136 @@ module SkillParity =
                           SurfaceId = entry.SurfaceId
                           Path = entry.Path
                           Status = status }))
+
+    /// The themes that outlived the substring-matched guidance layer removed in #189. A theme is kept
+    /// only where its prose pointed at a repository artifact that can be resolved; the four themes whose
+    /// prose named nothing resolvable (`evidence-honesty`, `visual-readiness`, `responsiveness-diagnostics`,
+    /// `validation-output-isolation`) were deliberately not carried over, because a check that cannot fail
+    /// on a real regression is the false assurance #189 set out to delete. The disposition of all seven is
+    /// recorded in `specs/235-gate-cadence-from-slnx/guidance-rule-disposition.md`.
+    ///
+    /// Scopes are the ones the deleted rules carried, so this narrows coverage without silently widening it.
+    let defaultGuardedThemes () =
+        [ { ThemeId = "package-pin-drift"
+            Intent = "Package-consuming samples prove their FS.GG.UI.* pins against the local feed."
+            Artifacts = [ HarnessCommand "package-feed"; RepoPath "scripts/refresh-local-feed-and-samples.fsx" ]
+            ApplicablePatterns =
+                [ "speckit-implement"
+                  "speckit-merge"
+                  "src/testing"
+                  "template/fragments/samples"
+                  "src/controls"
+                  "src/skiaviewer"
+                  "fs-gg-project" ] }
+          { ThemeId = "post-merge-package-bump"
+            Intent = "Merge work packs to the local feed and re-validates sample package pins."
+            Artifacts = [ HarnessCommand "package-feed" ]
+            ApplicablePatterns = [ "speckit-merge" ] }
+          { ThemeId = "readiness-allowlisting"
+            Intent = "Committed readiness evidence is allowlisted against the repository ignore rules."
+            // `git check-ignore` was the third reference of the deleted rule. It is not repository-owned,
+            // so it is not resolvable here and is not required — the ignore file is.
+            Artifacts = [ RepoPath ".gitignore" ]
+            ApplicablePatterns = [ "speckit-implement"; "speckit-merge"; "src/testing"; "fs-gg-project" ] } ]
+
+    let private harnessCliPath root = Path.Combine(root, "tools", "Rendering.Harness", "Cli.fs")
+
+    /// A dispatch arm: `| "package-feed" :: rest -> ...`. Internal arms (`__viewer`) and options
+    /// (`--help`) do not match, so a skill cannot point at one.
+    let private dispatchArmPattern =
+        Regex(@"^\s*\|\s*""([a-z][a-z0-9-]*)""\s*::", RegexOptions.Compiled ||| RegexOptions.Multiline)
+
+    /// The closed world for `HarnessCommand`: every verb the harness actually dispatches. Read from the
+    /// dispatch table rather than a hand-kept list, so renaming a verb moves this set with it.
+    let loadHarnessCommands repositoryRoot =
+        let path = harnessCliPath repositoryRoot
+
+        if not (File.Exists path) then
+            None
+        else
+            dispatchArmPattern.Matches(File.ReadAllText path)
+            |> Seq.map (fun m -> m.Groups[1].Value)
+            |> Set.ofSeq
+            |> Some
+
+    /// Inline code spans only. Prose cannot point at an artifact — a skill has to write it as code, and
+    /// the token it writes then has to resolve. Fence bodies and fence openers carry no single-backtick
+    /// span, so they contribute nothing here.
+    let private codeSpanPattern = Regex(@"`([^`\r\n]+)`", RegexOptions.Compiled)
+
+    let private codeSpans (content: string) =
+        codeSpanPattern.Matches content
+        |> Seq.map (fun m -> m.Groups[1].Value)
+        |> List.ofSeq
+
+    /// A span names a command when one of its words *is* the verb (so `` `package-feed` `` and
+    /// `` `harness package-feed --check` `` both point at it, and `package-feedback` does not), and names
+    /// a path when the span contains it (so a full command line still points at the script it runs).
+    let private spanNames (span: string) reference =
+        match reference with
+        | HarnessCommand verb ->
+            span.Split([| ' '; '\t' |], StringSplitOptions.RemoveEmptyEntries)
+            |> Array.exists (fun word -> word = verb)
+        | RepoPath path -> span.Contains(path, StringComparison.Ordinal)
+
+    let private artifactResolves root (harnessCommands: Set<string>) reference =
+        match reference with
+        | HarnessCommand verb -> harnessCommands |> Set.contains verb
+        | RepoPath path ->
+            let full = Path.Combine(root, path)
+            File.Exists full || Directory.Exists full
+
+    let private themeApplies (theme: GuardedTheme) (entry: SkillEntry) =
+        let haystack = $"{entry.SkillName} {entry.Description} {entry.Path}".ToLowerInvariant()
+
+        theme.ApplicablePatterns
+        |> List.exists (fun pattern -> haystack.Contains(pattern.ToLowerInvariant()))
+
+    /// Resolve each theme against the skills in its scope.
+    ///
+    /// The scan finds *candidate* references; the **verdict is resolution**. That is the whole difference
+    /// from the deleted layer: `content.Contains "local feed"` was satisfiable by writing the phrase,
+    /// whereas `HarnessCommand "package-feed"` is satisfiable only if the harness still dispatches that
+    /// verb. Deleting the guidance leaves the theme `ArtifactUnnamed`; renaming the artifact underneath
+    /// intact guidance leaves it `ArtifactDangling`. Both are the regressions the words could hide.
+    let evaluateArtifactReferences
+        (repositoryRoot: string)
+        (harnessCommands: Set<string>)
+        (themes: GuardedTheme list)
+        (entries: SkillEntry list)
+        =
+        entries
+        |> List.filter (fun entry ->
+            entry.EntryKind = CanonicalEntry
+            || entry.EntryKind = CommandEntry)
+        |> List.collect (fun entry ->
+            let spans = codeSpans entry.Content
+
+            themes
+            |> List.filter (fun theme -> themeApplies theme entry)
+            |> List.map (fun theme ->
+                let named =
+                    theme.Artifacts
+                    |> List.filter (fun reference -> spans |> List.exists (fun span -> spanNames span reference))
+
+                let reference, status =
+                    match named with
+                    | [] -> None, ArtifactUnnamed
+                    | candidates ->
+                        // A theme offering alternatives is satisfied by any one that resolves; it is
+                        // dangling only when every artifact it names has gone away.
+                        match candidates |> List.tryFind (artifactResolves repositoryRoot harnessCommands) with
+                        | Some resolved -> Some resolved, ArtifactResolved
+                        | None -> Some(List.head candidates), ArtifactDangling
+
+                { ThemeId = theme.ThemeId
+                  Intent = theme.Intent
+                  SkillName = entry.SkillName
+                  SurfaceId = entry.SurfaceId
+                  Path = entry.Path
+                  Reference = reference
+                  Expected = theme.Artifacts
+                  Status = status }))
 
     let defaultRequest repositoryRoot =
         let root = Path.GetFullPath repositoryRoot
@@ -888,11 +1073,51 @@ module SkillParity =
                     "Add a test that calls the documented API, or stop documenting it."
             | Exercised -> None)
 
-    let private classifyFindings request entries symbols =
+    let private artifactFindings (references: ArtifactReference list) =
+        references
+        |> List.choose (fun item ->
+            let finding category severity message remediation =
+                Some
+                    { FindingId = $"{categoryToken category}:{item.SurfaceId}:{item.SkillName}:{item.ThemeId}"
+                      SkillName = item.SkillName
+                      SurfaceId = item.SurfaceId
+                      Category = category
+                      Severity = severity
+                      CanonicalPath = Some item.Path
+                      WrapperPath = None
+                      Symbol = item.Reference |> Option.map artifactRefToken
+                      Message = message
+                      Remediation = remediation
+                      ExceptionId = None }
+
+            let expected =
+                item.Expected
+                |> List.map (fun reference -> $"`{artifactRefToken reference}`")
+                |> String.concat " or "
+
+            match item.Status with
+            | ArtifactResolved -> None
+            | ArtifactDangling ->
+                let named = item.Reference |> Option.map artifactRefToken |> Option.defaultValue ""
+
+                finding
+                    UnresolvedArtifactReference
+                    High
+                    $"Skill's `{item.ThemeId}` guidance points at `{named}`, which no longer exists."
+                    "Point the guidance at the artifact's current name, or restore the artifact."
+            | ArtifactUnnamed ->
+                finding
+                    MissingRequiredArtifact
+                    High
+                    $"Skill is in scope for `{item.ThemeId}` but names none of its artifacts ({expected})."
+                    $"Restore the guidance — {item.Intent} — naming {expected}; or narrow the theme's scope.")
+
+    let private classifyFindings request entries symbols artifacts =
         wrapperFindings entries
         @ missingWrapperFindings entries
         @ canonicalDriftFindings request entries
         @ symbolFindings symbols
+        @ artifactFindings artifacts
         |> List.distinctBy (fun finding -> finding.FindingId)
 
     let private severityCounts findings =
@@ -914,6 +1139,21 @@ module SkillParity =
               Unexercised = countOf Unexercised
               Unresolved = countOf Unresolved })
         |> List.sortBy (fun summary -> summary.SkillName)
+
+    /// Every theme appears, including one with no skill in scope — a theme that silently stopped applying
+    /// to anything would otherwise read as a theme that passed.
+    let private themeSummary (themes: GuardedTheme list) (references: ArtifactReference list) =
+        themes
+        |> List.map (fun theme ->
+            let items = references |> List.filter (fun item -> item.ThemeId = theme.ThemeId)
+            let countOf status = items |> List.filter (fun item -> item.Status = status) |> List.length
+
+            { ThemeId = theme.ThemeId
+              Scoped = items.Length
+              Resolved = countOf ArtifactResolved
+              Dangling = countOf ArtifactDangling
+              Unnamed = countOf ArtifactUnnamed })
+        |> List.sortBy (fun summary -> summary.ThemeId)
 
     let private reportStatus findings =
         if findings |> List.exists (fun f -> f.Severity = Critical || f.Severity = High) then
@@ -941,6 +1181,8 @@ module SkillParity =
         (entries: SkillEntry list)
         (symbols: ApiSymbol list)
         (symbolCaveats: string list)
+        (artifacts: ArtifactReference list)
+        (artifactCaveats: string list)
         (findings: ParityFinding list)
         =
         let counts = severityCounts findings
@@ -957,6 +1199,7 @@ module SkillParity =
           WrapperCount = entries |> List.filter (fun entry -> entry.EntryKind = WrapperEntry) |> List.length
           FindingCountsBySeverity = counts
           ApiSymbolCoverage = symbolSummary symbols
+          GuardedThemeCoverage = themeSummary (defaultGuardedThemes ()) artifacts
           Findings = findings
           IntentionalExceptions = []
           GeneratedReportPath = request.ReportPath
@@ -965,7 +1208,8 @@ module SkillParity =
             [ "Global Codex skill installation paths are excluded from required repository parity."
               if request.FixtureMode.IsSome then
                   "Fixture mode uses synthetic skill files and is not real repository parity evidence."
-              yield! symbolCaveats ]
+              yield! symbolCaveats
+              yield! artifactCaveats ]
           Command = commandText request }
 
     let private createSkillFile path name description body =
@@ -1138,6 +1382,18 @@ Before acting, read the canonical instructions in:
 
             Error $"API symbol resolution skipped: {missing} not found — documented APIs were not checked."
 
+    /// The dispatch table is the only closed world this layer needs. Without it a `HarnessCommand` cannot
+    /// be told from a typo, so the layer stays silent and says so rather than reporting a green it did not
+    /// earn. Fixture roots have no harness, and degrade here by design.
+    let private resolveArtifacts effectiveRequest entries =
+        let root = effectiveRequest.RepositoryRoot
+
+        match loadHarnessCommands root with
+        | Some harnessCommands -> Ok(evaluateArtifactReferences root harnessCommands (defaultGuardedThemes ()) entries)
+        | None ->
+            Error
+                $"Guarded-theme resolution skipped: {relativePath root (harnessCliPath root)} not found — process guidance was not checked."
+
     let runCheck request =
         let effectiveRequest = effectiveRequestFor request
         let surfaces = effectiveSurfaces effectiveRequest effectiveRequest.RepositoryRoot
@@ -1148,8 +1404,13 @@ Before acting, read the canonical instructions in:
             | Ok (symbols, caveats) -> symbols, caveats
             | Error reason -> [], [ reason ]
 
-        let findings = classifyFindings effectiveRequest entries symbols
-        buildReport effectiveRequest surfaces entries symbols symbolCaveats findings
+        let artifacts, artifactCaveats =
+            match resolveArtifacts effectiveRequest entries with
+            | Ok artifacts -> artifacts, []
+            | Error reason -> [], [ reason ]
+
+        let findings = classifyFindings effectiveRequest entries symbols artifacts
+        buildReport effectiveRequest surfaces entries symbols symbolCaveats artifacts artifactCaveats findings
 
     let private markdownTableRow (values: string list) =
         "| " + (values |> List.map (fun value -> value.Replace("\n", " ")) |> String.concat " | ") + " |"
@@ -1210,6 +1471,26 @@ Before acting, read the canonical instructions in:
                           string summary.Exercised
                           string summary.Unexercised
                           string summary.Unresolved ]
+                )
+                |> ignore
+
+        sb.AppendLine() |> ignore
+        sb.AppendLine("## Guarded Theme Coverage") |> ignore
+
+        match report.GuardedThemeCoverage with
+        | [] -> sb.AppendLine("Guarded themes were not resolved — see caveats.") |> ignore
+        | coverage ->
+            sb.AppendLine(markdownTableRow [ "Theme"; "Scoped"; "Resolved"; "Dangling"; "Unnamed" ]) |> ignore
+            sb.AppendLine(markdownTableRow [ "---"; "---"; "---"; "---"; "---" ]) |> ignore
+
+            for summary in coverage do
+                sb.AppendLine(
+                    markdownTableRow
+                        [ summary.ThemeId
+                          string summary.Scoped
+                          string summary.Resolved
+                          string summary.Dangling
+                          string summary.Unnamed ]
                 )
                 |> ignore
 
@@ -1301,6 +1582,15 @@ Before acting, read the canonical instructions in:
                    unexercised = item.Unexercised
                    unresolved = item.Unresolved |})
 
+        let themeCoverage =
+            report.GuardedThemeCoverage
+            |> List.map (fun item ->
+                {| themeId = item.ThemeId
+                   scoped = item.Scoped
+                   resolved = item.Resolved
+                   dangling = item.Dangling
+                   unnamed = item.Unnamed |})
+
         let findings =
             report.Findings
             |> List.map (fun finding ->
@@ -1329,6 +1619,7 @@ Before acting, read the canonical instructions in:
                    warning = report.FindingCountsBySeverity.Warning
                    info = report.FindingCountsBySeverity.Info |}
                apiSymbolCoverage = coverage
+               guardedThemeCoverage = themeCoverage
                findings = findings
                caveats = report.Caveats |},
             options
@@ -1427,6 +1718,7 @@ Before acting, read the canonical instructions in:
           Entries = []
           Findings = []
           Symbols = []
+          Artifacts = []
           Report = None
           Diagnostics = [] },
         [ ReadSkillSurfaces ]
@@ -1435,7 +1727,8 @@ Before acting, read the canonical instructions in:
         match msg with
         | InventoryRequested -> model, [ ReadSkillSurfaces ]
         | InventoryLoaded (surfaces, entries) -> { model with Surfaces = surfaces; Entries = entries }, [ ResolveApiSymbols ]
-        | SymbolsResolved symbols -> { model with Symbols = symbols }, [ ClassifyFindings ]
+        | SymbolsResolved symbols -> { model with Symbols = symbols }, [ ResolveArtifactReferences ]
+        | ArtifactsResolved artifacts -> { model with Artifacts = artifacts }, [ ClassifyFindings ]
         | FindingsClassified findings -> { model with Findings = findings }, []
         | ReportGenerated report -> { model with Report = Some report }, [ WriteMarkdownReport; WriteSummaryJson ]
         | WorkflowFailed reason -> { model with Diagnostics = model.Diagnostics @ [ reason ] }, []

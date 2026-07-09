@@ -71,6 +71,7 @@
     <Compile Include="Feature167ResponsivenessReadinessTests.fs" />
     <Compile Include="Feature168SkillParityFixtures.fs" />
     <Compile Include="Feature168ApiSymbolTests.fs" />
+    <Compile Include="Feature222GuardedThemeTests.fs" />
     <Compile Include="Feature168SkillInventoryTests.fs" />
     <Compile Include="Feature168ParityFindingTests.fs" />
     <Compile Include="Feature168ParityReportTests.fs" />

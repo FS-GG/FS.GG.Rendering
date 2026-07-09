@@ -35,6 +35,46 @@ module SkillParity =
         /// Absent from the public surface baseline — the skill documents an API that does not exist.
         | Unresolved
 
+    /// A repository-owned artifact that a skill's process guidance must point at. Both cases are
+    /// adjudicated by a closed world — the filesystem, or the harness dispatch table — never by the
+    /// skill's vocabulary.
+    type ArtifactRef =
+        /// Resolves iff the path exists beneath the repository root.
+        | RepoPath of path: string
+        /// Resolves iff `tools/Rendering.Harness/Cli.fs` still dispatches the verb.
+        | HarnessCommand of verb: string
+
+    /// Verdict for one `GuardedTheme` against one skill in its scope.
+    type ArtifactStatus =
+        /// The skill names an artifact of the theme, and that artifact exists.
+        | ArtifactResolved
+        /// The skill names an artifact of the theme, and it no longer exists — the guidance is stale.
+        | ArtifactDangling
+        /// The skill is in the theme's scope but names none of its artifacts — the guidance is gone.
+        | ArtifactUnnamed
+
+    /// A process-guidance theme retained from the deleted substring-matched guidance layer, narrowed to
+    /// the artifacts it can actually resolve. Themes whose prose named no repository artifact were not
+    /// retained; see `specs/235-gate-cadence-from-slnx/guidance-rule-disposition.md`.
+    type GuardedTheme =
+        { ThemeId: string
+          Intent: string
+          Artifacts: ArtifactRef list
+          ApplicablePatterns: string list }
+
+    /// One `GuardedTheme` resolved against one in-scope skill.
+    type ArtifactReference =
+        { ThemeId: string
+          /// The theme's `Intent`, carried so a finding can say what the missing guidance was for.
+          Intent: string
+          SkillName: string
+          SurfaceId: string
+          Path: string
+          /// The artifact the skill named — `None` exactly when `Status` is `ArtifactUnnamed`.
+          Reference: ArtifactRef option
+          Expected: ArtifactRef list
+          Status: ArtifactStatus }
+
     type FindingSeverity =
         | Info
         | Warning
@@ -49,6 +89,8 @@ module SkillParity =
         | CanonicalDrift
         | UnresolvedApiSymbol
         | UnexercisedApiSymbol
+        | UnresolvedArtifactReference
+        | MissingRequiredArtifact
         | MetadataDrift
         | IntentionalExceptionFinding
         | UnreadableSurface
@@ -131,6 +173,13 @@ module SkillParity =
           Unexercised: int
           Unresolved: int }
 
+    type ThemeArtifactSummary =
+        { ThemeId: string
+          Scoped: int
+          Resolved: int
+          Dangling: int
+          Unnamed: int }
+
     type ParityReport =
         { CheckedAtUtc: DateTime
           RepositoryRoot: string
@@ -140,6 +189,7 @@ module SkillParity =
           WrapperCount: int
           FindingCountsBySeverity: SeverityCounts
           ApiSymbolCoverage: SkillSymbolSummary list
+          GuardedThemeCoverage: ThemeArtifactSummary list
           Findings: ParityFinding list
           IntentionalExceptions: IntentionalException list
           GeneratedReportPath: string
@@ -165,6 +215,7 @@ module SkillParity =
           Entries: SkillEntry list
           Findings: ParityFinding list
           Symbols: ApiSymbol list
+          Artifacts: ArtifactReference list
           Report: ParityReport option
           Diagnostics: string list }
 
@@ -172,6 +223,7 @@ module SkillParity =
         | InventoryRequested
         | InventoryLoaded of SkillSurface list * SkillEntry list
         | SymbolsResolved of ApiSymbol list
+        | ArtifactsResolved of ArtifactReference list
         | FindingsClassified of ParityFinding list
         | ReportGenerated of ParityReport
         | WorkflowFailed of string
@@ -179,6 +231,7 @@ module SkillParity =
     type Effect =
         | ReadSkillSurfaces
         | ResolveApiSymbols
+        | ResolveArtifactReferences
         | ClassifyFindings
         | WriteMarkdownReport
         | WriteSummaryJson
@@ -190,6 +243,11 @@ module SkillParity =
     val entryKindToken: kind: EntryKind -> string
 
     val symbolStatusToken: status: SymbolStatus -> string
+
+    val artifactStatusToken: status: ArtifactStatus -> string
+
+    /// The text a skill must name to point at this artifact.
+    val artifactRefToken: reference: ArtifactRef -> string
 
     val severityToken: severity: FindingSeverity -> string
 
@@ -218,6 +276,24 @@ module SkillParity =
         exercised: Set<string> ->
         entries: SkillEntry list ->
             ApiSymbol list
+
+    /// The process-guidance themes that survived the deleted substring layer, each narrowed to the
+    /// repository artifacts it can resolve.
+    val defaultGuardedThemes: unit -> GuardedTheme list
+
+    /// Every verb `tools/Rendering.Harness/Cli.fs` dispatches. This is the closed world for
+    /// `HarnessCommand`. `None` when the dispatch table is absent, so callers degrade instead of
+    /// reporting a false green.
+    val loadHarnessCommands: repositoryRoot: string -> Set<string> option
+
+    /// Resolve each guarded theme against the skills in its scope. A skill satisfies a theme only by
+    /// naming an artifact that resolves — naming the right words satisfies nothing.
+    val evaluateArtifactReferences:
+        repositoryRoot: string ->
+        harnessCommands: Set<string> ->
+        themes: GuardedTheme list ->
+        entries: SkillEntry list ->
+            ArtifactReference list
 
     val runCheck: request: ParityCheckRequest -> ParityReport
 
