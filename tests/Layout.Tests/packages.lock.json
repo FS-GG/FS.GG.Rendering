@@ -127,7 +127,7 @@
       "FS.GG.UI.Layout": {
         "type": "Project",
         "dependencies": {
-          "FS.GG.UI.Scene": "[0.3.0-preview.1, )",
+          "FS.GG.UI.Scene": "[0.4.0-preview.1, )",
           "FSharp.Core": "[10.1.301, )",
           "Yoga.Net": "[3.2.3, )"
         }
