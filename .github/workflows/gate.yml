@@ -12,13 +12,18 @@ name: gate
 # parallel-work model. This job also runs on `push: main`, so a bad interleaving reds `main` rather
 # than being caught pre-merge. That is the chosen trade.
 #
-# THE RELEASE TAG WINDOW. Between a release bump landing on `main` and its tag triple being pushed,
-# PRs that did not bump fail `pin-no-tag` / `pkg-no-release-tag` — the pin they inherit resolves to
-# a tag that does not exist yet. With the gate required, those PRs are BLOCKED, not merely informed.
-# That is correct fail-closed behavior and the window is minutes long (the guard prints the exact
-# `git tag && git push` commands, in the mandated push order, to the run summary). #218 removes it:
-# cut the triple in the same automation that lands the bump. A release PR itself is NOT expected-red
-# — the guard's RELEASE-PENDING waiver covers it.
+# THE RELEASE TAG WINDOW IS CLOSED (#218). Between a release bump landing on `main` and its tag
+# triple being pushed, PRs that did not bump fail `pin-no-tag` / `pkg-no-release-tag` — the pin they
+# inherit resolves to a tag that does not exist yet — and with the gate required those PRs are
+# BLOCKED, not merely informed. That window used to stay open until an operator noticed and pushed
+# the tags by hand. It no longer exists as a manual step: `.github/workflows/release-tags.yml` runs
+# on `push: main`, reads the pending triple out of the coherence guard's RELEASE-PENDING block, cuts
+# it in the mandated order, and then CALLS `release.yml` / `template-dispatch.yml` (a `GITHUB_TOKEN`
+# tag push starts no workflow run, so the downstream lanes must be invoked, not awaited).
+#
+# What remains is bounded by that workflow's own run, not by anyone's attention: a PR whose gate run
+# starts inside it can still red, and re-running the gate after the cut lands turns it green. A
+# release PR itself is NOT expected-red — the guard's RELEASE-PENDING waiver covers it.
 #
 # MERGE METHOD IS LOAD-BEARING. `bumpedInCommitUnderTest` (scripts/validate-version-coherence.fsx)
 # reads `HEAD~1..HEAD`. A rebase-merge splits a release across two commits, so the second is seen as

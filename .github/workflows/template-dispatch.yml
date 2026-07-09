@@ -19,9 +19,20 @@ name: template-dispatch
 #
 # The manual workflow_dispatch entry is for operator inspection only: a manual run lands on a non-tag
 # ref, so version derivation fails and `derive` fails loudly rather than sending (FR-005).
+#
+# Feature 218 — `workflow_call` is now the PRIMARY entry. `release-tags.yml` cuts
+# `fs-gg-ui-template/v<version>` with `GITHUB_TOKEN`, and a `GITHUB_TOKEN` tag push starts no workflow
+# run, so the `push:` trigger below would never fire on a real release. The cutter therefore calls this
+# workflow directly with the version it cut. The `push:` trigger is retained for a human-pushed tag.
 on:
   push:
     tags: ['fs-gg-ui-template/v*']
+  workflow_call:
+    inputs:
+      version:
+        description: "Released template version, without any tag prefix (e.g. 0.1.52-preview.1)."
+        type: string
+        required: true
   workflow_dispatch: {}
 
 concurrency:
@@ -44,10 +55,16 @@ jobs:
       version: ${{ steps.v.outputs.version }}
     steps:
       - uses: actions/checkout@v4
+      # `derive-template-version.sh` stays the SINGLE validator of a released template version, on
+      # every entry path. A `workflow_call` run has no template tag in `github.ref` (it inherits the
+      # caller's ref, `refs/heads/main`), so rather than teaching the job a second, unvalidated way to
+      # learn the version, we hand the script the tag ref that version implies. The regex it already
+      # enforces then guards the call too: a caller passing `main`, an empty string, or `v1.2` fails
+      # loudly here and NOTHING is dispatched (FR-005), exactly as a malformed tag would.
       - id: v
         name: Derive + validate version from the tag ref
         env:
-          GITHUB_REF: ${{ github.ref }}
+          GITHUB_REF: ${{ inputs.version && format('refs/tags/fs-gg-ui-template/v{0}', inputs.version) || github.ref }}
         run: bash scripts/derive-template-version.sh
 
   dispatch:
