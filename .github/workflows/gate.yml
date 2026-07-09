@@ -171,6 +171,17 @@ jobs:
           dotnet fsi scripts/validate-version-coherence.fsx
           FS_GG_RUN_VERSION_COHERENCE_SMOKE=1 dotnet fsi scripts/validate-version-coherence.fsx
 
+      # #241 — the OFFLINE half of the template payload pin guard. The three axis literals in
+      # template/base/Directory.Packages.props become a scaffolded product's pins; this step proves
+      # they are well-formed, declared once, derived through an axis (never a bare literal, which no
+      # axis bump would sweep), and that every scaffold profile resolves at least one pin — a profile
+      # that restores nothing would otherwise report a vacuous pass (#266). It touches no network, so
+      # it belongs in the required gate. The restore-grounded half — does the payload actually
+      # resolve, and to a stable graph — needs nuget.org and runs in `template-payload-restore-gate`
+      # below, for the same reason ADR-0101 keeps `api-compatibility-gate` out of the required set.
+      - name: Template payload pins — structural verdict-core (env-free)
+        run: dotnet fsi scripts/validate-template-payload-pins.fsx
+
       # #106 (refs #104/#105) — lifecycle-template verdict-core drift guard, PR-time. The Feature-204
       # gating invariant is classified by TWO parallel sources: this fsx's env-free verdict-core
       # (`verifyGatedSources`) and Package.Tests' independent `gatedSourceAudit`. A PR that adds/moves a
@@ -331,3 +342,47 @@ jobs:
           NUGET_FEED_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NUGET_FEED_USER: ${{ github.actor }}
         run: bash scripts/apicompat-check.sh
+
+  # #241 — template payload restore gate (refs #235, #238, FS-GG/.github#266).
+  #
+  # `template/base/Directory.Packages.props` declares the three version axes a SCAFFOLDED PRODUCT
+  # restores. Nothing in CI ever restored them: Package.Tests reads the file as text and asserts axis
+  # STRUCTURE while explicitly disclaiming the VALUE, and template payload is content rather than a
+  # nuspec dependency, so NU5104 cannot see it. A pin that was stale, prerelease, yanked, or simply
+  # nonexistent passed every check in this repo. That is how #235 happened — a stable fs-gg-ui 0.4.0
+  # template scaffolded products restoring PRERELEASE FS.GG.Game.* / FS.GG.Audio.*, with
+  # $(FsGgGameVersion) two minors stale, red nowhere for months.
+  #
+  # This job restores each of the five scaffold profiles for real, on the template's real TFM, and
+  # asserts the RESOLVED GRAPH: no prerelease `FS.GG.*` anywhere including transitively (a prerelease
+  # enters through a dependency without ever appearing in the props file — FS.GG.Game.Render reaches
+  # down to FS.GG.UI.Scene, so a regex over the three literals is insufficient); NU1603/NU1608 promoted
+  # to errors so a nonexistent pin cannot resolve upward silently; and the Game/Audio pins not lagging
+  # feed-newest (the staleness direction, as `.github`'s check-feed-coherence.py does for the registry).
+  #
+  # A SEPARATE JOB, not a step of the required `gate`, on exactly ADR-0101's bound: this reads
+  # nuget.org, and requiring a feed-dependent check takes a dependency on that feed's availability —
+  # an outage must not wedge every merge in the repo. As with `api-compatibility-gate`, "advisory"
+  # means NOT-REQUIRED and is NOT `continue-on-error` (#216): this job has none and must not grow one.
+  # A red here is the gate reporting what it found. Its exits: 0 coherent · 1 drift · 2 guard error
+  # (feed unreachable / restore tooling failed / zero pins matched) — it fails CLOSED, per #266's rule
+  # that "nothing to check" and "checked, and it's fine" must not share an exit code.
+  #
+  # The env-free structural half runs in the required `gate` job above; this invocation re-runs it
+  # first (the script always does) and then proves the graph.
+  template-payload-restore-gate:
+    name: Template payload restore gate (scaffolded pins resolve, stable)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore the template payload and assert the resolved graph
+        env:
+          FS_GG_RUN_TEMPLATE_PAYLOAD_RESTORE: '1'
+        run: dotnet fsi scripts/validate-template-payload-pins.fsx

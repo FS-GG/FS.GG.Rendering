@@ -227,15 +227,70 @@ tag`; ADR-0012/0013 (dual-publish) and ADR-0024 (consumer edges) depend on the s
 is a cross-repo decision — it changes a published contract — so it belongs in an `FS-GG/.github` ADR, not
 here; this section records why the independence is load-bearing today.
 
+## 4b. Template payload pins — chosen gate behavior (#241)
+
+`template/base/Directory.Packages.props` declares three version axes — `$(FsGgUiVersion)`,
+`$(FsGgGameVersion)`, `$(FsGgAudioVersion)` — that become a **scaffolded product's** package pins.
+Until #241 nothing in CI ever **restored** them. `Package.Tests` reads the file as *text*:
+`AudioProfileWiringTests` asserts axis *structure* and explicitly disclaims the *value*, and template
+payload is *content* rather than a nuspec dependency, so `NU5104` cannot see it either. Only
+`$(FsGgUiVersion)` was protected, by §4a. A pin that was stale, prerelease, yanked, or simply
+nonexistent passed every check in this repo — which is exactly how #235 happened: a **stable**
+`fs-gg-ui` template (`0.4.0`) scaffolded products restoring **prerelease** `FS.GG.Game.*` /
+`FS.GG.Audio.*`, with `$(FsGgGameVersion)` also two minors stale, and nothing was red for months.
+
+`scripts/validate-template-payload-pins.fsx` closes it, in two layers on **two different jobs**:
+
+- **Structural verdict-core (env-free, offline)** — step of the required `Deterministic gate`. The
+  three axis literals are present exactly once each and well-formed; **every** `FS.GG.*`
+  `PackageVersion` derives through one of the three axes (a bare literal is invisible to an axis bump
+  and to the staleness rule below); every `<!--#if -->` profile gate has a shape the guard can
+  evaluate; and **every scaffold profile resolves a non-empty pin set** — a profile that restores
+  nothing would otherwise report a vacuous pass.
+- **Restore-grounded proof (`FS_GG_RUN_TEMPLATE_PAYLOAD_RESTORE=1`)** — the separate
+  `Template payload restore gate` job. It restores each of the five profiles for real, on the
+  template's real TFM (`net10.0`), against nuget.org, and asserts the **resolved graph** rather than
+  the literals: no prerelease `FS.GG.*` **including transitive** (`FS.GG.Game.Render` reaches down to
+  `FS.GG.UI.Scene`, so a regex over the three literals would miss it); `NU1603`/`NU1608`/`NU1101`/
+  `NU1102`/`NU1605` promoted to errors so a nonexistent pin cannot resolve upward silently; every
+  pinned `(id, version)` present on the feed; and the Game/Audio pins not **lagging** feed-newest.
+
+Exit codes: `0` coherent · `1` drift (named, expected-vs-actual) · `2` guard error (feed unreachable,
+restore tooling failed, an unevaluable gate, zero pins matched). It **fails closed**, per
+`FS-GG/.github#266`: *"nothing to check" and "checked, and it's fine" must not share an exit code.*
+
+**Why the restore half is a separate, non-required job.** It reads nuget.org, and requiring a
+feed-dependent check takes a dependency on that feed's availability — an outage would wedge every
+merge in the repo. That is precisely ADR-0101's bound on `api-compatibility-gate`, applied again.
+As there, **advisory means not-required, not `continue-on-error`** (#216): the job has none, and a red
+is the gate reporting what it found.
+
+**Why `$(FsGgUiVersion)` is exempt from the staleness rule, and only that rule.** The `FS.GG.UI.*`
+set is published *from this repo*, and §4a already pins it to `fs-gg-ui/v*` snapshot tags — a source
+of truth that exists at merge time. Feed-newest does not: between a release landing on `main` and the
+packages reaching nuget.org, feed-newest **lags the repo**, and a "pin ≥ newest" rule would red every
+PR in that window against this repo's own release. Game and Audio ship from *other* repos, where the
+feed *is* the source of truth and no such window exists. UI pins are still proved to exist and to be
+non-prerelease by the restore layer.
+
+**The preview channel is asserted by `$(FsGgUiVersion)` alone.** A prerelease framework pin means the
+template deliberately scaffolds preview products, so a prerelease component is coherent with it. It
+must not be read as "any axis is prerelease": under that reading a prerelease `$(FsGgAudioVersion)`
+would declare the very preview channel that excuses it, and #235 would have stayed green.
+
 ## 5. Branch protection (one-time maintainer step)
 
 The spec defines which checks are required; **enabling** branch protection is the maintainer's
 one-time action (it cannot be set from the repo tree). On `main`:
 
-- **Require status checks to pass before merging** → select **both** of the `gate` workflow's jobs:
-  **`Deterministic gate`** and **`API compatibility gate (breaking-change → SemVer major)`** (§5.1).
-  Do **not** add `release` or `capability` jobs as required (FR-007) — that constraint is about those
-  two *workflows*, and says nothing about `gate.yml`'s own jobs.
+- **Require status checks to pass before merging** → select **two** of the `gate` workflow's three
+  jobs: **`Deterministic gate`** and **`API compatibility gate (breaking-change → SemVer major)`**
+  (§5.1). Do **not** add `release` or `capability` jobs as required (FR-007) — that constraint is
+  about those two *workflows*, and says nothing about `gate.yml`'s own jobs.
+- Leave **`Template payload restore gate (scaffolded pins resolve, stable)`** unselected. It is
+  feed-dependent, and ADR-0101's bound applies to it as it does to ApiCompat (§4b). Unlike ApiCompat,
+  it has **no elevation path**: its subject *is* an external feed, so a nuget.org outage is
+  indistinguishable from a bad pin and must stay unable to wedge the repo.
 - Do **not** enable "Require branches to be up to date before merging". This section originally
   recommended it, but under the ADR-0021 parallel intra-repo model it serializes every merge: each
   landing invalidates every other open PR's green. `gate` also runs on `push: main`, so a bad
@@ -244,8 +299,8 @@ one-time action (it cannot be set from the repo tree). On `main`:
 - Leave `release.yml` and `capability.yml` unselected — they are advisory by design and must never
   block a merge (gate-contract "What can NEVER fail the gate").
 
-Result: a PR merges iff both `gate.yml` jobs are green; release/capability runs are visible evidence
-but never gate.
+Result: a PR merges iff `Deterministic gate` and `API compatibility gate` are green;
+`Template payload restore gate`, release and capability runs are visible evidence but never gate.
 
 ### 5.1 `API compatibility gate` — required as of 2026-07-09
 
