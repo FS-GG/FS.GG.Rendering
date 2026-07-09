@@ -38,7 +38,7 @@
     <PackageVersion Include="FS.GG.Game.Core" Version="0.1.0-preview.1" />
     <PackageVersion Include="Expecto" Version="10.2.3" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.7.0" />
-    <PackageVersion Include="YoloDev.Expecto.TestSdk" Version="0.15.6" />
+    <PackageVersion Include="YoloDev.Expecto.TestSdk" Version="0.16.0" />
   </ItemGroup>
   <!-- Build-tooling only (build/** projects, NOT src/** and NOT shipped in any
        generated product). Consumed as ordinary NuGet libraries by the compiled
