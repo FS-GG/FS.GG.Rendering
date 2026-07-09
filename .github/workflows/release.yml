@@ -37,12 +37,13 @@ jobs:
       # drift. Belt to the successor-tag braces: those bounds can only see a mis-order that LEFT A TAG
       # BEHIND, and a publish need not leave one.
       #
-      # This does NOT close the `workflow_dispatch (version:)` hole. The guard validates the REPO's
-      # `<Version>`, never `inputs.version`, so a dispatch from a coherent `main` with an arbitrary
-      # version is green here and `publish-packages` ships it untagged — template-dispatch.yml, which
-      # fires only on `fs-gg-ui-template/v*`, never runs. Closing that needs a check on `inputs.version`
-      # itself, or removing the publishing dispatch path. Tracked separately; do not read this flag as
-      # covering it.
+      # This flag bounds the WAIVERS; it does not bind the guard's SUBJECT. The guard only ever validates
+      # the REPO's `<Version>`, while `publish-packages` resolves what it ships from the trigger. On a
+      # `workflow_dispatch` those differ: an arbitrary `inputs.version` was green here (the repo is
+      # coherent) and shipped untagged, and template-dispatch.yml — which fires only on
+      # `fs-gg-ui-template/v*` — never ran. `publish-packages` now asserts the two are the same string
+      # before it packs (see "Verify the version to publish is the version the guard validated"), so a
+      # dispatch can only republish the version this job proved coherent.
       FS_GG_VERSION_COHERENCE_RELEASE_LANE: "1"
       # The pack -> fresh-consumer -> build -> run path. Too slow for the push gate, so it is opt-in
       # everywhere else; the release lane is the "somewhere" it must run. Package.Tests asserts this
@@ -209,6 +210,37 @@ jobs:
           fi
           echo "version=$ver" >> "$GITHUB_OUTPUT"
           echo "Coherent-set version: $ver"
+
+      # The guard's subject and this job's object must be ONE STRING.
+      #
+      # `package-tests` (needs:) proves a version coherent: it runs the Feature 209 mirror in the release
+      # lane, where every waiver is off, so the repo's `<Version>` must already carry its `v*` AND
+      # `fs-gg-ui-template/v*` tags. But the version it validates is the one it READS FROM THE REPO, while
+      # the version resolved above comes from the TRIGGER. For `release`/`push: tags` those coincide — the
+      # tag names the commit whose `<Version>` was validated. For `workflow_dispatch` they do not:
+      # `inputs.version` is free text. A dispatch from a coherent `main` therefore validated `<Version>`
+      # and published something else, untagged; `template-dispatch.yml` fires only on
+      # `fs-gg-ui-template/v*`, so FS.GG.Templates was never told. Published, unannounced — the
+      # FS-GG/.github#250 class the guard exists to catch, entered through the door beside it.
+      #
+      # Asserting equality closes it for every trigger at once, and needs no new rule: a dispatch may only
+      # republish the version `package-tests` just proved coherent and tagged. A dry run (no input, no
+      # push) is exempt — it ships nothing.
+      - name: Verify the version to publish is the version the guard validated
+        if: steps.ver.outputs.push == 'true'
+        shell: bash
+        env:
+          VER: ${{ steps.ver.outputs.version }}
+        run: |
+          set -euo pipefail
+          fsproj=".template.package/FS.GG.UI.Template.fsproj"
+          repo_ver="$(grep -oP '(?<=<Version>)[^<]+' "$fsproj" | head -n1)"
+          [[ -n "$repo_ver" ]] || { echo "::error::<Version> not found in $fsproj — cannot bind the publish to a validated version"; exit 1; }
+          if [[ "$VER" != "$repo_ver" ]]; then
+            echo "::error::Refusing to publish $VER: the coherence guard validated the repo's <Version>=$repo_ver, not $VER. On a workflow_dispatch, 'version' must name the version this commit carries (and whose v*/fs-gg-ui-template/v* tags are cut). Nothing was published."
+            exit 1
+          fi
+          echo "✓ publishing $VER == repo <Version> ($fsproj) — the version package-tests validated in the release lane"
 
       # TWO decoupled axes (registry fs-gg-ui-template: version=framework pin vs package-version=tag):
       #   * the FRAMEWORK set FS.GG.UI.* is versioned by the template PIN ($(FsGgUiVersion)) — pack+push

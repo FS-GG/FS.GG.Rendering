@@ -186,6 +186,47 @@ lines are echoed to `$GITHUB_STEP_SUMMARY` (SC-006). The gate's `actions/checkou
 Note: the repo-root `<Version>` (`Directory.Build.props`) is **decoupled by default** (D5) and is not
 compared by the guard.
 
+### The guard validates the repo; the publish ships the trigger
+
+`release.yml`'s `package-tests` job sets `FS_GG_VERSION_COHERENCE_RELEASE_LANE=1`, which disables every
+RELEASE-PENDING waiver: at publish time no tag can be "cut next", so a missing tag is drift. That job
+`needs:`-gates `publish-packages`, so nothing ships until the guard is green.
+
+But the guard's **subject** is the version it reads from the repo (`<Version>` in
+`.template.package/FS.GG.UI.Template.fsproj`), while `publish-packages`' **object** is the version it
+resolves from the trigger. On `release` and `push: tags` those are the same string — the tag names the
+commit whose `<Version>` was validated. On `workflow_dispatch` they are not: `inputs.version` is free
+text, so a dispatch from a coherent `main` validated one version and published another, untagged, and
+`template-dispatch.yml` (which fires only on `fs-gg-ui-template/v*`) never told FS.GG.Templates. That is
+the publish-before-announce class of `FS-GG/.github#250`, entered through the door beside the guard.
+
+`publish-packages` therefore asserts `inputs.version == <Version>` before it packs or pushes anything.
+A manual dispatch can only *re-publish* the version `package-tests` just proved coherent and tagged
+(idempotent via `--skip-duplicate`); a pack-only dry run (no input) is exempt because it ships nothing.
+
+### Why the two version axes stay independent
+
+The guard's size comes mostly from carrying **two** decoupled version axes, and the natural question is
+whether one could be derived from the other:
+
+- the **framework pin** `<FsGgUiVersion>` — what a generated product restores `FS.GG.UI.*` at, snapshotted
+  by `fs-gg-ui/v*`;
+- the **template package** `<Version>` of `FS.GG.UI.Template` — what `dotnet new install` resolves,
+  snapshotted by `fs-gg-ui-template/v*` and triggered by `v*`.
+
+They must remain independent because **template content changes without the framework changing**. A
+template-only release (new sample, fixed scaffold, corrected doc) ships a new `FS.GG.UI.Template` over an
+*unchanged* framework pin. Deriving the pin from the package would republish all sixteen `FS.GG.UI.*`
+members at the template's version on every such release — which is exactly what produced the orphaned
+`FS.GG.UI.* 0.1.60/0.1.61` packages that no product pins. Deriving the package from the pin would forbid
+template-only releases altogether. So the axes are ordered, not equal: `pin <= package`
+(`pin-leads-package`), because a framework snapshot is only reachable through a template that consumes it.
+
+The registry records this as `fs-gg-ui-template: version = framework pin` vs `package-version = release
+tag`; ADR-0012/0013 (dual-publish) and ADR-0024 (consumer edges) depend on the split. Collapsing the axes
+is a cross-repo decision — it changes a published contract — so it belongs in an `FS-GG/.github` ADR, not
+here; this section records why the independence is load-bearing today.
+
 ## 5. Branch protection (one-time maintainer step)
 
 The spec defines which checks are required; **enabling** branch protection is the maintainer's

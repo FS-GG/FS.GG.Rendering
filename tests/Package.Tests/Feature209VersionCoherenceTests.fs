@@ -19,6 +19,24 @@ open FS.GG.TestSupport
 let private root = RepositoryRoot.value
 let private repo (path: string) = Path.Combine(root, path.Replace('/', Path.DirectorySeparatorChar))
 
+/// Run `exe args` in `workDir`; return its exit code and stdout+stderr merged. Used by the exit-code
+/// contract tests, which invoke the real guard script against a throwaway root.
+let private runIn (workDir: string) (exe: string) (args: string list) =
+    let psi = ProcessStartInfo(exe)
+    psi.WorkingDirectory <- workDir
+    psi.UseShellExecute <- false
+    psi.RedirectStandardOutput <- true
+    psi.RedirectStandardError <- true
+    args |> List.iter psi.ArgumentList.Add
+    match Process.Start psi with
+    | null -> failwithf "%s could not be started" exe
+    | p ->
+        use p = p
+        let out = p.StandardOutput.ReadToEnd()
+        let err = p.StandardError.ReadToEnd()
+        p.WaitForExit()
+        p.ExitCode, out + err
+
 // ---- preview-aware SemVer comparator (mirrors the script's D7 comparator) ----------------------
 let private parse (s: string) =
     let s = s.Trim()
@@ -93,13 +111,22 @@ let private pkgVersion =
 
 let private pkgOccurrences = Regex.Matches(templateFsprojText, "<Version>([^<]*)</Version>").Count
 
+/// The FAIL-CLOSED decision, isolated from the process call so it can be exercised over its whole state
+/// space (`tagQueryFailClosed`, below) instead of only over a live repo that is always healthy.
+///
+/// Both inputs are errors. `ec <> 0` is git refusing to answer. `[]` is subtler and is the one that has
+/// bitten: the waiver bounds are keyed on tag PRESENCE (`releaseTagCut = List.contains v tags`), so an
+/// empty-by-accident list answers "not cut" to every question and silently GRANTS every waiver —
+/// green-by-absence, in the one job that gates `publish-packages`. Neither may be answerable as "no tags".
+let internal tagsOrFailClosed (glob: string) (ec: int) (versions: string list) : string list =
+    if ec <> 0 then
+        failwithf "git tag --list %s failed — tags must be visible (fetch-depth: 0); fail closed rather than green-by-absence" glob
+    if versions.IsEmpty then
+        failwithf "no %s tags visible — CI must fetch tags (fetch-depth: 0); fail closed rather than green-by-absence" glob
+    versions
+
 /// Versions carried by tags matching `glob` whose ref starts with `prefix` (prefix stripped).
-/// Fails CLOSED, mirroring the script's `tagVersionsOf`: a git failure or an unfetched tag namespace
-/// must never be answerable as "no tags". The waiver bounds below (`releaseTagCut`) are keyed on tag
-/// PRESENCE, so an empty-by-accident list would silently GRANT a waiver — green-by-absence, in the one
-/// job that gates `publish-packages`. The script raises GuardError here; so must this. (The script's
-/// module-level raises escape its `try/with` and surface as exit 1, not the contract's exit 2 — a
-/// pre-existing defect. Both still fail CLOSED, which is what this bound depends on.)
+/// Fails CLOSED via `tagsOrFailClosed`, mirroring the script's `tagVersionsOf`.
 let private gitTagVersions (glob: string) (prefix: string) =
     let psi = ProcessStartInfo("git")
     psi.WorkingDirectory <- root
@@ -114,20 +141,15 @@ let private gitTagVersions (glob: string) (prefix: string) =
             let o = p.StandardOutput.ReadToEnd()
             p.WaitForExit()
             p.ExitCode, o
-    if ec <> 0 then
-        failwithf "git tag --list %s failed — tags must be visible (fetch-depth: 0); fail closed rather than green-by-absence" glob
-    let versions =
-        out.Replace("\r\n", "\n").Split('\n')
-        |> Array.map (fun s -> s.Trim())
-        |> Array.filter (fun s -> s.StartsWith(prefix, StringComparison.Ordinal))
-        |> Array.map (fun s -> s.Substring(prefix.Length))
-        // `v*` also matches `vnext`, `validate`, `v2-wip`. Filter by SHAPE, not by the glob: an
-        // unparseable stray raises out of the sort comparer, and a numeric one (`v9.9`) invents a lag.
-        |> Array.filter (fun s -> Regex.IsMatch(s, @"^\d+\.\d+(\.\d+)?(-[0-9A-Za-z.\-]+)?$"))
-        |> Array.toList
-    if versions.IsEmpty then
-        failwithf "no %s tags visible — CI must fetch tags (fetch-depth: 0); fail closed rather than green-by-absence" glob
-    versions
+    out.Replace("\r\n", "\n").Split('\n')
+    |> Array.map (fun s -> s.Trim())
+    |> Array.filter (fun s -> s.StartsWith(prefix, StringComparison.Ordinal))
+    |> Array.map (fun s -> s.Substring(prefix.Length))
+    // `v*` also matches `vnext`, `validate`, `v2-wip`. Filter by SHAPE, not by the glob: an
+    // unparseable stray raises out of the sort comparer, and a numeric one (`v9.9`) invents a lag.
+    |> Array.filter (fun s -> Regex.IsMatch(s, @"^\d+\.\d+(\.\d+)?(-[0-9A-Za-z.\-]+)?$"))
+    |> Array.toList
+    |> tagsOrFailClosed glob ec
 
 /// Did the commit under test change the VALUE of `<element>` in `rel`? — mirrors the script's
 /// RELEASE-PENDING signal (scripts/validate-version-coherence.fsx `bumpedInCommitUnderTest`), and must
@@ -361,6 +383,113 @@ let feature209VersionCoherenceTests =
                           Expect.isTrue (templateTagWaived lane pkgB rCut) "pin waived ⇒ template tag waived (its successor set is a superset)"
                       if templateTagWaived lane pkgB rCut then
                           Expect.isTrue (releaseTagWaived lane pkgB) "template tag waived ⇒ v* waived (v* lands last)"
+        }
+
+        // #188 — `[]` NEVER GRANTS A WAIVER.
+        //
+        // The first half asserts the counterfactual, so the reason for the fail-closed rule is executable
+        // rather than a comment: fed an empty tag list, every `...TagCut` predicate answers false, and a
+        // false `cut` is exactly what each waiver bound is waiting for. An empty list is therefore not a
+        // neutral "no information" answer — it is an affirmative "no successor tag was cut", the most
+        // permissive answer there is. Green-by-absence, in the job that gates `publish-packages`.
+        //
+        // The second half asserts the rule that makes that state unreachable.
+        test "an empty tag list would grant every waiver, so it must be unreachable (fail closed)" {
+            // Counterfactual: what `[]` says to the bounds. `pkgVersion` is a real, released version.
+            let cutPerEmptyList = List.contains pkgVersion []
+            Expect.isFalse cutPerEmptyList "an empty tag list reports even a RELEASED version as 'not cut'"
+            Expect.isTrue (templateTagWaived false true cutPerEmptyList)
+                "…and 'not cut' waives pkg-no-template-tag — the #250 publish-before-announce waiver, granted by absence"
+            Expect.isTrue (pinWaived false true cutPerEmptyList cutPerEmptyList)
+                "…and it waives pin-no-tag too: both of the pin's successor bounds read the same empty list"
+
+            // So neither an empty list nor a git failure may ever reach the bounds.
+            Expect.throws (fun () -> tagsOrFailClosed "v*" 0 [] |> ignore)
+                "ec=0 with no tags (unfetched namespace / shallow clone) must fail closed, not return []"
+            Expect.throws (fun () -> tagsOrFailClosed "v*" 128 [] |> ignore)
+                "git could not answer ⇒ fail closed"
+            // A non-empty list does not rescue a failed query: a partial read is still not an answer.
+            Expect.throws (fun () -> tagsOrFailClosed "v*" 1 [ "0.1.51-preview.1" ] |> ignore)
+                "a non-zero exit code fails closed even when the parsed output looks plausible"
+            Expect.equal (tagsOrFailClosed "v*" 0 [ "0.1.51-preview.1" ]) [ "0.1.51-preview.1" ]
+                "a successful, non-empty query passes through unchanged"
+        }
+
+        // #188 — the guard's EXIT-CODE CONTRACT (`scripts/validate-version-coherence.fsx` header §1):
+        //   0 coherent · 1 drift · 2 guard error (inputs unreadable / tags not fetched / tooling failed)
+        //
+        // Failing closed is necessary but not sufficient: 1 and 2 mean different things to whoever reads
+        // them. 1 says "the repo is incoherent — here are the named locations to fix"; 2 says "the guard
+        // could not decide". Every input reader used to run at MODULE scope, i.e. before `main` and hence
+        // outside the `try/with` that maps GuardError to 2, so `dotnet fsi` reported the escaping exception
+        // as 1. A broken guard was indistinguishable from a drifting repo, and the fix for one is not the
+        // fix for the other. `readInputs` is now called from inside `main`; these two cases pin that down.
+        //
+        // Both run the real script against a throwaway root (its `repoRoot` is the parent of its own
+        // directory), so neither can be satisfied by the healthy repo this suite otherwise reads.
+        test "guard error exits 2, not 1: an unreadable input is not reported as drift" {
+            let tmp = Path.Combine(Path.GetTempPath(), "vcoh188-unreadable-" + Guid.NewGuid().ToString("N").Substring(0, 8))
+            Directory.CreateDirectory(Path.Combine(tmp, "scripts")) |> ignore
+            try
+                File.Copy(repo "scripts/validate-version-coherence.fsx", Path.Combine(tmp, "scripts", "validate-version-coherence.fsx"))
+                // No template/base/Directory.Packages.props under this root ⇒ `readFile` raises GuardError.
+                let ec, out = runIn tmp "dotnet" [ "fsi"; Path.Combine("scripts", "validate-version-coherence.fsx") ]
+                Expect.notEqual ec 1 (sprintf "an unreadable input must NOT be reported as DRIFT (exit 1):\n%s" out)
+                Expect.equal ec 2 (sprintf "contract §1: inputs unreadable ⇒ exit 2:\n%s" out)
+                Expect.stringContains out "GUARD ERROR" "the guard names itself as the failure, not the repo"
+            finally
+                try Directory.Delete(tmp, true) with _ -> ()
+        }
+
+        test "guard error exits 2, not 1: git failing to answer is not reported as drift" {
+            let tmp = Path.Combine(Path.GetTempPath(), "vcoh188-nogit-" + Guid.NewGuid().ToString("N").Substring(0, 8))
+            Directory.CreateDirectory(Path.Combine(tmp, "scripts")) |> ignore
+            Directory.CreateDirectory(Path.Combine(tmp, "template", "base")) |> ignore
+            try
+                File.Copy(repo "scripts/validate-version-coherence.fsx", Path.Combine(tmp, "scripts", "validate-version-coherence.fsx"))
+                // The pin reads fine; the very next thing the guard does is ask git for the snapshot tags.
+                // `tmp` is under the system temp dir, so it is not a work tree: `git tag --list` exits non-zero.
+                File.Copy(repo "template/base/Directory.Packages.props", Path.Combine(tmp, "template", "base", "Directory.Packages.props"))
+                let ec, out = runIn tmp "dotnet" [ "fsi"; Path.Combine("scripts", "validate-version-coherence.fsx") ]
+                Expect.notEqual ec 1 (sprintf "a git-query failure must NOT be reported as DRIFT (exit 1):\n%s" out)
+                Expect.equal ec 2 (sprintf "contract §1: tags not fetched / git failed ⇒ exit 2:\n%s" out)
+                Expect.stringContains out "git tag --list" "the guard names the query that could not be answered"
+            finally
+                try Directory.Delete(tmp, true) with _ -> ()
+        }
+
+        // #188 — the `workflow_dispatch (version:)` hole.
+        //
+        // `package-tests` sets FS_GG_VERSION_COHERENCE_RELEASE_LANE=1 and thereby proves a version fully
+        // tagged before `publish-packages` runs. But it proves it of the version it READS FROM THE REPO,
+        // and `publish-packages` ships the version it resolves FROM THE TRIGGER. On `release` / `push: tags`
+        // those coincide. On `workflow_dispatch` `inputs.version` is free text, so the guard validated one
+        // string and the job published another — untagged, and invisible to template-dispatch.yml, which
+        // fires only on `fs-gg-ui-template/v*`.
+        //
+        // The binding step closes that. What makes it load-bearing is its POSITION: a check that runs after
+        // the pack, or after either `dotnet nuget push`, cannot unpublish anything. Assert the order.
+        test "release.yml: publish-packages binds the published version to the guard's subject, before publishing" {
+            let yml = File.ReadAllText(repo ".github/workflows/release.yml")
+            let idx (needle: string) = yml.IndexOf(needle, StringComparison.Ordinal)
+
+            let verify = idx "Verify the version to publish is the version the guard validated"
+            Expect.isGreaterThan verify -1 "publish-packages must verify the version it is about to ship"
+
+            // It must read the guard's subject — the repo's <Version> — not merely echo the trigger's.
+            let verifyStep = yml.Substring verify
+            Expect.stringContains verifyStep ".template.package/FS.GG.UI.Template.fsproj"
+                "the binding must compare against the repo's <Version>, the string the guard validated"
+            Expect.stringContains verifyStep "steps.ver.outputs.push == 'true'"
+                "a pack-only dry run publishes nothing and is exempt"
+
+            // Position: before the template pack (which stamps $VER into the package) and before every push.
+            Expect.isGreaterThan (idx "dotnet pack .template.package") verify
+                "the version must be validated before it is stamped into a package"
+            let firstPush = idx "dotnet nuget push"
+            Expect.isGreaterThan firstPush verify "a check after the first push cannot unpublish it"
+            Expect.isGreaterThan (yml.LastIndexOf("dotnet nuget push", StringComparison.Ordinal)) verify
+                "…nor after the last (nuget.org dual-publish, ADR-0012)"
         }
 
         // US2 / FR-003/004 — BOM token + bracket + member parity (policy-independent, structural).
