@@ -23,4 +23,23 @@ let feature146RenderAnywhereEvidenceTests =
             Expect.hasLength evidence 3 "one reference evidence record per corpus item"
             Expect.isTrue (System.IO.File.Exists(System.IO.Path.Combine(out, "summary.md"))) "summary is written"
         }
+
+        test "written reference summary reads back into the entries the report cites" {
+            let out = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "fs-gg-feature146-reference-roundtrip")
+            if System.IO.Directory.Exists out then System.IO.Directory.Delete(out, true)
+
+            let evidence = RenderAnywhere.runReferenceCommand out
+
+            Expect.equal
+                (RenderAnywhere.readReferenceSummary out)
+                (RenderAnywhere.summaryEntries evidence)
+                "summary.md round-trips identity, verdict, and image identity"
+        }
+
+        test "an absent reference summary reads as no evidence rather than throwing" {
+            let out = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "fs-gg-feature146-reference-absent")
+            if System.IO.Directory.Exists out then System.IO.Directory.Delete(out, true)
+
+            Expect.isEmpty (RenderAnywhere.readReferenceSummary out) "a missing summary yields no reference entries"
+        }
     ]

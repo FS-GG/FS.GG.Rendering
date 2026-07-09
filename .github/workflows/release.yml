@@ -44,6 +44,10 @@ jobs:
       # itself, or removing the publishing dispatch path. Tracked separately; do not read this flag as
       # covering it.
       FS_GG_VERSION_COHERENCE_RELEASE_LANE: "1"
+      # The pack -> fresh-consumer -> build -> run path. Too slow for the push gate, so it is opt-in
+      # everywhere else; the release lane is the "somewhere" it must run. Package.Tests asserts this
+      # flag is set here, so deleting it fails the build rather than silently un-testing the packages.
+      FS_SKIA_RUN_PACKAGE_CONSUMER_SMOKE: "1"
     steps:
       - uses: actions/checkout@v4
         with:
