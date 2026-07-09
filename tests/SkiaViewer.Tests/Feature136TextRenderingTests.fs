@@ -15,6 +15,9 @@ open FS.GG.UI.SkiaViewer
 
 let private font: FontSpec = { Family = None; Size = 16.0; Weight = None }
 
+/// 一 — no bundled coverage in any face, so it always renders as a disclosed tofu box.
+let private tofuChar = Char.ConvertFromUtf32 0x4E00
+
 let private renderToPngBytes (w: int) (h: int) (scene: SceneNode) =
     let path = IO.Path.Combine(IO.Path.GetTempPath(), sprintf "fs136-%s.png" (Guid.NewGuid().ToString("N")))
 
@@ -136,4 +139,47 @@ let tests =
               let report = Text.fallbackReport ()
               Expect.isTrue (report.TofuCount >= 1) "tofu disclosed in the per-page report"
               Expect.isNonEmpty (Text.fallbackDiagnostics ()) "structured fallback diagnostics emitted")
+          }
+
+          // Issue #176 — the disclosure accumulator was reset only on the screenshot path. Every other
+          // present path (the live GL loop, the CPU raster PNG) appended a `ResolvedChar` per non-authored
+          // glyph per frame and never cleared, so a long-lived interactive window grew without bound and
+          // `Text.fallbackReport` returned every frame since the window opened. `SceneRenderer.drawScene`
+          // is now the one frame boundary all three paths share.
+          test "the frame boundary scopes the fallback accumulator per frame (#176)" {
+              withRaster "per-frame fallback disclosure scoping" (fun () ->
+              let scene = { Nodes = [ textScene (sprintf "x%sy" tofuChar) ] }
+              use surface = SKSurface.Create(SKImageInfo(140, 50))
+
+              let disclosuresAfter frames =
+                  for _ in 1..frames do
+                      SceneRenderer.drawScene surface.Canvas scene
+
+                  SceneRenderer.fallbackEvents.Count
+
+              let afterOne = disclosuresAfter 1
+              let afterMany = disclosuresAfter 8
+
+              Expect.isGreaterThan afterOne 0 "the tofu glyph is disclosed at all (else this proves nothing)"
+              Expect.equal afterMany afterOne "disclosure is per-frame, not cumulative across frames")
+          }
+
+          // Issue #176 — the same invariant through a real, public present path. `renderScenePngResult`
+          // painted straight through `paintNode`, so N renders disclosed N times over.
+          test "N renders through the public raster present path disclose once, not N times (#176)" {
+              withRaster "per-render fallback disclosure on the CPU raster path" (fun () ->
+              let scene = { Nodes = [ textScene (sprintf "x%sy" tofuChar) ] }
+              let size: Size = { Width = 140; Height = 50 }
+
+              let tofuReportedAfter renders =
+                  for _ in 1..renders do
+                      ReferenceRendering.renderScenePngResult size scene |> ignore
+
+                  (Text.fallbackReport ()).TofuCount
+
+              let afterOne = tofuReportedAfter 1
+              let afterMany = tofuReportedAfter 8
+
+              Expect.isGreaterThan afterOne 0 "the tofu glyph is disclosed at all (else this proves nothing)"
+              Expect.equal afterMany afterOne "the report describes the render just performed, not every render so far")
           } ]

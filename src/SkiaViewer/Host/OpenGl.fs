@@ -360,8 +360,11 @@ module GlHost =
         Vector2D<int>(size.Width, size.Height)
 
     let drawScene (scene: Scene) (canvas: SKCanvas) =
-        // Feature 063 (FR-001): delegate to the single shared exhaustive painter.
-        scene.Nodes |> List.iter (SceneRenderer.paintNode canvas)
+        // Feature 063 (FR-001): delegate to the single shared exhaustive painter. `SceneRenderer.drawScene`
+        // is the frame boundary — it scopes the text-fallback disclosure accumulator to this frame, so a
+        // long-lived interactive window does not accumulate a `ResolvedChar` per substituted glyph per
+        // repaint for the life of the window (the screenshot path has always scoped it this way).
+        SceneRenderer.drawScene canvas scene
 
     // Feature 120 (US1, FR-001/002): the most recent present's per-phase durations — the scene→canvas
     // paint walk (incl. surface clear + canvas flush) vs the GL flush + buffer-swap (compose/present).

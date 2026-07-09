@@ -14,6 +14,8 @@ open FS.GG.UI.Scene
 /// `paintNode`, so the evidence and interactive renderers can never diverge again.
 /// The `match` over `SceneNode` is **exhaustive — no wildcard** — so a new case is a
 /// compile error until handled. Non-public (`internal`): no SkiaViewer surface change.
+/// A whole-`Scene` present goes through `drawScene`, the shared frame boundary that
+/// scopes per-frame renderer state (the text-fallback disclosure accumulator).
 module internal SceneRenderer =
 
     // Feature 120 (US3): the active backend replay cache for the current present, set by the OpenGL host
@@ -174,8 +176,10 @@ module internal SceneRenderer =
 
     // Feature 136 (FR-001/SC-005): per-present text-fallback disclosure accumulator. The renderer
     // records every non-`Authored` per-character outcome as it DRAWS (not during measurement — that
-    // would double count). The host resets it at the start of each present/screenshot and reads it via
-    // `SkiaViewer` (T017). Single-present, single-threaded edge mutation (constitution IV).
+    // would double count). Scoped to one frame by `drawScene` (and by the screenshot path's own reset)
+    // and read back via `SkiaViewer` (T017). Single-present, single-threaded edge mutation
+    // (constitution IV). Anything that paints via `paintNode` directly, rather than through
+    // `drawScene`, owns the reset — otherwise the accumulator spans frames and grows without bound.
     let mutable fallbackEvents: ResizeArray<Fonts.ResolvedChar> = ResizeArray()
 
     let resetFallbackEvents () = fallbackEvents <- ResizeArray()
@@ -415,3 +419,10 @@ module internal SceneRenderer =
             | Some cache ->
                 PictureReplayCache.paintBoundary cache canvas (fun c (s: Scene) -> s.Nodes |> List.iter (paintNode c)) boundary
             | None -> boundary.Scene.Nodes |> List.iter (paintNode canvas)
+
+    /// Paint one frame's `Scene`. The single frame boundary shared by every present path: the
+    /// text-fallback disclosure accumulator is scoped to this frame, so `Text.fallbackReport` describes
+    /// the frame just painted rather than every frame since the window opened.
+    let drawScene (canvas: SKCanvas) (scene: Scene) =
+        resetFallbackEvents ()
+        scene.Nodes |> List.iter (paintNode canvas)
