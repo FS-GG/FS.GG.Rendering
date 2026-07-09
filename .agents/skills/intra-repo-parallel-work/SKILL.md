@@ -81,12 +81,18 @@ home. Use `claim <issue>` only when you must have a *specific* item.
 ## 1. Declare the touch-set (on every parallelizable item)
 
 Each item's issue body carries a **`Paths:`** line naming the file subtrees it will touch —
-comma- or space-separated globs. This is the intra-repo analogue of a contract: it makes the
-shared surface explicit and checkable *before* work starts.
+comma- or space-separated **exact paths and directory prefixes**. This is the intra-repo analogue
+of a contract: it makes the shared surface explicit and checkable *before* work starts.
 
 ```
-Paths: src/Scene/**, tests/Scene/**
+Paths: src/Scene/**, tests/Scene/**, Directory.Packages.props
 ```
+
+**Not globs** (ADR-0021, `.github#273`). A token matches by exact equality or subtree containment;
+the only wildcard is a **trailing** `/**` or `/*`. A leading `**/` — or a `*` in the middle —
+matches nothing, and a token that matches nothing would conflict with nothing, i.e. read as
+`DISJOINT` against everything. So the tool **refuses** it: `claim`, `widen`, `batch`, `overlap`,
+and `verify-paths` all reject an unmatchable token and name it. Want every lockfile? List them.
 
 Declare narrowly and honestly. An item with no `Paths:` is **unschedulable** — `batch` will
 report it and refuse to hand it out.

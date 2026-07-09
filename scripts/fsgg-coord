@@ -104,10 +104,11 @@
 #                                             # their declared `Paths:` touch-sets (issue body,
 #                                             # ADR-0021) as subtrees. DISJOINT -> exit 0 (safe to
 #                                             # parallelize); OVERLAP -> exit 1 + the conflicting
-#                                             # globs (sequence them with the board's `Blocked by`).
-#                                             # Exit 2 if either item declares no `Paths:`.
+#                                             # tokens (sequence them with the board's `Blocked by`).
+#                                             # Exit 2 if either item declares no `Paths:`, or one
+#                                             # that can never match a file (see the grammar below).
 #   fsgg-coord overlap <a> --active           # ...or against EVERY in-flight claim at once.
-#   fsgg-coord widen <issue> --paths "<globs>"
+#   fsgg-coord widen <issue> --paths "<paths>"
 #                                             # re-declare a touch-set mid-flight, re-check it
 #                                             # against live claims, and NOTIFY the workers it now
 #                                             # collides with (ADR-0021 says re-check; this does it).
@@ -1264,6 +1265,20 @@ claim_cmd() {
   parse_ref "$ref"
   worker >/dev/null; local w="$WORKER_ID"
 
+  # Refuse to take the lock on an item whose declared touch-set reserves nothing. Holding it would
+  # make our own files invisible to every other worker's overlap check — the collision this protocol
+  # exists to prevent, entered voluntarily. An item with NO `Paths:` stays claimable (it declares
+  # nothing and claims nothing); one that declares an unmatchable token is claiming to have declared.
+  #
+  # ASSIGN FIRST, then validate. `paths_of` fails closed by calling `die` when the body read fails —
+  # but `die` is an `exit`, and an `exit` inside `$( )` kills only the substitution subshell. Passing
+  # `"$(paths_of …)"` straight as an argument would print "refusing to schedule against an unknown
+  # touch-set" on stderr and then claim the item anyway, exit 0 — reintroducing, in the guard itself,
+  # the fail-open this guard exists to close. The assignment form propagates the exit under `set -e`,
+  # which is how `overlap` (`pa="$(paths_for_ref …)"`) already gets it right.
+  local declared_paths; declared_paths="$(paths_of "$R_OWNER" "$R_REPO" "$R_NUM")"
+  die_on_invalid_paths "$declared_paths" "claim: $R_REPO#$R_NUM"
+
   local claims live stale mine others
   claims="$(claims_of "$R_OWNER" "$R_REPO" "$R_NUM")"
 
@@ -1457,13 +1472,15 @@ release_cmd() {
 }
 
 # ---- overlap: can two items run in parallel? Compare their declared `Paths:` touch-sets (ADR-0021).
-# Each item declares the file globs it touches as a `Paths:` line in its issue body, e.g.
+# Each item declares the files it touches as a `Paths:` line in its issue body — exact paths and
+# directory prefixes, NOT globs (see TOUCHSET_GRAMMAR below), e.g.
 #   Paths: src/Scene/**, tests/Scene/**
 # We read both bodies over REST (cheap, no GraphQL budget) and treat each token as a SUBTREE: two
 # tokens conflict when they are equal or one is a path-prefix of the other. This is deliberately
 # file-existence-INDEPENDENT (a new feature adding files still has a declared touch-set) and
 # CONSERVATIVE — it errs toward reporting overlap. Disjoint -> exit 0; overlap -> exit 1 (+ the
-# conflicting globs); no declaration on either side -> exit 2.
+# conflicting tokens); no declaration on either side -> exit 2, as does a declaration the matcher
+# cannot honour (.github#273) — an unmatchable token must never be answered `DISJOINT`.
 # NO declaration is a normal, expected answer ("this item cannot be scheduled yet"), not an error:
 # `grep` exits 1 on no match, and under `set -o pipefail` that would abort every caller at exactly the
 # item they need to report on. Return empty, exit 0, and let the caller decide what an empty set means.
@@ -1483,6 +1500,63 @@ paths_from_body() {  # $1=issue body -> one normalized touch-set token per line 
     | tr ',' ' ' | tr '\t' ' ' | tr -s ' ' '\n' | sed '/^$/d' \
     | sed -E 's#^\./##; s#/\*\*$##; s#/\*$##; s#/+$##' \
     || true                                  # normalize: strip ./ prefix, /** /* and trailing /
+}
+
+# The touch-set grammar the matcher ACTUALLY implements — and the refusal that keeps the gap between
+# grammar and matcher from becoming a silent parallel collision (FS-GG/.github#273).
+#
+# `conflicts_between` and `verify_paths` compare tokens by EXACT EQUALITY and SUBTREE CONTAINMENT.
+# There is no glob engine behind either. `paths_from_body` strips a *trailing* `/**` or `/*` and
+# nothing else, so any other wildcard — a leading `**/`, an interior `*` — survives as a literal path
+# segment and matches NO file, ever. And a token that matches nothing CONFLICTS WITH NOTHING: overlap
+# reports `DISJOINT`, `batch` hands the item out, and two workers edit the same files while the tool
+# tells them both they are disjoint. That is ADR-0021's own failure — a lock that succeeds under
+# exactly the conditions it exists to prevent — one level down, in the touch-set instead of the claim.
+#
+# So an unmatchable token is not a near-miss to be tolerated: it is an UNKNOWN touch-set, and it is
+# refused everywhere an unknown touch-set already is. `paths_of` dies rather than "schedule against an
+# unknown touch-set" when the body read fails; this is the same rule for a body that read fine and
+# declared something the matcher cannot honour.
+TOUCHSET_GRAMMAR="supported: an exact path ('src/Foo.fs'), or a directory prefix ('src/Foo', 'src/Foo/*', 'src/Foo/**'). There is no glob matcher: a leading '**/' or an interior '*' matches nothing — spell the paths out."
+
+# The tokens in a normalized touch-set that can never match a file. Empty output = every token is
+# honourable. `[*?[]` is a bracket expression of the three shell-pattern metacharacters; `[` is
+# literal inside it.
+invalid_paths() {  # $1=normalized token list -> the unmatchable tokens, one per line
+  [ -n "$1" ] || return 0
+  printf '%s\n' "$1" | grep -E '[*?[]' || true
+}
+
+fmt_bad_paths() { printf '%s' "$1" | tr '\n' ' ' | sed -E 's/ +$//'; }
+
+# The same predicate as `invalid_paths`, over a CLAIMS array rather than a token list: which live
+# claims declare a touch-set that reserves nothing? Kept as ONE filter, called by `overlap --active`,
+# `batch`, and `widen`, because three hand-copied `test("[*?\\[]")` regexes in two different engines
+# (jq here, `grep -E` above) is a drift surface: widen the shell char class later and the jq copies
+# silently do not follow, reopening the fail-open on exactly the in-flight-claim guards that need it
+# most.
+#
+# `$self` excludes the item doing the asking ("" excludes nothing). `widen` normally cannot see its
+# own stale tokens — it PATCHes before it re-checks — but a read-after-write lag on that re-read would
+# serve the pre-PATCH body and make an item refuse on account of the very declaration it just fixed,
+# stranding the one worker who is doing the right thing. Defence; the fixture cannot reproduce the lag.
+JQ_CLAIMS_WITH_UNMATCHABLE_PATHS='
+  [ .[]
+    | select("\(.repo)#\(.number)" != $self)
+    | select(any(.paths[]?; test("[*?\\[]")))
+    | "\(.repo | sub("^[^/]+/"; ""))#\(.number)"
+  ] | join(", ")'
+
+claims_with_unmatchable_paths() {  # $1=claims JSON [$2=self ref to exclude] -> "repo#n, repo#n" or ""
+  jq -r --arg self "${2:-}" "$JQ_CLAIMS_WITH_UNMATCHABLE_PATHS" <<<"$1"
+}
+
+# Refuse, loudly, with the tokens named and the grammar quoted. Callers that must not abort the whole
+# command (the schedulers, which merely pass the item over) use `invalid_paths` directly instead.
+die_on_invalid_paths() {  # $1=normalized tokens $2=what declared them (e.g. 'FS.GG.SDD#74')
+  local bad; bad="$(invalid_paths "$1")"
+  [ -n "$bad" ] || return 0
+  die "$2 declares touch-set token(s) that can never match a file: $(fmt_bad_paths "$bad") — $TOUCHSET_GRAMMAR"
 }
 
 paths_of() {  # $1=owner $2=repo $3=num -> one normalized touch-set token per line (possibly none)
@@ -1677,10 +1751,26 @@ overlap_cmd() {
     parse_ref "$a"; local ar="$R_REPO" an="$R_NUM" aid="$R_OWNER/$R_REPO#$R_NUM"
     local pa; pa="$(paths_for_ref "$a")"
     [ -n "$pa" ] || { echo "overlap: no 'Paths:' touch-set declared on $ar#$an — add one to schedule it." >&2; return 2; }
+    local abad; abad="$(invalid_paths "$pa")"
+    if [ -n "$abad" ]; then
+      echo "overlap: $ar#$an declares unmatchable touch-set token(s): $(fmt_bad_paths "$abad")" >&2
+      echo "  $TOUCHSET_GRAMMAR" >&2
+      echo "  refusing to answer — a token that matches nothing would read as DISJOINT against everything." >&2
+      return 2
+    fi
 
     local claims n=0 i=0 found=0
     claims="$(active_claims)"
     n="$(jq 'length' <<<"$claims")"
+    # An in-flight claim whose own touch-set is unmatchable reserves NOTHING, so clearing <a> against
+    # it would be an answer about a surface we cannot see. Refuse before comparing against any of them.
+    local cbad
+    cbad="$(claims_with_unmatchable_paths "$claims")"
+    if [ -n "$cbad" ]; then
+      echo "overlap: in-flight claim(s) declare unmatchable touch-set token(s): $cbad" >&2
+      echo "  their touch-sets reserve nothing, so no answer here is trustworthy. Fix them: fsgg-coord widen <issue> --paths '<paths>'" >&2
+      return 2
+    fi
     while [ "$i" -lt "$n" ]; do
       local c cid pb hits
       c="$(jq -c ".[$i]" <<<"$claims")"; i=$((i + 1))
@@ -1713,6 +1803,14 @@ overlap_cmd() {
     [ -z "$pa" ] && which="$ar#$an"
     [ -z "$pb" ] && which="${which:+$which and }$br#$bn"
     echo "overlap: no 'Paths:' touch-set declared on $which — add one (e.g. 'Paths: src/Foo/**') to schedule it." >&2
+    return 2
+  fi
+  local abad bbad; abad="$(invalid_paths "$pa")"; bbad="$(invalid_paths "$pb")"
+  if [ -n "$abad" ] || [ -n "$bbad" ]; then
+    [ -n "$abad" ] && echo "overlap: $ar#$an declares unmatchable touch-set token(s): $(fmt_bad_paths "$abad")" >&2
+    [ -n "$bbad" ] && echo "overlap: $br#$bn declares unmatchable touch-set token(s): $(fmt_bad_paths "$bbad")" >&2
+    echo "  $TOUCHSET_GRAMMAR" >&2
+    echo "  refusing to answer — a token that matches nothing would read as DISJOINT against everything." >&2
     return 2
   fi
 
@@ -1880,6 +1978,14 @@ batch_cmd() {
   # item never added to the board) — which the column-seeded version silently left free to schedule.
   local active_paths; active_paths="$(jq -r '.[].paths[]?' <<<"$active")"
 
+  # A held item whose touch-set is unmatchable RESERVES NOTHING: every candidate would clear it, and
+  # `batch` would hand a second worker the very files it is holding. We cannot see that item's real
+  # surface, so we cannot schedule anything against it — refuse, exactly as `paths_of` refuses to
+  # schedule against a touch-set it could not read.
+  local active_bad
+  active_bad="$(claims_with_unmatchable_paths "$active")"
+  [ -z "$active_bad" ] || die "batch: in-flight claim(s) declare unmatchable touch-set token(s) and therefore reserve nothing: $active_bad — refusing to schedule against an unknown touch-set. Fix with: fsgg-coord widen <issue> --paths '<paths>'"
+
   local -a chosen_ids=() chosen_paths=()
   local n i=0 skipped=""
   n="$(jq 'length' <<<"$cands")"
@@ -1895,11 +2001,19 @@ batch_cmd() {
     p="$(paths_of "${r%%/*}" "${r#*/}" "$num")"
     holder="$(live_claim_worker "${r%%/*}" "${r#*/}" "$num")"
     if [ -n "$holder" ]; then
+      # Same rule as the `active` pre-check, for a claim that never reached the board: an unmatchable
+      # touch-set reserves nothing, so its holder's files are invisible to every later comparison.
+      [ -z "$(invalid_paths "$p")" ] || die "batch: $id is claimed by worker $holder but declares unmatchable touch-set token(s): $(fmt_bad_paths "$(invalid_paths "$p")") — it reserves nothing, so refusing to schedule against an unknown touch-set. Fix with: fsgg-coord widen $id --paths '<paths>'"
       active_paths="$active_paths${active_paths:+$'\n'}$p"
       skipped="$skipped  $id — already claimed by worker $holder"$'\n'; continue
     fi
     if [ -z "$p" ]; then
       skipped="$skipped  $id — no 'Paths:' declared (cannot schedule)"$'\n'; continue
+    fi
+    # A candidate is merely unschedulable, not fatal: pass it over with the reason, as an undeclared
+    # touch-set is. Never let it fall through to `conflicts_between`, which would clear it against all.
+    if [ -n "$(invalid_paths "$p")" ]; then
+      skipped="$skipped  $id — unmatchable 'Paths:' token(s): $(fmt_bad_paths "$(invalid_paths "$p")") (cannot schedule)"$'\n'; continue
     fi
     hits="$(conflicts_between "$p" "$active_paths")"
     if [ -n "$hits" ]; then
@@ -2075,10 +2189,16 @@ widen_cmd() {
     esac
   done
   [ -n "$ref" ] || die "widen: <issue> required."
-  [ -n "$newpaths" ] || die "widen: --paths '<globs>' required."
+  [ -n "$newpaths" ] || die "widen: --paths '<paths>' required."
   parse_ref "$ref"
   worker >/dev/null; local w="$WORKER_ID"
   local self="$R_OWNER/$R_REPO#$R_NUM" sr="$R_REPO" sn="$R_NUM" so="$R_OWNER"
+
+  # Validate BEFORE the read and the PATCH. `widen`'s whole job is to re-check a touch-set against
+  # live claims and shout about collisions; widening to a token that matches nothing gets the cleanest
+  # possible answer for the worst possible reason. Refuse while the body is still untouched, so a
+  # rejected widen leaves no trace and the old declaration keeps reserving its files.
+  die_on_invalid_paths "$(paths_from_body "Paths: $newpaths")" "widen: --paths for $sr#$sn"
 
   # Rewrite the `Paths:` line in place (or append one), then PATCH the body back.
   local bodyfile newfile
@@ -2099,6 +2219,19 @@ widen_cmd() {
   pa="$(paths_of "$so" "$sr" "$sn")"
   claims="$(active_claims)"
   n="$(jq 'length' <<<"$claims")"
+  # The widen itself has landed (that is `widen`'s job, and it is how a bad declaration gets FIXED —
+  # including on an item that is itself held). But the re-check against in-flight work is only as
+  # trustworthy as the touch-sets it compares against: a legacy holder whose own tokens are
+  # unmatchable reserves nothing, clears everything, and would hand us a `DISJOINT` that means only
+  # "we cannot see their files". Screen the OTHER claims (never `self`) and refuse to answer instead.
+  local obad
+  obad="$(claims_with_unmatchable_paths "$claims" "$self")"
+  if [ -n "$obad" ]; then
+    echo "fsgg-coord: widen: in-flight claim(s) declare unmatchable touch-set token(s): $obad" >&2
+    echo "  they reserve nothing, so this widen cannot be re-checked against them — refusing to report DISJOINT." >&2
+    echo "  fix theirs first: fsgg-coord widen <issue> --paths '<paths>'" >&2
+    return 2
+  fi
   while [ "$i" -lt "$n" ]; do
     local c cr cn cw co crp hits
     c="$(jq -c ".[$i]" <<<"$claims")"; i=$((i + 1))
@@ -2179,6 +2312,16 @@ verify_paths_cmd() {
     echo "verify-paths: $issue declares no 'Paths:' touch-set — nothing to verify against." >&2
     return 2
   fi
+  # A fourth verdict. An unmatchable token covers no file, so every changed file would be reported as
+  # drift "outside the touch-set" — technically true, and useless: the touch-set is the broken thing.
+  # Say so, rather than burying the cause under a file list.
+  local badtok; badtok="$(invalid_paths "$declared")"
+  if [ -n "$badtok" ]; then
+    local msg="$issue declares unmatchable touch-set token(s): $(fmt_bad_paths "$badtok") — they match no file, so nothing can be verified against them."
+    [ -n "$warn" ] && { printf 'FSGG-PATHS INVALID — %s\n  %s\n' "$msg" "$TOUCHSET_GRAMMAR"; return 0; }
+    printf 'FSGG-PATHS INVALID — %s\n  %s\n' "$msg" "$TOUCHSET_GRAMMAR" >&2
+    return 2
+  fi
 
   local changed; changed="$(gh api "repos/$o/$r/pulls/$pr/files?per_page=100" --paginate --jq '.[].filename' 2>/dev/null)"
   [ -n "$changed" ] || { printf 'FSGG-PATHS OK — PR #%s changes no files.\n' "$pr"; return 0; }
@@ -2203,7 +2346,7 @@ verify_paths_cmd() {
     "$pr" "$(printf '%s' "$drift" | grep -c .)" "$issue"
   printf '%s' "$drift" | sed 's/^/  /'
   printf '\ndeclared:\n'; printf '%s\n' "$declared" | sed 's/^/  /'
-  printf '\nRe-declare and re-check against in-flight work:\n  fsgg-coord widen %s --paths "<globs>"\n' "$issue"
+  printf '\nRe-declare and re-check against in-flight work:\n  fsgg-coord widen %s --paths "<paths>"\n' "$issue"
   [ -n "$warn" ] && return 0
   return 1
 }
