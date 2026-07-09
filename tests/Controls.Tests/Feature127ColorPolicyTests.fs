@@ -309,13 +309,18 @@ let feature127ColorPolicyTests =
           test "the emitted catalog is derived from StyleResolver, not restated (issue #174)" {
               let theme = FS.GG.UI.Themes.Default.Theme.light
 
-              // `icon-button/neutral/hover` is the sharpest witness: Hover overwrites Fill with the
-              // accent while the icon-button base leaves Foreground on the accent too, so the
-              // resolver emits an accent-on-accent label — invisible, ratio 1.00.
-              let style = StyleResolver.resolve theme "icon-button" "" [ Variant StyleVariant.Neutral ] Hover
-              Expect.equal style.Foreground style.Fill "the resolver really does emit accent-on-accent here"
+              // `button/danger/invalid` is the sharpest witness: the `danger` variant fills with
+              // `theme.Danger` while the `Invalid` validation state paints the LABEL `theme.Danger`
+              // too, so the resolver emits a danger-on-danger label — invisible, ratio 1.00.
+              //
+              // This used to be `icon-button/neutral/hover` (accent-on-accent), a pathology issue #181
+              // removed: `Hover` now modulates the incoming fill instead of overwriting it with the
+              // accent, so the icon-button's transparent fill stays transparent and its accent label
+              // is read against the canvas. The witness moved; what it witnesses did not.
+              let style = StyleResolver.resolve theme "button" "" [ Variant StyleVariant.Danger ] (VisualState.Validation(Invalid ""))
+              Expect.equal style.Foreground style.Fill "the resolver really does emit danger-on-danger here"
 
-              let rows = StyleCatalog.pairingsOfStyle theme.Background "icon-button/neutral/hover" false style
+              let rows = StyleCatalog.pairingsOfStyle theme.Background "button/danger/invalid" false style
               let textRow = rows |> List.find (fun p -> p.Name.EndsWith "#text")
               Expect.equal textRow.Foreground style.Foreground "the pairing carries the resolver's own foreground"
 
@@ -406,8 +411,18 @@ let feature127ColorPolicyTests =
               let failed = results |> List.filter (fun r -> r.Outcome = ColorPolicy.Failed)
               Expect.isNonEmpty failed "rejection must come from Failed rows, not from an empty catalog"
 
+              // The un-modulated states paint one flat colour on itself: exactly 1.00.
+              Expect.isNonEmpty
+                  (failed |> List.filter (fun r -> r.Measured = 1.0))
+                  "a flat theme's unmodulated states measure 1.00"
+
+              // Since issue #181 the state layer derives its own shades off the fill (hover lightens,
+              // pressed/selected darken), so a flat theme no longer yields 1.00 on EVERY row. Those
+              // shades are single emphasis steps off one colour, so every failing row still measures
+              // below 3.0 — the most permissive threshold any non-decorative role is held to. The
+              // rejection remains the theme's doing, not a gate that refuses all input.
               for r in failed do
-                  Expect.equal r.Measured 1.0 (sprintf "%s: identical colours measure 1.00" r.Pairing)
+                  Expect.isLessThan r.Measured 3.0 (sprintf "%s: a flat theme's every shade is near-invisible" r.Pairing)
 
               // …and the shipped theme it was derived from is genuinely different: it passes rows
               // this one fails, so the rejection is the theme's doing, not the gate refusing all input.
