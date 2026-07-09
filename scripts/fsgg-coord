@@ -39,7 +39,9 @@
 #   fsgg-coord item-id   <issue> [--refresh]  # resolve an issue's board item id (narrow, cached)
 #   fsgg-coord set-field <issue> <Field> <Value> [--refresh]
 #                                             # set a board field, resolving all ids from cache,
-#                                             # auto-routing by the field's dataType
+#                                             # auto-routing by the field's dataType. `Blocked by`
+#                                             # additionally takes ONLY issue refs (comma-separated,
+#                                             # canonicalized to owner/repo#n); prose is refused.
 #   fsgg-coord issues <repo> [--label L] [--state open|closed|all] [--refresh] [--jq EXPR]
 #                                             # list issues over REST with ETag revalidation
 #   fsgg-coord ready [--repo R] [--status S] [--phase P] [--all] [--json|--jq EXPR]
@@ -47,7 +49,11 @@
 #                                             # thrifty full-board scan (2 fields/item). --repo takes
 #                                             # a registry short-id (sdd/rendering/governance/
 #                                             # templates/.github), owner/repo, or a literal repo name
-#   fsgg-coord next  [--repo R]               # print the one most-startable item (Ready, else Backlog)
+#   fsgg-coord next  [--repo R] [--ignore-blocked]
+#                                             # print the one most-startable item (Ready, else
+#                                             # Backlog), SKIPPING items whose `Blocked by` refs are
+#                                             # still open (or unverifiable), with the reason on
+#                                             # stderr. --ignore-blocked restores the old behaviour.
 #   fsgg-coord done  <issue> [--pr N] [--flip]
 #                                             # verify an item is finished (PR merged AND board
 #                                             # Status=Done) and print an EARNED green DONE stamp;
@@ -55,23 +61,66 @@
 #                                             # also sets Status=Done once the PR is merged, and rolls
 #                                             # the completion up to any parent epic whose children
 #                                             # are now all Done).
+#   fsgg-coord lint  [--repo R] [--json] [--strict]
+#                                             # assert the board's EPIC invariants: no `[epic]` with
+#                                             # zero sub-issues (the orphaned epic), none the board
+#                                             # calls Done over an open child, none with children the
+#                                             # scan cannot see. Exit 1 on any error. `Status: Done`
+#                                             # on a still-open issue is a NOTE (fatal under --strict).
 #   fsgg-coord budget                         # print GraphQL + REST rate-limit meters (free)
-#   fsgg-coord claim <issue> [--force]        # claim an item for parallel intra-repo work
-#                                             # (ADR-0021): assign @me as the advisory lock +
-#                                             # set Status=In progress. Refuses an item already
-#                                             # assigned to someone else unless --force; on a true
-#                                             # simultaneous claim BOTH racers back off (safe).
-#                                             # Prints the suggested worktree branch to isolate on.
-#   fsgg-coord release <issue> [--status S]   # release a claim: unassign @me + set Status
-#                                             # (default Ready, so it returns to the pool).
+#
+# Parallel intra-repo work (ADR-0021, revised by ADR-0027). N workers share ONE GitHub account, so
+# the LOCK, the IDENTITY, and the CHANNEL are all keyed on a WORKER ID, never on the login:
+#
+#   fsgg-coord whoami                         # this worker's id, which rule derived it, and the
+#                                             # harness/session it belongs to (provenance)
+#   fsgg-coord claim <issue> [--force]        # take the item's lock. Posts an `fsgg:claim` marker
+#                                             # comment, then re-reads: the LOWEST live claim
+#                                             # comment id wins (GitHub ids are a server-side total
+#                                             # order, so every racer computes the same winner).
+#                                             # A loser deletes its own marker and says so. Also
+#                                             # assigns @me + Status=In progress, and prints the
+#                                             # worktree/branch to isolate on. --force steals.
+#   fsgg-coord heartbeat <issue>              # renew this worker's lease on a claim
+#   fsgg-coord release <issue> [--status S] [--force]
+#                                             # drop the lock: delete the marker, unassign, Status
+#                                             # (default Ready, so the item returns to the pool)
+#   fsgg-coord who [--repo R] [--local] [--json]
+#                                             # WHO holds WHAT, right now: worker, age, lease
+#                                             # health, declared paths, branch. --local joins the
+#                                             # local `git worktree list` so you never have to go
+#                                             # spelunking through worktrees to see what's running.
+#   fsgg-coord reap [--repo R] [--apply]      # find claims whose lease expired (a worker died);
+#                                             # dry-run by default, --apply releases them.
+#   fsgg-coord take [--repo R] [--tries N]    # pick + claim the next SCHEDULABLE item in one step,
+#                                             # retrying on a lost race so a worker never idles.
+#   fsgg-coord batch [--repo R] [-n N] [--json] [--include-backlog]
+#                                             # the scheduler: a maximal set of Ready items whose
+#                                             # touch-sets are disjoint from EACH OTHER and from
+#                                             # every in-flight claim. Hand one to each worker.
 #   fsgg-coord overlap <a> <b>                # can items <a> and <b> run in parallel? Compares
 #                                             # their declared `Paths:` touch-sets (issue body,
 #                                             # ADR-0021) as subtrees. DISJOINT -> exit 0 (safe to
 #                                             # parallelize); OVERLAP -> exit 1 + the conflicting
 #                                             # globs (sequence them with the board's `Blocked by`).
 #                                             # Exit 2 if either item declares no `Paths:`.
+#   fsgg-coord overlap <a> --active           # ...or against EVERY in-flight claim at once.
+#   fsgg-coord widen <issue> --paths "<globs>"
+#                                             # re-declare a touch-set mid-flight, re-check it
+#                                             # against live claims, and NOTIFY the workers it now
+#                                             # collides with (ADR-0021 says re-check; this does it).
+#   fsgg-coord say <issue> [--to <worker>] <message>
+#                                             # the channel: post an `fsgg:msg` addressed to a
+#                                             # worker (default `*` = anyone working the item).
+#   fsgg-coord inbox [--repo R] [--peek] [--json]
+#                                             # messages addressed to this worker across every live
+#                                             # claim, since last read (--peek does not advance).
+#   fsgg-coord verify-paths --pr N [--repo R] [--issue REF] [--warn]
+#                                             # did the PR stay inside the issue's declared `Paths:`?
+#                                             # Reports drift; exit 1 (or 0 with --warn, for CI).
 #
 #   <issue> is a full URL, `owner/repo#n`, or `repo#n` (owner defaults to FS-GG).
+#   A global `--worker <id>` may precede any subcommand.
 #
 # Env:
 #   FSGG_COORD_OWNER    board owner org           (default: FS-GG)
@@ -79,8 +128,11 @@
 #   FSGG_COORD_CACHE    cache dir                 (default: ${XDG_CACHE_HOME:-~/.cache}/fsgg-coord)
 #   FSGG_COORD_BOARD_TTL_MIN  board-map freshness (default: 1440 min = 24h; schema changes are rare)
 #   FSGG_COORD_DEBUG    =1 -> log each GraphQL call's rateLimit cost/remaining to stderr
+#   FSGG_WORKER         this worker's id          (default: derived — run `whoami` to see how)
+#   FSGG_CLAIM_LEASE_MIN  claim lease in minutes  (default: 120; past it a claim is reapable)
 #
-# See docs/coordination/graphql-budget.md for the cost model and when to reach for this.
+# See docs/coordination/graphql-budget.md for the cost model and when to reach for this,
+# and docs/coordination/parallel-work.md for the protocol these subcommands implement.
 
 set -euo pipefail
 
@@ -88,6 +140,13 @@ OWNER="${FSGG_COORD_OWNER:-FS-GG}"
 TITLE="${FSGG_COORD_PROJECT:-Coordination}"
 CACHE="${FSGG_COORD_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/fsgg-coord}"
 BOARD_TTL_MIN="${FSGG_COORD_BOARD_TTL_MIN:-1440}"
+CLAIM_LEASE_MIN="${FSGG_CLAIM_LEASE_MIN:-120}"
+
+# The two machine-readable markers this client writes into issue comments. They live in an HTML
+# comment so GitHub renders nothing, `grep` finds everything, and the human prose underneath is free
+# to change without breaking a parser.
+CLAIM_MARK='fsgg:claim'
+MSG_MARK='fsgg:msg'
 
 die() { echo "fsgg-coord: $*" >&2; exit 1; }
 dbg() { [ -n "${FSGG_COORD_DEBUG:-}" ] && echo "fsgg-coord: $*" >&2 || true; }
@@ -99,7 +158,293 @@ mkdir -p "$CACHE"
 
 # Filesystem-safe slug of the board identity, so multiple owners/boards don't collide in the cache.
 slug() { printf '%s' "$1" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9' '-' | sed 's/-\{2,\}/-/g; s/^-//; s/-$//'; }
+trim() { local s="$1"; s="${s#"${s%%[![:space:]]*}"}"; printf '%s' "${s%"${s##*[![:space:]]}"}"; }
 BOARD_FILE="$CACHE/board-$(slug "$OWNER")-$(slug "$TITLE").json"
+
+# ---- worker identity: WHICH of the N parallel workers am I? --------------------------------------
+# ADR-0021 made the ISSUE ASSIGNEE the claim lock. That silently fails the one case the lock exists
+# for. When N agents fan out under ONE `gh` login, `@me` names the same principal for all of them, so
+# an item a sibling already holds reads back as "assigned to me" — and `claim`'s "is anyone ELSE
+# holding this?" test passes. Both workers proceed. The assignee is an ACCOUNT; the thing that must be
+# excluded is a WORKER. They are not the same thing, and no amount of care with assignees fixes that.
+#
+# So every worker carries a stable, human-readable id, and the lock (claim markers), the channel
+# (messages), and attribution (git config + commit trailer) are all keyed on it. Resolution order —
+# `whoami` prints which rule fired, because a surprising id is a lock bug waiting to happen:
+#
+#   1. --worker <id>       explicit; wins everything.
+#   2. $FSGG_WORKER        how an orchestrator names the agents it spawns.
+#   3. the worktree name   ADR-0021 gives each item its own git worktree, so the worktree IS an
+#                          identity — unique per worker, stable across that worker's invocations,
+#                          and free. Only LINKED worktrees qualify (see rule 4).
+#   4. the HARNESS SESSION ID, if the agent harness exports one (see below), hashed into a memorable
+#      name. Deterministic, so it needs no persistence.
+#   5. generated, persisted per checkout — the last resort. A checkout shared by several workers gives
+#      them one id, which is precisely the same-account collapse this mechanism exists to prevent.
+#
+# WHY THE SESSION ID IS RULE 4 AND NOT RULE 1. Agent harnesses do export a session identifier, but
+# there is NO cross-harness convention, and — worse — the same name means different things:
+#
+#   claude-code  CLAUDE_CODE_SESSION_ID   ONE id per session, SHARED by every subagent it spawns
+#                                         (anthropics/claude-code#7881). Keying the lock on it would
+#                                         collapse an N-agent fan-out onto one worker id — the exact
+#                                         bug ADR-0027 removed, one level down. Hence: WARN.
+#   opencode     OPENCODE_SESSION_ID      subagents run as CHILD SESSIONS with their own ids
+#                                         (sst/opencode task tool sets parentID), so it IS per-worker.
+#   codex        —                        exports no session/conversation id at all.
+#   gemini-cli   —                        exports only GEMINI_CLI=1.
+#
+# A per-subagent id exists in Claude Code only as `agent_id` inside HOOK JSON — not in the environment
+# a Bash tool sees. So the session id is a good *fallback* (it separates concurrent sessions sharing a
+# checkout, which rule 5 cannot) and good *provenance* (it points at the transcript that made a claim),
+# but it is not an identity. The worktree — rule 3 — remains the thing that is actually per-worker.
+# See docs/coordination/agent-session-identifiers.md for the evidence behind this table.
+WORKER_OVERRIDE=""
+WORKER_ID=""
+WORKER_FROM=""
+WORKER_SHARED_WHY=""     # non-empty => this id may name more than one worker; warn on every claim
+HARNESS_NAME=""
+HARNESS_SESSION=""
+_WORKER_WORDS=(finch heron wren swift kite tern rook crake snipe plover
+               merlin godwit curlew dunlin teal smew osprey shrike avocet brant)
+
+gen_worker() {
+  local w h
+  w="${_WORKER_WORDS[$((RANDOM % ${#_WORKER_WORDS[@]}))]}"
+  h="$(head -c 2 /dev/urandom 2>/dev/null | od -An -tx1 | tr -d ' \n')"
+  [ -n "$h" ] || h="$(printf '%04x' "$((RANDOM % 65536))")"
+  printf '%s-%s' "$w" "$h"
+}
+
+# A memorable name derived deterministically from a seed, so the same session always names the same
+# worker without persisting anything. UUIDs are unusable as an identity a human reads in a `who`
+# table, types into `say --to`, or greps a branch for.
+name_from_seed() {
+  local h idx
+  h="$(printf '%s' "$1" | sha256sum | cut -c1-8)"
+  idx=$(( 16#${h:0:2} % ${#_WORKER_WORDS[@]} ))
+  printf '%s-%s' "${_WORKER_WORDS[$idx]}" "${h:2:3}"
+}
+
+# Detect the agent harness and its session id. Sets HARNESS_NAME/HARNESS_SESSION (empty if none).
+# `FSGG_AGENT_SESSION_ID` is the escape hatch for a harness we do not know about — set it and the
+# fallback identity and the claim's provenance both start working, with no change here.
+harness_session() {
+  if   [ -n "${CLAUDE_CODE_SESSION_ID:-}" ]; then
+    HARNESS_NAME="claude-code"; HARNESS_SESSION="$CLAUDE_CODE_SESSION_ID"
+  elif [ -n "${OPENCODE_SESSION_ID:-}" ]; then
+    HARNESS_NAME="opencode";    HARNESS_SESSION="$OPENCODE_SESSION_ID"
+  elif [ -n "${FSGG_AGENT_SESSION_ID:-}" ]; then
+    HARNESS_NAME="${FSGG_AGENT_HARNESS:-unknown}"; HARNESS_SESSION="$FSGG_AGENT_SESSION_ID"
+  else
+    HARNESS_NAME=""; HARNESS_SESSION=""
+  fi
+}
+
+# Does one session id name one worker, on this harness? Only where subagents get their own session.
+session_is_per_worker() {
+  case "$1" in
+    opencode) return 0 ;;   # subagents are child sessions with distinct ids
+    *)        return 1 ;;   # claude-code shares one id across subagents; unknown harnesses: assume shared
+  esac
+}
+
+git_toplevel() { git rev-parse --show-toplevel 2>/dev/null || true; }
+# A LINKED worktree has a per-worktree git dir distinct from the shared common dir; the primary
+# checkout has them equal. Only the former is per-worker, so only the former names a worker.
+is_linked_worktree() {
+  local gd cdir
+  gd="$(git rev-parse --absolute-git-dir 2>/dev/null || true)"
+  cdir="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+  [ -n "$gd" ] && [ -n "$cdir" ] && [ "$gd" != "$cdir" ]
+}
+
+# Sets WORKER_ID/WORKER_FROM as globals *and* echoes the id. Call it as `worker >/dev/null` and read
+# $WORKER_ID — `w="$(worker)"` runs it in a subshell, where WORKER_FROM (and so the shared-identity
+# warning that depends on it) dies with the subshell.
+worker() {
+  [ -n "$WORKER_ID" ] && { printf '%s' "$WORKER_ID"; return 0; }
+  local top; top="$(git_toplevel)"
+  harness_session                       # always resolved: even an explicit id wants provenance
+  if [ -n "$WORKER_OVERRIDE" ]; then
+    WORKER_ID="$WORKER_OVERRIDE"; WORKER_FROM="--worker flag"
+  elif [ -n "${FSGG_WORKER:-}" ]; then
+    WORKER_ID="$FSGG_WORKER"; WORKER_FROM="\$FSGG_WORKER"
+  elif [ -n "$top" ] && is_linked_worktree; then
+    WORKER_ID="$(basename "$top")"; WORKER_FROM="git worktree name ($top)"
+  elif [ -n "$HARNESS_SESSION" ]; then
+    WORKER_ID="$(name_from_seed "$HARNESS_SESSION")"
+    WORKER_FROM="$HARNESS_NAME session id ($HARNESS_SESSION)"
+    session_is_per_worker "$HARNESS_NAME" \
+      || WORKER_SHARED_WHY="every subagent of this $HARNESS_NAME session shares this session id"
+  else
+    local f; f="$CACHE/worker-$(slug "${top:-$PWD}")"
+    if [ -f "$f" ]; then WORKER_ID="$(cat "$f")"
+    else WORKER_ID="$(gen_worker)"; printf '%s' "$WORKER_ID" >"$f"; fi
+    WORKER_FROM="generated, persisted per-checkout ($f)"
+    WORKER_SHARED_WHY="every worker sharing this checkout gets this same id"
+  fi
+  WORKER_ID="$(slug "$WORKER_ID")"
+  [ -n "$WORKER_ID" ] || die "could not derive a worker id — set FSGG_WORKER."
+  printf '%s' "$WORKER_ID"
+}
+
+# Rules 4 and 5 can each hand the same id to several workers — for different reasons. Say which one,
+# loudly, at every point a claim depends on it: a lock that cannot separate two workers is not a lock.
+warn_shared_identity() {
+  [ -n "$WORKER_SHARED_WHY" ] || return 0
+  echo "fsgg-coord: WARNING — worker id '$WORKER_ID' may not be unique to this worker:" >&2
+  echo "  $WORKER_SHARED_WHY." >&2
+  echo "  The claim lock cannot separate workers that share an id. Give each worker its own git" >&2
+  echo "  worktree (the identity ADR-0021 already mandates), or set FSGG_WORKER explicitly." >&2
+}
+
+# Stamp the worker into the worktree itself, so "who edited these files?" is a `git config` read
+# rather than mtime forensics. Best-effort: a claim made outside a checkout still holds.
+# `git config --worktree` only writes per-worktree when `extensions.worktreeConfig` is set, which is
+# NOT the default. Without it both keys land in the shared config that every linked worktree reads,
+# so the last claim overwrites all the others and `who --local` attributes every worktree to one
+# worker — the misattribution this stamp exists to prevent. We do not silently enable the extension
+# on someone's repo; we say what happened so it is fixable.
+stamp_worktree() {
+  git rev-parse --git-dir >/dev/null 2>&1 || return 0
+  local scoped=1
+  git config --worktree fsgg.worker "$1" 2>/dev/null && git config --worktree fsgg.item "$2" 2>/dev/null || scoped=0
+  if [ "$scoped" -eq 0 ]; then
+    git config fsgg.worker "$1" 2>/dev/null || true
+    git config fsgg.item   "$2" 2>/dev/null || true
+    if [ "$(git rev-parse --git-dir 2>/dev/null)" != "$(git rev-parse --git-common-dir 2>/dev/null)" ]; then
+      echo "fsgg-coord: NOTE — stamped worker '$1' into this repo's SHARED git config, not this worktree's." >&2
+      echo "  Linked worktrees share it, so 'who --local' will show the last claimer for all of them." >&2
+      echo "  Fix: git config extensions.worktreeConfig true" >&2
+    fi
+  fi
+}
+
+whoami_cmd() {
+  worker >/dev/null; local w="$WORKER_ID"
+  printf 'worker  %s\n' "$w"
+  printf 'source  %s\n' "$WORKER_FROM"
+  printf 'lease   %sm\n' "$CLAIM_LEASE_MIN"
+  if [ -n "$HARNESS_SESSION" ]; then
+    printf 'harness %s\n' "$HARNESS_NAME"
+    printf 'session %s%s\n' "$HARNESS_SESSION" \
+      "$(session_is_per_worker "$HARNESS_NAME" && printf ' (per-worker)' || printf ' (shared by subagents)')"
+  fi
+  warn_shared_identity
+}
+
+# ---- issue comments: the substrate for the lock (claim markers) and the channel (messages) --------
+# Both are ordinary issue comments carrying an HTML-comment marker. One REST fetch serves both
+# parsers, so a caller that needs claims AND messages pays for one round trip, not two.
+now_iso() { date -u +%Y-%m-%dT%H:%M:%SZ; }
+
+# A failed READ and an item with NO comments must never look alike. As a pipeline under `pipefail`,
+# a transient gh failure (rate limit, 5xx, network) produced empty output *and* a non-zero status that
+# aborted the caller mid-flight — in `claim`'s case, after posting the marker but before the back-off
+# delete, orphaning a live claim nobody was working. Capture first, then decide.
+issue_comments() {  # $1=owner $2=repo $3=num -> JSON array of raw comments; non-zero iff the READ failed
+  local out
+  out="$(gh api "repos/$1/$2/issues/$3/comments?per_page=100" --paginate --jq '.[]' 2>/dev/null)" \
+    || return 1
+  printf '%s' "$out" | jq -s '.'
+}
+
+# Read + parse the claim markers on an item, or DIE. Guessing the lock state from a failed read is the
+# one thing a lock may never do: an empty answer would read as "nobody holds this".
+claims_of() {  # $1=owner $2=repo $3=num -> JSON array of claim records, lowest comment id first
+  local raw
+  raw="$(issue_comments "$1" "$2" "$3")" \
+    || die "cannot read the claim markers on $2#$3 (rate limit? network?) — refusing to guess the lock state."
+  parse_claims <<<"$raw"
+}
+
+# Claim markers, oldest COMMENT ID first. The id is the lock's ordering key: GitHub assigns comment
+# ids from a single server-side sequence, so two racers that both post and then both re-read compute
+# the SAME winner (lowest id) with no coordination. `stale` marks a lease the holder stopped renewing
+# — a dead worker's claim, which `reap` clears and the lock ignores.
+# ANCHORED at the start of the body (`^<!--`), because a marker matched anywhere would let any
+# free-form `say` message whose text merely quotes `<!-- fsgg:claim worker=ghost -->` forge a lock.
+# A marker we cannot parse a worker out of becomes `unparsed-marker` — a claim held by nobody, which
+# BLOCKS the item rather than vanishing. A half-written lock must fail closed, not fail open.
+#
+# NOTE: `ageSec` compares the client's clock (`now`) with GitHub's (`updated_at`). The lease is
+# therefore only as good as clock agreement; the 120m default is orders of magnitude above realistic
+# NTP skew, but a badly-skewed client can reap live claims. `who` shows the age it computed.
+parse_claims() {
+  jq --argjson lease "$((CLAIM_LEASE_MIN * 60))" '
+    map(select(.body | test("^<!--\\s*fsgg:claim\\s")))
+    | map(. as $c
+        | (($c.body | [capture("^<!--\\s*fsgg:claim\\s+worker=(?<w>[^\\s>]+)")] | first) // null) as $m
+        | { id: $c.id, worker: ($m.w // "unparsed-marker"), user: $c.user.login,
+            updatedAt: $c.updated_at,
+            ageSec: ((now - ($c.updated_at | fromdateiso8601)) | floor) })
+    | map(. + { stale: (.ageSec > $lease) })
+    | sort_by(.id)'
+}
+
+parse_msgs() {
+  jq '
+    map(select(.body | test("^<!--\\s*fsgg:msg\\s")))
+    | map(. as $c
+        | ($c.body | capture("^<!--\\s*fsgg:msg\\s+from=(?<f>[^\\s>]+)\\s+to=(?<t>[^\\s>]+)")) as $m
+        | { id: $c.id, from: $m.f, to: $m.t, at: $c.created_at,
+            text: ($c.body | sub("^<!--[^>]*-->\\s*"; "") | sub("^\\*\\*[^*]*\\*\\*\\s*"; "")
+                           | sub("\\s+$"; "")) })
+    | sort_by(.id)'
+}
+
+post_comment()   { gh api "repos/$1/$2/issues/$3/comments" -f body="$4" --jq '.id'; }
+patch_comment()  { gh api -X PATCH  "repos/$1/$2/issues/comments/$3" -f body="$4" >/dev/null; }
+# Returns non-zero when the comment is still THERE afterwards. Callers must not claim they cleaned up
+# otherwise: a surviving marker by a worker that walked away blocks the item for a full lease.
+# A 404 is SUCCESS, not failure — "already gone" is the goal state of every caller, and two workers
+# collecting the same expired marker must not turn the loser's benign 404 into a hard error.
+delete_comment() {
+  local out rc=0
+  out="$(gh api -X DELETE "repos/$1/$2/issues/comments/$3" 2>&1)" || rc=$?
+  if [ "$rc" -eq 0 ]; then return 0; fi
+  case "$out" in *404*|*"Not Found"*) return 0 ;; esac
+  return 1
+}
+
+# Tell a worker whose marker we removed. Both `reap` and `claim` collect dead claims; neither may do
+# it silently — a worker that is merely slow needs to learn its item was taken.
+notify_reaped() {  # $1=owner $2=repo $3=num $4=reaped-worker $5=age-min $6=by-worker
+  post_comment "$1" "$2" "$3" "$(printf '<!-- %s from=%s to=%s -->\n**reaped** — the claim by worker `%s` idled %sm, past its %sm lease, and was released. Re-claim if you are still alive; do NOT keep working this item.\n' \
+    "$MSG_MARK" "$6" "$4" "$4" "$5" "$CLAIM_LEASE_MIN")" >/dev/null || true
+}
+
+# The claim marker. `renewed` changes on every heartbeat so the edit always moves `updated_at` —
+# the lease clock is the comment's own mtime, which no worker can forge without touching the comment.
+# `worker=` stays the FIRST key after the marker, because that is what parse_claims anchors on. The
+# rest is PROVENANCE, not identity: the harness + session id say WHICH agent transcript made this
+# claim. That is the question FS-GG/.github#255 could only answer with file mtimes and `ps`.
+claim_body() {  # $1=worker $2=branch $3=ts $4=ref
+  local prov="" provline=""
+  if [ -n "$HARNESS_SESSION" ]; then
+    prov=" harness=$HARNESS_NAME session=$HARNESS_SESSION"
+    provline=$'\n'"<sub>agent: \`$HARNESS_NAME\` · session \`$HARNESS_SESSION\`</sub>"
+  fi
+  cat <<EOF
+<!-- $CLAIM_MARK worker=$1 lease=$CLAIM_LEASE_MIN$prov -->
+🔒 **Claimed** by worker \`$1\` · lease ${CLAIM_LEASE_MIN}m · renewed \`$3\`
+
+Isolated on branch \`$2\`. Renew with \`fsgg-coord heartbeat $4\`, drop with \`fsgg-coord release $4\`.$provline
+EOF
+}
+
+branch_for() {  # $1=owner $2=repo $3=num -> item/<n>-<title-slug>
+  local title s
+  title="$(gh api "repos/$1/$2/issues/$3" --jq '.title' 2>/dev/null || echo "")"
+  s="$(printf '%s' "$title" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9' '-' \
+       | sed 's/-\{2,\}/-/g; s/^-//; s/-$//' | cut -c1-40 | sed 's/-$//')"
+  printf 'item/%s%s' "$3" "${s:+-$s}"
+}
+
+heartbeat_comment() {  # $1=owner $2=repo $3=num $4=commentId $5=worker $6=ref
+  patch_comment "$1" "$2" "$4" "$(claim_body "$5" "$(branch_for "$1" "$2" "$3")" "$(now_iso)" "$6")"
+}
 
 # ---- GraphQL wrapper: run a query, log its rateLimit cost when FSGG_COORD_DEBUG=1 ----------------
 # Every query passed here MUST select `rateLimit { cost remaining }` so the meter is observable.
@@ -192,6 +537,61 @@ parse_ref() {
   fi
 }
 
+# ---- Blocked by: canonicalize a dependency edge into refs, or refuse the write --------------------
+# `Blocked by` is TEXT only because Projects v2 has no typed dependency field. Unvalidated it drifts
+# into a resolution log ("RESOLVED: #18 closed, shipped @sha") or an inverted edge ("blocks #14") —
+# both unreadable by any "what is blocking this?" query. Canonicalize every ref to `owner/repo#n` on
+# write so a consumer parses one form. Sets CANON_BLOCKED_BY; dies (in the CALLER's shell, so an
+# invalid value can never reach the mutation) on anything else. Prose belongs in an issue comment;
+# "this item is blocked" belongs in Status. An empty value clears the field — the blocker is gone.
+CANON_BLOCKED_BY=""
+canon_blocked_by() {
+  local raw="$1" self_owner="$2" self_repo="$3" ref="${4:-<issue>}"
+  local -a parts=() refs=()
+  local part o r n
+  raw="$(trim "$raw")"
+  CANON_BLOCKED_BY=""
+  [ -n "$raw" ] || return 0
+
+  local oldifs="$IFS"; IFS=','; read -r -a parts <<<"$raw"; IFS="$oldifs"
+  for part in "${parts[@]}"; do
+    part="$(trim "$part")"
+    [ -n "$part" ] || continue
+    if   [[ "$part" =~ ^https?://github\.com/([^/]+)/([^/]+)/issues/([0-9]+)$ ]]; then
+      o="${BASH_REMATCH[1]}"; r="${BASH_REMATCH[2]}"; n="${BASH_REMATCH[3]}"
+    elif [[ "$part" =~ ^([^/#[:space:]]+)/([^/#[:space:]]+)#([0-9]+)$ ]]; then
+      o="${BASH_REMATCH[1]}"; r="${BASH_REMATCH[2]}"; n="${BASH_REMATCH[3]}"
+    elif [[ "$part" =~ ^([^/#[:space:]]+)#([0-9]+)$ ]]; then
+      o="$OWNER"; r="${BASH_REMATCH[1]}"; n="${BASH_REMATCH[2]}"
+    elif [[ "$part" =~ ^#([0-9]+)$ ]]; then           # bare #n -> the blocked item's own repo
+      o="$self_owner"; r="$self_repo"; n="${BASH_REMATCH[1]}"
+    elif [[ "${part,,}" =~ ^(-+|—|–|none|n/?a|tbd|todo)$ ]]; then
+      # "-" and friends mean "nothing blocks this". Say it with an empty value, so a reader never has
+      # to guess whether a placeholder is a blocker it cannot parse.
+      echo "fsgg-coord: 'Blocked by' has no placeholder value — '$part' is not a ref." >&2
+      echo "  to record that nothing blocks this item, CLEAR the field:" >&2
+      echo "      fsgg-coord set-field $ref 'Blocked by' ''" >&2
+      exit 1
+    else
+      echo "fsgg-coord: 'Blocked by' takes issue refs, not prose — rejected: '$part'" >&2
+      echo "  want: a comma-separated list of owner/repo#n, repo#n, #n, or issue URLs" >&2
+      echo "        (e.g. 'FS-GG/FS.GG.SDD#8, #33')" >&2
+      echo "  note: the field records what blocks THIS item — 'blocks X' is the inverse edge," >&2
+      echo "        and it is not a delivery log. Put narrative in an issue comment; mark the" >&2
+      echo "        item blocked with: fsgg-coord set-field <issue> Status Blocked" >&2
+      exit 1
+    fi
+    refs+=("$o/$r#$n")
+  done
+
+  local joined="" ref
+  for ref in "${refs[@]}"; do
+    case ", $joined," in *", $ref,"*) continue ;; esac   # de-dupe, preserving first-seen order
+    joined="${joined:+$joined, }$ref"
+  done
+  CANON_BLOCKED_BY="$joined"
+}
+
 # ---- item-id: narrow issue -> projectItems resolution, cached per issue (item ids are stable) ---
 item_id() {
   local ref="$1" refresh="${2:-}"
@@ -226,17 +626,31 @@ set_field() {
   dtype="$(board_get ".fields[\"$field\"].dataType // empty")"
   [ -n "$dtype" ] || die "no field named '$field' on board '$TITLE' (fields: $(board_get '.fields | keys | join(\", \")'))."
   fid="$(field_id "$field")"
+
+  # Canonicalize BEFORE resolving the item: a rejected value must cost zero GraphQL.
+  if [ "$field" = "Blocked by" ]; then
+    parse_ref "$ref"                                   # the blocked item's repo, for bare `#n` refs
+    canon_blocked_by "$value" "$R_OWNER" "$R_REPO" "$ref"
+    value="$CANON_BLOCKED_BY"
+  fi
+
   item="$(item_id "$ref" "$refresh")"
 
+  # An empty value CLEARS the field. `gh project item-edit --text ''` is not a clear — it is a no-op
+  # ("no changes to make"), so an empty write would silently leave the old value in place.
   local -a vflag
-  case "$dtype" in
-    SINGLE_SELECT) vflag=(--single-select-option-id "$(option_id "$field" "$value")") ;;
-    TEXT)          vflag=(--text   "$value") ;;
-    NUMBER)        vflag=(--number "$value") ;;
-    DATE)          vflag=(--date   "$value") ;;
-    ITERATION)     vflag=(--iteration-id "$value") ;;
-    *)             die "field '$field' has unsupported dataType '$dtype'." ;;
-  esac
+  if [ -z "$value" ]; then
+    vflag=(--clear)
+  else
+    case "$dtype" in
+      SINGLE_SELECT) vflag=(--single-select-option-id "$(option_id "$field" "$value")") ;;
+      TEXT)          vflag=(--text   "$value") ;;
+      NUMBER)        vflag=(--number "$value") ;;
+      DATE)          vflag=(--date   "$value") ;;
+      ITERATION)     vflag=(--iteration-id "$value") ;;
+      *)             die "field '$field' has unsupported dataType '$dtype'." ;;
+    esac
+  fi
   dbg "set-field $ref $field='$value' -> item=$item field=$fid ($dtype)"
   gh project item-edit --id "$item" --project-id "$pid" --field-id "$fid" "${vflag[@]}"
 }
@@ -304,9 +718,13 @@ emit_issues() {
 # `fieldValues(first:100){ ...fragments }` INSIDE `items(first:N)`, so its cost is O(items × 100)
 # (≈ 2,500 points for a ~100-item board) — a few of those exhaust the 5,000-pt/hr primary budget.
 # `fieldValueByName` is a RESOLVER field, not a connection: it returns ONE value with no node
-# multiplication. We read just the two fields a "what's next" decision needs (Status, Phase) that
-# way, plus the issue's own repository/number/title — a small constant per item. A 100-item page
-# costs ~1 point (a full board ~3), and the result is normalized once here.
+# multiplication. We read just the three fields a "what's next" decision needs (Status, Phase,
+# Blocked by) that way, plus the issue's own repository/number/title/state — a small constant per
+# item. A 100-item page costs ~1 point (a full board ~3), and the result is normalized once here.
+#
+# `Blocked by` rides along for free: because the scan already carries every board item's `state`,
+# a blocker's open/closed status is resolved CLIENT-SIDE against the same page set (board_annotate)
+# — no per-blocker issue lookup, so blocked-awareness adds ZERO GraphQL calls.
 board_items() {
   ensure_board >/dev/null
   local num; num="$(board_get '.number')"
@@ -317,6 +735,7 @@ board_items() {
         nodes{
           status: fieldValueByName(name:"Status"){ ... on ProjectV2ItemFieldSingleSelectValue{ name } }
           phase:  fieldValueByName(name:"Phase"){  ... on ProjectV2ItemFieldSingleSelectValue{ name } }
+          blockedBy: fieldValueByName(name:"Blocked by"){ ... on ProjectV2ItemFieldTextValue{ text } }
           content{
             __typename
             ... on Issue{ number title url state repository{ nameWithOwner } }
@@ -340,12 +759,59 @@ board_items() {
       | { number:(.content.number // null), repo:(.content.repository.nameWithOwner // null),
           title:(.content.title // null),   url:(.content.url // null),
           state:(.content.state // null),   type:(.content.__typename // null),
-          status:(.status.name // null),    phase:(.phase.name // null) }' <<<"$out" >> "$tmp"
+          status:(.status.name // null),    phase:(.phase.name // null),
+          blockedBy:(.blockedBy.text // null) }' <<<"$out" >> "$tmp"
     hasNext="$(jq -r '.data.organization.projectV2.items.pageInfo.hasNextPage' <<<"$out")"
     cursor="$(jq -r '.data.organization.projectV2.items.pageInfo.endCursor // empty' <<<"$out")"
     [ "$hasNext" = "true" ] && [ -z "$cursor" ] && break   # defensive: stop if a page lies
   done
-  jq -s '.' "$tmp"; rm -f "$tmp"
+  jq -s '.' "$tmp" | board_annotate; rm -f "$tmp"
+}
+
+# ---- board_annotate: resolve each item's `Blocked by` refs against the scan itself ----------------
+# Adds `.blockers` ([{ref,state}]) and `.blocked` (bool) to every item, spending no extra GraphQL:
+# the scan already carries each board item's OPEN/CLOSED `state`, so a blocker that is itself a board
+# item resolves from an in-memory index. States:
+#   OPEN        -> still blocking.
+#   CLOSED      -> resolved; does not block.
+#   UNKNOWN     -> the ref is a real issue but is not ON the board, so we cannot see its state.
+#   UNPARSEABLE -> legacy prose (the pre-gate resolution logs on Done cards), or a hand-edited value.
+# UNKNOWN and UNPARSEABLE both count as blocking: refusing to hand out work whose prerequisite we
+# cannot verify is the safe failure, and `next` says which it hit rather than silently skipping.
+#
+# Placeholder values ("-", "none", "n/a", "TBD") are read as NO BLOCKER: people typed them to mean
+# "nothing blocks this" before the field meant anything, and reading them as UNPARSEABLE would make
+# `next` refuse work that is in fact startable. Only the READ side is forgiving — `set-field` still
+# refuses to write one (it tells you to clear the field instead), so they cannot spread.
+board_annotate() {
+  jq '
+    def placeholder: test("^(-+|—|–|none|n/?a|tbd|todo)$"; "i");
+    def canon($owner; $selfrepo):
+      if   test("^https?://github\\.com/[^/]+/[^/]+/issues/[0-9]+$")
+      then (capture("^https?://github\\.com/(?<o>[^/]+)/(?<r>[^/]+)/issues/(?<n>[0-9]+)$") | "\(.o)/\(.r)#\(.n)")
+      elif test("^[^/#[:space:]]+/[^/#[:space:]]+#[0-9]+$") then .
+      elif test("^[^/#[:space:]]+#[0-9]+$")                 then "\($owner)/\(.)"
+      elif test("^#[0-9]+$")                                then "\($selfrepo)\(.)"
+      else null end;
+
+    . as $all
+    | ( $all | map(select(.number != null and .repo != null))
+             | map({ key: "\(.repo)#\(.number)", value: (.state // "UNKNOWN") })
+             | from_entries ) as $idx
+    | $all
+    | map(
+        . as $it
+        | ($it.repo // "")                            as $selfrepo
+        | (($it.repo // "") | split("/") | first // "") as $owner
+        | ( [ ($it.blockedBy // "") | split(",")[] | sub("^\\s+";"") | sub("\\s+$";"")
+              | select(length > 0) | select(placeholder | not) ]
+            | map( canon($owner; $selfrepo) as $c
+                   | if $c == null then { ref: ., state: "UNPARSEABLE" }
+                     else { ref: $c, state: ($idx[$c] // "UNKNOWN") } end )
+            | unique_by(.ref) ) as $blockers
+        | $it + { blockers: $blockers,
+                  blocked: ($blockers | any(.state != "CLOSED")) }
+      )'
 }
 
 # Resolve a --repo value to the actual GitHub repo name the board items carry. Accepts the registry
@@ -380,13 +846,16 @@ board_filter() {
     )'
 }
 
-# Pretty TSV: STATUS | ITEM (repo#num, owner stripped) | PHASE | TITLE. Draft items show `draft`/`-`.
+# Pretty TSV: STATUS | ITEM (repo#num, owner stripped) | PHASE | BLOCKED BY | TITLE. Draft items show
+# `draft`/`-`. BLOCKED BY lists only the refs still holding the item (closed blockers are noise).
 board_table() {
   jq -r '.[]
     | ((.status // "—")) as $s
     | (if .number then ((.repo // "" | sub("^[^/]+/";"")) + "#" + (.number|tostring)) else "draft" end) as $item
-    | [ $s, $item, (.phase // "—"), (.title // "") ] | @tsv' \
-  | { printf "STATUS\tITEM\tPHASE\tTITLE\n"; cat; } | column -t -s $'\t'
+    | ( [ (.blockers // [])[] | select(.state != "CLOSED") | (.ref | sub("^[^/]+/";"")) ]
+        | if length == 0 then "—" else join(", ") end ) as $b
+    | [ $s, $item, (.phase // "—"), $b, (.title // "") ] | @tsv' \
+  | { printf "STATUS\tITEM\tPHASE\tBLOCKED BY\tTITLE\n"; cat; } | column -t -s $'\t'
 }
 
 # ---- ready: list board items that are actionable (not Done by default), thrifty full-board read --
@@ -415,28 +884,157 @@ ready() {
 
 # ---- next: print the single most-startable item (Ready, else Backlog), optionally repo-scoped ----
 next() {
-  local repo=""
+  local repo="" ignore_blocked=""
   while [ $# -gt 0 ]; do
     case "$1" in
-      --repo) repo="${2:?--repo needs a value}"; shift 2 ;;
+      --repo)            repo="${2:?--repo needs a value}"; shift 2 ;;
+      --ignore-blocked)  ignore_blocked=1; shift ;;
       -*)     die "next: unknown flag '$1'." ;;
       *)      die "next: unexpected argument '$1'." ;;
     esac
   done
   [ -n "$repo" ] && repo="$(resolve_repo "$repo")"
   local items; items="$(board_items)"
-  local pick="" s
+  local pick="" cand="" s skipped=""
   for s in Ready Backlog; do
-    pick="$(board_filter "$repo" "$s" "" "0" <<<"$items" | jq -c 'first(.[])? // empty')"
+    cand="$(board_filter "$repo" "$s" "" "0" <<<"$items")"
+    if [ -z "$ignore_blocked" ]; then
+      # Say WHY an otherwise-startable item was passed over — a silent skip reads as "nothing to do".
+      local notes
+      notes="$(jq -r '.[] | select(.blocked)
+        | "fsgg-coord: skipping " + ((.repo // "" | sub("^[^/]+/";"")) + "#" + (.number|tostring))
+          + " — blocked by " + ([.blockers[] | "\(.ref) (\(.state|ascii_downcase))"] | join(", "))' \
+        <<<"$cand")"
+      if [ -n "$notes" ]; then printf '%s\n' "$notes" >&2; skipped=1; fi
+      cand="$(jq -c 'map(select(.blocked | not))' <<<"$cand")"
+    fi
+    pick="$(jq -c 'first(.[])? // empty' <<<"$cand")"
     [ -n "$pick" ] && break
   done
   if [ -z "$pick" ]; then
     echo "fsgg-coord: no startable item (Ready/Backlog)${repo:+ for repo '$repo'} on board '$TITLE'." >&2
+    [ -n "$skipped" ] && echo "fsgg-coord: (every candidate was blocked — see above, or pass --ignore-blocked)" >&2
     return 0
   fi
   jq -r '"→ " + ((.repo // "" | sub("^[^/]+/";"")) + (if .number then "#"+(.number|tostring) else "" end))
     + "  [" + (.status // "—") + (if .phase then " · "+.phase else "" end) + "]\n  "
     + (.title // "") + (if .url then "\n  "+.url else "" end)' <<<"$pick"
+}
+
+# ---- lint_items: a board scan carrying each epic's CHILDREN, for the epic invariants -------------
+# Separate from `board_items` on purpose: `ready`/`next` must stay as thin as possible, and only the
+# lint needs sub-issue state. Cost is still 1 point per 100-item page — `subIssues` inside `items` does
+# raise nodeCount (200 -> ~10,100 per page), but it buys every child's state in the SAME pagination,
+# where the alternative is one follow-up query per epic. `first:100` on the children can truncate, so
+# `totalCount` rides along and EPIC-CHILDREN-TRUNCATED fires rather than silently under-counting.
+lint_items() {
+  ensure_board >/dev/null
+  local num; num="$(board_get '.number')"
+  local q='query($owner:String!, $number:Int!, $cursor:String){
+    organization(login:$owner){ projectV2(number:$number){
+      items(first:100, after:$cursor){
+        pageInfo{ hasNextPage endCursor }
+        nodes{
+          status: fieldValueByName(name:"Status"){ ... on ProjectV2ItemFieldSingleSelectValue{ name } }
+          content{
+            __typename
+            ... on Issue{ number title state url repository{ nameWithOwner }
+              subIssues(first:100){ totalCount nodes{ number state repository{ nameWithOwner } } } }
+          }
+        }
+      }
+    } }
+    rateLimit{ cost remaining }
+  }'
+  local cursor="" hasNext="true" out tmp
+  tmp="$(mktemp "$CACHE/.lint.XXXXXX")"; : > "$tmp"
+  while [ "$hasNext" = "true" ]; do
+    if [ -n "$cursor" ]; then
+      out="$(gql "$q" -f owner="$OWNER" -F number="$num" -f cursor="$cursor")"
+    else
+      out="$(gql "$q" -f owner="$OWNER" -F number="$num")"
+    fi
+    jq -c '.data.organization.projectV2.items.nodes[]?
+      | select(.content.__typename == "Issue")
+      | { repo:.content.repository.nameWithOwner, number:.content.number,
+          title:(.content.title // ""), url:(.content.url // null),
+          state:(.content.state // null), status:(.status.name // null),
+          childTotal:(.content.subIssues.totalCount // 0),
+          children:[ .content.subIssues.nodes[]?
+                     | { ref:"\(.repository.nameWithOwner)#\(.number)", state:.state } ] }' <<<"$out" >> "$tmp"
+    hasNext="$(jq -r '.data.organization.projectV2.items.pageInfo.hasNextPage' <<<"$out")"
+    cursor="$(jq -r '.data.organization.projectV2.items.pageInfo.endCursor // empty' <<<"$out")"
+    [ "$hasNext" = "true" ] && [ -z "$cursor" ] && break
+  done
+  jq -s '.' "$tmp"; rm -f "$tmp"
+}
+
+# ---- lint: assert the board's epic invariants ----------------------------------------------------
+# An "epic" is a card whose TITLE carries `[epic]` — Projects v2 issue types are unset across this
+# board, so the title is the only marker the convention actually uses (docs/coordination README, the
+# cross-repo-coordination skill: "Epics are the Phase parents; use sub-issues so progress rolls up").
+#
+#   EPIC-NO-CHILDREN        an `[epic]` with zero sub-issues. Nothing rolls up, and `next` will hand
+#                           the epic itself out as work. This is the orphaned epic.
+#   EPIC-DONE-OPEN-CHILD    an epic the board calls Done while a child issue is still OPEN. The board
+#                           claims finished work that is not finished.
+#   EPIC-CHILDREN-TRUNCATED an epic with more than 100 children — the scan cannot see them all, so
+#                           EPIC-DONE-OPEN-CHILD cannot be trusted for it. Fail loudly, never guess.
+#
+# A NOTE (not a failure) is printed for `Status: Done` on an issue that is still open: it is how the
+# board legitimately looks between "the PR merged" and "someone closed the epic", so it fails only
+# under --strict. `epic_rollup` no longer manufactures it (it requires children CLOSED, not merely
+# board-Done), but a human flipping Status by hand still can.
+lint() {
+  local repo="" json="" strict=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --repo)   repo="${2:?--repo needs a value}"; shift 2 ;;
+      --json)   json=1; shift ;;
+      --strict) strict=1; shift ;;
+      -*)       die "lint: unknown flag '$1'." ;;
+      *)        die "lint: unexpected argument '$1'." ;;
+    esac
+  done
+  [ -n "$repo" ] && repo="$(resolve_repo "$repo")"
+
+  local items findings
+  items="$(lint_items)"
+  findings="$(jq --arg repo "$repo" '
+    def repo_match($f): ($f|ascii_downcase) as $q
+      | (.repo // "" | ascii_downcase) as $r
+      | ($q=="") or ($r==$q) or (($r|split("/")|last // "")==$q);
+    def short: sub("^[^/]+/";"");
+    def is_epic: (.title // "") | test("\\[epic\\]"; "i");
+
+    map(select($repo=="" or repo_match($repo)))
+    | map(. + {id:"\(.repo)#\(.number)"})
+    | [
+        ( .[] | select(is_epic and .childTotal == 0)
+          | { code:"EPIC-NO-CHILDREN", severity:"error", id:.id, status:.status, url:.url,
+              detail:"[epic] with zero sub-issues — nothing rolls up" } ),
+        ( .[] | select(is_epic and .childTotal > (.children|length))
+          | { code:"EPIC-CHILDREN-TRUNCATED", severity:"error", id:.id, status:.status, url:.url,
+              detail:"\(.childTotal) sub-issues, only \(.children|length) visible — cannot verify rollup" } ),
+        ( .[] | select(is_epic and .status == "Done" and (.children | any(.state == "OPEN")))
+          | { code:"EPIC-DONE-OPEN-CHILD", severity:"error", id:.id, status:.status, url:.url,
+              detail:"board says Done, but open child: \([.children[]|select(.state=="OPEN")|.ref|short]|join(", "))" } ),
+        ( .[] | select(.status == "Done" and .state == "OPEN")
+          | { code:"DONE-STATUS-OPEN-ISSUE", severity:"note", id:.id, status:.status, url:.url,
+              detail:"board Status is Done but the issue is still open" } )
+      ]' <<<"$items")"
+
+  if [ -n "$json" ]; then jq '.' <<<"$findings"; else
+    jq -r '.[] | "FSGG-LINT \(.severity|ascii_upcase)  \(.code)  \(.id|sub("^[^/]+/";""))  — \(.detail)"' <<<"$findings"
+  fi
+
+  local errors notes
+  errors="$(jq '[.[] | select(.severity=="error")] | length' <<<"$findings")"
+  notes="$(jq  '[.[] | select(.severity=="note")]  | length' <<<"$findings")"
+  [ -n "$json" ] || printf 'fsgg-coord: %s error(s), %s note(s)%s\n' \
+    "$errors" "$notes" "${repo:+ for repo '$repo'}" >&2
+  { [ "$errors" -gt 0 ] || { [ -n "$strict" ] && [ "$notes" -gt 0 ]; }; } && return 1
+  return 0
 }
 
 # ---- budget: read the GraphQL + REST meters. `gh api rate_limit` does not consume the core budget.
@@ -470,7 +1068,7 @@ banner() {   # $1=done|fail  $2=line1  $3=line2  — two full-width rows
 }
 
 # ---- epic_rollup: after a child flips to Done, walk parents UPWARD and flip each epic whose children
-# are now ALL board-Done, stamping each one that rolls up. One thrifty query per level (subIssues +
+# are now ALL board-Done AND CLOSED, stamping each one that rolls up. One thrifty query per level (subIssues +
 # a Status resolver each); runs only from `done --flip`. Bounded to 10 levels as a cycle backstop.
 # An already-Done epic is walked THROUGH silently (no re-stamp); a not-yet-complete epic prints a
 # one-line progress note and stops the climb.
@@ -483,7 +1081,7 @@ epic_rollup() {
         number url repository{ nameWithOwner }
         projectItems(first:20){ nodes{ project{ number }
           status: fieldValueByName(name:"Status"){ ... on ProjectV2ItemFieldSingleSelectValue{ name } } } }
-        subIssues(first:100){ nodes{ number
+        subIssues(first:100){ totalCount nodes{ number state
           projectItems(first:20){ nodes{ project{ number }
             status: fieldValueByName(name:"Status"){ ... on ProjectV2ItemFieldSingleSelectValue{ name } } } } } }
       }
@@ -509,21 +1107,31 @@ epic_rollup() {
     fi
     p_status="$(jq -r --argjson pn "$boardnum" \
       '[.data.repository.issue.parent.projectItems.nodes[]? | select(.project.number==$pn) | .status.name] | first // ""' <<<"$out")"
+    # A child counts as finished only when BOTH facts hold: the board says Done AND the issue is
+    # actually CLOSED. Board-Done alone is not enough — `done --flip` sets Status=Done as soon as the
+    # PR merges, and a merged PR does not necessarily close its issue. Trusting Status alone is what
+    # flipped an epic to Done over a still-open child (FS-GG/.github#235).
     total="$(jq -r '[.data.repository.issue.parent.subIssues.nodes[]?] | length' <<<"$out")"
+    local seen; seen="$(jq -r '.data.repository.issue.parent.subIssues.totalCount // 0' <<<"$out")"
     done="$(jq -r --argjson pn "$boardnum" \
       '[.data.repository.issue.parent.subIssues.nodes[]?
+        | select(.state == "CLOSED")
         | ([.projectItems.nodes[]? | select(.project.number==$pn) | .status.name] | first // "")
         | select(. == "Done")] | length' <<<"$out")"
     [ "$total" = "0" ] && break
+    if [ "$seen" != "$total" ]; then
+      printf '  epic %s: %s sub-issues, only %s visible — not rolling up (cannot verify)\n' \
+        "$p_lbl" "$seen" "$total"; break
+    fi
 
     if [ "$done" != "$total" ]; then
-      printf '  epic %s: %s/%s children Done — holding (not rolling up)\n' "$p_lbl" "$done" "$total"; break
+      printf '  epic %s: %s/%s children Done+closed — holding (not rolling up)\n' "$p_lbl" "$done" "$total"; break
     fi
     if [ "$p_status" = "Done" ]; then
       dbg "epic_rollup: $p_lbl already Done — walking up"
     else
       set_field "$p_or#$p_num" Status Done >/dev/null
-      banner done "✓✓ FSGG-DONE   $p_lbl (epic)" "all $total children Done  ·  board: Done"
+      banner done "✓✓ FSGG-DONE   $p_lbl (epic)" "all $total children Done + closed  ·  board: Done"
     fi
     cur="$p_or#$p_num"
   done
@@ -616,16 +1224,26 @@ done_cmd() {
   return 0
 }
 
-# ---- claim: the ADR-0021 intra-repo work lock. Assign @me (the advisory lock) + Status=In progress.
-# Assignment is check-then-set, so a genuine simultaneous claim has a TOCTOU window; we close it
-# honestly: after adding @me we RE-READ the assignees, and if anyone else also holds it we back off
-# (remove our own assignment) and fail. So two racers that both saw "unassigned" BOTH abort and retry
-# — never both proceed. --force steals an item already assigned to someone else. The Status flip is
-# best-effort: an item not yet on the board still claims (assignment is the lock), it just prints a note.
-me_login() { gh api user --jq '.login' 2>/dev/null || die "cannot resolve your GitHub login (gh auth?)."; }
-issue_assignees() {  # $1=owner $2=repo $3=num -> newline-separated logins (REST, cheap)
-  gh api "repos/$1/$2/issues/$3" --jq '.assignees[].login' 2>/dev/null
-}
+# ---- claim: the intra-repo work lock, keyed on the WORKER (ADR-0027 supersedes ADR-0021 §1) -------
+# ADR-0021 locked on the issue ASSIGNEE. Under same-account fan-out that lock is a no-op: `@me` is one
+# principal for every agent, so a sibling's claim reads back as our own and both workers proceed. The
+# assignee remains — it is what a HUMAN sees on the board — but it is no longer the lock.
+#
+# The lock is a `fsgg:claim` marker comment, resolved by COMMENT-ORDER COMPARE-AND-SWAP:
+#
+#   1. read the live markers; refuse (or --force steal) if another worker holds one
+#   2. post our own marker
+#   3. RE-READ, and take the LOWEST live marker id as the winner
+#   4. if that isn't us, delete our marker and back off
+#
+# Step 3 is why this is a real lock and the assignee never was. GitHub issues comment ids from one
+# server-side sequence, so the "lowest id" is a TOTAL ORDER every racer observes identically: a
+# simultaneous claim has exactly ONE winner, and the losers know they lost. ADR-0021's assignee
+# protocol could only make both racers back off (livelock) or, same-account, let both through.
+#
+# The lease (`updated_at` on the marker, vs FSGG_CLAIM_LEASE_MIN) makes a dead worker's claim
+# collectable — see `reap`. The Status flip stays best-effort: an item not yet on the board still
+# claims, because the marker, not the board, is the lock.
 claim_cmd() {
   local ref="" force=""
   while [ $# -gt 0 ]; do
@@ -637,63 +1255,198 @@ claim_cmd() {
   done
   [ -n "$ref" ] || die "claim: <issue> required (URL, owner/repo#n, or repo#n)."
   parse_ref "$ref"
-  local me; me="$(me_login)"
+  worker >/dev/null; local w="$WORKER_ID"
 
-  local held; held="$(issue_assignees "$R_OWNER" "$R_REPO" "$R_NUM")"
-  local others; others="$(printf '%s\n' "$held" | grep -v -x "$me" | grep -v -x '' || true)"
-  if [ -n "$others" ] && [ -z "$force" ]; then
-    die "$R_REPO#$R_NUM is already claimed by: $(printf '%s' "$others" | paste -sd, -). Use --force to steal."
+  local claims live stale mine others
+  claims="$(claims_of "$R_OWNER" "$R_REPO" "$R_NUM")"
+
+  # GARBAGE-COLLECT dead markers before deciding anything. A stale marker that is merely *ignored*
+  # survives, and `heartbeat` would later renew it back to life underneath whoever claimed next —
+  # two live markers, two workers, one item. Collect it here (telling its worker), so that after this
+  # point "live" and "exists" mean the same thing. This also covers our OWN stale marker, so a slow
+  # worker re-claiming renews a single marker instead of minting a second.
+  stale="$(jq -c 'map(select(.stale))' <<<"$claims")"
+  if [ "$(jq 'length' <<<"$stale")" -gt 0 ]; then
+    local sid sw sage fresh
+    while read -r sid sw sage; do
+      [ -n "$sid" ] || continue
+      # RE-VERIFY against a fresh read, exactly as `reap` does. `claims` is a snapshot, and the holder
+      # may have heartbeated since. Deleting a marker because it USED TO BE stale evicts a worker that
+      # is alive and believes its lease was renewed — the double-hold this GC exists to prevent.
+      fresh="$(claims_of "$R_OWNER" "$R_REPO" "$R_NUM" \
+               | jq -c --argjson id "$sid" 'map(select(.id == $id)) | first // empty')"
+      if [ -z "$fresh" ]; then
+        echo "fsgg-coord: worker '$sw' expired marker on $R_REPO#$R_NUM was already collected." >&2
+        continue
+      fi
+      if [ "$(jq -r '.stale' <<<"$fresh")" != "true" ]; then
+        die "claim: worker '$sw' renewed its lease on $R_REPO#$R_NUM while we were collecting it ($(jq -r '.ageSec / 60 | floor' <<<"$fresh")m ago) — it is alive. Retry, or use --force to steal."
+      fi
+      if delete_comment "$R_OWNER" "$R_REPO" "$sid"; then
+        [ "$sw" = "$w" ] || notify_reaped "$R_OWNER" "$R_REPO" "$R_NUM" "$sw" "$sage" "$w"
+        echo "fsgg-coord: collected worker '$sw' expired claim on $R_REPO#$R_NUM (idle ${sage}m)." >&2
+      else
+        die "claim: cannot remove worker '$sw' expired marker (comment $sid) on $R_REPO#$R_NUM — refusing to claim over a marker that is still there."
+      fi
+    done < <(jq -r '.[] | "\(.id) \(.worker) \(.ageSec / 60 | floor)"' <<<"$stale")
+    claims="$(jq -c 'map(select(.stale | not))' <<<"$claims")"
   fi
 
-  gh issue edit "$R_NUM" --repo "$R_OWNER/$R_REPO" --add-assignee "$me" >/dev/null \
-    || die "claim: failed to assign @$me on $R_REPO#$R_NUM."
+  live="$(jq -c 'map(select(.stale | not))' <<<"$claims")"
+  mine="$(jq -c --arg w "$w" 'map(select(.worker == $w)) | first // empty' <<<"$live")"
+  others="$(jq -c --arg w "$w" 'map(select(.worker != $w))' <<<"$live")"
 
-  # Re-read: on a true race another worker may have landed between our check and our add.
-  held="$(issue_assignees "$R_OWNER" "$R_REPO" "$R_NUM")"
-  others="$(printf '%s\n' "$held" | grep -v -x "$me" | grep -v -x '' || true)"
-  if [ -n "$others" ] && [ -z "$force" ]; then
-    gh issue edit "$R_NUM" --repo "$R_OWNER/$R_REPO" --remove-assignee "$me" >/dev/null 2>&1 || true
-    die "lost a simultaneous claim on $R_REPO#$R_NUM (also held by $(printf '%s' "$others" | paste -sd, -)) — backed off. Retry."
+  # --force evicts the holders first, so the CAS below sees a clear field.
+  if [ -n "$force" ] && [ "$(jq 'length' <<<"$others")" -gt 0 ]; then
+    local oid ow
+    while read -r oid ow; do
+      [ -n "$oid" ] || continue
+      delete_comment "$R_OWNER" "$R_REPO" "$oid" \
+        || die "claim --force: could not evict worker '$ow' (comment $oid) — it still holds $R_REPO#$R_NUM."
+      echo "fsgg-coord: --force — evicted worker '$ow' from $R_REPO#$R_NUM." >&2
+    done < <(jq -r '.[] | "\(.id) \(.worker)"' <<<"$others")
+    others='[]'
   fi
 
-  # Advisory lock is held. Flip Status best-effort (item may not be on the board yet).
-  local boardnote=""
-  if set_field "$ref" Status "In progress" >/dev/null 2>&1; then
+  # Re-claiming what we already hold is a heartbeat, not an error: `take` retries must be idempotent.
+  # CAREFUL: a marker bearing our id is not proof it is OURS. Identity rules 4/5 can hand one id to
+  # several workers, and this path bypasses the CAS entirely — so it is exactly where a same-id
+  # sibling silently adopts another worker's lock. Warn here too; the success path's warning at the
+  # bottom of this function is never reached from this early return.
+  if [ -n "$mine" ]; then
+    heartbeat_comment "$R_OWNER" "$R_REPO" "$R_NUM" "$(jq -r '.id' <<<"$mine")" "$w" "$ref"
+    stamp_worktree "$w" "$R_REPO#$R_NUM"
+    printf 'held %s by worker %s (lease renewed)\n' "$R_REPO#$R_NUM" "$w"
+    if [ -n "$WORKER_SHARED_WHY" ]; then
+      echo "fsgg-coord: NOTE — this renewed an EXISTING marker for worker '$w' without running the" >&2
+      echo "  claim CAS. If another worker shares this id, you have just adopted ITS lock." >&2
+    fi
+    warn_shared_identity
+    return 0
+  fi
+  if [ "$(jq 'length' <<<"$others")" -gt 0 ]; then
+    die "$R_REPO#$R_NUM is held by worker '$(jq -r '.[0].worker' <<<"$others")' ($(jq -r '.[0].ageSec / 60 | floor' <<<"$others")m ago). Use --force to steal, or 'reap' if its lease has expired."
+  fi
+
+  local branch myid
+  branch="$(branch_for "$R_OWNER" "$R_REPO" "$R_NUM")"
+  myid="$(post_comment "$R_OWNER" "$R_REPO" "$R_NUM" \
+            "$(claim_body "$w" "$branch" "$(now_iso)" "$ref")")"
+  [ -n "$myid" ] || die "claim: could not post the claim marker on $R_REPO#$R_NUM."
+
+  # The CAS. Lowest LIVE marker id wins; a loser removes its own marker so the item stays clean.
+  # Our marker is already posted, so EVERY exit from here must either keep it (we won) or remove it
+  # (we lost / we cannot tell) — never abort in between and leave it orphaned.
+  local recheck winner wid ww
+  if ! recheck="$(issue_comments "$R_OWNER" "$R_REPO" "$R_NUM")"; then
+    delete_comment "$R_OWNER" "$R_REPO" "$myid" \
+      || die "claim: could not re-read $R_REPO#$R_NUM after posting, AND could not remove our own marker (comment $myid). Delete it by hand — it is holding the item."
+    die "claim: could not re-read the markers on $R_REPO#$R_NUM after posting — removed our marker, nothing was claimed. Retry."
+  fi
+  winner="$(parse_claims <<<"$recheck" | jq -c 'map(select(.stale | not)) | first // empty')"
+  wid="$(jq -r '.id // empty' <<<"$winner")"
+  ww="$(jq -r '.worker // empty' <<<"$winner")"
+  # NO live marker at all means our OWN marker is missing from the re-read: a peer's --force/reap/GC
+  # deleted it under us, or the read has not caught up with our POST. We cannot show we hold the lock,
+  # so we do not hold it. "We cannot tell" is a LOSS — treating it as a win is how two workers both
+  # proceed holding nothing.
+  if [ -z "$wid" ]; then
+    delete_comment "$R_OWNER" "$R_REPO" "$myid" || true
+    die "claim: our marker vanished from $R_REPO#$R_NUM between posting and re-reading it (a concurrent --force/reap, or a read that lagged the write) — nothing was claimed. Retry ('fsgg-coord take')."
+  fi
+  if [ "$wid" != "$myid" ]; then
+    delete_comment "$R_OWNER" "$R_REPO" "$myid" \
+      || die "lost the claim race on $R_REPO#$R_NUM to worker '$ww', but could NOT remove our own marker (comment $myid). Delete it by hand — it is blocking the item."
+    die "lost the claim race on $R_REPO#$R_NUM to worker '$ww' — backed off cleanly. Try another item ('fsgg-coord take')."
+  fi
+
+  # The lock is held. Everything below is bookkeeping a human or a later reader benefits from.
+  gh issue edit "$R_NUM" --repo "$R_OWNER/$R_REPO" --add-assignee "@me" >/dev/null 2>&1 || true
+  stamp_worktree "$w" "$R_REPO#$R_NUM"
+  # A SUBSHELL, not just a redirect: set_field's `die` is an `exit`, and the board flip is strictly
+  # best-effort — the lock is already held, so a board that rejects the write must not unwind a claim.
+  local boardnote
+  if ( set_field "$ref" Status "In progress" ) >/dev/null 2>&1; then
     boardnote="board: In progress"
   else
-    boardnote="note: not on board '$TITLE' (assignment is the lock; add it to sequence it)"
+    boardnote="note: not on board '$TITLE' (the marker is the lock; add it to sequence it)"
   fi
-
-  # Suggest the isolation branch (ADR-0021: one worktree per item). Slug the title.
-  local title slug branch
-  title="$(gh api "repos/$R_OWNER/$R_REPO/issues/$R_NUM" --jq '.title' 2>/dev/null || echo "")"
-  slug="$(printf '%s' "$title" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9' '-' | sed 's/-\{2,\}/-/g; s/^-//; s/-$//' | cut -c1-40 | sed 's/-$//')"
-  branch="item/$R_NUM${slug:+-$slug}"
-  printf 'claimed %s by @%s  ·  %s\n' "$R_REPO#$R_NUM" "$me" "$boardnote"
+  printf 'claimed %s by worker %s  ·  %s\n' "$R_REPO#$R_NUM" "$w" "$boardnote"
   printf '  isolate:  git worktree add ../%s-%s -b %s\n' "$R_REPO" "$R_NUM" "$branch"
+  printf '  attribute: git commit --trailer "FSGG-Worker: %s"\n' "$w"
+  warn_shared_identity
 }
 
-# ---- release: drop the claim. Unassign @me and set Status (default Ready -> back into the pool). ----
+# ---- heartbeat: renew this worker's lease. Any long-running claim must beat, or `reap` collects it.
+# Renewing is only legal for the CURRENT holder — the lowest LIVE marker. Renewing anything else is
+# how a worker whose lease expired resurrects its marker underneath the worker that legitimately
+# claimed next, leaving two live markers and two workers on one item. So:
+#   * my marker is stale  -> REFUSE. The lease is the promise; it lapsed. Re-claim (which re-runs the
+#     CAS) or stop. Renewing it here would be a lock taken without ever winning one.
+#   * someone else holds  -> REFUSE, loudly, and tell the worker to STOP. It is no longer working an
+#     item it owns, and it needs to hear that from the tool, not from a merge conflict.
+heartbeat_cmd() {
+  local ref="${1:-}"
+  [ -n "$ref" ] || die "heartbeat: <issue> required."
+  parse_ref "$ref"
+  worker >/dev/null; local w="$WORKER_ID"
+  local claims holder mine
+  claims="$(claims_of "$R_OWNER" "$R_REPO" "$R_NUM")"
+  holder="$(jq -c 'map(select(.stale | not)) | first // empty' <<<"$claims")"
+  mine="$(jq -c --arg w "$w" 'map(select(.worker == $w)) | first // empty' <<<"$claims")"
+
+  [ -n "$mine" ] || die "heartbeat: worker '$w' holds no claim on $R_REPO#$R_NUM."
+  if [ -n "$holder" ] && [ "$(jq -r '.worker' <<<"$holder")" != "$w" ]; then
+    # Someone else holds it. Naming them is the actionable fact — say that before anything about us.
+    local why=""
+    [ "$(jq -r '.stale' <<<"$mine")" = "true" ] && why=" (our lease had expired)"
+    die "heartbeat: worker '$w' no longer holds $R_REPO#$R_NUM — worker '$(jq -r '.worker' <<<"$holder")' does$why. STOP working it."
+  fi
+  if [ -z "$holder" ] || [ "$(jq -r '.stale' <<<"$mine")" = "true" ]; then
+    die "heartbeat: worker '$w' lease on $R_REPO#$R_NUM EXPIRED ($(jq -r '.ageSec / 60 | floor' <<<"$mine")m > ${CLAIM_LEASE_MIN}m). STOP working it. Re-take it with 'fsgg-coord claim $ref'."
+  fi
+  heartbeat_comment "$R_OWNER" "$R_REPO" "$R_NUM" "$(jq -r '.id' <<<"$mine")" "$w" "$ref"
+  printf 'renewed %s for worker %s (lease %sm)\n' "$R_REPO#$R_NUM" "$w" "$CLAIM_LEASE_MIN"
+}
+
+# ---- release: drop the lock. Delete our marker, unassign, and return the item to the pool. --------
+# Releasing a claim held by ANOTHER worker needs --force: an accidental release is how two workers end
+# up on one item, which is the failure this protocol exists to prevent.
 release_cmd() {
-  local ref="" status="Ready"
+  local ref="" status="Ready" force=""
   while [ $# -gt 0 ]; do
     case "$1" in
       --status) status="${2:?--status needs a value}"; shift 2 ;;
+      --force)  force=1; shift ;;
       -*)       die "release: unknown flag '$1'." ;;
       *)        [ -z "$ref" ] && ref="$1" || die "release: unexpected argument '$1'."; shift ;;
     esac
   done
   [ -n "$ref" ] || die "release: <issue> required (URL, owner/repo#n, or repo#n)."
   parse_ref "$ref"
-  local me; me="$(me_login)"
-  gh issue edit "$R_NUM" --repo "$R_OWNER/$R_REPO" --remove-assignee "$me" >/dev/null 2>&1 || true
-  local boardnote=""
-  if set_field "$ref" Status "$status" >/dev/null 2>&1; then
-    boardnote="board: $status"
-  else
-    boardnote="note: not on board '$TITLE'"
+  worker >/dev/null; local w="$WORKER_ID"
+  local claims mine
+  claims="$(claims_of "$R_OWNER" "$R_REPO" "$R_NUM")"
+  mine="$(jq -c --arg w "$w" 'map(select(.worker == $w)) | first // empty' <<<"$claims")"
+
+  if [ -z "$mine" ] && [ -z "$force" ]; then
+    local holder; holder="$(jq -r '.[0].worker // empty' <<<"$claims")"
+    [ -n "$holder" ] \
+      && die "release: $R_REPO#$R_NUM is held by worker '$holder', not '$w' — pass --force to release it anyway."
   fi
-  printf 'released %s (unassigned @%s)  ·  %s\n' "$R_REPO#$R_NUM" "$me" "$boardnote"
+
+  local id
+  while read -r id; do
+    [ -n "$id" ] || continue
+    delete_comment "$R_OWNER" "$R_REPO" "$id" \
+      || die "release: could not remove marker (comment $id) on $R_REPO#$R_NUM — it still holds the item."
+  done < <(jq -r --arg w "$w" --arg f "${force:-}" '.[] | select($f != "" or .worker == $w) | .id' <<<"$claims")
+
+  gh issue edit "$R_NUM" --repo "$R_OWNER/$R_REPO" --remove-assignee "@me" >/dev/null 2>&1 || true
+  local boardnote
+  if ( set_field "$ref" Status "$status" ) >/dev/null 2>&1; then boardnote="board: $status"
+  else boardnote="note: not on board '$TITLE'"; fi
+  printf 'released %s (worker %s)  ·  %s\n' "$R_REPO#$R_NUM" "$w" "$boardnote"
 }
 
 # ---- overlap: can two items run in parallel? Compare their declared `Paths:` touch-sets (ADR-0021).
@@ -704,59 +1457,662 @@ release_cmd() {
 # file-existence-INDEPENDENT (a new feature adding files still has a declared touch-set) and
 # CONSERVATIVE — it errs toward reporting overlap. Disjoint -> exit 0; overlap -> exit 1 (+ the
 # conflicting globs); no declaration on either side -> exit 2.
-paths_of() {  # $1=owner $2=repo $3=num -> one normalized touch-set token per line
-  gh api "repos/$1/$2/issues/$3" --jq '.body // ""' 2>/dev/null \
-    | grep -iE '^[[:space:]]*Paths:' \
+# NO declaration is a normal, expected answer ("this item cannot be scheduled yet"), not an error:
+# `grep` exits 1 on no match, and under `set -o pipefail` that would abort every caller at exactly the
+# item they need to report on. Return empty, exit 0, and let the caller decide what an empty set means.
+#
+# But an EMPTY answer must mean "this item declared no touch-set", never "the read failed". A failed
+# read that returns empty reads as `disjoint` to `conflicts_between`, so the scheduler would hand out
+# work that overlaps a held item — the same fail-open `claims_of` refuses for the lock itself. So the
+# body is read on its own line and a read failure DIES; only `grep`'s no-match is absorbed below.
+#
+# The detect and the strip must also agree on case, or a mis-cased `PATHS:` line survives grep and
+# keeps its prefix as a bogus `PATHS:` touch-set token. `widen` rewrites on `[Pp]aths:` too, so that
+# is the one spelling the whole tool recognizes.
+paths_of() {  # $1=owner $2=repo $3=num -> one normalized touch-set token per line (possibly none)
+  local body
+  body="$(gh api "repos/$1/$2/issues/$3" --jq '.body // ""' 2>/dev/null)" \
+    || die "cannot read the touch-set on $2#$3 (rate limit? network?) — refusing to schedule against an unknown touch-set."
+  printf '%s\n' "$body" \
+    | grep -E '^[[:space:]]*[Pp]aths:' \
     | sed -E 's/^[[:space:]]*[Pp]aths:[[:space:]]*//' \
     | tr ',' ' ' | tr '\t' ' ' | tr -s ' ' '\n' | sed '/^$/d' \
-    | sed -E 's#^\./##; s#/\*\*$##; s#/\*$##; s#/+$##'   # normalize: strip ./ prefix, /** /* and trailing /
+    | sed -E 's#^\./##; s#/\*\*$##; s#/\*$##; s#/+$##' \
+    || true                                  # normalize: strip ./ prefix, /** /* and trailing /
 }
+# The comparison core, shared by `overlap`, `batch`, `take`, and `widen`. Two newline-separated token
+# lists in; the conflicting pairs out (empty = disjoint). Subtree containment in either direction.
+conflicts_between() {
+  local a="$1" b="$2"
+  [ -n "$a" ] && [ -n "$b" ] || return 0
+  local -a pa pb; mapfile -t pa <<<"$a"; mapfile -t pb <<<"$b"
+  local x y
+  for x in "${pa[@]}"; do
+    [ -n "$x" ] || continue
+    for y in "${pb[@]}"; do
+      [ -n "$y" ] || continue
+      if [ "$x" = "$y" ] || [ "${y#"$x"/}" != "$y" ] || [ "${x#"$y"/}" != "$x" ]; then
+        printf '%s  ⇄  %s\n' "$x" "$y"
+      fi
+    done
+  done | sort -u
+}
+
+paths_for_ref() { parse_ref "$1"; paths_of "$R_OWNER" "$R_REPO" "$R_NUM"; }
+
+# The worker holding a live claim on an item, or empty. The MARKER is the lock; the board's `Status`
+# is a projection of it that `claim` writes best-effort and can therefore lag (or fail). Any scheduler
+# decision that asks "is this taken?" must read the marker, never the column.
+live_claim_worker() {  # $1=owner $2=repo $3=num
+  claims_of "$1" "$2" "$3" | jq -r 'map(select(.stale | not)) | .[0].worker // empty'
+}
+
+# ---- active_claims: the one view of "what is actually running right now" -------------------------
+# Everything that needs to reason about in-flight work — who, reap, batch, take, overlap --active,
+# widen, inbox — reads it from here. Board `Status: In progress` names the candidates (one thrifty
+# GraphQL scan); each candidate then costs 2 cheap REST reads (its comments for the claim marker, its
+# body for the touch-set). The in-progress set is bounded by the number of workers, so this is small.
+#
+# `worker: null` is the state the FS-GG/.github incident was in: the board says In progress, but NO
+# claim marker exists — someone is working the item outside the protocol, and nothing records who.
+# We surface that as `unclaimed` rather than pretending the item is free.
+active_claims() {
+  local repo="${1:-}"
+  local items n=0 i=0 tmp
+  items="$(board_items | board_filter "$repo" "In progress" "" "0")"
+  n="$(jq 'length' <<<"$items")"
+  tmp="$(mktemp "$CACHE/.claims.XXXXXX")"; : >"$tmp"
+  while [ "$i" -lt "$n" ]; do
+    local it r num o rp claims paths
+    it="$(jq -c ".[$i]" <<<"$items")"; i=$((i + 1))
+    r="$(jq -r '.repo // ""' <<<"$it")"; num="$(jq -r '.number // ""' <<<"$it")"
+    { [ -n "$r" ] && [ -n "$num" ]; } || continue
+    o="${r%%/*}"; rp="${r#*/}"
+    claims="$(claims_of "$o" "$rp" "$num")"
+    paths="$(paths_of "$o" "$rp" "$num" | jq -R -s -c 'split("\n") | map(select(length > 0))')"
+    jq -c -n --argjson it "$it" --argjson claims "$claims" --argjson paths "$paths" '
+      ($claims | map(select(.stale | not)) | first) as $live
+      | ($claims | first) as $any
+      | { repo: $it.repo, number: $it.number, title: $it.title, url: $it.url, paths: $paths,
+          worker:  ($live.worker // $any.worker // null),
+          claimId: ($live.id     // $any.id     // null),
+          ageSec:  ($live.ageSec // $any.ageSec // null),
+          state:   (if $live then "held" elif $any then "stale" else "unclaimed" end) }' >>"$tmp"
+  done
+  jq -s '.' "$tmp"; rm -f "$tmp"
+}
+
+# Local worktrees, joined into `who --local` so "what is that worktree doing?" needs no forensics.
+# `fsgg.worker` is stamped by `claim`; the branch name carries the item number as a fallback.
+local_worktrees() {
+  # `|| true`: outside a git checkout this must yield an empty join, not kill the caller via pipefail.
+  { git worktree list --porcelain 2>/dev/null || true; } | awk '
+    /^worktree /{ path = substr($0, 10); branch = ""; next }
+    /^branch /   { branch = substr($0, 8); sub("refs/heads/", "", branch)
+                   item = ""
+                   if (branch ~ /^item\//) { item = branch; sub("^item/", "", item); sub("-.*", "", item) }
+                   printf "{\"path\":\"%s\",\"branch\":\"%s\",\"item\":\"%s\"}\n", path, branch, item }
+  ' | while read -r line; do
+        local p; p="$(jq -r '.path' <<<"$line")"
+        local w; w="$(git -C "$p" config --get fsgg.worker 2>/dev/null || echo "")"
+        jq -c --arg w "$w" '. + {worker: $w}' <<<"$line"
+      done | jq -s '.'
+}
+
 overlap_cmd() {
-  local a="" b=""
+  local a="" b="" against_active=""
   while [ $# -gt 0 ]; do
     case "$1" in
+      --active) against_active=1; shift ;;
       -*) die "overlap: unknown flag '$1'." ;;
       *)  if   [ -z "$a" ]; then a="$1"
           elif [ -z "$b" ]; then b="$1"
           else die "overlap: unexpected argument '$1'."; fi; shift ;;
     esac
   done
-  { [ -n "$a" ] && [ -n "$b" ]; } || die "overlap: two issue refs required (overlap <a> <b>)."
-  parse_ref "$a"; local ao="$R_OWNER" ar="$R_REPO" an="$R_NUM"
-  parse_ref "$b"; local bo="$R_OWNER" br="$R_REPO" bn="$R_NUM"
+  [ -n "$a" ] || die "overlap: an issue ref is required (overlap <a> <b>, or overlap <a> --active)."
 
-  local -a pa pb; mapfile -t pa < <(paths_of "$ao" "$ar" "$an"); mapfile -t pb < <(paths_of "$bo" "$br" "$bn")
-  if [ "${#pa[@]}" -eq 0 ] || [ "${#pb[@]}" -eq 0 ]; then
+  # --- <a> against every in-flight claim -----------------------------------------------------------
+  if [ -n "$against_active" ]; then
+    [ -z "$b" ] || die "overlap: --active takes one issue ref, not two."
+    parse_ref "$a"; local ar="$R_REPO" an="$R_NUM" aid="$R_OWNER/$R_REPO#$R_NUM"
+    local pa; pa="$(paths_for_ref "$a")"
+    [ -n "$pa" ] || { echo "overlap: no 'Paths:' touch-set declared on $ar#$an — add one to schedule it." >&2; return 2; }
+
+    local claims n=0 i=0 found=0
+    claims="$(active_claims)"
+    n="$(jq 'length' <<<"$claims")"
+    while [ "$i" -lt "$n" ]; do
+      local c cid pb hits
+      c="$(jq -c ".[$i]" <<<"$claims")"; i=$((i + 1))
+      cid="$(jq -r '"\(.repo)#\(.number)"' <<<"$c")"
+      [ "$cid" = "$aid" ] && continue
+      pb="$(jq -r '.paths[]?' <<<"$c")"
+      hits="$(conflicts_between "$pa" "$pb")"
+      [ -n "$hits" ] || continue
+      found=1
+      printf 'OVERLAP — %s ⇄ %s (worker %s, %s)\n' "$ar#$an" \
+        "$(jq -r '.repo | sub("^[^/]+/"; "")' <<<"$c")#$(jq -r '.number' <<<"$c")" \
+        "$(jq -r '.worker // "unclaimed"' <<<"$c")" "$(jq -r '.state' <<<"$c")"
+      printf '  %s\n' "$hits"
+    done
+    if [ "$found" -eq 0 ]; then
+      printf 'DISJOINT — %s may run alongside all %s in-flight claim(s).\n' "$ar#$an" "$n"
+      return 0
+    fi
+    echo "  sequence with 'Blocked by', or coordinate: fsgg-coord say <their-issue> --to <worker> '...'" >&2
+    return 1
+  fi
+
+  # --- pairwise -------------------------------------------------------------------------------------
+  [ -n "$b" ] || die "overlap: two issue refs required (overlap <a> <b>), or pass --active."
+  parse_ref "$a"; local ar="$R_REPO" an="$R_NUM"
+  parse_ref "$b"; local br="$R_REPO" bn="$R_NUM"
+  local pa pb; pa="$(paths_for_ref "$a")"; pb="$(paths_for_ref "$b")"
+  if [ -z "$pa" ] || [ -z "$pb" ]; then
     local which=""
-    [ "${#pa[@]}" -eq 0 ] && which="$ar#$an"
-    [ "${#pb[@]}" -eq 0 ] && which="${which:+$which and }$br#$bn"
+    [ -z "$pa" ] && which="$ar#$an"
+    [ -z "$pb" ] && which="${which:+$which and }$br#$bn"
     echo "overlap: no 'Paths:' touch-set declared on $which — add one (e.g. 'Paths: src/Foo/**') to schedule it." >&2
     return 2
   fi
 
-  local -a hits=() ; local x y
-  for x in "${pa[@]}"; do
-    for y in "${pb[@]}"; do
-      if [ "$x" = "$y" ] || [ "${y#"$x"/}" != "$y" ] || [ "${x#"$y"/}" != "$x" ]; then
-        hits+=("$x  ⇄  $y")
-      fi
-    done
-  done
-
-  if [ "${#hits[@]}" -eq 0 ]; then
+  local hits; hits="$(conflicts_between "$pa" "$pb")"
+  if [ -z "$hits" ]; then
     printf 'DISJOINT — %s and %s may run in parallel (own worktree each).\n' "$ar#$an" "$br#$bn"
     return 0
   fi
   printf 'OVERLAP — %s and %s share touch-set; sequence them (board `Blocked by`), do NOT parallelize:\n' "$ar#$an" "$br#$bn"
-  printf '  %s\n' "$(printf '%s\n' "${hits[@]}" | sort -u)"
+  printf '  %s\n' "$hits"
   return 1
 }
 
+# ---- who: the answer to "what is actually going on", without spelunking through worktrees ---------
+who_cmd() {
+  local repo="" json="" want_local=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --repo)  repo="${2:?--repo needs a value}"; shift 2 ;;
+      --local) want_local=1; shift ;;
+      --json)  json=1; shift ;;
+      -*)      die "who: unknown flag '$1'." ;;
+      *)       die "who: unexpected argument '$1'." ;;
+    esac
+  done
+  [ -n "$repo" ] && repo="$(resolve_repo "$repo")"
+  local claims; claims="$(active_claims "$repo")"
+
+  if [ -n "$want_local" ]; then
+    local wts; wts="$(local_worktrees)"
+    claims="$(jq -c --argjson wts "$wts" '
+      map(. as $c | . + { worktree: ( $wts
+            | map(select((.item | tostring) == ($c.number | tostring)) | .path) | first // null ) })' <<<"$claims")"
+  fi
+
+  if [ -n "$json" ]; then jq '.' <<<"$claims"; return 0; fi
+
+  if [ "$(jq 'length' <<<"$claims")" -eq 0 ]; then
+    echo "fsgg-coord: no items are In progress${repo:+ for repo '$repo'} on board '$TITLE'."
+    return 0
+  fi
+  jq -r --arg wt "${want_local:-}" '.[]
+    | ((.repo // "" | sub("^[^/]+/"; "")) + "#" + (.number | tostring)) as $item
+    | (if .ageSec == null then "—" elif .ageSec < 3600 then "\(.ageSec / 60 | floor)m"
+       else "\(.ageSec / 3600 | floor)h" end) as $age
+    | (if .state == "held" then "ok" elif .state == "stale" then "STALE" else "UNCLAIMED" end) as $lease
+    | ((.paths // []) | if length == 0 then "—" else join(" ") end) as $paths
+    | [ (.worker // "—"), $item, $age, $lease ]
+      + (if $wt != "" then [ (.worktree // "—") ] else [] end)
+      + [ $paths, (.title // "") ] | @tsv' <<<"$claims" \
+  | { if [ -n "$want_local" ]; then printf "WORKER\tITEM\tAGE\tLEASE\tWORKTREE\tPATHS\tTITLE\n"
+      else printf "WORKER\tITEM\tAGE\tLEASE\tPATHS\tTITLE\n"; fi; cat; } | column -t -s $'\t'
+
+  local stale unclaimed
+  stale="$(jq '[.[] | select(.state == "stale")] | length' <<<"$claims")"
+  unclaimed="$(jq '[.[] | select(.state == "unclaimed")] | length' <<<"$claims")"
+  [ "$stale" -gt 0 ] && echo "fsgg-coord: $stale claim(s) past their ${CLAIM_LEASE_MIN}m lease — 'fsgg-coord reap --apply' to release." >&2
+  [ "$unclaimed" -gt 0 ] && echo "fsgg-coord: $unclaimed item(s) In progress with NO claim marker — someone is working outside the protocol." >&2
+  return 0
+}
+
+# ---- reap: collect the claims of workers that died. Dry-run unless --apply. -----------------------
+# A crashed agent holds its item forever, because nothing renews and nothing expires on its behalf.
+# Reaping is destructive to someone else's lock, so it defaults to a report and it TELLS the worker
+# (over the channel) that its claim was collected — a worker that is merely slow can then re-claim.
+reap_cmd() {
+  local repo="" apply=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --repo)  repo="${2:?--repo needs a value}"; shift 2 ;;
+      --apply) apply=1; shift ;;
+      -*)      die "reap: unknown flag '$1'." ;;
+      *)       die "reap: unexpected argument '$1'." ;;
+    esac
+  done
+  [ -n "$repo" ] && repo="$(resolve_repo "$repo")"
+  local stale n=0 i=0
+  stale="$(active_claims "$repo" | jq -c '[.[] | select(.state == "stale")]')"
+  n="$(jq 'length' <<<"$stale")"
+  if [ "$n" -eq 0 ]; then
+    echo "fsgg-coord: no expired claims${repo:+ for repo '$repo'} (lease ${CLAIM_LEASE_MIN}m)."
+    return 0
+  fi
+  while [ "$i" -lt "$n" ]; do
+    local c r num o rp cw cid age
+    c="$(jq -c ".[$i]" <<<"$stale")"; i=$((i + 1))
+    r="$(jq -r '.repo' <<<"$c")"; num="$(jq -r '.number' <<<"$c")"
+    cw="$(jq -r '.worker' <<<"$c")"; cid="$(jq -r '.claimId' <<<"$c")"
+    age="$(jq -r '.ageSec / 60 | floor' <<<"$c")"
+    o="${r%%/*}"; rp="${r#*/}"
+    if [ -z "$apply" ]; then
+      printf 'would reap  %s#%s  worker %s  (idle %sm > %sm lease)\n' "$rp" "$num" "$cw" "$age" "$CLAIM_LEASE_MIN"
+      continue
+    fi
+    # RE-VERIFY against a fresh read. `active_claims` was a snapshot; between it and this delete the
+    # worker may have heartbeated. Deleting a live lock because it *used to be* stale is the one way
+    # `reap` can itself cause the double-hold it exists to clean up.
+    local now_state
+    now_state="$(claims_of "$o" "$rp" "$num" | jq -c --argjson id "$cid" 'map(select(.id == $id)) | first // empty')"
+    if [ -z "$now_state" ]; then
+      printf 'skipped %s#%s  worker %s  — marker already gone\n' "$rp" "$num" "$cw"; continue
+    fi
+    if [ "$(jq -r '.stale' <<<"$now_state")" != "true" ]; then
+      printf 'skipped %s#%s  worker %s  — renewed since the scan (%sm), still alive\n' \
+        "$rp" "$num" "$cw" "$(jq -r '.ageSec / 60 | floor' <<<"$now_state")"; continue
+    fi
+    # DELETE FIRST, then tell the worker. Notifying before the delete lands means a failed delete
+    # leaves the worker told-to-stop while its marker still holds the item for a full lease — an
+    # item that is released to its owner and held against everyone else, which nothing clears.
+    if ! delete_comment "$o" "$rp" "$cid"; then
+      printf 'FAILED  %s#%s  worker %s  — could not remove the marker; board left untouched, worker not notified\n' "$rp" "$num" "$cw" >&2
+      continue
+    fi
+    notify_reaped "$o" "$rp" "$num" "$cw" "$age" "$(worker)"
+    ( set_field "$r#$num" Status Ready ) >/dev/null 2>&1 || true
+    printf 'reaped  %s#%s  worker %s  (idle %sm)  ·  board: Ready\n' "$rp" "$num" "$cw" "$age"
+  done
+  [ -z "$apply" ] && echo "fsgg-coord: dry run — pass --apply to release these." >&2
+  return 0
+}
+
+# ---- batch: THE scheduler. A maximal set of items that may run at once. --------------------------
+# ADR-0021 shipped a pairwise `overlap` and told the scheduler to loop over candidate pairs by hand.
+# That is O(n²) of a human's attention, and it silently ignores the items already in flight. `batch`
+# answers the question a fan-out actually asks: given what is RUNNING, which Ready items can I hand
+# to N workers right now? An item is schedulable iff its touch-set is disjoint from every live claim
+# AND from every item already chosen for this batch. Greedy by issue number, so it is deterministic.
+#
+# Items with no declared `Paths:` are NOT scheduled and are reported — an undeclared touch-set is
+# unschedulable by construction, and silently dropping it would look like "there is no work".
+batch_cmd() {
+  local repo="" want=0 json="" include_backlog=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --repo)   repo="${2:?--repo needs a value}"; shift 2 ;;
+      -n)       want="${2:?-n needs a value}"; shift 2 ;;
+      --json)   json=1; shift ;;
+      --include-backlog) include_backlog=1; shift ;;
+      -*)       die "batch: unknown flag '$1'." ;;
+      *)        die "batch: unexpected argument '$1'." ;;
+    esac
+  done
+  [ -n "$repo" ] && repo="$(resolve_repo "$repo")"
+  case "$want" in ''|*[!0-9]*) die "batch: -n must be a number." ;; esac
+
+  local items cands active
+  items="$(board_items)"
+  active="$(active_claims "$repo")"
+  cands="$(board_filter "$repo" "Ready" "" "0" <<<"$items")"
+  if [ -n "$include_backlog" ]; then
+    cands="$(jq -c -s 'add' <(printf '%s' "$cands") <(board_filter "$repo" "Backlog" "" "0" <<<"$items"))"
+  fi
+  cands="$(jq -c 'map(select(.blocked | not) | select(.number != null)) | sort_by(.number)' <<<"$cands")"
+
+  # Touch-sets already spoken for by in-flight work.
+  local active_paths; active_paths="$(jq -r '.[].paths[]?' <<<"$active")"
+
+  local -a chosen_ids=() chosen_paths=()
+  local n i=0 skipped=""
+  n="$(jq 'length' <<<"$cands")"
+  while [ "$i" -lt "$n" ]; do
+    local it r num id p hits j clash holder
+    it="$(jq -c ".[$i]" <<<"$cands")"; i=$((i + 1))
+    r="$(jq -r '.repo' <<<"$it")"; num="$(jq -r '.number' <<<"$it")"
+    id="${r#*/}#$num"
+    # Read the LOCK, not the board column: a claim whose Status flip failed still owns the item. And
+    # a claimed item does not merely drop out of the batch — its touch-set is OCCUPIED, so it must
+    # also be added to `active_paths`. Skipping without reserving would happily schedule a candidate
+    # that overlaps the very item another worker is holding.
+    p="$(paths_of "${r%%/*}" "${r#*/}" "$num")"
+    holder="$(live_claim_worker "${r%%/*}" "${r#*/}" "$num")"
+    if [ -n "$holder" ]; then
+      active_paths="$active_paths${active_paths:+$'\n'}$p"
+      skipped="$skipped  $id — already claimed by worker $holder"$'\n'; continue
+    fi
+    if [ -z "$p" ]; then
+      skipped="$skipped  $id — no 'Paths:' declared (cannot schedule)"$'\n'; continue
+    fi
+    hits="$(conflicts_between "$p" "$active_paths")"
+    if [ -n "$hits" ]; then
+      skipped="$skipped  $id — overlaps in-flight work: $(printf '%s' "$hits" | head -1)"$'\n'; continue
+    fi
+    clash=""
+    for ((j = 0; j < ${#chosen_paths[@]}; j++)); do
+      hits="$(conflicts_between "$p" "${chosen_paths[j]}")"
+      [ -n "$hits" ] && { clash="${chosen_ids[j]} ($(printf '%s' "$hits" | head -1))"; break; }
+    done
+    if [ -n "$clash" ]; then
+      skipped="$skipped  $id — overlaps batch member $clash"$'\n'; continue
+    fi
+    chosen_ids+=("$id"); chosen_paths+=("$p")
+    [ "$want" -gt 0 ] && [ "${#chosen_ids[@]}" -ge "$want" ] && break
+  done
+
+  if [ -n "$json" ]; then
+    printf '%s\n' "${chosen_ids[@]+"${chosen_ids[@]}"}" | jq -R -s -c 'split("\n") | map(select(length > 0))'
+  else
+    if [ "${#chosen_ids[@]}" -eq 0 ]; then
+      echo "fsgg-coord: nothing schedulable${repo:+ for repo '$repo'} right now."
+    else
+      printf 'schedulable in parallel (%s):\n' "${#chosen_ids[@]}"
+      printf '  → %s\n' "${chosen_ids[@]}"
+    fi
+    [ -n "$skipped" ] && { echo "passed over:"; printf '%s' "$skipped"; } >&2
+  fi
+  return 0
+}
+
+# ---- take: pick + claim in one step, retrying a lost race. ---------------------------------------
+# ADR-0021's loop was `next || exit 0; claim || exit 0` — a worker that lost a race simply went home,
+# leaving startable work on the board. `take` re-schedules instead: on a lost race the board has moved,
+# so recompute the batch and try the next item. Claiming is what resolves the race, so we never
+# pre-filter on "looks unclaimed" — we just try, and let the CAS decide.
+take_cmd() {
+  local repo="" tries=3
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --repo)  repo="${2:?--repo needs a value}"; shift 2 ;;
+      --tries) tries="${2:?--tries needs a value}"; shift 2 ;;
+      -*)      die "take: unknown flag '$1'." ;;
+      *)       die "take: unexpected argument '$1'." ;;
+    esac
+  done
+  case "$tries" in ''|*[!0-9]*) die "take: --tries must be a number." ;; esac
+  worker >/dev/null; local w="$WORKER_ID"
+  local -a repoflag=(); [ -n "$repo" ] && repoflag=(--repo "$repo")
+  local attempt=1
+  while [ "$attempt" -le "$tries" ]; do
+    local pick
+    pick="$(batch_cmd "${repoflag[@]+"${repoflag[@]}"}" -n 1 --json 2>/dev/null | jq -r '.[0] // empty')"
+    if [ -z "$pick" ]; then
+      echo "fsgg-coord: no schedulable item${repo:+ for repo '$repo'} — every candidate is blocked, claimed, overlapping, or undeclared." >&2
+      echo "  see why:  fsgg-coord batch${repo:+ --repo $repo}" >&2
+      return 0
+    fi
+    # claim in a subshell: its `die` must end the attempt, not `take`.
+    if ( claim_cmd "$pick" ); then return 0; fi
+    echo "fsgg-coord: worker $w lost $pick (attempt $attempt/$tries) — rescheduling." >&2
+    attempt=$((attempt + 1))
+  done
+  echo "fsgg-coord: worker $w gave up after $tries attempt(s); the board is contended. Retry, or widen --repo." >&2
+  return 0
+}
+
+# ---- say / inbox: the channel between workers whose work touches -----------------------------------
+# ADR-0021 gave workers a way to DETECT overlap and no way to TALK about it, so the only remedy was to
+# sequence — even when the right answer was "you take the interface, I'll take the impl". Messages are
+# issue comments carrying an `fsgg:msg` marker addressed to a worker id (or `*`, meaning whoever holds
+# the item). They ride the item they concern, so the conversation is next to the work, GitHub notifies
+# the assignee for free, and nothing new has to be stood up. Same reason ADR-0001 chose issues over a
+# file mailbox: git is history, not a queue.
+say_cmd() {
+  local ref="" to="*" msg=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      # SLUG the target. Worker ids are always slug()'d at creation, and `inbox` matches `.to` by exact
+      # string, so an unslugged `--to Finch-A3F` posts a message that its recipient can never see.
+      # `*` (anyone holding the item) is the one literal that is not a worker id.
+      --to) to="${2:?--to needs a value}"
+            if [ "$to" != '*' ]; then
+              local slugged; slugged="$(slug "$to")"
+              [ -n "$slugged" ] || die "say: --to '$to' is not a usable worker id."
+              [ "$slugged" = "$to" ] || echo "fsgg-coord: addressing worker '$slugged' (normalized from '$to')." >&2
+              to="$slugged"
+            fi
+            shift 2 ;;
+      -*)   die "say: unknown flag '$1'." ;;
+      *)    if [ -z "$ref" ]; then ref="$1"; else msg="${msg:+$msg }$1"; fi; shift ;;
+    esac
+  done
+  [ -n "$ref" ] || die "say: <issue> required."
+  [ -n "$msg" ] || die "say: a message is required (say <issue> [--to worker] <message>)."
+  parse_ref "$ref"
+  worker >/dev/null; local w="$WORKER_ID"
+  local body
+  body="$(printf '<!-- %s from=%s to=%s -->\n**%s → %s**\n\n%s\n' "$MSG_MARK" "$w" "$to" "$w" "$to" "$msg")"
+  post_comment "$R_OWNER" "$R_REPO" "$R_NUM" "$body" >/dev/null
+  printf 'said on %s: %s → %s\n' "$R_REPO#$R_NUM" "$w" "$to"
+
+  # Talking about an item we hold is activity: renew the lease rather than let `reap` collect us.
+  # Renew only a LIVE marker of ours: `say` must not resurrect an expired claim (see heartbeat_cmd).
+  local mine
+  mine="$(claims_of "$R_OWNER" "$R_REPO" "$R_NUM" \
+          | jq -c --arg w "$w" 'map(select(.stale | not) | select(.worker == $w)) | first // empty')"
+  [ -n "$mine" ] && heartbeat_comment "$R_OWNER" "$R_REPO" "$R_NUM" "$(jq -r '.id' <<<"$mine")" "$w" "$ref"
+  return 0
+}
+
+# Messages addressed to this worker, across every in-flight claim (both parties to a collision are
+# In progress, so that set is exactly where cross-work talk lives). A per-worker cursor makes `inbox`
+# show only what is new; --peek leaves the cursor alone.
+inbox_cmd() {
+  local repo="" peek="" json=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --repo) repo="${2:?--repo needs a value}"; shift 2 ;;
+      --peek) peek=1; shift ;;
+      --json) json=1; shift ;;
+      -*)     die "inbox: unknown flag '$1'." ;;
+      *)      die "inbox: unexpected argument '$1'." ;;
+    esac
+  done
+  [ -n "$repo" ] && repo="$(resolve_repo "$repo")"
+  worker >/dev/null; local w="$WORKER_ID"
+  local cursorfile="$CACHE/inbox-$(slug "$w")"
+  local since=0; [ -f "$cursorfile" ] && since="$(cat "$cursorfile")"
+  case "$since" in ''|*[!0-9]*) since=0 ;; esac   # a truncated cursor must not reach --argjson
+
+  local claims n i=0 tmp maxid="$since"
+  claims="$(active_claims "$repo")"
+  n="$(jq 'length' <<<"$claims")"
+  tmp="$(mktemp "$CACHE/.inbox.XXXXXX")"; : >"$tmp"
+  while [ "$i" -lt "$n" ]; do
+    local c r num o rp msgs top
+    c="$(jq -c ".[$i]" <<<"$claims")"; i=$((i + 1))
+    r="$(jq -r '.repo' <<<"$c")"; num="$(jq -r '.number' <<<"$c")"
+    o="${r%%/*}"; rp="${r#*/}"
+    msgs="$(issue_comments "$o" "$rp" "$num" | parse_msgs)"   # a failed read here is a lost message, not a lost lock
+    top="$(jq -r 'map(.id) | max // 0' <<<"$msgs")"
+    [ "$top" -gt "$maxid" ] && maxid="$top"
+    jq -c --arg w "$w" --arg item "$rp#$num" --argjson since "$since" '
+      .[] | select(.id > $since) | select(.from != $w) | select(.to == $w or .to == "*")
+      | { item: $item } + .' <<<"$msgs" >>"$tmp"
+  done
+
+  local out; out="$(jq -s '.' "$tmp")"; rm -f "$tmp"
+  [ -z "$peek" ] && printf '%s' "$maxid" >"$cursorfile"
+
+  if [ -n "$json" ]; then jq '.' <<<"$out"; return 0; fi
+  if [ "$(jq 'length' <<<"$out")" -eq 0 ]; then
+    printf 'no new messages for worker %s.\n' "$w"; return 0
+  fi
+  jq -r '.[] | "── \(.item)  \(.from) → \(.to)  (\(.at))\n\(.text)\n"' <<<"$out"
+  [ -n "$peek" ] && echo "fsgg-coord: --peek — cursor not advanced." >&2
+  return 0
+}
+
+# ---- widen: re-declare a touch-set mid-flight, and TELL whoever it now collides with --------------
+# ADR-0021: "a worker that must widen its touch-set re-declares and re-checks overlap before
+# continuing." It never said how, so in practice nobody did. This does all three in one call: rewrite
+# the `Paths:` line, re-check against every live claim, and — the part a worker cannot do alone —
+# notify the workers whose items now overlap, on their own issues.
+widen_cmd() {
+  local ref="" newpaths=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --paths) newpaths="${2:?--paths needs a value}"; shift 2 ;;
+      -*)      die "widen: unknown flag '$1'." ;;
+      *)       [ -z "$ref" ] && ref="$1" || die "widen: unexpected argument '$1'."; shift ;;
+    esac
+  done
+  [ -n "$ref" ] || die "widen: <issue> required."
+  [ -n "$newpaths" ] || die "widen: --paths '<globs>' required."
+  parse_ref "$ref"
+  worker >/dev/null; local w="$WORKER_ID"
+  local self="$R_OWNER/$R_REPO#$R_NUM" sr="$R_REPO" sn="$R_NUM" so="$R_OWNER"
+
+  # Rewrite the `Paths:` line in place (or append one), then PATCH the body back.
+  local bodyfile newfile
+  bodyfile="$(mktemp "$CACHE/.body.XXXXXX")"; newfile="$(mktemp "$CACHE/.body.XXXXXX")"
+  gh api "repos/$so/$sr/issues/$sn" --jq '.body // ""' >"$bodyfile" 2>/dev/null \
+    || { rm -f "$bodyfile" "$newfile"; die "widen: cannot read $sr#$sn."; }
+  awk -v repl="Paths: $newpaths" '
+    /^[ \t]*[Pp]aths:/ && !done { print repl; done = 1; next }
+    { print }
+    END { if (!done) { print ""; print repl } }' "$bodyfile" >"$newfile"
+  gh api -X PATCH "repos/$so/$sr/issues/$sn" -F body=@"$newfile" >/dev/null \
+    || { rm -f "$bodyfile" "$newfile"; die "widen: cannot update the body of $sr#$sn."; }
+  rm -f "$bodyfile" "$newfile"
+  printf 'widened %s → Paths: %s\n' "$sr#$sn" "$newpaths"
+
+  # Re-check against everything in flight, and notify each worker we now collide with.
+  local pa claims n i=0 found=0
+  pa="$(paths_of "$so" "$sr" "$sn")"
+  claims="$(active_claims)"
+  n="$(jq 'length' <<<"$claims")"
+  while [ "$i" -lt "$n" ]; do
+    local c cr cn cw co crp hits
+    c="$(jq -c ".[$i]" <<<"$claims")"; i=$((i + 1))
+    cr="$(jq -r '.repo' <<<"$c")"; cn="$(jq -r '.number' <<<"$c")"
+    [ "$cr#$cn" = "$self" ] && continue
+    cw="$(jq -r '.worker // "*"' <<<"$c")"
+    hits="$(conflicts_between "$pa" "$(jq -r '.paths[]?' <<<"$c")")"
+    [ -n "$hits" ] || continue
+    found=1
+    co="${cr%%/*}"; crp="${cr#*/}"
+    printf 'OVERLAP — now collides with %s#%s (worker %s)\n' "$crp" "$cn" "$cw" >&2
+    printf '  %s\n' "$hits" >&2
+    post_comment "$co" "$crp" "$cn" \
+      "$(printf '<!-- %s from=%s to=%s -->\n**%s → %s** — heads up: I widened `%s` to `Paths: %s`, which now overlaps your touch-set here:\n\n```\n%s\n```\n\nWe cannot run these in parallel as declared. Sequence one behind the other (`Blocked by`), or split the touch-set — reply here.\n' \
+         "$MSG_MARK" "$w" "$cw" "$w" "$cw" "$self" "$newpaths" "$hits")" >/dev/null
+    printf '  notified worker %s on %s#%s\n' "$cw" "$crp" "$cn" >&2
+  done
+
+  if [ "$found" -eq 0 ]; then
+    printf 'DISJOINT — the widened touch-set clears all %s in-flight claim(s).\n' "$n"
+    return 0
+  fi
+  echo "fsgg-coord: widening introduced a collision — do NOT keep editing the shared paths until it is resolved." >&2
+  return 1
+}
+
+# ---- verify-paths: did the PR stay inside the touch-set its issue declared? -----------------------
+# The touch-set is a DECLARATION, not an enforced boundary (ADR-0021), and it stays that way: this
+# reports drift, it does not prevent it. But an undetected drift is what turns two "disjoint" items
+# into a merge conflict, so CI runs this in --warn mode and posts what it found. The declaration is
+# only worth as much as the check that reads it back.
+verify_paths_cmd() {
+  local pr="" repo="" issue="" warn=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --pr)    pr="${2:?--pr needs a value}"; shift 2 ;;
+      --repo)  repo="${2:?--repo needs a value}"; shift 2 ;;
+      --issue) issue="${2:?--issue needs a value}"; shift 2 ;;
+      --warn)  warn=1; shift ;;
+      -*)      die "verify-paths: unknown flag '$1'." ;;
+      *)       die "verify-paths: unexpected argument '$1'." ;;
+    esac
+  done
+  [ -n "$pr" ] || die "verify-paths: --pr N required."
+  case "$pr" in *[!0-9]*) die "verify-paths: --pr must be a number." ;; esac
+  [ -n "$repo" ] || repo="$(gh repo view --json nameWithOwner --jq '.nameWithOwner' 2>/dev/null || true)"
+  [ -n "$repo" ] || die "verify-paths: --repo owner/repo required (not inside a GitHub checkout)."
+  local o="${repo%%/*}" r="${repo#*/}"
+  [ "$o" = "$r" ] && { o="$OWNER"; r="$repo"; }
+
+  # Which issue does this PR implement? Explicit wins; else the `item/<n>-…` branch ADR-0021 mandates;
+  # else the PR's own closing reference. Refusing to guess is better than checking the wrong touch-set.
+  if [ -z "$issue" ]; then
+    local head; head="$(gh api "repos/$o/$r/pulls/$pr" --jq '.head.ref' 2>/dev/null || echo "")"
+    if [[ "$head" =~ ^item/([0-9]+) ]]; then
+      issue="$o/$r#${BASH_REMATCH[1]}"
+    else
+      local q='query($owner:String!, $repo:String!, $num:Int!){
+        repository(owner:$owner, name:$repo){ pullRequest(number:$num){
+          closingIssuesReferences(first:5){ nodes{ number repository{ nameWithOwner } } } } }
+        rateLimit{ cost remaining }
+      }'
+      local out; out="$(gql "$q" -f owner="$o" -f repo="$r" -F num="$pr")"
+      issue="$(jq -r '.data.repository.pullRequest.closingIssuesReferences.nodes[0]
+                      | select(. != null) | "\(.repository.nameWithOwner)#\(.number)"' <<<"$out")"
+    fi
+  fi
+  # Three verdicts, not two. A PR with nothing to verify against is SKIP — never a silent pass, or CI
+  # would stamp "stays inside its touch-set" on a PR that never declared one.
+  if [ -z "$issue" ]; then
+    [ -n "$warn" ] && { printf 'FSGG-PATHS SKIP — cannot tell which issue PR #%s implements (branch is not item/<n>-…, and it closes no issue).\n' "$pr"; return 0; }
+    die "verify-paths: cannot tell which issue PR #$pr implements (branch is not item/<n>-…, and it closes no issue). Pass --issue."
+  fi
+
+  local declared; declared="$(paths_for_ref "$issue")"
+  if [ -z "$declared" ]; then
+    [ -n "$warn" ] && { printf 'FSGG-PATHS SKIP — %s declares no '"'"'Paths:'"'"' touch-set; nothing to verify against.\n' "$issue"; return 0; }
+    echo "verify-paths: $issue declares no 'Paths:' touch-set — nothing to verify against." >&2
+    return 2
+  fi
+
+  local changed; changed="$(gh api "repos/$o/$r/pulls/$pr/files?per_page=100" --paginate --jq '.[].filename' 2>/dev/null)"
+  [ -n "$changed" ] || { printf 'FSGG-PATHS OK — PR #%s changes no files.\n' "$pr"; return 0; }
+
+  local -a decl; mapfile -t decl <<<"$declared"
+  local f t covered drift=""
+  while read -r f; do
+    [ -n "$f" ] || continue
+    covered=""
+    for t in "${decl[@]}"; do
+      [ -n "$t" ] || continue
+      if [ "$f" = "$t" ] || [ "${f#"$t"/}" != "$f" ]; then covered=1; break; fi
+    done
+    [ -n "$covered" ] || drift="$drift$f"$'\n'
+  done <<<"$changed"
+
+  if [ -z "$drift" ]; then
+    printf 'FSGG-PATHS OK — PR #%s stays inside the touch-set declared by %s.\n' "$pr" "$issue"
+    return 0
+  fi
+  printf 'FSGG-PATHS DRIFT — PR #%s touches %s file(s) outside the touch-set declared by %s:\n' \
+    "$pr" "$(printf '%s' "$drift" | grep -c .)" "$issue"
+  printf '%s' "$drift" | sed 's/^/  /'
+  printf '\ndeclared:\n'; printf '%s\n' "$declared" | sed 's/^/  /'
+  printf '\nRe-declare and re-check against in-flight work:\n  fsgg-coord widen %s --paths "<globs>"\n' "$issue"
+  [ -n "$warn" ] && return 0
+  return 1
+}
+
+# The usage block is the header comment down to (but not including) the Env section. Deriving the
+# range from a marker rather than hardcoded line numbers means adding a subcommand cannot silently
+# truncate `--help`.
 usage() {
-  sed -n '2,83p' "$0" | sed 's/^# \{0,1\}//; s/^#$//'
+  sed -n '2,/^# Env:/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//; s/^#$//'
 }
 
 # ---- dispatch -----------------------------------------------------------------------------------
+# A global `--worker <id>` may precede the subcommand, so an orchestrator can name each agent it
+# spawns without exporting an env var into it.
+if [ "${1:-}" = "--worker" ]; then
+  WORKER_OVERRIDE="${2:?--worker needs a value}"; shift 2
+fi
+
 cmd="${1:-}"; [ $# -gt 0 ] && shift || true
 case "$cmd" in
   bootstrap) case "${1:-}" in --refresh) bootstrap 1 ;; "") bootstrap ;; *) die "bootstrap: unknown arg '$1'." ;; esac ;;
@@ -768,10 +2124,21 @@ case "$cmd" in
   issues)    issues "$@" ;;
   ready)     ready "$@" ;;
   next)      next "$@" ;;
+  lint)      lint "$@" ;;
   done)      done_cmd "$@" ;;
+  whoami)    whoami_cmd ;;
   claim)     claim_cmd "$@" ;;
+  heartbeat) heartbeat_cmd "$@" ;;
   release)   release_cmd "$@" ;;
+  who)       who_cmd "$@" ;;
+  reap)      reap_cmd "$@" ;;
+  take)      take_cmd "$@" ;;
+  batch)     batch_cmd "$@" ;;
   overlap)   overlap_cmd "$@" ;;
+  widen)     widen_cmd "$@" ;;
+  say)       say_cmd "$@" ;;
+  inbox)     inbox_cmd "$@" ;;
+  verify-paths) verify_paths_cmd "$@" ;;
   budget)    budget ;;
   -h|--help|help|"") usage ;;
   *)         die "unknown command '$cmd' (try: fsgg-coord --help)." ;;
