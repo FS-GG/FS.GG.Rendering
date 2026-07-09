@@ -1,0 +1,903 @@
+FS.GG.UI.Scene.Animation.Color : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Tween<FS.GG.UI.Scene.Color>> [get]
+FS.GG.UI.Scene.Animation.Opacity : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Tween<System.Double>> [get]
+FS.GG.UI.Scene.Animation.Transform : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Tween<FS.GG.UI.Scene.Transform>> [get]
+FS.GG.UI.Scene.Animation.applyAt(System.TimeSpan, FS.GG.UI.Scene.Animation, FS.GG.UI.Scene.Scene) : FS.GG.UI.Scene.SceneNode
+FS.GG.UI.Scene.Animation.empty : FS.GG.UI.Scene.Animation [get]
+FS.GG.UI.Scene.Animation.isSettled(System.TimeSpan, FS.GG.UI.Scene.Animation) : System.Boolean
+FS.GG.UI.Scene.Animation.lerpColor(FS.GG.UI.Scene.Color, FS.GG.UI.Scene.Color, System.Double) : FS.GG.UI.Scene.Color
+FS.GG.UI.Scene.Animation.lerpFloat(System.Double, System.Double, System.Double) : System.Double
+FS.GG.UI.Scene.Animation.new(Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Tween<System.Double>>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Tween<FS.GG.UI.Scene.Transform>>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Tween<FS.GG.UI.Scene.Color>>)
+FS.GG.UI.Scene.Animation.sampleColor(System.TimeSpan, FS.GG.UI.Scene.Animation) : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Color>
+FS.GG.UI.Scene.Animation.sampleFrames(Microsoft.FSharp.Collections.FSharpList<System.TimeSpan>, FS.GG.UI.Scene.Animation, FS.GG.UI.Scene.Scene) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.Scene>
+FS.GG.UI.Scene.AnimationState.advance<a>(System.TimeSpan, AnimationState<a>) : AnimationState<a>
+FS.GG.UI.Scene.AnimationState.create<a>(FSharpFunc<a, FSharpFunc<a, FSharpFunc<System.Double, a>>>, a, System.TimeSpan, FS.GG.UI.Scene.Easing) : AnimationState<a>
+FS.GG.UI.Scene.AnimationState.isActive<a>(AnimationState<a>) : System.Boolean
+FS.GG.UI.Scene.AnimationState.retarget<a>(a, AnimationState<a>) : AnimationState<a>
+FS.GG.UI.Scene.AnimationState.value<a>(AnimationState<a>) : a
+FS.GG.UI.Scene.AnimationState`1.Current : a [get]
+FS.GG.UI.Scene.AnimationState`1.Duration : System.TimeSpan [get]
+FS.GG.UI.Scene.AnimationState`1.Easing : FS.GG.UI.Scene.Easing [get]
+FS.GG.UI.Scene.AnimationState`1.Elapsed : System.TimeSpan [get]
+FS.GG.UI.Scene.AnimationState`1.Interp : FSharpFunc<a, FSharpFunc<a, FSharpFunc<System.Double, a>>> [get]
+FS.GG.UI.Scene.AnimationState`1.Start : a [get]
+FS.GG.UI.Scene.AnimationState`1.Target : a [get]
+FS.GG.UI.Scene.AnimationState`1.new(a, a, a, System.TimeSpan, System.TimeSpan, FS.GG.UI.Scene.Easing, FSharpFunc<a, FSharpFunc<a, FSharpFunc<System.Double, a>>>)
+FS.GG.UI.Scene.BlendMode+Tags.ColorBurn : System.Int32
+FS.GG.UI.Scene.BlendMode+Tags.ColorDodge : System.Int32
+FS.GG.UI.Scene.BlendMode+Tags.Darken : System.Int32
+FS.GG.UI.Scene.BlendMode+Tags.Difference : System.Int32
+FS.GG.UI.Scene.BlendMode+Tags.Exclusion : System.Int32
+FS.GG.UI.Scene.BlendMode+Tags.Lighten : System.Int32
+FS.GG.UI.Scene.BlendMode+Tags.Multiply : System.Int32
+FS.GG.UI.Scene.BlendMode+Tags.Overlay : System.Int32
+FS.GG.UI.Scene.BlendMode+Tags.Screen : System.Int32
+FS.GG.UI.Scene.BlendMode+Tags.SrcOver : System.Int32
+FS.GG.UI.Scene.CacheBoundary.CacheId : System.UInt64 [get]
+FS.GG.UI.Scene.CacheBoundary.Fingerprint : System.UInt64 [get]
+FS.GG.UI.Scene.CacheBoundary.Scene : FS.GG.UI.Scene.Scene [get]
+FS.GG.UI.Scene.CacheBoundary.new(System.UInt64, System.UInt64, FS.GG.UI.Scene.Scene)
+FS.GG.UI.Scene.CapabilityRequirement.AffectedScenePaths : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.CapabilityRequirement.CapabilityId : System.String [get]
+FS.GG.UI.Scene.CapabilityRequirement.DegradationPolicy : FS.GG.UI.Scene.DegradationPolicy [get]
+FS.GG.UI.Scene.CapabilityRequirement.RequirementLevel : FS.GG.UI.Scene.RequirementLevel [get]
+FS.GG.UI.Scene.CapabilityRequirement.new(System.String, FS.GG.UI.Scene.RequirementLevel, FS.GG.UI.Scene.DegradationPolicy, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Scene.CapabilityVerdict.Degraded : System.Boolean [get]
+FS.GG.UI.Scene.CapabilityVerdict.Diagnostics : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.PackageDiagnostic> [get]
+FS.GG.UI.Scene.CapabilityVerdict.Requirement : FS.GG.UI.Scene.CapabilityRequirement [get]
+FS.GG.UI.Scene.CapabilityVerdict.Supported : System.Boolean [get]
+FS.GG.UI.Scene.CapabilityVerdict.new(FS.GG.UI.Scene.CapabilityRequirement, System.Boolean, System.Boolean, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.PackageDiagnostic>)
+FS.GG.UI.Scene.CircleShapeEvidence.Bounds : FS.GG.UI.Scene.Rect [get]
+FS.GG.UI.Scene.CircleShapeEvidence.Center : FS.GG.UI.Scene.Point [get]
+FS.GG.UI.Scene.CircleShapeEvidence.Fill : FS.GG.UI.Scene.Color [get]
+FS.GG.UI.Scene.CircleShapeEvidence.Placement : FS.GG.UI.Scene.ShapePlacement [get]
+FS.GG.UI.Scene.CircleShapeEvidence.Radius : System.Double [get]
+FS.GG.UI.Scene.CircleShapeEvidence.new(FS.GG.UI.Scene.Point, System.Double, FS.GG.UI.Scene.Rect, FS.GG.UI.Scene.Color, FS.GG.UI.Scene.ShapePlacement)
+FS.GG.UI.Scene.Clip+Tags.PathClip : System.Int32
+FS.GG.UI.Scene.Clip+Tags.RectClip : System.Int32
+FS.GG.UI.Scene.Color.Alpha : System.Byte [get]
+FS.GG.UI.Scene.Color.Blue : System.Byte [get]
+FS.GG.UI.Scene.Color.Green : System.Byte [get]
+FS.GG.UI.Scene.Color.Red : System.Byte [get]
+FS.GG.UI.Scene.Color.new(System.Byte, System.Byte, System.Byte, System.Byte)
+FS.GG.UI.Scene.ColorFilter+Tags.BlendColor : System.Int32
+FS.GG.UI.Scene.ColorFilter+Tags.NoColorFilter : System.Int32
+FS.GG.UI.Scene.ColorSpace+Tags.AdobeRgb : System.Int32
+FS.GG.UI.Scene.ColorSpace+Tags.DisplayP3 : System.Int32
+FS.GG.UI.Scene.ColorSpace+Tags.Srgb : System.Int32
+FS.GG.UI.Scene.Colors.black : FS.GG.UI.Scene.Color [get]
+FS.GG.UI.Scene.Colors.rgb(System.Byte, System.Byte, System.Byte) : FS.GG.UI.Scene.Color
+FS.GG.UI.Scene.Colors.rgba(System.Byte, System.Byte, System.Byte, System.Byte) : FS.GG.UI.Scene.Color
+FS.GG.UI.Scene.Colors.transparent : FS.GG.UI.Scene.Color [get]
+FS.GG.UI.Scene.Colors.white : FS.GG.UI.Scene.Color [get]
+FS.GG.UI.Scene.DamageInspectionStatus+Tags.Broad : System.Int32
+FS.GG.UI.Scene.DamageInspectionStatus+Tags.Empty : System.Int32
+FS.GG.UI.Scene.DamageInspectionStatus+Tags.FullSurface : System.Int32
+FS.GG.UI.Scene.DamageInspectionStatus+Tags.Localized : System.Int32
+FS.GG.UI.Scene.DamageInspectionStatus+Tags.NotInspected : System.Int32
+FS.GG.UI.Scene.DamageInspectionStatus+Tags.Unsupported : System.Int32
+FS.GG.UI.Scene.DamageLocalityFinding.Actual : System.String [get]
+FS.GG.UI.Scene.DamageLocalityFinding.AffectedNodeIds : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.DamageLocalityFinding.AffectedRegionIds : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.DamageLocalityFinding.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.DamageLocalityFinding.ExceptionId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.DamageLocalityFinding.Expected : System.String [get]
+FS.GG.UI.Scene.DamageLocalityFinding.FindingId : System.String [get]
+FS.GG.UI.Scene.DamageLocalityFinding.Message : System.String [get]
+FS.GG.UI.Scene.DamageLocalityFinding.RuleId : System.String [get]
+FS.GG.UI.Scene.DamageLocalityFinding.Severity : FS.GG.UI.Scene.VisualInspectionSeverity [get]
+FS.GG.UI.Scene.DamageLocalityFinding.TransitionId : System.String [get]
+FS.GG.UI.Scene.DamageLocalityFinding.new(System.String, System.String, FS.GG.UI.Scene.VisualInspectionSeverity, System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, System.String, System.String, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Scene.DamageNodeCounts.Repainted : System.Int32 [get]
+FS.GG.UI.Scene.DamageNodeCounts.Shifted : System.Int32 [get]
+FS.GG.UI.Scene.DamageNodeCounts.Unaffected : System.Int32 [get]
+FS.GG.UI.Scene.DamageNodeCounts.new(System.Int32, System.Int32, System.Int32)
+FS.GG.UI.Scene.DamageRegionInspection.AffectedNodeIds : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.DamageRegionInspection.AffectedRegionIds : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.DamageRegionInspection.Cause : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.DamageRegionInspection.DamageStatus : FS.GG.UI.Scene.DamageInspectionStatus [get]
+FS.GG.UI.Scene.DamageRegionInspection.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.DamageRegionInspection.DirtyPercentage : System.Double [get]
+FS.GG.UI.Scene.DamageRegionInspection.DirtyRectangles : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.Rect> [get]
+FS.GG.UI.Scene.DamageRegionInspection.FrameBounds : FS.GG.UI.Scene.Rect [get]
+FS.GG.UI.Scene.DamageRegionInspection.RepaintedNodeCount : System.Int32 [get]
+FS.GG.UI.Scene.DamageRegionInspection.ShiftedNodeCount : System.Int32 [get]
+FS.GG.UI.Scene.DamageRegionInspection.TransitionId : System.String [get]
+FS.GG.UI.Scene.DamageRegionInspection.UnaffectedNodeCount : System.Int32 [get]
+FS.GG.UI.Scene.DamageRegionInspection.UnionArea : System.Int32 [get]
+FS.GG.UI.Scene.DamageRegionInspection.UnionBounds : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Rect> [get]
+FS.GG.UI.Scene.DamageRegionInspection.VisibleDirtyArea : System.Int32 [get]
+FS.GG.UI.Scene.DamageRegionInspection.new(System.String, FS.GG.UI.Scene.DamageInspectionStatus, FS.GG.UI.Scene.Rect, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.Rect>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Rect>, System.Int32, System.Int32, System.Double, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, System.Int32, System.Int32, System.Int32, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Scene.DegradationPolicy+Tags.Degrade : System.Int32
+FS.GG.UI.Scene.DegradationPolicy+Tags.Ignore : System.Int32
+FS.GG.UI.Scene.DegradationPolicy+Tags.Reject : System.Int32
+FS.GG.UI.Scene.DiagnosticSeverity+Tags.Error : System.Int32
+FS.GG.UI.Scene.DiagnosticSeverity+Tags.Fatal : System.Int32
+FS.GG.UI.Scene.DiagnosticSeverity+Tags.Info : System.Int32
+FS.GG.UI.Scene.DiagnosticSeverity+Tags.Warning : System.Int32
+FS.GG.UI.Scene.Easing+Tags.EaseIn : System.Int32
+FS.GG.UI.Scene.Easing+Tags.EaseInOut : System.Int32
+FS.GG.UI.Scene.Easing+Tags.EaseOut : System.Int32
+FS.GG.UI.Scene.Easing+Tags.Linear : System.Int32
+FS.GG.UI.Scene.Easing.Default : FS.GG.UI.Scene.Easing [get]
+FS.GG.UI.Scene.Easing.apply(FS.GG.UI.Scene.Easing, System.Double) : System.Double
+FS.GG.UI.Scene.EllipseShapeEvidence.Bounds : FS.GG.UI.Scene.Rect [get]
+FS.GG.UI.Scene.EllipseShapeEvidence.Fill : FS.GG.UI.Scene.Color [get]
+FS.GG.UI.Scene.EllipseShapeEvidence.Placement : FS.GG.UI.Scene.ShapePlacement [get]
+FS.GG.UI.Scene.EllipseShapeEvidence.new(FS.GG.UI.Scene.Rect, FS.GG.UI.Scene.Color, FS.GG.UI.Scene.ShapePlacement)
+FS.GG.UI.Scene.FontSpec.Family : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.FontSpec.Size : System.Double [get]
+FS.GG.UI.Scene.FontSpec.Weight : Microsoft.FSharp.Core.FSharpOption<System.Int32> [get]
+FS.GG.UI.Scene.FontSpec.new(Microsoft.FSharp.Core.FSharpOption<System.String>, System.Double, Microsoft.FSharp.Core.FSharpOption<System.Int32>)
+FS.GG.UI.Scene.GlyphRun.Data : FS.GG.UI.Scene.GlyphRunData [get]
+FS.GG.UI.Scene.GlyphRun.Paint : FS.GG.UI.Scene.Paint [get]
+FS.GG.UI.Scene.GlyphRun.Position : FS.GG.UI.Scene.Point [get]
+FS.GG.UI.Scene.GlyphRun.new(FS.GG.UI.Scene.GlyphRunData, FS.GG.UI.Scene.Point, FS.GG.UI.Scene.Paint)
+FS.GG.UI.Scene.GlyphRunData.FallbackDiagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.GlyphRunData.FallbackMode : FS.GG.UI.Scene.ShapedTextFallbackMode [get]
+FS.GG.UI.Scene.GlyphRunData.Fingerprint : System.String [get]
+FS.GG.UI.Scene.GlyphRunData.Font : FS.GG.UI.Scene.FontSpec [get]
+FS.GG.UI.Scene.GlyphRunData.Glyphs : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.GlyphRunGlyph> [get]
+FS.GG.UI.Scene.GlyphRunData.Metrics : FS.GG.UI.Scene.GlyphRunMetrics [get]
+FS.GG.UI.Scene.GlyphRunData.Provider : FS.GG.UI.Scene.ShapingProviderEvidence [get]
+FS.GG.UI.Scene.GlyphRunData.Runs : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.TextShapeRun> [get]
+FS.GG.UI.Scene.GlyphRunData.Text : System.String [get]
+FS.GG.UI.Scene.GlyphRunData.new(System.String, FS.GG.UI.Scene.FontSpec, FS.GG.UI.Scene.ShapingProviderEvidence, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.TextShapeRun>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.GlyphRunGlyph>, FS.GG.UI.Scene.GlyphRunMetrics, System.String, FS.GG.UI.Scene.ShapedTextFallbackMode, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Scene.GlyphRunGlyph.Advance : System.Double [get]
+FS.GG.UI.Scene.GlyphRunGlyph.Cluster : System.Int32 [get]
+FS.GG.UI.Scene.GlyphRunGlyph.GlyphId : System.Int32 [get]
+FS.GG.UI.Scene.GlyphRunGlyph.Missing : System.Boolean [get]
+FS.GG.UI.Scene.GlyphRunGlyph.Offset : FS.GG.UI.Scene.Point [get]
+FS.GG.UI.Scene.GlyphRunGlyph.Position : FS.GG.UI.Scene.Point [get]
+FS.GG.UI.Scene.GlyphRunGlyph.ResolvedFace : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.GlyphRunGlyph.SourceText : System.String [get]
+FS.GG.UI.Scene.GlyphRunGlyph.new(System.Int32, System.String, System.Double, FS.GG.UI.Scene.Point, System.Int32, FS.GG.UI.Scene.Point, Microsoft.FSharp.Core.FSharpOption<System.String>, System.Boolean)
+FS.GG.UI.Scene.GlyphRunMetrics.Advance : System.Double [get]
+FS.GG.UI.Scene.GlyphRunMetrics.Baseline : System.Double [get]
+FS.GG.UI.Scene.GlyphRunMetrics.Height : System.Double [get]
+FS.GG.UI.Scene.GlyphRunMetrics.new(System.Double, System.Double, System.Double)
+FS.GG.UI.Scene.ImageFilter+Tags.DropShadow : System.Int32
+FS.GG.UI.Scene.ImageFilter+Tags.NoImageFilter : System.Int32
+FS.GG.UI.Scene.IntentionalDamageException.AffectedIds : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.IntentionalDamageException.ExceptionId : System.String [get]
+FS.GG.UI.Scene.IntentionalDamageException.ExpiresWith : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.IntentionalDamageException.Reason : System.String [get]
+FS.GG.UI.Scene.IntentionalDamageException.RuleId : System.String [get]
+FS.GG.UI.Scene.IntentionalDamageException.ScopeId : System.String [get]
+FS.GG.UI.Scene.IntentionalDamageException.TransitionId : System.String [get]
+FS.GG.UI.Scene.IntentionalDamageException.new(System.String, System.String, System.String, System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>)
+FS.GG.UI.Scene.LayoutEvidence.classify(FS.GG.UI.Scene.LayoutEvidenceReport) : FS.GG.UI.Scene.LayoutEvidenceReport
+FS.GG.UI.Scene.LayoutEvidence.fromRenderEvidence(FS.GG.UI.Scene.Scene, FS.GG.UI.Scene.RenderReadbackEvidence) : FS.GG.UI.Scene.LayoutEvidenceReport
+FS.GG.UI.Scene.LayoutEvidence.unsupported(FS.GG.UI.Scene.Scene, FS.GG.UI.Scene.Size, FS.GG.UI.Scene.LayoutUnsupportedReason) : FS.GG.UI.Scene.LayoutEvidenceReport
+FS.GG.UI.Scene.LayoutEvidenceReport.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.LayoutEvidenceReport.GameplayBounds : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.LayoutGameplayBounds> [get]
+FS.GG.UI.Scene.LayoutEvidenceReport.GameplayRegion : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.LayoutRegionEvidence> [get]
+FS.GG.UI.Scene.LayoutEvidenceReport.HudRegion : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.LayoutRegionEvidence> [get]
+FS.GG.UI.Scene.LayoutEvidenceReport.MeasurementMode : FS.GG.UI.Scene.LayoutMeasurementMode [get]
+FS.GG.UI.Scene.LayoutEvidenceReport.OutputSize : FS.GG.UI.Scene.Size [get]
+FS.GG.UI.Scene.LayoutEvidenceReport.OverlapStatus : FS.GG.UI.Scene.LayoutOverlapStatus [get]
+FS.GG.UI.Scene.LayoutEvidenceReport.ProofLevel : FS.GG.UI.Scene.LayoutProofLevel [get]
+FS.GG.UI.Scene.LayoutEvidenceReport.RenderEvidence : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.RenderReadbackEvidence> [get]
+FS.GG.UI.Scene.LayoutEvidenceReport.Scene : FS.GG.UI.Scene.Scene [get]
+FS.GG.UI.Scene.LayoutEvidenceReport.TextBounds : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.LayoutTextBounds> [get]
+FS.GG.UI.Scene.LayoutEvidenceReport.UnsupportedReasons : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.LayoutUnsupportedReason> [get]
+FS.GG.UI.Scene.LayoutEvidenceReport.new(FS.GG.UI.Scene.Scene, FS.GG.UI.Scene.Size, FS.GG.UI.Scene.LayoutProofLevel, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.LayoutRegionEvidence>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.LayoutRegionEvidence>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.LayoutTextBounds>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.LayoutGameplayBounds>, FS.GG.UI.Scene.LayoutOverlapStatus, FS.GG.UI.Scene.LayoutMeasurementMode, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.LayoutUnsupportedReason>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.RenderReadbackEvidence>)
+FS.GG.UI.Scene.LayoutGameplayBounds.Bounds : FS.GG.UI.Scene.Rect [get]
+FS.GG.UI.Scene.LayoutGameplayBounds.Name : System.String [get]
+FS.GG.UI.Scene.LayoutGameplayBounds.new(System.String, FS.GG.UI.Scene.Rect)
+FS.GG.UI.Scene.LayoutMeasurementMode+Tags.ApproximateTextBounds : System.Int32
+FS.GG.UI.Scene.LayoutMeasurementMode+Tags.ExactTextBounds : System.Int32
+FS.GG.UI.Scene.LayoutMeasurementMode+Tags.UnsupportedTextBounds : System.Int32
+FS.GG.UI.Scene.LayoutOverlapDiagnostic.Bounds : FS.GG.UI.Scene.Rect [get]
+FS.GG.UI.Scene.LayoutOverlapDiagnostic.FirstName : System.String [get]
+FS.GG.UI.Scene.LayoutOverlapDiagnostic.Kind : FS.GG.UI.Scene.LayoutOverlapKind [get]
+FS.GG.UI.Scene.LayoutOverlapDiagnostic.Message : System.String [get]
+FS.GG.UI.Scene.LayoutOverlapDiagnostic.SecondName : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.LayoutOverlapDiagnostic.new(FS.GG.UI.Scene.LayoutOverlapKind, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, FS.GG.UI.Scene.Rect, System.String)
+FS.GG.UI.Scene.LayoutOverlapKind+Tags.GameplayOutOfBounds : System.Int32
+FS.GG.UI.Scene.LayoutOverlapKind+Tags.HudGameplayOverlap : System.Int32
+FS.GG.UI.Scene.LayoutOverlapKind+Tags.HudTextOverlap : System.Int32
+FS.GG.UI.Scene.LayoutOverlapStatus+Tags.LayoutOverlaps : System.Int32
+FS.GG.UI.Scene.LayoutOverlapStatus+Tags.NoLayoutOverlap : System.Int32
+FS.GG.UI.Scene.LayoutProofLevel+Tags.DeterministicRenderOnly : System.Int32
+FS.GG.UI.Scene.LayoutProofLevel+Tags.ReadableLayout : System.Int32
+FS.GG.UI.Scene.LayoutProofLevel+Tags.UnsupportedLayoutInspection : System.Int32
+FS.GG.UI.Scene.LayoutRegionEvidence.Bounds : FS.GG.UI.Scene.Rect [get]
+FS.GG.UI.Scene.LayoutRegionEvidence.Name : System.String [get]
+FS.GG.UI.Scene.LayoutRegionEvidence.new(System.String, FS.GG.UI.Scene.Rect)
+FS.GG.UI.Scene.LayoutTextBounds.Bounds : FS.GG.UI.Scene.Rect [get]
+FS.GG.UI.Scene.LayoutTextBounds.MeasurementMode : FS.GG.UI.Scene.LayoutMeasurementMode [get]
+FS.GG.UI.Scene.LayoutTextBounds.Name : System.String [get]
+FS.GG.UI.Scene.LayoutTextBounds.Text : System.String [get]
+FS.GG.UI.Scene.LayoutTextBounds.new(System.String, System.String, FS.GG.UI.Scene.Rect, FS.GG.UI.Scene.LayoutMeasurementMode)
+FS.GG.UI.Scene.LayoutUnsupportedReason.Diagnostic : System.String [get]
+FS.GG.UI.Scene.LayoutUnsupportedReason.Fact : System.String [get]
+FS.GG.UI.Scene.LayoutUnsupportedReason.Reason : System.String [get]
+FS.GG.UI.Scene.LayoutUnsupportedReason.new(System.String, System.String, System.String)
+FS.GG.UI.Scene.MaskFilter+Tags.Blur : System.Int32
+FS.GG.UI.Scene.MaskFilter+Tags.NoMaskFilter : System.Int32
+FS.GG.UI.Scene.PackageDiagnostic.CapabilityId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.PackageDiagnostic.Message : System.String [get]
+FS.GG.UI.Scene.PackageDiagnostic.ResourceId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.PackageDiagnostic.ScenePath : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.PackageDiagnostic.Severity : FS.GG.UI.Scene.DiagnosticSeverity [get]
+FS.GG.UI.Scene.PackageDiagnostic.Stage : FS.GG.UI.Scene.PackageDiagnosticStage [get]
+FS.GG.UI.Scene.PackageDiagnostic.new(FS.GG.UI.Scene.DiagnosticSeverity, FS.GG.UI.Scene.PackageDiagnosticStage, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>)
+FS.GG.UI.Scene.PackageDiagnosticStage+Tags.Capability : System.Int32
+FS.GG.UI.Scene.PackageDiagnosticStage+Tags.Parse : System.Int32
+FS.GG.UI.Scene.PackageDiagnosticStage+Tags.Resource : System.Int32
+FS.GG.UI.Scene.PackageDiagnosticStage+Tags.ScenePayload : System.Int32
+FS.GG.UI.Scene.PackageDiagnosticStage+Tags.TextPayload : System.Int32
+FS.GG.UI.Scene.PackageDiagnosticStage+Tags.Version : System.Int32
+FS.GG.UI.Scene.PackageExportOptions.OptionalCapabilities : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.PackageExportOptions.ProfileId : System.String [get]
+FS.GG.UI.Scene.PackageExportOptions.Resources : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.ResourceEntry> [get]
+FS.GG.UI.Scene.PackageExportOptions.new(System.String, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.ResourceEntry>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Scene.PackageInspectionOptions.Resources : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.ResourceAvailability> [get]
+FS.GG.UI.Scene.PackageInspectionOptions.TargetProfile : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.TargetCapabilityProfile> [get]
+FS.GG.UI.Scene.PackageInspectionOptions.new(Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.TargetCapabilityProfile>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.ResourceAvailability>)
+FS.GG.UI.Scene.PackageInspectionReport.CapabilityVerdicts : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.CapabilityVerdict> [get]
+FS.GG.UI.Scene.PackageInspectionReport.Diagnostics : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.PackageDiagnostic> [get]
+FS.GG.UI.Scene.PackageInspectionReport.PackageIdentity : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.PackageInspectionReport.ProfileId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.PackageInspectionReport.ResourceVerdicts : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.ResourceVerdict> [get]
+FS.GG.UI.Scene.PackageInspectionReport.Status : FS.GG.UI.Scene.PackageInspectionStatus [get]
+FS.GG.UI.Scene.PackageInspectionReport.Version : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.ProtocolVersion> [get]
+FS.GG.UI.Scene.PackageInspectionReport.new(FS.GG.UI.Scene.PackageInspectionStatus, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.ProtocolVersion>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.CapabilityVerdict>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.ResourceVerdict>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.PackageDiagnostic>)
+FS.GG.UI.Scene.PackageInspectionStatus+Tags.PackageAccepted : System.Int32
+FS.GG.UI.Scene.PackageInspectionStatus+Tags.PackageAcceptedWithDegradation : System.Int32
+FS.GG.UI.Scene.PackageInspectionStatus+Tags.PackageRejected : System.Int32
+FS.GG.UI.Scene.Paint.Antialias : System.Boolean [get]
+FS.GG.UI.Scene.Paint.BlendMode : FS.GG.UI.Scene.BlendMode [get]
+FS.GG.UI.Scene.Paint.ColorFilter : FS.GG.UI.Scene.ColorFilter [get]
+FS.GG.UI.Scene.Paint.Fill : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Color> [get]
+FS.GG.UI.Scene.Paint.ImageFilter : FS.GG.UI.Scene.ImageFilter [get]
+FS.GG.UI.Scene.Paint.MaskFilter : FS.GG.UI.Scene.MaskFilter [get]
+FS.GG.UI.Scene.Paint.Opacity : System.Double [get]
+FS.GG.UI.Scene.Paint.PathEffect : FS.GG.UI.Scene.PathEffect [get]
+FS.GG.UI.Scene.Paint.Shader : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Shader> [get]
+FS.GG.UI.Scene.Paint.Stroke : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Stroke> [get]
+FS.GG.UI.Scene.Paint.fill(FS.GG.UI.Scene.Color) : FS.GG.UI.Scene.Paint
+FS.GG.UI.Scene.Paint.new(Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Color>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Stroke>, System.Double, System.Boolean, FS.GG.UI.Scene.BlendMode, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Shader>, FS.GG.UI.Scene.ColorFilter, FS.GG.UI.Scene.MaskFilter, FS.GG.UI.Scene.ImageFilter, FS.GG.UI.Scene.PathEffect)
+FS.GG.UI.Scene.Paint.stroke(FS.GG.UI.Scene.Color, System.Double) : FS.GG.UI.Scene.Paint
+FS.GG.UI.Scene.Paint.withAntialias(System.Boolean, FS.GG.UI.Scene.Paint) : FS.GG.UI.Scene.Paint
+FS.GG.UI.Scene.Paint.withBlendMode(FS.GG.UI.Scene.BlendMode, FS.GG.UI.Scene.Paint) : FS.GG.UI.Scene.Paint
+FS.GG.UI.Scene.Paint.withColorFilter(FS.GG.UI.Scene.ColorFilter, FS.GG.UI.Scene.Paint) : FS.GG.UI.Scene.Paint
+FS.GG.UI.Scene.Paint.withImageFilter(FS.GG.UI.Scene.ImageFilter, FS.GG.UI.Scene.Paint) : FS.GG.UI.Scene.Paint
+FS.GG.UI.Scene.Paint.withMaskFilter(FS.GG.UI.Scene.MaskFilter, FS.GG.UI.Scene.Paint) : FS.GG.UI.Scene.Paint
+FS.GG.UI.Scene.Paint.withMiter(System.Double, FS.GG.UI.Scene.Paint) : FS.GG.UI.Scene.Paint
+FS.GG.UI.Scene.Paint.withOpacity(System.Double, FS.GG.UI.Scene.Paint) : FS.GG.UI.Scene.Paint
+FS.GG.UI.Scene.Paint.withPathEffect(FS.GG.UI.Scene.PathEffect, FS.GG.UI.Scene.Paint) : FS.GG.UI.Scene.Paint
+FS.GG.UI.Scene.Paint.withShader(FS.GG.UI.Scene.Shader, FS.GG.UI.Scene.Paint) : FS.GG.UI.Scene.Paint
+FS.GG.UI.Scene.Paint.withStrokeCap(FS.GG.UI.Scene.StrokeCap, FS.GG.UI.Scene.Paint) : FS.GG.UI.Scene.Paint
+FS.GG.UI.Scene.Paint.withStrokeJoin(FS.GG.UI.Scene.StrokeJoin, FS.GG.UI.Scene.Paint) : FS.GG.UI.Scene.Paint
+FS.GG.UI.Scene.Path.bounds(FS.GG.UI.Scene.PathSpec) : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Rect>
+FS.GG.UI.Scene.Path.close : FS.GG.UI.Scene.PathCommand [get]
+FS.GG.UI.Scene.Path.combine(FS.GG.UI.Scene.PathOperation, FS.GG.UI.Scene.PathSpec, FS.GG.UI.Scene.PathSpec) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.PathSpec, FS.GG.UI.Scene.PathCombineError>
+FS.GG.UI.Scene.Path.create(FS.GG.UI.Scene.PathFillType, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.PathCommand>) : FS.GG.UI.Scene.PathSpec
+FS.GG.UI.Scene.Path.cubicTo(FS.GG.UI.Scene.Point, FS.GG.UI.Scene.Point, FS.GG.UI.Scene.Point) : FS.GG.UI.Scene.PathCommand
+FS.GG.UI.Scene.Path.lineTo(System.Double, System.Double) : FS.GG.UI.Scene.PathCommand
+FS.GG.UI.Scene.Path.measure(FS.GG.UI.Scene.PathSpec) : FS.GG.UI.Scene.PathMeasure
+FS.GG.UI.Scene.Path.moveTo(System.Double, System.Double) : FS.GG.UI.Scene.PathCommand
+FS.GG.UI.Scene.Path.quadTo(FS.GG.UI.Scene.Point, FS.GG.UI.Scene.Point) : FS.GG.UI.Scene.PathCommand
+FS.GG.UI.Scene.Path.segment(System.Double, System.Double, FS.GG.UI.Scene.PathSpec) : FS.GG.UI.Scene.PathSpec
+FS.GG.UI.Scene.PathCombineError.Message : System.String [get]
+FS.GG.UI.Scene.PathCombineError.Operation : FS.GG.UI.Scene.PathOperation [get]
+FS.GG.UI.Scene.PathCombineError.new(FS.GG.UI.Scene.PathOperation, System.String)
+FS.GG.UI.Scene.PathCommand+Tags.ArcTo : System.Int32
+FS.GG.UI.Scene.PathCommand+Tags.Close : System.Int32
+FS.GG.UI.Scene.PathCommand+Tags.CubicTo : System.Int32
+FS.GG.UI.Scene.PathCommand+Tags.LineTo : System.Int32
+FS.GG.UI.Scene.PathCommand+Tags.MoveTo : System.Int32
+FS.GG.UI.Scene.PathCommand+Tags.QuadTo : System.Int32
+FS.GG.UI.Scene.PathEffect+Tags.Corner : System.Int32
+FS.GG.UI.Scene.PathEffect+Tags.Dash : System.Int32
+FS.GG.UI.Scene.PathEffect+Tags.Discrete : System.Int32
+FS.GG.UI.Scene.PathEffect+Tags.NoPathEffect : System.Int32
+FS.GG.UI.Scene.PathFillType+Tags.EvenOdd : System.Int32
+FS.GG.UI.Scene.PathFillType+Tags.Winding : System.Int32
+FS.GG.UI.Scene.PathMeasure.IsClosed : System.Boolean [get]
+FS.GG.UI.Scene.PathMeasure.Length : System.Double [get]
+FS.GG.UI.Scene.PathMeasure.new(System.Double, System.Boolean)
+FS.GG.UI.Scene.PathOperation+Tags.Difference : System.Int32
+FS.GG.UI.Scene.PathOperation+Tags.Intersect : System.Int32
+FS.GG.UI.Scene.PathOperation+Tags.Union : System.Int32
+FS.GG.UI.Scene.PathOperation+Tags.Xor : System.Int32
+FS.GG.UI.Scene.PathSpec.Commands : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.PathCommand> [get]
+FS.GG.UI.Scene.PathSpec.FillType : FS.GG.UI.Scene.PathFillType [get]
+FS.GG.UI.Scene.PathSpec.new(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.PathCommand>, FS.GG.UI.Scene.PathFillType)
+FS.GG.UI.Scene.PerspectiveTransform.M11 : System.Double [get]
+FS.GG.UI.Scene.PerspectiveTransform.M12 : System.Double [get]
+FS.GG.UI.Scene.PerspectiveTransform.M13 : System.Double [get]
+FS.GG.UI.Scene.PerspectiveTransform.M21 : System.Double [get]
+FS.GG.UI.Scene.PerspectiveTransform.M22 : System.Double [get]
+FS.GG.UI.Scene.PerspectiveTransform.M23 : System.Double [get]
+FS.GG.UI.Scene.PerspectiveTransform.M31 : System.Double [get]
+FS.GG.UI.Scene.PerspectiveTransform.M32 : System.Double [get]
+FS.GG.UI.Scene.PerspectiveTransform.M33 : System.Double [get]
+FS.GG.UI.Scene.PerspectiveTransform.new(System.Double, System.Double, System.Double, System.Double, System.Double, System.Double, System.Double, System.Double, System.Double)
+FS.GG.UI.Scene.Picture.Name : System.String [get]
+FS.GG.UI.Scene.Picture.Scene : FS.GG.UI.Scene.Scene [get]
+FS.GG.UI.Scene.Picture.new(System.String, FS.GG.UI.Scene.Scene)
+FS.GG.UI.Scene.Point.X : System.Double [get]
+FS.GG.UI.Scene.Point.Y : System.Double [get]
+FS.GG.UI.Scene.Point.new(System.Double, System.Double)
+FS.GG.UI.Scene.PortableScenePackage.CanonicalBytes : System.Byte[] [get]
+FS.GG.UI.Scene.PortableScenePackage.Capabilities : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.CapabilityRequirement> [get]
+FS.GG.UI.Scene.PortableScenePackage.Diagnostics : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.PackageDiagnostic> [get]
+FS.GG.UI.Scene.PortableScenePackage.PackageIdentity : System.String [get]
+FS.GG.UI.Scene.PortableScenePackage.ProfileId : System.String [get]
+FS.GG.UI.Scene.PortableScenePackage.Resources : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.ResourceEntry> [get]
+FS.GG.UI.Scene.PortableScenePackage.Scene : FS.GG.UI.Scene.Scene [get]
+FS.GG.UI.Scene.PortableScenePackage.Version : FS.GG.UI.Scene.ProtocolVersion [get]
+FS.GG.UI.Scene.PortableScenePackage.new(FS.GG.UI.Scene.ProtocolVersion, System.String, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.CapabilityRequirement>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.ResourceEntry>, FS.GG.UI.Scene.Scene, System.Byte[], System.String, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.PackageDiagnostic>)
+FS.GG.UI.Scene.ProtocolVersion.Major : System.Int32 [get]
+FS.GG.UI.Scene.ProtocolVersion.Minor : System.Int32 [get]
+FS.GG.UI.Scene.ProtocolVersion.new(System.Int32, System.Int32)
+FS.GG.UI.Scene.Rect.Height : System.Double [get]
+FS.GG.UI.Scene.Rect.Width : System.Double [get]
+FS.GG.UI.Scene.Rect.X : System.Double [get]
+FS.GG.UI.Scene.Rect.Y : System.Double [get]
+FS.GG.UI.Scene.Rect.new(System.Double, System.Double, System.Double, System.Double)
+FS.GG.UI.Scene.Region.Bounds : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.Rect> [get]
+FS.GG.UI.Scene.Region.Operation : FS.GG.UI.Scene.RegionOperation [get]
+FS.GG.UI.Scene.Region.new(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.Rect>, FS.GG.UI.Scene.RegionOperation)
+FS.GG.UI.Scene.RegionOperation+Tags.RegionDifference : System.Int32
+FS.GG.UI.Scene.RegionOperation+Tags.RegionIntersect : System.Int32
+FS.GG.UI.Scene.RegionOperation+Tags.RegionUnion : System.Int32
+FS.GG.UI.Scene.RegionOperation+Tags.Replace : System.Int32
+FS.GG.UI.Scene.RenderDiagnostic.Cause : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.RenderDiagnostic.Message : System.String [get]
+FS.GG.UI.Scene.RenderDiagnostic.Severity : FS.GG.UI.Scene.DiagnosticSeverity [get]
+FS.GG.UI.Scene.RenderDiagnostic.Stage : FS.GG.UI.Scene.DiagnosticStage [get]
+FS.GG.UI.Scene.RenderDiagnostic.new(FS.GG.UI.Scene.DiagnosticSeverity, FS.GG.UI.Scene.DiagnosticStage, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>)
+FS.GG.UI.Scene.RenderReadbackEvidence.Capabilities : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.RenderReadbackEvidence.CapabilityCount : System.Int32 [get]
+FS.GG.UI.Scene.RenderReadbackEvidence.DeterministicHash : System.String [get]
+FS.GG.UI.Scene.RenderReadbackEvidence.Size : FS.GG.UI.Scene.Size [get]
+FS.GG.UI.Scene.RenderReadbackEvidence.new(FS.GG.UI.Scene.Size, System.Int32, Microsoft.FSharp.Collections.FSharpList<System.String>, System.String)
+FS.GG.UI.Scene.RequirementLevel+Tags.Optional : System.Int32
+FS.GG.UI.Scene.RequirementLevel+Tags.Required : System.Int32
+FS.GG.UI.Scene.ResourceAvailability.ByteLength : Microsoft.FSharp.Core.FSharpOption<System.Int64> [get]
+FS.GG.UI.Scene.ResourceAvailability.ContentHash : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.ResourceAvailability.Kind : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.ResourceKind> [get]
+FS.GG.UI.Scene.ResourceAvailability.ResourceId : System.String [get]
+FS.GG.UI.Scene.ResourceAvailability.Status : FS.GG.UI.Scene.ResourceAvailabilityStatus [get]
+FS.GG.UI.Scene.ResourceAvailability.new(System.String, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.ResourceKind>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.Int64>, FS.GG.UI.Scene.ResourceAvailabilityStatus)
+FS.GG.UI.Scene.ResourceAvailabilityStatus+Tags.ResourceAvailable : System.Int32
+FS.GG.UI.Scene.ResourceAvailabilityStatus+Tags.ResourceCorrupted : System.Int32
+FS.GG.UI.Scene.ResourceAvailabilityStatus+Tags.ResourceDuplicated : System.Int32
+FS.GG.UI.Scene.ResourceAvailabilityStatus+Tags.ResourceHashMismatch : System.Int32
+FS.GG.UI.Scene.ResourceAvailabilityStatus+Tags.ResourceMissing : System.Int32
+FS.GG.UI.Scene.ResourceEntry.ByteLength : Microsoft.FSharp.Core.FSharpOption<System.Int64> [get]
+FS.GG.UI.Scene.ResourceEntry.ContentHash : System.String [get]
+FS.GG.UI.Scene.ResourceEntry.Kind : FS.GG.UI.Scene.ResourceKind [get]
+FS.GG.UI.Scene.ResourceEntry.MediaType : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.ResourceEntry.Required : System.Boolean [get]
+FS.GG.UI.Scene.ResourceEntry.ResourceId : System.String [get]
+FS.GG.UI.Scene.ResourceEntry.SourceLabel : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.ResourceEntry.new(System.String, FS.GG.UI.Scene.ResourceKind, System.String, Microsoft.FSharp.Core.FSharpOption<System.Int64>, System.Boolean, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>)
+FS.GG.UI.Scene.ResourceKind+Tags.BinaryResource : System.Int32
+FS.GG.UI.Scene.ResourceKind+Tags.FontResource : System.Int32
+FS.GG.UI.Scene.ResourceKind+Tags.ImageResource : System.Int32
+FS.GG.UI.Scene.ResourceVerdict.Accepted : System.Boolean [get]
+FS.GG.UI.Scene.ResourceVerdict.Availability : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.ResourceAvailability> [get]
+FS.GG.UI.Scene.ResourceVerdict.Degraded : System.Boolean [get]
+FS.GG.UI.Scene.ResourceVerdict.Diagnostics : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.PackageDiagnostic> [get]
+FS.GG.UI.Scene.ResourceVerdict.Entry : FS.GG.UI.Scene.ResourceEntry [get]
+FS.GG.UI.Scene.ResourceVerdict.new(FS.GG.UI.Scene.ResourceEntry, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.ResourceAvailability>, System.Boolean, System.Boolean, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.PackageDiagnostic>)
+FS.GG.UI.Scene.RetainedFrameTransition.CurrentFrameId : System.String [get]
+FS.GG.UI.Scene.RetainedFrameTransition.ExpectedAffectedRegionIds : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.RetainedFrameTransition.IntentionalExceptions : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.IntentionalDamageException> [get]
+FS.GG.UI.Scene.RetainedFrameTransition.InteractionId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.RetainedFrameTransition.MaximumDirtyPercentage : Microsoft.FSharp.Core.FSharpOption<System.Double> [get]
+FS.GG.UI.Scene.RetainedFrameTransition.PriorFrameId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.RetainedFrameTransition.TransitionId : System.String [get]
+FS.GG.UI.Scene.RetainedFrameTransition.new(System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Core.FSharpOption<System.Double>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.IntentionalDamageException>)
+FS.GG.UI.Scene.RetainedInspection.artifactDiagnostics(FS.GG.UI.Scene.RetainedInspectionArtifact) : Microsoft.FSharp.Collections.FSharpList<System.String>
+FS.GG.UI.Scene.RetainedInspection.damageRegion(System.String, FS.GG.UI.Scene.Rect, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.Rect>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, FS.GG.UI.Scene.DamageNodeCounts, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.Double>) : FS.GG.UI.Scene.DamageRegionInspection
+FS.GG.UI.Scene.RetainedInspection.damageStatusText(FS.GG.UI.Scene.DamageInspectionStatus) : System.String
+FS.GG.UI.Scene.RetainedInspection.dirtyUnionArea(FS.GG.UI.Scene.Rect, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.Rect>) : System.Int32
+FS.GG.UI.Scene.RetainedInspection.dirtyUnionBounds(FS.GG.UI.Scene.Rect, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.Rect>) : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Rect>
+FS.GG.UI.Scene.RetainedInspection.finding(System.String, FS.GG.UI.Scene.VisualInspectionSeverity, System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, System.String, System.String, System.String) : FS.GG.UI.Scene.DamageLocalityFinding
+FS.GG.UI.Scene.RetainedInspection.nodeStatusText(FS.GG.UI.Scene.RetainedNodeStatus) : System.String
+FS.GG.UI.Scene.RetainedInspection.normalizeArtifact(FS.GG.UI.Scene.RetainedInspectionArtifact) : FS.GG.UI.Scene.RetainedInspectionArtifact
+FS.GG.UI.Scene.RetainedInspection.stableFindingId(System.String, System.String, Microsoft.FSharp.Collections.FSharpList<System.String>) : System.String
+FS.GG.UI.Scene.RetainedInspection.statusText(FS.GG.UI.Scene.RetainedInspectionStatus) : System.String
+FS.GG.UI.Scene.RetainedInspection.unsupportedFact(System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, System.Boolean, System.String, System.String, System.Boolean) : FS.GG.UI.Scene.VisualInspectionUnsupportedFact
+FS.GG.UI.Scene.RetainedInspectionArtifact.ArtifactId : System.String [get]
+FS.GG.UI.Scene.RetainedInspectionArtifact.Damage : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.DamageRegionInspection> [get]
+FS.GG.UI.Scene.RetainedInspectionArtifact.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.RetainedInspectionArtifact.FinalVisualArtifact : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.VisualInspectionArtifact> [get]
+FS.GG.UI.Scene.RetainedInspectionArtifact.Findings : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.DamageLocalityFinding> [get]
+FS.GG.UI.Scene.RetainedInspectionArtifact.GeneratedAtUtc : System.String [get]
+FS.GG.UI.Scene.RetainedInspectionArtifact.OutputSize : FS.GG.UI.Scene.Size [get]
+FS.GG.UI.Scene.RetainedInspectionArtifact.Presentation : System.String [get]
+FS.GG.UI.Scene.RetainedInspectionArtifact.ReadinessStatus : FS.GG.UI.Scene.RetainedInspectionStatus [get]
+FS.GG.UI.Scene.RetainedInspectionArtifact.RelatedVisualEvidence : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.RetainedInspectionArtifact.RetainedNodes : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.RetainedNodeInspection> [get]
+FS.GG.UI.Scene.RetainedInspectionArtifact.RunId : System.String [get]
+FS.GG.UI.Scene.RetainedInspectionArtifact.Scope : FS.GG.UI.Scene.VisualInspectionScope [get]
+FS.GG.UI.Scene.RetainedInspectionArtifact.Transition : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.RetainedFrameTransition> [get]
+FS.GG.UI.Scene.RetainedInspectionArtifact.UnsupportedFacts : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.VisualInspectionUnsupportedFact> [get]
+FS.GG.UI.Scene.RetainedInspectionArtifact.new(System.String, System.String, FS.GG.UI.Scene.VisualInspectionScope, FS.GG.UI.Scene.Size, System.String, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.RetainedFrameTransition>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.VisualInspectionArtifact>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.RetainedNodeInspection>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.DamageRegionInspection>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.DamageLocalityFinding>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.VisualInspectionUnsupportedFact>, Microsoft.FSharp.Collections.FSharpList<System.String>, FS.GG.UI.Scene.RetainedInspectionStatus, Microsoft.FSharp.Collections.FSharpList<System.String>, System.String)
+FS.GG.UI.Scene.RetainedInspectionStatus+Tags.Accepted : System.Int32
+FS.GG.UI.Scene.RetainedInspectionStatus+Tags.Blocked : System.Int32
+FS.GG.UI.Scene.RetainedInspectionStatus+Tags.EnvironmentLimited : System.Int32
+FS.GG.UI.Scene.RetainedInspectionStatus+Tags.NotInspected : System.Int32
+FS.GG.UI.Scene.RetainedInspectionStatus+Tags.NotRun : System.Int32
+FS.GG.UI.Scene.RetainedInspectionStatus+Tags.ReviewRequired : System.Int32
+FS.GG.UI.Scene.RetainedInspectionStatus+Tags.Unsupported : System.Int32
+FS.GG.UI.Scene.RetainedInspectionSummary.AcceptedExceptions : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.RetainedInspectionSummary.ArtifactCount : System.Int32 [get]
+FS.GG.UI.Scene.RetainedInspectionSummary.BlockingFindings : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.DamageLocalityFinding> [get]
+FS.GG.UI.Scene.RetainedInspectionSummary.Caveats : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.RetainedInspectionSummary.CommandEvidence : Microsoft.FSharp.Collections.FSharpList<System.Tuple<System.String, System.String>> [get]
+FS.GG.UI.Scene.RetainedInspectionSummary.DamageStatusCounts : Microsoft.FSharp.Collections.FSharpList<System.Tuple<System.String, System.Int32>> [get]
+FS.GG.UI.Scene.RetainedInspectionSummary.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.RetainedInspectionSummary.DirtyAreaSummaries : Microsoft.FSharp.Collections.FSharpList<System.Tuple<System.String, System.Double, Microsoft.FSharp.Collections.FSharpList<System.String>>> [get]
+FS.GG.UI.Scene.RetainedInspectionSummary.InspectedScopes : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.RetainedInspectionSummary.InvalidExceptions : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.RetainedInspectionSummary.NodeStatusCounts : Microsoft.FSharp.Collections.FSharpList<System.Tuple<System.String, System.Int32>> [get]
+FS.GG.UI.Scene.RetainedInspectionSummary.NotInspectedScopes : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.RetainedInspectionSummary.OverallStatus : FS.GG.UI.Scene.RetainedInspectionStatus [get]
+FS.GG.UI.Scene.RetainedInspectionSummary.RelatedVisualEvidence : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.RetainedInspectionSummary.RunId : System.String [get]
+FS.GG.UI.Scene.RetainedInspectionSummary.StatusCounts : Microsoft.FSharp.Collections.FSharpList<System.Tuple<System.String, System.Int32>> [get]
+FS.GG.UI.Scene.RetainedInspectionSummary.UnsupportedFacts : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.VisualInspectionUnsupportedFact> [get]
+FS.GG.UI.Scene.RetainedInspectionSummary.new(System.String, FS.GG.UI.Scene.RetainedInspectionStatus, System.Int32, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.Tuple<System.String, System.Int32>>, Microsoft.FSharp.Collections.FSharpList<System.Tuple<System.String, System.Int32>>, Microsoft.FSharp.Collections.FSharpList<System.Tuple<System.String, System.Int32>>, Microsoft.FSharp.Collections.FSharpList<System.Tuple<System.String, System.Double, Microsoft.FSharp.Collections.FSharpList<System.String>>>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.DamageLocalityFinding>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.VisualInspectionUnsupportedFact>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.Tuple<System.String, System.String>>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Scene.RetainedNodeInspection.AffectedRegionIds : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.RetainedNodeInspection.CurrentBounds : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Rect> [get]
+FS.GG.UI.Scene.RetainedNodeInspection.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.RetainedNodeInspection.Kind : System.String [get]
+FS.GG.UI.Scene.RetainedNodeInspection.NodeId : System.String [get]
+FS.GG.UI.Scene.RetainedNodeInspection.OwnerId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.RetainedNodeInspection.ParentId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.RetainedNodeInspection.PriorBounds : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Rect> [get]
+FS.GG.UI.Scene.RetainedNodeInspection.Repainted : System.Boolean [get]
+FS.GG.UI.Scene.RetainedNodeInspection.RetainedIdentity : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.RetainedNodeInspection.Shifted : System.Boolean [get]
+FS.GG.UI.Scene.RetainedNodeInspection.Status : FS.GG.UI.Scene.RetainedNodeStatus [get]
+FS.GG.UI.Scene.RetainedNodeInspection.UnsupportedFacts : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.VisualInspectionUnsupportedFact> [get]
+FS.GG.UI.Scene.RetainedNodeInspection.new(System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, FS.GG.UI.Scene.RetainedNodeStatus, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Rect>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Rect>, Microsoft.FSharp.Collections.FSharpList<System.String>, System.Boolean, System.Boolean, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.VisualInspectionUnsupportedFact>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Scene.RetainedNodeStatus+Tags.Added : System.Int32
+FS.GG.UI.Scene.RetainedNodeStatus+Tags.Removed : System.Int32
+FS.GG.UI.Scene.RetainedNodeStatus+Tags.Repainted : System.Int32
+FS.GG.UI.Scene.RetainedNodeStatus+Tags.Retained : System.Int32
+FS.GG.UI.Scene.RetainedNodeStatus+Tags.Reused : System.Int32
+FS.GG.UI.Scene.RetainedNodeStatus+Tags.Shifted : System.Int32
+FS.GG.UI.Scene.RetainedNodeStatus+Tags.ShiftedAndRepainted : System.Int32
+FS.GG.UI.Scene.RetainedNodeStatus+Tags.Unaffected : System.Int32
+FS.GG.UI.Scene.RetainedNodeStatus+Tags.Unsupported : System.Int32
+FS.GG.UI.Scene.Scene.Nodes : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SceneNode> [get]
+FS.GG.UI.Scene.Scene.arc(FS.GG.UI.Scene.Rect, System.Double, System.Double, FS.GG.UI.Scene.Paint) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Scene.Scene.buildFallbackShapedText(System.String, FS.GG.UI.Scene.FontSpec) : FS.GG.UI.Scene.ShapedTextResult
+FS.GG.UI.Scene.Scene.buildGlyphRun(System.String, FS.GG.UI.Scene.FontSpec) : FS.GG.UI.Scene.GlyphRunData
+FS.GG.UI.Scene.Scene.chart(Microsoft.FSharp.Collections.FSharpList<System.Double>) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Scene.Scene.circle(FS.GG.UI.Scene.Point, System.Double, FS.GG.UI.Scene.Color) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Scene.Scene.circleEvidence(FS.GG.UI.Scene.Size, FS.GG.UI.Scene.Point, System.Double, FS.GG.UI.Scene.Color) : FS.GG.UI.Scene.CircleShapeEvidence
+FS.GG.UI.Scene.Scene.clipped(FS.GG.UI.Scene.Clip, FS.GG.UI.Scene.Scene) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Scene.Scene.describe(FS.GG.UI.Scene.Scene) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SceneElementKind>
+FS.GG.UI.Scene.Scene.diagnostics(FS.GG.UI.Scene.Scene) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.RenderDiagnostic>
+FS.GG.UI.Scene.Scene.ellipse(FS.GG.UI.Scene.Rect, FS.GG.UI.Scene.Paint) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Scene.Scene.ellipseEvidence(FS.GG.UI.Scene.Size, FS.GG.UI.Scene.Rect, FS.GG.UI.Scene.Color) : FS.GG.UI.Scene.EllipseShapeEvidence
+FS.GG.UI.Scene.Scene.empty : FS.GG.UI.Scene.Scene [get]
+FS.GG.UI.Scene.Scene.filledEllipse(FS.GG.UI.Scene.Rect, FS.GG.UI.Scene.Color) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Scene.Scene.filledRectangle(FS.GG.UI.Scene.Rect, FS.GG.UI.Scene.Color) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Scene.Scene.glyphRun(FS.GG.UI.Scene.Point, FS.GG.UI.Scene.GlyphRunData, FS.GG.UI.Scene.Paint) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Scene.Scene.glyphRunDataFromShapedText(FS.GG.UI.Scene.ShapedTextResult) : FS.GG.UI.Scene.GlyphRunData
+FS.GG.UI.Scene.Scene.glyphRunFingerprint(FS.GG.UI.Scene.GlyphRunData) : System.String
+FS.GG.UI.Scene.Scene.glyphRunProof(FS.GG.UI.Scene.Point, System.String, FS.GG.UI.Scene.FontSpec, FS.GG.UI.Scene.Paint) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Scene.Scene.group(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.Scene>) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Scene.Scene.image(System.Double, System.Double, System.Double, System.Double, System.String) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Scene.Scene.line(FS.GG.UI.Scene.Point, FS.GG.UI.Scene.Point, FS.GG.UI.Scene.Paint) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Scene.Scene.measureGlyphRun(FS.GG.UI.Scene.GlyphRunData) : FS.GG.UI.Scene.TextMetrics
+FS.GG.UI.Scene.Scene.measureShapedText(FS.GG.UI.Scene.ShapedTextResult) : FS.GG.UI.Scene.TextMetrics
+FS.GG.UI.Scene.Scene.measureText(System.String, FS.GG.UI.Scene.FontSpec) : FS.GG.UI.Scene.TextMetrics
+FS.GG.UI.Scene.Scene.measureTextResolved(System.String, FS.GG.UI.Scene.FontSpec) : FS.GG.UI.Scene.TextMetrics
+FS.GG.UI.Scene.Scene.new(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SceneNode>)
+FS.GG.UI.Scene.Scene.path(FS.GG.UI.Scene.PathSpec, FS.GG.UI.Scene.Paint) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Scene.Scene.picture(FS.GG.UI.Scene.Picture) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Scene.Scene.points(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.Point>, FS.GG.UI.Scene.Paint) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Scene.Scene.rectangle(System.Double, System.Double, System.Double, System.Double, FS.GG.UI.Scene.Color) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Scene.Scene.rectangleWithPaint(FS.GG.UI.Scene.Rect, FS.GG.UI.Scene.Paint) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Scene.Scene.region(FS.GG.UI.Scene.Region, FS.GG.UI.Scene.Paint) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Scene.Scene.renderReadbackEvidence(FS.GG.UI.Scene.Size, FS.GG.UI.Scene.Scene) : FS.GG.UI.Scene.RenderReadbackEvidence
+FS.GG.UI.Scene.Scene.setRealTextMeasurer(Microsoft.FSharp.Core.FSharpOption<Microsoft.FSharp.Core.FSharpFunc<System.String, Microsoft.FSharp.Core.FSharpFunc<FS.GG.UI.Scene.FontSpec, FS.GG.UI.Scene.TextMetrics>>>) : System.Void
+FS.GG.UI.Scene.Scene.setTextMeasurementVersionBucket(System.String) : System.Void
+FS.GG.UI.Scene.Scene.shapedTextFingerprint(FS.GG.UI.Scene.ShapedTextResult) : System.String
+FS.GG.UI.Scene.Scene.sizedText(System.Tuple<System.Double, System.Double>, System.String, System.Double, FS.GG.UI.Scene.Color) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Scene.Scene.text(System.Double, System.Double, System.String, FS.GG.UI.Scene.Color) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Scene.Scene.textAt(FS.GG.UI.Scene.Point, System.String, FS.GG.UI.Scene.Color) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Scene.Scene.textMeasurementVersionBucket() : System.String
+FS.GG.UI.Scene.Scene.textRun(FS.GG.UI.Scene.TextRun) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Scene.Scene.translate(System.Double, System.Double, FS.GG.UI.Scene.Scene) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Scene.Scene.vertices(FS.GG.UI.Scene.VertexMode, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.Vertex>, FS.GG.UI.Scene.Paint) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Scene.Scene.withColorSpace(FS.GG.UI.Scene.ColorSpace, FS.GG.UI.Scene.Scene) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Scene.Scene.withPerspective(FS.GG.UI.Scene.PerspectiveTransform, FS.GG.UI.Scene.Scene) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Scene.SceneCodec.compareScenes(FS.GG.UI.Scene.Scene, FS.GG.UI.Scene.Scene) : FS.GG.UI.Scene.SemanticComparison
+FS.GG.UI.Scene.SceneCodec.defaultExportOptions : FS.GG.UI.Scene.PackageExportOptions [get]
+FS.GG.UI.Scene.SceneCodec.defaultInspectionOptions : FS.GG.UI.Scene.PackageInspectionOptions [get]
+FS.GG.UI.Scene.SceneCodec.export(FS.GG.UI.Scene.Scene) : FS.GG.UI.Scene.PortableScenePackage
+FS.GG.UI.Scene.SceneCodec.exportScene(FS.GG.UI.Scene.PackageExportOptions, FS.GG.UI.Scene.Scene) : FS.GG.UI.Scene.PortableScenePackage
+FS.GG.UI.Scene.SceneCodec.formatDiagnostics(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.PackageDiagnostic>) : Microsoft.FSharp.Collections.FSharpList<System.String>
+FS.GG.UI.Scene.SceneCodec.importPackage(System.Byte[]) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.PortableScenePackage, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.PackageDiagnostic>>
+FS.GG.UI.Scene.SceneCodec.inspect(System.Byte[]) : FS.GG.UI.Scene.PackageInspectionReport
+FS.GG.UI.Scene.SceneCodec.inspectWith(FS.GG.UI.Scene.PackageInspectionOptions, System.Byte[]) : FS.GG.UI.Scene.PackageInspectionReport
+FS.GG.UI.Scene.SceneCodec.magicHeader : System.String [get]
+FS.GG.UI.Scene.SceneCodec.packageIdentity(System.Byte[]) : System.String
+FS.GG.UI.Scene.SceneCodec.supportedVersion : FS.GG.UI.Scene.ProtocolVersion [get]
+FS.GG.UI.Scene.SceneElementKind+Tags.ArcElement : System.Int32
+FS.GG.UI.Scene.SceneElementKind+Tags.ChartElement : System.Int32
+FS.GG.UI.Scene.SceneElementKind+Tags.CircleElement : System.Int32
+FS.GG.UI.Scene.SceneElementKind+Tags.ClipElement : System.Int32
+FS.GG.UI.Scene.SceneElementKind+Tags.ColorSpaceElement : System.Int32
+FS.GG.UI.Scene.SceneElementKind+Tags.EllipseElement : System.Int32
+FS.GG.UI.Scene.SceneElementKind+Tags.EmptyElement : System.Int32
+FS.GG.UI.Scene.SceneElementKind+Tags.GlyphRunElement : System.Int32
+FS.GG.UI.Scene.SceneElementKind+Tags.GroupElement : System.Int32
+FS.GG.UI.Scene.SceneElementKind+Tags.ImageElement : System.Int32
+FS.GG.UI.Scene.SceneElementKind+Tags.LineElement : System.Int32
+FS.GG.UI.Scene.SceneElementKind+Tags.PathElement : System.Int32
+FS.GG.UI.Scene.SceneElementKind+Tags.PerspectiveElement : System.Int32
+FS.GG.UI.Scene.SceneElementKind+Tags.PictureElement : System.Int32
+FS.GG.UI.Scene.SceneElementKind+Tags.PointsElement : System.Int32
+FS.GG.UI.Scene.SceneElementKind+Tags.RectangleElement : System.Int32
+FS.GG.UI.Scene.SceneElementKind+Tags.RegionElement : System.Int32
+FS.GG.UI.Scene.SceneElementKind+Tags.SizedTextElement : System.Int32
+FS.GG.UI.Scene.SceneElementKind+Tags.TextElement : System.Int32
+FS.GG.UI.Scene.SceneElementKind+Tags.TextRunElement : System.Int32
+FS.GG.UI.Scene.SceneElementKind+Tags.TranslateElement : System.Int32
+FS.GG.UI.Scene.SceneElementKind+Tags.VerticesElement : System.Int32
+FS.GG.UI.Scene.SceneEvidence.EvidencePath : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.SceneEvidence.Format : FS.GG.UI.Scene.SceneEvidenceFormat [get]
+FS.GG.UI.Scene.SceneEvidence.OutputSize : FS.GG.UI.Scene.Size [get]
+FS.GG.UI.Scene.SceneEvidence.RendererMode : System.String [get]
+FS.GG.UI.Scene.SceneEvidence.Value : System.String [get]
+FS.GG.UI.Scene.SceneEvidence.new(FS.GG.UI.Scene.SceneEvidenceFormat, FS.GG.UI.Scene.Size, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, System.String)
+FS.GG.UI.Scene.SceneEvidence.render(FS.GG.UI.Scene.SceneEvidenceRequest) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SceneEvidence, FS.GG.UI.Scene.SceneEvidenceFailure>
+FS.GG.UI.Scene.SceneEvidence.renderHash(FS.GG.UI.Scene.Size, FS.GG.UI.Scene.Scene) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SceneEvidence, FS.GG.UI.Scene.SceneEvidenceFailure>
+FS.GG.UI.Scene.SceneEvidence.renderPng(FS.GG.UI.Scene.Size, FS.GG.UI.Scene.Scene) : Microsoft.FSharp.Core.FSharpResult<System.Byte[], FS.GG.UI.Scene.SceneEvidenceFailure>
+FS.GG.UI.Scene.SceneEvidence.setRealPngRasterizer(Microsoft.FSharp.Core.FSharpOption<Microsoft.FSharp.Core.FSharpFunc<FS.GG.UI.Scene.Size, Microsoft.FSharp.Core.FSharpFunc<FS.GG.UI.Scene.Scene, Microsoft.FSharp.Core.FSharpResult<System.Byte[], FS.GG.UI.Scene.SceneEvidenceFailure>>>>) : System.Void
+FS.GG.UI.Scene.SceneEvidenceFailure.BlockedStage : System.String [get]
+FS.GG.UI.Scene.SceneEvidenceFailure.Classification : FS.GG.UI.Scene.SceneEvidenceFailureClassification [get]
+FS.GG.UI.Scene.SceneEvidenceFailure.DiagnosticCategory : System.String [get]
+FS.GG.UI.Scene.SceneEvidenceFailure.Message : System.String [get]
+FS.GG.UI.Scene.SceneEvidenceFailure.new(System.String, FS.GG.UI.Scene.SceneEvidenceFailureClassification, System.String, System.String)
+FS.GG.UI.Scene.SceneEvidenceFailureClassification+Tags.ProductDefect : System.Int32
+FS.GG.UI.Scene.SceneEvidenceFailureClassification+Tags.UnsupportedEnvironment : System.Int32
+FS.GG.UI.Scene.SceneEvidenceFormat+Tags.Hash : System.Int32
+FS.GG.UI.Scene.SceneEvidenceFormat+Tags.Metadata : System.Int32
+FS.GG.UI.Scene.SceneEvidenceFormat+Tags.Png : System.Int32
+FS.GG.UI.Scene.SceneEvidenceRequest.EvidencePath : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.SceneEvidenceRequest.Format : FS.GG.UI.Scene.SceneEvidenceFormat [get]
+FS.GG.UI.Scene.SceneEvidenceRequest.OutputSize : FS.GG.UI.Scene.Size [get]
+FS.GG.UI.Scene.SceneEvidenceRequest.RendererMode : System.String [get]
+FS.GG.UI.Scene.SceneEvidenceRequest.Scene : FS.GG.UI.Scene.Scene [get]
+FS.GG.UI.Scene.SceneEvidenceRequest.new(FS.GG.UI.Scene.Scene, FS.GG.UI.Scene.Size, FS.GG.UI.Scene.SceneEvidenceFormat, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>)
+FS.GG.UI.Scene.SceneNode+Tags.Arc : System.Int32
+FS.GG.UI.Scene.SceneNode+Tags.CachedSubtree : System.Int32
+FS.GG.UI.Scene.SceneNode+Tags.Chart : System.Int32
+FS.GG.UI.Scene.SceneNode+Tags.Circle : System.Int32
+FS.GG.UI.Scene.SceneNode+Tags.ClipNode : System.Int32
+FS.GG.UI.Scene.SceneNode+Tags.ColorSpaceNode : System.Int32
+FS.GG.UI.Scene.SceneNode+Tags.Ellipse : System.Int32
+FS.GG.UI.Scene.SceneNode+Tags.Empty : System.Int32
+FS.GG.UI.Scene.SceneNode+Tags.FilledEllipse : System.Int32
+FS.GG.UI.Scene.SceneNode+Tags.GlyphRun : System.Int32
+FS.GG.UI.Scene.SceneNode+Tags.Group : System.Int32
+FS.GG.UI.Scene.SceneNode+Tags.Image : System.Int32
+FS.GG.UI.Scene.SceneNode+Tags.Line : System.Int32
+FS.GG.UI.Scene.SceneNode+Tags.PaintedRectangle : System.Int32
+FS.GG.UI.Scene.SceneNode+Tags.Path : System.Int32
+FS.GG.UI.Scene.SceneNode+Tags.PerspectiveNode : System.Int32
+FS.GG.UI.Scene.SceneNode+Tags.PictureNode : System.Int32
+FS.GG.UI.Scene.SceneNode+Tags.Points : System.Int32
+FS.GG.UI.Scene.SceneNode+Tags.Rectangle : System.Int32
+FS.GG.UI.Scene.SceneNode+Tags.RegionNode : System.Int32
+FS.GG.UI.Scene.SceneNode+Tags.SizedText : System.Int32
+FS.GG.UI.Scene.SceneNode+Tags.Text : System.Int32
+FS.GG.UI.Scene.SceneNode+Tags.TextRun : System.Int32
+FS.GG.UI.Scene.SceneNode+Tags.Translate : System.Int32
+FS.GG.UI.Scene.SceneNode+Tags.Vertices : System.Int32
+FS.GG.UI.Scene.SemanticComparison.ActualCapabilities : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SceneElementKind> [get]
+FS.GG.UI.Scene.SemanticComparison.Diagnostics : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.PackageDiagnostic> [get]
+FS.GG.UI.Scene.SemanticComparison.Equivalent : System.Boolean [get]
+FS.GG.UI.Scene.SemanticComparison.ExpectedCapabilities : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SceneElementKind> [get]
+FS.GG.UI.Scene.SemanticComparison.new(System.Boolean, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SceneElementKind>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SceneElementKind>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.PackageDiagnostic>)
+FS.GG.UI.Scene.Shader+Tags.LinearGradient : System.Int32
+FS.GG.UI.Scene.Shader+Tags.RadialGradient : System.Int32
+FS.GG.UI.Scene.Shader+Tags.SolidColor : System.Int32
+FS.GG.UI.Scene.Shader+Tags.SweepGradient : System.Int32
+FS.GG.UI.Scene.ShapePlacement+Tags.FullyInside : System.Int32
+FS.GG.UI.Scene.ShapePlacement+Tags.FullyOutOfBounds : System.Int32
+FS.GG.UI.Scene.ShapePlacement+Tags.PartiallyOutOfBounds : System.Int32
+FS.GG.UI.Scene.ShapedGlyph.Advance : System.Double [get]
+FS.GG.UI.Scene.ShapedGlyph.GlyphId : System.Int32 [get]
+FS.GG.UI.Scene.ShapedGlyph.Missing : System.Boolean [get]
+FS.GG.UI.Scene.ShapedGlyph.Offset : FS.GG.UI.Scene.Point [get]
+FS.GG.UI.Scene.ShapedGlyph.Position : FS.GG.UI.Scene.Point [get]
+FS.GG.UI.Scene.ShapedGlyph.ResolvedFace : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.ShapedGlyph.SourceCluster : System.Int32 [get]
+FS.GG.UI.Scene.ShapedGlyph.SourceText : System.String [get]
+FS.GG.UI.Scene.ShapedGlyph.new(System.Int32, System.Int32, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, System.Double, FS.GG.UI.Scene.Point, FS.GG.UI.Scene.Point, System.Boolean)
+FS.GG.UI.Scene.ShapedTextFallbackMode+Tags.ProviderUnavailableFallback : System.Int32
+FS.GG.UI.Scene.ShapedTextFallbackMode+Tags.PureFallbackMode : System.Int32
+FS.GG.UI.Scene.ShapedTextFallbackMode+Tags.Shaped : System.Int32
+FS.GG.UI.Scene.ShapedTextFallbackMode+Tags.ShapingFailedFallback : System.Int32
+FS.GG.UI.Scene.ShapedTextMetrics.Advance : System.Double [get]
+FS.GG.UI.Scene.ShapedTextMetrics.Baseline : System.Double [get]
+FS.GG.UI.Scene.ShapedTextMetrics.Bounds : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Rect> [get]
+FS.GG.UI.Scene.ShapedTextMetrics.Height : System.Double [get]
+FS.GG.UI.Scene.ShapedTextMetrics.Width : System.Double [get]
+FS.GG.UI.Scene.ShapedTextMetrics.new(System.Double, System.Double, System.Double, System.Double, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Rect>)
+FS.GG.UI.Scene.ShapedTextResult.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.ShapedTextResult.FallbackMode : FS.GG.UI.Scene.ShapedTextFallbackMode [get]
+FS.GG.UI.Scene.ShapedTextResult.Fingerprint : System.String [get]
+FS.GG.UI.Scene.ShapedTextResult.Font : FS.GG.UI.Scene.FontSpec [get]
+FS.GG.UI.Scene.ShapedTextResult.Glyphs : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.ShapedGlyph> [get]
+FS.GG.UI.Scene.ShapedTextResult.Metrics : FS.GG.UI.Scene.ShapedTextMetrics [get]
+FS.GG.UI.Scene.ShapedTextResult.Provider : FS.GG.UI.Scene.ShapingProviderEvidence [get]
+FS.GG.UI.Scene.ShapedTextResult.Runs : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.TextShapeRun> [get]
+FS.GG.UI.Scene.ShapedTextResult.Text : System.String [get]
+FS.GG.UI.Scene.ShapedTextResult.new(System.String, FS.GG.UI.Scene.FontSpec, FS.GG.UI.Scene.ShapingProviderEvidence, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.TextShapeRun>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.ShapedGlyph>, FS.GG.UI.Scene.ShapedTextMetrics, Microsoft.FSharp.Collections.FSharpList<System.String>, System.String, FS.GG.UI.Scene.ShapedTextFallbackMode)
+FS.GG.UI.Scene.ShapingProviderAvailability+Tags.ProviderCleared : System.Int32
+FS.GG.UI.Scene.ShapingProviderAvailability+Tags.ProviderFailed : System.Int32
+FS.GG.UI.Scene.ShapingProviderAvailability+Tags.ProviderInstalled : System.Int32
+FS.GG.UI.Scene.ShapingProviderAvailability+Tags.ProviderUnavailable : System.Int32
+FS.GG.UI.Scene.ShapingProviderEvidence.Availability : FS.GG.UI.Scene.ShapingProviderAvailability [get]
+FS.GG.UI.Scene.ShapingProviderEvidence.Failure : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.ShapingProviderEvidence.ProviderId : System.String [get]
+FS.GG.UI.Scene.ShapingProviderEvidence.VersionBucket : System.String [get]
+FS.GG.UI.Scene.ShapingProviderEvidence.new(FS.GG.UI.Scene.ShapingProviderAvailability, System.String, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>)
+FS.GG.UI.Scene.Size.Height : System.Int32 [get]
+FS.GG.UI.Scene.Size.Width : System.Int32 [get]
+FS.GG.UI.Scene.Size.new(System.Int32, System.Int32)
+FS.GG.UI.Scene.Stroke.Cap : FS.GG.UI.Scene.StrokeCap [get]
+FS.GG.UI.Scene.Stroke.Join : FS.GG.UI.Scene.StrokeJoin [get]
+FS.GG.UI.Scene.Stroke.Miter : System.Double [get]
+FS.GG.UI.Scene.Stroke.Width : System.Double [get]
+FS.GG.UI.Scene.Stroke.new(System.Double, FS.GG.UI.Scene.StrokeCap, FS.GG.UI.Scene.StrokeJoin, System.Double)
+FS.GG.UI.Scene.StrokeCap+Tags.Butt : System.Int32
+FS.GG.UI.Scene.StrokeCap+Tags.Round : System.Int32
+FS.GG.UI.Scene.StrokeCap+Tags.Square : System.Int32
+FS.GG.UI.Scene.StrokeJoin+Tags.Bevel : System.Int32
+FS.GG.UI.Scene.StrokeJoin+Tags.Miter : System.Int32
+FS.GG.UI.Scene.StrokeJoin+Tags.RoundJoin : System.Int32
+FS.GG.UI.Scene.TargetCapabilityProfile.ProfileId : System.String [get]
+FS.GG.UI.Scene.TargetCapabilityProfile.SupportedCapabilities : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.TargetCapabilityProfile.new(System.String, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Scene.TextDirection+Tags.AutoDirection : System.Int32
+FS.GG.UI.Scene.TextDirection+Tags.LeftToRight : System.Int32
+FS.GG.UI.Scene.TextDirection+Tags.MixedDirection : System.Int32
+FS.GG.UI.Scene.TextDirection+Tags.RightToLeft : System.Int32
+FS.GG.UI.Scene.TextFallbackDecision+Tags.AuthoredFace : System.Int32
+FS.GG.UI.Scene.TextFallbackDecision+Tags.MissingGlyphs : System.Int32
+FS.GG.UI.Scene.TextFallbackDecision+Tags.ProviderFailure : System.Int32
+FS.GG.UI.Scene.TextFallbackDecision+Tags.PureFallback : System.Int32
+FS.GG.UI.Scene.TextFallbackDecision+Tags.SubstitutedFace : System.Int32
+FS.GG.UI.Scene.TextMetrics.Baseline : System.Double [get]
+FS.GG.UI.Scene.TextMetrics.Height : System.Double [get]
+FS.GG.UI.Scene.TextMetrics.Width : System.Double [get]
+FS.GG.UI.Scene.TextMetrics.new(System.Double, System.Double, System.Double)
+FS.GG.UI.Scene.TextRun.Font : FS.GG.UI.Scene.FontSpec [get]
+FS.GG.UI.Scene.TextRun.Paint : FS.GG.UI.Scene.Paint [get]
+FS.GG.UI.Scene.TextRun.Position : FS.GG.UI.Scene.Point [get]
+FS.GG.UI.Scene.TextRun.Text : System.String [get]
+FS.GG.UI.Scene.TextRun.new(System.String, FS.GG.UI.Scene.Point, FS.GG.UI.Scene.FontSpec, FS.GG.UI.Scene.Paint)
+FS.GG.UI.Scene.TextScript+Tags.ArabicScript : System.Int32
+FS.GG.UI.Scene.TextScript+Tags.AutoScript : System.Int32
+FS.GG.UI.Scene.TextScript+Tags.DevanagariScript : System.Int32
+FS.GG.UI.Scene.TextScript+Tags.EmojiScript : System.Int32
+FS.GG.UI.Scene.TextScript+Tags.LatinScript : System.Int32
+FS.GG.UI.Scene.TextScript+Tags.MixedScript : System.Int32
+FS.GG.UI.Scene.TextScript+Tags.SymbolScript : System.Int32
+FS.GG.UI.Scene.TextScript+Tags.ThaiScript : System.Int32
+FS.GG.UI.Scene.TextScript+Tags.UnknownScript : System.Int32
+FS.GG.UI.Scene.TextShapeRun.Advance : System.Double [get]
+FS.GG.UI.Scene.TextShapeRun.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.TextShapeRun.Direction : FS.GG.UI.Scene.TextDirection [get]
+FS.GG.UI.Scene.TextShapeRun.FallbackDecision : FS.GG.UI.Scene.TextFallbackDecision [get]
+FS.GG.UI.Scene.TextShapeRun.Glyphs : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.ShapedGlyph> [get]
+FS.GG.UI.Scene.TextShapeRun.ResolvedFont : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.TextShapeRun.Script : FS.GG.UI.Scene.TextScript [get]
+FS.GG.UI.Scene.TextShapeRun.SourceText : System.String [get]
+FS.GG.UI.Scene.TextShapeRun.TextRange : System.Tuple<System.Int32, System.Int32> [get]
+FS.GG.UI.Scene.TextShapeRun.new(System.Tuple<System.Int32, System.Int32>, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, FS.GG.UI.Scene.TextDirection, FS.GG.UI.Scene.TextScript, FS.GG.UI.Scene.TextFallbackDecision, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.ShapedGlyph>, System.Double, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Scene.Transform.RotationDegrees : System.Double [get]
+FS.GG.UI.Scene.Transform.ScaleX : System.Double [get]
+FS.GG.UI.Scene.Transform.ScaleY : System.Double [get]
+FS.GG.UI.Scene.Transform.TranslateX : System.Double [get]
+FS.GG.UI.Scene.Transform.TranslateY : System.Double [get]
+FS.GG.UI.Scene.Transform.identity : FS.GG.UI.Scene.Transform [get]
+FS.GG.UI.Scene.Transform.isIdentity(FS.GG.UI.Scene.Transform) : System.Boolean
+FS.GG.UI.Scene.Transform.lerp(FS.GG.UI.Scene.Transform, FS.GG.UI.Scene.Transform, System.Double) : FS.GG.UI.Scene.Transform
+FS.GG.UI.Scene.Transform.new(System.Double, System.Double, System.Double, System.Double, System.Double)
+FS.GG.UI.Scene.Transform.toPerspectiveTransform(FS.GG.UI.Scene.Transform) : FS.GG.UI.Scene.PerspectiveTransform
+FS.GG.UI.Scene.Tween.progress<a>(System.TimeSpan, Tween<a>) : System.Double
+FS.GG.UI.Scene.Tween.sample<a>(FSharpFunc<a, FSharpFunc<a, FSharpFunc<System.Double, a>>>, System.TimeSpan, Tween<a>) : a
+FS.GG.UI.Scene.Tween`1.Duration : System.TimeSpan [get]
+FS.GG.UI.Scene.Tween`1.Easing : FS.GG.UI.Scene.Easing [get]
+FS.GG.UI.Scene.Tween`1.End : a [get]
+FS.GG.UI.Scene.Tween`1.Start : a [get]
+FS.GG.UI.Scene.Tween`1.new(a, a, System.TimeSpan, FS.GG.UI.Scene.Easing)
+FS.GG.UI.Scene.Vertex.Color : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Color> [get]
+FS.GG.UI.Scene.Vertex.Position : FS.GG.UI.Scene.Point [get]
+FS.GG.UI.Scene.Vertex.new(FS.GG.UI.Scene.Point, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Color>)
+FS.GG.UI.Scene.VertexMode+Tags.TriangleFan : System.Int32
+FS.GG.UI.Scene.VertexMode+Tags.TriangleStrip : System.Int32
+FS.GG.UI.Scene.VertexMode+Tags.Triangles : System.Int32
+FS.GG.UI.Scene.VisualClipFact.AffectedTextRunIds : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.VisualClipFact.ClipBounds : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Rect> [get]
+FS.GG.UI.Scene.VisualClipFact.ClipId : System.String [get]
+FS.GG.UI.Scene.VisualClipFact.ClipStatus : FS.GG.UI.Scene.VisualInspectionClipStatus [get]
+FS.GG.UI.Scene.VisualClipFact.NodeId : System.String [get]
+FS.GG.UI.Scene.VisualClipFact.Reason : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.VisualClipFact.new(System.String, System.String, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Rect>, FS.GG.UI.Scene.VisualInspectionClipStatus, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Scene.VisualInspection.artifactDiagnostics(FS.GG.UI.Scene.VisualInspectionArtifact) : Microsoft.FSharp.Collections.FSharpList<System.String>
+FS.GG.UI.Scene.VisualInspection.clipStatusText(FS.GG.UI.Scene.VisualInspectionClipStatus) : System.String
+FS.GG.UI.Scene.VisualInspection.coverageStatusText(FS.GG.UI.Scene.VisualInspectionCoverageStatus) : System.String
+FS.GG.UI.Scene.VisualInspection.finding(System.String, FS.GG.UI.Scene.VisualInspectionSeverity, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, System.String, System.String, System.String) : FS.GG.UI.Scene.VisualInspectionFinding
+FS.GG.UI.Scene.VisualInspection.fitStatusText(FS.GG.UI.Scene.VisualInspectionFitStatus) : System.String
+FS.GG.UI.Scene.VisualInspection.measurementModeText(FS.GG.UI.Scene.VisualInspectionMeasurementMode) : System.String
+FS.GG.UI.Scene.VisualInspection.nodeKindText(FS.GG.UI.Scene.VisualInspectionNodeKind) : System.String
+FS.GG.UI.Scene.VisualInspection.normalizeArtifact(FS.GG.UI.Scene.VisualInspectionArtifact) : FS.GG.UI.Scene.VisualInspectionArtifact
+FS.GG.UI.Scene.VisualInspection.paintRoleText(FS.GG.UI.Scene.VisualInspectionPaintRole) : System.String
+FS.GG.UI.Scene.VisualInspection.severityText(FS.GG.UI.Scene.VisualInspectionSeverity) : System.String
+FS.GG.UI.Scene.VisualInspection.stableFindingId(System.String, Microsoft.FSharp.Collections.FSharpList<System.String>) : System.String
+FS.GG.UI.Scene.VisualInspection.statusText(FS.GG.UI.Scene.VisualInspectionStatus) : System.String
+FS.GG.UI.Scene.VisualInspection.surfaceRoleText(FS.GG.UI.Scene.VisualInspectionSurfaceRole) : System.String
+FS.GG.UI.Scene.VisualInspection.unsupportedFact(System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, System.Boolean, System.String, System.String, System.Boolean) : FS.GG.UI.Scene.VisualInspectionUnsupportedFact
+FS.GG.UI.Scene.VisualInspectionArtifact.ArtifactId : System.String [get]
+FS.GG.UI.Scene.VisualInspectionArtifact.ClipFacts : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.VisualClipFact> [get]
+FS.GG.UI.Scene.VisualInspectionArtifact.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.VisualInspectionArtifact.Findings : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.VisualInspectionFinding> [get]
+FS.GG.UI.Scene.VisualInspectionArtifact.GeneratedAtUtc : System.String [get]
+FS.GG.UI.Scene.VisualInspectionArtifact.Nodes : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.VisualInspectionNode> [get]
+FS.GG.UI.Scene.VisualInspectionArtifact.OutputSize : FS.GG.UI.Scene.Size [get]
+FS.GG.UI.Scene.VisualInspectionArtifact.PaintCoverage : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.VisualPaintCoverage> [get]
+FS.GG.UI.Scene.VisualInspectionArtifact.Presentation : System.String [get]
+FS.GG.UI.Scene.VisualInspectionArtifact.ReadinessStatus : FS.GG.UI.Scene.VisualInspectionStatus [get]
+FS.GG.UI.Scene.VisualInspectionArtifact.Regions : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.VisualRegionBoundary> [get]
+FS.GG.UI.Scene.VisualInspectionArtifact.Scope : FS.GG.UI.Scene.VisualInspectionScope [get]
+FS.GG.UI.Scene.VisualInspectionArtifact.TextRuns : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.VisualTextInspection> [get]
+FS.GG.UI.Scene.VisualInspectionArtifact.UnsupportedFacts : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.VisualInspectionUnsupportedFact> [get]
+FS.GG.UI.Scene.VisualInspectionArtifact.new(System.String, FS.GG.UI.Scene.VisualInspectionScope, FS.GG.UI.Scene.Size, System.String, FS.GG.UI.Scene.VisualInspectionStatus, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.VisualInspectionNode>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.VisualRegionBoundary>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.VisualTextInspection>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.VisualPaintCoverage>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.VisualClipFact>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.VisualInspectionFinding>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.VisualInspectionUnsupportedFact>, Microsoft.FSharp.Collections.FSharpList<System.String>, System.String)
+FS.GG.UI.Scene.VisualInspectionClipStatus+Tags.Accidental : System.Int32
+FS.GG.UI.Scene.VisualInspectionClipStatus+Tags.Intentional : System.Int32
+FS.GG.UI.Scene.VisualInspectionClipStatus+Tags.None : System.Int32
+FS.GG.UI.Scene.VisualInspectionClipStatus+Tags.Unavailable : System.Int32
+FS.GG.UI.Scene.VisualInspectionClipStatus+Tags.Unsupported : System.Int32
+FS.GG.UI.Scene.VisualInspectionCoverageStatus+Tags.Complete : System.Int32
+FS.GG.UI.Scene.VisualInspectionCoverageStatus+Tags.Missing : System.Int32
+FS.GG.UI.Scene.VisualInspectionCoverageStatus+Tags.Partial : System.Int32
+FS.GG.UI.Scene.VisualInspectionCoverageStatus+Tags.Unavailable : System.Int32
+FS.GG.UI.Scene.VisualInspectionCoverageStatus+Tags.Unsupported : System.Int32
+FS.GG.UI.Scene.VisualInspectionFinding.Actual : System.String [get]
+FS.GG.UI.Scene.VisualInspectionFinding.AffectedNodeIds : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.VisualInspectionFinding.AffectedRegionIds : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.VisualInspectionFinding.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.VisualInspectionFinding.ExceptionId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.VisualInspectionFinding.Expected : System.String [get]
+FS.GG.UI.Scene.VisualInspectionFinding.FindingId : System.String [get]
+FS.GG.UI.Scene.VisualInspectionFinding.Message : System.String [get]
+FS.GG.UI.Scene.VisualInspectionFinding.RuleId : System.String [get]
+FS.GG.UI.Scene.VisualInspectionFinding.Severity : FS.GG.UI.Scene.VisualInspectionSeverity [get]
+FS.GG.UI.Scene.VisualInspectionFinding.new(System.String, System.String, FS.GG.UI.Scene.VisualInspectionSeverity, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, System.String, System.String, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Scene.VisualInspectionFitStatus+Tags.Clipped : System.Int32
+FS.GG.UI.Scene.VisualInspectionFitStatus+Tags.Inside : System.Int32
+FS.GG.UI.Scene.VisualInspectionFitStatus+Tags.Overflow : System.Int32
+FS.GG.UI.Scene.VisualInspectionFitStatus+Tags.Truncated : System.Int32
+FS.GG.UI.Scene.VisualInspectionFitStatus+Tags.Unavailable : System.Int32
+FS.GG.UI.Scene.VisualInspectionFitStatus+Tags.Unsupported : System.Int32
+FS.GG.UI.Scene.VisualInspectionFitStatus+Tags.Wrapped : System.Int32
+FS.GG.UI.Scene.VisualInspectionMeasurementMode+Tags.Approximate : System.Int32
+FS.GG.UI.Scene.VisualInspectionMeasurementMode+Tags.Exact : System.Int32
+FS.GG.UI.Scene.VisualInspectionMeasurementMode+Tags.Unavailable : System.Int32
+FS.GG.UI.Scene.VisualInspectionMeasurementMode+Tags.Unsupported : System.Int32
+FS.GG.UI.Scene.VisualInspectionNode.Bounds : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Rect> [get]
+FS.GG.UI.Scene.VisualInspectionNode.Children : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.VisualInspectionNode.Clip : FS.GG.UI.Scene.VisualInspectionClipStatus [get]
+FS.GG.UI.Scene.VisualInspectionNode.Dynamic : System.Boolean [get]
+FS.GG.UI.Scene.VisualInspectionNode.Kind : FS.GG.UI.Scene.VisualInspectionNodeKind [get]
+FS.GG.UI.Scene.VisualInspectionNode.NodeId : System.String [get]
+FS.GG.UI.Scene.VisualInspectionNode.OwnerId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.VisualInspectionNode.PaintRole : FS.GG.UI.Scene.VisualInspectionPaintRole [get]
+FS.GG.UI.Scene.VisualInspectionNode.ParentId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.VisualInspectionNode.SurfaceRole : FS.GG.UI.Scene.VisualInspectionSurfaceRole [get]
+FS.GG.UI.Scene.VisualInspectionNode.TextRunIds : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.VisualInspectionNode.UnsupportedFacts : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.VisualInspectionUnsupportedFact> [get]
+FS.GG.UI.Scene.VisualInspectionNode.ZOrder : System.Int32 [get]
+FS.GG.UI.Scene.VisualInspectionNode.new(System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, FS.GG.UI.Scene.VisualInspectionNodeKind, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Rect>, FS.GG.UI.Scene.VisualInspectionClipStatus, System.Int32, FS.GG.UI.Scene.VisualInspectionPaintRole, FS.GG.UI.Scene.VisualInspectionSurfaceRole, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, System.Boolean, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.VisualInspectionUnsupportedFact>)
+FS.GG.UI.Scene.VisualInspectionNodeKind+Tags.Container : System.Int32
+FS.GG.UI.Scene.VisualInspectionNodeKind+Tags.Custom : System.Int32
+FS.GG.UI.Scene.VisualInspectionNodeKind+Tags.Image : System.Int32
+FS.GG.UI.Scene.VisualInspectionNodeKind+Tags.Overlay : System.Int32
+FS.GG.UI.Scene.VisualInspectionNodeKind+Tags.Popup : System.Int32
+FS.GG.UI.Scene.VisualInspectionNodeKind+Tags.Root : System.Int32
+FS.GG.UI.Scene.VisualInspectionNodeKind+Tags.Shape : System.Int32
+FS.GG.UI.Scene.VisualInspectionNodeKind+Tags.Text : System.Int32
+FS.GG.UI.Scene.VisualInspectionNodeKind+Tags.Unknown : System.Int32
+FS.GG.UI.Scene.VisualInspectionPaintRole+Tags.Background : System.Int32
+FS.GG.UI.Scene.VisualInspectionPaintRole+Tags.Border : System.Int32
+FS.GG.UI.Scene.VisualInspectionPaintRole+Tags.Content : System.Int32
+FS.GG.UI.Scene.VisualInspectionPaintRole+Tags.Foreground : System.Int32
+FS.GG.UI.Scene.VisualInspectionPaintRole+Tags.None : System.Int32
+FS.GG.UI.Scene.VisualInspectionPaintRole+Tags.Overlay : System.Int32
+FS.GG.UI.Scene.VisualInspectionPaintRole+Tags.Surface : System.Int32
+FS.GG.UI.Scene.VisualInspectionPaintRole+Tags.Unknown : System.Int32
+FS.GG.UI.Scene.VisualInspectionScope.Required : System.Boolean [get]
+FS.GG.UI.Scene.VisualInspectionScope.ScopeId : System.String [get]
+FS.GG.UI.Scene.VisualInspectionScope.Title : System.String [get]
+FS.GG.UI.Scene.VisualInspectionScope.new(System.String, System.String, System.Boolean)
+FS.GG.UI.Scene.VisualInspectionSeverity+Tags.Blocking : System.Int32
+FS.GG.UI.Scene.VisualInspectionSeverity+Tags.EnvironmentLimited : System.Int32
+FS.GG.UI.Scene.VisualInspectionSeverity+Tags.Info : System.Int32
+FS.GG.UI.Scene.VisualInspectionSeverity+Tags.Pass : System.Int32
+FS.GG.UI.Scene.VisualInspectionSeverity+Tags.Unsupported : System.Int32
+FS.GG.UI.Scene.VisualInspectionSeverity+Tags.Warning : System.Int32
+FS.GG.UI.Scene.VisualInspectionStatus+Tags.Accepted : System.Int32
+FS.GG.UI.Scene.VisualInspectionStatus+Tags.Blocked : System.Int32
+FS.GG.UI.Scene.VisualInspectionStatus+Tags.EnvironmentLimited : System.Int32
+FS.GG.UI.Scene.VisualInspectionStatus+Tags.Incomplete : System.Int32
+FS.GG.UI.Scene.VisualInspectionStatus+Tags.NotInspected : System.Int32
+FS.GG.UI.Scene.VisualInspectionStatus+Tags.NotRun : System.Int32
+FS.GG.UI.Scene.VisualInspectionStatus+Tags.Unsupported : System.Int32
+FS.GG.UI.Scene.VisualInspectionSummary.AcceptedExceptions : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.VisualInspectionSummary.ArtifactCount : System.Int32 [get]
+FS.GG.UI.Scene.VisualInspectionSummary.BlockingFindings : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.VisualInspectionFinding> [get]
+FS.GG.UI.Scene.VisualInspectionSummary.Caveats : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.VisualInspectionSummary.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.VisualInspectionSummary.FindingCounts : Microsoft.FSharp.Collections.FSharpList<System.Tuple<System.String, System.Int32>> [get]
+FS.GG.UI.Scene.VisualInspectionSummary.InspectedScopes : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.VisualInspectionSummary.InvalidExceptions : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.VisualInspectionSummary.NotInspectedScopes : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.VisualInspectionSummary.NotRunScopes : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.VisualInspectionSummary.OverallStatus : FS.GG.UI.Scene.VisualInspectionStatus [get]
+FS.GG.UI.Scene.VisualInspectionSummary.RelatedVisualEvidence : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.VisualInspectionSummary.RunId : System.String [get]
+FS.GG.UI.Scene.VisualInspectionSummary.StatusCounts : Microsoft.FSharp.Collections.FSharpList<System.Tuple<System.String, System.Int32>> [get]
+FS.GG.UI.Scene.VisualInspectionSummary.UnsupportedFacts : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.VisualInspectionUnsupportedFact> [get]
+FS.GG.UI.Scene.VisualInspectionSummary.new(System.String, FS.GG.UI.Scene.VisualInspectionStatus, System.Int32, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.Tuple<System.String, System.Int32>>, Microsoft.FSharp.Collections.FSharpList<System.Tuple<System.String, System.Int32>>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.VisualInspectionFinding>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.VisualInspectionUnsupportedFact>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Scene.VisualInspectionSurfaceRole+Tags.Content : System.Int32
+FS.GG.UI.Scene.VisualInspectionSurfaceRole+Tags.Custom : System.Int32
+FS.GG.UI.Scene.VisualInspectionSurfaceRole+Tags.Feedback : System.Int32
+FS.GG.UI.Scene.VisualInspectionSurfaceRole+Tags.Floating : System.Int32
+FS.GG.UI.Scene.VisualInspectionSurfaceRole+Tags.Navigation : System.Int32
+FS.GG.UI.Scene.VisualInspectionSurfaceRole+Tags.Overlay : System.Int32
+FS.GG.UI.Scene.VisualInspectionSurfaceRole+Tags.Popup : System.Int32
+FS.GG.UI.Scene.VisualInspectionSurfaceRole+Tags.Root : System.Int32
+FS.GG.UI.Scene.VisualInspectionSurfaceRole+Tags.Shell : System.Int32
+FS.GG.UI.Scene.VisualInspectionSurfaceRole+Tags.Unknown : System.Int32
+FS.GG.UI.Scene.VisualInspectionUnsupportedFact.Diagnostic : System.String [get]
+FS.GG.UI.Scene.VisualInspectionUnsupportedFact.EnvironmentLimited : System.Boolean [get]
+FS.GG.UI.Scene.VisualInspectionUnsupportedFact.Fact : System.String [get]
+FS.GG.UI.Scene.VisualInspectionUnsupportedFact.OwnerId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.VisualInspectionUnsupportedFact.Reason : System.String [get]
+FS.GG.UI.Scene.VisualInspectionUnsupportedFact.Required : System.Boolean [get]
+FS.GG.UI.Scene.VisualInspectionUnsupportedFact.new(System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, System.Boolean, System.String, System.String, System.Boolean)
+FS.GG.UI.Scene.VisualPaintCoverage.CoverageBounds : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Rect> [get]
+FS.GG.UI.Scene.VisualPaintCoverage.CoverageId : System.String [get]
+FS.GG.UI.Scene.VisualPaintCoverage.CoverageStatus : FS.GG.UI.Scene.VisualInspectionCoverageStatus [get]
+FS.GG.UI.Scene.VisualPaintCoverage.PaintRole : FS.GG.UI.Scene.VisualInspectionPaintRole [get]
+FS.GG.UI.Scene.VisualPaintCoverage.Reason : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.VisualPaintCoverage.TargetId : System.String [get]
+FS.GG.UI.Scene.VisualPaintCoverage.new(System.String, System.String, FS.GG.UI.Scene.VisualInspectionPaintRole, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Rect>, FS.GG.UI.Scene.VisualInspectionCoverageStatus, Microsoft.FSharp.Core.FSharpOption<System.String>)
+FS.GG.UI.Scene.VisualRegionBoundary.AllowedOverlapRoles : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.VisualInspectionSurfaceRole> [get]
+FS.GG.UI.Scene.VisualRegionBoundary.Bounds : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Rect> [get]
+FS.GG.UI.Scene.VisualRegionBoundary.Name : System.String [get]
+FS.GG.UI.Scene.VisualRegionBoundary.OwnerNodeIds : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.VisualRegionBoundary.RegionId : System.String [get]
+FS.GG.UI.Scene.VisualRegionBoundary.Required : System.Boolean [get]
+FS.GG.UI.Scene.VisualRegionBoundary.Role : FS.GG.UI.Scene.VisualInspectionSurfaceRole [get]
+FS.GG.UI.Scene.VisualRegionBoundary.new(System.String, System.String, FS.GG.UI.Scene.VisualInspectionSurfaceRole, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Rect>, System.Boolean, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.VisualInspectionSurfaceRole>)
+FS.GG.UI.Scene.VisualTextInspection.Baseline : Microsoft.FSharp.Core.FSharpOption<System.Double> [get]
+FS.GG.UI.Scene.VisualTextInspection.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.VisualTextInspection.FitStatus : FS.GG.UI.Scene.VisualInspectionFitStatus [get]
+FS.GG.UI.Scene.VisualTextInspection.MeasurementMode : FS.GG.UI.Scene.VisualInspectionMeasurementMode [get]
+FS.GG.UI.Scene.VisualTextInspection.OwnerBounds : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Rect> [get]
+FS.GG.UI.Scene.VisualTextInspection.OwnerNodeId : System.String [get]
+FS.GG.UI.Scene.VisualTextInspection.Required : System.Boolean [get]
+FS.GG.UI.Scene.VisualTextInspection.Text : System.String [get]
+FS.GG.UI.Scene.VisualTextInspection.TextBounds : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Rect> [get]
+FS.GG.UI.Scene.VisualTextInspection.TextId : System.String [get]
+FS.GG.UI.Scene.VisualTextInspection.new(System.String, System.String, System.String, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Rect>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Rect>, Microsoft.FSharp.Core.FSharpOption<System.Double>, FS.GG.UI.Scene.VisualInspectionMeasurementMode, FS.GG.UI.Scene.VisualInspectionFitStatus, System.Boolean, Microsoft.FSharp.Collections.FSharpList<System.String>)

@@ -1,0 +1,713 @@
+FS.GG.UI.Testing.CompositorDamageReadiness.statusText(FS.GG.UI.Testing.CompositorDamageReadinessStatus) : System.String
+FS.GG.UI.Testing.CompositorDamageReadiness.validate(FS.GG.UI.Testing.CompositorDamageReadinessCheck) : FS.GG.UI.Testing.CompositorDamageReadinessValidationResult
+FS.GG.UI.Testing.CompositorDamageReadinessCheck.AcceptedAttemptCount : System.Int32 [get]
+FS.GG.UI.Testing.CompositorDamageReadinessCheck.AcceptedPartialRedrawArtifacts : System.Int32 [get]
+FS.GG.UI.Testing.CompositorDamageReadinessCheck.CompatibilityAccepted : System.Boolean [get]
+FS.GG.UI.Testing.CompositorDamageReadinessCheck.Feature : System.String [get]
+FS.GG.UI.Testing.CompositorDamageReadinessCheck.Limitations : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.CompositorDamageReadinessCheck.PackageAccepted : System.Boolean [get]
+FS.GG.UI.Testing.CompositorDamageReadinessCheck.PerformanceClaim : System.String [get]
+FS.GG.UI.Testing.CompositorDamageReadinessCheck.RegressionAccepted : System.Boolean [get]
+FS.GG.UI.Testing.CompositorDamageReadinessCheck.RequiredScenarioIds : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.CompositorDamageReadinessCheck.Scenarios : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.CompositorDamageScenarioEvidence> [get]
+FS.GG.UI.Testing.CompositorDamageReadinessCheck.UnsupportedHostStatus : FS.GG.UI.Testing.CompositorDamageReadinessStatus [get]
+FS.GG.UI.Testing.CompositorDamageReadinessCheck.new(System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.CompositorDamageScenarioEvidence>, System.Int32, FS.GG.UI.Testing.CompositorDamageReadinessStatus, System.Int32, System.Boolean, System.Boolean, System.Boolean, System.String, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.CompositorDamageReadinessStatus+Tags.CompositorDamageAccepted : System.Int32
+FS.GG.UI.Testing.CompositorDamageReadinessStatus+Tags.CompositorDamageEnvironmentLimited : System.Int32
+FS.GG.UI.Testing.CompositorDamageReadinessStatus+Tags.CompositorDamageFallbackOnly : System.Int32
+FS.GG.UI.Testing.CompositorDamageReadinessStatus+Tags.CompositorDamageRejected : System.Int32
+FS.GG.UI.Testing.CompositorDamageReadinessValidationResult.Accepted : System.Boolean [get]
+FS.GG.UI.Testing.CompositorDamageReadinessValidationResult.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.CompositorDamageReadinessValidationResult.MissingScenarios : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.CompositorDamageReadinessValidationResult.Status : FS.GG.UI.Testing.CompositorDamageReadinessStatus [get]
+FS.GG.UI.Testing.CompositorDamageReadinessValidationResult.new(System.Boolean, FS.GG.UI.Testing.CompositorDamageReadinessStatus, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.CompositorDamageScenarioEvidence.AcceptedAttemptCount : System.Int32 [get]
+FS.GG.UI.Testing.CompositorDamageScenarioEvidence.ArtifactPaths : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.CompositorDamageScenarioEvidence.FallbackReason : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.CompositorDamageScenarioEvidence.ScenarioId : System.String [get]
+FS.GG.UI.Testing.CompositorDamageScenarioEvidence.Status : FS.GG.UI.Testing.CompositorDamageReadinessStatus [get]
+FS.GG.UI.Testing.CompositorDamageScenarioEvidence.new(System.String, FS.GG.UI.Testing.CompositorDamageReadinessStatus, System.Int32, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>)
+FS.GG.UI.Testing.CompositorReadiness.statusText(FS.GG.UI.Testing.CompositorReadinessStatus) : System.String
+FS.GG.UI.Testing.CompositorReadiness.validate(FS.GG.UI.Testing.CompositorReadinessReport) : FS.GG.UI.Testing.CompositorReadinessValidationResult
+FS.GG.UI.Testing.CompositorReadinessEvidence.EvidenceDiagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.CompositorReadinessEvidence.EvidenceName : System.String [get]
+FS.GG.UI.Testing.CompositorReadinessEvidence.EvidencePath : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.CompositorReadinessEvidence.EvidenceRequired : System.Boolean [get]
+FS.GG.UI.Testing.CompositorReadinessEvidence.EvidenceStatus : FS.GG.UI.Testing.CompositorReadinessStatus [get]
+FS.GG.UI.Testing.CompositorReadinessEvidence.new(System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, FS.GG.UI.Testing.CompositorReadinessStatus, System.Boolean, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.CompositorReadinessReport.CompatibilityStatus : FS.GG.UI.Testing.CompositorReadinessStatus [get]
+FS.GG.UI.Testing.CompositorReadinessReport.Evidence : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.CompositorReadinessEvidence> [get]
+FS.GG.UI.Testing.CompositorReadinessReport.Feature : System.String [get]
+FS.GG.UI.Testing.CompositorReadinessReport.Limitations : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.CompositorReadinessReport.ParityStatus : FS.GG.UI.Testing.CompositorReadinessStatus [get]
+FS.GG.UI.Testing.CompositorReadinessReport.ProofStatus : FS.GG.UI.Testing.CompositorReadinessStatus [get]
+FS.GG.UI.Testing.CompositorReadinessReport.RegressionStatus : FS.GG.UI.Testing.CompositorReadinessStatus [get]
+FS.GG.UI.Testing.CompositorReadinessReport.TimingStatus : FS.GG.UI.Testing.CompositorReadinessStatus [get]
+FS.GG.UI.Testing.CompositorReadinessReport.new(System.String, FS.GG.UI.Testing.CompositorReadinessStatus, FS.GG.UI.Testing.CompositorReadinessStatus, FS.GG.UI.Testing.CompositorReadinessStatus, FS.GG.UI.Testing.CompositorReadinessStatus, FS.GG.UI.Testing.CompositorReadinessStatus, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.CompositorReadinessEvidence>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.CompositorReadinessStatus+Tags.CompositorReadinessAccepted : System.Int32
+FS.GG.UI.Testing.CompositorReadinessStatus+Tags.CompositorReadinessCompatibilityBlocked : System.Int32
+FS.GG.UI.Testing.CompositorReadinessStatus+Tags.CompositorReadinessEnvironmentLimited : System.Int32
+FS.GG.UI.Testing.CompositorReadinessStatus+Tags.CompositorReadinessFailed : System.Int32
+FS.GG.UI.Testing.CompositorReadinessStatus+Tags.CompositorReadinessFallbackGated : System.Int32
+FS.GG.UI.Testing.CompositorReadinessStatus+Tags.CompositorReadinessMissingEvidence : System.Int32
+FS.GG.UI.Testing.CompositorReadinessValidationResult.Accepted : System.Boolean [get]
+FS.GG.UI.Testing.CompositorReadinessValidationResult.BlockingLimitations : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.CompositorReadinessValidationResult.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.CompositorReadinessValidationResult.MissingEvidence : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.CompositorReadinessValidationResult.Status : FS.GG.UI.Testing.CompositorReadinessStatus [get]
+FS.GG.UI.Testing.CompositorReadinessValidationResult.new(System.Boolean, FS.GG.UI.Testing.CompositorReadinessStatus, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.CompositorTimingAssertions.validateSummary(FS.GG.UI.Testing.CompositorTimingSummaryCheck) : FS.GG.UI.Testing.CompositorTimingSummaryValidationResult
+FS.GG.UI.Testing.CompositorTimingAssertions.verdictText(FS.GG.UI.Testing.CompositorTimingVerdict) : System.String
+FS.GG.UI.Testing.CompositorTimingScenario.ArtifactPaths : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.CompositorTimingScenario.DamageScopedSampleCount : System.Int32 [get]
+FS.GG.UI.Testing.CompositorTimingScenario.FullRedrawSampleCount : System.Int32 [get]
+FS.GG.UI.Testing.CompositorTimingScenario.RejectionReasons : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.CompositorTimingScenario.ScenarioId : System.String [get]
+FS.GG.UI.Testing.CompositorTimingScenario.Verdict : FS.GG.UI.Testing.CompositorTimingVerdict [get]
+FS.GG.UI.Testing.CompositorTimingScenario.new(System.String, System.Int32, System.Int32, FS.GG.UI.Testing.CompositorTimingVerdict, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.CompositorTimingSummaryCheck.ActualProfileId : System.String [get]
+FS.GG.UI.Testing.CompositorTimingSummaryCheck.ExpectedProfileId : System.String [get]
+FS.GG.UI.Testing.CompositorTimingSummaryCheck.Feature : System.String [get]
+FS.GG.UI.Testing.CompositorTimingSummaryCheck.MeasuredRepetitions : System.Int32 [get]
+FS.GG.UI.Testing.CompositorTimingSummaryCheck.PolicyId : System.String [get]
+FS.GG.UI.Testing.CompositorTimingSummaryCheck.RequiredScenarioIds : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.CompositorTimingSummaryCheck.Scenarios : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.CompositorTimingScenario> [get]
+FS.GG.UI.Testing.CompositorTimingSummaryCheck.ShippedPerformanceClaim : System.String [get]
+FS.GG.UI.Testing.CompositorTimingSummaryCheck.WarmupCount : System.Int32 [get]
+FS.GG.UI.Testing.CompositorTimingSummaryCheck.new(System.String, System.String, System.String, System.String, System.Int32, System.Int32, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.CompositorTimingScenario>, System.String)
+FS.GG.UI.Testing.CompositorTimingSummaryValidationResult.Accepted : System.Boolean [get]
+FS.GG.UI.Testing.CompositorTimingSummaryValidationResult.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.CompositorTimingSummaryValidationResult.MissingScenarios : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.CompositorTimingSummaryValidationResult.RejectedScenarios : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.CompositorTimingSummaryValidationResult.Verdict : FS.GG.UI.Testing.CompositorTimingVerdict [get]
+FS.GG.UI.Testing.CompositorTimingSummaryValidationResult.new(System.Boolean, FS.GG.UI.Testing.CompositorTimingVerdict, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.CompositorTimingVerdict+Tags.CompositorTimingEnvironmentLimited : System.Int32
+FS.GG.UI.Testing.CompositorTimingVerdict+Tags.CompositorTimingIncomplete : System.Int32
+FS.GG.UI.Testing.CompositorTimingVerdict+Tags.CompositorTimingLimited : System.Int32
+FS.GG.UI.Testing.CompositorTimingVerdict+Tags.CompositorTimingNoisy : System.Int32
+FS.GG.UI.Testing.CompositorTimingVerdict+Tags.CompositorTimingNonBeneficial : System.Int32
+FS.GG.UI.Testing.CompositorTimingVerdict+Tags.CompositorTimingPositive : System.Int32
+FS.GG.UI.Testing.CompositorTimingVerdict+Tags.CompositorTimingRejected : System.Int32
+FS.GG.UI.Testing.DefaultTextGlyphEvidence.validate(FS.GG.UI.Testing.DefaultTextGlyphEvidenceCheck) : FS.GG.UI.Testing.DefaultTextGlyphEvidenceValidationResult
+FS.GG.UI.Testing.DefaultTextGlyphEvidenceCheck.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.DefaultTextGlyphEvidenceCheck.ExpectedHeight : Microsoft.FSharp.Core.FSharpOption<System.Int32> [get]
+FS.GG.UI.Testing.DefaultTextGlyphEvidenceCheck.ExpectedWidth : Microsoft.FSharp.Core.FSharpOption<System.Int32> [get]
+FS.GG.UI.Testing.DefaultTextGlyphEvidenceCheck.FallbackUsed : Microsoft.FSharp.Core.FSharpOption<System.Boolean> [get]
+FS.GG.UI.Testing.DefaultTextGlyphEvidenceCheck.FontResolution : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.DefaultTextGlyphEvidenceCheck.ReadinessDirectory : System.String [get]
+FS.GG.UI.Testing.DefaultTextGlyphEvidenceCheck.ScreenshotPath : System.String [get]
+FS.GG.UI.Testing.DefaultTextGlyphEvidenceCheck.Status : System.String [get]
+FS.GG.UI.Testing.DefaultTextGlyphEvidenceCheck.TextRegion : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Rect> [get]
+FS.GG.UI.Testing.DefaultTextGlyphEvidenceCheck.UnsupportedHostReason : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.DefaultTextGlyphEvidenceCheck.new(System.String, System.String, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Rect>, Microsoft.FSharp.Core.FSharpOption<System.Int32>, Microsoft.FSharp.Core.FSharpOption<System.Int32>, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.Boolean>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.DefaultTextGlyphEvidenceValidationResult.Accepted : System.Boolean [get]
+FS.GG.UI.Testing.DefaultTextGlyphEvidenceValidationResult.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.DefaultTextGlyphEvidenceValidationResult.FailureClass : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.DefaultTextGlyphEvidenceValidationResult.GlyphCoverageMetric : System.Double [get]
+FS.GG.UI.Testing.DefaultTextGlyphEvidenceValidationResult.PlaceholderMetric : System.Double [get]
+FS.GG.UI.Testing.DefaultTextGlyphEvidenceValidationResult.SolidBlockMetric : System.Double [get]
+FS.GG.UI.Testing.DefaultTextGlyphEvidenceValidationResult.new(System.Boolean, System.Double, System.Double, System.Double, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.EvidenceReport.Command : System.String [get]
+FS.GG.UI.Testing.EvidenceReport.ExitCode : System.Int32 [get]
+FS.GG.UI.Testing.EvidenceReport.Fields : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.EvidenceReportField> [get]
+FS.GG.UI.Testing.EvidenceReport.Lines : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.EvidenceReport.OutputPath : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.EvidenceReport.Status : FS.GG.UI.Testing.EvidenceReportStatus [get]
+FS.GG.UI.Testing.EvidenceReport.new(FS.GG.UI.Testing.EvidenceReportStatus, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.EvidenceReportField>, Microsoft.FSharp.Collections.FSharpList<System.String>, System.Int32)
+FS.GG.UI.Testing.EvidenceReportField.Name : System.String [get]
+FS.GG.UI.Testing.EvidenceReportField.Value : System.String [get]
+FS.GG.UI.Testing.EvidenceReportField.new(System.String, System.String)
+FS.GG.UI.Testing.EvidenceReportRequest.Command : System.String [get]
+FS.GG.UI.Testing.EvidenceReportRequest.Fields : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.EvidenceReportField> [get]
+FS.GG.UI.Testing.EvidenceReportRequest.OutputPath : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.EvidenceReportRequest.Status : FS.GG.UI.Testing.EvidenceReportStatus [get]
+FS.GG.UI.Testing.EvidenceReportRequest.new(FS.GG.UI.Testing.EvidenceReportStatus, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.EvidenceReportField>)
+FS.GG.UI.Testing.EvidenceReportStatus+Tags.EvidenceFailed : System.Int32
+FS.GG.UI.Testing.EvidenceReportStatus+Tags.EvidenceOk : System.Int32
+FS.GG.UI.Testing.EvidenceReportStatus+Tags.EvidenceUnsupported : System.Int32
+FS.GG.UI.Testing.EvidenceReportValidationResult.Accepted : System.Boolean [get]
+FS.GG.UI.Testing.EvidenceReportValidationResult.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.EvidenceReportValidationResult.MissingFields : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.EvidenceReportValidationResult.new(System.Boolean, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.EvidenceReports.build(FS.GG.UI.Testing.EvidenceReportRequest) : FS.GG.UI.Testing.EvidenceReport
+FS.GG.UI.Testing.EvidenceReports.field(System.String, System.String) : FS.GG.UI.Testing.EvidenceReportField
+FS.GG.UI.Testing.EvidenceReports.parseScreenshotEvidenceRecord(Microsoft.FSharp.Collections.FSharpList<System.String>) : FS.GG.UI.Testing.ScreenshotEvidenceRecord
+FS.GG.UI.Testing.EvidenceReports.statusText(FS.GG.UI.Testing.EvidenceReportStatus) : System.String
+FS.GG.UI.Testing.EvidenceReports.validate(FS.GG.UI.Testing.EvidenceReport) : FS.GG.UI.Testing.EvidenceReportValidationResult
+FS.GG.UI.Testing.EvidenceReports.validateScreenshotArtifact(FS.GG.UI.Testing.ScreenshotArtifactValidationCheck) : FS.GG.UI.Testing.ScreenshotArtifactValidationResult
+FS.GG.UI.Testing.EvidenceReports.validateScreenshotEvidence(FS.GG.UI.Testing.ScreenshotEvidenceReportCheck) : FS.GG.UI.Testing.ScreenshotEvidenceReportValidationResult
+FS.GG.UI.Testing.EvidenceReports.write(FS.GG.UI.Testing.EvidenceReportRequest) : FS.GG.UI.Testing.EvidenceReport
+FS.GG.UI.Testing.Feature159Readiness.statusText(FS.GG.UI.Testing.Feature159ReadinessStatus) : System.String
+FS.GG.UI.Testing.Feature159Readiness.validate(FS.GG.UI.Testing.Feature159ReadinessCheck) : FS.GG.UI.Testing.Feature159ReadinessValidationResult
+FS.GG.UI.Testing.Feature159ReadinessCheck.AcceptedAttemptCount : System.Int32 [get]
+FS.GG.UI.Testing.Feature159ReadinessCheck.AcceptedPromotionArtifacts : System.Int32 [get]
+FS.GG.UI.Testing.Feature159ReadinessCheck.AcceptedReuseArtifacts : System.Int32 [get]
+FS.GG.UI.Testing.Feature159ReadinessCheck.CompatibilityAccepted : System.Boolean [get]
+FS.GG.UI.Testing.Feature159ReadinessCheck.Feature : System.String [get]
+FS.GG.UI.Testing.Feature159ReadinessCheck.Limitations : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.Feature159ReadinessCheck.PackageAccepted : System.Boolean [get]
+FS.GG.UI.Testing.Feature159ReadinessCheck.PerformanceClaim : System.String [get]
+FS.GG.UI.Testing.Feature159ReadinessCheck.RegressionAccepted : System.Boolean [get]
+FS.GG.UI.Testing.Feature159ReadinessCheck.RequiredScenarioIds : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.Feature159ReadinessCheck.Scenarios : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.Feature159ScenarioEvidence> [get]
+FS.GG.UI.Testing.Feature159ReadinessCheck.UnsupportedHostStatus : FS.GG.UI.Testing.Feature159ReadinessStatus [get]
+FS.GG.UI.Testing.Feature159ReadinessCheck.new(System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.Feature159ScenarioEvidence>, System.Int32, FS.GG.UI.Testing.Feature159ReadinessStatus, System.Int32, System.Int32, System.Boolean, System.Boolean, System.Boolean, System.String, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.Feature159ReadinessStatus+Tags.Feature159Accepted : System.Int32
+FS.GG.UI.Testing.Feature159ReadinessStatus+Tags.Feature159EnvironmentLimited : System.Int32
+FS.GG.UI.Testing.Feature159ReadinessStatus+Tags.Feature159FallbackOnly : System.Int32
+FS.GG.UI.Testing.Feature159ReadinessStatus+Tags.Feature159NonBeneficial : System.Int32
+FS.GG.UI.Testing.Feature159ReadinessStatus+Tags.Feature159Rejected : System.Int32
+FS.GG.UI.Testing.Feature159ReadinessValidationResult.Accepted : System.Boolean [get]
+FS.GG.UI.Testing.Feature159ReadinessValidationResult.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.Feature159ReadinessValidationResult.MissingScenarios : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.Feature159ReadinessValidationResult.Status : FS.GG.UI.Testing.Feature159ReadinessStatus [get]
+FS.GG.UI.Testing.Feature159ReadinessValidationResult.new(System.Boolean, FS.GG.UI.Testing.Feature159ReadinessStatus, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.Feature159ScenarioEvidence.AcceptedAttemptCount : System.Int32 [get]
+FS.GG.UI.Testing.Feature159ScenarioEvidence.ArtifactPaths : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.Feature159ScenarioEvidence.CounterNetSavedWork : System.Int32 [get]
+FS.GG.UI.Testing.Feature159ScenarioEvidence.ParityPassed : System.Boolean [get]
+FS.GG.UI.Testing.Feature159ScenarioEvidence.PrimaryReason : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.Feature159ScenarioEvidence.PromotionDecision : System.String [get]
+FS.GG.UI.Testing.Feature159ScenarioEvidence.ReuseDecision : System.String [get]
+FS.GG.UI.Testing.Feature159ScenarioEvidence.ScenarioId : System.String [get]
+FS.GG.UI.Testing.Feature159ScenarioEvidence.Status : FS.GG.UI.Testing.Feature159ReadinessStatus [get]
+FS.GG.UI.Testing.Feature159ScenarioEvidence.new(System.String, FS.GG.UI.Testing.Feature159ReadinessStatus, System.String, System.String, System.Int32, System.Int32, System.Boolean, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>)
+FS.GG.UI.Testing.Feature160ScenarioEvidence.ArtifactPaths : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.Feature160ScenarioEvidence.Covered : System.Boolean [get]
+FS.GG.UI.Testing.Feature160ScenarioEvidence.MeasuredRepetitions : System.Int32 [get]
+FS.GG.UI.Testing.Feature160ScenarioEvidence.PrimaryReason : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.Feature160ScenarioEvidence.SamplePolicy : System.String [get]
+FS.GG.UI.Testing.Feature160ScenarioEvidence.ScenarioId : System.String [get]
+FS.GG.UI.Testing.Feature160ScenarioEvidence.WarmupCount : System.Int32 [get]
+FS.GG.UI.Testing.Feature160ScenarioEvidence.new(System.String, System.Boolean, System.Int32, System.Int32, System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>)
+FS.GG.UI.Testing.Feature160ThroughputReadiness.statusText(FS.GG.UI.Testing.Feature160ThroughputReadinessStatus) : System.String
+FS.GG.UI.Testing.Feature160ThroughputReadiness.validate(FS.GG.UI.Testing.Feature160ThroughputReadinessCheck) : FS.GG.UI.Testing.Feature160ThroughputReadinessValidationResult
+FS.GG.UI.Testing.Feature160ThroughputReadinessCheck.AcceptedIterationCount : System.Int32 [get]
+FS.GG.UI.Testing.Feature160ThroughputReadinessCheck.AcceptedUnsupportedHostArtifacts : System.Int32 [get]
+FS.GG.UI.Testing.Feature160ThroughputReadinessCheck.CompatibilityAccepted : System.Boolean [get]
+FS.GG.UI.Testing.Feature160ThroughputReadinessCheck.Feature : System.String [get]
+FS.GG.UI.Testing.Feature160ThroughputReadinessCheck.FullValidationStatus : System.String [get]
+FS.GG.UI.Testing.Feature160ThroughputReadinessCheck.Limitations : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.Feature160ThroughputReadinessCheck.PackageAccepted : System.Boolean [get]
+FS.GG.UI.Testing.Feature160ThroughputReadinessCheck.PerformanceClaim : System.String [get]
+FS.GG.UI.Testing.Feature160ThroughputReadinessCheck.RegressionAccepted : System.Boolean [get]
+FS.GG.UI.Testing.Feature160ThroughputReadinessCheck.RequiredIterationCount : System.Int32 [get]
+FS.GG.UI.Testing.Feature160ThroughputReadinessCheck.RequiredScenarioIds : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.Feature160ThroughputReadinessCheck.Scenarios : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.Feature160ScenarioEvidence> [get]
+FS.GG.UI.Testing.Feature160ThroughputReadinessCheck.UnsupportedHostStatus : FS.GG.UI.Testing.Feature160ThroughputReadinessStatus [get]
+FS.GG.UI.Testing.Feature160ThroughputReadinessCheck.new(System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.Feature160ScenarioEvidence>, System.Int32, System.Int32, FS.GG.UI.Testing.Feature160ThroughputReadinessStatus, System.Int32, System.String, System.Boolean, System.Boolean, System.Boolean, System.String, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.Feature160ThroughputReadinessStatus+Tags.Feature160Accepted : System.Int32
+FS.GG.UI.Testing.Feature160ThroughputReadinessStatus+Tags.Feature160Blocked : System.Int32
+FS.GG.UI.Testing.Feature160ThroughputReadinessStatus+Tags.Feature160EnvironmentLimited : System.Int32
+FS.GG.UI.Testing.Feature160ThroughputReadinessStatus+Tags.Feature160FallbackOnly : System.Int32
+FS.GG.UI.Testing.Feature160ThroughputReadinessStatus+Tags.Feature160Rejected : System.Int32
+FS.GG.UI.Testing.Feature160ThroughputReadinessValidationResult.Accepted : System.Boolean [get]
+FS.GG.UI.Testing.Feature160ThroughputReadinessValidationResult.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.Feature160ThroughputReadinessValidationResult.MissingScenarios : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.Feature160ThroughputReadinessValidationResult.Status : FS.GG.UI.Testing.Feature160ThroughputReadinessStatus [get]
+FS.GG.UI.Testing.Feature160ThroughputReadinessValidationResult.new(System.Boolean, FS.GG.UI.Testing.Feature160ThroughputReadinessStatus, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.Feature161ClaimScopeEvidence.AcceptedLaneId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.Feature161ClaimScopeEvidence.NonGeneralizedLanes : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.Feature161ClaimScopeEvidence.PerformanceClaim : System.String [get]
+FS.GG.UI.Testing.Feature161ClaimScopeEvidence.RemainingBlockers : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.Feature161ClaimScopeEvidence.new(Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, System.String)
+FS.GG.UI.Testing.Feature161HostFactEvidence.ArtifactPaths : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.Feature161HostFactEvidence.CpuLoadNote : System.String [get]
+FS.GG.UI.Testing.Feature161HostFactEvidence.DirectRendering : Microsoft.FSharp.Core.FSharpOption<System.Boolean> [get]
+FS.GG.UI.Testing.Feature161HostFactEvidence.DisplayIdentity : System.String [get]
+FS.GG.UI.Testing.Feature161HostFactEvidence.DisplayServer : System.String [get]
+FS.GG.UI.Testing.Feature161HostFactEvidence.DriverIdentity : System.String [get]
+FS.GG.UI.Testing.Feature161HostFactEvidence.EnvironmentLimits : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.Feature161HostFactEvidence.GpuLoadNote : System.String [get]
+FS.GG.UI.Testing.Feature161HostFactEvidence.HostProfile : System.String [get]
+FS.GG.UI.Testing.Feature161HostFactEvidence.LaneId : System.String [get]
+FS.GG.UI.Testing.Feature161HostFactEvidence.PackageVersionSet : System.String [get]
+FS.GG.UI.Testing.Feature161HostFactEvidence.RefreshStatus : System.String [get]
+FS.GG.UI.Testing.Feature161HostFactEvidence.RendererIdentity : System.String [get]
+FS.GG.UI.Testing.Feature161HostFactEvidence.RunIdentity : System.String [get]
+FS.GG.UI.Testing.Feature161HostFactEvidence.ScenarioIdentity : System.String [get]
+FS.GG.UI.Testing.Feature161HostFactEvidence.TimingPolicyIdentity : System.String [get]
+FS.GG.UI.Testing.Feature161HostFactEvidence.new(System.String, System.String, System.String, System.String, Microsoft.FSharp.Core.FSharpOption<System.Boolean>, System.String, System.String, System.String, System.String, System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, System.String, System.String, System.String, System.String, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.Feature161HostLaneReadiness.statusText(FS.GG.UI.Testing.Feature161HostLaneReadinessStatus) : System.String
+FS.GG.UI.Testing.Feature161HostLaneReadiness.validate(FS.GG.UI.Testing.Feature161HostLaneReadinessCheck) : FS.GG.UI.Testing.Feature161HostLaneReadinessValidationResult
+FS.GG.UI.Testing.Feature161HostLaneReadinessCheck.AcceptedLaneScopedPerformanceArtifacts : System.Int32 [get]
+FS.GG.UI.Testing.Feature161HostLaneReadinessCheck.ClaimScope : FS.GG.UI.Testing.Feature161ClaimScopeEvidence [get]
+FS.GG.UI.Testing.Feature161HostLaneReadinessCheck.CompatibilityAccepted : System.Boolean [get]
+FS.GG.UI.Testing.Feature161HostLaneReadinessCheck.CoveredScenarioIds : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.Feature161HostLaneReadinessCheck.Feature : System.String [get]
+FS.GG.UI.Testing.Feature161HostLaneReadinessCheck.FullValidationStatus : System.String [get]
+FS.GG.UI.Testing.Feature161HostLaneReadinessCheck.HostFacts : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Testing.Feature161HostFactEvidence> [get]
+FS.GG.UI.Testing.Feature161HostLaneReadinessCheck.Limitations : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.Feature161HostLaneReadinessCheck.PackageAccepted : System.Boolean [get]
+FS.GG.UI.Testing.Feature161HostLaneReadinessCheck.PriorGateStatuses : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.Feature161HostLaneReadinessCheck.RegressionAccepted : System.Boolean [get]
+FS.GG.UI.Testing.Feature161HostLaneReadinessCheck.RequiredScenarioIds : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.Feature161HostLaneReadinessCheck.UnsupportedHostStatus : FS.GG.UI.Testing.Feature161HostLaneReadinessStatus [get]
+FS.GG.UI.Testing.Feature161HostLaneReadinessCheck.new(System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Testing.Feature161HostFactEvidence>, System.Int32, FS.GG.UI.Testing.Feature161HostLaneReadinessStatus, Microsoft.FSharp.Collections.FSharpList<System.String>, FS.GG.UI.Testing.Feature161ClaimScopeEvidence, System.String, System.Boolean, System.Boolean, System.Boolean, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.Feature161HostLaneReadinessStatus+Tags.Feature161Accepted : System.Int32
+FS.GG.UI.Testing.Feature161HostLaneReadinessStatus+Tags.Feature161Blocked : System.Int32
+FS.GG.UI.Testing.Feature161HostLaneReadinessStatus+Tags.Feature161EnvironmentLimited : System.Int32
+FS.GG.UI.Testing.Feature161HostLaneReadinessStatus+Tags.Feature161FallbackOnly : System.Int32
+FS.GG.UI.Testing.Feature161HostLaneReadinessStatus+Tags.Feature161MissingEvidence : System.Int32
+FS.GG.UI.Testing.Feature161HostLaneReadinessStatus+Tags.Feature161Rejected : System.Int32
+FS.GG.UI.Testing.Feature161HostLaneReadinessValidationResult.Accepted : System.Boolean [get]
+FS.GG.UI.Testing.Feature161HostLaneReadinessValidationResult.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.Feature161HostLaneReadinessValidationResult.MissingFacts : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.Feature161HostLaneReadinessValidationResult.MissingScenarios : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.Feature161HostLaneReadinessValidationResult.Status : FS.GG.UI.Testing.Feature161HostLaneReadinessStatus [get]
+FS.GG.UI.Testing.Feature161HostLaneReadinessValidationResult.new(System.Boolean, FS.GG.UI.Testing.Feature161HostLaneReadinessStatus, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.GeneratedConsumerValidation.buildValidationContractOutput(FS.GG.UI.Testing.GeneratedValidationContractCheck) : FS.GG.UI.Testing.GeneratedValidationContractResult
+FS.GG.UI.Testing.GeneratedConsumerValidation.selectVisualEvidence(FS.GG.UI.Testing.VisualEvidenceRequest) : FS.GG.UI.Testing.VisualEvidenceResult
+FS.GG.UI.Testing.GeneratedConsumerValidation.summarize(FS.GG.UI.Testing.GeneratedValidationResult) : System.String
+FS.GG.UI.Testing.GeneratedConsumerValidation.validateVisualEvidenceCommandOutput(FS.GG.UI.Testing.GeneratedVisualEvidenceCommandCheck) : FS.GG.UI.Testing.GeneratedVisualEvidenceCommandResult
+FS.GG.UI.Testing.GeneratedConsumerValidation.verifyGeneratedTests(FS.GG.UI.Testing.GeneratedTestExecutionCheck) : FS.GG.UI.Testing.GeneratedTestExecutionResult
+FS.GG.UI.Testing.GeneratedConsumerValidation.verifyPackageResolution(FS.GG.UI.Testing.PackageResolutionCheck) : FS.GG.UI.Testing.PackageResolutionCheckResult
+FS.GG.UI.Testing.GeneratedLayoutValidation.validate(FS.GG.UI.Testing.GeneratedLayoutValidationCheck) : FS.GG.UI.Testing.GeneratedLayoutValidationResult
+FS.GG.UI.Testing.GeneratedLayoutValidationCheck.Report : FS.GG.UI.Scene.LayoutEvidenceReport [get]
+FS.GG.UI.Testing.GeneratedLayoutValidationCheck.RequireReadableLayout : System.Boolean [get]
+FS.GG.UI.Testing.GeneratedLayoutValidationCheck.new(FS.GG.UI.Scene.LayoutEvidenceReport, System.Boolean)
+FS.GG.UI.Testing.GeneratedLayoutValidationFailureClass+Tags.DeterministicRenderOnlyClaim : System.Int32
+FS.GG.UI.Testing.GeneratedLayoutValidationFailureClass+Tags.MissingLayoutFacts : System.Int32
+FS.GG.UI.Testing.GeneratedLayoutValidationFailureClass+Tags.OverlappingLayoutBounds : System.Int32
+FS.GG.UI.Testing.GeneratedLayoutValidationFailureClass+Tags.UnsupportedLayoutFacts : System.Int32
+FS.GG.UI.Testing.GeneratedLayoutValidationResult.Accepted : System.Boolean [get]
+FS.GG.UI.Testing.GeneratedLayoutValidationResult.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.GeneratedLayoutValidationResult.FailureClass : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Testing.GeneratedLayoutValidationFailureClass> [get]
+FS.GG.UI.Testing.GeneratedLayoutValidationResult.new(System.Boolean, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Testing.GeneratedLayoutValidationFailureClass>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.GeneratedProductAssertions.summarize(FS.GG.UI.Testing.GeneratedProductExpectation) : System.String
+FS.GG.UI.Testing.GeneratedProductAssertions.validateDefaultInteractiveLaunch(System.String) : FS.GG.UI.Testing.GeneratedProductLaunchValidationResult
+FS.GG.UI.Testing.GeneratedProductAssertions.validateWindowDiagnostics(FS.GG.UI.Testing.GeneratedWindowDiagnosticCheck) : FS.GG.UI.Testing.GeneratedWindowDiagnosticValidationResult
+FS.GG.UI.Testing.GeneratedProductExpectation.ForbiddenPrefixes : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.GeneratedProductExpectation.PackageReferences : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.PackageReferenceExpectation> [get]
+FS.GG.UI.Testing.GeneratedProductExpectation.Profile : System.String [get]
+FS.GG.UI.Testing.GeneratedProductExpectation.RequiredFiles : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.GeneratedProductExpectation.new(System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.PackageReferenceExpectation>)
+FS.GG.UI.Testing.GeneratedProductLaunchValidationResult.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.GeneratedProductLaunchValidationResult.InteractiveLaunchRequired : System.Boolean [get]
+FS.GG.UI.Testing.GeneratedProductLaunchValidationResult.new(System.Boolean, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.GeneratedTestExecutionCheck.TestsExist : System.Boolean [get]
+FS.GG.UI.Testing.GeneratedTestExecutionCheck.TestsRan : System.Boolean [get]
+FS.GG.UI.Testing.GeneratedTestExecutionCheck.VerifyRan : System.Boolean [get]
+FS.GG.UI.Testing.GeneratedTestExecutionCheck.new(System.Boolean, System.Boolean, System.Boolean)
+FS.GG.UI.Testing.GeneratedTestExecutionResult.Authoritative : System.Boolean [get]
+FS.GG.UI.Testing.GeneratedTestExecutionResult.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.GeneratedTestExecutionResult.NonAuthoritativeReason : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.GeneratedTestExecutionResult.new(System.Boolean, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.GeneratedValidationCategory+Tags.Completed : System.Int32
+FS.GG.UI.Testing.GeneratedValidationCategory+Tags.PackageDrift : System.Int32
+FS.GG.UI.Testing.GeneratedValidationCategory+Tags.RestoreFailure : System.Int32
+FS.GG.UI.Testing.GeneratedValidationCategory+Tags.SceneEvidenceFailure : System.Int32
+FS.GG.UI.Testing.GeneratedValidationCategory+Tags.SemanticTestFailure : System.Int32
+FS.GG.UI.Testing.GeneratedValidationCategory+Tags.UnsupportedHost : System.Int32
+FS.GG.UI.Testing.GeneratedValidationCategory+Tags.ViewerStartupFailure : System.Int32
+FS.GG.UI.Testing.GeneratedValidationContractCheck.BoundedEvidenceValidated : System.Boolean [get]
+FS.GG.UI.Testing.GeneratedValidationContractCheck.CloseReasonValidated : System.Boolean [get]
+FS.GG.UI.Testing.GeneratedValidationContractCheck.DefaultInteractiveLaunch : FS.GG.UI.Testing.GeneratedProductLaunchValidationResult [get]
+FS.GG.UI.Testing.GeneratedValidationContractCheck.GeneratedTests : FS.GG.UI.Testing.GeneratedTestExecutionResult [get]
+FS.GG.UI.Testing.GeneratedValidationContractCheck.ImageEvidence : FS.GG.UI.Testing.GeneratedVisualEvidenceCommandResult [get]
+FS.GG.UI.Testing.GeneratedValidationContractCheck.PackageResolution : FS.GG.UI.Testing.PackageResolutionCheckResult [get]
+FS.GG.UI.Testing.GeneratedValidationContractCheck.WindowDiagnostics : FS.GG.UI.Testing.GeneratedWindowDiagnosticValidationResult [get]
+FS.GG.UI.Testing.GeneratedValidationContractCheck.WindowOptionsValidated : System.Boolean [get]
+FS.GG.UI.Testing.GeneratedValidationContractCheck.new(FS.GG.UI.Testing.PackageResolutionCheckResult, FS.GG.UI.Testing.GeneratedTestExecutionResult, FS.GG.UI.Testing.GeneratedProductLaunchValidationResult, System.Boolean, System.Boolean, FS.GG.UI.Testing.GeneratedWindowDiagnosticValidationResult, System.Boolean, FS.GG.UI.Testing.GeneratedVisualEvidenceCommandResult)
+FS.GG.UI.Testing.GeneratedValidationContractResult.Authoritative : System.Boolean [get]
+FS.GG.UI.Testing.GeneratedValidationContractResult.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.GeneratedValidationContractResult.FailureClass : System.String [get]
+FS.GG.UI.Testing.GeneratedValidationContractResult.Output : System.String [get]
+FS.GG.UI.Testing.GeneratedValidationContractResult.new(System.String, System.Boolean, System.String, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.GeneratedValidationResult.Category : FS.GG.UI.Testing.GeneratedValidationCategory [get]
+FS.GG.UI.Testing.GeneratedValidationResult.CommandContext : System.String [get]
+FS.GG.UI.Testing.GeneratedValidationResult.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.GeneratedValidationResult.Elapsed : System.TimeSpan [get]
+FS.GG.UI.Testing.GeneratedValidationResult.EvidencePath : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.GeneratedValidationResult.new(FS.GG.UI.Testing.GeneratedValidationCategory, System.TimeSpan, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.GeneratedVisualEvidenceCommandCheck.Output : System.String [get]
+FS.GG.UI.Testing.GeneratedVisualEvidenceCommandCheck.RequestedImageEvidence : System.Boolean [get]
+FS.GG.UI.Testing.GeneratedVisualEvidenceCommandCheck.new(System.String, System.Boolean)
+FS.GG.UI.Testing.GeneratedVisualEvidenceCommandResult.Accepted : System.Boolean [get]
+FS.GG.UI.Testing.GeneratedVisualEvidenceCommandResult.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.GeneratedVisualEvidenceCommandResult.EvidenceKind : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.GeneratedVisualEvidenceCommandResult.FailureReason : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.GeneratedVisualEvidenceCommandResult.new(System.Boolean, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.GeneratedWindowDiagnosticCheck.Output : System.String [get]
+FS.GG.UI.Testing.GeneratedWindowDiagnosticCheck.RequiredFailureClasses : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.GeneratedWindowDiagnosticCheck.RequiredNativeFacts : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.GeneratedWindowDiagnosticCheck.new(System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.GeneratedWindowDiagnosticValidationResult.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.GeneratedWindowDiagnosticValidationResult.DiagnosticsComplete : System.Boolean [get]
+FS.GG.UI.Testing.GeneratedWindowDiagnosticValidationResult.new(System.Boolean, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.HostWarningClass+Tags.BenignEnvironmentWarning : System.Int32
+FS.GG.UI.Testing.HostWarningClass+Tags.LaunchFailure : System.Int32
+FS.GG.UI.Testing.HostWarningClass+Tags.LayoutFailure : System.Int32
+FS.GG.UI.Testing.HostWarningClass+Tags.PackageFailure : System.Int32
+FS.GG.UI.Testing.HostWarningClass+Tags.RenderingFailure : System.Int32
+FS.GG.UI.Testing.HostWarningClass+Tags.UnknownWarning : System.Int32
+FS.GG.UI.Testing.HostWarningClassification.classify(FS.GG.UI.Testing.HostWarningClassificationCheck) : FS.GG.UI.Testing.HostWarningClassificationResult
+FS.GG.UI.Testing.HostWarningClassificationCheck.EvidencePath : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.HostWarningClassificationCheck.ExplicitlyUnsupportedWithoutReadabilityClaim : System.Boolean [get]
+FS.GG.UI.Testing.HostWarningClassificationCheck.KnownBenignMarkers : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.HostWarningClassificationCheck.LaunchSucceeded : System.Boolean [get]
+FS.GG.UI.Testing.HostWarningClassificationCheck.LayoutReadable : Microsoft.FSharp.Core.FSharpOption<System.Boolean> [get]
+FS.GG.UI.Testing.HostWarningClassificationCheck.PackageSucceeded : System.Boolean [get]
+FS.GG.UI.Testing.HostWarningClassificationCheck.RawMessage : System.String [get]
+FS.GG.UI.Testing.HostWarningClassificationCheck.RenderingSucceeded : System.Boolean [get]
+FS.GG.UI.Testing.HostWarningClassificationCheck.new(System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, System.Boolean, System.Boolean, Microsoft.FSharp.Core.FSharpOption<System.Boolean>, System.Boolean, System.Boolean, Microsoft.FSharp.Core.FSharpOption<System.String>)
+FS.GG.UI.Testing.HostWarningClassificationResult.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.HostWarningClassificationResult.EvidencePath : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.HostWarningClassificationResult.Fatal : System.Boolean [get]
+FS.GG.UI.Testing.HostWarningClassificationResult.RawMessage : System.String [get]
+FS.GG.UI.Testing.HostWarningClassificationResult.SupportingFacts : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.HostWarningClassificationResult.WarningClass : FS.GG.UI.Testing.HostWarningClass [get]
+FS.GG.UI.Testing.HostWarningClassificationResult.new(FS.GG.UI.Testing.HostWarningClass, System.String, System.Boolean, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.LayoutCompatibilityDelta.Change : System.String [get]
+FS.GG.UI.Testing.LayoutCompatibilityDelta.Intentional : System.Boolean [get]
+FS.GG.UI.Testing.LayoutCompatibilityDelta.Migration : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.LayoutCompatibilityDelta.Surface : System.String [get]
+FS.GG.UI.Testing.LayoutCompatibilityDelta.new(System.String, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, System.Boolean)
+FS.GG.UI.Testing.LayoutReadiness.statusText(FS.GG.UI.Testing.LayoutReadinessStatus) : System.String
+FS.GG.UI.Testing.LayoutReadiness.validate(FS.GG.UI.Testing.LayoutReadinessReport) : FS.GG.UI.Testing.LayoutReadinessValidationResult
+FS.GG.UI.Testing.LayoutReadinessEvidence.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.LayoutReadinessEvidence.Name : System.String [get]
+FS.GG.UI.Testing.LayoutReadinessEvidence.Path : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.LayoutReadinessEvidence.Required : System.Boolean [get]
+FS.GG.UI.Testing.LayoutReadinessEvidence.Status : FS.GG.UI.Testing.LayoutReadinessStatus [get]
+FS.GG.UI.Testing.LayoutReadinessEvidence.new(System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, FS.GG.UI.Testing.LayoutReadinessStatus, System.Boolean, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.LayoutReadinessReport.CompatibilityDeltas : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.LayoutCompatibilityDelta> [get]
+FS.GG.UI.Testing.LayoutReadinessReport.CompatibilityStatus : FS.GG.UI.Testing.LayoutReadinessStatus [get]
+FS.GG.UI.Testing.LayoutReadinessReport.ContractStatus : FS.GG.UI.Testing.LayoutReadinessStatus [get]
+FS.GG.UI.Testing.LayoutReadinessReport.DiagnosticsStatus : FS.GG.UI.Testing.LayoutReadinessStatus [get]
+FS.GG.UI.Testing.LayoutReadinessReport.Evidence : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.LayoutReadinessEvidence> [get]
+FS.GG.UI.Testing.LayoutReadinessReport.Feature : System.String [get]
+FS.GG.UI.Testing.LayoutReadinessReport.IntrinsicStatus : FS.GG.UI.Testing.LayoutReadinessStatus [get]
+FS.GG.UI.Testing.LayoutReadinessReport.Limitations : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.LayoutReadinessReport.ParityStatus : FS.GG.UI.Testing.LayoutReadinessStatus [get]
+FS.GG.UI.Testing.LayoutReadinessReport.ScrollViewerStatus : FS.GG.UI.Testing.LayoutReadinessStatus [get]
+FS.GG.UI.Testing.LayoutReadinessReport.new(System.String, FS.GG.UI.Testing.LayoutReadinessStatus, FS.GG.UI.Testing.LayoutReadinessStatus, FS.GG.UI.Testing.LayoutReadinessStatus, FS.GG.UI.Testing.LayoutReadinessStatus, FS.GG.UI.Testing.LayoutReadinessStatus, FS.GG.UI.Testing.LayoutReadinessStatus, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.LayoutReadinessEvidence>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.LayoutCompatibilityDelta>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.LayoutReadinessStatus+Tags.LayoutReadinessAccepted : System.Int32
+FS.GG.UI.Testing.LayoutReadinessStatus+Tags.LayoutReadinessCompatibilityBlocked : System.Int32
+FS.GG.UI.Testing.LayoutReadinessStatus+Tags.LayoutReadinessEnvironmentLimited : System.Int32
+FS.GG.UI.Testing.LayoutReadinessStatus+Tags.LayoutReadinessFailed : System.Int32
+FS.GG.UI.Testing.LayoutReadinessStatus+Tags.LayoutReadinessIncomplete : System.Int32
+FS.GG.UI.Testing.LayoutReadinessStatus+Tags.LayoutReadinessMissingEvidence : System.Int32
+FS.GG.UI.Testing.LayoutReadinessStatus+Tags.LayoutReadinessSkipped : System.Int32
+FS.GG.UI.Testing.LayoutReadinessStatus+Tags.LayoutReadinessSyntheticOnly : System.Int32
+FS.GG.UI.Testing.LayoutReadinessValidationResult.Accepted : System.Boolean [get]
+FS.GG.UI.Testing.LayoutReadinessValidationResult.BlockingLimitations : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.LayoutReadinessValidationResult.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.LayoutReadinessValidationResult.MissingEvidence : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.LayoutReadinessValidationResult.Status : FS.GG.UI.Testing.LayoutReadinessStatus [get]
+FS.GG.UI.Testing.LayoutReadinessValidationResult.new(System.Boolean, FS.GG.UI.Testing.LayoutReadinessStatus, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.LocalConsumerPackage.FeedPath : System.String [get]
+FS.GG.UI.Testing.LocalConsumerPackage.PackageId : System.String [get]
+FS.GG.UI.Testing.LocalConsumerPackage.Version : System.String [get]
+FS.GG.UI.Testing.LocalConsumerPackage.new(System.String, System.String, System.String)
+FS.GG.UI.Testing.LocalConsumerPackageDrift.ActualVersion : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.LocalConsumerPackageDrift.ExpectedVersion : System.String [get]
+FS.GG.UI.Testing.LocalConsumerPackageDrift.FeedPath : System.String [get]
+FS.GG.UI.Testing.LocalConsumerPackageDrift.PackageId : System.String [get]
+FS.GG.UI.Testing.LocalConsumerPackageDrift.RemediationCommand : System.String [get]
+FS.GG.UI.Testing.LocalConsumerPackageDrift.new(System.String, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, System.String, System.String)
+FS.GG.UI.Testing.LocalConsumerPackageReport.ConsumerConfigSnippet : System.String [get]
+FS.GG.UI.Testing.LocalConsumerPackageReport.DriftDiagnostics : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.LocalConsumerPackageDrift> [get]
+FS.GG.UI.Testing.LocalConsumerPackageReport.FeedPath : System.String [get]
+FS.GG.UI.Testing.LocalConsumerPackageReport.NuGetConfigSnippet : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.LocalConsumerPackageReport.Packages : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.LocalConsumerPackage> [get]
+FS.GG.UI.Testing.LocalConsumerPackageReport.RestoreCommand : System.String [get]
+FS.GG.UI.Testing.LocalConsumerPackageReport.new(System.String, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.LocalConsumerPackage>, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, System.String, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.LocalConsumerPackageDrift>)
+FS.GG.UI.Testing.LocalConsumerPackages.classifyDrift(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.LocalConsumerPackage>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.LocalConsumerPackage>) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.LocalConsumerPackageDrift>
+FS.GG.UI.Testing.LocalConsumerPackages.report(System.String, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.LocalConsumerPackage>) : FS.GG.UI.Testing.LocalConsumerPackageReport
+FS.GG.UI.Testing.PackageInspectionAssertionCheck.ExpectedStatus : FS.GG.UI.Scene.PackageInspectionStatus [get]
+FS.GG.UI.Testing.PackageInspectionAssertionCheck.Report : FS.GG.UI.Scene.PackageInspectionReport [get]
+FS.GG.UI.Testing.PackageInspectionAssertionCheck.RequiredDiagnosticFragments : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.PackageInspectionAssertionCheck.new(FS.GG.UI.Scene.PackageInspectionReport, FS.GG.UI.Scene.PackageInspectionStatus, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.PackageInspectionAssertionResult.Accepted : System.Boolean [get]
+FS.GG.UI.Testing.PackageInspectionAssertionResult.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.PackageInspectionAssertionResult.new(System.Boolean, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.PackageInspectionAssertions.validate(FS.GG.UI.Testing.PackageInspectionAssertionCheck) : FS.GG.UI.Testing.PackageInspectionAssertionResult
+FS.GG.UI.Testing.PackageReferenceExpectation.PackageId : System.String [get]
+FS.GG.UI.Testing.PackageReferenceExpectation.Required : System.Boolean [get]
+FS.GG.UI.Testing.PackageReferenceExpectation.new(System.String, System.Boolean)
+FS.GG.UI.Testing.PackageResolutionCheck.PackageSources : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.PackageResolutionCheck.RequestedPackages : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.LocalConsumerPackage> [get]
+FS.GG.UI.Testing.PackageResolutionCheck.ResolvedPackages : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.LocalConsumerPackage> [get]
+FS.GG.UI.Testing.PackageResolutionCheck.RestoreWarnings : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.PackageResolutionCheck.new(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.LocalConsumerPackage>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.LocalConsumerPackage>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.PackageResolutionCheckResult.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.PackageResolutionCheckResult.ExactMatch : System.Boolean [get]
+FS.GG.UI.Testing.PackageResolutionCheckResult.FailureReason : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.PackageResolutionCheckResult.new(System.Boolean, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.PersistentLaunchArtifactCheck.ArtifactPath : System.String [get]
+FS.GG.UI.Testing.PersistentLaunchArtifactCheck.Lines : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.PersistentLaunchArtifactCheck.SupportedHostPassClaimed : System.Boolean [get]
+FS.GG.UI.Testing.PersistentLaunchArtifactCheck.SyntheticFixture : System.Boolean [get]
+FS.GG.UI.Testing.PersistentLaunchArtifactCheck.new(System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, System.Boolean, System.Boolean)
+FS.GG.UI.Testing.PersistentLaunchArtifactValidation.validate(FS.GG.UI.Testing.PersistentLaunchArtifactCheck) : FS.GG.UI.Testing.PersistentLaunchArtifactValidationResult
+FS.GG.UI.Testing.PersistentLaunchArtifactValidationResult.Accepted : System.Boolean [get]
+FS.GG.UI.Testing.PersistentLaunchArtifactValidationResult.Contradictions : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.PersistentLaunchArtifactValidationResult.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.PersistentLaunchArtifactValidationResult.MissingFields : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.PersistentLaunchArtifactValidationResult.new(System.Boolean, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.ReadinessFileDiscovery.validate(FS.GG.UI.Testing.ReadinessFileDiscoveryCheck) : FS.GG.UI.Testing.ReadinessFileDiscoveryResult
+FS.GG.UI.Testing.ReadinessFileDiscoveryCheck.ExistingFiles : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.ReadinessFileDiscoveryCheck.ReadinessDirectory : System.String [get]
+FS.GG.UI.Testing.ReadinessFileDiscoveryCheck.RequiredFiles : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.ReadinessFileDiscoveryCheck.new(System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.ReadinessFileDiscoveryResult.Complete : System.Boolean [get]
+FS.GG.UI.Testing.ReadinessFileDiscoveryResult.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.ReadinessFileDiscoveryResult.MissingFiles : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.ReadinessFileDiscoveryResult.new(System.Boolean, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.RetainedInspectionMarkdown.endMarker : System.String [get]
+FS.GG.UI.Testing.RetainedInspectionMarkdown.renderJson(FS.GG.UI.Scene.RetainedInspectionSummary) : System.String
+FS.GG.UI.Testing.RetainedInspectionMarkdown.renderSummary(FS.GG.UI.Scene.RetainedInspectionSummary) : System.String
+FS.GG.UI.Testing.RetainedInspectionMarkdown.startMarker : System.String [get]
+FS.GG.UI.Testing.RetainedInspectionMarkdown.updateManagedSection(System.String, System.String) : FS.GG.UI.Testing.RetainedInspectionSummarySectionUpdate
+FS.GG.UI.Testing.RetainedInspectionReadiness.aggregate(System.String, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.RetainedInspectionArtifact>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.RetainedInspectionValidationResult>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.Tuple<System.String, System.String>>, Microsoft.FSharp.Collections.FSharpList<System.String>) : FS.GG.UI.Scene.RetainedInspectionSummary
+FS.GG.UI.Testing.RetainedInspectionRule.Required : System.Boolean [get]
+FS.GG.UI.Testing.RetainedInspectionRule.RuleId : System.String [get]
+FS.GG.UI.Testing.RetainedInspectionRule.new(System.String, System.Boolean)
+FS.GG.UI.Testing.RetainedInspectionSummarySectionUpdate.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.RetainedInspectionSummarySectionUpdate.InsertedMarkers : System.Boolean [get]
+FS.GG.UI.Testing.RetainedInspectionSummarySectionUpdate.SafeToWrite : System.Boolean [get]
+FS.GG.UI.Testing.RetainedInspectionSummarySectionUpdate.UpdatedText : System.String [get]
+FS.GG.UI.Testing.RetainedInspectionSummarySectionUpdate.new(System.String, System.Boolean, System.Boolean, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.RetainedInspectionValidation.defaultRules : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.RetainedInspectionRule> [get]
+FS.GG.UI.Testing.RetainedInspectionValidation.rule(System.String) : FS.GG.UI.Testing.RetainedInspectionRule
+FS.GG.UI.Testing.RetainedInspectionValidation.validate(FS.GG.UI.Scene.RetainedInspectionArtifact, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.RetainedInspectionRule>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.IntentionalDamageException>) : FS.GG.UI.Testing.RetainedInspectionValidationResult
+FS.GG.UI.Testing.RetainedInspectionValidation.validateCheck(FS.GG.UI.Testing.RetainedInspectionValidationCheck) : FS.GG.UI.Testing.RetainedInspectionValidationResult
+FS.GG.UI.Testing.RetainedInspectionValidationCheck.Artifact : FS.GG.UI.Scene.RetainedInspectionArtifact [get]
+FS.GG.UI.Testing.RetainedInspectionValidationCheck.EnvironmentLimitations : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.RetainedInspectionValidationCheck.Exceptions : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.IntentionalDamageException> [get]
+FS.GG.UI.Testing.RetainedInspectionValidationCheck.ExpectedAffectedRegionIds : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.RetainedInspectionValidationCheck.PreviousArtifact : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.RetainedInspectionArtifact> [get]
+FS.GG.UI.Testing.RetainedInspectionValidationCheck.Rules : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.RetainedInspectionRule> [get]
+FS.GG.UI.Testing.RetainedInspectionValidationCheck.new(FS.GG.UI.Scene.RetainedInspectionArtifact, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.RetainedInspectionRule>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.IntentionalDamageException>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.RetainedInspectionArtifact>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.RetainedInspectionValidationResult.AppliedExceptions : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.RetainedInspectionValidationResult.ArtifactId : System.String [get]
+FS.GG.UI.Testing.RetainedInspectionValidationResult.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.RetainedInspectionValidationResult.Findings : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.DamageLocalityFinding> [get]
+FS.GG.UI.Testing.RetainedInspectionValidationResult.InvalidExceptions : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.RetainedInspectionValidationResult.ReadinessStatus : FS.GG.UI.Scene.RetainedInspectionStatus [get]
+FS.GG.UI.Testing.RetainedInspectionValidationResult.UnusedExceptions : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.RetainedInspectionValidationResult.new(System.String, FS.GG.UI.Scene.RetainedInspectionStatus, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.DamageLocalityFinding>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.RuntimeDiagnosticReadiness.validate(FS.GG.UI.Testing.RuntimeDiagnosticReadinessCheck) : FS.GG.UI.Testing.RuntimeDiagnosticReadinessResult
+FS.GG.UI.Testing.RuntimeDiagnosticReadinessCheck.RequireAccepted : System.Boolean [get]
+FS.GG.UI.Testing.RuntimeDiagnosticReadinessCheck.RequiredStatus : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Diagnostics.ReadinessDiagnosticStatus> [get]
+FS.GG.UI.Testing.RuntimeDiagnosticReadinessCheck.Summary : FS.GG.UI.Diagnostics.DiagnosticSummary [get]
+FS.GG.UI.Testing.RuntimeDiagnosticReadinessCheck.new(FS.GG.UI.Diagnostics.DiagnosticSummary, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Diagnostics.ReadinessDiagnosticStatus>, System.Boolean)
+FS.GG.UI.Testing.RuntimeDiagnosticReadinessResult.Accepted : System.Boolean [get]
+FS.GG.UI.Testing.RuntimeDiagnosticReadinessResult.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.RuntimeDiagnosticReadinessResult.Status : System.String [get]
+FS.GG.UI.Testing.RuntimeDiagnosticReadinessResult.new(System.Boolean, System.String, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.ScreenshotArtifactValidationCheck.ArtifactPath : System.String [get]
+FS.GG.UI.Testing.ScreenshotArtifactValidationCheck.ExpectedHeight : Microsoft.FSharp.Core.FSharpOption<System.Int32> [get]
+FS.GG.UI.Testing.ScreenshotArtifactValidationCheck.ExpectedWidth : Microsoft.FSharp.Core.FSharpOption<System.Int32> [get]
+FS.GG.UI.Testing.ScreenshotArtifactValidationCheck.ReadinessDirectory : System.String [get]
+FS.GG.UI.Testing.ScreenshotArtifactValidationCheck.RequireNonBlank : System.Boolean [get]
+FS.GG.UI.Testing.ScreenshotArtifactValidationCheck.new(System.String, System.String, Microsoft.FSharp.Core.FSharpOption<System.Int32>, Microsoft.FSharp.Core.FSharpOption<System.Int32>, System.Boolean)
+FS.GG.UI.Testing.ScreenshotArtifactValidationResult.Accepted : System.Boolean [get]
+FS.GG.UI.Testing.ScreenshotArtifactValidationResult.DecodedHeight : Microsoft.FSharp.Core.FSharpOption<System.Int32> [get]
+FS.GG.UI.Testing.ScreenshotArtifactValidationResult.DecodedWidth : Microsoft.FSharp.Core.FSharpOption<System.Int32> [get]
+FS.GG.UI.Testing.ScreenshotArtifactValidationResult.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.ScreenshotArtifactValidationResult.FailureClass : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.ScreenshotArtifactValidationResult.PixelContentValidation : System.String [get]
+FS.GG.UI.Testing.ScreenshotArtifactValidationResult.new(System.Boolean, Microsoft.FSharp.Core.FSharpOption<System.Int32>, Microsoft.FSharp.Core.FSharpOption<System.Int32>, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.ScreenshotEvidenceRecord.ArtifactPath : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.ScreenshotEvidenceRecord.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.ScreenshotEvidenceRecord.Fields : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.EvidenceReportField> [get]
+FS.GG.UI.Testing.ScreenshotEvidenceRecord.new(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.EvidenceReportField>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.ScreenshotEvidenceReportCheck.AppOrSample : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.ScreenshotEvidenceReportCheck.ArtifactPath : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.ScreenshotEvidenceReportCheck.BlockedStage : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.ScreenshotEvidenceReportCheck.CaptureAvailability : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.ScreenshotEvidenceReportCheck.CaptureMode : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.ScreenshotEvidenceReportCheck.CaptureSource : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.ScreenshotEvidenceReportCheck.Category : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.ScreenshotEvidenceReportCheck.Classification : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.ScreenshotEvidenceReportCheck.Command : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.ScreenshotEvidenceReportCheck.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.ScreenshotEvidenceReportCheck.EvidenceKind : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.ScreenshotEvidenceReportCheck.Fallback : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.ScreenshotEvidenceReportCheck.FirstFrameStatus : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.ScreenshotEvidenceReportCheck.Height : Microsoft.FSharp.Core.FSharpOption<System.Int32> [get]
+FS.GG.UI.Testing.ScreenshotEvidenceReportCheck.HostFacts : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.ScreenshotEvidenceReportCheck.Message : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.ScreenshotEvidenceReportCheck.PixelContentValidation : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.ScreenshotEvidenceReportCheck.ProvesScreenshot : Microsoft.FSharp.Core.FSharpOption<System.Boolean> [get]
+FS.GG.UI.Testing.ScreenshotEvidenceReportCheck.ScreenshotPath : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.ScreenshotEvidenceReportCheck.Status : System.String [get]
+FS.GG.UI.Testing.ScreenshotEvidenceReportCheck.Timestamp : Microsoft.FSharp.Core.FSharpOption<System.DateTimeOffset> [get]
+FS.GG.UI.Testing.ScreenshotEvidenceReportCheck.UnsupportedHostReason : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.ScreenshotEvidenceReportCheck.ViewerOpenStatus : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.ScreenshotEvidenceReportCheck.Width : Microsoft.FSharp.Core.FSharpOption<System.Int32> [get]
+FS.GG.UI.Testing.ScreenshotEvidenceReportCheck.new(System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.Int32>, Microsoft.FSharp.Core.FSharpOption<System.Int32>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.Boolean>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.DateTimeOffset>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.ScreenshotEvidenceReportValidationResult.Accepted : System.Boolean [get]
+FS.GG.UI.Testing.ScreenshotEvidenceReportValidationResult.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.ScreenshotEvidenceReportValidationResult.FailureClass : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.ScreenshotEvidenceReportValidationResult.MissingFields : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.ScreenshotEvidenceReportValidationResult.new(System.Boolean, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.VisualCaptureArtifact.ByteCount : Microsoft.FSharp.Core.FSharpOption<System.Int64> [get]
+FS.GG.UI.Testing.VisualCaptureArtifact.ContentHash : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.VisualCaptureArtifact.DecodeError : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.VisualCaptureArtifact.DecodedHeight : Microsoft.FSharp.Core.FSharpOption<System.Int32> [get]
+FS.GG.UI.Testing.VisualCaptureArtifact.DecodedWidth : Microsoft.FSharp.Core.FSharpOption<System.Int32> [get]
+FS.GG.UI.Testing.VisualCaptureArtifact.Exists : System.Boolean [get]
+FS.GG.UI.Testing.VisualCaptureArtifact.RelativePath : System.String [get]
+FS.GG.UI.Testing.VisualCaptureArtifact.new(System.String, System.Boolean, Microsoft.FSharp.Core.FSharpOption<System.Int64>, Microsoft.FSharp.Core.FSharpOption<System.Int32>, Microsoft.FSharp.Core.FSharpOption<System.Int32>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>)
+FS.GG.UI.Testing.VisualCaptureMatrix.expand(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.VisualPage>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.VisualTheme>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.VisualSize>, Microsoft.FSharp.Core.FSharpFunc<FS.GG.UI.Testing.VisualPage, Microsoft.FSharp.Core.FSharpFunc<FS.GG.UI.Testing.VisualTheme, Microsoft.FSharp.Core.FSharpFunc<FS.GG.UI.Testing.VisualSize, System.String>>>) : Microsoft.FSharp.Core.FSharpResult<Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.VisualCaptureTarget>, Microsoft.FSharp.Collections.FSharpList<System.String>>
+FS.GG.UI.Testing.VisualCaptureMatrix.targetId(FS.GG.UI.Testing.VisualPage, FS.GG.UI.Testing.VisualTheme, FS.GG.UI.Testing.VisualSize, System.String) : System.String
+FS.GG.UI.Testing.VisualCaptureRecord.Artifact : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Testing.VisualCaptureArtifact> [get]
+FS.GG.UI.Testing.VisualCaptureRecord.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.VisualCaptureRecord.ExpectedHeight : System.Int32 [get]
+FS.GG.UI.Testing.VisualCaptureRecord.ExpectedWidth : System.Int32 [get]
+FS.GG.UI.Testing.VisualCaptureRecord.ObservedHeight : Microsoft.FSharp.Core.FSharpOption<System.Int32> [get]
+FS.GG.UI.Testing.VisualCaptureRecord.ObservedWidth : Microsoft.FSharp.Core.FSharpOption<System.Int32> [get]
+FS.GG.UI.Testing.VisualCaptureRecord.Reason : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.VisualCaptureRecord.Status : FS.GG.UI.Testing.VisualCaptureStatus [get]
+FS.GG.UI.Testing.VisualCaptureRecord.Target : FS.GG.UI.Testing.VisualCaptureTarget [get]
+FS.GG.UI.Testing.VisualCaptureRecord.new(FS.GG.UI.Testing.VisualCaptureTarget, FS.GG.UI.Testing.VisualCaptureStatus, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Testing.VisualCaptureArtifact>, System.Int32, System.Int32, Microsoft.FSharp.Core.FSharpOption<System.Int32>, Microsoft.FSharp.Core.FSharpOption<System.Int32>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.VisualCaptureStatus+Tags.VisualCaptureBlocked : System.Int32
+FS.GG.UI.Testing.VisualCaptureStatus+Tags.VisualCaptureComplete : System.Int32
+FS.GG.UI.Testing.VisualCaptureStatus+Tags.VisualCaptureDegraded : System.Int32
+FS.GG.UI.Testing.VisualCaptureStatus+Tags.VisualCaptureMissing : System.Int32
+FS.GG.UI.Testing.VisualCaptureStatus+Tags.VisualCaptureUndecodable : System.Int32
+FS.GG.UI.Testing.VisualCaptureStatus+Tags.VisualCaptureWrongSize : System.Int32
+FS.GG.UI.Testing.VisualCaptureTarget.Page : FS.GG.UI.Testing.VisualPage [get]
+FS.GG.UI.Testing.VisualCaptureTarget.RelativePath : System.String [get]
+FS.GG.UI.Testing.VisualCaptureTarget.Required : System.Boolean [get]
+FS.GG.UI.Testing.VisualCaptureTarget.Size : FS.GG.UI.Testing.VisualSize [get]
+FS.GG.UI.Testing.VisualCaptureTarget.TargetId : System.String [get]
+FS.GG.UI.Testing.VisualCaptureTarget.Theme : FS.GG.UI.Testing.VisualTheme [get]
+FS.GG.UI.Testing.VisualCaptureTarget.new(System.String, FS.GG.UI.Testing.VisualPage, FS.GG.UI.Testing.VisualTheme, FS.GG.UI.Testing.VisualSize, System.String, System.Boolean)
+FS.GG.UI.Testing.VisualCompleteness.degraded(FS.GG.UI.Testing.VisualCaptureTarget, System.String) : FS.GG.UI.Testing.VisualCaptureRecord
+FS.GG.UI.Testing.VisualCompleteness.statusText(FS.GG.UI.Testing.VisualCaptureStatus) : System.String
+FS.GG.UI.Testing.VisualCompleteness.validate(System.String, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.VisualCaptureTarget>) : System.Tuple<Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.VisualCaptureRecord>, Microsoft.FSharp.Collections.FSharpList<System.String>>
+FS.GG.UI.Testing.VisualContactSheet.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.VisualContactSheet.MissingTargetIds : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.VisualContactSheet.RelativePath : System.String [get]
+FS.GG.UI.Testing.VisualContactSheet.SheetId : System.String [get]
+FS.GG.UI.Testing.VisualContactSheet.SizeRole : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.VisualContactSheet.TargetIds : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.VisualContactSheet.ThemeId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.VisualContactSheet.new(System.String, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.VisualEvidenceKind+Tags.PixelReadback : System.Int32
+FS.GG.UI.Testing.VisualEvidenceKind+Tags.Screenshot : System.Int32
+FS.GG.UI.Testing.VisualEvidenceKind+Tags.UnsupportedHost : System.Int32
+FS.GG.UI.Testing.VisualEvidenceRequest.BoardReadable : Microsoft.FSharp.Core.FSharpOption<System.Boolean> [get]
+FS.GG.UI.Testing.VisualEvidenceRequest.InputOrProgressObserved : Microsoft.FSharp.Core.FSharpOption<System.Boolean> [get]
+FS.GG.UI.Testing.VisualEvidenceRequest.PixelReadbackAvailable : System.Boolean [get]
+FS.GG.UI.Testing.VisualEvidenceRequest.ScreenshotAvailable : System.Boolean [get]
+FS.GG.UI.Testing.VisualEvidenceRequest.UnsupportedReason : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.VisualEvidenceRequest.new(System.Boolean, System.Boolean, Microsoft.FSharp.Core.FSharpOption<System.Boolean>, Microsoft.FSharp.Core.FSharpOption<System.Boolean>, Microsoft.FSharp.Core.FSharpOption<System.String>)
+FS.GG.UI.Testing.VisualEvidenceResult.BoardReadable : Microsoft.FSharp.Core.FSharpOption<System.Boolean> [get]
+FS.GG.UI.Testing.VisualEvidenceResult.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.VisualEvidenceResult.EvidenceKind : FS.GG.UI.Testing.VisualEvidenceKind [get]
+FS.GG.UI.Testing.VisualEvidenceResult.FallbackReason : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.VisualEvidenceResult.InputOrProgressObserved : Microsoft.FSharp.Core.FSharpOption<System.Boolean> [get]
+FS.GG.UI.Testing.VisualEvidenceResult.UnsupportedReason : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.VisualEvidenceResult.new(FS.GG.UI.Testing.VisualEvidenceKind, Microsoft.FSharp.Core.FSharpOption<System.Boolean>, Microsoft.FSharp.Core.FSharpOption<System.Boolean>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.VisualInspectionException.AffectedIds : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.VisualInspectionException.ExceptionId : System.String [get]
+FS.GG.UI.Testing.VisualInspectionException.ExpiresWith : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Testing.VisualInspectionException.OwnerId : System.String [get]
+FS.GG.UI.Testing.VisualInspectionException.Reason : System.String [get]
+FS.GG.UI.Testing.VisualInspectionException.RuleId : System.String [get]
+FS.GG.UI.Testing.VisualInspectionException.new(System.String, System.String, System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>)
+FS.GG.UI.Testing.VisualInspectionMarkdown.endMarker : System.String [get]
+FS.GG.UI.Testing.VisualInspectionMarkdown.renderJson(FS.GG.UI.Scene.VisualInspectionSummary) : System.String
+FS.GG.UI.Testing.VisualInspectionMarkdown.renderSummary(FS.GG.UI.Scene.VisualInspectionSummary) : System.String
+FS.GG.UI.Testing.VisualInspectionMarkdown.startMarker : System.String [get]
+FS.GG.UI.Testing.VisualInspectionMarkdown.updateManagedSection(System.String, System.String) : FS.GG.UI.Testing.VisualInspectionSummarySectionUpdate
+FS.GG.UI.Testing.VisualInspectionReadiness.aggregate(System.String, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.VisualInspectionArtifact>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.VisualInspectionValidationResult>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>) : FS.GG.UI.Scene.VisualInspectionSummary
+FS.GG.UI.Testing.VisualInspectionRule.Required : System.Boolean [get]
+FS.GG.UI.Testing.VisualInspectionRule.RuleId : System.String [get]
+FS.GG.UI.Testing.VisualInspectionRule.new(System.String, System.Boolean)
+FS.GG.UI.Testing.VisualInspectionSummarySectionUpdate.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.VisualInspectionSummarySectionUpdate.InsertedMarkers : System.Boolean [get]
+FS.GG.UI.Testing.VisualInspectionSummarySectionUpdate.SafeToWrite : System.Boolean [get]
+FS.GG.UI.Testing.VisualInspectionSummarySectionUpdate.UpdatedText : System.String [get]
+FS.GG.UI.Testing.VisualInspectionSummarySectionUpdate.new(System.String, System.Boolean, System.Boolean, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.VisualInspectionValidation.defaultRules : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.VisualInspectionRule> [get]
+FS.GG.UI.Testing.VisualInspectionValidation.rule(System.String) : FS.GG.UI.Testing.VisualInspectionRule
+FS.GG.UI.Testing.VisualInspectionValidation.validate(FS.GG.UI.Scene.VisualInspectionArtifact, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.VisualInspectionRule>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.VisualInspectionException>) : FS.GG.UI.Testing.VisualInspectionValidationResult
+FS.GG.UI.Testing.VisualInspectionValidation.validateCheck(FS.GG.UI.Testing.VisualInspectionValidationCheck) : FS.GG.UI.Testing.VisualInspectionValidationResult
+FS.GG.UI.Testing.VisualInspectionValidationCheck.Artifact : FS.GG.UI.Scene.VisualInspectionArtifact [get]
+FS.GG.UI.Testing.VisualInspectionValidationCheck.EnvironmentLimitations : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.VisualInspectionValidationCheck.Exceptions : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.VisualInspectionException> [get]
+FS.GG.UI.Testing.VisualInspectionValidationCheck.PreviousArtifact : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.VisualInspectionArtifact> [get]
+FS.GG.UI.Testing.VisualInspectionValidationCheck.RequiredRegionIds : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.VisualInspectionValidationCheck.Rules : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.VisualInspectionRule> [get]
+FS.GG.UI.Testing.VisualInspectionValidationCheck.new(FS.GG.UI.Scene.VisualInspectionArtifact, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.VisualInspectionRule>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.VisualInspectionException>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.VisualInspectionArtifact>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.VisualInspectionValidationResult.AppliedExceptions : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.VisualInspectionValidationResult.ArtifactId : System.String [get]
+FS.GG.UI.Testing.VisualInspectionValidationResult.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.VisualInspectionValidationResult.Findings : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.VisualInspectionFinding> [get]
+FS.GG.UI.Testing.VisualInspectionValidationResult.InvalidExceptions : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.VisualInspectionValidationResult.ReadinessStatus : FS.GG.UI.Scene.VisualInspectionStatus [get]
+FS.GG.UI.Testing.VisualInspectionValidationResult.UnusedExceptions : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.VisualInspectionValidationResult.new(System.String, FS.GG.UI.Scene.VisualInspectionStatus, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.VisualInspectionFinding>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.VisualPage.Order : System.Int32 [get]
+FS.GG.UI.Testing.VisualPage.PageId : System.String [get]
+FS.GG.UI.Testing.VisualPage.Required : System.Boolean [get]
+FS.GG.UI.Testing.VisualPage.Title : System.String [get]
+FS.GG.UI.Testing.VisualPage.new(System.String, System.String, System.Int32, System.Boolean)
+FS.GG.UI.Testing.VisualReadiness.evaluate(System.String, System.String, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.VisualCaptureTarget>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.VisualCaptureRecord>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.VisualReviewerClassification>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.VisualContactSheet>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>) : FS.GG.UI.Testing.VisualReadinessReport
+FS.GG.UI.Testing.VisualReadiness.statusText(FS.GG.UI.Testing.VisualReadinessStatus) : System.String
+FS.GG.UI.Testing.VisualReadinessMarkdown.endMarker : System.String [get]
+FS.GG.UI.Testing.VisualReadinessMarkdown.renderJson(FS.GG.UI.Testing.VisualReadinessReport) : System.String
+FS.GG.UI.Testing.VisualReadinessMarkdown.renderSummary(FS.GG.UI.Testing.VisualReadinessReport) : System.String
+FS.GG.UI.Testing.VisualReadinessMarkdown.startMarker : System.String [get]
+FS.GG.UI.Testing.VisualReadinessMarkdown.updateManagedSection(System.String, System.String) : FS.GG.UI.Testing.VisualSummarySectionUpdate
+FS.GG.UI.Testing.VisualReadinessReport.CaptureStatusCounts : Microsoft.FSharp.Collections.FSharpList<System.Tuple<System.String, System.Int32>> [get]
+FS.GG.UI.Testing.VisualReadinessReport.Captures : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.VisualCaptureRecord> [get]
+FS.GG.UI.Testing.VisualReadinessReport.Caveats : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.VisualReadinessReport.ContactSheets : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.VisualContactSheet> [get]
+FS.GG.UI.Testing.VisualReadinessReport.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.VisualReadinessReport.EvidenceRoot : System.String [get]
+FS.GG.UI.Testing.VisualReadinessReport.ReadinessStatus : FS.GG.UI.Testing.VisualReadinessStatus [get]
+FS.GG.UI.Testing.VisualReadinessReport.ReviewerClassifications : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.VisualReviewerClassification> [get]
+FS.GG.UI.Testing.VisualReadinessReport.ReviewerStatusCounts : Microsoft.FSharp.Collections.FSharpList<System.Tuple<System.String, System.Int32>> [get]
+FS.GG.UI.Testing.VisualReadinessReport.RunId : System.String [get]
+FS.GG.UI.Testing.VisualReadinessReport.Targets : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.VisualCaptureTarget> [get]
+FS.GG.UI.Testing.VisualReadinessReport.new(System.String, System.String, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.VisualCaptureTarget>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.VisualCaptureRecord>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.VisualReviewerClassification>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.VisualContactSheet>, Microsoft.FSharp.Collections.FSharpList<System.Tuple<System.String, System.Int32>>, Microsoft.FSharp.Collections.FSharpList<System.Tuple<System.String, System.Int32>>, FS.GG.UI.Testing.VisualReadinessStatus, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.VisualReadinessStatus+Tags.VisualReadinessAccepted : System.Int32
+FS.GG.UI.Testing.VisualReadinessStatus+Tags.VisualReadinessBlocked : System.Int32
+FS.GG.UI.Testing.VisualReadinessStatus+Tags.VisualReadinessEnvironmentLimited : System.Int32
+FS.GG.UI.Testing.VisualReadinessStatus+Tags.VisualReadinessIncomplete : System.Int32
+FS.GG.UI.Testing.VisualReadinessStatus+Tags.VisualReadinessPendingReview : System.Int32
+FS.GG.UI.Testing.VisualReviewerClassification.DefectClass : System.String [get]
+FS.GG.UI.Testing.VisualReviewerClassification.Notes : System.String [get]
+FS.GG.UI.Testing.VisualReviewerClassification.ReadinessImpact : System.String [get]
+FS.GG.UI.Testing.VisualReviewerClassification.ReviewedAt : System.String [get]
+FS.GG.UI.Testing.VisualReviewerClassification.Reviewer : System.String [get]
+FS.GG.UI.Testing.VisualReviewerClassification.Severity : FS.GG.UI.Testing.VisualReviewerSeverity [get]
+FS.GG.UI.Testing.VisualReviewerClassification.TargetId : System.String [get]
+FS.GG.UI.Testing.VisualReviewerClassification.new(System.String, FS.GG.UI.Testing.VisualReviewerSeverity, System.String, System.String, System.String, System.String, System.String)
+FS.GG.UI.Testing.VisualReviewerClassifications.parse(System.String, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.VisualCaptureTarget>) : FS.GG.UI.Testing.VisualReviewerValidationResult
+FS.GG.UI.Testing.VisualReviewerClassifications.severityText(FS.GG.UI.Testing.VisualReviewerSeverity) : System.String
+FS.GG.UI.Testing.VisualReviewerClassifications.writeTemplate(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.VisualCaptureTarget>) : System.String
+FS.GG.UI.Testing.VisualReviewerSeverity+Tags.VisualReviewerBlocking : System.Int32
+FS.GG.UI.Testing.VisualReviewerSeverity+Tags.VisualReviewerMajor : System.Int32
+FS.GG.UI.Testing.VisualReviewerSeverity+Tags.VisualReviewerMinor : System.Int32
+FS.GG.UI.Testing.VisualReviewerSeverity+Tags.VisualReviewerNone : System.Int32
+FS.GG.UI.Testing.VisualReviewerSeverity+Tags.VisualReviewerPending : System.Int32
+FS.GG.UI.Testing.VisualReviewerValidationResult.Classifications : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.VisualReviewerClassification> [get]
+FS.GG.UI.Testing.VisualReviewerValidationResult.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.VisualReviewerValidationResult.DuplicateTargetIds : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.VisualReviewerValidationResult.MalformedRows : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.VisualReviewerValidationResult.MissingTargetIds : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.VisualReviewerValidationResult.PendingTargetIds : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.VisualReviewerValidationResult.UnknownTargetIds : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.VisualReviewerValidationResult.new(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Testing.VisualReviewerClassification>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.VisualSize.Height : System.Int32 [get]
+FS.GG.UI.Testing.VisualSize.Order : System.Int32 [get]
+FS.GG.UI.Testing.VisualSize.Role : System.String [get]
+FS.GG.UI.Testing.VisualSize.Width : System.Int32 [get]
+FS.GG.UI.Testing.VisualSize.new(System.String, System.Int32, System.Int32, System.Int32)
+FS.GG.UI.Testing.VisualSummarySectionUpdate.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Testing.VisualSummarySectionUpdate.InsertedMarkers : System.Boolean [get]
+FS.GG.UI.Testing.VisualSummarySectionUpdate.SafeToWrite : System.Boolean [get]
+FS.GG.UI.Testing.VisualSummarySectionUpdate.UpdatedText : System.String [get]
+FS.GG.UI.Testing.VisualSummarySectionUpdate.new(System.String, System.Boolean, System.Boolean, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Testing.VisualTheme.Order : System.Int32 [get]
+FS.GG.UI.Testing.VisualTheme.ThemeId : System.String [get]
+FS.GG.UI.Testing.VisualTheme.Title : System.String [get]
+FS.GG.UI.Testing.VisualTheme.new(System.String, System.String, System.Int32)

@@ -1,0 +1,1087 @@
+FS.GG.UI.SkiaViewer.CompositorProof+AcceptedProofSet.AcceptedAt : System.DateTimeOffset [get]
+FS.GG.UI.SkiaViewer.CompositorProof+AcceptedProofSet.Attempts : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.CompositorProof+LiveProofAttempt> [get]
+FS.GG.UI.SkiaViewer.CompositorProof+AcceptedProofSet.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.SkiaViewer.CompositorProof+AcceptedProofSet.FreshnessWindow : System.TimeSpan [get]
+FS.GG.UI.SkiaViewer.CompositorProof+AcceptedProofSet.HostProfile : FS.GG.UI.SkiaViewer.CompositorProof+HostProfile [get]
+FS.GG.UI.SkiaViewer.CompositorProof+AcceptedProofSet.ProofMethod : System.String [get]
+FS.GG.UI.SkiaViewer.CompositorProof+AcceptedProofSet.ProofSetId : System.String [get]
+FS.GG.UI.SkiaViewer.CompositorProof+AcceptedProofSet.SelectedAttemptIds : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.SkiaViewer.CompositorProof+AcceptedProofSet.new(System.String, FS.GG.UI.SkiaViewer.CompositorProof+HostProfile, System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, System.TimeSpan, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.CompositorProof+LiveProofAttempt>, System.DateTimeOffset, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.SkiaViewer.CompositorProof+Effect+Tags.DetectProfile : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+Effect+Tags.ObservePixels : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+Effect+Tags.PresentDamageFrame : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+Effect+Tags.PresentSentinelFrame : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+Effect+Tags.WriteProofArtifact : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+HostDisplayEnvironment+Tags.Headless : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+HostDisplayEnvironment+Tags.MissingDisplay : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+HostDisplayEnvironment+Tags.Unknown : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+HostDisplayEnvironment+Tags.Wayland : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+HostDisplayEnvironment+Tags.X11 : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+HostProfile.Backend : System.String [get]
+FS.GG.UI.SkiaViewer.CompositorProof+HostProfile.DisplayEnvironment : FS.GG.UI.SkiaViewer.CompositorProof+HostDisplayEnvironment [get]
+FS.GG.UI.SkiaViewer.CompositorProof+HostProfile.FramebufferSize : FS.GG.UI.Scene.Size [get]
+FS.GG.UI.SkiaViewer.CompositorProof+HostProfile.PresentMode : FS.GG.UI.SkiaViewer.ViewerPresentMode [get]
+FS.GG.UI.SkiaViewer.CompositorProof+HostProfile.ProfileId : System.String [get]
+FS.GG.UI.SkiaViewer.CompositorProof+HostProfile.ProofAlgorithmVersion : System.String [get]
+FS.GG.UI.SkiaViewer.CompositorProof+HostProfile.Renderer : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.CompositorProof+HostProfile.Scale : Microsoft.FSharp.Core.FSharpOption<System.Double> [get]
+FS.GG.UI.SkiaViewer.CompositorProof+HostProfile.new(System.String, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, FS.GG.UI.SkiaViewer.ViewerPresentMode, FS.GG.UI.Scene.Size, Microsoft.FSharp.Core.FSharpOption<System.Double>, FS.GG.UI.SkiaViewer.CompositorProof+HostDisplayEnvironment, System.String)
+FS.GG.UI.SkiaViewer.CompositorProof+LiveProofAttempt.ArtifactQuality : FS.GG.UI.SkiaViewer.CompositorProof+ProofArtifactQuality [get]
+FS.GG.UI.SkiaViewer.CompositorProof+LiveProofAttempt.AttemptId : System.String [get]
+FS.GG.UI.SkiaViewer.CompositorProof+LiveProofAttempt.Proof : FS.GG.UI.SkiaViewer.CompositorProof+PresentProof [get]
+FS.GG.UI.SkiaViewer.CompositorProof+LiveProofAttempt.ProofMethod : System.String [get]
+FS.GG.UI.SkiaViewer.CompositorProof+LiveProofAttempt.new(System.String, FS.GG.UI.SkiaViewer.CompositorProof+PresentProof, System.String, FS.GG.UI.SkiaViewer.CompositorProof+ProofArtifactQuality)
+FS.GG.UI.SkiaViewer.CompositorProof+Model.ActiveProfile : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.CompositorProof+HostProfile> [get]
+FS.GG.UI.SkiaViewer.CompositorProof+Model.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.SkiaViewer.CompositorProof+Model.Phase : FS.GG.UI.SkiaViewer.CompositorProof+ProofPhase [get]
+FS.GG.UI.SkiaViewer.CompositorProof+Model.Proof : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.CompositorProof+PresentProof> [get]
+FS.GG.UI.SkiaViewer.CompositorProof+Model.new(Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.CompositorProof+HostProfile>, FS.GG.UI.SkiaViewer.CompositorProof+ProofPhase, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.CompositorProof+PresentProof>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.SkiaViewer.CompositorProof+Msg+Tags.ArtifactWritten : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+Msg+Tags.DamagePresented : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+Msg+Tags.ObservationCompleted : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+Msg+Tags.ProfileDetected : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+Msg+Tags.ProofFailed : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+Msg+Tags.SentinelPresented : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+ObservedRegionKind+Tags.Damaged : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+ObservedRegionKind+Tags.Untouched : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+PresentProof.CreatedAt : System.DateTimeOffset [get]
+FS.GG.UI.SkiaViewer.CompositorProof+PresentProof.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.SkiaViewer.CompositorProof+PresentProof.EvidenceArtifacts : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.SkiaViewer.CompositorProof+PresentProof.HostProfile : FS.GG.UI.SkiaViewer.CompositorProof+HostProfile [get]
+FS.GG.UI.SkiaViewer.CompositorProof+PresentProof.ObservedDamagedRegion : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.CompositorProof+PresentProofObservation> [get]
+FS.GG.UI.SkiaViewer.CompositorProof+PresentProof.ObservedUntouchedRegions : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.CompositorProof+PresentProofObservation> [get]
+FS.GG.UI.SkiaViewer.CompositorProof+PresentProof.ProofId : System.String [get]
+FS.GG.UI.SkiaViewer.CompositorProof+PresentProof.ScenarioId : System.String [get]
+FS.GG.UI.SkiaViewer.CompositorProof+PresentProof.Verdict : FS.GG.UI.SkiaViewer.CompositorProof+PresentProofVerdict [get]
+FS.GG.UI.SkiaViewer.CompositorProof+PresentProof.new(System.String, FS.GG.UI.SkiaViewer.CompositorProof+HostProfile, System.String, FS.GG.UI.SkiaViewer.CompositorProof+PresentProofVerdict, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.CompositorProof+PresentProofObservation>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.CompositorProof+PresentProofObservation>, Microsoft.FSharp.Collections.FSharpList<System.String>, System.DateTimeOffset, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.SkiaViewer.CompositorProof+PresentProofFailureCause+Tags.ClearedPixels : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+PresentProofFailureCause+Tags.HostError : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+PresentProofFailureCause+Tags.HostMismatch : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+PresentProofFailureCause+Tags.MissingDisplay : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+PresentProofFailureCause+Tags.StalePixels : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+PresentProofFailureCause+Tags.SyntheticEvidence : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+PresentProofFailureCause+Tags.Timeout : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+PresentProofFailureCause+Tags.UnsupportedObservation : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+PresentProofObservation.ActualIdentity : System.String [get]
+FS.GG.UI.SkiaViewer.CompositorProof+PresentProofObservation.ExpectedIdentity : System.String [get]
+FS.GG.UI.SkiaViewer.CompositorProof+PresentProofObservation.Kind : FS.GG.UI.SkiaViewer.CompositorProof+ObservedRegionKind [get]
+FS.GG.UI.SkiaViewer.CompositorProof+PresentProofObservation.Matched : System.Boolean [get]
+FS.GG.UI.SkiaViewer.CompositorProof+PresentProofObservation.RegionId : System.String [get]
+FS.GG.UI.SkiaViewer.CompositorProof+PresentProofObservation.new(System.String, FS.GG.UI.SkiaViewer.CompositorProof+ObservedRegionKind, System.String, System.String, System.Boolean)
+FS.GG.UI.SkiaViewer.CompositorProof+PresentProofVerdict+Tags.PresentProofEnvironmentLimited : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+PresentProofVerdict+Tags.PresentProofFailed : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+PresentProofVerdict+Tags.PresentProofPassed : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+ProofArtifactQuality.Decodable : System.Boolean [get]
+FS.GG.UI.SkiaViewer.CompositorProof+ProofArtifactQuality.Fresh : System.Boolean [get]
+FS.GG.UI.SkiaViewer.CompositorProof+ProofArtifactQuality.NonBlank : System.Boolean [get]
+FS.GG.UI.SkiaViewer.CompositorProof+ProofArtifactQuality.Present : System.Boolean [get]
+FS.GG.UI.SkiaViewer.CompositorProof+ProofArtifactQuality.Synthetic : System.Boolean [get]
+FS.GG.UI.SkiaViewer.CompositorProof+ProofArtifactQuality.new(System.Boolean, System.Boolean, System.Boolean, System.Boolean, System.Boolean)
+FS.GG.UI.SkiaViewer.CompositorProof+ProofPhase+Tags.Completed : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+ProofPhase+Tags.DetectingProfile : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+ProofPhase+Tags.NotStarted : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+ProofPhase+Tags.Observing : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+ProofPhase+Tags.PresentingDamage : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+ProofPhase+Tags.PresentingSentinel : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+ProofReadiness+Tags.EnvironmentLimited : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+ProofReadiness+Tags.Failed : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+ProofReadiness+Tags.HostMismatch : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+ProofReadiness+Tags.Missing : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+ProofReadiness+Tags.Ready : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+ProofReadiness+Tags.Stale : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+ProofSetReadiness+Tags.Accepted : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+ProofSetReadiness+Tags.EnvironmentLimited : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+ProofSetReadiness+Tags.Failed : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+ProofSetReadiness+Tags.FallbackGated : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+TimingOverheadDisclosure.Path : FS.GG.UI.SkiaViewer.CompositorProof+TimingPath [get]
+FS.GG.UI.SkiaViewer.CompositorProof+TimingOverheadDisclosure.ProofReadbackIncluded : System.Boolean [get]
+FS.GG.UI.SkiaViewer.CompositorProof+TimingOverheadDisclosure.ReviewerNote : System.String [get]
+FS.GG.UI.SkiaViewer.CompositorProof+TimingOverheadDisclosure.ValidationReadbackIncluded : System.Boolean [get]
+FS.GG.UI.SkiaViewer.CompositorProof+TimingOverheadDisclosure.new(FS.GG.UI.SkiaViewer.CompositorProof+TimingPath, System.Boolean, System.Boolean, System.String)
+FS.GG.UI.SkiaViewer.CompositorProof+TimingPath+Tags.DamageScoped : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof+TimingPath+Tags.FullRedraw : System.Int32
+FS.GG.UI.SkiaViewer.CompositorProof.artifactQualityAccepted(FS.GG.UI.SkiaViewer.CompositorProof+ProofArtifactQuality) : System.Boolean
+FS.GG.UI.SkiaViewer.CompositorProof.artifactQualityFailure(FS.GG.UI.SkiaViewer.CompositorProof+ProofArtifactQuality) : Microsoft.FSharp.Core.FSharpOption<System.String>
+FS.GG.UI.SkiaViewer.CompositorProof.classifyObservations(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.CompositorProof+PresentProofObservation>) : FS.GG.UI.SkiaViewer.CompositorProof+PresentProofVerdict
+FS.GG.UI.SkiaViewer.CompositorProof.evaluateProofSet(FS.GG.UI.SkiaViewer.CompositorProof+HostProfile, System.DateTimeOffset, System.TimeSpan, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.CompositorProof+LiveProofAttempt>) : FS.GG.UI.SkiaViewer.CompositorProof+ProofSetReadiness
+FS.GG.UI.SkiaViewer.CompositorProof.failureCauseText(FS.GG.UI.SkiaViewer.CompositorProof+PresentProofFailureCause) : System.String
+FS.GG.UI.SkiaViewer.CompositorProof.init() : System.Tuple<FS.GG.UI.SkiaViewer.CompositorProof+Model, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.CompositorProof+Effect>>
+FS.GG.UI.SkiaViewer.CompositorProof.profileId(FS.GG.UI.SkiaViewer.CompositorProof+HostProfile) : System.String
+FS.GG.UI.SkiaViewer.CompositorProof.proofAlgorithmVersion : System.String [get]
+FS.GG.UI.SkiaViewer.CompositorProof.proofIsFresh(System.DateTimeOffset, System.TimeSpan, FS.GG.UI.SkiaViewer.CompositorProof+PresentProof) : System.Boolean
+FS.GG.UI.SkiaViewer.CompositorProof.proofMatchesHost(FS.GG.UI.SkiaViewer.CompositorProof+HostProfile, FS.GG.UI.SkiaViewer.CompositorProof+PresentProof) : System.Boolean
+FS.GG.UI.SkiaViewer.CompositorProof.proofSetReadinessToken(FS.GG.UI.SkiaViewer.CompositorProof+ProofSetReadiness) : System.String
+FS.GG.UI.SkiaViewer.CompositorProof.readiness(FS.GG.UI.SkiaViewer.CompositorProof+HostProfile, System.DateTimeOffset, System.TimeSpan, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.CompositorProof+PresentProof>) : FS.GG.UI.SkiaViewer.CompositorProof+ProofReadiness
+FS.GG.UI.SkiaViewer.CompositorProof.readinessToken(FS.GG.UI.SkiaViewer.CompositorProof+ProofReadiness) : System.String
+FS.GG.UI.SkiaViewer.CompositorProof.renderProof(FS.GG.UI.SkiaViewer.CompositorProof+PresentProof) : System.String
+FS.GG.UI.SkiaViewer.CompositorProof.renderProofSet(FS.GG.UI.SkiaViewer.CompositorProof+ProofSetReadiness) : System.String
+FS.GG.UI.SkiaViewer.CompositorProof.sentinelDamageRect : FS.GG.UI.Scene.Rect [get]
+FS.GG.UI.SkiaViewer.CompositorProof.timingOverheadVerdict(FS.GG.UI.SkiaViewer.CompositorProof+TimingOverheadDisclosure) : System.String
+FS.GG.UI.SkiaViewer.CompositorProof.timingPathToken(FS.GG.UI.SkiaViewer.CompositorProof+TimingPath) : System.String
+FS.GG.UI.SkiaViewer.CompositorProof.update(System.DateTimeOffset, System.String, FS.GG.UI.SkiaViewer.CompositorProof+Msg, FS.GG.UI.SkiaViewer.CompositorProof+Model) : System.Tuple<FS.GG.UI.SkiaViewer.CompositorProof+Model, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.CompositorProof+Effect>>
+FS.GG.UI.SkiaViewer.CompositorProof.verdictToken(FS.GG.UI.SkiaViewer.CompositorProof+PresentProofVerdict) : System.String
+FS.GG.UI.SkiaViewer.EvidenceWorkflowEffect+Tags.CaptureViewerScreenshot : System.Int32
+FS.GG.UI.SkiaViewer.EvidenceWorkflowEffect+Tags.CleanupEvidenceViewer : System.Int32
+FS.GG.UI.SkiaViewer.EvidenceWorkflowEffect+Tags.CollectProcessOutput : System.Int32
+FS.GG.UI.SkiaViewer.EvidenceWorkflowEffect+Tags.LaunchViewerForEvidence : System.Int32
+FS.GG.UI.SkiaViewer.EvidenceWorkflowEffect+Tags.ValidateGeneratedGuidance : System.Int32
+FS.GG.UI.SkiaViewer.EvidenceWorkflowEffect+Tags.ValidateScreenshotArtifact : System.Int32
+FS.GG.UI.SkiaViewer.EvidenceWorkflowEffect+Tags.WriteScreenshotEvidenceReport : System.Int32
+FS.GG.UI.SkiaViewer.EvidenceWorkflowModel.CaptureAvailability : FS.GG.UI.SkiaViewer.ScreenshotCaptureAvailability [get]
+FS.GG.UI.SkiaViewer.EvidenceWorkflowModel.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.SkiaViewer.EvidenceWorkflowModel.FirstFrameStatus : FS.GG.UI.SkiaViewer.FirstFrameStatus [get]
+FS.GG.UI.SkiaViewer.EvidenceWorkflowModel.OutputPath : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.EvidenceWorkflowModel.Request : FS.GG.UI.SkiaViewer.ScreenshotEvidenceRequest [get]
+FS.GG.UI.SkiaViewer.EvidenceWorkflowModel.Result : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ScreenshotEvidenceResult> [get]
+FS.GG.UI.SkiaViewer.EvidenceWorkflowModel.ViewerOpenStatus : FS.GG.UI.SkiaViewer.ViewerOpenStatus [get]
+FS.GG.UI.SkiaViewer.EvidenceWorkflowModel.new(FS.GG.UI.SkiaViewer.ScreenshotEvidenceRequest, FS.GG.UI.SkiaViewer.ViewerOpenStatus, FS.GG.UI.SkiaViewer.FirstFrameStatus, FS.GG.UI.SkiaViewer.ScreenshotCaptureAvailability, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ScreenshotEvidenceResult>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.SkiaViewer.EvidenceWorkflowMsg+Tags.CaptureCapabilityKnown : System.Int32
+FS.GG.UI.SkiaViewer.EvidenceWorkflowMsg+Tags.CaptureFailed : System.Int32
+FS.GG.UI.SkiaViewer.EvidenceWorkflowMsg+Tags.CaptureSucceeded : System.Int32
+FS.GG.UI.SkiaViewer.EvidenceWorkflowMsg+Tags.CaptureUnsupported : System.Int32
+FS.GG.UI.SkiaViewer.EvidenceWorkflowMsg+Tags.EvidenceReportWritten : System.Int32
+FS.GG.UI.SkiaViewer.EvidenceWorkflowMsg+Tags.FirstFrameObserved : System.Int32
+FS.GG.UI.SkiaViewer.EvidenceWorkflowMsg+Tags.LaunchCompleted : System.Int32
+FS.GG.UI.SkiaViewer.EvidenceWorkflowMsg+Tags.LaunchStarted : System.Int32
+FS.GG.UI.SkiaViewer.FirstFrameStatus+Tags.FirstFrameNotPresentedStatus : System.Int32
+FS.GG.UI.SkiaViewer.FirstFrameStatus+Tags.FirstFramePresentedStatus : System.Int32
+FS.GG.UI.SkiaViewer.FirstFrameStatus+Tags.FirstFrameUnknownStatus : System.Int32
+FS.GG.UI.SkiaViewer.Fonts+FallbackReport.AffectedCodePoints : Microsoft.FSharp.Collections.FSharpList<System.Int32> [get]
+FS.GG.UI.SkiaViewer.Fonts+FallbackReport.SubstitutedCount : System.Int32 [get]
+FS.GG.UI.SkiaViewer.Fonts+FallbackReport.TofuCount : System.Int32 [get]
+FS.GG.UI.SkiaViewer.Fonts+FallbackReport.new(System.Int32, System.Int32, Microsoft.FSharp.Collections.FSharpList<System.Int32>)
+FS.GG.UI.SkiaViewer.Fonts+FallbackResolution+Tags.Authored : System.Int32
+FS.GG.UI.SkiaViewer.Fonts+FallbackResolution+Tags.Substituted : System.Int32
+FS.GG.UI.SkiaViewer.Fonts+FallbackResolution+Tags.Tofu : System.Int32
+FS.GG.UI.SkiaViewer.Fonts+ResolvedChar.Font : SkiaSharp.SKFont [get]
+FS.GG.UI.SkiaViewer.Fonts+ResolvedChar.Original : System.Char [get]
+FS.GG.UI.SkiaViewer.Fonts+ResolvedChar.Rendered : System.Char [get]
+FS.GG.UI.SkiaViewer.Fonts+ResolvedChar.Resolution : FS.GG.UI.SkiaViewer.Fonts+FallbackResolution [get]
+FS.GG.UI.SkiaViewer.Fonts+ResolvedChar.new(System.Char, System.Char, SkiaSharp.SKFont, FS.GG.UI.SkiaViewer.Fonts+FallbackResolution)
+FS.GG.UI.SkiaViewer.Fonts+TextShapingProviderStatus.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.SkiaViewer.Fonts+TextShapingProviderStatus.Evidence : FS.GG.UI.Scene.ShapingProviderEvidence [get]
+FS.GG.UI.SkiaViewer.Fonts+TextShapingProviderStatus.new(FS.GG.UI.Scene.ShapingProviderEvidence, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.SkiaViewer.Fonts.buildGlyphRunData(System.String, FS.GG.UI.Scene.FontSpec) : FS.GG.UI.Scene.GlyphRunData
+FS.GG.UI.SkiaViewer.Fonts.buildShapedGlyphRunData(System.String, FS.GG.UI.Scene.FontSpec) : FS.GG.UI.Scene.GlyphRunData
+FS.GG.UI.SkiaViewer.Fonts.clearShapingProvider() : FS.GG.UI.SkiaViewer.Fonts+TextShapingProviderStatus
+FS.GG.UI.SkiaViewer.Fonts.defaultMonoFamily : System.String [get]
+FS.GG.UI.SkiaViewer.Fonts.defaultSansFamily : System.String [get]
+FS.GG.UI.SkiaViewer.Fonts.diagnostics(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.Fonts+ResolvedChar>) : Microsoft.FSharp.Collections.FSharpList<System.String>
+FS.GG.UI.SkiaViewer.Fonts.installMeasurementSeam() : System.Void
+FS.GG.UI.SkiaViewer.Fonts.installShapingProvider() : FS.GG.UI.SkiaViewer.Fonts+TextShapingProviderStatus
+FS.GG.UI.SkiaViewer.Fonts.measureWidth(FS.GG.UI.Scene.FontSpec, System.String) : System.Double
+FS.GG.UI.SkiaViewer.Fonts.realMeasure(System.String, FS.GG.UI.Scene.FontSpec) : FS.GG.UI.Scene.TextMetrics
+FS.GG.UI.SkiaViewer.Fonts.report(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.Fonts+ResolvedChar>) : FS.GG.UI.SkiaViewer.Fonts+FallbackReport
+FS.GG.UI.SkiaViewer.Fonts.resolveFont(FS.GG.UI.Scene.FontSpec) : SkiaSharp.SKFont
+FS.GG.UI.SkiaViewer.Fonts.resolveText(FS.GG.UI.Scene.FontSpec, System.String) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.Fonts+ResolvedChar>
+FS.GG.UI.SkiaViewer.Fonts.shapeText(System.String, FS.GG.UI.Scene.FontSpec) : FS.GG.UI.Scene.ShapedTextResult
+FS.GG.UI.SkiaViewer.Fonts.shapingProviderStatus() : FS.GG.UI.SkiaViewer.Fonts+TextShapingProviderStatus
+FS.GG.UI.SkiaViewer.GeneratedAppHost.dispatchKey<model, msg>(GeneratedAppHost<model, msg>, FS.GG.UI.KeyboardInput.ViewerKeyEvent, model) : Tuple<model, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerEffect>>
+FS.GG.UI.SkiaViewer.GeneratedAppHost.smoke<model, msg>(GeneratedAppHost<model, msg>, FS.GG.UI.SkiaViewer.ViewerRunRequest) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerRunEvidence, FS.GG.UI.SkiaViewer.ViewerRunFailure>
+FS.GG.UI.SkiaViewer.GeneratedAppHost`2.Diagnostics : FS.GG.UI.SkiaViewer.ViewerDiagnosticsOptions [get]
+FS.GG.UI.SkiaViewer.GeneratedAppHost`2.Init : FSharpFunc<Microsoft.FSharp.Core.Unit, Tuple<model, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerEffect>>> [get]
+FS.GG.UI.SkiaViewer.GeneratedAppHost`2.MapKey : FSharpFunc<FS.GG.UI.KeyboardInput.ViewerKey, FSharpFunc<System.Boolean, FSharpOption<msg>>> [get]
+FS.GG.UI.SkiaViewer.GeneratedAppHost`2.Tick : FSharpFunc<System.TimeSpan, FSharpOption<msg>> [get]
+FS.GG.UI.SkiaViewer.GeneratedAppHost`2.Update : FSharpFunc<msg, FSharpFunc<model, Tuple<model, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerEffect>>>> [get]
+FS.GG.UI.SkiaViewer.GeneratedAppHost`2.View : FSharpFunc<model, FS.GG.UI.Scene.SceneNode> [get]
+FS.GG.UI.SkiaViewer.GeneratedAppHost`2.new(FSharpFunc<Microsoft.FSharp.Core.Unit, Tuple<model, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerEffect>>>, FSharpFunc<msg, FSharpFunc<model, Tuple<model, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerEffect>>>>, FSharpFunc<model, FS.GG.UI.Scene.SceneNode>, FSharpFunc<FS.GG.UI.KeyboardInput.ViewerKey, FSharpFunc<System.Boolean, FSharpOption<msg>>>, FSharpFunc<System.TimeSpan, FSharpOption<msg>>, FS.GG.UI.SkiaViewer.ViewerDiagnosticsOptions)
+FS.GG.UI.SkiaViewer.Host.DiagnosticOptions.Verbose : System.Boolean [get]
+FS.GG.UI.SkiaViewer.Host.DiagnosticOptions.new(System.Boolean)
+FS.GG.UI.SkiaViewer.Host.DiagnosticSeverity+Tags.Error : System.Int32
+FS.GG.UI.SkiaViewer.Host.DiagnosticSeverity+Tags.Fatal : System.Int32
+FS.GG.UI.SkiaViewer.Host.DiagnosticSeverity+Tags.Info : System.Int32
+FS.GG.UI.SkiaViewer.Host.DiagnosticSeverity+Tags.Warning : System.Int32
+FS.GG.UI.SkiaViewer.Host.DiagnosticStage+Tags.FrameRender : System.Int32
+FS.GG.UI.SkiaViewer.Host.DiagnosticStage+Tags.Framebuffer : System.Int32
+FS.GG.UI.SkiaViewer.Host.DiagnosticStage+Tags.GlContext : System.Int32
+FS.GG.UI.SkiaViewer.Host.DiagnosticStage+Tags.GlRenderer : System.Int32
+FS.GG.UI.SkiaViewer.Host.DiagnosticStage+Tags.GlSurface : System.Int32
+FS.GG.UI.SkiaViewer.Host.DiagnosticStage+Tags.Input : System.Int32
+FS.GG.UI.SkiaViewer.Host.DiagnosticStage+Tags.PlatformCheck : System.Int32
+FS.GG.UI.SkiaViewer.Host.DiagnosticStage+Tags.ScreenshotCapture : System.Int32
+FS.GG.UI.SkiaViewer.Host.DiagnosticStage+Tags.Shutdown : System.Int32
+FS.GG.UI.SkiaViewer.Host.DiagnosticStage+Tags.SkiaContext : System.Int32
+FS.GG.UI.SkiaViewer.Host.Diagnostics.create(FS.GG.UI.SkiaViewer.Host.DiagnosticSeverity, FS.GG.UI.SkiaViewer.Host.DiagnosticStage, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>) : FS.GG.UI.SkiaViewer.Host.RenderDiagnostic
+FS.GG.UI.SkiaViewer.Host.Diagnostics.damageScopedDecision(System.String, Microsoft.FSharp.Core.FSharpOption<System.String>) : FS.GG.UI.SkiaViewer.Host.RenderDiagnostic
+FS.GG.UI.SkiaViewer.Host.Diagnostics.frameLoopAbandoned(System.String, Microsoft.FSharp.Core.FSharpOption<System.String>) : FS.GG.UI.SkiaViewer.Host.RenderDiagnostic
+FS.GG.UI.SkiaViewer.Host.Diagnostics.frameRenderFailed(System.String) : FS.GG.UI.SkiaViewer.Host.RenderDiagnostic
+FS.GG.UI.SkiaViewer.Host.Diagnostics.glUnavailable(System.String) : FS.GG.UI.SkiaViewer.Host.RenderDiagnostic
+FS.GG.UI.SkiaViewer.Host.Diagnostics.invalidConfiguration(System.String) : FS.GG.UI.SkiaViewer.Host.RenderDiagnostic
+FS.GG.UI.SkiaViewer.Host.Diagnostics.invalidPath(System.String) : FS.GG.UI.SkiaViewer.Host.RenderDiagnostic
+FS.GG.UI.SkiaViewer.Host.Diagnostics.missingCapability(System.String, System.String) : FS.GG.UI.SkiaViewer.Host.RenderDiagnostic
+FS.GG.UI.SkiaViewer.Host.Diagnostics.screenshotFailed(System.String) : FS.GG.UI.SkiaViewer.Host.RenderDiagnostic
+FS.GG.UI.SkiaViewer.Host.Diagnostics.shutdownFailed(System.String) : FS.GG.UI.SkiaViewer.Host.RenderDiagnostic
+FS.GG.UI.SkiaViewer.Host.Diagnostics.startupFailed(FS.GG.UI.SkiaViewer.Host.DiagnosticStage, System.String) : FS.GG.UI.SkiaViewer.Host.RenderDiagnostic
+FS.GG.UI.SkiaViewer.Host.Diagnostics.toRuntimeDiagnostic(FS.GG.UI.Diagnostics.DiagnosticContext, FS.GG.UI.SkiaViewer.Host.RenderDiagnostic) : FS.GG.UI.Diagnostics.RuntimeDiagnostic
+FS.GG.UI.SkiaViewer.Host.Diagnostics.unavailableFont(System.String) : FS.GG.UI.SkiaViewer.Host.RenderDiagnostic
+FS.GG.UI.SkiaViewer.Host.Diagnostics.unmappedPointerButton(System.String) : FS.GG.UI.SkiaViewer.Host.RenderDiagnostic
+FS.GG.UI.SkiaViewer.Host.Diagnostics.unsupportedPlatform(System.String) : FS.GG.UI.SkiaViewer.Host.RenderDiagnostic
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageRenderDecision.DamageArea : System.Int32 [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageRenderDecision.FallbackReason : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageRenderDecision.Kind : FS.GG.UI.SkiaViewer.Host.GlHost+DamageRenderDecisionKind [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageRenderDecision.Parity : System.String [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageRenderDecision.ProofGate : System.String [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageRenderDecision.RetainedBacking : System.String [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageRenderDecision.ScissorRects : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.Host.GlHost+ScissorRect> [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageRenderDecision.new(FS.GG.UI.SkiaViewer.Host.GlHost+DamageRenderDecisionKind, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.Host.GlHost+ScissorRect>, System.Int32, Microsoft.FSharp.Core.FSharpOption<System.String>, System.String, System.String, System.String)
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageRenderDecisionKind+Tags.DamageScopedAccepted : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageRenderDecisionKind+Tags.EnvironmentLimited : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageRenderDecisionKind+Tags.FullRedraw : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageRenderDecisionKind+Tags.Rejected : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageRenderDecisionKind+Tags.SkipNoChange : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageRenderEligibility.AmbiguousDamage : System.Boolean [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageRenderEligibility.Damage : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.Host.GlHost+ScissorRect> [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageRenderEligibility.FrameHeight : System.Int32 [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageRenderEligibility.FrameWidth : System.Int32 [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageRenderEligibility.FullFrameInvalidation : System.Boolean [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageRenderEligibility.IncompleteDamage : System.Boolean [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageRenderEligibility.ParityAccepted : System.Boolean [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageRenderEligibility.Proof : FS.GG.UI.SkiaViewer.CompositorProof+ProofReadiness [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageRenderEligibility.ResourcesAvailable : System.Boolean [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageRenderEligibility.RetainedBacking : FS.GG.UI.SkiaViewer.Host.GlHost+RetainedBackingStatus [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageRenderEligibility.StaleDamage : System.Boolean [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageRenderEligibility.VisibleChange : System.Boolean [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageRenderEligibility.new(FS.GG.UI.SkiaViewer.CompositorProof+ProofReadiness, FS.GG.UI.SkiaViewer.Host.GlHost+RetainedBackingStatus, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.Host.GlHost+ScissorRect>, System.Int32, System.Int32, System.Boolean, System.Boolean, System.Boolean, System.Boolean, System.Boolean, System.Boolean, System.Boolean)
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageValidationFlags.AmbiguousDamage : System.Boolean [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageValidationFlags.FullFrameInvalidation : System.Boolean [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageValidationFlags.IncompleteDamage : System.Boolean [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageValidationFlags.StaleDamage : System.Boolean [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageValidationFlags.VisibleChange : System.Boolean [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageValidationFlags.new(System.Boolean, System.Boolean, System.Boolean, System.Boolean, System.Boolean)
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageValidationResult.Reason : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageValidationResult.Rects : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.Host.GlHost+ScissorRect> [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageValidationResult.Status : FS.GG.UI.SkiaViewer.Host.GlHost+DamageValidationStatus [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageValidationResult.UnionArea : System.Int32 [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageValidationResult.new(FS.GG.UI.SkiaViewer.Host.GlHost+DamageValidationStatus, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.Host.GlHost+ScissorRect>, System.Int32, Microsoft.FSharp.Core.FSharpOption<System.String>)
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageValidationStatus+Tags.Ambiguous : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageValidationStatus+Tags.Duplicated : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageValidationStatus+Tags.EmptyNoChange : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageValidationStatus+Tags.EmptyVisibleChange : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageValidationStatus+Tags.FullFrameInvalidation : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageValidationStatus+Tags.Incomplete : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageValidationStatus+Tags.OutOfBounds : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageValidationStatus+Tags.Stale : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost+DamageValidationStatus+Tags.Valid : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost+FrameFailureAction+Tags.RetryFrame : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost+FrameFailureAction+Tags.TeardownRun : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost+FrameFailureFacts.ContextAbandoned : System.Boolean [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+FrameFailureFacts.GlContextCurrent : System.Boolean [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+FrameFailureFacts.GraphicsResetStatus : System.UInt32 [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+FrameFailureFacts.WindowSystemPresent : System.Boolean [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+FrameFailureFacts.new(System.UInt32, System.Boolean, System.Boolean, System.Boolean)
+FS.GG.UI.SkiaViewer.Host.GlHost+FrameFailureKind+Tags.DeviceLost : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost+FrameFailureKind+Tags.TransientDrawFailure : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost+FrameFailureKind+Tags.WindowSystemUnavailable : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost+FrameFailureTracker.ConsecutiveFailures : System.Int32 [get, set]
+FS.GG.UI.SkiaViewer.Host.GlHost+FrameFailureTracker.new(System.Int32)
+FS.GG.UI.SkiaViewer.Host.GlHost+InputReceiptDiagnostic.CallbackDuration : System.TimeSpan [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+InputReceiptDiagnostic.InputKind : System.String [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+InputReceiptDiagnostic.QueueDepthAtReceipt : System.Int32 [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+InputReceiptDiagnostic.ReceivedAt : System.DateTimeOffset [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+InputReceiptDiagnostic.RenderWorkStarted : System.Boolean [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+InputReceiptDiagnostic.SequenceId : System.Int64 [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+InputReceiptDiagnostic.SignalRequested : System.Boolean [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+InputReceiptDiagnostic.new(System.Int64, System.String, System.DateTimeOffset, System.TimeSpan, System.Int32, System.Boolean, System.Boolean)
+FS.GG.UI.SkiaViewer.Host.GlHost+LiveProofHostFacts.Display : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+LiveProofHostFacts.PermissionGranted : System.Boolean [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+LiveProofHostFacts.ReadbackAvailable : System.Boolean [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+LiveProofHostFacts.Renderer : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+LiveProofHostFacts.SessionType : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+LiveProofHostFacts.TimedOut : System.Boolean [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+LiveProofHostFacts.WaylandDisplay : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+LiveProofHostFacts.new(Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, System.Boolean, System.Boolean, System.Boolean)
+FS.GG.UI.SkiaViewer.Host.GlHost+LiveProofHostReadiness+Tags.Capable : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost+LiveProofHostReadiness+Tags.HostError : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost+LiveProofHostReadiness+Tags.MissingDisplay : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost+LiveProofHostReadiness+Tags.MissingRenderer : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost+LiveProofHostReadiness+Tags.PermissionDenied : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost+LiveProofHostReadiness+Tags.ReadbackUnavailable : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost+LiveProofHostReadiness+Tags.Timeout : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost+PresentAction+Tags.PaintAndPresent : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost+PresentAction+Tags.RepresentLastGood : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost+PresentAction+Tags.SkipPresent : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost+PresentationTimingDiagnostic.EnvironmentStatus : System.String [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+PresentationTimingDiagnostic.PaintDuration : Microsoft.FSharp.Core.FSharpOption<System.TimeSpan> [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+PresentationTimingDiagnostic.PresentDuration : Microsoft.FSharp.Core.FSharpOption<System.TimeSpan> [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+PresentationTimingDiagnostic.PresentedFrameId : System.Int64 [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+PresentationTimingDiagnostic.new(System.Int64, Microsoft.FSharp.Core.FSharpOption<System.TimeSpan>, Microsoft.FSharp.Core.FSharpOption<System.TimeSpan>, System.String)
+FS.GG.UI.SkiaViewer.Host.GlHost+RetainedBackingStatus+Tags.CrossProfile : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost+RetainedBackingStatus+Tags.CrossRun : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost+RetainedBackingStatus+Tags.CurrentBufferPreserved : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost+RetainedBackingStatus+Tags.Missing : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost+RetainedBackingStatus+Tags.Resized : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost+RetainedBackingStatus+Tags.ResourceFailed : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost+RetainedBackingStatus+Tags.RetainedFrameRestored : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost+RetainedBackingStatus+Tags.Stale : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost+ScissorDecision+Tags.FullRedraw : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost+ScissorDecision+Tags.Scissored : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost+ScissorRect.Height : System.Int32 [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+ScissorRect.Width : System.Int32 [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+ScissorRect.X : System.Int32 [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+ScissorRect.Y : System.Int32 [get]
+FS.GG.UI.SkiaViewer.Host.GlHost+ScissorRect.new(System.Int32, System.Int32, System.Int32, System.Int32)
+FS.GG.UI.SkiaViewer.Host.GlHost.backendLabel : System.String [get]
+FS.GG.UI.SkiaViewer.Host.GlHost.classifyFrameFailure(FS.GG.UI.SkiaViewer.Host.GlHost+FrameFailureFacts) : FS.GG.UI.SkiaViewer.Host.GlHost+FrameFailureKind
+FS.GG.UI.SkiaViewer.Host.GlHost.classifyLiveProofHost(FS.GG.UI.SkiaViewer.Host.GlHost+LiveProofHostFacts) : FS.GG.UI.SkiaViewer.Host.GlHost+LiveProofHostReadiness
+FS.GG.UI.SkiaViewer.Host.GlHost.decideDamageScopedRender(FS.GG.UI.SkiaViewer.Host.GlHost+DamageRenderEligibility) : FS.GG.UI.SkiaViewer.Host.GlHost+DamageRenderDecision
+FS.GG.UI.SkiaViewer.Host.GlHost.decideFrameFailure(FS.GG.UI.SkiaViewer.Host.GlHost+FrameFailureKind, System.Int32, System.Int32) : FS.GG.UI.SkiaViewer.Host.GlHost+FrameFailureAction
+FS.GG.UI.SkiaViewer.Host.GlHost.decideScissorRedraw(FS.GG.UI.SkiaViewer.CompositorProof+ProofReadiness, System.Boolean, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.Host.GlHost+ScissorRect>, System.Int32, System.Int32) : FS.GG.UI.SkiaViewer.Host.GlHost+ScissorDecision
+FS.GG.UI.SkiaViewer.Host.GlHost.glNoError : System.UInt32 [get]
+FS.GG.UI.SkiaViewer.Host.GlHost.lastPresentTiming() : System.Tuple<System.TimeSpan, System.TimeSpan>
+FS.GG.UI.SkiaViewer.Host.GlHost.liveProofHostProfile(FS.GG.UI.SkiaViewer.Host.GlHost+LiveProofHostFacts) : FS.GG.UI.SkiaViewer.CompositorProof+HostProfile
+FS.GG.UI.SkiaViewer.Host.GlHost.mapPointerButton(System.Int32) : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.Host.ViewerPointerButton>
+FS.GG.UI.SkiaViewer.Host.GlHost.newFrameFailureTracker() : FS.GG.UI.SkiaViewer.Host.GlHost+FrameFailureTracker
+FS.GG.UI.SkiaViewer.Host.GlHost.normalizeScissorRects(System.Int32, System.Int32, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.Host.GlHost+ScissorRect>) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.Host.GlHost+ScissorRect>
+FS.GG.UI.SkiaViewer.Host.GlHost.observeFrameFailed(FS.GG.UI.SkiaViewer.Host.GlHost+FrameFailureTracker, FS.GG.UI.SkiaViewer.Host.GlHost+FrameFailureFacts, System.Int32) : FS.GG.UI.SkiaViewer.Host.GlHost+FrameFailureAction
+FS.GG.UI.SkiaViewer.Host.GlHost.observeFramePresented(FS.GG.UI.SkiaViewer.Host.GlHost+FrameFailureTracker) : System.Void
+FS.GG.UI.SkiaViewer.Host.GlHost.planPresent(Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Scene>, FS.GG.UI.Scene.Scene, System.Boolean, System.Int32) : FS.GG.UI.SkiaViewer.Host.GlHost+PresentAction
+FS.GG.UI.SkiaViewer.Host.GlHost.presentationTiming(System.Int64, Microsoft.FSharp.Core.FSharpOption<System.TimeSpan>, Microsoft.FSharp.Core.FSharpOption<System.TimeSpan>, System.Boolean) : FS.GG.UI.SkiaViewer.Host.GlHost+PresentationTimingDiagnostic
+FS.GG.UI.SkiaViewer.Host.GlHost.receiptDidRenderWork(FS.GG.UI.SkiaViewer.Host.GlHost+InputReceiptDiagnostic) : System.Boolean
+FS.GG.UI.SkiaViewer.Host.GlHost.receiptWithinBudget(System.TimeSpan, System.TimeSpan, FS.GG.UI.SkiaViewer.Host.GlHost+InputReceiptDiagnostic) : System.Boolean
+FS.GG.UI.SkiaViewer.Host.GlHost.recordInputReceipt(System.Int64, System.String, System.Int32, System.TimeSpan, System.Boolean, System.Boolean) : FS.GG.UI.SkiaViewer.Host.GlHost+InputReceiptDiagnostic
+FS.GG.UI.SkiaViewer.Host.GlHost.run<model, msg>(ViewerProgram<model, msg>) : Microsoft.FSharp.Core.FSharpResult<Microsoft.FSharp.Core.Unit, FS.GG.UI.SkiaViewer.Host.RenderDiagnostic>
+FS.GG.UI.SkiaViewer.Host.GlHost.scissorArea(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.Host.GlHost+ScissorRect>) : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlHost.shouldAdvanceFrame(System.Double, System.Double, System.Double) : System.Boolean
+FS.GG.UI.SkiaViewer.Host.GlHost.shouldPresent(Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Scene>, FS.GG.UI.Scene.Scene, System.Boolean) : System.Boolean
+FS.GG.UI.SkiaViewer.Host.GlHost.transientFrameRetryBudget : System.Int32 [get]
+FS.GG.UI.SkiaViewer.Host.GlHost.validateDamage(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.Host.GlHost+ScissorRect>, System.Int32, System.Int32, FS.GG.UI.SkiaViewer.Host.GlHost+DamageValidationFlags) : FS.GG.UI.SkiaViewer.Host.GlHost+DamageValidationResult
+FS.GG.UI.SkiaViewer.Host.GlResources+OwnedResource.AcquireStage : System.String [get]
+FS.GG.UI.SkiaViewer.Host.GlResources+OwnedResource.Category : FS.GG.UI.SkiaViewer.Host.GlResources+ResourceCategory [get]
+FS.GG.UI.SkiaViewer.Host.GlResources+OwnedResource.Id : System.String [get]
+FS.GG.UI.SkiaViewer.Host.GlResources+OwnedResource.Owner : System.String [get]
+FS.GG.UI.SkiaViewer.Host.GlResources+OwnedResource.ReleaseAction : System.String [get]
+FS.GG.UI.SkiaViewer.Host.GlResources+OwnedResource.State : FS.GG.UI.SkiaViewer.Host.GlResources+OwnershipState [get]
+FS.GG.UI.SkiaViewer.Host.GlResources+OwnedResource.TransferPoint : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.Host.GlResources+OwnedResource.new(System.String, FS.GG.UI.SkiaViewer.Host.GlResources+ResourceCategory, System.String, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, System.String, FS.GG.UI.SkiaViewer.Host.GlResources+OwnershipState)
+FS.GG.UI.SkiaViewer.Host.GlResources+OwnershipState+Tags.Acquired : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlResources+OwnershipState+Tags.Released : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlResources+OwnershipState+Tags.Transferred : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlResources+ReleaseRecord.Category : FS.GG.UI.SkiaViewer.Host.GlResources+ResourceCategory [get]
+FS.GG.UI.SkiaViewer.Host.GlResources+ReleaseRecord.Id : System.String [get]
+FS.GG.UI.SkiaViewer.Host.GlResources+ReleaseRecord.Order : System.Int32 [get]
+FS.GG.UI.SkiaViewer.Host.GlResources+ReleaseRecord.Stage : System.String [get]
+FS.GG.UI.SkiaViewer.Host.GlResources+ReleaseRecord.new(System.String, FS.GG.UI.SkiaViewer.Host.GlResources+ResourceCategory, System.String, System.Int32)
+FS.GG.UI.SkiaViewer.Host.GlResources+ResourceCategory+Tags.Framebuffer : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlResources+ResourceCategory+Tags.GlContext : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlResources+ResourceCategory+Tags.GlSurface : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlResources+ResourceCategory+Tags.GrContext : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlResources+ResourceCategory+Tags.SkiaGpu : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlResources+ResourceCategory+Tags.SkiaSurface : System.Int32
+FS.GG.UI.SkiaViewer.Host.GlResources+ResourceLedger.Owned : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.Host.GlResources+OwnedResource> [get]
+FS.GG.UI.SkiaViewer.Host.GlResources+ResourceLedger.Released : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.Host.GlResources+ReleaseRecord> [get]
+FS.GG.UI.SkiaViewer.Host.GlResources+ResourceLedger.new(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.Host.GlResources+OwnedResource>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.Host.GlResources+ReleaseRecord>)
+FS.GG.UI.SkiaViewer.Host.GlResources.acquire(System.String, FS.GG.UI.SkiaViewer.Host.GlResources+ResourceCategory, System.String, System.String, System.String, FS.GG.UI.SkiaViewer.Host.GlResources+ResourceLedger) : FS.GG.UI.SkiaViewer.Host.GlResources+ResourceLedger
+FS.GG.UI.SkiaViewer.Host.GlResources.acquired(FS.GG.UI.SkiaViewer.Host.GlResources+ResourceLedger) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.Host.GlResources+OwnedResource>
+FS.GG.UI.SkiaViewer.Host.GlResources.empty : FS.GG.UI.SkiaViewer.Host.GlResources+ResourceLedger [get]
+FS.GG.UI.SkiaViewer.Host.GlResources.releaseAll(System.String, FS.GG.UI.SkiaViewer.Host.GlResources+ResourceLedger) : System.Tuple<FS.GG.UI.SkiaViewer.Host.GlResources+ResourceLedger, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.Host.GlResources+ReleaseRecord>>
+FS.GG.UI.SkiaViewer.Host.GlResources.transfer(System.String, System.String, FS.GG.UI.SkiaViewer.Host.GlResources+ResourceLedger) : FS.GG.UI.SkiaViewer.Host.GlResources+ResourceLedger
+FS.GG.UI.SkiaViewer.Host.GlStartup+StartupFailureCase.AcquiredBeforeFailure : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.Host.GlResources+OwnedResource> [get]
+FS.GG.UI.SkiaViewer.Host.GlStartup+StartupFailureCase.DiagnosticCause : System.String [get]
+FS.GG.UI.SkiaViewer.Host.GlStartup+StartupFailureCase.DiagnosticStage : System.String [get]
+FS.GG.UI.SkiaViewer.Host.GlStartup+StartupFailureCase.ExpectedReleaseOrder : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.Host.GlResources+ResourceCategory> [get]
+FS.GG.UI.SkiaViewer.Host.GlStartup+StartupFailureCase.FailedStage : FS.GG.UI.SkiaViewer.Host.GlStartup+StartupStage [get]
+FS.GG.UI.SkiaViewer.Host.GlStartup+StartupFailureCase.ObservedReleaseOrder : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.Host.GlResources+ResourceCategory> [get]
+FS.GG.UI.SkiaViewer.Host.GlStartup+StartupFailureCase.Synthetic : System.Boolean [get]
+FS.GG.UI.SkiaViewer.Host.GlStartup+StartupFailureCase.new(FS.GG.UI.SkiaViewer.Host.GlStartup+StartupStage, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.Host.GlResources+OwnedResource>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.Host.GlResources+ResourceCategory>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.Host.GlResources+ResourceCategory>, System.String, System.String, System.Boolean)
+FS.GG.UI.SkiaViewer.Host.GlStartup+StartupStage.DiagnosticStage : System.String [get]
+FS.GG.UI.SkiaViewer.Host.GlStartup+StartupStage.Name : System.String [get]
+FS.GG.UI.SkiaViewer.Host.GlStartup+StartupStage.Order : System.Int32 [get]
+FS.GG.UI.SkiaViewer.Host.GlStartup+StartupStage.Resource : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.Host.GlResources+ResourceCategory> [get]
+FS.GG.UI.SkiaViewer.Host.GlStartup+StartupStage.new(System.String, System.Int32, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.Host.GlResources+ResourceCategory>, System.String)
+FS.GG.UI.SkiaViewer.Host.GlStartup.simulateFailure(System.String) : FS.GG.UI.SkiaViewer.Host.GlStartup+StartupFailureCase
+FS.GG.UI.SkiaViewer.Host.GlStartup.simulateSuccessfulShutdown() : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.Host.GlResources+ReleaseRecord>
+FS.GG.UI.SkiaViewer.Host.GlStartup.stageByName(System.String) : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.Host.GlStartup+StartupStage>
+FS.GG.UI.SkiaViewer.Host.GlStartup.stages : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.Host.GlStartup+StartupStage> [get]
+FS.GG.UI.SkiaViewer.Host.RenderDiagnostic.Cause : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.Host.RenderDiagnostic.Message : System.String [get]
+FS.GG.UI.SkiaViewer.Host.RenderDiagnostic.Severity : FS.GG.UI.SkiaViewer.Host.DiagnosticSeverity [get]
+FS.GG.UI.SkiaViewer.Host.RenderDiagnostic.Stage : FS.GG.UI.SkiaViewer.Host.DiagnosticStage [get]
+FS.GG.UI.SkiaViewer.Host.RenderDiagnostic.new(FS.GG.UI.SkiaViewer.Host.DiagnosticSeverity, FS.GG.UI.SkiaViewer.Host.DiagnosticStage, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>)
+FS.GG.UI.SkiaViewer.Host.ScreenshotFormat+Tags.Jpeg : System.Int32
+FS.GG.UI.SkiaViewer.Host.ScreenshotFormat+Tags.Png : System.Int32
+FS.GG.UI.SkiaViewer.Host.ScreenshotRequest.Destination : System.String [get]
+FS.GG.UI.SkiaViewer.Host.ScreenshotRequest.Format : FS.GG.UI.SkiaViewer.Host.ScreenshotFormat [get]
+FS.GG.UI.SkiaViewer.Host.ScreenshotRequest.new(System.String, FS.GG.UI.SkiaViewer.Host.ScreenshotFormat)
+FS.GG.UI.SkiaViewer.Host.Viewer.create<model, msg>(FS.GG.UI.SkiaViewer.Host.ViewerConfiguration, FSharpFunc<Microsoft.FSharp.Core.Unit, Tuple<model, FSharpList<FSharpFunc<FSharpFunc<msg, Microsoft.FSharp.Core.Unit>, Microsoft.FSharp.Core.Unit>>>>, FSharpFunc<msg, FSharpFunc<model, Tuple<model, FSharpList<FSharpFunc<FSharpFunc<msg, Microsoft.FSharp.Core.Unit>, Microsoft.FSharp.Core.Unit>>>>>, FSharpFunc<model, FS.GG.UI.Scene.Scene>) : ViewerProgram<model, msg>
+FS.GG.UI.SkiaViewer.Host.Viewer.defaultConfiguration(System.String, FS.GG.UI.Scene.Size) : FS.GG.UI.SkiaViewer.Host.ViewerConfiguration
+FS.GG.UI.SkiaViewer.Host.Viewer.liveProofInterpreterSupported<model, msg>(ViewerProgram<model, msg>) : System.Boolean
+FS.GG.UI.SkiaViewer.Host.Viewer.run<model, msg>(ViewerProgram<model, msg>) : Microsoft.FSharp.Core.FSharpResult<Microsoft.FSharp.Core.Unit, FS.GG.UI.SkiaViewer.Host.RenderDiagnostic>
+FS.GG.UI.SkiaViewer.Host.Viewer.withEffectMapping<msg, model>(FSharpFunc<msg, FSharpOption<ViewerEffect<msg>>>, ViewerProgram<model, msg>) : ViewerProgram<model, msg>
+FS.GG.UI.SkiaViewer.Host.Viewer.withEventMapping<msg, model>(FSharpFunc<FS.GG.UI.SkiaViewer.Host.ViewerEvent, FSharpOption<msg>>, ViewerProgram<model, msg>) : ViewerProgram<model, msg>
+FS.GG.UI.SkiaViewer.Host.Viewer.withSubscription<model, msg>(FSharpFunc<model, FSharpList<Tuple<Microsoft.FSharp.Collections.FSharpList<System.String>, FSharpFunc<FSharpFunc<msg, Microsoft.FSharp.Core.Unit>, System.IDisposable>>>>, ViewerProgram<model, msg>) : ViewerProgram<model, msg>
+FS.GG.UI.SkiaViewer.Host.ViewerConfiguration.ClearColor : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Color> [get]
+FS.GG.UI.SkiaViewer.Host.ViewerConfiguration.ConfigureWindow : Microsoft.FSharp.Core.FSharpOption<Microsoft.FSharp.Core.FSharpFunc<Silk.NET.Windowing.WindowOptions, Silk.NET.Windowing.WindowOptions>> [get]
+FS.GG.UI.SkiaViewer.Host.ViewerConfiguration.Diagnostics : FS.GG.UI.SkiaViewer.Host.DiagnosticOptions [get]
+FS.GG.UI.SkiaViewer.Host.ViewerConfiguration.InitialSize : FS.GG.UI.Scene.Size [get]
+FS.GG.UI.SkiaViewer.Host.ViewerConfiguration.PresentMode : FS.GG.UI.SkiaViewer.ViewerPresentMode [get]
+FS.GG.UI.SkiaViewer.Host.ViewerConfiguration.TargetFrameRate : Microsoft.FSharp.Core.FSharpOption<System.Int32> [get]
+FS.GG.UI.SkiaViewer.Host.ViewerConfiguration.Title : System.String [get]
+FS.GG.UI.SkiaViewer.Host.ViewerConfiguration.new(System.String, FS.GG.UI.Scene.Size, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Color>, Microsoft.FSharp.Core.FSharpOption<System.Int32>, FS.GG.UI.SkiaViewer.Host.DiagnosticOptions, Microsoft.FSharp.Core.FSharpOption<Microsoft.FSharp.Core.FSharpFunc<Silk.NET.Windowing.WindowOptions, Silk.NET.Windowing.WindowOptions>>, FS.GG.UI.SkiaViewer.ViewerPresentMode)
+FS.GG.UI.SkiaViewer.Host.ViewerEffect`1+Tags.CaptureScreenshot : System.Int32
+FS.GG.UI.SkiaViewer.Host.ViewerEffect`1+Tags.Dispatch : System.Int32
+FS.GG.UI.SkiaViewer.Host.ViewerEffect`1+Tags.InitializeRenderer : System.Int32
+FS.GG.UI.SkiaViewer.Host.ViewerEffect`1+Tags.RenderFrame : System.Int32
+FS.GG.UI.SkiaViewer.Host.ViewerEffect`1+Tags.ReportDiagnostic : System.Int32
+FS.GG.UI.SkiaViewer.Host.ViewerEffect`1+Tags.Shutdown : System.Int32
+FS.GG.UI.SkiaViewer.Host.ViewerEvent+Tags.CloseRequested : System.Int32
+FS.GG.UI.SkiaViewer.Host.ViewerEvent+Tags.DiagnosticReported : System.Int32
+FS.GG.UI.SkiaViewer.Host.ViewerEvent+Tags.KeyDown : System.Int32
+FS.GG.UI.SkiaViewer.Host.ViewerEvent+Tags.KeyUp : System.Int32
+FS.GG.UI.SkiaViewer.Host.ViewerEvent+Tags.Loaded : System.Int32
+FS.GG.UI.SkiaViewer.Host.ViewerEvent+Tags.PointerExited : System.Int32
+FS.GG.UI.SkiaViewer.Host.ViewerEvent+Tags.PointerMoved : System.Int32
+FS.GG.UI.SkiaViewer.Host.ViewerEvent+Tags.PointerPressed : System.Int32
+FS.GG.UI.SkiaViewer.Host.ViewerEvent+Tags.PointerReleased : System.Int32
+FS.GG.UI.SkiaViewer.Host.ViewerEvent+Tags.PointerScrolled : System.Int32
+FS.GG.UI.SkiaViewer.Host.ViewerEvent+Tags.RenderTick : System.Int32
+FS.GG.UI.SkiaViewer.Host.ViewerEvent+Tags.Resized : System.Int32
+FS.GG.UI.SkiaViewer.Host.ViewerEvent+Tags.UpdateTick : System.Int32
+FS.GG.UI.SkiaViewer.Host.ViewerPointerButton+Tags.MiddleButton : System.Int32
+FS.GG.UI.SkiaViewer.Host.ViewerPointerButton+Tags.PrimaryButton : System.Int32
+FS.GG.UI.SkiaViewer.Host.ViewerPointerButton+Tags.SecondaryButton : System.Int32
+FS.GG.UI.SkiaViewer.Host.ViewerProgram`2.Configuration : FS.GG.UI.SkiaViewer.Host.ViewerConfiguration [get]
+FS.GG.UI.SkiaViewer.Host.ViewerProgram`2.EffectMapper : FSharpFunc<msg, FSharpOption<ViewerEffect<msg>>> [get]
+FS.GG.UI.SkiaViewer.Host.ViewerProgram`2.EventMapper : FSharpFunc<FS.GG.UI.SkiaViewer.Host.ViewerEvent, FSharpOption<msg>> [get]
+FS.GG.UI.SkiaViewer.Host.ViewerProgram`2.Init : FSharpFunc<Microsoft.FSharp.Core.Unit, Tuple<model, FSharpList<FSharpFunc<FSharpFunc<msg, Microsoft.FSharp.Core.Unit>, Microsoft.FSharp.Core.Unit>>>> [get]
+FS.GG.UI.SkiaViewer.Host.ViewerProgram`2.Subscriptions : FSharpFunc<model, FSharpList<Tuple<Microsoft.FSharp.Collections.FSharpList<System.String>, FSharpFunc<FSharpFunc<msg, Microsoft.FSharp.Core.Unit>, System.IDisposable>>>> [get]
+FS.GG.UI.SkiaViewer.Host.ViewerProgram`2.Update : FSharpFunc<msg, FSharpFunc<model, Tuple<model, FSharpList<FSharpFunc<FSharpFunc<msg, Microsoft.FSharp.Core.Unit>, Microsoft.FSharp.Core.Unit>>>>> [get]
+FS.GG.UI.SkiaViewer.Host.ViewerProgram`2.View : FSharpFunc<model, FS.GG.UI.Scene.Scene> [get]
+FS.GG.UI.SkiaViewer.Host.ViewerProgram`2.new(FS.GG.UI.SkiaViewer.Host.ViewerConfiguration, FSharpFunc<Microsoft.FSharp.Core.Unit, Tuple<model, FSharpList<FSharpFunc<FSharpFunc<msg, Microsoft.FSharp.Core.Unit>, Microsoft.FSharp.Core.Unit>>>>, FSharpFunc<msg, FSharpFunc<model, Tuple<model, FSharpList<FSharpFunc<FSharpFunc<msg, Microsoft.FSharp.Core.Unit>, Microsoft.FSharp.Core.Unit>>>>>, FSharpFunc<model, FS.GG.UI.Scene.Scene>, FSharpFunc<FS.GG.UI.SkiaViewer.Host.ViewerEvent, FSharpOption<msg>>, FSharpFunc<msg, FSharpOption<ViewerEffect<msg>>>, FSharpFunc<model, FSharpList<Tuple<Microsoft.FSharp.Collections.FSharpList<System.String>, FSharpFunc<FSharpFunc<msg, Microsoft.FSharp.Core.Unit>, System.IDisposable>>>>)
+FS.GG.UI.SkiaViewer.InteractiveViewerHost`2.Diagnostics : FS.GG.UI.SkiaViewer.ViewerDiagnosticsOptions [get]
+FS.GG.UI.SkiaViewer.InteractiveViewerHost`2.Init : FSharpFunc<Microsoft.FSharp.Core.Unit, Tuple<model, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerEffect>>> [get]
+FS.GG.UI.SkiaViewer.InteractiveViewerHost`2.MapKey : FSharpFunc<FS.GG.UI.KeyboardInput.ViewerKey, FSharpFunc<System.Boolean, FSharpList<msg>>> [get]
+FS.GG.UI.SkiaViewer.InteractiveViewerHost`2.MapPointer : FSharpFunc<FS.GG.UI.SkiaViewer.ViewerPointerInput, FSharpFunc<FS.GG.UI.Scene.Size, FSharpFunc<model, FSharpList<msg>>>> [get]
+FS.GG.UI.SkiaViewer.InteractiveViewerHost`2.Tick : FSharpFunc<System.TimeSpan, FSharpOption<msg>> [get]
+FS.GG.UI.SkiaViewer.InteractiveViewerHost`2.Update : FSharpFunc<msg, FSharpFunc<model, Tuple<model, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerEffect>>>> [get]
+FS.GG.UI.SkiaViewer.InteractiveViewerHost`2.View : FSharpFunc<FS.GG.UI.Scene.Size, FSharpFunc<model, FS.GG.UI.Scene.SceneNode>> [get]
+FS.GG.UI.SkiaViewer.InteractiveViewerHost`2.new(FSharpFunc<Microsoft.FSharp.Core.Unit, Tuple<model, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerEffect>>>, FSharpFunc<msg, FSharpFunc<model, Tuple<model, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerEffect>>>>, FSharpFunc<FS.GG.UI.Scene.Size, FSharpFunc<model, FS.GG.UI.Scene.SceneNode>>, FSharpFunc<FS.GG.UI.KeyboardInput.ViewerKey, FSharpFunc<System.Boolean, FSharpList<msg>>>, FSharpFunc<FS.GG.UI.SkiaViewer.ViewerPointerInput, FSharpFunc<FS.GG.UI.Scene.Size, FSharpFunc<model, FSharpList<msg>>>>, FSharpFunc<System.TimeSpan, FSharpOption<msg>>, FS.GG.UI.SkiaViewer.ViewerDiagnosticsOptions)
+FS.GG.UI.SkiaViewer.ReferenceFailureClassification+Tags.ReferencePackageResourceIncompatibility : System.Int32
+FS.GG.UI.SkiaViewer.ReferenceFailureClassification+Tags.ReferenceProductDefect : System.Int32
+FS.GG.UI.SkiaViewer.ReferenceFailureClassification+Tags.ReferenceUnsupportedEnvironment : System.Int32
+FS.GG.UI.SkiaViewer.ReferenceFailureClassification+Tags.ReferenceVerificationDepth : System.Int32
+FS.GG.UI.SkiaViewer.ReferenceRenderVerdict+Tags.ReferenceEnvironmentLimited : System.Int32
+FS.GG.UI.SkiaViewer.ReferenceRenderVerdict+Tags.ReferenceFailed : System.Int32
+FS.GG.UI.SkiaViewer.ReferenceRenderVerdict+Tags.ReferencePassed : System.Int32
+FS.GG.UI.SkiaViewer.ReferenceRendering.init(FS.GG.UI.SkiaViewer.ReferenceRenderingRequest) : System.Tuple<FS.GG.UI.SkiaViewer.ReferenceRenderingModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ReferenceRenderingEffect>>
+FS.GG.UI.SkiaViewer.ReferenceRendering.renderPackage(FS.GG.UI.SkiaViewer.ReferenceRenderingRequest) : FS.GG.UI.SkiaViewer.ReferenceRenderingEvidence
+FS.GG.UI.SkiaViewer.ReferenceRendering.renderScenePngResult(FS.GG.UI.Scene.Size, FS.GG.UI.Scene.Scene) : Microsoft.FSharp.Core.FSharpResult<System.Byte[], FS.GG.UI.Scene.SceneEvidenceFailure>
+FS.GG.UI.SkiaViewer.ReferenceRendering.run(FS.GG.UI.SkiaViewer.ReferenceRenderingRequest) : FS.GG.UI.SkiaViewer.ReferenceRenderingEvidence
+FS.GG.UI.SkiaViewer.ReferenceRendering.update(FS.GG.UI.SkiaViewer.ReferenceRenderingMsg, FS.GG.UI.SkiaViewer.ReferenceRenderingModel) : System.Tuple<FS.GG.UI.SkiaViewer.ReferenceRenderingModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ReferenceRenderingEffect>>
+FS.GG.UI.SkiaViewer.ReferenceRendering.writeEvidenceSummary(System.String, FS.GG.UI.SkiaViewer.ReferenceRenderingEvidence) : System.String
+FS.GG.UI.SkiaViewer.ReferenceRenderingEffect+Tags.InspectPackage : System.Int32
+FS.GG.UI.SkiaViewer.ReferenceRenderingEffect+Tags.RenderPackage : System.Int32
+FS.GG.UI.SkiaViewer.ReferenceRenderingEffect+Tags.WriteReferenceEvidence : System.Int32
+FS.GG.UI.SkiaViewer.ReferenceRenderingEvidence.CapabilityProfile : System.String [get]
+FS.GG.UI.SkiaViewer.ReferenceRenderingEvidence.Classification : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ReferenceFailureClassification> [get]
+FS.GG.UI.SkiaViewer.ReferenceRenderingEvidence.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.SkiaViewer.ReferenceRenderingEvidence.ImageIdentity : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.ReferenceRenderingEvidence.ImagePath : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.ReferenceRenderingEvidence.OutputSize : FS.GG.UI.Scene.Size [get]
+FS.GG.UI.SkiaViewer.ReferenceRenderingEvidence.PackageIdentity : System.String [get]
+FS.GG.UI.SkiaViewer.ReferenceRenderingEvidence.ProtocolVersion : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.ProtocolVersion> [get]
+FS.GG.UI.SkiaViewer.ReferenceRenderingEvidence.RendererIdentity : System.String [get]
+FS.GG.UI.SkiaViewer.ReferenceRenderingEvidence.ResourceStatus : System.String [get]
+FS.GG.UI.SkiaViewer.ReferenceRenderingEvidence.Verdict : FS.GG.UI.SkiaViewer.ReferenceRenderVerdict [get]
+FS.GG.UI.SkiaViewer.ReferenceRenderingEvidence.new(System.String, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.ProtocolVersion>, System.String, System.String, FS.GG.UI.Scene.Size, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, System.String, FS.GG.UI.SkiaViewer.ReferenceRenderVerdict, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ReferenceFailureClassification>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.SkiaViewer.ReferenceRenderingModel.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.SkiaViewer.ReferenceRenderingModel.Evidence : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ReferenceRenderingEvidence> [get]
+FS.GG.UI.SkiaViewer.ReferenceRenderingModel.Inspection : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.PackageInspectionReport> [get]
+FS.GG.UI.SkiaViewer.ReferenceRenderingModel.Request : FS.GG.UI.SkiaViewer.ReferenceRenderingRequest [get]
+FS.GG.UI.SkiaViewer.ReferenceRenderingModel.new(FS.GG.UI.SkiaViewer.ReferenceRenderingRequest, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.PackageInspectionReport>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ReferenceRenderingEvidence>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.SkiaViewer.ReferenceRenderingMsg+Tags.PackageInspected : System.Int32
+FS.GG.UI.SkiaViewer.ReferenceRenderingMsg+Tags.RenderCompleted : System.Int32
+FS.GG.UI.SkiaViewer.ReferenceRenderingMsg+Tags.RenderFailed : System.Int32
+FS.GG.UI.SkiaViewer.ReferenceRenderingMsg+Tags.Start : System.Int32
+FS.GG.UI.SkiaViewer.ReferenceRenderingRequest.OutputDirectory : System.String [get]
+FS.GG.UI.SkiaViewer.ReferenceRenderingRequest.OutputSize : FS.GG.UI.Scene.Size [get]
+FS.GG.UI.SkiaViewer.ReferenceRenderingRequest.PackageBytes : System.Byte[] [get]
+FS.GG.UI.SkiaViewer.ReferenceRenderingRequest.Resources : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.ResourceAvailability> [get]
+FS.GG.UI.SkiaViewer.ReferenceRenderingRequest.new(System.Byte[], System.String, FS.GG.UI.Scene.Size, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.ResourceAvailability>)
+FS.GG.UI.SkiaViewer.ScreenshotCaptureAvailability+Tags.CaptureAvailabilityUnknown : System.Int32
+FS.GG.UI.SkiaViewer.ScreenshotCaptureAvailability+Tags.CaptureAvailable : System.Int32
+FS.GG.UI.SkiaViewer.ScreenshotCaptureAvailability+Tags.CaptureUnavailable : System.Int32
+FS.GG.UI.SkiaViewer.ScreenshotCaptureSource+Tags.DeterministicSceneRender : System.Int32
+FS.GG.UI.SkiaViewer.ScreenshotCaptureSource+Tags.LiveViewerWindow : System.Int32
+FS.GG.UI.SkiaViewer.ScreenshotCaptureSource+Tags.NoCaptureSource : System.Int32
+FS.GG.UI.SkiaViewer.ScreenshotCaptureSource+Tags.OffscreenSceneRaster : System.Int32
+FS.GG.UI.SkiaViewer.ScreenshotCaptureSource+Tags.PixelReadbackSource : System.Int32
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceRequest.AppOrSample : System.String [get]
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceRequest.CaptureMode : FS.GG.UI.SkiaViewer.ScreenshotCaptureMode [get]
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceRequest.Command : System.String [get]
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceRequest.Height : System.Int32 [get]
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceRequest.HostFacts : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceRequest.OutputPath : System.String [get]
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceRequest.RendererMode : System.String [get]
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceRequest.Timeout : System.TimeSpan [get]
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceRequest.Width : System.Int32 [get]
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceRequest.new(System.String, System.String, System.String, System.Int32, System.Int32, System.String, FS.GG.UI.SkiaViewer.ScreenshotCaptureMode, Microsoft.FSharp.Collections.FSharpList<System.String>, System.TimeSpan)
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceResult.AppOrSample : System.String [get]
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceResult.BlockedStage : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerRunBlockedStage> [get]
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceResult.CaptureAvailability : FS.GG.UI.SkiaViewer.ScreenshotCaptureAvailability [get]
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceResult.CaptureMode : FS.GG.UI.SkiaViewer.ScreenshotCaptureMode [get]
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceResult.CaptureSource : FS.GG.UI.SkiaViewer.ScreenshotCaptureSource [get]
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceResult.Category : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerDiagnosticCategory> [get]
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceResult.Classification : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerRunFailureClassification> [get]
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceResult.Command : System.String [get]
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceResult.DeterministicFallbackKind : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceResult.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceResult.EvidenceKind : System.String [get]
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceResult.Fallback : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceResult.FirstFrameStatus : FS.GG.UI.SkiaViewer.FirstFrameStatus [get]
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceResult.FramesRendered : Microsoft.FSharp.Core.FSharpOption<System.Int32> [get]
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceResult.Height : Microsoft.FSharp.Core.FSharpOption<System.Int32> [get]
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceResult.HostFacts : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceResult.Message : System.String [get]
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceResult.OutputPath : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceResult.PixelContentValidation : FS.GG.UI.SkiaViewer.ScreenshotPixelContentValidation [get]
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceResult.ProvesScreenshot : System.Boolean [get]
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceResult.RendererMode : System.String [get]
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceResult.ScreenshotPath : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceResult.Status : FS.GG.UI.SkiaViewer.ScreenshotEvidenceStatus [get]
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceResult.Timestamp : System.DateTimeOffset [get]
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceResult.UnsupportedHostReason : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceResult.ViewerOpenStatus : FS.GG.UI.SkiaViewer.ViewerOpenStatus [get]
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceResult.Width : Microsoft.FSharp.Core.FSharpOption<System.Int32> [get]
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceResult.new(FS.GG.UI.SkiaViewer.ScreenshotEvidenceStatus, System.String, System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, FS.GG.UI.SkiaViewer.ScreenshotCaptureMode, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.Int32>, Microsoft.FSharp.Core.FSharpOption<System.Int32>, FS.GG.UI.SkiaViewer.ScreenshotPixelContentValidation, System.String, Microsoft.FSharp.Core.FSharpOption<System.Int32>, FS.GG.UI.SkiaViewer.ViewerOpenStatus, FS.GG.UI.SkiaViewer.FirstFrameStatus, FS.GG.UI.SkiaViewer.ScreenshotCaptureAvailability, FS.GG.UI.SkiaViewer.ScreenshotCaptureSource, Microsoft.FSharp.Core.FSharpOption<System.String>, System.Boolean, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerRunBlockedStage>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerRunFailureClassification>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerDiagnosticCategory>, System.String, System.DateTimeOffset, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceStatus+Tags.ScreenshotFailed : System.Int32
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceStatus+Tags.ScreenshotOk : System.Int32
+FS.GG.UI.SkiaViewer.ScreenshotEvidenceStatus+Tags.ScreenshotUnsupported : System.Int32
+FS.GG.UI.SkiaViewer.ScreenshotPixelContentValidation+Tags.PixelContentBlank : System.Int32
+FS.GG.UI.SkiaViewer.ScreenshotPixelContentValidation+Tags.PixelContentNonBlank : System.Int32
+FS.GG.UI.SkiaViewer.ScreenshotPixelContentValidation+Tags.PixelContentNotValidated : System.Int32
+FS.GG.UI.SkiaViewer.ScreenshotPixelContentValidation+Tags.PixelContentUnreadable : System.Int32
+FS.GG.UI.SkiaViewer.Text.clearPngRasterizer() : System.Void
+FS.GG.UI.SkiaViewer.Text.clearShapingProvider() : FS.GG.UI.SkiaViewer.Fonts+TextShapingProviderStatus
+FS.GG.UI.SkiaViewer.Text.fallbackDiagnostics() : Microsoft.FSharp.Collections.FSharpList<System.String>
+FS.GG.UI.SkiaViewer.Text.fallbackReport() : FS.GG.UI.SkiaViewer.Fonts+FallbackReport
+FS.GG.UI.SkiaViewer.Text.installMeasurer() : System.Void
+FS.GG.UI.SkiaViewer.Text.installPngRasterizer() : System.Void
+FS.GG.UI.SkiaViewer.Text.installShapingProvider() : FS.GG.UI.SkiaViewer.Fonts+TextShapingProviderStatus
+FS.GG.UI.SkiaViewer.Text.resetFallbackDisclosure() : System.Void
+FS.GG.UI.SkiaViewer.Text.shapeText(System.String, FS.GG.UI.Scene.FontSpec) : FS.GG.UI.Scene.ShapedTextResult
+FS.GG.UI.SkiaViewer.Text.shapingProviderStatus() : FS.GG.UI.SkiaViewer.Fonts+TextShapingProviderStatus
+FS.GG.UI.SkiaViewer.Viewer.captureDiagnostic(FS.GG.UI.SkiaViewer.ViewerDiagnosticsOptions, FS.GG.UI.SkiaViewer.ViewerDiagnosticEvent) : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerDiagnosticEvent>
+FS.GG.UI.SkiaViewer.Viewer.captureScreenshotEvidence(FS.GG.UI.SkiaViewer.ScreenshotEvidenceRequest, FS.GG.UI.SkiaViewer.ViewerOptions, FS.GG.UI.Scene.SceneNode) : FS.GG.UI.SkiaViewer.ScreenshotEvidenceResult
+FS.GG.UI.SkiaViewer.Viewer.classifyWindowObservation(FS.GG.UI.SkiaViewer.ViewerLaunchOutcome, FS.GG.UI.SkiaViewer.WindowObservationInputs) : FS.GG.UI.SkiaViewer.ViewerWindowObservationResult
+FS.GG.UI.SkiaViewer.Viewer.classifyWindowState(FS.GG.UI.SkiaViewer.ViewerWindowStateDiagnostic) : FS.GG.UI.SkiaViewer.ViewerLifecycleState
+FS.GG.UI.SkiaViewer.Viewer.createResponsivenessRunId() : System.String
+FS.GG.UI.SkiaViewer.Viewer.damageDecisionToken(FS.GG.UI.SkiaViewer.ViewerDamageDecision) : System.String
+FS.GG.UI.SkiaViewer.Viewer.defaultDiagnostics : FS.GG.UI.SkiaViewer.ViewerDiagnosticsOptions [get]
+FS.GG.UI.SkiaViewer.Viewer.defaultResponsivenessBudget : FS.GG.UI.SkiaViewer.ViewerResponsivenessBudget [get]
+FS.GG.UI.SkiaViewer.Viewer.defaultResponsivenessOptions : FS.GG.UI.SkiaViewer.ViewerResponsivenessOptions [get]
+FS.GG.UI.SkiaViewer.Viewer.defaultWindowBehavior : FS.GG.UI.SkiaViewer.ViewerWindowBehaviorRequest [get]
+FS.GG.UI.SkiaViewer.Viewer.desktopSessionDiagnostic() : FS.GG.UI.SkiaViewer.ViewerDesktopSessionDiagnostic
+FS.GG.UI.SkiaViewer.Viewer.dirtyState(System.Boolean, System.Boolean, System.Boolean, System.Boolean, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerResponsivenessDirtyRegion>, Microsoft.FSharp.Collections.FSharpList<System.String>) : FS.GG.UI.SkiaViewer.ViewerDirtyState
+FS.GG.UI.SkiaViewer.Viewer.dirtyStateRequiresRecompose(FS.GG.UI.SkiaViewer.ViewerDirtyState) : System.Boolean
+FS.GG.UI.SkiaViewer.Viewer.drainInputQueue(System.Int64, System.String, FS.GG.UI.SkiaViewer.ViewerInputQueue) : System.Tuple<FS.GG.UI.SkiaViewer.ViewerFrameDrain, FS.GG.UI.SkiaViewer.ViewerInputQueue>
+FS.GG.UI.SkiaViewer.Viewer.emptyInputQueue : FS.GG.UI.SkiaViewer.ViewerInputQueue [get]
+FS.GG.UI.SkiaViewer.Viewer.enqueueInput(System.DateTimeOffset, FS.GG.UI.SkiaViewer.ViewerResponsivenessInputKind, System.String, FS.GG.UI.SkiaViewer.ViewerInputQueue) : System.Tuple<FS.GG.UI.SkiaViewer.ViewerInputEnvelope, FS.GG.UI.SkiaViewer.ViewerInputQueue>
+FS.GG.UI.SkiaViewer.Viewer.failureFromDiagnostic(FS.GG.UI.SkiaViewer.ViewerDiagnosticEvent) : FS.GG.UI.SkiaViewer.ViewerRunFailure
+FS.GG.UI.SkiaViewer.Viewer.init(FS.GG.UI.SkiaViewer.ViewerOptions) : System.Tuple<FS.GG.UI.SkiaViewer.ViewerModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerEffect>>
+FS.GG.UI.SkiaViewer.Viewer.initEvidenceWorkflow(FS.GG.UI.SkiaViewer.ScreenshotEvidenceRequest) : System.Tuple<FS.GG.UI.SkiaViewer.EvidenceWorkflowModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.EvidenceWorkflowEffect>>
+FS.GG.UI.SkiaViewer.Viewer.initRun(FS.GG.UI.SkiaViewer.ViewerRunRequest) : System.Tuple<FS.GG.UI.SkiaViewer.ViewerRunModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerRunEffect>>
+FS.GG.UI.SkiaViewer.Viewer.initWithWindowBehavior(FS.GG.UI.SkiaViewer.ViewerOptions, FS.GG.UI.SkiaViewer.ViewerWindowBehaviorRequest) : System.Tuple<FS.GG.UI.SkiaViewer.ViewerModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerEffect>>
+FS.GG.UI.SkiaViewer.Viewer.inputQueueDepth(FS.GG.UI.SkiaViewer.ViewerInputQueue) : System.Int32
+FS.GG.UI.SkiaViewer.Viewer.latencyRecordToJsonLine(FS.GG.UI.SkiaViewer.ViewerLatencyRecord) : System.String
+FS.GG.UI.SkiaViewer.Viewer.responsivenessEnvironmentStatusToken(FS.GG.UI.SkiaViewer.ViewerResponsivenessEnvironmentStatus) : System.String
+FS.GG.UI.SkiaViewer.Viewer.responsivenessInputKindToken(FS.GG.UI.SkiaViewer.ViewerResponsivenessInputKind) : System.String
+FS.GG.UI.SkiaViewer.Viewer.responsivenessReadinessToken(FS.GG.UI.SkiaViewer.ViewerResponsivenessReadiness) : System.String
+FS.GG.UI.SkiaViewer.Viewer.responsivenessSummaryToJson(FS.GG.UI.SkiaViewer.ViewerResponsivenessSummary) : System.String
+FS.GG.UI.SkiaViewer.Viewer.responsivenessSummaryToMarkdown(FS.GG.UI.SkiaViewer.ViewerResponsivenessSummary) : System.String
+FS.GG.UI.SkiaViewer.Viewer.responsivenessVisibleResponseToken(FS.GG.UI.SkiaViewer.ViewerResponsivenessVisibleResponse) : System.String
+FS.GG.UI.SkiaViewer.Viewer.run(FS.GG.UI.SkiaViewer.ViewerOptions, FS.GG.UI.Scene.SceneNode) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerLaunchOutcome, FS.GG.UI.SkiaViewer.ViewerRunFailure>
+FS.GG.UI.SkiaViewer.Viewer.runApp<model, msg>(FS.GG.UI.SkiaViewer.ViewerOptions, GeneratedAppHost<model, msg>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerLaunchOutcome, FS.GG.UI.SkiaViewer.ViewerRunFailure>
+FS.GG.UI.SkiaViewer.Viewer.runAppEvidence<model, msg>(FS.GG.UI.SkiaViewer.ViewerRunRequest, FS.GG.UI.SkiaViewer.ViewerOptions, GeneratedAppHost<model, msg>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerLaunchOutcome, FS.GG.UI.SkiaViewer.ViewerRunFailure>
+FS.GG.UI.SkiaViewer.Viewer.runAppWithWindowBehavior<model, msg>(FS.GG.UI.SkiaViewer.ViewerOptions, FS.GG.UI.SkiaViewer.ViewerWindowBehaviorRequest, GeneratedAppHost<model, msg>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerLaunchOutcome, FS.GG.UI.SkiaViewer.ViewerRunFailure>
+FS.GG.UI.SkiaViewer.Viewer.runBounded(FS.GG.UI.SkiaViewer.ViewerRunRequest, FS.GG.UI.SkiaViewer.ViewerOptions, FS.GG.UI.Scene.SceneNode) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerRunEvidence, FS.GG.UI.SkiaViewer.ViewerRunFailure>
+FS.GG.UI.SkiaViewer.Viewer.runForFrames(System.Int32, FS.GG.UI.SkiaViewer.ViewerOptions, FS.GG.UI.Scene.SceneNode) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerRunEvidence, FS.GG.UI.SkiaViewer.ViewerRunFailure>
+FS.GG.UI.SkiaViewer.Viewer.runInteractiveViewer<model, msg>(FS.GG.UI.SkiaViewer.ViewerOptions, InteractiveViewerHost<model, msg>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerLaunchOutcome, FS.GG.UI.SkiaViewer.ViewerRunFailure>
+FS.GG.UI.SkiaViewer.Viewer.runInteractiveViewerScript<model, msg>(FS.GG.UI.SkiaViewer.ViewerOptions, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerScriptInput>, InteractiveViewerHost<model, msg>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerLaunchOutcome, FS.GG.UI.SkiaViewer.ViewerRunFailure>
+FS.GG.UI.SkiaViewer.Viewer.runInteractiveViewerScriptWithWindowBehavior<model, msg>(FS.GG.UI.SkiaViewer.ViewerOptions, FS.GG.UI.SkiaViewer.ViewerWindowBehaviorRequest, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerScriptInput>, InteractiveViewerHost<model, msg>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerLaunchOutcome, FS.GG.UI.SkiaViewer.ViewerRunFailure>
+FS.GG.UI.SkiaViewer.Viewer.runInteractiveViewerWithWindowBehavior<model, msg>(FS.GG.UI.SkiaViewer.ViewerOptions, FS.GG.UI.SkiaViewer.ViewerWindowBehaviorRequest, InteractiveViewerHost<model, msg>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerLaunchOutcome, FS.GG.UI.SkiaViewer.ViewerRunFailure>
+FS.GG.UI.SkiaViewer.Viewer.runUntilFirstFrame(FS.GG.UI.SkiaViewer.ViewerOptions, FS.GG.UI.Scene.SceneNode) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerRunEvidence, FS.GG.UI.SkiaViewer.ViewerRunFailure>
+FS.GG.UI.SkiaViewer.Viewer.runtimeCapability() : FS.GG.UI.SkiaViewer.ViewerRuntimeCapability
+FS.GG.UI.SkiaViewer.Viewer.shouldCaptureDiagnostic(FS.GG.UI.SkiaViewer.ViewerDiagnosticsOptions, FS.GG.UI.SkiaViewer.ViewerDiagnosticEvent) : System.Boolean
+FS.GG.UI.SkiaViewer.Viewer.summarizeResponsivenessRecords(System.String, System.String, System.String, System.DateTimeOffset, System.DateTimeOffset, FS.GG.UI.SkiaViewer.ViewerResponsivenessBudget, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerLatencyRecord>) : FS.GG.UI.SkiaViewer.ViewerResponsivenessSummary
+FS.GG.UI.SkiaViewer.Viewer.timingPathCanSupportClaim(FS.GG.UI.SkiaViewer.ViewerTimingPath, System.Boolean, System.Boolean) : System.Boolean
+FS.GG.UI.SkiaViewer.Viewer.timingPathToken(FS.GG.UI.SkiaViewer.ViewerTimingPath) : System.String
+FS.GG.UI.SkiaViewer.Viewer.update(FS.GG.UI.SkiaViewer.ViewerMsg, FS.GG.UI.SkiaViewer.ViewerModel) : System.Tuple<FS.GG.UI.SkiaViewer.ViewerModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerEffect>>
+FS.GG.UI.SkiaViewer.Viewer.updateEvidenceWorkflow(FS.GG.UI.SkiaViewer.EvidenceWorkflowMsg, FS.GG.UI.SkiaViewer.EvidenceWorkflowModel) : System.Tuple<FS.GG.UI.SkiaViewer.EvidenceWorkflowModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.EvidenceWorkflowEffect>>
+FS.GG.UI.SkiaViewer.Viewer.updateRun(FS.GG.UI.SkiaViewer.ViewerRunMsg, FS.GG.UI.SkiaViewer.ViewerRunModel) : System.Tuple<FS.GG.UI.SkiaViewer.ViewerRunModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerRunEffect>>
+FS.GG.UI.SkiaViewer.Viewer.validateWindowBehavior(FS.GG.UI.SkiaViewer.ViewerWindowBehaviorRequest) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerWindowOptionResult>
+FS.GG.UI.SkiaViewer.Viewer.validateWindowLaunchBehavior(FS.GG.UI.Scene.Size, FS.GG.UI.SkiaViewer.ViewerWindowBehaviorRequest) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerWindowOptionResult>
+FS.GG.UI.SkiaViewer.Viewer.writeResponsivenessRun(System.String, FS.GG.UI.SkiaViewer.ViewerResponsivenessSummary, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerLatencyRecord>) : Microsoft.FSharp.Collections.FSharpList<System.String>
+FS.GG.UI.SkiaViewer.ViewerBackendPreference+Tags.DefaultBackend : System.Int32
+FS.GG.UI.SkiaViewer.ViewerBackendPreference+Tags.OpenGL : System.Int32
+FS.GG.UI.SkiaViewer.ViewerBackendPreference+Tags.Software : System.Int32
+FS.GG.UI.SkiaViewer.ViewerBackendPreference+Tags.Vulkan : System.Int32
+FS.GG.UI.SkiaViewer.ViewerCloseReason+Tags.AppRequestedClose : System.Int32
+FS.GG.UI.SkiaViewer.ViewerCloseReason+Tags.EvidenceRequestedClose : System.Int32
+FS.GG.UI.SkiaViewer.ViewerCloseReason+Tags.FailureDrivenClose : System.Int32
+FS.GG.UI.SkiaViewer.ViewerCloseReason+Tags.FrameworkRequestedClose : System.Int32
+FS.GG.UI.SkiaViewer.ViewerCloseReason+Tags.HostSystemClose : System.Int32
+FS.GG.UI.SkiaViewer.ViewerCloseReason+Tags.TimeoutClose : System.Int32
+FS.GG.UI.SkiaViewer.ViewerCloseReason+Tags.UserClose : System.Int32
+FS.GG.UI.SkiaViewer.ViewerDamageDecision+Tags.DamageScopedAccepted : System.Int32
+FS.GG.UI.SkiaViewer.ViewerDamageDecision+Tags.EnvironmentLimited : System.Int32
+FS.GG.UI.SkiaViewer.ViewerDamageDecision+Tags.FullRedraw : System.Int32
+FS.GG.UI.SkiaViewer.ViewerDamageDecision+Tags.Rejected : System.Int32
+FS.GG.UI.SkiaViewer.ViewerDamageDecision+Tags.SkipNoChange : System.Int32
+FS.GG.UI.SkiaViewer.ViewerDesktopSessionDiagnostic.DiagnosticClass : System.String [get]
+FS.GG.UI.SkiaViewer.ViewerDesktopSessionDiagnostic.DisplaySocket : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.ViewerDesktopSessionDiagnostic.DisplaySocketExists : System.Boolean [get]
+FS.GG.UI.SkiaViewer.ViewerDesktopSessionDiagnostic.DisplayVariable : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.ViewerDesktopSessionDiagnostic.FallbackIsFullDesktopSession : System.Boolean [get]
+FS.GG.UI.SkiaViewer.ViewerDesktopSessionDiagnostic.FallbackRuntimeDirectory : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.ViewerDesktopSessionDiagnostic.Message : System.String [get]
+FS.GG.UI.SkiaViewer.ViewerDesktopSessionDiagnostic.RuntimeDirectory : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.ViewerDesktopSessionDiagnostic.RuntimeDirectoryExists : System.Boolean [get]
+FS.GG.UI.SkiaViewer.ViewerDesktopSessionDiagnostic.RuntimeDirectoryOwnerSuitable : System.Boolean [get]
+FS.GG.UI.SkiaViewer.ViewerDesktopSessionDiagnostic.RuntimeDirectoryPermissionsSuitable : System.Boolean [get]
+FS.GG.UI.SkiaViewer.ViewerDesktopSessionDiagnostic.SessionBus : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.ViewerDesktopSessionDiagnostic.new(Microsoft.FSharp.Core.FSharpOption<System.String>, System.Boolean, System.Boolean, System.Boolean, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, System.Boolean, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, System.Boolean, System.String, System.String)
+FS.GG.UI.SkiaViewer.ViewerDiagnosticCategory+Tags.EnvironmentSession : System.Int32
+FS.GG.UI.SkiaViewer.ViewerDiagnosticCategory+Tags.Frame : System.Int32
+FS.GG.UI.SkiaViewer.ViewerDiagnosticCategory+Tags.Framebuffer : System.Int32
+FS.GG.UI.SkiaViewer.ViewerDiagnosticCategory+Tags.Input : System.Int32
+FS.GG.UI.SkiaViewer.ViewerDiagnosticCategory+Tags.OpenGl : System.Int32
+FS.GG.UI.SkiaViewer.ViewerDiagnosticCategory+Tags.Renderer : System.Int32
+FS.GG.UI.SkiaViewer.ViewerDiagnosticCategory+Tags.Scene : System.Int32
+FS.GG.UI.SkiaViewer.ViewerDiagnosticCategory+Tags.Screenshot : System.Int32
+FS.GG.UI.SkiaViewer.ViewerDiagnosticCategory+Tags.Skia : System.Int32
+FS.GG.UI.SkiaViewer.ViewerDiagnosticCategory+Tags.Startup : System.Int32
+FS.GG.UI.SkiaViewer.ViewerDiagnosticEvent.Category : FS.GG.UI.SkiaViewer.ViewerDiagnosticCategory [get]
+FS.GG.UI.SkiaViewer.ViewerDiagnosticEvent.Elapsed : Microsoft.FSharp.Core.FSharpOption<System.TimeSpan> [get]
+FS.GG.UI.SkiaViewer.ViewerDiagnosticEvent.FrameIndex : Microsoft.FSharp.Core.FSharpOption<System.Int32> [get]
+FS.GG.UI.SkiaViewer.ViewerDiagnosticEvent.Level : FS.GG.UI.SkiaViewer.ViewerDiagnosticLevel [get]
+FS.GG.UI.SkiaViewer.ViewerDiagnosticEvent.Message : System.String [get]
+FS.GG.UI.SkiaViewer.ViewerDiagnosticEvent.Stage : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerRunBlockedStage> [get]
+FS.GG.UI.SkiaViewer.ViewerDiagnosticEvent.new(FS.GG.UI.SkiaViewer.ViewerDiagnosticLevel, FS.GG.UI.SkiaViewer.ViewerDiagnosticCategory, System.String, Microsoft.FSharp.Core.FSharpOption<System.Int32>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerRunBlockedStage>, Microsoft.FSharp.Core.FSharpOption<System.TimeSpan>)
+FS.GG.UI.SkiaViewer.ViewerDiagnosticLevel+Tags.Debug : System.Int32
+FS.GG.UI.SkiaViewer.ViewerDiagnosticLevel+Tags.Error : System.Int32
+FS.GG.UI.SkiaViewer.ViewerDiagnosticLevel+Tags.Info : System.Int32
+FS.GG.UI.SkiaViewer.ViewerDiagnosticLevel+Tags.Trace : System.Int32
+FS.GG.UI.SkiaViewer.ViewerDiagnosticLevel+Tags.Warning : System.Int32
+FS.GG.UI.SkiaViewer.ViewerDiagnosticsOptions.Categories : Microsoft.FSharp.Collections.FSharpSet<FS.GG.UI.SkiaViewer.ViewerDiagnosticCategory> [get]
+FS.GG.UI.SkiaViewer.ViewerDiagnosticsOptions.FrameLogLimit : Microsoft.FSharp.Core.FSharpOption<System.Int32> [get]
+FS.GG.UI.SkiaViewer.ViewerDiagnosticsOptions.MinimumLevel : FS.GG.UI.SkiaViewer.ViewerDiagnosticLevel [get]
+FS.GG.UI.SkiaViewer.ViewerDiagnosticsOptions.Sink : Microsoft.FSharp.Core.FSharpOption<Microsoft.FSharp.Core.FSharpFunc<FS.GG.UI.SkiaViewer.ViewerDiagnosticEvent, Microsoft.FSharp.Core.Unit>> [get]
+FS.GG.UI.SkiaViewer.ViewerDiagnosticsOptions.Verbose : System.Boolean [get]
+FS.GG.UI.SkiaViewer.ViewerDiagnosticsOptions.new(FS.GG.UI.SkiaViewer.ViewerDiagnosticLevel, Microsoft.FSharp.Collections.FSharpSet<FS.GG.UI.SkiaViewer.ViewerDiagnosticCategory>, Microsoft.FSharp.Core.FSharpOption<System.Int32>, Microsoft.FSharp.Core.FSharpOption<Microsoft.FSharp.Core.FSharpFunc<FS.GG.UI.SkiaViewer.ViewerDiagnosticEvent, Microsoft.FSharp.Core.Unit>>, System.Boolean)
+FS.GG.UI.SkiaViewer.ViewerDirtyState.DirtyRegionSummary : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerResponsivenessDirtyRegion> [get]
+FS.GG.UI.SkiaViewer.ViewerDirtyState.ProductModelChanged : System.Boolean [get]
+FS.GG.UI.SkiaViewer.ViewerDirtyState.Reason : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.SkiaViewer.ViewerDirtyState.RuntimeStateChanged : System.Boolean [get]
+FS.GG.UI.SkiaViewer.ViewerDirtyState.SceneDirty : System.Boolean [get]
+FS.GG.UI.SkiaViewer.ViewerDirtyState.SizeChanged : System.Boolean [get]
+FS.GG.UI.SkiaViewer.ViewerDirtyState.ThemeChanged : System.Boolean [get]
+FS.GG.UI.SkiaViewer.ViewerDirtyState.new(System.Boolean, System.Boolean, System.Boolean, System.Boolean, System.Boolean, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerResponsivenessDirtyRegion>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.SkiaViewer.ViewerEffect+Tags.ApplyWindowOptions : System.Int32
+FS.GG.UI.SkiaViewer.ViewerEffect+Tags.CaptureImageEvidence : System.Int32
+FS.GG.UI.SkiaViewer.ViewerEffect+Tags.CaptureScreenshot : System.Int32
+FS.GG.UI.SkiaViewer.ViewerEffect+Tags.CheckDesktopSession : System.Int32
+FS.GG.UI.SkiaViewer.ViewerEffect+Tags.CloseWindow : System.Int32
+FS.GG.UI.SkiaViewer.ViewerEffect+Tags.DispatchInput : System.Int32
+FS.GG.UI.SkiaViewer.ViewerEffect+Tags.EmitDiagnostic : System.Int32
+FS.GG.UI.SkiaViewer.ViewerEffect+Tags.OpenWindow : System.Int32
+FS.GG.UI.SkiaViewer.ViewerEffect+Tags.QueryNativeWindowState : System.Int32
+FS.GG.UI.SkiaViewer.ViewerEffect+Tags.ReadPixels : System.Int32
+FS.GG.UI.SkiaViewer.ViewerEffect+Tags.RenderScene : System.Int32
+FS.GG.UI.SkiaViewer.ViewerEffect+Tags.StartBoundedRun : System.Int32
+FS.GG.UI.SkiaViewer.ViewerEffect+Tags.WriteRunEvidence : System.Int32
+FS.GG.UI.SkiaViewer.ViewerEffect+Tags.WriteVisualEvidence : System.Int32
+FS.GG.UI.SkiaViewer.ViewerEvidenceTarget+Tags.Duration : System.Int32
+FS.GG.UI.SkiaViewer.ViewerEvidenceTarget+Tags.FirstFrame : System.Int32
+FS.GG.UI.SkiaViewer.ViewerEvidenceTarget+Tags.FrameCount : System.Int32
+FS.GG.UI.SkiaViewer.ViewerFailureClass+Tags.AppLifecycle : System.Int32
+FS.GG.UI.SkiaViewer.ViewerFailureClass+Tags.EnvironmentSession : System.Int32
+FS.GG.UI.SkiaViewer.ViewerFailureClass+Tags.PackageVerification : System.Int32
+FS.GG.UI.SkiaViewer.ViewerFailureClass+Tags.ProductDefectFailure : System.Int32
+FS.GG.UI.SkiaViewer.ViewerFailureClass+Tags.VerificationDepthFailure : System.Int32
+FS.GG.UI.SkiaViewer.ViewerFailureClass+Tags.VisualEvidence : System.Int32
+FS.GG.UI.SkiaViewer.ViewerFailureClass+Tags.WindowOptions : System.Int32
+FS.GG.UI.SkiaViewer.ViewerFailureClass+Tags.WindowVisibility : System.Int32
+FS.GG.UI.SkiaViewer.ViewerFrameDrain.BatchId : System.Int64 [get]
+FS.GG.UI.SkiaViewer.ViewerFrameDrain.CoalescedMovementCount : System.Int32 [get]
+FS.GG.UI.SkiaViewer.ViewerFrameDrain.CoalescedPointer : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerInputEnvelope> [get]
+FS.GG.UI.SkiaViewer.ViewerFrameDrain.DiscreteInputs : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerInputEnvelope> [get]
+FS.GG.UI.SkiaViewer.ViewerFrameDrain.DrainReason : System.String [get]
+FS.GG.UI.SkiaViewer.ViewerFrameDrain.QueueDepthAfterDrain : System.Int32 [get]
+FS.GG.UI.SkiaViewer.ViewerFrameDrain.QueueDepthBeforeDrain : System.Int32 [get]
+FS.GG.UI.SkiaViewer.ViewerFrameDrain.new(System.Int64, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerInputEnvelope>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerInputEnvelope>, System.Int32, System.Int32, System.Int32, System.String)
+FS.GG.UI.SkiaViewer.ViewerInputDispatchStatus+Tags.NotRequired : System.Int32
+FS.GG.UI.SkiaViewer.ViewerInputDispatchStatus+Tags.NotVerified : System.Int32
+FS.GG.UI.SkiaViewer.ViewerInputDispatchStatus+Tags.Verified : System.Int32
+FS.GG.UI.SkiaViewer.ViewerInputEnvelope.InputKind : FS.GG.UI.SkiaViewer.ViewerResponsivenessInputKind [get]
+FS.GG.UI.SkiaViewer.ViewerInputEnvelope.Payload : System.String [get]
+FS.GG.UI.SkiaViewer.ViewerInputEnvelope.PriorityLane : FS.GG.UI.SkiaViewer.ViewerInputPriorityLane [get]
+FS.GG.UI.SkiaViewer.ViewerInputEnvelope.ReceiptQueueDepth : System.Int32 [get]
+FS.GG.UI.SkiaViewer.ViewerInputEnvelope.ReceivedAt : System.DateTimeOffset [get]
+FS.GG.UI.SkiaViewer.ViewerInputEnvelope.SequenceId : System.Int64 [get]
+FS.GG.UI.SkiaViewer.ViewerInputEnvelope.new(System.Int64, System.DateTimeOffset, FS.GG.UI.SkiaViewer.ViewerResponsivenessInputKind, FS.GG.UI.SkiaViewer.ViewerInputPriorityLane, System.Int32, System.String)
+FS.GG.UI.SkiaViewer.ViewerInputPriorityLane+Tags.Background : System.Int32
+FS.GG.UI.SkiaViewer.ViewerInputPriorityLane+Tags.Continuous : System.Int32
+FS.GG.UI.SkiaViewer.ViewerInputPriorityLane+Tags.Discrete : System.Int32
+FS.GG.UI.SkiaViewer.ViewerInputPriorityLane+Tags.Lifecycle : System.Int32
+FS.GG.UI.SkiaViewer.ViewerInputQueue.ContinuousCoalescedCount : System.Int32 [get]
+FS.GG.UI.SkiaViewer.ViewerInputQueue.Discrete : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerInputEnvelope> [get]
+FS.GG.UI.SkiaViewer.ViewerInputQueue.LatestContinuousPointer : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerInputEnvelope> [get]
+FS.GG.UI.SkiaViewer.ViewerInputQueue.Lifecycle : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerInputEnvelope> [get]
+FS.GG.UI.SkiaViewer.ViewerInputQueue.MaxObservedDepth : System.Int32 [get]
+FS.GG.UI.SkiaViewer.ViewerInputQueue.NextSequenceId : System.Int64 [get]
+FS.GG.UI.SkiaViewer.ViewerInputQueue.new(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerInputEnvelope>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerInputEnvelope>, System.Int32, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerInputEnvelope>, System.Int64, System.Int32)
+FS.GG.UI.SkiaViewer.ViewerLatencyRecord.CoalescedMovementCount : System.Int32 [get]
+FS.GG.UI.SkiaViewer.ViewerLatencyRecord.ControlGroup : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.ViewerLatencyRecord.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.SkiaViewer.ViewerLatencyRecord.DirtyRegion : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerResponsivenessDirtyRegion> [get]
+FS.GG.UI.SkiaViewer.ViewerLatencyRecord.EnvironmentStatus : FS.GG.UI.SkiaViewer.ViewerResponsivenessEnvironmentStatus [get]
+FS.GG.UI.SkiaViewer.ViewerLatencyRecord.InputKind : FS.GG.UI.SkiaViewer.ViewerResponsivenessInputKind [get]
+FS.GG.UI.SkiaViewer.ViewerLatencyRecord.InputName : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.ViewerLatencyRecord.InputSequenceId : System.Int64 [get]
+FS.GG.UI.SkiaViewer.ViewerLatencyRecord.LongFrame : System.Boolean [get]
+FS.GG.UI.SkiaViewer.ViewerLatencyRecord.Page : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.ViewerLatencyRecord.PhaseTiming : FS.GG.UI.SkiaViewer.ViewerResponsivenessPhaseTiming [get]
+FS.GG.UI.SkiaViewer.ViewerLatencyRecord.PresentedFrameId : Microsoft.FSharp.Core.FSharpOption<System.Int64> [get]
+FS.GG.UI.SkiaViewer.ViewerLatencyRecord.ProductMessageCount : System.Int32 [get]
+FS.GG.UI.SkiaViewer.ViewerLatencyRecord.ProductStateChanged : System.Boolean [get]
+FS.GG.UI.SkiaViewer.ViewerLatencyRecord.QueueDepthAtDrain : System.Int32 [get]
+FS.GG.UI.SkiaViewer.ViewerLatencyRecord.QueueDepthAtReceipt : System.Int32 [get]
+FS.GG.UI.SkiaViewer.ViewerLatencyRecord.ReceiptTimestamp : System.DateTimeOffset [get]
+FS.GG.UI.SkiaViewer.ViewerLatencyRecord.RecordId : System.String [get]
+FS.GG.UI.SkiaViewer.ViewerLatencyRecord.RunId : System.String [get]
+FS.GG.UI.SkiaViewer.ViewerLatencyRecord.RuntimeStateChanged : System.Boolean [get]
+FS.GG.UI.SkiaViewer.ViewerLatencyRecord.VisibleResponse : FS.GG.UI.SkiaViewer.ViewerResponsivenessVisibleResponse [get]
+FS.GG.UI.SkiaViewer.ViewerLatencyRecord.new(System.String, System.String, System.Int64, FS.GG.UI.SkiaViewer.ViewerResponsivenessInputKind, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, System.DateTimeOffset, System.Int32, System.Int32, System.Int32, System.Int32, System.Boolean, System.Boolean, FS.GG.UI.SkiaViewer.ViewerResponsivenessVisibleResponse, Microsoft.FSharp.Core.FSharpOption<System.Int64>, FS.GG.UI.SkiaViewer.ViewerResponsivenessEnvironmentStatus, FS.GG.UI.SkiaViewer.ViewerResponsivenessPhaseTiming, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerResponsivenessDirtyRegion>, System.Boolean, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.SkiaViewer.ViewerLaunchMode+Tags.InteractiveWindow : System.Int32
+FS.GG.UI.SkiaViewer.ViewerLaunchMode+Tags.PersistentEvidence : System.Int32
+FS.GG.UI.SkiaViewer.ViewerLaunchOutcome.AppCloseObserved : System.Boolean [get]
+FS.GG.UI.SkiaViewer.ViewerLaunchOutcome.BlockedStage : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerRunBlockedStage> [get]
+FS.GG.UI.SkiaViewer.ViewerLaunchOutcome.Category : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerDiagnosticCategory> [get]
+FS.GG.UI.SkiaViewer.ViewerLaunchOutcome.Classification : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerRunFailureClassification> [get]
+FS.GG.UI.SkiaViewer.ViewerLaunchOutcome.CloseReason : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerCloseReason> [get]
+FS.GG.UI.SkiaViewer.ViewerLaunchOutcome.Command : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.ViewerLaunchOutcome.EvidenceCloseObserved : System.Boolean [get]
+FS.GG.UI.SkiaViewer.ViewerLaunchOutcome.ExitPath : System.Boolean [get]
+FS.GG.UI.SkiaViewer.ViewerLaunchOutcome.FailureClass : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerFailureClass> [get]
+FS.GG.UI.SkiaViewer.ViewerLaunchOutcome.FirstFramePresented : System.Boolean [get]
+FS.GG.UI.SkiaViewer.ViewerLaunchOutcome.InputDispatch : System.String [get]
+FS.GG.UI.SkiaViewer.ViewerLaunchOutcome.Message : System.String [get]
+FS.GG.UI.SkiaViewer.ViewerLaunchOutcome.Mode : System.String [get]
+FS.GG.UI.SkiaViewer.ViewerLaunchOutcome.OptionResults : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerWindowOptionResult> [get]
+FS.GG.UI.SkiaViewer.ViewerLaunchOutcome.RendererMode : System.String [get]
+FS.GG.UI.SkiaViewer.ViewerLaunchOutcome.SelfClosedForEvidence : System.Boolean [get]
+FS.GG.UI.SkiaViewer.ViewerLaunchOutcome.Status : System.String [get]
+FS.GG.UI.SkiaViewer.ViewerLaunchOutcome.UserCloseObserved : System.Boolean [get]
+FS.GG.UI.SkiaViewer.ViewerLaunchOutcome.VisualEvidence : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerVisualEvidenceArtifact> [get]
+FS.GG.UI.SkiaViewer.ViewerLaunchOutcome.WindowDiagnostics : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerWindowStateDiagnostic> [get]
+FS.GG.UI.SkiaViewer.ViewerLaunchOutcome.WindowOpened : System.Boolean [get]
+FS.GG.UI.SkiaViewer.ViewerLaunchOutcome.WindowVisible : FS.GG.UI.SkiaViewer.ViewerObservedValue [get]
+FS.GG.UI.SkiaViewer.ViewerLaunchOutcome.new(System.String, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, System.String, System.Boolean, FS.GG.UI.SkiaViewer.ViewerObservedValue, System.Boolean, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerCloseReason>, System.Boolean, System.Boolean, System.Boolean, System.Boolean, System.String, System.Boolean, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerWindowStateDiagnostic>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerWindowOptionResult>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerVisualEvidenceArtifact>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerFailureClass>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerRunBlockedStage>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerRunFailureClassification>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerDiagnosticCategory>, System.String)
+FS.GG.UI.SkiaViewer.ViewerLifecycleState+Tags.AppCloseObservedState : System.Int32
+FS.GG.UI.SkiaViewer.ViewerLifecycleState+Tags.CheckingDesktopSession : System.Int32
+FS.GG.UI.SkiaViewer.ViewerLifecycleState+Tags.CloseRequested : System.Int32
+FS.GG.UI.SkiaViewer.ViewerLifecycleState+Tags.Closing : System.Int32
+FS.GG.UI.SkiaViewer.ViewerLifecycleState+Tags.EvidenceCloseObservedState : System.Int32
+FS.GG.UI.SkiaViewer.ViewerLifecycleState+Tags.EvidenceRunning : System.Int32
+FS.GG.UI.SkiaViewer.ViewerLifecycleState+Tags.Failed : System.Int32
+FS.GG.UI.SkiaViewer.ViewerLifecycleState+Tags.FirstFramePresented : System.Int32
+FS.GG.UI.SkiaViewer.ViewerLifecycleState+Tags.InaccessibleWindow : System.Int32
+FS.GG.UI.SkiaViewer.ViewerLifecycleState+Tags.InteractiveRunning : System.Int32
+FS.GG.UI.SkiaViewer.ViewerLifecycleState+Tags.NotStarted : System.Int32
+FS.GG.UI.SkiaViewer.ViewerLifecycleState+Tags.StartingWindow : System.Int32
+FS.GG.UI.SkiaViewer.ViewerLifecycleState+Tags.Unsupported : System.Int32
+FS.GG.UI.SkiaViewer.ViewerLifecycleState+Tags.UserCloseObservedState : System.Int32
+FS.GG.UI.SkiaViewer.ViewerLifecycleState+Tags.VisibilityChecking : System.Int32
+FS.GG.UI.SkiaViewer.ViewerLifecycleState+Tags.WindowCreated : System.Int32
+FS.GG.UI.SkiaViewer.ViewerModel.FirstFramePresented : System.Boolean [get]
+FS.GG.UI.SkiaViewer.ViewerModel.InputDispatch : FS.GG.UI.SkiaViewer.ViewerInputDispatchStatus [get]
+FS.GG.UI.SkiaViewer.ViewerModel.IsRunning : System.Boolean [get]
+FS.GG.UI.SkiaViewer.ViewerModel.LastScene : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.SceneNode> [get]
+FS.GG.UI.SkiaViewer.ViewerModel.LifecycleState : FS.GG.UI.SkiaViewer.ViewerLifecycleState [get]
+FS.GG.UI.SkiaViewer.ViewerModel.Options : FS.GG.UI.SkiaViewer.ViewerOptions [get]
+FS.GG.UI.SkiaViewer.ViewerModel.UserCloseObserved : System.Boolean [get]
+FS.GG.UI.SkiaViewer.ViewerModel.WindowBehavior : FS.GG.UI.SkiaViewer.ViewerWindowBehaviorRequest [get]
+FS.GG.UI.SkiaViewer.ViewerModel.new(FS.GG.UI.SkiaViewer.ViewerOptions, FS.GG.UI.SkiaViewer.ViewerWindowBehaviorRequest, System.Boolean, FS.GG.UI.SkiaViewer.ViewerLifecycleState, System.Boolean, System.Boolean, FS.GG.UI.SkiaViewer.ViewerInputDispatchStatus, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.SceneNode>)
+FS.GG.UI.SkiaViewer.ViewerMsg+Tags.AppCloseRequested : System.Int32
+FS.GG.UI.SkiaViewer.ViewerMsg+Tags.DesktopSessionChecked : System.Int32
+FS.GG.UI.SkiaViewer.ViewerMsg+Tags.DiagnosticCaptured : System.Int32
+FS.GG.UI.SkiaViewer.ViewerMsg+Tags.EvidenceCloseRequested : System.Int32
+FS.GG.UI.SkiaViewer.ViewerMsg+Tags.EvidenceTargetReached : System.Int32
+FS.GG.UI.SkiaViewer.ViewerMsg+Tags.FramePresented : System.Int32
+FS.GG.UI.SkiaViewer.ViewerMsg+Tags.HostCloseObserved : System.Int32
+FS.GG.UI.SkiaViewer.ViewerMsg+Tags.KeyEvent : System.Int32
+FS.GG.UI.SkiaViewer.ViewerMsg+Tags.Render : System.Int32
+FS.GG.UI.SkiaViewer.ViewerMsg+Tags.RunFailed : System.Int32
+FS.GG.UI.SkiaViewer.ViewerMsg+Tags.RunTimedOut : System.Int32
+FS.GG.UI.SkiaViewer.ViewerMsg+Tags.Start : System.Int32
+FS.GG.UI.SkiaViewer.ViewerMsg+Tags.StartEvidence : System.Int32
+FS.GG.UI.SkiaViewer.ViewerMsg+Tags.StartInteractive : System.Int32
+FS.GG.UI.SkiaViewer.ViewerMsg+Tags.Stop : System.Int32
+FS.GG.UI.SkiaViewer.ViewerMsg+Tags.UserCloseObserved : System.Int32
+FS.GG.UI.SkiaViewer.ViewerMsg+Tags.VisibilityCheckStarted : System.Int32
+FS.GG.UI.SkiaViewer.ViewerMsg+Tags.VisibilityObserved : System.Int32
+FS.GG.UI.SkiaViewer.ViewerMsg+Tags.WindowCreated : System.Int32
+FS.GG.UI.SkiaViewer.ViewerObservedValue+Tags.Observed : System.Int32
+FS.GG.UI.SkiaViewer.ViewerObservedValue+Tags.Unavailable : System.Int32
+FS.GG.UI.SkiaViewer.ViewerObservedValue+Tags.Unsupported : System.Int32
+FS.GG.UI.SkiaViewer.ViewerOpenStatus+Tags.ViewerOpenConfirmed : System.Int32
+FS.GG.UI.SkiaViewer.ViewerOpenStatus+Tags.ViewerOpenFailed : System.Int32
+FS.GG.UI.SkiaViewer.ViewerOpenStatus+Tags.ViewerOpenUnknown : System.Int32
+FS.GG.UI.SkiaViewer.ViewerOpenStatus+Tags.ViewerOpenUnsupported : System.Int32
+FS.GG.UI.SkiaViewer.ViewerOptions.FrameRateCap : Microsoft.FSharp.Core.FSharpOption<System.Int32> [get]
+FS.GG.UI.SkiaViewer.ViewerOptions.InitialSize : FS.GG.UI.Scene.Size [get]
+FS.GG.UI.SkiaViewer.ViewerOptions.PresentMode : FS.GG.UI.SkiaViewer.ViewerPresentMode [get]
+FS.GG.UI.SkiaViewer.ViewerOptions.Title : System.String [get]
+FS.GG.UI.SkiaViewer.ViewerOptions.new(System.String, FS.GG.UI.Scene.Size, FS.GG.UI.SkiaViewer.ViewerPresentMode, Microsoft.FSharp.Core.FSharpOption<System.Int32>)
+FS.GG.UI.SkiaViewer.ViewerPointerButtonKind+Tags.Middle : System.Int32
+FS.GG.UI.SkiaViewer.ViewerPointerButtonKind+Tags.Primary : System.Int32
+FS.GG.UI.SkiaViewer.ViewerPointerButtonKind+Tags.Secondary : System.Int32
+FS.GG.UI.SkiaViewer.ViewerPointerInput.Button : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerPointerButtonKind> [get]
+FS.GG.UI.SkiaViewer.ViewerPointerInput.DeltaX : System.Double [get]
+FS.GG.UI.SkiaViewer.ViewerPointerInput.DeltaY : System.Double [get]
+FS.GG.UI.SkiaViewer.ViewerPointerInput.Phase : FS.GG.UI.SkiaViewer.ViewerPointerPhaseKind [get]
+FS.GG.UI.SkiaViewer.ViewerPointerInput.X : System.Double [get]
+FS.GG.UI.SkiaViewer.ViewerPointerInput.Y : System.Double [get]
+FS.GG.UI.SkiaViewer.ViewerPointerInput.new(FS.GG.UI.SkiaViewer.ViewerPointerPhaseKind, System.Double, System.Double, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerPointerButtonKind>, System.Double, System.Double)
+FS.GG.UI.SkiaViewer.ViewerPointerPhaseKind+Tags.Exited : System.Int32
+FS.GG.UI.SkiaViewer.ViewerPointerPhaseKind+Tags.Moved : System.Int32
+FS.GG.UI.SkiaViewer.ViewerPointerPhaseKind+Tags.Pressed : System.Int32
+FS.GG.UI.SkiaViewer.ViewerPointerPhaseKind+Tags.Released : System.Int32
+FS.GG.UI.SkiaViewer.ViewerPointerPhaseKind+Tags.Wheel : System.Int32
+FS.GG.UI.SkiaViewer.ViewerPresentMode+Tags.DirectToSwapchain : System.Int32
+FS.GG.UI.SkiaViewer.ViewerPresentMode+Tags.OffscreenReadback : System.Int32
+FS.GG.UI.SkiaViewer.ViewerResponsivenessBudget.InputReceiptMax : System.TimeSpan [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessBudget.InputReceiptP95 : System.TimeSpan [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessBudget.InputToVisibleMax : System.TimeSpan [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessBudget.InputToVisibleP95 : System.TimeSpan [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessBudget.LongFrameThreshold : System.TimeSpan [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessBudget.new(System.TimeSpan, System.TimeSpan, System.TimeSpan, System.TimeSpan, System.TimeSpan)
+FS.GG.UI.SkiaViewer.ViewerResponsivenessDirtyRegion.DirtyArea : Microsoft.FSharp.Core.FSharpOption<System.Int32> [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessDirtyRegion.DirtyRectCount : Microsoft.FSharp.Core.FSharpOption<System.Int32> [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessDirtyRegion.RepaintedNodeCount : Microsoft.FSharp.Core.FSharpOption<System.Int32> [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessDirtyRegion.Status : FS.GG.UI.SkiaViewer.ViewerResponsivenessEnvironmentStatus [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessDirtyRegion.new(Microsoft.FSharp.Core.FSharpOption<System.Int32>, Microsoft.FSharp.Core.FSharpOption<System.Int32>, Microsoft.FSharp.Core.FSharpOption<System.Int32>, FS.GG.UI.SkiaViewer.ViewerResponsivenessEnvironmentStatus)
+FS.GG.UI.SkiaViewer.ViewerResponsivenessEnvironmentStatus+Tags.Failed : System.Int32
+FS.GG.UI.SkiaViewer.ViewerResponsivenessEnvironmentStatus+Tags.HeadlessSubstitute : System.Int32
+FS.GG.UI.SkiaViewer.ViewerResponsivenessEnvironmentStatus+Tags.LowPrecisionTimestamp : System.Int32
+FS.GG.UI.SkiaViewer.ViewerResponsivenessEnvironmentStatus+Tags.Measured : System.Int32
+FS.GG.UI.SkiaViewer.ViewerResponsivenessEnvironmentStatus+Tags.MissingBoundary : System.Int32
+FS.GG.UI.SkiaViewer.ViewerResponsivenessEnvironmentStatus+Tags.NoVisibleSurface : System.Int32
+FS.GG.UI.SkiaViewer.ViewerResponsivenessEnvironmentStatus+Tags.NonMonotonicTimestamp : System.Int32
+FS.GG.UI.SkiaViewer.ViewerResponsivenessEnvironmentStatus+Tags.WriteFailed : System.Int32
+FS.GG.UI.SkiaViewer.ViewerResponsivenessFailedBudget.Budget : System.TimeSpan [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessFailedBudget.InputKind : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerResponsivenessInputKind> [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessFailedBudget.Kind : System.String [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessFailedBudget.Measured : System.TimeSpan [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessFailedBudget.Scope : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessFailedBudget.new(System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerResponsivenessInputKind>, System.TimeSpan, System.TimeSpan)
+FS.GG.UI.SkiaViewer.ViewerResponsivenessGroupSummary.ControlGroup : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessGroupSummary.Count : System.Int32 [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessGroupSummary.InputKind : FS.GG.UI.SkiaViewer.ViewerResponsivenessInputKind [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessGroupSummary.LongFrameCount : System.Int32 [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessGroupSummary.Max : Microsoft.FSharp.Core.FSharpOption<System.TimeSpan> [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessGroupSummary.P50 : Microsoft.FSharp.Core.FSharpOption<System.TimeSpan> [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessGroupSummary.P95 : Microsoft.FSharp.Core.FSharpOption<System.TimeSpan> [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessGroupSummary.Page : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessGroupSummary.Readiness : FS.GG.UI.SkiaViewer.ViewerResponsivenessReadiness [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessGroupSummary.new(Microsoft.FSharp.Core.FSharpOption<System.String>, FS.GG.UI.SkiaViewer.ViewerResponsivenessInputKind, Microsoft.FSharp.Core.FSharpOption<System.String>, System.Int32, Microsoft.FSharp.Core.FSharpOption<System.TimeSpan>, Microsoft.FSharp.Core.FSharpOption<System.TimeSpan>, Microsoft.FSharp.Core.FSharpOption<System.TimeSpan>, System.Int32, FS.GG.UI.SkiaViewer.ViewerResponsivenessReadiness)
+FS.GG.UI.SkiaViewer.ViewerResponsivenessInputKind+Tags.KeyDown : System.Int32
+FS.GG.UI.SkiaViewer.ViewerResponsivenessInputKind+Tags.KeyUp : System.Int32
+FS.GG.UI.SkiaViewer.ViewerResponsivenessInputKind+Tags.Lifecycle : System.Int32
+FS.GG.UI.SkiaViewer.ViewerResponsivenessInputKind+Tags.PointerDiscrete : System.Int32
+FS.GG.UI.SkiaViewer.ViewerResponsivenessInputKind+Tags.PointerMove : System.Int32
+FS.GG.UI.SkiaViewer.ViewerResponsivenessInputKind+Tags.Resize : System.Int32
+FS.GG.UI.SkiaViewer.ViewerResponsivenessInputKind+Tags.Tick : System.Int32
+FS.GG.UI.SkiaViewer.ViewerResponsivenessInputKind+Tags.Wheel : System.Int32
+FS.GG.UI.SkiaViewer.ViewerResponsivenessOptions.Budget : FS.GG.UI.SkiaViewer.ViewerResponsivenessBudget [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessOptions.Enabled : System.Boolean [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessOptions.OutputRoot : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessOptions.RunId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessOptions.Sink : Microsoft.FSharp.Core.FSharpOption<Microsoft.FSharp.Core.FSharpFunc<FS.GG.UI.SkiaViewer.ViewerLatencyRecord, Microsoft.FSharp.Core.Unit>> [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessOptions.new(System.Boolean, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, FS.GG.UI.SkiaViewer.ViewerResponsivenessBudget, Microsoft.FSharp.Core.FSharpOption<Microsoft.FSharp.Core.FSharpFunc<FS.GG.UI.SkiaViewer.ViewerLatencyRecord, Microsoft.FSharp.Core.Unit>>)
+FS.GG.UI.SkiaViewer.ViewerResponsivenessPhaseTiming.LayoutDuration : Microsoft.FSharp.Core.FSharpOption<System.TimeSpan> [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessPhaseTiming.PaintDuration : Microsoft.FSharp.Core.FSharpOption<System.TimeSpan> [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessPhaseTiming.PresentDuration : Microsoft.FSharp.Core.FSharpOption<System.TimeSpan> [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessPhaseTiming.QueueDelay : Microsoft.FSharp.Core.FSharpOption<System.TimeSpan> [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessPhaseTiming.ReceiptDuration : Microsoft.FSharp.Core.FSharpOption<System.TimeSpan> [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessPhaseTiming.RetainedStepDuration : Microsoft.FSharp.Core.FSharpOption<System.TimeSpan> [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessPhaseTiming.RoutingDuration : Microsoft.FSharp.Core.FSharpOption<System.TimeSpan> [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessPhaseTiming.TextDuration : Microsoft.FSharp.Core.FSharpOption<System.TimeSpan> [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessPhaseTiming.TotalInputToVisibleDuration : Microsoft.FSharp.Core.FSharpOption<System.TimeSpan> [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessPhaseTiming.UpdateDuration : Microsoft.FSharp.Core.FSharpOption<System.TimeSpan> [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessPhaseTiming.ViewDuration : Microsoft.FSharp.Core.FSharpOption<System.TimeSpan> [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessPhaseTiming.new(Microsoft.FSharp.Core.FSharpOption<System.TimeSpan>, Microsoft.FSharp.Core.FSharpOption<System.TimeSpan>, Microsoft.FSharp.Core.FSharpOption<System.TimeSpan>, Microsoft.FSharp.Core.FSharpOption<System.TimeSpan>, Microsoft.FSharp.Core.FSharpOption<System.TimeSpan>, Microsoft.FSharp.Core.FSharpOption<System.TimeSpan>, Microsoft.FSharp.Core.FSharpOption<System.TimeSpan>, Microsoft.FSharp.Core.FSharpOption<System.TimeSpan>, Microsoft.FSharp.Core.FSharpOption<System.TimeSpan>, Microsoft.FSharp.Core.FSharpOption<System.TimeSpan>, Microsoft.FSharp.Core.FSharpOption<System.TimeSpan>)
+FS.GG.UI.SkiaViewer.ViewerResponsivenessReadiness+Tags.Accepted : System.Int32
+FS.GG.UI.SkiaViewer.ViewerResponsivenessReadiness+Tags.Blocked : System.Int32
+FS.GG.UI.SkiaViewer.ViewerResponsivenessReadiness+Tags.EnvironmentLimited : System.Int32
+FS.GG.UI.SkiaViewer.ViewerResponsivenessReadiness+Tags.Failed : System.Int32
+FS.GG.UI.SkiaViewer.ViewerResponsivenessReadiness+Tags.Incomplete : System.Int32
+FS.GG.UI.SkiaViewer.ViewerResponsivenessReadiness+Tags.Rejected : System.Int32
+FS.GG.UI.SkiaViewer.ViewerResponsivenessSlowInteraction.DominantPhase : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessSlowInteraction.InputSequenceId : System.Int64 [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessSlowInteraction.RecordId : System.String [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessSlowInteraction.TotalInputToVisible : Microsoft.FSharp.Core.FSharpOption<System.TimeSpan> [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessSlowInteraction.new(System.String, System.Int64, Microsoft.FSharp.Core.FSharpOption<System.TimeSpan>, Microsoft.FSharp.Core.FSharpOption<System.String>)
+FS.GG.UI.SkiaViewer.ViewerResponsivenessSummary.Budgets : FS.GG.UI.SkiaViewer.ViewerResponsivenessBudget [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessSummary.CompletedUtc : System.DateTimeOffset [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessSummary.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessSummary.EnvironmentLimitations : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessSummary.FirstFailedBudget : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerResponsivenessFailedBudget> [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessSummary.Groups : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerResponsivenessGroupSummary> [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessSummary.OverallReadiness : FS.GG.UI.SkiaViewer.ViewerResponsivenessReadiness [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessSummary.RecordsPath : System.String [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessSummary.RunId : System.String [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessSummary.Scope : System.String [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessSummary.SlowestInteractions : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerResponsivenessSlowInteraction> [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessSummary.StartedUtc : System.DateTimeOffset [get]
+FS.GG.UI.SkiaViewer.ViewerResponsivenessSummary.new(System.String, System.String, FS.GG.UI.SkiaViewer.ViewerResponsivenessReadiness, System.DateTimeOffset, System.DateTimeOffset, System.String, FS.GG.UI.SkiaViewer.ViewerResponsivenessBudget, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerResponsivenessFailedBudget>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerResponsivenessGroupSummary>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerResponsivenessSlowInteraction>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.SkiaViewer.ViewerResponsivenessVisibleResponse+Tags.EnvironmentLimited : System.Int32
+FS.GG.UI.SkiaViewer.ViewerResponsivenessVisibleResponse+Tags.Failed : System.Int32
+FS.GG.UI.SkiaViewer.ViewerResponsivenessVisibleResponse+Tags.NoVisibleResponse : System.Int32
+FS.GG.UI.SkiaViewer.ViewerResponsivenessVisibleResponse+Tags.NotRun : System.Int32
+FS.GG.UI.SkiaViewer.ViewerResponsivenessVisibleResponse+Tags.PresentedFrame : System.Int32
+FS.GG.UI.SkiaViewer.ViewerRunBlockedStage+Tags.App : System.Int32
+FS.GG.UI.SkiaViewer.ViewerRunBlockedStage+Tags.ArtifactWrite : System.Int32
+FS.GG.UI.SkiaViewer.ViewerRunBlockedStage+Tags.Capture : System.Int32
+FS.GG.UI.SkiaViewer.ViewerRunBlockedStage+Tags.ControlledExit : System.Int32
+FS.GG.UI.SkiaViewer.ViewerRunBlockedStage+Tags.DesktopPrerequisite : System.Int32
+FS.GG.UI.SkiaViewer.ViewerRunBlockedStage+Tags.FirstFrameRender : System.Int32
+FS.GG.UI.SkiaViewer.ViewerRunBlockedStage+Tags.GlContext : System.Int32
+FS.GG.UI.SkiaViewer.ViewerRunBlockedStage+Tags.InputVerification : System.Int32
+FS.GG.UI.SkiaViewer.ViewerRunBlockedStage+Tags.Observation : System.Int32
+FS.GG.UI.SkiaViewer.ViewerRunBlockedStage+Tags.ProcessLaunch : System.Int32
+FS.GG.UI.SkiaViewer.ViewerRunBlockedStage+Tags.Readback : System.Int32
+FS.GG.UI.SkiaViewer.ViewerRunBlockedStage+Tags.Renderer : System.Int32
+FS.GG.UI.SkiaViewer.ViewerRunBlockedStage+Tags.Scene : System.Int32
+FS.GG.UI.SkiaViewer.ViewerRunBlockedStage+Tags.Surface : System.Int32
+FS.GG.UI.SkiaViewer.ViewerRunBlockedStage+Tags.Timeout : System.Int32
+FS.GG.UI.SkiaViewer.ViewerRunBlockedStage+Tags.Unknown : System.Int32
+FS.GG.UI.SkiaViewer.ViewerRunBlockedStage+Tags.Window : System.Int32
+FS.GG.UI.SkiaViewer.ViewerRunBlockedStage+Tags.WindowCreation : System.Int32
+FS.GG.UI.SkiaViewer.ViewerRunEffect+Tags.CaptureOutputSize : System.Int32
+FS.GG.UI.SkiaViewer.ViewerRunEffect+Tags.OpenBoundedWindow : System.Int32
+FS.GG.UI.SkiaViewer.ViewerRunEffect+Tags.PersistRunEvidence : System.Int32
+FS.GG.UI.SkiaViewer.ViewerRunEffect+Tags.RequestFrame : System.Int32
+FS.GG.UI.SkiaViewer.ViewerRunEffect+Tags.StopBoundedRun : System.Int32
+FS.GG.UI.SkiaViewer.ViewerRunEvidence.Elapsed : System.TimeSpan [get]
+FS.GG.UI.SkiaViewer.ViewerRunEvidence.EvidencePath : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.ViewerRunEvidence.FramesRendered : System.Int32 [get]
+FS.GG.UI.SkiaViewer.ViewerRunEvidence.InitialOutputSize : FS.GG.UI.Scene.Size [get]
+FS.GG.UI.SkiaViewer.ViewerRunEvidence.LastDiagnosticSummary : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.ViewerRunEvidence.RendererMode : System.String [get]
+FS.GG.UI.SkiaViewer.ViewerRunEvidence.new(System.Int32, System.TimeSpan, FS.GG.UI.Scene.Size, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>)
+FS.GG.UI.SkiaViewer.ViewerRunFailure.BlockedStage : FS.GG.UI.SkiaViewer.ViewerRunBlockedStage [get]
+FS.GG.UI.SkiaViewer.ViewerRunFailure.Classification : FS.GG.UI.SkiaViewer.ViewerRunFailureClassification [get]
+FS.GG.UI.SkiaViewer.ViewerRunFailure.DiagnosticCategory : FS.GG.UI.SkiaViewer.ViewerDiagnosticCategory [get]
+FS.GG.UI.SkiaViewer.ViewerRunFailure.LastDiagnosticSummary : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.ViewerRunFailure.Message : System.String [get]
+FS.GG.UI.SkiaViewer.ViewerRunFailure.new(FS.GG.UI.SkiaViewer.ViewerRunBlockedStage, FS.GG.UI.SkiaViewer.ViewerRunFailureClassification, FS.GG.UI.SkiaViewer.ViewerDiagnosticCategory, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>)
+FS.GG.UI.SkiaViewer.ViewerRunFailureClassification+Tags.AppLifecycle : System.Int32
+FS.GG.UI.SkiaViewer.ViewerRunFailureClassification+Tags.PackageResolution : System.Int32
+FS.GG.UI.SkiaViewer.ViewerRunFailureClassification+Tags.ProductDefect : System.Int32
+FS.GG.UI.SkiaViewer.ViewerRunFailureClassification+Tags.UnsupportedEnvironment : System.Int32
+FS.GG.UI.SkiaViewer.ViewerRunFailureClassification+Tags.VerificationDepth : System.Int32
+FS.GG.UI.SkiaViewer.ViewerRunModel.Completed : Microsoft.FSharp.Core.FSharpOption<Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerRunEvidence, FS.GG.UI.SkiaViewer.ViewerRunFailure>> [get]
+FS.GG.UI.SkiaViewer.ViewerRunModel.FramesRendered : System.Int32 [get]
+FS.GG.UI.SkiaViewer.ViewerRunModel.LastDiagnostic : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerDiagnosticEvent> [get]
+FS.GG.UI.SkiaViewer.ViewerRunModel.Request : FS.GG.UI.SkiaViewer.ViewerRunRequest [get]
+FS.GG.UI.SkiaViewer.ViewerRunModel.StartedAt : Microsoft.FSharp.Core.FSharpOption<System.DateTimeOffset> [get]
+FS.GG.UI.SkiaViewer.ViewerRunModel.new(FS.GG.UI.SkiaViewer.ViewerRunRequest, System.Int32, Microsoft.FSharp.Core.FSharpOption<System.DateTimeOffset>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerDiagnosticEvent>, Microsoft.FSharp.Core.FSharpOption<Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerRunEvidence, FS.GG.UI.SkiaViewer.ViewerRunFailure>>)
+FS.GG.UI.SkiaViewer.ViewerRunMsg+Tags.BeginRun : System.Int32
+FS.GG.UI.SkiaViewer.ViewerRunMsg+Tags.CompleteRun : System.Int32
+FS.GG.UI.SkiaViewer.ViewerRunMsg+Tags.FailRun : System.Int32
+FS.GG.UI.SkiaViewer.ViewerRunMsg+Tags.RecordDiagnostic : System.Int32
+FS.GG.UI.SkiaViewer.ViewerRunMsg+Tags.RecordFrame : System.Int32
+FS.GG.UI.SkiaViewer.ViewerRunMsg+Tags.RunStarted : System.Int32
+FS.GG.UI.SkiaViewer.ViewerRunMsg+Tags.TimeoutRun : System.Int32
+FS.GG.UI.SkiaViewer.ViewerRunRequest.Diagnostics : FS.GG.UI.SkiaViewer.ViewerDiagnosticsOptions [get]
+FS.GG.UI.SkiaViewer.ViewerRunRequest.EvidencePath : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.ViewerRunRequest.RendererMode : System.String [get]
+FS.GG.UI.SkiaViewer.ViewerRunRequest.Target : FS.GG.UI.SkiaViewer.ViewerEvidenceTarget [get]
+FS.GG.UI.SkiaViewer.ViewerRunRequest.Timeout : System.TimeSpan [get]
+FS.GG.UI.SkiaViewer.ViewerRunRequest.new(FS.GG.UI.SkiaViewer.ViewerEvidenceTarget, System.TimeSpan, FS.GG.UI.SkiaViewer.ViewerDiagnosticsOptions, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>)
+FS.GG.UI.SkiaViewer.ViewerRuntimeCapability.BoundedSmoke : System.Boolean [get]
+FS.GG.UI.SkiaViewer.ViewerRuntimeCapability.KeyboardInput : System.Boolean [get]
+FS.GG.UI.SkiaViewer.ViewerRuntimeCapability.MissingPackageCapabilities : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.SkiaViewer.ViewerRuntimeCapability.PersistentWindow : System.Boolean [get]
+FS.GG.UI.SkiaViewer.ViewerRuntimeCapability.RendererMode : System.String [get]
+FS.GG.UI.SkiaViewer.ViewerRuntimeCapability.UnsupportedHostReasons : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.SkiaViewer.ViewerRuntimeCapability.new(System.Boolean, System.Boolean, System.Boolean, System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.SkiaViewer.ViewerScriptInput+Tags.Key : System.Int32
+FS.GG.UI.SkiaViewer.ViewerScriptInput+Tags.Pointer : System.Int32
+FS.GG.UI.SkiaViewer.ViewerScriptInput+Tags.WaitFrame : System.Int32
+FS.GG.UI.SkiaViewer.ViewerTimingPath+Tags.DamageScoped : System.Int32
+FS.GG.UI.SkiaViewer.ViewerTimingPath+Tags.FullRedraw : System.Int32
+FS.GG.UI.SkiaViewer.ViewerVisualEvidenceArtifact.ImageDecodable : Microsoft.FSharp.Core.FSharpOption<System.Boolean> [get]
+FS.GG.UI.SkiaViewer.ViewerVisualEvidenceArtifact.Kind : FS.GG.UI.SkiaViewer.ViewerVisualEvidenceKind [get]
+FS.GG.UI.SkiaViewer.ViewerVisualEvidenceArtifact.Message : System.String [get]
+FS.GG.UI.SkiaViewer.ViewerVisualEvidenceArtifact.Path : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.ViewerVisualEvidenceArtifact.ProvesDesktopVisibility : System.Boolean [get]
+FS.GG.UI.SkiaViewer.ViewerVisualEvidenceArtifact.ProvesSceneRendering : System.Boolean [get]
+FS.GG.UI.SkiaViewer.ViewerVisualEvidenceArtifact.new(FS.GG.UI.SkiaViewer.ViewerVisualEvidenceKind, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.Boolean>, System.Boolean, System.Boolean, System.String)
+FS.GG.UI.SkiaViewer.ViewerVisualEvidenceKind+Tags.Image : System.Int32
+FS.GG.UI.SkiaViewer.ViewerVisualEvidenceKind+Tags.MetadataHash : System.Int32
+FS.GG.UI.SkiaViewer.ViewerVisualEvidenceKind+Tags.PixelReadback : System.Int32
+FS.GG.UI.SkiaViewer.ViewerVisualEvidenceKind+Tags.UnsupportedHost : System.Int32
+FS.GG.UI.SkiaViewer.ViewerWindowBehaviorRequest.BackendPreference : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerBackendPreference> [get]
+FS.GG.UI.SkiaViewer.ViewerWindowBehaviorRequest.MaximizePolicy : FS.GG.UI.SkiaViewer.ViewerWindowMaximizePolicy [get]
+FS.GG.UI.SkiaViewer.ViewerWindowBehaviorRequest.ResizePolicy : FS.GG.UI.SkiaViewer.ViewerWindowResizePolicy [get]
+FS.GG.UI.SkiaViewer.ViewerWindowBehaviorRequest.StartupPosition : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerWindowPosition> [get]
+FS.GG.UI.SkiaViewer.ViewerWindowBehaviorRequest.StartupState : FS.GG.UI.SkiaViewer.ViewerWindowStartupState [get]
+FS.GG.UI.SkiaViewer.ViewerWindowBehaviorRequest.new(FS.GG.UI.SkiaViewer.ViewerWindowResizePolicy, FS.GG.UI.SkiaViewer.ViewerWindowMaximizePolicy, FS.GG.UI.SkiaViewer.ViewerWindowStartupState, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerWindowPosition>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerBackendPreference>)
+FS.GG.UI.SkiaViewer.ViewerWindowMaximizePolicy+Tags.Maximizable : System.Int32
+FS.GG.UI.SkiaViewer.ViewerWindowMaximizePolicy+Tags.NotMaximizable : System.Int32
+FS.GG.UI.SkiaViewer.ViewerWindowObservationResult.BlockedStage : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerRunBlockedStage> [get]
+FS.GG.UI.SkiaViewer.ViewerWindowObservationResult.CaptureAttempted : System.Boolean [get]
+FS.GG.UI.SkiaViewer.ViewerWindowObservationResult.CaptureSucceeded : Microsoft.FSharp.Core.FSharpOption<System.Boolean> [get]
+FS.GG.UI.SkiaViewer.ViewerWindowObservationResult.Classification : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerRunFailureClassification> [get]
+FS.GG.UI.SkiaViewer.ViewerWindowObservationResult.Command : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.ViewerWindowObservationResult.DiagnosticSource : System.String [get]
+FS.GG.UI.SkiaViewer.ViewerWindowObservationResult.ExternalObservationAttempted : System.Boolean [get]
+FS.GG.UI.SkiaViewer.ViewerWindowObservationResult.ExternalWindowMatched : Microsoft.FSharp.Core.FSharpOption<System.Boolean> [get]
+FS.GG.UI.SkiaViewer.ViewerWindowObservationResult.HostFacts : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.SkiaViewer.ViewerWindowObservationResult.Message : System.String [get]
+FS.GG.UI.SkiaViewer.ViewerWindowObservationResult.MissingFacts : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.SkiaViewer.ViewerWindowObservationResult.ViewerFacts : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.SkiaViewer.ViewerWindowObservationResult.ViewerFirstFramePresented : System.Boolean [get]
+FS.GG.UI.SkiaViewer.ViewerWindowObservationResult.ViewerWindowOpened : System.Boolean [get]
+FS.GG.UI.SkiaViewer.ViewerWindowObservationResult.ViewerWindowVisible : FS.GG.UI.SkiaViewer.ViewerObservedValue [get]
+FS.GG.UI.SkiaViewer.ViewerWindowObservationResult.new(System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, System.Boolean, System.Boolean, FS.GG.UI.SkiaViewer.ViewerObservedValue, System.Boolean, Microsoft.FSharp.Core.FSharpOption<System.Boolean>, System.Boolean, Microsoft.FSharp.Core.FSharpOption<System.Boolean>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerRunBlockedStage>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerRunFailureClassification>, Microsoft.FSharp.Collections.FSharpList<System.String>, System.String)
+FS.GG.UI.SkiaViewer.ViewerWindowOptionResult.Message : System.String [get]
+FS.GG.UI.SkiaViewer.ViewerWindowOptionResult.Observed : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.ViewerWindowOptionResult.Option : System.String [get]
+FS.GG.UI.SkiaViewer.ViewerWindowOptionResult.Requested : System.String [get]
+FS.GG.UI.SkiaViewer.ViewerWindowOptionResult.Status : FS.GG.UI.SkiaViewer.ViewerWindowOptionStatus [get]
+FS.GG.UI.SkiaViewer.ViewerWindowOptionResult.new(System.String, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, FS.GG.UI.SkiaViewer.ViewerWindowOptionStatus, System.String)
+FS.GG.UI.SkiaViewer.ViewerWindowOptionStatus+Tags.Degraded : System.Int32
+FS.GG.UI.SkiaViewer.ViewerWindowOptionStatus+Tags.FailedOption : System.Int32
+FS.GG.UI.SkiaViewer.ViewerWindowOptionStatus+Tags.Honored : System.Int32
+FS.GG.UI.SkiaViewer.ViewerWindowOptionStatus+Tags.UnsupportedOption : System.Int32
+FS.GG.UI.SkiaViewer.ViewerWindowPosition+Tags.Centered : System.Int32
+FS.GG.UI.SkiaViewer.ViewerWindowPosition+Tags.Coordinates : System.Int32
+FS.GG.UI.SkiaViewer.ViewerWindowResizePolicy+Tags.FixedSize : System.Int32
+FS.GG.UI.SkiaViewer.ViewerWindowResizePolicy+Tags.Resizable : System.Int32
+FS.GG.UI.SkiaViewer.ViewerWindowStartupState+Tags.Fullscreen : System.Int32
+FS.GG.UI.SkiaViewer.ViewerWindowStartupState+Tags.Maximized : System.Int32
+FS.GG.UI.SkiaViewer.ViewerWindowStartupState+Tags.Minimized : System.Int32
+FS.GG.UI.SkiaViewer.ViewerWindowStartupState+Tags.Normal : System.Int32
+FS.GG.UI.SkiaViewer.ViewerWindowStartupState+Tags.WindowedFullscreen : System.Int32
+FS.GG.UI.SkiaViewer.ViewerWindowStateDiagnostic.Backend : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.ViewerWindowStateDiagnostic.ClientSize : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.ViewerWindowStateDiagnostic.FailureClass : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.SkiaViewer.ViewerWindowStateDiagnostic.Focusable : FS.GG.UI.SkiaViewer.ViewerObservedValue [get]
+FS.GG.UI.SkiaViewer.ViewerWindowStateDiagnostic.Focused : FS.GG.UI.SkiaViewer.ViewerObservedValue [get]
+FS.GG.UI.SkiaViewer.ViewerWindowStateDiagnostic.InputDevicesAvailable : FS.GG.UI.SkiaViewer.ViewerObservedValue [get]
+FS.GG.UI.SkiaViewer.ViewerWindowStateDiagnostic.Maximized : FS.GG.UI.SkiaViewer.ViewerObservedValue [get]
+FS.GG.UI.SkiaViewer.ViewerWindowStateDiagnostic.Message : System.String [get]
+FS.GG.UI.SkiaViewer.ViewerWindowStateDiagnostic.Minimized : FS.GG.UI.SkiaViewer.ViewerObservedValue [get]
+FS.GG.UI.SkiaViewer.ViewerWindowStateDiagnostic.NativeHandle : FS.GG.UI.SkiaViewer.ViewerObservedValue [get]
+FS.GG.UI.SkiaViewer.ViewerWindowStateDiagnostic.RenderableSurfaceAvailable : FS.GG.UI.SkiaViewer.ViewerObservedValue [get]
+FS.GG.UI.SkiaViewer.ViewerWindowStateDiagnostic.Visible : FS.GG.UI.SkiaViewer.ViewerObservedValue [get]
+FS.GG.UI.SkiaViewer.ViewerWindowStateDiagnostic.WindowInitialized : System.Boolean [get]
+FS.GG.UI.SkiaViewer.ViewerWindowStateDiagnostic.new(System.Boolean, FS.GG.UI.SkiaViewer.ViewerObservedValue, FS.GG.UI.SkiaViewer.ViewerObservedValue, FS.GG.UI.SkiaViewer.ViewerObservedValue, FS.GG.UI.SkiaViewer.ViewerObservedValue, FS.GG.UI.SkiaViewer.ViewerObservedValue, FS.GG.UI.SkiaViewer.ViewerObservedValue, Microsoft.FSharp.Core.FSharpOption<System.String>, FS.GG.UI.SkiaViewer.ViewerObservedValue, Microsoft.FSharp.Core.FSharpOption<System.String>, FS.GG.UI.SkiaViewer.ViewerObservedValue, Microsoft.FSharp.Core.FSharpOption<System.String>, System.String)
+FS.GG.UI.SkiaViewer.WindowObservationInputs.CaptureAttempted : System.Boolean [get]
+FS.GG.UI.SkiaViewer.WindowObservationInputs.CaptureSucceeded : Microsoft.FSharp.Core.FSharpOption<System.Boolean> [get]
+FS.GG.UI.SkiaViewer.WindowObservationInputs.ExternalObservationAttempted : System.Boolean [get]
+FS.GG.UI.SkiaViewer.WindowObservationInputs.ExternalWindowMatched : Microsoft.FSharp.Core.FSharpOption<System.Boolean> [get]
+FS.GG.UI.SkiaViewer.WindowObservationInputs.new(System.Boolean, Microsoft.FSharp.Core.FSharpOption<System.Boolean>, System.Boolean, Microsoft.FSharp.Core.FSharpOption<System.Boolean>)

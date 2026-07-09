@@ -1,0 +1,17 @@
+FS.GG.UI.Themes.Default.Theme.dark : FS.GG.UI.DesignSystem.Theme [get]
+FS.GG.UI.Themes.Default.Theme.light : FS.GG.UI.DesignSystem.Theme [get]
+FS.GG.UI.Themes.Default.Theme.resolve(Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.DesignSystem.Theme>) : FS.GG.UI.DesignSystem.Theme
+FS.GG.UI.Themes.Default.Theme.withAccent(FS.GG.UI.Scene.Color, FS.GG.UI.DesignSystem.Theme) : FS.GG.UI.DesignSystem.Theme
+FS.GG.UI.Themes.Default.Theme.withDensity(System.Double, FS.GG.UI.DesignSystem.Theme) : FS.GG.UI.DesignSystem.Theme
+FS.GG.UI.Themes.Default.Theming.RolePalette.Accent : FS.GG.UI.Scene.Color [get]
+FS.GG.UI.Themes.Default.Theming.RolePalette.Background : FS.GG.UI.Scene.Color [get]
+FS.GG.UI.Themes.Default.Theming.RolePalette.Danger : FS.GG.UI.Scene.Color [get]
+FS.GG.UI.Themes.Default.Theming.RolePalette.FocusRing : FS.GG.UI.Scene.Color [get]
+FS.GG.UI.Themes.Default.Theming.RolePalette.Foreground : FS.GG.UI.Scene.Color [get]
+FS.GG.UI.Themes.Default.Theming.RolePalette.Mode : FS.GG.UI.Themes.Default.Theming.ThemeMode [get]
+FS.GG.UI.Themes.Default.Theming.RolePalette.Muted : FS.GG.UI.Scene.Color [get]
+FS.GG.UI.Themes.Default.Theming.RolePalette.new(FS.GG.UI.Themes.Default.Theming.ThemeMode, FS.GG.UI.Scene.Color, FS.GG.UI.Scene.Color, FS.GG.UI.Scene.Color, FS.GG.UI.Scene.Color, FS.GG.UI.Scene.Color, FS.GG.UI.Scene.Color)
+FS.GG.UI.Themes.Default.Theming.ThemeMode+Tags.Dark : System.Int32
+FS.GG.UI.Themes.Default.Theming.ThemeMode+Tags.Light : System.Int32
+FS.GG.UI.Themes.Default.Theming.Theming.resolve(FS.GG.UI.Themes.Default.Theming.ThemeMode, FS.GG.UI.Scene.Color) : FS.GG.UI.Themes.Default.Theming.RolePalette
+FS.GG.UI.Themes.Default.Theming.Theming.toTheme(FS.GG.UI.Themes.Default.Theming.RolePalette) : FS.GG.UI.DesignSystem.Theme

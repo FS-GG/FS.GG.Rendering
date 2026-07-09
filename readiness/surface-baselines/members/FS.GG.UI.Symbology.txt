@@ -1,0 +1,132 @@
+FS.GG.UI.Symbology.AutoField+Tags.FactionCode : System.Int32
+FS.GG.UI.Symbology.AutoField+Tags.HealthTier : System.Int32
+FS.GG.UI.Symbology.AutoField+Tags.KlassCode : System.Int32
+FS.GG.UI.Symbology.AutoField+Tags.ShieldFlag : System.Int32
+FS.GG.UI.Symbology.AutoField+Tags.SpeedPips : System.Int32
+FS.GG.UI.Symbology.AutoField+Tags.StateCode : System.Int32
+FS.GG.UI.Symbology.AutoField+Tags.ThreatTier : System.Int32
+FS.GG.UI.Symbology.AutoLabelSpec.Fields : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Symbology.AutoField> [get]
+FS.GG.UI.Symbology.AutoLabelSpec.Separator : System.String [get]
+FS.GG.UI.Symbology.AutoLabelSpec.new(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Symbology.AutoField>, System.String)
+FS.GG.UI.Symbology.Faction+Tags.Ally : System.Int32
+FS.GG.UI.Symbology.Faction+Tags.Custom : System.Int32
+FS.GG.UI.Symbology.Faction+Tags.Enemy : System.Int32
+FS.GG.UI.Symbology.Faction+Tags.Neutral : System.Int32
+FS.GG.UI.Symbology.Grammar+Tags.Badge : System.Int32
+FS.GG.UI.Symbology.Grammar+Tags.Ring : System.Int32
+FS.GG.UI.Symbology.Grammar+Tags.Token : System.Int32
+FS.GG.UI.Symbology.Klass+Tags.Heavy : System.Int32
+FS.GG.UI.Symbology.Klass+Tags.Mobile : System.Int32
+FS.GG.UI.Symbology.Klass+Tags.Scout : System.Int32
+FS.GG.UI.Symbology.LabelAlign+Tags.Center : System.Int32
+FS.GG.UI.Symbology.LabelAlign+Tags.Justify : System.Int32
+FS.GG.UI.Symbology.LabelAlign+Tags.Leading : System.Int32
+FS.GG.UI.Symbology.LabelAlign+Tags.Trailing : System.Int32
+FS.GG.UI.Symbology.LabelMotion+Tags.Fade : System.Int32
+FS.GG.UI.Symbology.LabelMotion+Tags.Pulse : System.Int32
+FS.GG.UI.Symbology.LabelMotion+Tags.Scroll : System.Int32
+FS.GG.UI.Symbology.LabelMotion+Tags.TypeOn : System.Int32
+FS.GG.UI.Symbology.LabelParagraph.Align : FS.GG.UI.Symbology.LabelAlign [get]
+FS.GG.UI.Symbology.LabelParagraph.Runs : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Symbology.LabelRun> [get]
+FS.GG.UI.Symbology.LabelParagraph.new(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Symbology.LabelRun>, FS.GG.UI.Symbology.LabelAlign)
+FS.GG.UI.Symbology.LabelRun.Color : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Color> [get]
+FS.GG.UI.Symbology.LabelRun.Italic : Microsoft.FSharp.Core.FSharpOption<System.Boolean> [get]
+FS.GG.UI.Symbology.LabelRun.Scale : Microsoft.FSharp.Core.FSharpOption<System.Double> [get]
+FS.GG.UI.Symbology.LabelRun.Strike : Microsoft.FSharp.Core.FSharpOption<System.Boolean> [get]
+FS.GG.UI.Symbology.LabelRun.Text : System.String [get]
+FS.GG.UI.Symbology.LabelRun.Tracking : Microsoft.FSharp.Core.FSharpOption<System.Double> [get]
+FS.GG.UI.Symbology.LabelRun.Underline : Microsoft.FSharp.Core.FSharpOption<System.Boolean> [get]
+FS.GG.UI.Symbology.LabelRun.Weight : Microsoft.FSharp.Core.FSharpOption<System.Int32> [get]
+FS.GG.UI.Symbology.LabelRun.new(System.String, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Color>, Microsoft.FSharp.Core.FSharpOption<System.Int32>, Microsoft.FSharp.Core.FSharpOption<System.Double>, Microsoft.FSharp.Core.FSharpOption<System.Boolean>, Microsoft.FSharp.Core.FSharpOption<System.Boolean>, Microsoft.FSharp.Core.FSharpOption<System.Boolean>, Microsoft.FSharp.Core.FSharpOption<System.Double>)
+FS.GG.UI.Symbology.LabelText+Tags.Laid : System.Int32
+FS.GG.UI.Symbology.LabelText+Tags.Plain : System.Int32
+FS.GG.UI.Symbology.LabelText+Tags.Rich : System.Int32
+FS.GG.UI.Symbology.Legibility+Channel+Tags.Charge : System.Int32
+FS.GG.UI.Symbology.Legibility+Channel+Tags.Faction : System.Int32
+FS.GG.UI.Symbology.Legibility+Channel+Tags.Heading : System.Int32
+FS.GG.UI.Symbology.Legibility+Channel+Tags.Health : System.Int32
+FS.GG.UI.Symbology.Legibility+Channel+Tags.Klass : System.Int32
+FS.GG.UI.Symbology.Legibility+Channel+Tags.Motion : System.Int32
+FS.GG.UI.Symbology.Legibility+Channel+Tags.Shield : System.Int32
+FS.GG.UI.Symbology.Legibility+Channel+Tags.Sigil : System.Int32
+FS.GG.UI.Symbology.Legibility+Channel+Tags.Size : System.Int32
+FS.GG.UI.Symbology.Legibility+Channel+Tags.Speed : System.Int32
+FS.GG.UI.Symbology.Legibility+Channel+Tags.State : System.Int32
+FS.GG.UI.Symbology.Legibility+Channel+Tags.Threat : System.Int32
+FS.GG.UI.Symbology.Legibility+ChannelKind+Tags.Categorical : System.Int32
+FS.GG.UI.Symbology.Legibility+ChannelKind+Tags.Continuous : System.Int32
+FS.GG.UI.Symbology.Legibility+ChannelKind+Tags.Ordered : System.Int32
+FS.GG.UI.Symbology.Legibility+ChannelSpec.Capacity : System.Int32 [get]
+FS.GG.UI.Symbology.Legibility+ChannelSpec.Channel : FS.GG.UI.Symbology.Legibility+Channel [get]
+FS.GG.UI.Symbology.Legibility+ChannelSpec.Kind : FS.GG.UI.Symbology.Legibility+ChannelKind [get]
+FS.GG.UI.Symbology.Legibility+ChannelSpec.new(FS.GG.UI.Symbology.Legibility+Channel, FS.GG.UI.Symbology.Legibility+ChannelKind, System.Int32)
+FS.GG.UI.Symbology.Legibility+ChannelUsage.Capacity : System.Int32 [get]
+FS.GG.UI.Symbology.Legibility+ChannelUsage.Channel : FS.GG.UI.Symbology.Legibility+Channel [get]
+FS.GG.UI.Symbology.Legibility+ChannelUsage.DistinctLevels : System.Int32 [get]
+FS.GG.UI.Symbology.Legibility+ChannelUsage.Kind : FS.GG.UI.Symbology.Legibility+ChannelKind [get]
+FS.GG.UI.Symbology.Legibility+ChannelUsage.new(FS.GG.UI.Symbology.Legibility+Channel, FS.GG.UI.Symbology.Legibility+ChannelKind, System.Int32, System.Int32)
+FS.GG.UI.Symbology.Legibility+Finding.Channel : FS.GG.UI.Symbology.Legibility+Channel [get]
+FS.GG.UI.Symbology.Legibility+Finding.Message : System.String [get]
+FS.GG.UI.Symbology.Legibility+Finding.Severity : FS.GG.UI.Symbology.Legibility+Severity [get]
+FS.GG.UI.Symbology.Legibility+Finding.Units : Microsoft.FSharp.Collections.FSharpList<System.Int32> [get]
+FS.GG.UI.Symbology.Legibility+Finding.new(FS.GG.UI.Symbology.Legibility+Channel, FS.GG.UI.Symbology.Legibility+Severity, System.String, Microsoft.FSharp.Collections.FSharpList<System.Int32>)
+FS.GG.UI.Symbology.Legibility+Report.Findings : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Symbology.Legibility+Finding> [get]
+FS.GG.UI.Symbology.Legibility+Report.Usage : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Symbology.Legibility+ChannelUsage> [get]
+FS.GG.UI.Symbology.Legibility+Report.Verdict : FS.GG.UI.Symbology.Legibility+Verdict [get]
+FS.GG.UI.Symbology.Legibility+Report.new(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Symbology.Legibility+Finding>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Symbology.Legibility+ChannelUsage>, FS.GG.UI.Symbology.Legibility+Verdict)
+FS.GG.UI.Symbology.Legibility+Severity+Tags.Error : System.Int32
+FS.GG.UI.Symbology.Legibility+Severity+Tags.Warning : System.Int32
+FS.GG.UI.Symbology.Legibility+Verdict+Tags.Clean : System.Int32
+FS.GG.UI.Symbology.Legibility+Verdict+Tags.HasWarnings : System.Int32
+FS.GG.UI.Symbology.Legibility.score(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Symbology.Token>) : FS.GG.UI.Symbology.Legibility+Report
+FS.GG.UI.Symbology.Legibility.scoreAnimated(Microsoft.FSharp.Collections.FSharpList<System.Tuple<FS.GG.UI.Symbology.Motion, FS.GG.UI.Symbology.Token>>) : FS.GG.UI.Symbology.Legibility+Report
+FS.GG.UI.Symbology.Legibility.table : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Symbology.Legibility+ChannelSpec> [get]
+FS.GG.UI.Symbology.Motion+Tags.Blink : System.Int32
+FS.GG.UI.Symbology.Motion+Tags.Damage : System.Int32
+FS.GG.UI.Symbology.Motion+Tags.Idle : System.Int32
+FS.GG.UI.Symbology.Motion+Tags.Moving : System.Int32
+FS.GG.UI.Symbology.Motion+Tags.Pulse : System.Int32
+FS.GG.UI.Symbology.Motion+Tags.Spin : System.Int32
+FS.GG.UI.Symbology.Sigil+Tags.Bolt : System.Int32
+FS.GG.UI.Symbology.Sigil+Tags.Fang : System.Int32
+FS.GG.UI.Symbology.Sigil+Tags.Mark : System.Int32
+FS.GG.UI.Symbology.Sigil+Tags.Ring : System.Int32
+FS.GG.UI.Symbology.Symbology.align(FS.GG.UI.Symbology.LabelAlign, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Symbology.LabelRun>) : FS.GG.UI.Symbology.LabelParagraph
+FS.GG.UI.Symbology.Symbology.animate(FS.GG.UI.Symbology.Motion, FS.GG.UI.Symbology.Token, System.Double) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Symbology.Symbology.animateIn(FS.GG.UI.Symbology.Grammar, FS.GG.UI.Symbology.Motion, FS.GG.UI.Symbology.Token, System.Double) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Symbology.Symbology.autoLabel(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Symbology.AutoField>) : FS.GG.UI.Symbology.AutoLabelSpec
+FS.GG.UI.Symbology.Symbology.autoLabelSep(System.String, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Symbology.AutoField>) : FS.GG.UI.Symbology.AutoLabelSpec
+FS.GG.UI.Symbology.Symbology.badge(FS.GG.UI.Symbology.Token) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Symbology.Symbology.defaultToken : FS.GG.UI.Symbology.Token [get]
+FS.GG.UI.Symbology.Symbology.filmstrip(System.Int32, Microsoft.FSharp.Collections.FSharpList<System.Tuple<FS.GG.UI.Symbology.Motion, FS.GG.UI.Symbology.Token>>) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Symbology.Symbology.filmstripIn(FS.GG.UI.Symbology.Grammar, System.Int32, Microsoft.FSharp.Collections.FSharpList<System.Tuple<FS.GG.UI.Symbology.Motion, FS.GG.UI.Symbology.Token>>) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Symbology.Symbology.gallery(System.Int32, System.Double, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Symbology.Token>) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Symbology.Symbology.galleryIn(FS.GG.UI.Symbology.Grammar, System.Int32, System.Double, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Symbology.Token>) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Symbology.Symbology.labelMotion(FS.GG.UI.Symbology.LabelMotion) : FS.GG.UI.Symbology.LabelMotion
+FS.GG.UI.Symbology.Symbology.laidLabel(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Symbology.LabelParagraph>) : FS.GG.UI.Symbology.LabelText
+FS.GG.UI.Symbology.Symbology.paragraph(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Symbology.LabelRun>) : FS.GG.UI.Symbology.LabelParagraph
+FS.GG.UI.Symbology.Symbology.plainLabel(System.String) : FS.GG.UI.Symbology.LabelText
+FS.GG.UI.Symbology.Symbology.render(FS.GG.UI.Symbology.Grammar, FS.GG.UI.Symbology.Token) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Symbology.Symbology.richLabel(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Symbology.LabelRun>) : FS.GG.UI.Symbology.LabelText
+FS.GG.UI.Symbology.Symbology.ring(FS.GG.UI.Symbology.Token) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Symbology.Symbology.run(System.String) : FS.GG.UI.Symbology.LabelRun
+FS.GG.UI.Symbology.Symbology.token(FS.GG.UI.Symbology.Token) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Symbology.Token.AutoLabel : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Symbology.AutoLabelSpec> [get]
+FS.GG.UI.Symbology.Token.Charge : System.Double [get]
+FS.GG.UI.Symbology.Token.Cx : System.Double [get]
+FS.GG.UI.Symbology.Token.Cy : System.Double [get]
+FS.GG.UI.Symbology.Token.Faction : FS.GG.UI.Symbology.Faction [get]
+FS.GG.UI.Symbology.Token.Heading : System.Double [get]
+FS.GG.UI.Symbology.Token.Health : System.Double [get]
+FS.GG.UI.Symbology.Token.Klass : FS.GG.UI.Symbology.Klass [get]
+FS.GG.UI.Symbology.Token.Label : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Symbology.LabelText> [get]
+FS.GG.UI.Symbology.Token.LabelMotion : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Symbology.LabelMotion> [get]
+FS.GG.UI.Symbology.Token.R : System.Double [get]
+FS.GG.UI.Symbology.Token.Shield : System.Boolean [get]
+FS.GG.UI.Symbology.Token.Sigil : FS.GG.UI.Symbology.Sigil [get]
+FS.GG.UI.Symbology.Token.Speed : System.Int32 [get]
+FS.GG.UI.Symbology.Token.State : FS.GG.UI.Symbology.TokenState [get]
+FS.GG.UI.Symbology.Token.Threat : System.Double [get]
+FS.GG.UI.Symbology.Token.new(System.Double, System.Double, System.Double, System.Double, FS.GG.UI.Symbology.Faction, FS.GG.UI.Symbology.Klass, FS.GG.UI.Symbology.Sigil, FS.GG.UI.Symbology.TokenState, System.Double, System.Double, System.Int32, System.Double, System.Boolean, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Symbology.LabelText>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Symbology.AutoLabelSpec>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Symbology.LabelMotion>)
+FS.GG.UI.Symbology.TokenState+Tags.Confirmed : System.Int32
+FS.GG.UI.Symbology.TokenState+Tags.Suspected : System.Int32

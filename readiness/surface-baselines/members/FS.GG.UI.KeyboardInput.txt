@@ -1,0 +1,74 @@
+FS.GG.UI.KeyboardInput.KeyModifiers.Alt : System.Boolean [get]
+FS.GG.UI.KeyboardInput.KeyModifiers.Ctrl : System.Boolean [get]
+FS.GG.UI.KeyboardInput.KeyModifiers.Meta : System.Boolean [get]
+FS.GG.UI.KeyboardInput.KeyModifiers.Shift : System.Boolean [get]
+FS.GG.UI.KeyboardInput.KeyModifiers.new(System.Boolean, System.Boolean, System.Boolean, System.Boolean)
+FS.GG.UI.KeyboardInput.Keyboard.init(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.KeyboardBinding>) : System.Tuple<FS.GG.UI.KeyboardInput.KeyboardModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.KeyboardEffect>>
+FS.GG.UI.KeyboardInput.Keyboard.stateDisplay(FS.GG.UI.KeyboardInput.KeyboardModel) : FS.GG.UI.KeyboardInput.KeyboardStateDisplay
+FS.GG.UI.KeyboardInput.Keyboard.update(FS.GG.UI.KeyboardInput.KeyboardMsg, FS.GG.UI.KeyboardInput.KeyboardModel) : System.Tuple<FS.GG.UI.KeyboardInput.KeyboardModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.KeyboardEffect>>
+FS.GG.UI.KeyboardInput.KeyboardBinding.Command : System.String [get]
+FS.GG.UI.KeyboardInput.KeyboardBinding.Key : System.String [get]
+FS.GG.UI.KeyboardInput.KeyboardBinding.new(System.String, System.String)
+FS.GG.UI.KeyboardInput.KeyboardDiagnostic.Code : System.String [get]
+FS.GG.UI.KeyboardInput.KeyboardDiagnostic.Key : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.KeyboardInput.KeyboardDiagnostic.Message : System.String [get]
+FS.GG.UI.KeyboardInput.KeyboardDiagnostic.Severity : System.String [get]
+FS.GG.UI.KeyboardInput.KeyboardDiagnostic.new(System.String, System.String, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>)
+FS.GG.UI.KeyboardInput.KeyboardEffect+Tags.CommandResolved : System.Int32
+FS.GG.UI.KeyboardInput.KeyboardEffect+Tags.KeyStateChanged : System.Int32
+FS.GG.UI.KeyboardInput.KeyboardEffect+Tags.LayoutChanged : System.Int32
+FS.GG.UI.KeyboardInput.KeyboardEffect+Tags.ModeChanged : System.Int32
+FS.GG.UI.KeyboardInput.KeyboardEffect+Tags.PendingSequenceChanged : System.Int32
+FS.GG.UI.KeyboardInput.KeyboardEffect+Tags.ReportKeyboardDiagnostic : System.Int32
+FS.GG.UI.KeyboardInput.KeyboardEffect+Tags.RequestHostKeyCapture : System.Int32
+FS.GG.UI.KeyboardInput.KeyboardEffect+Tags.StateDisplayChanged : System.Int32
+FS.GG.UI.KeyboardInput.KeyboardModel.ActiveLayout : System.String [get]
+FS.GG.UI.KeyboardInput.KeyboardModel.ActiveModeStack : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.KeyboardInput.KeyboardModel.Bindings : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.KeyboardBinding> [get]
+FS.GG.UI.KeyboardInput.KeyboardModel.Diagnostics : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.KeyboardDiagnostic> [get]
+FS.GG.UI.KeyboardInput.KeyboardModel.LastCommand : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.KeyboardInput.KeyboardModel.PendingSequence : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.KeyboardInput.KeyboardModel.PersistentModeState : Microsoft.FSharp.Collections.FSharpMap<System.String, System.String> [get]
+FS.GG.UI.KeyboardInput.KeyboardModel.PressedKeys : Microsoft.FSharp.Collections.FSharpSet<System.String> [get]
+FS.GG.UI.KeyboardInput.KeyboardModel.RecentEffects : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.KeyboardEffect> [get]
+FS.GG.UI.KeyboardInput.KeyboardModel.StateDisplay : FS.GG.UI.KeyboardInput.KeyboardStateDisplay [get]
+FS.GG.UI.KeyboardInput.KeyboardModel.new(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.KeyboardBinding>, Microsoft.FSharp.Collections.FSharpSet<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpMap<System.String, System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.KeyboardDiagnostic>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.KeyboardEffect>, FS.GG.UI.KeyboardInput.KeyboardStateDisplay)
+FS.GG.UI.KeyboardInput.KeyboardMsg+Tags.FocusLost : System.Int32
+FS.GG.UI.KeyboardInput.KeyboardMsg+Tags.KeyDown : System.Int32
+FS.GG.UI.KeyboardInput.KeyboardMsg+Tags.KeyUp : System.Int32
+FS.GG.UI.KeyboardInput.KeyboardMsg+Tags.PopTemporaryMode : System.Int32
+FS.GG.UI.KeyboardInput.KeyboardMsg+Tags.PushTemporaryMode : System.Int32
+FS.GG.UI.KeyboardInput.KeyboardMsg+Tags.Reset : System.Int32
+FS.GG.UI.KeyboardInput.KeyboardMsg+Tags.ResolvePendingSequence : System.Int32
+FS.GG.UI.KeyboardInput.KeyboardMsg+Tags.SetActiveLayout : System.Int32
+FS.GG.UI.KeyboardInput.KeyboardMsg+Tags.SetPersistentMode : System.Int32
+FS.GG.UI.KeyboardInput.KeyboardStateDisplay.ActiveLayout : System.String [get]
+FS.GG.UI.KeyboardInput.KeyboardStateDisplay.ActiveModeStack : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.KeyboardInput.KeyboardStateDisplay.LastCommand : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.KeyboardInput.KeyboardStateDisplay.PendingSequence : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.KeyboardInput.KeyboardStateDisplay.PressedKeys : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.KeyboardInput.KeyboardStateDisplay.new(Microsoft.FSharp.Collections.FSharpList<System.String>, System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>)
+FS.GG.UI.KeyboardInput.ViewerKey+Tags.ArrowDown : System.Int32
+FS.GG.UI.KeyboardInput.ViewerKey+Tags.ArrowLeft : System.Int32
+FS.GG.UI.KeyboardInput.ViewerKey+Tags.ArrowRight : System.Int32
+FS.GG.UI.KeyboardInput.ViewerKey+Tags.ArrowUp : System.Int32
+FS.GG.UI.KeyboardInput.ViewerKey+Tags.Backspace : System.Int32
+FS.GG.UI.KeyboardInput.ViewerKey+Tags.Digit : System.Int32
+FS.GG.UI.KeyboardInput.ViewerKey+Tags.Enter : System.Int32
+FS.GG.UI.KeyboardInput.ViewerKey+Tags.Escape : System.Int32
+FS.GG.UI.KeyboardInput.ViewerKey+Tags.Function : System.Int32
+FS.GG.UI.KeyboardInput.ViewerKey+Tags.Letter : System.Int32
+FS.GG.UI.KeyboardInput.ViewerKey+Tags.Space : System.Int32
+FS.GG.UI.KeyboardInput.ViewerKey+Tags.Unknown : System.Int32
+FS.GG.UI.KeyboardInput.ViewerKeyDirection+Tags.KeyDown : System.Int32
+FS.GG.UI.KeyboardInput.ViewerKeyDirection+Tags.KeyUp : System.Int32
+FS.GG.UI.KeyboardInput.ViewerKeyEvent.Direction : FS.GG.UI.KeyboardInput.ViewerKeyDirection [get]
+FS.GG.UI.KeyboardInput.ViewerKeyEvent.RawKey : System.String [get]
+FS.GG.UI.KeyboardInput.ViewerKeyEvent.new(System.String, FS.GG.UI.KeyboardInput.ViewerKeyDirection)
+FS.GG.UI.KeyboardInput.ViewerKeyboard.formatChord(FS.GG.UI.KeyboardInput.KeyModifiers, System.String) : System.String
+FS.GG.UI.KeyboardInput.ViewerKeyboard.isModifierKey(System.String) : System.Boolean
+FS.GG.UI.KeyboardInput.ViewerKeyboard.noModifiers : FS.GG.UI.KeyboardInput.KeyModifiers [get]
+FS.GG.UI.KeyboardInput.ViewerKeyboard.normalize(System.String) : FS.GG.UI.KeyboardInput.ViewerKey
+FS.GG.UI.KeyboardInput.ViewerKeyboard.normalizeEvent(FS.GG.UI.KeyboardInput.ViewerKeyEvent) : System.Tuple<FS.GG.UI.KeyboardInput.ViewerKey, System.Boolean>
+FS.GG.UI.KeyboardInput.ViewerKeyboard.normalizeEventWithModifiers(FS.GG.UI.KeyboardInput.ViewerKeyEvent) : System.Tuple<FS.GG.UI.KeyboardInput.ViewerKey, System.Boolean, FS.GG.UI.KeyboardInput.KeyModifiers>
+FS.GG.UI.KeyboardInput.ViewerKeyboard.toKeyId(FS.GG.UI.KeyboardInput.ViewerKey) : System.String

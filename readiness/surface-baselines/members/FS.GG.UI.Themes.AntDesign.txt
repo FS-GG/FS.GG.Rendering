@@ -1,0 +1,5 @@
+FS.GG.UI.Themes.AntDesign.AntIntentPolicy.dark : FS.GG.UI.DesignSystem.IntentPolicy [get]
+FS.GG.UI.Themes.AntDesign.AntIntentPolicy.light : FS.GG.UI.DesignSystem.IntentPolicy [get]
+FS.GG.UI.Themes.AntDesign.AntTheme.antDark : FS.GG.UI.DesignSystem.Theme [get]
+FS.GG.UI.Themes.AntDesign.AntTheme.antLight : FS.GG.UI.DesignSystem.Theme [get]
+FS.GG.UI.Themes.AntDesign.AntTheme.resolve(Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.DesignSystem.Theme>) : FS.GG.UI.DesignSystem.Theme

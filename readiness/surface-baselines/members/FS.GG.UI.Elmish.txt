@@ -1,0 +1,11 @@
+FS.GG.UI.Elmish.Animation.tickSubscription<model, msg>(FSharpFunc<model, System.Boolean>, FSharpFunc<System.TimeSpan, msg>, System.TimeSpan, model) : FSharpList<Tuple<Microsoft.FSharp.Collections.FSharpList<System.String>, FSharpFunc<FSharpFunc<msg, Microsoft.FSharp.Core.Unit>, System.IDisposable>>>
+FS.GG.UI.Elmish.ElmishAdapter.init<model, msg>(FS.GG.UI.SkiaViewer.ViewerOptions, model, FS.GG.UI.Scene.SceneNode) : Tuple<ElmishAdapterModel<model>, FSharpList<ElmishAdapterEffect<msg>>>
+FS.GG.UI.Elmish.ElmishAdapter.update<model, msg>(FSharpFunc<model, FS.GG.UI.Scene.SceneNode>, ElmishAdapterMsg<msg>, ElmishAdapterModel<model>) : Tuple<ElmishAdapterModel<model>, FSharpList<ElmishAdapterEffect<msg>>>
+FS.GG.UI.Elmish.ElmishAdapterEffect`1+Tags.DispatchUser : System.Int32
+FS.GG.UI.Elmish.ElmishAdapterEffect`1+Tags.DispatchViewer : System.Int32
+FS.GG.UI.Elmish.ElmishAdapterModel`1.Scene : FS.GG.UI.Scene.SceneNode [get]
+FS.GG.UI.Elmish.ElmishAdapterModel`1.UserModel : model [get]
+FS.GG.UI.Elmish.ElmishAdapterModel`1.Viewer : FS.GG.UI.SkiaViewer.ViewerModel [get]
+FS.GG.UI.Elmish.ElmishAdapterModel`1.new(model, FS.GG.UI.Scene.SceneNode, FS.GG.UI.SkiaViewer.ViewerModel)
+FS.GG.UI.Elmish.ElmishAdapterMsg`1+Tags.UserMsg : System.Int32
+FS.GG.UI.Elmish.ElmishAdapterMsg`1+Tags.ViewerMsg : System.Int32

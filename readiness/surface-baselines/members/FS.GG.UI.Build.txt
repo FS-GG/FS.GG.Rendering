@@ -1,0 +1,13 @@
+FS.GG.UI.Build.Evidence.Audit.evaluate(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Build.Evidence.EvidenceNode>) : FS.GG.UI.Build.Evidence.Verdict
+FS.GG.UI.Build.Evidence.Audit.render(FS.GG.UI.Build.Evidence.Verdict, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Build.Evidence.EvidenceNode>) : System.String
+FS.GG.UI.Build.Evidence.EvidenceNode.ArtifactPath : System.String [get]
+FS.GG.UI.Build.Evidence.EvidenceNode.Kind : System.String [get]
+FS.GG.UI.Build.Evidence.EvidenceNode.State : FS.GG.UI.Build.Evidence.EvidenceState [get]
+FS.GG.UI.Build.Evidence.EvidenceNode.new(System.String, System.String, FS.GG.UI.Build.Evidence.EvidenceState)
+FS.GG.UI.Build.Evidence.EvidenceState+Tags.PresentInvalid : System.Int32
+FS.GG.UI.Build.Evidence.EvidenceState+Tags.PresentValid : System.Int32
+FS.GG.UI.Build.Evidence.GeneratedRunner.run(System.String, System.String) : System.Int32
+FS.GG.UI.Build.Evidence.Graph.render(System.String, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Build.Evidence.EvidenceNode>) : System.String
+FS.GG.UI.Build.Evidence.Graph.sense(System.String) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Build.Evidence.EvidenceNode>
+FS.GG.UI.Build.Evidence.Verdict+Tags.Fail : System.Int32
+FS.GG.UI.Build.Evidence.Verdict+Tags.Pass : System.Int32
