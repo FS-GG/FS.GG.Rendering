@@ -118,6 +118,9 @@ module Diagnostics =
     let frameRenderFailed detail =
         create DiagnosticSeverity.Error DiagnosticStage.FrameRender "OpenGL/Skia frame rendering failed. The viewer has no fallback renderer." (Some detail)
 
+    let frameLoopAbandoned reason detail =
+        create DiagnosticSeverity.Fatal DiagnosticStage.FrameRender reason detail
+
     let screenshotFailed detail =
         create DiagnosticSeverity.Error DiagnosticStage.ScreenshotCapture "Screenshot capture failed." (Some detail)
 
