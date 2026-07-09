@@ -140,21 +140,21 @@
       "FS.GG.UI.Controls": {
         "type": "Project",
         "dependencies": {
-          "FS.GG.UI.DesignSystem": "[0.2.0-preview.1, )",
-          "FS.GG.UI.Diagnostics": "[0.2.0-preview.1, )",
-          "FS.GG.UI.KeyboardInput": "[0.2.0-preview.1, )",
-          "FS.GG.UI.Layout": "[0.2.0-preview.1, )",
-          "FS.GG.UI.Scene": "[0.2.0-preview.1, )",
+          "FS.GG.UI.DesignSystem": "[0.3.0-preview.1, )",
+          "FS.GG.UI.Diagnostics": "[0.3.0-preview.1, )",
+          "FS.GG.UI.KeyboardInput": "[0.3.0-preview.1, )",
+          "FS.GG.UI.Layout": "[0.3.0-preview.1, )",
+          "FS.GG.UI.Scene": "[0.3.0-preview.1, )",
           "FSharp.Core": "[10.1.301, )"
         }
       },
       "FS.GG.UI.Controls.Elmish": {
         "type": "Project",
         "dependencies": {
-          "FS.GG.UI.Controls": "[0.2.0-preview.1, )",
-          "FS.GG.UI.Diagnostics": "[0.2.0-preview.1, )",
-          "FS.GG.UI.KeyboardInput": "[0.2.0-preview.1, )",
-          "FS.GG.UI.SkiaViewer": "[0.2.0-preview.1, )",
+          "FS.GG.UI.Controls": "[0.3.0-preview.1, )",
+          "FS.GG.UI.Diagnostics": "[0.3.0-preview.1, )",
+          "FS.GG.UI.KeyboardInput": "[0.3.0-preview.1, )",
+          "FS.GG.UI.SkiaViewer": "[0.3.0-preview.1, )",
           "FSharp.Core": "[10.1.301, )",
           "Fable.Elmish": "[5.0.2, )"
         }
@@ -162,7 +162,7 @@
       "FS.GG.UI.DesignSystem": {
         "type": "Project",
         "dependencies": {
-          "FS.GG.UI.Scene": "[0.2.0-preview.1, )",
+          "FS.GG.UI.Scene": "[0.3.0-preview.1, )",
           "FSharp.Core": "[10.1.301, )"
         }
       },
@@ -175,7 +175,7 @@
       "FS.GG.UI.KeyboardInput": {
         "type": "Project",
         "dependencies": {
-          "FS.GG.UI.Scene": "[0.2.0-preview.1, )",
+          "FS.GG.UI.Scene": "[0.3.0-preview.1, )",
           "FSharp.Core": "[10.1.301, )",
           "YamlDotNet": "[18.1.0, )"
         }
@@ -183,7 +183,7 @@
       "FS.GG.UI.Layout": {
         "type": "Project",
         "dependencies": {
-          "FS.GG.UI.Scene": "[0.2.0-preview.1, )",
+          "FS.GG.UI.Scene": "[0.3.0-preview.1, )",
           "FSharp.Core": "[10.1.301, )",
           "Yoga.Net": "[3.2.3, )"
         }
@@ -197,9 +197,9 @@
       "FS.GG.UI.SkiaViewer": {
         "type": "Project",
         "dependencies": {
-          "FS.GG.UI.Diagnostics": "[0.2.0-preview.1, )",
-          "FS.GG.UI.KeyboardInput": "[0.2.0-preview.1, )",
-          "FS.GG.UI.Scene": "[0.2.0-preview.1, )",
+          "FS.GG.UI.Diagnostics": "[0.3.0-preview.1, )",
+          "FS.GG.UI.KeyboardInput": "[0.3.0-preview.1, )",
+          "FS.GG.UI.Scene": "[0.3.0-preview.1, )",
           "FSharp.Core": "[10.1.301, )",
           "Fable.Elmish": "[5.0.2, )",
           "HarfBuzzSharp.NativeAssets.Linux": "[14.2.0, )",
@@ -217,8 +217,8 @@
       "FS.GG.UI.Testing": {
         "type": "Project",
         "dependencies": {
-          "FS.GG.UI.Diagnostics": "[0.2.0-preview.1, )",
-          "FS.GG.UI.Scene": "[0.2.0-preview.1, )",
+          "FS.GG.UI.Diagnostics": "[0.3.0-preview.1, )",
+          "FS.GG.UI.Scene": "[0.3.0-preview.1, )",
           "FSharp.Core": "[10.1.301, )",
           "SkiaSharp": "[4.148.0, )"
         }
