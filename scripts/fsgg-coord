@@ -87,8 +87,10 @@
 #                                             # (default Ready, so the item returns to the pool)
 #   fsgg-coord who [--repo R] [--local] [--json]
 #                                             # WHO holds WHAT, right now: worker, age, lease
-#                                             # health, declared paths, branch. --local joins the
-#                                             # local `git worktree list` so you never have to go
+#                                             # health, declared paths, branch. Finds work by its
+#                                             # claim MARKER, so it sees an item the board never
+#                                             # heard of (or whose Status flip failed). --local joins
+#                                             # the local `git worktree list` so you never have to go
 #                                             # spelunking through worktrees to see what's running.
 #   fsgg-coord reap [--repo R] [--apply]      # find claims whose lease expired (a worker died);
 #                                             # dry-run by default, --apply releases them.
@@ -1469,16 +1471,20 @@ release_cmd() {
 # The detect and the strip must also agree on case, or a mis-cased `PATHS:` line survives grep and
 # keeps its prefix as a bogus `PATHS:` touch-set token. `widen` rewrites on `[Pp]aths:` too, so that
 # is the one spelling the whole tool recognizes.
-paths_of() {  # $1=owner $2=repo $3=num -> one normalized touch-set token per line (possibly none)
-  local body
-  body="$(gh api "repos/$1/$2/issues/$3" --jq '.body // ""' 2>/dev/null)" \
-    || die "cannot read the touch-set on $2#$3 (rate limit? network?) — refusing to schedule against an unknown touch-set."
-  printf '%s\n' "$body" \
+paths_from_body() {  # $1=issue body -> one normalized touch-set token per line (possibly none)
+  printf '%s\n' "$1" \
     | grep -E '^[[:space:]]*[Pp]aths:' \
     | sed -E 's/^[[:space:]]*[Pp]aths:[[:space:]]*//' \
     | tr ',' ' ' | tr '\t' ' ' | tr -s ' ' '\n' | sed '/^$/d' \
     | sed -E 's#^\./##; s#/\*\*$##; s#/\*$##; s#/+$##' \
     || true                                  # normalize: strip ./ prefix, /** /* and trailing /
+}
+
+paths_of() {  # $1=owner $2=repo $3=num -> one normalized touch-set token per line (possibly none)
+  local body
+  body="$(gh api "repos/$1/$2/issues/$3" --jq '.body // ""' 2>/dev/null)" \
+    || die "cannot read the touch-set on $2#$3 (rate limit? network?) — refusing to schedule against an unknown touch-set."
+  paths_from_body "$body"
 }
 # The comparison core, shared by `overlap`, `batch`, `take`, and `widen`. Two newline-separated token
 # lists in; the conflicting pairs out (empty = disjoint). Subtree containment in either direction.
@@ -1507,30 +1513,118 @@ live_claim_worker() {  # $1=owner $2=repo $3=num
   claims_of "$1" "$2" "$3" | jq -r 'map(select(.stale | not)) | .[0].worker // empty'
 }
 
+# Every OPEN issue in a repo that could possibly hold a claim, with the body its touch-set is
+# declared in. A claim marker IS a comment, so `comments == 0` cannot hold a lock: that prune is
+# sound and free, straight off the list payload. Pull requests are excluded — a PR is neither
+# claimable nor schedulable.
+#
+# --paginate, NOT the ETag-revalidated `issues` command, for two reasons, both load-bearing:
+#   * `issues` asks for ONE page of 100. A repo's 101st open issue would silently never be a
+#     candidate, so a live claim on it would be invisible and — via `batch` — its touch-set would be
+#     handed to a second worker. The lock may not have a size limit.
+#   * A lock may never be read from a CACHE. A 304 serving a body captured before the claim was
+#     posted would report `comments: 0` and hide a live marker — the exact blind spot this exists to
+#     close. Going direct means there is no ETag to be stale.
+# A read we cannot complete DIES, exactly as `claims_of` and `paths_of` do: an unreadable repo may be
+# holding claims, and answering "nothing is running" for it is how the scheduler double-books work.
+open_claim_candidates() {  # $1=owner/repo -> JSON array of {number,title,url,body}
+  local o="${1%%/*}" r="${1#*/}" out
+  out="$(gh api --paginate "repos/$o/$r/issues?state=open&per_page=100" \
+           --jq '.[] | select(.pull_request == null) | select(.comments > 0)
+                 | {number, title, url: .html_url, body: (.body // "")}' 2>/dev/null)" \
+    || die "cannot list the open issues of $o/$r (rate limit? network? no access?) — refusing to guess which of its items are claimed."
+  printf '%s' "$out" | jq -s '.'
+}
+
 # ---- active_claims: the one view of "what is actually running right now" -------------------------
 # Everything that needs to reason about in-flight work — who, reap, batch, take, overlap --active,
-# widen, inbox — reads it from here. Board `Status: In progress` names the candidates (one thrifty
-# GraphQL scan); each candidate then costs 2 cheap REST reads (its comments for the claim marker, its
-# body for the touch-set). The in-progress set is bounded by the number of workers, so this is small.
+# widen, inbox — reads it from here.
 #
-# `worker: null` is the state the FS-GG/.github incident was in: the board says In progress, but NO
-# claim marker exists — someone is working the item outside the protocol, and nothing records who.
-# We surface that as `unclaimed` rather than pretending the item is free.
+# THE MARKER IS THE LOCK, so the marker — not the board column — defines the candidate set. `claim`
+# writes `Status: In progress` strictly best-effort (a subshell that swallows a Projects v2 5xx, and
+# an item that is not on the board at all never gets a column). Seeding this set from the column
+# alone therefore lost exactly the claims it most needed to see (FS-GG/.github#257): `who` could not
+# report them, `reap` could not collect a dead worker off them, `inbox` dropped their messages, and —
+# worse than the issue supposed — `batch` never RESERVED their touch-sets, so it would cheerfully
+# schedule a Ready item overlapping an item somebody was already holding.
+#
+# So the candidates are a UNION of two arms:
+#   A. board `Status: In progress` — an item here with NO marker is the state the FS-GG/.github
+#      incident was found in: someone working outside the protocol, nothing recording who. We surface
+#      that as `unclaimed` rather than pretending the item is free. Only this arm can produce it.
+#   B. OPEN issues carrying at least one comment. A claim marker IS a comment, so `comments == 0`
+#      cannot hold a lock — a sound, free prune straight off the list payload. This arm is what sees
+#      a claim the board lost track of, wherever it sits (Ready, Backlog, or off-board entirely).
+#
+# Cost: the board scan is already paid for. Arm B adds one REST issue-list per repo (PAGINATED, see
+# open_claim_candidates), which also carries each issue's body — so a touch-set costs zero extra
+# reads. Each surviving candidate then costs one comments read.
+#
+# KNOWN BOUND: with no --repo, the repos to scan are derived from the board. A claim in a repo with
+# ZERO board items is therefore invisible to an org-wide `who`/`reap`. Pass --repo to reach it.
 active_claims() {
   local repo="${1:-}"
-  local items n=0 i=0 tmp
-  items="$(board_items | board_filter "$repo" "In progress" "" "0")"
-  n="$(jq 'length' <<<"$items")"
+  local board inprog repos offboard cand n=0 i=0 tmp
+
+  board="$(board_items)"
+  inprog="$(board_filter "$repo" "In progress" "" "0" <<<"$board")"
+
+  # Which repos could hold an off-board claim? Derive `owner/repo` from the board scan already in
+  # hand. A --repo naming no board item at all still resolves, against the default owner.
+  repos="$(board_filter "$repo" "" "" "0" <<<"$board" | jq -r '[.[].repo // empty] | unique | .[]')"
+  if [ -z "$repos" ] && [ -n "$repo" ]; then
+    case "$repo" in */*) repos="$repo" ;; *) repos="$OWNER/$repo" ;; esac
+  fi
+
+  offboard='[]'
+  local r lst
+  while IFS= read -r r; do
+    [ -n "$r" ] || continue
+    lst="$(open_claim_candidates "$r")"
+    offboard="$(jq -c -n --argjson acc "$offboard" --argjson lst "$lst" --arg repo "$r" \
+                  '$acc + [ $lst[] | . + {repo: $repo} ]')"
+  done <<<"$repos"
+
+  # Merge the arms. `body` rides in from arm B (free touch-set); `inProgress` remembers arm A, which
+  # is the ONLY thing that licenses an `unclaimed` verdict on a markerless item.
+  cand="$(jq -c -n --argjson a "$inprog" --argjson b "$offboard" '
+    ( [ $a[] | select(.number != null)
+        | {repo, number, title, url, body: null, inProgress: true} ]
+    + [ $b[] | {repo, number, title, url, body, inProgress: false} ] )
+    | group_by("\(.repo)#\(.number)")
+    | map({ repo:       .[0].repo,
+            number:     .[0].number,
+            title:      ([ .[].title ] | map(select(. != null and . != "")) | first // ""),
+            url:        ([ .[].url  ] | map(select(. != null)) | first // null),
+            body:       ([ .[].body ] | map(select(. != null)) | first // null),
+            inProgress: ([ .[].inProgress ] | any) })
+    | sort_by(.repo, .number)')"
+
+  n="$(jq 'length' <<<"$cand")"
   tmp="$(mktemp "$CACHE/.claims.XXXXXX")"; : >"$tmp"
   while [ "$i" -lt "$n" ]; do
-    local it r num o rp claims paths
-    it="$(jq -c ".[$i]" <<<"$items")"; i=$((i + 1))
-    r="$(jq -r '.repo // ""' <<<"$it")"; num="$(jq -r '.number // ""' <<<"$it")"
-    { [ -n "$r" ] && [ -n "$num" ]; } || continue
-    o="${r%%/*}"; rp="${r#*/}"
+    local it r2 num o rp claims paths pathsjson
+    it="$(jq -c ".[$i]" <<<"$cand")"; i=$((i + 1))
+    r2="$(jq -r '.repo // ""' <<<"$it")"; num="$(jq -r '.number // ""' <<<"$it")"
+    { [ -n "$r2" ] && [ -n "$num" ]; } || continue
+    o="${r2%%/*}"; rp="${r2#*/}"
     claims="$(claims_of "$o" "$rp" "$num")"
-    paths="$(paths_of "$o" "$rp" "$num" | jq -R -s -c 'split("\n") | map(select(length > 0))')"
-    jq -c -n --argjson it "$it" --argjson claims "$claims" --argjson paths "$paths" '
+
+    # An arm-B candidate with no marker is just an issue that someone commented on — NOT in-flight.
+    # Only arm A (the board's own `In progress`) may report a markerless item, and then as
+    # `unclaimed`. Without this, every chatty open issue in the org would read as occupied work.
+    if [ "$(jq 'length' <<<"$claims")" -eq 0 ] && [ "$(jq -r '.inProgress' <<<"$it")" != "true" ]; then
+      continue
+    fi
+
+    if [ "$(jq -r '.body == null' <<<"$it")" = "true" ]; then
+      paths="$(paths_of "$o" "$rp" "$num")"          # arm A only (board item, closed or unlisted)
+    else
+      paths="$(paths_from_body "$(jq -r '.body' <<<"$it")")"
+    fi
+    pathsjson="$(printf '%s' "$paths" | jq -R -s -c 'split("\n") | map(select(length > 0))')"
+
+    jq -c -n --argjson it "$it" --argjson claims "$claims" --argjson paths "$pathsjson" '
       ($claims | map(select(.stale | not)) | first) as $live
       | ($claims | first) as $any
       | { repo: $it.repo, number: $it.number, title: $it.title, url: $it.url, paths: $paths,
@@ -1652,7 +1746,7 @@ who_cmd() {
   if [ -n "$json" ]; then jq '.' <<<"$claims"; return 0; fi
 
   if [ "$(jq 'length' <<<"$claims")" -eq 0 ]; then
-    echo "fsgg-coord: no items are In progress${repo:+ for repo '$repo'} on board '$TITLE'."
+    echo "fsgg-coord: nothing is in flight${repo:+ for repo '$repo'} (no claim markers, no items In progress)."
     return 0
   fi
   jq -r --arg wt "${want_local:-}" '.[]
@@ -1728,8 +1822,16 @@ reap_cmd() {
       continue
     fi
     notify_reaped "$o" "$rp" "$num" "$cw" "$age" "$(worker)"
-    ( set_field "$r#$num" Status Ready ) >/dev/null 2>&1 || true
-    printf 'reaped  %s#%s  worker %s  (idle %sm)  ·  board: Ready\n' "$rp" "$num" "$cw" "$age"
+    # `reap` now collects claims on items the board never had (that is the point of finding them by
+    # marker), so the Status write can legitimately have nothing to write to. Report what actually
+    # happened rather than asserting a board mutation we may not have performed.
+    local rnote
+    if ( set_field "$r#$num" Status Ready ) >/dev/null 2>&1; then
+      rnote="board: Ready"
+    else
+      rnote="not on board (marker cleared; nothing to reset)"
+    fi
+    printf 'reaped  %s#%s  worker %s  (idle %sm)  ·  %s\n' "$rp" "$num" "$cw" "$age" "$rnote"
   done
   [ -z "$apply" ] && echo "fsgg-coord: dry run — pass --apply to release these." >&2
   return 0
@@ -1768,7 +1870,9 @@ batch_cmd() {
   fi
   cands="$(jq -c 'map(select(.blocked | not) | select(.number != null)) | sort_by(.number)' <<<"$cands")"
 
-  # Touch-sets already spoken for by in-flight work.
+  # Touch-sets already spoken for by in-flight work. `active_claims` finds a claim by its MARKER, so
+  # this reserves the touch-sets of items the board has lost track of (a failed `Status` flip, or an
+  # item never added to the board) — which the column-seeded version silently left free to schedule.
   local active_paths; active_paths="$(jq -r '.[].paths[]?' <<<"$active")"
 
   local -a chosen_ids=() chosen_paths=()
