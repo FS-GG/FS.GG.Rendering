@@ -2,10 +2,11 @@ module Feature127ColorPolicyTests
 
 // Feature 127 (Workstream F, F2) — color-validation policies (`wcag` / `ant`).
 //
-// The policy ENGINE is `module internal ColorPolicy` in FS.GG.UI.Color (reached here via
-// InternalsVisibleTo). The design-system PAIRING CATALOG, all evaluation, and the report drift gate
-// live in this test assembly (the one place that already references Color + DesignTokens +
-// the internal DesignTokensExt), so DesignSystem stays at dep = Scene only.
+// The policy ENGINE is `module internal ColorPolicy` in FS.GG.UI.Color, and the pairing CATALOGS are
+// `module internal StyleCatalog` beside it (both reached here via InternalsVisibleTo). Issue #174
+// moved the catalogs out of this file: while they lived here the policy linted a hand-authored list
+// and never saw a `ResolvedStyle` the resolver produced, so no consumer could violate it. This
+// assembly now supplies only the THEMES and the report drift gate.
 //
 // Coverage:
 //   * US1 (FR-002/SC-001): `wcag` verdicts byte-identical to Contrast.check; default = wcag;
@@ -14,6 +15,9 @@ module Feature127ColorPolicyTests
 //     (≥1 pairing diverges), covers all Ant families, discloses out-of-scope + no-overclaim.
 //   * US3 (FR-008/FR-009/SC-004): the committed reports render idempotently, are complete, and the
 //     drift gate byte-compares them against the live render (with an UPDATE_POLICY_REPORTS=1 regen).
+//   * Issue #174: the policy evaluates the styles `StyleResolver` actually emits — the emitted
+//     catalog is derived from the resolver, a low-contrast theme is rejected, and the emitted
+//     reports are drift-gated so a newly unreadable style cannot land unremarked.
 
 open System
 open System.IO
@@ -31,43 +35,34 @@ let private pairing name fg bg role : ColorPolicy.Pairing =
       Background = bg
       Role = role }
 
-/// The shared catalog: real design-system token values (public DesignTokens primitives + the F1
-/// internal Ant families via IVT). Both policies evaluate this same list; the order is the report
-/// row order. The Ant semantic families (primary/success/warning/error/info/text-on-surface) are
-/// all present (SC-003); `primary-hover-fg-on-surface` is the policy-divergent pairing (ratio ≈
-/// 2.99: WCAG Fail, ant Pass — drives FR-005 divergence and FR-010 no-overclaim);
-/// `decorative-hairline-on-surface` is the out-of-scope exemplar for `ant` (FR-011).
-let private catalog =
-    [ pairing "text-on-canvas" DesignTokensExt.Alias.Light.textDefault DesignTokensExt.Alias.Light.surfaceCanvas Text
-      pairing "text-on-surface" DesignTokensExt.Alias.Light.textDefault DesignTokensExt.Map.Light.colorBgContainer Text
-      pairing
-          "muted-text-on-surface"
-          DesignTokensExt.Alias.Light.textSecondary
-          DesignTokensExt.Map.Light.colorBgContainer
-          Text
-      pairing "primary-fg-on-surface" DesignTokensExt.Seed.colorPrimary DesignTokensExt.Map.Light.colorBgContainer GraphicOrUi
-      pairing "success-fg-on-surface" DesignTokensExt.Seed.colorSuccess DesignTokensExt.Map.Light.colorBgContainer GraphicOrUi
-      pairing "warning-fg-on-surface" DesignTokensExt.Seed.colorWarning DesignTokensExt.Map.Light.colorBgContainer GraphicOrUi
-      pairing "error-fg-on-surface" DesignTokensExt.Seed.colorError DesignTokensExt.Map.Light.colorBgContainer GraphicOrUi
-      pairing "info-fg-on-surface" DesignTokensExt.Seed.colorInfo DesignTokensExt.Map.Light.colorBgContainer GraphicOrUi
-      pairing
-          "primary-hover-fg-on-surface"
-          DesignTokensExt.Map.Light.colorPrimaryHover
-          DesignTokensExt.Map.Light.colorBgContainer
-          GraphicOrUi
-      pairing
-          "decorative-hairline-on-surface"
-          DesignTokensExt.Map.Light.colorBorder
-          DesignTokensExt.Map.Light.colorBgContainer
-          Decorative ]
+/// The design-system token catalog — now owned by the library (issue #174), not this file.
+let private catalog = StyleCatalog.designSystemTokens
+
+/// The built-in themes whose emitted style set is drift-gated. Fully qualified: the `Theme` modules
+/// would otherwise shadow the `Theme` type this file also names.
+let private gatedThemes: (string * Theme) list =
+    [ "default-light", FS.GG.UI.Themes.Default.Theme.light
+      "default-dark", FS.GG.UI.Themes.Default.Theme.dark
+      "ant-light", FS.GG.UI.Themes.AntDesign.AntTheme.antLight
+      "ant-dark", FS.GG.UI.Themes.AntDesign.AntTheme.antDark ]
 
 let private reportPath name =
     Path.Combine(repositoryRoot, "docs", "reports", sprintf "color-policy-%s.md" name)
 
+let private emittedReportPath slug = reportPath (sprintf "emitted-%s" slug)
+
+/// The emitted reports are rendered under `wcag` — the WCAG-certified authority is the one whose
+/// verdict a low-contrast style must answer to.
+let private emittedReport (slug: string) (theme: Theme) =
+    ColorPolicy.renderReportFor
+        (Some(sprintf "emitted styles, `%s` theme" slug))
+        ColorPolicy.wcag
+        (StyleCatalog.emittedPairings theme)
+
 let private resultFor (results: ColorPolicy.PairingResult list) name =
     results |> List.find (fun r -> r.Pairing = name)
 
-// T022 / US3 regeneration: when UPDATE_POLICY_REPORTS=1, (re)write both committed reports via the
+// T022 / US3 regeneration: when UPDATE_POLICY_REPORTS=1, (re)write every committed report via the
 // SAME renderReport evaluator the drift gate verifies. Runs at module load (before the tests read
 // the files), so a single `UPDATE_POLICY_REPORTS=1 dotnet test` run regenerates then passes.
 let private regenerateReportsIfRequested () =
@@ -76,6 +71,9 @@ let private regenerateReportsIfRequested () =
         Directory.CreateDirectory dir |> ignore
         File.WriteAllText(reportPath "wcag", ColorPolicy.renderReport ColorPolicy.wcag catalog)
         File.WriteAllText(reportPath "ant", ColorPolicy.renderReport ColorPolicy.ant catalog)
+
+        for slug, theme in gatedThemes do
+            File.WriteAllText(emittedReportPath slug, emittedReport slug theme)
 
 do regenerateReportsIfRequested ()
 
@@ -298,5 +296,134 @@ let feature127ColorPolicyTests =
                   let committed = File.ReadAllText path
                   let live = ColorPolicy.renderReport policy catalog
                   Expect.equal committed live (sprintf "committed docs/reports/color-policy-%s.md is out of date (drift)" name)
+          }
+
+          // ---- Issue #174: the policy sees the styles the resolver emits ----------------------
+
+          // The catalog must be DERIVED from StyleResolver, not a second hand-authored list that
+          // happens to agree with it today. Ask the resolver for a style, then demand the pairings
+          // carry exactly those colours: re-hardcoding them breaks this test.
+          //
+          // Membership in the emitted catalog is asserted by COLOUR, not by row name — dedup elects
+          // one witness combination per (fg, bg, role), and which one it elects is not the contract.
+          test "the emitted catalog is derived from StyleResolver, not restated (issue #174)" {
+              let theme = FS.GG.UI.Themes.Default.Theme.light
+
+              // `icon-button/neutral/hover` is the sharpest witness: Hover overwrites Fill with the
+              // accent while the icon-button base leaves Foreground on the accent too, so the
+              // resolver emits an accent-on-accent label — invisible, ratio 1.00.
+              let style = StyleResolver.resolve theme "icon-button" "" [ Variant StyleVariant.Neutral ] Hover
+              Expect.equal style.Foreground style.Fill "the resolver really does emit accent-on-accent here"
+
+              let rows = StyleCatalog.pairingsOfStyle theme.Background "icon-button/neutral/hover" false style
+              let textRow = rows |> List.find (fun p -> p.Name.EndsWith "#text")
+              Expect.equal textRow.Foreground style.Foreground "the pairing carries the resolver's own foreground"
+
+              Expect.equal
+                  textRow.Background
+                  (Contrast.compositeOver theme.Background style.Fill)
+                  "…and the resolver's own fill, composited over the canvas"
+
+              Expect.equal
+                  (ColorPolicy.evaluatePairing ColorPolicy.wcag textRow).Outcome
+                  ColorPolicy.Failed
+                  "an invisible label is a policy failure"
+
+              let key (p: ColorPolicy.Pairing) = p.Foreground, p.Background, p.Role
+
+              Expect.contains
+                  (StyleCatalog.emittedPairings theme |> List.map key)
+                  (key textRow)
+                  "the emitted catalog contains the style the resolver produced"
+          }
+
+          // The domain is closed and every combination is reached: 2 kinds x 6 variants x 11 states.
+          // Dedup by (fg, bg, role) collapses them, but nothing may be silently dropped.
+          test "the emitted catalog covers the closed kind x variant x state domain (issue #174)" {
+              Expect.equal (StyleCatalog.kinds.Length * StyleCatalog.variants.Length * StyleCatalog.states.Length) 132 "closed domain size"
+
+              for slug, theme in gatedThemes do
+                  let emitted = StyleCatalog.emittedPairings theme
+                  Expect.isNonEmpty emitted (sprintf "%s emits pairings" slug)
+
+                  let keys = emitted |> List.map (fun p -> p.Foreground, p.Background, p.Role)
+                  Expect.equal keys.Length (List.distinct keys).Length (sprintf "%s rows are deduplicated by (fg, bg, role)" slug)
+
+                  // every row names a real combination from the enumerated domain
+                  for p in emitted do
+                      let combination = p.Name.Split('#').[0]
+                      let parts = combination.Split('/')
+                      Expect.equal parts.Length 3 (sprintf "%s: %s names kind/variant/state" slug p.Name)
+                      Expect.contains StyleCatalog.kinds parts.[0] (sprintf "%s: %s names a real kind" slug p.Name)
+                      Expect.contains (StyleCatalog.variants |> List.map fst) parts.[1] (sprintf "%s: %s names a real variant" slug p.Name)
+                      Expect.contains (StyleCatalog.states |> List.map fst) parts.[2] (sprintf "%s: %s names a real state" slug p.Name)
+          }
+
+          // A disabled control is WCAG-exempt (1.4.3 / 1.4.11 both exempt inactive components), so
+          // the resolver's muted-on-muted Disabled delta must not be reported as a failure — and a
+          // control with neither fill nor stroke has no boundary, so it emits no boundary pairing.
+          test "disabled pairings are exempt; a boundary-less control emits no boundary row (issue #174)" {
+              let theme = FS.GG.UI.Themes.Default.Theme.light
+              let emitted = StyleCatalog.emittedPairings theme
+
+              let disabled = emitted |> List.filter (fun p -> p.Name.Contains "/disabled#")
+              Expect.isNonEmpty disabled "disabled styles are enumerated, not skipped"
+
+              for p in disabled do
+                  Expect.equal p.Role Decorative (sprintf "%s: an inactive component is exempt" p.Name)
+                  Expect.notEqual (ColorPolicy.evaluatePairing ColorPolicy.wcag p).Outcome ColorPolicy.Failed (sprintf "%s must not fail" p.Name)
+
+              // the ghost button at rest: transparent fill, zero stroke width -> no boundary to measure
+              let ghost = StyleResolver.resolve theme "button" "" [ Variant StyleVariant.Ghost ] Normal
+              Expect.equal ghost.Fill Colors.transparent "the ghost base fill is transparent"
+              Expect.equal ghost.StrokeWidth 0.0 "the button base draws no stroke"
+
+              let rows = StyleCatalog.pairingsOfStyle theme.Background "button/ghost/normal" false ghost
+              Expect.equal (rows |> List.map (fun p -> p.Name)) [ "button/ghost/normal#text" ] "only the text pairing — no unmeasurable boundary row"
+          }
+
+          // The acceptance test the issue asks for: a deliberately low-contrast theme is REJECTED.
+          // Painting every role the same colour makes every emitted label invisible; `overall` must
+          // be false, and it must be false because rows FAILED, not because they were exempted or
+          // ruled out of scope.
+          test "a deliberately low-contrast theme is rejected (issue #174)" {
+              let flat = { Red = 0x77uy; Green = 0x77uy; Blue = 0x77uy; Alpha = 255uy }
+
+              let lowContrast =
+                  { FS.GG.UI.Themes.Default.Theme.light with
+                      Name = "low-contrast"
+                      Foreground = flat
+                      Background = flat
+                      Accent = flat
+                      Danger = flat
+                      Success = flat
+                      Warning = flat
+                      Muted = flat }
+
+              let results = ColorPolicy.evaluate ColorPolicy.wcag (StyleCatalog.emittedPairings lowContrast)
+              Expect.isFalse (ColorPolicy.overall results) "a theme whose every colour is identical must not pass"
+
+              let failed = results |> List.filter (fun r -> r.Outcome = ColorPolicy.Failed)
+              Expect.isNonEmpty failed "rejection must come from Failed rows, not from an empty catalog"
+
+              for r in failed do
+                  Expect.equal r.Measured 1.0 (sprintf "%s: identical colours measure 1.00" r.Pairing)
+
+              // …and the shipped theme it was derived from is genuinely different: it passes rows
+              // this one fails, so the rejection is the theme's doing, not the gate refusing all input.
+              let shipped = ColorPolicy.evaluate ColorPolicy.wcag (StyleCatalog.emittedPairings FS.GG.UI.Themes.Default.Theme.light)
+              Expect.isNonEmpty (shipped |> List.filter (fun r -> r.Outcome = ColorPolicy.Passed)) "the shipped light theme passes some pairings"
+          }
+
+          // The gate with teeth: the emitted style set of every built-in theme is committed. A
+          // resolver or theme edit that makes a style unreadable (or repairs one) changes these
+          // files, and the build fails until the change is seen and re-committed.
+          test "committed emitted-style reports match the live render — drift gate (issue #174)" {
+              for slug, theme in gatedThemes do
+                  let path = emittedReportPath slug
+                  Expect.isTrue (File.Exists path) (sprintf "committed report %s must exist (regenerate with UPDATE_POLICY_REPORTS=1)" path)
+                  let committed = File.ReadAllText path
+                  let live = emittedReport slug theme
+                  Expect.equal committed live (sprintf "committed docs/reports/color-policy-emitted-%s.md is out of date (drift)" slug)
           }
         ]

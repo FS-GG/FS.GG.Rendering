@@ -17,6 +17,9 @@
     <!-- The internal color-policy engine. `module internal` with NO .fsi; reuses Contrast
          in-assembly so the `wcag` policy stays byte-identical. Loads after Contrast. -->
     <Compile Include="ColorPolicy.fs" />
+    <!-- Issue #174: the pairing catalogs, relocated out of Controls.Tests. `emittedPairings` calls
+         StyleResolver, so this loads after ColorPolicy and pulls in the DesignSystem reference. -->
+    <Compile Include="StyleCatalog.fs" />
   </ItemGroup>
 
   <!-- Expose the internal ColorPolicy engine to the test assembly that drives the design-system
@@ -26,8 +29,13 @@
     <InternalsVisibleTo Include="Controls.Tests" />
   </ItemGroup>
 
+  <!-- Issue #174: DesignSystem is referenced so `StyleCatalog.emittedPairings` can evaluate the
+       styles `StyleResolver` really produces. The arrow points ColorPolicy -> DesignSystem, never
+       back: DesignSystem stays at dep = Scene only, so nothing in the packed design-system surface
+       depends on the (non-packed, internal) policy engine. -->
   <ItemGroup>
     <ProjectReference Include="..\Scene\Scene.fsproj" />
+    <ProjectReference Include="..\DesignSystem\DesignSystem.fsproj" />
   </ItemGroup>
 
 </Project>

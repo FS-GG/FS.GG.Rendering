@@ -1,13 +1,15 @@
 // Feature 127 (Workstream F, F2) — on-demand regenerator for the committed color-policy reports
-// (docs/reports/color-policy-{wcag,ant}.md).
+// (docs/reports/color-policy-{wcag,ant}.md and, since issue #174, color-policy-emitted-*.md).
 //
 // Research R3 decision: the policy engine is `module internal ColorPolicy` in FS.GG.UI.Color with
-// NO public .fsi, and the design-system *pairing catalog* lives in the Controls.Tests assembly (the
-// one place that references both Color and the internal DesignTokensExt). Reaching internal symbols
-// of a built assembly from the `dotnet fsi` dynamic assembly via InternalsVisibleTo is fragile on
-// net10 and, more importantly, the catalog is NOT in a referenceable library — so a standalone fsx
-// would have to re-implement the catalog and evaluation, creating a SECOND evaluator that can drift
-// from the compiled one. That is exactly the failure mode the single-evaluator design forbids.
+// NO public .fsi. Reaching internal symbols of a built assembly from the `dotnet fsi` dynamic
+// assembly via InternalsVisibleTo is fragile on net10, so a standalone fsx would have to re-
+// implement the evaluation, creating a SECOND evaluator that can drift from the compiled one. That
+// is exactly the failure mode the single-evaluator design forbids.
+//
+// (Issue #174 moved the pairing catalogs into a referenceable library, `StyleCatalog`, so a catalog
+// no longer has to be copied — but the ENGINE is still internal, which is what keeps this script a
+// wrapper rather than a second evaluator.)
 //
 // Therefore the supported regeneration path is the env-gated test update mode, which reuses the
 // exact in-process `ColorPolicy.renderReport` evaluator the drift gate verifies. This script is a
