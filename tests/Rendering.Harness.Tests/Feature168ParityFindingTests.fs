@@ -20,7 +20,8 @@ let tests =
                 Expect.contains categories SkillParity.StaleDescription "stale description"
                 Expect.contains categories SkillParity.BrokenTarget "broken target"
                 Expect.contains categories SkillParity.CanonicalDrift "canonical drift"
-                Expect.contains categories SkillParity.GuidanceRuleGap "guidance gap"
+                Expect.contains categories SkillParity.UnresolvedApiSymbol "documents an API that does not exist"
+                Expect.contains categories SkillParity.UnexercisedApiSymbol "documents an API no test exercises"
                 Expect.isTrue (report.FindingCountsBySeverity.High > 0) "high severity fixture findings"
             finally
                 Feature168SkillParityFixtures.deleteTempRoot root

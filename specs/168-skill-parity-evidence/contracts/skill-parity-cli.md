@@ -9,7 +9,7 @@ dotnet fsi scripts/check-agent-skill-parity.fsx [options]
 The script forwards to:
 
 ```sh
-dotnet run --project tests/Rendering.Harness/Rendering.Harness.fsproj -- skill-parity [options]
+dotnet run --project tools/Rendering.Harness/Rendering.Harness.fsproj -- skill-parity [options]
 ```
 
 ## Options
@@ -24,7 +24,7 @@ dotnet run --project tests/Rendering.Harness/Rendering.Harness.fsproj -- skill-p
 | `--surface <id=path>` | Add or override a skill surface for fixture or advanced local checks. Repeatable. |
 | `--allow-exception <id>` | Allow an intentional exception id while keeping it visible in the report. Repeatable. |
 | `--fail-on <severity>` | Lowest unresolved severity that returns exit code `1`. Defaults to `high`. |
-| `--list-rules` | Print required guidance rules and exit without writing reports. |
+| `--list-symbols` | Print every API symbol the skills document, with its status and skill, and exit without writing reports. |
 | `--json` | Print final structured summary path and status as JSON. |
 
 No `--fix` or auto-update mode is part of the MVP.
@@ -60,7 +60,6 @@ The CLI prints:
 - report path and summary JSON path
 - overall status
 - unresolved finding counts by severity
-- guidance coverage counts by rule
 
 With `--json`, stdout is a single JSON object:
 
@@ -87,8 +86,12 @@ The required fixture set includes:
 - `stale-description`
 - `broken-target`
 - `canonical-drift`
-- `guidance-gap`
+- `unresolved-api-symbol`
+- `unexercised-api-symbol`
 - `passing`
+
+Each fixture writes a synthetic surface baseline and test corpus alongside the
+synthetic skills, so the API-symbol layer has both of its inputs.
 
 Each fixture result names the expected finding category and the actual finding
 ids produced by the checker.

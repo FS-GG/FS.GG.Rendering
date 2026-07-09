@@ -30,12 +30,15 @@ module SkillParity =
         | CommandEntry
         | WrapperOnlyEntry
 
-    type CoverageStatus =
-        | Covered
-        | Partial
-        | Missing
-        | NotApplicable
-        | Excepted
+    /// Verdict for one `Module.member` an FS.GG skill documents inside an F# code fence.
+    type SymbolStatus =
+        /// Present in the public surface baseline, and called by at least one test source. This says
+        /// a test names the API in code — not that the test asserts anything meaningful about it.
+        | Exercised
+        /// Present in the public surface baseline, but no test calls it — a seam that may be dead.
+        | Unexercised
+        /// Absent from the public surface baseline — the skill documents an API that does not exist.
+        | Unresolved
 
     type FindingSeverity =
         | Info
@@ -49,7 +52,8 @@ module SkillParity =
         | StaleDescription
         | BrokenTarget
         | CanonicalDrift
-        | GuidanceRuleGap
+        | UnresolvedApiSymbol
+        | UnexercisedApiSymbol
         | MetadataDrift
         | IntentionalExceptionFinding
         | UnreadableSurface
@@ -88,23 +92,13 @@ module SkillParity =
           Content: string
           WrapperTarget: WrapperTarget option }
 
-    type GuidanceRule =
-        { RuleId: string
-          Theme: string
-          Description: string
-          RequiredReferences: string list list
-          ApplicablePatterns: string list
-          MinimumCoverage: string }
-
-    type GuidanceCoverage =
-        { RuleId: string
+    /// One `Module.member` a skill documents, resolved against the surface baseline and the test corpus.
+    type ApiSymbol =
+        { Symbol: string
           SkillName: string
           SurfaceId: string
           Path: string
-          Status: CoverageStatus
-          Evidence: string list
-          MissingReferences: string list
-          ExceptionId: string option }
+          Status: SymbolStatus }
 
     type IntentionalException =
         { ExceptionId: string
@@ -124,7 +118,7 @@ module SkillParity =
           Severity: FindingSeverity
           CanonicalPath: string option
           WrapperPath: string option
-          RuleId: string option
+          Symbol: string option
           Message: string
           Remediation: string
           ExceptionId: string option }
@@ -135,13 +129,12 @@ module SkillParity =
           Warning: int
           Info: int }
 
-    type RuleCoverageSummary =
-        { RuleId: string
-          Covered: int
-          Partial: int
-          Missing: int
-          Excepted: int
-          NotApplicable: int }
+    type SkillSymbolSummary =
+        { SkillName: string
+          Documented: int
+          Exercised: int
+          Unexercised: int
+          Unresolved: int }
 
     type ParityReport =
         { CheckedAtUtc: DateTime
@@ -151,7 +144,7 @@ module SkillParity =
           CanonicalSourceCount: int
           WrapperCount: int
           FindingCountsBySeverity: SeverityCounts
-          GuidanceRuleCoverage: RuleCoverageSummary list
+          ApiSymbolCoverage: SkillSymbolSummary list
           Findings: ParityFinding list
           IntentionalExceptions: IntentionalException list
           GeneratedReportPath: string
@@ -168,7 +161,7 @@ module SkillParity =
           SurfaceOverrides: (string * string) list
           AllowedExceptionIds: Set<string>
           FailOnSeverity: FindingSeverity
-          ListRulesOnly: bool
+          ListSymbolsOnly: bool
           JsonOutput: bool }
 
     type Model =
@@ -176,21 +169,21 @@ module SkillParity =
           Surfaces: SkillSurface list
           Entries: SkillEntry list
           Findings: ParityFinding list
-          Coverage: GuidanceCoverage list
+          Symbols: ApiSymbol list
           Report: ParityReport option
           Diagnostics: string list }
 
     type Msg =
         | InventoryRequested
         | InventoryLoaded of SkillSurface list * SkillEntry list
-        | CoverageEvaluated of GuidanceCoverage list
+        | SymbolsResolved of ApiSymbol list
         | FindingsClassified of ParityFinding list
         | ReportGenerated of ParityReport
         | WorkflowFailed of string
 
     type Effect =
         | ReadSkillSurfaces
-        | EvaluateGuidanceRules
+        | ResolveApiSymbols
         | ClassifyFindings
         | WriteMarkdownReport
         | WriteSummaryJson
@@ -218,13 +211,11 @@ module SkillParity =
         | CommandEntry -> "command"
         | WrapperOnlyEntry -> "wrapper-only"
 
-    let coverageToken status =
+    let symbolStatusToken status =
         match status with
-        | Covered -> "covered"
-        | Partial -> "partial"
-        | Missing -> "missing"
-        | NotApplicable -> "not-applicable"
-        | Excepted -> "excepted"
+        | Exercised -> "exercised"
+        | Unexercised -> "unexercised"
+        | Unresolved -> "unresolved"
 
     let severityToken severity =
         match severity with
@@ -240,7 +231,8 @@ module SkillParity =
         | StaleDescription -> "stale-description"
         | BrokenTarget -> "broken-target"
         | CanonicalDrift -> "canonical-drift"
-        | GuidanceRuleGap -> "guidance-rule-gap"
+        | UnresolvedApiSymbol -> "unresolved-api-symbol"
+        | UnexercisedApiSymbol -> "unexercised-api-symbol"
         | MetadataDrift -> "metadata-drift"
         | IntentionalExceptionFinding -> "intentional-exception"
         | UnreadableSurface -> "unreadable-surface"
@@ -338,132 +330,154 @@ module SkillParity =
     let private metadataValue key (metadata: Map<string, string>) =
         metadata |> Map.tryFind key |> Option.defaultValue ""
 
-    let defaultGuidanceRules () =
-        [ { RuleId = "package-pin-drift"
-            Theme = "Package-consuming samples check current FS.GG.UI.* package pins and use local-feed proof."
-            Description = "Package-consuming samples compare current package versions and use the package-feed proof workflow."
-            RequiredReferences =
-                [ [ "FS.GG.UI." ]
-                  [ "scripts/refresh-local-feed-and-samples.fsx"; "package-feed" ]
-                  [ "stale package pins"; "package pins" ]
-                  [ "local feed" ] ]
-            ApplicablePatterns =
-                // Feature 225 de-leak: produced product skills must NOT carry framework-repo
-                // evidence-process references (the `refresh-local-feed-and-samples`/`package-feed`
-                // proof workflow), so the de-leaked `fs-gg-testing` product skill is no longer
-                // required to. This rule still governs the framework's own command/source skills.
-                [ "speckit-implement"
-                  "speckit-merge"
-                  "src/testing"
-                  "template/fragments/samples"
-                  "src/controls"
-                  "src/skiaviewer"
-                  "fs-gg-project" ]
-            MinimumCoverage = "required" }
-          { RuleId = "readiness-allowlisting"
-            Theme = "Committed readiness evidence is ignored by default until allowlisted."
-            Description = "Readiness evidence uses specs/*/readiness/ allowlists and git check-ignore proof."
-            RequiredReferences =
-                [ [ "specs/*/readiness/" ]
-                  [ ".gitignore" ]
-                  [ "git check-ignore" ] ]
-            ApplicablePatterns =
-                // Feature 225 de-leak: `specs/*/readiness/` + `.gitignore` allowlisting is
-                // framework-only output, never a product-author location — so the de-leaked
-                // `fs-gg-testing` product skill is exempt. The rule still governs the framework's
-                // own command/source skills.
-                [ "speckit-implement"
-                  "src/testing"
-                  "fs-gg-project"
-                  "speckit-merge" ]
-            MinimumCoverage = "required" }
-          { RuleId = "validation-output-isolation"
-            Theme = "Same project/configuration validation is not parallelized unless output paths are isolated."
-            Description = "Same project/configuration test runs require isolated output paths."
-            RequiredReferences =
-                [ [ "dotnet test" ]
-                  [ "same project/configuration"; "same project and configuration" ]
-                  [ "isolated output"; "BaseOutputPath" ] ]
-            ApplicablePatterns =
-                [ "speckit-implement"
-                  "fs-gg-testing"
-                  "src/testing"
-                  "template/product-skills/fs-gg-testing"
-                  "fs-gg-project" ]
-            MinimumCoverage = "required" }
-          { RuleId = "visual-readiness"
-            Theme = "Real screenshots, degraded capture disclosure, reviewer classification, and summary caveat preservation are required."
-            Description = "Visual readiness prefers real screenshots and keeps degraded or pending review caveats visible."
-            RequiredReferences =
-                [ [ "screenshot" ]
-                  [ "degraded" ]
-                  [ "reviewer" ]
-                  [ "accepted readiness" ]
-                  [ "generated summary"; "managed section" ] ]
-            ApplicablePatterns =
-                [ "speckit-implement"
-                  "fs-gg-testing"
-                  "src/testing"
-                  "template/product-skills/fs-gg-testing"
-                  "src/controls"
-                  "template/fragments/controls"
-                  "fs-gg-ui-widgets"
-                  "src/skiaviewer"
-                  "fs-gg-skiaviewer"
-                  "speckit-merge" ]
-            MinimumCoverage = "required" }
-          { RuleId = "responsiveness-diagnostics"
-            Theme = "Interactive readiness validates pointer and keyboard activation separately and separates routing from update/render/present latency."
-            Description = "Responsiveness evidence separates activation, routing, update, render, and present latency."
-            RequiredReferences =
-                [ [ "pointer" ]
-                  [ "keyboard" ]
-                  [ "responsiveness" ]
-                  [ "routing" ]
-                  [ "render"; "present" ] ]
-            ApplicablePatterns =
-                [ "src/skiaviewer"
-                  "fs-gg-skiaviewer"
-                  "src/controls"
-                  "template/fragments/controls"
-                  "fs-gg-ui-widgets"
-                  "fs-gg-testing"
-                  "src/testing"
-                  "template/product-skills/fs-gg-testing" ]
-            MinimumCoverage = "required" }
-          { RuleId = "post-merge-package-bump"
-            Theme = "Merge/post-merge work records package bump, local-feed pack, sample pin alignment, restore/validation, and readiness ledger updates."
-            Description = "Merge work records package bump evidence and local feed/sample validation."
-            RequiredReferences =
-                [ [ "package bump" ]
-                  [ "local feed" ]
-                  [ "sample package pins" ]
-                  [ "restore"; "validation" ]
-                  [ "readiness ledger" ] ]
-            ApplicablePatterns = [ "speckit-merge" ]
-            MinimumCoverage = "required" }
-          { RuleId = "evidence-honesty"
-            Theme = "Canceled, timed-out, skipped, synthetic, substitute, degraded, pending-review, and environment-limited checks are visibly caveated."
-            Description = "Evidence caveats remain visible and are not reported as fully green."
-            RequiredReferences =
-                [ [ "canceled"; "cancelled"; "timed out"; "timed-out" ]
-                  [ "synthetic"; "substitute" ]
-                  [ "environment-limited"; "pending-review"; "pending review" ]
-                  [ "caveat" ] ]
-            ApplicablePatterns =
-                [ "speckit-implement"
-                  "speckit-merge"
-                  "fs-gg-testing"
-                  "src/testing"
-                  "template/product-skills/fs-gg-testing"
-                  "src/controls"
-                  "template/fragments/controls"
-                  "fs-gg-ui-widgets"
-                  "src/skiaviewer"
-                  "fs-gg-skiaviewer"
-                  "template/fragments/samples"
-                  "fs-gg-project" ]
-            MinimumCoverage = "required" } ]
+    /// Qualified `Module.member` occurrences. Members are lower-camel by F# convention, so an
+    /// uppercase second segment (a nested type, a union case, a property) is deliberately not a match.
+    let private symbolPattern = Regex(@"\b([A-Z][A-Za-z0-9_]*)\.([a-z][A-Za-z0-9_]*)\b", RegexOptions.Compiled)
+
+    let private qualifiedSymbols (text: string) =
+        symbolPattern.Matches text
+        |> Seq.map (fun m -> $"{m.Groups[1].Value}.{m.Groups[2].Value}")
+        |> Set.ofSeq
+
+    /// Tolerates an info string (```` ```fsharp {highlight=1} ````) and casing, so a decorated fence
+    /// does not silently drop out of coverage.
+    let private fencePattern =
+        Regex(
+            @"```fsharp[^\r\n]*\r?\n(.*?)```",
+            RegexOptions.Compiled ||| RegexOptions.Singleline ||| RegexOptions.IgnoreCase
+        )
+
+    let private fsharpFences (content: string) =
+        fencePattern.Matches content
+        |> Seq.map (fun m -> m.Groups[1].Value)
+        |> List.ofSeq
+
+    let private surfaceBaselineDir root =
+        Path.Combine(root, "readiness", "surface-baselines", "members")
+
+    let private testSourceDir root = Path.Combine(root, "tests")
+
+    let private blockCommentPattern = Regex(@"\(\*.*?\*\)", RegexOptions.Compiled ||| RegexOptions.Singleline)
+
+    let private tripleQuotedPattern = Regex("\"\"\".*?\"\"\"", RegexOptions.Compiled ||| RegexOptions.Singleline)
+
+    let private stringLiteralPattern = Regex("@?\"(?:\\\\.|\"\"|[^\"\\\\\\n])*\"", RegexOptions.Compiled)
+
+    let private lineCommentPattern = Regex("//.*$", RegexOptions.Compiled ||| RegexOptions.Multiline)
+
+    /// Strip everything in an F# source that is not code, so that *mentioning* an API in a comment or
+    /// a string literal cannot pass for *exercising* it. Order matters: block comments and strings go
+    /// first, so a `//` inside a URL literal is gone before line comments are stripped.
+    let private codeOnly (source: string) =
+        let stripped = blockCommentPattern.Replace(source, " ")
+        let stripped = tripleQuotedPattern.Replace(stripped, " ")
+        let stripped = stringLiteralPattern.Replace(stripped, " ")
+        lineCommentPattern.Replace(stripped, " ")
+
+    let private trailingGenericsPattern = Regex(@"<[^>]*>$", RegexOptions.Compiled)
+
+    /// `FS.GG.UI.Controls.DataGrid.visibleRange<msg>(...) : Attr<msg>` -> ("DataGrid", "visibleRange").
+    let private parseBaselineMember (line: string) =
+        let trimmed = line.Trim()
+
+        if trimmed = "" then
+            None
+        else
+            let beforeParen =
+                match trimmed.IndexOf '(' with
+                | -1 -> trimmed
+                | index -> trimmed.Substring(0, index)
+
+            let beforeReturnType =
+                match beforeParen.IndexOf ':' with
+                | -1 -> beforeParen
+                | index -> beforeParen.Substring(0, index)
+
+            let withoutGenerics = trailingGenericsPattern.Replace(beforeReturnType.Trim(), "")
+            let parts = withoutGenerics.Split '.'
+
+            if parts.Length < 2 then
+                None
+            else
+                Some(parts[parts.Length - 2], parts[parts.Length - 1])
+
+    /// Declaring module -> its public member names, read from the member-granular surface baseline.
+    /// This is the closed world: a `Module.member` whose module is absent here is product-local or
+    /// pseudo-code in a skill's example, and is not the checker's business.
+    ///
+    /// Modules are keyed by simple name, because that is how a skill's fence writes them. Two
+    /// consequences, both chosen to keep the check free of false positives:
+    ///   * Same-named modules in different namespaces (`Controls.Button` and `Controls.Typed.Button`)
+    ///     merge into one member set, so a member removed from only one of them still resolves.
+    ///   * Members of a nested type (`ControlsElmish+Perf.runScript`) key under `ControlsElmish+Perf`,
+    ///     so a fence writing `Perf.runScript` is treated as product-local and is not judged. Keying
+    ///     them under `Perf` instead would make `Model` a known module and turn the model-swap skill's
+    ///     product-local `Model.update` into a false finding.
+    let loadSurfaceMembers repositoryRoot =
+        let dir = surfaceBaselineDir repositoryRoot
+
+        if not (Directory.Exists dir) then
+            None
+        else
+            Directory.GetFiles(dir, "*.txt")
+            |> Array.collect File.ReadAllLines
+            |> Array.choose parseBaselineMember
+            |> Array.fold
+                (fun acc (moduleName, memberName) ->
+                    let existing = acc |> Map.tryFind moduleName |> Option.defaultValue Set.empty
+                    acc |> Map.add moduleName (existing |> Set.add memberName))
+                Map.empty
+            |> Some
+
+    /// Every qualified symbol a test source *calls*. Comments and string literals are stripped first,
+    /// so naming an API in prose cannot pass for exercising it.
+    let loadExercisedSymbols repositoryRoot =
+        let dir = testSourceDir repositoryRoot
+
+        if not (Directory.Exists dir) then
+            None
+        else
+            Directory.GetFiles(dir, "*.fs", SearchOption.AllDirectories)
+            |> Array.map (File.ReadAllText >> codeOnly >> qualifiedSymbols)
+            |> Set.unionMany
+            |> Some
+
+    /// Resolve every API symbol the canonical and command skills document in their F# code fences.
+    let evaluateApiSymbols
+        (surfaceMembers: Map<string, Set<string>>)
+        (exercised: Set<string>)
+        (entries: SkillEntry list)
+        =
+        entries
+        |> List.filter (fun entry ->
+            entry.EntryKind = CanonicalEntry
+            || entry.EntryKind = CommandEntry)
+        |> List.collect (fun entry ->
+            // `codeOnly` first: a fence's comments name filenames (`Program.fs`) and cautionary APIs
+            // that read as `Module.member` but document nothing.
+            fsharpFences entry.Content
+            |> List.map (codeOnly >> qualifiedSymbols)
+            |> Set.unionMany
+            |> Set.toList
+            |> List.choose (fun symbol ->
+                let parts = symbol.Split '.'
+                let moduleName = parts[0]
+                let memberName = parts[1]
+
+                match surfaceMembers |> Map.tryFind moduleName with
+                | None -> None
+                | Some members ->
+                    let status =
+                        if not (members |> Set.contains memberName) then Unresolved
+                        elif exercised |> Set.contains symbol then Exercised
+                        else Unexercised
+
+                    Some
+                        { Symbol = symbol
+                          SkillName = entry.SkillName
+                          SurfaceId = entry.SurfaceId
+                          Path = entry.Path
+                          Status = status }))
 
     let defaultRequest repositoryRoot =
         let root = Path.GetFullPath repositoryRoot
@@ -477,7 +491,7 @@ module SkillParity =
           SurfaceOverrides = []
           AllowedExceptionIds = Set.empty
           FailOnSeverity = High
-          ListRulesOnly = false
+          ListSymbolsOnly = false
           JsonOutput = false }
 
     let discoverDefaultSurfaces repositoryRoot =
@@ -686,69 +700,6 @@ module SkillParity =
                     None))
         |> List.distinctBy (fun entry -> entry.SurfaceId, entry.Path)
 
-    let private ruleApplies (rule: GuidanceRule) (entry: SkillEntry) =
-        let haystack = $"{entry.SkillName} {entry.Description} {entry.Path}".ToLowerInvariant()
-
-        rule.ApplicablePatterns
-        |> List.exists (fun pattern -> haystack.Contains(pattern.ToLowerInvariant()))
-
-    let evaluateGuidanceCoverage rules entries =
-        entries
-        |> List.filter (fun entry ->
-            entry.EntryKind = CanonicalEntry
-            || entry.EntryKind = CommandEntry)
-        |> List.collect (fun entry ->
-            let content = entry.Content.ToLowerInvariant()
-
-            rules
-            |> List.map (fun rule ->
-                if not (ruleApplies rule entry) then
-                    { RuleId = rule.RuleId
-                      SkillName = entry.SkillName
-                      SurfaceId = entry.SurfaceId
-                      Path = entry.Path
-                      Status = NotApplicable
-                      Evidence = []
-                      MissingReferences = []
-                      ExceptionId = None }
-                else
-                    let matched, missing =
-                        rule.RequiredReferences
-                        |> List.map (fun alternatives ->
-                            let hit =
-                                alternatives
-                                |> List.tryFind (fun token -> content.Contains(token.ToLowerInvariant()))
-
-                            match hit with
-                            | Some token -> Choice1Of2 token
-                            | None -> Choice2Of2(String.concat " or " alternatives))
-                        |> List.partition (function Choice1Of2 _ -> true | Choice2Of2 _ -> false)
-
-                    let evidence =
-                        matched
-                        |> List.choose (function Choice1Of2 token -> Some token | _ -> None)
-
-                    let missingReferences =
-                        missing
-                        |> List.choose (function Choice2Of2 token -> Some token | _ -> None)
-
-                    let status =
-                        if missingReferences.IsEmpty then
-                            Covered
-                        elif evidence.IsEmpty then
-                            Missing
-                        else
-                            Partial
-
-                    { RuleId = rule.RuleId
-                      SkillName = entry.SkillName
-                      SurfaceId = entry.SurfaceId
-                      Path = entry.Path
-                      Status = status
-                      Evidence = evidence
-                      MissingReferences = missingReferences
-                      ExceptionId = None }))
-
     let private findingId category surface skill =
         $"{categoryToken category}:{surface}:{skill}"
 
@@ -777,7 +728,7 @@ module SkillParity =
                       Severity = High
                       CanonicalPath = Some target.RawTarget
                       WrapperPath = Some entry.Path
-                      RuleId = None
+                      Symbol = None
                       Message = "Wrapper target does not resolve."
                       Remediation = "Update the wrapper target path or restore the canonical skill source."
                       ExceptionId = None }
@@ -793,7 +744,7 @@ module SkillParity =
                           Severity = Warning
                           CanonicalPath = Some(relativePath (Path.GetFullPath ".") target.ResolvedPath)
                           WrapperPath = Some entry.Path
-                          RuleId = None
+                          Symbol = None
                           Message = "Wrapper skill name differs from the routed canonical skill."
                           Remediation = "Align wrapper metadata or document an intentional command exception."
                           ExceptionId = None }
@@ -806,7 +757,7 @@ module SkillParity =
                           Severity = Warning
                           CanonicalPath = Some target.RawTarget
                           WrapperPath = Some entry.Path
-                          RuleId = None
+                          Symbol = None
                           Message = "Wrapper description differs from the canonical skill description."
                           Remediation = "Refresh the wrapper description or add an explicit exception."
                           ExceptionId = None }
@@ -820,7 +771,7 @@ module SkillParity =
                       Severity = Warning
                       CanonicalPath = None
                       WrapperPath = Some entry.Path
-                      RuleId = None
+                      Symbol = None
                       Message = "Wrapper entry has no canonical target."
                       Remediation = "Add a canonical source route or classify the entry as an intentional command skill."
                       ExceptionId = None }
@@ -870,7 +821,7 @@ module SkillParity =
                           Severity = Warning
                           CanonicalPath = Some entry.Path
                           WrapperPath = None
-                          RuleId = None
+                          Symbol = None
                           Message = "Canonical skill is not exposed on this supported wrapper surface."
                           Remediation = "Add a short wrapper that routes to the canonical SKILL.md, or record an explicit exception."
                           ExceptionId = None }))
@@ -898,41 +849,50 @@ module SkillParity =
                           Severity = High
                           CanonicalPath = Some entry.Path
                           WrapperPath = None
-                          RuleId = None
+                          Symbol = None
                           Message = "Duplicate canonical sources with the same skill name diverge."
                           Remediation = "Choose one canonical source or document a specific variant exception."
                           ExceptionId = None })
                 else
                     [])
 
-    let private guidanceFindings (coverage: GuidanceCoverage list) =
-        coverage
+    let private symbolFindings (symbols: ApiSymbol list) =
+        symbols
         |> List.choose (fun item ->
-            match item.Status with
-            | Missing
-            | Partial ->
-                let severity =
-                    if item.Status = Missing then High else Warning
-
+            let finding category severity message remediation =
                 Some
-                    { FindingId = $"{categoryToken GuidanceRuleGap}:{item.SurfaceId}:{item.SkillName}:{item.RuleId}"
+                    { FindingId = $"{categoryToken category}:{item.SurfaceId}:{item.SkillName}:{item.Symbol}"
                       SkillName = item.SkillName
                       SurfaceId = item.SurfaceId
-                      Category = GuidanceRuleGap
+                      Category = category
                       Severity = severity
                       CanonicalPath = Some item.Path
                       WrapperPath = None
-                      RuleId = Some item.RuleId
-                      Message = $"Guidance rule {item.RuleId} is {coverageToken item.Status}."
-                      Remediation = "Add the missing concrete command/path/status caveat or record an explicit exception."
-                      ExceptionId = item.ExceptionId }
-            | _ -> None)
+                      Symbol = Some item.Symbol
+                      Message = message
+                      Remediation = remediation
+                      ExceptionId = None }
 
-    let private classifyFindings request entries coverage =
+            match item.Status with
+            | Unresolved ->
+                finding
+                    UnresolvedApiSymbol
+                    High
+                    $"Skill documents `{item.Symbol}`, which is absent from the public surface baseline."
+                    "Correct the skill's example, or refresh the surface baselines if the API was added."
+            | Unexercised ->
+                finding
+                    UnexercisedApiSymbol
+                    Warning
+                    $"Skill documents `{item.Symbol}`, but no test calls it — the seam may be dead."
+                    "Add a test that calls the documented API, or stop documenting it."
+            | Exercised -> None)
+
+    let private classifyFindings request entries symbols =
         wrapperFindings entries
         @ missingWrapperFindings entries
         @ canonicalDriftFindings request entries
-        @ guidanceFindings coverage
+        @ symbolFindings symbols
         |> List.distinctBy (fun finding -> finding.FindingId)
 
     let private severityCounts findings =
@@ -941,17 +901,19 @@ module SkillParity =
           Warning = findings |> List.filter (fun f -> f.Severity = Warning) |> List.length
           Info = findings |> List.filter (fun f -> f.Severity = Info) |> List.length }
 
-    let private coverageSummary (rules: GuidanceRule list) (coverage: GuidanceCoverage list) =
-        rules
-        |> List.map (fun rule ->
-            let items = coverage |> List.filter (fun item -> item.RuleId = rule.RuleId)
+    let private symbolSummary (symbols: ApiSymbol list) =
+        symbols
+        |> List.groupBy (fun symbol -> symbol.SkillName)
+        |> List.map (fun (skillName, items) ->
+            let counts = items |> List.countBy (fun item -> item.Status) |> Map.ofList
+            let countOf status = counts |> Map.tryFind status |> Option.defaultValue 0
 
-            { RuleId = rule.RuleId
-              Covered = items |> List.filter (fun item -> item.Status = Covered) |> List.length
-              Partial = items |> List.filter (fun item -> item.Status = Partial) |> List.length
-              Missing = items |> List.filter (fun item -> item.Status = Missing) |> List.length
-              Excepted = items |> List.filter (fun item -> item.Status = Excepted) |> List.length
-              NotApplicable = items |> List.filter (fun item -> item.Status = NotApplicable) |> List.length })
+            { SkillName = skillName
+              Documented = items.Length
+              Exercised = countOf Exercised
+              Unexercised = countOf Unexercised
+              Unresolved = countOf Unresolved })
+        |> List.sortBy (fun summary -> summary.SkillName)
 
     let private reportStatus findings =
         if findings |> List.exists (fun f -> f.Severity = Critical || f.Severity = High) then
@@ -967,17 +929,21 @@ module SkillParity =
             |> Option.map (fun mode -> $" --fixture {mode}")
             |> Option.defaultValue ""
 
-        $"dotnet fsi scripts/check-agent-skill-parity.fsx --out {request.OutDir} --report {request.ReportPath} --summary-json {request.SummaryJsonPath}{fixture} --fail-on {severityToken request.FailOnSeverity}"
+        // The report is committed, so the regenerate line must not bake in the absolute path of
+        // whichever checkout produced it — otherwise every worktree rewrites the file.
+        let path = relativePath request.RepositoryRoot
+
+        $"dotnet fsi scripts/check-agent-skill-parity.fsx --out {path request.OutDir} --report {path request.ReportPath} --summary-json {path request.SummaryJsonPath}{fixture} --fail-on {severityToken request.FailOnSeverity}"
 
     let private buildReport
         (request: ParityCheckRequest)
         (surfaces: SkillSurface list)
         (entries: SkillEntry list)
-        (coverage: GuidanceCoverage list)
+        (symbols: ApiSymbol list)
+        (symbolCaveats: string list)
         (findings: ParityFinding list)
         =
         let counts = severityCounts findings
-        let rules = defaultGuidanceRules ()
 
         { CheckedAtUtc = DateTime.UtcNow
           RepositoryRoot = request.RepositoryRoot
@@ -990,7 +956,7 @@ module SkillParity =
             |> List.length
           WrapperCount = entries |> List.filter (fun entry -> entry.EntryKind = WrapperEntry) |> List.length
           FindingCountsBySeverity = counts
-          GuidanceRuleCoverage = coverageSummary rules coverage
+          ApiSymbolCoverage = symbolSummary symbols
           Findings = findings
           IntentionalExceptions = []
           GeneratedReportPath = request.ReportPath
@@ -998,7 +964,8 @@ module SkillParity =
           Caveats =
             [ "Global Codex skill installation paths are excluded from required repository parity."
               if request.FixtureMode.IsSome then
-                  "Fixture mode uses synthetic skill files and is not real repository parity evidence." ]
+                  "Fixture mode uses synthetic skill files and is not real repository parity evidence."
+              yield! symbolCaveats ]
           Command = commandText request }
 
     let private createSkillFile path name description body =
@@ -1048,33 +1015,62 @@ Before acting, read the canonical instructions in:
 
         let full parts = Path.Combine(Array.ofList (root :: parts))
 
-        let coveredBody =
-            "FS.GG.UI. package pins use scripts/refresh-local-feed-and-samples.fsx and package-feed local feed proof for stale package pins. specs/*/readiness/ is allowlisted through .gitignore and git check-ignore. dotnet test for the same project/configuration needs isolated output or BaseOutputPath. screenshot evidence records degraded capture, reviewer accepted readiness, and generated summary caveats. pointer and keyboard responsiveness separate routing from update render present latency. package bump uses local feed, sample package pins, restore validation, and readiness ledger updates. canceled timed-out synthetic substitute environment-limited pending-review checks keep caveats visible."
+        // The symbol layer needs both of its inputs to run at all, so every fixture gets a synthetic
+        // surface baseline and a synthetic test corpus. `Widget.render` is public and exercised,
+        // `Widget.hidden` is public and untested, and `Widget.missing` does not exist.
+        let baselinePath = full [ "readiness"; "surface-baselines"; "members"; "FS.GG.Fixture.txt" ]
+        ensureParent baselinePath
+
+        File.WriteAllText(
+            baselinePath,
+            "FS.GG.Fixture.Widget.render(System.String) : System.String\n"
+            + "FS.GG.Fixture.Widget.hidden(System.String) : System.String\n"
+        )
+
+        let testPath = full [ "tests"; "FixtureTests.fs" ]
+        ensureParent testPath
+        File.WriteAllText(testPath, "module FixtureTests\n\nlet exercised = Widget.render \"fixture\"\n")
+
+        let documents symbol =
+            $"Synthetic fixture body.\n\n```fsharp\nlet value = {symbol} \"fixture\"\n```\n"
+
+        let alignedBody = documents "Widget.render"
 
         if includeCase "passing" then
-            createSkillFile (full [ "canonical"; "passing"; "SKILL.md" ]) "fs-gg-fixture-passing" "Aligned fixture skill." coveredBody
+            createSkillFile (full [ "canonical"; "passing"; "SKILL.md" ]) "fs-gg-fixture-passing" "Aligned fixture skill." alignedBody
             createWrapper (full [ "codex"; "passing"; "SKILL.md" ]) "fs-gg-fixture-passing" "Aligned fixture skill." "../../canonical/passing/SKILL.md"
             createWrapper (full [ "claude"; "passing"; "SKILL.md" ]) "fs-gg-fixture-passing" "Aligned fixture skill." "../../canonical/passing/SKILL.md"
 
         if includeCase "missing-wrapper" then
-            createSkillFile (full [ "canonical"; "missing-wrapper"; "SKILL.md" ]) "fs-gg-fixture-missing" "Missing wrapper fixture." coveredBody
+            createSkillFile (full [ "canonical"; "missing-wrapper"; "SKILL.md" ]) "fs-gg-fixture-missing" "Missing wrapper fixture." alignedBody
 
         if includeCase "wrapper-only" then
             createSkillFile (full [ "codex"; "wrapper-only"; "SKILL.md" ]) "fs-gg-fixture-wrapper-only" "Wrapper only fixture." "No canonical route."
 
         if includeCase "stale-description" then
-            createSkillFile (full [ "canonical"; "stale-description"; "SKILL.md" ]) "fs-gg-fixture-stale" "Current canonical description." coveredBody
+            createSkillFile (full [ "canonical"; "stale-description"; "SKILL.md" ]) "fs-gg-fixture-stale" "Current canonical description." alignedBody
             createWrapper (full [ "codex"; "stale-description"; "SKILL.md" ]) "fs-gg-fixture-stale" "Old wrapper description." "../../canonical/stale-description/SKILL.md"
 
         if includeCase "broken-target" then
             createWrapper (full [ "codex"; "broken-target"; "SKILL.md" ]) "fs-gg-fixture-broken" "Broken target fixture." "../../canonical/does-not-exist/SKILL.md"
 
         if includeCase "canonical-drift" then
-            createSkillFile (full [ "canonical"; "drift-a"; "SKILL.md" ]) "fs-gg-fixture-drift" "Canonical description A." coveredBody
-            createSkillFile (full [ "canonical"; "drift-b"; "SKILL.md" ]) "fs-gg-fixture-drift" "Canonical description B." coveredBody
+            createSkillFile (full [ "canonical"; "drift-a"; "SKILL.md" ]) "fs-gg-fixture-drift" "Canonical description A." alignedBody
+            createSkillFile (full [ "canonical"; "drift-b"; "SKILL.md" ]) "fs-gg-fixture-drift" "Canonical description B." alignedBody
 
-        if includeCase "guidance-gap" then
-            createSkillFile (full [ "canonical"; "guidance-gap"; "SKILL.md" ]) "fs-gg-testing" "Testing guidance gap fixture." "This skill intentionally omits required tokens."
+        if includeCase "unresolved-api-symbol" then
+            createSkillFile
+                (full [ "canonical"; "unresolved-api-symbol"; "SKILL.md" ])
+                "fs-gg-fixture-unresolved"
+                "Documents an API that does not exist."
+                (documents "Widget.missing")
+
+        if includeCase "unexercised-api-symbol" then
+            createSkillFile
+                (full [ "canonical"; "unexercised-api-symbol"; "SKILL.md" ])
+                "fs-gg-fixture-unexercised"
+                "Documents a public API that no test exercises."
+                (documents "Widget.hidden")
 
     let private effectiveSurfaces request root =
         if request.SurfaceOverrides.IsEmpty then
@@ -1092,23 +1088,68 @@ Before acting, read the canonical instructions in:
                   IsRequired = true
                   Notes = [ "Operator-supplied surface override." ] })
 
+    /// Materializes the fixture tree when one is requested, so every caller sees the same world.
+    let private effectiveRequestFor request =
+        match request.FixtureMode with
+        | Some fixtureName ->
+            let fixtureRoot = Path.Combine(request.OutDir, "_skill-parity-fixture")
+            createFixture fixtureRoot fixtureName
+            { request with RepositoryRoot = fixtureRoot }
+        | None -> { request with RepositoryRoot = Path.GetFullPath request.RepositoryRoot }
+
+    /// Both inputs are required to say anything honest about a documented symbol: the baseline decides
+    /// whether it exists, the test corpus whether anything exercises it. Missing either, the layer
+    /// stays silent and says so rather than reporting a green it did not earn.
+    /// Canonical/command skills that show F# examples but name no public API in them. Their examples
+    /// are product-local, so the symbol layer judged nothing — say so, rather than let an unchecked
+    /// skill look like a clean one by its absence from the coverage table.
+    let private unjudgedSkills entries (symbols: ApiSymbol list) =
+        let judged = symbols |> List.map (fun symbol -> symbol.SkillName) |> Set.ofList
+
+        entries
+        |> List.filter (fun entry ->
+            (entry.EntryKind = CanonicalEntry || entry.EntryKind = CommandEntry)
+            && not (fsharpFences entry.Content).IsEmpty)
+        |> List.map (fun entry -> entry.SkillName)
+        |> List.distinct
+        |> List.filter (fun name -> not (judged.Contains name))
+        |> List.sort
+
+    let private resolveSymbols effectiveRequest entries =
+        let root = effectiveRequest.RepositoryRoot
+
+        match loadSurfaceMembers root, loadExercisedSymbols root with
+        | Some surfaceMembers, Some exercised ->
+            let symbols = evaluateApiSymbols surfaceMembers exercised entries
+
+            let caveats =
+                match unjudgedSkills entries symbols with
+                | [] -> []
+                | skills ->
+                    [ $"""{skills.Length} skill(s) show F# examples that name no public API symbol, so none was judged: {String.concat ", " skills}.""" ]
+
+            Ok(symbols, caveats)
+        | surfaceMembers, exercised ->
+            let missing =
+                [ if surfaceMembers.IsNone then surfaceBaselineDir root
+                  if exercised.IsNone then testSourceDir root ]
+                |> List.map (relativePath root)
+                |> String.concat " and "
+
+            Error $"API symbol resolution skipped: {missing} not found — documented APIs were not checked."
+
     let runCheck request =
-        let repositoryRoot = Path.GetFullPath request.RepositoryRoot
-
-        let effectiveRequest =
-            match request.FixtureMode with
-            | Some fixtureName ->
-                let fixtureRoot = Path.Combine(request.OutDir, "_skill-parity-fixture")
-                createFixture fixtureRoot fixtureName
-                { request with RepositoryRoot = fixtureRoot }
-            | None -> { request with RepositoryRoot = repositoryRoot }
-
+        let effectiveRequest = effectiveRequestFor request
         let surfaces = effectiveSurfaces effectiveRequest effectiveRequest.RepositoryRoot
         let entries = inventorySkills effectiveRequest surfaces
-        let rules = defaultGuidanceRules ()
-        let coverage = evaluateGuidanceCoverage rules entries
-        let findings = classifyFindings effectiveRequest entries coverage
-        buildReport effectiveRequest surfaces entries coverage findings
+
+        let symbols, symbolCaveats =
+            match resolveSymbols effectiveRequest entries with
+            | Ok (symbols, caveats) -> symbols, caveats
+            | Error reason -> [], [ reason ]
+
+        let findings = classifyFindings effectiveRequest entries symbols
+        buildReport effectiveRequest surfaces entries symbols symbolCaveats findings
 
     let private markdownTableRow (values: string list) =
         "| " + (values |> List.map (fun value -> value.Replace("\n", " ")) |> String.concat " | ") + " |"
@@ -1153,21 +1194,24 @@ Before acting, read the canonical instructions in:
         |> ignore
 
         sb.AppendLine() |> ignore
-        sb.AppendLine("## Guidance Coverage") |> ignore
-        sb.AppendLine(markdownTableRow [ "Rule"; "Covered"; "Partial"; "Missing"; "Excepted"; "Not applicable" ]) |> ignore
-        sb.AppendLine(markdownTableRow [ "---"; "---"; "---"; "---"; "---"; "---" ]) |> ignore
+        sb.AppendLine("## API Symbol Coverage") |> ignore
 
-        for coverage in report.GuidanceRuleCoverage do
-            sb.AppendLine(
-                markdownTableRow
-                    [ coverage.RuleId
-                      string coverage.Covered
-                      string coverage.Partial
-                      string coverage.Missing
-                      string coverage.Excepted
-                      string coverage.NotApplicable ]
-            )
-            |> ignore
+        match report.ApiSymbolCoverage with
+        | [] -> sb.AppendLine("No skill documents an API symbol from the public surface baseline.") |> ignore
+        | coverage ->
+            sb.AppendLine(markdownTableRow [ "Skill"; "Documented"; "Exercised"; "Unexercised"; "Unresolved" ]) |> ignore
+            sb.AppendLine(markdownTableRow [ "---"; "---"; "---"; "---"; "---" ]) |> ignore
+
+            for summary in coverage do
+                sb.AppendLine(
+                    markdownTableRow
+                        [ summary.SkillName
+                          string summary.Documented
+                          string summary.Exercised
+                          string summary.Unexercised
+                          string summary.Unresolved ]
+                )
+                |> ignore
 
         sb.AppendLine() |> ignore
         sb.AppendLine("## Findings") |> ignore
@@ -1249,14 +1293,13 @@ Before acting, read the canonical instructions in:
                    required = surface.IsRequired |})
 
         let coverage =
-            report.GuidanceRuleCoverage
+            report.ApiSymbolCoverage
             |> List.map (fun item ->
-                {| ruleId = item.RuleId
-                   covered = item.Covered
-                   partial = item.Partial
-                   missing = item.Missing
-                   excepted = item.Excepted
-                   notApplicable = item.NotApplicable |})
+                {| skillName = item.SkillName
+                   documented = item.Documented
+                   exercised = item.Exercised
+                   unexercised = item.Unexercised
+                   unresolved = item.Unresolved |})
 
         let findings =
             report.Findings
@@ -1268,7 +1311,7 @@ Before acting, read the canonical instructions in:
                    severity = severityToken finding.Severity
                    canonicalPath = nullable finding.CanonicalPath
                    wrapperPath = nullable finding.WrapperPath
-                   ruleId = nullable finding.RuleId
+                   symbol = nullable finding.Symbol
                    message = finding.Message
                    remediation = finding.Remediation
                    exceptionId = nullable finding.ExceptionId |})
@@ -1285,7 +1328,7 @@ Before acting, read the canonical instructions in:
                    high = report.FindingCountsBySeverity.High
                    warning = report.FindingCountsBySeverity.Warning
                    info = report.FindingCountsBySeverity.Info |}
-               guidanceRuleCoverage = coverage
+               apiSymbolCoverage = coverage
                findings = findings
                caveats = report.Caveats |},
             options
@@ -1323,30 +1366,33 @@ Before acting, read the canonical instructions in:
 
     let private renderCoverageMarkdown report =
         let sb = StringBuilder()
-        sb.AppendLine("# Feature 168 Guidance Coverage") |> ignore
+        sb.AppendLine("# Skill API Symbol Coverage") |> ignore
         sb.AppendLine() |> ignore
         sb.AppendLine($"Overall status: `{overallStatusToken report.OverallStatus}`") |> ignore
         sb.AppendLine() |> ignore
-        sb.AppendLine(markdownTableRow [ "Rule"; "Covered"; "Partial"; "Missing"; "Excepted"; "Not applicable" ]) |> ignore
-        sb.AppendLine(markdownTableRow [ "---"; "---"; "---"; "---"; "---"; "---" ]) |> ignore
 
-        for coverage in report.GuidanceRuleCoverage do
-            sb.AppendLine(
-                markdownTableRow
-                    [ coverage.RuleId
-                      string coverage.Covered
-                      string coverage.Partial
-                      string coverage.Missing
-                      string coverage.Excepted
-                      string coverage.NotApplicable ]
-            )
-            |> ignore
+        sb.AppendLine(
+            "Each `Module.member` a skill documents in an F# code fence is resolved against the "
+            + "member-granular public surface baseline, then against the test corpus. A symbol whose "
+            + "module is known but whose member is absent is a `high` finding; a symbol no test calls "
+            + "is a `warning`. Symbols from modules outside the baseline are product-local and not judged."
+        )
+        |> ignore
 
         sb.AppendLine() |> ignore
-        sb.AppendLine("## Required Rules") |> ignore
+        sb.AppendLine(markdownTableRow [ "Skill"; "Documented"; "Exercised"; "Unexercised"; "Unresolved" ]) |> ignore
+        sb.AppendLine(markdownTableRow [ "---"; "---"; "---"; "---"; "---" ]) |> ignore
 
-        for rule in defaultGuidanceRules () do
-            sb.AppendLine($"- `{rule.RuleId}`: {rule.Theme}") |> ignore
+        for summary in report.ApiSymbolCoverage do
+            sb.AppendLine(
+                markdownTableRow
+                    [ summary.SkillName
+                      string summary.Documented
+                      string summary.Exercised
+                      string summary.Unexercised
+                      string summary.Unresolved ]
+            )
+            |> ignore
 
         sb.ToString()
 
@@ -1366,7 +1412,7 @@ Before acting, read the canonical instructions in:
             if String.IsNullOrWhiteSpace request.OutDir || request.FixtureMode.IsSome then
                 None
             else
-                let path = Path.Combine(request.OutDir, "..", "guidance-coverage.md") |> Path.GetFullPath
+                let path = Path.Combine(request.OutDir, "..", "api-symbol-coverage.md") |> Path.GetFullPath
                 Some(writeGenerated path (renderCoverageMarkdown report))
 
         [ Some reportPath
@@ -1380,7 +1426,7 @@ Before acting, read the canonical instructions in:
           Surfaces = []
           Entries = []
           Findings = []
-          Coverage = []
+          Symbols = []
           Report = None
           Diagnostics = [] },
         [ ReadSkillSurfaces ]
@@ -1388,8 +1434,8 @@ Before acting, read the canonical instructions in:
     let update msg model =
         match msg with
         | InventoryRequested -> model, [ ReadSkillSurfaces ]
-        | InventoryLoaded (surfaces, entries) -> { model with Surfaces = surfaces; Entries = entries }, [ EvaluateGuidanceRules ]
-        | CoverageEvaluated coverage -> { model with Coverage = coverage }, [ ClassifyFindings ]
+        | InventoryLoaded (surfaces, entries) -> { model with Surfaces = surfaces; Entries = entries }, [ ResolveApiSymbols ]
+        | SymbolsResolved symbols -> { model with Symbols = symbols }, [ ClassifyFindings ]
         | FindingsClassified findings -> { model with Findings = findings }, []
         | ReportGenerated report -> { model with Report = Some report }, [ WriteMarkdownReport; WriteSummaryJson ]
         | WorkflowFailed reason -> { model with Diagnostics = model.Diagnostics @ [ reason ] }, []
@@ -1464,19 +1510,58 @@ Before acting, read the canonical instructions in:
             SurfaceOverrides = flagValues "--surface" args |> List.choose parseSurfaceOverride
             AllowedExceptionIds = flagValues "--allow-exception" args |> Set.ofList
             FailOnSeverity = failOn
-            ListRulesOnly = hasFlag "--list-rules" args
+            ListSymbolsOnly = hasFlag "--list-symbols" args
             JsonOutput = hasFlag "--json" args }
 
-    let private printRules () =
-        for rule in defaultGuidanceRules () do
-            printfn "%s\t%s" rule.RuleId rule.Theme
+    /// Same pipeline as `runCheck`, minus the report — so `--list-symbols` and the report can never
+    /// disagree about what a symbol resolves to, and `--fixture` materializes here too.
+    let private printSymbols request =
+        let effectiveRequest = effectiveRequestFor request
+        let surfaces = effectiveSurfaces effectiveRequest effectiveRequest.RepositoryRoot
+        let entries = inventorySkills effectiveRequest surfaces
+
+        match resolveSymbols effectiveRequest entries with
+        | Error reason ->
+            eprintfn "skill-parity: %s" reason
+            1
+        | Ok (symbols, caveats) ->
+            symbols
+            |> List.iter (fun symbol ->
+                printfn "%s\t%s\t%s" symbol.Symbol (symbolStatusToken symbol.Status) symbol.SkillName)
+
+            caveats |> List.iter (eprintfn "skill-parity: %s")
+            0
+
+    let private knownFlags =
+        set [ "--repo"
+              "--out"
+              "--report"
+              "--summary-json"
+              "--fixture"
+              "--surface"
+              "--allow-exception"
+              "--fail-on"
+              "--list-symbols"
+              "--json" ]
 
     let runCli argv =
+        // `--list-rules` was removed with the guidance layer. Silently ignoring it would run a full
+        // check and rewrite the committed report — so an unrecognized option is a configuration error.
+        let unknown =
+            argv
+            |> List.filter (fun (arg: string) ->
+                arg.StartsWith("--", StringComparison.Ordinal)
+                && not (knownFlags.Contains arg))
+
+        if not unknown.IsEmpty then
+            eprintfn "skill-parity: unknown option(s): %s" (String.concat " " unknown)
+            2
+        else
+
         let request = requestFromArgs argv
 
-        if request.ListRulesOnly then
-            printRules ()
-            0
+        if request.ListSymbolsOnly then
+            printSymbols request
         else
             let report = runCheck request
             writeReport request report |> ignore

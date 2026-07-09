@@ -33,7 +33,7 @@ runtime storage.
 
 **Testing**: Expecto through `dotnet test`. New focused tests in
 `tests/Rendering.Harness.Tests` cover canonical/wrapper inventory, wrapper target
-resolution, guidance-rule coverage, surface-baseline drift, finding
+resolution, API-symbol resolution, surface-baseline drift, finding
 classification, fixture/dry-run cases including duplicate canonical-source
 conflict, report rendering, and non-destructive behavior. CLI validation runs
 through the `Rendering.Harness` executable and a thin script wrapper.
@@ -80,7 +80,7 @@ checkout.
 | Visibility lives in `.fsi` | PASS | Harness-visible types and functions belong in `tests/Rendering.Harness/SkillParity.fsi`; Markdown parsing, filesystem, and CLI plumbing stay implementation-owned. Feature readiness records the `Rendering.Harness.SkillParity` surface baseline plus the automated drift assertion. |
 | Idiomatic simplicity | PASS | The design uses plain F# records, discriminated unions, path normalization, deterministic string/Markdown parsing, and JSON/Markdown rendering. No custom operators, SRTP, reflection-driven discovery, type providers, or broad framework abstractions are planned. |
 | Elmish/MVU boundary for stateful or I/O workflows | PASS | The checker has request/inventory/report state and filesystem I/O, so it will expose a small `Model`/`Msg`/`Effect` boundary. Pure update logic classifies surfaces and findings; the edge interpreter reads files and writes reports. |
-| Test evidence is mandatory | PASS | Focused tests prove missing-wrapper, wrapper-only, stale-description, broken-target, canonical-drift, duplicate canonical-source conflict, guidance-gap, non-destructive behavior, and passing findings. Any synthetic fixture content uses explicit fixture naming and stays separate from repository evidence. |
+| Test evidence is mandatory | PASS | Focused tests prove missing-wrapper, wrapper-only, stale-description, broken-target, canonical-drift, duplicate canonical-source conflict, API-symbol, non-destructive behavior, and passing findings. Any synthetic fixture content uses explicit fixture naming and stays separate from repository evidence. |
 | Observability and safe failure | PASS | Every finding includes skill name, surface, category, severity, source path, wrapper path when applicable, and remediation hint. Broken paths and unreadable reports fail closed. |
 | Tier 1 tooling boundaries | PASS | The contracted surface is maintainer tooling: `Rendering.Harness.SkillParity`, the `skill-parity` CLI, a script wrapper, skill Markdown guidance, and generated reports. No public `FS.GG.UI.*` runtime package behavior changes are planned. |
 
@@ -98,7 +98,7 @@ specs/168-skill-parity-evidence/
 |-- data-model.md
 |-- quickstart.md
 |-- contracts/
-|   |-- guidance-rule-coverage.md
+|   |-- api-symbol-coverage.md
 |   |-- parity-report-record.md
 |   |-- skill-parity-cli.md
 |   `-- skill-surface-inventory.md
@@ -107,7 +107,7 @@ specs/168-skill-parity-evidence/
     |   `-- Rendering.Harness.SkillParity.txt
     |-- skill-parity-report.md
     |-- skill-parity-summary.json
-    |-- guidance-coverage.md
+    |-- api-symbol-coverage.md
     |-- fixture-results.md
     |-- feature168-tests.md
     `-- validation-log.md
@@ -127,7 +127,7 @@ tests/
 `-- Rendering.Harness.Tests/
     |-- Feature168SkillParityFixtures.fs
     |-- Feature168SkillInventoryTests.fs
-    |-- Feature168GuidanceCoverageTests.fs
+    |-- Feature168ApiSymbolTests.fs
     |-- Feature168ParityFindingTests.fs
     `-- Feature168ParityReportTests.fs
 
@@ -176,10 +176,12 @@ See [research.md](research.md). All planning unknowns are resolved:
   guidance because both wrapper surfaces route through it.
 - The checker extends `Rendering.Harness` instead of adding a shell-only parser.
 - The first release is report-only and non-destructive by default.
-- Guidance coverage is modeled as seven required rule themes matching the spec.
+- API-symbol coverage resolves each documented `Module.member` against the
+  member-granular public surface baseline, then the test corpus (#189).
+  It replaced seven substring-matched guidance rules.
 - Fixture/dry-run cases prove missing-wrapper, wrapper-only, stale-description,
   broken-target, canonical-drift, duplicate canonical-source conflict,
-  guidance-gap, and non-destructive behavior findings.
+  API-symbol, and non-destructive behavior findings.
 - No new dependency is required.
 
 ## Phase 1: Design and Contracts
@@ -191,7 +193,7 @@ Observable contracts:
 
 - [Skill Parity CLI](contracts/skill-parity-cli.md)
 - [Skill Surface Inventory](contracts/skill-surface-inventory.md)
-- [Guidance Rule Coverage](contracts/guidance-rule-coverage.md)
+- [API Symbol Coverage](contracts/api-symbol-coverage.md)
 - [Parity Report Record](contracts/parity-report-record.md)
 
 Validation guide:

@@ -25,7 +25,8 @@ The focused tests must cover:
 - stale description fixture
 - broken target fixture
 - canonical drift fixture
-- guidance-rule gap fixture
+- unresolved-api-symbol fixture
+- unexercised-api-symbol fixture
 - passing fixture
 - report Markdown/JSON agreement
 
@@ -64,26 +65,23 @@ Review:
 
 - `docs/reports/skills-parity.md`
 - `specs/168-skill-parity-evidence/readiness/skill-parity-summary.json`
-- `specs/168-skill-parity-evidence/readiness/guidance-coverage.md`
+- `specs/168-skill-parity-evidence/readiness/api-symbol-coverage.md`
 
-## 4. Check Required Guidance Coverage
+## 4. Check API Symbol Coverage
 
-Expected outcome: every required guidance theme is covered, not applicable, or
-explicitly excepted for relevant updated skills.
+Expected outcome: every `Module.member` a skill documents in an F# code fence
+exists in the public surface baseline, and some test names it.
 
 ```sh
-dotnet fsi scripts/check-agent-skill-parity.fsx --list-rules
+dotnet fsi scripts/check-agent-skill-parity.fsx --list-symbols
 ```
 
-Required themes:
+Each line is `<symbol>\t<status>\t<skill>`, where status is `exercised`,
+`unexercised` (warning — the seam may be dead), or `unresolved` (high — the skill
+documents an API that does not exist).
 
-- package-pin drift and local-feed proof
-- readiness evidence allowlisting
-- validation output isolation
-- visual readiness
-- responsiveness diagnostics
-- post-merge package bump validation
-- evidence honesty
+See [API Symbol Coverage](contracts/api-symbol-coverage.md). This replaced the
+seven substring-matched guidance rules (#189).
 
 ## 5. Validate Readiness Evidence Is Commit-Visible
 
@@ -136,7 +134,7 @@ The final readiness package should contain:
 
 - parity checker fixture output
 - repository parity report
-- guidance-rule coverage summary
+- API symbol coverage summary
 - focused Feature 168 test results
 - validation-lane output or visible caveat
 - `git check-ignore` proof when readiness evidence is committed

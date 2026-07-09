@@ -9,7 +9,7 @@ docs/reports/skills-parity.md
 specs/168-skill-parity-evidence/readiness/
 |-- skill-parity-report.md
 |-- skill-parity-summary.json
-|-- guidance-coverage.md
+|-- api-symbol-coverage.md
 |-- fixture-results.md
 `-- validation-log.md
 ```
@@ -43,14 +43,13 @@ caveats outside generated sections.
     "warning": 3,
     "info": 2
   },
-  "guidanceRuleCoverage": [
+  "apiSymbolCoverage": [
     {
-      "ruleId": "package-pin-drift",
-      "covered": 6,
-      "partial": 0,
-      "missing": 0,
-      "excepted": 1,
-      "notApplicable": 12
+      "skillName": "fs-gg-ui-widgets",
+      "documented": 43,
+      "exercised": 43,
+      "unexercised": 0,
+      "unresolved": 0
     }
   ],
   "findings": [
@@ -62,7 +61,7 @@ caveats outside generated sections.
       "severity": "high",
       "canonicalPath": null,
       "wrapperPath": ".agents/skills/fs-gg-testing/SKILL.md",
-      "ruleId": null,
+      "symbol": null,
       "message": "Wrapper target does not resolve.",
       "remediation": "Update the wrapper target path or restore the canonical skill source.",
       "exceptionId": null
@@ -78,9 +77,9 @@ caveats outside generated sections.
 
 | Status | Meaning |
 |--------|---------|
-| `passed` | No unresolved high or critical findings and all required guidance rules are covered or explicitly excepted. |
-| `warning` | Only warning/info findings remain, or required guidance has partial but non-blocking coverage. |
-| `failed` | At least one unresolved high/critical finding, unreadable required surface, broken target, or required guidance gap remains. |
+| `passed` | No unresolved findings. |
+| `warning` | Only warning/info findings remain — e.g. a documented API symbol that no test names. |
+| `failed` | At least one unresolved high/critical finding: an unreadable required surface, a broken target, or a documented API symbol absent from the public surface baseline. |
 
 ## Markdown Requirements
 
@@ -92,7 +91,7 @@ The Markdown report includes:
 - canonical source count
 - wrapper count by agent surface
 - finding counts by severity
-- required guidance-rule coverage matrix
+- per-skill API symbol coverage (documented, exercised, unexercised, unresolved)
 - unresolved findings table with skill name, surface, category, severity, path,
   and suggested next action
 - intentional exceptions table
