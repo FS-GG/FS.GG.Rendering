@@ -22,6 +22,8 @@ any source is copied (source import is Stage R4).
   that live in [`FS-GG/.github` → `docs/adr/`](https://github.com/FS-GG/.github/blob/main/docs/adr/)
   and are cited normatively by rendering code — they are *not* a continuation of the local
   sequence.
+  Because the org sequence has run past `0014`, a repo-local ADR numbered `0015` would collide with
+  a future stub. **Repo-local ADRs therefore resume at `0100`**; org stubs keep their org number.
   - [0001-package-identity.md](./decisions/0001-package-identity.md) — accepted at R8: rebranded
     `FS.Skia.UI.*` → `FS.GG.UI.*`.
   - [0002-template-ownership.md](./decisions/0002-template-ownership.md) — rendering repo owns
@@ -40,6 +42,9 @@ any source is copied (source import is Stage R4).
   - [0009-g3-ant-showcase.md](./decisions/0009-g3-ant-showcase.md) — G3 Ant showcase.
   - [0010-fs-gg-ui-template-default-starter.md](./decisions/0010-fs-gg-ui-template-default-starter.md)
     — a replaceable `game` profile as the `fs-gg-ui-template` default starter.
+  - [0100-gate-is-a-required-check.md](./decisions/0100-gate-is-a-required-check.md) — `gate`
+    becomes a required check on `main`; release PRs are no longer expected-red, and the tag-window
+    freeze is scheduled for removal.
   - **Org-level pointer stubs** (canonical text in `FS-GG/.github`):
     - [0011-agent-skill-roots-full-union-orchestrator-owned-mirror.md](./decisions/0011-agent-skill-roots-full-union-orchestrator-owned-mirror.md)
       — agent-skill roots carry the full union; `fsgg-sdd` owns the mirror; providers confined
