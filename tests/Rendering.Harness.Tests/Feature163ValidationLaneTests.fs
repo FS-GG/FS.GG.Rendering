@@ -123,19 +123,36 @@ let tests =
         test "process runner classifies passed failed timed-out and no-progress lanes" {
             let root = Feature163TestFixtures.createTempRoot "feature163-lane-runner"
 
+            // A lane runs under `bash -lc`, so reaching the first byte of the command costs a login
+            // shell's startup. That cost is unbounded on a loaded runner, and it is spent before any
+            // behaviour under test happens. So a lane expected to *complete* gets a budget no runner
+            // can plausibly exhaust: its timeout is not the property being asserted, and a tight one
+            // only buys a flake that reads as "the runner misclassified a passing lane".
+            let ampleBudget = TimeSpan.FromMinutes 2.0
+
+            // A lane expected to *trip* a bound keeps a tight one — that classification IS the
+            // property. Both are robust to a slow start: the command outlasts the bound regardless of
+            // when it began, so extra startup delays the verdict without changing it.
+            let tightBudget = TimeSpan.FromMilliseconds 100.0
+
             try
-                let passed = ValidationLanes.runLane (lane root "passed" "printf ok" (TimeSpan.FromSeconds 2.0) None)
+                let passed = ValidationLanes.runLane (lane root "passed" "printf ok" ampleBudget None)
                 Expect.equal passed.Status ValidationLanes.Passed "passed"
                 Expect.isTrue (File.Exists passed.LogPath) "passed log"
 
-                let failed = ValidationLanes.runLane (lane root "failed" "printf fail; exit 7" (TimeSpan.FromSeconds 2.0) None)
+                let failed = ValidationLanes.runLane (lane root "failed" "printf fail; exit 7" ampleBudget None)
                 Expect.equal failed.Status ValidationLanes.Failed "failed"
                 Expect.equal failed.ExitCode (Some 7) "exit code"
 
-                let timedOut = ValidationLanes.runLane (lane root "timed" "sleep 2" (TimeSpan.FromMilliseconds 100.0) None)
+                let timedOut = ValidationLanes.runLane (lane root "timed" "sleep 2" tightBudget None)
                 Expect.equal timedOut.Status ValidationLanes.TimedOut "timed out"
 
-                let stalled = ValidationLanes.runLane (lane root "stalled" "printf 'start\n'; sleep 2" (TimeSpan.FromSeconds 2.0) (Some(TimeSpan.FromMilliseconds 100.0)))
+                // The no-progress bound is this lane's property; the overall bound is not, so it gets
+                // the ample one too. (The tight overall bound was not itself a flake here — the
+                // no-progress bound always trips first, even while the shell is still starting.)
+                let stalled =
+                    ValidationLanes.runLane (lane root "stalled" "printf 'start\n'; sleep 2" ampleBudget (Some tightBudget))
+
                 Expect.equal stalled.Status ValidationLanes.NoProgressTimedOut "no-progress timeout"
             finally
                 Feature163TestFixtures.deleteTempRoot root
