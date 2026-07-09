@@ -171,175 +171,48 @@ module Layout =
                 diagnostics
                 @ [ diagnostic nodeId UnmeasurableContent FS.GG.UI.Layout.DiagnosticSeverity.Warning "Invalid measurement output was normalized to 0x0." (Some "measure") true ]
 
-    let preferredMainSize isRow availableMain (node: LayoutNode) =
-        let explicit =
-            if isRow then
-                node.Intent.Size.Width
-            else
-                node.Intent.Size.Height
+    /// Intent validation, decoupled from geometry.
+    ///
+    /// `evaluate` used to source these diagnostics by running a second, hand-written flex engine over
+    /// the whole tree on every call and discarding its geometry. That engine is gone (see `evaluate`);
+    /// what remains is the set it actually contributed, recovered as a pure function of `LayoutIntent`.
+    ///
+    /// No measurement happens here. Yoga invokes the measure callbacks and reports their diagnostics
+    /// itself, so measuring here only ran user callbacks a second time per frame.
+    ///
+    /// A `Collapsed` node contributes its own diagnostics but not its subtree's, matching the engine
+    /// this replaces: a collapsed subtree was never laid out, so its intent was never validated.
+    let validateIntent (root: LayoutNode) =
+        let diagnostics = ResizeArray<LayoutDiagnostic>()
 
-        match node.Visibility, explicit, node.Intent.FlexBasis with
-        | Collapsed, _, _ -> 0.0
-        | _, Some value, _ when nonNegative value -> value
-        | _, _, Some value when nonNegative value -> value
-        | _ ->
-            let measuredWidth, measuredHeight, _ = measureLeaf (Some node.Id) availableMain availableMain node.Measure
-            if isRow then measuredWidth else measuredHeight
+        let rec visit (node: LayoutNode) =
+            let nodeId = Some node.Id
+            let _, paddingDiagnostics = normalizePadding nodeId node.Intent.Padding
+            let _, gapDiagnostics = normalizeGap nodeId node.Intent.Gap
+            let _, marginDiagnostics = normalizePadding nodeId node.Intent.Margin
+            let _, widthDiagnostics = normalizeDimension nodeId "width" node.Intent.Size.Width
+            let _, heightDiagnostics = normalizeDimension nodeId "height" node.Intent.Size.Height
 
-    let alignOffset align available childSize =
-        match align with
-        | LayoutAlign.Center -> max 0.0 ((available - childSize) / 2.0)
-        | LayoutAlign.End -> max 0.0 (available - childSize)
-        | _ -> 0.0
+            // `constrain`'s diagnostics depend only on the min/max pair, never on the requested value,
+            // so validating them needs no geometry.
+            let _, minMaxWidthDiagnostics = constrain nodeId 0.0 node.Intent.MinSize.Width node.Intent.MaxSize.Width "width"
+            let _, minMaxHeightDiagnostics = constrain nodeId 0.0 node.Intent.MinSize.Height node.Intent.MaxSize.Height "height"
 
-    let rec layoutNode (bounds: LayoutBounds) (node: LayoutNode) =
-        let padding, paddingDiagnostics = normalizePadding (Some node.Id) node.Intent.Padding
-        let gap, gapDiagnostics = normalizeGap (Some node.Id) node.Intent.Gap
-        let margin, marginDiagnostics = normalizePadding (Some node.Id) node.Intent.Margin
+            diagnostics.AddRange paddingDiagnostics
+            diagnostics.AddRange gapDiagnostics
+            diagnostics.AddRange marginDiagnostics
+            diagnostics.AddRange widthDiagnostics
+            diagnostics.AddRange heightDiagnostics
+            diagnostics.AddRange minMaxWidthDiagnostics
+            diagnostics.AddRange minMaxHeightDiagnostics
 
-        let widthFromIntent, widthDiagnostics =
-            match node.Intent.Size.Width with
-            | Some value -> normalizeDimension (Some node.Id) "width" (Some value)
-            | None -> bounds.Width, []
+            if node.Visibility <> Collapsed then
+                for child in node.Children do
+                    visit child
 
-        let heightFromIntent, heightDiagnostics =
-            match node.Intent.Size.Height with
-            | Some value -> normalizeDimension (Some node.Id) "height" (Some value)
-            | None -> bounds.Height, []
+        visit root
+        List.ofSeq diagnostics
 
-        let width, minMaxWidthDiagnostics = constrain (Some node.Id) widthFromIntent node.Intent.MinSize.Width node.Intent.MaxSize.Width "width"
-        let height, minMaxHeightDiagnostics = constrain (Some node.Id) heightFromIntent node.Intent.MinSize.Height node.Intent.MaxSize.Height "height"
-
-        let ownBounds: LayoutBounds =
-            match node.Visibility with
-            | Collapsed ->
-                { X = bounds.X + margin.Left
-                  Y = bounds.Y + margin.Top
-                  Width = 0.0
-                  Height = 0.0 }
-            | _ ->
-                { X = bounds.X + margin.Left
-                  Y = bounds.Y + margin.Top
-                  Width = max 0.0 (width - margin.Left - margin.Right)
-                  Height = max 0.0 (height - margin.Top - margin.Bottom) }
-
-        let own: ComputedBounds = { NodeId = node.Id; Bounds = ownBounds; Visibility = node.Visibility }
-        let diagnostics = paddingDiagnostics @ gapDiagnostics @ marginDiagnostics @ widthDiagnostics @ heightDiagnostics @ minMaxWidthDiagnostics @ minMaxHeightDiagnostics
-
-        if node.Visibility = Collapsed || List.isEmpty node.Children then
-            [ own ], diagnostics
-        else
-            let inner: LayoutBounds =
-                { X = ownBounds.X + padding.Left
-                  Y = ownBounds.Y + padding.Top
-                  Width = max 0.0 (ownBounds.Width - padding.Left - padding.Right)
-                  Height = max 0.0 (ownBounds.Height - padding.Top - padding.Bottom) }
-
-            let children = node.Children
-            let isRow = node.Intent.Direction = LayoutDirection.Row
-            let mainAvailable = if isRow then inner.Width else inner.Height
-            let crossAvailable = if isRow then inner.Height else inner.Width
-            let mainGap = if isRow then gap.Column else gap.Row
-            let crossGap = if isRow then gap.Row else gap.Column
-
-            let childDescriptors =
-                children
-                |> List.map (fun child ->
-                    let basis = preferredMainSize isRow mainAvailable child
-                    let grow = if nonNegative child.Intent.FlexGrow then child.Intent.FlexGrow else 0.0
-                    let shrink = if nonNegative child.Intent.FlexShrink then child.Intent.FlexShrink else 1.0
-                    child, basis, grow, shrink)
-
-            let totalBasis = childDescriptors |> List.sumBy (fun (_, basis, _, _) -> basis)
-            let totalGap = mainGap * float (max 0 (children.Length - 1))
-            let remaining = mainAvailable - totalBasis - totalGap
-            let totalGrow = childDescriptors |> List.sumBy (fun (_, _, grow, _) -> grow)
-            let totalShrink = childDescriptors |> List.sumBy (fun (_, _, _, shrink) -> shrink)
-
-            let mainSizes =
-                childDescriptors
-                |> List.map (fun (child, basis, grow, shrink) ->
-                    let adjusted =
-                        if node.Intent.Wrap = LayoutWrap.Wrap then
-                            basis
-                        elif remaining > 0.0 && totalGrow > 0.0 then
-                            basis + remaining * grow / totalGrow
-                        elif remaining < 0.0 && totalShrink > 0.0 then
-                            basis + remaining * shrink / totalShrink
-                        elif remaining > 0.0 && basis = 0.0 && totalGrow = 0.0 then
-                            basis
-                        elif basis = 0.0 && children.Length > 0 then
-                            max 0.0 ((mainAvailable - totalGap) / float children.Length)
-                        else
-                            basis
-
-                    let axis = if isRow then "width" else "height"
-                    let minValue = if isRow then child.Intent.MinSize.Width else child.Intent.MinSize.Height
-                    let maxValue = if isRow then child.Intent.MaxSize.Width else child.Intent.MaxSize.Height
-                    let constrained, constrainedDiagnostics = constrain (Some child.Id) adjusted minValue maxValue axis
-                    child, constrained, constrainedDiagnostics)
-
-            let wrapLines =
-                if node.Intent.Wrap = LayoutWrap.Wrap then
-                    (([], [], 0.0), mainSizes)
-                    ||> List.fold (fun (lines, current, used) (child, size, childDiagnostics) ->
-                        let nextUsed = if List.isEmpty current then size else used + mainGap + size
-                        if not (List.isEmpty current) && nextUsed > mainAvailable then
-                            ((List.rev current) :: lines, [ child, size, childDiagnostics ], size)
-                        else
-                            (lines, (child, size, childDiagnostics) :: current, nextUsed))
-                    |> fun (lines, current, _) -> List.rev ((List.rev current) :: lines |> List.filter (List.isEmpty >> not))
-                else
-                    [ mainSizes ]
-
-            let childResults, childDiagnostics, _ =
-                (([], diagnostics, 0.0), wrapLines)
-                ||> List.fold (fun (allBounds, allDiagnostics, crossOffset) line ->
-                    let lineMain =
-                        line |> List.sumBy (fun (_, size, _) -> size)
-
-                    let lineCross =
-                        if List.isEmpty line then 0.0 else max 0.0 ((crossAvailable - crossGap * float (wrapLines.Length - 1)) / float wrapLines.Length)
-
-                    let startMain =
-                        match node.Intent.JustifyContent with
-                        | LayoutAlign.Center -> max 0.0 ((mainAvailable - lineMain - mainGap * float (max 0 (line.Length - 1))) / 2.0)
-                        | LayoutAlign.End -> max 0.0 (mainAvailable - lineMain - mainGap * float (max 0 (line.Length - 1)))
-                        | _ -> 0.0
-
-                    let _, lineBounds, lineDiagnostics =
-                        ((startMain, [], allDiagnostics), line)
-                        ||> List.fold (fun (mainOffset, boundsAcc, diagnosticsAcc) (child, mainSize, childSizeDiagnostics) ->
-                            let measuredWidth, measuredHeight, measureDiagnostics = measureLeaf (Some child.Id) mainSize lineCross child.Measure
-                            let explicitCross = if isRow then child.Intent.Size.Height else child.Intent.Size.Width
-                            let measuredCross = if isRow then measuredHeight else measuredWidth
-                            let crossSize =
-                                match child.Visibility, (child.Intent.AlignSelf |> Option.defaultValue node.Intent.AlignItems), explicitCross with
-                                | Collapsed, _, _ -> 0.0
-                                | _, LayoutAlign.Stretch, None -> lineCross
-                                | _, _, Some value when nonNegative value -> min lineCross value
-                                | _ -> if measuredCross > 0.0 then min lineCross measuredCross else lineCross
-
-                            let crossAlign = child.Intent.AlignSelf |> Option.defaultValue node.Intent.AlignItems
-                            let crossPosition = crossOffset + alignOffset crossAlign lineCross crossSize
-                            let childBounds: LayoutBounds =
-                                if isRow then
-                                    { X = inner.X + mainOffset
-                                      Y = inner.Y + crossPosition
-                                      Width = mainSize
-                                      Height = crossSize }
-                                else
-                                    { X = inner.X + crossPosition
-                                      Y = inner.Y + mainOffset
-                                      Width = crossSize
-                                      Height = mainSize }
-
-                            let childComputed, childLayoutDiagnostics = layoutNode childBounds child
-                            mainOffset + mainSize + mainGap, boundsAcc @ childComputed, diagnosticsAcc @ childSizeDiagnostics @ measureDiagnostics @ childLayoutDiagnostics)
-
-                    allBounds @ lineBounds, lineDiagnostics, crossOffset + lineCross + crossGap)
-
-            own :: childResults, childDiagnostics
 
     let yogaAlign align =
         match align with
@@ -420,6 +293,10 @@ module Layout =
     let tryYogaLayout (available: AvailableSpace) (pin: LayoutBounds option) (root: LayoutNode) =
         let measurementDiagnostics = ResizeArray<LayoutDiagnostic>()
         let nodePairs = ResizeArray<LayoutNode * Node>()
+        // Yoga keeps only a native function pointer to each measure callback. Root the managed
+        // delegates for the whole layout pass rather than relying on the binding to do it, so a GC
+        // between `createNode` and `YGNodeCalculateLayout` cannot collect one out from under Yoga.
+        let measureCallbacks = ResizeArray<YGMeasureFunc>()
 
         let rec createNode (node: LayoutNode) =
             let yogaNode = YGNodeAPI.YGNodeNewWithConfig(yogaConfig)
@@ -454,6 +331,7 @@ module Layout =
 
                             YGSize(Width = 0.0f, Height = 0.0f))
 
+                measureCallbacks.Add callback
                 YGNodeAPI.YGNodeSetMeasureFunc(yogaNode, callback)
             | _ -> ()
 
@@ -533,6 +411,10 @@ module Layout =
                             | childYoga -> read cached.X cached.Y child childYoga)
                         |> List.concat
                     own :: children
+
+            // Yoga invoked the measure callbacks during `YGNodeCalculateLayout` above; keep them
+            // reachable until every read that depends on that pass has completed.
+            GC.KeepAlive measureCallbacks
             YGNodeAPI.YGNodeFreeRecursive(rootYoga)
             rootCreated <- false
             Ok(bounds, List.ofSeq measurementDiagnostics)
@@ -547,30 +429,45 @@ module Layout =
 
     let evaluate available root =
         let available, availableDiagnostics = normalizeAvailable available
-        let rootBounds: LayoutBounds =
-            { X = 0.0
-              Y = 0.0
-              Width = available.Width
-              Height = available.Height }
-
-        let _, pureValidationDiagnostics = layoutNode rootBounds root
 
         let bounds, diagnostics =
             match tryYogaLayout available None root with
-            | Ok(bounds, yogaDiagnostics) -> bounds, yogaDiagnostics @ pureValidationDiagnostics
+            | Ok(bounds, yogaDiagnostics) -> bounds, yogaDiagnostics
             | Result.Error ex ->
-                let bounds, pureDiagnostics = layoutNode rootBounds root
-                let fallbackDiagnostic =
+                // Yoga is the only layout engine. A hand-written flex engine used to stand in here,
+                // but it was never checked against Yoga and does not agree with it: it ignores the
+                // `SpaceBetween`/`SpaceAround`/`SpaceEvenly` justifications entirely, and it re-derives
+                // a child's box from `Intent.Size` after positioning it at its flex-shrunk offset —
+                // so an overflowing row came back with children that overlap and spill their container.
+                // Substituting that silently, as a Warning, is worse than admitting the failure: report
+                // an Error and empty geometry, so a caller sees nothing rather than something wrong.
+                let collapsed =
+                    let acc = ResizeArray<ComputedBounds>()
+
+                    let rec visit (node: LayoutNode) =
+                        acc.Add
+                            { NodeId = node.Id
+                              Bounds = { X = 0.0; Y = 0.0; Width = 0.0; Height = 0.0 }
+                              Visibility = node.Visibility }
+
+                        for child in node.Children do
+                            visit child
+
+                    visit root
+                    List.ofSeq acc
+
+                let failureDiagnostic =
                     diagnostic
                         (Some root.Id)
                         FallbackBoundsApplied
-                        FS.GG.UI.Layout.DiagnosticSeverity.Warning
-                        $"Yoga execution failed recoverably; pure fallback layout was applied. {ex.GetType().Name}: {ex.Message}"
+                        FS.GG.UI.Layout.DiagnosticSeverity.Error
+                        $"Yoga layout execution failed; no geometry was computed and every node collapsed to empty bounds. {ex.GetType().Name}: {ex.Message}"
                         (Some "yoga")
                         true
 
-                bounds, fallbackDiagnostic :: pureDiagnostics
-        let allDiagnostics = availableDiagnostics @ validateTree root @ diagnostics
+                collapsed, [ failureDiagnostic ]
+
+        let allDiagnostics = availableDiagnostics @ validateTree root @ validateIntent root @ diagnostics
 
         let fallbackDiagnostics =
             if allDiagnostics |> List.exists (fun item -> item.FallbackApplied) then
