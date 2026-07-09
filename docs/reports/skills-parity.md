@@ -1,7 +1,7 @@
 <!-- SKILL-PARITY:START -->
 # Skill Parity Report
 
-Checked at UTC: `2026-07-09T12:50:21.2869897Z`
+Checked at UTC: `2026-07-09T15:50:42.8543018Z`
 Overall status: `passed`
 Canonical sources: `31`
 Wrappers: `63`
@@ -37,6 +37,13 @@ Wrappers: `63`
 | fs-gg-symbology | 13 | 13 | 0 | 0 |
 | fs-gg-testing | 5 | 5 | 0 | 0 |
 | fs-gg-ui-widgets | 41 | 41 | 0 | 0 |
+
+## Guarded Theme Coverage
+| Theme | Scoped | Resolved | Dangling | Unnamed |
+| --- | --- | --- | --- | --- |
+| package-pin-drift | 8 | 8 | 0 | 0 |
+| post-merge-package-bump | 2 | 2 | 0 | 0 |
+| readiness-allowlisting | 5 | 5 | 0 | 0 |
 
 ## Findings
 No unresolved parity findings.
