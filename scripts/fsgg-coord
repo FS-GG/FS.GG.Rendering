@@ -1493,10 +1493,56 @@ release_cmd() {
 # The detect and the strip must also agree on case, or a mis-cased `PATHS:` line survives grep and
 # keeps its prefix as a bogus `PATHS:` touch-set token. `widen` rewrites on `[Pp]aths:` too, so that
 # is the one spelling the whole tool recognizes.
+#
+# A DECLARATION IS A LINE THE AUTHOR WROTE AS ONE — not any line that looks like one (.github#277).
+# Scanning the raw body meant an issue that merely *quotes* a `Paths:` line — in a reproduction, in a
+# suggested `widen` command — silently acquired it as its own touch-set, and every matching line was
+# unioned, so a body with a real declaration and a quoted one reserved both. This is the #273
+# fail-open one turn further in: an unmatchable token reserves nothing and is loudly refused, but a
+# FABRICATED one reserves the *wrong* files and passes every check, because each token is well-formed.
+# `#261` is the live instance — its only `Paths:` line sits inside a fence, quoting another repo, so
+# it reserved Rendering's files and none of the file it edits.
+#
+# A code block is not prose: fenced blocks are stripped before scanning, and markdown's own rule
+# settles the indented case — 4+ leading spaces (or a tab) is a code block, so a declaration is a
+# `Paths:` line indented at most 3, the same bound that decides whether a fence is a fence. A body
+# whose only `Paths:` line was fenced now declares NOTHING, and an undeclared touch-set is already
+# refused everywhere. That is the fail-CLOSED direction: unschedulable beats mis-scheduled.
+#
+# WHAT SURVIVES IS UNIONED, not `head -1`ed — deliberately, against #277's suggested fix. Both stop a
+# FENCED quote from widening a real declaration, but only because the strip already deleted it; they
+# differ on a quote that ESCAPES the strip (a bare one at column 0 — which #277 itself records as how
+# #273 "infected itself with its own reproduction"). Taking the first line then reserves the QUOTE and
+# silently DROPS the real declaration below it: under-reserving, so two workers are told DISJOINT on a
+# file they both edit. That is ADR-0021's own failure mode — the one this file exists to prevent, and
+# the one a fix for #277 must not reintroduce. Unioning reserves a SUPERSET instead: the cost is a
+# false OVERLAP, which is loud, investigable, and spends only parallelism. Over-reserve on ambiguity;
+# never under-reserve. `widen` COLLAPSES the duplicates, so the two sides stay coherent.
+FENCE_AWK='
+function fence_delim(line,   t, lead, ch, n, rest) {
+  t = line; lead = 0
+  while (lead < 3 && substr(t, 1, 1) == " ") { t = substr(t, 2); lead++ }
+  if (t !~ /^(```|~~~)/) return 0
+  ch = substr(t, 1, 1); n = 0
+  while (substr(t, n + 1, 1) == ch) n++
+  rest = substr(t, n + 1)
+  if (!IN_FENCE) {
+    if (ch == "`" && index(rest, "`")) return 0   # an opening ``` info string carries no backtick
+    IN_FENCE = 1; FENCE_CH = ch; FENCE_N = n; return 1
+  }
+  gsub(/[ \t]/, "", rest)                         # a closer: same char, at least as long, nothing else
+  if (ch == FENCE_CH && n >= FENCE_N && rest == "") { IN_FENCE = 0; return 1 }
+  return 0
+}
+'
+# `widen` REWRITES the lines this reads. Both must agree on which lines are declarations, or `widen`
+# patches a quoted line inside a fence and the reader never sees the new touch-set — so both sides
+# share `FENCE_AWK` and the same `^ {0,3}[Pp]aths:` bound.
 paths_from_body() {  # $1=issue body -> one normalized touch-set token per line (possibly none)
   printf '%s\n' "$1" \
-    | grep -E '^[[:space:]]*[Pp]aths:' \
-    | sed -E 's/^[[:space:]]*[Pp]aths:[[:space:]]*//' \
+    | awk "$FENCE_AWK"'{ if (fence_delim($0)) next; if (!IN_FENCE) print }' \
+    | grep -E '^ {0,3}[Pp]aths:' \
+    | sed -E 's/^ *[Pp]aths:[[:space:]]*//' \
     | tr ',' ' ' | tr '\t' ' ' | tr -s ' ' '\n' | sed '/^$/d' \
     | sed -E 's#^\./##; s#/\*\*$##; s#/\*$##; s#/+$##' \
     || true                                  # normalize: strip ./ prefix, /** /* and trailing /
@@ -2205,10 +2251,33 @@ widen_cmd() {
   bodyfile="$(mktemp "$CACHE/.body.XXXXXX")"; newfile="$(mktemp "$CACHE/.body.XXXXXX")"
   gh api "repos/$so/$sr/issues/$sn" --jq '.body // ""' >"$bodyfile" 2>/dev/null \
     || { rm -f "$bodyfile" "$newfile"; die "widen: cannot read $sr#$sn."; }
-  awk -v repl="Paths: $newpaths" '
-    /^[ \t]*[Pp]aths:/ && !done { print repl; done = 1; next }
+  # Rewrite the lines `paths_from_body` would READ (unfenced, ≤3-space indent) — never a quoted one
+  # inside a fence, which would leave the real declaration standing and reserve nothing (#277).
+  #
+  # The reader UNIONS every surviving declaration, so replacing just the first would leave the rest
+  # still reserving their old tokens and `widen` would not have widened to what it printed. The first
+  # becomes the new declaration and the others are DROPPED, which is also how a body that accumulated
+  # a stray bare quotation gets repaired.
+  #
+  # `repl` travels via the environment, NOT `-v`: awk applies escape processing to a `-v` value, so a
+  # token containing a backslash would be PATCHed as something other than the string we validated with
+  # `die_on_invalid_paths` and printed back to the worker (`src/a\tb` -> a real tab -> two tokens).
+  #
+  # And when the body ENDS inside an unclosed fence there is no declaration to patch, so we append —
+  # but appending after an unterminated fence puts the new line *inside* it, where the reader will not
+  # see it. widen would then report a confident `widened …` over an item that still declares nothing,
+  # which is precisely the body a worker runs widen to repair. Close the fence first.
+  FSGG_REPL="Paths: $newpaths" awk "$FENCE_AWK"'
+    BEGIN { repl = ENVIRON["FSGG_REPL"] }
+    { if (fence_delim($0)) { print; next } }
+    !IN_FENCE && /^ {0,3}[Pp]aths:/ { if (!done) { print repl; done = 1 } ; next }
     { print }
-    END { if (!done) { print ""; print repl } }' "$bodyfile" >"$newfile"
+    END {
+      if (!done) {
+        if (IN_FENCE) { closer = ""; for (i = 0; i < FENCE_N; i++) closer = closer FENCE_CH; print closer }
+        print ""; print repl
+      }
+    }' "$bodyfile" >"$newfile"
   gh api -X PATCH "repos/$so/$sr/issues/$sn" -F body=@"$newfile" >/dev/null \
     || { rm -f "$bodyfile" "$newfile"; die "widen: cannot update the body of $sr#$sn."; }
   rm -f "$bodyfile" "$newfile"

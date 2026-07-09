@@ -94,6 +94,17 @@ matches nothing, and a token that matches nothing would conflict with nothing, i
 `DISJOINT` against everything. So the tool **refuses** it: `claim`, `widen`, `batch`, `overlap`,
 and `verify-paths` all reject an unmatchable token and name it. Want every lockfile? List them.
 
+**A declaration is a line you wrote as one** (`.github#277`). A `Paths:` line inside a fenced
+(``` or `~~~`) or indented code block is a **quotation**, not a declaration — quote freely in
+reproductions and suggested `widen` commands. So an issue whose only `Paths:` line is fenced declares
+**nothing** and is refused as undeclared, rather than silently reserving the files it quoted. Indent a
+real declaration by **at most 3 spaces, and never a tab** — markdown reads 4 spaces (or a tab) as a
+code block, and so does the reader.
+
+Quote in a **fence**, not bare. A bare `Paths:` line at column 0 *is* a declaration, and if you leave
+two of them the reader **unions** both — it over-reserves rather than guess which one you meant, so
+you get a loud false `OVERLAP` instead of a silent collision. `widen` collapses them back to one.
+
 Declare narrowly and honestly. An item with no `Paths:` is **unschedulable** — `batch` will
 report it and refuse to hand it out.
 
