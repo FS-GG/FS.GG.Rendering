@@ -18,10 +18,12 @@
 #
 # ADVISORY (mirrors FS.GG.Governance spec 088 D7)
 #   This runs as a SEPARATE step and never reddens the normal build/release pack (Package
-#   Validation is left OFF there). The script EXITS NON-ZERO when a real break is found, so the
-#   gate flips from advisory → required by dropping `continue-on-error` on the CI job — no script
-#   change. Fail-safe: a package with no baseline on the feed is reported NoBaselineYet (NOT a
-#   silent pass); a pack/tool failure unrelated to API is reported Indeterminate.
+#   Validation is left OFF there). The script EXITS NON-ZERO when a real break is found, so its
+#   gate.yml job fails on a break. That job is not in branch protection's required set, so today a
+#   break informs a merge rather than blocking one; elevating it is a branch-protection change, not
+#   a script change (docs/ci/cadence-map.md §5, ADR-0101). Fail-safe: a package with no baseline on
+#   the feed is reported NoBaselineYet (NOT a silent pass); a pack/tool failure unrelated to API is
+#   reported Indeterminate.
 #
 # AUTH
 #   Needs read access to https://nuget.pkg.github.com/FS-GG. Provide a token via NUGET_FEED_TOKEN
@@ -81,10 +83,28 @@ cat > "$cfg" <<EOF
 EOF
 
 # Latest published version of a package id on the feed, or empty if none (NoBaselineYet).
+#
+# The flat-container `versions` array has NO guaranteed order (NuGet API spec) — nuget.org happens
+# to return it oldest-first, GitHub Packages returns it NEWEST-first. So the max must be computed,
+# never read off an end: taking `tail -1` picked the OLDEST version on this feed, which silently
+# baselined every package against 0.1.52-preview.1 and re-reported both already-shipped majors
+# (0.2.0, 0.3.0) as fresh breaks on every run. That is what kept `api-compatibility-gate` red on
+# `main` from the 0.2.0 release onward, and it would have made the job permanently red after any
+# major — i.e. un-requirable by construction (ADR-0101).
+#
+# `sort -V` gives Debian version ordering, which agrees with SemVer on the dotted numeric core and
+# compares numeric prerelease identifiers numerically (`preview.10` > `preview.2`). It disagrees on
+# one rule: SemVer says a prerelease precedes its own release (`1.0.0-preview.1` < `1.0.0`), while
+# plain `-` sorts after end-of-string. Mapping the prerelease separator to `~` — the one character
+# `sort -V` orders before everything, including the empty string — restores exactly that rule. Only
+# the FIRST `-` is the separator, so `sed 's/-/~/'` (no `g`) is deliberate.
+#
+# Requires GNU coreutils `sort` (ubuntu-latest CI, and the repo's Linux dev boxes).
 latest_version() {
   local id_lower; id_lower="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
   curl -fsSL -H "Authorization: Bearer $token" "$FEED_DL/$id_lower/index.json" 2>/dev/null \
-    | grep -oE '"[0-9][^"]*"' | tr -d '"' | tail -1
+    | tr ',' '\n' | grep -oE '"[0-9][^"]*"' | tr -d '"' \
+    | sed 's/-/~/' | sort -V | tail -1 | sed 's/~/-/'
 }
 
 # A check version strictly greater than the baseline that PRESERVES prerelease-ness. For a

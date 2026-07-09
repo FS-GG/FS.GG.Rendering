@@ -5,8 +5,9 @@ name: gate
 #
 # ENFORCED: the `Deterministic gate` job is a required status check on `main` (ADR-0100,
 # docs/product/decisions/0100-gate-is-a-required-check.md). A red run blocks the merge button. The
-# sibling `api-compatibility-gate` job is NOT required yet — elevating it needs a cadence-map §5
-# amendment. `release.yml` / `capability.yml` are advisory and must never be required (FR-007).
+# sibling `api-compatibility-gate` job stays ADVISORY: cadence-map §5 names the one precondition it
+# has not yet met (a green run on `main`), and ADR-0101 records why.
+# `release.yml` / `capability.yml` are advisory and must never be required (FR-007).
 #
 # "Require branches to be up to date" is deliberately OFF: it serializes merges under the ADR-0021
 # parallel-work model. This job also runs on `push: main`, so a bad interleaving reds `main` rather
@@ -253,17 +254,34 @@ jobs:
   # (Microsoft.CodeAnalysis.PublicApiAnalyzers is C#-only). A removed/changed public member is a
   # break that must force a SemVer major (registry coherence id `apicompat-publicapi-gate`).
   #
-  # ENFORCING (ratcheted from advisory, FS-GG/.github#20 resolved): a SEPARATE job whose run FAILS
-  # on a real public-API break (Package Validation stays OFF in the normal build/release, so the
-  # required `gate` job above is unaffected). The detector script exits non-zero ONLY on a genuine
-  # CP#### break — NoBaselineYet / Indeterminate (e.g. a feed hiccup) do not fail it — so this is a
-  # robust hard gate, not a flaky one. It reads the feed with GITHUB_TOKEN (packages: read); on a
-  # fork PR (no token) the script degrades to clean (exit 0) so forks still merge.
-  # `main` now HAS branch protection, but this job is deliberately NOT in the required set: ADR-0100
-  # requires only `Deterministic gate`, because cadence-map §5 names only that context (FR-007) and
-  # amending §5 is a separate decision. So enforcement here is still at the workflow level, the same
-  # model as the lockfile-restore-enforcement gate — a red here informs a merge, it does not block
-  # one. Adding this job's context to the required set is tracked as #219.
+  # ENFORCING AT THE WORKFLOW LEVEL (FS-GG/.github#20 resolved): a SEPARATE job whose run FAILS on a
+  # real public-API break (Package Validation stays OFF in the normal build/release, so the required
+  # `gate` job above is unaffected). The detector script exits non-zero ONLY on a genuine CP####
+  # break — NoBaselineYet / Indeterminate (e.g. a feed hiccup) do not fail it. It reads the feed
+  # with GITHUB_TOKEN (packages: read); on a fork PR (no token) the script degrades to clean
+  # (exit 0) so forks still merge. A red here informs a merge; it does not block one.
+  #
+  # WHY NOT A REQUIRED CHECK YET (#219, ADR-0101). Not because the detector is weak — it is a sound
+  # hard gate — but because it is RED ON `main` RIGHT NOW, and a required check that is red on the
+  # base branch wedges every merge in the repo. Three packables carry public-API breaks that no
+  # published major has discharged yet: FS.GG.UI.Controls (`CustomControlDefinition<'msg>` lost its
+  # type parameter), FS.GG.UI.DesignSystem (`IntentPolicy` moved out of the `StyleResolver` module,
+  # and `Theme` lost `IComparable`), and FS.GG.UI.Themes.AntDesign (which re-exports that policy).
+  # The gate is doing its job: those breaks force the next FS.GG.UI release to be a SemVer major.
+  #
+  # DO NOT re-derive that red from folklore. Until 2026-07-09 both this comment and ADR-0100 blamed
+  # the `FS.GG.UI.Canvas.Audio` removal from specs/252 — but `FS.GG.UI.Canvas` reports OK, and Audio
+  # appears in none of the CP#### lines. The run log is the source of truth; read it before
+  # asserting a cause.
+  #
+  # ELEVATION IS A ONE-LINE CHANGE, on ONE precondition: this job goes green on `main` (i.e. the
+  # major that discharges the three breaks is published to the feed). Then add the context named by
+  # this job's `name:` to branch protection's required set — cadence-map §5 already authorizes it
+  # and lists the exact string. No workflow or script change is needed.
+  #
+  # The baseline this compares against is each package's LATEST published feed version, computed as
+  # a SemVer max — see the `latest_version` note in scripts/apicompat-check.sh for why it must never
+  # be read off either end of the feed's `versions` array.
   api-compatibility-gate:
     name: API compatibility gate (breaking-change → SemVer major)
     runs-on: ubuntu-latest

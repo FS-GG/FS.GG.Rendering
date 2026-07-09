@@ -232,15 +232,54 @@ here; this section records why the independence is load-bearing today.
 The spec defines which checks are required; **enabling** branch protection is the maintainer's
 one-time action (it cannot be set from the repo tree). On `main`:
 
-- **Require status checks to pass before merging** → select **only** the `gate` workflow's job
-  (`Deterministic gate`). Do **not** add `release` or `capability` jobs as required (FR-007).
-- Recommended: "Require branches to be up to date before merging" so the gate runs against the
-  post-merge state.
+- **Require status checks to pass before merging** → select the `gate` workflow's job
+  **`Deterministic gate`**. Do **not** add `release` or `capability` jobs as required (FR-007).
+- Do **not** enable "Require branches to be up to date before merging". This section originally
+  recommended it, but under the ADR-0021 parallel intra-repo model it serializes every merge: each
+  landing invalidates every other open PR's green. `gate` also runs on `push: main`, so a bad
+  interleaving reds `main` rather than being prevented pre-merge. That is the chosen trade
+  (ADR-0100).
 - Leave `release.yml` and `capability.yml` unselected — they are advisory by design and must never
   block a merge (gate-contract "What can NEVER fail the gate").
 
 Result: a PR merges iff the deterministic gate is green; release/capability runs are visible evidence
 but never gate.
+
+### 5.1 `API compatibility gate` — authorized, pending one precondition
+
+This section once said to select **only** `Deterministic gate`. That wording predates `gate.yml`'s
+second job and was read as a standing prohibition on requiring it (ADR-0100). It was never a
+judgement about ApiCompat — only a description of a workflow that had one job. **Amended here**
+(FR-007 is unchanged: it constrains `release` and `capability`, which are advisory *by design*, and
+says nothing about `gate.yml`'s own jobs).
+
+**`API compatibility gate (breaking-change → SemVer major)` is authorized to join the required set**,
+under exactly one precondition:
+
+> **The job must be green on `main` at the moment it is added.**
+
+That is not ceremony. A required check that is red on the base branch blocks *every* PR in the repo,
+including the release PR that would discharge the red — a deadlock only an admin bypass escapes.
+
+The check is otherwise a sound hard gate, and stronger than the advisory framing suggested: it exits
+non-zero **only** on a genuine `CP####` break; `NoBaselineYet` and `Indeterminate` (a feed hiccup)
+do **not** fail it; and on a fork PR with no token it degrades to clean (exit 0), so forks still
+merge. Its one structural cost, which requiring it accepts: the check reads the package feed, so it
+takes a merge-blocking dependency on feed availability that `Deterministic gate` does not have.
+
+**Status (2026-07-09): the precondition is NOT met.** Three packables carry public-API breaks that
+no published major has discharged — `FS.GG.UI.Controls`, `FS.GG.UI.DesignSystem`,
+`FS.GG.UI.Themes.AntDesign`. The gate is correctly red; the breaks force the next FS.GG.UI release
+to be a SemVer major. See [ADR-0101](../product/decisions/0101-apicompat-stays-advisory.md).
+
+**When it goes green on `main`**, the maintainer adds this context string — it is the job's `name:`,
+not its key, and the arrow is U+2192:
+
+```
+API compatibility gate (breaking-change → SemVer major)
+```
+
+No workflow or script change is required. Tracking issue: FS.GG.Rendering#219.
 
 ## 6. Quickstart validation outcomes (V1–V7)
 

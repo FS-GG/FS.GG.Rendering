@@ -45,6 +45,9 @@ any source is copied (source import is Stage R4).
   - [0100-gate-is-a-required-check.md](./decisions/0100-gate-is-a-required-check.md) — `gate`
     becomes a required check on `main`; release PRs are no longer expected-red, and the tag-window
     freeze is scheduled for removal.
+  - [0101-apicompat-stays-advisory.md](./decisions/0101-apicompat-stays-advisory.md) — `API
+    compatibility gate` is authorized to be required but stays advisory until it is green on `main`;
+    fixes the baseline-selection defect that kept it red, and corrects ADR-0100's account of why.
   - **Org-level pointer stubs** (canonical text in `FS-GG/.github`):
     - [0011-agent-skill-roots-full-union-orchestrator-owned-mirror.md](./decisions/0011-agent-skill-roots-full-union-orchestrator-owned-mirror.md)
       — agent-skill roots carry the full union; `fsgg-sdd` owns the mirror; providers confined
