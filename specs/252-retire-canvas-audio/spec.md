@@ -47,6 +47,13 @@ the platform's single audio request vocabulary; Canvas retires its copy. This is
 
 ## Release choreography (publish-before-flip)
 
+> **Superseded (2026-07-09, [ADR-0100](../../docs/product/decisions/0100-gate-is-a-required-check.md), #190).**
+> Step 1's "red *by design*" is **no longer true and must not be copied into a new release spec.**
+> It records what this shipped release did, not what the next one should do. The version-coherence
+> guard now carries a RELEASE-PENDING waiver: a change that bumps the pin/package waives its own
+> not-yet-cut tags, so a release PR's `Deterministic gate` is **green**. `gate` is a required check
+> as of ADR-0100, so a release PR that is red is red for a real reason — do not merge past it.
+
 1. Merge this release PR to `main` (its version-coherence gate is red *by design*, as on #155).
 2. Push the tag triple at the merge commit: `fs-gg-ui/v0.3.0-preview.1`,
    `fs-gg-ui-template/v0.3.0-preview.1`, then `v0.3.0-preview.1` (the `v*` tag triggers `release.yml`).

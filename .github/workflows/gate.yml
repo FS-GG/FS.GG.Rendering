@@ -3,11 +3,27 @@ name: gate
 # The pre-merge gate. Fast, deterministic, runs on every change. It is the ONLY workflow intended to
 # be a required check (see docs/ci/cadence-map.md §5).
 #
-# NOT ENFORCED TODAY: `main` has no branch protection and no rulesets, so a red run here does not
-# block a merge — it only informs one. Making this a required check is a repo-policy decision; note
-# that it freezes every open PR during the window between a release bump landing on `main` and its
-# tags being pushed (`pkg-no-release-tag` / `pkg-no-template-tag` fire on PRs that did not bump).
-# That freeze is correct fail-closed behavior, not a bug, but it is a consequence worth choosing.
+# ENFORCED: the `Deterministic gate` job is a required status check on `main` (ADR-0100,
+# docs/product/decisions/0100-gate-is-a-required-check.md). A red run blocks the merge button. The
+# sibling `api-compatibility-gate` job is NOT required yet — elevating it needs a cadence-map §5
+# amendment. `release.yml` / `capability.yml` are advisory and must never be required (FR-007).
+#
+# "Require branches to be up to date" is deliberately OFF: it serializes merges under the ADR-0021
+# parallel-work model. This job also runs on `push: main`, so a bad interleaving reds `main` rather
+# than being caught pre-merge. That is the chosen trade.
+#
+# THE RELEASE TAG WINDOW. Between a release bump landing on `main` and its tag triple being pushed,
+# PRs that did not bump fail `pin-no-tag` / `pkg-no-release-tag` — the pin they inherit resolves to
+# a tag that does not exist yet. With the gate required, those PRs are BLOCKED, not merely informed.
+# That is correct fail-closed behavior and the window is minutes long (the guard prints the exact
+# `git tag && git push` commands, in the mandated push order, to the run summary). #218 removes it:
+# cut the triple in the same automation that lands the bump. A release PR itself is NOT expected-red
+# — the guard's RELEASE-PENDING waiver covers it.
+#
+# MERGE METHOD IS LOAD-BEARING. `bumpedInCommitUnderTest` (scripts/validate-version-coherence.fsx)
+# reads `HEAD~1..HEAD`. A rebase-merge splits a release across two commits, so the second is seen as
+# a bump-less change and the package lane reds on `main`. Squash-merge and merge-commit keep the
+# whole release in one diff. Rebase merging is disabled on this repo for that reason (ADR-0100).
 #
 # Contracts: specs/005-ci-cadence-wiring/contracts/{gate-contract,run-summary.schema}.md
 on:
@@ -243,9 +259,11 @@ jobs:
   # CP#### break — NoBaselineYet / Indeterminate (e.g. a feed hiccup) do not fail it — so this is a
   # robust hard gate, not a flaky one. It reads the feed with GITHUB_TOKEN (packages: read); on a
   # fork PR (no token) the script degrades to clean (exit 0) so forks still merge.
-  # (These repos have no branch protection; enforcement is at the workflow level, the same model as
-  # the lockfile-restore-enforcement gate. Add to branch-protection required checks to also hard-block
-  # the merge button if/when the org adopts branch protection.)
+  # `main` now HAS branch protection, but this job is deliberately NOT in the required set: ADR-0100
+  # requires only `Deterministic gate`, because cadence-map §5 names only that context (FR-007) and
+  # amending §5 is a separate decision. So enforcement here is still at the workflow level, the same
+  # model as the lockfile-restore-enforcement gate — a red here informs a merge, it does not block
+  # one. Adding this job's context to the required set is tracked as #219.
   api-compatibility-gate:
     name: API compatibility gate (breaking-change → SemVer major)
     runs-on: ubuntu-latest
