@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-18
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "start next item in docs/reports/2026-06-17-13-54-radical-rendering-architecture-analysis-and-plan.md" interpreted as the next unimplemented roadmap item after Feature 148: complete the remaining P7 compositor work before starting P8 intrinsic layout.
 

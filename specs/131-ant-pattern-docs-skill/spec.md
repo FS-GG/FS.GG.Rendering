@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-16
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "next item of FS gg" → resolved to Workstream **F6** (the final, optional, docs-first item of the Ant Design adoption arc): Ant interaction-pattern documentation per control family, plus the `fs-gg-ant-design` agent skill that translates Ant Design's stable ideas into this repository's token / control / renderer / policy machinery.
 

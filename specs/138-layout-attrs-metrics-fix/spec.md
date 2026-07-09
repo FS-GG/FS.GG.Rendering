@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-17
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "start next item" from the active report
 `docs/reports/2026-06-17-13-54-radical-rendering-architecture-analysis-and-plan.md`.

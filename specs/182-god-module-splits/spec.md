@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-21
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "next item in plan." — resolved to **Phase 5** of the code-health
 refactoring plan (`docs/reports/2026-06-21-05-19-code-health-refactoring-analysis-and-plan.md`):

@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-15
 
-**Status**: Final
+**Status**: Shipped
 
 **Input**: User description: "next item in the implementation plan"
 

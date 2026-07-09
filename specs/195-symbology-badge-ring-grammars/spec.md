@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-25
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "next item in the plan." — resolved to the **Badge/Ring alternative grammars** thread of roadmap milestone **M7 (Governance & breadth)** in [`docs/reports/2026-06-25-12-48-agent-symbology-design-system-analysis-and-plan.md`](../../docs/reports/2026-06-25-12-48-agent-symbology-design-system-analysis-and-plan.md). The M7 legibility-linter thread shipped as [spec 194](../194-symbology-legibility-linter/spec.md); the §4 grammar table names **three** symbol form factors — Badge, Token, Ring — of which only the **Directional Token** was built (M1–M6). This feature delivers the two remaining form factors as sibling grammars behind the **same fixed channel vocabulary**.
 

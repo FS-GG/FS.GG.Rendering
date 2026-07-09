@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-04
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: Resolves **FS-GG/FS.GG.Rendering#73** — the **P1 Rendering** child of epic
 **FS-GG/.github#165**. Source: Space Invaders consumer feedback §5 item 6 (Friction). Pairs with the

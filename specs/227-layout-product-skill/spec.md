@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-01
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "start the next Rendering owned item on the coordination board." → Coordination board item [FS-GG/FS.GG.Rendering#39](https://github.com/FS-GG/FS.GG.Rendering/issues/39) — "Add an fs-gg-layout consumer product-skill (app + game profiles)" (Backlog, P1 Rendering, epic #34).
 

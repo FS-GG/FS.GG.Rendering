@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-04
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: Roadmap item FS-GG/FS.GG.Rendering#75 (epic FS-GG/.github#165); Space Invaders consumer feedback §2.2/§2.3. Two additive discoverability asks in the fs-gg-ui generated-product template.
 

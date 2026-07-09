@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-05
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: FS-GG/FS.GG.Rendering#139 (child of epic FS-GG/FS.GG.Rendering#137). Source: FS.GG framework
 development-feedback report — *Hollow Depths* build (`001-hollow-depths`), 2026-07-05, §2.5. The persistent host that

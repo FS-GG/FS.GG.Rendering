@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-27
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "next Rendering item on the project coordination board" → P1 · rendering board item **"Publish FS.GG.UI.Template carrying the new parameter; tag the coherent set."**
 

@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-29
 
-**Status**: Draft
+**Status**: Shipped
 
 **Tier**: Tier 1 (realizes a cross-repo contract mechanism — the `fs-gg-ui-template` package/coherence surface). No F# public surface is added, removed, or changed: the producer code already shipped in Feature 217 (commit `6df0d39`, now on `main`). This feature touches only release/packaging cadence, GitHub Packages visibility, and the cross-repo registry — so no `.fsi` or surface-area baseline applies (see the plan's Constitution Check).
 

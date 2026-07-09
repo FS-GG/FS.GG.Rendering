@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-30
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "start the next Rendering owned item on the coordination board" → resolved to Coordination board item **FS-GG/FS.GG.Rendering#30** (P1 Rendering, parent epic FS-GG/.github#74): *Framework skills not vendored on the SDD scaffold path (lifecycle=='spec-kit' gate)*.
 

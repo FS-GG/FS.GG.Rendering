@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-20
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "test automatically without user input every control in second antshowcase for visual fidelity and correct and full functionality. fix any problems. write a detailed and comprehensive report of all framework/library related problems/possible improvements in docs/reports."
 

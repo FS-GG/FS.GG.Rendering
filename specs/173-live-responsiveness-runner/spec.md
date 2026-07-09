@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-19
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "create a live runner and fix responsiveness"
 

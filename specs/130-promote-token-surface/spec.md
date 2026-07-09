@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-16
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "next item in fs.gg" → resolved to Workstream **F5**: deliberately promote the chosen public token / policy / resolver surface (the Ant-derived token taxonomy from F1/126, the central visual-state style resolver and its intent-policy seam from F4/129, and the color-validation policy from F2/127), regenerate the per-package public-surface baselines and the design-token-drift baseline in the same change, and author a decision record.
 

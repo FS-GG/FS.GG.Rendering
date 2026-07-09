@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-14
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "next phase in fs.gg"
 

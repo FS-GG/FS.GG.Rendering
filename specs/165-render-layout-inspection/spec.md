@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-19
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "Start the next item in `docs/reports/2026-06-19-00-24-framework-and-skills-retrospective.md`: structured render/layout inspection metadata for deterministic visual assertions."
 

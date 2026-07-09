@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-29
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "start the next unblocked Rendering item on the coordination board." → Coordination board item FS-GG/FS.GG.Rendering#27: *"fs-gg-ui rejects --productName from the SDD scaffold-provider (exit 127) — add a productName symbol or align the name param."*
 

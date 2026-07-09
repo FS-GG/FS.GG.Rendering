@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-27
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "Read cross-repo request FS-GG/FS.GG.Rendering#1 — the `fs-gg-ui` template drifted from FS.GG.UI framework HEAD. The request is OPEN and labeled cross-repo/cross-repo:request/blocked: the template pins `FsSkiaUiVersion=0.1.0-preview.1` while the framework HEAD ships a refactored Scene API (VisualTextInspection/LayoutEvidenceReport split, Rect vs Rect option), there are no git tags so no coherent release snapshot exists, and the `fs-skia-ui-version` registry row is `coherent: false` linking to that issue. Resolve the request and bring the contract back to coherent."
 

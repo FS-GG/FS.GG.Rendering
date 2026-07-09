@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-04
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "Minimal audio capability + fs-gg-audio product skill for the game default profile (closes cross-repo issue #92). Add a pure, dependency-light audio effect surface following the existing effects-as-values, interpreted-at-the-host-boundary pattern; a host interpreter seam that is a record-only stub in headless environments (no real audio backend yet); an fs-gg-audio product skill gated to profile in [game, sample-pack], wired into the skill-manifest and template; scope is the pure surface + host seam + skill + template wiring, NOT a real audio backend and NOT CI that plays sound."
 

@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-19
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "docs/reports/20260619-192344+0200-second-antshowcase-implementation-report.md docs/reports/20260619-200417+0200-second-antshowcase-postinteractive-feedback.md mouse interaction still unchanged laggy"
 

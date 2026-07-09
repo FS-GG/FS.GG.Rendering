@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-25
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "next item in the plan." → the roadmap milestone **M6 — Live board sample**, the first deferred item after the completed M1–M5 of spec 192 (agent-driven unit-symbology design system).
 

@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-21
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "create specs for this cleanup" — remove backward-compatibility code / legacy shims surfaced by the post code-health research, on the premise that there are no external consumers that depend on the deprecated identities.
 

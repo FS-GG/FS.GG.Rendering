@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-19
 
-**Status**: Draft
+**Status**: Shipped
 
 **Change Classification**: Tier 1 (contracted sample and evidence workflow addition; no planned `FS.GG.UI.*` product public API change)
 

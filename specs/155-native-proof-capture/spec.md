@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-18
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "wire the native proof-capture runner/effect interpreter to end-to-end for this capable host. then finish P7"
 

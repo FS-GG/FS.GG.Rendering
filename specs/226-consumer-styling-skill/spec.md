@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-01
 
-**Status**: Draft
+**Status**: Shipped
 
 **Change Classification**: **Tier 2 (internal/content change)** — package-content only (FR-010). Adds one shipped consumer styling skill, its product-skill wrapper, template wiring, a catalog row, a backstop-list entry, and one cross-link. It introduces **no** public API surface, touches **no** `.fs`/`.fsi` module, and updates **no** surface-area baseline; therefore the Tier 1 artifact chain (`.fsi` updates, baseline updates) does not apply. (Per Constitution → Change Classification, which requires every feature to declare its tier.)
 

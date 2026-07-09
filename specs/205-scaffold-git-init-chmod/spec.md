@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-27
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "next Rendering item on the project coordination board" — resolved to Coordination board item **P1 · rendering — Move git-init/chmod out of template post-actions into scaffold path** (workstream: Lifecycle; contract: `fs-gg-ui-template`; phase P1 Rendering; effort M). Board note: *"CI-hang / VS-skip risk. Move to scaffold path or keep strictly behind skipGitInit."*
 

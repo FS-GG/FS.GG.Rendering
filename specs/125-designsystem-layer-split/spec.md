@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-15
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "next item in fs.gg" → Workstream **D, Phase D1** of `docs/reports/2026-06-15-11-34-missing-features-implementation-plan.md` — the behaviour-neutral assembly/layer split that carves the design-system primitives and the default theme out of the monolithic `Controls` package, creating the foundation the design-system enrichment (Workstream F) and concrete themes (Workstream D2: Ant/Fluent/Material) build on.
 

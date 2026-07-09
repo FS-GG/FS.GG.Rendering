@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-28
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "next Rendering item on the project coordination board" — resolved to FS-GG/FS.GG.Rendering#10 (H4 · rendering — Wire release → `fs-gg-ui-template-released` repository_dispatch to Templates, the missing sender). Part of FS-GG/.github#16; Contract: `fs-gg-ui-template`.
 

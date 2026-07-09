@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-22
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "next item in the plan."
 

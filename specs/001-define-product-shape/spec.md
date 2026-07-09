@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-14
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "start the fs.gg migration process."
 

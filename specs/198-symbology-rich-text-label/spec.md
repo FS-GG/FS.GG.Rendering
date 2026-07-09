@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-25
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "next backlog item." — the symbology **M0–M7 roadmap** in [`docs/reports/2026-06-25-12-48-agent-symbology-design-system-analysis-and-plan.md`](../../docs/reports/2026-06-25-12-48-agent-symbology-design-system-analysis-and-plan.md) is complete, so this resolves to the next **deferred symbology backlog item** from the M7 "(∞)" bucket. Spec 196 ([label / glyph-text channel](../196-symbology-label-text/spec.md)) shipped a single-line identity label and spec 197 ([multi-line / paragraph label](../197-symbology-multiline-label/spec.md)) widened it to several lines — but both draw the whole label in **one uniform style** (one ink, one weight, one fitted size) and explicitly deferred **rich-text styling (per-run colour / weight / size runs within the label)** as out of scope (197 FR-016). This feature delivers that deferred item: let a single label carry **styled runs** — e.g. a bright bold callsign followed by a dim, smaller code on the same line — still tofu-free, still fitted to the region, still opt-in **byte-identical** when the label uses no styling.
 

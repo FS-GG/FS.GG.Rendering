@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-25
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "Embedded Canvas Control — a first-class, model-driven `canvas` control for games and arbitrary rendering, embedded inside the existing Ant-themed UI (a viewport in the control tree alongside themed chrome, not a full-window takeover), plus a reusable element library authored as pure `'props -> Scene` functions and a fixed-timestep game-loop helper. Base the spec on docs/reports/2026-06-17-13-42-embedded-canvas-control-analysis-and-plan.md."
 

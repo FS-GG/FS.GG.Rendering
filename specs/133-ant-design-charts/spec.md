@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-16
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "continue with charts"
 

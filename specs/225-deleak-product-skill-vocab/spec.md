@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-30
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "start the next Rendering owned item on the coordination board" → resolved to **FS-GG/FS.GG.Rendering#37 — "Product skills leak framework-process vocabulary to consumers"** (child of epic #34, Phase P1 · Rendering; contract `fs-gg-ui-template`).
 

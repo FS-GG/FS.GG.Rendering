@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-27
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "next Rendering item on the project coordination board" → resolved to FS.GG.Rendering issue [#3](https://github.com/FS-GG/FS.GG.Rendering/issues/3) — "[versioning] Rename fs-skia-ui-* version machinery to fs-gg-ui-* (clean break)", per ADR-0003.
 

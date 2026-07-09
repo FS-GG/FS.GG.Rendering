@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-15
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "we imported lots of code from fs-skia-ui. that rendering and controls code is pretty complicated and is not battletested. do an indepth code analysis, testing performance and other mechanisms if they really work as advertised. be thorough and comprehensive."
 

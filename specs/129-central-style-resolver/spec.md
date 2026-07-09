@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-16
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "next item in fs.gg" → resolved to Workstream F, Phase F4 of the 2026-06-15 missing-features implementation plan: the central visual-state style resolver (`resolve: theme → kind → intent → states → ControlStyle`), migrate button intents to consume it, with a parity test proving resolver output ≡ current rendering for the default policy (behaviour-neutral until a theme opts in). Co-designed with the C11 visual-state style layer (093/095/096); the first three F pillars (F1 tokens / F2 color policy / F3 template parameter) are already shipped.
 

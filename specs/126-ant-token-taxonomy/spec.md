@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-15
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "next item for FS.GG" → resolved to Workstream **F1**: expand the design-token source and the generated token model from today's flat ~13 primitives into the Ant-derived layered taxonomy (seed → map → alias → component) plus semantic spacing, named density, a type scale, and elevation — **generated**, and **internal/additive-first** so no public contract or rendered output changes yet.
 

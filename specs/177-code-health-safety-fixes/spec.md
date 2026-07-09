@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-21
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "start next item in the project" → Phase 0 of the code-health refactoring plan (`docs/reports/2026-06-21-05-19-code-health-refactoring-analysis-and-plan.md`): verify one possible latent hash bug and bank the safest, lowest-risk cleanups before any larger refactoring work.
 

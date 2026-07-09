@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-25
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "next item in the plan." — resolved to the **label / glyph text** thread of roadmap milestone **M7 (Governance & breadth)** in [`docs/reports/2026-06-25-12-48-agent-symbology-design-system-analysis-and-plan.md`](../../docs/reports/2026-06-25-12-48-agent-symbology-design-system-analysis-and-plan.md). M7's two sibling threads have shipped — the **legibility linter** ([spec 194](../194-symbology-legibility-linter/spec.md)) and the **Badge/Ring grammars** ([spec 195](../195-symbology-badge-ring-grammars/spec.md), which explicitly deferred label text as backlog in its FR-015). This feature delivers the **third and final** M7 thread: an **optional identity label** on a symbol's text channel, rendered tofu-free, so a designer can put a unit's short name / callsign / code on the symbol when the abstract vector sigil alone is not enough to read identity.
 
