@@ -109,6 +109,25 @@ jobs:
           [[ -n "$pin" ]] || { echo "::error::<FsGgUiVersion> not found in template/base/Directory.Packages.props"; exit 1; }
           echo "version=$pin" >> "$GITHUB_OUTPUT"
           echo "Framework pin for the gate feed: $pin"
+      # The feed must be reachable FROM THE GENERATED PRODUCT, which is instantiated under `mktemp -d`
+      # (/tmp), not under this repo. `dotnet nuget add source` writes to the NEAREST nuget.config, and
+      # since #186 (3b0605b) that is this repo's own pinned `nuget.config` — which declares `<clear />`
+      # and maps every pattern to nuget.org, so the added source is both invisible to /tmp and excluded
+      # by mapping where it IS visible. The release lane has not cut a real release since #186, so the
+      # regression stayed latent until 0.4.0-preview.1 (#225): the product resolved FS.GG.UI.* from
+      # nuget.org, found only the previous major, and failed NU1102 — taking the publish (needs: this
+      # job) down with it while the tag triple had already been cut.
+      #
+      # Write the USER-LEVEL config instead: NuGet always applies it, whatever directory the restore is
+      # rooted in, so both instantiated products see the feed. Author it whole rather than appending a
+      # source, so the mapping is explicit and this step does not depend on whatever the runner image
+      # left behind. FS.GG.UI.* (and the bare `FS.GG.UI` BOM) come from the local feed and nowhere else;
+      # everything else — FS.GG.Game.Core, FS.GG.Audio.*, FS.GG.Contracts, FSharp.Core — from nuget.org,
+      # exactly as a real consumer restores. The mapping also excludes the SDK's implicit
+      # `FSharp/library-packs` source, matching the hermeticity #186 established for the repo.
+      #
+      # This repo's own restores are unaffected: its `nuget.config` <clear />s packageSources, which
+      # drops `release-local-feed` for anything rooted here.
       - name: Pack the framework set (at the pin) to a runner-local feed
         shell: bash
         env:
@@ -119,8 +138,47 @@ jobs:
           mkdir -p "$feed"
           dotnet restore FS.GG.Rendering.slnx
           dotnet pack FS.GG.Rendering.slnx -c Release -p:Version="$PIN" -o "$feed"
-          dotnet nuget add source "$feed" --name release-local-feed
+          cfg="$HOME/.nuget/NuGet/NuGet.Config"
+          mkdir -p "$(dirname "$cfg")"
+          cat > "$cfg" <<XML
+          <?xml version="1.0" encoding="utf-8"?>
+          <configuration>
+            <packageSources>
+              <clear />
+              <add key="nuget.org" value="https://api.nuget.org/v3/index.json" protocolVersion="3" />
+              <add key="release-local-feed" value="$feed" />
+            </packageSources>
+            <packageSourceMapping>
+              <packageSource key="release-local-feed">
+                <package pattern="FS.GG.UI" />
+                <package pattern="FS.GG.UI.*" />
+              </packageSource>
+              <packageSource key="nuget.org">
+                <package pattern="*" />
+              </packageSource>
+            </packageSourceMapping>
+          </configuration>
+          XML
           echo "Packed FS.GG.UI.* $PIN to $feed"; ls -1 "$feed"/*.nupkg
+          echo "--- user-level NuGet.Config ---"; cat "$cfg"
+      # Fail here, loudly, rather than 40 lines deep in an NU1102 dump: the whole point of the feed is
+      # that the product restores the pin from it, so prove the pin is actually IN it before we install
+      # the template. A pack that silently produced a different version is the failure this catches.
+      - name: Assert the local feed carries the pin
+        shell: bash
+        env:
+          PIN: ${{ steps.pin.outputs.version }}
+        run: |
+          set -euo pipefail
+          feed="$RUNNER_TEMP/release-local-feed"
+          for id in FS.GG.UI.Scene FS.GG.UI.SkiaViewer FS.GG.UI.Elmish; do
+            [[ -f "$feed/$id.$PIN.nupkg" ]] || {
+              echo "::error::$id.$PIN.nupkg is not in the runner-local feed — the generated product cannot restore the pin."
+              ls -1 "$feed" || true
+              exit 1
+            }
+          done
+          echo "✓ runner-local feed carries the framework set at $PIN"
       # Exercise the real consumer path: install the in-repo `dotnet new` template, instantiate a
       # product, and run THAT generated product's tests (template/base/tests/Product.Tests becomes
       # the generated product's tests). This is gated on the instantiation tooling actually working
