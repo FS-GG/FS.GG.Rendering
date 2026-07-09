@@ -38,6 +38,10 @@ module internal ControlKindRegistry =
         Set.ofList
             [ "line-chart"; "bar-chart"; "pie-chart"; "scatter-plot"; "graph-view"
               "list-view"; "list-box"; "multi-select-list"; "combo-box"; "tree-view"; "data-grid"
+              // Feature 175 (issue #175): the DataGrid child tree's leaves paint tabular cells rather
+              // than the generic box+label leaf. Their containers (`data-grid-header`/`data-grid-row`)
+              // stay unregistered — a container never reaches `faithfulContent`.
+              "data-grid-header-cell"; "data-grid-cell"
               "menu"; "context-menu"; "radio-group"; "tabs"
               "slider"; "progress-bar"; "numeric-input"; "switch"; "check-box"
               "button"; "icon-button"; "badge"; "toggle-button"; "split-button"
