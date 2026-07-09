@@ -102,9 +102,10 @@ cross-repo roadmap (milestones are repo-scoped; keep them for repo-local release
   see on the board — is skipped, with the reason on stderr (`--ignore-blocked` overrides).
 - **Epics are the Phase parents**; use **sub-issues** for the children so progress rolls up.
   An epic is a card whose **title** carries `[epic]` (Projects v2 issue types are unset on this
-  board). `fsgg-coord lint` enforces the invariants: an `[epic]` must have at least one sub-issue —
-  a childless one is an **orphan** that never rolls up and that `next` will hand out as work — and
-  an epic the board calls `Done` must have no open child. Run it before you re-sequence the board;
+  board). `fsgg-coord lint` enforces the invariants: an **open** `[epic]` must have at least one
+  sub-issue — a childless one is an **orphan** that never rolls up and that `next` will hand out as
+  work, neither of which can happen once the epic is closed — and an epic the board calls `Done`
+  must have no open child (this one holds for closed epics too). Run it before you re-sequence the board;
   it exits non-zero on a violation. `done --flip` only rolls an epic up once every child is both
   board-`Done` **and** issue-closed, so a merged-but-unclosed child can no longer complete an epic.
 - A `contract-change` item must link its registry PR (ADR-0001) — put the registry id in

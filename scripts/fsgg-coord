@@ -62,10 +62,10 @@
 #                                             # the completion up to any parent epic whose children
 #                                             # are now all Done).
 #   fsgg-coord lint  [--repo R] [--json] [--strict]
-#                                             # assert the board's EPIC invariants: no `[epic]` with
-#                                             # zero sub-issues (the orphaned epic), none the board
-#                                             # calls Done over an open child, none with children the
-#                                             # scan cannot see. Exit 1 on any error. `Status: Done`
+#                                             # assert the board's EPIC invariants: no OPEN `[epic]`
+#                                             # with zero sub-issues (the orphaned epic), none the
+#                                             # board calls Done over an open child, none with children
+#                                             # the scan cannot see. Exit 1 on any error. `Status: Done`
 #                                             # on a still-open issue is a NOTE (fatal under --strict).
 #   fsgg-coord budget                         # print GraphQL + REST rate-limit meters (free)
 #
@@ -976,10 +976,15 @@ lint_items() {
 # board, so the title is the only marker the convention actually uses (docs/coordination README, the
 # cross-repo-coordination skill: "Epics are the Phase parents; use sub-issues so progress rolls up").
 #
-#   EPIC-NO-CHILDREN        an `[epic]` with zero sub-issues. Nothing rolls up, and `next` will hand
-#                           the epic itself out as work. This is the orphaned epic.
+#   EPIC-NO-CHILDREN        an OPEN `[epic]` with zero sub-issues. Nothing rolls up, and `next` will
+#                           hand the epic itself out as work. This is the orphaned epic. Scoped to
+#                           open epics because both harms need live work: rollup is how an epic
+#                           REACHES Done, and `next` selects only open Ready/Backlog cards. A closed
+#                           childless epic is finished work, not an orphan — linting it can never be
+#                           acted on, and a check that stays red on completed work is not a gate.
 #   EPIC-DONE-OPEN-CHILD    an epic the board calls Done while a child issue is still OPEN. The board
-#                           claims finished work that is not finished.
+#                           claims finished work that is not finished. Deliberately NOT scoped to open
+#                           epics: a CLOSED epic over an open child is the sharpest form of the bug.
 #   EPIC-CHILDREN-TRUNCATED an epic with more than 100 children — the scan cannot see them all, so
 #                           EPIC-DONE-OPEN-CHILD cannot be trusted for it. Fail loudly, never guess.
 #
@@ -1012,9 +1017,9 @@ lint() {
     map(select($repo=="" or repo_match($repo)))
     | map(. + {id:"\(.repo)#\(.number)"})
     | [
-        ( .[] | select(is_epic and .childTotal == 0)
+        ( .[] | select(is_epic and .state == "OPEN" and .childTotal == 0)
           | { code:"EPIC-NO-CHILDREN", severity:"error", id:.id, status:.status, url:.url,
-              detail:"[epic] with zero sub-issues — nothing rolls up" } ),
+              detail:"open [epic] with zero sub-issues — nothing rolls up" } ),
         ( .[] | select(is_epic and .childTotal > (.children|length))
           | { code:"EPIC-CHILDREN-TRUNCATED", severity:"error", id:.id, status:.status, url:.url,
               detail:"\(.childTotal) sub-issues, only \(.children|length) visible — cannot verify rollup" } ),
