@@ -252,34 +252,39 @@ module ViewerKeyboard =
             | _ -> Unknown raw
         | _ -> Unknown raw
 
-    let normalizeEvent event =
-        let isDown =
-            match event.Direction with
-            | ViewerKeyDirection.KeyDown -> true
-            | ViewerKeyDirection.KeyUp -> false
-
-        normalize event.RawKey, isDown
-
-    let toKeyId key =
-        match key with
-        | ArrowLeft -> "ArrowLeft"
-        | ArrowRight -> "ArrowRight"
-        | ArrowUp -> "ArrowUp"
-        | ArrowDown -> "ArrowDown"
-        | Enter -> "Enter"
-        | Space -> "Space"
-        | Escape -> "Escape"
-        | Backspace -> "Backspace"
-        | Letter value -> string value
-        | Digit value -> string value
-        | Function value -> $"F{value}"
-        | Unknown raw -> raw
-
     let noModifiers =
         { Ctrl = false
           Alt = false
           Shift = false
           Meta = false }
+
+    // Issue 183: the modifier keys themselves. A host must never decorate one with its own held
+    // state — `ControlLeft` pressed while Ctrl is down is `ControlLeft`, not `Ctrl+ControlLeft`.
+    // Both the toolkit spellings (`ControlLeft`) and the bare tokens `parseModifiers` accepts.
+    let private modifierKeyNames =
+        set
+            [ "shift"
+              "shiftleft"
+              "shiftright"
+              "ctrl"
+              "control"
+              "controlleft"
+              "controlright"
+              "alt"
+              "option"
+              "altleft"
+              "altright"
+              "meta"
+              "cmd"
+              "command"
+              "win"
+              "super"
+              "superleft"
+              "superright" ]
+
+    let isModifierKey (raw: string) =
+        not (System.String.IsNullOrEmpty raw)
+        && modifierKeyNames.Contains(raw.Trim().ToLowerInvariant())
 
     // FR-016: split the raw key on '+'; the final segment is the base key, every preceding segment
     // is a modifier token classified case-insensitively (any order, repeats tolerated). A raw key
@@ -312,6 +317,51 @@ module ViewerKeyboard =
                     | _ -> ()
 
                 baseKey, mods
+
+    // Issue 183: the inverse of `parseModifiers`, and the ONLY producer of the `Ctrl+L` wire format.
+    // `parseModifiers` classifies in any order, so the order here is merely canonical, not load-bearing.
+    let formatChord (modifiers: KeyModifiers) (baseKey: string) : string =
+        if System.String.IsNullOrEmpty baseKey then
+            baseKey
+        else
+            let prefixes =
+                [ if modifiers.Ctrl then "Ctrl"
+                  if modifiers.Alt then "Alt"
+                  if modifiers.Shift then "Shift"
+                  if modifiers.Meta then "Meta" ]
+
+            if List.isEmpty prefixes then
+                baseKey
+            else
+                String.concat "+" (prefixes @ [ baseKey ])
+
+    // Issue 183: deliberately does NOT strip modifiers. A chord reaches the `MapKeyChord` seam as
+    // `ViewerKey.Unknown "Ctrl+L"` and `chordFallthrough` recovers the modifiers from that raw string,
+    // so stripping here would silently dissolve every chord before the seam ever sees it. Consumers
+    // that want the base key call `normalizeEventWithModifiers` (or strip a prefix, as
+    // `normalizeFocusKey` does for `Shift+Tab`).
+    let normalizeEvent event =
+        let isDown =
+            match event.Direction with
+            | ViewerKeyDirection.KeyDown -> true
+            | ViewerKeyDirection.KeyUp -> false
+
+        normalize event.RawKey, isDown
+
+    let toKeyId key =
+        match key with
+        | ArrowLeft -> "ArrowLeft"
+        | ArrowRight -> "ArrowRight"
+        | ArrowUp -> "ArrowUp"
+        | ArrowDown -> "ArrowDown"
+        | Enter -> "Enter"
+        | Space -> "Space"
+        | Escape -> "Escape"
+        | Backspace -> "Backspace"
+        | Letter value -> string value
+        | Digit value -> string value
+        | Function value -> $"F{value}"
+        | Unknown raw -> raw
 
     let normalizeEventWithModifiers event =
         let isDown =

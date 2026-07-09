@@ -1051,14 +1051,18 @@ module GlHost =
             addDisposable disposables (fun () -> input.Dispose())
 
             for keyboard in input.Keyboards do
+                // Issue 183: sample the held modifiers off the firing keyboard, so a real `Ctrl+L`
+                // reaches the `MapKeyChord` seam as `Ctrl+L` instead of two unrelated key events.
                 let keyDownHandler =
-                    Action<IKeyboard, Key, int>(fun _ key _ -> dispatchViewerEvent program dispatch (KeyDown(key.ToString())))
+                    Action<IKeyboard, Key, int>(fun kb key _ ->
+                        dispatchViewerEvent program dispatch (KeyDown(KeyChord.rawKeyDown kb key)))
 
                 keyboard.add_KeyDown keyDownHandler
                 addDisposable disposables (fun () -> keyboard.remove_KeyDown keyDownHandler)
 
                 let keyUpHandler =
-                    Action<IKeyboard, Key, int>(fun _ key _ -> dispatchViewerEvent program dispatch (KeyUp(key.ToString())))
+                    Action<IKeyboard, Key, int>(fun _ key _ ->
+                        dispatchViewerEvent program dispatch (KeyUp(KeyChord.rawKeyUp key)))
 
                 keyboard.add_KeyUp keyUpHandler
                 addDisposable disposables (fun () -> keyboard.remove_KeyUp keyUpHandler)

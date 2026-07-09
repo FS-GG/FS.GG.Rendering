@@ -1380,8 +1380,11 @@ module Viewer =
                                 inputAvailable <- ViewerObservedValue.Observed(input.Keyboards.Count > 0)
 
                                 for keyboard in input.Keyboards do
+                                    // Issue 183: sample the held modifiers off the firing keyboard, so a real
+                                    // `Ctrl+L` reaches the `MapKeyChord` seam as `Ctrl+L` rather than as two
+                                    // unrelated key events.
                                     let keyDownHandler =
-                                        Action<IKeyboard, Key, int>(fun _ key _ -> onKeyEvent (key.ToString()) true)
+                                        Action<IKeyboard, Key, int>(fun kb key _ -> onKeyEvent (Host.KeyChord.rawKeyDown kb key) true)
 
                                     keyboard.add_KeyDown keyDownHandler
                                     inputDisposables.Add
@@ -1389,7 +1392,7 @@ module Viewer =
                                             member _.Dispose() = keyboard.remove_KeyDown keyDownHandler }
 
                                     let keyUpHandler =
-                                        Action<IKeyboard, Key, int>(fun _ key _ -> onKeyEvent (key.ToString()) false)
+                                        Action<IKeyboard, Key, int>(fun _ key _ -> onKeyEvent (Host.KeyChord.rawKeyUp key) false)
 
                                     keyboard.add_KeyUp keyUpHandler
                                     inputDisposables.Add
