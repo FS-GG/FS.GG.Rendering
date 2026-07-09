@@ -126,7 +126,7 @@ module ReferenceRendering =
             Result.Error "Skia could not create an offscreen raster surface."
         else
             surface.Canvas.Clear(SKColors.Transparent)
-            scene.Nodes |> List.iter (SceneRenderer.paintNode surface.Canvas)
+            SceneRenderer.drawScene surface.Canvas scene
             surface.Canvas.Flush()
             use image = surface.Snapshot()
             use data = image.Encode(SKEncodedImageFormat.Png, 100)
@@ -142,9 +142,10 @@ module ReferenceRendering =
     // `SceneRenderer.paintNode`, so `renderPng` returns real pixels in a bare container. Donor string
     // and native-load failures are mapped onto the typed `SceneEvidenceFailure` so the PNG surface
     // never returns a success-shaped non-image (FR-005/SC-005). Serialized via `rasterGate`:
-    // `SceneRenderer.paintNode` mutates the shared `fallbackEvents` disclosure accumulator, so
-    // concurrent calls are serialized to keep each render isolated and deterministic (contract
-    // C2.3/C1.7). The render surface is per-call/local, so output bytes depend only on (size, scene).
+    // `SceneRenderer.drawScene` scopes the shared `fallbackEvents` disclosure accumulator to the frame
+    // it paints, so concurrent calls are serialized to keep each render isolated and deterministic
+    // (contract C2.3/C1.7). The render surface is per-call/local, so output bytes depend only on
+    // (size, scene).
     let private rasterGate = obj ()
 
     let renderScenePngResult (outputSize: Size) (scene: Scene) : Result<byte[], SceneEvidenceFailure> =
