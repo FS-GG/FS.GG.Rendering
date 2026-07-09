@@ -38,16 +38,45 @@ type StyleClass =
     | Variant of StyleVariant
     | Custom of string
 
-type ResolvedStyle =
+// Feature 173: a `Theme` carries the `IntentPolicy` that maps its semantic intents onto structural
+// style deltas, so the policy reaches the render path with the theme — no control names a theme, and
+// nothing has to thread a policy alongside one. The three types are mutually recursive because a
+// policy reads the theme's roles and returns a `ResolvedStyle`.
+//
+// `IntentPolicy` is declared FIRST so `Theme` stays the last-declared type of the group: F# binds an
+// ambiguous bare field name to the last declaration, and the renderer's many unannotated `theme.*`
+// accesses depend on `Foreground`/`FontFamily`/`FontSize`/`Name` binding to `Theme`, not to
+// `ResolvedStyle` or `IntentPolicy`.
+//
+// Equality is by `Name` alone. `Theme` must stay equatable — the retained renderer's
+// `prev.Theme <> theme` drives ThemeChanged invalidation — and a bare function field would strip that
+// equality at compile time and hash by closure identity at run time. Naming the policy keeps theme
+// equality structural and its hash stable across processes.
+[<CustomEquality; NoComparison>]
+type IntentPolicy =
+    { Name: string
+      ApplyIntent: Theme -> string -> string -> ResolvedStyle -> ResolvedStyle }
+
+    override this.Equals(other) =
+        match other with
+        | :? IntentPolicy as that -> this.Name = that.Name
+        | _ -> false
+
+    override this.GetHashCode() = hash this.Name
+
+and ResolvedStyle =
     { Foreground: Color
       Fill: Color
       Stroke: Color
       StrokeWidth: float
+      // Empty ⇒ a solid stroke. A non-empty on/off interval list is a real dash pattern, handed to
+      // `PathEffect.Dash` by the geometry — so `dashed` is rendered, not faked with a thicker border.
+      StrokeDash: float list
       FontFamily: string option
       FontSize: float
       FontWeight: int option }
 
-type Theme =
+and Theme =
     { Name: string
       Foreground: Color
       Background: Color
@@ -61,4 +90,13 @@ type Theme =
       FontSize: float
       Density: float
       CornerRadius: float
-      ContrastRequiredRatio: float }
+      ContrastRequiredRatio: float
+      IntentPolicy: IntentPolicy }
+
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module IntentPolicy =
+    /// The intent-agnostic policy: every intent (including `""` and unknown) returns the kind's
+    /// structural base unchanged. The Default theme's policy, so its output is unchanged.
+    let neutral: IntentPolicy =
+        { Name = "neutral"
+          ApplyIntent = fun _ _ _ style -> style }

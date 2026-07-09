@@ -17,9 +17,9 @@ Source: the central hub ([`../reference/ant-llms-sources.md`](../reference/ant-l
 
 | Ant part | Repo region | Material (token) | Resolver state |
 |---|---|---|---|
-| `Checkbox/root` | `check-box` hit/box region | `Seed.controlHeight` | `resolveDefault` |
+| `Checkbox/root` | `check-box` hit/box region | `Seed.controlHeight` | `resolve` |
 | `Checkbox/icon` | the check/indicator glyph | `Seed.colorPrimary` | `resolve` (selected) |
-| `Checkbox/label` | the adjacent text | `Seed.fontSize` | `resolveDefault` |
+| `Checkbox/label` | the adjacent text | `Seed.fontSize` | `resolve` |
 
 ## Machine-checked references
 
@@ -30,7 +30,6 @@ control:color-picker
 token:Seed.colorPrimary
 token:Seed.controlHeight
 resolver:resolve
-resolver:resolveDefault
 policy:ant
 part:Checkbox/root
 part:Checkbox/icon

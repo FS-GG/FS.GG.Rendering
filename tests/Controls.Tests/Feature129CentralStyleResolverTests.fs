@@ -3,19 +3,19 @@ module Feature129CentralStyleResolverTests
 // Feature 129 (Workstream F, F4) — the central visual-state style resolver
 // (`theme → kind → intent → states → style`).
 //
-// The FRONT HALF is `module internal StyleResolver` in FS.GG.UI.DesignSystem (reached here via
-// InternalsVisibleTo). It supplies the kind's structural base under an overridable IntentPolicy,
-// then composes the shipped 093 back half `Style.resolve` for the class+state overlay.
+// The FRONT HALF is `StyleResolver` in FS.GG.UI.DesignSystem. It supplies the kind's structural base,
+// lets the ACTIVE THEME's `IntentPolicy` perturb it by intent (Feature 173), then composes the shipped
+// 093 back half `Style.resolve` for the class+state overlay.
 //
 // Coverage (filters mirror quickstart.md):
-//   * parity     (V2 / G1+G2, FR-003/SC-001): default-theme byte-identity — resolveDefault equals
-//     the pre-migration `Style.resolve theme <structural base> classes state`, and the migrated
-//     Button/IconButton Scene is byte-identical to the frozen pre-migration geometry.
+//   * parity     (V2 / G1+G2, FR-003/SC-001): the Default theme carries `IntentPolicy.neutral`, so its
+//     resolution equals the pre-migration `Style.resolve theme <structural base> classes state` and the
+//     migrated Button/IconButton Scene is byte-identical to the frozen pre-migration geometry.
 //   * totality   (V3 / G3, FR-004/FR-006/SC-003): the full {kind}×{intent}×{state} cross-product
 //     (incl. an unknown kind + unknown intent) is total, deterministic, and preserves 093 precedence.
-//   * divergence (V4 / G4+G5, FR-002/FR-005/FR-008/SC-002/SC-006/SC-007): a non-default policy makes
-//     `danger` diverge from `primary` THROUGH THE RESOLVER ALONE — neutral keeps them equal, and no
-//     control type is forked per intent.
+//   * divergence (V4 / G4+G5, FR-002/FR-005/FR-008/SC-002/SC-006/SC-007): a theme carrying a divergent
+//     policy makes `danger` diverge from `primary` THROUGH THE RESOLVER ALONE — a neutral-policy theme
+//     keeps them equal, and no control type is forked per intent.
 
 open Expecto
 open FS.GG.UI.Scene
@@ -29,6 +29,7 @@ let private filledBase (theme: Theme) : ResolvedStyle =
       Fill = theme.Accent
       Stroke = theme.Accent
       StrokeWidth = 0.0
+      StrokeDash = []
       FontFamily = theme.FontFamily
       FontSize = 15.0
       FontWeight = None }
@@ -38,6 +39,7 @@ let private outlineBase (theme: Theme) : ResolvedStyle =
       Fill = Colors.transparent
       Stroke = theme.Accent
       StrokeWidth = 2.0
+      StrokeDash = []
       FontFamily = theme.FontFamily
       FontSize = 15.0
       FontWeight = None }
@@ -103,16 +105,17 @@ let feature129CentralStyleResolverTests =
           testList
               "parity"
               [
-                // T013 (G1, FR-003/SC-001): default-policy style byte-identity vs the pre-migration
-                // oracle, for both themes, across every kind × intent × state — the intent is ignored.
-                test "resolveDefault is byte-identical to the pre-migration oracle (G1)" {
+                // T013 (G1, FR-003/SC-001): under the Default theme (whose policy is neutral) style
+                // resolution is byte-identical to the pre-migration oracle, across every kind × intent
+                // × state — the intent is ignored.
+                test "a neutral-policy theme resolves byte-identically to the pre-migration oracle (G1)" {
                     for (tname, theme) in themes do
                         for kind in knownKinds do
                             for intent in knownIntents do
                                 for state in allStates do
                                     for classes in [ []; sampleClasses ] do
                                         let migrated =
-                                            StyleResolver.resolveDefault theme kind intent classes state
+                                            StyleResolver.resolve theme kind intent classes state
 
                                         let oracle = Style.resolve theme (oracleBase theme kind) classes state
 
@@ -120,7 +123,7 @@ let feature129CentralStyleResolverTests =
                                             migrated
                                             oracle
                                             (sprintf
-                                                "resolveDefault %s/%s/%s/%A must byte-equal the pre-migration oracle"
+                                                "resolve %s/%s/%s/%A must byte-equal the pre-migration oracle"
                                                 tname
                                                 kind
                                                 intent
@@ -162,7 +165,7 @@ let feature129CentralStyleResolverTests =
                         [ for kind in kinds do
                               for intent in intents do
                                   for state in allStates do
-                                      yield StyleResolver.resolve StyleResolver.neutralPolicy Theme.light kind intent [] state ]
+                                      yield StyleResolver.resolve Theme.light kind intent [] state ]
 
                     let first = runOnce ()
                     let second = runOnce ()
@@ -180,7 +183,7 @@ let feature129CentralStyleResolverTests =
                     for kind in knownKinds do
                         for state in [ Hover; Pressed; Selected; Disabled ] do
                             let viaResolver =
-                                StyleResolver.resolve StyleResolver.neutralPolicy Theme.light kind "primary" sampleClasses state
+                                StyleResolver.resolve Theme.light kind "primary" sampleClasses state
 
                             let viaBackHalf =
                                 Style.resolve Theme.light (StyleResolver.baseStyleFor Theme.light kind) sampleClasses state
@@ -196,34 +199,37 @@ let feature129CentralStyleResolverTests =
           testList
               "divergence"
               [
-                // T019 (G4, FR-002/FR-005/SC-002/SC-007): a non-default policy maps `danger` to
-                // theme.Danger, making it diverge from `primary` — while `neutralPolicy` keeps the two
-                // EQUAL (today's intent-drop preserved by default).
-                test "a divergent IntentPolicy makes danger differ from primary; neutral keeps them equal (G4)" {
-                    let divergentPolicy: StyleResolver.IntentPolicy =
-                        { ApplyIntent =
-                            fun theme intent s ->
+                // T019 (G4, FR-002/FR-005/SC-002/SC-007): a theme carrying a divergent policy maps
+                // `danger` to theme.Danger, making it diverge from `primary` — while the same theme
+                // under `IntentPolicy.neutral` keeps the two EQUAL (today's intent-drop preserved).
+                test "a theme's divergent IntentPolicy makes danger differ from primary; neutral keeps them equal (G4)" {
+                    let divergentPolicy: IntentPolicy =
+                        { Name = "test-divergent"
+                          ApplyIntent =
+                            fun theme _kind intent s ->
                                 match intent with
                                 | "danger" -> { s with Fill = theme.Danger; Stroke = theme.Danger; Foreground = theme.Background }
                                 | _ -> s }
 
+                    let divergentTheme = { Theme.light with IntentPolicy = divergentPolicy }
+
                     for kind in knownKinds do
                         // Normal + no classes so the base-level intent delta survives (a state like
                         // Hover would overwrite Fill and mask the divergence).
-                        let dangerDiv = StyleResolver.resolve divergentPolicy Theme.light kind "danger" [] Normal
-                        let primaryDiv = StyleResolver.resolve divergentPolicy Theme.light kind "primary" [] Normal
+                        let dangerDiv = StyleResolver.resolve divergentTheme kind "danger" [] Normal
+                        let primaryDiv = StyleResolver.resolve divergentTheme kind "primary" [] Normal
                         Expect.notEqual dangerDiv primaryDiv (sprintf "divergent policy: danger ≠ primary for %s" kind)
 
-                        let dangerNeutral = StyleResolver.resolve StyleResolver.neutralPolicy Theme.light kind "danger" [] Normal
-                        let primaryNeutral = StyleResolver.resolve StyleResolver.neutralPolicy Theme.light kind "primary" [] Normal
+                        let dangerNeutral = StyleResolver.resolve Theme.light kind "danger" [] Normal
+                        let primaryNeutral = StyleResolver.resolve Theme.light kind "primary" [] Normal
                         Expect.equal dangerNeutral primaryNeutral (sprintf "neutral policy: danger ≡ primary for %s (intent dropped)" kind)
                 }
 
                 // T020 (G5, FR-008/SC-006/SC-007): the divergence above is reached through the resolver
-                // ALONE — the control render path stays neutral (danger Button renders == primary Button),
-                // and no control type is forked per intent (control-type count carries no intent kinds).
-                test "divergence needs no control edit: control path stays neutral; no per-intent control type (G5)" {
-                    // control render path is intent-neutral by default (proven without any control edit)
+                // ALONE — under a neutral-policy theme the control render path stays neutral (danger
+                // Button renders == primary Button), and no control type is forked per intent.
+                test "divergence needs no control edit: neutral-policy path stays neutral; no per-intent control type (G5)" {
+                    // the Default theme's policy is neutral, so its render path drops intent (no control edit)
                     let dangerBtn = Button.create [ Button.text "Save"; Attr.style "danger" ]
                     let primaryBtn = Button.create [ Button.text "Save"; Attr.style "primary" ]
                     Expect.equal

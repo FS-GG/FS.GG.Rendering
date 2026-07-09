@@ -44,6 +44,7 @@ let private box: Rect = { X = 10.0; Y = 40.0; Width = 284.0; Height = 92.0 }
 
 let private defaultLight = FS.GG.UI.Themes.Default.Theme.light
 let private antLight = AntTheme.antLight
+let private antDark = AntTheme.antDark
 
 // A representative tree spanning every catalog category, EXISTING controls only (US1). US3 net-new
 // families are appended below once their modules exist (US4 / T031).
@@ -139,9 +140,11 @@ let feature132ThemeParityTests =
             Expect.isTrue (List.contains "button" divergent) "Button (brand-blue accent) diverges under AntDesign"
         }
 
+        // Feature 173: the Ant theme CARRIES `AntIntentPolicy.light`, so `StyleResolver.resolve` — the
+        // very call `buttonGeom` makes — reaches it. No policy is passed in by the test.
         test "the Ant Danger intent is observably distinct from Primary through the policy seam (SC-007)" {
             let resolved intent =
-                StyleResolver.resolve AntIntentPolicy.policy antLight "button" intent [] Normal
+                StyleResolver.resolve antLight "button" intent [] Normal
             Expect.notEqual
                 (resolved "danger")
                 (resolved "primary")
@@ -151,5 +154,60 @@ let feature132ThemeParityTests =
                 (resolved "")
                 (resolved "some-unknown-intent")
                 "empty and unknown intents both resolve to the identity (structural base) — total, never raises"
+        }
+
+        // Feature 173 (issue #173, AC-3): the six Ant button intents must be PAIRWISE distinct once
+        // resolved. Before the theme carried its policy every one of them collapsed onto the neutral
+        // filled base, so `default`, `dashed`, `text` and `link` were indistinguishable on screen.
+        test "every Ant button intent resolves to a pairwise-distinct style (issue #173)" {
+            let intents = [ "primary"; "default"; "dashed"; "text"; "link"; "danger" ]
+
+            for theme in [ antLight; antDark ] do
+                let resolved = intents |> List.map (fun i -> i, StyleResolver.resolve theme "button" i [] Normal)
+
+                for (a, sa) in resolved do
+                    for (b, sb) in resolved do
+                        if a < b then
+                            Expect.notEqual sa sb (sprintf "%s: intents %s and %s must resolve differently" theme.Name a b)
+        }
+
+        // `dashed` is a REAL dash pattern on `ResolvedStyle.StrokeDash`, not a thicker solid border
+        // faking one, and it is the only thing separating `dashed` from `default`.
+        test "the Ant dashed intent carries a real dash pattern, differing from default only there (issue #173)" {
+            let dashed = StyleResolver.resolve antLight "button" "dashed" [] Normal
+            let dflt = StyleResolver.resolve antLight "button" "default" [] Normal
+
+            Expect.isNonEmpty dashed.StrokeDash "dashed resolves to a non-empty dash interval list"
+            Expect.isEmpty dflt.StrokeDash "default resolves to a solid (empty-dash) stroke"
+            Expect.equal { dashed with StrokeDash = [] } dflt "dashed differs from default ONLY in its dash pattern"
+        }
+
+        // The end of the wire: the Scene a `dashed` Button paints must actually carry `PathEffect.Dash`,
+        // and `default`/`dashed`/`text`/`link` Buttons must paint different Scenes. This renders through
+        // the real control render path, so a regression in `buttonGeom` fails here, not only in the resolver.
+        test "dashed/text/link Ant Buttons render structurally distinct Scenes (issue #173)" {
+            let render intent = paint antLight (Button.create [ Button.text "Save"; Attr.style intent ])
+            let byIntent = [ "default"; "dashed"; "text"; "link" ] |> List.map (fun i -> i, render i)
+
+            for (a, sa) in byIntent do
+                for (b, sb) in byIntent do
+                    if a < b then
+                        Expect.notEqual sa sb (sprintf "a %s Button and a %s Button must paint different Scenes" a b)
+
+            // `dashed` is the only intent whose painted border carries a Dash path effect.
+            let dashIntervals (scenes: Scene list) =
+                scenes
+                |> List.collect (fun scene -> scene.Nodes)
+                |> List.choose (fun node ->
+                    match node with
+                    | PaintedRectangle(_, paint) ->
+                        match paint.PathEffect with
+                        | Dash(intervals, _) -> Some intervals
+                        | _ -> None
+                    | _ -> None)
+
+            let scenesFor intent = byIntent |> List.find (fst >> (=) intent) |> snd
+            Expect.isNonEmpty (dashIntervals (scenesFor "dashed")) "a dashed Button paints a Dash path effect"
+            Expect.isEmpty (dashIntervals (scenesFor "default")) "a default Button paints a solid border, no Dash"
         }
     ]

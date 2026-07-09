@@ -23,7 +23,9 @@ module Theme =
           FontSize = DesignTokens.Light.fontSize
           Density = DesignTokens.Light.density
           CornerRadius = DesignTokens.Light.cornerRadius
-          ContrastRequiredRatio = DesignTokens.Light.contrastRequiredRatio }
+          ContrastRequiredRatio = DesignTokens.Light.contrastRequiredRatio
+          // Intent-agnostic: the Default theme renders every intent as the kind's structural base.
+          IntentPolicy = IntentPolicy.neutral }
 
     let dark : Theme =
         { Name = "dark"
@@ -39,7 +41,8 @@ module Theme =
           FontSize = DesignTokens.Dark.fontSize
           Density = DesignTokens.Dark.density
           CornerRadius = DesignTokens.Dark.cornerRadius
-          ContrastRequiredRatio = DesignTokens.Dark.contrastRequiredRatio }
+          ContrastRequiredRatio = DesignTokens.Dark.contrastRequiredRatio
+          IntentPolicy = IntentPolicy.neutral }
 
     let withDensity (density: float) (theme: Theme) =
         { theme with Density = max 0.5 density }

@@ -19,7 +19,7 @@ Source: the central hub ([`../reference/ant-llms-sources.md`](../reference/ant-l
 | Ant part | Repo region | Material (token) | Resolver state |
 |---|---|---|---|
 | `Card/root` | the `custom-control` host container | `Seed.sizeUnit` | `baseStyleFor` |
-| `Card/body` | the custom drawing region | `Space.md` | `resolveDefault` |
+| `Card/body` | the custom drawing region | `Space.md` | `resolve` |
 
 ## Machine-checked references
 
@@ -27,7 +27,7 @@ Source: the central hub ([`../reference/ant-llms-sources.md`](../reference/ant-l
 control:custom-control
 token:Seed.sizeUnit
 token:Space.md
-resolver:resolveDefault
+resolver:resolve
 resolver:baseStyleFor
 policy:wcag
 part:Card/root

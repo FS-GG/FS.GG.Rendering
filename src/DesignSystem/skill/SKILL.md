@@ -53,10 +53,11 @@ in the controls. Ant-pattern *advice* (which token maps to which Ant region) liv
   - `Style.resolve : theme -> baseStyle -> classes -> state -> ResolvedStyle` (`Style.fsi`) — the pure,
     total, deterministic back-half overlay. Precedence (last-writer-wins per field): `baseStyle` < each
     class in attach order (earlier < later) < the visual state.
-  - `StyleResolver` (`StyleResolver.fsi`) — the front half: `baseStyleFor theme kind`, the overridable
-    `IntentPolicy` (`{ ApplyIntent }`) with the identity `neutralPolicy`, the full
-    `resolve policy theme kind intent classes state`, and `resolveDefault theme kind intent classes
-    state` (the intent-neutral path control render code calls).
+  - `StyleResolver` (`StyleResolver.fsi`) — the front half: `baseStyleFor theme kind` and
+    `resolve theme kind intent classes state` (the single path control render code calls). What an
+    intent *means* comes from the active theme's `IntentPolicy` (`{ Name; ApplyIntent }`, declared in
+    `Types.DesignSystem.fsi`): `IntentPolicy.neutral` ignores intent, the Ant theme carries a policy
+    that makes `primary`/`default`/`dashed`/`text`/`link`/`danger` structurally distinct.
 - **Themes + live-theming** (`FS.GG.UI.Themes.Default`):
   - `Theme` module (`Theme.fsi`) — `light`, `dark`, `withDensity density theme`, `withAccent accent
     theme`, and `resolve overrides` (the caller's `Theme option` else `light`).
@@ -101,7 +102,8 @@ Guarantees to preserve when editing the resolver:
 - **Total + deterministic** over every `(Theme, ResolvedStyle, StyleClass list, VisualState)` — all eight
   visual states, every variant, any custom string.
 - **Identity at the default path**: `Style.resolve theme baseStyle [] Normal = baseStyle` **exactly**
-  (the parity proof). `resolveDefault` is byte-identical to the pre-promotion internal call.
+  (the parity proof). Under a theme carrying `IntentPolicy.neutral`, `StyleResolver.resolve` is
+  byte-identical to the pre-promotion internal call across every kind × intent × state.
 - **No inline colour literals** — every colour a layer reads originates from the `theme` (which is
   DTCG-generated). New semantic colours come from the token source, not a literal in the resolver.
 - **No selectors / specificity / cross-control cascade** — these are permanent roadmap non-goals. Style

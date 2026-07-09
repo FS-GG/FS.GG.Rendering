@@ -24,7 +24,8 @@ module AntTheme =
           FontSize = DesignTokensExt.Type.Body.fontSize
           Density = DesignTokensExt.Density.middle
           CornerRadius = DesignTokensExt.Seed.borderRadius
-          ContrastRequiredRatio = DesignTokens.Light.contrastRequiredRatio }
+          ContrastRequiredRatio = DesignTokens.Light.contrastRequiredRatio
+          IntentPolicy = AntIntentPolicy.light }
 
     let antDark: Theme =
         { Name = "AntDesign Dark"
@@ -39,7 +40,8 @@ module AntTheme =
           FontSize = DesignTokensExt.Type.Body.fontSize
           Density = DesignTokensExt.Density.middle
           CornerRadius = DesignTokensExt.Seed.borderRadius
-          ContrastRequiredRatio = DesignTokens.Dark.contrastRequiredRatio }
+          ContrastRequiredRatio = DesignTokens.Dark.contrastRequiredRatio
+          IntentPolicy = AntIntentPolicy.dark }
 
     let resolve (overrides: Theme option) =
         overrides |> Option.defaultValue antLight

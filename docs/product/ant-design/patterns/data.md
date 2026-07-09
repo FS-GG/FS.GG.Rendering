@@ -19,7 +19,7 @@ Source: the central hub ([`../reference/ant-llms-sources.md`](../reference/ant-l
 |---|---|---|---|
 | `Table/header` | `data-grid` header band | `Space.sm` | `baseStyleFor` |
 | `Table/row` | a `list-view`/`data-grid` row | `Space.sm` | `resolve` (hover/selected) |
-| `Table/cell` | a single cell | `Seed.fontSize` | `resolveDefault` |
+| `Table/cell` | a single cell | `Seed.fontSize` | `resolve` |
 
 ## Machine-checked references
 

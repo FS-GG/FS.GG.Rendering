@@ -19,9 +19,9 @@ Source: the central hub ([`../reference/ant-llms-sources.md`](../reference/ant-l
 |---|---|---|---|
 | `Button/root` | `button` background + border box | `Seed.controlHeight`, `Seed.colorPrimary` | `resolve` (intent + states) |
 | `Button/content` | the button label run | `Seed.fontSize` | `resolve` |
-| `Button/icon` | leading/trailing glyph slot | `Space.md` | `resolveDefault` |
-| `Input/prefix` | leading affix of `text-box` | `Space.md` | `resolveDefault` |
-| `Input/suffix` | trailing affix of `text-box` | `Space.md` | `resolveDefault` |
+| `Button/icon` | leading/trailing glyph slot | `Space.md` | `resolve` |
+| `Input/prefix` | leading affix of `text-box` | `Space.md` | `resolve` |
+| `Input/suffix` | trailing affix of `text-box` | `Space.md` | `resolve` |
 
 Intent colors (primary/danger) are validated with the `ant` policy; sizing follows
 `Seed.controlHeight` (32) on the 8-unit grid.
@@ -35,7 +35,6 @@ control:numeric-input
 token:Seed.controlHeight
 token:Space.md
 resolver:resolve
-resolver:resolveDefault
 policy:ant
 part:Button/root
 part:Button/content

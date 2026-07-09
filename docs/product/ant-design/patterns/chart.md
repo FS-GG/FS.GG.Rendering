@@ -20,7 +20,7 @@ Source: the central hub ([`../reference/ant-llms-sources.md`](../reference/ant-l
 | Ant part | Repo region | Material (token) | Resolver state |
 |---|---|---|---|
 | `Card/header` | the chart panel's title/legend row | `Space.md` | `baseStyleFor` |
-| `Card/body` | the plot drawing region | `Seed.colorPrimary` | `resolveDefault` |
+| `Card/body` | the plot drawing region | `Seed.colorPrimary` | `resolve` |
 
 ## Machine-checked references
 
@@ -30,7 +30,7 @@ control:bar-chart
 control:pie-chart
 token:Seed.colorPrimary
 token:Space.md
-resolver:resolveDefault
+resolver:resolve
 resolver:baseStyleFor
 policy:ant
 part:Card/header

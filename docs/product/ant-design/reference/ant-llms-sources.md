@@ -35,8 +35,9 @@ raw `ant.design` URLs across other docs; link here instead.
   `Component`, `Space`, `Type`, `Density`, `Elevation`) and the flat `DesignTokens`. Ant's
   component design tokens (from `llms-full.txt`) map onto these.
 - **Semantic styles (application)** → the central `FS.GG.UI.DesignSystem.StyleResolver`
-  (`resolve`, `resolveDefault`, `baseStyleFor`, `neutralPolicy`, `IntentPolicy`) drives the
-  stateful styling of a region (hover/active/disabled/selected/focus).
+  (`resolve`, `baseStyleFor`) drives the stateful styling of a region
+  (hover/active/disabled/selected/focus), reading the intent language off the active theme's
+  `IntentPolicy` (`IntentPolicy.neutral` for Default, `AntIntentPolicy.light`/`dark` for Ant).
 - **Color/contrast policy** → `FS.GG.UI.Color.ColorPolicy` (`wcag`, `ant`).
 - **The one semantic control set** → `FS.GG.UI.Controls.Catalog` (96 controls after feature 133's
   net-new charts; 82 after feature 132;
