@@ -38,6 +38,7 @@ type DiagnosticStage =
     | FrameRender
     | ScreenshotCapture
     | Shutdown
+    | Input
 
 type RenderDiagnostic =
     { Severity: DiagnosticSeverity
@@ -130,6 +131,13 @@ module Diagnostics =
     let startupFailed stage detail =
         create DiagnosticSeverity.Fatal stage "OpenGL initialization failed. The viewer has no fallback renderer." (Some detail)
 
+    let unmappedPointerButton (button: string) =
+        create
+            DiagnosticSeverity.Warning
+            DiagnosticStage.Input
+            $"Pointer button '{button}' has no representation in ViewerPointerButton; the press/release was dropped."
+            (Some "The host contract carries only the primary, secondary and middle buttons. Bind the action to one of those, or extend ViewerPointerButton.")
+
     let damageScopedDecision (decision: string) reason =
         let cause = reason |> Option.filter (String.IsNullOrWhiteSpace >> not)
         create DiagnosticSeverity.Info DiagnosticStage.Framebuffer $"Feature157 damage render decision: {decision}." cause
@@ -147,6 +155,7 @@ module Diagnostics =
         | DiagnosticStage.GlContext
         | DiagnosticStage.GlRenderer
         | DiagnosticStage.GlSurface
+        | DiagnosticStage.Input
         | DiagnosticStage.SkiaContext -> FS.GG.UI.Diagnostics.DiagnosticCategory.Environment
         | DiagnosticStage.Framebuffer when diagnostic.Message.Contains("damage render decision", StringComparison.OrdinalIgnoreCase) ->
             FS.GG.UI.Diagnostics.DiagnosticCategory.BackendCost

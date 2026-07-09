@@ -872,6 +872,7 @@ module Viewer =
             | Host.DiagnosticStage.SkiaContext
             | Host.DiagnosticStage.FrameRender -> ViewerRunBlockedStage.Renderer
             | Host.DiagnosticStage.ScreenshotCapture -> ViewerRunBlockedStage.Readback
+            | Host.DiagnosticStage.Input
             | Host.DiagnosticStage.Shutdown -> ViewerRunBlockedStage.App
 
         let category =
@@ -883,6 +884,7 @@ module Viewer =
             | Host.DiagnosticStage.SkiaContext -> ViewerDiagnosticCategory.Skia
             | Host.DiagnosticStage.FrameRender -> ViewerDiagnosticCategory.Frame
             | Host.DiagnosticStage.ScreenshotCapture -> ViewerDiagnosticCategory.Screenshot
+            | Host.DiagnosticStage.Input
             | Host.DiagnosticStage.PlatformCheck
             | Host.DiagnosticStage.Shutdown -> ViewerDiagnosticCategory.Startup
 

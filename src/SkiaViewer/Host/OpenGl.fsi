@@ -223,6 +223,14 @@ module GlHost =
         | Timeout
         | HostError of string
 
+    /// Issue #184: the host contract's button identity for a raw Silk.NET `MouseButton` code, or
+    /// `None` for a button it cannot carry — Silk's `Unknown`, and the extra `Button4`..`Button12`
+    /// that back/forward and thumb buttons arrive on. The caller drops such an event and reports it;
+    /// coercing a thumb-button press onto `PrimaryButton` is the one answer that cannot be right.
+    /// Takes the raw code rather than `Silk.NET.Input.MouseButton` to keep the input binding out of
+    /// this package's public surface, as `FrameFailureFacts.GraphicsResetStatus` does for GL.
+    val mapPointerButton: buttonCode: int -> ViewerPointerButton option
+
     /// Issue #179: `glGetGraphicsResetStatus` on a context that has not been reset — and also what a
     /// context without `GL_KHR_robustness` always reports, so a reset is a positive signal only.
     val glNoError: uint32
