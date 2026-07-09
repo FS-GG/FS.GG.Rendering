@@ -105,7 +105,7 @@ FS.GG.UI.Controls.ControlSchema
 FS.GG.UI.Controls.ControlSelection
 FS.GG.UI.Controls.Control`1
 FS.GG.UI.Controls.CustomControl
-FS.GG.UI.Controls.CustomControlDefinition`1
+FS.GG.UI.Controls.CustomControlDefinition
 FS.GG.UI.Controls.DataEntry2
 FS.GG.UI.Controls.DataEntry2+AutoComplete
 FS.GG.UI.Controls.DataEntry2+Cascader

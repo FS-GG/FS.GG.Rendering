@@ -218,7 +218,7 @@ module Catalog =
           |> withChartDataGridEvidence
           // END GENERATED: typed-catalog/graph-view
           // BEGIN GENERATED: typed-catalog/custom-control
-          definition "custom-control" "Custom Control" "custom" "CustomControl" "Product-owned wrapper; renderTree paints a labeled placeholder, not the custom Render/Draw content — build must-show geometry from primitive controls (Border/TextBlock/Stack)." [] common [ "onCustom" ] states "Custom"
+          definition "custom-control" "Custom Control" "custom" "CustomControl" "Product-owned wrapper for events/attributes; renderTree paints a labeled placeholder — draw arbitrary geometry with the canvas kind, or build must-show chrome from primitive controls (Border/TextBlock/Stack)." [] common [ "onCustom" ] states "Custom"
           // END GENERATED: typed-catalog/custom-control
           // BEGIN GENERATED: typed-catalog/toggle-button
           definition "toggle-button" "Toggle Button" "input" "ToggleButton" "On/off command with product-owned pressed state." [ "text" ] common [ "onToggle" ] states "Button"
