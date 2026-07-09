@@ -34,7 +34,8 @@ let private frozenLight : Theme =
       FontSize = 14.0
       Density = 1.0
       CornerRadius = 4.0
-      ContrastRequiredRatio = 4.5 }
+      ContrastRequiredRatio = 4.5
+      IntentPolicy = IntentPolicy.neutral }
 
 let private frozenDark : Theme =
     { frozenLight with

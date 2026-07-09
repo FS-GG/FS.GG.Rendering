@@ -12,12 +12,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Feature 132 (D2.1): the Ant Design theme layer. AntTheme (the Theme value) before
-         AntIntentPolicy (it reads no AntTheme members but the value-first order mirrors Themes.Default). -->
-    <Compile Include="AntTheme.fsi" />
-    <Compile Include="AntTheme.fs" />
+    <!-- Feature 132 (D2.1): the Ant Design theme layer. Feature 173 put the policy ON the Theme
+         (`Theme.IntentPolicy`), so AntIntentPolicy must now compile BEFORE AntTheme, which reads it.
+         The policy takes its theme as an argument, so the dependency runs one way only. -->
     <Compile Include="AntIntentPolicy.fsi" />
     <Compile Include="AntIntentPolicy.fs" />
+    <Compile Include="AntTheme.fsi" />
+    <Compile Include="AntTheme.fs" />
   </ItemGroup>
 
   <ItemGroup>

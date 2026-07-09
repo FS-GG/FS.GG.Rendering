@@ -19,7 +19,7 @@ Source: the central hub ([`../reference/ant-llms-sources.md`](../reference/ant-l
 |---|---|---|---|
 | `Alert/root` | `toast`/`validation-message` container | `Seed.colorError` | `resolve` (status) |
 | `Alert/icon` | the status glyph | `Seed.colorSuccess` | `resolve` (status) |
-| `Alert/description` | the message body | `Seed.fontSize` | `resolveDefault` |
+| `Alert/description` | the message body | `Seed.fontSize` | `resolve` |
 | `Alert/close` | the dismiss affordance | `Space.sm` | `resolve` (hover) |
 
 ## Machine-checked references
@@ -32,7 +32,6 @@ token:Seed.colorError
 token:Seed.colorSuccess
 token:Space.sm
 resolver:resolve
-resolver:resolveDefault
 policy:ant
 part:Alert/root
 part:Alert/icon

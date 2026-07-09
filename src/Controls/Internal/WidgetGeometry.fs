@@ -85,6 +85,7 @@ module internal WidgetGeometry =
                       Fill = (if isSel then theme.Accent else theme.Muted)
                       Stroke = theme.Accent
                       StrokeWidth = 0.0
+                      StrokeDash = []
                       FontFamily = theme.FontFamily
                       FontSize = 12.0
                       FontWeight = None }
@@ -122,6 +123,7 @@ module internal WidgetGeometry =
               Fill = theme.Accent
               Stroke = theme.Accent
               StrokeWidth = 0.0
+              StrokeDash = []
               FontFamily = theme.FontFamily
               FontSize = 13.0
               FontWeight = None }
@@ -158,6 +160,7 @@ module internal WidgetGeometry =
               Fill = (if on then theme.Accent else theme.Muted)
               Stroke = theme.Accent
               StrokeWidth = 0.0
+              StrokeDash = []
               FontFamily = theme.FontFamily
               FontSize = 13.0
               FontWeight = None }
@@ -186,6 +189,7 @@ module internal WidgetGeometry =
                   Fill = theme.Accent
                   Stroke = theme.Background
                   StrokeWidth = 3.0
+                  StrokeDash = []
                   FontFamily = theme.FontFamily
                   FontSize = 13.0
                   FontWeight = None }
@@ -195,6 +199,7 @@ module internal WidgetGeometry =
                   Fill = Colors.transparent
                   Stroke = theme.Foreground
                   StrokeWidth = 2.0
+                  StrokeDash = []
                   FontFamily = theme.FontFamily
                   FontSize = 13.0
                   FontWeight = None }
@@ -276,12 +281,14 @@ module internal WidgetGeometry =
     //
     // Feature 093 (E3): Button (box+label migrant) — paint flows through the resolver.
     // Feature 129 (F4): the `baseStyle` is now obtained from the central front-half path
-    // `StyleResolver.resolveDefault theme kind intent classes state`, replacing the inline
-    // `primary: bool` literal dispatch. The structural bases were relocated verbatim into
-    // `StyleResolver.baseStyleFor`, and the default (neutral) policy ignores `intent`, so the
-    // default-theme output is byte-identical across every intent and visual state (FR-003, SC-001).
-    // `kind` selects the fill-vs-outline geometry; the resolver supplies the colours; `intent` is
-    // now a THREADED, consumed argument (reaches resolution) rather than dead code.
+    // `StyleResolver.resolve theme kind intent classes state`, replacing the inline `primary: bool`
+    // literal dispatch. The structural bases were relocated verbatim into `StyleResolver.baseStyleFor`.
+    // `kind` selects the fill-vs-outline geometry; the resolver supplies the colours.
+    //
+    // Feature 173: the resolver applies the ACTIVE THEME's `IntentPolicy` to `intent`. The Default
+    // theme's policy is `IntentPolicy.neutral`, which ignores intent and returns the structural base —
+    // so default-theme output stays byte-identical across every intent and visual state (FR-003,
+    // SC-001). A theme with a divergent policy (AntDesign) reaches the screen through this same call.
     let buttonGeom theme (box: Rect) (classes: StyleClass list) (state: VisualState) (kind: string) (intent: string) (label: string) : Scene list =
         let h = 38.0
         let textW = (measureText label { Family = theme.FontFamily; Size = 15.0; Weight = None }).Width
@@ -289,17 +296,36 @@ module internal WidgetGeometry =
         let by = box.Y + box.Height / 2.0 - h / 2.0
         let rect = { X = box.X; Y = by; Width = w; Height = h }
 
-        let style = StyleResolver.resolveDefault theme kind intent classes state
+        let style = StyleResolver.resolve theme kind intent classes state
+
+        // A resolved `StrokeDash` is a real dash pattern (Feature 173); `[]` leaves the stroke solid.
+        let strokePaint (color: Color) (width: float) =
+            let paint = Paint.stroke color width
+
+            match style.StrokeDash with
+            | [] -> paint
+            | intervals -> paint |> Paint.withPathEffect (Dash(intervals, 0.0))
 
         // Feature 175 (FR-004): a filled button's fill carries hover/press, but FOCUS only moves the
         // stroke — which the filled branch otherwise ignores, so keyboard focus was invisible on every
         // button (incl. the ghost nav buttons). Paint a focus ring (the resolved focus stroke) when the
         // state involves focus; Normal/Hover/Pressed add nothing, so non-focused buttons are unchanged.
+        // The ring is always solid: it reports focus, not the intent's border style.
         let focusRing =
             match state with
             | Focused
             | FocusedHover -> [ Scene.rectangleWithPaint rect (Paint.stroke style.Stroke 2.0) ]
             | _ -> []
+
+        // Feature 173: a filled button painted only its fill, so an intent that asks for a border
+        // (Ant's `default`/`dashed`, whose fill IS the surface colour) rendered as an invisible box.
+        // Stroke it whenever the resolved style asks for a border. Every structural base resolves to
+        // `StrokeWidth = 0.0` under the neutral policy, so unthemed buttons gain nothing.
+        let border =
+            if style.StrokeWidth > 0.0 then
+                [ Scene.rectangleWithPaint rect (strokePaint style.Stroke style.StrokeWidth) ]
+            else
+                []
 
         // Feature 175 (FR-003, finding F-009): a default button's resting fill is already `theme.Accent`,
         // so `applyState Hover` (Fill = Accent) is a no-op and hover was invisible on it. Lighten the
@@ -314,9 +340,10 @@ module internal WidgetGeometry =
         if kind = "button" then
             [ Scene.rectangle (box.X, by, w, h) buttonFill
               mkText theme (box.X + 16.0) (by + h / 2.0 + 5.0) 15.0 style.Foreground label ]
+            @ border
             @ focusRing
         else
-            [ Scene.rectangleWithPaint rect (Paint.stroke style.Stroke 2.0)
+            [ Scene.rectangleWithPaint rect (strokePaint style.Stroke 2.0)
               mkText theme (box.X + 16.0) (by + h / 2.0 + 5.0) 15.0 style.Foreground label ]
 
     /// A compact accent pill with light text — a status badge.
@@ -496,6 +523,7 @@ module internal WidgetGeometry =
               Fill = theme.Background
               Stroke = theme.Foreground
               StrokeWidth = 2.0
+              StrokeDash = []
               FontFamily = theme.FontFamily
               FontSize = 15.0
               FontWeight = None }

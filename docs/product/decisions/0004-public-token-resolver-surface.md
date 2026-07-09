@@ -18,21 +18,22 @@ paired **generated `.fsi`** in lock-step with the `.fs`.
 
 ### Promoted — `StyleResolver` (hand-curated [`StyleResolver.fsi`](../../../src/DesignSystem/StyleResolver.fsi))
 
-The full front-half resolver + intent-policy seam — exactly five public members:
+The full front-half resolver — exactly two public members:
 
 | Symbol | Signature |
 |--------|-----------|
-| `type IntentPolicy` | `{ ApplyIntent: Theme -> string -> ResolvedStyle -> ResolvedStyle }` |
 | `val baseStyleFor` | `Theme -> string -> ResolvedStyle` |
-| `val neutralPolicy` | `IntentPolicy` |
-| `val resolve` | `IntentPolicy -> Theme -> string -> string -> StyleClass list -> VisualState -> ResolvedStyle` |
-| `val resolveDefault` | `Theme -> string -> string -> StyleClass list -> VisualState -> ResolvedStyle` |
+| `val resolve` | `Theme -> string -> string -> StyleClass list -> VisualState -> ResolvedStyle` |
 
-Baseline rows added: `FS.GG.UI.DesignSystem.StyleResolver`, `FS.GG.UI.DesignSystem.StyleResolver+IntentPolicy`.
+Baseline row added: `FS.GG.UI.DesignSystem.StyleResolver`.
 
-> Implementation note: `resolveDefault` is written as a fully-applied function (not the eta-reduced
-> `resolve neutralPolicy`) so its arity matches the curated public signature. The change is semantically
-> identical — the Feature129 neutral-parity oracle remains byte-identical.
+> Amended by issue #173. The intent-policy seam originally lived here as `type IntentPolicy`,
+> `val neutralPolicy` and `val resolveDefault`, with the policy passed in per call. Nothing under
+> `src/` ever passed a non-neutral one, because a control names a kind and an intent but never a
+> theme — so there was no caller positioned to choose the policy. `IntentPolicy` moved onto `Theme`
+> (`Types.DesignSystem.fsi`), `resolve` reads it from the theme it is already given, and the two
+> now-redundant members were dropped. `IntentPolicy.neutral` (the Default theme's policy) preserves
+> the byte-identical Feature129 neutral-parity oracle.
 
 ### Promoted — `DesignTokensExt` taxonomy (generated [`DesignTokensExt.fsi`](../../../src/DesignSystem/DesignTokensExt.fsi))
 

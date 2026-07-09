@@ -24,6 +24,7 @@ FS.GG.UI.DesignSystem.DesignTokensExt+Type+Display
 FS.GG.UI.DesignSystem.DesignTokensExt+Type+Section
 FS.GG.UI.DesignSystem.DesignTokensExt+Type+Small
 FS.GG.UI.DesignSystem.DesignTokensExt+Type+Title
+FS.GG.UI.DesignSystem.IntentPolicy
 FS.GG.UI.DesignSystem.ResolvedStyle
 FS.GG.UI.DesignSystem.Style
 FS.GG.UI.DesignSystem.StyleClass
@@ -31,7 +32,6 @@ FS.GG.UI.DesignSystem.StyleClass+Custom
 FS.GG.UI.DesignSystem.StyleClass+Tags
 FS.GG.UI.DesignSystem.StyleClass+Variant
 FS.GG.UI.DesignSystem.StyleResolver
-FS.GG.UI.DesignSystem.StyleResolver+IntentPolicy
 FS.GG.UI.DesignSystem.StyleVariant
 FS.GG.UI.DesignSystem.StyleVariant+Tags
 FS.GG.UI.DesignSystem.Theme

@@ -22,6 +22,7 @@ let private baseStyle (theme: Theme) : ResolvedStyle =
       Fill = theme.Background
       Stroke = theme.Foreground
       StrokeWidth = 1.0
+      StrokeDash = []
       FontFamily = theme.FontFamily
       FontSize = 14.0
       FontWeight = None }

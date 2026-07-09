@@ -220,6 +220,7 @@ let focusIndicatorTests =
           Fill = Colors.white
           Stroke = Colors.black
           StrokeWidth = 1.0
+          StrokeDash = []
           FontFamily = None
           FontSize = 14.0
           FontWeight = None }

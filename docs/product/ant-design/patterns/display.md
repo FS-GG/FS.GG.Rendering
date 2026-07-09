@@ -18,8 +18,8 @@ Source: the central hub ([`../reference/ant-llms-sources.md`](../reference/ant-l
 
 | Ant part | Repo region | Material (token) | Resolver state |
 |---|---|---|---|
-| `Badge/root` | the host control's content box (`badge`/`label`) | `Seed.fontSize`, `Seed.colorTextBase` | `resolveDefault` (neutral) |
-| `Badge/indicator` | the status dot/count drawn over the host | `Seed.colorError` / `Seed.colorPrimary` | `resolveDefault` |
+| `Badge/root` | the host control's content box (`badge`/`label`) | `Seed.fontSize`, `Seed.colorTextBase` | `resolve` (neutral policy) |
+| `Badge/indicator` | the status dot/count drawn over the host | `Seed.colorError` / `Seed.colorPrimary` | `resolve` |
 
 ## Machine-checked references
 
@@ -28,7 +28,7 @@ control:badge
 control:label
 token:Seed.fontSize
 token:Seed.colorTextBase
-resolver:resolveDefault
+resolver:resolve
 policy:wcag
 part:Badge/root
 part:Badge/indicator

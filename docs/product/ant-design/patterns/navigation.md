@@ -16,7 +16,7 @@ Source: the central hub ([`../reference/ant-llms-sources.md`](../reference/ant-l
 
 | Ant part | Repo region | Material (token) | Resolver state |
 |---|---|---|---|
-| `Tabs/nav` | `tabs` header strip | `Space.md` | `resolveDefault` |
+| `Tabs/nav` | `tabs` header strip | `Space.md` | `resolve` |
 | `Tabs/tab` | an individual tab item | `Seed.fontSize` | `resolve` (hover/selected) |
 | `Tabs/indicator` | the active-tab ink bar | `Seed.colorPrimary` | `resolve` (selected) |
 
@@ -28,7 +28,6 @@ control:menu
 token:Seed.colorPrimary
 token:Space.md
 resolver:resolve
-resolver:resolveDefault
 policy:wcag
 part:Tabs/nav
 part:Tabs/tab

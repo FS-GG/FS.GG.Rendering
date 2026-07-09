@@ -19,7 +19,7 @@ Source: the central hub ([`../reference/ant-llms-sources.md`](../reference/ant-l
 | Ant part | Repo region | Material (token) | Resolver state |
 |---|---|---|---|
 | `Card/root` | the graph panel container | `Space.md` | `baseStyleFor` |
-| `Card/body` | the graph drawing canvas | `Seed.colorPrimary` | `resolveDefault` |
+| `Card/body` | the graph drawing canvas | `Seed.colorPrimary` | `resolve` |
 
 ## Machine-checked references
 
@@ -27,7 +27,7 @@ Source: the central hub ([`../reference/ant-llms-sources.md`](../reference/ant-l
 control:graph-view
 token:Seed.colorPrimary
 token:Space.md
-resolver:resolveDefault
+resolver:resolve
 resolver:baseStyleFor
 policy:ant
 part:Card/root

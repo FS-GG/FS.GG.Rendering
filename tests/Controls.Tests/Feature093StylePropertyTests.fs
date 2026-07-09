@@ -39,6 +39,7 @@ module private Gen093 =
                   Fill = fill
                   Stroke = stroke
                   StrokeWidth = sw
+                  StrokeDash = []
                   FontFamily = ff
                   FontSize = fs
                   FontWeight = fw }

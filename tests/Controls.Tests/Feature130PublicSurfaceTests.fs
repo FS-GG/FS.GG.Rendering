@@ -4,7 +4,7 @@ module Feature130PublicSurfaceTests
 //
 // F5 promotes two proven-internal capabilities to a public, `.fsi`-declared contract:
 //   * `FS.GG.UI.DesignSystem.StyleResolver` — the front-half resolver + the overridable `IntentPolicy`
-//     seam (`baseStyleFor`/`neutralPolicy`/`resolve`/`resolveDefault`).
+//     seam (`baseStyleFor`/`resolve`, plus the `IntentPolicy` a `Theme` carries).
 //   * `FS.GG.UI.DesignSystem.DesignTokensExt` — the Ant-derived seed/map/alias/component taxonomy
 //     plus space/density/type/elevation.
 //
@@ -15,9 +15,9 @@ module Feature130PublicSurfaceTests
 // Coverage (filters mirror quickstart.md V4):
 //   * public-path consumption — name `StyleResolver.*` + read `DesignTokensExt.*` with no IVT (INV-4).
 //   * value parity — representative promoted token values equal their known literals (INV-2/SC-003).
-//   * render neutrality — `resolveDefault` is byte-identical to the Feature129 neutral oracle across the
+//   * render neutrality — a neutral-policy theme resolves byte-identically to the Feature129 oracle across the
 //     full {kind}×{intent}×{state} cross-product (INV-3/SC-003).
-//   * divergence — a custom public `IntentPolicy` makes `danger` diverge from `resolveDefault` (INV-5/SC-005).
+//   * divergence — a theme carrying a custom public `IntentPolicy` makes `danger` diverge (INV-5/SC-005).
 
 open Expecto
 open FS.GG.UI.Scene
@@ -30,6 +30,7 @@ let private filledBase (theme: Theme) : ResolvedStyle =
       Fill = theme.Accent
       Stroke = theme.Accent
       StrokeWidth = 0.0
+      StrokeDash = []
       FontFamily = theme.FontFamily
       FontSize = 15.0
       FontWeight = None }
@@ -39,6 +40,7 @@ let private outlineBase (theme: Theme) : ResolvedStyle =
       Fill = Colors.transparent
       Stroke = theme.Accent
       StrokeWidth = 2.0
+      StrokeDash = []
       FontFamily = theme.FontFamily
       FontSize = 15.0
       FontWeight = None }
@@ -77,10 +79,9 @@ let feature130PublicSurfaceTests =
         // assertions are incidental; the COMPILE is the proof of public visibility.
         test "promoted StyleResolver + DesignTokensExt are reachable through the public API only (INV-4/SC-001)" {
             // StyleResolver public members are nameable and callable.
-            let resolved =
-                StyleResolver.resolve StyleResolver.neutralPolicy Theme.light "button" "primary" [] Normal
-            let viaDefault = StyleResolver.resolveDefault Theme.light "button" "primary" [] Normal
-            Expect.equal resolved viaDefault "resolve neutralPolicy == resolveDefault (public seam)"
+            let resolved = StyleResolver.resolve Theme.light "button" "primary" [] Normal
+            let viaBackHalf = Style.resolve Theme.light (StyleResolver.baseStyleFor Theme.light "button") [] Normal
+            Expect.equal resolved viaBackHalf "a neutral-policy theme resolves to its structural base (public seam)"
 
             let baseStyle = StyleResolver.baseStyleFor Theme.light "button"
             Expect.equal baseStyle.Fill Theme.light.Accent "baseStyleFor button is the filled accent base"
@@ -115,47 +116,51 @@ let feature130PublicSurfaceTests =
         }
 
         // ===== render neutrality (INV-3/SC-003) — T007 ================================================
-        // resolveDefault is byte-identical to the pre-promotion neutral oracle across the FULL
-        // {kind}×{intent}×{state} cross-product (incl. unknown kind/intent), both themes, ±classes.
-        test "resolveDefault is byte-identical to the Feature129 neutral oracle across the cross-product (INV-3/SC-003)" {
+        // Both built-in Default themes carry `IntentPolicy.neutral`, so resolution is byte-identical to
+        // the pre-promotion neutral oracle across the FULL {kind}×{intent}×{state} cross-product (incl.
+        // unknown kind/intent), ±classes.
+        test "a neutral-policy theme resolves byte-identically to the Feature129 oracle across the cross-product (INV-3/SC-003)" {
             for (tname, theme) in themes do
                 for kind in knownKinds do
                     for intent in knownIntents do
                         for state in allStates do
                             for classes in [ []; sampleClasses ] do
-                                let migrated = StyleResolver.resolveDefault theme kind intent classes state
+                                let migrated = StyleResolver.resolve theme kind intent classes state
                                 let oracle = Style.resolve theme (oracleBase theme kind) classes state
                                 Expect.equal
                                     migrated
                                     oracle
-                                    (sprintf "resolveDefault %s/%s/%s/%A neutral parity" tname kind intent state)
+                                    (sprintf "resolve %s/%s/%s/%A neutral parity" tname kind intent state)
         }
 
         // ===== divergence via a public policy (INV-5/SC-005) — T022 ===================================
-        // A custom public IntentPolicy mapping "danger" -> theme.Danger makes a danger button diverge from
-        // resolveDefault — proven from the public seam, with ZERO control edits.
-        test "a custom public IntentPolicy makes danger diverge from resolveDefault — no control edits (INV-5/SC-005)" {
-            let divergentPolicy: StyleResolver.IntentPolicy =
-                { ApplyIntent =
-                    fun theme intent s ->
+        // A theme carrying a custom public IntentPolicy that maps "danger" -> theme.Danger makes a danger
+        // button diverge from the same theme under the neutral policy — proven from the public seam, with
+        // ZERO control edits.
+        test "a theme's custom public IntentPolicy makes danger diverge from the neutral resolution — no control edits (INV-5/SC-005)" {
+            let divergentPolicy: IntentPolicy =
+                { Name = "test-divergent"
+                  ApplyIntent =
+                    fun theme _kind intent s ->
                         match intent with
                         | "danger" -> { s with Fill = theme.Danger; Stroke = theme.Danger; Foreground = theme.Background }
                         | _ -> s }
 
+            let divergentTheme = { Theme.light with IntentPolicy = divergentPolicy }
+
             for kind in [ "button"; "icon-button" ] do
                 // Normal + no classes so the base-level intent delta survives (Hover would overwrite Fill).
-                let dangerDivergent = StyleResolver.resolve divergentPolicy Theme.light kind "danger" [] Normal
-                let dangerDefault = StyleResolver.resolveDefault Theme.light kind "danger" [] Normal
+                let dangerDivergent = StyleResolver.resolve divergentTheme kind "danger" [] Normal
+                let dangerNeutralResolved = StyleResolver.resolve Theme.light kind "danger" [] Normal
                 Expect.notEqual
                     dangerDivergent
-                    dangerDefault
-                    (sprintf "divergent policy: danger differs from resolveDefault for %s" kind)
+                    dangerNeutralResolved
+                    (sprintf "divergent policy: danger differs from the neutral resolution for %s" kind)
 
                 // neutral keeps danger == primary (today's intent-drop preserved by default).
-                let dangerNeutral = StyleResolver.resolveDefault Theme.light kind "danger" [] Normal
-                let primaryNeutral = StyleResolver.resolveDefault Theme.light kind "primary" [] Normal
+                let primaryNeutral = StyleResolver.resolve Theme.light kind "primary" [] Normal
                 Expect.equal
-                    dangerNeutral
+                    dangerNeutralResolved
                     primaryNeutral
                     (sprintf "neutral policy: danger == primary for %s (intent dropped)" kind)
         }

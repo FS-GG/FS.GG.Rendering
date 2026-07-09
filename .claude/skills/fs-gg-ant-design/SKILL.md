@@ -48,6 +48,6 @@ doc:../../../docs/product/ant-design/reference/ant-llms-sources.md
 doc:../../../docs/product/ant-design/patterns/input.md
 doc:../../../docs/product/ant-design/README.md
 token:Seed.colorPrimary
-resolver:resolveDefault
+resolver:resolve
 policy:ant
 ```
