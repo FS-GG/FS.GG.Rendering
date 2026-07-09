@@ -232,8 +232,10 @@ here; this section records why the independence is load-bearing today.
 The spec defines which checks are required; **enabling** branch protection is the maintainer's
 one-time action (it cannot be set from the repo tree). On `main`:
 
-- **Require status checks to pass before merging** → select the `gate` workflow's job
-  **`Deterministic gate`**. Do **not** add `release` or `capability` jobs as required (FR-007).
+- **Require status checks to pass before merging** → select **both** of the `gate` workflow's jobs:
+  **`Deterministic gate`** and **`API compatibility gate (breaking-change → SemVer major)`** (§5.1).
+  Do **not** add `release` or `capability` jobs as required (FR-007) — that constraint is about those
+  two *workflows*, and says nothing about `gate.yml`'s own jobs.
 - Do **not** enable "Require branches to be up to date before merging". This section originally
   recommended it, but under the ADR-0021 parallel intra-repo model it serializes every merge: each
   landing invalidates every other open PR's green. `gate` also runs on `push: main`, so a bad
@@ -242,10 +244,10 @@ one-time action (it cannot be set from the repo tree). On `main`:
 - Leave `release.yml` and `capability.yml` unselected — they are advisory by design and must never
   block a merge (gate-contract "What can NEVER fail the gate").
 
-Result: a PR merges iff the deterministic gate is green; release/capability runs are visible evidence
+Result: a PR merges iff both `gate.yml` jobs are green; release/capability runs are visible evidence
 but never gate.
 
-### 5.1 `API compatibility gate` — authorized, pending one precondition
+### 5.1 `API compatibility gate` — required as of 2026-07-09
 
 This section once said to select **only** `Deterministic gate`. That wording predates `gate.yml`'s
 second job and was read as a standing prohibition on requiring it (ADR-0100). It was never a
@@ -261,34 +263,46 @@ under exactly one precondition:
 That is not ceremony. A required check that is red on the base branch blocks *every* PR in the repo,
 including the release PR that would discharge the red — a deadlock only an admin bypass escapes.
 
-The check is otherwise a sound hard gate, and stronger than the advisory framing suggested: it exits
-non-zero **only** on a genuine `CP####` break; `NoBaselineYet` and `Indeterminate` (a feed hiccup)
-do **not** fail it; and on a fork PR with no token it degrades to clean (exit 0), so forks still
-merge. Its one structural cost, which requiring it accepts: the check reads the package feed, so it
-takes a merge-blocking dependency on feed availability that `Deterministic gate` does not have.
-
-**Status (2026-07-09): the major is cut; the precondition clears on publish.** The three undischarged
-breaks — `FS.GG.UI.Controls`, `FS.GG.UI.DesignSystem`, `FS.GG.UI.Themes.AntDesign` — are discharged by
-the SemVer major `0.4.0-preview.1` (FS.GG.Rendering#225), which they forced. See
-[ADR-0101](../product/decisions/0101-apicompat-stays-advisory.md).
-
-The green does not follow the merge; it follows the **publish**. `scripts/apicompat-check.sh` never
-reads this repo's version — it packs each project at `check_version` (the baseline plus an `.apicheck`
-prerelease identifier) and compares against `latest_version()` **off the feed**. So the gate keeps
-reporting the three breaks until `0.4.0-preview.1` is on the feed and becomes the baseline; at that
-point the compared surface is, by construction, the surface the baseline was packed from, and the job
-goes green. `release-tags.yml` cuts the tag triple on push to `main` and invokes the publish, so the
-transition is expected within one release run of the bump landing — not instantly at merge.
-
-**Once the job is observed green on `main`**, the maintainer adds this context string — it is the
-job's `name:`, not its key, and the arrow is U+2192:
+**Status (2026-07-09): DONE — the check is required.** The precondition was discharged and the context
+added. Both contexts are now required on `main`:
 
 ```
+Deterministic gate
 API compatibility gate (breaking-change → SemVer major)
 ```
 
-No workflow or script change is required. Tracking issues: FS.GG.Rendering#219 (the authorization),
-FS.GG.Rendering#225 (the major that discharges the breaks).
+The second string is the job's `name:`, not its key, and the arrow is U+2192.
+
+How it was discharged: the three breaks — `FS.GG.UI.Controls`, `FS.GG.UI.DesignSystem`,
+`FS.GG.UI.Themes.AntDesign` — forced the SemVer major `0.4.0-preview.1`, cut by FS.GG.Rendering#225.
+**The green followed the publish, not the merge.** `scripts/apicompat-check.sh` never reads this
+repo's version: it packs each project at `check_version` (the baseline plus an `.apicheck` prerelease
+identifier) and compares against `latest_version()` **off the feed**. The gate went on reporting the
+three breaks until `0.4.0-preview.1` reached the feed and became the baseline — at which point the
+compared surface is, by construction, the surface the baseline was packed from. It then reported
+`OK=17 BREAK=0 (total 17, compared 17)` on `main`, and the context was added at that commit. See
+[ADR-0101](../product/decisions/0101-apicompat-stays-advisory.md).
+
+### What now blocks a merge
+
+Requiring the check makes its exit codes load-bearing, and #216/#227 refined them after ADR-0101 was
+written. The bound ADR-0101 relies on still holds, but it is `FeedUnavailable` — not `Indeterminate` —
+that carries it:
+
+| outcome | meaning | exit | blocks a merge? |
+|---|---|---|---|
+| `BREAK` | the gate ran and found a `CP####` removal | 1 | **yes** — cut a SemVer major |
+| `Indeterminate` | `dotnet pack` failed, so the gate **never ran** for that packable | 3 | **yes** — a check that could not run is not a pass |
+| `FeedUnavailable` | the feed did not answer (transport error, 5xx, no token) | 0 | no — a feed outage informs a merge, it does not block one |
+| `NoBaselineYet` | the packable is not on the feed yet | 0 | no |
+
+So the structural cost requiring it accepts is bounded: the check reads the package feed, but a feed
+outage degrades to `FeedUnavailable` and exits 0, and a fork PR with no token resolves every packable
+that way — forks still merge. What a red *does* mean is either a real break or a gate that could not
+execute, and neither should merge.
+
+Tracking issues: FS.GG.Rendering#219 (the authorization), FS.GG.Rendering#225 (the major that
+discharged the breaks and elevated the check), FS.GG.Rendering#216 (the exit-code semantics above).
 
 ## 6. Quickstart validation outcomes (V1–V7)
 
