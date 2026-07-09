@@ -212,18 +212,11 @@ let private chartsPage (_s: DemoState): Control<GalleryMsg> =
 // Page 10 — Pointer Playground / Custom
 // ---------------------------------------------------------------------------------
 let private pointerPage (_s: DemoState): Control<GalleryMsg> =
-    // Render/Draw/Layout are phantom — never invoked by `create`/`renderTree` (they are
-    // host-driven), matching the framework's own custom-control authoring pattern.
-    let customDef: CustomControlDefinition<GalleryMsg> =
+    // `custom-control` paints a labeled placeholder frame — it carries no author geometry.
+    // Arbitrary drawing lives on the `canvas` kind (`Canvas.create [ Canvas.scene ... ]`).
+    let customDef: CustomControlDefinition =
         { Id = "gallery-custom"
-          Measure = fun () -> (160.0, 48.0)
-          Render = fun () -> ({ Nodes = [] }: Scene)
-          Draw = fun () -> ({ Nodes = [] }: Scene)
-          Layout = fun () -> failwith "custom-control layout is host-driven"
-          Clip = None
           Effects = []
-          HitTest = fun _ _ -> false
-          Event = fun _ -> None
           Accessibility = None
           Diagnostics = [] }
     group

@@ -25,27 +25,12 @@ open SampleApps.Core.Evidence
 let size: Size = { Width = 1024; Height = 768 }
 
 /// A fixed-size drawing surface: wraps an author-supplied `Scene` via the framework's public
-/// `CustomControl` canvas seam, so games paint real colored shapes (`SceneNode.Rectangle` etc.)
+/// `canvas` control kind, so games paint real colored shapes (`SceneNode.Rectangle` etc.)
 /// rather than ASCII text — rendered identically in the live window and the offscreen capture.
 /// No new framework control is added; this is a consumer use of the existing public surface.
 let canvas (id: string) (widthPx: float) (heightPx: float) (draw: unit -> Scene): Control<'msg> =
-    let definition: CustomControlDefinition<'msg> =
-        { Id = id
-          Measure = fun () -> widthPx, heightPx
-          Render = draw
-          Draw = draw
-          Layout =
-            fun () ->
-                { Defaults.layoutNode id with
-                    Intent = { Defaults.layoutIntent with Size = { Width = Some widthPx; Height = Some heightPx } }
-                    Content = Some(draw ()) }
-          Clip = Some(0.0, 0.0, widthPx, heightPx)
-          Effects = []
-          HitTest = fun _ _ -> true
-          Event = fun _ -> None
-          Accessibility = None
-          Diagnostics = [] }
-    CustomControl.create definition []
+    Canvas.create [ Attr.width widthPx; Attr.height heightPx; Canvas.scene (draw ()) ]
+    |> Control.withKey id
 
 /// The closure-erased registry element (research R2). Its sample-specific `Model`/`Msg`
 /// live inside the `RunEvidence`/`Interactive` closures, so the type carries no parameter.

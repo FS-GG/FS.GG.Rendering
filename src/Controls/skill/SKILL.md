@@ -52,14 +52,18 @@ When changing retained inspection:
 ### `CustomControl` does NOT rasterize its content (feature 122)
 
 `Control.renderTree` (the production paint path the live host and every
-screenshot/preview use) paints a **labeled placeholder** for a `custom-control`
-— it does **not** invoke the `CustomControlDefinition` `Render`/`Draw`/`Layout`
-fields, so authored Skia geometry does not appear in the window or in evidence.
+screenshot/preview use) paints a **labeled placeholder** for a `custom-control`.
 `CustomControl` is a wrapper for product-owned **events/attributes**, not a
-draw seam. When geometry must show in the rasterized/screenshot path, build it
-from primitive controls (`Border` + `TextBlock` + `Stack`); reserve
-`CustomControl` for non-visual extension points. (A null/blank `Id` or a null
-effect string is guarded — `validate`/`create` return a diagnostic, never an NRE.)
+draw seam, and `CustomControlDefinition` carries only `Id`/`Effects`/
+`Accessibility`/`Diagnostics` — it no longer advertises `Render`/`Draw`/
+`Layout`/`Measure`/`HitTest` callbacks, because nothing ever invoked them.
+
+To draw arbitrary geometry, use the `canvas` kind: `Canvas.create [ Canvas.scene
+myScene ]` carries an immutable `Scene` through the render path (clipped and
+translated to the laid-out box). For must-show chrome, build it from primitive
+controls (`Border` + `TextBlock` + `Stack`); reserve `CustomControl` for
+non-visual extension points. (A null/blank `Id` or a null effect string is
+guarded — `validate`/`create` return a diagnostic, never an NRE.)
 
 ## Generated Product Pattern
 

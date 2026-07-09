@@ -27,15 +27,18 @@ than masquerading as a misspelled standard control.
 ## `CustomControl` does NOT rasterize its content
 
 `Control.renderTree` (the production paint path the live host and every screenshot/preview
-use) paints a **labeled placeholder** for a `custom-control` — it does **not** invoke the
-`CustomControlDefinition` `Render`/`Draw`/`Layout` fields, so authored Skia geometry does
-**not** appear in the window or in evidence. The catalog calls it a "product-owned wrapper",
-which is for routing custom **events/attributes**, not for drawing.
+use) paints a **labeled placeholder** for a `custom-control`. The catalog calls it a
+"product-owned wrapper", which is for routing custom **events/attributes**, not for drawing.
+`CustomControlDefinition` carries only `Id`/`Effects`/`Accessibility`/`Diagnostics` — it no
+longer advertises `Render`/`Draw`/`Layout`/`Measure`/`HitTest` callbacks, because nothing ever
+invoked them.
 
-So: when geometry must actually show in the rasterized/screenshot path, **build it from
-primitive controls** (`Border` + `TextBlock` + `Stack`), not from one big `CustomControl`.
-A reusable recipe is a fixed-cell grid composed of framed cells/rows that `renderTree` paints
-reliably. Reserve `CustomControl` for non-visual extension seams.
+So: when geometry must actually show in the rasterized/screenshot path, use the **`canvas`
+kind** — `Canvas.create [ Canvas.scene myScene ]` carries an immutable `Scene` through the
+render path, clipped and translated to the laid-out box. For must-show chrome, **build it from
+primitive controls** (`Border` + `TextBlock` + `Stack`); a reusable recipe is a fixed-cell grid
+composed of framed cells/rows that `renderTree` paints reliably. Reserve `CustomControl` for
+non-visual extension seams.
 
 ## No-new-dependency property tests
 

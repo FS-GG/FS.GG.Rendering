@@ -305,18 +305,11 @@ let private chartsAdvPage (_s: DemoState): Control<AntShowcaseMsg> =
 // Page 13 — Graphs & Custom
 // ---------------------------------------------------------------------------------
 let private graphsPage (_s: DemoState): Control<AntShowcaseMsg> =
-    // Render/Draw/Layout are phantom — never invoked by `create`/`renderTree` (they are
-    // host-driven), matching the framework's own custom-control authoring pattern.
-    let customDef: CustomControlDefinition<AntShowcaseMsg> =
+    // `custom-control` paints a labeled placeholder frame — it carries no author geometry.
+    // Arbitrary drawing lives on the `canvas` kind (see the `canvas` section below).
+    let customDef: CustomControlDefinition =
         { Id = "ant-showcase-custom"
-          Measure = fun () -> (160.0, 48.0)
-          Render = fun () -> ({ Nodes = [] }: Scene)
-          Draw = fun () -> ({ Nodes = [] }: Scene)
-          Layout = fun () -> failwith "custom-control layout is host-driven"
-          Clip = None
           Effects = []
-          HitTest = fun _ _ -> false
-          Event = fun _ -> None
           Accessibility = None
           Diagnostics = [] }
     // A small author-supplied scene for the embedded `canvas` control (Feature 191): a filled box

@@ -64,14 +64,21 @@ let semanticTests =
             Expect.isTrue (second.Children[2].Attributes |> List.exists (fun attr -> match attr.Name, attr.Value with "enabled", BoolValue false -> true | _ -> false)) "enabled state reflects current model"
         }
 
-        test "custom controls expose explicit Skia measurement drawing clipping and effect hooks" {
+        // Issue #172: `custom-control` has no painter arm — it paints a labeled placeholder. The
+        // definition therefore must not advertise drawing/measure/layout/hit-test/event callbacks the
+        // render path never invokes. Arbitrary drawing is the `canvas` kind's job (Feature 191).
+        test "custom control definitions advertise no callbacks the renderer never invokes" {
             let properties =
-                typeof<CustomControlDefinition<FormMsg>>
+                typeof<CustomControlDefinition>
                     .GetProperties(BindingFlags.Public ||| BindingFlags.Instance)
                 |> Array.map _.Name
                 |> Set.ofArray
 
-            [ "Measure"; "Draw"; "Clip"; "Effects"; "Diagnostics" ]
+            [ "Measure"; "Render"; "Draw"; "Layout"; "Clip"; "HitTest"; "Event" ]
+            |> List.iter (fun property ->
+                Expect.isFalse (Set.contains property properties) $"CustomControlDefinition no longer exposes the dead {property} hook")
+
+            [ "Id"; "Effects"; "Accessibility"; "Diagnostics" ]
             |> List.iter (fun property ->
                 Expect.isTrue (Set.contains property properties) $"CustomControlDefinition exposes {property}")
         }
