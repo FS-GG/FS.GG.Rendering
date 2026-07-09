@@ -1662,6 +1662,13 @@ module GlHost =
             PictureReplayCache.dispose replayCache
             SceneRenderer.activeReplayCache <- None
 
+            // Issue #206: the decoded images and the fonts are resident native objects on exactly the
+            // same footing as the replay cache's pictures, and #178 gave both a bounded cache without
+            // ever wiring its teardown. Release them on this boundary too, before `grContext` goes —
+            // the ordering #177 established. Both repopulate on demand, so a later run is unaffected.
+            SceneRenderer.ImageCache.dispose ()
+            Fonts.disposeCaches ()
+
             match grContext with
             | Some context -> context.Dispose()
             | None -> ()
