@@ -1,0 +1,309 @@
+FS.GG.UI.Layout.AvailableSpace.Height : System.Double [get]
+FS.GG.UI.Layout.AvailableSpace.HeightMode : FS.GG.UI.Layout.MeasureMode [get]
+FS.GG.UI.Layout.AvailableSpace.Width : System.Double [get]
+FS.GG.UI.Layout.AvailableSpace.WidthMode : FS.GG.UI.Layout.MeasureMode [get]
+FS.GG.UI.Layout.AvailableSpace.new(System.Double, FS.GG.UI.Layout.MeasureMode, System.Double, FS.GG.UI.Layout.MeasureMode)
+FS.GG.UI.Layout.ComputedBounds.Bounds : FS.GG.UI.Layout.LayoutBounds [get]
+FS.GG.UI.Layout.ComputedBounds.NodeId : System.String [get]
+FS.GG.UI.Layout.ComputedBounds.Visibility : FS.GG.UI.Layout.LayoutVisibility [get]
+FS.GG.UI.Layout.ComputedBounds.new(System.String, FS.GG.UI.Layout.LayoutBounds, FS.GG.UI.Layout.LayoutVisibility)
+FS.GG.UI.Layout.Defaults.availableSpace(System.Double, System.Double) : FS.GG.UI.Layout.AvailableSpace
+FS.GG.UI.Layout.Defaults.bounds(System.Double, System.Double) : FS.GG.UI.Layout.LayoutBounds
+FS.GG.UI.Layout.Defaults.child(FS.GG.UI.Scene.Scene) : FS.GG.UI.Layout.LayoutChild
+FS.GG.UI.Layout.Defaults.dockConfig(System.Double, System.Double) : FS.GG.UI.Layout.DockConfig
+FS.GG.UI.Layout.Defaults.graphConfig(FS.GG.UI.Layout.GraphKind, System.Double, System.Double) : FS.GG.UI.Layout.GraphConfig
+FS.GG.UI.Layout.Defaults.layoutGap : FS.GG.UI.Layout.LayoutGap [get]
+FS.GG.UI.Layout.Defaults.layoutIntent : FS.GG.UI.Layout.LayoutIntent [get]
+FS.GG.UI.Layout.Defaults.layoutNode(System.String) : FS.GG.UI.Layout.LayoutNode
+FS.GG.UI.Layout.Defaults.layoutSize : FS.GG.UI.Layout.LayoutSize [get]
+FS.GG.UI.Layout.Defaults.padding : FS.GG.UI.Layout.LayoutPadding [get]
+FS.GG.UI.Layout.Defaults.pixelSnapPolicy(System.Double) : FS.GG.UI.Layout.PixelSnapPolicy
+FS.GG.UI.Layout.Defaults.sizing : FS.GG.UI.Layout.LayoutSizing [get]
+FS.GG.UI.Layout.Defaults.stackConfig(System.Double, System.Double) : FS.GG.UI.Layout.StackConfig
+FS.GG.UI.Layout.DiagnosticSeverity+Tags.Error : System.Int32
+FS.GG.UI.Layout.DiagnosticSeverity+Tags.Info : System.Int32
+FS.GG.UI.Layout.DiagnosticSeverity+Tags.Warning : System.Int32
+FS.GG.UI.Layout.DockConfig.Bounds : FS.GG.UI.Layout.LayoutBounds [get]
+FS.GG.UI.Layout.DockConfig.Padding : FS.GG.UI.Layout.LayoutPadding [get]
+FS.GG.UI.Layout.DockConfig.Spacing : System.Double [get]
+FS.GG.UI.Layout.DockConfig.new(FS.GG.UI.Layout.LayoutBounds, FS.GG.UI.Layout.LayoutPadding, System.Double)
+FS.GG.UI.Layout.DockPosition+Tags.Bottom : System.Int32
+FS.GG.UI.Layout.DockPosition+Tags.Fill : System.Int32
+FS.GG.UI.Layout.DockPosition+Tags.Left : System.Int32
+FS.GG.UI.Layout.DockPosition+Tags.Right : System.Int32
+FS.GG.UI.Layout.DockPosition+Tags.Top : System.Int32
+FS.GG.UI.Layout.Graph.directed(FS.GG.UI.Layout.GraphDefinition) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.Scene, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.GraphValidationIssue>>
+FS.GG.UI.Layout.Graph.hitTest(FS.GG.UI.Layout.GraphLayoutResult, System.Double, System.Double) : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Layout.GraphTarget>
+FS.GG.UI.Layout.Graph.layout(FS.GG.UI.Layout.GraphDefinition) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Layout.GraphLayoutResult, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.GraphValidationIssue>>
+FS.GG.UI.Layout.Graph.undirected(FS.GG.UI.Layout.GraphDefinition) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.Scene, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.GraphValidationIssue>>
+FS.GG.UI.Layout.GraphConfig.Bounds : FS.GG.UI.Layout.LayoutBounds [get]
+FS.GG.UI.Layout.GraphConfig.Kind : FS.GG.UI.Layout.GraphKind [get]
+FS.GG.UI.Layout.GraphConfig.new(FS.GG.UI.Layout.GraphKind, FS.GG.UI.Layout.LayoutBounds)
+FS.GG.UI.Layout.GraphDefinition.Config : FS.GG.UI.Layout.GraphConfig [get]
+FS.GG.UI.Layout.GraphDefinition.Edges : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.GraphEdge> [get]
+FS.GG.UI.Layout.GraphDefinition.Nodes : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.GraphNode> [get]
+FS.GG.UI.Layout.GraphDefinition.new(FS.GG.UI.Layout.GraphConfig, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.GraphNode>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.GraphEdge>)
+FS.GG.UI.Layout.GraphEdge.Label : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Layout.GraphEdge.Source : System.String [get]
+FS.GG.UI.Layout.GraphEdge.Target : System.String [get]
+FS.GG.UI.Layout.GraphEdge.Weight : Microsoft.FSharp.Core.FSharpOption<System.Double> [get]
+FS.GG.UI.Layout.GraphEdge.new(System.String, System.String, Microsoft.FSharp.Core.FSharpOption<System.Double>, Microsoft.FSharp.Core.FSharpOption<System.String>)
+FS.GG.UI.Layout.GraphKind+Tags.Directed : System.Int32
+FS.GG.UI.Layout.GraphKind+Tags.Undirected : System.Int32
+FS.GG.UI.Layout.GraphLayoutResult.Edges : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.GraphEdge> [get]
+FS.GG.UI.Layout.GraphLayoutResult.Nodes : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.GraphNodeLayout> [get]
+FS.GG.UI.Layout.GraphLayoutResult.new(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.GraphNodeLayout>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.GraphEdge>)
+FS.GG.UI.Layout.GraphNode.Id : System.String [get]
+FS.GG.UI.Layout.GraphNode.Label : System.String [get]
+FS.GG.UI.Layout.GraphNode.Style : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Color> [get]
+FS.GG.UI.Layout.GraphNode.new(System.String, System.String, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Color>)
+FS.GG.UI.Layout.GraphNodeLayout.Bounds : FS.GG.UI.Layout.LayoutBounds [get]
+FS.GG.UI.Layout.GraphNodeLayout.Node : FS.GG.UI.Layout.GraphNode [get]
+FS.GG.UI.Layout.GraphNodeLayout.new(FS.GG.UI.Layout.GraphNode, FS.GG.UI.Layout.LayoutBounds)
+FS.GG.UI.Layout.GraphTarget+Tags.Edge : System.Int32
+FS.GG.UI.Layout.GraphTarget+Tags.Node : System.Int32
+FS.GG.UI.Layout.GraphValidation.disconnectedComponents(FS.GG.UI.Layout.GraphDefinition) : Microsoft.FSharp.Collections.FSharpList<Microsoft.FSharp.Collections.FSharpList<System.String>>
+FS.GG.UI.Layout.GraphValidation.hasCycle(FS.GG.UI.Layout.GraphDefinition) : System.Boolean
+FS.GG.UI.Layout.GraphValidation.validate(FS.GG.UI.Layout.GraphDefinition) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.GraphValidationIssue>
+FS.GG.UI.Layout.GraphValidationIssue+Tags.CycleDetected : System.Int32
+FS.GG.UI.Layout.GraphValidationIssue+Tags.DuplicateNodeId : System.Int32
+FS.GG.UI.Layout.GraphValidationIssue+Tags.MissingSource : System.Int32
+FS.GG.UI.Layout.GraphValidationIssue+Tags.MissingTarget : System.Int32
+FS.GG.UI.Layout.GraphValidationIssue+Tags.SelfLoop : System.Int32
+FS.GG.UI.Layout.HorizontalAlignment+Tags.Center : System.Int32
+FS.GG.UI.Layout.HorizontalAlignment+Tags.Left : System.Int32
+FS.GG.UI.Layout.HorizontalAlignment+Tags.Right : System.Int32
+FS.GG.UI.Layout.HorizontalAlignment+Tags.Stretch : System.Int32
+FS.GG.UI.Layout.IntrinsicAxis+Tags.IntrinsicMaxHeight : System.Int32
+FS.GG.UI.Layout.IntrinsicAxis+Tags.IntrinsicMaxWidth : System.Int32
+FS.GG.UI.Layout.IntrinsicAxis+Tags.IntrinsicMinHeight : System.Int32
+FS.GG.UI.Layout.IntrinsicAxis+Tags.IntrinsicMinWidth : System.Int32
+FS.GG.UI.Layout.IntrinsicDependency.QueryIdentity : System.String [get]
+FS.GG.UI.Layout.IntrinsicDependency.ResultIdentity : System.String [get]
+FS.GG.UI.Layout.IntrinsicDependency.new(System.String, System.String)
+FS.GG.UI.Layout.IntrinsicQuery.Axis : FS.GG.UI.Layout.IntrinsicAxis [get]
+FS.GG.UI.Layout.IntrinsicQuery.CrossAxisConstraint : Microsoft.FSharp.Core.FSharpOption<System.Double> [get]
+FS.GG.UI.Layout.IntrinsicQuery.LayoutInputKey : System.String [get]
+FS.GG.UI.Layout.IntrinsicQuery.ParticipantId : System.String [get]
+FS.GG.UI.Layout.IntrinsicQuery.QueryIdentity : System.String [get]
+FS.GG.UI.Layout.IntrinsicQuery.QuerySource : FS.GG.UI.Layout.IntrinsicQuerySource [get]
+FS.GG.UI.Layout.IntrinsicQuery.Revision : System.Int32 [get]
+FS.GG.UI.Layout.IntrinsicQuery.new(System.String, FS.GG.UI.Layout.IntrinsicAxis, Microsoft.FSharp.Core.FSharpOption<System.Double>, System.String, FS.GG.UI.Layout.IntrinsicQuerySource, System.String, System.Int32)
+FS.GG.UI.Layout.IntrinsicQuerySource+Tags.CompatibilityCheck : System.Int32
+FS.GG.UI.Layout.IntrinsicQuerySource+Tags.CustomContainer : System.Int32
+FS.GG.UI.Layout.IntrinsicQuerySource+Tags.DiagnosticProbe : System.Int32
+FS.GG.UI.Layout.IntrinsicQuerySource+Tags.ScrollViewer : System.Int32
+FS.GG.UI.Layout.IntrinsicSizeResult.Accepted : System.Boolean [get]
+FS.GG.UI.Layout.IntrinsicSizeResult.Dependencies : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.IntrinsicDependency> [get]
+FS.GG.UI.Layout.IntrinsicSizeResult.Diagnostics : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.LayoutDiagnostic> [get]
+FS.GG.UI.Layout.IntrinsicSizeResult.QueryIdentity : System.String [get]
+FS.GG.UI.Layout.IntrinsicSizeResult.Size : System.Double [get]
+FS.GG.UI.Layout.IntrinsicSizeResult.new(System.String, System.Double, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.IntrinsicDependency>, System.Boolean, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.LayoutDiagnostic>)
+FS.GG.UI.Layout.Layout.cacheEntry(FS.GG.UI.Layout.LayoutCacheEntryKind, System.String, System.String, System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, System.String) : FS.GG.UI.Layout.LayoutCacheEntry
+FS.GG.UI.Layout.Layout.constraints(FS.GG.UI.Layout.LayoutConstraintSource, System.Double, Microsoft.FSharp.Core.FSharpOption<System.Double>, System.Double, Microsoft.FSharp.Core.FSharpOption<System.Double>) : FS.GG.UI.Layout.LayoutConstraints
+FS.GG.UI.Layout.Layout.constraintsFromAvailable(FS.GG.UI.Layout.LayoutConstraintSource, FS.GG.UI.Layout.AvailableSpace) : FS.GG.UI.Layout.LayoutConstraints
+FS.GG.UI.Layout.Layout.contentExtent(System.Double, System.Double, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Layout.LayoutNode>) : FS.GG.UI.Layout.LayoutContentExtent
+FS.GG.UI.Layout.Layout.dock(FS.GG.UI.Layout.DockConfig, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.LayoutChild>) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Layout.Layout.evaluate(FS.GG.UI.Layout.AvailableSpace, FS.GG.UI.Layout.LayoutNode) : FS.GG.UI.Layout.LayoutResult
+FS.GG.UI.Layout.Layout.evaluateIncremental(FS.GG.UI.Layout.LayoutResult, Microsoft.FSharp.Collections.FSharpList<System.String>, FS.GG.UI.Layout.AvailableSpace, FS.GG.UI.Layout.LayoutNode) : FS.GG.UI.Layout.LayoutResult
+FS.GG.UI.Layout.Layout.evaluateIntrinsic(FS.GG.UI.Layout.IntrinsicQuery, FS.GG.UI.Layout.LayoutNode) : FS.GG.UI.Layout.IntrinsicSizeResult
+FS.GG.UI.Layout.Layout.hitTestComputed(FS.GG.UI.Layout.PixelSnapPolicy, FS.GG.UI.Layout.LayoutResult, System.Double, System.Double) : Microsoft.FSharp.Core.FSharpOption<System.String>
+FS.GG.UI.Layout.Layout.horizontalStack(FS.GG.UI.Layout.StackConfig, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.LayoutChild>) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Layout.Layout.initWorkflow(FS.GG.UI.Layout.AvailableSpace, FS.GG.UI.Layout.LayoutNode) : System.Tuple<FS.GG.UI.Layout.LayoutWorkflowModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.LayoutWorkflowEffect>>
+FS.GG.UI.Layout.Layout.interpretWorkflowEffect(FS.GG.UI.Layout.LayoutWorkflowEffect, FS.GG.UI.Layout.LayoutWorkflowModel) : FS.GG.UI.Layout.LayoutWorkflowMsg
+FS.GG.UI.Layout.Layout.intrinsicQuery(System.String, FS.GG.UI.Layout.IntrinsicAxis, Microsoft.FSharp.Core.FSharpOption<System.Double>, System.String, FS.GG.UI.Layout.IntrinsicQuerySource) : FS.GG.UI.Layout.IntrinsicQuery
+FS.GG.UI.Layout.Layout.layoutInputKey(FS.GG.UI.Layout.LayoutNode) : System.String
+FS.GG.UI.Layout.Layout.measureHorizontal(FS.GG.UI.Layout.StackConfig, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.LayoutChild>) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.LayoutBounds>
+FS.GG.UI.Layout.Layout.measureProtocol(FS.GG.UI.Layout.LayoutConstraints, FS.GG.UI.Layout.LayoutNode) : FS.GG.UI.Layout.MeasuredLayoutResult
+FS.GG.UI.Layout.Layout.measureVertical(FS.GG.UI.Layout.StackConfig, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.LayoutChild>) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.LayoutBounds>
+FS.GG.UI.Layout.Layout.renderComputed(FS.GG.UI.Layout.LayoutResult, FS.GG.UI.Layout.LayoutNode) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Layout.Layout.snapBounds(FS.GG.UI.Layout.PixelSnapPolicy, FS.GG.UI.Layout.LayoutBounds) : FS.GG.UI.Layout.LayoutBounds
+FS.GG.UI.Layout.Layout.updateWorkflow(FS.GG.UI.Layout.LayoutWorkflowMsg, FS.GG.UI.Layout.LayoutWorkflowModel) : System.Tuple<FS.GG.UI.Layout.LayoutWorkflowModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.LayoutWorkflowEffect>>
+FS.GG.UI.Layout.Layout.verticalStack(FS.GG.UI.Layout.StackConfig, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.LayoutChild>) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Layout.LayoutAlign+Tags.Auto : System.Int32
+FS.GG.UI.Layout.LayoutAlign+Tags.Center : System.Int32
+FS.GG.UI.Layout.LayoutAlign+Tags.End : System.Int32
+FS.GG.UI.Layout.LayoutAlign+Tags.SpaceAround : System.Int32
+FS.GG.UI.Layout.LayoutAlign+Tags.SpaceBetween : System.Int32
+FS.GG.UI.Layout.LayoutAlign+Tags.SpaceEvenly : System.Int32
+FS.GG.UI.Layout.LayoutAlign+Tags.Start : System.Int32
+FS.GG.UI.Layout.LayoutAlign+Tags.Stretch : System.Int32
+FS.GG.UI.Layout.LayoutBounds.Height : System.Double [get]
+FS.GG.UI.Layout.LayoutBounds.Width : System.Double [get]
+FS.GG.UI.Layout.LayoutBounds.X : System.Double [get]
+FS.GG.UI.Layout.LayoutBounds.Y : System.Double [get]
+FS.GG.UI.Layout.LayoutBounds.new(System.Double, System.Double, System.Double, System.Double)
+FS.GG.UI.Layout.LayoutCacheEntry.ChildDependencyKeys : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Layout.LayoutCacheEntry.ConstraintIdentity : System.String [get]
+FS.GG.UI.Layout.LayoutCacheEntry.EntryId : System.String [get]
+FS.GG.UI.Layout.LayoutCacheEntry.EntryKind : FS.GG.UI.Layout.LayoutCacheEntryKind [get]
+FS.GG.UI.Layout.LayoutCacheEntry.LayoutInputKey : System.String [get]
+FS.GG.UI.Layout.LayoutCacheEntry.ParticipantId : System.String [get]
+FS.GG.UI.Layout.LayoutCacheEntry.ResultIdentity : System.String [get]
+FS.GG.UI.Layout.LayoutCacheEntry.Revision : System.Int32 [get]
+FS.GG.UI.Layout.LayoutCacheEntry.new(System.String, FS.GG.UI.Layout.LayoutCacheEntryKind, System.String, System.String, System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, System.String, System.Int32)
+FS.GG.UI.Layout.LayoutCacheEntryKind+Tags.IntrinsicLayoutEntry : System.Int32
+FS.GG.UI.Layout.LayoutCacheEntryKind+Tags.MeasuredLayoutEntry : System.Int32
+FS.GG.UI.Layout.LayoutChild.Content : FS.GG.UI.Scene.Scene [get]
+FS.GG.UI.Layout.LayoutChild.Dock : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Layout.DockPosition> [get]
+FS.GG.UI.Layout.LayoutChild.Sizing : FS.GG.UI.Layout.LayoutSizing [get]
+FS.GG.UI.Layout.LayoutChild.new(FS.GG.UI.Scene.Scene, FS.GG.UI.Layout.LayoutSizing, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Layout.DockPosition>)
+FS.GG.UI.Layout.LayoutChildPlacement.Bounds : FS.GG.UI.Layout.LayoutBounds [get]
+FS.GG.UI.Layout.LayoutChildPlacement.ChildId : System.String [get]
+FS.GG.UI.Layout.LayoutChildPlacement.PlacementIdentity : System.String [get]
+FS.GG.UI.Layout.LayoutChildPlacement.Visibility : FS.GG.UI.Layout.LayoutVisibility [get]
+FS.GG.UI.Layout.LayoutChildPlacement.new(System.String, FS.GG.UI.Layout.LayoutBounds, FS.GG.UI.Layout.LayoutVisibility, System.String)
+FS.GG.UI.Layout.LayoutConstraintBound+Tags.Bounded : System.Int32
+FS.GG.UI.Layout.LayoutConstraintBound+Tags.Unbounded : System.Int32
+FS.GG.UI.Layout.LayoutConstraintSource+Tags.Compatibility : System.Int32
+FS.GG.UI.Layout.LayoutConstraintSource+Tags.Fallback : System.Int32
+FS.GG.UI.Layout.LayoutConstraintSource+Tags.IntrinsicProbe : System.Int32
+FS.GG.UI.Layout.LayoutConstraintSource+Tags.Parent : System.Int32
+FS.GG.UI.Layout.LayoutConstraintSource+Tags.Viewport : System.Int32
+FS.GG.UI.Layout.LayoutConstraints.HeightMode : FS.GG.UI.Layout.MeasureMode [get]
+FS.GG.UI.Layout.LayoutConstraints.MaxHeight : FS.GG.UI.Layout.LayoutConstraintBound [get]
+FS.GG.UI.Layout.LayoutConstraints.MaxWidth : FS.GG.UI.Layout.LayoutConstraintBound [get]
+FS.GG.UI.Layout.LayoutConstraints.MinHeight : System.Double [get]
+FS.GG.UI.Layout.LayoutConstraints.MinWidth : System.Double [get]
+FS.GG.UI.Layout.LayoutConstraints.NormalizedIdentity : System.String [get]
+FS.GG.UI.Layout.LayoutConstraints.Source : FS.GG.UI.Layout.LayoutConstraintSource [get]
+FS.GG.UI.Layout.LayoutConstraints.WidthMode : FS.GG.UI.Layout.MeasureMode [get]
+FS.GG.UI.Layout.LayoutConstraints.new(System.Double, FS.GG.UI.Layout.LayoutConstraintBound, System.Double, FS.GG.UI.Layout.LayoutConstraintBound, FS.GG.UI.Layout.MeasureMode, FS.GG.UI.Layout.MeasureMode, FS.GG.UI.Layout.LayoutConstraintSource, System.String)
+FS.GG.UI.Layout.LayoutContentExtent.ContentHeight : System.Double [get]
+FS.GG.UI.Layout.LayoutContentExtent.ContentWidth : System.Double [get]
+FS.GG.UI.Layout.LayoutContentExtent.DependencyKeys : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Layout.LayoutContentExtent.Diagnostics : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.LayoutDiagnostic> [get]
+FS.GG.UI.Layout.LayoutContentExtent.ExtentSource : FS.GG.UI.Layout.LayoutContentExtentSource [get]
+FS.GG.UI.Layout.LayoutContentExtent.MaxHorizontalOffset : System.Double [get]
+FS.GG.UI.Layout.LayoutContentExtent.MaxVerticalOffset : System.Double [get]
+FS.GG.UI.Layout.LayoutContentExtent.new(System.Double, System.Double, System.Double, System.Double, FS.GG.UI.Layout.LayoutContentExtentSource, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.LayoutDiagnostic>)
+FS.GG.UI.Layout.LayoutContentExtentSource+Tags.DiagnosticFallback : System.Int32
+FS.GG.UI.Layout.LayoutContentExtentSource+Tags.EmptyContent : System.Int32
+FS.GG.UI.Layout.LayoutContentExtentSource+Tags.IntrinsicResult : System.Int32
+FS.GG.UI.Layout.LayoutContentExtentSource+Tags.MeasuredFallback : System.Int32
+FS.GG.UI.Layout.LayoutDiagnostic.Code : FS.GG.UI.Layout.LayoutDiagnosticCode [get]
+FS.GG.UI.Layout.LayoutDiagnostic.Constraint : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Layout.LayoutDiagnostic.FallbackApplied : System.Boolean [get]
+FS.GG.UI.Layout.LayoutDiagnostic.Message : System.String [get]
+FS.GG.UI.Layout.LayoutDiagnostic.NodeId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Layout.LayoutDiagnostic.Severity : FS.GG.UI.Layout.DiagnosticSeverity [get]
+FS.GG.UI.Layout.LayoutDiagnostic.new(Microsoft.FSharp.Core.FSharpOption<System.String>, FS.GG.UI.Layout.LayoutDiagnosticCode, FS.GG.UI.Layout.DiagnosticSeverity, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, System.Boolean)
+FS.GG.UI.Layout.LayoutDiagnosticCode+Tags.ContradictoryIntrinsicExtent : System.Int32
+FS.GG.UI.Layout.LayoutDiagnosticCode+Tags.DuplicateLayoutNodeId : System.Int32
+FS.GG.UI.Layout.LayoutDiagnosticCode+Tags.DuplicateMeasurement : System.Int32
+FS.GG.UI.Layout.LayoutDiagnosticCode+Tags.FallbackBoundsApplied : System.Int32
+FS.GG.UI.Layout.LayoutDiagnosticCode+Tags.InsufficientDependencyEvidence : System.Int32
+FS.GG.UI.Layout.LayoutDiagnosticCode+Tags.InvalidAvailableSpace : System.Int32
+FS.GG.UI.Layout.LayoutDiagnosticCode+Tags.InvalidLayoutValue : System.Int32
+FS.GG.UI.Layout.LayoutDiagnosticCode+Tags.RejectedIntrinsicResult : System.Int32
+FS.GG.UI.Layout.LayoutDiagnosticCode+Tags.StaleLayoutCacheEntry : System.Int32
+FS.GG.UI.Layout.LayoutDiagnosticCode+Tags.UnmeasurableContent : System.Int32
+FS.GG.UI.Layout.LayoutDiagnosticCode+Tags.UnsatisfiedConstraint : System.Int32
+FS.GG.UI.Layout.LayoutDiagnosticCode+Tags.UnsupportedIntrinsicQuery : System.Int32
+FS.GG.UI.Layout.LayoutDiagnosticCode+Tags.UnsupportedLayoutIntent : System.Int32
+FS.GG.UI.Layout.LayoutDirection+Tags.Column : System.Int32
+FS.GG.UI.Layout.LayoutDirection+Tags.Row : System.Int32
+FS.GG.UI.Layout.LayoutGap.Column : System.Double [get]
+FS.GG.UI.Layout.LayoutGap.Row : System.Double [get]
+FS.GG.UI.Layout.LayoutGap.new(System.Double, System.Double)
+FS.GG.UI.Layout.LayoutIntent.AlignItems : FS.GG.UI.Layout.LayoutAlign [get]
+FS.GG.UI.Layout.LayoutIntent.AlignSelf : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Layout.LayoutAlign> [get]
+FS.GG.UI.Layout.LayoutIntent.Direction : FS.GG.UI.Layout.LayoutDirection [get]
+FS.GG.UI.Layout.LayoutIntent.FlexBasis : Microsoft.FSharp.Core.FSharpOption<System.Double> [get]
+FS.GG.UI.Layout.LayoutIntent.FlexGrow : System.Double [get]
+FS.GG.UI.Layout.LayoutIntent.FlexShrink : System.Double [get]
+FS.GG.UI.Layout.LayoutIntent.Gap : FS.GG.UI.Layout.LayoutGap [get]
+FS.GG.UI.Layout.LayoutIntent.JustifyContent : FS.GG.UI.Layout.LayoutAlign [get]
+FS.GG.UI.Layout.LayoutIntent.Margin : FS.GG.UI.Layout.LayoutPadding [get]
+FS.GG.UI.Layout.LayoutIntent.MaxSize : FS.GG.UI.Layout.LayoutSize [get]
+FS.GG.UI.Layout.LayoutIntent.MinSize : FS.GG.UI.Layout.LayoutSize [get]
+FS.GG.UI.Layout.LayoutIntent.Padding : FS.GG.UI.Layout.LayoutPadding [get]
+FS.GG.UI.Layout.LayoutIntent.Size : FS.GG.UI.Layout.LayoutSize [get]
+FS.GG.UI.Layout.LayoutIntent.Wrap : FS.GG.UI.Layout.LayoutWrap [get]
+FS.GG.UI.Layout.LayoutIntent.new(FS.GG.UI.Layout.LayoutDirection, FS.GG.UI.Layout.LayoutWrap, FS.GG.UI.Layout.LayoutAlign, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Layout.LayoutAlign>, FS.GG.UI.Layout.LayoutAlign, FS.GG.UI.Layout.LayoutPadding, FS.GG.UI.Layout.LayoutPadding, FS.GG.UI.Layout.LayoutGap, FS.GG.UI.Layout.LayoutSize, FS.GG.UI.Layout.LayoutSize, FS.GG.UI.Layout.LayoutSize, System.Double, System.Double, Microsoft.FSharp.Core.FSharpOption<System.Double>)
+FS.GG.UI.Layout.LayoutMeasuredSize.MeasuredHeight : System.Double [get]
+FS.GG.UI.Layout.LayoutMeasuredSize.MeasuredWidth : System.Double [get]
+FS.GG.UI.Layout.LayoutMeasuredSize.new(System.Double, System.Double)
+FS.GG.UI.Layout.LayoutMeasurementRequest.Constraints : FS.GG.UI.Layout.LayoutConstraints [get]
+FS.GG.UI.Layout.LayoutMeasurementRequest.LayoutInputKey : System.String [get]
+FS.GG.UI.Layout.LayoutMeasurementRequest.ParentPath : System.String [get]
+FS.GG.UI.Layout.LayoutMeasurementRequest.ParticipantId : System.String [get]
+FS.GG.UI.Layout.LayoutMeasurementRequest.PassId : System.String [get]
+FS.GG.UI.Layout.LayoutMeasurementRequest.new(System.String, FS.GG.UI.Layout.LayoutConstraints, System.String, System.String, System.String)
+FS.GG.UI.Layout.LayoutNode.Children : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.LayoutNode> [get]
+FS.GG.UI.Layout.LayoutNode.Content : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Scene> [get]
+FS.GG.UI.Layout.LayoutNode.Id : System.String [get]
+FS.GG.UI.Layout.LayoutNode.Intent : FS.GG.UI.Layout.LayoutIntent [get]
+FS.GG.UI.Layout.LayoutNode.Measure : Microsoft.FSharp.Core.FSharpOption<Microsoft.FSharp.Core.FSharpFunc<FS.GG.UI.Layout.MeasureRequest, FS.GG.UI.Layout.MeasureResponse>> [get]
+FS.GG.UI.Layout.LayoutNode.Visibility : FS.GG.UI.Layout.LayoutVisibility [get]
+FS.GG.UI.Layout.LayoutNode.new(System.String, FS.GG.UI.Layout.LayoutIntent, FS.GG.UI.Layout.LayoutVisibility, Microsoft.FSharp.Core.FSharpOption<Microsoft.FSharp.Core.FSharpFunc<FS.GG.UI.Layout.MeasureRequest, FS.GG.UI.Layout.MeasureResponse>>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Scene>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.LayoutNode>)
+FS.GG.UI.Layout.LayoutPadding.Bottom : System.Double [get]
+FS.GG.UI.Layout.LayoutPadding.Left : System.Double [get]
+FS.GG.UI.Layout.LayoutPadding.Right : System.Double [get]
+FS.GG.UI.Layout.LayoutPadding.Top : System.Double [get]
+FS.GG.UI.Layout.LayoutPadding.new(System.Double, System.Double, System.Double, System.Double)
+FS.GG.UI.Layout.LayoutResult.Bounds : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.ComputedBounds> [get]
+FS.GG.UI.Layout.LayoutResult.Diagnostics : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.LayoutDiagnostic> [get]
+FS.GG.UI.Layout.LayoutResult.Invalidated : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Layout.LayoutResult.Revision : System.Int64 [get]
+FS.GG.UI.Layout.LayoutResult.new(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.ComputedBounds>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.LayoutDiagnostic>, Microsoft.FSharp.Collections.FSharpList<System.String>, System.Int64)
+FS.GG.UI.Layout.LayoutSize.Height : Microsoft.FSharp.Core.FSharpOption<System.Double> [get]
+FS.GG.UI.Layout.LayoutSize.Width : Microsoft.FSharp.Core.FSharpOption<System.Double> [get]
+FS.GG.UI.Layout.LayoutSize.new(Microsoft.FSharp.Core.FSharpOption<System.Double>, Microsoft.FSharp.Core.FSharpOption<System.Double>)
+FS.GG.UI.Layout.LayoutSizing.DesiredHeight : Microsoft.FSharp.Core.FSharpOption<System.Double> [get]
+FS.GG.UI.Layout.LayoutSizing.DesiredWidth : Microsoft.FSharp.Core.FSharpOption<System.Double> [get]
+FS.GG.UI.Layout.LayoutSizing.HorizontalAlignment : FS.GG.UI.Layout.HorizontalAlignment [get]
+FS.GG.UI.Layout.LayoutSizing.VerticalAlignment : FS.GG.UI.Layout.VerticalAlignment [get]
+FS.GG.UI.Layout.LayoutSizing.new(Microsoft.FSharp.Core.FSharpOption<System.Double>, Microsoft.FSharp.Core.FSharpOption<System.Double>, FS.GG.UI.Layout.HorizontalAlignment, FS.GG.UI.Layout.VerticalAlignment)
+FS.GG.UI.Layout.LayoutVisibility+Tags.Collapsed : System.Int32
+FS.GG.UI.Layout.LayoutVisibility+Tags.Hidden : System.Int32
+FS.GG.UI.Layout.LayoutVisibility+Tags.Visible : System.Int32
+FS.GG.UI.Layout.LayoutWorkflowEffect+Tags.EvaluateIncrementalLayout : System.Int32
+FS.GG.UI.Layout.LayoutWorkflowEffect+Tags.EvaluateLayout : System.Int32
+FS.GG.UI.Layout.LayoutWorkflowModel.Available : FS.GG.UI.Layout.AvailableSpace [get]
+FS.GG.UI.Layout.LayoutWorkflowModel.LastChangedNodeIds : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Layout.LayoutWorkflowModel.PixelSnapPolicy : FS.GG.UI.Layout.PixelSnapPolicy [get]
+FS.GG.UI.Layout.LayoutWorkflowModel.Result : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Layout.LayoutResult> [get]
+FS.GG.UI.Layout.LayoutWorkflowModel.Root : FS.GG.UI.Layout.LayoutNode [get]
+FS.GG.UI.Layout.LayoutWorkflowModel.new(FS.GG.UI.Layout.LayoutNode, FS.GG.UI.Layout.AvailableSpace, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Layout.LayoutResult>, Microsoft.FSharp.Collections.FSharpList<System.String>, FS.GG.UI.Layout.PixelSnapPolicy)
+FS.GG.UI.Layout.LayoutWorkflowMsg+Tags.LayoutEvaluationCompleted : System.Int32
+FS.GG.UI.Layout.LayoutWorkflowMsg+Tags.LayoutHostResized : System.Int32
+FS.GG.UI.Layout.LayoutWorkflowMsg+Tags.LayoutIntentChanged : System.Int32
+FS.GG.UI.Layout.LayoutWorkflowMsg+Tags.LayoutMeasurementChanged : System.Int32
+FS.GG.UI.Layout.LayoutWorkflowMsg+Tags.LayoutVisibilityChanged : System.Int32
+FS.GG.UI.Layout.LayoutWrap+Tags.NoWrap : System.Int32
+FS.GG.UI.Layout.LayoutWrap+Tags.Wrap : System.Int32
+FS.GG.UI.Layout.MeasureMode+Tags.AtMost : System.Int32
+FS.GG.UI.Layout.MeasureMode+Tags.Exactly : System.Int32
+FS.GG.UI.Layout.MeasureMode+Tags.Undefined : System.Int32
+FS.GG.UI.Layout.MeasureRequest.AvailableHeight : System.Double [get]
+FS.GG.UI.Layout.MeasureRequest.AvailableWidth : System.Double [get]
+FS.GG.UI.Layout.MeasureRequest.HeightMode : FS.GG.UI.Layout.MeasureMode [get]
+FS.GG.UI.Layout.MeasureRequest.WidthMode : FS.GG.UI.Layout.MeasureMode [get]
+FS.GG.UI.Layout.MeasureRequest.new(System.Double, FS.GG.UI.Layout.MeasureMode, System.Double, FS.GG.UI.Layout.MeasureMode)
+FS.GG.UI.Layout.MeasureResponse.Diagnostics : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.LayoutDiagnostic> [get]
+FS.GG.UI.Layout.MeasureResponse.Height : System.Double [get]
+FS.GG.UI.Layout.MeasureResponse.Width : System.Double [get]
+FS.GG.UI.Layout.MeasureResponse.new(System.Double, System.Double, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.LayoutDiagnostic>)
+FS.GG.UI.Layout.MeasuredLayoutResult.CacheEntryId : System.String [get]
+FS.GG.UI.Layout.MeasuredLayoutResult.ChildPlacements : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.LayoutChildPlacement> [get]
+FS.GG.UI.Layout.MeasuredLayoutResult.Constraints : FS.GG.UI.Layout.LayoutConstraints [get]
+FS.GG.UI.Layout.MeasuredLayoutResult.Diagnostics : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.LayoutDiagnostic> [get]
+FS.GG.UI.Layout.MeasuredLayoutResult.IntrinsicDependencies : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.IntrinsicDependency> [get]
+FS.GG.UI.Layout.MeasuredLayoutResult.MeasuredSize : FS.GG.UI.Layout.LayoutMeasuredSize [get]
+FS.GG.UI.Layout.MeasuredLayoutResult.ParticipantId : System.String [get]
+FS.GG.UI.Layout.MeasuredLayoutResult.new(System.String, FS.GG.UI.Layout.LayoutConstraints, FS.GG.UI.Layout.LayoutMeasuredSize, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.LayoutChildPlacement>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.IntrinsicDependency>, System.String, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Layout.LayoutDiagnostic>)
+FS.GG.UI.Layout.PixelSnapPolicy.Mode : FS.GG.UI.Layout.SnapMode [get]
+FS.GG.UI.Layout.PixelSnapPolicy.ScaleFactor : System.Double [get]
+FS.GG.UI.Layout.PixelSnapPolicy.new(System.Double, FS.GG.UI.Layout.SnapMode)
+FS.GG.UI.Layout.SnapMode+Tags.Expand : System.Int32
+FS.GG.UI.Layout.SnapMode+Tags.Floor : System.Int32
+FS.GG.UI.Layout.SnapMode+Tags.Round : System.Int32
+FS.GG.UI.Layout.StackConfig.Bounds : FS.GG.UI.Layout.LayoutBounds [get]
+FS.GG.UI.Layout.StackConfig.Padding : FS.GG.UI.Layout.LayoutPadding [get]
+FS.GG.UI.Layout.StackConfig.Spacing : System.Double [get]
+FS.GG.UI.Layout.StackConfig.new(FS.GG.UI.Layout.LayoutBounds, FS.GG.UI.Layout.LayoutPadding, System.Double)
+FS.GG.UI.Layout.VerticalAlignment+Tags.Bottom : System.Int32
+FS.GG.UI.Layout.VerticalAlignment+Tags.Middle : System.Int32
+FS.GG.UI.Layout.VerticalAlignment+Tags.Stretch : System.Int32
+FS.GG.UI.Layout.VerticalAlignment+Tags.Top : System.Int32

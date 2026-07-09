@@ -1,0 +1,32 @@
+FS.GG.UI.Canvas.Elements.at(System.Double, System.Double, FS.GG.UI.Scene.Scene) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Canvas.Elements.cached(System.String, FS.GG.UI.Scene.Scene) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Canvas.Elements.circle(System.Double, FS.GG.UI.Scene.Color) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Canvas.Elements.layer(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.Scene>) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Canvas.Elements.polyline(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.Point>, FS.GG.UI.Scene.Paint) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Canvas.Elements.rect(System.Double, System.Double, FS.GG.UI.Scene.Paint) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Canvas.Elements.sprite(System.String, System.Double, System.Double) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Canvas.Loop.advance<world>(System.Double, FSharpFunc<world, FSharpFunc<System.Double, world>>, System.Double, StepState<world>) : StepState<world>
+FS.GG.UI.Canvas.Loop.alpha<world>(System.Double, StepState<world>) : System.Double
+FS.GG.UI.Canvas.Loop.init<world>(world) : StepState<world>
+FS.GG.UI.Canvas.Persistence.clampVersion(System.Int32) : System.Int32
+FS.GG.UI.Canvas.Persistence.deleteSlot(FS.GG.UI.Canvas.SaveSlot) : FS.GG.UI.Canvas.PersistenceEffect
+FS.GG.UI.Canvas.Persistence.emptyEvidence : FS.GG.UI.Canvas.PersistenceEvidence [get]
+FS.GG.UI.Canvas.Persistence.interpret(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Canvas.PersistenceEffect>) : FS.GG.UI.Canvas.PersistenceEvidence
+FS.GG.UI.Canvas.Persistence.load(FS.GG.UI.Canvas.SaveSlot) : FS.GG.UI.Canvas.PersistenceEffect
+FS.GG.UI.Canvas.Persistence.minVersion : System.Int32 [get]
+FS.GG.UI.Canvas.Persistence.record(FS.GG.UI.Canvas.PersistenceEffect, FS.GG.UI.Canvas.PersistenceEvidence) : FS.GG.UI.Canvas.PersistenceEvidence
+FS.GG.UI.Canvas.Persistence.save(FS.GG.UI.Canvas.SaveEnvelope) : FS.GG.UI.Canvas.PersistenceEffect
+FS.GG.UI.Canvas.Persistence.saveEnvelope(System.Int32, FS.GG.UI.Canvas.SaveSlot, System.String) : FS.GG.UI.Canvas.SaveEnvelope
+FS.GG.UI.Canvas.PersistenceEffect+Tags.DeleteSlot : System.Int32
+FS.GG.UI.Canvas.PersistenceEffect+Tags.Load : System.Int32
+FS.GG.UI.Canvas.PersistenceEffect+Tags.Save : System.Int32
+FS.GG.UI.Canvas.PersistenceEvidence.Requested : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Canvas.PersistenceEffect> [get]
+FS.GG.UI.Canvas.PersistenceEvidence.new(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Canvas.PersistenceEffect>)
+FS.GG.UI.Canvas.SaveEnvelope.Payload : FS.GG.UI.Canvas.SavePayload [get]
+FS.GG.UI.Canvas.SaveEnvelope.Slot : FS.GG.UI.Canvas.SaveSlot [get]
+FS.GG.UI.Canvas.SaveEnvelope.Version : System.Int32 [get]
+FS.GG.UI.Canvas.SaveEnvelope.new(System.Int32, FS.GG.UI.Canvas.SaveSlot, FS.GG.UI.Canvas.SavePayload)
+FS.GG.UI.Canvas.StepState`1.Accumulator : System.Double [get]
+FS.GG.UI.Canvas.StepState`1.Current : world [get]
+FS.GG.UI.Canvas.StepState`1.Previous : world [get]
+FS.GG.UI.Canvas.StepState`1.new(world, world, System.Double)

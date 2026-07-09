@@ -1,0 +1,1419 @@
+FS.GG.UI.Controls.Accessibility.contrast(FS.GG.UI.Scene.Color, FS.GG.UI.Scene.Color, System.Double, System.Double) : FS.GG.UI.Controls.ContrastEvidence
+FS.GG.UI.Controls.Accessibility.defaultFor(System.String, System.String) : FS.GG.UI.Controls.AccessibilityMetadata
+FS.GG.UI.Controls.Accessibility.keyboard(System.Boolean, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>) : FS.GG.UI.Controls.KeyboardOperation
+FS.GG.UI.Controls.Accessibility.metadata(FS.GG.UI.Controls.AccessibilityRole, System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Core.FSharpOption<System.Int32>, FS.GG.UI.Controls.KeyboardOperation, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.ContrastEvidence>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.NavRange>) : FS.GG.UI.Controls.AccessibilityMetadata
+FS.GG.UI.Controls.Accessibility.validate<msg>(Control<msg>) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlDiagnostic>
+FS.GG.UI.Controls.AccessibilityMetadata.Collection : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.CollectionPosition> [get]
+FS.GG.UI.Controls.AccessibilityMetadata.Contrast : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.ContrastEvidence> [get]
+FS.GG.UI.Controls.AccessibilityMetadata.FocusOrder : Microsoft.FSharp.Core.FSharpOption<System.Int32> [get]
+FS.GG.UI.Controls.AccessibilityMetadata.Keyboard : FS.GG.UI.Controls.KeyboardOperation [get]
+FS.GG.UI.Controls.AccessibilityMetadata.NameSource : System.String [get]
+FS.GG.UI.Controls.AccessibilityMetadata.Navigation : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.NavRange> [get]
+FS.GG.UI.Controls.AccessibilityMetadata.Role : FS.GG.UI.Controls.AccessibilityRole [get]
+FS.GG.UI.Controls.AccessibilityMetadata.State : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Controls.AccessibilityMetadata.new(FS.GG.UI.Controls.AccessibilityRole, System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Core.FSharpOption<System.Int32>, FS.GG.UI.Controls.KeyboardOperation, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.ContrastEvidence>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.NavRange>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.CollectionPosition>)
+FS.GG.UI.Controls.AccessibilityRole+Tags.Button : System.Int32
+FS.GG.UI.Controls.AccessibilityRole+Tags.Chart : System.Int32
+FS.GG.UI.Controls.AccessibilityRole+Tags.CheckBox : System.Int32
+FS.GG.UI.Controls.AccessibilityRole+Tags.Custom : System.Int32
+FS.GG.UI.Controls.AccessibilityRole+Tags.Dialog : System.Int32
+FS.GG.UI.Controls.AccessibilityRole+Tags.Graph : System.Int32
+FS.GG.UI.Controls.AccessibilityRole+Tags.Grid : System.Int32
+FS.GG.UI.Controls.AccessibilityRole+Tags.Image : System.Int32
+FS.GG.UI.Controls.AccessibilityRole+Tags.List : System.Int32
+FS.GG.UI.Controls.AccessibilityRole+Tags.Menu : System.Int32
+FS.GG.UI.Controls.AccessibilityRole+Tags.Progress : System.Int32
+FS.GG.UI.Controls.AccessibilityRole+Tags.RadioGroup : System.Int32
+FS.GG.UI.Controls.AccessibilityRole+Tags.Slider : System.Int32
+FS.GG.UI.Controls.AccessibilityRole+Tags.StaticText : System.Int32
+FS.GG.UI.Controls.AccessibilityRole+Tags.Tab : System.Int32
+FS.GG.UI.Controls.AccessibilityRole+Tags.TextBox : System.Int32
+FS.GG.UI.Controls.AnchorEvidence.AnchorBounds : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Rect> [get]
+FS.GG.UI.Controls.AnchorEvidence.AnchorId : System.String [get]
+FS.GG.UI.Controls.AnchorEvidence.FrameFingerprint : Microsoft.FSharp.Core.FSharpOption<System.UInt64> [get]
+FS.GG.UI.Controls.AnchorEvidence.NoFit : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.AnchorEvidence.Placement : System.String [get]
+FS.GG.UI.Controls.AnchorEvidence.SurfaceBounds : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Rect> [get]
+FS.GG.UI.Controls.AnchorEvidence.new(System.String, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Rect>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Rect>, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.UInt64>)
+FS.GG.UI.Controls.AnchorRemovalPolicy+Tags.CloseOnAnchorRemoval : System.Int32
+FS.GG.UI.Controls.AnchorRemovalPolicy+Tags.KeepOpenWithDiagnostic : System.Int32
+FS.GG.UI.Controls.AreaChart.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.AreaChart.series<msg>(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ChartSeries>) : Attr<msg>
+FS.GG.UI.Controls.Attr.accessibility<msg>(FS.GG.UI.Controls.AccessibilityMetadata) : Attr<msg>
+FS.GG.UI.Controls.Attr.alignItems<msg>(FS.GG.UI.Layout.LayoutAlign) : Attr<msg>
+FS.GG.UI.Controls.Attr.alignSelf<msg>(FS.GG.UI.Layout.LayoutAlign) : Attr<msg>
+FS.GG.UI.Controls.Attr.child<msg>(Control<msg>) : Attr<msg>
+FS.GG.UI.Controls.Attr.children<msg>(FSharpList<Control<msg>>) : Attr<msg>
+FS.GG.UI.Controls.Attr.create<msg>(System.String, FS.GG.UI.Controls.AttrCategory, AttrValue<msg>) : Attr<msg>
+FS.GG.UI.Controls.Attr.customAttribute<msg>(System.String, System.Object) : Attr<msg>
+FS.GG.UI.Controls.Attr.customEvent<msg>(System.String, msg) : Attr<msg>
+FS.GG.UI.Controls.Attr.enabled<msg>(System.Boolean) : Attr<msg>
+FS.GG.UI.Controls.Attr.flexBasis<msg>(System.Double) : Attr<msg>
+FS.GG.UI.Controls.Attr.flexGrow<msg>(System.Double) : Attr<msg>
+FS.GG.UI.Controls.Attr.flexShrink<msg>(System.Double) : Attr<msg>
+FS.GG.UI.Controls.Attr.gap<msg>(System.Double) : Attr<msg>
+FS.GG.UI.Controls.Attr.height<msg>(System.Double) : Attr<msg>
+FS.GG.UI.Controls.Attr.items<msg>(Microsoft.FSharp.Collections.FSharpList<System.String>) : Attr<msg>
+FS.GG.UI.Controls.Attr.justifyContent<msg>(FS.GG.UI.Layout.LayoutAlign) : Attr<msg>
+FS.GG.UI.Controls.Attr.loading<msg>(System.Boolean) : Attr<msg>
+FS.GG.UI.Controls.Attr.margin<msg>(System.Double) : Attr<msg>
+FS.GG.UI.Controls.Attr.maxHeight<msg>(System.Double) : Attr<msg>
+FS.GG.UI.Controls.Attr.maxWidth<msg>(System.Double) : Attr<msg>
+FS.GG.UI.Controls.Attr.minHeight<msg>(System.Double) : Attr<msg>
+FS.GG.UI.Controls.Attr.minWidth<msg>(System.Double) : Attr<msg>
+FS.GG.UI.Controls.Attr.on<msg>(System.String, msg) : Attr<msg>
+FS.GG.UI.Controls.Attr.onWith<msg>(System.String, FSharpFunc<FS.GG.UI.Controls.ControlEvent, msg>) : Attr<msg>
+FS.GG.UI.Controls.Attr.padding<msg>(System.Double) : Attr<msg>
+FS.GG.UI.Controls.Attr.readOnly<msg>(System.Boolean) : Attr<msg>
+FS.GG.UI.Controls.Attr.selected<msg>(System.Boolean) : Attr<msg>
+FS.GG.UI.Controls.Attr.standardAttribute<msg>(FS.GG.UI.Controls.StandardAttributeName, StandardAttributeValue<msg>) : Attr<msg>
+FS.GG.UI.Controls.Attr.standardEvent<msg>(FS.GG.UI.Controls.StandardEventKind, msg) : Attr<msg>
+FS.GG.UI.Controls.Attr.style<msg>(System.String) : Attr<msg>
+FS.GG.UI.Controls.Attr.styleClasses<msg>(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.DesignSystem.StyleClass>) : Attr<msg>
+FS.GG.UI.Controls.Attr.text<msg>(System.String) : Attr<msg>
+FS.GG.UI.Controls.Attr.theme<msg>(FS.GG.UI.DesignSystem.Theme) : Attr<msg>
+FS.GG.UI.Controls.Attr.validation<msg>(FS.GG.UI.DesignSystem.ValidationState) : Attr<msg>
+FS.GG.UI.Controls.Attr.value<msg>(System.String) : Attr<msg>
+FS.GG.UI.Controls.Attr.visible<msg>(System.Boolean) : Attr<msg>
+FS.GG.UI.Controls.Attr.visualState<msg>(FS.GG.UI.DesignSystem.VisualState) : Attr<msg>
+FS.GG.UI.Controls.Attr.width<msg>(System.Double) : Attr<msg>
+FS.GG.UI.Controls.AttrCategory+Tags.Accessibility : System.Int32
+FS.GG.UI.Controls.AttrCategory+Tags.Children : System.Int32
+FS.GG.UI.Controls.AttrCategory+Tags.Content : System.Int32
+FS.GG.UI.Controls.AttrCategory+Tags.Data : System.Int32
+FS.GG.UI.Controls.AttrCategory+Tags.Event : System.Int32
+FS.GG.UI.Controls.AttrCategory+Tags.Layout : System.Int32
+FS.GG.UI.Controls.AttrCategory+Tags.Slot : System.Int32
+FS.GG.UI.Controls.AttrCategory+Tags.State : System.Int32
+FS.GG.UI.Controls.AttrCategory+Tags.Style : System.Int32
+FS.GG.UI.Controls.AttrCategory+Tags.Theme : System.Int32
+FS.GG.UI.Controls.AttrCategory+Tags.Validation : System.Int32
+FS.GG.UI.Controls.AttrValue`1+Tags.AccessibilityValue : System.Int32
+FS.GG.UI.Controls.AttrValue`1+Tags.BoolValue : System.Int32
+FS.GG.UI.Controls.AttrValue`1+Tags.ChildValue : System.Int32
+FS.GG.UI.Controls.AttrValue`1+Tags.ChildrenValue : System.Int32
+FS.GG.UI.Controls.AttrValue`1+Tags.EventValue : System.Int32
+FS.GG.UI.Controls.AttrValue`1+Tags.FloatValue : System.Int32
+FS.GG.UI.Controls.AttrValue`1+Tags.MessageValue : System.Int32
+FS.GG.UI.Controls.AttrValue`1+Tags.SceneValue : System.Int32
+FS.GG.UI.Controls.AttrValue`1+Tags.SlotFillsValue : System.Int32
+FS.GG.UI.Controls.AttrValue`1+Tags.StringListValue : System.Int32
+FS.GG.UI.Controls.AttrValue`1+Tags.StyleClassesValue : System.Int32
+FS.GG.UI.Controls.AttrValue`1+Tags.TextValue : System.Int32
+FS.GG.UI.Controls.AttrValue`1+Tags.ThemeValue : System.Int32
+FS.GG.UI.Controls.AttrValue`1+Tags.UntypedValue : System.Int32
+FS.GG.UI.Controls.AttrValue`1+Tags.ValidationValue : System.Int32
+FS.GG.UI.Controls.AttrValue`1+Tags.VisualStateValue : System.Int32
+FS.GG.UI.Controls.Attr`1.Category : FS.GG.UI.Controls.AttrCategory [get]
+FS.GG.UI.Controls.Attr`1.Name : System.String [get]
+FS.GG.UI.Controls.Attr`1.Value : AttrValue<msg> [get]
+FS.GG.UI.Controls.Attr`1.new(System.String, FS.GG.UI.Controls.AttrCategory, AttrValue<msg>)
+FS.GG.UI.Controls.Badge.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Badge.text<msg>(System.String) : Attr<msg>
+FS.GG.UI.Controls.BarChart.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.BarChart.series<msg>(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ChartSeries>) : Attr<msg>
+FS.GG.UI.Controls.Border.child<msg>(Control<msg>) : Attr<msg>
+FS.GG.UI.Controls.Border.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.BoxPlot.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.BoxPlot.series<msg>(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ChartSeries>) : Attr<msg>
+FS.GG.UI.Controls.Button.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Button.enabled<msg>(System.Boolean) : Attr<msg>
+FS.GG.UI.Controls.Button.onClick<msg>(msg) : Attr<msg>
+FS.GG.UI.Controls.Button.onClickWith<msg>(FSharpFunc<FS.GG.UI.Controls.ControlEvent, msg>) : Attr<msg>
+FS.GG.UI.Controls.Button.text<msg>(System.String) : Attr<msg>
+FS.GG.UI.Controls.Canvas.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Canvas.onKey<msg>(FSharpFunc<FS.GG.UI.KeyboardInput.ViewerKey, FSharpFunc<FS.GG.UI.KeyboardInput.KeyModifiers, msg>>) : Attr<msg>
+FS.GG.UI.Controls.Canvas.onPointer<msg>(FSharpFunc<FS.GG.UI.Controls.PointerSample, msg>) : Attr<msg>
+FS.GG.UI.Controls.Canvas.scene<msg>(FS.GG.UI.Scene.Scene) : Attr<msg>
+FS.GG.UI.Controls.Canvas.viewport<msg>(FS.GG.UI.Scene.PerspectiveTransform) : Attr<msg>
+FS.GG.UI.Controls.Canvas.volatile'<msg>() : Attr<msg>
+FS.GG.UI.Controls.Catalog.categories() : Microsoft.FSharp.Collections.FSharpList<System.String>
+FS.GG.UI.Controls.Catalog.knownControlKinds() : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.StandardControlKind>
+FS.GG.UI.Controls.Catalog.markdownSummary() : System.String
+FS.GG.UI.Controls.Catalog.requiredAttributes(FS.GG.UI.Controls.StandardControlKind) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.StandardAttributeName>
+FS.GG.UI.Controls.Catalog.standardSchema : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlSchema> [get]
+FS.GG.UI.Controls.Catalog.supportedAttributes(FS.GG.UI.Controls.StandardControlKind) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.StandardAttributeName>
+FS.GG.UI.Controls.Catalog.supportedControls : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlDefinition> [get]
+FS.GG.UI.Controls.Catalog.supportedCount() : System.Int32
+FS.GG.UI.Controls.Catalog.supportedEvents(FS.GG.UI.Controls.StandardControlKind) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.StandardEventKind>
+FS.GG.UI.Controls.Catalog.validate() : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlDiagnostic>
+FS.GG.UI.Controls.Catalog.validateStandardControl<msg>(Control<msg>) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlDiagnostic>
+FS.GG.UI.Controls.CatalogAccessibility.ContrastEvidence : System.String [get]
+FS.GG.UI.Controls.CatalogAccessibility.FocusBehavior : System.String [get]
+FS.GG.UI.Controls.CatalogAccessibility.KeyboardOperation : System.String [get]
+FS.GG.UI.Controls.CatalogAccessibility.NameSource : System.String [get]
+FS.GG.UI.Controls.CatalogAccessibility.Role : System.String [get]
+FS.GG.UI.Controls.CatalogAccessibility.StateMetadata : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Controls.CatalogAccessibility.new(System.String, System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, System.String, System.String, System.String)
+FS.GG.UI.Controls.ChartPoint.Label : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.ChartPoint.X : System.Double [get]
+FS.GG.UI.Controls.ChartPoint.Y : System.Double [get]
+FS.GG.UI.Controls.ChartPoint.new(System.Double, System.Double, Microsoft.FSharp.Core.FSharpOption<System.String>)
+FS.GG.UI.Controls.ChartSeries.Name : System.String [get]
+FS.GG.UI.Controls.ChartSeries.Points : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ChartPoint> [get]
+FS.GG.UI.Controls.ChartSeries.new(System.String, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ChartPoint>)
+FS.GG.UI.Controls.CheckBox.checked'<msg>(System.Boolean) : Attr<msg>
+FS.GG.UI.Controls.CheckBox.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.CheckBox.onChanged<msg>(FSharpFunc<System.Boolean, msg>) : Attr<msg>
+FS.GG.UI.Controls.CheckBox.text<msg>(System.String) : Attr<msg>
+FS.GG.UI.Controls.ChordDiagram.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.ChordDiagram.nodes<msg>(Microsoft.FSharp.Collections.FSharpList<System.String>) : Attr<msg>
+FS.GG.UI.Controls.CollectionModel.ControlId : System.String [get]
+FS.GG.UI.Controls.CollectionModel.ItemCount : System.Int32 [get]
+FS.GG.UI.Controls.CollectionModel.Overscan : System.Int32 [get]
+FS.GG.UI.Controls.CollectionModel.RecalculationThresholdMs : System.Int32 [get]
+FS.GG.UI.Controls.CollectionModel.RowHeight : System.Double [get]
+FS.GG.UI.Controls.CollectionModel.ScrollOffset : System.Double [get]
+FS.GG.UI.Controls.CollectionModel.SelectedKeys : Microsoft.FSharp.Collections.FSharpSet<System.String> [get]
+FS.GG.UI.Controls.CollectionModel.ViewportHeight : System.Double [get]
+FS.GG.UI.Controls.CollectionModel.VisibleRange : FS.GG.UI.Controls.VisibleRange [get]
+FS.GG.UI.Controls.CollectionModel.new(System.String, System.Int32, System.Double, System.Double, System.Double, Microsoft.FSharp.Collections.FSharpSet<System.String>, FS.GG.UI.Controls.VisibleRange, System.Int32, System.Int32)
+FS.GG.UI.Controls.CollectionMsg+Tags.ReplaceItemCount : System.Int32
+FS.GG.UI.Controls.CollectionMsg+Tags.ScrollTo : System.Int32
+FS.GG.UI.Controls.CollectionMsg+Tags.SelectKey : System.Int32
+FS.GG.UI.Controls.CollectionMsg+Tags.ToggleKey : System.Int32
+FS.GG.UI.Controls.CollectionPosition.FocusedIndex : Microsoft.FSharp.Core.FSharpOption<System.Int32> [get]
+FS.GG.UI.Controls.CollectionPosition.TotalItems : System.Int32 [get]
+FS.GG.UI.Controls.CollectionPosition.new(System.Int32, Microsoft.FSharp.Core.FSharpOption<System.Int32>)
+FS.GG.UI.Controls.Collections.init(System.String, System.Int32, System.Double, System.Double) : System.Tuple<FS.GG.UI.Controls.CollectionModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.CollectionEffect>>
+FS.GG.UI.Controls.Collections.update(FS.GG.UI.Controls.CollectionMsg, FS.GG.UI.Controls.CollectionModel) : System.Tuple<FS.GG.UI.Controls.CollectionModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.CollectionEffect>>
+FS.GG.UI.Controls.Collections.visibleRange(System.Double, System.Double, System.Double, System.Int32, System.Int32) : FS.GG.UI.Controls.VisibleRange
+FS.GG.UI.Controls.ColumnChart.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.ColumnChart.series<msg>(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ChartSeries>) : Attr<msg>
+FS.GG.UI.Controls.ContrastEvidence.Background : FS.GG.UI.Scene.Color [get]
+FS.GG.UI.Controls.ContrastEvidence.Foreground : FS.GG.UI.Scene.Color [get]
+FS.GG.UI.Controls.ContrastEvidence.Ratio : System.Double [get]
+FS.GG.UI.Controls.ContrastEvidence.RequiredRatio : System.Double [get]
+FS.GG.UI.Controls.ContrastEvidence.new(FS.GG.UI.Scene.Color, FS.GG.UI.Scene.Color, System.Double, System.Double)
+FS.GG.UI.Controls.Control.count<msg>(Control<msg>) : System.Int32
+FS.GG.UI.Controls.Control.create<msg>(System.String, FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Control.customControl<msg>(System.String, FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Control.diagnostics<msg>(Control<msg>) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlDiagnostic>
+FS.GG.UI.Controls.Control.dispatch<msg>(FS.GG.UI.Controls.ControlEvent, Control<msg>) : FSharpList<msg>
+FS.GG.UI.Controls.Control.hitTest<msg>(ControlRenderResult<msg>, System.Double, System.Double) : Microsoft.FSharp.Core.FSharpOption<System.String>
+FS.GG.UI.Controls.Control.isOverlaySurface<msg>(Control<msg>) : System.Boolean
+FS.GG.UI.Controls.Control.lowerCustom<msg>(Control<msg>) : Control<msg>
+FS.GG.UI.Controls.Control.lowerStandard<msg>(Control<msg>) : Control<msg>
+FS.GG.UI.Controls.Control.map<a, b>(FSharpFunc<a, b>, Control<a>) : Control<b>
+FS.GG.UI.Controls.Control.nearestAuthored<msg>(ControlRenderResult<msg>, System.String) : Microsoft.FSharp.Core.FSharpOption<System.String>
+FS.GG.UI.Controls.Control.render<msg>(FS.GG.UI.DesignSystem.Theme, Control<msg>) : ControlRenderResult<msg>
+FS.GG.UI.Controls.Control.renderTree<msg>(FS.GG.UI.DesignSystem.Theme, FS.GG.UI.Scene.Size, Control<msg>) : ControlRenderResult<msg>
+FS.GG.UI.Controls.Control.scrollViewport<msg>(ControlRenderResult<msg>, System.String) : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.ScrollViewport>
+FS.GG.UI.Controls.Control.standard<msg>(FS.GG.UI.Controls.StandardControlKind, FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Control.withKey<msg>(System.String, Control<msg>) : Control<msg>
+FS.GG.UI.Controls.ControlCaret.ControlId : System.String [get]
+FS.GG.UI.Controls.ControlCaret.Index : System.Int32 [get]
+FS.GG.UI.Controls.ControlCaret.new(System.String, System.Int32)
+FS.GG.UI.Controls.ControlComposition.ControlId : System.String [get]
+FS.GG.UI.Controls.ControlComposition.Text : System.String [get]
+FS.GG.UI.Controls.ControlComposition.new(System.String, System.String)
+FS.GG.UI.Controls.ControlDefinition.Accessibility : FS.GG.UI.Controls.CatalogAccessibility [get]
+FS.GG.UI.Controls.ControlDefinition.Category : System.String [get]
+FS.GG.UI.Controls.ControlDefinition.CommonAttributes : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Controls.ControlDefinition.DisplayName : System.String [get]
+FS.GG.UI.Controls.ControlDefinition.Events : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Controls.ControlDefinition.Evidence : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Controls.ControlDefinition.Examples : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Controls.ControlDefinition.Id : System.String [get]
+FS.GG.UI.Controls.ControlDefinition.Module : System.String [get]
+FS.GG.UI.Controls.ControlDefinition.Owner : System.String [get]
+FS.GG.UI.Controls.ControlDefinition.Purpose : System.String [get]
+FS.GG.UI.Controls.ControlDefinition.RequiredAttributes : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Controls.ControlDefinition.SupportStatus : System.String [get]
+FS.GG.UI.Controls.ControlDefinition.Tests : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Controls.ControlDefinition.VisualStates : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Controls.ControlDefinition.new(System.String, System.String, System.String, System.String, System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, FS.GG.UI.Controls.CatalogAccessibility, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, System.String, System.String)
+FS.GG.UI.Controls.ControlDiagnostic.Code : FS.GG.UI.Controls.ControlDiagnosticCode [get]
+FS.GG.UI.Controls.ControlDiagnostic.ControlId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.ControlDiagnostic.ControlKind : System.String [get]
+FS.GG.UI.Controls.ControlDiagnostic.EvidencePath : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.ControlDiagnostic.Message : System.String [get]
+FS.GG.UI.Controls.ControlDiagnostic.Severity : FS.GG.UI.Controls.ControlDiagnosticSeverity [get]
+FS.GG.UI.Controls.ControlDiagnostic.new(Microsoft.FSharp.Core.FSharpOption<System.String>, System.String, FS.GG.UI.Controls.ControlDiagnosticCode, FS.GG.UI.Controls.ControlDiagnosticSeverity, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>)
+FS.GG.UI.Controls.ControlDiagnosticCode+Tags.BlockedOverlayDismissal : System.Int32
+FS.GG.UI.Controls.ControlDiagnosticCode+Tags.ContrastFailure : System.Int32
+FS.GG.UI.Controls.ControlDiagnosticCode+Tags.DisabledOverlayTrigger : System.Int32
+FS.GG.UI.Controls.ControlDiagnosticCode+Tags.DuplicateAttribute : System.Int32
+FS.GG.UI.Controls.ControlDiagnosticCode+Tags.DuplicateOverlayDispatch : System.Int32
+FS.GG.UI.Controls.ControlDiagnosticCode+Tags.HitTestFailed : System.Int32
+FS.GG.UI.Controls.ControlDiagnosticCode+Tags.InvalidOverlayMessage : System.Int32
+FS.GG.UI.Controls.ControlDiagnosticCode+Tags.KeyCollision : System.Int32
+FS.GG.UI.Controls.ControlDiagnosticCode+Tags.LayoutConflict : System.Int32
+FS.GG.UI.Controls.ControlDiagnosticCode+Tags.LowerLayerBlocked : System.Int32
+FS.GG.UI.Controls.ControlDiagnosticCode+Tags.MissingAccessibilityMetadata : System.Int32
+FS.GG.UI.Controls.ControlDiagnosticCode+Tags.MissingOverlayAnchor : System.Int32
+FS.GG.UI.Controls.ControlDiagnosticCode+Tags.MissingRequiredAttribute : System.Int32
+FS.GG.UI.Controls.ControlDiagnosticCode+Tags.MissingStableKey : System.Int32
+FS.GG.UI.Controls.ControlDiagnosticCode+Tags.NoFitOverlayPlacement : System.Int32
+FS.GG.UI.Controls.ControlDiagnosticCode+Tags.OffscreenComposition : System.Int32
+FS.GG.UI.Controls.ControlDiagnosticCode+Tags.ScrollExtentFallback : System.Int32
+FS.GG.UI.Controls.ControlDiagnosticCode+Tags.ScrollIntrinsicUnavailable : System.Int32
+FS.GG.UI.Controls.ControlDiagnosticCode+Tags.StaleGeneratedReference : System.Int32
+FS.GG.UI.Controls.ControlDiagnosticCode+Tags.StaleOverlayFocusTarget : System.Int32
+FS.GG.UI.Controls.ControlDiagnosticCode+Tags.UnstableReuseInput : System.Int32
+FS.GG.UI.Controls.ControlDiagnosticCode+Tags.UnsupportedEnvironment : System.Int32
+FS.GG.UI.Controls.ControlDiagnosticCode+Tags.UnsupportedStateCombination : System.Int32
+FS.GG.UI.Controls.ControlDiagnosticSeverity+Tags.Error : System.Int32
+FS.GG.UI.Controls.ControlDiagnosticSeverity+Tags.Info : System.Int32
+FS.GG.UI.Controls.ControlDiagnosticSeverity+Tags.Warning : System.Int32
+FS.GG.UI.Controls.ControlDrag.ControlId : System.String [get]
+FS.GG.UI.Controls.ControlDrag.CurrentX : System.Double [get]
+FS.GG.UI.Controls.ControlDrag.CurrentY : System.Double [get]
+FS.GG.UI.Controls.ControlDrag.StartX : System.Double [get]
+FS.GG.UI.Controls.ControlDrag.StartY : System.Double [get]
+FS.GG.UI.Controls.ControlDrag.new(System.String, System.Double, System.Double, System.Double, System.Double)
+FS.GG.UI.Controls.ControlEvent.ControlId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.ControlEvent.Kind : System.String [get]
+FS.GG.UI.Controls.ControlEvent.Nav : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.NavPayload> [get]
+FS.GG.UI.Controls.ControlEvent.Origin : FS.GG.UI.Controls.ControlEventOrigin [get]
+FS.GG.UI.Controls.ControlEvent.navCell(FS.GG.UI.Controls.ControlEvent) : Microsoft.FSharp.Core.FSharpOption<System.Tuple<System.Int32, System.Int32>>
+FS.GG.UI.Controls.ControlEvent.navText(FS.GG.UI.Controls.ControlEvent) : Microsoft.FSharp.Core.FSharpOption<System.String>
+FS.GG.UI.Controls.ControlEvent.navValue(FS.GG.UI.Controls.ControlEvent) : Microsoft.FSharp.Core.FSharpOption<System.Double>
+FS.GG.UI.Controls.ControlEvent.new(System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, FS.GG.UI.Controls.ControlEventOrigin, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.NavPayload>)
+FS.GG.UI.Controls.ControlEventBinding`1.ControlId : System.String [get]
+FS.GG.UI.Controls.ControlEventBinding`1.Dispatch : FSharpFunc<FS.GG.UI.Controls.ControlEvent, msg> [get]
+FS.GG.UI.Controls.ControlEventBinding`1.EventKind : System.String [get]
+FS.GG.UI.Controls.ControlEventBinding`1.new(System.String, System.String, FSharpFunc<FS.GG.UI.Controls.ControlEvent, msg>)
+FS.GG.UI.Controls.ControlEventOrigin+Tags.Clipboard : System.Int32
+FS.GG.UI.Controls.ControlEventOrigin+Tags.Focus : System.Int32
+FS.GG.UI.Controls.ControlEventOrigin+Tags.Keyboard : System.Int32
+FS.GG.UI.Controls.ControlEventOrigin+Tags.Pointer : System.Int32
+FS.GG.UI.Controls.ControlEventOrigin+Tags.Selection : System.Int32
+FS.GG.UI.Controls.ControlEventOrigin+Tags.Text : System.Int32
+FS.GG.UI.Controls.ControlInspection.inspect<msg>(ControlInspectionRequest<msg>) : FS.GG.UI.Scene.VisualInspectionArtifact
+FS.GG.UI.Controls.ControlInspection.inspectRendered<msg>(FS.GG.UI.Scene.VisualInspectionScope, System.String, FS.GG.UI.Scene.Size, Control<msg>, ControlRenderResult<msg>) : FS.GG.UI.Scene.VisualInspectionArtifact
+FS.GG.UI.Controls.ControlInspection.inspectRetained<msg>(RetainedControlInspectionRequest<msg>) : FS.GG.UI.Scene.RetainedInspectionArtifact
+FS.GG.UI.Controls.ControlInspectionRequest`1.Control : Control<msg> [get]
+FS.GG.UI.Controls.ControlInspectionRequest`1.OutputSize : FS.GG.UI.Scene.Size [get]
+FS.GG.UI.Controls.ControlInspectionRequest`1.Presentation : System.String [get]
+FS.GG.UI.Controls.ControlInspectionRequest`1.RelatedVisualEvidence : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Controls.ControlInspectionRequest`1.RunId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.ControlInspectionRequest`1.Scope : FS.GG.UI.Scene.VisualInspectionScope [get]
+FS.GG.UI.Controls.ControlInspectionRequest`1.Theme : FS.GG.UI.DesignSystem.Theme [get]
+FS.GG.UI.Controls.ControlInspectionRequest`1.new(FS.GG.UI.Scene.VisualInspectionScope, FS.GG.UI.DesignSystem.Theme, FS.GG.UI.Scene.Size, Control<msg>, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Controls.ControlRenderResult`1.BoundIds : Microsoft.FSharp.Collections.FSharpSet<System.String> [get]
+FS.GG.UI.Controls.ControlRenderResult`1.Bounds : Microsoft.FSharp.Collections.FSharpList<System.Tuple<System.String, FS.GG.UI.Scene.Rect>> [get]
+FS.GG.UI.Controls.ControlRenderResult`1.Diagnostics : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlDiagnostic> [get]
+FS.GG.UI.Controls.ControlRenderResult`1.EventBindings : FSharpList<ControlEventBinding<msg>> [get]
+FS.GG.UI.Controls.ControlRenderResult`1.Layout : FS.GG.UI.Layout.LayoutNode [get]
+FS.GG.UI.Controls.ControlRenderResult`1.NodeCount : System.Int32 [get]
+FS.GG.UI.Controls.ControlRenderResult`1.Scene : FS.GG.UI.Scene.Scene [get]
+FS.GG.UI.Controls.ControlRenderResult`1.new(FS.GG.UI.Scene.Scene, FS.GG.UI.Layout.LayoutNode, Microsoft.FSharp.Collections.FSharpList<System.Tuple<System.String, FS.GG.UI.Scene.Rect>>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlDiagnostic>, FSharpList<ControlEventBinding<msg>>, Microsoft.FSharp.Collections.FSharpSet<System.String>, System.Int32)
+FS.GG.UI.Controls.ControlRuntime.attachOverlayEffects(FS.GG.UI.Controls.OverlayState, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.OverlayEffect>) : FS.GG.UI.Controls.OverlayRuntimeBridge
+FS.GG.UI.Controls.ControlRuntime.deriveVisualState(FS.GG.UI.Controls.ControlRuntimeModel, System.String) : FS.GG.UI.DesignSystem.VisualState
+FS.GG.UI.Controls.ControlRuntime.diagnostics(FS.GG.UI.Controls.ControlRuntimeModel) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlDiagnostic>
+FS.GG.UI.Controls.ControlRuntime.init() : System.Tuple<FS.GG.UI.Controls.ControlRuntimeModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlRuntimeEffect>>
+FS.GG.UI.Controls.ControlRuntime.overlayDispatchRecords(FS.GG.UI.Controls.OverlayRuntimeBridge) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.OverlayRuntimeDispatchRecord>
+FS.GG.UI.Controls.ControlRuntime.scrollState(System.String, FS.GG.UI.Controls.ControlRuntimeModel) : FS.GG.UI.Controls.ScrollState
+FS.GG.UI.Controls.ControlRuntime.update(FS.GG.UI.Controls.ControlRuntimeMsg, FS.GG.UI.Controls.ControlRuntimeModel) : System.Tuple<FS.GG.UI.Controls.ControlRuntimeModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlRuntimeEffect>>
+FS.GG.UI.Controls.ControlRuntimeEffect+Tags.CancelledInteraction : System.Int32
+FS.GG.UI.Controls.ControlRuntimeEffect+Tags.CaretChanged : System.Int32
+FS.GG.UI.Controls.ControlRuntimeEffect+Tags.CompositionChanged : System.Int32
+FS.GG.UI.Controls.ControlRuntimeEffect+Tags.DragChanged : System.Int32
+FS.GG.UI.Controls.ControlRuntimeEffect+Tags.FocusChanged : System.Int32
+FS.GG.UI.Controls.ControlRuntimeEffect+Tags.HoverChanged : System.Int32
+FS.GG.UI.Controls.ControlRuntimeEffect+Tags.PressedControlsChanged : System.Int32
+FS.GG.UI.Controls.ControlRuntimeEffect+Tags.ReportControlRuntimeDiagnostic : System.Int32
+FS.GG.UI.Controls.ControlRuntimeEffect+Tags.ScrollChanged : System.Int32
+FS.GG.UI.Controls.ControlRuntimeEffect+Tags.SelectionChanged : System.Int32
+FS.GG.UI.Controls.ControlRuntimeEffect+Tags.StaleTarget : System.Int32
+FS.GG.UI.Controls.ControlRuntimeModel.ActiveDrag : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.ControlDrag> [get]
+FS.GG.UI.Controls.ControlRuntimeModel.Caret : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.ControlCaret> [get]
+FS.GG.UI.Controls.ControlRuntimeModel.Composition : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.ControlComposition> [get]
+FS.GG.UI.Controls.ControlRuntimeModel.Diagnostics : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlDiagnostic> [get]
+FS.GG.UI.Controls.ControlRuntimeModel.FocusedControl : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.ControlRuntimeModel.HoveredControl : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.ControlRuntimeModel.PressedControls : Microsoft.FSharp.Collections.FSharpSet<System.String> [get]
+FS.GG.UI.Controls.ControlRuntimeModel.RecentEffects : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlRuntimeEffect> [get]
+FS.GG.UI.Controls.ControlRuntimeModel.ScrollOffsets : Microsoft.FSharp.Collections.FSharpMap<System.String, FS.GG.UI.Controls.ScrollState> [get]
+FS.GG.UI.Controls.ControlRuntimeModel.Selection : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.ControlSelection> [get]
+FS.GG.UI.Controls.ControlRuntimeModel.new(Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpSet<System.String>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.ControlCaret>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.ControlSelection>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.ControlComposition>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.ControlDrag>, Microsoft.FSharp.Collections.FSharpMap<System.String, FS.GG.UI.Controls.ScrollState>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlDiagnostic>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlRuntimeEffect>)
+FS.GG.UI.Controls.ControlRuntimeMsg+Tags.CancelInteraction : System.Int32
+FS.GG.UI.Controls.ControlRuntimeMsg+Tags.CommitComposition : System.Int32
+FS.GG.UI.Controls.ControlRuntimeMsg+Tags.EndDrag : System.Int32
+FS.GG.UI.Controls.ControlRuntimeMsg+Tags.FocusControl : System.Int32
+FS.GG.UI.Controls.ControlRuntimeMsg+Tags.FocusLost : System.Int32
+FS.GG.UI.Controls.ControlRuntimeMsg+Tags.HoverControl : System.Int32
+FS.GG.UI.Controls.ControlRuntimeMsg+Tags.MoveDrag : System.Int32
+FS.GG.UI.Controls.ControlRuntimeMsg+Tags.PressControl : System.Int32
+FS.GG.UI.Controls.ControlRuntimeMsg+Tags.RecoverStaleTarget : System.Int32
+FS.GG.UI.Controls.ControlRuntimeMsg+Tags.ReleaseControl : System.Int32
+FS.GG.UI.Controls.ControlRuntimeMsg+Tags.RemoveControl : System.Int32
+FS.GG.UI.Controls.ControlRuntimeMsg+Tags.Reset : System.Int32
+FS.GG.UI.Controls.ControlRuntimeMsg+Tags.ScrollControl : System.Int32
+FS.GG.UI.Controls.ControlRuntimeMsg+Tags.SetCaret : System.Int32
+FS.GG.UI.Controls.ControlRuntimeMsg+Tags.SetScrollExtent : System.Int32
+FS.GG.UI.Controls.ControlRuntimeMsg+Tags.SetSelection : System.Int32
+FS.GG.UI.Controls.ControlRuntimeMsg+Tags.StartComposition : System.Int32
+FS.GG.UI.Controls.ControlRuntimeMsg+Tags.StartDrag : System.Int32
+FS.GG.UI.Controls.ControlSchema.CustomAllowed : System.Boolean [get]
+FS.GG.UI.Controls.ControlSchema.Kind : FS.GG.UI.Controls.StandardControlKind [get]
+FS.GG.UI.Controls.ControlSchema.RequiredAttributes : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.StandardAttributeName> [get]
+FS.GG.UI.Controls.ControlSchema.SupportedAttributes : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.StandardAttributeName> [get]
+FS.GG.UI.Controls.ControlSchema.SupportedEvents : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.StandardEventKind> [get]
+FS.GG.UI.Controls.ControlSchema.new(FS.GG.UI.Controls.StandardControlKind, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.StandardAttributeName>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.StandardAttributeName>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.StandardEventKind>, System.Boolean)
+FS.GG.UI.Controls.ControlSelection.ControlId : System.String [get]
+FS.GG.UI.Controls.ControlSelection.End : System.Int32 [get]
+FS.GG.UI.Controls.ControlSelection.Start : System.Int32 [get]
+FS.GG.UI.Controls.ControlSelection.new(System.String, System.Int32, System.Int32)
+FS.GG.UI.Controls.Control`1.Accessibility : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.AccessibilityMetadata> [get]
+FS.GG.UI.Controls.Control`1.Attributes : FSharpList<Attr<msg>> [get]
+FS.GG.UI.Controls.Control`1.Children : FSharpList<FS.GG.UI.Controls.Control<msg>> [get]
+FS.GG.UI.Controls.Control`1.Content : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Control`1.Key : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Control`1.Kind : System.String [get]
+FS.GG.UI.Controls.Control`1.new(System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, FSharpList<Attr<msg>>, FSharpList<FS.GG.UI.Controls.Control<msg>>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.AccessibilityMetadata>)
+FS.GG.UI.Controls.CustomControl.create<msg>(FS.GG.UI.Controls.CustomControlDefinition, FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.CustomControl.validate(FS.GG.UI.Controls.CustomControlDefinition) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlDiagnostic>
+FS.GG.UI.Controls.CustomControlDefinition.Accessibility : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.AccessibilityMetadata> [get]
+FS.GG.UI.Controls.CustomControlDefinition.Diagnostics : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlDiagnostic> [get]
+FS.GG.UI.Controls.CustomControlDefinition.Effects : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Controls.CustomControlDefinition.Id : System.String [get]
+FS.GG.UI.Controls.CustomControlDefinition.new(System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.AccessibilityMetadata>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlDiagnostic>)
+FS.GG.UI.Controls.DataEntry2+AutoComplete.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.DataEntry2+AutoComplete.onChange<msg>(FSharpFunc<System.String, msg>) : Attr<msg>
+FS.GG.UI.Controls.DataEntry2+AutoComplete.transientMetadata<msg>(System.String, System.Boolean, System.Boolean) : Attr<msg>
+FS.GG.UI.Controls.DataEntry2+AutoComplete.value<msg>(System.String) : Attr<msg>
+FS.GG.UI.Controls.DataEntry2+Cascader.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.DataEntry2+Cascader.onChange<msg>(FSharpFunc<System.String, msg>) : Attr<msg>
+FS.GG.UI.Controls.DataEntry2+Upload.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.DataEntry2+Upload.onChange<msg>(FSharpFunc<System.String, msg>) : Attr<msg>
+FS.GG.UI.Controls.DataEntry2+Upload.text<msg>(System.String) : Attr<msg>
+FS.GG.UI.Controls.DataGrid.columns<msg>(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.DataGridColumn>) : Attr<msg>
+FS.GG.UI.Controls.DataGrid.create<msg>(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.DataGridColumn>, FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.DataGrid.focusedCell<msg>(Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.DataGridFocusedCell>) : Attr<msg>
+FS.GG.UI.Controls.DataGrid.init(System.String, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.DataGridColumn>, System.Int32, System.Double, System.Double) : System.Tuple<FS.GG.UI.Controls.DataGridModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.DataGridEffect>>
+FS.GG.UI.Controls.DataGrid.rows<msg>(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.DataGridRow>) : Attr<msg>
+FS.GG.UI.Controls.DataGrid.selectedRows<msg>(Microsoft.FSharp.Collections.FSharpSet<System.String>) : Attr<msg>
+FS.GG.UI.Controls.DataGrid.update(FS.GG.UI.Controls.DataGridMsg, FS.GG.UI.Controls.DataGridModel) : System.Tuple<FS.GG.UI.Controls.DataGridModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.DataGridEffect>>
+FS.GG.UI.Controls.DataGrid.visibleRange<msg>(FS.GG.UI.Controls.VisibleRange) : Attr<msg>
+FS.GG.UI.Controls.DataGridCell.ColumnKey : System.String [get]
+FS.GG.UI.Controls.DataGridCell.RowKey : System.String [get]
+FS.GG.UI.Controls.DataGridCell.Value : System.String [get]
+FS.GG.UI.Controls.DataGridCell.new(System.String, System.String, System.String)
+FS.GG.UI.Controls.DataGridColumn.ColumnType : FS.GG.UI.Controls.DataGridColumnType [get]
+FS.GG.UI.Controls.DataGridColumn.Header : System.String [get]
+FS.GG.UI.Controls.DataGridColumn.Key : System.String [get]
+FS.GG.UI.Controls.DataGridColumn.Width : System.Double [get]
+FS.GG.UI.Controls.DataGridColumn.new(System.String, System.String, System.Double, FS.GG.UI.Controls.DataGridColumnType)
+FS.GG.UI.Controls.DataGridColumnType+Tags.BooleanColumn : System.Int32
+FS.GG.UI.Controls.DataGridColumnType+Tags.CustomColumn : System.Int32
+FS.GG.UI.Controls.DataGridColumnType+Tags.NumericColumn : System.Int32
+FS.GG.UI.Controls.DataGridColumnType+Tags.TextColumn : System.Int32
+FS.GG.UI.Controls.DataGridEffect+Tags.DataGridFilterChanged : System.Int32
+FS.GG.UI.Controls.DataGridEffect+Tags.DataGridFocusChanged : System.Int32
+FS.GG.UI.Controls.DataGridEffect+Tags.DataGridSelectionChanged : System.Int32
+FS.GG.UI.Controls.DataGridEffect+Tags.DataGridSortChanged : System.Int32
+FS.GG.UI.Controls.DataGridEffect+Tags.DataGridVisibleRangeChanged : System.Int32
+FS.GG.UI.Controls.DataGridEffect+Tags.ReportDataGridDiagnostic : System.Int32
+FS.GG.UI.Controls.DataGridFocusedCell.ColumnKey : System.String [get]
+FS.GG.UI.Controls.DataGridFocusedCell.RowKey : System.String [get]
+FS.GG.UI.Controls.DataGridFocusedCell.new(System.String, System.String)
+FS.GG.UI.Controls.DataGridModel.Columns : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.DataGridColumn> [get]
+FS.GG.UI.Controls.DataGridModel.ControlId : System.String [get]
+FS.GG.UI.Controls.DataGridModel.Diagnostics : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlDiagnostic> [get]
+FS.GG.UI.Controls.DataGridModel.FilterText : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.DataGridModel.FocusedCell : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.DataGridFocusedCell> [get]
+FS.GG.UI.Controls.DataGridModel.Overscan : System.Int32 [get]
+FS.GG.UI.Controls.DataGridModel.RowCount : System.Int32 [get]
+FS.GG.UI.Controls.DataGridModel.RowHeight : System.Double [get]
+FS.GG.UI.Controls.DataGridModel.SelectedRows : Microsoft.FSharp.Collections.FSharpSet<System.String> [get]
+FS.GG.UI.Controls.DataGridModel.Sort : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.DataGridSort> [get]
+FS.GG.UI.Controls.DataGridModel.ViewportHeight : System.Double [get]
+FS.GG.UI.Controls.DataGridModel.VisibleRange : FS.GG.UI.Controls.VisibleRange [get]
+FS.GG.UI.Controls.DataGridModel.new(System.String, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.DataGridColumn>, System.Int32, System.Double, System.Double, FS.GG.UI.Controls.VisibleRange, System.Int32, Microsoft.FSharp.Collections.FSharpSet<System.String>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.DataGridFocusedCell>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.DataGridSort>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlDiagnostic>)
+FS.GG.UI.Controls.DataGridMsg+Tags.ApplyFilter : System.Int32
+FS.GG.UI.Controls.DataGridMsg+Tags.FocusCell : System.Int32
+FS.GG.UI.Controls.DataGridMsg+Tags.ReplaceRowCount : System.Int32
+FS.GG.UI.Controls.DataGridMsg+Tags.ScrollRowsTo : System.Int32
+FS.GG.UI.Controls.DataGridMsg+Tags.SelectRow : System.Int32
+FS.GG.UI.Controls.DataGridMsg+Tags.SortBy : System.Int32
+FS.GG.UI.Controls.DataGridMsg+Tags.ToggleRow : System.Int32
+FS.GG.UI.Controls.DataGridRow.Cells : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.DataGridCell> [get]
+FS.GG.UI.Controls.DataGridRow.Key : System.String [get]
+FS.GG.UI.Controls.DataGridRow.new(System.String, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.DataGridCell>)
+FS.GG.UI.Controls.DataGridSort.ColumnKey : System.String [get]
+FS.GG.UI.Controls.DataGridSort.Direction : FS.GG.UI.Controls.DataGridSortDirection [get]
+FS.GG.UI.Controls.DataGridSort.new(System.String, FS.GG.UI.Controls.DataGridSortDirection)
+FS.GG.UI.Controls.DataGridSortDirection+Tags.Ascending : System.Int32
+FS.GG.UI.Controls.DataGridSortDirection+Tags.Descending : System.Int32
+FS.GG.UI.Controls.Diagnostics.blockedOverlayDismissal(System.String, System.String) : FS.GG.UI.Controls.ControlDiagnostic
+FS.GG.UI.Controls.Diagnostics.catalogOmission(System.String, System.String) : FS.GG.UI.Controls.ControlDiagnostic
+FS.GG.UI.Controls.Diagnostics.create(Microsoft.FSharp.Core.FSharpOption<System.String>, System.String, FS.GG.UI.Controls.ControlDiagnosticCode, FS.GG.UI.Controls.ControlDiagnosticSeverity, System.String) : FS.GG.UI.Controls.ControlDiagnostic
+FS.GG.UI.Controls.Diagnostics.customExtension(System.String, System.String) : FS.GG.UI.Controls.ControlDiagnostic
+FS.GG.UI.Controls.Diagnostics.dependencyLeak(System.String, System.String) : FS.GG.UI.Controls.ControlDiagnostic
+FS.GG.UI.Controls.Diagnostics.disabledOverlayTrigger(System.String, System.String) : FS.GG.UI.Controls.ControlDiagnostic
+FS.GG.UI.Controls.Diagnostics.duplicateAttribute(Microsoft.FSharp.Core.FSharpOption<System.String>, System.String, System.String) : FS.GG.UI.Controls.ControlDiagnostic
+FS.GG.UI.Controls.Diagnostics.duplicateOverlayDispatch(System.String, System.String) : FS.GG.UI.Controls.ControlDiagnostic
+FS.GG.UI.Controls.Diagnostics.duplicateRuntimeDefinition(System.String, System.String) : FS.GG.UI.Controls.ControlDiagnostic
+FS.GG.UI.Controls.Diagnostics.invalidOverlayMessage(Microsoft.FSharp.Core.FSharpOption<System.String>, System.String) : FS.GG.UI.Controls.ControlDiagnostic
+FS.GG.UI.Controls.Diagnostics.keyCollision(System.String, System.String) : FS.GG.UI.Controls.ControlDiagnostic
+FS.GG.UI.Controls.Diagnostics.lowerLayerBlocked(System.String, Microsoft.FSharp.Core.FSharpOption<System.String>) : FS.GG.UI.Controls.ControlDiagnostic
+FS.GG.UI.Controls.Diagnostics.missingAccessibility(Microsoft.FSharp.Core.FSharpOption<System.String>, System.String) : FS.GG.UI.Controls.ControlDiagnostic
+FS.GG.UI.Controls.Diagnostics.missingOverlayAnchor(System.String, System.String) : FS.GG.UI.Controls.ControlDiagnostic
+FS.GG.UI.Controls.Diagnostics.missingRequired(Microsoft.FSharp.Core.FSharpOption<System.String>, System.String, System.String) : FS.GG.UI.Controls.ControlDiagnostic
+FS.GG.UI.Controls.Diagnostics.missingStandardAttribute(FS.GG.UI.Controls.StandardControlKind, FS.GG.UI.Controls.StandardAttributeName) : FS.GG.UI.Controls.ControlDiagnostic
+FS.GG.UI.Controls.Diagnostics.noFitOverlayPlacement(System.String, System.String) : FS.GG.UI.Controls.ControlDiagnostic
+FS.GG.UI.Controls.Diagnostics.stabilityReport<msg>(Control<msg>, Control<msg>) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlDiagnostic>
+FS.GG.UI.Controls.Diagnostics.staleEventTarget(System.String, System.String) : FS.GG.UI.Controls.ControlDiagnostic
+FS.GG.UI.Controls.Diagnostics.staleOverlayFocusTarget(Microsoft.FSharp.Core.FSharpOption<System.String>, System.String) : FS.GG.UI.Controls.ControlDiagnostic
+FS.GG.UI.Controls.Diagnostics.stalePackageReference(System.String, System.String) : FS.GG.UI.Controls.ControlDiagnostic
+FS.GG.UI.Controls.Diagnostics.toRuntimeDiagnostic(FS.GG.UI.Diagnostics.DiagnosticContext, FS.GG.UI.Controls.ControlDiagnostic) : FS.GG.UI.Diagnostics.RuntimeDiagnostic
+FS.GG.UI.Controls.Diagnostics.unkeyedInteractiveSiblings<msg>(Control<msg>) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlDiagnostic>
+FS.GG.UI.Controls.Diagnostics.unsupportedEnvironment(System.String, System.String) : FS.GG.UI.Controls.ControlDiagnostic
+FS.GG.UI.Controls.Diagnostics.unsupportedScopeExpansion(System.String, System.String) : FS.GG.UI.Controls.ControlDiagnostic
+FS.GG.UI.Controls.Diagnostics.unsupportedStandardAttribute(FS.GG.UI.Controls.StandardControlKind, FS.GG.UI.Controls.StandardAttributeName) : FS.GG.UI.Controls.ControlDiagnostic
+FS.GG.UI.Controls.Diagnostics.unsupportedStandardEvent(FS.GG.UI.Controls.StandardControlKind, FS.GG.UI.Controls.StandardEventKind) : FS.GG.UI.Controls.ControlDiagnostic
+FS.GG.UI.Controls.Dialog.children<msg>(FSharpList<Control<msg>>) : Attr<msg>
+FS.GG.UI.Controls.Dialog.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Direction+Tags.First : System.Int32
+FS.GG.UI.Controls.Direction+Tags.Last : System.Int32
+FS.GG.UI.Controls.Direction+Tags.Next : System.Int32
+FS.GG.UI.Controls.Direction+Tags.Previous : System.Int32
+FS.GG.UI.Controls.DismissalOutcome.Diagnostic : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.ControlDiagnostic> [get]
+FS.GG.UI.Controls.DismissalOutcome.Dismissed : System.Boolean [get]
+FS.GG.UI.Controls.DismissalOutcome.PassThrough : System.Boolean [get]
+FS.GG.UI.Controls.DismissalOutcome.Reason : FS.GG.UI.Controls.DismissalReason [get]
+FS.GG.UI.Controls.DismissalOutcome.SurfaceId : System.String [get]
+FS.GG.UI.Controls.DismissalOutcome.new(System.String, FS.GG.UI.Controls.DismissalReason, System.Boolean, System.Boolean, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.ControlDiagnostic>)
+FS.GG.UI.Controls.DismissalPolicy.AnchorRemoval : FS.GG.UI.Controls.AnchorRemovalPolicy [get]
+FS.GG.UI.Controls.DismissalPolicy.Escape : FS.GG.UI.Controls.DismissalRule [get]
+FS.GG.UI.Controls.DismissalPolicy.ExplicitClose : FS.GG.UI.Controls.DismissalRule [get]
+FS.GG.UI.Controls.DismissalPolicy.OutsidePointer : FS.GG.UI.Controls.DismissalRule [get]
+FS.GG.UI.Controls.DismissalPolicy.PassThroughAfterDismissal : System.Boolean [get]
+FS.GG.UI.Controls.DismissalPolicy.SelectionCompletion : FS.GG.UI.Controls.SelectionCompletionPolicy [get]
+FS.GG.UI.Controls.DismissalPolicy.new(FS.GG.UI.Controls.DismissalRule, FS.GG.UI.Controls.DismissalRule, FS.GG.UI.Controls.SelectionCompletionPolicy, FS.GG.UI.Controls.DismissalRule, FS.GG.UI.Controls.AnchorRemovalPolicy, System.Boolean)
+FS.GG.UI.Controls.DismissalReason+Tags.AnchorRemoved : System.Int32
+FS.GG.UI.Controls.DismissalReason+Tags.Escape : System.Int32
+FS.GG.UI.Controls.DismissalReason+Tags.ExplicitClose : System.Int32
+FS.GG.UI.Controls.DismissalReason+Tags.OutsidePointer : System.Int32
+FS.GG.UI.Controls.DismissalReason+Tags.ProductClosed : System.Int32
+FS.GG.UI.Controls.DismissalReason+Tags.SelectionCompletion : System.Int32
+FS.GG.UI.Controls.DismissalRule+Tags.AllowDismiss : System.Int32
+FS.GG.UI.Controls.DismissalRule+Tags.BlockDismiss : System.Int32
+FS.GG.UI.Controls.DismissalRule+Tags.IgnoreDismiss : System.Int32
+FS.GG.UI.Controls.Display2+Avatar.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Display2+Avatar.text<msg>(System.String) : Attr<msg>
+FS.GG.UI.Controls.Display2+Card.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Display2+Card.title<msg>(System.String) : Attr<msg>
+FS.GG.UI.Controls.Display2+Descriptions.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Display2+Empty.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Display2+Empty.text<msg>(System.String) : Attr<msg>
+FS.GG.UI.Controls.Display2+QrCode.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Display2+QrCode.value<msg>(System.String) : Attr<msg>
+FS.GG.UI.Controls.Display2+Skeleton.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Display2+Statistic.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Display2+Statistic.value<msg>(System.String) : Attr<msg>
+FS.GG.UI.Controls.Display2+Tag.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Display2+Tag.onClose<msg>(msg) : Attr<msg>
+FS.GG.UI.Controls.Display2+Tag.text<msg>(System.String) : Attr<msg>
+FS.GG.UI.Controls.Display2+Timeline.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Display2+Watermark.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Display2+Watermark.text<msg>(System.String) : Attr<msg>
+FS.GG.UI.Controls.Dock.children<msg>(FSharpList<Control<msg>>) : Attr<msg>
+FS.GG.UI.Controls.Dock.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Feedback2+Alert.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Feedback2+Alert.onClose<msg>(msg) : Attr<msg>
+FS.GG.UI.Controls.Feedback2+Alert.text<msg>(System.String) : Attr<msg>
+FS.GG.UI.Controls.Feedback2+Drawer.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Feedback2+Drawer.onClose<msg>(msg) : Attr<msg>
+FS.GG.UI.Controls.Feedback2+Drawer.title<msg>(System.String) : Attr<msg>
+FS.GG.UI.Controls.Feedback2+FloatButton.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Feedback2+FloatButton.onClick<msg>(msg) : Attr<msg>
+FS.GG.UI.Controls.Feedback2+FloatButton.text<msg>(System.String) : Attr<msg>
+FS.GG.UI.Controls.Feedback2+Popconfirm.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Feedback2+Popconfirm.onCancel<msg>(msg) : Attr<msg>
+FS.GG.UI.Controls.Feedback2+Popconfirm.onConfirm<msg>(msg) : Attr<msg>
+FS.GG.UI.Controls.Feedback2+Popconfirm.text<msg>(System.String) : Attr<msg>
+FS.GG.UI.Controls.Feedback2+Popover.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Feedback2+Popover.text<msg>(System.String) : Attr<msg>
+FS.GG.UI.Controls.Feedback2+Result.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Feedback2+Result.title<msg>(System.String) : Attr<msg>
+FS.GG.UI.Controls.Feedback2+Tour.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Feedback2+Tour.text<msg>(System.String) : Attr<msg>
+FS.GG.UI.Controls.Focus.markFocused<msg>(Microsoft.FSharp.Core.FSharpOption<System.String>, Control<msg>) : Control<msg>
+FS.GG.UI.Controls.Focus.order<msg>(Control<msg>) : FS.GG.UI.Controls.TabOrder
+FS.GG.UI.Controls.Focus.recoverOverlayFocus(FS.GG.UI.Controls.OverlayState, System.String) : System.Tuple<FS.GG.UI.Controls.OverlayState, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.OverlayEffect>, FS.GG.UI.Controls.FocusRecoveryDecision>
+FS.GG.UI.Controls.Focus.route(FS.GG.UI.Controls.AccessibilityRole, FS.GG.UI.Controls.KeyboardOperation, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.NavRange>, System.String, System.Boolean, System.Boolean) : FS.GG.UI.Controls.KeyRouting
+FS.GG.UI.Controls.Focus.traverse(FS.GG.UI.Controls.TabOrder, Microsoft.FSharp.Core.FSharpOption<System.String>, FS.GG.UI.Controls.FocusMove) : Microsoft.FSharp.Core.FSharpOption<System.String>
+FS.GG.UI.Controls.FocusMove+Tags.Next : System.Int32
+FS.GG.UI.Controls.FocusMove+Tags.Previous : System.Int32
+FS.GG.UI.Controls.FocusRecoveryDecision.Diagnostic : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.ControlDiagnostic> [get]
+FS.GG.UI.Controls.FocusRecoveryDecision.From : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.FocusRecoveryDecision.Reason : System.String [get]
+FS.GG.UI.Controls.FocusRecoveryDecision.RecoveryTargetKind : FS.GG.UI.Controls.FocusRecoveryTargetKind [get]
+FS.GG.UI.Controls.FocusRecoveryDecision.To : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.FocusRecoveryDecision.new(Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, System.String, FS.GG.UI.Controls.FocusRecoveryTargetKind, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.ControlDiagnostic>)
+FS.GG.UI.Controls.FocusRecoveryTargetKind+Tags.Fallback : System.Int32
+FS.GG.UI.Controls.FocusRecoveryTargetKind+Tags.NoFocus : System.Int32
+FS.GG.UI.Controls.FocusRecoveryTargetKind+Tags.ParentSurface : System.Int32
+FS.GG.UI.Controls.FocusRecoveryTargetKind+Tags.Trigger : System.Int32
+FS.GG.UI.Controls.FocusScope.InitialFocus : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.FocusScope.RecoveryTarget : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.FocusScope.Stops : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Controls.FocusScope.SurfaceId : System.String [get]
+FS.GG.UI.Controls.FocusScope.TrapMode : FS.GG.UI.Controls.TrapMode [get]
+FS.GG.UI.Controls.FocusScope.new(System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, FS.GG.UI.Controls.TrapMode)
+FS.GG.UI.Controls.FocusStop.Control : System.String [get]
+FS.GG.UI.Controls.FocusStop.FocusOrder : Microsoft.FSharp.Core.FSharpOption<System.Int32> [get]
+FS.GG.UI.Controls.FocusStop.Keyboard : FS.GG.UI.Controls.KeyboardOperation [get]
+FS.GG.UI.Controls.FocusStop.Role : FS.GG.UI.Controls.AccessibilityRole [get]
+FS.GG.UI.Controls.FocusStop.new(System.String, FS.GG.UI.Controls.AccessibilityRole, FS.GG.UI.Controls.KeyboardOperation, Microsoft.FSharp.Core.FSharpOption<System.Int32>)
+FS.GG.UI.Controls.FocusTransition.From : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.FocusTransition.Reason : System.String [get]
+FS.GG.UI.Controls.FocusTransition.To : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.FocusTransition.new(Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, System.String)
+FS.GG.UI.Controls.FunnelChart.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.FunnelChart.values<msg>(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ChartPoint>) : Attr<msg>
+FS.GG.UI.Controls.GaugeChart.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.GaugeChart.value<msg>(System.Double) : Attr<msg>
+FS.GG.UI.Controls.GraphView.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.GraphView.nodes<msg>(Microsoft.FSharp.Collections.FSharpList<System.String>) : Attr<msg>
+FS.GG.UI.Controls.Grid.children<msg>(FSharpList<Control<msg>>) : Attr<msg>
+FS.GG.UI.Controls.Grid.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Heatmap.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Heatmap.values<msg>(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ChartPoint>) : Attr<msg>
+FS.GG.UI.Controls.Histogram.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Histogram.values<msg>(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ChartPoint>) : Attr<msg>
+FS.GG.UI.Controls.Icon.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Icon.name<msg>(System.String) : Attr<msg>
+FS.GG.UI.Controls.IconButton.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.IconButton.icon<msg>(System.String) : Attr<msg>
+FS.GG.UI.Controls.IconButton.onClick<msg>(msg) : Attr<msg>
+FS.GG.UI.Controls.Image.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Image.source<msg>(System.String) : Attr<msg>
+FS.GG.UI.Controls.InteractionReplayLog.Diagnostics : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlDiagnostic> [get]
+FS.GG.UI.Controls.InteractionReplayLog.DismissalReasons : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.DismissalOutcome> [get]
+FS.GG.UI.Controls.InteractionReplayLog.FocusTransitions : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.FocusTransition> [get]
+FS.GG.UI.Controls.InteractionReplayLog.HitDecisions : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.TopmostHitDecision> [get]
+FS.GG.UI.Controls.InteractionReplayLog.Inputs : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Controls.InteractionReplayLog.OverlayTransitions : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.OverlayTransition> [get]
+FS.GG.UI.Controls.InteractionReplayLog.ProductDispatches : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ProductDispatch> [get]
+FS.GG.UI.Controls.InteractionReplayLog.RenderEvidence : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Controls.InteractionReplayLog.new(Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.OverlayTransition>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.FocusTransition>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ProductDispatch>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.DismissalOutcome>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlDiagnostic>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.TopmostHitDecision>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Controls.Interactive2+Calendar.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Interactive2+Calendar.onChange<msg>(FSharpFunc<System.String, msg>) : Attr<msg>
+FS.GG.UI.Controls.Interactive2+Carousel.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Interactive2+Collapse.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Interactive2+Collapse.onChange<msg>(FSharpFunc<System.String, msg>) : Attr<msg>
+FS.GG.UI.Controls.Interactive2+Rate.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Interactive2+Rate.onChange<msg>(FSharpFunc<System.String, msg>) : Attr<msg>
+FS.GG.UI.Controls.Interactive2+Rate.value<msg>(System.Double) : Attr<msg>
+FS.GG.UI.Controls.KeyRouting+Tags.Activate : System.Int32
+FS.GG.UI.Controls.KeyRouting+Tags.Fallthrough : System.Int32
+FS.GG.UI.Controls.KeyRouting+Tags.Navigate : System.Int32
+FS.GG.UI.Controls.KeyRouting+Tags.Traverse : System.Int32
+FS.GG.UI.Controls.KeyboardOperation.ActivationKeys : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Controls.KeyboardOperation.Focusable : System.Boolean [get]
+FS.GG.UI.Controls.KeyboardOperation.NavigationKeys : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Controls.KeyboardOperation.new(System.Boolean, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Controls.KnownAttribute+Tags.Children : System.Int32
+FS.GG.UI.Controls.KnownAttribute+Tags.Columns : System.Int32
+FS.GG.UI.Controls.KnownAttribute+Tags.FocusedCell : System.Int32
+FS.GG.UI.Controls.KnownAttribute+Tags.Items : System.Int32
+FS.GG.UI.Controls.KnownAttribute+Tags.Nodes : System.Int32
+FS.GG.UI.Controls.KnownAttribute+Tags.Rows : System.Int32
+FS.GG.UI.Controls.KnownAttribute+Tags.SelectedRows : System.Int32
+FS.GG.UI.Controls.KnownAttribute+Tags.Series : System.Int32
+FS.GG.UI.Controls.KnownAttribute+Tags.Text : System.Int32
+FS.GG.UI.Controls.KnownAttribute+Tags.Value : System.Int32
+FS.GG.UI.Controls.KnownAttribute+Tags.Values : System.Int32
+FS.GG.UI.Controls.KnownAttribute+Tags.VisibleRange : System.Int32
+FS.GG.UI.Controls.KnownControl+Tags.BarChart : System.Int32
+FS.GG.UI.Controls.KnownControl+Tags.Button : System.Int32
+FS.GG.UI.Controls.KnownControl+Tags.DataGrid : System.Int32
+FS.GG.UI.Controls.KnownControl+Tags.GraphView : System.Int32
+FS.GG.UI.Controls.KnownControl+Tags.LineChart : System.Int32
+FS.GG.UI.Controls.KnownControl+Tags.PieChart : System.Int32
+FS.GG.UI.Controls.KnownControl+Tags.ScatterPlot : System.Int32
+FS.GG.UI.Controls.KnownControl+Tags.TextBlock : System.Int32
+FS.GG.UI.Controls.KnownControl+Tags.TextBox : System.Int32
+FS.GG.UI.Controls.KnownEvent+Tags.Changed : System.Int32
+FS.GG.UI.Controls.KnownEvent+Tags.Click : System.Int32
+FS.GG.UI.Controls.KnownEvent+Tags.FocusChanged : System.Int32
+FS.GG.UI.Controls.KnownEvent+Tags.Selected : System.Int32
+FS.GG.UI.Controls.KnownEvent+Tags.SortChanged : System.Int32
+FS.GG.UI.Controls.Label.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Label.text<msg>(System.String) : Attr<msg>
+FS.GG.UI.Controls.LineChart.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.LineChart.series<msg>(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ChartSeries>) : Attr<msg>
+FS.GG.UI.Controls.Menu.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Menu.items<msg>(Microsoft.FSharp.Collections.FSharpList<System.String>) : Attr<msg>
+FS.GG.UI.Controls.Menu.onSelected<msg>(FSharpFunc<System.String, msg>) : Attr<msg>
+FS.GG.UI.Controls.NavIntent+Tags.GridMove : System.Int32
+FS.GG.UI.Controls.NavIntent+Tags.SelectionMove : System.Int32
+FS.GG.UI.Controls.NavIntent+Tags.ValueStep : System.Int32
+FS.GG.UI.Controls.NavPayload+Tags.EditedText : System.Int32
+FS.GG.UI.Controls.NavPayload+Tags.MovedCell : System.Int32
+FS.GG.UI.Controls.NavPayload+Tags.MovedSelection : System.Int32
+FS.GG.UI.Controls.NavPayload+Tags.SteppedValue : System.Int32
+FS.GG.UI.Controls.NavRange.Max : System.Double [get]
+FS.GG.UI.Controls.NavRange.Min : System.Double [get]
+FS.GG.UI.Controls.NavRange.Step : System.Double [get]
+FS.GG.UI.Controls.NavRange.new(System.Double, System.Double, System.Double)
+FS.GG.UI.Controls.Navigation2+Affix.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Navigation2+Affix.text<msg>(System.String) : Attr<msg>
+FS.GG.UI.Controls.Navigation2+Anchor.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Navigation2+Breadcrumb.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Navigation2+Pagination.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Navigation2+Pagination.onChange<msg>(FSharpFunc<System.String, msg>) : Attr<msg>
+FS.GG.UI.Controls.Navigation2+Pagination.total<msg>(System.Int32) : Attr<msg>
+FS.GG.UI.Controls.Navigation2+Segmented.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Navigation2+Segmented.onChange<msg>(FSharpFunc<System.String, msg>) : Attr<msg>
+FS.GG.UI.Controls.Navigation2+Steps.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.NumericInput.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.NumericInput.onChanged<msg>(FSharpFunc<System.Double, msg>) : Attr<msg>
+FS.GG.UI.Controls.NumericInput.value<msg>(System.Double) : Attr<msg>
+FS.GG.UI.Controls.Overlay.child<msg>(Control<msg>) : Attr<msg>
+FS.GG.UI.Controls.Overlay.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.OverlayActivationSource+Tags.KeyboardActivation : System.Int32
+FS.GG.UI.Controls.OverlayActivationSource+Tags.NestedOpen : System.Int32
+FS.GG.UI.Controls.OverlayActivationSource+Tags.PointerActivation : System.Int32
+FS.GG.UI.Controls.OverlayActivationSource+Tags.ProductOwnedOpen : System.Int32
+FS.GG.UI.Controls.OverlayEffect+Tags.AllowPassThrough : System.Int32
+FS.GG.UI.Controls.OverlayEffect+Tags.ConsumeInput : System.Int32
+FS.GG.UI.Controls.OverlayEffect+Tags.DispatchProductMessage : System.Int32
+FS.GG.UI.Controls.OverlayEffect+Tags.RecordTopmostHit : System.Int32
+FS.GG.UI.Controls.OverlayEffect+Tags.ReportOverlayDiagnostic : System.Int32
+FS.GG.UI.Controls.OverlayEffect+Tags.RequestFocus : System.Int32
+FS.GG.UI.Controls.OverlayEffect+Tags.RequestOpenStateChange : System.Int32
+FS.GG.UI.Controls.OverlayMsg+Tags.AnchorChanged : System.Int32
+FS.GG.UI.Controls.OverlayMsg+Tags.AnchorRemoved : System.Int32
+FS.GG.UI.Controls.OverlayMsg+Tags.DismissRequested : System.Int32
+FS.GG.UI.Controls.OverlayMsg+Tags.FocusTargetRemoved : System.Int32
+FS.GG.UI.Controls.OverlayMsg+Tags.KeyRouted : System.Int32
+FS.GG.UI.Controls.OverlayMsg+Tags.OpenRequested : System.Int32
+FS.GG.UI.Controls.OverlayMsg+Tags.PointerRouted : System.Int32
+FS.GG.UI.Controls.OverlayMsg+Tags.Reset : System.Int32
+FS.GG.UI.Controls.OverlayMsg+Tags.SelectionCompleted : System.Int32
+FS.GG.UI.Controls.OverlayRuntimeBridge.Effects : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.OverlayEffect> [get]
+FS.GG.UI.Controls.OverlayRuntimeBridge.Overlay : FS.GG.UI.Controls.OverlayState [get]
+FS.GG.UI.Controls.OverlayRuntimeBridge.new(FS.GG.UI.Controls.OverlayState, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.OverlayEffect>)
+FS.GG.UI.Controls.OverlayRuntimeDispatchRecord.Kind : System.String [get]
+FS.GG.UI.Controls.OverlayRuntimeDispatchRecord.Payload : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.OverlayRuntimeDispatchRecord.ProductVisible : System.Boolean [get]
+FS.GG.UI.Controls.OverlayRuntimeDispatchRecord.SurfaceId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.OverlayRuntimeDispatchRecord.new(Microsoft.FSharp.Core.FSharpOption<System.String>, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, System.Boolean)
+FS.GG.UI.Controls.OverlayState.ActiveSurface : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.OverlayState.Diagnostics : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlDiagnostic> [get]
+FS.GG.UI.Controls.OverlayState.DispatchedSelectionKeys : Microsoft.FSharp.Collections.FSharpSet<System.String> [get]
+FS.GG.UI.Controls.OverlayState.FocusedControl : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.OverlayState.OpenSurfaces : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.OverlaySurface> [get]
+FS.GG.UI.Controls.OverlayState.RecentTransitions : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.OverlayTransition> [get]
+FS.GG.UI.Controls.OverlayState.ReplayLog : FS.GG.UI.Controls.InteractionReplayLog [get]
+FS.GG.UI.Controls.OverlayState.defaultDismissalPolicy() : FS.GG.UI.Controls.DismissalPolicy
+FS.GG.UI.Controls.OverlayState.diagnostics(FS.GG.UI.Controls.OverlayState) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlDiagnostic>
+FS.GG.UI.Controls.OverlayState.init() : FS.GG.UI.Controls.OverlayState
+FS.GG.UI.Controls.OverlayState.modalDismissalPolicy() : FS.GG.UI.Controls.DismissalPolicy
+FS.GG.UI.Controls.OverlayState.new(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.OverlaySurface>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.OverlayTransition>, FS.GG.UI.Controls.InteractionReplayLog, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlDiagnostic>, Microsoft.FSharp.Collections.FSharpSet<System.String>)
+FS.GG.UI.Controls.OverlayState.replayLog(FS.GG.UI.Controls.OverlayState) : FS.GG.UI.Controls.InteractionReplayLog
+FS.GG.UI.Controls.OverlayState.supportedSurfaceKinds() : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.TransientSurfaceKind>
+FS.GG.UI.Controls.OverlayState.update(FS.GG.UI.Controls.OverlayMsg, FS.GG.UI.Controls.OverlayState) : System.Tuple<FS.GG.UI.Controls.OverlayState, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.OverlayEffect>>
+FS.GG.UI.Controls.OverlaySurface.Anchor : FS.GG.UI.Controls.AnchorEvidence [get]
+FS.GG.UI.Controls.OverlaySurface.DismissalPolicy : FS.GG.UI.Controls.DismissalPolicy [get]
+FS.GG.UI.Controls.OverlaySurface.FocusScope : FS.GG.UI.Controls.FocusScope [get]
+FS.GG.UI.Controls.OverlaySurface.Id : FS.GG.UI.Controls.OverlaySurfaceId [get]
+FS.GG.UI.Controls.OverlaySurface.Kind : FS.GG.UI.Controls.TransientSurfaceKind [get]
+FS.GG.UI.Controls.OverlaySurface.LayerPriority : System.Int32 [get]
+FS.GG.UI.Controls.OverlaySurface.Modal : System.Boolean [get]
+FS.GG.UI.Controls.OverlaySurface.Trigger : FS.GG.UI.Controls.OverlayTrigger [get]
+FS.GG.UI.Controls.OverlaySurface.new(FS.GG.UI.Controls.OverlaySurfaceId, FS.GG.UI.Controls.TransientSurfaceKind, FS.GG.UI.Controls.OverlayTrigger, System.Int32, FS.GG.UI.Controls.AnchorEvidence, FS.GG.UI.Controls.DismissalPolicy, FS.GG.UI.Controls.FocusScope, System.Boolean)
+FS.GG.UI.Controls.OverlaySurfaceId.ParentSurfaceId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.OverlaySurfaceId.SurfaceId : System.String [get]
+FS.GG.UI.Controls.OverlaySurfaceId.TriggerId : System.String [get]
+FS.GG.UI.Controls.OverlaySurfaceId.new(System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, System.String)
+FS.GG.UI.Controls.OverlayTransition.Kind : System.String [get]
+FS.GG.UI.Controls.OverlayTransition.Reason : System.String [get]
+FS.GG.UI.Controls.OverlayTransition.Stack : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Controls.OverlayTransition.SurfaceId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.OverlayTransition.new(Microsoft.FSharp.Core.FSharpOption<System.String>, System.String, System.String, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Controls.OverlayTrigger.ActivationSource : FS.GG.UI.Controls.OverlayActivationSource [get]
+FS.GG.UI.Controls.OverlayTrigger.ControlId : System.String [get]
+FS.GG.UI.Controls.OverlayTrigger.Enabled : System.Boolean [get]
+FS.GG.UI.Controls.OverlayTrigger.RecoveryTarget : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.OverlayTrigger.new(System.String, System.Boolean, FS.GG.UI.Controls.OverlayActivationSource, Microsoft.FSharp.Core.FSharpOption<System.String>)
+FS.GG.UI.Controls.Panel.children<msg>(FSharpList<Control<msg>>) : Attr<msg>
+FS.GG.UI.Controls.Panel.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.PieChart.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.PieChart.values<msg>(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ChartPoint>) : Attr<msg>
+FS.GG.UI.Controls.Pointer.init() : FS.GG.UI.Controls.PointerState
+FS.GG.UI.Controls.Pointer.origin : FS.GG.UI.Controls.PointerOrigin [get]
+FS.GG.UI.Controls.Pointer.replay(FS.GG.UI.Layout.PixelSnapPolicy, FS.GG.UI.Layout.LayoutResult, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.PointerMsg>, FS.GG.UI.Controls.PointerState) : System.Tuple<FS.GG.UI.Controls.PointerState, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.PointerInteraction>>
+FS.GG.UI.Controls.Pointer.routeOverlay(FS.GG.UI.Controls.OverlayState, System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>) : FS.GG.UI.Controls.PointerOverlayRoutingResult
+FS.GG.UI.Controls.Pointer.scrollKeyDelta(System.String, System.Boolean, System.Double) : Microsoft.FSharp.Core.FSharpOption<System.Double>
+FS.GG.UI.Controls.Pointer.toMsg(FS.GG.UI.Controls.PointerSample) : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.PointerMsg>
+FS.GG.UI.Controls.Pointer.update(FS.GG.UI.Layout.PixelSnapPolicy, FS.GG.UI.Layout.LayoutResult, FS.GG.UI.Controls.PointerMsg, FS.GG.UI.Controls.PointerState) : System.Tuple<FS.GG.UI.Controls.PointerState, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.PointerInteraction>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlRuntimeMsg>>
+FS.GG.UI.Controls.PointerButton+Tags.Middle : System.Int32
+FS.GG.UI.Controls.PointerButton+Tags.Primary : System.Int32
+FS.GG.UI.Controls.PointerButton+Tags.Secondary : System.Int32
+FS.GG.UI.Controls.PointerDiagnostic.Code : FS.GG.UI.Controls.PointerDiagnosticCode [get]
+FS.GG.UI.Controls.PointerDiagnostic.Control : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.PointerDiagnostic.Message : System.String [get]
+FS.GG.UI.Controls.PointerDiagnostic.X : System.Double [get]
+FS.GG.UI.Controls.PointerDiagnostic.Y : System.Double [get]
+FS.GG.UI.Controls.PointerDiagnostic.new(FS.GG.UI.Controls.PointerDiagnosticCode, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, System.Double, System.Double)
+FS.GG.UI.Controls.PointerDiagnosticCode+Tags.HitTestMiss : System.Int32
+FS.GG.UI.Controls.PointerDiagnosticCode+Tags.StaleTarget : System.Int32
+FS.GG.UI.Controls.PointerInteraction+Tags.Click : System.Int32
+FS.GG.UI.Controls.PointerInteraction+Tags.Diagnostic : System.Int32
+FS.GG.UI.Controls.PointerInteraction+Tags.DragBegin : System.Int32
+FS.GG.UI.Controls.PointerInteraction+Tags.DragCancelled : System.Int32
+FS.GG.UI.Controls.PointerInteraction+Tags.DragEnd : System.Int32
+FS.GG.UI.Controls.PointerInteraction+Tags.DragMove : System.Int32
+FS.GG.UI.Controls.PointerInteraction+Tags.FocusMovedByPointer : System.Int32
+FS.GG.UI.Controls.PointerInteraction+Tags.HoverEnter : System.Int32
+FS.GG.UI.Controls.PointerInteraction+Tags.HoverLeave : System.Int32
+FS.GG.UI.Controls.PointerInteraction+Tags.PressedDown : System.Int32
+FS.GG.UI.Controls.PointerInteraction+Tags.ReleasedUp : System.Int32
+FS.GG.UI.Controls.PointerInteraction+Tags.Scroll : System.Int32
+FS.GG.UI.Controls.PointerMsg+Tags.Down : System.Int32
+FS.GG.UI.Controls.PointerMsg+Tags.FocusLost : System.Int32
+FS.GG.UI.Controls.PointerMsg+Tags.Move : System.Int32
+FS.GG.UI.Controls.PointerMsg+Tags.Up : System.Int32
+FS.GG.UI.Controls.PointerMsg+Tags.WheelMsg : System.Int32
+FS.GG.UI.Controls.PointerMsg+Tags.WindowExited : System.Int32
+FS.GG.UI.Controls.PointerOverlayRoutingResult.Decision : FS.GG.UI.Controls.TopmostHitDecision [get]
+FS.GG.UI.Controls.PointerOverlayRoutingResult.Diagnostics : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlDiagnostic> [get]
+FS.GG.UI.Controls.PointerOverlayRoutingResult.Effects : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.OverlayEffect> [get]
+FS.GG.UI.Controls.PointerOverlayRoutingResult.PassThrough : System.Boolean [get]
+FS.GG.UI.Controls.PointerOverlayRoutingResult.State : FS.GG.UI.Controls.OverlayState [get]
+FS.GG.UI.Controls.PointerOverlayRoutingResult.new(FS.GG.UI.Controls.OverlayState, FS.GG.UI.Controls.TopmostHitDecision, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.OverlayEffect>, System.Boolean, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlDiagnostic>)
+FS.GG.UI.Controls.PointerPhase+Tags.Exited : System.Int32
+FS.GG.UI.Controls.PointerPhase+Tags.Moved : System.Int32
+FS.GG.UI.Controls.PointerPhase+Tags.Pressed : System.Int32
+FS.GG.UI.Controls.PointerPhase+Tags.Released : System.Int32
+FS.GG.UI.Controls.PointerPhase+Tags.Wheel : System.Int32
+FS.GG.UI.Controls.PointerSample.Button : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.PointerButton> [get]
+FS.GG.UI.Controls.PointerSample.DeltaX : System.Double [get]
+FS.GG.UI.Controls.PointerSample.DeltaY : System.Double [get]
+FS.GG.UI.Controls.PointerSample.Phase : FS.GG.UI.Controls.PointerPhase [get]
+FS.GG.UI.Controls.PointerSample.X : System.Double [get]
+FS.GG.UI.Controls.PointerSample.Y : System.Double [get]
+FS.GG.UI.Controls.PointerSample.new(FS.GG.UI.Controls.PointerPhase, System.Double, System.Double, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.PointerButton>, System.Double, System.Double)
+FS.GG.UI.Controls.PointerState.DragThreshold : System.Double [get]
+FS.GG.UI.Controls.PointerState.Hover : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.PointerState.LastX : System.Double [get]
+FS.GG.UI.Controls.PointerState.LastY : System.Double [get]
+FS.GG.UI.Controls.PointerState.Presses : Microsoft.FSharp.Collections.FSharpMap<FS.GG.UI.Controls.PointerButton, FS.GG.UI.Controls.PressCandidate> [get]
+FS.GG.UI.Controls.PointerState.new(Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpMap<FS.GG.UI.Controls.PointerButton, FS.GG.UI.Controls.PressCandidate>, System.Double, System.Double, System.Double)
+FS.GG.UI.Controls.PressCandidate.Control : System.String [get]
+FS.GG.UI.Controls.PressCandidate.Dragging : System.Boolean [get]
+FS.GG.UI.Controls.PressCandidate.StartX : System.Double [get]
+FS.GG.UI.Controls.PressCandidate.StartY : System.Double [get]
+FS.GG.UI.Controls.PressCandidate.new(System.String, System.Double, System.Double, System.Boolean)
+FS.GG.UI.Controls.ProductDispatch.DispatchKey : System.String [get]
+FS.GG.UI.Controls.ProductDispatch.Payload : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.ProductDispatch.SurfaceId : System.String [get]
+FS.GG.UI.Controls.ProductDispatch.new(System.String, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>)
+FS.GG.UI.Controls.ProgressBar.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.ProgressBar.value<msg>(System.Double) : Attr<msg>
+FS.GG.UI.Controls.RadarChart.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.RadarChart.values<msg>(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ChartPoint>) : Attr<msg>
+FS.GG.UI.Controls.RadioGroup.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.RadioGroup.items<msg>(Microsoft.FSharp.Collections.FSharpList<System.String>) : Attr<msg>
+FS.GG.UI.Controls.RadioGroup.onChanged<msg>(FSharpFunc<System.String, msg>) : Attr<msg>
+FS.GG.UI.Controls.RadioGroup.selected<msg>(System.String) : Attr<msg>
+FS.GG.UI.Controls.RetainedControlInspectionRequest`1.OutputSize : FS.GG.UI.Scene.Size [get]
+FS.GG.UI.Controls.RetainedControlInspectionRequest`1.Presentation : System.String [get]
+FS.GG.UI.Controls.RetainedControlInspectionRequest`1.RelatedVisualEvidence : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Controls.RetainedControlInspectionRequest`1.RunId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.RetainedControlInspectionRequest`1.Scope : FS.GG.UI.Scene.VisualInspectionScope [get]
+FS.GG.UI.Controls.RetainedControlInspectionRequest`1.Theme : FS.GG.UI.DesignSystem.Theme [get]
+FS.GG.UI.Controls.RetainedControlInspectionRequest`1.Transition : RetainedControlTransition<msg> [get]
+FS.GG.UI.Controls.RetainedControlInspectionRequest`1.new(FS.GG.UI.Scene.VisualInspectionScope, FS.GG.UI.DesignSystem.Theme, FS.GG.UI.Scene.Size, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, RetainedControlTransition<msg>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Controls.RetainedControlTransition`1.CurrentControl : Control<msg> [get]
+FS.GG.UI.Controls.RetainedControlTransition`1.ExpectedAffectedRegionIds : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Controls.RetainedControlTransition`1.IntentionalExceptions : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.IntentionalDamageException> [get]
+FS.GG.UI.Controls.RetainedControlTransition`1.InteractionId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.RetainedControlTransition`1.MaximumDirtyPercentage : Microsoft.FSharp.Core.FSharpOption<System.Double> [get]
+FS.GG.UI.Controls.RetainedControlTransition`1.PriorControl : FSharpOption<Control<msg>> [get]
+FS.GG.UI.Controls.RetainedControlTransition`1.TransitionId : System.String [get]
+FS.GG.UI.Controls.RetainedControlTransition`1.new(System.String, FSharpOption<Control<msg>>, Control<msg>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Core.FSharpOption<System.Double>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.IntentionalDamageException>)
+FS.GG.UI.Controls.RichText.block(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.RichTextRun>) : FS.GG.UI.Controls.RichTextBlock
+FS.GG.UI.Controls.RichText.create<msg>(FS.GG.UI.Controls.RichTextBlock, FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.RichText.defaultStyle(FS.GG.UI.DesignSystem.Theme) : FS.GG.UI.Controls.RichTextStyle
+FS.GG.UI.Controls.RichText.measure(FS.GG.UI.Controls.RichTextBlock) : FS.GG.UI.Controls.RichTextMeasurement
+FS.GG.UI.Controls.RichText.run(System.String, FS.GG.UI.Controls.RichTextStyle) : FS.GG.UI.Controls.RichTextRun
+FS.GG.UI.Controls.RichTextBlock.Accessibility : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.AccessibilityMetadata> [get]
+FS.GG.UI.Controls.RichTextBlock.Clip : System.Boolean [get]
+FS.GG.UI.Controls.RichTextBlock.Effects : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Controls.RichTextBlock.MaxWidth : Microsoft.FSharp.Core.FSharpOption<System.Double> [get]
+FS.GG.UI.Controls.RichTextBlock.Runs : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.RichTextRun> [get]
+FS.GG.UI.Controls.RichTextBlock.new(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.RichTextRun>, Microsoft.FSharp.Core.FSharpOption<System.Double>, System.Boolean, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.AccessibilityMetadata>)
+FS.GG.UI.Controls.RichTextMeasurement.Diagnostics : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlDiagnostic> [get]
+FS.GG.UI.Controls.RichTextMeasurement.Height : System.Double [get]
+FS.GG.UI.Controls.RichTextMeasurement.LineCount : System.Int32 [get]
+FS.GG.UI.Controls.RichTextMeasurement.Width : System.Double [get]
+FS.GG.UI.Controls.RichTextMeasurement.new(System.Double, System.Double, System.Int32, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlDiagnostic>)
+FS.GG.UI.Controls.RichTextRun.Diagnostics : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlDiagnostic> [get]
+FS.GG.UI.Controls.RichTextRun.Style : FS.GG.UI.Controls.RichTextStyle [get]
+FS.GG.UI.Controls.RichTextRun.Text : System.String [get]
+FS.GG.UI.Controls.RichTextRun.new(System.String, FS.GG.UI.Controls.RichTextStyle, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlDiagnostic>)
+FS.GG.UI.Controls.RichTextStyle.Background : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Color> [get]
+FS.GG.UI.Controls.RichTextStyle.FontFamily : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.RichTextStyle.FontSize : System.Double [get]
+FS.GG.UI.Controls.RichTextStyle.Foreground : FS.GG.UI.Scene.Color [get]
+FS.GG.UI.Controls.RichTextStyle.Italic : System.Boolean [get]
+FS.GG.UI.Controls.RichTextStyle.Underline : System.Boolean [get]
+FS.GG.UI.Controls.RichTextStyle.Weight : FS.GG.UI.Controls.RichTextWeight [get]
+FS.GG.UI.Controls.RichTextStyle.new(Microsoft.FSharp.Core.FSharpOption<System.String>, System.Double, FS.GG.UI.Controls.RichTextWeight, FS.GG.UI.Scene.Color, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Color>, System.Boolean, System.Boolean)
+FS.GG.UI.Controls.RichTextWeight+Tags.Bold : System.Int32
+FS.GG.UI.Controls.RichTextWeight+Tags.Medium : System.Int32
+FS.GG.UI.Controls.RichTextWeight+Tags.Regular : System.Int32
+FS.GG.UI.Controls.RoseChart.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.RoseChart.values<msg>(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ChartPoint>) : Attr<msg>
+FS.GG.UI.Controls.SankeyDiagram.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.SankeyDiagram.nodes<msg>(Microsoft.FSharp.Collections.FSharpList<System.String>) : Attr<msg>
+FS.GG.UI.Controls.ScatterPlot.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.ScatterPlot.series<msg>(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ChartSeries>) : Attr<msg>
+FS.GG.UI.Controls.ScrollExtentSource+Tags.DiagnosticFallbackExtent : System.Int32
+FS.GG.UI.Controls.ScrollExtentSource+Tags.EmptyContentExtent : System.Int32
+FS.GG.UI.Controls.ScrollExtentSource+Tags.IntrinsicContentExtent : System.Int32
+FS.GG.UI.Controls.ScrollExtentSource+Tags.MeasuredFallbackExtent : System.Int32
+FS.GG.UI.Controls.ScrollState.ContentHeight : System.Double [get]
+FS.GG.UI.Controls.ScrollState.Offset : System.Double [get]
+FS.GG.UI.Controls.ScrollState.ViewportHeight : System.Double [get]
+FS.GG.UI.Controls.ScrollState.applyScrollDelta(System.Double, FS.GG.UI.Controls.ScrollState) : FS.GG.UI.Controls.ScrollState
+FS.GG.UI.Controls.ScrollState.deadZone : System.Double [get]
+FS.GG.UI.Controls.ScrollState.empty : FS.GG.UI.Controls.ScrollState [get]
+FS.GG.UI.Controls.ScrollState.maxOffset(FS.GG.UI.Controls.ScrollState) : System.Double
+FS.GG.UI.Controls.ScrollState.minThumb : System.Double [get]
+FS.GG.UI.Controls.ScrollState.new(System.Double, System.Double, System.Double)
+FS.GG.UI.Controls.ScrollState.scrollable(FS.GG.UI.Controls.ScrollState) : System.Boolean
+FS.GG.UI.Controls.ScrollState.thumbHeight(FS.GG.UI.Controls.ScrollState) : System.Double
+FS.GG.UI.Controls.ScrollState.thumbPosition(System.Double, FS.GG.UI.Controls.ScrollState) : System.Double
+FS.GG.UI.Controls.ScrollState.withExtent(System.Double, System.Double, FS.GG.UI.Controls.ScrollState) : FS.GG.UI.Controls.ScrollState
+FS.GG.UI.Controls.ScrollViewport.ContentHeight : System.Double [get]
+FS.GG.UI.Controls.ScrollViewport.ContentWidth : System.Double [get]
+FS.GG.UI.Controls.ScrollViewport.Diagnostics : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlDiagnostic> [get]
+FS.GG.UI.Controls.ScrollViewport.ExtentSource : FS.GG.UI.Controls.ScrollExtentSource [get]
+FS.GG.UI.Controls.ScrollViewport.MaxHorizontalOffset : System.Double [get]
+FS.GG.UI.Controls.ScrollViewport.MaxVerticalOffset : System.Double [get]
+FS.GG.UI.Controls.ScrollViewport.Offset : System.Double [get]
+FS.GG.UI.Controls.ScrollViewport.OffsetX : System.Double [get]
+FS.GG.UI.Controls.ScrollViewport.OffsetY : System.Double [get]
+FS.GG.UI.Controls.ScrollViewport.Viewport : FS.GG.UI.Scene.Rect [get]
+FS.GG.UI.Controls.ScrollViewport.new(FS.GG.UI.Scene.Rect, System.Double, System.Double, System.Double, System.Double, System.Double, System.Double, System.Double, FS.GG.UI.Controls.ScrollExtentSource, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlDiagnostic>)
+FS.GG.UI.Controls.SelectionCompletionPolicy+Tags.CloseOnSelection : System.Int32
+FS.GG.UI.Controls.SelectionCompletionPolicy+Tags.KeepOpenOnSelection : System.Int32
+FS.GG.UI.Controls.Separator.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Slider.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Slider.onChanged<msg>(FSharpFunc<System.Double, msg>) : Attr<msg>
+FS.GG.UI.Controls.Slider.value<msg>(System.Double) : Attr<msg>
+FS.GG.UI.Controls.Spinner.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Stack.children<msg>(FSharpList<Control<msg>>) : Attr<msg>
+FS.GG.UI.Controls.Stack.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Stack.orientation<msg>(System.String) : Attr<msg>
+FS.GG.UI.Controls.StandardAttributeName+Tags.Children : System.Int32
+FS.GG.UI.Controls.StandardAttributeName+Tags.Columns : System.Int32
+FS.GG.UI.Controls.StandardAttributeName+Tags.Custom : System.Int32
+FS.GG.UI.Controls.StandardAttributeName+Tags.FocusedCell : System.Int32
+FS.GG.UI.Controls.StandardAttributeName+Tags.Items : System.Int32
+FS.GG.UI.Controls.StandardAttributeName+Tags.Nodes : System.Int32
+FS.GG.UI.Controls.StandardAttributeName+Tags.Rows : System.Int32
+FS.GG.UI.Controls.StandardAttributeName+Tags.SelectedRows : System.Int32
+FS.GG.UI.Controls.StandardAttributeName+Tags.Series : System.Int32
+FS.GG.UI.Controls.StandardAttributeName+Tags.Text : System.Int32
+FS.GG.UI.Controls.StandardAttributeName+Tags.Value : System.Int32
+FS.GG.UI.Controls.StandardAttributeName+Tags.Values : System.Int32
+FS.GG.UI.Controls.StandardAttributeName+Tags.VisibleRange : System.Int32
+FS.GG.UI.Controls.StandardAttributeValue`1+Tags.StandardBool : System.Int32
+FS.GG.UI.Controls.StandardAttributeValue`1+Tags.StandardEvent : System.Int32
+FS.GG.UI.Controls.StandardAttributeValue`1+Tags.StandardFloat : System.Int32
+FS.GG.UI.Controls.StandardAttributeValue`1+Tags.StandardMessage : System.Int32
+FS.GG.UI.Controls.StandardAttributeValue`1+Tags.StandardStringList : System.Int32
+FS.GG.UI.Controls.StandardAttributeValue`1+Tags.StandardText : System.Int32
+FS.GG.UI.Controls.StandardAttributeValue`1+Tags.StandardUntyped : System.Int32
+FS.GG.UI.Controls.StandardControlKind+Tags.BarChart : System.Int32
+FS.GG.UI.Controls.StandardControlKind+Tags.Button : System.Int32
+FS.GG.UI.Controls.StandardControlKind+Tags.Custom : System.Int32
+FS.GG.UI.Controls.StandardControlKind+Tags.DataGrid : System.Int32
+FS.GG.UI.Controls.StandardControlKind+Tags.GraphView : System.Int32
+FS.GG.UI.Controls.StandardControlKind+Tags.LineChart : System.Int32
+FS.GG.UI.Controls.StandardControlKind+Tags.PieChart : System.Int32
+FS.GG.UI.Controls.StandardControlKind+Tags.ScatterPlot : System.Int32
+FS.GG.UI.Controls.StandardControlKind+Tags.TextBlock : System.Int32
+FS.GG.UI.Controls.StandardControlKind+Tags.TextBox : System.Int32
+FS.GG.UI.Controls.StandardEventKind+Tags.Changed : System.Int32
+FS.GG.UI.Controls.StandardEventKind+Tags.Click : System.Int32
+FS.GG.UI.Controls.StandardEventKind+Tags.Custom : System.Int32
+FS.GG.UI.Controls.StandardEventKind+Tags.FocusChanged : System.Int32
+FS.GG.UI.Controls.StandardEventKind+Tags.Selected : System.Int32
+FS.GG.UI.Controls.StandardEventKind+Tags.SortChanged : System.Int32
+FS.GG.UI.Controls.Sunburst.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Sunburst.values<msg>(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ChartPoint>) : Attr<msg>
+FS.GG.UI.Controls.Switch.checked'<msg>(System.Boolean) : Attr<msg>
+FS.GG.UI.Controls.Switch.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Switch.onChanged<msg>(FSharpFunc<System.Boolean, msg>) : Attr<msg>
+FS.GG.UI.Controls.TabOrder.Stops : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.FocusStop> [get]
+FS.GG.UI.Controls.TabOrder.new(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.FocusStop>)
+FS.GG.UI.Controls.Tabs.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Tabs.items<msg>(Microsoft.FSharp.Collections.FSharpList<System.String>) : Attr<msg>
+FS.GG.UI.Controls.Tabs.onChanged<msg>(FSharpFunc<System.String, msg>) : Attr<msg>
+FS.GG.UI.Controls.Tabs.selected<msg>(System.String) : Attr<msg>
+FS.GG.UI.Controls.TextArea.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.TextArea.onChanged<msg>(FSharpFunc<System.String, msg>) : Attr<msg>
+FS.GG.UI.Controls.TextArea.value<msg>(System.String) : Attr<msg>
+FS.GG.UI.Controls.TextBlock.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.TextBlock.text<msg>(System.String) : Attr<msg>
+FS.GG.UI.Controls.TextBox.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.TextBox.onChanged<msg>(FSharpFunc<System.String, msg>) : Attr<msg>
+FS.GG.UI.Controls.TextBox.readOnly<msg>(System.Boolean) : Attr<msg>
+FS.GG.UI.Controls.TextBox.validation<msg>(FS.GG.UI.DesignSystem.ValidationState) : Attr<msg>
+FS.GG.UI.Controls.TextBox.value<msg>(System.String) : Attr<msg>
+FS.GG.UI.Controls.TextInput.diagnostics(FS.GG.UI.Controls.TextInputModel) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlDiagnostic>
+FS.GG.UI.Controls.TextInput.init(System.String, FS.GG.UI.Controls.TextInputMode, System.String) : System.Tuple<FS.GG.UI.Controls.TextInputModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.TextInputEffect>>
+FS.GG.UI.Controls.TextInput.interpretEffect(FS.GG.UI.Controls.TextInputEffect) : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.TextInputMsg>
+FS.GG.UI.Controls.TextInput.update(FS.GG.UI.Controls.TextInputMsg, FS.GG.UI.Controls.TextInputModel) : System.Tuple<FS.GG.UI.Controls.TextInputModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.TextInputEffect>>
+FS.GG.UI.Controls.TextInputEffect+Tags.CommitText : System.Int32
+FS.GG.UI.Controls.TextInputEffect+Tags.ReportTextInputDiagnostic : System.Int32
+FS.GG.UI.Controls.TextInputEffect+Tags.RequestClipboardText : System.Int32
+FS.GG.UI.Controls.TextInputMode+Tags.MultiLine : System.Int32
+FS.GG.UI.Controls.TextInputMode+Tags.SingleLine : System.Int32
+FS.GG.UI.Controls.TextInputModel.CaretIndex : System.Int32 [get]
+FS.GG.UI.Controls.TextInputModel.CommittedText : System.String [get]
+FS.GG.UI.Controls.TextInputModel.Composition : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.TextInputModel.ControlId : System.String [get]
+FS.GG.UI.Controls.TextInputModel.DraftText : System.String [get]
+FS.GG.UI.Controls.TextInputModel.Focused : System.Boolean [get]
+FS.GG.UI.Controls.TextInputModel.Mode : FS.GG.UI.Controls.TextInputMode [get]
+FS.GG.UI.Controls.TextInputModel.Selection : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.TextSelection> [get]
+FS.GG.UI.Controls.TextInputModel.Validation : FS.GG.UI.DesignSystem.ValidationState [get]
+FS.GG.UI.Controls.TextInputModel.new(System.String, FS.GG.UI.Controls.TextInputMode, System.String, System.String, System.Int32, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.TextSelection>, Microsoft.FSharp.Core.FSharpOption<System.String>, FS.GG.UI.DesignSystem.ValidationState, System.Boolean)
+FS.GG.UI.Controls.TextInputMsg+Tags.ApplyValidation : System.Int32
+FS.GG.UI.Controls.TextInputMsg+Tags.Blur : System.Int32
+FS.GG.UI.Controls.TextInputMsg+Tags.Cancel : System.Int32
+FS.GG.UI.Controls.TextInputMsg+Tags.ClipboardTextReceived : System.Int32
+FS.GG.UI.Controls.TextInputMsg+Tags.Commit : System.Int32
+FS.GG.UI.Controls.TextInputMsg+Tags.CompositionCommitted : System.Int32
+FS.GG.UI.Controls.TextInputMsg+Tags.CompositionStarted : System.Int32
+FS.GG.UI.Controls.TextInputMsg+Tags.Focus : System.Int32
+FS.GG.UI.Controls.TextInputMsg+Tags.InsertText : System.Int32
+FS.GG.UI.Controls.TextInputMsg+Tags.MoveCaret : System.Int32
+FS.GG.UI.Controls.TextInputMsg+Tags.RequestClipboardPaste : System.Int32
+FS.GG.UI.Controls.TextInputMsg+Tags.SelectRange : System.Int32
+FS.GG.UI.Controls.TextSelection.End : System.Int32 [get]
+FS.GG.UI.Controls.TextSelection.Start : System.Int32 [get]
+FS.GG.UI.Controls.TextSelection.new(System.Int32, System.Int32)
+FS.GG.UI.Controls.Toast.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Toast.text<msg>(System.String) : Attr<msg>
+FS.GG.UI.Controls.Toolbar.children<msg>(FSharpList<Control<msg>>) : Attr<msg>
+FS.GG.UI.Controls.Toolbar.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Tooltip.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Tooltip.text<msg>(System.String) : Attr<msg>
+FS.GG.UI.Controls.TopmostHitDecision.BlockedByModal : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.TopmostHitDecision.CandidateLayers : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Controls.TopmostHitDecision.ChosenTarget : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.TopmostHitDecision.Input : System.String [get]
+FS.GG.UI.Controls.TopmostHitDecision.OutsideOfSurface : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.TopmostHitDecision.new(System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>)
+FS.GG.UI.Controls.TransientSurfaceKind+Tags.AutoCompleteSuggestions : System.Int32
+FS.GG.UI.Controls.TransientSurfaceKind+Tags.ColorPickerPalette : System.Int32
+FS.GG.UI.Controls.TransientSurfaceKind+Tags.ComboDropdown : System.Int32
+FS.GG.UI.Controls.TransientSurfaceKind+Tags.ContextMenu : System.Int32
+FS.GG.UI.Controls.TransientSurfaceKind+Tags.DatePickerCalendar : System.Int32
+FS.GG.UI.Controls.TransientSurfaceKind+Tags.DialogModal : System.Int32
+FS.GG.UI.Controls.TransientSurfaceKind+Tags.Menu : System.Int32
+FS.GG.UI.Controls.TransientSurfaceKind+Tags.SplitButtonMenu : System.Int32
+FS.GG.UI.Controls.TransientWidget.activationRequest(FS.GG.UI.Controls.OverlayActivationSource, System.Boolean, FS.GG.UI.Controls.TransientWidgetMetadata) : FS.GG.UI.Controls.WidgetActivationRequest
+FS.GG.UI.Controls.TransientWidget.attribute<msg>(FS.GG.UI.Controls.TransientWidgetMetadata) : Attr<msg>
+FS.GG.UI.Controls.TransientWidget.collect<msg>(Control<msg>) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.TransientWidgetMetadata>
+FS.GG.UI.Controls.TransientWidget.toSurface(FS.GG.UI.Controls.AnchorEvidence, FS.GG.UI.Controls.TransientWidgetMetadata) : FS.GG.UI.Controls.OverlaySurface
+FS.GG.UI.Controls.TransientWidget.validate(Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.AnchorEvidence>, FS.GG.UI.Controls.TransientWidgetMetadata) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlDiagnostic>
+FS.GG.UI.Controls.TransientWidgetMetadata.AnchorId : System.String [get]
+FS.GG.UI.Controls.TransientWidgetMetadata.DismissalPolicy : FS.GG.UI.Controls.DismissalPolicy [get]
+FS.GG.UI.Controls.TransientWidgetMetadata.FocusScope : FS.GG.UI.Controls.FocusScope [get]
+FS.GG.UI.Controls.TransientWidgetMetadata.LayerPriority : System.Int32 [get]
+FS.GG.UI.Controls.TransientWidgetMetadata.Modal : System.Boolean [get]
+FS.GG.UI.Controls.TransientWidgetMetadata.ParentSurfaceId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.TransientWidgetMetadata.SelectionDispatchKey : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.TransientWidgetMetadata.SurfaceId : System.String [get]
+FS.GG.UI.Controls.TransientWidgetMetadata.SurfaceKind : FS.GG.UI.Controls.TransientSurfaceKind [get]
+FS.GG.UI.Controls.TransientWidgetMetadata.TriggerEnabled : System.Boolean [get]
+FS.GG.UI.Controls.TransientWidgetMetadata.TriggerId : System.String [get]
+FS.GG.UI.Controls.TransientWidgetMetadata.VisibilityState : System.Boolean [get]
+FS.GG.UI.Controls.TransientWidgetMetadata.new(FS.GG.UI.Controls.TransientSurfaceKind, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, System.String, System.String, System.Int32, FS.GG.UI.Controls.DismissalPolicy, FS.GG.UI.Controls.FocusScope, System.Boolean, Microsoft.FSharp.Core.FSharpOption<System.String>, System.Boolean, System.Boolean)
+FS.GG.UI.Controls.TrapMode+Tags.LocalScope : System.Int32
+FS.GG.UI.Controls.TrapMode+Tags.ModalTrap : System.Int32
+FS.GG.UI.Controls.TrapMode+Tags.NoFocusCapture : System.Int32
+FS.GG.UI.Controls.Treemap.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.Treemap.values<msg>(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ChartPoint>) : Attr<msg>
+FS.GG.UI.Controls.Typed.Badge.defaults<msg>() : BadgeProps<msg>
+FS.GG.UI.Controls.Typed.Badge.view<msg>(BadgeProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.BadgeProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.BadgeProps`1.Text : System.String [get]
+FS.GG.UI.Controls.Typed.BadgeProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, System.String)
+FS.GG.UI.Controls.Typed.BarChart.defaults<msg>() : BarChartProps<msg>
+FS.GG.UI.Controls.Typed.BarChart.view<msg>(BarChartProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.BarChartProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.BarChartProps`1.OnSelected : FSharpOption<FSharpFunc<System.String, msg>> [get]
+FS.GG.UI.Controls.Typed.BarChartProps`1.Series : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ChartSeries> [get]
+FS.GG.UI.Controls.Typed.BarChartProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ChartSeries>, FSharpOption<FSharpFunc<System.String, msg>>)
+FS.GG.UI.Controls.Typed.Border.defaults<msg>(Widget<msg>) : BorderProps<msg>
+FS.GG.UI.Controls.Typed.Border.view<msg>(BorderProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.BorderProps`1.Child : Widget<msg> [get]
+FS.GG.UI.Controls.Typed.BorderProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.BorderProps`1.Padding : System.Double [get]
+FS.GG.UI.Controls.Typed.BorderProps`1.Thickness : System.Double [get]
+FS.GG.UI.Controls.Typed.BorderProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, System.Double, System.Double, Widget<msg>)
+FS.GG.UI.Controls.Typed.Button.defaults<msg>() : ButtonProps<msg>
+FS.GG.UI.Controls.Typed.Button.view<msg>(ButtonProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.ButtonIntent+Tags.Danger : System.Int32
+FS.GG.UI.Controls.Typed.ButtonIntent+Tags.Ghost : System.Int32
+FS.GG.UI.Controls.Typed.ButtonIntent+Tags.Primary : System.Int32
+FS.GG.UI.Controls.Typed.ButtonIntent+Tags.Secondary : System.Int32
+FS.GG.UI.Controls.Typed.ButtonProps`1.Classes : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.DesignSystem.StyleClass> [get]
+FS.GG.UI.Controls.Typed.ButtonProps`1.Enabled : System.Boolean [get]
+FS.GG.UI.Controls.Typed.ButtonProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.ButtonProps`1.Intent : FS.GG.UI.Controls.Typed.ButtonIntent [get]
+FS.GG.UI.Controls.Typed.ButtonProps`1.Leading : FSharpOption<Widget<msg>> [get]
+FS.GG.UI.Controls.Typed.ButtonProps`1.OnClick : FSharpOption<msg> [get]
+FS.GG.UI.Controls.Typed.ButtonProps`1.Text : System.String [get]
+FS.GG.UI.Controls.Typed.ButtonProps`1.Trailing : FSharpOption<Widget<msg>> [get]
+FS.GG.UI.Controls.Typed.ButtonProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, System.String, System.Boolean, FS.GG.UI.Controls.Typed.ButtonIntent, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.DesignSystem.StyleClass>, FSharpOption<Widget<msg>>, FSharpOption<Widget<msg>>, FSharpOption<msg>)
+FS.GG.UI.Controls.Typed.CheckBox.defaults<msg>() : CheckBoxProps<msg>
+FS.GG.UI.Controls.Typed.CheckBox.view<msg>(CheckBoxProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.CheckBoxProps`1.Checked : System.Boolean [get]
+FS.GG.UI.Controls.Typed.CheckBoxProps`1.Classes : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.DesignSystem.StyleClass> [get]
+FS.GG.UI.Controls.Typed.CheckBoxProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.CheckBoxProps`1.OnChanged : FSharpOption<FSharpFunc<System.Boolean, msg>> [get]
+FS.GG.UI.Controls.Typed.CheckBoxProps`1.Text : System.String [get]
+FS.GG.UI.Controls.Typed.CheckBoxProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, System.String, System.Boolean, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.DesignSystem.StyleClass>, FSharpOption<FSharpFunc<System.Boolean, msg>>)
+FS.GG.UI.Controls.Typed.ColorPicker.defaults<msg>() : ColorPickerProps<msg>
+FS.GG.UI.Controls.Typed.ColorPicker.view<msg>(ColorPickerProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.ColorPickerProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.ColorPickerProps`1.OnSelected : FSharpOption<FSharpFunc<FS.GG.UI.Controls.Typed.ColorSwatch, msg>> [get]
+FS.GG.UI.Controls.Typed.ColorPickerProps`1.Selected : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.Typed.ColorSwatch> [get]
+FS.GG.UI.Controls.Typed.ColorPickerProps`1.Swatches : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.Typed.ColorSwatch> [get]
+FS.GG.UI.Controls.Typed.ColorPickerProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.Typed.ColorSwatch>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.Typed.ColorSwatch>, FSharpOption<FSharpFunc<FS.GG.UI.Controls.Typed.ColorSwatch, msg>>)
+FS.GG.UI.Controls.Typed.ColorSwatch.Color : FS.GG.UI.Scene.Color [get]
+FS.GG.UI.Controls.Typed.ColorSwatch.Name : System.String [get]
+FS.GG.UI.Controls.Typed.ColorSwatch.new(System.String, FS.GG.UI.Scene.Color)
+FS.GG.UI.Controls.Typed.ComboBox.defaults<msg>(System.String) : ComboBoxProps<msg>
+FS.GG.UI.Controls.Typed.ComboBox.init<msg>(ComboBoxProps<msg>) : System.Tuple<FS.GG.UI.Controls.CollectionModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.CollectionEffect>>
+FS.GG.UI.Controls.Typed.ComboBox.update(FS.GG.UI.Controls.CollectionMsg, FS.GG.UI.Controls.CollectionModel) : System.Tuple<FS.GG.UI.Controls.CollectionModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.CollectionEffect>>
+FS.GG.UI.Controls.Typed.ComboBox.view<msg>(ComboBoxProps<msg>, FS.GG.UI.Controls.CollectionModel) : Widget<msg>
+FS.GG.UI.Controls.Typed.ComboBoxProps`1.Id : System.String [get]
+FS.GG.UI.Controls.Typed.ComboBoxProps`1.Items : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Controls.Typed.ComboBoxProps`1.OnChanged : FSharpOption<FSharpFunc<System.String, msg>> [get]
+FS.GG.UI.Controls.Typed.ComboBoxProps`1.new(System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, FSharpOption<FSharpFunc<System.String, msg>>)
+FS.GG.UI.Controls.Typed.ContextMenu.defaults<msg>() : ContextMenuProps<msg>
+FS.GG.UI.Controls.Typed.ContextMenu.view<msg>(ContextMenuProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.ContextMenuProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.ContextMenuProps`1.Items : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Controls.Typed.ContextMenuProps`1.OnSelected : FSharpOption<FSharpFunc<System.String, msg>> [get]
+FS.GG.UI.Controls.Typed.ContextMenuProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, FSharpOption<FSharpFunc<System.String, msg>>)
+FS.GG.UI.Controls.Typed.CustomControl.ofControl<msg>(Control<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.DataGrid.defaults<msg>(System.String) : DataGridProps<msg>
+FS.GG.UI.Controls.Typed.DataGrid.init<msg>(DataGridProps<msg>) : System.Tuple<FS.GG.UI.Controls.DataGridModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.DataGridEffect>>
+FS.GG.UI.Controls.Typed.DataGrid.update(FS.GG.UI.Controls.DataGridMsg, FS.GG.UI.Controls.DataGridModel) : System.Tuple<FS.GG.UI.Controls.DataGridModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.DataGridEffect>>
+FS.GG.UI.Controls.Typed.DataGrid.view<msg>(DataGridProps<msg>, FS.GG.UI.Controls.DataGridModel) : Widget<msg>
+FS.GG.UI.Controls.Typed.DataGridProps`1.Columns : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.DataGridColumn> [get]
+FS.GG.UI.Controls.Typed.DataGridProps`1.Id : System.String [get]
+FS.GG.UI.Controls.Typed.DataGridProps`1.OnSelectionChanged : FSharpOption<FSharpFunc<Microsoft.FSharp.Collections.FSharpList<System.String>, msg>> [get]
+FS.GG.UI.Controls.Typed.DataGridProps`1.RowHeight : System.Double [get]
+FS.GG.UI.Controls.Typed.DataGridProps`1.Rows : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.DataGridRow> [get]
+FS.GG.UI.Controls.Typed.DataGridProps`1.SelectedRows : Microsoft.FSharp.Collections.FSharpSet<System.String> [get]
+FS.GG.UI.Controls.Typed.DataGridProps`1.ViewportHeight : System.Double [get]
+FS.GG.UI.Controls.Typed.DataGridProps`1.new(System.String, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.DataGridColumn>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.DataGridRow>, System.Double, System.Double, Microsoft.FSharp.Collections.FSharpSet<System.String>, FSharpOption<FSharpFunc<Microsoft.FSharp.Collections.FSharpList<System.String>, msg>>)
+FS.GG.UI.Controls.Typed.DatePicker.defaults<msg>() : DatePickerProps<msg>
+FS.GG.UI.Controls.Typed.DatePicker.view<msg>(DatePickerProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.DatePickerProps`1.Enabled : System.Boolean [get]
+FS.GG.UI.Controls.Typed.DatePickerProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.DatePickerProps`1.IsOpen : System.Boolean [get]
+FS.GG.UI.Controls.Typed.DatePickerProps`1.OnChange : FSharpOption<FSharpFunc<System.DateOnly, msg>> [get]
+FS.GG.UI.Controls.Typed.DatePickerProps`1.Value : Microsoft.FSharp.Core.FSharpOption<System.DateOnly> [get]
+FS.GG.UI.Controls.Typed.DatePickerProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.DateOnly>, System.Boolean, System.Boolean, FSharpOption<FSharpFunc<System.DateOnly, msg>>)
+FS.GG.UI.Controls.Typed.Dialog.defaults<msg>() : DialogProps<msg>
+FS.GG.UI.Controls.Typed.Dialog.view<msg>(DialogProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.DialogProps`1.Children : FSharpList<Widget<msg>> [get]
+FS.GG.UI.Controls.Typed.DialogProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.DialogProps`1.IsOpen : System.Boolean [get]
+FS.GG.UI.Controls.Typed.DialogProps`1.OnSelected : FSharpOption<FSharpFunc<System.String, msg>> [get]
+FS.GG.UI.Controls.Typed.DialogProps`1.Title : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.DialogProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, System.Boolean, FSharpList<Widget<msg>>, FSharpOption<FSharpFunc<System.String, msg>>)
+FS.GG.UI.Controls.Typed.Dock.defaults<msg>() : DockProps<msg>
+FS.GG.UI.Controls.Typed.Dock.view<msg>(DockProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.DockProps`1.Children : FSharpList<Widget<msg>> [get]
+FS.GG.UI.Controls.Typed.DockProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.DockProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, FSharpList<Widget<msg>>)
+FS.GG.UI.Controls.Typed.GraphView.defaults<msg>() : GraphViewProps<msg>
+FS.GG.UI.Controls.Typed.GraphView.view<msg>(GraphViewProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.GraphViewProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.GraphViewProps`1.Nodes : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Controls.Typed.GraphViewProps`1.OnSelected : FSharpOption<FSharpFunc<System.String, msg>> [get]
+FS.GG.UI.Controls.Typed.GraphViewProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, FSharpOption<FSharpFunc<System.String, msg>>)
+FS.GG.UI.Controls.Typed.Grid.defaults<msg>() : GridProps<msg>
+FS.GG.UI.Controls.Typed.Grid.view<msg>(GridProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.GridProps`1.Children : FSharpList<Widget<msg>> [get]
+FS.GG.UI.Controls.Typed.GridProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.GridProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, FSharpList<Widget<msg>>)
+FS.GG.UI.Controls.Typed.Icon.defaults<msg>() : IconProps<msg>
+FS.GG.UI.Controls.Typed.Icon.view<msg>(IconProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.IconButton.defaults<msg>() : IconButtonProps<msg>
+FS.GG.UI.Controls.Typed.IconButton.view<msg>(IconButtonProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.IconButtonProps`1.Enabled : System.Boolean [get]
+FS.GG.UI.Controls.Typed.IconButtonProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.IconButtonProps`1.Intent : FS.GG.UI.Controls.Typed.ButtonIntent [get]
+FS.GG.UI.Controls.Typed.IconButtonProps`1.OnClick : FSharpOption<msg> [get]
+FS.GG.UI.Controls.Typed.IconButtonProps`1.Text : System.String [get]
+FS.GG.UI.Controls.Typed.IconButtonProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, System.String, System.Boolean, FS.GG.UI.Controls.Typed.ButtonIntent, FSharpOption<msg>)
+FS.GG.UI.Controls.Typed.IconProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.IconProps`1.Text : System.String [get]
+FS.GG.UI.Controls.Typed.IconProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, System.String)
+FS.GG.UI.Controls.Typed.Image.defaults<msg>() : ImageProps<msg>
+FS.GG.UI.Controls.Typed.Image.view<msg>(ImageProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.ImageProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.ImageProps`1.Value : System.String [get]
+FS.GG.UI.Controls.Typed.ImageProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, System.String)
+FS.GG.UI.Controls.Typed.Label.defaults<msg>() : LabelProps<msg>
+FS.GG.UI.Controls.Typed.Label.view<msg>(LabelProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.LabelProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.LabelProps`1.Text : System.String [get]
+FS.GG.UI.Controls.Typed.LabelProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, System.String)
+FS.GG.UI.Controls.Typed.LineChart.defaults<msg>() : LineChartProps<msg>
+FS.GG.UI.Controls.Typed.LineChart.view<msg>(LineChartProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.LineChartProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.LineChartProps`1.OnSelected : FSharpOption<FSharpFunc<System.String, msg>> [get]
+FS.GG.UI.Controls.Typed.LineChartProps`1.Series : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ChartSeries> [get]
+FS.GG.UI.Controls.Typed.LineChartProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ChartSeries>, FSharpOption<FSharpFunc<System.String, msg>>)
+FS.GG.UI.Controls.Typed.ListBox.defaults<msg>(System.String) : ListBoxProps<msg>
+FS.GG.UI.Controls.Typed.ListBox.init<msg>(ListBoxProps<msg>) : System.Tuple<FS.GG.UI.Controls.CollectionModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.CollectionEffect>>
+FS.GG.UI.Controls.Typed.ListBox.update(FS.GG.UI.Controls.CollectionMsg, FS.GG.UI.Controls.CollectionModel) : System.Tuple<FS.GG.UI.Controls.CollectionModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.CollectionEffect>>
+FS.GG.UI.Controls.Typed.ListBox.view<msg>(ListBoxProps<msg>, FS.GG.UI.Controls.CollectionModel) : Widget<msg>
+FS.GG.UI.Controls.Typed.ListBoxProps`1.Id : System.String [get]
+FS.GG.UI.Controls.Typed.ListBoxProps`1.Items : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Controls.Typed.ListBoxProps`1.OnSelected : FSharpOption<FSharpFunc<System.String, msg>> [get]
+FS.GG.UI.Controls.Typed.ListBoxProps`1.new(System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, FSharpOption<FSharpFunc<System.String, msg>>)
+FS.GG.UI.Controls.Typed.ListView.defaults<msg>(System.String) : ListViewProps<msg>
+FS.GG.UI.Controls.Typed.ListView.init<msg>(ListViewProps<msg>) : System.Tuple<FS.GG.UI.Controls.CollectionModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.CollectionEffect>>
+FS.GG.UI.Controls.Typed.ListView.update(FS.GG.UI.Controls.CollectionMsg, FS.GG.UI.Controls.CollectionModel) : System.Tuple<FS.GG.UI.Controls.CollectionModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.CollectionEffect>>
+FS.GG.UI.Controls.Typed.ListView.view<msg>(ListViewProps<msg>, FS.GG.UI.Controls.CollectionModel) : Widget<msg>
+FS.GG.UI.Controls.Typed.ListViewProps`1.Id : System.String [get]
+FS.GG.UI.Controls.Typed.ListViewProps`1.Items : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Controls.Typed.ListViewProps`1.OnSelected : FSharpOption<FSharpFunc<System.String, msg>> [get]
+FS.GG.UI.Controls.Typed.ListViewProps`1.new(System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, FSharpOption<FSharpFunc<System.String, msg>>)
+FS.GG.UI.Controls.Typed.Menu.defaults<msg>() : MenuProps<msg>
+FS.GG.UI.Controls.Typed.Menu.view<msg>(MenuProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.MenuProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.MenuProps`1.Items : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Controls.Typed.MenuProps`1.OnSelected : FSharpOption<FSharpFunc<System.String, msg>> [get]
+FS.GG.UI.Controls.Typed.MenuProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, FSharpOption<FSharpFunc<System.String, msg>>)
+FS.GG.UI.Controls.Typed.MultiSelectList.defaults<msg>(System.String) : MultiSelectListProps<msg>
+FS.GG.UI.Controls.Typed.MultiSelectList.init<msg>(MultiSelectListProps<msg>) : System.Tuple<FS.GG.UI.Controls.CollectionModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.CollectionEffect>>
+FS.GG.UI.Controls.Typed.MultiSelectList.update(FS.GG.UI.Controls.CollectionMsg, FS.GG.UI.Controls.CollectionModel) : System.Tuple<FS.GG.UI.Controls.CollectionModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.CollectionEffect>>
+FS.GG.UI.Controls.Typed.MultiSelectList.view<msg>(MultiSelectListProps<msg>, FS.GG.UI.Controls.CollectionModel) : Widget<msg>
+FS.GG.UI.Controls.Typed.MultiSelectListProps`1.Id : System.String [get]
+FS.GG.UI.Controls.Typed.MultiSelectListProps`1.Items : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Controls.Typed.MultiSelectListProps`1.OnChanged : FSharpOption<FSharpFunc<Microsoft.FSharp.Collections.FSharpList<System.String>, msg>> [get]
+FS.GG.UI.Controls.Typed.MultiSelectListProps`1.new(System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, FSharpOption<FSharpFunc<Microsoft.FSharp.Collections.FSharpList<System.String>, msg>>)
+FS.GG.UI.Controls.Typed.NumericInput.defaults<msg>() : NumericInputProps<msg>
+FS.GG.UI.Controls.Typed.NumericInput.view<msg>(NumericInputProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.NumericInputProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.NumericInputProps`1.OnChanged : FSharpOption<FSharpFunc<System.Double, msg>> [get]
+FS.GG.UI.Controls.Typed.NumericInputProps`1.ReadOnly : System.Boolean [get]
+FS.GG.UI.Controls.Typed.NumericInputProps`1.Value : System.Double [get]
+FS.GG.UI.Controls.Typed.NumericInputProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, System.Double, System.Boolean, FSharpOption<FSharpFunc<System.Double, msg>>)
+FS.GG.UI.Controls.Typed.Overlay.defaults<msg>(Widget<msg>) : OverlayProps<msg>
+FS.GG.UI.Controls.Typed.Overlay.view<msg>(OverlayProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.OverlayProps`1.Child : Widget<msg> [get]
+FS.GG.UI.Controls.Typed.OverlayProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.OverlayProps`1.IsOpen : System.Boolean [get]
+FS.GG.UI.Controls.Typed.OverlayProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, System.Boolean, Widget<msg>)
+FS.GG.UI.Controls.Typed.Panel.defaults<msg>() : PanelProps<msg>
+FS.GG.UI.Controls.Typed.Panel.view<msg>(PanelProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.PanelProps`1.Children : FSharpList<Widget<msg>> [get]
+FS.GG.UI.Controls.Typed.PanelProps`1.Footer : FSharpOption<Widget<msg>> [get]
+FS.GG.UI.Controls.Typed.PanelProps`1.Header : FSharpOption<Widget<msg>> [get]
+FS.GG.UI.Controls.Typed.PanelProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.PanelProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, FSharpOption<Widget<msg>>, FSharpOption<Widget<msg>>, FSharpList<Widget<msg>>)
+FS.GG.UI.Controls.Typed.PieChart.defaults<msg>() : PieChartProps<msg>
+FS.GG.UI.Controls.Typed.PieChart.view<msg>(PieChartProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.PieChartProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.PieChartProps`1.OnSelected : FSharpOption<FSharpFunc<System.String, msg>> [get]
+FS.GG.UI.Controls.Typed.PieChartProps`1.Values : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ChartPoint> [get]
+FS.GG.UI.Controls.Typed.PieChartProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ChartPoint>, FSharpOption<FSharpFunc<System.String, msg>>)
+FS.GG.UI.Controls.Typed.ProgressBar.defaults<msg>() : ProgressBarProps<msg>
+FS.GG.UI.Controls.Typed.ProgressBar.view<msg>(ProgressBarProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.ProgressBarProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.ProgressBarProps`1.Value : System.Double [get]
+FS.GG.UI.Controls.Typed.ProgressBarProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, System.Double)
+FS.GG.UI.Controls.Typed.RadioGroup.defaults<msg>() : RadioGroupProps<msg>
+FS.GG.UI.Controls.Typed.RadioGroup.view<msg>(RadioGroupProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.RadioGroupProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.RadioGroupProps`1.Items : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Controls.Typed.RadioGroupProps`1.OnChanged : FSharpOption<FSharpFunc<System.String, msg>> [get]
+FS.GG.UI.Controls.Typed.RadioGroupProps`1.SelectedKey : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.RadioGroupProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, FSharpOption<FSharpFunc<System.String, msg>>)
+FS.GG.UI.Controls.Typed.RichText.defaults<msg>() : RichTextProps<msg>
+FS.GG.UI.Controls.Typed.RichText.view<msg>(RichTextProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.RichTextProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.RichTextProps`1.Runs : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.RichTextRun> [get]
+FS.GG.UI.Controls.Typed.RichTextProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.RichTextRun>)
+FS.GG.UI.Controls.Typed.ScatterPlot.defaults<msg>() : ScatterPlotProps<msg>
+FS.GG.UI.Controls.Typed.ScatterPlot.view<msg>(ScatterPlotProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.ScatterPlotProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.ScatterPlotProps`1.OnSelected : FSharpOption<FSharpFunc<System.String, msg>> [get]
+FS.GG.UI.Controls.Typed.ScatterPlotProps`1.Series : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ChartSeries> [get]
+FS.GG.UI.Controls.Typed.ScatterPlotProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ChartSeries>, FSharpOption<FSharpFunc<System.String, msg>>)
+FS.GG.UI.Controls.Typed.ScrollViewer.defaults<msg>(System.String, Widget<msg>) : ScrollViewerProps<msg>
+FS.GG.UI.Controls.Typed.ScrollViewer.view<msg>(ScrollViewerProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.ScrollViewerProps`1.Child : Widget<msg> [get]
+FS.GG.UI.Controls.Typed.ScrollViewerProps`1.Id : System.String [get]
+FS.GG.UI.Controls.Typed.ScrollViewerProps`1.OnChanged : FSharpOption<FSharpFunc<System.Double, msg>> [get]
+FS.GG.UI.Controls.Typed.ScrollViewerProps`1.new(System.String, Widget<msg>, FSharpOption<FSharpFunc<System.Double, msg>>)
+FS.GG.UI.Controls.Typed.Separator.defaults<msg>() : SeparatorProps<msg>
+FS.GG.UI.Controls.Typed.Separator.view<msg>(SeparatorProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.SeparatorProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.SeparatorProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>)
+FS.GG.UI.Controls.Typed.Slider.defaults<msg>() : SliderProps<msg>
+FS.GG.UI.Controls.Typed.Slider.view<msg>(SliderProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.SliderProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.SliderProps`1.OnChanged : FSharpOption<FSharpFunc<System.Double, msg>> [get]
+FS.GG.UI.Controls.Typed.SliderProps`1.Value : System.Double [get]
+FS.GG.UI.Controls.Typed.SliderProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, System.Double, FSharpOption<FSharpFunc<System.Double, msg>>)
+FS.GG.UI.Controls.Typed.Spinner.defaults<msg>() : SpinnerProps<msg>
+FS.GG.UI.Controls.Typed.Spinner.view<msg>(SpinnerProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.SpinnerProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.SpinnerProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>)
+FS.GG.UI.Controls.Typed.SplitButton.defaults<msg>() : SplitButtonProps<msg>
+FS.GG.UI.Controls.Typed.SplitButton.view<msg>(SplitButtonProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.SplitButtonItem.Key : System.String [get]
+FS.GG.UI.Controls.Typed.SplitButtonItem.Label : System.String [get]
+FS.GG.UI.Controls.Typed.SplitButtonItem.new(System.String, System.String)
+FS.GG.UI.Controls.Typed.SplitButtonProps`1.Enabled : System.Boolean [get]
+FS.GG.UI.Controls.Typed.SplitButtonProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.SplitButtonProps`1.IsOpen : System.Boolean [get]
+FS.GG.UI.Controls.Typed.SplitButtonProps`1.Items : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.Typed.SplitButtonItem> [get]
+FS.GG.UI.Controls.Typed.SplitButtonProps`1.OnClick : FSharpOption<msg> [get]
+FS.GG.UI.Controls.Typed.SplitButtonProps`1.OnSelected : FSharpOption<FSharpFunc<System.String, msg>> [get]
+FS.GG.UI.Controls.Typed.SplitButtonProps`1.Text : System.String [get]
+FS.GG.UI.Controls.Typed.SplitButtonProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, System.String, System.Boolean, System.Boolean, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.Typed.SplitButtonItem>, FSharpOption<msg>, FSharpOption<FSharpFunc<System.String, msg>>)
+FS.GG.UI.Controls.Typed.SplitView.defaults<msg>() : SplitViewProps<msg>
+FS.GG.UI.Controls.Typed.SplitView.view<msg>(SplitViewProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.SplitViewProps`1.Children : FSharpList<Widget<msg>> [get]
+FS.GG.UI.Controls.Typed.SplitViewProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.SplitViewProps`1.OnChanged : FSharpOption<FSharpFunc<System.Double, msg>> [get]
+FS.GG.UI.Controls.Typed.SplitViewProps`1.Orientation : FS.GG.UI.Controls.Typed.StackOrientation [get]
+FS.GG.UI.Controls.Typed.SplitViewProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, FS.GG.UI.Controls.Typed.StackOrientation, FSharpList<Widget<msg>>, FSharpOption<FSharpFunc<System.Double, msg>>)
+FS.GG.UI.Controls.Typed.Stack.defaults<msg>() : StackProps<msg>
+FS.GG.UI.Controls.Typed.Stack.view<msg>(StackProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.StackOrientation+Tags.Horizontal : System.Int32
+FS.GG.UI.Controls.Typed.StackOrientation+Tags.Vertical : System.Int32
+FS.GG.UI.Controls.Typed.StackProps`1.Children : FSharpList<Widget<msg>> [get]
+FS.GG.UI.Controls.Typed.StackProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.StackProps`1.Orientation : FS.GG.UI.Controls.Typed.StackOrientation [get]
+FS.GG.UI.Controls.Typed.StackProps`1.Spacing : System.Double [get]
+FS.GG.UI.Controls.Typed.StackProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, FS.GG.UI.Controls.Typed.StackOrientation, System.Double, FSharpList<Widget<msg>>)
+FS.GG.UI.Controls.Typed.Switch.defaults<msg>() : SwitchProps<msg>
+FS.GG.UI.Controls.Typed.Switch.view<msg>(SwitchProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.SwitchProps`1.Checked : System.Boolean [get]
+FS.GG.UI.Controls.Typed.SwitchProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.SwitchProps`1.OnChanged : FSharpOption<FSharpFunc<System.Boolean, msg>> [get]
+FS.GG.UI.Controls.Typed.SwitchProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, System.Boolean, FSharpOption<FSharpFunc<System.Boolean, msg>>)
+FS.GG.UI.Controls.Typed.Tabs.defaults<msg>() : TabsProps<msg>
+FS.GG.UI.Controls.Typed.Tabs.view<msg>(TabsProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.TabsProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.TabsProps`1.Items : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Controls.Typed.TabsProps`1.OnChanged : FSharpOption<FSharpFunc<System.String, msg>> [get]
+FS.GG.UI.Controls.Typed.TabsProps`1.SelectedKey : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.TabsProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, FSharpOption<FSharpFunc<System.String, msg>>)
+FS.GG.UI.Controls.Typed.TextArea.defaults<msg>(System.String) : TextAreaProps<msg>
+FS.GG.UI.Controls.Typed.TextArea.init<msg>(TextAreaProps<msg>) : System.Tuple<FS.GG.UI.Controls.TextInputModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.TextInputEffect>>
+FS.GG.UI.Controls.Typed.TextArea.update(FS.GG.UI.Controls.TextInputMsg, FS.GG.UI.Controls.TextInputModel) : System.Tuple<FS.GG.UI.Controls.TextInputModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.TextInputEffect>>
+FS.GG.UI.Controls.Typed.TextArea.view<msg>(TextAreaProps<msg>, FS.GG.UI.Controls.TextInputModel) : Widget<msg>
+FS.GG.UI.Controls.Typed.TextAreaProps`1.Id : System.String [get]
+FS.GG.UI.Controls.Typed.TextAreaProps`1.OnChanged : FSharpOption<FSharpFunc<System.String, msg>> [get]
+FS.GG.UI.Controls.Typed.TextAreaProps`1.ReadOnly : System.Boolean [get]
+FS.GG.UI.Controls.Typed.TextAreaProps`1.Validation : FS.GG.UI.DesignSystem.ValidationState [get]
+FS.GG.UI.Controls.Typed.TextAreaProps`1.Value : System.String [get]
+FS.GG.UI.Controls.Typed.TextAreaProps`1.new(System.String, System.String, System.Boolean, FS.GG.UI.DesignSystem.ValidationState, FSharpOption<FSharpFunc<System.String, msg>>)
+FS.GG.UI.Controls.Typed.TextBlock.defaults<msg>() : TextBlockProps<msg>
+FS.GG.UI.Controls.Typed.TextBlock.view<msg>(TextBlockProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.TextBlockProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.TextBlockProps`1.Text : System.String [get]
+FS.GG.UI.Controls.Typed.TextBlockProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, System.String)
+FS.GG.UI.Controls.Typed.TextBox.defaults<msg>(System.String) : TextBoxProps<msg>
+FS.GG.UI.Controls.Typed.TextBox.init<msg>(TextBoxProps<msg>) : System.Tuple<FS.GG.UI.Controls.TextInputModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.TextInputEffect>>
+FS.GG.UI.Controls.Typed.TextBox.update(FS.GG.UI.Controls.TextInputMsg, FS.GG.UI.Controls.TextInputModel) : System.Tuple<FS.GG.UI.Controls.TextInputModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.TextInputEffect>>
+FS.GG.UI.Controls.Typed.TextBox.view<msg>(TextBoxProps<msg>, FS.GG.UI.Controls.TextInputModel) : Widget<msg>
+FS.GG.UI.Controls.Typed.TextBoxProps`1.Id : System.String [get]
+FS.GG.UI.Controls.Typed.TextBoxProps`1.Mode : FS.GG.UI.Controls.TextInputMode [get]
+FS.GG.UI.Controls.Typed.TextBoxProps`1.OnChanged : FSharpOption<FSharpFunc<System.String, msg>> [get]
+FS.GG.UI.Controls.Typed.TextBoxProps`1.ReadOnly : System.Boolean [get]
+FS.GG.UI.Controls.Typed.TextBoxProps`1.Validation : FS.GG.UI.DesignSystem.ValidationState [get]
+FS.GG.UI.Controls.Typed.TextBoxProps`1.Value : System.String [get]
+FS.GG.UI.Controls.Typed.TextBoxProps`1.new(System.String, FS.GG.UI.Controls.TextInputMode, System.String, System.Boolean, FS.GG.UI.DesignSystem.ValidationState, FSharpOption<FSharpFunc<System.String, msg>>)
+FS.GG.UI.Controls.Typed.TimePicker.defaults<msg>() : TimePickerProps<msg>
+FS.GG.UI.Controls.Typed.TimePicker.view<msg>(TimePickerProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.TimePickerProps`1.Enabled : System.Boolean [get]
+FS.GG.UI.Controls.Typed.TimePickerProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.TimePickerProps`1.OnChange : FSharpOption<FSharpFunc<System.TimeOnly, msg>> [get]
+FS.GG.UI.Controls.Typed.TimePickerProps`1.Value : Microsoft.FSharp.Core.FSharpOption<System.TimeOnly> [get]
+FS.GG.UI.Controls.Typed.TimePickerProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.TimeOnly>, System.Boolean, FSharpOption<FSharpFunc<System.TimeOnly, msg>>)
+FS.GG.UI.Controls.Typed.Toast.defaults<msg>() : ToastProps<msg>
+FS.GG.UI.Controls.Typed.Toast.view<msg>(ToastProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.ToastProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.ToastProps`1.Severity : FS.GG.UI.DesignSystem.ValidationState [get]
+FS.GG.UI.Controls.Typed.ToastProps`1.Text : System.String [get]
+FS.GG.UI.Controls.Typed.ToastProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, System.String, FS.GG.UI.DesignSystem.ValidationState)
+FS.GG.UI.Controls.Typed.ToggleButton.defaults<msg>() : ToggleButtonProps<msg>
+FS.GG.UI.Controls.Typed.ToggleButton.view<msg>(ToggleButtonProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.ToggleButtonProps`1.Enabled : System.Boolean [get]
+FS.GG.UI.Controls.Typed.ToggleButtonProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.ToggleButtonProps`1.IsOn : System.Boolean [get]
+FS.GG.UI.Controls.Typed.ToggleButtonProps`1.OnToggle : FSharpOption<FSharpFunc<System.Boolean, msg>> [get]
+FS.GG.UI.Controls.Typed.ToggleButtonProps`1.Text : System.String [get]
+FS.GG.UI.Controls.Typed.ToggleButtonProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, System.String, System.Boolean, System.Boolean, FSharpOption<FSharpFunc<System.Boolean, msg>>)
+FS.GG.UI.Controls.Typed.Toolbar.defaults<msg>() : ToolbarProps<msg>
+FS.GG.UI.Controls.Typed.Toolbar.view<msg>(ToolbarProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.ToolbarProps`1.Children : FSharpList<Widget<msg>> [get]
+FS.GG.UI.Controls.Typed.ToolbarProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.ToolbarProps`1.OnClick : FSharpOption<msg> [get]
+FS.GG.UI.Controls.Typed.ToolbarProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, FSharpList<Widget<msg>>, FSharpOption<msg>)
+FS.GG.UI.Controls.Typed.Tooltip.defaults<msg>() : TooltipProps<msg>
+FS.GG.UI.Controls.Typed.Tooltip.view<msg>(TooltipProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.TooltipProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.TooltipProps`1.Text : System.String [get]
+FS.GG.UI.Controls.Typed.TooltipProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, System.String)
+FS.GG.UI.Controls.Typed.TreeView.defaults<msg>(System.String) : TreeViewProps<msg>
+FS.GG.UI.Controls.Typed.TreeView.init<msg>(TreeViewProps<msg>) : System.Tuple<FS.GG.UI.Controls.CollectionModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.CollectionEffect>>
+FS.GG.UI.Controls.Typed.TreeView.update(FS.GG.UI.Controls.CollectionMsg, FS.GG.UI.Controls.CollectionModel) : System.Tuple<FS.GG.UI.Controls.CollectionModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.CollectionEffect>>
+FS.GG.UI.Controls.Typed.TreeView.view<msg>(TreeViewProps<msg>, FS.GG.UI.Controls.CollectionModel) : Widget<msg>
+FS.GG.UI.Controls.Typed.TreeViewProps`1.Id : System.String [get]
+FS.GG.UI.Controls.Typed.TreeViewProps`1.Items : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Controls.Typed.TreeViewProps`1.OnSelected : FSharpOption<FSharpFunc<System.String, msg>> [get]
+FS.GG.UI.Controls.Typed.TreeViewProps`1.new(System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, FSharpOption<FSharpFunc<System.String, msg>>)
+FS.GG.UI.Controls.Typed.ValidationMessage.defaults<msg>() : ValidationMessageProps<msg>
+FS.GG.UI.Controls.Typed.ValidationMessage.view<msg>(ValidationMessageProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.ValidationMessageProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.ValidationMessageProps`1.Severity : FS.GG.UI.DesignSystem.ValidationState [get]
+FS.GG.UI.Controls.Typed.ValidationMessageProps`1.Text : System.String [get]
+FS.GG.UI.Controls.Typed.ValidationMessageProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, System.String, FS.GG.UI.DesignSystem.ValidationState)
+FS.GG.UI.Controls.Typed.Wrap.defaults<msg>() : WrapProps<msg>
+FS.GG.UI.Controls.Typed.Wrap.view<msg>(WrapProps<msg>) : Widget<msg>
+FS.GG.UI.Controls.Typed.WrapProps`1.Children : FSharpList<Widget<msg>> [get]
+FS.GG.UI.Controls.Typed.WrapProps`1.Id : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Typed.WrapProps`1.Orientation : FS.GG.UI.Controls.Typed.StackOrientation [get]
+FS.GG.UI.Controls.Typed.WrapProps`1.Spacing : System.Double [get]
+FS.GG.UI.Controls.Typed.WrapProps`1.new(Microsoft.FSharp.Core.FSharpOption<System.String>, FS.GG.UI.Controls.Typed.StackOrientation, System.Double, FSharpList<Widget<msg>>)
+FS.GG.UI.Controls.ValidationMessage.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.ValidationMessage.text<msg>(System.String) : Attr<msg>
+FS.GG.UI.Controls.VisibleRange.Count : System.Int32 [get]
+FS.GG.UI.Controls.VisibleRange.FirstIndex : System.Int32 [get]
+FS.GG.UI.Controls.VisibleRange.Total : System.Int32 [get]
+FS.GG.UI.Controls.VisibleRange.new(System.Int32, System.Int32, System.Int32)
+FS.GG.UI.Controls.WaterfallChart.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.WaterfallChart.values<msg>(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ChartPoint>) : Attr<msg>
+FS.GG.UI.Controls.Widget.map<a, b>(FSharpFunc<a, b>, Widget<a>) : Widget<b>
+FS.GG.UI.Controls.Widget.ofControl<msg>(Control<msg>) : Widget<msg>
+FS.GG.UI.Controls.Widget.render<msg>(FS.GG.UI.DesignSystem.Theme, Widget<msg>) : ControlRenderResult<msg>
+FS.GG.UI.Controls.Widget.toControl<msg>(Widget<msg>) : Control<msg>
+FS.GG.UI.Controls.WidgetActivationRequest.ActivationSource : FS.GG.UI.Controls.OverlayActivationSource [get]
+FS.GG.UI.Controls.WidgetActivationRequest.Diagnostic : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.ControlDiagnostic> [get]
+FS.GG.UI.Controls.WidgetActivationRequest.RequestedOpenState : System.Boolean [get]
+FS.GG.UI.Controls.WidgetActivationRequest.SurfaceId : System.String [get]
+FS.GG.UI.Controls.WidgetActivationRequest.TriggerId : System.String [get]
+FS.GG.UI.Controls.WidgetActivationRequest.new(System.String, System.String, FS.GG.UI.Controls.OverlayActivationSource, System.Boolean, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.ControlDiagnostic>)
+FS.GG.UI.Controls.Wrap.children<msg>(FSharpList<Control<msg>>) : Attr<msg>
+FS.GG.UI.Controls.Wrap.create<msg>(FSharpList<Attr<msg>>) : Control<msg>

@@ -3,16 +3,24 @@ module SurfaceAreaTests
 open System
 open System.IO
 open System.Reflection
+open System.Runtime.CompilerServices
 open Expecto
 open FS.GG.TestSupport
 
 let repositoryRoot = RepositoryRoot.value
 
+let private readBaseline (path: string) =
+    path |> File.ReadAllLines |> Array.filter (fun line -> line.Trim() <> "") |> Set.ofArray
+
 let baseline packageName =
     Path.Combine(repositoryRoot, "readiness", "surface-baselines", packageName + ".txt")
-    |> File.ReadAllLines
-    |> Array.filter (fun line -> line.Trim() <> "")
-    |> Set.ofArray
+    |> readBaseline
+
+/// Issue #200: the type-name baseline above cannot see a member added to or removed from a type that
+/// already exists. `members/<package>.txt` closes that: one line per exported member, with signature.
+let memberBaseline packageName =
+    Path.Combine(repositoryRoot, "readiness", "surface-baselines", "members", packageName + ".txt")
+    |> readBaseline
 
 let exportedNames (assembly: Assembly) =
     assembly.GetExportedTypes()
@@ -36,6 +44,122 @@ let assertBaseline packageName (assembly: Assembly) =
     Expect.isEmpty missing $"expected public surface for {packageName} is exported"
     Expect.isEmpty unexpected $"no unapproved public exports were added to {packageName}"
 
+// ---------------------------------------------------------------------------------------------
+// Member-level surface. This mirrors the renderer in `scripts/refresh-surface-baselines.fsx`, which
+// WRITES `members/<package>.txt`; here we re-derive the signatures and READ that file back. The two
+// renderers must agree character-for-character — and if they ever drift apart, this comparison is
+// what fails, so the divergence cannot pass silently.
+// ---------------------------------------------------------------------------------------------
+
+let private isCompilerGenerated (m: MemberInfo) =
+    m.GetCustomAttributes(typeof<CompilerGeneratedAttribute>, false).Length > 0
+    || m.Name.StartsWith("<", StringComparison.Ordinal)
+
+let private fullNameOf (ty: Type) =
+    match ty.FullName with
+    | null -> ty.Name
+    | value -> value
+
+let private displayName (ty: Type) =
+    let fullName = fullNameOf ty
+
+    if ty.Name.EndsWith("Module", StringComparison.Ordinal) then
+        fullName.Replace("Module", "")
+    else
+        fullName
+
+/// Stable rendering of a type reference: no assembly-qualified generic arguments, no arity suffix.
+let rec private typeRef (ty: Type) : string =
+    if ty.IsGenericParameter then
+        ty.Name
+    elif ty.IsArray || ty.IsByRef || ty.IsPointer then
+        let suffix =
+            if ty.IsArray then "[]"
+            elif ty.IsByRef then "&"
+            else "*"
+
+        match ty.GetElementType() with
+        | null -> ty.Name
+        | element -> typeRef element + suffix
+    elif ty.IsGenericType then
+        let stem =
+            let raw = fullNameOf ty
+
+            match raw.IndexOf('`') with
+            | -1 -> raw
+            | tick -> raw.Substring(0, tick)
+
+        let args = ty.GetGenericArguments() |> Array.map typeRef |> String.concat ", "
+        $"{stem}<{args}>"
+    else
+        fullNameOf ty
+
+let private parameters (ps: ParameterInfo array) =
+    ps |> Array.map (fun p -> typeRef p.ParameterType) |> String.concat ", "
+
+let private isAccessor (m: MethodInfo) =
+    m.IsSpecialName
+    && [ "get_"; "set_"; "add_"; "remove_" ]
+       |> List.exists (fun prefix -> m.Name.StartsWith(prefix, StringComparison.Ordinal))
+
+let private memberFlags =
+    BindingFlags.Public ||| BindingFlags.Instance ||| BindingFlags.Static ||| BindingFlags.DeclaredOnly
+
+/// Deliberately not `GetMembers`, which also populates nested types and so forces the runtime to
+/// resolve assemblies a public signature never names. See the generator for the full rationale.
+let private membersOf (ty: Type) : MemberInfo array =
+    [| yield! ty.GetConstructors(memberFlags) |> Array.map (fun m -> m :> MemberInfo)
+       yield! ty.GetMethods(memberFlags) |> Array.map (fun m -> m :> MemberInfo)
+       yield! ty.GetProperties(memberFlags) |> Array.map (fun m -> m :> MemberInfo)
+       yield! ty.GetFields(memberFlags) |> Array.map (fun m -> m :> MemberInfo)
+       yield! ty.GetEvents(memberFlags) |> Array.map (fun m -> m :> MemberInfo) |]
+
+let private signature (owner: string) (m: MemberInfo) =
+    match m with
+    | :? ConstructorInfo as ctor -> Some $"{owner}.new({parameters (ctor.GetParameters())})"
+    | :? MethodInfo as method' when isAccessor method' -> None
+    | :? MethodInfo as method' ->
+        let generics =
+            if method'.IsGenericMethodDefinition then
+                let args = method'.GetGenericArguments() |> Array.map _.Name |> String.concat ", "
+                $"<{args}>"
+            else
+                ""
+
+        Some $"{owner}.{method'.Name}{generics}({parameters (method'.GetParameters())}) : {typeRef method'.ReturnType}"
+    | :? PropertyInfo as property ->
+        let accessors =
+            [ if property.CanRead then "get"
+              if property.CanWrite then "set" ]
+            |> String.concat ", "
+
+        Some $"{owner}.{property.Name} : {typeRef property.PropertyType} [{accessors}]"
+    | :? FieldInfo as field -> Some $"{owner}.{field.Name} : {typeRef field.FieldType}"
+    | :? EventInfo as event' ->
+        match event'.EventHandlerType with
+        | null -> Some $"{owner}.{event'.Name} : event"
+        | handler -> Some $"{owner}.{event'.Name} : event {typeRef handler}"
+    | _ -> None
+
+let exportedMembers (assembly: Assembly) =
+    assembly.GetExportedTypes()
+    |> Array.filter (fun ty -> not (isCompilerGenerated ty))
+    |> Array.collect (fun ty ->
+        let owner = displayName ty
+
+        membersOf ty
+        |> Array.filter (fun m -> not (isCompilerGenerated m))
+        |> Array.choose (signature owner))
+    |> Set.ofArray
+
+let assertMemberBaseline packageName (assembly: Assembly) =
+    let expected = memberBaseline packageName
+    let actual = exportedMembers assembly
+    let removed = Set.difference expected actual
+    let added = Set.difference actual expected
+    Expect.isEmpty removed $"no public member was removed from {packageName} without updating its baseline"
+    Expect.isEmpty added $"no unapproved public member was added to {packageName}"
+
 [<Tests>]
 let surfaceAreaTests =
     testList "Surface baselines" [
@@ -51,6 +175,26 @@ let surfaceAreaTests =
 
         test "FS.GG.UI.Layout baseline exports expected contract names" {
             assertBaseline "FS.GG.UI.Layout" typeof<FS.GG.UI.Layout.GraphDefinition>.Assembly
+        }
+
+        // Issue #200: a member added to or removed from an already-exported type moves none of the
+        // type-name baselines above. These three assert the member-level baseline for the packages
+        // this project already reflects; the gate.yml drift step regenerates and diffs the baselines
+        // of all sixteen packages, so no package is left without a member-level guard.
+        test "FS.GG.UI.Layout member baseline pins every exported member" {
+            assertMemberBaseline "FS.GG.UI.Layout" typeof<FS.GG.UI.Layout.GraphDefinition>.Assembly
+        }
+
+        test "FS.GG.UI.Controls member baseline pins every exported member" {
+            assertMemberBaseline "FS.GG.UI.Controls" typeof<FS.GG.UI.Controls.Control<int>>.Assembly
+        }
+
+        test "FS.GG.UI.Build member baseline pins every exported member" {
+            let assemblyPath =
+                Path.Combine(repositoryRoot, "src", "Build", "bin", "Debug", "net10.0", "FS.GG.UI.Build.dll")
+
+            Expect.isTrue (File.Exists assemblyPath) "FS.GG.UI.Build assembly has been built"
+            assertMemberBaseline "FS.GG.UI.Build" (Assembly.LoadFrom assemblyPath)
         }
 
         test "SkiaViewer package exposes selected generated persistent viewer entry point" {

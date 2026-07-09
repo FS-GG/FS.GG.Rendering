@@ -1,0 +1,142 @@
+FS.GG.UI.Controls.Elmish.AdapterCmd.none<msg>() : FSharpList<FSharpFunc<FSharpFunc<msg, Microsoft.FSharp.Core.Unit>, Microsoft.FSharp.Core.Unit>>
+FS.GG.UI.Controls.Elmish.AdapterCmd.ofMessage<msg>(msg) : FSharpList<AdapterEffect<msg>>
+FS.GG.UI.Controls.Elmish.AdapterCmd.productMessages<msg>(FSharpList<AdapterEffect<msg>>) : FSharpList<msg>
+FS.GG.UI.Controls.Elmish.AdapterCmd.toCmd<msg>(FSharpFunc<AdapterEffect<msg>, msg>, FSharpList<AdapterEffect<msg>>) : FSharpList<FSharpFunc<FSharpFunc<msg, Microsoft.FSharp.Core.Unit>, Microsoft.FSharp.Core.Unit>>
+FS.GG.UI.Controls.Elmish.AdapterDiagnostic.Code : System.String [get]
+FS.GG.UI.Controls.Elmish.AdapterDiagnostic.Message : System.String [get]
+FS.GG.UI.Controls.Elmish.AdapterDiagnostic.Source : System.String [get]
+FS.GG.UI.Controls.Elmish.AdapterDiagnostic.new(System.String, System.String, System.String)
+FS.GG.UI.Controls.Elmish.AdapterEffect`1+Tags.DispatchControlRuntimeMessage : System.Int32
+FS.GG.UI.Controls.Elmish.AdapterEffect`1+Tags.DispatchHostCommand : System.Int32
+FS.GG.UI.Controls.Elmish.AdapterEffect`1+Tags.DispatchKeyboardMessage : System.Int32
+FS.GG.UI.Controls.Elmish.AdapterEffect`1+Tags.DispatchProductMessage : System.Int32
+FS.GG.UI.Controls.Elmish.AdapterEffect`1+Tags.ReportAdapterDiagnostic : System.Int32
+FS.GG.UI.Controls.Elmish.AdapterProgram`2.Init : FSharpFunc<Microsoft.FSharp.Core.Unit, Tuple<model, FSharpList<AdapterEffect<msg>>>> [get]
+FS.GG.UI.Controls.Elmish.AdapterProgram`2.Subscriptions : FSharpFunc<model, FSharpList<AdapterSubscription<msg>>> [get]
+FS.GG.UI.Controls.Elmish.AdapterProgram`2.Update : FSharpFunc<msg, FSharpFunc<model, Tuple<model, FSharpList<AdapterEffect<msg>>>>> [get]
+FS.GG.UI.Controls.Elmish.AdapterProgram`2.View : FSharpFunc<model, Control<msg>> [get]
+FS.GG.UI.Controls.Elmish.AdapterProgram`2.new(FSharpFunc<Microsoft.FSharp.Core.Unit, Tuple<model, FSharpList<AdapterEffect<msg>>>>, FSharpFunc<msg, FSharpFunc<model, Tuple<model, FSharpList<AdapterEffect<msg>>>>>, FSharpFunc<model, Control<msg>>, FSharpFunc<model, FSharpList<AdapterSubscription<msg>>>)
+FS.GG.UI.Controls.Elmish.AdapterSubscription`1.Id : System.String [get]
+FS.GG.UI.Controls.Elmish.AdapterSubscription`1.Subscribe : FSharpFunc<Microsoft.FSharp.Core.Unit, FSharpList<AdapterEffect<msg>>> [get]
+FS.GG.UI.Controls.Elmish.AdapterSubscription`1.new(System.String, FSharpFunc<Microsoft.FSharp.Core.Unit, FSharpList<AdapterEffect<msg>>>)
+FS.GG.UI.Controls.Elmish.Authoring.Cmd.none<msg>() : FSharpList<AdapterEffect<msg>>
+FS.GG.UI.Controls.Elmish.Authoring.Sub.none<msg>() : FSharpList<AdapterSubscription<msg>>
+FS.GG.UI.Controls.Elmish.CompositorFrameDiagnostics.DamageUnionArea : System.Int32 [get]
+FS.GG.UI.Controls.Elmish.CompositorFrameDiagnostics.DemotionCount : System.Int32 [get]
+FS.GG.UI.Controls.Elmish.CompositorFrameDiagnostics.FallbackReason : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Elmish.CompositorFrameDiagnostics.PromotionDecisionCount : System.Int32 [get]
+FS.GG.UI.Controls.Elmish.CompositorFrameDiagnostics.ProofStatus : System.String [get]
+FS.GG.UI.Controls.Elmish.CompositorFrameDiagnostics.ReuseHitCount : System.Int32 [get]
+FS.GG.UI.Controls.Elmish.CompositorFrameDiagnostics.ReuseMissCount : System.Int32 [get]
+FS.GG.UI.Controls.Elmish.CompositorFrameDiagnostics.ScissorCandidateArea : System.Int32 [get]
+FS.GG.UI.Controls.Elmish.CompositorFrameDiagnostics.SnapshotResourceBytes : System.Int32 [get]
+FS.GG.UI.Controls.Elmish.CompositorFrameDiagnostics.new(System.String, System.Int32, System.Int32, Microsoft.FSharp.Core.FSharpOption<System.String>, System.Int32, System.Int32, System.Int32, System.Int32, System.Int32)
+FS.GG.UI.Controls.Elmish.ControlsElmish+Live.runScript<model, msg>(FS.GG.UI.SkiaViewer.ViewerOptions, InteractiveAppHost<model, msg>, FSharpList<FrameInput<msg>>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Controls.Elmish.LiveScriptRunResult, FS.GG.UI.SkiaViewer.ViewerRunFailure>
+FS.GG.UI.Controls.Elmish.ControlsElmish+Live.runScriptWithWindowBehavior<model, msg>(FS.GG.UI.SkiaViewer.ViewerOptions, FS.GG.UI.SkiaViewer.ViewerWindowBehaviorRequest, InteractiveAppHost<model, msg>, FSharpList<FrameInput<msg>>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Controls.Elmish.LiveScriptRunResult, FS.GG.UI.SkiaViewer.ViewerRunFailure>
+FS.GG.UI.Controls.Elmish.ControlsElmish+Perf.runScript<model, msg>(InteractiveAppHost<model, msg>, FS.GG.UI.Scene.Size, FSharpList<FrameInput<msg>>) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.Elmish.FrameMetrics>
+FS.GG.UI.Controls.Elmish.ControlsElmish+Perf.runScriptToModel<model, msg>(InteractiveAppHost<model, msg>, FS.GG.UI.Scene.Size, FSharpList<FrameInput<msg>>) : Tuple<model, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.Elmish.FrameMetrics>>
+FS.GG.UI.Controls.Elmish.ControlsElmish.adapterDiagnosticToRuntimeDiagnostic(FS.GG.UI.Diagnostics.DiagnosticContext, FS.GG.UI.Controls.Elmish.AdapterDiagnostic) : FS.GG.UI.Diagnostics.RuntimeDiagnostic
+FS.GG.UI.Controls.Elmish.ControlsElmish.captureRespondsProof<model, msg>(InteractiveAppHost<model, msg>, FS.GG.UI.Controls.PointerState, FS.GG.UI.Scene.Size, model, FS.GG.UI.SkiaViewer.ViewerPointerInput) : FS.GG.UI.Controls.Elmish.RespondsProof
+FS.GG.UI.Controls.Elmish.ControlsElmish.compositorDiagnostics(System.Boolean, Microsoft.FSharp.Core.FSharpOption<System.String>, FS.GG.UI.Controls.Elmish.FrameMetrics) : FS.GG.UI.Controls.Elmish.CompositorFrameDiagnostics
+FS.GG.UI.Controls.Elmish.ControlsElmish.diagnostic(System.String, System.String, System.String) : FS.GG.UI.Controls.Elmish.AdapterDiagnostic
+FS.GG.UI.Controls.Elmish.ControlsElmish.diagnosticsDisabledCompatibility(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.Elmish.FrameMetrics>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.Elmish.FrameMetrics>) : FS.GG.UI.Controls.Elmish.DiagnosticsDisabledCompatibility
+FS.GG.UI.Controls.Elmish.ControlsElmish.interpretControlEffect<msg>(FSharpFunc<FS.GG.UI.Controls.ControlRuntimeMsg, msg>, FS.GG.UI.Controls.ControlRuntimeEffect) : FSharpList<AdapterEffect<msg>>
+FS.GG.UI.Controls.Elmish.ControlsElmish.interpretKeyboardEffect<msg>(FSharpFunc<System.String, msg>, FS.GG.UI.KeyboardInput.KeyboardEffect) : FSharpList<AdapterEffect<msg>>
+FS.GG.UI.Controls.Elmish.ControlsElmish.interpretOverlayEffect<msg>(FSharpFunc<System.String, FSharpFunc<System.Boolean, msg>>, FSharpFunc<System.String, FSharpFunc<Microsoft.FSharp.Core.FSharpOption<System.String>, msg>>, FSharpFunc<Microsoft.FSharp.Core.FSharpOption<System.String>, FSharpOption<msg>>, FS.GG.UI.Controls.OverlayEffect) : FSharpList<AdapterEffect<msg>>
+FS.GG.UI.Controls.Elmish.ControlsElmish.interpretOverlayOutcome<msg>(FSharpFunc<System.String, FSharpFunc<System.Boolean, msg>>, FSharpFunc<System.String, FSharpFunc<Microsoft.FSharp.Core.FSharpOption<System.String>, msg>>, FSharpFunc<Microsoft.FSharp.Core.FSharpOption<System.String>, FSharpOption<msg>>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.OverlayEffect>) : FSharpList<AdapterEffect<msg>>
+FS.GG.UI.Controls.Elmish.ControlsElmish.interpretPointerEffect<msg>(FSharpFunc<FS.GG.UI.Controls.PointerInteraction, FSharpOption<msg>>, FS.GG.UI.Controls.PointerInteraction) : FSharpList<AdapterEffect<msg>>
+FS.GG.UI.Controls.Elmish.ControlsElmish.interpretPointerOutcome<msg>(FSharpFunc<FS.GG.UI.Controls.PointerInteraction, FSharpOption<msg>>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.PointerInteraction>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlRuntimeMsg>) : FSharpList<AdapterEffect<msg>>
+FS.GG.UI.Controls.Elmish.ControlsElmish.layoutMetrics(FS.GG.UI.Controls.Elmish.FrameMetrics) : FS.GG.UI.Controls.Elmish.LayoutWorkMetrics
+FS.GG.UI.Controls.Elmish.ControlsElmish.program<model, msg>(FSharpFunc<Microsoft.FSharp.Core.Unit, Tuple<model, FSharpList<AdapterEffect<msg>>>>, FSharpFunc<msg, FSharpFunc<model, Tuple<model, FSharpList<AdapterEffect<msg>>>>>, FSharpFunc<model, Control<msg>>, FSharpFunc<model, FSharpList<AdapterSubscription<msg>>>) : AdapterProgram<model, msg>
+FS.GG.UI.Controls.Elmish.ControlsElmish.programOfWidget<model, msg>(FSharpFunc<Microsoft.FSharp.Core.Unit, Tuple<model, FSharpList<AdapterEffect<msg>>>>, FSharpFunc<msg, FSharpFunc<model, Tuple<model, FSharpList<AdapterEffect<msg>>>>>, FSharpFunc<model, Widget<msg>>, FSharpFunc<model, FSharpList<AdapterSubscription<msg>>>) : AdapterProgram<model, msg>
+FS.GG.UI.Controls.Elmish.ControlsElmish.respondsProofOf(FS.GG.UI.Scene.Scene, FS.GG.UI.Scene.Scene) : FS.GG.UI.Controls.Elmish.RespondsProof
+FS.GG.UI.Controls.Elmish.ControlsElmish.responsivenessTimingContribution(FS.GG.UI.Controls.Elmish.FrameMetrics) : FS.GG.UI.Controls.Elmish.ResponsivenessTimingContribution
+FS.GG.UI.Controls.Elmish.ControlsElmish.routeInteractivePointer<model, msg>(InteractiveAppHost<model, msg>, FS.GG.UI.Controls.PointerState, FS.GG.UI.Scene.Size, model, FS.GG.UI.SkiaViewer.ViewerPointerInput) : Tuple<FS.GG.UI.Controls.PointerState, FSharpList<msg>>
+FS.GG.UI.Controls.Elmish.ControlsElmish.runInteractiveApp<model, msg>(FS.GG.UI.SkiaViewer.ViewerOptions, InteractiveAppHost<model, msg>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerLaunchOutcome, FS.GG.UI.SkiaViewer.ViewerRunFailure>
+FS.GG.UI.Controls.Elmish.ControlsElmish.runInteractiveAppWithWindowBehavior<model, msg>(FS.GG.UI.SkiaViewer.ViewerOptions, FS.GG.UI.SkiaViewer.ViewerWindowBehaviorRequest, InteractiveAppHost<model, msg>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerLaunchOutcome, FS.GG.UI.SkiaViewer.ViewerRunFailure>
+FS.GG.UI.Controls.Elmish.ControlsElmish.subscriptions<msg>(FSharpList<AdapterSubscription<msg>>, FSharpList<AdapterSubscription<msg>>) : FSharpList<AdapterSubscription<msg>>
+FS.GG.UI.Controls.Elmish.ControlsElmish.widgetView<model, msg>(FSharpFunc<model, Widget<msg>>) : FSharpFunc<model, Control<msg>>
+FS.GG.UI.Controls.Elmish.DiagnosticsDisabledCompatibility.ClockFreePerfScript : System.Boolean [get]
+FS.GG.UI.Controls.Elmish.DiagnosticsDisabledCompatibility.FrameMetricsUnchanged : System.Boolean [get]
+FS.GG.UI.Controls.Elmish.DiagnosticsDisabledCompatibility.RecordsWritten : System.Int32 [get]
+FS.GG.UI.Controls.Elmish.DiagnosticsDisabledCompatibility.new(System.Boolean, System.Int32, System.Boolean)
+FS.GG.UI.Controls.Elmish.FrameCause+Tags.Idle : System.Int32
+FS.GG.UI.Controls.Elmish.FrameCause+Tags.Key : System.Int32
+FS.GG.UI.Controls.Elmish.FrameCause+Tags.PointerDiscrete : System.Int32
+FS.GG.UI.Controls.Elmish.FrameCause+Tags.PointerMove : System.Int32
+FS.GG.UI.Controls.Elmish.FrameCause+Tags.Resize : System.Int32
+FS.GG.UI.Controls.Elmish.FrameCause+Tags.Theme : System.Int32
+FS.GG.UI.Controls.Elmish.FrameCause+Tags.Tick : System.Int32
+FS.GG.UI.Controls.Elmish.FrameInput`1+Tags.Idle : System.Int32
+FS.GG.UI.Controls.Elmish.FrameInput`1+Tags.Key : System.Int32
+FS.GG.UI.Controls.Elmish.FrameInput`1+Tags.Pointer : System.Int32
+FS.GG.UI.Controls.Elmish.FrameInput`1+Tags.Tick : System.Int32
+FS.GG.UI.Controls.Elmish.FrameMetrics.ComposeDuration : System.TimeSpan [get]
+FS.GG.UI.Controls.Elmish.FrameMetrics.DiffRan : System.Boolean [get]
+FS.GG.UI.Controls.Elmish.FrameMetrics.DirtyArea : System.Int32 [get]
+FS.GG.UI.Controls.Elmish.FrameMetrics.DirtyRectCount : System.Int32 [get]
+FS.GG.UI.Controls.Elmish.FrameMetrics.FrameCause : FS.GG.UI.Controls.Elmish.FrameCause [get]
+FS.GG.UI.Controls.Elmish.FrameMetrics.FrameDuration : System.TimeSpan [get]
+FS.GG.UI.Controls.Elmish.FrameMetrics.FullRenderCount : System.Int32 [get]
+FS.GG.UI.Controls.Elmish.FrameMetrics.FullRenderFallbackCount : System.Int32 [get]
+FS.GG.UI.Controls.Elmish.FrameMetrics.LayoutInvalidatedNodeCount : System.Int32 [get]
+FS.GG.UI.Controls.Elmish.FrameMetrics.LayoutRan : System.Boolean [get]
+FS.GG.UI.Controls.Elmish.FrameMetrics.MemoHitCount : System.Int32 [get]
+FS.GG.UI.Controls.Elmish.FrameMetrics.MemoMissCount : System.Int32 [get]
+FS.GG.UI.Controls.Elmish.FrameMetrics.PaintDuration : System.TimeSpan [get]
+FS.GG.UI.Controls.Elmish.FrameMetrics.PaintRan : System.Boolean [get]
+FS.GG.UI.Controls.Elmish.FrameMetrics.PictureCacheEntryCount : System.Int32 [get]
+FS.GG.UI.Controls.Elmish.FrameMetrics.PictureCacheHitCount : System.Int32 [get]
+FS.GG.UI.Controls.Elmish.FrameMetrics.PictureCacheMissCount : System.Int32 [get]
+FS.GG.UI.Controls.Elmish.FrameMetrics.PointerMovesProcessed : System.Int32 [get]
+FS.GG.UI.Controls.Elmish.FrameMetrics.PointerSamplesReceived : System.Int32 [get]
+FS.GG.UI.Controls.Elmish.FrameMetrics.ProductModelChanged : System.Boolean [get]
+FS.GG.UI.Controls.Elmish.FrameMetrics.RemeasuredNodeCount : System.Int32 [get]
+FS.GG.UI.Controls.Elmish.FrameMetrics.RepaintedNodeCount : System.Int32 [get]
+FS.GG.UI.Controls.Elmish.FrameMetrics.ReplayCacheNativeBytes : System.Int32 [get]
+FS.GG.UI.Controls.Elmish.FrameMetrics.ReplayHitCount : System.Int32 [get]
+FS.GG.UI.Controls.Elmish.FrameMetrics.ReplayMissCount : System.Int32 [get]
+FS.GG.UI.Controls.Elmish.FrameMetrics.ReplayRecordCount : System.Int32 [get]
+FS.GG.UI.Controls.Elmish.FrameMetrics.ReplaySkippedNodeCount : System.Int32 [get]
+FS.GG.UI.Controls.Elmish.FrameMetrics.TextMeasureCacheHitCount : System.Int32 [get]
+FS.GG.UI.Controls.Elmish.FrameMetrics.TextMeasureCacheMissCount : System.Int32 [get]
+FS.GG.UI.Controls.Elmish.FrameMetrics.ViewCalled : System.Boolean [get]
+FS.GG.UI.Controls.Elmish.FrameMetrics.VirtualItemsMaterialized : System.Int32 [get]
+FS.GG.UI.Controls.Elmish.FrameMetrics.VirtualItemsTotal : System.Int32 [get]
+FS.GG.UI.Controls.Elmish.FrameMetrics.new(System.Boolean, System.Boolean, System.Int32, System.Int32, System.Int32, System.Int32, System.Int32, System.Int32, System.Int32, System.Int32, System.Int32, System.Int32, System.Int32, System.Int32, System.Int32, System.Int32, System.Int32, System.Int32, System.Int32, System.Int32, FS.GG.UI.Controls.Elmish.FrameCause, System.Boolean, System.Boolean, System.Boolean, System.TimeSpan, System.TimeSpan, System.TimeSpan, System.Int32, System.Int32, System.Int32, System.Int32, System.Int32)
+FS.GG.UI.Controls.Elmish.InteractiveAppHost`2.Diagnostics : FS.GG.UI.SkiaViewer.ViewerDiagnosticsOptions [get]
+FS.GG.UI.Controls.Elmish.InteractiveAppHost`2.Init : FSharpFunc<Microsoft.FSharp.Core.Unit, Tuple<model, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerEffect>>> [get]
+FS.GG.UI.Controls.Elmish.InteractiveAppHost`2.MapKey : FSharpFunc<FS.GG.UI.KeyboardInput.ViewerKey, FSharpFunc<System.Boolean, FSharpOption<msg>>> [get]
+FS.GG.UI.Controls.Elmish.InteractiveAppHost`2.MapKeyChord : FSharpFunc<FS.GG.UI.KeyboardInput.ViewerKey, FSharpFunc<FS.GG.UI.KeyboardInput.KeyModifiers, FSharpOption<msg>>> [get]
+FS.GG.UI.Controls.Elmish.InteractiveAppHost`2.MapPointer : FSharpFunc<FS.GG.UI.Controls.PointerInteraction, FSharpOption<msg>> [get]
+FS.GG.UI.Controls.Elmish.InteractiveAppHost`2.OnFrameMetrics : Microsoft.FSharp.Core.FSharpFunc<FS.GG.UI.Controls.Elmish.FrameMetrics, Microsoft.FSharp.Core.Unit> [get]
+FS.GG.UI.Controls.Elmish.InteractiveAppHost`2.Theme : FS.GG.UI.DesignSystem.Theme [get]
+FS.GG.UI.Controls.Elmish.InteractiveAppHost`2.Tick : FSharpFunc<System.TimeSpan, FSharpOption<msg>> [get]
+FS.GG.UI.Controls.Elmish.InteractiveAppHost`2.Update : FSharpFunc<msg, FSharpFunc<model, Tuple<model, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerEffect>>>> [get]
+FS.GG.UI.Controls.Elmish.InteractiveAppHost`2.View : FSharpFunc<FS.GG.UI.Scene.Size, FSharpFunc<model, Control<msg>>> [get]
+FS.GG.UI.Controls.Elmish.InteractiveAppHost`2.new(FSharpFunc<Microsoft.FSharp.Core.Unit, Tuple<model, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerEffect>>>, FSharpFunc<msg, FSharpFunc<model, Tuple<model, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerEffect>>>>, FSharpFunc<FS.GG.UI.Scene.Size, FSharpFunc<model, Control<msg>>>, FS.GG.UI.DesignSystem.Theme, FSharpFunc<FS.GG.UI.KeyboardInput.ViewerKey, FSharpFunc<System.Boolean, FSharpOption<msg>>>, FSharpFunc<FS.GG.UI.Controls.PointerInteraction, FSharpOption<msg>>, FSharpFunc<System.TimeSpan, FSharpOption<msg>>, FSharpFunc<FS.GG.UI.KeyboardInput.ViewerKey, FSharpFunc<FS.GG.UI.KeyboardInput.KeyModifiers, FSharpOption<msg>>>, Microsoft.FSharp.Core.FSharpFunc<FS.GG.UI.Controls.Elmish.FrameMetrics, Microsoft.FSharp.Core.Unit>, FS.GG.UI.SkiaViewer.ViewerDiagnosticsOptions)
+FS.GG.UI.Controls.Elmish.LayoutWorkMetrics.IntrinsicCacheHitCount : System.Int32 [get]
+FS.GG.UI.Controls.Elmish.LayoutWorkMetrics.IntrinsicCacheMissCount : System.Int32 [get]
+FS.GG.UI.Controls.Elmish.LayoutWorkMetrics.IntrinsicInvalidationCount : System.Int32 [get]
+FS.GG.UI.Controls.Elmish.LayoutWorkMetrics.IntrinsicQueryWorkCount : System.Int32 [get]
+FS.GG.UI.Controls.Elmish.LayoutWorkMetrics.LayoutWorkCount : System.Int32 [get]
+FS.GG.UI.Controls.Elmish.LayoutWorkMetrics.new(System.Int32, System.Int32, System.Int32, System.Int32, System.Int32)
+FS.GG.UI.Controls.Elmish.LiveScriptRunResult.Metrics : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.Elmish.FrameMetrics> [get]
+FS.GG.UI.Controls.Elmish.LiveScriptRunResult.Outcome : FS.GG.UI.SkiaViewer.ViewerLaunchOutcome [get]
+FS.GG.UI.Controls.Elmish.LiveScriptRunResult.new(FS.GG.UI.SkiaViewer.ViewerLaunchOutcome, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.Elmish.FrameMetrics>)
+FS.GG.UI.Controls.Elmish.RespondsProof.After : FS.GG.UI.Scene.Scene [get]
+FS.GG.UI.Controls.Elmish.RespondsProof.Before : FS.GG.UI.Scene.Scene [get]
+FS.GG.UI.Controls.Elmish.RespondsProof.Verdict : FS.GG.UI.Controls.Elmish.RespondsVerdict [get]
+FS.GG.UI.Controls.Elmish.RespondsProof.new(FS.GG.UI.Scene.Scene, FS.GG.UI.Scene.Scene, FS.GG.UI.Controls.Elmish.RespondsVerdict)
+FS.GG.UI.Controls.Elmish.RespondsVerdict+Tags.Inert : System.Int32
+FS.GG.UI.Controls.Elmish.RespondsVerdict+Tags.Responsive : System.Int32
+FS.GG.UI.Controls.Elmish.ResponsivenessTimingContribution.LayoutDuration : System.TimeSpan [get]
+FS.GG.UI.Controls.Elmish.ResponsivenessTimingContribution.NoVisibleResponseReason : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.Elmish.ResponsivenessTimingContribution.ProductMessageCount : System.Int32 [get]
+FS.GG.UI.Controls.Elmish.ResponsivenessTimingContribution.ProductModelChanged : System.Boolean [get]
+FS.GG.UI.Controls.Elmish.ResponsivenessTimingContribution.RetainedStepDuration : System.TimeSpan [get]
+FS.GG.UI.Controls.Elmish.ResponsivenessTimingContribution.RoutingDuration : System.TimeSpan [get]
+FS.GG.UI.Controls.Elmish.ResponsivenessTimingContribution.RuntimeStateChanged : System.Boolean [get]
+FS.GG.UI.Controls.Elmish.ResponsivenessTimingContribution.TextDuration : System.TimeSpan [get]
+FS.GG.UI.Controls.Elmish.ResponsivenessTimingContribution.UpdateDuration : System.TimeSpan [get]
+FS.GG.UI.Controls.Elmish.ResponsivenessTimingContribution.new(System.TimeSpan, System.TimeSpan, System.TimeSpan, System.TimeSpan, System.TimeSpan, System.Int32, System.Boolean, System.Boolean, Microsoft.FSharp.Core.FSharpOption<System.String>)

@@ -1,0 +1,96 @@
+FS.GG.UI.Diagnostics.AggregatedDiagnostic.Action : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Diagnostics.AggregatedDiagnostic.Category : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Diagnostics.DiagnosticCategory> [get]
+FS.GG.UI.Diagnostics.AggregatedDiagnostic.Code : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Diagnostics.AggregatedDiagnostic.ExampleIds : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Diagnostics.AggregatedDiagnostic.Fingerprint : System.String [get]
+FS.GG.UI.Diagnostics.AggregatedDiagnostic.FirstOccurrence : FS.GG.UI.Diagnostics.DiagnosticContext [get]
+FS.GG.UI.Diagnostics.AggregatedDiagnostic.LastOccurrence : FS.GG.UI.Diagnostics.DiagnosticContext [get]
+FS.GG.UI.Diagnostics.AggregatedDiagnostic.Message : System.String [get]
+FS.GG.UI.Diagnostics.AggregatedDiagnostic.OccurrenceCount : System.Int32 [get]
+FS.GG.UI.Diagnostics.AggregatedDiagnostic.Severity : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Diagnostics.DiagnosticSeverity> [get]
+FS.GG.UI.Diagnostics.AggregatedDiagnostic.Source : FS.GG.UI.Diagnostics.DiagnosticSource [get]
+FS.GG.UI.Diagnostics.AggregatedDiagnostic.new(System.String, FS.GG.UI.Diagnostics.DiagnosticSource, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Diagnostics.DiagnosticSeverity>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Diagnostics.DiagnosticCategory>, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, System.Int32, FS.GG.UI.Diagnostics.DiagnosticContext, FS.GG.UI.Diagnostics.DiagnosticContext, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Diagnostics.DiagnosticCategory+Tags.BackendCost : System.Int32
+FS.GG.UI.Diagnostics.DiagnosticCategory+Tags.DeveloperAction : System.Int32
+FS.GG.UI.Diagnostics.DiagnosticCategory+Tags.Environment : System.Int32
+FS.GG.UI.Diagnostics.DiagnosticCategory+Tags.ReadinessBlocker : System.Int32
+FS.GG.UI.Diagnostics.DiagnosticCategory+Tags.RenderingLimitation : System.Int32
+FS.GG.UI.Diagnostics.DiagnosticContext.Details : Microsoft.FSharp.Collections.FSharpList<System.Tuple<System.String, System.String>> [get]
+FS.GG.UI.Diagnostics.DiagnosticContext.OutputPath : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Diagnostics.DiagnosticContext.RunId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Diagnostics.DiagnosticContext.TimestampUtc : Microsoft.FSharp.Core.FSharpOption<System.DateTime> [get]
+FS.GG.UI.Diagnostics.DiagnosticContext.new(Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.DateTime>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<System.Tuple<System.String, System.String>>)
+FS.GG.UI.Diagnostics.DiagnosticException.AcceptedBy : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Diagnostics.DiagnosticException.ExceptionId : System.String [get]
+FS.GG.UI.Diagnostics.DiagnosticException.ExpiresOn : Microsoft.FSharp.Core.FSharpOption<System.DateOnly> [get]
+FS.GG.UI.Diagnostics.DiagnosticException.Reason : System.String [get]
+FS.GG.UI.Diagnostics.DiagnosticException.Scope : System.String [get]
+FS.GG.UI.Diagnostics.DiagnosticException.new(System.String, System.String, System.String, Microsoft.FSharp.Core.FSharpOption<System.DateOnly>, Microsoft.FSharp.Core.FSharpOption<System.String>)
+FS.GG.UI.Diagnostics.DiagnosticReadinessImpact+Tags.BlocksReadiness : System.Int32
+FS.GG.UI.Diagnostics.DiagnosticReadinessImpact+Tags.EnvironmentLimited : System.Int32
+FS.GG.UI.Diagnostics.DiagnosticReadinessImpact+Tags.NonBlocking : System.Int32
+FS.GG.UI.Diagnostics.DiagnosticReadinessImpact+Tags.RequiresReview : System.Int32
+FS.GG.UI.Diagnostics.DiagnosticSeverity+Tags.Error : System.Int32
+FS.GG.UI.Diagnostics.DiagnosticSeverity+Tags.Informational : System.Int32
+FS.GG.UI.Diagnostics.DiagnosticSeverity+Tags.Warning : System.Int32
+FS.GG.UI.Diagnostics.DiagnosticSource.LaneId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Diagnostics.DiagnosticSource.PackageId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Diagnostics.DiagnosticSource.SampleId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Diagnostics.DiagnosticSource.Subsystem : System.String [get]
+FS.GG.UI.Diagnostics.DiagnosticSource.new(Microsoft.FSharp.Core.FSharpOption<System.String>, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>)
+FS.GG.UI.Diagnostics.DiagnosticSummary.ArtifactPaths : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Diagnostics.DiagnosticSummary.ArtifactWriteDiagnostics : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Diagnostics.RuntimeDiagnostic> [get]
+FS.GG.UI.Diagnostics.DiagnosticSummary.BlockerCount : System.Int32 [get]
+FS.GG.UI.Diagnostics.DiagnosticSummary.CountsByCategory : Microsoft.FSharp.Collections.FSharpList<System.Tuple<FS.GG.UI.Diagnostics.DiagnosticCategory, System.Int32>> [get]
+FS.GG.UI.Diagnostics.DiagnosticSummary.CountsBySeverity : Microsoft.FSharp.Collections.FSharpList<System.Tuple<FS.GG.UI.Diagnostics.DiagnosticSeverity, System.Int32>> [get]
+FS.GG.UI.Diagnostics.DiagnosticSummary.ExceptionCount : System.Int32 [get]
+FS.GG.UI.Diagnostics.DiagnosticSummary.Exceptions : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Diagnostics.DiagnosticException> [get]
+FS.GG.UI.Diagnostics.DiagnosticSummary.Groups : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Diagnostics.AggregatedDiagnostic> [get]
+FS.GG.UI.Diagnostics.DiagnosticSummary.ReviewRequiredCount : System.Int32 [get]
+FS.GG.UI.Diagnostics.DiagnosticSummary.RunId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Diagnostics.DiagnosticSummary.Status : FS.GG.UI.Diagnostics.ReadinessDiagnosticStatus [get]
+FS.GG.UI.Diagnostics.DiagnosticSummary.UnclassifiedCount : System.Int32 [get]
+FS.GG.UI.Diagnostics.DiagnosticSummary.new(Microsoft.FSharp.Core.FSharpOption<System.String>, FS.GG.UI.Diagnostics.ReadinessDiagnosticStatus, Microsoft.FSharp.Collections.FSharpList<System.Tuple<FS.GG.UI.Diagnostics.DiagnosticSeverity, System.Int32>>, Microsoft.FSharp.Collections.FSharpList<System.Tuple<FS.GG.UI.Diagnostics.DiagnosticCategory, System.Int32>>, System.Int32, System.Int32, System.Int32, System.Int32, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Diagnostics.AggregatedDiagnostic>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Diagnostics.DiagnosticException>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Diagnostics.RuntimeDiagnostic>)
+FS.GG.UI.Diagnostics.ReadinessDiagnosticStatus+Tags.Accepted : System.Int32
+FS.GG.UI.Diagnostics.ReadinessDiagnosticStatus+Tags.Blocked : System.Int32
+FS.GG.UI.Diagnostics.ReadinessDiagnosticStatus+Tags.EnvironmentLimitedStatus : System.Int32
+FS.GG.UI.Diagnostics.ReadinessDiagnosticStatus+Tags.ReviewRequired : System.Int32
+FS.GG.UI.Diagnostics.ReadinessStatus+Tags.Accepted : System.Int32
+FS.GG.UI.Diagnostics.ReadinessStatus+Tags.Blocked : System.Int32
+FS.GG.UI.Diagnostics.ReadinessStatus+Tags.Degraded : System.Int32
+FS.GG.UI.Diagnostics.ReadinessStatus+Tags.EnvironmentLimited : System.Int32
+FS.GG.UI.Diagnostics.ReadinessStatus+Tags.Failed : System.Int32
+FS.GG.UI.Diagnostics.ReadinessStatus+Tags.FallbackOnly : System.Int32
+FS.GG.UI.Diagnostics.ReadinessStatus+Tags.Incomplete : System.Int32
+FS.GG.UI.Diagnostics.ReadinessStatus+Tags.Missing : System.Int32
+FS.GG.UI.Diagnostics.ReadinessStatus+Tags.Pending : System.Int32
+FS.GG.UI.Diagnostics.ReadinessStatus+Tags.Rejected : System.Int32
+FS.GG.UI.Diagnostics.ReadinessStatus+Tags.Unknown : System.Int32
+FS.GG.UI.Diagnostics.ReadinessStatus+Tags.Unsupported : System.Int32
+FS.GG.UI.Diagnostics.ReadinessStatus.blocksAcceptance(FS.GG.UI.Diagnostics.ReadinessStatus) : System.Boolean
+FS.GG.UI.Diagnostics.ReadinessStatus.statusToken(FS.GG.UI.Diagnostics.ReadinessStatus) : System.String
+FS.GG.UI.Diagnostics.ReadinessStatus.tryParse(System.String) : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Diagnostics.ReadinessStatus>
+FS.GG.UI.Diagnostics.RuntimeDiagnostic.Action : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Diagnostics.RuntimeDiagnostic.Category : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Diagnostics.DiagnosticCategory> [get]
+FS.GG.UI.Diagnostics.RuntimeDiagnostic.Code : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Diagnostics.RuntimeDiagnostic.Context : FS.GG.UI.Diagnostics.DiagnosticContext [get]
+FS.GG.UI.Diagnostics.RuntimeDiagnostic.Fingerprint : System.String [get]
+FS.GG.UI.Diagnostics.RuntimeDiagnostic.Id : System.String [get]
+FS.GG.UI.Diagnostics.RuntimeDiagnostic.Message : System.String [get]
+FS.GG.UI.Diagnostics.RuntimeDiagnostic.Severity : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Diagnostics.DiagnosticSeverity> [get]
+FS.GG.UI.Diagnostics.RuntimeDiagnostic.Source : FS.GG.UI.Diagnostics.DiagnosticSource [get]
+FS.GG.UI.Diagnostics.RuntimeDiagnostic.new(System.String, FS.GG.UI.Diagnostics.DiagnosticSource, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Diagnostics.DiagnosticSeverity>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Diagnostics.DiagnosticCategory>, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, FS.GG.UI.Diagnostics.DiagnosticContext, System.String)
+FS.GG.UI.Diagnostics.RuntimeDiagnostics.aggregate(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Diagnostics.RuntimeDiagnostic>) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Diagnostics.AggregatedDiagnostic>
+FS.GG.UI.Diagnostics.RuntimeDiagnostics.categoryToken(FS.GG.UI.Diagnostics.DiagnosticCategory) : System.String
+FS.GG.UI.Diagnostics.RuntimeDiagnostics.context(Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.DateTime>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<System.Tuple<System.String, System.String>>) : FS.GG.UI.Diagnostics.DiagnosticContext
+FS.GG.UI.Diagnostics.RuntimeDiagnostics.create(FS.GG.UI.Diagnostics.DiagnosticSource, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Diagnostics.DiagnosticSeverity>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Diagnostics.DiagnosticCategory>, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, FS.GG.UI.Diagnostics.DiagnosticContext) : FS.GG.UI.Diagnostics.RuntimeDiagnostic
+FS.GG.UI.Diagnostics.RuntimeDiagnostics.readinessStatusToken(FS.GG.UI.Diagnostics.ReadinessDiagnosticStatus) : System.String
+FS.GG.UI.Diagnostics.RuntimeDiagnostics.renderConsole(System.Boolean, System.Int32, FS.GG.UI.Diagnostics.DiagnosticSummary) : Microsoft.FSharp.Collections.FSharpList<System.String>
+FS.GG.UI.Diagnostics.RuntimeDiagnostics.renderJson(FS.GG.UI.Diagnostics.DiagnosticSummary) : System.String
+FS.GG.UI.Diagnostics.RuntimeDiagnostics.renderJsonLines(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Diagnostics.RuntimeDiagnostic>) : System.String
+FS.GG.UI.Diagnostics.RuntimeDiagnostics.renderMarkdown(FS.GG.UI.Diagnostics.DiagnosticSummary) : System.String
+FS.GG.UI.Diagnostics.RuntimeDiagnostics.severityToken(FS.GG.UI.Diagnostics.DiagnosticSeverity) : System.String
+FS.GG.UI.Diagnostics.RuntimeDiagnostics.source(Microsoft.FSharp.Core.FSharpOption<System.String>, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>) : FS.GG.UI.Diagnostics.DiagnosticSource
+FS.GG.UI.Diagnostics.RuntimeDiagnostics.summarize(Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Diagnostics.DiagnosticException>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Diagnostics.RuntimeDiagnostic>) : FS.GG.UI.Diagnostics.DiagnosticSummary
+FS.GG.UI.Diagnostics.RuntimeDiagnostics.tryParseReadinessStatus(System.String) : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Diagnostics.ReadinessDiagnosticStatus>
+FS.GG.UI.Diagnostics.RuntimeDiagnostics.writeArtifacts(System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Diagnostics.DiagnosticException>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Diagnostics.RuntimeDiagnostic>) : FS.GG.UI.Diagnostics.DiagnosticSummary
