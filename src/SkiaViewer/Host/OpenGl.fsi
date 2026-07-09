@@ -223,8 +223,66 @@ module GlHost =
         | Timeout
         | HostError of string
 
+    /// Issue #179: `glGetGraphicsResetStatus` on a context that has not been reset — and also what a
+    /// context without `GL_KHR_robustness` always reports, so a reset is a positive signal only.
+    val glNoError: uint32
+
+    /// Issue #179: the driver/window facts a failed frame is classified from. `GraphicsResetStatus` is
+    /// the raw `glGetGraphicsResetStatus` code (`glNoError`, or a guilty/innocent/unknown reset),
+    /// carried as a code rather than Silk's `GLEnum` to keep the GL binding out of this package's
+    /// public surface. `ContextAbandoned` is the signal Skia always maintains.
+    type FrameFailureFacts =
+        { GraphicsResetStatus: uint32
+          ContextAbandoned: bool
+          GlContextCurrent: bool
+          WindowSystemPresent: bool }
+
+    [<RequireQualifiedAccess>]
+    /// Issue #179: what a failed frame means. Constitution VI requires an implementation defect to
+    /// stay distinguishable from a lost device and from a missing window system.
+    type FrameFailureKind =
+        | DeviceLost
+        | WindowSystemUnavailable
+        | TransientDrawFailure
+
+    [<RequireQualifiedAccess>]
+    /// Issue #179: what the persistent loop does about a failed frame. There is no context-recreation
+    /// path, so an unrecoverable frame tears the run down explicitly rather than spinning on it.
+    type FrameFailureAction =
+        | RetryFrame of attempt: int
+        | TeardownRun of reason: string
+
+    /// Issue #179: consecutive transient frame failures tolerated before the run is torn down.
+    val transientFrameRetryBudget: int
+
+    /// Issue #179: classify a failed frame from driver/window facts alone.
+    val classifyFrameFailure: facts: FrameFailureFacts -> FrameFailureKind
+
+    /// Issue #179: decide what a failed frame does to the run. `consecutiveFailures` counts this
+    /// failure, so the first failed frame passes 1. A lost device and a vanished window system are
+    /// terminal immediately; a transient draw failure is retried up to `retryBudget` times.
+    val decideFrameFailure:
+        kind: FrameFailureKind -> consecutiveFailures: int -> retryBudget: int -> FrameFailureAction
+
+    /// Issue #179: the failure streak a run carries across frames.
+    type FrameFailureTracker =
+        { mutable ConsecutiveFailures: int }
+
+    /// Issue #179: a fresh streak for a new run.
+    val newFrameFailureTracker: unit -> FrameFailureTracker
+
+    /// Issue #179: a presented frame clears the streak, so the retry budget bounds *consecutive*
+    /// failures rather than failures over the life of the window.
+    val observeFramePresented: tracker: FrameFailureTracker -> unit
+
+    /// Issue #179: fold a failed frame into the streak and decide what the run does about it. This
+    /// is the accumulation the live loop performs, exposed so it can be driven frame by frame.
+    val observeFrameFailed:
+        tracker: FrameFailureTracker -> facts: FrameFailureFacts -> retryBudget: int -> FrameFailureAction
+
     /// Public contract function exposed by this FS.GG.UI package. Signature shape preserved
-    /// from the former VulkanHost.run so Host/Viewer.fs routes unchanged.
+    /// from the former VulkanHost.run so Host/Viewer.fs routes unchanged. A run whose frame loop
+    /// was abandoned (issue #179) returns the fatal diagnostic that ended it.
     val run: program: ViewerProgram<'model, 'msg> -> Result<unit, RenderDiagnostic>
 
     /// Feature 120 (US1, FR-001/002): the most recent present's per-phase durations — the scene→canvas

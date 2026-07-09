@@ -728,8 +728,10 @@ module GlHost =
     let createSkiaContext configuration (window: IWindow) =
         try
             // Initialise the GL API binding for this window/thread (context is current after
-            // Initialize()); SkiaSharp draws through the same context via the proc loader.
-            window.CreateOpenGL() |> ignore
+            // Initialize()); SkiaSharp draws through the same context via the proc loader. The
+            // binding is kept (not discarded) so a failed frame can ask the driver for its
+            // graphics-reset status before deciding whether the device is lost (#179).
+            let gl = window.CreateOpenGL()
 
             match box window.GLContext with
             | null -> Result.Error(Diagnostics.startupFailed GlContext "Silk.NET window exposed no GL context.")
@@ -754,7 +756,7 @@ module GlHost =
                     if isNull context then
                         Result.Error(Diagnostics.startupFailed SkiaContext "SkiaSharp did not create an OpenGL GPU context.")
                     else
-                        Ok(context, glInterface)
+                        Ok(context, glInterface, gl)
         with ex ->
             Result.Error(Diagnostics.startupFailed SkiaContext $"SkiaSharp OpenGL GPU context creation failed: {ex.Message}")
 
@@ -1158,6 +1160,87 @@ module GlHost =
         with ex ->
             Result.Error(Diagnostics.screenshotFailed ex.Message)
 
+    /// Issue #179: `glGetGraphicsResetStatus` on a context that has not been reset — and also what a
+    /// context WITHOUT `GL_KHR_robustness` always reports, which is why a reset is a positive signal
+    /// only: its absence proves nothing. `ContextAbandoned` is the signal Skia always maintains.
+    let glNoError = 0u
+
+    /// Issue #179: the driver/window facts a failed frame is classified from. Structured, so the
+    /// classification never has to sniff an exception's prose (which no layer guarantees).
+    /// `GraphicsResetStatus` is the raw `glGetGraphicsResetStatus` code — `glNoError`, or one of GL's
+    /// guilty/innocent/unknown reset codes. It is carried as the raw code rather than Silk's `GLEnum`
+    /// so the GL binding stays out of this package's public surface (the surface-baseline reflector
+    /// would have to resolve `Silk.NET.OpenGL` to enumerate this record).
+    type FrameFailureFacts =
+        { GraphicsResetStatus: uint32
+          ContextAbandoned: bool
+          GlContextCurrent: bool
+          WindowSystemPresent: bool }
+
+    [<RequireQualifiedAccess>]
+    /// Issue #179: what a failed frame means, per Constitution VI — an implementation defect
+    /// (transient) must stay distinguishable from a lost device and from a missing window system.
+    type FrameFailureKind =
+        | DeviceLost
+        | WindowSystemUnavailable
+        | TransientDrawFailure
+
+    [<RequireQualifiedAccess>]
+    /// Issue #179: what the loop does about it. There is no context-recreation path, so an
+    /// unrecoverable frame tears the run down explicitly rather than spinning on it.
+    type FrameFailureAction =
+        | RetryFrame of attempt: int
+        | TeardownRun of reason: string
+
+    /// Issue #179: consecutive transient frame failures tolerated before the run is torn down.
+    /// Bounded so a permanently-failing draw can never re-emit the same diagnostic at frame rate.
+    let transientFrameRetryBudget = 3
+
+    /// Issue #179: classify a failed frame from driver/window facts alone (pure).
+    let classifyFrameFailure (facts: FrameFailureFacts) : FrameFailureKind =
+        if facts.ContextAbandoned || facts.GraphicsResetStatus <> glNoError then
+            FrameFailureKind.DeviceLost
+        elif not facts.WindowSystemPresent then
+            FrameFailureKind.WindowSystemUnavailable
+        elif not facts.GlContextCurrent then
+            // The context outlived its window/surface: the device is gone even if no reset was reported.
+            FrameFailureKind.DeviceLost
+        else
+            FrameFailureKind.TransientDrawFailure
+
+    /// Issue #179: decide what a failed frame does to the run. `consecutiveFailures` counts this
+    /// failure (so the first failed frame passes 1). A lost device and a vanished window system are
+    /// terminal on the first frame — retrying either only re-emits the same diagnostic.
+    let decideFrameFailure (kind: FrameFailureKind) (consecutiveFailures: int) (retryBudget: int) : FrameFailureAction =
+        match kind with
+        | FrameFailureKind.DeviceLost ->
+            FrameFailureAction.TeardownRun "The OpenGL device was lost; the viewer has no context-recreation path."
+        | FrameFailureKind.WindowSystemUnavailable ->
+            FrameFailureAction.TeardownRun "The window system is no longer available to present frames."
+        | FrameFailureKind.TransientDrawFailure ->
+            if consecutiveFailures <= retryBudget then
+                FrameFailureAction.RetryFrame consecutiveFailures
+            else
+                FrameFailureAction.TeardownRun
+                    $"Frame rendering failed {consecutiveFailures} times consecutively (budget {retryBudget}); the failure is not transient."
+
+    /// Issue #179: the failure streak carried across frames. Only the run mutates it; it exists as a
+    /// type (rather than a `let mutable` inside `run`) so the retry/teardown accumulation the live
+    /// loop performs is the same code a test can drive frame by frame.
+    type FrameFailureTracker = { mutable ConsecutiveFailures: int }
+
+    /// Issue #179: a fresh streak for a new run.
+    let newFrameFailureTracker () = { ConsecutiveFailures = 0 }
+
+    /// Issue #179: a presented frame clears the streak, so the retry budget bounds *consecutive*
+    /// failures rather than failures over the life of the window.
+    let observeFramePresented (tracker: FrameFailureTracker) = tracker.ConsecutiveFailures <- 0
+
+    /// Issue #179: fold a failed frame into the streak and decide what the run does about it.
+    let observeFrameFailed (tracker: FrameFailureTracker) (facts: FrameFailureFacts) (retryBudget: int) : FrameFailureAction =
+        tracker.ConsecutiveFailures <- tracker.ConsecutiveFailures + 1
+        decideFrameFailure (classifyFrameFailure facts) tracker.ConsecutiveFailures retryBudget
+
     let run program : Result<unit, RenderDiagnostic> =
         let mutable currentModel = Unchecked.defaultof<_>
         let mutable window: IWindow option = None
@@ -1166,6 +1249,12 @@ module GlHost =
         let mutable activeSubscriptions: IDisposable list = []
         let mutable grContext: GRContext option = None
         let mutable glInterface: GRGlInterface option = None
+        let mutable glApi: GL option = None
+        // Issue #179: consecutive failed frames, and the failure that ended the run. A frame that
+        // fails no longer vanishes into `ignore` — it is counted, classified, and either retried a
+        // bounded number of times or made terminal, and a terminal one is what `run` returns.
+        let frameFailures = newFrameFailureTracker ()
+        let mutable fatalFrameDiagnostic: RenderDiagnostic option = None
         let framebuffer: FramebufferState = { Surface = None; RenderTarget = None; Width = 0; Height = 0 }
         let announced = ref false
         let mutable pendingScene: Scene option = None
@@ -1213,6 +1302,59 @@ module GlHost =
 
             activeSubscriptions <- []
 
+        /// Issue #179: is there still a window system to present to? A frame that fails after the
+        /// session went away is not an implementation defect (Constitution VI).
+        let windowSystemPresent () =
+            if OperatingSystem.IsLinux() then
+                [ "DISPLAY"; "WAYLAND_DISPLAY" ]
+                |> List.exists (fun name -> not (String.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable name)))
+            else
+                true
+
+        /// Issue #179: snapshot the driver/window facts behind a failed frame. Every probe is a
+        /// native call on a context that just failed, so each one falls back to its healthy value
+        /// rather than throwing a second failure out of the failure handler.
+        let frameFailureFacts () : FrameFailureFacts =
+            let resetStatus =
+                match glApi with
+                | Some gl ->
+                    try
+                        uint32 (gl.GetGraphicsResetStatus())
+                    with _ ->
+                        glNoError
+                | None -> glNoError
+
+            let abandoned =
+                match grContext with
+                | Some context ->
+                    try
+                        context.IsAbandoned
+                    with _ ->
+                        false
+                | None -> false
+
+            let contextCurrent =
+                match window with
+                | Some w ->
+                    try
+                        match box w.GLContext with
+                        | null -> false
+                        | _ -> w.GLContext.IsCurrent
+                    with _ ->
+                        false
+                | None -> false
+
+            { GraphicsResetStatus = resetStatus
+              ContextAbandoned = abandoned
+              GlContextCurrent = contextCurrent
+              WindowSystemPresent = windowSystemPresent () }
+
+        let frameFailureKindLabel kind =
+            match kind with
+            | FrameFailureKind.DeviceLost -> "device-lost"
+            | FrameFailureKind.WindowSystemUnavailable -> "window-system-unavailable"
+            | FrameFailureKind.TransientDrawFailure -> "transient"
+
         let rec saveScreenshot request snapshot =
             match encodeSnapshot request snapshot with
             | Ok() -> Ok()
@@ -1244,6 +1386,9 @@ module GlHost =
                     match render scene with
                     | Ok snapshot ->
                         lastFrame <- Some snapshot
+                        // Issue #179: only an actually-presented frame clears the failure streak,
+                        // so the retry budget bounds *consecutive* failures, not failures overall.
+                        observeFramePresented frameFailures
                         let paint, present = lastPresentTiming()
                         RenderLagTrace.emit
                             "gl-render-success"
@@ -1266,8 +1411,7 @@ module GlHost =
                             | _ -> Ok()
                     | Result.Error diagnostic ->
                         RenderLagTrace.emit "gl-render-failed" [ "message", diagnostic.Message.Replace(" ", "_") ]
-                        dispatchViewerEvent program dispatch (DiagnosticReported diagnostic)
-                        Result.Error diagnostic
+                        handleFrameFailure diagnostic
                 | None ->
                     pendingScene <- Some scene
                     Ok()
@@ -1313,10 +1457,62 @@ module GlHost =
                 dispatch msg
                 Ok()
 
+        /// Issue #179: a failed frame changes the run's behaviour. It is counted, classified from
+        /// driver facts, and then either retried (the next frame re-enters this path) or made
+        /// terminal — closing the window and giving `run` its Error. Before this, the failure was
+        /// reported and dropped, so a lost device re-emitted the same diagnostic every frame,
+        /// forever, behind a window still showing the last good frame.
+        and handleFrameFailure diagnostic =
+            let facts = frameFailureFacts ()
+            let kind = classifyFrameFailure facts
+
+            match observeFrameFailed frameFailures facts transientFrameRetryBudget with
+            | FrameFailureAction.RetryFrame attempt ->
+                RenderLagTrace.emit
+                    "gl-frame-retry"
+                    [ "kind", frameFailureKindLabel kind
+                      "attempt", string attempt
+                      "budget", string transientFrameRetryBudget ]
+
+                dispatchViewerEvent program dispatch (DiagnosticReported diagnostic)
+                Result.Error diagnostic
+            | FrameFailureAction.TeardownRun reason ->
+                // The raw reset code is what tells guilty from innocent from unknown. It stays out of
+                // `FrameFailureFacts` (which the policy reads) but belongs in the operator's cause.
+                let underlying = diagnostic.Cause |> Option.defaultValue diagnostic.Message
+
+                let cause =
+                    if facts.GraphicsResetStatus <> glNoError then
+                        $"{underlying} (glGetGraphicsResetStatus=0x{facts.GraphicsResetStatus:X4})"
+                    else
+                        underlying
+
+                let fatal = Diagnostics.frameLoopAbandoned reason (Some cause)
+
+                RenderLagTrace.emit
+                    "gl-frame-abandoned"
+                    [ "kind", frameFailureKindLabel kind
+                      "failures", string frameFailures.ConsecutiveFailures ]
+
+                fatalFrameDiagnostic <- Some fatal
+                dispatchViewerEvent program dispatch (DiagnosticReported fatal)
+                requestShutdown true
+                Result.Error fatal
+
         and dispatch msg =
             match program.EffectMapper msg with
             | Some effect ->
-                interpretEffect effect |> ignore
+                // Issue #179: the interpreter's Result is consumed, not `ignore`d. Each failure was
+                // already reported over the diagnostic channel at its source; a terminal one has set
+                // `fatalFrameDiagnostic` and requested shutdown, so the loop is already ending. What
+                // is added here is that the failure leaves a trace instead of vanishing.
+                match interpretEffect effect with
+                | Ok() -> ()
+                | Result.Error diagnostic ->
+                    RenderLagTrace.emit
+                        "gl-effect-failed"
+                        [ "stage", string diagnostic.Stage
+                          "terminal", string fatalFrameDiagnostic.IsSome ]
             | None ->
                 let nextModel, cmd = program.Update msg currentModel
                 currentModel <- nextModel
@@ -1386,9 +1582,10 @@ module GlHost =
                                 inputEventMapping <- Some inputMapping
                                 Ok createdWindow)))
                     (fun createdWindow ->
-                        bind (createSkiaContext program.Configuration createdWindow) (fun (context, glIface) ->
+                        bind (createSkiaContext program.Configuration createdWindow) (fun (context, glIface, gl) ->
                             grContext <- Some context
                             glInterface <- Some glIface
+                            glApi <- Some gl
 
                             // Live-only, non-golden present diagnostics (FR-005 fallback,
                             // FR-007 present-mode Info) flow over the existing diagnostic channel.
@@ -1417,9 +1614,15 @@ module GlHost =
                                 |> Option.defaultValue (program.View currentModel)
 
                             pendingScene <- None
+
                             bind (interpretEffect (RenderFrame scene)) (fun () ->
                                 runEventLoop createdWindow
-                                Ok())))
+
+                                // Issue #179: a run the frame loop abandoned ends in Error, like the
+                                // bounded path's timeout — not in a silent Ok behind a closed window.
+                                match fatalFrameDiagnostic with
+                                | Some diagnostic -> Result.Error diagnostic
+                                | None -> Ok())))
             with ex ->
                 Result.Error(Diagnostics.frameRenderFailed ex.Message)
 
@@ -1454,6 +1657,12 @@ module GlHost =
 
             match glInterface with
             | Some glIface -> glIface.Dispose()
+            | None -> ()
+
+            // Issue #179: the run captured the GL binding to read the driver's reset status, so the
+            // run releases it — after Skia, which drew through it.
+            match glApi with
+            | Some gl -> gl.Dispose()
             | None -> ()
 
             match window with

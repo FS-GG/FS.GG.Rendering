@@ -87,6 +87,14 @@ FS.GG.UI.SkiaViewer.Host.GlHost+DamageValidationFlags
 FS.GG.UI.SkiaViewer.Host.GlHost+DamageValidationResult
 FS.GG.UI.SkiaViewer.Host.GlHost+DamageValidationStatus
 FS.GG.UI.SkiaViewer.Host.GlHost+DamageValidationStatus+Tags
+FS.GG.UI.SkiaViewer.Host.GlHost+FrameFailureAction
+FS.GG.UI.SkiaViewer.Host.GlHost+FrameFailureAction+RetryFrame
+FS.GG.UI.SkiaViewer.Host.GlHost+FrameFailureAction+Tags
+FS.GG.UI.SkiaViewer.Host.GlHost+FrameFailureAction+TeardownRun
+FS.GG.UI.SkiaViewer.Host.GlHost+FrameFailureFacts
+FS.GG.UI.SkiaViewer.Host.GlHost+FrameFailureKind
+FS.GG.UI.SkiaViewer.Host.GlHost+FrameFailureKind+Tags
+FS.GG.UI.SkiaViewer.Host.GlHost+FrameFailureTracker
 FS.GG.UI.SkiaViewer.Host.GlHost+InputReceiptDiagnostic
 FS.GG.UI.SkiaViewer.Host.GlHost+LiveProofHostFacts
 FS.GG.UI.SkiaViewer.Host.GlHost+LiveProofHostReadiness

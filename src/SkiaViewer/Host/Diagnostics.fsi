@@ -125,6 +125,12 @@ module Diagnostics =
     val unavailableFont: family: string -> RenderDiagnostic
     /// Public contract function exposed by this FS.GG.UI package.
     val frameRenderFailed: detail: string -> RenderDiagnostic
+
+    /// Issue #179: the run is ending because a frame failure is unrecoverable — a lost device, a
+    /// vanished window system, or a draw that failed past its retry budget. Fatal, and terminal:
+    /// the persistent loop stops rather than re-emitting the underlying diagnostic every frame.
+    val frameLoopAbandoned: reason: string -> detail: string option -> RenderDiagnostic
+
     /// Public contract function exposed by this FS.GG.UI package.
     val screenshotFailed: detail: string -> RenderDiagnostic
     /// Public contract function exposed by this FS.GG.UI package.
