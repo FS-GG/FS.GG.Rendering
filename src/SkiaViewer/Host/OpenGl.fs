@@ -380,12 +380,11 @@ module GlHost =
     let mutable lastPresentedScene: Scene option = None
     let mutable skippedPresentCount = 0
 
-    // Feature 122 (FR-001/002): the most recent fully-painted frame, cached so an idle frame can
-    // re-present it onto a not-yet-filled swapchain buffer WITHOUT re-walking the scene. On a
+    // Feature 122 (FR-001/002): the most recent fully-painted frame lives in `FrameCache`, so an idle
+    // frame can re-present it onto a not-yet-filled swapchain buffer WITHOUT re-walking the scene. On a
     // multi-buffer swapchain (e.g. Wayland windowed-fullscreen) an idle frame that skipped the buffer
     // swap outright would otherwise rotate an undrawn (black) buffer into view — the interleaved-black
     // blink the Spread3 consumer reported. The bounded re-present keeps every buffer populated.
-    let mutable lastGoodFrame: SKImage option = None
     let mutable idleRepresentsRemaining = 0
     let mutable representedCount = 0
     // Swapchain buffers to keep populated after a change before fully idling: 3 covers typical
@@ -856,8 +855,7 @@ module GlHost =
                 paintSw.Stop()
                 // Feature 122 (FR-001): cache this fully-painted frame so idle frames can re-present it
                 // onto not-yet-filled swapchain buffers without re-walking the scene.
-                lastGoodFrame |> Option.iter (fun img -> img.Dispose())
-                lastGoodFrame <- Some(surface.Snapshot())
+                FrameCache.replace (surface.Snapshot())
                 let composeSw = System.Diagnostics.Stopwatch.StartNew()
                 context.Flush()
                 window.SwapBuffers()
@@ -960,7 +958,7 @@ module GlHost =
               ColorType = SKColorType.Rgba8888
               Pixels = [||] }
 
-        match action, lastGoodFrame with
+        match action, FrameCache.current () with
         | PresentAction.SkipPresent, _ ->
             skippedPresentCount <- skippedPresentCount + 1
             Ok(idleSnapshot ())
@@ -1186,9 +1184,9 @@ module GlHost =
         SceneRenderer.activeReplayCache <- Some replayCache
         lastPresentedScene <- None
         skippedPresentCount <- 0
-        // Feature 122 (FR-001): fresh present-buffer-fill state per run.
-        lastGoodFrame |> Option.iter (fun img -> img.Dispose())
-        lastGoodFrame <- None
+        // Feature 122 (FR-001): fresh present-buffer-fill state per run. `beginRun` drops a stale frame
+        // without disposing it — this run's teardown owns the release, while the GRContext is alive.
+        FrameCache.beginRun ()
         idleRepresentsRemaining <- 0
         representedCount <- 0
 
@@ -1437,6 +1435,11 @@ module GlHost =
             match windowEventMapping with
             | Some mapping -> mapping.Dispose()
             | None -> ()
+
+            // The cached frame is a GPU-backed snapshot whose pixels live in `grContext`. Release it
+            // here, while that context is still alive — the next run must never be the one to dispose
+            // it, because by then its context is gone.
+            FrameCache.release ()
 
             framebuffer.Surface |> Option.iter (fun s -> s.Dispose())
             framebuffer.RenderTarget |> Option.iter (fun rt -> rt.Dispose())

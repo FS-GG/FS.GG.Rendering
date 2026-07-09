@@ -30,6 +30,7 @@
     <Compile Include="..\Shared\Numeric.fs">
       <Link>Shared/Numeric.fs</Link>
     </Compile>
+    <Compile Include="Host/FrameCache.fs" />
     <Compile Include="Host/OpenGl.fsi" />
     <Compile Include="Host/OpenGl.fs" />
     <Compile Include="Host/Viewer.fsi" />
