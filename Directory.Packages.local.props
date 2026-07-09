@@ -35,7 +35,7 @@
          sources (collision/visibility/grids/line-drawing), which now `open FS.GG.Game.Core`, so the
          test project pins it here. Test-only in THIS repo; the generated product pins it via the
          template's own $(FsGgGameVersion). -->
-    <PackageVersion Include="FS.GG.Game.Core" Version="0.1.0-preview.1" />
+    <PackageVersion Include="FS.GG.Game.Core" Version="0.2.0" />
     <PackageVersion Include="Expecto" Version="10.2.3" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.7.0" />
     <PackageVersion Include="YoloDev.Expecto.TestSdk" Version="0.16.0" />
