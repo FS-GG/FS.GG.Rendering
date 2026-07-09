@@ -99,7 +99,55 @@ module Fonts =
 
     let private gate = obj ()
     let private typefaceCache = Dictionary<struct (string * bool), SKTypeface>()
-    let private fontCache = Dictionary<struct (string * bool * float), SKFont>()
+
+    // Issue #178: `typefaceCache` is keyed on (family, bold) and both are bounded by the bundled
+    // `faceAssets` set, so it cannot grow without limit. `fontCache` is keyed on a *continuous* size,
+    // so a product animating font size used to grow it forever, each entry an undisposed native
+    // `SKFont`. It is now a bounded LRU that disposes the victim, matching `PictureReplayCache`.
+    //
+    // Disposing on eviction is safe because the cap far exceeds the number of distinct fonts alive at
+    // one time: `resolveText` materializes one `ResolvedChar` list — at most one font per bundled face,
+    // all at a single size — and the renderer draws it before resolving anything else. Callers treat a
+    // returned `SKFont` as borrowed for the current draw; they must not stash one across frames.
+    let internal fontCacheCap = 128
+
+    type private FontEntry = { Font: SKFont; mutable Stamp: int64 }
+
+    let private fontCache = Dictionary<struct (string * bool * float), FontEntry>()
+    let mutable private fontClock = 0L
+
+    /// Live `fontCache` entry count — the bound a leak regression test asserts against.
+    let internal fontCacheCount () = lock gate (fun () -> fontCache.Count)
+
+    /// Dispose every cached `SKFont`/`SKTypeface` and empty both caches.
+    let internal disposeCaches () =
+        lock gate (fun () ->
+            for kv in fontCache do
+                kv.Value.Font.Dispose()
+
+            fontCache.Clear()
+
+            for kv in typefaceCache do
+                kv.Value.Dispose()
+
+            typefaceCache.Clear())
+
+    // Caller holds `gate`.
+    let private evictFontsOverCap () =
+        while fontCache.Count > fontCacheCap do
+            let mutable lruKey = Unchecked.defaultof<struct (string * bool * float)>
+            let mutable lruStamp = Int64.MaxValue
+            let mutable seen = false
+
+            for kv in fontCache do
+                if not seen || kv.Value.Stamp < lruStamp then
+                    lruKey <- kv.Key
+                    lruStamp <- kv.Value.Stamp
+                    seen <- true
+
+            if seen then
+                fontCache.[lruKey].Font.Dispose()
+                fontCache.Remove lruKey |> ignore
 
     let private loadTypeface (family: string) (bold: bool) : SKTypeface =
         // Prefer the exact (family, bold) asset; if bold was requested but only a regular face is
@@ -150,13 +198,17 @@ module Fonts =
         lock gate (fun () ->
             let size = max 1.0 size
             let key = struct (family, bold, size)
+            fontClock <- fontClock + 1L
 
             match fontCache.TryGetValue key with
-            | true, f -> f
+            | true, entry ->
+                entry.Stamp <- fontClock
+                entry.Font
             | _ ->
-                let f = new SKFont(cachedTypeface family bold, float32 size)
-                fontCache.[key] <- f
-                f)
+                let font = new SKFont(cachedTypeface family bold, float32 size)
+                fontCache.[key] <- { Font = font; Stamp = fontClock }
+                evictFontsOverCap ()
+                font)
 
     // Map a logical family-name request (possibly a CSS-ish list like "Inter, sans-serif") to one of
     // the bundled canonical families, longest specific names first so "Noto Sans Mono" wins over

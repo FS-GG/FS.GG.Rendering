@@ -73,6 +73,23 @@ module internal SceneRenderer =
         | TriangleStrip -> SKVertexMode.TriangleStrip
         | TriangleFan -> SKVertexMode.TriangleFan
 
+    // Issue #178: every native sub-object handed to an `SKPaint` (shader, colour filter, mask filter,
+    // image filter, path effect) is a separate `SKObject` with its own native handle. Disposing the
+    // `SKPaint` releases only the paint's handle, so a frame that used a gradient or a shadow used to
+    // leave those objects for the finalizer thread — on the per-node, per-frame paint path. Assignment
+    // takes the paint's own native reference, so our wrapper is disposed here, immediately, while the
+    // object stays alive for the draw. `subObjectsReleased` counts those disposals so a regression test
+    // can see that a frame releases everything it created.
+    let mutable subObjectsReleased = 0
+
+    let resetSubObjectsReleased () = subObjectsReleased <- 0
+
+    /// Dispose a sub-object wrapper already assigned into an `SKPaint`. Safe: the assignment took a
+    /// native reference of its own, so the object lives until the paint releases it.
+    let private release (subObject: SKObject) =
+        subObject.Dispose()
+        subObjectsReleased <- subObjectsReleased + 1
+
     let configurePaint (scenePaint: Paint) (paint: SKPaint) =
         paint.Color <- paintColor scenePaint
         paint.IsAntialias <- scenePaint.Antialias
@@ -87,59 +104,79 @@ module internal SceneRenderer =
             paint.StrokeMiter <- float32 stroke.Miter
         | None -> paint.Style <- SKPaintStyle.Fill
 
+        let setShader (shader: SKShader) =
+            paint.Shader <- shader
+            release shader
+
         match scenePaint.Shader with
         | Some(SolidColor color) ->
-            paint.Shader <- SKShader.CreateColor(color |> withOpacity scenePaint.Opacity |> skColor)
+            setShader (SKShader.CreateColor(color |> withOpacity scenePaint.Opacity |> skColor))
         | Some(LinearGradient(startPoint, endPoint, colors)) when not colors.IsEmpty ->
-            paint.Shader <-
+            setShader (
                 SKShader.CreateLinearGradient(
                     skPoint startPoint,
                     skPoint endPoint,
                     colors |> List.map (withOpacity scenePaint.Opacity >> skColor) |> List.toArray,
                     SKShaderTileMode.Clamp
                 )
+            )
         | Some(RadialGradient(center, radius, colors)) when radius > 0.0 && not colors.IsEmpty ->
-            paint.Shader <-
+            setShader (
                 SKShader.CreateRadialGradient(
                     skPoint center,
                     float32 radius,
                     colors |> List.map (withOpacity scenePaint.Opacity >> skColor) |> List.toArray,
                     SKShaderTileMode.Clamp
                 )
+            )
         | Some(SweepGradient(center, colors)) when not colors.IsEmpty ->
-            paint.Shader <-
+            setShader (
                 SKShader.CreateSweepGradient(
                     skPoint center,
                     colors |> List.map (withOpacity scenePaint.Opacity >> skColor) |> List.toArray
                 )
+            )
         | _ -> ()
 
         match scenePaint.ColorFilter with
         | NoColorFilter -> ()
         | BlendColor(color, mode) ->
-            paint.ColorFilter <- SKColorFilter.CreateBlendMode(color |> withOpacity scenePaint.Opacity |> skColor, blendMode mode)
+            let colorFilter = SKColorFilter.CreateBlendMode(color |> withOpacity scenePaint.Opacity |> skColor, blendMode mode)
+            paint.ColorFilter <- colorFilter
+            release colorFilter
 
         match scenePaint.MaskFilter with
         | NoMaskFilter -> ()
         | Blur sigma when sigma > 0.0 ->
-            paint.MaskFilter <- SKMaskFilter.CreateBlur(SKBlurStyle.Normal, float32 sigma)
+            let maskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, float32 sigma)
+            paint.MaskFilter <- maskFilter
+            release maskFilter
         | _ -> ()
 
         match scenePaint.ImageFilter with
         | NoImageFilter -> ()
         | DropShadow(dx, dy, blur, color) when blur >= 0.0 ->
-            paint.ImageFilter <-
+            let imageFilter =
                 SKImageFilter.CreateDropShadow(float32 dx, float32 dy, float32 blur, float32 blur, color |> withOpacity scenePaint.Opacity |> skColor)
+
+            paint.ImageFilter <- imageFilter
+            release imageFilter
         | _ -> ()
 
         match scenePaint.PathEffect with
         | NoPathEffect -> ()
         | Dash(intervals, phase) when not intervals.IsEmpty ->
-            paint.PathEffect <- SKPathEffect.CreateDash(intervals |> List.map float32 |> List.toArray, float32 phase)
+            let pathEffect = SKPathEffect.CreateDash(intervals |> List.map float32 |> List.toArray, float32 phase)
+            paint.PathEffect <- pathEffect
+            release pathEffect
         | Discrete(segmentLength, deviation) when segmentLength > 0.0 ->
-            paint.PathEffect <- SKPathEffect.CreateDiscrete(float32 segmentLength, float32 deviation)
+            let pathEffect = SKPathEffect.CreateDiscrete(float32 segmentLength, float32 deviation)
+            paint.PathEffect <- pathEffect
+            release pathEffect
         | Corner radius when radius >= 0.0 ->
-            paint.PathEffect <- SKPathEffect.CreateCorner(float32 radius)
+            let pathEffect = SKPathEffect.CreateCorner(float32 radius)
+            paint.PathEffect <- pathEffect
+            release pathEffect
         | _ -> ()
 
     let toSkPath path =
@@ -245,6 +282,81 @@ module internal SceneRenderer =
 
         drawGlyphRunData canvas x y shaped color antialias
 
+    // Issue #178: `Image` nodes used to call `SKImage.FromEncodedData` inside `paintNode`, so a static
+    // image in a repainting scene re-read and re-decoded its file on every frame. Decodes are cached on
+    // file identity — path plus last-write time plus length — so an edited file decodes again rather
+    // than serving a stale bitmap. Bounded LRU with disposal on eviction, the discipline
+    // `PictureReplayCache` already uses. A failed decode is cached too (as `null`), otherwise a corrupt
+    // file re-reads every frame; `paintNode` draws its placeholder for that case.
+    module internal ImageCache =
+
+        [<Literal>]
+        let cap = 32
+
+        // `Image` is null for a source that is missing or failed to decode — the negative result is
+        // cached too, so a corrupt file is not re-read every frame.
+        type private Entry(image: SKImage, stamp: int64) =
+            member val Image = image
+            member val Stamp = stamp with get, set
+
+        let private gate = obj ()
+        // key: (path, last-write ticks, length) — a missing file is keyed (path, -1L, -1L)
+        let private entries = Collections.Generic.Dictionary<struct (string * int64 * int64), Entry>()
+        let mutable private clock = 0L
+
+        let private evictOverCap () =
+            while entries.Count > cap do
+                let mutable lruKey = Unchecked.defaultof<struct (string * int64 * int64)>
+                let mutable lruStamp = Int64.MaxValue
+                let mutable seen = false
+
+                for kv in entries do
+                    if not seen || kv.Value.Stamp < lruStamp then
+                        lruKey <- kv.Key
+                        lruStamp <- kv.Value.Stamp
+                        seen <- true
+
+                if seen then
+                    let victim = entries.[lruKey]
+                    if not (isNull victim.Image) then victim.Image.Dispose()
+                    entries.Remove lruKey |> ignore
+
+        /// The decoded image for `source`, or `null` when the file is missing or undecodable. The cache
+        /// owns the returned `SKImage` — callers draw it, they do not dispose it.
+        let resolve (source: string) : SKImage =
+            lock gate (fun () ->
+                let key =
+                    let info = FileInfo source
+
+                    if info.Exists then
+                        struct (source, info.LastWriteTimeUtc.Ticks, info.Length)
+                    else
+                        struct (source, -1L, -1L)
+
+                clock <- clock + 1L
+
+                match entries.TryGetValue key with
+                | true, entry ->
+                    entry.Stamp <- clock
+                    entry.Image
+                | _ ->
+                    let struct (_, ticks, _) = key
+                    let image = if ticks < 0L then null else SKImage.FromEncodedData source
+                    entries.[key] <- Entry(image, clock)
+                    evictOverCap ()
+                    image)
+
+        /// Live entry count — the bound a leak regression test asserts against.
+        let count () = lock gate (fun () -> entries.Count)
+
+        /// Dispose every decoded image and empty the cache.
+        let dispose () =
+            lock gate (fun () ->
+                for kv in entries do
+                    if not (isNull kv.Value.Image) then kv.Value.Image.Dispose()
+
+                entries.Clear())
+
     /// Paint one `SceneNode` onto `canvas`. Exhaustive over every `SceneNode` case —
     /// **no wildcard** — so a new primitive forces both render paths to handle it.
     let rec paintNode (canvas: SKCanvas) (node: SceneNode) =
@@ -330,24 +442,17 @@ module internal SceneRenderer =
             drawGlyphRunData canvas run.Position.X run.Position.Y run.Data (paintColor run.Paint) run.Paint.Antialias
         | Image((x, y, width, height), source) ->
             let destination = SKRect(float32 x, float32 y, float32 (x + width), float32 (y + height))
+            // Cache-owned; not disposed here. `null` ⇒ missing or undecodable ⇒ the placeholder outline.
+            let image = ImageCache.resolve source
 
-            if File.Exists source then
-                use image = SKImage.FromEncodedData(source)
-
-                if isNull image then
-                    use paint = new SKPaint()
-                    paint.Color <- SKColor(96uy, 128uy, 160uy, 255uy)
-                    paint.Style <- SKPaintStyle.Stroke
-                    paint.StrokeWidth <- 2.0f
-                    canvas.DrawRect(destination, paint)
-                else
-                    canvas.DrawImage(image, destination)
-            else
+            if isNull image then
                 use paint = new SKPaint()
                 paint.Color <- SKColor(96uy, 128uy, 160uy, 255uy)
                 paint.Style <- SKPaintStyle.Stroke
                 paint.StrokeWidth <- 2.0f
                 canvas.DrawRect(destination, paint)
+            else
+                canvas.DrawImage(image, destination)
         | ClipNode(clip, clippedScene) ->
             canvas.Save() |> ignore
 

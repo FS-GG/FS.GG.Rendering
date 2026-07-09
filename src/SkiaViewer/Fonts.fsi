@@ -98,3 +98,14 @@ module Fonts =
     /// Install this registry's real measurer into the `Scene` measurement seam so control box sizing
     /// uses true advances. Idempotent; the host calls this once before layout.
     val installMeasurementSeam: unit -> unit
+
+    /// The `SKFont` cache bound. Far above the number of fonts alive at one time (one per bundled face,
+    /// at a single size), so eviction never disposes a font a caller is still drawing with.
+    val internal fontCacheCap: int
+
+    /// Live `SKFont` cache entry count. The cache is a bounded LRU (issue #178) — a product animating
+    /// font size no longer grows it without limit. Internal: read by the leak regression test.
+    val internal fontCacheCount: unit -> int
+
+    /// Dispose every cached `SKFont`/`SKTypeface` and empty both caches. Internal: teardown and tests.
+    val internal disposeCaches: unit -> unit
