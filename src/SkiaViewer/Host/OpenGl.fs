@@ -1043,6 +1043,12 @@ module GlHost =
                 for disposable in Seq.rev disposables do
                     disposable.Dispose() }
 
+    let mapPointerButton (buttonCode: int) : ViewerPointerButton option =
+        if buttonCode = int MouseButton.Left then Some PrimaryButton
+        elif buttonCode = int MouseButton.Right then Some SecondaryButton
+        elif buttonCode = int MouseButton.Middle then Some MiddleButton
+        else None
+
     let attachInputEventMapping program (window: IWindow) dispatch =
         try
             let input = window.CreateInput()
@@ -1067,13 +1073,16 @@ module GlHost =
                 keyboard.add_KeyUp keyUpHandler
                 addDisposable disposables (fun () -> keyboard.remove_KeyUp keyUpHandler)
 
-            // 075 (FR-013): map the Silk.NET button identity to the host contract.
-            let toViewerButton (button: MouseButton) =
-                match button with
-                | MouseButton.Left -> PrimaryButton
-                | MouseButton.Right -> SecondaryButton
-                | MouseButton.Middle -> MiddleButton
-                | _ -> PrimaryButton
+            // 075 (FR-013): map the Silk.NET button identity to the host contract. Issue #184: a
+            // button the contract cannot carry is dropped and reported, never coerced onto another.
+            let dispatchPointerButton toEvent (mouse: IMouse) (button: MouseButton) =
+                let position = mouse.Position
+
+                match mapPointerButton (int button) with
+                | Some viewerButton ->
+                    dispatchViewerEvent program dispatch (toEvent (float position.X) (float position.Y) viewerButton)
+                | None ->
+                    dispatchViewerEvent program dispatch (DiagnosticReported(Diagnostics.unmappedPointerButton (string button)))
 
             for mouse in input.Mice do
                 let pointerMoveHandler =
@@ -1085,16 +1094,14 @@ module GlHost =
 
                 let pointerPressedHandler =
                     Action<IMouse, MouseButton>(fun mouse button ->
-                        let position = mouse.Position
-                        dispatchViewerEvent program dispatch (PointerPressed(float position.X, float position.Y, toViewerButton button)))
+                        dispatchPointerButton (fun x y b -> PointerPressed(x, y, b)) mouse button)
 
                 mouse.add_MouseDown pointerPressedHandler
                 addDisposable disposables (fun () -> mouse.remove_MouseDown pointerPressedHandler)
 
                 let pointerReleasedHandler =
                     Action<IMouse, MouseButton>(fun mouse button ->
-                        let position = mouse.Position
-                        dispatchViewerEvent program dispatch (PointerReleased(float position.X, float position.Y, toViewerButton button)))
+                        dispatchPointerButton (fun x y b -> PointerReleased(x, y, b)) mouse button)
 
                 mouse.add_MouseUp pointerReleasedHandler
                 addDisposable disposables (fun () -> mouse.remove_MouseUp pointerReleasedHandler)

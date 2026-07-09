@@ -73,6 +73,7 @@
     <Compile Include="Issue177FrameCacheLifetimeTests.fs" />
     <Compile Include="Issue178PaintResourceTests.fs" />
     <Compile Include="Issue183ModifierChordTests.fs" />
+    <Compile Include="Issue184PointerButtonTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

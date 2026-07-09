@@ -43,6 +43,8 @@ type DiagnosticStage =
     | FrameRender
     | ScreenshotCapture
     | Shutdown
+    /// Issue #184: an input event the host contract cannot represent. Never a run-blocker.
+    | Input
 
 /// Viewer host contract type (moved from the FS.GG.UI monolith, retyped onto FS.GG.UI.Scene).
 type RenderDiagnostic =
@@ -137,6 +139,10 @@ module Diagnostics =
     val shutdownFailed: detail: string -> RenderDiagnostic
     /// Public contract function exposed by this FS.GG.UI package.
     val startupFailed: stage: DiagnosticStage -> detail: string -> RenderDiagnostic
+    /// Issue #184: a pointer button outside the primary/secondary/middle contract reached the host.
+    /// The press or release is dropped rather than coerced onto another button, and this says so.
+    val unmappedPointerButton: button: string -> RenderDiagnostic
+
     /// Feature 157: frame diagnostic for no-clear damage-scoped decisions and fallback reasons.
     val damageScopedDecision: decision: string -> reason: string option -> RenderDiagnostic
     /// Converts a host render diagnostic into the shared runtime diagnostics taxonomy.
