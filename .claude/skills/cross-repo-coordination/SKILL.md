@@ -225,8 +225,19 @@ wrong and the registry advertises a version the feed can't serve. The universal 
    per change, so diffs stay reviewable (the old single-line `updated:` comment is retired,
    .github#129). Then update the **hand-maintained** projection
    `docs/registry/compatibility.md` (dependency-graph line + versioned-contracts row + the
-   relevant coherence row). Validate with the typed validator — the SAME one the gate runs:
-   `fsgg-sdd registry validate registry/dependencies.yml` → `"valid": true`. Open the PR; the
+   relevant coherence row). Finally reconcile the **architecture map**
+   `docs/architecture.md` — a registry flip touches `registry/dependencies.yml`, which is
+   exactly the `architecture-map.yml` reconcile trigger. A routine version bump does not
+   change the map's shape: take the opt-out, a one-line
+   `architecture-map: unaffected` in the PR body (or the
+   `architecture-map:unaffected` label). A flip that moves a coherent-set axis or the map's
+   §5 contract picture updates the map instead.
+
+   Validate with the typed validator — the SAME one the gate runs:
+   `fsgg-sdd registry validate registry/dependencies.yml` → `"valid": true`. **A green
+   validator is not a green PR:** neither it nor `check-feed-coherence` sees
+   `docs/registry/compatibility.md` or `docs/architecture.md` — those are gated by
+   `projection` and `architecture-map` respectively, and only in CI. Open the PR; the
    `contract-coherence` check must pass. The PR may `Closes <producer>#<n>`.
 3. **Re-pin downstream.** Publishing makes the feed coherent, but a consumer only *receives* the
    new version when its pin moves. **Direct-pin** consumers self-bump (one version literal +
