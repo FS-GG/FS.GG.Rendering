@@ -19,9 +19,9 @@
 //
 // The F2 engine is `module internal ColorPolicy` (no `.fsi`); an `fsx` cannot borrow the
 // `Controls.Tests` InternalsVisibleTo grant, so the engine source closure is `#load`-ed here to
-// compile into THIS script's own assembly — same-assembly access, no IVT needed. The pairing
-// catalog is reproduced from Feature127ColorPolicyTests.fs verbatim (same tokens) so the rendered
-// report byte-matches the committed F2 oracle, keeping a single source of truth.
+// compile into THIS script's own assembly — same-assembly access, no IVT needed. Issue #174 moved
+// the pairing catalog into that closure (`StyleCatalog.designSystemTokens`), so this script now
+// loads the one catalog rather than reproducing it: there is no second list to drift.
 //
 // Usage:
 //   dotnet fsi scripts/validate-design-system-template.fsx                       # verdict-core self-check only
@@ -35,7 +35,14 @@
 #load "../src/Scene/Scene.fs"
 #load "../src/ColorPolicy/Contrast.fs"
 #load "../src/ColorPolicy/ColorPolicy.fs"
+// Issue #174: StyleCatalog owns the pairing catalog and derives the emitted one from
+// StyleResolver, so its whole DesignSystem closure loads here in fsproj compile order.
+#load "../src/DesignSystem/Types.DesignSystem.fs"
+#load "../src/DesignSystem/DesignTokens.fs"
 #load "../src/DesignSystem/DesignTokensExt.fs"
+#load "../src/DesignSystem/Style.fs"
+#load "../src/DesignSystem/StyleResolver.fs"
+#load "../src/ColorPolicy/StyleCatalog.fs"
 
 open System
 open System.Diagnostics
@@ -64,40 +71,11 @@ let repoPath (rel: string) =
 let reportRelPath =
     "specs/128-design-system-template-param/readiness/design-system-template-validation.md"
 
-// ---- the shared design-system pairing catalog (reproduced from Feature127ColorPolicyTests) ----
-// Same tokens / order as the F2 test catalog, so `renderReport` byte-matches the committed oracle.
-// `open FS.GG.UI.Color` (after Scene) brings Role's cases into scope, so bare Text/GraphicOrUi/
-// Decorative bind to Role, not SceneNode.Text.
+// ---- the shared design-system pairing catalog (issue #174: owned by the library) -------------
+// `StyleCatalog.designSystemTokens` is the one catalog the F2 tests and the committed oracle both
+// evaluate, so `renderReport` here byte-matches by construction rather than by careful copying.
 
-let private pairing name fg bg role : ColorPolicy.Pairing =
-    { Name = name
-      Foreground = fg
-      Background = bg
-      Role = role }
-
-let private catalog =
-    [ pairing "text-on-canvas" DesignTokensExt.Alias.Light.textDefault DesignTokensExt.Alias.Light.surfaceCanvas Text
-      pairing "text-on-surface" DesignTokensExt.Alias.Light.textDefault DesignTokensExt.Map.Light.colorBgContainer Text
-      pairing
-          "muted-text-on-surface"
-          DesignTokensExt.Alias.Light.textSecondary
-          DesignTokensExt.Map.Light.colorBgContainer
-          Text
-      pairing "primary-fg-on-surface" DesignTokensExt.Seed.colorPrimary DesignTokensExt.Map.Light.colorBgContainer GraphicOrUi
-      pairing "success-fg-on-surface" DesignTokensExt.Seed.colorSuccess DesignTokensExt.Map.Light.colorBgContainer GraphicOrUi
-      pairing "warning-fg-on-surface" DesignTokensExt.Seed.colorWarning DesignTokensExt.Map.Light.colorBgContainer GraphicOrUi
-      pairing "error-fg-on-surface" DesignTokensExt.Seed.colorError DesignTokensExt.Map.Light.colorBgContainer GraphicOrUi
-      pairing "info-fg-on-surface" DesignTokensExt.Seed.colorInfo DesignTokensExt.Map.Light.colorBgContainer GraphicOrUi
-      pairing
-          "primary-hover-fg-on-surface"
-          DesignTokensExt.Map.Light.colorPrimaryHover
-          DesignTokensExt.Map.Light.colorBgContainer
-          GraphicOrUi
-      pairing
-          "decorative-hairline-on-surface"
-          DesignTokensExt.Map.Light.colorBorder
-          DesignTokensExt.Map.Light.colorBgContainer
-          Decorative ]
+let private catalog = StyleCatalog.designSystemTokens
 
 // ---- engine-facing helpers -------------------------------------------------------------------
 

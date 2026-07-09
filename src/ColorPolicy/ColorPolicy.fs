@@ -243,7 +243,11 @@ module internal ColorPolicy =
     /// one row per pairing in fixed catalog order, fixed F2 invariant-culture numerics, lowercase
     /// hex colors, `\n` line endings, an overall summary — no clock/random/culture-sensitive
     /// content. The same evaluator the tests exercise, so the committed report cannot drift.
-    let renderReport (policy: ColorPolicy) (catalog: Pairing list) : string =
+    ///
+    /// `subject` names which catalog was measured, so the several reports one policy now produces
+    /// (the token catalog, and the emitted style set of each built-in theme) are distinguishable by
+    /// their heading alone.
+    let renderReportFor (subject: string option) (policy: ColorPolicy) (catalog: Pairing list) : string =
         let results = evaluate policy catalog
         let countWhere f = results |> List.filter f |> List.length
         let failing = countWhere (fun r -> r.Outcome = Failed)
@@ -252,8 +256,13 @@ module internal ColorPolicy =
         let indeterminate = countWhere (fun r -> r.Outcome = PolicyOutcome.Indeterminate)
         let pass = failing = 0
 
+        let title =
+            match subject with
+            | Some s -> sprintf "# Color Policy Report — %s (`%s`) — %s" policy.Label policy.Name s
+            | None -> sprintf "# Color Policy Report — %s (`%s`)" policy.Label policy.Name
+
         let header =
-            [ sprintf "# Color Policy Report — %s (`%s`)" policy.Label policy.Name
+            [ title
               ""
               "> GENERATED — do not edit. Regenerate via: UPDATE_POLICY_REPORTS=1 dotnet test tests/Controls.Tests/Controls.Tests.fsproj --filter Feature127"
               sprintf "> Authority: %s" (authorityText policy.Authority)
@@ -286,3 +295,6 @@ module internal ColorPolicy =
                   indeterminate ]
 
         (header @ rows @ summary |> String.concat "\n") + "\n"
+
+    /// The untitled report — the shape the token-catalog reports have always had.
+    let renderReport (policy: ColorPolicy) (catalog: Pairing list) : string = renderReportFor None policy catalog

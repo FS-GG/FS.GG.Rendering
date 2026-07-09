@@ -38,7 +38,14 @@ module Style =
 
     // `Custom name` resolves through the SAME fold (FR-001): a known name maps to a delta; an
     // unknown name resolves to identity — never an exception or a silent drop (data-model
-    // edge case; contrast still governed by `ContrastCheck`, FR-007).
+    // edge case).
+    //
+    // The resolver does NOT check contrast. It is pure colour algebra over the theme and can emit a
+    // `ResolvedStyle` nobody can read (a danger button whose hover fill is the accent; an outline
+    // button whose hovered label matches its own fill). Contrast is measured one level out, over the
+    // style set this resolver emits, by `FS.GG.UI.Color.StyleCatalog.emittedPairings` — see the
+    // committed `docs/reports/color-policy-emitted-*.md` gate. An earlier comment here claimed a
+    // `ContrastCheck` (FR-007) governed this path; no such call ever existed (issue #174).
     let applyCustom (theme: Theme) (name: string) (s: ResolvedStyle) : ResolvedStyle =
         match name.Trim().ToLowerInvariant() with
         | "primary" -> applyVariant theme StyleVariant.Primary s

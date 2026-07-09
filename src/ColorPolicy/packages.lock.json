@@ -8,6 +8,13 @@
         "resolved": "10.1.301",
         "contentHash": "FwQFuqOA1+qQnFl6Vqg6piS83ZRuKJqXJQxOM52M5tNarT2XQ/pMvw8fOOlnhcOYvdZyje2PJ8rK/J64ZI729Q=="
       },
+      "FS.GG.UI.DesignSystem": {
+        "type": "Project",
+        "dependencies": {
+          "FS.GG.UI.Scene": "[0.3.0-preview.1, )",
+          "FSharp.Core": "[10.1.301, )"
+        }
+      },
       "FS.GG.UI.Scene": {
         "type": "Project",
         "dependencies": {
