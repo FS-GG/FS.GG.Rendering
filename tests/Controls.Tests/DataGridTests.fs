@@ -6,6 +6,10 @@ open FS.GG.UI.Controls
 open FS.GG.UI.Themes.Default
 open FS.GG.UI.DesignSystem
 
+// Aliased, not opened: `TestAssertions` publishes a `SceneEvidenceFailureClassification` whose cases
+// shadow the `ControlDiagnosticCode` ones this file matches on.
+module TestAssertions = Rendering.Harness.TestAssertions
+
 type GridMsg =
     | RowSelected of string
 
@@ -79,6 +83,39 @@ let dataGridTests =
             Expect.isGreaterThan rendered.NodeCount model.VisibleRange.Count "render includes visible row/header nodes, not just an empty shell"
             Expect.isLessThanOrEqual rendered.NodeCount maxNodes "render stays bounded by the visible range instead of all 10,000 rows"
             Expect.isEmpty rendered.Diagnostics "valid large DataGrid render has no diagnostics"
+        }
+
+        // Issue #175 (AC-3). The keyed child tree `DataGrid.create` builds is what paints a bound grid:
+        // two distinct row sets must reach the screen as two distinct scenes. Asserted on the RETAINED
+        // path (`renderTree`) — the one a product renders through — and on the values themselves, so a
+        // regression that reinstated placeholder data would fail here rather than merely differ.
+        test "two distinct row sets render distinct scenes carrying their own values (issue #175)" {
+            // `FS.GG.UI.Scene` is not opened here: its `SceneEvidenceFailureClassification` cases shadow
+            // the `ControlDiagnosticCode` ones the viewport test below matches on.
+            let size: FS.GG.UI.Scene.Size = { Width = 400; Height = 200 }
+
+            let gridOf rows =
+                DataGrid.create columns [ DataGrid.rows rows ]
+                |> Control.renderTree Theme.light size
+
+            let first = gridOf [ row 1; row 2 ]
+            let second = gridOf [ row 3; row 4 ]
+
+            Expect.notEqual first.Scene second.Scene "distinct row sets paint distinct scenes"
+
+            let textsOf (r: ControlRenderResult<'msg>) =
+                TestAssertions.renderedText r.Scene |> List.map (fun t -> t.Text) |> Set.ofList
+
+            let firstTexts = textsOf first
+            let secondTexts = textsOf second
+
+            Expect.contains firstTexts "Customer 1" "the first grid paints its own bound row values"
+            Expect.contains secondTexts "Customer 3" "the second grid paints its own bound row values"
+            Expect.isFalse (firstTexts.Contains "Customer 3") "a grid paints only the rows bound to it"
+
+            // The retired hardcoded sample must not reappear from any path.
+            for invented in [ "Widget"; "Gadget" ] do
+                Expect.isFalse (firstTexts.Contains invented) (sprintf "a bound grid never paints the retired sample datum %s" invented)
         }
 
         test "invalid DataGrid viewport reports diagnostics through model and effects" {

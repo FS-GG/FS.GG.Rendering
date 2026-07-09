@@ -29,18 +29,30 @@ let rec private hasClip (s: Scene) =
 let tests =
     testList
         "Feature136 composite controls (US3)"
-        [ // T027
+        [ // T027. The cells are supplied, not invented: issue #175 removed the hardcoded
+          // `["Name";"Qty";"Widget";"12";"Gadget";"7"]` fallback this test used to rely on. The
+          // assertion is unchanged — it is about column geometry, which needs cells, any cells.
           test "data-grid renders columns side-by-side; header cell N aligned with body cell N" {
-              let scene = render (sz 240 160) (Control.create "data-grid" [])
+              let cells = [ "Name"; "Qty"; "Widget"; "12"; "Gadget"; "7" ]
+              let scene = render (sz 240 160) (Control.create "data-grid" [ Attr.items cells ])
               let texts = renderedText scene
               let xOf t = texts |> List.tryFind (fun r -> r.Text = t) |> Option.map (fun r -> r.X)
-              // default cells (cols=2): row0 = Name | Qty ; body rows include Widget | 12
+              // cols=2, laid out row-major: row0 = Name | Qty ; body rows include Widget | 12
               match xOf "Name", xOf "Widget", xOf "Qty", xOf "12" with
               | Some nameX, Some widgetX, Some qtyX, Some twelveX ->
                   Expect.floatClose Accuracy.medium nameX widgetX "header col0 X aligns with body col0 X"
                   Expect.floatClose Accuracy.medium qtyX twelveX "header col1 X aligns with body col1 X"
                   Expect.isTrue (nameX < qtyX) "columns are side-by-side (col0 left of col1)"
-              | _ -> failtest "expected the default data-grid cells to render as a table"
+              | _ -> failtest "expected the supplied data-grid cells to render as a table"
+          }
+
+          // Issue #175: an unbound data-grid used to paint a plausible 2x2 of invented sample data.
+          // It must render as an empty grid — chrome, no cell text — so a product can never mistake
+          // the renderer's placeholder for its own rows.
+          test "an unbound data-grid renders empty chrome and invents no cell data (issue #175)" {
+              let scene = render (sz 240 160) (Control.create "data-grid" [])
+              let texts = renderedText scene |> List.map (fun r -> r.Text)
+              Expect.isEmpty texts "an unbound data-grid paints no cell text"
           }
 
           // T028

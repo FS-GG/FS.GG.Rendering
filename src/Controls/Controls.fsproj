@@ -65,6 +65,7 @@
     <Compile Include="Internal/ChartGeometry.fs" />
     <Compile Include="Internal/WidgetGeometry.fs" />
     <Compile Include="Internal/SceneHash.fs" />
+    <Compile Include="Internal/DataGridGeometry.fs" />
     <Compile Include="Internal/ContentRender.fs" />
     <Compile Include="Internal/LayoutEval.fs" />
     <Compile Include="Internal/NodeAssembly.fs" />

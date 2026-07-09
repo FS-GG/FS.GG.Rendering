@@ -12,6 +12,7 @@ module internal ContentRender =
     open ControlPrimitives
     open ChartGeometry
     open WidgetGeometry
+    open DataGridGeometry
     /// Dispatch a rich-family control to its faithful geometry (within `box`, below the title).
     let faithfulContent (theme: Theme) (box: Rect) (control: Control<'msg>) : Scene list =
         let label = control.Content |> Option.defaultValue ""
@@ -58,7 +59,25 @@ module internal ContentRender =
         | "menu"
         | "context-menu" ->
             rowsGeom theme box (stringListOf "items" control) (stringListOf "selectedKeys" control |> Set.ofList)
-        | "data-grid" -> gridGeom theme box (itemsOr [ "Name"; "Qty"; "Widget"; "12"; "Gadget"; "7" ] items)
+        // Feature 175 (issue #175). Two things used to go wrong here.
+        //
+        // The `items` fallback invented `["Name";"Qty";"Widget";"12";"Gadget";"7"]`, so an unbound
+        // `data-grid` painted plausible sample data rather than reading as empty. It now paints the
+        // tabular chrome with no cell text — empty, not invented.
+        //
+        // And a BOUND grid (`DataGrid.create`) carries its rows as a keyed child tree, which paints
+        // itself; the preview walk (`renderNode`) calls `faithfulContent` on rich kinds regardless of
+        // children, so the schematic was painted *on top of* the real rows. A grid that owns children
+        // therefore contributes its frame only, and lets the children paint the data.
+        | "data-grid" ->
+            if List.isEmpty control.Children then
+                gridGeom theme box items
+            else
+                [ Scene.rectangleWithPaint box (Paint.stroke theme.Foreground 1.5) ]
+        // The child tree's leaves. `data-grid-header`/`data-grid-row` are containers and never reach
+        // here — see `DataGridGeometry`.
+        | "data-grid-header-cell" -> headerCellGeom theme box label
+        | "data-grid-cell" -> cellGeom theme box label
         | "radio-group" -> radioGeom theme box classes state (stringListOf "items" control) (textValueOf "value" control)
         | "tabs" -> tabsGeom theme box (stringListOf "items" control) (textValueOf "value" control)
         | "slider" -> sliderGeom theme box classes state (floatValue "value" 0.5 control.Attributes)
@@ -134,9 +153,12 @@ module internal ContentRender =
         | other -> emptyState theme box other
 
     /// Feature 113 (Phase 5) — the resolved cell/header data the `data-grid` row/column projection
-    /// (`gridGeom`) consumes: the control's `items` attribute, or the same sample fallback
-    /// `faithfulContent` substitutes when none is authored. This is the projection's sole control-borne
-    /// input; the memoization seam (`RetainedRender.memoize`) folds it with the theme + evaluated box
-    /// into the deterministic dependency value (an equal value ⇒ a byte-identical projection, FR-006).
-    let dataGridCells (control: Control<'msg>) : string list =
-        itemsOr [ "Name"; "Qty"; "Widget"; "12"; "Gadget"; "7" ] (stringListOf "items" control)
+    /// (`gridGeom`) consumes: the control's `items` attribute. This is the projection's sole
+    /// control-borne input; the memoization seam (`RetainedRender.memoize`) folds it with the theme +
+    /// evaluated box into the deterministic dependency value (an equal value ⇒ a byte-identical
+    /// projection, FR-006).
+    ///
+    /// Feature 175 (issue #175): no sample-data fallback. It has to agree with what `faithfulContent`
+    /// actually paints, and an unbound grid now paints no cell text — a fallback here would key the
+    /// memo on data that never reaches the screen.
+    let dataGridCells (control: Control<'msg>) : string list = stringListOf "items" control
