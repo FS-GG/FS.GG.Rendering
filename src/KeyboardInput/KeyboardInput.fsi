@@ -109,13 +109,24 @@ type KeyModifiers =
 module ViewerKeyboard =
     /// Public contract function exposed by this FS.GG.UI package.
     val normalize: raw: string -> ViewerKey
-    /// Public contract function exposed by this FS.GG.UI package.
+    /// Public contract function exposed by this FS.GG.UI package. Does NOT strip modifiers: a host
+    /// reports a chord as the raw `Ctrl+L`, which normalizes to `ViewerKey.Unknown "Ctrl+L"` so the
+    /// `MapKeyChord` seam can recover them (issue 183). Use `normalizeEventWithModifiers` for the
+    /// base key plus its modifiers.
     val normalizeEvent: event: ViewerKeyEvent -> ViewerKey * bool
     /// Public contract function exposed by this FS.GG.UI package.
     val toKeyId: key: ViewerKey -> KeyId
 
     /// Feature 108 (US5, FR-016): the all-false `KeyModifiers` — an unmodified key's modifier set.
     val noModifiers: KeyModifiers
+
+    /// Issue 183: is this raw key a modifier key in its own right (`ControlLeft`, `Shift`, …)?
+    /// A host uses this to avoid decorating a modifier key with its own held state.
+    val isModifierKey: raw: string -> bool
+
+    /// Issue 183: encode held modifiers and a base key into the `Ctrl+L` raw-key wire format that
+    /// `normalizeEventWithModifiers` parses. The inverse of that parse, and its only producer.
+    val formatChord: modifiers: KeyModifiers -> baseKey: string -> string
 
     /// Feature 108 (US5, FR-016): strip the leading `Ctrl+`/`Alt+`/`Shift+`/`Meta+` prefixes
     /// (case-insensitive, any order, repeats tolerated) off the raw key, then `normalize` the base
