@@ -28,7 +28,7 @@ let buildFrontEnd () =
     else
         ""
 
-let runDotnet (workingDirectory: string) (arguments: string) =
+let runDotnetWithin (timeoutMilliseconds: int) (workingDirectory: string) (arguments: string) =
     let startInfo: ProcessStartInfo = ProcessStartInfo("dotnet", arguments)
     startInfo.WorkingDirectory <- workingDirectory
     startInfo.RedirectStandardOutput <- true
@@ -42,16 +42,71 @@ let runDotnet (workingDirectory: string) (arguments: string) =
         let stdoutTask = proc.StandardOutput.ReadToEndAsync()
         let stderrTask = proc.StandardError.ReadToEndAsync()
 
-        if proc.WaitForExit(120000) then
+        if proc.WaitForExit(timeoutMilliseconds) then
             proc.ExitCode, stdoutTask.GetAwaiter().GetResult(), stderrTask.GetAwaiter().GetResult()
         else
             proc.Kill(true)
             -1, stdoutTask.GetAwaiter().GetResult(), stderrTask.GetAwaiter().GetResult()
 
-let packageOutput name =
-    Path.Combine(repositoryRoot, "specs", "007-v2-template-packaging", "readiness", "package", name)
-
+/// Version the consumer smoke packs the coherent set at. It is not the repo's shipped version; it
+/// only has to agree with the `PackageReference` the generated consumer restores, so pack and
+/// reference both read it from here. Packing at an implicit default (1.0.0) while referencing a
+/// literal here is what previously made the smoke resolve nothing and pass vacuously.
 let packageVersion = "0.1.9-preview.1"
+
+/// Packages the consumer smoke references directly.
+let consumerSmokePackages =
+    [ "FS.GG.UI.Scene"; "FS.GG.UI.Layout"; "FS.GG.UI.Controls"; "FS.GG.UI.Themes.Default" ]
+
+/// Transitive project closure of `consumerSmokePackages`, in dependency order. The consumer restores
+/// them all at `packageVersion`, a version on no public feed, so a partial feed cannot restore: every
+/// FS.GG.UI.* package the four pull in has to be packed locally too. Ordered and packed one project
+/// at a time rather than `pack FS.GG.Rendering.slnx`, which builds every package in parallel and
+/// exhausts memory on smaller machines.
+let consumerSmokeProjects =
+    [ "src/Scene/Scene.fsproj"
+      "src/Diagnostics/Diagnostics.fsproj"
+      "src/Layout/Layout.fsproj"
+      "src/KeyboardInput/KeyboardInput.fsproj"
+      "src/DesignSystem/DesignSystem.fsproj"
+      "src/Themes.Default/Themes.Default.fsproj"
+      "src/Controls/Controls.fsproj" ]
+
+/// A consumer that CALLS the packages rather than merely restoring them: it exports a scene through
+/// SceneCodec, computes a real Yoga layout, and paints a Button through the default theme. Each call
+/// is load-bearing — a package that restores but ships no native asset or no public entry point
+/// fails here at build or at run, which a bare `dotnet restore` cannot detect.
+let consumerSmokeProgram =
+    """module PackageConsumerSmoke
+
+open FS.GG.UI.Scene
+open FS.GG.UI.Layout
+open FS.GG.UI.Controls
+
+type Msg = Clicked
+
+[<EntryPoint>]
+let main _ =
+    let package = SceneCodec.export (Scene.rectangle (0.0, 0.0, 8.0, 8.0) Colors.white)
+
+    if not (package.PackageIdentity.StartsWith "sha256:") then
+        failwith "FS.GG.UI.Scene: SceneCodec.export produced no sha256 package identity"
+
+    let layout = Layout.evaluate (Defaults.availableSpace 100.0 50.0) (Defaults.layoutNode "root")
+
+    if List.isEmpty layout.Bounds then
+        failwith "FS.GG.UI.Layout: Layout.evaluate computed no bounds"
+
+    let theme = FS.GG.UI.Themes.Default.Theme.light
+    let rendered = Control.render theme (Button.create [ Button.text "ok"; Button.onClick Clicked ])
+    let renderedIdentity = (SceneCodec.export rendered.Scene).PackageIdentity
+
+    if not (renderedIdentity.StartsWith "sha256:") then
+        failwith "FS.GG.UI.Controls: Control.render produced no exportable scene"
+
+    printfn "package consumer smoke: scene=%s layout=%d controls=%s" package.PackageIdentity layout.Bounds.Length renderedIdentity
+    0
+"""
 
 [<Tests>]
 let packageContractTests =
@@ -133,32 +188,37 @@ let packageContractTests =
             Expect.stringContains build "readiness/surface-baselines/FS.GG.UI.KeyboardInput.txt" "package surface report includes the KeyboardInput baseline"
         }
 
-        test "package consumer smoke is deferred outside v1 verification" {
-            let enabled =
-                Environment.GetEnvironmentVariable("FS_SKIA_RUN_PACKAGE_CONSUMER_SMOKE") = "1"
+        // The smoke is too slow for the push gate, so it stays opt-in for Dev/Verify/Ci. "Opt-in"
+        // only means something if something opts in: assert the release lane sets the flag, or the
+        // pack -> consume path is tested nowhere and its green is worth nothing.
+        test "the release lane opts the package consumer smoke in" {
+            let release = File.ReadAllText(repositoryPath ".github/workflows/release.yml")
 
-            if enabled then
-                Expect.isTrue enabled "explicit PackageSmoke target opted in to package consumer smoke"
-            else
-                Expect.isFalse enabled "v1 Dev, Verify, and Ci must not require package consumer smoke"
+            Expect.stringContains
+                release
+                "FS_SKIA_RUN_PACKAGE_CONSUMER_SMOKE: \"1\""
+                "release.yml must enable the package consumer smoke; never-by-default is not a cadence"
         }
     ]
 
     let deferredPackageSmokeTests =
         if Environment.GetEnvironmentVariable("FS_SKIA_RUN_PACKAGE_CONSUMER_SMOKE") = "1" then
-            [ test "explicit package consumer smoke can restore each package independently from local output" {
-                  let packageOutput = packageOutput "consumer-nuget"
-                  Directory.CreateDirectory packageOutput |> ignore
+            [ test "explicit package consumer smoke builds and runs a consumer against the packed feed" {
+                  let feed = Path.Combine(Path.GetTempPath(), "fs-gg-ui-package-feed-" + Guid.NewGuid().ToString("N"))
+                  Directory.CreateDirectory feed |> ignore
 
-                  [ "src/Scene/Scene.fsproj"
-                    "src/Layout/Layout.fsproj"
-                    "src/Controls/Controls.fsproj" ]
-                  |> List.filter (fun project -> File.Exists(Path.Combine(repositoryRoot, project.Replace("/", string Path.DirectorySeparatorChar))))
+                  consumerSmokeProjects
                   |> List.iter (fun project ->
-                      let exitCode, _, stderr =
-                          runDotnet repositoryRoot $"pack {project} --output {packageOutput}"
+                      let exitCode, stdout, stderr =
+                          runDotnetWithin 600000 repositoryRoot $"pack {project} -c Release -m:1 -p:Version={packageVersion} --output {feed}"
 
-                      Expect.equal exitCode 0 stderr)
+                      Expect.equal exitCode 0 $"packing {project} to the local feed:{Environment.NewLine}{stdout}{stderr}")
+
+                  let missing =
+                      consumerSmokePackages
+                      |> List.filter (fun packageId -> not (File.Exists(Path.Combine(feed, $"{packageId}.{packageVersion}.nupkg"))))
+
+                  Expect.isEmpty missing $"every package the consumer references was packed to the local feed (feed: {feed})"
 
                   let consumerRoot = Path.Combine(Path.GetTempPath(), "fs-gg-ui-package-consumer-" + Guid.NewGuid().ToString("N"))
                   Directory.CreateDirectory consumerRoot |> ignore
@@ -169,42 +229,48 @@ let packageContractTests =
 <configuration>
   <packageSources>
     <clear />
-    <add key="local" value="{packageOutput}" />
+    <add key="local" value="{feed}" />
     <add key="nuget" value="https://api.nuget.org/v3/index.json" />
   </packageSources>
 </configuration>
 """
                   )
 
-                  [ "SceneConsumer", "FS.GG.UI.Scene"
-                    "LayoutConsumer", "FS.GG.UI.Layout"
-                    "ControlsConsumer", "FS.GG.UI.Controls" ]
-                  |> List.filter (fun (_, packageId) ->
-                      File.Exists(Path.Combine(packageOutput, packageId + $".{packageVersion}.nupkg")))
-                  |> List.iter (fun (name, packageId) ->
-                      let projectDir = Path.Combine(consumerRoot, name)
-                      Directory.CreateDirectory projectDir |> ignore
-                      File.WriteAllText(
-                          Path.Combine(projectDir, $"{name}.fsproj"),
-                          $"""<Project Sdk="Microsoft.NET.Sdk">
+                  let references =
+                      consumerSmokePackages
+                      |> List.map (fun packageId -> $"""    <PackageReference Include="{packageId}" Version="{packageVersion}" />""")
+                      |> String.concat Environment.NewLine
+
+                  // Central package management is on repo-wide; the consumer lives outside the repo's
+                  // Directory.Packages.props, so it pins versions on the PackageReference itself.
+                  File.WriteAllText(
+                      Path.Combine(consumerRoot, "PackageConsumerSmoke.fsproj"),
+                      $"""<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
+    <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Library.fs" />
+    <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="{packageId}" Version="{packageVersion}" />
+{references}
   </ItemGroup>
 </Project>
 """
-                      )
-                      File.WriteAllText(Path.Combine(projectDir, "Library.fs"), $"module {name}\nlet value = 1\n")
+                  )
 
-                      let exitCode, _, stderr =
-                          runDotnet projectDir "restore"
+                  File.WriteAllText(Path.Combine(consumerRoot, "Program.fs"), consumerSmokeProgram)
 
-                      Expect.equal exitCode 0 stderr)
+                  let buildExit, buildStdout, buildStderr = runDotnetWithin 600000 consumerRoot "build -c Release"
+                  Expect.equal buildExit 0 (buildStdout + buildStderr)
+
+                  // Building proves the public API compiles; running proves the packages' native and
+                  // managed assets actually load. Restore alone proved neither.
+                  let runExit, runStdout, runStderr = runDotnetWithin 300000 consumerRoot "run -c Release --no-build"
+                  Expect.equal runExit 0 (runStdout + runStderr)
+                  Expect.stringContains runStdout "package consumer smoke:" "the consumer executed its FS.GG.UI calls"
               } ]
         else
             []

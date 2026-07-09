@@ -135,7 +135,7 @@ let private runRenderAnywhereReferenceCmd (rest: string list) =
 
 let private runRenderAnywhereBrowserFeasibilityCmd (rest: string list) =
     let out = renderAnywhereBrowserOutDir rest
-    RenderAnywhere.runBrowserFeasibilityCommand out |> ignore
+    RenderAnywhere.runBrowserCapabilityCommand RenderAnywhere.referenceDirectory out |> ignore
     printfn "%s" (IO.Path.Combine(out, "browser-feasibility.md"))
     0
 

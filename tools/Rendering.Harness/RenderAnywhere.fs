@@ -12,32 +12,28 @@ module RenderAnywhere =
           Scene: Scene
           Package: PortableScenePackage }
 
-    type BrowserCandidateVerdict =
-        | CandidatePassed
-        | CandidateFailed
-        | CandidateUnsupportedCapability
-        | CandidateMissingResource
-        | CandidateEnvironmentLimited
+    type ReferenceSummaryEntry =
+        { PackageIdentity: string
+          Verdict: ReferenceRenderVerdict
+          ImageIdentity: string option }
 
-    type BrowserFinalDecision =
-        | AcceptedCandidatePath of string
-        | DocumentedFallbackPath of string
+    type CandidateCapabilityStatus =
+        | CandidateNotExecuted
+        | CandidateMissingReference
 
-    type BrowserComparison =
+    type BrowserFinalDecision = DocumentedFallbackPath of string
+
+    type ScenarioCapability =
         { ScenarioId: string
           PackageIdentity: string
           ReferenceIdentity: string option
-          CandidateIdentity: string option
-          Tolerance: float
-          DiffMetric: float option
-          Verdict: BrowserCandidateVerdict
+          Status: CandidateCapabilityStatus
           Diagnostics: string list }
 
-    type BrowserFeasibilityReport =
+    type BrowserCapabilityReport =
         { CandidateBackend: string
           Corpus: string list
-          Tolerance: float
-          Comparisons: BrowserComparison list
+          Scenarios: ScenarioCapability list
           UnsupportedCapabilities: string list
           Decision: BrowserFinalDecision
           Diagnostics: string list }
@@ -46,20 +42,20 @@ module RenderAnywhere =
         { OutputDirectory: string
           CandidateBackend: string
           Corpus: CorpusItem list
-          ReferenceEvidence: ReferenceRenderingEvidence list
-          Report: BrowserFeasibilityReport option
+          ReferenceEvidence: ReferenceSummaryEntry list
+          Report: BrowserCapabilityReport option
           Diagnostics: string list }
 
     type BrowserFeasibilityMsg =
         | BrowserStart
-        | ReferencesLoaded of ReferenceRenderingEvidence list
-        | CandidateCompared of BrowserFeasibilityReport
+        | ReferencesLoaded of ReferenceSummaryEntry list
+        | CapabilityAssessed of BrowserCapabilityReport
         | BrowserFallbackSelected of string
 
     type BrowserFeasibilityEffect =
         | LoadReferenceEvidence of string
-        | CompareBrowserCandidate of CorpusItem list * ReferenceRenderingEvidence list * string
-        | WriteBrowserReport of BrowserFeasibilityReport * string
+        | AssessCandidateCapability of CorpusItem list * ReferenceSummaryEntry list * string
+        | WriteBrowserReport of BrowserCapabilityReport * string
 
     let featureDirectory = "specs/146-render-anywhere-protocol"
     let readinessDirectory = Path.Combine(featureDirectory, "readiness")
@@ -106,6 +102,13 @@ module RenderAnywhere =
         | ReferenceFailed -> "failed"
         | ReferenceEnvironmentLimited -> "environment-limited"
 
+    let private verdictOfToken token =
+        match token with
+        | "passed" -> Some ReferencePassed
+        | "failed" -> Some ReferenceFailed
+        | "environment-limited" -> Some ReferenceEnvironmentLimited
+        | _ -> None
+
     let formatReferenceEvidence (evidence: ReferenceRenderingEvidence list) =
         [ "# Feature 146 Reference Corpus Evidence"
           ""
@@ -116,6 +119,59 @@ module RenderAnywhere =
               $"  verdict: {verdictToken item.Verdict}"
               $"  image: {imagePath}"
               $"  identity: {imageIdentity}" ]
+
+    let summaryEntries (evidence: ReferenceRenderingEvidence list) =
+        evidence
+        |> List.map (fun item ->
+            { PackageIdentity = item.PackageIdentity
+              Verdict = item.Verdict
+              ImageIdentity = item.ImageIdentity })
+
+    /// Parse the `summary.md` written by `runReferenceCommand` back into the subset of reference
+    /// evidence a capability report can honestly cite: package identity, verdict, image identity.
+    /// Fields the summary does not carry are not reconstructed. A missing or malformed summary
+    /// yields `[]`, which the report surfaces as `CandidateMissingReference`, never as acceptance.
+    let readReferenceSummary (directory: string) : ReferenceSummaryEntry list =
+        let path = Path.Combine(directory, "summary.md")
+
+        if not (File.Exists path) then
+            []
+        else
+            let field (prefix: string) (line: string) =
+                let trimmed = line.Trim()
+
+                if trimmed.StartsWith(prefix, StringComparison.Ordinal) then
+                    Some(trimmed.Substring(prefix.Length).Trim())
+                else
+                    None
+
+            let optional value =
+                if value = "none" || value = "" then None else Some value
+
+            // A record is a `- package:` line followed by its indented fields, so the next
+            // `- package:` (or end of file) closes the record before it.
+            let flush (identity, verdict, imageIdentity) =
+                match identity, verdict |> Option.bind verdictOfToken with
+                | Some identity, Some verdict ->
+                    [ { PackageIdentity = identity
+                        Verdict = verdict
+                        ImageIdentity = imageIdentity |> Option.bind optional } ]
+                | _ -> []
+
+            let entries, pending =
+                File.ReadAllLines path
+                |> Array.fold
+                    (fun (entries, (identity, verdict, imageIdentity)) line ->
+                        match field "- package:" line with
+                        | Some value -> entries @ flush (identity, verdict, imageIdentity), (Some value, None, None)
+                        | None ->
+                            match field "verdict:" line, field "identity:" line with
+                            | Some value, _ -> entries, (identity, Some value, imageIdentity)
+                            | _, Some value -> entries, (identity, verdict, Some value)
+                            | None, None -> entries, (identity, verdict, imageIdentity))
+                    ([], (None, None, None))
+
+            entries @ flush pending
 
     let runReferenceCommand outputDirectory =
         Directory.CreateDirectory(outputDirectory) |> ignore
@@ -143,90 +199,85 @@ module RenderAnywhere =
           Diagnostics = [] },
         [ LoadReferenceEvidence outputDirectory ]
 
-    let private comparisonFor (tolerance: float) (references: ReferenceRenderingEvidence list) (item: CorpusItem) : BrowserComparison =
+    let private capabilityFor (references: ReferenceSummaryEntry list) (item: CorpusItem) : ScenarioCapability =
         let reference =
             references
-            |> List.tryFind (fun evidence -> evidence.PackageIdentity = item.Package.PackageIdentity && evidence.Verdict = ReferencePassed)
+            |> List.tryFind (fun entry ->
+                entry.PackageIdentity = item.Package.PackageIdentity && entry.Verdict = ReferencePassed)
 
         match reference with
-        | Some evidence ->
+        | Some entry ->
             { ScenarioId = item.ScenarioId
               PackageIdentity = item.Package.PackageIdentity
-              ReferenceIdentity = evidence.ImageIdentity
-              CandidateIdentity = None
-              Tolerance = tolerance
-              DiffMetric = None
-              Verdict = CandidateEnvironmentLimited
-              Diagnostics = [ "CanvasKit candidate execution is not configured in this host; fallback decision recorded." ] }
+              ReferenceIdentity = entry.ImageIdentity
+              Status = CandidateNotExecuted
+              Diagnostics = [ "CanvasKit candidate execution is not configured in this host; no candidate image exists to compare." ] }
         | None ->
             { ScenarioId = item.ScenarioId
               PackageIdentity = item.Package.PackageIdentity
               ReferenceIdentity = None
-              CandidateIdentity = None
-              Tolerance = tolerance
-              DiffMetric = None
-              Verdict = CandidateEnvironmentLimited
-              Diagnostics = [ "No passed reference evidence available; browser candidate cannot claim acceptance." ] }
+              Status = CandidateMissingReference
+              Diagnostics = [ "No passed reference evidence available; run render-anywhere-reference first." ] }
 
-    let buildBrowserFeasibilityReport (corpus: CorpusItem list) (references: ReferenceRenderingEvidence list) (candidateBackend: string) : BrowserFeasibilityReport =
-        let tolerance = 0.015
-        let comparisons = corpus |> List.map (comparisonFor tolerance references)
-
+    let buildBrowserCapabilityReport
+        (corpus: CorpusItem list)
+        (references: ReferenceSummaryEntry list)
+        (candidateBackend: string)
+        : BrowserCapabilityReport =
         { CandidateBackend = candidateBackend
           Corpus = corpus |> List.map _.ScenarioId
-          Tolerance = tolerance
-          Comparisons = comparisons
+          Scenarios = corpus |> List.map (capabilityFor references)
           UnsupportedCapabilities = [ "direct browser execution unavailable in current harness" ]
-          Decision = DocumentedFallbackPath "Continue with a generated CanvasKit command-stream proof; do not claim a production browser backend yet."
-          Diagnostics = [ "Candidate path is evidence-only for Feature 146."; "Environment-limited browser results cannot count as accepted candidate evidence." ] }
+          Decision =
+            DocumentedFallbackPath
+                "Continue with a generated CanvasKit command-stream proof; do not claim a production browser backend yet."
+          Diagnostics =
+            [ "This is a capability report, not a perceptual diff: no candidate image is produced, so no image is compared."
+              "Cross-backend visual fidelity is UNPROVEN and this report is not evidence of it." ] }
 
     let updateBrowserFeasibility (msg: BrowserFeasibilityMsg) (model: BrowserFeasibilityModel) =
         match msg with
         | BrowserStart -> model, [ LoadReferenceEvidence model.OutputDirectory ]
         | ReferencesLoaded references ->
             let model = { model with ReferenceEvidence = references }
-            model, [ CompareBrowserCandidate(model.Corpus, references, model.CandidateBackend) ]
-        | CandidateCompared report ->
+            model, [ AssessCandidateCapability(model.Corpus, references, model.CandidateBackend) ]
+        | CapabilityAssessed report ->
             { model with Report = Some report; Diagnostics = report.Diagnostics },
             [ WriteBrowserReport(report, model.OutputDirectory) ]
         | BrowserFallbackSelected reason ->
             let report =
-                { buildBrowserFeasibilityReport model.Corpus model.ReferenceEvidence model.CandidateBackend with
+                { buildBrowserCapabilityReport model.Corpus model.ReferenceEvidence model.CandidateBackend with
                     Decision = DocumentedFallbackPath reason }
 
             { model with Report = Some report; Diagnostics = report.Diagnostics },
             [ WriteBrowserReport(report, model.OutputDirectory) ]
 
-    let private candidateVerdictToken verdict =
-        match verdict with
-        | CandidatePassed -> "passed"
-        | CandidateFailed -> "failed"
-        | CandidateUnsupportedCapability -> "unsupported-capability"
-        | CandidateMissingResource -> "missing-resource"
-        | CandidateEnvironmentLimited -> "environment-limited"
+    let private statusToken status =
+        match status with
+        | CandidateNotExecuted -> "candidate-not-executed"
+        | CandidateMissingReference -> "missing-reference"
 
     let private decisionText decision =
         match decision with
-        | AcceptedCandidatePath value -> "accepted: " + value
         | DocumentedFallbackPath value -> "fallback: " + value
 
-    let formatBrowserReport (report: BrowserFeasibilityReport) =
-        [ "# Feature 146 Browser Feasibility"
+    let formatBrowserReport (report: BrowserCapabilityReport) =
+        [ "# Feature 146 Browser Capability"
+          ""
+          "No candidate image is rendered and no perceptual diff is computed. This report records which"
+          "corpus scenes have passing reference evidence, and why the browser candidate did not run. It"
+          "is NOT cross-backend fidelity evidence."
           ""
           $"- candidate-backend: {report.CandidateBackend}"
-          $"- tolerance: {report.Tolerance}"
+          "- comparison: not performed"
           $"- decision: {decisionText report.Decision}"
           ""
-          "## Comparisons"
-          for comparison in report.Comparisons do
-              let referenceIdentity = comparison.ReferenceIdentity |> Option.defaultValue "none"
-              let candidateIdentity = comparison.CandidateIdentity |> Option.defaultValue "none"
-              let diffMetric = comparison.DiffMetric |> Option.map string |> Option.defaultValue "none"
-              $"- {comparison.ScenarioId}: {candidateVerdictToken comparison.Verdict}"
-              $"  package: {comparison.PackageIdentity}"
+          "## Scenarios"
+          for scenario in report.Scenarios do
+              let referenceIdentity = scenario.ReferenceIdentity |> Option.defaultValue "none"
+              $"- {scenario.ScenarioId}: {statusToken scenario.Status}"
+              $"  package: {scenario.PackageIdentity}"
               $"  reference: {referenceIdentity}"
-              $"  candidate: {candidateIdentity}"
-              $"  diff: {diffMetric}"
           ""
           "## Unsupported Capabilities"
           yield!
@@ -242,20 +293,15 @@ module RenderAnywhere =
               else
                   report.Diagnostics |> List.map (fun item -> "- " + item) ]
 
-    let writeBrowserReport (outputDirectory: string) (report: BrowserFeasibilityReport) =
+    let writeBrowserReport (outputDirectory: string) (report: BrowserCapabilityReport) =
         Directory.CreateDirectory(outputDirectory) |> ignore
         let path = Path.Combine(outputDirectory, "browser-feasibility.md")
         File.WriteAllLines(path, formatBrowserReport report)
         path
 
-    let runBrowserFeasibilityCommand outputDirectory =
+    let runBrowserCapabilityCommand (referenceDirectory: string) (outputDirectory: string) =
         Directory.CreateDirectory(outputDirectory) |> ignore
-        let references =
-            if Directory.Exists referenceDirectory then
-                []
-            else
-                []
-
-        let report = buildBrowserFeasibilityReport (corpus ()) references "canvaskit-command-stream/proof"
+        let references = readReferenceSummary referenceDirectory
+        let report = buildBrowserCapabilityReport (corpus ()) references "canvaskit-command-stream/proof"
         writeBrowserReport outputDirectory report |> ignore
         report
