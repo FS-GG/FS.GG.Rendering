@@ -259,20 +259,44 @@ jobs:
   # (Microsoft.CodeAnalysis.PublicApiAnalyzers is C#-only). A removed/changed public member is a
   # break that must force a SemVer major (registry coherence id `apicompat-publicapi-gate`).
   #
-  # ENFORCING AT THE WORKFLOW LEVEL (FS-GG/.github#20 resolved): a SEPARATE job whose run FAILS on a
-  # real public-API break (Package Validation stays OFF in the normal build/release, so the required
-  # `gate` job above is unaffected). The detector script exits non-zero ONLY on a genuine CP####
-  # break — NoBaselineYet / Indeterminate (e.g. a feed hiccup) do not fail it. It reads the feed
-  # with GITHUB_TOKEN (packages: read); on a fork PR (no token) the script degrades to clean
-  # (exit 0) so forks still merge. A red here informs a merge; it does not block one.
+  # "ADVISORY" MEANS NOT-REQUIRED, NOT continue-on-error (#216). This job has NO `continue-on-error`
+  # and must not grow one. Advisory is a statement about branch protection — this job's context is
+  # not in the required set, so a red here informs a merge rather than blocking one. It is NOT a
+  # statement that the job may report success when it failed. `continue-on-error: true` would paint
+  # the check green whatever it found, which is the green-by-omission class this gate exists to
+  # detect, and would make the elevation below meaningless. The contradiction #216 named — "advisory"
+  # prose next to a job that reddens the run — resolves in favour of the job: it should redden.
+  #
+  # ENFORCING AT THE WORKFLOW LEVEL (FS-GG/.github#20 resolved): a SEPARATE job (Package Validation
+  # stays OFF in the normal build/release, so the required `gate` job above is unaffected). The
+  # detector's exit codes, per scripts/apicompat-check.sh:
+  #
+  #   1  a genuine CP#### break        red   — the gate ran and found a break
+  #   3  a packable failed to pack     red   — the gate did NOT run; that is not a pass (#216)
+  #   0  OK / NoBaselineYet            green — the gate ran, or had nothing to compare against
+  #   0  FeedUnavailable  + ::error::  green — the gate did not run, for a reason external to the
+  #                                           change. Loud, never silent. Includes the fork-PR case
+  #                                           (no token), so forks still merge (FR-001/FR-013).
+  #
+  # Exit 3 is the #216 fix. From Feature 211 to #186 every packable failed to pack with NU1403, the
+  # script classified all 17 as Indeterminate, and exited 0 — the job was green while comparing
+  # nothing. A pack failure is the tree failing to build; the feed's availability is a separate axis,
+  # split out as FeedUnavailable so ADR-0101's bound still holds (requiring this job takes a
+  # dependency on the feed, and a feed outage must not wedge the repo).
   #
   # WHY NOT A REQUIRED CHECK YET (#219, ADR-0101). Not because the detector is weak — it is a sound
-  # hard gate — but because it is RED ON `main` RIGHT NOW, and a required check that is red on the
-  # base branch wedges every merge in the repo. Three packables carry public-API breaks that no
-  # published major has discharged yet: FS.GG.UI.Controls (`CustomControlDefinition<'msg>` lost its
+  # hard gate — but because it was RED ON `main` AS OF 2026-07-09, and a required check that is red
+  # on the base branch wedges every merge in the repo. Three packables carried public-API breaks that
+  # no published major had discharged: FS.GG.UI.Controls (`CustomControlDefinition<'msg>` lost its
   # type parameter), FS.GG.UI.DesignSystem (`IntentPolicy` moved out of the `StyleResolver` module,
   # and `Theme` lost `IComparable`), and FS.GG.UI.Themes.AntDesign (which re-exports that policy).
   # The gate is doing its job: those breaks force the next FS.GG.UI release to be a SemVer major.
+  #
+  # THAT SENTENCE HAS AN EXPIRY. #225 cut `0.4.0-preview.1` to discharge exactly those three; this
+  # job goes green the moment that major is PUBLISHED to the feed (the cut alone is not enough — the
+  # baseline is read from the feed, not from the tree). Do not read the paragraph above as current
+  # state. The live answer is one line: the `summary:` line in this job's log, which now also reports
+  # how many packables were actually `compared`.
   #
   # DO NOT re-derive that red from folklore. Until 2026-07-09 both this comment and ADR-0100 blamed
   # the `FS.GG.UI.Canvas.Audio` removal from specs/252 — but `FS.GG.UI.Canvas` reports OK, and Audio
