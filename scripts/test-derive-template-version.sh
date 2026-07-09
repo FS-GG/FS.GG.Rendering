@@ -77,5 +77,24 @@ run "unset ref fails, no version" 1 \
   "GITHUB_REF" "version=" "-" -- \
   GITHUB_REF=
 
+# workflow_call lane: the runner OWNS $GITHUB_REF and pins it to the caller's branch, so the tag ref
+# has to arrive under a name it does not reserve. RELEASE_TAG_REF must win over a branch GITHUB_REF —
+# this is the regression that lost the FS.GG.UI 0.4.0 Templates dispatch.
+run "RELEASE_TAG_REF wins over a caller-branch GITHUB_REF" 0 \
+  "version=0.1.52-preview.1" "-" "version=0.1.52-preview.1" -- \
+  RELEASE_TAG_REF="$GOOD_REF" GITHUB_REF='refs/heads/main'
+
+# Precedence is absolute: a malformed RELEASE_TAG_REF must NOT silently fall back to a good
+# GITHUB_REF, or a bad caller would dispatch the wrong version.
+run "malformed RELEASE_TAG_REF does not fall back to GITHUB_REF" 1 \
+  "is malformed" "version=" "-" -- \
+  RELEASE_TAG_REF='refs/tags/fs-gg-ui-template/vNOPE' GITHUB_REF="$GOOD_REF"
+
+# The channel suffix is optional: a stable `x.y.z` derives, exactly as the regex allows. FS.GG.UI
+# left the -preview channel at 0.4.0 and the dispatch must follow.
+run "stable (no -preview) version derives" 0 \
+  "version=0.4.0" "-" "version=0.4.0" -- \
+  RELEASE_TAG_REF='refs/tags/fs-gg-ui-template/v0.4.0'
+
 echo
 if [ "$fails" = 0 ]; then echo "ALL PASS"; exit 0; else echo "$fails scenario(s) FAILED"; exit 1; fi

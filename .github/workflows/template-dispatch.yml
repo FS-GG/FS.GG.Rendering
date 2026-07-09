@@ -61,10 +61,14 @@ jobs:
       # learn the version, we hand the script the tag ref that version implies. The regex it already
       # enforces then guards the call too: a caller passing `main`, an empty string, or `v1.2` fails
       # loudly here and NOTHING is dispatched (FR-005), exactly as a malformed tag would.
+      # NOT `GITHUB_REF:` — the runner reserves the GITHUB_* namespace and re-injects its own value,
+      # so that override is declared in the step log and then ignored by the process. On a
+      # workflow_call that meant the script read the caller's `refs/heads/main` and refused to derive,
+      # which is how the FS.GG.UI 0.4.0 cut published the set but never notified Templates.
       - id: v
         name: Derive + validate version from the tag ref
         env:
-          GITHUB_REF: ${{ inputs.version && format('refs/tags/fs-gg-ui-template/v{0}', inputs.version) || github.ref }}
+          RELEASE_TAG_REF: ${{ inputs.version && format('refs/tags/fs-gg-ui-template/v{0}', inputs.version) || github.ref }}
         run: bash scripts/derive-template-version.sh
 
   dispatch:
