@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-02
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "Implement ADR-0014 P2 for the fs-gg-ui template (issue FS-GG/FS.GG.Rendering#43, parent epic FS-GG/.github#110): product skill-manifest + single standalone materialize; drop dev-surface vendoring. R2.1 product manifest boundary; R2.2 one standalone materialize + content-parity test vs FS.GG.Contracts >= 1.4.0; R2.3 scope the `replaces:\"product\"` token; R2.4 no-dangling-route guard."
 

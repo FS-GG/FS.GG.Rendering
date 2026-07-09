@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-21
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "start next item in the project" — Phase 3 of the whole-repo
 code-health refactoring plan: introduce one shared readiness-status vocabulary, collapse the three

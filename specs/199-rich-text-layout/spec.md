@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-26
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "full rich text layout" — the next **deferred symbology backlog item**. Spec 196 ([label / glyph-text channel](../196-symbology-label-text/spec.md)) shipped a single-line identity label, spec 197 ([multi-line / paragraph label](../197-symbology-multiline-label/spec.md)) widened it to several lines, and spec 198 ([rich-text label runs](../198-symbology-rich-text-label/spec.md)) let the label carry **styled runs** with per-run **colour, weight, and size** — but 198 explicitly deferred (198 FR-018) the two things this feature delivers: **full rich-text layout** (per-paragraph alignment incl. justification, explicit paragraph/line structure within styled runs) and the **typographic run attributes beyond colour/weight/size** (italic / slant, underline, strike-through, letter-spacing / tracking). This feature completes the rich-text label: a label may set **how its lines are aligned within the region** and each run may carry **decoration and slant and tracking** — still tofu-free, still fitted to the region, still an opt-in inspection-detail channel, still **byte-identical** when the label uses none of the new capabilities.
 

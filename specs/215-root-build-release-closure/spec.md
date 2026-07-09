@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-28
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "next Rendering item on the project coordination board" → resolved with the user to **Finalize H1 root-build (FS-GG/FS.GG.Rendering#9)**: move the root-buildable template guarantee from *In review* to *Done*. The capability (root `.slnx` + `global.json` + verb wrapper, Feature 212) is built, live-verified, and merged to `main` at commit `b6ac246`, but it is **not yet released**: the latest published template tag `fs-gg-ui-template/v0.1.50-preview.1` predates the root-build work, and the cross-repo registry-coherence PR `FS-GG/.github#25` is still open.
 

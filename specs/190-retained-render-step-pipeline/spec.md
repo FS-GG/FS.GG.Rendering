@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-22
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "next item in plan" — Phase 6 (final phase) of the god-module decomposition
 campaign (`docs/reports/2026-06-21-23-57-god-module-decomposition-analysis-and-plan.md` §4.1 / §6).

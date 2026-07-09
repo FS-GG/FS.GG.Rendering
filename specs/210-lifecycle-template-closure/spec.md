@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-28
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "next Rendering item on the project coordination board" → resolved to the P1 Rendering epic *"Make fs-gg-ui emit Spec Kit only when asked (lifecycle-agnostic template)"*. Its three child features (204 lifecycle symbol, 205 scaffold git-init/chmod, 206 publish coherent set) are all Done; this feature delivers the **Rendering-owned epic-closure work** that turns those parts into a single, defensible "epic is closeable" statement.
 

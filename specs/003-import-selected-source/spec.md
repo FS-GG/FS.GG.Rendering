@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-14
 
-**Status**: Draft
+**Status**: Shipped
 
 **Change Classification**: **Tier 1 (contracted change)** — introduces the product's public API
 surface, dependencies, and package contracts. Requires the full artifact chain: `.fsi`

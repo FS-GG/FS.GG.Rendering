@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-27
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "next Rendering item on the project coordination board" — resolved to **P5 · rendering — Optional FS.GG.UI BOM/metapackage pinning the 16-package set**, a child of the P5 epic *"Make the FsSkiaUiVersion staleness bug class structurally impossible"* on the FS-GG Coordination board (Workstream: Versioning).
 

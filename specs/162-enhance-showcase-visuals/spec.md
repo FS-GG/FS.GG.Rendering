@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-18
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "create specs to comprehensively fix and enhance the showcase as much as possible. size can also be bigger if preferable."
 

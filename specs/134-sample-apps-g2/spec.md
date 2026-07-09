@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-16
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "now do the samples" → Workstream **G2** of
 `docs/reports/2026-06-15-11-34-missing-features-implementation-plan.md` (§10) — a curated,

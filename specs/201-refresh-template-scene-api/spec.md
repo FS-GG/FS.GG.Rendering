@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-27
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "Refresh the fs-gg-ui template so template/base/src/Product/*.fs matches the current Scene API (and re-pin FsSkiaUiVersion) — a FS.GG.Rendering maintenance task."
 

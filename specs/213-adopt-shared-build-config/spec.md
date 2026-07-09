@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-28
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "next Rendering item on the project coordination board" → resolved to **FS-GG/FS.GG.Rendering#11 — H3 · rendering — Adopt shared-build-config; migrate RestoreLockedMode gate CIB→GITHUB_ACTIONS** (Coordination board status: Ready; contract: `shared-build-config`; upstream source of truth `.github#19` / ADR-0006 is merged).
 

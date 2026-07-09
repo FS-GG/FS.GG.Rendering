@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-27
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "next Rendering item on the project coordination board" → resolved to the next not-Done, Rendering-owned item: **P5 Versioning · Epic — Make the FsSkiaUiVersion staleness bug class structurally impossible** (board: FS-GG `Coordination`, Phase `P5 Versioning`, Workstream `Versioning`, target 2026-08-29). The P1 Rendering phase (lifecycle template parameter) is complete; this is the rendering-side versioning hardening that follows the just-completed 204 (coherence restore), 207 (BOM), and 208 (version-machinery rename).
 

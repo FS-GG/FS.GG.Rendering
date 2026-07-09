@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-25
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "next item in the plan" — the build-out (milestones M1–M5) of `docs/reports/2026-06-25-12-48-agent-symbology-design-system-analysis-and-plan.md`: a reusable unit-symbology library plus an agent workflow that turns a game's unit roster + stats into a legible visual control set (abstract vector symbols, not depictions), refined through a render→eyeball→tweak loop until the user is satisfied. The proof-of-concept (P0) is already complete; this feature delivers objectives O1–O5 (the minimum viable agent loop with provenance).
 

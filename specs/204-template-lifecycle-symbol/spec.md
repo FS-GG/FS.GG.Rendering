@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-27
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "next Rendering item on the project coordination board" — resolved to Coordination board item **P1 · rendering — Add `lifecycle` choice symbol (spec-kit|sdd|none) + conditions; default spec-kit byte-identical** (workstream: Lifecycle; contract: `fs-gg-ui-template`; phase P1 Rendering).
 

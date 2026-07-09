@@ -4,6 +4,8 @@
 **Type:** contract-change (breaking public-surface removal) → coherent-set release
 **Lifecycle:** lean (on `item/158-retire-canvas-audio`; no full speckit ceremony — the ADR fixes the decision & scope).
 
+**Status**: Shipped
+
 ## Why
 
 `FS.GG.Audio.Core` was extracted *verbatim* from `FS.GG.UI.Canvas.Audio` but the Canvas copy

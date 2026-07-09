@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-01
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "start the next rendering item on the coord board." → resolved to the next Ready rendering-scoped item: **FS.GG.Rendering#42 / contract `fs-gg-ui-template`** — re-release the template so it materializes its UI product skills **only** into `.agents/skills/` and drops the `.claude/skills/` copies entirely, per **ADR-0011**. Unblocks `FS-GG/FS.GG.Templates#47` (`scaffold.providerWroteSddTree`).
 

@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-26
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "auto label and label bound motion" — the next two **deferred symbology backlog items**. The label channel was built up across specs 196–199: spec 196 ([label / glyph-text channel](../196-symbology-label-text/spec.md)) shipped a single-line identity label, spec 197 ([multi-line / paragraph label](../197-symbology-multiline-label/spec.md)) widened it to several lines, spec 198 ([rich-text label runs](../198-symbology-rich-text-label/spec.md)) let the label carry styled runs (per-run colour / weight / size), and spec 199 ([full rich-text layout](../199-rich-text-layout/spec.md)) completed the typography with per-paragraph alignment / justification, explicit paragraph-line structure, and per-run italic / underline / strike-through / letter-spacing. Spec 199 then explicitly deferred (199 FR-019) two items this feature delivers: **automatic generation of labels from a unit's encoded state without hand-authoring every label** ("auto label") and **label-bound motion** (animating the label's runs over the symbology motion timeline). This feature lifts both — still tofu-free, still fitted to the region, still an opt-in inspection-detail channel, still **byte-identical** when neither capability is used, and still keeping the **per-game stat mapping out of the library**.
 

@@ -133,6 +133,17 @@ specs/168-skill-parity-evidence/readiness/**
 # (handled above), and the only root readiness/* trees (readiness/surface-baselines,
 # readiness/parity) are durable + gate-checked, so a root role rule would wrongly
 # ignore them.
+#
+#   promotion/ — per-scenario promotion attempt ledgers (#187). Harness-regenerated
+#   per-run output: the tests that cover them (Rendering.Harness.Tests'
+#   Feature159PromotionEvidenceTests / Feature159ReadinessPackageTests) render the
+#   reports from the emitter and assert on the rendered strings — they never read the
+#   committed copies back from disk, so a clean checkout without them still passes.
+#   159 alone had committed 65 of these. The trees that ARE read from disk
+#   (159's readiness/fsi/** and its root *.md ledgers) stay pinned above.
+#   Regenerate with scripts/emit-harness-readiness.sh <target-dir>. See
+#   docs/product/spec-lifecycle.md.
+specs/*/readiness/promotion/
 nuget-cache/
 .tmp/
 

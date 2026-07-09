@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-16
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "next item in fs.gg concrete ant theme. lets widen the scope and try to add as many components from https://ant.design/components/overview/ as possible. also add adding the components from https://ant-design-charts.antgroup.com/en/components/overview as a follow up feature to the plan."
 

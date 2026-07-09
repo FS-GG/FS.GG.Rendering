@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-01
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: Maintainer correction to Feature 229: "in the vendored product there are no claude skills but only agent skills; the requirement was that they mirror each other." → the standalone `spec-kit` product must carry the byte-identical skill union in **all three** agent-skill roots (`.agents/`, `.claude/`, `.codex/`), per **ADR-0011 §1**.
 

@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-15
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "next item in the implementation plan" → Workstream **G1** of `docs/reports/2026-06-15-11-34-missing-features-implementation-plan.md` — the flagship Controls Gallery sample application, a multi-page showcase that exercises every catalog control on the existing Light/Dark themes, landable early and independently of the design-system (F) and layer-split (D) work because it needs only the controls that ship today.
 

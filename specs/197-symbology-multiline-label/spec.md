@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-25
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "next item in the plan." — the symbology **M0–M7 roadmap** in [`docs/reports/2026-06-25-12-48-agent-symbology-design-system-analysis-and-plan.md`](../../docs/reports/2026-06-25-12-48-agent-symbology-design-system-analysis-and-plan.md) is complete, so this resolves to the next **deferred symbology backlog item**. Spec 196 ([symbology label / glyph-text channel](../196-symbology-label-text/spec.md)) shipped a **single-line** identity label and explicitly deferred **multi-line / paragraph text** as out of scope (FR-016). This feature delivers that deferred item: extend the existing optional identity-label channel so it can carry **more than one line** of text, wrapped/stacked and fitted within each grammar's label region, still tofu-free, still opt-in byte-identical when unused.
 

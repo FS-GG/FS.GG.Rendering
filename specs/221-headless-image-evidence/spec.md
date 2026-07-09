@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-30
 
-**Status**: Draft
+**Status**: Shipped
 
 **Change Classification**: **Tier 1 (contracted change)** — this feature alters the observable behavior of the public `SceneEvidence.renderPng` surface (it begins returning real PNG bytes instead of a hash stub) and adds a new injectable rasterizer seam to the `Scene` public API. Per the constitution's Change Classification, it therefore requires the full artifact chain: spec, plan, `.fsi` updates, surface-area baseline updates, test evidence, and documentation updates. **Public API impact**: new Scene seam (e.g. `setRealPngRasterizer`); changed `renderPng` output semantics; the existing `Hash`/metadata/evidence-file surfaces are preserved unchanged (FR-007). This is a Tier 1 change **within the Rendering repo only** — it does **not** change any cross-repo contract in the dependency registry (no `contract-change`).
 

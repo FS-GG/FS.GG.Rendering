@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-22
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "next item in the plan" → Phase 1 of the god-module decomposition
 (`docs/reports/2026-06-21-23-57-god-module-decomposition-analysis-and-plan.md`): the harness

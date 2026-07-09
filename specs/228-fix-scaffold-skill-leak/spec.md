@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-01
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "start the next unblocked rendering item on the coordination board." → resolved to the next unblocked rendering-scoped item: **Templates#47 / contract `fs-gg-ui-template`** — the `fs-gg-ui` template writes its UI product skills into the SDD-owned `.claude/skills/` tree, so an SDD-orchestrated scaffold is rejected with `scaffold.providerWroteSddTree` and aborts. Its only board blocker (SDD#55) is now Done, so the item is unblocked and the fix lives in this repository.
 

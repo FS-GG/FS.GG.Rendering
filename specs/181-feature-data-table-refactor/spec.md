@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-21
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "start next item in the project." — resolved to Phase 4 of the code-health refactoring plan (`docs/reports/2026-06-21-05-19-code-health-refactoring-analysis-and-plan.md`): the per-feature data-table refactor that converts copy-forward *code* into *data*.
 

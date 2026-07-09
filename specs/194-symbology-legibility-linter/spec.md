@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-25
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "next item in the plan" — milestone **M7 (governance)** of `docs/reports/2026-06-25-12-48-agent-symbology-design-system-analysis-and-plan.md`: a **legibility linter** that scores a per-game channel mapping against the fixed channel-grammar capacities (§4) and warns on overload. M1–M5 (the agent loop, spec 192) and M6 (the live board, spec 193) are complete; this feature delivers the first of M7's three independent threads — the linter — and explicitly leaves the Badge/Ring grammars and label text (the rest of M7) deferred.
 

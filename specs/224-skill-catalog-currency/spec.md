@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-30
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "start the next Rendering owned item on the coordination board." → Coordination board epic #34 child **#36** — *[cross-repo] Consumer skill docs reference a defunct skill taxonomy; wire the currency check*.
 

@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-28
 
-**Status**: Draft
+**Status**: Shipped
 
 **Change Classification**: **Tier 2 (internal change)** — no public F# API surface is added or changed, no new shipped dependency is introduced, and no observable library behavior changes. The feature pins the *resolution* of the already-pinned dependency graph and adds a CI restore guard; `.fsi` files and surface-area baselines remain untouched.
 

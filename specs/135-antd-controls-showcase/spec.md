@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-17
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "create a comprehensive showcase of antd controls. use skills if available." → Workstream **G3** of `docs/reports/2026-06-15-11-34-missing-features-implementation-plan.md` — re-skin the controls showcase under the now-shipped **AntDesign theme** and realize the Ant enterprise page templates (workbench / list / detail / form / result / exception) as demonstrable pages. The Workstream **F** design-system arc (token taxonomy, color policy, `--design-system` parameter, central style resolver, public surface promotion, Ant pattern docs) and **D2.1** (feature 132, the concrete `FS.GG.UI.Themes.AntDesign` theme + the widened catalog of net-new Ant controls) have landed, so this is no longer dependency-blocked.
 

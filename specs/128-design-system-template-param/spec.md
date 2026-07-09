@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-16
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "next item in fs.gg" → Workstream F3: `--designSystem wcag|ant` template parameter + `TemplateCheck`/generated-product validation.
 

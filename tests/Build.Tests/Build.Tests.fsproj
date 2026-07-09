@@ -11,6 +11,7 @@
     <Compile Include="RestoreLockTests.fs" />
     <Compile Include="CadenceCoverageTests.fs" />
     <Compile Include="Feature242DocsCurrencyTests.fs" />
+    <Compile Include="SpecLifecycleTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

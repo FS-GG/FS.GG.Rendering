@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-21
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "start next item in the project" — Phase 2 of the whole-repo
 code-health refactoring plan: relocate the mis-filed `Rendering.Harness` production CLI, and resolve

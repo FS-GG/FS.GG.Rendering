@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-30
 
-**Status**: Draft
+**Status**: Shipped
 
 **Tier**: Tier 1 (realizes a cross-repo contract mechanism — the `fs-gg-ui-template` package/coherence surface). No `FS.GG.UI.*` public surface is added, removed, or changed: the producer code for the additive `game` profile already shipped in Feature 220 (commit `b78e72a`, on `main`). This feature touches only release/packaging cadence, the org GitHub Packages feed, and the cross-repo registry — so no `.fsi` / design-token / surface-area baseline applies (see the plan's Constitution Check). Tier 1 here denotes the **cross-repo contract** surface (the registry-recorded `fs-gg-ui-template` coordinates), not an F# `.fsi` surface: the constitution's Tier-1 `.fsi` / surface-area-baseline obligations are therefore N/A (no F# surface changes), while its documentation/registry-update obligation applies and is met by FR-006.
 

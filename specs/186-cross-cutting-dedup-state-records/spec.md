@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-22
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "next item in the plan" — Phase 2 of the god-module decomposition (`docs/reports/2026-06-21-23-57-god-module-decomposition-analysis-and-plan.md` §6). Phase 1 shipped as feature 185 (harness data-table refactor).
 

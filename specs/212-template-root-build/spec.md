@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-28
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "next Rendering item on the project coordination board" → H1 · rendering (FS-GG/FS.GG.Rendering#9): Emit root `.slnx` + `Directory.Build.props` + `global.json` + a build-verb wrapper in the fs-gg-ui template so generated products are root-buildable with generic `dotnet build`/`dotnet run`, while keeping FAKE as the rich path; the release test asserts `dotnet build`/`dotnet test` at the product root.
 

@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-28
 
-**Status**: Draft
+**Status**: Shipped
 
 **Tier**: Tier 1 (realizes a cross-repo contract mechanism). No F# public surface is added, removed, or changed — this feature touches only GitHub Actions YAML and a Bash helper, so no `.fsi` or surface-area baseline applies (see the plan's Constitution Check).
 
