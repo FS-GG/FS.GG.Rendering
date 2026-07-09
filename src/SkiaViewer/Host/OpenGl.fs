@@ -7,6 +7,7 @@ namespace FS.GG.UI.SkiaViewer.Host
 #nowarn "44"
 
 open System
+open System.Collections.Concurrent
 open System.IO
 open System.Runtime.InteropServices
 open Elmish
@@ -224,6 +225,64 @@ module GlStartup =
         let _, secondRelease = GlResources.releaseAll "shutdown" afterFirst
 
         firstRelease @ secondRelease
+
+/// Issue #180: the hand-off that keeps `GlHost.run` single-threaded.
+///
+/// Silk drives the window from one thread — input callbacks fire inside `DoEvents`, and `DoUpdate`
+/// / `DoRender` run on that same thread. Everything the run mutates without a lock (the current
+/// model, `lastScene`/`pendingScene`/`pendingScreenshots`, the module statics) is safe only because
+/// of that. The GL context is thread-affine on top of it: the effect interpreter paints through
+/// Skia, so a dispatch off the loop thread does not merely tear the model, it issues GL calls on a
+/// thread that owns no context.
+///
+/// `Animation.tickSubscription` dispatches from a `System.Threading.Timer` callback — a threadpool
+/// thread. A gate lets the run hand subscriptions a `Dispatch` that queues from any other thread and
+/// replays on the loop thread, so the invariant holds for every subscription rather than for the
+/// ones that happen not to use a timer.
+type internal LoopDispatchGate<'msg> =
+    private
+        { Queue: ConcurrentQueue<'msg>
+          LoopThreadId: int }
+
+module internal LoopDispatch =
+    /// Bind a gate to the calling thread. `run` calls this on the thread that will own the loop.
+    let forCurrentThread<'msg> () : LoopDispatchGate<'msg> =
+        { Queue = ConcurrentQueue<'msg>()
+          LoopThreadId = Environment.CurrentManagedThreadId }
+
+    let isLoopThread (gate: LoopDispatchGate<'msg>) =
+        Environment.CurrentManagedThreadId = gate.LoopThreadId
+
+    let pending (gate: LoopDispatchGate<'msg>) = gate.Queue.Count
+
+    /// Wrap a loop-thread-only `dispatch`. On the loop thread the message runs inline, so a
+    /// subscription's synchronous first dispatch keeps its ordering against the loop's own
+    /// dispatches; from any other thread it is queued for `drain`.
+    let guard (gate: LoopDispatchGate<'msg>) (dispatch: Dispatch<'msg>) : Dispatch<'msg> =
+        fun msg ->
+            if isLoopThread gate then
+                dispatch msg
+            else
+                gate.Queue.Enqueue msg
+
+    /// Replay queued messages on the loop thread, returning how many ran. Off the loop thread this
+    /// is a no-op — draining anywhere else would reopen the race it exists to close. At most the
+    /// depth observed on entry is drained, so a producer that outruns the loop delays frames instead
+    /// of starving them.
+    let drain (gate: LoopDispatchGate<'msg>) (dispatch: Dispatch<'msg>) : int =
+        if not (isLoopThread gate) then
+            0
+        else
+            let mutable budget = gate.Queue.Count
+            let mutable ran = 0
+            let mutable msg = Unchecked.defaultof<'msg>
+
+            while budget > 0 && gate.Queue.TryDequeue(&msg) do
+                dispatch msg
+                ran <- ran + 1
+                budget <- budget - 1
+
+            ran
 
 module GlHost =
     /// The single source of truth for the graphics backend this viewer host actually initializes.
@@ -1253,6 +1312,9 @@ module GlHost =
         decideFrameFailure (classifyFrameFailure facts) tracker.ConsecutiveFailures retryBudget
 
     let run program : Result<unit, RenderDiagnostic> =
+        // Issue #180: bind the loop-thread gate before anything can dispatch. `run`'s caller owns the
+        // loop, so the calling thread is the loop thread.
+        let dispatchGate = LoopDispatch.forCurrentThread ()
         let mutable currentModel = Unchecked.defaultof<_>
         let mutable window: IWindow option = None
         let mutable windowEventMapping: IDisposable option = None
@@ -1534,9 +1596,14 @@ module GlHost =
         let startSubscriptions () =
             disposeSubscriptions ()
 
+            // Issue #180: a subscription may dispatch from any thread it likes (the animation tick
+            // uses a threadpool timer). Guard the dispatch it is handed so those land on the loop
+            // thread; the loop's own dispatches still run inline.
+            let subscriptionDispatch = LoopDispatch.guard dispatchGate dispatch
+
             activeSubscriptions <-
                 program.Subscriptions currentModel
-                |> List.map (fun (_, subscribe) -> subscribe dispatch)
+                |> List.map (fun (_, subscribe) -> subscribe subscriptionDispatch)
 
         let runEventLoop (createdWindow: IWindow) =
             if not shutdownRequested then
@@ -1559,6 +1626,11 @@ module GlHost =
                         with _ ->
                             ()
                     else
+                        // Issue #180: replay whatever off-thread subscriptions queued since the last
+                        // iteration. Drained every poll (not only on an advanced frame) so the queue
+                        // stays shallow and a tick keeps the cadence its interval asked for.
+                        LoopDispatch.drain dispatchGate dispatch |> ignore
+
                         let now = stopwatch.Elapsed.TotalSeconds
 
                         // Feature 121 (US1, FR-002): gate BOTH update and present by the frame interval so

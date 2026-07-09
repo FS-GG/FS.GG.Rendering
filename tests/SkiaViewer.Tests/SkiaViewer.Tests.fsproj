@@ -21,6 +21,7 @@
     <Compile Include="Feature120ReplayCacheTests.fs" />
     <Compile Include="Feature121LiveHostPacingTests.fs" />
     <Compile Include="Feature122PresentPathTests.fs" />
+    <Compile Include="Issue180LoopDispatchTests.fs" />
     <Compile Include="Audit_ReplayCache.fs" />
     <Compile Include="Feature136TextRenderingTests.fs" />
     <Compile Include="Feature140GlyphRunRenderingTests.fs" />
@@ -86,6 +87,9 @@
          runInteractiveApp + routeInteractivePointer) lives in Controls.Elmish (research
          D3-AMEND); this suite exercises its real adapter routing path headlessly. -->
     <ProjectReference Include="..\..\src\Controls.Elmish\Controls.Elmish.fsproj" />
+    <!-- Issue #180: drive the real `Animation.tickSubscription` (the threadpool-timer subscription
+         the host must marshal) against the host's own loop-dispatch gate. -->
+    <ProjectReference Include="..\..\src\Elmish\Elmish.fsproj" />
     <!-- Feature 125: design-system primitives + default theme carved out of Controls. -->
     <ProjectReference Include="..\..\src\DesignSystem\DesignSystem.fsproj" />
     <ProjectReference Include="..\..\src\Themes.Default\Themes.Default.fsproj" />
