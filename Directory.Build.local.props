@@ -76,6 +76,17 @@
     <EnablePackageValidation>false</EnablePackageValidation>
   </PropertyGroup>
 
+  <!-- 186: the .NET SDK's F# targets append `FSharp/library-packs` to RestoreAdditionalProjectSources
+       (Microsoft.FSharp.NetSdk.targets), and that folder ships an FSharp.Core nupkg with the same
+       VERSION as nuget.org's but different BYTES. With both sources live, which artifact restore
+       installs — and therefore the contentHash recorded in packages.lock.json — depends on the
+       installed SDK patch and on which source answers first. Disabling the implicit folder makes
+       nuget.config (`<clear />` + nuget.org) the whole truth, so the committed lockfiles are
+       reproducible across machines and across SDK patch bumps. -->
+  <PropertyGroup Label="lockfile-restore-enforcement">
+    <DisableImplicitLibraryPacksFolder>true</DisableImplicitLibraryPacksFolder>
+  </PropertyGroup>
+
   <!-- FSharp.Core resolves its version from the org baseline in the canonical
        Directory.Packages.props (CPM); this version-less reference just adds the package. -->
   <ItemGroup>
