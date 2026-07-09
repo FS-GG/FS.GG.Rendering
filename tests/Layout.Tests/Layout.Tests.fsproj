@@ -13,6 +13,7 @@
     </Compile>
     <Compile Include="Tests.fs" />
     <Compile Include="YogaFallbackDiagnosticsTests.fs" />
+    <Compile Include="Issue182SingleEngineTests.fs" />
     <Compile Include="Feature097IncrementalTests.fs" />
     <Compile Include="Feature138IncrementalLayoutTests.fs" />
     <Compile Include="Feature150Fixtures.fs" />
