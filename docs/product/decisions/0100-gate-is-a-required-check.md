@@ -108,16 +108,28 @@ tracked follow-up rather than by folklore.
 
   Deferring to §5 turned out to be load-bearing rather than merely cautious. **ApiCompat is red on
   `main` right now** — commits `3b0605b` and `7a5f751` both show `Deterministic gate` green and
-  `API compatibility gate` failing on `FS.GG.UI.Controls BREAK (vs 0.1.52-preview.1)`. That break is
-  intentional: it is the `FS.GG.UI.Canvas.Audio` surface removal from `specs/252`, and it stays red
-  until the major bump it forces is published to the feed. Had this decision required both contexts,
-  enabling branch protection would have wedged `main` on the spot. A check that is red on `main` for
-  a good reason cannot be a required check until that reason is discharged — which is precisely the
-  question #219 has to answer, and precisely the trap this ADR exists to stop repeating.
+  `API compatibility gate` failing. Had this decision required both contexts, enabling branch
+  protection would have wedged `main` on the spot. A check that is red on `main` for a good reason
+  cannot be a required check until that reason is discharged — which is precisely the question #219
+  has to answer, and precisely the trap this ADR exists to stop repeating.
+
+  > **Correction (2026-07-09, [ADR-0101](./0101-apicompat-stays-advisory.md)).** This paragraph
+  > originally attributed that red to *"`FS.GG.UI.Controls BREAK (vs 0.1.52-preview.1)` … the
+  > `FS.GG.UI.Canvas.Audio` surface removal from `specs/252`."* **That is wrong.** `FS.GG.UI.Canvas`
+  > reports **OK**; `Audio` appears in none of the `CP####` lines; and **five** packables broke, not
+  > one. The `vs 0.1.52-preview.1` baseline was itself the tell — a defect in
+  > `scripts/apicompat-check.sh` selected the **oldest** published version instead of the latest, so
+  > every already-shipped major re-reported as a fresh break in perpetuity. The conclusion above
+  > survives (ApiCompat could not be required), but the reachability claim below it did **not**: with
+  > that defect, the check would have stayed red forever and "discharge, then elevate" was
+  > impossible. ADR-0101 fixes the selection and names the three genuine, undischarged breaks
+  > (`Controls`, `DesignSystem`, `Themes.AntDesign`). Read the run log before restating a cause.
 
 ## Open follow-ups
 
 - [#218](https://github.com/FS-GG/FS.GG.Rendering/issues/218) — implement the tag-cutter
   (`workflow_call` route). Closing it also closes the freeze window and flips `enforce_admins` on.
-- [#219](https://github.com/FS-GG/FS.GG.Rendering/issues/219) — decide whether `API compatibility
-  gate` joins the required set, amending cadence-map §5.
+- ~~[#219](https://github.com/FS-GG/FS.GG.Rendering/issues/219) — decide whether `API compatibility
+  gate` joins the required set, amending cadence-map §5.~~ **Decided** in
+  [ADR-0101](./0101-apicompat-stays-advisory.md): authorized, §5 amended (§5.1), but it stays
+  advisory until it is green on `main`. Elevation is then a branch-protection change only.
