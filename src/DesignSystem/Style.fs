@@ -64,9 +64,68 @@ module Style =
         | Custom name -> applyCustom theme name s
 
     // ---- state layer ----------------------------------------------------------------------
-    // Applied AFTER the class fold so a state's owned field overrides any class value (FR-003).
-    // Colour-only, all token-derived. `Normal`/`Loading` are identity — the procedural baseline
-    // paints `Loading` like `Normal`, so the resolver preserves that identity (FR-004 parity).
+    // Applied AFTER the class fold, so a state's owned field still wins over any class value
+    // (FR-003) — but `Fill` is now a FUNCTION of the value the class layer left there rather than a
+    // replacement for it (issue #181, below). Colour-only; every colour still originates from the
+    // active theme (FR-008), the emphasis states deriving a shade of a theme colour rather than
+    // naming one of their own. `Normal`/`Loading` are identity — the procedural baseline paints
+    // `Loading` like `Normal`, so the resolver preserves that identity (FR-004 parity).
+
+    // Issue #181: the state layer used to *replace* the fill (`Hover -> theme.Accent`), so a `danger`
+    // button turned primary-blue under the pointer — a destructive action wearing the primary-action
+    // colour at the exact moment it is about to be clicked. `success`/`warning` lost their intent the
+    // same way. The rule "state wins over class" was implemented correctly; the rule was wrong.
+    //
+    // The state layer now MODULATES the fill it is handed instead of naming a colour of its own. That
+    // is origin-agnostic: the fill may come from the kind's structural base, from a variant/custom
+    // class, or from the theme's own `IntentPolicy` (Feature 173) — the modulation preserves whichever
+    // intent put it there, so no layer has to publish "who owns Fill".
+    //
+    // Modulation scales every channel toward a common endpoint (black or white), so the HUE is
+    // preserved: a uniform scale in RGB moves HSV's value and saturation, never rotates hue.
+    let private scaleTowards (endpoint: byte) (amount: float) (c: byte) : byte =
+        let e = float endpoint
+        let v = float c
+        byte (System.Math.Round(v + (e - v) * amount))
+
+    /// Modulate a colour toward `endpoint` by `amount` (0.0 = identity, 1.0 = the endpoint), leaving
+    /// alpha untouched. A fully transparent colour is returned unchanged: a `ghost` variant's fill is
+    /// deliberately `Colors.transparent`, and nudging the RGB of something nobody can see would only
+    /// invent an invisible colour — and, worse, give the contrast gate a boundary pairing to measure
+    /// where the control has no visible boundary at all.
+    let private modulate (endpoint: byte) (amount: float) (c: Color) : Color =
+        if c.Alpha = 0uy then
+            c
+        else
+            { c with
+                Red = scaleTowards endpoint amount c.Red
+                Green = scaleTowards endpoint amount c.Green
+                Blue = scaleTowards endpoint amount c.Blue }
+
+    /// Which way is "away from the label". Ant shades a light theme's hover LIGHTER
+    /// (`colorPrimaryHover`), but a fixed direction is only ever right for one polarity of theme: on a
+    /// dark theme the label is dark, and lifting the fill toward it is what makes a `danger` button's
+    /// text bleed into its background. Emphasis therefore moves the fill AWAY from the foreground it
+    /// carries, which lightens on a dark theme and darkens on a light one — hue preserved either way,
+    /// and contrast rising monotonically with emphasis rather than falling.
+    ///
+    /// The weights are the sRGB luma coefficients. Picking a direction only needs to know which colour
+    /// is the lighter of two; it does not need WCAG's linearized relative luminance (that lives in
+    /// `FS.GG.UI.Color.Contrast`, one level out, which measures what this module emits).
+    let private luma (c: Color) =
+        0.2126 * float c.Red + 0.7152 * float c.Green + 0.0722 * float c.Blue
+
+    /// A step of `amount` away from `s.Foreground`, applied to `s.Fill`.
+    let private emphasize (amount: float) (s: ResolvedStyle) : Color =
+        let endpoint = if luma s.Foreground > luma s.Fill then 0uy else 255uy
+        modulate endpoint amount s.Fill
+
+    // The three emphasis steps, in increasing commitment: a transient touch, a press, and a standing
+    // selection. Each is a step further from the label, so each is also a step more readable.
+    let private hoverAmount = 0.10
+    let private pressedAmount = 0.20
+    let private selectedAmount = 0.28
+
     let applyValidation (theme: Theme) (v: ValidationState) (s: ResolvedStyle) : ResolvedStyle =
         match v with
         | Valid -> { s with Stroke = successColor theme }
@@ -77,13 +136,26 @@ module Style =
         match state with
         | Normal -> s
         | Loading -> s
-        | Hover -> { s with Fill = theme.Accent }
-        | Pressed -> { s with Fill = theme.Muted }
+        | Hover -> { s with Fill = emphasize hoverAmount s }
+        | Pressed -> { s with Fill = emphasize pressedAmount s }
+        // The focus ring is an accessibility affordance, not an intent: it names the accent outright so
+        // a focused control is identifiable by the same ring wherever it appears.
         | Focused -> { s with Stroke = theme.Accent }
         // Feature 175 (FR-005): combined hover+focus applies BOTH orthogonal deltas (hover fill +
         // focus stroke) so neither affordance suppresses the other.
-        | FocusedHover -> { s with Fill = theme.Accent; Stroke = theme.Accent }
-        | Selected -> { s with Fill = theme.Accent; Foreground = theme.Background }
+        | FocusedHover ->
+            { s with
+                Fill = emphasize hoverAmount s
+                Stroke = theme.Accent }
+        // `Selected` used to repaint the label `theme.Background` as well. That was a no-op for every
+        // FILLED style (whose foreground is already the background colour) and actively harmful for the
+        // unfilled ones: a selected `ghost` button painted a background-coloured label straight onto the
+        // background — invisible, ratio 1.00. The fill each layer chose already carries a readable
+        // foreground; emphasis has no business relighting it.
+        | Selected -> { s with Fill = emphasize selectedAmount s }
+        // `Disabled` is the one state that deliberately DOES discard the intent: an inactive control
+        // must not advertise a destructive (or any) action it will not perform. WCAG 1.4.3/1.4.11 both
+        // exempt inactive components, which is why the contrast gate rates these pairings Decorative.
         | Disabled -> { s with Fill = theme.Muted; Stroke = theme.Muted; Foreground = theme.Muted }
         // Qualified: `Validation` also names `AttrCategory.Validation`; this scrutinee is a `VisualState`.
         | VisualState.Validation v -> applyValidation theme v s
