@@ -4,11 +4,23 @@ name: release
 # and only meaningful at a release: Package.Tests and the generated-product tests from the template.
 # This workflow is NEVER a required check and NEVER runs on push/PR (FR-008, SC-007).
 # Cadence contract: specs/005-ci-cadence-wiring/contracts/cadence-matrix.md (release row).
+#
+# Feature 218 — this workflow is also `workflow_call`-able, and that is how a release now publishes.
+# `release-tags.yml` cuts the tag triple on `main` with `GITHUB_TOKEN`, whose pushes deliberately do
+# not start new workflow runs, and then CALLS this workflow with the version it cut. Publishing is a
+# data dependency of the cut, not an event race. The `push: tags: ['v*']` trigger is retained as the
+# operator's manual escape hatch (and for a tag pushed by a human), not as the primary path.
 on:
   release:
     types: [published]
   push:
     tags: ['v*']
+  workflow_call:
+    inputs:
+      version:
+        description: "Version to pack+publish, without the leading `v` (e.g. 0.1.51-preview.1). Must equal the repo's <Version> at the called SHA — the publish job asserts it."
+        type: string
+        required: true
   workflow_dispatch:
     inputs:
       version:
@@ -189,17 +201,32 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      # `github.event_name` CANNOT identify a `workflow_call` run: a called workflow reports the
+      # CALLER's event. `release-tags.yml` is `push: branches: [main]`, so a call from it arrives here
+      # as event_name=push with GITHUB_REF_NAME=main — the old `push)` arm would have resolved the
+      # version to the literal string "main" and tried to publish it. Two corrections, both required:
+      #
+      #   * `inputs.version` is consulted FIRST. It is set only by `workflow_call` (required) and
+      #     `workflow_dispatch` (optional); on `release` / `push: tags` the `inputs` context is empty.
+      #   * the `push` arm now demands a TAG ref. A branch push can no longer name a version at all,
+      #     so if the first rule is ever bypassed the result is a pack-only dry run, not a bad publish.
       - name: Resolve coherent-set version from the release tag
         id: ver
         shell: bash
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           set -euo pipefail
-          case "${{ github.event_name }}" in
-            release)           raw="${{ github.event.release.tag_name }}" ;;
-            push)              raw="${GITHUB_REF_NAME}" ;;
-            workflow_dispatch) raw="${{ inputs.version }}" ;;
-            *)                 raw="" ;;
-          esac
+          if [[ -n "$INPUT_VERSION" ]]; then
+            raw="$INPUT_VERSION"                                    # workflow_call (release-tags.yml) or dispatch
+          else
+            case "${{ github.event_name }}" in
+              release)                              raw="$RELEASE_TAG" ;;
+              push) if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then raw="${GITHUB_REF_NAME}"; else raw=""; fi ;;
+              *)                                    raw="" ;;
+            esac
+          fi
           ver="${raw#v}"   # v0.1.51-preview.1 -> 0.1.51-preview.1
           if [[ -z "$ver" ]]; then
             echo "::notice::No version (manual run without input) — pack-only dry run, no push."
@@ -226,6 +253,11 @@ jobs:
       # Asserting equality closes it for every trigger at once, and needs no new rule: a dispatch may only
       # republish the version `package-tests` just proved coherent and tagged. A dry run (no input, no
       # push) is exempt — it ships nothing.
+      #
+      # Feature 218 adds a third trigger whose version comes from outside the ref: `workflow_call`. This
+      # same assertion covers it unchanged — `release-tags.yml` reads the pending version out of the
+      # guard at the very commit it is tagging, so `inputs.version` and the repo's `<Version>` are the
+      # same string by construction, and this step is what proves it rather than assuming it.
       - name: Verify the version to publish is the version the guard validated
         if: steps.ver.outputs.push == 'true'
         shell: bash
