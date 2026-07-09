@@ -131,10 +131,35 @@ failure `apicompat-publicapi-gate` is registered to prevent.
   configured (deliberately **off**, because it serializes merges under ADR-0021 parallel work). The
   doc previously recommended the opposite of the deployed setting.
 
+## Amendment (2026-07-09) — the precondition was discharged, same day
+
+This ADR's decision was "advisory **now**, on a named precondition". The precondition is met and the
+check **is required**; the decision above is left as written rather than rewritten, since it records
+the state that produced it. Two corrections it could not have anticipated:
+
+- **The major shipped.** #225 cut `0.4.0-preview.1` and published it. The gate then reported
+  `OK=17 BREAK=0 (total 17, compared 17)` on `main`, and
+  `API compatibility gate (breaking-change → SemVer major)` joined the required set. Note the green
+  followed the **publish**, not the merge: the detector baselines off the feed, never off the repo's
+  own version, so the bump alone changed nothing until the packages landed.
+- **`Indeterminate` no longer carries the bound.** The Consequences bullet above justifies requiring
+  the check partly on "a feed hiccup exits 0, it does not fail". #216/#227 then split
+  **`FeedUnavailable`** (the feed did not answer → exit 0, informs a merge) out of **`Indeterminate`**
+  (`dotnet pack` failed, so the gate never ran → exit 3, blocks). The bound still holds — a feed
+  outage cannot block a merge, and a tokenless fork resolves every packable to `FeedUnavailable` — but
+  it is `FeedUnavailable` that holds it. A gate that could not execute now correctly refuses to report
+  a pass. See cadence-map §5.1 for the exit-code table.
+
 ## Open follow-ups
 
-- **Elevate after the major.** When `API compatibility gate` is green on `main`, add its context to
-  branch protection per cadence-map §5.1. Tracked on #219; no code change.
+- ~~**Elevate after the major.**~~ Done 2026-07-09 (#225); the context is on branch protection.
 - A gate that must be green on `main` before it can be required has no automated check that anyone
-  ever revisits it. The `Blocked by` field cannot express "blocked on a release." Worth a follow-up
-  if the elevation is still pending after the next major.
+  ever revisits it. The `Blocked by` field cannot express "blocked on a release." This one was
+  discharged within a day, so nothing was built for it; if a future elevation waits on a release
+  again, that gap is still open.
+- **The release lane published nothing on its first real run after #186.** `release.yml` added its
+  runner-local feed with `dotnet nuget add source`, which writes to the nearest `nuget.config` — the
+  repo's own since #186 — so the generated product could not restore the unpublished coherent set and
+  the publish job (which `needs:` it) never ran, *after* the tag triple was already cut. Fixed in
+  #228. The shape is worth remembering: a release lane's own validation steps can be broken by a
+  change that no non-release run exercises.
