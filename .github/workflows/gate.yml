@@ -57,10 +57,14 @@ jobs:
       # generated products; --locked-mode here forces it explicitly and gives one clear place to point
       # at the regenerate command. This is the single restore enforcement point (the build below uses
       # --no-restore), so NU1603/NU1608 promotion is anchored here.
+      # 186 — restore against the COMMITTED nuget.config, explicitly. `--configfile` replaces the
+      # inherited config chain rather than merging it, so the sources a locked restore resolves from
+      # are exactly the ones in the repo, and deleting the file fails the gate here instead of
+      # silently handing restore back to whatever the machine has.
       - name: Restore (locked)
         run: |
           set -euo pipefail
-          if ! dotnet restore FS.GG.Rendering.slnx --locked-mode; then
+          if ! dotnet restore FS.GG.Rendering.slnx --locked-mode --configfile nuget.config; then
             echo "::error::locked restore failed — the resolved graph does not match the committed packages.lock.json (or a version was substituted, NU1603). If this is an intentional dependency change, run: dotnet restore FS.GG.Rendering.slnx --force-evaluate  and commit the updated lockfiles."
             exit 1
           fi

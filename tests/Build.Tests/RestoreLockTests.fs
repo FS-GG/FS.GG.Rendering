@@ -92,4 +92,38 @@ let restoreLockTests =
             Expect.isTrue warnAsErrorsHasNu1603
                 "NU1603 must appear in WarningsAsErrors so silent version substitution fails the build (FR-004)"
         }
+
+        // 186 — a lockfile pins a contentHash, so it only means something if every machine resolves
+        // each package from the same source. Two things make that true, and both are asserted here
+        // because either one silently going missing restores the environment-dependent restore.
+        test "the repo pins a root nuget.config that clears inherited sources" {
+            let path = repoPath "nuget.config"
+            Expect.isTrue (File.Exists path)
+                "the repo must commit a root nuget.config, or restore inherits whatever sources the machine has"
+            let cfg = File.ReadAllText path
+            Expect.stringContains cfg "<clear />"
+                "nuget.config must <clear /> inherited packageSources, or a user-level or corporate feed still contributes"
+            Expect.stringContains cfg "https://api.nuget.org/v3/index.json"
+                "nuget.config must declare nuget.org explicitly"
+            // The local pack-as-you-go feed is deliberately NOT a source for this repo's restore:
+            // every slnx member takes its FS.GG.* packages from nuget.org.
+            Expect.isFalse (cfg.Contains "nuget-local" || cfg.Contains "local-feed")
+                "the local pack-as-you-go feed must not be a source for this repo's restore"
+        }
+
+        test "the SDK's implicit FSharp.Core library-packs source is disabled" {
+            // Microsoft.FSharp.NetSdk.targets appends `FSharp/library-packs` to
+            // RestoreAdditionalProjectSources unless this property is set. That folder ships an
+            // FSharp.Core nupkg with nuget.org's VERSION but different BYTES, so leaving it live
+            // makes the recorded contentHash depend on the installed SDK patch.
+            let props = File.ReadAllText(repoPath "Directory.Build.local.props")
+            Expect.stringContains props "<DisableImplicitLibraryPacksFolder>true</DisableImplicitLibraryPacksFolder>"
+                "Directory.Build.local.props must disable the SDK's implicit library-packs restore source"
+        }
+
+        test "the gate restores against the committed nuget.config" {
+            let gate = File.ReadAllText(repoPath ".github/workflows/gate.yml")
+            Expect.stringContains gate "--locked-mode --configfile nuget.config"
+                "gate.yml's locked restore must name the committed config, so the pinned sources are intentional rather than inherited"
+        }
     ]
