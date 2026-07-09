@@ -25,12 +25,15 @@ module SkillParity =
         | CommandEntry
         | WrapperOnlyEntry
 
-    type CoverageStatus =
-        | Covered
-        | Partial
-        | Missing
-        | NotApplicable
-        | Excepted
+    /// Verdict for one `Module.member` an FS.GG skill documents inside an F# code fence.
+    type SymbolStatus =
+        /// Present in the public surface baseline, and called by at least one test source. This says
+        /// a test names the API in code — not that the test asserts anything meaningful about it.
+        | Exercised
+        /// Present in the public surface baseline, but no test calls it — a seam that may be dead.
+        | Unexercised
+        /// Absent from the public surface baseline — the skill documents an API that does not exist.
+        | Unresolved
 
     type FindingSeverity =
         | Info
@@ -44,7 +47,8 @@ module SkillParity =
         | StaleDescription
         | BrokenTarget
         | CanonicalDrift
-        | GuidanceRuleGap
+        | UnresolvedApiSymbol
+        | UnexercisedApiSymbol
         | MetadataDrift
         | IntentionalExceptionFinding
         | UnreadableSurface
@@ -83,23 +87,13 @@ module SkillParity =
           Content: string
           WrapperTarget: WrapperTarget option }
 
-    type GuidanceRule =
-        { RuleId: string
-          Theme: string
-          Description: string
-          RequiredReferences: string list list
-          ApplicablePatterns: string list
-          MinimumCoverage: string }
-
-    type GuidanceCoverage =
-        { RuleId: string
+    /// One `Module.member` a skill documents, resolved against the surface baseline and the test corpus.
+    type ApiSymbol =
+        { Symbol: string
           SkillName: string
           SurfaceId: string
           Path: string
-          Status: CoverageStatus
-          Evidence: string list
-          MissingReferences: string list
-          ExceptionId: string option }
+          Status: SymbolStatus }
 
     type IntentionalException =
         { ExceptionId: string
@@ -119,7 +113,7 @@ module SkillParity =
           Severity: FindingSeverity
           CanonicalPath: string option
           WrapperPath: string option
-          RuleId: string option
+          Symbol: string option
           Message: string
           Remediation: string
           ExceptionId: string option }
@@ -130,13 +124,12 @@ module SkillParity =
           Warning: int
           Info: int }
 
-    type RuleCoverageSummary =
-        { RuleId: string
-          Covered: int
-          Partial: int
-          Missing: int
-          Excepted: int
-          NotApplicable: int }
+    type SkillSymbolSummary =
+        { SkillName: string
+          Documented: int
+          Exercised: int
+          Unexercised: int
+          Unresolved: int }
 
     type ParityReport =
         { CheckedAtUtc: DateTime
@@ -146,7 +139,7 @@ module SkillParity =
           CanonicalSourceCount: int
           WrapperCount: int
           FindingCountsBySeverity: SeverityCounts
-          GuidanceRuleCoverage: RuleCoverageSummary list
+          ApiSymbolCoverage: SkillSymbolSummary list
           Findings: ParityFinding list
           IntentionalExceptions: IntentionalException list
           GeneratedReportPath: string
@@ -163,7 +156,7 @@ module SkillParity =
           SurfaceOverrides: (string * string) list
           AllowedExceptionIds: Set<string>
           FailOnSeverity: FindingSeverity
-          ListRulesOnly: bool
+          ListSymbolsOnly: bool
           JsonOutput: bool }
 
     type Model =
@@ -171,21 +164,21 @@ module SkillParity =
           Surfaces: SkillSurface list
           Entries: SkillEntry list
           Findings: ParityFinding list
-          Coverage: GuidanceCoverage list
+          Symbols: ApiSymbol list
           Report: ParityReport option
           Diagnostics: string list }
 
     type Msg =
         | InventoryRequested
         | InventoryLoaded of SkillSurface list * SkillEntry list
-        | CoverageEvaluated of GuidanceCoverage list
+        | SymbolsResolved of ApiSymbol list
         | FindingsClassified of ParityFinding list
         | ReportGenerated of ParityReport
         | WorkflowFailed of string
 
     type Effect =
         | ReadSkillSurfaces
-        | EvaluateGuidanceRules
+        | ResolveApiSymbols
         | ClassifyFindings
         | WriteMarkdownReport
         | WriteSummaryJson
@@ -196,15 +189,13 @@ module SkillParity =
 
     val entryKindToken: kind: EntryKind -> string
 
-    val coverageToken: status: CoverageStatus -> string
+    val symbolStatusToken: status: SymbolStatus -> string
 
     val severityToken: severity: FindingSeverity -> string
 
     val categoryToken: category: FindingCategory -> string
 
     val overallStatusToken: status: OverallStatus -> string
-
-    val defaultGuidanceRules: unit -> GuidanceRule list
 
     val defaultRequest: repositoryRoot: string -> ParityCheckRequest
 
@@ -214,7 +205,19 @@ module SkillParity =
 
     val inventorySkills: request: ParityCheckRequest -> surfaces: SkillSurface list -> SkillEntry list
 
-    val evaluateGuidanceCoverage: rules: GuidanceRule list -> entries: SkillEntry list -> GuidanceCoverage list
+    /// Declaring module -> its public member names, from `readiness/surface-baselines/members`.
+    /// `None` when the baseline is absent, so callers can degrade instead of reporting a false green.
+    val loadSurfaceMembers: repositoryRoot: string -> Map<string, Set<string>> option
+
+    /// Every qualified `Module.member` a test source under `tests/` calls. Comments and string
+    /// literals are stripped first. `None` when the test corpus is absent.
+    val loadExercisedSymbols: repositoryRoot: string -> Set<string> option
+
+    val evaluateApiSymbols:
+        surfaceMembers: Map<string, Set<string>> ->
+        exercised: Set<string> ->
+        entries: SkillEntry list ->
+            ApiSymbol list
 
     val runCheck: request: ParityCheckRequest -> ParityReport
 

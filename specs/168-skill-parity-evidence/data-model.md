@@ -37,7 +37,7 @@ Represents one `SKILL.md` file.
 - `EntryKind`: `canonical`, `wrapper`, `command`, or `wrapper-only`.
 - `Metadata`: parsed front-matter key/value pairs that must be preserved.
 - `BodyHash`: normalized body hash for drift checks.
-- `GuidanceRules`: coverage results for the required guidance themes.
+- `ApiSymbols`: resolution results for the API symbols this entry documents.
 - `WrapperTarget`: optional resolved target when this entry routes to another
   skill.
 
@@ -71,69 +71,42 @@ Represents a routed canonical source referenced by a wrapper.
   external and excluded from required repository parity.
 - Broken targets are high-severity findings.
 
-## Guidance Rule
+## API Symbol
 
-Represents one required repository trap that must be visible in relevant skills.
-
-**Fields**
-
-- `RuleId`: stable id.
-- `Theme`: one of the seven required themes.
-- `Description`: reviewer-facing rule.
-- `RequiredReferences`: scripts, commands, paths, or terms that prove concrete
-  guidance.
-- `ApplicableSkillPatterns`: skill names or source paths where the rule applies.
-- `MinimumCoverage`: `required`, `recommended`, or `not-applicable`.
-
-**Required Rule Themes**
-
-- `package-pin-drift`: package-consuming samples compare current `FS.GG.UI.*`
-  package versions and use `scripts/refresh-local-feed-and-samples.fsx` or the
-  package-feed proof workflow.
-- `readiness-allowlisting`: committed feature readiness evidence is ignored by
-  default until allowlisted, and `git check-ignore -v` proof is required.
-- `validation-output-isolation`: same project/configuration test runs are not
-  run concurrently unless output paths are explicitly isolated.
-- `visual-readiness`: real screenshots are preferred, degraded capture is
-  disclosed, reviewer classification gates accepted readiness, and generated
-  summaries preserve manual caveats.
-- `responsiveness-diagnostics`: interactive samples validate pointer and
-  keyboard activation separately from screenshot readiness and distinguish input
-  routing from update/render/present latency.
-- `post-merge-package-bump`: merge/post-merge work records package bump
-  evidence, packs to the local feed, aligns sample package pins, restores or
-  validates package-consuming samples, and updates readiness ledgers.
-- `evidence-honesty`: canceled, timed-out, skipped, synthetic, substitute,
-  degraded, pending-review, or environment-limited checks are never reported as
-  fully green without visible caveats.
-
-**Validation Rules**
-
-- Each rule has at least one applicable canonical skill.
-- A wrapper can inherit a rule from its canonical target only when the target is
-  valid and the wrapper does not contradict the target.
-- Exceptions are explicit and do not hide unrelated findings.
-
-## Guidance Coverage
-
-Represents coverage for one rule on one skill entry.
+Represents one `Module.member` a canonical or command skill documents inside an
+F# code fence. This replaces the substring-matched guidance rules of the
+original feature (see #189): a skill can no longer stay green by containing the
+right words, because what is checked is the API it actually names.
 
 **Fields**
 
-- `RuleId`
+- `Symbol`: the qualified `Module.member` as written in the fence.
 - `SkillName`
 - `SurfaceId`
-- `Status`: `covered`, `missing`, `partial`, `not-applicable`, or `excepted`.
-- `Evidence`: snippets, paths, or normalized reference ids that triggered
-  coverage.
-- `MissingReferences`: expected references not found.
-- `ExceptionId`: optional intentional exception.
+- `Path`: the canonical skill source that documents it.
+- `Status`: `exercised`, `unexercised`, or `unresolved`.
+
+**Resolution**
+
+- The **closed world** is the set of modules in the member-granular public
+  surface baseline under `readiness/surface-baselines/members/`. A `Module.member`
+  whose module is absent is product-local or pseudo-code, and is not judged.
+- A symbol whose module is known but whose member is absent from the baseline is
+  `unresolved` — the skill documents an API that does not exist.
+- A symbol present in the baseline that no test source calls is `unexercised` —
+  the seam it documents may be dead.
+- A symbol present in the baseline that a test source calls is `exercised`.
 
 **Validation Rules**
 
-- Required applicable rules cannot be `missing` in passing parity.
-- `partial` coverage is at least warning severity.
-- `excepted` coverage requires an `IntentionalException`.
+- `unresolved` is a high-severity finding; `unexercised` is a warning.
+- Comments and string literals are stripped from both skill fences and test sources,
+  so *mentioning* an API cannot pass for *documenting* or *exercising* it.
+- Both inputs are required. If either the surface baseline or the test corpus is
+  absent, no symbol is judged and the report carries a caveat saying so.
+- A canonical or command skill that shows F# examples but names no baseline module
+  yields no coverage row, so the report names it in a caveat.
+- The check's known limitations are contracted in `contracts/api-symbol-coverage.md`.
 
 ## Intentional Exception
 
@@ -170,7 +143,7 @@ Represents one checker invocation.
 - `FixtureMode`
 - `FailOnSeverity`
 - `AllowedExceptionIds`
-- `ListRulesOnly`
+- `ListSymbolsOnly`
 - `JsonOutput`
 
 **Validation Rules**
@@ -194,7 +167,7 @@ Represents one synchronization or coverage issue.
 - `Severity`: `info`, `warning`, `high`, or `critical`.
 - `CanonicalPath`
 - `WrapperPath`
-- `RuleId`
+- `Symbol`
 - `Message`
 - `Remediation`
 - `ExceptionId`
@@ -206,7 +179,8 @@ Represents one synchronization or coverage issue.
 - `stale-description`
 - `broken-target`
 - `canonical-drift`
-- `guidance-rule-gap`
+- `unresolved-api-symbol`
+- `unexercised-api-symbol`
 - `metadata-drift`
 - `intentional-exception`
 - `unreadable-surface`
@@ -214,7 +188,7 @@ Represents one synchronization or coverage issue.
 **Validation Rules**
 
 - Every finding includes a remediation hint.
-- `broken-target`, unreadable required surface, and required guidance gaps are
+- `broken-target`, unreadable required surface, and `unresolved-api-symbol` are
   high or critical severity.
 - Findings remain visible even when an exception downgrades severity.
 
@@ -231,7 +205,7 @@ Represents the reviewer-readable and structured checker output.
 - `CanonicalSourceCount`
 - `WrapperCount`
 - `FindingCountsBySeverity`
-- `GuidanceRuleCoverage`
+- `ApiSymbolCoverage`
 - `Findings`
 - `IntentionalExceptions`
 - `GeneratedReportPath`
@@ -255,7 +229,7 @@ Represents pure checker state for the MVU boundary.
 - `Surfaces`
 - `Entries`
 - `Findings`
-- `Coverage`
+- `Symbols`
 - `Report`
 - `Diagnostics`
 
@@ -267,7 +241,7 @@ Represents pure checker state for the MVU boundary.
 | `InventoryLoaded` | Skill surfaces and entries were read. |
 | `InventoryFailed` | Required surface or skill file could not be read. |
 | `TargetsResolved` | Wrapper targets were normalized and classified. |
-| `CoverageEvaluated` | Required guidance themes were evaluated. |
+| `SymbolsResolved` | Documented API symbols were resolved against the surface baseline and test corpus. |
 | `FindingsClassified` | Findings were assigned category and severity. |
 | `ReportRequested` | Markdown/JSON output should be rendered. |
 | `ReportWritten` | Output files were written. |

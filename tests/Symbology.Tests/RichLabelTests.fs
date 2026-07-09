@@ -82,6 +82,20 @@ let zeroDriftTests =
                   let rich = render { baseT with Label = Some(LabelText.Rich [ Symbology.run "BRAVO"; Symbology.run " ac12" ]) }
                   let plain = render { baseT with Label = Some(LabelText.Plain "BRAVO ac12") }
                   Expect.equal (bytesOf rich) (bytesOf plain) "default runs join to the equivalent plain label (FR-002)"
+              }
+
+              // The tests above reach for the `LabelText` cases directly, but the skill tells authors to
+              // build labels with `Symbology.richLabel` / `Symbology.plainLabel`. Drive the documented
+              // constructors, so the surface an author is pointed at cannot rot untested.
+              test (sprintf "[%s] the documented richLabel/plainLabel constructors build and render their label" gname) {
+                  let runs = [ Symbology.run "HMR-7" ]
+
+                  Expect.equal (Symbology.richLabel runs) (LabelText.Rich runs) "richLabel builds a Rich label"
+                  Expect.equal (Symbology.plainLabel "HMR-7") (LabelText.Plain "HMR-7") "plainLabel builds a Plain label"
+
+                  let rich = render { baseT with Label = Some(Symbology.richLabel runs) }
+                  let plain = render { baseT with Label = Some(Symbology.plainLabel "HMR-7") }
+                  Expect.equal (bytesOf rich) (bytesOf plain) "an all-default richLabel reproduces the plainLabel byte-for-byte (FR-002)"
               } ]
 
 [<Tests>]

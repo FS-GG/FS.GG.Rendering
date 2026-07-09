@@ -1,7 +1,7 @@
 <!-- SKILL-PARITY:START -->
 # Skill Parity Report
 
-Checked at UTC: `2026-07-05T12:42:56.3629936Z`
+Checked at UTC: `2026-07-09T12:50:21.2869897Z`
 Overall status: `passed`
 Canonical sources: `31`
 Wrappers: `63`
@@ -21,16 +21,22 @@ Wrappers: `63`
 | --- | --- | --- | --- |
 | 0 | 0 | 0 | 0 |
 
-## Guidance Coverage
-| Rule | Covered | Partial | Missing | Excepted | Not applicable |
-| --- | --- | --- | --- | --- | --- |
-| package-pin-drift | 8 | 0 | 0 | 0 | 55 |
-| readiness-allowlisting | 5 | 0 | 0 | 0 | 58 |
-| validation-output-isolation | 4 | 0 | 0 | 0 | 59 |
-| visual-readiness | 11 | 0 | 0 | 0 | 52 |
-| responsiveness-diagnostics | 7 | 0 | 0 | 0 | 56 |
-| post-merge-package-bump | 2 | 0 | 0 | 0 | 61 |
-| evidence-honesty | 12 | 0 | 0 | 0 | 51 |
+## API Symbol Coverage
+| Skill | Documented | Exercised | Unexercised | Unresolved |
+| --- | --- | --- | --- | --- |
+| fs-gg-diagnostics | 2 | 2 | 0 | 0 |
+| fs-gg-elmish | 7 | 7 | 0 | 0 |
+| fs-gg-generated-controls-guidance | 25 | 25 | 0 | 0 |
+| fs-gg-keyboard-input | 4 | 4 | 0 | 0 |
+| fs-gg-layout | 3 | 3 | 0 | 0 |
+| fs-gg-persistence | 5 | 5 | 0 | 0 |
+| fs-gg-samples | 2 | 2 | 0 | 0 |
+| fs-gg-scene | 12 | 12 | 0 | 0 |
+| fs-gg-skiaviewer | 4 | 4 | 0 | 0 |
+| fs-gg-styling | 17 | 17 | 0 | 0 |
+| fs-gg-symbology | 13 | 13 | 0 | 0 |
+| fs-gg-testing | 5 | 5 | 0 | 0 |
+| fs-gg-ui-widgets | 41 | 41 | 0 | 0 |
 
 ## Findings
 No unresolved parity findings.
@@ -40,10 +46,11 @@ No intentional exceptions were applied.
 
 ## Caveats
 - Global Codex skill installation paths are excluded from required repository parity.
+- 7 skill(s) show F# examples that name no public API symbol, so none was judged: fs-gg-audio, fs-gg-collision, fs-gg-game-core, fs-gg-grids, fs-gg-line-drawing, fs-gg-model-swap, fs-gg-visibility.
 
 ## Regenerate
 
 ```sh
-dotnet fsi scripts/check-agent-skill-parity.fsx --out /home/developer/projects/fsgg-rendering-248/artifacts/skill-parity --report /home/developer/projects/fsgg-rendering-248/docs/reports/skills-parity.md --summary-json /home/developer/projects/fsgg-rendering-248/artifacts/skill-parity/skill-parity-summary.json --fail-on high
+dotnet fsi scripts/check-agent-skill-parity.fsx --out artifacts/skill-parity --report docs/reports/skills-parity.md --summary-json artifacts/skill-parity/skill-parity-summary.json --fail-on high
 ```
 <!-- SKILL-PARITY:END -->

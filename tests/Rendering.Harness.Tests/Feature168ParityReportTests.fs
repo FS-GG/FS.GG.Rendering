@@ -18,7 +18,7 @@ let tests =
                 let json = SkillParity.renderSummaryJson report
 
                 Expect.stringContains markdown "Overall status: `passed`" "markdown status"
-                Expect.stringContains markdown "Guidance Coverage" "coverage section"
+                Expect.stringContains markdown "API Symbol Coverage" "coverage section"
 
                 use doc = JsonDocument.Parse json
                 let status = doc.RootElement.GetProperty("overallStatus").GetString()

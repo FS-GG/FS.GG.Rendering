@@ -6,6 +6,14 @@
 
 **Status**: Shipped
 
+> **Guidance-rule layer superseded by #189.** The wrapper→canonical parity half of this spec still
+> describes the repo. The **guidance-rule** half — the seven required themes asserted by substring
+> matching over skill bodies (FR-013, FR-016, SC-001, SC-004, SC-008, and the *Guidance Rule* entity) —
+> was removed: `content.Contains(token)` is semantically blind, and a skill could drift arbitrarily far
+> from the library it documents while staying green by keeping the right words. It is replaced by an
+> API-symbol check: every `Module.member` a skill documents in an F# code fence is resolved against the
+> member-granular public surface baseline, then against the test corpus.
+
 **Input**: User description: "start next item in docs/reports/2026-06-19-00-24-framework-and-skills-retrospective.md"
 
 **Resolved Item**: The next unimplemented retrospective item is the skill parity and evidence-guidance follow-up. The report's detailed section labels this as Feature 167, but Feature 167 is already used by the implemented input/render responsiveness work; the dependency graph identifies the skill/parity follow-up as Feature 168. This specification uses the non-conflicting branch and feature directory `168-skill-parity-evidence`.
