@@ -239,6 +239,15 @@
           "FSharp.Core": "[10.1.301, )"
         }
       },
+      "FS.GG.UI.Elmish": {
+        "type": "Project",
+        "dependencies": {
+          "FS.GG.UI.Scene": "[0.3.0-preview.1, )",
+          "FS.GG.UI.SkiaViewer": "[0.3.0-preview.1, )",
+          "FSharp.Core": "[10.1.301, )",
+          "Fable.Elmish": "[5.0.2, )"
+        }
+      },
       "FS.GG.UI.KeyboardInput": {
         "type": "Project",
         "dependencies": {

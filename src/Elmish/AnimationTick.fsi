@@ -21,6 +21,14 @@ module Animation =
     /// host stops requesting frames (redraw gating at the framework-request
     /// level — FR-006). The `'model -> Sub<'msg>` shape plugs directly into
     /// `Program.withSubscription`.
+    ///
+    /// **Threading (issue #180).** The first frame dispatches synchronously on
+    /// the caller's thread; every later tick dispatches from a
+    /// `System.Threading.Timer` callback — a threadpool thread. A host whose
+    /// update/render loop is thread-affine must marshal that dispatch onto its
+    /// loop thread. `GlHost.run` does (see its `LoopDispatch` gate); a custom
+    /// host must, or it will mutate its model and drive its graphics context
+    /// off-thread.
     val tickSubscription:
         isAnimating: ('model -> bool) ->
         toMsg: (TimeSpan -> 'msg) ->

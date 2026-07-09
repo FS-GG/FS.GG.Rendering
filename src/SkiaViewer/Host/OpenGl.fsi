@@ -1,5 +1,6 @@
 namespace FS.GG.UI.SkiaViewer.Host
 
+open Elmish
 open FS.GG.UI.SkiaViewer
 
 /// GL resource-ownership ledger (feature 119; GL successor to the former VulkanResources).
@@ -89,7 +90,47 @@ module GlStartup =
     /// Public contract function exposed by this FS.GG.UI package.
     val simulateSuccessfulShutdown: unit -> GlResources.ReleaseRecord list
 
+/// Issue #180: the loop-thread hand-off that keeps `GlHost.run` single-threaded. Internal to the
+/// package (products never touch it); exposed here so the concurrency invariant can be tested.
+type internal LoopDispatchGate<'msg>
+
+/// Issue #180: queue a dispatch raised off the loop thread and replay it on the loop thread.
+/// `Animation.tickSubscription` dispatches from a `System.Threading.Timer` threadpool thread; the
+/// run's model, effect state and thread-affine GL context all assume the loop thread.
+module internal LoopDispatch =
+    /// Bind a gate to the calling thread — the thread that will own the loop.
+    val forCurrentThread: unit -> LoopDispatchGate<'msg>
+
+    /// True only on the thread the gate was bound to.
+    val isLoopThread: gate: LoopDispatchGate<'msg> -> bool
+
+    /// Messages queued from other threads and not yet drained.
+    val pending: gate: LoopDispatchGate<'msg> -> int
+
+    /// Wrap a loop-thread-only dispatch: inline on the loop thread, queued from anywhere else.
+    val guard: gate: LoopDispatchGate<'msg> -> dispatch: Dispatch<'msg> -> Dispatch<'msg>
+
+    /// Replay queued messages on the loop thread, returning how many ran. A no-op off the loop
+    /// thread, and bounded by the depth observed on entry.
+    val drain: gate: LoopDispatchGate<'msg> -> dispatch: Dispatch<'msg> -> int
+
 /// The OpenGL/Skia presentation host body (internal helpers hidden; only `run` is reachable).
+///
+/// **Concurrency (issue #180).** `run` is single-threaded and single-run.
+///
+/// *Single-threaded:* Silk delivers input callbacks, `DoUpdate` and `DoRender` on the thread that
+/// called `run`, and the GL context is affine to it. `run` therefore hands subscriptions a
+/// `LoopDispatch`-guarded `Dispatch`, so a subscription that fires on a threadpool thread (as
+/// `Animation.tickSubscription` does) is replayed on the loop thread rather than mutating the model
+/// and painting through Skia from off it.
+///
+/// *Single-run:* two overlapping `run` calls are **unsupported** and corrupt each other. The host
+/// keeps per-run state in module statics — the present carrier (`lastPresentedScene`,
+/// `skippedPresentCount`), the idle-represent carrier (`lastGoodFrame`, `idleRepresentsRemaining`)
+/// — as does the painter (`SceneRenderer.activeReplayCache`, `fallbackEvents`, and the
+/// `subObjectsReleased` diagnostic counter). None is keyed by run, and `run` resets them on entry,
+/// so a second concurrent run resets the first one's state underneath it. Call `run` once per
+/// process at a time.
 module GlHost =
     /// The single source of truth for the graphics backend this viewer host actually initializes
     /// (always `ContextAPI.OpenGL` + Skia `GRContext.CreateGl`; Vulkan/software are rejected,
