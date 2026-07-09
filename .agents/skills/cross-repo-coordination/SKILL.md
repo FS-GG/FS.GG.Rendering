@@ -85,7 +85,7 @@ cross-repo roadmap (milestones are repo-scoped; keep them for repo-local release
 | `Start` / `Target` | date | feed the Roadmap (timeline) view |
 | `Effort` | single-select | `S`, `M`, `L`, `XL` |
 | `Contract` | text | registry id the item touches (e.g. `fs-gg-ui-template`) |
-| `Blocked by` | text | item ref(s); Projects has no typed dependency field |
+| `Blocked by` | text | what blocks THIS item — comma-separated issue refs; Projects has no typed dependency field |
 
 **Conventions** (also in the board README):
 
@@ -93,7 +93,20 @@ cross-repo roadmap (milestones are repo-scoped; keep them for repo-local release
   `cross-repo`/`cross-repo:request` and live in the *target* repo.
 - Set `Phase`, `Repo`, `Workstream`, `Target`, and (for cross-repo work) `Contract` on every
   item. `Blocked` status mirrors the `blocked` label.
+- **`Blocked by` records the dependency edge, nothing else.** `fsgg-coord set-field` takes a
+  comma-separated list of issue refs (`owner/repo#n`, `repo#n`, `#n`, or an issue URL) and
+  canonicalizes each to `owner/repo#n`; anything else is refused before the write. It is not a
+  delivery log and not the inverse (`blocks X`) edge — narrative goes in an issue comment, "this
+  item is blocked" goes in `Status`. Clear it (`''`) when the blocker resolves.
+  `fsgg-coord next` reads it: an item whose blockers are still open — or whose blocker it cannot
+  see on the board — is skipped, with the reason on stderr (`--ignore-blocked` overrides).
 - **Epics are the Phase parents**; use **sub-issues** for the children so progress rolls up.
+  An epic is a card whose **title** carries `[epic]` (Projects v2 issue types are unset on this
+  board). `fsgg-coord lint` enforces the invariants: an `[epic]` must have at least one sub-issue —
+  a childless one is an **orphan** that never rolls up and that `next` will hand out as work — and
+  an epic the board calls `Done` must have no open child. Run it before you re-sequence the board;
+  it exits non-zero on a violation. `done --flip` only rolls an epic up once every child is both
+  board-`Done` **and** issue-closed, so a merged-but-unclosed child can no longer complete an epic.
 - A `contract-change` item must link its registry PR (ADR-0001) — put the registry id in
   `Contract`.
 - The board is the source of *order*; the registry is the source of *contracts*; ADRs are
