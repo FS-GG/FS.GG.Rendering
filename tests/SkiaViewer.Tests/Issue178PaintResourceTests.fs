@@ -116,6 +116,33 @@ let tests =
               Expect.equal SceneRenderer.subObjectsReleased 0 "nothing was created, so nothing is released"
           }
 
+          // Skia declines to build a degenerate path effect and SkiaSharp returns `null` for it. Both of
+          // these pass `configurePaint`'s guards (`radius >= 0.0`, `not intervals.IsEmpty`), so the
+          // release step must treat a null wrapper as nothing to dispose rather than dereferencing it.
+          test "a degenerate path effect paints instead of dereferencing a null sub-object" {
+              let rect = { X = 8.0; Y = 8.0; Width = 48.0; Height = 48.0 }
+
+              for label, effect in [ "Corner 0.0", Corner 0.0; "Dash [0; 0]", Dash([ 0.0; 0.0 ], 0.0) ] do
+                  let node = PaintedRectangle(rect, { allSubObjectsPaint with PathEffect = effect })
+
+                  Expect.isGreaterThan
+                      (paintFrame node).Length
+                      0
+                      (sprintf "%s yields no path effect, and the frame still paints" label)
+          }
+
+          // `File.Exists` is total over any string; `FileInfo` throws on one that cannot name a file.
+          // An `Image` node with an unset source must draw the placeholder, not raise out of `paintNode`.
+          test "an Image node with an unnameable source draws the placeholder" {
+              let rect = 0.0, 0.0, 32.0, 32.0
+
+              for label, source in [ "unset", ""; "whitespace", "   "; "absent", "no/such/file.png" ] do
+                  Expect.isGreaterThan
+                      (paintFrame (SceneNode.Image(rect, source))).Length
+                      0
+                      (sprintf "an Image whose source is %s paints the placeholder outline" label)
+          }
+
           test "repainting an Image node decodes once, not once per frame" {
               let dir = tempDir ()
 

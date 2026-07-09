@@ -86,9 +86,15 @@ module internal SceneRenderer =
 
     /// Dispose a sub-object wrapper already assigned into an `SKPaint`. Safe: the assignment took a
     /// native reference of its own, so the object lives until the paint releases it.
+    ///
+    /// Null-tolerant: Skia declines to build a degenerate effect and the SkiaSharp factory hands back
+    /// `null` for it — `CreateCorner 0.0`, `CreateDash [0; 0]`. Those values reach here through the
+    /// guards below (`radius >= 0.0`, `not intervals.IsEmpty`), and assigning `null` into the paint is
+    /// how "no effect" is spelled, so a null wrapper is nothing to dispose rather than an error.
     let private release (subObject: SKObject) =
-        subObject.Dispose()
-        subObjectsReleased <- subObjectsReleased + 1
+        if not (isNull subObject) then
+            subObject.Dispose()
+            subObjectsReleased <- subObjectsReleased + 1
 
     let configurePaint (scenePaint: Paint) (paint: SKPaint) =
         paint.Color <- paintColor scenePaint
@@ -326,9 +332,11 @@ module internal SceneRenderer =
         let resolve (source: string) : SKImage =
             lock gate (fun () ->
                 let key =
-                    let info = FileInfo source
-
-                    if info.Exists then
+                    // `File.Exists` first: it is total over any string, while `FileInfo` throws on one
+                    // that cannot name a file at all (`""`). An unset `Image` source is exactly that,
+                    // and it must reach the placeholder outline, not raise out of `paintNode`.
+                    if File.Exists source then
+                        let info = FileInfo source
                         struct (source, info.LastWriteTimeUtc.Ticks, info.Length)
                     else
                         struct (source, -1L, -1L)
