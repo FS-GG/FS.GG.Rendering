@@ -267,19 +267,28 @@ do **not** fail it; and on a fork PR with no token it degrades to clean (exit 0)
 merge. Its one structural cost, which requiring it accepts: the check reads the package feed, so it
 takes a merge-blocking dependency on feed availability that `Deterministic gate` does not have.
 
-**Status (2026-07-09): the precondition is NOT met.** Three packables carry public-API breaks that
-no published major has discharged — `FS.GG.UI.Controls`, `FS.GG.UI.DesignSystem`,
-`FS.GG.UI.Themes.AntDesign`. The gate is correctly red; the breaks force the next FS.GG.UI release
-to be a SemVer major. See [ADR-0101](../product/decisions/0101-apicompat-stays-advisory.md).
+**Status (2026-07-09): the major is cut; the precondition clears on publish.** The three undischarged
+breaks — `FS.GG.UI.Controls`, `FS.GG.UI.DesignSystem`, `FS.GG.UI.Themes.AntDesign` — are discharged by
+the SemVer major `0.4.0-preview.1` (FS.GG.Rendering#225), which they forced. See
+[ADR-0101](../product/decisions/0101-apicompat-stays-advisory.md).
 
-**When it goes green on `main`**, the maintainer adds this context string — it is the job's `name:`,
-not its key, and the arrow is U+2192:
+The green does not follow the merge; it follows the **publish**. `scripts/apicompat-check.sh` never
+reads this repo's version — it packs each project at `check_version` (the baseline plus an `.apicheck`
+prerelease identifier) and compares against `latest_version()` **off the feed**. So the gate keeps
+reporting the three breaks until `0.4.0-preview.1` is on the feed and becomes the baseline; at that
+point the compared surface is, by construction, the surface the baseline was packed from, and the job
+goes green. `release-tags.yml` cuts the tag triple on push to `main` and invokes the publish, so the
+transition is expected within one release run of the bump landing — not instantly at merge.
+
+**Once the job is observed green on `main`**, the maintainer adds this context string — it is the
+job's `name:`, not its key, and the arrow is U+2192:
 
 ```
 API compatibility gate (breaking-change → SemVer major)
 ```
 
-No workflow or script change is required. Tracking issue: FS.GG.Rendering#219.
+No workflow or script change is required. Tracking issues: FS.GG.Rendering#219 (the authorization),
+FS.GG.Rendering#225 (the major that discharges the breaks).
 
 ## 6. Quickstart validation outcomes (V1–V7)
 
