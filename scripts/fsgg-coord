@@ -1069,7 +1069,14 @@ lint_items() {
 #                           issue) that is not in its sub-issue graph. Rollup reads the graph, so such
 #                           a child is invisible to it and the epic can complete over an open child.
 #                           Scoped to epics whose child list is not truncated — otherwise the missing
-#                           children are an artifact of the scan, not of the link. Fix: `coord child`.
+#                           children are an artifact of the scan, not of the link. A body ref that
+#                           resolves to a PULL REQUEST is skipped, not flagged: GitHub refuses to link
+#                           a PR as a sub-issue, so citing the PR that closed a checklist line is not
+#                           an unlinked child (FS-GG/.github#346). Deliberately NOT scoped to OPEN
+#                           epics (unlike EPIC-NO-CHILDREN): a CLOSED epic whose body declares an
+#                           unlinked child that is itself still open is the one case EPIC-DONE-OPEN-
+#                           CHILD cannot catch, because that child is absent from the graph it reads.
+#                           Fix: `coord child`.
 #
 # A NOTE (not a failure) is printed for `Status: Done` on an issue that is still open: it is how the
 # board legitimately looks between "the PR merged" and "someone closed the epic", so it fails only
@@ -1115,11 +1122,18 @@ lint() {
           | ($declared - [ $e.children[].ref ]) as $unlinked
           | select($unlinked | length > 0)
           | { code:"EPIC-UNLINKED-CHILD", severity:"error", id:.id, status:.status, url:.url,
+              unlinked:$unlinked,
               detail:"body declares child(ren) absent from the sub-issue graph, so rollup cannot see them: \([$unlinked[]|short]|join(", "))" } ),
         ( .[] | select(.status == "Done" and .state == "OPEN")
           | { code:"DONE-STATUS-OPEN-ISSUE", severity:"note", id:.id, status:.status, url:.url,
               detail:"board Status is Done but the issue is still open" } )
       ]' <<<"$items")"
+
+  # A body-declared ref that resolves to a PR is not an unlinked child — a PR can never be a
+  # sub-issue. Drop those before counting or printing, so the gate stops going red on an epic that
+  # merely cites the PR that closed a checklist line (FS-GG/.github#346). Also strips the internal
+  # `unlinked` scratch field, restoring the finding schema.
+  findings="$(prune_pr_unlinked "$findings")"
 
   if [ -n "$json" ]; then jq '.' <<<"$findings"; else
     jq -r '.[] | "FSGG-LINT \(.severity|ascii_upcase)  \(.code)  \(.id|sub("^[^/]+/";""))  — \(.detail)"' <<<"$findings"
@@ -1192,6 +1206,56 @@ def body_child_refs($self):
   | unique;
 '
 
+# ---- ref_is_pr / drop_pr_refs / prune_pr_unlinked: a body-declared "child" that is really a PR ----
+# `lint` (EPIC-UNLINKED-CHILD) and `epic_rollup` both take the epic's body refs MINUS its sub-issue
+# graph and treat the remainder as unlinked children. But GitHub refuses to link a PULL REQUEST as a
+# sub-issue, so a task-list line citing the PR that closed it — `- [x] … (PR #243)` — declares a ref
+# the graph can NEVER hold. Left alone it wedges the gate red forever on genuinely-complete work, and
+# a gate that is red on correct work is one people learn to ignore (FS-GG/.github#346, arriving at
+# #266 from the other side). So re-resolve the OTHERWISE-UNLINKED refs — only that set, typically
+# empty, so a healthy board pays nothing — and drop the ones GitHub reports as PRs.
+#
+# A ref that will not resolve (404, network, rate-limit) is KEPT, not dropped: per FS-GG/.github#266
+# an unverifiable subject must not clear a gate, and "I could not check" is not "it is a PR". One
+# REST call each (the separate 5,000/hr budget), and only for refs that would otherwise fail the gate.
+ref_is_pr() {  # <owner/repo#n> — exit 0 iff GitHub confirms the ref is a pull request
+  local ref="$1" o r n pr
+  [[ "$ref" =~ ^([^/]+)/([^#]+)#([0-9]+)$ ]] || return 1
+  o="${BASH_REMATCH[1]}"; r="${BASH_REMATCH[2]}"; n="${BASH_REMATCH[3]}"
+  pr="$(gh api "repos/$o/$r/issues/$n" --jq '.pull_request.url // empty' 2>/dev/null)" || return 1
+  [ -n "$pr" ]
+}
+drop_pr_refs() {  # filter refs on stdin (one per line) to those that are NOT pull requests
+  local ref
+  while IFS= read -r ref; do
+    [ -n "$ref" ] || continue
+    ref_is_pr "$ref" && continue
+    printf '%s\n' "$ref"
+  done
+}
+# Rewrite a lint findings array: drop PR refs from every EPIC-UNLINKED-CHILD, delete a finding left
+# with no genuine unlinked child, and rebuild its detail line. Each ref is probed at most once.
+prune_pr_unlinked() {  # <findings-json> -> findings-json
+  local findings="$1" refs ref prs="" prjson
+  refs="$(jq -r '[.[] | select(.code=="EPIC-UNLINKED-CHILD") | .unlinked[]] | unique[]?' <<<"$findings")"
+  [ -n "$refs" ] || { printf '%s' "$findings"; return 0; }
+  while IFS= read -r ref; do
+    [ -n "$ref" ] || continue
+    ref_is_pr "$ref" && prs="$prs$ref"$'\n'
+  done <<<"$refs"
+  prjson="$(printf '%s' "$prs" | jq -R -s 'split("\n") | map(select(length > 0))')"
+  jq --argjson prs "$prjson" '
+    def short: sub("^[^/]+/";"");
+    map( if .code == "EPIC-UNLINKED-CHILD"
+         then (.unlinked - $prs) as $u
+              | if ($u | length) == 0 then empty
+                else .unlinked = $u
+                     | .detail = "body declares child(ren) absent from the sub-issue graph, so rollup cannot see them: " + ([$u[] | short] | join(", "))
+                end
+         else . end )
+    | map(del(.unlinked))' <<<"$findings"
+}
+
 # ---- epic_rollup: after a child flips to Done, walk parents UPWARD and flip each epic whose children
 # are now ALL board-Done AND CLOSED, stamping each one that rolls up. One thrifty query per level (subIssues +
 # a Status resolver each); runs only from `done --flip`. Bounded to 10 levels as a cycle backstop.
@@ -1263,6 +1327,10 @@ epic_rollup() {
       | ($p.body | body_child_refs($self)) as $declared
       | [ $p.subIssues.nodes[]? | "\(.repository.nameWithOwner)#\(.number)" ] as $linked
       | ($declared - $linked)[]' <<<"$out")"
+    # A body ref that is really a PR can never be a sub-issue, so it is not a missing child — dropping
+    # it lets an epic that cites the PR which delivered a checklist line still roll up (.github#346).
+    # An unresolvable ref is kept, so the rollup still refuses rather than guessing (#266).
+    unlinked="$(printf '%s\n' "$unlinked" | drop_pr_refs)"
     if [ -n "$unlinked" ]; then
       # `paste -sd', '` would CYCLE the two delimiters (a,b c,d). Join on ',' and space it after.
       printf '  epic %s: body declares %s child(ren) the sub-issue graph does not contain — not rolling up: %s\n' \
