@@ -1,6 +1,6 @@
 ---
 name: cross-repo-coordination
-description: Coordinate work across the FS-GG repos (FS.GG.SDD, FS.GG.Rendering, FS.GG.Governance, FS.GG.Templates). Use when you need something from another FS-GG repo, are changing a versioned cross-repo contract, hit a cross-repo version/API incoherence, or need to place/sequence work on the org-level "Coordination" Projects v2 roadmap. File and answer requests as GitHub issues, track sequencing on the Coordination board, keep the contract/compatibility registry coherent, and record cross-repo decisions as ADRs. Canonical protocol lives in FS-GG/.github.
+description: Coordinate work across the FS-GG repos (FS.GG.SDD, FS.GG.Rendering, FS.GG.Governance, FS.GG.Templates, FS.GG.Game, FS.GG.Audio). Use when you need something from another FS-GG repo, are changing a versioned cross-repo contract, hit a cross-repo version/API incoherence, or need to place/sequence work on the org-level "Coordination" Projects v2 roadmap. File and answer requests as GitHub issues, track sequencing on the Coordination board, keep the contract/compatibility registry coherent, and record cross-repo decisions as ADRs. Canonical protocol lives in FS-GG/.github.
 ---
 
 # Cross-repo coordination (FS-GG)
@@ -79,8 +79,8 @@ cross-repo roadmap (milestones are repo-scoped; keep them for repo-local release
 | Field | Type | Options / notes |
 |---|---|---|
 | `Status` | single-select | `Backlog`, `Ready`, `In progress`, `Blocked`, `In review`, `Done` |
-| `Phase` | single-select | `P0 Decisions`, `P1 Rendering`, `P2 SDD`, `P3 Governance`, `P4 Templates`, `P5 Versioning` |
-| `Repo` | single-select | `rendering`, `sdd`, `governance`, `templates`, `.github`, `cross-repo` |
+| `Phase` | single-select | `P0 Decisions`, `P1 Rendering`, `P2 SDD`, `P3 Governance`, `P4 Templates`, `P5 Versioning`, `P6 Game`, `P7 Audio` |
+| `Repo Scope` | single-select | `rendering`, `sdd`, `governance`, `templates`, `.github`, `cross-repo`, `game`, `audio` — **not** `Repository`, which is Projects' own built-in column |
 | `Workstream` | single-select | `Composition`, `Lifecycle`, `Governance`, `Versioning`, `Docs`, `Coordination` |
 | `Start` / `Target` | date | feed the Roadmap (timeline) view |
 | `Effort` | single-select | `S`, `M`, `L`, `XL` |
@@ -91,8 +91,10 @@ cross-repo roadmap (milestones are repo-scoped; keep them for repo-local release
 
 - **One roadmap item = one issue** in its owning repo. Cross-repo asks additionally carry
   `cross-repo`/`cross-repo:request` and live in the *target* repo.
-- Set `Phase`, `Repo`, `Workstream`, `Target`, and (for cross-repo work) `Contract` on every
-  item. `Blocked` status mirrors the `blocked` label.
+- Set `Phase`, `Repo Scope`, `Workstream`, `Target`, and (for cross-repo work) `Contract` on every
+  item. `Blocked` status mirrors the `blocked` label. One phase per product repo: a `game` item is
+  `P6 Game`, an `audio` item `P7 Audio`. Do not reach for `P1 Rendering` because a `Game.Core` item
+  happens to do geometry — `Repo Scope` decides the phase, not the subject matter.
 - **`Blocked by` records the dependency edge, nothing else.** `fsgg-coord set-field` takes a
   comma-separated list of issue refs (`owner/repo#n`, `repo#n`, `#n`, or an issue URL) and
   canonicalizes each to `owner/repo#n`; anything else is refused before the write. It is not a
@@ -121,8 +123,8 @@ sub-issue links, issue-type assignment, and built-in workflows are UI/REST-drive
 gh auth refresh -s project,read:project                       # token needs project scope
 P=$(gh project create --owner FS-GG --title "Coordination" --format json --jq '.number')
 gh project field-create $P --owner FS-GG --name "Phase" --data-type SINGLE_SELECT \
-  --single-select-options "P0 Decisions,P1 Rendering,P2 SDD,P3 Governance,P4 Templates,P5 Versioning"
-# ...Repo / Workstream / Effort single-selects; Start / Target dates; Contract / Blocked by text
+  --single-select-options "P0 Decisions,P1 Rendering,P2 SDD,P3 Governance,P4 Templates,P5 Versioning,P6 Game,P7 Audio"
+# ...Repo Scope / Workstream / Effort single-selects; Start / Target dates; Contract / Blocked by text
 gh project item-add    $P --owner FS-GG --url https://github.com/FS-GG/<repo>/issues/<n>
 gh project item-create $P --owner FS-GG --title "<draft item>" --body "<acceptance criteria>"
 # set fields (prefer the thrifty client): scripts/fsgg-coord set-field <issue> <Field> <Value>
@@ -131,6 +133,17 @@ gh project item-create $P --owner FS-GG --title "<draft item>" --body "<acceptan
 scripts/fsgg-coord next  --repo .github            # the one most-startable item (Ready, else Backlog)
 scripts/fsgg-coord ready --repo .github            # all actionable items (not Done) for a repo
 ```
+
+> **Adding an option to an existing single-select is destructive — prefer the UI.** There is no
+> additive API: `field-create` only makes new fields, so the only scriptable route is the GraphQL
+> `updateProjectV2Field` mutation with a full `singleSelectOptions:[...]` list. Its option input
+> carries **no id**, so resending the existing options verbatim does not preserve them — GitHub
+> **recreates every option with a fresh id and clears the field on every item**. Adding `P6 Game` /
+> `P7 Audio` this way ([#303](https://github.com/FS-GG/.github/issues/303)) blanked `Phase` on all
+> **374** items that had it set. If you must script it: snapshot `itemId → option name` for every
+> item first, mutate, then restore with one `updateProjectV2ItemFieldValue` per item against the
+> **new** option ids, and diff the re-read against the snapshot before you trust the board. Any
+> `fsgg-coord` cache still holds the dead ids — `bootstrap --refresh` before the next `set-field`.
 
 > **Keep GraphQL cheap — route board work through `scripts/fsgg-coord`.** Projects v2 is
 > GraphQL-only and the primary rate limit (5,000 pts/hr) is metered by *nodes requested*, not by
