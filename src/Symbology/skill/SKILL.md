@@ -164,9 +164,8 @@ Symbology.autoLabel [ FactionCode; HealthTier ]                            // pr
 - **Outside the capacity table.** `Legibility.score` ignores the label, so its verdict is unchanged and
   grammar-independent. Never use a label to dodge a channel-overload warning — fix the pre-attentive
   encoding instead.
-- **Tofu-free is a render-edge property.** The pure library emits deterministic glyph-run proof nodes and
-  **never installs, requires, or throws without** a measurer; real glyphs come from the bundled-font
-  registry the render bridge installs. Verify through `Symbology.Render`, never from a pure unit test.
+- **Tofu-free is a render-edge property.** Assert it through `Symbology.Render`, never from a pure unit
+  test — see [Troubleshooting](#troubleshooting).
 - **Surplus degrades: wrap → cap → ellipsis.** Lines wrap at whitespace, the drawn line count is **capped**
   to the grammar budget, and the last drawn line ends with `…`. Empty, whitespace, or a projection that
   renders to nothing ⇒ **no label**. A degenerate (`R <= 0`) token shows the **placeholder** — it always wins.
@@ -251,6 +250,19 @@ let png   = Render.toPng { Width = 920; Height = 660 } board "./work/iter-001"
 
 See `reference.fsx` in this skill folder for a runnable in-tree version.
 
+### The golden reference — [`samples/SymbologyBoard/`](../../../samples/SymbologyBoard/)
+
+An approved, lint-clean, three-grammar mapping you can read instead of inventing one:
+
+- [`Roster.fs`](../../../samples/SymbologyBoard/Roster.fs) — the **approved M5/M6 mapping**, compiled
+  unchanged from the M5 dry run. `tests/SymbologyBoard.Tests/BoardTests.fs` asserts it lints `Clean`, so
+  it is the reference every "a fresh `Warning` is a real signal" claim below is measured against.
+- [`GrammarCompare.fs`](../../../samples/SymbologyBoard/GrammarCompare.fs) — the **executable form of the
+  "one mapping, three drawings" claim**: one `Token` set, one grid, rendered as three stacked bands
+  (Token / Badge / Ring) so you can A/B form factors.
+- [`Board.fs`](../../../samples/SymbologyBoard/Board.fs) — the same roster on a deterministic live board,
+  with each unit's approved `Symbology.animate` motion overlay.
+
 ## The fixed feedback loop (FR-014 / FR-016 — the unit of change is the mapping, never the grammar)
 
 ```
@@ -273,7 +285,8 @@ See `reference.fsx` in this skill folder for a runnable in-tree version.
 
 > The linter (`FS.GG.UI.Symbology.Legibility`) is pure/deterministic and scores the *produced symbol set*
 > against the fixed §4 capacities — it is the mechanical complement to the eyeball check, not a replacement.
-> The approved M5/M6 roster lints `Clean`, so a fresh `Warning` is a real signal to re-tune the mapping.
+> The approved M5/M6 roster ([`samples/SymbologyBoard/Roster.fs`](../../../samples/SymbologyBoard/Roster.fs))
+> lints `Clean`, so a fresh `Warning` is a real signal to re-tune the mapping.
 
 ## Provenance the loop MUST write (FR-017 / FR-018)
 
@@ -306,6 +319,23 @@ public surface baselines live under `readiness/surface-baselines/`.
 `FS.GG.UI.Symbology` references **only** `FS.GG.UI.Scene` — never SkiaViewer, Controls, Canvas, Elmish,
 Layout, or any host/IO. All raster/IO stays in `FS.GG.UI.Symbology.Render`, which is the only component
 that may reference `SkiaViewer`. Keep the game-symbol vocabulary off the core control surface.
+
+## Troubleshooting
+
+The recurring failure modes, collected. Three of the four are the contract working as designed.
+
+- **Tofu boxes (`□□□`) where a label should be** — you asserted glyph content from a **pure unit test**.
+  Tofu-free is a **render-edge** property: the pure library emits deterministic glyph-run *proof* nodes
+  and **never installs, requires, or throws without** a measurer. Real glyphs come from the bundled-font
+  registry that the render bridge installs, so verify through `Symbology.Render` — sampling phases when
+  the label is motion-bound. Not a bug in the pure layer.
+- **`Render.toPng` raised** — that is the **fail-loud contract**, not a bug. Any verdict that is not
+  `ReferencePassed` with a real image path raises with the joined diagnostics. It never returns a blank
+  success, which is precisely why a critique never reasons over an empty PNG. Read the diagnostics.
+- **A blank or placeholder symbol** — `R <= 0`. The placeholder **wins over** label, auto-label and
+  motion, so a degenerate radius silently swallows every other channel. Fix the radius in the mapping.
+- **`NU1403` on restore** — the known poisoned-NuGet-cache trap. Restore against a **scratch
+  `NUGET_PACKAGES` directory**; do **not** clear the shared cache.
 
 ## Persistent problems
 
