@@ -34,8 +34,19 @@ module LogicalCanvas =
     let present (logical: Size) (actual: Size) (node: SceneNode) : SceneNode =
         let fitted = fit logical actual
 
+        let canvas =
+            { X = 0.0
+              Y = 0.0
+              Width = float logical.Width
+              Height = float logical.Height }
+
+        // The clip is unconditional: "a product cannot draw outside its logical canvas" must not be a
+        // fact about the current window size. At the identity fit it is a visual no-op (the canvas
+        // already covers the surface), so an unscaled render stays pixel-identical either way.
+        let clipped = ClipNode(RectClip canvas, { Nodes = [ node ] })
+
         if isIdentity fitted then
-            node
+            clipped
         else
             let transform =
                 Transform.toPerspectiveTransform
@@ -45,23 +56,12 @@ module LogicalCanvas =
                         TranslateX = fitted.OffsetX
                         TranslateY = fitted.OffsetY }
 
-            let canvas =
-                { X = 0.0
-                  Y = 0.0
-                  Width = float logical.Width
-                  Height = float logical.Height }
-
             // The clip sits INSIDE the transform, so it is expressed in logical coordinates and
             // lands on the letterboxed rect once the matrix applies.
-            PerspectiveNode(
-                transform,
-                { Nodes = [ ClipNode(RectClip canvas, { Nodes = [ node ] }) ] }
-            )
+            PerspectiveNode(transform, { Nodes = [ clipped ] })
 
     let toLogicalPoint (logical: Size) (actual: Size) (x: float) (y: float) : float * float =
+        // `fit` never yields a zero scale: a degenerate extent gives the identity, and every other
+        // case is a min of two strictly positive ratios.
         let fitted = fit logical actual
-
-        if fitted.Scale = 0.0 then
-            (x, y)
-        else
-            ((x - fitted.OffsetX) / fitted.Scale, (y - fitted.OffsetY) / fitted.Scale)
+        ((x - fitted.OffsetX) / fitted.Scale, (y - fitted.OffsetY) / fitted.Scale)

@@ -23,9 +23,10 @@ module LogicalCanvas =
     val fit: logical: Size -> actual: Size -> LogicalCanvasFit
 
     /// Wrap a scene authored in `logical` coordinates so it renders scaled and centered in `actual`.
-    /// Content is clipped to the logical canvas, so a product cannot draw into the letterbox bars.
-    /// When the fit is the identity the node is returned unchanged — an unscaled render stays
-    /// byte-identical to one taken without a `LogicalSize`.
+    /// Content is always clipped to the logical canvas — a product cannot draw into the letterbox
+    /// bars, and that does not become a fact about the current window size. Under the identity fit
+    /// the scale is elided and the clip is a visual no-op, so an unscaled render stays
+    /// pixel-identical to one taken without a `LogicalSize`.
     val present: logical: Size -> actual: Size -> node: SceneNode -> SceneNode
 
     /// Map a point in `actual` (window/surface) coordinates back into `logical` coordinates —

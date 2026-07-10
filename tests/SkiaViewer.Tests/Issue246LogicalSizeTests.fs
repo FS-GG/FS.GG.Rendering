@@ -118,10 +118,16 @@ let issue246LogicalSizeTests =
               Expect.equal (LogicalCanvas.fit (size 1280 720) (size 640 0)).Scale 1.0 "zero surface height is inert"
           }
 
-          test "present returns the node untouched under an identity fit (an unscaled render is unchanged)" {
+          test "present elides the scale under an identity fit but still clips to the canvas" {
               let node = fullCanvas (size 640 480)
-              Expect.equal (LogicalCanvas.present (size 640 480) (size 640 480) node) node "no wrapper when nothing to do"
+
+              match LogicalCanvas.present (size 640 480) (size 640 480) node with
+              | ClipNode(RectClip canvas, { Nodes = [ inner ] }) ->
+                  Expect.equal inner node "the node is carried through untransformed"
+                  Expect.equal canvas { X = 0.0; Y = 0.0; Width = 640.0; Height = 480.0 } "still clipped to the canvas"
+              | other -> failtestf "expected a bare clip with no scale, got %A" other
           }
+
 
           test "present wraps in a clipped perspective transform carrying the fit" {
               match LogicalCanvas.present (size 1280 720) (size 640 480) (fullCanvas (size 1280 720)) with
@@ -213,6 +219,33 @@ let issue246LogicalSizeTests =
               | Result.Error failure ->
                   Expect.stringContains failure.Message "frame count" "the logical size cleared validation; the frame count did not"
               | Result.Ok evidence -> failtestf "expected a frame-count validation failure, got %A" evidence
+          }
+
+          // The fit must not be honored by one launch entry point and dropped by the next: every
+          // surface-owning path routes through `presentedFor`. A scene-taking launch (`Viewer.run`,
+          // `runBounded` and its wrappers) carries a LogicalSize just as a host-taking one does.
+          test "runBounded fits a scene-taking launch to its bounded surface, not just the host paths" {
+              withRaster "scene-taking launch letterbox" (fun () ->
+                  let logical, surface = size 1280 720, size 640 480
+                  let evidencePath = IO.Path.Combine(IO.Path.GetTempPath(), $"issue246-bounded-{Guid.NewGuid():N}.png")
+
+                  let request: ViewerRunRequest =
+                      { Target = FirstFrame
+                        Timeout = TimeSpan.FromSeconds 5.0
+                        Diagnostics = Viewer.defaultDiagnostics
+                        RendererMode = "skia"
+                        EvidencePath = Some evidencePath }
+
+                  match Viewer.runBounded request (evidenceOptions (Some logical) surface) (fullCanvas logical) with
+                  | Result.Error failure ->
+                      Expect.equal failure.Classification UnsupportedEnvironment "only an unsupported environment may fail here"
+                  | Result.Ok _ ->
+                      Expect.isTrue (IO.File.Exists evidencePath) "the bounded run wrote its PNG evidence"
+                      // The written evidence is the scene runBounded actually rendered. Unfitted, this
+                      // would be the top-left crop (bars absent); fitted, the 60px bars are there.
+                      let _, minY, _, maxY = bbox (litPoints evidencePath)
+                      Expect.equal minY 60 "the bounded surface got the top letterbox bar"
+                      Expect.equal maxY (surface.Height - 61) "the bounded surface got the bottom letterbox bar")
           }
 
           test "runAppEvidence letterboxes a fixed-resolution generated app onto the evidence surface (AC-2)" {
