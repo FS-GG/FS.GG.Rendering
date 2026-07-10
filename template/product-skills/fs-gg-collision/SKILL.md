@@ -17,15 +17,28 @@ frozen package. Everything here is pure, total, and deterministic — safe to ca
 
 ## Public Contract
 
-The detection signatures you consume are bundled framework surfaces; the response layer is your own
-product source:
+The detection **and the low-level response** signatures you consume are bundled framework surfaces; the
+game-opinionated *policy* layer on top of them is your own product source:
 
 - `docs/api-surface/Game.Core/Geometry.fsi` — the `Geometry` module (box overlap / containment / swept /
-  centering) on the sim `Rect`/`Point`. Shipped in `FS.GG.Game.Core` (`game`/`sample-pack` profiles).
+  centering, plus the `*Contact` narrow-phase manifolds) on the sim `Rect`/`Point`. Shipped in
+  `FS.GG.Game.Core` (`game`/`sample-pack` profiles).
+- `docs/api-surface/Game.Core/Primitives.fsi` — the sim value vocabulary those helpers return and consume:
+  `Contact` (the `{ Normal; Depth }` minimum-translation manifold), `Circle`, `ConvexPolygon`, `RayHit`,
+  and the impulse-layer `Manifold`. This framework `Contact` is a **detection** value; your product's
+  `Collision.Contact<'T>` is a *different*, body-carrying record (last bullet) — see the pitfall.
 - `docs/api-surface/Game.Core/SpatialGrid.fsi` — the uniform `SpatialGrid` for broad-phase bucketing and
   range/splash queries. Also `FS.GG.Game.Core` (`game`/`sample-pack` profiles).
-- `src/<ProductDir>/Collision.fs` — **product-owned, adaptable** source: the `Body`/`Contact`/
-  `Resolution`/`ResponseRule` shapes and `contact`/`collide`/`resolve`/`step`. Yours to edit or delete.
+- `docs/api-surface/Game.Core/Resolution.fsi` — the framework `Resolution` **module** (bundled at
+  Game.Core 0.3.0): `pushOut` (separate along the MTV), `slide` (remove the normal velocity component),
+  `knockback` (discrete grid push). Pure, total, deterministic per-body transforms — the primitives your
+  `resolve` composes rather than re-deriving. This `Resolution` is a **module**; your product's
+  `Collision.Resolution<'T>` is a *different*, body-carrying result **record** — see the pitfall.
+- `src/<ProductDir>/Collision.fs` — **product-owned, adaptable** source: the generic `Body<'T>`/
+  `Contact<'T>`/`Resolution<'T>`/`ResponseRule` shapes and `contact`/`collide`/`resolve`/`step`, always
+  reached module-qualified as `Collision.*`. This is the game-opinionated **policy** — which body is a
+  wall, how bounce is booked — that the framework primitives above deliberately do not decide. Yours to
+  edit or delete.
 
 All detection helpers are **total**: degenerate inputs return a documented value, they never throw.
 
@@ -40,7 +53,10 @@ All detection helpers are **total**: degenerate inputs return a documented value
 - `Geometry.containsPoint` / `contains` — inclusive of shared edges (containment, culling).
 
 The helper's `Collision.contact a b` builds on `intersects` and returns the **minimum-translation
-vector** (which way + how far to separate) and overlap depth — a `Contact`, not a bare boolean.
+vector** (which way + how far to separate) and overlap depth, wrapped with the two bodies — a
+`Collision.Contact<'T>`, not a bare boolean. If you only need the manifold (normal + depth) and not the
+body pair, `Geometry.aabbContact a b` returns the framework `Contact option` directly (`None` on no
+overlap).
 
 ## Broad-phase
 
@@ -63,8 +79,10 @@ let contacts = Collision.collide 32.0 bodies      // cellSize tunes the grid
 
 ## Response
 
-`resolve` is the game-opinionated part — **this is the line to edit.** It turns a `Contact` into a
-`Resolution` (the separated bodies + the displacement applied):
+`resolve` is the game-opinionated part — **this is the line to edit.** It turns a `Collision.Contact<'T>`
+into a `Collision.Resolution<'T>` (the separated bodies + the displacement applied). It is the *policy*
+that sits on top of the framework `Resolution` primitives (`pushOut`/`slide`/`knockback`) — compose those
+inside `resolve` rather than re-deriving separation math:
 
 - `SeparateEqually` — split the push 50/50 (both bodies move).
 - `PushFirst` / `PushSecond` — one body is a wall; the other takes the full push.
@@ -91,6 +109,12 @@ never touch the durable `Product.fsproj`.
 - **Consumer geometry records colliding with framework `Point`/`Rect`.** As in [[fs-gg-scene]]: a bare
   `{ X = …; Y = … }` binds to whichever record is in scope last. Reuse the framework `Rect`/`Point`;
   don't define a look-alike bounds/vector type.
+- **Framework `Resolution`/`Contact` vs your `Collision.Resolution`/`Contact`.** Game.Core 0.3.0 bundles
+  a `Resolution` *module* (`pushOut`/`slide`/`knockback`) and a `Contact` *manifold* type; your
+  `Collision.fs` ships its own generic `Resolution<'T>`/`Contact<'T>` *records*. Same names, different
+  things. Reach the framework ones only through their module (`Resolution.slide`, a `Geometry.*Contact`
+  return) and your own only through `Collision.` (`Collision.resolve`, `Collision.Contact`); never `open`
+  both into one unqualified scope, or the name binds to whichever came last.
 - **Two of your own records exposing `.Pos`/`.Id` (consumer-vs-consumer).** Annotate the parameter —
   `let posOf (c: Creep) = c.Pos` — so the helper doesn't silently infer the wrong record. `Body.Tag`
   is generic precisely so you don't need a second id-carrying record.
@@ -119,8 +143,9 @@ Record collision evidence (overlap/resolution cases, determinism replays) under 
 
 ## Package Boundary
 
-`Geometry` and `SpatialGrid` (plus the sim `Rect`/`Point`) are in `FS.GG.Game.Core` (referenced only on
-the `game`/`sample-pack` profiles). `Collision.fs` is **product-owned source with no backing package**. Keep
+`Geometry`, `SpatialGrid`, and `Resolution` (plus the sim `Rect`/`Point`/`Contact` in `Primitives`) are in
+`FS.GG.Game.Core` (referenced only on the `game`/`sample-pack` profiles). `Collision.fs` is
+**product-owned source with no backing package** — the policy layer, not the primitives. Keep
 rendering in [[fs-gg-scene]] and host wiring in [[fs-gg-skiaviewer]].
 
 ## Generated Product
