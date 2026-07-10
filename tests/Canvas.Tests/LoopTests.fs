@@ -5,6 +5,7 @@ module Canvas.Tests.LoopTests
 // wall clock. dt values are negative powers of two so the accumulator arithmetic is exact (no FP drift).
 
 open Expecto
+open FsCheck
 open FS.GG.UI.Canvas
 
 // integrate counts how many fixed steps ran; the step value (dt) is recorded too.
@@ -63,5 +64,70 @@ let tests =
             let advanced = Loop.advance 0.5 bump 1.25 (Loop.init 0)
             let a = Loop.alpha 0.5 advanced
             Expect.isTrue (a >= 0.0 && a < 1.0) "alpha stays in [0,1) after advance"
+        }
+
+        // #266: F#'s `min`/`max` propagate NaN, so the old `max 0.0 (min frameTime maxFrameTime)`
+        // turned one NaN frame into a NaN accumulator. `acc >= dt` is then false forever and the
+        // only writer of `acc` sits inside that loop — the simulation stopped stepping for good.
+        // `FixedStep.drain` (FS.GG.Game.Core) already documents these totals; `Loop` now matches.
+
+        test "a NaN frameTime contributes nothing, and the next finite frame steps normally" {
+            let poisoned = Loop.advance 0.0625 bump nan (Loop.init 0)
+            Expect.equal poisoned.Current 0 "a NaN frame runs no steps"
+            Expect.equal poisoned.Accumulator 0.0 "the NaN never reaches the accumulator"
+            // The latch: before the fix every later frame was dead too, whatever its frameTime.
+            let recovered = Loop.advance 0.0625 bump 0.25 poisoned
+            Expect.equal recovered.Current 4 "the loop recovers — four steps on the next good frame"
+        }
+
+        test "an infinite frameTime contributes nothing rather than latching or clamping" {
+            let up = Loop.advance 0.0625 bump infinity (Loop.init 0)
+            Expect.equal up.Current 0 "+infinity is not a 0.25s frame; it contributes nothing"
+            Expect.equal up.Accumulator 0.0 "accumulator stays empty"
+            let down = Loop.advance 0.0625 bump -infinity (Loop.init 0)
+            Expect.equal down.Current 0 "-infinity advances nothing"
+            Expect.equal down.Accumulator 0.0 "accumulator stays empty"
+        }
+
+        test "a non-finite accumulator on the incoming state is treated as empty" {
+            // Defence in depth: a state fabricated (or persisted) with a poisoned accumulator heals.
+            let s = Loop.advance 0.0625 bump 0.25 { Current = 0; Previous = 0; Accumulator = nan }
+            Expect.equal s.Current 4 "the NaN accumulator is dropped, the 0.25s frame still steps"
+            Expect.equal s.Accumulator 0.0 "and the carried remainder is finite"
+            let neg = Loop.advance 0.0625 bump 0.0625 { Current = 0; Previous = 0; Accumulator = -5.0 }
+            Expect.equal neg.Current 1 "a negative accumulator is empty, not a step debt"
+        }
+
+        test "a non-finite dt is a no-op, like a non-positive one" {
+            let s0 = { Current = 4; Previous = 3; Accumulator = 0.1 }
+            // `nan <= 0.0` is false, so the old guard fell through into the loop.
+            Expect.equal (Loop.advance nan bump 1.0 s0) s0 "dt = NaN returns the state unchanged"
+            Expect.equal (Loop.advance infinity bump 1.0 s0) s0 "dt = infinity returns the state unchanged"
+        }
+
+        test "alpha never returns NaN" {
+            let poisoned = { Current = 0; Previous = 0; Accumulator = nan }
+            Expect.equal (Loop.alpha 0.5 poisoned) 0.0 "a NaN accumulator interpolates at 0, not NaN"
+            let negative = { Current = 0; Previous = 0; Accumulator = -1.0 }
+            Expect.equal (Loop.alpha 0.5 negative) 0.0 "a negative accumulator interpolates at 0"
+            let good = { Current = 0; Previous = 0; Accumulator = 0.25 }
+            Expect.equal (Loop.alpha nan good) 0.0 "a NaN dt yields 0, not NaN"
+            Expect.equal (Loop.alpha infinity good) 0.0 "an infinite dt yields 0"
+        }
+
+        test "property: any frameTime sequence (non-finite included) keeps Accumulator in [0,dt)" {
+            let dt = 0.0625
+
+            Check.One(
+                Config.QuickThrowOnFailure.WithMaxTest 500,
+                // FsCheck's float generator emits NaN and ±infinity, which is exactly the point here.
+                fun (frameTimes: float list) ->
+                    let final =
+                        frameTimes
+                        |> List.fold (fun st ft -> Loop.advance dt bump ft st) (Loop.init 0)
+
+                    let acc = final.Accumulator
+                    System.Double.IsFinite acc && acc >= 0.0 && acc < dt
+                    && System.Double.IsFinite(Loop.alpha dt final))
         }
     ]

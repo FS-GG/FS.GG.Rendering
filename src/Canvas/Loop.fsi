@@ -22,6 +22,10 @@ module Loop =
     /// `integrate` — pure `'world -> dt -> 'world` simulation step.
     /// `frameTime` — elapsed seconds since the last advance; clamped to `<= 0.25` (spiral-of-death guard).
     /// Runs `floor((Accumulator + clamp frameTime) / dt)` steps, carrying the remainder in `Accumulator`.
+    /// A non-finite input can never poison the loop: a non-positive or non-finite `dt` returns `state`
+    /// unchanged; a non-positive or non-finite `frameTime` contributes nothing; a non-finite or negative
+    /// `Accumulator` is treated as empty. Given a `state` produced by `init` or `advance`, the returned
+    /// `Accumulator` is finite and in `[0, dt)`.
     val advance:
         dt: float ->
         integrate: ('world -> float -> 'world) ->
@@ -29,5 +33,8 @@ module Loop =
         state: StepState<'world> ->
             StepState<'world>
 
-    /// Interpolation factor in [0,1) for rendering between `Previous` and `Current` (`Accumulator / dt`).
+    /// Interpolation factor for rendering between `Previous` and `Current` (`Accumulator / dt`); in
+    /// `[0,1)` for any `state` produced by `init` or `advance`, whose `Accumulator` is `< dt`.
+    /// Never `NaN`: a non-positive or non-finite `dt` yields `0.0`, as does a non-finite or negative
+    /// `Accumulator`.
     val alpha: dt: float -> state: StepState<'world> -> float
