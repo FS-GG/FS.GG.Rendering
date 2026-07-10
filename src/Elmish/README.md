@@ -5,6 +5,14 @@ Elmish adapter contracts for FS.GG.UI V3 products.
 `FS.GG.UI.Elmish` is one of the **FS.GG.UI** distribution packages — an F# / Elmish UI and 2D
 scene-graph framework for .NET 10 desktop, rendered through Vulkan + SkiaSharp.
 
+> **Which adapter?** `FS.GG.UI.Elmish` is the **pure scene adapter** (`ElmishAdapter`): your
+> `render` projects the model to a `SceneNode`, and `init`/`update` stay pure, returning the
+> next model plus effect *values* interpreted at the host boundary (it bridges viewer messages
+> and effects into Elmish envelopes over `Viewer.runInteractiveViewer`). For a product built on
+> the semantic control set — buttons, text boxes, grids — use the sibling package
+> **`FS.GG.UI.Controls.Elmish`** (`runInteractiveApp`), which every FS.GG.UI sample uses. Both
+> are supported; pick by whether your view produces a `SceneNode` or a `Control<'msg>` tree.
+
 ## Install
 
 ```bash
@@ -43,7 +51,8 @@ let options = { Title = "Counter"; InitialSize = { Width = 640; Height = 480 } }
 let initial, effects =
     ElmishAdapter.init options { Count = 0 } (render { Count = 0 })
 
-// Fold a user message through the adapter (re-renders via `render`)
+// Pass a user message through the adapter. `UserMsg` yields a `DispatchUser` effect and
+// leaves the scene unchanged; the scene is rebuilt via `render` only on a `ViewerMsg`.
 let next, _ =
     ElmishAdapter.update render (UserMsg Increment) initial
 ```

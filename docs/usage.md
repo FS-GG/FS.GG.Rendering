@@ -79,7 +79,8 @@ for the owning source module of each):
 | `FS.GG.UI.DesignSystem` | Token model, `Theme` record, `ResolvedStyle`, and the pure `Style.resolve` resolver |
 | `FS.GG.UI.Themes.Default` | The default **Light**/**Dark** theme and mode+accent derivation |
 | `FS.GG.UI.Themes.AntDesign` | Opt-in **Ant Design** theme (`AntTheme.antLight`/`antDark`) + intent policy |
-| `FS.GG.UI.Elmish` / `FS.GG.UI.Controls.Elmish` | **Optional** Elmish adapters (Cmd/subscriptions/program) |
+| `FS.GG.UI.Controls.Elmish` | **Optional** Elmish adapter for control-set products — `runInteractiveApp`/`program`, Cmd/subscriptions (see [Which Elmish adapter?](#which-elmish-adapter)) |
+| `FS.GG.UI.Elmish` | **Optional** pure scene Elmish adapter (`SceneNode` view, no control tree) |
 | `FS.GG.UI.Testing` | Test helpers — capture, screenshot, responds/perf proof seams |
 | `FS.GG.UI.Diagnostics` | Runtime diagnostic taxonomy, aggregation, readiness, and artifact contracts |
 | `FS.GG.UI.Canvas` | Dependency-light element library + deterministic fixed-timestep game loop |
@@ -199,6 +200,25 @@ control and keyboard runtime effects flow through normal Elmish `Cmd`s.
 > `FS.GG.UI.Controls` (see the controls catalog in the generated template docs and
 > `src/Controls/Widgets/`). The examples above focus on the *host wiring*, which is the
 > part most likely to trip you up.
+
+### Which Elmish adapter?
+
+FS.GG.UI ships **two** Elmish adapter packages for **two different product shapes** — pick by
+what your view produces. Both are supported (each has its own product skill); they are not
+interchangeable.
+
+- **`FS.GG.UI.Controls.Elmish`** — for products built on the **semantic control set** (way 3
+  above). Your `View` returns a `Control<'msg>` tree, and the adapter runs the interactive
+  host (`runInteractiveApp`, or `program`/`programOfWidget` to wire into an existing
+  `Elmish.Program`) with keyboard/pointer/control runtime effects flowing through Elmish
+  `Cmd`/subscriptions. Every sample in this repo uses it.
+- **`FS.GG.UI.Elmish`** — the lower-level **pure scene adapter** (`ElmishAdapter`). Your
+  `render` returns a `SceneNode` (no control tree); `init`/`update` stay pure, returning the
+  next model plus effect *values* interpreted at the host boundary, bridging viewer messages
+  and effects into Elmish envelopes over `Viewer.runInteractiveViewer` (way 2).
+
+If your app uses buttons, text boxes, grids — anything from the control set — reach for
+`FS.GG.UI.Controls.Elmish`.
 
 ---
 
