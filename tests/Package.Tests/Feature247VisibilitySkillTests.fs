@@ -47,12 +47,30 @@ let feature247VisibilitySkillTests =
         "Feature247 visibility skill + import-and-adapt helper (US1/US2/US3)"
         [
           // ---- US2: the skill exists, is named correctly, reuses the primitives, cites the ref -----
-          test "the fs-gg-visibility skill declares its name, reuses Point + SpatialGrid, cites Red Blob Games" {
+          test "the fs-gg-visibility skill declares its name, reuses Point, cites Red Blob Games" {
               Expect.stringContains skillBody "name: fs-gg-visibility" "frontmatter name matches the id"
               Expect.stringContains skillBody "Point" "geometry vocabulary reuses the shared Point"
-              Expect.stringContains skillBody "SpatialGrid" "broad-phase cull reuses SpatialGrid"
               Expect.stringContains skillBody "Visibility.fs" "points at the adaptable helper source"
               Expect.stringContains skillBody "redblobgames.com/articles/visibility" "cites the Red Blob Games reference"
+          }
+
+          // #261 — the skill used to teach endpoint-bucketing as the right answer, so an agent following
+          // it hand-rolled the very cull that drops a spanning wall. It must now teach the exact test,
+          // and the helper must not reach for the point-keyed grid it warns against.
+          test "the skill teaches an exact segment-vs-box cull, and the helper does not bucket endpoints" {
+              Expect.stringContains skillBody "segment-vs-box" "the cull is described as an exact segment-vs-box test"
+              Expect.stringContains
+                  skillBody
+                  "both ends outside"
+                  "the skill names the spanning-wall case the endpoint cull dropped"
+
+              // The word survives in a comment explaining why the grid is the wrong tool here; what must
+              // not survive is a CALL back into the point-keyed cull.
+              let src = File.ReadAllText helperSource
+              for call in [ "SpatialGrid.build"; "SpatialGrid.query" ] do
+                  Expect.isFalse
+                      (src.Contains(call, System.StringComparison.Ordinal))
+                      $"polygon culls occluders without calling {call} (#261)"
           }
 
           test "the skill materializes for game/sample-pack in the manifest" {

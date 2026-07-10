@@ -1,6 +1,6 @@
 ---
 name: fs-gg-visibility
-description: Compute 2D visibility in a generated FS.GG.UI product — the angular-sweep visibility polygon (line-of-sight, field-of-view, fog-of-war, 2D lighting) over an adaptable helper you own, reusing Point/SpatialGrid.
+description: Compute 2D visibility in a generated FS.GG.UI product — the angular-sweep visibility polygon (line-of-sight, field-of-view, fog-of-war, 2D lighting) over an adaptable helper you own, reusing Point/Rect.
 ---
 
 # 2D Visibility Capability
@@ -26,8 +26,6 @@ product source:
 - `docs/api-surface/Game.Core/Primitives.fsi` — the sim `Point`/`Rect` (positions, ray directions, hit
   vertices, the bound box), with the `Geometry` helpers in `docs/api-surface/Game.Core/Geometry.fsi`.
   Shipped in `FS.GG.Game.Core` (`game`/`sample-pack` profiles).
-- `docs/api-surface/Game.Core/SpatialGrid.fsi` — the uniform `SpatialGrid` for broad-phase culling of
-  nearby occluders (`build`/`query`/`queryRadius`). Also `FS.GG.Game.Core` (`game`/`sample-pack`).
 - `src/<ProductDir>/Visibility.fs` — **product-owned, adaptable** source: the `Segment`/`Settings`/
   `VisibilityPolygon` shapes and `raySegment`/`isVisible`/`polygon`. Yours to edit or delete.
 
@@ -43,13 +41,18 @@ wall list from your world each frame (tile edges, polygon boundaries, dynamic bl
 
 ## Broad-phase cull
 
-Don't ray-test every wall in the world. `polygon` buckets segment endpoints once with `SpatialGrid` and
-culls to the occluders inside the sight **bound box** (`source ± Settings.Radius`) — reusing the
-framework broad-phase, no hand-rolled bucketing. `Settings.Radius` is a single knob: it is the cull
-region **and** the ray bound, so the two can never disagree.
+Don't ray-test every wall in the world. `polygon` culls to the occluders that **touch** the sight
+**bound box** (`source ± Settings.Radius`) with an exact segment-vs-box test (a Liang–Barsky slab clip),
+then sweeps only those. `Settings.Radius` is the single knob: it is the cull region **and** the ray
+bound, so the two can never disagree.
+
+The cull tests the **whole segment**, not its endpoints. That distinction is the entire point: a wall
+that spans the box with both ends outside it has *no* endpoint inside, so any endpoint-keyed cull drops
+it and the viewpoint sees straight through the wall. Long runs of wall are the common case in a real
+map, not a corner case.
 
 ```fsharp
-open FS.GG.Game.Core       // Point, Rect, Geometry, SpatialGrid
+open FS.GG.Game.Core       // Point, Rect, Geometry
 // Visibility lives in your product's own namespace (Visibility.fs).
 
 let walls =
@@ -57,8 +60,14 @@ let walls =
       // ...more wall segments from your world
     ]
 
-let poly = Visibility.polygon { Radius = 200.0; CellSize = 32.0 } source walls
+let poly = Visibility.polygon { Radius = 200.0 } source walls
 ```
+
+**Why not `SpatialGrid`?** It buckets *points*, so it cannot index a segment — only its endpoints, which
+is exactly the unsound cull above. The exact test is also cheaper here: it is `O(walls)` with no
+allocation, while rebuilding a grid every call is `O(walls)` of dictionary inserts. If you profile a
+wall list large enough to matter, keep a grid **across** frames in your `Model` (it is immutable and pure,
+so it is safe to hold) and bucket by cell coverage — don't rebuild a point grid per call.
 
 ## The angular sweep
 
@@ -102,8 +111,10 @@ stays green and you never touch the durable `Product.fsproj`.
   differ across runtimes and flip two near-collinear corners — breaking replay determinism. Keep the
   cross-product comparator (it is already the default); only fall back to `atan2` for a purely cosmetic,
   non-replayed light.
-- **O(segments) scans without the cull.** Route occluders through `SpatialGrid` (as `polygon` does), not
-  a nested loop over every wall.
+- **Culling occluders by their endpoints.** A point-keyed cull (bucketing `Segment.A`/`Segment.B` into a
+  `SpatialGrid`, or testing `Geometry.containsPoint` on each end) silently drops any wall that spans the
+  sight box with both ends outside it — the viewpoint sees through it. Cull with the exact segment-vs-box
+  test `polygon` uses.
 - **Unbounded rays.** Every ray must terminate on the `source ± Radius` bound; forgetting the bound
   yields an open polygon. `Settings.Radius` drives both the bound and the cull — keep them one value.
 - **Deleting `Visibility.fs` and then editing `Product.fsproj`.** You don't need to — the compile item
@@ -125,9 +136,9 @@ Record visibility evidence (occlusion cases, determinism replays, bound/totality
 
 ## Package Boundary
 
-`Point`/`Rect`/`Geometry` and `SpatialGrid` are in `FS.GG.Game.Core` (referenced only
-on the `game`/`sample-pack` profiles). `Visibility.fs` is **product-owned source with no backing
-package**. Keep rendering in [[fs-gg-scene]] and host wiring in [[fs-gg-skiaviewer]].
+`Point`/`Rect`/`Geometry` are in `FS.GG.Game.Core` (referenced only on the `game`/`sample-pack`
+profiles). `Visibility.fs` is **product-owned source with no backing package**. Keep rendering in
+[[fs-gg-scene]] and host wiring in [[fs-gg-skiaviewer]].
 
 ## Generated Product
 
@@ -146,7 +157,7 @@ community sources. If your product uses Spec Kit, record findings and resolving 
 ## Related
 
 - [[fs-gg-collision]] — the sibling per-frame geometry pass (detection + response) that shares the
-  `Point`/`Rect`/`SpatialGrid` vocabulary.
+  `Point`/`Rect` vocabulary.
 - [[fs-gg-game-core]] — the simulation loop (fixed step, RNG, culling, pathfinding) that drives the world
   visibility is computed over.
 - [[fs-gg-scene]] — owns the shared `Point`/`Rect` visibility operates on; renders the polygon.
