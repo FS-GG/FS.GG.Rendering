@@ -1,3 +1,4 @@
+// See skill: fs-gg-elmish
 namespace FS.GG.UI.Elmish
 
 open FS.GG.UI.Scene

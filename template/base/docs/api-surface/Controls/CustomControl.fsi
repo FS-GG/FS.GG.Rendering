@@ -1,3 +1,4 @@
+// See skill: fs-gg-ui-widgets
 namespace FS.GG.UI.Controls
 
 /// The author-supplied definition of a product-owned wrapper control: an `Id`, author-declared

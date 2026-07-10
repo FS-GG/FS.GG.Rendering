@@ -1,3 +1,4 @@
+// See skill: fs-gg-ui-widgets
 namespace FS.GG.UI.Controls
 
 // `ChartPoint` / `ChartSeries` are declared in Types.fsi (feature 080, surface-neutral move).

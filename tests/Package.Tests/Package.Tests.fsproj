@@ -49,6 +49,7 @@
     <Compile Include="Feature240GameCoreSkillTests.fs" />
     <Compile Include="AudioProfileWiringTests.fs" />
     <Compile Include="AudioSkillSurfaceTests.fs" />
+    <Compile Include="ApiSurfaceMirrorTests.fs" />
     <Compile Include="Feature246CollisionSkillTests.fs" />
     <Compile Include="Feature247VisibilitySkillTests.fs" />
     <Compile Include="Feature249GridsSkillTests.fs" />

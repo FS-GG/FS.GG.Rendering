@@ -6,12 +6,17 @@ module AudioProfileWiringTests
 // .github registry/dependencies.yml, contract fs-gg-audio). The Rendering template is only the FIRST
 // CONSUMER EDGE of that package contract — so this gate asserts the WIRING SHAPE, nothing about audio's
 // own surface or its version-of-truth:
-//   * audio's public API surface is verified in the FS.GG.Audio repo — NOT bundled as api-surface .fsi
-//     here (contrast Feature240, which bundles Game.Core .fsi because the fs-gg-game-core skill cites
-//     those members). The record-only fs-gg-audio skill cites the pure AudioEffect edge in
-//     FS.GG.UI.Canvas (an in-repo file), not the standalone packages.
+//   * audio's public API surface is VERIFIED in the FS.GG.Audio repo, never here. It is nonetheless
+//     BUNDLED here as api-surface .fsi (#247): a package `Product.fsproj` references but ships no
+//     surface for is undiscoverable to the product author who reads `docs/api-surface/`. ADR-0024
+//     originally withheld the bundle because a doc copy can outlive the package it claims; that
+//     objection is now ENFORCED rather than avoided — see M-PROV in ApiSurfaceMirrorTests, which
+//     fails when a mirror's stamped version drifts from the pinned $(FsGgAudioVersion).
+//     (Also stale as written: since #161 the fs-gg-audio skill cites FS.GG.Audio.Core, not the
+//     retired FS.GG.UI.Canvas edge — ADR-0024/#158 removed that file.)
 //   * WHETHER 0.1.0-preview.1 is the coherent pin is the registry consumer-edge's job (.github#238),
-//     not Rendering's — so no version-VALUE assertion lives here.
+//     not Rendering's — so no version-VALUE assertion lives here. M-PROV asserts only that the
+//     bundled copy and the pin AGREE, not that either is the coherent value.
 //
 // What a Rendering consumer edge DOES owe (mirrors the FS.GG.Game.Core precedent, ADR-0022 P5):
 //   G-AXIS   — the pins derive through a DISTINCT $(FsGgAudioVersion) axis (its own component/release

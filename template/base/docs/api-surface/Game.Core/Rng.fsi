@@ -1,3 +1,4 @@
+// See skill: fs-gg-game-core
 namespace FS.GG.Game.Core
 
 /// Public contract type exposed by the FS.GG.Game.Core package.

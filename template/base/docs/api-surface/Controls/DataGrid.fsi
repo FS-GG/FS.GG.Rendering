@@ -1,3 +1,4 @@
+// See skill: fs-gg-ui-widgets
 namespace FS.GG.UI.Controls
 
 /// How a `DataGridColumn` renders and interprets its cells — `TextColumn`,

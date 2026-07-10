@@ -1,3 +1,4 @@
+// See skill: fs-gg-keyboard-input
 namespace FS.GG.UI.KeyboardInput
 
 /// Public contract type exposed by this FS.GG.UI package.

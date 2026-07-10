@@ -1,3 +1,4 @@
+// See skill: fs-gg-layout
 namespace FS.GG.UI.Layout
 
 /// Public contract type exposed by this FS.GG.UI package.

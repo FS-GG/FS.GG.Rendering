@@ -1,3 +1,4 @@
+// See skill: fs-gg-ui-widgets
 namespace FS.GG.UI.Controls
 
 /// Accessibility facts a catalog entry advertises for a control: its `Role`,
