@@ -141,118 +141,175 @@ let private isCapabilitySkillSource (target: string) (condition: string) =
     && not (condition.Contains SPEC_KIT_COND)
     && not (condition.Contains "profile ==")
 
-/// Verify the gating invariant on every `source` entry (the env-free verdict-core fact,
+// ---- the classification contract, shared with Package.Tests by RULE ID (issue #253) -----------
+
+/// One `sources[]` row of template.json, reduced to the fields classification reads.
+type SourceRow =
+    { Source: string
+      Target: string
+      Condition: string
+      Includes: string list
+      CopyOnly: string list }
+
+/// Read the `sources[]` rows out of a JSON array element (template.json's, or a synthetic fixture's).
+let private sourceRows (arrayElement: JsonElement) =
+    let str (s: JsonElement) (prop: string) =
+        match s.TryGetProperty prop with
+        | true, v -> v.GetString() |> Option.ofObj |> Option.defaultValue ""
+        | _ -> ""
+    let strs (s: JsonElement) (prop: string) =
+        match s.TryGetProperty prop with
+        | true, arr -> [ for e in arr.EnumerateArray() -> e.GetString() |> Option.ofObj |> Option.defaultValue "" ]
+        | _ -> []
+    [ for s in arrayElement.EnumerateArray() ->
+        { Source = str s "source"
+          Target = str s "target"
+          Condition = str s "condition"
+          Includes = strs s "include"
+          CopyOnly = strs s "copyOnly" } ]
+
+/// Classify one `source` entry and name the rules it breaks (the env-free verdict-core fact,
 /// Feature 219 R3 / data-model "Template source category"; reworked by Feature 231 / ADR-0014).
 /// Classification order is significant: framework-product-skill FIRST (by `source` prefix), then
-/// the ungated skill-manifest row (named exception), then lifecycle-workspace (by `target` prefix
-/// / generated tree / the named skillist exception), then product. Feature 231 also proves the
-/// two structural ADR-0014 facts: the repo-root `.agents/skills/` source vendors ONLY the
-/// `speckit-*` process skills (no dev surface, F3), and exactly one spec-kit-gated materialize
-/// step (template/lifecycle/ -> .specify/scripts/fs-gg/) replaces the Feature 230 per-skill
-/// `.claude`/`.codex` twins (of which none may remain).
+/// the capability-gated skill (by shape), then the ungated skill-manifest row (named exception),
+/// then lifecycle-workspace (by `target` prefix / generated tree / the named skillist exception),
+/// then product. Feature 231's two structural ADR-0014 facts live in the workspace branch: the
+/// repo-root `.agents/skills/` source vendors ONLY the `speckit-*` process skills (no dev surface,
+/// F3), and the single spec-kit-gated materialize step (template/lifecycle/ ->
+/// .specify/scripts/fs-gg/) replaces the Feature 230 per-skill `.claude`/`.codex` twins.
+///
+/// Issue #253: `Package.Tests`' `gatedSourceAudit` re-derives this classification INDEPENDENTLY, so
+/// the gate proves the gating rather than a self-written line. That is only worth anything if the
+/// two derivations agree, so the returned **rule ids** are a contract shared verbatim with the test
+/// copy, which feeds a synthetic fixture through both via `--classify` and asserts identical
+/// verdicts. The prose each side renders from a rule id stays local to that side.
+let private classifySource (row: SourceRow) : string * string list =
+    let source = row.Source.Replace('\\', '/')
+    let target = row.Target.Replace('\\', '/')
+    let condition = row.Condition
+    let violations = ResizeArray<string>()
+    let require ruleId holds = if not holds then violations.Add ruleId
+    let isCopyOnly = List.contains "**/*" row.CopyOnly
+
+    let isGeneratedTree = source = ".template.config/generated/"
+    let isGatedTarget =
+        target.StartsWith ".specify" || target.StartsWith ".agents" || target.StartsWith ".claude"
+        || target.StartsWith ".codex"
+        || target = "CLAUDE.md" || target = "AGENTS.md"
+
+    let category =
+        // FRAMEWORK PRODUCT-SKILL: lifecycle-independent, profile-gated (FR-001/FR-002), verbatim
+        // (copyOnly — canonical bytes must match the skill-manifest sha256, F5). Emits to
+        // `.agents/skills/` ONLY; a `.claude/skills/` or `.codex/skills/` target is a resurrected
+        // Feature 230 twin.
+        if isFrameworkSkillSource source then
+            require "framework/target-agents-skills-only" (target.StartsWith ".agents/skills/")
+            require "framework/no-spec-kit-clause" (not (condition.Contains SPEC_KIT_COND))
+            require "framework/profile-predicate" (condition.Contains "profile ==")
+            require "framework/copy-only" isCopyOnly
+            "framework"
+        // CAPABILITY-GATED SKILL (issue #248): profile- and lifecycle-independent; the gate is a
+        // capability flag (`feedback`). Same provider-surface + verbatim-body rule as a product
+        // skill. Target, lifecycle-independence and a non-empty gate are the classification itself.
+        elif isCapabilitySkillSource target condition then
+            require "capability/copy-only" isCopyOnly
+            "capability"
+        // SKILL-MANIFEST (Feature 231, named exception): ungated provider data in .agents/skills/.
+        elif isManifestSource source then
+            require "manifest/target-agents-skills" (target.StartsWith ".agents/skills/")
+            require "manifest/ungated" (condition = "")
+            require "manifest/copy-only" isCopyOnly
+            "manifest"
+        // LIFECYCLE WORKSPACE: spec-kit-only (.specify/ incl. the single materialize step,
+        // agent-context, the narrowed speckit-* skills copy, generated tree, and the spec-kit-only
+        // skillist catalog — the named exception).
+        elif isGatedTarget || isGeneratedTree || isSkillistCatalogSource target row.Includes then
+            require "workspace/spec-kit-clause" (condition.Contains SPEC_KIT_COND)
+            if source = ".agents/skills/" then
+                require "workspace/speckit-blanket-target" (target = ".agents/skills/")
+                require "workspace/speckit-blanket-include" (row.Includes = [ "speckit-*/**" ])
+            if source = "template/lifecycle/" then
+                require "workspace/materialize-target" (target = ".specify/scripts/fs-gg/")
+            "workspace"
+        // PRODUCT source (base -> ./, samples -> samples/, ant overlay -> ./)
+        else
+            require "product/no-spec-kit-clause" (not (condition.Contains SPEC_KIT_COND))
+            "product"
+
+    category, violations |> List.ofSeq |> List.sort
+
+/// Every rule id `classifySource` can emit — the vocabulary half of the contract. `--classify`
+/// publishes it, and Package.Tests asserts its own copy matches AND that its fixture exercises all
+/// of it. So a rule added here but exercised by no fixture row cannot ship: declaring it forces the
+/// test's list to change, which forces a fixture row, which GV-AGREE then runs through both copies.
+/// (Adding a rule WITHOUT declaring it here defeats that, and is why it sits next to classifySource.)
+let private ruleIds =
+    [ "framework/target-agents-skills-only"
+      "framework/no-spec-kit-clause"
+      "framework/profile-predicate"
+      "framework/copy-only"
+      "capability/copy-only"
+      "manifest/target-agents-skills"
+      "manifest/ungated"
+      "manifest/copy-only"
+      "workspace/spec-kit-clause"
+      "workspace/speckit-blanket-target"
+      "workspace/speckit-blanket-include"
+      "workspace/materialize-target"
+      "product/no-spec-kit-clause" ]
+
+/// This side's prose for a rule id. Deliberately NOT shared with the test copy — only the ids are.
+let private ruleMessage (row: SourceRow) (ruleId: string) =
+    let s, t = row.Source, row.Target
+    match ruleId with
+    | "framework/target-agents-skills-only" ->
+        sprintf "product-skill source %s -> %s: product skills emit to .agents/skills/ ONLY (the standalone materialize step / orchestrator fan-out own the other roots, ADR-0014)" s t
+    | "framework/no-spec-kit-clause" ->
+        sprintf "framework product-skill source %s -> %s must NOT carry `%s` (it follows the profile, not the lifecycle)" s t SPEC_KIT_COND
+    | "framework/profile-predicate" ->
+        sprintf "framework product-skill source %s -> %s must carry a profile predicate" s t
+    | "framework/copy-only" ->
+        sprintf "framework product-skill source %s -> %s must be copyOnly (verbatim canonical body, ADR-0014/F5)" s t
+    | "capability/copy-only" ->
+        sprintf "capability-gated skill source %s -> %s must be copyOnly (verbatim canonical body, ADR-0014/F5)" s t
+    | "manifest/target-agents-skills" ->
+        sprintf "skill-manifest source %s -> %s must target .agents/skills/ (provider-owned in every lane)" s t
+    | "manifest/ungated" ->
+        sprintf "skill-manifest source %s -> %s must be UNGATED (ships in every lifecycle)" s t
+    | "manifest/copy-only" -> sprintf "skill-manifest source %s -> %s must be copyOnly" s t
+    | "workspace/spec-kit-clause" ->
+        sprintf "lifecycle-workspace source %s -> %s missing `%s` (condition=%A)" s t SPEC_KIT_COND row.Condition
+    | "workspace/speckit-blanket-target" ->
+        sprintf "repo-root .agents/skills/ source must target .agents/skills/ only, found %s (Feature 230 blanket twin resurrected?)" t
+    | "workspace/speckit-blanket-include" ->
+        sprintf ".agents/skills/ source must include ONLY speckit-*/** (no dev-surface vendoring, ADR-0014/F3); found include=%A" row.Includes
+    | "workspace/materialize-target" ->
+        sprintf "materialize source %s must target .specify/scripts/fs-gg/, found %s" s t
+    | "product/no-spec-kit-clause" ->
+        sprintf "ungated product source %s -> %s must NOT carry `%s`" s t SPEC_KIT_COND
+    | unknown -> sprintf "source %s -> %s violates %s" s t unknown
+
+/// Verify the gating invariant on every `source` entry of the real template.json.
 let private verifyGatedSources () =
     use doc = templateDoc ()
-    let sources = doc.RootElement.GetProperty("sources")
-    let mutable frameworkChecked = 0
-    let mutable capabilityChecked = 0
-    let mutable workspaceChecked = 0
-    let mutable productChecked = 0
-    let mutable manifestChecked = 0
-    let mutable materializeChecked = 0
-    let mutable speckitNarrowChecked = 0
-    for s in sources.EnumerateArray() do
-        let source =
-            match s.TryGetProperty "source" with
-            | true, v -> v.GetString()
-            | _ -> ""
-        let target =
-            match s.TryGetProperty "target" with
-            | true, v -> v.GetString()
-            | _ -> ""
-        let condition =
-            match s.TryGetProperty "condition" with
-            | true, v -> v.GetString()
-            | _ -> ""
-        let includes =
-            match s.TryGetProperty "include" with
-            | true, arr -> [ for e in arr.EnumerateArray() -> e.GetString() ]
-            | _ -> []
-        let copyOnly =
-            match s.TryGetProperty "copyOnly" with
-            | true, arr -> [ for e in arr.EnumerateArray() -> e.GetString() ]
-            | _ -> []
-        let t = target.Replace('\\', '/')
-        let isGeneratedTree = source = ".template.config/generated/"
-        let isGatedTarget =
-            t.StartsWith ".specify" || t.StartsWith ".agents" || t.StartsWith ".claude"
-            || t.StartsWith ".codex"
-            || t = "CLAUDE.md" || t = "AGENTS.md"
-        // Feature 231 (ADR-0014): product skills emit to `.agents/skills/` ONLY — a product-skill
-        // source targeting `.claude/skills/` or `.codex/skills/` is a resurrected Feature 230 twin.
-        if isFrameworkSkillSource source then
-            assertTrue
-                (t.StartsWith ".agents/skills")
-                (sprintf "product-skill source %s -> %s: product skills emit to .agents/skills/ ONLY (the standalone materialize step / orchestrator fan-out own the other roots, ADR-0014)" source target)
-            // FRAMEWORK PRODUCT-SKILL: lifecycle-independent, profile-gated (FR-001/FR-002),
-            // verbatim (copyOnly — canonical bytes must match the skill-manifest sha256, F5).
-            assertTrue
-                (not (condition.Contains SPEC_KIT_COND))
-                (sprintf "framework product-skill source %s -> %s must NOT carry `%s` (it follows the profile, not the lifecycle)" source target SPEC_KIT_COND)
-            assertTrue
-                (condition.Contains "profile ==")
-                (sprintf "framework product-skill source %s -> %s must carry a profile predicate" source target)
-            assertTrue
-                (List.contains "**/*" copyOnly)
-                (sprintf "framework product-skill source %s -> %s must be copyOnly (verbatim canonical body, ADR-0014/F5)" source target)
-            frameworkChecked <- frameworkChecked + 1
-        elif isCapabilitySkillSource t condition then
-            // CAPABILITY-GATED SKILL (issue #248): profile- and lifecycle-independent; the gate is a
-            // capability flag (`feedback`). Same provider-surface + verbatim-body rule as a product
-            // skill. Target, lifecycle-independence and a non-empty gate are the classification itself.
-            assertTrue
-                (List.contains "**/*" copyOnly)
-                (sprintf "capability-gated skill source %s -> %s must be copyOnly (verbatim canonical body, ADR-0014/F5)" source target)
-            capabilityChecked <- capabilityChecked + 1
-        elif isManifestSource source then
-            // SKILL-MANIFEST (Feature 231, named exception): ungated provider data in .agents/skills/.
-            assertTrue
-                (t.StartsWith ".agents/skills")
-                (sprintf "skill-manifest source %s -> %s must target .agents/skills/ (provider-owned in every lane)" source target)
-            assertTrue
-                (condition = "")
-                (sprintf "skill-manifest source %s -> %s must be UNGATED (ships in every lifecycle)" source target)
-            assertTrue
-                (List.contains "**/*" copyOnly)
-                (sprintf "skill-manifest source %s -> %s must be copyOnly" source target)
-            manifestChecked <- manifestChecked + 1
-        elif isGatedTarget || isGeneratedTree || isSkillistCatalogSource target includes then
-            // LIFECYCLE WORKSPACE: spec-kit-only (.specify/ incl. the single materialize step,
-            // agent-context, the narrowed speckit-* skills copy, generated tree, and the
-            // spec-kit-only skillist catalog — the named exception).
-            assertTrue
-                (condition.Contains SPEC_KIT_COND)
-                (sprintf "lifecycle-workspace source %s -> %s missing `%s` (condition=%A)" source target SPEC_KIT_COND condition)
-            // Feature 231 (F3): the repo-root `.agents/skills/` blanket must vendor ONLY speckit-*.
-            if source.Replace('\\', '/') = ".agents/skills/" then
-                assertTrue
-                    (t = ".agents/skills/")
-                    (sprintf "repo-root .agents/skills/ source must target .agents/skills/ only, found %s (Feature 230 blanket twin resurrected?)" target)
-                assertTrue
-                    (includes = [ "speckit-*/**" ])
-                    (sprintf ".agents/skills/ source must include ONLY speckit-*/** (no dev-surface vendoring, ADR-0014/F3); found include=%A" includes)
-                speckitNarrowChecked <- speckitNarrowChecked + 1
-            if source.Replace('\\', '/') = "template/lifecycle/" then
-                assertTrue
-                    (t = ".specify/scripts/fs-gg/")
-                    (sprintf "materialize source %s must target .specify/scripts/fs-gg/, found %s" source target)
-                materializeChecked <- materializeChecked + 1
-            workspaceChecked <- workspaceChecked + 1
-        else
-            // PRODUCT source (base -> ./, samples -> samples/, ant overlay -> ./)
-            assertTrue
-                (not (condition.Contains SPEC_KIT_COND))
-                (sprintf "ungated product source %s -> %s must NOT carry `%s`" source target SPEC_KIT_COND)
-            productChecked <- productChecked + 1
+    let classified =
+        sourceRows (doc.RootElement.GetProperty("sources"))
+        |> List.map (fun row -> row, classifySource row)
+    for row, (_, violations) in classified do
+        for ruleId in violations do
+            assertTrue false (ruleMessage row ruleId)
+    let countWhere predicate =
+        classified |> List.filter predicate |> List.length
+    let inCategory name = countWhere (fun (_, (c, _)) -> c = name)
+    let frameworkChecked = inCategory "framework"
+    let capabilityChecked = inCategory "capability"
+    let manifestChecked = inCategory "manifest"
+    let workspaceChecked = inCategory "workspace"
+    let productChecked = inCategory "product"
+    let workspaceSourced source =
+        countWhere (fun (row, (c, _)) -> c = "workspace" && row.Source.Replace('\\', '/') = source)
+    let materializeChecked = workspaceSourced "template/lifecycle/"
+    let speckitNarrowChecked = workspaceSourced ".agents/skills/"
     assertTrue (frameworkChecked = 18) (sprintf "expected exactly 18 framework product-skill sources (.agents/skills/ provider surface incl. fs-gg-project + fs-gg-collision + fs-gg-visibility + fs-gg-grids + fs-gg-line-drawing, no twins), checked %d" frameworkChecked)
     assertTrue (capabilityChecked = 1) (sprintf "expected exactly 1 capability-gated skill source (fs-gg-feedback-report, issue #248), checked %d" capabilityChecked)
     assertTrue (manifestChecked = 1) (sprintf "expected exactly 1 ungated skill-manifest source, checked %d" manifestChecked)
@@ -261,6 +318,21 @@ let private verifyGatedSources () =
     assertTrue (workspaceChecked >= 9) (sprintf "expected >=9 lifecycle-workspace sources, checked %d" workspaceChecked)
     assertTrue (productChecked >= 3) (sprintf "expected >=3 ungated product sources, checked %d" productChecked)
     frameworkChecked, workspaceChecked, productChecked
+
+/// `--classify <fixture.json>`: publish this side's rule vocabulary, then run `classifySource` over
+/// a synthetic row array and print one `category<TAB>rule,rule` line per row, bracketed by markers.
+/// The agreement test (GV-AGREE) runs its own classifier over the same fixture and compares both.
+/// Reads no repo state, so a fixture may describe rows that template.json does not (and must not)
+/// contain.
+let private classifyFixture (fixturePath: string) =
+    use doc = JsonDocument.Parse(File.ReadAllText fixturePath)
+    printfn "FSGG-CLASSIFY-BEGIN"
+    printfn "FSGG-RULE-IDS\t%s" (String.concat "," (List.sort ruleIds))
+    for row in sourceRows doc.RootElement do
+        let category, violations = classifySource row
+        printfn "%s\t%s" category (String.concat "," violations)
+    printfn "FSGG-CLASSIFY-END"
+    0
 
 /// Verify the directive agent-context docs are lifecycle-safe (CC-1, env-free).
 let private verifyBaseDocsNeutral () =
@@ -780,7 +852,14 @@ let private synthVerdicts () =
 let private verdictCoreProvenance =
     "verdict-core (env-free; full live proof gated behind FS_GG_RUN_LIFECYCLE_VALIDATION=1)"
 
-let private main () =
+/// `--classify <fixture.json>`, if present on the command line.
+let private classifyFixtureArg () =
+    match fsi.CommandLineArgs |> Array.tryFindIndex (fun a -> a = "--classify") with
+    | Some i when i + 1 < fsi.CommandLineArgs.Length -> Some fsi.CommandLineArgs[i + 1]
+    | Some _ -> failwith "--classify requires a fixture path"
+    | None -> None
+
+let private runValidation () =
     let values = verifyVerdictCore ()
 
     let emitReport = fsi.CommandLineArgs |> Array.exists (fun a -> a = "--emit-report")
@@ -809,5 +888,12 @@ let private main () =
         writeReport report
         printfn "%s" report
         0
+
+/// `--classify` short-circuits ahead of the verdict core (issue #253): its fixture rows are
+/// synthetic, so the caller wants this side's verdict on THEM, not on the real template.json.
+let private main () =
+    match classifyFixtureArg () with
+    | Some fixturePath -> classifyFixture fixturePath
+    | None -> runValidation ()
 
 exit (main ())
