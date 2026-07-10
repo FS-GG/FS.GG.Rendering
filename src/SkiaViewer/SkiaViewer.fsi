@@ -1,6 +1,7 @@
 namespace FS.GG.UI.SkiaViewer
 
 open System
+open FS.GG.Audio.Core
 open FS.GG.UI.KeyboardInput
 open FS.GG.UI.Scene
 
@@ -126,6 +127,13 @@ module Viewer =
     val runApp: options: ViewerOptions -> host: GeneratedAppHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
     /// Public contract function exposed by this FS.GG.UI package.
     val runAppWithWindowBehavior: options: ViewerOptions -> behavior: ViewerWindowBehaviorRequest -> host: GeneratedAppHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
+    /// Issue #245 — as `runApp`, but every `ViewerEffect.PlayAudio` batch the host emits is handed to
+    /// `audioSink` in dispatch order instead of being discarded. This is the seam from a product's pure
+    /// `update` to real playback: pass `FS.GG.Audio.Host.Audio.play backend` and a scaffolded game's
+    /// sound requests reach the device with no edit to the durable `Program.fs`. Additive —
+    /// `runApp`/`runAppWithWindowBehavior` stay intact and keep discarding audio (FR-006), and the viewer
+    /// still owns no audio device: the backend's lifetime belongs to the caller.
+    val runAppWithAudio: options: ViewerOptions -> audioSink: (AudioEffect list -> unit) -> host: GeneratedAppHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
     /// Feature 085 — pointer-aware, size-aware durable launch. Routes native pointer events
     /// and window resizes to the host and renders the size-aware `View`; additive to
     /// `runApp`/`runAppWithWindowBehavior`, which stay intact (FR-004/FR-006/FR-009).

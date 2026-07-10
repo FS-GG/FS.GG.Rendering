@@ -1,6 +1,7 @@
 namespace FS.GG.UI.SkiaViewer
 
 open System
+open FS.GG.Audio.Core
 open FS.GG.UI.KeyboardInput
 open FS.GG.UI.Scene
 
@@ -701,6 +702,11 @@ type ViewerEffect =
     | ReadPixels
     | WriteVisualEvidence of path: string * artifact: ViewerVisualEvidenceArtifact
     | WriteRunEvidence of path: string * evidence: ViewerRunEvidence
+    /// Issue #245 — a batch of sound requests a product's `update` emitted, in dispatch order.
+    /// Pure data: no device handle, no closure. Only `runAppWithAudio` realizes it, by handing the
+    /// batch to the caller-supplied sink; `runApp` and the evidence paths discard it (a viewer
+    /// owns no audio device). Effects within one batch are played in list order.
+    | PlayAudio of effects: AudioEffect list
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ViewerRunEffect =
