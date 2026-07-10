@@ -184,3 +184,34 @@ release artifacts the first amendment described: the `<FsGgUiVersion>` bump, the
 `CP0002` baseline suppression (now against the published `0.5.0`, deleted once `0.6.0` ships), the
 registry flip, and the second-amendment "landed" note. The `#266` NaN-totality guarantee already lives
 in `FS.GG.Game.Core.FixedStep.drain` regardless.
+
+## Amendment — 2026-07-11: retirement landed with the `0.6.0` cut (#319 / #355)
+
+Decision 5 is executed. FS.GG.Rendering#371 removes `FS.GG.UI.Canvas.Loop`/`StepState` and adds the
+release artifacts the amendments named, on the `0.6.0` framework major (#355, the release envelope
+that carries this break):
+
+- `<FsGgUiVersion>` `0.5.0` → `0.6.0` in `template/base/Directory.Packages.props` — the
+  framework-pin literal the release packs the whole slnx at. `src/Canvas/Canvas.Lib.fsproj`
+  `<Version>` (`0.4.0-preview.1`) stays vestigial and untouched.
+- `.template.package/FS.GG.UI.Template.fsproj` `<Version>` `0.5.0` → `0.6.0`. This is **not** the
+  vestigial per-project version — it is the template *package* version, and the coherence guard's
+  `pin-leads-package` rule requires the framework pin be `<=` it (a framework major cannot lead the
+  template release). #355's "bump this single literal" scope therefore missed a required second edit;
+  a framework-major pin bump necessarily drags the template package version with it.
+- The narrow transient baseline suppression is `src/Canvas/CompatibilitySuppressions.xml`: two
+  `IsBaselineSuppression` entries against the published `0.5.0` baseline. The generated diagnostic is
+  **`CP0001`** (the removed *types* `Loop` and `StepState\`1`), which subsumes the member-level
+  changes — the amendments' "`CP0002`" was the member-level id, but ApiCompat reports the type
+  removal. It is **deleted** once `0.6.0` is on the org feed: the baseline then moves to `0.6.0`
+  (no `Loop`/`StepState`) and nothing remains to suppress.
+
+The release publish (whole slnx packed at `0.6.0` → org feed + nuget.org) and the cross-repo registry
+flip (`FS-GG/.github`: `registry/dependencies.yml` + `docs/registry/compatibility.md` + a dated
+`registry/CHANGELOG.md` entry) complete the envelope in #355. #355's body prose ("*not* papered over
+with `CompatibilitySuppressions.xml`") is reconciled here: the break is a genuine major — recorded in
+this ADR and discharged by a real `0.6.0` publish — and the suppression is **transient**
+(`IsBaselineSuppression`, deleted at publish), not a permanent paper-over. The required ApiCompat gate
+baselines off the published feed, so without this transient the removal PR could not merge at all
+(ADR-0103: the gate is enforced, `enforce_admins` on); the suppression is what makes decision 5
+executable, not a softening of it.
