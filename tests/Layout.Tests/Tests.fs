@@ -173,6 +173,26 @@ let contractTests =
             | other -> failtestf "dock returns a group of two positioned children, got %A" other
         }
 
+        test "dock splits the remaining extent evenly across unsized edge children (#369)" {
+            // Two unsized Top children over a 480-tall dock: each takes an even share (240),
+            // rather than the first swallowing all 480 and starving the second.
+            let top position =
+                { Content = Scene.rectangle (0.0, 0.0, 10.0, 10.0) Colors.white
+                  Sizing = Defaults.sizing
+                  Dock = Some position }
+
+            match (Layout.dock (Defaults.dockConfig 640.0 480.0) [ top Top; top Top ]).Nodes with
+            | [ SceneNode.Group [ firstPlaced; secondPlaced ] ] ->
+                let offsetY (node: Scene) =
+                    match node.Nodes with
+                    | [ SceneNode.Translate((_, y), _) ] -> y
+                    | other -> failtestf "docked child is wrapped in a Translate, got %A" other
+
+                Expect.floatClose Accuracy.medium (offsetY firstPlaced) 0.0 "the first unsized top child sits at the top of the dock"
+                Expect.floatClose Accuracy.medium (offsetY secondPlaced) 240.0 "the second unsized top child starts at the even-share boundary, not starved off-canvas"
+            | other -> failtestf "dock returns a group of two positioned children, got %A" other
+        }
+
         test "zero and negative stack bounds clamp measured child sizes to non-negative values" {
             let zero = Layout.measureHorizontal (Defaults.stackConfig 0.0 0.0) [ child "zero" ]
             let negative = Layout.measureVertical (Defaults.stackConfig -20.0 -10.0) [ child "negative" ]

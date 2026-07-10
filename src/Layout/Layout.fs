@@ -1155,46 +1155,72 @@ module Layout =
     // (sized by the child's `DesiredHeight`/`DesiredWidth`, defaulting to an even share of the
     // remaining extent), `Spacing` insets the next slice, and `Fill`/`None` children take the
     // rectangle that survives after every explicit edge is consumed.
+    //
+    // "Even share" means each unsized edge child takes the current remaining extent on its axis
+    // divided by the count of still-unplaced unsized children on that axis (this child included):
+    // Top/Bottom divide the remaining height, Left/Right the remaining width. So `n` unsized
+    // siblings each get roughly `1/n` of the space rather than the first one swallowing everything
+    // and starving the rest. With no `Spacing` the shares are exactly equal; a non-zero `Spacing`
+    // is inset from `remaining` before the next child divides, so earlier siblings run marginally
+    // larger.
     let dock (config: DockConfig) (children: LayoutChild list) =
-        let stepEdge (remaining: LayoutBounds) (desired: float option) (fraction: float) =
-            match desired with
-            | Some value -> max 0.0 (min value fraction)
-            | None -> fraction
+        let isVertical dock = dock = Some Top || dock = Some Bottom
+        let isHorizontal dock = dock = Some Left || dock = Some Right
 
-        let struct (placements, _) =
+        let unsizedVertical =
+            children
+            |> List.filter (fun child -> isVertical child.Dock && Option.isNone child.Sizing.DesiredHeight)
+            |> List.length
+
+        let unsizedHorizontal =
+            children
+            |> List.filter (fun child -> isHorizontal child.Dock && Option.isNone child.Sizing.DesiredWidth)
+            |> List.length
+
+        // Sized -> min(Desired*, remaining); unsized -> an even share of the extent left to it.
+        let edgeExtent (desired: float option) (extent: float) (unsizedRemaining: int) =
+            match desired with
+            | Some value -> max 0.0 (min value extent)
+            | None -> if unsizedRemaining > 0 then max 0.0 (extent / float unsizedRemaining) else max 0.0 extent
+
+        let struct (placements, _, _, _) =
             children
             |> List.fold
-                (fun (struct (acc, remaining: LayoutBounds)) (child: LayoutChild) ->
+                (fun (struct (acc, remaining: LayoutBounds, verticalLeft: int, horizontalLeft: int)) (child: LayoutChild) ->
                     let spacing = config.Spacing
 
                     match child.Dock with
                     | Some Top ->
-                        let h = stepEdge remaining child.Sizing.DesiredHeight remaining.Height
+                        let h = edgeExtent child.Sizing.DesiredHeight remaining.Height verticalLeft
+                        let verticalLeft = if Option.isNone child.Sizing.DesiredHeight then verticalLeft - 1 else verticalLeft
                         let placed = { remaining with Height = h }
                         let next = { remaining with Y = remaining.Y + h + spacing; Height = max 0.0 (remaining.Height - h - spacing) }
-                        struct ((placed, child) :: acc, next)
+                        struct ((placed, child) :: acc, next, verticalLeft, horizontalLeft)
                     | Some Bottom ->
-                        let h = stepEdge remaining child.Sizing.DesiredHeight remaining.Height
+                        let h = edgeExtent child.Sizing.DesiredHeight remaining.Height verticalLeft
+                        let verticalLeft = if Option.isNone child.Sizing.DesiredHeight then verticalLeft - 1 else verticalLeft
                         let placed = { remaining with Y = remaining.Y + max 0.0 (remaining.Height - h); Height = h }
                         let next = { remaining with Height = max 0.0 (remaining.Height - h - spacing) }
-                        struct ((placed, child) :: acc, next)
+                        struct ((placed, child) :: acc, next, verticalLeft, horizontalLeft)
                     | Some Left ->
-                        let w = stepEdge remaining child.Sizing.DesiredWidth remaining.Width
+                        let w = edgeExtent child.Sizing.DesiredWidth remaining.Width horizontalLeft
+                        let horizontalLeft = if Option.isNone child.Sizing.DesiredWidth then horizontalLeft - 1 else horizontalLeft
                         let placed = { remaining with Width = w }
                         let next = { remaining with X = remaining.X + w + spacing; Width = max 0.0 (remaining.Width - w - spacing) }
-                        struct ((placed, child) :: acc, next)
+                        struct ((placed, child) :: acc, next, verticalLeft, horizontalLeft)
                     | Some Right ->
-                        let w = stepEdge remaining child.Sizing.DesiredWidth remaining.Width
+                        let w = edgeExtent child.Sizing.DesiredWidth remaining.Width horizontalLeft
+                        let horizontalLeft = if Option.isNone child.Sizing.DesiredWidth then horizontalLeft - 1 else horizontalLeft
                         let placed = { remaining with X = remaining.X + max 0.0 (remaining.Width - w); Width = w }
                         let next = { remaining with Width = max 0.0 (remaining.Width - w - spacing) }
-                        struct ((placed, child) :: acc, next)
+                        struct ((placed, child) :: acc, next, verticalLeft, horizontalLeft)
                     | Some Fill
                     | None ->
                         // Fill children share the current remaining rect (undivided — the last writer
                         // wins z-order, matching `content`'s prior overlay behaviour but positioned).
-                        struct ((remaining, child) :: acc, remaining))
+                        struct ((remaining, child) :: acc, remaining, verticalLeft, horizontalLeft))
                 (let inner = innerBounds config.Bounds config.Padding
-                 struct ([], { LayoutBounds.X = inner.X; Y = inner.Y; Width = inner.Width; Height = inner.Height }))
+                 struct ([], { LayoutBounds.X = inner.X; Y = inner.Y; Width = inner.Width; Height = inner.Height }, unsizedVertical, unsizedHorizontal))
 
         placements
         |> List.rev
