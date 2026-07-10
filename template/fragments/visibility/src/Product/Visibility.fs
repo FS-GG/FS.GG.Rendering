@@ -12,10 +12,10 @@ open FS.GG.Game.Core // ADR-0022 P5: Point/Rect now live in the FS.GG.Game.Core 
 /// field of view, swap the polygon output for a per-cell mask, or delete this whole file (the build
 /// stays green: its compile item is `Exists`-guarded).
 ///
-/// Everything here is pure, total, and deterministic: endpoints are ordered by a cross-product angular
-/// comparator (NO `atan2`) with an integer-index tiebreak, and nearest-hit uses a sqrt-free parametric
-/// distance, so identical inputs yield byte-identical output across runs and platforms — safe to call
-/// from a replayed `update`/`view`.
+/// Everything here is pure, total, and deterministic: endpoints are ordered by a perp-dot (the 2-D
+/// cross, `ax*by - ay*bx`) angular comparator (NO `atan2`) with an integer-index tiebreak, and
+/// nearest-hit uses a sqrt-free parametric distance, so identical inputs yield byte-identical output
+/// across runs and platforms — safe to call from a replayed `update`/`view`.
 ///
 /// Algorithm reference: https://www.redblobgames.com/articles/visibility/
 module Visibility =
@@ -145,8 +145,8 @@ module Visibility =
                 | _ -> Some(p, t))
         |> Option.map fst
 
-    // Total rotational order of points around `source`, computed from cross products only (no `atan2`):
-    // half-plane first, then cross-product sign, then squared distance, then the supplied integer index.
+    // Total rotational order of points around `source`, computed from perp-dot terms only (no `atan2`):
+    // half-plane first, then perp-dot sign, then squared distance, then the supplied integer index.
     let private angleCompare (source: Point) (a: Point * int) (b: Point * int) : int =
         let pa, ia = a
         let pb, ib = b

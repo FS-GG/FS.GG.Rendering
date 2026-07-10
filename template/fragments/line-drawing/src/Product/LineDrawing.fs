@@ -65,9 +65,9 @@ module LineDrawing =
     /// `a = b` returns `[a]`. This is the variant `lineOfSight` walks. Pure, total, deterministic;
     /// integer-only (exact diagonal crossings resolve by a fixed step-x-first tiebreak).
     let supercover (a: Cell) (b: Cell) : Cell list =
-        // Deltas and the tiebreak cross-product are `int64` for the same full-`int`-domain totality as
-        // `line` (wrap-free subtraction, `abs` that can't throw, and `(1 + 2*ix)*ny` that can't overflow
-        // for any sane tile range). Still pure integer arithmetic; x/y only step by ±1.
+        // Deltas and the tiebreak perp-dot (the 2-D cross) are `int64` for the same full-`int`-domain
+        // totality as `line` (wrap-free subtraction, `abs` that can't throw, and `(1 + 2*ix)*ny` that
+        // can't overflow for any sane tile range). Still pure integer arithmetic; x/y only step by ±1.
         let dx = int64 b.Col - int64 a.Col
         let dy = int64 b.Row - int64 a.Row
         let nx = abs dx
