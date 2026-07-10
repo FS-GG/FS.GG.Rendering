@@ -176,6 +176,7 @@ FS.GG.UI.SkiaViewer.Fonts.resolveFont(FS.GG.UI.Scene.FontSpec) : SkiaSharp.SKFon
 FS.GG.UI.SkiaViewer.Fonts.resolveText(FS.GG.UI.Scene.FontSpec, System.String) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.Fonts+ResolvedChar>
 FS.GG.UI.SkiaViewer.Fonts.shapeText(System.String, FS.GG.UI.Scene.FontSpec) : FS.GG.UI.Scene.ShapedTextResult
 FS.GG.UI.SkiaViewer.Fonts.shapingProviderStatus() : FS.GG.UI.SkiaViewer.Fonts+TextShapingProviderStatus
+FS.GG.UI.SkiaViewer.GeneratedAppHost.audioRequests(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerEffect>) : Microsoft.FSharp.Collections.FSharpList<FS.GG.Audio.Core.AudioEffect>
 FS.GG.UI.SkiaViewer.GeneratedAppHost.dispatchKey<model, msg>(GeneratedAppHost<model, msg>, FS.GG.UI.KeyboardInput.ViewerKeyEvent, model) : Tuple<model, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerEffect>>
 FS.GG.UI.SkiaViewer.GeneratedAppHost.smoke<model, msg>(GeneratedAppHost<model, msg>, FS.GG.UI.SkiaViewer.ViewerRunRequest) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerRunEvidence, FS.GG.UI.SkiaViewer.ViewerRunFailure>
 FS.GG.UI.SkiaViewer.GeneratedAppHost`2.Diagnostics : FS.GG.UI.SkiaViewer.ViewerDiagnosticsOptions [get]
@@ -592,7 +593,9 @@ FS.GG.UI.SkiaViewer.Viewer.responsivenessVisibleResponseToken(FS.GG.UI.SkiaViewe
 FS.GG.UI.SkiaViewer.Viewer.run(FS.GG.UI.SkiaViewer.ViewerOptions, FS.GG.UI.Scene.SceneNode) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerLaunchOutcome, FS.GG.UI.SkiaViewer.ViewerRunFailure>
 FS.GG.UI.SkiaViewer.Viewer.runApp<model, msg>(FS.GG.UI.SkiaViewer.ViewerOptions, GeneratedAppHost<model, msg>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerLaunchOutcome, FS.GG.UI.SkiaViewer.ViewerRunFailure>
 FS.GG.UI.SkiaViewer.Viewer.runAppEvidence<model, msg>(FS.GG.UI.SkiaViewer.ViewerRunRequest, FS.GG.UI.SkiaViewer.ViewerOptions, GeneratedAppHost<model, msg>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerLaunchOutcome, FS.GG.UI.SkiaViewer.ViewerRunFailure>
+FS.GG.UI.SkiaViewer.Viewer.runAppWithAudio<model, msg>(FS.GG.UI.SkiaViewer.ViewerOptions, Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Collections.FSharpList<FS.GG.Audio.Core.AudioEffect>, Microsoft.FSharp.Core.Unit>, GeneratedAppHost<model, msg>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerLaunchOutcome, FS.GG.UI.SkiaViewer.ViewerRunFailure>
 FS.GG.UI.SkiaViewer.Viewer.runAppWithWindowBehavior<model, msg>(FS.GG.UI.SkiaViewer.ViewerOptions, FS.GG.UI.SkiaViewer.ViewerWindowBehaviorRequest, GeneratedAppHost<model, msg>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerLaunchOutcome, FS.GG.UI.SkiaViewer.ViewerRunFailure>
+FS.GG.UI.SkiaViewer.Viewer.runAppWithWindowBehaviorAndAudio<model, msg>(FS.GG.UI.SkiaViewer.ViewerOptions, FS.GG.UI.SkiaViewer.ViewerWindowBehaviorRequest, Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Collections.FSharpList<FS.GG.Audio.Core.AudioEffect>, Microsoft.FSharp.Core.Unit>, GeneratedAppHost<model, msg>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerLaunchOutcome, FS.GG.UI.SkiaViewer.ViewerRunFailure>
 FS.GG.UI.SkiaViewer.Viewer.runBounded(FS.GG.UI.SkiaViewer.ViewerRunRequest, FS.GG.UI.SkiaViewer.ViewerOptions, FS.GG.UI.Scene.SceneNode) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerRunEvidence, FS.GG.UI.SkiaViewer.ViewerRunFailure>
 FS.GG.UI.SkiaViewer.Viewer.runForFrames(System.Int32, FS.GG.UI.SkiaViewer.ViewerOptions, FS.GG.UI.Scene.SceneNode) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerRunEvidence, FS.GG.UI.SkiaViewer.ViewerRunFailure>
 FS.GG.UI.SkiaViewer.Viewer.runInteractiveViewer<model, msg>(FS.GG.UI.SkiaViewer.ViewerOptions, InteractiveViewerHost<model, msg>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerLaunchOutcome, FS.GG.UI.SkiaViewer.ViewerRunFailure>
@@ -684,6 +687,7 @@ FS.GG.UI.SkiaViewer.ViewerEffect+Tags.CloseWindow : System.Int32
 FS.GG.UI.SkiaViewer.ViewerEffect+Tags.DispatchInput : System.Int32
 FS.GG.UI.SkiaViewer.ViewerEffect+Tags.EmitDiagnostic : System.Int32
 FS.GG.UI.SkiaViewer.ViewerEffect+Tags.OpenWindow : System.Int32
+FS.GG.UI.SkiaViewer.ViewerEffect+Tags.PlayAudio : System.Int32
 FS.GG.UI.SkiaViewer.ViewerEffect+Tags.QueryNativeWindowState : System.Int32
 FS.GG.UI.SkiaViewer.ViewerEffect+Tags.ReadPixels : System.Int32
 FS.GG.UI.SkiaViewer.ViewerEffect+Tags.RenderScene : System.Int32
