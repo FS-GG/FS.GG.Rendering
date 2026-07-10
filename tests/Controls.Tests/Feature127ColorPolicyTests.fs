@@ -309,16 +309,16 @@ let feature127ColorPolicyTests =
           test "the emitted catalog is derived from StyleResolver, not restated (issue #174)" {
               let theme = FS.GG.UI.Themes.Default.Theme.light
 
-              // `button/danger/invalid` is the sharpest witness: the `danger` variant fills with
-              // `theme.Danger` while the `Invalid` validation state paints the LABEL `theme.Danger`
-              // too, so the resolver emits a danger-on-danger label — invisible, ratio 1.00.
-              //
-              // This used to be `icon-button/neutral/hover` (accent-on-accent), a pathology issue #181
-              // removed: `Hover` now modulates the incoming fill instead of overwriting it with the
-              // accent, so the icon-button's transparent fill stays transparent and its accent label
-              // is read against the canvas. The witness moved; what it witnesses did not.
+              // `button/danger/invalid` is the witness: the `danger` variant fills with `theme.Danger`
+              // and carries an on-fill label, while the `Invalid` validation state adds a red BORDER.
+              // Until issue #359, `Invalid` also repainted the LABEL `theme.Danger`, so the resolver
+              // emitted a danger-on-danger label — invisible, ratio 1.00. It now tints only the stroke
+              // (symmetric with `Valid`/`Pending`), so the label stays the variant's readable on-fill
+              // foreground and the red border carries the invalid signal.
               let style = StyleResolver.resolve theme "button" "" [ Variant StyleVariant.Danger ] (VisualState.Validation(Invalid ""))
-              Expect.equal style.Foreground style.Fill "the resolver really does emit danger-on-danger here"
+              Expect.notEqual style.Foreground style.Fill "issue #359: the invalid label is no longer painted onto its own fill"
+              Expect.equal style.Foreground theme.Background "the danger variant's on-fill label survives validation"
+              Expect.equal style.Stroke theme.Danger "the invalid signal moved to the border"
 
               let rows = StyleCatalog.pairingsOfStyle theme.Background "button/danger/invalid" false style
               let textRow = rows |> List.find (fun p -> p.Name.EndsWith "#text")
@@ -331,8 +331,8 @@ let feature127ColorPolicyTests =
 
               Expect.equal
                   (ColorPolicy.evaluatePairing ColorPolicy.wcag textRow).Outcome
-                  ColorPolicy.Failed
-                  "an invisible label is a policy failure"
+                  ColorPolicy.Passed
+                  "issue #359: a readable invalid label is no longer a policy failure"
 
               let key (p: ColorPolicy.Pairing) = p.Foreground, p.Background, p.Role
 
