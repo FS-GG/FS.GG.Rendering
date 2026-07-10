@@ -215,7 +215,7 @@ let behaviorTests =
 
             let source = System.IO.File.ReadAllText(System.IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "Product", "Program.fs"))
             let defaultBranch = source.Substring(source.LastIndexOf("| None ->", StringComparison.Ordinal))
-            Expect.stringContains defaultBranch "Viewer.runApp viewerOptions generatedHost" "game-family normal launch uses the keyboard-only persistent host"
+            Expect.stringContains defaultBranch "Viewer.runAppWithAudio viewerOptions audioSink generatedHost" "game-family normal launch uses the keyboard-only persistent host (with the #245 audio sink)"
             Expect.isFalse (defaultBranch.Contains("--launch-evidence")) "launch evidence flag stays out of normal launch branch"
             Expect.isFalse (defaultBranch.Contains("--bounded-smoke")) "bounded smoke flag stays out of normal launch branch"
             Expect.isFalse (defaultBranch.Contains("self-closed-for-evidence=true")) "normal launch does not report evidence self-close"
@@ -532,7 +532,11 @@ let behaviorTests =
             //#if (profile == "app")
             Expect.stringContains defaultBranch "ControlsElmish.runInteractiveApp viewerOptions interactiveHost" "controls-family normal launch uses the pointer-aware persistent host"
             //#else
-            Expect.stringContains defaultBranch "Viewer.runApp viewerOptions generatedHost" "game-family normal launch uses the keyboard-only persistent host"
+            //#if (profile == "game")
+            Expect.stringContains defaultBranch "Viewer.runAppWithAudio viewerOptions audioSink generatedHost" "game-family normal launch uses the keyboard-only persistent host (with the #245 audio sink)"
+            //#else
+            Expect.stringContains defaultBranch "Viewer.runApp viewerOptions generatedHost" "non-app non-game normal launch uses the keyboard-only persistent host"
+            //#endif
             //#endif
             Expect.isFalse (defaultBranch.Contains("--launch-evidence")) "launch evidence flag stays out of normal launch branch"
             Expect.isFalse (defaultBranch.Contains("--bounded-smoke")) "bounded smoke flag stays out of normal launch branch"
