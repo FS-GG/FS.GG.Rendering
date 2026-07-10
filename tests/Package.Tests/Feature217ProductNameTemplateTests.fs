@@ -19,7 +19,6 @@ module Feature217ProductNameTemplateTests
 // in-test) fails for the right reason.
 
 open System
-open System.Diagnostics
 open System.IO
 open System.Text.Json
 open Expecto
@@ -35,26 +34,21 @@ let private validationReportPath =
 
 let private templateJsonPath = repositoryPath ".template.config/template.json"
 
-// ---- self-provisioning (mirrors Feature204) ---------------------------------------------------
+// ---- self-provisioning (SelfProvision.ensureFresh; feature 255) --------------------------------
 
-let private selfProvisionReport () =
-    if not (File.Exists validationReportPath) then
-        let psi = ProcessStartInfo("dotnet")
-        psi.WorkingDirectory <- repositoryRoot
-        psi.UseShellExecute <- false
-        psi.RedirectStandardOutput <- true
-        psi.RedirectStandardError <- true
-        [ "fsi"; "scripts/validate-productname-template.fsx"; "--emit-report" ]
-        |> List.iter psi.ArgumentList.Add
-        match Process.Start psi with
-        | null -> ()
-        | started ->
-            use proc = started
-            proc.StandardOutput.ReadToEnd() |> ignore
-            proc.StandardError.ReadToEnd() |> ignore
-            proc.WaitForExit()
+let private validatorScriptRelPath = "scripts/validate-productname-template.fsx"
 
-let private reportProvisioned = selfProvisionReport ()
+// The env-free verdict core (verifyVerdictCore) reads exactly one data file — template.json, the
+// wiring it audits — plus the validator itself, whose contract rules decide the verdict. `synthResult`
+// and `renderReport` are pure, and the report is written blind (never read back).
+let private verdictCoreInputs =
+    [ templateJsonPath; repositoryPath validatorScriptRelPath ]
+
+let private reportProvisioned =
+    SelfProvision.ensureFresh
+        validationReportPath
+        verdictCoreInputs
+        [ "fsi"; validatorScriptRelPath; "--emit-report" ]
 
 let private readValidationReport () =
     Expect.isTrue

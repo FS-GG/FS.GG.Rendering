@@ -17,9 +17,10 @@ module Feature204LifecycleTemplateTests
 // gate fails loudly. Coverage (TP-7) is checked against the template's own `lifecycle` choice set, so
 // a new value left unvalidated fails the gate.
 //
-// Provisioning triggers when the report is absent OR older than either input it derives from
-// (template.json, the validator script), and deletes the stale report before regenerating — so a local
-// readiness/ surviving across runs and branches can never answer for a template.json it never saw.
+// Provisioning goes through SelfProvision.ensureFresh (feature 255): it triggers when the report is
+// absent OR older than any declared verdict-core input, and deletes the stale report before
+// regenerating — so a local readiness/ surviving across runs and branches can never answer for a
+// template.json it never saw.
 
 open System
 open System.Diagnostics
@@ -40,7 +41,7 @@ let private templateJsonPath = repositoryPath ".template.config/template.json"
 
 let private profiles = [ "app"; "headless-scene"; "governed"; "sample-pack" ]
 
-// ---- self-provisioning (mirrors Feature128) ---------------------------------------------------
+// ---- self-provisioning (SelfProvision.ensureFresh; feature 255) --------------------------------
 
 let private validatorScriptRelPath = "scripts/validate-lifecycle-template.fsx"
 
@@ -48,48 +49,19 @@ let private validatorScriptRelPath = "scripts/validate-lifecycle-template.fsx"
 // itself (the classification rules), and template/base/README.md (verifyBaseDocsNeutral). A report is
 // only as trustworthy as its OLDEST input — miss one and a stale report answers for a file it never saw,
 // which is the whole failure this guards. Keep in step with verifyVerdictCore.
+//
+// Feature219EmitFrameworkSkillsTests derives from this same report and declares the same inputs;
+// ensureFresh regenerates it once per process whichever module initializes first.
 let private verdictCoreInputs =
     [ templateJsonPath
       repositoryPath validatorScriptRelPath
       repositoryPath "template/base/README.md" ]
 
-// The report is a DERIVED artifact of those inputs, and it lives under the gitignored readiness/, so it
-// outlives runs and branch switches. Regenerating only when ABSENT lets a report written against a
-// different template.json satisfy the GV gates below.
-let private reportIsStale () =
-    not (File.Exists validationReportPath)
-    || (let writtenUtc = File.GetLastWriteTimeUtc validationReportPath
-
-        // A vanished input counts as stale, never as "no evidence of change": regenerating then lets the
-        // verdict core throw on it loudly, instead of silently dropping it from the freshness check.
+let private reportProvisioned =
+    SelfProvision.ensureFresh
+        validationReportPath
         verdictCoreInputs
-        |> List.exists (fun input ->
-            not (File.Exists input) || File.GetLastWriteTimeUtc input > writtenUtc))
-
-let private selfProvisionReport () =
-    if reportIsStale () then
-        // Drop the stale report FIRST. The verdict core throws (writing nothing) precisely when the
-        // gating is wrong; leaving the old file in place would let it answer for the current
-        // template.json, which is the failure this guards. Absent beats stale — GV-8 fails loudly.
-        if File.Exists validationReportPath then
-            File.Delete validationReportPath
-
-        let psi = ProcessStartInfo("dotnet")
-        psi.WorkingDirectory <- repositoryRoot
-        psi.UseShellExecute <- false
-        psi.RedirectStandardOutput <- true
-        psi.RedirectStandardError <- true
         [ "fsi"; validatorScriptRelPath; "--emit-report" ]
-        |> List.iter psi.ArgumentList.Add
-        match Process.Start psi with
-        | null -> ()
-        | started ->
-            use proc = started
-            proc.StandardOutput.ReadToEnd() |> ignore
-            proc.StandardError.ReadToEnd() |> ignore
-            proc.WaitForExit()
-
-let private reportProvisioned = selfProvisionReport ()
 
 let private readValidationReport () =
     Expect.isTrue

@@ -14,10 +14,10 @@ module Feature219EmitFrameworkSkillsTests
 // profile predicate names P), and the live-only counts are asserted against the gitignored validation
 // report the env-gated regenerator (scripts/validate-lifecycle-template.fsx) writes — the same report
 // Feature204 asserts. The report is self-provisioned from the validator's env-free `--emit-report`
-// verdict-core path if absent, so a fresh checkout is green-by-construction only when the gating holds.
+// verdict-core path when absent OR stale (SelfProvision.ensureFresh, feature 255), so a fresh checkout
+// is green-by-construction only when the gating holds.
 
 open System
-open System.Diagnostics
 open System.IO
 open System.Text.Json
 open Expecto
@@ -72,26 +72,25 @@ let private expectedFrameworkSkills =
 // is not in that loop — so the report-backed assertions iterate that covered set, not every matrix key.
 let private profiles = [ "app"; "headless-scene"; "governed"; "sample-pack" ]
 
-// ---- self-provisioning (mirrors Feature204) ---------------------------------------------------
+// ---- self-provisioning (SelfProvision.ensureFresh; feature 255) --------------------------------
 
-let private selfProvisionReport () =
-    if not (File.Exists validationReportPath) then
-        let psi = ProcessStartInfo("dotnet")
-        psi.WorkingDirectory <- repositoryRoot
-        psi.UseShellExecute <- false
-        psi.RedirectStandardOutput <- true
-        psi.RedirectStandardError <- true
-        [ "fsi"; "scripts/validate-lifecycle-template.fsx"; "--emit-report" ]
-        |> List.iter psi.ArgumentList.Add
-        match Process.Start psi with
-        | null -> ()
-        | started ->
-            use proc = started
-            proc.StandardOutput.ReadToEnd() |> ignore
-            proc.StandardError.ReadToEnd() |> ignore
-            proc.WaitForExit()
+let private validatorScriptRelPath = "scripts/validate-lifecycle-template.fsx"
 
-let private reportProvisioned = selfProvisionReport ()
+// This gate derives from the SAME report as Feature204LifecycleTemplateTests, written by the same
+// validator, so it declares the same verdict-core inputs: template.json (the emission table it
+// re-derives), the validator itself, and template/base/README.md (verifyBaseDocsNeutral).
+// ensureFresh is memoised per report path, so whichever of the two modules initializes first
+// regenerates it, once.
+let private verdictCoreInputs =
+    [ templateJsonPath
+      repositoryPath validatorScriptRelPath
+      repositoryPath "template/base/README.md" ]
+
+let private reportProvisioned =
+    SelfProvision.ensureFresh
+        validationReportPath
+        verdictCoreInputs
+        [ "fsi"; validatorScriptRelPath; "--emit-report" ]
 
 let private readValidationReport () =
     Expect.isTrue

@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <Compile Include="RepositoryRoot.fs" />
+    <Compile Include="SelfProvision.fs" />
   </ItemGroup>
 
 </Project>

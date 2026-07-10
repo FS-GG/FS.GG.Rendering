@@ -13,7 +13,6 @@ module Feature128DesignSystemTemplateTests
 // set, so a new accepted value left unvalidated fails the gate (FR-009/SC-006).
 
 open System
-open System.Diagnostics
 open System.IO
 open Expecto
 open FS.GG.TestSupport
@@ -26,32 +25,7 @@ let private repositoryPath (relativePath: string) =
 let private validationReportPath =
     repositoryPath "specs/128-design-system-template-param/readiness/design-system-template-validation.md"
 
-// Self-provisioning (feature 203, US2/T011): `readiness/` is gitignored, so a fresh checkout has no
-// report and the gate would be red-by-default through no fault of the release surface (FR-002). Before
-// the GV gates evaluate, produce the report from the validator's env-free verdict-core path
-// (`--emit-report`: no `dotnet new`, build, GL, or network). The heavy live scaffold+build proof stays
-// opt-in behind FS_GG_RUN_DESIGN_SYSTEM_VALIDATION=1; this only guarantees the report's *presence* from
-// a current verdict-core run — it does not weaken any GV assertion (GV-8 still fails loudly if the
-// report cannot be produced). This runs once at module initialization, before the `[<Tests>]` value.
-let private selfProvisionReport () =
-    if not (File.Exists validationReportPath) then
-        let psi = ProcessStartInfo("dotnet")
-        psi.WorkingDirectory <- repositoryRoot
-        psi.UseShellExecute <- false
-        psi.RedirectStandardOutput <- true
-        psi.RedirectStandardError <- true
-        [ "fsi"; "scripts/validate-design-system-template.fsx"; "--emit-report" ]
-        |> List.iter psi.ArgumentList.Add
-        match Process.Start psi with
-        | null -> ()
-        | started ->
-            use proc = started
-            proc.StandardOutput.ReadToEnd() |> ignore
-            proc.StandardError.ReadToEnd() |> ignore
-            proc.WaitForExit()
-    // Whether or not provisioning ran, GV-8 (readValidationReport) asserts the report now exists.
-
-let private reportProvisioned = selfProvisionReport ()
+let private templateJsonPath = repositoryPath ".template.config/template.json"
 
 // GV-8: the report MUST exist; its absence is a loud failure (failing-first before the regenerator).
 let private readValidationReport () =
@@ -65,7 +39,7 @@ let private readValidationReport () =
 
 /// The accepted designSystem choice set, parsed from the template (single coverage source, TP-7).
 let private enumeratedChoices () =
-    let json = File.ReadAllText(repositoryPath ".template.config/template.json")
+    let json = File.ReadAllText templateJsonPath
     let mi = json.IndexOf("\"designSystem\"", StringComparison.Ordinal)
     let choicesIdx = json.IndexOf("\"choices\"", mi, StringComparison.Ordinal)
     let arrStart = json.IndexOf('[', choicesIdx)
@@ -82,6 +56,43 @@ let private enumeratedChoices () =
             let q2 = body.IndexOf('"', q1 + 1)
             loop (q2 + 1) (body.Substring(q1 + 1, q2 - q1 - 1) :: acc)
     loop 0 []
+
+// ---- self-provisioning (SelfProvision.ensureFresh; feature 255) --------------------------------
+//
+// `readiness/` is gitignored, so a fresh checkout has no report and the gate would be red-by-default
+// through no fault of the release surface (FR-002). Produce it from the validator's env-free
+// verdict-core path (`--emit-report`: no `dotnet new`, build, GL, or network) before the GV gates
+// evaluate. The heavy live scaffold+build proof stays opt-in behind
+// FS_GG_RUN_DESIGN_SYSTEM_VALIDATION=1. This does not weaken any GV assertion — GV-8 still fails
+// loudly if the report cannot be produced.
+
+let private validatorScriptRelPath = "scripts/validate-design-system-template.fsx"
+
+let private validatorScriptPath = repositoryPath validatorScriptRelPath
+
+// Every file the env-free verdict core reads. Both halves of its central assertion are inputs:
+//
+//   * the RENDERED side — the validator `#load`s eleven `src/**/*.fs` sources and computes
+//     `ColorPolicy.renderReport policy StyleCatalog.designSystemTokens` from them, so a change to the
+//     contrast math or the token catalog changes the verdict. Derived from the script's own `#load`
+//     block, never hand-copied, so it cannot drift out of step with it.
+//   * the COMMITTED side — `docs/reports/color-policy-<choice>.md`, the oracle each rendered report is
+//     byte-compared against. Derived per enumerated choice using the validator's own path rule, so a
+//     newly accepted designSystem value brings its oracle along.
+//
+// Plus template.json (which enumerates the choices) and the validator itself (the rendering rules).
+// A report is only as trustworthy as its OLDEST input.
+let private verdictCoreInputs =
+    [ yield templateJsonPath
+      yield validatorScriptPath
+      yield! SelfProvision.fsiLoadedSources validatorScriptPath
+      for choice in enumeratedChoices () -> repositoryPath (sprintf "docs/reports/color-policy-%s.md" choice) ]
+
+let private reportProvisioned =
+    SelfProvision.ensureFresh
+        validationReportPath
+        verdictCoreInputs
+        [ "fsi"; validatorScriptRelPath; "--emit-report" ]
 
 /// The values listed on the report's `covered-values:` line.
 let private coveredValues (report: string) =
