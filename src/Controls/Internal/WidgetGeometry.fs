@@ -262,20 +262,14 @@ module internal WidgetGeometry =
           mkText theme (box.X + 6.0) (box.Y + box.Height - 6.0) 11.0 theme.Foreground source ]
 
     let iconGeom theme (box: Rect) (name: string) : Scene list =
-        // A font-independent house glyph from a `Path` (no `.notdef` box risk), plus the name.
+        // Feature 386: the glyph a name maps to is a design-system concern (`IconGlyphs`), no longer a
+        // literal `Path` baked here — icons are Theme/design-system-owned (layering.md §1), and the
+        // `Icon`/`IconButton` `name` now actually selects a glyph. Unknown names fall back to the house
+        // glyph (a font-independent `Path`, no `.notdef` box risk), so pre-386 output is byte-identical.
         let cx = box.X + 22.0
         let cy = box.Y + box.Height / 2.0
         let r = 16.0
-        let cmds =
-            [ Path.moveTo (cx - r) cy
-              Path.lineTo cx (cy - r)
-              Path.lineTo (cx + r) cy
-              Path.lineTo (cx + r - 3.0) cy
-              Path.lineTo (cx + r - 3.0) (cy + r)
-              Path.lineTo (cx - r + 3.0) (cy + r)
-              Path.lineTo (cx - r + 3.0) cy
-              Path.close ]
-        [ Scene.path (Path.create Winding cmds) (Paint.fill theme.Accent)
+        [ Scene.path (IconGlyphs.pathFor name cx cy r) (Paint.fill theme.Accent)
           mkText theme (cx + r + 8.0) (cy + 5.0) 14.0 theme.Foreground name ]
 
     // ---- command / button geometry ----------------------------------------------------------

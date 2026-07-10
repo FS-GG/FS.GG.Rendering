@@ -37,12 +37,24 @@
          hand-curated .fsi (Principle II); the .fsi compiles immediately before its .fs. -->
     <Compile Include="StyleResolver.fsi" />
     <Compile Include="StyleResolver.fs" />
+    <!-- Feature 386: the icon glyph vocabulary (name → filled glyph geometry). Design-system-owned
+         per layering.md §1; depends only on the Scene vocabulary, so its position in the order is
+         free. `internal` — visibility lives in the .fsi (Principle II) — reached by Controls via the
+         IVT grant below, keeping the package's public surface unchanged. -->
+    <Compile Include="IconGlyphs.fsi" />
+    <Compile Include="IconGlyphs.fs" />
   </ItemGroup>
 
-  <!-- Feature 130 (F5): the F1/F4 InternalsVisibleTo grants (Controls.Tests, FS.GG.UI.Controls) for
-       DesignTokensExt and StyleResolver are REMOVED — both are now public, so the grants are redundant.
-       IVT is not public surface, so this removal is invisible to the surface-drift gate (baseline-neutral);
-       it is guarded by a green full-suite build. -->
+  <!-- Feature 130 (F5): the F1/F4 InternalsVisibleTo grants for DesignTokensExt and StyleResolver were
+       REMOVED — both are now public, so those grants were redundant. -->
+  <!-- Feature 386: RE-ADD the grants for the new INTERNAL `IconGlyphs` module — `FS.GG.UI.Controls`
+       (WidgetGeometry.iconGeom consumes the glyph table) and `Controls.Tests` (unit-tests it directly).
+       IVT is not public surface, so these grants are invisible to the surface-drift gate
+       (baseline-neutral); they are guarded by a green full-suite build. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="FS.GG.UI.Controls" />
+    <InternalsVisibleTo Include="Controls.Tests" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Scene\Scene.fsproj" />
