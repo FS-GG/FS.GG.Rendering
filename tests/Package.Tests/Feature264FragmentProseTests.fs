@@ -42,11 +42,17 @@ module Feature264FragmentProseTests
 // HONESTY CAVEAT (constitution Principle V): this is a static regex scan over the substitution-subject
 // scaffold sources, not a `dotnet new` instantiation. It proves ONE bounded thing precisely — no
 // mathematical `<x> product` compound survives in the trees the engine rewrites, so none can be
-// mangled. It does NOT prove the scaffolded output is otherwise byte-identical to upstream prose (the
-// env-gated `scripts/validate-productname-template.fsx` byte-diff covers that), and it cannot catch a
-// future term of art outside `mathProductCompounds` (e.g. a newly coined "Hadamard product") until
-// that term is added below. It is deliberately cheap and always-on so the common case fails HERE, at
-// template-author time, instead of in a user's scaffolded game.
+// mangled. Three bounds it does NOT cover:
+//   * a future term of art outside `mathProductCompound` (a newly coined "Hadamard product") until
+//     that alternative is added to the pattern;
+//   * `product` as a SUBSTRING of an unrelated word. `replaces` is a plain substring match, so
+//     `production` mangles to `<name>ion` — and it does, today, in `template/base` (see #264's
+//     follow-up). A word-boundary-free scan for the bare token would drown in the ~21 deliberate
+//     common-noun uses, so that class needs the durable fix (option 2), not a wider regex here;
+//   * byte-identity of the scaffolded output against upstream prose — the env-gated
+//     `scripts/validate-productname-template.fsx` diff covers that.
+// It is deliberately cheap and always-on so the common case fails HERE, at template-author time,
+// instead of in a user's scaffolded game.
 
 open System.IO
 open System.Text.RegularExpressions
@@ -55,71 +61,56 @@ open FS.GG.TestSupport
 
 let private repositoryRoot = RepositoryRoot.value
 
-let private repositoryPath (relativePath: string) =
-    Path.Combine(repositoryRoot, relativePath.Replace('/', Path.DirectorySeparatorChar))
+// The same substitution-subject trees `ScaffoldIdentifierLeakGuardTests` scans, from the same shared
+// list, and for the same reason: these are the sources the template engine rewrites `Product`/
+// `product` in. The `copyOnly` trees (the product-skill `SKILL.md` bodies, the `docs/**` reference
+// trees) are exempt from substitution, so their prose is safe by construction and is intentionally out
+// of scope — which is why `template/product-skills/fs-gg-visibility/SKILL.md` may keep saying
+// "cross-product".
+let private scaffoldSourceFiles = ScaffoldSources.files repositoryRoot
 
-// The same substitution-subject trees `ScaffoldIdentifierLeakGuardTests` scans, and for the same
-// reason: these are the sources the template engine rewrites `Product`/`product` in. The `copyOnly`
-// trees (the product-skill `SKILL.md` bodies, the `docs/**` reference trees) are exempt from
-// substitution, so their prose is safe by construction and is intentionally out of scope — which is
-// why `template/product-skills/fs-gg-visibility/SKILL.md` may keep saying "cross-product".
-let private scaffoldSourceRoots =
-    [ "template/base/src"; "template/base/tests" ]
-    @ (let fragments = repositoryPath "template/fragments"
-
-       if Directory.Exists fragments then
-           Directory.GetDirectories fragments
-           |> Array.collect (fun d -> [| Path.Combine(d, "src"); Path.Combine(d, "tests") |])
-           |> Array.filter Directory.Exists
-           |> Array.map (fun d -> Path.GetRelativePath(repositoryRoot, d).Replace('\\', '/'))
-           |> Array.toList
-       else
-           [])
-
-let private scaffoldSourceFiles =
-    scaffoldSourceRoots
-    |> List.collect (fun root ->
-        let full = repositoryPath root
-
-        if Directory.Exists full then
-            Directory.GetFiles(full, "*.fs", SearchOption.AllDirectories)
-            |> Array.append (Directory.GetFiles(full, "*.fsi", SearchOption.AllDirectories))
-            |> Array.filter (fun p ->
-                let n = p.Replace('\\', '/')
-                not (n.Contains "/obj/") && not (n.Contains "/bin/"))
-            |> Array.toList
-        else
-            [])
-
-/// The mathematical compounds whose meaning lives in the word `product` itself. Hyphen, space, or a
-/// plural `s` all mangle identically (`cross-breakout1`, `cross breakout1s`), so the pattern accepts
-/// any of them. `\b` on the left keeps this off unrelated words; the common noun `product` standing
-/// alone never matches, because every alternative requires a qualifier immediately before it.
+/// The mathematical compounds whose meaning lives in the word `product` itself. A plural `s` mangles
+/// just as badly (the issue's capture shows `cross products` -> `cross breakout1s`, which is also the
+/// proof that `replaces` is a plain SUBSTRING match), so `products?` is accepted. The separator is
+/// `[-\s]+`, not a single space: a re-justified comment can leave two spaces, and a wrapped one puts a
+/// newline there (see `scanPairs`).
+///
+/// Scanned over the WHOLE LINE, not just its comment. Three reasons, in order of importance:
+///   * the rewrite does not respect syntax — it mangles a STRING LITERAL exactly as happily as a
+///     comment (`template/base/tests/Product.Tests/BehaviorTests.fs` carries the token inside a `test
+///     "..."` name), and a comment-only scan is blind to that;
+///   * a compound needs a hyphen or a space before `product`, and neither is legal in an F# identifier,
+///     so scanning code text cannot false-positive on `dotProduct` — the identifier case is
+///     `ScaffoldIdentifierLeakGuardTests`' business and stays there;
+///   * it removes the "is this a comment?" question, and with it the `//`-inside-a-URL misread.
 let private mathProductCompound =
-    Regex(@"\b(cross|dot|scalar|vector|inner|outer|triple)[- ]products?\b", RegexOptions.IgnoreCase ||| RegexOptions.Compiled)
+    Regex(@"\b(cross|dot|scalar|vector|inner|outer|triple)[-\s]+products?\b", RegexOptions.IgnoreCase ||| RegexOptions.Compiled)
 
-/// The comment text on a line, or `""` if the line carries none. Both `//` and `///` start with `//`.
-/// Takes the first `//` onward, so a `product` inside an identifier or an ordinary string literal
-/// cannot trip this scan (those are `ScaffoldIdentifierLeakGuardTests`' business). Note the direction
-/// of the imprecision, which is the opposite of that guard's `stripLineComment`: a `//` INSIDE a
-/// string literal (a URL) would be read as a comment, so this can add a false POSITIVE, never a false
-/// negative. That fails loudly and is trivially fixed by rewording; a false negative would ship a
-/// mangled scaffold silently. Block comments `(* ... *)` are not tracked; no scaffold source uses one
-/// for prose.
-let private commentText (line: string) =
-    match line.IndexOf "//" with
-    | -1 -> ""
-    | i -> line.Substring i
+let private matchesIn (text: string) : string list =
+    mathProductCompound.Matches text |> Seq.map (fun m -> m.Value) |> Seq.toList
 
-let private scanLine (line: string) : string list =
-    let comment = commentText line
+let private scanLine (line: string) : string list = matchesIn line
 
-    if comment = "" then
-        []
-    else
-        mathProductCompound.Matches comment
-        |> Seq.map (fun m -> m.Value)
-        |> Seq.toList
+/// A compound wrapped across two lines (`... a cross` / `/// product comparator ...`) is invisible to a
+/// line-at-a-time scan, yet the second line's bare `product` is rewritten all the same. So also scan
+/// each ADJACENT PAIR, with the continuation's indentation and `//`/`///` marker collapsed to a single
+/// space so the join reads as running prose; `[-\s]+` then spans the seam. Reported against the FIRST
+/// line of the pair. The doc comment this feature reworks wraps at exactly that spot, one
+/// re-justification away from the gap.
+let private continuationText (line: string) =
+    Regex.Replace(line, @"^\s*(///?/?)?\s*", " ")
+
+let private scanPairs (lines: string[]) : (int * string) list =
+    lines
+    |> Array.pairwise
+    |> Array.mapi (fun i (first, second) ->
+        // Only the seam is new information; a match wholly inside `first` or `second` is already
+        // reported by `scanLine`, so subtract those to keep the pair scan from double-reporting.
+        let joined = first + continuationText second
+        let seamOnly = matchesIn joined |> List.except (matchesIn first @ matchesIn second)
+        seamOnly |> List.map (fun term -> i + 1, term))
+    |> Array.toList
+    |> List.concat
 
 type private Finding =
     { File: string
@@ -129,18 +120,23 @@ type private Finding =
 
 let private scanFile (path: string) : Finding list =
     let rel = Path.GetRelativePath(repositoryRoot, path).Replace('\\', '/')
+    let lines = File.ReadAllLines path
 
-    File.ReadAllLines path
-    |> Array.mapi (fun i line -> i + 1, line)
-    |> Array.collect (fun (n, line) ->
-        scanLine line
-        |> List.map (fun term ->
-            { File = rel
-              Line = n
-              Term = term
-              Text = line.Trim() })
-        |> List.toArray)
-    |> Array.toList
+    let finding n term =
+        { File = rel
+          Line = n
+          Term = term
+          Text = lines.[n - 1].Trim() }
+
+    let inLine =
+        lines
+        |> Array.mapi (fun i line -> i + 1, line)
+        |> Array.collect (fun (n, line) -> scanLine line |> List.map (finding n) |> List.toArray)
+        |> Array.toList
+
+    let acrossWrap = scanPairs lines |> List.map (fun (n, term) -> finding n term)
+
+    inLine @ acrossWrap
 
 let private findings = scaffoldSourceFiles |> List.collect scanFile
 
@@ -191,21 +187,21 @@ let feature264FragmentProseTests =
                     "    // half-plane first, then cross-product sign, then squared distance, ..."
                     "        // Deltas and the tiebreak cross-product are `int64` for ..."
                     "// the dot product of the two vectors"
-                    "// a Dot-Product, capitalized and hyphenated" ]
+                    "// a Dot-Product, capitalized and hyphenated"
+                    "// a cross  product with two spaces, as a re-justified comment leaves"
+                    "    let message = \"cross-product\"" ] // a STRING LITERAL mangles exactly as a comment does
 
               let mustPass =
                   [ "/// Product-owned 2D-visibility helper — THIS FILE IS YOURS TO ADAPT." // the intended header
                     "/// Where `resolver` looks for PCM WAV files, relative to the running product."
                     "/// the ONE place bare `Scene` record literals appear in your product tree, where only `Scene` types"
                     "// `forTransition` is the ONLY place this product decides what to play."
-                    // NOT a claim that `production` is safe — it is NOT: `replaces` is a plain substring
-                    // match (the issue's capture shows `products` -> `breakout1s`), so `production` mangles
-                    // to `breakout1ion`. That is a distinct defect class (token inside a word, and it also
-                    // reaches string literals) tracked separately; it is simply not a `<x> product` compound,
-                    // which is the only thing THIS scan claims to see.
+                    // NOT a claim that `production` is safe — it is NOT (see the caveat above); it is
+                    // simply not a `<x> product` compound, which is all THIS scan claims to see.
                     "// production tree-render path (`Control.renderTree`) at the output extent"
-                    "let dotProduct a b = a.X * b.X + a.Y * b.Y" // an identifier, not comment prose
-                    "    let message = \"cross-product\"" // a string literal, not comment prose
+                    // No separator, so no match: a hyphen/space cannot occur in an F# identifier, which is
+                    // exactly why scanning code text alongside comments costs no false positives here.
+                    "let dotProduct a b = a.X * b.X + a.Y * b.Y"
                     "/// endpoints are ordered by a perp-dot (the 2-D cross) angular comparator" ] // the fix shape
 
               mustFlag
@@ -213,5 +209,26 @@ let feature264FragmentProseTests =
 
               mustPass
               |> List.iter (fun l -> Expect.isEmpty (scanLine l) (sprintf "false positive on legitimate line: %s" l))
+          }
+
+          test "the scanner detects a compound wrapped across two comment lines" {
+              // The line-at-a-time scan cannot see this; `scanPairs` is why it is caught. The seam match
+              // is attributed to the FIRST line, and a compound lying wholly within one line is not
+              // double-reported by the pair scan.
+              let wrapped =
+                  [| "/// Everything here is deterministic: endpoints are ordered by a cross"
+                     "/// product angular comparator (NO `atan2`) with an integer-index tiebreak." |]
+
+              Expect.isEmpty (scanLine wrapped.[0]) "precondition: neither line matches on its own"
+              Expect.isEmpty (scanLine wrapped.[1]) "precondition: neither line matches on its own"
+
+              Expect.equal (scanPairs wrapped) [ 1, "cross product" ] "the wrapped compound must be caught, at line 1"
+
+              let notWrapped =
+                  [| "// the tiebreak cross-product is `int64`"; "// and the deltas are too." |]
+
+              Expect.isEmpty
+                  (scanPairs notWrapped)
+                  "a compound wholly inside one line is reported by scanLine, and must not be double-reported here"
           }
         ]
