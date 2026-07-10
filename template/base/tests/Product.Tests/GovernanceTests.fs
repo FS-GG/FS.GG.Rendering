@@ -205,7 +205,11 @@ let governanceTests =
             //#if (profile == "app")
             Expect.stringContains defaultBranch "ControlsElmish.runInteractiveApp viewerOptions interactiveHost" "controls-family normal launch is the pointer-aware persistent interactive host"
             //#else
-            Expect.stringContains defaultBranch "Viewer.runApp viewerOptions generatedHost" "game-family normal launch remains the keyboard-only persistent interactive path"
+            //#if (profile == "game")
+            Expect.stringContains defaultBranch "Viewer.runAppWithAudio viewerOptions audioSink generatedHost" "game-family normal launch remains the keyboard-only persistent interactive path (with the #245 audio sink)"
+            //#else
+            Expect.stringContains defaultBranch "Viewer.runApp viewerOptions generatedHost" "non-app non-game normal launch remains the keyboard-only persistent interactive path"
+            //#endif
             //#endif
             Expect.isFalse (defaultBranch.Contains("mode=persistent-evidence")) "normal launch does not report bounded evidence mode"
             Expect.isFalse (defaultBranch.Contains("self-closed-for-evidence=true")) "normal launch does not claim evidence self-close"
@@ -279,7 +283,11 @@ let governanceTests =
             //#if (profile == "app")
             Expect.stringContains source "ControlsElmish.runInteractiveApp viewerOptions interactiveHost" "controls-family default path runs the pointer-aware persistent host"
             //#else
-            Expect.stringContains source "Viewer.runApp viewerOptions generatedHost" "game-family default path runs the keyboard-only persistent generated app host"
+            //#if (profile == "game")
+            Expect.stringContains source "Viewer.runAppWithAudio viewerOptions audioSink generatedHost" "game-family default path runs the keyboard-only persistent generated app host (with the #245 audio sink)"
+            //#else
+            Expect.stringContains source "Viewer.runApp viewerOptions generatedHost" "non-app non-game default path runs the keyboard-only persistent generated app host"
+            //#endif
             //#endif
             Expect.stringContains source "mode=interactive-window" "default path reports interactive mode"
             Expect.stringContains source "accessible-window=true" "successful default path reports accessible desktop window claim"
@@ -365,7 +373,11 @@ let governanceTests =
             //#if (profile == "app")
             Expect.stringContains source "ControlsElmish.runInteractiveApp viewerOptions interactiveHost" "controls-family default launch applies the pointer-aware persistent viewer contract"
             //#else
-            Expect.stringContains source "Viewer.runApp viewerOptions generatedHost" "game-family default launch applies the keyboard-only persistent viewer contract"
+            //#if (profile == "game")
+            Expect.stringContains source "Viewer.runAppWithAudio viewerOptions audioSink generatedHost" "game-family default launch applies the keyboard-only persistent viewer contract (with the #245 audio sink)"
+            //#else
+            Expect.stringContains source "Viewer.runApp viewerOptions generatedHost" "non-app non-game default launch applies the keyboard-only persistent viewer contract"
+            //#endif
             //#endif
             Expect.stringContains source "manualWindowOptionResults windowBehaviorRequest" "normal launch validates parsed behavior request before calling SkiaViewer"
             Expect.stringContains source "window-options=%s" "normal launch reports option validation output"
