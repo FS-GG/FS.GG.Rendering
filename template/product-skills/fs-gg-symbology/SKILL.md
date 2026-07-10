@@ -60,103 +60,62 @@ a `None` token renders byte-identically to one with no such channel:
 
 ## Identity label (opt-in inspection-detail channel)
 
-`Token` carries an optional `Label : LabelText option` — a short callsign/code drawn screen-aligned in a
-per-grammar region. Set it in `mapUnit` only when the abstract sigil cannot disambiguate identity:
+Three optional `Token` fields — all `None` by default — form **one** channel: a short callsign/code drawn
+screen-aligned in a per-grammar region. Set them in `mapUnit` only when the abstract `Sigil` cannot
+disambiguate identity.
+
+| Field | Type | What it does |
+|---|---|---|
+| `Label` | `LabelText option` | the explicit identity — `Plain` text, `Rich` styled runs, or `Laid` paragraphs |
+| `AutoLabel` | `AutoLabelSpec option` | projects the label from the `Token`'s **own encoded channels** |
+| `LabelMotion` | `LabelMotion option` | binds the resolved label to the motion phase the board already supplies |
 
 ```fsharp
+// The common case — an explicit callsign:
 { Symbology.defaultToken with R = 28.0; Faction = Ally; Label = Some (Symbology.plainLabel u.Callsign) }
 ```
 
-- **Inspection-detail, not pop-out.** It complements — never replaces — the vector `Sigil`; keep strings
-  short. It is **not** in the legibility capacity table, so the linter's verdict is unchanged by labels.
-- **Opt-in, zero-drift.** `Label = None` (the default) and empty/whitespace render byte-identically to the
-  pre-feature symbol; the one mapping still drives all three grammars unchanged.
-- **Tofu-free is a render-edge property.** The pure library emits a deterministic glyph-run node and never
-  requires a measurer; legible non-tofu glyphs come from the render bridge. Overlong labels are fitted
-  (shrink, then ellipsis-truncate); a degenerate (`R <= 0`) labelled token still degrades to the placeholder.
-- **Multi-line rides the same field.** `Label` may carry more than one line: embedded `\n` are hard breaks,
-  and a long line soft-wraps at whitespace to the region width — no new field, no second channel. Keep to a
-  few short lines (budget **Token ≤ 3, Badge ≤ 2, Ring ≤ 2**); lines stack downward from the label's
-  baseline, screen-aligned. Surplus degrades **wrap → cap → ellipsis** (the last drawn line ends with `…`);
-  empty/whitespace/blank-lines collapse to no label. A one-line-fitting label stays byte-identical, so `\n`
-  is the only way to force a break; every line is tofu-free only through the render bridge's real measurer.
-
 ```fsharp
-// A callsign over a code — two lines in the one field:
-{ Symbology.defaultToken with R = 28.0; Faction = Ally; Label = Some (Symbology.plainLabel (u.Callsign + "\n" + u.Code)) }
-```
-
-- **Rich-text runs — per-run colour / weight / size (same channel).** `LabelText.Rich` carries a short
-  ordered sequence of `LabelRun { Text; Color; Weight; Scale }` spans; each attribute is optional and
-  inherits the default when `None`, so an all-default `Rich` ≡ the equivalent `plainLabel` byte-for-byte.
-  Use it for an **emphasis hierarchy** (a loud bold callsign + a dim small code); colour / weight / size
-  here, with **italic / underline / strike / letter-spacing** added by full rich-text layout below
-  (per-glyph styling and per-run font family stay out of scope). Keep runs **few** and the
-  palette **restrained**, and **do not colour a run to impersonate the faction/state pre-attentive
-  encodings** — author colours are used as-is (never re-mapped) and the linter is unchanged, so this is a
-  loop caveat, not a runtime rule. Each run is fitted in its own style, lines cap to the grammar budget and
-  ellipsise surplus, and tofu-free output is a **render-edge** property (verify through `Symbology.Render`).
-
-```fsharp
-// A loud bold callsign next to a dim, smaller code — one styled label:
-{ Symbology.defaultToken with
-    R = 28.0
-    Faction = Ally
-    Label =
-        Some(
-            Symbology.richLabel
-                [ { Symbology.run u.Callsign with Weight = Some 700 }
-                  { Symbology.run ("  " + u.Code) with Scale = Some 0.7; Color = Some (Colors.rgb 150uy 150uy 150uy) } ]) }
-```
-
-- **Full rich-text layout — alignment / justification / explicit breaks + decoration (same
-  channel).** Each `LabelRun` also takes optional **`Italic` / `Underline` / `Strike` / `Tracking`**
-  (each `None`/`false`/`0.0`-defaulted), and `LabelText.Laid of LabelParagraph list` carries explicit
-  paragraphs, each `{ Runs; Align }` with **`Align = Leading | Center | Trailing | Justify`** (build with
-  `Symbology.paragraph` / `align` / `laidLabel`). **`Center` is the default and reproduces the 198 flow
-  byte-for-byte** (a single `Center` all-default paragraph ≡ the equivalent `richLabel`/`plainLabel`).
-  `Justify` fills wrapped lines; the **last line of each paragraph** and any **single-token line** stay
-  un-justified. Tracking is folded into measurement (never overflows); underline/strike follow each drawn
-  fragment; lines cap+ellipsise under every alignment; empty paragraphs/runs drop and a degenerate token
-  shows the placeholder. Keep paragraphs **short** and the alignment/decoration set **restrained** — don't
-  let it crowd the region or impersonate the faction/state encodings (loop caveat, not a runtime rule);
-  it stays **inspection-detail**, the linter is unchanged, and tofu-free is a **render-edge** property.
-
-```fsharp
-// A centred callsign over a justified descriptor and a struck-through retired code:
-{ Symbology.defaultToken with
-    R = 28.0
-    Faction = Ally
-    Label =
-        Some(
-            Symbology.laidLabel
-                [ Symbology.align Center [ { Symbology.run u.Callsign with Weight = Some 700 } ]
-                  Symbology.align Justify [ Symbology.run u.Descriptor ]
-                  Symbology.align Trailing [ { Symbology.run u.RetiredCode with Strike = Some true } ] ]) }
-```
-
-- **Auto-label — derive the label from channels (same channel).** Instead of hand-authoring a
-  callsign, set `AutoLabel : AutoLabelSpec option` (`Symbology.autoLabel fields` / `autoLabelSep sep fields`)
-  and the library projects a compact game-agnostic readout from the **`Token`'s own encoded channels**:
-  `FactionCode` (ALY/ENY/NEU/CUS), `KlassCode` (MOB/HVY/SCT), `StateCode` (CFM/SUS), `HealthTier` (H+nn),
-  `ThreatTier` (T0..T4), `SpeedPips` (S0..S4), `ShieldFlag` (SHD, dropped when off). An explicit `Label`
-  **always wins**; identical channels ⇒ identical label; an empty/dropped projection ⇒ no label. Keep
-  projections compact (2–3 fields — Ring is tightest) and don't impersonate the faction/state encodings.
-  The per-game `'stats -> Token` mapping stays yours; auto-label reads only the encoded channels.
-
-```fsharp
-// A state readout projected from the unit's own channels — no callsign typed:
+// Or derive it from the unit's own channels — no callsign typed:
 { Symbology.defaultToken with R = 28.0; Faction = Ally; Health = 0.9; Speed = 2
                               AutoLabel = Some(Symbology.autoLabel [ FactionCode; HealthTier; SpeedPips ]) }
 ```
 
-- **Label-bound motion — animate the resolved label (no new clock).** Set
-  `LabelMotion : LabelMotion option` (`LabelMotion.TypeOn | Fade | Pulse | Scroll`) and the resolved label
-  (explicit or auto-derived) animates as a pure function of the **phase the board already supplies**
-  (`animate`/`filmstrip`/`animateIn`/`filmstripIn`) — no signature change. At the rest phase it is
-  **byte-identical to the static label**; it stays fitted and tofu-free at every phase; `Scroll` clips to
-  the region (no overflow). Keep motion **restrained** — it is inspection-detail, the linter is unchanged.
-  `AutoLabel = None` / `LabelMotion = None` are the defaults and are byte-identical to the pre-200 symbol.
+An explicit `Label` **always wins** over `AutoLabel`, so there is always **exactly one** resolved label, or
+none. Per-grammar line budget: **`Token` ≤ 3, `Badge` ≤ 2, `Ring` ≤ 2** (the ring's inner disc is tightest).
+
+The remaining ctors, all styled by record-copy — see [`reference/labels.md`](reference/labels.md) for when
+to reach for each:
+
+```fsharp
+Symbology.richLabel [ { Symbology.run "BRAVO-6" with Weight = Some 700 } ] // Rich — styled runs
+Symbology.laidLabel [ Symbology.paragraph [ Symbology.run "BRAVO-6" ]      // Laid — paragraphs
+                      Symbology.align Trailing [ Symbology.run "R-12" ] ]
+```
+
+`Symbology.autoLabelSep sep fields` joins a projection with a separator other than a space, and
+`Symbology.labelMotion kind` builds the `LabelMotion` value.
+
+### The invariants — they hold for every field, style, projection and phase
+
+- **Opt-in, layered zero-drift.** Each layer is byte-identical to the one beneath it when unused: `None` ≡
+  the pre-feature symbol; `Plain` ≡ the single-line label; an all-default `Rich` ≡ `Plain`; a default
+  `Center` `Laid` ≡ `Rich`; `AutoLabel` / `LabelMotion` = `None` ≡ the same `Token` without them; and a
+  motion-bound label **at rest** ≡ the static label. Your one mapping still drives all three grammars.
+- **Inspection-detail.** It **complements — never replaces** — the vector `Sigil`; keep strings short.
+- **Outside the capacity table.** The linter ignores the label, so its verdict is unchanged by labels.
+  Never use a label to dodge a channel-overload warning — fix the encoding.
+- **Tofu-free is a render-edge property.** The pure library emits deterministic glyph-run nodes and never
+  requires a measurer; real glyphs come from the render bridge. Verify through `Symbology.Render`.
+- **Surplus degrades: wrap → cap → ellipsis.** Lines wrap at whitespace, the count is **capped** to the
+  budget, and the last drawn line ends with `…`. Empty, whitespace, or a fully dropped projection ⇒ **no
+  label**. A degenerate (`R <= 0`) token shows the **placeholder** — it always wins.
+- **Do not impersonate the pre-attentive encodings.** A label styled to mimic the faction or state palettes
+  misleads, and the linter will not catch it. This is a **loop caveat, not a runtime rule**: your colours,
+  alignment and decoration are used **as-is**, never re-mapped or rejected.
+
+The per-feature detail and worked examples — styled runs, paragraph alignment and justification, the
+`AutoField` codes, and the four `LabelMotion` kinds — live in [`reference/labels.md`](reference/labels.md).
 
 ## Selectable grammars (form factors) — one mapping, three drawings
 

@@ -1,7 +1,7 @@
 <!-- SKILL-PARITY:START -->
 # Skill Parity Report
 
-Checked at UTC: `2026-07-10T05:43:33.5044184Z`
+Checked at UTC: `2026-07-10T10:59:38.8901434Z`
 Overall status: `passed`
 Canonical sources: `32`
 Wrappers: `63`
@@ -35,7 +35,7 @@ Wrappers: `63`
 | fs-gg-scene | 12 | 12 | 0 | 0 |
 | fs-gg-skiaviewer | 4 | 4 | 0 | 0 |
 | fs-gg-styling | 17 | 17 | 0 | 0 |
-| fs-gg-symbology | 13 | 13 | 0 | 0 |
+| fs-gg-symbology | 20 | 20 | 0 | 0 |
 | fs-gg-testing | 5 | 5 | 0 | 0 |
 | fs-gg-ui-widgets | 41 | 41 | 0 | 0 |
 
