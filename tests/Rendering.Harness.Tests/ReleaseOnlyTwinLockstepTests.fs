@@ -85,6 +85,13 @@ let private registry =
       { Twin = $"{twinDirectory}/SkillMaterializesWhenCoherenceTests.fs"
         ReleaseOnly = "tests/Package.Tests/Feature238SkillMaterializesWhenTests.fs"
         HeaderNames = "Feature238SkillMaterializesWhenTests"
+        SharedInputs = true }
+      // #366 — the collision-safe Vec2 wiring gate (#138). Text-mirror of a release-only Package.Tests
+      // rule: both read the fragment source, the base Model.fs, Product.fsproj and template.json, and
+      // scan them for the naming invariant + delivery wiring, so they share the same four inputs.
+      { Twin = $"{twinDirectory}/CollisionSafeVec2CoherenceTests.fs"
+        ReleaseOnly = "tests/Package.Tests/Feature250CollisionSafeVec2Tests.fs"
+        HeaderNames = "Feature250CollisionSafeVec2Tests"
         SharedInputs = true } ]
 
 /// The repository source-of-truth paths a test source reads, extracted from its `repositoryPath "…"`
