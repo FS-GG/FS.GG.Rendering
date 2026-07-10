@@ -233,8 +233,12 @@ The recurring failure modes, collected. Three of the four are the contract worki
 - **`Render.toPng` raised** — that is the **fail-loud contract**, not a bug. Any non-passing verdict
   raises with the joined diagnostics; it never returns a blank success, which is why a critique never
   reasons over an empty PNG. Read the diagnostics.
-- **A blank or placeholder symbol** — `R <= 0`. The placeholder **wins over** label, auto-label and
-  motion, so a degenerate radius silently swallows every other channel. Fix `R` in `mapUnit`.
+- **A blank or placeholder symbol** — `R <= 0`. You get a **fixed 12px grey box with an X**, at any radius.
+  The guard runs *before* label resolution, so it swallows the body, the `Sigil`, the label and the
+  auto-label alike. It is **not** a motion guard, though — only `Pulse` suppresses itself on a degenerate
+  token. `Blink` still draws its red dot on top (that dot has a 2px floor), `Moving` draws the echo as a
+  *second* offset placeholder, and `Spin` / `Damage` emit overlay nodes that are simply degenerate at
+  `R = 0`. So a placeholder box with a stray dot beside it is a bad `R`, not a motion bug. Fix `mapUnit`.
 - **`NU1403` on restore** — a poisoned NuGet cache. Restore against a **scratch `NUGET_PACKAGES`
   directory**; do **not** clear the shared cache.
 

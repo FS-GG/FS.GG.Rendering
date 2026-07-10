@@ -140,7 +140,7 @@
     {
       "id": "fs-gg-symbology",
       "scope": "product",
-      "sha256": "56c4cbabcb8c5f520dce88104d4b9fc381e4521dd39002de28ed5c235d521cbb",
+      "sha256": "078d3823ce3b3a8b930080884267f4e82b4529d96ef818f6536cb8ac2b50a3fc",
       "resolvablePath": ".agents/skills/fs-gg-symbology/SKILL.md",
       "materializes-when": "profile in [app, headless-scene, governed, sample-pack, game]",
       "supplied-by": "template/product-skills/fs-gg-symbology/"
