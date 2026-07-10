@@ -284,7 +284,16 @@ let generatedHost =
       Update =
         fun msg model ->
             let next, _, viewerEffects = interpretAtHostBoundary msg model
+//#if (profile == "game" || profile == "sample-pack")
+            // Issue #245: the product's sound requests ride out on the same effect list the viewer
+            // already interprets. `Viewer.runAppWithAudio` hands each batch to the real backend;
+            // `Viewer.runApp` and the evidence paths discard it, so nothing here needs a device.
+            match AppRoot.AudioCues.forTransition msg model next with
+            | [] -> next, viewerEffects
+            | cues -> next, viewerEffects @ [ PlayAudio cues ]
+//#else
             next, viewerEffects
+//#endif
       View = view
       MapKey = mapKey
       Tick = tick

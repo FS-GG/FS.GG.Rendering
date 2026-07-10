@@ -647,6 +647,57 @@ let main args =
             Expect.exists invalid.Diagnostics (fun item -> item.Contains "metadata-only") "metadata-only default is diagnostic"
         }
 
+        // Issue #245: the game family launches through the audio-carrying overloads. They drive the same
+        // persistent window with the same generated host, so the validator must accept them — and must
+        // still reject a default branch that launches nothing.
+        test "generated product validation accepts the audio-carrying interactive launches" {
+            let audioSource =
+                """
+[<EntryPoint>]
+let main args =
+    match List.ofArray args with
+    | "--launch-evidence" :: path :: _ -> launchEvidence path
+    | _ ->
+        match Viewer.runAppWithAudio viewerOptions audioSink generatedHost with
+        | Result.Ok outcome ->
+            printfn "status=%s mode=interactive-window accessible-window=true window-visible=observed:true" outcome.Status
+            0
+        | Result.Error _ -> 1
+"""
+
+            let audioWithBehaviorSource =
+                """
+[<EntryPoint>]
+let main args =
+    match List.ofArray args with
+    | _ ->
+        match Viewer.runAppWithWindowBehaviorAndAudio viewerOptions behavior audioSink generatedHost with
+        | Result.Ok outcome ->
+            printfn "status=%s mode=interactive-window accessible-window=true window-visible=observed:true" outcome.Status
+            0
+        | Result.Error _ -> 1
+"""
+
+            for source in [ audioSource; audioWithBehaviorSource ] do
+                let result = GeneratedProductAssertions.validateDefaultInteractiveLaunch source
+                Expect.isTrue result.InteractiveLaunchRequired "the audio-carrying launch is an interactive default"
+                Expect.isEmpty result.Diagnostics "the audio-carrying launch has no diagnostics"
+
+            // The widened check must not degenerate into "any mention of audio passes".
+            let noLaunch =
+                """
+[<EntryPoint>]
+let main args =
+    match List.ofArray args with
+    | _ ->
+        printfn "mode=interactive-window accessible-window=true audioSink is configured"
+        0
+"""
+
+            let rejected = GeneratedProductAssertions.validateDefaultInteractiveLaunch noLaunch
+            Expect.isFalse rejected.InteractiveLaunchRequired "a default branch that launches nothing is still rejected"
+        }
+
         test "generated product validation rejects first-frame metadata and inaccessible default commands" {
             let invalidDefaults =
                 [ ("first-frame-only",

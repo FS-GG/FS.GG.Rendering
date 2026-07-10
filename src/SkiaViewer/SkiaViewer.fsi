@@ -134,6 +134,10 @@ module Viewer =
     /// `runApp`/`runAppWithWindowBehavior` stay intact and keep discarding audio (FR-006), and the viewer
     /// still owns no audio device: the backend's lifetime belongs to the caller.
     val runAppWithAudio: options: ViewerOptions -> audioSink: (AudioEffect list -> unit) -> host: GeneratedAppHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
+    /// Issue #245 — `runAppWithAudio` with an explicit window behavior, completing the pairing that
+    /// `runApp`/`runAppWithWindowBehavior` already have. The generated game template uses this when a
+    /// `--window-*` flag is supplied and `runAppWithAudio` otherwise.
+    val runAppWithWindowBehaviorAndAudio: options: ViewerOptions -> behavior: ViewerWindowBehaviorRequest -> audioSink: (AudioEffect list -> unit) -> host: GeneratedAppHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
     /// Feature 085 — pointer-aware, size-aware durable launch. Routes native pointer events
     /// and window resizes to the host and renders the size-aware `View`; additive to
     /// `runApp`/`runAppWithWindowBehavior`, which stay intact (FR-004/FR-006/FR-009).

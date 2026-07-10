@@ -34,6 +34,12 @@
     <Compile Include="Model.fs" />
     <Compile Include="View.fs" />
     <Compile Include="LayoutEvidence.fs" />
+    <!--#if (profile == "game" || profile == "sample-pack") -->
+    <!-- Issue #245: the product-owned `Msg -> AudioEffect list` cue map and asset resolver. Compiles
+         after Model.fs (it names your Msg cases) and before EvidenceCommands.fs (which lifts its
+         output onto ViewerEffect.PlayAudio). Replaceable: rewrite it when you swap the model. -->
+    <Compile Include="AudioCues.fs" />
+    <!--#endif -->
     <!--#if (profile == "app" || profile == "sample-pack" || profile == "game") -->
     <Compile Include="WindowOptions.fs" />
     <!--#endif -->

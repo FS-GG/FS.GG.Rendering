@@ -2203,7 +2203,7 @@ module Viewer =
     // dispatch order; the viewer itself owns no audio device, so realizing a batch is entirely the
     // caller's business (the template hands in `FS.GG.Audio.Host.Audio.play backend`). `runApp` and
     // `runAppWithWindowBehavior` pass `ignore`, which is why they keep behaving exactly as before.
-    let private runAppWithWindowBehaviorAndAudio
+    let private runGeneratedApp
         options
         behavior
         (audioSink: AudioEffect list -> unit)
@@ -2326,13 +2326,16 @@ module Viewer =
                     | Result.Error failure -> Result.Error failure
 
     let runAppWithWindowBehavior options behavior (host: GeneratedAppHost<'model, 'msg>) =
-        runAppWithWindowBehaviorAndAudio options behavior ignore host
+        runGeneratedApp options behavior ignore host
 
     let runApp options host =
         runAppWithWindowBehavior options defaultWindowBehavior host
 
+    let runAppWithWindowBehaviorAndAudio options behavior audioSink (host: GeneratedAppHost<'model, 'msg>) =
+        runGeneratedApp options behavior audioSink host
+
     let runAppWithAudio options audioSink (host: GeneratedAppHost<'model, 'msg>) =
-        runAppWithWindowBehaviorAndAudio options defaultWindowBehavior audioSink host
+        runGeneratedApp options defaultWindowBehavior audioSink host
 
     // Feature 085 — pointer-aware, size-aware durable launch. Mirrors
     // `runAppWithWindowBehavior` but routes native pointer events and resizes to the host,

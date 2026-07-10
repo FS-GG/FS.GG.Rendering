@@ -171,13 +171,21 @@ let main args =
                 ControlsElmish.runInteractiveApp viewerOptions interactiveHost
         //#else
         // GAME family: the keyboard-only persistent host is preserved (FR-006). A window flag
-        // routes through runAppWithWindowBehavior; otherwise the durable runApp path stays
+        // routes through the window-behavior overload; otherwise the durable default path stays
         // reachable and inherits the framework windowed-fullscreen default.
+        // Issue #245 — the audio seam. `OpenAlBackend.create` opens a real device and degrades to
+        // the record-only Null backend when OpenAL or the device is unavailable, so this line is
+        // safe headless and in CI: it never throws into game code. `Audio.play backend` is the
+        // `AudioEffect list -> unit` sink the viewer hands every `PlayAudio` batch, in dispatch
+        // order. Nothing else in the product knows a device exists.
+        use audioBackend = FS.GG.Audio.Host.OpenAlBackend.create AppRoot.AudioCues.resolver
+        let audioSink = FS.GG.Audio.Host.Audio.play audioBackend
+
         let launchResult =
             if AppRoot.WindowOptions.windowFlagSupplied args then
-                Viewer.runAppWithWindowBehavior viewerOptions (AppRoot.WindowOptions.toViewerLaunchRequest windowBehavior) generatedHost
+                Viewer.runAppWithWindowBehaviorAndAudio viewerOptions (AppRoot.WindowOptions.toViewerLaunchRequest windowBehavior) audioSink generatedHost
             else
-                Viewer.runApp viewerOptions generatedHost
+                Viewer.runAppWithAudio viewerOptions audioSink generatedHost
         //#endif
 
         match launchResult with

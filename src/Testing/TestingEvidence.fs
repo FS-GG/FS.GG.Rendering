@@ -32,8 +32,17 @@ module GeneratedProductAssertions =
         let contains (value: string) =
             defaultBranch.Contains(value, StringComparison.Ordinal)
 
+        // Issue #245: the game family launches through the audio-carrying overloads, which drive the
+        // same persistent window with the same generated host. Accept any of them — the requirement is
+        // "the default branch opens the interactive window through `generatedHost`", not one spelling.
+        let launchesGeneratedHost =
+            [ "Viewer.runApp viewerOptions generatedHost"
+              "Viewer.runAppWithAudio viewerOptions"
+              "Viewer.runAppWithWindowBehaviorAndAudio viewerOptions" ]
+            |> List.exists contains
+
         let diagnostics =
-            [ if not (contains "Viewer.runApp viewerOptions generatedHost") then
+            [ if not launchesGeneratedHost then
                   "default executable must call Viewer.runApp viewerOptions generatedHost"
               if not (contains "mode=interactive-window") then
                   "default executable must report mode=interactive-window"

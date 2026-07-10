@@ -41,6 +41,13 @@ let private apiSurfaceRoot = repositoryPath "template/base/docs/api-surface"
 let private citedSurfaceRelative = "docs/api-surface/Audio.Core/Audio.fsi"
 let private audioCoreFsiPath = repositoryPath ("template/base/" + citedSurfaceRelative)
 
+/// Issue #245 — the skill's runtime-playback claim became TRUE, so the skill now cites the host-side
+/// drive (`Audio.play backend`) as well as the pure vocabulary. That member lives in FS.GG.Audio.Host,
+/// so the Host surface is bundled too and A-MEMBERS resolves against both. Cite-what-you-ship is
+/// unchanged; the shipped set simply grew by the surface the claim depends on.
+let private citedHostSurfaceRelative = "docs/api-surface/Audio.Host/Host.fsi"
+let private audioHostFsiPath = repositoryPath ("template/base/" + citedHostSurfaceRelative)
+
 /// The doc copy retired with Canvas 0.3.0 (ADR-0024, #158) — it must not come back.
 let private retiredCanvasAudioFsi = repositoryPath "template/base/docs/api-surface/Canvas/Audio.fsi"
 
@@ -59,11 +66,12 @@ let audioSkillSurfaceTests =
     testList
         "fs-gg-audio skill surface (ADR-0024 step 4)"
         [
-          // A-MEMBERS — a member the body names but the surface does not declare is a lie the build
-          // must not ship. `Audio.playSfx` etc. resolve; `Audio.play` (renamed) would not.
-          test "every Audio.<member> cited in SKILL.md resolves in the bundled FS.GG.Audio.Core surface" {
+          // A-MEMBERS — a member the body names but no bundled surface declares is a lie the build must
+          // not ship. `Audio.playSfx` resolves in Core; `Audio.play` resolves in Host (issue #245); a
+          // renamed or hallucinated member resolves in neither and fails.
+          test "every Audio.<member> cited in SKILL.md resolves in a bundled FS.GG.Audio surface" {
               let body = File.ReadAllText skillBodyPath
-              let fsiText = File.ReadAllText audioCoreFsiPath
+              let fsiText = File.ReadAllText audioCoreFsiPath + "\n" + File.ReadAllText audioHostFsiPath
 
               // Code position only: members are lowercase-initial F# values; the lookbehind rejects
               // file-path / qualified contexts like `Audio.Core/Audio.fsi` or `X.Audio.y`.
@@ -76,7 +84,23 @@ let audioSkillSurfaceTests =
               Expect.isNonEmpty cited "the skill body cites at least one Audio member"
 
               let unresolved = cited |> List.filter (declaresMember fsiText >> not)
-              Expect.isEmpty unresolved $"every cited Audio.<member> resolves in {citedSurfaceRelative}"
+              Expect.isEmpty unresolved $"every cited Audio.<member> resolves in {citedSurfaceRelative} or {citedHostSurfaceRelative}"
+          }
+
+          // Issue #245 — the runtime-playback claim is only honest while the surface backing it ships.
+          test "the host-side playback surface the skill's runtime claim depends on is bundled" {
+              Expect.isTrue (File.Exists audioHostFsiPath) $"bundled surface missing: {citedHostSurfaceRelative}"
+
+              let hostFsi = File.ReadAllText audioHostFsiPath
+              Expect.isTrue (declaresMember hostFsi "play") "the bundled Host surface declares Audio.play"
+
+              Expect.equal
+                  (declaredNamespace hostFsi)
+                  (Some "FS.GG.Audio.Host")
+                  "the bundled host surface declares namespace FS.GG.Audio.Host"
+
+              let body = File.ReadAllText skillBodyPath
+              Expect.stringContains body citedHostSurfaceRelative "SKILL.md cites the bundled host surface path"
           }
 
           // A-BUNDLE — the surface the skill points a reader at is the one the product ships, and it
