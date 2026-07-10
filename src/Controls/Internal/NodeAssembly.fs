@@ -17,11 +17,43 @@ module internal NodeAssembly =
     open WidgetGeometry
     open ContentRender
     open LayoutEval
+
+    /// The leaf-content decision shared by the single-control preview walk (`renderNode`) and the
+    /// retained product paint (`paintLeaf`): fill selection, fitted font size, and overflow ellipsis.
+    /// ONLY the box source differs between the two paths (flatten-and-stack slot vs real Yoga box), so
+    /// factoring it here keeps preview and product byte-identical on content — the preview no longer
+    /// paints the raw label where product ellipsizes an overflowing one. (#362)
+    let private leafContent (theme: Theme) (box: Rect) (c: Control<'msg>) : Scene list =
+        let label = c.Content |> Option.defaultValue c.Kind
+
+        let fill =
+            if disabledOrReadOnly c then theme.Muted
+            elif boolValue "selected" false c.Attributes then theme.Accent
+            else theme.Background
+
+        let fontSize =
+            fittedFontSize theme.FontSize 6.0 box.Width box.Height theme.FontFamily label
+
+        let textY = box.Y + (box.Height + fontSize) * 0.5 - 3.0
+
+        // Feature 136 (T016A): if the label still overflows the box at the smallest fitted size,
+        // ellipsize it (explicit `…`) rather than letting the clip rect silently drop characters.
+        let shown =
+            ellipsize theme.FontFamily fontSize (box.Width - 16.0) label
+
+        let labelRun =
+            { Text = shown
+              Position = { X = box.X + 8.0; Y = textY }
+              Font = { Family = theme.FontFamily; Size = fontSize; Weight = None }
+              Paint = Paint.fill theme.Foreground }
+
+        [ Scene.rectangle (box.X, box.Y, box.Width, box.Height) fill
+          Scene.clipped (RectClip box) (Scene.textRun labelRun) ]
+
     let renderNode (theme: Theme) y (control: Control<'msg>) =
         let width = nodeWidth control
         let height = nodeHeight control
         let visible = boolValue "visible" true control.Attributes
-        let label = control.Content |> Option.defaultValue control.Kind
 
         if not visible then
             Scene.group [ Scene.rectangle (0.0, y, width, height) Colors.transparent ]
@@ -39,23 +71,9 @@ module internal NodeAssembly =
             Scene.group (title :: faithfulContent theme box control)
         else
             // Text / container controls: the control IS its text, so box + clipped label is faithful.
-            let fill =
-                if disabledOrReadOnly control then theme.Muted
-                elif boolValue "selected" false control.Attributes then theme.Accent
-                else theme.Background
-            let fontSize = fittedFontSize theme.FontSize 6.0 width height theme.FontFamily label
-            let textY = y + (height + fontSize) * 0.5 - 3.0
-            let labelRun =
-                { Text = label
-                  Position = { X = 8.0; Y = textY }
-                  Font = { Family = theme.FontFamily; Size = fontSize; Weight = None }
-                  Paint = Paint.fill theme.Foreground }
-            Scene.group [
-                Scene.rectangle (0.0, y, width, height) fill
-                Scene.clipped
-                    (RectClip { X = 0.0; Y = y; Width = width; Height = height })
-                    (Scene.textRun labelRun)
-            ]
+            // The box here is this node's flatten-and-stack slot; `leafContent` makes the content
+            // decision (fill/fit/ellipsize) identical to the product paint, which uses the real Yoga box.
+            Scene.group (leafContent theme { X = 0.0; Y = y; Width = width; Height = height } control)
 
     let renderScene (theme: Theme) (control: Control<'msg>) =
         let controls = recursively (fun control -> [ control ]) control
@@ -101,31 +119,9 @@ module internal NodeAssembly =
             else
                 content
         else
-            let label = c.Content |> Option.defaultValue c.Kind
-
-            let fill =
-                if disabledOrReadOnly c then theme.Muted
-                elif boolValue "selected" false c.Attributes then theme.Accent
-                else theme.Background
-
-            let fontSize =
-                fittedFontSize theme.FontSize 6.0 box.Width box.Height theme.FontFamily label
-
-            let textY = box.Y + (box.Height + fontSize) * 0.5 - 3.0
-
-            // Feature 136 (T016A): if the label still overflows the box at the smallest fitted size,
-            // ellipsize it (explicit `…`) rather than letting the clip rect silently drop characters.
-            let shown =
-                ellipsize theme.FontFamily fontSize (box.Width - 16.0) label
-
-            let labelRun =
-                { Text = shown
-                  Position = { X = box.X + 8.0; Y = textY }
-                  Font = { Family = theme.FontFamily; Size = fontSize; Weight = None }
-                  Paint = Paint.fill theme.Foreground }
-
-            [ Scene.rectangle (box.X, box.Y, box.Width, box.Height) fill
-              Scene.clipped (RectClip box) (Scene.textRun labelRun) ]
+            // The leaf-content decision (fill/fit/ellipsize) is shared with the preview walk so the two
+            // paths agree on content; only this box (the real Yoga box) differs from the stack slot.
+            leafContent theme box c
 
     /// Paint ONE node's own contribution (`here`) at its computed box — the reusable unit a
     /// retained `RenderFragment` caches. Output depends ONLY on `theme`, the looked-up box,

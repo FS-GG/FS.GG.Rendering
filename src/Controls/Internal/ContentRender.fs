@@ -30,6 +30,17 @@ module internal ContentRender =
         // to the neutral `"primary"`. The default (neutral) policy still ignores it, so this is
         // byte-identical under the default theme — but the value now reaches resolution (FR-002, R3).
         let intent = textValueOf "style" control |> Option.defaultValue "primary"
+        // A rich family that can OWN a keyed child subtree must not paint its full schematic once it HAS
+        // children: the children paint the real content through their own keyed nodes, so a schematic on
+        // top duplicates it. Such a node contributes only its frame and lets the children win — matching
+        // the product path, where `paintNode` paints a container's frame and never calls
+        // `faithfulContent`. This generalises the reconciliation `data-grid` already applied. (#362)
+        let nestedOrSchematic (schematic: unit -> Scene list) =
+            if List.isEmpty control.Children then
+                schematic ()
+            else
+                [ Scene.rectangleWithPaint box (Paint.stroke theme.Foreground 1.5) ]
+
         match control.Kind with
         | "line-chart" -> lineGeom theme box (chartValues control)
         | "bar-chart" -> barGeom theme box (chartValues control)
@@ -72,11 +83,7 @@ module internal ContentRender =
         // itself; the preview walk (`renderNode`) calls `faithfulContent` on rich kinds regardless of
         // children, so the schematic was painted *on top of* the real rows. A grid that owns children
         // therefore contributes its frame only, and lets the children paint the data.
-        | "data-grid" ->
-            if List.isEmpty control.Children then
-                gridGeom theme box items
-            else
-                [ Scene.rectangleWithPaint box (Paint.stroke theme.Foreground 1.5) ]
+        | "data-grid" -> nestedOrSchematic (fun () -> gridGeom theme box items)
         // The child tree's leaves. `data-grid-header`/`data-grid-row` are containers and never reach
         // here — see `DataGridGeometry`.
         | "data-grid-header-cell" -> headerCellGeom theme box label
@@ -101,10 +108,10 @@ module internal ContentRender =
         | "wrap" -> wrapGeom theme box items
         | "split-view" -> splitViewGeom theme box items
         | "toolbar" -> toolbarGeom theme box items
-        | "panel" -> panelGeom theme box (if label = "" then "Panel content" else label)
-        | "border" -> borderGeom theme box (if label = "" then "Bordered" else label)
+        | "panel" -> nestedOrSchematic (fun () -> panelGeom theme box (if label = "" then "Panel content" else label))
+        | "border" -> nestedOrSchematic (fun () -> borderGeom theme box (if label = "" then "Bordered" else label))
         | "scroll-viewer" -> scrollViewerGeom theme box (if label = "" then "Scrollable content" else label)
-        | "overlay" -> overlayGeom theme box (if label = "" then "Overlaid content" else label)
+        | "overlay" -> nestedOrSchematic (fun () -> overlayGeom theme box (if label = "" then "Overlaid content" else label))
         | "date-picker"
         | "time-picker" -> pickerGeom theme box (control.Content |> Option.defaultValue control.Kind)
         | "color-picker" -> swatchGeom theme box
@@ -119,7 +126,7 @@ module internal ContentRender =
         // (and, where intent matters, the resolver) — no branch on theme identity (FR-007, R4).
         | "tag" -> tagGeom theme box label
         | "avatar" -> avatarGeom theme box label
-        | "card" -> cardGeom theme box label
+        | "card" -> nestedOrSchematic (fun () -> cardGeom theme box label)
         | "descriptions" -> descriptionsGeom theme box (stringListOf "items" control)
         | "statistic" -> statisticGeom theme box (textValueOf "value" control |> Option.orElse (control.Content) |> Option.defaultValue "")
         | "timeline" -> timelineGeom theme box (stringListOf "items" control)

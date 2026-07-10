@@ -171,6 +171,7 @@
     <Compile Include="Issue56FocusScopeStopsTests.fs" />
     <Compile Include="Issue335KeyRebindTests.fs" />
     <Compile Include="Feature358VisibleCollapseTests.fs" />
+    <Compile Include="Feature362RenderParityTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
