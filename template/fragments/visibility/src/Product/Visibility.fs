@@ -1,13 +1,12 @@
 namespace AppRoot
 
-open FS.GG.Game.Core // ADR-0022 P5: Point/Rect + SpatialGrid now live in the FS.GG.Game.Core bottom layer (moved from FS.GG.UI.Scene/.Canvas)
+open FS.GG.Game.Core // ADR-0022 P5: Point/Rect now live in the FS.GG.Game.Core bottom layer (moved from FS.GG.UI.Scene/.Canvas)
 
 /// Product-owned 2D-visibility helper — THIS FILE IS YOURS TO ADAPT.
 ///
 /// The geometry vocabulary reuses the framework primitives (no hand-rolled point/vector type):
-///   * positions, ray directions and hit vertices are the shared `FS.GG.UI.Scene.Point`;
-///   * the sight bound and cull region are the shared `FS.GG.UI.Scene.Rect`;
-///   * broad-phase culling of nearby occluders reuses `FS.GG.UI.Canvas.SpatialGrid`.
+///   * positions, ray directions and hit vertices are the shared `FS.GG.Game.Core.Point`;
+///   * the sight bound and cull region are the shared `FS.GG.Game.Core.Rect`.
 /// The ray-segment intersection and the *angular sweep* (`polygon`, below) are the game-opinionated
 /// part the framework deliberately does not freeze into a package — edit the sight radius, cone the
 /// field of view, swap the polygon output for a per-cell mask, or delete this whole file (the build
@@ -26,11 +25,11 @@ module Visibility =
     /// type. A zero-length segment (`A = B`) occludes nothing.
     type Segment = { A: Point; B: Point }
 
-    /// The editable knobs. THIS is the policy to tune per game.
+    /// The editable knob. THIS is the policy to tune per game.
     /// `Radius` is the half-extent of the square sight bound centred on the source: it doubles as the
-    /// ray **bound** (an unhit ray terminates on the `source ± Radius` box) AND the broad-phase cull
-    /// region, so the two can never disagree. `CellSize` tunes the `SpatialGrid` used to cull occluders.
-    type Settings = { Radius: float; CellSize: float }
+    /// ray **bound** (an unhit ray terminates on the `source ± Radius` box) AND the cull region, so the
+    /// two can never disagree — one radius, one sight box.
+    type Settings = { Radius: float }
 
     /// The visible region from a source: an ordered, closed, counter-clockwise ring of hit points,
     /// bounded by `Radius`. `Source` is the viewpoint it was computed from.
@@ -47,6 +46,38 @@ module Visibility =
     let private isFiniteSeg (s: Segment) = isFinitePoint s.A && isFinitePoint s.B
 
     let private sqLen (v: Point) = v.X * v.X + v.Y * v.Y
+
+    /// True when the segment `a`→`b` touches `rect` anywhere: an endpoint inside it, a chord crossing
+    /// clean through with both ends outside, or an edge graze. Liang–Barsky slab clip of the parametric
+    /// segment against the four half-planes — sqrt-free and transcendental-free, so it is exact and
+    /// deterministic. Edge contact counts as a touch (inclusive, matching `Geometry.containsPoint`).
+    ///
+    /// This is the cull predicate, and it must never report a false negative: a dropped occluder is a
+    /// wall the viewpoint sees straight through.
+    let private segmentHitsRect (rect: Rect) (a: Point) (b: Point) : bool =
+        let dx = b.X - a.X
+        let dy = b.Y - a.Y
+
+        // Narrow the surviving parameter window `[t0, t1]` by one half-plane `p * t <= q`. A `p` of zero
+        // means the segment runs parallel to that slab, so it survives only where it already lies inside
+        // it (`q >= 0`); an empty window `(1, 0)` is absorbing, so a rejected segment stays rejected.
+        // Struct tuples, so culling a wall list allocates nothing.
+        let inline clip (p: float) (q: float) (struct (t0, t1)) =
+            if p = 0.0 then
+                if q < 0.0 then struct (1.0, 0.0) else struct (t0, t1)
+            else
+                let r = q / p
+                if p < 0.0 then struct (max t0 r, t1) else struct (t0, min t1 r)
+
+        let window =
+            struct (0.0, 1.0)
+            |> clip (-dx) (a.X - rect.X)
+            |> clip dx (rect.X + rect.Width - a.X)
+            |> clip (-dy) (a.Y - rect.Y)
+            |> clip dy (rect.Y + rect.Height - a.Y)
+
+        let struct (t0, t1) = window
+        t0 <= t1
 
     /// Nearest ray-segment hit: the point struck and the parametric distance `t >= 0` along the ray
     /// `origin + t*dir`, or `None` when the ray is parallel to / points away from the segment, misses
@@ -134,10 +165,10 @@ module Visibility =
                 let c = compare (sqLen va) (sqLen vb)
                 if c <> 0 then c else compare ia ib
 
-    /// The full visibility polygon via angular sweep: cull occluders inside the `Radius` bound with
-    /// `SpatialGrid`, shoot a ray at every occluder corner (and one either side of it), keep the nearest
-    /// hit per ray, and order the hits into a closed CCW ring. Pure and deterministic. This is the
-    /// function most games call from `update`/`view`.
+    /// The full visibility polygon via angular sweep: cull to the occluders touching the `Radius` bound
+    /// box, shoot a ray at every occluder corner (and one either side of it), keep the nearest hit per
+    /// ray, and order the hits into a closed CCW ring. Pure and deterministic. This is the function most
+    /// games call from `update`/`view`.
     let polygon (settings: Settings) (source: Point) (segments: Segment list) : VisibilityPolygon =
         // Total on a bad radius: fall back to a minimal positive bound rather than throwing.
         let radius =
@@ -155,22 +186,17 @@ module Visibility =
             segments
             |> List.filter (fun s -> isFiniteSeg s && sqLen { X = s.B.X - s.A.X; Y = s.B.Y - s.A.Y } > 0.0)
 
-        // Broad-phase cull: bucket each segment by BOTH endpoints, keep those with an endpoint inside the
-        // bound box (reuses SpatialGrid — no hand-rolled bucketing). A chord crossing the box with both
-        // ends outside is a documented broad-phase simplification.
+        // Cull to the occluders that actually touch the sight bound box, by an exact segment-vs-box test.
+        // NOT a `SpatialGrid` bucket: the grid indexes *points*, so bucketing a segment by its endpoints
+        // drops a wall that spans the box with both ends outside it — the viewpoint then sees straight
+        // through it. Long walls are the common case, not the corner case, so this test is exact.
         let boundRect =
             { X = source.X - radius
               Y = source.Y - radius
               Width = 2.0 * radius
               Height = 2.0 * radius }
 
-        let indexed = List.indexed real
-        let grid =
-            SpatialGrid.build settings.CellSize [ for i, s in indexed do
-                                                      yield s.A, i
-                                                      yield s.B, i ]
-        let culledIdx = SpatialGrid.query boundRect grid |> List.distinct |> List.sort
-        let culled = [ for i in culledIdx -> real.[i] ]
+        let culled = real |> List.filter (fun s -> segmentHitsRect boundRect s.A s.B)
 
         let bEdges, bCorners = boundEdges source radius
         let allSegs = culled @ bEdges

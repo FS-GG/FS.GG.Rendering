@@ -164,7 +164,7 @@
     {
       "id": "fs-gg-visibility",
       "scope": "product",
-      "sha256": "09ca21571aa007f0806d2b1fd1430310f376af93d507670de69343adcc3b4e6c",
+      "sha256": "74f9d3fb5121f36785e58caf2fb64741922ed3b287c4fc92d9501d2f486031c3",
       "resolvablePath": ".agents/skills/fs-gg-visibility/SKILL.md",
       "materializes-when": "profile in [game, sample-pack]",
       "supplied-by": "template/product-skills/fs-gg-visibility/"
