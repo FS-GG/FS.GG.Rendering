@@ -193,6 +193,7 @@ FS.GG.UI.Controls.Interactive2+Calendar
 FS.GG.UI.Controls.Interactive2+Carousel
 FS.GG.UI.Controls.Interactive2+Collapse
 FS.GG.UI.Controls.Interactive2+Rate
+FS.GG.UI.Controls.KeyRebind
 FS.GG.UI.Controls.KeyRouting
 FS.GG.UI.Controls.KeyRouting+Navigate
 FS.GG.UI.Controls.KeyRouting+Tags

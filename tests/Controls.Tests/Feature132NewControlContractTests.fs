@@ -52,7 +52,8 @@ let private netNewControls : (string * Control<Msg>) list =
       "calendar", Interactive2.Calendar.create []
       "cascader", DataEntry2.Cascader.create [ Attr.items [ "Region"; "City" ] ]
       "auto-complete", DataEntry2.AutoComplete.create [ DataEntry2.AutoComplete.value "qu" ]
-      "upload", DataEntry2.Upload.create [ DataEntry2.Upload.text "Upload" ] ]
+      "upload", DataEntry2.Upload.create [ DataEntry2.Upload.text "Upload" ]
+      "key-rebind", KeyRebind.create [ KeyRebind.commands [ "MoveUp", "w" ] ] ]
 
 let private rowsById = Catalog.supportedControls |> List.map (fun r -> r.Id, r) |> Map.ofList
 
