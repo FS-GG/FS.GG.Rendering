@@ -1,27 +1,3 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <!-- https://learn.microsoft.com/dotnet/fundamentals/package-validation/diagnostic-ids -->
-<!--
-  Issue #246: `ViewerOptions` gained `LogicalSize: Size option`, which is the API the issue's
-  acceptance criteria specify. Adding a field to an F# record necessarily changes the arity of its
-  generated constructor, so ApiCompat reports CP0002 for the old 4-argument constructor against the
-  published 0.4.0 baseline. The break is DELIBERATE and sanctioned — the same shape as the additions
-  of `PresentMode` and `FrameRateCap` before it. `scripts/apicompat-check.sh` names this exact
-  remedy: "force a SemVer major, or suppress deliberately with ApiCompatGenerateSuppressionFile".
-
-  SCOPE: one diagnostic, one target. `IsBaselineSuppression` confines it to the comparison against
-  the published baseline, so a NEW break introduced later still reddens the gate. Do not widen this
-  file to silence a break you have not read.
-
-  LIFETIME: delete it once a release carrying this break (>= 0.5.0) is published to the org feed.
-  The gate baselines off the feed's latest version, not the repo's, so the suppression is needed
-  only for the window between this merge and that publish.
--->
-<Suppressions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:FS.GG.UI.SkiaViewer.ViewerOptions.#ctor(System.String,FS.GG.UI.Scene.Size,FS.GG.UI.SkiaViewer.ViewerPresentMode,Microsoft.FSharp.Core.FSharpOption{System.Int32})</Target>
-    <Left>lib/net10.0/FS.GG.UI.SkiaViewer.dll</Left>
-    <Right>lib/net10.0/FS.GG.UI.SkiaViewer.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-</Suppressions>
+<Suppressions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" />
