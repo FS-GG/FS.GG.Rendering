@@ -12,6 +12,11 @@ module Loop =
     [<Literal>]
     let private maxFrameTime = 0.25
 
+    /// #266: a carried accumulator that is not a finite, non-negative number is spent time we cannot
+    /// account for; treat it as empty rather than propagate it. Mirrors `FixedStep.drain`.
+    let inline private finiteAccumulator (acc: float) =
+        if System.Double.IsFinite acc && acc >= 0.0 then acc else 0.0
+
     let init (world: 'world) : StepState<'world> =
         { Current = world; Previous = world; Accumulator = 0.0 }
 
@@ -21,14 +26,25 @@ module Loop =
         (frameTime: float)
         (state: StepState<'world>)
         : StepState<'world> =
-        if dt <= 0.0 then
+        if not (System.Double.IsFinite dt) || dt <= 0.0 then
             state
         else
-            // Clamp negative/oversized frame times before accumulating (determinism + no spiral).
-            let clamped = max 0.0 (min frameTime maxFrameTime)
+            // Clamp negative/oversized/non-finite frame times before accumulating (determinism + no
+            // spiral). Written as an explicit finiteness test, not `max 0.0 (min frameTime 0.25)`:
+            // F#'s `min`/`max` PROPAGATE NaN, so that clamp fed NaN straight into the accumulator,
+            // `acc >= dt` went false forever, and the simulation latched off (#266).
+            let clamped =
+                if System.Double.IsFinite frameTime && frameTime > 0.0 then
+                    min frameTime maxFrameTime
+                else
+                    0.0
+
+            // A non-finite or negative carried accumulator is empty, so a poisoned state heals.
+            let acc0 = finiteAccumulator state.Accumulator
+
             let mutable current = state.Current
             let mutable previous = state.Previous
-            let mutable acc = state.Accumulator + clamped
+            let mutable acc = acc0 + clamped
 
             while acc >= dt do
                 previous <- current
@@ -38,4 +54,7 @@ module Loop =
             { Current = current; Previous = previous; Accumulator = acc }
 
     let alpha (dt: float) (state: StepState<'world>) : float =
-        if dt <= 0.0 then 0.0 else state.Accumulator / dt
+        if not (System.Double.IsFinite dt) || dt <= 0.0 then
+            0.0
+        else
+            finiteAccumulator state.Accumulator / dt
