@@ -71,6 +71,13 @@ let private registry =
       { Twin = $"{twinDirectory}/BomMembershipCoherenceTests.fs"
         ReleaseOnly = "tests/Package.Tests/Feature207BomMembershipTests.fs"
         HeaderNames = "Feature207BomMembershipTests"
+        SharedInputs = true }
+      // #366 — the bundled api-surface mirror contract (M-REF/M-PTR/M-PROV + the #259 completeness
+      // checks). Verbatim text-mirror of a release-only Package.Tests rule, so it reads the same four
+      // source-of-truth inputs (the bundled tree, Product.fsproj, the template pins, the product-skills).
+      { Twin = $"{twinDirectory}/ApiSurfaceMirrorCoherenceTests.fs"
+        ReleaseOnly = "tests/Package.Tests/ApiSurfaceMirrorTests.fs"
+        HeaderNames = "ApiSurfaceMirrorTests"
         SharedInputs = true } ]
 
 /// The repository source-of-truth paths a test source reads, extracted from its `repositoryPath "…"`
