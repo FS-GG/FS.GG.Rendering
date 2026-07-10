@@ -74,7 +74,21 @@ module internal LayoutEval =
               AttrKeys.LayoutMaxHeight ]
 
     let rec toLayout (path: string) (c: Control<'msg>) : FS.GG.UI.Layout.LayoutNode =
+        toLayoutVisible false path c
+
+    // Feature 358: `Attr.visible false` collapses the control AND its whole subtree out of layout. The
+    // node is lowered with `Visibility = Collapsed`, which `Layout.evaluate` maps to Yoga `Display.None`
+    // (zero size; siblings reflow as if it were absent). `ancestorHidden` threads the collapse down so
+    // every descendant of a hidden node is also `Collapsed` — `boundsByIdOf` (below) then drops the
+    // entire subtree from the paint/hit-test map, so a hidden control contributes no bounds and no scene
+    // in BOTH the full (`renderTree`) and retained paths. The incremental classifier re-measures on a
+    // `visible` toggle through the `AttrCategory.Layout` channel (`Attr.visible` is categorised `Layout`);
+    // the NAME channel is deliberately unused — the Feature 101 drift gate reads names and its probe
+    // cannot set a bool, so `visible` stays a category-only layout signal, the same discipline `elevation`
+    // uses (see `Feature101LayoutDriftGuardTests`).
+    and private toLayoutVisible (ancestorHidden: bool) (path: string) (c: Control<'msg>) : FS.GG.UI.Layout.LayoutNode =
         let id = c.Key |> Option.defaultValue path
+        let hidden = ancestorHidden || not (boolValue "visible" true c.Attributes)
         let isLeaf = List.isEmpty c.Children
 
         let size: FS.GG.UI.Layout.LayoutSize =
@@ -97,6 +111,7 @@ module internal LayoutEval =
               Height = tryFloat AttrKeys.LayoutMaxHeight attrs }
 
         { LayoutDefaults.layoutNode id with
+            Visibility = (if hidden then FS.GG.UI.Layout.Collapsed else FS.GG.UI.Layout.Visible)
             Intent =
                 { LayoutDefaults.layoutIntent with
                     Direction = directionOf c
@@ -113,7 +128,7 @@ module internal LayoutEval =
                     FlexGrow = tryFloat AttrKeys.LayoutFlexGrow attrs |> Option.defaultValue LayoutDefaults.layoutIntent.FlexGrow
                     FlexShrink = tryFloat AttrKeys.LayoutFlexShrink attrs |> Option.defaultValue LayoutDefaults.layoutIntent.FlexShrink
                     FlexBasis = tryFloat AttrKeys.LayoutFlexBasis attrs }
-            Children = c.Children |> List.mapi (fun index child -> toLayout (path + "." + string index) child) }
+            Children = c.Children |> List.mapi (fun index child -> toLayoutVisible hidden (path + "." + string index) child) }
 
     /// Build the nested Yoga layout tree for `control` at `size`, evaluate it, and return the
     /// root `LayoutNode` plus the evaluated absolute bounds keyed by the SAME collision-free
@@ -126,7 +141,14 @@ module internal LayoutEval =
 
     let boundsByIdOf (result: FS.GG.UI.Layout.LayoutResult) =
         result.Bounds
-        |> List.map (fun (b: FS.GG.UI.Layout.ComputedBounds) -> b.NodeId, b.Bounds)
+        // Feature 358: a `Collapsed` node (a `visible=false` control or a descendant of one, marked by
+        // `toLayoutVisible`) is dropped from the paint/hit-test map entirely — `paintNode` then returns
+        // `[]` (its `Map.tryFind` misses) and `nodeBox` returns `None`, so the hidden subtree contributes
+        // no bounds and no scene. Nothing else produces `Collapsed` bounds, so this is identity for every
+        // pre-358 control. (`Layout.hitTestComputed` independently ignores non-`Visible` bounds, so the
+        // raw `LayoutResult` threaded as the incremental/retained cache stays hit-test-correct too.)
+        |> List.choose (fun (b: FS.GG.UI.Layout.ComputedBounds) ->
+            if b.Visibility = FS.GG.UI.Layout.Collapsed then None else Some(b.NodeId, b.Bounds))
         |> Map.ofList
 
     // Feature 175 (FR-001/FR-009): the live scroll offset stamped onto a `scroll-viewer` node by the
