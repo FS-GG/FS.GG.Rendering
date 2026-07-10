@@ -26,9 +26,9 @@ type StepState<'world> =
 /// Depend on `FS.GG.Game.Core` directly — the `game` and `sample-pack` profiles, the only two that
 /// materialize `FS.GG.UI.Canvas`, already pin it.
 ///
-/// Retired at the next `FS.GG.UI.Canvas` major. It carries no `[<Obsolete>]` yet because the
-/// replacement ships in no published `FS.GG.Game.Core` (it landed after `v0.2.0`); the attribute lands
-/// with the release that makes the migration target reachable.
+/// Retired at the next `FS.GG.UI.Canvas` major, which is where it gains `[<Obsolete>]`. The migration
+/// target is now reachable: `FS.GG.Game.Core` `0.3.0` ships `Loop`, and `$(FsGgGameVersion)` pins it on
+/// the `game` and `sample-pack` profiles — the only two that materialize `FS.GG.UI.Canvas` (#269).
 ///
 /// Feature 191 (US3, C4): a deterministic fixed-timestep game loop (Glenn Fiedler's accumulator).
 /// Every function's output depends ONLY on its arguments — no wall-clock read — so a seed + a scripted
