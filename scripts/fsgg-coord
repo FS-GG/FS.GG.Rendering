@@ -88,8 +88,10 @@
 #                                             # worktree/branch to isolate on. --force steals.
 #   fsgg-coord heartbeat <issue>              # renew this worker's lease on a claim
 #   fsgg-coord release <issue> [--status S] [--force]
-#                                             # drop the lock: delete the marker, unassign, Status
-#                                             # (default Ready, so the item returns to the pool)
+#                                             # drop the lock: delete the marker, unassign, and reset
+#                                             # the `In progress` claim set -> Ready. Any OTHER status
+#                                             # the caller chose (Blocked, Backlog, ...) is PRESERVED;
+#                                             # --status S overrides. See release_cmd.
 #   fsgg-coord who [--repo R] [--local] [--json]
 #                                             # WHO holds WHAT, right now: worker, age, lease
 #                                             # health, declared paths, branch. Finds work by its
@@ -149,6 +151,9 @@ set -euo pipefail
 
 OWNER="${FSGG_COORD_OWNER:-FS-GG}"
 TITLE="${FSGG_COORD_PROJECT:-Coordination}"
+# The ONLY Status a claim writes. Undoing a claim (`release`, `reap`) resets this column and no
+# other — see unclaim_status.
+CLAIM_STATUS="In progress"
 CACHE="${FSGG_COORD_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/fsgg-coord}"
 BOARD_TTL_MIN="${FSGG_COORD_BOARD_TTL_MIN:-1440}"
 CLAIM_LEASE_MIN="${FSGG_CLAIM_LEASE_MIN:-120}"
@@ -626,6 +631,69 @@ item_id() {
     || die "issue $R_OWNER/$R_REPO#$R_NUM is not on board '$TITLE' — add it first: gh project item-add $boardnum --owner $OWNER --url https://github.com/$R_OWNER/$R_REPO/issues/$R_NUM"
   jq -n --arg itemId "$iid" '{itemId:$itemId}' > "$itemfile"
   printf '%s\n' "$iid"
+}
+
+# ---- the item's CURRENT Status, read fresh (never cached — `release` decides on it) -------------
+# Deliberately NOT folded into `item_id`: that caches its answer to a file, and a stale Status is
+# worse than none. One narrow query, no blocker resolution.
+#
+# Echoes the Status name — empty when the item is on the board with no Status set.
+#   rc 0 -> read it    rc 1 -> the read failed    rc 2 -> the issue is not on this board
+#
+# Callers must invoke this in a command substitution: `gql`/`ensure_board` `die` on failure, and the
+# substitution's subshell is what turns that into rc 1 rather than killing the caller mid-release.
+item_status() {
+  local ref="$1"
+  parse_ref "$ref"
+  ensure_board >/dev/null
+  local boardnum out node
+  boardnum="$(board_get '.number')"
+  local q='query($owner:String!, $repo:String!, $num:Int!){
+    repository(owner:$owner, name:$repo){ issue(number:$num){
+      projectItems(first:20){ nodes{
+        project{ number }
+        status: fieldValueByName(name:"Status"){ ... on ProjectV2ItemFieldSingleSelectValue{ name } }
+      } } } }
+    rateLimit{ cost remaining }
+  }'
+  # Check the read EXPLICITLY. `gql` dies, but its `exit` only unwinds the `$( )` it runs in, leaving
+  # `out` empty here — and an empty payload yields no board node, which is indistinguishable from
+  # "not on this board" (rc 2) unless we catch it first. That mistake is the whole bug in miniature:
+  # a failed read must never be reported as a known, benign state.
+  out="$(gql "$q" -f owner="$R_OWNER" -f repo="$R_REPO" -F num="$R_NUM")" || return 1
+  [ -n "$out" ] || return 1
+  node="$(jq -c --argjson pn "$boardnum" \
+    '[ .data.repository.issue.projectItems.nodes[]? | select(.project.number == $pn) ] | first // empty' \
+    <<<"$out")" || return 1
+  [ -n "$node" ] || return 2
+  jq -r '.status.name // ""' <<<"$node"
+}
+
+# ---- what Status should an item carry once its claim is UNDONE? (#331) --------------------------
+# `release` and `reap` are the two ways a claim goes away, so they owe the board the same answer —
+# and both used to force `Ready`. But "the lease is gone" and "this item is startable" are DIFFERENT
+# claims. A claim's only Status footprint is the `$CLAIM_STATUS` it wrote; that is the one column
+# undoing it may reset. `Blocked`, `Backlog`, `In review`, `Done` were each chosen by somebody, and
+# overwriting them is how the board came to assert `Ready` on rows whose `Blocked by` named an open
+# issue — silently, every time a worker followed the documented blocked-item sequence.
+#
+# And a Status we could not READ is not a Status we may overwrite: guessing `Ready` over an unknown
+# column is the same fail-open one turn in (#266).
+#
+# Echoes one TAB-separated verdict; always rc 0, because every outcome here is a decision:
+#   write<TAB>Ready   reset the claim's own column
+#   keep<TAB><name>   leave a deliberately-chosen column alone
+#   offboard<TAB>     the item is on no board; there is nothing to reset
+#   unreadable<TAB>   the read failed; do not touch the column
+unclaim_status() {
+  local cur rc=0
+  cur="$(item_status "$1" 2>/dev/null)" || rc=$?
+  case "$rc" in
+    0) if [ -z "$cur" ] || [ "$cur" = "$CLAIM_STATUS" ]; then printf 'write\tReady\n'
+       else printf 'keep\t%s\n' "$cur"; fi ;;
+    2) printf 'offboard\t\n' ;;
+    *) printf 'unreadable\t\n' ;;
+  esac
 }
 
 # ---- set-field: resolve project/field/item/option ids from cache, one narrow mutation -----------
@@ -1515,8 +1583,8 @@ claim_cmd() {
   # A SUBSHELL, not just a redirect: set_field's `die` is an `exit`, and the board flip is strictly
   # best-effort — the lock is already held, so a board that rejects the write must not unwind a claim.
   local boardnote
-  if ( set_field "$ref" Status "In progress" ) >/dev/null 2>&1; then
-    boardnote="board: In progress"
+  if ( set_field "$ref" Status "$CLAIM_STATUS" ) >/dev/null 2>&1; then
+    boardnote="board: $CLAIM_STATUS"
   else
     boardnote="note: not on board '$TITLE' (the marker is the lock; add it to sequence it)"
   fi
@@ -1565,11 +1633,29 @@ heartbeat_cmd() {
 # ---- release: drop the lock. Delete our marker, unassign, and return the item to the pool. --------
 # Releasing a claim held by ANOTHER worker needs --force: an accidental release is how two workers end
 # up on one item, which is the failure this protocol exists to prevent.
+# ---- release: "drop the lease" and "this item is startable" are two different claims (#331) ------
+# `claim` sets Status=In progress. Releasing the lease undoes THAT, and only that. Every other status
+# on the item was chosen deliberately — Blocked, Backlog, In review, Done — and a release that forced
+# `Ready` over it silently reverted its author. The documented blocked-item sequence
+#
+#     set-field <i> 'Blocked by' <ref>;  set-field <i> Status Blocked;  release <i>
+#
+# therefore could not produce its own documented end state: the board ended up asserting `Ready` on a
+# row whose `Blocked by` named an open issue. Self-contradicting, and regenerated every time a worker
+# followed the protocol. (Not a scheduler fail-open — `batch` derives blockedness from `Blocked by`,
+# not from `Status` — but the board is a record humans read, and `check-board` had to keep repairing
+# what `release` kept breaking.)
+#
+# A status we could not READ is not a status we may overwrite: forcing `Ready` over an unknown one is
+# the same defect a turn further in. An unreadable Status writes nothing and says so.
+#
+# `--status S` still wins outright. That is the caller stating the end state, rather than release
+# guessing it.
 release_cmd() {
-  local ref="" status="Ready" force=""
+  local ref="" status="" explicit="" force=""
   while [ $# -gt 0 ]; do
     case "$1" in
-      --status) status="${2:?--status needs a value}"; shift 2 ;;
+      --status) status="${2:?--status needs a value}"; explicit=1; shift 2 ;;
       --force)  force=1; shift ;;
       -*)       die "release: unknown flag '$1'." ;;
       *)        [ -z "$ref" ] && ref="$1" || die "release: unexpected argument '$1'."; shift ;;
@@ -1596,9 +1682,28 @@ release_cmd() {
   done < <(jq -r --arg w "$w" --arg f "${force:-}" '.[] | select($f != "" or .worker == $w) | .id' <<<"$claims")
 
   gh issue edit "$R_NUM" --repo "$R_OWNER/$R_REPO" --remove-assignee "@me" >/dev/null 2>&1 || true
-  local boardnote
-  if ( set_field "$ref" Status "$status" ) >/dev/null 2>&1; then boardnote="board: $status"
-  else boardnote="note: not on board '$TITLE'"; fi
+
+  # The marker is gone by here, so the lease is ALREADY dropped. Nothing below may abort the release
+  # — a board that cannot be read or written leaves the column alone and reports that, exactly as it
+  # has always done for a board write that failed.
+  local boardnote=""
+  if [ -z "$explicit" ]; then
+    local act val
+    IFS=$'\t' read -r act val < <(unclaim_status "$ref")
+    case "$act" in
+      write) status="$val" ;;
+      keep)  boardnote="board: $val (preserved — release resets only the '$CLAIM_STATUS' claim set)" ;;
+      offboard) boardnote="note: not on board '$TITLE'" ;;
+      *)     boardnote="note: Status unchanged — could not read it"
+             echo "fsgg-coord: release: could not read $R_REPO#$R_NUM Status. The lease IS dropped; the board column is untouched." >&2
+             echo "  set it yourself if it still says '$CLAIM_STATUS': fsgg-coord set-field $ref Status Ready" >&2 ;;
+    esac
+  fi
+
+  if [ -z "$boardnote" ]; then
+    if ( set_field "$ref" Status "$status" ) >/dev/null 2>&1; then boardnote="board: $status"
+    else boardnote="note: not on board '$TITLE'"; fi
+  fi
   printf 'released %s (worker %s)  ·  %s\n' "$R_REPO#$R_NUM" "$w" "$boardnote"
 }
 
@@ -2105,12 +2210,19 @@ reap_cmd() {
     # `reap` now collects claims on items the board never had (that is the point of finding them by
     # marker), so the Status write can legitimately have nothing to write to. Report what actually
     # happened rather than asserting a board mutation we may not have performed.
-    local rnote
-    if ( set_field "$r#$num" Status Ready ) >/dev/null 2>&1; then
-      rnote="board: Ready"
-    else
-      rnote="not on board (marker cleared; nothing to reset)"
-    fi
+    #
+    # Reaping UNDOES a claim, exactly as `release` does, so it owes the board the same answer and
+    # asks the same question (#331). A worker whose lease expired on an item it had marked `Blocked`
+    # must not have that column reset to `Ready` on its way out.
+    local rnote ract rval
+    IFS=$'\t' read -r ract rval < <(unclaim_status "$r#$num")
+    case "$ract" in
+      write) if ( set_field "$r#$num" Status "$rval" ) >/dev/null 2>&1; then rnote="board: $rval"
+             else rnote="not on board (marker cleared; nothing to reset)"; fi ;;
+      keep)  rnote="board: $rval (preserved)" ;;
+      offboard)   rnote="not on board (marker cleared; nothing to reset)" ;;
+      *)          rnote="board: Status unchanged — could not read it (marker cleared)" ;;
+    esac
     printf 'reaped  %s#%s  worker %s  (idle %sm)  ·  %s\n' "$rp" "$num" "$cw" "$age" "$rnote"
   done
   [ -z "$apply" ] && echo "fsgg-coord: dry run — pass --apply to release these." >&2
