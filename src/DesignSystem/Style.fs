@@ -126,10 +126,22 @@ module Style =
     let private pressedAmount = 0.20
     let private selectedAmount = 0.28
 
+    // Validation tints the BORDER, never the label. `Invalid` used to also paint `Foreground = theme.Danger`
+    // (issue #359): a danger-red label over whatever fill the class layer left — invisible red-on-red for a
+    // `danger` control (ratio 1.00), red-on-fill for every other filled intent (≤1.6). The stroke is the
+    // legible invalid affordance (a red border is the conventional form-field signal, and it is measured as
+    // a 3:1 GraphicOrUi element, not 4.5 Text); the label stays whatever readable foreground the fill layer
+    // already chose. `Invalid` is now symmetric with `Valid`/`Pending`, which were always stroke-only.
+    //
+    // The signal rides the stroke, so a variant that draws no border (`ghost`/`text`/`link`, whose base
+    // `StrokeWidth` is 0) shows no visible invalid affordance — validation is a form-field concern and those
+    // are borderless BUTTONS, and the alternative (a red label) fails WCAG on the dark canvas anyway (the
+    // 3.25 `ghost/invalid` row this fix clears). Forcing a stroke width per state is a geometry change left
+    // to the kind bases, not this colour-only resolver.
     let applyValidation (theme: Theme) (v: ValidationState) (s: ResolvedStyle) : ResolvedStyle =
         match v with
         | Valid -> { s with Stroke = successColor theme }
-        | Invalid _ -> { s with Stroke = theme.Danger; Foreground = theme.Danger }
+        | Invalid _ -> { s with Stroke = theme.Danger }
         | Pending _ -> { s with Stroke = warningColor theme }
 
     let applyState (theme: Theme) (state: VisualState) (s: ResolvedStyle) : ResolvedStyle =

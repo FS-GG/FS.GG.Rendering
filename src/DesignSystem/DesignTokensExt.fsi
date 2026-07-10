@@ -37,6 +37,9 @@ module DesignTokensExt =
             val colorPrimaryHover : Color
             val colorPrimaryActive : Color
             val colorPrimaryBg : Color
+            val colorSuccess : Color
+            val colorWarning : Color
+            val colorError : Color
             val colorErrorBg : Color
             val colorBorder : Color
             val colorFillSecondary : Color
@@ -52,6 +55,9 @@ module DesignTokensExt =
             val colorPrimaryHover : Color
             val colorPrimaryActive : Color
             val colorPrimaryBg : Color
+            val colorSuccess : Color
+            val colorWarning : Color
+            val colorError : Color
             val colorErrorBg : Color
             val colorBorder : Color
             val colorFillSecondary : Color
