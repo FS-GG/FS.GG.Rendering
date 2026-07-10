@@ -78,6 +78,13 @@ let private registry =
       { Twin = $"{twinDirectory}/ApiSurfaceMirrorCoherenceTests.fs"
         ReleaseOnly = "tests/Package.Tests/ApiSurfaceMirrorTests.fs"
         HeaderNames = "ApiSurfaceMirrorTests"
+        SharedInputs = true }
+      // #366 — the skill-manifest materializes-when + supplied-by coherence against template.json.
+      // Text-mirror of a release-only Package.Tests rule: both read the skill-manifest and template.json
+      // and evaluate their conditions over the same parameter grid, so they share the same two inputs.
+      { Twin = $"{twinDirectory}/SkillMaterializesWhenCoherenceTests.fs"
+        ReleaseOnly = "tests/Package.Tests/Feature238SkillMaterializesWhenTests.fs"
+        HeaderNames = "Feature238SkillMaterializesWhenTests"
         SharedInputs = true } ]
 
 /// The repository source-of-truth paths a test source reads, extracted from its `repositoryPath "…"`
