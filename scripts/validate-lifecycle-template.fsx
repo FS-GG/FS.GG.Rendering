@@ -125,6 +125,22 @@ let private isSkillistCatalogSource (target: string) (includes: string list) =
 let private isManifestSource (source: string) =
     source.Replace('\\', '/') = "template/skill-manifest/"
 
+/// Issue #248: a capability-gated skill body — the same `.agents/skills/`-only, copyOnly,
+/// lifecycle-INDEPENDENT shape as a framework product skill, but gated on a capability flag
+/// (`feedback`) rather than a `profile` predicate, so it materializes on every profile AND lane.
+/// Its own category, so `frameworkChecked` keeps meaning exactly "profile-gated product skill".
+///
+/// Detected BY SHAPE, not by path: keying it on `template/feedback-report/skill/` would send the
+/// NEXT capability-gated skill down the lifecycle-workspace branch, where it would be rejected for
+/// missing a `lifecycle == "spec-kit"` clause it must not have. `fs-gg-feedback-report` is merely
+/// the first. The ungated skill-manifest row is excluded by `condition <> ""`; capture and
+/// fs-gg-samples by their spec-kit clause; the product skills by their profile predicate.
+let private isCapabilitySkillSource (target: string) (condition: string) =
+    target.Replace('\\', '/').StartsWith ".agents/skills/"
+    && condition <> ""
+    && not (condition.Contains SPEC_KIT_COND)
+    && not (condition.Contains "profile ==")
+
 /// Verify the gating invariant on every `source` entry (the env-free verdict-core fact,
 /// Feature 219 R3 / data-model "Template source category"; reworked by Feature 231 / ADR-0014).
 /// Classification order is significant: framework-product-skill FIRST (by `source` prefix), then
@@ -138,6 +154,7 @@ let private verifyGatedSources () =
     use doc = templateDoc ()
     let sources = doc.RootElement.GetProperty("sources")
     let mutable frameworkChecked = 0
+    let mutable capabilityChecked = 0
     let mutable workspaceChecked = 0
     let mutable productChecked = 0
     let mutable manifestChecked = 0
@@ -188,6 +205,14 @@ let private verifyGatedSources () =
                 (List.contains "**/*" copyOnly)
                 (sprintf "framework product-skill source %s -> %s must be copyOnly (verbatim canonical body, ADR-0014/F5)" source target)
             frameworkChecked <- frameworkChecked + 1
+        elif isCapabilitySkillSource t condition then
+            // CAPABILITY-GATED SKILL (issue #248): profile- and lifecycle-independent; the gate is a
+            // capability flag (`feedback`). Same provider-surface + verbatim-body rule as a product
+            // skill. Target, lifecycle-independence and a non-empty gate are the classification itself.
+            assertTrue
+                (List.contains "**/*" copyOnly)
+                (sprintf "capability-gated skill source %s -> %s must be copyOnly (verbatim canonical body, ADR-0014/F5)" source target)
+            capabilityChecked <- capabilityChecked + 1
         elif isManifestSource source then
             // SKILL-MANIFEST (Feature 231, named exception): ungated provider data in .agents/skills/.
             assertTrue
@@ -229,6 +254,7 @@ let private verifyGatedSources () =
                 (sprintf "ungated product source %s -> %s must NOT carry `%s`" source target SPEC_KIT_COND)
             productChecked <- productChecked + 1
     assertTrue (frameworkChecked = 18) (sprintf "expected exactly 18 framework product-skill sources (.agents/skills/ provider surface incl. fs-gg-project + fs-gg-collision + fs-gg-visibility + fs-gg-grids + fs-gg-line-drawing, no twins), checked %d" frameworkChecked)
+    assertTrue (capabilityChecked = 1) (sprintf "expected exactly 1 capability-gated skill source (fs-gg-feedback-report, issue #248), checked %d" capabilityChecked)
     assertTrue (manifestChecked = 1) (sprintf "expected exactly 1 ungated skill-manifest source, checked %d" manifestChecked)
     assertTrue (materializeChecked = 1) (sprintf "expected exactly 1 spec-kit-gated materialize source (template/lifecycle/), checked %d" materializeChecked)
     assertTrue (speckitNarrowChecked = 1) (sprintf "expected exactly 1 narrowed repo-root .agents/skills/ source, checked %d" speckitNarrowChecked)
@@ -481,6 +507,12 @@ let private codexProductSkillCount (dir: string) = orchestratorRootProductSkillC
 /// spec-kit-only authoring/conditional skills) — any extra dir is a vendored wrapper (F3).
 let private assertNoWrapperDirs (dir: string) (profile: string) (specKit: bool) =
     let allowedSpecKitExtras = Set.ofList [ "fs-gg-project"; "fs-gg-feedback-capture" ]
+    // Issue #248: the capability-gated skills are profile- AND lifecycle-independent, so they are an
+    // expected extra on EVERY lane whenever their flag is on — unlike the spec-kit-only set above.
+    // Today's callers all scaffold with `--feedback false`, so this only matters for a future caller
+    // that enables it; without the allowance that caller would get a misleading wrapper-vendoring
+    // failure naming a skill the template is supposed to ship.
+    let allowedCapabilityExtras = Set.ofList [ "fs-gg-feedback-report" ]
     let expected =
         let baseSet = Map.find profile expectedFrameworkSkills
         // fs-gg-samples is spec-kit-gated (sample-pack only): drop it from the sdd/none expectation.
@@ -489,6 +521,7 @@ let private assertNoWrapperDirs (dir: string) (profile: string) (specKit: bool) 
     let extras =
         Set.difference actual expected
         |> fun s -> if specKit then Set.difference s allowedSpecKitExtras else s
+        |> fun s -> Set.difference s allowedCapabilityExtras
     if not (Set.isEmpty extras) then
         failwithf "%s/%s: unexpected fs-gg-* skill dirs vendored (dev-surface wrappers, audit F3): %A"
             profile (if specKit then "spec-kit" else "sdd|none") extras
@@ -630,8 +663,17 @@ let private validateCompositionMatrix (tmpRoot: string) (values: string list) =
             count <- count + 1
     // feedback=true under a non-spec-kit lifecycle must NOT emit the gated feedback skill.
     let fb = scaffold tmpRoot "app" [ "--lifecycle"; "sdd"; "--feedback"; "true" ] "fb-sdd"
-    let feedbackSkill = Directory.Exists(Path.Combine(fb, ".claude", "skills", "fs-gg-feedback-capture"))
+    // Probe `.agents/`, not `.claude/`: under sdd the whole `.claude/` root is suppressed, so a
+    // `.claude/skills/fs-gg-feedback-capture` probe is vacuously false and would stay green even if
+    // capture lost its lifecycle clause and leaked into the provider surface. `.agents/skills/` is
+    // where a leak would actually land.
+    let feedbackSkill = Directory.Exists(Path.Combine(fb, ".agents", "skills", "fs-gg-feedback-capture"))
     if feedbackSkill then failwithf "feedback=true under sdd emitted the gated feedback skill (should be suppressed)"
+    // ...but the UNGATED retrospective report skill (issue #248) MUST emit on that same lane — it is
+    // agent-invoked, not hook-invoked, so it carries no lifecycle clause. This is the positive dual of
+    // the check above: together they pin that exactly one of the two feedback skills is lane-gated.
+    if not (Directory.Exists(Path.Combine(fb, ".agents", "skills", "fs-gg-feedback-report"))) then
+        failwith "feedback=true under sdd did NOT emit fs-gg-feedback-report (should be lifecycle-independent)"
     count
 
 /// Feature 231 (Constitution V red case): a corrupted canonical copy must turn the enforcing

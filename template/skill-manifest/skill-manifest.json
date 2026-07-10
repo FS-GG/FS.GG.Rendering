@@ -34,6 +34,14 @@
       "supplied-by": "template/feedback/skill/"
     },
     {
+      "id": "fs-gg-feedback-report",
+      "scope": "product",
+      "sha256": "4093ccd31db484e16f926cfc7423c0f8049ec110eb5d5b45997b91681ece8170",
+      "resolvablePath": ".agents/skills/fs-gg-feedback-report/SKILL.md",
+      "materializes-when": "feedback == true",
+      "supplied-by": "template/feedback-report/skill/"
+    },
+    {
       "id": "fs-gg-game-core",
       "scope": "product",
       "sha256": "f9f732cdfa0198ee2529e31eba383ca258f4574321c1432d7b5d3d5a2c8afd45",

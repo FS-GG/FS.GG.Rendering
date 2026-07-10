@@ -95,6 +95,9 @@ let private SPEC_KIT_COND = "lifecycle == \"spec-kit\""
 /// significant: framework product-skill FIRST — a source under template/product-skills/, which MUST
 /// target .agents/skills/ ONLY (the provider surface, present under EVERY lifecycle; a `.claude/`
 /// or `.codex/` product-skill target is a resurrected Feature 230 twin and a violation). Then the
+/// capability-gated skill (issue #248, template/feedback-report/: same .agents/skills/-only, copyOnly,
+/// lifecycle-independent shape as a product skill, but gated on the `feedback` capability flag rather
+/// than a `profile` predicate). Then the
 /// ungated skill-manifest row (template/skill-manifest/, the ADR-0014 named exception: provider
 /// data inside .agents/skills/ in every lifecycle). Then lifecycle-workspace (target under
 /// .specify/ — incl. the single materialize step at .specify/scripts/fs-gg/ — | .agents/ | .claude/
@@ -105,6 +108,7 @@ let private SPEC_KIT_COND = "lifecycle == \"spec-kit\""
 let private gatedSourceAudit () =
     use doc = JsonDocument.Parse(File.ReadAllText templateJsonPath)
     let mutable framework = 0
+    let mutable capability = 0
     let mutable manifest = 0
     let mutable workspace = 0
     let mutable product = 0
@@ -131,6 +135,17 @@ let private gatedSourceAudit () =
         // shape (dedicated profile-gated source, no longer the lifecycle-gated whole-.agents/ blanket).
         let isProductSkillSource =
             source.StartsWith "template/product-skills/" || source.StartsWith "template/base/.agents/skills/"
+        // Issue #248: a capability-gated skill body. Shaped like a framework product skill — canonical
+        // body, copyOnly, .agents/skills/ only, lifecycle-INDEPENDENT — but gated on a capability flag
+        // (`feedback`) instead of a `profile` predicate, so it materializes on every profile AND every
+        // lane. Its own category, so `framework` keeps meaning exactly "profile-gated product skill".
+        // Detected BY SHAPE, not by path, so the next capability-gated skill needs no edit here (it
+        // would otherwise fall through and be rejected for missing a spec-kit clause it must not have).
+        let isCapabilitySkillSource =
+            target.StartsWith ".agents/skills/"
+            && condition <> ""
+            && not (condition.Contains SPEC_KIT_COND)
+            && not (condition.Contains "profile ==")
         let isManifestSource = source = "template/skill-manifest/"
         let isGeneratedTree = source = ".template.config/generated/"
         let isGatedTarget =
@@ -149,6 +164,10 @@ let private gatedSourceAudit () =
                 violations <- (sprintf "framework-skill %s -> %s missing profile predicate" source target) :: violations
             if not (List.contains "**/*" copyOnly) then
                 violations <- (sprintf "framework-skill %s -> %s missing copyOnly (verbatim canonical body, ADR-0014)" source target) :: violations
+        elif isCapabilitySkillSource then
+            capability <- capability + 1
+            if not (List.contains "**/*" copyOnly) then
+                violations <- (sprintf "capability-skill %s -> %s missing copyOnly (verbatim canonical body, ADR-0014)" source target) :: violations
         elif isManifestSource then
             manifest <- manifest + 1
             if not (target.StartsWith ".agents/skills/") then
@@ -166,7 +185,7 @@ let private gatedSourceAudit () =
             product <- product + 1
             if condition.Contains SPEC_KIT_COND then
                 violations <- (sprintf "product %s -> %s wrongly gated" source target) :: violations
-    framework, manifest, workspace, product, List.rev violations
+    framework, capability, manifest, workspace, product, List.rev violations
 
 [<Tests>]
 let feature204LifecycleTemplateTests =
@@ -186,7 +205,7 @@ let feature204LifecycleTemplateTests =
           // framework product-skill sources are profile-gated & lifecycle-INDEPENDENT; lifecycle-
           // workspace sources carry the spec-kit condition; product sources carry neither.
           test "GV-2 sources partition into framework-skill / manifest / lifecycle-workspace / product (ADR-0014 gating)" {
-              let framework, manifest, workspace, product, violations = gatedSourceAudit ()
+              let framework, capability, manifest, workspace, product, violations = gatedSourceAudit ()
               Expect.isEmpty violations (sprintf "gating violations: %s" (String.concat "; " violations))
               // Feature 231 / ADR-0014: framework = EXACTLY the .agents/skills/ provider sources
               // (present under every lifecycle; zero .claude/.codex twins — the single materialize
@@ -202,6 +221,7 @@ let feature204LifecycleTemplateTests =
               // workspace shrank from Feature 230's >=30 twin matrix to the genuine
               // lifecycle-workspace sources (incl. the materialize step). product unchanged.
               Expect.equal framework 18 (sprintf "expected exactly 18 framework product-skill sources (no twins), found %d" framework)
+              Expect.equal capability 1 (sprintf "expected exactly 1 capability-gated skill source (fs-gg-feedback-report, issue #248), found %d" capability)
               Expect.equal manifest 1 (sprintf "expected exactly 1 ungated skill-manifest source, found %d" manifest)
               Expect.isTrue (workspace >= 9) (sprintf "expected >=9 lifecycle-workspace sources, found %d" workspace)
               Expect.isTrue (product >= 3) (sprintf "expected >=3 ungated product sources, found %d" product)

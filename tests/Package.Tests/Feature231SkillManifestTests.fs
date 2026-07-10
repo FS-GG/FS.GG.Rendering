@@ -44,6 +44,7 @@ let private canonicalSources =
       "fs-gg-collision", "template/product-skills/fs-gg-collision/SKILL.md"
       "fs-gg-elmish", "template/product-skills/fs-gg-elmish/SKILL.md"
       "fs-gg-feedback-capture", "template/feedback/skill/SKILL.md"
+      "fs-gg-feedback-report", "template/feedback-report/skill/SKILL.md"
       "fs-gg-game-core", "template/product-skills/fs-gg-game-core/SKILL.md"
       "fs-gg-grids", "template/product-skills/fs-gg-grids/SKILL.md"
       "fs-gg-keyboard-input", "template/product-skills/fs-gg-keyboard-input/SKILL.md"
