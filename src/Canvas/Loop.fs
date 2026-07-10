@@ -1,5 +1,8 @@
 namespace FS.GG.UI.Canvas
 
+// The `[<Obsolete>]` attributes live in Loop.fsi — the signature owns the public surface, and an
+// attribute declared there does not deprecate this file's own definitions. No `#nowarn` needed here.
+
 type StepState<'world> =
     { Current: 'world
       Previous: 'world

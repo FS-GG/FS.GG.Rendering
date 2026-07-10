@@ -14,9 +14,9 @@
       },
       "FS.GG.Game.Core": {
         "type": "Direct",
-        "requested": "[0.1.0-preview.1, )",
-        "resolved": "0.1.0-preview.1",
-        "contentHash": "gHJvf4NBNmYljqRSxQaiwY8IudjcXG/GgcgZQ44FhgnyA7oN0UlGrFaG7M+76RufMN9WM9331zU5nsYXKfTAug==",
+        "requested": "[0.3.0, )",
+        "resolved": "0.3.0",
+        "contentHash": "MPYeWdkB2nt+CL/800onb813iMMIpLZgNyivMQAnFXPYhhL4Ae0syJwC7tlrc1q71m0tvW9le33F42Tr2h3JwA==",
         "dependencies": {
           "FSharp.Core": "10.1.301"
         }

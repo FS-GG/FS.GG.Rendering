@@ -1,5 +1,11 @@
 namespace FS.GG.UI.Canvas
 
+open System
+
+// `Loop`'s own `val`s take and return the deprecated `StepState`, so the deprecation fires on the
+// declaration that carries it. Suppressed here only; every consumer outside this file still sees it.
+#nowarn "44"
+
 /// **DEPRECATED (ADR-0104, Rendering#269).** Superseded by `FS.GG.Game.Core.StepState`. The double
 /// step buffer is a *simulation* primitive: `Current`/`Previous` are two simulated worlds, not two
 /// render states. It is retired at the next `FS.GG.UI.Canvas` major. Prefer `FS.GG.Game.Core`.
@@ -7,6 +13,7 @@ namespace FS.GG.UI.Canvas
 /// Feature 191 (US3, C4/FR-009/FR-011): the fixed-timestep accumulator state. `Current`/`Previous`
 /// bracket the latest two simulated worlds (render interpolates between them with `Loop.alpha`);
 /// `Accumulator` carries the unspent sub-step time. Deterministic: a `StepState` is a pure value.
+[<Obsolete("Use FS.GG.Game.Core.StepState. The double step buffer is a simulation primitive, not a render one (ADR-0104, Rendering#269). Retired at the next FS.GG.UI.Canvas major.")>]
 type StepState<'world> =
     { Current: 'world
       Previous: 'world
@@ -26,13 +33,16 @@ type StepState<'world> =
 /// Depend on `FS.GG.Game.Core` directly — the `game` and `sample-pack` profiles, the only two that
 /// materialize `FS.GG.UI.Canvas`, already pin it.
 ///
-/// Retired at the next `FS.GG.UI.Canvas` major, which is where it gains `[<Obsolete>]`. The migration
-/// target is now reachable: `FS.GG.Game.Core` `0.3.0` ships `Loop`, and `$(FsGgGameVersion)` pins it on
-/// the `game` and `sample-pack` profiles — the only two that materialize `FS.GG.UI.Canvas` (#269).
+/// Carries `[<Obsolete>]` as of #269: the migration target is reachable, so the warning names a fix a
+/// consumer can actually apply. `FS.GG.Game.Core` `0.3.0` ships `Loop`, and `$(FsGgGameVersion)` pins it
+/// on the `game` and `sample-pack` profiles — the only two that materialize `FS.GG.UI.Canvas`. The
+/// surface is still *here*, still tested, and still shipped; it is **removed** at the next
+/// `FS.GG.UI.Canvas` major, which is a separate change (#269 step 5).
 ///
 /// Feature 191 (US3, C4): a deterministic fixed-timestep game loop (Glenn Fiedler's accumulator).
 /// Every function's output depends ONLY on its arguments — no wall-clock read — so a seed + a scripted
 /// `frameTime` sequence reproduces an identical `StepState` every run (FR-011, SC-006).
+[<Obsolete("Use FS.GG.Game.Core.Loop — one hardened accumulator, built on FixedStep.drain (ADR-0104, Rendering#269). Not re-exported here on purpose: that would grow a FS.GG.UI.Canvas -> FS.GG.Game.Core package edge. Retired at the next FS.GG.UI.Canvas major.")>]
 [<RequireQualifiedAccess>]
 module Loop =
 

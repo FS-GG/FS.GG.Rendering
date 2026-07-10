@@ -7,8 +7,9 @@
   </PropertyGroup>
 
   <!-- Feature 191 (US3, T037): a runnable embedded-canvas sample — a bouncing ball + paddle composed
-       from FS.GG.UI.Canvas `Elements`, advanced by the deterministic `Loop.advance` fixed-timestep on
-       the host tick, painted into a `Canvas.volatile'` control with raw onPointer/onKey input.
+       from FS.GG.UI.Canvas `Elements`, advanced by the deterministic `FS.GG.Game.Core.Loop.advance`
+       fixed-timestep on the host tick, painted into a `Canvas.volatile'` control with raw
+       onPointer/onKey input.
 
        NOTE (FR-015 caveat): the shipped consumer path is package references against the local feed
        (like samples/ControlsGallery). This in-repo copy uses ProjectReferences so the sample is
@@ -18,6 +19,13 @@
   <ItemGroup>
     <Compile Include="Game.fs" />
     <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <!-- ADR-0104 (#269): the fixed-step double buffer is a simulation primitive, so the loop comes from
+       FS.GG.Game.Core, not from the deprecated FS.GG.UI.Canvas.Loop. A package reference, because
+       Canvas deliberately does not re-export it. -->
+  <ItemGroup>
+    <PackageReference Include="FS.GG.Game.Core" />
   </ItemGroup>
 
   <ItemGroup>

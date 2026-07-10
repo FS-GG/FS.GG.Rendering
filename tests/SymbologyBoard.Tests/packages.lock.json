@@ -305,6 +305,7 @@
       "symbologyboard": {
         "type": "Project",
         "dependencies": {
+          "FS.GG.Game.Core": "[0.3.0, )",
           "FS.GG.UI.Canvas": "[0.4.0-preview.1, )",
           "FS.GG.UI.Controls": "[0.4.0-preview.1, )",
           "FS.GG.UI.Controls.Elmish": "[0.4.0-preview.1, )",
@@ -330,6 +331,15 @@
         "requested": "[0.1.0, )",
         "resolved": "0.1.0",
         "contentHash": "/Reh8nDfGIBoKG56ngJ7b7a3lfUp9jofDKdsqQB9nIDGDkrfEq/Lk0Bei+MQ1W3VSENVvKr70DVqYzQQiS3CJw==",
+        "dependencies": {
+          "FSharp.Core": "10.1.301"
+        }
+      },
+      "FS.GG.Game.Core": {
+        "type": "CentralTransitive",
+        "requested": "[0.3.0, )",
+        "resolved": "0.3.0",
+        "contentHash": "MPYeWdkB2nt+CL/800onb813iMMIpLZgNyivMQAnFXPYhhL4Ae0syJwC7tlrc1q71m0tvW9le33F42Tr2h3JwA==",
         "dependencies": {
           "FSharp.Core": "10.1.301"
         }

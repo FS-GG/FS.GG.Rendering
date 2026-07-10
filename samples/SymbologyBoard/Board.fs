@@ -2,7 +2,7 @@ module SymbologyBoard.Board
 
 // Feature 193 (M6): the deterministic live board. A pure fixed-timestep simulation advances each approved
 // roster symbol across the board (advance + bounce), driven solely by accumulated step time `World.T`; the
-// scene interpolates Previous→Current via `Loop.alpha` and overlays each unit's approved `Symbology.animate`
+// scene interpolates Previous→Current via `Loop.alpha` (FS.GG.Game.Core) and overlays each unit's `Symbology.animate`
 // motion. Nothing reads a wall clock, performs IO, or draws on render-time randomness — a seed + a scripted
 // `Tick` sequence reproduces an identical world, scene, and canonical fingerprint every run (FR-003/FR-005).
 
@@ -10,6 +10,12 @@ open FS.GG.UI.Scene
 open FS.GG.UI.Canvas
 open FS.GG.UI.Symbology
 open SymbologyBoard.Roster
+
+// ADR-0104 (#269): the double step buffer is a *simulation* primitive, so it comes from the BCL-only
+// bottom layer, not from the deprecated `FS.GG.UI.Canvas.Loop`. Abbreviated rather than `open`ed:
+// FS.GG.Game.Core also exports `Point`/`Rect`, which would shadow `FS.GG.UI.Scene`'s.
+type StepState<'world> = FS.GG.Game.Core.StepState<'world>
+module Loop = FS.GG.Game.Core.Loop
 
 /// The nominal fixed simulation step (also the interval the host tick carries).
 let dt = 1.0 / 60.0

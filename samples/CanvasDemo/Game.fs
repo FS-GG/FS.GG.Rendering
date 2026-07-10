@@ -1,7 +1,7 @@
 module CanvasDemo.Game
 
 // Feature 191 (US3, T037/T038): a deterministic embedded-canvas mini-game. The simulation is a pure
-// fixed-timestep transition advanced by FS.GG.UI.Canvas `Loop.advance`; the scene is composed from
+// fixed-timestep transition advanced by FS.GG.Game.Core `Loop.advance`; the scene is composed from
 // `Elements`; input arrives as raw pointer/key messages from the `canvas` control. Nothing reads a wall
 // clock — a seed + a scripted tick/input sequence reproduces an identical world and scene every run.
 
@@ -9,6 +9,12 @@ open FS.GG.UI.Scene
 open FS.GG.UI.Canvas
 open FS.GG.UI.Controls
 open FS.GG.UI.KeyboardInput
+
+// ADR-0104 (#269): the double step buffer is a *simulation* primitive, so it comes from the BCL-only
+// bottom layer, not from the deprecated `FS.GG.UI.Canvas.Loop`. Abbreviated rather than `open`ed:
+// FS.GG.Game.Core also exports `Point`/`Rect`, which would shadow `FS.GG.UI.Scene`'s.
+type StepState<'world> = FS.GG.Game.Core.StepState<'world>
+module Loop = FS.GG.Game.Core.Loop
 
 [<Literal>]
 let Width = 320.0
@@ -96,7 +102,8 @@ let update (msg: Msg) (model: Model) : Model =
     | Point s -> { model with PaddleTarget = max 0.0 (min Width s.X) }
 
 // The sample's OWN world interpolation (no framework lerp/interpolation API — `Loop.alpha` supplies only
-// the factor): blend Previous→Current so rendering is smooth between fixed steps.
+// the factor): blend Previous→Current so rendering is smooth between fixed steps. `alpha` is a
+// presentation value: it is never fed back into `integrate`.
 let private lerp (a: World) (b: World) (t: float) : World =
     { b with
         BallX = a.BallX + (b.BallX - a.BallX) * t

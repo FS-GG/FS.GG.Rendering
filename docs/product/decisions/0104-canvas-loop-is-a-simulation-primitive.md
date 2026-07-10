@@ -50,7 +50,9 @@ Two costs, both already paid:
    corrected in place to point here.
 2. **Deprecate `FS.GG.UI.Canvas.Loop` and `StepState`** in their doc comments now, naming
    `FS.GG.Game.Core.Loop` as the replacement and this ADR as the authority.
-3. **No `[<Obsolete>]` attribute yet.** See below — the replacement is not reachable.
+3. ~~**No `[<Obsolete>]` attribute yet.** See below — the replacement is not reachable.~~
+   **Superseded 2026-07-10 by the amendment below**: `FS.GG.Game.Core` `0.3.0` shipped `Loop`, so the
+   attribute and the sample migration landed together, exactly as this ADR sequenced them.
 4. **No re-export.** `FS.GG.UI.Canvas` does not grow a `ProjectReference`/`PackageReference` to
    `FS.GG.Game.Core`. Requested explicitly by FS.GG.Game, and correct: `Canvas.Lib.fsproj` has exactly
    one `ProjectReference` (to `Scene`), and a re-export would create a package edge for one type and
@@ -74,6 +76,33 @@ The attribute is not abandoned, it is **sequenced**: it lands with the same chan
 samples, once a `FS.GG.Game.Core` release carrying `Loop` is on the feed. Tracked as a follow-up on
 this issue's epic. The doc comment says so, so the deferral cannot be mistaken for an oversight — which
 is the failure mode this ADR exists to correct.
+
+### Amendment — 2026-07-10: the sequenced attribute landed (#269 steps 3–4)
+
+The precondition is met. `FS.GG.Game.Core` `0.3.0` is published to nuget.org — the only source this
+repo restores from — and it ships `Loop`. FS.GG.Game#66 (the release request) closed at `12:51Z`. So the
+`[<Obsolete>]` attribute now names a fix a consumer can actually apply, and decision 3 above no longer
+holds. Landed in one change, as sequenced:
+
+- `[<Obsolete>]` on `FS.GG.UI.Canvas.StepState` and `FS.GG.UI.Canvas.Loop`, both pointing at
+  `FS.GG.Game.Core`. The surface is still shipped and still tested (`tests/Canvas.Tests/LoopTests.fs`
+  suppresses `FS0044` deliberately); **removal** remains step 5, at Canvas `0.5.0`.
+- `samples/CanvasDemo` and `samples/SymbologyBoard` migrated onto `FS.GG.Game.Core.Loop` via a
+  `PackageReference` — not a Canvas re-export, so decision 4 is intact. The repo pin
+  (`Directory.Packages.local.props`) moved `0.1.0-preview.1` → `0.3.0`; `Loop` exists below neither.
+- `Loop`/`StepState` are abbreviated per-file rather than `open FS.GG.Game.Core`d, because that
+  namespace also exports `Point`/`Rect`, which would shadow `FS.GG.UI.Scene`'s.
+
+**The swap is behaviour-preserving, measured rather than argued.** Both samples' seeded evidence
+fingerprints are byte-identical across the change — `symbology-board 0a4d78cb…`, `canvas-demo
+fa424f98…` — which is the intended result: `Canvas.Loop.advance` and `Game.Core.Loop.advance` share the
+same `0.25 s` clamp, the same `Previous`-brackets-the-last-step semantics, and the same non-finite
+totality. `scripts/apicompat-check.sh` reports `FS.GG.UI.Canvas OK (compatible with 0.4.0)`, `BREAK=0`,
+confirming this section's prediction that the attribute is additive metadata. Baselines re-ran clean.
+
+One file outside this item's touch-set changed: `tests/SymbologyBoard.Tests/BoardTests.fs` called the
+now-deprecated `Loop.init` (and `TreatWarningsAsErrors` is on), so its call is qualified to
+`FS.GG.Game.Core.Loop.init`. Coordinated with the holder of #286 under ADR-0021 §4.
 
 ### The blast radius is narrower than the issue feared
 
