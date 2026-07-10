@@ -415,7 +415,10 @@ module Scene =
                 @ (run.Data.FallbackDiagnostics
                    |> List.map (fun message -> diagnostic Warning message (Some "glyph-run-proof")))
             | Image(_, source) when String.IsNullOrWhiteSpace source -> [ diagnostic Error "Invalid image resource declaration." (Some "Image source path is empty.") ]
-            | Image(_, source) when not (IO.File.Exists source) -> [ diagnostic Error "Invalid image resource declaration." (Some $"Image source '{source}' does not exist.") ]
+            // Existence of the source on disk is a host-level (render-edge) concern, not a pure
+            // structural property of the Scene value. Probing IO.File.Exists here made diagnostics
+            // non-deterministic (machine/CWD/filesystem-dependent) in the dependency root every
+            // package pins; the viewer host validates the resource when it loads it. (#357)
             | ClipNode(_, scene)
             | ColorSpaceNode(_, scene)
             | PerspectiveNode(_, scene)

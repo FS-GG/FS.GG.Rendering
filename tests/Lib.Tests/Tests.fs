@@ -443,8 +443,11 @@ let us1ContractTests =
         }
 
         test "invalid image resources report frame diagnostics" {
-            let missingImagePath =
-                readinessPath [ "sample-assets"; "missing-image.png" ]
+            // Scene validates only pure, structural image-declaration problems (an empty/whitespace
+            // source). Filesystem existence — like SkiaSharp-backed font availability and
+            // path-structure validation — is a host-level concern that travels with the viewer
+            // host, not the pure FS.GG.UI.Scene vocabulary. (#357)
+            let emptyImageSource = "   "
 
             let malformedPath =
                 Path.create Winding [
@@ -454,7 +457,7 @@ let us1ContractTests =
 
             let diagnostics =
                 Scene.group [
-                    Scene.image (0.0, 0.0, 16.0, 16.0) missingImagePath
+                    Scene.image (0.0, 0.0, 16.0, 16.0) emptyImageSource
                     Scene.textRun
                         { Text = "fallback"
                           Position = { X = 0.0; Y = 24.0 }
@@ -467,10 +470,10 @@ let us1ContractTests =
                 ]
                 |> Scene.diagnostics
 
-            // The lean scene vocabulary validates image-resource existence; SkiaSharp-backed font
-            // availability and path-structure validation are host-level concerns that no longer live
-            // in FS.GG.UI.Scene.
-            Expect.exists diagnostics (fun d -> d.Message.Contains "Invalid image resource") "missing image reports an invalid resource"
+            // The lean scene vocabulary diagnoses a structurally invalid image declaration (an
+            // empty/whitespace source); resource existence, SkiaSharp-backed font availability, and
+            // path-structure validation are host-level concerns that no longer live in FS.GG.UI.Scene.
+            Expect.exists diagnostics (fun d -> d.Message.Contains "Invalid image resource") "an empty image source is diagnosed"
         }
 
         test "path commands fill types boolean operations measurement segment extraction and helpers are semantic" {
