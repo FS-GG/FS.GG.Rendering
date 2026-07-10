@@ -71,6 +71,19 @@ let png   = Render.toPng { Width = 920; Height = 660 } board "./readiness/symbol
 // -> read `png` back, critique at the target size, TWEAK mapUnit ONLY, repeat.
 ```
 
+**A runnable version ships with this product**: [`reference.fsx`](reference.fsx), beside this file. Run it
+with `dotnet fsi` — it drives the *whole* loop end to end (roster → ChannelMap → LINT → TWEAK → re-lint →
+`galleryIn` across all three grammars → `Render.toPng`), and is the fastest way to see a `Warning` raised
+and then tuned away. Pin its `#r "nuget: FS.GG.UI.*"` lines to your `FsGgUiVersion` from
+`Directory.Packages.props` for version coherence; unpinned resolves the latest published set.
+
+### The golden reference (upstream)
+
+The approved, lint-clean roster is **not** vendored into your product — read it upstream in
+[`FS-GG/FS.GG.Rendering/samples/SymbologyBoard/`](https://github.com/FS-GG/FS.GG.Rendering/tree/main/samples/SymbologyBoard):
+`Roster.fs` is the approved mapping (its test asserts a `Clean` verdict), and `GrammarCompare.fs` is the
+executable form of the "one mapping, three drawings" claim — one `Token` set drawn as three stacked bands.
+
 ## Two rotations (opt-in second heading)
 
 `Heading` is where a unit **faces**; `SecondaryHeading : float option` is where it **points**, when the
@@ -135,8 +148,8 @@ Symbology.laidLabel [ Symbology.paragraph [ Symbology.run "BRAVO-6" ]      // La
 - **Inspection-detail.** It **complements — never replaces** — the vector `Sigil`; keep strings short.
 - **Outside the capacity table.** The linter ignores the label, so its verdict is unchanged by labels.
   Never use a label to dodge a channel-overload warning — fix the encoding.
-- **Tofu-free is a render-edge property.** The pure library emits deterministic glyph-run nodes and never
-  requires a measurer; real glyphs come from the render bridge. Verify through `Symbology.Render`.
+- **Tofu-free is a render-edge property.** Assert it through `Symbology.Render`, never from a pure unit
+  test — see [Troubleshooting](#troubleshooting).
 - **Surplus degrades: wrap → cap → ellipsis.** Lines wrap at whitespace, the count is **capped** to the
   budget, and the last drawn line ends with `…`. Empty, whitespace, or a fully dropped projection ⇒ **no
   label**. A degenerate (`R <= 0`) token shows the **placeholder** — it always wins.
@@ -188,7 +201,7 @@ and the mechanical backstop: a `Warning`/`Error` names the overloaded or out-of-
 used-vs-capacity, and the contributing unit indices. A non-`Clean` verdict is a TWEAK trigger — the unit
 of change stays the mapping, never the grammar. (b) EYE — the human-style self-check of the PNG vs the
 rules above stays (the linter cannot see crowding, contrast, or label collisions). The approved roster
-lints `Clean`, so a fresh finding is a real signal to re-tune the mapping.
+(the golden reference above) lints `Clean`, so a fresh finding is a real signal to re-tune the mapping.
 
 ## Build Commands
 
@@ -208,6 +221,26 @@ over a blank image. Re-rendering an unchanged mapping is byte-identical (determi
 
 `FS.GG.UI.Symbology` must not reference the viewer host, layout, widgets, or Elmish — keep all raster/IO
 in `FS.GG.UI.Symbology.Render`. Keep the game-symbol vocabulary off the core control surface.
+
+## Troubleshooting
+
+The recurring failure modes, collected. Three of the four are the contract working as designed.
+
+- **Tofu boxes (`□□□`) where a label should be** — you asserted glyph content from a **pure unit test**.
+  Tofu-free is a **render-edge** property: the pure library emits deterministic glyph-run *proof* nodes
+  and never requires a measurer. Real glyphs come from the render bridge, so verify through
+  `Symbology.Render` — sampling phases when the label is motion-bound. Not a bug in the pure layer.
+- **`Render.toPng` raised** — that is the **fail-loud contract**, not a bug. Any non-passing verdict
+  raises with the joined diagnostics; it never returns a blank success, which is why a critique never
+  reasons over an empty PNG. Read the diagnostics.
+- **A blank or placeholder symbol** — `R <= 0`. You get a **fixed 12px grey box with an X**, at any radius.
+  The guard runs *before* label resolution, so it swallows the body, the `Sigil`, the label and the
+  auto-label alike. It is **not** a motion guard, though — only `Pulse` suppresses itself on a degenerate
+  token. `Blink` still draws its red dot on top (that dot has a 2px floor), `Moving` draws the echo as a
+  *second* offset placeholder, and `Spin` / `Damage` emit overlay nodes that are simply degenerate at
+  `R = 0`. So a placeholder box with a stray dot beside it is a bad `R`, not a motion bug. Fix `mapUnit`.
+- **`NU1403` on restore** — a poisoned NuGet cache. Restore against a **scratch `NUGET_PACKAGES`
+  directory**; do **not** clear the shared cache.
 
 ## Persistent problems
 
