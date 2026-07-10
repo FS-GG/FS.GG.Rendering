@@ -56,7 +56,7 @@ let render (model: Model) : SceneNode =
 let options = { Title = "Counter"; InitialSize = { Width = 640; Height = 480 } }
 
 // Initialise the combined adapter model + initial effects
-let initial, effects =
+let initial, startupEffects =
     ElmishAdapter.init options { Count = 0 } (render { Count = 0 })
 
 // Pass a user message through the adapter. `UserMsg` is a pass-through: it yields a

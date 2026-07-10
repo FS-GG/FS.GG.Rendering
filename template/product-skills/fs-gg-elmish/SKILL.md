@@ -41,6 +41,8 @@ let passthrough, effects =
 let folded =
     match effects with
     | [ DispatchUser m ] ->
+        // `update` here is YOUR product's own MVU update (msg -> model -> model),
+        // NOT ElmishAdapter.update — the adapter never calls it for you.
         let userModel' = update m passthrough.UserModel
         { passthrough with UserModel = userModel'; Scene = view userModel' }
     | _ -> passthrough
