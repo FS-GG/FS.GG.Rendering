@@ -11,14 +11,19 @@ open FS.GG.Game.Core // ADR-0022 P5: Point/Rect + Geometry + SpatialGrid now liv
 /// layers, or delete this whole file (the build stays green: its compile item is `Exists`-guarded).
 ///
 /// Everything here is pure, total, and deterministic: pairs are formed in ascending body-index order
-/// and the response math is sqrt-free, so identical inputs yield byte-identical output across runs and
-/// platforms — safe to call from a replayed `update`.
+/// and the response math is sqrt-free (the swept narrow-phase uses a single deterministic IEEE `sqrt`
+/// for the impact distance), so identical inputs yield byte-identical output across runs and platforms
+/// — safe to call from a replayed `update`.
 module Collision =
 
-    /// A collidable thing: its axis-aligned bounds plus a caller-supplied identity/layer payload.
+    /// A collidable thing: its axis-aligned bounds at the START of the step, the per-step displacement
+    /// (`velocity × dt`) it travels this step, plus a caller-supplied identity/layer payload. A wall (or
+    /// any body at rest) has `Velocity = { X = 0.0; Y = 0.0 }` and behaves exactly as a static body; give
+    /// a fast mover its real per-step displacement so the swept pass (`collide`/`step`) tests the whole
+    /// path `Bounds → Bounds + Velocity` and cannot tunnel it clean through a thin target in one step.
     /// `Tag` is generic (like `SpatialGrid<'T>`) so you never define a look-alike record just to
     /// carry an id — avoiding the consumer-vs-consumer `.Pos`/`.Id` inference footgun.
-    type Body<'T> = { Bounds: Rect; Tag: 'T }
+    type Body<'T> = { Bounds: Rect; Velocity: Point; Tag: 'T }
 
     /// A detected overlap between two bodies and how to separate them (pure detection result).
     /// `A` is always the lower-index body of the pair, `B` the higher — a stable, total order.
@@ -81,10 +86,54 @@ module Collision =
                     { X = 0.0; Y = sign * overlapY }, overlapY
             Some { A = a; B = b; Penetration = penetration; Depth = depth }
 
-    /// Broad-phase (SpatialGrid) + narrow-phase over every body pair, returned in ascending
-    /// (i, j) index order so the result is fully deterministic. `cellSize` tunes the grid; the
-    /// query region is expanded by the largest body half-extent so no overlap is missed (exact —
-    /// no false negatives). Total on empty/singleton input (returns `[]`).
+    /// The moving narrow-phase: a `Contact` when `a` and `b` overlap at the start of the step OR when
+    /// `a`'s swept path — `Bounds → Bounds + Velocity`, taken relative to `b`'s own motion — crosses `b`
+    /// during the step. The second case is exactly the tunnelling a static overlap test misses: a body
+    /// moving faster than the target is thick is in front of it before the step and behind it after, so a
+    /// point test at either end reports a clean miss on a pair that did collide. Defers to `contact` for
+    /// an existing overlap (identical MTV); for a pure crossing it advances `a` to first contact along its
+    /// path (the minimum translation that stops it AT `b`'s surface rather than past it). Total (NaN-safe)
+    /// and deterministic. `collide`/`step` use THIS, not the bare `contact`.
+    let sweptContact (a: Body<'T>) (b: Body<'T>) : Contact<'T> option =
+        match contact a b with
+        | Some _ as existing -> existing
+        | None ->
+            // Collapse `b`'s motion into `a`'s frame so a single swept test suffices; for the common
+            // projectile-vs-wall case `b` is at rest and this is just `a`'s own displacement.
+            let d = { X = a.Velocity.X - b.Velocity.X; Y = a.Velocity.Y - b.Velocity.Y }
+            if not (Geometry.sweptIntersects a.Bounds d b.Bounds) then
+                None
+            else
+                // First contact via the Minkowski-expanded segment cast: grow `b` by `a`'s extents and
+                // cast `a`'s centre along its relative path; the swept box overlaps `b` exactly when this
+                // segment meets the expanded box. `T ∈ [0, 1]` is the fraction of the step at first touch.
+                let halfW = finiteDim a.Bounds.Width / 2.0
+                let halfH = finiteDim a.Bounds.Height / 2.0
+                let expanded =
+                    { X = b.Bounds.X - halfW
+                      Y = b.Bounds.Y - halfH
+                      Width = b.Bounds.Width + finiteDim a.Bounds.Width
+                      Height = b.Bounds.Height + finiteDim a.Bounds.Height }
+                let c0 = Geometry.center a.Bounds
+                let c1 = { X = c0.X + d.X; Y = c0.Y + d.Y }
+                match Geometry.segmentAabbHit c0 c1 expanded with
+                | Some hit ->
+                    // Advance `a` from its start to first contact: the minimum translation that leaves it
+                    // touching `b`'s near face instead of tunnelled past it.
+                    let penetration = { X = d.X * hit.T; Y = d.Y * hit.T }
+                    let depth = sqrt (penetration.X * penetration.X + penetration.Y * penetration.Y)
+                    Some { A = a; B = b; Penetration = penetration; Depth = depth }
+                | None ->
+                    // `sweptIntersects` was true but the centre segment never crosses INTO the expanded
+                    // box from outside — only a zero-area edge/corner graze at an endpoint reaches here,
+                    // which the strict-edge convention (`contact`) already treats as no contact.
+                    None
+
+    /// Broad-phase (SpatialGrid) + swept narrow-phase over every body pair, returned in ascending
+    /// (i, j) index order so the result is fully deterministic. `cellSize` tunes the grid; the query
+    /// region is expanded by the largest body half-extent AND the largest per-step displacement so no
+    /// overlap — including one a fast body only touches mid-sweep — is missed (exact, no false
+    /// negatives). Total on empty/singleton input (returns `[]`).
     let collide (cellSize: float) (bodies: Body<'T> list) : Contact<'T> list =
         match bodies with
         | []
@@ -95,18 +144,28 @@ module Collision =
                 (0.0, arr)
                 ||> Array.fold (fun acc b -> max acc (max (finiteDim b.Bounds.Width) (finiteDim b.Bounds.Height)))
                 |> fun d -> d / 2.0
+            // A fast body's swept path can reach a cell its centre never occupies, so the query region
+            // must also grow by the largest per-step displacement — otherwise the grid prunes away the
+            // very tunnelling pair the swept narrow-phase exists to catch. The L∞ (max-axis) bound keeps
+            // this sqrt-free; both bodies of a pair can move, hence 2×. Over-covering only adds candidate
+            // pairs (the narrow-phase stays exact), never a false negative.
+            let maxDisp =
+                (0.0, arr)
+                ||> Array.fold (fun acc b ->
+                    max acc (max (abs (finiteDim b.Velocity.X)) (abs (finiteDim b.Velocity.Y))))
+            let pad = maxHalf + 2.0 * maxDisp
             let grid =
                 SpatialGrid.build cellSize [ for i in 0 .. arr.Length - 1 -> Geometry.center arr.[i].Bounds, i ]
             [ for i in 0 .. arr.Length - 1 do
                   let bi = arr.[i].Bounds
                   let region =
-                      { X = bi.X - maxHalf
-                        Y = bi.Y - maxHalf
-                        Width = bi.Width + 2.0 * maxHalf
-                        Height = bi.Height + 2.0 * maxHalf }
+                      { X = bi.X - pad
+                        Y = bi.Y - pad
+                        Width = bi.Width + 2.0 * pad
+                        Height = bi.Height + 2.0 * pad }
                   for j in SpatialGrid.query region grid do
                       if j > i then
-                          match contact arr.[i] arr.[j] with
+                          match sweptContact arr.[i] arr.[j] with
                           | Some c -> yield c
                           | None -> () ]
 
@@ -127,8 +186,9 @@ module Collision =
         | PushFirst -> { A = move c.A p; B = c.B; Applied = p; Restitution = 0.0 }
         | PushSecond -> { A = c.A; B = move c.B (negate p); Applied = { X = 0.0; Y = 0.0 }; Restitution = 0.0 }
 
-    /// One per-frame pass: detect every collision and resolve it under `rule`, in deterministic pair
-    /// order. This is the function most games call from `update`. A single positional pass per frame;
-    /// for dense stacking, call it again on the resolved bodies or add your own iteration.
+    /// One per-frame pass: detect every collision over each body's swept step (so a fast mover cannot
+    /// tunnel a thin target) and resolve it under `rule`, in deterministic pair order. This is the
+    /// function most games call from `update`. A single swept pass per frame; for dense stacking, call it
+    /// again on the resolved bodies or add your own iteration.
     let step (rule: ResponseRule) (cellSize: float) (bodies: Body<'T> list) : Resolution<'T> list =
         collide cellSize bodies |> List.map (resolve rule)
