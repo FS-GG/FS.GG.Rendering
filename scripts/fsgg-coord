@@ -909,9 +909,19 @@ board_annotate() {
 }
 
 # Resolve a --repo value to the actual GitHub repo name the board items carry. Accepts the registry
-# short-id used everywhere else in the roster (sdd/rendering/governance/templates/.github — see
-# registry/repos.yml), an `owner/repo`, or the literal repo name. Without this, `--repo templates`
-# would silently match nothing (the repo is `FS.GG.Templates`, not `templates`) — a quiet footgun.
+# short-id used everywhere else in the roster (sdd/rendering/governance/templates/game/audio, and
+# .github via the literal fall-through — see registry/repos.yml), an `owner/repo`, or the literal
+# repo name. Without this, `--repo templates` would silently match nothing (the repo is
+# `FS.GG.Templates`, not `templates`) — a quiet footgun.
+#
+# This map is EMBEDDED, not read from registry/repos.yml at run time, because fsgg-coord is a
+# `kind: client` kit item mirrored into every receiver repo (the four skills + this script) WITHOUT
+# the roster — a worker in FS.GG.Rendering running `--repo game` has no registry/repos.yml to read.
+# So the roster short-ids are duplicated here, and tests/fsgg-coord/run.sh carries a coherence check
+# that reads repos.yml (present in the .github checkout where CI runs) and FAILS if this case handles
+# fewer ids than the roster rosters — turning "added a repo, forgot this map" from a silent empty
+# queue (.github#381) into a red check. Adding a repo is a data change to repos.yml PLUS a one-line
+# case here, and the guard makes forgetting the second half impossible.
 resolve_repo() {
   case "$1" in
     */*)        printf '%s' "${1#*/}" ;;      # owner/repo -> repo part
@@ -919,6 +929,8 @@ resolve_repo() {
     rendering)  printf '%s' "FS.GG.Rendering" ;;
     governance) printf '%s' "FS.GG.Governance" ;;
     templates)  printf '%s' "FS.GG.Templates" ;;
+    game)       printf '%s' "FS.GG.Game" ;;
+    audio)      printf '%s' "FS.GG.Audio" ;;
     *)          printf '%s' "$1" ;;           # .github or an already-literal repo name
   esac
 }
