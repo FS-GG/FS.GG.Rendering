@@ -93,7 +93,10 @@ module internal WidgetGeometry =
                 let style = Style.resolve theme baseStyle classes state
                 let outer = Scene.circle { X = cx; Y = cy } 7.0 style.Fill
                 let inner = if isSel then [ Scene.circle { X = cx; Y = cy } 3.0 theme.Background ] else []
-                Scene.group (outer :: inner @ [ mkText theme (cx + 16.0) (cy + 4.0) 12.0 style.Foreground it ]))
+                // #383: feed the RESOLVER's typography through (not a literal), so a theme can restyle
+                // the label font. Byte-identical today: `style.FontSize` == the former literal (base 12.0)
+                // and `style.FontWeight` is `None`, and `mkTextW … None` emits the same run as `mkText`.
+                Scene.group (outer :: inner @ [ mkTextW theme (cx + 16.0) (cy + 4.0) style.FontSize style.FontWeight style.Foreground it ]))
 
     let tabsGeom theme (box: Rect) (items: string list) (selected: string option) : Scene list =
         match items with
@@ -215,7 +218,8 @@ module internal WidgetGeometry =
                   Scene.line { X = bx + 12.0; Y = by + 21.0 } { X = bx + 23.0; Y = by + 7.0 } (Paint.stroke style.Stroke 3.0) ]
             else
                 []
-        let text = [ mkText theme (bx + s + 10.0) (cy + 5.0) 13.0 style.Foreground label ]
+        // #383: honor the resolved typography (byte-identical: base FontSize == the former 13.0 literal).
+        let text = [ mkTextW theme (bx + s + 10.0) (cy + 5.0) style.FontSize style.FontWeight style.Foreground label ]
         fill @ tick @ text
 
     let toggleGeom theme (box: Rect) (on: bool) (label: string) : Scene list =
@@ -339,12 +343,16 @@ module internal WidgetGeometry =
 
         if kind = "button" then
             [ Scene.rectangle (box.X, by, w, h) buttonFill
-              mkText theme (box.X + 16.0) (by + h / 2.0 + 5.0) 15.0 style.Foreground label ]
+              // #383: resolved typography reaches the label (byte-identical: base FontSize == the former
+              // 15.0 literal). NOTE: the width `measureText` above still uses 15.0 — reconcile when a
+              // theme actually varies button FontSize (#384).
+              mkTextW theme (box.X + 16.0) (by + h / 2.0 + 5.0) style.FontSize style.FontWeight style.Foreground label ]
             @ border
             @ focusRing
         else
             [ Scene.rectangleWithPaint rect (strokePaint style.Stroke 2.0)
-              mkText theme (box.X + 16.0) (by + h / 2.0 + 5.0) 15.0 style.Foreground label ]
+              // #383: resolved typography reaches the icon-button label (byte-identical: base 15.0).
+              mkTextW theme (box.X + 16.0) (by + h / 2.0 + 5.0) style.FontSize style.FontWeight style.Foreground label ]
 
     /// A compact accent pill with light text — a status badge.
     let badgeGeom theme (box: Rect) (label: string) : Scene list =
@@ -534,7 +542,9 @@ module internal WidgetGeometry =
           Scene.rectangleWithPaint field (Paint.stroke style.Stroke 2.0)
           Scene.clipped
               (RectClip field)
-              (mkText theme textX baseline 15.0 style.Foreground value)
+              // #383: resolved typography reaches the field text (byte-identical: base 15.0). The caret
+              // `measureText` above still uses 15.0 — reconcile with #384 when FontSize becomes themeable.
+              (mkTextW theme textX baseline style.FontSize style.FontWeight style.Foreground value)
           Scene.line { X = caretX; Y = by + 7.0 } { X = caretX; Y = by + h - 7.0 } (Paint.stroke theme.Accent 2.0) ]
 
     /// A bordered multi-line input field showing each value line plus a caret — `text-area`.
