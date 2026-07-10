@@ -16,6 +16,7 @@
     <Compile Include="FilmstripTests.fs" />
     <Compile Include="GrammarTests.fs" />
     <Compile Include="LegibilityTests.fs" />
+    <Compile Include="LegibilityDoctrineTests.fs" />
     <Compile Include="LabelTests.fs" />
     <Compile Include="MultilineLabelTests.fs" />
     <Compile Include="RichLabelTests.fs" />
@@ -28,6 +29,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Symbology\Symbology.fsproj" />
     <ProjectReference Include="..\..\src\Scene\Scene.fsproj" />
+    <!-- LegibilityDoctrineTests reads the skill body from the repo root (RepositoryRoot.value). -->
+    <ProjectReference Include="..\TestSupport\TestSupport.fsproj" />
     <PackageReference Include="Expecto" />
     <PackageReference Include="FsCheck" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />

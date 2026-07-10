@@ -59,9 +59,16 @@ module Legibility =
           Usage: ChannelUsage list
           Verdict: Verdict }
 
-    /// The fixed capacity table (research D2), §4 grammar order. One row per per-unit channel (12);
-    /// `Motion` is whole-board and has no `ChannelKind`, so it is NOT a row here (Capacity is unused
-    /// for the Continuous rows — they are overload-exempt, FR-009).
+    /// The fixed capacity table (research D2), §4 grammar order — and the SINGLE source of the
+    /// reliable-level counts the skill's §4 prose table quotes (a test parses that table and fails on
+    /// divergence). One row per per-unit channel (12); `Motion` is whole-board and has no
+    /// `ChannelKind`, so it is NOT a row here (Capacity is unused for the Continuous rows — they are
+    /// overload-exempt, FR-009).
+    ///
+    /// `Capacity` is how many distinct levels the EYE separates, not how many the grammar can DRAW.
+    /// The two differ on purpose: `Speed` renders 0..6 beads (`unitFindings` errors outside that), yet
+    /// only ~4 bead counts are reliably ranked at board size, so a fifth distinct speed is legal per
+    /// unit and warns per board. The same holds for `Faction`/`Sigil`, whose domains are open.
     let table: ChannelSpec list =
         [ { Channel = Faction; Kind = Categorical; Capacity = 7 }
           { Channel = Klass; Kind = Categorical; Capacity = 6 }
@@ -69,9 +76,14 @@ module Legibility =
           { Channel = State; Kind = Categorical; Capacity = 3 }
           { Channel = Shield; Kind = Categorical; Capacity = 3 }
           { Channel = Speed; Kind = Ordered; Capacity = 4 }
-          { Channel = Size; Kind = Continuous; Capacity = 0 }
-          { Channel = Threat; Kind = Continuous; Capacity = 0 }
-          { Channel = Charge; Kind = Continuous; Capacity = 0 }
+          // Size/Threat/Charge carry a float, but the eye ranks radius, stroke width and gradient
+          // depth at ~4 levels — so they are Ordered and DO overload. A board using twelve distinct
+          // radii is the legibility defect the doctrine names; leaving them Continuous made the
+          // doctrine's most salient numbers the only ones the linter never enforced (#285).
+          { Channel = Size; Kind = Ordered; Capacity = 4 }
+          { Channel = Threat; Kind = Ordered; Capacity = 4 }
+          { Channel = Charge; Kind = Ordered; Capacity = 4 }
+          // Genuinely continuous: read as a magnitude or an angle, never as a rank of levels.
           { Channel = Health; Kind = Continuous; Capacity = 0 }
           { Channel = Heading; Kind = Continuous; Capacity = 0 }
           { Channel = SecondaryHeading; Kind = Continuous; Capacity = 0 } ]
@@ -94,11 +106,21 @@ module Legibility =
         | SecondaryHeading -> 11
         | Motion -> 12
 
+    /// Whole-board budget of simultaneous non-`Idle` rhythms (FR-010). `Motion` is not a `table` row —
+    /// it is scored per board, not per unit — so this is its capacity, and the number the skill's §4
+    /// Motion row must quote. Deliberately the strictest channel: a second rhythm competes for the same
+    /// pre-attentive attention grab rather than adding a level to it, so two rhythms do not read as a
+    /// rank of two, they read as noise.
+    let private motionBudget = 1
+
     let private isFiniteF (v: float) = not (Double.IsNaN v || Double.IsInfinity v)
 
     /// The per-unit level each token occupies on a channel, boxed so one projection serves every
     /// channel. Structural equality decides sameness (each distinct `Custom` colour and each distinct
     /// `Mark` path is its own level). `Motion` is whole-board and occupies no per-unit level.
+    ///
+    /// For the Ordered FLOAT channels (Size/Threat/Charge) sameness is exact: two radii differing in the
+    /// last bit are two levels, because a float ramp is not a rank. Quantise in the mapping (#285).
     let private levelKeys channel (tokens: Token list) : objnull list =
         let keys projection = tokens |> List.map projection
 
@@ -282,22 +304,26 @@ module Legibility =
         let tokens = board |> List.map snd
         let _, findings, usage = scoreTokens tokens
 
-        // Whole-board motion load (FR-010): count distinct *non-Idle* rhythms; > 1 simultaneous rhythm
-        // is a board-level Warning (Units = []). A single rhythm (any count of moving units) never flags.
+        // Whole-board motion load (FR-010): count distinct *non-Idle* rhythms; more than `motionBudget`
+        // simultaneous rhythms is a board-level Warning (Units = []). A single rhythm (any count of
+        // moving units) never flags.
         let activeRhythms =
             board |> List.map fst |> List.filter (fun m -> m <> Idle) |> List.distinct
 
         let motionFindings =
-            if List.length activeRhythms > 1 then
+            if List.length activeRhythms > motionBudget then
                 [ { Channel = Motion
                     Severity = Warning
                     Message =
-                        sprintf "Motion overloaded: %d distinct active rhythms across the board, budget 1" (List.length activeRhythms)
+                        sprintf
+                            "Motion overloaded: %d distinct active rhythms across the board, budget %d"
+                            (List.length activeRhythms)
+                            motionBudget
                     Units = [] } ]
             else
                 []
 
-        // Motion sorts last (channelOrder = 11), so appending preserves the deterministic order.
+        // Motion sorts last (channelOrder = 12), so appending preserves the deterministic order.
         let allFindings = findings @ motionFindings
 
         { Findings = allFindings

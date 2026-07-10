@@ -40,6 +40,17 @@ let roster =
       { Side = "red";  Role = "scout"; Dps = 70.0;  Hp = 30.0; HpMax = 60.0;  Speed = 14.0; Armor = 5.0;  Facing = 0.8 }
       { Side = "grey"; Role = "scout"; Dps = 25.0;  Hp = 55.0; HpMax = 55.0;  Speed = 20.0; Armor = 35.0; Facing = 4.7 } ]
 
+// `Threat` is Ordered with capacity 4 (Legibility.table), and it carries a float — so the RAW ramp
+// `Dps / 120.0` would spend one distinct stroke width per unit and overload the channel. Quantising is
+// the map's job: a float channel that is read as a rank must be banded before it reaches the grammar.
+// (This is the same tweak the loop below performs on `Speed`, done up front so the recipe demonstrates
+// exactly ONE overload at a time.)
+let threatBand dps =
+    if dps >= 100.0 then 1.0
+    elif dps >= 75.0 then 0.75
+    elif dps >= 50.0 then 0.5
+    else 0.25
+
 // --- MAP: the editable per-game ChannelMap (data, NOT library internals). Tweak THIS each round. ---
 // Only the speed banding varies between rounds below, so it is the one parameter lifted out.
 let mapUnitWith (speedBand: float -> int) (u: UnitStats) : Token =
@@ -48,7 +59,7 @@ let mapUnitWith (speedBand: float -> int) (u: UnitStats) : Token =
         Faction = (match u.Side with "blue" -> Ally | "red" -> Enemy | _ -> Neutral)
         Klass = (match u.Role with "tank" -> Heavy | "scout" -> Scout | _ -> Mobile)
         Sigil = (match u.Role with "tank" -> Ring | "scout" -> Fang | _ -> Bolt)
-        Threat = min 1.0 (u.Dps / 120.0)
+        Threat = threatBand u.Dps
         Health = u.Hp / u.HpMax
         Speed = speedBand u.Speed
         Shield = u.Armor > 30.0
