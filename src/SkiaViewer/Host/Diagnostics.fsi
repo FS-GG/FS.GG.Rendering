@@ -45,6 +45,10 @@ type DiagnosticStage =
     | Shutdown
     /// Issue #184: an input event the host contract cannot represent. Never a run-blocker.
     | Input
+    /// Issue #365: a product `Update`/`View` raised. Distinct from `FrameRender` (a draw fault):
+    /// this is application code, so it must not be mislabeled a render failure. The frame is dropped
+    /// and the persistent window kept alive; a product-code fault is deterministic, so it is not retried.
+    | App
 
 /// Viewer host contract type (moved from the FS.GG.UI monolith, retyped onto FS.GG.UI.Scene).
 type RenderDiagnostic =
@@ -127,6 +131,11 @@ module Diagnostics =
     val unavailableFont: family: string -> RenderDiagnostic
     /// Public contract function exposed by this FS.GG.UI package.
     val frameRenderFailed: detail: string -> RenderDiagnostic
+
+    /// Issue #365: a product `Update`/`View` raised. Staged at `App`, not `FrameRender` — application
+    /// code, not a draw fault — so the persistent window is not torn down and mislabeled a render
+    /// failure. `phase` names the step ("Update"/"View"); the frame is dropped and the window kept alive.
+    val productStepFailed: phase: string -> detail: string -> RenderDiagnostic
 
     /// Issue #179: the run is ending because a frame failure is unrecoverable — a lost device, a
     /// vanished window system, or a draw that failed past its retry budget. Fatal, and terminal:

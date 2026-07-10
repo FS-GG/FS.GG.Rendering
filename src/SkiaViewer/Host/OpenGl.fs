@@ -1339,6 +1339,19 @@ module GlHost =
         tracker.ConsecutiveFailures <- tracker.ConsecutiveFailures + 1
         decideFrameFailure (classifyFrameFailure facts) tracker.ConsecutiveFailures retryBudget
 
+    /// Issue #365: the update/view counterpart to `handleFrameFailure`. Before this, `program.Update`
+    /// ran unguarded in `dispatch`; a throwing product step escaped the Silk callback and was caught
+    /// only by the run's outer handler, which tore the persistent window down and mislabeled it
+    /// `frameRenderFailed`. A product-code fault is deterministic — retrying the same (msg, model)
+    /// just re-throws — so the resilient answer is to drop the failing step, report it as an
+    /// `App`-stage defect, and keep the window and its last-good state alive.
+    let tryProductStep (report: RenderDiagnostic -> unit) (phase: string) (step: unit -> 'a) : 'a option =
+        try
+            Some(step ())
+        with ex ->
+            report (Diagnostics.productStepFailed phase ex.Message)
+            None
+
     let run program : Result<unit, RenderDiagnostic> =
         // Issue #180: bind the loop-thread gate before anything can dispatch. `run`'s caller owns the
         // loop, so the calling thread is the loop thread.
@@ -1615,11 +1628,26 @@ module GlHost =
                         [ "stage", string diagnostic.Stage
                           "terminal", string fatalFrameDiagnostic.IsSome ]
             | None ->
-                let nextModel, cmd = program.Update msg currentModel
-                currentModel <- nextModel
+                // Issue #365: a throwing product `Update` used to escape here, tear the persistent
+                // window down, and be mislabeled `frameRenderFailed`. Guard it: report an `App`-stage
+                // defect (over the trace, and the verbose console the `ReportDiagnostic` effect uses)
+                // and drop the message, leaving the model and window intact. The diagnostic is NOT
+                // re-dispatched through the product's `EventMapper` — that would fold straight back
+                // into `Update` and could recurse on a product that maps the report to another message.
+                let reportProductFailure (diagnostic: RenderDiagnostic) =
+                    RenderLagTrace.emit
+                        "gl-product-update-failed"
+                        [ "stage", string diagnostic.Stage
+                          "message", diagnostic.Message.Replace(" ", "_") ]
 
-                cmd
-                |> List.iter (fun effect -> effect dispatch)
+                    if program.Configuration.Diagnostics.Verbose then
+                        Console.Error.WriteLine($"FS.GG.UI diagnostic: {diagnostic.Stage}: {diagnostic.Message}")
+
+                match tryProductStep reportProductFailure "Update" (fun () -> program.Update msg currentModel) with
+                | Some(nextModel, cmd) ->
+                    currentModel <- nextModel
+                    cmd |> List.iter (fun effect -> effect dispatch)
+                | None -> ()
 
         let startSubscriptions () =
             disposeSubscriptions ()

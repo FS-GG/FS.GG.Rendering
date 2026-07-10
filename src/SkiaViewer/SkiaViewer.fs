@@ -136,6 +136,33 @@ module Viewer =
     let captureDiagnostic options diagnostic =
         DiagnosticsFiltering.capture options diagnostic
 
+    /// Issue #365: the counterpart to the GL host's `Diagnostics.productStepFailed`, for the presented
+    /// interactive host. Staged at `App` (application code) — never `Frame`/render — so a throwing
+    /// product step is not mislabeled a render failure.
+    let productDefectDiagnostic (phase: string) (message: string) : ViewerDiagnosticEvent =
+        { Level = ViewerDiagnosticLevel.Error
+          Category = ViewerDiagnosticCategory.Scene
+          Message =
+            sprintf
+                "Product %s raised an exception (%s). The input was dropped and the persistent window kept alive."
+                phase
+                message
+          FrameIndex = None
+          Stage = Some ViewerRunBlockedStage.App
+          Elapsed = None }
+
+    /// Issue #365: guard a presented-host product `Update`/`View`. A throwing step used to escape the
+    /// Silk callback and tear the persistent window down (mislabeled `frameRenderFailed` by the GL
+    /// host's outer handler). Here the step is dropped, reported as an `App`-stage defect, and the
+    /// window kept alive on its last-good model/scene. A product-code fault is deterministic, so the
+    /// same input is not retried.
+    let tryProductStep (report: ViewerDiagnosticEvent -> unit) (phase: string) (step: unit -> 'a) : 'a option =
+        try
+            Some(step ())
+        with ex ->
+            report (productDefectDiagnostic phase ex.Message)
+            None
+
     let private dispatchDiagnostic options (diagnostic: ViewerDiagnosticEvent) =
         captureDiagnostic options diagnostic |> Option.defaultValue diagnostic
 
@@ -874,6 +901,7 @@ module Viewer =
             | Host.DiagnosticStage.FrameRender -> ViewerRunBlockedStage.Renderer
             | Host.DiagnosticStage.ScreenshotCapture -> ViewerRunBlockedStage.Readback
             | Host.DiagnosticStage.Input
+            | Host.DiagnosticStage.App
             | Host.DiagnosticStage.Shutdown -> ViewerRunBlockedStage.App
 
         let category =
@@ -885,6 +913,7 @@ module Viewer =
             | Host.DiagnosticStage.SkiaContext -> ViewerDiagnosticCategory.Skia
             | Host.DiagnosticStage.FrameRender -> ViewerDiagnosticCategory.Frame
             | Host.DiagnosticStage.ScreenshotCapture -> ViewerDiagnosticCategory.Screenshot
+            | Host.DiagnosticStage.App -> ViewerDiagnosticCategory.Scene
             | Host.DiagnosticStage.Input
             | Host.DiagnosticStage.PlatformCheck
             | Host.DiagnosticStage.Shutdown -> ViewerDiagnosticCategory.Startup
@@ -2242,6 +2271,13 @@ module Viewer =
                     let mutable currentModel = model
                     let mutable currentScene = host.View currentModel
                     let mutable inputDispatch = "false"
+                    // Issue #365: guard the product `Update`/`View` so one throwing step drops that input
+                    // and keeps the persistent window on its last-good scene, rather than escaping to a
+                    // teardown mislabeled `frameRenderFailed`.
+                    let reportProductDefect ev = captureDiagnostic host.Diagnostics ev |> ignore
+                    let safeView model =
+                        tryProductStep reportProductDefect "View" (fun () -> host.View model)
+                        |> Option.defaultValue currentScene
                     // Issue #246: `GeneratedAppHost.View` withholds the window size on purpose, so the
                     // product always draws in its own coordinate space. Track the live surface so a
                     // `LogicalSize` product can be fitted to it; without one this stays inert and the
@@ -2297,10 +2333,12 @@ module Viewer =
                               LastScene = None }
 
                     let dispatchHostMsg msg =
-                        let next, effects = host.Update msg currentModel
-                        currentModel <- next
-                        currentScene <- host.View currentModel
-                        interpretEffects effects
+                        match tryProductStep reportProductDefect "Update" (fun () -> host.Update msg currentModel) with
+                        | None -> false // product Update threw; drop the message, keep window + last-good scene
+                        | Some(next, effects) ->
+                            currentModel <- next
+                            currentScene <- safeView currentModel
+                            interpretEffects effects
 
                     let handleTick elapsed =
                         match host.Tick elapsed with
@@ -2326,7 +2364,7 @@ module Viewer =
                             // F1: a key that maps to no product message may still have changed
                             // host-internal runtime state (focus traversal, scroll keys); re-derive so
                             // it renders on THIS key. (Previously only the full-interactive loop did this.)
-                            currentScene <- runtimeStateRepaint false currentScene (fun () -> host.View currentModel)
+                            currentScene <- runtimeStateRepaint false currentScene (fun () -> safeView currentModel)
                             false
 
                     let inputVerified () =
@@ -2390,6 +2428,13 @@ module Viewer =
                     let mutable currentSize = viewSize ()
                     let mutable currentScene = host.View currentSize currentModel
                     let mutable inputDispatch = "false"
+                    // Issue #365: guard the product `Update`/`View` so one throwing step drops that input
+                    // and keeps the persistent window on its last-good scene, rather than escaping to a
+                    // teardown mislabeled `frameRenderFailed`.
+                    let reportProductDefect ev = captureDiagnostic host.Diagnostics ev |> ignore
+                    let safeView size model =
+                        tryProductStep reportProductDefect "View" (fun () -> host.View size model)
+                        |> Option.defaultValue currentScene
 
                     let presentScene () = presentedFor options currentSurfaceSize currentScene
 
@@ -2430,31 +2475,44 @@ module Viewer =
                         let msgText = (sprintf "%A" msg).Replace(" ", "_").Replace(Environment.NewLine, "_")
                         let updateSw = Stopwatch.StartNew()
                         RenderLagTrace.emit "model-update-start" [ "msg", msgText ]
-                        let next, effects = host.Update msg currentModel
-                        updateSw.Stop()
-                        RenderLagTrace.emit
-                            "model-update-end"
-                            [ "msg", msgText
-                              "durationMs", updateSw.Elapsed.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture) ]
-                        currentModel <- next
-                        let viewSw = Stopwatch.StartNew()
-                        RenderLagTrace.emit "view-start" [ "msg", msgText ]
-                        currentScene <- host.View currentSize currentModel
-                        viewSw.Stop()
-                        RenderLagTrace.emit
-                            "view-end"
-                            [ "msg", msgText
-                              "durationMs", viewSw.Elapsed.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture) ]
-                        let effectsSw = Stopwatch.StartNew()
-                        interpretEffects effects
-                        |> fun closeRequested ->
-                            effectsSw.Stop()
+
+                        match tryProductStep reportProductDefect "Update" (fun () -> host.Update msg currentModel) with
+                        | None ->
+                            // Issue #365: a throwing product Update drops this input and keeps the window
+                            // alive on its last-good model/scene, rather than tearing it down.
+                            updateSw.Stop()
                             RenderLagTrace.emit
-                                "effects-end"
+                                "model-update-end"
                                 [ "msg", msgText
-                                  "durationMs", effectsSw.Elapsed.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture)
-                                  "closeRequested", string closeRequested ]
-                            closeRequested
+                                  "durationMs", updateSw.Elapsed.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture)
+                                  "dropped", "true" ]
+
+                            false
+                        | Some(next, effects) ->
+                            updateSw.Stop()
+                            RenderLagTrace.emit
+                                "model-update-end"
+                                [ "msg", msgText
+                                  "durationMs", updateSw.Elapsed.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture) ]
+                            currentModel <- next
+                            let viewSw = Stopwatch.StartNew()
+                            RenderLagTrace.emit "view-start" [ "msg", msgText ]
+                            currentScene <- safeView currentSize currentModel
+                            viewSw.Stop()
+                            RenderLagTrace.emit
+                                "view-end"
+                                [ "msg", msgText
+                                  "durationMs", viewSw.Elapsed.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture) ]
+                            let effectsSw = Stopwatch.StartNew()
+                            interpretEffects effects
+                            |> fun closeRequested ->
+                                effectsSw.Stop()
+                                RenderLagTrace.emit
+                                    "effects-end"
+                                    [ "msg", msgText
+                                      "durationMs", effectsSw.Elapsed.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture)
+                                      "closeRequested", string closeRequested ]
+                                closeRequested
 
                     let handleTick elapsed =
                         match host.Tick elapsed with
@@ -2484,7 +2542,7 @@ module Viewer =
                         // have changed runtime state (focus traversal, scroll keys); re-derive so it
                         // renders on THIS key, not the next. (When messages ran, dispatchHostMsg already
                         // re-derived, so this is a no-op.)
-                        currentScene <- runtimeStateRepaint (not (List.isEmpty msgs)) currentScene (fun () -> host.View currentSize currentModel)
+                        currentScene <- runtimeStateRepaint (not (List.isEmpty msgs)) currentScene (fun () -> safeView currentSize currentModel)
                         closeRequested
 
                     let handlePointer (input: ViewerPointerInput) =
@@ -2528,7 +2586,7 @@ module Viewer =
                         // dead-hover, and dead-scroll class. `runtimeStateRepaint` re-derives from
                         // `host.View` (the single source reflecting model + every runtime ref) on the
                         // no-message path, and is a no-op when messages already drove a re-derive.
-                        currentScene <- runtimeStateRepaint (not (List.isEmpty msgs)) currentScene (fun () -> host.View currentSize currentModel)
+                        currentScene <- runtimeStateRepaint (not (List.isEmpty msgs)) currentScene (fun () -> safeView currentSize currentModel)
 
                         closeRequested
 
@@ -2541,7 +2599,7 @@ module Viewer =
 
                         if nextViewSize <> currentSize then
                             currentSize <- nextViewSize
-                            currentScene <- host.View currentSize currentModel
+                            currentScene <- safeView currentSize currentModel
 
                     let inputVerified () =
                         not (requireInputDispatchVerification ()) || inputDispatch = "true"

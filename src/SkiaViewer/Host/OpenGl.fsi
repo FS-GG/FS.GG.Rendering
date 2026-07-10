@@ -335,6 +335,13 @@ module GlHost =
     val observeFrameFailed:
         tracker: FrameFailureTracker -> facts: FrameFailureFacts -> retryBudget: int -> FrameFailureAction
 
+    /// Issue #365: run a product `Update`/`View` step that must not kill the persistent window. On
+    /// success, `Some` its result; on a product-raised exception, `None` plus exactly one `App`-staged
+    /// diagnostic through `report` — never the mislabeled `frameRenderFailed`, and never a retry (a
+    /// product-code fault is deterministic, so the offending step is dropped and the window kept alive).
+    /// This is exactly the guard the live `dispatch` loop performs, exposed so it can be driven directly.
+    val tryProductStep: report: (RenderDiagnostic -> unit) -> phase: string -> step: (unit -> 'a) -> 'a option
+
     /// Public contract function exposed by this FS.GG.UI package. Signature shape preserved
     /// from the former VulkanHost.run so Host/Viewer.fs routes unchanged. A run whose frame loop
     /// was abandoned (issue #179) returns the fatal diagnostic that ended it.
