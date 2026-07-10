@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# apicompat-check.sh — advisory breaking-change (ApiCompat / Package Validation) detector for the
+# apicompat-check.sh — breaking-change (ApiCompat / Package Validation) detector for the
 # FS.GG.UI.* packables. H3 / FS-GG/.github#20, epic FS-GG/.github#16 Pillar 5.
 #
 # WHAT IT DOES
@@ -16,12 +16,18 @@
 #   registry coherence id `apicompat-publicapi-gate` (Governance spec 088 research D1). The
 #   source-level public-surface record stays the committed .fsi baselines in readiness/surface-baselines/.
 #
-# ADVISORY (mirrors FS.GG.Governance spec 088 D7)
-#   This runs as a SEPARATE step and never reddens the normal build/release pack (Package
-#   Validation is left OFF there). The script EXITS NON-ZERO when a real break is found, so its
-#   gate.yml job fails on a break. That job is not in branch protection's required set, so today a
-#   break informs a merge rather than blocking one; elevating it is a branch-protection change, not
-#   a script change (docs/ci/cadence-map.md §5, ADR-0101).
+# OUT-OF-BAND, BUT NOT ADVISORY (the D7 shape; the status has since changed)
+#   Per FS.GG.Governance spec 088 D7 this runs as a SEPARATE step and never reddens the normal
+#   build/release pack (Package Validation is left OFF there) — that much is unchanged. But the
+#   step is no longer informational. The script EXITS NON-ZERO when a real break is found, and its
+#   `api-compatibility-gate` job IS in branch protection's required set on `main` (since 2026-07-09;
+#   ADR-0101 authorized, ADR-0103 records it). `enforce_admins` is ON, so `gh pr merge --admin` does
+#   not bypass it either. A break BLOCKS the merge, and the remedy is to CUT A SEMVER MAJOR — the
+#   break is the only signal forcing that bump. Do NOT reach for `ApiCompatGenerateSuppressionFile`
+#   to go green: blanket suppression inverts this gate and ships a silent break under a
+#   preview-patch, the exact failure `apicompat-publicapi-gate` is registered to prevent (ADR-0101).
+#   A suppression is legitimate only as ADR-0102 used one — `IsBaselineSuppression`, a single
+#   diagnostic and target, and a lifetime note. See docs/ci/cadence-map.md §5.1.
 #
 # A GATE THAT COULD NOT RUN NEVER REPORTS A PASS (#216)
 #   Every packable lands in exactly one of five states, and only two of them mean "compared".
@@ -183,7 +189,7 @@ check_version() {
 
 mapfile -t projects < <(grep -rl '<IsPackable>true</IsPackable>' src --include='*.fsproj' | sort)
 
-echo "apicompat-check — advisory ApiCompat/Package Validation vs the org feed baseline"
+echo "apicompat-check — ApiCompat/Package Validation vs the org feed baseline (REQUIRED check on main)"
 echo "feed: $FEED_URL   packables: ${#projects[@]}"
 echo
 

@@ -49,12 +49,17 @@ They have different lifetimes, and separating them is what makes this decision s
   every other open PR's green. `gate` also runs on `push: main`, so a bad interleaving is caught
   post-merge rather than prevented pre-merge. That is the right trade for a repo running four
   workers at once.
-- **`enforce_admins` is OFF, for now.** Requiring the gate *of admins too* is the faithful reading
-  of this decision, and it is where the repo should end up. But the freeze window below is not yet
-  automated away, and with admin enforcement on, a release window blocks **everyone** with no
-  escape — a wedged `main` is a worse failure than an informed bypass. The admin bypass is an
-  explicit, logged action, not a silent one. **Flip it to `true` when the tag-cutter lands**; that
-  is part of the follow-up, not a separate judgement call.
+- **`enforce_admins` is OFF, for now** — ~~superseded: it is now **ON**~~. Requiring the gate
+  *of admins too* is the faithful reading of this decision, and it is where the repo should end up.
+  But the freeze window below is not yet automated away, and with admin enforcement on, a release
+  window blocks **everyone** with no escape — a wedged `main` is a worse failure than an informed
+  bypass. The admin bypass is an explicit, logged action, not a silent one. **Flip it to `true` when
+  the tag-cutter lands**; that is part of the follow-up, not a separate judgement call.
+  > **Superseded.** `enforce_admins: true` on `main` today — there is no admin bypass. #218 landed
+  > `release-tags.yml` and closed the freeze window, which is the trigger this bullet named, but
+  > **nothing records when the setting was flipped, or by whom**: branch protection is not in the
+  > repo tree. Read this as a state, not an event. See
+  > [ADR-0103](./0103-gate-is-fully-enforced.md).
 - **Rebase merging is disabled on this repo.** The guard's `bumpedInCommitUnderTest` reads
   `HEAD~1..HEAD`; a rebase-merge splits a release across two commits, so the second is seen as a
   bump-less change and the package lane reds on `main`. Squash and merge-commit both keep the whole
@@ -105,6 +110,8 @@ tracked follow-up rather than by folklore.
 - `docs/ci/cadence-map.md` §5's "select **only** the `Deterministic gate`" wording predates
   `gate.yml`'s `api-compatibility-gate` job, whose own comment asks to be required. Elevating
   ApiCompat is a **separate** decision needing a §5 amendment (#219). ApiCompat stays advisory.
+  *(As of 2026-07-09 it does not: §5.1 was amended, the check went green, and it is required —
+  [ADR-0103](./0103-gate-is-fully-enforced.md).)*
 
   Deferring to §5 turned out to be load-bearing rather than merely cautious. **ApiCompat is red on
   `main` right now** — commits `3b0605b` and `7a5f751` both show `Deterministic gate` green and
@@ -127,9 +134,12 @@ tracked follow-up rather than by folklore.
 
 ## Open follow-ups
 
-- [#218](https://github.com/FS-GG/FS.GG.Rendering/issues/218) — implement the tag-cutter
-  (`workflow_call` route). Closing it also closes the freeze window and flips `enforce_admins` on.
+- ~~[#218](https://github.com/FS-GG/FS.GG.Rendering/issues/218) — implement the tag-cutter
+  (`workflow_call` route). Closing it also closes the freeze window and flips `enforce_admins` on.~~
+  **Done**: `release-tags.yml` cuts the tag triple, and `enforce_admins` is `true`
+  ([ADR-0103](./0103-gate-is-fully-enforced.md)).
 - ~~[#219](https://github.com/FS-GG/FS.GG.Rendering/issues/219) — decide whether `API compatibility
   gate` joins the required set, amending cadence-map §5.~~ **Decided** in
   [ADR-0101](./0101-apicompat-stays-advisory.md): authorized, §5 amended (§5.1), but it stays
   advisory until it is green on `main`. Elevation is then a branch-protection change only.
+  It went green and **was elevated the same day** ([ADR-0103](./0103-gate-is-fully-enforced.md)).

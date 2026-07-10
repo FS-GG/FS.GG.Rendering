@@ -48,6 +48,12 @@ any source is copied (source import is Stage R4).
   - [0101-apicompat-stays-advisory.md](./decisions/0101-apicompat-stays-advisory.md) — `API
     compatibility gate` is authorized to be required but stays advisory until it is green on `main`;
     fixes the baseline-selection defect that kept it red, and corrects ADR-0100's account of why.
+    **Title and Decision superseded in part by ADR-0103** — the check is now required.
+  - [0102-symbology-secondary-heading-channel.md](./decisions/0102-symbology-secondary-heading-channel.md)
+    — `Token` gains an opt-in second rotation channel (`Heading2`); the fixed grammar stays fixed.
+  - [0103-gate-is-fully-enforced.md](./decisions/0103-gate-is-fully-enforced.md) — the pre-merge gate
+    is fully enforced: both `gate.yml` contexts are required on `main` and `enforce_admins` is on, so
+    a `CP####` break blocks the merge and no admin bypasses it.
   - **Org-level pointer stubs** (canonical text in `FS-GG/.github`):
     - [0011-agent-skill-roots-full-union-orchestrator-owned-mirror.md](./decisions/0011-agent-skill-roots-full-union-orchestrator-owned-mirror.md)
       — agent-skill roots carry the full union; `fsgg-sdd` owns the mirror; providers confined

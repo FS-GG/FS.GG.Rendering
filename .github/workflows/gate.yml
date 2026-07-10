@@ -3,10 +3,16 @@ name: gate
 # The pre-merge gate. Fast, deterministic, runs on every change. It is the ONLY workflow intended to
 # be a required check (see docs/ci/cadence-map.md §5).
 #
-# ENFORCED: the `Deterministic gate` job is a required status check on `main` (ADR-0100,
-# docs/product/decisions/0100-gate-is-a-required-check.md). A red run blocks the merge button. The
-# sibling `api-compatibility-gate` job stays ADVISORY: cadence-map §5 names the one precondition it
-# has not yet met (a green run on `main`), and ADR-0101 records why.
+# ENFORCED: BOTH the `Deterministic gate` job (ADR-0100) and its sibling `api-compatibility-gate`
+# job (ADR-0101 authorized, ADR-0103 records the elevation) are required status checks on `main`.
+# A red run of either blocks the merge button, and `enforce_admins` is ON — `--admin` does not
+# bypass it. A `CP####` break wedges the PR, and the remedy is to CUT A SEMVER MAJOR: the break is
+# the only signal forcing that bump. Do NOT reach for `ApiCompatGenerateSuppressionFile` to go green
+# — blanket suppression INVERTS the gate and ships a silent break under a preview-patch (ADR-0101,
+# "Why not require it and suppress the three breaks"). A suppression is legitimate only as ADR-0102
+# used one: `IsBaselineSuppression`, a single diagnostic and target, and a note saying when to delete
+# it. See docs/ci/cadence-map.md §5.1 for the exact context strings and the exit-code table
+# (BREAK/Indeterminate block; FeedUnavailable/NoBaselineYet do not).
 # `release.yml` / `capability.yml` are advisory and must never be required (FR-007).
 #
 # "Require branches to be up to date" is deliberately OFF: it serializes merges under the ADR-0021
@@ -178,7 +184,11 @@ jobs:
       # that restores nothing would otherwise report a vacuous pass (#266). It touches no network, so
       # it belongs in the required gate. The restore-grounded half — does the payload actually
       # resolve, and to a stable graph — needs nuget.org and runs in `template-payload-restore-gate`
-      # below, for the same reason ADR-0101 keeps `api-compatibility-gate` out of the required set.
+      # below, which stays NON-required. Unlike `api-compatibility-gate` (now required, ADR-0103) it
+      # has no elevation path: ApiCompat reads a feed only to FIND A BASELINE, so a silent feed is
+      # classifiable as `FeedUnavailable` → exit 0. The restore gate's SUBJECT *is* the feed — "the
+      # payload did not restore" is the verdict, and a nuget.org outage is indistinguishable from a
+      # bad pin. It must stay unable to wedge the repo. See cadence-map §5 / §4b.
       - name: Template payload pins — structural verdict-core (env-free)
         run: dotnet fsi scripts/validate-template-payload-pins.fsx
 
@@ -360,10 +370,13 @@ jobs:
   # to errors so a nonexistent pin cannot resolve upward silently; and the Game/Audio pins not lagging
   # feed-newest (the staleness direction, as `.github`'s check-feed-coherence.py does for the registry).
   #
-  # A SEPARATE JOB, not a step of the required `gate`, on exactly ADR-0101's bound: this reads
-  # nuget.org, and requiring a feed-dependent check takes a dependency on that feed's availability —
-  # an outage must not wedge every merge in the repo. As with `api-compatibility-gate`, "advisory"
-  # means NOT-REQUIRED and is NOT `continue-on-error` (#216): this job has none and must not grow one.
+  # A SEPARATE JOB, not a step of the required `gate`: this reads nuget.org, and requiring a
+  # feed-dependent check takes a dependency on that feed's availability — an outage must not wedge
+  # every merge in the repo. `api-compatibility-gate` reads a feed too and IS required (ADR-0103),
+  # because it can tell a silent feed apart from a break (`FeedUnavailable` → exit 0). This job
+  # cannot: the feed is its SUBJECT, so an outage is indistinguishable from a bad pin. It has no
+  # elevation path and must stay non-required (cadence-map §4b/§5).
+  # NOT-REQUIRED is NOT `continue-on-error` (#216): this job has none and must not grow one.
   # A red here is the gate reporting what it found. Its exits: 0 coherent · 1 drift · 2 guard error
   # (feed unreachable / restore tooling failed / zero pins matched) — it fails CLOSED, per #266's rule
   # that "nothing to check" and "checked, and it's fine" must not share an exit code.
