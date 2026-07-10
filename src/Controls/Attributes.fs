@@ -61,7 +61,11 @@ module Attr =
     let child control = create "child" Children (ChildValue control)
     let children controls = create "children" Children (ChildrenValue controls)
     let enabled value = create "enabled" State (BoolValue value)
-    let visible value = create "visible" State (BoolValue value)
+    // Feature 358: `visible` drives layout collapse in `toLayout`, so it is categorised `Layout` — the
+    // channel the incremental classifier honours (`layoutDirtySet`) to re-measure on a toggle. The NAME
+    // channel is gated shut by the Feature 101 drift probe (it cannot set a bool), so this is a
+    // category-only layout signal, mirroring `elevation`.
+    let visible value = create "visible" AttrCategory.Layout (BoolValue value)
     let readOnly value = create "readOnly" State (BoolValue value)
     let loading value = create "loading" State (BoolValue value)
     let selected value = create "selected" State (BoolValue value)
