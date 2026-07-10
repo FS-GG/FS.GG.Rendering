@@ -22,9 +22,20 @@ module ApiSurfaceMirrorTests
 //           the .fsi. Tightening M-PTR that way is a follow-up: today `Controls.Elmish` would fail it,
 //           because no shipped skill mentions `runInteractiveApp` / `InteractiveAppHost` at all.
 //   M-PROV  every CROSS-REPO mirror records the version it was copied from, and that version must
-//           equal the `$(FsGgAudioVersion)` the template pins. This is ADR-0024's staleness concern
-//           in enforced form: the copy can no longer outlive its package in silence. The in-repo
-//           copies get the stronger check — compared against their src/ original outright.
+//           equal the version property the template pins for that mirror's source repo. This is
+//           ADR-0024's staleness concern in enforced form: the copy can no longer outlive its package
+//           in silence. The in-repo copies get the stronger check — compared against their src/
+//           original outright.
+//
+// #259 — M-PROV originally hard-coded FS.GG.Audio, so the Game.Core mirror was unstamped and
+// therefore unchecked: it sat at the pre-0.2.0 surface (no `Resolution`, no collision layer on
+// `Geometry`/`Primitives`) while `$(FsGgGameVersion)` already said 0.2.0, and a scaffolded product
+// read that stale surface as its contract. The mirror table below is now keyed by source repo, so
+// every cross-repo mirror is stamped and compared against its own pin.
+//
+// What M-PROV can and cannot see: it proves the stamp equals the pin, not that the bytes equal the
+// package — CI cannot see the other repo. That is enough for the drift it exists to catch, because
+// bumping a pin without recopying leaves the stamp behind and fails here.
 
 open System.IO
 open System.Text.RegularExpressions
@@ -49,9 +60,15 @@ let private surfaceDirectoryFor (packageId: string) =
     else failwithf "not an FS.GG package id: %s" packageId
 
 /// Mirrors copied verbatim from ANOTHER FS-GG repo. Each carries a provenance stamp, because a
-/// cross-repo copy is the one that can outlive the package it claims (ADR-0024).
-let private crossRepoMirrorDirectories =
-    set [ "Audio.Core"; "Audio.Host"; "Audio.Engine"; "Audio.Elmish" ]
+/// cross-repo copy is the one that can outlive the package it claims (ADR-0024). Keyed by bundled
+/// directory -> the source repo it was copied from, and the template property pinning that repo.
+let private crossRepoMirrors =
+    Map
+        [ "Audio.Core", ("FS.GG.Audio", "FsGgAudioVersion")
+          "Audio.Host", ("FS.GG.Audio", "FsGgAudioVersion")
+          "Audio.Engine", ("FS.GG.Audio", "FsGgAudioVersion")
+          "Audio.Elmish", ("FS.GG.Audio", "FsGgAudioVersion")
+          "Game.Core", ("FS.GG.Game", "FsGgGameVersion") ]
 
 /// Mirrors copied verbatim from THIS repo's src/, so their freshness is checkable directly rather
 /// than by a stamp. `Scene/` is deliberately absent: it is a hand-MERGED surface (it inlines
@@ -90,10 +107,12 @@ let private skillPointers (file: string) =
         if m.Success then Some m.Groups.[1].Value else None)
     |> Array.toList
 
-let private provenanceVersion (file: string) =
+/// The version stamped on a mirror copied from `repo`. A stamp naming a DIFFERENT repo does not
+/// count — otherwise a mis-copied file could satisfy the gate with someone else's provenance.
+let private provenanceVersion (repo: string) (file: string) =
     headerLines file
     |> Array.tryPick (fun line ->
-        let m = Regex.Match(line, @"^// Mirrored from FS-GG/FS\.GG\.Audio @ (\S+)")
+        let m = Regex.Match(line, $@"^// Mirrored from FS-GG/{Regex.Escape repo} @ (\S+)")
         if m.Success then Some m.Groups.[1].Value else None)
 
 /// A mirrored file minus its `//` header stamps, for comparison against a src/ original that has none.
@@ -111,9 +130,13 @@ let private shippedProductSkills () =
     |> Array.map (fun d -> DirectoryInfo(d).Name)
     |> Set.ofArray
 
-let private pinnedAudioVersion () =
-    let m = Regex.Match(File.ReadAllText templatePackagesPath, @"<FsGgAudioVersion>([^<]+)</FsGgAudioVersion>")
-    if m.Success then m.Groups.[1].Value else failwith "template/base/Directory.Packages.props pins no FsGgAudioVersion"
+let private pinnedVersion (property: string) =
+    let m = Regex.Match(File.ReadAllText templatePackagesPath, $"<{Regex.Escape property}>([^<]+)</{Regex.Escape property}>")
+
+    if m.Success then
+        m.Groups.[1].Value
+    else
+        failwithf "template/base/Directory.Packages.props pins no %s" property
 
 [<Tests>]
 let apiSurfaceMirrorTests =
@@ -178,29 +201,56 @@ let apiSurfaceMirrorTests =
 
           // M-PROV — ADR-0024's objection, enforced. A cross-repo doc copy cannot outlive its package
           // without failing here.
-          test "every cross-repo Audio mirror records the FS.GG.Audio version the template pins" {
-              let pinned = pinnedAudioVersion ()
-
+          test "every cross-repo mirror records the source-repo version the template pins" {
               let offenders =
                   bundledFsiFiles ()
-                  |> List.filter (fun f -> crossRepoMirrorDirectories.Contains(owningPackageDirectory f))
                   |> List.choose (fun file ->
-                      match provenanceVersion file with
-                      | None -> Some(relativeToSurfaceRoot file, "<no provenance line>")
-                      | Some stamped when stamped <> pinned -> Some(relativeToSurfaceRoot file, stamped)
-                      | Some _ -> None)
+                      crossRepoMirrors
+                      |> Map.tryFind (owningPackageDirectory file)
+                      |> Option.bind (fun (repo, property) ->
+                          let pinned = pinnedVersion property
 
-              Expect.isEmpty offenders $"each cross-repo mirror is stamped with the pinned FsGgAudioVersion ({pinned})"
+                          match provenanceVersion repo file with
+                          | None -> Some(relativeToSurfaceRoot file, $"<no 'Mirrored from FS-GG/{repo}' line>")
+                          | Some stamped when stamped <> pinned ->
+                              Some(relativeToSurfaceRoot file, $"stamped {stamped}, but {property} pins {pinned}")
+                          | Some _ -> None))
+
+              Expect.isEmpty offenders "each cross-repo mirror is stamped with the version its template property pins"
           }
 
-          test "every cross-repo mirror directory declared here actually exists" {
-              // Keeps `crossRepoMirrorDirectories` from silently going stale into a no-op filter,
-              // which would make M-PROV vacuously green.
-              crossRepoMirrorDirectories
-              |> Set.iter (fun dir ->
-                  Expect.isTrue
-                      (Directory.Exists(Path.Combine(apiSurfaceRoot, dir)))
-                      $"declared cross-repo mirror {dir} exists")
+          test "every cross-repo mirror directory declared here actually exists and is non-empty" {
+              // Keeps `crossRepoMirrors` from silently going stale into a no-op lookup, which would make
+              // M-PROV vacuously green — the exact way #259's Game.Core mirror went unchecked.
+              crossRepoMirrors
+              |> Map.iter (fun dir _ ->
+                  let path = Path.Combine(apiSurfaceRoot, dir)
+                  Expect.isTrue (Directory.Exists path) $"declared cross-repo mirror {dir} exists"
+
+                  Expect.isGreaterThan
+                      (Directory.GetFiles(path, "*.fsi").Length)
+                      0
+                      $"declared cross-repo mirror {dir} bundles at least one .fsi to stamp")
+          }
+
+          // #259 — the regression that started this: Game.Core is a cross-repo mirror, so it must be in
+          // the table above. Asserted by name because "we forgot to add it" is precisely the failure.
+          test "the Game.Core mirror is registered as cross-repo and bundles the 0.2.0 collision layer" {
+              Expect.isTrue (crossRepoMirrors.ContainsKey "Game.Core") "Game.Core is a cross-repo mirror and must be stamped"
+
+              let read name =
+                  File.ReadAllText(Path.Combine(apiSurfaceRoot, "Game.Core", name))
+
+              Expect.isTrue
+                  (File.Exists(Path.Combine(apiSurfaceRoot, "Game.Core", "Resolution.fsi")))
+                  "the bundled Game.Core surface ships Resolution.fsi"
+
+              [ "Resolution.fsi", [ "pushOut"; "slide"; "knockback" ]
+                "Primitives.fsi", [ "Contact"; "Circle"; "RayHit"; "ConvexPolygon" ]
+                "Geometry.fsi", [ "aabbContact"; "circleContact"; "segmentAabbHit"; "polygonContact" ] ]
+              |> List.iter (fun (file, members) ->
+                  let text = read file
+                  members |> List.iter (fun m -> Expect.stringContains text m $"bundled Game.Core/{file} declares {m}"))
           }
 
           // The in-repo half of the same staleness problem. A cross-repo copy gets a stamp because we
