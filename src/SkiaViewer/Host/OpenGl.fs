@@ -451,6 +451,36 @@ module GlHost =
         // repaint for the life of the window (the screenshot path has always scoped it this way).
         SceneRenderer.drawScene canvas scene
 
+    /// Issue #364 (HiDPI): the live scene is authored in the window's LOGICAL coordinate space
+    /// (`window.Size` — the same space `IMouse.Position` and every product `view`/pointer map use),
+    /// but the GL/Skia surface is sized in PHYSICAL framebuffer pixels (`window.FramebufferSize`). On
+    /// a scaled display (scale != 1) the two diverge, so a bare 1:1 draw rasterizes the logical scene
+    /// into the top-left `1/scale²` corner of a larger surface. Draw it through the uniform
+    /// logical→physical fit instead, so it fills the surface exactly as the (unscaled) window intends.
+    /// At scale 1 `logical = physical`, the fit is the identity, and this is byte-identical to a bare
+    /// `drawScene` — which is why the whole X11/scale-1 test surface is unaffected.
+    let private drawSceneFitted (logical: Size) (physical: Size) (scene: Scene) (canvas: SKCanvas) =
+        let fitted = LogicalCanvas.fit logical physical
+
+        if fitted.Scale = 1.0 && fitted.OffsetX = 0.0 && fitted.OffsetY = 0.0 then
+            drawScene scene canvas
+        else
+            // `finally` keeps the save-stack balanced even if the painter throws mid-frame — an
+            // unbalanced Save would leave a residual transform on the reused surface for later frames.
+            let restoreCount = canvas.Save()
+
+            try
+                canvas.Translate(float32 fitted.OffsetX, float32 fitted.OffsetY)
+                canvas.Scale(float32 fitted.Scale)
+                drawScene scene canvas
+            finally
+                canvas.RestoreToCount restoreCount
+
+    /// Issue #364: the logical/physical size pair for the current live present — logical from the
+    /// window (points), physical from the framebuffer the surface was just sized to. Equal at scale 1.
+    let private liveFitSizes (window: IWindow) (framebuffer: FramebufferState) : Size * Size =
+        { Width = window.Size.X; Height = window.Size.Y }, { Width = framebuffer.Width; Height = framebuffer.Height }
+
     // Feature 120 (US1, FR-001/002): the most recent present's per-phase durations — the scene→canvas
     // paint walk (incl. surface clear + canvas flush) vs the GL flush + buffer-swap (compose/present).
     // Live-only, non-golden; surfaced to `FrameMetrics.PaintDuration`/`ComposeDuration`.
@@ -939,7 +969,8 @@ module GlHost =
                 SceneRenderer.activeReplayCache |> Option.iter PictureReplayCache.resetCounters
                 let paintSw = System.Diagnostics.Stopwatch.StartNew()
                 surface.Canvas.Clear clear
-                drawScene scene surface.Canvas
+                let logicalSize, physicalSize = liveFitSizes window framebuffer
+                drawSceneFitted logicalSize physicalSize scene surface.Canvas
                 surface.Canvas.Flush()
                 paintSw.Stop()
                 // Feature 122 (FR-001): cache this fully-painted frame so idle frames can re-present it
@@ -999,7 +1030,8 @@ module GlHost =
                 SceneRenderer.activeReplayCache |> Option.iter PictureReplayCache.resetCounters
                 let paintSw = System.Diagnostics.Stopwatch.StartNew()
                 surface.Canvas.Clear clear
-                drawScene scene surface.Canvas
+                let logicalSize, physicalSize = liveFitSizes window framebuffer
+                drawSceneFitted logicalSize physicalSize scene surface.Canvas
                 surface.Canvas.Flush()
                 paintSw.Stop()
                 let composeSw = System.Diagnostics.Stopwatch.StartNew()
@@ -1009,6 +1041,11 @@ module GlHost =
                 lastPaintDuration <- paintSw.Elapsed
                 lastComposeDuration <- composeSw.Elapsed
 
+                // Issue #364: the readback PIXELS below still render 1:1 at physical size (the scene is
+                // logical), so on a scaled display the opt-in `OffscreenReadback` capture keeps the scene
+                // in its top-left corner even though the DISPLAYED frame above is now correctly fitted.
+                // The live default (`DirectToSwapchain`) has no readback and is fully correct; readback is
+                // evidence/fallback and evidence runs at scale 1. Tracked as a follow-up.
                 bind (renderSceneToPixels configuration context framebuffer.Width framebuffer.Height scene) (fun pixels ->
                     Ok
                         { Width = framebuffer.Width

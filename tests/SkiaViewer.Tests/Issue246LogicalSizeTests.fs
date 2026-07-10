@@ -118,6 +118,48 @@ let issue246LogicalSizeTests =
               Expect.equal (LogicalCanvas.fit (size 1280 720) (size 640 0)).Scale 1.0 "zero surface height is inert"
           }
 
+          // Issue #364 — the SAME fit the host's `drawSceneFitted` now applies at present time to map a
+          // LOGICAL scene (window.Size) onto the PHYSICAL framebuffer (window.FramebufferSize). At an
+          // integer HiDPI scale the logical canvas UPSCALES to fill the whole surface (no bars); at scale
+          // 1 the fit is the identity, which is why `drawSceneFitted` is byte-identical to a bare draw
+          // and the entire X11/scale-1 test surface is unaffected.
+          test "an integer HiDPI scale upscales the logical canvas to fill the physical surface, no bars (#364)" {
+              let fit = LogicalCanvas.fit (size 800 600) (size 1600 1200)
+              Expect.equal fit.Scale 2.0 "a 2x display doubles the logical canvas"
+              Expect.equal fit.OffsetX 0.0 "a uniform 2x fit centers with no horizontal bar"
+              Expect.equal fit.OffsetY 0.0 "a uniform 2x fit centers with no vertical bar"
+          }
+
+          test "a HiDPI scale onto a differently-shaped surface stays aspect-preserving and bars the surplus (#364)" {
+              // 800x600 (4:3) onto a 1600x1000 (8:5) surface: height binds (1.667 < 2.0), so pillarbox.
+              let fit = LogicalCanvas.fit (size 800 600) (size 1600 1000)
+              Expect.floatClose Accuracy.high fit.Scale (1000.0 / 600.0) "height binds: 1000/600"
+              Expect.floatClose Accuracy.high fit.OffsetX ((1600.0 - 800.0 * (1000.0 / 600.0)) / 2.0) "surplus width is centered"
+              Expect.equal fit.OffsetY 0.0 "the binding axis has no bar"
+          }
+
+          test "at scale 1 the fit is the identity, so the host draws the scene unchanged (#364)" {
+              // The scale-1 invariant `drawSceneFitted` guards on: logical == physical -> identity ->
+              // delegate to the bare `drawScene`. This is what keeps every scale-1 host present untouched.
+              let fit = LogicalCanvas.fit (size 1280 720) (size 1280 720)
+              Expect.equal fit { Scale = 1.0; OffsetX = 0.0; OffsetY = 0.0 } "physical == logical is a no-op fit"
+          }
+
+          // The HiDPI regression proper, as a pixel fact: a logical canvas presented onto a LARGER
+          // physical surface fills it edge to edge. Before #364 the host drew the logical scene 1:1 into
+          // the top-left `1/scale²` corner of the physical framebuffer — this proves it now fills the
+          // surface, the upscale analog of the #246 top-left-crop proof below.
+          test "a logical canvas fills a 2x physical surface edge to edge, not the top-left quadrant (#364)" {
+              withRaster "HiDPI upscale pixel proof" (fun () ->
+                  let logical, physical = size 400 300, size 800 600
+                  let presented = LogicalCanvas.present logical physical (fullCanvas logical)
+                  let minX, minY, maxX, maxY = bbox (litPoints (renderToPng physical.Width physical.Height presented))
+
+                  Expect.equal (minX, minY) (0, 0) "the upscaled canvas reaches the top-left origin"
+                  Expect.equal maxX (physical.Width - 1) "the upscaled canvas reaches the right edge (not a 400px corner)"
+                  Expect.equal maxY (physical.Height - 1) "the upscaled canvas reaches the bottom edge (not a 300px corner)")
+          }
+
           test "present elides the scale under an identity fit but still clips to the canvas" {
               let node = fullCanvas (size 640 480)
 
