@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-30
 
-**Status**: Draft
+**Status**: Shipped
 
 **Input**: User description: "start the next Rendering owned item on the coordination board." → resolved to Coordination board (FS-GG Projects v2 #1) Rendering item **FS-GG/FS.GG.Rendering#35** — "[cross-repo] Symbology product skill is authored but never delivered to consumers" (status: Ready; parent epic #34; publish vehicle #33, now released).
 
