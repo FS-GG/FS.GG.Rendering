@@ -135,6 +135,7 @@ scripts/fsgg-coord claim <issue>            # marker + assignee + Status=In prog
 scripts/fsgg-coord claim <issue> --force    # steal an item another worker holds
 scripts/fsgg-coord heartbeat <issue>        # renew the lease on a long-running claim
 scripts/fsgg-coord release <issue>          # drop it back into the pool
+scripts/fsgg-coord child <parent> <issue>   # link <issue> as a sub-issue — see §5
 ```
 
 The **marker is the lock**. The assignee is set only so a human sees it on the board.
@@ -202,6 +203,28 @@ scripts/fsgg-coord done <issue> --flip     # green FSGG-DONE only after PR merge
 ```
 
 Same stamp and epic roll-up as cross-repo. Check your PR stayed inside its declaration:
+
+### If you filed an issue, LINK it — a mention is not a link
+
+`done --flip` rolls an epic up from its **native sub-issue graph**. A `(j) child of #266` title, a
+`Child of #266` comment, a line in the epic's body — each *looks* like a link, and none of them is
+one. File a child of an epic without linking it and the roll-up cannot see it, so the epic can be
+stamped `Done` over your still-open issue. That happened: an epic completed thirty minutes after an
+open child of it was filed (#325).
+
+```sh
+scripts/fsgg-coord child <parent> <new>    # the ONLY thing that creates the edge rollup reads
+```
+
+Run it the moment you file, not at close-out — the whole failure is a worker who moved on. `child`
+is idempotent, so re-running it is free. It also puts the REST API's two traps in one place: the
+endpoint keys on the child's **id**, not its number, and `gh api -f sub_issue_id=…` sends that id as
+a string and gets a 422 — it needs `-F`.
+
+`done --flip` now **refuses to roll up** an epic whose body declares a child that is not linked, and
+names it; `fsgg-coord lint` reports the same as `EPIC-UNLINKED-CHILD`. Both read the epic's body
+task-list (`- [ ]` / `- [x]` lines naming an issue) as its second, human-legible record of what its
+children are, and hold the two records to agreement.
 
 ```sh
 scripts/fsgg-coord verify-paths --pr <n>   # files changed outside the issue's `Paths:`

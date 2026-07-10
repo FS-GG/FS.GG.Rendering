@@ -54,18 +54,23 @@
 #                                             # Backlog), SKIPPING items whose `Blocked by` refs are
 #                                             # still open (or unverifiable), with the reason on
 #                                             # stderr. --ignore-blocked restores the old behaviour.
+#   fsgg-coord child <parent> <issue>         # link <issue> as a native SUB-ISSUE of <parent> — the
+#                                             # ONLY edge `done --flip` rolls up over. A title
+#                                             # convention or a comment is not a link.
 #   fsgg-coord done  <issue> [--pr N] [--flip]
 #                                             # verify an item is finished (PR merged AND board
 #                                             # Status=Done) and print an EARNED green DONE stamp;
 #                                             # red stamp + non-zero exit if a check fails (--flip
 #                                             # also sets Status=Done once the PR is merged, and rolls
 #                                             # the completion up to any parent epic whose children
-#                                             # are now all Done).
+#                                             # are now all Done — refusing to roll up an epic whose
+#                                             # BODY declares a child the sub-issue graph lacks).
 #   fsgg-coord lint  [--repo R] [--json] [--strict]
 #                                             # assert the board's EPIC invariants: no OPEN `[epic]`
 #                                             # with zero sub-issues (the orphaned epic), none the
 #                                             # board calls Done over an open child, none with children
-#                                             # the scan cannot see. Exit 1 on any error. `Status: Done`
+#                                             # the scan cannot see, none whose body declares a child
+#                                             # that is not linked. Exit 1 on any error. `Status: Done`
 #                                             # on a still-open issue is a NOTE (fatal under --strict).
 #   fsgg-coord budget                         # print GraphQL + REST rate-limit meters (free)
 #
@@ -944,7 +949,7 @@ lint_items() {
           status: fieldValueByName(name:"Status"){ ... on ProjectV2ItemFieldSingleSelectValue{ name } }
           content{
             __typename
-            ... on Issue{ number title state url repository{ nameWithOwner }
+            ... on Issue{ number title state url body repository{ nameWithOwner }
               subIssues(first:100){ totalCount nodes{ number state repository{ nameWithOwner } } } }
           }
         }
@@ -965,6 +970,7 @@ lint_items() {
       | { repo:.content.repository.nameWithOwner, number:.content.number,
           title:(.content.title // ""), url:(.content.url // null),
           state:(.content.state // null), status:(.status.name // null),
+          body:(.content.body // ""),
           childTotal:(.content.subIssues.totalCount // 0),
           children:[ .content.subIssues.nodes[]?
                      | { ref:"\(.repository.nameWithOwner)#\(.number)", state:.state } ] }' <<<"$out" >> "$tmp"
@@ -991,6 +997,11 @@ lint_items() {
 #                           epics: a CLOSED epic over an open child is the sharpest form of the bug.
 #   EPIC-CHILDREN-TRUNCATED an epic with more than 100 children — the scan cannot see them all, so
 #                           EPIC-DONE-OPEN-CHILD cannot be trusted for it. Fail loudly, never guess.
+#   EPIC-UNLINKED-CHILD     an epic whose BODY declares a child (a `- [ ]`/`- [x]` line naming an
+#                           issue) that is not in its sub-issue graph. Rollup reads the graph, so such
+#                           a child is invisible to it and the epic can complete over an open child.
+#                           Scoped to epics whose child list is not truncated — otherwise the missing
+#                           children are an artifact of the scan, not of the link. Fix: `coord child`.
 #
 # A NOTE (not a failure) is printed for `Status: Done` on an issue that is still open: it is how the
 # board legitimately looks between "the PR merged" and "someone closed the epic", so it fails only
@@ -1011,7 +1022,7 @@ lint() {
 
   local items findings
   items="$(lint_items)"
-  findings="$(jq --arg repo "$repo" '
+  findings="$(jq --arg repo "$repo" "$JQ_BODY_CHILD_REFS"'
     def repo_match($f): ($f|ascii_downcase) as $q
       | (.repo // "" | ascii_downcase) as $r
       | ($q=="") or ($r==$q) or (($r|split("/")|last // "")==$q);
@@ -1030,6 +1041,13 @@ lint() {
         ( .[] | select(is_epic and .status == "Done" and (.children | any(.state == "OPEN")))
           | { code:"EPIC-DONE-OPEN-CHILD", severity:"error", id:.id, status:.status, url:.url,
               detail:"board says Done, but open child: \([.children[]|select(.state=="OPEN")|.ref|short]|join(", "))" } ),
+        ( .[] | select(is_epic and .childTotal == (.children|length))
+          | . as $e
+          | ($e.body | body_child_refs($e.repo)) as $declared
+          | ($declared - [ $e.children[].ref ]) as $unlinked
+          | select($unlinked | length > 0)
+          | { code:"EPIC-UNLINKED-CHILD", severity:"error", id:.id, status:.status, url:.url,
+              detail:"body declares child(ren) absent from the sub-issue graph, so rollup cannot see them: \([$unlinked[]|short]|join(", "))" } ),
         ( .[] | select(.status == "Done" and .state == "OPEN")
           | { code:"DONE-STATUS-OPEN-ISSUE", severity:"note", id:.id, status:.status, url:.url,
               detail:"board Status is Done but the issue is still open" } )
@@ -1078,21 +1096,55 @@ banner() {   # $1=done|fail  $2=line1  $3=line2  — two full-width rows
   printf '%s%-*s%s\n' "$on" "$cols" "  $l2" "$off"
 }
 
+# ---- body_child_refs: the epic's OTHER record of its children -------------------------------------
+# `epic_rollup` and `lint` both need to ask "which children does this epic's BODY claim?", and two
+# hand-copied regexes in two engines is precisely the drift surface this file warns about elsewhere.
+# One definition, injected into both jq programs.
+#
+# A child is declared by a markdown TASK-LIST line — `- [ ]` / `- [x]` — that names an issue. The
+# FIRST ref on the line is the child, so `- [x] (b) #268 — matched by substring (cf. #100)` declares
+# #268 and not #100; prose, tables and links elsewhere in the body declare nothing. A ref may be
+# `#n`, `owner/repo#n`, or a full issue URL, and all three canonicalize to `owner/repo#n` against
+# the epic's own repo — the same form `lint_items` builds for the sub-issue graph, so the two sets
+# are directly comparable.
+#
+# All THREE markdown bullets are accepted (`-`, `*`, `+`). GitHub renders a task list for each, so a
+# matcher that knows only `-` would read an epic written with `+` as declaring NO children — and the
+# gate below would wave it through. A gate that fails open on a formatting choice is the bug this
+# whole epic is about.
+JQ_BODY_CHILD_REFS='
+def body_child_refs($self):
+  (. // "") | split("\n")
+  | map(select(test("^[ \t]{0,3}[-*+][ \t]+\\[[ xX]\\][ \t]")))
+  | map([ scan("([A-Za-z0-9._-]+/[A-Za-z0-9._-]+)#([0-9]+)|https?://github\\.com/([^/[:space:]]+)/([^/[:space:]]+)/issues/([0-9]+)|#([0-9]+)") ] | first)
+  | map(select(. != null))
+  | map( if   .[0] then "\(.[0])#\(.[1])"
+         elif .[2] then "\(.[2])/\(.[3])#\(.[4])"
+         else "\($self)#\(.[5])" end )
+  | unique;
+'
+
 # ---- epic_rollup: after a child flips to Done, walk parents UPWARD and flip each epic whose children
 # are now ALL board-Done AND CLOSED, stamping each one that rolls up. One thrifty query per level (subIssues +
 # a Status resolver each); runs only from `done --flip`. Bounded to 10 levels as a cycle backstop.
 # An already-Done epic is walked THROUGH silently (no re-stamp); a not-yet-complete epic prints a
 # one-line progress note and stops the climb.
+#
+# The graph is AUTHORITATIVE for what rolls up; the body is the cross-check that the graph is not
+# missing anyone. A child named in the body but absent from `subIssues` means the roll-up is counting
+# fewer children than the epic itself claims to have — "all children Done" is then a statement about
+# a set we know to be incomplete, and per FS-GG/.github#266 an unverifiable subject must not report
+# green. We refuse, and name the unlinked children (FS-GG/.github#325).
 epic_rollup() {
   local child="$1" boardnum depth=0 cur="$1"
   boardnum="$(board_get '.number')"
   local q='query($owner:String!, $repo:String!, $num:Int!){
     repository(owner:$owner, name:$repo){ issue(number:$num){
       parent{
-        number url repository{ nameWithOwner }
+        number url body repository{ nameWithOwner }
         projectItems(first:20){ nodes{ project{ number }
           status: fieldValueByName(name:"Status"){ ... on ProjectV2ItemFieldSingleSelectValue{ name } } } }
-        subIssues(first:100){ totalCount nodes{ number state
+        subIssues(first:100){ totalCount nodes{ number state repository{ nameWithOwner }
           projectItems(first:20){ nodes{ project{ number }
             status: fieldValueByName(name:"Status"){ ... on ProjectV2ItemFieldSingleSelectValue{ name } } } } } }
       }
@@ -1129,11 +1181,29 @@ epic_rollup() {
         | select(.state == "CLOSED")
         | ([.projectItems.nodes[]? | select(.project.number==$pn) | .status.name] | first // "")
         | select(. == "Done")] | length' <<<"$out")"
-    [ "$total" = "0" ] && break
+    # Truncation first: a child list the query could not see whole would make every set comparison
+    # below (and the `unlinked` one especially) a guess.
     if [ "$seen" != "$total" ]; then
       printf '  epic %s: %s sub-issues, only %s visible — not rolling up (cannot verify)\n' \
         "$p_lbl" "$seen" "$total"; break
     fi
+    # Now the graph is known-whole, so the body's claim can be checked against it. Declared-but-not-
+    # linked means the roll-up would count a set it already knows is short. Refuse, and say who.
+    local unlinked
+    unlinked="$(jq -r --arg self "$p_or" "$JQ_BODY_CHILD_REFS"'
+      .data.repository.issue.parent as $p
+      | ($p.body | body_child_refs($self)) as $declared
+      | [ $p.subIssues.nodes[]? | "\(.repository.nameWithOwner)#\(.number)" ] as $linked
+      | ($declared - $linked)[]' <<<"$out")"
+    if [ -n "$unlinked" ]; then
+      # `paste -sd', '` would CYCLE the two delimiters (a,b c,d). Join on ',' and space it after.
+      printf '  epic %s: body declares %s child(ren) the sub-issue graph does not contain — not rolling up: %s\n' \
+        "$p_lbl" "$(printf '%s\n' "$unlinked" | wc -l | tr -d ' ')" \
+        "$(printf '%s\n' "$unlinked" | paste -sd, - | sed 's/,/, /g')"
+      printf '  link them, then re-run:  fsgg-coord child %s <issue>\n' "$p_lbl"
+      break
+    fi
+    [ "$total" = "0" ] && break
 
     if [ "$done" != "$total" ]; then
       printf '  epic %s: %s/%s children Done+closed — holding (not rolling up)\n' "$p_lbl" "$done" "$total"; break
@@ -1146,6 +1216,60 @@ epic_rollup() {
     fi
     cur="$p_or#$p_num"
   done
+}
+
+# ---- child: link an issue as a native SUB-ISSUE of a parent --------------------------------------
+# The edge `epic_rollup` walks is the sub-issue graph, and NOTHING else creates it. A `(j) child of
+# #266` title, a `Child of #266` comment, a body checklist line — all of them LOOK like a link and
+# none of them is one. That is how an epic got stamped Done thirty minutes after an open child of it
+# was filed (FS-GG/.github#325).
+#
+# Two traps live in this endpoint, so they live in exactly one place. It wants the child's REST
+# **id** (a large integer), not its issue number; and `gh api -f` would send that id as a JSON
+# string, which the API rejects with a 422 — it must be `-F`, which types the value.
+child_cmd() {
+  local parent="" child=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      -*) die "child: unknown flag '$1'." ;;
+      *)  if   [ -z "$parent" ]; then parent="$1"
+          elif [ -z "$child" ];  then child="$1"
+          else die "child: unexpected argument '$1'."; fi; shift ;;
+    esac
+  done
+  [ -n "$parent" ] && [ -n "$child" ] \
+    || die "child: <parent> <issue> required (URL, owner/repo#n, or repo#n)."
+
+  parse_ref "$parent"; local po="$R_OWNER" pp="$R_REPO" pn="$R_NUM"
+  parse_ref "$child";  local co="$R_OWNER" cp="$R_REPO" cn="$R_NUM"
+
+  local cid
+  cid="$(gh api "repos/$co/$cp/issues/$cn" --jq '.id' 2>/dev/null)" \
+    || die "child: cannot read $co/$cp#$cn — does it exist?"
+  [ -n "$cid" ] || die "child: cannot read $co/$cp#$cn — does it exist?"
+
+  # Idempotent by ID, not by number: two repos can each have an issue #7. Re-linking is success, so
+  # a worker re-running the close-out never has to reason about whether the edge already exists.
+  #
+  # The read's exit status is KEPT. `2>/dev/null`-ing it would make "I could not reach the API" look
+  # exactly like "the edge is not there" — we would POST, collect a 422, and blame the token. That is
+  # the #266 defect (and #320's, precisely) reappearing inside the fix for it: an unreachable subject
+  # must not be reported as an absent one.
+  local existing rc=0
+  existing="$(gh api "repos/$po/$pp/issues/$pn/sub_issues" --paginate --jq '.[].id')" || rc=$?
+  [ "$rc" -eq 0 ] \
+    || die "child: cannot read $pp#$pn's sub-issues (rc=$rc) — refusing to guess whether $cp#$cn is already linked."
+  if printf '%s\n' "$existing" | grep -qx "$cid"; then
+    printf 'child: %s#%s is already a sub-issue of %s#%s — nothing to do\n' "$cp" "$cn" "$pp" "$pn"
+    return 0
+  fi
+
+  # Surface gh's own diagnosis rather than guessing one: a 422 (already linked, or a cross-repo link
+  # GitHub refuses) and a 403 (no `issues: write`) are different problems with different fixes.
+  local err
+  err="$(gh api "repos/$po/$pp/issues/$pn/sub_issues" -F sub_issue_id="$cid" 2>&1 >/dev/null)" \
+    || die "child: could not link $cp#$cn under $pp#$pn — $err"
+  printf 'linked %s#%s as a sub-issue of %s#%s  ·  `done --flip` can now see it\n' "$cp" "$cn" "$pp" "$pn"
 }
 
 done_cmd() {
@@ -2462,6 +2586,7 @@ case "$cmd" in
   ready)     ready "$@" ;;
   next)      next "$@" ;;
   lint)      lint "$@" ;;
+  child)     child_cmd "$@" ;;
   done)      done_cmd "$@" ;;
   whoami)    whoami_cmd ;;
   claim)     claim_cmd "$@" ;;
