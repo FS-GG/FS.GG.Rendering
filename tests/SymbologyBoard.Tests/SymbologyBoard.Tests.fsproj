@@ -9,6 +9,7 @@
   <ItemGroup>
     <Compile Include="BoardTests.fs" />
     <Compile Include="LinterGrammarIndependenceTests.fs" />
+    <Compile Include="LinterGrammarAwareTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

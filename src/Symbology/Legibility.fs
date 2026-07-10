@@ -23,6 +23,9 @@ module Legibility =
         // persisted tag. Declaration order carries no meaning here anyway — `table` and `channelOrder`
         // already order the channels, and neither follows this DU.
         | SecondaryHeading
+        // Appended after `SecondaryHeading` for the same tag-stability reason. Like `Motion`, not a
+        // `table` row: budgeted in lines, per grammar, and scored only by `scoreIn`/`scoreAnimatedIn`.
+        | Label
 
     type ChannelKind =
         | Categorical
@@ -88,7 +91,8 @@ module Legibility =
           { Channel = Heading; Kind = Continuous; Capacity = 0 }
           { Channel = SecondaryHeading; Kind = Continuous; Capacity = 0 } ]
 
-    /// Deterministic channel order: the §4 table order, with whole-board `Motion` sorting last.
+    /// Deterministic channel order: the §4 table order, with the two non-table channels sorting last —
+    /// whole-board `Motion`, then per-unit `Label`.
     /// Drives the stable finding/usage ordering the determinism contract relies on (FR-001/SC-001).
     let private channelOrder channel =
         match channel with
@@ -105,6 +109,7 @@ module Legibility =
         | Heading -> 10
         | SecondaryHeading -> 11
         | Motion -> 12
+        | Label -> 13
 
     /// Whole-board budget of simultaneous non-`Idle` rhythms (FR-010). `Motion` is not a `table` row —
     /// it is scored per board, not per unit — so this is its capacity, and the number the skill's §4
@@ -139,7 +144,10 @@ module Legibility =
         // `None` is itself a level: a board that leaves the channel unset reports one distinct level,
         // exactly as an all-identical `Heading` board does. Informational only (Continuous ⇒ exempt).
         | SecondaryHeading -> keys (fun t -> box t.SecondaryHeading)
-        | Motion -> []
+        // Neither is a table row, so neither is ever asked for a level: `Motion` is whole-board, and
+        // `Label` is budgeted in lines rather than in separable levels.
+        | Motion
+        | Label -> []
 
     /// Distinct-level count for a per-unit channel via structural equality. For Continuous channels
     /// this is the informational count of distinct raw values (never drives an overload — research D3).
@@ -300,31 +308,143 @@ module Legibility =
           Usage = usage
           Verdict = verdictOf findings }
 
+    /// Whole-board motion load (FR-010): count distinct *non-Idle* rhythms; more than `motionBudget`
+    /// simultaneous rhythms is a board-level Warning (Units = []). A single rhythm (any count of
+    /// moving units) never flags.
+    let private motionLoadFindings (board: (Motion * Token) list) =
+        let activeRhythms =
+            board |> List.map fst |> List.filter (fun m -> m <> Idle) |> List.distinct
+
+        if List.length activeRhythms > motionBudget then
+            [ { Channel = Motion
+                Severity = Warning
+                Message =
+                    sprintf
+                        "Motion overloaded: %d distinct active rhythms across the board, budget %d"
+                        (List.length activeRhythms)
+                        motionBudget
+                Units = [] } ]
+        else
+            []
+
     let scoreAnimated (board: (Motion * Token) list) : Report =
         let tokens = board |> List.map snd
         let _, findings, usage = scoreTokens tokens
 
-        // Whole-board motion load (FR-010): count distinct *non-Idle* rhythms; more than `motionBudget`
-        // simultaneous rhythms is a board-level Warning (Units = []). A single rhythm (any count of
-        // moving units) never flags.
-        let activeRhythms =
-            board |> List.map fst |> List.filter (fun m -> m <> Idle) |> List.distinct
-
-        let motionFindings =
-            if List.length activeRhythms > motionBudget then
-                [ { Channel = Motion
-                    Severity = Warning
-                    Message =
-                        sprintf
-                            "Motion overloaded: %d distinct active rhythms across the board, budget %d"
-                            (List.length activeRhythms)
-                            motionBudget
-                    Units = [] } ]
-            else
-                []
-
         // Motion sorts last (channelOrder = 12), so appending preserves the deterministic order.
-        let allFindings = findings @ motionFindings
+        let allFindings = findings @ motionLoadFindings board
+
+        { Findings = allFindings
+          Usage = usage
+          Verdict = verdictOf allFindings }
+
+    // ---- Grammar-aware scoring (#286) --------------------------------------------------------------
+    // `score` is grammar-blind by contract (FR-009/SC-005) and stays so. Everything below is strictly
+    // ADDITIVE: the same per-unit and whole-board findings, plus the two facts that depend on WHICH
+    // grammar draws the roster. Nothing here can suppress a finding `score`/`scoreAnimated` would emit.
+
+    /// Hard line breaks in a raw label, normalised exactly as `wrapLabel` normalises them: CRLF folded,
+    /// each segment trimmed, blank segments dropped. Greedy wrapping happens AFTER this and can only add
+    /// lines, so this is a lower bound on what the grammar will try to draw.
+    let private hardLines (s: string) =
+        s.Replace("\r\n", "\n").Split('\n')
+        |> Array.filter (fun seg -> not (String.IsNullOrWhiteSpace seg))
+        |> Array.length
+
+    /// Lower bound on the lines the resolved label occupies. `Rich` runs concatenate into one flow
+    /// (`joinRuns`), so only their embedded breaks count; `Laid` paragraphs each start a new line, so a
+    /// two-paragraph label is at least two lines even with no `\n` in it.
+    let private labelLineCount (t: Token) =
+        let runsText (runs: LabelRun list) =
+            runs |> List.map (fun r -> r.Text) |> String.concat ""
+
+        match Symbology.resolvedLabel t with
+        | None -> 0
+        | Some(LabelText.Plain s) -> hardLines s
+        | Some(LabelText.Rich runs) -> hardLines (runsText runs)
+        | Some(LabelText.Laid paras) -> paras |> List.sumBy (fun p -> hardLines (runsText p.Runs))
+
+    /// Per-unit `Label` Warning: the resolved label already needs more lines than the grammar draws, so
+    /// `wrapLabel` will drop the surplus. Keyed after `Motion` (channelOrder = 13).
+    let private labelBudgetFindings grammar (tokens: Token list) =
+        // Read from the renderer, never re-declared here: the emitters cap at this exact number.
+        let budget = Symbology.labelLineBudget grammar
+
+        [ for i, t in List.indexed tokens do
+              let lines = labelLineCount t
+
+              if lines > budget then
+                  yield
+                      (channelOrder Label, i),
+                      { Channel = Label
+                        Severity = Warning
+                        Message =
+                            sprintf
+                                "Label over budget under %A: %d hard lines, budget %d — the surplus is dropped and the last drawn line gains an ellipsis"
+                                grammar
+                                lines
+                                budget
+                        Units = [ i ] } ]
+
+    /// Per-unit `Motion` Error: `animateIn` composes non-`Token` grammars from the grammar-agnostic
+    /// overlays only (`Pulse`/`Blink`/`Damage`), so `Spin` and `Moving` contribute NO node. The unit is
+    /// then byte-identical to an `Idle` one — the channel is dropped, not degraded, and no amount of
+    /// re-mapping inside the grammar recovers it.
+    let private droppedRhythmFindings grammar (board: (Motion * Token) list) =
+        match grammar with
+        | Grammar.Token -> [] // whole-body rotation and travel are drawn; nothing is dropped
+        | g ->
+            [ for i, (motion, _) in List.indexed board do
+                  match motion with
+                  | Spin
+                  | Moving ->
+                      yield
+                          (channelOrder Motion, i),
+                          { Channel = Motion
+                            Severity = Error
+                            Message =
+                                sprintf
+                                    "%A cannot draw Motion.%A: the rhythm is dropped, so the unit renders identically to Idle"
+                                    g
+                                    motion
+                            Units = [ i ] }
+                  | Idle
+                  | Pulse
+                  | Blink
+                  | Damage -> () ]
+
+    /// Merge keyed finding groups into the one deterministic order the contract promises: table order,
+    /// then unit index. Whole-board findings carry index -1 and so precede the per-unit findings of the
+    /// same channel. `List.sortBy` is stable, so equal keys keep their construction order.
+    let private ordered (keyed: ((int * int) * Finding) list) =
+        keyed |> List.sortBy fst |> List.map snd
+
+    let scoreIn (grammar: Grammar) (tokens: Token list) : Report =
+        let keys, findings, usage = scoreTokens tokens
+
+        let allFindings =
+            ordered (List.zip keys findings @ labelBudgetFindings grammar tokens)
+
+        { Findings = allFindings
+          Usage = usage
+          Verdict = verdictOf allFindings }
+
+    let scoreAnimatedIn (grammar: Grammar) (board: (Motion * Token) list) : Report =
+        let tokens = board |> List.map snd
+        let keys, findings, usage = scoreTokens tokens
+
+        // The whole-board motion Warning is keyed at (Motion, -1) so it sorts ahead of the per-unit
+        // dropped-rhythm Errors, matching `scoreAnimated`'s "board finding last among Motion" order.
+        let motionLoad =
+            motionLoadFindings board |> List.map (fun f -> (channelOrder Motion, -1), f)
+
+        let allFindings =
+            ordered (
+                List.zip keys findings
+                @ motionLoad
+                @ droppedRhythmFindings grammar board
+                @ labelBudgetFindings grammar tokens
+            )
 
         { Findings = allFindings
           Usage = usage

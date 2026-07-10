@@ -36,8 +36,12 @@ unit roster into legible abstract vector symbols. The per-game stat-to-channel m
 
   ```fsharp
   val table: ChannelSpec list                                  // the §4 Kind/Capacity columns, machine-readable
-  val score: tokens: Token list -> Report                      // a static board
+  val score: tokens: Token list -> Report                      // a static board, grammar-blind
   val scoreAnimated: board: (Motion * Token) list -> Report    // + whole-board motion load
+
+  // Grammar-AWARE siblings: the same findings, plus the ones that depend on which grammar draws.
+  val scoreIn: grammar: Grammar -> tokens: Token list -> Report
+  val scoreAnimatedIn: grammar: Grammar -> board: (Motion * Token) list -> Report
 
   type Verdict     = Clean | HasWarnings              // Clean iff Findings is empty
   type Severity    = Warning | Error                  // Error = ungrammatical; Warning = encodable but overloaded
@@ -48,13 +52,27 @@ unit roster into legible abstract vector symbols. The per-game stat-to-channel m
   type ChannelUsage= { Channel: Channel; Kind: ChannelKind; DistinctLevels: int; Capacity: int }
   ```
 
-  `Channel` has **13** cases: the 12 per-unit channels of §4, plus `Motion`. **`Motion` is whole-board** —
-  it has no `ChannelKind`, no `table` row and no `ChannelUsage` entry, and reaches you only as a
-  `Finding.Channel` from `scoreAnimated`'s motion-load check (its budget of 1 lives in the finding's
-  `Message`). `Findings` and `Usage` come back in table order — findings then by ascending unit index —
-  so re-scoring an equal board yields an equal report. On an overload `Warning`, `Units` names only the
-  units carrying levels **past** capacity, the smallest set a re-map has to move, not the whole board;
-  whole-board findings carry `Units = []`.
+  `Channel` has **14** cases: the 12 per-unit channels of §4, plus `Motion` and `Label`. Neither of the
+  last two is a `table` row: **`Motion` is whole-board** — no `ChannelKind`, no `ChannelUsage` entry —
+  and reaches you only as a `Finding.Channel` from `scoreAnimated`'s motion-load check (its budget of 1
+  lives in the finding's `Message`); **`Label` is budgeted in lines, per grammar**, so only
+  `scoreIn`/`scoreAnimatedIn` ever raise it. `Findings` and `Usage` come back in table order — findings
+  then by ascending unit index — so re-scoring an equal board yields an equal report. On an overload
+  `Warning`, `Units` names only the units carrying levels **past** capacity, the smallest set a re-map
+  has to move, not the whole board; whole-board findings carry `Units = []`.
+
+  **`score` is grammar-blind by contract** and stays so (a test locks it in). `scoreIn` is strictly
+  additive — it never removes a finding `score` would emit — and adds the two facts that depend on the
+  drawing:
+
+  | grammar-conditional fact | raised by | severity |
+  |---|---|---|
+  | Badge/Ring cannot draw `Motion.Spin` / `Motion.Moving` — the unit renders identically to `Idle` | `scoreAnimatedIn` | `Error` |
+  | the identity label needs more lines than the grammar draws (Token 3, Badge 2, Ring 2) | `scoreIn` | `Warning` |
+
+  The label check reads **hard line breaks only**: the drawn count also depends on greedy wrapping,
+  which needs a text measurer, and the linter is measurement-free by contract. Wrapping only *adds*
+  lines, so the check under-reports and never false-positives. It is a backstop, not a layout oracle.
 - Render bridge `FS.GG.UI.Symbology.Render` (`src/Symbology.Render/Render.fsi`): `Render.toPng : Size
   -> Scene -> dir:string -> string`. Wraps the public `SkiaViewer.ReferenceRendering.run` via a
   `SceneCodec` round-trip and **fails loud** (raises with joined diagnostics) on any verdict that is
@@ -164,6 +182,10 @@ Symbology.autoLabel [ FactionCode; HealthTier ]                            // pr
 - **Outside the capacity table.** `Legibility.score` ignores the label, so its verdict is unchanged and
   grammar-independent. Never use a label to dodge a channel-overload warning — fix the pre-attentive
   encoding instead.
+- **But it has a per-grammar LINE budget**: 3 lines under `Grammar.Token`, 2 under `Badge` and `Ring`.
+  Past that, `wrapLabel` drops the surplus and marks the last drawn line with an ellipsis — silently, as
+  far as `score` is concerned. `Legibility.scoreIn grammar` raises a `Label` `Warning` naming the units
+  whose lines will vanish. A label is still not a channel; the budget is about what survives the draw.
 - **Tofu-free is a render-edge property.** Assert it through `Symbology.Render`, never from a pure unit
   test — see [Troubleshooting](#troubleshooting).
 - **Surplus degrades: wrap → cap → ellipsis.** Lines wrap at whitespace, the drawn line count is **capped**
@@ -194,9 +216,12 @@ first-class value `Grammar = Token | Badge | Ring`; one `'stats -> Token` Channe
 - **Screen-aligned (Badge/Ring)**: the frame/ring never rotate with heading — heading is a discrete edge
   pip (Badge) or centre needle (Ring), so upright legibility holds at any heading.
 - **Grammar-agnostic motion only** on Badge/Ring: `animateIn` applies the centre/radius rhythms
-  (Pulse/Blink/Damage); directional rhythms (Spin/Moving) degrade to the static base symbol there.
-- The **ChannelMap is identical across grammars**, so the legibility linter's verdict is
-  **grammar-independent** — it scores the `Token` channel values, never which grammar draws them.
+  (Pulse/Blink/Damage); directional rhythms (Spin/Moving) are **dropped**, not degraded — the symbol is
+  byte-identical to the `Idle` one, so the channel is gone rather than quieter. `scoreAnimatedIn` errors.
+- The **ChannelMap is identical across grammars**, so `Legibility.score`'s verdict is
+  **grammar-independent** — it scores the `Token` channel values, never which grammar draws them. That is
+  a deliberate contract, not a complete story: a channel the selected grammar *cannot draw* is invisible
+  to it. Run **`scoreIn grammar`** (or `scoreAnimatedIn`) to price that; it adds findings, never removes them.
 - `Grammar.Token` reproduces the existing `token`/`gallery`/`filmstrip`/`animate` **byte-for-byte**.
 
 ## Legibility rules — encode these and CRITIQUE every board against them at the target size
@@ -270,11 +295,15 @@ An approved, lint-clean, three-grammar mapping you can read instead of inventing
 2. MAP      draft ChannelMap : 'stats -> Token  (assign-by-urgency; redundancy on critical state).
 3. RENDER   FSI: build `Symbology.gallery ...`; `Render.toPng size scene dir`; READ THE PNG BACK.
 4. CRITIQUE two complementary checks against the legibility rules at the target size:
-            (a) LINT   `Legibility.score (roster |> List.map mapUnit)` (animated boards: `scoreAnimated`
-                       over the `(motion, token)` pairs) — the mechanical backstop. Inspect `report.Verdict`
-                       and `report.Findings`: any `Warning`/`Error` names the overloaded/out-of-domain
-                       `Channel`, used-vs-capacity, and the contributing unit indices. Treat a non-`Clean`
-                       verdict as a TWEAK trigger (the unit of change stays the mapping — never the grammar).
+            (a) LINT   `Legibility.scoreIn grammar (roster |> List.map mapUnit)` (animated boards:
+                       `scoreAnimatedIn grammar` over the `(motion, token)` pairs) — the mechanical backstop.
+                       Pass the grammar you picked in step 1: `scoreIn` is `score` plus the findings that
+                       depend on the drawing (a rhythm Badge/Ring cannot draw; a label over the grammar's
+                       line budget), so it is what catches a mapping that is legal in the abstract and
+                       illegible as rendered. Inspect `report.Verdict` and `report.Findings`: any
+                       `Warning`/`Error` names the overloaded/out-of-domain `Channel`, used-vs-capacity,
+                       and the contributing unit indices. Treat a non-`Clean` verdict as a TWEAK trigger
+                       (the unit of change stays the mapping — never the grammar).
             (b) EYE    human-style self-check of the PNG vs the rules (the linter cannot see crowding,
                        contrast, or label collisions — the eyeball check stays).
 5. REVIEW   present the PNG to the human; capture feedback.

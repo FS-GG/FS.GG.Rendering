@@ -13,6 +13,8 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="FS.GG.UI.Symbology.Tests" />
+    <!-- SymbologyBoard.Tests pins `labelLineBudget` against what the emitters actually draw. -->
+    <InternalsVisibleTo Include="SymbologyBoard.Tests" />
   </ItemGroup>
 
   <!-- Pure symbol vocabulary. Scene-only dependency (plan Structure Decision / FR-001/FR-011):

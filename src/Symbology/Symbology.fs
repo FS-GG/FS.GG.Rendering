@@ -964,6 +964,10 @@ module Symbology =
     let private resolveLabel (t: Token) : LabelText option =
         t.Label |> Option.orElseWith (fun () -> t.AutoLabel |> Option.bind (projectAutoLabel t))
 
+    // Assembly-internal so `Legibility.scoreIn` scores the very text the grammar draws, rather than a
+    // second copy of the resolution order that would drift from this one.
+    let internal resolvedLabel (token: Token) : LabelText option = resolveLabel token
+
     // ---- Label-bound motion (feature 200, FR-005/FR-006/FR-007) -------------------------------------
     // The motion is a pure per-phase transform of the ALREADY-RESOLVED, ALREADY-FITTED label nodes. At
     // `restPhase` every kind is the identity transform, so a motion-bound label at rest is byte-identical
@@ -1081,17 +1085,29 @@ module Symbology =
         | Some kind when labelPhase <> restPhase -> motionLabelNodes kind labelPhase centerX baselineY regionWidth staticNodes
         | _ -> staticNodes ()
 
+    // The ONE source of the per-grammar line budget: the emitters below pass it to `wrapLabel`, and
+    // `Legibility.scoreIn` reads it to warn before the surplus is silently dropped. Two copies would
+    // drift, and the linter's whole job here is to be right about this number.
+    let internal labelLineBudget (grammar: Grammar) : int =
+        match grammar with
+        | Grammar.Token -> 3 // caption strip below the health arc
+        | Grammar.Badge -> 2 // band below the health bar / pips
+        | Grammar.Ring -> 2 // caption beneath the sigil, inner disc
+
     let private tokenLabelNodes (t: Token) (labelPhase: float) : Scene list =
         let baseSize = t.R * 0.5
-        labelNodesAt t.Cx (t.Cy + t.R * 1.5) (t.R * 1.9) baseSize (lineHeightOf baseSize) 3 t labelPhase // caption strip below the health arc (≤ 3 lines)
+        let budget = labelLineBudget Grammar.Token
+        labelNodesAt t.Cx (t.Cy + t.R * 1.5) (t.R * 1.9) baseSize (lineHeightOf baseSize) budget t labelPhase
 
     let private badgeLabelNodes (t: Token) (labelPhase: float) : Scene list =
         let baseSize = t.R * 0.42
-        labelNodesAt t.Cx (t.Cy + t.R * 1.42) (t.R * 1.7) baseSize (lineHeightOf baseSize) 2 t labelPhase // band below the health bar / pips (≤ 2 lines)
+        let budget = labelLineBudget Grammar.Badge
+        labelNodesAt t.Cx (t.Cy + t.R * 1.42) (t.R * 1.7) baseSize (lineHeightOf baseSize) budget t labelPhase
 
     let private ringLabelNodes (t: Token) (labelPhase: float) : Scene list =
         let baseSize = t.R * 0.34
-        labelNodesAt t.Cx (t.Cy + t.R * 0.52) (t.R * 1.05) baseSize (lineHeightOf baseSize) 2 t labelPhase // caption beneath the sigil, inner disc (≤ 2 lines)
+        let budget = labelLineBudget Grammar.Ring
+        labelNodesAt t.Cx (t.Cy + t.R * 0.52) (t.R * 1.05) baseSize (lineHeightOf baseSize) budget t labelPhase
 
     // Append the label line nodes to a grammar's child list as bare siblings (research.md R5): `[]` ⇒
     // `Scene.group nodes` (byte-identical to no-label), `[one]` ⇒ `nodes @ [one]` (byte-identical to the
