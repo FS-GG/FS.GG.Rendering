@@ -1,5 +1,21 @@
 // Feature 210 — PUBLISHED-PACKAGE epic-acceptance harness.
 //
+// ┌─ FROZEN ACCEPTANCE RECORD — DO NOT REPOINT THE PIN (#321) ──────────────────────────────────┐
+// │ This is the Feature-210 acceptance artifact, pinned at FS.GG.UI.Template 0.1.51-preview.1.   │
+// │ Its gated-set model (`gatedAbsent`/`isGatedPath`: `.agents/` suppressed under sdd/none) is   │
+// │ the PRE-ADR-0014 contract, self-consistent ONLY against that pinned package. It is a         │
+// │ historical record of what Feature 210 accepted, NOT a validator of the current template.     │
+// │                                                                                              │
+// │ Do NOT bump `packageVersion` to a later package: Feature 231 / ADR-0014 deliberately made    │
+// │ `.agents/skills/` PRESENT under every lifecycle, so any package >= 0.1.62 fails this harness  │
+// │ at "gated set not fully absent" — a false alarm about the OLD contract, not a defect.        │
+// │                                                                                              │
+// │ Validating the CURRENT template contract is `scripts/validate-lifecycle-template.fsx`, which │
+// │ already asserts the ADR-0014 gated set (`.agents/skills/` present in every lane) against the │
+// │ working-tree source. Published-package coverage of the NEW contract, if wanted, is a new     │
+// │ feature — not a repoint of this frozen record.                                               │
+// └──────────────────────────────────────────────────────────────────────────────────────────────┘
+//
 // Closes the lifecycle-agnostic template epic on EVIDENCE by validating the *published*
 // `FS.GG.UI.Template` package a consumer pulls from the feed — NOT the working-tree source template
 // that the child features (204/205/206) validated. This is the crucial difference: it closes the
@@ -38,6 +54,9 @@ open System.Text.RegularExpressions
 // ---- pinned inputs (research R1/R2) -----------------------------------------------------------
 
 let packageId = "FS.GG.UI.Template"
+// FROZEN — see the DO-NOT-REPOINT banner at the top of this file (#321). This pin, and the
+// gated-set model below, are the Feature-210 acceptance record at the pre-ADR-0014 contract.
+// Bumping this to a package >= 0.1.62 re-reds the harness on the OLD contract, not a real defect.
 let packageVersion = "0.1.51-preview.1"
 let tagAnchor = "fs-gg-ui/v0.1.51-preview.1"
 let feedDir =
@@ -311,11 +330,14 @@ let private symbologyReferenceCheck (specKitAppDir: string) =
     // Assert the SHAPE before running, so the failure names the defect instead of surfacing an
     // FS0078 "unable to find the file" from four directories up.
     //
-    // This is not hypothetical. Template source `.agents/skills/ -> .agents/skills/` (spec-kit-gated)
-    // copies THIS REPO's Codex wrapper into the product, shadowing the
+    // This was a real defect of the PINNED 0.1.51 package (this file is frozen against it, #321):
+    // template source `.agents/skills/ -> .agents/skills/` (spec-kit-gated) copied THIS REPO's Codex
+    // wrapper into the product, shadowing the
     // `template/product-skills/fs-gg-symbology/ -> .agents/skills/fs-gg-symbology/` source that is
-    // supposed to supply it (skill-manifest.json: supplied-by). A consumer's recipe is therefore the
-    // in-tree twin, `#r`ing Debug DLLs that exist in no product.
+    // supposed to supply it (skill-manifest.json: supplied-by), so a consumer's recipe was the
+    // in-tree twin, `#r`ing Debug DLLs that exist in no product. That shadowing was FIXED in the
+    // template by #303 (Feature 231 narrowed the blanket `.agents/skills/` row); it is absent from
+    // every package >= 0.1.62. This detector therefore fires only against the frozen 0.1.51 pin.
     // Only the `#r` DIRECTIVES decide which twin this is — a prose mention of bin/Debug in a comment
     // (both headers describe the other variant) must not trip the detector.
     let refLines =
@@ -330,8 +352,10 @@ let private symbologyReferenceCheck (specKitAppDir: string) =
              It `#r`s src/*/bin/Debug DLLs, which exist only in the FS.GG.Rendering working tree, so it\n\
              throws FS0078 on a consumer's first run. Expected the packaged twin from\n\
              template/product-skills/fs-gg-symbology/ (`#r \"nuget: FS.GG.UI.*\"`).\n\
-             Likely cause: the spec-kit-gated `.agents/skills/` template source shadows the\n\
-             `template/product-skills/fs-gg-symbology/` source that targets the same directory.\n\
+             Historical cause (fixed since): the spec-kit-gated `.agents/skills/` template source\n\
+             shadowed the `template/product-skills/fs-gg-symbology/` source that targets the same\n\
+             directory. This file is frozen at 0.1.51 (#321), where that shadowing was still present;\n\
+             #303 (Feature 231) fixed it, so packages >= 0.1.62 do not hit this drift.\n\
              --- materialized #r directives ---\n%s"
             relPath (String.concat "\n" refLines)
 
