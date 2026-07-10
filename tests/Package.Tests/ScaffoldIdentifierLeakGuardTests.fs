@@ -34,37 +34,17 @@ open FS.GG.TestSupport
 
 let private repositoryRoot = RepositoryRoot.value
 
-let private repositoryPath (relativePath: string) =
-    Path.Combine(repositoryRoot, relativePath.Replace('/', Path.DirectorySeparatorChar))
-
 // The compiled, non-copyOnly scaffold sources: `template/base/{src,tests}` plus the game/sample-pack
 // capability fragments under `template/fragments/*/{src,tests}`. These are the trees the template
 // engine rewrites `Product`/`product` in (the copyOnly `docs/**` reference trees are exempt from
 // substitution, so they carry no hyphen risk and are intentionally out of scope). `tests/` is in
 // scope because #152's leak (`let readProductFile` in the game-starter test project) shipped there
 // while #149's src-only gate looked away.
-let private scaffoldSourceRoots =
-    [ "template/base/src"; "template/base/tests" ]
-    @ (let fragments = repositoryPath "template/fragments"
-       if Directory.Exists fragments then
-           Directory.GetDirectories(fragments)
-           |> Array.collect (fun d -> [| Path.Combine(d, "src"); Path.Combine(d, "tests") |])
-           |> Array.filter Directory.Exists
-           |> Array.map (fun d -> Path.GetRelativePath(repositoryRoot, d).Replace('\\', '/'))
-           |> Array.toList
-       else [])
-
-let private scaffoldSourceFiles =
-    scaffoldSourceRoots
-    |> List.collect (fun root ->
-        let full = repositoryPath root
-        if Directory.Exists full then
-            Directory.GetFiles(full, "*.fs", SearchOption.AllDirectories)
-            |> Array.filter (fun p ->
-                let n = p.Replace('\\', '/')
-                not (n.Contains "/obj/") && not (n.Contains "/bin/"))
-            |> Array.toList
-        else [])
+//
+// Shared with `Feature264FragmentProseTests`, which guards the same trees against the same rewrite
+// from the other side (the token inside a mathematical term of art, not an identifier). One list, so
+// a newly added substitution-subject tree cannot narrow one guard while the other still covers it.
+let private scaffoldSourceFiles = ScaffoldSources.files repositoryRoot
 
 // Declaration-anchored patterns: a `product`/`Product` token appearing ANYWHERE in the declaration
 // IDENTIFIER of a binding/type/module/DU-case/member — at its start (`productDefectMessage`, #149)
