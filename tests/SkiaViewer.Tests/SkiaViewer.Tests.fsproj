@@ -78,6 +78,7 @@
     <Compile Include="Issue184PointerButtonTests.fs" />
     <Compile Include="Issue245AudioSeamTests.fs" />
     <Compile Include="Issue246LogicalSizeTests.fs" />
+    <Compile Include="Issue365ProductFaultTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

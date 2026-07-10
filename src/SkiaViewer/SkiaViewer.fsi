@@ -113,6 +113,19 @@ module Viewer =
     val shouldCaptureDiagnostic: options: ViewerDiagnosticsOptions -> diagnostic: ViewerDiagnosticEvent -> bool
     /// Public contract function exposed by this FS.GG.UI package.
     val captureDiagnostic: options: ViewerDiagnosticsOptions -> diagnostic: ViewerDiagnosticEvent -> ViewerDiagnosticEvent option
+
+    /// Issue #365: the `App`-stage diagnostic reported when a presented product's `Update`/`View`
+    /// raises. `Error`-level, `Scene` category, `Stage = Some App` — deliberately NOT a `Frame`/render
+    /// failure, because the fault is application code, not the draw. `phase` names the step.
+    val productDefectDiagnostic: phase: string -> message: string -> ViewerDiagnosticEvent
+
+    /// Issue #365: run a presented-host product `Update`/`View` step that must not kill the persistent
+    /// window. On success, `Some` its result; on a product-raised exception, `None` plus exactly one
+    /// `App`-stage diagnostic through `report`. The offending step is dropped (a product-code fault is
+    /// deterministic, so it is not retried) and the window kept alive on its last-good state. This is
+    /// the guard the live interactive loop performs, exposed so it can be driven directly.
+    val tryProductStep:
+        report: (ViewerDiagnosticEvent -> unit) -> phase: string -> step: (unit -> 'a) -> 'a option
     /// Public contract function exposed by this FS.GG.UI package.
     val failureFromDiagnostic: diagnostic: ViewerDiagnosticEvent -> ViewerRunFailure
     /// Public contract function exposed by this FS.GG.UI package.
