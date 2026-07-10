@@ -41,6 +41,7 @@ open System.Diagnostics
 open System.IO
 open System.Text
 open System.Text.Json
+open System.Text.RegularExpressions
 
 // ---- repo layout -----------------------------------------------------------------------------
 
@@ -149,6 +150,7 @@ type SourceRow =
       Target: string
       Condition: string
       Includes: string list
+      Excludes: string list
       CopyOnly: string list }
 
 /// Read the `sources[]` rows out of a JSON array element (template.json's, or a synthetic fixture's).
@@ -166,6 +168,7 @@ let private sourceRows (arrayElement: JsonElement) =
           Target = str s "target"
           Condition = str s "condition"
           Includes = strs s "include"
+          Excludes = strs s "exclude"
           CopyOnly = strs s "copyOnly" } ]
 
 /// Classify one `source` entry and name the rules it breaks (the env-free verdict-core fact,
@@ -319,6 +322,160 @@ let private verifyGatedSources () =
     assertTrue (productChecked >= 3) (sprintf "expected >=3 ungated product sources, checked %d" productChecked)
     frameworkChecked, workspaceChecked, productChecked
 
+// ---- the skill supply chain: who is allowed to write .agents/skills/<id>/ (issue #303) ---------
+
+// `skill-manifest.json`'s `supplied-by` names the ONE template source that fills each skill
+// directory. Nothing verified that claim against template.json, and two sources can legally target
+// the same directory — so the claim was wrong for eleven skills and no gate could tell. Until
+// Feature 231 narrowed it, the repo-root `.agents/skills/` row copied this repo's whole dev surface
+// over every `template/product-skills/` row aimed at the same directories; consumers got the Codex
+// wrappers, whose `reference.fsx` `#r`s `src/*/bin/Debug` DLLs that exist in no product (#303).
+//
+// `classifySource` cannot see this: it judges each row alone, and a shadow is a property of the row
+// SET. So prove the two structural facts directly, env-free, against the real trees:
+//   S1  every row targeting `.agents/skills/<id>/` is the supplier the manifest names for `<id>`,
+//       and each manifest skill has exactly one such row;
+//   S2  a row targeting an ANCESTOR of the skill directories (`.agents/skills/`, `.agents/`, `./`)
+//       may create `<id>/` only by copying the very directory the manifest declares its supplier.
+//
+// S2 is checked by SIMULATION — enumerate what the row's source offers beneath the skills root and
+// filter it through the row's `include`/`exclude` globs. That keeps it honest when a row's glob set
+// changes shape, and it needs no named exception. Today the two `template/base/ -> ./` rows reach no
+// skill directory (the ungated one excludes `.agents/**`; its spec-kit twin includes one doc file),
+// and the manifest-data row copies none — but `template/base/.agents/skills/` is a real tree, so had
+// either row stayed blanket it would have shadowed. Keying the verdict on `supplied-by` rather than
+// on the row's identity means such a row is allowed exactly when it copies the declared directory.
+
+/// One `skills[]` entry of skill-manifest.json, reduced to the supply-chain claim it makes.
+type private ManifestSkill = { Id: string; SuppliedBy: string }
+
+let private manifestSkills () =
+    let path = repoPath "template/skill-manifest/skill-manifest.json"
+    assertTrue (File.Exists path) (sprintf "skill-manifest missing at %s — the supply chain has no declaration to check" path)
+    use doc = JsonDocument.Parse(File.ReadAllText path)
+    let field (s: JsonElement) name =
+        match s.TryGetProperty(name: string) with
+        | true, v when v.ValueKind = JsonValueKind.String -> v.GetString().Replace('\\', '/')
+        | _ -> failwithf "VERDICT-CORE FAIL: skill-manifest entry is missing a string `%s` (regenerate via scripts/generate-skill-manifest.fsx)" name
+    [ for s in doc.RootElement.GetProperty("skills").EnumerateArray() ->
+        { Id = field s "id"; SuppliedBy = field s "supplied-by" } ]
+
+/// The `<id>` a row fills, when its target names a single directory under `.agents/skills/`.
+let private targetedSkillId (target: string) =
+    let t = target.Replace('\\', '/').TrimEnd '/'
+    if not (t.StartsWith ".agents/skills/") then None
+    else
+        let rest = t.Substring(".agents/skills/".Length)
+        if rest = "" || rest.Contains "/" then None else Some rest
+
+/// Match one path segment against a template glob segment (`*` is the only wildcard).
+let private segmentMatches (pattern: string) (segment: string) =
+    let rx = "^" + String.Join(".*", pattern.Split '*' |> Array.map Regex.Escape) + "$"
+    Regex.IsMatch(segment, rx)
+
+let private globSegments (pattern: string) =
+    pattern.Replace('\\', '/').Split('/') |> List.ofArray
+
+/// `**` matches zero or more whole segments, so it must ABSORB a prefix of `segs` and let the rest
+/// of the pattern decide — not short-circuit to a match. Reading it as "anything from here" makes
+/// `**/bin/**` cover every directory, which in an `exclude` silently hides real shadows.
+let private absorb (recurse: string list -> bool) (segs: string list) =
+    let rec go s = recurse s || (match s with [] -> false | _ :: rest -> go rest)
+    go segs
+
+/// Does an `include` glob reach the directory at `segs`? A pattern more specific than `segs` still
+/// reaches it (`x/SKILL.md` reaches `x/`); one that diverges does not.
+let rec private includeReaches (pattern: string list) (segs: string list) =
+    match pattern, segs with
+    | _, [] -> true
+    | "**" :: rest, _ -> List.isEmpty rest || absorb (includeReaches rest) segs
+    | p :: pRest, s :: sRest -> segmentMatches p s && includeReaches pRest sRest
+    | [], _ -> false
+
+/// Does an `exclude` glob remove the WHOLE directory at `segs`? A pattern that only names files
+/// inside it (`x/SKILL.md`) does not — the directory still materializes.
+let rec private excludeCovers (pattern: string list) (segs: string list) =
+    match pattern, segs with
+    | "**" :: rest, _ -> List.isEmpty rest || absorb (excludeCovers rest) segs
+    | [], [] -> true
+    | p :: pRest, s :: sRest -> segmentMatches p s && excludeCovers pRest sRest
+    | _ -> false
+
+/// For a row targeting an ancestor of the skill directories, the sub-path from its source down to
+/// the skills root (`./` ⇒ `.agents/skills`, `.agents/` ⇒ `skills`, `.agents/skills/` ⇒ nothing).
+let private skillsRootPrefix (target: string) =
+    let t = target.Replace('\\', '/').TrimEnd '/'
+    let segs = if t = "" || t = "." then [] else List.ofArray (t.Split '/')
+    let skillsRoot = [ ".agents"; "skills" ]
+    if segs.Length <= skillsRoot.Length && segs = List.truncate segs.Length skillsRoot
+    then Some(List.skip segs.Length skillsRoot)
+    else None
+
+/// The skill directories an ancestor-targeting row actually creates, paired with the source
+/// directory each is copied FROM — which is what `supplied-by` must name.
+let private rowMaterializesSkillDirs (row: SourceRow) (prefix: string list) =
+    let sourceRel = row.Source.Replace('\\', '/').TrimEnd '/'
+    let sourceDir = repoPath (String.concat "/" (sourceRel :: prefix))
+    if not (Directory.Exists sourceDir) then []
+    else
+        Directory.EnumerateDirectories sourceDir
+        |> Seq.map Path.GetFileName
+        |> Seq.filter (fun d ->
+            let segs = prefix @ [ d ]
+            let included =
+                List.isEmpty row.Includes
+                || row.Includes |> List.exists (fun p -> includeReaches (globSegments p) segs)
+            let excluded = row.Excludes |> List.exists (fun p -> excludeCovers (globSegments p) segs)
+            included && not excluded)
+        |> Seq.map (fun d -> d, String.concat "/" (sourceRel :: prefix @ [ d ]) + "/")
+        |> List.ofSeq
+
+let private verifySkillSupplyChain () =
+    use doc = templateDoc ()
+    let rows = sourceRows (doc.RootElement.GetProperty("sources"))
+    let skills = manifestSkills ()
+    let suppliedBy id = skills |> List.tryFind (fun s -> s.Id = id) |> Option.map (fun s -> s.SuppliedBy)
+
+    // S1: each skill-directory row is the manifest's named supplier.
+    let skillRows = rows |> List.choose (fun r -> targetedSkillId r.Target |> Option.map (fun id -> id, r))
+    for id, row in skillRows do
+        match suppliedBy id with
+        | None ->
+            assertTrue false
+                (sprintf "template source %s -> .agents/skills/%s/ fills a skill the manifest does not declare (add it to template/skill-manifest/, or stop emitting it)"
+                    row.Source id)
+        | Some declared ->
+            assertTrue (declared = row.Source.Replace('\\', '/'))
+                (sprintf "skill-manifest says %s is supplied-by %s, but template.json fills .agents/skills/%s/ from %s (#303: supplied-by must name the real source)"
+                    id declared id row.Source)
+
+    // S1 (converse): exactly one row per declared skill — a second row silently wins or loses.
+    for skill in skills do
+        let suppliers = skillRows |> List.filter (fun (id, _) -> id = skill.Id) |> List.map (fun (_, r) -> r.Source)
+        match suppliers with
+        | [ _ ] -> ()
+        | [] ->
+            assertTrue false
+                (sprintf "no template source targets .agents/skills/%s/, so the manifest declares a skill the template never emits (#303)" skill.Id)
+        | many ->
+            assertTrue false
+                (sprintf "skill %s is filled by %d template sources (%s) — exactly one may target .agents/skills/%s/ (#303)"
+                    skill.Id many.Length (String.concat ", " many) skill.Id)
+
+    // S2: an ancestor row may create <id>/ only from the directory `supplied-by` names.
+    let rootRows = rows |> List.choose (fun r -> skillsRootPrefix r.Target |> Option.map (fun p -> r, p))
+    for row, prefix in rootRows do
+        for id, copiedFrom in rowMaterializesSkillDirs row prefix do
+            match suppliedBy id with
+            | Some declared when declared = copiedFrom -> ()
+            | Some declared ->
+                assertTrue false
+                    (sprintf "template source %s -> %s materializes .agents/skills/%s/ from %s, shadowing its declared supplier %s (#303: the repo's own wrappers `#r` src/*/bin/Debug DLLs that exist in no product; narrow this row's `include`/`exclude`)"
+                        row.Source row.Target id copiedFrom declared)
+            | None -> ()
+
+    skills.Length, rootRows.Length
+
 /// `--classify <fixture.json>`: publish this side's rule vocabulary, then run `classifySource` over
 /// a synthetic row array and print one `category<TAB>rule,rule` line per row, bracketed by markers.
 /// The agreement test (GV-AGREE) runs its own classifier over the same fixture and compares both.
@@ -354,9 +511,10 @@ let private verifyBaseDocsNeutral () =
 let private verifyVerdictCore () =
     let values = enumerateLifecycleChoices ()
     let framework, workspace, product = verifyGatedSources ()
+    let suppliedSkills, rootRows = verifySkillSupplyChain ()
     verifyBaseDocsNeutral ()
-    printfn "verdict-core OK: covered-values %s; %d lifecycle-workspace sources carry `%s`; %d framework product-skill sources profile-gated & lifecycle-independent; %d product sources clean; directive agent-context docs lifecycle-safe"
-        (String.concat ", " values) workspace SPEC_KIT_COND framework product
+    printfn "verdict-core OK: covered-values %s; %d lifecycle-workspace sources carry `%s`; %d framework product-skill sources profile-gated & lifecycle-independent; %d product sources clean; %d manifest skills each filled by their declared supplier, %d root-targeting source(s) shadow none; directive agent-context docs lifecycle-safe"
+        (String.concat ", " values) workspace SPEC_KIT_COND framework product suppliedSkills rootRows
     values
 
 // ---- live scaffold helpers (env-gated only) ---------------------------------------------------
