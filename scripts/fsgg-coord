@@ -121,6 +121,9 @@
 #   fsgg-coord verify-paths --pr N [--repo R] [--issue REF] [--warn]
 #                                             # did the PR stay inside the issue's declared `Paths:`?
 #                                             # Reports drift; exit 1 (or 0 with --warn, for CI).
+#                                             # --warn downgrades the VERDICT, not a failure to reach
+#                                             # one: if the PR's issue cannot be resolved, it still
+#                                             # exits non-zero rather than reporting SKIP (#322).
 #
 #   <issue> is a full URL, `owner/repo#n`, or `repo#n` (owner defaults to FS-GG).
 #   A global `--worker <id>` may precede any subcommand.
@@ -2358,7 +2361,16 @@ verify_paths_cmd() {
   # Which issue does this PR implement? Explicit wins; else the `item/<n>-…` branch ADR-0021 mandates;
   # else the PR's own closing reference. Refusing to guess is better than checking the wrong touch-set.
   if [ -z "$issue" ]; then
-    local head; head="$(gh api "repos/$o/$r/pulls/$pr" --jq '.head.ref' 2>/dev/null || echo "")"
+    # Capture the rc; do NOT `|| echo ""`. An empty head ref must mean "the API answered, and the
+    # branch is not item/<n>-…" — never "the API did not answer". Collapsing the two lets a transient
+    # 502 fall through to the closing-reference fallback, which then reports healthily that the PR
+    # closes no issue, and `verify-paths` prints SKIP with rc=0: a verdict invented from an
+    # unanswered query (.github#322). `die` is right even under --warn — --warn downgrades the drift
+    # VERDICT to advisory, and "I could not check" is not a verdict. The touch-set-drift gate keeps
+    # this rc precisely so it can fail closed on it.
+    local head rc=0
+    head="$(gh api "repos/$o/$r/pulls/$pr" --jq '.head.ref' 2>/dev/null)" || rc=$?
+    [ "$rc" -eq 0 ] || die "verify-paths: cannot read PR #$pr's head ref (gh exited $rc) — refusing to guess which issue it implements. The touch-set was NOT checked."
     if [[ "$head" =~ ^item/([0-9]+) ]]; then
       issue="$o/$r#${BASH_REMATCH[1]}"
     else
