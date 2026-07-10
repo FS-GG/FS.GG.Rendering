@@ -56,7 +56,8 @@ any source is copied (source import is Stage R4).
     a `CP####` break blocks the merge and no admin bypasses it.
   - [0104-canvas-loop-is-a-simulation-primitive.md](./decisions/0104-canvas-loop-is-a-simulation-primitive.md)
     — the fixed-step double buffer is a simulation primitive owned by `FS.GG.Game.Core.Loop`;
-    `FS.GG.UI.Canvas.Loop` is deprecated and retires at the next Canvas major, with no re-export.
+    `FS.GG.UI.Canvas.Loop`/`StepState` were deprecated (#269/#317) and retire at the next FS.GG.UI
+    framework major, `0.6.0` (#319, decision 5), with no re-export.
   - **Org-level pointer stubs** (canonical text in `FS-GG/.github`):
     - [0011-agent-skill-roots-full-union-orchestrator-owned-mirror.md](./decisions/0011-agent-skill-roots-full-union-orchestrator-owned-mirror.md)
       — agent-skill roots carry the full union; `fsgg-sdd` owns the mirror; providers confined

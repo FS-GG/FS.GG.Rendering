@@ -164,3 +164,23 @@ shipped to consumers, contradicted by nothing and believed by everyone.
 
 The NaN-totality fix stays in `Loop.advance` for as long as the module exists. A deprecated primitive
 that freezes the simulation is worse than a deprecated primitive.
+
+## Amendment — 2026-07-10: step 5 retargets to `0.6.0` — the `0.5.0` boat sailed with `Loop` aboard (#319)
+
+The first amendment said the retirement "lands at `0.5.0`, so Canvas is `0.4.0-preview.1`." That is now
+stale. A framework `0.5.0` shipped on 2026-07-10 (org feed + nuget.org) for the KeyboardInput `Keymap`
+surface (#331/#332), **carrying `Loop`/`StepState` forward** — verified against the published
+`FS.GG.UI.Canvas.0.5.0` assembly, which still exports `StepState\`1` and `Loop.advance`. The
+version-of-truth is `<FsGgUiVersion>` in `template/base/Directory.Packages.props` (now `0.5.0`), which
+the release packs the whole slnx at; the per-project `.fsproj` `<Version>` is vestigial and misled the
+first amendment's "`0.4.0-preview.1`" reading.
+
+So decision 5 stands but its target moves: `Loop`/`StepState` retire at the **next** framework major,
+**`0.6.0`**, not `0.5.0`. Per FS.GG.Rendering#319's disposition (2026-07-10), the removal is **prepared
+but held** — branch `item/319-retire-canvas-loop` carries the pure surface deletion and builds clean —
+and **rides the next framework major cut for substantive reasons**, rather than forcing a whole-BOM
+`0.6.0` solely to delete one already-deprecated module. When that major is cut, the removal PR adds the
+release artifacts the first amendment described: the `<FsGgUiVersion>` bump, the narrow transient
+`CP0002` baseline suppression (now against the published `0.5.0`, deleted once `0.6.0` ships), the
+registry flip, and the second-amendment "landed" note. The `#266` NaN-totality guarantee already lives
+in `FS.GG.Game.Core.FixedStep.drain` regardless.
