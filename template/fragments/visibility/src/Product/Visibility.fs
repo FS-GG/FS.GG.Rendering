@@ -47,21 +47,25 @@ module Visibility =
 
     let private sqLen (v: Point) = v.X * v.X + v.Y * v.Y
 
-    /// True when the segment `a`→`b` touches `rect` anywhere: an endpoint inside it, a chord crossing
-    /// clean through with both ends outside, or an edge graze. Liang–Barsky slab clip of the parametric
-    /// segment against the four half-planes — sqrt-free and transcendental-free, so it is exact and
-    /// deterministic. Edge contact counts as a touch (inclusive, matching `Geometry.containsPoint`).
+    /// The portion of the segment `a`→`b` lying inside `rect`, or `None` when it misses entirely.
+    /// Liang–Barsky slab clip of the parametric segment against the four half-planes — sqrt-free and
+    /// transcendental-free, so it is exact and deterministic. Edge contact counts as a touch
+    /// (inclusive, matching `Geometry.containsPoint`), and clips to a zero-length segment.
     ///
-    /// This is the cull predicate, and it must never report a false negative: a dropped occluder is a
-    /// wall the viewpoint sees straight through.
-    let private segmentHitsRect (rect: Rect) (a: Point) (b: Point) : bool =
+    /// This is the cull, and it must never answer `None` for a segment that touches: a dropped occluder
+    /// is a wall the viewpoint sees straight through. It is also the *trim*: the returned endpoints are
+    /// the occluder's crossings of the bound, which the sweep needs as aim points — a wall spanning the
+    /// bound has both its real endpoints outside it, so nothing would otherwise aim at the corners the
+    /// visible region turns on. A segment meeting `rect` at a single point clips to a zero-length pair;
+    /// it occludes nothing, and `polygon` drops it.
+    let private clipSegmentToRect (rect: Rect) (a: Point) (b: Point) : (Point * Point) option =
         let dx = b.X - a.X
         let dy = b.Y - a.Y
 
         // Narrow the surviving parameter window `[t0, t1]` by one half-plane `p * t <= q`. A `p` of zero
         // means the segment runs parallel to that slab, so it survives only where it already lies inside
         // it (`q >= 0`); an empty window `(1, 0)` is absorbing, so a rejected segment stays rejected.
-        // Struct tuples, so culling a wall list allocates nothing.
+        // Struct tuples, so narrowing the window itself allocates nothing.
         let inline clip (p: float) (q: float) (struct (t0, t1)) =
             if p = 0.0 then
                 if q < 0.0 then struct (1.0, 0.0) else struct (t0, t1)
@@ -77,7 +81,11 @@ module Visibility =
             |> clip dy (rect.Y + rect.Height - a.Y)
 
         let struct (t0, t1) = window
-        t0 <= t1
+
+        if t0 > t1 then
+            None
+        else
+            Some({ X = a.X + t0 * dx; Y = a.Y + t0 * dy }, { X = a.X + t1 * dx; Y = a.Y + t1 * dy })
 
     /// Nearest ray-segment hit: the point struck and the parametric distance `t >= 0` along the ray
     /// `origin + t*dir`, or `None` when the ray is parallel to / points away from the segment, misses
@@ -190,18 +198,29 @@ module Visibility =
         // NOT a `SpatialGrid` bucket: the grid indexes *points*, so bucketing a segment by its endpoints
         // drops a wall that spans the box with both ends outside it — the viewpoint then sees straight
         // through it. Long walls are the common case, not the corner case, so this test is exact.
+        //
+        // Each survivor is also *trimmed* to the bound, which is what puts an aim point at the crossing.
+        // Trimming cannot change which rays an occluder blocks: the bound box is convex and contains the
+        // source, so a ray leaves it exactly once, and the ever-present bound edges already hit it there
+        // — any occluder point beyond the crossing loses the nearest-hit comparison to that edge.
+        // A wall grazing a corner clips to zero length, occludes nothing, and is dropped.
         let boundRect =
             { X = source.X - radius
               Y = source.Y - radius
               Width = 2.0 * radius
               Height = 2.0 * radius }
 
-        let culled = real |> List.filter (fun s -> segmentHitsRect boundRect s.A s.B)
+        let culled =
+            real
+            |> List.choose (fun s ->
+                match clipSegmentToRect boundRect s.A s.B with
+                | Some(a, b) when sqLen { X = b.X - a.X; Y = b.Y - a.Y } > 0.0 -> Some { A = a; B = b }
+                | _ -> None)
 
         let bEdges, bCorners = boundEdges source radius
         let allSegs = culled @ bEdges
 
-        // Aim points: every culled-occluder endpoint plus the bound corners.
+        // Aim points: every clipped-occluder endpoint (i.e. its bound crossings) plus the bound corners.
         let aimPoints = [ for s in culled do
                               yield s.A
                               yield s.B
