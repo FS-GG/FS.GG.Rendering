@@ -5,14 +5,14 @@
 
 | Pairing | Foreground | Background | Role | Measured | Threshold | Verdict | Note |
 |---------|-----------|-----------|------|----------|-----------|---------|------|
-| button/neutral/normal#text | #f5f5f5 | #1677ff | Text | 3.76 | 4.50 | Fail |  |
-| button/neutral/normal#surface | #1677ff | #f5f5f5 | GraphicOrUi | 3.76 | 3.00 | Aa |  |
-| button/neutral/hover#text | #f5f5f5 | #146be6 | Text | 4.51 | 4.50 | Aa |  |
-| button/neutral/hover#surface | #146be6 | #f5f5f5 | GraphicOrUi | 4.51 | 3.00 | Aa |  |
-| button/neutral/pressed#text | #f5f5f5 | #125fcc | Text | 5.45 | 4.50 | Aa |  |
-| button/neutral/pressed#surface | #125fcc | #f5f5f5 | GraphicOrUi | 5.45 | 3.00 | Aa |  |
-| button/neutral/selected#text | #f5f5f5 | #1056b8 | Text | 6.33 | 4.50 | Aa |  |
-| button/neutral/selected#surface | #1056b8 | #f5f5f5 | GraphicOrUi | 6.33 | 3.00 | Aa |  |
+| button/neutral/normal#text | #f5f5f5 | #0958d9 | Text | 5.65 | 4.50 | Aa |  |
+| button/neutral/normal#surface | #0958d9 | #f5f5f5 | GraphicOrUi | 5.65 | 3.00 | Aa |  |
+| button/neutral/hover#text | #f5f5f5 | #084fc3 | Text | 6.60 | 4.50 | Aa |  |
+| button/neutral/hover#surface | #084fc3 | #f5f5f5 | GraphicOrUi | 6.60 | 3.00 | Aa |  |
+| button/neutral/pressed#text | #f5f5f5 | #0746ae | Text | 7.72 | 4.50 | Aaa |  |
+| button/neutral/pressed#surface | #0746ae | #f5f5f5 | GraphicOrUi | 7.72 | 3.00 | Aa |  |
+| button/neutral/selected#text | #f5f5f5 | #063f9c | Text | 8.76 | 4.50 | Aaa |  |
+| button/neutral/selected#surface | #063f9c | #f5f5f5 | GraphicOrUi | 8.76 | 3.00 | Aa |  |
 | button/neutral/disabled#text | #d9d9d9 | #d9d9d9 | Decorative | 1.00 | n/a | Exempt |  |
 | button/neutral/disabled#surface | #d9d9d9 | #f5f5f5 | Decorative | 1.29 | n/a | Exempt |  |
 | button/danger/normal#text | #f5f5f5 | #b91c1c | Text | 5.93 | 4.50 | Aa |  |
@@ -40,7 +40,7 @@
 | button/warning/selected#text | #f5f5f5 | #823c06 | Text | 7.41 | 4.50 | Aaa |  |
 | button/warning/selected#surface | #823c06 | #f5f5f5 | GraphicOrUi | 7.41 | 3.00 | Aa |  |
 | button/ghost/normal#text | #1f2937 | #f5f5f5 | Text | 13.46 | 4.50 | Aaa |  |
-| icon-button/neutral/normal#text | #1677ff | #f5f5f5 | Text | 3.76 | 4.50 | Fail |  |
+| icon-button/neutral/normal#text | #0958d9 | #f5f5f5 | Text | 5.65 | 4.50 | Aa |  |
 | icon-button/ghost/normal#border | #1f2937 | #f5f5f5 | GraphicOrUi | 13.46 | 3.00 | Aa |  |
 
-**Overall: FAIL** (2 failing of 37 validated; 0 out-of-scope; 0 indeterminate)
+**Overall: PASS** (0 failing of 37 validated; 0 out-of-scope; 0 indeterminate)
