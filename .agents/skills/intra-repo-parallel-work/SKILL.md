@@ -69,7 +69,7 @@ If the work is cross-repo (needs a change/release from *another* FS-GG repo), us
 ```sh
 export FSGG_WORKER=finch-a3f                   # or let the worktree name you
 scripts/fsgg-coord take --repo <this-repo>     # pick + claim the next SCHEDULABLE item, retrying a lost race
-git worktree add ../<repo>-<n> -b item/<n>-<slug>   # `take` prints this
+git worktree add ../<repo>-<n> -b item/<n>-<slug> origin/main   # `take` prints this; name the base
 # ...implement, commit with the printed FSGG-Worker trailer, PR into main...
 scripts/fsgg-coord done <issue> --flip         # earn the stamp
 ```
@@ -156,6 +156,13 @@ scripts/fsgg-coord reap --repo <r> --apply    # release them, and tell the reape
 Work on `item/<n>-<slug>` in its **own git worktree**. Agents: prefer the harness's built-in
 worktree isolation (`isolation: "worktree"`) — the same discipline, managed for you. Commit with the
 trailer `claim` prints (`FSGG-Worker: <id>`) so attribution survives into history.
+
+**Always name the base ref** — `git worktree add … -b item/<n>-<slug> origin/main`. With no
+commit-ish, `-b` branches from the *shared checkout's* `HEAD`, and this protocol's whole premise is
+that N workers pass through that checkout: its `HEAD` is routinely another worker's unmerged branch,
+not `main`. Omit the base and the item's PR silently carries that branch's commits too. Nothing warns
+you: `verify-paths` reports the resulting drift only as an advisory, and only for as long as that
+sibling branch stays unmerged (.github#319).
 
 Keep `main` green. **Disjoint** items merge in any order; **overlapping** items (which you
 sequenced) merge in `Blocked by` order and rebase.
