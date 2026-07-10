@@ -60,6 +60,9 @@ module Path =
     /// Public contract function exposed by this FS.GG.UI package.
     val bounds: path: PathSpec -> Rect option
     /// Public contract function exposed by this FS.GG.UI package.
+    /// `Length` is the chord length over the vertex-bearing commands (MoveTo/LineTo and curve
+    /// endpoints) — the exact polyline `segment` extracts along. `ArcTo` carries no vertex in that
+    /// flattening and contributes no length, so `measure` and `segment` always share one metric.
     val measure: path: PathSpec -> PathMeasure
     /// Public contract function exposed by this FS.GG.UI package.
     /// Extracts the sub-path between two arc-length distances. The path is flattened to the polyline
