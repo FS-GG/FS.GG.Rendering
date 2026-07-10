@@ -11,6 +11,11 @@
          SpatialGrid) moved OUT to FS.GG.Game.Core (the new bottom layer). Canvas now carries only
          the render-adjacent surfaces: pure Elements, the render Loop, and the Persistence request
          vocabulary.
+         ^ "the render Loop" was an implementation-time judgement recorded here and ratified nowhere:
+         ADR-0022 never mentions Loop. ADR-0104 (Rendering#269) supersedes it — the fixed-step double
+         buffer is a SIMULATION primitive owned by FS.GG.Game.Core.Loop. Canvas.Loop is deprecated
+         (doc-comment; see Loop.fsi) and retires at the next Canvas major, leaving Canvas carrying
+         pure Elements and the Persistence request vocabulary.
          0.3.0 major (ADR-0024): the Audio request surface (AudioEffect/SoundId/TrackId/Audio.*) is
          RETIRED from Canvas — its single vocabulary now lives in the standalone FS.GG.Audio.Core
          (a breaking removal; the extraction completed under Rendering#158). -->
