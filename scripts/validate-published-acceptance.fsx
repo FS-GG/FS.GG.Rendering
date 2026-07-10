@@ -74,9 +74,16 @@ let private assertTrue cond msg =
 // A failure blob that carries one of these is the ENVIRONMENT failing to reach a feed, not the
 // artifact under test failing. Shared by the build spot-check and the packaged reference recipe:
 // both shell out to a `dotnet` that must restore before it can prove anything.
-let private envLimitedMarkers =
+//
+// Split by strength. The DEFINITIVE markers are NuGet's own restore diagnostics: nothing but a
+// failed restore emits them. The rest are heuristic — `"nuget.org"` is merely a source name, and
+// any script that restores from it can echo it while failing for an entirely unrelated reason.
+let private restoreFailureMarkers =
     [ "NU1101"; "NU1102"; "NU1301"; "Unable to load the service index"
-      "No such host"; "actively refused"; "nuget.org"; "Unable to resolve"; "network" ]
+      "No such host"; "actively refused" ]
+
+let private envLimitedMarkers =
+    restoreFailureMarkers @ [ "nuget.org"; "Unable to resolve"; "network" ]
 
 let private runProc (workDir: string) (exe: string) (args: string list) =
     let psi = ProcessStartInfo(exe)
@@ -290,8 +297,9 @@ let private buildSpotCheck (sddAppDir: string) (noneAppDir: string) =
 ///
 /// Runs the copy materialized into the spec-kit scaffold (`.agents/` is gated to lifecycle=spec-kit,
 /// so this is the only lifecycle that carries it) and pins the same verdict SEQUENCE `gate.yml` pins
-/// in-tree. Returns ("pass" | "environment-limited", detail). A real failure — a broken script, a
-/// drifted Legibility contract, an unresolvable pin — is NOT swallowed (SC-007).
+/// in-tree. Returns ("pass" | "environment-limited", detail). Only an unreachable FEED is
+/// environment-limited; a broken script, a drifted Legibility contract, or a materialized in-tree
+/// twin all throw and block close (SC-007).
 let private symbologyReferenceCheck (specKitAppDir: string) =
     let relPath = ".agents/skills/fs-gg-symbology/reference.fsx"
     let script = Path.Combine(specKitAppDir, relPath.Replace('/', Path.DirectorySeparatorChar))
@@ -329,13 +337,22 @@ let private symbologyReferenceCheck (specKitAppDir: string) =
 
     // Run from the scaffold: the product's NuGet.config is what resolves the `#r "nuget:"` lines,
     // and the recipe writes its PNGs under Path.GetTempPath(), never the working directory.
-    let code, out, err = runProc specKitAppDir "dotnet" [ "fsi"; script ]
-    let blob = out + "\n" + err
+    let code, rawOut, rawErr = runProc specKitAppDir "dotnet" [ "fsi"; script ]
+    // Normalise CRLF: the pins below anchor with `$`, and .NET's `$` matches BEFORE the `\n`, so a
+    // Windows-produced `HasWarnings\r\n` would fail every anchored pin on a perfectly good run.
+    let out = rawOut.Replace("\r\n", "\n")
+    let blob = out + "\n" + rawErr.Replace("\r\n", "\n")
 
     if code <> 0 then
-        // Three failure modes, named apart. The recipe guards its own loop with `failwith "reference
+        // Four failure modes, named apart. The recipe guards its own loop with `failwith "reference
         // recipe: ..."`, so when THAT fires the script ran fine and the published LIBRARY disagreed
         // with it — a different bug, and a different fix, from the script being broken.
+        //
+        // Precedence matters. A DEFINITIVE restore diagnostic wins first: an offline `fsi` emits
+        // NU1101 *and* an FS-numbered package-manager error, and that is an unreachable feed, not a
+        // broken script. Only then does a compiler diagnostic outrank the heuristic markers — this
+        // recipe restores from nuget.org on every run, so the bare source name in `envLimitedMarkers`
+        // (harmless for `dotnet build`) would otherwise swallow a genuinely broken recipe.
         if blob.Contains "reference recipe:" then
             failwithf
                 "packaged symbology reference recipe: the PUBLISHED library disagrees with the recipe at %s.\n\
@@ -345,6 +362,15 @@ let private symbologyReferenceCheck (specKitAppDir: string) =
                  publish (green follows the publish). Pin the recipe's `#r` lines to FsGgUiVersion, or ship.\n\
                  --- recipe output ---\n%s\n--- diagnostic ---\n%s"
                 relPath out blob
+        elif restoreFailureMarkers |> List.exists blob.Contains then
+            "environment-limited",
+            "packaged FS.GG.UI.* could not be restored from the feed; the packaged recipe was not asserted to run"
+        elif Regex.IsMatch(blob, @"error FS\d+") then
+            failwithf
+                "packaged symbology reference recipe does not COMPILE at %s (exit %d).\n\
+                 The feed answered (no NuGet restore diagnostic), so this is the artifact, not the\n\
+                 environment: the packaged recipe has drifted from the published library's surface.\n%s"
+                relPath code blob
         elif envLimitedMarkers |> List.exists blob.Contains then
             "environment-limited",
             "packaged FS.GG.UI.* could not be restored from the feed; the packaged recipe was not asserted to run"
@@ -450,6 +476,11 @@ let private renderRecord (provenance: string) (verdicts: ProfileVerdict list)
         line "lifecycle surface only under spec-kit, suppresses it (product intact) under sdd/none, the"
         line "no-flag default is byte-identical to spec-kit across all four profiles, and the app-profile"
         line "sdd/none outputs build (or buildability is disclosed environment-limited)."
+        if symbology <> "pass" then
+            line ""
+            line (sprintf "CAVEAT (Constitution V): packaged-reference-recipe = %s. The skill's one runnable" symbology)
+            line "artifact was NOT asserted to run against the published feed on this pass, so the CLOSE above"
+            line "does not cover it. Re-run where the feed is reachable to lift this caveat."
         line ""
         line "Cross-repo remainder state (US3): both SDD-owned items the spec/204 assumed open are, at"
         line "implementation time, already tracked once and **Done** on the Coordination board — so no open"
