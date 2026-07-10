@@ -16,6 +16,10 @@ module Feature204LifecycleTemplateTests
 // verdict core PASSES; if the gating is wrong the verdict core throws, no report is written, and the
 // gate fails loudly. Coverage (TP-7) is checked against the template's own `lifecycle` choice set, so
 // a new value left unvalidated fails the gate.
+//
+// Provisioning triggers when the report is absent OR older than either input it derives from
+// (template.json, the validator script), and deletes the stale report before regenerating — so a local
+// readiness/ surviving across runs and branches can never answer for a template.json it never saw.
 
 open System
 open System.Diagnostics
@@ -38,8 +42,26 @@ let private profiles = [ "app"; "headless-scene"; "governed"; "sample-pack" ]
 
 // ---- self-provisioning (mirrors Feature128) ---------------------------------------------------
 
+let private validatorScriptPath = repositoryPath "scripts/validate-lifecycle-template.fsx"
+
+// The report is a DERIVED artifact of template.json + the validator's verdict core, and it lives under
+// the gitignored readiness/, so it outlives runs and branch switches. Regenerating only when ABSENT lets
+// a report written against a different template.json satisfy the GV gates below.
+let private reportIsStale () =
+    not (File.Exists validationReportPath)
+    || (let writtenUtc = File.GetLastWriteTimeUtc validationReportPath
+
+        [ templateJsonPath; validatorScriptPath ]
+        |> List.exists (fun input -> File.Exists input && File.GetLastWriteTimeUtc input > writtenUtc))
+
 let private selfProvisionReport () =
-    if not (File.Exists validationReportPath) then
+    if reportIsStale () then
+        // Drop the stale report FIRST. The verdict core throws (writing nothing) precisely when the
+        // gating is wrong; leaving the old file in place would let it answer for the current
+        // template.json, which is the failure this guards. Absent beats stale — GV-8 fails loudly.
+        if File.Exists validationReportPath then
+            File.Delete validationReportPath
+
         let psi = ProcessStartInfo("dotnet")
         psi.WorkingDirectory <- repositoryRoot
         psi.UseShellExecute <- false
