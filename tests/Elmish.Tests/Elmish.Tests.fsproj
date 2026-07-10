@@ -76,6 +76,7 @@
     <Compile Include="Feature241ActivationValueGapsTests.fs" />
     <Compile Include="AdapterCmdSubNoneTests.fs" />
     <Compile Include="Feature333KeymapDispatchTests.fs" />
+    <Compile Include="Feature333PrecedenceTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
