@@ -36,6 +36,12 @@ type UnitStats =
 
 // Five units spanning the speed range. That span is what will overload a channel below — a roster
 // wide enough to exercise the grammar is also wide enough to break it.
+//
+// ORDER IS LOAD-BEARING for the lint below. The five speeds land in five distinct bands, one unit
+// each, so no band is rarer than another and the linter breaks the tie on first appearance: the LAST
+// band introduced is the excess one. Listed slowest-to-fastest, that is the fastest unit, index 4.
+// Reorder the roster and a different index gets named (the lint still fires; the guard below will
+// tell you which unit it expected).
 let roster =
     [ { Side = "blue"; Role = "tank";  Dps = 40.0;  Hp = 90.0; HpMax = 100.0; Speed = 2.0;  Armor = 50.0; Facing = 0.0 }
       { Side = "blue"; Role = "dps";   Dps = 95.0;  Hp = 44.0; HpMax = 80.0;  Speed = 6.0;  Armor = 20.0; Facing = 1.9 }
