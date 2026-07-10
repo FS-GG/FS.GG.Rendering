@@ -35,10 +35,10 @@ input, viewer, and Elmish assemblies form **Rendering.Core**; the rest layer on 
 | Layout | `Layout` | `FS.GG.UI.Layout` | Rendering.Core | Layout engine and layout graph with validation. |
 | Keyboard input | `KeyboardInput` | `FS.GG.UI.KeyboardInput` | Rendering.Core | Pointer + keyboard input model and dispatch — the live input path wired into viewer/controls. |
 | Viewer | `SkiaViewer` | `FS.GG.UI.SkiaViewer` | Rendering.Core | SkiaSharp-over-GL viewer/host: window, frame loop, present mode, screenshot/replay seams. |
-| Elmish integration | `Elmish` | `FS.GG.UI.Elmish` | Rendering.Core | Elmish/MVU runtime integration and animation tick. |
+| Elmish integration | `Elmish` | `FS.GG.UI.Elmish` | Rendering.Core | The pure scene Elmish adapter (`ElmishAdapter`): wraps a `render : model → SceneNode` product and threads viewer messages/effects as pure values, plus the animation tick. For control-set products use `Controls.Elmish`. |
 | Diagnostics | `Diagnostics` | `FS.GG.UI.Diagnostics` | Rendering.Core | Shared runtime diagnostic taxonomy, aggregation, readiness, and artifact contracts. |
 | Controls | `Controls` | `FS.GG.UI.Controls` | Controls | Semantic control set (Button, TextBox, ComboBox, DataGrid, Dialog), accessibility, catalog, charts. |
-| Controls Elmish integration | `Controls.Elmish` | `FS.GG.UI.Controls.Elmish` | Controls | Elmish/MVU bindings and responds/perf proof seams for controls. |
+| Controls Elmish integration | `Controls.Elmish` | `FS.GG.UI.Controls.Elmish` | Controls | The control-set Elmish adapter: a full interactive host over the semantic control set (`runInteractiveApp`/`program`, Cmd/subscriptions) plus responds/perf proof seams. Used by every in-repo sample. |
 | Canvas | `Canvas` | `FS.GG.UI.Canvas` | Controls | Dependency-light pure element library and deterministic fixed-timestep game loop for canvas controls. |
 | Design-system primitives | `DesignSystem` | `FS.GG.UI.DesignSystem` | DesignSystem | Token model, `Theme` record, `ResolvedStyle`, density/typography/radii/colour roles, visual-state rules, the pure `Style.resolve` resolver, the public `DesignTokensExt` Ant-derived taxonomy, and the `StyleResolver`/`IntentPolicy` seam. Depends only on `Scene`. Decisions [0003](./decisions/0003-designsystem-namespace-relocation.md), [0004](./decisions/0004-public-token-resolver-surface.md). |
 | Default theme | `Themes.Default` | `FS.GG.UI.Themes.Default` | Themes | The default Light/Dark `Theme` value module, `Theming` mode/accent derivation, and the DTCG token source. Depends only on `DesignSystem`. |

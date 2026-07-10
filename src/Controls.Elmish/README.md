@@ -5,6 +5,11 @@ Elmish command, subscription, and program adapters for Controls and KeyboardInpu
 `FS.GG.UI.Controls.Elmish` is one of the **FS.GG.UI** distribution packages — an F# / Elmish UI and 2D
 scene-graph framework for .NET 10 desktop, rendered through Vulkan + SkiaSharp.
 
+> **Use this package for products built on the semantic control set** — buttons, text boxes,
+> grids — driven by an interactive host (`runInteractiveApp`/`program`, Cmd/subscriptions).
+> Every FS.GG.UI sample uses it. Its sibling `FS.GG.UI.Elmish` is the lower-level pure scene
+> adapter (a `SceneNode` view, no control tree); pick by what your view produces.
+
 ## Install
 
 ```bash
