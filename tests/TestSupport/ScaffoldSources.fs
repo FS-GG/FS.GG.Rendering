@@ -136,27 +136,45 @@ module ScaffoldSources =
     /// newly added substituted tree is scanned the day it is declared. A caller that finds this empty
     /// — or suspiciously small — must fail loudly rather than pass vacuously.
     let substitutionSubjectFiles (repositoryRoot: string) : string list =
-        templateSources repositoryRoot
-        |> List.collect (fun (root, includes, excludes, copyOnly) ->
-            let full = Path.Combine(repositoryRoot, root.Replace('/', Path.DirectorySeparatorChar))
+        let sources = templateSources repositoryRoot
 
-            if not (Directory.Exists full) then
-                []
-            else
-                Directory.GetFiles(full, "*", SearchOption.AllDirectories)
-                |> Array.toList
-                |> List.filter (fun path ->
-                    let relative = Path.GetRelativePath(full, path).Replace('\\', '/')
-                    let matches (patterns: Regex list) = patterns |> List.exists (fun rx -> rx.IsMatch relative)
+        let resolved =
+            sources
+            |> List.map (fun (root, includes, excludes, copyOnly) ->
+                root, Path.Combine(repositoryRoot, root.Replace('/', Path.DirectorySeparatorChar)), includes, excludes, copyOnly)
 
-                    let underBuildOutput =
-                        relative.StartsWith "bin/"
-                        || relative.StartsWith "obj/"
-                        || relative.Contains "/bin/"
-                        || relative.Contains "/obj/"
+        // A declared source root that does not exist on disk is NOT "zero files to scan" — it is a
+        // renamed or deleted tree that the scan would silently stop covering while staying green.
+        // That vacuous pass is precisely what this module was extracted to prevent, and no
+        // "must not narrow to zero" backstop downstream can see it (the other roots keep the count
+        // healthy). Fail here, naming the root, rather than narrow in silence.
+        match resolved |> List.filter (fun (_, full, _, _, _) -> not (Directory.Exists full)) with
+        | [] -> ()
+        | missing ->
+            missing
+            |> List.map (fun (root, _, _, _, _) -> root)
+            |> String.concat ", "
+            |> failwithf
+                "template.json declares source root(s) that do not exist: %s — the substitution-subject scan would silently narrow"
 
-                    not underBuildOutput
-                    && (List.isEmpty includes || matches includes)
-                    && not (matches excludes)
-                    && not (matches copyOnly)))
+        resolved
+        |> List.collect (fun (_, full, includes, excludes, copyOnly) ->
+            Directory.GetFiles(full, "*", SearchOption.AllDirectories)
+            |> Array.toList
+            |> List.filter (fun path ->
+                let relative = Path.GetRelativePath(full, path).Replace('\\', '/')
+                let matches (patterns: Regex list) = patterns |> List.exists (fun rx -> rx.IsMatch relative)
+
+                // `bin/`/`obj/` are excluded by entry 1's globs but NOT by the other source entries,
+                // so this is load-bearing rather than belt-and-braces.
+                let underBuildOutput =
+                    relative.StartsWith "bin/"
+                    || relative.StartsWith "obj/"
+                    || relative.Contains "/bin/"
+                    || relative.Contains "/obj/"
+
+                not underBuildOutput
+                && (List.isEmpty includes || matches includes)
+                && not (matches excludes)
+                && not (matches copyOnly)))
         |> List.distinct

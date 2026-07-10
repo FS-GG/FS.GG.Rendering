@@ -70,7 +70,10 @@ let private embeddedToken =
 /// Report the whole word the token is embedded in, not the two-character regex match — `products` is
 /// an actionable message where `ts` is a puzzle.
 let private enclosingWord (line: string) (index: int) =
-    let isWord c = System.Char.IsLetterOrDigit c || c = '_'
+    // The SAME ASCII class the matcher uses. `Char.IsLetterOrDigit` is Unicode-aware and would widen
+    // the reported word across letters the pattern never considered an adjacency, so the message
+    // would name a word the scan did not actually match on.
+    let isWord c = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c = '_'
     let mutable start = index
     let mutable finish = index
     while start > 0 && isWord line.[start - 1] do
@@ -230,5 +233,40 @@ let feature282EmbeddedTokenGuardTests =
               Expect.equal (scanLine "generated products pin it") [ "products" ] "the plural is reported whole"
               Expect.equal (scanLine "// production path") [ "production" ] "the adjective is reported whole"
               Expect.equal (scanLine "let dotProduct a b = 0") [ "dotProduct" ] "a leading-adjacency identifier is reported whole"
+          }
+
+          test "a declared source root that vanished fails loudly instead of narrowing the scan" {
+              // The one narrowing no downstream count backstop can see: rename `template/fragments/vec2/src`
+              // and its files simply stop being scanned, while the OTHER roots keep the total well above
+              // any lower bound. So drive the real branch with a fixture repo whose template.json declares
+              // one root that exists and one that does not.
+              let fixture = Path.Combine(Path.GetTempPath(), "fsgg-282-fixture-" + string (System.Guid.NewGuid()))
+              let present = Path.Combine(fixture, "template", "base")
+
+              try
+                  Directory.CreateDirectory(Path.Combine(fixture, ".template.config")) |> ignore
+                  Directory.CreateDirectory present |> ignore
+                  File.WriteAllText(Path.Combine(present, "View.fs"), "// nothing to see")
+
+                  let templateJson =
+                      """{ "sources": [ { "source": "template/base/" }, { "source": "template/gone/" } ] }"""
+
+                  File.WriteAllText(Path.Combine(fixture, ".template.config", "template.json"), templateJson)
+
+                  Expect.throws
+                      (fun () -> ScaffoldSources.substitutionSubjectFiles fixture |> ignore)
+                      "a declared-but-absent source root must raise, not silently contribute zero files"
+
+                  // And the same fixture WITHOUT the absent root scans normally — proving the throw is
+                  // caused by the missing root, not by the fixture being malformed.
+                  File.WriteAllText(
+                      Path.Combine(fixture, ".template.config", "template.json"),
+                      """{ "sources": [ { "source": "template/base/" } ] }"""
+                  )
+
+                  Expect.hasLength (ScaffoldSources.substitutionSubjectFiles fixture) 1 "the surviving root is scanned normally"
+              finally
+                  if Directory.Exists fixture then
+                      Directory.Delete(fixture, true)
           }
         ]
