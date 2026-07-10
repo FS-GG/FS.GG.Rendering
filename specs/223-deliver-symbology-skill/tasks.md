@@ -129,7 +129,7 @@ tools/Rendering.Harness -- skill-parity` ⇒ a `MissingWrapper` finding for `fs-
 
 - [X] T016 Reverse the narrative records: the "symbology not-vendored (research R5)" comments at `tests/Package.Tests/Feature219EmitFrameworkSkillsTests.fs:38-41` → "vendored (Feature 223)", and align the `data-model.md` narrative. **Not `[P]`**: edits the same `Feature219EmitFrameworkSkillsTests.fs` as T008/T009 — run after both have landed
 - [X] T017 Run quickstart Scenarios 2–6 (`specs/223-deliver-symbology-skill/quickstart.md`) and re-run `dotnet fsi scripts/baseline-tests.fsx` to confirm zero regressions against the T002 baseline
-- [ ] T018 Cross-repo delivery (FR-007/FR-008) via the `cross-repo-coordination` skill: update the `fs-gg-ui-template` contract entry in `FS-GG/.github` (`registry/dependencies.yml` + `docs/registry/compatibility.md`) to record symbology as vendored, carry the change on the next `fs-gg-ui-template` republish, and close/Done Coordination board item **#35** with its acceptance checklist satisfied
+- [X] T018 Cross-repo delivery (FR-007/FR-008) via the `cross-repo-coordination` skill: update the `fs-gg-ui-template` contract entry in `FS-GG/.github` (`registry/dependencies.yml` + `docs/registry/compatibility.md`) to record symbology as vendored, carry the change on the next `fs-gg-ui-template` republish, and close/Done Coordination board item **#35** with its acceptance checklist satisfied
 
 ---
 
