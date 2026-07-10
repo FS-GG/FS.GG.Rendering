@@ -74,4 +74,7 @@ two-facing consumer at once).
   a legible label field.
 - **No version bump.** Per standing practice the `<Version>` move belongs to a separate `release:`
   commit. ADR-0102 records that the next `FS.GG.UI.Symbology` release must be a **minor** bump, because
-  `Token.new(...)` gaining a parameter is a binary break.
+  `Token.new(...)` gaining a parameter is a binary break. The break is carried in the interim by a
+  one-diagnostic, one-target `src/Symbology/CompatibilitySuppressions.xml`, to be deleted once a release
+  `>= 0.5.0` is published — the `API compatibility gate` is a *required* check on `main`, contrary to
+  what ADR-0101 and `scripts/apicompat-check.sh` claim.

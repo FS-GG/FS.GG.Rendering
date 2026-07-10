@@ -112,16 +112,45 @@ hard-coded `Usage.Length = 11` must update; nothing else in the report moves.
 ### Adding a record field is a binary break, and ApiCompat will say so
 
 `Token.new(...)` gains a parameter, so the packed assembly is not binary-compatible with the published
-`FS.GG.UI.Symbology 0.4.0-preview.1`. `scripts/apicompat-check.sh` will report a `CP0002` against the
-feed baseline until the next publish moves that baseline — the same shape as the three breaks
-discharged by `f6cb384` (`release: FS.GG.UI major 0.4.0-preview.1`).
+`FS.GG.UI.Symbology 0.4.0` — the feed's newest version, per the `latest_version` ordering fix ADR-0101
+made. ApiCompat reports exactly one `CP0002`, on that constructor, and nothing else.
 
-This does **not** wedge the PR: per [ADR-0101](./0101-apicompat-stays-advisory.md) the ApiCompat job is
-advisory and outside branch protection's required set. Per this repo's standing practice the version
-bump belongs to a separate `release:` commit, not to the feature — features 198/199/200 each added a
-`Token` field without touching `Symbology.fsproj`. **The next `FS.GG.UI.Symbology` release must be a
-minor bump (`0.5.0-preview.1`), not a patch**, and it discharges the break.
+Per this repo's standing practice the version bump belongs to a separate `release:` commit, not to the
+feature: features 198/199/200 each added a `Token` field without touching `Symbology.fsproj`. **The
+next `FS.GG.UI.Symbology` release must be a minor bump (`0.5.0-preview.1`), not a patch**, and
+publishing it discharges the break by moving the baseline.
 
-Source-compatibility is unaffected for the supported construction style: `{ Symbology.defaultToken with
-... }` keeps compiling. A caller that writes a full record literal must add the field — none exists in
-this repo, and the roster mapping the skills teach uses `defaultToken`.
+### ApiCompat is a required check, whatever ADR-0101 says
+
+[ADR-0101](./0101-apicompat-stays-advisory.md) is titled *"`API compatibility gate` stays advisory"*,
+and the header of `scripts/apicompat-check.sh` says the job "is not in branch protection's required
+set, so today a break informs a merge rather than blocking one."
+
+**Both are wrong.** `main`'s branch protection lists two required contexts:
+
+```
+Deterministic gate
+API compatibility gate (breaking-change → SemVer major)
+```
+
+with `enforce_admins: true`, so not even an admin merge bypasses it. A `CP0002` wedges the PR outright.
+This was discovered by trying to merge, not by reading — the documentation and the enforced policy have
+drifted apart, and the enforced policy wins. Reconciling them (either re-titling ADR-0101 or removing
+the required context) is a governance change out of scope here; it should be filed against `gate.yml`
+and ADR-0101.
+
+The remedy the script itself names is a deliberate suppression, and the repo has precedent:
+`src/SkiaViewer/CompatibilitySuppressions.xml`, added for `ViewerOptions.LogicalSize` (#246) — the same
+"F# record gained a field, so its constructor arity changed" shape. So this feature ships
+`src/Symbology/CompatibilitySuppressions.xml`: **one** diagnostic, **one** target, and
+`IsBaselineSuppression` so that a *new* break introduced later still reddens the gate. It carries a
+lifetime note: delete it once a release `>= 0.5.0` is on the feed.
+
+Verified rather than assumed — packing `Symbology` against baseline `0.4.0` exits `1` with one `CP0002`
+without the file, and exits `0` with it.
+
+### Source compatibility
+
+Unaffected for the supported construction style: `{ Symbology.defaultToken with ... }` keeps compiling.
+A caller that writes a full record literal must add the field — none exists in this repo, and the roster
+mapping the skills teach uses `defaultToken`.
