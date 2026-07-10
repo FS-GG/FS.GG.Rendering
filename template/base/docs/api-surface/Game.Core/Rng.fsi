@@ -1,4 +1,5 @@
 // See skill: fs-gg-game-core
+// Mirrored from FS-GG/FS.GG.Game @ 0.2.0 (src/Game.Core/Rng.fsi); regenerate when $(FsGgGameVersion) moves.
 namespace FS.GG.Game.Core
 
 /// Public contract type exposed by the FS.GG.Game.Core package.
