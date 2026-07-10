@@ -42,17 +42,29 @@ let private profiles = [ "app"; "headless-scene"; "governed"; "sample-pack" ]
 
 // ---- self-provisioning (mirrors Feature128) ---------------------------------------------------
 
-let private validatorScriptPath = repositoryPath "scripts/validate-lifecycle-template.fsx"
+let private validatorScriptRelPath = "scripts/validate-lifecycle-template.fsx"
 
-// The report is a DERIVED artifact of template.json + the validator's verdict core, and it lives under
-// the gitignored readiness/, so it outlives runs and branch switches. Regenerating only when ABSENT lets
-// a report written against a different template.json satisfy the GV gates below.
+// Every file the env-free verdict core reads: template.json (the gating it audits), the validator
+// itself (the classification rules), and template/base/README.md (verifyBaseDocsNeutral). A report is
+// only as trustworthy as its OLDEST input — miss one and a stale report answers for a file it never saw,
+// which is the whole failure this guards. Keep in step with verifyVerdictCore.
+let private verdictCoreInputs =
+    [ templateJsonPath
+      repositoryPath validatorScriptRelPath
+      repositoryPath "template/base/README.md" ]
+
+// The report is a DERIVED artifact of those inputs, and it lives under the gitignored readiness/, so it
+// outlives runs and branch switches. Regenerating only when ABSENT lets a report written against a
+// different template.json satisfy the GV gates below.
 let private reportIsStale () =
     not (File.Exists validationReportPath)
     || (let writtenUtc = File.GetLastWriteTimeUtc validationReportPath
 
-        [ templateJsonPath; validatorScriptPath ]
-        |> List.exists (fun input -> File.Exists input && File.GetLastWriteTimeUtc input > writtenUtc))
+        // A vanished input counts as stale, never as "no evidence of change": regenerating then lets the
+        // verdict core throw on it loudly, instead of silently dropping it from the freshness check.
+        verdictCoreInputs
+        |> List.exists (fun input ->
+            not (File.Exists input) || File.GetLastWriteTimeUtc input > writtenUtc))
 
 let private selfProvisionReport () =
     if reportIsStale () then
@@ -67,7 +79,7 @@ let private selfProvisionReport () =
         psi.UseShellExecute <- false
         psi.RedirectStandardOutput <- true
         psi.RedirectStandardError <- true
-        [ "fsi"; "scripts/validate-lifecycle-template.fsx"; "--emit-report" ]
+        [ "fsi"; validatorScriptRelPath; "--emit-report" ]
         |> List.iter psi.ArgumentList.Add
         match Process.Start psi with
         | null -> ()
