@@ -52,11 +52,12 @@ module Visibility =
     /// transcendental-free, so it is exact and deterministic. Edge contact counts as a touch
     /// (inclusive, matching `Geometry.containsPoint`), and clips to a zero-length segment.
     ///
-    /// This is the cull predicate, and it must never report a false negative: a dropped occluder is a
-    /// wall the viewpoint sees straight through. It is also the *trim*: the returned endpoints are the
-    /// occluder's crossings of the bound, which the sweep needs as aim points — a wall spanning the
+    /// This is the cull, and it must never answer `None` for a segment that touches: a dropped occluder
+    /// is a wall the viewpoint sees straight through. It is also the *trim*: the returned endpoints are
+    /// the occluder's crossings of the bound, which the sweep needs as aim points — a wall spanning the
     /// bound has both its real endpoints outside it, so nothing would otherwise aim at the corners the
-    /// visible region turns on.
+    /// visible region turns on. A segment meeting `rect` at a single point clips to a zero-length pair;
+    /// it occludes nothing, and `polygon` drops it.
     let private clipSegmentToRect (rect: Rect) (a: Point) (b: Point) : (Point * Point) option =
         let dx = b.X - a.X
         let dy = b.Y - a.Y
@@ -64,7 +65,7 @@ module Visibility =
         // Narrow the surviving parameter window `[t0, t1]` by one half-plane `p * t <= q`. A `p` of zero
         // means the segment runs parallel to that slab, so it survives only where it already lies inside
         // it (`q >= 0`); an empty window `(1, 0)` is absorbing, so a rejected segment stays rejected.
-        // Struct tuples, so culling a wall list allocates nothing.
+        // Struct tuples, so narrowing the window itself allocates nothing.
         let inline clip (p: float) (q: float) (struct (t0, t1)) =
             if p = 0.0 then
                 if q < 0.0 then struct (1.0, 0.0) else struct (t0, t1)

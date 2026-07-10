@@ -105,6 +105,18 @@ let tests =
             Expect.isTrue (turnsAt -50.0 0.0) "the ring has a vertex at the left bound crossing (-50, 0)"
         }
 
+        // #284: the clip's degenerate case. A wall meeting the bound at exactly one point clips to zero
+        // length, occludes nothing, and must be dropped rather than kept as a duplicate aim point.
+        test "a wall grazing the bound box at a single point clips to nothing and leaves the ring unchanged" {
+            let src = p 0.0 0.0
+            // Bound box is [-10, 10]^2; this wall touches it only at the corner (10, 10).
+            let grazing = [ seg 10.0 10.0 20.0 20.0 ]
+            Expect.equal
+                (Visibility.polygon (settings 10.0) src grazing)
+                (Visibility.polygon (settings 10.0) src [])
+                "a zero-length clip contributes neither an aim point nor a hit"
+        }
+
         // The cull must still REJECT: a wall wholly outside the bound box cannot change the ring. Without
         // this, a cull that simply kept every segment would satisfy the spanning-chord test above.
         test "a wall wholly outside the bound box is culled and leaves the ring unchanged" {
