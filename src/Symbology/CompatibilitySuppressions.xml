@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- https://learn.microsoft.com/dotnet/fundamentals/package-validation/diagnostic-ids -->
+<!--
+  Issue #260: `Token` gained `SecondaryHeading: float option`, the opt-in second rotation channel
+  ADR-0102 sanctions. Adding a field to an F# record necessarily changes the arity of its generated
+  constructor, so ApiCompat reports CP0002 for the old 16-argument constructor against the published
+  0.4.0 baseline. The break is DELIBERATE and recorded — the same shape as `ViewerOptions.LogicalSize`
+  (#246) and the `Label` / `AutoLabel` / `LabelMotion` additions before it.
+
+  This file exists because `API compatibility gate` is a REQUIRED status check on `main` (branch
+  protection, `enforce_admins` on), so a CP0002 wedges the PR outright. ADR-0101 and the header of
+  `scripts/apicompat-check.sh` both still describe the gate as advisory and outside the required set;
+  they are out of date, and branch protection is the source of truth. See ADR-0102 § "ApiCompat is a
+  required check, whatever ADR-0101 says".
+
+  SCOPE: one diagnostic, one target. `IsBaselineSuppression` confines it to the comparison against the
+  published baseline, so a NEW break introduced later still reddens the gate. Do not widen this file to
+  silence a break you have not read.
+
+  LIFETIME: delete it once a release carrying this break (>= 0.5.0) is published to the org feed. The
+  gate baselines off the feed's latest version, not the repo's, so the suppression is needed only for
+  the window between this merge and that publish.
+-->
+<Suppressions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:FS.GG.UI.Symbology.Token.#ctor(System.Double,System.Double,System.Double,System.Double,FS.GG.UI.Symbology.Faction,FS.GG.UI.Symbology.Klass,FS.GG.UI.Symbology.Sigil,FS.GG.UI.Symbology.TokenState,System.Double,System.Double,System.Int32,System.Double,System.Boolean,Microsoft.FSharp.Core.FSharpOption{FS.GG.UI.Symbology.LabelText},Microsoft.FSharp.Core.FSharpOption{FS.GG.UI.Symbology.AutoLabelSpec},Microsoft.FSharp.Core.FSharpOption{FS.GG.UI.Symbology.LabelMotion})</Target>
+    <Left>lib/net10.0/FS.GG.UI.Symbology.dll</Left>
+    <Right>lib/net10.0/FS.GG.UI.Symbology.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+</Suppressions>

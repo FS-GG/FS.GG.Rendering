@@ -87,6 +87,7 @@ type Token =
       Cy: float
       R: float
       Heading: float
+      SecondaryHeading: float option
       Faction: Faction
       Klass: Klass
       Sigil: Sigil
@@ -286,11 +287,42 @@ module Symbology =
               Scene.line { X = t.Cx - s; Y = t.Cy - s } { X = t.Cx + s; Y = t.Cy + s } paint
               Scene.line { X = t.Cx - s; Y = t.Cy + s } { X = t.Cx + s; Y = t.Cy - s } paint ]
 
+    // Secondary heading -> a centre-out barrel with a tip mark (feature 254, FR-003). Angle 0 points
+    // north, matching `Heading` (the Token nose at (0,-1), the Badge pip, the Ring needle). The barrel
+    // is sited so it cannot be misread as the primary indicator: it starts at the centre and its tip
+    // mark sits at a radius no primary indicator occupies. Callers pass the per-grammar geometry.
+    //
+    // Never called with `SecondaryHeading = None` — absence contributes NO node at all. Note that
+    // `Scene.empty` is itself a node (`describe` yields `EmptyElement` for it), so the usual
+    // "return Scene.empty when off" shape would have drifted every existing golden; the caller omits
+    // these nodes instead. Returned as BARE SIBLINGS, never wrapped in a group, for the same reason
+    // `withLabel` appends bare line nodes: a wrapper would add a third node to the tree.
+    //
+    // The barrel always starts clear of the centre identity sigil (which every grammar draws out to
+    // 0.42R): a line struck through the sigil muddies the identity channel exactly where it is read.
+    // Only `outer` varies per grammar, and it is measured from the centre in units of R.
+    let private secondaryHeadingInner = 0.15
+
+    let private secondaryHeadingTipRadius (t: Token) = max 1.0 (t.R * 0.1)
+
+    /// The farthest any secondary-heading indicator reaches, in units of `R`. `filmstrip` reads this
+    /// to size its cells, so the two cannot drift apart.
+    let private secondaryHeadingMaxExtent = 1.32 + 0.1
+
+    let private secondaryHeadingIndicator (outer: float) (width: float) (t: Token) (angle: float) : Scene list =
+        let color = factionColor t.Faction
+        let at radius = { X = t.Cx + sin angle * t.R * radius; Y = t.Cy - cos angle * t.R * radius }
+        let tip = at outer
+
+        [ Scene.line (at secondaryHeadingInner) tip (Paint.stroke color width |> Paint.withStrokeCap Round)
+          Scene.circle tip (secondaryHeadingTipRadius t) color ]
+
     let defaultToken: Token =
         { Cx = 0.0
           Cy = 0.0
           R = 1.0
           Heading = 0.0
+          SecondaryHeading = None
           Faction = Neutral
           Klass = Mobile
           Sigil = Ring
@@ -1074,12 +1106,17 @@ module Symbology =
         else
             withLabel
                 (tokenLabelNodes t labelPhase)
-                [ chargeFill t
-                  Scene.path (bodyPath t) (strokePaint t)
-                  sigilScene t
-                  tailBeads t
-                  healthArc t
-                  shieldMount t ]
+                [ yield chargeFill t
+                  yield Scene.path (bodyPath t) (strokePaint t)
+                  yield sigilScene t
+                  yield tailBeads t
+                  yield healthArc t
+                  yield shieldMount t
+                  // Here the primary heading IS the rotated silhouette, so the barrel only has to clear
+                  // the hull (1.0R) and the belly arc (1.18R) to read as a separate channel.
+                  match t.SecondaryHeading with
+                  | Some angle -> yield! secondaryHeadingIndicator 1.32 2.5 t angle
+                  | None -> () ]
 
     let private drawSymbol (t: Token) : Scene = drawSymbolAt restPhase t
 
@@ -1155,10 +1192,18 @@ module Symbology =
             token { tk with Cx = cx; Cy = cy })
         |> Scene.group
 
+    // 2.6R per cell is the pre-feature spacing and must stay EXACTLY that when nothing draws a barrel,
+    // or every filmstrip golden drifts. But each cell then owns only 1.3R, and a barrel reaches
+    // `secondaryHeadingMaxExtent` (1.42R) — so a filmstrip of turreted units would overrun its
+    // neighbour. Widen to fit the barrel, and only when one is present.
+    let private filmstripSpacing (entries: (Motion * Token) list) (maxR: float) : float =
+        let anyBarrel = entries |> List.exists (fun (_, tk) -> Option.isSome tk.SecondaryHeading)
+        maxR * (if anyBarrel then 2.0 * secondaryHeadingMaxExtent else 2.6)
+
     let filmstrip (samples: int) (entries: (Motion * Token) list) : Scene =
         let samples = max 1 samples
         let maxR = entries |> List.fold (fun acc (_, tk) -> max acc tk.R) 1.0
-        let spacing = maxR * 2.6
+        let spacing = filmstripSpacing entries maxR
 
         entries
         |> List.mapi (fun row (m, tk) ->
@@ -1248,13 +1293,20 @@ module Symbology =
         else
             withLabel
                 (badgeLabelNodes t labelPhase)
-                [ chargeFill t
-                  Scene.path (polyPath (badgeFramePoints t.Klass t.Cx t.Cy t.R)) (strokePaint t)
-                  sigilScene { t with Heading = 0.0 } // screen-aligned centre identity (heading is the edge pip)
-                  badgeSpeedPips t
-                  badgeHealthBar t
-                  shieldMount t
-                  badgeHeadingPip t ]
+                [ yield chargeFill t
+                  yield Scene.path (polyPath (badgeFramePoints t.Klass t.Cx t.Cy t.R)) (strokePaint t)
+                  yield sigilScene { t with Heading = 0.0 } // screen-aligned centre identity (heading is the edge pip)
+                  yield badgeSpeedPips t
+                  yield badgeHealthBar t
+                  yield shieldMount t
+                  yield badgeHeadingPip t
+                  // Stops WELL inside the frame. The rim pip carrying the primary heading sits at 1.0R
+                  // with radius 0.12R, so a barrel reaching 0.86R would have its 0.10R tip mark merge
+                  // into the pip whenever the two headings agree — and "turret forward" is the common
+                  // rest state. Ending at 0.70R leaves a visible gap in exactly that case.
+                  match t.SecondaryHeading with
+                  | Some angle -> yield! secondaryHeadingIndicator 0.7 2.0 t angle
+                  | None -> () ]
 
     let private drawBadge (t: Token) : Scene = drawBadgeAt restPhase t
 
@@ -1330,14 +1382,19 @@ module Symbology =
 
             withLabel
                 (ringLabelNodes t labelPhase)
-                [ chargeFill t
-                  Scene.ellipse bounds (strokePaint t) // outer ring: hue=faction, width=threat, dash=state
-                  ringClassGlyph t
-                  sigilScene { t with Heading = 0.0 } // screen-aligned centre identity
-                  ringSpeedBeads t
-                  ringHealthArc t
-                  shieldMount t
-                  ringHeadingNeedle t ]
+                [ yield chargeFill t
+                  yield Scene.ellipse bounds (strokePaint t) // outer ring: hue=faction, width=threat, dash=state
+                  yield ringClassGlyph t
+                  yield sigilScene { t with Heading = 0.0 } // screen-aligned centre identity
+                  yield ringSpeedBeads t
+                  yield ringHealthArc t
+                  yield shieldMount t
+                  yield ringHeadingNeedle t
+                  // The primary needle stops inside the ring (0.95R); the barrel pushes its tip mark
+                  // outside it, so the two are told apart by extent even when they point the same way.
+                  match t.SecondaryHeading with
+                  | Some angle -> yield! secondaryHeadingIndicator 1.3 1.5 t angle
+                  | None -> () ]
 
     let private drawRing (t: Token) : Scene = drawRingAt restPhase t
 
@@ -1422,7 +1479,7 @@ module Symbology =
         | g ->
             let samples = max 1 samples
             let maxR = entries |> List.fold (fun acc (_, tk) -> max acc tk.R) 1.0
-            let spacing = maxR * 2.6
+            let spacing = filmstripSpacing entries maxR
 
             entries
             |> List.mapi (fun row (m, tk) ->

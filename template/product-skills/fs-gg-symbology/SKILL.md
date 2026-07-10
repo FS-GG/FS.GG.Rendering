@@ -42,6 +42,22 @@ let png   = Render.toPng { Width = 920; Height = 660 } board "./readiness/symbol
 // -> read `png` back, critique at the target size, TWEAK mapUnit ONLY, repeat.
 ```
 
+## Two rotations (opt-in second heading)
+
+`Heading` is where a unit **faces**; `SecondaryHeading : float option` is where it **points**, when the
+two differ — a turret on a hull, a weapon arc, a sensor or gaze direction. It is `None` by default, and
+a `None` token renders byte-identically to one with no such channel:
+
+```fsharp
+{ Symbology.defaultToken with Heading = u.HullFacing; SecondaryHeading = Some u.TurretFacing }
+```
+
+- Both are **absolute** angles, `0.0` = north, and they wrap — any finite value is in-domain.
+- Every grammar draws the second as a **barrel with a tip mark** that starts clear of the centre sigil,
+  sited so it never reads as the primary nose / rim pip / needle.
+- Leave it `None` unless the angles genuinely differ. A barrel that always agrees with the nose spends a
+  channel to say nothing — map it in `mapUnit` only when your units really have two facings.
+
 ## Identity label (opt-in inspection-detail channel)
 
 `Token` carries an optional `Label : LabelText option` — a short callsign/code drawn screen-aligned in a
