@@ -238,6 +238,64 @@ module Keymap =
 
     let clear (_: Keymap) = empty
 
+    // Issue 332 (epic 330): one "many keys -> one command" diagnostic per command reachable from two
+    // or more DISTINCT keys. Deterministic — commands sorted, keys sorted within each.
+    let private sharedCommandDiagnostics (bindings: KeyboardBinding list) : KeyboardDiagnostic list =
+        bindings
+        |> List.groupBy (fun binding -> binding.Command)
+        |> List.sortBy fst
+        |> List.choose (fun (command, group) ->
+            let keys = group |> List.map (fun binding -> binding.Key) |> List.distinct |> List.sort
+
+            if List.length keys > 1 then
+                Some
+                    { Code = "SharedCommandBinding"
+                      Severity = "Info"
+                      Message =
+                        sprintf "Command '%s' is bound to multiple keys: %s." command (String.concat ", " keys)
+                      Key = None }
+            else
+                None)
+
+    // Issue 332 (epic 330): one "duplicate key" diagnostic per key that appears in more than one
+    // binding — the conflict `ofBindings` silently collapses last-wins. Deterministic, keys sorted; the
+    // named winner mirrors `ofBindings` (the LAST binding in the list).
+    let private duplicateKeyDiagnostics (bindings: KeyboardBinding list) : KeyboardDiagnostic list =
+        bindings
+        |> List.groupBy (fun binding -> binding.Key)
+        |> List.sortBy fst
+        |> List.choose (fun (key, group) ->
+            if List.length group > 1 then
+                let commands = group |> List.map (fun binding -> binding.Command)
+
+                Some
+                    { Code = "DuplicateKeyBinding"
+                      Severity = "Warning"
+                      Message =
+                        sprintf
+                            "Key '%s' is bound %d times (commands: %s); last-wins keeps '%s'."
+                            key
+                            (List.length group)
+                            (String.concat ", " commands)
+                            (List.last commands)
+                      Key = Some key }
+            else
+                None)
+
+    // Issue 332 (epic 330): the named resolution entry point the live dispatch path (issue 333) will
+    // consult. Keymap-first, so a host binds one keymap and resolves varying keys; `tryFind` flipped.
+    let resolve (keymap: Keymap) (key: KeyId) : CommandId option = keymap.Bindings |> Map.tryFind key
+
+    // Issue 332 (epic 330): a built keymap indexes by key, so it can hold NO duplicate-key conflict;
+    // only many-keys->one-command is surfaced. Use `validateBindings` for the raw-list case.
+    let validate (keymap: Keymap) : KeyboardDiagnostic list =
+        keymap |> toBindings |> sharedCommandDiagnostics
+
+    // Issue 332 (epic 330): conflicts in a raw binding list, BEFORE `ofBindings` collapses duplicate
+    // keys. Duplicate-key diagnostics first (by key), then shared-command diagnostics (by command).
+    let validateBindings (bindings: KeyboardBinding list) : KeyboardDiagnostic list =
+        duplicateKeyDiagnostics bindings @ sharedCommandDiagnostics bindings
+
 // Feature 108 (US5, FR-016): modifier state recovered at the key boundary (see KeyboardInput.fsi).
 type KeyModifiers =
     { Ctrl: bool

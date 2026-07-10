@@ -11,6 +11,7 @@
     <Compile Include="Feature108ModifierTests.fs" />
     <Compile Include="Issue183ChordFormatTests.fs" />
     <Compile Include="Issue331KeymapTests.fs" />
+    <Compile Include="Issue332ResolveConflictTests.fs" />
     <Compile Include="Feature143OverlayKeyboardTests.fs" />
     <Compile Include="Feature144OverlayKeyboardEvidenceTests.fs" />
     <Compile Include="Program.fs" />
