@@ -1394,7 +1394,11 @@ claim_cmd() {
     boardnote="note: not on board '$TITLE' (the marker is the lock; add it to sequence it)"
   fi
   printf 'claimed %s by worker %s  ·  %s\n' "$R_REPO#$R_NUM" "$w" "$boardnote"
-  printf '  isolate:  git worktree add ../%s-%s -b %s\n' "$R_REPO" "$R_NUM" "$branch"
+  # `origin/main` is not decoration. `git worktree add -b <new>` with no commit-ish branches from the
+  # shared checkout's HEAD, and this protocol's premise is that N workers pass through that checkout —
+  # so its HEAD is routinely some other worker's unmerged branch. Branching off it silently carries
+  # that branch's commits into this item's PR (.github#319).
+  printf '  isolate:  git worktree add ../%s-%s -b %s origin/main\n' "$R_REPO" "$R_NUM" "$branch"
   printf '  attribute: git commit --trailer "FSGG-Worker: %s"\n' "$w"
   warn_shared_identity
 }
