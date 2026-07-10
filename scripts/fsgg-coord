@@ -149,6 +149,20 @@
 
 set -euo pipefail
 
+# `die` must be FATAL from anywhere — including inside a `$( )`. `exit` in a command substitution
+# only unwinds that subshell, and `set -e` does NOT propagate the substitution's non-zero status
+# across a bare `out="$(...)"` assignment (verified on bash 5.x). So a `die` two subshells deep used
+# to leave the caller with an empty string and rc 0, and an UNREADABLE board would render as a
+# confident, empty one (#344). `die` therefore signals the top-level shell, whose trap turns any
+# die — at any nesting depth — into a real `exit 1`.
+#
+# The exception: a FEW callers deliberately run a command in a subshell so its `die` stays LOCAL —
+# a best-effort board write whose failure must NOT unwind a claim the lock already holds, and the
+# soft read `item_status` feeds release/reap. They set `SOFT_DIE=1` in that subshell's environment;
+# `die` then skips the signal and just exits the subshell, so the caller's `if (…)` / `|| return`
+# catches it exactly as before. Unmarked dies stay fatal, which is the whole point.
+trap 'exit 1' TERM
+
 OWNER="${FSGG_COORD_OWNER:-FS-GG}"
 TITLE="${FSGG_COORD_PROJECT:-Coordination}"
 # The ONLY Status a claim writes. Undoing a claim (`release`, `reap`) resets this column and no
@@ -164,7 +178,7 @@ CLAIM_LEASE_MIN="${FSGG_CLAIM_LEASE_MIN:-120}"
 CLAIM_MARK='fsgg:claim'
 MSG_MARK='fsgg:msg'
 
-die() { echo "fsgg-coord: $*" >&2; exit 1; }
+die() { echo "fsgg-coord: $*" >&2; [ -n "${SOFT_DIE:-}" ] || kill -s TERM $$ 2>/dev/null; exit 1; }
 dbg() { [ -n "${FSGG_COORD_DEBUG:-}" ] && echo "fsgg-coord: $*" >&2 || true; }
 
 command -v gh >/dev/null 2>&1 || die "gh not found (GitHub CLI is required)."
@@ -656,11 +670,12 @@ item_status() {
       } } } }
     rateLimit{ cost remaining }
   }'
-  # Check the read EXPLICITLY. `gql` dies, but its `exit` only unwinds the `$( )` it runs in, leaving
-  # `out` empty here — and an empty payload yields no board node, which is indistinguishable from
-  # "not on this board" (rc 2) unless we catch it first. That mistake is the whole bug in miniature:
-  # a failed read must never be reported as a known, benign state.
-  out="$(gql "$q" -f owner="$R_OWNER" -f repo="$R_REPO" -F num="$R_NUM")" || return 1
+  # Check the read EXPLICITLY, and mark it SOFT. This caller is the deliberate exception to #344's
+  # fail-closed rule: `release`/`reap` must still drop a lease when the board is unreadable, so here a
+  # failed read is rc 1 (handled), not a fatal abort. `SOFT_DIE=1` keeps `gql`'s `die` from escalating
+  # to the whole command, so `|| return 1` catches it. An empty payload yields no board node,
+  # indistinguishable from "not on this board" (rc 2) unless we catch it first — so we catch it.
+  out="$(SOFT_DIE=1 gql "$q" -f owner="$R_OWNER" -f repo="$R_REPO" -F num="$R_NUM")" || return 1
   [ -n "$out" ] || return 1
   node="$(jq -c --argjson pn "$boardnum" \
     '[ .data.repository.issue.projectItems.nodes[]? | select(.project.number == $pn) ] | first // empty' \
@@ -1650,8 +1665,9 @@ claim_cmd() {
   stamp_worktree "$w" "$R_REPO#$R_NUM"
   # A SUBSHELL, not just a redirect: set_field's `die` is an `exit`, and the board flip is strictly
   # best-effort — the lock is already held, so a board that rejects the write must not unwind a claim.
+  # SOFT_DIE=1 keeps that `die` from escalating to the whole command under #344's fatal-die rule.
   local boardnote
-  if ( set_field "$ref" Status "$CLAIM_STATUS" ) >/dev/null 2>&1; then
+  if ( SOFT_DIE=1; set_field "$ref" Status "$CLAIM_STATUS" ) >/dev/null 2>&1; then
     boardnote="board: $CLAIM_STATUS"
   else
     boardnote="note: not on board '$TITLE' (the marker is the lock; add it to sequence it)"
@@ -1769,7 +1785,9 @@ release_cmd() {
   fi
 
   if [ -z "$boardnote" ]; then
-    if ( set_field "$ref" Status "$status" ) >/dev/null 2>&1; then boardnote="board: $status"
+    # SOFT_DIE=1: the board write is best-effort (the lease is already dropped); its `die` must not
+    # escalate to the whole command under #344's fatal-die rule.
+    if ( SOFT_DIE=1; set_field "$ref" Status "$status" ) >/dev/null 2>&1; then boardnote="board: $status"
     else boardnote="note: not on board '$TITLE'"; fi
   fi
   printf 'released %s (worker %s)  ·  %s\n' "$R_REPO#$R_NUM" "$w" "$boardnote"
@@ -2306,7 +2324,7 @@ reap_cmd() {
     local rnote ract rval
     IFS=$'\t' read -r ract rval < <(unclaim_status "$r#$num")
     case "$ract" in
-      write) if ( set_field "$r#$num" Status "$rval" ) >/dev/null 2>&1; then rnote="board: $rval"
+      write) if ( SOFT_DIE=1; set_field "$r#$num" Status "$rval" ) >/dev/null 2>&1; then rnote="board: $rval"
              else rnote="not on board (marker cleared; nothing to reset)"; fi ;;
       keep)  rnote="board: $rval (preserved)" ;;
       offboard)   rnote="not on board (marker cleared; nothing to reset)" ;;
@@ -2450,8 +2468,10 @@ take_cmd() {
       echo "  see why:  fsgg-coord batch${repo:+ --repo $repo}" >&2
       return 0
     fi
-    # claim in a subshell: its `die` must end the attempt, not `take`.
-    if ( claim_cmd "$pick" ); then return 0; fi
+    # claim in a subshell: its `die` (a lost race) must end the attempt, not `take`. SOFT_DIE=1 keeps
+    # that `die` local under #344's fatal-die rule — the board read that must fail closed already
+    # happened in `batch_cmd` above, before we ever get a `$pick` to claim.
+    if ( SOFT_DIE=1; claim_cmd "$pick" ); then return 0; fi
     echo "fsgg-coord: worker $w lost $pick (attempt $attempt/$tries) — rescheduling." >&2
     attempt=$((attempt + 1))
   done
