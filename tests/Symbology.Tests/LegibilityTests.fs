@@ -169,19 +169,72 @@ let tests =
 
           // ── C9 (continuous exempt) — many distinct continuous values, no overload ─────────
           test "C9-continuous-exempt — many distinct continuous values emit no overload (FR-009)" {
-              // 20 units, identical categoricals/speed, but every continuous channel distinct & in-domain.
+              // 20 units, identical categoricals/speed/size, but every CONTINUOUS channel distinct &
+              // in-domain. Health and the two rotations are read as a position on a scale, not a rank,
+              // so an arbitrary number of distinct values is legible (#285: Size/Threat/Charge are NOT
+              // in this set — they are Ordered, and the test below asserts they overload).
               let board =
                   [ for i in 0..19 ->
                         { baseUnit with
-                            R = 10.0 + float i
-                            Threat = float i / 20.0
-                            Charge = float i / 25.0
                             Health = float i / 30.0
-                            Heading = float i * 13.0 } ]
+                            Heading = float i * 13.0
+                            SecondaryHeading = Some(float i * 7.0) } ]
 
               let report = Legibility.score board
               Expect.equal report.Findings [] "continuous channels are overload-exempt — no findings"
               Expect.equal report.Verdict Legibility.Clean "Clean despite 20 distinct continuous values"
+          }
+
+          // ── #285 — the doctrine's headline channels are the ones the linter must enforce ──
+          test "#285 — Size/Threat/Charge are Ordered: a float ramp overloads, one Warning each" {
+              // The defect this pins: these three advertise ~4 reliable levels in the skill's §4 table,
+              // and used to be `Continuous`, cap 0 — so `overloadFindings` skipped them and a board of
+              // twelve distinct radii lint `Clean`. Every other channel here is held at one level.
+              let board =
+                  [ for i in 0..11 ->
+                        { baseUnit with
+                            R = 10.0 + float i
+                            Threat = float i / 20.0
+                            Charge = float i / 25.0 } ]
+
+              let report = Legibility.score board
+              Expect.equal report.Verdict Legibility.HasWarnings "twelve distinct radii is not a legible board"
+
+              for ch in [ Legibility.Size; Legibility.Threat; Legibility.Charge ] do
+                  let found = report.Findings |> List.filter (fun f -> f.Channel = ch)
+                  Expect.equal found.Length 1 (sprintf "exactly one %A overload" ch)
+                  Expect.equal found.Head.Severity Legibility.Warning (sprintf "%A overload is a Warning" ch)
+                  Expect.stringContains found.Head.Message "12" (sprintf "%A message reports the 12 used levels" ch)
+                  Expect.stringContains found.Head.Message "4" (sprintf "%A message reports the capacity" ch)
+                  Expect.equal (usageOf report ch).Capacity 4 (sprintf "%A usage carries the capacity as evidence" ch)
+                  Expect.equal (usageOf report ch).DistinctLevels 12 (sprintf "%A usage carries the used count as evidence" ch)
+
+                  // `Units` names the units holding levels past capacity (#295's `excessUnits`), which
+                  // ranks levels by (frequency DESC, first-appearance ASC) and calls the tail excess.
+                  // On a MONOTONIC RAMP every level has frequency 1, so the tie-break collapses to first
+                  // appearance: the named units are the last 12-4 introduced — here the LARGEST radii,
+                  // not the rarest levels. Pinned deliberately, because it is what a float channel gets
+                  // and it is not obviously what a ramp wants (merging adjacent bands would be). If
+                  // #295's ordering ever learns about magnitude, this expectation is the thing that
+                  // should fail and force the conversation.
+                  Expect.equal
+                      found.Head.Units
+                      [ 4..11 ]
+                      (sprintf "%A names the eight units past capacity, ascending" ch)
+          }
+
+          test "#285 — a mapping that quantises Size/Threat/Charge to 4 levels stays Clean" {
+              // The tweak the finding above asks for: quantise in the mapping, don't widen the grammar.
+              let board =
+                  [ for i in 0..11 ->
+                        { baseUnit with
+                            R = 10.0 + float (i % 4) * 5.0
+                            Threat = float (i % 4) / 4.0
+                            Charge = float (i % 4) / 4.0 } ]
+
+              let report = Legibility.score board
+              Expect.equal report.Findings [] "four levels across twelve units is within capacity"
+              Expect.equal report.Verdict Legibility.Clean "verdict is Clean"
           }
 
           // ── C11 / C12 — whole-board motion load ──────────────────────────────────────────

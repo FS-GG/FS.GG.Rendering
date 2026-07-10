@@ -40,20 +40,42 @@ with zero drift on the existing `Scene` / `SkiaViewer` / `Controls` / `Canvas` b
 
 ## The fixed channel grammar (do not invent geometry — pick from this table)
 
-| Channel | Token field | Primitive | Reliable levels | Salience |
-|---|---|---|---|---|
-| Stroke **hue** -> faction | `Faction` | `Paint.stroke` colour | ~7 categorical | high |
-| Motion **rhythm** -> activity | `Motion` (via `animate`) | overlay over phase | ~6 rhythms | high |
-| **Size** -> magnitude | `R` | symbol radius | ~4 ordered | high |
-| **Silhouette** + sigil -> class + identity | `Klass`, `Sigil` | `Path.create` + centre mark | ~6 + many | med |
-| **Rotation** -> heading | `Heading` | point transform | continuous | med |
-| **Barrel** -> secondary heading | `SecondaryHeading` | centre-out line + tip mark | continuous | med |
-| Stroke **width** -> threat | `Threat` | `Paint.stroke` width | ~4 ordered | med |
-| Interior **gradient** -> charge | `Charge` | `Shader.RadialGradient` | ~4 ordered | med |
-| Belly **arc** -> health | `Health` | `Scene.arc` + green->red lerp | continuous | low |
-| Tail **beads** -> speed | `Speed` | `Scene.circle` run | ~4 | low |
-| Stroke **dash** -> confirmed/suspected | `TokenState` | `PathEffect.Dash` | ~3 | inspection |
-| Corner **mount** -> shield | `Shield` | small mark | ~3 per slot | inspection |
+`Legibility.table` is the **single source** of the `Kind` and `Capacity` columns below; a test
+(`Symbology.Tests/LegibilityDoctrineTests.fs`) parses this table and fails if the two disagree. Change
+the F# table, never this prose alone. Rows are in `Legibility.table` order, with whole-board `Motion`
+last (it has no row).
+
+| Channel | Token field | Primitive | Kind | Capacity | Salience |
+|---|---|---|---|---|---|
+| Stroke **hue** -> faction | `Faction` | `Paint.stroke` colour | Categorical | 7 | high |
+| **Silhouette** -> class | `Klass` | `Path.create` | Categorical | 6 | med |
+| Centre **sigil** -> identity | `Sigil` | centre mark | Categorical | 12 | med |
+| Stroke **dash** -> confirmed/suspected | `State` | `PathEffect.Dash` | Categorical | 3 | inspection |
+| Corner **mount** -> shield | `Shield` | small mark | Categorical | 3 | inspection |
+| Tail **beads** -> speed | `Speed` | `Scene.circle` run | Ordered | 4 | low |
+| **Size** -> magnitude | `R` | symbol radius | Ordered | 4 | high |
+| Stroke **width** -> threat | `Threat` | `Paint.stroke` width | Ordered | 4 | med |
+| Interior **gradient** -> charge | `Charge` | `Shader.RadialGradient` | Ordered | 4 | med |
+| Belly **arc** -> health | `Health` | `Scene.arc` + green->red lerp | Continuous | — | low |
+| **Rotation** -> heading | `Heading` | point transform | Continuous | — | med |
+| **Barrel** -> secondary heading | `SecondaryHeading` | centre-out line + tip mark | Continuous | — | med |
+| Motion **rhythm** -> activity | `Motion` (via `animate`) | overlay over phase | whole board | budget 1 | high |
+
+**Capacity is what the eye separates, not what the grammar can draw.** `Speed` renders `0..6` beads —
+all seven bead counts are in-domain, and `Legibility.score` errors *outside* that range — but only its
+capacity-many are reliably *ranked* at board size, so spending more distinct speeds than the capacity is
+a `Warning`, not an `Error`. The same split holds for `Faction` and `Sigil`, whose domains are open
+(`Custom` colours, `Mark` paths). Domain violations are per unit; overloads are per board.
+
+`Size`, `Threat` and `Charge` carry a `float`, and it is your **mapping's job to quantise it**: a radius
+ramp of twelve distinct values is twelve levels, and the linter says so. `Health` and the two rotations
+are the only genuinely continuous channels — read as a position on a scale, never as a rank.
+
+`Motion` is scored **per board, not per unit**: the grammar offers five non-`Idle` rhythms (`Pulse`,
+`Spin`, `Blink`, `Damage`, `Moving`) and you may have **one** of them live across the whole board
+(`Legibility.scoreAnimated` warns above that). It is a palette to choose from, not a rank to spend — the
+strictest channel in the grammar, because a second rhythm competes for the same attention grab instead
+of adding a level to it. It has no `Legibility.table` row and no `ChannelUsage` entry.
 
 A zero/empty-area `Token` (`R <= 0`) renders a visible **placeholder**, never a blank or a crash.
 
@@ -156,13 +178,16 @@ first-class value `Grammar = Token | Badge | Ring`; one `'stats -> Token` Channe
 
 - **Assign-by-urgency**: the most urgent state goes on the most salient channels (hue, motion, size).
 - **Redundancy on critical state**: encode urgent state across *multiple* pre-attentive channels.
-- **One active motion at a time**: never stack motion rhythms on one symbol (`animate` takes one `Motion`).
+- **One active rhythm per board**: across the whole board, use at most one non-`Idle` `Motion` — a
+  second rhythm competes with the first instead of adding a level. (Stacking rhythms on a *single*
+  symbol is impossible by type: `animate` takes one `Motion`. The rule you can break is the board one,
+  and `scoreAnimated` is what catches it.)
 - **Never critical state on dash alone**: dash + corner mounts are inspection-only channels.
 - **No faction/state hue collision (FR-019)**: faction rides the saturated stroke-hue palette; inspection
   state rides the dash channel — they never share the hue channel. (State *semantics* that need colour
   reuse the repo's Ant status tokens via `fs-gg-ant-design`, never the faction palette.)
 - **Critique checklist**: faction separable? class distinct? health readable at the target on-board
-  size? any channel overloaded beyond its reliable level count above?
+  size? any channel overloaded beyond its capacity above?
 
 ## Grammar vs mapping — the pattern
 

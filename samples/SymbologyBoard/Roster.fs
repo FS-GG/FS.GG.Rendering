@@ -39,18 +39,29 @@ let private sigilOf role =
     | "scout" -> Fang
     | _ -> Bolt
 
-/// The approved channel assignment (FinalSymbolSet.fsx, unchanged). Urgent state (DPS) is redundant across
-/// stroke WIDTH (threat) and interior GRADIENT (charge); team rides the saturated faction HUE; suspected
-/// contacts ride the DASH (inspection-only); armour rides the corner MOUNT (inspection). Faction hue and
-/// inspection state never share the hue channel.
+/// DPS quantised to the four levels `Legibility.table` says the eye ranks on an `Ordered` channel (#285).
+/// The raw `Dps / 120.0` ramp this replaces spent one distinct stroke width per unit — in-domain, but a
+/// rank of eight the eye cannot read, and now an overload finding. Threat and charge share the band on
+/// purpose: they redundantly encode the SAME urgent state, so they encode the same rank.
+let private threatBand dps =
+    if dps >= 100.0 then 1.0
+    elif dps >= 75.0 then 0.75
+    elif dps >= 50.0 then 0.5
+    else 0.25
+
+/// The approved channel assignment (FinalSymbolSet.fsx, with DPS quantised — see `threatBand`). Urgent
+/// state (DPS) is redundant across stroke WIDTH (threat) and interior GRADIENT (charge); team rides the
+/// saturated faction HUE; suspected contacts ride the DASH (inspection-only); armour rides the corner
+/// MOUNT (inspection). Faction hue and inspection state never share the hue channel. `R` is one level for
+/// every unit: this roster does not encode magnitude on size.
 let mapUnit (u: UnitStats) : Token =
     { Symbology.defaultToken with
         R = 30.0
         Faction = factionOf u.Side
         Klass = klassOf u.Role
         Sigil = sigilOf u.Role
-        Threat = min 1.0 (u.Dps / 120.0)
-        Charge = min 1.0 (u.Dps / 130.0)
+        Threat = threatBand u.Dps
+        Charge = threatBand u.Dps
         Speed = int (min 4.0 (u.Speed / 4.0))
         Health = u.Hp / u.HpMax
         State = (if u.Suspected then Suspected else Confirmed)

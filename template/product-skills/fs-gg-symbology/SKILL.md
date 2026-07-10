@@ -137,9 +137,20 @@ reproduces the existing functions byte-for-byte.
 
 ## Legibility rules to critique against
 
-Assign-by-urgency (urgent state on hue/motion/size); redundancy on critical state; one active motion at
-a time; never critical state on dash alone; faction (saturated hue) and inspection state (dash) never
-share the hue channel. Check: faction separable? class distinct? health readable at the target size?
+Assign-by-urgency (urgent state on hue/motion/size); redundancy on critical state; **one active rhythm
+per board** (at most one non-`Idle` `Motion` across the whole board — a single symbol cannot stack
+rhythms, `animate` takes one `Motion`); never critical state on dash alone; faction (saturated hue) and
+inspection state (dash) never share the hue channel. Check: faction separable? class distinct? health
+readable at the target size?
+
+**`Legibility.table` is the single source of every channel's capacity** — read it (`Legibility.table |>
+List.iter (printfn "%A")`) rather than memorising numbers, and note that a capacity is what the eye
+separates, not what the grammar can draw (`Speed` renders `0..6` beads but ranks fewer of them, so a
+board spending more distinct speeds than the capacity warns even though every unit is in-domain). `R`,
+`Threat` and
+`Charge` carry a `float` and are `Ordered`, so **quantise them in `mapUnit`** — a ramp of twelve
+distinct radii is twelve levels and lints as an overload. Only `Health` and the two rotations are
+`Continuous`, and only they are overload-exempt.
 
 CRITIQUE with two complementary checks: (a) LINT — run the linter on the produced symbol set
 (`Legibility.score (roster |> List.map mapUnit)`; animated boards use `scoreAnimated` over the
