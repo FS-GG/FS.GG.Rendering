@@ -316,9 +316,11 @@ let private buildSpotCheck (sddAppDir: string) (noneAppDir: string) =
 ///
 /// Runs the copy materialized into the spec-kit scaffold (`.agents/` is gated to lifecycle=spec-kit,
 /// so this is the only lifecycle that carries it) and pins the same verdict SEQUENCE `gate.yml` pins
-/// in-tree. Returns ("pass" | "environment-limited", detail). Only an unreachable FEED is
-/// environment-limited; a broken script, a drifted Legibility contract, or a materialized in-tree
-/// twin all throw and block close (SC-007).
+/// in-tree. Returns ("pass" | "environment-limited", detail). Two things are environment-limited: an
+/// unreachable FEED, and (since #304) the publish-lag window where the recipe leads its pinned published
+/// library — a merged-but-unshipped library change, proven safe upstream by the required in-tree gate.
+/// A broken script, a drifted Legibility contract, or a materialized in-tree twin all throw and block
+/// close (SC-007).
 let private symbologyReferenceCheck (specKitAppDir: string) =
     let relPath = ".agents/skills/fs-gg-symbology/reference.fsx"
     let script = Path.Combine(specKitAppDir, relPath.Replace('/', Path.DirectorySeparatorChar))
@@ -378,14 +380,23 @@ let private symbologyReferenceCheck (specKitAppDir: string) =
         // recipe restores from nuget.org on every run, so the bare source name in `envLimitedMarkers`
         // (harmless for `dotnet build`) would otherwise swallow a genuinely broken recipe.
         if blob.Contains "reference recipe:" then
-            failwithf
-                "packaged symbology reference recipe: the PUBLISHED library disagrees with the recipe at %s.\n\
-                 The recipe's own guard fired, so it resolved and ran — but `#r \"nuget: FS.GG.UI.*\"` is\n\
-                 UNPINNED, so it runs against the latest PUBLISHED library, never the working tree. A\n\
-                 library behaviour change that has merged but not yet shipped reds here until the packages\n\
-                 publish (green follows the publish). Pin the recipe's `#r` lines to FsGgUiVersion, or ship.\n\
-                 --- recipe output ---\n%s\n--- diagnostic ---\n%s"
-                relPath out blob
+            // The recipe's own guard fired: it resolved, ran, and the library it PINS disagreed with it.
+            // Since #304 the packaged recipe `#r`s `nuget: FS.GG.UI.*, <FsGgUiVersion>` (held equal to the
+            // single FsGgUiVersion source by validate-version-coherence's `symbology-recipe-pin-skew`), so
+            // the library under test is the one the product ships beside — the LAST published set — not a
+            // moving "latest". A disagreement is therefore the publish-lag window: a library behaviour
+            // change has merged and FsGgUiVersion still names the published library that predates it.
+            //
+            // This is NOT a broken recipe, and must not red the harness (#304 acceptance). The IN-TREE twin
+            // (gate.yml, every PR, required) runs the SAME recipe body against the working-tree library and
+            // blocks the merge on any disagreement — so recipe-vs-current-library correctness is already
+            // proven upstream, and the only thing this run can still catch is the lag. Green follows the
+            // publish that carries the change and bumps FsGgUiVersion onto it.
+            "environment-limited",
+            sprintf
+                "packaged symbology reference recipe leads its pinned published library (FsGgUiVersion) at %s — \
+                 a merged-but-unshipped library behaviour change; green follows the publish. Recipe output:\n%s"
+                relPath out
         elif restoreFailureMarkers |> List.exists blob.Contains then
             "environment-limited",
             "packaged FS.GG.UI.* could not be restored from the feed; the packaged recipe was not asserted to run"

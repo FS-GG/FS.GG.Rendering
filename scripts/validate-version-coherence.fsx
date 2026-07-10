@@ -194,6 +194,10 @@ let propsRel = "template/base/Directory.Packages.props"
 let nuspecRel = "src/Meta/FS.GG.UI.nuspec"
 let buildFsxRel = "template/base/build.fsx"
 let templateFsprojRel = ".template.package/FS.GG.UI.Template.fsproj"
+// The one RUNNABLE artifact the packaged fs-gg-symbology skill ships. Its `#r "nuget: FS.GG.UI.*"`
+// lines must pin FsGgUiVersion so it resolves the library it ships beside, not the latest PUBLISHED
+// set (which can predate the recipe and make it throw — #304).
+let symbologyRecipeRel = "template/product-skills/fs-gg-symbology/reference.fsx"
 
 // The documented consumed manifest (data-model §5, surface-map T004) — 12 product-facing members.
 // Feature 240 (#73): FS.GG.UI.Canvas is consumed on the game/sample-pack profiles (FixedStep + Rng).
@@ -202,6 +206,13 @@ let templateExpected =
         [ "FS.GG.UI.Build"; "FS.GG.UI.Scene"; "FS.GG.UI.Canvas"; "FS.GG.UI.SkiaViewer"; "FS.GG.UI.Elmish"
           "FS.GG.UI.KeyboardInput"; "FS.GG.UI.Layout"; "FS.GG.UI.Controls"; "FS.GG.UI.Controls.Elmish"
           "FS.GG.UI.DesignSystem"; "FS.GG.UI.Themes.Default"; "FS.GG.UI.Testing" ]
+
+// The FS.GG.UI packages the symbology reference recipe MUST `#r` (#304). A floor so the pin check cannot
+// go silently green when the regex matches nothing — a recipe reformatted, renamed, or switched to
+// `#load` would otherwise reserve no pins and read as coherent.
+let symbologyRecipeExpected =
+    Set.ofList
+        [ "FS.GG.UI.Scene"; "FS.GG.UI.SkiaViewer"; "FS.GG.UI.Symbology"; "FS.GG.UI.Symbology.Render" ]
 
 /// Versions carried by tags matching `glob` whose ref starts with `prefix` (the prefix stripped).
 /// Fails closed if git errors — never green-by-absence.
@@ -228,6 +239,7 @@ type Inputs =
       BomIds: Set<string>
       TemplatePins: (string * string) list
       TemplateIds: Set<string>
+      SymbologyRecipePins: (string * string) list
       RuntimeRegexResolves: bool
       PkgVersion: string
       PkgVersionLoc: string
@@ -290,6 +302,14 @@ let readInputs () : Inputs =
     let templatePins =
         Regex.Matches(propsText, "<PackageVersion\\s+Include=\"(FS\\.GG\\.UI\\.[^\"]+)\"\\s+Version=\"([^\"]+)\"")
         |> Seq.map (fun m -> m.Groups.[1].Value, m.Groups.[2].Value)
+        |> Seq.toList
+
+    // SymbologyRecipePinSet — each `#r "nuget: FS.GG.UI.<pkg>[, <ver>]"` in the packaged reference recipe,
+    // as (id, version) with version "" when the `#r` is unpinned. Read in file order.
+    let symbologyRecipePins =
+        let text = readFile (repo symbologyRecipeRel)
+        Regex.Matches(text, "#r\\s+\"nuget:\\s*(FS\\.GG\\.UI\\.[A-Za-z0-9.]+)\\s*(?:,\\s*([^\"]+))?\"")
+        |> Seq.map (fun m -> m.Groups.[1].Value, (if m.Groups.[2].Success then m.Groups.[2].Value.Trim() else ""))
         |> Seq.toList
 
     // RuntimeResolution (build.fsx:60 regex still matches the literal in the current tree)
@@ -394,6 +414,7 @@ let readInputs () : Inputs =
       BomIds = bomDeps |> List.map fst |> Set.ofList
       TemplatePins = templatePins
       TemplateIds = templatePins |> List.map fst |> Set.ofList
+      SymbologyRecipePins = symbologyRecipePins
       RuntimeRegexResolves = runtimeRegexResolves
       PkgVersion = pkgVersion
       PkgVersionLoc = pkgVersionLoc
@@ -499,6 +520,36 @@ let templateFailures (i: Inputs) : Failure list =
             Actual = sprintf "unexpected consumed pin %s" extra
             Fix = sprintf "drop %s, or update the documented consumed manifest in surface-map.md" extra } ]
 
+// #304 — the packaged symbology reference recipe is the skill's one runnable artifact, and its
+// `#r "nuget: FS.GG.UI.*"` lines must resolve the library it ships beside, not "latest published".
+// An unpinned `#r` resolves the newest published package, which can PREDATE the recipe: a library
+// behaviour change that has merged but not shipped makes the recipe throw against a library that never
+// saw it (validate-published-acceptance's #294-lane-2 read this as a publish lag). Hold every FS.GG.UI
+// `#r` pin equal to the single FsGgUiVersion source, exactly as the props pins derive through it.
+let symbologyRecipeFailures (i: Inputs) : Failure list =
+    [ // Floor: every expected FS.GG.UI `#r` is actually present — the pin check below is vacuous over a
+      // recipe the regex found nothing in (reformatted / renamed / switched to `#load`).
+      let pinned = i.SymbologyRecipePins |> List.map fst |> Set.ofList
+      for missing in Set.difference symbologyRecipeExpected pinned ->
+          { Rule = "symbology-recipe-missing"
+            Location = sprintf "%s %s" symbologyRecipeRel missing
+            Expected = sprintf "a pinned `#r \"nuget: %s, %s\"`" missing i.PinVersion
+            Actual = "no matching `#r \"nuget: FS.GG.UI...\"` directive in the recipe"
+            Fix = sprintf "restore the `#r \"nuget: %s, %s\"` line (the recipe's one runnable proof needs it)" missing i.PinVersion }
+      for (id, v) in i.SymbologyRecipePins do
+        if v = "" then
+            { Rule = "symbology-recipe-unpinned"
+              Location = sprintf "%s %s" symbologyRecipeRel id
+              Expected = sprintf "%s (FsGgUiVersion)" i.PinVersion
+              Actual = "unpinned #r — resolves the latest PUBLISHED library, which can predate the recipe"
+              Fix = sprintf "pin the #r to `nuget: %s, %s` (your FsGgUiVersion)" id i.PinVersion }
+        elif v <> i.PinVersion then
+            { Rule = "symbology-recipe-pin-skew"
+              Location = sprintf "%s %s" symbologyRecipeRel id
+              Expected = i.PinVersion
+              Actual = v
+              Fix = sprintf "repin %s's #r to %s (the single FsGgUiVersion source)" id i.PinVersion } ]
+
 let invariantFailures (i: Inputs) : Failure list =
     [ if i.Occurrences <> 1 then
           { Rule = "single-source-not-unique"
@@ -583,7 +634,7 @@ let releaseLaneFailures (i: Inputs) : Failure list =
 
 let structuralFailures (i: Inputs) =
     us1Failures i @ bomTokenFailures i @ bomMemberSkewFailures i @ templateFailures i @ invariantFailures i
-    @ releaseLaneFailures i
+    @ symbologyRecipeFailures i @ releaseLaneFailures i
 
 // ---- restore-grounded proof (live, US3/T027) --------------------------------------------------
 type LiveResult =

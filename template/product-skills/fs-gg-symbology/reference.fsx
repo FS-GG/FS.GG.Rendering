@@ -1,13 +1,17 @@
 // fs-gg-symbology reference recipe — the WHOLE design loop:
 // roster -> ChannelMap -> LINT (Legibility.score) -> TWEAK -> re-lint -> galleryIn x3 -> Render.toPng.
-// Packaged-product recipe: reference the symbology packages from NuGet. For version coherence
-// with this product, pin each to your FsGgUiVersion (Directory.Packages.props), e.g.
-// `#r "nuget: FS.GG.UI.Symbology, <FsGgUiVersion>"`; unpinned resolves the latest published set.
-// SkiaSharp and its native assets arrive transitively behind FS.GG.UI.SkiaViewer.
-#r "nuget: FS.GG.UI.Scene"
-#r "nuget: FS.GG.UI.SkiaViewer"
-#r "nuget: FS.GG.UI.Symbology"
-#r "nuget: FS.GG.UI.Symbology.Render"
+// Packaged-product recipe: reference the symbology packages from NuGet, PINNED to FsGgUiVersion
+// (Directory.Packages.props). An unpinned `#r "nuget:"` resolves the latest PUBLISHED package, which
+// can PREDATE the recipe: a library behaviour change that has merged but not yet shipped then makes the
+// recipe throw against a library that never saw it (that is exactly how this recipe was found broken).
+// Pinning resolves the exact library the recipe was written against. In this template the pin is held
+// in step with FsGgUiVersion by scripts/validate-version-coherence.fsx (rule `symbology-recipe-pin-skew`);
+// in a scaffolded product, bump these to your FsGgUiVersion when you upgrade. SkiaSharp and its native
+// assets arrive transitively behind FS.GG.UI.SkiaViewer.
+#r "nuget: FS.GG.UI.Scene, 0.4.0"
+#r "nuget: FS.GG.UI.SkiaViewer, 0.4.0"
+#r "nuget: FS.GG.UI.Symbology, 0.4.0"
+#r "nuget: FS.GG.UI.Symbology.Render, 0.4.0"
 
 open System.IO
 open FS.GG.UI.Scene
