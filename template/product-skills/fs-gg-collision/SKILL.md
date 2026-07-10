@@ -49,7 +49,9 @@ All detection helpers are **total**: degenerate inputs return a documented value
 - `Geometry.intersects a b` — box-vs-box overlap on positive area (edge/corner touching is **not** an
   intersection: strict edges).
 - `Geometry.sweptIntersects moving velocity target` — for a fast projectile that would **tunnel** a
-  thin target in one step; tests the whole swept path, not just the endpoints.
+  thin target in one step; tests the whole swept path, not just the endpoints. `Collision.collide`/
+  `step` already sweep each body's step for you (from its `Body.Velocity`), so you rarely call this
+  one directly — reach for it only in a bespoke, one-off cast outside the per-frame pass.
 - `Geometry.containsPoint` / `contains` — inclusive of shared edges (containment, culling).
 
 The helper's `Collision.contact a b` builds on `intersects` and returns the **minimum-translation
@@ -61,17 +63,20 @@ overlap).
 ## Broad-phase
 
 Don't test every body against every other (O(n²)). `Collision.collide` buckets bodies once with
-`SpatialGrid` and only narrow-phase-tests near pairs — expanding each query region by the largest body
-half-extent so no overlap is missed (**exact**, no false negatives). Pairs come back in ascending
-`(i, j)` insertion-index order, so the result is deterministic.
+`SpatialGrid` and narrow-phase-tests near pairs with the **swept** contact (so a fast mover cannot
+tunnel) — expanding each query region by the largest body half-extent **and the largest per-step
+displacement**, so no overlap is missed, including one a fast body only touches mid-sweep (**exact**,
+no false negatives). Pairs come back in ascending `(i, j)` insertion-index order, so the result is
+deterministic.
 
 ```fsharp
 open FS.GG.Game.Core       // Rect, Point, Geometry, SpatialGrid
 // Collision lives in your product's own namespace (Collision.fs).
 
 let bodies =
-    [ { Bounds = { X = 0.0; Y = 0.0; Width = 10.0; Height = 10.0 }; Tag = playerId }
-      // ...enemies, bullets, walls — Tag is any id/layer payload you choose
+    [ { Bounds = { X = 0.0; Y = 0.0; Width = 10.0; Height = 10.0 }; Velocity = { X = 0.0; Y = 0.0 }; Tag = playerId }
+      // ...enemies, bullets, walls — Velocity is this step's displacement (velocity × dt); a wall (or any
+      // body at rest) is { X = 0.0; Y = 0.0 }. Tag is any id/layer payload you choose.
     ]
 
 let contacts = Collision.collide 32.0 bodies      // cellSize tunes the grid
@@ -89,7 +94,8 @@ inside `resolve` rather than re-deriving separation math:
 - `Slide` — 50/50 separation, no recorded restitution.
 - `Bounce restitutionPercent` — 50/50 separation plus a normalized restitution (integer percent, so
   two equal bounces never tie-break through floating-point) the consumer folds into its own velocity
-  step. (Velocity integration itself is *your* job — the helper only separates.)
+  step. (`collide`/`step` read each `Body.Velocity` to sweep the step for *detection*; integrating
+  velocities into new positions is still *your* job — the helper only separates.)
 
 ```fsharp
 // One per-frame pass: detect + resolve, deterministic pair order.
