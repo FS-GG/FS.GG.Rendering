@@ -6,11 +6,21 @@ module Canvas.Tests.CollisionHelperTests
 // layer separates overlaps deterministically. All real pure computation — no synthetic evidence.
 
 open Expecto
+open FsCheck
 open FS.GG.Game.Core // ADR-0022 P5: the collision fragment's Point/Rect + Geometry/SpatialGrid now come from FS.GG.Game.Core
 open AppRoot
 
+// A body at rest (a wall / a static overlap fixture): zero per-step displacement.
 let private body x y w h tag : Collision.Body<int> =
-    { Bounds = { X = x; Y = y; Width = w; Height = h }; Tag = tag }
+    { Bounds = { X = x; Y = y; Width = w; Height = h }
+      Velocity = { X = 0.0; Y = 0.0 }
+      Tag = tag }
+
+// A body that travels `(vx, vy)` this step — the swept-detection fixtures (#290).
+let private moving x y w h vx vy tag : Collision.Body<int> =
+    { Bounds = { X = x; Y = y; Width = w; Height = h }
+      Velocity = { X = vx; Y = vy }
+      Tag = tag }
 
 [<Tests>]
 let tests =
@@ -117,5 +127,70 @@ let tests =
             let mixed = [ nan; body 0.0 0.0 10.0 10.0 4; body 5.0 0.0 10.0 10.0 5 ]
             let found = Collision.collide 16.0 mixed |> List.map (fun c -> c.A.Tag, c.B.Tag)
             Expect.equal found [ (4, 5) ] "finite overlap still found alongside a NaN body"
+        }
+
+        // --- #290: a moving body is a SEGMENT, never a point — the swept pass does not tunnel ---------
+
+        test "a fast round does not tunnel a thin target (the issue's 1200 u/s example)" {
+            // 1200 u/s advanced by one 60 Hz step covers 20 units; a 6-wide target sits in the path.
+            let round = moving 0.0 0.0 2.0 2.0 20.0 0.0 1
+            let target = body 10.0 -2.0 6.0 6.0 2
+            // Neither the start nor the end position overlaps — a point test reports a clean miss on
+            // the very pair that collides, exactly the FS.GG.Game.Core.Ballistics red-vs-point property.
+            let endRound = { round.Bounds with X = round.Bounds.X + round.Velocity.X }
+            Expect.isFalse (Geometry.intersects round.Bounds target.Bounds) "start: the round is in front of the target"
+            Expect.isFalse (Geometry.intersects endRound target.Bounds) "end: the round is past the target"
+            let hits = Collision.collide 16.0 [ round; target ] |> List.map (fun c -> c.A.Tag, c.B.Tag)
+            Expect.equal hits [ (1, 2) ] "the swept pass detects the crossing the point test misses"
+        }
+
+        test "resolving a swept hit stops the mover at the wall's near face (first-contact advance)" {
+            let round = moving 0.0 0.0 2.0 2.0 20.0 0.0 1
+            let wall = body 10.0 -2.0 6.0 6.0 2
+            match Collision.step Collision.PushFirst 16.0 [ round; wall ] with
+            | [ r ] ->
+                Expect.floatClose Accuracy.high (r.A.Bounds.X + r.A.Bounds.Width) wall.Bounds.X
+                    "PushFirst advances the round to touch the wall's near face, not past it"
+                Expect.equal r.B.Bounds wall.Bounds "the immovable wall does not move"
+            | other -> failtestf "expected exactly one resolution, got %d" (List.length other)
+        }
+
+        // --- #290 acceptance: any speed, any timestep, any grid — a crossed wall is always detected ---
+        // Property (FsCheck): for a body whose step segment crosses a wall, `collide` reports the
+        // contact, AND the naive endpoint point test reports a miss — so this property is RED against
+        // the pre-fix point-test implementation. Speed (= velocity × dt), start gap, target height band,
+        // and the broad-phase cell size all vary; the only fixed premise is that the segment crosses.
+        test "property: a body of any speed/timestep collides with a wall its step segment crosses" {
+            Check.One(
+                Config.QuickThrowOnFailure.WithMaxTest 500,
+                fun (startGap: NormalFloat) (extraSpeed: NormalFloat) (yBand: NormalFloat) (cell: NormalFloat) ->
+                    let pw, ph = 4.0, 4.0
+                    let wall = body 500.0 0.0 6.0 200.0 2
+                    // Strictly left of the wall (gap ≥ 0.5 keeps the start endpoint clear of the face).
+                    let gap = 0.5 + abs startGap.Get % 100.0
+                    let px0 = wall.Bounds.X - gap - pw
+                    // Anywhere inside the wall's tall Y span, so the horizontal sweep truly crosses it.
+                    let py = wall.Bounds.Y + abs yBand.Get % (wall.Bounds.Height - ph)
+                    // Enough displacement to end fully RIGHT of the wall (+1 margin), plus any extra speed.
+                    let dx = gap + pw + wall.Bounds.Width + 1.0 + abs extraSpeed.Get % 100000.0
+                    let round = moving px0 py pw ph dx 0.0 1
+                    let cellSize = 4.0 + abs cell.Get % 500.0
+
+                    let endRound = { round.Bounds with X = round.Bounds.X + dx }
+                    let pointTestMisses =
+                        not (Geometry.intersects round.Bounds wall.Bounds)
+                        && not (Geometry.intersects endRound wall.Bounds)
+                    let sweptFinds =
+                        Collision.collide cellSize [ round; wall ]
+                        |> List.exists (fun c -> c.A.Tag = 1 && c.B.Tag = 2)
+
+                    pointTestMisses && sweptFinds)
+        }
+
+        test "a zero-velocity swept pass reduces to the static overlap pass" {
+            // With no motion, `collide` must be byte-identical to the pre-#290 point behaviour.
+            let bodies = [ body 0.0 0.0 10.0 10.0 1; body 6.0 2.0 10.0 10.0 2; body 100.0 100.0 8.0 8.0 3 ]
+            let swept = Collision.collide 16.0 bodies |> List.map (fun c -> c.A.Tag, c.B.Tag)
+            Expect.equal swept [ (1, 2) ] "static (zero-velocity) bodies collide exactly as before"
         }
     ]
