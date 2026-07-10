@@ -48,6 +48,16 @@ FS.GG.UI.KeyboardInput.KeyboardStateDisplay.LastCommand : Microsoft.FSharp.Core.
 FS.GG.UI.KeyboardInput.KeyboardStateDisplay.PendingSequence : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
 FS.GG.UI.KeyboardInput.KeyboardStateDisplay.PressedKeys : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
 FS.GG.UI.KeyboardInput.KeyboardStateDisplay.new(Microsoft.FSharp.Collections.FSharpList<System.String>, System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>)
+FS.GG.UI.KeyboardInput.Keymap.add(System.String, System.String, FS.GG.UI.KeyboardInput.Keymap) : FS.GG.UI.KeyboardInput.Keymap
+FS.GG.UI.KeyboardInput.Keymap.clear(FS.GG.UI.KeyboardInput.Keymap) : FS.GG.UI.KeyboardInput.Keymap
+FS.GG.UI.KeyboardInput.Keymap.count(FS.GG.UI.KeyboardInput.Keymap) : System.Int32
+FS.GG.UI.KeyboardInput.Keymap.empty : FS.GG.UI.KeyboardInput.Keymap [get]
+FS.GG.UI.KeyboardInput.Keymap.ofBindings(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.KeyboardBinding>) : FS.GG.UI.KeyboardInput.Keymap
+FS.GG.UI.KeyboardInput.Keymap.rebind(System.String, System.String, FS.GG.UI.KeyboardInput.Keymap) : FS.GG.UI.KeyboardInput.Keymap
+FS.GG.UI.KeyboardInput.Keymap.remove(System.String, FS.GG.UI.KeyboardInput.Keymap) : FS.GG.UI.KeyboardInput.Keymap
+FS.GG.UI.KeyboardInput.Keymap.replace(System.String, System.String, FS.GG.UI.KeyboardInput.Keymap) : FS.GG.UI.KeyboardInput.Keymap
+FS.GG.UI.KeyboardInput.Keymap.toBindings(FS.GG.UI.KeyboardInput.Keymap) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.KeyboardBinding>
+FS.GG.UI.KeyboardInput.Keymap.tryFind(System.String, FS.GG.UI.KeyboardInput.Keymap) : Microsoft.FSharp.Core.FSharpOption<System.String>
 FS.GG.UI.KeyboardInput.ViewerKey+Tags.ArrowDown : System.Int32
 FS.GG.UI.KeyboardInput.ViewerKey+Tags.ArrowLeft : System.Int32
 FS.GG.UI.KeyboardInput.ViewerKey+Tags.ArrowRight : System.Int32

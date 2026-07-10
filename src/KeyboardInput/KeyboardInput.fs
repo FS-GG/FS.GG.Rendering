@@ -188,6 +188,56 @@ module Keyboard =
             { model with PendingSequence = sequence }
             |> attachState [ PendingSequenceChanged sequence ]
 
+// Issue 331 (epic 330): the keymap mechanism. Representation is a `Map<KeyId, CommandId>` so a key
+// binds to a single command by construction; it is hidden by the .fsi (the type is opaque), so a keymap
+// can only be built through the `Keymap` module. Map gives structural equality and a deterministic,
+// key-ordered enumeration for free.
+type Keymap = { Bindings: Map<KeyId, CommandId> }
+
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module Keymap =
+    let empty = { Bindings = Map.empty }
+
+    // Fold left so a key bound more than once takes its LAST binding (Map.add overwrites) — total on
+    // duplicates, and the natural inverse of `toBindings`.
+    let ofBindings (bindings: KeyboardBinding list) =
+        { Bindings =
+            bindings
+            |> List.fold (fun acc binding -> Map.add binding.Key binding.Command acc) Map.empty }
+
+    // Map enumerates in key order, so the result is deterministic across runs.
+    let toBindings (keymap: Keymap) =
+        keymap.Bindings
+        |> Map.toList
+        |> List.map (fun (key, command) -> { Key = key; Command = command })
+
+    let tryFind key (keymap: Keymap) = keymap.Bindings |> Map.tryFind key
+
+    let count (keymap: Keymap) = keymap.Bindings.Count
+
+    // Non-destructive: only binds when the key is absent, so an existing binding is never clobbered.
+    let add key command (keymap: Keymap) =
+        if keymap.Bindings.ContainsKey key then
+            keymap
+        else
+            { keymap with Bindings = Map.add key command keymap.Bindings }
+
+    let remove key (keymap: Keymap) =
+        { keymap with Bindings = Map.remove key keymap.Bindings }
+
+    // Update-only: leaves an unbound key untouched (the complement of `add`).
+    let replace key command (keymap: Keymap) =
+        if keymap.Bindings.ContainsKey key then
+            { keymap with Bindings = Map.add key command keymap.Bindings }
+        else
+            keymap
+
+    // Upsert: the headline rebind — binds a fresh key, and overwrites an already-bound one.
+    let rebind key command (keymap: Keymap) =
+        { keymap with Bindings = Map.add key command keymap.Bindings }
+
+    let clear (_: Keymap) = empty
+
 // Feature 108 (US5, FR-016): modifier state recovered at the key boundary (see KeyboardInput.fsi).
 type KeyModifiers =
     { Ctrl: bool

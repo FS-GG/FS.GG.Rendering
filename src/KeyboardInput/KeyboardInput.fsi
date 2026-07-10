@@ -95,6 +95,52 @@ module Keyboard =
     /// Public contract function exposed by this FS.GG.UI package.
     val stateDisplay: model: KeyboardModel -> KeyboardStateDisplay
 
+/// Issue 331 (epic 330): an immutable key→command keymap — the **mechanism** layer for rebinding,
+/// Rendering-owned and command-id-agnostic (a `CommandId` is any string). Indexes `KeyboardBinding`s
+/// by `KeyId`, so a key binds to at most one command; the edit ops in the `Keymap` module each return
+/// a new value, and the representation is opaque so a keymap can only be built through them. Round-trips
+/// to/from `KeyboardBinding list`, the shape `Keyboard.init` already consumes.
+type Keymap
+
+/// Public contract module exposed by this FS.GG.UI package. Pure, total edit operations over `Keymap`;
+/// each returns a new keymap and never mutates its argument.
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module Keymap =
+    /// The keymap with no bindings.
+    val empty: Keymap
+
+    /// Build a keymap from a `KeyboardBinding list`. On a key bound more than once, the LAST binding in
+    /// the list wins (a key maps to a single command), so this is total and never fails on duplicates.
+    val ofBindings: bindings: KeyboardBinding list -> Keymap
+
+    /// The keymap's bindings as a `KeyboardBinding list`, ordered by key for a deterministic result —
+    /// the round-trip back into `Keyboard.init`.
+    val toBindings: keymap: Keymap -> KeyboardBinding list
+
+    /// The command bound to `key`, if any.
+    val tryFind: key: KeyId -> keymap: Keymap -> CommandId option
+
+    /// The number of bound keys.
+    val count: keymap: Keymap -> int
+
+    /// Bind `key` to `command` only if `key` is currently UNbound; if it is already bound, the keymap is
+    /// returned unchanged. The non-destructive insert — use `rebind` to overwrite.
+    val add: key: KeyId -> command: CommandId -> keymap: Keymap -> Keymap
+
+    /// Drop the binding for `key`. An unbound `key` returns the keymap unchanged.
+    val remove: key: KeyId -> keymap: Keymap -> Keymap
+
+    /// Point an ALREADY-bound `key` at `command`; if `key` is unbound, the keymap is returned unchanged.
+    /// The update-only counterpart to `add` — use `rebind` to bind-or-update in one call.
+    val replace: key: KeyId -> command: CommandId -> keymap: Keymap -> Keymap
+
+    /// Bind `key` to `command`, whether or not `key` was already bound (an upsert). This is the headline
+    /// rebind: rebinding an already-bound key replaces its command; a fresh key is added.
+    val rebind: key: KeyId -> command: CommandId -> keymap: Keymap -> Keymap
+
+    /// The keymap with every binding removed (equal to `empty`).
+    val clear: keymap: Keymap -> Keymap
+
 /// Feature 108 (US5, FR-016): the modifier state recovered at the key boundary. The raw key
 /// string can carry `Ctrl+`/`Alt+`/`Shift+`/`Meta+` prefixes that the plain `normalize` collapses
 /// into `Unknown "Ctrl+L"` and loses; parsing them here makes chords as dependable as plain keys,
