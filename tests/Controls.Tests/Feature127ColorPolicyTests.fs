@@ -441,4 +441,31 @@ let feature127ColorPolicyTests =
                   let live = emittedReport slug theme
                   Expect.equal committed live (sprintf "committed docs/reports/color-policy-emitted-%s.md is out of date (drift)" slug)
           }
+
+          // The drift gate above only asserts the emitted set did not CHANGE — a committed report
+          // that reads `Overall: FAIL` keeps CI green, so a shipped unreadable label goes unremarked
+          // (issue #360; the concrete instance was #379/PR #387, an antLight Text row that stayed at
+          // 3.76 with no check red). This is the gate that actually blocks: every readable label the
+          // resolver emits — every `Role.Text` pairing of every built-in theme — must PASS `wcag`.
+          //
+          // The exemptions the issue asks to carve out are structural, not enumerated here:
+          //   * disabled controls resolve to `Role.Decorative` (WCAG 1.4.3 exempts inactive
+          //     components), so the `Role.Text` filter already drops them;
+          //   * the impossible (variant × validation-state) combos — e.g. danger + Invalid — resolve
+          //     to their base variant's colours and are deduped away by `emittedPairings` before they
+          //     reach here, so a `Role.Text` row that survives is a real, reachable label.
+          // ghost is a legible label over the canvas (~19:1), not an exemption, so it is gated too.
+          test "every emitted Text label of every built-in theme passes wcag — blocking gate (issue #360)" {
+              for slug, theme in gatedThemes do
+                  let textLabels =
+                      StyleCatalog.emittedPairings theme
+                      |> List.filter (fun p -> p.Role = Role.Text)
+                  Expect.isNonEmpty textLabels (sprintf "%s emits readable Text labels" slug)
+
+                  for p in textLabels do
+                      Expect.notEqual
+                          (ColorPolicy.evaluatePairing ColorPolicy.wcag p).Outcome
+                          ColorPolicy.Failed
+                          (sprintf "%s: %s is a readable label — it must not fail wcag" slug p.Name)
+          }
         ]
