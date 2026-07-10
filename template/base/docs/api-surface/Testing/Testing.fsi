@@ -1,3 +1,4 @@
+// See skill: fs-gg-testing
 namespace FS.GG.UI.Testing
 
 open System

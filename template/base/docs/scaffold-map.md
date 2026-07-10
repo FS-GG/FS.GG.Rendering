@@ -178,15 +178,15 @@ before you design against it; when they disagree, the `.fsi` wins.
 > `catalog.yml` (e.g. `module: TextBlock`) — that is the authoritative typed-front-door probe,
 > not `docs/api-surface/`. See the `fs-gg-ui-widgets` skill's consumer note.
 
-> **Interactive host seam is present in the package, not in `docs/api-surface/` (feature 108,
-> FR-019).** The persistent interactive launch seam — `Controls.Elmish.runInteractiveApp`, the
-> `InteractiveAppHost<'model,'msg>` record (incl. the feature-108 additive `MapKeyChord` /
-> `OnFrameMetrics` fields), `PointerInteraction`, and the pure `Perf.runScript` frame driver — lives
-> in the **`FS.GG.UI.Controls.Elmish`** package and its `ControlsElmish.fsi`. It is **not** mirrored
-> under `docs/api-surface/` (which tracks the lower SkiaViewer / Controls surfaces), so "it's not in
-> `docs/api-surface/`" does **not** mean it's unavailable. The **authority** for this seam is the
-> `fs-gg-ui-widgets` skill + `ControlsElmish.fsi`; reconcile any summary against those. Focus
-> visibility on this seam is the public `Focus.markFocused model.Focused (view …)` call inside `view`.
+> **Interactive host seam (feature 108, FR-019; mirrored since #247).** The persistent interactive
+> launch seam — `Controls.Elmish.runInteractiveApp`, the `InteractiveAppHost<'model,'msg>` record
+> (incl. the feature-108 additive `MapKeyChord` / `OnFrameMetrics` fields), `PointerInteraction`, and
+> the pure `Perf.runScript` frame driver — lives in the **`FS.GG.UI.Controls.Elmish`** package. It is
+> now mirrored at `docs/api-surface/Controls.Elmish/ControlsElmish.fsi`, alongside the adapter's
+> `Authoring.fsi`; before #247 it was referenced by `Product.fsproj` but shipped no surface here.
+> The **authority** for this seam remains `ControlsElmish.fsi` itself; reconcile any summary against
+> it. Focus visibility on this seam is the public `Focus.markFocused model.Focused (view …)` call
+> inside `view`.
 
 > **The game family's default host is keyboard-only (feature 139).** The `game` starter launches
 > through `Viewer.runApp` over `GeneratedAppHost`, whose only input seam is

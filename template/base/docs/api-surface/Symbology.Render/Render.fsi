@@ -1,3 +1,4 @@
+// See skill: fs-gg-symbology
 namespace FS.GG.UI.Symbology.Render
 
 open FS.GG.UI.Scene

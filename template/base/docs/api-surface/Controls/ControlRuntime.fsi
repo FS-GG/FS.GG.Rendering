@@ -1,3 +1,4 @@
+// See skill: fs-gg-ui-widgets
 namespace FS.GG.UI.Controls
 
 /// The text caret position (`Index`) within a focused control identified by `ControlId`.

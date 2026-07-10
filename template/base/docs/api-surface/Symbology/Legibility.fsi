@@ -1,3 +1,4 @@
+// See skill: fs-gg-symbology
 namespace FS.GG.UI.Symbology
 
 /// Pure legibility linter: scores a produced symbol set against the fixed §4 channel-grammar

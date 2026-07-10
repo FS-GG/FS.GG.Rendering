@@ -1,3 +1,4 @@
+// See skill: fs-gg-ui-widgets
 namespace FS.GG.UI.Controls
 
 open FS.GG.UI.Scene

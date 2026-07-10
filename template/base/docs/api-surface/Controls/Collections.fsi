@@ -1,3 +1,4 @@
+// See skill: fs-gg-ui-widgets
 namespace FS.GG.UI.Controls
 
 /// The slice of a virtualized list currently realized: `FirstIndex`/`Count` within `Total`.

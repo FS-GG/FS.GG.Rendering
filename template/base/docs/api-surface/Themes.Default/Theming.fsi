@@ -1,3 +1,4 @@
+// See skill: fs-gg-styling
 namespace FS.GG.UI.Themes.Default.Theming
 
 open FS.GG.UI.Scene

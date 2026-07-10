@@ -1,3 +1,4 @@
+// See skill: fs-gg-skiaviewer
 namespace FS.GG.UI.SkiaViewer
 
 open System

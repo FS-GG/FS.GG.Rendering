@@ -1,3 +1,4 @@
+// See skill: fs-gg-ui-widgets
 namespace FS.GG.UI.Controls
 
 /// Internal extraction seam (feature 080) — `internal` accessibility, no public-surface

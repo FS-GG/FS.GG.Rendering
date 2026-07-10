@@ -1,3 +1,4 @@
+// See skill: fs-gg-ui-widgets
 namespace FS.GG.UI.Controls
 
 /// Whether a `TextInputModel` accepts a `SingleLine` or `MultiLine` of text.

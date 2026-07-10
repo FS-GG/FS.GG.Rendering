@@ -1,3 +1,4 @@
+// See skill: fs-gg-ui-widgets
 namespace FS.GG.UI.Controls
 
 /// Constructors for `ControlDiagnostic` values reported by the controls runtime and validation passes.

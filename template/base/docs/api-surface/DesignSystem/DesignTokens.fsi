@@ -1,3 +1,4 @@
+// See skill: fs-gg-styling
 // DesignTokens.fsi — curated public surface of the generated token module (feature 069).
 // Principle II: this hand-curated signature is the SOLE public-surface declaration; the
 // paired DesignTokens.fs is GENERATED from src/Themes.Default/design-tokens.tokens.json (the

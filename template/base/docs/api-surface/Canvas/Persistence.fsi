@@ -1,3 +1,4 @@
+// See skill: fs-gg-persistence
 namespace FS.GG.UI.Canvas
 
 /// Public contract type exposed by this FS.GG.UI package.

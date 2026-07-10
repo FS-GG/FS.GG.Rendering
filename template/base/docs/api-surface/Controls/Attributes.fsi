@@ -1,3 +1,4 @@
+// See skill: fs-gg-ui-widgets
 namespace FS.GG.UI.Controls
 
 /// Builder functions (`Attr`) for constructing the typed `Attr<'msg>` values that

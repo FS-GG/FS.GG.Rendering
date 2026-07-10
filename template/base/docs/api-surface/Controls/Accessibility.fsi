@@ -1,3 +1,4 @@
+// See skill: fs-gg-ui-widgets
 namespace FS.GG.UI.Controls
 
 /// Build and validate a control's accessibility contract: `metadata`/`defaultFor` plus `keyboard`/`contrast` evidence.

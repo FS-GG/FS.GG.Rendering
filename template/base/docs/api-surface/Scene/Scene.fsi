@@ -1,3 +1,4 @@
+// See skill: fs-gg-scene
 namespace FS.GG.UI.Scene
 
 /// Public contract type exposed by this FS.GG.UI package.
@@ -321,6 +322,8 @@ type RenderDiagnostic =
 type SceneNode =
     | Empty
     | Group of Scene list
+    /// Positional `(x, y, width, height)` — the arity slip `filledRectangle` exists to avoid.
+    /// Prefer `Scene.filledRectangle` (`Rect`-based), which names the bounds.
     | Rectangle of (float * float * float * float) * Color
     | PaintedRectangle of Rect * Paint
     | Circle of center: Point * radius: float * fill: Color
@@ -331,6 +334,10 @@ type SceneNode =
     | Points of Point list * Paint
     | Vertices of VertexMode * Vertex list * Paint
     | Arc of Rect * float * float * Paint
+    /// Positional `(x, y)` — the arity slip `textAt` exists to avoid.
+    /// Prefer `Scene.textAt` (`Point`-based), which names the position.
+    /// To centre or lay text out, measure it with `Scene.measureText` rather than estimating
+    /// from character count and font size.
     | Text of (float * float) * string * Color
     | TextRun of TextRun
     | Image of (float * float * float * float) * string
@@ -341,6 +348,9 @@ type SceneNode =
     | PictureNode of Picture
     | Chart of values: float list
     | Translate of (float * float) * Scene
+    /// Positional `(x, y)`, then `text`, then `size`, then `fill` — the same arity slip as `Text`,
+    /// with no `Point`-based sibling to escape to: `Scene.sizedText` takes the identical positional
+    /// tuple. Read the field order here before calling it, and measure with `Scene.measureText`.
     | SizedText of (float * float) * string * float * Color
     /// Feature 120 (FR-007): a reuse-stable subtree marked as a backend replay-cache boundary.
     /// TRANSPARENT to every Scene-IR consumer except the OpenGL backend painter — `describe`,
