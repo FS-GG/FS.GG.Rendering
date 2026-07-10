@@ -13,16 +13,23 @@ feature below.
 
 `Token` carries three optional label fields, all `None` by default:
 
+Pick **one** of `Label` or `AutoLabel` — they are two ways to resolve the same label, not two labels:
+
 ```fsharp
+// Hand-authored identity, animated:
 { Symbology.defaultToken with
-    Label       = Some (Symbology.plainLabel "BRAVO-6")   // explicit identity
-    AutoLabel   = Some (Symbology.autoLabel [ FactionCode; HealthTier ])  // or: derive from channels
-    LabelMotion = Some (Symbology.labelMotion TypeOn) }   // and optionally animate the result
+    Label       = Some (Symbology.plainLabel "BRAVO-6")
+    LabelMotion = Some (Symbology.labelMotion TypeOn) }
+
+// Or projected from the token's own channels, animated the same way:
+{ Symbology.defaultToken with
+    AutoLabel   = Some (Symbology.autoLabel [ FactionCode; HealthTier ])
+    LabelMotion = Some (Symbology.labelMotion TypeOn) }
 ```
 
-An explicit `Label` **always wins** over `AutoLabel`; the projection is ignored. There is always
-**exactly one** resolved label, or none. `AutoLabel` resolves *first*, then `LabelMotion` animates
-whatever resolved — auto and motion compose.
+An explicit `Label` **always wins** over `AutoLabel`, so setting both silently ignores the projection.
+There is always **exactly one** resolved label, or none. `AutoLabel` resolves *first*, then `LabelMotion`
+animates whatever resolved — auto and motion compose.
 
 The same `'stats -> Token` mapping drives all three grammars; there is no per-grammar label mapping.
 

@@ -100,8 +100,9 @@ Symbology.laidLabel [ Symbology.paragraph [ Symbology.run "BRAVO-6" ]      // La
 
 - **Opt-in, layered zero-drift.** Each layer is byte-identical to the one beneath it when unused: `None` ≡
   the pre-feature symbol; `Plain` ≡ the single-line label; an all-default `Rich` ≡ `Plain`; a default
-  `Center` `Laid` ≡ `Rich`; `AutoLabel` / `LabelMotion` = `None` ≡ the same `Token` without them; and a
-  motion-bound label **at rest** ≡ the static label. Your one mapping still drives all three grammars.
+  `Center` `Laid` ≡ `Rich`; `AutoLabel` = `None` ≡ the explicit-label symbol; and `LabelMotion` = `None`
+  ≡ the static label **across the whole timeline**, as is any motion-bound label **at rest**. Your one
+  mapping still drives all three grammars.
 - **Inspection-detail.** It **complements — never replaces** — the vector `Sigil`; keep strings short.
 - **Outside the capacity table.** The linter ignores the label, so its verdict is unchanged by labels.
   Never use a label to dodge a channel-overload warning — fix the encoding.

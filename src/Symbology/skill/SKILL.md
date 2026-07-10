@@ -108,8 +108,9 @@ Symbology.autoLabel [ FactionCode; HealthTier ]                            // pr
 
 - **Opt-in, layered zero-drift.** Each layer is byte-identical to the one beneath it when unused: `None`
   ≡ the pre-feature symbol; `Plain` ≡ the single-line label; an all-default `Rich` ≡ `Plain`; a default
-  `Center` `Laid` ≡ `Rich`; `AutoLabel` / `LabelMotion` = `None` ≡ the same `Token` without them; and a
-  motion-bound label **at rest** ≡ the static label. Only a real override changes the bytes.
+  `Center` `Laid` ≡ `Rich`; `AutoLabel` = `None` ≡ the explicit-label symbol; and `LabelMotion` = `None`
+  ≡ the static label **across the whole timeline**, as is any motion-bound label **at rest**. Only a real
+  override changes the bytes.
 - **Inspection-detail.** Read **after** attention lands. It **complements — never replaces** — the vector
   `Sigil` and the pre-attentive channels above.
 - **Outside the capacity table.** `Legibility.score` ignores the label, so its verdict is unchanged and
