@@ -22,6 +22,7 @@ FS.GG.UI.KeyboardInput.KeyboardMsg+SetActiveLayout
 FS.GG.UI.KeyboardInput.KeyboardMsg+SetPersistentMode
 FS.GG.UI.KeyboardInput.KeyboardMsg+Tags
 FS.GG.UI.KeyboardInput.KeyboardStateDisplay
+FS.GG.UI.KeyboardInput.Keymap
 FS.GG.UI.KeyboardInput.ViewerKey
 FS.GG.UI.KeyboardInput.ViewerKey+Digit
 FS.GG.UI.KeyboardInput.ViewerKey+Function
