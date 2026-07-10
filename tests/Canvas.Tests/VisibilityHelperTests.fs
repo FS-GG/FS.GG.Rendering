@@ -87,6 +87,24 @@ let tests =
                 "no vertex escapes past the spanning wall at y = 0"
         }
 
+        // --- #284: keeping the spanning wall is not enough; it must be CLIPPED to the bound, or the
+        // sweep aims past the crossing and the ring cuts the corner it should turn on.
+        test "a spanning wall is clipped to the bound, so the ring turns at its bound crossings" {
+            let src = p 0.0 -10.0
+            let spanning = [ seg -1000.0 0.0 1000.0 0.0 ]
+
+            // Bound box is [-50, 50] x [-60, 40]; the wall crosses it at (±50, 0), so the true visible
+            // region is the box below the wall, [-50, 50] x [-60, 0], whose top corners are those points.
+            let poly = Visibility.polygon (settings 50.0) src spanning
+
+            let turnsAt (tx: float) (ty: float) =
+                poly.Vertices
+                |> List.exists (fun v -> abs (v.X - tx) < 1e-6 && abs (v.Y - ty) < 1e-6)
+
+            Expect.isTrue (turnsAt 50.0 0.0) "the ring has a vertex at the right bound crossing (50, 0)"
+            Expect.isTrue (turnsAt -50.0 0.0) "the ring has a vertex at the left bound crossing (-50, 0)"
+        }
+
         // The cull must still REJECT: a wall wholly outside the bound box cannot change the ring. Without
         // this, a cull that simply kept every segment would satisfy the spanning-chord test above.
         test "a wall wholly outside the bound box is culled and leaves the ring unchanged" {
