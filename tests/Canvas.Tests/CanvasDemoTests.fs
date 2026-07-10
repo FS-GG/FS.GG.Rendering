@@ -10,8 +10,9 @@ open FS.GG.UI.Scene
 open FS.GG.UI.Canvas
 
 // Tracks samples/CanvasDemo onto FS.GG.Game.Core.Loop (ADR-0104, #269) — the point of this file is to
-// exercise the pattern the sample actually uses. `FS.GG.UI.Canvas.Loop`'s own behaviour is covered by
-// LoopTests.fs until it is removed. Abbreviated, not `open`ed: FS.GG.Game.Core also exports Point/Rect.
+// exercise the pattern the sample actually uses. `FS.GG.UI.Canvas.Loop` is removed here and retires at
+// the next framework major, 0.6.0 (#319); FS.GG.Game.Core owns the accumulator now. Abbreviated, not
+// `open`ed: FS.GG.Game.Core also exports Point/Rect.
 type StepState<'world> = FS.GG.Game.Core.StepState<'world>
 module Loop = FS.GG.Game.Core.Loop
 

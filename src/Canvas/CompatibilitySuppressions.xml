@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- https://learn.microsoft.com/dotnet/fundamentals/package-validation/diagnostic-ids -->
+<!--
+  TRANSIENT — retires FS.GG.UI.Canvas.Loop / StepState at the fs-gg-ui 0.6.0 framework
+  major (#319, ADR-0104 decision 5). CP0001 (type removed) vs the published 0.5.0 baseline,
+  which still exports both. IsBaselineSuppression=true so a NEW break introduced later still
+  reddens the required ApiCompat gate. DELETE this file once fs-gg-ui 0.6.0 is on the org
+  feed — the baseline then moves to 0.6.0 (no Loop/StepState) and there is nothing to suppress.
+-->
+<Suppressions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Suppression>
+    <DiagnosticId>CP0001</DiagnosticId>
+    <Target>T:FS.GG.UI.Canvas.Loop</Target>
+    <Left>lib/net10.0/FS.GG.UI.Canvas.dll</Left>
+    <Right>lib/net10.0/FS.GG.UI.Canvas.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0001</DiagnosticId>
+    <Target>T:FS.GG.UI.Canvas.StepState`1</Target>
+    <Left>lib/net10.0/FS.GG.UI.Canvas.dll</Left>
+    <Right>lib/net10.0/FS.GG.UI.Canvas.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+</Suppressions>

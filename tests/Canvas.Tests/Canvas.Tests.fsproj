@@ -7,7 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="LoopTests.fs" />
     <!-- ADR-0022 P5: Rng/FixedStep/Pathfinding/SpatialGrid moved to FS.GG.Game.Core; their unit
          suites live in FS.GG.Game's Game.Core.Tests now (removed here with the surfaces). -->
     <Compile Include="ElementsTests.fs" />
