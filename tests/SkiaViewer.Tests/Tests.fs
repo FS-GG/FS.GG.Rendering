@@ -1060,6 +1060,34 @@ let tests =
                 skiptest "Linux desktop-session diagnostics are not applicable on this host"
         }
 
+        test "withWindowBackendOverride pins X11 only during window creation and restores WAYLAND_DISPLAY (#363)" {
+            // The XWayland backend pin nulls WAYLAND_DISPLAY so GLFW selects the GLX/X11 backend, then
+            // restores it the instant creation returns. The #363 defect wrapped the ENTIRE run loop, so
+            // the variable stayed nulled process-wide (and the lock held) for the whole session.
+            withEnvironment [ "DISPLAY", ":0"; "WAYLAND_DISPLAY", "wayland-1" ] (fun () ->
+                let mutable observedInside = "unset"
+
+                let result =
+                    Host.GlHost.withWindowBackendOverride (fun () ->
+                        observedInside <-
+                            match Environment.GetEnvironmentVariable "WAYLAND_DISPLAY" with
+                            | null -> "<null>"
+                            | value -> value
+
+                        "created")
+
+                Expect.equal result "created" "the wrapped creation result is propagated"
+
+                if OperatingSystem.IsLinux() then
+                    Expect.equal observedInside "<null>" "WAYLAND_DISPLAY is nulled while the window is created so GLFW selects X11"
+                    Expect.equal
+                        (Environment.GetEnvironmentVariable "WAYLAND_DISPLAY")
+                        "wayland-1"
+                        "WAYLAND_DISPLAY is restored the instant creation returns — the override is not held across the render loop (#363)"
+                else
+                    Expect.equal observedInside "wayland-1" "off Linux the override is a pass-through and leaves WAYLAND_DISPLAY untouched")
+        }
+
         test "runtime capability distinguishes persistent window bounded smoke keyboard and unsupported reasons" {
             let capability = Viewer.runtimeCapability()
 

@@ -292,6 +292,32 @@ module GlHost =
     /// label from here, so a self-report can never drift from what really initialized (#135).
     let backendLabel = "OpenGL"
 
+    // #363: a process-global env override that pins GLFW to the GLX/X11 backend on an XWayland
+    // session (where both `DISPLAY` and `WAYLAND_DISPLAY` are advertised and GLFW would otherwise
+    // prefer Wayland, which this host's GL/Skia interop path is not validated against).
+    let private nativeWindowBackendLock = obj ()
+
+    /// Run `action` — a Silk window `Create`/`Initialize` — with `WAYLAND_DISPLAY` nulled so GLFW
+    /// selects the X11 backend, then restore it immediately. Because the variable is process-global,
+    /// the override is held ONLY across window creation (never across the render loop, which would
+    /// null Wayland for every other thread for the window's whole lifetime — #363) and serialized by
+    /// a lock so two windows never race the shared variable. A no-op off Linux or when only one of
+    /// the two display vars is set.
+    let internal withWindowBackendOverride (action: unit -> 'a) : 'a =
+        if OperatingSystem.IsLinux()
+           && not (String.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable "DISPLAY"))
+           && not (String.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable "WAYLAND_DISPLAY")) then
+            lock nativeWindowBackendLock (fun () ->
+                let previousWayland = Environment.GetEnvironmentVariable "WAYLAND_DISPLAY"
+
+                try
+                    Environment.SetEnvironmentVariable("WAYLAND_DISPLAY", null)
+                    action ()
+                finally
+                    Environment.SetEnvironmentVariable("WAYLAND_DISPLAY", previousWayland))
+        else
+            action ()
+
     type ScissorRect =
         { X: int
           Y: int
@@ -765,13 +791,15 @@ module GlHost =
             match configuration.ConfigureWindow with
             | Some configure -> options <- configure options
             | None -> ()
-            Ok(Window.Create options)
+            // #363: pin the X11 backend only around window creation, not the later render loop.
+            Ok(withWindowBackendOverride (fun () -> Window.Create options))
         with ex ->
             Result.Error(Diagnostics.startupFailed GlSurface $"Silk.NET window creation failed: {ex.Message}")
 
     let initializeWindow (window: IWindow) =
         try
-            window.Initialize()
+            // #363: GLFW resolves the X11/Wayland backend at `Initialize`; keep the override scoped here.
+            withWindowBackendOverride (fun () -> window.Initialize())
 
             if window.IsInitialized then
                 Ok()

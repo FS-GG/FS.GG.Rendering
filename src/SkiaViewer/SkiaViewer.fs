@@ -509,22 +509,10 @@ module Viewer =
         | Some logical -> LogicalCanvas.present logical surfaceSize scene
         | None -> scene
 
-    let private nativeWindowEnvironmentLock = obj()
-
-    let private withNativeWindowEnvironment action =
-        if OperatingSystem.IsLinux()
-           && not (String.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable "DISPLAY"))
-           && not (String.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable "WAYLAND_DISPLAY")) then
-            lock nativeWindowEnvironmentLock (fun () ->
-                let previousWayland = Environment.GetEnvironmentVariable "WAYLAND_DISPLAY"
-
-                try
-                    Environment.SetEnvironmentVariable("WAYLAND_DISPLAY", null)
-                    action()
-                finally
-                    Environment.SetEnvironmentVariable("WAYLAND_DISPLAY", previousWayland))
-        else
-            action()
+    // #363: the XWayland backend pin now lives in the host as `GlHost.withWindowBackendOverride`,
+    // scoped to window `Create`/`Initialize` only. It used to wrap the entire run loop here, which
+    // nulled `WAYLAND_DISPLAY` process-wide and held its lock for the whole (potentially multi-hour)
+    // session; the inline window paths below apply it narrowly around their own creation instead.
 
     let private unsupportedHostFailure () =
         let isSupportedOs = OperatingSystem.IsWindows() || OperatingSystem.IsLinux()
@@ -1185,7 +1173,7 @@ module Viewer =
             |> Host.Viewer.withEventMapping eventMapper
             |> Host.Viewer.withEffectMapping effectMapper
 
-        match withNativeWindowEnvironment (fun () -> Host.Viewer.run program) with
+        match Host.Viewer.run program with
         | Ok() ->
             let visibleDiagnostic =
                 { WindowInitialized = !windowOpened
@@ -1261,7 +1249,9 @@ module Viewer =
                 with _ ->
                     ())
 
-        withNativeWindowEnvironment (fun () ->
+        // #363: the render loop below runs OUTSIDE the XWayland backend override; only the
+        // `Window.Create`/`Initialize` calls are wrapped in `GlHost.withWindowBackendOverride`.
+        (
             try
                 let mutable windowOptions = WindowOptions.Default
                 windowOptions.Title <- options.Title
@@ -1272,7 +1262,7 @@ module Viewer =
                 windowOptions.UpdatesPerSecond <- 60.0
                 windowOptions <- applyWindowBehaviorToOptions behavior windowOptions
 
-                let window = Window.Create windowOptions
+                let window = Host.GlHost.withWindowBackendOverride (fun () -> Window.Create windowOptions)
 
                 let loadedHandler =
                     Action(fun () ->
@@ -1337,7 +1327,7 @@ module Viewer =
                       fun (w: IWindow) -> w.remove_Closing closingHandler ]
 
                 try
-                    window.Initialize()
+                    Host.GlHost.withWindowBackendOverride (fun () -> window.Initialize())
 
                     if not window.IsInitialized then
                         Result.Error(
@@ -2057,7 +2047,9 @@ module Viewer =
                     let mutable frame = 0
                     let stopwatch = Stopwatch.StartNew()
 
-                    withNativeWindowEnvironment (fun () ->
+                    // #363: only window creation runs under the XWayland backend override; the
+                    // bounded render loop below runs outside it (see GlHost.withWindowBackendOverride).
+                    (
                         try
                             let mutable windowOptions = WindowOptions.Default
                             windowOptions.Title <- options.Title
@@ -2067,7 +2059,7 @@ module Viewer =
                             windowOptions.FramesPerSecond <- 60.0
                             windowOptions.UpdatesPerSecond <- 60.0
 
-                            let window = Window.Create windowOptions
+                            let window = Host.GlHost.withWindowBackendOverride (fun () -> Window.Create windowOptions)
 
                             let loadedHandler =
                                 Action(fun () ->
@@ -2107,7 +2099,7 @@ module Viewer =
                                   fun (w: IWindow) -> w.remove_Render renderHandler ]
 
                             try
-                                window.Initialize()
+                                Host.GlHost.withWindowBackendOverride (fun () -> window.Initialize())
 
                                 if not window.IsInitialized then
                                     Result.Error(

@@ -138,6 +138,12 @@ module GlHost =
     /// from what really initialized (#135).
     val backendLabel: string
 
+    /// #363: run a Silk window `Create`/`Initialize` with `WAYLAND_DISPLAY` nulled so GLFW picks the
+    /// GLX/X11 backend on an XWayland session, restoring it immediately afterwards. Scoped to window
+    /// creation only — never held across the render loop — and serialized against concurrent windows.
+    /// A no-op off Linux or when only one display variable is set.
+    val internal withWindowBackendOverride: action: (unit -> 'a) -> 'a
+
     /// Feature 147: integer framebuffer scissor rectangle used by the proof and partial-redraw
     /// decision helpers. Coordinates are clamped to the framebuffer before use.
     type ScissorRect =
