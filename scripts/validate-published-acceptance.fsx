@@ -20,7 +20,8 @@
 //     an isolated store, confirms `dotnet new list` resolves `fs-gg-ui` to the PACKAGE (not the
 //     working tree), runs the 3 lifecycle x 4 profile matrix, asserts the per-value gated-set result
 //     + byte-identical default + none-has-no-orchestrator-marker + unknown-value-rejected, runs the
-//     bounded `dotnet build` spot-check on the app-profile sdd/none outputs, uninstalls/restores
+//     bounded `dotnet build` spot-check on the app-profile sdd/none outputs, EXECUTES the packaged
+//     fs-gg-symbology reference recipe materialized into the scaffold (#294), uninstalls/restores
 //     (even on failure), and writes the record with `provenance: live`.
 //
 // Usage:
@@ -32,6 +33,7 @@ open System
 open System.Diagnostics
 open System.IO
 open System.Text
+open System.Text.RegularExpressions
 
 // ---- pinned inputs (research R1/R2) -----------------------------------------------------------
 
@@ -68,6 +70,13 @@ let reportRelPath = "specs/210-lifecycle-template-closure/readiness/epic-accepta
 
 let private assertTrue cond msg =
     if not cond then failwithf "ACCEPTANCE FAIL: %s" msg
+
+// A failure blob that carries one of these is the ENVIRONMENT failing to reach a feed, not the
+// artifact under test failing. Shared by the build spot-check and the packaged reference recipe:
+// both shell out to a `dotnet` that must restore before it can prove anything.
+let private envLimitedMarkers =
+    [ "NU1101"; "NU1102"; "NU1301"; "Unable to load the service index"
+      "No such host"; "actively refused"; "nuget.org"; "Unable to resolve"; "network" ]
 
 let private runProc (workDir: string) (exe: string) (args: string list) =
     let psi = ProcessStartInfo(exe)
@@ -252,9 +261,6 @@ let private validateUnknownRejected (tmpRoot: string) =
 /// A real compile failure (no restore/network marker) is NOT swallowed — it surfaces as a thrown
 /// failure that blocks close (SC-007).
 let private buildSpotCheck (sddAppDir: string) (noneAppDir: string) =
-    let envLimitedMarkers =
-        [ "NU1101"; "NU1102"; "NU1301"; "Unable to load the service index"
-          "No such host"; "actively refused"; "nuget.org"; "Unable to resolve"; "network" ]
     let buildOne (dir: string) =
         // The generated product ships no solution file; the product project is src/<name>/<name>.fsproj.
         let proj = Path.Combine(dir, "src", productName, sprintf "%s.fsproj" productName)
@@ -269,10 +275,110 @@ let private buildSpotCheck (sddAppDir: string) (noneAppDir: string) =
         "environment-limited",
         "build toolchain/restore unavailable (NuGet restore could not reach the feed); buildability not asserted as pass"
 
+// ---- packaged symbology reference recipe (live, step 5, #294 lane 2) --------------------------
+
+/// The fs-gg-symbology skill's `reference.fsx` is the one RUNNABLE artifact it ships, and it shipped
+/// broken: `fsi` resolves a bare `#r` DLL against the file system rather than the project's
+/// deps.json, so nothing pulled SkiaSharp in behind FS.GG.UI.SkiaViewer and every invocation threw.
+/// Nobody noticed because every check that named the file asserted it EXISTS and is byte-mirrored;
+/// none asserted it RUNS.
+///
+/// #295 closed that hole for the in-tree variant (`gate.yml`, on every PR). It cannot close it for
+/// the PACKAGED variant, which `#r`s `nuget: FS.GG.UI.*` packages that do not exist until they are
+/// published — so the packaged twin is only provable here, against the real feed, exactly as a
+/// consumer gets it. This is the drift the harness was built for (feature 210).
+///
+/// Runs the copy materialized into the spec-kit scaffold (`.agents/` is gated to lifecycle=spec-kit,
+/// so this is the only lifecycle that carries it) and pins the same verdict SEQUENCE `gate.yml` pins
+/// in-tree. Returns ("pass" | "environment-limited", detail). A real failure — a broken script, a
+/// drifted Legibility contract, an unresolvable pin — is NOT swallowed (SC-007).
+let private symbologyReferenceCheck (specKitAppDir: string) =
+    let relPath = ".agents/skills/fs-gg-symbology/reference.fsx"
+    let script = Path.Combine(specKitAppDir, relPath.Replace('/', Path.DirectorySeparatorChar))
+    assertTrue (File.Exists script)
+        (sprintf "packaged fs-gg-symbology reference recipe missing from the spec-kit scaffold at %s" relPath)
+
+    // Which recipe actually landed? The `#r` header is the whole difference between the two twins:
+    // the in-tree one references src/*/bin/Debug DLLs, the packaged one `#r`s `nuget: FS.GG.UI.*`.
+    // Assert the SHAPE before running, so the failure names the defect instead of surfacing an
+    // FS0078 "unable to find the file" from four directories up.
+    //
+    // This is not hypothetical. Template source `.agents/skills/ -> .agents/skills/` (spec-kit-gated)
+    // copies THIS REPO's Codex wrapper into the product, shadowing the
+    // `template/product-skills/fs-gg-symbology/ -> .agents/skills/fs-gg-symbology/` source that is
+    // supposed to supply it (skill-manifest.json: supplied-by). A consumer's recipe is therefore the
+    // in-tree twin, `#r`ing Debug DLLs that exist in no product.
+    // Only the `#r` DIRECTIVES decide which twin this is — a prose mention of bin/Debug in a comment
+    // (both headers describe the other variant) must not trip the detector.
+    let refLines =
+        File.ReadAllLines script
+        |> Array.filter (fun l -> l.TrimStart().StartsWith "#r ")
+    let refsDebugDll = refLines |> Array.exists (fun l -> l.Contains "bin/Debug")
+    let refsNugetPackages = refLines |> Array.exists (fun l -> l.Contains "nuget: FS.GG.UI.")
+
+    if refsDebugDll || not refsNugetPackages then
+        failwithf
+            "packaged symbology reference recipe DRIFT at %s — the materialized script is the IN-TREE twin.\n\
+             It `#r`s src/*/bin/Debug DLLs, which exist only in the FS.GG.Rendering working tree, so it\n\
+             throws FS0078 on a consumer's first run. Expected the packaged twin from\n\
+             template/product-skills/fs-gg-symbology/ (`#r \"nuget: FS.GG.UI.*\"`).\n\
+             Likely cause: the spec-kit-gated `.agents/skills/` template source shadows the\n\
+             `template/product-skills/fs-gg-symbology/` source that targets the same directory.\n\
+             --- materialized #r directives ---\n%s"
+            relPath (String.concat "\n" refLines)
+
+    // Run from the scaffold: the product's NuGet.config is what resolves the `#r "nuget:"` lines,
+    // and the recipe writes its PNGs under Path.GetTempPath(), never the working directory.
+    let code, out, err = runProc specKitAppDir "dotnet" [ "fsi"; script ]
+    let blob = out + "\n" + err
+
+    if code <> 0 then
+        // Three failure modes, named apart. The recipe guards its own loop with `failwith "reference
+        // recipe: ..."`, so when THAT fires the script ran fine and the published LIBRARY disagreed
+        // with it — a different bug, and a different fix, from the script being broken.
+        if blob.Contains "reference recipe:" then
+            failwithf
+                "packaged symbology reference recipe: the PUBLISHED library disagrees with the recipe at %s.\n\
+                 The recipe's own guard fired, so it resolved and ran — but `#r \"nuget: FS.GG.UI.*\"` is\n\
+                 UNPINNED, so it runs against the latest PUBLISHED library, never the working tree. A\n\
+                 library behaviour change that has merged but not yet shipped reds here until the packages\n\
+                 publish (green follows the publish). Pin the recipe's `#r` lines to FsGgUiVersion, or ship.\n\
+                 --- recipe output ---\n%s\n--- diagnostic ---\n%s"
+                relPath out blob
+        elif envLimitedMarkers |> List.exists blob.Contains then
+            "environment-limited",
+            "packaged FS.GG.UI.* could not be restored from the feed; the packaged recipe was not asserted to run"
+        else
+            failwithf "packaged symbology reference recipe FAILED (real failure, not environment) at %s (exit %d):\n%s"
+                relPath code blob
+    else
+        // The script fails loud on its own (`failwith` on both rounds). Pinning the output here makes
+        // the expected sequence part of the gate rather than a comment that can drift from the code
+        // beneath it — and proves the packaged twin demonstrates the SAME loop as the in-tree one.
+        let must (pattern: string) (why: string) =
+            assertTrue (Regex.IsMatch(out, pattern, RegexOptions.Multiline))
+                (sprintf "packaged symbology reference recipe: %s\n--- stdout ---\n%s" why out)
+
+        must @"^round 1: HasWarnings$"
+            "round 1 must score HasWarnings — the recipe teaches the loop by showing a warning"
+        must @"Speed overloaded: 5 distinct levels used, capacity 4"
+            "round 1 must name Speed as the overloaded channel, over capacity 4"
+        must @"^\s+units: \[4\]$"
+            "round 1 must name ONLY the units past capacity (expected [4]); naming the whole board is the #295 regression"
+        must @"^round 2 \(after tweak\): Clean$"
+            "round 2 must score Clean — the ChannelMap tweak has to clear every finding"
+        for grammar in [ "Token"; "Badge"; "Ring" ] do
+            must (sprintf @"^%s\s+board PNG: " grammar)
+                (sprintf "one unchanged mapUnit must render a %s board via galleryIn" grammar)
+
+        "pass",
+        "packaged reference.fsx exit 0: seeded overload -> named unit 4 -> tweak -> Clean -> 3 grammars"
+
 // ---- record writer (T009) ---------------------------------------------------------------------
 
 let private renderRecord (provenance: string) (verdicts: ProfileVerdict list)
                          (unknown: string) (buildability: string) (buildDetail: string)
+                         (symbology: string) (symbologyDetail: string)
                          (sddIssueUrl: string) (constitutionItem: string) =
     let sb = StringBuilder()
     let line (s: string) = sb.Append(s).Append('\n') |> ignore
@@ -316,6 +422,13 @@ let private renderRecord (provenance: string) (verdicts: ProfileVerdict list)
     line "- scope:  dotnet build on the app-profile output for sdd and none (spec-kit follows from byte-identity)."
     line (sprintf "- result: buildability = %s" buildability)
     line (sprintf "          %s" buildDetail)
+    line ""
+    line "## Packaged skill reference recipe (#294 lane 2)"
+    line "- scope:  dotnet fsi on .agents/skills/fs-gg-symbology/reference.fsx in the app/spec-kit output."
+    line "          The packaged recipe `#r`s published `nuget: FS.GG.UI.*`, so only a live run against the"
+    line "          real feed can prove it — the in-tree twin is gated per-PR by gate.yml (#295)."
+    line (sprintf "- result: packaged-reference-recipe = %s" symbology)
+    line (sprintf "          %s" symbologyDetail)
     line ""
     line "## Reproduction"
     line "```bash"
@@ -386,6 +499,7 @@ let private main () =
         let record =
             renderRecord "verdict-core" (synthVerdicts ()) "rejected"
                 "environment-limited" "verdict-core: live build spot-check not run"
+                "environment-limited" "verdict-core: packaged reference recipe not run"
                 sddIssuePlaceholder constitutionPlaceholder
         writeRecord record
         0
@@ -407,8 +521,13 @@ let private main () =
                 buildSpotCheck
                     (Path.Combine(tmpRoot, "app-sdd"))
                     (Path.Combine(tmpRoot, "app-none"))
+            // The gated `.agents/` tree exists only under lifecycle=spec-kit; validateProfile left
+            // every scaffold on disk, so the app/spec-kit output is still there to run.
+            let symbology, symbologyDetail =
+                symbologyReferenceCheck (Path.Combine(tmpRoot, "app-speckit"))
             let record =
                 renderRecord "live" verdicts unknown buildability buildDetail
+                    symbology symbologyDetail
                     sddIssuePlaceholder constitutionPlaceholder
             writeRecord record
             printfn "%s" record
