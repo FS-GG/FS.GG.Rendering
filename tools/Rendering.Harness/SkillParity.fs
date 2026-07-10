@@ -752,6 +752,12 @@ module SkillParity =
     let private commandSkillName (name: string) =
         name.StartsWith("speckit-", StringComparison.OrdinalIgnoreCase)
 
+    /// The ADR-0019/0021 coordination kit: externally-owned (FS-GG/.github) process/command skills synced
+    /// verbatim by coordination-sync. Excluded from wrapper parity (their byte-coherence is the
+    /// coordination-coherence gate's job); add a kit skill here when coordination-sync introduces it.
+    let private coordinationKitSkills =
+        Set.ofList [ "cross-repo-coordination"; "intra-repo-parallel-work"; "check-board"; "pnext-item" ]
+
     let private targetFromContent (absoluteSkillPath: string) (content: string) =
         let routeIndex = content.IndexOf("Before acting", StringComparison.OrdinalIgnoreCase)
         let matches = Regex.Matches(content, "`([^`]*SKILL\\.md)`", RegexOptions.IgnoreCase)
@@ -858,14 +864,13 @@ module SkillParity =
                 let normalized = normalizeSeparators path
                 not (containsIgnoreCase "/.claude/skills/fs-gg-ant-design/SKILL.md" normalized)
                 && not ((parentDirectoryName path).StartsWith("speckit-", StringComparison.OrdinalIgnoreCase))
-                // The ADR-0019 coordination kit (cross-repo-coordination + intra-repo-parallel-work,
-                // ADR-0021) is externally-owned (FS-GG/.github): process skills synced verbatim by
-                // coordination-sync, not repo wrappers routing to an internal canonical. Their
-                // byte-coherence is enforced by the coordination-coherence gate, so exclude them from
-                // wrapper parity exactly like the Ant canonical and the externally-owned speckit-*
-                // command skills above.
-                && (parentDirectoryName path) <> "cross-repo-coordination"
-                && (parentDirectoryName path) <> "intra-repo-parallel-work")
+                // The ADR-0019 coordination kit (cross-repo-coordination + intra-repo-parallel-work per
+                // ADR-0021, plus the check-board / pnext-item command skills) is externally-owned
+                // (FS-GG/.github): process skills synced verbatim by coordination-sync, not repo wrappers
+                // routing to an internal canonical. Their byte-coherence is enforced by the
+                // coordination-coherence gate, so exclude them from wrapper parity exactly like the Ant
+                // canonical and the externally-owned speckit-* command skills above.
+                && not (coordinationKitSkills |> Set.contains (parentDirectoryName path)))
         | _ ->
             if File.Exists rootPath then
                 [ rootPath ]
