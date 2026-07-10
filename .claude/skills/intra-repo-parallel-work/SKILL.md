@@ -238,6 +238,21 @@ names it; `fsgg-coord lint` reports the same as `EPIC-UNLINKED-CHILD`. Both read
 task-list (`- [ ]` / `- [x]` lines naming an issue) as its second, human-legible record of what its
 children are, and hold the two records to agreement.
 
+So write the body's task-list the way the matcher reads it, or it counts a child you did not mean.
+Only a `- [ ]` / `- [x]` line (also `*`/`+` bullets, `[X]`) indented **at most three spaces**
+declares a child, and only its **first** issue ref does:
+
+- **The first ref wins**, positionally in the raw line — a `#n` in a code span or a link's text
+  still counts. Put the child ref first and let an aside (`(cf. #100)`, `ties to #163`) trail, or
+  the aside becomes the declared child.
+- **A bare `#n` resolves against the epic's own repo.** `SDD#109` has no slash, so it is read as
+  `.github#109`. Write cross-repo children fully qualified: `FS-GG/FS.GG.SDD#109`.
+- **A PR is not a child** — the sub-issue graph holds issues, never PRs. Cite a line a PR delivered
+  as a **bare** `/pull/` URL (`https://github.com/FS-GG/.github/pull/239`), which carries no `#n`
+  and so declares nothing. `(PR #239)` or `[PR #239](…)` reads as an unlinked child forever.
+
+Canonical, with the live incidents: `docs/coordination/parallel-work.md` §"What the body counts as a declaration".
+
 ```sh
 scripts/fsgg-coord verify-paths --pr <n>   # files changed outside the issue's `Paths:`
 ```
