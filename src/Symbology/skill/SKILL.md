@@ -245,6 +245,61 @@ The **grammar** (this library) is fixed. The **mapping** `'stats -> Token` is pe
 each iteration. Build from `Symbology.defaultToken` and override only the fields the game encodes, so the
 unit of change every round is the mapping, never the library.
 
+## When the grammar can't encode it
+
+The two rules above — *do not invent geometry*, and *the grammar is fixed* — together leave **no legal
+move** when a game holds a state that no channel expresses. That gap is real, not hypothetical, and it
+has exactly one sanctioned exit: **ask for the channel**.
+
+Do **not** invent geometry. Do **not** overload a channel that already means something else: the linter
+counts a channel's **distinct levels**, and cannot see that two of them now mean different *kinds* of
+thing — a second meaning that fits inside the capacity lints `Clean` and still fails the eye. Instead
+open a `cross-repo:request` issue against the **`fs-gg-symbology`** contract — the
+[[cross-repo-coordination]] skill files it — naming the state you cannot encode and what you would draw
+for it. Three outcomes are possible, and which one is **Rendering's call, not the consumer's**:
+
+1. **A caller-drawn `Sigil.Mark of PathSpec`** — cheap, and usually wrong. The grammar does not rotate
+   or animate a caller path, so you re-implement the transform outside the vocabulary, where
+   `Legibility` cannot see it: the linter scores `Sigil` as the *identity* channel it is, never the
+   rotation you smuggled through it. And `Sigil` is the identity slot, so spending it costs you your
+   identity mark.
+2. **An additive opt-in channel**, `None` by default and rendering byte-identically when unset — the
+   zero-drift pattern `Label` / `AutoLabel` / `LabelMotion` / `SecondaryHeading` have now established
+   four times. Adding to the fixed set is a deliberate, reviewed, one-time act **by the library**; it is
+   never a thing a mapping may do for itself.
+3. **Declared out of scope** — the vocabulary draws unit *symbols*, not vehicle *schematics*.
+
+Filing the request *is* the move the doctrine asks of you. "The grammar is fixed" constrains the
+mapping; it is not a refusal to grow.
+
+### Worked example — the turret with nowhere to go
+
+FS.GG.Game mapped a tank and found `Token` carried a single `Heading`. A tank rotates twice: the **hull**
+decides which armor plate a shot lands on, the **turret** where the gun points. Neither is inspection
+detail, and the skill offered no legal way to say both. They filed
+[#260](https://github.com/FS-GG/FS.GG.Rendering/issues/260) rather than working around it — and said
+plainly that they did not object to any of the three options, they just wanted the outcome *recorded*.
+
+The answer was **(2)**, recorded as
+[ADR-0102](../../../docs/product/decisions/0102-symbology-secondary-heading-channel.md):
+`Token.SecondaryHeading : float option`. All three grammars draw it and **none degrades**; it is
+`Continuous` in `Legibility.table`, therefore overload-exempt, and only a non-finite angle is an `Error`.
+
+The instructive part is what was **rejected**. A per-unit *"the two headings nearly agree"* `Warning` was
+considered and dropped: a tank driving forward with its gun forward is the **normal rest state**, so the
+check would have fired constantly on correct input. Two rotations on one glyph genuinely *is* a
+legibility hazard — and it was discharged by **drawing**, not by linting. Each grammar sites the barrel
+where no primary indicator lives, so extent and form separate the two even when the angles agree.
+
+Two lessons generalise past this case:
+
+- **A hazard the grammar can draw its way out of is not a linter finding.** Reach for form and siting
+  before you reach for a `Warning`; a rule that fires on the common correct input teaches users to
+  ignore the linter.
+- **The consumer's job ended at "we cannot encode this."** They named the state, named the cost of each
+  option, and stopped. Inventing the answer — a rotated `Sigil.Mark`, a second meaning on `Speed` — is
+  what the doctrine exists to prevent, and it is what filing the request buys you out of.
+
 ## FSI recipe (the loop's core move)
 
 ```fsharp

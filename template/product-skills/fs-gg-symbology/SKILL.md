@@ -227,6 +227,44 @@ of change stays the mapping, never the grammar. (b) EYE — the human-style self
 rules above stays (the linter cannot see crowding, contrast, or label collisions). The approved roster
 (the golden reference above) lints `Clean`, so a fresh finding is a real signal to re-tune the mapping.
 
+## When the grammar can't encode it
+
+The grammar is fixed and you may not invent geometry — so when your game holds a state that **no channel
+expresses**, the doctrine as stated leaves you no legal move. It has exactly one sanctioned exit: **ask
+for the channel.**
+
+Do **not** invent geometry. Do **not** overload a channel that already means something else: the linter
+counts a channel's **distinct levels**, and cannot see that two of them now mean different *kinds* of
+thing — a second meaning that fits inside the capacity lints `Clean` under `scoreIn` and still fails the
+eye. Instead open a `cross-repo:request` issue against the **`fs-gg-symbology`** contract on
+`FS-GG/FS.GG.Rendering` — the `cross-repo-coordination` skill files it — naming the state you cannot
+encode and what you would draw for it. Three outcomes are possible, and which one is **Rendering's call,
+not yours**:
+
+1. **A caller-drawn `Sigil.Mark of PathSpec`** — cheap, and usually wrong. The grammar does not rotate or
+   animate a caller path, so `Legibility` scores `Sigil` as the identity channel it is and never the
+   rotation you routed through it. `Sigil` is also the *identity* slot, so spending it costs you your
+   identity mark.
+2. **An additive opt-in channel**, `None` by default and rendering byte-identically when unset — as
+   `Label` / `AutoLabel` / `LabelMotion` / `SecondaryHeading` each did. Growing the fixed set is the
+   **library's** act, never your mapping's.
+3. **Declared out of scope** — the vocabulary draws unit *symbols*, not vehicle *schematics*.
+
+Filing the request *is* the move the doctrine asks of you. Do not work around it silently: a workaround
+is a channel the linter cannot see.
+
+**Worked example.** FS.GG.Game mapped a tank and found `Token` carried a single `Heading` — but a tank
+rotates twice, the **hull** (which armor plate faces you) and the **turret** (where the gun points).
+Neither is inspection detail. They filed
+[FS.GG.Rendering#260](https://github.com/FS-GG/FS.GG.Rendering/issues/260) instead of working around it,
+naming the cost of each option and leaving the choice to Rendering. The answer was **(2)** —
+`Token.SecondaryHeading : float option`, per
+[ADR-0102](https://github.com/FS-GG/FS.GG.Rendering/blob/main/docs/product/decisions/0102-symbology-secondary-heading-channel.md)
+— which is why the [Two rotations](#two-rotations-opt-in-second-heading) channel exists for you to map
+today. A proposed *"the two headings nearly agree"* `Warning` was **rejected**: a tank driving forward
+with its gun forward is the normal rest state, so it would have fired on correct input. The hazard was
+answered by **drawing** (each grammar sites the barrel clear of its primary indicator), not by linting.
+
 ## Build Commands
 
 Run `./fake.sh build -t Dev` then `./fake.sh build -t Verify` in this product.
