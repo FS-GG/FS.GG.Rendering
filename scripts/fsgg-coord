@@ -1917,6 +1917,14 @@ paths_of() {  # $1=owner $2=repo $3=num -> one normalized touch-set token per li
 }
 # The comparison core, shared by `overlap`, `batch`, `take`, and `widen`. Two newline-separated token
 # lists in; the conflicting pairs out (empty = disjoint). Subtree containment in either direction.
+#
+# CONTRACT — both token lists MUST come from the SAME repo. `Paths:` tokens are repo-relative, so
+# `scripts/fsgg-coord` in repo A and `scripts/fsgg-coord` in repo B name two different files; this
+# function cannot see the repo and will happily report them as colliding (#353). Every caller is
+# therefore responsible for confining its inputs to one repo before calling: `batch`/`widen`/`overlap
+# --active` pass that repo to `active_claims` so the compared claims are same-repo, and the pairwise
+# `overlap a b` short-circuits to DISJOINT when its two refs resolve to different repos. Hand this
+# cross-repo token lists and it invents collisions.
 conflicts_between() {
   local a="$1" b="$2"
   [ -n "$a" ] && [ -n "$b" ] || return 0
@@ -2098,7 +2106,7 @@ overlap_cmd() {
   # --- <a> against every in-flight claim -----------------------------------------------------------
   if [ -n "$against_active" ]; then
     [ -z "$b" ] || die "overlap: --active takes one issue ref, not two."
-    parse_ref "$a"; local ar="$R_REPO" an="$R_NUM" aid="$R_OWNER/$R_REPO#$R_NUM"
+    parse_ref "$a"; local ar="$R_REPO" an="$R_NUM" ao="$R_OWNER" aid="$R_OWNER/$R_REPO#$R_NUM"
     local pa; pa="$(paths_for_ref "$a")"
     [ -n "$pa" ] || { echo "overlap: no 'Paths:' touch-set declared on $ar#$an — add one to schedule it." >&2; return 2; }
     local abad; abad="$(invalid_paths "$pa")"
@@ -2110,7 +2118,11 @@ overlap_cmd() {
     fi
 
     local claims n=0 i=0 found=0
-    claims="$(active_claims)"
+    # Scope to <a>'s own repo, for the same reason `widen` and `batch` do: `Paths:` tokens are
+    # repo-relative, so a claim in another repo can never share a file with <a>, and comparing across
+    # the boundary only manufactures phantom overlaps (#353). "against every in-flight claim" means
+    # every claim that could actually contend for <a>'s files — which is every claim in <a>'s repo.
+    claims="$(active_claims "$ao/$ar")"
     n="$(jq 'length' <<<"$claims")"
     # An in-flight claim whose own touch-set is unmatchable reserves NOTHING, so clearing <a> against
     # it would be an answer about a surface we cannot see. Refuse before comparing against any of them.
@@ -2145,8 +2157,17 @@ overlap_cmd() {
 
   # --- pairwise -------------------------------------------------------------------------------------
   [ -n "$b" ] || die "overlap: two issue refs required (overlap <a> <b>), or pass --active."
-  parse_ref "$a"; local ar="$R_REPO" an="$R_NUM"
-  parse_ref "$b"; local br="$R_REPO" bn="$R_NUM"
+  parse_ref "$a"; local ar="$R_REPO" an="$R_NUM" ao="$R_OWNER"
+  parse_ref "$b"; local br="$R_REPO" bn="$R_NUM" bo="$R_OWNER"
+  # `Paths:` tokens are repo-relative, so two items in DIFFERENT repos never name the same file — they
+  # live in separate checkouts and can always run in parallel. Answer that directly rather than handing
+  # cross-repo tokens to `conflicts_between`, which cannot see a repo and would read a shared prefix
+  # (`scripts/fsgg-coord` ⇄ `scripts/fsgg-coord`) as a phantom overlap (#353). Compare the NORMALIZED
+  # owner/repo, so `SDD#1` and `FS-GG/FS.GG.SDD#2` still count as one repo.
+  if [ "$ao/$ar" != "$bo/$br" ]; then
+    printf 'DISJOINT — %s and %s are in different repos; their touch-sets cannot overlap.\n' "$ar#$an" "$br#$bn"
+    return 0
+  fi
   local pa pb; pa="$(paths_for_ref "$a")"; pb="$(paths_for_ref "$b")"
   if [ -z "$pa" ] || [ -z "$pb" ]; then
     local which=""
@@ -2597,7 +2618,15 @@ widen_cmd() {
   # Re-check against everything in flight, and notify each worker we now collide with.
   local pa claims n i=0 found=0
   pa="$(paths_of "$so" "$sr" "$sn")"
-  claims="$(active_claims)"
+  # Scope to THIS item's repo, exactly as `batch` does (`active_claims "$repo"`). `Paths:` tokens are
+  # repo-relative, so comparing `self`'s tokens against a claim in ANOTHER repo compares two strings
+  # that name files in two different repositories — `conflicts_between` sees a shared prefix and
+  # invents a collision, which stops a worker who has nothing to stop for and posts a false
+  # "sequence one behind the other" notice onto a stranger's item (#353). A cross-repo claim can
+  # never share a (repo-relative) file with this item, so it is correct to leave it out of the scan;
+  # doing so also makes `widen` coherent with `batch`, which would schedule the very pair `widen`
+  # otherwise insists collides.
+  claims="$(active_claims "$so/$sr")"
   n="$(jq 'length' <<<"$claims")"
   # The widen itself has landed (that is `widen`'s job, and it is how a bad declaration gets FIXED —
   # including on an item that is itself held). But the re-check against in-flight work is only as
