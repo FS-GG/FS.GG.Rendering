@@ -14,12 +14,17 @@ module ApiSurfaceMirrorTests
 //   M-REF   every FS.GG.* package `Product.fsproj` REFERENCES has a mirrored api-surface directory.
 //           The converse is NOT asserted: a directory may outlive a reference (e.g. Symbology, which
 //           is bundled but referenced only by the sample-pack content, not Product.fsproj).
-//   M-PTR   every bundled .fsi names the product skill that teaches it, so the .fsi and the SKILL.md
-//           stop being an unlinked pair (§5.3 — the report's author read the .fsi and never found
+//   M-PTR   every bundled .fsi names a SHIPPED product skill, so the .fsi and the SKILL.md stop being
+//           an unlinked pair (§5.3 — the report's author read the .fsi and never found
 //           `Scene.measureText`, which the fs-gg-scene skill documents under its own heading).
+//           It checks the skill EXISTS, not that it teaches this file's members. Contrast
+//           Feature240GameCoreSkillTests, which resolves every `Module.member` the skill names against
+//           the .fsi. Tightening M-PTR that way is a follow-up: today `Controls.Elmish` would fail it,
+//           because no shipped skill mentions `runInteractiveApp` / `InteractiveAppHost` at all.
 //   M-PROV  every CROSS-REPO mirror records the version it was copied from, and that version must
 //           equal the `$(FsGgAudioVersion)` the template pins. This is ADR-0024's staleness concern
-//           in enforced form: the copy can no longer outlive its package in silence.
+//           in enforced form: the copy can no longer outlive its package in silence. The in-repo
+//           copies get the stronger check — compared against their src/ original outright.
 
 open System.IO
 open System.Text.RegularExpressions
@@ -41,7 +46,19 @@ let private productSkillsRoot = repositoryPath "template/product-skills"
 let private surfaceDirectoryFor (packageId: string) =
     if packageId.StartsWith "FS.GG.UI." then packageId.Substring("FS.GG.UI.".Length)
     elif packageId.StartsWith "FS.GG." then packageId.Substring("FS.GG.".Length)
-    else packageId
+    else failwithf "not an FS.GG package id: %s" packageId
+
+/// Mirrors copied verbatim from ANOTHER FS-GG repo. Each carries a provenance stamp, because a
+/// cross-repo copy is the one that can outlive the package it claims (ADR-0024).
+let private crossRepoMirrorDirectories =
+    set [ "Audio.Core"; "Audio.Host"; "Audio.Engine"; "Audio.Elmish" ]
+
+/// Mirrors copied verbatim from THIS repo's src/, so their freshness is checkable directly rather
+/// than by a stamp. `Scene/` is deliberately absent: it is a hand-MERGED surface (it inlines
+/// Types.fsi), not a file copy, so it has no single original to compare against.
+let private inRepoExactCopies =
+    [ "Controls.Elmish/ControlsElmish.fsi", "src/Controls.Elmish/ControlsElmish.fsi"
+      "Controls.Elmish/Authoring.fsi", "src/Controls.Elmish/Authoring.fsi" ]
 
 let private referencedFsGgPackages () =
     Regex.Matches(File.ReadAllText productProjPath, @"<PackageReference\s+Include=""(FS\.GG\.[^""]+)""")
@@ -60,14 +77,30 @@ let private relativeToSurfaceRoot (file: string) =
 let private owningPackageDirectory (file: string) =
     (relativeToSurfaceRoot file).Split('/').[0]
 
-/// The `// See skill:` pointer must sit in the header, above the `namespace` declaration.
-let private skillPointers (file: string) =
+/// Everything above the `namespace` declaration. Both header stamps are read from here, so a stray
+/// occurrence deeper in the file cannot satisfy either gate.
+let private headerLines (file: string) =
     File.ReadAllLines file
     |> Array.takeWhile (fun line -> not (line.StartsWith "namespace"))
+
+let private skillPointers (file: string) =
+    headerLines file
     |> Array.choose (fun line ->
         let m = Regex.Match(line, @"^//\s*See skill:\s*(\S+)\s*$")
         if m.Success then Some m.Groups.[1].Value else None)
     |> Array.toList
+
+let private provenanceVersion (file: string) =
+    headerLines file
+    |> Array.tryPick (fun line ->
+        let m = Regex.Match(line, @"^// Mirrored from FS-GG/FS\.GG\.Audio @ (\S+)")
+        if m.Success then Some m.Groups.[1].Value else None)
+
+/// A mirrored file minus its `//` header stamps, for comparison against a src/ original that has none.
+let private bodyOf (path: string) =
+    File.ReadAllLines path
+    |> Array.skipWhile (fun line -> line.StartsWith "//")
+    |> String.concat "\n"
 
 /// No shipped product skill covers FS.GG.UI.Canvas's immediate-mode drawing/loop surface. Recorded
 /// here rather than papered over with a pointer to a skill that does not teach these members.
@@ -93,12 +126,13 @@ let apiSurfaceMirrorTests =
               let missing =
                   referencedFsGgPackages ()
                   |> List.choose (fun pkg ->
-                      let dir = Path.Combine(apiSurfaceRoot, surfaceDirectoryFor pkg)
+                      let name = surfaceDirectoryFor pkg
+                      let dir = Path.Combine(apiSurfaceRoot, name)
 
                       if Directory.Exists dir && Directory.GetFiles(dir, "*.fsi").Length > 0 then
                           None
                       else
-                          Some(pkg, surfaceDirectoryFor pkg))
+                          Some(pkg, name))
 
               Expect.isEmpty missing "each referenced FS.GG.* package bundles at least one api-surface .fsi"
           }
@@ -149,19 +183,42 @@ let apiSurfaceMirrorTests =
 
               let offenders =
                   bundledFsiFiles ()
-                  |> List.filter (fun f -> (owningPackageDirectory f).StartsWith "Audio.")
+                  |> List.filter (fun f -> crossRepoMirrorDirectories.Contains(owningPackageDirectory f))
                   |> List.choose (fun file ->
-                      let m =
-                          Regex.Match(File.ReadAllText file, @"^// Mirrored from FS-GG/FS\.GG\.Audio @ (\S+)", RegexOptions.Multiline)
+                      match provenanceVersion file with
+                      | None -> Some(relativeToSurfaceRoot file, "<no provenance line>")
+                      | Some stamped when stamped <> pinned -> Some(relativeToSurfaceRoot file, stamped)
+                      | Some _ -> None)
 
-                      if not m.Success then
-                          Some(relativeToSurfaceRoot file, "<no provenance line>")
-                      elif m.Groups.[1].Value <> pinned then
-                          Some(relativeToSurfaceRoot file, m.Groups.[1].Value)
+              Expect.isEmpty offenders $"each cross-repo mirror is stamped with the pinned FsGgAudioVersion ({pinned})"
+          }
+
+          test "every cross-repo mirror directory declared here actually exists" {
+              // Keeps `crossRepoMirrorDirectories` from silently going stale into a no-op filter,
+              // which would make M-PROV vacuously green.
+              crossRepoMirrorDirectories
+              |> Set.iter (fun dir ->
+                  Expect.isTrue
+                      (Directory.Exists(Path.Combine(apiSurfaceRoot, dir)))
+                      $"declared cross-repo mirror {dir} exists")
+          }
+
+          // The in-repo half of the same staleness problem. A cross-repo copy gets a stamp because we
+          // cannot see the other repo from here; an in-repo copy has its original one directory away,
+          // so compare them outright.
+          test "every in-repo exact-copy mirror still matches its src original" {
+              let offenders =
+                  inRepoExactCopies
+                  |> List.choose (fun (rel, srcRelative) ->
+                      let mirror = Path.Combine(apiSurfaceRoot, rel.Replace('/', Path.DirectorySeparatorChar))
+                      let original = repositoryPath srcRelative
+
+                      if bodyOf mirror = bodyOf original then
+                          None
                       else
-                          None)
+                          Some(rel, srcRelative))
 
-              Expect.isEmpty offenders $"each Audio.* mirror is stamped with the pinned FsGgAudioVersion ({pinned})"
+              Expect.isEmpty offenders "each in-repo exact-copy mirror is identical to its src original (modulo the // header)"
           }
 
           // §5.3 — the report's author hand-rolled `len * size * 0.6` centring while `measureText` sat
