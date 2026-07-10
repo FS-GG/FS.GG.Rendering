@@ -14,9 +14,38 @@ headlessly to critique at the target on-board size. The grammar is fixed; the ma
 ## Public Contract
 
 The signatures you consume are bundled with this product under `docs/api-surface/Symbology/` (the pure
-`Symbology.fsi`) and `docs/api-surface/Symbology.Render/` (the `Render.fsi` bridge). The pure library
-references only `Scene`; all raster/IO is in the render bridge. Build from `Symbology.defaultToken` and
-override only the fields your game encodes.
+`Symbology.fsi` **and** `Legibility.fsi`) and `docs/api-surface/Symbology.Render/` (the `Render.fsi`
+bridge). The pure library references only `Scene`; all raster/IO is in the render bridge. Build from
+`Symbology.defaultToken` and override only the fields your game encodes.
+
+`Legibility` is the pure package's third public module — the linter your CRITIQUE step runs. Pure,
+deterministic, advisory; it never mutates and never raises on valid input:
+
+```fsharp
+val table: ChannelSpec list                                  // the fixed capacity table, machine-readable
+val score: tokens: Token list -> Report                      // a static board
+val scoreAnimated: board: (Motion * Token) list -> Report    // + whole-board motion load
+
+type Verdict     = Clean | HasWarnings              // Clean iff Findings is empty
+type Severity    = Warning | Error                  // Error = ungrammatical; Warning = encodable but overloaded
+type ChannelKind = Categorical | Ordered | Continuous
+type Report      = { Findings: Finding list; Usage: ChannelUsage list; Verdict: Verdict }
+type Finding     = { Channel: Channel; Severity: Severity; Message: string; Units: int list }
+type ChannelSpec = { Channel: Channel; Kind: ChannelKind; Capacity: int }
+type ChannelUsage= { Channel: Channel; Kind: ChannelKind; DistinctLevels: int; Capacity: int }
+```
+
+`Finding.Units` are 0-based indices into the list you scored, so they point straight back at your roster.
+On an overload `Warning` they name only the units carrying levels **past** capacity — the smallest set your
+re-map has to move — not the whole board; whole-board findings carry `Units = []`.
+
+**Read `Legibility.table`, never a copy of it** — including this page. Each row's `Kind` tells you what the
+linter does with that channel: `Categorical` and `Ordered` channels have their distinct levels **counted**
+and overload past `Capacity`, while `Continuous` ones are read as a position on a scale and are
+**overload-exempt** — only their domain is checked. `report.Usage` hands you the `Kind`, `DistinctLevels`
+and `Capacity` of every scored channel for the board you just linted. `Channel` also carries a whole-board
+`Motion` case — no `ChannelKind`, no `table` row, no `ChannelUsage` entry — raised by `scoreAnimated` when
+more than one non-`Idle` rhythm is live at once.
 
 ## Usage
 

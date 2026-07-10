@@ -29,6 +29,32 @@ unit roster into legible abstract vector symbols. The per-game stat-to-channel m
   `galleryIn : Grammar -> cols -> spacing -> Token list -> Scene`, `filmstripIn : Grammar -> samples ->
   (Motion * Token) list -> Scene` and `animateIn : Grammar -> Motion -> Token -> phase:float -> Scene`.
   References **only** `FS.GG.UI.Scene` — no IO, no GL, no codec call.
+- Legibility linter `FS.GG.UI.Symbology.Legibility` (`src/Symbology/Legibility.fsi`): the **third**
+  public module, shipped in the same pure `FS.GG.UI.Symbology` package and covered by the same surface
+  baseline. It is what step 4a of the loop below runs. Pure, deterministic and advisory — it never
+  mutates, and never raises on valid input.
+
+  ```fsharp
+  val table: ChannelSpec list                                  // the §4 Kind/Capacity columns, machine-readable
+  val score: tokens: Token list -> Report                      // a static board
+  val scoreAnimated: board: (Motion * Token) list -> Report    // + whole-board motion load
+
+  type Verdict     = Clean | HasWarnings              // Clean iff Findings is empty
+  type Severity    = Warning | Error                  // Error = ungrammatical; Warning = encodable but overloaded
+  type ChannelKind = Categorical | Ordered | Continuous
+  type Report      = { Findings: Finding list; Usage: ChannelUsage list; Verdict: Verdict }
+  type Finding     = { Channel: Channel; Severity: Severity; Message: string; Units: int list }
+  type ChannelSpec = { Channel: Channel; Kind: ChannelKind; Capacity: int }
+  type ChannelUsage= { Channel: Channel; Kind: ChannelKind; DistinctLevels: int; Capacity: int }
+  ```
+
+  `Channel` has **13** cases: the 12 per-unit channels of §4, plus `Motion`. **`Motion` is whole-board** —
+  it has no `ChannelKind`, no `table` row and no `ChannelUsage` entry, and reaches you only as a
+  `Finding.Channel` from `scoreAnimated`'s motion-load check (its budget of 1 lives in the finding's
+  `Message`). `Findings` and `Usage` come back in table order — findings then by ascending unit index —
+  so re-scoring an equal board yields an equal report. On an overload `Warning`, `Units` names only the
+  units carrying levels **past** capacity, the smallest set a re-map has to move, not the whole board;
+  whole-board findings carry `Units = []`.
 - Render bridge `FS.GG.UI.Symbology.Render` (`src/Symbology.Render/Render.fsi`): `Render.toPng : Size
   -> Scene -> dir:string -> string`. Wraps the public `SkiaViewer.ReferenceRendering.run` via a
   `SceneCodec` round-trip and **fails loud** (raises with joined diagnostics) on any verdict that is
