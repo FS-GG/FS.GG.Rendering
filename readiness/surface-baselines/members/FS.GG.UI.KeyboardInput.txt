@@ -80,6 +80,7 @@ FS.GG.UI.KeyboardInput.ViewerKeyEvent.RawKey : System.String [get]
 FS.GG.UI.KeyboardInput.ViewerKeyEvent.new(System.String, FS.GG.UI.KeyboardInput.ViewerKeyDirection)
 FS.GG.UI.KeyboardInput.ViewerKeyboard.formatChord(FS.GG.UI.KeyboardInput.KeyModifiers, System.String) : System.String
 FS.GG.UI.KeyboardInput.ViewerKeyboard.isModifierKey(System.String) : System.Boolean
+FS.GG.UI.KeyboardInput.ViewerKeyboard.mapKeyOfKeymap<msg>(FS.GG.UI.KeyboardInput.Keymap, FSharpFunc<System.String, FSharpOption<msg>>) : FSharpFunc<FS.GG.UI.KeyboardInput.ViewerKey, FSharpFunc<System.Boolean, FSharpOption<msg>>>
 FS.GG.UI.KeyboardInput.ViewerKeyboard.noModifiers : FS.GG.UI.KeyboardInput.KeyModifiers [get]
 FS.GG.UI.KeyboardInput.ViewerKeyboard.normalize(System.String) : FS.GG.UI.KeyboardInput.ViewerKey
 FS.GG.UI.KeyboardInput.ViewerKeyboard.normalizeEvent(FS.GG.UI.KeyboardInput.ViewerKeyEvent) : System.Tuple<FS.GG.UI.KeyboardInput.ViewerKey, System.Boolean>
