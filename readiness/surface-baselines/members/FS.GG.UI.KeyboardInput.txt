@@ -61,6 +61,15 @@ FS.GG.UI.KeyboardInput.Keymap.toBindings(FS.GG.UI.KeyboardInput.Keymap) : Micros
 FS.GG.UI.KeyboardInput.Keymap.tryFind(System.String, FS.GG.UI.KeyboardInput.Keymap) : Microsoft.FSharp.Core.FSharpOption<System.String>
 FS.GG.UI.KeyboardInput.Keymap.validate(FS.GG.UI.KeyboardInput.Keymap) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.KeyboardDiagnostic>
 FS.GG.UI.KeyboardInput.Keymap.validateBindings(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.KeyboardBinding>) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.KeyboardDiagnostic>
+FS.GG.UI.KeyboardInput.KeymapCodec.decode(System.Byte[]) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.KeyboardInput.Keymap, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.KeymapCodecError>>
+FS.GG.UI.KeyboardInput.KeymapCodec.encode(FS.GG.UI.KeyboardInput.Keymap) : System.Byte[]
+FS.GG.UI.KeyboardInput.KeymapCodec.formatId : System.String [get]
+FS.GG.UI.KeyboardInput.KeymapCodec.formatVersion : System.Int32 [get]
+FS.GG.UI.KeyboardInput.KeymapCodecError+Tags.InvalidBinding : System.Int32
+FS.GG.UI.KeyboardInput.KeymapCodecError+Tags.MalformedJson : System.Int32
+FS.GG.UI.KeyboardInput.KeymapCodecError+Tags.MissingField : System.Int32
+FS.GG.UI.KeyboardInput.KeymapCodecError+Tags.UnsupportedFormat : System.Int32
+FS.GG.UI.KeyboardInput.KeymapCodecError+Tags.UnsupportedVersion : System.Int32
 FS.GG.UI.KeyboardInput.ViewerKey+Tags.ArrowDown : System.Int32
 FS.GG.UI.KeyboardInput.ViewerKey+Tags.ArrowLeft : System.Int32
 FS.GG.UI.KeyboardInput.ViewerKey+Tags.ArrowRight : System.Int32
