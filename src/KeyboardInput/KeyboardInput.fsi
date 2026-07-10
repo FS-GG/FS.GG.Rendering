@@ -141,6 +141,24 @@ module Keymap =
     /// The keymap with every binding removed (equal to `empty`).
     val clear: keymap: Keymap -> Keymap
 
+    /// Issue 332 (epic 330): the command bound to `key`, if any — the named resolution entry point the
+    /// live dispatch path (issue 333) consults. Keymap-first (`Keymap -> KeyId`) so a host binds the
+    /// keymap once and resolves varying keys; equivalent to `tryFind` with the arguments flipped.
+    val resolve: keymap: Keymap -> key: KeyId -> CommandId option
+
+    /// Issue 332 (epic 330): conflict diagnostics for a built keymap. A `Keymap` indexes by key, so a
+    /// duplicate-key conflict cannot exist in one; only a many-keys→one-command conflict (a command
+    /// reachable from two or more keys — `Code = "SharedCommandBinding"`, `Severity = "Info"`) is
+    /// surfaced, ordered by command. Use `validateBindings` for duplicate-key conflicts.
+    val validate: keymap: Keymap -> KeyboardDiagnostic list
+
+    /// Issue 332 (epic 330): conflict diagnostics for a raw `KeyboardBinding list`, BEFORE `ofBindings`
+    /// collapses duplicate keys (last-wins). Surfaces duplicate-key conflicts (one key bound more than
+    /// once — `Code = "DuplicateKeyBinding"`, `Severity = "Warning"`, otherwise silently lost) and
+    /// many-keys→one-command conflicts. Deterministic: duplicate-key diagnostics first (by key), then
+    /// shared-command diagnostics (by command).
+    val validateBindings: bindings: KeyboardBinding list -> KeyboardDiagnostic list
+
 /// Feature 108 (US5, FR-016): the modifier state recovered at the key boundary. The raw key
 /// string can carry `Ctrl+`/`Alt+`/`Shift+`/`Meta+` prefixes that the plain `normalize` collapses
 /// into `Unknown "Ctrl+L"` and loses; parsing them here makes chords as dependable as plain keys,
