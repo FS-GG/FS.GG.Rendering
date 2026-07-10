@@ -30,7 +30,24 @@ let private repositoryPath (relativePath: string) =
 let private reportPath =
     repositoryPath "specs/207-ui-bom-metapackage/readiness/bom-consumer-validation.md"
 
-// ---- self-provisioning (mirrors Feature204) ---------------------------------------------------
+// ---- self-provisioning: absent-only, BY DESIGN (feature 255) -----------------------------------
+//
+// The sibling gates (Feature128/204/217/219) regenerate a STALE report too, via
+// SelfProvision.ensureFresh. This one deliberately does not, and must not.
+//
+// Their reports live under a gitignored `readiness/`; this one is un-ignored (.gitignore) and
+// COMMITTED, carrying `provenance: live` — the forced-mismatch/reproducibility evidence the live
+// FS_GG_RUN_BOM_CONSUMER_SMOKE=1 run measured and that no env-free run can reproduce. Two consequences:
+//
+//   * mtime staleness is meaningless here. Git stamps a tracked file at checkout, like its inputs, so
+//     `report older than input` is decided by checkout order, not by staleness.
+//   * ensureFresh deletes before regenerating. On a false-positive it would destroy the committed live
+//     evidence and rewrite it as `provenance: verdict-core`, silently dropping the live-only assertions
+//     below into their skipped branch — green, and wrong.
+//
+// So the report is provisioned only when genuinely ABSENT (someone deleted it). Guarding this report
+// against its true inputs — the `src/**/*.fsproj` set that drives `members-expected`, and
+// src/Meta/FS.GG.UI.nuspec — needs a content check in CI, not a timestamp. Tracked separately.
 let private selfProvisionReport () =
     if not (File.Exists reportPath) then
         let psi = ProcessStartInfo "dotnet"
