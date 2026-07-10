@@ -88,6 +88,7 @@
     <Compile Include="TemplateAudioProfileWiringCoherenceTests.fs" />
     <Compile Include="BomMembershipCoherenceTests.fs" />
     <Compile Include="ApiSurfaceMirrorCoherenceTests.fs" />
+    <Compile Include="SkillMaterializesWhenCoherenceTests.fs" />
     <Compile Include="ReleaseOnlyTwinLockstepTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
