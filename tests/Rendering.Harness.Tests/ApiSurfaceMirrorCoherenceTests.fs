@@ -124,9 +124,11 @@ let private bodyOf (path: string) =
     |> Array.skipWhile (fun line -> line.StartsWith "//")
     |> String.concat "\n"
 
-/// No shipped product skill covers FS.GG.UI.Canvas's immediate-mode drawing/loop surface. Recorded
+/// No shipped product skill covers FS.GG.UI.Canvas's immediate-mode drawing surface. Recorded
 /// here rather than papered over with a pointer to a skill that does not teach these members.
-let private pointerExempt = set [ "Canvas/Elements.fsi"; "Canvas/Loop.fsi" ]
+/// (`Canvas/Loop.fsi` removed with the surface at the 0.6.0 framework major — ADR-0104 decision 5,
+/// #319/#355; mirrors the release-only Package.Tests/ApiSurfaceMirrorTests pointerExempt.)
+let private pointerExempt = set [ "Canvas/Elements.fsi" ]
 
 let private shippedProductSkills () =
     Directory.GetDirectories productSkillsRoot
