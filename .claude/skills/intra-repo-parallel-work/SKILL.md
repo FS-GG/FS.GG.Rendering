@@ -249,7 +249,10 @@ declares a child, and only its **first** issue ref does:
   `.github#109`. Write cross-repo children fully qualified: `FS-GG/FS.GG.SDD#109`.
 - **A PR is not a child** — the sub-issue graph holds issues, never PRs. Cite a line a PR delivered
   as a **bare** `/pull/` URL (`https://github.com/FS-GG/.github/pull/239`), which carries no `#n`
-  and so declares nothing. `(PR #239)` or `[PR #239](…)` reads as an unlinked child forever.
+  and so declares nothing. `(PR #239)` or `[PR #239](…)` reads as an ordinary `#n`; since #346 the
+  gate re-resolves it and drops the ones GitHub confirms are PRs, so a genuine same-repo PR ref no
+  longer lingers — it survives only if the number is an *issue* or will not resolve (kept
+  fail-closed, #266). The `/pull/` URL stays cleanest: it declares nothing and needs no REST probe.
 
 Canonical, with the live incidents: `docs/coordination/parallel-work.md` §"What the body counts as a declaration".
 
