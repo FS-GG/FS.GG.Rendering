@@ -12,6 +12,15 @@
           "Fable.Core": "4.0.0"
         }
       },
+      "FS.GG.Audio.Core": {
+        "type": "Direct",
+        "requested": "[0.1.0, )",
+        "resolved": "0.1.0",
+        "contentHash": "/Reh8nDfGIBoKG56ngJ7b7a3lfUp9jofDKdsqQB9nIDGDkrfEq/Lk0Bei+MQ1W3VSENVvKr70DVqYzQQiS3CJw==",
+        "dependencies": {
+          "FSharp.Core": "10.1.301"
+        }
+      },
       "FSharp.Core": {
         "type": "Direct",
         "requested": "[10.1.301, )",

@@ -132,8 +132,50 @@ authoring bridge). Keep device work out of `update` regardless of which of them 
 ## Generated Product
 
 Map each `Msg` that should make a sound to an `AudioEffect` in your `update`, collect the frame's
-requests, and `Audio.interpret` them for evidence in tests; at runtime the host interprets the same
-values into actual playback through `FS.GG.Audio.Host`, with no change to your `update`.
+requests, and `Audio.interpret` them for evidence in tests; at runtime the host plays the same values
+through `FS.GG.Audio.Host`, with no change to your `update`.
+
+The seam is real and the scaffold ships it wired (issue #245). Two files carry it:
+
+- **`src/Product/AudioCues.fs`** — *yours*. `forTransition : Msg -> Model -> Model -> AudioEffect list`
+  is the one place the product decides what to play. Pure: a function of the message and the
+  before/after model. Rewrite it when you swap the model; it names your `Msg` cases.
+- **`src/Product/Program.fs`** — *durable*. It creates a backend once and hands the viewer a sink:
+
+```fsharp
+open FS.GG.Audio.Host
+
+// Opens a real device; degrades to the record-only Null backend when OpenAL or the
+// device is missing, so this is safe headless and in CI. It never throws into game code.
+use backend = OpenAlBackend.create AudioCues.resolver
+
+// `Audio.play backend : AudioEffect list -> unit` is the sink. The viewer hands it every
+// `ViewerEffect.PlayAudio` batch, in dispatch order.
+Viewer.runAppWithAudio viewerOptions (Audio.play backend) generatedHost
+```
+
+Between them, `EvidenceCommands.fs` lifts each frame's cues onto `ViewerEffect.PlayAudio`, which is
+the effect the viewer interprets. So a scaffolded game plays a sound **without editing the host**:
+add a case to `AudioCues.forTransition` and drop a WAV at `assets/audio/<id>.wav`.
+
+`SoundId`/`TrackId` stay yours — `AudioCues.resolver` is the product-owned `id -> bytes` mapping, and
+an id with no file resolves to `None`, which the backend records as a no-op rather than throwing. So a
+game with no assets yet still runs, and still requests the right sounds.
+
+Two escape hatches you rarely need. `Viewer.runApp` still exists and simply **discards** audio — use
+it when a product should be silent. And `GeneratedAppHost.audioRequests : ViewerEffect list ->
+AudioEffect list` flattens a frame's batches in dispatch order, so a test can assert what was
+requested with no window and no device:
+
+```fsharp
+GeneratedAppHost.dispatchKey host keyEvent model
+|> snd
+|> GeneratedAppHost.audioRequests
+|> Audio.interpret          // AudioEvidence — the same evidence the record-only path yields
+```
+
+The bundled surfaces: `docs/api-surface/Audio.Core/Audio.fsi` (the vocabulary) and
+`docs/api-surface/Audio.Host/Host.fsi` (`IAudioBackend`, `Audio.play`, the backends).
 
 ## Persistent problems
 

@@ -88,6 +88,10 @@
     <ProjectReference Include="..\KeyboardInput\KeyboardInput.fsproj" />
     <ProjectReference Include="..\Diagnostics\Diagnostics.fsproj" />
     <ProjectReference Include="..\Scene\Scene.fsproj" />
+    <!-- Issue #245: the pure AudioEffect vocabulary, so `ViewerEffect.PlayAudio` can carry what a
+         product's `update` requested. Core is data-only (no device, no OpenAL); the real backend
+         (FS.GG.Audio.Host/Engine) is supplied by the caller of `runAppWithAudio`. -->
+    <PackageReference Include="FS.GG.Audio.Core" />
     <PackageReference Include="Fable.Elmish" />
     <PackageReference Include="Silk.NET.Input" />
     <PackageReference Include="Silk.NET.OpenGL" />

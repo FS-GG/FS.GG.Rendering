@@ -7,6 +7,7 @@ open System.IO
 open System.Text.Json
 open System.Threading
 open Elmish
+open FS.GG.Audio.Core
 open FS.GG.UI.KeyboardInput
 open FS.GG.UI.Scene
 open SkiaSharp
@@ -2198,7 +2199,16 @@ module Viewer =
                     (fun () -> true)
                     None
 
-    let runAppWithWindowBehavior options behavior (host: GeneratedAppHost<'model, 'msg>) =
+    // Issue #245 — the one generated-app launch body. `audioSink` receives every `PlayAudio` batch in
+    // dispatch order; the viewer itself owns no audio device, so realizing a batch is entirely the
+    // caller's business (the template hands in `FS.GG.Audio.Host.Audio.play backend`). `runApp` and
+    // `runAppWithWindowBehavior` pass `ignore`, which is why they keep behaving exactly as before.
+    let private runGeneratedApp
+        options
+        behavior
+        (audioSink: AudioEffect list -> unit)
+        (host: GeneratedAppHost<'model, 'msg>)
+        =
         match validateOptions options with
         | Result.Error failure -> Result.Error failure
         | Result.Ok() ->
@@ -2238,6 +2248,9 @@ module Viewer =
                                 | CloseWindow -> true
                                 | EmitDiagnostic diagnostic ->
                                     captureDiagnostic host.Diagnostics diagnostic |> ignore
+                                    closeRequested
+                                | PlayAudio effects ->
+                                    audioSink effects
                                     closeRequested
                                 | OpenWindow _
                                 | ApplyWindowOptions _
@@ -2312,8 +2325,17 @@ module Viewer =
                         )
                     | Result.Error failure -> Result.Error failure
 
+    let runAppWithWindowBehavior options behavior (host: GeneratedAppHost<'model, 'msg>) =
+        runGeneratedApp options behavior ignore host
+
     let runApp options host =
         runAppWithWindowBehavior options defaultWindowBehavior host
+
+    let runAppWithWindowBehaviorAndAudio options behavior audioSink (host: GeneratedAppHost<'model, 'msg>) =
+        runGeneratedApp options behavior audioSink host
+
+    let runAppWithAudio options audioSink (host: GeneratedAppHost<'model, 'msg>) =
+        runGeneratedApp options defaultWindowBehavior audioSink host
 
     // Feature 085 — pointer-aware, size-aware durable launch. Mirrors
     // `runAppWithWindowBehavior` but routes native pointer events and resizes to the host,
@@ -2360,6 +2382,10 @@ module Viewer =
                                 | EmitDiagnostic diagnostic ->
                                     captureDiagnostic host.Diagnostics diagnostic |> ignore
                                     closeRequested
+                                // The interactive (pointer/size-aware) host has no audio sink: audio is a
+                                // game-family seam reached through `runAppWithAudio` (issue #245). A
+                                // `PlayAudio` here is discarded, exactly as the other unhandled effects are.
+                                | PlayAudio _
                                 | OpenWindow _
                                 | ApplyWindowOptions _
                                 | QueryNativeWindowState
@@ -2831,6 +2857,12 @@ module GeneratedAppHost =
         match host.MapKey key isDown with
         | Some msg -> host.Update msg model
         | None -> model, [ DispatchInput(key, isDown) ]
+
+    let audioRequests (effects: ViewerEffect list) : AudioEffect list =
+        effects
+        |> List.collect (function
+            | PlayAudio batch -> batch
+            | _ -> [])
 
     let smoke (host: GeneratedAppHost<'model, 'msg>) (request: ViewerRunRequest) =
         let model, _ = host.Init()

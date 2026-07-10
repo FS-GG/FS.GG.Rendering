@@ -22,6 +22,9 @@ There are two distinct kinds of effect, on two sides of one boundary:
    - `RenderScene scene` — draw the current `View model` scene.
    - `CaptureScreenshot path` / `CaptureImageEvidence path` — write visual evidence.
    - `EmitDiagnostic event` — record a diagnostic.
+   - `PlayAudio effects` — play a batch of requested sounds, in dispatch order
+     (game/sample-pack profiles). Realized only by the audio-carrying launches;
+     `Viewer.runApp` discards it. See the `fs-gg-audio` skill.
    - `CloseWindow`, `DispatchInput (key, isDown)`, `CheckDesktopSession`, …
 
 ## The boundary
@@ -60,6 +63,11 @@ match Viewer.runApp viewerOptions generatedHost with
 `Tick`, and interprets every `ViewerEffect` your `Update` returns at the host
 boundary. For bounded evidence runs the same host is used with
 `Viewer.runAppEvidence request viewerOptions generatedHost`.
+
+On the game/sample-pack profiles the scaffold launches through
+`Viewer.runAppWithAudio viewerOptions (Audio.play backend) generatedHost` instead:
+the same host, plus a sink that realizes `PlayAudio`. `Viewer.runApp` remains the
+silent path — it interprets every other effect identically.
 
 ## Summary
 

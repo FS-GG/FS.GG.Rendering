@@ -12,6 +12,18 @@
           "Mono.Cecil": "[0.11.4, 1.0.0)"
         }
       },
+      "FS.GG.Audio.Host": {
+        "type": "Direct",
+        "requested": "[0.1.0, )",
+        "resolved": "0.1.0",
+        "contentHash": "RKAXe6HA0HqYUmtTd+TwfKdDsl7sW4PixqDyEGP8Lh845B1EnQsQGuszI2ihR+B2PyEgzAjeeIylPQUTjsjcKg==",
+        "dependencies": {
+          "FS.GG.Audio.Core": "0.1.0",
+          "FSharp.Core": "10.1.301",
+          "Silk.NET.OpenAL": "2.23.0",
+          "Silk.NET.OpenAL.Soft.Native": "1.23.1"
+        }
+      },
       "FSharp.Core": {
         "type": "Direct",
         "requested": "[10.1.301, )",
@@ -185,6 +197,19 @@
         "resolved": "2.23.0",
         "contentHash": "r8PdIVzME8EH0qAgbmRPO87I4GfgR2j8TofT7EMuRJDf1QluoQwnVypDoFJjQ2ZBSRsGYk5unYxxogI05Ogsmw=="
       },
+      "Silk.NET.OpenAL": {
+        "type": "Transitive",
+        "resolved": "2.23.0",
+        "contentHash": "O8EaDRWGOcKniZ2VxKD/xOmugzUJz747KpqGRw3cezDsz8nD66OZW217o1rT06cG76f8eYigy/yY6eRdhRqHHQ==",
+        "dependencies": {
+          "Silk.NET.Core": "2.23.0"
+        }
+      },
+      "Silk.NET.OpenAL.Soft.Native": {
+        "type": "Transitive",
+        "resolved": "1.23.1",
+        "contentHash": "gZIbksInoiXbJZmepYnTs5O6Edg5O5k86c1+Uus0zSaVnQx5WRbInGz2VTlvudbs0qAqXs/asL1YvJzco/nfAQ=="
+      },
       "Silk.NET.Windowing.Common": {
         "type": "Transitive",
         "resolved": "2.23.0",
@@ -273,6 +298,7 @@
       "FS.GG.UI.SkiaViewer": {
         "type": "Project",
         "dependencies": {
+          "FS.GG.Audio.Core": "[0.1.0, )",
           "FS.GG.UI.Diagnostics": "[0.4.0-preview.1, )",
           "FS.GG.UI.KeyboardInput": "[0.4.0-preview.1, )",
           "FS.GG.UI.Scene": "[0.4.0-preview.1, )",
@@ -311,6 +337,15 @@
         "dependencies": {
           "FSharp.Core": "4.7.2",
           "Fable.Core": "4.0.0"
+        }
+      },
+      "FS.GG.Audio.Core": {
+        "type": "CentralTransitive",
+        "requested": "[0.1.0, )",
+        "resolved": "0.1.0",
+        "contentHash": "/Reh8nDfGIBoKG56ngJ7b7a3lfUp9jofDKdsqQB9nIDGDkrfEq/Lk0Bei+MQ1W3VSENVvKr70DVqYzQQiS3CJw==",
+        "dependencies": {
+          "FSharp.Core": "10.1.301"
         }
       },
       "HarfBuzzSharp.NativeAssets.Linux": {
