@@ -84,6 +84,7 @@
     <Compile Include="Feature151TextShapingRegressionTests.fs" />
     <Compile Include="Feature151CompositorReadinessRegressionTests.fs" />
     <Compile Include="FeatureCatalogTests.fs" />
+    <Compile Include="TemplateLaunchExpressionCoherenceTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
