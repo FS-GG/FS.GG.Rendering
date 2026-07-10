@@ -329,7 +329,7 @@ module Catalog =
           definition "upload" "Upload" "input" "Upload" "File drop zone with an upload action." [] common [ "onChange" ] states "Button"
           // END GENERATED: typed-catalog/upload
           // BEGIN GENERATED: typed-catalog/key-rebind
-          definition "key-rebind" "Key Rebind" "input" "KeyRebind" "Config screen listing rebindable commands, their key bindings, and keymap conflicts." [] common [ "onRebind" ] states "Button"
+          definition "key-rebind" "Key Rebind" "input" "KeyRebind" "Config screen listing rebindable commands, their key bindings, and keymap conflicts." [] common [ "onRebind" ] states "List"
           // END GENERATED: typed-catalog/key-rebind
           // Feature 133 (D2C.1): net-new generic chart controls (Charts2). Hand-maintained GENERATED
           // rows (no in-repo typed-catalog generator — see PROVENANCE.md). Mirrored in catalog.yml.

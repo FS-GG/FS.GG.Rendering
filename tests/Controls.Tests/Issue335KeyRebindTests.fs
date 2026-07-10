@@ -60,4 +60,19 @@ let tests =
               let mapKey = ViewerKeyboard.mapKeyOfKeymap after mapCommand
               Expect.equal (mapKey (Letter 'j') true) (Some(Command "MoveUp")) "'j' now routes to MoveUp in live dispatch"
               Expect.equal (mapKey (Letter 'w') true) None "'w' no longer routes to any command"
+          }
+
+          test "onRebind dispatches the activated command id from the event payload" {
+              let control =
+                  KeyRebind.ofKeymap (Keymap.empty |> Keymap.add "w" "MoveUp") [ KeyRebind.onRebind Command ]
+
+              // The `onRebind` attribute normalizes to the `rebind` event kind (as `onClose` → `close`);
+              // the activated command id rides the event's nav text.
+              let ev: ControlEvent =
+                  { Kind = "rebind"
+                    ControlId = None
+                    Origin = ControlEventOrigin.Pointer
+                    Nav = Some(EditedText "MoveUp") }
+
+              Expect.equal (Control.dispatch ev control) [ Command "MoveUp" ] "onRebind fires the activated command id"
           } ]
