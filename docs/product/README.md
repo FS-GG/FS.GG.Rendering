@@ -54,6 +54,9 @@ any source is copied (source import is Stage R4).
   - [0103-gate-is-fully-enforced.md](./decisions/0103-gate-is-fully-enforced.md) — the pre-merge gate
     is fully enforced: both `gate.yml` contexts are required on `main` and `enforce_admins` is on, so
     a `CP####` break blocks the merge and no admin bypasses it.
+  - [0104-canvas-loop-is-a-simulation-primitive.md](./decisions/0104-canvas-loop-is-a-simulation-primitive.md)
+    — the fixed-step double buffer is a simulation primitive owned by `FS.GG.Game.Core.Loop`;
+    `FS.GG.UI.Canvas.Loop` is deprecated and retires at the next Canvas major, with no re-export.
   - **Org-level pointer stubs** (canonical text in `FS-GG/.github`):
     - [0011-agent-skill-roots-full-union-orchestrator-owned-mirror.md](./decisions/0011-agent-skill-roots-full-union-orchestrator-owned-mirror.md)
       — agent-skill roots carry the full union; `fsgg-sdd` owns the mirror; providers confined
