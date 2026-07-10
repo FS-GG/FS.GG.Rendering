@@ -182,6 +182,44 @@ jobs:
 
           echo "reference.fsx ran the whole loop: seeded overload -> named unit 4 -> tweak -> Clean -> 3 grammars"
 
+      # #300 — the OFFLINE half of the packaged-consumer gate: does every sample pin still mirror
+      # `src/*/*.fsproj` `<Version>`?
+      #
+      # This rule already had a test — `tests/Package.Tests/Feature163PackageFeedValidationTests.fs`,
+      # "all package-consuming samples' FS.GG.UI pins match source-controlled package versions". But
+      # Package.Tests is RELEASE-ONLY and not in the slnx, so it runs after the merge that breaks it,
+      # never on the PR. That is how Renovate PR #233 reached `4/4 green` while proposing a
+      # `0.4.0` pin no local `dotnet pack` can produce: the samples map `FS.GG.UI.*` exclusively to
+      # the machine-local feed, and the bot reads `nuget.pkg.github.com`. Nothing pre-merge read the
+      # files it changed.
+      #
+      # `--mode check` touches NO network and packs nothing: it reads the 16 `src` `<Version>`s and
+      # the 57 sample `PackageReference` pins as text and compares them. That is why it belongs in
+      # the required gate, while the pack-restore-BUILD proof — whose subject IS a feed — stays a
+      # separate non-required workflow (`packaged-consumer.yml`), exactly as
+      # `template-payload-restore-gate` is split from its env-free half. See cadence-map §4b/§5.
+      #
+      # NO `--sample` ARGUMENTS ON PURPOSE. The harness discovers the package-consuming samples (a
+      # sample qualifies by mapping `FS.GG.UI.*` to the local feed in its own `nuget.config`), so a
+      # fifth one is gated by construction. Naming four here would rebuild the omission that left
+      # this path ungated — the same reason the deterministic tier derives its projects from the slnx.
+      # `package-feed` exits 2 if it finds none, so the check cannot silently pass over an empty set.
+      #
+      # Exit 1 on a stale pin; the harness names each offending pin and then the mirror rule, so the
+      # next reader fixes the pin instead of bumping `<Version>` to match it.
+      # `--out`/`--feed` live in RUNNER_TEMP so the evidence files never land in the worktree, where
+      # the drift steps below would see them as untracked.
+      - name: Sample pins mirror src <Version> (offline)
+        run: |
+          set -euo pipefail
+          if ! dotnet run --project tools/Rendering.Harness/Rendering.Harness.fsproj -c Debug --no-build -- \
+              package-feed --mode check \
+              --feed "$RUNNER_TEMP/package-feed-check/feed" \
+              --out "$RUNNER_TEMP/package-feed-check"; then
+            echo "::error::a samples/ FS.GG.UI.* pin disagrees with src <Version> — see the stale-pin lines above. The sample pin MUST mirror src/*/*.fsproj <Version>; fix the pin, not <Version>."
+            exit 1
+          fi
+
       # T009 (FR-003) — public .fsi surface-drift across all 9 committed baselines. Regenerate in
       # place and fail on ANY uncommitted change: a modified baseline = surface drift; an untracked
       # new baseline = a package gained a surface with no committed baseline (the spec's

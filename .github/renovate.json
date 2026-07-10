@@ -11,6 +11,13 @@
   ],
   "packageRules": [
     {
+      "description": "#300 — NEVER propose FS.GG.UI.* bumps under samples/. The four out-of-solution sample suites map FS.GG.UI.* exclusively to the machine-local feed (see each samples/*/nuget.config packageSourceMapping), which only a local `dotnet pack` of src/ fills, at src/*/*.fsproj <Version>. Renovate's datasource is nuget.pkg.github.com — a feed these projects are configured never to read — so every version it can see is one they cannot resolve (NU1102). That is PR #233: it proposed the published 0.4.0 against a tree pinned to 0.4.0-preview.1 and merged 4/4 green, because nothing in CI read the files it changed. Both halves of that hole are now closed: the required gate checks the pin mirrors <Version>, and packaged-consumer.yml builds the samples against a feed packed from the commit. This rule stops the bot re-proposing, every cycle, a bump the gate now rejects. The pin moves ONLY with the release: commit that moves src <Version>, never on its own.",
+      "matchDatasources": ["nuget"],
+      "matchFileNames": ["samples/**"],
+      "matchPackageNames": ["/^FS\\.GG\\.UI\\./"],
+      "enabled": false
+    },
+    {
       "description": "Expecto is capped to the 10.x line because the only test-SDK adapter that runs Expecto under `dotnet test`, YoloDev.Expecto.TestSdk (latest 0.15.6, 2026-04-14), constrains Expecto to `< 11.0.0`. Renovate cannot see that transitive constraint on its own, so an Expecto 11.x bump resolves to an unmergeable graph (NU1608) and churns every cycle (see #24). ACTION WHEN YoloDev.Expecto.TestSdk ships a release supporting Expecto ≥ 11: delete this allowedVersions cap — the group rule below then bumps both in one PR.",
       "matchDatasources": ["nuget"],
       "matchPackageNames": ["Expecto"],

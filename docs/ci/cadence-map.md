@@ -288,6 +288,69 @@ template deliberately scaffolds preview products, so a prerelease component is c
 must not be read as "any axis is prerelease": under that reading a prerelease `$(FsGgAudioVersion)`
 would declare the very preview channel that excuses it, and #235 would have stayed green.
 
+## 4c. The packaged-consumer path — chosen gate behavior (#300)
+
+Four sample suites — `AntShowcase`, `ControlsGallery`, `SampleApps`, `SecondAntShowcase`, **twelve
+`.fsproj`** — consume the framework *only* as packed `FS.GG.UI.*` NuGet packages. None is in
+`FS.GG.Rendering.slnx` (deliberately: an in-solution project would take `ProjectReference`s and stop
+proving the packaged path at all), and until #300 none was named in any workflow. The path an actual
+downstream product walks was compiled on **zero** pull requests, while each sample's `nuget.config`
+asserted the opposite: *"building against it IS the proof the Ant-theme consumer path works end to
+end (research R1 / FR-015 / SC-006)"*. The proof was asserted and never executed.
+
+`src/` is fully gated, and §5.1's `ApiCompat` guards the public surface. What neither can see is the
+**composition** — whether the sixteen packages, restored together at one version from a feed, build a
+program. `ApiCompat` compares surfaces *pairwise*; it cannot see that `AntShowcase.Core` opens eight
+of them at once. Only compiling the consumer sees that.
+
+The lane splits on exactly the §4b axis — **does this check need a feed?**
+
+| half | what it asserts | needs a feed? | where it runs | required? |
+|---|---|---|---|---|
+| pin mirror | every `samples/**` `FS.GG.UI.*` pin `==` `src/*/*.fsproj` `<Version>` | no — it reads two sets of files as text | a step of `gate.yml`'s `Deterministic gate` | **yes** |
+| source proof | pack `src/` → restore **and build** the twelve `.fsproj` against that feed | yes — nuget.org, for the samples' third-party deps | `packaged-consumer.yml` | no |
+
+Both run `tools/Rendering.Harness` `package-feed` (`--mode check` / `--mode proof --pack`), which
+already existed and which nothing had ever invoked.
+
+**Neither names a sample.** The harness discovers them: a `samples/*/` directory is a package consumer
+exactly when its own `nuget.config` maps `FS.GG.UI.*` to the local feed. A hardcoded list is how a
+consumer goes ungated in the first place, so a fifth sample is covered by construction — the same
+reasoning that makes the deterministic tier derive its test projects from the slnx. Discovery finding
+nothing is an error (exit 2), never a vacuous pass.
+
+**Why the proof cannot be required.** Its *subject* is a feed, so a nuget.org outage is
+indistinguishable from a bad pin — the same reason `template-payload-restore-gate` stays
+non-required, and the reason `api-compatibility-gate` could be elevated (it classifies a silent feed
+as `FeedUnavailable` → exit 0; this cannot). NOT-REQUIRED IS NOT `continue-on-error` (#216): the
+workflow has none.
+
+**Why the pin half *can* be required.** It packs nothing and reads nothing over the network.
+
+**The mirror rule.** `samples/*/nuget.config` maps `FS.GG.UI.*` *exclusively* to the machine-local
+feed, which only a local `dotnet pack` of `src/` fills, at `<Version>`. So a sample pin naming any
+other version cannot resolve (`NU1102`). Renovate's datasource is `nuget.pkg.github.com` — a feed
+these projects are configured never to read — so **every** version it can propose is one they cannot
+resolve. That is PR #233: it proposed the published `0.4.0` against a tree pinned to
+`0.4.0-preview.1`, and merged with **4/4 green** because nothing in CI read the files it changed. The
+gate now names the rule on failure, and `.github/renovate.json` disables `FS.GG.UI.*` under
+`samples/**` so the bot stops re-proposing it every cycle. **Fix the pin, not `<Version>`** — the pin
+moves only with the `release:` commit that moves `<Version>`.
+
+**Lockfiles.** The samples have no `packages.lock.json` and gain none: in-solution projects restore
+`--locked-mode`, but a `src` `<Version>` bump already stales 24 committed lockfiles, and locking
+twelve more would add that cost to every release to hash-pin a graph the proof rebuilds from source
+on each run. The proof restores **unlocked**, into an **isolated** package cache, so a stale global
+cache entry cannot mask a feed that is missing a package.
+
+**Cost.** Packing sixteen projects is not free, so `packaged-consumer.yml` is `paths:`-filtered to
+`src/**`, `samples/**`, `tools/Rendering.Harness/**`, and itself. That filter is *why* it is its own
+workflow rather than a job in `gate.yml`: a required workflow that is path-skipped never reports its
+context, which blocks the merge button forever.
+
+Tracking issue: FS.GG.Rendering#300. Evidence that the gate fails a hand-reverted #233:
+`specs/163-package-feed-validation-lanes/readiness/packaged-consumer-gate.md`.
+
 ## 5. Branch protection (one-time maintainer step)
 
 The spec defines which checks are required; **enabling** branch protection is the maintainer's
@@ -301,6 +364,11 @@ one-time action (it cannot be set from the repo tree). On `main`:
   feed-dependent, and ADR-0101's bound applies to it as it does to ApiCompat (§4b). Unlike ApiCompat,
   it has **no elevation path**: its subject *is* an external feed, so a nuget.org outage is
   indistinguishable from a bad pin and must stay unable to wedge the repo.
+- Leave **`Packaged-consumer gate (samples build against the packed feed)`** (`packaged-consumer.yml`)
+  unselected, for the same reason, plus a second one: it is `paths:`-filtered, and a required check
+  that is path-skipped never reports its context — it would block the merge button on every PR that
+  does not touch `src/**` or `samples/**` (§4c). Its offline half, the sample-pin mirror check, is
+  already a step of the required `Deterministic gate`.
 - Do **not** enable "Require branches to be up to date before merging". This section originally
   recommended it, but under the ADR-0021 parallel intra-repo model it serializes every merge: each
   landing invalidates every other open PR's green. `gate` also runs on `push: main`, so a bad
