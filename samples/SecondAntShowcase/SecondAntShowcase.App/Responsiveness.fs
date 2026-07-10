@@ -487,7 +487,7 @@ let private liveViewerOptions () : FS.GG.UI.SkiaViewer.ViewerOptions =
     { Title = "Second Ant Showcase Responsiveness"
       InitialSize = size
       PresentMode = FS.GG.UI.SkiaViewer.ViewerPresentMode.DirectToSwapchain
-      FrameRateCap = Some 60 }
+      FrameRateCap = Some 60; LogicalSize = None }
 
 let private liveWindowBehavior () =
     { FS.GG.UI.SkiaViewer.Viewer.defaultWindowBehavior with

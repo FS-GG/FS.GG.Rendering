@@ -79,6 +79,38 @@ let placeScore (hudWidth: float) (font: FontSpec) (ink: Color) (scoreText: strin
 
 Run `./fake.sh build -t Dev` then `./fake.sh build -t Verify` in this product.
 
+### Fixed resolution — scale at the host, not in the scene
+
+If your product has a fixed logical playfield (the dominant 2D game shape — "coordinates are
+1280x720; the host scales to the window"), **do not scale the scene**. Build every node in
+logical coordinates and set `ViewerOptions.LogicalSize = Some { Width = 1280; Height = 720 }`
+at the host boundary. The host then scales that canvas uniformly to whatever surface it has,
+centers it, clips to it, and letterboxes the surplus axis — in the live window, across resize,
+and on the offscreen evidence surface alike. Pointer input arrives already mapped back into
+logical coordinates.
+
+This is why `GeneratedAppHost.View : 'model -> SceneNode` is handed no `Size`: with a
+`LogicalSize` there is nothing to derive from it, and without one your product should be
+resolution-independent anyway. Window-size arithmetic scattered through `view` is the thing
+the signature exists to prevent. See `fs-gg-skiaviewer`.
+
+There is deliberately **no `Scale` scene node**. A uniform fit is a host concern, and a scene
+that scales itself has to know the window size to do it — reintroducing exactly the coupling
+`LogicalSize` removes.
+
+#### `PerspectiveNode` — the low-level escape hatch
+
+`PerspectiveNode of transform: PerspectiveTransform * scene: Scene` concatenates a raw 3x3
+affine/perspective matrix onto the canvas (`M11`/`M22` scale, `M13`/`M23` translate). It is the
+primitive `LogicalSize` is built from, and it is the escape hatch for transforms this skill's
+other nodes do not express — rotation, shear, non-uniform scale, true perspective.
+
+Reach for it only when you need such a transform **within** your logical canvas, via
+`Scene.withPerspective : PerspectiveTransform -> Scene -> Scene`. Do not reach for it to fit a
+fixed canvas to a window: that needs the window size, which `view` does not get, and
+`LogicalSize` already does the job. For a plain offset, prefer `Scene.translate` — it says what
+it means.
+
 ## Test Commands
 
 Run `./fake.sh build -t Test` to exercise product-owned scene examples.

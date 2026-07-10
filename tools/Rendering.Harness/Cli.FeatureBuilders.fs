@@ -110,7 +110,7 @@ let captureFeature156Sample rawDir scenarioId path hostFacts =
         { Title = $"Feature156 {path}"
           InitialSize = proofSize
           PresentMode = ViewerPresentMode.OffscreenReadback
-          FrameRateCap = None }
+          FrameRateCap = None; LogicalSize = None }
 
     let request: ScreenshotEvidenceRequest =
         { Command = "compositor-performance"
@@ -512,7 +512,7 @@ let measureFeature158Path rawDir scenario path warmup repetitions runId hostProf
         { Title = $"Feature158 {pathToken}"
           InitialSize = proofSize
           PresentMode = ViewerPresentMode.DirectToSwapchain
-          FrameRateCap = Some 60 }
+          FrameRateCap = Some 60; LogicalSize = None }
 
     for _ in 1..warmup do
         Viewer.runForFrames 1 options scene |> ignore

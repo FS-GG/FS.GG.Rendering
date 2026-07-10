@@ -456,6 +456,13 @@ FS.GG.UI.SkiaViewer.InteractiveViewerHost`2.Tick : FSharpFunc<System.TimeSpan, F
 FS.GG.UI.SkiaViewer.InteractiveViewerHost`2.Update : FSharpFunc<msg, FSharpFunc<model, Tuple<model, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerEffect>>>> [get]
 FS.GG.UI.SkiaViewer.InteractiveViewerHost`2.View : FSharpFunc<FS.GG.UI.Scene.Size, FSharpFunc<model, FS.GG.UI.Scene.SceneNode>> [get]
 FS.GG.UI.SkiaViewer.InteractiveViewerHost`2.new(FSharpFunc<Microsoft.FSharp.Core.Unit, Tuple<model, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerEffect>>>, FSharpFunc<msg, FSharpFunc<model, Tuple<model, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerEffect>>>>, FSharpFunc<FS.GG.UI.Scene.Size, FSharpFunc<model, FS.GG.UI.Scene.SceneNode>>, FSharpFunc<FS.GG.UI.KeyboardInput.ViewerKey, FSharpFunc<System.Boolean, FSharpList<msg>>>, FSharpFunc<FS.GG.UI.SkiaViewer.ViewerPointerInput, FSharpFunc<FS.GG.UI.Scene.Size, FSharpFunc<model, FSharpList<msg>>>>, FSharpFunc<System.TimeSpan, FSharpOption<msg>>, FS.GG.UI.SkiaViewer.ViewerDiagnosticsOptions)
+FS.GG.UI.SkiaViewer.LogicalCanvas.fit(FS.GG.UI.Scene.Size, FS.GG.UI.Scene.Size) : FS.GG.UI.SkiaViewer.LogicalCanvasFit
+FS.GG.UI.SkiaViewer.LogicalCanvas.present(FS.GG.UI.Scene.Size, FS.GG.UI.Scene.Size, FS.GG.UI.Scene.SceneNode) : FS.GG.UI.Scene.SceneNode
+FS.GG.UI.SkiaViewer.LogicalCanvas.toLogicalPoint(FS.GG.UI.Scene.Size, FS.GG.UI.Scene.Size, System.Double, System.Double) : System.Tuple<System.Double, System.Double>
+FS.GG.UI.SkiaViewer.LogicalCanvasFit.OffsetX : System.Double [get]
+FS.GG.UI.SkiaViewer.LogicalCanvasFit.OffsetY : System.Double [get]
+FS.GG.UI.SkiaViewer.LogicalCanvasFit.Scale : System.Double [get]
+FS.GG.UI.SkiaViewer.LogicalCanvasFit.new(System.Double, System.Double, System.Double)
 FS.GG.UI.SkiaViewer.ReferenceFailureClassification+Tags.ReferencePackageResourceIncompatibility : System.Int32
 FS.GG.UI.SkiaViewer.ReferenceFailureClassification+Tags.ReferenceProductDefect : System.Int32
 FS.GG.UI.SkiaViewer.ReferenceFailureClassification+Tags.ReferenceUnsupportedEnvironment : System.Int32
@@ -834,9 +841,10 @@ FS.GG.UI.SkiaViewer.ViewerOpenStatus+Tags.ViewerOpenUnknown : System.Int32
 FS.GG.UI.SkiaViewer.ViewerOpenStatus+Tags.ViewerOpenUnsupported : System.Int32
 FS.GG.UI.SkiaViewer.ViewerOptions.FrameRateCap : Microsoft.FSharp.Core.FSharpOption<System.Int32> [get]
 FS.GG.UI.SkiaViewer.ViewerOptions.InitialSize : FS.GG.UI.Scene.Size [get]
+FS.GG.UI.SkiaViewer.ViewerOptions.LogicalSize : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Size> [get]
 FS.GG.UI.SkiaViewer.ViewerOptions.PresentMode : FS.GG.UI.SkiaViewer.ViewerPresentMode [get]
 FS.GG.UI.SkiaViewer.ViewerOptions.Title : System.String [get]
-FS.GG.UI.SkiaViewer.ViewerOptions.new(System.String, FS.GG.UI.Scene.Size, FS.GG.UI.SkiaViewer.ViewerPresentMode, Microsoft.FSharp.Core.FSharpOption<System.Int32>)
+FS.GG.UI.SkiaViewer.ViewerOptions.new(System.String, FS.GG.UI.Scene.Size, FS.GG.UI.SkiaViewer.ViewerPresentMode, Microsoft.FSharp.Core.FSharpOption<System.Int32>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Size>)
 FS.GG.UI.SkiaViewer.ViewerPointerButtonKind+Tags.Middle : System.Int32
 FS.GG.UI.SkiaViewer.ViewerPointerButtonKind+Tags.Primary : System.Int32
 FS.GG.UI.SkiaViewer.ViewerPointerButtonKind+Tags.Secondary : System.Int32

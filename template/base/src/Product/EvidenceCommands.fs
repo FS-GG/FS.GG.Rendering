@@ -254,7 +254,7 @@ let viewerOptions =
     { Title = "Generated Product"
       InitialSize = { Width = 1280; Height = 800 }
       PresentMode = ViewerPresentMode.DirectToSwapchain
-      FrameRateCap = None }
+      FrameRateCap = None; LogicalSize = None }
 
 // Evidence/screenshot-capture options: a small OffscreenReadback surface for deterministic pixel
 // readback. Used only by the bounded evidence commands below — never for the persistent launch.
@@ -262,7 +262,7 @@ let evidenceViewerOptions =
     { Title = "Generated Product"
       InitialSize = { Width = 640; Height = 480 }
       PresentMode = ViewerPresentMode.OffscreenReadback
-      FrameRateCap = None }
+      FrameRateCap = None; LogicalSize = None }
 
 let appCommandName command =
     match command with
@@ -383,7 +383,7 @@ let boundedSmoke includeFrameDiagnostics evidencePath =
         Viewer.runBounded
             request
             { Title = "Generated Product Bounded Smoke"
-              InitialSize = { Width = 320; Height = 200 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None }
+              InitialSize = { Width = 320; Height = 200 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None }
             scene
 
     match result with

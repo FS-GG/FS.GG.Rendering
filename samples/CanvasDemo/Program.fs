@@ -49,7 +49,7 @@ let private runInteractive () =
             { Title = "Canvas Demo — bouncing ball"
               InitialSize = { Width = 360; Height = 260 }
               PresentMode = ViewerPresentMode.DirectToSwapchain
-              FrameRateCap = Some 60 }
+              FrameRateCap = Some 60; LogicalSize = None }
 
         match ControlsElmish.runInteractiveApp options host with
         | Result.Ok outcome ->

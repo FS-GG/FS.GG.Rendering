@@ -15,7 +15,7 @@ let private options cap : ViewerOptions =
     { Title = "Product"
       InitialSize = { Width = 320; Height = 200 }
       PresentMode = ViewerPresentMode.OffscreenReadback
-      FrameRateCap = cap }
+      FrameRateCap = cap; LogicalSize = None }
 
 // Sequenced (feature 203, US4/T024): drives the live host render path through the shared, single-threaded SceneRenderer.
 [<Tests>]

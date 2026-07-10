@@ -55,7 +55,7 @@ let private capture (outPath: string) (scene: SceneNode) : ScreenshotEvidenceRes
         { Title = "feature175-s1"
           InitialSize = size
           PresentMode = ViewerPresentMode.OffscreenReadback
-          FrameRateCap = None }
+          FrameRateCap = None; LogicalSize = None }
     Viewer.captureScreenshotEvidence request options scene
 
 // Sequenced (feature 203, US4/T024): captures real frames through the shared, single-threaded SceneRenderer.

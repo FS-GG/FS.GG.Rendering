@@ -19,7 +19,8 @@ type ViewerOptions =
     { Title: string
       InitialSize: Size
       PresentMode: ViewerPresentMode
-      FrameRateCap: int option }
+      FrameRateCap: int option
+      LogicalSize: Size option }
 
 type ViewerLaunchMode =
     | InteractiveWindow

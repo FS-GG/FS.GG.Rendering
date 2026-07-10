@@ -338,7 +338,7 @@ module Perf =
             { Title = "harness-perf"
               InitialSize = { Width = 200; Height = 160 }
               PresentMode = ViewerPresentMode.OffscreenReadback
-              FrameRateCap = None }
+              FrameRateCap = None; LogicalSize = None }
         let sw = Stopwatch.StartNew()
         Viewer.captureScreenshotEvidence request options scene |> ignore
         sw.Stop()

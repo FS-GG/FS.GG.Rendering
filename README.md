@@ -22,7 +22,8 @@ open FS.GG.UI.SkiaViewer
 
 let options : ViewerOptions =
     { Title = "Hello"; InitialSize = size
-      PresentMode = ViewerPresentMode.DirectToSwapchain; FrameRateCap = None }
+      PresentMode = ViewerPresentMode.DirectToSwapchain; FrameRateCap = None
+      LogicalSize = None }   // Some { Width = 1280; Height = 720 } to letterbox a fixed canvas
 
 // Render a static scene…
 Viewer.run options scene |> ignore

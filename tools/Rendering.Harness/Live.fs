@@ -234,7 +234,7 @@ module Live =
             { Title = "feature145-overlay-visual-proof"
               InitialSize = { Width = 480; Height = 320 }
               PresentMode = ViewerPresentMode.OffscreenReadback
-              FrameRateCap = None }
+              FrameRateCap = None; LogicalSize = None }
         let result =
             FS.GG.UI.SkiaViewer.Viewer.captureScreenshotEvidence request options (overlayProofScene state)
 

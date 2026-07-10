@@ -23,7 +23,18 @@ type ViewerOptions =
       /// without a blocking compositor does not free-run the present loop; `Some n` with n <= 0 is
       /// rejected at startup validation. Ignored by the offscreen/evidence (`runBounded`) path, which
       /// does not use the persistent event loop.
-      FrameRateCap: int option }
+      FrameRateCap: int option
+      /// Issue #246: the fixed logical resolution a product renders in. `None` (the pre-#246
+      /// behaviour) means the product renders directly in output-surface coordinates. `Some logical`
+      /// makes the host scale that canvas uniformly to the output surface and center it, clipping
+      /// content to the canvas and leaving letterbox bars on the surplus axis — so a fixed-resolution
+      /// game fills whatever window or offscreen evidence surface it is given.
+      ///
+      /// When set, the logical size is also what a size-aware `InteractiveViewerHost.View` is handed,
+      /// and pointer input is mapped back into logical coordinates before `MapPointer` sees it: the
+      /// product never observes the window size. `Some` with a non-positive extent is rejected at
+      /// startup validation. See `LogicalCanvas`.
+      LogicalSize: Size option }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ViewerLaunchMode =
