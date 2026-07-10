@@ -25,6 +25,12 @@ let private markSigil i =
 let private usageOf (report: Legibility.Report) (channel: Legibility.Channel) =
     report.Usage |> List.find (fun u -> u.Channel = channel)
 
+/// Six distinct Speed levels against capacity 4. Levels 0..3 are held by three units each; levels 4
+/// and 5 by two each. Ranking by (frequency desc, first appearance asc) keeps 0,1,2,3 and leaves 4
+/// and 5 as the excess — units 12,13 and 14,15.
+let private sixSpeedLevels =
+    [ for s in [ 0; 0; 0; 1; 1; 1; 2; 2; 2; 3; 3; 3; 4; 4; 5; 5 ] -> { baseUnit with Speed = s } ]
+
 [<Tests>]
 let tests =
     testList
@@ -226,6 +232,57 @@ let tests =
               let report = Legibility.score board // must not raise
               Expect.equal report.Verdict Legibility.HasWarnings "an overloaded set scores HasWarnings, not an exception"
               Expect.isNonEmpty report.Findings "the overload is reported as data"
+          }
+
+          // ── C2/C3 `Units` — an overload names the units PAST capacity, not the whole board ──
+          // Answering "which units do I re-tune?" is the entire point of the backstop; `[0..n-1]`
+          // answers "all of them" and is noise on any board bigger than the reference roster.
+
+          test "an overload names only the units holding the levels past capacity, not every unit" {
+              // Speed capacity 4. Levels 0..3 are each held by two units; level 4 by one. The single
+              // rare level is the excess, so only the unit carrying it is named.
+              let board =
+                  [ for s in [ 0; 0; 1; 1; 2; 2; 3; 3; 4 ] -> { baseUnit with Speed = s } ]
+
+              let report = Legibility.score board
+              let f = report.Findings |> List.find (fun f -> f.Channel = Legibility.Speed)
+              Expect.equal f.Severity Legibility.Warning "overload is a Warning"
+              Expect.equal f.Units [ 8 ] "only the unit holding the 5th (rarest) Speed level is named"
+              Expect.notEqual f.Units [ 0..8 ] "the whole scored set is NOT named"
+          }
+
+          test "an overload names every unit sharing an excess level, ascending" {
+              let report = Legibility.score sixSpeedLevels
+              let f = report.Findings |> List.find (fun f -> f.Channel = Legibility.Speed)
+              Expect.equal f.Units [ 12; 13; 14; 15 ] "both units of each excess level, in ascending order"
+          }
+
+          test "the named units are exactly the ones whose re-mapping clears the overload" {
+              // The linter's contract as a property: fold every named unit onto a surviving level and
+              // the channel drops back inside capacity. This is what makes `Units` actionable.
+              let named =
+                  (Legibility.score sixSpeedLevels).Findings
+                  |> List.find (fun f -> f.Channel = Legibility.Speed)
+                  |> fun f -> Set.ofList f.Units
+
+              let remapped =
+                  sixSpeedLevels
+                  |> List.mapi (fun i t -> if named.Contains i then { t with Speed = 0 } else t)
+
+              Expect.equal (Legibility.score remapped).Verdict Legibility.Clean "re-mapping exactly the named units clears the finding"
+          }
+
+          test "overload `Units` is deterministic across scorings (SC-001)" {
+              let board = [ for i in 0..9 -> { baseUnit with Faction = customFaction i } ]
+              Expect.equal (Legibility.score board).Findings (Legibility.score board).Findings "same input, same Units"
+          }
+
+          test "a distinct-level-per-unit board names the levels introduced last" {
+              // 8 distinct factions, all frequency 1: the tie breaks on first appearance, so the
+              // 7 introduced first fit and the 8th is the excess. Keeps C2's `isNonEmpty` honest.
+              let board = [ for i in 0..7 -> { baseUnit with Faction = customFaction i } ]
+              let f = (Legibility.score board).Findings.Head
+              Expect.equal f.Units [ 7 ] "the last-introduced faction is the one past capacity"
           } ]
 
 // ---- Feature 254 — the SecondaryHeading channel ------------------------------------------------------
