@@ -107,6 +107,64 @@ let private pathTokens (body: string) =
         if not isPlaceholder && not isProductConvention && (looksRooted || token.StartsWith "../") then
             yield token ]
 
+/// Fold `.` and `..` over a '/'-separated path. A `..` that cannot be cancelled is retained, so a
+/// path escaping its root stays visibly prefixed with `..`.
+let private normalizeRelative (path: string) =
+    path.Split('/')
+    |> Array.filter (fun s -> s <> "" && s <> ".")
+    |> Array.fold
+        (fun acc segment ->
+            match segment, acc with
+            | "..", top :: rest when top <> ".." -> rest
+            | _ -> segment :: acc)
+        []
+    |> List.rev
+    |> String.concat "/"
+
+/// Does a path token extracted from `containingFile` resolve in the product the skill ships into?
+/// Resolution universe: the ungated template/base tree (docs/, src-shape, load-product.fsx …), the
+/// skill's own directory, and the spec-kit workspace (.specify/ from the repo).
+let private resolves (skillId: string) (skillRoot: string) (containingFile: string) (token: string) =
+    let cleaned = (token.TrimEnd('.', ':', ',')).TrimEnd('/')
+    // Branch on the raw token: `cleaned` strips the trailing slash, so a bare `../` would otherwise
+    // arrive here as `..` and fall through to the product-root arm as `template/base/..` — the repo.
+    if token.StartsWith "../" then
+        // A relative link resolves from the file that holds it, not from the product root. Anchor at
+        // the skill's product location and normalize: a link that stays inside the skill is a real file
+        // next to its author (`reference/labels.md` -> `../SKILL.md`), while one that climbs out lands
+        // at the product root (a wrapper's `../../../src/X`) and must exist in the ungated
+        // template/base tree. (The depth-3 anchor is wrong for the three canonical sources that do not
+        // ship to `.agents/skills/<id>/` — feedback, feedback-report, samples. Carried from the
+        // `../../../`-strip this replaces; the product location belongs in `canonicalSources`.)
+        let skillPrefix = ".agents/skills/" + skillId
+        let containingDir =
+            Path.GetDirectoryName containingFile |> Option.ofObj |> Option.defaultValue skillRoot
+        let fileDir =
+            Path.GetRelativePath(skillRoot, containingDir).Replace(Path.DirectorySeparatorChar, '/')
+        let fileDir = if fileDir = "." then "" else fileDir + "/"
+        let productPath = normalizeRelative (skillPrefix + "/" + fileDir + cleaned)
+        let segments = productPath.Split('/')
+        if segments.[0] = ".." then
+            false // climbs out of the product entirely
+        elif productPath.StartsWith(skillPrefix + "/") then
+            let insideSkill = productPath.Substring(skillPrefix.Length + 1)
+            let onDisk = Path.Combine(skillRoot, insideSkill.Replace('/', Path.DirectorySeparatorChar))
+            File.Exists onDisk || Directory.Exists onDisk
+        else
+            File.Exists(repositoryPath ("template/base/" + productPath))
+            || Directory.Exists(repositoryPath ("template/base/" + productPath))
+    elif cleaned.StartsWith ".specify/extensions/feedback" then
+        // emitted by the feedback row: template/feedback/extensions/ -> .specify/extensions/feedback/
+        Directory.Exists(repositoryPath "template/feedback/extensions")
+    elif cleaned.StartsWith ".specify" then
+        File.Exists(repositoryPath cleaned) || Directory.Exists(repositoryPath cleaned)
+    elif cleaned = "samples" || cleaned.StartsWith "samples/" then
+        // emitted by the sample-pack row: template/fragments/samples/ -> samples/
+        Directory.Exists(repositoryPath "template/fragments/samples")
+    else
+        File.Exists(repositoryPath ("template/base/" + cleaned))
+        || Directory.Exists(repositoryPath ("template/base/" + cleaned))
+
 [<Tests>]
 let feature231SkillManifestTests =
     testList
@@ -239,33 +297,12 @@ let feature231SkillManifestTests =
           // ---- G-NODANGLE --------------------------------------------------------------------
 
           test "G-NODANGLE canonical fs-gg-* bodies carry no unresolvable path reference (env-free core)" {
-              // Resolution universe for a scaffolded product: the ungated template/base tree (docs/,
-              // src-shape, load-product.fsx …) plus the spec-kit workspace (.specify/ from the repo).
-              let resolves (skillId: string) (token: string) =
-                  let cleaned = (token.TrimEnd('.', ':', ',')).TrimEnd('/')
-                  if token.StartsWith "../" then
-                      // relative to the skill dir .agents/skills/<id>/ inside the product: ../../../X = product-root X
-                      let underProductRoot = cleaned.Replace("../../../", "")
-                      not (underProductRoot.Contains "..")
-                      && (File.Exists(repositoryPath ("template/base/" + underProductRoot))
-                          || Directory.Exists(repositoryPath ("template/base/" + underProductRoot)))
-                  elif cleaned.StartsWith ".specify/extensions/feedback" then
-                      // emitted by the feedback row: template/feedback/extensions/ -> .specify/extensions/feedback/
-                      Directory.Exists(repositoryPath "template/feedback/extensions")
-                  elif cleaned.StartsWith ".specify" then
-                      File.Exists(repositoryPath cleaned) || Directory.Exists(repositoryPath cleaned)
-                  elif cleaned = "samples" || cleaned.StartsWith "samples/" then
-                      // emitted by the sample-pack row: template/fragments/samples/ -> samples/
-                      Directory.Exists(repositoryPath "template/fragments/samples")
-                  else
-                      File.Exists(repositoryPath ("template/base/" + cleaned))
-                      || Directory.Exists(repositoryPath ("template/base/" + cleaned))
               let failures =
                   [ for id, source in canonicalSources do
                       let dir = Path.GetDirectoryName(repositoryPath source) |> Option.ofObj |> Option.defaultValue "."
                       for file in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories) do
                           for token in pathTokens (File.ReadAllText file) do
-                              if not (resolves id token) then
+                              if not (resolves id dir file token) then
                                   yield sprintf "%s: `%s` (in %s)" id token (Path.GetFileName file) ]
               Expect.isEmpty failures (sprintf "dangling skill routes (audit F3 class): %s" (String.concat "; " failures))
           }
@@ -277,6 +314,48 @@ let feature231SkillManifestTests =
               Expect.equal (pathTokens wrapperBody) [ "../../../src/Diagnostics/skill/SKILL.md" ] "the 12-line wrapper's repo-internal route is extracted"
               let placeholderBody = "See `src/<YourProduct>/<YourProduct>.fsproj` and record under `readiness/logs/`."
               Expect.isEmpty (pathTokens placeholderBody) "placeholders and the readiness/ convention are not flagged"
+          }
+
+          test "G-NODANGLE a relative route resolves from the file that holds it, not the product root" {
+              // #307: every token used to resolve against template/base/, so an intra-skill sibling link
+              // (`../SKILL.md` from reference/labels.md) could never resolve and read as a dangling route.
+              let symbologyRoot = repositoryPath "template/product-skills/fs-gg-symbology"
+              let labels = Path.Combine(symbologyRoot, "reference", "labels.md")
+              Expect.isTrue
+                  (resolves "fs-gg-symbology" symbologyRoot labels "../SKILL.md")
+                  "a sibling-relative link to the skill's own SKILL.md resolves"
+              Expect.isFalse
+                  (resolves "fs-gg-symbology" symbologyRoot labels "../no-such-file.md")
+                  "a sibling-relative link to nothing is still a dangling route"
+
+              // The wrapper shape must keep resolving at the product root: `.agents/skills/<id>/` is three
+              // deep, so `../../../X` lands on X in template/base/.
+              let projectRoot = repositoryPath "template/base/.agents/skills/fs-gg-project"
+              let projectSkill = Path.Combine(projectRoot, "SKILL.md")
+              Expect.isTrue
+                  (resolves "fs-gg-project" projectRoot projectSkill "../../../docs")
+                  "a wrapper route climbing to the product root resolves against template/base/"
+              Expect.isFalse
+                  (resolves "fs-gg-project" projectRoot projectSkill "../../../../escape.md")
+                  "a route climbing out of the product does not resolve"
+
+              // `cleaned` drops the trailing slash, so a bare `../` must not fall through to the
+              // product-root arm and probe `template/base/..` — the repository itself.
+              Expect.isTrue
+                  (resolves "fs-gg-project" projectRoot projectSkill "../")
+                  "a bare ../ names the skills directory, which exists"
+              Expect.isFalse
+                  (resolves "fs-gg-project" projectRoot projectSkill "../../../no-such-dir/")
+                  "a trailing slash does not smuggle a missing directory past the guard"
+          }
+
+          test "G-NODANGLE normalizeRelative folds . and .. and keeps an uncancelled escape visible" {
+              Expect.equal (normalizeRelative ".agents/skills/x/reference/../SKILL.md") ".agents/skills/x/SKILL.md" "a .. cancels its parent"
+              Expect.equal (normalizeRelative ".agents/skills/x/./SKILL.md") ".agents/skills/x/SKILL.md" "a . is dropped"
+              Expect.equal (normalizeRelative ".agents/skills/x/../../../src/X") "src/X" "three .. reach the product root"
+              Expect.equal (normalizeRelative ".agents/skills/x/../../../../out") "../out" "an uncancelled .. survives"
+              // an escape is the leading *segment* `..`, not any segment that starts with those two chars.
+              Expect.equal (normalizeRelative ".agents/skills/x/../../../..data/y") "..data/y" "a segment merely beginning with .. is not an escape"
           }
 
           // ---- G-TARGET ----------------------------------------------------------------------
