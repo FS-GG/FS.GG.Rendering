@@ -58,6 +58,7 @@
     <Compile Include="SwapChecklistTemplateTests.fs" />
     <Compile Include="ScaffoldIdentifierLeakGuardTests.fs" />
     <Compile Include="Feature264FragmentProseTests.fs" />
+    <Compile Include="Feature282EmbeddedTokenGuardTests.fs" />
     <Compile Include="Tests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

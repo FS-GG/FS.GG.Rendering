@@ -345,9 +345,9 @@ let behaviorTests =
         }
 
         // FR-003 / SC-002: the unmodified default `view` renders the REAL example controls
-        // through the production tree-render path (`Control.renderTree`), not hand-drawn
+        // through the framework tree-render path (`Control.renderTree`), not hand-drawn
         // placeholder geometry. The rendered scene therefore carries the example control text.
-        test "default view renders real controls through the production render path" {
+        test "default view renders real controls through the framework render path" {
             let rendered = view initialModel
             let nodes = collectSceneNodes rendered |> Seq.toList
             let text = sceneText rendered
