@@ -20,11 +20,17 @@ The signatures you consume are bundled with this product:
 - `docs/api-surface/Game.Core/Geometry.fsi` — the `Geometry` module (collision / containment / centering),
   on the sim `Rect`/`Point`. Shipped in `FS.GG.Game.Core`, referenced on the `game` and `sample-pack`
   profiles.
-- `docs/api-surface/Game.Core/Rng.fsi` and `docs/api-surface/Game.Core/FixedStep.fsi` — the `Rng` value type
-  and the `FixedStep` accumulator drain. Also `FS.GG.Game.Core`, same profiles.
+- `docs/api-surface/Game.Core/Rng.fsi`, `docs/api-surface/Game.Core/FixedStep.fsi`, and
+  `docs/api-surface/Game.Core/Loop.fsi` — the `Rng` value type, the `FixedStep` accumulator drain, and the
+  `Loop` double step buffer built on it. Also `FS.GG.Game.Core`, same profiles.
 - `docs/api-surface/Game.Core/Pathfinding.fsi` and `docs/api-surface/Game.Core/SpatialGrid.fsi` — deterministic
   grid `Pathfinding` (A*/BFS over a walkability predicate) and the uniform `SpatialGrid` for range/splash
   queries. Also `FS.GG.Game.Core`, same profiles — reuse these instead of hand-rolling BFS/A* or bucketing.
+
+The rest of the simulation substrate ships in the same package, each with a skill that teaches it:
+`Resolution` ([[fs-gg-collision]]), `Grids` ([[fs-gg-grids]]), `Los` ([[fs-gg-line-drawing]]), `Visibility`
+and `Fov` ([[fs-gg-visibility]]), and `Ballistics` ([[fs-gg-ballistics]]). Reach for those before writing
+your own — they are the authoritative implementations, not starting points to copy.
 
 Every draw returns a `struct` tuple `(value, nextState)` — deconstruct with `let struct(v, next) = …`.
 All helpers are **total**: degenerate inputs return a documented value, they never throw.
@@ -37,25 +43,57 @@ scripted `frameTime` sequence reproduces identical results. A stalled frame is c
 `defaultMaxFrameTime` (0.25 s) so the loop can't spiral; pass a tighter clamp with
 `drainWith maxFrameTime interval frameTime accumulator`.
 
+Stepping on whole intervals is only half the problem. Render frames land *between* steps, so drawing
+`Current` directly makes motion stutter at every frame rate that isn't an exact multiple of the sim
+rate. `Loop` closes that gap: it keeps the world one step back and hands you the interpolant.
+
+### The double step buffer is the default
+
+> **The double-buffered fixed-step loop (`StepState { Current; Previous; Accumulator }`) is the default
+> for any product with a continuously-moving simulation. Stepping the world any other way MUST record
+> why in the spec.**
+
+The one-liner that generalizes it: **interpolate when the world moves between ticks; buffer when you
+interpolate.** The sanctioned departures, so the rule reads as a rule and not a prohibition:
+
+| Departure | Where | Justification |
+|---|---|---|
+| Single world + step timer | `Snake.fs`, `Tetris.fs` | **Discrete-grid games.** The world only occupies integer cells; there is nothing between `Previous` and `Current` to show. Interpolating a Tetris piece halfway between two rows is wrong, not smooth. |
+| Single world + step timer | `Pong.fs` | Continuous motion — a **weaker** case. Pong would look better double-buffered; it predates the buffer. Legacy, not precedent. |
+| No `Previous` at all | headless replay, `Board.evidence` | **Nothing renders.** `Previous` and `alpha` are dead weight in a fold that only fingerprints `Current`. |
+| More than two buffers | rollback netcode | Needs a ring of N historical worlds. The sanctioned reason to *widen* the buffer, not narrow it. |
+| No accumulator | turn-based games | A turn is a `Msg`, not a tick. |
+
+Three things stay non-negotiable regardless of buffering, because they are the three ways to lose
+replay: **never feed `alpha` back into the simulation**, never step with a variable `dt`, and never read
+a wall clock below the effect interpreter.
+
 ```fsharp
 open FS.GG.Game.Core
 
 // Run world-updates at a fixed 60 Hz regardless of render cadence.
-let stepHz = 1.0 / 60.0
+let simInterval = 1.0 / 60.0
 
-let advance (dt: float) (accumulator: float) (world: 'w) (stepWorld: 'w -> 'w) : 'w * float =
-    let struct (steps, carry) = FixedStep.drain stepHz dt accumulator
-    // mutable: single unaliased accumulator over a fixed step count — plainer than a fold.
-    let mutable w = world
-    for _ in 1 .. steps do
-        w <- stepWorld w
-    w, carry
+// `integrate` is your game step: world -> dt -> world.
+let stepped = Loop.advance simInterval integrate dtSeconds model.Sim
+
+// ...and at draw time, lerp the two worlds by how far the presentation clock sits between them.
+let t = Loop.alpha simInterval stepped        // in [0, 1], never NaN
+let shown = lerpWorld stepped.Previous stepped.Current t
 ```
 
-The scaffolded `game` starter ships exactly this shape: `Model.SimAccumulator` carries the remainder,
+`Loop.advance` delegates the drain — and with it the 0.25 s clamp and the totality — to
+`FixedStep.drain`, so a `NaN` frame time can never enter the accumulator and freeze the sim. `Previous`
+is the world before the **last** step, so a frame that catches up several steps still brackets exactly
+the interval you interpolate across. Seed with `Loop.init world`.
+
+Reach for `FixedStep.drain` directly only when you have taken one of the departures above — a
+discrete-grid game or a headless replay, where there is no `Previous` worth keeping.
+
+The scaffolded `game` starter ships the drain shape: `Model.SimAccumulator` carries the remainder,
 `update` on `Tick dtSeconds` calls `FixedStep.drain simInterval dtSeconds` and runs `stepSim` that many
 times, and the host feeds the real elapsed time in (`EvidenceCommands.tick`). Edit `stepSim` to be your
-game step.
+game step; if it moves anything continuously, carry a `StepState` instead of a bare accumulator.
 
 ## Collision-safe positions (`Geometry.Vec2`)
 
@@ -96,9 +134,10 @@ let forkStream (model: Model) : Rng * Model =
 ## Collision
 
 Collision detection **and** response now have a dedicated skill — see **[[fs-gg-collision]]**. It covers
-narrow-phase (`Geometry` box/swept overlap on the shared `Rect`/`Point`), broad-phase over `SpatialGrid`,
-and the game-opinionated response layer shipped as adaptable `Collision.fs` source you own. Reach for it
-instead of hand-rolling AABB or a duplicate bounds record.
+narrow-phase (`Geometry` box/circle/polygon contacts and segment casts on the shared `Rect`/`Point`),
+broad-phase over `SpatialGrid`, and the `Resolution` response layer — which `FS.GG.Game.Core` keeps
+deliberately separate from detection. Reach for it instead of hand-rolling AABB or a duplicate bounds
+record.
 
 ## Culling
 
@@ -266,16 +305,16 @@ Record simulation evidence (determinism replays, collision/culling cases) under 
 
 ## Package Boundary
 
-`Geometry`, `Rng`, `FixedStep`, `Pathfinding`, and `SpatialGrid` (plus the sim `Point`/`Rect`/`Cell`) all
+`Geometry`, `Rng`, `FixedStep`, `Loop`, `Pathfinding`, and `SpatialGrid` (plus the sim `Point`/`Rect`/`Cell`) all
 live in `FS.GG.Game.Core` (referenced only on the `game`/`sample-pack` profiles). `FS.GG.Game.Core` is the
 BCL-only bottom layer — it depends on nothing and pulls in no viewer, layout, or widget machinery. Keep
 rendering in `fs-gg-scene` and host wiring in `fs-gg-skiaviewer`.
 
 ## Generated Product
 
-Thread the `Rng` through your `Model`, drive `update` on the `FixedStep.drain` step count, run collision
-with `Geometry`, cull against the visible `Rect`, then hand the surviving world to your `View` as a
-`Scene`.
+Thread the `Rng` through your `Model`, carry a `Loop.StepState` and drive `update` with `Loop.advance`, run
+collision with `Geometry`, cull against the visible `Rect`, then hand the world your `View` interpolates by
+`Loop.alpha` on as a `Scene`.
 
 ## Persistent problems
 
@@ -287,12 +326,16 @@ community sources. If your product uses Spec Kit, record findings and resolving 
 
 ## Related
 
-- [[fs-gg-collision]] — detect and resolve collisions (broad-phase + narrow-phase + response); owns the
-  adaptable `Collision.fs` helper.
-- [[fs-gg-scene]] — build the `Scene` the simulated world renders into; owns the shared `Rect`/`Point`.
-- [[fs-gg-skiaviewer]] — drive the fixed-step loop from the host window.
-- [[fs-gg-layout]] — compute the gameplay region (the visible `Rect`) entities are culled against.
-- [[fs-gg-keyboard-input]] — map input to the `Msg` values your `update` steps the world with.
+- [[fs-gg-collision]] — detect and resolve collisions: the `Geometry` narrow phase, a `SpatialGrid` broad
+  phase, and the `Resolution` response layer kept deliberately separate from detection.
+- [[fs-gg-grids]] — the grid's geometry *vocabulary*: faces, edges, vertices, and the pixel↔cell map.
+- [[fs-gg-line-drawing]] — `Los`: the Bresenham/supercover cell walk and discrete grid line-of-sight.
+- [[fs-gg-visibility]] — `Visibility`'s continuous angular-sweep polygon and `Fov`'s symmetric shadowcasting.
+- [[fs-gg-ballistics]] — swept projectile advance, lead solves, and splash over the same `Geometry` casts.
+- [[fs-gg-rendering:fs-gg-scene]] — build the `Scene` the simulated world renders into.
+- [[fs-gg-rendering:fs-gg-skiaviewer]] — drive the fixed-step loop from the host window.
+- [[fs-gg-rendering:fs-gg-layout]] — compute the gameplay region (the visible `Rect`) entities are culled against.
+- [[fs-gg-rendering:fs-gg-keyboard-input]] — map input to the `Msg` values your `update` steps the world with.
 
 ## Sources / links
 

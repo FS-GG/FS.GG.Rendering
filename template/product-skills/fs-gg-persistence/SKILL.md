@@ -134,9 +134,9 @@ community sources. If your product uses Spec Kit, record findings and resolving 
 ## Related
 
 - [[fs-gg-game-core]] — the simulation half of a game product; the seeded, deterministic `Model` is the natural thing to save.
-- [[fs-gg-skiaviewer]] — the host window where a real file backend will interpret these requests and return loaded saves.
+- [[fs-gg-rendering:fs-gg-skiaviewer]] — the host window where a real file backend will interpret these requests and return loaded saves.
 - [[fs-gg-audio]] — the sibling requested-effect surface; persistence and audio are both effects requested from `update`.
-- [[fs-gg-keyboard-input]] — map input to the `Msg` values whose `update` requests a save/load.
+- [[fs-gg-rendering:fs-gg-keyboard-input]] — map input to the `Msg` values whose `update` requests a save/load.
 
 ## Sources / links
 

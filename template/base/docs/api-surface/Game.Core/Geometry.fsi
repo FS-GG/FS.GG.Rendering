@@ -1,5 +1,5 @@
 // See skill: fs-gg-game-core
-// Mirrored from FS-GG/FS.GG.Game @ 0.2.0 (src/Game.Core/Geometry.fsi); regenerate when $(FsGgGameVersion) moves.
+// Mirrored from FS-GG/FS.GG.Game @ 0.3.0 (src/Game.Core/Geometry.fsi); regenerate when $(FsGgGameVersion) moves.
 namespace FS.GG.Game.Core
 
 /// Public contract module exposed by the FS.GG.Game.Core package.
@@ -103,6 +103,68 @@ module Geometry =
     /// generation order (byte-deterministic). Pure and total: a polygon with fewer than 3 vertices, a
     /// zero-area polygon, or any NaN coordinate yields `None` without throwing.
     val polygonContact: a: ConvexPolygon -> b: ConvexPolygon -> Contact option
+
+    /// Public contract function exposed by the FS.GG.Game.Core package.
+    /// Narrow-phase convex-polygon contact POINTS — what `polygonContact` cannot give you. SAT returns
+    /// a separating axis and a depth; the points where the pair actually touches need reference-face
+    /// selection plus Sutherland–Hodgman clipping of the incident face. An angular impulse needs them
+    /// (the lever arms from each centre of mass), and so does most-overlap-first stacking.
+    ///
+    /// Additive: `Contact` and `polygonContact` are unchanged, and `Resolution` still consumes them.
+    ///
+    /// `Normal` and `Depth` come from the same SAT scan `polygonContact` uses, so for all inputs
+    /// `polygonManifold a b |> ValueOption.isSome` agrees with `polygonContact a b |> Option.isSome`
+    /// (same strict-edge convention: a touch is not a contact), and on a hit the two agree bit for bit
+    /// on `Normal` and `Depth` — including the a-then-b generation-order tie-break, and so including
+    /// its documented divergence from `aabbContact`'s X-bias on an exactly-equal penetration.
+    /// `A`/`B` are the argument positions `0`/`1` (so `A < B`); `Normal` points from `a` toward `b`.
+    ///
+    /// The *reference face* is whichever face of `a` or `b` the other polygon penetrates least — a
+    /// directed face query, so it is always a real face and its penetration is exactly `Depth`. The
+    /// *incident face* is the face of the other polygon most anti-parallel to it. Clipping the incident
+    /// face to the reference face's side planes yields the contact.
+    ///
+    /// `Points` holds `PointCount` ∈ {1, 2} contact points — 2 for a face-on-face contact, 1 when a
+    /// vertex pokes into a face. Each lies exactly on the boundary of the *incident* polygon (it is a
+    /// point of its clipped face) and at signed distance within `[−Depth, 0]` of the *reference*
+    /// polygon's contacting face, hence within `Depth` of that polygon's boundary too: the pair met
+    /// there, to within the penetration the manifold reports. Points that clip to the same position
+    /// collapse to one.
+    ///
+    /// `FeatureId` identifies which pair of faces produced the contact and is stable across ticks for
+    /// an unmoving pair — the warm-start cache key (see `Manifold`). Opaque: compare, do not decode.
+    ///
+    /// Deterministic tie-breaks, fixed for byte-identical output, all of them the same first-wins rule
+    /// `polygonContact` applies to its axis scan: an exact tie in penetration between a face of `a` and
+    /// one of `b` (parallel faces — two axis-aligned boxes, say) makes `a`'s the reference; within one
+    /// polygon, an exact tie between faces resolves to the first in vertex order; and the incident face
+    /// is tie-broken the same way.
+    ///
+    /// Pure and total: a polygon with fewer than 3 vertices, a zero-area polygon, or any NaN
+    /// coordinate yields `ValueNone` without throwing, exactly as `polygonContact` yields `None`.
+    val polygonManifold: a: ConvexPolygon -> b: ConvexPolygon -> Manifold voption
+
+    /// Public contract function exposed by the FS.GG.Game.Core package.
+    /// Segment-cast against a convex polygon by half-plane clipping (the slab method with one half-plane
+    /// per edge instead of one per axis). Returns `Some hit` at the first crossing INTO the polygon from
+    /// outside with parameter `T ∈ [0,1]`, and `None` on a miss, a segment starting inside, or a polygon
+    /// behind the segment. `Point = p0 + (p1 − p0)·T` lies on the polygon boundary and `Normal` is the
+    /// outward unit normal of the ENTERED edge — the value that identifies which face was struck.
+    /// Strict edges, matching `aabbContact`/`polygonContact`: where a zero-AREA overlap is not a contact,
+    /// a zero-LENGTH chord is not a hit — so a graze that clips a single vertex is NOT a hit. A segment
+    /// collinear with an edge IS a hit (its chord has positive length), reporting the edge it crossed to
+    /// reach the boundary. The clipped vertex is the sole divergence in the RULE from `segmentAabbHit`,
+    /// which reports that graze as a hit; otherwise, for a `rotation = 0` `obbPolygon`, `segmentPolygonHit`
+    /// agrees with `segmentAabbHit` on `T` and `Point`. (A segment endpoint lying exactly on the boundary
+    /// can still flip either way between the two, because a `Rect` edge `X + Width` and the corresponding
+    /// corner `centre + halfExtent` need not be the same double — the two shapes differ, not the two
+    /// rules.) A corner ENTRY (adjacent edges sharing the maximal entry
+    /// parameter, to within a `1e-9` tolerance on the dimensionless `T` that keeps the choice out of the
+    /// hands of floating-point rounding) resolves to the FIRST such edge in vertex order — deterministic,
+    /// and distinct from `segmentAabbHit`'s X-face tie-break, exactly as `polygonContact`'s tie normal is
+    /// distinct from `aabbContact`'s. Pure and total: fewer than 3 vertices, a zero-area polygon, a
+    /// zero-length segment, or any NaN coordinate yields `None`.
+    val segmentPolygonHit: p0: Point -> p1: Point -> poly: ConvexPolygon -> RayHit option
 
     /// Public contract function exposed by the FS.GG.Game.Core package.
     /// True when the swept path of `moving` displaced by `velocity` overlaps `target` anywhere along
