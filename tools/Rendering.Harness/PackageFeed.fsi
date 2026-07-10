@@ -67,6 +67,9 @@ module PackageFeed =
           SourceRules: SourceRule list
           RestoreCommand: string option
           RestoreLogPath: string option
+          /// `None` when the proof short-circuited before compiling the consumers (a stale pin or a
+          /// missing feed package), so "did not build" is never mistaken for "built clean".
+          BuildLogPath: string option
           AssetsFiles: string list
           Violations: string list }
 
@@ -124,10 +127,23 @@ module PackageFeed =
         | CheckLocalFeed
         | CreateGeneratedNuGetConfig
         | RunRestore
+        | BuildSampleProjects
         | ReadRestoreAssets
         | WritePackageEvidence
 
     val defaultFeedPath: string
+
+    /// Why a sample pin must equal `src/*/*.fsproj` `<Version>` — printed alongside the offending
+    /// pins so the next reader fixes the pin rather than bumping `<Version>` to match it.
+    val mirrorRuleHint: string
+
+    /// The samples that consume the framework as packages — those carrying a `nuget.config` that maps
+    /// `FS.GG.UI.*` to the local feed. Discovered, so a newly added consumer is gated by construction.
+    val discoverPackageConsumingSamples: repositoryRoot: string -> string list
+
+    /// Every way a selected sample's pin disagrees with the packages `src/` produces, with project
+    /// paths relative to `repositoryRoot` (these lines are read in CI logs and quoted in evidence).
+    val pinViolations: repositoryRoot: string -> pins: PackagePin list -> string list
 
     val statusToken: status: PackagePinStatus -> string
 

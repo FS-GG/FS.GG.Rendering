@@ -93,6 +93,8 @@ let tests =
             Expect.contains effects PackageFeed.ReadSampleProjects "samples"
             Expect.contains effects PackageFeed.CreateGeneratedNuGetConfig "config"
             Expect.contains effects PackageFeed.RunRestore "restore"
+            // #300 — a proof that restores but never compiles the consumer is the hole, not the gate.
+            Expect.contains effects PackageFeed.BuildSampleProjects "build"
             Expect.contains effects PackageFeed.WritePackageEvidence "evidence"
 
             let failed, failedEffects = PackageFeed.update (PackageFeed.WorkflowFailed "boom") model

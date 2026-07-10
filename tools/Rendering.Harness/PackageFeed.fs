@@ -72,6 +72,7 @@ module PackageFeed =
           SourceRules: SourceRule list
           RestoreCommand: string option
           RestoreLogPath: string option
+          BuildLogPath: string option
           AssetsFiles: string list
           Violations: string list }
 
@@ -129,6 +130,7 @@ module PackageFeed =
         | CheckLocalFeed
         | CreateGeneratedNuGetConfig
         | RunRestore
+        | BuildSampleProjects
         | ReadRestoreAssets
         | WritePackageEvidence
 
@@ -172,6 +174,7 @@ module PackageFeed =
               if options.Mode = Proof then
                   CreateGeneratedNuGetConfig
                   RunRestore
+                  BuildSampleProjects
                   ReadRestoreAssets
               WritePackageEvidence ]
 
@@ -194,7 +197,7 @@ module PackageFeed =
         | LocalFeedChecked feed -> { model with FeedPackages = feed }, []
         | PinsRefreshRequested -> model, [ WriteSamplePins ]
         | PinsRefreshed changed -> { model with Diagnostics = model.Diagnostics @ changed }, [ WritePackageEvidence ]
-        | SourceProofRequested -> model, [ CreateGeneratedNuGetConfig; RunRestore; ReadRestoreAssets ]
+        | SourceProofRequested -> model, [ CreateGeneratedNuGetConfig; RunRestore; BuildSampleProjects; ReadRestoreAssets ]
         | SourceProofClassified proof -> { model with Proof = Some proof; Status = Some proof.Status }, [ WritePackageEvidence ]
         | EvidenceWritten paths -> { model with Diagnostics = model.Diagnostics @ paths }, []
         | WorkflowFailed reason -> { model with Status = Some (Failed: ProofStatus); Diagnostics = model.Diagnostics @ [ reason ] }, [ WritePackageEvidence ]
@@ -551,6 +554,9 @@ module PackageFeed =
         let json = Path.Combine(outDir, "source-proof.json")
         let restoreCommand = proof.RestoreCommand |> Option.defaultValue "not-run"
         let restoreLogPath = proof.RestoreLogPath |> Option.defaultValue "not-written"
+        // "not-run" is load-bearing: it distinguishes a proof that compiled the consumers from one
+        // that short-circuited before it ever got there (a stale pin, a missing feed package).
+        let buildLogPath = proof.BuildLogPath |> Option.defaultValue "not-run"
         let selectedSamples = String.concat ", " proof.SelectedSamples
 
         let lines =
@@ -563,6 +569,7 @@ module PackageFeed =
               $"- Selected samples: `{selectedSamples}`"
               $"- Restore command: `{restoreCommand}`"
               $"- Restore log: `{restoreLogPath}`"
+              $"- Build log: `{buildLogPath}`"
               ""
               "## Source Rules"
               "" ]
@@ -664,6 +671,64 @@ module PackageFeed =
             else
                 None)
 
+    /// The mirror rule, stated where a failing operator will read it. A sample pin is NOT a free
+    /// choice: `samples/*/nuget.config` maps `FS.GG.UI.*` exclusively to the machine-local feed,
+    /// which only a local `dotnet pack` of `src/` fills — at `src/*/*.fsproj` `<Version>`. So the
+    /// pin can only ever resolve to that one version, and a bump to any other (Renovate reads the
+    /// GitHub Packages feed, which these projects are configured never to read) yields NU1102.
+    /// The remedy is to revert the pin, NOT to bump `<Version>` to match it.
+    let mirrorRuleHint =
+        "the mirror rule: every FS.GG.UI.* pin under samples/ MUST equal <Version> in src/*/*.fsproj. \
+         The four out-of-solution samples restore FS.GG.UI.* ONLY from the local feed, which a local \
+         `dotnet pack` fills at <Version>; a pin naming any other version cannot resolve (NU1102). \
+         Fix the pin, not <Version>."
+
+    /// The package-consuming samples, DISCOVERED rather than listed. A sample consumes the framework
+    /// as packages exactly when it carries its own `nuget.config` mapping `FS.GG.UI.*` to the local
+    /// feed — that mapping IS the definition, and it is the file that makes the sample out-of-solution.
+    ///
+    /// Discovery, not a hardcoded list of four, because a hardcoded list is how #300 happened: a
+    /// consumer nothing enumerates is a consumer nothing gates. A fifth sample is picked up by
+    /// construction, the way gate.yml derives its test projects from the slnx rather than naming them.
+    let discoverPackageConsumingSamples (repositoryRoot: string) : string list =
+        let samplesRoot = Path.Combine(repositoryRoot, "samples")
+
+        if not (Directory.Exists samplesRoot) then
+            []
+        else
+            Directory.EnumerateDirectories samplesRoot
+            |> Seq.filter (fun directory ->
+                let config = Path.Combine(directory, "nuget.config")
+
+                File.Exists config
+                && (try
+                        File.ReadAllText(config).Contains("pattern=\"FS.GG.UI.*\"")
+                    with _ ->
+                        false))
+            |> Seq.map (fun directory -> "samples/" + Path.GetFileName directory)
+            |> Seq.sort
+            |> Seq.toList
+
+    /// Every way a selected sample's pin can disagree with the packages `src/` actually produces.
+    /// Shared by the source proof (which refuses to restore against a pin it knows is wrong) and by
+    /// the CLI (so a `check`-mode exit 1 names the offending pin instead of only its exit code).
+    ///
+    /// Paths are relativised: these lines are read in a CI log, where an absolute runner path is
+    /// noise, and they are quoted in committed evidence, where it would not even be reproducible.
+    let pinViolations (repositoryRoot: string) (pins: PackagePin list) : string list =
+        let where (pin: PackagePin) = relativePath repositoryRoot pin.ProjectFilePath
+
+        pins
+        |> List.choose (fun pin ->
+            match pin.Status with
+            | Current
+            | CompatibilityException -> None
+            | Stale ->
+                let expectedVersion = pin.ExpectedVersion |> Option.defaultValue "(missing)"
+                Some $"stale-pin: {pin.PackageId} expected {expectedVersion} actual {pin.DeclaredVersion} in {where pin}"
+            | MissingExpectedPackage -> Some $"missing-expected-package: {pin.PackageId} in {where pin}"
+            | NotSelected -> Some $"not-selected: {pin.PackageId} in {where pin}")
+
     let runSourceProof
         (options: PackageFeedOptions)
         (pins: PackagePin list)
@@ -678,6 +743,7 @@ module PackageFeed =
 
         let configPath = Path.Combine(outDir, "source-rules.nuget.config")
         let restoreLog = Path.Combine(outDir, "restore.log")
+        let buildLog = Path.Combine(outDir, "build.log")
         let sourceRules = writeGeneratedNuGetConfig configPath options.FeedPath
         let initial: SourceProof =
             { Status = Failed
@@ -688,20 +754,11 @@ module PackageFeed =
               SourceRules = sourceRules
               RestoreCommand = None
               RestoreLogPath = Some restoreLog
+              BuildLogPath = None
               AssetsFiles = []
               Violations = [] }
 
-        let pinViolations =
-            pins
-            |> List.choose (fun pin ->
-                match pin.Status with
-                | Current
-                | CompatibilityException -> None
-                | Stale ->
-                    let expectedVersion = pin.ExpectedVersion |> Option.defaultValue "(missing)"
-                    Some $"stale-pin: {pin.PackageId} expected {expectedVersion} actual {pin.DeclaredVersion} in {pin.ProjectFilePath}"
-                | MissingExpectedPackage -> Some $"missing-expected-package: {pin.PackageId} in {pin.ProjectFilePath}"
-                | NotSelected -> Some $"not-selected: {pin.PackageId} in {pin.ProjectFilePath}")
+        let pinViolationLines = pinViolations options.RepositoryRoot pins
 
         let feedViolations =
             feedStatuses
@@ -709,20 +766,27 @@ module PackageFeed =
                 if status.Present then None
                 else Some $"missing-local-package: {status.PackageId} {status.Version} at {status.PackageFilePath}")
 
+        let projectFiles =
+            options.SelectedSamples
+            |> List.collect (projectFilesForSample options.RepositoryRoot)
+            |> List.filter (fun project -> pins |> List.exists (fun pin -> Path.GetFullPath(Path.Combine(options.RepositoryRoot, pin.ProjectFilePath)) = project))
+
         if options.SelectedSamples.IsEmpty then
             { initial with Violations = [ "no-selected-samples: no package-consuming samples were selected" ] }
         elif pins.IsEmpty then
             { initial with Violations = [ "no-package-pins: selected samples have no FS.GG.UI.* package references" ] }
         elif options.ClearGlobalCache && not options.Cold then
             { initial with Violations = [ "cache-policy-violation: --clear-global-cache requires --cold" ] }
-        elif not pinViolations.IsEmpty || not feedViolations.IsEmpty then
-            { initial with Violations = pinViolations @ feedViolations }
+        elif not pinViolationLines.IsEmpty || not feedViolations.IsEmpty then
+            { initial with Violations = pinViolationLines @ feedViolations }
+        // "nothing to check" and "checked, and it's fine" must not share an exit code (#266). Pins
+        // exist but no project carries them means discovery and pin-reading disagree, and a proof
+        // that restored and compiled zero projects would otherwise report `passed`.
+        elif projectFiles.IsEmpty then
+            { initial with
+                Violations = [ "no-consumer-projects: selected samples yielded no project to restore, though pins were found" ] }
         else
             Directory.CreateDirectory cachePath |> ignore
-            let projectFiles =
-                options.SelectedSamples
-                |> List.collect (projectFilesForSample options.RepositoryRoot)
-                |> List.filter (fun project -> pins |> List.exists (fun pin -> Path.GetFullPath(Path.Combine(options.RepositoryRoot, pin.ProjectFilePath)) = project))
 
             let restoreResults =
                 projectFiles
@@ -742,20 +806,55 @@ module PackageFeed =
                 |> List.map (fun (_, command, output) -> command + Environment.NewLine + output)
                 |> String.concat Environment.NewLine
 
+            // Written BEFORE the builds start. The build phase blocks for minutes per project, and a
+            // job killed inside it must still leave the restore evidence it had already earned.
             writeLines restoreLog [ restoreText ]
 
-            let failures =
+            let restoreFailures =
                 restoreResults
                 |> List.choose (fun (exitCode, command, _) ->
                     if exitCode = 0 then None else Some $"restore-failed: `{command}` exit {exitCode}")
 
+            // A restore proves the sixteen packages RESOLVE. It does not prove they COMPOSE — that
+            // `AntShowcase.Core` can open eight of them at once and still compile. ApiCompat cannot
+            // see that either; it compares surfaces pairwise. Compiling the consumer is the only
+            // thing that does, so the proof does not stop at restore. `--no-restore` reuses the
+            // assets the step above wrote against the generated source rules, so the build cannot
+            // silently reach a source the rules exclude.
+            let buildResults =
+                if restoreFailures.IsEmpty then
+                    projectFiles
+                    |> List.map (fun project ->
+                        runProcess
+                            options.RepositoryRoot
+                            "dotnet"
+                            [ "build"; project; "-c"; "Release"; "--no-restore" ]
+                            (TimeSpan.FromMinutes 10.0))
+                else
+                    []
+
+            let buildFailures =
+                buildResults
+                |> List.choose (fun (exitCode, command, _) ->
+                    if exitCode = 0 then None else Some $"build-failed: `{command}` exit {exitCode}")
+
+            if not buildResults.IsEmpty then
+                let buildText =
+                    buildResults
+                    |> List.map (fun (_, command, output) -> command + Environment.NewLine + output)
+                    |> String.concat Environment.NewLine
+
+                writeLines buildLog [ buildText ]
+
             let assets = copyAssets options.RepositoryRoot outDir projectFiles
+            let failures = restoreFailures @ buildFailures
             let status = if failures.IsEmpty then Passed else Failed
 
             { initial with
                 Status = status
                 GlobalCacheCleared = options.ClearGlobalCache
                 RestoreCommand = restoreResults |> List.tryHead |> Option.map (fun (_, command, _) -> command)
+                BuildLogPath = if buildResults.IsEmpty then None else Some buildLog
                 AssetsFiles = assets
                 Violations = failures }
 

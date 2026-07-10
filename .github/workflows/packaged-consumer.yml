@@ -1,0 +1,143 @@
+name: packaged-consumer
+
+# #300 — the packaged-consumer path. Four sample suites (AntShowcase, ControlsGallery, SampleApps,
+# SecondAntShowcase — twelve `.fsproj`) consume the framework ONLY as packed `FS.GG.UI.*` NuGet
+# packages. None is in `FS.GG.Rendering.slnx`, and until this workflow none was named in any
+# workflow: the path an actual downstream product walks was compiled on ZERO pull requests.
+#
+# That is not incidental coverage we happened to lack — it is the coverage these samples exist to
+# provide. From `samples/AntShowcase/nuget.config`, which each of the four carries a copy of:
+#
+#   "This local feed is the documented consumer path; building against it IS the proof the
+#    Ant-theme consumer path works end to end (research R1 / FR-015 / SC-006)."
+#
+# The proof was asserted and never executed. `src/` is fully gated and `ApiCompat` guards the public
+# surface, but what neither can see is the COMPOSITION: whether the sixteen packages, restored
+# together at one version from a feed, actually build a program. ApiCompat compares surfaces
+# pairwise; it cannot see that `AntShowcase.Core` opens eight of them at once. Only compiling the
+# consumer sees that, which is why `package-feed --mode proof` builds and does not stop at restore.
+#
+# NOT REQUIRED, AND IT MUST STAY THAT WAY (cadence-map §4b/§5). This job restores from nuget.org for
+# the samples' third-party dependencies, and requiring a feed-dependent check takes a dependency on
+# that feed's availability — an outage would wedge every merge in the repo. The precedent is exact:
+# `api-compatibility-gate` reads a feed and IS required, because it can tell a silent feed apart from
+# a break (`FeedUnavailable` → exit 0). `template-payload-restore-gate` cannot, and stays
+# non-required. Neither can this job: a nuget.org outage is indistinguishable from a bad pin.
+#
+# NOT-REQUIRED IS NOT `continue-on-error` (#216). This workflow has none and must not grow one. A red
+# here is the gate reporting what it found; advisory is a statement about branch protection, not a
+# licence to report success after failing.
+#
+# The OFFLINE half — does each sample pin still mirror `src/*/*.fsproj` `<Version>`? — needs no feed
+# and therefore runs as a step of the REQUIRED `gate` job ("Sample pins mirror src <Version>"). A pin
+# that disagrees fails there, pre-merge, naming the mirror rule. This workflow re-checks it anyway
+# (the proof refuses to restore against a pin it knows is wrong) and then proves the graph.
+#
+# COST. Packing sixteen projects is not free, so the workflow is `paths:`-filtered to the inputs that
+# can actually break it: the packages (`src/**`), the consumers (`samples/**`), the prover
+# (`tools/Rendering.Harness/**`), the root build files that govern the pack and the restore, and this
+# file. A PR touching only docs or skills does not pay it.
+# Filtering natively on `paths:` is why this is its own workflow rather than a job in `gate.yml`:
+# `gate.yml` is a required check, and a required workflow that is path-skipped never reports its
+# context, which blocks the merge button forever.
+#
+# The two `paths:` lists are duplicated on purpose: GitHub Actions' workflow parser does not support
+# YAML anchors/aliases, so `&x`/`*x` would not deduplicate them — it would fail to parse. Keep them
+# in sync by hand.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'samples/**'
+      - 'tools/Rendering.Harness/**'
+      # The root build files govern what `dotnet pack` produces and how the samples resolve, so a
+      # change to them can break the packaged path without touching src/ or samples/.
+      - 'Directory.Build.props'
+      - 'Directory.Packages.props'
+      - 'nuget.config'
+      - 'FS.GG.Rendering.slnx'
+      - '.github/workflows/packaged-consumer.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'samples/**'
+      - 'tools/Rendering.Harness/**'
+      # The root build files govern what `dotnet pack` produces and how the samples resolve, so a
+      # change to them can break the packaged path without touching src/ or samples/.
+      - 'Directory.Build.props'
+      - 'Directory.Packages.props'
+      - 'nuget.config'
+      - 'FS.GG.Rendering.slnx'
+      - '.github/workflows/packaged-consumer.yml'
+
+concurrency:
+  group: packaged-consumer-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+# No privileged secrets: the local feed is built from this checkout, and the samples' third-party
+# dependencies come from public nuget.org. Fork PRs get a real signal (FR-001/FR-013).
+permissions:
+  contents: read
+
+jobs:
+  packaged-consumer:
+    name: Packaged-consumer gate (samples build against the packed feed)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      # The pack below is `--no-restore` (PackageFeed.runPackIfRequested), so the solution must be
+      # restored first. Locked, against the committed nuget.config, for the same reason `gate` is:
+      # the sources a restore resolves from are exactly the ones in the repo (#186).
+      - name: Restore the solution (locked)
+        run: dotnet restore FS.GG.Rendering.slnx --locked-mode --configfile nuget.config
+
+      - name: Build the prover
+        run: dotnet build tools/Rendering.Harness/Rendering.Harness.fsproj -c Debug --no-restore
+
+      # `--mode proof --pack` is the whole lane in one command:
+      #   1. `dotnet pack FS.GG.Rendering.slnx -c Release -o <feed>` — sixteen packages at <Version>.
+      #   2. classify every sample pin against those <Version>s; a stale pin fails HERE, before any
+      #      restore, because restoring against a pin we already know is wrong only yields a
+      #      confusing NU1102 in place of the real diagnosis.
+      #   3. write a generated nuget.config whose packageSourceMapping sends `FS.GG.UI.*` to the
+      #      scratch feed and everything else to nuget.org. This preserves the #186 discipline: the
+      #      SDK's bundled `library-packs` copy of FSharp.Core cannot win, because the generated
+      #      config `<clear />`s sources exactly as the committed ones do.
+      #   4. restore each of the twelve sample projects into an ISOLATED package cache, so a stale
+      #      global cache entry cannot mask a feed that is missing a package.
+      #   5. BUILD each of them. Restore proves the packages resolve; only the build proves they
+      #      compose.
+      # Exit 0 passed · 1 failed. It fails closed: "nothing to check" (no samples selected, no pins
+      # found) is a violation, not a vacuous pass — #266's rule.
+      # No `--sample` arguments: the harness discovers every package-consuming sample from the tree,
+      # so a fifth one is proved by construction rather than by someone remembering to list it here.
+      - name: Pack src, then restore + build the package-consuming samples
+        run: |
+          set -euo pipefail
+          if ! dotnet run --project tools/Rendering.Harness/Rendering.Harness.fsproj -c Debug --no-build -- \
+              package-feed --mode proof --pack \
+              --feed "$RUNNER_TEMP/packaged-consumer/feed" \
+              --isolated-cache "$RUNNER_TEMP/packaged-consumer/cache" \
+              --out artifacts/packaged-consumer; then
+            echo "::error::the packaged-consumer path is broken — the out-of-solution samples do not restore+build against a feed packed from this commit. See the stale-pin / restore-failed / build-failed violations above, the build log they name, and artifacts/packaged-consumer/source-proof.md."
+            exit 1
+          fi
+
+      # Upload on failure too: `source-proof.md` names the violations, and restore.log/build.log
+      # carry the NU#### / FS#### the summary above only points at.
+      - name: Upload source proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: packaged-consumer-proof
+          path: artifacts/packaged-consumer
+          if-no-files-found: warn

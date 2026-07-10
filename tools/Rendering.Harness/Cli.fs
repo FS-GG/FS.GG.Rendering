@@ -573,10 +573,24 @@ let private runPackageFeedCmd (rest: string list) =
         2
     | Some mode ->
         let repositoryRoot = Directory.GetCurrentDirectory()
-        let samples = flagValues "--sample" rest
+        let discovered = PackageFeed.discoverPackageConsumingSamples repositoryRoot
+
+        // No `--sample` means "every package-consuming sample", discovered from the tree. CI passes
+        // none, so a newly added consumer is gated without anyone remembering to list it — the
+        // hardcoded-list omission is what left this path ungated (#300). An explicit `--sample`
+        // still narrows the run for local iteration, and says so when it skips a consumer.
+        let samples =
+            match flagValues "--sample" rest with
+            | [] -> discovered
+            | explicit ->
+                for skipped in discovered |> List.filter (fun s -> not (List.contains s explicit)) do
+                    eprintfn "package-feed: NOT checking %s (narrowed by --sample)" skipped
+
+                explicit
 
         if samples.IsEmpty then
-            eprintfn "package-feed: at least one --sample <path> is required"
+            // Fail closed: "no samples selected" and "all samples pass" must not share an exit code.
+            eprintfn "package-feed: no package-consuming samples found under samples/ (a sample qualifies by mapping FS.GG.UI.* to the local feed in its own nuget.config), and none given with --sample"
             2
         else
             let out =
@@ -611,6 +625,30 @@ let private runPackageFeedCmd (rest: string list) =
 
             for diagnostic in result.Diagnostics do
                 eprintfn "%s" diagnostic
+
+            // Without this, a failure is an exit code and nothing else. `check` computes the pin
+            // violations only to fold them into a status, and `proof` writes ITS violations —
+            // restore-failed, build-failed, missing-local-package — to an evidence file a CI reader
+            // has to download an artifact to open. Print both to stderr, where the failure is read.
+            if result.Status = PackageFeed.Failed then
+                let pinLines = PackageFeed.pinViolations repositoryRoot result.PackagePins
+
+                let proofLines =
+                    match result.SourceProof with
+                    | Some proof -> proof.Violations |> List.filter (fun v -> not (List.contains v pinLines))
+                    | None -> []
+
+                for violation in pinLines @ proofLines do
+                    eprintfn "%s" violation
+
+                // The mirror rule explains a stale pin. It explains nothing about a build failure, so
+                // do not print it as though it were the diagnosis for one.
+                if not pinLines.IsEmpty then
+                    eprintfn "package-feed: %s" PackageFeed.mirrorRuleHint
+
+                match result.SourceProof |> Option.bind (fun proof -> proof.BuildLogPath) with
+                | Some log -> eprintfn "package-feed: build output: %s" log
+                | None -> ()
 
             match result.Status with
             | PackageFeed.Passed -> 0
