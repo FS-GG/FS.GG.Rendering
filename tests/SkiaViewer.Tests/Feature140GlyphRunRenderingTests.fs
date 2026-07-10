@@ -25,7 +25,7 @@ let private renderToPng (width: int) (height: int) (scene: SceneNode) =
           Timeout = TimeSpan.FromSeconds 5.0 }
 
     let options: ViewerOptions =
-        { Title = "feature140"; InitialSize = { Width = width; Height = height }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None }
+        { Title = "feature140"; InitialSize = { Width = width; Height = height }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None }
 
     Viewer.captureScreenshotEvidence request options scene, path
 

@@ -24,7 +24,40 @@ type ViewerOptions =
       /// without a blocking compositor does not free-run the present loop; `Some n` with n <= 0 is
       /// rejected at startup validation. Ignored by the offscreen/evidence (`runBounded`) path, which
       /// does not use the persistent event loop.
-      FrameRateCap: int option }
+      FrameRateCap: int option
+      /// Issue #246: the fixed logical resolution a product renders in. `None` (the pre-#246
+      /// behaviour) means the product renders directly in output-surface coordinates. `Some logical`
+      /// makes the host scale that canvas uniformly to the output surface and center it, clipping
+      /// content to the canvas and leaving letterbox bars on the surplus axis — so a fixed-resolution
+      /// game fills whatever window or offscreen evidence surface it is given.
+      ///
+      /// When set, the logical size is also what a size-aware `InteractiveViewerHost.View` is handed,
+      /// and pointer input is mapped back into logical coordinates before `MapPointer` sees it: the
+      /// product never observes the window size. `Some` with a non-positive extent is rejected at
+      /// startup validation. See `LogicalCanvas`.
+      LogicalSize: Size option }
+
+/// Issue #246: how a fixed logical canvas maps onto the actual output surface — a uniform
+/// scale plus the centering offset that puts the unused surface into letterbox bars.
+type LogicalCanvasFit =
+    { Scale: float
+      OffsetX: float
+      OffsetY: float }
+
+/// Issue #246: the letterbox seam for a fixed-logical-resolution product. The host applies this
+/// for you when `ViewerOptions.LogicalSize` is set; it is public so a product can assert the
+/// mapping (and map its own points) with no window and no device.
+[<RequireQualifiedAccess>]
+module LogicalCanvas =
+
+    /// The uniform (aspect-preserving) fit of `logical` centered inside `actual`.
+    val fit: logical: Size -> actual: Size -> LogicalCanvasFit
+
+    /// Wrap a scene authored in `logical` coordinates so it renders scaled and centered in `actual`.
+    val present: logical: Size -> actual: Size -> node: SceneNode -> SceneNode
+
+    /// Map a point in `actual` (window/surface) coordinates back into `logical` coordinates.
+    val toLogicalPoint: logical: Size -> actual: Size -> x: float -> y: float -> float * float
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ViewerLaunchMode =

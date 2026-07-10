@@ -111,12 +111,33 @@ let options : ViewerOptions =
     { Title = "Hello"
       InitialSize = (* a Scene.Size *) sceneSize
       PresentMode = ViewerPresentMode.DirectToSwapchain   // live default
-      FrameRateCap = None }                               // None = 60 FPS
+      FrameRateCap = None                                 // None = 60 FPS
+      LogicalSize = None }                                // None = draw in surface coordinates
 
 match Viewer.run options scene with
 | Ok outcome  -> ()                  // window ran and closed cleanly
 | Error fail  -> eprintfn "%A" fail
 ```
+
+### A fixed-resolution game
+
+Set `LogicalSize` and your product draws in exactly that coordinate space, whatever the window
+does. The host scales the canvas uniformly to the surface, centers it, clips to it, and leaves
+letterbox bars on the surplus axis — in the live window, on resize, and on the offscreen evidence
+surface alike. Pointer input is mapped back into logical coordinates before your product sees it.
+
+```fsharp
+let options : ViewerOptions =
+    { Title = "Breakout"
+      InitialSize = { Width = 1920; Height = 1080 }       // the window we open with
+      PresentMode = ViewerPresentMode.DirectToSwapchain
+      FrameRateCap = None
+      LogicalSize = Some { Width = 1280; Height = 720 } } // the space `view` draws in
+```
+
+`GeneratedAppHost.View` is handed no `Size` on purpose: with a `LogicalSize` there is nothing to
+derive from it, and without one your product should be resolution-independent anyway. Reach for
+`PerspectiveNode` only when you need a transform this seam does not express.
 
 Use this for splash content, fixed visuals, or to sanity-check your GL setup.
 

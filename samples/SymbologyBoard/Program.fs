@@ -63,7 +63,7 @@ let private runInteractive () =
             { Title = "Symbology Board — live roster"
               InitialSize = { Width = int BoardWidth; Height = int BoardHeight }
               PresentMode = ViewerPresentMode.DirectToSwapchain
-              FrameRateCap = Some 60 }
+              FrameRateCap = Some 60; LogicalSize = None }
 
         match ControlsElmish.runInteractiveApp options host with
         | Result.Ok outcome ->

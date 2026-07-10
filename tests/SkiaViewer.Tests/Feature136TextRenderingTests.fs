@@ -36,7 +36,7 @@ let private renderToPngBytes (w: int) (h: int) (scene: SceneNode) =
         { Title = "feature136"
           InitialSize = { Width = w; Height = h }
           PresentMode = ViewerPresentMode.OffscreenReadback
-          FrameRateCap = None }
+          FrameRateCap = None; LogicalSize = None }
 
     Viewer.captureScreenshotEvidence request options scene |> ignore
     let bytes = if IO.File.Exists path then IO.File.ReadAllBytes path else [||]

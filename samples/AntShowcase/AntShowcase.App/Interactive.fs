@@ -38,7 +38,7 @@ let run (mode: ThemeMode) (startPage: string): int =
             { Title = "Ant Design Controls Showcase"
               InitialSize = VisualConfig.preferredSize
               PresentMode = ViewerPresentMode.DirectToSwapchain
-              FrameRateCap = Some 60 }
+              FrameRateCap = Some 60; LogicalSize = None }
         // `Result.Ok`/`Result.Error` are qualified: a viewer namespace also defines an
         // `Ok` union case which would otherwise shadow the F# Result constructors.
         match ControlsElmish.runInteractiveApp options host with

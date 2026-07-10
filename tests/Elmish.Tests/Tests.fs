@@ -9,7 +9,7 @@ let private viewerOptions =
     { Title = "Product"
       InitialSize = { Width = 320; Height = 240 }
       PresentMode = ViewerPresentMode.OffscreenReadback
-      FrameRateCap = None }
+      FrameRateCap = None; LogicalSize = None }
 
 /// A render function whose output is keyed on the user model, so a re-render is observable.
 let private render (userModel: int) =

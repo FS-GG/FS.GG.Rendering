@@ -274,7 +274,7 @@ let private capturePageCell
         { Title = "second-ant-showcase-control-pass"
           InitialSize = size
           PresentMode = ViewerPresentMode.OffscreenReadback
-          FrameRateCap = None }
+          FrameRateCap = None; LogicalSize = None }
 
     try
         let result = Viewer.captureScreenshotEvidence request options scene

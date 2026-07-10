@@ -21,7 +21,7 @@ let tests =
             let options =
                 { Title = "Product"
                   InitialSize = size
-                  PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None }
+                  PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None }
 
             Expect.equal options.PresentMode ViewerPresentMode.OffscreenReadback "default present mode must be OffscreenReadback"
         }
@@ -39,10 +39,10 @@ let tests =
                     PresentMode = options.PresentMode }
 
             let direct =
-                thread { Title = "P"; InitialSize = size; PresentMode = ViewerPresentMode.DirectToSwapchain; FrameRateCap = None }
+                thread { Title = "P"; InitialSize = size; PresentMode = ViewerPresentMode.DirectToSwapchain; FrameRateCap = None; LogicalSize = None }
 
             let offscreen =
-                thread { Title = "P"; InitialSize = size; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None }
+                thread { Title = "P"; InitialSize = size; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None }
 
             Expect.equal direct.PresentMode ViewerPresentMode.DirectToSwapchain "DirectToSwapchain must thread through"
             Expect.equal offscreen.PresentMode ViewerPresentMode.OffscreenReadback "OffscreenReadback must thread through"

@@ -494,6 +494,10 @@ module Viewer =
               | Some cap -> cap <= 0
               | None -> false) then
             Result.Error(makeFailure Window ProductDefect Startup "Viewer frame-rate cap must be positive." None)
+        elif (match options.LogicalSize with
+              | Some logical -> logical.Width <= 0 || logical.Height <= 0
+              | None -> false) then
+            Result.Error(makeFailure Window ProductDefect Startup "Viewer logical size must be positive." None)
         else
             Result.Ok()
 
@@ -2233,6 +2237,18 @@ module Viewer =
                     let mutable currentModel = model
                     let mutable currentScene = host.View currentModel
                     let mutable inputDispatch = "false"
+                    // Issue #246: `GeneratedAppHost.View` withholds the window size on purpose, so the
+                    // product always draws in its own coordinate space. Track the live surface so a
+                    // `LogicalSize` product can be fitted to it; without one this stays inert and the
+                    // presented scene is the view output verbatim.
+                    let mutable currentSurfaceSize = options.InitialSize
+
+                    let presentScene () =
+                        match options.LogicalSize with
+                        | Some logical -> LogicalCanvas.present logical currentSurfaceSize currentScene
+                        | None -> currentScene
+
+                    let handleResize (size: Size) = currentSurfaceSize <- size
 
                     let interpretEffects effects =
                         effects
@@ -2314,7 +2330,7 @@ module Viewer =
                     let inputVerified () =
                         not (requireInputDispatchVerification ()) || inputDispatch = "true"
 
-                    match runPresentedPersistentWindow options behavior host.Diagnostics inputDispatch (fun () -> currentScene) handleTick (Some handleKey) None None inputVerified None with
+                    match runPresentedPersistentWindow options behavior host.Diagnostics inputDispatch presentScene handleTick (Some handleKey) None (Some handleResize) inputVerified None with
                     | Result.Ok outcome ->
                         Result.Ok(
                             { outcome with
@@ -2363,9 +2379,20 @@ module Viewer =
                 else
                     let model, initEffects = host.Init()
                     let mutable currentModel = model
-                    let mutable currentSize = options.InitialSize
+                    // Issue #246: `currentSurfaceSize` is the real window; `currentSize` is the space the
+                    // product renders and points in. Without a `LogicalSize` they are the same value and
+                    // every seam behaves exactly as before; with one, the product only ever sees the
+                    // logical canvas and the host owns the fit.
+                    let mutable currentSurfaceSize = options.InitialSize
+                    let viewSize () = options.LogicalSize |> Option.defaultValue currentSurfaceSize
+                    let mutable currentSize = viewSize ()
                     let mutable currentScene = host.View currentSize currentModel
                     let mutable inputDispatch = "false"
+
+                    let presentScene () =
+                        match options.LogicalSize with
+                        | Some logical -> LogicalCanvas.present logical currentSurfaceSize currentScene
+                        | None -> currentScene
 
                     let interpretEffects effects =
                         effects
@@ -2463,6 +2490,17 @@ module Viewer =
 
                     let handlePointer (input: ViewerPointerInput) =
                         let pointerSw = Stopwatch.StartNew()
+                        // Issue #246: the native pointer arrives in surface coordinates. A letterboxed
+                        // product draws through a scale+offset, so route the inverse or every hit test
+                        // is wrong by exactly that transform. `DeltaX/DeltaY` are wheel ticks, not
+                        // positions, so they are not scaled.
+                        let input =
+                            match options.LogicalSize with
+                            | Some logical ->
+                                let x, y = LogicalCanvas.toLogicalPoint logical currentSurfaceSize input.X input.Y
+                                { input with X = x; Y = y }
+                            | None -> input
+
                         RenderLagTrace.emit
                             "pointer-route-start"
                             [ "phase", string input.Phase
@@ -2492,7 +2530,10 @@ module Viewer =
                         closeRequested
 
                     let handleResize (size: Size) =
-                        currentSize <- size
+                        currentSurfaceSize <- size
+                        // With a `LogicalSize` this is a no-op re-derive (the view space did not move) and
+                        // the new fit is applied by `presentScene`; without one it is the pre-#246 behaviour.
+                        currentSize <- viewSize ()
                         currentScene <- host.View currentSize currentModel
 
                     let inputVerified () =
@@ -2504,7 +2545,7 @@ module Viewer =
                             behavior
                             host.Diagnostics
                             inputDispatch
-                            (fun () -> currentScene)
+                            presentScene
                             handleTick
                             (Some handleKey)
                             (Some handlePointer)
@@ -2536,7 +2577,13 @@ module Viewer =
 
     let runAppEvidence (request: ViewerRunRequest) options (host: GeneratedAppHost<'model, 'msg>) =
         let model, _ = host.Init()
-        let scene = host.View model
+        // Issue #246: the offscreen evidence surface is `InitialSize`. A fixed-logical-resolution
+        // product must be fitted to it here too, or evidence captures the top-left crop of the canvas
+        // rather than the game.
+        let scene =
+            match options.LogicalSize with
+            | Some logical -> LogicalCanvas.present logical options.InitialSize (host.View model)
+            | None -> host.View model
 
         match runBounded request options scene with
         | Result.Ok evidence ->
@@ -2873,7 +2920,7 @@ module GeneratedAppHost =
             | FrameCount _ -> { Width = 1; Height = 1 }
             | Duration _ -> { Width = 1; Height = 1 }
 
-        Viewer.runBounded request { Title = "Generated App"; InitialSize = size; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None } scene
+        Viewer.runBounded request { Title = "Generated App"; InitialSize = size; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None } scene
 
 /// Feature 136 (R2/FR-001/FR-002): the rendering-edge text seam. Hosts install the bundled-font
 /// real-metrics measurer once before building/laying out control scenes so box sizing equals draw

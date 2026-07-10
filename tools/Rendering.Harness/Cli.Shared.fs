@@ -84,7 +84,7 @@ let captureProofImage command app hostFacts path scene =
         { Title = "Feature155 native proof capture"
           InitialSize = proofSize
           PresentMode = ViewerPresentMode.OffscreenReadback
-          FrameRateCap = None }
+          FrameRateCap = None; LogicalSize = None }
 
     let request: ScreenshotEvidenceRequest =
         { Command = command

@@ -66,13 +66,13 @@ let tests =
     testSequenced
     <| testList "SkiaViewer MVU contract" [
         test "init emits window-open effect" {
-            let model, effects = Viewer.init { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None }
+            let model, effects = Viewer.init { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None }
             Expect.isFalse model.IsRunning "viewer starts stopped"
             Expect.exists effects (function OpenWindow("Product", { Width = 640; Height = 480 }) -> true | _ -> false) "init emits open effect"
         }
 
         test "render updates model and emits render effect" {
-            let model, _ = Viewer.init { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None }
+            let model, _ = Viewer.init { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None }
             let scene = Group []
             let next, effects = Viewer.update (Render scene) model
             Expect.equal next.LastScene (Some scene) "last scene is stored"
@@ -92,7 +92,7 @@ let tests =
                       CaptureMode = ViewerRenderTargetPng
                       HostFacts = [ "host=test" ]
                       Timeout = TimeSpan.FromSeconds 2.0 }
-                    { Title = "Product"; InitialSize = { Width = 320; Height = 200 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None }
+                    { Title = "Product"; InitialSize = { Width = 320; Height = 200 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None }
                     (Rectangle((0.0, 0.0, 16.0, 16.0), Colors.white))
 
             Expect.equal result.Status ScreenshotOk "viewer render-target capture is accepted as screenshot proof"
@@ -196,7 +196,7 @@ let tests =
 
         test "viewer boundary guardrails preserve screenshot visual capability and window diagnostics" {
             let scene = Rectangle((0.0, 0.0, 24.0, 24.0), Colors.white)
-            let options = { Title = "Product"; InitialSize = { Width = 320; Height = 200 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None }
+            let options = { Title = "Product"; InitialSize = { Width = 320; Height = 200 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None }
             let outputPath = IO.Path.Combine(IO.Path.GetTempPath(), $"skia-viewer-screenshot-{Guid.NewGuid():N}.md")
 
             let capability = Viewer.runtimeCapability()
@@ -335,7 +335,7 @@ let tests =
         }
 
         test "bounded run validates positive frame counts timeouts and durations" {
-            let options = { Title = "Product"; InitialSize = { Width = 320; Height = 200 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None }
+            let options = { Title = "Product"; InitialSize = { Width = 320; Height = 200 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None }
             let scene = Group []
 
             let invalidFrameRequest =
@@ -555,7 +555,7 @@ let tests =
         }
 
         test "diagnostics and viewer key events flow through public update effects" {
-            let model, _ = Viewer.init { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None }
+            let model, _ = Viewer.init { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None }
             let diagnostic =
                 { Level = Info
                   Category = Startup
@@ -576,7 +576,7 @@ let tests =
         }
 
         test "interactive lifecycle update remains pure and emits interpreter effects" {
-            let model, initEffects = Viewer.init { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None }
+            let model, initEffects = Viewer.init { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None }
 
             Expect.equal model.LifecycleState NotStarted "init starts before native work"
             Expect.equal model.FirstFramePresented false "init has no frame evidence"
@@ -607,7 +607,7 @@ let tests =
         }
 
         test "runApp interactive first-frame lifecycle stays open until explicit close for 30 second hold" {
-            let model, _ = Viewer.init { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None }
+            let model, _ = Viewer.init { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None }
             let running, startEffects = Viewer.update StartInteractive model
             let firstFrame, frameEffects = Viewer.update (FramePresented { Width = 640; Height = 480 }) running
 
@@ -624,7 +624,7 @@ let tests =
         }
 
         test "interactive launch close reasons complete only after explicit user app host or failure close" {
-            let model, _ = Viewer.init { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None }
+            let model, _ = Viewer.init { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None }
             let running, _ = Viewer.update StartInteractive model
             let firstFrame, frameEffects = Viewer.update (FramePresented { Width = 640; Height = 480 }) running
 
@@ -662,7 +662,7 @@ let tests =
         }
 
         test "visibility diagnostics classify taskbar-only inaccessible windows before app lifecycle debugging" {
-            let model, _ = Viewer.init { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None }
+            let model, _ = Viewer.init { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None }
 
             let created =
                 { WindowInitialized = true
@@ -753,7 +753,7 @@ let tests =
                       Message = "surface-less window cannot present frames" } ]
 
             for label, diagnostic in cases do
-                let model, _ = Viewer.init { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None }
+                let model, _ = Viewer.init { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None }
                 let checking, _ = Viewer.update (VisibilityCheckStarted diagnostic) model
                 let next, effects = Viewer.update (VisibilityObserved diagnostic) checking
                 Expect.equal next.LifecycleState InaccessibleWindow $"{label} must not be reported as visible interactive success"
@@ -776,7 +776,7 @@ let tests =
                   FailureClass = Some "environment-session"
                   Message = "native window-state fields are unsupported on this host" }
 
-            let model, _ = Viewer.init { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None }
+            let model, _ = Viewer.init { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None }
             let unsupported, unsupportedEffects = Viewer.update (VisibilityObserved baseDiagnostic) model
             Expect.equal unsupported.LifecycleState Unsupported "unsupported native visibility facts are not visible launch success"
             Expect.exists unsupportedEffects (function EmitDiagnostic event when event.Message.Contains "unsupported" -> true | _ -> false) "unsupported state emits a diagnostic"
@@ -809,7 +809,7 @@ let tests =
                   RendererMode = "skia"
                   EvidencePath = None }
 
-            match Viewer.runAppEvidence request { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None } host with
+            match Viewer.runAppEvidence request { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None } host with
             | Result.Ok outcome ->
                 Expect.equal outcome.Mode "persistent-evidence" "explicit evidence runs do not report interactive mode"
                 Expect.equal outcome.CloseReason (Some EvidenceRequestedClose) "evidence close has its own close reason"
@@ -823,7 +823,7 @@ let tests =
         }
 
         test "MVU lifecycle transitions emit effects for session window visibility close timeout and failure states" {
-            let options = { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None }
+            let options = { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None }
             let model, _ = Viewer.init options
 
             let started, startEffects = Viewer.update StartInteractive model
@@ -917,7 +917,7 @@ let tests =
                 if not (nativeWindowAvailable()) then
                     liveWindowSkip "runApp interactive semantic-outcome launch"
                 else
-                match Viewer.runApp { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None } host with
+                match Viewer.runApp { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None } host with
                 | Result.Ok outcome ->
                     Expect.equal outcome.Mode "interactive-window" "runApp reports the interactive launch mode"
                     Expect.equal outcome.SelfClosedForEvidence false "runApp never reports evidence self-close"
@@ -940,7 +940,7 @@ let tests =
                   RendererMode = "skia"
                   EvidencePath = Some "readiness/evidence-launch-mode.md" }
 
-            let model, _ = Viewer.init { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None }
+            let model, _ = Viewer.init { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None }
             let evidence, evidenceEffects = Viewer.update (StartEvidence request) model
             Expect.equal evidence.LifecycleState EvidenceRunning "evidence start is distinct from interactive start"
             Expect.exists evidenceEffects (function StartBoundedRun started when started.Target = FirstFrame -> true | _ -> false) "evidence mode starts bounded interpreter effect"
@@ -966,7 +966,7 @@ let tests =
         }
 
         test "persistent run exposes launch outcome fields or unsupported-host diagnostics" {
-            let options = { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None }
+            let options = { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None }
             let scene = Group []
 
             if livePersistentTestsEnabled() then
@@ -1181,7 +1181,7 @@ let tests =
                     StartupPosition = Some(Coordinates(32, 48))
                     BackendPreference = Some ViewerBackendPreference.Vulkan }
 
-            let model, initEffects = Viewer.initWithWindowBehavior { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None } behavior
+            let model, initEffects = Viewer.initWithWindowBehavior { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None } behavior
             let sessionReady =
                 { RuntimeDirectory = Some "/run/user/1000"
                   RuntimeDirectoryExists = true
@@ -1204,7 +1204,7 @@ let tests =
         }
 
         test "persistent run preserves bounded APIs as explicit separate helpers" {
-            let options = { Title = "Product"; InitialSize = { Width = 320; Height = 200 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None }
+            let options = { Title = "Product"; InitialSize = { Width = 320; Height = 200 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None }
             let scene = Group []
 
             let invalidPersistent = Viewer.run { options with Title = "" } scene
@@ -1228,8 +1228,8 @@ let tests =
 
         test "bounded helper APIs remain explicitly callable regression" {
             let scene = Group []
-            let invalidOptions = { Title = ""; InitialSize = { Width = 320; Height = 200 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None }
-            let validOptions = { Title = "Product"; InitialSize = { Width = 320; Height = 200 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None }
+            let invalidOptions = { Title = ""; InitialSize = { Width = 320; Height = 200 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None }
+            let validOptions = { Title = "Product"; InitialSize = { Width = 320; Height = 200 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None }
 
             match Viewer.runUntilFirstFrame invalidOptions scene with
             | Result.Error failure ->
@@ -1269,7 +1269,7 @@ let tests =
             Expect.equal (host.Tick(TimeSpan.FromMilliseconds 16.0)) (Some Increment) "tick mapping is public and pure"
 
             if livePersistentTestsEnabled() then
-                match Viewer.runApp { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None } host with
+                match Viewer.runApp { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None } host with
                 | Result.Ok outcome ->
                     Expect.equal outcome.Mode "interactive-window" "runApp reports interactive-window mode"
                     Expect.equal outcome.Status "ok" "runApp reports ok status on supported hosts"
@@ -1325,7 +1325,7 @@ let tests =
                 Expect.exists tickEffects (function RenderScene _ -> true | _ -> false) "tick progression emits render refresh"
             | None -> failtest "expected tick message after 16ms"
 
-            let viewer, _ = Viewer.init { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None }
+            let viewer, _ = Viewer.init { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None }
             let running, _ = Viewer.update StartInteractive viewer
             let firstFrame, frameEffects = Viewer.update (FramePresented { Width = 640; Height = 480 }) running
             Expect.equal firstFrame.LifecycleState ViewerLifecycleState.FirstFramePresented "first-frame state is represented in viewer model"
@@ -1378,7 +1378,7 @@ let tests =
                   FailureClass = None
                   Message = "visible window with keyboard input observed" }
 
-            let viewer, _ = Viewer.init { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None }
+            let viewer, _ = Viewer.init { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None }
             let running, _ = Viewer.update StartInteractive viewer
             let visible, visibilityEffects = Viewer.update (VisibilityObserved diagnostic) running
             Expect.equal visible.LifecycleState InteractiveRunning "input-capable visible window reaches interactive running"
@@ -1410,7 +1410,7 @@ let tests =
                   RendererMode = "skia"
                   EvidencePath = None }
 
-            match Viewer.runAppEvidence invalidEvidence { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None } host with
+            match Viewer.runAppEvidence invalidEvidence { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None } host with
             | Result.Error failure ->
                 Expect.equal failure.Classification ProductDefect "invalid evidence request is product configuration failure"
                 Expect.equal failure.BlockedStage App "invalid evidence request is rejected before window lifecycle"
@@ -1437,7 +1437,7 @@ let tests =
                   RendererMode = "skia"
                   EvidencePath = Some evidencePath }
 
-            match Viewer.runAppEvidence request { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None } host with
+            match Viewer.runAppEvidence request { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None } host with
             | Result.Ok outcome ->
                 Expect.equal outcome.Status "ok" "explicit evidence launch succeeds through bounded interpreter"
                 Expect.equal outcome.Mode "persistent-evidence" "evidence launch reports persistent-evidence mode"
@@ -1486,7 +1486,7 @@ let tests =
                   EvidencePath = Some imagePath }
 
             try
-                match Viewer.runAppEvidence request { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None } host with
+                match Viewer.runAppEvidence request { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None } host with
                 | Result.Ok outcome ->
                     Expect.equal outcome.Mode "persistent-evidence" "image evidence is an explicit evidence launch mode"
                     Expect.exists outcome.VisualEvidence (fun item -> item.Kind = ViewerVisualEvidenceKind.Image) "requested image evidence records an image artifact"
@@ -1519,7 +1519,7 @@ let tests =
                   EvidencePath = Some metadataPath }
 
             try
-                match Viewer.runAppEvidence request { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None } host with
+                match Viewer.runAppEvidence request { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None } host with
                 | Result.Ok outcome ->
                     Expect.exists outcome.VisualEvidence (fun item -> item.Kind = ViewerVisualEvidenceKind.MetadataHash) "metadata evidence is labeled metadata-hash"
                     Expect.isFalse (outcome.VisualEvidence |> List.exists (fun item -> item.Kind = ViewerVisualEvidenceKind.Image && item.Path = Some metadataPath)) "metadata/hash artifacts are not mislabeled as image evidence"
@@ -1560,7 +1560,7 @@ let tests =
 
             Expect.exists timeoutEffects (function StopBoundedRun -> true | _ -> false) "timeout stops bounded evidence"
 
-            let launchModel, _ = Viewer.init { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None }
+            let launchModel, _ = Viewer.init { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None }
             let evidenceModel, evidenceEffects = Viewer.update (StartEvidence request) launchModel
             Expect.equal evidenceModel.LifecycleState EvidenceRunning "evidence launch enters evidence-running state"
             Expect.exists evidenceEffects (function StartBoundedRun started when started.Target = request.Target -> true | _ -> false) "evidence launch emits bounded run effect"
@@ -1668,7 +1668,7 @@ let tests =
         }
 
         test "viewer update emits categorized diagnostics for startup input scene frame and failure milestones" {
-            let model, initEffects = Viewer.init { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None }
+            let model, initEffects = Viewer.init { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None }
             Expect.exists initEffects (function EmitDiagnostic diagnostic when diagnostic.Category = ViewerDiagnosticCategory.Startup && diagnostic.Message.Contains "Product" -> true | _ -> false) "startup emits categorized diagnostic"
 
             let _, renderEffects = Viewer.update (Render(Group [])) model

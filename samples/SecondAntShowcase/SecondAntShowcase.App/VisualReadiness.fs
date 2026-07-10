@@ -120,7 +120,7 @@ let captureScreenshot seed outDir (size: Size) (mode: ThemeMode) themeId (page: 
         { Title = "second-ant-showcase-visual-readiness"
           InitialSize = size
           PresentMode = ViewerPresentMode.OffscreenReadback
-          FrameRateCap = None }
+          FrameRateCap = None; LogicalSize = None }
     try
         let result = Viewer.captureScreenshotEvidence request options scene
         if result.ProvesScreenshot && File.Exists outPath then

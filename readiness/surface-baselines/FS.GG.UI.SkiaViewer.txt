@@ -149,6 +149,8 @@ FS.GG.UI.SkiaViewer.Host.ViewerPointerButton
 FS.GG.UI.SkiaViewer.Host.ViewerPointerButton+Tags
 FS.GG.UI.SkiaViewer.Host.ViewerProgram`2
 FS.GG.UI.SkiaViewer.InteractiveViewerHost`2
+FS.GG.UI.SkiaViewer.LogicalCanvas
+FS.GG.UI.SkiaViewer.LogicalCanvasFit
 FS.GG.UI.SkiaViewer.ReferenceFailureClassification
 FS.GG.UI.SkiaViewer.ReferenceFailureClassification+Tags
 FS.GG.UI.SkiaViewer.ReferenceRenderVerdict

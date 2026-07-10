@@ -98,7 +98,7 @@ let tests =
                     { Title = "Product"
                       InitialSize = { Width = 640; Height = 480 }
                       PresentMode = ViewerPresentMode.OffscreenReadback
-                      FrameRateCap = None }
+                      FrameRateCap = None; LogicalSize = None }
 
                 match Viewer.runAppWithAudio options (fun batch -> played.AddRange batch) audioHost with
                 | Result.Ok _ -> failtest "an unsupported host cannot report a successful launch"

@@ -26,7 +26,7 @@ module Tiers =
             { Title = "harness"
               InitialSize = { Width = w; Height = h }
               PresentMode = ViewerPresentMode.OffscreenReadback
-              FrameRateCap = None }
+              FrameRateCap = None; LogicalSize = None }
         Viewer.captureScreenshotEvidence request options demoScene
 
     let nonBlank (r: ScreenshotEvidenceResult) =

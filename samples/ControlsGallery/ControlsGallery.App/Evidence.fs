@@ -40,7 +40,7 @@ let private capture (pageId: string) (outPath: string): ScreenshotEvidenceResult
         { Title = "controls-gallery-evidence"
           InitialSize = size
           PresentMode = ViewerPresentMode.OffscreenReadback
-          FrameRateCap = None }
+          FrameRateCap = None; LogicalSize = None }
     Viewer.captureScreenshotEvidence request options scene
 
 /// Produce and persist one page's evidence record.

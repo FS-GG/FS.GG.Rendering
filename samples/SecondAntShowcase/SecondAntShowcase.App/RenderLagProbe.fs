@@ -23,7 +23,7 @@ let private options () =
     { Title = "Second Ant Showcase Render Lag Probe"
       InitialSize = size
       PresentMode = ViewerPresentMode.DirectToSwapchain
-      FrameRateCap = Some 60 }
+      FrameRateCap = Some 60; LogicalSize = None }
 
 let private windowBehavior () =
     { Viewer.defaultWindowBehavior with
