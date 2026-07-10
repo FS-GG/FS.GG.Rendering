@@ -32,7 +32,9 @@ let private singleUnitModel (token: Token) : Model =
           Vx = 0.0
           Vy = 0.0 }
 
-    { Step = Loop.init { Units = [ unit ]; T = 0.0 }; Seed = 0 }
+    // Qualified: `Board.Step` is a FS.GG.Game.Core.StepState since ADR-0104 (#269), and the `Loop` that
+    // `open FS.GG.UI.Canvas` puts in scope here is the deprecated one.
+    { Step = FS.GG.Game.Core.Loop.init { Units = [ unit ]; T = 0.0 }; Seed = 0 }
 
 [<Tests>]
 let tests =

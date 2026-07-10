@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <!-- Feature 193 (M6): a runnable live board sample. The approved M5 symbol set (Roster.fs) is put in
-       motion on a deterministic fixed-timestep board (Board.fs), advanced by FS.GG.UI.Canvas `Loop.advance`,
+       motion on a deterministic fixed-timestep board (Board.fs), advanced by FS.GG.Game.Core `Loop.advance`,
        painted into a `Canvas.volatile'` control for the interactive path, and folded to a single canonical
        scene fingerprint for the default headless `evidence` path (Program.fs).
 
@@ -20,6 +20,13 @@
     <Compile Include="GrammarCompare.fs" />
     <Compile Include="Board.fs" />
     <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <!-- ADR-0104 (#269): the fixed-step double buffer is a simulation primitive, so the loop comes from
+       FS.GG.Game.Core, not from the deprecated FS.GG.UI.Canvas.Loop. A package reference, because
+       Canvas deliberately does not re-export it. -->
+  <ItemGroup>
+    <PackageReference Include="FS.GG.Game.Core" />
   </ItemGroup>
 
   <ItemGroup>

@@ -3,6 +3,12 @@ module Canvas.Tests.LoopTests
 // Feature 191 (US3, T033, C4/FR-009/FR-011, SC-006): the fixed-timestep loop is deterministic, runs
 // `floor((acc + clamp frameTime)/dt)` whole steps, clamps a runaway frame to 0.25s, and never reads a
 // wall clock. dt values are negative powers of two so the accumulator arithmetic is exact (no FP drift).
+//
+// `FS.GG.UI.Canvas.Loop` is deprecated (ADR-0104, #269) but still SHIPPED, so it stays under test until
+// it is removed at the next Canvas major. Suppressing the deprecation here is the point: these tests
+// assert the behaviour consumers still get. The migration target's own suite lives in FS.GG.Game's
+// Game.Core.Tests — this file does not duplicate it.
+#nowarn "44"
 
 open Expecto
 open FsCheck

@@ -39,9 +39,14 @@
     <!-- ADR-0022 P5: the game-sim primitives (Rng/FixedStep/Pathfinding/SpatialGrid/Geometry) moved
          to the FS.GG.Game.Core bottom layer. Canvas.Tests compiles the re-homed game-profile fragment
          sources (collision/visibility/grids/line-drawing), which now `open FS.GG.Game.Core`, so the
-         test project pins it here. Test-only in THIS repo; the generated product pins it via the
-         template's own $(FsGgGameVersion). -->
-    <PackageVersion Include="FS.GG.Game.Core" Version="0.1.0-preview.1" />
+         test project pins it here. Not shipped by any FS.GG.UI.* package in THIS repo — no library
+         takes a reference; the generated product pins it via the template's own $(FsGgGameVersion).
+
+         0.3.0 (ADR-0104, #269): adds `Loop`, the double step buffer that supersedes the deprecated
+         `FS.GG.UI.Canvas.Loop`. samples/CanvasDemo and samples/SymbologyBoard consume it directly —
+         the migration target must be a PACKAGE reference, because re-exporting it from Canvas is the
+         `FS.GG.UI.Canvas -> FS.GG.Game.Core` edge ADR-0104 forbids. Below 0.3.0 there is no `Loop`. -->
+    <PackageVersion Include="FS.GG.Game.Core" Version="0.3.0" />
     <!-- Issue #245: SkiaViewer.Tests drives the real record-only backend (NullBackend) through the
          same `Audio.play` the generated template hands to `runAppWithAudio`, so the seam is proven
          end-to-end without a window or a device. Test-only: the shipped SkiaViewer package depends on

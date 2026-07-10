@@ -9,6 +9,12 @@ open Expecto
 open FS.GG.UI.Scene
 open FS.GG.UI.Canvas
 
+// Tracks samples/CanvasDemo onto FS.GG.Game.Core.Loop (ADR-0104, #269) — the point of this file is to
+// exercise the pattern the sample actually uses. `FS.GG.UI.Canvas.Loop`'s own behaviour is covered by
+// LoopTests.fs until it is removed. Abbreviated, not `open`ed: FS.GG.Game.Core also exports Point/Rect.
+type StepState<'world> = FS.GG.Game.Core.StepState<'world>
+module Loop = FS.GG.Game.Core.Loop
+
 // A tiny bouncing-ball world: position + velocity in a 100x100 box, reflected at the walls.
 type private Ball = { X: float; Y: float; Vx: float; Vy: float }
 
