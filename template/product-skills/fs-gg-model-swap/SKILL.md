@@ -87,7 +87,7 @@ re-point files untouched too — then the swap is just `Model.fs` + `View.fs` + 
 ## Doing the swap — a checklist
 
 1. Rewrite `Model.fs`: your `Model`, `Msg`, `initialModel`, `update`. Keep those names.
-2. Rewrite `View.fs`: your `view : Model -> SceneNode` (see [[fs-gg-scene]] for the primitives).
+2. Rewrite `View.fs`: your `view : Model -> SceneNode` (see [[fs-gg-rendering:fs-gg-scene]] for the primitives).
 3. Re-point `LayoutEvidence.fs` and `EvidenceCommands.fs` at the fields your new model exposes,
    preserving every must-survive source-scan token (`SceneEvidence.render`,
    `RendererMode = "deterministic-scene"`, the visual-evidence vocabulary — see `scaffold-map.md`).
@@ -166,11 +166,11 @@ and any product-local `docs/` location. Offline, the mandate degrades to recordi
 
 ## Related
 
-- [[fs-gg-scene]] — the `Scene`/`Point`/`Rect` primitives your new `view` builds; owns the
+- [[fs-gg-rendering:fs-gg-scene]] — the `Scene`/`Point`/`Rect` primitives your new `view` builds; owns the
   framework geometry records the collision note is about.
 - [[fs-gg-game-core]] — the grid-sim recipe and the consumer-vs-consumer record-label guidance.
-- [[fs-gg-skiaviewer]] — the host boundary the re-exported `generatedHost` drives.
-- [[fs-gg-layout]] — the HUD + gameplay regions the re-pointed `LayoutEvidence.fs` computes.
+- [[fs-gg-rendering:fs-gg-skiaviewer]] — the host boundary the re-exported `generatedHost` drives.
+- [[fs-gg-rendering:fs-gg-layout]] — the HUD + gameplay regions the re-pointed `LayoutEvidence.fs` computes.
 
 ## Sources / links
 

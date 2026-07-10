@@ -1,7 +1,7 @@
 <!-- SKILL-PARITY:START -->
 # Skill Parity Report
 
-Checked at UTC: `2026-07-10T12:00:46.2488981Z`
+Checked at UTC: `2026-07-10T13:14:57.1731212Z`
 Overall status: `passed`
 Canonical sources: `32`
 Wrappers: `63`
@@ -27,6 +27,7 @@ Wrappers: `63`
 | fs-gg-audio | 3 | 3 | 0 | 0 |
 | fs-gg-diagnostics | 2 | 2 | 0 | 0 |
 | fs-gg-elmish | 7 | 7 | 0 | 0 |
+| fs-gg-game-core | 2 | 2 | 0 | 0 |
 | fs-gg-generated-controls-guidance | 25 | 25 | 0 | 0 |
 | fs-gg-keyboard-input | 4 | 4 | 0 | 0 |
 | fs-gg-layout | 3 | 3 | 0 | 0 |
@@ -54,7 +55,7 @@ No intentional exceptions were applied.
 
 ## Caveats
 - Global Codex skill installation paths are excluded from required repository parity.
-- 6 skill(s) show F# examples that name no public API symbol, so none was judged: fs-gg-collision, fs-gg-game-core, fs-gg-grids, fs-gg-line-drawing, fs-gg-model-swap, fs-gg-visibility.
+- 5 skill(s) show F# examples that name no public API symbol, so none was judged: fs-gg-collision, fs-gg-grids, fs-gg-line-drawing, fs-gg-model-swap, fs-gg-visibility.
 
 ## Regenerate
 

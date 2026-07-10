@@ -10,7 +10,10 @@
     <!-- ADR-0022 P5: the deterministic sim primitives (Rng/FixedStep/Pathfinding/SpatialGrid/
          Geometry) moved OUT of FS.GG.UI.Canvas/.Scene into FS.GG.Game.Core — the platform's
          BCL-only bottom layer, released on its OWN axis (NOT $(FsGgUiVersion)). Game/sample-pack
-         scaffolds pin it here; simulation profiles only. -->
+         scaffolds pin it here; simulation profiles only.
+         0.3.0 (ADR-0104, Rendering#269): adds `Loop`, the double step buffer that supersedes the
+         deprecated FS.GG.UI.Canvas.Loop. A scaffold cannot reach it below this version. -->
+
     <FsGgGameVersion>0.3.0</FsGgGameVersion>
     <!-- The standalone FS.GG.Audio component (own repo FS-GG/FS.GG.Audio, released on its OWN
          axis — NOT $(FsGgUiVersion)/$(FsGgGameVersion)). Game/sample-pack scaffolds pin it here to

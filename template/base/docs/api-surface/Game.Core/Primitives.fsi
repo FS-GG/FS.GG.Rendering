@@ -1,5 +1,5 @@
 // See skill: fs-gg-game-core
-// Mirrored from FS-GG/FS.GG.Game @ 0.2.0 (src/Game.Core/Primitives.fsi); regenerate when $(FsGgGameVersion) moves.
+// Mirrored from FS-GG/FS.GG.Game @ 0.3.0 (src/Game.Core/Primitives.fsi); regenerate when $(FsGgGameVersion) moves.
 namespace FS.GG.Game.Core
 
 /// Public contract type exposed by the FS.GG.Game.Core package.
@@ -50,3 +50,34 @@ type RayHit = { T: float; Point: Point; Normal: Point }
 /// degenerate ring (fewer than 3 vertices, zero area, or a NaN coordinate) is a no-contact input —
 /// `polygonContact` returns `None` rather than throwing. Structural equality makes it golden-testable.
 type ConvexPolygon = { Vertices: Point[] }
+
+/// Public contract type exposed by the FS.GG.Game.Core package.
+/// Up to two contact *points* for a 2-D convex pair — the impulse counterpart of `Contact`, which
+/// carries only the minimum translation. `Contact` is unchanged and `Resolution` still consumes it;
+/// this type is additive, for callers that need torque or warm-starting.
+///
+/// - `A`/`B` are body indices identifying the pair, and `A < B` always — the canonical pair key. The
+///   producer `Geometry.polygonManifold` has no bodies, so it emits the argument positions `0`/`1`;
+///   a body-owning layer rebinds them to its own indices, preserving `A < B` by swapping and negating
+///   `Normal`.
+/// - `Normal` is unit and points from `A` toward `B`, and `Depth` is the positive penetration along
+///   it — both identical to what `Contact` would carry for the same pair.
+/// - `Points` holds `PointCount` contact points (1 for a circle pair or a vertex-on-face polygon
+///   contact, 2 for a face-on-face one); `PointCount = Points.Length`. An angular impulse takes the
+///   lever arms from each body's centre of mass to these.
+/// - `FeatureId` identifies *which pair of features* produced the contact, and is stable across ticks
+///   for an unmoving pair. It is the warm-start cache key: a sequential-impulse solver seeds last
+///   tick's accumulated impulse into the contact with the same `(A, B, FeatureId)`, and without a
+///   stable id it seeds the wrong one and the stack jitters. It is an opaque packing of the reference
+///   and incident edge indices — compare it, do not decode it.
+///
+/// A *detection-only value*, as `Contact` is: structural equality (element-wise over `Points`) makes
+/// it a deterministic golden-testable value.
+type Manifold =
+    { A: int
+      B: int
+      Normal: Point
+      Depth: float
+      Points: Point[]
+      PointCount: int
+      FeatureId: int }
