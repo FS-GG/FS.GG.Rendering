@@ -55,6 +55,7 @@ let private canonicalSources =
       "fs-gg-collision", "template/product-skills/fs-gg-collision/SKILL.md"
       "fs-gg-elmish", "template/product-skills/fs-gg-elmish/SKILL.md"
       "fs-gg-feedback-capture", "template/feedback/skill/SKILL.md"
+      "fs-gg-feedback-report", "template/feedback-report/skill/SKILL.md"
       "fs-gg-game-core", "template/product-skills/fs-gg-game-core/SKILL.md"
       "fs-gg-grids", "template/product-skills/fs-gg-grids/SKILL.md"
       "fs-gg-keyboard-input", "template/product-skills/fs-gg-keyboard-input/SKILL.md"
@@ -292,5 +293,22 @@ let feature238SkillMaterializesWhenTests =
               let feedbackOff = Map.ofList [ "profile", "app"; "lifecycle", "spec-kit"; "feedback", "false" ]
               Expect.isTrue (evalCanonical feedbackOn feedback) "fs-gg-feedback-capture emits when feedback == true and lifecycle == spec-kit"
               Expect.isFalse (evalCanonical feedbackOff feedback) "fs-gg-feedback-capture suppressed when feedback == false (conjunction)"
+
+              // Issue #248: the report is the lifecycle-INDEPENDENT counterpart of the capture skill.
+              // Capture's `lifecycle == spec-kit` clause is load-bearing (it is Spec Kit hook machinery);
+              // the report is agent-invoked, so it must emit on EVERY lane. Adding a lifecycle clause to
+              // it — the regression this asserts against — would strand it on the lane it exists to serve.
+              let report = (Map.find "fs-gg-feedback-report" entries).MaterializesWhen
+              for lifecycle in [ "spec-kit"; "sdd"; "none" ] do
+                  let on = Map.ofList [ "profile", "app"; "lifecycle", lifecycle; "feedback", "true" ]
+                  let off = Map.ofList [ "profile", "app"; "lifecycle", lifecycle; "feedback", "false" ]
+                  Expect.isTrue (evalCanonical on report)
+                      (sprintf "fs-gg-feedback-report emits when feedback == true on lifecycle=%s" lifecycle)
+                  Expect.isFalse (evalCanonical off report)
+                      (sprintf "fs-gg-feedback-report suppressed when feedback == false on lifecycle=%s" lifecycle)
+
+              // ...and it is profile-independent: gated by `feedback` alone, on an off-list profile too.
+              let reportControls = Map.ofList [ "profile", "controls"; "lifecycle", "sdd"; "feedback", "true" ]
+              Expect.isTrue (evalCanonical reportControls report) "fs-gg-feedback-report is profile-independent"
           }
         ]
