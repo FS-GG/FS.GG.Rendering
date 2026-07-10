@@ -122,6 +122,12 @@ publishing it discharges the break by moving the baseline.
 
 ### ApiCompat is a required check, whatever ADR-0101 says
 
+> **Resolved.** This section reports the documentation state on 2026-07-10. It was filed as
+> [#289](https://github.com/FS-GG/FS.GG.Rendering/issues/289) and reconciled by
+> [ADR-0103](./0103-gate-is-fully-enforced.md): ADR-0101's title and Decision are superseded, and
+> the `apicompat-check.sh` header now says the job is required. The enforced policy was, and is,
+> that ApiCompat blocks a merge. Kept as written — it is the observation that produced ADR-0103.
+
 [ADR-0101](./0101-apicompat-stays-advisory.md) is titled *"`API compatibility gate` stays advisory"*,
 and the header of `scripts/apicompat-check.sh` says the job "is not in branch protection's required
 set, so today a break informs a merge rather than blocking one."

@@ -100,8 +100,10 @@ The audit (FR-009) checks these invariants by inspection of this map against the
 2. **No release-only member in `gate`** — `Package.Tests` / template `Product.Tests` never on push/PR.
 3. **Every row traces to a settled source** — validation-set members → `validation-set.md` (R3);
    harness tiers → `harness.md` (R5). Nothing is invented here.
-4. **Only `gate` is intended to be required** — release/capability never block merge. Branch protection
-   is not yet enabled (§5), so no check blocks a merge today.
+4. **Only `gate` is required** — release/capability never block merge. Branch protection is enabled
+   (§5): `Deterministic gate` and `API compatibility gate` are required contexts on `main`, and
+   `enforce_admins` is on (§5.1, ADR-0103). `gate`'s third job, `Template payload restore gate`, is
+   feed-dependent and deliberately unselected (§4b).
 5. **Capability rows degrade-and-disclose** — never a silent drop, never a false pass.
 
 ### 3.1 Audit result (T019)
@@ -123,6 +125,11 @@ after the gate loop became slnx-derived and the coverage machine-enforced. **PAS
    for the same member.
 4. **Only `gate` is required** — ✅ `release.yml`/`capability.yml` carry no required status and are
    intended to be excluded from branch protection (§5).
+   > **Not re-audited since.** Branch protection was enabled after this audit ran, and
+   > `API compatibility gate` joined the required set on 2026-07-09 (§5.1, ADR-0103). The ✅ above
+   > covers only the `release`/`capability` half of invariant 4, which is unchanged. The invariant's
+   > branch-protection half has never been machine- or audit-checked — nothing in the repo can read
+   > branch protection (ADR-0103, "Open follow-ups").
 5. **Capability rows degrade-and-disclose** — ✅ `capability.yml` invokes each tier through the
    `harness-evidence` action with no `required-tiers` and `continue-on-error: true`; absence/skip is
    disclosed, never a false pass and never blocking.
@@ -261,9 +268,12 @@ restore tooling failed, an unevaluable gate, zero pins matched). It **fails clos
 
 **Why the restore half is a separate, non-required job.** It reads nuget.org, and requiring a
 feed-dependent check takes a dependency on that feed's availability — an outage would wedge every
-merge in the repo. That is precisely ADR-0101's bound on `api-compatibility-gate`, applied again.
-As there, **advisory means not-required, not `continue-on-error`** (#216): the job has none, and a red
-is the gate reporting what it found.
+merge in the repo. `api-compatibility-gate` reads a feed too, and **is** required (§5.1, ADR-0103):
+it reads one only to *find a baseline*, so it can classify a silent feed as `FeedUnavailable` and
+exit 0. This job cannot — the feed is its **subject**, and "the payload did not restore" cannot be
+told apart from an outage. It therefore has **no elevation path** and stays non-required.
+**Not-required is not `continue-on-error`** (#216): the job has none, and a red is the gate
+reporting what it found.
 
 **Why `$(FsGgUiVersion)` is exempt from the staleness rule, and only that rule.** The `FS.GG.UI.*`
 set is published *from this repo*, and §4a already pins it to `fs-gg-ui/v*` snapshot tags — a source

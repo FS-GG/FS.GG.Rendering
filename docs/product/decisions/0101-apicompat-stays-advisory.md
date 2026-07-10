@@ -1,10 +1,23 @@
 # 0101 — `API compatibility gate` stays advisory, on one named precondition; cadence-map §5 amended
 
-**Status**: Accepted · **Date**: 2026-07-09 · **Issue**: [FS.GG.Rendering#219](https://github.com/FS-GG/FS.GG.Rendering/issues/219)
+**Status**: Accepted · **Superseded in part by**
+[ADR-0103](./0103-gate-is-fully-enforced.md) · **Date**: 2026-07-09 · **Issue**:
+[FS.GG.Rendering#219](https://github.com/FS-GG/FS.GG.Rendering/issues/219)
 
 > **Numbering.** Repo-local ADRs resume at `0100` (see [`../README.md`](../README.md)). This one
 > follows [ADR-0100](./0100-gate-is-a-required-check.md), which required `Deterministic gate` and
 > deferred this question.
+
+> **⚠ The title and the Decision below no longer describe the enforced policy.** The precondition
+> they name was discharged the same day (see the Amendment at the foot of this ADR), and
+> `API compatibility gate (breaking-change → SemVer major)` **is a required status check on `main`**.
+> A `CP####` break **blocks** your merge, and `enforce_admins` is on, so `--admin` does not bypass it.
+> [ADR-0103](./0103-gate-is-fully-enforced.md) records the enforced state; this ADR is kept as
+> written because it records the state that produced the decision. The Context, the Evidence, and the
+> `latest_version()` SemVer-max fix stand unamended — that fix is why the check can be green at all.
+> **Read the Consequences against the Amendment**: its `Indeterminate`-bounds-the-feed-risk bullet is
+> retracted there (#216/#227 split out `FeedUnavailable`, which carries the bound; `Indeterminate`
+> now exits 3 and *blocks*).
 
 ## Context
 
@@ -75,7 +88,10 @@ version:
 These are exactly what the gate exists to catch. They force the next `FS.GG.UI` release to be a
 **SemVer major**.
 
-## Decision
+## Decision (superseded 2026-07-09 — see the Amendment, and [ADR-0103](./0103-gate-is-fully-enforced.md))
+
+> Parts 1 and 2 below landed and stand. Part 3 was true for one day. The check **is required**; read
+> this section as the reasoning that made elevation reachable, not as current policy.
 
 **`API compatibility gate` does NOT join the required set now. It stays advisory, and this ADR
 records why — not as a judgement against the check, but as a statement that its one precondition is
