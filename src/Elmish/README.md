@@ -28,18 +28,26 @@ dotnet new fs-gg-ui -o MyApp
 
 ## Usage
 
-The adapter wraps your own Elmish `model`/`msg` together with the viewer, so a single
-`update` drives both your state and the rendered scene. You supply a `render` function that
-projects your model to a `SceneNode`; the adapter rebuilds the scene on every message.
+The adapter wraps your own Elmish `model`/`msg` together with the viewer. It is a **viewer
+bridge**, not your MVU runtime: a `ViewerMsg` advances the viewer and rebuilds the scene from
+the current user model, while a `UserMsg` is a pass-through — it forwards your message as a
+`DispatchUser` effect and leaves the model and scene unchanged. You supply a `render` function
+that projects your model to a `SceneNode`; the adapter re-renders it on a `ViewerMsg`, and your
+product composes its own `update` around the adapter (interpret `DispatchUser` by running your
+`update`, then reflect the next user model back so the following `ViewerMsg` re-renders it).
 
 ```fsharp
 open FS.GG.UI.Scene
 open FS.GG.UI.SkiaViewer
 open FS.GG.UI.Elmish
 
-// Your own Elmish model/msg
+// Your own Elmish model/msg — and your own pure update (the adapter never folds this).
 type Model = { Count: int }
 type Msg = Increment
+
+let update (msg: Msg) (model: Model) : Model =
+    match msg with
+    | Increment -> { model with Count = model.Count + 1 }
 
 // Project the user model into a scene
 let render (model: Model) : SceneNode =
@@ -51,16 +59,27 @@ let options = { Title = "Counter"; InitialSize = { Width = 640; Height = 480 } }
 let initial, effects =
     ElmishAdapter.init options { Count = 0 } (render { Count = 0 })
 
-// Pass a user message through the adapter. `UserMsg` yields a `DispatchUser` effect and
-// leaves the scene unchanged; the scene is rebuilt via `render` only on a `ViewerMsg`.
-let next, _ =
+// Pass a user message through the adapter. `UserMsg` is a pass-through: it yields a
+// `DispatchUser` effect and leaves `passthrough.UserModel`/scene unchanged (the scene is
+// rebuilt via `render` only on a `ViewerMsg`).
+let passthrough, effects =
     ElmishAdapter.update render (UserMsg Increment) initial
+
+// Compose YOUR update around the adapter: interpret the `DispatchUser` effect by folding
+// your own `update`, then reflect the next user model back so the following `ViewerMsg`
+// re-renders the scene from it.
+let folded =
+    match effects with
+    | [ DispatchUser m ] ->
+        let userModel' = update m passthrough.UserModel
+        { passthrough with UserModel = userModel'; Scene = render userModel' }
+    | _ -> passthrough
 ```
 
 ## API at a glance
 
 - `ElmishAdapter.init` — builds the combined `ElmishAdapterModel<'model>` from `ViewerOptions`, your initial user model, and an initial `SceneNode`, returning the model and its startup effects.
-- `ElmishAdapter.update` — folds an `ElmishAdapterMsg<'msg>` into the adapter model, using the supplied `render` function to refresh the scene, and yields the next model plus effects.
+- `ElmishAdapter.update` — advances the adapter on an `ElmishAdapterMsg<'msg>`: a `ViewerMsg` steps the viewer and refreshes the scene via `render`, while a `UserMsg` is forwarded verbatim as a `DispatchUser` effect — your user model is **not** folded here, so compose your own `update` around the adapter. Yields the next model plus effects.
 - `ElmishAdapterModel<'model>` — the bridged state record holding your `UserModel`, the current `Scene` (a `SceneNode`), and the `ViewerModel`.
 - `ElmishAdapterMsg<'msg>` — message envelope: `UserMsg` carries your own messages, `ViewerMsg` carries viewer messages.
 - `ElmishAdapterEffect<'msg>` — effect envelope: `DispatchUser` for your messages and `DispatchViewer` for `ViewerEffect`s.

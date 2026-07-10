@@ -8,8 +8,10 @@ description: Drive a generated FS.GG.UI product through the pure Elmish adapter.
 ## Scope
 
 Use this skill for the Elmish boundary of a generated product: wrapping your pure
-user model/messages in the adapter so viewer messages and effects are threaded
-through one pure `update`.
+user model/messages in the adapter so viewer messages, effects, and scene refreshes
+are threaded through it. The adapter is a **viewer bridge**, not your MVU runtime —
+it does not fold your product's `update`; a `UserMsg` is forwarded verbatim as a
+`DispatchUser` effect, and you compose your own `update` around the adapter (see Usage).
 
 ## Public Contract
 
@@ -28,9 +30,20 @@ open FS.GG.UI.Elmish
 let adapterModel, startupEffects =
     ElmishAdapter.init viewerOptions initialModel (view initialModel)
 
-// update stays pure: next adapter model + requested effects.
-let nextModel, effects =
+// A UserMsg is a pass-through: it forwards `productMsg` as a DispatchUser effect and
+// leaves adapterModel/scene unchanged (only a ViewerMsg re-renders via `view`).
+let passthrough, effects =
     ElmishAdapter.update view (UserMsg productMsg) adapterModel
+
+// The adapter never folds your update. Compose your own `update` around it: interpret
+// DispatchUser by running your update, then reflect the next user model back so the
+// following ViewerMsg re-renders the scene from it.
+let folded =
+    match effects with
+    | [ DispatchUser m ] ->
+        let userModel' = update m passthrough.UserModel
+        { passthrough with UserModel = userModel'; Scene = view userModel' }
+    | _ -> passthrough
 ```
 
 ### No-op command / subscription
