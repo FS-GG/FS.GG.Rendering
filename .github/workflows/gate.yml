@@ -137,6 +137,51 @@ jobs:
             echo "::endgroup::"
           done
 
+      # 295 — EXECUTE the one runnable artifact in the fs-gg-symbology skill.
+      #
+      # Every other check that mentions reference.fsx asserts only that the file EXISTS and is
+      # byte-mirrored across the skill roots (Feature231SkillManifestTests, materialize-skill-roots,
+      # validate-lifecycle-template). None asserts it compiles. That is how six shipped features
+      # (194, 195, 196-200) each updated the skill's prose while the script quietly stopped
+      # exercising any of them, until it demonstrated the design loop with its own lint step deleted.
+      #
+      # So: run it, and pin the verdict SEQUENCE it must print. The script already fails loud on its
+      # own (`failwith` on both rounds); the assertions below make the expected output part of the
+      # gate rather than a comment that can drift from the code beneath it. A capacity change that
+      # un-fires the seeded overload reds here instead of silently demonstrating a backstop with
+      # nothing left to catch.
+      #
+      # No extra build: the Debug build above already produced the Symbology + Symbology.Render DLLs
+      # the in-tree script `#r`s. `#r "nuget: SkiaSharp"` resolves from nuget.config's single source
+      # (fsi loads a bare `#r` DLL alone, so Skia must be asked for by name — see the script header).
+      - name: Symbology skill reference recipe (runs the design loop)
+        run: |
+          set -euo pipefail
+          # tee, not capture: on a `failwith` the script's own diagnostic goes to stderr and the
+          # verdict lines it printed before dying still have to reach the log. Outside the worktree,
+          # so the surface-baseline / coherence drift steps below never see a stray untracked file.
+          log="$(mktemp)"
+          dotnet fsi src/Symbology/skill/reference.fsx | tee "$log"
+          out="$(cat "$log")"
+
+          fail() { echo "::error::reference.fsx: $1"; exit 1; }
+
+          grep -qE '^round 1: HasWarnings$' <<<"$out" \
+            || fail "round 1 must score HasWarnings — the recipe teaches the loop by showing a warning"
+          grep -qE 'Speed overloaded: 5 distinct levels used, capacity 4' <<<"$out" \
+            || fail "round 1 must name Speed as the overloaded channel, over capacity 4"
+          grep -qE '^[[:space:]]+units: \[4\]$' <<<"$out" \
+            || fail "round 1 must name ONLY the units past capacity (expected [4]); naming the whole board is the #295 regression"
+          grep -qE '^round 2 \(after tweak\): Clean$' <<<"$out" \
+            || fail "round 2 must score Clean — the ChannelMap tweak has to clear every finding"
+
+          for grammar in Token Badge Ring; do
+            grep -qE "^${grammar}[[:space:]]+board PNG: " <<<"$out" \
+              || fail "one unchanged mapUnit must render a ${grammar} board via galleryIn"
+          done
+
+          echo "reference.fsx ran the whole loop: seeded overload -> named unit 4 -> tweak -> Clean -> 3 grammars"
+
       # T009 (FR-003) — public .fsi surface-drift across all 9 committed baselines. Regenerate in
       # place and fail on ANY uncommitted change: a modified baseline = surface drift; an untracked
       # new baseline = a package gained a surface with no committed baseline (the spec's

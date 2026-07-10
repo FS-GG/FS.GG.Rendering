@@ -48,7 +48,14 @@ module Legibility =
         { Channel: Channel
           Severity: Severity
           Message: string
-          /// 0-based indices into the scored set; [] for whole-board findings
+          /// 0-based indices into the scored set; [] for whole-board findings.
+          ///
+          /// For a per-unit `Error` this is the offending unit. For an overload `Warning` it is the
+          /// units holding the levels PAST the channel's capacity — the smallest set a re-map has to
+          /// move to bring the channel back inside capacity — NOT every unit on the board. Levels are
+          /// ranked by (frequency descending, first appearance ascending) and the ones after the
+          /// leading `Capacity` are the excess, so the named units are those carrying the
+          /// least-frequent levels. Deterministic for a given input (SC-001).
           Units: int list }
 
     /// One row of the fixed capacity table (FR-002).

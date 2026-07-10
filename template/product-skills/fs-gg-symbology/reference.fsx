@@ -65,15 +65,20 @@ let round1 = roster |> List.map (mapUnitWith (fun s -> int (min 4.0 (s / 4.0))))
 let report1 = lint "round 1" round1
 // -> round 1: HasWarnings
 //      Warning Speed — Speed overloaded: 5 distinct levels used, capacity 4
-//        units: [0; 1; 2; 3; 4]
+//        units: [4]
+//
+// `units` names the units holding the levels PAST capacity, not every unit on the board. Here that
+// is the 20 m/s scout alone: it is the only unit in the fifth pip band, so it is the only unit the
+// re-map below has to move. The other four already fit the four ranks the eye can separate.
 
 // The recipe teaches the loop by SHOWING a warning. If a capacity change ever un-fires this one,
 // say so instead of quietly demonstrating the backstop with nothing for it to catch.
-if
-    report1.Verdict <> Legibility.HasWarnings
-    || not (report1.Findings |> List.exists (fun f -> f.Channel = Legibility.Speed))
-then
-    failwith "reference recipe: round 1 was supposed to overload the Speed channel"
+if report1.Verdict <> Legibility.HasWarnings then
+    failwith "reference recipe: round 1 was supposed to score HasWarnings"
+
+match report1.Findings |> List.tryFind (fun f -> f.Channel = Legibility.Speed) with
+| Some f when f.Severity = Legibility.Warning && f.Units = [ 4 ] -> ()
+| other -> failwithf "reference recipe: round 1 was supposed to warn that unit 4 alone overloads Speed; got %A" other
 
 // --- TWEAK: a WARNING is fixed in the ChannelMap, never in the library. Widen the bands so the
 // roster lands on four pip counts (0..3) instead of five. No unit is dropped; the rank coarsens. ---

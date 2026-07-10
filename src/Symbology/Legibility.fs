@@ -96,42 +96,70 @@ module Legibility =
 
     let private isFiniteF (v: float) = not (Double.IsNaN v || Double.IsInfinity v)
 
-    /// Distinct-level count for a per-unit channel via structural equality (each distinct `Custom`
-    /// colour and each distinct `Mark` path counted separately). For Continuous channels this is the
-    /// informational count of distinct raw values (never drives an overload finding — research D3).
-    let private distinctLevels channel (tokens: Token list) =
-        let count projection =
-            tokens |> List.map projection |> List.distinct |> List.length
+    /// The per-unit level each token occupies on a channel, boxed so one projection serves every
+    /// channel. Structural equality decides sameness (each distinct `Custom` colour and each distinct
+    /// `Mark` path is its own level). `Motion` is whole-board and occupies no per-unit level.
+    let private levelKeys channel (tokens: Token list) : objnull list =
+        let keys projection = tokens |> List.map projection
 
         match channel with
-        | Faction -> count (fun t -> box t.Faction)
-        | Klass -> count (fun t -> box t.Klass)
-        | Sigil -> count (fun t -> box t.Sigil)
-        | State -> count (fun t -> box t.State)
-        | Shield -> count (fun t -> box t.Shield)
-        | Speed -> count (fun t -> box t.Speed)
-        | Size -> count (fun t -> box t.R)
-        | Threat -> count (fun t -> box t.Threat)
-        | Charge -> count (fun t -> box t.Charge)
-        | Health -> count (fun t -> box t.Health)
-        | Heading -> count (fun t -> box t.Heading)
+        | Faction -> keys (fun t -> box t.Faction)
+        | Klass -> keys (fun t -> box t.Klass)
+        | Sigil -> keys (fun t -> box t.Sigil)
+        | State -> keys (fun t -> box t.State)
+        | Shield -> keys (fun t -> box t.Shield)
+        | Speed -> keys (fun t -> box t.Speed)
+        | Size -> keys (fun t -> box t.R)
+        | Threat -> keys (fun t -> box t.Threat)
+        | Charge -> keys (fun t -> box t.Charge)
+        | Health -> keys (fun t -> box t.Health)
+        | Heading -> keys (fun t -> box t.Heading)
         // `None` is itself a level: a board that leaves the channel unset reports one distinct level,
         // exactly as an all-identical `Heading` board does. Informational only (Continuous ⇒ exempt).
-        | SecondaryHeading -> count (fun t -> box t.SecondaryHeading)
-        | Motion -> 0
+        | SecondaryHeading -> keys (fun t -> box t.SecondaryHeading)
+        | Motion -> []
+
+    /// Distinct-level count for a per-unit channel via structural equality. For Continuous channels
+    /// this is the informational count of distinct raw values (never drives an overload — research D3).
+    let private distinctLevels channel (tokens: Token list) =
+        levelKeys channel tokens |> List.distinct |> List.length
+
+    /// The units carrying the levels a channel cannot rank (FR-003/FR-006).
+    ///
+    /// Levels are ranked by (frequency DESCENDING, first appearance ASCENDING); the leading
+    /// `capacity` of them are the ones the eye reliably separates, and every level after that is
+    /// EXCESS. The returned indices are the units holding an excess level, ascending — i.e. the
+    /// least-frequent levels, which are the cheapest to fold away and the smallest set a re-map has
+    /// to touch to bring the channel back inside capacity.
+    ///
+    /// Deterministic: the frequency/first-appearance ordering is a total order on levels, so equal
+    /// input yields an equal index list (SC-001).
+    let private excessUnits capacity (keys: objnull list) =
+        let levels =
+            keys
+            |> List.indexed
+            |> List.groupBy snd
+            |> List.map (fun (_, members) ->
+                let indices = members |> List.map fst
+                List.length indices, List.min indices, indices)
+
+        levels
+        |> List.sortBy (fun (count, firstSeen, _) -> -count, firstSeen)
+        |> List.skip (min capacity (List.length levels))
+        |> List.collect (fun (_, _, indices) -> indices)
+        |> List.sort
 
     /// Level-overload check (FR-003): one `Warning` per Categorical/Ordered channel whose distinct
-    /// levels exceed capacity. Every unit contributes to the distinct-level count, so `Units` names
-    /// the whole scored set. Continuous channels are exempt (FR-009).
+    /// levels exceed capacity. `Units` names only the units holding the levels PAST capacity — the
+    /// ones a re-map must move — not the whole scored set. Continuous channels are exempt (FR-009).
     let private overloadFindings (tokens: Token list) =
-        let allUnits = [ 0 .. List.length tokens - 1 ]
-
         [ for spec in table do
               match spec.Kind with
               | Continuous -> ()
               | Categorical
               | Ordered ->
-                  let used = distinctLevels spec.Channel tokens
+                  let keys = levelKeys spec.Channel tokens
+                  let used = keys |> List.distinct |> List.length
 
                   if used > spec.Capacity then
                       let finding =
@@ -143,7 +171,7 @@ module Legibility =
                                     spec.Channel
                                     used
                                     spec.Capacity
-                            Units = allUnits }
+                            Units = excessUnits spec.Capacity keys }
 
                       yield (channelOrder spec.Channel, -1), finding ]
 
