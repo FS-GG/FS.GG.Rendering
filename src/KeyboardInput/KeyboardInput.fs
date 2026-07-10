@@ -479,3 +479,16 @@ module ViewerKeyboard =
 
         let baseKey, mods = parseModifiers event.RawKey
         normalize baseKey, isDown, mods
+
+    // Issue 333 (epic 330): the R3 "wire the keymap into live dispatch" seam. A `Keymap` is pure data
+    // (issue 331) and `Keymap.resolve` maps a `KeyId` to a `CommandId` (issue 332); this composes the
+    // ViewerKey->KeyId bridge (`toKeyId`) with that resolve and a product `mapCommand` into the host
+    // `MapKey : ViewerKey -> bool -> 'msg option` seam. Set a host's `MapKey` to this and editing the
+    // keymap re-routes a key with no code change. Only key-DOWN resolves a command (matching the reducer's
+    // `CommandResolved`-on-`KeyDown`); key-up and unbound/unmapped keys yield `None`.
+    let mapKeyOfKeymap (keymap: Keymap) (mapCommand: CommandId -> 'msg option) : ViewerKey -> bool -> 'msg option =
+        fun key isDown ->
+            if isDown then
+                Keymap.resolve keymap (toKeyId key) |> Option.bind mapCommand
+            else
+                None

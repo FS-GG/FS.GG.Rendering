@@ -1506,6 +1506,24 @@ controls:
     supportStatus: supported
     owner: controls
   # END GENERATED: typed-catalog/upload
+  # BEGIN GENERATED: typed-catalog/key-rebind
+  - id: key-rebind
+    displayName: Key Rebind
+    category: input
+    module: KeyRebind
+    typedModule: KeyRebind
+    purpose: Config screen listing rebindable commands, their key bindings, and keymap conflicts.
+    requiredAttributes: []
+    commonAttributes: [enabled, visible, width, height, padding, style, theme, accessibility]
+    events: [onRebind]
+    visualStates: [normal, disabled, hover, pressed, focused, selected, validation, loading]
+    accessibility: { role: List, nameSource: text/value/accessibility attribute, stateMetadata: [enabled, visible, selected, validation, loading], focusBehavior: catalog focus order, keyboardOperation: Tab navigation and Enter/Space activation where interactive, contrastEvidence: readiness/layout-rendering.md }
+    examples: [samples/ControlsGallery/Program.fs]
+    tests: [tests/Controls.Tests/CatalogTests.fs, tests/Controls.Tests/SemanticTests.fs, tests/Controls.Tests/InteractionTests.fs, tests/Controls.Tests/AccessibilityTests.fs, tests/Controls.Tests/RenderingTests.fs]
+    evidence: [specs/010-skia-controls-library/readiness/control-catalog.md, specs/010-skia-controls-library/readiness/layout-rendering.md]
+    supportStatus: supported
+    owner: controls
+  # END GENERATED: typed-catalog/key-rebind
   # Feature 133 (D2C.1): net-new generic chart controls (Charts2). Hand-maintained.
   # BEGIN GENERATED: typed-catalog/area-chart
   - id: area-chart

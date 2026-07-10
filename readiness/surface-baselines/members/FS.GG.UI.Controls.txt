@@ -599,6 +599,10 @@ FS.GG.UI.Controls.Interactive2+Collapse.onChange<msg>(FSharpFunc<System.String, 
 FS.GG.UI.Controls.Interactive2+Rate.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
 FS.GG.UI.Controls.Interactive2+Rate.onChange<msg>(FSharpFunc<System.String, msg>) : Attr<msg>
 FS.GG.UI.Controls.Interactive2+Rate.value<msg>(System.Double) : Attr<msg>
+FS.GG.UI.Controls.KeyRebind.commands<msg>(Microsoft.FSharp.Collections.FSharpList<System.Tuple<System.String, System.String>>) : Attr<msg>
+FS.GG.UI.Controls.KeyRebind.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.KeyRebind.ofKeymap<msg>(FS.GG.UI.KeyboardInput.Keymap, FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.KeyRebind.onRebind<msg>(FSharpFunc<System.String, msg>) : Attr<msg>
 FS.GG.UI.Controls.KeyRouting+Tags.Activate : System.Int32
 FS.GG.UI.Controls.KeyRouting+Tags.Fallthrough : System.Int32
 FS.GG.UI.Controls.KeyRouting+Tags.Navigate : System.Int32

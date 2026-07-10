@@ -199,3 +199,14 @@ module ViewerKeyboard =
     /// `normalizeEvent` (byte-identical routing); a chord recovers every held modifier — zero silent
     /// loss (SC-009). Pure, total; never throws.
     val normalizeEventWithModifiers: event: ViewerKeyEvent -> ViewerKey * bool * KeyModifiers
+
+    /// Issue 333 (epic 330): back a host `MapKey` seam with a `Keymap` so a **data** change re-routes a
+    /// key with no code change. Given a `keymap` and a `mapCommand` that turns a resolved `CommandId`
+    /// into the product's `'msg`, returns a `MapKey : ViewerKey -> bool -> 'msg option`: on key-down it
+    /// resolves the key's `KeyId` (`toKeyId`) through the keymap (`Keymap.resolve`) and maps the command
+    /// to a message; key-up and unbound/unmapped keys yield `None`. This is the framework seam the epic's
+    /// R3 ("wire the keymap into live dispatch") installs: set a host's `MapKey` to this and the keymap —
+    /// pure data — drives the last (key) tier of the routing order (authored bindings -> focus -> chord ->
+    /// key). Pure, total; never throws.
+    val mapKeyOfKeymap:
+        keymap: Keymap -> mapCommand: (CommandId -> 'msg option) -> (ViewerKey -> bool -> 'msg option)

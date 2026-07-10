@@ -57,7 +57,10 @@ module internal ContentRender =
         | "combo-box"
         | "tree-view"
         | "menu"
-        | "context-menu" ->
+        | "context-menu"
+        // Issue 335 (epic 330): the key-rebind config screen lists its command->key rows (and conflict
+        // rows) through the same vertical items-row painter as menus/lists.
+        | "key-rebind" ->
             rowsGeom theme box (stringListOf "items" control) (stringListOf "selectedKeys" control |> Set.ofList)
         // Feature 175 (issue #175). Two things used to go wrong here.
         //
