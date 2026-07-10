@@ -128,7 +128,7 @@ let adapterProgram =
     ControlsElmish.program AppRoot.Model.init AppRoot.Model.update controlsExampleView AppRoot.Model.subscriptions
 
 // The default scaffold `view` rasterizes the REAL example control tree through the
-// production tree-render path (`Control.renderTree`) at the output extent, so the
+// framework tree-render path (`Control.renderTree`) at the output extent, so the
 // unmodified generated app shows actual styled controls — form, rich text, chart, graph,
 // and DataGrid — laid out by the framework, not hand-drawn placeholder geometry (FR-003).
 let contentArea: FS.GG.UI.Scene.Size = { Width = 640; Height = 480 }

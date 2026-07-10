@@ -6,7 +6,7 @@ open System.Text.RegularExpressions
 
 // Feature 043 (FR-013): generated projects run the EvidenceGraph / EvidenceAudit gates
 // IN-PROCESS through the published FS.GG.UI.Build engine. No Python or shell audit scripts
-// are copied into or executed by generated products; the only retained external process is
+// are copied into or executed by a generated scaffold; the only retained external process is
 // `dotnet test`.
 //
 // Feature 064 (FR-004 / research R1): there is NO versioned engine reference directive here.

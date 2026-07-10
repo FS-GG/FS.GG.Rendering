@@ -117,7 +117,7 @@ Exact owner phrases for scans: framework runtime; generated template workflow; d
 
 ## Compact Consumer API Map
 
-Generated products expose a compact consumer API map before app-specific code:
+A generated scaffold exposes a compact consumer API map before app-specific code:
 keyboard input uses `FS.GG.UI.KeyboardInput.ViewerKey` cases `ArrowLeft`,
 `ArrowRight`, `ArrowUp`, `ArrowDown`, `Enter`, `Space`, `Escape`, `Backspace`,
 `Letter`, `Digit`, `Function`, and `Unknown`, with
@@ -239,7 +239,7 @@ Keep the `readiness/logs/product-viewer.log` path with the review notes so
 stdout, stderr, and startup facts remain available.
 
 Users migrating from the legacy Charts package should replace chart, graph, and
-DataGrid authoring with Controls declarations. Generated products do not
+DataGrid authoring with Controls declarations. A generated scaffold does not
 include a compatibility shim.
 
 ## Archive And API Reference Guidance

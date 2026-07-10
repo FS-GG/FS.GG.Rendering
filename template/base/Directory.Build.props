@@ -12,7 +12,7 @@
   </PropertyGroup>
 
   <!-- 231 (ADR-0014): the ONE standalone-lane skill-root materialize step. Present only when the
-       spec-kit lifecycle emitted the vendored script (sdd/none products never run it — the
+       spec-kit lifecycle emitted the vendored script (an sdd/none lifecycle never runs it — the
        orchestrator owns mirroring there). Fans .agents/skills/** into .claude/ + .codex/ as
        byte-identical copies and verifies against .agents/skills/skill-manifest.json (advisory in
        the product; release/composition gates rerun the script with the enforce flag). Incremental via the
