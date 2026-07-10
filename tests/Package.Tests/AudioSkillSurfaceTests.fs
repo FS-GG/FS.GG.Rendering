@@ -87,17 +87,13 @@ let audioSkillSurfaceTests =
               Expect.isEmpty unresolved $"every cited Audio.<member> resolves in {citedSurfaceRelative} or {citedHostSurfaceRelative}"
           }
 
-          // Issue #245 — the runtime-playback claim is only honest while the surface backing it ships.
-          test "the host-side playback surface the skill's runtime claim depends on is bundled" {
-              Expect.isTrue (File.Exists audioHostFsiPath) $"bundled surface missing: {citedHostSurfaceRelative}"
-
+          // Issue #245 — the runtime-playback claim is only honest while the member backing it ships and
+          // the skill points a reader at it. That the Audio.Host mirror EXISTS, sits in the right
+          // namespace, and records its provenance is `ApiSurfaceMirrorTests` (M-REF / M-NS / M-PROV,
+          // issue #247); this asserts only what the skill's claim adds on top.
+          test "the skill's runtime-playback claim points at a surface that declares Audio.play" {
               let hostFsi = File.ReadAllText audioHostFsiPath
               Expect.isTrue (declaresMember hostFsi "play") "the bundled Host surface declares Audio.play"
-
-              Expect.equal
-                  (declaredNamespace hostFsi)
-                  (Some "FS.GG.Audio.Host")
-                  "the bundled host surface declares namespace FS.GG.Audio.Host"
 
               let body = File.ReadAllText skillBodyPath
               Expect.stringContains body citedHostSurfaceRelative "SKILL.md cites the bundled host surface path"
