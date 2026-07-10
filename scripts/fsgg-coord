@@ -2345,6 +2345,23 @@ reap_cmd() {
 #
 # Items with no declared `Paths:` are NOT scheduled and are reported — an undeclared touch-set is
 # unschedulable by construction, and silently dropping it would look like "there is no work".
+#
+# Unlike `widen` and `overlap --active`, `batch` is legitimately MULTI-REPO: with no `--repo` it
+# schedules across the whole board, so its reservation set mixes touch-sets from different repos. But
+# `Paths:` tokens are repo-relative — `scripts/foo` in one repo and `scripts/foo` in another name two
+# different files in two different worktrees — and `conflicts_between` cannot see a repo, so comparing
+# them bare invents a phantom collision and under-schedules a candidate that nothing is actually
+# holding (#312). #353 fixed the single-item comparers by SCOPING their input to one repo; `batch`
+# cannot do that (spanning repos is the point), so instead it TAGS every reserved token with its
+# owning repo (`owner/repo<TAB>token`) and projects out just the same-repo tokens before each
+# comparison — honouring `conflicts_between`'s same-repo contract without collapsing the batch to one
+# repo. `tag_repo` tags a token list; `reserved_in` reads one repo's tokens back out.
+tag_repo() {  # $1=token list (newline-separated)  $2=owner/repo -> `owner/repo<TAB>token` lines
+  printf '%s\n' "$1" | awk -v r="$2" 'NF { print r "\t" $0 }'
+}
+reserved_in() {  # $1=repo-tagged lines  $2=owner/repo -> the bare tokens reserved in THAT repo
+  printf '%s\n' "$1" | awk -F'\t' -v r="$2" 'NF >= 2 && $1 == r { print $2 }'
+}
 batch_cmd() {
   local repo="" want=0 json="" include_backlog=""
   while [ $# -gt 0 ]; do
@@ -2372,7 +2389,9 @@ batch_cmd() {
   # Touch-sets already spoken for by in-flight work. `active_claims` finds a claim by its MARKER, so
   # this reserves the touch-sets of items the board has lost track of (a failed `Status` flip, or an
   # item never added to the board) — which the column-seeded version silently left free to schedule.
-  local active_paths; active_paths="$(jq -r '.[].paths[]?' <<<"$active")"
+  # Each token carries its owning repo (`owner/repo<TAB>token`); every comparison below projects out
+  # just the candidate's own repo first, because a cross-repo token names a different file (#312).
+  local active_paths; active_paths="$(jq -r '.[] | .repo as $r | .paths[]? | "\($r)\t\(.)"' <<<"$active")"
 
   # A held item whose touch-set is unmatchable RESERVES NOTHING: every candidate would clear it, and
   # `batch` would hand a second worker the very files it is holding. We cannot see that item's real
@@ -2382,7 +2401,7 @@ batch_cmd() {
   active_bad="$(claims_with_unmatchable_paths "$active")"
   [ -z "$active_bad" ] || die "batch: in-flight claim(s) declare unmatchable touch-set token(s) and therefore reserve nothing: $active_bad — refusing to schedule against an unknown touch-set. Fix with: fsgg-coord widen <issue> --paths '<paths>'"
 
-  local -a chosen_ids=() chosen_paths=()
+  local -a chosen_ids=() chosen_paths=() chosen_repos=()
   local n i=0 skipped=""
   n="$(jq 'length' <<<"$cands")"
   while [ "$i" -lt "$n" ]; do
@@ -2400,7 +2419,7 @@ batch_cmd() {
       # Same rule as the `active` pre-check, for a claim that never reached the board: an unmatchable
       # touch-set reserves nothing, so its holder's files are invisible to every later comparison.
       [ -z "$(invalid_paths "$p")" ] || die "batch: $id is claimed by worker $holder but declares unmatchable touch-set token(s): $(fmt_bad_paths "$(invalid_paths "$p")") — it reserves nothing, so refusing to schedule against an unknown touch-set. Fix with: fsgg-coord widen $id --paths '<paths>'"
-      active_paths="$active_paths${active_paths:+$'\n'}$p"
+      active_paths="$active_paths${active_paths:+$'\n'}$(tag_repo "$p" "$r")"
       skipped="$skipped  $id — already claimed by worker $holder"$'\n'; continue
     fi
     if [ -z "$p" ]; then
@@ -2411,19 +2430,21 @@ batch_cmd() {
     if [ -n "$(invalid_paths "$p")" ]; then
       skipped="$skipped  $id — unmatchable 'Paths:' token(s): $(fmt_bad_paths "$(invalid_paths "$p")") (cannot schedule)"$'\n'; continue
     fi
-    hits="$(conflicts_between "$p" "$active_paths")"
+    hits="$(conflicts_between "$p" "$(reserved_in "$active_paths" "$r")")"
     if [ -n "$hits" ]; then
       skipped="$skipped  $id — overlaps in-flight work: $(printf '%s' "$hits" | head -1)"$'\n'; continue
     fi
     clash=""
     for ((j = 0; j < ${#chosen_paths[@]}; j++)); do
+      # Two chosen items in different repos share no file (different worktrees) — never compare them.
+      [ "${chosen_repos[j]}" = "$r" ] || continue
       hits="$(conflicts_between "$p" "${chosen_paths[j]}")"
       [ -n "$hits" ] && { clash="${chosen_ids[j]} ($(printf '%s' "$hits" | head -1))"; break; }
     done
     if [ -n "$clash" ]; then
       skipped="$skipped  $id — overlaps batch member $clash"$'\n'; continue
     fi
-    chosen_ids+=("$id"); chosen_paths+=("$p")
+    chosen_ids+=("$id"); chosen_paths+=("$p"); chosen_repos+=("$r")
     [ "$want" -gt 0 ] && [ "${#chosen_ids[@]}" -ge "$want" ] && break
   done
 
