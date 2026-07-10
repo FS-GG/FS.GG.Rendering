@@ -183,6 +183,11 @@ module Viewer =
 module GeneratedAppHost =
     /// Public contract function exposed by this FS.GG.UI package.
     val dispatchKey: host: GeneratedAppHost<'model,'msg> -> raw: ViewerKeyEvent -> model: 'model -> 'model * ViewerEffect list
+    /// Issue #245 — every sound request in an effect batch, flattened in dispatch order; non-audio
+    /// effects are dropped. This is exactly what `runAppWithAudio` feeds its sink, exposed as a pure
+    /// function so a product can assert what a frame requested without opening a window or a device:
+    /// `dispatchKey host raw model |> snd |> audioRequests |> Audio.interpret` yields `AudioEvidence`.
+    val audioRequests: effects: ViewerEffect list -> AudioEffect list
     /// Public contract function exposed by this FS.GG.UI package.
     val smoke: host: GeneratedAppHost<'model,'msg> -> request: ViewerRunRequest -> Result<ViewerRunEvidence, ViewerRunFailure>
 

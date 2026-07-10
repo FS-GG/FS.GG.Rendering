@@ -2855,6 +2855,12 @@ module GeneratedAppHost =
         | Some msg -> host.Update msg model
         | None -> model, [ DispatchInput(key, isDown) ]
 
+    let audioRequests (effects: ViewerEffect list) : AudioEffect list =
+        effects
+        |> List.collect (function
+            | PlayAudio batch -> batch
+            | _ -> [])
+
     let smoke (host: GeneratedAppHost<'model, 'msg>) (request: ViewerRunRequest) =
         let model, _ = host.Init()
         let scene = host.View model
