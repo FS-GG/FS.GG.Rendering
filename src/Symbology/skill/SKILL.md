@@ -47,6 +47,7 @@ with zero drift on the existing `Scene` / `SkiaViewer` / `Controls` / `Canvas` b
 | **Size** -> magnitude | `R` | symbol radius | ~4 ordered | high |
 | **Silhouette** + sigil -> class + identity | `Klass`, `Sigil` | `Path.create` + centre mark | ~6 + many | med |
 | **Rotation** -> heading | `Heading` | point transform | continuous | med |
+| **Barrel** -> secondary heading | `SecondaryHeading` | centre-out line + tip mark | continuous | med |
 | Stroke **width** -> threat | `Threat` | `Paint.stroke` width | ~4 ordered | med |
 | Interior **gradient** -> charge | `Charge` | `Shader.RadialGradient` | ~4 ordered | med |
 | Belly **arc** -> health | `Health` | `Scene.arc` + green->red lerp | continuous | low |
@@ -55,6 +56,25 @@ with zero drift on the existing `Scene` / `SkiaViewer` / `Controls` / `Canvas` b
 | Corner **mount** -> shield | `Shield` | small mark | ~3 per slot | inspection |
 
 A zero/empty-area `Token` (`R <= 0`) renders a visible **placeholder**, never a blank or a crash.
+
+## Two rotations (opt-in second heading)
+
+`Heading` is where the unit **faces**. `SecondaryHeading : float option` is where it **points**, when
+that is a different thing — a turret on a hull, a weapon arc, a sensor or gaze direction. It is `None`
+by default, and a `None` token renders byte-identically to one with no such channel at all.
+
+```fsharp
+{ Symbology.defaultToken with Heading = hull.Facing; SecondaryHeading = Some turret.Facing }
+```
+
+Both are absolute angles, `0.0` = north; they wrap, so any finite value is in-domain. Each grammar
+draws the second one as a **barrel with a tip mark**, starting clear of the centre sigil and sited so it
+cannot be misread as the primary indicator: it overshoots the hull in `Token`, stops inside the rim pip
+in `Badge`, and pushes its tip outside the ring in `Ring`. Leave it `None` unless the two angles
+genuinely differ — a barrel that always agrees with the nose spends a channel to say nothing.
+
+A barrel is the widest thing a symbol draws, so `filmstrip` widens its cells when any token sets the
+channel (and keeps the historic spacing exactly when none does).
 
 ## Identity label (opt-in inspection-detail channel)
 

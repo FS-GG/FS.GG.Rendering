@@ -132,7 +132,17 @@ type Token =
     { Cx: float
       Cy: float
       R: float
+      /// The body orientation: where the unit faces / drives. Whole-body rotation in `Grammar.Token`,
+      /// a discrete indicator in `Badge`/`Ring`.
       Heading: float
+      /// Feature 254 (FR-001) — an opt-in SECOND rotation channel, independent of `Heading`: where a
+      /// unit *points* when that differs from where it faces (a turret on a hull, a weapon arc, a sensor
+      /// or gaze direction). `None` = off (default), and a no-`SecondaryHeading` token renders
+      /// BYTE-IDENTICALLY to the pre-feature symbol in every grammar (FR-002) — it contributes no node
+      /// at all, rather than an empty one. When `Some angle` it is drawn as a centre-out barrel with a
+      /// tip mark, deliberately shaped so it never reads as the primary nose / edge pip / needle
+      /// (FR-003). Angles wrap, so any finite value is in-domain; non-finite is a `Legibility` error.
+      SecondaryHeading: float option
       Faction: Faction
       Klass: Klass
       Sigil: Sigil

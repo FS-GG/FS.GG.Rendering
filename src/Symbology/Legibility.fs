@@ -18,6 +18,11 @@ module Legibility =
         | State
         | Shield
         | Motion
+        // Declared LAST on purpose. A DU case's compiler-generated tag is its declaration index, so
+        // inserting next to `Heading` would renumber `Threat`..`Motion` and silently invalidate any
+        // persisted tag. Declaration order carries no meaning here anyway — `table` and `channelOrder`
+        // already order the channels, and neither follows this DU.
+        | SecondaryHeading
 
     type ChannelKind =
         | Categorical
@@ -54,7 +59,7 @@ module Legibility =
           Usage: ChannelUsage list
           Verdict: Verdict }
 
-    /// The fixed capacity table (research D2), §4 grammar order. One row per per-unit channel (11);
+    /// The fixed capacity table (research D2), §4 grammar order. One row per per-unit channel (12);
     /// `Motion` is whole-board and has no `ChannelKind`, so it is NOT a row here (Capacity is unused
     /// for the Continuous rows — they are overload-exempt, FR-009).
     let table: ChannelSpec list =
@@ -68,7 +73,8 @@ module Legibility =
           { Channel = Threat; Kind = Continuous; Capacity = 0 }
           { Channel = Charge; Kind = Continuous; Capacity = 0 }
           { Channel = Health; Kind = Continuous; Capacity = 0 }
-          { Channel = Heading; Kind = Continuous; Capacity = 0 } ]
+          { Channel = Heading; Kind = Continuous; Capacity = 0 }
+          { Channel = SecondaryHeading; Kind = Continuous; Capacity = 0 } ]
 
     /// Deterministic channel order: the §4 table order, with whole-board `Motion` sorting last.
     /// Drives the stable finding/usage ordering the determinism contract relies on (FR-001/SC-001).
@@ -85,7 +91,8 @@ module Legibility =
         | Charge -> 8
         | Health -> 9
         | Heading -> 10
-        | Motion -> 11
+        | SecondaryHeading -> 11
+        | Motion -> 12
 
     let private isFiniteF (v: float) = not (Double.IsNaN v || Double.IsInfinity v)
 
@@ -108,6 +115,9 @@ module Legibility =
         | Charge -> count (fun t -> box t.Charge)
         | Health -> count (fun t -> box t.Health)
         | Heading -> count (fun t -> box t.Heading)
+        // `None` is itself a level: a board that leaves the channel unset reports one distinct level,
+        // exactly as an all-identical `Heading` board does. Informational only (Continuous ⇒ exempt).
+        | SecondaryHeading -> count (fun t -> box t.SecondaryHeading)
         | Motion -> 0
 
     /// Level-overload check (FR-003): one `Warning` per Categorical/Ordered channel whose distinct
@@ -195,9 +205,21 @@ module Legibility =
                   { Channel = Heading
                     Severity = Error
                     Message = sprintf "Heading non-finite: %g" t.Heading
-                    Units = [ i ] } ]
+                    Units = [ i ] }
 
-    /// One `ChannelUsage` per per-unit channel (11), in table order (FR-007). Motion excluded.
+          // SecondaryHeading: an unset channel is legal (the grammar simply omits the indicator).
+          // When set it is scored exactly like Heading — angles wrap, so only non-finite is an error.
+          match t.SecondaryHeading with
+          | Some a when not (isFiniteF a) ->
+              yield
+                  (channelOrder SecondaryHeading, i),
+                  { Channel = SecondaryHeading
+                    Severity = Error
+                    Message = sprintf "SecondaryHeading non-finite: %g" a
+                    Units = [ i ] }
+          | _ -> () ]
+
+    /// One `ChannelUsage` per per-unit channel (12), in table order (FR-007). Motion excluded.
     let private usageOf (tokens: Token list) =
         table
         |> List.map (fun spec ->

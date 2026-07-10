@@ -47,6 +47,7 @@ FS.GG.UI.Symbology.Legibility+Channel+Tags.Heading : System.Int32
 FS.GG.UI.Symbology.Legibility+Channel+Tags.Health : System.Int32
 FS.GG.UI.Symbology.Legibility+Channel+Tags.Klass : System.Int32
 FS.GG.UI.Symbology.Legibility+Channel+Tags.Motion : System.Int32
+FS.GG.UI.Symbology.Legibility+Channel+Tags.SecondaryHeading : System.Int32
 FS.GG.UI.Symbology.Legibility+Channel+Tags.Shield : System.Int32
 FS.GG.UI.Symbology.Legibility+Channel+Tags.Sigil : System.Int32
 FS.GG.UI.Symbology.Legibility+Channel+Tags.Size : System.Int32
@@ -122,11 +123,12 @@ FS.GG.UI.Symbology.Token.Klass : FS.GG.UI.Symbology.Klass [get]
 FS.GG.UI.Symbology.Token.Label : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Symbology.LabelText> [get]
 FS.GG.UI.Symbology.Token.LabelMotion : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Symbology.LabelMotion> [get]
 FS.GG.UI.Symbology.Token.R : System.Double [get]
+FS.GG.UI.Symbology.Token.SecondaryHeading : Microsoft.FSharp.Core.FSharpOption<System.Double> [get]
 FS.GG.UI.Symbology.Token.Shield : System.Boolean [get]
 FS.GG.UI.Symbology.Token.Sigil : FS.GG.UI.Symbology.Sigil [get]
 FS.GG.UI.Symbology.Token.Speed : System.Int32 [get]
 FS.GG.UI.Symbology.Token.State : FS.GG.UI.Symbology.TokenState [get]
 FS.GG.UI.Symbology.Token.Threat : System.Double [get]
-FS.GG.UI.Symbology.Token.new(System.Double, System.Double, System.Double, System.Double, FS.GG.UI.Symbology.Faction, FS.GG.UI.Symbology.Klass, FS.GG.UI.Symbology.Sigil, FS.GG.UI.Symbology.TokenState, System.Double, System.Double, System.Int32, System.Double, System.Boolean, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Symbology.LabelText>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Symbology.AutoLabelSpec>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Symbology.LabelMotion>)
+FS.GG.UI.Symbology.Token.new(System.Double, System.Double, System.Double, System.Double, Microsoft.FSharp.Core.FSharpOption<System.Double>, FS.GG.UI.Symbology.Faction, FS.GG.UI.Symbology.Klass, FS.GG.UI.Symbology.Sigil, FS.GG.UI.Symbology.TokenState, System.Double, System.Double, System.Int32, System.Double, System.Boolean, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Symbology.LabelText>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Symbology.AutoLabelSpec>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Symbology.LabelMotion>)
 FS.GG.UI.Symbology.TokenState+Tags.Confirmed : System.Int32
 FS.GG.UI.Symbology.TokenState+Tags.Suspected : System.Int32

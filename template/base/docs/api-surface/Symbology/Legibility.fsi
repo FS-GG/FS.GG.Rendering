@@ -24,6 +24,11 @@ module Legibility =
         | State
         | Shield
         | Motion
+        /// Feature 254 — the opt-in second rotation channel. `Continuous`, so it is overload-exempt
+        /// like `Heading`: a token that leaves it `None` still contributes a distinct level, and only
+        /// a non-finite angle is an error. Declared LAST so that adding it does not renumber the
+        /// existing cases' tags; it still sorts next to `Heading` in `table` and `channelOrder`.
+        | SecondaryHeading
 
     /// How the eye reads a channel — selects which checks apply (FR-003/FR-009).
     type ChannelKind =
@@ -72,12 +77,12 @@ module Legibility =
     type Report =
         { /// deterministic order: table order, then unit index
           Findings: Finding list
-          /// one entry per per-unit channel (11; Motion excluded), table order
+          /// one entry per per-unit channel (12; Motion excluded), table order
           Usage: ChannelUsage list
           Verdict: Verdict }
 
     /// The fixed capacity table the linter scores against (FR-002) — exposed read-only.
-    /// One row per per-unit channel (11); `Motion` has no `ChannelKind` and is not a table row.
+    /// One row per per-unit channel (12); `Motion` has no `ChannelKind` and is not a table row.
     val table: ChannelSpec list
 
     /// Score a static produced symbol set (FR-001/FR-003/FR-004/FR-005/FR-007/FR-011).

@@ -55,7 +55,7 @@ let tests =
               let r = Legibility.score []
               Expect.equal r.Findings [] "empty board: no findings"
               Expect.equal r.Verdict Legibility.Clean "empty board: Clean"
-              Expect.equal r.Usage.Length 11 "usage has one entry per per-unit channel"
+              Expect.equal r.Usage.Length 12 "usage has one entry per per-unit channel"
               Expect.isTrue (r.Usage |> List.forall (fun u -> u.DistinctLevels = 0)) "all usage at 0 distinct levels"
 
               let ra = Legibility.scoreAnimated []
@@ -226,6 +226,67 @@ let tests =
               let report = Legibility.score board // must not raise
               Expect.equal report.Verdict Legibility.HasWarnings "an overloaded set scores HasWarnings, not an exception"
               Expect.isNonEmpty report.Findings "the overload is reported as data"
+          } ]
+
+// ---- Feature 254 — the SecondaryHeading channel ------------------------------------------------------
+// The second rotation channel is scored exactly like `Heading`: `Continuous`, so overload-exempt, and
+// only a non-finite angle is an Error. An UNSET channel is legal and never yields a finding.
+[<Tests>]
+let secondaryHeadingLinter =
+    testList
+        "Feature254 SecondaryHeading linter"
+        [ test "SecondaryHeading is a Continuous table row, capacity-exempt" {
+              let spec = Legibility.table |> List.find (fun s -> s.Channel = Legibility.SecondaryHeading)
+              Expect.equal spec.Kind Legibility.Continuous "a rotation channel is read as a magnitude, like Heading"
+          }
+
+          test "an all-None roster is Clean and reports one distinct level" {
+              let report = Legibility.score (List.replicate 5 baseUnit)
+              Expect.equal report.Verdict Legibility.Clean "leaving the channel unset is not a finding"
+              Expect.equal (usageOf report Legibility.SecondaryHeading).DistinctLevels 1 "None is itself one level"
+          }
+
+          test "many distinct secondary angles emit no overload (Continuous ⇒ exempt)" {
+              let board = [ for i in 0..19 -> { baseUnit with SecondaryHeading = Some(float i * 13.0) } ]
+              let report = Legibility.score board
+              Expect.equal report.Findings [] "20 distinct angles is not an overload"
+              Expect.equal (usageOf report Legibility.SecondaryHeading).DistinctLevels 20 "each angle is a distinct level"
+          }
+
+          test "a non-finite secondary angle → one Error on SecondaryHeading, naming the unit" {
+              let report =
+                  Legibility.score [ baseUnit; { baseUnit with SecondaryHeading = Some nan }; { baseUnit with SecondaryHeading = Some infinity } ]
+
+              let found = report.Findings |> List.filter (fun f -> f.Channel = Legibility.SecondaryHeading)
+              Expect.equal found.Length 2 "one Error per non-finite unit"
+              Expect.isTrue (found |> List.forall (fun f -> f.Severity = Legibility.Error)) "non-finite is an Error"
+              Expect.equal (found |> List.collect (fun f -> f.Units)) [ 1; 2 ] "the offending units are named, in ascending order"
+          }
+
+          test "a finite secondary angle outside 0..2π is in-domain (angles wrap, as Heading does)" {
+              let report = Legibility.score [ { baseUnit with SecondaryHeading = Some -97.0 } ]
+              Expect.equal report.Verdict Legibility.Clean "any finite angle is legal"
+          }
+
+          test "SecondaryHeading findings sort after Heading and before Motion (deterministic order)" {
+              // Two DISTINCT non-Idle rhythms, so a whole-board Motion warning is actually emitted —
+              // otherwise the `before Motion` half of this claim would go unexercised.
+              let bad = { baseUnit with Heading = nan; SecondaryHeading = Some nan }
+              let report = Legibility.scoreAnimated [ (Pulse, bad); (Spin, bad) ]
+
+              Expect.equal
+                  (report.Findings |> List.map (fun f -> f.Channel))
+                  [ Legibility.Heading
+                    Legibility.Heading
+                    Legibility.SecondaryHeading
+                    Legibility.SecondaryHeading
+                    Legibility.Motion ]
+                  "table order: both Heading errors, then both SecondaryHeading errors, then whole-board Motion"
+
+              Expect.equal
+                  (report.Findings |> List.filter (fun f -> f.Channel = Legibility.SecondaryHeading) |> List.collect (fun f -> f.Units))
+                  [ 0; 1 ]
+                  "and within a channel, ascending unit index"
           } ]
 
 // T024 [US3] Label is inspection-detail, NOT a pre-attentive channel (FR-011/SC-006). Adding labels to a

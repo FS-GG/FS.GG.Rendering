@@ -51,7 +51,8 @@ let tests =
           channelChanges "speed-tail-beads" { baseT with Speed = 0 } { baseT with Speed = 4 }
           channelChanges "health-belly-arc" { baseT with Health = 0.2 } { baseT with Health = 0.95 }
           channelChanges "heading-rotation" { baseT with Heading = 0.0 } { baseT with Heading = 1.2 }
-          channelChanges "shield-mount" baseT { baseT with Shield = true } ]
+          channelChanges "shield-mount" baseT { baseT with Shield = true }
+          channelChanges "secondary-heading" baseT { baseT with SecondaryHeading = Some 1.2 } ]
 
 // Grammar-parameterized channel-presence battery (SC-002/FR-003). For each grammar, varying ONE channel
 // at a time (incl. a distinct `Custom` faction) must change the canonical bytes. Asserts every channel is
@@ -75,7 +76,10 @@ let private grammarChannelChanges (gname: string) (render: Token -> Scene) =
       changes "speed-pips" { baseT with Speed = 0 } { baseT with Speed = 4 }
       changes "health" { baseT with Health = 0.2 } { baseT with Health = 0.95 }
       changes "heading-indicator" { baseT with Heading = 0.0 } { baseT with Heading = 1.2 }
-      changes "shield-mount" baseT { baseT with Shield = true } ]
+      changes "shield-mount" baseT { baseT with Shield = true }
+      // Presence only. That the two rotations are INDEPENDENT — that the body's angle does not move the
+      // barrel — needs the barrel's own nodes, and is asserted in `secondaryHeadingTests` below.
+      changes "secondary-heading" baseT { baseT with SecondaryHeading = Some 1.2 } ]
 
 // T007 [US1] Badge channel-presence battery.
 [<Tests>]
@@ -181,6 +185,122 @@ let richChannelTests =
                       let b = (SceneCodec.export (render { bigT with Label = Some(LabelText.Rich [ mk baseRun ]) })).CanonicalBytes
                       Expect.notEqual a b (sprintf "%s is a per-run channel (B6/SC-002)" attrName)
                   } ]
+
+// ---- Feature 254 — the SecondaryHeading channel is sited, independent, and absent-by-default ----------
+// The zero-drift guarantee (FR-002) is that an unset channel contributes NO scene node — not an empty
+// one. `DeterminismTests`' hardcoded pre-feature goldens pin the bytes; these tests pin the mechanism,
+// so a future refactor that starts emitting `Scene.empty` for `None` fails HERE with a clear reason
+// rather than as an opaque golden-hash mismatch.
+[<Tests>]
+let secondaryHeadingTests =
+    let elementCount (render: Token -> Scene) (t: Token) = render t |> Scene.describe |> List.length
+
+    // The barrel is appended LAST, as two bare sibling scenes, and `baseT` carries no label — so the
+    // final two children of the top-level group ARE the barrel. Isolating them is what lets us assert
+    // the barrel's own geometry rather than "some byte somewhere moved", which any implementation
+    // (including a body-relative one) would satisfy.
+    let barrelOf (render: Token -> Scene) (t: Token) =
+        match (render t).Nodes with
+        | [ Group children ] ->
+            let n = List.length children
+            children |> List.skip (n - 2)
+        | other -> failwithf "expected a single top-level group, got %A" other
+
+    testList
+        "Feature254 secondary-heading channel"
+        [ for gname, render in labelGrammars do
+              test (sprintf "[%s] an unset secondary heading adds no node; setting it adds exactly the barrel + tip" gname) {
+                  let bare = elementCount render { baseT with SecondaryHeading = None }
+                  let aimed = elementCount render { baseT with SecondaryHeading = Some 1.2 }
+                  Expect.equal aimed (bare + 2) "the indicator is one line plus one tip mark, and absence draws neither"
+              }
+
+              test (sprintf "[%s] the barrel's angle is absolute — turning the body does not move it" gname) {
+                  // The load-bearing claim of the whole feature: two INDEPENDENT rotations. If the
+                  // barrel were drawn at `angle + Heading` it would still change the scene bytes, so a
+                  // whole-scene comparison cannot see the bug. Compare the barrel nodes themselves.
+                  Expect.equal
+                      (barrelOf render { baseT with Heading = 0.0; SecondaryHeading = Some 1.0 })
+                      (barrelOf render { baseT with Heading = 2.5; SecondaryHeading = Some 1.0 })
+                      "the same secondary angle draws the same barrel whatever the body is doing"
+
+                  Expect.notEqual
+                      (barrelOf render { baseT with Heading = 2.5; SecondaryHeading = Some 1.0 })
+                      (barrelOf render { baseT with Heading = 2.5; SecondaryHeading = Some 2.0 })
+                      "and a different secondary angle draws a different barrel"
+              }
+
+              test (sprintf "[%s] a degenerate token still degrades to the placeholder, barrel or not" gname) {
+                  let degenerate = { baseT with R = 0.0; SecondaryHeading = Some 1.2 }
+                  Expect.equal
+                      (bytesOfG render degenerate)
+                      (bytesOfG render { degenerate with SecondaryHeading = None })
+                      "the placeholder rule wins over the secondary indicator, as it does over the label"
+              } ]
+
+// A filmstrip cell owns half the spacing. The barrel reaches 1.42R — further than the pre-feature
+// symbol ever did (the belly arc, at 1.18R) — and further than the 1.3R a cell owns at the historic
+// 2.6R spacing. So the cell must widen to hold it, and must NOT widen when no barrel is drawn, or
+// every existing filmstrip golden moves.
+[<Tests>]
+let secondaryHeadingFilmstripTests =
+    // Speed = 0 and Shield = false so the ONLY `Circle` this token draws is the barrel's tip mark:
+    // the tail beads and the shield mount are circles too. Sigil/body/health are paths, ellipses, arcs.
+    let bare = { baseT with R = 30.0; Speed = 0; Shield = false }
+
+    let rec circlesIn (scene: Scene) =
+        scene.Nodes
+        |> List.collect (function
+            | Circle(centre, radius, _) -> [ centre, radius ]
+            | Group children -> children |> List.collect circlesIn
+            | _ -> [])
+
+    testList
+        "Feature254 filmstrip cell sizing"
+        [ test "a barrel-free filmstrip keeps the historic 2.6R spacing (goldens do not move)" {
+              // The Token-grammar filmstrip golden is pinned in DeterminismTests; this states the
+              // invariant that guards it directly — no barrel anywhere ⇒ nothing about layout changes.
+              let noBarrel = Symbology.filmstrip 3 [ Idle, bare; Pulse, bare ]
+              let viaGrammar = Symbology.filmstripIn Grammar.Token 3 [ Idle, bare; Pulse, bare ]
+
+              Expect.equal
+                  ((SceneCodec.export noBarrel).CanonicalBytes)
+                  ((SceneCodec.export viaGrammar).CanonicalBytes)
+                  "filmstripIn Grammar.Token reproduces filmstrip byte-for-byte (FR-010)"
+          }
+
+          test "an east-pointing barrel stays inside its own filmstrip cell" {
+              // Angle π/2 = due east, the worst case for horizontal cell bleed.
+              let aimed = { bare with SecondaryHeading = Some(System.Math.PI / 2.0) }
+              let scene = Symbology.filmstrip 2 [ Idle, aimed ]
+
+              match circlesIn scene with
+              | [ (tip0, r0); (tip1, _) ] ->
+                  // Cells sit at spacing*(i+0.5), so their centres are `spacing` apart, and each tip is
+                  // a fixed offset east of its own cell centre.
+                  let spacing = tip1.X - tip0.X
+                  let cell0Centre = tip0.X - 1.32 * aimed.R // the barrel's outer radius
+                  let midline = cell0Centre + spacing / 2.0
+
+                  Expect.isLessThanOrEqual
+                      (tip0.X + r0)
+                      midline
+                      "the tip mark (and so the whole barrel) stays on its own side of the cell boundary"
+              | other -> failtestf "expected exactly one tip mark per sample, got %d circles" (List.length other)
+          }
+
+          test "the widened cell is only used when a barrel is present" {
+              let withBarrel = Symbology.filmstrip 2 [ Idle, { bare with SecondaryHeading = Some 0.0 } ]
+              let withoutBarrel = Symbology.filmstrip 2 [ Idle, bare ]
+
+              let spanOf scene =
+                  match circlesIn scene with
+                  | [] -> 0.0
+                  | cs -> (cs |> List.map (fun (c, _) -> c.X) |> List.max) - (cs |> List.map (fun (c, _) -> c.X) |> List.min)
+
+              Expect.isGreaterThan (spanOf withBarrel) 0.0 "the barrelled strip has tip marks to measure"
+              Expect.equal (spanOf withoutBarrel) 0.0 "the barrel-free strip draws no circles at all"
+          } ]
 
 // ---- Feature 200 (T014/US1) — auto-label channel observability ---------------------------------------
 // Two Tokens whose ONLY difference is a projected channel value yield differing canonical bytes via the
