@@ -39,6 +39,7 @@ type DiagnosticStage =
     | ScreenshotCapture
     | Shutdown
     | Input
+    | App
 
 type RenderDiagnostic =
     { Severity: DiagnosticSeverity
@@ -119,6 +120,13 @@ module Diagnostics =
     let frameRenderFailed detail =
         create DiagnosticSeverity.Error DiagnosticStage.FrameRender "OpenGL/Skia frame rendering failed. The viewer has no fallback renderer." (Some detail)
 
+    let productStepFailed (phase: string) detail =
+        create
+            DiagnosticSeverity.Error
+            DiagnosticStage.App
+            $"Product {phase} raised an exception. The frame was dropped and the persistent window kept alive."
+            (Some detail)
+
     let frameLoopAbandoned reason detail =
         create DiagnosticSeverity.Fatal DiagnosticStage.FrameRender reason detail
 
@@ -160,7 +168,9 @@ module Diagnostics =
         | DiagnosticStage.Framebuffer when diagnostic.Message.Contains("damage render decision", StringComparison.OrdinalIgnoreCase) ->
             FS.GG.UI.Diagnostics.DiagnosticCategory.BackendCost
         | DiagnosticStage.ScreenshotCapture
-        | DiagnosticStage.Shutdown -> FS.GG.UI.Diagnostics.DiagnosticCategory.DeveloperAction
+        | DiagnosticStage.Shutdown
+        // Issue #365: a product Update/View fault is the app author's to fix, not the environment's.
+        | DiagnosticStage.App -> FS.GG.UI.Diagnostics.DiagnosticCategory.DeveloperAction
         | DiagnosticStage.FrameRender ->
             match diagnostic.Severity with
             | DiagnosticSeverity.Warning -> FS.GG.UI.Diagnostics.DiagnosticCategory.RenderingLimitation

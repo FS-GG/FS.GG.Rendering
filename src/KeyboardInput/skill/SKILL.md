@@ -29,7 +29,7 @@ readiness package-surface reports. Stable public surface baselines live under
 
 ## Package Boundary
 
-Keyboard input may depend on Scene and YamlDotNet only. Keep viewer hosting, controls, charting, graphing, and layout concerns out of this package; use `fs-gg-ui-widgets` for widget authoring.
+Keyboard input may depend on Scene only. Keep viewer hosting, controls, charting, graphing, and layout concerns out of this package; use `fs-gg-ui-widgets` for widget authoring.
 
 ## Generated Product
 
@@ -66,4 +66,3 @@ rather than hard-failing the phase.
 ## Sources / links
 
 - F#/.NET docs: https://learn.microsoft.com/en-us/dotnet/fsharp/
-- YamlDotNet (the binding-config dependency): https://github.com/aaubry/YamlDotNet

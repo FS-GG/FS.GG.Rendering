@@ -20,7 +20,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Scene\Scene.fsproj" />
-    <PackageReference Include="YamlDotNet" />
   </ItemGroup>
 
 </Project>

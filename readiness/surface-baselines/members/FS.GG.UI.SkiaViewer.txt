@@ -192,6 +192,7 @@ FS.GG.UI.SkiaViewer.Host.DiagnosticSeverity+Tags.Error : System.Int32
 FS.GG.UI.SkiaViewer.Host.DiagnosticSeverity+Tags.Fatal : System.Int32
 FS.GG.UI.SkiaViewer.Host.DiagnosticSeverity+Tags.Info : System.Int32
 FS.GG.UI.SkiaViewer.Host.DiagnosticSeverity+Tags.Warning : System.Int32
+FS.GG.UI.SkiaViewer.Host.DiagnosticStage+Tags.App : System.Int32
 FS.GG.UI.SkiaViewer.Host.DiagnosticStage+Tags.FrameRender : System.Int32
 FS.GG.UI.SkiaViewer.Host.DiagnosticStage+Tags.Framebuffer : System.Int32
 FS.GG.UI.SkiaViewer.Host.DiagnosticStage+Tags.GlContext : System.Int32
@@ -210,6 +211,7 @@ FS.GG.UI.SkiaViewer.Host.Diagnostics.glUnavailable(System.String) : FS.GG.UI.Ski
 FS.GG.UI.SkiaViewer.Host.Diagnostics.invalidConfiguration(System.String) : FS.GG.UI.SkiaViewer.Host.RenderDiagnostic
 FS.GG.UI.SkiaViewer.Host.Diagnostics.invalidPath(System.String) : FS.GG.UI.SkiaViewer.Host.RenderDiagnostic
 FS.GG.UI.SkiaViewer.Host.Diagnostics.missingCapability(System.String, System.String) : FS.GG.UI.SkiaViewer.Host.RenderDiagnostic
+FS.GG.UI.SkiaViewer.Host.Diagnostics.productStepFailed(System.String, System.String) : FS.GG.UI.SkiaViewer.Host.RenderDiagnostic
 FS.GG.UI.SkiaViewer.Host.Diagnostics.screenshotFailed(System.String) : FS.GG.UI.SkiaViewer.Host.RenderDiagnostic
 FS.GG.UI.SkiaViewer.Host.Diagnostics.shutdownFailed(System.String) : FS.GG.UI.SkiaViewer.Host.RenderDiagnostic
 FS.GG.UI.SkiaViewer.Host.Diagnostics.startupFailed(FS.GG.UI.SkiaViewer.Host.DiagnosticStage, System.String) : FS.GG.UI.SkiaViewer.Host.RenderDiagnostic
@@ -345,6 +347,7 @@ FS.GG.UI.SkiaViewer.Host.GlHost.scissorArea(Microsoft.FSharp.Collections.FSharpL
 FS.GG.UI.SkiaViewer.Host.GlHost.shouldAdvanceFrame(System.Double, System.Double, System.Double) : System.Boolean
 FS.GG.UI.SkiaViewer.Host.GlHost.shouldPresent(Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Scene>, FS.GG.UI.Scene.Scene, System.Boolean) : System.Boolean
 FS.GG.UI.SkiaViewer.Host.GlHost.transientFrameRetryBudget : System.Int32 [get]
+FS.GG.UI.SkiaViewer.Host.GlHost.tryProductStep<a>(Microsoft.FSharp.Core.FSharpFunc<FS.GG.UI.SkiaViewer.Host.RenderDiagnostic, Microsoft.FSharp.Core.Unit>, System.String, FSharpFunc<Microsoft.FSharp.Core.Unit, a>) : FSharpOption<a>
 FS.GG.UI.SkiaViewer.Host.GlHost.validateDamage(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.Host.GlHost+ScissorRect>, System.Int32, System.Int32, FS.GG.UI.SkiaViewer.Host.GlHost+DamageValidationFlags) : FS.GG.UI.SkiaViewer.Host.GlHost+DamageValidationResult
 FS.GG.UI.SkiaViewer.Host.GlResources+OwnedResource.AcquireStage : System.String [get]
 FS.GG.UI.SkiaViewer.Host.GlResources+OwnedResource.Category : FS.GG.UI.SkiaViewer.Host.GlResources+ResourceCategory [get]
@@ -591,6 +594,7 @@ FS.GG.UI.SkiaViewer.Viewer.initRun(FS.GG.UI.SkiaViewer.ViewerRunRequest) : Syste
 FS.GG.UI.SkiaViewer.Viewer.initWithWindowBehavior(FS.GG.UI.SkiaViewer.ViewerOptions, FS.GG.UI.SkiaViewer.ViewerWindowBehaviorRequest) : System.Tuple<FS.GG.UI.SkiaViewer.ViewerModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerEffect>>
 FS.GG.UI.SkiaViewer.Viewer.inputQueueDepth(FS.GG.UI.SkiaViewer.ViewerInputQueue) : System.Int32
 FS.GG.UI.SkiaViewer.Viewer.latencyRecordToJsonLine(FS.GG.UI.SkiaViewer.ViewerLatencyRecord) : System.String
+FS.GG.UI.SkiaViewer.Viewer.productDefectDiagnostic(System.String, System.String) : FS.GG.UI.SkiaViewer.ViewerDiagnosticEvent
 FS.GG.UI.SkiaViewer.Viewer.responsivenessEnvironmentStatusToken(FS.GG.UI.SkiaViewer.ViewerResponsivenessEnvironmentStatus) : System.String
 FS.GG.UI.SkiaViewer.Viewer.responsivenessInputKindToken(FS.GG.UI.SkiaViewer.ViewerResponsivenessInputKind) : System.String
 FS.GG.UI.SkiaViewer.Viewer.responsivenessReadinessToken(FS.GG.UI.SkiaViewer.ViewerResponsivenessReadiness) : System.String
@@ -615,6 +619,7 @@ FS.GG.UI.SkiaViewer.Viewer.shouldCaptureDiagnostic(FS.GG.UI.SkiaViewer.ViewerDia
 FS.GG.UI.SkiaViewer.Viewer.summarizeResponsivenessRecords(System.String, System.String, System.String, System.DateTimeOffset, System.DateTimeOffset, FS.GG.UI.SkiaViewer.ViewerResponsivenessBudget, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerLatencyRecord>) : FS.GG.UI.SkiaViewer.ViewerResponsivenessSummary
 FS.GG.UI.SkiaViewer.Viewer.timingPathCanSupportClaim(FS.GG.UI.SkiaViewer.ViewerTimingPath, System.Boolean, System.Boolean) : System.Boolean
 FS.GG.UI.SkiaViewer.Viewer.timingPathToken(FS.GG.UI.SkiaViewer.ViewerTimingPath) : System.String
+FS.GG.UI.SkiaViewer.Viewer.tryProductStep<a>(Microsoft.FSharp.Core.FSharpFunc<FS.GG.UI.SkiaViewer.ViewerDiagnosticEvent, Microsoft.FSharp.Core.Unit>, System.String, FSharpFunc<Microsoft.FSharp.Core.Unit, a>) : FSharpOption<a>
 FS.GG.UI.SkiaViewer.Viewer.update(FS.GG.UI.SkiaViewer.ViewerMsg, FS.GG.UI.SkiaViewer.ViewerModel) : System.Tuple<FS.GG.UI.SkiaViewer.ViewerModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerEffect>>
 FS.GG.UI.SkiaViewer.Viewer.updateEvidenceWorkflow(FS.GG.UI.SkiaViewer.EvidenceWorkflowMsg, FS.GG.UI.SkiaViewer.EvidenceWorkflowModel) : System.Tuple<FS.GG.UI.SkiaViewer.EvidenceWorkflowModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.EvidenceWorkflowEffect>>
 FS.GG.UI.SkiaViewer.Viewer.updateRun(FS.GG.UI.SkiaViewer.ViewerRunMsg, FS.GG.UI.SkiaViewer.ViewerRunModel) : System.Tuple<FS.GG.UI.SkiaViewer.ViewerRunModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerRunEffect>>

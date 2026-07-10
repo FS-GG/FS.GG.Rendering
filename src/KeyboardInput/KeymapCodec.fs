@@ -13,8 +13,7 @@ type KeymapCodecError =
 
 /// JSON serialization/persistence for `Keymap`. See `KeymapCodec.fsi` for the contract. Built on
 /// `System.Text.Json` (shared framework — no package dependency), so the codec adds nothing to the
-/// package's dependency set. `KeyboardInput.fsproj` still lists YamlDotNet, but it stays unused for
-/// bindings: JSON is the single contract format here.
+/// package's dependency set: JSON is the single contract format here.
 module KeymapCodec =
 
     let formatId = "fsgg.keymap"
