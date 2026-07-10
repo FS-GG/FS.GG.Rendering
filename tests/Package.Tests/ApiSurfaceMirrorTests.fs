@@ -70,6 +70,17 @@ let private crossRepoMirrors =
           "Audio.Elmish", ("FS.GG.Audio", "FsGgAudioVersion")
           "Game.Core", ("FS.GG.Game", "FsGgGameVersion") ]
 
+/// A bundled directory is cross-repo exactly when this repo has no `src/<dir>` to have copied it from.
+/// Derived, not trusted: it lets the suite CHECK the table above is complete rather than take its word,
+/// so a newly-bundled cross-repo mirror cannot slip in unstamped the way Game.Core did (#259).
+let private bundledSurfaceDirectories () =
+    Directory.GetDirectories apiSurfaceRoot
+    |> Array.map (fun d -> DirectoryInfo(d).Name)
+    |> Array.toList
+
+let private hasInRepoSource (directory: string) =
+    Directory.Exists(repositoryPath $"src/{directory}")
+
 /// Mirrors copied verbatim from THIS repo's src/, so their freshness is checkable directly rather
 /// than by a stamp. `Scene/` is deliberately absent: it is a hand-MERGED surface (it inlines
 /// Types.fsi), not a file copy, so it has no single original to compare against.
@@ -138,6 +149,15 @@ let private pinnedVersion (property: string) =
     else
         failwithf "template/base/Directory.Packages.props pins no %s" property
 
+/// Each distinct version property resolved once, rather than re-reading the props file per .fsi.
+let private pinnedVersions () =
+    crossRepoMirrors
+    |> Map.toList
+    |> List.map (fun (_, (_, property)) -> property)
+    |> List.distinct
+    |> List.map (fun property -> property, pinnedVersion property)
+    |> Map.ofList
+
 [<Tests>]
 let apiSurfaceMirrorTests =
     testList
@@ -202,13 +222,15 @@ let apiSurfaceMirrorTests =
           // M-PROV — ADR-0024's objection, enforced. A cross-repo doc copy cannot outlive its package
           // without failing here.
           test "every cross-repo mirror records the source-repo version the template pins" {
+              let pins = pinnedVersions ()
+
               let offenders =
                   bundledFsiFiles ()
                   |> List.choose (fun file ->
                       crossRepoMirrors
                       |> Map.tryFind (owningPackageDirectory file)
                       |> Option.bind (fun (repo, property) ->
-                          let pinned = pinnedVersion property
+                          let pinned = pins.[property]
 
                           match provenanceVersion repo file with
                           | None -> Some(relativeToSurfaceRoot file, $"<no 'Mirrored from FS-GG/{repo}' line>")
@@ -233,24 +255,48 @@ let apiSurfaceMirrorTests =
                       $"declared cross-repo mirror {dir} bundles at least one .fsi to stamp")
           }
 
-          // #259 — the regression that started this: Game.Core is a cross-repo mirror, so it must be in
-          // the table above. Asserted by name because "we forgot to add it" is precisely the failure.
-          test "the Game.Core mirror is registered as cross-repo and bundles the 0.2.0 collision layer" {
-              Expect.isTrue (crossRepoMirrors.ContainsKey "Game.Core") "Game.Core is a cross-repo mirror and must be stamped"
+          // #259, generalized. The bug was not "Game.Core was missing from the table" but "the table was
+          // taken on trust". A bundled directory with no `src/` original can only have come from another
+          // repo, so membership is derivable — check it instead of asserting Game.Core by name, and the
+          // NEXT unstamped cross-repo mirror fails here on the day it is added.
+          test "every bundled mirror with no src/ original is registered as cross-repo" {
+              let unregistered =
+                  bundledSurfaceDirectories ()
+                  |> List.filter (fun dir -> not (hasInRepoSource dir) && not (crossRepoMirrors.ContainsKey dir))
 
-              let read name =
-                  File.ReadAllText(Path.Combine(apiSurfaceRoot, "Game.Core", name))
+              Expect.isEmpty
+                  unregistered
+                  "a bundled surface with no src/ original is a cross-repo copy and must be registered in crossRepoMirrors so M-PROV stamps it"
+          }
 
-              Expect.isTrue
-                  (File.Exists(Path.Combine(apiSurfaceRoot, "Game.Core", "Resolution.fsi")))
-                  "the bundled Game.Core surface ships Resolution.fsi"
+          test "no registered cross-repo mirror actually has a src/ original" {
+              // The converse. A mirror wrongly registered as cross-repo would be stamped by hand forever
+              // instead of getting the stronger `inRepoExactCopies` byte comparison.
+              let misregistered =
+                  crossRepoMirrors |> Map.toList |> List.map fst |> List.filter hasInRepoSource
 
-              [ "Resolution.fsi", [ "pushOut"; "slide"; "knockback" ]
-                "Primitives.fsi", [ "Contact"; "Circle"; "RayHit"; "ConvexPolygon" ]
-                "Geometry.fsi", [ "aabbContact"; "circleContact"; "segmentAabbHit"; "polygonContact" ] ]
-              |> List.iter (fun (file, members) ->
-                  let text = read file
-                  members |> List.iter (fun m -> Expect.stringContains text m $"bundled Game.Core/{file} declares {m}"))
+              Expect.isEmpty misregistered "each registered cross-repo mirror has no in-repo src/ original to compare against"
+          }
+
+          // The surface #259 was actually missing. Anchored on the DECLARATION, not a bare substring:
+          // `slide` occurs inside `collide`, `Contact` inside `aabbContact`, so a substring probe could
+          // stay green on a surface that had dropped the member.
+          test "the bundled Game.Core surface declares the 0.2.0 collision layer" {
+              let declares file (declaration: string) =
+                  let text = File.ReadAllText(Path.Combine(apiSurfaceRoot, "Game.Core", file))
+                  Expect.stringContains text declaration $"bundled Game.Core/{file} declares '{declaration}'"
+
+              [ "Resolution.fsi", [ "val pushOut:"; "val slide:"; "val knockback:" ]
+                "Primitives.fsi", [ "type Contact ="; "type Circle ="; "type RayHit ="; "type ConvexPolygon =" ]
+                "Geometry.fsi",
+                [ "val aabbContact:"
+                  "val circleContact:"
+                  "val circleAabbContact:"
+                  "val segmentAabbHit:"
+                  "val segmentCircleHit:"
+                  "val obbPolygon:"
+                  "val polygonContact:" ] ]
+              |> List.iter (fun (file, declarations) -> declarations |> List.iter (declares file))
           }
 
           // The in-repo half of the same staleness problem. A cross-repo copy gets a stamp because we
