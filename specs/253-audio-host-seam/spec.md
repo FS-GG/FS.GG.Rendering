@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-10
 
-**Status**: Implemented
+**Status**: Shipped
 
 **Input**: GitHub issue [FS.GG.Rendering#245](https://github.com/FS-GG/FS.GG.Rendering/issues/245) —
 "[cross-repo] ViewerEffect has no audio case — a game-family product can request audio but never play it",

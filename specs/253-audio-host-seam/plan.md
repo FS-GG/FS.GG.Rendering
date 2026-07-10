@@ -72,8 +72,17 @@ and never throws into game code, so the durable line is safe headless and in CI 
 FS.GG.Audio spec). An unresolved `SoundId` resolves to `None`, which the backend records as a no-op —
 a game with no assets yet still runs and still requests the right sounds.
 
-Wiring is gated to `profile == "game" || profile == "sample-pack"`, matching the existing gate on the
-four `FS.GG.Audio.*` package references (asserted by `AudioProfileWiringTests`, G-GATE).
+Wiring is gated to **`profile == "game"` only**, which is narrower than the `game || sample-pack` gate
+on the four `FS.GG.Audio.*` package references. The two profiles ship *different* starter `Msg` types
+— game is the Pong-style `Tick | MovePaddle | ViewerInput | NoOp`, sample-pack shares the app profile's
+`NameChanged | SaveRequested | Navigated | …` — and `AudioCues.forTransition` is written against the
+game's. sample-pack keeps referencing the audio packages exactly as it did before, so
+`AudioProfileWiringTests` (G-GATE, which checks the *package* gates) is unaffected.
+
+The starter cues are Pong's: a score, and a bounce (the ball reversing along either axis). Reversal is
+`before * after < 0.0`, not `sign before <> sign after` — `sign 0.0 = 0`, so the sign comparison calls a
+ball *starting* to move along an axis a bounce. Verified by driving the real `update` through 2000
+ticks and by table-testing the reflect / score / rest / non-Tick transitions.
 
 ## Blast radius outside the seam
 

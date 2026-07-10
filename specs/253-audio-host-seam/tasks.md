@@ -32,13 +32,20 @@ All tasks landed. Statuses are the record of what shipped, not a forecast.
 ## Phase 3 — the template (FR-002, US1)
 
 - [X] **T011** `template/base/src/Product/AudioCues.fs` — `forTransition` cue map + `resolver`.
-      Replaceable; documented as such in the file header.
-- [X] **T012** Register it in `Product.fsproj`, gated to `game || sample-pack`, compiled after
-      `Model.fs` (it names `Msg`) and before `EvidenceCommands.fs` (which consumes it).
-- [X] **T013** `EvidenceCommands.fs` lifts cues onto `PlayAudio`, profile-gated, skipping the effect
+      Replaceable; documented as such in the file header. Pong cues: score, and bounce-on-reversal.
+- [X] **T012** Register it in `Product.fsproj`, gated to **`game` only**, compiled after `Model.fs`
+      (it names `Msg` and reads `Model`) and before `EvidenceCommands.fs` (which consumes it).
+      Not `sample-pack`: that profile ships the app profile's `Msg`, which has none of these cases.
+- [X] **T013** `EvidenceCommands.fs` lifts cues onto `PlayAudio`, gated to `game`, skipping the effect
       entirely on a silent transition.
 - [X] **T014** `Program.fs` creates `OpenAlBackend.create AudioCues.resolver` and passes
-      `Audio.play backend` to the audio-carrying launches.
+      `Audio.play backend` to the audio-carrying launches; the `//#else` keeps `runApp` for the
+      profiles without cues.
+- [X] **T014a** Type-check `AudioCues.fs` against the *preprocessed* game `Model.fs`, and drive the
+      real `update` through it. CI only builds a rendered template at release time, so nothing else in
+      this repo would have caught a template compile error or a misfiring cue. This found two: the cue
+      map was originally written against the app profile's `Msg`, and `sign 0.0 = 0` made a ball
+      starting from rest report a bounce.
 
 ## Phase 4 — the gates the change moves (FR-007)
 

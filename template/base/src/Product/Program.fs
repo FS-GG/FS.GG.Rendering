@@ -173,6 +173,7 @@ let main args =
         // GAME family: the keyboard-only persistent host is preserved (FR-006). A window flag
         // routes through the window-behavior overload; otherwise the durable default path stays
         // reachable and inherits the framework windowed-fullscreen default.
+        //#if (profile == "game")
         // Issue #245 — the audio seam. `OpenAlBackend.create` opens a real device and degrades to
         // the record-only Null backend when OpenAL or the device is unavailable, so this line is
         // safe headless and in CI: it never throws into game code. `Audio.play backend` is the
@@ -186,6 +187,13 @@ let main args =
                 Viewer.runAppWithWindowBehaviorAndAudio viewerOptions (AppRoot.WindowOptions.toViewerLaunchRequest windowBehavior) audioSink generatedHost
             else
                 Viewer.runAppWithAudio viewerOptions audioSink generatedHost
+        //#else
+        let launchResult =
+            if AppRoot.WindowOptions.windowFlagSupplied args then
+                Viewer.runAppWithWindowBehavior viewerOptions (AppRoot.WindowOptions.toViewerLaunchRequest windowBehavior) generatedHost
+            else
+                Viewer.runApp viewerOptions generatedHost
+        //#endif
         //#endif
 
         match launchResult with

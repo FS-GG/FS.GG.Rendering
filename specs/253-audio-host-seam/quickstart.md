@@ -12,13 +12,14 @@ sink; you do not open that file.
 
 ## 2. Say what makes a sound
 
-`src/Product/AudioCues.fs` is yours. It is a pure function of the message and the before/after model:
+`src/Product/AudioCues.fs` is yours. It is a pure function of the message and the before/after model.
+The Pong starter ships two cues:
 
 ```fsharp
 let forTransition (msg: Msg) (previous: Model) (next: Model) : AudioEffect list =
     match msg with
-    | SaveRequested -> [ Audio.playSfx (SoundId "save") 0.8 ]
-    | Navigated _ when previous.Page <> next.Page -> [ Audio.playSfx (SoundId "navigate") 0.5 ]
+    | Tick _ when scored previous next  -> [ Audio.playSfx (SoundId "score") 0.9 ]
+    | Tick _ when bounced previous next -> [ Audio.playSfx (SoundId "bounce") 0.6 ]
     | _ -> []
 ```
 
@@ -28,7 +29,7 @@ Add your own case. Effects play in list order. Return `[]` for a silent transiti
 
 ```sh
 mkdir -p assets/audio
-cp ~/click.wav assets/audio/save.wav      # SoundId "save" -> assets/audio/save.wav
+cp ~/blip.wav assets/audio/bounce.wav     # SoundId "bounce" -> assets/audio/bounce.wav
 ```
 
 `SoundId`/`TrackId` are names **you** own; `AudioCues.resolver` maps them to bytes. An id with no file
