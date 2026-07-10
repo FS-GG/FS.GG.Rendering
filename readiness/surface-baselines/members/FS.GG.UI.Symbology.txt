@@ -46,6 +46,7 @@ FS.GG.UI.Symbology.Legibility+Channel+Tags.Faction : System.Int32
 FS.GG.UI.Symbology.Legibility+Channel+Tags.Heading : System.Int32
 FS.GG.UI.Symbology.Legibility+Channel+Tags.Health : System.Int32
 FS.GG.UI.Symbology.Legibility+Channel+Tags.Klass : System.Int32
+FS.GG.UI.Symbology.Legibility+Channel+Tags.Label : System.Int32
 FS.GG.UI.Symbology.Legibility+Channel+Tags.Motion : System.Int32
 FS.GG.UI.Symbology.Legibility+Channel+Tags.SecondaryHeading : System.Int32
 FS.GG.UI.Symbology.Legibility+Channel+Tags.Shield : System.Int32
@@ -81,6 +82,8 @@ FS.GG.UI.Symbology.Legibility+Verdict+Tags.Clean : System.Int32
 FS.GG.UI.Symbology.Legibility+Verdict+Tags.HasWarnings : System.Int32
 FS.GG.UI.Symbology.Legibility.score(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Symbology.Token>) : FS.GG.UI.Symbology.Legibility+Report
 FS.GG.UI.Symbology.Legibility.scoreAnimated(Microsoft.FSharp.Collections.FSharpList<System.Tuple<FS.GG.UI.Symbology.Motion, FS.GG.UI.Symbology.Token>>) : FS.GG.UI.Symbology.Legibility+Report
+FS.GG.UI.Symbology.Legibility.scoreAnimatedIn(FS.GG.UI.Symbology.Grammar, Microsoft.FSharp.Collections.FSharpList<System.Tuple<FS.GG.UI.Symbology.Motion, FS.GG.UI.Symbology.Token>>) : FS.GG.UI.Symbology.Legibility+Report
+FS.GG.UI.Symbology.Legibility.scoreIn(FS.GG.UI.Symbology.Grammar, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Symbology.Token>) : FS.GG.UI.Symbology.Legibility+Report
 FS.GG.UI.Symbology.Legibility.table : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Symbology.Legibility+ChannelSpec> [get]
 FS.GG.UI.Symbology.Motion+Tags.Blink : System.Int32
 FS.GG.UI.Symbology.Motion+Tags.Damage : System.Int32

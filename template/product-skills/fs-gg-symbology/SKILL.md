@@ -23,8 +23,12 @@ deterministic, advisory; it never mutates and never raises on valid input:
 
 ```fsharp
 val table: ChannelSpec list                                  // the fixed capacity table, machine-readable
-val score: tokens: Token list -> Report                      // a static board
+val score: tokens: Token list -> Report                      // a static board, grammar-blind
 val scoreAnimated: board: (Motion * Token) list -> Report    // + whole-board motion load
+
+// Grammar-AWARE siblings: the same findings, plus the ones that depend on which grammar draws.
+val scoreIn: grammar: Grammar -> tokens: Token list -> Report
+val scoreAnimatedIn: grammar: Grammar -> board: (Motion * Token) list -> Report
 
 type Verdict     = Clean | HasWarnings              // Clean iff Findings is empty
 type Severity    = Warning | Error                  // Error = ungrammatical; Warning = encodable but overloaded
@@ -45,7 +49,20 @@ and overload past `Capacity`, while `Continuous` ones are read as a position on 
 **overload-exempt** — only their domain is checked. `report.Usage` hands you the `Kind`, `DistinctLevels`
 and `Capacity` of every scored channel for the board you just linted. `Channel` also carries a whole-board
 `Motion` case — no `ChannelKind`, no `table` row, no `ChannelUsage` entry — raised by `scoreAnimated` when
-more than one non-`Idle` rhythm is live at once.
+more than one non-`Idle` rhythm is live at once, and a `Label` case, budgeted in lines rather than levels.
+
+**`score` is grammar-blind by contract**: it reads your `Token` channel values, never which grammar draws
+them. That is deliberate, and it means a channel the grammar *cannot draw* is invisible to it. Pass the
+grammar to **`scoreIn`** (or `scoreAnimatedIn`) to price those too — it only ever *adds* findings:
+
+| grammar-conditional fact | raised by | severity |
+|---|---|---|
+| Badge/Ring cannot draw `Motion.Spin` / `Motion.Moving` — the unit renders identically to `Idle` | `scoreAnimatedIn` | `Error` |
+| the identity label needs more lines than the grammar draws (Token 3, Badge 2, Ring 2) | `scoreIn` | `Warning` |
+
+The label check counts **hard line breaks only**. The drawn count also depends on greedy wrapping, which
+needs a text measurer the pure linter does not have; wrapping only *adds* lines, so the check under-reports
+and never false-positives.
 
 ## Usage
 
@@ -146,8 +163,11 @@ Symbology.laidLabel [ Symbology.paragraph [ Symbology.run "BRAVO-6" ]      // La
   ≡ the static label **across the whole timeline**, as is any motion-bound label **at rest**. Your one
   mapping still drives all three grammars.
 - **Inspection-detail.** It **complements — never replaces** — the vector `Sigil`; keep strings short.
-- **Outside the capacity table.** The linter ignores the label, so its verdict is unchanged by labels.
+- **Outside the capacity table.** `score` ignores the label, so its verdict is unchanged by labels.
   Never use a label to dodge a channel-overload warning — fix the encoding.
+- **But it has a per-grammar LINE budget**: 3 lines under `Grammar.Token`, 2 under `Badge` and `Ring`.
+  Past that the surplus lines are dropped and the last drawn line gains an ellipsis. `scoreIn grammar`
+  raises a `Label` `Warning` naming the units whose lines will vanish.
 - **Tofu-free is a render-edge property.** Assert it through `Symbology.Render`, never from a pure unit
   test — see [Troubleshooting](#troubleshooting).
 - **Surplus degrades: wrap → cap → ellipsis.** Lines wrap at whitespace, the count is **capped** to the
@@ -173,9 +193,10 @@ The same `'stats -> Token` mapping drives three interchangeable **grammars**, ch
 Render a selected grammar with `Symbology.render grammar token`; build boards with `galleryIn` /
 `filmstripIn` / `animateIn` (the `gallery`/`filmstrip`/`animate` args, plus a leading `Grammar`).
 Badge/Ring are screen-aligned (heading is a discrete indicator) and take only grammar-agnostic motion
-overlays (Pulse/Blink/Damage; directional rhythms degrade to the static base). Because the mapping is
-identical across grammars, the legibility linter's verdict is **grammar-independent**. `Grammar.Token`
-reproduces the existing functions byte-for-byte.
+overlays (Pulse/Blink/Damage); directional rhythms (Spin/Moving) are **dropped** there — the symbol comes
+out byte-identical to the `Idle` one, so `scoreAnimatedIn` errors on them. Because the mapping is identical
+across grammars, `Legibility.score`'s verdict is **grammar-independent**; run `scoreIn grammar` to also
+catch what the selected grammar cannot draw. `Grammar.Token` reproduces the existing functions byte-for-byte.
 
 ## Legibility rules to critique against
 
@@ -194,9 +215,12 @@ board spending more distinct speeds than the capacity warns even though every un
 distinct radii is twelve levels and lints as an overload. Only `Health` and the two rotations are
 `Continuous`, and only they are overload-exempt.
 
-CRITIQUE with two complementary checks: (a) LINT — run the linter on the produced symbol set
-(`Legibility.score (roster |> List.map mapUnit)`; animated boards use `scoreAnimated` over the
-`(motion, token)` pairs) and read `report.Verdict` / `report.Findings`. The linter is pure/deterministic
+CRITIQUE with two complementary checks: (a) LINT — run the linter on the produced symbol set, passing the
+grammar you picked (`Legibility.scoreIn grammar (roster |> List.map mapUnit)`; animated boards use
+`scoreAnimatedIn grammar` over the `(motion, token)` pairs), and read `report.Verdict` /
+`report.Findings`. `scoreIn` is the grammar-aware backstop: it is `score` plus the findings that depend on
+the drawing, so it catches a mapping that is legal in the abstract and illegible as rendered. The linter is
+pure/deterministic
 and the mechanical backstop: a `Warning`/`Error` names the overloaded or out-of-domain `Channel`,
 used-vs-capacity, and the contributing unit indices. A non-`Clean` verdict is a TWEAK trigger — the unit
 of change stays the mapping, never the grammar. (b) EYE — the human-style self-check of the PNG vs the
