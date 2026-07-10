@@ -233,4 +233,36 @@ let tests =
             | LayoutOverlaps overlaps -> Expect.exists overlaps (fun item -> item.Kind = HudTextOverlap) "HUD/HUD overlap is reported"
             | NoLayoutOverlap -> failtest "expected HUD overlap diagnostics"
         }
+
+        // #368: `Path.measure` and `Path.segment` must share one metric — the chord polyline over the
+        // vertex-bearing commands. `ArcTo` carries no vertex in that flattening, so it must add no
+        // length to `measure`. It previously added a mean-radius arc-length approximation `segment`
+        // never modelled, so a window computed from `measure.Length` indexed a polyline that was
+        // shorter and extracted the wrong sub-path.
+        test "arc segments contribute no length so measure and segment share one metric" {
+            let arcPath =
+                Path.create Winding [
+                    Path.moveTo 0.0 0.0
+                    Path.lineTo 10.0 0.0
+                    ArcTo({ X = 10.0; Y = 0.0; Width = 20.0; Height = 20.0 }, 0.0, 180.0)
+                    Path.lineTo 40.0 0.0
+                ]
+
+            let measured = Path.measure arcPath
+
+            // Chord polyline length = |(0,0)->(10,0)| + |(10,0)->(40,0)| = 10 + 30. The arc adds
+            // nothing, and the LineTo after it measures from the pre-arc point — matching the polyline.
+            Expect.floatClose Accuracy.high measured.Length 40.0 "arc adds no chord length to measure"
+
+            // A window over the whole measured length reproduces exactly the polyline `segment` walks,
+            // proving `measure` and `segment` index the same metric.
+            let full = Path.segment 0.0 measured.Length arcPath
+
+            Expect.equal
+                full.Commands
+                [ MoveTo { X = 0.0; Y = 0.0 }
+                  LineTo { X = 10.0; Y = 0.0 }
+                  LineTo { X = 40.0; Y = 0.0 } ]
+                "segment over [0, measure.Length] recovers the full vertex-bearing polyline"
+        }
     ]

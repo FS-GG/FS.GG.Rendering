@@ -129,9 +129,12 @@ module Path =
             | LineTo p, Some previous -> Some p, length + distance previous p
             | QuadTo(_, p), Some previous -> Some p, length + distance previous p
             | CubicTo(_, _, p), Some previous -> Some p, length + distance previous p
-            | ArcTo(bounds, _, sweep), _ ->
-                let radius = (abs bounds.Width + abs bounds.Height) / 4.0
-                last, length + (Math.PI * 2.0 * radius * abs sweep / 360.0)
+            // ArcTo carries no vertex in the flattened polyline `segment` walks, so it contributes no
+            // chord length and does not advance the current point — `measure` and `segment` then share
+            // ONE metric (the vertex-bearing chord polyline the .fsi discloses). Adding a mean-radius
+            // arc-length approximation here made `measure.Length` overstate a metric `segment` indexes
+            // into without it, so a window from `measure.Length` extracted the wrong sub-path. (#368)
+            | ArcTo _, _
             | Close, _ -> last, length
             | _, None -> last, length
 
