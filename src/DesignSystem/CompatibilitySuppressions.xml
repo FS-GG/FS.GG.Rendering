@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- https://learn.microsoft.com/dotnet/fundamentals/package-validation/diagnostic-ids -->
+<!--
+  TRANSIENT — retires the dead FS.GG.UI.DesignSystem.Theme.ContrastRequiredRatio record
+  field at the fs-gg-ui 0.7.0 framework major (#392, split from #370). Two CP0002 (member
+  removed) diagnostics vs the published 0.6.0 baseline, which still exports the field: the
+  removed property getter and the shortened primary constructor. IsBaselineSuppression=true
+  so a NEW break introduced later still reddens the required ApiCompat gate. DELETE this file
+  once fs-gg-ui 0.7.0 is on the org feed — the baseline then moves to 0.7.0 (no
+  ContrastRequiredRatio) and there is nothing to suppress.
+-->
+<Suppressions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:FS.GG.UI.DesignSystem.Theme.#ctor(System.String,FS.GG.UI.Scene.Color,FS.GG.UI.Scene.Color,FS.GG.UI.Scene.Color,FS.GG.UI.Scene.Color,FS.GG.UI.Scene.Color,FS.GG.UI.Scene.Color,FS.GG.UI.Scene.Color,Microsoft.FSharp.Core.FSharpOption{System.String},System.Double,System.Double,System.Double,System.Double,FS.GG.UI.DesignSystem.IntentPolicy)</Target>
+    <Left>lib/net10.0/FS.GG.UI.DesignSystem.dll</Left>
+    <Right>lib/net10.0/FS.GG.UI.DesignSystem.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:FS.GG.UI.DesignSystem.Theme.get_ContrastRequiredRatio</Target>
+    <Left>lib/net10.0/FS.GG.UI.DesignSystem.dll</Left>
+    <Right>lib/net10.0/FS.GG.UI.DesignSystem.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+</Suppressions>
