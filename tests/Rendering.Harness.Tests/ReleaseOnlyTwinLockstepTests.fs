@@ -136,6 +136,16 @@ let private registry =
       { Twin = $"{twinDirectory}/GridsSkillCoherenceTests.fs"
         ReleaseOnly = "tests/Package.Tests/Feature249GridsSkillTests.fs"
         HeaderNames = "Feature249GridsSkillTests"
+        SharedInputs = true }
+      // #366 — the fs-gg-audio product-skill surface guard (#160, ADR-0024 step 4). Text-mirror of a
+      // release-only Package.Tests rule: both read the audio SKILL.md and the whole bundled api-surface
+      // tree and assert the cited Audio.<member>s resolve, the cited surface is the shipped one, the
+      // retired Canvas audio doc copy stays gone, and every bundled .fsi's namespace carries its package
+      // directory — so they share the same source-of-truth inputs (the concatenated Audio.Core/Host .fsi
+      // paths are built from `citedSurfaceRelative`, so both sides read the SAME literal helper inputs).
+      { Twin = $"{twinDirectory}/AudioSkillSurfaceCoherenceTests.fs"
+        ReleaseOnly = "tests/Package.Tests/AudioSkillSurfaceTests.fs"
+        HeaderNames = "AudioSkillSurfaceTests"
         SharedInputs = true } ]
 
 /// The repository source-of-truth paths a test source reads, extracted from its `repositoryPath "…"`
