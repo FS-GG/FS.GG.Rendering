@@ -271,7 +271,7 @@
       "FS.GG.UI.SkiaViewer": {
         "type": "Project",
         "dependencies": {
-          "FS.GG.Audio.Core": "[0.1.0, )",
+          "FS.GG.Audio.Core": "[0.2.0, )",
           "FS.GG.UI.Diagnostics": "[0.4.0-preview.1, )",
           "FS.GG.UI.KeyboardInput": "[0.4.0-preview.1, )",
           "FS.GG.UI.Scene": "[0.4.0-preview.1, )",
@@ -314,9 +314,9 @@
       },
       "FS.GG.Audio.Core": {
         "type": "CentralTransitive",
-        "requested": "[0.1.0, )",
-        "resolved": "0.1.0",
-        "contentHash": "/Reh8nDfGIBoKG56ngJ7b7a3lfUp9jofDKdsqQB9nIDGDkrfEq/Lk0Bei+MQ1W3VSENVvKr70DVqYzQQiS3CJw==",
+        "requested": "[0.2.0, )",
+        "resolved": "0.2.0",
+        "contentHash": "vwfZl9bdr1ylsYVKBobEK5Mz7uecPSaq4O0G2dt4k3w/Z6sYwa11Z0WOh0m+psTj/zpWS6QHYGsa7/Jr7u2Itw==",
         "dependencies": {
           "FSharp.Core": "10.1.301"
         }
