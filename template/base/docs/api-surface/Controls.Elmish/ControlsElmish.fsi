@@ -353,6 +353,40 @@ module AdapterCmd =
 
 /// Public contract module exposed by this FS.GG.UI package.
 module ControlsElmish =
+    /// Issue #460: THE definition of pointer-move coalescing, called by BOTH frame loops — the live
+    /// `runInteractiveApp` loop and `Perf.runScript` — so neither can drift from the other by
+    /// hand-copying a predicate.
+    ///
+    /// The two coalesce different alphabets, and they must. The live loop coalesces raw SAMPLES before
+    /// the hit-test (avoiding it is the point), and `Pointer.update` then RE-DERIVES every interaction
+    /// the surviving sample implies — so a dropped sample can never lose a state transition. `Perf`
+    /// scripts are written in the alphabet `Pointer.update` produces, so `Perf` coalesces already-derived
+    /// INTERACTIONS, which nothing re-derives; dropping the wrong one destroys an event the live host
+    /// delivers. That is why the drop rule is `isSupersedablePosition`, not `isMoveInteraction`.
+    ///
+    /// `Coalescing.Parity` in Elmish.Tests gates the two against the real `Pointer.update`, so this
+    /// correspondence is TESTED rather than merely asserted in a docstring (it previously was not, and
+    /// it was false).
+    ///
+    /// Internal: a contract between the framework and its tests (`InternalsVisibleTo`), not public API.
+    module internal Coalescing =
+        /// LIVE side. A sample is coalescible iff it carries only a position update (`Moved`); every
+        /// other phase is discrete, processed in arrival order and never dropped.
+        val isCoalescibleSample: phase: PointerPhase -> bool
+
+        /// PERF side, GROUPING: which interactions belong to ONE coalesced move frame, mirroring the
+        /// frame boundary a burst of `Moved` samples produces on the live loop.
+        val isMoveInteraction: interaction: PointerInteraction -> bool
+
+        /// PERF side, DROP: only a POSITIONAL update (`HoverEnter`/`DragMove`) may be superseded by a
+        /// later one — it is the interaction-level image of a sample the live loop drops. `HoverLeave`
+        /// is a state transition the live host always delivers, so it is never supersedable (#460).
+        val isSupersedablePosition: interaction: PointerInteraction -> bool
+
+        /// The interactions a coalesced move frame routes: every non-supersedable interaction in
+        /// arrival order, plus the LAST positional one.
+        val routedInCoalescedFrame: frame: PointerInteraction list -> PointerInteraction list
+
     /// Lower one `KeyboardEffect` to an `AdapterCommand`. `CommandResolved` becomes a product message;
     /// the state-echo cases (`KeyStateChanged`, `LayoutChanged`, `ModeChanged`, `PendingSequenceChanged`,
     /// `StateDisplayChanged`) carry no host action and yield `[]`; `ReportKeyboardDiagnostic` becomes a
@@ -688,11 +722,32 @@ module ControlsElmish =
     /// Feature 108 (US3, FR-009/010): the pure, headless, deterministic frame driver. Folds an
     /// ordered `FrameInput` script over the host's pure `Update` + `RetainedRender.step`, advancing
     /// one frame per step (consecutive pointer-MOVE inputs coalesce into a single frame) and
-    /// accumulating the per-frame `FrameMetrics`. Shares the message→update→retained-step +
-    /// clock-advance + coalescing code path with `runInteractiveApp` (no parallel logic), so a
-    /// regression that un-coalesces moves or reintroduces a per-hover full rebuild fails the
-    /// byte-stable count golden (SC-003/004/005) rather than shipping. The four count/bool fields are
-    /// identical across repeated runs of the same script; `FrameDuration` is not asserted.
+    /// accumulating the per-frame `FrameMetrics`. A regression that un-coalesces moves or reintroduces
+    /// a per-hover full rebuild fails the byte-stable count golden (SC-003/004/005) rather than
+    /// shipping. The four count/bool fields are identical across repeated runs of the same script;
+    /// `FrameDuration` is not asserted.
+    ///
+    /// WHAT IS SHARED WITH THE LIVE `runInteractiveApp` LOOP, precisely (issue #460 — this used to say
+    /// "no parallel logic", which was false, and a false claim here is worse than none because it
+    /// retires the reader's suspicion about the one thing they must check):
+    ///
+    ///   * SHARED, same functions: message→update→`RetainedRender.step`, binding resolution
+    ///     (`routeRetainedInteraction`), `buildFrameMetrics`, `interpretPointerEffect`, clock advance,
+    ///     and the `Coalescing` definition of a move frame.
+    ///   * NOT SHARED: the frame loop. This is an independent fold; the live loop has its own. They
+    ///     also coalesce different alphabets — the live loop drops raw SAMPLES before the hit-test and
+    ///     `Pointer.update` re-derives whatever the surviving sample implies, whereas a script is
+    ///     written in already-derived INTERACTIONS, which nothing re-derives.
+    ///
+    /// What IS guaranteed across the two: no state transition is lost. A coalesced frame drops only
+    /// superseded POSITIONS, never a `HoverLeave`, press, release, scroll or drag boundary — so an
+    /// interaction a product would see live is one a script sees too. Frame COUNTS are NOT claimed
+    /// equal (a script is an abstraction over samples, and `FrameMetrics` counts script inputs); do
+    /// not read the goldens as a statement about how many frames the live host renders.
+    ///
+    /// That asymmetry is real and cannot be refactored away, so it is GATED instead: `Coalescing.Parity`
+    /// in Elmish.Tests drives the real `Pointer.update` and fails if the two sides ever disagree about
+    /// what a coalesced frame drops. Trust that test, not a docstring.
     module Perf =
         /// Fold an ordered `FrameInput` script over the host's pure `Update` + `RetainedRender.step`,
         /// returning the per-frame `FrameMetrics` (consecutive pointer-MOVE inputs coalesce into one

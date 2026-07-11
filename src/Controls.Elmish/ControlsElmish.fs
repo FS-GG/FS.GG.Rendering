@@ -200,6 +200,83 @@ module AdapterCmd =
         |> List.map (fun effect -> (fun (dispatch: Dispatch<'msg>) -> dispatch (route effect)))
 
 module ControlsElmish =
+    // Issue #460: THE definition of pointer-move coalescing. Both frame loops call it — the live
+    // `runInteractiveApp` loop (which coalesces raw SAMPLES) and `Perf.runScript` (which coalesces
+    // INTERACTIONS) — so the two cannot drift apart by hand-copying.
+    //
+    // They coalesce different alphabets because they must, and that asymmetry is the whole subtlety:
+    //
+    //   * The live loop sees `PointerSample`s and coalesces them BEFORE the hit-test — avoiding the
+    //     hit-test is the entire point of coalescing. Whichever sample survives is then fully routed
+    //     by `Pointer.update`, which RE-DERIVES every interaction it implies (hover enter/leave, drag
+    //     begin/move) from the hit against `PointerState`. So dropping intermediate samples can never
+    //     lose a state transition: a `HoverLeave` is always re-emitted, paired with its `HoverEnter`,
+    //     from the one surviving sample.
+    //
+    //   * `Perf` scripts are written in the alphabet `Pointer.update` PRODUCES, so its coalescing
+    //     drops already-derived interactions — and nothing re-derives them. Dropping the wrong one
+    //     destroys an event the live host would have delivered.
+    //
+    // Hence two predicates that are NOT interchangeable, and the distinction the old code missed
+    // (it kept only `List.last` of a coalesced frame, silently annihilating a `HoverLeave` that was
+    // not last — the exact pair `Pointer.update` emits for a move that changes the hit).
+    // `Coalescing.Parity` in Elmish.Tests gates the correspondence against the real state machine.
+    //
+    // Internal (not public API): a contract between the framework and its tests, reached via
+    // `InternalsVisibleTo` — the same footing as `routeRetainedInteraction`.
+    module internal Coalescing =
+        /// LIVE side. A sample is coalescible iff it carries only a position update: the live loop
+        /// buffers these latest-wins and processes at most one per boundary. Every other phase
+        /// (press/release/wheel/exit) is a discrete event, processed in arrival order, never dropped.
+        let isCoalescibleSample (phase: PointerPhase) : bool =
+            match phase with
+            | PointerPhase.Moved -> true
+            | PointerPhase.Pressed
+            | PointerPhase.Released
+            | PointerPhase.Wheel
+            | PointerPhase.Exited -> false
+
+        /// PERF side, GROUPING: which interactions belong to ONE coalesced move frame. This mirrors
+        /// the live loop's frame boundaries — a run of move-derived interactions is the one frame a
+        /// burst of `Moved` samples would have produced.
+        let isMoveInteraction (interaction: PointerInteraction) : bool =
+            match interaction with
+            | HoverEnter _
+            | HoverLeave _
+            | DragMove _ -> true
+            | _ -> false
+
+        /// PERF side, DROP: within a coalesced frame, only a POSITIONAL update may be superseded by a
+        /// later one — it is the interaction-level image of a dropped sample. Live drops the sample
+        /// that would have produced an intermediate `HoverEnter`/`DragMove`, so `Perf` may drop those.
+        ///
+        /// `HoverLeave` is NOT positional. It is a state transition that `Pointer.update` re-derives
+        /// and emits from the SURVIVING sample (paired with the enter), so the live host always
+        /// delivers it. Dropping it in `Perf` would lose an event the product really sees — issue #460.
+        let isSupersedablePosition (interaction: PointerInteraction) : bool =
+            match interaction with
+            | HoverEnter _
+            | DragMove _ -> true
+            | _ -> false
+
+        /// The interactions a coalesced move frame actually routes: every non-supersedable
+        /// interaction in arrival order, plus the LAST positional one. For the canonical hit-changing
+        /// move this yields `[HoverLeave prior; HoverEnter next]` — exactly what `Pointer.update`
+        /// returns for the single surviving sample, in the same order, in one frame.
+        let routedInCoalescedFrame (frame: PointerInteraction list) : PointerInteraction list =
+            let lastPositional =
+                frame
+                |> List.indexed
+                |> List.filter (snd >> isSupersedablePosition)
+                |> List.tryLast
+                |> Option.map fst
+
+            frame
+            |> List.indexed
+            |> List.filter (fun (i, interaction) ->
+                not (isSupersedablePosition interaction) || Some i = lastPositional)
+            |> List.map snd
+
     let diagnostic source code message =
         { Source = source
           Code = code
@@ -869,17 +946,22 @@ module ControlsElmish =
             @ interpretPointerEffect mapPointer interaction
             |> routeAdapterDiagnostics options
 
+    // The viewer→neutral phase mapping, factored out of `pointerSampleOf` (issue #460) so the live
+    // loop can ask `Coalescing.isCoalescibleSample` about an incoming input without building a whole
+    // `PointerSample` on the pointer-move hot path.
+    let private pointerPhaseOf (phase: ViewerPointerPhaseKind) : PointerPhase =
+        match phase with
+        | ViewerPointerPhaseKind.Moved -> PointerPhase.Moved
+        | ViewerPointerPhaseKind.Pressed -> PointerPhase.Pressed
+        | ViewerPointerPhaseKind.Released -> PointerPhase.Released
+        | ViewerPointerPhaseKind.Wheel -> PointerPhase.Wheel
+        | ViewerPointerPhaseKind.Exited -> PointerPhase.Exited
+
     // Translate a native viewer pointer input into the neutral 075 `PointerSample` the gesture fold
     // consumes. Pure/total; shared by the preserved full-render oracle and the feature-110 retained
     // route so both feed `Pointer.update` the identical sample (a precondition of dispatch parity).
     let private pointerSampleOf (input: ViewerPointerInput) : PointerSample =
-        let phase =
-            match input.Phase with
-            | ViewerPointerPhaseKind.Moved -> PointerPhase.Moved
-            | ViewerPointerPhaseKind.Pressed -> PointerPhase.Pressed
-            | ViewerPointerPhaseKind.Released -> PointerPhase.Released
-            | ViewerPointerPhaseKind.Wheel -> PointerPhase.Wheel
-            | ViewerPointerPhaseKind.Exited -> PointerPhase.Exited
+        let phase = pointerPhaseOf input.Phase
 
         let button =
             input.Button
@@ -1911,13 +1993,19 @@ module ControlsElmish =
         // sample boundary — so a burst of K moves yields at most one processed move (one render +
         // hit-test) per boundary, while every discrete interaction (press/release/click/drag
         // begin/end/cancel/scroll/secondary) is processed in arrival order, never coalesced or
-        // dropped. The authoritative, byte-stable coalescing surface is `Perf.runScript`; here the
-        // identical predicate drives the live loop and feeds best-effort `OnFrameMetrics`.
+        // dropped.
+        //
+        // Issue #460: the predicate is `Coalescing.isCoalescibleSample` — the SAME definition
+        // `Perf.runScript` uses, not a hand-copy of it. Note what is dropped here: a raw SAMPLE, before
+        // the hit-test. `routeInteractivePointer` re-derives every interaction the surviving sample
+        // implies, so coalescing on this side cannot lose a hover-leave or a drag-begin. `Perf` drops
+        // already-derived interactions and therefore needs the stricter `isSupersedablePosition` rule;
+        // `Coalescing.Parity` in Elmish.Tests gates the two against each other.
         let mapPointer (input: ViewerPointerInput) (size: Size) (model: 'model) : 'msg list =
             loopState.PointerSampleCount <- loopState.PointerSampleCount + 1
 
-            match input.Phase with
-            | ViewerPointerPhaseKind.Moved ->
+            match pointerPhaseOf input.Phase with
+            | phase when Coalescing.isCoalescibleSample phase ->
                 // Process the previously-deferred move (≤1 per boundary), then defer this one. Feature
                 // 110: a flushed move routes from the retained frame and performs ZERO routing renders
                 // (FullRenderCount = 0) unless it must fall back; the first move of a burst defers
@@ -2263,18 +2351,18 @@ module ControlsElmish =
             runScriptCore options Viewer.defaultWindowBehavior audioSink host script
 
     // Feature 108 (US3, FR-009/010): the pure, headless, deterministic frame driver. Nested in
-    // `ControlsElmish` so it reuses the SAME message→update→retained-step + binding-resolution +
-    // coalescing primitives the live `runInteractiveApp` loop uses (no parallel logic).
+    // `ControlsElmish` so it reuses the SAME message→update→retained-step + binding-resolution
+    // primitives the live `runInteractiveApp` loop uses (`routeRetainedInteraction`,
+    // `buildFrameMetrics`, `interpretPointerEffect`, `RetainedRender.step` are literally the same
+    // functions), and the same `Coalescing` definition of what a move frame is.
+    //
+    // Issue #460 — the FRAME LOOP itself is not shared: this is an independent fold, and the live
+    // loop's is another. What keeps the two honest is `Coalescing` (one definition, called by both)
+    // plus the `Coalescing.Parity` test, which drives the real `Pointer.update` and fails if the two
+    // sides ever disagree about which inputs a coalesced frame drops. Do not re-add a blanket "no
+    // parallel logic" claim here: it was asserted for years over logic that WAS parallel, and it
+    // retired exactly the suspicion that would have caught the hover-leave `Perf` was dropping.
     module Perf =
-        // FR-011: the move predicate shared with the live loop's coalescing — hover/drag moves
-        // collapse; every other interaction is discrete.
-        let private isMoveInteraction (interaction: PointerInteraction) : bool =
-            match interaction with
-            | HoverEnter _
-            | HoverLeave _
-            | DragMove _ -> true
-            | _ -> false
-
         // Group the script into frames: consecutive pointer-MOVE inputs coalesce into ONE frame;
         // every other input (key, discrete pointer, tick, idle) is its own frame. Order preserved.
         let private toFrames (script: FrameInput<'msg> list) : FrameInput<'msg> list list =
@@ -2288,7 +2376,7 @@ module ControlsElmish =
 
             for input in script do
                 match input with
-                | FrameInput.Pointer interaction when isMoveInteraction interaction -> current.Add input
+                | FrameInput.Pointer interaction when Coalescing.isMoveInteraction interaction -> current.Add input
                 | other ->
                     flush ()
                     frames.Add [ other ]
@@ -2482,19 +2570,38 @@ module ControlsElmish =
 
                 match frame with
                 | FrameInput.Pointer _ :: _ when frame |> List.forall (function
-                                                                       | FrameInput.Pointer p -> isMoveInteraction p
+                                                                       | FrameInput.Pointer p -> Coalescing.isMoveInteraction p
                                                                        | _ -> false) ->
-                    // Coalesced move frame: K samples, ONE processed move (the latest). Feature 110: the
-                    // move routes from the retained frame and performs ZERO routing full renders
-                    // (`FullRenderCount` no longer counts a routing render); only a model-driven re-render
-                    // (`hasMsgs`) or a counted oracle fallback adds to it.
+                    // Coalesced move frame: K samples, ONE processed move. Feature 110: the move routes
+                    // from the retained frame and performs ZERO routing full renders (`FullRenderCount`
+                    // no longer counts a routing render); only a model-driven re-render (`hasMsgs`) or a
+                    // counted oracle fallback adds to it.
+                    //
+                    // Issue #460: "one processed move" means one surviving SAMPLE, not one surviving
+                    // interaction. This used to route `List.last frame` and discard the rest, which
+                    // silently annihilated a `HoverLeave` that was not last — and `[HoverLeave prior;
+                    // HoverEnter next]` is precisely what `Pointer.update` emits, as a pair, for a move
+                    // that changes the hit. The live host routes both (it re-derives them from the one
+                    // surviving sample); `Perf` dropped the leave, so hover-out never fired headlessly
+                    // and the suite stayed green. `routedInCoalescedFrame` drops only SUPERSEDED
+                    // POSITIONS — the interaction-level image of the samples the live loop drops.
                     let k = List.length frame
                     let before = model
 
-                    let msgs, fallbacks =
-                        match List.last frame with
-                        | FrameInput.Pointer interaction -> routeInteraction interaction // 0 routing renders
-                        | _ -> [], 0
+                    let routed =
+                        frame
+                        |> List.choose (function
+                            | FrameInput.Pointer interaction -> Some interaction
+                            | _ -> None)
+                        |> Coalescing.routedInCoalescedFrame
+
+                    // Route every surviving interaction in arrival order, summing the per-interaction
+                    // fallback counts — the same shape `routeInteractivePointer` uses for the several
+                    // interactions ONE live sample derives: they all route against the SAME retained
+                    // frame, and the messages are applied afterwards, once.
+                    let results = routed |> List.map routeInteraction // 0 routing renders
+                    let msgs = results |> List.collect fst
+                    let fallbacks = results |> List.sumBy snd
 
                     let hasMsgs = not (List.isEmpty msgs)
                     applyMessages msgs
