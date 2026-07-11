@@ -747,9 +747,12 @@ let renderReport (i: Inputs) (provenance: string) (failures: Failure list) (live
             line (sprintf "- `DRIFT [%s]` %s — expected `%s`; actual `%s`" f.Rule f.Location f.Expected f.Actual)
     sb.ToString()
 
-let writeReport (i: Inputs) (provenance: string) (failures: Failure list) (liveOpt: LiveResult option) =
+let writeRendered (content: string) =
     Directory.CreateDirectory(Path.GetDirectoryName reportPath) |> ignore
-    File.WriteAllText(reportPath, renderReport i provenance failures liveOpt)
+    File.WriteAllText(reportPath, content)
+
+let writeReport (i: Inputs) (provenance: string) (failures: Failure list) (liveOpt: LiveResult option) =
+    writeRendered (renderReport i provenance failures liveOpt)
 
 // ---- the artifact is EVIDENCE, so something must read it (#435) --------------------------------
 //
@@ -770,6 +773,15 @@ let writeReport (i: Inputs) (provenance: string) (failures: Failure list) (liveO
 // committed, so the check runs in verdict-core mode only and always compares against a verdict-core
 // render — which is also why `writeReport` below is handed `structural` rather than the full failure
 // list: the report must not describe its own staleness, or regenerating it could never make it match.
+//
+// KNOWN, INTENDED FRICTION — a RELEASE makes this rule fire once. The report records the latest
+// `fs-gg-ui/v*`, `v*` and `fs-gg-ui-template/v*` tags, and those tags are pushed AFTER the release
+// commit merges — so the artifact the release PR committed names the PREVIOUS tags the moment the new
+// ones are cut. The first change to land after a release therefore reds with `artifact-stale` and must
+// regenerate the artifact (one command, named in `Fix`). That is the rule working, not misfiring: the
+// three releases that rotted this file (0.6.0, 0.7.0, 0.8.0) are precisely the events it must not sleep
+// through. If that friction is ever judged too high, the answer is to regenerate-and-commit from the
+// release lane — NOT to stop reading the artifact, which is how it rotted in the first place.
 let normalize (s: string) = s.Replace("\r\n", "\n")
 
 /// The artifact as COMMITTED at HEAD — `None` when HEAD has no such path (never committed / deleted).
@@ -783,7 +795,9 @@ let committedReport () : string option =
     if ec <> 0 then None else Some out
 
 /// The first line on which the committed artifact and a fresh render disagree — so the operator sees
-/// WHAT rotted (house style: expected-vs-actual), not merely that the file is "different".
+/// WHAT rotted (house style: expected-vs-actual), not merely that the file is "different". `None` ⇔ the
+/// two agree, so this IS the equality test: line-wise over the newline-normalized text, which keeps a
+/// CRLF checkout from reading as drift.
 let private firstDiff (committed: string) (fresh: string) =
     let c = (normalize committed).Split('\n')
     let f = (normalize fresh).Split('\n')
@@ -792,8 +806,9 @@ let private firstDiff (committed: string) (fresh: string) =
         let at (a: string[]) = if n < a.Length then a.[n] else "<end of file>"
         if at c <> at f then Some(n + 1, at c, at f) else None)
 
-let artifactStaleFailures (i: Inputs) (structural: Failure list) : Failure list =
-    let fresh = renderReport i "verdict-core" structural None
+/// Takes the ALREADY-RENDERED verdict-core report — the same string that is written to disk — so the
+/// bytes compared against HEAD and the bytes offered as the fix cannot drift apart.
+let artifactStaleFailures (fresh: string) : Failure list =
     let fix =
         sprintf
             "regenerate and commit it: `dotnet fsi scripts/validate-version-coherence.fsx && git add -- %s`  (commit the BARE run's output — the FS_GG_RUN_VERSION_COHERENCE_SMOKE=1 render is transient CI output, not the artifact)"
@@ -805,22 +820,15 @@ let artifactStaleFailures (i: Inputs) (structural: Failure list) : Failure list 
             Expected = "the verdict report is committed — it is this feature's readiness evidence"
             Actual = "no such path at HEAD"
             Fix = fix } ]
-    | Some committed when normalize committed <> normalize fresh ->
-        [ { Rule = "artifact-stale"
-            Location =
-                match firstDiff committed fresh with
-                | Some(n, _, _) -> sprintf "%s:%d" reportPathRel n
-                | None -> reportPathRel
-            Expected =
-                match firstDiff committed fresh with
-                | Some(_, _, fresh') -> fresh'
-                | None -> "a fresh verdict-core render"
-            Actual =
-                match firstDiff committed fresh with
-                | Some(_, committed', _) -> sprintf "%s (committed)" committed'
-                | None -> "a stale committed render"
-            Fix = fix } ]
-    | Some _ -> []
+    | Some committed ->
+        match firstDiff committed fresh with
+        | None -> []
+        | Some(n, committed', fresh') ->
+            [ { Rule = "artifact-stale"
+                Location = sprintf "%s:%d" reportPathRel n
+                Expected = fresh'
+                Actual = sprintf "%s (committed)" committed'
+                Fix = fix } ]
 
 let printDrift (failures: Failure list) =
     for f in failures do
@@ -900,12 +908,18 @@ let main () =
             eprintfn "version coherence: DRIFT — %d failure(s); wrote %s" allFailures.Length reportPath
             1
     else
-        // The report is rendered from `structural` ALONE, then compared with HEAD's copy; the staleness
-        // verdict is added to the EXIT code, never to the file. Writing "this artifact is stale" into the
-        // artifact would move the target every time it was regenerated, so it could never converge.
+        // Render ONCE, then write that exact string and compare that exact string against HEAD — the
+        // staleness verdict is added to the EXIT code, never to the file. An artifact that described its
+        // own staleness would move the target every time it was regenerated, so it could never converge.
         let structural = structuralFailures i
-        let failures = structural @ artifactStaleFailures i structural
-        writeReport i "verdict-core" structural None
+        let fresh = renderReport i "verdict-core" structural None
+        writeRendered fresh
+        // The artifact records a VERDICT, so only check the evidence when there is a clean verdict for it
+        // to record. Running it while the repo is ALREADY incoherent adds a second red for a file nobody
+        // broke, and its `Fix` would tell the author to commit an artifact whose own `result:` is `fail` —
+        // advice that fixes nothing and enters a failing verdict into the readiness record. Fix the drift;
+        // the evidence is checked on the way back to green.
+        let failures = if structural.IsEmpty then artifactStaleFailures fresh else structural
         if failures.IsEmpty then
             // Say what is true of the PIN. `pendingTags` also carries the two package-lane tags, so on a
             // template-only release (the common shape: pin held, <Version> bumped) keying off the whole
