@@ -99,6 +99,16 @@ it exits non-zero on a collision. Declare **narrowly and honestly** — `Paths:`
 language (exact paths, directory prefixes, and a *trailing* `/**` or `/*`; a leading `**/` matches
 nothing and is refused).
 
+**And do not reserve a generated artifact** (`.github#309`). If a checked-in generator produces the file
+and a CI **regeneration gate** fails on any diff in it, nobody *authors* it — a collision there is a
+rebase, not a decision — so declaring it reserves a file nobody owns and serialises every item that
+regenerates it. Both conditions are required: if nothing in CI fails on a stale copy, keep declaring it,
+because you would be trading a loud false `OVERLAP` for a silent staleness. Mind the **subtree**, too —
+naming the artifact's parent directory reserves it just as effectively as naming the file. Declare
+against **what the generator emits**, not what the issue's prose says it does. The full rule, with the
+authorship test, is [intra-repo-parallel-work §1](../intra-repo-parallel-work/SKILL.md); expect
+`verify-paths` to report the regenerated artifact as drift in §5, and say so there.
+
 ## 2. Isolate
 
 `claim` prints the branch and the worktree command. Use them — never work an item in the shared
@@ -118,6 +128,11 @@ discipline, managed for you.
   just edit it: `fsgg-coord widen <issue> --paths "<new set>"`. Non-zero exit means you have
   collided with a live claim — stop editing the shared paths and talk:
   `fsgg-coord say <issue> --to <worker> 'I need src/Audio for this; can you land first?'`
+  **One exception, and it is the rule from §1: do NOT `widen` onto a generated artifact.** If the
+  file you just touched is one a checked-in generator emits and a CI regeneration gate guards, you
+  regenerated it — you did not author it. Declaring it now reserves a file nobody owns and
+  serialises every other item that regenerates it, which is the exact failure §1 keeps you out of.
+  Leave it undeclared, and name it as expected drift in the PR (§5).
 - **Heartbeat long work.** A claim goes stale after `FSGG_CLAIM_LEASE_MIN` (default 120m) without
   one, and the next claimant collects it.
 
@@ -216,7 +231,9 @@ over a full one ([#442](https://github.com/FS-GG/.github/issues/442)). You are t
 context — you can name the files better than the eventual claimant can.
 
 Declare it **narrowly and honestly**: exact paths, directory prefixes, and a *trailing* `/**` or
-`/*` (a leading `**/` matches nothing and is refused; so is a backticked line, #435). If you truly
+`/*` (a leading `**/` matches nothing and is refused; so is a backticked line, #435), and **no
+generated artifact** — see §1: a file a generator emits and a CI regeneration gate guards is not
+authored, and reserving it serialises every item that regenerates it. If you truly
 cannot name a touch-set — a decision item, an epic, an investigation whose scope *is* the question —
 **write that in the body** ("no touch-set: declare at claim time with `widen`"), so an undeclared
 item is a decision somebody made rather than an omission nobody noticed.
@@ -260,8 +277,12 @@ scripts/fsgg-coord verify-paths --pr <n>    # did the PR stay inside its declara
 ```
 
 `verify-paths` is **advisory** — the touch-set is a declaration, not an enforced boundary, and CI
-reports drift rather than blocking it. Drift still means one of two things, and both need an
-answer before merge: you should have `widen`ed, or you edited a file that is not this item's work.
+reports drift rather than blocking it. Drift means one of three things, and each needs an answer
+before merge: you should have `widen`ed; you edited a file that is not this item's work; or you
+**regenerated an artifact §1 told you not to declare** — which is correct behaviour, and the one
+case where the right answer is to say so and merge. `verify-paths` cannot yet tell the third from
+the first ([#498](https://github.com/FS-GG/.github/issues/498)), so **name which one it is in the
+PR**: an advisory that fires on correct behaviour, unexplained, is one the next worker skips past.
 
 Then review before you merge. Run `/code-review` on the diff and fix what it finds; if the change
 has a runtime surface, drive it with `/verify` rather than trusting tests.
