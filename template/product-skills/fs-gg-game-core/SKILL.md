@@ -185,11 +185,21 @@ items in **insertion order**.
 - `SpatialGrid.query region grid` — items inside a `Rect` (broad-phase collision / on-screen set).
 - `SpatialGrid.queryRadius center radius grid` — items within a radius (splash damage / proximity).
 
+`SpatialGrid` buckets by the sim `Point`, but your model stores positions in the collision-safe
+`Geometry.Vec2` (`Vx`/`Vy`) — and the scaffold's `Vec2` only crosses into the *scene*
+(`toPoint`/`toRect`), so it ships **no** `Vec2 -> Game.Core.Point` crossing. Write the one-liner
+yourself; the return annotation is what stops a bare `{ X = …; Y = … }` from binding to
+`Scene.Point` (the clash in *Consumer geometry records colliding with framework `Point`/`Rect`*
+below).
+
 ```fsharp
 open FS.GG.Game.Core
 
-let grid = SpatialGrid.build 32.0 [ for e in enemies -> e.Pos, e.Id ]
-let splashed = SpatialGrid.queryRadius blast 48.0 grid            // ids to damage
+// The crossing the scaffold does not ship. `: Point` is load-bearing, not decoration.
+let simPoint (v: Geometry.Vec2) : Point = { X = v.Vx; Y = v.Vy }
+
+let grid = SpatialGrid.build 32.0 [ for e in enemies -> simPoint e.Pos, e.Id ]
+let splashed = SpatialGrid.queryRadius (simPoint blast) 48.0 grid   // ids to damage
 ```
 
 ## Grid-sim recipe
