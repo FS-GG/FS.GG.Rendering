@@ -3,7 +3,9 @@ module AppRoot.AudioCues
 open System.IO
 open FS.GG.Audio.Core
 open FS.GG.Audio.Host
+//#if (profile == "game")
 open AppRoot.Geometry
+//#endif
 open AppRoot.Model
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -11,9 +13,10 @@ open AppRoot.Model
 //
 // `forTransition` is the ONLY place this product decides what to play. It is a pure function of the
 // message and the before/after model — no device, no file handle, no `unit -> unit`. The host turns
-// the returned values into real playback: `Program.fs` passes `Audio.play backend` to
-// `Viewer.runAppWithAudio`, and the viewer hands it each `ViewerEffect.PlayAudio` batch in dispatch
-// order. Your `update` never changes.
+// the returned values into real playback: `Program.fs` passes `Audio.play backend` to the launcher for
+// this profile's host family — `Viewer.runAppWithAudio` for the keyboard host (game, sample-pack) or
+// `ControlsElmish.runInteractiveAppWithAudio` for the pointer-aware one (app, issue #436) — and the
+// viewer hands it each `ViewerEffect.PlayAudio` batch in dispatch order. Your `update` never changes.
 //
 // REPLACE ME, with Model.fs. This file names your `Msg` cases and reads your `Model`'s fields, so a
 // model swap rewrites it. The seam that carries its output (`PlayAudio` / `runAppWithAudio`) is
@@ -38,6 +41,7 @@ let resolver: AssetResolver =
     { ResolveSound = fun (SoundId id) -> tryReadAsset id
       ResolveTrack = fun (TrackId id) -> tryReadAsset id }
 
+//#if (profile == "game")
 let private scored (previous: Model) (next: Model) =
     next.LeftScore > previous.LeftScore || next.RightScore > previous.RightScore
 
@@ -62,3 +66,27 @@ let forTransition (msg: Msg) (previous: Model) (next: Model) : AudioEffect list 
     | Tick _ when scored previous next -> [ Audio.playSfx (SoundId "score") 0.9 ]
     | Tick _ when bounced previous next -> [ Audio.playSfx (SoundId "bounce") 0.6 ]
     | _ -> []
+//#else
+/// What this product asks to hear when `msg` takes it from `previous` to `next` (issue #436).
+///
+/// The CONTROLS starter model, shared by the `app` and `sample-pack` profiles. A UI makes sound for
+/// the same reason a game does — it confirms that something happened — so the cues here are the three
+/// transitions a user causes: a save, a page change, a row selection. `#429` is what makes them
+/// audible: `Program.fs` hands `Audio.play backend` to `runInteractiveAppWithAudio`, the pointer-aware
+/// host, so a CLICK on the save control both dispatches `SaveRequested` and plays its sound.
+///
+/// Return `[]` for a silent transition. Effects play in list order. Drop a WAV at
+/// `assets/audio/<id>.wav` and you hear it; leave it out and the request is recorded but silent — so
+/// a product with no assets yet still runs, and still asks for the right sounds.
+///
+/// Test it the way you test `update` — by value, with no sound card:
+///     AudioCues.forTransition SaveRequested before after = [ Audio.playSfx (SoundId "save") 0.7 ]
+let forTransition (msg: Msg) (previous: Model) (next: Model) : AudioEffect list =
+    match msg with
+    | SaveRequested -> [ Audio.playSfx (SoundId "save") 0.7 ]
+    // Only when the page actually CHANGES: re-selecting the current page is not a navigation, and
+    // re-playing its sound on every no-op click is the kind of thing that makes people mute an app.
+    | Navigated page when page <> previous.Page -> [ Audio.playSfx (SoundId "navigate") 0.5 ]
+    | GridSelectionChanged _ -> [ Audio.playSfx (SoundId "select") 0.4 ]
+    | _ -> []
+//#endif

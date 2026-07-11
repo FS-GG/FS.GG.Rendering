@@ -38,15 +38,25 @@
          (ADR-0022 P5) nor, since the Canvas 0.3.0 major (ADR-0024, Rendering#158), the Audio
          request surface, which moved to FS.GG.Audio.Core below. -->
     <PackageVersion Include="FS.GG.UI.Canvas" Version="$(FsGgUiVersion)" />
+    <!-- Engine = buses / fades / ducking / 3D; Elmish = the Audio.Cmd authoring bridge. Both are
+         SIMULATION-shaped: they serve a game's MVU loop, not a menu. `app` gets Core + Host below
+         instead — the two packages a product needs to REQUEST a sound and have a device realize it. -->
+    <PackageVersion Include="FS.GG.Audio.Engine" Version="$(FsGgAudioVersion)" />
+    <PackageVersion Include="FS.GG.Audio.Elmish" Version="$(FsGgAudioVersion)" />
+    <!--#endif -->
+    <!--#if (profile == "app" || profile == "game" || profile == "sample-pack") -->
     <!-- FS.GG.Audio: the single home of the pure AudioEffect vocabulary and its real host-side
          realization (standalone repo, $(FsGgAudioVersion) axis).
          Core = request vocabulary + record interpreter (headless default);
-         Host = IAudioBackend device seam (Null/record + OpenAL, degrade-to-Null); Engine = buses /
-         fades / ducking / 3D; Elmish = Audio.Cmd authoring bridge. See ADR-0024. -->
+         Host = IAudioBackend device seam (Null/record + OpenAL, degrade-to-Null). See ADR-0024.
+
+         Issue #436: `app` is on this gate too. #429 gave the pointer-aware host family an audio sink
+         (`runInteractiveAppWithAudio`), but the controls profile referenced NO FS.GG.Audio package, so
+         a scaffolded app could not so much as NAME `AudioEffect` — the framework grew the seam and the
+         generated product still got silence, which is the complaint #429 was filed about. A start
+         screen, a volume slider and a click-to-confirm are the motivating cases; they are not games. -->
     <PackageVersion Include="FS.GG.Audio.Core" Version="$(FsGgAudioVersion)" />
     <PackageVersion Include="FS.GG.Audio.Host" Version="$(FsGgAudioVersion)" />
-    <PackageVersion Include="FS.GG.Audio.Engine" Version="$(FsGgAudioVersion)" />
-    <PackageVersion Include="FS.GG.Audio.Elmish" Version="$(FsGgAudioVersion)" />
     <!--#endif -->
     <!--#if (profile == "app" || profile == "sample-pack" || profile == "game") -->
     <PackageVersion Include="FS.GG.UI.SkiaViewer" Version="$(FsGgUiVersion)" />

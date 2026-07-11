@@ -34,13 +34,17 @@
     <Compile Include="Model.fs" />
     <Compile Include="View.fs" />
     <Compile Include="LayoutEvidence.fs" />
-    <!--#if (profile == "game") -->
+    <!--#if (profile == "app" || profile == "game" || profile == "sample-pack") -->
     <!-- Issue #245: the product-owned `Msg -> AudioEffect list` cue map and asset resolver. Compiles
          after Model.fs (it names your Msg cases and reads your Model) and before EvidenceCommands.fs
          (which lifts its output onto ViewerEffect.PlayAudio). Replaceable: rewrite it with the model.
-         `game` only, not `sample-pack`: the two profiles ship DIFFERENT starter Msg types, and this
-         file is written against the game's Pong-style one. sample-pack keeps referencing the
-         FS.GG.Audio packages, as it did before. -->
+
+         Issue #436: on every profile that HAS a starter Msg to make sound about. The file is
+         profile-conditional inside, because the profiles ship different starter models: `game` gets
+         the Pong cues (score, bounce), while `app` and `sample-pack` — which share ONE controls-style
+         starter Msg — get the UI cues (save, navigate, select). It used to be `game` only, and
+         `sample-pack` referenced the FS.GG.Audio packages while compiling no cue map and wiring no
+         sink: it shipped the dependency and could never make a sound. -->
     <Compile Include="AudioCues.fs" />
     <!--#endif -->
     <!--#if (profile == "app" || profile == "sample-pack" || profile == "game") -->
@@ -62,15 +66,22 @@
          request surface was RETIRED at the Canvas 0.3.0 major (ADR-0024, Rendering#158) — the
          AudioEffect vocabulary now lives in FS.GG.Audio.Core, referenced just below. -->
     <PackageReference Include="FS.GG.UI.Canvas" />
-    <!-- FS.GG.Audio (standalone repo, $(FsGgAudioVersion) axis): the single home of the pure
-         AudioEffect vocabulary (Core) AND its real host-side realization — buses, fades/ducking, 3D,
-         and a device backend that degrades to a headless Null/record path (so tests stay
-         deterministic and hardware-free). Elmish is the Audio.Cmd authoring bridge for the game's
-         MVU loop. See ADR-0024 / fs-gg-audio skill. -->
-    <PackageReference Include="FS.GG.Audio.Core" />
-    <PackageReference Include="FS.GG.Audio.Host" />
+    <!-- Engine (buses, fades/ducking, 3D) and Elmish (the Audio.Cmd authoring bridge) serve a
+         simulation's MVU loop. See ADR-0024 / fs-gg-audio skill. -->
     <PackageReference Include="FS.GG.Audio.Engine" />
     <PackageReference Include="FS.GG.Audio.Elmish" />
+    <!--#endif -->
+    <!--#if (profile == "app" || profile == "game" || profile == "sample-pack") -->
+    <!-- FS.GG.Audio (standalone repo, $(FsGgAudioVersion) axis): the pure AudioEffect vocabulary
+         (Core) and its real host-side realization (Host) — a device backend that degrades to a
+         headless Null/record path, so tests stay deterministic and hardware-free.
+
+         Issue #436: `app` too. These two are what AudioCues.fs and Program.fs need in order to
+         request a sound and hand a sink to `runInteractiveAppWithAudio` (the #429 seam). Without
+         them the controls profile could not name `AudioEffect`, and the seam was unreachable from a
+         generated product. -->
+    <PackageReference Include="FS.GG.Audio.Core" />
+    <PackageReference Include="FS.GG.Audio.Host" />
     <!--#endif -->
     <!--#if (profile == "app" || profile == "sample-pack" || profile == "game") -->
     <PackageReference Include="FS.GG.UI.SkiaViewer" />

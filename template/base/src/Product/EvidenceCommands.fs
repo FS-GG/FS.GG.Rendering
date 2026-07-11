@@ -284,10 +284,14 @@ let generatedHost =
       Update =
         fun msg model ->
             let next, _, viewerEffects = interpretAtHostBoundary msg model
-//#if (profile == "game")
+//#if (profile == "game" || profile == "sample-pack")
             // Issue #245: the product's sound requests ride out on the same effect list the viewer
             // already interprets. `Viewer.runAppWithAudio` hands each batch to the real backend;
             // `Viewer.runApp` and the evidence paths discard it, so nothing here needs a device.
+            //
+            // Issue #436: `sample-pack` too. It referenced every FS.GG.Audio package, compiled no cue
+            // map, and launched through the sinkless `Viewer.runApp` — it shipped the dependency and
+            // could never make a sound. It now lifts cues here and gets a real sink in Program.fs.
             match AppRoot.AudioCues.forTransition msg model next with
             | [] -> next, viewerEffects
             | cues -> next, viewerEffects @ [ PlayAudio cues ]
@@ -311,7 +315,15 @@ let interactiveHost: InteractiveAppHost<Model, Msg> =
       Update =
         fun msg model ->
             let next, _, viewerEffects = interpretAtHostBoundary msg model
-            next, viewerEffects
+            // Issue #436: the pointer-aware host asks for sound the same way the keyboard one does —
+            // by putting `PlayAudio` on the effect list its `update` already returns. #429 gave this
+            // host family a sink (`runInteractiveAppWithAudio`); before that the interactive host
+            // SILENTLY DISCARDED every `PlayAudio`, so emitting cues here would have been a lie.
+            // `Program.fs` supplies the real backend; the evidence and headless paths take the same
+            // effects and drop the audio, so nothing here needs a device.
+            match AppRoot.AudioCues.forTransition msg model next with
+            | [] -> next, viewerEffects
+            | cues -> next, viewerEffects @ [ PlayAudio cues ]
       View = fun _size model -> controlsExampleView model
       Theme = Theme.light
       MapKey = mapKey

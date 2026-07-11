@@ -163,12 +163,23 @@ let main args =
         // dispatches that control's bound message (via MapPointer over the renderTree bounds). A
         // window flag (e.g. --window-startup normal) threads the parsed behavior into the ACTUAL live
         // launch (feature 122, FR-005), so the scaffold-map remedy is effective instead of inert;
-        // with no flag the default windowed-fullscreen path is preserved (byte-identical).
+        // with no flag the default windowed-fullscreen path is preserved.
+        //
+        // Issue #436 — and it now has SOUND. #429 added `runInteractiveAppWithAudio`, the audio-capable
+        // sibling of this family's host, because pointer and audio used to be mutually exclusive:
+        // `runAppWithAudio` has no pointer and cannot author Controls, and `runInteractiveApp` silently
+        // discarded every `PlayAudio`. A start screen, a volume slider, a click-to-confirm — the
+        // motivating cases are UI, not simulation. Same backend story as the game family below: the
+        // device degrades to a record-only Null backend when OpenAL is unavailable, so this is safe
+        // headless and in CI, and nothing outside this line knows a device exists.
+        use audioBackend = FS.GG.Audio.Host.OpenAlBackend.create AppRoot.AudioCues.resolver
+        let audioSink = FS.GG.Audio.Host.Audio.play audioBackend
+
         let launchResult =
             if AppRoot.WindowOptions.windowFlagSupplied args then
-                ControlsElmish.runInteractiveAppWithWindowBehavior viewerOptions (AppRoot.WindowOptions.toViewerLaunchRequest windowBehavior) interactiveHost
+                ControlsElmish.runInteractiveAppWithWindowBehaviorAndAudio viewerOptions (AppRoot.WindowOptions.toViewerLaunchRequest windowBehavior) audioSink interactiveHost
             else
-                ControlsElmish.runInteractiveApp viewerOptions interactiveHost
+                ControlsElmish.runInteractiveAppWithAudio viewerOptions audioSink interactiveHost
         //#else
         // GAME family: the keyboard-only persistent host is preserved (FR-006). A window flag
         // routes through the window-behavior overload; otherwise the durable default path stays
@@ -188,11 +199,18 @@ let main args =
             else
                 Viewer.runAppWithAudio viewerOptions audioSink generatedHost
         //#else
+        // SAMPLE-PACK (issue #436): it referenced all four FS.GG.Audio packages and then launched
+        // through the SINKLESS `Viewer.runApp` — shipping the dependency while being structurally
+        // incapable of making a sound. It gets the same real sink as the game family; its cue map is
+        // the controls one (it shares the `app` starter Msg), so a save/navigate/select is audible.
+        use audioBackend = FS.GG.Audio.Host.OpenAlBackend.create AppRoot.AudioCues.resolver
+        let audioSink = FS.GG.Audio.Host.Audio.play audioBackend
+
         let launchResult =
             if AppRoot.WindowOptions.windowFlagSupplied args then
-                Viewer.runAppWithWindowBehavior viewerOptions (AppRoot.WindowOptions.toViewerLaunchRequest windowBehavior) generatedHost
+                Viewer.runAppWithWindowBehaviorAndAudio viewerOptions (AppRoot.WindowOptions.toViewerLaunchRequest windowBehavior) audioSink generatedHost
             else
-                Viewer.runApp viewerOptions generatedHost
+                Viewer.runAppWithAudio viewerOptions audioSink generatedHost
         //#endif
         //#endif
 
