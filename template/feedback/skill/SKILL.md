@@ -65,9 +65,7 @@ capture the skill family/topic + candidate helper so it can be triaged into
 `FS.GG.UI.SkillSupport`.
 
 These rules are normative **here**: this skill body is the contract, and no separate
-requirements document stands behind it. Cite it as `fs-gg-feedback-capture`, and do not
-re-point `metadata.source` at a `specs/<feature>/` path — the one this skill used to carry
-was inherited from the pre-migration repository and never existed in this one.
+requirements document stands behind it. Cite it as `fs-gg-feedback-capture`.
 
 ## Version every record, and check before you file
 
