@@ -156,6 +156,10 @@
 #                                             # --warn downgrades the VERDICT, not a failure to reach
 #                                             # one: if the PR's issue cannot be resolved, it still
 #                                             # exits non-zero rather than reporting SKIP (#322).
+#                                             # --issue DECIDES the repo: --pr resolves in the issue's
+#                                             # repo, not the checkout's. A --repo that disagrees is
+#                                             # refused, never silently preferred — a verdict is only
+#                                             # ever printed when PR and issue are in ONE repo (#479).
 #
 #   <issue> is a full URL, `owner/repo#n`, or `repo#n` (owner defaults to FS-GG).
 #   A global `--worker <id>` may precede any subcommand.
@@ -3230,10 +3234,34 @@ verify_paths_cmd() {
   done
   [ -n "$pr" ] || die "verify-paths: --pr N required."
   case "$pr" in *[!0-9]*) die "verify-paths: --pr must be a number." ;; esac
-  [ -n "$repo" ] || repo="$(gh repo view --json nameWithOwner --jq '.nameWithOwner' 2>/dev/null || true)"
-  [ -n "$repo" ] || die "verify-paths: --repo owner/repo required (not inside a GitHub checkout)."
-  local o="${repo%%/*}" r="${repo#*/}"
-  [ "$o" = "$r" ] && { o="$OWNER"; r="$repo"; }
+
+  # WHICH REPO IS THE PR IN? `--pr` used to resolve against the repo you were STANDING IN while
+  # `--issue` carried a repo of its own — so a PR in one repo was diffed against a touch-set in
+  # another, and a confident FSGG-PATHS verdict was printed on a subject nobody had looked at
+  # (.github#479). The `--issue` ref already NAMES the repo; the answer was in the arguments.
+  # Precedence: an explicit --repo, else the issue's repo, else the checkout. The checkout is a
+  # fallback, never evidence that overrides a ref the caller spelled out.
+  local io="" ir="" o="" r=""
+  if [ -n "$issue" ]; then
+    parse_ref "$issue"; io="$R_OWNER"; ir="$R_REPO"   # read R_* IMMEDIATELY (#389)
+    issue="$io/$ir#$R_NUM"          # canonical, so the verdict names the repo it actually checked
+  fi
+  if [ -z "$repo" ] && [ -z "$issue" ]; then
+    repo="$(gh repo view --json nameWithOwner --jq '.nameWithOwner' 2>/dev/null || true)"
+    [ -n "$repo" ] || die "verify-paths: --repo owner/repo required (not inside a GitHub checkout)."
+  fi
+  if [ -n "$repo" ]; then
+    case "$repo" in */*) o="${repo%%/*}" ;; *) o="$OWNER" ;; esac
+    r="$(resolve_repo "$repo")"     # a registry short-id (`audio`) resolves like it does everywhere else
+  else
+    o="$io"; r="$ir"
+  fi
+  # A disagreement is an ERROR, not a preference. Silently preferring one of the two is exactly how a
+  # PR in repo A earned a verdict from repo B's touch-set. Compare case-insensitively — GitHub repo
+  # names are, and `--repo fs.gg.audio` agreeing with `FS.GG.Audio#42` must not read as a conflict.
+  if [ -n "$issue" ] && { [ "${o,,}" != "${io,,}" ] || [ "${r,,}" != "${ir,,}" ]; }; then
+    die "verify-paths: --repo names $o/$r but --issue names $io/$ir — a PR in one repo cannot be verified against a touch-set in another. The touch-set was NOT checked."
+  fi
 
   # Which issue does this PR implement? Explicit wins; else the `item/<n>-…` branch ADR-0021 mandates;
   # else the PR's own closing reference. Refusing to guess is better than checking the wrong touch-set.
@@ -3266,6 +3294,18 @@ verify_paths_cmd() {
   if [ -z "$issue" ]; then
     [ -n "$warn" ] && { printf 'FSGG-PATHS SKIP — cannot tell which issue PR #%s implements (branch is not item/<n>-…, and it closes no issue).\n' "$pr"; return 0; }
     die "verify-paths: cannot tell which issue PR #$pr implements (branch is not item/<n>-…, and it closes no issue). Pass --issue."
+  fi
+  # The boundary again, from the other side. GitHub lets a PR close an issue in ANOTHER repo, so the
+  # closing-reference fallback can hand back a ref that walks straight back across the line the
+  # explicit check above just refused to cross (.github#479). The caller did nothing wrong here — this
+  # is not an error, it is simply nothing we can check — but it is emphatically NOT a verdict: repo B's
+  # touch-set says nothing about repo A's files. Re-check the DERIVED ref, not just the explicit one.
+  parse_ref "$issue"; local xo="$R_OWNER" xr="$R_REPO" xn="$R_NUM"   # read R_* IMMEDIATELY (#389)
+  if [ "${xo,,}" != "${o,,}" ] || [ "${xr,,}" != "${r,,}" ]; then
+    local xmsg="PR #$pr is in $o/$r but closes $xo/$xr#$xn, in another repo — a touch-set declared there says nothing about the files changed here, so there is nothing to verify against."
+    [ -n "$warn" ] && { printf 'FSGG-PATHS SKIP — %s\n' "$xmsg"; return 0; }
+    echo "verify-paths: $xmsg" >&2
+    return 2
   fi
 
   local declared; declared="$(paths_for_ref "$issue")"
