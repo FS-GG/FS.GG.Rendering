@@ -670,7 +670,14 @@ let private expectedFrameworkSkills =
     // in FS.GG.UI.Symbology.Render -> FS.GG.UI.SkiaViewer, and the viewerless profiles pin no viewer,
     // so it could never compile there. Matches its manifest `materializes-when: profile in [app,
     // sample-pack, game]`.
-    [ "app", Set.ofList [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-keyboard-input"; "fs-gg-ui-widgets"; "fs-gg-styling"; "fs-gg-layout"; "fs-gg-symbology"; "fs-gg-testing" ]
+    //
+    // fs-gg-audio: on `app` since #436, for the same reason and on the same three profiles. Sound is a
+    // WINDOW concern, not a simulation one — #429 gave the Controls host family an audio sink, and the
+    // `app` scaffold could not reach it (no FS.GG.Audio refs, sinkless launch). It now follows the
+    // SkiaViewer profile set too. Matches its manifest `materializes-when: profile in [app,
+    // sample-pack, game]`, and the audio Core/Host package gate in
+    // template/base/{Directory.Packages.props,src/Product/Product.fsproj}.
+    [ "app", Set.ofList [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-keyboard-input"; "fs-gg-ui-widgets"; "fs-gg-styling"; "fs-gg-layout"; "fs-gg-symbology"; "fs-gg-audio"; "fs-gg-testing" ]
       "headless-scene", Set.ofList [ "fs-gg-scene"; "fs-gg-testing" ]
       "governed", Set.ofList [ "fs-gg-scene"; "fs-gg-testing" ]
       // sample-pack shares the game profile's capability set (audio/collision/game-core/grids/
