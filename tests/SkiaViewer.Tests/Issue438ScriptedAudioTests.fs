@@ -61,6 +61,7 @@ let private playedBy (effects: ViewerEffect list) =
         ignore
         ignore
         ignore
+        ignore // #444 evidence sink: this script emits no evidence effect
         effects
     |> ignore
 

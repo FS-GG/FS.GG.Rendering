@@ -1621,6 +1621,28 @@ module Viewer =
         ensureParentDirectory path
         IO.File.WriteAllLines(path, lines |> List.toArray)
 
+    // Issue #444: `WriteVisualEvidence` carries an already-formed artifact record — the product (or a
+    // readiness workflow) decided what the evidence says. So this serializes the record verbatim in the
+    // same kebab-key text shape the bounded path's evidence uses, rather than re-deriving a verdict the
+    // caller has already reached. `Path` is the artifact's own subject (the image it describes), which
+    // is NOT the path being written here, so both are recorded.
+    let private writeVisualEvidenceArtifact (path: string) (artifact: ViewerVisualEvidenceArtifact) =
+        // Lower-cased deliberately: `$"{bool}"` renders .NET's `True`/`False`, but every other evidence
+        // line this module writes spells these `true`/`false` (see `visualEvidenceArtifacts`), and a
+        // reader that greps `proves-scene-rendering=true` must not miss it on case alone.
+        let flag value = if value then "true" else "false"
+        let subject = artifact.Path |> Option.defaultValue ""
+        let decodable = artifact.ImageDecodable |> Option.map flag |> Option.defaultValue ""
+
+        writeTextEvidence
+            path
+            [ $"kind={artifact.Kind}"
+              $"path={subject}"
+              $"image-decodable={decodable}"
+              $"proves-scene-rendering={flag artifact.ProvesSceneRendering}"
+              $"proves-desktop-visibility={flag artifact.ProvesDesktopVisibility}"
+              $"message={artifact.Message}" ]
+
     let private sceneFromNode node =
         { Nodes = [ node ] }
 
@@ -1966,6 +1988,88 @@ module Viewer =
                     (fun () -> true)
                     None
 
+    /// Issue #444: the evidence effects a product emits from a persistent loop. The highest-severity
+    /// member of the silent-no-op family (#416) — `CaptureScreenshot`, `CaptureImageEvidence`,
+    /// `WriteVisualEvidence` and `WriteRunEvidence` sat in the discard group beside the window-lifecycle
+    /// effects, so a product's `Update` asked for evidence and got no file, no error, and a run that
+    /// reported success. Compose that with SDD#349 — the lifecycle never opens the `artifacts:` path it
+    /// records — and the verdict is green with nothing behind it, unfalsifiable end to end.
+    ///
+    /// So these are HONORED, not merely announced. Audio needed a caller-supplied sink because the viewer
+    /// owns no audio device; evidence is different — every writer already existed in this module, private,
+    /// serving the bounded path. `WriteRunEvidence`/`WriteVisualEvidence` carry their payload and are
+    /// written verbatim. The two capture effects rasterize the CURRENT scene through the same shared CPU
+    /// painter `runBounded` uses, so they depict the SCENE and not the presented GL framebuffer — the same
+    /// disclosure `runBounded` already carries, restated on the `runApp` family in SkiaViewer.fsi.
+    ///
+    /// Evidence I/O must never take a live render loop down with it, so a failed write is caught and
+    /// reported as an `Error`/`Screenshot`/`ArtifactWrite` diagnostic naming the effect, the path and the
+    /// reason. That reason string is the failure leg #266 asks for: evidence that did NOT get written now
+    /// says so, on the diagnostics channel that was already wired five lines above the old discard.
+    let internal productEvidenceSink
+        (onDiagnostic: ViewerDiagnosticEvent -> unit)
+        (sceneSize: unit -> FS.GG.UI.Scene.Size)
+        (currentScene: unit -> SceneNode)
+        (effect: ViewerEffect)
+        : unit =
+        // "failed to write", not "did not write": `writeSceneImageEvidence` returns false both when the
+        // encode produced nothing (no file) and when the file it wrote will not decode again. Claiming
+        // nothing was written would be a lie in the second case, and the whole point here is to stop
+        // saying reassuring things about evidence that is not there.
+        let report (effectName: string) (path: string) (reason: string) =
+            onDiagnostic
+                { Level = ViewerDiagnosticLevel.Error
+                  Category = ViewerDiagnosticCategory.Screenshot
+                  Message = $"{effectName} failed to write '{path}': {reason}"
+                  FrameIndex = None
+                  Stage = Some ViewerRunBlockedStage.ArtifactWrite
+                  Elapsed = None }
+
+        let attempt (effectName: string) (path: string) (write: unit -> unit) =
+            if String.IsNullOrWhiteSpace path then
+                report effectName path "the effect named an empty path"
+            else
+                try
+                    write ()
+                with ex ->
+                    report effectName path ex.Message
+
+        let rasterize (effectName: string) (path: string) =
+            if not (writeSceneImageEvidence path (sceneSize ()) (currentScene ())) then
+                report effectName path "the rasterized scene did not produce a readable PNG"
+
+        match effect with
+        | CaptureScreenshot path -> attempt "CaptureScreenshot" path (fun () -> rasterize "CaptureScreenshot" path)
+        | CaptureImageEvidence path -> attempt "CaptureImageEvidence" path (fun () -> rasterize "CaptureImageEvidence" path)
+        | WriteRunEvidence(path, evidence) ->
+            // The SAME rule the bounded path applies (`writeRunEvidence`): a `.png` evidence path gets the
+            // rasterized scene, any other path gets the textual run summary. Writing text unconditionally
+            // here would mean one effect, two behaviours depending on which host ran it — the exact
+            // two-copies drift #429 removed from this fold, reintroduced one level down.
+            attempt "WriteRunEvidence" path (fun () ->
+                if isPngPath path then
+                    rasterize "WriteRunEvidence" path
+                else
+                    writeEvidence path evidence)
+        // NOT rasterized even for a `.png` path, unlike the two above: this effect CARRIES the artifact
+        // record the product already decided on, and rasterizing would silently discard that payload.
+        | WriteVisualEvidence(path, artifact) ->
+            attempt "WriteVisualEvidence" path (fun () -> writeVisualEvidenceArtifact path artifact)
+        // Enumerated, not a `| _ -> ()` wildcard, and deliberately so: a wildcard in the very function
+        // whose job is to stop effects vanishing would silently swallow the NEXT evidence effect somebody
+        // adds to `ViewerEffect`. Listed out, the compiler makes that addition a decision instead.
+        | RenderScene _
+        | DispatchInput _
+        | CloseWindow
+        | EmitDiagnostic _
+        | PlayAudio _
+        | OpenWindow _
+        | ApplyWindowOptions _
+        | QueryNativeWindowState
+        | StartBoundedRun _
+        | CheckDesktopSession
+        | ReadPixels -> ()
+
     /// Issue #429: the ONE effect interpretation both persistent loops perform — the generated-app loop
     /// and the pointer/size-aware interactive loop. They were separate, byte-identical folds, and they
     /// drifted: the interactive copy left `PlayAudio` in the discard group, so a product on the
@@ -1981,6 +2085,7 @@ module Viewer =
         (onScene: SceneNode -> unit)
         (onInputDispatch: unit -> unit)
         (onDiagnostic: ViewerDiagnosticEvent -> unit)
+        (evidenceSink: ViewerEffect -> unit)
         (effects: ViewerEffect list)
         : bool =
         effects
@@ -2000,16 +2105,28 @@ module Viewer =
                 | PlayAudio batch ->
                     audioSink batch
                     closeRequested
+                // Issue #444: evidence is WRITTEN, not discarded. These four used to fall through to the
+                // group below and vanish — no file, no error, success. `productEvidenceSink` honors them
+                // and reports any failed write on the diagnostics channel.
+                | CaptureScreenshot _
+                | CaptureImageEvidence _
+                | WriteVisualEvidence _
+                | WriteRunEvidence _ ->
+                    evidenceSink effect
+                    closeRequested
+                // Structurally inapplicable INSIDE a running persistent loop, and that is why they are
+                // dropped — the honesty the interactive loop's sibling comment already had and this fold
+                // did not (#444). `OpenWindow`/`ApplyWindowOptions`/`StartBoundedRun`/`CheckDesktopSession`
+                // are launch-time lifecycle steps: the loop is past them, holding the window they ask for.
+                // `QueryNativeWindowState` and `ReadPixels` are queries, and a fold returning `bool` has no
+                // channel to answer on — a product cannot observe a reply that has nowhere to go. None of
+                // the six names a path, so none of them can silently fail to write one.
                 | OpenWindow _
                 | ApplyWindowOptions _
                 | QueryNativeWindowState
                 | StartBoundedRun _
                 | CheckDesktopSession
-                | CaptureScreenshot _
-                | CaptureImageEvidence _
-                | ReadPixels
-                | WriteVisualEvidence _
-                | WriteRunEvidence _ -> closeRequested)
+                | ReadPixels -> closeRequested)
             false
 
     // Issue #245 — the one generated-app launch body. `audioSink` receives every `PlayAudio` batch in
@@ -2078,8 +2195,15 @@ module Viewer =
                         let onInputDispatch () = inputDispatch <- "true"
                         let onDiagnostic diagnostic = captureDiagnostic host.Diagnostics diagnostic |> ignore
 
+                        // Issue #444: evidence rasterizes at `InitialSize`, the space `GeneratedAppHost.View`
+                        // authors in — it is handed no window size on purpose (#246), so the live surface is
+                        // a present-time fit and not the scene's own coordinate space. This is the size
+                        // `runBounded` rasterizes evidence at too.
+                        let evidenceSink =
+                            productEvidenceSink onDiagnostic (fun () -> options.InitialSize) (fun () -> currentScene)
+
                         let interpretEffects effects =
-                            interpretViewerEffects audioSink onScene onInputDispatch onDiagnostic effects
+                            interpretViewerEffects audioSink onScene onInputDispatch onDiagnostic evidenceSink effects
 
                         let initialCloseRequested = interpretEffects initEffects
 
@@ -2232,8 +2356,14 @@ module Viewer =
                         let onInputDispatch () = inputDispatch <- "true"
                         let onDiagnostic diagnostic = captureDiagnostic host.Diagnostics diagnostic |> ignore
 
+                        // Issue #444: evidence rasterizes at `currentSize` — the space this host's `View`
+                        // actually authors in (the fixed `LogicalSize` when set, else the physical
+                        // framebuffer), so the image depicts what the product drew.
+                        let evidenceSink =
+                            productEvidenceSink onDiagnostic (fun () -> currentSize) (fun () -> currentScene)
+
                         let interpretEffects effects =
-                            interpretViewerEffects audioSink onScene onInputDispatch onDiagnostic effects
+                            interpretViewerEffects audioSink onScene onInputDispatch onDiagnostic evidenceSink effects
 
                         let initialCloseRequested = interpretEffects initEffects
 

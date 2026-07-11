@@ -37,15 +37,31 @@ module Viewer =
     /// byte-identical folds, and they drifted — the interactive copy discarded `PlayAudio`, so a
     /// pointer-driven product got silence (#429). `internal` for the same reason as
     /// `runtimeStateRepaint`: the live loops are GL/timing-bound, so this is the seam that lets the
-    /// regression assert the policy — notably that audio reaches the sink — deterministically.
+    /// regression assert the policy — notably that audio reaches the sink, and that evidence reaches
+    /// `evidenceSink` rather than the floor (#444) — deterministically.
     /// Each loop passes in its own mutations; the returned flag is "this batch requested a close".
     val internal interpretViewerEffects:
         audioSink: (AudioEffect list -> unit) ->
         onScene: (SceneNode -> unit) ->
         onInputDispatch: (unit -> unit) ->
         onDiagnostic: (ViewerDiagnosticEvent -> unit) ->
+        evidenceSink: (ViewerEffect -> unit) ->
         effects: ViewerEffect list ->
             bool
+
+    /// Issue #444: the evidence sink both persistent loops hand to `interpretViewerEffects`. Writes the
+    /// four evidence effects a product can emit — `CaptureScreenshot`, `CaptureImageEvidence`,
+    /// `WriteVisualEvidence`, `WriteRunEvidence` — which the fold used to discard silently: no file, no
+    /// error, run reports success. A failed write is reported as an `Error`/`Screenshot`/`ArtifactWrite`
+    /// diagnostic naming the effect, the path and the reason, so evidence never fails silently again;
+    /// it never throws, because evidence I/O must not take a live render loop down with it.
+    /// `internal` — the seam the #444 regression asserts on, for the same GL/timing reason as above.
+    val internal productEvidenceSink:
+        onDiagnostic: (ViewerDiagnosticEvent -> unit) ->
+        sceneSize: (unit -> Size) ->
+        currentScene: (unit -> SceneNode) ->
+        effect: ViewerEffect ->
+            unit
 
     /// S3 (Feature 175) live-trace read-back. `traceStartCapture` begins in-memory capture of
     /// `RenderLagTrace` events (focus/hover/scroll/dispatch/timing); `traceDrainCapture` stops and
@@ -150,9 +166,23 @@ module Viewer =
     val runtimeCapability: unit -> ViewerRuntimeCapability
     /// Public contract function exposed by this FS.GG.UI package.
     val run: options: ViewerOptions -> scene: SceneNode -> Result<ViewerLaunchOutcome, ViewerRunFailure>
-    /// Public contract function exposed by this FS.GG.UI package.
+    /// Issue #444 — EVIDENCE EFFECTS ARE HONORED HERE. A host that emits `CaptureScreenshot`,
+    /// `CaptureImageEvidence`, `WriteVisualEvidence` or `WriteRunEvidence` from `Init`/`Update` gets the
+    /// file written. Before #444 all four were discarded by the launch loop — no file, no error, and the
+    /// run still reported success — which made a green "evidence collected" verdict unfalsifiable.
+    ///
+    /// What lands on disk. `CaptureScreenshot`/`CaptureImageEvidence` — and `WriteRunEvidence` when its
+    /// path ends in `.png`, the same rule `runBounded` applies — rasterize the CURRENT SCENE offscreen
+    /// through the shared CPU painter, so the image depicts the scene the product drew, NOT the presented
+    /// GL framebuffer: read it as "the product rendered this", not as "the desktop showed this".
+    /// `WriteRunEvidence` to any other path writes the textual run summary, and `WriteVisualEvidence`
+    /// always serializes the artifact record it carries (rasterizing would discard that payload).
+    ///
+    /// A write that fails does not throw and does not take the window down; it raises an
+    /// `Error`/`Screenshot`/`ArtifactWrite` diagnostic naming the effect, the path and the reason, so the
+    /// failure is observable on `Diagnostics` rather than silent.
     val runApp: options: ViewerOptions -> host: GeneratedAppHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
-    /// Public contract function exposed by this FS.GG.UI package.
+    /// As `runApp` (including the Issue #444 evidence-effect handling), with an explicit window behavior.
     val runAppWithWindowBehavior: options: ViewerOptions -> behavior: ViewerWindowBehaviorRequest -> host: GeneratedAppHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
     /// Issue #245 — as `runApp`, but every `ViewerEffect.PlayAudio` batch the host emits is handed to
     /// `audioSink` in dispatch order instead of being discarded. This is the seam from a product's pure
