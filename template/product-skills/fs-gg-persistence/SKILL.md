@@ -161,6 +161,22 @@ Be clear about what that host is today: **there isn't one.** No host in this org
 screenshot I/O and documents no persistence sink. Nothing will pick these requests up unless you
 write the backend yourself ([If you own the backend](#if-you-own-the-backend)).
 
+### Which host interprets each `PersistenceEffect`
+
+| `PersistenceEffect` | `Persistence.interpret` does | Which host runner interprets it |
+|---|---|---|
+| `Save` | records the request into `PersistenceEvidence.Requested` (clamping `Version` to `>= 0`); **writes no bytes** | **none** |
+| `Load` | records the request; returns **no payload** | **none** |
+| `DeleteSlot` | records the request; **deletes nothing** | **none** |
+
+The "none" column is structural, not an oversight: a host runner interprets `ViewerEffect`, and **no
+`ViewerEffect` case carries a `PersistenceEffect`**. A persistence request cannot reach a host runner
+even in principle — `Persistence.interpret` is the only thing that will ever see it, and all it does
+is hand the requests back to you.
+
+So `PersistenceEvidence.Requested` proves that your `update` **asked** to save. It proves **nothing
+about durability**, because no code in the framework writes a byte.
+
 ## Generated Product
 
 Map each `Msg` that should save, load, or delete to a `PersistenceEffect` in your `update`, collect
