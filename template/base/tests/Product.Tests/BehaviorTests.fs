@@ -157,6 +157,40 @@ let behaviorTests =
             Expect.isNonEmpty effects "generatedHost returns a render effect to SkiaViewer"
         }
 
+        // Issue #458. Assert at the SINK, not at the model.
+        //
+        // This is the only shape of test that catches this class. A test that asserts on the MODEL
+        // cannot: a restored setting the mixer was never told about is indistinguishable, from inside
+        // the model, from one that was applied correctly. So this asks what the host actually HANDED
+        // OUT — the ViewerEffect list `Init` returns, which is what `Viewer.runAppWithAudio` feeds to
+        // the audio sink.
+        //
+        // Its failure leg is real: revert `Init` to `fun () -> initialModel, []` (what it was) and
+        // this test goes red. That matters — a fix whose failure leg is untested is how this class
+        // survives its own fix.
+        test "generated game host cues the INITIAL state through the same seam as every other state" {
+            let host = AppRoot.Program.generatedHost
+            let model0, initEffects = host.Init()
+
+            let expected = AppRoot.AudioCues.forTransition Started model0 model0
+
+            Expect.isNonEmpty
+                expected
+                "the scaffold ships `Started` wired to a cue — an empty one would make this test vacuous (#458)"
+
+            let cued =
+                initEffects
+                |> List.collect (fun effect ->
+                    match effect with
+                    | PlayAudio cues -> cues
+                    | _ -> [])
+
+            Expect.equal
+                cued
+                expected
+                "generatedHost.Init routes the initial model through AudioCues.forTransition Started — state that is LOADED rather than transitioned into must still reach the audio sink (#458)"
+        }
+
         test "generated game host boundary keeps app commands separate from viewer effects" {
             let model0 = AppRoot.Program.initialModel
             let hosted, appCommands, viewerEffects = AppRoot.Program.interpretAtHostBoundary (Tick oneStep) model0

@@ -70,6 +70,24 @@ type Model =
       LastInput: ViewerKey option }
 
 type Msg =
+    /// The program started, and `initialModel` is the state it started in (issue #458).
+    ///
+    /// This exists so that the initial state passes through the SAME seam every other state passes
+    /// through. `AudioCues.forTransition` is a function of a *transition* — and without this message
+    /// there is no transition into the initial model, so nothing the initial state implies is ever
+    /// cued. Anything you *load* rather than *transition into* — settings, a save game, a restored
+    /// session, a replayed checkpoint — enters the model through that door, and a
+    /// transition-shaped effect seam cannot see it.
+    ///
+    /// The failure is invisible from inside the model: a restored volume the mixer was never told
+    /// about is indistinguishable, in the model, from one that was restored correctly. It surfaces
+    /// as "turn the music down, restart, and get full-volume music from a settings screen that
+    /// correctly reports it as quiet".
+    ///
+    /// `EvidenceCommands.generatedHost.Init` dispatches it as `forTransition Started m m` — the same
+    /// function `Update` calls, so there is no separate startup path to drift out of sync. `update`
+    /// treats it as identity: it announces the initial state, it does not build it.
+    | Started
     | Tick of dtSeconds: float
     | MovePaddle of PaddleSide * PaddleDirection
     | ViewerInput of ViewerKey * isDown: bool
@@ -215,6 +233,10 @@ let init () : Model * AdapterCommand<Msg> = initialModel, Cmd.none
 
 let update msg model : Model * AdapterCommand<Msg> =
     match msg with
+    // Identity (issue #458). `Started` ANNOUNCES the initial state; it does not build it —
+    // `initialModel` already did. Its whole job is to give the cue seam a transition to look at, so
+    // keep this a no-op and put what you want to happen at startup in `AudioCues.forTransition`.
+    | Started -> model, Cmd.none
     | Tick dtSeconds -> advanceSim dtSeconds model, Cmd.none
     | MovePaddle(side, direction) -> movePaddle side direction model, Cmd.none
     | ViewerInput(key, isDown) ->
