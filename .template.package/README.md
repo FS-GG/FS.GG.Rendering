@@ -47,7 +47,7 @@ for you, so `--initGit` is unnecessary there.
 |--------|---------|--------|
 | `--profile <p>` | `app` | Which product to scaffold (see profile table below). |
 | `--lifecycle <l>` | `spec-kit` | Which lifecycle scaffolding to emit alongside the product: `spec-kit` (full Spec Kit workspace), `sdd` (product only, external orchestrator), or `none` (product only, nothing attached). See **Lifecycle** below. The default is byte-identical to the pre-lifecycle template. |
-| `--feedback true` | `false` | Emit the feedback skills. On every lifecycle: the `fs-gg-feedback-report` skill, which writes one retrospective report per development cycle into `feedback/`. Additionally under `--lifecycle spec-kit`: per-phase capture into `specs/<feature>/feedback/` via the `after_*` hooks and the `fs-gg-feedback-capture` skill. Default `false` induces no diff. |
+| `--feedback true` | `false` | Emit the per-phase feedback **capture** machinery: under `--lifecycle spec-kit`, capture into `specs/<feature>/feedback/` via the `after_*` hooks and the `fs-gg-feedback-capture` skill. Default `false` induces no diff. It does **not** gate the retrospective `fs-gg-feedback-report` skill, which ships in every scaffold on every profile and lifecycle: the report is agent-invoked at cycle end and reads only whatever guarded evidence exists, so it degrades cleanly when nothing was captured. |
 | `--initGit true` | `false` | Opt in to initialize a Git repository with a `[Spec Kit] Initial commit` **and** mark generated shell scripts executable. Skipped when already inside a repository; non-fatal if `git` is absent. Pair with `--allow-scripts yes` for non-interactive runs. Default `false` is side-effect-free. Unnecessary under the SDD scaffold path. |
 
 | Profile | Scaffolds |

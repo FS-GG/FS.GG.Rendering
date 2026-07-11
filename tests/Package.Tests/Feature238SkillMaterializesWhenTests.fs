@@ -124,7 +124,7 @@ let private tokenizeCStyle (s: string) : string list =
     let tokens = System.Text.RegularExpressions.Regex.Matches(s, "\"[^\"]*\"|==|&&|\\|\\||\\(|\\)|[A-Za-z0-9_\\-]+")
     [ for m in tokens -> m.Value ]
 
-let private evalCStyle (parameters: Map<string, string>) (condition: string) : bool =
+let private evalCStyleParsed (parameters: Map<string, string>) (condition: string) : bool =
     let toks = tokenizeCStyle condition |> List.toArray
     let mutable pos = 0
     let peek () = if pos < toks.Length then Some toks.[pos] else None
@@ -154,6 +154,14 @@ let private evalCStyle (parameters: Map<string, string>) (condition: string) : b
             let rhs = operandValue (next ())
             lhs = rhs
     parseOr ()
+
+/// #434: a `sources` row with no `condition` fires on EVERY scaffold — the engine's native
+/// "unconditional", which the canonical grammar spells `always`. `templateConditions` surfaces such
+/// a row as the empty string, which tokenizes to nothing and would index past the end of `toks`.
+/// Modelling it as `true` is what makes `always` ≡ no-condition provable by G-EQUIV rather than asserted.
+let private evalCStyle (parameters: Map<string, string>) (condition: string) : bool =
+    if System.String.IsNullOrWhiteSpace condition then true
+    else evalCStyleParsed parameters condition
 
 // ---- Evaluator for the ADR-0017 CANONICAL grammar (mirror of skill-union-assert.sh) -----------
 // condition := clause [ (" and " | " or ") clause ]...  ; `and` binds tighter than `or`.
@@ -294,21 +302,18 @@ let feature238SkillMaterializesWhenTests =
               Expect.isTrue (evalCanonical feedbackOn feedback) "fs-gg-feedback-capture emits when feedback == true and lifecycle == spec-kit"
               Expect.isFalse (evalCanonical feedbackOff feedback) "fs-gg-feedback-capture suppressed when feedback == false (conjunction)"
 
-              // Issue #248: the report is the lifecycle-INDEPENDENT counterpart of the capture skill.
-              // Capture's `lifecycle == spec-kit` clause is load-bearing (it is Spec Kit hook machinery);
-              // the report is agent-invoked, so it must emit on EVERY lane. Adding a lifecycle clause to
-              // it — the regression this asserts against — would strand it on the lane it exists to serve.
+              // Issue #248 / #434: the report is the UNCONDITIONAL counterpart of the capture skill.
+              // Capture's `(feedback == true) && lifecycle == spec-kit` gate is load-bearing (it is Spec
+              // Kit hook machinery); the report is agent-invoked at cycle end and reads only optional,
+              // guarded evidence, so it must emit on EVERY lane — including one that captured none.
+              // #434: it was `feedback == true`, and since `feedback` defaults to false that shipped it
+              // to NOBODY. Re-adding ANY clause — lifecycle, profile, or the old capability flag — is the
+              // regression this asserts against, so evaluate it over the WHOLE grid rather than a sample.
               let report = (Map.find "fs-gg-feedback-report" entries).MaterializesWhen
-              for lifecycle in [ "spec-kit"; "sdd"; "none" ] do
-                  let on = Map.ofList [ "profile", "app"; "lifecycle", lifecycle; "feedback", "true" ]
-                  let off = Map.ofList [ "profile", "app"; "lifecycle", lifecycle; "feedback", "false" ]
-                  Expect.isTrue (evalCanonical on report)
-                      (sprintf "fs-gg-feedback-report emits when feedback == true on lifecycle=%s" lifecycle)
-                  Expect.isFalse (evalCanonical off report)
-                      (sprintf "fs-gg-feedback-report suppressed when feedback == false on lifecycle=%s" lifecycle)
-
-              // ...and it is profile-independent: gated by `feedback` alone, on an off-list profile too.
-              let reportControls = Map.ofList [ "profile", "controls"; "lifecycle", "sdd"; "feedback", "true" ]
-              Expect.isTrue (evalCanonical reportControls report) "fs-gg-feedback-report is profile-independent"
+              Expect.equal report "always" "fs-gg-feedback-report is unconditional (#434)"
+              for parameters in parameterGrid do
+                  Expect.isTrue
+                      (evalCanonical parameters report)
+                      (sprintf "fs-gg-feedback-report materializes at EVERY grid point — including feedback=false, every lifecycle, and an off-list profile (#434); failed at %A" parameters)
           }
         ]

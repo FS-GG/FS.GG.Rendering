@@ -124,13 +124,15 @@ let private sourceRows (arrayElement: JsonElement) =
 /// by Feature 231 / ADR-0014). Classification order is significant: framework product-skill FIRST —
 /// a source under template/product-skills/, which MUST target .agents/skills/ ONLY (the provider
 /// surface, present under EVERY lifecycle; a `.claude/` or `.codex/` product-skill target is a
-/// resurrected Feature 230 twin and a violation). Then the capability-gated skill (issue #248,
-/// template/feedback-report/: same .agents/skills/-only, copyOnly, lifecycle-independent shape as a
-/// product skill, but gated on the `feedback` capability flag rather than a `profile` predicate) —
-/// detected BY SHAPE, not by path, so the next capability-gated skill needs no edit here (it would
-/// otherwise fall through and be rejected for missing a spec-kit clause it must not have). Then the
-/// ungated skill-manifest row (template/skill-manifest/, the ADR-0014 named exception: provider
-/// data inside .agents/skills/ in every lifecycle). Then lifecycle-workspace (target under
+/// resurrected Feature 230 twin and a violation). Then the ungated skill-manifest row
+/// (template/skill-manifest/, the ADR-0014 named exception: provider data inside .agents/skills/ in
+/// every lifecycle) — resolved by its NAMED PATH, and it must come BEFORE the capability test, which
+/// since #434 also admits an ungated body and would otherwise swallow it. Then the capability skill
+/// (issue #248, template/feedback-report/: same .agents/skills/-only, copyOnly, lifecycle-independent
+/// shape as a product skill, but gated on the `feedback` capability flag — or, since #434, on nothing
+/// at all — rather than a `profile` predicate) — detected BY SHAPE, not by path, so the next such
+/// skill needs no edit here (it would otherwise fall through and be rejected for missing a spec-kit
+/// clause it must not have). Then lifecycle-workspace (target under
 /// .specify/ — incl. the single materialize step at .specify/scripts/fs-gg/ — | .agents/ | .claude/
 /// | .codex/ | CLAUDE.md | AGENTS.md, the generated tree, or the named docs/skillist-reference.md
 /// catalog exception), then product. Framework product-skills carry a profile predicate, NO
@@ -152,9 +154,11 @@ let private classifySource (row: SourceRow) : string * string list =
 
     let isProductSkillSource =
         source.StartsWith "template/product-skills/" || source.StartsWith "template/base/.agents/skills/"
+    // #434: admits an UNGATED body too (`condition = ""` — the engine's "always"). The manifest row
+    // is ungated as well, so it can no longer be excluded here by `condition <> ""`; the category
+    // order below resolves its named path first.
     let isCapabilitySkillSource =
         target.StartsWith ".agents/skills/"
-        && condition <> ""
         && not (condition.Contains SPEC_KIT_COND)
         && not (condition.Contains "profile ==")
     let isManifestSource = source = "template/skill-manifest/"
@@ -173,14 +177,14 @@ let private classifySource (row: SourceRow) : string * string list =
             breaks "framework/profile-predicate" (condition.Contains "profile ==")
             breaks "framework/copy-only" verbatimBody
             "framework"
-        elif isCapabilitySkillSource then
-            breaks "capability/copy-only" verbatimBody
-            "capability"
         elif isManifestSource then
             breaks "manifest/target-agents-skills" (target.StartsWith ".agents/skills/")
             breaks "manifest/ungated" (condition = "")
             breaks "manifest/copy-only" verbatimBody
             "manifest"
+        elif isCapabilitySkillSource then
+            breaks "capability/copy-only" verbatimBody
+            "capability"
         elif isGatedTarget || isGeneratedTree || isSkillistException then
             breaks "workspace/spec-kit-clause" (condition.Contains SPEC_KIT_COND)
             // Feature 231 (F3): the repo-root blanket vendors ONLY the speckit-* process skills.
@@ -291,12 +295,14 @@ let private agreementFixture: (string * SourceRow) list =
       row "template/product-skills/fs-gg-bare/" ".agents/skills/fs-gg-bare/" "" [] []
       "framework: `.agents/skillsets/` is not the `.agents/skills/` provider root",
       row "template/product-skills/fs-gg-prefix/" ".agents/skillsets/fs-gg-prefix/" profileGate [] verbatim
-      "capability: fs-gg-feedback-report, the first one (issue #248)",
-      row "template/feedback-report/skill/" ".agents/skills/fs-gg-feedback-report/" "(feedback == true)" [] verbatim
-      "capability: a hypothetical SECOND one, off a path neither classifier names",
+      "capability: fs-gg-feedback-report, ungated since #434 (`always` — no condition at all)",
+      row "template/feedback-report/skill/" ".agents/skills/fs-gg-feedback-report/" "" [] verbatim
+      "capability: still a category for a FLAG-gated body — the #248 shape, unchanged by #434",
       row "template/telemetry/skill/" ".agents/skills/fs-gg-telemetry/" "(telemetry == true)" [] verbatim
       "capability: not copyOnly",
       row "template/telemetry/skill/" ".agents/skills/fs-gg-telemetry/" "(telemetry == true)" [] []
+      "capability: ungated AND not copyOnly — the verbatim-body rule still bites without a gate (#434)",
+      row "template/telemetry/skill/" ".agents/skills/fs-gg-telemetry/" "" [] []
       "manifest: ungated provider data, clean",
       row "template/skill-manifest/" ".agents/skills/" "" [] verbatim
       "manifest: gated AND not copyOnly",
@@ -419,7 +425,9 @@ let feature204LifecycleTemplateTests =
               // workspace shrank from Feature 230's >=30 twin matrix to the genuine
               // lifecycle-workspace sources (incl. the materialize step). product unchanged.
               Expect.equal framework 18 (sprintf "expected exactly 18 framework product-skill sources (no twins), found %d" framework)
-              Expect.equal capability 1 (sprintf "expected exactly 1 capability-gated skill source (fs-gg-feedback-report, issue #248), found %d" capability)
+              // #434 ungated it (`always`), which does NOT move this count: the category is the
+              // off-convention, lifecycle-independent skill-body shape, and an ungated body still has it.
+              Expect.equal capability 1 (sprintf "expected exactly 1 capability-scope skill source (fs-gg-feedback-report — ungated since #434), found %d" capability)
               Expect.equal manifest 1 (sprintf "expected exactly 1 ungated skill-manifest source, found %d" manifest)
               Expect.isTrue (workspace >= 9) (sprintf "expected >=9 lifecycle-workspace sources, found %d" workspace)
               Expect.isTrue (product >= 3) (sprintf "expected >=3 ungated product sources, found %d" product)

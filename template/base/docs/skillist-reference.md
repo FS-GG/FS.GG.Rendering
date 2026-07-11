@@ -45,9 +45,11 @@ each. Each is a self-contained canonical body declared (with its content digest)
 > `fs-gg-samples` for the sample-pack profile and `fs-gg-feedback-capture` with `--feedback true`
 > at the same `.agents/skills/<id>/` locations.
 >
-> `--feedback true` also vendors `fs-gg-feedback-report` — the retrospective, cycle-end synthesis
-> counterpart to the per-phase `fs-gg-feedback-capture`. Unlike capture (Spec Kit hook machinery),
-> the report is agent-invoked and therefore materializes on **every** lifecycle and every profile.
+> `fs-gg-feedback-report` — the retrospective, cycle-end synthesis counterpart to the per-phase
+> `fs-gg-feedback-capture` — ships in **every** workspace, on every profile and every lifecycle,
+> and is **not** gated by `--feedback`. Unlike capture (Spec Kit hook machinery), the report is
+> agent-invoked and reads only optional, guarded evidence, so it degrades cleanly on a lane that
+> captured none.
 > The framework's own developer surface (`fs-gg-product-*` aliases, `fs-gg-diagnostics`,
 > `fs-gg-design-system`, …) stays in the FS.GG.Rendering repository and does not ship
 > (Feature 231 / ADR-0014). After the first build the same union is materialized byte-identically
