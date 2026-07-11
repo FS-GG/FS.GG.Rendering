@@ -146,6 +146,16 @@ let private registry =
       { Twin = $"{twinDirectory}/AudioSkillSurfaceCoherenceTests.fs"
         ReleaseOnly = "tests/Package.Tests/AudioSkillSurfaceTests.fs"
         HeaderNames = "AudioSkillSurfaceTests"
+        SharedInputs = true }
+      // #366 — the swap-checklist + build-help-banner template-authoring gate (spec 242, #75).
+      // Text-mirror of a release-only Package.Tests rule: both read the per-family SWAP-CHECKLIST.md
+      // files, the raw scaffold sources, and the three build-banner surfaces (build.fsx/build.sh/
+      // product.md), and assert the same NO-PHANTOM/COVERAGE/anchor/literal-path + banner-sync
+      // invariants. The checklist/scaffold reads go through `repositoryPath (sprintf …)`, so L-INPUTS
+      // keys on the three literal build-banner inputs both sides read identically.
+      { Twin = $"{twinDirectory}/SwapChecklistCoherenceTests.fs"
+        ReleaseOnly = "tests/Package.Tests/SwapChecklistTemplateTests.fs"
+        HeaderNames = "SwapChecklistTemplateTests"
         SharedInputs = true } ]
 
 /// The repository source-of-truth paths a test source reads, extracted from its `repositoryPath "…"`
