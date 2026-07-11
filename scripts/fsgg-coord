@@ -554,6 +554,14 @@ option_id() {
 }
 
 # ---- parse an issue ref into R_OWNER / R_REPO / R_NUM --------------------------------------------
+# HAZARD — parse_ref writes THREE unscoped globals (R_OWNER / R_REPO / R_NUM), and so does every
+# helper that calls it (item_id, set_field, canon_blocked_by, child, claim, done, …). They hold the
+# LAST-parsed ref only, and any intervening helper call silently overwrites them. Read them into
+# locals IMMEDIATELY after the call, before invoking any other helper:
+#     parse_ref "$ref"; local o="$R_OWNER" r="$R_REPO" n="$R_NUM"
+# Reading R_* after an intervening helper returns THAT call's issue, not yours (see .github#389).
+# (A structured return would remove the footgun; kept as globals here to avoid churning 16 call
+#  sites in live coordination tooling — the hazard is documented instead, per .github#389.)
 parse_ref() {
   local ref="$1"
   if   [[ "$ref" =~ ^https?://github\.com/([^/]+)/([^/]+)/issues/([0-9]+) ]]; then
