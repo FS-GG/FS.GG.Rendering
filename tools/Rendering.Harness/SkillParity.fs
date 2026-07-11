@@ -1117,12 +1117,128 @@ module SkillParity =
                     $"Skill is in scope for `{item.ThemeId}` but names none of its artifacts ({expected})."
                     $"Restore the guidance — {item.Intent} — naming {expected}; or narrow the theme's scope.")
 
+    /// Issue #475 / #465: assert wrapper coverage against the MANIFEST, not against what the
+    /// filesystem scan happened to discover.
+    ///
+    /// `missingWrapperFindings` above can only speak about entries the surface scan found, and
+    /// `requiresWrapper` decides whether an entry needs a wrapper by testing whether its PATH contains
+    /// `template/product-skills`. Both are properties of where a file happens to sit, and neither is
+    /// the question we actually care about, which is: *does this skill ship into a generated
+    /// workspace?* The manifest answers that directly — `scope: product` — and two skills answer it
+    /// "yes" while living somewhere else entirely:
+    ///
+    ///     fs-gg-feedback-report   scope=product  materializes-when=always  supplied-by=template/feedback-report/skill/
+    ///     fs-gg-feedback-capture  scope=product                            supplied-by=template/feedback/skill/
+    ///
+    /// So both were exempt from the wrapper requirement and absent from the report entirely. That is
+    /// how #465 happened: `fs-gg-feedback-report` materialized into every workspace with no wrapper in
+    /// this repo, and `MissingWrapper` — the diagnostic that exists to catch exactly that — never fired.
+    /// A check whose subject list is assembled by a path glob cannot report on a skill the glob misses,
+    /// and it will report `passed` while doing so.
+    ///
+    /// This closes it from the other end: every `scope: product` row in the manifest must have an
+    /// activation wrapper under BOTH orchestrator roots, or it is a finding — whatever the scan saw.
+    /// It is deliberately manifest-driven and filesystem-checked, so it stays true for a skill supplied
+    /// from a directory nobody has thought of yet.
+    ///
+    /// Either wrapper name satisfies it: the `fs-gg-product-*` alias (the `template/product-skills`
+    /// convention) or the canonical id (what the two feedback skills use). Feature 223's alias-only rule
+    /// exists so a same-named FRAMEWORK wrapper cannot mask a missing PRODUCT wrapper; both feedback
+    /// wrappers were read and do route to their product canonical, so there is nothing being masked.
+    /// The naming inconsistency itself is real but is not this check's business — filed separately.
+    let private manifestCoverageFindings (request: ParityCheckRequest) =
+        // Fixture mode uses synthetic trees with no manifest; it is not real repository parity evidence.
+        if request.FixtureMode.IsSome then
+            []
+        else
+
+        let manifestPath =
+            Path.Combine(request.RepositoryRoot, "template", "skill-manifest", "skill-manifest.json")
+
+        if not (File.Exists manifestPath) then
+            [ { FindingId = findingId MissingWrapper "manifest" "skill-manifest"
+                SkillName = "skill-manifest"
+                SurfaceId = "manifest"
+                Category = MissingWrapper
+                Severity = High
+                CanonicalPath = Some "template/skill-manifest/skill-manifest.json"
+                WrapperPath = None
+                Symbol = None
+                Message = "The skill manifest is missing, so product-skill wrapper coverage cannot be asserted."
+                Remediation = "Restore template/skill-manifest/skill-manifest.json (dotnet fsi scripts/generate-skill-manifest.fsx)."
+                ExceptionId = None } ]
+        else
+
+        let productIds =
+            try
+                use doc = JsonDocument.Parse(File.ReadAllText manifestPath)
+                let skills =
+                    match doc.RootElement.ValueKind with
+                    | JsonValueKind.Array -> doc.RootElement.EnumerateArray() |> Seq.toList
+                    | _ ->
+                        match doc.RootElement.TryGetProperty "skills" with
+                        | true, arr when arr.ValueKind = JsonValueKind.Array -> arr.EnumerateArray() |> Seq.toList
+                        | _ -> []
+
+                skills
+                |> List.choose (fun s ->
+                    let prop name =
+                        match s.TryGetProperty(name: string) with
+                        | true, v when v.ValueKind = JsonValueKind.String -> Option.ofObj (v.GetString())
+                        | _ -> None
+
+                    match prop "id", prop "scope" with
+                    | Some id, Some "product" -> Some id
+                    | _ -> None)
+            with _ ->
+                []
+
+        // Both orchestrator roots are required: a skill activated for one agent and not the other is
+        // half-shipped, and that asymmetry is precisely what the parity report exists to surface.
+        //
+        // These are the REAL surface ids from `supportedSurfaces` — `codex-local` is rooted at
+        // `.agents/skills` (there is no `.codex/` in this repo), not at anything called "agents". Reusing
+        // them (rather than inventing a surface name) keeps two invariants: the finding names a surface
+        // that appears in the report's Supported Surfaces table, and it shares a FindingId with the
+        // scan-driven `missingWrapperFindings` above — so when both fire for the same skill+surface, the
+        // `List.distinctBy` in `classifyFindings` collapses them to one finding instead of reporting the
+        // same missing wrapper twice under two different names.
+        let roots = [ "claude", ".claude"; "codex-local", ".agents" ]
+
+        productIds
+        |> List.collect (fun id ->
+            let alias = id.Replace("fs-gg-", "fs-gg-product-")
+
+            roots
+            |> List.choose (fun (surfaceId, root) ->
+                let present name =
+                    File.Exists(Path.Combine(request.RepositoryRoot, root, "skills", name, "SKILL.md"))
+
+                if present alias || present id then
+                    None
+                else
+                    Some
+                        { FindingId = findingId MissingWrapper surfaceId id
+                          SkillName = id
+                          SurfaceId = surfaceId
+                          Category = MissingWrapper
+                          Severity = High
+                          CanonicalPath = Some "template/skill-manifest/skill-manifest.json"
+                          WrapperPath = None
+                          Symbol = None
+                          Message =
+                            $"Manifest declares `{id}` as a product skill (it materializes into generated workspaces), but no activation wrapper exists under `{root}/skills/`."
+                          Remediation =
+                            $"Add `{root}/skills/{alias}/SKILL.md` (or `{root}/skills/{id}/SKILL.md`) routing to the canonical body, or drop the skill's `scope: product` in the manifest."
+                          ExceptionId = None }))
+
     let private classifyFindings request entries symbols artifacts =
         wrapperFindings entries
         @ missingWrapperFindings entries
         @ canonicalDriftFindings request entries
         @ symbolFindings symbols
         @ artifactFindings artifacts
+        @ manifestCoverageFindings request
         |> List.distinctBy (fun finding -> finding.FindingId)
 
     let private severityCounts findings =
@@ -1422,11 +1538,22 @@ Before acting, read the canonical instructions in:
 
     let renderMarkdown report =
         let sb = StringBuilder()
-        let checkedAt = report.CheckedAtUtc.ToString("O", CultureInfo.InvariantCulture)
 
         sb.AppendLine("# Skill Parity Report") |> ignore
         sb.AppendLine() |> ignore
-        sb.AppendLine($"Checked at UTC: `{checkedAt}`") |> ignore
+        // Issue #475: NO wall-clock timestamp here. This report is COMMITTED, and the gate that keeps it
+        // honest regenerates it and fails on any diff — which a `Checked at UTC` line makes impossible,
+        // because it changes on every run and so every run diffs. The committed markdown must be a pure
+        // function of the repo, exactly as the `Regenerate` line below already is (it deliberately emits a
+        // repo-relative path so a checkout's location does not rewrite the file).
+        //
+        // Losing the line loses nothing. It was never evidence of freshness — it was an *assertion* of it,
+        // written by the run that produced the file and true only of that run. On main it read
+        // `2026-07-10T16:25:25Z` while the report was a day stale and wrong (a whole skill had dropped out
+        // of the table), which is worse than no timestamp: a reader who checks the date is reassured by it.
+        // Freshness is now a property the gate enforces on every PR, not a claim the artifact makes about
+        // itself. The real timestamp still goes to the JSON summary, which is a per-run CI artifact and the
+        // right place for it.
         sb.AppendLine($"Overall status: `{overallStatusToken report.OverallStatus}`") |> ignore
         sb.AppendLine($"Canonical sources: `{report.CanonicalSourceCount}`") |> ignore
         sb.AppendLine($"Wrappers: `{report.WrapperCount}`") |> ignore
