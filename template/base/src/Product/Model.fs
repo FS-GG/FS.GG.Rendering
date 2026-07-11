@@ -297,6 +297,15 @@ and InputFlowDiagnostic =
       Flow: string }
 
 type Msg =
+    // Issue #436 / #458: the transition the INITIAL state arrives on. The host dispatches it as
+    // `AudioCues.forTransition Started initialModel initialModel`, so anything the initial state
+    // implies (a restored volume, resumed music) is requested through the SAME seam every other
+    // state uses. Without it, `forTransition` — a function of a TRANSITION — is never called for a
+    // model that was *loaded* rather than *transitioned into*, and the effect is silently dropped:
+    // the model is correct, every model-level test passes, and the mixer was simply never told.
+    // The game starter has carried `Started` since #458; the Controls starter gets it here, because
+    // #436 gives this profile a cue seam and the hole would otherwise reappear one profile over.
+    | Started
     | NameChanged of string
     | SaveRequested
     | GridSelectionChanged of string
@@ -436,6 +445,10 @@ let init () : Model * AdapterCommand<Msg> =
 
 let update msg model : Model * AdapterCommand<Msg> =
     match msg with
+    // #436/#458: `Started` changes no state — the initial model IS the state. It exists so the
+    // startup transition passes through `AudioCues.forTransition` like any other, which is where a
+    // cue the initial state implies actually gets requested.
+    | Started -> model, Cmd.none
     | NameChanged value -> { model with Name = value }, Cmd.none
     | SaveRequested -> model, [ DispatchHostCommand $"save:{model.Name}" ]
     | GridSelectionChanged _ -> model, Cmd.none

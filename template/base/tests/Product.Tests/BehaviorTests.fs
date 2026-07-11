@@ -485,6 +485,74 @@ let behaviorTests =
             Expect.isEmpty interactionEffects "content interaction has no host command"
         }
 
+        // Issue #436 (and #458, one profile over). Assert at the SINK, not at the model.
+        //
+        // This is the only shape of test that catches this class. A test that asserts on the MODEL
+        // cannot: a restored setting the mixer was never told about is indistinguishable, from inside
+        // the model, from one that was applied correctly. So this asks what the host actually HANDED
+        // OUT — the ViewerEffect list `Init` returns, which is what the `*WithAudio` launch entry
+        // point feeds to the audio sink.
+        //
+        // The host under test is the one this profile LAUNCHES with: `app` launches
+        // `ControlsElmish.runInteractiveAppWithAudio ... interactiveHost`, sample-pack launches
+        // `Viewer.runAppWithAudio ... generatedHost`. Testing the other one would prove nothing about
+        // what the product actually does at startup.
+        //
+        // Its failure leg is real: revert this profile's `Init` to `fun () -> initialModel, []` (what
+        // the app profile's was before #436) and this goes red. That matters — a fix whose failure leg
+        // is untested is how this class survives its own fix.
+        test "generated host cues the INITIAL state through the same seam as every other state" {
+            //#if (profile == "app")
+            let host = AppRoot.Program.interactiveHost
+            //#else
+            let host = AppRoot.Program.generatedHost
+            //#endif
+            let model0, initEffects = host.Init()
+
+            let expected = AppRoot.AudioCues.forTransition Started model0 model0
+
+            Expect.isNonEmpty
+                expected
+                "the scaffold ships `Started` wired to a cue — an empty one would make this test vacuous (#458)"
+
+            let cued =
+                initEffects
+                |> List.collect (fun effect ->
+                    match effect with
+                    | PlayAudio cues -> cues
+                    | _ -> [])
+
+            Expect.equal
+                cued
+                expected
+                "Init routes the initial model through AudioCues.forTransition Started — state that is LOADED rather than transitioned into must still reach the audio sink (#458/#436)"
+        }
+
+        // The other half of the seam: a real transition's cues reach the sink too. An Init-only wiring
+        // would play the startup cue and then fall silent for every interaction after it.
+        test "generated host cues a real transition through the audio seam" {
+            //#if (profile == "app")
+            let host = AppRoot.Program.interactiveHost
+            //#else
+            let host = AppRoot.Program.generatedHost
+            //#endif
+            let _, effects = host.Update SaveRequested initialModel
+
+            let expected =
+                AppRoot.AudioCues.forTransition SaveRequested initialModel (fst (AppRoot.Program.update SaveRequested initialModel))
+
+            Expect.isNonEmpty expected "the Controls starter cues `SaveRequested` — an empty cue would make this test vacuous"
+
+            let cued =
+                effects
+                |> List.collect (fun effect ->
+                    match effect with
+                    | PlayAudio cues -> cues
+                    | _ -> [])
+
+            Expect.equal cued expected "Update lifts the transition's cues onto ViewerEffect.PlayAudio for the audio sink"
+        }
+
         test "generated host boundary keeps app commands separate from viewer effects" {
             let unchanged, appCommands = AppRoot.Program.update SaveRequested initialModel
             let hosted, observedAppCommands, viewerEffects = AppRoot.Program.interpretAtHostBoundary SaveRequested initialModel
@@ -497,8 +565,36 @@ let behaviorTests =
             Expect.equal observedAppCommands appCommands "host boundary exposes app commands before interpretation"
             Expect.exists (observedAppCommands |> List.map AppRoot.Program.appCommandName) ((=) "app-command:dispatch-host-command:save:Product") "app command category is named separately"
             Expect.exists viewerEffects (function RenderScene _ -> true | _ -> false) "host boundary emits viewer render effect separately"
-            Expect.equal hostViewerEffects.Length viewerEffects.Length "generated host returns the same number of viewer effects to SkiaViewer"
-            Expect.exists hostViewerEffects (function RenderScene _ -> true | _ -> false) "generated host returns render effects to SkiaViewer"
+
+            // #436: `generatedHost` is the host the game/sample-pack families LAUNCH with, so on
+            // sample-pack its Update now appends the frame's `PlayAudio` batch to the boundary's
+            // effects — it returns the boundary's render effects PLUS the cues, and `SaveRequested`
+            // is a cued transition. (The `app` family launches with `interactiveHost`, which carries
+            // the seam instead; `generatedHost` there serves only the evidence commands, which
+            // discard audio.) So compare the RENDER half — the part SkiaViewer draws, and the part
+            // this test is actually about — rather than the raw list length, which would now differ
+            // by exactly the cue batch and turn a correctly-wired seam into a red test.
+            let renderEffects effects =
+                effects |> List.filter (function RenderScene _ -> true | _ -> false)
+
+            Expect.equal
+                (renderEffects hostViewerEffects)
+                (renderEffects viewerEffects)
+                "generated host returns the boundary's render effects to SkiaViewer, unchanged"
+            Expect.isNonEmpty (renderEffects hostViewerEffects) "generated host returns render effects to SkiaViewer"
+
+            // ...and nothing ELSE. Comparing only the render half would stop noticing a host that
+            // emitted a stray effect — a duplicated `PlayAudio` (every sound played twice, if a future
+            // edit lifted cues in `interpretAtHostBoundary` AND in `Update`), or an evidence effect
+            // that has no business on the live path. The old length-equality caught that class; keep
+            // the guard rather than trading it away for the cue batch.
+            let nonRender effects =
+                effects |> List.filter (function RenderScene _ -> false | _ -> true)
+
+            Expect.isEmpty (nonRender viewerEffects) "the host boundary itself emits only render effects"
+            Expect.isTrue
+                (nonRender hostViewerEffects |> List.forall (function PlayAudio _ -> true | _ -> false))
+                "the generated host adds only audio cue batches to the boundary's effects — nothing else"
         }
 
         test "generated layout evidence separates summary and content regions at default and constrained sizes" {
@@ -563,14 +659,14 @@ let behaviorTests =
             let source = System.IO.File.ReadAllText(System.IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "Product", "Program.fs"))
             let defaultBranch = source.Substring(source.LastIndexOf("| None ->", StringComparison.Ordinal))
             // FR-005 (086): per-family persistent interactive host in the default launch.
+            // #436: and every family's default launch carries the audio sink. `sample-pack` used to
+            // land on the sinkless `Viewer.runApp viewerOptions generatedHost` while referencing all
+            // four FS.GG.Audio packages; it now shares the game family's expression, which is the one
+            // it always should have had — the two families already shared `generatedHost`.
             //#if (profile == "app")
-            Expect.stringContains defaultBranch "ControlsElmish.runInteractiveApp viewerOptions interactiveHost" "controls-family normal launch uses the pointer-aware persistent host"
+            Expect.stringContains defaultBranch "ControlsElmish.runInteractiveAppWithAudio viewerOptions audioSink interactiveHost" "controls-family normal launch uses the pointer-aware persistent host, with the #429/#436 audio sink"
             //#else
-            //#if (profile == "game")
-            Expect.stringContains defaultBranch "Viewer.runAppWithAudio viewerOptions audioSink generatedHost" "game-family normal launch uses the keyboard-only persistent host (with the #245 audio sink)"
-            //#else
-            Expect.stringContains defaultBranch "Viewer.runApp viewerOptions generatedHost" "non-app non-game normal launch uses the keyboard-only persistent host"
-            //#endif
+            Expect.stringContains defaultBranch "Viewer.runAppWithAudio viewerOptions audioSink generatedHost" "game/sample-pack normal launch uses the keyboard-only persistent host (with the #245 audio sink)"
             //#endif
             Expect.isFalse (defaultBranch.Contains("--launch-evidence")) "launch evidence flag stays out of normal launch branch"
             Expect.isFalse (defaultBranch.Contains("--bounded-smoke")) "bounded smoke flag stays out of normal launch branch"

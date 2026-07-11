@@ -433,16 +433,38 @@ let templateConsumesPinnedApiTests =
         // template pinned, and was unreachable from every scaffolded product for the life of 0.8.0.
         // If a refactor ever stops the extractor from seeing the viewer launch calls, this is the
         // test that says so out loud rather than quietly reducing the check to nothing.
+        //
+        // #436 completes that story, so the list below changed shape. `Viewer.runApp` and
+        // `ControlsElmish.runInteractiveApp` — the two SINKLESS overloads — are no longer called by
+        // the template at all: every profile that opens a window now launches through the
+        // audio-carrying sibling, because #429's seam existing in `src/` was only half the fix while
+        // the scaffold still launched past it. These four ARE the launch seam now, and asserting the
+        // sinkless pair here would be asserting the defect.
         test "the viewer launch seam is among the extracted call sites" {
             let extracted = callSites |> List.map (fun c -> $"{c.Module}.{c.Member}") |> Set.ofList
             let rendered = extracted |> Set.toList |> String.concat ", "
 
-            [ "Viewer.runApp"; "Viewer.runAppWithAudio"; "ControlsElmish.runInteractiveApp" ]
+            [ "Viewer.runAppWithAudio" // game / sample-pack, default launch
+              "Viewer.runAppWithWindowBehaviorAndAudio" // game / sample-pack, --window-* launch
+              "ControlsElmish.runInteractiveAppWithAudio" // app, default launch
+              "ControlsElmish.runInteractiveAppWithWindowBehaviorAndAudio" ] // app, --window-* launch
             |> List.iter (fun entryPoint ->
                 Expect.isTrue
                     (extracted.Contains entryPoint)
                     $"'{entryPoint}' is one of the framework entry points the template's Program.fs calls \
                       (extracted: {rendered})")
+
+            // And the sinkless overloads are NOT called. This is the #436 invariant stated where it can
+            // be enforced against the real extractor: a scaffolded product that launches through
+            // `runApp`/`runInteractiveApp` discards every `PlayAudio` batch its cue seam produces, and
+            // does so silently — it compiles, it runs, it is simply mute. That is the exact defect, and
+            // it is invisible to every other check in this file.
+            [ "Viewer.runApp"; "ControlsElmish.runInteractiveApp" ]
+            |> List.iter (fun sinkless ->
+                Expect.isFalse
+                    (extracted.Contains sinkless)
+                    $"the template must not launch through the sink-discarding '{sinkless}' — every windowed \
+                      profile carries the audio sink (#436) (extracted: {rendered})")
         }
 
         // Offline necessary-but-not-sufficient condition. It CANNOT catch #429 (the mirror tracks

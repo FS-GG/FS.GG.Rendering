@@ -282,7 +282,7 @@ let interpretAtHostBoundary msg model =
 let generatedHost =
     { Init =
         fun () ->
-//#if (profile == "game")
+//#if (profile == "game" || profile == "sample-pack")
             // Issue #458: the initial state goes through the SAME cue seam every other state goes
             // through. This used to be `fun () -> initialModel, []` — the model was produced without
             // passing through a transition, so `forTransition` was never called for it, so ANY effect
@@ -306,7 +306,7 @@ let generatedHost =
       Update =
         fun msg model ->
             let next, _, viewerEffects = interpretAtHostBoundary msg model
-//#if (profile == "game")
+//#if (profile == "game" || profile == "sample-pack")
             // Issue #245: the product's sound requests ride out on the same effect list the viewer
             // already interprets. `Viewer.runAppWithAudio` hands each batch to the real backend;
             // `Viewer.runApp` and the evidence paths discard it, so nothing here needs a device.
@@ -329,11 +329,36 @@ let generatedHost =
 // game family keeps the keyboard-only `Viewer.runApp ... generatedHost` (FR-006) — the
 // keyboard host is not removed, it is the per-family alternative.
 let interactiveHost: InteractiveAppHost<Model, Msg> =
-    { Init = fun () -> initialModel, []
+    { Init =
+        fun () ->
+            // Issue #436 + #458: the app profile's INITIAL model goes through the SAME cue seam every
+            // other state goes through. This was `fun () -> initialModel, []`, and that was correct
+            // only for as long as the profile compiled no AudioCues.fs and so had no seam to miss —
+            // the two gates that guard #458 (AudioProfileWiringTests / TemplateAudioProfileWiring-
+            // CoherenceTests) said so in as many words, and said that whoever gave this profile a
+            // seam had to route Init through it too, or #458 simply reappears one profile over.
+            //
+            // This is that landing. The reasoning is unchanged from `generatedHost`: `forTransition`
+            // is a function of a TRANSITION, and a model that is *loaded* rather than transitioned
+            // into never makes one — so any effect the initial state implies (a restored volume, the
+            // menu's theme music) would be silently never emitted. It is invisible from inside the
+            // model and no test that asserts on the model can catch it. `Started` is that door, and
+            // Init dispatches it through the SAME function `Update` calls — no separate startup cue
+            // path to drift out of sync.
+            match AppRoot.AudioCues.forTransition Started initialModel initialModel with
+            | [] -> initialModel, []
+            | cues -> initialModel, [ PlayAudio cues ]
       Update =
         fun msg model ->
             let next, _, viewerEffects = interpretAtHostBoundary msg model
-            next, viewerEffects
+            // Issue #436: the Controls family's sound requests ride out on the same effect list the
+            // viewer already interprets, exactly as the game family's do.
+            // `ControlsElmish.runInteractiveAppWithAudio` hands each batch to the real backend; the
+            // sinkless `runInteractiveApp` and the evidence paths discard it, so nothing here needs
+            // a device.
+            match AppRoot.AudioCues.forTransition msg model next with
+            | [] -> next, viewerEffects
+            | cues -> next, viewerEffects @ [ PlayAudio cues ]
       View = fun _size model -> controlsExampleView model
       Theme = Theme.light
       MapKey = mapKey

@@ -70,8 +70,17 @@ let private SPEC_KIT_COND = "lifecycle == \"spec-kit\""
 // on them (and it pinned no Symbology package on ANY profile, which is the bug #430 was filed for). It
 // now follows the SkiaViewer profile set — app, sample-pack, game — and drops off these two rows.
 // SkillPackageReachTests holds the general invariant that produced this correction.
+// Issue #436 CORRECTS the Feature 243 row above the same way, in the other direction: `fs-gg-audio` was
+// wired to the (game, sample-pack) SIM surface, as though sound were a simulation concern. It is not —
+// it is a WINDOW concern. #429 gave the Controls host family an audio sink
+// (`ControlsElmish.runInteractiveAppWithAudio`), and the motivating case for it was "every game with a
+// menu": the menu lives on `app`. Yet `app` referenced no FS.GG.Audio package and launched through a
+// sinkless overload, so the profile the seam was built for could not reach it. `fs-gg-audio` now follows
+// the SkiaViewer profile set — app, sample-pack, game, every profile that opens a window — and joins the
+// app row here. Its Core/Host pins moved with it (SkillPackageReachTests holds that half); Engine/Elmish
+// stay on the sim profiles, since the skill never tells an author to `open` them.
 let private expectedFrameworkSkills =
-    [ "app", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-keyboard-input"; "fs-gg-ui-widgets"; "fs-gg-styling"; "fs-gg-layout"; "fs-gg-symbology"; "fs-gg-testing" ]
+    [ "app", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-keyboard-input"; "fs-gg-ui-widgets"; "fs-gg-styling"; "fs-gg-layout"; "fs-gg-symbology"; "fs-gg-audio"; "fs-gg-testing" ]
       "headless-scene", set [ "fs-gg-scene"; "fs-gg-testing" ]
       "governed", set [ "fs-gg-scene"; "fs-gg-testing" ]
       "sample-pack", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-symbology"; "fs-gg-game-core"; "fs-gg-audio"; "fs-gg-persistence"; "fs-gg-model-swap"; "fs-gg-collision"; "fs-gg-visibility"; "fs-gg-grids"; "fs-gg-line-drawing"; "fs-gg-testing" ]

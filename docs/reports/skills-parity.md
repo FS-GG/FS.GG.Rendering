@@ -23,7 +23,7 @@ Wrappers: `65`
 ## API Symbol Coverage
 | Skill | Documented | Exercised | Unexercised | Unresolved |
 | --- | --- | --- | --- | --- |
-| fs-gg-audio | 3 | 3 | 0 | 0 |
+| fs-gg-audio | 4 | 4 | 0 | 0 |
 | fs-gg-diagnostics | 2 | 2 | 0 | 0 |
 | fs-gg-elmish | 9 | 9 | 0 | 0 |
 | fs-gg-generated-controls-guidance | 25 | 25 | 0 | 0 |

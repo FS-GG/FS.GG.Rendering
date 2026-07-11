@@ -42,8 +42,21 @@ let private productTestsDir = repositoryPath "template/base/tests/Product.Tests"
 let private launchExpression =
     Regex(@"(?:Viewer|ControlsElmish)\.run[A-Za-z]+ viewerOptions (?:audioSink )?(?:generatedHost|interactiveHost)")
 
+/// Drop whole-line `//` comments before matching.
+///
+/// Both sides of this comparison are PROSE-RICH: Program.fs explains each family's launch in comments,
+/// and the Product.Tests explain what they assert. A comment that merely NAMES a launch expression —
+/// "sample-pack used to land on the sinkless `Viewer.runApp viewerOptions generatedHost`" — is not an
+/// assertion, and reading it as one makes this gate report drift that does not exist (it did exactly
+/// that while #436 was being written). The launch expressions this test cares about live in code, or
+/// inside a string literal on a code line; neither is touched here.
+let private withoutComments (text: string) =
+    text.Replace("\r\n", "\n").Split('\n')
+    |> Array.filter (fun line -> not ((line.TrimStart()).StartsWith "//"))
+    |> String.concat "\n"
+
 let private expressionsIn (text: string) : Set<string> =
-    launchExpression.Matches text |> Seq.map (fun m -> m.Value) |> Set.ofSeq
+    launchExpression.Matches(withoutComments text) |> Seq.map (fun m -> m.Value) |> Set.ofSeq
 
 /// `Program.fs` carries every family's branch behind `//#if (profile == ...)` markers; the live
 /// viewer entrypoint's default path begins at the LAST `| None ->` (an earlier one belongs to the
@@ -92,17 +105,39 @@ let templateLaunchExpressionCoherenceTests =
                       onlyInTests)
           }
 
-          // Belt-and-braces on the regex intent: the three shipped families must each be present, so a
+          // Belt-and-braces on the regex intent: every shipped family's launch must be present, so a
           // future rename of the host entry points cannot leave the lock quietly matching nothing.
-          test "all three product families' default launch hosts are present and locked" {
+          //
+          // There are TWO default launch expressions, not three (#436). The third used to be
+          // `Viewer.runApp viewerOptions generatedHost`, labelled here as the "headless / governed
+          // family" — which was never true, and the mislabel is a fair part of why the defect #436
+          // fixed went unseen for so long. `governed`/`headless-scene` return from an EARLIER
+          // entrypoint and never reach this branch at all; the profile actually landing on that
+          // sinkless call was `sample-pack`, which had referenced all four FS.GG.Audio packages since
+          // ADR-0024 and wired none of them. #436 routes it through `Viewer.runAppWithAudio` with the
+          // `game` family it already shared a host (`generatedHost`) with, so the two collapse into
+          // one expression — and the silent launch is gone from the template entirely.
+          test "every product family's default launch host is present, locked, and carries the audio sink" {
               let programExpressions = expressionsIn (programDefaultBranch ())
 
               for expected in
-                  [ "ControlsElmish.runInteractiveApp viewerOptions interactiveHost" // app / controls family
-                    "Viewer.runAppWithAudio viewerOptions audioSink generatedHost" // game family (#245 audio seam)
-                    "Viewer.runApp viewerOptions generatedHost" ] do // headless / governed family
+                  [ "ControlsElmish.runInteractiveAppWithAudio viewerOptions audioSink interactiveHost" // app / controls family (#429 seam, reached by #436)
+                    "Viewer.runAppWithAudio viewerOptions audioSink generatedHost" ] do // game + sample-pack (#245 audio seam)
                   Expect.isTrue
                       (programExpressions.Contains expected)
                       (sprintf "Program.fs default branch must emit `%s`" expected)
+
+              // The point of #436: no viewer profile launches through a sink-discarding overload. Every
+              // default launch expression the template emits carries `audioSink`. Without this, a
+              // future edit could drop one family back to the silent overload and only the two
+              // positive assertions above would notice — and they would not, because they only check
+              // presence, not absence of a silent twin.
+              for expression in programExpressions do
+                  Expect.stringContains
+                      expression
+                      "audioSink"
+                      (sprintf
+                          "every viewer profile's default launch must carry the audio sink (#436) — `%s` discards it, which is the exact defect that left `app` and `sample-pack` silent"
+                          expression)
           }
         ]
