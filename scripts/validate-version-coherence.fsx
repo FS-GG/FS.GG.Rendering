@@ -709,10 +709,10 @@ let liveProof (i: Inputs) : LiveResult =
       CleanBuild = (bc = 0) }
 
 // ---- aggregate verdict + report (T014/T024/T028) ----------------------------------------------
-let reportPath = repo "specs/209-version-staleness-guard/readiness/version-coherence.md"
+let reportPathRel = "specs/209-version-staleness-guard/readiness/version-coherence.md"
+let reportPath = repo reportPathRel
 
-let writeReport (i: Inputs) (provenance: string) (failures: Failure list) (liveOpt: LiveResult option) =
-    Directory.CreateDirectory(Path.GetDirectoryName reportPath) |> ignore
+let renderReport (i: Inputs) (provenance: string) (failures: Failure list) (liveOpt: LiveResult option) =
     let sb = System.Text.StringBuilder()
     let line (s: string) = sb.AppendLine s |> ignore
     let ok = failures.IsEmpty
@@ -745,7 +745,82 @@ let writeReport (i: Inputs) (provenance: string) (failures: Failure list) (liveO
         line ""
         for f in failures do
             line (sprintf "- `DRIFT [%s]` %s — expected `%s`; actual `%s`" f.Rule f.Location f.Expected f.Actual)
-    File.WriteAllText(reportPath, sb.ToString())
+    sb.ToString()
+
+let writeReport (i: Inputs) (provenance: string) (failures: Failure list) (liveOpt: LiveResult option) =
+    Directory.CreateDirectory(Path.GetDirectoryName reportPath) |> ignore
+    File.WriteAllText(reportPath, renderReport i provenance failures liveOpt)
+
+// ---- the artifact is EVIDENCE, so something must read it (#435) --------------------------------
+//
+// This script has always WRITTEN the verdict report; nothing ever checked that the copy COMMITTED to
+// the repo still says what a fresh run would say. So the artifact rotted in place: it recorded the
+// 0.5.0 world while the repo sat at 0.8.0 — the 0.6.0, 0.7.0 and 0.8.0 releases each moved the pin and
+// none regenerated it. The gate stayed green throughout, because the LIVE script always computes the
+// right answer; only the committed evidence lied. An evidence artifact no gate reads is not evidence,
+// and it will always drift — so read it here, in the guard that owns it, and call a stale copy DRIFT.
+//
+// Compared against the copy at HEAD, NOT the working tree. gate.yml runs this script TWICE — once bare,
+// then once with FS_GG_RUN_VERSION_COHERENCE_SMOKE=1 — and the second run overwrites the file with the
+// `live` render. A working-tree comparison would therefore be self-satisfying on the first run and
+// impossible on the second. HEAD is the only stable subject.
+//
+// The canonical committed artifact is the VERDICT-CORE render (its `provenance:` line says so, and the
+// live lines it lacks say `pending-live`). The live render is transient CI output that is never
+// committed, so the check runs in verdict-core mode only and always compares against a verdict-core
+// render — which is also why `writeReport` below is handed `structural` rather than the full failure
+// list: the report must not describe its own staleness, or regenerating it could never make it match.
+let normalize (s: string) = s.Replace("\r\n", "\n")
+
+/// The artifact as COMMITTED at HEAD — `None` when HEAD has no such path (never committed / deleted).
+/// Fails closed (exit 2) if git cannot answer at all: "the guard could not decide" is not "the repo is
+/// coherent", and a shallow or detached checkout must not silently waive the only check of this file.
+let committedReport () : string option =
+    let ec, out = run repoRoot "git" [ "rev-parse"; "--verify"; "HEAD" ]
+    if ec <> 0 then
+        raise (GuardError(sprintf "git rev-parse HEAD failed — cannot read the committed artifact to compare against; fail closed rather than green-by-absence:\n%s" out))
+    let ec, out = run repoRoot "git" [ "show"; sprintf "HEAD:%s" reportPathRel ]
+    if ec <> 0 then None else Some out
+
+/// The first line on which the committed artifact and a fresh render disagree — so the operator sees
+/// WHAT rotted (house style: expected-vs-actual), not merely that the file is "different".
+let private firstDiff (committed: string) (fresh: string) =
+    let c = (normalize committed).Split('\n')
+    let f = (normalize fresh).Split('\n')
+    Seq.init (max c.Length f.Length) id
+    |> Seq.tryPick (fun n ->
+        let at (a: string[]) = if n < a.Length then a.[n] else "<end of file>"
+        if at c <> at f then Some(n + 1, at c, at f) else None)
+
+let artifactStaleFailures (i: Inputs) (structural: Failure list) : Failure list =
+    let fresh = renderReport i "verdict-core" structural None
+    let fix =
+        sprintf
+            "regenerate and commit it: `dotnet fsi scripts/validate-version-coherence.fsx && git add -- %s`  (commit the BARE run's output — the FS_GG_RUN_VERSION_COHERENCE_SMOKE=1 render is transient CI output, not the artifact)"
+            reportPathRel
+    match committedReport () with
+    | None ->
+        [ { Rule = "artifact-not-committed"
+            Location = reportPathRel
+            Expected = "the verdict report is committed — it is this feature's readiness evidence"
+            Actual = "no such path at HEAD"
+            Fix = fix } ]
+    | Some committed when normalize committed <> normalize fresh ->
+        [ { Rule = "artifact-stale"
+            Location =
+                match firstDiff committed fresh with
+                | Some(n, _, _) -> sprintf "%s:%d" reportPathRel n
+                | None -> reportPathRel
+            Expected =
+                match firstDiff committed fresh with
+                | Some(_, _, fresh') -> fresh'
+                | None -> "a fresh verdict-core render"
+            Actual =
+                match firstDiff committed fresh with
+                | Some(_, committed', _) -> sprintf "%s (committed)" committed'
+                | None -> "a stale committed render"
+            Fix = fix } ]
+    | Some _ -> []
 
 let printDrift (failures: Failure list) =
     for f in failures do
@@ -825,8 +900,12 @@ let main () =
             eprintfn "version coherence: DRIFT — %d failure(s); wrote %s" allFailures.Length reportPath
             1
     else
-        let failures = structuralFailures i
-        writeReport i "verdict-core" failures None
+        // The report is rendered from `structural` ALONE, then compared with HEAD's copy; the staleness
+        // verdict is added to the EXIT code, never to the file. Writing "this artifact is stale" into the
+        // artifact would move the target every time it was regenerated, so it could never converge.
+        let structural = structuralFailures i
+        let failures = structural @ artifactStaleFailures i structural
+        writeReport i "verdict-core" structural None
         if failures.IsEmpty then
             // Say what is true of the PIN. `pendingTags` also carries the two package-lane tags, so on a
             // template-only release (the common shape: pin held, <Version> bumped) keying off the whole
