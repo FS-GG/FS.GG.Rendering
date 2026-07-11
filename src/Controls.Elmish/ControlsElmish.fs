@@ -184,6 +184,17 @@ module AdapterCmd =
             | DispatchProductMessage msg -> Some msg
             | _ -> None)
 
+    /// Issue #457: the companion `productMessages` never had. `productMessages` keeps the product
+    /// messages and DISCARDS every other effect — so a `ReportAdapterDiagnostic` that an interpreter
+    /// had carefully constructed, typed, and given a code and a message was dropped on the floor by
+    /// the one function every pointer routing path went through. A routing site that wants the
+    /// messages must also be able to see the diagnostics; this is how.
+    let diagnostics (command: AdapterCommand<'msg>) : AdapterDiagnostic list =
+        command
+        |> List.choose (function
+            | ReportAdapterDiagnostic d -> Some d
+            | _ -> None)
+
     let toCmd (route: AdapterEffect<'msg> -> 'msg) (command: AdapterCommand<'msg>) : Cmd<'msg> =
         command
         |> List.map (fun effect -> (fun (dispatch: Dispatch<'msg>) -> dispatch (route effect)))
@@ -193,6 +204,52 @@ module ControlsElmish =
         { Source = source
           Code = code
           Message = message }
+
+    // Issue #457: `pointer/UnresolvedControlId` — a routed `PointerInteraction` named a `ControlId` that
+    // NO control in the frame carries. Deliberately NOT the existing `HitTestMiss`, which the geometric
+    // hit-test raises when a press lands on empty space: that is a routine thing a user does (and it has
+    // no id to name — `PointerDiagnostic.Control` is honestly `None` there), whereas this one is always a
+    // defect in the caller. One code cannot be both routine and a defect, and conflating them is what
+    // makes the level unpickable — so they are separate codes at separate levels.
+    let internal unresolvedControlIdCode = "UnresolvedControlId"
+
+    // Issue #457: hand each adapter diagnostic to the host's diagnostics sink, THEN extract the product
+    // messages. Every pointer routing site used to call `AdapterCmd.productMessages` alone, which
+    // filtered `ReportAdapterDiagnostic` out — so the escape hatch the silent-no-op family reaches for
+    // ("just emit a diagnostic; every site has a channel in scope") was itself silent on this path.
+    //
+    // Diagnostics go through the SAME `ViewerDiagnosticsOptions` filter the live viewer applies
+    // (`Viewer.shouldCaptureDiagnostic`), so a product's configured `MinimumLevel`/`Categories` govern
+    // what it sees — the filter is the product's policy, not a hardcoded drop. Both levels below pass
+    // the default options (`MinimumLevel = Info`, `Categories` includes `Input`). A host with no sink —
+    // the default — observes nothing and behaves byte-identically to before (SC: at-rest unchanged).
+    let internal routeAdapterDiagnostics (options: ViewerDiagnosticsOptions) (command: AdapterCommand<'msg>) : 'msg list =
+        match options.Sink with
+        | Some sink ->
+            command
+            |> AdapterCmd.diagnostics
+            |> List.iter (fun d ->
+                let level =
+                    // A named id that resolves to nothing is a caller defect; everything else on this
+                    // channel (a geometric miss, a stale target) is a routine runtime condition.
+                    if d.Code = unresolvedControlIdCode then
+                        ViewerDiagnosticLevel.Warning
+                    else
+                        ViewerDiagnosticLevel.Info
+
+                let event =
+                    { Level = level
+                      Category = ViewerDiagnosticCategory.Input
+                      Message = $"[{d.Source}/{d.Code}] {d.Message}"
+                      FrameIndex = None
+                      Stage = None
+                      Elapsed = None }
+
+                if Viewer.shouldCaptureDiagnostic options event then
+                    sink event)
+        | None -> ()
+
+        AdapterCmd.productMessages command
 
     // Feature 186 (US1, FR-001/SC-001/SC-007): the SINGLE site that names all 32 `FrameMetrics`
     // fields. Every full-construction caller delegates here, so adding a new per-frame metric is a
@@ -741,6 +798,62 @@ module ControlsElmish =
             |> Option.bind (fun authored -> sliderChangedMessages rendered root authored x ControlEventOrigin.Pointer)
         | _ -> None
 
+    // Issue #457: a ROUTED `PointerInteraction` (a `FrameInput.Pointer`, or one replayed onto the
+    // retained frame) carries an ALREADY-RESOLVED `ControlId`. `Pointer.update`'s geometric hit-test —
+    // the only place `HitTestMiss` is raised — never runs for it, so an interaction naming an id that
+    // simply does not exist sails straight through: `bindingMessagesFor` returns `None`, `MapPointer`
+    // declines, and NOTHING happens. "No authored binding matched" and "that id does not exist" were
+    // indistinguishable, so a typo'd id produced a test that drives nothing — and if its assertion was a
+    // negative one ("the screen did not change"), it PASSED.
+    //
+    // Only ACTIVATING interactions are checked — the ones `bindingMessagesFor` above can consume. A
+    // hover/exit legitimately names a control that is not in the frame (scripts spell "the pointer is
+    // over nothing" as a `HoverEnter` at an absent id), so flagging those would cry wolf. `Bounds` keys
+    // every laid-out control instance and is populated on both routing paths (only the unused preview
+    // `Control.render` leaves it empty), which makes it the frame's honest id set.
+    let private unresolvedControlDiagnostics
+        (rendered: ControlRenderResult<'msg>)
+        (interaction: PointerInteraction)
+        : AdapterCommand<'msg> =
+        let carried id =
+            rendered.Bounds |> List.exists (fun (known, _) -> known = id)
+
+        let unresolved (id: ControlId) =
+            [ ReportAdapterDiagnostic(
+                  diagnostic
+                      "pointer"
+                      unresolvedControlIdCode
+                      $"Pointer interaction named control id '{id}', which no control in the current frame carries — it dispatched nothing. Check for a typo'd, mis-cased, or stale ControlId, or a control that is not currently rendered."
+              ) ]
+
+        match interaction with
+        | Click(id, _, _, _) when not (carried id) -> unresolved id
+        | DragMove(id, PointerButton.Primary, _, _)
+        | DragEnd(id, PointerButton.Primary, _, _) when not (carried id) -> unresolved id
+        | _ -> []
+
+    // Issue #457: the single MapPointer-fallback seam for an interaction no authored binding consumed.
+    // Every pointer routing site funnels through here, so the two halves of the fix land once: the
+    // unresolved-id diagnostic is raised, and BOTH it and whatever `interpretPointerEffect` lowered
+    // (including a genuine geometric `HitTestMiss`) reach the host's diagnostics sink instead of being
+    // filtered out by `AdapterCmd.productMessages`. Product messages are extracted exactly as before.
+    let private routePointerFallback
+        (options: ViewerDiagnosticsOptions)
+        (mapPointer: PointerInteraction -> 'msg option)
+        (rendered: ControlRenderResult<'msg>)
+        (interaction: PointerInteraction)
+        : 'msg list =
+        match options.Sink with
+        // No sink: nothing can observe a diagnostic, so do not go looking for one. The `Bounds` scan in
+        // `unresolvedControlDiagnostics` is O(laid-out controls) and a primary-button DRAG re-enters this
+        // path once per sample, so it is not a free check to leave running. At rest — the default, and
+        // every pre-existing test — this is byte-for-byte the pre-#457 path.
+        | None -> interpretPointerEffect mapPointer interaction |> AdapterCmd.productMessages
+        | Some _ ->
+            unresolvedControlDiagnostics rendered interaction
+            @ interpretPointerEffect mapPointer interaction
+            |> routeAdapterDiagnostics options
+
     // Translate a native viewer pointer input into the neutral 075 `PointerSample` the gesture fold
     // consumes. Pure/total; shared by the preserved full-render oracle and the feature-110 retained
     // route so both feed `Pointer.update` the identical sample (a precondition of dispatch parity).
@@ -875,9 +988,7 @@ module ControlsElmish =
                 |> List.collect (fun interaction ->
                     match bindingMessagesFor rendered current interaction with
                     | Some msgs -> msgs
-                    | None ->
-                        interpretPointerEffect host.MapPointer interaction
-                        |> AdapterCmd.productMessages)
+                    | None -> routePointerFallback host.Diagnostics host.MapPointer rendered interaction)
 
             // Feature 191 (US2, FR-006): forward the raw sample (canvas-local) to an in-box canvas bound
             // to onPointer. Independent of the gesture fold so move/wheel reach the canvas too; appended
@@ -922,7 +1033,7 @@ module ControlsElmish =
         : 'msg list * int =
         match retainedBindingMessages retained render interaction with
         | Some msgs, _ -> msgs, 0
-        | None, false -> interpretPointerEffect host.MapPointer interaction |> AdapterCmd.productMessages, 0
+        | None, false -> routePointerFallback host.Diagnostics host.MapPointer render interaction, 0
         | None, true ->
             // Counted full-render fallback (FR-007/FR-009): a fresh render + the oracle's resolution.
             let current = host.View size model
@@ -930,7 +1041,7 @@ module ControlsElmish =
 
             match bindingMessagesFor rendered current interaction with
             | Some msgs -> msgs, 1
-            | None -> interpretPointerEffect host.MapPointer interaction |> AdapterCmd.productMessages, 1
+            | None -> routePointerFallback host.Diagnostics host.MapPointer rendered interaction, 1
 
     // Feature 175 (FR-001) / F6: wheel-delta normalization. Raw `ViewerPointerInput.DeltaY` from the
     // viewer is a few units per notch (the GL backend forwards the OS wheel count verbatim, it is NOT
@@ -2284,14 +2395,26 @@ module ControlsElmish =
             // resolves directly to `host.MapPointer` (the oracle's non-`Click` path) with no hit-test and
             // no render, so a hover/drag burst performs zero routing full renders.
             let routeInteraction (interaction: PointerInteraction) : 'msg list * int =
+                // Issue #457: the MapPointer fallback, with the frame's id set when we have one — this is
+                // the headless SCRIPTED route, the one where a hand-written `Click(id, …)` naming a
+                // control that does not exist used to be indistinguishable from no input at all. Before
+                // the first frame is drawn there is no id set to check against, so only the interpreter's
+                // own diagnostics can be routed; they are no longer dropped either way.
+                let fallback () =
+                    match lastRender with
+                    | Some render -> routePointerFallback host.Diagnostics host.MapPointer render interaction
+                    | None ->
+                        interpretPointerEffect host.MapPointer interaction
+                        |> routeAdapterDiagnostics host.Diagnostics
+
                 match interaction with
                 | Click _ ->
                     ensureRetained ()
 
                     match retained, lastRender with
                     | Some r, Some render -> routeRetainedInteraction host size model r render interaction
-                    | _ -> interpretPointerEffect host.MapPointer interaction |> AdapterCmd.productMessages, 0
-                | _ -> interpretPointerEffect host.MapPointer interaction |> AdapterCmd.productMessages, 0
+                    | _ -> fallback (), 0
+                | _ -> fallback (), 0
 
             // Feature 109 (US1): did a product message actually change the model across the fold? An
             // empty message list never changes it; a non-empty list changed it iff the folded model's
