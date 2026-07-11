@@ -100,6 +100,7 @@
     <Compile Include="EmbeddedTokenGuardCoherenceTests.fs" />
     <Compile Include="FragmentProseCoherenceTests.fs" />
     <Compile Include="ScaffoldIdentifierLeakCoherenceTests.fs" />
+    <Compile Include="TemplateProductProbeCompileTests.fs" />
     <Compile Include="ReleaseOnlyTwinLockstepTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
