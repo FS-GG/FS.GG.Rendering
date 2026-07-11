@@ -12,7 +12,14 @@
     "fontSize":              { "$type": "dimension",  "$value": 14.0 },
     "density":               { "$type": "number",     "$value": 1.0 },
     "cornerRadius":          { "$type": "dimension",  "$value": 4.0 },
-    "contrastRequiredRatio": { "$type": "number",     "$value": 4.5 }
+    "contrastRequiredRatio": { "$type": "number",     "$value": 4.5 },
+    "controlHeight":         { "$type": "dimension",  "$value": 32.0 },
+    "controlHeightSm":       { "$type": "dimension",  "$value": 24.0 },
+    "controlHeightLg":       { "$type": "dimension",  "$value": 40.0 },
+    "spaceXs":               { "$type": "dimension",  "$value": 4.0 },
+    "spaceSm":               { "$type": "dimension",  "$value": 8.0 },
+    "spaceMd":               { "$type": "dimension",  "$value": 16.0 },
+    "spaceLg":               { "$type": "dimension",  "$value": 24.0 }
   },
   "dark": {
     "foreground":            { "$type": "color",      "$value": "#f1f5f9ff" },
@@ -26,7 +33,14 @@
     "fontSize":              { "$type": "dimension",  "$value": 14.0 },
     "density":               { "$type": "number",     "$value": 1.0 },
     "cornerRadius":          { "$type": "dimension",  "$value": 4.0 },
-    "contrastRequiredRatio": { "$type": "number",     "$value": 4.5 }
+    "contrastRequiredRatio": { "$type": "number",     "$value": 4.5 },
+    "controlHeight":         { "$type": "dimension",  "$value": 32.0 },
+    "controlHeightSm":       { "$type": "dimension",  "$value": 24.0 },
+    "controlHeightLg":       { "$type": "dimension",  "$value": 40.0 },
+    "spaceXs":               { "$type": "dimension",  "$value": 4.0 },
+    "spaceSm":               { "$type": "dimension",  "$value": 8.0 },
+    "spaceMd":               { "$type": "dimension",  "$value": 16.0 },
+    "spaceLg":               { "$type": "dimension",  "$value": 24.0 }
   },
 
   "seed": {

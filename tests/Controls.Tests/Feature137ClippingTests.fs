@@ -165,7 +165,8 @@ let scrollTests =
 
             // a scroll affordance is painted: a track plus a SHORTER thumb at the right edge (the thumb
             // is shorter than the track precisely because the content overflows).
-            let barW = 10.0
+            // #385: the scroll affordance width now flows from the theme metric model (Space.sm).
+            let barW = theme.SpaceSm
             let trackX = svBox.X + svBox.Width - barW
             let barRects =
                 TestAssertions.drawnBounds rendered.Scene

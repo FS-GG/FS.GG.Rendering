@@ -80,21 +80,23 @@ let private mkText (theme: Theme) (x: float) (baseline: float) (size: float) (co
           Paint = Paint.fill color }
 
 let private frozenFilledScene (theme: Theme) (label: string) : Scene list =
-    let h = 38.0
+    // #385: dimensions now flow from the theme metric model (Ant control-size + Space scale).
+    let h = theme.ControlHeight
     let textW = (Scene.measureText label { Family = theme.FontFamily; Size = 15.0; Weight = None }).Width
-    let w = min box.Width (max 70.0 (textW + 32.0))
+    let w = min box.Width (max 70.0 (textW + 2.0 * theme.SpaceMd))
     let by = box.Y + box.Height / 2.0 - h / 2.0
     [ Scene.rectangle (box.X, by, w, h) theme.Accent
-      mkText theme (box.X + 16.0) (by + h / 2.0 + 5.0) 15.0 theme.Background label ]
+      mkText theme (box.X + theme.SpaceMd) (by + h / 2.0 + 5.0) 15.0 theme.Background label ]
 
 let private frozenOutlineScene (theme: Theme) (label: string) : Scene list =
-    let h = 38.0
+    // #385: dimensions now flow from the theme metric model (Ant control-size + Space scale).
+    let h = theme.ControlHeight
     let textW = (Scene.measureText label { Family = theme.FontFamily; Size = 15.0; Weight = None }).Width
-    let w = min box.Width (max 70.0 (textW + 32.0))
+    let w = min box.Width (max 70.0 (textW + 2.0 * theme.SpaceMd))
     let by = box.Y + box.Height / 2.0 - h / 2.0
     let rect = { X = box.X; Y = by; Width = w; Height = h }
     [ Scene.rectangleWithPaint rect (Paint.stroke theme.Accent 2.0)
-      mkText theme (box.X + 16.0) (by + h / 2.0 + 5.0) 15.0 theme.Accent label ]
+      mkText theme (box.X + theme.SpaceMd) (by + h / 2.0 + 5.0) 15.0 theme.Accent label ]
 
 [<Tests>]
 let feature129CentralStyleResolverTests =

@@ -36,6 +36,14 @@ module AntTheme =
           FontSize = DesignTokensExt.Type.Body.fontSize
           Density = DesignTokensExt.Density.middle
           CornerRadius = DesignTokensExt.Seed.borderRadius
+          // #385: Ant control-size + Space scale. SM/LG follow Ant's size-step ratios (×3/4, ×5/4).
+          ControlHeight = DesignTokensExt.Seed.controlHeight
+          ControlHeightSm = DesignTokensExt.Seed.controlHeight * 0.75
+          ControlHeightLg = DesignTokensExt.Seed.controlHeight * 1.25
+          SpaceXs = DesignTokensExt.Space.xs
+          SpaceSm = DesignTokensExt.Space.sm
+          SpaceMd = DesignTokensExt.Space.md
+          SpaceLg = DesignTokensExt.Space.lg
           IntentPolicy = AntIntentPolicy.light }
 
     let antDark: Theme =
@@ -51,6 +59,14 @@ module AntTheme =
           FontSize = DesignTokensExt.Type.Body.fontSize
           Density = DesignTokensExt.Density.middle
           CornerRadius = DesignTokensExt.Seed.borderRadius
+          // #385: Ant control-size + Space scale. SM/LG follow Ant's size-step ratios (×3/4, ×5/4).
+          ControlHeight = DesignTokensExt.Seed.controlHeight
+          ControlHeightSm = DesignTokensExt.Seed.controlHeight * 0.75
+          ControlHeightLg = DesignTokensExt.Seed.controlHeight * 1.25
+          SpaceXs = DesignTokensExt.Space.xs
+          SpaceSm = DesignTokensExt.Space.sm
+          SpaceMd = DesignTokensExt.Space.md
+          SpaceLg = DesignTokensExt.Space.lg
           IntentPolicy = AntIntentPolicy.dark }
 
     let resolve (overrides: Theme option) =

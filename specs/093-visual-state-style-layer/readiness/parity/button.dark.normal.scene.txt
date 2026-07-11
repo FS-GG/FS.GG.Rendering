@@ -1,4 +1,4 @@
-[{ Nodes = [Rectangle ((10.0, 67.0, 70.0, 38.0), { Red = 96uy
+[{ Nodes = [Rectangle ((10.0, 70.0, 70.0, 32.0), { Red = 96uy
                                                    Green = 165uy
                                                    Blue = 250uy
                                                    Alpha = 255uy })] };

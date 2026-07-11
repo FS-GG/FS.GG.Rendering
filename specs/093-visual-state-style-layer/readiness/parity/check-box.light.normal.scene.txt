@@ -18,7 +18,7 @@
                                                    ImageFilter = NoImageFilter
                                                    PathEffect = NoPathEffect })] };
  { Nodes = [TextRun { Text = "Enabled"
-                      Position = { X = 48.0
+                      Position = { X = 46.0
                                    Y = 91.0 }
                       Font = { Family = None
                                Size = 13.0

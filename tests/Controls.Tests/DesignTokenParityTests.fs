@@ -34,6 +34,15 @@ let private frozenLight : Theme =
       FontSize = 14.0
       Density = 1.0
       CornerRadius = 4.0
+      // #385: token-sourced dimension/spacing metrics (Ant control-size + Space scale). No
+      // pre-feature literal existed; Theme.light sets the same token-derived values.
+      ControlHeight = DesignTokens.Light.controlHeight
+      ControlHeightSm = DesignTokens.Light.controlHeightSm
+      ControlHeightLg = DesignTokens.Light.controlHeightLg
+      SpaceXs = DesignTokens.Light.spaceXs
+      SpaceSm = DesignTokens.Light.spaceSm
+      SpaceMd = DesignTokens.Light.spaceMd
+      SpaceLg = DesignTokens.Light.spaceLg
       IntentPolicy = IntentPolicy.neutral }
 
 let private frozenDark : Theme =

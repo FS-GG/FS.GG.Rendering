@@ -39,11 +39,11 @@ module internal NodeAssembly =
         // Feature 136 (T016A): if the label still overflows the box at the smallest fitted size,
         // ellipsize it (explicit `…`) rather than letting the clip rect silently drop characters.
         let shown =
-            ellipsize theme.FontFamily fontSize (box.Width - 16.0) label
+            ellipsize theme.FontFamily fontSize (box.Width - 2.0 * theme.SpaceSm) label
 
         let labelRun =
             { Text = shown
-              Position = { X = box.X + 8.0; Y = textY }
+              Position = { X = box.X + theme.SpaceSm; Y = textY }
               Font = { Family = theme.FontFamily; Size = fontSize; Weight = None }
               Paint = Paint.fill theme.Foreground }
 
@@ -59,15 +59,15 @@ module internal NodeAssembly =
             Scene.group [ Scene.rectangle (0.0, y, width, height) Colors.transparent ]
         elif ControlKindRegistry.isRich control.Kind then
             // Title band on top; control-specific geometry below it (within the canvas).
-            let pad = 10.0
-            let titleH = 30.0
+            let pad = theme.SpaceSm
+            let titleH = theme.ControlHeight
             let box: Rect = { X = pad; Y = y + titleH; Width = width - 2.0 * pad; Height = height - titleH - pad }
             // Title band shows the control's NAME (the schematic below shows its content); this
             // fixes composite-lowering title bleed and content duplication for rich families.
             let title =
                 Scene.clipped
                     (RectClip { X = 0.0; Y = y; Width = width; Height = titleH })
-                    (mkText theme 8.0 (y + 19.0) 13.0 theme.Foreground (prettyKind control.Kind))
+                    (mkText theme theme.SpaceSm (y + 19.0) 13.0 theme.Foreground (prettyKind control.Kind))
             Scene.group (title :: faithfulContent theme box control)
         else
             // Text / container controls: the control IS its text, so box + clipped label is faithful.
@@ -81,7 +81,7 @@ module internal NodeAssembly =
         ((0.0, []), controls)
         ||> List.fold (fun (y, scenes) control ->
             let height = nodeHeight control
-            y + height + 4.0, renderNode theme y control :: scenes)
+            y + height + theme.SpaceXs, renderNode theme y control :: scenes)
         |> snd
         |> List.rev
         |> Scene.group

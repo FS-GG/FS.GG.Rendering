@@ -28,15 +28,16 @@ let private mkText (theme: Theme) (x: float) (baseline: float) (size: float) (co
 
 // ---- frozen pre-refactor procedural geometry (the parity oracle) ---------------------------
 let private frozenButtonGeom (theme: Theme) (label: string) : Scene list =
-    let h = 38.0
+    // #385: dimensions now flow from the theme metric model (Ant control-size + Space scale).
+    let h = theme.ControlHeight
     let textW = (Scene.measureText label { Family = theme.FontFamily; Size = 15.0; Weight = None }).Width
-    let w = min box.Width (max 70.0 (textW + 32.0))
+    let w = min box.Width (max 70.0 (textW + 2.0 * theme.SpaceMd))
     let by = box.Y + box.Height / 2.0 - h / 2.0
     [ Scene.rectangle (box.X, by, w, h) theme.Accent
-      mkText theme (box.X + 16.0) (by + h / 2.0 + 5.0) 15.0 theme.Background label ]
+      mkText theme (box.X + theme.SpaceMd) (by + h / 2.0 + 5.0) 15.0 theme.Background label ]
 
 let private frozenCheckboxGeom (theme: Theme) (on: bool) (label: string) : Scene list =
-    let s = 28.0
+    let s = theme.ControlHeightSm + theme.SpaceXs
     let bx = box.X
     let cy = box.Y + box.Height / 2.0
     let by = cy - s / 2.0
@@ -50,7 +51,7 @@ let private frozenCheckboxGeom (theme: Theme) (on: bool) (label: string) : Scene
               Scene.line { X = bx + 12.0; Y = by + 21.0 } { X = bx + 23.0; Y = by + 7.0 } (Paint.stroke theme.Background 3.0) ]
         else
             []
-    let text = [ mkText theme (bx + s + 10.0) (cy + 5.0) 13.0 theme.Foreground label ]
+    let text = [ mkText theme (bx + s + theme.SpaceSm) (cy + 5.0) 13.0 theme.Foreground label ]
     fill @ tick @ text
 
 let private themes = [ "light", Theme.light; "dark", Theme.dark ]
