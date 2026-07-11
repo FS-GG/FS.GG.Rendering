@@ -94,6 +94,7 @@
     <Compile Include="CollisionSkillCoherenceTests.fs" />
     <Compile Include="VisibilitySkillCoherenceTests.fs" />
     <Compile Include="LineDrawingSkillCoherenceTests.fs" />
+    <Compile Include="GridsSkillCoherenceTests.fs" />
     <Compile Include="ReleaseOnlyTwinLockstepTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
