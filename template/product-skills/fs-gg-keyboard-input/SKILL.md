@@ -41,7 +41,9 @@ let mapKey (key: ViewerKey) (isDown: bool) : Msg option =
 The `Keyboard.init`/`Keyboard.update`/`KeyboardEffect` reducer in
 `KeyboardInput.fsi` is an optional advanced surface for products that maintain
 their own keyboard state machine; the `app` host does **not** use it, so do not
-seed it as the consumer path.
+seed it as the consumer path. If you do adopt it, read
+[Package Boundary](#package-boundary) first: **no host runner interprets a
+`KeyboardEffect`**, so every effect it emits is yours to act on.
 
 ## Common pitfalls
 
@@ -101,8 +103,38 @@ paths. Do not copy framework readiness reports into the product.
 
 ## Package Boundary
 
-Keep key reduction pure; the host delivers raw key events and interprets
-`RequestHostKeyCapture` through the viewer, not inside `Keyboard.update`.
+Keep key reduction pure: the host delivers normalized keys, and `Keyboard.update` returns
+`KeyboardEffect` values without performing I/O.
+
+**No shipped host runner interprets a `KeyboardEffect`.** Every runner that interprets effects at
+all — `Viewer.runApp`, `Viewer.runAppWithAudio`, `ControlsElmish.runInteractiveApp`, and the rest —
+interprets `ViewerEffect`, and `ViewerEffect` has no keyboard case. (The scene-only runners,
+`Viewer.run`/`runBounded`/`runForFrames`, take a `SceneNode` and interpret no effects at all.) The
+only interpreter that exists,
+`ControlsElmish.interpretKeyboardEffect`, is a pure lowering function that **the framework never
+calls**. If you want it called, you call it, and you route what it returns.
+
+### Which host interprets each `KeyboardEffect`
+
+| `KeyboardEffect` | `interpretKeyboardEffect` lowers it to | Which host runner interprets that |
+|---|---|---|
+| `CommandResolved` | `DispatchProductMessage` | none — **you** route it into `update` |
+| `ReportKeyboardDiagnostic` | `ReportAdapterDiagnostic` | none — **you** route it |
+| `RequestHostKeyCapture` | `DispatchHostCommand "capture-key:<key>"` | **none — nothing consumes that string** |
+| `KeyStateChanged`, `LayoutChanged`, `ModeChanged`, `PendingSequenceChanged`, `StateDisplayChanged` | `[]` — dropped | n/a |
+
+**`RequestHostKeyCapture` is inert in the framework, and the owner is you — the product.** Nothing
+constructs it (`Keyboard.update` never emits it), nothing consumes the `capture-key:<key>` string it
+lowers to, and no runner is listening for it. Wire a rebind button to it and nothing else, and the
+button does nothing — silently, with no error.
+
+Host key capture is not a framework capability today. To rebind a key, do it in product code:
+
+1. Route `AdapterEffect.DispatchHostCommand "capture-key:<key>"` to one of your own `Msg` cases at
+   your `AdapterCmd.toCmd` route function.
+2. Enter a capture mode in your model, and take the next key-down that arrives at your `MapKey`.
+3. Apply `Keymap.rebind` / `Keymap.remove`, and drive `MapKey` from the keymap with
+   `ViewerKeyboard.mapKeyOfKeymap`. That path is pure, and it does work.
 
 ## Generated Product
 
