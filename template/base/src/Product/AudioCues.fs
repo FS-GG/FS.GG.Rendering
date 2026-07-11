@@ -3,7 +3,9 @@ module AppRoot.AudioCues
 open System.IO
 open FS.GG.Audio.Core
 open FS.GG.Audio.Host
+//#if (profile == "game")
 open AppRoot.Geometry
+//#endif
 open AppRoot.Model
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -11,16 +13,29 @@ open AppRoot.Model
 //
 // `forTransition` is the ONLY place this product decides what to play. It is a pure function of the
 // message and the before/after model — no device, no file handle, no `unit -> unit`. The host turns
-// the returned values into real playback: `Program.fs` passes `Audio.play backend` to
-// `Viewer.runAppWithAudio`, and the viewer hands it each `ViewerEffect.PlayAudio` batch in dispatch
-// order. Your `update` never changes.
+// the returned values into real playback: `Program.fs` passes `Audio.play backend` to the launch
+// entry point, and the viewer hands it each `ViewerEffect.PlayAudio` batch in dispatch order. Your
+// `update` never changes.
 //
 // REPLACE ME, with Model.fs. This file names your `Msg` cases and reads your `Model`'s fields, so a
-// model swap rewrites it. The seam that carries its output (`PlayAudio` / `runAppWithAudio`) is
-// durable and does not — see docs/scaffold-map.md.
+// model swap rewrites it. The seam that carries its output (`PlayAudio` + the `*WithAudio` launch)
+// is durable and does not — see docs/scaffold-map.md.
 //
 // Test it the way you test `update` — by value, with no sound card:
-//     AudioCues.forTransition (Tick 0.016) before after = [ Audio.playSfx (SoundId "bounce") 0.6 ]
+//     AudioCues.forTransition SaveRequested before after = [ Audio.playSfx (SoundId "save") 0.7 ]
+//
+// ── Which host carries it (issue #436) ───────────────────────────────────────────────────────
+//
+// Both of them, through the same seam. The two starter profiles ship DIFFERENT `Msg` types, so the
+// cue map below is written twice — but the SIGNATURE is identical, and both hosts in
+// EvidenceCommands.fs call it from `Init` AND `Update`:
+//
+//     app                  -> `interactiveHost`, launched by `ControlsElmish.runInteractiveAppWithAudio`
+//     game / sample-pack   -> `generatedHost`,   launched by `Viewer.runAppWithAudio`
+//
+// That the Controls family can request sound at all is #429; that a scaffolded product on the `app`
+// profile can REACH it is #436 — before which `app` referenced none of the FS.GG.Audio packages and
+// launched through a sinkless overload, so "every game with a menu" got a silent menu.
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 
 /// Where `resolver` looks for PCM WAV files, relative to the running product.
@@ -33,11 +48,49 @@ let private tryReadAsset (name: string) =
 
 /// The product owns the id -> asset mapping; the framework never does (FS.GG.Audio FR-005).
 /// An id with no file on disk resolves to `None`, which the backend treats as a recorded no-op —
-/// so a game with no assets yet still runs, and still requests the right sounds.
+/// so a product with no assets yet still runs, and still requests the right sounds.
+///
+/// Model-agnostic on purpose: this half survives a model swap even though `forTransition` does not,
+/// which is why it sits above the per-starter split below.
 let resolver: AssetResolver =
     { ResolveSound = fun (SoundId id) -> tryReadAsset id
       ResolveTrack = fun (TrackId id) -> tryReadAsset id }
 
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// `Started`, and the trap it exists to close (issue #458)
+//
+// `forTransition` is a function of a TRANSITION. The initial model does not make one: it is produced
+// by `initialModel`, not dispatched into. So without `Started`, ANY sound the initial state implies
+// is never requested — and that is a hole in this pattern, not a bug in a function.
+//
+// It bites the moment you *load* state instead of *transitioning into* it:
+//
+//     Load the player's saved settings in `initialModel`, fold them into the model, and the model
+//     is CORRECT. The settings ARE loaded. And the mixer is never told, because no transition ever
+//     carried them to it. Nothing catches this — no type is wrong, no requirement unsatisfied, and
+//     a test that asserts on the model passes, because a restored volume the mixer never heard is
+//     indistinguishable, from inside the model, from one that was restored properly.
+//
+//     It surfaces later as: turn the music down, restart, and get full-volume music from a settings
+//     screen that correctly reports it as quiet.
+//
+// The same applies to a save game, restored window geometry, a resumed session, a replayed
+// checkpoint — anything that enters the model through a door a transition-shaped seam is not
+// watching. `Started` is that door, and the host dispatches it as `forTransition Started m m`.
+//
+// So: **put anything the initial state implies under `Started`**, e.g.
+//
+//     | Started -> [ Audio.setMasterVolume next.Settings.Volume
+//                    Audio.playMusic (TrackId "theme") true ]
+//
+// Assert it at the SINK, not at the model — the only test that catches this class asks *what the
+// engine was told*, not *what the model holds*.
+//
+// Both starters carry `Started` for this reason. It was the game's alone until #436 gave the
+// Controls starter a cue seam; a seam without `Started` would have reproduced #458 one profile over.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+//#if (profile == "game")
 let private scored (previous: Model) (next: Model) =
     next.LeftScore > previous.LeftScore || next.RightScore > previous.RightScore
 
@@ -55,35 +108,6 @@ let private bounced (previous: Model) (next: Model) =
 ///
 /// Drop a WAV at `assets/audio/<id>.wav` and you hear it; leave it out and the request is recorded
 /// but silent. Add your own cases — this is your file.
-///
-/// ── `Started`, and the trap it exists to close (issue #458) ──────────────────────────────────
-///
-/// `forTransition` is a function of a TRANSITION. The initial model does not make one: it is
-/// produced by `initialModel`, not dispatched into. So without `Started`, ANY sound the initial
-/// state implies is never requested — and that is a hole in this pattern, not a bug in a function.
-///
-/// It bites the moment you *load* state instead of *transitioning into* it:
-///
-///     Load the player's saved settings in `initialModel`, fold them into the model, and the model
-///     is CORRECT. The settings ARE loaded. And the mixer is never told, because no transition ever
-///     carried them to it. Nothing catches this — no type is wrong, no requirement unsatisfied, and
-///     a test that asserts on the model passes, because a restored volume the mixer never heard is
-///     indistinguishable, from inside the model, from one that was restored properly.
-///
-///     It surfaces later as: turn the music down, restart, and get full-volume music from a settings
-///     screen that correctly reports it as quiet.
-///
-/// The same applies to a save game, restored window geometry, a resumed session, a replayed
-/// checkpoint — anything that enters the model through a door a transition-shaped seam is not
-/// watching. `Started` is that door, and the host dispatches it as `forTransition Started m m`.
-///
-/// So: **put anything the initial state implies under `Started`**, e.g.
-///
-///     | Started -> [ Audio.setMasterVolume next.Settings.Volume
-///                    Audio.playMusic (TrackId "theme") ]
-///
-/// Assert it at the SINK, not at the model — the only test that catches this class asks *what the
-/// engine was told*, not *what the model holds*.
 let forTransition (msg: Msg) (previous: Model) (next: Model) : AudioEffect list =
     match msg with
     // The scaffold ships this seam WIRED rather than empty, for the same reason #245 shipped the
@@ -101,3 +125,29 @@ let forTransition (msg: Msg) (previous: Model) (next: Model) : AudioEffect list 
     | Tick _ when scored previous next -> [ Audio.playSfx (SoundId "score") 0.9 ]
     | Tick _ when bounced previous next -> [ Audio.playSfx (SoundId "bounce") 0.6 ]
     | _ -> []
+//#else
+/// What this product asks to hear when `msg` takes it from `previous` to `next`.
+/// Return `[]` for a silent transition. Effects play in list order.
+///
+/// Drop a WAV at `assets/audio/<id>.wav` and you hear it; leave it out and the request is recorded
+/// but silent. Add your own cases — this is your file.
+///
+/// This is the CONTROLS starter's cue map (issue #436): an app's sounds are its interaction
+/// feedback — a page turn, a committed save, a selection. `previous`/`next` are here for the cues
+/// that need them (play the save sound only when the name actually changed, duck the music when a
+/// modal opens); these starter cues are decided by the message alone, so they ignore both.
+let forTransition (msg: Msg) (_previous: Model) (_next: Model) : AudioEffect list =
+    match msg with
+    // Shipped WIRED, not empty — see the `Started` note above. A `Started` case that returned `[]`
+    // would make the Product.Tests regression test vacuous: it would pass whether or not `Init` is
+    // routed through the seam at all, which is exactly how #458 survived its own first fix.
+    // Silent until you drop `assets/audio/start.wav`; an unresolved id is a recorded no-op.
+    | Started -> [ Audio.playSfx (SoundId "start") 0.5 ]
+    // The user committed something — the one interaction in the starter that changes the world.
+    | SaveRequested -> [ Audio.playSfx (SoundId "save") 0.7 ]
+    // Page turns and selections: quiet, and quieter than the save. `Tick` deliberately has NO cue —
+    // it fires every frame, and a per-frame sound is a buzzsaw, not feedback.
+    | Navigated _ -> [ Audio.playSfx (SoundId "navigate") 0.4 ]
+    | GridSelectionChanged _ -> [ Audio.playSfx (SoundId "select") 0.3 ]
+    | _ -> []
+//#endif

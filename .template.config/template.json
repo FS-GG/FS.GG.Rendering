@@ -411,7 +411,8 @@
       ]
     },
     {
-      "condition": "(profile == \"game\" || profile == \"sample-pack\")",
+      "comment": "Issue #436: widened from the two simulation profiles to the three that open a viewer window. #429 gave the Controls host family an audio sink (ControlsElmish.runInteractiveAppWithAudio) and #436 puts the four FS.GG.Audio.* packages on `app`, so the skill now compiles there — and an author who can request sound but is handed no skill teaching the seam is the #430 failure in reverse. The gate is kept identical to the audio PACKAGE gate in template/base/Directory.Packages.props and Product.fsproj: a skill's reach may not exceed, nor fall short of, the packages it tells the author to open (SkillPackageReachTests, R-REACH). `headless-scene`/`governed` still get neither: they never launch a viewer, so they can never make a sound.",
+      "condition": "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\")",
       "source": "template/product-skills/fs-gg-audio/",
       "target": ".agents/skills/fs-gg-audio/",
       "copyOnly": [

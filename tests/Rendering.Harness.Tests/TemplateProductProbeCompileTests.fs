@@ -82,7 +82,36 @@ let private frameworkProjects =
           // Not in the app branch today, but legitimately reachable if a future edit widens the gate;
           // keeping them mapped means such an edit still probes offline instead of failing P-MAP-COMPLETE.
           "FS.GG.UI.Canvas", "src/Canvas/Canvas.Lib.fsproj"
+
           "FS.GG.UI.Testing", "src/Testing/Testing.fsproj" ]
+
+/// Packages from ANOTHER FS-GG repo that the app profile references (issue #436 put FS.GG.Audio.Core
+/// and .Host on it, so the Controls family can reach #429's audio sink). This repo builds no project
+/// for them, so — unlike the FS.GG.UI.* rows above — there is no HEAD to compile against, and the
+/// honest thing to probe is what a real generated product actually consumes: the PINNED release,
+/// resolved from the feed at the template's own `$(FsGgAudioVersion)`.
+///
+/// This does NOT weaken the offline contract. Both are already in the global-packages folder by the
+/// time this test runs, because the FRAMEWORK depends on them — `src/SkiaViewer` references
+/// FS.GG.Audio.Core and `tests/SkiaViewer.Tests` references FS.GG.Audio.Host, so the slnx restore that
+/// precedes this test has fetched them. That is exactly why the split #436 chose is Core/Host and not
+/// all four: FS.GG.Audio.Engine/.Elmish are referenced by nothing in this repo, are never in the cache,
+/// and putting them on `app` would make this probe need the network.
+///
+/// A package added here must therefore satisfy BOTH: it is genuinely feed-only (no repo project), and
+/// something in the slnx already pulls it. Anything else belongs in `frameworkProjects` — or nowhere,
+/// and P-MAP-COMPLETE will say so.
+let private feedOnlyPackages = set [ "FS.GG.Audio.Core"; "FS.GG.Audio.Host" ]
+
+/// The template's own audio pin, read from where the template declares it, so the probe compiles the
+/// version a scaffolded product would actually get and cannot drift from it.
+let private audioVersion =
+    let props = File.ReadAllText(repositoryPath "template/base/Directory.Packages.props")
+    let m = Regex.Match(props, "<FsGgAudioVersion>(?<v>[^<]+)</FsGgAudioVersion>")
+    if not m.Success then
+        failwith
+            "template/base/Directory.Packages.props declares no <FsGgAudioVersion> — the probe cannot pin the feed-only audio packages it must restore"
+    m.Groups.["v"].Value.Trim()
 
 // ---- the profile-marker preprocessor ----------------------------------------------------------
 /// Does a `//#if`/`<!--#if -->` condition of the shape `profile == "a" || profile == "b"` hold for the
@@ -170,6 +199,12 @@ let private materialize (dir: string) : Materialized =
                 let id = m.Groups.["id"].Value
                 match Map.tryFind id frameworkProjects with
                 | Some proj -> sprintf "<ProjectReference Include=\"%s\" />" (repositoryPath proj)
+                // A feed-only package from another FS-GG repo (#436): no repo project to compile
+                // against, so keep it a real PackageReference at the template's pinned version. The
+                // probe dir carries no Directory.Packages.props, so the Version must be explicit here
+                // — a bare central-managed reference would not restore.
+                | None when Set.contains id feedOnlyPackages ->
+                    sprintf "<PackageReference Include=\"%s\" Version=\"%s\" />" id audioVersion
                 | None -> sprintf "<!-- UNMAPPED PACKAGE: %s -->" id)
 
     File.WriteAllText(Path.Combine(dir, "Product.fsproj"), rewritten)
@@ -273,18 +308,25 @@ let templateProductProbeCompileTests =
               Expect.isFalse (kept.Contains "#if") "directive lines are stripped"
           }
 
-          // P-MAP-COMPLETE — every FS.GG.* package the app fsproj still references after preprocessing must
-          // map to a repo project. An unmapped one means the app profile is no longer offline-probeable
-          // (e.g. a feed-only Game/Audio package crept into the app branch); fail loudly here rather than
-          // silently dropping the reference and compiling a product that is missing a dependency.
-          test "every referenced FS.GG.* package maps to a repo project (offline-probeable)" {
+          // P-MAP-COMPLETE — every FS.GG.* package the app fsproj still references after preprocessing is
+          // accounted for: either it maps to a repo project (compiled at HEAD) or it is a declared
+          // feed-only package from another FS-GG repo (restored at its pinned version, #436). One that is
+          // NEITHER means the app profile is no longer probeable as configured — e.g. a feed-only
+          // FS.GG.Game.* package crept into the app branch, or FS.GG.Audio.Engine/.Elmish did, neither of
+          // which is in the global-packages folder. Fail loudly here rather than silently dropping the
+          // reference and compiling a product that is missing a dependency.
+          test "every referenced FS.GG.* package is probeable (repo project, or a declared feed-only pin)" {
               withMaterialized (fun mat ->
-                  let unmapped = mat.ReferencedPackages |> List.filter (fun id -> not (Map.containsKey id frameworkProjects))
+                  let unaccounted =
+                      mat.ReferencedPackages
+                      |> List.filter (fun id ->
+                          not (Map.containsKey id frameworkProjects) && not (Set.contains id feedOnlyPackages))
+
                   Expect.isEmpty
-                      unmapped
+                      unaccounted
                       (sprintf
-                          "the app profile references FS.GG.* package(s) with no repo project to compile against, so it can no longer be probed offline: %A — add a mapping if the package is built here, or move the probe off the app profile"
-                          unmapped)
+                          "the app profile references FS.GG.* package(s) that are neither built in this repo nor declared feed-only, so the probe cannot resolve them: %A — add a `frameworkProjects` mapping if the package is built here; add it to `feedOnlyPackages` ONLY if something in the slnx already restores it (otherwise the probe would need the network); else move the probe off the app profile"
+                          unaccounted)
                   Expect.isFalse
                       ((File.ReadAllText(Path.Combine(mat.Dir, "Product.fsproj"))).Contains "UNMAPPED")
                       "no PackageReference was left unmapped in the materialized fsproj")
@@ -302,10 +344,19 @@ let templateProductProbeCompileTests =
                       (List.length mat.ProjectRefs)
                       3
                       "the app product references several FS.GG.UI.* framework projects"
-                  // The app profile must NOT drag in the game/sample-pack-only helpers or AudioCues.
+                  // The app profile must NOT drag in the game/sample-pack-only simulation helpers.
+                  // AudioCues.fs is NO LONGER one of them: #436 gave the app profile a cue seam (the
+                  // Controls host launches through `runInteractiveAppWithAudio`), so the file compiles
+                  // on every windowed profile and is asserted PRESENT just below.
                   let joined = String.concat "\n" mat.CompileItems
-                  for gameOnly in [ "Vec2.fs"; "Collision.fs"; "Visibility.fs"; "Grids.fs"; "LineDrawing.fs"; "AudioCues.fs" ] do
-                      Expect.isFalse (joined.Contains gameOnly) (sprintf "%s is game/sample-pack-only and must not be in the app tree" gameOnly))
+                  for gameOnly in [ "Vec2.fs"; "Collision.fs"; "Visibility.fs"; "Grids.fs"; "LineDrawing.fs" ] do
+                      Expect.isFalse (joined.Contains gameOnly) (sprintf "%s is game/sample-pack-only and must not be in the app tree" gameOnly)
+
+                  // #436, the positive half: the app tree really does carry the cue seam. Without this,
+                  // deleting `AudioCues.fs` from the app gate would silently pass every check in this
+                  // file — the product would simply compile with no sound, which is the defect #436
+                  // fixed and precisely the state this probe was blind to before.
+                  Expect.stringContains joined "AudioCues.fs" "the app profile compiles AudioCues.fs — it has an audio cue seam (#436)")
           }
 
           // P-COMPILES — the deliverable. The materialized app product compiles offline against the repo's

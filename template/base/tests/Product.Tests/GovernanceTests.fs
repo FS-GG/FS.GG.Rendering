@@ -201,15 +201,13 @@ let governanceTests =
             Expect.stringContains source "\"--pixel-readback-evidence\"" "pixel-readback evidence records the evidence command"
             Expect.stringContains source "Viewer.runBounded" "generated evidence commands use bounded viewer evidence entry points"
             // FR-005 (086, D6): the host-lock assertion is generalized to the per-family
-            // persistent interactive host — controls → runInteractiveApp, game → runApp.
+            // persistent interactive host — controls → runInteractiveAppWithAudio, game/sample-pack →
+            // runAppWithAudio. #436: both carry the audio sink; no family launches through a
+            // sink-discarding overload any more.
             //#if (profile == "app")
-            Expect.stringContains defaultBranch "ControlsElmish.runInteractiveApp viewerOptions interactiveHost" "controls-family normal launch is the pointer-aware persistent interactive host"
+            Expect.stringContains defaultBranch "ControlsElmish.runInteractiveAppWithAudio viewerOptions audioSink interactiveHost" "controls-family normal launch is the pointer-aware persistent interactive host, with the #429/#436 audio sink"
             //#else
-            //#if (profile == "game")
-            Expect.stringContains defaultBranch "Viewer.runAppWithAudio viewerOptions audioSink generatedHost" "game-family normal launch remains the keyboard-only persistent interactive path (with the #245 audio sink)"
-            //#else
-            Expect.stringContains defaultBranch "Viewer.runApp viewerOptions generatedHost" "non-app non-game normal launch remains the keyboard-only persistent interactive path"
-            //#endif
+            Expect.stringContains defaultBranch "Viewer.runAppWithAudio viewerOptions audioSink generatedHost" "game/sample-pack normal launch remains the keyboard-only persistent interactive path (with the #245 audio sink)"
             //#endif
             Expect.isFalse (defaultBranch.Contains("mode=persistent-evidence")) "normal launch does not report bounded evidence mode"
             Expect.isFalse (defaultBranch.Contains("self-closed-for-evidence=true")) "normal launch does not claim evidence self-close"
@@ -280,13 +278,11 @@ let governanceTests =
             Expect.stringContains source "MapKey = mapKey" "generated host wires keyboard mapping"
             Expect.stringContains source "Tick = tick" "generated host wires tick mapping"
             // FR-005 (086): default path runs the per-family persistent interactive host.
+            // #436: with the audio sink, on every family.
             //#if (profile == "app")
-            Expect.stringContains source "ControlsElmish.runInteractiveApp viewerOptions interactiveHost" "controls-family default path runs the pointer-aware persistent host"
+            Expect.stringContains source "ControlsElmish.runInteractiveAppWithAudio viewerOptions audioSink interactiveHost" "controls-family default path runs the pointer-aware persistent host, with the #429/#436 audio sink"
             //#else
-            //#if (profile == "game")
-            Expect.stringContains source "Viewer.runAppWithAudio viewerOptions audioSink generatedHost" "game-family default path runs the keyboard-only persistent generated app host (with the #245 audio sink)"
-            //#else
-            Expect.stringContains source "Viewer.runApp viewerOptions generatedHost" "non-app non-game default path runs the keyboard-only persistent generated app host"
+            Expect.stringContains source "Viewer.runAppWithAudio viewerOptions audioSink generatedHost" "game/sample-pack default path runs the keyboard-only persistent generated app host (with the #245 audio sink)"
             //#endif
             //#endif
             Expect.stringContains source "mode=interactive-window" "default path reports interactive mode"
@@ -369,15 +365,12 @@ let governanceTests =
             Expect.stringContains source "toViewerWindowBehavior windowBehavior" "parsed flags become the public viewer request"
             Expect.stringContains source "Viewer.validateWindowLaunchBehavior viewerOptions.InitialSize" "generated diagnostics use public launch behavior validation"
             // FR-005 (086): the default launch applies the selected persistent viewer contract
-            // appropriate to the product family (controls → runInteractiveApp, game → runApp).
+            // appropriate to the product family (controls → runInteractiveAppWithAudio,
+            // game/sample-pack → runAppWithAudio). #436: both carry the audio sink.
             //#if (profile == "app")
-            Expect.stringContains source "ControlsElmish.runInteractiveApp viewerOptions interactiveHost" "controls-family default launch applies the pointer-aware persistent viewer contract"
+            Expect.stringContains source "ControlsElmish.runInteractiveAppWithAudio viewerOptions audioSink interactiveHost" "controls-family default launch applies the pointer-aware persistent viewer contract, with the #429/#436 audio sink"
             //#else
-            //#if (profile == "game")
-            Expect.stringContains source "Viewer.runAppWithAudio viewerOptions audioSink generatedHost" "game-family default launch applies the keyboard-only persistent viewer contract (with the #245 audio sink)"
-            //#else
-            Expect.stringContains source "Viewer.runApp viewerOptions generatedHost" "non-app non-game default launch applies the keyboard-only persistent viewer contract"
-            //#endif
+            Expect.stringContains source "Viewer.runAppWithAudio viewerOptions audioSink generatedHost" "game/sample-pack default launch applies the keyboard-only persistent viewer contract (with the #245 audio sink)"
             //#endif
             Expect.stringContains source "manualWindowOptionResults windowBehaviorRequest" "normal launch validates parsed behavior request before calling SkiaViewer"
             Expect.stringContains source "window-options=%s" "normal launch reports option validation output"

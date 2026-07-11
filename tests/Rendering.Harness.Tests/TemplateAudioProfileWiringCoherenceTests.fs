@@ -64,6 +64,30 @@ let private gateOf (text: string) (packageId: string) =
 
 let private simProfileGate = "profile == \"game\" || profile == \"sample-pack\""
 
+/// Issue #436: Core/Host reach every profile that opens a VIEWER WINDOW — app as well as
+/// game/sample-pack.
+let private viewerProfileGate =
+    "profile == \"app\" || profile == \"sample-pack\" || profile == \"game\""
+
+/// The gate each audio package's pin and reference must sit in. Kept byte-identical to
+/// AudioProfileWiringTests.expectedGate: these two files are deliberate twins, and a gate that drifted
+/// between them would let the PR lane and the release lane disagree about what the template may say.
+///
+/// Core/Host follow the fs-gg-audio skill onto the viewer profiles — they are what it tells an author
+/// to `open`, and what the scaffold's AudioCues.fs/Program.fs compile (#430 R-REACH). Engine/Elmish
+/// are prose-only in the skill, referenced by no scaffold source, and unresolvable by the #366 offline
+/// probe (this repo builds no FS.GG.Audio project; only Core/Host are in the global-packages folder,
+/// because the framework itself depends on them) — so they stay on the simulation profiles.
+let private expectedGate =
+    Map [ "FS.GG.Audio.Core", viewerProfileGate
+          "FS.GG.Audio.Host", viewerProfileGate
+          "FS.GG.Audio.Engine", simProfileGate
+          "FS.GG.Audio.Elmish", simProfileGate ]
+
+/// Both hosts EvidenceCommands.fs defines must route the initial model through the cue seam —
+/// `generatedHost` since #458, `interactiveHost` since #436.
+let private cueSeamHosts = [ "generatedHost"; "interactiveHost" ]
+
 [<Tests>]
 let templateAudioProfileWiringCoherenceTests =
     testList
@@ -97,14 +121,19 @@ let templateAudioProfileWiringCoherenceTests =
                   Expect.stringContains proj $"Include=\"{pkg}\"" $"Product.fsproj references {pkg}"
           }
 
-          // G-GATE — every pin and every ref sits inside the `game || sample-pack` gate, so the audio
-          // realization can never leak into an app/none/governed scaffold.
-          test "every FS.GG.Audio pin and reference is gated to the game/sample-pack profiles only" {
+          // G-GATE — each audio package's pin and ref sit in ITS profile gate (#436): Core/Host on the
+          // viewer profiles, so audio reaches the Controls family; Engine/Elmish on the simulation
+          // profiles. Neither half can leak into a headless-scene/governed scaffold, which launches no
+          // viewer and can make no sound. Pin and ref are held to the SAME expectation: a package
+          // pinned where it is not referenced is dead weight, and referenced where it is not pinned
+          // does not restore.
+          test "every FS.GG.Audio pin and reference sits in its package's profile gate" {
               let props = File.ReadAllText propsPath
               let proj = File.ReadAllText projPath
               for pkg in audioPackages do
-                  Expect.equal (gateOf props pkg) (Some(Some simProfileGate)) $"{pkg} pin is gated to the sim profiles only"
-                  Expect.equal (gateOf proj pkg) (Some(Some simProfileGate)) $"{pkg} reference is gated to the sim profiles only"
+                  let gate = Map.find pkg expectedGate
+                  Expect.equal (gateOf props pkg) (Some(Some gate)) $"{pkg} pin is gated to `{gate}`"
+                  Expect.equal (gateOf proj pkg) (Some(Some gate)) $"{pkg} reference is gated to `{gate}`"
           }
 
           // G-INIT (issue #458) — the INITIAL state reaches the cue seam. The PR-time half of the
@@ -117,44 +146,70 @@ let templateAudioProfileWiringCoherenceTests =
           // `Init` was `fun () -> initialModel, []`, any effect the initial state implied was silently
           // never emitted — and state that is LOADED rather than transitioned into (settings, a save
           // game, a resumed session) is exactly the state that enters through that door.
-          test "the game host routes the INITIAL model through the audio cue seam (#458)" {
+          test "BOTH hosts route the INITIAL model through the audio cue seam (#458, #436)" {
               let evidenceCommands = File.ReadAllText(repositoryPath "template/base/src/Product/EvidenceCommands.fs")
               let model = File.ReadAllText(repositoryPath "template/base/src/Product/Model.fs")
               let audioCues = File.ReadAllText(repositoryPath "template/base/src/Product/AudioCues.fs")
 
-              Expect.stringContains
-                  evidenceCommands
-                  "AppRoot.AudioCues.forTransition Started initialModel initialModel"
-                  "generatedHost.Init dispatches Started through the SAME cue seam Update uses — not a separate startup branch"
-
-              // Scoped to `generatedHost`. `interactiveHost` (app profile) still has the effect-free
-              // Init, correct TODAY only because that profile compiles no AudioCues.fs and so has no
-              // seam to miss. #429 gave the interactive host an audio sink and #436 wires audio into
-              // the app profile — whoever lands that must route this Init through the seam too, and
-              // widen this assertion, or #458 reappears one profile over.
-              let generatedHostRegion =
-                  let start = evidenceCommands.IndexOf "let generatedHost"
-                  Expect.isGreaterThan start -1 "EvidenceCommands.fs defines generatedHost"
+              /// The body of a top-level `let <name> ...` binding, up to the next column-0 `let`.
+              let hostRegion (name: string) =
+                  let start = evidenceCommands.IndexOf $"let {name}"
+                  Expect.isGreaterThan start -1 $"EvidenceCommands.fs defines {name}"
                   let after = evidenceCommands.IndexOf("\nlet ", start + 1)
                   let stop = if after < 0 then evidenceCommands.Length else after
                   evidenceCommands.Substring(start, stop - start)
 
-              Expect.isFalse
-                  (generatedHostRegion.Contains "Init = fun () -> initialModel, []")
-                  "generatedHost.Init must not go back to producing the initial model with no effects (the #458 hole)"
+              // Was scoped to `generatedHost` while `interactiveHost` (app) still carried the
+              // effect-free Init — correct only for as long as that profile compiled no AudioCues.fs
+              // and so had no seam to miss. #436 gave it one, so the assertion covers BOTH hosts now:
+              // each dispatches `Started` through the SAME `forTransition` its Update calls, and
+              // neither is left with a seam it silently bypasses at startup.
+              for host in cueSeamHosts do
+                  let region = hostRegion host
+
+                  Expect.stringContains
+                      region
+                      "AppRoot.AudioCues.forTransition Started initialModel initialModel"
+                      $"{host}.Init dispatches Started through the SAME cue seam Update uses — not a separate startup branch"
+
+                  Expect.isFalse
+                      (region.Contains "Init = fun () -> initialModel, []")
+                      $"{host}.Init must not go back to producing the initial model with no effects (the #458 hole)"
+
+                  // An Init-only wiring would emit the startup cue and then go silent for every
+                  // subsequent transition — the seam has to carry Update's cues out too.
+                  Expect.stringContains
+                      region
+                      "AppRoot.AudioCues.forTransition msg model next"
+                      $"{host}.Update lifts each transition's cues onto PlayAudio"
 
               Expect.stringContains model "| Started" "the starter Msg declares Started"
               Expect.stringContains audioCues "| Started ->" "AudioCues.forTransition handles Started"
 
               // A `Started` case returning [] makes the generated product's own regression test
               // vacuous — it would pass whether or not Init is wired to the seam at all, which is how
-              // this class survives its own fix (#266). The scaffold must ship it emitting something.
-              let startedCue = Regex.Match(audioCues, @"\|\s*Started\s*->\s*\[(?<cues>[^\]]*)\]")
+              // this class survives its own fix (#266). The scaffold must ship it emitting something,
+              // in EVERY starter's cue map: #436 gave AudioCues.fs one `forTransition` per starter,
+              // because the two profiles ship different `Msg` types.
+              //
+              // Comments are stripped FIRST: AudioCues.fs documents the seam with a worked example of a
+              // `Started` cue, so matching the raw file counts prose as wiring. This gate used to take
+              // the FIRST regex match, and in the shipped file that match WAS the comment.
+              let audioCuesCode =
+                  audioCues.Replace("\r\n", "\n").Split('\n')
+                  |> Array.filter (fun line -> not ((line.TrimStart()).StartsWith "//"))
+                  |> String.concat "\n"
 
-              Expect.isTrue startedCue.Success "AudioCues ships a `Started` cue list"
+              let startedCues = Regex.Matches(audioCuesCode, @"\|\s*Started\s*->\s*\[(?<cues>[^\]]*)\]")
 
-              Expect.isFalse
-                  (System.String.IsNullOrWhiteSpace startedCue.Groups.["cues"].Value)
-                  "the scaffold ships `Started` wired to a real cue — an empty one makes the product's own regression test vacuous"
+              Expect.equal
+                  startedCues.Count
+                  2
+                  "AudioCues ships a wired `Started` cue for BOTH starters (the game's and the Controls one)"
+
+              for startedCue in startedCues do
+                  Expect.isFalse
+                      (System.String.IsNullOrWhiteSpace startedCue.Groups.["cues"].Value)
+                      "the scaffold ships `Started` wired to a real cue — an empty one makes the product's own regression test vacuous"
           }
         ]

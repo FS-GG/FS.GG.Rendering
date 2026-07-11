@@ -44,7 +44,11 @@ let repoPath (rel: string) =
 // parens/quotes. normalizeCondition (below) is the deterministic bridge; Feature238 proves manifest ≡
 // template.json semantically so the two grammars never drift.
 let catalog =
-    [ "fs-gg-audio", "template/product-skills/fs-gg-audio/SKILL.md", "(profile == \"game\" || profile == \"sample-pack\")"
+    // #436: audio reaches every profile that opens a viewer window, not the simulation profiles only.
+    // Must stay identical to the fs-gg-audio row in .template.config/template.json and to the audio
+    // package gate in template/base/{Directory.Packages.props,src/Product/Product.fsproj} — R-REACH
+    // (SkillPackageReachTests) fails if the skill materializes where its four packages do not.
+    [ "fs-gg-audio", "template/product-skills/fs-gg-audio/SKILL.md", "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\")"
       "fs-gg-collision", "template/product-skills/fs-gg-collision/SKILL.md", "(profile == \"game\" || profile == \"sample-pack\")"
       "fs-gg-elmish", "template/product-skills/fs-gg-elmish/SKILL.md", "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\")"
       "fs-gg-feedback-capture", "template/feedback/skill/SKILL.md", "(feedback == true) && lifecycle == \"spec-kit\""

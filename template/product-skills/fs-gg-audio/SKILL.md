@@ -7,14 +7,19 @@ description: Make a generated FS.GG.UI product request sound — audio as pure v
 
 ## Scope
 
-Use this skill to give a game/sim product **sound**: firing a sound effect, starting or stopping
-music, setting bus volumes, ducking, and positioning a sound in 3D. Audio here is **requested as
-pure values** — your `update` returns `AudioEffect` values, it never touches an audio device. A
+Use this skill to give a product **sound**: firing a sound effect, starting or stopping music,
+setting bus volumes, ducking, and positioning a sound in 3D. Audio here is **requested as pure
+values** — your `update` returns `AudioEffect` values, it never touches an audio device. A
 record-only interpreter folds the requests into ordered evidence, so the whole thing is
 deterministic and testable with no sound hardware. Real device playback is the host's job, and it
 now ships: `FS.GG.Audio.Host` carries the device seam and `FS.GG.Audio.Engine` the mixing. This
-skill covers requesting sound and proving what was requested. This skill materializes for the
-`game` and `sample-pack` profiles.
+skill covers requesting sound and proving what was requested.
+
+This skill materializes for the `app`, `game`, and `sample-pack` profiles — every profile that opens
+a viewer window, and so every profile that can make a sound (FS.GG.Rendering#436). It is **not** a
+game-only capability: a Controls app wants a click, a page turn, a save chime, and "every game with a
+menu" was the motivating case for giving the Controls host family an audio sink at all (#429). The
+`headless-scene` and `governed` profiles launch no viewer and get neither the skill nor the packages.
 
 ## Public Contract
 
@@ -23,7 +28,7 @@ The signatures you consume are bundled with this product:
 - `docs/api-surface/Audio.Core/Audio.fsi` — the `AudioEffect` request DU, the `SoundId`/`TrackId`
   identifiers, the `Bus` DU, the `AudioEvidence` record, and the `Audio` module (smart constructors
   + the record-only `interpret`/`record`). Shipped in **`FS.GG.Audio.Core`**, referenced on the
-  `game` and `sample-pack` profiles.
+  `app`, `game`, and `sample-pack` profiles.
 
 `FS.GG.Audio` is its own component, released on its own `$(FsGgAudioVersion)` axis — independent of
 `$(FsGgUiVersion)` and `$(FsGgGameVersion)`.
@@ -122,12 +127,26 @@ product's `readiness/` paths. Do not copy framework readiness reports into the p
 ## Package Boundary
 
 `AudioEffect`/`Audio`/`Bus` are in **`FS.GG.Audio.Core`** — a standalone component on its own
-`$(FsGgAudioVersion)` axis, referenced only on the `game`/`sample-pack` profiles. `Core` is
-BCL-only: the request vocabulary and the record-only interpreter pull in no viewer, layout, widget,
-or rendering machinery. The rest of the component sits behind that same edge and is referenced on
-the same profiles: `FS.GG.Audio.Host` (the `IAudioBackend` device seam, degrading to a null/record
-path), `FS.GG.Audio.Engine` (buses, fades, ducking, 3D), and `FS.GG.Audio.Elmish` (the `Cmd`
-authoring bridge). Keep device work out of `update` regardless of which of them you reach for.
+`$(FsGgAudioVersion)` axis. `Core` is BCL-only: the request vocabulary and the record-only
+interpreter pull in no viewer, layout, widget, or rendering machinery. The rest of the component sits
+behind that same edge. Keep device work out of `update` regardless of which piece you reach for.
+
+The four packages are **not all on every profile** — check before you `open` one (#436):
+
+| Package | What it is | Profiles |
+| --- | --- | --- |
+| `FS.GG.Audio.Core` | the `AudioEffect` request vocabulary + record-only interpreter | `app`, `game`, `sample-pack` |
+| `FS.GG.Audio.Host` | the `IAudioBackend` device seam (null/record + OpenAL) and `AssetResolver` | `app`, `game`, `sample-pack` |
+| `FS.GG.Audio.Engine` | buses, fades, ducking, 3D | `game`, `sample-pack` |
+| `FS.GG.Audio.Elmish` | the `Audio.Cmd` authoring bridge | `game`, `sample-pack` |
+
+Core and Host are what *this skill's code* needs — the values you return from `forTransition`, and the
+backend `Program.fs` hands the viewer — so they follow the skill onto every profile that opens a
+window. Engine and Elmish are the simulation half; an `app` scaffold references neither, and nothing
+above tells you to `open` them. To use named buses or 3D positioning on an `app` product, pin the
+package in `Directory.Packages.props` on the `$(FsGgAudioVersion)` axis (as the `game` profile does)
+and reference it from `Product.fsproj` — they are part of the same released component, not a
+different one.
 
 ## Generated Product
 
@@ -146,26 +165,55 @@ The seam is real and the scaffold ships it wired (FS.GG.Rendering#245). Two file
 open FS.GG.Audio.Host
 
 // Opens a real device; degrades to the record-only Null backend when OpenAL or the
-// device is missing, so this is safe headless and in CI. It never throws into game code.
+// device is missing, so this is safe headless and in CI. It never throws into product code.
 use backend = OpenAlBackend.create AudioCues.resolver
 
 // `Audio.play backend : AudioEffect list -> unit` is the sink. The viewer hands it every
 // `ViewerEffect.PlayAudio` batch, in dispatch order.
-Viewer.runAppWithAudio viewerOptions (Audio.play backend) generatedHost
+let audioSink = Audio.play backend
 ```
 
-Between them, `EvidenceCommands.fs` lifts each frame's cues onto `ViewerEffect.PlayAudio`, which is
-the effect the viewer interprets. So a scaffolded game plays a sound **without editing the host**:
-add a case to `AudioCues.forTransition` and drop a WAV at `assets/audio/<id>.wav`.
+### The launch entry point is per FAMILY — take the one your profile launches with
+
+The sink is the same value everywhere; only the entry point that accepts it differs. Reaching for the
+game family's function on a Controls product (or vice versa) will not type-check, so this is the table
+to read before you wire anything (FS.GG.Rendering#429, #436):
+
+| Profile | Host record | Silent (discards audio) | **With sound** |
+| --- | --- | --- | --- |
+| `app` | `interactiveHost` | `ControlsElmish.runInteractiveApp` | **`ControlsElmish.runInteractiveAppWithAudio`** |
+| `game`, `sample-pack` | `generatedHost` | `Viewer.runApp` | **`Viewer.runAppWithAudio`** |
+
+```fsharp
+// app (Controls family) — pointer-aware host
+ControlsElmish.runInteractiveAppWithAudio viewerOptions audioSink interactiveHost
+
+// game / sample-pack — keyboard host
+Viewer.runAppWithAudio viewerOptions audioSink generatedHost
+```
+
+Each has a window-behavior sibling that takes the parsed `--window-*` request as its second argument:
+`ControlsElmish.runInteractiveAppWithWindowBehaviorAndAudio` and
+`Viewer.runAppWithWindowBehaviorAndAudio`. The scaffold's `Program.fs` already picks between the two
+by whether a window flag was supplied — you should not need to touch it.
+
+These are not forks of the loop. Each `*WithAudio` entry point is the *same* message → update →
+retained-step code path as its silent twin with the terminal viewer launcher swapped, so what you hear
+cannot drift away from what the live loop actually did.
+
+Between `AudioCues.fs` and `Program.fs`, `EvidenceCommands.fs` lifts each frame's cues onto
+`ViewerEffect.PlayAudio`, which is the effect the viewer interprets. So a scaffolded product plays a
+sound **without editing the host**: add a case to `AudioCues.forTransition` and drop a WAV at
+`assets/audio/<id>.wav`.
 
 `SoundId`/`TrackId` stay yours — `AudioCues.resolver` is the product-owned `id -> bytes` mapping, and
 an id with no file resolves to `None`, which the backend records as a no-op rather than throwing. So a
-game with no assets yet still runs, and still requests the right sounds.
+product with no assets yet still runs, and still requests the right sounds.
 
-Two escape hatches you rarely need. `Viewer.runApp` still exists and simply **discards** audio — use
-it when a product should be silent. And `GeneratedAppHost.audioRequests : ViewerEffect list ->
-AudioEffect list` flattens a frame's batches in dispatch order, so a test can assert what was
-requested with no window and no device:
+Two escape hatches you rarely need. The silent entry points in the table above still exist and simply
+**discard** audio — use one when a product should make no sound. And `GeneratedAppHost.audioRequests :
+ViewerEffect list -> AudioEffect list` flattens a frame's batches in dispatch order, so a test can
+assert what was requested with no window and no device:
 
 ```fsharp
 GeneratedAppHost.dispatchKey host keyEvent model

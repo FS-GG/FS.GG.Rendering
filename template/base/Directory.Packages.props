@@ -16,10 +16,11 @@
 
     <FsGgGameVersion>0.4.0</FsGgGameVersion>
     <!-- The standalone FS.GG.Audio component (own repo FS-GG/FS.GG.Audio, released on its OWN
-         axis — NOT $(FsGgUiVersion)/$(FsGgGameVersion)). Game/sample-pack scaffolds pin it here to
-         get the REAL host-side audio realization (named buses, fades/ducking, 3D, device backend)
+         axis — NOT $(FsGgUiVersion)/$(FsGgGameVersion)). App/game/sample-pack scaffolds pin it here
+         to get the REAL host-side audio realization (named buses, fades/ducking, 3D, device backend)
          behind the pure AudioEffect edge — the piece the fs-gg-audio skill calls "a real playback
-         backend is deferred". Simulation profiles only. See ADR-0024. -->
+         backend is deferred". Every profile that opens a viewer window (issue #436), not the
+         simulation profiles only. See ADR-0024. -->
     <FsGgAudioVersion>0.2.0</FsGgAudioVersion>
   </PropertyGroup>
   <ItemGroup>
@@ -38,15 +39,36 @@
          (ADR-0022 P5) nor, since the Canvas 0.3.0 major (ADR-0024, Rendering#158), the Audio
          request surface, which moved to FS.GG.Audio.Core below. -->
     <PackageVersion Include="FS.GG.UI.Canvas" Version="$(FsGgUiVersion)" />
-    <!-- FS.GG.Audio: the single home of the pure AudioEffect vocabulary and its real host-side
-         realization (standalone repo, $(FsGgAudioVersion) axis).
-         Core = request vocabulary + record interpreter (headless default);
-         Host = IAudioBackend device seam (Null/record + OpenAL, degrade-to-Null); Engine = buses /
-         fades / ducking / 3D; Elmish = Audio.Cmd authoring bridge. See ADR-0024. -->
-    <PackageVersion Include="FS.GG.Audio.Core" Version="$(FsGgAudioVersion)" />
-    <PackageVersion Include="FS.GG.Audio.Host" Version="$(FsGgAudioVersion)" />
+    <!-- FS.GG.Audio, the simulation half (standalone repo, $(FsGgAudioVersion) axis):
+         Engine = buses / fades / ducking / 3D; Elmish = the Audio.Cmd authoring bridge.
+         Simulation profiles only — the `app` starter opens neither (its cue map needs the request
+         vocabulary and a device, nothing more), and the fs-gg-audio skill names them in prose without
+         ever telling the author to `open` them, so #430's R-REACH does not put them on `app`. See
+         ADR-0024. -->
     <PackageVersion Include="FS.GG.Audio.Engine" Version="$(FsGgAudioVersion)" />
     <PackageVersion Include="FS.GG.Audio.Elmish" Version="$(FsGgAudioVersion)" />
+    <!--#endif -->
+    <!--#if (profile == "app" || profile == "sample-pack" || profile == "game") -->
+    <!-- FS.GG.Audio, the half EVERY windowed profile needs (standalone repo, $(FsGgAudioVersion) axis):
+         Core = the pure AudioEffect request vocabulary + record interpreter (headless default);
+         Host = the IAudioBackend device seam (Null/record + OpenAL, degrading to Null).
+
+         Issue #436: these two ship on every profile with a LIVE VIEWER WINDOW — app as well as
+         game/sample-pack — not on the simulation profiles only. #429 gave the Controls host family its
+         audio sink (`ControlsElmish.runInteractiveAppWithAudio`), and an `app` scaffold that cannot
+         even name `AudioEffect` cannot reach it: "every game with a menu" was the motivating case for
+         #429, and the menu lives on `app`. The gate is the SAME three profiles that pin
+         SkiaViewer/Controls below — the ones that actually open a window and can make a sound.
+         `headless-scene`/`governed` still pin nothing: they never launch a viewer.
+
+         Core and Host, and not the other two, is exactly what the scaffold and the skill use: the
+         `app` AudioCues.fs opens `FS.GG.Audio.Core` (the cue values) and `FS.GG.Audio.Host` (the
+         `AssetResolver`), and Program.fs the device sink. It is also what keeps the #366 offline
+         probe honest — this repo builds no project for FS.GG.Audio, so the probe resolves these from
+         the feed, and only Core/Host are guaranteed in the global-packages folder (the framework
+         itself depends on them: SkiaViewer -> Core, SkiaViewer.Tests -> Host). -->
+    <PackageVersion Include="FS.GG.Audio.Core" Version="$(FsGgAudioVersion)" />
+    <PackageVersion Include="FS.GG.Audio.Host" Version="$(FsGgAudioVersion)" />
     <!--#endif -->
     <!--#if (profile == "app" || profile == "sample-pack" || profile == "game") -->
     <PackageVersion Include="FS.GG.UI.SkiaViewer" Version="$(FsGgUiVersion)" />
