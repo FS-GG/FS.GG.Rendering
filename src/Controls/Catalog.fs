@@ -559,26 +559,26 @@ module Catalog =
 
     let validate () =
         [ if supportedCount () < 30 then
-              yield Diagnostics.create None "catalog" MissingRequiredAttribute Error "Catalog has fewer than 30 supported controls."
+              yield Diagnostics.create None "catalog" MissingRequiredAttribute ControlDiagnosticSeverity.Error "Catalog has fewer than 30 supported controls."
 
           for row in supportedControls do
               if row.Owner <> "controls" then
-                  yield Diagnostics.create (Some row.Id) row.Id StaleGeneratedReference Error "Catalog row is not Controls-owned."
+                  yield Diagnostics.create (Some row.Id) row.Id StaleGeneratedReference ControlDiagnosticSeverity.Error "Catalog row is not Controls-owned."
               if String.IsNullOrWhiteSpace row.Purpose then
-                  yield Diagnostics.create (Some row.Id) row.Id MissingRequiredAttribute Error "Catalog row is missing purpose."
+                  yield Diagnostics.create (Some row.Id) row.Id MissingRequiredAttribute ControlDiagnosticSeverity.Error "Catalog row is missing purpose."
               if row.VisualStates.IsEmpty then
-                  yield Diagnostics.create (Some row.Id) row.Id MissingRequiredAttribute Error "Catalog row is missing visual states."
+                  yield Diagnostics.create (Some row.Id) row.Id MissingRequiredAttribute ControlDiagnosticSeverity.Error "Catalog row is missing visual states."
               if row.Examples.IsEmpty || row.Tests.IsEmpty || row.Evidence.IsEmpty then
-                  yield Diagnostics.create (Some row.Id) row.Id MissingRequiredAttribute Error "Catalog row is missing examples, tests, or evidence."
+                  yield Diagnostics.create (Some row.Id) row.Id MissingRequiredAttribute ControlDiagnosticSeverity.Error "Catalog row is missing examples, tests, or evidence."
               if row.Accessibility.Role.Trim() = "" then
-                  yield Diagnostics.create (Some row.Id) row.Id MissingAccessibilityMetadata Error "Catalog row is missing accessibility role."
+                  yield Diagnostics.create (Some row.Id) row.Id MissingAccessibilityMetadata ControlDiagnosticSeverity.Error "Catalog row is missing accessibility role."
           for row in supportedControls do
               if row.Id = "data-grid" && row.Category <> "data" && row.Category <> "collection" then
-                  yield Diagnostics.create (Some row.Id) row.Id UnsupportedStateCombination Error "DataGrid must be categorized as data or collection."
+                  yield Diagnostics.create (Some row.Id) row.Id UnsupportedStateCombination ControlDiagnosticSeverity.Error "DataGrid must be categorized as data or collection."
               if row.Id = "data-grid" && row.Module <> "DataGrid" then
-                  yield Diagnostics.create (Some row.Id) row.Id StaleGeneratedReference Error "DataGrid catalog row must be owned by the Controls DataGrid module."
+                  yield Diagnostics.create (Some row.Id) row.Id StaleGeneratedReference ControlDiagnosticSeverity.Error "DataGrid catalog row must be owned by the Controls DataGrid module."
               if row.Id = "rich-text" && row.Module <> "RichText" then
-                  yield Diagnostics.create (Some row.Id) row.Id MissingRequiredAttribute Error "Rich text catalog row must reference the RichText module." ]
+                  yield Diagnostics.create (Some row.Id) row.Id MissingRequiredAttribute ControlDiagnosticSeverity.Error "Rich text catalog row must reference the RichText module." ]
 
     let markdownSummary () =
         [ "# Control Catalog"

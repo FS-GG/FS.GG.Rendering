@@ -75,7 +75,7 @@ module DataGrid =
                       (Some controlId)
                       "data-grid"
                       UnsupportedStateCombination
-                      Error
+                      ControlDiagnosticSeverity.Error
                       "DataGrid rowHeight must be greater than zero."
 
           if viewportHeight <= 0.0 then
@@ -84,7 +84,7 @@ module DataGrid =
                       (Some controlId)
                       "data-grid"
                       UnsupportedStateCombination
-                      Error
+                      ControlDiagnosticSeverity.Error
                       "DataGrid viewportHeight must be greater than zero." ]
 
     let withDiagnosticEffects effects diagnostics =
@@ -138,7 +138,7 @@ module DataGrid =
                         (Some model.ControlId)
                         "data-grid"
                         StaleGeneratedReference
-                        Warning
+                        ControlDiagnosticSeverity.Warning
                         $"DataGrid sort column '{columnKey}' does not exist."
 
                 { model with Diagnostics = diagnostic :: model.Diagnostics }, [ ReportDataGridDiagnostic diagnostic ]

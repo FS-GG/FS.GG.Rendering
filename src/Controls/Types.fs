@@ -157,6 +157,9 @@ type ControlSchema =
       SupportedEvents: StandardEventKind list
       CustomAllowed: bool }
 
+// #459 — `Error` here shadows `Result.Error` for every consumer that opens this namespace. See the
+// signature file for why this attribute is not optional on this particular type.
+[<RequireQualifiedAccess>]
 type ControlDiagnosticSeverity =
     | Info
     | Warning
