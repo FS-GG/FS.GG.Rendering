@@ -529,29 +529,73 @@ let templateFailures (i: Inputs) : Failure list =
 // behaviour change that has merged but not shipped makes the recipe throw against a library that never
 // saw it (validate-published-acceptance's #294-lane-2 read this as a publish lag). Hold every FS.GG.UI
 // `#r` pin equal to the single FsGgUiVersion source, exactly as the props pins derive through it.
-let symbologyRecipeFailures (i: Inputs) : Failure list =
+/// The rules, over their INPUTS rather than over `Inputs` — so `rulesSelfCheck` can feed them synthetic
+/// pins and prove each one still fires. That is the whole defence against #478: these two rules were
+/// dead for four minors, and nothing noticed, because a rule that never fires looks exactly like a repo
+/// that never drifts.
+let symbologyRecipeRules (pinVersion: string) (pins: (string * string) list) : Failure list =
     [ // Floor: every expected FS.GG.UI `#r` is actually present — the pin check below is vacuous over a
       // recipe the regex found nothing in (reformatted / renamed / switched to `#load`).
-      let pinned = i.SymbologyRecipePins |> List.map fst |> Set.ofList
+      let pinned = pins |> List.map fst |> Set.ofList
       for missing in Set.difference symbologyRecipeExpected pinned ->
           { Rule = "symbology-recipe-missing"
             Location = sprintf "%s %s" symbologyRecipeRel missing
-            Expected = sprintf "a pinned `#r \"nuget: %s, %s\"`" missing i.PinVersion
+            Expected = sprintf "a pinned `#r \"nuget: %s, %s\"`" missing pinVersion
             Actual = "no matching `#r \"nuget: FS.GG.UI...\"` directive in the recipe"
-            Fix = sprintf "restore the `#r \"nuget: %s, %s\"` line (the recipe's one runnable proof needs it)" missing i.PinVersion }
-      for (id, v) in i.SymbologyRecipePins do
+            Fix = sprintf "restore the `#r \"nuget: %s, %s\"` line (the recipe's one runnable proof needs it)" missing pinVersion }
+      // `yield` is NOT optional here, and the compiler said so. Once a list comprehension contains an
+      // explicit `->` arm (the floor above), a bare `for … do` whose body is an `if`/`elif` WITHOUT an
+      // `else` is statement position: the `Failure` records below were built and then implicitly
+      // DISCARDED (`warning FS3221`), so both rules were dead from the day they were written. The floor
+      // checked that the `#r` lines EXIST; nothing ever checked what they were pinned TO — and the
+      // recipe sat at 0.4.0 against a 0.8.0 framework for four minors while the gate reported green
+      // (#478). A guard rule that cannot fail is worse than no rule: it is a green light nobody audits.
+      for (id, v) in pins do
         if v = "" then
-            { Rule = "symbology-recipe-unpinned"
-              Location = sprintf "%s %s" symbologyRecipeRel id
-              Expected = sprintf "%s (FsGgUiVersion)" i.PinVersion
-              Actual = "unpinned #r — resolves the latest PUBLISHED library, which can predate the recipe"
-              Fix = sprintf "pin the #r to `nuget: %s, %s` (your FsGgUiVersion)" id i.PinVersion }
-        elif v <> i.PinVersion then
-            { Rule = "symbology-recipe-pin-skew"
-              Location = sprintf "%s %s" symbologyRecipeRel id
-              Expected = i.PinVersion
-              Actual = v
-              Fix = sprintf "repin %s's #r to %s (the single FsGgUiVersion source)" id i.PinVersion } ]
+            yield
+                { Rule = "symbology-recipe-unpinned"
+                  Location = sprintf "%s %s" symbologyRecipeRel id
+                  Expected = sprintf "%s (FsGgUiVersion)" pinVersion
+                  Actual = "unpinned #r — resolves the latest PUBLISHED library, which can predate the recipe"
+                  Fix = sprintf "pin the #r to `nuget: %s, %s` (your FsGgUiVersion)" id pinVersion }
+        elif v <> pinVersion then
+            yield
+                { Rule = "symbology-recipe-pin-skew"
+                  Location = sprintf "%s %s" symbologyRecipeRel id
+                  Expected = pinVersion
+                  Actual = v
+                  Fix = sprintf "repin %s's #r to %s (the single FsGgUiVersion source)" id pinVersion } ]
+
+let symbologyRecipeFailures (i: Inputs) : Failure list =
+    symbologyRecipeRules i.PinVersion i.SymbologyRecipePins
+
+/// Self-check the RULES the way `semverSelfCheck` self-checks the comparator (T008) — fail closed if any
+/// of them ever stops firing. #478: `symbology-recipe-unpinned` and `symbology-recipe-pin-skew` were
+/// silently discarded by the list comprehension and could not fail; the recipe drifted to 0.4.0 under a
+/// 0.8.0 framework and the gate stayed green for four minors. The compiler DID say so (`warning FS3221`),
+/// and the warning scrolled past in the gate log every run.
+///
+/// A guard is only evidence if it can distinguish a healthy repo from a sick one, so prove it can: feed
+/// each rule an input it MUST reject, and one it must accept. A dead rule now fails the guard itself
+/// (exit 2, GUARD ERROR) instead of quietly reporting the repo coherent.
+let rulesSelfCheck () =
+    let v = "0.8.0"
+    let fired pins = symbologyRecipeRules v pins |> List.map (fun f -> f.Rule) |> Set.ofList
+    let expected = Set.toList symbologyRecipeExpected
+    let allAt (ver: string) = expected |> List.map (fun id -> id, ver)
+    let one (id: string) (ver: string) =
+        (id, ver) :: (expected |> List.filter ((<>) id) |> List.map (fun x -> x, v))
+
+    // A healthy recipe must produce NO failures — a rule that fires on everything is as useless as one
+    // that fires on nothing, and would make the whole guard unfalsifiable.
+    if not (fired (allAt v)).IsEmpty then
+        raise (GuardError "rule regressed: a correctly-pinned symbology recipe must produce no failures")
+    if not ((fired (one "FS.GG.UI.Scene" "")).Contains "symbology-recipe-unpinned") then
+        raise (GuardError "rule DEAD: symbology-recipe-unpinned did not fire on an unpinned `#r` (see #478 — check for warning FS3221, an implicitly discarded Failure)")
+    if not ((fired (one "FS.GG.UI.Scene" "0.4.0")).Contains "symbology-recipe-pin-skew") then
+        raise (GuardError "rule DEAD: symbology-recipe-pin-skew did not fire on a recipe pinned off FsGgUiVersion (see #478 — check for warning FS3221, an implicitly discarded Failure)")
+    if not ((fired []).Contains "symbology-recipe-missing") then
+        raise (GuardError "rule DEAD: symbology-recipe-missing did not fire on a recipe with no FS.GG.UI `#r` at all")
 
 let invariantFailures (i: Inputs) : Failure list =
     [ if i.Occurrences <> 1 then
@@ -894,6 +938,7 @@ let printReleasePending (tags: string list) =
 // the push order would otherwise get nothing.
 let main () =
     semverSelfCheck ()
+    rulesSelfCheck ()
     let i = readInputs ()
     printReleasePending (pendingTags i)
     if live then
