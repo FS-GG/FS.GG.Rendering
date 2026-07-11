@@ -100,6 +100,14 @@ let private registry =
       { Twin = $"{twinDirectory}/GameCoreSkillCoherenceTests.fs"
         ReleaseOnly = "tests/Package.Tests/Feature240GameCoreSkillTests.fs"
         HeaderNames = "Feature240GameCoreSkillTests"
+        SharedInputs = true }
+      // #366 — the fs-gg-collision skill + import-and-adapt helper wiring guard (#246). Text-mirror of a
+      // release-only Package.Tests rule: both read the collision SKILL.md, the Collision.fs fragment,
+      // Product.fsproj, the game-core SKILL.md, template.json and the skill-manifest, and assert the same
+      // name/reuse/gate/delete-safe/pointer invariants, so they share the same six inputs.
+      { Twin = $"{twinDirectory}/CollisionSkillCoherenceTests.fs"
+        ReleaseOnly = "tests/Package.Tests/Feature246CollisionSkillTests.fs"
+        HeaderNames = "Feature246CollisionSkillTests"
         SharedInputs = true } ]
 
 /// The repository source-of-truth paths a test source reads, extracted from its `repositoryPath "…"`
