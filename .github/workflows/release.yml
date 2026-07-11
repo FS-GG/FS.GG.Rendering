@@ -71,11 +71,14 @@ jobs:
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '10.0.x'
-      # The Surface-baseline tests reflect over the BUILT FS.GG.UI.* assemblies on disk
-      # (src/<Pkg>/bin/Debug/net10.0/*.dll — e.g. SkiaViewer, Build). They are not packed/restored
-      # by Package.Tests itself, so the solution must be built (default Debug config) first or those
-      # tests fail with "assembly has been built = false".
-      - name: Build solution (Debug) for surface-baseline assemblies
+      # 453: this step no longer exists for the Surface-baseline tests. They used to reflect over
+      # src/<Pkg>/bin/Debug/net10.0/*.dll and needed the solution built first; they now bind each
+      # FS.GG.UI.* package by type through a ProjectReference, so `dotnet test` builds what it
+      # reflects over. The step is kept because other Package.Tests suites shell out to `dotnet`
+      # against this repo (Tests.fs packs to a throwaway feed and builds a generated consumer);
+      # whether they still need a warm solution build was NOT established by 453 — check before
+      # removing it.
+      - name: Build solution (warms the suites that shell out to dotnet against this repo)
         run: dotnet build FS.GG.Rendering.slnx
       # Package.Tests is an exe test project outside the slnx; run it directly.
       - name: Run Package.Tests
