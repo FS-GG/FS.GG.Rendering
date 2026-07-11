@@ -176,6 +176,16 @@ let private registry =
       { Twin = $"{twinDirectory}/FragmentProseCoherenceTests.fs"
         ReleaseOnly = "tests/Package.Tests/Feature264FragmentProseTests.fs"
         HeaderNames = "Feature264FragmentProseTests"
+        SharedInputs = false }
+      // #366 — the scaffold identifier-leak guard (#149/#152). Faithful text-mirror of a release-only
+      // Package.Tests rule, SharedInputs = false for the same reason as the #282/#264 token-leak twins:
+      // its counterpart derives the scanned set via `ScaffoldSources.files`, not the `repositoryPath`/
+      // `repo` helper L-INPUTS keys on, so the input-set equality cannot be mechanically checked (a
+      // byte-faithful hoist extracts zero literal inputs and would trip L-INPUTS's non-empty guard).
+      // Byte-faithfulness keeps the two in step; L-EXISTS/L-NAMES/L-CLOSED still guard the pairing.
+      { Twin = $"{twinDirectory}/ScaffoldIdentifierLeakCoherenceTests.fs"
+        ReleaseOnly = "tests/Package.Tests/ScaffoldIdentifierLeakGuardTests.fs"
+        HeaderNames = "ScaffoldIdentifierLeakGuardTests"
         SharedInputs = false } ]
 
 /// The repository source-of-truth paths a test source reads, extracted from its `repositoryPath "…"`
