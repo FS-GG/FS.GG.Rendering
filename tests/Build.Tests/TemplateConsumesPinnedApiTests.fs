@@ -96,7 +96,10 @@ let private valRegex = Regex(@"^\s+val\s+(?:inline\s+)?([a-z]\w*)\s*:", RegexOpt
 let private parseMirrorFile (path: string) =
     let mutable ns = ""
     let mutable current = ""
-    let members = System.Collections.Generic.Dictionary<string, ResizeArray<string>>()
+    // Keyed by (namespace, module): the namespace is bound when the MODULE is declared, not read off
+    // a mutable after the loop, so a file that ever declares two namespaces attributes each module to
+    // the one it was actually written under instead of to whichever came last.
+    let members = System.Collections.Generic.Dictionary<string * string, ResizeArray<string>>()
 
     for line in File.ReadAllLines path do
         let nsMatch = namespaceRegex.Match line
@@ -106,15 +109,17 @@ let private parseMirrorFile (path: string) =
         if nsMatch.Success then ns <- nsMatch.Groups.[1].Value
         elif moduleMatch.Success then
             current <- moduleMatch.Groups.[1].Value
-            if not (members.ContainsKey current) then members.[current] <- ResizeArray()
-        elif valMatch.Success && current <> "" then
-            members.[current].Add(valMatch.Groups.[1].Value)
+            if ns <> "" && not (members.ContainsKey((ns, current))) then
+                members.[(ns, current)] <- ResizeArray()
+        elif valMatch.Success && current <> "" && ns <> "" then
+            match members.TryGetValue((ns, current)) with
+            | true, vals -> vals.Add(valMatch.Groups.[1].Value)
+            | _ -> ()
 
     members
-    |> Seq.filter (fun kvp -> ns <> "")
     |> Seq.map (fun kvp ->
-        { Namespace = ns
-          Name = kvp.Key
+        { Namespace = fst kvp.Key
+          Name = snd kvp.Key
           Members = Set.ofSeq kvp.Value })
     |> List.ofSeq
 
@@ -147,10 +152,23 @@ type CallSite =
 
 let private stringLiteral = Regex("\"(\\\\.|[^\"\\\\])*\"", RegexOptions.Compiled)
 
+/// Multi-line forms have to go before the file is split into lines: a `(* ... *)` block or a `"""…"""`
+/// string spans lines, so no per-line rule can see it. Each match is replaced by JUST its newlines,
+/// which erases the content while keeping every later line at its true line number (the numbers are
+/// reported to a human chasing a failure, so they have to be real).
+let private blockForms =
+    Regex(@"\(\*.*?\*\)|"""""".*?""""""", RegexOptions.Compiled ||| RegexOptions.Singleline)
+
+let private eraseKeepingLines (text: string) =
+    blockForms.Replace(
+        text,
+        fun m -> String(m.Value |> Seq.filter (fun c -> c = '\n') |> Seq.toArray))
+
 /// Strings BEFORE comments: a `//` inside a string literal is not a comment. Both must go, because
 /// `Program.fs` NAMES framework API in prose and in string literals without calling it —
 /// `let desktopSessionDiagnosticApi = "Viewer.desktopSessionDiagnostic()"` is a label, not a call.
-/// Counting it would make this test assert something the template does not actually do.
+/// Counting it would make this test assert something the template does not actually do, and would
+/// then demand the pinned package export API the template never touches.
 let private stripCommentsAndStrings (line: string) =
     let withoutStrings = stringLiteral.Replace(line, "\"\"")
 
@@ -190,7 +208,7 @@ let private isFrameworkCall (qualifier: string) (moduleName: string) =
         else candidates |> List.exists (fun m -> m.Namespace = qualified)
 
 let private callSites =
-    File.ReadAllLines programPath
+    (File.ReadAllText programPath |> eraseKeepingLines).Split('\n')
     |> Array.mapi (fun i line -> i + 1, stripCommentsAndStrings line)
     |> Array.collect (fun (lineNo, line) ->
         callRegex.Matches line
@@ -205,13 +223,31 @@ let private callSites =
     |> Array.distinctBy (fun c -> c.Module, c.Member)
     |> List.ofArray
 
-/// Resolve a call site to the mirrored module that exports it (a module name is unique across the
-/// mirror in practice; if two packages ever export the same module name, any that declares the
-/// member satisfies the call, which is exactly what the F# resolver would do given the `open`s).
+/// Resolve a call site to the mirrored module that EXPORTS THE MEMBER (a module name is unique
+/// across the mirror in practice; if two packages ever export the same module name, any that
+/// declares the member satisfies the call, which is what the F# resolver would do given the `open`s).
+/// `None` means the mirror does not declare this member — which is what the mirror test asserts on.
 let private owningModule (call: CallSite) =
     frameworkModulesByName
     |> Map.tryFind call.Module
     |> Option.bind (fun candidates -> candidates |> List.tryFind (fun m -> m.Members.Contains call.Member))
+
+/// The namespace to `open` (and the package to reference) for a call site — resolved at MODULE level,
+/// deliberately falling back to any module of that name when no mirrored module declares the member.
+///
+/// The probe emits a `nameof` for EVERY call site, so it must emit an `open` for every call site too.
+/// Deriving the namespace from `owningModule` instead would drop exactly the call sites the mirror is
+/// missing, and the probe would then fail FS0039 on an unopened namespace and blame the PIN — reporting
+/// "the framework grew API a scaffolded product cannot reach" when the pin is fine and only the mirror
+/// is stale. A wrong diagnosis on a real failure is worse than no diagnosis.
+let private callNamespace (call: CallSite) =
+    frameworkModulesByName
+    |> Map.tryFind call.Module
+    |> Option.bind (fun candidates ->
+        candidates
+        |> List.tryFind (fun m -> m.Members.Contains call.Member)
+        |> Option.orElse (List.tryHead candidates))
+    |> Option.map (fun m -> m.Namespace)
 
 // ---------------------------------------------------------------------------------------------
 // The pins the template hands a scaffolded product.
@@ -235,6 +271,16 @@ let private pinFor (packageId: string) =
 // The pin-grounded proof: compile the call sites against the RESTORED pinned packages.
 // ---------------------------------------------------------------------------------------------
 
+/// A stalled restore must fail, not hang. Generous enough for a cold restore on a slow runner.
+let private probeTimeoutMs = 6 * 60 * 1000
+
+/// Probe-private packages folder, OUTSIDE the throwaway work dir so a cold restore is paid once per
+/// machine rather than on every test run. It is still not the machine's global packages folder — the
+/// point of the isolation is that nothing this repo `pack`s locally can ever be resolved from here;
+/// only nuget.org can populate it, and a published (id, version) is immutable, so reuse is safe.
+let private probePackagesDir =
+    Path.Combine(Path.GetTempPath(), "fsgg-pinned-api-probe-packages")
+
 let private runProbeBuild () =
     let workDir = Path.Combine(Path.GetTempPath(), "fsgg-pinned-api-probe-" + Guid.NewGuid().ToString("N"))
     Directory.CreateDirectory workDir |> ignore
@@ -243,8 +289,7 @@ let private runProbeBuild () =
         // The namespaces actually called, each one a package to restore at its axis pin.
         let packages =
             callSites
-            |> List.choose owningModule
-            |> List.map (fun m -> m.Namespace)
+            |> List.choose callNamespace
             |> List.distinct
             |> List.sort
 
@@ -285,7 +330,7 @@ let private runProbeBuild () =
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
-    <RestorePackagesPath>./packages</RestorePackagesPath>
+    <RestorePackagesPath>{probePackagesDir}</RestorePackagesPath>
     <WarningsAsErrors>NU1603;NU1101;NU1102;NU1608</WarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
@@ -325,11 +370,41 @@ let private runProbeBuild () =
         | null -> failwith "could not start 'dotnet' to build the pinned-API probe"
         | started ->
             use proc = started
-            let stdout = proc.StandardOutput.ReadToEnd()
-            let stderr = proc.StandardError.ReadToEnd()
-            proc.WaitForExit()
 
-            proc.ExitCode, stdout + stderr
+            // Both pipes are drained CONCURRENTLY. Reading one to the end before touching the other
+            // deadlocks the moment the child fills the pipe it is NOT being read from — the child
+            // blocks writing, the parent blocks reading, and neither moves. `dotnet build` emits
+            // plenty on both, and this test is default-on, so that would hang the gate rather than
+            // fail it.
+            let output = StringBuilder()
+
+            let append (data: string | null) =
+                match data with
+                | null -> ()
+                | text -> lock output (fun () -> output.AppendLine text |> ignore)
+
+            proc.OutputDataReceived.Add(fun e -> append e.Data)
+            proc.ErrorDataReceived.Add(fun e -> append e.Data)
+            proc.BeginOutputReadLine()
+            proc.BeginErrorReadLine()
+
+            // And the wait is BOUNDED. The accepted cost of running this by default is that a feed
+            // outage can turn the gate RED; an unbounded wait would instead let a stalled restore
+            // HANG it until the job timeout, which is strictly worse and is not what was signed up
+            // for. A timeout is reported as a failure with its own message, not as a missing API.
+            if proc.WaitForExit probeTimeoutMs then
+                // Let the async readers flush before the buffer is read.
+                proc.WaitForExit()
+                proc.ExitCode, lock output (fun () -> output.ToString())
+            else
+                try proc.Kill true with _ -> ()
+
+                let minutes = probeTimeoutMs / 60_000
+
+                -1,
+                $"the pinned-API probe did not finish within {minutes} minute(s) — most likely the \
+                  restore from nuget.org stalled. This is an infrastructure failure, NOT a missing \
+                  API.\n\n{lock output (fun () -> output.ToString())}"
     finally
         try Directory.Delete(workDir, true) with _ -> ()
 
