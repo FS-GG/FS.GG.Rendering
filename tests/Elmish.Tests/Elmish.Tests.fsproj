@@ -20,6 +20,7 @@
     <Compile Include="Feature099AnimationSeamTests.fs" />
     <Compile Include="Feature100NavigationTests.fs" />
     <Compile Include="Feature108MetricsTests.fs" />
+    <Compile Include="Issue460CoalescingParityTests.fs" />
     <Compile Include="Feature109MetricsHonestyTests.fs" />
     <Compile Include="Feature109CorpusTests.fs" />
     <Compile Include="Feature109BaselineReportTests.fs" />
