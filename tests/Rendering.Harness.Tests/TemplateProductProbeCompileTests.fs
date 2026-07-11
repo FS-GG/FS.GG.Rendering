@@ -101,16 +101,26 @@ let private frameworkProjects =
 /// A package added here must therefore satisfy BOTH: it is genuinely feed-only (no repo project), and
 /// something in the slnx already pulls it. Anything else belongs in `frameworkProjects` — or nowhere,
 /// and P-MAP-COMPLETE will say so.
-let private feedOnlyPackages = set [ "FS.GG.Audio.Core"; "FS.GG.Audio.Host" ]
+///
+/// The value is the package's VERSION AXIS, not a version: each FS-GG component releases on its own
+/// cadence ($(FsGgAudioVersion), $(FsGgGameVersion), ...), so the axis has to travel with the package.
+/// A bare set with one shared version would hand the next maintainer a loaded gun — add FS.GG.Game.Core
+/// here and it would silently be pinned at the AUDIO version.
+let private feedOnlyPackages =
+    Map [ "FS.GG.Audio.Core", "FsGgAudioVersion"
+          "FS.GG.Audio.Host", "FsGgAudioVersion" ]
 
-/// The template's own audio pin, read from where the template declares it, so the probe compiles the
-/// version a scaffolded product would actually get and cannot drift from it.
-let private audioVersion =
+/// The version the template itself pins on `axis`, read from where the template declares it, so the
+/// probe compiles the version a scaffolded product would actually get and cannot drift from it.
+let private templateVersionOnAxis (axis: string) =
     let props = File.ReadAllText(repositoryPath "template/base/Directory.Packages.props")
-    let m = Regex.Match(props, "<FsGgAudioVersion>(?<v>[^<]+)</FsGgAudioVersion>")
+    let m = Regex.Match(props, sprintf "<%s>(?<v>[^<]+)</%s>" (Regex.Escape axis) (Regex.Escape axis))
+
     if not m.Success then
-        failwith
-            "template/base/Directory.Packages.props declares no <FsGgAudioVersion> — the probe cannot pin the feed-only audio packages it must restore"
+        failwithf
+            "template/base/Directory.Packages.props declares no <%s> — the probe cannot pin the feed-only package that derives from that axis"
+            axis
+
     m.Groups.["v"].Value.Trim()
 
 // ---- the profile-marker preprocessor ----------------------------------------------------------
@@ -200,11 +210,12 @@ let private materialize (dir: string) : Materialized =
                 match Map.tryFind id frameworkProjects with
                 | Some proj -> sprintf "<ProjectReference Include=\"%s\" />" (repositoryPath proj)
                 // A feed-only package from another FS-GG repo (#436): no repo project to compile
-                // against, so keep it a real PackageReference at the template's pinned version. The
-                // probe dir carries no Directory.Packages.props, so the Version must be explicit here
-                // — a bare central-managed reference would not restore.
-                | None when Set.contains id feedOnlyPackages ->
-                    sprintf "<PackageReference Include=\"%s\" Version=\"%s\" />" id audioVersion
+                // against, so keep it a real PackageReference at the version the template pins on
+                // THAT package's own axis. The probe dir carries no Directory.Packages.props, so the
+                // Version must be explicit here — a bare central-managed reference would not restore.
+                | None when Map.containsKey id feedOnlyPackages ->
+                    let version = templateVersionOnAxis (Map.find id feedOnlyPackages)
+                    sprintf "<PackageReference Include=\"%s\" Version=\"%s\" />" id version
                 | None -> sprintf "<!-- UNMAPPED PACKAGE: %s -->" id)
 
     File.WriteAllText(Path.Combine(dir, "Product.fsproj"), rewritten)
@@ -320,7 +331,7 @@ let templateProductProbeCompileTests =
                   let unaccounted =
                       mat.ReferencedPackages
                       |> List.filter (fun id ->
-                          not (Map.containsKey id frameworkProjects) && not (Set.contains id feedOnlyPackages))
+                          not (Map.containsKey id frameworkProjects) && not (Map.containsKey id feedOnlyPackages))
 
                   Expect.isEmpty
                       unaccounted

@@ -183,23 +183,24 @@ let templateAudioProfileWiringCoherenceTests =
                       "AppRoot.AudioCues.forTransition msg model next"
                       $"{host}.Update lifts each transition's cues onto PlayAudio"
 
+              // Comments are stripped FIRST, and every assertion below reads the STRIPPED text.
+              // AudioCues.fs documents the seam with a worked example of a `Started` cue, so matching
+              // the raw file counts prose as wiring. This gate used to take the FIRST regex match, and
+              // in the shipped file that match WAS the comment — delete both real cue arms and it still
+              // passed.
+              let audioCuesCode =
+                  audioCues.Replace("\r\n", "\n").Split('\n')
+                  |> Array.filter (fun line -> not ((line.TrimStart()).StartsWith "//"))
+                  |> String.concat "\n"
+
               Expect.stringContains model "| Started" "the starter Msg declares Started"
-              Expect.stringContains audioCues "| Started ->" "AudioCues.forTransition handles Started"
+              Expect.stringContains audioCuesCode "| Started ->" "AudioCues.forTransition handles Started"
 
               // A `Started` case returning [] makes the generated product's own regression test
               // vacuous — it would pass whether or not Init is wired to the seam at all, which is how
               // this class survives its own fix (#266). The scaffold must ship it emitting something,
               // in EVERY starter's cue map: #436 gave AudioCues.fs one `forTransition` per starter,
               // because the two profiles ship different `Msg` types.
-              //
-              // Comments are stripped FIRST: AudioCues.fs documents the seam with a worked example of a
-              // `Started` cue, so matching the raw file counts prose as wiring. This gate used to take
-              // the FIRST regex match, and in the shipped file that match WAS the comment.
-              let audioCuesCode =
-                  audioCues.Replace("\r\n", "\n").Split('\n')
-                  |> Array.filter (fun line -> not ((line.TrimStart()).StartsWith "//"))
-                  |> String.concat "\n"
-
               let startedCues = Regex.Matches(audioCuesCode, @"\|\s*Started\s*->\s*\[(?<cues>[^\]]*)\]")
 
               Expect.equal

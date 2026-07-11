@@ -218,24 +218,24 @@ let audioProfileWiringTests =
                       "AppRoot.AudioCues.forTransition msg model next"
                       $"{host}.Update lifts each transition's cues onto PlayAudio"
 
-              Expect.stringContains model "| Started" "the starter Msg declares Started"
-              Expect.stringContains audioCues "| Started ->" "AudioCues.forTransition handles Started"
-
-              // A `Started` case that returns [] makes the product-side test vacuous: it would pass
-              // whether or not Init is wired to the seam. The scaffold must ship it emitting something
-              // — and in EVERY starter's cue map, since #436 gave the file one `forTransition` per
-              // starter (the two profiles ship different `Msg` types).
-              //
-              // Comments are stripped FIRST. AudioCues.fs documents the seam with a worked example of a
-              // `Started` cue (`| Started -> [ Audio.setMasterVolume ... ]`), so matching the raw file
-              // counts prose as wiring. That is not hypothetical: this assertion used to take the FIRST
-              // regex match, and in the shipped file that match was the comment — the gate was reading
-              // documentation and calling it code.
+              // Comments are stripped FIRST, and every assertion below reads the STRIPPED text.
+              // AudioCues.fs documents the seam with a worked example of a `Started` cue
+              // (`| Started -> [ Audio.setMasterVolume ... ]`), so matching the raw file counts prose
+              // as wiring. That is not hypothetical: this gate used to take the FIRST regex match, and
+              // in the shipped file that match was the comment — it was reading documentation and
+              // calling it code. Delete both real cue arms and the raw-text version still passed.
               let audioCuesCode =
                   audioCues.Replace("\r\n", "\n").Split('\n')
                   |> Array.filter (fun line -> not ((line.TrimStart()).StartsWith "//"))
                   |> String.concat "\n"
 
+              Expect.stringContains model "| Started" "the starter Msg declares Started"
+              Expect.stringContains audioCuesCode "| Started ->" "AudioCues.forTransition handles Started"
+
+              // A `Started` case that returns [] makes the product-side test vacuous: it would pass
+              // whether or not Init is wired to the seam. The scaffold must ship it emitting something
+              // — and in EVERY starter's cue map, since #436 gave the file one `forTransition` per
+              // starter (the two profiles ship different `Msg` types).
               let startedCues =
                   Regex.Matches(audioCuesCode, @"\|\s*Started\s*->\s*\[(?<cues>[^\]]*)\]")
 

@@ -69,8 +69,6 @@
          itself depends on them: SkiaViewer -> Core, SkiaViewer.Tests -> Host). -->
     <PackageVersion Include="FS.GG.Audio.Core" Version="$(FsGgAudioVersion)" />
     <PackageVersion Include="FS.GG.Audio.Host" Version="$(FsGgAudioVersion)" />
-    <!--#endif -->
-    <!--#if (profile == "app" || profile == "sample-pack" || profile == "game") -->
     <PackageVersion Include="FS.GG.UI.SkiaViewer" Version="$(FsGgUiVersion)" />
     <PackageVersion Include="FS.GG.UI.Elmish" Version="$(FsGgUiVersion)" />
     <!--#endif -->

@@ -83,12 +83,8 @@
          `runInteractiveAppWithAudio` seam unreachable from the exact profile it was built for. -->
     <PackageReference Include="FS.GG.Audio.Core" />
     <PackageReference Include="FS.GG.Audio.Host" />
-    <!--#endif -->
-    <!--#if (profile == "app" || profile == "sample-pack" || profile == "game") -->
     <PackageReference Include="FS.GG.UI.SkiaViewer" />
     <PackageReference Include="FS.GG.UI.Elmish" />
-    <!--#endif -->
-    <!--#if (profile == "app" || profile == "sample-pack" || profile == "game") -->
     <PackageReference Include="FS.GG.UI.KeyboardInput" />
     <PackageReference Include="FS.GG.UI.Layout" />
     <PackageReference Include="FS.GG.UI.Controls" />

@@ -133,10 +133,12 @@ let forTransition (msg: Msg) (previous: Model) (next: Model) : AudioEffect list 
 /// but silent. Add your own cases — this is your file.
 ///
 /// This is the CONTROLS starter's cue map (issue #436): an app's sounds are its interaction
-/// feedback — a page turn, a committed save, a selection. `previous`/`next` are here for the cues
-/// that need them (play the save sound only when the name actually changed, duck the music when a
-/// modal opens); these starter cues are decided by the message alone, so they ignore both.
-let forTransition (msg: Msg) (_previous: Model) (_next: Model) : AudioEffect list =
+/// feedback — a page turn, a committed save, a selection.
+///
+/// Note what `previous`/`next` buy you, because the page-turn cue below is the whole argument for
+/// them being in the signature at all: a cue belongs to a TRANSITION, not to whichever message
+/// happens to cause it. Several messages can cause one, and in this starter they do.
+let forTransition (msg: Msg) (previous: Model) (next: Model) : AudioEffect list =
     match msg with
     // Shipped WIRED, not empty — see the `Started` note above. A `Started` case that returned `[]`
     // would make the Product.Tests regression test vacuous: it would pass whether or not `Init` is
@@ -145,9 +147,17 @@ let forTransition (msg: Msg) (_previous: Model) (_next: Model) : AudioEffect lis
     | Started -> [ Audio.playSfx (SoundId "start") 0.5 ]
     // The user committed something — the one interaction in the starter that changes the world.
     | SaveRequested -> [ Audio.playSfx (SoundId "save") 0.7 ]
-    // Page turns and selections: quiet, and quieter than the save. `Tick` deliberately has NO cue —
-    // it fires every frame, and a per-frame sound is a buzzsaw, not feedback.
-    | Navigated _ -> [ Audio.playSfx (SoundId "navigate") 0.4 ]
     | GridSelectionChanged _ -> [ Audio.playSfx (SoundId "select") 0.3 ]
+    // A page turn, cued on the TRANSITION rather than on a message.
+    //
+    // Matching `| Navigated _` instead would be the natural-looking mistake, and it would cue the one
+    // path this scaffold never takes: the starter navigates from the KEYBOARD, so a page change
+    // arrives as `ViewerInput`/`ViewerKeyEventReceived` and `transitionViewerInput` folds it into a
+    // new `Page` — `Navigated` is dispatched by nobody. You would drop `navigate.wav` in, hear
+    // nothing, and blame the seam. Ask what CHANGED instead, and both routes cue.
+    //
+    // Quieter than the save: navigating is not committing. `Tick` cannot reach here — it never moves
+    // the page — and it deliberately has no cue of its own, because a per-frame sound is a buzzsaw.
+    | _ when next.Page <> previous.Page -> [ Audio.playSfx (SoundId "navigate") 0.4 ]
     | _ -> []
 //#endif

@@ -582,6 +582,19 @@ let behaviorTests =
                 (renderEffects viewerEffects)
                 "generated host returns the boundary's render effects to SkiaViewer, unchanged"
             Expect.isNonEmpty (renderEffects hostViewerEffects) "generated host returns render effects to SkiaViewer"
+
+            // ...and nothing ELSE. Comparing only the render half would stop noticing a host that
+            // emitted a stray effect — a duplicated `PlayAudio` (every sound played twice, if a future
+            // edit lifted cues in `interpretAtHostBoundary` AND in `Update`), or an evidence effect
+            // that has no business on the live path. The old length-equality caught that class; keep
+            // the guard rather than trading it away for the cue batch.
+            let nonRender effects =
+                effects |> List.filter (function RenderScene _ -> false | _ -> true)
+
+            Expect.isEmpty (nonRender viewerEffects) "the host boundary itself emits only render effects"
+            Expect.isTrue
+                (nonRender hostViewerEffects |> List.forall (function PlayAudio _ -> true | _ -> false))
+                "the generated host adds only audio cue batches to the boundary's effects — nothing else"
         }
 
         test "generated layout evidence separates summary and content regions at default and constrained sizes" {
