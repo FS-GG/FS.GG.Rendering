@@ -65,7 +65,20 @@ let lane root id script =
         (Some id)
         (Some id)
 
-let result id role status : ValidationLanes.LaneResult =
+/// A stand-in run root for the cases that only assert on the in-memory model and never write.
+/// Relative on purpose: the harness's own default `--out` is, so this keeps the fixtures the same
+/// shape as production rather than an absolute-path special case.
+let syntheticRunRoot = "artifacts/synthetic-run"
+
+/// Evidence paths are built FROM the run root, exactly as defaultLaneDefinitions builds them.
+/// They used to be bare `lanes/<id>/...` — relative to the run root instead of to the run root's
+/// own base — so writeSummary resolved them against the process CWD and dropped lane evidence
+/// outside the run root (#448).
+let result runRoot id role status : ValidationLanes.LaneResult =
+    let laneDir = Path.Combine(runRoot, "lanes", id)
+    let logPath = Path.Combine(laneDir, "log.txt")
+    let resultPath = Path.Combine(laneDir, "result.json")
+
     { LaneId = id
       ReadinessRole = role
       Status = status
@@ -77,10 +90,10 @@ let result id role status : ValidationLanes.LaneResult =
       LastActivityUtc = None
       LastActivityText = None
       ExitCode = None
-      LogPath = $"lanes/{id}/log.txt"
-      ResultPath = $"lanes/{id}/result.json"
-      DiagnosticsPath = $"lanes/{id}/diagnostics.md"
-      ResultArtifacts = [ $"lanes/{id}/result.json"; $"lanes/{id}/log.txt" ]
+      LogPath = logPath
+      ResultPath = resultPath
+      DiagnosticsPath = Path.Combine(laneDir, "diagnostics.md")
+      ResultArtifacts = [ resultPath; logPath ]
       RuntimeDiagnostics = None
       Reason = if status = ValidationLanes.Passed then None else Some(status |> ValidationLanes.statusToken)
       Diagnostics = []
