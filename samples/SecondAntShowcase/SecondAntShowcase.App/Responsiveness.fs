@@ -882,7 +882,10 @@ let private writeLiveOutputs (request: Request) (run: string) (live: FS.GG.UI.Co
                   ""
                   $"- status: {overallReadiness}"
                   "- presentation: live GL presentation boundary measured through DirectToSwapchain"
-                  "- viewer-path: ControlsElmish.Live.runScript -> Viewer.runInteractiveViewerScriptWithWindowBehavior"
+                  // Issue #438: this evidence names a call chain, so it has to be the one the code takes.
+                  // `Live.runScript` now folds through the shared `runScriptCore` into the audio-capable
+                  // scripted runner with an `ignore` sink — same behaviour, different function.
+                  "- viewer-path: ControlsElmish.Live.runScript -> Viewer.runInteractiveViewerScriptWithWindowBehaviorAndAudio (sink: ignore)"
                   $"- measured-records: {List.length measuredTotals}"
                   "- artifact-write-status: complete"
                   for diagnostic in diagnostics do

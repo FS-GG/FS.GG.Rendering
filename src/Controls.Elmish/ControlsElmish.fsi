@@ -638,6 +638,29 @@ module ControlsElmish =
             script: FrameInput<'msg> list ->
                 Result<LiveScriptRunResult, ViewerRunFailure>
 
+        /// Issue #438 — `runScript` with an audio sink. The scripted Live runners are what the evidence
+        /// and responsiveness tooling drives, and until now they handed the viewer core `ignore`: a
+        /// scripted product could request sound and the batch was discarded with no error and no
+        /// diagnostic — the same silent discard #429 removed from the non-scripted paths. `audioSink`
+        /// receives every `PlayAudio` batch in dispatch order; `runScript` (no sink) is unchanged, and
+        /// both share one scripted body so they cannot drift.
+        val runScriptWithAudio:
+            options: ViewerOptions ->
+            audioSink: (AudioEffect list -> unit) ->
+            host: InteractiveAppHost<'model, 'msg> ->
+            script: FrameInput<'msg> list ->
+                Result<LiveScriptRunResult, ViewerRunFailure>
+
+        /// Issue #438 — `runScriptWithAudio` with an explicit window behavior, completing the pairing
+        /// the sinkless scripted runners already have.
+        val runScriptWithWindowBehaviorAndAudio:
+            options: ViewerOptions ->
+            behavior: ViewerWindowBehaviorRequest ->
+            audioSink: (AudioEffect list -> unit) ->
+            host: InteractiveAppHost<'model, 'msg> ->
+            script: FrameInput<'msg> list ->
+                Result<LiveScriptRunResult, ViewerRunFailure>
+
     /// Feature 108 (US3, FR-009/010): the pure, headless, deterministic frame driver. Folds an
     /// ordered `FrameInput` script over the host's pure `Update` + `RetainedRender.step`, advancing
     /// one frame per step (consecutive pointer-MOVE inputs coalesce into a single frame) and
