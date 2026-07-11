@@ -1,5 +1,12 @@
 schemaVersion: "1.0"
 catalogVersion: "2026-05-16"
+# `profiles:` on a capability row means: the profiles on which this capability's PACKAGE is actually on a
+# generated product's compile graph — i.e. pinned in template/base/Directory.Packages.props AND referenced by
+# Product.fsproj or Product.Tests.fsproj, under the `dotnet new` gates each declaration sits in. It is NOT the
+# profiles its SKILL materializes on: a skill may be gated narrower than its package (fs-gg-ui-widgets ships on
+# app+game while FS.GG.UI.Controls reaches sample-pack too), and the manifest's `materializes-when` is the
+# authority for that. Asserted by R-CAT in tests/Package.Tests/SkillPackageReachTests.fs — issue #483, where six
+# of these seven rows had drifted unseen because nothing held them against anything.
 # validation paths are listed through tests, docs, evidence, and surfaceBaseline fields per capability.
 # implementationSkills inventory (feature 059 split the former
 # fs-gg-layout-evidence catch-all into two registered skills):
@@ -54,7 +61,7 @@ capabilities:
     skill: template/product-skills/fs-gg-skiaviewer/SKILL.md
     templateFragment: template/fragments/skiaviewer
     dependencies: [scene]
-    profiles: [app, governed, sample-pack, game]
+    profiles: [app, sample-pack, game]
     defaultApp: true
     evidence: [capability-catalog, package-surface, generated-product]
     surfaceBaseline: readiness/surface-baselines/FS.GG.UI.SkiaViewer.txt
@@ -71,7 +78,7 @@ capabilities:
     skill: template/product-skills/fs-gg-elmish/SKILL.md
     templateFragment: template/fragments/elmish
     dependencies: [scene, skiaviewer]
-    profiles: [app, governed, sample-pack, game]
+    profiles: [app, sample-pack, game]
     defaultApp: true
     evidence: [capability-catalog, package-surface, generated-product]
     surfaceBaseline: readiness/surface-baselines/FS.GG.UI.Elmish.txt
@@ -88,7 +95,7 @@ capabilities:
     skill: template/product-skills/fs-gg-keyboard-input/SKILL.md
     templateFragment: template/fragments/keyboard-input
     dependencies: [scene]
-    profiles: [app, governed, sample-pack, game]
+    profiles: [app, sample-pack, game]
     defaultApp: true
     evidence: [capability-catalog, package-surface, generated-product]
     surfaceBaseline: readiness/surface-baselines/FS.GG.UI.KeyboardInput.txt
@@ -108,7 +115,7 @@ capabilities:
     skill: src/Layout/skill/SKILL.md
     templateFragment: template/fragments/layout
     dependencies: [scene]
-    profiles: [app, headless-scene, governed, sample-pack, game]
+    profiles: [app, sample-pack, game]
     defaultApp: true
     evidence: [capability-catalog, package-surface, generated-product]
     surfaceBaseline: readiness/surface-baselines/FS.GG.UI.Layout.txt
@@ -157,7 +164,7 @@ capabilities:
     skill: template/product-skills/fs-gg-ui-widgets/SKILL.md
     templateFragment: template/fragments/controls
     dependencies: [scene, layout, keyboard-input]
-    profiles: [app, governed, sample-pack, game]
+    profiles: [app, sample-pack, game]
     defaultApp: true
     evidence: [control-catalog, public-surface, semantic-tests, interaction-tests, layout-rendering, chart-datagrid-controls, generated-product]
     surfaceBaseline: readiness/surface-baselines/FS.GG.UI.Controls.txt
@@ -174,7 +181,7 @@ capabilities:
     skill: template/product-skills/fs-gg-testing/SKILL.md
     templateFragment: template/fragments/testing
     dependencies: [scene]
-    profiles: [governed, sample-pack]
+    profiles: [app, headless-scene, governed, sample-pack, game]
     defaultApp: false
     evidence: [capability-catalog, package-surface, generated-product]
     surfaceBaseline: readiness/surface-baselines/FS.GG.UI.Testing.txt
