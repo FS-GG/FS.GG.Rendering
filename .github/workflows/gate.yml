@@ -466,12 +466,25 @@ jobs:
   #
   # The env-free structural half runs in the required `gate` job above; this invocation re-runs it
   # first (the script always does) and then proves the graph.
+  #
+  # NOT expected-red on a release PR any more (#506). The pin bump is what CAUSES the publish, so at PR
+  # time $(FsGgUiVersion) necessarily names a version nuget.org does not carry, and this gate reported
+  # `pin-not-published` + NU1102 on all five profiles — by construction, on every framework release
+  # (0.8.0 #426, 0.9.0 #498), merged past both times. That red was byte-identical to a GENUINE bad pin,
+  # so it camouflaged the defect it exists to catch. The script now waives it as RELEASE-PENDING, on the
+  # $(FsGgUiVersion) axis alone and only when THIS commit bumped it — mirroring the coherence guard's
+  # `PinPending`. Game/Audio ship from other repos, where a bump here publishes nothing; those stay red.
   template-payload-restore-gate:
     name: Template payload restore gate (scaffolded pins resolve, stable)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        # The RELEASE-PENDING waiver asks `git diff HEAD~1 HEAD -- template/base/Directory.Packages.props`
+        # ("did THIS commit bump the pin?"). The default shallow checkout has no `HEAD~1`, and the guard
+        # fails CLOSED (exit 2) rather than silently reverting to the always-red gate #506 removed.
+        with:
+          fetch-depth: 0
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v5
