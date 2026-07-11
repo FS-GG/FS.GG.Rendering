@@ -120,6 +120,42 @@ Quote in a **fence**, not bare. A bare `Paths:` line at column 0 *is* a declarat
 two of them the reader **unions** both — it over-reserves rather than guess which one you meant, so
 you get a loud false `OVERLAP` instead of a silent collision. `widen` collapses them back to one.
 
+**Do not reserve generated artifacts** (`.github#309`). A `Paths:` token names a file two workers might
+*author* into conflict. A file produced by a checked-in generator and guarded by a **regeneration gate**
+— a CI check that re-runs the generator and fails on any diff — is neither authored nor semantically
+conflicting: **a collision in it is a rebase, not a decision.** Declaring it reserves a file nobody owns,
+and serialises every item that regenerates it. `FS.GG.Game` is the instance: one generated
+`readiness/surface-baselines/<pkg>.txt` per package, and every `[core]` item appends a line to it — so
+declared honestly, every `[core]` item overlapped every other and the whole `P6 Game` phase collapsed to
+**one worker**, in the phase the protocol exists to fan out.
+
+Two conditions, and the second is not optional:
+
+1. **Nobody authors it.** Ask whether a human makes a *merge decision* in the file. If two workers' edits
+   can only be reconciled by re-running a script, neither has an intent to preserve. The test is
+   **authorship, not `.gitignore`** — a generated file that is committed and reviewed is still not
+   authored.
+2. **A regeneration gate guards it.** Excluding the file moves the guarantee from the *scheduler* to
+   *CI*, so CI must actually have it. **If nothing fails on a stale copy, do not exclude it** — you would
+   be trading a loud false `OVERLAP` for a silent unguarded staleness, which is strictly worse. Add the
+   gate first, or keep declaring the file.
+
+**Beware the subtree.** `overlap` matches directory prefixes, so declaring the artifact's *parent*
+reserves it exactly as effectively as naming it. Declare your sources, not the directory the generated
+file happens to sit in — `src/Core/**, readiness/**` locks the baseline against the whole board just as
+`readiness/surface-baselines/**` does, while `src/Core/Pathfinding.fs, tests/Core/PathfindingTests.fs`
+locks nothing it does not own.
+
+**Declare against what the generator emits, not against the issue's prose.** `FS.GG.Game#31`'s acceptance
+said "surface baseline"; it adds a *function* to an existing module, and the generator emits one exported
+**type** per line — so it never touched the baseline at all. A `Paths:` line asserted from an issue body
+rather than from the generator's output is how a *false global lock* gets created.
+
+**Then expect the drift, and name it.** Excluding an artifact you go on to regenerate is exactly what
+`verify-paths` reports as touch-set drift, and it cannot today tell that from a real undeclared edit
+(`.github#498`). **Say which one it is in the PR** — an advisory that fires on correct behaviour is one
+workers learn to skip past.
+
 Declare narrowly and honestly. An item with no `Paths:` is **unschedulable** — `batch` will
 report it and refuse to hand it out.
 
