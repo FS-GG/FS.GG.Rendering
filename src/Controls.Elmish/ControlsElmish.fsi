@@ -352,7 +352,22 @@ module AdapterCmd =
 
 /// Public contract module exposed by this FS.GG.UI package.
 module ControlsElmish =
-    /// Public contract function exposed by this FS.GG.UI package.
+    /// Lower one `KeyboardEffect` to an `AdapterCommand`. `CommandResolved` becomes a product message;
+    /// the state-echo cases (`KeyStateChanged`, `LayoutChanged`, `ModeChanged`, `PendingSequenceChanged`,
+    /// `StateDisplayChanged`) carry no host action and yield `[]`; `ReportKeyboardDiagnostic` becomes a
+    /// `ReportAdapterDiagnostic`.
+    ///
+    /// Issue #456 (epic FS-GG/.github#416): `RequestHostKeyCapture` yields a
+    /// `keyboard-input/HostKeyCaptureNotInterpreted` diagnostic — NOT a capture. No `ViewerEffect` case
+    /// carries a `KeyboardEffect` (`DispatchInput` is host->product only), so the request cannot reach a
+    /// host and the capture it arms never fires. This arm previously lowered it to
+    /// `DispatchHostCommand "capture-key:{key}"`, an effect the framework never interprets either — a
+    /// decoy that made an inert request look wired. To actually capture a rebind key, set the host's
+    /// `MapKey` to `ViewerKeyboard.mapKeyRaw` and route the key in `update`, where the product's keymap
+    /// and capture state live (`MapKey` itself never sees the model, so it cannot resolve either).
+    ///
+    /// Surface the diagnostic with `AdapterCmd.diagnostics`: `AdapterCmd.productMessages` keeps only
+    /// product messages and would drop it.
     val interpretKeyboardEffect: mapCommand: (CommandId -> 'msg) -> effect: KeyboardEffect -> AdapterCommand<'msg>
     /// Public contract function exposed by this FS.GG.UI package.
     val interpretControlEffect: mapRuntime: (ControlRuntimeMsg -> 'msg) -> effect: ControlRuntimeEffect -> AdapterCommand<'msg>

@@ -213,6 +213,15 @@ module ControlsElmish =
     // makes the level unpickable — so they are separate codes at separate levels.
     let internal unresolvedControlIdCode = "UnresolvedControlId"
 
+    // Issue #456 (epic FS-GG/.github#416): `keyboard-input/HostKeyCaptureNotInterpreted`. Emitting
+    // `KeyboardEffect.RequestHostKeyCapture` arms a capture that NOTHING completes: `ViewerEffect` has no
+    // case that carries a `KeyboardEffect` (`DispatchInput` is host->product only), so the request cannot
+    // reach a host at all. This arm used to lower it to `DispatchHostCommand "capture-key:{key}"` — an
+    // `AdapterEffect` the framework never interprets either, whose only consumer in the tree turns it into
+    // a LOG STRING. A consumer who did everything right got silence; the decoy is what made it look wired.
+    // Per the epic's rule, the surface now says what it cannot do, and names the seam that can.
+    let internal hostKeyCaptureNotInterpretedCode = "HostKeyCaptureNotInterpreted"
+
     // Issue #457: hand each adapter diagnostic to the host's diagnostics sink, THEN extract the product
     // messages. Every pointer routing site used to call `AdapterCmd.productMessages` alone, which
     // filtered `ReportAdapterDiagnostic` out — so the escape hatch the silent-no-op family reaches for
@@ -327,7 +336,13 @@ module ControlsElmish =
         | ModeChanged _
         | PendingSequenceChanged _
         | StateDisplayChanged _ -> []
-        | RequestHostKeyCapture key -> [ DispatchHostCommand $"capture-key:{key}" ]
+        | RequestHostKeyCapture key ->
+            [ ReportAdapterDiagnostic(
+                  diagnostic
+                      "keyboard-input"
+                      hostKeyCaptureNotInterpretedCode
+                      $"RequestHostKeyCapture '{key}' is not interpreted by any host: no ViewerEffect carries a KeyboardEffect, so the request never reaches one and the capture never fires. Capture the key in the product instead: set the host's MapKey to ViewerKeyboard.mapKeyRaw and route the key in update, where the keymap and the capture state live."
+              ) ]
         | ReportKeyboardDiagnostic keyboardDiagnostic ->
             [ ReportAdapterDiagnostic(diagnostic "keyboard-input" keyboardDiagnostic.Code keyboardDiagnostic.Message) ]
 

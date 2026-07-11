@@ -120,21 +120,51 @@ calls**. If you want it called, you call it, and you route what it returns.
 |---|---|---|
 | `CommandResolved` | `DispatchProductMessage` | none — **you** route it into `update` |
 | `ReportKeyboardDiagnostic` | `ReportAdapterDiagnostic` | none — **you** route it |
-| `RequestHostKeyCapture` | `DispatchHostCommand "capture-key:<key>"` | **none — nothing consumes that string** |
+| `RequestHostKeyCapture` | `ReportAdapterDiagnostic` — `keyboard-input/HostKeyCaptureNotInterpreted` (issue 456) | **none — it is a complaint, not a capture** |
 | `KeyStateChanged`, `LayoutChanged`, `ModeChanged`, `PendingSequenceChanged`, `StateDisplayChanged` | `[]` — dropped | n/a |
 
 **`RequestHostKeyCapture` is inert in the framework, and the owner is you — the product.** Nothing
-constructs it (`Keyboard.update` never emits it), nothing consumes the `capture-key:<key>` string it
-lowers to, and no runner is listening for it. Wire a rebind button to it and nothing else, and the
-button does nothing — silently, with no error.
+constructs it (`Keyboard.update` never emits it), no `ViewerEffect` carries it, and no runner is
+listening for it. It used to lower to `DispatchHostCommand "capture-key:<key>"` — a string nothing
+consumed — so wiring a rebind button to it did nothing, silently. Issue 456 removed that decoy: it now
+lowers to a **diagnostic that says it is not interpreted**. Surface it with `AdapterCmd.diagnostics`
+(`AdapterCmd.productMessages` keeps only product messages and would drop it). Do not build a rebind on
+it; build it as below.
 
-Host key capture is not a framework capability today. To rebind a key, do it in product code:
+### Capturing a key for a rebind (the path that works)
 
-1. Route `AdapterEffect.DispatchHostCommand "capture-key:<key>"` to one of your own `Msg` cases at
-   your `AdapterCmd.toCmd` route function.
-2. Enter a capture mode in your model, and take the next key-down that arrives at your `MapKey`.
-3. Apply `Keymap.rebind` / `Keymap.remove`, and drive `MapKey` from the keymap with
-   `ViewerKeyboard.mapKeyOfKeymap`. That path is pure, and it does work.
+Host key capture needs no host capability, and this is why: **`MapKey` is a closure fixed when you
+build your host record, and it never sees your model.** So a `MapKey` that *resolves* a key — like
+`ViewerKeyboard.mapKeyOfKeymap` — resolves against the keymap it closed over, and drops both key-up
+and **every key that keymap does not bind**. A rebind capture needs exactly what it drops: the key the
+user presses next is, by definition, not bound yet. Drive `MapKey` from a keymap and the key you are
+waiting for is the one key that never arrives.
+
+Forward the key instead of resolving it, and do the routing in `update`, where your model is:
+
+```fsharp
+type Msg = Key of KeyId * isDown: bool     // every key arrives raw; YOU decide what it means
+
+// The seam: forwards key-down AND key-up, bound or not. Nothing is dropped.
+MapKey = ViewerKeyboard.mapKeyRaw (fun key isDown -> Some(Key(key, isDown)))
+
+let update (Key(key, isDown)) model =
+    if not isDown then model, [] else
+    match model.Rebinding with                       // the command awaiting a new key
+    | Some _ when key = "Escape" -> { model with Rebinding = None }, []          // your cancel policy
+    | Some command ->
+        { model with
+            Keymap = model.Keymap |> Keymap.rebind key command                   // the capture FIRES
+            Rebinding = None }, []
+    | None ->
+        match Keymap.resolve model.Keymap key with                               // ordinary play
+        | Some command -> { model with Dispatched = command :: model.Dispatched }, []
+        | None -> model, []
+```
+
+A capture is then an ordinary model transition, and the rebound key routes on the very next press —
+same host, no reconstruction, no mutable closure. Pair it with the `KeyRebind` config-screen control
+(`KeyRebind.ofKeymap` / `KeyRebind.onRebind`) to arm `Rebinding` from the UI.
 
 ## Generated Product
 

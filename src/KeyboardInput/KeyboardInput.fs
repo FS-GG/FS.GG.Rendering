@@ -492,3 +492,19 @@ module ViewerKeyboard =
                 Keymap.resolve keymap (toKeyId key) |> Option.bind mapCommand
             else
                 None
+
+    // Issue 456 (epic FS-GG/.github#416): the seam that loses nothing — and the one a rebind CAPTURE
+    // needs, because `mapKeyOfKeymap` cannot serve one.
+    //
+    // `MapKey` is a closure fixed when the host record is built, and it never sees the model. So
+    // `mapKeyOfKeymap` resolves against the keymap it CLOSED OVER, and it drops two things on the way:
+    // key-up, and any key the keymap does not bind. A rebind capture needs exactly what it drops — the
+    // key the user presses next is, by definition, one that is not bound yet — so the key the product is
+    // waiting for is the one key that seam cannot deliver.
+    //
+    // The fix is not more state in the viewer: it is to stop resolving in the model-blind seam. Forward
+    // the raw key and let the product route it in `update`, where the keymap and the capture state live.
+    // A capture is then an ordinary model transition, and a rebind re-routes the very next key — with no
+    // mutable closure and no new `ViewerEffect`.
+    let mapKeyRaw (onKey: KeyId -> bool -> 'msg option) : ViewerKey -> bool -> 'msg option =
+        fun key isDown -> onKey (toKeyId key) isDown
