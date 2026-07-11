@@ -154,7 +154,6 @@ FS.GG.UI.DesignSystem.StyleVariant+Tags.Success : System.Int32
 FS.GG.UI.DesignSystem.StyleVariant+Tags.Warning : System.Int32
 FS.GG.UI.DesignSystem.Theme.Accent : FS.GG.UI.Scene.Color [get]
 FS.GG.UI.DesignSystem.Theme.Background : FS.GG.UI.Scene.Color [get]
-FS.GG.UI.DesignSystem.Theme.ContrastRequiredRatio : System.Double [get]
 FS.GG.UI.DesignSystem.Theme.CornerRadius : System.Double [get]
 FS.GG.UI.DesignSystem.Theme.Danger : FS.GG.UI.Scene.Color [get]
 FS.GG.UI.DesignSystem.Theme.Density : System.Double [get]

@@ -34,7 +34,6 @@ let private frozenLight : Theme =
       FontSize = 14.0
       Density = 1.0
       CornerRadius = 4.0
-      ContrastRequiredRatio = 4.5
       IntentPolicy = IntentPolicy.neutral }
 
 let private frozenDark : Theme =
@@ -76,7 +75,6 @@ let designTokenParityTests =
             Expect.equal DesignTokens.Light.fontSize frozenLight.FontSize "light fontSize"
             Expect.equal DesignTokens.Light.density frozenLight.Density "light density"
             Expect.equal DesignTokens.Light.cornerRadius frozenLight.CornerRadius "light cornerRadius"
-            Expect.equal DesignTokens.Light.contrastRequiredRatio frozenLight.ContrastRequiredRatio "light contrastRequiredRatio"
         }
 
         test "every DesignTokens.Dark value feeds the matching Theme.dark field (SC-002)" {
@@ -89,7 +87,6 @@ let designTokenParityTests =
             Expect.equal DesignTokens.Dark.fontSize frozenDark.FontSize "dark fontSize"
             Expect.equal DesignTokens.Dark.density frozenDark.Density "dark density"
             Expect.equal DesignTokens.Dark.cornerRadius frozenDark.CornerRadius "dark cornerRadius"
-            Expect.equal DesignTokens.Dark.contrastRequiredRatio frozenDark.ContrastRequiredRatio "dark contrastRequiredRatio"
         }
 
         // T021 (US2, SC-003): render parity against the frozen themes.

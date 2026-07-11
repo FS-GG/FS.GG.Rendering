@@ -66,7 +66,7 @@ type ResolvedStyle =
 
 /// Design-token palette and metrics (`Theme`): the named color roles
 /// (`Foreground`/`Background`/`Accent`/`Danger`/`Success`/`Warning`/`Muted`), typography
-/// (`FontFamily`/`FontSize`), and layout metrics (`Density`/`CornerRadius`/`ContrastRequiredRatio`).
+/// (`FontFamily`/`FontSize`), and layout metrics (`Density`/`CornerRadius`).
 type Theme =
     { Name: string
       Foreground: Color
@@ -83,5 +83,4 @@ type Theme =
       FontFamily: string option
       FontSize: float
       Density: float
-      CornerRadius: float
-      ContrastRequiredRatio: float }
+      CornerRadius: float }

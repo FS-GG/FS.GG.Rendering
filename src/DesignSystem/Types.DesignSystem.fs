@@ -90,7 +90,6 @@ and Theme =
       FontSize: float
       Density: float
       CornerRadius: float
-      ContrastRequiredRatio: float
       IntentPolicy: IntentPolicy }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]

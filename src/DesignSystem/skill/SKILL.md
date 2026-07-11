@@ -40,7 +40,7 @@ in the controls. Ant-pattern *advice* (which token maps to which Ant region) liv
     per field and parity is a structural record compare). **Declared before `Theme`** on purpose so the
     shared field names resolve to `Theme` for bare `theme.*` accesses.
   - `Theme` = `{ Name; Foreground; Background; Accent; Danger; Success; Warning; Muted; FontFamily;
-    FontSize; Density; CornerRadius; ContrastRequiredRatio }` — the active palette + metrics.
+    FontSize; Density; CornerRadius }` — the active palette + metrics.
 - **Generated token modules** (`FS.GG.UI.DesignSystem`):
   - `DesignTokens` (`DesignTokens.fsi`) — the flat primitives under `DesignTokens.Light.*` /
     `DesignTokens.Dark.*` (`foreground`/`background`/`accent`/`danger`/`success`/`warning`/`muted`,
@@ -136,8 +136,9 @@ swapping the `IntentPolicy` at `StyleResolver.resolve`, **not** by branching ins
   into `ResolvedStyle`.
 - **`StyleVariant` is closed; free-form lives one level up** in `StyleClass.Custom`. Add a built-in
   variant only when it is genuinely common and theme-sourced.
-- **Colour pairings are validated by `ColorPolicy`** (`wcag` / `ant`) at the control/test layer — the
-  theme carries `ContrastRequiredRatio`; honour it rather than shipping a failing pairing.
+- **Colour pairings are validated by `ColorPolicy`** (`wcag` / `ant`) at the control/test layer, which
+  applies its own fixed role thresholds (WCAG Text 4.5 / non-text 3.0; Ant's own table) — honour its
+  verdict rather than shipping a failing pairing.
 
 ## Build Commands
 
