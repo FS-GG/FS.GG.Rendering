@@ -70,9 +70,14 @@
     <PackageVersion Include="FS.GG.UI.Symbology" Version="$(FsGgUiVersion)" />
     <PackageVersion Include="FS.GG.UI.Symbology.Render" Version="$(FsGgUiVersion)" />
     <!--#endif -->
-    <!--#if (profile == "governed") -->
+    <!-- Issue #432 (finishing #90): the fs-gg-testing skill materializes on ALL FIVE profiles and its body
+         says `open FS.GG.UI.Testing`, but this pin was `governed`-gated — so on four of the five the first
+         line an author copied out of the skill did not compile. Ungated, alongside the other test packages:
+         every profile ships the base Product.Tests project, and the skill is about authoring in it. The
+         REFERENCE lives on Product.Tests.fsproj, not Product.fsproj — nothing in the product source uses
+         these helpers, and a generated product should not carry a testing dependency to satisfy a skill
+         about its tests. -->
     <PackageVersion Include="FS.GG.UI.Testing" Version="$(FsGgUiVersion)" />
-    <!--#endif -->
     <PackageVersion Include="Expecto" Version="10.2.3" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.7.0" />
     <PackageVersion Include="YoloDev.Expecto.TestSdk" Version="0.16.0" />

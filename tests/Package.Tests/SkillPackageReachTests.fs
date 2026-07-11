@@ -21,7 +21,12 @@ module SkillPackageReachTests
 // THE INVARIANT (asserted for EVERY product skill, not just symbology)
 //   R-PINNED — every FS.GG.* namespace a product skill's body tells the author to `open`, whose name is
 //              exactly a real package id, is pinned in the template's Directory.Packages.props.
-//   R-REF    — ...and referenced by Product.fsproj, so it is on the compile graph and not merely pinned.
+//   R-REF    — ...and referenced by the project whose compile graph the skill's `open` lands in, so it is
+//              actually reachable and not merely pinned. That is Product.fsproj for almost every skill —
+//              but a TEST-SCOPED skill (#432: fs-gg-testing) is authored in the generated product's test
+//              project, so its packages are looked for in Product.Tests.fsproj UNION Product.fsproj (the
+//              test project project-references the product, so the product's references flow into it).
+//              See `testScopedSkills` — the classification is itself asserted, not merely declared.
 //   R-REACH  — ...and the profiles the SKILL materializes on are a SUBSET of the profiles that pin it.
 //              A skill reaching a profile its package does not is exactly #430: silent, type-check-free,
 //              and indistinguishable from working until an author types the `open`.
@@ -42,7 +47,35 @@ let private repositoryPath (relativePath: string) =
 
 let private propsPath = repositoryPath "template/base/Directory.Packages.props"
 let private projPath = repositoryPath "template/base/src/Product/Product.fsproj"
+let private testsProjPath = repositoryPath "template/base/tests/Product.Tests/Product.Tests.fsproj"
 let private manifestPath = repositoryPath "template/skill-manifest/skill-manifest.json"
+
+/// TEST-SCOPED skills (#432). A skill's `open` lines have to land on SOME compile graph, but not always the
+/// product's: `fs-gg-testing` is about authoring the generated product's TESTS, and its helpers are consumed
+/// from `tests/Product.Tests` (BehaviorTests.fs already calls `GeneratedLayoutValidation.validate`). Nothing
+/// in the product source uses them, so referencing FS.GG.UI.Testing from Product.fsproj would make every
+/// generated product carry a test-only dependency to satisfy a skill about its tests.
+///
+/// The invariant is UNCHANGED — a skill may not out-reach the packages it says to open. Only the question
+/// "which project must carry the reference" is answered per skill. Getting this wrong in the permissive
+/// direction is the whole bug class this file exists for, so the set is explicit and small rather than a
+/// heuristic: add a skill here only when its `open`s genuinely belong in the test project.
+let private testScopedSkills = set [ "fs-gg-testing" ]
+
+/// The projects whose `PackageReference`s can put a package on the compile graph `id`'s `open` lands in.
+///
+/// A UNION, not a replacement. `Product.Tests.fsproj` carries
+/// `<ProjectReference Include="..\..\src\Product\Product.fsproj" />`, so the product's package references
+/// flow into the test project transitively: a test-scoped skill that opens a package the PRODUCT already
+/// carries (FS.GG.UI.Scene, say) is perfectly compilable, and modelling the redirect as a replacement would
+/// red it and push someone to add a redundant reference to the template to shut the guard up.
+let private referencingProjectsOf id =
+    let product = projPath, "template/base/src/Product/Product.fsproj"
+
+    if Set.contains id testScopedSkills then
+        [ testsProjPath, "template/base/tests/Product.Tests/Product.Tests.fsproj"; product ]
+    else
+        [ product ]
 let private skillistRel = "template/base/docs/skillist-reference.md"
 let private skillistPath = repositoryPath skillistRel
 
@@ -109,6 +142,16 @@ let private profilesDeclaring (text: string) (packageId: string) =
 
     if Array.isEmpty declared then None else Some(Set.unionMany declared)
 
+/// The profiles on which `pkg` reaches the compile graph `id`'s `open` lands in — the UNION over every
+/// project that can carry it (see `referencingProjectsOf`). None when NO such project declares it at all,
+/// which is R-REF's failure to report rather than R-REACH's.
+let private refProfilesFor id pkg =
+    let declared =
+        referencingProjectsOf id
+        |> List.choose (fun (path, _) -> profilesDeclaring (File.ReadAllText path) pkg)
+
+    if List.isEmpty declared then None else Some(Set.unionMany declared)
+
 /// The profile set of a manifest `materializes-when` clause (ADR-0017 grammar: `profile in [a, b]`,
 /// optionally `and`-ed with non-profile clauses such as `lifecycle == spec-kit`, which we ignore — they
 /// narrow WHEN a skill ships, never onto a profile its `profile in [..]` clause excluded).
@@ -131,19 +174,20 @@ let private profilesOf (materializesWhen: string) =
 /// inline `#if` in markdown is unproven). Making the umbrella lane-neutral is a content decision, taken
 /// in #431 rather than smuggled into #430's touch-set.
 ///
-/// `fs-gg-testing` (issue #432): materializes on all five profiles and opens FS.GG.UI.Testing, which is
-/// pinned and referenced on `governed` ONLY — so four of the five profiles ship a testing skill whose
-/// first `open` does not compile. Wider blast radius than #430 itself. Issue #90 widened the skill's
-/// materializes-when and never widened the pin with it; the Feature219 comment asserting all five ship
-/// the package is part of the bug, and is why nobody re-checked. Finishing #90 is a decision about what
-/// `Product.fsproj` vs `Product.Tests.fsproj` should carry — #432, not smuggled into #430.
+/// `fs-gg-testing` (issue #432) is FIXED and its exemption is therefore GONE — it is now held to R-REACH
+/// like every other skill. #90 had widened the skill's materializes-when to all five profiles and never
+/// widened the pin with it, so four of the five shipped a testing skill whose first `open` did not compile.
+/// #432 finished #90: the pin is ungated, and the REFERENCE moved to `Product.Tests.fsproj` (see
+/// `testScopedSkills` above) rather than being widened on `Product.fsproj` — the product source never used
+/// the package, and spreading a test-only dependency across all five profiles would have traded one defect
+/// for a worse one.
 ///
 /// An exemption is a debt with a number on it, not a pass: R-PINNED/R-REF still hold for these skills
 /// (the package must exist and be referenced SOMEWHERE), only the profile-subset check is waived. Adding
 /// a row here requires a filed issue; the guard is worthless the moment it becomes a place to put things
-/// that are merely inconvenient. Both rows below are PRE-EXISTING defects this guard DISCOVERED — it
-/// found them on the day it was written, which is the argument for it.
-let private reachExemptions = Map.ofList [ "fs-gg-project", "#431"; "fs-gg-testing", "#432" ]
+/// that are merely inconvenient. The row below is a PRE-EXISTING defect this guard DISCOVERED — it found
+/// it on the day it was written, which is the argument for it.
+let private reachExemptions = Map.ofList [ "fs-gg-project", "#431" ]
 
 /// (skill id, profiles it materializes on, the FS.GG.* packages its body says to `open`).
 let private productSkills =
@@ -196,19 +240,61 @@ let skillPackageReachTests =
           }
 
           // R-PINNED / R-REF — the package an author is told to `open` is on the compile graph at all.
-          test "every package a product skill says to open is pinned AND referenced by the product" {
+          // Which compile graph is per-skill: a test-scoped skill (#432) must be referenced by the generated
+          // product's TEST project, not its product source. Central pinning without a reference is #430's bug.
+          test "every package a product skill says to open is pinned AND referenced by the project that opens it" {
               let props = File.ReadAllText propsPath
-              let proj = File.ReadAllText projPath
 
               for id, _, opens in productSkills do
+                  let refRels = referencingProjectsOf id |> List.map snd |> String.concat " or "
+
                   for pkg in opens do
                       Expect.isSome
                           (profilesDeclaring props pkg)
                           $"the {id} skill tells the author to `open {pkg}`, so {pkg} must be pinned in template/base/Directory.Packages.props — a skill that names a package the scaffold does not pin does not compile (#430)"
 
                       Expect.isSome
-                          (profilesDeclaring proj pkg)
-                          $"the {id} skill tells the author to `open {pkg}`, so Product.fsproj must reference {pkg} — pinning it centrally without referencing it leaves it off the compile graph (#430)"
+                          (refProfilesFor id pkg)
+                          $"the {id} skill tells the author to `open {pkg}`, so {refRels} must reference {pkg} — pinning it centrally without referencing it leaves it off the compile graph (#430)"
+          }
+
+          // The test-scoped redirect (#432) is the one place this guard is TOLD something rather than
+          // checking it, and a redirect that is merely declared is a fail-open hatch: drop a skill into
+          // `testScopedSkills`, move its package onto the test project, and R-REF/R-REACH stop consulting
+          // the product at all — while the author's `open` still sits in Program.fs and still does not
+          // compile. That is #430 shipped past its own guard, by the guard's own author. So the
+          // classification is ASSERTED, not assumed: a test-scoped skill's packages must be absent from
+          // every product source and present in at least one test source.
+          test "every test-scoped skill really is test-scoped (the redirect is checked, not declared)" {
+              let sourcesUnder relative =
+                  Directory.EnumerateFiles(repositoryPath relative, "*.fs", SearchOption.AllDirectories)
+                  |> Seq.map (fun path -> path, File.ReadAllText path)
+                  |> List.ofSeq
+
+              // Source files only: Product.fsproj carries a comment NAMING the package to explain its
+              // absence, and a substring scan over project files would read that tombstone as a use.
+              let productSources = sourcesUnder "template/base/src"
+              let testSources = sourcesUnder "template/base/tests"
+
+              for id in testScopedSkills do
+                  let row = productSkills |> List.tryFind (fun (sid, _, _) -> sid = id)
+                  Expect.isSome row $"test-scoped skill {id} is a product skill that opens FS.GG packages"
+
+                  let _, _, opens = row.Value
+
+                  for pkg in opens do
+                      let usedIn sources =
+                          sources
+                          |> List.filter (fun (_, text: string) -> text.Contains pkg)
+                          |> List.map (fun (path: string, _) -> Path.GetFileName path)
+
+                      Expect.isEmpty
+                          (usedIn productSources)
+                          $"{id} is classified test-scoped, so R-REF/R-REACH no longer require {pkg} on Product.fsproj — but product source USES it ({usedIn productSources}). The redirect is wrong: the package belongs on the product, and holding this skill to the test project instead would let a real #430 violation walk straight through."
+
+                      Expect.isNonEmpty
+                          (usedIn testSources)
+                          $"{id} is classified test-scoped, but nothing under template/base/tests uses {pkg} — no evidence supports the claim that its `open` lands in the test project. Remove it from testScopedSkills rather than let an unfounded redirect weaken the guard."
           }
 
           // An exemption that outlives its defect is a lie of a quieter kind: it keeps the guard green
@@ -217,17 +303,20 @@ let skillPackageReachTests =
           // until the row is deleted, which is exactly when it should be.
           test "every R-REACH exemption is still violating (a stale waiver must be deleted, not kept)" {
               let props = File.ReadAllText propsPath
-              let proj = File.ReadAllText projPath
 
               for KeyValue(id, issue) in reachExemptions do
                   let row = productSkills |> List.tryFind (fun (sid, _, _) -> sid = id)
                   Expect.isSome row $"exempted skill {id} ({issue}) still exists and still opens FS.GG packages"
 
                   let _, skillProfiles, opens = row.Value
+                  // `refProfilesFor`, NOT a hard-coded Product.fsproj read: if a skill were ever both
+                  // test-scoped AND exempted, reading only the product would report None for a test-only
+                  // package, fall to the `| _ -> true` arm, and leave this test unconditionally green —
+                  // a stale waiver surviving inside the very guard that exists to kill stale waivers.
                   let stillOrphaned =
                       opens
                       |> Set.exists (fun pkg ->
-                          match profilesDeclaring props pkg, profilesDeclaring proj pkg with
+                          match profilesDeclaring props pkg, refProfilesFor id pkg with
                           | Some pins, Some refs -> not (Set.isEmpty (Set.difference skillProfiles (Set.intersect pins refs)))
                           | _ -> true)
 
@@ -259,13 +348,11 @@ let skillPackageReachTests =
               for id, documented in rows do
                   let m = Regex.Match(manifest, $"\"id\":\\s*\"{Regex.Escape id}\"[\\s\\S]*?\"materializes-when\":\\s*\"(?<when>[^\"]+)\"")
 
-                  // The exempted skills' rows cannot be settled yet: which side is wrong depends on how
-                  // their filed issue resolves. `fs-gg-testing` (#432) is the live case — this doc says
-                  // `governed` (agreeing with the PACKAGE gate) while the manifest says all five, because
-                  // issue #90 widened materializes-when and updated neither the pin nor this roster.
-                  // Correcting the row here would PREJUDGE #432: widen the package and all five is right;
-                  // narrow the skill and `governed` already was. Left to #432, with the evidence recorded
-                  // there, rather than guessed at here.
+                  // An exempted skill's row cannot be settled while its issue is open: which side is wrong
+                  // depends on how that issue resolves, so correcting it here would prejudge the answer.
+                  // `fs-gg-testing` WAS the live case; #432 settled it by widening the package rather than
+                  // narrowing the skill, so its roster row now reads all five and it is held to R-DOC like
+                  // every other skill. `fs-gg-project` (#431) remains open.
                   if m.Success && not (reachExemptions.ContainsKey id) then
                       let actual = profilesOf m.Groups.["when"].Value
 
@@ -280,11 +367,10 @@ let skillPackageReachTests =
           // failure, one profile over.
           test "every product skill's profiles are a subset of the profiles pinning the packages it opens" {
               let props = File.ReadAllText propsPath
-              let proj = File.ReadAllText projPath
 
               for id, skillProfiles, opens in productSkills do
                   for pkg in opens do
-                      match profilesDeclaring props pkg, profilesDeclaring proj pkg with
+                      match profilesDeclaring props pkg, refProfilesFor id pkg with
                       | _ when reachExemptions.ContainsKey id -> ()
                       | Some pinProfiles, Some refProfiles ->
                           let reachable = Set.intersect pinProfiles refProfiles
