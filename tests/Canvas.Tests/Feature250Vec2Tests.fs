@@ -39,6 +39,49 @@ let tests =
               Expect.equal r { X = -4.0; Y = -3.0; Width = 8.0; Height = 6.0 } "abs of size, no inverted rect"
           }
 
+          // --- sim-space interop (#446): the SECOND vocabulary, FS.GG.Game.Core --------------------
+          // The collision/visibility helpers the same scaffold ships speak Game.Core's Point/Rect, not
+          // Scene's. These crossings are what let a Vec2-modelled product call them at all. The laws
+          // mirror the scene crossings above, because the two vocabularies are label-identical.
+          test "toSimPoint copies the components straight into a Game.Core.Point" {
+              let p = toSimPoint (vec2 3.0 -4.0)
+              Expect.equal (p.X, p.Y) (3.0, -4.0) "toSimPoint = (X = Vx, Y = Vy)"
+          }
+
+          test "ofSimPoint inverts toSimPoint (a round trip through sim space is the identity)" {
+              Check.One(
+                  Config.QuickThrowOnFailure.WithMaxTest 500,
+                  fun (x: float) (y: float) ->
+                      not (finite x && finite y)
+                      || ofSimPoint (toSimPoint (vec2 x y)) = vec2 x y)
+          }
+
+          test "toSimRect is a centered AABB of the given size (the sim twin of toRect)" {
+              let r = toSimRect (vec2 10.0 20.0) 8.0 6.0
+              Expect.equal (r.X, r.Y, r.Width, r.Height) (6.0, 17.0, 8.0, 6.0) "centered on the vector"
+          }
+
+          test "toSimRect treats a negative size as its magnitude (total)" {
+              let r = toSimRect (vec2 0.0 0.0) -8.0 -6.0
+              Expect.equal (r.X, r.Y, r.Width, r.Height) (-4.0, -3.0, 8.0, 6.0) "abs of size, no inverted rect"
+          }
+
+          // The two crossings must not disagree: same numbers, distinct (nominally) types. A swapped
+          // component in one of them would show up here and nowhere else.
+          test "the sim crossing agrees componentwise with the scene crossing" {
+              let v = vec2 -2.5 7.25
+              let sp = toSimPoint v
+              let rp = toPoint v
+              Expect.equal (sp.X, sp.Y) (rp.X, rp.Y) "same coordinates in both vocabularies"
+
+              let sr = toSimRect v 4.0 2.0
+              let rr = toRect v 4.0 2.0
+              Expect.equal
+                  (sr.X, sr.Y, sr.Width, sr.Height)
+                  (rr.X, rr.Y, rr.Width, rr.Height)
+                  "same centered AABB in both vocabularies"
+          }
+
           // --- algebraic laws ----------------------------------------------------------------------
           test "add identity: add v zero = v" {
               let v = vec2 2.5 -7.0
