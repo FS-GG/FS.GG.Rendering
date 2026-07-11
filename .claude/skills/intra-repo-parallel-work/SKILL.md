@@ -38,6 +38,20 @@ sessions with their own ids, so there it is per-worker and does not warn.) **Fan
 worktrees, or set `FSGG_WORKER` per worker.** See
 `docs/coordination/agent-session-identifiers.md` in FS-GG/.github for the harness survey.
 
+When you set it, **mint it — never invent it**:
+
+```sh
+export FSGG_WORKER="w-$(od -An -tx1 -N4 /dev/urandom | tr -d ' \n')"
+```
+
+A hand-picked id is the same-account bug a *third* level down. Agents asked to name themselves
+converge — this board has carried **four `finch-*` workers at once**, every one of them copied from
+the worked example that used to sit on this line, while the ids `whoami` *derives* spread cleanly
+across the word list. Two workers holding one id defeats every operation that keys on it: `release`
+drops the other's claim mid-flight, `heartbeat` renews a marker that is not yours, `say`/`inbox`
+cross-deliver, and `claim`'s CAS cannot tell its own marker from its twin's. Randomising the suffix
+is not enough — the attractor is the **word**, and any literal printed here becomes one (#419).
+
 Whatever named you, the claim marker records `harness=<name> session=<id>` as provenance, so
 "which agent transcript took this lock?" is a lookup rather than mtime forensics.
 
@@ -67,7 +81,7 @@ If the work is cross-repo (needs a change/release from *another* FS-GG repo), us
 ## The loop
 
 ```sh
-export FSGG_WORKER=finch-a3f                   # or let the worktree name you
+export FSGG_WORKER="w-$(od -An -tx1 -N4 /dev/urandom | tr -d ' \n')"   # MINT one; never invent one (#419)
 scripts/fsgg-coord take --repo <this-repo>     # pick + claim the next SCHEDULABLE item, retrying a lost race
 git worktree add ../<repo>-<n> -b item/<n>-<slug> origin/main   # `take` prints this; name the base
 # ...implement, commit with the printed FSGG-Worker trailer, PR into main...
