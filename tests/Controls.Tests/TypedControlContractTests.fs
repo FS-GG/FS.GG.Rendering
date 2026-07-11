@@ -204,7 +204,7 @@ let typedControlContractTests =
                 ]
                 |> Catalog.validateStandardControl
 
-            Expect.exists custom (fun diagnostic -> diagnostic.Severity = Info && diagnostic.Message.Contains "Custom extension") "custom controls are visibly classified"
+            Expect.exists custom (fun diagnostic -> diagnostic.Severity = ControlDiagnosticSeverity.Info && diagnostic.Message.Contains "Custom extension") "custom controls are visibly classified"
         }
     ]
 

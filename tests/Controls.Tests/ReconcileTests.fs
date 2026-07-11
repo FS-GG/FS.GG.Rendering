@@ -271,7 +271,7 @@ let edges =
               let collisions = result.Diagnostics |> List.filter (fun d -> d.Code = KeyCollision)
               Expect.isNonEmpty collisions "a duplicate key surfaces a KeyCollision diagnostic"
               collisions
-              |> List.iter (fun d -> Expect.equal d.Severity Warning "KeyCollision is a Warning")
+              |> List.iter (fun d -> Expect.equal d.Severity ControlDiagnosticSeverity.Warning "KeyCollision is a Warning")
 
               // total + deterministic on this input
               Expect.equal (repr result) (repr (Reconcile.diff prev next)) "duplicate-key diff is deterministic"

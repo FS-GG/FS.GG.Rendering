@@ -165,8 +165,21 @@ type ControlSchema =
       SupportedEvents: StandardEventKind list
       CustomAllowed: bool }
 
+[<RequireQualifiedAccess>]
 /// Severity level of a `ControlDiagnostic` (`ControlDiagnosticSeverity`): `Info`,
 /// `Warning`, or `Error`, ordered from advisory to authoring-blocking.
+///
+/// `RequireQualifiedAccess` — the bare case name `Error` otherwise shadows `FSharp.Core`'s
+/// `Result.Error` constructor for anyone who `open`s this namespace, so every `Error "..."` in an
+/// ordinary decode railway stops compiling with `error FS0003: This value is not a function and
+/// cannot be applied` — a message that names neither `Result` nor shadowing nor the fix. This is the
+/// same hazard the attribute already guards against on `KnownControl`, `KnownEvent`, `KnownAttribute`,
+/// `StandardControlKind`, `StandardEventKind`, `StandardAttributeName` and `ControlEventOrigin` in
+/// this very file — and on `PointerButton`/`PointerPhase`/`FrameCause`/`FrameInput` elsewhere. It was
+/// simply never applied to the one case that shadows a FSharp.Core constructor, which is the worst
+/// collision of the set: `Result` is the error-handling vocabulary of the whole language. That our own
+/// `SkiaViewer.fs` already writes `Result.Error`/`Result.Ok` fully qualified throughout is the
+/// workaround being load-bearing in our own source. Issue #459.
 type ControlDiagnosticSeverity =
     | Info
     | Warning

@@ -390,7 +390,7 @@ let us4 =
 
               let collisions = s.Diagnostics |> List.filter (fun d -> d.Code = KeyCollision)
               Expect.isNonEmpty collisions "SC-006: KeyCollision surfaces through the ControlDiagnostic channel"
-              collisions |> List.iter (fun d -> Expect.equal d.Severity Warning "KeyCollision is a Warning")
+              collisions |> List.iter (fun d -> Expect.equal d.Severity ControlDiagnosticSeverity.Warning "KeyCollision is a Warning")
           } ]
 
 // =============================================================================================

@@ -136,8 +136,15 @@ type ControlSchema =
       SupportedEvents: StandardEventKind list
       CustomAllowed: bool }
 
+[<RequireQualifiedAccess>]
 /// Severity level of a `ControlDiagnostic` (`ControlDiagnosticSeverity`): `Info`,
 /// `Warning`, or `Error`, ordered from advisory to authoring-blocking.
+///
+/// Qualify these: write `ControlDiagnosticSeverity.Error`, never a bare `Error`. Without the
+/// attribute the case name shadows `FSharp.Core`'s `Result.Error` for everyone who `open`s
+/// `FS.GG.UI.Controls`, so an ordinary `Error "..."` in your decode railway stops compiling with
+/// `error FS0003: This value is not a function and cannot be applied` — which names neither `Result`
+/// nor the shadowing nor the fix. Issue #459.
 type ControlDiagnosticSeverity =
     | Info
     | Warning

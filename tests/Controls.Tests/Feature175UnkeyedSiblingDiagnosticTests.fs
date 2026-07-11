@@ -22,7 +22,7 @@ let tests =
             match diags with
             | [ d ] ->
                 Expect.equal d.Code MissingStableKey "the collision is reported as a missing-stable-key warning"
-                Expect.equal d.Severity Warning "it is advisory, not blocking"
+                Expect.equal d.Severity ControlDiagnosticSeverity.Warning "it is advisory, not blocking"
                 Expect.stringContains d.Message "button" "the message names the colliding kind"
             | other -> failtestf "expected exactly one diagnostic, got %A" (other |> List.map (fun d -> d.Code))
         }

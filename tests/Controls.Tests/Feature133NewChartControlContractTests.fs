@@ -84,7 +84,7 @@ let feature133NewChartControlContractTests =
                 test (sprintf "%s authors with the expected kind and is diagnostic-clean" id) {
                     Expect.equal ctrl.Kind id (sprintf "%s control carries kind '%s'" id id)
                     Expect.isGreaterThan (Control.count ctrl) 0 (sprintf "%s has at least one node" id)
-                    let errors = Control.diagnostics ctrl |> List.filter (fun d -> d.Severity = Error)
+                    let errors = Control.diagnostics ctrl |> List.filter (fun d -> d.Severity = ControlDiagnosticSeverity.Error)
                     Expect.isEmpty errors (sprintf "%s authors with no Error diagnostics" id)
                 }
         ]

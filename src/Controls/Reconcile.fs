@@ -108,7 +108,7 @@ module internal Reconcile =
                 { ControlId = Some key
                   ControlKind = parentKind
                   Code = KeyCollision
-                  Severity = Warning
+                  Severity = ControlDiagnosticSeverity.Warning
                   Message =
                     sprintf "Duplicate key '%s' within the children of a '%s' node; first occurrence wins." key parentKind
                   EvidencePath = None }
