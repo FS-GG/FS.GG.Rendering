@@ -26,6 +26,10 @@
          fragments because it drives them from a Vec2-modelled product, which is the acceptance
          criterion (the fragments themselves only need Vec2.fs, compiled above). -->
     <Compile Include="Issue446SimCrossingTests.fs" />
+    <!-- #532: Vec2 PROPAGATES non-finite input rather than guarding it (the header used to claim the
+         opposite). Compiled after the collision fragment because the load-bearing assertion is what a
+         NaN position costs downstream: the contact silently vanishes. -->
+    <Compile Include="Issue532NonFiniteTests.fs" />
     <!-- Feature 249 (US1): compile the raw import-and-adapt grid-parts helper source (literal
          `namespace Product`, the default sourceName) so its logic is tested framework-side. -->
     <Compile Include="..\..\template\fragments\grids\src\Product\Grids.fs" />

@@ -29,9 +29,32 @@ open FS.GG.UI.Scene
 /// target record unambiguously — the pattern to copy whenever you must build a `Game.Core` value in
 /// a file that already sees `Scene` (the durable `Model.fs` is exactly such a file).
 ///
-/// Everything here is pure, total, and deterministic: straight-line float arithmetic guarded against
-/// non-finite input (never throws, never yields NaN silently), so identical inputs yield byte-identical
-/// output across runs and platforms — safe to call from a replayed `update`.
+/// Everything here is pure, total, and deterministic: straight-line float arithmetic that never throws,
+/// so identical inputs yield byte-identical output across runs and platforms — safe to call from a
+/// replayed `update`.
+///
+/// TOTAL MEANS "NEVER THROWS" — IT DOES NOT MEAN "NEVER NaN". With ONE exception (`clamp`, below), the
+/// helpers here do not sanitise non-finite input; they PROPAGATE it. `add`/`sub`/`scale` on a NaN
+/// component yield NaN, `toPoint`/`toSimPoint` carry it into the scene/sim vocabularies, and
+/// `toRect`/`toSimRect` carry it into a `Rect` — into the origin (derived from the centre) and into the
+/// size as well, because that guard is `abs`, and `abs nan = nan`. Sanitising is YOUR job — see
+/// `isFinite`. It is deliberately not done for you: rewriting a NaN to `0.0` inside these helpers would
+/// convert a loud modelling bug into an entity that silently teleports to the origin, which is harder to
+/// find, not easier.
+///
+/// `clamp` IS THE EXCEPTION, AND IT IS A TRAP RATHER THAN A GUARD. It does not propagate a NaN, it
+/// SWALLOWS one: the comparison runs through `max`/`min`, every comparison against a NaN is false, so a
+/// NaN component falls out as the LOW bound `lo` — not as NaN. An entity whose position has gone bad
+/// therefore does not LOOK bad: it silently snaps to the corner of the clamp box and keeps playing. That
+/// is emergent from IEEE-754, not a designed sanitiser, so do not lean on it — it launders only one of
+/// the two failure modes (an infinity clamps sensibly, to `hi`/`lo`), and it is the reason to call
+/// `isFinite` where the float ENTERS the model rather than trust a downstream `clamp` to absorb it.
+///
+/// Know what a NaN costs you downstream, because it will not announce itself. The shipped `Collision`
+/// helpers document non-finite bounds as NEVER OVERLAPPING (every comparison against a NaN is false), so
+/// a single NaN component does not crash the step — it silently turns collision OFF for that entity, and
+/// it walks through walls. Guard where floats ENTER your model (a division you did not prove non-zero, a
+/// parsed save file, an impulse off a bad delta), not on every helper call.
 ///
 /// You own this file: rename `Vx`/`Vy`, add a `Z`, add rotation/normalization, or delete it after you
 /// swap `Model.fs` off it (its compile item is `Exists`-guarded, so deletion keeps the build green).
@@ -58,6 +81,15 @@ module Geometry =
     /// Construct a vector from its components.
     let vec2 (x: float) (y: float) : Vec2 = { Vx = x; Vy = y }
 
+    /// Is every component finite — neither NaN nor an infinity? This is the guard the header sends you
+    /// to, and NOTHING in this module calls it for you: what a bad float should BECOME (drop the entity,
+    /// clamp it, keep the last good value, fail the load) is a policy only the product can pick, and a
+    /// helper that quietly picked `0.0` for you would hide the bug it was handed. Call it where floats
+    /// enter the model, and note the payoff is not a crash you avoid but a crash you GET: an unguarded
+    /// NaN position does not throw, it just makes `Collision` stop seeing the entity.
+    let isFinite (v: Vec2) : bool =
+        System.Double.IsFinite v.Vx && System.Double.IsFinite v.Vy
+
     /// Component-wise addition (e.g. advance a position by a displacement).
     let add (a: Vec2) (b: Vec2) : Vec2 = { Vx = a.Vx + b.Vx; Vy = a.Vy + b.Vy }
 
@@ -69,6 +101,13 @@ module Geometry =
 
     /// Per-component clamp into `[lo, hi]` — keep an entity inside a bound. Total: if a `lo` axis
     /// exceeds its `hi` axis the low bound wins (no throw), so a degenerate bound can never crash a step.
+    ///
+    /// WARNING — this is the one helper here that does NOT propagate a NaN, and that is a trap, not a
+    /// feature. Every comparison against a NaN is false, so `max`/`min` fall through and a NaN component
+    /// comes out as `lo`: a position that has silently gone bad silently snaps to the corner of your
+    /// bound and keeps playing, instead of staying visibly NaN. Do not use `clamp` as your finite guard —
+    /// it hides NaN and only NaN (an infinity clamps sensibly to `hi`/`lo`). Use `isFinite` at the
+    /// boundary where the float enters the model.
     let clamp (lo: Vec2) (hi: Vec2) (v: Vec2) : Vec2 =
         let clamp1 lo hi x = x |> max lo |> min (max lo hi)
         { Vx = clamp1 lo.Vx hi.Vx v.Vx
