@@ -87,7 +87,8 @@ and ResolvedStyle =
 
 /// Design-token palette and metrics (`Theme`): the named color roles
 /// (`Foreground`/`Background`/`Accent`/`Danger`/`Success`/`Warning`/`Muted`), typography
-/// (`FontFamily`/`FontSize`), layout metrics (`Density`/`CornerRadius`),
+/// (`FontFamily`/`FontSize`), layout metrics (`Density`/`CornerRadius`), the dimension/spacing
+/// model (`ControlHeight`/`ControlHeightSm`/`ControlHeightLg` + the `Space{Xs,Sm,Md,Lg}` scale — #385),
 /// and the `IntentPolicy` that maps this theme's semantic intents onto structural style deltas.
 and Theme =
     { Name: string
@@ -106,6 +107,21 @@ and Theme =
       FontSize: float
       Density: float
       CornerRadius: float
+      /// #385: standard interactive control height (Ant `controlHeight`). Geometry reads this
+      /// instead of a frozen literal, so a theme restyles control sizing.
+      ControlHeight: float
+      /// #385: compact interactive control height (Ant `controlHeightSM`).
+      ControlHeightSm: float
+      /// #385: large interactive control height (Ant `controlHeightLG`).
+      ControlHeightLg: float
+      /// #385: extra-small spacing/gap step (Ant `Space.xs`).
+      SpaceXs: float
+      /// #385: small spacing/gap step (Ant `Space.sm`).
+      SpaceSm: float
+      /// #385: medium spacing/gap step (Ant `Space.md`).
+      SpaceMd: float
+      /// #385: large spacing/gap step (Ant `Space.lg`).
+      SpaceLg: float
       /// How this theme perturbs a control's structural base by semantic intent. The render path
       /// resolves through it (`StyleResolver.resolve`), so a theme's intent language reaches the
       /// screen without any control edit. `IntentPolicy.neutral` ignores intent entirely.

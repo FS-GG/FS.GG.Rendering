@@ -90,6 +90,16 @@ and Theme =
       FontSize: float
       Density: float
       CornerRadius: float
+      // #385: token-sourced dimension/spacing metrics (Ant control-size + Space scale). Geometry
+      // reads these instead of frozen literals, so a theme restyles control sizing the way palette
+      // roles restyle colour. Sourced from DesignTokens.{Light,Dark}.
+      ControlHeight: float
+      ControlHeightSm: float
+      ControlHeightLg: float
+      SpaceXs: float
+      SpaceSm: float
+      SpaceMd: float
+      SpaceLg: float
       IntentPolicy: IntentPolicy }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]

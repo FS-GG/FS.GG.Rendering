@@ -23,6 +23,14 @@ module Theme =
           FontSize = DesignTokens.Light.fontSize
           Density = DesignTokens.Light.density
           CornerRadius = DesignTokens.Light.cornerRadius
+          // #385: token-sourced dimension/spacing metrics feed the control geometry.
+          ControlHeight = DesignTokens.Light.controlHeight
+          ControlHeightSm = DesignTokens.Light.controlHeightSm
+          ControlHeightLg = DesignTokens.Light.controlHeightLg
+          SpaceXs = DesignTokens.Light.spaceXs
+          SpaceSm = DesignTokens.Light.spaceSm
+          SpaceMd = DesignTokens.Light.spaceMd
+          SpaceLg = DesignTokens.Light.spaceLg
           // Intent-agnostic: the Default theme renders every intent as the kind's structural base.
           IntentPolicy = IntentPolicy.neutral }
 
@@ -40,6 +48,14 @@ module Theme =
           FontSize = DesignTokens.Dark.fontSize
           Density = DesignTokens.Dark.density
           CornerRadius = DesignTokens.Dark.cornerRadius
+          // #385: token-sourced dimension/spacing metrics feed the control geometry.
+          ControlHeight = DesignTokens.Dark.controlHeight
+          ControlHeightSm = DesignTokens.Dark.controlHeightSm
+          ControlHeightLg = DesignTokens.Dark.controlHeightLg
+          SpaceXs = DesignTokens.Dark.spaceXs
+          SpaceSm = DesignTokens.Dark.spaceSm
+          SpaceMd = DesignTokens.Dark.spaceMd
+          SpaceLg = DesignTokens.Dark.spaceLg
           IntentPolicy = IntentPolicy.neutral }
 
     let withDensity (density: float) (theme: Theme) =

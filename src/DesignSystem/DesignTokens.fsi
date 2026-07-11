@@ -44,6 +44,20 @@ module DesignTokens =
         val cornerRadius : float
         /// Minimum foreground/background contrast ratio the light theme must satisfy.
         val contrastRequiredRatio : float
+        /// Light-theme standard interactive control height (Ant `controlHeight`).
+        val controlHeight : float
+        /// Light-theme compact control height (Ant `controlHeightSM`).
+        val controlHeightSm : float
+        /// Light-theme large control height (Ant `controlHeightLG`).
+        val controlHeightLg : float
+        /// Light-theme extra-small spacing step (Ant `Space.xs`).
+        val spaceXs : float
+        /// Light-theme small spacing step (Ant `Space.sm`).
+        val spaceSm : float
+        /// Light-theme medium spacing step (Ant `Space.md`).
+        val spaceMd : float
+        /// Light-theme large spacing step (Ant `Space.lg`).
+        val spaceLg : float
 
     /// Dark-theme primitives (feed Theme.dark; value-identical to the pre-feature literals).
     module Dark =
@@ -71,3 +85,17 @@ module DesignTokens =
         val cornerRadius : float
         /// Minimum foreground/background contrast ratio the dark theme must satisfy.
         val contrastRequiredRatio : float
+        /// Dark-theme standard interactive control height (Ant `controlHeight`).
+        val controlHeight : float
+        /// Dark-theme compact control height (Ant `controlHeightSM`).
+        val controlHeightSm : float
+        /// Dark-theme large control height (Ant `controlHeightLG`).
+        val controlHeightLg : float
+        /// Dark-theme extra-small spacing step (Ant `Space.xs`).
+        val spaceXs : float
+        /// Dark-theme small spacing step (Ant `Space.sm`).
+        val spaceSm : float
+        /// Dark-theme medium spacing step (Ant `Space.md`).
+        val spaceMd : float
+        /// Dark-theme large spacing step (Ant `Space.lg`).
+        val spaceLg : float
