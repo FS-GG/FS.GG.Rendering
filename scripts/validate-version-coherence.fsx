@@ -569,26 +569,33 @@ let symbologyRecipeRules (pinVersion: string) (pins: (string * string) list) : F
 let symbologyRecipeFailures (i: Inputs) : Failure list =
     symbologyRecipeRules i.PinVersion i.SymbologyRecipePins
 
-/// Self-check the RULES the way `semverSelfCheck` self-checks the comparator (T008) — fail closed if any
-/// of them ever stops firing. #478: `symbology-recipe-unpinned` and `symbology-recipe-pin-skew` were
-/// silently discarded by the list comprehension and could not fail; the recipe drifted to 0.4.0 under a
-/// 0.8.0 framework and the gate stayed green for four minors. The compiler DID say so (`warning FS3221`),
-/// and the warning scrolled past in the gate log every run.
+/// Self-check the SYMBOLOGY-RECIPE rules the way `semverSelfCheck` self-checks the comparator (T008) —
+/// fail closed if any of the three ever stops firing. #478: `symbology-recipe-unpinned` and
+/// `symbology-recipe-pin-skew` were silently discarded by the list comprehension and could not fail; the
+/// recipe drifted to 0.4.0 under a 0.8.0 framework and the gate stayed green for four minors. The
+/// compiler DID say so (`warning FS3221`), and the warning scrolled past in the gate log every run.
 ///
 /// A guard is only evidence if it can distinguish a healthy repo from a sick one, so prove it can: feed
 /// each rule an input it MUST reject, and one it must accept. A dead rule now fails the guard itself
 /// (exit 2, GUARD ERROR) instead of quietly reporting the repo coherent.
-let rulesSelfCheck () =
+///
+/// SCOPE — deliberately these three rules, not all of them: the name says `symbology` because that is
+/// what it covers, and a self-check that overstates its reach is the same lie as a rule that cannot
+/// fire. The other families (`us1` / `bomToken` / `bomMemberSkew` / `template` / `invariant` /
+/// `releaseLane`) build their lists with `->` arms or `[ if … then … ]`, both of which DO yield; a sweep
+/// of every `scripts/*.fsx` for the discarded-value warning that killed these two came back clean. Feed
+/// a new rule family through here too if you ever add one whose body is a bare `for … do`.
+let symbologyRulesSelfCheck () =
     let v = "0.8.0"
     let fired pins = symbologyRecipeRules v pins |> List.map (fun f -> f.Rule) |> Set.ofList
     let expected = Set.toList symbologyRecipeExpected
-    let allAt (ver: string) = expected |> List.map (fun id -> id, ver)
+    let allGood = expected |> List.map (fun id -> id, v)
     let one (id: string) (ver: string) =
         (id, ver) :: (expected |> List.filter ((<>) id) |> List.map (fun x -> x, v))
 
     // A healthy recipe must produce NO failures — a rule that fires on everything is as useless as one
     // that fires on nothing, and would make the whole guard unfalsifiable.
-    if not (fired (allAt v)).IsEmpty then
+    if not (fired allGood).IsEmpty then
         raise (GuardError "rule regressed: a correctly-pinned symbology recipe must produce no failures")
     if not ((fired (one "FS.GG.UI.Scene" "")).Contains "symbology-recipe-unpinned") then
         raise (GuardError "rule DEAD: symbology-recipe-unpinned did not fire on an unpinned `#r` (see #478 — check for warning FS3221, an implicitly discarded Failure)")
@@ -938,7 +945,7 @@ let printReleasePending (tags: string list) =
 // the push order would otherwise get nothing.
 let main () =
     semverSelfCheck ()
-    rulesSelfCheck ()
+    symbologyRulesSelfCheck ()
     let i = readInputs ()
     printReleasePending (pendingTags i)
     if live then
