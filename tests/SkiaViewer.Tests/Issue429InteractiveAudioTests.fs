@@ -59,6 +59,7 @@ let private interpret (effects: ViewerEffect list) =
             scenes.Add
             (fun () -> dispatched <- true)
             diagnostics.Add
+            ignore // #444 evidence sink: these cases emit no evidence effect, so nothing reaches it
             effects
 
     {| Played = List.ofSeq played
@@ -188,7 +189,7 @@ let tests =
 
             // Drive the sink through the REAL shared fold, the way the live loop does: one batch per frame.
             let run effects =
-                Viewer.interpretViewerEffects sink ignore ignore ignore effects |> ignore
+                Viewer.interpretViewerEffects sink ignore ignore ignore ignore effects |> ignore
 
             run initEffects
             run clickEffects

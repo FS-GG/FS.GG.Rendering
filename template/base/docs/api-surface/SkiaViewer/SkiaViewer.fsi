@@ -675,9 +675,23 @@ module Viewer =
     val runtimeCapability: unit -> ViewerRuntimeCapability
     /// Public contract function exposed by this FS.GG.UI package.
     val run: options: ViewerOptions -> scene: SceneNode -> Result<ViewerLaunchOutcome, ViewerRunFailure>
-    /// Public contract function exposed by this FS.GG.UI package.
+    /// Issue #444 — EVIDENCE EFFECTS ARE HONORED HERE. A host that emits `CaptureScreenshot`,
+    /// `CaptureImageEvidence`, `WriteVisualEvidence` or `WriteRunEvidence` from `Init`/`Update` gets the
+    /// file written. Before #444 all four were discarded by the launch loop — no file, no error, and the
+    /// run still reported success — which made a green "evidence collected" verdict unfalsifiable.
+    ///
+    /// What lands on disk. `CaptureScreenshot`/`CaptureImageEvidence` — and `WriteRunEvidence` when its
+    /// path ends in `.png`, the same rule `runBounded` applies — rasterize the CURRENT SCENE offscreen
+    /// through the shared CPU painter, so the image depicts the scene the product drew, NOT the presented
+    /// GL framebuffer: read it as "the product rendered this", not as "the desktop showed this".
+    /// `WriteRunEvidence` to any other path writes the textual run summary, and `WriteVisualEvidence`
+    /// always serializes the artifact record it carries (rasterizing would discard that payload).
+    ///
+    /// A write that fails does not throw and does not take the window down; it raises an
+    /// `Error`/`Screenshot`/`ArtifactWrite` diagnostic naming the effect, the path and the reason, so the
+    /// failure is observable on `Diagnostics` rather than silent.
     val runApp: options: ViewerOptions -> host: GeneratedAppHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
-    /// Public contract function exposed by this FS.GG.UI package.
+    /// As `runApp` (including the Issue #444 evidence-effect handling), with an explicit window behavior.
     val runAppWithWindowBehavior: options: ViewerOptions -> behavior: ViewerWindowBehaviorRequest -> host: GeneratedAppHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
     /// Issue #245 — as `runApp`, but every `ViewerEffect.PlayAudio` batch the host emits is handed to
     /// `audioSink` in dispatch order instead of being discarded. This is the seam from a product's pure
