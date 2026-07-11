@@ -93,6 +93,7 @@
     <Compile Include="GameCoreSkillCoherenceTests.fs" />
     <Compile Include="CollisionSkillCoherenceTests.fs" />
     <Compile Include="VisibilitySkillCoherenceTests.fs" />
+    <Compile Include="LineDrawingSkillCoherenceTests.fs" />
     <Compile Include="ReleaseOnlyTwinLockstepTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

@@ -117,6 +117,15 @@ let private registry =
       { Twin = $"{twinDirectory}/VisibilitySkillCoherenceTests.fs"
         ReleaseOnly = "tests/Package.Tests/Feature247VisibilitySkillTests.fs"
         HeaderNames = "Feature247VisibilitySkillTests"
+        SharedInputs = true }
+      // #366 — the fs-gg-line-drawing skill + import-and-adapt helper wiring guard (#248). Text-mirror of
+      // a release-only Package.Tests rule: both read the line-drawing SKILL.md, the LineDrawing.fs
+      // fragment, Product.fsproj, the model-swap SKILL.md, the scaffold-map, template.json and the
+      // skill-manifest, and assert the same name/Cell-reuse/gate/delete-safe/swap-guidance invariants, so
+      // they share the same seven inputs.
+      { Twin = $"{twinDirectory}/LineDrawingSkillCoherenceTests.fs"
+        ReleaseOnly = "tests/Package.Tests/Feature248LineDrawingSkillTests.fs"
+        HeaderNames = "Feature248LineDrawingSkillTests"
         SharedInputs = true } ]
 
 /// The repository source-of-truth paths a test source reads, extracted from its `repositoryPath "…"`
