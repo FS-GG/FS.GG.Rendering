@@ -1048,9 +1048,15 @@ issues() {
       *)         [ -z "$repo" ] && repo="$1" || die "issues: unexpected argument '$1'."; shift ;;
     esac
   done
-  [ -n "$repo" ] || die "issues: a repo is required (short name or owner/repo)."
+  [ -n "$repo" ] || die "issues: a repo is required (registry short-id, owner/repo, or a repo name)."
+  # resolve_repo, like every other repo-taking command (#446). This was the ONE that took the bare
+  # name verbatim — so `issues game` asked for `repos/FS-GG/game` and 404'd, while `--repo game`
+  # worked everywhere else. That is worse than a typo-class bug: `issues` is the command both skills
+  # advertise as THE way to read issues without spending GraphQL, so the natural recovery from its
+  # 404 is `gh issue list` — 2 points a call, which is precisely the budget the command exists to
+  # save (#418).
   local O R
-  if [[ "$repo" == */* ]]; then O="${repo%%/*}"; R="${repo#*/}"; else O="$OWNER"; R="$repo"; fi
+  if [[ "$repo" == */* ]]; then O="${repo%%/*}"; R="${repo#*/}"; else O="$OWNER"; R="$(resolve_repo "$repo")"; fi
 
   local path="repos/$O/$R/issues?state=$state&per_page=100"
   [ -n "$label" ] && path="$path&labels=$(printf '%s' "$label" | jq -sRr @uri | sed 's/%0A$//')"
