@@ -13,6 +13,14 @@ module Canvas.Tests.Issue446SimCrossingTests
 // is precisely what a consumer could not do before. If a crossing were missing, this file would not
 // compile; if one were wrong (a swapped or dropped component), the numeric expectations below fail.
 //
+// That last clause is load-bearing and easy to get wrong, so it is worth stating why the fixtures look
+// the way they do. Swapping `Vx`/`Vy` inside `toSimPoint` reflects every point about y = x, and the
+// helpers are reflection-EQUIVARIANT: reflect the whole configuration and every distance, overlap and
+// sightline is preserved. So a symmetric fixture — zero velocities, an eye at the origin, a radial
+// query — reports SUCCESS under a swapped crossing. The fixtures here are asymmetric, and they assert
+// coordinates that travelled through a crossing (a velocity via `Body.Velocity`, the viewpoint via
+// `polygon.Source`), which is the only thing the reflection actually moves.
+//
 // It is also the worked example the three repos lacked: how to construct a Game.Core value in a file
 // that must not `open` Game.Core, via the `SimPoint`/`SimRect` abbreviations plus a return-type
 // annotation. All real pure computation — no synthetic evidence.
@@ -55,9 +63,15 @@ let tests =
         [
 
           // --- Collision: the scaffold's own helper, driven from Vec2 ------------------------------
+          // NOTE ON THE DATA. Swapping Vx/Vy inside `toSimPoint` reflects EVERY point about y = x, and
+          // the helpers are all reflection-equivariant — so a symmetric fixture (zero velocities, an
+          // eye at the origin, a radial query) cannot see the swap: the whole configuration reflects
+          // together and every distance is preserved. The fixtures below are therefore ASYMMETRIC, and
+          // they assert coordinates that travelled THROUGH a crossing, which is the only thing a
+          // reflection actually changes.
           test "a Vec2-modelled pair reaches Collision.contact, and the push-out reads back as a Vec2" {
               // Two 10-wide boxes centred 6 apart on X: spans [-5,5] and [1,11] -> a 4-wide overlap.
-              let a = entity 0.0 0.0 0.0 0.0 10.0 1
+              let a = entity 0.0 0.0 1.5 -2.5 10.0 1
               let b = entity 6.0 0.0 0.0 0.0 10.0 2
 
               match Collision.contact (bodyOf a) (bodyOf b) with
@@ -67,9 +81,14 @@ let tests =
                   Expect.floatClose Accuracy.high c.Depth 4.0 "least-penetration depth is the 4-wide X overlap"
                   Expect.floatClose Accuracy.high push.Vx -4.0 "A is pushed left off B (negative X)"
                   Expect.floatClose Accuracy.high push.Vy 0.0 "no vertical component for a horizontal overlap"
+
+                  // The velocity crossed into sim space via `toSimPoint` and must survive the trip
+                  // componentwise. Asymmetric on purpose: (1.5, -2.5) reflects to (-2.5, 1.5), so a
+                  // swapped crossing fails here rather than passing silently.
+                  Expect.equal (ofSimPoint c.A.Velocity) (vec2 1.5 -2.5) "A's velocity round-trips through Body.Velocity"
           }
 
-          test "Collision.step separates a Vec2-modelled pair; the applied push reads back as a Vec2" {
+          test "Collision.step separates a Vec2-modelled pair; the moved body reads back as a Vec2" {
               let a = entity 0.0 0.0 0.0 0.0 10.0 1
               let b = entity 6.0 0.0 0.0 0.0 10.0 2
 
@@ -78,6 +97,13 @@ let tests =
                   let applied = ofSimPoint r.Applied
                   Expect.floatClose Accuracy.high applied.Vx -2.0 "A takes half of the 4-wide separation"
                   Expect.floatClose Accuracy.high applied.Vy 0.0 "no vertical component"
+
+                  // `resolve` applies the separation by MOVING the body's Bounds, so the post-step
+                  // position comes back as a Rect. `ofSimRectCenter` is the return leg that lets a
+                  // Vec2 model store it without hand-writing the bridge.
+                  let movedA = ofSimRectCenter r.A.Bounds
+                  Expect.floatClose Accuracy.high movedA.Vx -2.0 "A's centre moved left by half the overlap"
+                  Expect.floatClose Accuracy.high movedA.Vy 0.0 "and not vertically"
               | rs -> failtestf "expected exactly one resolution for one overlapping pair, got %d" (List.length rs)
           }
 
@@ -115,8 +141,11 @@ let tests =
           }
 
           test "Visibility.polygon's vertices read back into Vec2 and stay inside the sight bound" {
-              let eye = vec2 0.0 0.0
-              let wall = segOf (vec2 5.0 -5.0) (vec2 5.0 5.0)
+              // The viewpoint is deliberately off-origin and asymmetric: it is the one value here that
+              // makes the round trip `Vec2 -> toSimPoint -> poly.Source -> ofSimPoint -> Vec2` observable,
+              // and (3, -7) reflects to (-7, 3), so a swapped crossing cannot survive the anchor check.
+              let eye = vec2 3.0 -7.0
+              let wall = segOf (vec2 8.0 -12.0) (vec2 8.0 -2.0)
               let radius = 20.0
 
               let poly = Visibility.polygon (sight radius) (toSimPoint eye) [ wall ]
@@ -127,20 +156,23 @@ let tests =
 
               Expect.all
                   vertices
-                  (fun v -> abs v.Vx <= radius + 1e-6 && abs v.Vy <= radius + 1e-6)
-                  "every vertex lies inside the square sight bound"
+                  (fun v -> abs (v.Vx - eye.Vx) <= radius + 1e-6 && abs (v.Vy - eye.Vy) <= radius + 1e-6)
+                  "every vertex lies inside the square sight bound around the eye"
           }
 
           // --- determinism: the crossing is pure arithmetic, safe in a replayed `update` ------------
           test "a full Vec2 -> sim -> Vec2 round trip is byte-identical across runs" {
               let step () =
-                  let bodies = [ bodyOf (entity 0.0 0.0 1.0 0.0 10.0 1); bodyOf (entity 6.0 0.0 0.0 0.0 10.0 2) ]
-                  let pushes =
-                      Collision.step Collision.SeparateEqually 32.0 bodies
-                      |> List.map (fun r -> ofSimPoint r.Applied)
+                  let bodies = [ bodyOf (entity 0.0 0.0 1.5 -2.5 10.0 1); bodyOf (entity 6.0 0.0 0.0 0.0 10.0 2) ]
+                  let resolutions = Collision.step Collision.SeparateEqually 32.0 bodies
+                  let pushes = resolutions |> List.map (fun r -> ofSimPoint r.Applied)
+                  let moved = resolutions |> List.map (fun r -> ofSimRectCenter r.A.Bounds)
+                  // Read the velocities back too, so every crossing this file ships is on the round trip
+                  // rather than merely constructed and discarded.
+                  let vels = bodies |> List.map (fun b -> ofSimPoint b.Velocity)
                   let poly =
-                      Visibility.polygon (sight 20.0) (toSimPoint (vec2 0.0 0.0)) [ segOf (vec2 5.0 -5.0) (vec2 5.0 5.0) ]
-                  pushes, poly.Vertices |> List.map ofSimPoint
+                      Visibility.polygon (sight 20.0) (toSimPoint (vec2 3.0 -7.0)) [ segOf (vec2 8.0 -12.0) (vec2 8.0 -2.0) ]
+                  pushes, moved, vels, poly.Vertices |> List.map ofSimPoint
 
               Expect.equal (step ()) (step ()) "identical inputs -> identical outputs"
           } ]

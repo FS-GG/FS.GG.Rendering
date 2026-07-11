@@ -22,7 +22,7 @@ open FS.GG.UI.Scene
 /// (`FS.GG.UI.Scene.Point`/`Rect`, opened above) and the simulation one
 /// (`FS.GG.Game.Core.Point`/`Rect`), which is what the shipped `Collision.fs` / `Visibility.fs`
 /// helpers and `SpatialGrid` actually speak. Cross into render space with `toPoint`/`toRect`, and
-/// into sim space with `toSimPoint`/`ofSimPoint`/`toSimRect`. This file deliberately does NOT
+/// into sim space with `toSimPoint`/`ofSimPoint`/`toSimRect`/`ofSimRectCenter`. This file deliberately does NOT
 /// `open FS.GG.Game.Core`: that would put two identically-labelled `Point`s (and two `Rect`s) in one
 /// scope and re-create the very ambiguity `Vx`/`Vy` exists to prevent. The sim crossings go through
 /// the `SimPoint`/`SimRect` abbreviations plus a return-type annotation instead, which names the
@@ -77,16 +77,21 @@ module Geometry =
     /// Cross into the shared scene vocabulary: a `Vec2` position becomes a `Scene.Point`.
     let toPoint (v: Vec2) : Point = { X = v.Vx; Y = v.Vy }
 
+    /// The centered-AABB arithmetic, shared by `toRect` and `toSimRect` so the two vocabularies can
+    /// never drift apart: negative sizes become their magnitude (total), and the origin is the corner
+    /// half a size away from `center`. Returns plain floats — it names no record, so it belongs to
+    /// neither vocabulary.
+    let private centeredBox (center: Vec2) (w: float) (h: float) =
+        let w = abs w
+        let h = abs h
+        struct (center.Vx - w / 2.0, center.Vy - h / 2.0, w, h)
+
     /// A centered axis-aligned rectangle of size `w` x `h` about `center` — the size-bearing case,
     /// expressed WITHOUT ever putting `Width`/`Height` labels on your own record. Negative sizes are
     /// treated as their magnitude (total), so a stray sign can never invert the rect.
     let toRect (center: Vec2) (w: float) (h: float) : Rect =
-        let w = abs w
-        let h = abs h
-        { X = center.Vx - w / 2.0
-          Y = center.Vy - h / 2.0
-          Width = w
-          Height = h }
+        let struct (x, y, w, h) = centeredBox center w h
+        { X = x; Y = y; Width = w; Height = h }
 
     /// Cross into the SIMULATION vocabulary: a `Vec2` position becomes a `Game.Core.Point` — the type
     /// `SpatialGrid.build` keys on, and the one `Collision.Body.Velocity` and `Visibility.Segment`
@@ -102,9 +107,15 @@ module Geometry =
     /// `center`, shaped as `Collision.Body.Bounds` wants it. Negative sizes are treated as their
     /// magnitude (total), so a stray sign can never invert the rect.
     let toSimRect (center: Vec2) (w: float) (h: float) : SimRect =
-        let w = abs w
-        let h = abs h
-        { X = center.Vx - w / 2.0
-          Y = center.Vy - h / 2.0
-          Width = w
-          Height = h }
+        let struct (x, y, w, h) = centeredBox center w h
+        { X = x; Y = y; Width = w; Height = h }
+
+    /// Cross BACK out of the simulation vocabulary at the RECT: the CENTRE of a `Game.Core.Rect`,
+    /// as a `Vec2`. This is the return leg of `toSimRect`, and you need it because `Collision.resolve`
+    /// applies a separation by MOVING the body's rect (`Resolution.A.Bounds`) — so the post-separation
+    /// position a model must store comes back as a `Rect`, not a `Point`. Without this the consumer is
+    /// back to hand-writing the bridge. Size is deliberately not returned: a `Vec2` model expresses
+    /// size through `toSimRect`/`toRect`, never as labels on its own record.
+    let ofSimRectCenter (r: SimRect) : Vec2 =
+        { Vx = r.X + r.Width / 2.0
+          Vy = r.Y + r.Height / 2.0 }

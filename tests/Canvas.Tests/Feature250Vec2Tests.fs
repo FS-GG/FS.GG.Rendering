@@ -66,6 +66,30 @@ let tests =
               Expect.equal (r.X, r.Y, r.Width, r.Height) (-4.0, -3.0, 8.0, 6.0) "abs of size, no inverted rect"
           }
 
+          // The return leg of toSimRect. `Collision.resolve` separates a pair by MOVING the body's
+          // Bounds, so a model that stores positions as Vec2 gets its new position back as a Rect.
+          test "ofSimRectCenter recovers the centre of a Game.Core.Rect" {
+              let r = toSimRect (vec2 10.0 20.0) 8.0 6.0
+              Expect.equal (ofSimRectCenter r) (vec2 10.0 20.0) "ofSimRectCenter inverts toSimRect's centering"
+          }
+
+          // Left inverse only UP TO ROUNDING, and only over a sane coordinate range: the round trip is
+          // `(x - w/2) + w/2`, which is not exactly invertible in binary floating point, and at the far
+          // end of the double range `x - w/2` can overflow to infinity outright. Both bounds below are
+          // therefore load-bearing — an unbounded absolute-tolerance version of this property is false,
+          // and FsCheck finds the counterexample immediately.
+          test "ofSimRectCenter is toSimRect's left inverse (up to rounding) over a game-sized range" {
+              let inRange (v: float) = finite v && abs v <= 1.0e6
+
+              Check.One(
+                  Config.QuickThrowOnFailure.WithMaxTest 500,
+                  fun (x: float) (y: float) (w: float) (h: float) ->
+                      not (inRange x && inRange y && inRange w && inRange h)
+                      || (let back = ofSimRectCenter (toSimRect (vec2 x y) w h)
+                          let tol v size = 1.0e-9 * (1.0 + abs v + abs size)
+                          abs (back.Vx - x) <= tol x w && abs (back.Vy - y) <= tol y h))
+          }
+
           // The two crossings must not disagree: same numbers, distinct (nominally) types. A swapped
           // component in one of them would show up here and nowhere else.
           test "the sim crossing agrees componentwise with the scene crossing" {
