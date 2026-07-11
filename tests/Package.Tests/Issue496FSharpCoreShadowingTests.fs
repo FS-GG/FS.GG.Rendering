@@ -29,11 +29,18 @@ module Issue496FSharpCoreShadowingTests
 //
 // HONESTY CAVEAT (constitution Principle V): a line-shape reader over signature files, not an F#
 // parser -- the same modelling choice `ApiSurfaceMirrorTests`' M-MIR reader makes, and for the same
-// reason (`.fsi` is the most regular F# there is). It models attributes, type headers and DU cases.
+// reason (`.fsi` is the most regular F# there is). It models attributes (above the header or inline
+// on it), `type` AND `and` headers, accessibility, and DU cases; a record field or a wrapped case
+// payload is a continuation, not a boundary.
+//
 // It does NOT see: a collision created downstream by an `AutoOpen` module rather than by the `.fsi`
-// itself, or a case reached through a type abbreviation. It proves one bounded thing precisely -- no
-// PUBLIC DU in `src/**/*.fsi` shadows an `FSharp.Core` constructor without qualified access -- which
-// is exactly the class that produced #459 and #496.
+// itself, or a case reached through a type abbreviation. Nor does it check the `.fsx` skill
+// references, which are not compiled by the solution -- #496's own review caught four of them still
+// teaching the bare `Legibility.Warning` AFTER the type was fixed, which is precisely the defect
+// class this gate exists to end, and the gap is worth closing next.
+//
+// It proves one bounded thing precisely: no PUBLIC DU in `src/**/*.fsi` shadows an `FSharp.Core`
+// constructor without qualified access -- which is exactly the class that produced #459 and #496.
 
 open System
 open System.IO
@@ -96,8 +103,32 @@ let private signatureFiles () =
     |> Seq.sort
     |> List.ofSeq
 
-let private attributeLine = Regex(@"^\s*\[<.*>\]\s*$", RegexOptions.Compiled)
-let private typeHeader = Regex(@"^\s*type\s+(?<name>[A-Za-z_][A-Za-z0-9_']*)", RegexOptions.Compiled)
+/// A leading attribute block, e.g. `[<RequireQualifiedAccess>]` or `[<NoEquality; NoComparison>]`,
+/// possibly several in a row. Stripped from the front of a line so an attribute written INLINE with
+/// its declaration (`[<Struct>] type Foo =`) is not mistaken for a bare attribute line.
+let private leadingAttributes = Regex(@"^\s*(?:\[<[^\]]*>\]\s*)+", RegexOptions.Compiled)
+
+/// A DU header. `and` is load-bearing: F# declares mutually recursive types with it, and this repo's
+/// public surface really does (`and ScreenshotCaptureMode`, `and ChildOp<'msg>`, `and AttrValue<'msg>`).
+/// A reader that only matched `type` would be blind to an entire declaration form -- and the eighth
+/// shadowing case could then land inside one and keep this gate green, which is the one outcome it
+/// exists to prevent. `Accessibility` is captured so non-public types can be skipped: they are not
+/// visible to a consumer and so cannot shadow anything for one.
+let private typeHeader =
+    Regex(
+        @"^(?:type|and)\s+(?:(?<access>private|internal|public)\s+)?(?:rec\s+)?(?<name>[A-Za-z_][A-Za-z0-9_']*)",
+        RegexOptions.Compiled
+    )
+
+/// Any line that OPENS a new declaration, and therefore ends whatever DU we were reading. Everything
+/// else -- a record field, a wrapped case payload (`| Bar of` / `    x: int`), a constraint clause --
+/// is a CONTINUATION and must not end it. The earlier version of this reader flushed on any
+/// unrecognised line, so a case whose payload wrapped silently truncated its DU and dropped every
+/// case after it. (Same shape as `ApiSurfaceMirrorTests`' M-MIR reader, which learned this the hard
+/// way; the two cannot share code because M-MIR models signatures and this models attributes.)
+let private opensDeclaration =
+    Regex(@"^(?:val|type|and|module|namespace|open)\b", RegexOptions.Compiled)
+
 let private duCase = Regex(@"^\s*\|\s*(?<case>[A-Z][A-Za-z0-9_']*)", RegexOptions.Compiled)
 
 /// One public DU read out of a signature file.
@@ -107,9 +138,9 @@ type private DuDecl =
       Qualified: bool
       Collisions: string list }
 
-/// Reads the DU declarations out of one `.fsi`. An attribute block may sit on its own line(s) above
-/// the `type` header or inline on it; a DU's cases are the `|`-led lines that follow, up to whatever
-/// declaration comes next.
+/// Reads the public DU declarations out of one `.fsi`. An attribute block may sit on its own line(s)
+/// above the header or inline on it; a DU's cases are the `|`-led lines that follow, up to the next
+/// line that OPENS a declaration.
 let private readDus (file: string) : DuDecl list =
     let results = ResizeArray<DuDecl>()
     let mutable pendingAttributes: string list = []
@@ -133,36 +164,50 @@ let private readDus (file: string) : DuDecl list =
     for raw in File.ReadAllLines file do
         let line = raw.TrimEnd()
         let trimmed = line.TrimStart()
+        // Split a line into its leading attribute block and whatever declaration follows it, so
+        // `[<RequireQualifiedAccess>]` reads the same whether it sits above the header or on it.
+        let attributes = leadingAttributes.Match(line).Value
+        let declaration = leadingAttributes.Replace(line, "").TrimStart()
 
         if String.IsNullOrWhiteSpace line || trimmed.StartsWith "//" then
-            () // Blank lines and comments sit inside DU bodies; they end nothing.
-        elif attributeLine.IsMatch line then
-            // An attribute block introduces the declaration BELOW it, so it closes the DU above it.
+            () // Blank lines and doc comments sit inside DU bodies; they end nothing.
+        elif not (String.IsNullOrWhiteSpace attributes) && String.IsNullOrWhiteSpace declaration then
+            // A bare attribute line: it introduces the declaration BELOW, so it closes the DU above.
             flush ()
-            pendingAttributes <- line :: pendingAttributes
-        elif typeHeader.IsMatch line then
+            pendingAttributes <- attributes :: pendingAttributes
+        elif typeHeader.IsMatch declaration then
             flush ()
-            let name = typeHeader.Match(line).Groups.["name"].Value
-            let attributeText = String.Join(" ", line :: pendingAttributes)
-            current <- Some(name, attributeText.Contains "RequireQualifiedAccess", [])
+            let m = typeHeader.Match declaration
+            let qualified =
+                String.Join(" ", attributes :: pendingAttributes).Contains "RequireQualifiedAccess"
+
+            // `type internal Foo` is not part of the public surface, so it cannot shadow anything for
+            // a consumer. Skip it rather than report it under the name "internal".
+            let isPublic =
+                let access = m.Groups.["access"].Value
+                access = "" || access = "public"
+
+            current <- if isPublic then Some(m.Groups.["name"].Value, qualified, []) else None
+            pendingAttributes <- []
+        elif opensDeclaration.IsMatch declaration then
+            // `val`, `module`, `namespace`, `open` -- ends the DU, and its attributes are not ours.
+            flush ()
             pendingAttributes <- []
         elif duCase.IsMatch line then
             match current with
             | Some(name, qualified, cases) ->
-                let case = duCase.Match(line).Groups.["case"].Value
-                current <- Some(name, qualified, case :: cases)
+                current <- Some(name, qualified, duCase.Match(line).Groups.["case"].Value :: cases)
             | None -> ()
         else
-            // A `val`, a record field, a nested module -- anything that is not a case ends the DU.
-            flush ()
-            pendingAttributes <- []
+            () // A record field or a wrapped case payload: a continuation, not a boundary.
 
     flush ()
     List.ofSeq results
 
 /// Every public DU in `src/**/*.fsi` that declares an FSharp.Core-colliding case, fixed or not.
-let private shadowingDus () =
-    signatureFiles () |> List.collect readDus
+/// Read once: it is a pure function of the tree, and all three tests below ask for it.
+let private shadowingDus =
+    lazy (signatureFiles () |> List.collect readDus)
 
 let private describe (dus: DuDecl list) =
     dus
@@ -177,7 +222,7 @@ let fsharpCoreShadowingTests =
 
         test "no public DU shadows an FSharp.Core constructor without RequireQualifiedAccess" {
             let offenders =
-                shadowingDus ()
+                shadowingDus.Value
                 |> List.filter (fun du -> not du.Qualified)
                 |> List.filter (fun du -> not (Set.contains (du.File, du.TypeName) knownViolations))
 
@@ -190,7 +235,7 @@ let fsharpCoreShadowingTests =
 
         test "no known violation has been fixed without being removed from the list" {
             let stillShadowing =
-                shadowingDus ()
+                shadowingDus.Value
                 |> List.filter (fun du -> not du.Qualified)
                 |> List.map (fun du -> du.File, du.TypeName)
                 |> Set.ofList
@@ -213,7 +258,7 @@ let fsharpCoreShadowingTests =
         // matched nothing would make both tests above pass vacuously, forever.
         test "the reader sees the types #459 and #496 fixed" {
             let qualified =
-                shadowingDus ()
+                shadowingDus.Value
                 |> List.filter (fun du -> du.Qualified)
                 |> List.map (fun du -> du.File, du.TypeName)
                 |> Set.ofList
