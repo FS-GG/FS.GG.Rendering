@@ -2061,9 +2061,15 @@ module ControlsElmish =
         let private toViewerScript script =
             script |> List.collect frameInputToScript
 
-        let runScriptWithWindowBehavior
+        // Issue #438: ONE scripted body, parameterised by the sink — deliberately not a sinkless copy
+        // plus an audio copy. Two byte-identical folds are exactly what #429 had to unpick (the
+        // interactive one had quietly stopped honouring `PlayAudio` while its twin still did), so the
+        // metrics-observing wiring below is shared by the sinkless and audio-capable runners and cannot
+        // drift between them. `ignore` is what makes the existing runners behave exactly as before.
+        let private runScriptCore
             (options: ViewerOptions)
             (behavior: ViewerWindowBehaviorRequest)
+            (audioSink: AudioEffect list -> unit)
             (host: InteractiveAppHost<'model, 'msg>)
             (script: FrameInput<'msg> list)
             =
@@ -2081,7 +2087,12 @@ module ControlsElmish =
             match
                 runInteractiveAppWithLauncher
                     (fun launchOptions viewerHost ->
-                        Viewer.runInteractiveViewerScriptWithWindowBehavior launchOptions behavior viewerScript viewerHost)
+                        Viewer.runInteractiveViewerScriptWithWindowBehaviorAndAudio
+                            launchOptions
+                            behavior
+                            viewerScript
+                            audioSink
+                            viewerHost)
                     options
                     observingHost
             with
@@ -2091,12 +2102,39 @@ module ControlsElmish =
                       Metrics = observed |> Seq.toList }
             | Result.Error failure -> Result.Error failure
 
+        let runScriptWithWindowBehavior
+            (options: ViewerOptions)
+            (behavior: ViewerWindowBehaviorRequest)
+            (host: InteractiveAppHost<'model, 'msg>)
+            (script: FrameInput<'msg> list)
+            =
+            runScriptCore options behavior ignore host script
+
+        /// Issue #438: the audio-capable sibling of `runScriptWithWindowBehavior`.
+        let runScriptWithWindowBehaviorAndAudio
+            (options: ViewerOptions)
+            (behavior: ViewerWindowBehaviorRequest)
+            (audioSink: AudioEffect list -> unit)
+            (host: InteractiveAppHost<'model, 'msg>)
+            (script: FrameInput<'msg> list)
+            =
+            runScriptCore options behavior audioSink host script
+
         let runScript
             (options: ViewerOptions)
             (host: InteractiveAppHost<'model, 'msg>)
             (script: FrameInput<'msg> list)
             =
             runScriptWithWindowBehavior options Viewer.defaultWindowBehavior host script
+
+        /// Issue #438: the audio-capable sibling of `runScript`.
+        let runScriptWithAudio
+            (options: ViewerOptions)
+            (audioSink: AudioEffect list -> unit)
+            (host: InteractiveAppHost<'model, 'msg>)
+            (script: FrameInput<'msg> list)
+            =
+            runScriptCore options Viewer.defaultWindowBehavior audioSink host script
 
     // Feature 108 (US3, FR-009/010): the pure, headless, deterministic frame driver. Nested in
     // `ControlsElmish` so it reuses the SAME message→update→retained-step + binding-resolution +

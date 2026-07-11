@@ -2432,6 +2432,24 @@ module Viewer =
     let runInteractiveViewerWithAudio options audioSink (host: InteractiveViewerHost<'model,'msg>) =
         runInteractiveViewerWithWindowBehaviorAndAudio options defaultWindowBehavior audioSink host
 
+    // Issue #438: the scripted siblings of the two above. #429 threaded an `audioSink` through
+    // `runInteractiveViewerWithWindowBehaviorCore`, but the SCRIPTED entry points kept handing it
+    // `ignore` — so a product driven by a script emitted `PlayAudio` and the batch was dropped with no
+    // error and no diagnostic, which is the very silent discard #429 was filed about, surviving in the
+    // one path the evidence/responsiveness tooling actually drives. These pass the sink the core has
+    // always accepted; the sinkless `runInteractiveViewerScript*` are unchanged.
+    let runInteractiveViewerScriptWithWindowBehaviorAndAudio
+        options
+        behavior
+        script
+        audioSink
+        (host: InteractiveViewerHost<'model,'msg>)
+        =
+        runInteractiveViewerWithWindowBehaviorCore options behavior (Some script) audioSink host
+
+    let runInteractiveViewerScriptWithAudio options script audioSink (host: InteractiveViewerHost<'model,'msg>) =
+        runInteractiveViewerScriptWithWindowBehaviorAndAudio options defaultWindowBehavior script audioSink host
+
     let runAppEvidence (request: ViewerRunRequest) options (host: GeneratedAppHost<'model, 'msg>) =
         let model, _ = host.Init()
         let reportProductDefect ev = captureDiagnostic host.Diagnostics ev |> ignore

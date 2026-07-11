@@ -203,6 +203,28 @@ module Viewer =
         audioSink: (AudioEffect list -> unit) ->
         host: InteractiveViewerHost<'model,'msg> ->
             Result<ViewerLaunchOutcome, ViewerRunFailure>
+    /// Issue #438 — `runInteractiveViewerScript` with an audio sink. #429 gave the interactive family a
+    /// sink but only on its NON-scripted entry points; the scripted runners kept passing `ignore`, so a
+    /// scripted product's `PlayAudio` was still dropped with no error and no diagnostic. That mattered
+    /// more than the count of entry points suggests: the scripted runners are what the evidence and
+    /// responsiveness tooling drives, so "audio was requested during a scripted run" was the one thing
+    /// about sound that could not be observed. `audioSink` receives every batch in dispatch order, from
+    /// the same shared fold the live loops use; `runInteractiveViewerScript` (no sink) is unchanged.
+    val runInteractiveViewerScriptWithAudio:
+        options: ViewerOptions ->
+        script: ViewerScriptInput list ->
+        audioSink: (AudioEffect list -> unit) ->
+        host: InteractiveViewerHost<'model,'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
+    /// Issue #438 — `runInteractiveViewerScriptWithAudio` with an explicit window behavior, completing
+    /// the pairing the sinkless scripted runners already have.
+    val runInteractiveViewerScriptWithWindowBehaviorAndAudio:
+        options: ViewerOptions ->
+        behavior: ViewerWindowBehaviorRequest ->
+        script: ViewerScriptInput list ->
+        audioSink: (AudioEffect list -> unit) ->
+        host: InteractiveViewerHost<'model,'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
     /// Public contract function exposed by this FS.GG.UI package.
     val runAppEvidence: request: ViewerRunRequest -> options: ViewerOptions -> host: GeneratedAppHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
     /// Public contract function exposed by this FS.GG.UI package.
