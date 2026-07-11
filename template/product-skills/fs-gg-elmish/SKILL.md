@@ -13,6 +13,10 @@ are threaded through it. The adapter is a **viewer bridge**, not your MVU runtim
 it does not fold your product's `update`; a `UserMsg` is forwarded verbatim as a
 `DispatchUser` effect, and you compose your own `update` around the adapter (see Usage).
 
+It also owns **driving that boundary headlessly in tests** — folding a click/key/scroll
+script through the real retained route to a final model, so you can prove the UI
+*responds* and not merely that it renders (see Drive interaction headlessly).
+
 ## Public Contract
 
 The signatures you consume are bundled with this product at
@@ -143,6 +147,11 @@ Because the fold returns the final model, you can render and offscreen-capture t
 frame" loop without a live window:
 
 ```fsharp
+open FS.GG.UI.Scene
+open FS.GG.UI.SkiaViewer   // Viewer.captureScreenshotEvidence, ViewerPresentMode
+
+// `request` is a ScreenshotEvidenceRequest and `options` a ViewerOptions — build them
+// as in [[fs-gg-skiaviewer]]; only PresentMode has to change for an offscreen capture.
 let scene = SceneNode.Group [ (Control.renderTree host.Theme size (host.View size finalModel)).Scene ]
 let result = Viewer.captureScreenshotEvidence request { options with PresentMode = ViewerPresentMode.OffscreenReadback } scene
 // result.ProvesScreenshot = a real PNG was written. Otherwise the capture is
