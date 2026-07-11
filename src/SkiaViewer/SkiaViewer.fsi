@@ -33,6 +33,20 @@ module Viewer =
     /// have changed with no model change — focus/hover/scroll — so re-derive on THIS input).
     val internal runtimeStateRepaint: producedMessages: bool -> current: 'scene -> deriveScene: (unit -> 'scene) -> 'scene
 
+    /// Issue #429: the single `ViewerEffect` interpretation both persistent loops perform. It was two
+    /// byte-identical folds, and they drifted — the interactive copy discarded `PlayAudio`, so a
+    /// pointer-driven product got silence (#429). `internal` for the same reason as
+    /// `runtimeStateRepaint`: the live loops are GL/timing-bound, so this is the seam that lets the
+    /// regression assert the policy — notably that audio reaches the sink — deterministically.
+    /// Each loop passes in its own mutations; the returned flag is "this batch requested a close".
+    val internal interpretViewerEffects:
+        audioSink: (AudioEffect list -> unit) ->
+        onScene: (SceneNode -> unit) ->
+        onInputDispatch: (unit -> unit) ->
+        onDiagnostic: (ViewerDiagnosticEvent -> unit) ->
+        effects: ViewerEffect list ->
+            bool
+
     /// S3 (Feature 175) live-trace read-back. `traceStartCapture` begins in-memory capture of
     /// `RenderLagTrace` events (focus/hover/scroll/dispatch/timing); `traceDrainCapture` stops and
     /// returns them as `(event, fields)` tuples; `traceEmit` records one event. Lets a test or tool
@@ -169,6 +183,24 @@ module Viewer =
         options: ViewerOptions ->
         behavior: ViewerWindowBehaviorRequest ->
         script: ViewerScriptInput list ->
+        host: InteractiveViewerHost<'model,'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
+    /// Issue #429 — `runInteractiveViewer` with an audio sink, so the pointer/size-aware host family
+    /// can request sound. Before this, audio was reachable only through `runAppWithAudio`, whose
+    /// `GeneratedAppHost` has no pointer: a product that needed both got silence, because the
+    /// interactive loop discarded `PlayAudio`. `audioSink` receives every batch in dispatch order,
+    /// exactly as it does under `runAppWithAudio`; `runInteractiveViewer` (no sink) is unchanged.
+    val runInteractiveViewerWithAudio:
+        options: ViewerOptions ->
+        audioSink: (AudioEffect list -> unit) ->
+        host: InteractiveViewerHost<'model,'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
+    /// Issue #429 — `runInteractiveViewerWithAudio` with an explicit window behavior, completing the
+    /// pairing the sinkless interactive runners already have.
+    val runInteractiveViewerWithWindowBehaviorAndAudio:
+        options: ViewerOptions ->
+        behavior: ViewerWindowBehaviorRequest ->
+        audioSink: (AudioEffect list -> unit) ->
         host: InteractiveViewerHost<'model,'msg> ->
             Result<ViewerLaunchOutcome, ViewerRunFailure>
     /// Public contract function exposed by this FS.GG.UI package.

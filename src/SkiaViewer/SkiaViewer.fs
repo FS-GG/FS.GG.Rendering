@@ -1966,6 +1966,52 @@ module Viewer =
                     (fun () -> true)
                     None
 
+    /// Issue #429: the ONE effect interpretation both persistent loops perform — the generated-app loop
+    /// and the pointer/size-aware interactive loop. They were separate, byte-identical folds, and they
+    /// drifted: the interactive copy left `PlayAudio` in the discard group, so a product on the
+    /// interactive host got silence with nothing in the type system objecting (#429). Sharing the fold
+    /// is what stops the two host families diverging on effect handling again.
+    ///
+    /// `internal` for the same reason `runtimeStateRepaint` is: the live loops are GL/timing-bound and
+    /// not drivable headless, so this is the seam a regression test asserts the policy on directly.
+    /// The mutations each loop performs are passed in, keeping the fold itself free of loop state.
+    /// Returns whether the batch requested a close.
+    let internal interpretViewerEffects
+        (audioSink: AudioEffect list -> unit)
+        (onScene: SceneNode -> unit)
+        (onInputDispatch: unit -> unit)
+        (onDiagnostic: ViewerDiagnosticEvent -> unit)
+        (effects: ViewerEffect list)
+        : bool =
+        effects
+        |> List.fold
+            (fun closeRequested effect ->
+                match effect with
+                | RenderScene scene ->
+                    onScene scene
+                    closeRequested
+                | DispatchInput _ ->
+                    onInputDispatch ()
+                    closeRequested
+                | CloseWindow -> true
+                | EmitDiagnostic diagnostic ->
+                    onDiagnostic diagnostic
+                    closeRequested
+                | PlayAudio batch ->
+                    audioSink batch
+                    closeRequested
+                | OpenWindow _
+                | ApplyWindowOptions _
+                | QueryNativeWindowState
+                | StartBoundedRun _
+                | CheckDesktopSession
+                | CaptureScreenshot _
+                | CaptureImageEvidence _
+                | ReadPixels
+                | WriteVisualEvidence _
+                | WriteRunEvidence _ -> closeRequested)
+            false
+
     // Issue #245 — the one generated-app launch body. `audioSink` receives every `PlayAudio` batch in
     // dispatch order; the viewer itself owns no audio device, so realizing a batch is entirely the
     // caller's business (the template hands in `FS.GG.Audio.Host.Audio.play backend`). `runApp` and
@@ -2025,35 +2071,15 @@ module Viewer =
 
                         let handleResize (size: Size) = currentSurfaceSize <- size
 
+                        // Bound once per launch, not per call: `interpretEffects` runs on every dispatched
+                        // message and every tick, so building these closures inline would allocate three
+                        // per frame.
+                        let onScene scene = currentScene <- scene
+                        let onInputDispatch () = inputDispatch <- "true"
+                        let onDiagnostic diagnostic = captureDiagnostic host.Diagnostics diagnostic |> ignore
+
                         let interpretEffects effects =
-                            effects
-                            |> List.fold
-                                (fun closeRequested effect ->
-                                    match effect with
-                                    | RenderScene scene ->
-                                        currentScene <- scene
-                                        closeRequested
-                                    | DispatchInput _ ->
-                                        inputDispatch <- "true"
-                                        closeRequested
-                                    | CloseWindow -> true
-                                    | EmitDiagnostic diagnostic ->
-                                        captureDiagnostic host.Diagnostics diagnostic |> ignore
-                                        closeRequested
-                                    | PlayAudio effects ->
-                                        audioSink effects
-                                        closeRequested
-                                    | OpenWindow _
-                                    | ApplyWindowOptions _
-                                    | QueryNativeWindowState
-                                    | StartBoundedRun _
-                                    | CheckDesktopSession
-                                    | CaptureScreenshot _
-                                    | CaptureImageEvidence _
-                                    | ReadPixels
-                                    | WriteVisualEvidence _
-                                    | WriteRunEvidence _ -> closeRequested)
-                                false
+                            interpretViewerEffects audioSink onScene onInputDispatch onDiagnostic effects
 
                         let initialCloseRequested = interpretEffects initEffects
 
@@ -2133,7 +2159,18 @@ module Viewer =
     // Feature 085 — pointer-aware, size-aware durable launch. Mirrors
     // `runAppWithWindowBehavior` but routes native pointer events and resizes to the host,
     // and renders a size-aware `View`. `runApp`/`GeneratedAppHost` are untouched (FR-006).
-    let private runInteractiveViewerWithWindowBehaviorCore options behavior script (host: InteractiveViewerHost<'model,'msg>) =
+    //
+    // Issue #429 — `audioSink` receives every `PlayAudio` batch in dispatch order, exactly as it does
+    // in `runGeneratedApp`. The two host families are now symmetric in audio: a product that needs a
+    // pointer AND sound (every game with a menu) no longer has to choose. The sinkless entry points
+    // pass `ignore`, which is why they keep behaving exactly as before.
+    let private runInteractiveViewerWithWindowBehaviorCore
+        options
+        behavior
+        script
+        (audioSink: AudioEffect list -> unit)
+        (host: InteractiveViewerHost<'model,'msg>)
+        =
         match validateOptions options with
         | Result.Error failure -> Result.Error failure
         | Result.Ok() ->
@@ -2188,36 +2225,15 @@ module Viewer =
 
                         let presentScene () = presentedFor options currentSurfaceSize currentScene
 
+                        // Bound once per launch, not per call: `interpretEffects` runs on every dispatched
+                        // message, tick and pointer sample, so building these closures inline would
+                        // allocate three per frame.
+                        let onScene scene = currentScene <- scene
+                        let onInputDispatch () = inputDispatch <- "true"
+                        let onDiagnostic diagnostic = captureDiagnostic host.Diagnostics diagnostic |> ignore
+
                         let interpretEffects effects =
-                            effects
-                            |> List.fold
-                                (fun closeRequested effect ->
-                                    match effect with
-                                    | RenderScene scene ->
-                                        currentScene <- scene
-                                        closeRequested
-                                    | DispatchInput _ ->
-                                        inputDispatch <- "true"
-                                        closeRequested
-                                    | CloseWindow -> true
-                                    | EmitDiagnostic diagnostic ->
-                                        captureDiagnostic host.Diagnostics diagnostic |> ignore
-                                        closeRequested
-                                    // The interactive (pointer/size-aware) host has no audio sink: audio is a
-                                    // game-family seam reached through `runAppWithAudio` (issue #245). A
-                                    // `PlayAudio` here is discarded, exactly as the other unhandled effects are.
-                                    | PlayAudio _
-                                    | OpenWindow _
-                                    | ApplyWindowOptions _
-                                    | QueryNativeWindowState
-                                    | StartBoundedRun _
-                                    | CheckDesktopSession
-                                    | CaptureScreenshot _
-                                    | CaptureImageEvidence _
-                                    | ReadPixels
-                                    | WriteVisualEvidence _
-                                    | WriteRunEvidence _ -> closeRequested)
-                                false
+                            interpretViewerEffects audioSink onScene onInputDispatch onDiagnostic effects
 
                         let initialCloseRequested = interpretEffects initEffects
 
@@ -2399,16 +2415,22 @@ module Viewer =
                         | Result.Error failure -> Result.Error failure
 
     let runInteractiveViewerWithWindowBehavior options behavior host =
-        runInteractiveViewerWithWindowBehaviorCore options behavior None host
+        runInteractiveViewerWithWindowBehaviorCore options behavior None ignore host
 
     let runInteractiveViewer options host =
         runInteractiveViewerWithWindowBehavior options defaultWindowBehavior host
 
     let runInteractiveViewerScriptWithWindowBehavior options behavior script host =
-        runInteractiveViewerWithWindowBehaviorCore options behavior (Some script) host
+        runInteractiveViewerWithWindowBehaviorCore options behavior (Some script) ignore host
 
     let runInteractiveViewerScript options script host =
         runInteractiveViewerScriptWithWindowBehavior options defaultWindowBehavior script host
+
+    let runInteractiveViewerWithWindowBehaviorAndAudio options behavior audioSink (host: InteractiveViewerHost<'model,'msg>) =
+        runInteractiveViewerWithWindowBehaviorCore options behavior None audioSink host
+
+    let runInteractiveViewerWithAudio options audioSink (host: InteractiveViewerHost<'model,'msg>) =
+        runInteractiveViewerWithWindowBehaviorAndAudio options defaultWindowBehavior audioSink host
 
     let runAppEvidence (request: ViewerRunRequest) options (host: GeneratedAppHost<'model, 'msg>) =
         let model, _ = host.Init()

@@ -1,6 +1,7 @@
 namespace FS.GG.UI.Controls.Elmish
 
 open System
+open FS.GG.Audio.Core
 open FS.GG.UI.Controls
 open FS.GG.UI.KeyboardInput
 open FS.GG.UI.Scene
@@ -1963,6 +1964,34 @@ module ControlsElmish =
         runInteractiveAppWithLauncher
             (fun launchOptions viewerHost ->
                 Viewer.runInteractiveViewerWithWindowBehavior launchOptions behavior viewerHost)
+            options
+            host
+
+    // Issue #429: audio reaches the Controls host family the same way window behavior does — by
+    // swapping the terminal viewer launcher, NOT by forking `runInteractiveAppWithLauncher`. The
+    // message→update→retained-step wiring below is therefore the exact same code path with or without
+    // sound, so the two cannot drift apart.
+    let runInteractiveAppWithAudio
+        (options: ViewerOptions)
+        (audioSink: AudioEffect list -> unit)
+        (host: InteractiveAppHost<'model, 'msg>)
+        =
+        runInteractiveAppWithLauncher
+            (fun launchOptions viewerHost -> Viewer.runInteractiveViewerWithAudio launchOptions audioSink viewerHost)
+            options
+            host
+
+    /// Issue #429: `runInteractiveAppWithAudio` with an explicit window behavior — the audio-capable
+    /// sibling of `runInteractiveAppWithWindowBehavior`.
+    let runInteractiveAppWithWindowBehaviorAndAudio
+        (options: ViewerOptions)
+        (behavior: ViewerWindowBehaviorRequest)
+        (audioSink: AudioEffect list -> unit)
+        (host: InteractiveAppHost<'model, 'msg>)
+        =
+        runInteractiveAppWithLauncher
+            (fun launchOptions viewerHost ->
+                Viewer.runInteractiveViewerWithWindowBehaviorAndAudio launchOptions behavior audioSink viewerHost)
             options
             host
 

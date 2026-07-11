@@ -1,6 +1,7 @@
 namespace FS.GG.UI.Controls.Elmish
 
 open System
+open FS.GG.Audio.Core
 open FS.GG.UI.Controls
 open FS.GG.UI.KeyboardInput
 open FS.GG.UI.Scene
@@ -597,6 +598,27 @@ module ControlsElmish =
     val runInteractiveAppWithWindowBehavior:
         options: ViewerOptions ->
         behavior: ViewerWindowBehaviorRequest ->
+        host: InteractiveAppHost<'model, 'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
+
+    /// Issue #429: as `runInteractiveApp`, with an audio sink. This is the entry point for a product
+    /// that needs BOTH a pointer and sound — a start screen, a volume slider, click-to-target — which
+    /// until now had to choose: `runAppWithAudio` has no pointer and cannot author Controls, and the
+    /// interactive host silently discarded `PlayAudio`. `audioSink` receives every batch a product's
+    /// `update` emits, in dispatch order (the template hands in `FS.GG.Audio.Host.Audio.play backend`).
+    /// `runInteractiveApp` (no sink) is unchanged.
+    val runInteractiveAppWithAudio:
+        options: ViewerOptions ->
+        audioSink: (AudioEffect list -> unit) ->
+        host: InteractiveAppHost<'model, 'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
+
+    /// Issue #429: `runInteractiveAppWithAudio` with an explicit `ViewerWindowBehaviorRequest` — the
+    /// audio-capable sibling of `runInteractiveAppWithWindowBehavior`.
+    val runInteractiveAppWithWindowBehaviorAndAudio:
+        options: ViewerOptions ->
+        behavior: ViewerWindowBehaviorRequest ->
+        audioSink: (AudioEffect list -> unit) ->
         host: InteractiveAppHost<'model, 'msg> ->
             Result<ViewerLaunchOutcome, ViewerRunFailure>
 
