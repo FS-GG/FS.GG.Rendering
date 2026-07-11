@@ -26,6 +26,15 @@ artifacts/controls-gallery/
 artifacts/sample-apps/
 # Ant Showcase (feature 135, G3) per-page evidence output — transient, regenerated per run.
 artifacts/ant-showcase/
+# Validation-lane evidence (#439). ValidationLanes.writeSummary emits each lane's evidence to the
+# path the LaneResult carries, verbatim — so a relative path resolves against the process CWD. The
+# Feature166 fixtures carry relative ones, and Rendering.Harness.Tests is an Expecto Exe, so running
+# it from here (`dotnet run --project tests/Rendering.Harness.Tests/...`) drops a real
+# lanes/<lane-id>/{result.json,diagnostics.md} in the repo root. Transient; under `dotnet test` the
+# CWD is bin/ and it is already ignored, and a real harness run writes absolute paths under --out-dir.
+# ROOT-ANCHORED deliberately: unanchored, `lanes/` matches at any depth and would swallow the pinned
+# specs/163-package-feed-validation-lanes/readiness/lanes/** evidence tree re-admitted below.
+/lanes/
 *.trx
 *.coverage
 *.log
