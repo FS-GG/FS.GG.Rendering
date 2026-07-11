@@ -3097,6 +3097,11 @@ widen_cmd() {
   rm -f "$bodyfile" "$newfile"
   printf 'widened %s → Paths: %s\n' "$sr#$sn" "$newpaths"
 
+  # Declaration time is the cheap moment to learn that editing a kit source obliges a re-digest (#469).
+  # The alternative is learning it from a red `main` after the merge, which is how this was found.
+  kit_digest_warn "$(printf '%s' "$newpaths" | tr ',' '\n' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')" \
+                  "the touch-set you just declared on $sr#$sn"
+
   # Re-check against everything in flight, and notify each worker we now collide with.
   local pa claims n i=0 found=0
   pa="$(paths_of "$so" "$sr" "$sn")"
@@ -3154,6 +3159,63 @@ widen_cmd() {
 # reports drift, it does not prevent it. But an undetected drift is what turns two "disjoint" items
 # into a merge conflict, so CI runs this in --warn mode and posts what it found. The declaration is
 # only worth as much as the check that reads it back.
+# ---- the kit-digest coupling (#469) --------------------------------------------------------------
+# `registry/repos.yml` pins a CONTENT DIGEST of every coordination-kit source (ADR-0019: the kit is
+# content-addressed). So editing a kit source — `scripts/fsgg-coord`, or ANY `.claude/skills/<kit>/`
+# — invalidates that digest, and `repos-registry` reds `main` until it is regenerated. The obligation
+# is invisible: it is not in the item, not in `widen`, and `verify-paths` cannot see it either, because
+# `verify-paths` only asks "did the PR stay INSIDE what you declared" — never "was your declaration
+# SUFFICIENT for what you touched". A touch-set of `scripts/fsgg-coord` alone passes, and reds main.
+# That is the #266 shape: the gate is most reassuring exactly when it is least informed.
+#
+# So: name the obligation the moment a kit source appears in a file list. Advisory, never fatal — the
+# authority is `repos-registry`, and this only stops it being a surprise. Silent where there is no
+# registry to read (a receiver repo mirrors the kit but not `registry/repos.yml`).
+kit_sources() {  # -> one kit `source:` per line, or nothing if there is no registry to read
+  local reg="${FSGG_REPOS_YML:-$(git rev-parse --show-toplevel 2>/dev/null)/registry/repos.yml}"
+  [ -f "$reg" ] || return 0
+  sed -n 's/.*[{,][[:space:]]*source:[[:space:]]*\([^,}]*\).*/\1/p' "$reg" | sed 's/[[:space:]]*$//'
+}
+
+# $1 = newline-separated file list (declared touch-set, or a PR's changed files).
+# Prints the kit sources it touches, IFF `registry/repos.yml` is absent from that same list.
+kit_digest_gap() {
+  local files="$1" src hit=""
+  printf '%s\n' "$files" | grep -qx 'registry/repos.yml' && return 0   # obligation already met
+  while IFS= read -r src; do
+    [ -n "$src" ] || continue
+    # a file IS the source (a client script) or lives UNDER it (a skill directory)
+    # Escape the regex metacharacters a path can legitimately contain. `/` is NOT one of them — escaping
+    # it makes grep warn "stray \ before /" on every kit, and a tool that cries wolf gets ignored.
+    if printf '%s\n' "$files" | grep -qE "^$(sed 's|[.[*^$]|\\&|g' <<<"$src")(/|$)"; then
+      hit="$hit$src"$'\n'
+    fi
+  done <<<"$(kit_sources)"
+  printf '%s' "$hit"
+}
+
+kit_digest_warn() {  # $1 = file list, $2 = context label
+  local gap; gap="$(kit_digest_gap "$1")"
+  [ -n "$gap" ] || return 0
+  printf '\nfsgg-coord: KIT DIGEST — %s touches a content-addressed kit source but not `registry/repos.yml`:\n' "$2" >&2
+  printf '%s' "$gap" | sed 's/^/  /' >&2
+  printf 'Its pinned sha256 is now stale, and `repos-registry` will red `main` (ADR-0019, #469). Regenerate:\n' >&2
+  printf '%s' "$gap" | sed 's|^|  scripts/repos.sh digest |' >&2
+  printf '...then commit `registry/repos.yml` — and declare it in the touch-set.\n' >&2
+
+  # A SKILL kit carries a SECOND obligation, and it is the same trap one step along: every agent-skill
+  # root holds the BYTE-IDENTICAL union (ADR-0011/0014), so editing `.claude/skills/<kit>/` without
+  # mirroring into `.agents/skills/<kit>/` reds the `roots` gate. Found by walking straight into it
+  # while fixing the digest half of this very bug — which is the argument for naming it here: ONE edit
+  # carries SEVERAL invisible obligations, and the tooling named none of them.
+  local sk; sk="$(printf '%s' "$gap" | grep '^\.claude/skills/' || true)"
+  [ -n "$sk" ] || return 0
+  printf '\nfsgg-coord: SKILL ROOTS — a skill kit must stay BYTE-IDENTICAL across every root\n' >&2
+  printf '(ADR-0011/0014), or the `roots` gate reds `main`. Mirror it:\n' >&2
+  printf '%s' "$sk" | sed 's|^\(\.claude/skills/.*\)$|  cp -r \1/. .agents/skills/|' >&2
+  return 0
+}
+
 verify_paths_cmd() {
   local pr="" repo="" issue="" warn=""
   while [ $# -gt 0 ]; do
@@ -3237,6 +3299,11 @@ verify_paths_cmd() {
     done
     [ -n "$covered" ] || drift="$drift$f"$'\n'
   done <<<"$changed"
+
+  # The kit-digest obligation is checked against what the PR CHANGED, not against what it declared —
+  # a PR that edits a kit source and never re-digests reds `main` whether or not it drifted, so an
+  # `OK` verdict must not imply it is safe to merge (#469).
+  kit_digest_warn "$changed" "PR #$pr"
 
   if [ -z "$drift" ]; then
     printf 'FSGG-PATHS OK — PR #%s stays inside the touch-set declared by %s.\n' "$pr" "$issue"
