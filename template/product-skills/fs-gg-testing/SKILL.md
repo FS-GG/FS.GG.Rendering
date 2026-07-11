@@ -1,6 +1,6 @@
 ---
 name: fs-gg-testing
-description: Assert generated-product expectations and evidence in a generated FS.GG.UI product.
+description: Test a generated FS.GG.UI product — assert generated-product expectations and evidence, and test that the UI actually responds (drive interaction headlessly through the real route, and guard clicks with BoundIds so a silent no-op cannot pass green).
 ---
 
 # Testing Capability
@@ -10,6 +10,40 @@ description: Assert generated-product expectations and evidence in a generated F
 Use this skill for product test and evidence helpers: declaring
 generated-product expectations, classifying local package drift, and building
 evidence reports from pure inputs.
+
+If your product has a UI, read **Test that your UI actually responds** first — it
+is the test a product suite is most likely missing.
+
+## Test that your UI actually responds
+
+A UI suite that only exercises `update` proves the part that was never in doubt.
+It never asks the question that actually breaks: **when the user clicks this
+control, does anything happen?** A control can render perfectly and be wired to
+nothing, and no amount of `update` testing will notice. This has shipped silently
+more than once.
+
+Two facts to test on, both of which your product can reach today:
+
+- **Drive the real route, don't simulate it.** `ControlsElmish.Perf.runScriptToModel`
+  folds an ordered script of clicks / keys / scrolls / ticks through the REAL
+  retained pointer route and returns the **final model** — pure, headless, no GL,
+  no window, deterministic. Assert on the model the interaction produced, not on a
+  message you dispatched by hand.
+- **An unbound click is silent, so guard it.** `ControlRenderResult.BoundIds` is
+  the set of ids that actually carry an event binding. A click at an id that is
+  *not* in it dispatches nothing and raises nothing. So a typo'd `ControlId` in a
+  test drives *nothing* — and if the assertion is negative ("the screen did not
+  change", "no error appeared") the test **passes**. An entire headless UI suite
+  can be green and pressing nothing. Assert `Set.contains id result.BoundIds`
+  before you drive a click, and build it into any click helper you write so it
+  cannot be forgotten per-test.
+
+**The runnable recipe — locate → guard → drive → assert, plus capturing the
+post-interaction frame — is in [[fs-gg-elmish]].** It lives there because
+`Perf` and `BoundIds` come from the Controls packages, which only the
+control-bearing profiles (`app`, `sample-pack`, `game`) ship; a `headless-scene`
+or `governed` product has no controls to click, and this skill must not tell it to
+open a package it was never given.
 
 ## Public Contract
 
@@ -95,6 +129,8 @@ rather than hard-failing the phase.
 
 ## Related
 
+- [[fs-gg-elmish]] — the runnable interaction-driver recipe (`Perf.runScriptToModel`,
+  the `BoundIds` pre-click guard, post-interaction frame capture).
 - [[fs-gg-scene]] — the capability whose generated output these tests assert.
 - [[fs-gg-project]] — product-level wiring of expectations and readiness gates.
 

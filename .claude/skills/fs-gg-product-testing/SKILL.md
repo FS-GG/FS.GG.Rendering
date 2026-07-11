@@ -1,6 +1,6 @@
 ---
 name: fs-gg-product-testing
-description: Assert generated-product expectations and evidence in a generated FS.GG.UI product.
+description: Test a generated FS.GG.UI product — assert generated-product expectations and evidence, and test that the UI actually responds (drive interaction headlessly through the real route, and guard clicks with BoundIds so a silent no-op cannot pass green).
 ---
 
 # FS.GG Product Testing
