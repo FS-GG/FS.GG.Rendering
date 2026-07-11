@@ -48,7 +48,10 @@ let catalog =
       "fs-gg-collision", "template/product-skills/fs-gg-collision/SKILL.md", "(profile == \"game\" || profile == \"sample-pack\")"
       "fs-gg-elmish", "template/product-skills/fs-gg-elmish/SKILL.md", "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\")"
       "fs-gg-feedback-capture", "template/feedback/skill/SKILL.md", "(feedback == true) && lifecycle == \"spec-kit\""
-      "fs-gg-feedback-report", "template/feedback-report/skill/SKILL.md", "(feedback == true)"
+      // #434: the report is UNCONDITIONAL — its template.json row carries no `condition` at all, which
+      // is the engine's native "always". The empty string mirrors that absent condition verbatim, and
+      // normalizeCondition maps it to the canonical `always`. Kept identical to the row by G-EQUIV.
+      "fs-gg-feedback-report", "template/feedback-report/skill/SKILL.md", ""
       "fs-gg-game-core", "template/product-skills/fs-gg-game-core/SKILL.md", "(profile == \"game\" || profile == \"sample-pack\")"
       "fs-gg-grids", "template/product-skills/fs-gg-grids/SKILL.md", "(profile == \"game\" || profile == \"sample-pack\")"
       "fs-gg-keyboard-input", "template/product-skills/fs-gg-keyboard-input/SKILL.md", "(profile == \"app\" || profile == \"game\")"
@@ -131,10 +134,16 @@ let private normalizeConjunct (conj: string) : string =
         | [ p ], true -> sprintf "%s in [%s]" p (many |> List.map (fun (_, _, v) -> v) |> String.concat ", ")
         | _ -> many |> List.map (fun (p, op, v) -> sprintf "%s %s %s" p op v) |> String.concat " or "
 
+/// #434: a `sources` row with no `condition` fires on every scaffold — the engine's native
+/// "unconditional". The canonical grammar spells that `always`; without this case the empty string
+/// would reach parseClause, which indexes on a `==` that is not there.
 let normalizeCondition (condition: string) : string =
-    splitTopLevel "&&" condition
-    |> List.map normalizeConjunct
-    |> String.concat " and "
+    if System.String.IsNullOrWhiteSpace condition then
+        "always"
+    else
+        splitTopLevel "&&" condition
+        |> List.map normalizeConjunct
+        |> String.concat " and "
 
 /// Minimal JSON string escape (conditions carry embedded double quotes around literals).
 let jsonEscape (s: string) : string =

@@ -126,19 +126,25 @@ let private isSkillistCatalogSource (target: string) (includes: string list) =
 let private isManifestSource (source: string) =
     source.Replace('\\', '/') = "template/skill-manifest/"
 
-/// Issue #248: a capability-gated skill body — the same `.agents/skills/`-only, copyOnly,
-/// lifecycle-INDEPENDENT shape as a framework product skill, but gated on a capability flag
-/// (`feedback`) rather than a `profile` predicate, so it materializes on every profile AND lane.
-/// Its own category, so `frameworkChecked` keeps meaning exactly "profile-gated product skill".
+/// Issue #248: a skill body shipped OFF the `template/product-skills/` convention — the same
+/// `.agents/skills/`-only, copyOnly, lifecycle-INDEPENDENT shape as a framework product skill, but
+/// gated on a capability flag (`feedback`) rather than a `profile` predicate, so it materializes on
+/// every profile AND lane. Its own category, so `frameworkChecked` keeps meaning exactly
+/// "profile-gated product skill".
+///
+/// Issue #434 widened this to admit an UNGATED body (`condition = ""` — the engine's "always").
+/// The load-bearing facts were never the capability flag itself but the shape around it:
+/// off-convention source, provider target, no lifecycle clause, no profile predicate, verbatim body.
+/// An `always` row satisfies all of them, so it belongs here rather than in a category of its own.
 ///
 /// Detected BY SHAPE, not by path: keying it on `template/feedback-report/skill/` would send the
-/// NEXT capability-gated skill down the lifecycle-workspace branch, where it would be rejected for
-/// missing a `lifecycle == "spec-kit"` clause it must not have. `fs-gg-feedback-report` is merely
-/// the first. The ungated skill-manifest row is excluded by `condition <> ""`; capture and
-/// fs-gg-samples by their spec-kit clause; the product skills by their profile predicate.
+/// NEXT such skill down the lifecycle-workspace branch, where it would be rejected for missing a
+/// `lifecycle == "spec-kit"` clause it must not have. `fs-gg-feedback-report` is merely the first.
+/// The ungated skill-manifest row can no longer be excluded by `condition <> ""` (it is ungated too),
+/// so `classifySource` now resolves that named path BEFORE this shape test; capture and
+/// fs-gg-samples are excluded by their spec-kit clause, the product skills by their profile predicate.
 let private isCapabilitySkillSource (target: string) (condition: string) =
     target.Replace('\\', '/').StartsWith ".agents/skills/"
-    && condition <> ""
     && not (condition.Contains SPEC_KIT_COND)
     && not (condition.Contains "profile ==")
 
@@ -211,18 +217,22 @@ let private classifySource (row: SourceRow) : string * string list =
             require "framework/profile-predicate" (condition.Contains "profile ==")
             require "framework/copy-only" isCopyOnly
             "framework"
-        // CAPABILITY-GATED SKILL (issue #248): profile- and lifecycle-independent; the gate is a
-        // capability flag (`feedback`). Same provider-surface + verbatim-body rule as a product
-        // skill. Target, lifecycle-independence and a non-empty gate are the classification itself.
-        elif isCapabilitySkillSource target condition then
-            require "capability/copy-only" isCopyOnly
-            "capability"
         // SKILL-MANIFEST (Feature 231, named exception): ungated provider data in .agents/skills/.
+        // Resolved by its NAMED PATH before the capability shape test below — since #434 that test
+        // admits an ungated body, and this row (`.agents/skills/` target, no condition) would
+        // otherwise match it and be miscounted as a skill.
         elif isManifestSource source then
             require "manifest/target-agents-skills" (target.StartsWith ".agents/skills/")
             require "manifest/ungated" (condition = "")
             require "manifest/copy-only" isCopyOnly
             "manifest"
+        // CAPABILITY SKILL (issue #248; ungated variant #434): profile- and lifecycle-independent;
+        // the gate is a capability flag (`feedback`) or nothing at all (`always`). Same
+        // provider-surface + verbatim-body rule as a product skill. Target and lifecycle/profile
+        // independence are the classification itself.
+        elif isCapabilitySkillSource target condition then
+            require "capability/copy-only" isCopyOnly
+            "capability"
         // LIFECYCLE WORKSPACE: spec-kit-only (.specify/ incl. the single materialize step,
         // agent-context, the narrowed speckit-* skills copy, generated tree, and the spec-kit-only
         // skillist catalog — the named exception).
@@ -314,7 +324,7 @@ let private verifyGatedSources () =
     let materializeChecked = workspaceSourced "template/lifecycle/"
     let speckitNarrowChecked = workspaceSourced ".agents/skills/"
     assertTrue (frameworkChecked = 18) (sprintf "expected exactly 18 framework product-skill sources (.agents/skills/ provider surface incl. fs-gg-project + fs-gg-collision + fs-gg-visibility + fs-gg-grids + fs-gg-line-drawing, no twins), checked %d" frameworkChecked)
-    assertTrue (capabilityChecked = 1) (sprintf "expected exactly 1 capability-gated skill source (fs-gg-feedback-report, issue #248), checked %d" capabilityChecked)
+    assertTrue (capabilityChecked = 1) (sprintf "expected exactly 1 capability-scope skill source (fs-gg-feedback-report — ungated since #434), checked %d" capabilityChecked)
     assertTrue (manifestChecked = 1) (sprintf "expected exactly 1 ungated skill-manifest source, checked %d" manifestChecked)
     assertTrue (materializeChecked = 1) (sprintf "expected exactly 1 spec-kit-gated materialize source (template/lifecycle/), checked %d" materializeChecked)
     assertTrue (speckitNarrowChecked = 1) (sprintf "expected exactly 1 narrowed repo-root .agents/skills/ source, checked %d" speckitNarrowChecked)
@@ -737,21 +747,26 @@ let private codexProductSkillCount (dir: string) = orchestratorRootProductSkillC
 /// spec-kit-only authoring/conditional skills) — any extra dir is a vendored wrapper (F3).
 let private assertNoWrapperDirs (dir: string) (profile: string) (specKit: bool) =
     let allowedSpecKitExtras = Set.ofList [ "fs-gg-project"; "fs-gg-feedback-capture" ]
-    // Issue #248: the capability-gated skills are profile- AND lifecycle-independent, so they are an
-    // expected extra on EVERY lane whenever their flag is on — unlike the spec-kit-only set above.
-    // Today's callers all scaffold with `--feedback false`, so this only matters for a future caller
-    // that enables it; without the allowance that caller would get a misleading wrapper-vendoring
-    // failure naming a skill the template is supposed to ship.
-    let allowedCapabilityExtras = Set.ofList [ "fs-gg-feedback-report" ]
     let expected =
         let baseSet = Map.find profile expectedFrameworkSkills
         // fs-gg-samples is spec-kit-gated (sample-pack only): drop it from the sdd/none expectation.
-        if specKit then baseSet else Set.remove "fs-gg-samples" baseSet
+        let baseSet = if specKit then baseSet else Set.remove "fs-gg-samples" baseSet
+        // Issue #434: fs-gg-feedback-report is UNCONDITIONAL — every profile, every lane, with or
+        // without `--feedback`. So it is EXPECTED here, not merely tolerated. While it was gated on
+        // `feedback` it sat in an `allowedCapabilityExtras` allow-list, which only ever PERMITTED it
+        // and so could never catch its ABSENCE — and since `feedback` defaults to false it was in fact
+        // absent from every workspace in the org. Requiring it is what makes that regression loud.
+        //
+        // A future capability skill that IS flag-gated needs no allowance here: every scaffold below
+        // runs with its flag defaulted off, so it never emits and never reads as an extra. Add it to
+        // `expected` on the lanes that actually enable the flag, rather than restoring a blanket
+        // allow-list — an allowance can only ever permit a skill, never catch its absence, which is
+        // the exact hole that let this one ship to nobody.
+        Set.add "fs-gg-feedback-report" baseSet
     let actual = skillSetUnder dir ".agents"
     let extras =
         Set.difference actual expected
         |> fun s -> if specKit then Set.difference s allowedSpecKitExtras else s
-        |> fun s -> Set.difference s allowedCapabilityExtras
     if not (Set.isEmpty extras) then
         failwithf "%s/%s: unexpected fs-gg-* skill dirs vendored (dev-surface wrappers, audit F3): %A"
             profile (if specKit then "spec-kit" else "sdd|none") extras

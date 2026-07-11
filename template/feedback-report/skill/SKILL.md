@@ -1,7 +1,7 @@
 ---
 name: fs-gg-feedback-report
 description: Write one comprehensive retrospective report on the development experience — what worked, what did not, problems hit, improvements proposed — into a dated file under feedback/ at the end of a development cycle.
-compatibility: Agent-invoked authoring skill, shipped only when `dotnet new fs-gg-ui --feedback true`; materializes on every lifecycle lane; no product runtime.
+compatibility: Agent-invoked authoring skill, shipped in EVERY generated workspace — every profile and every lifecycle lane, with or without `--feedback`; no product runtime.
 metadata:
   author: fs-gg-ui
 ---
@@ -13,9 +13,11 @@ writes it to `feedback/<date>-<workspace>.md`. It is the synthesis counterpart t
 [[fs-gg-feedback-capture]]: capture writes an incremental record per Spec Kit phase, this
 skill reads whatever evidence exists and produces a single durable document.
 
-The two compose but neither requires the other. Capture is Spec Kit hook machinery and
-materializes only on that lane; this skill is agent-invoked and materializes on **every**
-lane (spec-kit, sdd, none) whenever `--feedback true` was passed.
+The two compose but neither requires the other. Capture is Spec Kit hook machinery, so it is
+gated on `--feedback true` **and** the spec-kit lane; this skill is agent-invoked, reads only
+optional and guarded evidence, and therefore ships **unconditionally** — every profile, every
+lane (spec-kit, sdd, none), with or without `--feedback`. If nothing was captured, it reports
+from what it can see; a lane with no capture records is a supported case, not a broken one.
 
 ## When to use
 

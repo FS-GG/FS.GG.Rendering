@@ -190,7 +190,7 @@
       "type": "parameter",
       "datatype": "bool",
       "defaultValue": "false",
-      "description": "Emit the feedback skills. On every lifecycle: the fs-gg-feedback-report skill, which writes one retrospective report per development cycle into feedback/. Additionally under lifecycle=spec-kit: per-phase capture into specs/<feature>/feedback/ via the after_* feedback hooks and the fs-gg-feedback-capture skill. Default false induces no diff."
+      "description": "Emit the per-phase feedback CAPTURE machinery: under lifecycle=spec-kit, capture into specs/<feature>/feedback/ via the after_* feedback hooks and the fs-gg-feedback-capture skill. Default false induces no diff. Does NOT gate fs-gg-feedback-report — since issue #434 the retrospective report skill materializes on every workspace unconditionally, and reads whatever guarded evidence exists (including none)."
     },
     "projectSlug": {
       "type": "generated",
@@ -530,13 +530,12 @@
       "target": ".specify/extensions/feedback/"
     },
     {
-      "condition": "(feedback == true)",
       "source": "template/feedback-report/skill/",
       "target": ".agents/skills/fs-gg-feedback-report/",
       "copyOnly": [
         "**/*"
       ],
-      "comment": "Issue #248: fs-gg-feedback-report is the retrospective synthesis counterpart to the per-phase fs-gg-feedback-capture above. Capture is Spec Kit hook machinery (after_* hooks into .specify/extensions/), so its lifecycle == \"spec-kit\" clause is load-bearing; the report is agent-invoked at cycle end and reads only optional, guarded evidence, so it carries NO lifecycle clause and materializes on every lane — the ADR-0017 §C2 fs-gg-project precedent. copyOnly keeps the body byte-identical to its skill-manifest sha256."
+      "comment": "Issue #434: fs-gg-feedback-report is the retrospective synthesis counterpart to the per-phase fs-gg-feedback-capture above, and carries NO condition at all — it materializes on EVERY generated workspace (manifest materializes-when: always). Capture is Spec Kit hook machinery (after_* hooks into .specify/extensions/), so its `(feedback == true) && lifecycle == \"spec-kit\"` gate is load-bearing; the report is agent-invoked at cycle end and reads only optional, guarded evidence, so it degrades cleanly on a lane that captured none. It was gated on `feedback` until #434 — which, since `feedback` defaults to false, shipped it to nobody. Prefer `always` over enumerating the five profiles: the enumeration silently stops shipping the skill the day a sixth profile is added. copyOnly keeps the body byte-identical to its skill-manifest sha256."
     },
     {
       "condition": "(designSystem == \"ant\")",
