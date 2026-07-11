@@ -4,7 +4,6 @@ description: Capture per-phase fs-gg-ui / Spec Kit feedback (process friction, g
 compatibility: Authoring command skill, shipped only when `dotnet new fs-gg-ui --feedback true`; no product runtime.
 metadata:
   author: fs-gg-ui
-  source: specs/058-skills-quality-feedback/contracts/feedback-capture.md
 ---
 
 # fs-gg-feedback-capture
@@ -18,7 +17,7 @@ prompts and writes one dated, phase-identified feedback record.
 - Automatically, via the `after_specify` / `after_clarify` / `after_plan` / `after_tasks`
   / `after_analyze` / `after_implement` hooks wired into `.specify/extensions/feedback/`.
 - Fires only on phase **completion** — an aborted or failed phase runs no `after_*` hook
-  and writes nothing (FR-016).
+  and writes nothing.
 
 ## Driven-library API
 
@@ -61,9 +60,12 @@ toolVersion: 0.9.0         # `fsgg-sdd --version`, or `toolVersion` from any sta
  offline: "research blocked — <why>">
 ```
 
-One record per phase (FR-014). Severity is mandatory (FR-015). A record naming
-generalizable code MUST capture the skill family/topic + candidate helper so it can be
-triaged into `FS.GG.UI.SkillSupport` (FR-015 → US2).
+One record per phase. Severity is mandatory. A record naming generalizable code MUST
+capture the skill family/topic + candidate helper so it can be triaged into
+`FS.GG.UI.SkillSupport`.
+
+These rules are normative **here**: this skill body is the contract, and no separate
+requirements document stands behind it. Cite it as `fs-gg-feedback-capture`.
 
 ## Version every record, and check before you file
 
