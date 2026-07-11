@@ -49,8 +49,13 @@ module TextInput =
     /// Seeds a `TextInputModel` for `controlId` in the given `mode` with an initial `value`, plus any startup effects.
     val init: controlId: ControlId -> mode: TextInputMode -> value: string -> TextInputModel * TextInputEffect list
     /// Pure transition applying `msg` to `model`, returning the next model and the `TextInputEffect` list it raises.
+    ///
+    /// The `TextInputEffect` values it raises all point OUT at your host: `RequestClipboardText`
+    /// asks for the clipboard, `CommitText` and `ReportTextInputDiagnostic` notify. When your host
+    /// fulfils a `RequestClipboardText`, feed the text back in yourself as the
+    /// `TextInputMsg.ClipboardTextReceived` message — there is no framework function that turns a
+    /// raised effect back into a `Msg` (the package carries a deprecated `interpretEffect` that
+    /// only ever returns `None`; it is being removed, and it is not the seam you want).
     val update: msg: TextInputMsg -> model: TextInputModel -> TextInputModel * TextInputEffect list
-    /// Maps a host-fulfilled `effect` back into the `TextInputMsg` that feeds it into `update`, if any.
-    val interpretEffect: effect: TextInputEffect -> TextInputMsg option
     /// Returns the `ControlDiagnostic` list implied by the current `model` state.
     val diagnostics: model: TextInputModel -> ControlDiagnostic list

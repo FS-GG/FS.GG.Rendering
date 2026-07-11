@@ -2,10 +2,15 @@ namespace FS.GG.UI.Canvas
 
 // Feature 244: pure persistence (save/load) request surface + record-only interpreter. A product's
 // `update` emits PersistenceEffect values (never reads or writes a file); the interpreter folds a
-// batch into ordered evidence. Scene-only, dependency-light — the real file-backed backend (and the
-// load-result Msg it dispatches back to the model) is a deferred follow-up and will consume the same
-// values without changing this surface. The payload is opaque: the product serializes its own Model
-// and this surface carries the bytes verbatim, never parsing them.
+// batch into ordered evidence. Scene-only, dependency-light. The payload is opaque: the product
+// serializes its own Model and this surface carries the bytes verbatim, never parsing them.
+//
+// Issue #445 (epic .github#416, the silent no-op family): the record-only status now lives in the
+// NAME (`interpretRecordOnly`) and on the compiler's diagnostic channel (`[<Obsolete>]` on the old
+// `interpret`), not only in this comment. Candor in a comment is not a mechanism — it does not
+// survive being called from another file. The file-backed backend is NOT "a deferred follow-up"
+// that exists somewhere: it does not exist at all, and no ViewerEffect case carries a
+// PersistenceEffect, so no host can route these requests to one.
 
 type SaveSlot = SaveSlot of string
 
@@ -60,5 +65,10 @@ module Persistence =
     let record (effect: PersistenceEffect) (evidence: PersistenceEvidence) : PersistenceEvidence =
         { evidence with Requested = evidence.Requested @ [ normalize effect ] }
 
-    let interpret (effects: PersistenceEffect list) : PersistenceEvidence =
+    let interpretRecordOnly (effects: PersistenceEffect list) : PersistenceEvidence =
         { Requested = List.map normalize effects }
+
+    // A forwarder kept at its exact published signature: removing or reshaping it is an ApiCompat
+    // break, so it retires with the next framework major (#537), not before. The `[<Obsolete>]` sits
+    // on the val in the .fsi (Principle II), where it is a hard build error at every call site.
+    let interpret (effects: PersistenceEffect list) : PersistenceEvidence = interpretRecordOnly effects

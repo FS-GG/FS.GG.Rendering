@@ -1,4 +1,6 @@
 namespace FS.GG.UI.Controls
+
+open System
 open FS.GG.UI.DesignSystem
 
 /// Whether a `TextInputModel` accepts a `SingleLine` or `MultiLine` of text.
@@ -50,7 +52,13 @@ module TextInput =
     val init: controlId: ControlId -> mode: TextInputMode -> value: string -> TextInputModel * TextInputEffect list
     /// Pure transition applying `msg` to `model`, returning the next model and the `TextInputEffect` list it raises.
     val update: msg: TextInputMsg -> model: TextInputModel -> TextInputModel * TextInputEffect list
-    /// Maps a host-fulfilled `effect` back into the `TextInputMsg` that feeds it into `update`, if any.
+    /// DEPRECATED — returns `None` for every `TextInputEffect`, always, and cannot do otherwise.
+    /// It claims to map "a host-fulfilled effect" back into a `TextInputMsg`, but no
+    /// `TextInputEffect` case carries a host result to map: `RequestClipboardText` is a request
+    /// going OUT to the host, and `CommitText` / `ReportTextInputDiagnostic` are notifications
+    /// going OUT. There is no fulfilment in the input, so there is no `Msg` in the output. Feed a
+    /// fulfilled clipboard read back yourself as `TextInputMsg.ClipboardTextReceived`.
+    [<Obsolete("TextInput.interpretEffect ALWAYS returns None, for every case, and no implementation could do better: no TextInputEffect case carries a host result to map back into a TextInputMsg. RequestClipboardText goes OUT to the host; CommitText and ReportTextInputDiagnostic are outward notifications. When your host fulfils a RequestClipboardText, dispatch TextInputMsg.ClipboardTextReceived yourself. This inert no-op is scheduled for removal at the next FS.GG.UI major.")>]
     val interpretEffect: effect: TextInputEffect -> TextInputMsg option
     /// Returns the `ControlDiagnostic` list implied by the current `model` state.
     val diagnostics: model: TextInputModel -> ControlDiagnostic list

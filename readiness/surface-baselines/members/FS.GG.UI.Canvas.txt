@@ -9,6 +9,7 @@ FS.GG.UI.Canvas.Persistence.clampVersion(System.Int32) : System.Int32
 FS.GG.UI.Canvas.Persistence.deleteSlot(FS.GG.UI.Canvas.SaveSlot) : FS.GG.UI.Canvas.PersistenceEffect
 FS.GG.UI.Canvas.Persistence.emptyEvidence : FS.GG.UI.Canvas.PersistenceEvidence [get]
 FS.GG.UI.Canvas.Persistence.interpret(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Canvas.PersistenceEffect>) : FS.GG.UI.Canvas.PersistenceEvidence
+FS.GG.UI.Canvas.Persistence.interpretRecordOnly(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Canvas.PersistenceEffect>) : FS.GG.UI.Canvas.PersistenceEvidence
 FS.GG.UI.Canvas.Persistence.load(FS.GG.UI.Canvas.SaveSlot) : FS.GG.UI.Canvas.PersistenceEffect
 FS.GG.UI.Canvas.Persistence.minVersion : System.Int32 [get]
 FS.GG.UI.Canvas.Persistence.record(FS.GG.UI.Canvas.PersistenceEffect, FS.GG.UI.Canvas.PersistenceEvidence) : FS.GG.UI.Canvas.PersistenceEvidence

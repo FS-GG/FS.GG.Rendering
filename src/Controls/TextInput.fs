@@ -107,10 +107,12 @@ module TextInput =
         | CompositionCommitted value -> { insertAt model value with Composition = None }, []
         | ApplyValidation state -> { model with Validation = state }, []
 
+    // Every arm returns None, and structurally must: no TextInputEffect case carries a host RESULT
+    // to map back into a Msg — all three point OUT at the host. Deprecated on the .fsi; kept at its
+    // published signature only so the deprecation stays additive for ApiCompat. Retires with #537.
     let interpretEffect effect : TextInputMsg option =
         match effect with
-        | RequestClipboardText _ ->
-            None
+        | RequestClipboardText _ -> None
         | CommitText _ -> None
         | ReportTextInputDiagnostic _ -> None
 
