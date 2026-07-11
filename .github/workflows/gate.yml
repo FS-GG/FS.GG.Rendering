@@ -482,3 +482,68 @@ jobs:
         env:
           FS_GG_RUN_TEMPLATE_PAYLOAD_RESTORE: '1'
         run: dotnet fsi scripts/validate-template-payload-pins.fsx
+
+  # #452 — the LIVE lifecycle-validation lane. This is the only thing in the repo that checks what a
+  # scaffold actually EMITS, as opposed to what template.json SAYS: it instantiates every
+  # profile x lifecycle combination with `dotnet new` and audits the emitted tree.
+  #
+  # It existed, and it ran NOWHERE. It is gated behind FS_GG_RUN_LIFECYCLE_VALIDATION=1, and nothing
+  # set it — so it rotted red on main, unseen, through four separate features that widened or narrowed
+  # a skill's gate without updating its expectations (#90, #91, #430, and the eight capability skills
+  # sample-pack shares with game). #434 is the concrete cost of that blindness: a skill defaulted off
+  # materialized into ZERO workspaces org-wide and no gate noticed, because the unit tests check the
+  # PREDICATE and only this lane checks the EMISSION.
+  #
+  # THREE THINGS ABOUT THIS JOB ARE LOAD-BEARING. Please read before "simplifying" it.
+  #
+  # 1. It is a SEPARATE JOB, and the env-free `Lifecycle-template verdict-core guard` in the required
+  #    `gate` job above keeps its deliberately-empty FS_GG_RUN_LIFECYCLE_VALIDATION=. That empty value
+  #    is not the bug — it is what keeps that ~1s structural guard off this heavy path. Do not "fix"
+  #    #452 by setting it to 1 there: that turns a one-second guard into a scaffold-everything loop
+  #    inside the critical required job.
+  #
+  # 2. It runs UNCONDITIONALLY — no `paths:` filter, no `if:`. A lane that only runs when someone
+  #    predicted in advance which paths could break it is a lane that reports green on the PR that
+  #    breaks it in a way nobody predicted, which is precisely the failure being closed here. The full
+  #    live loop is ~22s (four profiles x three lifecycles, no build, no GL, no network), so there is
+  #    nothing to buy by making it conditional.
+  #
+  # 3. The script installs THIS WORKING TREE's template into a scoped DOTNET_CLI_HOME before the loop
+  #    (`installTemplateUnderTest`). Do not "helpfully" add a `dotnet new install .` step here: until
+  #    #452 the loop scaffolded from whatever FS.GG.UI.Template package was installed on the machine,
+  #    so it audited a PUBLISHED PACKAGE and reported a verdict as though it had proven something about
+  #    the tree under review. A CI lane wired up that way would be worse than none: green, fast, and
+  #    about the wrong artifact.
+  #
+  # Fails CLOSED (`set -euo pipefail`, non-zero ⇒ red), per #266: "nothing to check" and "checked, and
+  # it's fine" must not share an exit code.
+  lifecycle-live-gate:
+    name: Lifecycle-template live gate (scaffolds every profile × lifecycle, audits the emitted tree)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Scaffold every profile × lifecycle and audit what it emitted
+        env:
+          FS_GG_RUN_LIFECYCLE_VALIDATION: '1'
+        run: |
+          set -euo pipefail
+          if ! dotnet fsi scripts/validate-lifecycle-template.fsx; then
+            echo "::error::live lifecycle-template validation failed — a scaffold EMITTED something the audit did not expect (or omitted something it required). This is the emission, not the predicate: the unit tests can all pass while this is red. See the exception above; if you widened or narrowed a skill's gate, update expectedFrameworkSkills in scripts/validate-lifecycle-template.fsx in the SAME change (refs #452)."
+            exit 1
+          fi
+
+      # The report is the lane's evidence. Keep it on a red run too — that is when it is worth reading.
+      - name: Upload the lifecycle validation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lifecycle-template-validation
+          path: specs/204-template-lifecycle-symbol/readiness/lifecycle-template-validation.md
+          if-no-files-found: warn
