@@ -527,8 +527,10 @@ parse_claims() {
     map(select(.body | test("^<!--\\s*fsgg:claim\\s")))
     | map(. as $c
         | (($c.body | [capture("^<!--\\s*fsgg:claim\\s+worker=(?<w>[^\\s>]+)")] | first) // null) as $m
+        | (($c.body | [capture("^<!--[^>]*\\sprev=(?<p>[^\\s>]*)")] | first) // null) as $p
         | { id: $c.id, worker: ($m.w // "unparsed-marker"), user: $c.user.login,
             updatedAt: $c.updated_at,
+            prev: (($p.p // "") | gsub("%20"; " ") | gsub("%25"; "%")),
             ageSec: ((now - ($c.updated_at | fromdateiso8601)) | floor) })
     | map(. + { stale: (.ageSec > $lease) })
     | sort_by(.id)'
@@ -582,22 +584,39 @@ notify_reaped() {  # $1=owner $2=repo $3=num $4=reaped-worker $5=age-min $6=by-w
     "$MSG_MARK" "$6" "$4" "$4" "$5" "$CLAIM_LEASE_MIN")" >/dev/null || true
 }
 
+# A claim OVERWRITES the Status column, so it must remember what it overwrote (#481). `unclaim_status`
+# could once derive the reset target — `Ready` — because `claim` was reachable only from `Ready`. #440
+# gave `take` a Backlog fallback and broke that invariant, and a value nobody recorded cannot be
+# recovered afterwards: by the time `release` looks, the column says `In progress`, which is the
+# claim's own footprint. So the marker carries it. The marker is the right home for it precisely
+# because the marker IS the claim — it is created, stolen, inherited and destroyed with the lease.
+#
+# Marker keys are SPACE-separated and Status names are not (`In progress`, `In review`), so the value
+# is percent-encoded. `%` first on the way in — and therefore LAST on the way out, or the escape eats
+# its own escapes. The matching decode is in `parse_claims`, which is the only reader.
+enc_status() { local s="${1//%/%25}"; printf '%s' "${s// /%20}"; }
+
 # The claim marker. `renewed` changes on every heartbeat so the edit always moves `updated_at` —
 # the lease clock is the comment's own mtime, which no worker can forge without touching the comment.
 # `worker=` stays the FIRST key after the marker, because that is what parse_claims anchors on. The
 # rest is PROVENANCE, not identity: the harness + session id say WHICH agent transcript made this
 # claim. That is the question FS-GG/.github#255 could only answer with file mtimes and `ps`.
-claim_body() {  # $1=worker $2=branch $3=ts $4=ref
-  local prov="" provline=""
+#
+# `prev=` is the exception: it is not provenance but STATE — the one fact about the pre-claim board
+# that only this claim knows. Every rewrite of this body (`heartbeat`, `say`, a re-claim) must carry
+# it forward, or the lease renews itself into amnesia and `release` is back to guessing `Ready`.
+claim_body() {  # $1=worker $2=branch $3=ts $4=ref $5=prev-status (optional)
+  local prov="" provline="" prev=""
   if [ -n "$HARNESS_SESSION" ]; then
     prov=" harness=$HARNESS_NAME session=$HARNESS_SESSION"
     provline=$'\n'"<sub>agent: \`$HARNESS_NAME\` · session \`$HARNESS_SESSION\`</sub>"
   fi
+  [ -n "${5:-}" ] && prev=" prev=$(enc_status "$5")"
   cat <<EOF
-<!-- $CLAIM_MARK worker=$1 lease=$CLAIM_LEASE_MIN$prov -->
+<!-- $CLAIM_MARK worker=$1 lease=$CLAIM_LEASE_MIN$prov$prev -->
 🔒 **Claimed** by worker \`$1\` · lease ${CLAIM_LEASE_MIN}m · renewed \`$3\`
 
-Isolated on branch \`$2\`. Renew with \`fsgg-coord heartbeat $4\`, drop with \`fsgg-coord release $4\`.$provline
+Isolated on branch \`$2\`. Renew with \`fsgg-coord heartbeat $4\`, drop with \`fsgg-coord release $4\`.${5:+ Was \`$5\` before this claim.}$provline
 EOF
 }
 
@@ -609,8 +628,12 @@ branch_for() {  # $1=owner $2=repo $3=num -> item/<n>-<title-slug>
   printf 'item/%s%s' "$3" "${s:+-$s}"
 }
 
-heartbeat_comment() {  # $1=owner $2=repo $3=num $4=commentId $5=worker $6=ref
-  patch_comment "$1" "$2" "$4" "$(claim_body "$5" "$(branch_for "$1" "$2" "$3")" "$(now_iso)" "$6")"
+# $7 is the marker's OWN `prev`, read back off the comment we are about to overwrite. A heartbeat
+# rewrites the whole body, so anything not passed here is DROPPED — and a claim that beats for two
+# hours would forget the column it overwrote long before it ever released it (#481).
+heartbeat_comment() {  # $1=owner $2=repo $3=num $4=commentId $5=worker $6=ref $7=prev-status
+  patch_comment "$1" "$2" "$4" \
+    "$(claim_body "$5" "$(branch_for "$1" "$2" "$3")" "$(now_iso)" "$6" "${7:-}")"
 }
 
 # ---- GraphQL wrapper: run a query, log its rateLimit cost when FSGG_COORD_DEBUG=1 ----------------
@@ -870,16 +893,30 @@ item_status() {
 # And a Status we could not READ is not a Status we may overwrite: guessing `Ready` over an unknown
 # column is the same fail-open one turn in (#266).
 #
+# RESTORING the claim's column is not the same as guessing `Ready` for it (#481). Undoing a write
+# means putting back what was there, and $2 — the `prev=` the claim recorded in its own marker — is
+# the only witness to that. #331 reset to `Ready` and was right to, but only because `claim` was then
+# reachable only FROM `Ready`; #440's Backlog fallback made `Ready` a promotion, and every undo path
+# (`release`, `take`'s lost-race retry, `reap`) quietly drained Backlog into the queue humans read as
+# triaged work.
+#
+# `Ready` survives only as the fallback for a claim that recorded NOTHING — a marker minted before
+# this change, or one whose pre-claim column could not be read. That is the old behaviour, now scoped
+# to the one case where there is genuinely nothing to restore.
+#
 # Echoes one TAB-separated verdict; always rc 0, because every outcome here is a decision:
-#   write<TAB>Ready   reset the claim's own column
+#   write<TAB><name>  restore the column this claim overwrote (`Ready` if it recorded none)
 #   keep<TAB><name>   leave a deliberately-chosen column alone
 #   offboard<TAB>     the item is on no board; there is nothing to reset
 #   unreadable<TAB>   the read failed; do not touch the column
-unclaim_status() {
-  local cur rc=0
+unclaim_status() {  # $1=ref $2=prev-status recorded by the claim (may be empty)
+  local cur rc=0 prev="${2:-}"
+  # A claim that recorded `In progress` recorded its own footprint, not a column anybody chose —
+  # restoring it would leave the item looking claimed with no claim on it. Treat it as unrecorded.
+  [ "$prev" = "$CLAIM_STATUS" ] && prev=""
   cur="$(item_status "$1" 2>/dev/null)" || rc=$?
   case "$rc" in
-    0) if [ -z "$cur" ] || [ "$cur" = "$CLAIM_STATUS" ]; then printf 'write\tReady\n'
+    0) if [ -z "$cur" ] || [ "$cur" = "$CLAIM_STATUS" ]; then printf 'write\t%s\n' "${prev:-Ready}"
        else printf 'keep\t%s\n' "$cur"; fi ;;
     2) printf 'offboard\t\n' ;;
     *) printf 'unreadable\t\n' ;;
@@ -1931,6 +1968,16 @@ claim_cmd() {
   local claims live stale mine others
   claims="$(claims_of "$R_OWNER" "$R_REPO" "$R_NUM")"
 
+  # The pre-claim Status this item's EXISTING claim (if any) already recorded — read BEFORE the GC
+  # below deletes those markers, because it deletes the record along with the comment (#481). Without
+  # this, `claim` over an expired claim reads a column that already says `In progress`, concludes
+  # nothing was overwritten, and the Backlog the FIRST claim overwrote is lost for good — so a
+  # reaped-then-reclaimed item still comes back `Ready`. Lowest marker id first: `parse_claims` sorts
+  # by id, and the oldest claim is the one that did the overwriting. Inherited by a `--force` steal
+  # and a re-claim for exactly the same reason.
+  local prev_claimed
+  prev_claimed="$(jq -r 'map(select(.prev != "")) | .[0].prev // ""' <<<"$claims")"
+
   # GARBAGE-COLLECT dead markers before deciding anything. A stale marker that is merely *ignored*
   # survives, and `heartbeat` would later renew it back to life underneath whoever claimed next —
   # two live markers, two workers, one item. Collect it here (telling its worker), so that after this
@@ -1985,7 +2032,7 @@ claim_cmd() {
   # sibling silently adopts another worker's lock. Warn here too; the success path's warning at the
   # bottom of this function is never reached from this early return.
   if [ -n "$mine" ]; then
-    heartbeat_comment "$R_OWNER" "$R_REPO" "$R_NUM" "$(jq -r '.id' <<<"$mine")" "$w" "$ref"
+    heartbeat_comment "$R_OWNER" "$R_REPO" "$R_NUM" "$(jq -r '.id' <<<"$mine")" "$w" "$ref" "$prev_claimed"
     stamp_worktree "$w" "$R_REPO#$R_NUM"
     printf 'held %s by worker %s (lease renewed)\n' "$R_REPO#$R_NUM" "$w"
     if [ -n "$WORKER_SHARED_WHY" ]; then
@@ -1999,10 +2046,24 @@ claim_cmd() {
     die "$R_REPO#$R_NUM is held by worker '$(jq -r '.[0].worker' <<<"$others")' ($(jq -r '.[0].ageSec / 60 | floor' <<<"$others")m ago). Use --force to steal, or 'reap' if its lease has expired."
   fi
 
+  # Read the column we are about to overwrite, and record it in the marker (#481). This is the ONLY
+  # moment it is knowable: one line further down the board says `In progress` and the answer is gone.
+  #
+  # A read that FAILS records nothing rather than guessing — an unrecorded claim releases to `Ready`,
+  # which is exactly the pre-#481 behaviour, so a flaky read degrades to the old defect instead of
+  # inventing a column. It must not abort the claim: the pre-claim status is bookkeeping, and the CAS
+  # below is the lock.
+  local prev=""
+  prev="$(item_status "$ref" 2>/dev/null)" || prev=""
+  # Already `In progress`, or blank? Then it is not a column somebody chose — it is a claim's leftover
+  # footprint (a `--force` steal, or a re-claim after `reap` cleared the marker but not the board).
+  # Inherit what the superseded claim recorded; re-reading here would only re-read that footprint.
+  if [ -z "$prev" ] || [ "$prev" = "$CLAIM_STATUS" ]; then prev="$prev_claimed"; fi
+
   local branch myid
   branch="$(branch_for "$R_OWNER" "$R_REPO" "$R_NUM")"
   myid="$(post_comment "$R_OWNER" "$R_REPO" "$R_NUM" \
-            "$(claim_body "$w" "$branch" "$(now_iso)" "$ref")")"
+            "$(claim_body "$w" "$branch" "$(now_iso)" "$ref" "$prev")")"
   [ -n "$myid" ] || die "claim: could not post the claim marker on $R_REPO#$R_NUM."
 
   # The CAS. Lowest LIVE marker id wins; a loser removes its own marker so the item stays clean.
@@ -2090,7 +2151,8 @@ heartbeat_cmd() {
   if [ -z "$holder" ] || [ "$(jq -r '.stale' <<<"$mine")" = "true" ]; then
     die "heartbeat: worker '$w' lease on $R_REPO#$R_NUM EXPIRED ($(jq -r '.ageSec / 60 | floor' <<<"$mine")m > ${CLAIM_LEASE_MIN}m). STOP working it. Re-take it with 'fsgg-coord claim $ref'."
   fi
-  heartbeat_comment "$R_OWNER" "$R_REPO" "$R_NUM" "$(jq -r '.id' <<<"$mine")" "$w" "$ref"
+  heartbeat_comment "$R_OWNER" "$R_REPO" "$R_NUM" "$(jq -r '.id' <<<"$mine")" "$w" "$ref" \
+    "$(jq -r '.prev // ""' <<<"$mine")"
   printf 'renewed %s for worker %s (lease %sm)\n' "$R_REPO#$R_NUM" "$w" "$CLAIM_LEASE_MIN"
 }
 
@@ -2112,6 +2174,9 @@ heartbeat_cmd() {
 #
 # A status we could not READ is not a status we may overwrite: forcing `Ready` over an unknown one is
 # the same defect a turn further in. An unreadable Status writes nothing and says so.
+#
+# And undoing the claim's own column means RESTORING it, not guessing `Ready` for it (#481) — the
+# marker recorded what the claim overwrote, so we read it back off the marker we are about to delete.
 #
 # `--status S` still wins outright. That is the caller stating the end state, rather than release
 # guessing it.
@@ -2138,6 +2203,13 @@ release_cmd() {
       && die "release: $R_REPO#$R_NUM is held by worker '$holder', not '$w' — pass --force to release it anyway."
   fi
 
+  # What did the claim we are dropping overwrite? Read it off the marker BEFORE the loop below deletes
+  # it — afterwards the only witness to the pre-claim column is gone (#481). Same selector as the
+  # delete, so a `--force` release restores what the EVICTED claim recorded, not what we imagine.
+  local prev_claimed
+  prev_claimed="$(jq -r --arg w "$w" --arg f "${force:-}" \
+    'map(select(($f != "" or .worker == $w) and .prev != "")) | .[0].prev // ""' <<<"$claims")"
+
   local id
   while read -r id; do
     [ -n "$id" ] || continue
@@ -2150,24 +2222,31 @@ release_cmd() {
   # The marker is gone by here, so the lease is ALREADY dropped. Nothing below may abort the release
   # — a board that cannot be read or written leaves the column alone and reports that, exactly as it
   # has always done for a board write that failed.
-  local boardnote=""
+  local boardnote="" restored=""
   if [ -z "$explicit" ]; then
     local act val
-    IFS=$'\t' read -r act val < <(unclaim_status "$ref")
+    IFS=$'\t' read -r act val < <(unclaim_status "$ref" "$prev_claimed")
     case "$act" in
-      write) status="$val" ;;
+      # An `if`, not an `&&` chain: this is the LAST command of the branch, so under `set -e` a false
+      # test would make the `case` — and the `if` wrapping it — exit non-zero on the ordinary path.
+      write) status="$val"
+             if [ -n "$prev_claimed" ] && [ "$val" = "$prev_claimed" ]; then restored=1; fi ;;
       keep)  boardnote="board: $val (preserved — release resets only the '$CLAIM_STATUS' claim set)" ;;
       offboard) boardnote="note: not on board '$TITLE'" ;;
+      # The column is unreadable, so we write nothing — but we still KNOW what this claim overwrote,
+      # and the repair we hand the operator must say so. Hardcoding `Ready` here would reintroduce
+      # #481's promotion in the ADVICE on the one path where the marker can still prove it wrong.
       *)     boardnote="note: Status unchanged — could not read it"
              echo "fsgg-coord: release: could not read $R_REPO#$R_NUM Status. The lease IS dropped; the board column is untouched." >&2
-             echo "  set it yourself if it still says '$CLAIM_STATUS': fsgg-coord set-field $ref Status Ready" >&2 ;;
+             echo "  set it yourself if it still says '$CLAIM_STATUS': fsgg-coord set-field $ref Status ${prev_claimed:-Ready}" >&2 ;;
     esac
   fi
 
   if [ -z "$boardnote" ]; then
     # SOFT_DIE=1: the board write is best-effort (the lease is already dropped); its `die` must not
     # escalate to the whole command under #344's fatal-die rule.
-    if ( SOFT_DIE=1; set_field "$ref" Status "$status" ) >/dev/null 2>&1; then boardnote="board: $status"
+    if ( SOFT_DIE=1; set_field "$ref" Status "$status" ) >/dev/null 2>&1; then
+      boardnote="board: $status${restored:+ (restored — the column this claim overwrote)}"
     else boardnote="note: not on board '$TITLE'"; fi
   fi
   printf 'released %s (worker %s)  ·  %s\n' "$R_REPO#$R_NUM" "$w" "$boardnote"
@@ -2757,8 +2836,12 @@ reap_cmd() {
     # Reaping UNDOES a claim, exactly as `release` does, so it owes the board the same answer and
     # asks the same question (#331). A worker whose lease expired on an item it had marked `Blocked`
     # must not have that column reset to `Ready` on its way out.
+    #
+    # And it restores the claim's own column rather than guessing `Ready` for it (#481), from the
+    # `prev=` the dead worker's marker recorded. `now_state` is that marker, re-read fresh a few lines
+    # above — the delete has already happened, so this is the last copy of it we will ever have.
     local rnote ract rval
-    IFS=$'\t' read -r ract rval < <(unclaim_status "$r#$num")
+    IFS=$'\t' read -r ract rval < <(unclaim_status "$r#$num" "$(jq -r '.prev // ""' <<<"$now_state")")
     case "$ract" in
       write) if ( SOFT_DIE=1; set_field "$r#$num" Status "$rval" ) >/dev/null 2>&1; then rnote="board: $rval"
              else rnote="not on board (marker cleared; nothing to reset)"; fi ;;
@@ -3024,7 +3107,8 @@ say_cmd() {
   local mine
   mine="$(claims_of "$R_OWNER" "$R_REPO" "$R_NUM" \
           | jq -c --arg w "$w" 'map(select(.stale | not) | select(.worker == $w)) | first // empty')"
-  [ -n "$mine" ] && heartbeat_comment "$R_OWNER" "$R_REPO" "$R_NUM" "$(jq -r '.id' <<<"$mine")" "$w" "$ref"
+  [ -n "$mine" ] && heartbeat_comment "$R_OWNER" "$R_REPO" "$R_NUM" "$(jq -r '.id' <<<"$mine")" "$w" "$ref" \
+    "$(jq -r '.prev // ""' <<<"$mine")"
   return 0
 }
 
