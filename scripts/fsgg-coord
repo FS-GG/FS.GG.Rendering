@@ -202,6 +202,13 @@ EX_RATE=75        # EX_TEMPFAIL: the GraphQL budget is exhausted. TRY AGAIN LATE
 EX_OFFBOARD=3     # the issue is not an item on the board at all. A different fact, and permanent.
 trap 'exit $(cat "$RC_FILE" 2>/dev/null || echo 1)' TERM
 
+# Scratch files this process owns, swept on ANY exit — including the TERM a fatal `die` raises, which
+# is how a rate-limited scan used to strand them in $CACHE. It tracks PATHS, not a `$CACHE/.foo.*`
+# glob, precisely because N workers share that cache: a pattern sweep would delete a CONCURRENT
+# worker's live scratch, which is the failure this protocol exists to avoid, one level down.
+TMPFILES=()
+trap 'rm -f "${TMPFILES[@]+"${TMPFILES[@]}"}"' EXIT
+
 OWNER="${FSGG_COORD_OWNER:-FS-GG}"
 TITLE="${FSGG_COORD_PROJECT:-Coordination}"
 # The ONLY Status a claim writes. Undoing a claim (`release`, `reap`) resets this column and no
@@ -2398,7 +2405,7 @@ open_claim_candidates() {  # $1=owner/repo -> JSON array of {number,title,url,bo
 # ZERO board items is therefore invisible to an org-wide `who`/`reap`. Pass --repo to reach it.
 active_claims() {
   local repo="${1:-}"
-  local board inprog repos offboard cand n=0 i=0 tmp
+  local board inprog repos cand n=0 i=0 tmp armA armB
 
   board="$(board_items)"
   inprog="$(board_filter "$repo" "In progress" "" "0" <<<"$board")"
@@ -2410,19 +2417,50 @@ active_claims() {
     case "$repo" in */*) repos="$repo" ;; *) repos="$OWNER/$repo" ;; esac
   fi
 
-  offboard='[]'
+  # NEVER PASS THE CANDIDATE SET THROUGH `argv` (#497). Both arms carry each issue's full BODY — arm
+  # B reads bodies on purpose, so a touch-set costs zero extra reads — and on Linux a SINGLE argument
+  # is capped at MAX_ARG_STRLEN (128 KiB), independently of the much larger total ARG_MAX. Past that,
+  # `execve` returns E2BIG, `jq` never runs, and the `$( )` yields the EMPTY STRING — which the next
+  # iteration of an `--argjson`-accumulator loop feeds straight back in as `--argjson acc ''`
+  # ("invalid JSON text"). The org crossed 128 KiB of open-issue bodies and every claim-aware read —
+  # who, reap, batch, take, inbox, widen, overlap --active — died at once.
+  #
+  # So the arms travel as FILES, never as arguments: arm B streams to NDJSON (one row per candidate,
+  # tagged with its repo), arm A lands as the array it already is, and the merge slurps both. That is
+  # the same `mktemp` + `jq -s` idiom this function already uses to collect its own rows below, and
+  # it is flat in the payload — a board twice this size costs the same argv.
+  #
+  # NOT YET FLAT, and deliberately out of this fix's scope: ONE candidate's body still rides argv,
+  # via `--argjson it` and `paths_from_body` below. GitHub caps a body at 65,536 CHARACTERS, not
+  # bytes, so a CJK/emoji-heavy body can still reach ~196 KB and breach the cap on its own (#507).
+  armA="$(mktemp "$CACHE/.armA.XXXXXX")"; armB="$(mktemp "$CACHE/.armB.XXXXXX")"
+  TMPFILES+=("$armA" "$armB")
+  printf '%s' "$inprog" >"$armA"
+
   local r lst
   while IFS= read -r r; do
     [ -n "$r" ] || continue
-    lst="$(open_claim_candidates "$r")"
-    offboard="$(jq -c -n --argjson acc "$offboard" --argjson lst "$lst" --arg repo "$r" \
-                  '$acc + [ $lst[] | . + {repo: $repo} ]')"
+    lst="$(open_claim_candidates "$r")"      # dies on an unreadable read — never hands back junk
+    # A DROPPED REPO IS A FAIL-OPEN, so this append may not fail quietly. If it did — a partial write,
+    # a full $CACHE — the loop would carry on, the merge would still produce a well-formed array over
+    # the SURVIVING repos, and the guard below would wave it through: a claim in the dropped repo goes
+    # invisible, its touch-set is never reserved, and `batch` hands the item to a second worker.
+    jq -c --arg repo "$r" '.[] | . + {repo: $repo}' <<<"$lst" >>"$armB" \
+      || die "cannot assemble the claim candidates for $r — refusing to proceed on a partial lock read."
   done <<<"$repos"
 
   # Merge the arms. `body` rides in from arm B (free touch-set); `inProgress` remembers arm A, which
   # is the ONLY thing that licenses an `unclaimed` verdict on a markerless item.
-  cand="$(jq -c -n --argjson a "$inprog" --argjson b "$offboard" '
-    ( [ $a[] | select(.number != null)
+  # `--slurpfile a` wraps arm A's single array, hence `$a[0]`; arm B is NDJSON, so `$b` IS the rows.
+  #
+  # `$a[0]` is deliberately NOT defaulted (`// []`). `board_filter` is a jq `map(…)`, so on SUCCESS it
+  # always emits an array — `[]` at the very least. An EMPTY armA therefore means the board read
+  # FAILED, and defaulting it to `[]` would quietly rebuild the claim set from arm B alone: a
+  # well-formed array, missing every board-`In progress` item, sailing straight past the fail-closed
+  # guard below — including the markerless `unclaimed` verdicts that ONLY arm A can produce (#257).
+  # Iterating null instead ERRORS, `$cand` comes back empty, and the guard does its job.
+  cand="$(jq -c -n --slurpfile a "$armA" --slurpfile b "$armB" '
+    ( [ $a[0][] | select(.number != null)
         | {repo, number, title, url, body: null, inProgress: true} ]
     + [ $b[] | {repo, number, title, url, body, inProgress: false} ] )
     | group_by("\(.repo)#\(.number)")
@@ -2432,7 +2470,8 @@ active_claims() {
             url:        ([ .[].url  ] | map(select(. != null)) | first // null),
             body:       ([ .[].body ] | map(select(. != null)) | first // null),
             inProgress: ([ .[].inProgress ] | any) })
-    | sort_by(.repo, .number)')"
+    | sort_by(.repo, .number)')" || true
+  rm -f "$armA" "$armB"
 
   # FAIL CLOSED ON AN UNREADABLE CLAIM SET (#461, epic #266). `[]` is a CLAIM: "I read the locks and
   # nobody holds anything." A failed scan is not entitled to make it. If the merge above produced
@@ -2453,7 +2492,7 @@ active_claims() {
     ''|*[!0-9]*) die "the claim set${repo:+ for '$repo'} did not yield a count (got '$n') — refusing to proceed on an unread lock." ;;
   esac
 
-  tmp="$(mktemp "$CACHE/.claims.XXXXXX")"; : >"$tmp"
+  tmp="$(mktemp "$CACHE/.claims.XXXXXX")"; TMPFILES+=("$tmp")
   while [ "$i" -lt "$n" ]; do
     local it r2 num o rp claims paths pathsjson
     it="$(jq -c ".[$i]" <<<"$cand")"; i=$((i + 1))
