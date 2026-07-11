@@ -1394,6 +1394,10 @@ next() {
       *)      die "next: unexpected argument '$1'." ;;
     esac
   done
+  # "Why was each candidate skipped?" is a question about THIS repo's queue (#480). A `next` that
+  # answers it over the whole org explains a queue the worker is not standing in — and is the very
+  # command the recipe reaches for when `take` says there is nothing to do.
+  repo="$(scope_repo "$repo")"
   [ -n "$repo" ] && repo="$(resolve_repo "$repo")"
   # SCHEDULING read: a scan another worker paid for within the TTL is good enough, because the claim
   # CAS — not this list — is what decides who gets the item (#418).
@@ -2546,6 +2550,49 @@ open_claim_candidates() {  # $1=owner/repo -> JSON array of {number,title,url,bo
 # open_claim_candidates), which also carries each issue's body — so a touch-set costs zero extra
 # reads. Each surviving candidate then costs one comments read.
 #
+# ---- scope_repo: the repo a WORKER command defaults to — the one you are standing in (#480) -------
+#
+# `take`/`batch`/`next`/`who` answer "what do I work on HERE" and "who else is HERE", and the protocol
+# has always documented their default as the current checkout (pnext-item: *"Default: the repo you are
+# standing in"*). It was never implemented. They initialised `repo=""` — and every board read treats
+# an empty repo as THE WHOLE ORG — so a bare `take` in the `.github` checkout claimed FS.GG.Game#141,
+# walked past four schedulable `.github` items, and printed
+#
+#     git worktree add ../FS.GG.Game-141 -b item/141-... origin/main
+#
+# where `origin/main` is `.github`'s. Follow that and you get a worktree of the WRONG REPOSITORY and
+# start "working" an item whose files are not in it. Not a useless command — one that silently
+# succeeds at the wrong thing: the #416 silent-no-op shape, one level up, in the dispatcher itself.
+#
+# NOT APPLIED TO EVERY --repo COMMAND, and the exceptions are the point:
+#   * `ready` / `lint` are org-wide RECONCILERS. /check-board runs a BARE `ready --all` and `lint` to
+#     reconcile the whole board; defaulting them to the checkout would silently shrink the reconciler
+#     to one repo — trading this scope bug for a worse one, in the tool that exists to catch it.
+#   * `inbox` is a MAILBOX. Another worker can `say` to you on any repo's issue — a cross-repo request
+#     you filed, most obviously. Narrowing it to the checkout would silently HIDE mail. That is a drop,
+#     not a scope.
+#
+# RESOLVED FROM THE GIT REMOTE, NOT `gh repo view`. The remote is free and offline; the API call costs
+# budget and, worse, FAILS ON AN EXHAUSTED ONE — which `verify-paths` then reports as "not inside a
+# GitHub checkout" (#430), a wrong cause stated with total confidence. A scheduling command that ran
+# out of GraphQL must not tell the worker they are in the wrong directory.
+scope_repo() {
+  local repo="${1:-}"
+  [ -n "$repo" ] && { printf '%s' "$repo"; return 0; }
+  local url
+  url="$(git config --get remote.origin.url 2>/dev/null || true)"
+  # https://github.com/FS-GG/.github(.git) | git@github.com:FS-GG/.github(.git) | ssh://…/FS-GG/x.git
+  case "$url" in
+    *github.com[:/]*)
+      repo="${url##*github.com}"; repo="${repo#[:/]}"; repo="${repo%.git}"; repo="${repo%/}"
+      # Must look like owner/repo. Anything else (a bare host, a nested path) is not a scope.
+      case "$repo" in */*/*|*/) repo="" ;; */*) : ;; *) repo="" ;; esac
+      ;;
+    *) repo="" ;;
+  esac
+  printf '%s' "$repo"
+}
+
 # KNOWN BOUND: with no --repo, the repos to scan are derived from the board. A claim in a repo with
 # ZERO board items is therefore invisible to an org-wide `who`/`reap`. Pass --repo to reach it.
 active_claims() {
@@ -2806,6 +2853,9 @@ who_cmd() {
       *)       die "who: unexpected argument '$1'." ;;
     esac
   done
+  # "Is everything here already claimed?" — the recipe's own diagnosis step, and it is about THIS
+  # repo (#480). /check-board passes `--repo` explicitly, so it is unaffected.
+  repo="$(scope_repo "$repo")"
   [ -n "$repo" ] && repo="$(resolve_repo "$repo")"
   local claims; claims="$(active_claims "$repo")"
 
@@ -2856,6 +2906,12 @@ reap_cmd() {
       *)       die "reap: unexpected argument '$1'." ;;
     esac
   done
+  # Scoped to the checkout like its siblings (#480) — and this is the one where it matters most.
+  # `reap --apply` DESTROYS state: it deletes another worker's claim marker and unassigns them. A
+  # destructive command whose bare default is THE WHOLE ORG is the scope bug at its worst — a janitor
+  # run in `.github` would collect live-looking claims in five other repos it was never pointed at.
+  # Every documented use already passes --repo; nothing relied on the org-wide default.
+  repo="$(scope_repo "$repo")"
   [ -n "$repo" ] && repo="$(resolve_repo "$repo")"
   local stale n=0 i=0
   stale="$(active_claims "$repo" | jq -c '[.[] | select(.state == "stale")]')"
@@ -2959,6 +3015,9 @@ batch_cmd() {
       *)        die "batch: unexpected argument '$1'." ;;
     esac
   done
+  # The engine `take` schedules from — it must answer for the same scope (#480). A read, so an
+  # undetectable checkout falls back to the org rather than dying; `take` is the one that refuses.
+  repo="$(scope_repo "$repo")"
   [ -n "$repo" ] && repo="$(resolve_repo "$repo")"
   case "$want" in ''|*[!0-9]*) die "batch: -n must be a number." ;; esac
 
@@ -3072,9 +3131,16 @@ take_cmd() {
     esac
   done
   case "$tries" in ''|*[!0-9]*) die "take: --tries must be a number." ;; esac
+  # Default to the repo you are standing in (#480). `take` is the one command here that ACTS — it
+  # claims an item and prints a worktree command against THIS checkout's origin — so an undetectable
+  # scope is a hard error, not a quiet fall back to the whole org. Falling back is what handed a
+  # `.github` worker an FS.GG.Game item and a worktree command that would have built it in the wrong
+  # repository. A read can afford to guess wide; a claim cannot.
+  repo="$(scope_repo "$repo")"
+  [ -n "$repo" ] || die "take: --repo required (no git remote here, so 'the repo you are standing in' is undefined)."
   worker >/dev/null; local w="$WORKER_ID"
   autoflush                                    # a queued board write drains here, not on a human's memory
-  local -a repoflag=(); [ -n "$repo" ] && repoflag=(--repo "$repo")
+  local -a repoflag=(--repo "$repo")
   local attempt=1
   while [ "$attempt" -le "$tries" ]; do
     local pick
