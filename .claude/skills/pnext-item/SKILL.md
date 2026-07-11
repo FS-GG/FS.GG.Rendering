@@ -53,6 +53,21 @@ scripts/fsgg-coord take --repo <r>     # pick + claim the next SCHEDULABLE item,
 `take` asks `batch` what is startable *right now* — `Ready`, unblocked, and touch-set-disjoint from
 every in-flight claim — then claims it. On a lost race it re-schedules automatically.
 
+**If `take` exits 75, the GraphQL budget is exhausted — back off until the reset it names; do not
+loop.** You and every other worker share ONE 5,000-pt/hr budget (one account), and this loop is what
+drains it ([#418](https://github.com/FS-GG/.github/issues/418)): board reads are GraphQL-only, so N
+workers polling cost N full scans a round. Three rules follow, and they are the difference between a
+fan-out that scales and one that takes the board down with it:
+
+- **Let `take`/`next` use the shared 90s scan cache.** Never add `--fresh` in a loop; it exists for
+  `take`'s own retry-after-a-lost-race, which already sets it.
+- **Read issues over REST, not GraphQL.** `fsgg-coord issues <repo>` is free; `gh issue list` /
+  `gh issue view` cost 2 points each, and `gh issue edit` costs 4. When GraphQL is gone, REST is still
+  up — `gh api repos/…` will still open your PR and post your comments.
+- **A rate-limited board write is DEFERRED, not lost.** `claim` says so, queues it, and `fsgg-coord
+  flush` (or the next board write) replays it. Do not "fix" the board by hand; you will just duplicate
+  the write.
+
 **If `take` finds nothing, that is a finding, not an empty queue.** Diagnose before you idle:
 
 ```sh

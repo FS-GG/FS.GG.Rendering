@@ -21,7 +21,20 @@
 #      GraphQL-only full scan (Projects v2 has no server-side item filter). `ready`/`next` keep it
 #      cheap by selecting only two fields per item via `fieldValueByName` (a RESOLVER field, no node
 #      multiplication) — vs. `gh project item-list`, which nests `fieldValues(first:100)` inside
-#      `items(first:N)` for O(items × 100) ≈ 2,500 points. A 100-item page costs ~1 point (~3 total).
+#      `items(first:N)` for O(items × 100). Measured on the live 640-item board: a thrifty full scan
+#      is 7 pages × 1 pt = 7 pts, while `gh project item-list` costs 6 pts to read FIVE items.
+#   5. THE BUDGET IS SHARED, SO SPEND IT ONCE PER TTL, NOT ONCE PER WORKER (#418). N parallel workers
+#      authenticate as ONE account and share ONE 5,000-pt/hr budget. Five of them looping `take`/`next`
+#      re-scanned the whole board every round and drained it in ~15 minutes — and the first thing an
+#      exhausted budget kills is the WRITES. So the scan is cached to the shared cache dir for
+#      FSGG_COORD_SCAN_TTL_SEC (90s): the scheduling reads (`next`/`take`/`batch`) pay for ONE scan
+#      between all workers in a window; the reconciling reads (`ready`/`lint`/`who`) always scan fresh,
+#      because a cached "truth" is how a reconciler reports drift that was already fixed. `--fresh`
+#      forces a rescan; the claim CAS still reads its markers over REST and is NEVER cached.
+#   6. EXHAUSTION IS A NAMED CONDITION, NOT A MYSTERY 500 (#418). A rate-limited call exits EX_RATE
+#      (75) with the reset time — the signal a worker loop BACKS OFF on. And a board write refused by
+#      the budget is QUEUED (`flush`), not swallowed: swallowing it is what left the board saying
+#      `Backlog` while a worker held the item — the CLAIM-STATUS-LAG drift /check-board reconciles.
 #
 # Every GraphQL call also asks for `rateLimit { cost remaining }`; set FSGG_COORD_DEBUG=1 to log it
 # (and use `budget` to read the meters directly) so you can VERIFY the drop instead of guessing.
@@ -49,11 +62,17 @@
 #                                             # thrifty full-board scan (2 fields/item). --repo takes
 #                                             # a registry short-id (sdd/rendering/governance/
 #                                             # templates/.github), owner/repo, or a literal repo name
-#   fsgg-coord next  [--repo R] [--ignore-blocked]
+#   fsgg-coord next  [--repo R] [--ignore-blocked] [--fresh]
 #                                             # print the one most-startable item (Ready, else
 #                                             # Backlog), SKIPPING items whose `Blocked by` refs are
 #                                             # still open (or unverifiable), with the reason on
 #                                             # stderr. --ignore-blocked restores the old behaviour.
+#                                             # Rides the shared scan cache (see lever 5); --fresh
+#                                             # forces a rescan.
+#   fsgg-coord flush [--dry-run]              # replay board writes that an exhausted GraphQL budget
+#                                             # refused. Queued by `claim`, drained automatically by
+#                                             # the next board-writing command; this is the manual
+#                                             # handle. --dry-run lists the queue.
 #   fsgg-coord child <parent> <issue>         # link <issue> as a native SUB-ISSUE of <parent> — the
 #                                             # ONLY edge `done --flip` rolls up over. A title
 #                                             # convention or a comment is not a link.
@@ -72,7 +91,13 @@
 #                                             # the scan cannot see, none whose body declares a child
 #                                             # that is not linked. Exit 1 on any error. `Status: Done`
 #                                             # on a still-open issue is a NOTE (fatal under --strict).
-#   fsgg-coord budget                         # print GraphQL + REST rate-limit meters (free)
+#   fsgg-coord budget                         # print GraphQL + REST rate-limit meters, the queued-write
+#                                             # count, and a WARNING while there is still budget left
+#                                             # to act on (free — rate_limit does not meter itself)
+#
+# EXIT CODES: 0 ok · 1 error · 3 the issue is not on the board · 75 (EX_RATE) the GraphQL budget is
+# exhausted — TRY AGAIN LATER. A worker loop must treat 75 as "back off until the reset", never as a
+# protocol failure, and never by retrying immediately.
 #
 # Parallel intra-repo work (ADR-0021, revised by ADR-0027). N workers share ONE GitHub account, so
 # the LOCK, the IDENTITY, and the CHANNEL are all keyed on a WORKER ID, never on the login:
@@ -140,6 +165,7 @@
 #   FSGG_COORD_PROJECT  board title               (default: Coordination)
 #   FSGG_COORD_CACHE    cache dir                 (default: ${XDG_CACHE_HOME:-~/.cache}/fsgg-coord)
 #   FSGG_COORD_BOARD_TTL_MIN  board-map freshness (default: 1440 min = 24h; schema changes are rare)
+#   FSGG_COORD_SCAN_TTL_SEC   hot-read board-scan cache, shared across workers (default: 90; 0 = off)
 #   FSGG_COORD_DEBUG    =1 -> log each GraphQL call's rateLimit cost/remaining to stderr
 #   FSGG_WORKER         this worker's id          (default: derived — run `whoami` to see how)
 #   FSGG_CLAIM_LEASE_MIN  claim lease in minutes  (default: 120; past it a claim is reapable)
@@ -161,7 +187,16 @@ set -euo pipefail
 # soft read `item_status` feeds release/reap. They set `SOFT_DIE=1` in that subshell's environment;
 # `die` then skips the signal and just exits the subshell, so the caller's `if (…)` / `|| return`
 # catches it exactly as before. Unmarked dies stay fatal, which is the whole point.
-trap 'exit 1' TERM
+#
+# WHY THE EXIT CODE IS CARRIED THROUGH A FILE (#418). A soft caller must be able to tell WHY a board
+# write failed — "this issue is not on the board" and "the GraphQL budget is exhausted" are opposite
+# facts that used to be one indistinguishable `exit 1`, and `claim` reported the first when the truth
+# was the second (see claim_cmd). So dies carry a code. `exit <rc>` inside `$( )` cannot hand that
+# code to the top-level shell, and neither can a variable — the subshell's assignment dies with it —
+# so a fatal die writes the code to RC_FILE and the TERM trap exits with it.
+EX_RATE=75        # EX_TEMPFAIL: the GraphQL budget is exhausted. TRY AGAIN LATER — not a protocol error.
+EX_OFFBOARD=3     # the issue is not an item on the board at all. A different fact, and permanent.
+trap 'exit $(cat "$RC_FILE" 2>/dev/null || echo 1)' TERM
 
 OWNER="${FSGG_COORD_OWNER:-FS-GG}"
 TITLE="${FSGG_COORD_PROJECT:-Coordination}"
@@ -178,8 +213,83 @@ CLAIM_LEASE_MIN="${FSGG_CLAIM_LEASE_MIN:-120}"
 CLAIM_MARK='fsgg:claim'
 MSG_MARK='fsgg:msg'
 
-die() { echo "fsgg-coord: $*" >&2; [ -n "${SOFT_DIE:-}" ] || kill -s TERM $$ 2>/dev/null; exit 1; }
+RC_FILE="${TMPDIR:-/tmp}/.fsgg-coord-rc.$$"
+trap 'rm -f "$RC_FILE"' EXIT
+
+# die_rc <rc> <message…> — the general form. `die` is `die_rc 1`, which is every existing caller.
+#
+# The code is written to RC_FILE on BOTH paths, and that is load-bearing for the soft one. A soft die
+# fires from wherever it happens to be — routinely two levels down, inside a `$( )` inside the
+# SOFT_DIE subshell (item_id, called from set_field). `exit 3` there only unwinds the SUBSTITUTION,
+# and per this file's own opening note `set -e` does not propagate that across `item="$(…)"` — so the
+# code the caller finally reads is whatever the *next* failing command returns, not the one the die
+# meant. That is how an off-board claim first reported itself as a failed write. RC_FILE carries the
+# real code out; `soft_run` reads it back.
+die_rc() {
+  local rc="$1"; shift
+  echo "fsgg-coord: $*" >&2
+  # FIRST die wins. A soft die unwinds only its own `$( )`, so the code that follows may blunder on
+  # and die AGAIN for a downstream reason — item_id dies "budget exhausted", set_field carries on with
+  # an empty item id, and the malformed board write dies "write failed". The LAST code to be written
+  # is the least informative one, and reporting it is how a rate-limit gets reported as "not on board".
+  # soft_run truncates RC_FILE before each run, so "first" always means "first within this attempt".
+  [ -s "$RC_FILE" ] || printf '%s' "$rc" > "$RC_FILE" 2>/dev/null || true
+  [ -n "${SOFT_DIE:-}" ] && exit "$rc"          # local: unwinds only to the SOFT_DIE subshell
+  kill -s TERM $$ 2>/dev/null                   # fatal: the trap exits the top-level shell with rc
+  exit "$rc"
+}
+die() { die_rc 1 "$@"; }
+
+# The die already happened one substitution down, and already printed its message. Carry its code out
+# without inventing a second one — the caller cannot see it, and a guessed cause is worse than none.
+die_relay() {
+  local rc; rc="$(cat "$RC_FILE" 2>/dev/null)"; [ -n "$rc" ] || rc=1
+  [ -n "${SOFT_DIE:-}" ] && exit "$rc"
+  kill -s TERM $$ 2>/dev/null
+  exit "$rc"
+}
+
+# soft_run <cmd…> — run a command whose `die` must NOT unwind the caller, and get the code the die
+# actually chose (EX_RATE / EX_OFFBOARD / 1), however deeply nested it fired. Callers redirect.
+soft_run() {
+  : > "$RC_FILE"
+  local rc=0
+  ( SOFT_DIE=1; "$@" ) || rc=$?
+  if [ -s "$RC_FILE" ]; then rc="$(cat "$RC_FILE")"; : > "$RC_FILE"; fi
+  return "$rc"
+}
 dbg() { [ -n "${FSGG_COORD_DEBUG:-}" ] && echo "fsgg-coord: $*" >&2 || true; }
+
+# ---- the budget is SHARED, so exhausting it is a first-class, NAMED condition (#418) --------------
+# N parallel workers authenticate as ONE GitHub account and therefore share ONE 5,000-point/hr
+# GraphQL budget. Exhaustion is not a transient 5xx and must never be handled like one: it is
+# predictable, it lasts a known length of time, and — this is the part that bit us — it hits the
+# WRITES, not just the reads. A swallowed rate-limit on `claim`'s board write is exactly the
+# CLAIM-STATUS-LAG drift `/check-board` then has to reconcile: the lock is held, the board says
+# otherwise, and `next` hands the item to nobody.
+#
+# So: recognise it, name it, and exit EX_RATE (75) — the signal a worker loop backs off on.
+is_rate_limited() {  # <combined stdout+stderr of a failed gh call>
+  printf '%s' "$1" | grep -qiE 'rate limit (already )?exceeded|API rate limit|secondary rate limit|was submitted too quickly'
+}
+
+# Seconds until the GraphQL budget resets. `gh api rate_limit` does NOT itself consume the budget,
+# so asking is free — which is what makes "back off until the reset" a strategy and not a guess.
+rate_reset_in() {
+  local reset now
+  reset="$(gh api rate_limit --jq '.resources.graphql.reset' 2>/dev/null || echo "")"
+  [ -n "$reset" ] || { printf 'unknown'; return 0; }
+  now="$(date -u +%s)"
+  local secs=$(( reset - now )); [ "$secs" -lt 0 ] && secs=0
+  printf '%dm%02ds' $(( secs / 60 )) $(( secs % 60 ))
+}
+
+die_rate() {  # the one place that reports exhaustion, so every command reports it the same way
+  die_rc "$EX_RATE" "GraphQL budget EXHAUSTED (5,000 pts/hr, shared by every worker on this account) — resets in $(rate_reset_in).
+  This is not a protocol error: back off and retry, do not re-run in a loop. Reads that do not need
+  Projects v2 still work — REST has its own budget (\`fsgg-coord budget\`). Board WRITES are queued:
+  see \`fsgg-coord flush\`."
+}
 
 command -v gh >/dev/null 2>&1 || die "gh not found (GitHub CLI is required)."
 command -v jq >/dev/null 2>&1 || die "jq not found (required for JSON handling)."
@@ -424,6 +534,22 @@ parse_msgs() {
     | sort_by(.id)'
 }
 
+# ---- assignment: REST, not `gh issue edit` (#418) -------------------------------------------------
+# `gh issue edit --add-assignee @me` costs 4 GraphQL points (measured). The REST assignees endpoint
+# does the same job for 0 — on the OTHER budget, the one that is still alive when GraphQL is not.
+# Claim + release used to hand back 8 points per item for nothing. Still best-effort: an assignee is
+# a courtesy to human readers, never the lock (ADR-0027 — N workers share one account, so the
+# assignee CANNOT identify the holder).
+me_login() {  # cached: the login never changes for the life of the token
+  local f="$CACHE/login"
+  [ -s "$f" ] || gh api user --jq '.login' > "$f" 2>/dev/null || true
+  cat "$f" 2>/dev/null
+}
+assign_me()   { local me; me="$(me_login)"; [ -n "$me" ] || return 0
+                gh api -X POST   "repos/$1/$2/issues/$3/assignees" -f "assignees[]=$me" >/dev/null 2>&1 || true; }
+unassign_me() { local me; me="$(me_login)"; [ -n "$me" ] || return 0
+                gh api -X DELETE "repos/$1/$2/issues/$3/assignees" -f "assignees[]=$me" >/dev/null 2>&1 || true; }
+
 post_comment()   { gh api "repos/$1/$2/issues/$3/comments" -f body="$4" --jq '.id'; }
 patch_comment()  { gh api -X PATCH  "repos/$1/$2/issues/comments/$3" -f body="$4" >/dev/null; }
 # Returns non-zero when the comment is still THERE afterwards. Callers must not claim they cleaned up
@@ -481,12 +607,33 @@ heartbeat_comment() {  # $1=owner $2=repo $3=num $4=commentId $5=worker $6=ref
 # Extra `-f k=v` / `-F k=v` variable bindings are forwarded to `gh api graphql`.
 gql() {
   local query="$1"; shift
-  local out
-  out="$(gh api graphql -f query="$query" "$@")" \
-    || die "GraphQL call failed (see gh output above)."
+  local out rc=0
+  # stderr is CAPTURED, not passed through: a rate-limit failure has to be told apart from every
+  # other failure (#418), and `gh` only says so on stderr. It is re-emitted below if we cannot
+  # classify it, so nothing is swallowed.
+  out="$(gh api graphql -f query="$query" "$@" 2>&1)" || rc=$?
+  if [ "$rc" -ne 0 ]; then
+    is_rate_limited "$out" && die_rate
+    printf '%s\n' "$out" >&2
+    die "GraphQL call failed (see gh output above)."
+  fi
   if [ -n "${FSGG_COORD_DEBUG:-}" ]; then
     dbg "graphql cost=$(jq -r '.data.rateLimit.cost // "?"' <<<"$out")" \
         "remaining=$(jq -r '.data.rateLimit.remaining // "?"' <<<"$out")"
+  fi
+  printf '%s' "$out"
+}
+
+# `gh project item-edit` is the ONE board write that does not go through `gql` (it is a `gh project`
+# subcommand, not a raw query) — so it needs the same classification, or a rate-limited write lands
+# back in the "indistinguishable exit 1" hole this change exists to fill.
+project_write() {  # <gh project args…>
+  local out rc=0
+  out="$(gh "$@" 2>&1)" || rc=$?
+  if [ "$rc" -ne 0 ]; then
+    is_rate_limited "$out" && die_rate
+    printf '%s\n' "$out" >&2
+    die "board write failed (see gh output above)."
   fi
   printf '%s' "$out"
 }
@@ -645,12 +792,21 @@ item_id() {
       projectItems(first:20){ nodes{ id project{ number title } } } } }
     rateLimit{ cost remaining }
   }'
+  # AN UNREACHABLE SUBJECT IS NOT AN ABSENT ONE (#421, the #266 class). `gql` dies inside this `$( )`,
+  # and under SOFT_DIE that die unwinds only the substitution — leaving `out` EMPTY and this function
+  # free to carry on and conclude, from a payload it never received, that the issue is "not on board".
+  # It then printed a remediation (`gh project item-add …`) that would have created a DUPLICATE board
+  # item for an issue that was on the board all along. The read failing and the item being absent are
+  # different facts; only the second one may be reported here.
   local out iid
-  out="$(gql "$q" -f owner="$R_OWNER" -f repo="$R_REPO" -F num="$R_NUM")"
+  out="$(gql "$q" -f owner="$R_OWNER" -f repo="$R_REPO" -F num="$R_NUM")" || die_relay
+  [ -n "$out" ] || die_relay
   iid="$(jq -r --argjson pn "$boardnum" \
     '.data.repository.issue.projectItems.nodes[]? | select(.project.number==$pn) | .id' <<<"$out" | head -1)"
+  # EX_OFFBOARD, not a bare 1: "this issue is not on the board" is a PERMANENT fact a caller acts on
+  # differently from "the budget is gone, try later" (#418). `claim` tells the two apart on this code.
   [ -n "$iid" ] && [ "$iid" != "null" ] \
-    || die "issue $R_OWNER/$R_REPO#$R_NUM is not on board '$TITLE' — add it first: gh project item-add $boardnum --owner $OWNER --url https://github.com/$R_OWNER/$R_REPO/issues/$R_NUM"
+    || die_rc "$EX_OFFBOARD" "issue $R_OWNER/$R_REPO#$R_NUM is not on board '$TITLE' — add it first: gh project item-add $boardnum --owner $OWNER --url https://github.com/$R_OWNER/$R_REPO/issues/$R_NUM"
   jq -n --arg itemId "$iid" '{itemId:$itemId}' > "$itemfile"
   printf '%s\n' "$iid"
 }
@@ -736,7 +892,11 @@ set_field() {
     value="$CANON_BLOCKED_BY"
   fi
 
-  item="$(item_id "$ref" "$refresh")"
+  # If item_id died (off-board, or the budget is gone), STOP HERE. Letting an empty item id fall
+  # through to `gh project item-edit --id ''` is what turned a precise diagnosis into a generic
+  # "board write failed" — the stub's non-empty --id guard is the backstop, not the plan.
+  item="$(item_id "$ref" "$refresh")" || die_relay
+  [ -n "$item" ] || die_relay
 
   # An empty value CLEARS the field. `gh project item-edit --text ''` is not a clear — it is a no-op
   # ("no changes to make"), so an empty write would silently leave the old value in place.
@@ -754,8 +914,126 @@ set_field() {
     esac
   fi
   dbg "set-field $ref $field='$value' -> item=$item field=$fid ($dtype)"
-  gh project item-edit --id "$item" --project-id "$pid" --field-id "$fid" "${vflag[@]}"
+  project_write project item-edit --id "$item" --project-id "$pid" --field-id "$fid" "${vflag[@]}" >/dev/null
+  # Keep the hot-read scan cache honest about OUR OWN write, rather than dropping it. Invalidating
+  # would send the very next `take` back to a full-board scan — and a claim is always followed by a
+  # take — so the cache would never survive the loop it exists for. Patching costs nothing.
+  scan_cache_patch "$ref" "$field" "$value"
 }
+
+# ---- the deferred-write queue: a board write the budget refused is QUEUED, never lost (#418) ------
+# The failure this closes: `claim` takes the lock (REST comments — a different budget, still working)
+# and then cannot write `Status: In progress` because GraphQL is exhausted. The old code swallowed
+# that and printed "not on board". The board then said `Backlog`/`Blocked` while a worker held the
+# item, `next` skipped it for everyone, and `/check-board` later reported it as CLAIM-STATUS-LAG.
+#
+# The lock is REST-backed and already held, so the right move is neither to fail the claim nor to
+# pretend it wrote: RECORD the write and tell the caller, in the same breath, that it is pending.
+# `flush` replays the queue; every board-writing command tries a flush first, so the queue drains on
+# its own the moment the budget comes back.
+PENDING="$CACHE/pending.jsonl"
+
+defer_write() {  # <ref> <field> <value>
+  jq -cn --arg ref "$1" --arg field "$2" --arg value "$3" --arg at "$(now_iso)" --arg w "$(worker)" \
+    '{ref:$ref, field:$field, value:$value, at:$at, worker:$w}' >> "$PENDING"
+  dbg "deferred board write: $1 $2='$3'"
+}
+
+pending_count() { [ -s "$PENDING" ] && wc -l <"$PENDING" | tr -d ' ' || echo 0; }
+
+# Replay the queue. Each entry is retried ONCE per flush: a success drops it, another rate-limit
+# stops the whole flush (the budget is gone; the rest would fail identically), and a PERMANENT
+# failure (EX_OFFBOARD — the item is not on the board) drops the entry with a loud note rather than
+# retrying it forever. Quiet when there is nothing to do, so it can sit in front of every write.
+flush_pending() {  # [--quiet]
+  local quiet="${1:-}"
+  [ -s "$PENDING" ] || { [ -n "$quiet" ] || echo "flush: nothing pending."; return 0; }
+  local kept; kept="$(mktemp "$CACHE/.pending.XXXXXX")"
+  local line ref field value rc stopped="" done_n=0 drop_n=0
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    if [ -n "$stopped" ]; then printf '%s\n' "$line" >>"$kept"; continue; fi
+    ref="$(jq -r '.ref' <<<"$line")"; field="$(jq -r '.field' <<<"$line")"; value="$(jq -r '.value' <<<"$line")"
+    rc=0; soft_run set_field "$ref" "$field" "$value" >/dev/null 2>&1 || rc=$?
+    case "$rc" in
+      0)  done_n=$((done_n+1)); echo "flush: $ref $field='$value' — written." ;;
+      "$EX_RATE")
+          stopped=1; printf '%s\n' "$line" >>"$kept"
+          echo "flush: GraphQL still exhausted (resets in $(rate_reset_in)) — $ref and the rest stay queued." >&2 ;;
+      "$EX_OFFBOARD")
+          drop_n=$((drop_n+1))
+          echo "flush: DROPPED $ref $field='$value' — that issue is not on board '$TITLE' (add it, then set the field by hand)." >&2 ;;
+      *)  printf '%s\n' "$line" >>"$kept"
+          echo "flush: $ref $field='$value' failed (rc=$rc) — kept queued." >&2 ;;
+    esac
+  done < "$PENDING"
+  if [ -s "$kept" ]; then mv "$kept" "$PENDING"; else rm -f "$kept" "$PENDING"; fi
+  [ -n "$quiet" ] || printf 'flush: %d written, %d dropped, %d still queued.\n' "$done_n" "$drop_n" "$(pending_count)"
+  [ -z "$stopped" ]
+}
+
+# Every board-writing command calls this first: a queue that only drains when a human remembers to
+# run `flush` is a queue that stays full.
+autoflush() { [ -s "$PENDING" ] && flush_pending --quiet >/dev/null 2>&1 || true; }
+
+flush_cmd() {
+  case "${1:-}" in
+    "")       ;;
+    --dry-run) [ -s "$PENDING" ] && jq -r '"pending  \(.ref)  \(.field)=\"\(.value)\"  (queued \(.at) by \(.worker))"' "$PENDING" \
+                 || echo "flush: nothing pending."; return 0 ;;
+    *)        die "flush: unknown arg '$1' (want --dry-run)." ;;
+  esac
+  flush_pending
+}
+
+# ---- the hot-read scan cache: N workers looping must not cost N full-board scans (#418) -----------
+# Measured on the live 640-item Coordination board: one thrifty full scan = 7 pages × 1 pt = 7 pts.
+# Cheap once. But `take`/`next` are what a worker loop calls, and five workers polling them burn
+# 5 × 7 pts a round — which is how a 5,000-pt budget disappears in a quarter of an hour, mid-protocol,
+# taking the WRITES down with it.
+#
+# So the scan is cached to the (user-level, therefore SHARED-between-workers) cache dir with a short
+# TTL: N workers in a TTL window pay for ONE scan between them.
+#
+# WHY THIS IS SAFE FOR SCHEDULING AND NOT FOR RECONCILING — the line the TTL is drawn on:
+#   * `next`/`take`/`batch` (SCHEDULING) read it. A stale scan can only hand out an item somebody
+#     else just claimed, and the claim CAS — which reads MARKERS over REST, never this cache — is
+#     what actually decides who holds it. The loser retries (`take --tries`). Staleness costs a retry;
+#     it cannot cost a double-claim.
+#   * `ready`/`lint`/`who`/`overlap --active` (RECONCILING, and the /check-board snapshot) always
+#     scan FRESH. Their whole job is to say what is true right now, and a cached "truth" is how a
+#     reconciler reports drift that was already fixed. `--fresh` forces a rescan anywhere.
+# THE LOCK IS NEVER READ FROM A CACHE. That rule (see `who`) is unchanged and this does not touch it.
+SCAN_TTL_SEC="${FSGG_COORD_SCAN_TTL_SEC:-90}"
+# Keyed on the board, like every other cache file here: FSGG_COORD_OWNER/PROJECT can point this client
+# at a different board, and serving one board's items for another is not a stale answer — it is a wrong
+# one, and nothing downstream would notice.
+SCAN_FILE="$CACHE/scan-$(slug "$OWNER")-$(slug "$TITLE").json"
+
+scan_cache_get() {  # echoes the cached scan iff it is fresh; non-zero otherwise
+  [ "$SCAN_TTL_SEC" -gt 0 ] 2>/dev/null || return 1
+  [ -s "$SCAN_FILE" ] || return 1
+  local age; age=$(( $(date -u +%s) - $(mtime "$SCAN_FILE") ))
+  [ "$age" -lt "$SCAN_TTL_SEC" ] || return 1
+  dbg "scan cache HIT (${age}s old, ttl ${SCAN_TTL_SEC}s) — zero GraphQL"
+  cat "$SCAN_FILE"
+}
+
+scan_cache_put() { printf '%s' "$1" > "$SCAN_FILE"; }
+
+# Fold our own board write into the cached scan, so the cache stays true without being thrown away.
+scan_cache_patch() {  # <ref> <field> <value>
+  [ -s "$SCAN_FILE" ] || return 0
+  local key; case "$2" in Status) key=status ;; Phase) key=phase ;; "Blocked by") key=blockedBy ;; *) return 0 ;; esac
+  parse_ref "$1" || return 0
+  local tmp; tmp="$(mktemp "$CACHE/.scan.XXXXXX")"
+  jq -c --arg repo "$R_OWNER/$R_REPO" --argjson num "$R_NUM" --arg key "$key" --arg val "$3" \
+    'map(if (.repo == $repo and .number == $num) then (.[$key] = (if $val == "" then null else $val end)) else . end)' \
+    "$SCAN_FILE" > "$tmp" 2>/dev/null && mv "$tmp" "$SCAN_FILE" || rm -f "$tmp"
+  dbg "scan cache patched: $R_REPO#$R_NUM $key='$3'"
+}
+
+mtime() { stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null || echo 0; }
 
 # ---- issues: REST list with ETag revalidation (GraphQL-budget-free; 304s are free) --------------
 issues() {
@@ -828,6 +1106,12 @@ emit_issues() {
 # a blocker's open/closed status is resolved CLIENT-SIDE against the same page set (board_annotate)
 # — no per-blocker issue lookup, so blocked-awareness adds ZERO GraphQL calls.
 board_items() {
+  # CACHED=1 lets a SCHEDULING read (next/take/batch) reuse a scan another worker paid for, within
+  # SCAN_TTL_SEC. Every other caller scans fresh — see the scan-cache note above for why that line
+  # is where it is. FRESH=1 (`--fresh`) overrides from anywhere.
+  if [ -n "${CACHED:-}" ] && [ -z "${FRESH:-}" ]; then
+    local hit; if hit="$(scan_cache_get)"; then printf '%s' "$hit"; return 0; fi
+  fi
   ensure_board >/dev/null
   local num; num="$(board_get '.number')"
   local q='query($owner:String!, $number:Int!, $cursor:String){
@@ -867,7 +1151,18 @@ board_items() {
     cursor="$(jq -r '.data.organization.projectV2.items.pageInfo.endCursor // empty' <<<"$out")"
     [ "$hasNext" = "true" ] && [ -z "$cursor" ] && break   # defensive: stop if a page lies
   done
-  jq -s '.' "$tmp" | board_annotate; rm -f "$tmp"
+  local scan; scan="$(jq -s '.' "$tmp" | board_annotate)"; rm -f "$tmp"
+  # Store the ANNOTATED scan — every reader wants the blocker resolution, and re-deriving it per read
+  # would make the cache a half-measure. Stored on every scan, whoever paid for it: the next worker
+  # through the door reads it for free (that is the point — the cache dir is user-level, not per-worker).
+  #
+  # NEVER cache an EMPTY scan. `gql`'s die fires inside a `$( )` and signals the top-level shell, but
+  # this subshell keeps running long enough to reach here with a zero-item board in hand — so a failed
+  # read would write "the board is empty" into the cache and hand it, confidently, to the next 90
+  # seconds of workers. That is #344's confident-empty-board, laundered through the cache. A genuinely
+  # empty board just re-scans; that is the right price.
+  [ "$(jq 'length' <<<"$scan")" -gt 0 ] 2>/dev/null && scan_cache_put "$scan"
+  printf '%s' "$scan"
 }
 
 # ---- board_annotate: resolve each item's `Blocked by` refs against the scan itself ----------------
@@ -974,7 +1269,7 @@ board_table() {
 
 # ---- ready: list board items that are actionable (not Done by default), thrifty full-board read --
 ready() {
-  local repo="" status="" phase="" all="" json="" jqexpr=""
+  local repo="" status="" phase="" all="" json="" jqexpr="" cached=""
   while [ $# -gt 0 ]; do
     case "$1" in
       --repo)    repo="${2:?--repo needs a value}"; shift 2 ;;
@@ -983,13 +1278,15 @@ ready() {
       --all)     all=1; shift ;;
       --json)    json=1; shift ;;
       --jq)      jqexpr="${2:?--jq needs a value}"; shift 2 ;;
+      --cached)  cached=1; shift ;;   # opt IN to the hot-read cache; `ready` is a truth read by default
+      --fresh)   shift ;;             # accepted for symmetry with next/take — ready is already fresh
       -*)        die "ready: unknown flag '$1'." ;;
       *)         die "ready: unexpected argument '$1'." ;;
     esac
   done
   [ -n "$repo" ] && repo="$(resolve_repo "$repo")"
   local xd="1"; { [ -n "$all" ] || [ -n "$status" ]; } && xd="0"   # --all / --status widen past 'not Done'
-  local items; items="$(board_items | board_filter "$repo" "$status" "$phase" "$xd")"
+  local items; items="$(CACHED="$cached" board_items | board_filter "$repo" "$status" "$phase" "$xd")"
   if   [ -n "$jqexpr" ]; then jq -r "$jqexpr" <<<"$items"
   elif [ -n "$json" ];   then jq '.' <<<"$items"
   else board_table <<<"$items"
@@ -998,17 +1295,20 @@ ready() {
 
 # ---- next: print the single most-startable item (Ready, else Backlog), optionally repo-scoped ----
 next() {
-  local repo="" ignore_blocked=""
+  local repo="" ignore_blocked="" fresh=""
   while [ $# -gt 0 ]; do
     case "$1" in
       --repo)            repo="${2:?--repo needs a value}"; shift 2 ;;
       --ignore-blocked)  ignore_blocked=1; shift ;;
+      --fresh)           fresh=1; shift ;;    # bypass the hot-read cache (see the scan-cache note)
       -*)     die "next: unknown flag '$1'." ;;
       *)      die "next: unexpected argument '$1'." ;;
     esac
   done
   [ -n "$repo" ] && repo="$(resolve_repo "$repo")"
-  local items; items="$(board_items)"
+  # SCHEDULING read: a scan another worker paid for within the TTL is good enough, because the claim
+  # CAS — not this list — is what decides who gets the item (#418).
+  local items; items="$(CACHED=1 FRESH="$fresh" board_items)"
   local pick="" cand="" s skipped=""
   for s in Ready Backlog; do
     cand="$(board_filter "$repo" "$s" "" "0" <<<"$items")"
@@ -1184,11 +1484,27 @@ lint() {
 }
 
 # ---- budget: read the GraphQL + REST meters. `gh api rate_limit` does not consume the core budget.
+# It also reports what the meters cannot: how many board writes are QUEUED behind an exhausted budget
+# (#418), and a WARNING while there is still budget left to act on. A meter you only read after the
+# crash is an autopsy; the warning is the part that lets a fan-out stand down in time.
 budget() {
-  gh api rate_limit --jq '{
+  local out; out="$(gh api rate_limit --jq '{
     graphql: { remaining: .resources.graphql.remaining, limit: .resources.graphql.limit, resetAt: (.resources.graphql.reset|todate) },
     rest:    { remaining: .resources.core.remaining,    limit: .resources.core.limit,    resetAt: (.resources.core.reset|todate) }
-  }'
+  }')"
+  local pend; pend="$(pending_count)"
+  jq --argjson pending "$pend" '. + { pendingBoardWrites: $pending }' <<<"$out"
+
+  local rem; rem="$(jq -r '.graphql.remaining' <<<"$out")"
+  # 500 points ~= 70 full-board scans' worth of headroom on a 640-item board, or one worker's next
+  # few minutes. Below it, a fan-out of workers is minutes from taking the writes down with it.
+  if [ "$rem" -lt 500 ] 2>/dev/null; then
+    echo "fsgg-coord: WARNING — GraphQL budget LOW ($rem/5000, resets in $(rate_reset_in))." >&2
+    echo "  Stop fanning out workers. Reads that do not need Projects v2 have their own (REST) budget:" >&2
+    echo "  'issues' over 'gh issue list', 'gh api repos/…' over 'gh pr view'. See docs/coordination/graphql-budget.md." >&2
+  fi
+  [ "$pend" -gt 0 ] && echo "fsgg-coord: $pend board write(s) QUEUED behind the budget — 'fsgg-coord flush' when it resets." >&2
+  return 0
 }
 
 # ---- done: verify an item is truly finished (PR merged AND board Status=Done) and stamp it -------
@@ -1699,17 +2015,26 @@ claim_cmd() {
   fi
 
   # The lock is held. Everything below is bookkeeping a human or a later reader benefits from.
-  gh issue edit "$R_NUM" --repo "$R_OWNER/$R_REPO" --add-assignee "@me" >/dev/null 2>&1 || true
+  assign_me "$R_OWNER" "$R_REPO" "$R_NUM"
   stamp_worktree "$w" "$R_REPO#$R_NUM"
   # A SUBSHELL, not just a redirect: set_field's `die` is an `exit`, and the board flip is strictly
   # best-effort — the lock is already held, so a board that rejects the write must not unwind a claim.
   # SOFT_DIE=1 keeps that `die` from escalating to the whole command under #344's fatal-die rule.
-  local boardnote
-  if ( SOFT_DIE=1; set_field "$ref" Status "$CLAIM_STATUS" ) >/dev/null 2>&1; then
-    boardnote="board: $CLAIM_STATUS"
-  else
-    boardnote="note: not on board '$TITLE' (the marker is the lock; add it to sequence it)"
-  fi
+  #
+  # But best-effort is NOT the same as don't-care (#418). This used to be one `if`, so EVERY failure
+  # printed "not on board" — including a rate-limit 403, which is how the board came to say `Blocked`
+  # while a worker held the item and `next` hid it from everyone else (the CLAIM-STATUS-LAG drift
+  # /check-board reconciles). The three outcomes are now three outcomes:
+  local boardnote rc=0
+  soft_run set_field "$ref" Status "$CLAIM_STATUS" >/dev/null 2>&1 || rc=$?
+  case "$rc" in
+    0)                boardnote="board: $CLAIM_STATUS" ;;
+    "$EX_OFFBOARD")   boardnote="note: not on board '$TITLE' (the marker is the lock; add it to sequence it)" ;;
+    "$EX_RATE")       defer_write "$ref" Status "$CLAIM_STATUS"
+                      boardnote="board: DEFERRED — GraphQL budget exhausted, resets in $(rate_reset_in). The write is QUEUED (flushes on the next board write, or run 'fsgg-coord flush')" ;;
+    *)                defer_write "$ref" Status "$CLAIM_STATUS"
+                      boardnote="board: WRITE FAILED (rc=$rc) — queued; run 'fsgg-coord flush'" ;;
+  esac
   printf 'claimed %s by worker %s  ·  %s\n' "$R_REPO#$R_NUM" "$w" "$boardnote"
   # `origin/main` is not decoration. `git worktree add -b <new>` with no commit-ish branches from the
   # shared checkout's HEAD, and this protocol's premise is that N workers pass through that checkout —
@@ -1803,7 +2128,7 @@ release_cmd() {
       || die "release: could not remove marker (comment $id) on $R_REPO#$R_NUM — it still holds the item."
   done < <(jq -r --arg w "$w" --arg f "${force:-}" '.[] | select($f != "" or .worker == $w) | .id' <<<"$claims")
 
-  gh issue edit "$R_NUM" --repo "$R_OWNER/$R_REPO" --remove-assignee "@me" >/dev/null 2>&1 || true
+  unassign_me "$R_OWNER" "$R_REPO" "$R_NUM"
 
   # The marker is gone by here, so the lease is ALREADY dropped. Nothing below may abort the release
   # — a board that cannot be read or written leaves the column alone and reports that, exactly as it
@@ -2416,6 +2741,11 @@ batch_cmd() {
   case "$want" in ''|*[!0-9]*) die "batch: -n must be a number." ;; esac
 
   local items cands active
+  # The CALLER decides whether this is a scheduling read or a truth read, and it says so by exporting
+  # CACHED (#418). `take` — the worker loop's entry point, and the reason the budget ever ran out —
+  # sets CACHED=1, so five workers polling for work cost ONE board scan a window between them. A human
+  # running `batch` directly gets the fresh board they came for. Either way `active_claims` reads its
+  # markers over REST, uncached: the schedule may be 90s stale, the LOCK never is.
   items="$(board_items)"
   active="$(active_claims "$repo")"
   cands="$(board_filter "$repo" "Ready" "" "0" <<<"$items")"
@@ -2517,11 +2847,17 @@ take_cmd() {
   done
   case "$tries" in ''|*[!0-9]*) die "take: --tries must be a number." ;; esac
   worker >/dev/null; local w="$WORKER_ID"
+  autoflush                                    # a queued board write drains here, not on a human's memory
   local -a repoflag=(); [ -n "$repo" ] && repoflag=(--repo "$repo")
   local attempt=1
   while [ "$attempt" -le "$tries" ]; do
     local pick
-    pick="$(batch_cmd "${repoflag[@]+"${repoflag[@]}"}" -n 1 --json 2>/dev/null | jq -r '.[0] // empty')"
+    # The FIRST look may ride the shared scan cache (that is the whole point — N workers, one scan).
+    # A RETRY may not: we just lost a race, which means the cached scan is demonstrably behind the
+    # board, and re-reading it would re-pick the item we just lost, burn the retries, and idle the
+    # worker. So a retry pays for a fresh scan — the one case where the 7 points are worth it (#418).
+    [ "$attempt" -gt 1 ] && export FRESH=1
+    pick="$(CACHED=1 batch_cmd "${repoflag[@]+"${repoflag[@]}"}" -n 1 --json 2>/dev/null | jq -r '.[0] // empty')"
     if [ -z "$pick" ]; then
       echo "fsgg-coord: no schedulable item${repo:+ for repo '$repo'} — every candidate is blocked, claimed, overlapping, or undeclared." >&2
       echo "  see why:  fsgg-coord batch${repo:+ --repo $repo}" >&2
@@ -2530,10 +2866,22 @@ take_cmd() {
     # claim in a subshell: its `die` (a lost race) must end the attempt, not `take`. SOFT_DIE=1 keeps
     # that `die` local under #344's fatal-die rule — the board read that must fail closed already
     # happened in `batch_cmd` above, before we ever get a `$pick` to claim.
-    if ( SOFT_DIE=1; claim_cmd "$pick" ); then return 0; fi
+    local rc=0
+    soft_run claim_cmd "$pick" || rc=$?
+    [ "$rc" -eq 0 ] && { unset FRESH; return 0; }
+    # An exhausted budget is not a lost race, and retrying it 3× just spends REST calls confirming
+    # the same 403. Surface it as the back-off signal it is (#418): EX_RATE, with the reset time.
+    if [ "$rc" -eq "$EX_RATE" ]; then
+      unset FRESH
+      echo "fsgg-coord: worker $w cannot take work — GraphQL budget exhausted, resets in $(rate_reset_in)." >&2
+      echo "  Back off until then (do not loop). REST-only work — reading issues, pushing, opening a PR" >&2
+      echo "  via 'gh api' — still runs on its own budget." >&2
+      return "$EX_RATE"
+    fi
     echo "fsgg-coord: worker $w lost $pick (attempt $attempt/$tries) — rescheduling." >&2
     attempt=$((attempt + 1))
   done
+  unset FRESH
   echo "fsgg-coord: worker $w gave up after $tries attempt(s); the board is contended. Retry, or widen --repo." >&2
   return 0
 }
@@ -2869,15 +3217,16 @@ case "$cmd" in
   field-id)  [ $# -ge 1 ] || die "field-id: <Field> required.";  field_id "$1" ;;
   option-id) [ $# -ge 2 ] || die "option-id: <Field> <Option> required."; option_id "$1" "$2" ;;
   item-id)   [ $# -ge 1 ] || die "item-id: <issue> required.";  item_id "$1" "${2:-}" ;;
-  set-field) [ $# -ge 3 ] || die "set-field: <issue> <Field> <Value> required."; set_field "$1" "$2" "$3" "${4:-}" ;;
+  set-field) [ $# -ge 3 ] || die "set-field: <issue> <Field> <Value> required."; autoflush; set_field "$1" "$2" "$3" "${4:-}" ;;
+  flush)     flush_cmd "$@" ;;
   issues)    issues "$@" ;;
   ready)     ready "$@" ;;
   next)      next "$@" ;;
   lint)      lint "$@" ;;
   child)     child_cmd "$@" ;;
-  done)      done_cmd "$@" ;;
+  done)      autoflush; done_cmd "$@" ;;
   whoami)    whoami_cmd ;;
-  claim)     claim_cmd "$@" ;;
+  claim)     autoflush; claim_cmd "$@" ;;
   heartbeat) heartbeat_cmd "$@" ;;
   release)   release_cmd "$@" ;;
   who)       who_cmd "$@" ;;
