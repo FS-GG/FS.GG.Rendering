@@ -1,6 +1,6 @@
 ---
 name: fs-gg-product-elmish
-description: Drive a generated FS.GG.UI product through the pure Elmish adapter.
+description: Drive a generated FS.GG.UI product through the pure Elmish adapter, and drive its UI headlessly in tests — fold click/key/scroll scripts to a final model with Perf.runScriptToModel, guarded by BoundIds so a silent unbound click cannot pass green.
 ---
 
 # FS.GG Product Elmish
