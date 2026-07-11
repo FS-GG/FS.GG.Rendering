@@ -21,7 +21,19 @@ module Style =
     ///     &lt; each class in attach order (earlier &lt; later)
     ///     &lt; current visual state.
     /// A visual state's value for a field overrides any class's value for the same field; a
-    /// later-attached class overrides an earlier one. `theme` carries the active palette
+    /// later-attached class overrides an earlier one.
+    ///
+    /// The state layer MODULATES `Fill` rather than naming a colour for it (issue #181): `Hover`,
+    /// `Pressed` and `Selected` each step the incoming fill further AWAY from the foreground it
+    /// carries (darkening it on a light theme, lightening it on a dark one). Hue is therefore
+    /// preserved and contrast rises with emphasis, so a `danger` button stays red while hovered,
+    /// pressed and selected instead of turning the primary accent colour — and the same holds for a
+    /// fill contributed by any layer: base, class, or the theme's `IntentPolicy`. A fully transparent
+    /// fill (`ghost`) modulates to itself.
+    /// `Focused` is orthogonal: it paints the accent focus ring on `Stroke` and leaves `Fill` alone.
+    /// `Disabled` is the sole state that discards intent: it replaces fill, stroke and foreground with
+    /// `theme.Muted`, because an inactive control must not advertise an action it will not perform.
+    /// `theme` carries the active palette
     /// (DTCG-generated `DesignTokens`); every colour the variant/state layers read originates
     /// from it — no inline literals (FR-008). For the default (no-class, `Normal`) case
     /// `resolve theme baseStyle [] Normal = baseStyle` exactly (parity, FR-005, SC-003).

@@ -3,7 +3,8 @@
 // Principle II: this hand-curated signature is the SOLE public-surface declaration; the
 // paired DesignTokens.fs is GENERATED from src/Themes.Default/design-tokens.tokens.json (the
 // DTCG single source of truth) and carries no access modifiers. Regenerate via
-// `./fake.sh build -t RefreshSurfaceBaselines`; currency is enforced by DesignTokenDrift.
+// `dotnet fsi scripts/generate-design-tokens.fsx`; currency is enforced by that script's --check
+// (the Feature 126 drift gate).
 //
 // Feature 125: relocated from FS.GG.UI.Controls to the FS.GG.UI.DesignSystem layer. The
 // generated token MODULE lives here; the DTCG JSON source travels with the default theme.
@@ -44,6 +45,20 @@ module DesignTokens =
         val cornerRadius : float
         /// Minimum foreground/background contrast ratio the light theme must satisfy.
         val contrastRequiredRatio : float
+        /// Light-theme standard interactive control height (Ant `controlHeight`).
+        val controlHeight : float
+        /// Light-theme compact control height (Ant `controlHeightSM`).
+        val controlHeightSm : float
+        /// Light-theme large control height (Ant `controlHeightLG`).
+        val controlHeightLg : float
+        /// Light-theme extra-small spacing step (Ant `Space.xs`).
+        val spaceXs : float
+        /// Light-theme small spacing step (Ant `Space.sm`).
+        val spaceSm : float
+        /// Light-theme medium spacing step (Ant `Space.md`).
+        val spaceMd : float
+        /// Light-theme large spacing step (Ant `Space.lg`).
+        val spaceLg : float
 
     /// Dark-theme primitives (feed Theme.dark; value-identical to the pre-feature literals).
     module Dark =
@@ -71,3 +86,17 @@ module DesignTokens =
         val cornerRadius : float
         /// Minimum foreground/background contrast ratio the dark theme must satisfy.
         val contrastRequiredRatio : float
+        /// Dark-theme standard interactive control height (Ant `controlHeight`).
+        val controlHeight : float
+        /// Dark-theme compact control height (Ant `controlHeightSM`).
+        val controlHeightSm : float
+        /// Dark-theme large control height (Ant `controlHeightLG`).
+        val controlHeightLg : float
+        /// Dark-theme extra-small spacing step (Ant `Space.xs`).
+        val spaceXs : float
+        /// Dark-theme small spacing step (Ant `Space.sm`).
+        val spaceSm : float
+        /// Dark-theme medium spacing step (Ant `Space.md`).
+        val spaceMd : float
+        /// Dark-theme large spacing step (Ant `Space.lg`).
+        val spaceLg : float
