@@ -166,6 +166,16 @@ let private registry =
       { Twin = $"{twinDirectory}/EmbeddedTokenGuardCoherenceTests.fs"
         ReleaseOnly = "tests/Package.Tests/Feature282EmbeddedTokenGuardTests.fs"
         HeaderNames = "Feature282EmbeddedTokenGuardTests"
+        SharedInputs = false }
+      // #366 — the fragment-prose substitution guard (#264). Faithful text-mirror of a release-only
+      // Package.Tests rule, SharedInputs = false for the same reason as #282's embedded-token twin: its
+      // counterpart derives the scanned set via `ScaffoldSources.files`, not the `repositoryPath`/`repo`
+      // helper L-INPUTS keys on, so the input-set equality cannot be mechanically checked (a byte-faithful
+      // hoist extracts zero literal inputs and would trip L-INPUTS's non-empty guard). Byte-faithfulness
+      // keeps the two in step; L-EXISTS/L-NAMES/L-CLOSED still guard the pairing.
+      { Twin = $"{twinDirectory}/FragmentProseCoherenceTests.fs"
+        ReleaseOnly = "tests/Package.Tests/Feature264FragmentProseTests.fs"
+        HeaderNames = "Feature264FragmentProseTests"
         SharedInputs = false } ]
 
 /// The repository source-of-truth paths a test source reads, extracted from its `repositoryPath "…"`
