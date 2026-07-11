@@ -58,10 +58,24 @@ module Style =
         | "subtle" -> { s with Fill = theme.Muted; Foreground = theme.Background }
         | _ -> s // unknown ⇒ identity delta
 
+    // #384: the typography layer. `applyVariant`/`applyCustom` above are colour-only, so a class
+    // could never restyle `FontSize`/`FontWeight`. `Font` carries a `FontDelta`: each `Some`
+    // overrides the folded-in value, each `None` leaves it — the same own-only-your-fields,
+    // last-writer-wins overlay the colour classes use, so a `Font` class composes with them (and
+    // with the theme's `IntentPolicy`) rather than replacing the whole style.
+    let applyFont (d: FontDelta) (s: ResolvedStyle) : ResolvedStyle =
+        { s with
+            FontSize = defaultArg d.Size s.FontSize
+            FontWeight =
+                match d.Weight with
+                | Some _ -> d.Weight
+                | None -> s.FontWeight }
+
     let applyClass (theme: Theme) (cls: StyleClass) (s: ResolvedStyle) : ResolvedStyle =
         match cls with
         | Variant v -> applyVariant theme v s
         | Custom name -> applyCustom theme name s
+        | Font d -> applyFont d s
 
     // ---- state layer ----------------------------------------------------------------------
     // Applied AFTER the class fold, so a state's owned field still wins over any class value

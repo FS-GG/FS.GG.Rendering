@@ -293,12 +293,14 @@ module internal WidgetGeometry =
     // SC-001). A theme with a divergent policy (AntDesign) reaches the screen through this same call.
     let buttonGeom theme (box: Rect) (classes: StyleClass list) (state: VisualState) (kind: string) (intent: string) (label: string) : Scene list =
         let h = theme.ControlHeight
-        let textW = (measureText label { Family = theme.FontFamily; Size = 15.0; Weight = None }).Width
+        let style = StyleResolver.resolve theme kind intent classes state
+        // #384: measure the width at the RESOLVED typography (was a frozen 15.0), so the button
+        // still fits its label once `theme.FontSize`, the theme's `IntentPolicy`, or a
+        // `StyleClass.Font` has changed the size/weight the label is actually painted at (line below).
+        let textW = (measureText label { Family = style.FontFamily; Size = style.FontSize; Weight = style.FontWeight }).Width
         let w = min box.Width (max 70.0 (textW + 2.0 * theme.SpaceMd))
         let by = box.Y + box.Height / 2.0 - h / 2.0
         let rect = { X = box.X; Y = by; Width = w; Height = h }
-
-        let style = StyleResolver.resolve theme kind intent classes state
 
         // A resolved `StrokeDash` is a real dash pattern (Feature 173); `[]` leaves the stroke solid.
         let strokePaint (color: Color) (width: float) =
@@ -341,15 +343,14 @@ module internal WidgetGeometry =
 
         if kind = "button" then
             [ Scene.rectangle (box.X, by, w, h) buttonFill
-              // #383: resolved typography reaches the label (byte-identical: base FontSize == the former
-              // 15.0 literal). NOTE: the width `measureText` above still uses 15.0 — reconcile when a
-              // theme actually varies button FontSize (#384).
+              // #383 wired the resolved typography to the label; #384 made the width `measureText`
+              // above track that same resolved size, so paint and measure agree once FontSize is themed.
               mkTextW theme (box.X + theme.SpaceMd) (by + h / 2.0 + 5.0) style.FontSize style.FontWeight style.Foreground label ]
             @ border
             @ focusRing
         else
             [ Scene.rectangleWithPaint rect (strokePaint style.Stroke 2.0)
-              // #383: resolved typography reaches the icon-button label (byte-identical: base 15.0).
+              // #383: resolved typography reaches the icon-button label; #384 themed the base FontSize.
               mkTextW theme (box.X + theme.SpaceMd) (by + h / 2.0 + 5.0) style.FontSize style.FontWeight style.Foreground label ]
 
     /// A compact accent pill with light text — a status badge.
@@ -377,7 +378,9 @@ module internal WidgetGeometry =
                   Path.lineTo caretX (caretY + 5.0)
                   Path.close ]
         [ Scene.rectangle (box.X, by, primaryW, h) theme.Accent
-          mkText theme (box.X + theme.SpaceMd) (by + h / 2.0 + 5.0) 15.0 theme.Background label
+          // #384: the split-button preview's primary label tracks the theme body size (was a frozen
+          // 15.0), matching `buttonGeom` — the typed SplitButton already lowers to themed buttons.
+          mkText theme (box.X + theme.SpaceMd) (by + h / 2.0 + 5.0) theme.FontSize theme.Background label
           Scene.rectangle (box.X + primaryW + 2.0, by, triggerW, h) theme.Muted
           Scene.path caret (Paint.fill theme.Foreground) ]
 
@@ -521,8 +524,6 @@ module internal WidgetGeometry =
         let field: Rect = { X = box.X; Y = by; Width = box.Width; Height = h }
         let textX = box.X + theme.SpaceSm
         let baseline = by + h / 2.0 + 5.0
-        let textW = (measureText value { Family = theme.FontFamily; Size = 15.0; Weight = None }).Width
-        let caretX = min (box.X + box.Width - theme.SpaceSm) (textX + textW + 3.0)
 
         let baseStyle: ResolvedStyle =
             { Foreground = theme.Foreground
@@ -531,17 +532,22 @@ module internal WidgetGeometry =
               StrokeWidth = 2.0
               StrokeDash = []
               FontFamily = theme.FontFamily
-              FontSize = 15.0
+              // #384: track the theme's body size (was a frozen 15.0), like the button base.
+              FontSize = theme.FontSize
               FontWeight = None }
 
         let style = Style.resolve theme baseStyle classes state
+        // #384: place the caret using the RESOLVED typography (was a frozen 15.0), so it stays at the
+        // end of the text once the theme (or a `StyleClass.Font`) has changed the painted size/weight.
+        let textW = (measureText value { Family = style.FontFamily; Size = style.FontSize; Weight = style.FontWeight }).Width
+        let caretX = min (box.X + box.Width - theme.SpaceSm) (textX + textW + 3.0)
 
         [ Scene.rectangle (box.X, by, box.Width, h) theme.Background
           Scene.rectangleWithPaint field (Paint.stroke style.Stroke 2.0)
           Scene.clipped
               (RectClip field)
-              // #383: resolved typography reaches the field text (byte-identical: base 15.0). The caret
-              // `measureText` above still uses 15.0 — reconcile with #384 when FontSize becomes themeable.
+              // #383: resolved typography reaches the field text; #384 themed the base FontSize and the
+              // caret measure above, so both track `theme.FontSize` / any `StyleClass.Font` override.
               (mkTextW theme textX baseline style.FontSize style.FontWeight style.Foreground value)
           Scene.line { X = caretX; Y = by + 7.0 } { X = caretX; Y = by + h - 7.0 } (Paint.stroke theme.Accent 2.0) ]
 

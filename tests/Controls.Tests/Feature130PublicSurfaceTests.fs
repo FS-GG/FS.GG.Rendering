@@ -32,7 +32,8 @@ let private filledBase (theme: Theme) : ResolvedStyle =
       StrokeWidth = 0.0
       StrokeDash = []
       FontFamily = theme.FontFamily
-      FontSize = 15.0
+      // #384: the base now tracks the theme's body size (was a frozen 15.0).
+      FontSize = theme.FontSize
       FontWeight = None }
 
 let private outlineBase (theme: Theme) : ResolvedStyle =
@@ -42,7 +43,8 @@ let private outlineBase (theme: Theme) : ResolvedStyle =
       StrokeWidth = 2.0
       StrokeDash = []
       FontFamily = theme.FontFamily
-      FontSize = 15.0
+      // #384: the base now tracks the theme's body size (was a frozen 15.0).
+      FontSize = theme.FontSize
       FontWeight = None }
 
 /// The oracle structural base for a kind: outline for `icon-button`, filled otherwise — matches

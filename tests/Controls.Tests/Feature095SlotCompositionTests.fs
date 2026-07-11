@@ -44,12 +44,13 @@ let private mkText (t: Theme) (x: float) (baseline: float) (sz: float) (color: C
 
 let private frozenButtonGeom (t: Theme) (label: string) : Scene list =
     // #385: dimensions now flow from the theme metric model (Ant control-size + Space scale).
+    // #384: the base font tracks `theme.FontSize` (was a frozen 15.0).
     let h = t.ControlHeight
-    let textW = (Scene.measureText label { Family = t.FontFamily; Size = 15.0; Weight = None }).Width
+    let textW = (Scene.measureText label { Family = t.FontFamily; Size = t.FontSize; Weight = None }).Width
     let w = min box.Width (max 70.0 (textW + 2.0 * t.SpaceMd))
     let by = box.Y + box.Height / 2.0 - h / 2.0
     [ Scene.rectangle (box.X, by, w, h) t.Accent
-      mkText t (box.X + t.SpaceMd) (by + h / 2.0 + 5.0) 15.0 t.Background label ]
+      mkText t (box.X + t.SpaceMd) (by + h / 2.0 + 5.0) t.FontSize t.Background label ]
 
 // ---- small typed-front-door builders ----------------------------------------------------------
 let private label (key: string) (text: string) : Widget<int> =

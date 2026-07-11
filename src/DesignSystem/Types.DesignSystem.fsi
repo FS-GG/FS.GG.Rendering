@@ -40,14 +40,26 @@ type StyleVariant =
     | Success
     | Warning
 
+/// A typography delta a `StyleClass` can carry (`FontDelta`): an optional override of the
+/// resolved `Size` and/or `Weight`. `None` leaves the folded-in value untouched, so a `Font`
+/// class overlays only the typography fields it names.
+/// #384: the class/state overlay was colour-only, so no attached class could restyle
+/// `FontSize`/`FontWeight`; `FontDelta` carries those deltas into the resolver fold.
+type FontDelta =
+    { Size: float option
+      Weight: int option }
+
 /// One attached style class (`StyleClass`): a typed `Variant` wrapping a `StyleVariant`,
-/// or a free-form `Custom` consumer-defined class name.
+/// a free-form `Custom` consumer-defined class name, or a `Font` typography delta.
 /// Feature 093 (E3): one attached-class entry — either a typed <c>StyleVariant</c> or a
 /// free-form, consumer-defined class. A control carries a <c>StyleClass list</c> whose list
 /// position IS the attach order the resolver folds left-to-right (FR-001, FR-003).
 type StyleClass =
     | Variant of StyleVariant
     | Custom of string
+    /// #384: a typography-only class — carries a <c>FontDelta</c> so a class can restyle
+    /// <c>FontSize</c>/<c>FontWeight</c> the way <c>Variant</c>/<c>Custom</c> restyle colour.
+    | Font of FontDelta
 
 /// The `(theme, control-kind, lowered-intent, structural base) -> adjusted base` seam a `Theme`
 /// carries. Total over every intent: `""` and unknown intents must return a defined style, never

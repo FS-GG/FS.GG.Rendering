@@ -38,14 +38,23 @@ type StyleVariant =
     | Success
     | Warning
 
+/// A typography delta a `StyleClass` can carry (`FontDelta`): an optional override of the
+/// resolved `Size` and/or `Weight`. `None` leaves the folded-in value untouched.
+/// #384: the class/state overlay was colour-only; `FontDelta` lets a class restyle typography.
+type FontDelta =
+    { Size: float option
+      Weight: int option }
+
 /// One attached style class (`StyleClass`): a typed `Variant` wrapping a `StyleVariant`,
-/// or a free-form `Custom` consumer-defined class name.
+/// a free-form `Custom` consumer-defined class name, or a `Font` typography delta.
 /// Feature 093 (E3): one attached-class entry — either a typed <c>StyleVariant</c> or a
 /// free-form, consumer-defined class. A control carries a <c>StyleClass list</c> whose list
 /// position IS the attach order the resolver folds left-to-right (FR-001, FR-003).
 type StyleClass =
     | Variant of StyleVariant
     | Custom of string
+    /// #384: a typography-only class carrying a <c>FontDelta</c>.
+    | Font of FontDelta
 
 /// Resolved paint and typography for a control (`ResolvedStyle`): `Foreground`, `Fill`,
 /// `Stroke`/`StrokeWidth`, and `FontFamily`/`FontSize`/`FontWeight`, produced by `Style.resolve`.

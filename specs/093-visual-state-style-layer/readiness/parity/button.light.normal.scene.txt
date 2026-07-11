@@ -6,7 +6,7 @@
                       Position = { X = 26.0
                                    Y = 91.0 }
                       Font = { Family = None
-                               Size = 15.0
+                               Size = 14.0
                                Weight = None }
                       Paint = { Fill = Some { Red = 248uy
                                               Green = 250uy
