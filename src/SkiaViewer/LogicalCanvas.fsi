@@ -33,3 +33,8 @@ module LogicalCanvas =
     /// the inverse of `present`, for routing pointer input to a letterboxed product. Points inside
     /// a letterbox bar map outside the logical canvas, which is faithful: nothing is drawn there.
     val toLogicalPoint: logical: Size -> actual: Size -> x: float -> y: float -> float * float
+
+    /// Issue #400: scale a pointer sample from the LOGICAL window space Silk delivers it in
+    /// (`IMouse.Position`, sized in `window.Size` points) into the PHYSICAL framebuffer space a product
+    /// rendered at native resolution reasons in. Per-axis; the identity at scale 1 or a degenerate size.
+    val toPhysicalPoint: window: Size -> framebuffer: Size -> x: float -> y: float -> float * float

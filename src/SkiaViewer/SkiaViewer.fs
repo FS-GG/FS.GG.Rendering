@@ -69,6 +69,7 @@ type private LegacyHostMsg<'msg> =
     | LegacyKey of rawKey: string * isDown: bool
     | LegacyPointer of ViewerPointerInput
     | LegacyResized of Size
+    | LegacyFramebufferResized of Size
     | LegacyCloseRequested
     | LegacyDiagnosticReported of Host.RenderDiagnostic
     | LegacyHostEffect of Host.ViewerEffect<LegacyHostMsg<'msg>>
@@ -884,7 +885,7 @@ module Viewer =
         | Host.ViewerPointerButton.SecondaryButton -> ViewerPointerButtonKind.Secondary
         | Host.ViewerPointerButton.MiddleButton -> ViewerPointerButtonKind.Middle
 
-    let private runPresentedPersistentWindow options behavior diagnostics inputDispatch getScene onTick onKey onPointer onResize inputVerified scriptInputs =
+    let private runPresentedPersistentWindow options behavior diagnostics inputDispatch getScene onTick onKey onPointer onResize onFramebufferResize inputVerified scriptInputs =
         let windowOpened = ref false
         let framePresented = ref false
         let closeReason: ViewerCloseReason option ref = ref None
@@ -1097,6 +1098,12 @@ module Viewer =
             | LegacyResized size ->
                 onResize |> Option.iter (fun handle -> handle size)
                 (), Cmd.ofMsg (LegacyHostEffect(Host.ViewerEffect.RenderFrame(renderCurrentScene ())))
+            | LegacyFramebufferResized size ->
+                // Issue #400: the PHYSICAL framebuffer changed. A size-aware host uses it to advertise
+                // native resolution / rescale pointer; it does not itself force a present (the paired
+                // `LegacyResized` above already re-derives and repaints), so this only updates state.
+                onFramebufferResize |> Option.iter (fun handle -> handle size)
+                (), Cmd.none
             | LegacyCloseRequested ->
                 if closeReason.Value.IsNone then
                     closeReason := Some UserClose
@@ -1139,6 +1146,7 @@ module Viewer =
             | Host.ViewerEvent.CloseRequested -> Some LegacyCloseRequested
             | Host.ViewerEvent.DiagnosticReported diagnostic -> Some(LegacyDiagnosticReported diagnostic)
             | Host.ViewerEvent.Resized size -> Some(LegacyResized size)
+            | Host.ViewerEvent.FramebufferResized size -> Some(LegacyFramebufferResized size)
             | Host.ViewerEvent.PointerMoved(x, y) ->
                 Some(LegacyPointer { Phase = ViewerPointerPhaseKind.Moved; X = x; Y = y; Button = None; DeltaX = 0.0; DeltaY = 0.0 })
             | Host.ViewerEvent.PointerPressed(x, y, button) ->
@@ -1952,6 +1960,9 @@ module Viewer =
                     None
                     None
                     (Some(fun size -> currentSurfaceSize <- size))
+                    // Issue #400: the non-interactive generated-app path authors in the logical window and
+                    // lets the present-time fit scale up — it does not advertise native resolution.
+                    None
                     (fun () -> true)
                     None
 
@@ -2096,7 +2107,7 @@ module Viewer =
                         let inputVerified () =
                             not (requireInputDispatchVerification ()) || inputDispatch = "true"
 
-                        match runPresentedPersistentWindow options behavior host.Diagnostics inputDispatch presentScene handleTick (Some handleKey) None (Some handleResize) inputVerified None with
+                        match runPresentedPersistentWindow options behavior host.Diagnostics inputDispatch presentScene handleTick (Some handleKey) None (Some handleResize) None inputVerified None with
                         | Result.Ok outcome ->
                             Result.Ok(
                                 { outcome with
@@ -2145,11 +2156,16 @@ module Viewer =
                 else
                     let model, initEffects = host.Init()
                     let mutable currentModel = model
-                    // Issue #246: `currentSurfaceSize` is the real window; `currentSize` is the space the
-                    // product renders and points in. Without a `LogicalSize` they are the same value and
-                    // every seam behaves exactly as before; with one, the product only ever sees the
-                    // logical canvas and the host owns the fit.
+                    // Issue #246/#400: `currentSurfaceSize` is the PHYSICAL framebuffer the product
+                    // renders onto at native resolution; `currentWindowSize` is the LOGICAL window Silk
+                    // reports pointer input in. `currentSize` is the space the product's `View`/pointer
+                    // map speak — the fixed `LogicalSize` when set, otherwise the physical framebuffer.
+                    // At scale 1 all three coincide and every seam behaves exactly as before #400; on a
+                    // scaled display the product draws at full framebuffer resolution and the host owns
+                    // the fit. Both start at `InitialSize`; the load-time `FramebufferResized` seed
+                    // (issue #400) supplies the true physical size before the first steady-state frame.
                     let mutable currentSurfaceSize = options.InitialSize
+                    let mutable currentWindowSize = options.InitialSize
                     let viewSize () = options.LogicalSize |> Option.defaultValue currentSurfaceSize
                     let mutable currentSize = viewSize ()
                     // Issue #365: a product `Update`/`View` fault is an App-stage defect captured through
@@ -2290,16 +2306,23 @@ module Viewer =
                                   "x", input.X.ToString("0.###", CultureInfo.InvariantCulture)
                                   "y", input.Y.ToString("0.###", CultureInfo.InvariantCulture) ]
 
-                            // Issue #246: the native pointer arrives in surface coordinates. A letterboxed
-                            // product draws through a scale+offset, so route the inverse or every hit test
-                            // is wrong by exactly that transform. `DeltaX/DeltaY` are wheel ticks, not
-                            // positions, so they are not scaled.
+                            // Issue #400: Silk delivers the pointer in LOGICAL window coordinates
+                            // (`IMouse.Position`), but the product now renders and hit-tests in the PHYSICAL
+                            // framebuffer space (native resolution). Scale into physical FIRST, so every
+                            // downstream mapping speaks the surface the scene was drawn onto.
+                            let physicalX, physicalY =
+                                LogicalCanvas.toPhysicalPoint currentWindowSize currentSurfaceSize input.X input.Y
+
+                            // Issue #246: a `LogicalSize` product draws through the letterbox scale+offset,
+                            // so route the inverse (now from the physical surface) or every hit test is wrong
+                            // by exactly that transform. Without one, the physical coordinates ARE the
+                            // product's space. `DeltaX/DeltaY` are wheel ticks, not positions, so unscaled.
                             let routed =
                                 match options.LogicalSize with
                                 | Some logical ->
-                                    let x, y = LogicalCanvas.toLogicalPoint logical currentSurfaceSize input.X input.Y
+                                    let x, y = LogicalCanvas.toLogicalPoint logical currentSurfaceSize physicalX physicalY
                                     { input with X = x; Y = y }
-                                | None -> input
+                                | None -> { input with X = physicalX; Y = physicalY }
 
                             let msgs = host.MapPointer routed currentSize currentModel
                             pointerSw.Stop()
@@ -2325,10 +2348,22 @@ module Viewer =
                             closeRequested
 
                         let handleResize (size: Size) =
+                            // Issue #400: `Resized` carries the LOGICAL window size (Silk `window.Size`) —
+                            // the space Silk reports pointer input in. The product renders at the PHYSICAL
+                            // framebuffer size (owned by `handleFramebufferResize`), so a logical resize only
+                            // updates the pointer-scaling reference; the paired `FramebufferResized` owns the
+                            // surface change and any re-derive.
+                            currentWindowSize <- size
+
+                        let handleFramebufferResize (size: Size) =
                             currentSurfaceSize <- size
+                            // Issue #400: the live scene is authored at this physical size, so the present
+                            // path must NOT upscale it a second time — publish it as the fit's authoring size
+                            // (identity fit). `GlHost.run` clears the override per run.
+                            Host.GlHost.setLiveAuthoringSizeOverride (Some size)
                             // Re-derive only when the space the product draws in actually moved. With a
                             // `LogicalSize` it never does — `presentScene` alone applies the new fit — so a
-                            // fixed-resolution game does not re-render once per resize tick.
+                            // fixed-resolution game does not re-render once per framebuffer-resize tick.
                             let nextViewSize = viewSize ()
 
                             if nextViewSize <> currentSize then
@@ -2349,6 +2384,7 @@ module Viewer =
                                 (Some handleKey)
                                 (Some handlePointer)
                                 (Some handleResize)
+                                (Some handleFramebufferResize)
                                 inputVerified
                                 script
                         with

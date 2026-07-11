@@ -476,10 +476,30 @@ module GlHost =
             finally
                 canvas.RestoreToCount restoreCount
 
-    /// Issue #364: the logical/physical size pair for the current live present — logical from the
-    /// window (points), physical from the framebuffer the surface was just sized to. Equal at scale 1.
+    // Issue #400: the coordinate space the live scene is authored in, when it is NOT the logical
+    // window. The size-aware interactive host renders a product at NATIVE (physical framebuffer)
+    // resolution, so the scene it hands the present path is already framebuffer-sized; setting this
+    // to the framebuffer size makes the #364 logical→physical fit an identity for that path (no
+    // double-scale). `None` (the default, and every non-native path — generated-app, evidence,
+    // readback) keeps the #364 behaviour: author in the logical `window.Size`, fit up to the
+    // framebuffer. Per-run static like the present/idle carriers; `run` resets it on entry.
+    let mutable private liveAuthoringSizeOverride: Size option = None
+
+    /// Issue #400: the size-aware interactive host publishes the coordinate space it authored the live
+    /// scene in (the physical framebuffer, for native resolution) so the present-time fit does not
+    /// scale an already-native scene a second time. `None` restores the #364 window-authored default.
+    let internal setLiveAuthoringSizeOverride (size: Size option) = liveAuthoringSizeOverride <- size
+
+    /// Issue #364/#400: the (authoring, physical) size pair for the current live present. Physical is
+    /// always the framebuffer the surface was just sized to. Authoring is the space the scene was drawn
+    /// in — the logical `window.Size` by default (#364), or an explicit override when a caller rendered
+    /// at native framebuffer resolution (#400), in which case the fit collapses to the identity.
     let private liveFitSizes (window: IWindow) (framebuffer: FramebufferState) : Size * Size =
-        { Width = window.Size.X; Height = window.Size.Y }, { Width = framebuffer.Width; Height = framebuffer.Height }
+        let authoring =
+            liveAuthoringSizeOverride
+            |> Option.defaultValue { Width = window.Size.X; Height = window.Size.Y }
+
+        authoring, { Width = framebuffer.Width; Height = framebuffer.Height }
 
     // Feature 120 (US1, FR-001/002): the most recent present's per-phase durations — the scene→canvas
     // paint walk (incl. surface clear + canvas flush) vs the GL flush + buffer-swap (compose/present).
@@ -913,9 +933,13 @@ module GlHost =
             with ex ->
                 Result.Error(Diagnostics.startupFailed Framebuffer $"OpenGL framebuffer wrap failed: {ex.Message}")
 
-    /// Offscreen render → GPU→CPU readback. Backs the on-demand evidence/screenshot routine
-    /// (FR-004), independent of the live present path, and the explicit OffscreenReadback mode.
-    let renderSceneToPixels configuration (context: GRContext) (width: int) (height: int) (scene: Scene) =
+    /// Offscreen render → GPU→CPU readback onto a `width`×`height` GL surface. Backs the on-demand
+    /// evidence/screenshot routine (FR-004), independent of the live present path, and the explicit
+    /// OffscreenReadback mode. Issue #400: `authoringSize` is the coordinate space the scene was drawn
+    /// in — the readback fits it onto the (physical) target exactly as the displayed frame does, so a
+    /// HiDPI `OffscreenReadback` capture fills the surface instead of leaving the scene 1:1 in the
+    /// top-left corner. Pass the target size itself for a 1:1 (identity-fit) render.
+    let renderSceneToPixels configuration (context: GRContext) (width: int) (height: int) (authoringSize: Size) (scene: Scene) =
         try
             let imageInfo = SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Premul)
 
@@ -931,7 +955,7 @@ module GlHost =
                     |> SceneRenderer.skColor
 
                 surface.Canvas.Clear clear
-                drawScene scene surface.Canvas
+                drawSceneFitted authoringSize { Width = width; Height = height } scene surface.Canvas
                 surface.Canvas.Flush()
                 surface.Flush()
                 context.Flush()
@@ -1041,12 +1065,12 @@ module GlHost =
                 lastPaintDuration <- paintSw.Elapsed
                 lastComposeDuration <- composeSw.Elapsed
 
-                // Issue #364: the readback PIXELS below still render 1:1 at physical size (the scene is
-                // logical), so on a scaled display the opt-in `OffscreenReadback` capture keeps the scene
-                // in its top-left corner even though the DISPLAYED frame above is now correctly fitted.
-                // The live default (`DirectToSwapchain`) has no readback and is fully correct; readback is
-                // evidence/fallback and evidence runs at scale 1. Tracked as a follow-up.
-                bind (renderSceneToPixels configuration context framebuffer.Width framebuffer.Height scene) (fun pixels ->
+                // Issue #400 (was the #364 follow-up): the readback PIXELS render through the SAME
+                // logical→physical fit as the displayed frame above (`logicalSize` is the scene's
+                // authoring space from `liveFitSizes`), so on a scaled display the opt-in
+                // `OffscreenReadback` capture fills the framebuffer instead of leaving the scene 1:1 in
+                // the top-left corner. At scale 1 the fit is the identity and this is byte-identical.
+                bind (renderSceneToPixels configuration context framebuffer.Width framebuffer.Height logicalSize scene) (fun pixels ->
                     Ok
                         { Width = framebuffer.Width
                           Height = framebuffer.Height
@@ -1125,7 +1149,14 @@ module GlHost =
         let disposables = ResizeArray<IDisposable>()
 
         let loadedHandler =
-            Action(fun () -> dispatchViewerEvent program dispatch Loaded)
+            Action(fun () ->
+                dispatchViewerEvent program dispatch Loaded
+                // Issue #400: seed the interactive host with the PHYSICAL framebuffer size at load, so the
+                // first product `View`/present already renders at native resolution rather than waiting for
+                // the first `FramebufferResize` (Silk raises one on creation, but seeding here removes the
+                // one-frame race on a scaled display). Equal to `window.Size` at scale 1.
+                let fb = window.FramebufferSize
+                dispatchViewerEvent program dispatch (FramebufferResized { Width = fb.X; Height = fb.Y }))
 
         window.add_Load loadedHandler
         addDisposable disposables (fun () -> window.remove_Load loadedHandler)
@@ -1153,6 +1184,21 @@ module GlHost =
 
         window.add_Resize resizeHandler
         addDisposable disposables (fun () -> window.remove_Resize resizeHandler)
+
+        // Issue #400: the PHYSICAL framebuffer resize is a SEPARATE Silk signal from the logical
+        // `Resize` above — on a scaled display the two fire with different extents. Forward it so the
+        // interactive host can advertise native resolution and rescale pointer input.
+        let framebufferResizeHandler =
+            Action<Vector2D<int>>(fun size ->
+                dispatchViewerEvent
+                    program
+                    dispatch
+                    (FramebufferResized
+                        { Width = size.X
+                          Height = size.Y }))
+
+        window.add_FramebufferResize framebufferResizeHandler
+        addDisposable disposables (fun () -> window.remove_FramebufferResize framebufferResizeHandler)
 
         let closingHandler =
             Action(fun () ->
@@ -1429,6 +1475,9 @@ module GlHost =
         FrameCache.beginRun ()
         idleRepresentsRemaining <- 0
         representedCount <- 0
+        // Issue #400: a fresh run authors in the logical window until a size-aware host opts into native
+        // resolution; clear any override a prior run left behind (module static, like the carriers above).
+        liveAuthoringSizeOverride <- None
 
         let requestShutdown closeWindow =
             shutdownRequested <- true
@@ -1778,7 +1827,10 @@ module GlHost =
                                     let width = if framebuffer.Width > 0 then framebuffer.Width else max 1 createdWindow.FramebufferSize.X
                                     let height = if framebuffer.Height > 0 then framebuffer.Height else max 1 createdWindow.FramebufferSize.Y
 
-                                    bind (renderSceneToPixels program.Configuration context width height scene) (fun pixels ->
+                                    // Issue #400: this on-demand capture renders the (already SkiaViewer-fitted)
+                                    // scene onto the framebuffer 1:1 — pass the target size as the authoring size
+                                    // so the fit is the identity, preserving the prior behaviour exactly.
+                                    bind (renderSceneToPixels program.Configuration context width height { Width = width; Height = height } scene) (fun pixels ->
                                         Ok
                                             { Width = width
                                               Height = height

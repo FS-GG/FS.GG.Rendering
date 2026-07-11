@@ -135,6 +135,7 @@ FS.GG.UI.SkiaViewer.Host.ViewerEffect`1+ReportDiagnostic
 FS.GG.UI.SkiaViewer.Host.ViewerEffect`1+Tags
 FS.GG.UI.SkiaViewer.Host.ViewerEvent
 FS.GG.UI.SkiaViewer.Host.ViewerEvent+DiagnosticReported
+FS.GG.UI.SkiaViewer.Host.ViewerEvent+FramebufferResized
 FS.GG.UI.SkiaViewer.Host.ViewerEvent+KeyDown
 FS.GG.UI.SkiaViewer.Host.ViewerEvent+KeyUp
 FS.GG.UI.SkiaViewer.Host.ViewerEvent+PointerMoved
