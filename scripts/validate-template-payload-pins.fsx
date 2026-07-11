@@ -94,12 +94,19 @@
 //     version-coherence guard; release.yml documents it as exactly that.)
 //
 // WHAT THE WAIVER COSTS, AND WHY THAT IS NAMED RATHER THAN HIDDEN. In the window, no profile can
-// restore — every profile pins FS.GG.UI.Build/.Scene — so the RESOLVED-GRAPH proofs
-// (`prerelease-in-scaffolded-graph`, `pin-resolved-elsewhere`) genuinely cannot run. They are SKIPPED,
-// not passed: printing "COHERENT (structural + restore-grounded)" there would be the #266 lie this
-// script's own header forbids ("nothing to check" and "checked, and it's fine" must not share an exit
-// code). The RELEASE-PENDING block says which proofs did not run, and which still did — the structural
-// core, and Game/Audio existence + staleness, the ones this bump does not publish.
+// restore — every profile pins FS.GG.UI.Build/.Scene — so the proofs that NEED A RESOLVED GRAPH cannot
+// run: `pin-resolved-elsewhere`, and the TRANSITIVE half of `prerelease-in-scaffolded-graph`. They are
+// SKIPPED, not passed: printing "COHERENT (structural + restore-grounded)" there would be the #266 lie
+// this script's own header forbids ("nothing to check" and "checked, and it's fine" must not share an
+// exit code). The RELEASE-PENDING block names what did not run and what still did.
+//
+// The waiver skips the RESTORE — it does not skip the rules the restore is not needed for. Everything
+// answerable from the axis literals or from the feed keeps running, and keeps deciding the exit code:
+// the structural verdict-core; Game/Audio existence and staleness; and the DIRECT half of
+// `prerelease-in-scaffolded-graph` (`directPrereleaseFailures`), because a prerelease sitting in an axis
+// literal needs no graph to see. Dropping that last one through the window would let a stable release
+// ship a template pinning a prerelease $(FsGgAudioVersion) and exit 0 — #235 in a new coat, waved
+// through by the very waiver that is supposed to be bounded.
 //
 // THE WAIVER IS BOUNDED IN TIME, NOT BY THE FEED'S MOMENTARY STATE. A half-failed publish (tags cut,
 // some packages up, some not) is waived at the bump commit — deliberately, because failing there would
@@ -401,8 +408,19 @@ let structuralFailures (i: Inputs) : Failure list =
 
 // ---- the feed ---------------------------------------------------------------------------------
 // Version enumeration comes from the flat container, whose `index.json` is the authoritative list of
-// a package's published versions. An unreachable feed / non-200 / empty list is a GUARD ERROR: the
-// question "does this pin exist?" was not answered, and unanswered must never read as answered-yes.
+// a package's published versions. An unreachable feed / a 5xx / a 200 listing nothing is a GUARD ERROR:
+// the question "does this pin exist?" was not answered, and unanswered must never read as answered-yes.
+//
+// A 404 IS AN ANSWER, and it must not be confused with the feed failing to give one. The flat container
+// returns 404 for an id it carries no package under — "I have nothing by that name" — which is a FACT
+// about the feed, not a failure to establish one. It is also the NORMAL state of a package the release
+// under test INTRODUCES (FS.GG.UI.Symbology.Render, .DesignSystem and .Themes.Default each entered the
+// props file this way). Raising here would exit 2 BEFORE the RELEASE-PENDING waiver is ever consulted,
+// so a release that adds a package would stay red — the exact thing #506 exists to stop. Treat it as
+// the empty version list it is, and let the rules above decide what that means:
+//   * in the release window, the package lands in `pending` and is waived;
+//   * outside it, `pin-not-published` reports it as named drift (exit 1) rather than an opaque guard
+//     error — which is also a strictly better answer for a typo'd package id.
 let http = new Net.Http.HttpClient(Timeout = TimeSpan.FromSeconds 30.0)
 
 let feedCache = Collections.Generic.Dictionary<string, string list>()
@@ -412,22 +430,28 @@ let feedVersions (packageId: string) : string list =
     | true, vs -> vs
     | _ ->
         let url = sprintf "https://api.nuget.org/v3-flatcontainer/%s/index.json" (packageId.ToLowerInvariant())
-        let body =
+        let resp =
             try
-                let resp = http.GetAsync(url).GetAwaiter().GetResult()
-                if not resp.IsSuccessStatusCode then
-                    raise (GuardError(sprintf "nuget.org returned %d for %s — the feed could not answer whether %s exists; fail closed" (int resp.StatusCode) url packageId))
-                resp.Content.ReadAsStringAsync().GetAwaiter().GetResult()
-            with
-            | GuardError _ as e -> raise e
-            | ex -> raise (GuardError(sprintf "nuget.org unreachable for %s: %s" packageId ex.Message))
+                http.GetAsync(url).GetAwaiter().GetResult()
+            with ex ->
+                raise (GuardError(sprintf "nuget.org unreachable for %s: %s" packageId ex.Message))
         let versions =
-            use doc = JsonDocument.Parse body
-            doc.RootElement.GetProperty("versions").EnumerateArray()
-            |> Seq.map (fun e -> e.GetString())
-            |> Seq.toList
-        if versions.IsEmpty then
-            raise (GuardError(sprintf "nuget.org lists zero versions for %s — fail closed" packageId))
+            if resp.StatusCode = Net.HttpStatusCode.NotFound then
+                [] // the feed answered: it carries no package by this id. See the note above.
+            elif not resp.IsSuccessStatusCode then
+                raise (GuardError(sprintf "nuget.org returned %d for %s — the feed could not answer whether %s exists; fail closed" (int resp.StatusCode) url packageId))
+            else
+                let body = resp.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+                use doc = JsonDocument.Parse body
+                let vs =
+                    doc.RootElement.GetProperty("versions").EnumerateArray()
+                    |> Seq.map (fun e -> e.GetString())
+                    |> Seq.toList
+                // A 200 that lists nothing is the feed contradicting itself — it claims the package
+                // exists and then names no version of it. That is not an answer; fail closed.
+                if vs.IsEmpty then
+                    raise (GuardError(sprintf "nuget.org returned 200 but listed zero versions for %s — fail closed" packageId))
+                vs
         feedCache.[packageId] <- versions
         versions
 
@@ -577,10 +601,37 @@ let unpublishedUiMembers (i: Inputs) : string list =
 /// the normal case, which short-circuits before the git call — so a shallow clone still runs the full
 /// live proof whenever the pin is published, and `bumpedInCommitUnderTest` is only ever consulted when
 /// the answer actually changes a verdict. See the header for why each conjunct is there.
-let releasePending (i: Inputs) (pending: string list) =
+let releasePending (pending: string list) =
     not pending.IsEmpty
     && not releaseLane
     && bumpedInCommitUnderTest propsRel uiAxis
+
+/// The half of `prerelease-in-scaffolded-graph` that needs no graph.
+///
+/// RELEASE-PENDING skips the restore, and with it that rule — but the rule has two halves, and only one
+/// of them needs a resolved graph. A TRANSITIVE prerelease (FS.GG.Game.Render reaching down to
+/// FS.GG.UI.Scene) genuinely cannot be seen without restoring. A DIRECTLY PINNED prerelease is visible
+/// in the axis literal itself, and dropping it through the window would let a stable release ship a
+/// template pinning a prerelease $(FsGgAudioVersion), exit 0 — #235 in a new coat, waved through by the
+/// very waiver that is supposed to be bounded. So the cheap half keeps running, window or not.
+///
+/// `PreviewChannel` is asserted by $(FsGgUiVersion) alone (see `readInputs`): on a preview template a
+/// prerelease component is coherent, and this rule is correctly silent.
+let directPrereleaseFailures (i: Inputs) : Failure list =
+    if i.PreviewChannel then
+        []
+    else
+        [ for p in i.Pins |> List.distinctBy (fun p -> p.Id) do
+              if SemVer.isPrerelease p.Version then
+                  yield
+                      { Rule = "prerelease-in-scaffolded-graph"
+                        Location = sprintf "%s ($(%s), pinned directly)" propsRel p.Axis
+                        Expected = "a stable template scaffolds a stable graph"
+                        Actual = sprintf "%s %s" p.Id p.Version
+                        Fix =
+                            sprintf
+                                "re-pin $(%s) onto a stable version. The TRANSITIVE half of this rule needs the restore that RELEASE-PENDING skipped; a directly pinned prerelease needs no graph to see, so it is still checked"
+                                p.Axis } ]
 
 /// Existence on the feed, and (for the axes the feed owns) non-staleness. Both directions, like
 /// `.github`'s check-feed-coherence.py: a pin BEHIND feed-newest is stale; a pin the feed does not
@@ -602,7 +653,10 @@ let feedFailures (waiveUi: bool) (i: Inputs) : Failure list =
                         { Rule = "pin-not-published"
                           Location = sprintf "%s ($(%s) = %s)" propsRel axis version
                           Expected = sprintf "%s %s published on nuget.org" id version
-                          Actual = sprintf "%s is not among the %d published versions of %s" version (feedVersions id).Length id
+                          Actual =
+                            match (feedVersions id).Length with
+                            | 0 -> sprintf "nuget.org carries no package named %s at all" id
+                            | n -> sprintf "%s is not among the %d published versions of %s" version n id
                           Fix =
                             if axis = uiAxis then
                                 sprintf "publish %s@%s, or re-pin $(%s) onto a version the feed carries. NOTE: this is NOT waived as RELEASE-PENDING, so this commit did not bump $(%s) — the pin is stale or typo'd, not mid-release" id version axis axis
@@ -647,27 +701,35 @@ let summariseDrift (failures: Failure list) =
             sprintf "- `DRIFT [%s]` %s — expected `%s`; actual `%s` — fix: %s" f.Rule f.Location f.Expected f.Actual f.Fix ]
 
 /// The release window, stated rather than merely survived. Says three things, and needs all three:
-/// WHAT is pending, WHAT WAS NOT PROVED because of it, and WHAT STILL WAS. A waiver that printed only
+/// WHAT is pending, WHAT WAS NOT CHECKED because of it, and WHAT STILL WAS. A waiver that printed only
 /// the first would be indistinguishable from a pass, which is the #266 failure this script exists to
 /// refuse — the gate's own header forbids "nothing to check" and "checked, and it's fine" sharing an
 /// exit code, and that bans them sharing an OUTPUT too.
+///
+/// It says CHECKED, never PROVED. This block is printed before the verdict is known — the Game/Audio
+/// rules it names may be about to fail — so a word like "proved" would be a claim about a verdict this
+/// function does not have. (The sibling guard learned the same lesson about the word "legal" on its own
+/// RELEASE-PENDING line.) The exit code carries the verdict; these lines carry only the scope.
 let printReleasePending (i: Inputs) (pending: string list) =
     let version = Map.find uiAxis i.AxisVersions
     printfn "RELEASE-PENDING: this commit bumps $(%s) to %s, and the %d FS.GG.UI.* package(s) it pins are not on nuget.org yet." uiAxis version pending.Length
     printfn "  That is the release window, not drift: merging this is what cuts fs-gg-ui/v%s and publishes them (release-tags.yml -> release.yml)." version
     printfn "  awaiting publish @ %s: %s" version (String.concat ", " pending)
-    printfn "  NOT PROVED (a graph cannot restore against packages that do not exist yet):"
-    printfn "    - the resolved graph of all %d scaffold profiles — `prerelease-in-scaffolded-graph`, `pin-resolved-elsewhere`" profiles.Length
-    printfn "  STILL PROVED (this bump does not publish these, so nothing about them is pending):"
-    printfn "    - the structural verdict-core, and $(FsGgGameVersion) / $(FsGgAudioVersion) existence + staleness"
+    printfn "  NOT CHECKED (a graph cannot restore against packages that do not exist yet):"
+    printfn "    - the resolved graph of all %d scaffold profiles — the TRANSITIVE half of `prerelease-in-scaffolded-graph`, and `pin-resolved-elsewhere`" profiles.Length
+    printfn "  STILL CHECKED (this bump does not publish these, so the window excuses nothing about them):"
+    printfn "    - the structural verdict-core"
+    printfn "    - $(FsGgGameVersion) / $(FsGgAudioVersion) existence + staleness"
+    printfn "    - the DIRECT half of `prerelease-in-scaffolded-graph` — a pinned prerelease needs no graph to see"
+    printfn "  Those still decide the exit code: a failure in any of them reds this run, waiver or no waiver."
     printfn "  If the publish never lands, the next commit to main does not bump the pin, the waiver is OFF, and this gate reds on `pin-not-published`."
     writeStepSummary
         "Template payload pins — RELEASE-PENDING"
         [ sprintf "This commit bumps `$(%s)` to **%s**, whose FS.GG.UI.* packages are not published yet. That is the release window — merging is what publishes them — so `pin-not-published` / `pin-does-not-resolve` are **waived on that axis alone**." uiAxis version
           ""
           sprintf "- **awaiting publish @ %s:** %s" version (String.concat ", " pending)
-          sprintf "- **not proved:** the resolved graph of all %d scaffold profiles (`prerelease-in-scaffolded-graph`, `pin-resolved-elsewhere`) — skipped, not passed" profiles.Length
-          "- **still proved:** the structural verdict-core, and `$(FsGgGameVersion)` / `$(FsGgAudioVersion)` existence + staleness"
+          sprintf "- **not checked:** the resolved graph of all %d scaffold profiles — the transitive half of `prerelease-in-scaffolded-graph`, and `pin-resolved-elsewhere`. Skipped, not passed." profiles.Length
+          "- **still checked:** the structural verdict-core; `$(FsGgGameVersion)` / `$(FsGgAudioVersion)` existence + staleness; and the direct half of `prerelease-in-scaffolded-graph`. A failure in any of these still reds the run."
           ""
           "If the publish never lands, the next commit to `main` reds this gate on `pin-not-published`." ]
 
@@ -711,23 +773,27 @@ let main () =
                 // FS.GG.UI.* pins — five identical reds that say nothing the RELEASE-PENDING block does
                 // not say better. Skip them, and SAY they were skipped.
                 let pending = unpublishedUiMembers i
-                let waiveUi = releasePending i pending
+                let waiveUi = releasePending pending
                 let feed = feedFailures waiveUi i
 
                 if waiveUi then
                     printReleasePending i pending
-                    if feed.IsEmpty then
+                    // The waiver skips the RESTORE, not the rules the restore is not needed for. The
+                    // direct half of `prerelease-in-scaffolded-graph` reads the axis literals, so the
+                    // window is no excuse for dropping it — see `directPrereleaseFailures`.
+                    let stillChecked = feed @ directPrereleaseFailures i
+                    if stillChecked.IsEmpty then
                         // Deliberately NOT "COHERENT": the graph was not proved, and a success line that
                         // said so would be the lie the header forbids. The exit code says "not drift";
                         // the words say exactly what was and was not established.
-                        printfn "template payload pins: RELEASE-PENDING — structural core OK, Game/Audio axes OK; restore proof deferred to the publish."
+                        printfn "template payload pins: RELEASE-PENDING — structural core OK, Game/Audio axes OK, no directly pinned prerelease; restore proof deferred to the publish."
                         0
                     else
-                        // The waiver covers $(FsGgUiVersion) and nothing else, so anything left here is
-                        // a Game/Audio defect that the release window does not excuse.
-                        printDrift feed
-                        summariseDrift feed
-                        eprintfn "template payload pins: DRIFT — %d failure(s) on an axis this release does not publish (RELEASE-PENDING covers $(%s) only)" feed.Length uiAxis
+                        // The waiver covers $(FsGgUiVersion)'s PUBLICATION and nothing else, so anything
+                        // left here is a defect the release window does not excuse.
+                        printDrift stillChecked
+                        summariseDrift stillChecked
+                        eprintfn "template payload pins: DRIFT — %d failure(s) the release window does not excuse (RELEASE-PENDING waives only the publication of $(%s))" stillChecked.Length uiAxis
                         1
                 else
                     let graphs, restoreFailures =
