@@ -43,6 +43,8 @@ let private repositoryPath (relativePath: string) =
 let private propsPath = repositoryPath "template/base/Directory.Packages.props"
 let private projPath = repositoryPath "template/base/src/Product/Product.fsproj"
 let private manifestPath = repositoryPath "template/skill-manifest/skill-manifest.json"
+let private skillistRel = "template/base/docs/skillist-reference.md"
+let private skillistPath = repositoryPath skillistRel
 
 /// Every profile a scaffold can be generated on (.template.config/template.json `symbols.profile`).
 let private allProfiles = set [ "app"; "headless-scene"; "governed"; "sample-pack"; "game" ]
@@ -83,17 +85,29 @@ let private enclosingGate (lines: string[]) (lineIndex: int) =
 
 /// The profiles on which `packageId` is declared in `text` (a props or fsproj file), or None when it is
 /// not declared there at all. An ungated declaration reaches every profile.
+///
+/// UNIONS every declaration, rather than reading the first: the props file already carries two separate
+/// `(app || sample-pack || game)` regions, so a package legitimately CAN be declared more than once, and
+/// taking only the first would under-report its reach and fail R-REACH on profiles that are in fact
+/// covered. The exact `Include="<id>"` match (closing quote included) keeps `FS.GG.UI.Symbology` from
+/// matching the `FS.GG.UI.Symbology.Render` line — a prefix collision that would silently merge the two.
 let private profilesDeclaring (text: string) (packageId: string) =
     let lines = text.Replace("\r\n", "\n").Split('\n')
-    lines
-    |> Array.tryFindIndex (fun l -> l.Contains($"Include=\"{packageId}\""))
-    |> Option.map (fun idx ->
-        match enclosingGate lines idx with
-        | None -> allProfiles
-        | Some cond ->
-            Regex.Matches(cond, "\"([^\"]+)\"")
-            |> Seq.map (fun m -> m.Groups.[1].Value)
-            |> Set.ofSeq)
+    let needle = $"Include=\"{packageId}\""
+
+    let declared =
+        lines
+        |> Array.indexed
+        |> Array.filter (fun (_, l) -> l.Contains needle)
+        |> Array.map (fun (idx, _) ->
+            match enclosingGate lines idx with
+            | None -> allProfiles
+            | Some cond ->
+                Regex.Matches(cond, "\"([^\"]+)\"")
+                |> Seq.map (fun m -> m.Groups.[1].Value)
+                |> Set.ofSeq)
+
+    if Array.isEmpty declared then None else Some(Set.unionMany declared)
 
 /// The profile set of a manifest `materializes-when` clause (ADR-0017 grammar: `profile in [a, b]`,
 /// optionally `and`-ed with non-profile clauses such as `lifecycle == spec-kit`, which we ignore — they
@@ -134,10 +148,13 @@ let private reachExemptions = Map.ofList [ "fs-gg-project", "#431"; "fs-gg-testi
 /// (skill id, profiles it materializes on, the FS.GG.* packages its body says to `open`).
 let private productSkills =
     let manifest = File.ReadAllText manifestPath
-    // Each product row: id, materializes-when, supplied-by (the skill's source directory).
+    // Each row: id, materializes-when, supplied-by (the skill's source directory). `[^{}]*?` rather than
+    // `[\s\S]*?` so a match can never span a JSON object boundary — a row missing one of the three fields
+    // would otherwise pair THIS skill's id with the NEXT skill's materializes-when, and the guard would
+    // hold a skill to a gate that is not its own.
     Regex.Matches(
         manifest,
-        "\"id\":\\s*\"(?<id>[^\"]+)\"[\\s\\S]*?\"materializes-when\":\\s*\"(?<when>[^\"]+)\"[\\s\\S]*?\"supplied-by\":\\s*\"(?<dir>[^\"]+)\""
+        "\"id\":\\s*\"(?<id>[^\"]+)\"[^{}]*?\"materializes-when\":\\s*\"(?<when>[^\"]+)\"[^{}]*?\"supplied-by\":\\s*\"(?<dir>[^\"]+)\""
     )
     |> Seq.map (fun m ->
         let id = m.Groups.["id"].Value
@@ -217,6 +234,45 @@ let skillPackageReachTests =
                   Expect.isTrue
                       stillOrphaned
                       $"the {id} exemption ({issue}) no longer violates R-REACH — the defect it waives is fixed, so DELETE the row from reachExemptions and let the guard hold {id} to the invariant like every other skill"
+          }
+
+          // R-DOC — `docs/skillist-reference.md` SHIPS TO THE GENERATED PRODUCT and its "Profiles" column
+          // is what an author reads to learn which skills their scaffold vendors. It is hand-maintained,
+          // and nothing asserted it against the manifest — so narrowing a skill's materializes-when left
+          // the shipped doc claiming the old reach, silently. (That is not hypothetical: #430's own first
+          // pass did exactly this, and only a manual read caught it.) A skill roster that lies to the
+          // author is the same failure as a skill with no package: it looks wired.
+          test "the shipped skillist-reference profile column matches the manifest's materializes-when" {
+              let skillist = File.ReadAllText skillistPath
+              let manifest = File.ReadAllText manifestPath
+
+              // | `fs-gg-x` | .agents/skills/fs-gg-x/SKILL.md | app, game |
+              let rows =
+                  Regex.Matches(skillist, @"\|\s*`(?<id>fs-gg-[\w-]+)`\s*\|[^|]*\|\s*(?<profiles>[^|]+?)\s*\|")
+                  |> Seq.map (fun m ->
+                      m.Groups.["id"].Value,
+                      m.Groups.["profiles"].Value.Split(',') |> Seq.map (fun s -> s.Trim()) |> Set.ofSeq)
+                  |> List.ofSeq
+
+              Expect.isNonEmpty rows $"{skillistRel} has a parseable skill roster (if this fails the guard is vacuous)"
+
+              for id, documented in rows do
+                  let m = Regex.Match(manifest, $"\"id\":\\s*\"{Regex.Escape id}\"[\\s\\S]*?\"materializes-when\":\\s*\"(?<when>[^\"]+)\"")
+
+                  // The exempted skills' rows cannot be settled yet: which side is wrong depends on how
+                  // their filed issue resolves. `fs-gg-testing` (#432) is the live case — this doc says
+                  // `governed` (agreeing with the PACKAGE gate) while the manifest says all five, because
+                  // issue #90 widened materializes-when and updated neither the pin nor this roster.
+                  // Correcting the row here would PREJUDGE #432: widen the package and all five is right;
+                  // narrow the skill and `governed` already was. Left to #432, with the evidence recorded
+                  // there, rather than guessed at here.
+                  if m.Success && not (reachExemptions.ContainsKey id) then
+                      let actual = profilesOf m.Groups.["when"].Value
+
+                      Expect.equal
+                          documented
+                          actual
+                          $"{skillistRel} tells the product author that `{id}` vendors on {Set.toList documented}, but the manifest materializes it on {Set.toList actual} — the shipped skill roster is lying to the author. Update the row when you change a skill's gate."
           }
 
           // R-REACH — the heart of #430. Pinning is not enough: the skill must not reach a profile the
