@@ -16,6 +16,10 @@ Real file I/O (and dispatching a loaded save back to your model) is the host's j
 backend); this skill covers requesting save/load and proving what was requested. This skill
 materializes for the `game` and `sample-pack` profiles.
 
+> **Building the file backend rather than consuming it?** Then the testing guidance below is written
+> for the wrong reader, and following it will hand you a suite that passes against a backend that
+> writes nothing. Read [If you own the backend](#if-you-own-the-backend) first.
+
 ## Public Contract
 
 The signatures you consume are bundled with this product:
@@ -90,8 +94,44 @@ let evidence =
   your deserialize step's job, which is why you stamp the version.
 - **Expecting `Load`/`DeleteSlot` of an empty slot to error.** The interpreter records exactly what
   you request; "no such save" is a deferred-backend concern, not an exception here.
-- **Expecting real save files in CI.** There is no file backend yet; the evidence is the *requested*
-  values. Assert on `PersistenceEvidence.Requested`, not on files on disk.
+- **Expecting real save files in CI — *while the backend is deferred*.** With the record-only
+  interpreter there is no file backend, so the evidence is the *requested* values: assert on
+  `PersistenceEvidence.Requested`, not on files on disk. **If you are building the backend, invert
+  this** — a `Requested`-only suite passes against a backend that writes nothing. See
+  [If you own the backend](#if-you-own-the-backend).
+
+## If you own the backend
+
+Everything above is written for a product that *consumes* a deferred backend. **If your work item is
+to build the file backend itself, the guidance above describes the trap, not the target.**
+
+`Persistence.interpret`/`record` are **record-only**: they fold requests into
+`PersistenceEvidence.Requested` and touch no filesystem. So a suite that asserts on `Requested`
+**passes perfectly against a backend that writes nothing.** It exercises the framework's interpreter,
+never your code — and it will stay green through every bug you ship. Requests are not effects.
+
+Assert on the **effect**, not the request:
+
+- **`Save` writes.** After your backend handles a `Save`, the slot exists on disk and holds the
+  `SavePayload` bytes verbatim (the framework never parses or re-encodes them) under the stamped
+  `Version`.
+- **`Load` round-trips across a process boundary.** `Save` then `Load` of the same `SaveSlot` yields
+  the same `Version` and the same `Payload` — read back from a *fresh* process, not from an
+  in-memory cache that would also satisfy a same-process test.
+- **`DeleteSlot` removes.** After a `DeleteSlot`, a later `Load` of that slot must not observe the
+  deleted save.
+- **A missing slot and a damaged slot are different outcomes.** `Load` of a never-written slot is not
+  the same as `Load` of a slot whose bytes are truncated or unparseable. A backend that collapses
+  both into one "no save" answer silently eats corruption. Decide what each reports, then test it.
+
+⚠️ **The pure surface has no load-result type — you will have to add one, and it is not yours.**
+`PersistenceEffect` is request-only (`Save`/`Load`/`DeleteSlot`), and `Persistence.fsi` says so
+outright: *"how a real backend reports 'no such save' is a deferred concern."* There is no
+`LoadResult`, no absent/corrupt vocabulary, and no path that dispatches a loaded save back to
+`update` as a `Msg`. Reporting a load's outcome therefore needs a **new type on the
+`FS.GG.UI.Canvas` surface**, which is an `fs-gg-rendering` change, not a product-local one. Raise it
+there ([FS-GG/FS.GG.Rendering#445](https://github.com/FS-GG/FS.GG.Rendering/issues/445)) rather than
+inventing a private result type no host will ever dispatch.
 
 ## Build Commands
 
@@ -99,8 +139,10 @@ Run `./fake.sh build -t Dev` then `./fake.sh build -t Verify` in this product.
 
 ## Test Commands
 
-Run `./fake.sh build -t Test` to exercise product-owned save/load examples (assert the
-`PersistenceEvidence.Requested` sequence your `update` produces for a set of events).
+Run `./fake.sh build -t Test` to exercise product-owned save/load examples. While the backend is
+deferred, assert the `PersistenceEvidence.Requested` sequence your `update` produces for a set of
+events. **If you own a file backend, assert on the files it wrote instead** — see
+[If you own the backend](#if-you-own-the-backend).
 
 ## Evidence
 
@@ -112,16 +154,23 @@ framework readiness reports into the product.
 
 `PersistenceEffect`/`Persistence` are in `FS.GG.UI.Canvas` (referenced only on the
 `game`/`sample-pack` profiles). Canvas depends only on Scene — the persistence request surface pulls
-in no viewer, layout, or widget machinery. Real file I/O belongs in the host (`fs-gg-skiaviewer`), not
-in `update`.
+in no viewer, layout, or widget machinery. Real file I/O belongs in a **host**, not in `update`.
+
+Be clear about what that host is today: **there isn't one.** No host in this org interprets a
+`PersistenceEffect` into file I/O — `fs-gg-skiaviewer` scopes itself to window, render, and
+screenshot I/O and documents no persistence sink. Nothing will pick these requests up unless you
+write the backend yourself ([If you own the backend](#if-you-own-the-backend)).
 
 ## Generated Product
 
 Map each `Msg` that should save, load, or delete to a `PersistenceEffect` in your `update`, collect
-the frame's requests, and `Persistence.interpret` them for evidence today; when a real backend lands,
-the host will interpret the same values into real file I/O — and hand a loaded save back to your
-`update` as a `Msg` — with no change to your request surface. The natural thing to snapshot is your
-seeded, deterministic game-core `Model`.
+the frame's requests, and `Persistence.interpret` them for evidence today. The request surface is
+designed so that a real backend can interpret the same values into file I/O without changing it —
+but no such backend exists yet, and handing a loaded save back to `update` as a `Msg` additionally
+needs a result type the Canvas surface does not have (see
+[If you own the backend](#if-you-own-the-backend)). Treat "the host will handle it later" as
+*unbuilt work*, not as a delivered guarantee. The natural thing to snapshot is your seeded,
+deterministic game-core `Model`.
 
 ## Persistent problems
 
@@ -134,7 +183,6 @@ community sources. If your product uses Spec Kit, record findings and resolving 
 ## Related
 
 - [[fs-gg-game-core]] — the simulation half of a game product; the seeded, deterministic `Model` is the natural thing to save.
-- [[fs-gg-rendering:fs-gg-skiaviewer]] — the host window where a real file backend will interpret these requests and return loaded saves.
 - [[fs-gg-audio]] — the sibling requested-effect surface; persistence and audio are both effects requested from `update`.
 - [[fs-gg-rendering:fs-gg-keyboard-input]] — map input to the `Msg` values whose `update` requests a save/load.
 
