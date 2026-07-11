@@ -74,7 +74,7 @@ let tests =
                 ValidationLanes.InfrastructureError ]
               |> List.iter (fun status ->
                   let readiness =
-                      [ Feature166TestFixtures.result "retained-inspection" ValidationLanes.Required status ]
+                      [ Feature166TestFixtures.result Feature166TestFixtures.syntheticRunRoot "retained-inspection" ValidationLanes.Required status ]
                       |> ValidationLanes.computeOverallReadiness
 
                   Expect.notEqual readiness ValidationLanes.Ready (ValidationLanes.statusToken status))

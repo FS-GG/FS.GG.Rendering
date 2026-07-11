@@ -1315,8 +1315,37 @@ module ValidationLanes =
               "\"replacementNotice\":" + jsonStringOption summary.ReplacementNotice ]
         + "}"
 
+    // A LaneResult's evidence paths are already fully qualified in the same base as runRoot: production
+    // builds them FROM the run root (LogPath = <runRoot>/lanes/<id>/log.txt), and both may be relative,
+    // because the harness's default --out is. Nothing enforced that. A path rooted anywhere else — or
+    // reaching back out through `..` — was written verbatim, so a relative one resolved against the
+    // process CWD and dropped lane evidence outside the run root entirely (#448).
+    //
+    // Compare resolved paths: that catches CWD-relative and `..` escapes alike, and is a no-op for the
+    // production callers, whose lane paths already sit under the root.
+    let laneEvidenceEscaping (runRoot: string) (result: LaneResult) =
+        let root = Path.TrimEndingDirectorySeparator(Path.GetFullPath runRoot)
+        let prefix = root + string Path.DirectorySeparatorChar
+
+        [ result.LogPath; result.ResultPath; result.DiagnosticsPath ]
+        |> List.filter (fun path -> not ((Path.GetFullPath path).StartsWith(prefix, StringComparison.Ordinal)))
+
     let writeSummary (runRoot: string) (summary: ValidationSummary) =
         Directory.CreateDirectory runRoot |> ignore
+
+        // Evidence written outside its run root is evidence the reviewer never finds, and the run still
+        // reports success. Refuse, naming every offending lane and path, rather than scatter the files.
+        let escaping =
+            summary.LaneResults
+            |> List.collect (fun result ->
+                laneEvidenceEscaping runRoot result |> List.map (fun path -> $"{result.LaneId} -> {path}"))
+
+        if not escaping.IsEmpty then
+            invalidOp (
+                $"lane evidence escapes the run root '{runRoot}': "
+                + String.concat "; " escaping
+                + ". A LaneResult's LogPath/ResultPath/DiagnosticsPath must live under the run root."
+            )
 
         for result in summary.LaneResults do
             writeLaneResult result

@@ -238,4 +238,12 @@ module ValidationLanes =
 
     val runLanes: repositoryRoot: string -> outDir: string -> selectedLaneIds: string list -> ValidationSummary
 
+    /// Writes every lane's evidence plus the run summary, and returns the summary paths.
+    /// Each LaneResult's LogPath/ResultPath/DiagnosticsPath must resolve under `runRoot`, as the
+    /// lanes defaultLaneDefinitions builds do — it derives them from the run root. Both the lane
+    /// paths and `runRoot` may be relative (the harness's default --out is), but they must share a
+    /// base: a path written relative to the run root rather than to that base resolves against the
+    /// process CWD and lands outside the run root.
+    /// Raises InvalidOperationException naming each offending lane rather than writing evidence
+    /// where nothing will find it while the run still reports success.
     val writeSummary: runRoot: string -> summary: ValidationSummary -> string list

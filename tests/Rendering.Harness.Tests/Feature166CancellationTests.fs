@@ -13,7 +13,7 @@ let tests =
             let root = Feature166TestFixtures.createTempRoot "feature166-cancel"
 
             try
-                let completed = Feature166TestFixtures.result "build" ValidationLanes.Required ValidationLanes.Passed
+                let completed = Feature166TestFixtures.result Feature166TestFixtures.syntheticRunRoot "build" ValidationLanes.Required ValidationLanes.Passed
                 let lane = Feature166TestFixtures.lane root "rendering-harness" "sleep 1"
 
                 let model: ValidationLanes.Model =
@@ -43,8 +43,8 @@ let tests =
               ValidationLanes.NotRun ]
             |> List.iter (fun status ->
                 let readiness =
-                    [ Feature166TestFixtures.result "build" ValidationLanes.Required ValidationLanes.Passed
-                      Feature166TestFixtures.result "controls" ValidationLanes.Required status ]
+                    [ Feature166TestFixtures.result Feature166TestFixtures.syntheticRunRoot "build" ValidationLanes.Required ValidationLanes.Passed
+                      Feature166TestFixtures.result Feature166TestFixtures.syntheticRunRoot "controls" ValidationLanes.Required status ]
                     |> ValidationLanes.computeOverallReadiness
 
                 Expect.notEqual readiness ValidationLanes.Ready (ValidationLanes.statusToken status))
