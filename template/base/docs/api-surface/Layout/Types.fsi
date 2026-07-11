@@ -100,6 +100,12 @@ type LayoutDiagnosticCode =
     | UnmeasurableContent
     | FallbackBoundsApplied
     | UnsupportedLayoutIntent
+    | UnsupportedIntrinsicQuery
+    | RejectedIntrinsicResult
+    | StaleLayoutCacheEntry
+    | DuplicateMeasurement
+    | InsufficientDependencyEvidence
+    | ContradictoryIntrinsicExtent
 
 /// Public contract type exposed by this FS.GG.UI package.
 type LayoutDiagnostic =

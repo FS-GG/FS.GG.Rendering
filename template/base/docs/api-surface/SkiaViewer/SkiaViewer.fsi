@@ -418,6 +418,14 @@ type ViewerLaunchOutcome =
       Message: string }
 
 /// Public contract type exposed by this FS.GG.UI package.
+/// Feature 183 (US3): the four window-observation inputs `classifyWindowObservation` takes, named so
+/// the two bools and two bool-options cannot be transposed at the call site. Values/results unchanged.
+type WindowObservationInputs =
+    { ExternalObservationAttempted: bool
+      ExternalWindowMatched: bool option
+      CaptureAttempted: bool
+      CaptureSucceeded: bool option }
+
 type ViewerWindowObservationResult =
     { DiagnosticSource: string
       Command: string option
@@ -660,7 +668,7 @@ module Viewer =
     /// Public contract function exposed by this FS.GG.UI package.
     val failureFromDiagnostic: diagnostic: ViewerDiagnosticEvent -> ViewerRunFailure
     /// Public contract function exposed by this FS.GG.UI package.
-    val classifyWindowObservation: outcome: ViewerLaunchOutcome -> externalObservationAttempted: bool -> externalWindowMatched: bool option -> captureAttempted: bool -> captureSucceeded: bool option -> ViewerWindowObservationResult
+    val classifyWindowObservation: outcome: ViewerLaunchOutcome -> inputs: WindowObservationInputs -> ViewerWindowObservationResult
     /// Public contract function exposed by this FS.GG.UI package.
     val desktopSessionDiagnostic: unit -> ViewerDesktopSessionDiagnostic
     /// Public contract function exposed by this FS.GG.UI package.

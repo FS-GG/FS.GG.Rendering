@@ -160,6 +160,11 @@ type PathOperation =
     | Difference
     | Xor
 
+/// Skia's boolean-path ops can fail on degenerate or self-intersecting input, and the Scene IR has no
+/// boolean-geometry kernel, so `Intersect`/`Difference` fail loud with this rather than returning
+/// wrong-but-success-shaped geometry (P6 / R2).
+type PathCombineError = { Operation: PathOperation; Message: string }
+
 /// Public contract type exposed by this FS.GG.UI package.
 type PathMeasure =
     { Length: float
@@ -218,6 +223,7 @@ type SceneElementKind =
     | ChartElement
     | TranslateElement
     | SizedTextElement
+    | GlyphRunElement
 
 /// Public contract type exposed by this FS.GG.UI package.
 type RenderReadbackEvidence =
@@ -318,40 +324,149 @@ type RenderDiagnostic =
       Message: string
       Cause: string option }
 
+/// Direction evidence associated with a shaped text run.
+type TextDirection =
+    | AutoDirection
+    | LeftToRight
+    | RightToLeft
+    | MixedDirection
+
+/// Script bucket evidence associated with a shaped text run.
+type TextScript =
+    | AutoScript
+    | LatinScript
+    | ArabicScript
+    | DevanagariScript
+    | ThaiScript
+    | EmojiScript
+    | SymbolScript
+    | MixedScript
+    | UnknownScript
+
+/// Availability state for the rendering-edge text shaping provider.
+type ShapingProviderAvailability =
+    | ProviderInstalled
+    | ProviderCleared
+    | ProviderUnavailable
+    | ProviderFailed
+
+/// Dependency-light provider evidence stored with shaped text results.
+type ShapingProviderEvidence =
+    { Availability: ShapingProviderAvailability
+      ProviderId: string
+      VersionBucket: string
+      Failure: string option }
+
+/// Fallback decision for one shaped run or glyph range.
+type TextFallbackDecision =
+    | AuthoredFace of family: string
+    | SubstitutedFace of requested: string * resolved: string
+    | MissingGlyphs of sourceText: string
+    | PureFallback
+    | ProviderFailure of message: string
+
+/// One stable, drawable glyph emitted by a shaped text result.
+type ShapedGlyph =
+    { GlyphId: int
+      SourceCluster: int
+      SourceText: string
+      ResolvedFace: string option
+      Advance: float
+      Offset: Point
+      Position: Point
+      Missing: bool }
+
+/// One homogeneous text run and its shaping/fallback evidence.
+type TextShapeRun =
+    { TextRange: int * int
+      SourceText: string
+      ResolvedFont: string option
+      Direction: TextDirection
+      Script: TextScript
+      FallbackDecision: TextFallbackDecision
+      Glyphs: ShapedGlyph list
+      Advance: float
+      Diagnostics: string list }
+
+/// Indicates whether a shaped text result came from shaping or explicit fallback.
+type ShapedTextFallbackMode =
+    | Shaped
+    | PureFallbackMode
+    | ProviderUnavailableFallback
+    | ShapingFailedFallback
+
+/// One glyph in the Feature 140 proof data shape. This is a deterministic
+/// package-owned representation for measurement, drawing, diagnostics, and
+/// future cache/protocol work; it is not a full shaping engine.
+type GlyphRunGlyph =
+    { GlyphId: int
+      SourceText: string
+      Advance: float
+      Offset: Point
+      Cluster: int
+      Position: Point
+      ResolvedFace: string option
+      Missing: bool }
+
+/// Aggregate metrics for a glyph-run proof.
+type GlyphRunMetrics =
+    { Advance: float
+      Height: float
+      Baseline: float }
+
+/// Stable glyph-run proof payload.
+type GlyphRunData =
+    { Text: string
+      Font: FontSpec
+      Provider: ShapingProviderEvidence
+      Runs: TextShapeRun list
+      Glyphs: GlyphRunGlyph list
+      Metrics: GlyphRunMetrics
+      Fingerprint: string
+      FallbackMode: ShapedTextFallbackMode
+      FallbackDiagnostics: string list }
+
+/// Drawable glyph-run proof node payload — the payload of `SceneNode.GlyphRun`.
+type GlyphRun =
+    { Data: GlyphRunData
+      Position: Point
+      Paint: Paint }
+
 /// Public contract type exposed by this FS.GG.UI package.
 type SceneNode =
     | Empty
     | Group of Scene list
     /// Positional `(x, y, width, height)` — the arity slip `filledRectangle` exists to avoid.
     /// Prefer `Scene.filledRectangle` (`Rect`-based), which names the bounds.
-    | Rectangle of (float * float * float * float) * Color
-    | PaintedRectangle of Rect * Paint
+    | Rectangle of bounds: (float * float * float * float) * fill: Color
+    | PaintedRectangle of bounds: Rect * paint: Paint
     | Circle of center: Point * radius: float * fill: Color
     | FilledEllipse of bounds: Rect * fill: Color
-    | Ellipse of Rect * Paint
-    | Line of Point * Point * Paint
-    | Path of PathSpec * Paint
-    | Points of Point list * Paint
-    | Vertices of VertexMode * Vertex list * Paint
-    | Arc of Rect * float * float * Paint
+    | Ellipse of bounds: Rect * paint: Paint
+    | Line of startPoint: Point * endPoint: Point * paint: Paint
+    | Path of path: PathSpec * paint: Paint
+    | Points of points: Point list * paint: Paint
+    | Vertices of mode: VertexMode * vertices: Vertex list * paint: Paint
+    | Arc of bounds: Rect * startAngle: float * sweepAngle: float * paint: Paint
     /// Positional `(x, y)` — the arity slip `textAt` exists to avoid.
     /// Prefer `Scene.textAt` (`Point`-based), which names the position.
     /// To centre or lay text out, measure it with `Scene.measureText` rather than estimating
     /// from character count and font size.
-    | Text of (float * float) * string * Color
-    | TextRun of TextRun
-    | Image of (float * float * float * float) * string
-    | ClipNode of Clip * Scene
-    | RegionNode of Region * Paint
-    | ColorSpaceNode of ColorSpace * Scene
-    | PerspectiveNode of PerspectiveTransform * Scene
-    | PictureNode of Picture
+    | Text of position: (float * float) * text: string * fill: Color
+    | TextRun of run: TextRun
+    | Image of bounds: (float * float * float * float) * source: string
+    | ClipNode of clip: Clip * scene: Scene
+    | RegionNode of region: Region * paint: Paint
+    | ColorSpaceNode of colorSpace: ColorSpace * scene: Scene
+    | PerspectiveNode of transform: PerspectiveTransform * scene: Scene
+    | PictureNode of picture: Picture
     | Chart of values: float list
-    | Translate of (float * float) * Scene
+    | Translate of offset: (float * float) * scene: Scene
     /// Positional `(x, y)`, then `text`, then `size`, then `fill` — the same arity slip as `Text`,
     /// with no `Point`-based sibling to escape to: `Scene.sizedText` takes the identical positional
     /// tuple. Read the field order here before calling it, and measure with `Scene.measureText`.
-    | SizedText of (float * float) * string * float * Color
+    | SizedText of position: (float * float) * text: string * size: float * fill: Color
+    | GlyphRun of run: GlyphRun
     /// Feature 120 (FR-007): a reuse-stable subtree marked as a backend replay-cache boundary.
     /// TRANSPARENT to every Scene-IR consumer except the OpenGL backend painter — `describe`,
     /// diagnostics, `measure`, opacity scaling, and every retained walk recurse straight into
@@ -457,7 +572,7 @@ module Path =
     /// Public contract function exposed by this FS.GG.UI package.
     val segment: startDistance: float -> endDistance: float -> path: PathSpec -> PathSpec
     /// Public contract function exposed by this FS.GG.UI package.
-    val combine: operation: PathOperation -> left: PathSpec -> right: PathSpec -> PathSpec
+    val combine: operation: PathOperation -> left: PathSpec -> right: PathSpec -> Result<PathSpec, PathCombineError>
 
 /// Public contract module exposed by this FS.GG.UI package.
 module Scene =
