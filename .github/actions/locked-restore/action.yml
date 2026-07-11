@@ -1,0 +1,73 @@
+name: Locked restore
+description: >-
+  The single definition of the deterministic locked NuGet restore (feature 064 / ADR-0006,
+  FS-GG/.github#429). Restores in --locked-mode against the committed packages.lock.json, so a
+  dependency-graph drift or a silently substituted version (NU1603/NU1608) fails the gate instead
+  of resolving quietly.
+
+  The restore is COLD by construction: it resolves into a fresh, empty package folder with the HTTP
+  cache cleared, so --locked-mode validates the committed contentHash against THE FEED. A warm
+  package folder silently degrades the gate into comparing one record of reality against another.
+
+  Adopted from FS.GG.SDD's action of the same name, with one deliberate difference: this repo
+  restores with `--configfile nuget.config` (#186), so the sources a locked restore resolves from
+  are exactly the ones committed here, and deleting that file fails the gate rather than silently
+  handing restore back to whatever the machine has.
+
+inputs:
+  target:
+    description: >-
+      The solution or single project to restore in locked mode. Defaults to the whole solution.
+    required: false
+    default: FS.GG.Rendering.slnx
+
+runs:
+  using: composite
+  steps:
+    # Why a fresh package folder (FS-GG/.github#429, epic #266 — "compare against reality, not
+    # against a record of reality"):
+    #
+    # NU1403 ("package content hash validation failed") is raised by comparing the lock file against
+    # the package ALREADY PRESENT in the global-packages folder. If that copy is stale — left by an
+    # earlier restore, or pre-seeded in the runner image — then --locked-mode validates a record
+    # against a record and never contacts the feed. The gate then fails in BOTH directions, which is
+    # exactly what happened to FSharp.Core 10.1.301 after it was re-published:
+    #
+    #   * green on main with a lock file NO FRESH CLONE COULD RESTORE   (fails open), and
+    #   * red on a correct, freshly-generated lock file                 (fails closed).
+    #
+    # Restoring into an empty NUGET_PACKAGES forces a real download, so the hash the gate checks is
+    # the hash the feed actually serves. NUGET_PACKAGES is exported to GITHUB_ENV so the later
+    # --no-restore build / --no-build test steps resolve from the same folder.
+    #
+    # NOTE: NUGET_PACKAGES relocates the global-packages folder but NOT the HTTP cache, which will
+    # happily replay stale .nupkg bytes. Clearing it is load-bearing, not belt-and-braces.
+    - name: Restore (locked, cold)
+      shell: bash
+      env:
+        LOCKED_RESTORE_TARGET: ${{ inputs.target }}
+      run: |
+        set -euo pipefail
+
+        NUGET_PACKAGES="$(mktemp -d)"
+        export NUGET_PACKAGES
+        echo "NUGET_PACKAGES=$NUGET_PACKAGES" >> "$GITHUB_ENV"
+        dotnet nuget locals http-cache --clear
+
+        if dotnet restore "$LOCKED_RESTORE_TARGET" --locked-mode --configfile nuget.config; then
+          exit 0
+        fi
+
+        # The restore failed against the feed. Rather than leave the author to guess which of the
+        # three plausible hashes is the right one — the committed contentHash, the lock's
+        # contentHash, and the .nupkg.sha512 sidecar (the catalog packageHash) are three DIFFERENT
+        # values, and pasting the wrong one re-breaks the build — regenerate from the feed and print
+        # exactly what to commit.
+        echo "::group::what a cold restore from the feed actually resolves (commit this)"
+        dotnet restore "$LOCKED_RESTORE_TARGET" --force-evaluate --configfile nuget.config >/dev/null 2>&1 || true
+        git --no-pager diff --stat -- '**/packages.lock.json' || true
+        git --no-pager diff -- '**/packages.lock.json' || true
+        echo "::endgroup::"
+
+        echo "::error::locked restore failed — the committed packages.lock.json does not match what the feed serves (or a version was substituted, NU1603). The diff above is what a cold restore resolves; regenerate with: dotnet restore $LOCKED_RESTORE_TARGET --force-evaluate  and commit the updated packages.lock.json files. Let --force-evaluate write the hash — never hand-copy one, and note the lock's contentHash is NOT the .nupkg's SHA512."
+        exit 1

@@ -82,20 +82,21 @@ jobs:
       # 211 (FR-002/FR-004) — locked restore against committed packages.lock.json. On a graph that
       # differs from the lockfile (or an un-pinnable version, NU1603) restore fails and the gate
       # blocks. The RestoreLockedMode property (Directory.Build.props) makes the repo behave like the
-      # generated products; --locked-mode here forces it explicitly and gives one clear place to point
-      # at the regenerate command. This is the single restore enforcement point (the build below uses
-      # --no-restore), so NU1603/NU1608 promotion is anchored here.
-      # 186 — restore against the COMMITTED nuget.config, explicitly. `--configfile` replaces the
-      # inherited config chain rather than merging it, so the sources a locked restore resolves from
-      # are exactly the ones in the repo, and deleting the file fails the gate here instead of
-      # silently handing restore back to whatever the machine has.
-      - name: Restore (locked)
-        run: |
-          set -euo pipefail
-          if ! dotnet restore FS.GG.Rendering.slnx --locked-mode --configfile nuget.config; then
-            echo "::error::locked restore failed — the resolved graph does not match the committed packages.lock.json (or a version was substituted, NU1603). If this is an intentional dependency change, run: dotnet restore FS.GG.Rendering.slnx --force-evaluate  and commit the updated lockfiles."
-            exit 1
-          fi
+      # generated products; --locked-mode forces it explicitly. This is the gate's restore
+      # enforcement point (the build below uses --no-restore), so NU1603/NU1608 promotion is
+      # anchored here.
+      #
+      # 482 (FS-GG/.github#429) — the restore is COLD, and that is the whole point of the action:
+      # a WARM one validates the committed contentHash against the package copy already on the
+      # runner, never contacting the feed, so it compares a record of reality against another record
+      # of it. The enforcement, the error text and the --force-evaluate regenerate hint now live in
+      # exactly ONE place (packaged-consumer.yml restores through the same action), because two
+      # inline copies is how they drift — the comment here used to claim it was "the single restore
+      # enforcement point" while packaged-consumer.yml quietly ran a second, warm one.
+      - name: Restore (locked, cold)
+        uses: ./.github/actions/locked-restore
+        with:
+          target: FS.GG.Rendering.slnx
 
       # T007 (FR-002) — a build failure MUST fail the gate. Debug so test/harness steps reuse it
       # with --no-build. The slnx contains src + all local-tier tests + the harness; it does NOT
