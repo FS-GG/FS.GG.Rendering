@@ -66,6 +66,12 @@ type ViewerEvent =
     | Resized of Size
     | CloseRequested
     | DiagnosticReported of RenderDiagnostic
+    // Issue #400: the PHYSICAL framebuffer size (`window.FramebufferSize`), distinct from `Resized`
+    // which carries the LOGICAL window size (`window.Size`). Equal at scale 1; on a scaled display the
+    // framebuffer is larger. Appended last so no existing case tag shifts (additive — no ApiCompat
+    // break, no baseline removal). Lets the interactive host advertise native resolution to products
+    // and rescale pointer input by the physical/logical ratio.
+    | FramebufferResized of Size
 
 type ScreenshotFormat =
     | Png

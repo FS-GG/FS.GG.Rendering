@@ -83,6 +83,11 @@ type ViewerEvent =
     | Resized of Size
     | CloseRequested
     | DiagnosticReported of RenderDiagnostic
+    // Issue #400: the PHYSICAL framebuffer size (`window.FramebufferSize`), distinct from `Resized`
+    // (the LOGICAL window size). Appended last so no existing case tag shifts (additive). Carries
+    // native-resolution sizing to the interactive host so a product can render at full framebuffer
+    // resolution and pointer input can be rescaled by the physical/logical ratio.
+    | FramebufferResized of Size
 
 /// Viewer host contract type (moved from the FS.GG.UI monolith, retyped onto FS.GG.UI.Scene).
 type ScreenshotFormat =

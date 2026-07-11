@@ -65,3 +65,13 @@ module LogicalCanvas =
         // case is a min of two strictly positive ratios.
         let fitted = fit logical actual
         ((x - fitted.OffsetX) / fitted.Scale, (y - fitted.OffsetY) / fitted.Scale)
+
+    /// Issue #400: scale a pointer sample from the LOGICAL window space Silk delivers it in
+    /// (`IMouse.Position`, sized in `window.Size` points) into the PHYSICAL framebuffer space a
+    /// product rendered at native resolution reasons in. Per-axis so a non-square DPI still maps
+    /// correctly; the identity when `window` and `framebuffer` match (scale 1) or either is degenerate.
+    let toPhysicalPoint (window: Size) (framebuffer: Size) (x: float) (y: float) : float * float =
+        if window.Width <= 0 || window.Height <= 0 || framebuffer.Width <= 0 || framebuffer.Height <= 0 then
+            (x, y)
+        else
+            (x * float framebuffer.Width / float window.Width, y * float framebuffer.Height / float window.Height)

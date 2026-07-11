@@ -144,6 +144,13 @@ module GlHost =
     /// A no-op off Linux or when only one display variable is set.
     val internal withWindowBackendOverride: action: (unit -> 'a) -> 'a
 
+    /// Issue #400: the size-aware interactive host publishes the coordinate space it authored the live
+    /// scene in (the physical framebuffer, when rendering at native resolution), so the present-time
+    /// logical→physical fit collapses to the identity instead of scaling an already-native scene a
+    /// second time. `None` restores the #364 default (author in the logical window, fit up). A per-run
+    /// module static, reset when `run` begins.
+    val internal setLiveAuthoringSizeOverride: size: FS.GG.UI.Scene.Size option -> unit
+
     /// Feature 147: integer framebuffer scissor rectangle used by the proof and partial-redraw
     /// decision helpers. Coordinates are clamped to the framebuffer before use.
     type ScissorRect =

@@ -429,6 +429,7 @@ FS.GG.UI.SkiaViewer.Host.ViewerEffect`1+Tags.ReportDiagnostic : System.Int32
 FS.GG.UI.SkiaViewer.Host.ViewerEffect`1+Tags.Shutdown : System.Int32
 FS.GG.UI.SkiaViewer.Host.ViewerEvent+Tags.CloseRequested : System.Int32
 FS.GG.UI.SkiaViewer.Host.ViewerEvent+Tags.DiagnosticReported : System.Int32
+FS.GG.UI.SkiaViewer.Host.ViewerEvent+Tags.FramebufferResized : System.Int32
 FS.GG.UI.SkiaViewer.Host.ViewerEvent+Tags.KeyDown : System.Int32
 FS.GG.UI.SkiaViewer.Host.ViewerEvent+Tags.KeyUp : System.Int32
 FS.GG.UI.SkiaViewer.Host.ViewerEvent+Tags.Loaded : System.Int32
@@ -462,6 +463,7 @@ FS.GG.UI.SkiaViewer.InteractiveViewerHost`2.new(FSharpFunc<Microsoft.FSharp.Core
 FS.GG.UI.SkiaViewer.LogicalCanvas.fit(FS.GG.UI.Scene.Size, FS.GG.UI.Scene.Size) : FS.GG.UI.SkiaViewer.LogicalCanvasFit
 FS.GG.UI.SkiaViewer.LogicalCanvas.present(FS.GG.UI.Scene.Size, FS.GG.UI.Scene.Size, FS.GG.UI.Scene.SceneNode) : FS.GG.UI.Scene.SceneNode
 FS.GG.UI.SkiaViewer.LogicalCanvas.toLogicalPoint(FS.GG.UI.Scene.Size, FS.GG.UI.Scene.Size, System.Double, System.Double) : System.Tuple<System.Double, System.Double>
+FS.GG.UI.SkiaViewer.LogicalCanvas.toPhysicalPoint(FS.GG.UI.Scene.Size, FS.GG.UI.Scene.Size, System.Double, System.Double) : System.Tuple<System.Double, System.Double>
 FS.GG.UI.SkiaViewer.LogicalCanvasFit.OffsetX : System.Double [get]
 FS.GG.UI.SkiaViewer.LogicalCanvasFit.OffsetY : System.Double [get]
 FS.GG.UI.SkiaViewer.LogicalCanvasFit.Scale : System.Double [get]
