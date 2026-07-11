@@ -1195,7 +1195,15 @@ module SkillParity =
 
         // Both orchestrator roots are required: a skill activated for one agent and not the other is
         // half-shipped, and that asymmetry is precisely what the parity report exists to surface.
-        let roots = [ "claude", ".claude"; "agents", ".agents" ]
+        //
+        // These are the REAL surface ids from `supportedSurfaces` — `codex-local` is rooted at
+        // `.agents/skills` (there is no `.codex/` in this repo), not at anything called "agents". Reusing
+        // them (rather than inventing a surface name) keeps two invariants: the finding names a surface
+        // that appears in the report's Supported Surfaces table, and it shares a FindingId with the
+        // scan-driven `missingWrapperFindings` above — so when both fire for the same skill+surface, the
+        // `List.distinctBy` in `classifyFindings` collapses them to one finding instead of reporting the
+        // same missing wrapper twice under two different names.
+        let roots = [ "claude", ".claude"; "codex-local", ".agents" ]
 
         productIds
         |> List.collect (fun id ->
