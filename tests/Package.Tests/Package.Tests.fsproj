@@ -65,6 +65,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- 453: SurfaceAreaTests binds the FS.GG.UI.Build baselines by type, like every other package
+         baseline here. Without this reference the assembly is not built by `dotnet test` on this
+         project alone, and the Build baselines red in any fresh worktree or clean clone. -->
+    <ProjectReference Include="..\..\src\Build\FS.GG.UI.Build.fsproj" Condition="Exists('..\..\src\Build\FS.GG.UI.Build.fsproj')" />
     <ProjectReference Include="..\..\src\Scene\Scene.fsproj" Condition="Exists('..\..\src\Scene\Scene.fsproj')" />
     <ProjectReference Include="..\..\src\Diagnostics\Diagnostics.fsproj" Condition="Exists('..\..\src\Diagnostics\Diagnostics.fsproj')" />
     <ProjectReference Include="..\..\src\SkiaViewer\SkiaViewer.fsproj" Condition="Exists('..\..\src\SkiaViewer\SkiaViewer.fsproj')" />
