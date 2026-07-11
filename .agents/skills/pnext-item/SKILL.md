@@ -158,10 +158,13 @@ a queue, and neither is a TODO comment.
 
 ```sh
 # 1. The message: an issue in the repo that OWNS the problem, not the one that found it.
+#    The `Paths:` line is NOT optional — see below. Without it the item cannot be scheduled.
 gh issue create --repo FS-GG/<target> \
   --title "[cross-repo] <short summary>" \
   --label cross-repo --label cross-repo:request \
-  --body "From: <this repo>, found while working <this repo>#<n>. Contract: <id>. <what and why>"
+  --body "From: <this repo>, found while working <this repo>#<n>. Contract: <id>. <what and why>
+
+Paths: src/Scene/ tests/Scene/"
 
 # 2. Put it on the board, so it is sequenced rather than merely filed.
 gh project item-add <board> --owner FS-GG --url <issue-url>
@@ -172,6 +175,20 @@ scripts/fsgg-coord set-field <new> Status Backlog
 # 3. If the finding belongs under an epic, LINK it as a sub-issue — NOW, not at close-out.
 scripts/fsgg-coord child FS-GG/<repo>#<parent> FS-GG/<target>#<new>
 ```
+
+**A finding filed without `Paths:` is a finding nobody can pick up.** `take`/`batch` refuse an item
+with no declared touch-set — correctly, since an undeclared one cannot be proven disjoint from
+another worker's — so the item lands on the board *looking* like work and is invisible to every
+worker who asks for work. This is not theoretical: `.github` reached **twelve** open items, all
+filed by this very recipe, **none** of them schedulable, and `/pnext-item` reported a dead queue
+over a full one ([#442](https://github.com/FS-GG/.github/issues/442)). You are the one holding the
+context — you can name the files better than the eventual claimant can.
+
+Declare it **narrowly and honestly**: exact paths, directory prefixes, and a *trailing* `/**` or
+`/*` (a leading `**/` matches nothing and is refused; so is a backticked line, #435). If you truly
+cannot name a touch-set — a decision item, an epic, an investigation whose scope *is* the question —
+**write that in the body** ("no touch-set: declare at claim time with `widen`"), so an undeclared
+item is a decision somebody made rather than an omission nobody noticed.
 
 `Repo Scope` decides the `Phase`, not the subject matter — a `game` item is `P6 Game` even when it
 happens to do geometry. Always name the contract/registry id and cross-reference the item you were

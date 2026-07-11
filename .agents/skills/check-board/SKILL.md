@@ -90,6 +90,7 @@ Each finding has a code, a ground truth, and a fix — or an explicit refusal to
 | `STALE-CLAIM` | `who` says `state == "stale"` | `reap --repo <r> --apply` |
 | `UNCLAIMED-IN-PROGRESS` | `who` says `state == "unclaimed"` | **report only** — someone is working outside the protocol |
 | `CLAIM-STATUS-LAG` | held claim, but board `status != In progress` | `set-field <i> Status 'In progress'` |
+| `UNDECLARED-PATHS` | open, unclaimed, not `Done`, and the issue body declares no `Paths:` | **report only** — the fix is an *issue* edit, and this skill never writes to an issue |
 | `EPIC-*` | from `lint --json` (severity `error`) | **report only** — a broken epic needs a human |
 
 `CLAIM-STATUS-LAG` is the one class you cannot read off a single command: `who --json` does not
@@ -103,6 +104,24 @@ jq -r --slurpfile b /tmp/board.json '
   | select($st["\(.repo)#\(.number)"] != "In progress")
   | "CLAIM-STATUS-LAG  \(.repo)#\(.number)  held by \(.worker), board says \($st["\(.repo)#\(.number)"] // "—")"
 ' /tmp/who.json
+```
+
+`UNDECLARED-PATHS` is the class that makes a **full queue look like an empty one**. An item with no
+`Paths:` cannot be scheduled — `take`/`batch` refuse it, because an undeclared touch-set cannot be
+proven disjoint from another worker's — so it sits on the board *looking* startable while every
+worker who asks for work is told there is none. `.github` reached **twelve** such items at once, all
+filed through the org's own recipe, and `/pnext-item` reported a dead queue over a full one
+([#442](https://github.com/FS-GG/.github/issues/442)). The board is not wrong here — the *issue* is —
+which is exactly why this is report-only: the remedy is an issue-body edit, and **this skill never
+writes to an issue** (§*The one rule*). Report it, and let the claimant `claim` then `widen`, which
+is the ordering ADR-0021 requires anyway (the marker is the CAS; the body is not).
+
+The touch-set lives in the issue body, which the REST issue list already carries — so this costs
+**no extra call**:
+
+```sh
+scripts/fsgg-coord issues <r> --jq '.[] | select((.body // "") | test("(?m)^Paths:") | not)
+  | "UNDECLARED-PATHS  #\(.number)  \(.title)"'
 ```
 
 `DONE-STATUS-OPEN-ISSUE` is deliberately **not** auto-fixed, in either direction. `lint` calls it a
