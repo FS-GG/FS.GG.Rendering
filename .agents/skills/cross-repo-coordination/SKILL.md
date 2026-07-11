@@ -62,7 +62,8 @@ gh issue create --repo FS-GG/<target> \
 - **Resolve:** close the issue (ideally via a linked PR). The requester confirms.
 
 ```sh
-gh issue list    --repo FS-GG/<repo> --label cross-repo
+scripts/fsgg-coord issues <repo> --label cross-repo   # REST + ETag: 0 GraphQL, free on repeat.
+                                                      # `gh issue list` costs 2 pts to say the same thing.
 gh issue comment <n> --repo FS-GG/<repo> --body "## Response ..."
 ```
 
@@ -116,8 +117,53 @@ cross-repo roadmap (milestones are repo-scoped; keep them for repo-local release
   the source of *decisions*. Re-sequence → board; changed surface → registry; reversed
   choice → ADR.
 
-**`gh` runbook** (the board, fields, and items are scriptable; view layout/grouping,
-sub-issue links, issue-type assignment, and built-in workflows are UI/REST-driven):
+## Spend the GraphQL budget like it is shared — because it is
+
+Projects v2 is **GraphQL-only**, GitHub's primary limit is **5,000 points/hour**, and every worker you
+fan out authenticates as the **same account** and draws on the **same 5,000**. Cost is metered by
+*nodes requested*, not by request count, so batching buys nothing. Five workers looping the board
+drained the whole budget in **15 minutes** ([#418](https://github.com/FS-GG/.github/issues/418)) — and
+the first thing exhaustion kills is the **writes**, so the board starts lying about who holds what.
+
+**Route every board interaction through `scripts/fsgg-coord`.** It is not a convenience wrapper; it is
+the budget model, executable. Reach for raw `gh` on the board and you are opting out of it.
+
+| What you want | Run this | Cost |
+|---|---|---|
+| What do I pick up next? | `fsgg-coord next --repo <r>` | ~7 pts cold, **0 warm** (90s shared cache) |
+| Everything actionable | `fsgg-coord ready --repo <r>` | ~7 pts — a **truth** read, always fresh |
+| Set a board field | `fsgg-coord set-field <issue> <Field> <Value>` | 1 mutation, ids from cache |
+| Read issues / labels / PRs | `fsgg-coord issues <repo> --label …` | **0** — REST + ETag (304s are free) |
+| Am I about to run out? | `fsgg-coord budget` | **0** — free, so *check it before a fan-out* |
+| Claim → work → done | `/pnext-item`, `/check-board` | they already batch their reads — don't hand-roll |
+
+**Four habits, in the order they save you the most:**
+
+1. **Take ONE snapshot; answer many questions from it.** `fsgg-coord ready --all --json > /tmp/board.json`,
+   then `jq` that file for every follow-up. A second scan to answer a second question about the same
+   board is the most common way to waste the budget, and `jq` over a file costs nothing.
+2. **Never `gh project item-list`.** Measured: **6 points to read FIVE items** — about what the thrifty
+   scan costs for all **640**. It nests `fieldValues(first:100)` inside `items(first:N)`, so its cost
+   grows as O(items × 100). `next`/`ready` read the same fields through the `fieldValueByName`
+   **resolver** (no node multiplication). This is the single biggest own-goal available to you.
+3. **Put anything that isn't the board on REST.** `gh issue list` and `gh issue view` cost **2 GraphQL
+   points each**; `gh issue edit --add-assignee` costs **4**. REST does all of it for **0** — a separate
+   5,000-*requests*/hr budget that ETags to free on repeat. `fsgg-coord issues` is the read; `gh api
+   repos/…` is the escape hatch for comments, PRs, and edits (and it keeps working when GraphQL is gone).
+4. **Don't poll, and don't defeat the cache.** `next`/`take` share a 90s scan across all workers — a
+   loop that adds `--fresh`, or a coordinator re-scanning per item, puts the N-workers-N-scans cost
+   right back. Re-scan when you have *changed* something, not on a timer.
+
+**When it runs out** (`fsgg-coord budget` shows it, and every command exits **75** with the reset time):
+**back off until the reset — do not retry in a loop.** The claim lock lives on REST, so work continues:
+issues, comments, PRs, and pushes all still function. A board write refused by the budget is **queued,
+not lost** — `fsgg-coord flush` replays it, and the next board-writing command flushes automatically.
+`FSGG_COORD_DEBUG=1` logs every call's cost, so **verify the saving instead of assuming it**. Full cost
+model, with the measured table: `docs/coordination/graphql-budget.md`.
+
+**`gh` runbook** — the escape hatch, for what `fsgg-coord` deliberately does not do (creating the board
+and its fields, adding items). View layout/grouping, sub-issue links, issue-type assignment, and
+built-in workflows are UI/REST-driven:
 
 ```sh
 gh auth refresh -s project,read:project                       # token needs project scope
@@ -127,11 +173,7 @@ gh project field-create $P --owner FS-GG --name "Phase" --data-type SINGLE_SELEC
 # ...Repo Scope / Workstream / Effort single-selects; Start / Target dates; Contract / Blocked by text
 gh project item-add    $P --owner FS-GG --url https://github.com/FS-GG/<repo>/issues/<n>
 gh project item-create $P --owner FS-GG --title "<draft item>" --body "<acceptance criteria>"
-# set fields (prefer the thrifty client): scripts/fsgg-coord set-field <issue> <Field> <Value>
-# raw form: gh project item-edit --id <itemId> --field-id <fid> --single-select-option-id <oid> ...
-# pick the next item to work (thrifty; do NOT use raw `gh project item-list` for this):
-scripts/fsgg-coord next  --repo .github            # the one most-startable item (Ready, else Backlog)
-scripts/fsgg-coord ready --repo .github            # all actionable items (not Done) for a repo
+# item-list is the one to NEVER reach for — see above. next/ready answer the same question for ~1/100th.
 ```
 
 > **Adding an option to an existing single-select is destructive — prefer the UI.** There is no
@@ -144,21 +186,6 @@ scripts/fsgg-coord ready --repo .github            # all actionable items (not D
 > item first, mutate, then restore with one `updateProjectV2ItemFieldValue` per item against the
 > **new** option ids, and diff the re-read against the snapshot before you trust the board. Any
 > `fsgg-coord` cache still holds the dead ids — `bootstrap --refresh` before the next `set-field`.
-
-> **Keep GraphQL cheap — route board work through `scripts/fsgg-coord`.** Projects v2 is
-> GraphQL-only and the primary rate limit (5,000 pts/hr) is metered by *nodes requested*, not by
-> request count — so batching buys nothing; the wins are not re-fetching static ids, narrow item
-> lookups, and putting plain issue reads on REST. `fsgg-coord` does all three: `bootstrap` caches
-> the project/field/option ids **once**; `set-field <issue> <Field> <Value>` resolves every id from
-> cache and auto-routes by the field's dataType (one mutation, no introspection); `item-id` resolves
-> via `issue → projectItems` (not a whole-board scan); `issues <repo> --label …` reads over REST with
-> an ETag (304s cost nothing); and `next`/`ready` answer "**what do I pick up next?**" by scanning the
-> board reading Status/Phase through the `fieldValueByName` **resolver** field (no node
-> multiplication), ~1 point per 100-item page — whereas raw `gh project item-list` nests
-> `fieldValues(first:100)` inside `items(first:N)` for **O(items × 100) ≈ 2,500 pts**, so a few calls
-> exhaust the budget. **Use `next`/`ready` for that, never `item-list`.** Watch the meters with
-> `fsgg-coord budget` (and `FSGG_COORD_DEBUG=1`
-> logs each call's cost). Full cost model: `docs/coordination/graphql-budget.md`.
 
 **Manual steps (need org-admin in the UI, not the `project` scope):**
 
