@@ -7,6 +7,14 @@ module Canvas.Tests.PersistenceTests
 //        carries the opaque payload verbatim.
 // All real pure computation — no synthetic evidence (nothing is faked; the recorded requests ARE
 // the evidence).
+//
+// Issue #445: the interpreter is now spelled `interpretRecordOnly` — the record-only status lives in
+// the name. The deprecated `interpret` forwards to it and is pinned below.
+
+// FS0044 (obsolete member) is an ERROR in this repo (TreatWarningsAsErrors), so the one test that
+// deliberately exercises the deprecated `Persistence.interpret` forwarder cannot compile without
+// this. Scoped to this file, which is where that forwarder is meant to be called from.
+#nowarn "44"
 
 open Expecto
 open FsCheck
@@ -70,9 +78,9 @@ let tests =
 
         // ---- US2: record-only interpreter ----
 
-        test "interpret records requests in dispatch order (US2)" {
+        test "interpretRecordOnly records requests in dispatch order (US2)" {
             let ev =
-                Persistence.interpret
+                Persistence.interpretRecordOnly
                     [ Persistence.save (Persistence.saveEnvelope 1 (SaveSlot "slot-1") "{score:42}")
                       Persistence.load (SaveSlot "slot-1")
                       Persistence.deleteSlot (SaveSlot "old") ]
@@ -84,11 +92,11 @@ let tests =
                 "recorded oldest-first, faithfully"
         }
 
-        test "interpret normalizes an out-of-range Save version in recorded evidence (US2)" {
+        test "interpretRecordOnly normalizes an out-of-range Save version in recorded evidence (US2)" {
             // A raw Save built WITHOUT the smart ctor still gets its version normalized at the boundary;
             // the payload is carried verbatim (never re-encoded).
             let ev =
-                Persistence.interpret
+                Persistence.interpretRecordOnly
                     [ Save { Version = -9; Slot = SaveSlot "s"; Payload = SavePayload "raw" } ]
             Expect.equal
                 ev.Requested
@@ -107,26 +115,59 @@ let tests =
                 "second record lands after the first"
         }
 
-        test "emptyEvidence and interpret [] are both empty (US2)" {
+        test "emptyEvidence and interpretRecordOnly [] are both empty (US2)" {
             Expect.equal Persistence.emptyEvidence.Requested [] "emptyEvidence has no requests"
-            Expect.equal (Persistence.interpret []).Requested [] "interpreting no effects records nothing"
+            Expect.equal (Persistence.interpretRecordOnly []).Requested [] "interpreting no effects records nothing"
         }
 
         test "Load/DeleteSlot of an unknown slot is a well-defined recorded no-op, not an error (US2)" {
             // The interpreter does not throw or check "does this slot exist"; that is a deferred-backend
             // concern. It just records the requested read/delete faithfully.
-            let ev = Persistence.interpret [ Persistence.load (SaveSlot "never-saved"); Persistence.deleteSlot (SaveSlot "empty") ]
+            let ev = Persistence.interpretRecordOnly [ Persistence.load (SaveSlot "never-saved"); Persistence.deleteSlot (SaveSlot "empty") ]
             Expect.equal ev.Requested [ Load(SaveSlot "never-saved"); DeleteSlot(SaveSlot "empty") ] "unknown-slot load/delete records without error"
+        }
+
+        // ---- Issue #445: the record-only status is in the NAME, and the old name still works ----
+
+        // The rename had to stay ADDITIVE: `interpret` is a shipped member, and removing or
+        // reshaping it would be an ApiCompat break (and a SemVer major). So it survives as a
+        // forwarder — and a forwarder that has silently drifted from the function it forwards to is
+        // worse than no forwarder. Pin them to the same answer over arbitrary batches.
+        testCase "the deprecated interpret forwards to interpretRecordOnly, identically (#445, FsCheck >=500 cases)"
+        <| fun () ->
+            let prop (items: (int * string) list) =
+                let effects =
+                    items |> List.map (fun (v, p) -> Save { Version = v; Slot = SaveSlot "s"; Payload = SavePayload p })
+                Persistence.interpret effects = Persistence.interpretRecordOnly effects
+            Check.One(Config.QuickThrowOnFailure.WithMaxTest 500, prop)
+
+        // The whole point of #445: this surface RECORDS AND DROPS. It writes no bytes, and no host
+        // in the framework will ever route a PersistenceEffect to one that does. The evidence is a
+        // record of intent — asserting on it proves the product ASKED to save, never that a save
+        // happened. Nothing but `Requested` comes back, and nothing lands on disk.
+        test "interpretRecordOnly persists nothing — the evidence is the request, and that is all (#445)" {
+            let slot = SaveSlot "issue-445"
+            let ev = Persistence.interpretRecordOnly [ Persistence.save (Persistence.saveEnvelope 1 slot "payload") ]
+
+            Expect.equal
+                ev.Requested
+                [ Save { Version = 1; Slot = slot; Payload = SavePayload "payload" } ]
+                "the request is recorded verbatim..."
+
+            // ...and a Load of the slot we just "saved" returns no payload, because nothing was
+            // written. A record-only interpreter has no memory across calls: it is a `List.map`.
+            let reloaded = Persistence.interpretRecordOnly [ Persistence.load slot ]
+            Expect.equal reloaded.Requested [ Load slot ] "loading the slot just saved yields only the REQUEST — no payload, because no save occurred"
         }
 
         // Random-input coverage using FsCheck's auto-generation: every recorded Save version is
         // normalized, payloads are carried verbatim, and the batch count is preserved, over arbitrary
         // versions including negatives, and arbitrary payload strings.
-        testCase "interpret preserves count, normalizes versions, carries payloads verbatim (FsCheck >=500 cases)" <| fun () ->
+        testCase "interpretRecordOnly preserves count, normalizes versions, carries payloads verbatim (FsCheck >=500 cases)" <| fun () ->
             let prop (items: (int * string) list) =
                 let effects =
                     items |> List.map (fun (v, p) -> Save { Version = v; Slot = SaveSlot "s"; Payload = SavePayload p })
-                let ev = Persistence.interpret effects
+                let ev = Persistence.interpretRecordOnly effects
                 List.length ev.Requested = List.length effects
                 && List.forall2
                     (fun original recorded ->

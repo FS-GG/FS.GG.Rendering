@@ -35,20 +35,23 @@ type PersistenceEffect =
     | DeleteSlot of slot: SaveSlot
 
 /// Public contract type exposed by this FS.GG.UI package.
-/// Ordered evidence of what a product requested, produced by the record-only interpreter. This is
-/// the primary, filesystem-free evidence for the headless path: the recorded requests ARE the
-/// evidence (no real save I/O is involved).
+/// Ordered evidence of what a product *requested*, produced by the record-only interpreter. It is
+/// evidence of intent, NOT of durability: nothing in this framework writes a byte, so `Requested`
+/// proves your `update` asked to save — never that a save happened.
 type PersistenceEvidence =
     { /// Requested effects in dispatch order, oldest first, with `Save` versions normalized and
-      /// payloads carried verbatim.
+      /// payloads carried verbatim. Recorded and dropped: no file was written, read, or deleted.
       Requested: PersistenceEffect list }
 
 /// Public contract module exposed by this FS.GG.UI package.
-/// The persistence request vocabulary plus a pure record-only interpreter. A product's `update`
-/// emits `PersistenceEffect` values (it never reads or writes a file); the interpreter folds a
-/// batch into `PersistenceEvidence`. A real file-backed backend — including the load *result* it
-/// dispatches back to the model — is deferred and will consume the same values without changing
-/// this surface.
+/// The persistence request vocabulary plus a pure RECORD-ONLY interpreter. A product's `update`
+/// emits `PersistenceEffect` values (it never reads or writes a file); `interpretRecordOnly` folds
+/// a batch into `PersistenceEvidence` — it records the requests and drops them.
+///
+/// There is no file-backed backend, here or anywhere in this framework, and nothing routes these
+/// requests to one: no `ViewerEffect` case carries a `PersistenceEffect`, so no host runner will
+/// ever see one. A product that emits `PersistenceEffect` values and calls `interpretRecordOnly`
+/// has saved nothing. Writing the backend is your own job — see the `fs-gg-persistence` skill.
 [<RequireQualifiedAccess>]
 module Persistence =
 
@@ -90,7 +93,13 @@ module Persistence =
     val record: effect: PersistenceEffect -> evidence: PersistenceEvidence -> PersistenceEvidence
 
     /// Public contract function exposed by this FS.GG.UI package.
-    /// Record-only interpreter over a batch, preserving dispatch order. This is the headless-safe
-    /// host boundary: no filesystem access, never blocks, never throws. Returns the accumulated
-    /// evidence.
-    val interpret: effects: PersistenceEffect list -> PersistenceEvidence
+    /// Record-only interpreter over a batch, preserving dispatch order: it RECORDS the requests
+    /// into `PersistenceEvidence.Requested` and DROPS them. No file is written, read, or deleted —
+    /// not here, and not later by a host: no `ViewerEffect` case carries a `PersistenceEffect`.
+    /// Headless-safe: no filesystem access, never blocks, never throws. The evidence it returns
+    /// proves what your product ASKED for, and nothing about durability.
+    ///
+    /// (An older, deprecated spelling `Persistence.interpret` still exists on the package for
+    /// source compatibility. It forwards here. Do not call it — it reads as though it performs the
+    /// save, and it does not.)
+    val interpretRecordOnly: effects: PersistenceEffect list -> PersistenceEvidence

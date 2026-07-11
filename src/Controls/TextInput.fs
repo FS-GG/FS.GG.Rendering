@@ -107,10 +107,15 @@ module TextInput =
         | CompositionCommitted value -> { insertAt model value with Composition = None }, []
         | ApplyValidation state -> { model with Validation = state }, []
 
+    // Issue #445: total no-op, and structurally so — every arm below returns None because no
+    // TextInputEffect case carries a host RESULT to map back into a Msg. All three are outbound:
+    // RequestClipboardText asks the host for text, CommitText and ReportTextInputDiagnostic tell it
+    // something. Nothing comes back in, so nothing can come out. Deprecated on the .fsi (a hard
+    // build error at any call site under TreatWarningsAsErrors) and retired at the next major; it is
+    // kept at its published signature only so the deprecation stays additive for ApiCompat.
     let interpretEffect effect : TextInputMsg option =
         match effect with
-        | RequestClipboardText _ ->
-            None
+        | RequestClipboardText _ -> None
         | CommitText _ -> None
         | ReportTextInputDiagnostic _ -> None
 
