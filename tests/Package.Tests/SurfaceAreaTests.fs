@@ -190,20 +190,11 @@ let surfaceAreaTests =
         }
 
         test "FS.GG.UI.Build member baseline pins every exported member" {
-            let assemblyPath =
-                Path.Combine(repositoryRoot, "src", "Build", "bin", "Debug", "net10.0", "FS.GG.UI.Build.dll")
-
-            Expect.isTrue (File.Exists assemblyPath) "FS.GG.UI.Build assembly has been built"
-            assertMemberBaseline "FS.GG.UI.Build" (Assembly.LoadFrom assemblyPath)
+            assertMemberBaseline "FS.GG.UI.Build" typeof<FS.GG.UI.Build.Evidence.EvidenceNode>.Assembly
         }
 
         test "SkiaViewer package exposes selected generated persistent viewer entry point" {
-            let assemblyPath =
-                Path.Combine(repositoryRoot, "src", "SkiaViewer", "bin", "Debug", "net10.0", "FS.GG.UI.SkiaViewer.dll")
-
-            Expect.isTrue (File.Exists assemblyPath) "SkiaViewer assembly has been built"
-
-            let assembly = Assembly.LoadFrom assemblyPath
+            let assembly = typeof<FS.GG.UI.SkiaViewer.ViewerOptions>.Assembly
 
             let viewerModule =
                 match assembly.GetType("FS.GG.UI.SkiaViewer.Viewer") |> Option.ofObj with
@@ -228,11 +219,7 @@ let surfaceAreaTests =
         test "FS.GG.UI.Build engine baseline exports expected contract names" {
             // Feature 202: the in-repo governance engine is a public package → its curated .fsi is
             // governed by the same surface-drift baseline as every other FS.GG.UI.* package.
-            let assemblyPath =
-                Path.Combine(repositoryRoot, "src", "Build", "bin", "Debug", "net10.0", "FS.GG.UI.Build.dll")
-
-            Expect.isTrue (File.Exists assemblyPath) "FS.GG.UI.Build assembly has been built"
-            assertBaseline "FS.GG.UI.Build" (Assembly.LoadFrom assemblyPath)
+            assertBaseline "FS.GG.UI.Build" typeof<FS.GG.UI.Build.Evidence.EvidenceNode>.Assembly
         }
 
         test "V3 capability packages declare package-specific contracts and baselines" {
