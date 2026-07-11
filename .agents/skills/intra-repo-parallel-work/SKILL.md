@@ -94,6 +94,21 @@ matches nothing, and a token that matches nothing would conflict with nothing, i
 `DISJOINT` against everything. So the tool **refuses** it: `claim`, `widen`, `batch`, `overlap`,
 and `verify-paths` all reject an unmatchable token and name it. Want every lockfile? List them.
 
+**Editing a kit source obliges `registry/repos.yml`** (`.github#469`, ADR-0019). The coordination kit
+is **content-addressed**: `registry/repos.yml` pins a `sha256` of every kit source — `scripts/fsgg-coord`
+and each `.claude/skills/<kit>/` directory. Any edit to one invalidates its digest, and `repos-registry`
+reds `main` until it is regenerated. So the touch-set for a kit change is **three** files, not two:
+
+```sh
+scripts/repos.sh digest scripts/fsgg-coord    # then commit registry/repos.yml
+```
+
+`widen` and `verify-paths` now name this the moment a kit source appears in a touch-set — advisory,
+because `repos-registry` is the authority. Note what bit before they did: `verify-paths` asks *"did the
+PR stay **inside** what you declared"*, never *"was your declaration **sufficient** for what you
+touched"* — so a touch-set of `scripts/fsgg-coord` alone reported **OK** and red `main` anyway. A gate
+can be most reassuring exactly when it is least informed (epic `.github#266`).
+
 **A declaration is a line you wrote as one** (`.github#277`). A `Paths:` line inside a fenced
 (``` or `~~~`) or indented code block is a **quotation**, not a declaration — quote freely in
 reproductions and suggested `widen` commands. So an issue whose only `Paths:` line is fenced declares
