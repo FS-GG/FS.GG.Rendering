@@ -199,14 +199,23 @@ item's touch-set is **reserved**, not merely skipped.
 scripts/fsgg-coord claim <issue>            # marker + assignee + Status=In progress; prints the worktree
 scripts/fsgg-coord claim <issue> --force    # steal an item another worker holds
 scripts/fsgg-coord heartbeat <issue>        # renew the lease on a long-running claim
-scripts/fsgg-coord release <issue>          # drop the lease; In progress -> Ready
+scripts/fsgg-coord release <issue>          # drop the lease; Status RESTORED to what the claim overwrote
 scripts/fsgg-coord release <issue> --status Blocked   # ...drop it, but say where it lands
 scripts/fsgg-coord child <parent> <issue>   # link <issue> as a sub-issue — see §5
 ```
 
-`release` drops the **lease**, which is not the same claim as *"this item is startable"*. It resets
-the `In progress` that `claim` set, and only that: a `Status` you chose deliberately — `Blocked`,
-`Backlog`, `Done` — is preserved, and a `Status` it cannot read is left alone rather than guessed.
+`release` drops the **lease**, which is not the same claim as *"this item is startable"*. It undoes
+the `In progress` that `claim` set, and only that — but note *how*, because the two cases are
+different mechanisms (#481):
+
+- **Restored.** `claim` **overwrites** the column, so it *records* what it overwrote. `release` puts
+  that back: a `Backlog` item returns to `Backlog`. It is not preserved — it is remembered. `Ready`
+  is only the fallback for a claim that recorded nothing (a pre-#481 marker, or a column that could
+  not be read). Guessing `Ready` was the bug: since #440 made `claim` reachable from `Backlog`,
+  every undo path quietly **promoted** triaged work into the queue humans read as ready.
+- **Kept.** A `Status` you set *deliberately during* the lease — `Blocked`, `Done` — is left alone
+  (#331). A column it cannot read is left alone too, rather than guessed.
+
 `reap` collects an expired lease under the same rule, so a claim that dies on a `Blocked` item does
 not resurrect it as `Ready`. So handing back an item you cannot finish keeps its column honest:
 

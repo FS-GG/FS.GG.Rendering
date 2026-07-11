@@ -342,8 +342,13 @@ scripts/fsgg-coord inbox --repo <r>         # anything arrive while you were hea
 Do not just walk away — the lease holds the item for two hours and blocks its touch-set.
 
 ```sh
-scripts/fsgg-coord release <issue>          # marker deleted, unassigned, Status -> Ready
+scripts/fsgg-coord release <issue>          # marker deleted, unassigned, Status RESTORED
 ```
+
+`release` puts back **the column the claim overwrote** — a `Backlog` item returns to `Backlog`, not
+`Ready` (#481). `Ready` is only the fallback for a claim that recorded nothing to restore. A column
+you set *deliberately* during the lease still wins, so `release` will not undo a `Blocked` you meant
+(#331); to land somewhere specific, say so: `release <issue> --status Blocked`.
 
 If you got far enough to be worth resuming, say so on the issue first (`fsgg-coord say`), and push
 the branch so the next worker inherits the work rather than redoing it.
