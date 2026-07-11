@@ -154,7 +154,6 @@ FS.GG.UI.DesignSystem.StyleVariant+Tags.Success : System.Int32
 FS.GG.UI.DesignSystem.StyleVariant+Tags.Warning : System.Int32
 FS.GG.UI.DesignSystem.Theme.Accent : FS.GG.UI.Scene.Color [get]
 FS.GG.UI.DesignSystem.Theme.Background : FS.GG.UI.Scene.Color [get]
-FS.GG.UI.DesignSystem.Theme.ContrastRequiredRatio : System.Double [get]
 FS.GG.UI.DesignSystem.Theme.CornerRadius : System.Double [get]
 FS.GG.UI.DesignSystem.Theme.Danger : FS.GG.UI.Scene.Color [get]
 FS.GG.UI.DesignSystem.Theme.Density : System.Double [get]
@@ -166,7 +165,7 @@ FS.GG.UI.DesignSystem.Theme.Muted : FS.GG.UI.Scene.Color [get]
 FS.GG.UI.DesignSystem.Theme.Name : System.String [get]
 FS.GG.UI.DesignSystem.Theme.Success : FS.GG.UI.Scene.Color [get]
 FS.GG.UI.DesignSystem.Theme.Warning : FS.GG.UI.Scene.Color [get]
-FS.GG.UI.DesignSystem.Theme.new(System.String, FS.GG.UI.Scene.Color, FS.GG.UI.Scene.Color, FS.GG.UI.Scene.Color, FS.GG.UI.Scene.Color, FS.GG.UI.Scene.Color, FS.GG.UI.Scene.Color, FS.GG.UI.Scene.Color, Microsoft.FSharp.Core.FSharpOption<System.String>, System.Double, System.Double, System.Double, System.Double, FS.GG.UI.DesignSystem.IntentPolicy)
+FS.GG.UI.DesignSystem.Theme.new(System.String, FS.GG.UI.Scene.Color, FS.GG.UI.Scene.Color, FS.GG.UI.Scene.Color, FS.GG.UI.Scene.Color, FS.GG.UI.Scene.Color, FS.GG.UI.Scene.Color, FS.GG.UI.Scene.Color, Microsoft.FSharp.Core.FSharpOption<System.String>, System.Double, System.Double, System.Double, FS.GG.UI.DesignSystem.IntentPolicy)
 FS.GG.UI.DesignSystem.ValidationState+Tags.Invalid : System.Int32
 FS.GG.UI.DesignSystem.ValidationState+Tags.Pending : System.Int32
 FS.GG.UI.DesignSystem.ValidationState+Tags.Valid : System.Int32
