@@ -30,6 +30,10 @@ module SkillPackageReachTests
 //   R-REACH  — ...and the profiles the SKILL materializes on are a SUBSET of the profiles that pin it.
 //              A skill reaching a profile its package does not is exactly #430: silent, type-check-free,
 //              and indistinguishable from working until an author types the `open`.
+//   R-CAT    — and `template/capabilities.yml`'s `profiles:` is EXACTLY the profiles its package reaches
+//              (#483). Equality, not subset: the catalog is the human-facing inventory of what a profile
+//              gets, so over-claiming and under-claiming are both lies. This is the roster that had NO
+//              gate at all, and six of its seven rows had drifted by the time one was noticed.
 //
 // Deliberately sound rather than exhaustive: an `open` is only held against a package when the namespace
 // is EXACTLY a known package id, so a namespace that merely lives inside a differently-named package is
@@ -78,6 +82,9 @@ let private referencingProjectsOf id =
         [ product ]
 let private skillistRel = "template/base/docs/skillist-reference.md"
 let private skillistPath = repositoryPath skillistRel
+
+let private capabilitiesRel = "template/capabilities.yml"
+let private capabilitiesPath = repositoryPath capabilitiesRel
 
 /// Every profile a scaffold can be generated on (.template.config/template.json `symbols.profile`).
 let private allProfiles = set [ "app"; "headless-scene"; "governed"; "sample-pack"; "game" ]
@@ -163,6 +170,65 @@ let private profilesOf (materializesWhen: string) =
     else
         let eq = Regex.Match(materializesWhen, @"profile\s*==\s*(\w[\w-]*)")
         if eq.Success then set [ eq.Groups.[1].Value ] else allProfiles
+
+/// (capability id, packageId, the profiles the row CLAIMS — None when it declares none) for every RUNTIME
+/// capability in the catalog. `non-runtime` rows (samples) are dropped: they pin no package, so there is no
+/// reach to hold them to.
+///
+/// A missing `profiles:` is carried as None rather than dropping the row, because dropping it would fail
+/// OPEN: add a capability, forget the field, and R-CAT would assert nothing about it while still reading
+/// green. The row that started #483 was wrong for years precisely because no gate looked at it — a gate
+/// that quietly skips the rows it cannot parse reintroduces that, one refactor later.
+let private capabilityRows =
+    let text = File.ReadAllText capabilitiesPath
+    // Anchored on the two-space `  - id:` list indent, and each row's body runs to the next row — so a field
+    // is never read out of a neighbouring row (the same boundary discipline `productSkills` uses below).
+    Regex.Matches(text, @"^  - id: (?<id>\S+)(?<body>(?:\n(?!  - id: ).*)*)", RegexOptions.Multiline)
+    |> Seq.choose (fun m ->
+        let body = m.Groups.["body"].Value
+
+        let field name =
+            let f = Regex.Match(body, $@"^\s+{name}:\s*(?<v>.+?)\s*$", RegexOptions.Multiline)
+            if f.Success then Some f.Groups.["v"].Value else None
+
+        match field "packageId" with
+        | Some pkg when pkg <> "non-runtime" ->
+            let claimed =
+                field "profiles"
+                |> Option.map (fun profiles ->
+                    Regex.Match(profiles, @"\[(?<p>[^\]]*)\]").Groups.["p"].Value.Split(',')
+                    |> Seq.map (fun s -> s.Trim())
+                    |> Seq.filter (fun s -> s <> "")
+                    |> Set.ofSeq)
+
+            Some(m.Groups.["id"].Value, pkg, claimed)
+        | _ -> None)
+    |> List.ofSeq
+
+/// The profiles a capability's package actually reaches: pinned AND referenced by a project the generated
+/// product compiles.
+///
+/// The PRODUCT's references when the product carries the package, falling back to the test project's only
+/// when it does not — which is what "test-scoped" MEANS for a package, and is how FS.GG.UI.Testing (#432,
+/// referenced from Product.Tests.fsproj alone) enters the catalog at all.
+///
+/// Deliberately NOT a blind union of the two. Unioning the test project into every capability would let a
+/// package added to Product.Tests.fsproj widen the reach R-CAT blesses for a capability whose author consumes
+/// it from PRODUCT source: the catalog could then claim `layout` on a profile where `open FS.GG.UI.Layout` in
+/// Program.fs does not compile, and this guard would bless it. That is the permissive direction `testScopedSkills`
+/// above exists to police, and the whole bug class (#430) this file was written for. Erring the other way merely
+/// under-reports, which R-CAT reports as a loud RED rather than a silent green.
+let private capabilityReach pkg =
+    let pin = profilesDeclaring (File.ReadAllText propsPath) pkg
+
+    let refs =
+        match profilesDeclaring (File.ReadAllText projPath) pkg with
+        | Some product -> Some product
+        | None -> profilesDeclaring (File.ReadAllText testsProjPath) pkg
+
+    match pin, refs with
+    | Some pins, Some refs -> Some(Set.intersect pins refs)
+    | _ -> None
 
 /// KNOWN, FILED violations of R-REACH that predate this guard — named, never silent.
 ///
@@ -366,6 +432,47 @@ let skillPackageReachTests =
                           documented
                           actual
                           $"{skillistRel} tells the product author that `{id}` vendors on {Set.toList documented}, but the manifest materializes it on {Set.toList actual} — the shipped skill roster is lying to the author. Update the row when you change a skill's gate."
+          }
+
+          // R-CAT — `template/capabilities.yml` is the fourth roster of "what reaches which profile", and
+          // until #483 it was the one nothing held against anything. So it drifted, and not subtly: SIX of
+          // its seven runtime rows were wrong. Five over-claimed `governed` (a profile that pins no viewer,
+          // no elmish, no keyboard-input, no layout, no controls); `testing` under-claimed by three, still
+          // reading `[governed, sample-pack]` from before #432 ungated the pin — the row that prompted this
+          // issue was simply the one someone happened to read.
+          //
+          // The catalog is a PACKAGE catalog, so its `profiles:` is held to package reach (pin ∩ reference),
+          // NOT to the manifest's `materializes-when` the way R-DOC holds skillist-reference. Those two are
+          // genuinely different sets and conflating them would force a lie: `fs-gg-ui-widgets` materializes on
+          // [app, game] while FS.GG.UI.Controls is pinned and referenced on sample-pack as well. Asserting the
+          // catalog against the manifest would make it under-report its own packages to match a skill gate —
+          // trading a stale row for a wrong one.
+          test "every capability's profiles are exactly the profiles its package reaches (#483)" {
+              Expect.isGreaterThan
+                  (List.length capabilityRows)
+                  3
+                  $"{capabilitiesRel} has a parseable runtime capability roster (if this fails the guard is vacuous)"
+
+              for id, pkg, claimed in capabilityRows do
+                  match claimed, capabilityReach pkg with
+                  | Some claimed, Some reach ->
+                      Expect.equal
+                          claimed
+                          reach
+                          $"{capabilitiesRel} says the `{id}` capability is on {Set.toList claimed}, but {pkg} is pinned-and-referenced on {Set.toList reach}. The catalog is read as authoritative and asserted by nothing else — a row that over-claims sends an author to a profile where the package is absent, and one that under-claims hides a capability their scaffold really has (#483)."
+                  | None, _ ->
+                      failtestf
+                          "%s declares the runtime capability `%s` (packageId %s) with no `profiles:` line, so R-CAT has nothing to hold it to and the row can say anything. Declare the profiles its package reaches."
+                          capabilitiesRel
+                          id
+                          pkg
+                  | _, None ->
+                      failtestf
+                          "%s declares the `%s` capability with packageId %s, but %s is not both pinned in template/base/Directory.Packages.props and referenced by Product.fsproj or Product.Tests.fsproj — the catalog names a package no generated product can compile against (#430)."
+                          capabilitiesRel
+                          id
+                          pkg
+                          pkg
           }
 
           // R-REACH — the heart of #430. Pinning is not enough: the skill must not reach a profile the
