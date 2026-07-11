@@ -90,6 +90,7 @@
     <Compile Include="ApiSurfaceMirrorCoherenceTests.fs" />
     <Compile Include="SkillMaterializesWhenCoherenceTests.fs" />
     <Compile Include="CollisionSafeVec2CoherenceTests.fs" />
+    <Compile Include="GameCoreSkillCoherenceTests.fs" />
     <Compile Include="ReleaseOnlyTwinLockstepTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

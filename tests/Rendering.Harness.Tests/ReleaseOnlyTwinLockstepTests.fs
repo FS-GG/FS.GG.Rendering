@@ -92,6 +92,14 @@ let private registry =
       { Twin = $"{twinDirectory}/CollisionSafeVec2CoherenceTests.fs"
         ReleaseOnly = "tests/Package.Tests/Feature250CollisionSafeVec2Tests.fs"
         HeaderNames = "Feature250CollisionSafeVec2Tests"
+        SharedInputs = true }
+      // #366 — the fs-gg-game-core product-skill surface guard (#73). Text-mirror of a release-only
+      // Package.Tests rule: both read the shipped SKILL.md, the five packed Game.Core .fsi, and the
+      // template's Directory.Packages.props + Product.fsproj, and assert the cited members resolve +
+      // the pin/reference exists, so they share the same eight inputs.
+      { Twin = $"{twinDirectory}/GameCoreSkillCoherenceTests.fs"
+        ReleaseOnly = "tests/Package.Tests/Feature240GameCoreSkillTests.fs"
+        HeaderNames = "Feature240GameCoreSkillTests"
         SharedInputs = true } ]
 
 /// The repository source-of-truth paths a test source reads, extracted from its `repositoryPath "…"`
