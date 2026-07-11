@@ -1,3 +1,4 @@
+FS.GG.UI.Controls.Elmish.AdapterCmd.diagnostics<msg>(FSharpList<AdapterEffect<msg>>) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.Elmish.AdapterDiagnostic>
 FS.GG.UI.Controls.Elmish.AdapterCmd.none<msg>() : FSharpList<FSharpFunc<FSharpFunc<msg, Microsoft.FSharp.Core.Unit>, Microsoft.FSharp.Core.Unit>>
 FS.GG.UI.Controls.Elmish.AdapterCmd.ofMessage<msg>(msg) : FSharpList<AdapterEffect<msg>>
 FS.GG.UI.Controls.Elmish.AdapterCmd.productMessages<msg>(FSharpList<AdapterEffect<msg>>) : FSharpList<msg>
