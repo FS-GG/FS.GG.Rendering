@@ -213,6 +213,13 @@ A tower-defense-shaped step, start to finish:
 ```fsharp
 open FS.GG.Game.Core
 
+// Positions are stored in the collision-safe `Vec2`, per the storage rule above — so this recipe needs
+// the same `simPoint` crossing as *Spatial queries*. `: Point` is load-bearing, not decoration.
+type Creep = { Pos: Geometry.Vec2; Hp: int }
+type Tower = { Pos: Geometry.Vec2; Range: float }
+
+let simPoint (v: Geometry.Vec2) : Point = { X = v.Vx; Y = v.Vy }
+
 // 1. Route each creep across the map. The blocked set lives in the Model; the predicate IS the map, so
 //    recompute a path only when the walls change — not every step.
 let walkable (c: Cell) =
@@ -220,8 +227,9 @@ let walkable (c: Cell) =
 let path = Pathfinding.astar FourWay 8192 walkable spawn goal
 
 // 2. Bucket creeps once per step; each tower then asks "who is in range?" — no O(towers × creeps) scan.
-let grid = SpatialGrid.build cellPx [ for cr in creeps -> cr.Pos, cr ]
-let inRange (tower: Tower) = SpatialGrid.queryRadius tower.Pos tower.Range grid
+//    `SpatialGrid` buckets by the sim `Point`, so cross at the boundary — never hand it a `Vec2`.
+let grid = SpatialGrid.build cellPx [ for cr in creeps -> simPoint cr.Pos, cr ]
+let inRange (tower: Tower) = SpatialGrid.queryRadius (simPoint tower.Pos) tower.Range grid
 ```
 
 Two decisions every step then makes — how a hit lands, and how effects pile up.
