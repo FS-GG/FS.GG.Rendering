@@ -135,12 +135,12 @@ Map each `Msg` that should make a sound to an `AudioEffect` in your `update`, co
 requests, and `Audio.interpret` them for evidence in tests; at runtime the host plays the same values
 through `FS.GG.Audio.Host`, with no change to your `update`.
 
-The seam is real and the scaffold ships it wired (issue #245). Two files carry it:
+The seam is real and the scaffold ships it wired (FS.GG.Rendering#245). Two files carry it:
 
-- **`src/Product/AudioCues.fs`** — *yours*. `forTransition : Msg -> Model -> Model -> AudioEffect list`
+- **`src/<ProductDir>/AudioCues.fs`** — *yours*. `forTransition : Msg -> Model -> Model -> AudioEffect list`
   is the one place the product decides what to play. Pure: a function of the message and the
   before/after model. Rewrite it when you swap the model; it names your `Msg` cases.
-- **`src/Product/Program.fs`** — *durable*. It creates a backend once and hands the viewer a sink:
+- **`src/<ProductDir>/Program.fs`** — *durable*. It creates a backend once and hands the viewer a sink:
 
 ```fsharp
 open FS.GG.Audio.Host
