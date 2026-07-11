@@ -55,8 +55,47 @@ let private bounced (previous: Model) (next: Model) =
 ///
 /// Drop a WAV at `assets/audio/<id>.wav` and you hear it; leave it out and the request is recorded
 /// but silent. Add your own cases — this is your file.
+///
+/// ── `Started`, and the trap it exists to close (issue #458) ──────────────────────────────────
+///
+/// `forTransition` is a function of a TRANSITION. The initial model does not make one: it is
+/// produced by `initialModel`, not dispatched into. So without `Started`, ANY sound the initial
+/// state implies is never requested — and that is a hole in this pattern, not a bug in a function.
+///
+/// It bites the moment you *load* state instead of *transitioning into* it:
+///
+///     Load the player's saved settings in `initialModel`, fold them into the model, and the model
+///     is CORRECT. The settings ARE loaded. And the mixer is never told, because no transition ever
+///     carried them to it. Nothing catches this — no type is wrong, no requirement unsatisfied, and
+///     a test that asserts on the model passes, because a restored volume the mixer never heard is
+///     indistinguishable, from inside the model, from one that was restored properly.
+///
+///     It surfaces later as: turn the music down, restart, and get full-volume music from a settings
+///     screen that correctly reports it as quiet.
+///
+/// The same applies to a save game, restored window geometry, a resumed session, a replayed
+/// checkpoint — anything that enters the model through a door a transition-shaped seam is not
+/// watching. `Started` is that door, and the host dispatches it as `forTransition Started m m`.
+///
+/// So: **put anything the initial state implies under `Started`**, e.g.
+///
+///     | Started -> [ Audio.setMasterVolume next.Settings.Volume
+///                    Audio.playMusic (TrackId "theme") ]
+///
+/// Assert it at the SINK, not at the model — the only test that catches this class asks *what the
+/// engine was told*, not *what the model holds*.
 let forTransition (msg: Msg) (previous: Model) (next: Model) : AudioEffect list =
     match msg with
+    // The scaffold ships this seam WIRED rather than empty, for the same reason #245 shipped the
+    // bounce/score cues wired: a seam demonstrated is a seam an author trusts and edits, and a seam
+    // that emits nothing is one nobody can tell is broken. (It is also what gives the regression test
+    // in Product.Tests a real failure leg — with `[]` here, a test asserting "Init emits the cues"
+    // passes whether or not `Init` is wired to the seam at all, which is how this class of bug
+    // survives its own fix.)
+    //
+    // Silent until you drop `assets/audio/start.wav` — an unresolved id is a recorded no-op, never an
+    // error. Replace this with whatever YOUR initial state implies (restored volume, resumed music).
+    | Started -> [ Audio.playSfx (SoundId "start") 0.5 ]
     // A score resets the ball, which also reverses it — so score wins over bounce, and only one
     // sound plays on that frame.
     | Tick _ when scored previous next -> [ Audio.playSfx (SoundId "score") 0.9 ]

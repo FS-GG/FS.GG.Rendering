@@ -280,7 +280,29 @@ let interpretAtHostBoundary msg model =
     next, appCommands, viewerEffectsForModel next
 
 let generatedHost =
-    { Init = fun () -> initialModel, []
+    { Init =
+        fun () ->
+//#if (profile == "game")
+            // Issue #458: the initial state goes through the SAME cue seam every other state goes
+            // through. This used to be `fun () -> initialModel, []` — the model was produced without
+            // passing through a transition, so `forTransition` was never called for it, so ANY effect
+            // the initial state implies was silently never emitted.
+            //
+            // That is a hole in the pattern, not a bug in a function: `forTransition` is a function of
+            // a TRANSITION, and state that is *loaded* rather than *transitioned into* — settings, a
+            // save game, restored window geometry, a resumed session — never makes one. It is invisible
+            // from inside the model (a restored volume the mixer was never told about looks exactly like
+            // one that was restored correctly) and no test that asserts on the model can catch it.
+            //
+            // `Started` is that transition. Note this calls the SAME function `Update` calls, with no
+            // separate startup cue path to drift out of sync — which is the second thing to want here,
+            // after correctness.
+            match AppRoot.AudioCues.forTransition Started initialModel initialModel with
+            | [] -> initialModel, []
+            | cues -> initialModel, [ PlayAudio cues ]
+//#else
+            initialModel, []
+//#endif
       Update =
         fun msg model ->
             let next, _, viewerEffects = interpretAtHostBoundary msg model
