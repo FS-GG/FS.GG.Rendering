@@ -1,33 +1,55 @@
 // See skill: fs-gg-audio
-// Mirrored from FS-GG/FS.GG.Audio @ 0.1.0 (src/FS.GG.Audio.Elmish/Elmish.fsi); regenerate when $(FsGgAudioVersion) moves.
+// Mirrored from FS-GG/FS.GG.Audio @ 0.2.0 (src/FS.GG.Audio.Elmish/Elmish.fsi); regenerate when $(FsGgAudioVersion) moves.
 namespace FS.GG.Audio.Elmish
 
 open FS.GG.Audio.Core
 open FS.GG.Audio.Host
+open FS.GG.Audio.Engine
 
 /// Public contract module. Elmish authoring surface for audio (DEC-004 of 002-audio-host).
 /// A product's `update` returns these commands; the Elmish runtime executes them, playing through
 /// the supplied backend. The commands dispatch no message (fire-and-forget audio), so `update`
 /// stays a pure `Model -> Model * Cmd<'msg>`. Depends on Elmish (MIT) only — never on FS.GG.UI.
+///
+/// Two playback paths, and the difference is load-bearing:
+///   • `ofEffects` and the single-effect constructors play STRAIGHT at the `IAudioBackend`. There
+///     is no mixing: `SetBusVolume`/`Duck` are backend no-ops and `PlaySfx3D` degrades to
+///     non-positional. Use this for simple fire-and-forget playback.
+///   • `ofEngine` routes an `AudioEffect` batch through `FS.GG.Audio.Engine.step`, so bus volume,
+///     master scaling, side-chain ducking, and 3D positioning apply. Time-based envelopes (a `Duck`,
+///     or a fade installed via the `Engine.fadeBus`/`crossFade` methods — those are engine calls,
+///     not effects) advance only as the engine is stepped, so keep driving `ofEngine` each frame for
+///     them to progress and restore. Reach for it whenever those semantics matter.
 [<RequireQualifiedAccess>]
 module Audio =
 
-    /// Elmish command constructors that play `FS.GG.Audio.Core` effects through an IAudioBackend.
+    /// Elmish command constructors that play `FS.GG.Audio.Core` effects.
     [<RequireQualifiedAccess>]
     module Cmd =
 
-        /// A command that plays a batch of effects through the backend, in dispatch order, when the
-        /// Elmish runtime executes it. Dispatches no message.
+        /// RAW-BACKEND bridge: a command that plays a batch of effects STRAIGHT through the backend,
+        /// in dispatch order, when the Elmish runtime executes it. Dispatches no message.
+        /// No mixing is applied — `SetBusVolume`/`Duck` are backend no-ops and `PlaySfx3D` plays
+        /// non-positional. For bus mixing / fades / ducking / 3D, use `ofEngine` instead.
         val ofEffects: backend: IAudioBackend -> effects: AudioEffect list -> Elmish.Cmd<'msg>
 
-        /// Play one sound effect (mirrors `Core.Audio.playSfx`).
+        /// ENGINE-BACKED path: a command that advances the supplied engine by `dt` and realizes the
+        /// `AudioEffect` batch through `FS.GG.Audio.Engine.step`, so bus volume, master scaling,
+        /// side-chain ducking, and 3D positioning apply. Time-based envelopes (a `Duck`, or a fade
+        /// installed via `Engine.fadeBus`/`crossFade`) advance only as the engine is stepped, so
+        /// drive this each frame for them to progress and restore. The caller owns the `Engine.T`
+        /// and the per-frame `dt` (exactly as a direct `Engine.step` caller does). Dispatches no message.
+        val ofEngine: engine: T -> dt: float -> effects: AudioEffect list -> Elmish.Cmd<'msg>
+
+        /// Play one sound effect straight at the backend, no mixing (mirrors `Core.Audio.playSfx`).
         val playSfx: backend: IAudioBackend -> sound: SoundId -> volume: float -> Elmish.Cmd<'msg>
 
-        /// Play one music track (mirrors `Core.Audio.playMusic`).
+        /// Play one music track straight at the backend, no mixing (mirrors `Core.Audio.playMusic`).
         val playMusic: backend: IAudioBackend -> track: TrackId -> loop: bool -> Elmish.Cmd<'msg>
 
-        /// Stop the current music (mirrors `Core.Audio.stopMusic`).
+        /// Stop the current music straight at the backend (mirrors `Core.Audio.stopMusic`).
         val stopMusic: backend: IAudioBackend -> Elmish.Cmd<'msg>
 
-        /// Set the master volume (mirrors `Core.Audio.setMasterVolume`).
+        /// Set the master volume straight at the backend, a no-op unless the backend honours it
+        /// (mirrors `Core.Audio.setMasterVolume`; the Engine owns real master scaling).
         val setMasterVolume: backend: IAudioBackend -> level: float -> Elmish.Cmd<'msg>

@@ -1,18 +1,10 @@
 // See skill: fs-gg-game-core
-// Mirrored from FS-GG/FS.GG.Game @ 0.3.0 (src/Game.Core/Pathfinding.fsi); regenerate when $(FsGgGameVersion) moves.
+// Mirrored from FS-GG/FS.GG.Game @ 0.4.0 (src/Game.Core/Pathfinding.fsi); regenerate when $(FsGgGameVersion) moves.
 namespace FS.GG.Game.Core
 
 /// Public contract type exposed by the FS.GG.Game.Core package.
-/// An integer grid coordinate — the atom over which walkability, neighbours, and paths are expressed.
-/// Distinct from `FS.GG.Game.Core.Point` (float): a `Cell` is a discrete tile index, not a continuous
-/// position. Structural equality gives a stable identity for the frontier/visited bookkeeping and, with
-/// `(Col, Row)` ordering, the total tie-break order that keeps paths byte-identical (no hash-set
-/// iteration-order leakage).
-[<Struct>]
-type Cell = { Col: int; Row: int }
-
-/// Public contract type exposed by the FS.GG.Game.Core package.
-/// Movement neighbourhood for grid pathfinding.
+/// Movement neighbourhood for grid pathfinding. (`Cell`, the grid coordinate this operates over, is a
+/// shared primitive declared in `Primitives`.)
 type Neighbourhood =
     /// 4-connected: N/E/S/W only, no diagonals. Each move costs 1 (`bfs`) / 10 (`astar`).
     | FourWay
