@@ -156,6 +156,37 @@ on the **Coordination board** as a real issue, per
 [cross-repo-coordination](../cross-repo-coordination/SKILL.md). Issues are the mailbox; git is not
 a queue, and neither is a TODO comment.
 
+### Look before you file — you are not the only one filing
+
+**Check whether it is already filed. Two REST reads, zero GraphQL, and they cost you nothing:**
+
+```sh
+# 1. Is there already an issue for this?
+scripts/fsgg-coord issues <target> --jq '.[] | select(.title | test("<keyword>"; "i")) | "#\(.number) \(.title)"'
+
+# 2. If you are filing a CHILD of an item you hold — look at what it ALREADY has. This is the
+#    highest-signal place to look, and the one people skip.
+gh api repos/FS-GG/<repo>/issues/<parent>/sub_issues --jq '.[] | "#\(.number) \(.title)"'
+```
+
+This step exists because eager filing plus N workers **deterministically** produces duplicates, and
+they are worst exactly where the protocol is working hardest — several workers splitting one parent
+at the same time. [#459](https://github.com/FS-GG/.github/issues/459) and
+[#460](https://github.com/FS-GG/.github/issues/460) were the same finding, filed **eleven minutes
+apart**, by two workers who were each fixing a different half of the same issue and neither of whom
+could see the other's in-flight filing. Nobody was careless; the recipe simply never said to look
+([#464](https://github.com/FS-GG/.github/issues/464)).
+
+**On a hit, do not open a rival.** The finding's value is its context, and a comment carries that
+just as well as an issue does:
+
+- **Comment on the existing issue** with what you know that it does not.
+- If yours is the better-specified of the two, **transplant your detail into the existing one** and
+  say so — do not leave two issues for one piece of work.
+- **Prefer the child the parent's sub-issue graph already points at.** `done --flip` rolls up over
+  that graph and *nothing else*, so of two duplicate children the linked one is the one that can
+  actually complete its parent; an unlinked twin lets the parent stamp `Done` over open work (#322).
+
 ```sh
 # 1. The message: an issue in the repo that OWNS the problem, not the one that found it.
 #    The `Paths:` line is NOT optional — see below. Without it the item cannot be scheduled.
