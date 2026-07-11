@@ -140,10 +140,11 @@ let private inRepoExactCopies =
       "Controls.Elmish/Authoring.fsi", "src/Controls.Elmish/Authoring.fsi" ]
 
 /// M-MIR's reader: the declarations an .fsi teaches. Not an F# parser — a line-shape reader over
-/// signature files, which are the most regular F# there is. It sees `val`s, types, record fields
-/// and DU cases; it does NOT see `member`/`abstract` (no in-repo src/ .fsi under a mirrored
-/// directory declares one — the 17 in the tree are all in the Audio.* cross-repo mirrors, which
-/// M-MIR does not cover. If that changes, teach `memberOf` here rather than letting them pass).
+/// signature files, which are the most regular F# there is. It models `val`s, types, record fields
+/// and DU cases. It does NOT model `member`/`abstract`: no in-repo src/ .fsi under a mirrored
+/// directory declares one (the 17 in the tree are all in the Audio.* cross-repo mirrors, which M-MIR
+/// does not cover), so they are treated as a member BOUNDARY and skipped rather than compared. If a
+/// mirrored surface ever grows one, model it here — do not let it ride along inside a field's text.
 module private Fsi =
 
     /// A field or a DU case. `Name` identifies it; `Text` is the whole normalized declaration, so a
@@ -162,9 +163,17 @@ module private Fsi =
 
     let private indentOf (line: string) = line.Length - line.TrimStart().Length
 
-    /// A line that opens a new declaration, and therefore ENDS whatever we were accumulating.
+    /// A line that opens a new declaration, and therefore ENDS whatever we were accumulating. The
+    /// word boundary is load-bearing: without it a wrapped signature's own parameter truncates it —
+    /// `typeName: string ->` starts with `type`, `andThen: …` with `and`, `openPath: …` with `open`.
     let private opensDeclaration (line: string) =
-        Regex.IsMatch(line, @"^\s*(?:val|type|and|module|namespace|open|\[<)")
+        Regex.IsMatch(line, @"^\s*(?:(?:val|type|and|module|namespace|open)\b|\[<)")
+
+    /// A line that declares something M-MIR does not model (a class member). It is a member BOUNDARY,
+    /// not filler: appending it to the pending field would corrupt that field's text with a
+    /// declaration that is not part of it.
+    let private opensUnmodelled (line: string) =
+        Regex.IsMatch(line, @"^\s*(?:member|abstract|static|override|new|inherit|interface)\b")
 
     let private caseName (line: string) =
         let m = Regex.Match(line, @"^\s*\|\s*([A-Z][\w']*)")
@@ -173,7 +182,7 @@ module private Fsi =
     /// `{ Id: ControlId option`, `  Mode: ThemeMode`, `; Text: string`. A DU case cannot match: it
     /// opens with `|`, which is not in the optional `[{;]` prefix.
     let private fieldName (line: string) =
-        if Regex.IsMatch(line, @"^\s*(?:member|abstract|static|override|new|inherit|interface)\b") then
+        if opensUnmodelled line then
             None
         else
             let m = Regex.Match(line, @"^\s*[{;]?\s*(?:mutable\s+)?([A-Z][\w']*)\s*:")
@@ -270,7 +279,20 @@ module private Fsi =
 
                         j <- j + 1
 
-                    // Fold the body into members, joining each member's continuation lines onto it.
+                    // A record may put several fields on ONE line — `{ Operation: PathOperation; Message:
+                    // string }` — and members are detected per line, so split on `;` or the second field
+                    // is swallowed into the first one's text. Then the SAME record written across lines
+                    // (the prevailing style here) would not compare equal to it, and two files that agree
+                    // would report as drift. `;` cannot occur inside an .fsi field TYPE, so this is safe.
+                    let fragments =
+                        body
+                        |> Seq.collect (fun bodyLine ->
+                            if bodyLine.Contains ";" && not (bodyLine.TrimStart().StartsWith "|") then
+                                bodyLine.Split ';' |> Seq.filter (fun fragment -> fragment.Trim() <> "")
+                            else
+                                Seq.singleton bodyLine)
+
+                    // Fold the fragments into members, joining each member's continuation lines onto it.
                     let members = ResizeArray<Member>()
                     let pending = StringBuilder()
                     let mutable pendingName = None
@@ -287,7 +309,7 @@ module private Fsi =
                         pending.Clear() |> ignore
                         pendingName <- None
 
-                    for bodyLine in body do
+                    for bodyLine in fragments do
                         match caseName bodyLine, fieldName bodyLine with
                         | Some case, _ ->
                             flush ()
@@ -297,6 +319,10 @@ module private Fsi =
                             flush ()
                             pendingName <- Some field
                             pending.Append bodyLine |> ignore
+                        // A `member`/`abstract` line ends the field before it and starts nothing M-MIR
+                        // models. Appending it would corrupt that field's text with a declaration that
+                        // is not part of it.
+                        | None, None when opensUnmodelled bodyLine -> flush ()
                         | None, None when pendingName.IsSome -> pending.Append(' ').Append(bodyLine.Trim()) |> ignore
                         | None, None -> ()
 
@@ -323,10 +349,12 @@ let private fsiFilesUnder (root: string) =
 
 /// Drift M-MIR has FOUND and this repo has not yet fixed, because the file is not ours to fix:
 /// `template/base/docs/api-surface/Controls` is inside the live touch-set of #459, so #437 could not
-/// edit it without two workers writing one file. Each entry is `<mirror dir>.<type>` and each is a
-/// REAL defect, itemised in #499 — the mirror teaches a retired `ControlEvent.Payload` field and
-/// omits 10+ live DU cases. Fixing #499 means DELETING these lines; the guard below fails if an
-/// entry stops drifting, so the exemption cannot outlive the bug and quietly re-open the hole.
+/// edit it without two workers writing one file. Each entry is `<mirror dir>.<type or val>` — both
+/// rules honour it, so an unowned mirror's drift can always be RECORDED rather than forcing someone
+/// to disable a rule to get CI green. Each is a REAL defect, itemised in #499: the mirror teaches a
+/// retired `ControlEvent.Payload` field and omits 10+ live DU cases. Fixing #499 means DELETING these
+/// lines; the guard below fails if an entry stops drifting, so the exemption cannot outlive the bug
+/// and quietly re-open the hole this gate exists to close.
 let private knownDrift =
     set
         [ "Controls.AttrValue" // #499 — missing case SceneValue
@@ -337,17 +365,35 @@ let private knownDrift =
           "Controls.ControlRuntimeMsg" // #499 — missing cases ScrollControl / SetScrollExtent
           "Controls.NavPayload" ] // #499 — missing case EditedText
 
-/// Every type the mirror declares, paired with the src candidates of that name and arity.
-let private typeComparison (directory: string) =
-    let mirror = Fsi.read (fsiFilesUnder (Path.Combine(apiSurfaceRoot, directory)))
-    let source = Fsi.read (fsiFilesUnder (repositoryPath $"src/{directory}"))
+/// The parse is pure and every rule below needs the same two surfaces per subject, so read each tree
+/// once rather than once per rule.
+let private surfaceCache = Dictionary<string, Fsi.Surface>()
 
-    mirror.Types
+let private surfaceOf (root: string) =
+    match surfaceCache.TryGetValue root with
+    | true, cached -> cached
+    | _ ->
+        let parsed = Fsi.read (fsiFilesUnder root)
+        surfaceCache.[root] <- parsed
+        parsed
+
+let private mirrorSurface (directory: string) =
+    surfaceOf (Path.Combine(apiSurfaceRoot, directory))
+
+let private sourceSurface (directory: string) =
+    surfaceOf (repositoryPath $"src/{directory}")
+
+/// Every type DECLARATION the mirror makes, paired with the src candidates of that name and arity.
+/// Per declaration, not unioned across them: a merged mirror could declare one name twice, and
+/// union-merging the two would let a stale declaration hide inside a fresh one's member set.
+let private typeComparison (directory: string) =
+    let source = sourceSurface directory
+
+    (mirrorSurface directory).Types
     |> Map.toList
-    |> List.map (fun ((name, arity), declarations) ->
-        let mirrored = declarations |> List.reduce Set.union
+    |> List.collect (fun ((name, arity), declarations) ->
         let candidates = source.Types |> Map.tryFind (name, arity) |> Option.defaultValue []
-        directory, name, arity, mirrored, candidates)
+        declarations |> List.map (fun mirrored -> directory, name, arity, mirrored, candidates))
 
 let private referencedFsGgPackages () =
     Regex.Matches(File.ReadAllText productProjPath, @"<PackageReference\s+Include=""(FS\.GG\.[^""]+)""")
@@ -619,21 +665,25 @@ let apiSurfaceMirrorTests =
               let offenders =
                   mirroredSubjects ()
                   |> List.collect (fun directory ->
-                      let mirror = Fsi.read (fsiFilesUnder (Path.Combine(apiSurfaceRoot, directory)))
-                      let source = Fsi.read (fsiFilesUnder (repositoryPath $"src/{directory}"))
+                      let source = sourceSurface directory
 
-                      mirror.Vals
+                      (mirrorSurface directory).Vals
                       |> Map.toList
-                      |> List.choose (fun (name, mirrored) ->
+                      |> List.filter (fun (name, _) -> not (knownDrift.Contains $"{directory}.{name}"))
+                      |> List.collect (fun (name, mirrored) ->
                           match source.Vals |> Map.tryFind name with
-                          | None -> Some $"{directory}: val {name} — teaches a val no src/{directory} .fsi declares"
-                          | Some declared when Set.intersect mirrored declared |> Set.isEmpty ->
-                              let taught = mirrored |> Set.toList |> List.head
-                              let actual = declared |> Set.toList |> List.head
+                          | None -> [ $"{directory}: val {name} — teaches a val no src/{directory} .fsi declares" ]
+                          | Some declared ->
+                              // EVERY signature the mirror teaches under this name must be one src declares
+                              // — not merely one of them. A merged mirror carries a name from several
+                              // modules, and an intersection test would let a stale overload ride along
+                              // beside a fresh one, which is precisely the lie the rule exists to catch.
+                              Set.difference mirrored declared
+                              |> Set.toList
+                              |> List.map (fun taught ->
+                                  let actual = declared |> Set.toList |> List.head
 
-                              Some
-                                  $"{directory}: val {name} — mirror teaches `{taught}`, src declares `{actual}`"
-                          | Some _ -> None))
+                                  $"{directory}: val {name} — mirror teaches `{taught}`, src declares `{actual}`")))
 
               let report = offenders |> List.map (fun o -> "\n  " + o) |> String.concat ""
 
