@@ -34,9 +34,22 @@ harness session id — and on Claude Code every subagent of a session shares one
 `CLAUDE_CODE_SESSION_ID`, so a fan-out silently collapses onto **one id**. That is the same-account
 bug one level down, and it defeats the lock you are about to take.
 
+**Mint the id. Do not invent one** — run this verbatim, before anything else:
+
 ```sh
-export FSGG_WORKER=finch-a3f    # per worker, before anything else
+export FSGG_WORKER="w-$(od -An -tx1 -N4 /dev/urandom | tr -d ' \n')"
 ```
+
+Inventing one *feels* safe and is not. Agents asked to pick an id converge on the same corner of the
+name space, and an id two workers share is an id the lock cannot separate — `release` would drop the
+other's claim mid-flight, `heartbeat` would renew a marker that is not yours, and `say`/`inbox` would
+cross-deliver. This board has carried **four `finch-*` workers at once**, all of them hand-picked from
+the example that used to sit on this line, while `whoami`'s own derived ids spread cleanly across the
+word list (#419). The attractor is the *word*, not the suffix: randomising `-a3f` does not help if you
+still reach for the bird you just read.
+
+Until `claim` refuses a marker whose `worker=` duplicates a live one (the tool half of #419), **the id
+scheme is advisory** — a mint you skip is a lock you do not have.
 
 Then read your mail — another worker may have left you a message on an item you are about to touch:
 
@@ -147,7 +160,7 @@ discipline, managed for you.
 - **Commit with the trailer** `claim` printed, so attribution survives into history:
 
   ```
-  FSGG-Worker: finch-a3f
+  FSGG-Worker: w-4f2a91c7
   ```
 
 - Watch for stray build artifacts (`.pyc`, `bin/`, `obj/`) sneaking into the commit from a fresh
