@@ -34,7 +34,7 @@ each. Each is a self-contained canonical body declared (with its content digest)
 | `fs-gg-ui-widgets` | .agents/skills/fs-gg-ui-widgets/SKILL.md | app, game |
 | `fs-gg-styling` | .agents/skills/fs-gg-styling/SKILL.md | app, game |
 | `fs-gg-layout` | .agents/skills/fs-gg-layout/SKILL.md | app, game |
-| `fs-gg-testing` | .agents/skills/fs-gg-testing/SKILL.md | governed |
+| `fs-gg-testing` | .agents/skills/fs-gg-testing/SKILL.md | app, headless-scene, governed, sample-pack, game |
 | `fs-gg-project` | .agents/skills/fs-gg-project/SKILL.md | app, headless-scene, governed, sample-pack, game |
 
 > `fs-gg-project` is the product-orientation umbrella (how your generated product is laid out and how

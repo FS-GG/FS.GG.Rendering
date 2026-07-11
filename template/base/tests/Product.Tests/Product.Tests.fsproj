@@ -16,6 +16,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Product\Product.fsproj" />
+    <!-- Issue #432 (finishing #90): the fs-gg-testing skill materializes on every profile and tells the
+         author to `open FS.GG.UI.Testing`. The reference belongs here rather than in src/: the assertion,
+         evidence-report and layout-validation helpers it documents are consumed from the test project —
+         BehaviorTests.fs already calls one of them — and no source under src/ uses them. (Their type names
+         are not spelled out here: they embed the substitution token, and #282's guard would mangle them.) -->
+    <PackageReference Include="FS.GG.UI.Testing" />
     <PackageReference Include="Expecto" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" />

@@ -47,9 +47,14 @@ let private SPEC_KIT_COND = "lifecycle == \"spec-kit\""
 // HUD + gameplay region by output size) on the same (app, game) surface, so it joins those two rows too.
 // Feature 240 (#73) wired the simulation `fs-gg-game-core` (fixed-step / RNG / collision / culling) on the
 // (game, sample-pack) surface — the sim profiles — so it joins those two rows and lifts the source count to 10.
-// Issue #90 widened `fs-gg-testing` from `governed`-only to every profile that ships the base `Product.Tests`
-// project + the `FS.GG.UI.Testing` package (all five): its `materializes-when` now mirrors `fs-gg-scene`, so it
-// joins the app, headless-scene, sample-pack, and game rows alongside the pre-existing governed row.
+// Issue #90 widened `fs-gg-testing` from `governed`-only to all five profiles: its `materializes-when` now
+// mirrors `fs-gg-scene`, so it joins the app, headless-scene, sample-pack, and game rows alongside the
+// pre-existing governed row. NOTE this comment used to justify that by asserting all five ship the base
+// `Product.Tests` project + the `FS.GG.UI.Testing` package — and the package half was FALSE: #90 widened the
+// skill and left the pin `governed`-gated, so four of five shipped a skill whose first `open` did not compile
+// (#432). The claim is what stopped anyone re-checking, which is the argument for asserting it instead of
+// narrating it: SkillPackageReachTests now HOLDS the package half as an invariant. #432 made it true by
+// ungating the pin and referencing FS.GG.UI.Testing from `Product.Tests.fsproj`, where the helpers are used.
 // Feature 243 (#92) wired the `fs-gg-audio` request surface (AudioEffect / record-only interpret) on the same
 // (game, sample-pack) sim surface as `fs-gg-game-core`, so it joins those two rows and lifts the count to 11.
 // Feature 244 (#93) wired the `fs-gg-persistence` request surface (PersistenceEffect / record-only interpret)

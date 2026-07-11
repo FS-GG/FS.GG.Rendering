@@ -91,9 +91,10 @@
     <PackageReference Include="FS.GG.UI.Symbology" />
     <PackageReference Include="FS.GG.UI.Symbology.Render" />
     <!--#endif -->
-    <!--#if (profile == "governed") -->
-    <PackageReference Include="FS.GG.UI.Testing" />
-    <!--#endif -->
+    <!-- Issue #432: FS.GG.UI.Testing was referenced here on `governed`, but no product source has ever
+         used it — its only consumer is tests/Product.Tests. It now lives on Product.Tests.fsproj, on every
+         profile, so the fs-gg-testing skill compiles everywhere it materializes without the product
+         carrying a test-only dependency. -->
   </ItemGroup>
 
 </Project>
