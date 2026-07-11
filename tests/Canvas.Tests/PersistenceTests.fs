@@ -133,11 +133,18 @@ let tests =
         // reshaping it would be an ApiCompat break (and a SemVer major). So it survives as a
         // forwarder — and a forwarder that has silently drifted from the function it forwards to is
         // worse than no forwarder. Pin them to the same answer over arbitrary batches.
-        testCase "the deprecated interpret forwards to interpretRecordOnly, identically (#445, FsCheck >=500 cases)"
+        // Every case of the DU crosses the forwarder, not just `Save` — a forwarder that dropped or
+        // reordered `Load`/`DeleteSlot` would sail through a Save-only property.
+        testCase "the deprecated interpret forwards to interpretRecordOnly, identically, for every effect case (#445, FsCheck >=500 cases)"
         <| fun () ->
-            let prop (items: (int * string) list) =
+            let prop (items: (int * int * string) list) =
                 let effects =
-                    items |> List.map (fun (v, p) -> Save { Version = v; Slot = SaveSlot "s"; Payload = SavePayload p })
+                    items
+                    |> List.map (fun (tag, version, text) ->
+                        match ((tag % 3) + 3) % 3 with
+                        | 0 -> Save { Version = version; Slot = SaveSlot text; Payload = SavePayload text }
+                        | 1 -> Load(SaveSlot text)
+                        | _ -> DeleteSlot(SaveSlot text))
                 Persistence.interpret effects = Persistence.interpretRecordOnly effects
             Check.One(Config.QuickThrowOnFailure.WithMaxTest 500, prop)
 

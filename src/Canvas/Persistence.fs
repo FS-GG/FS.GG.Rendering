@@ -1,7 +1,5 @@
 namespace FS.GG.UI.Canvas
 
-open System
-
 // Feature 244: pure persistence (save/load) request surface + record-only interpreter. A product's
 // `update` emits PersistenceEffect values (never reads or writes a file); the interpreter folds a
 // batch into ordered evidence. Scene-only, dependency-light. The payload is opaque: the product
@@ -70,9 +68,7 @@ module Persistence =
     let interpretRecordOnly (effects: PersistenceEffect list) : PersistenceEvidence =
         { Requested = List.map normalize effects }
 
-    // Kept at its exact published signature so the rename stays additive (ApiCompat compares this
-    // assembly against the released baseline; dropping or reshaping the val would be a break, and
-    // the SemVer major that follows is a decision this item does not get to make). The `[<Obsolete>]`
-    // lives on the val in the .fsi — under this repo's TreatWarningsAsErrors it is a hard build
-    // error at every call site, which is the point. Retirement rides the next framework major.
+    // A forwarder kept at its exact published signature: removing or reshaping it is an ApiCompat
+    // break, so it retires with the next framework major (#537), not before. The `[<Obsolete>]` sits
+    // on the val in the .fsi (Principle II), where it is a hard build error at every call site.
     let interpret (effects: PersistenceEffect list) : PersistenceEvidence = interpretRecordOnly effects
