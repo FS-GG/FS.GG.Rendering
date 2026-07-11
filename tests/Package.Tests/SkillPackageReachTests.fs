@@ -206,17 +206,28 @@ let private capabilityRows =
     |> List.ofSeq
 
 /// The profiles a capability's package actually reaches: pinned AND referenced by a project the generated
-/// product compiles. A UNION over the product and test projects, not the product alone — FS.GG.UI.Testing is
-/// referenced only by Product.Tests.fsproj (#432), and it is no less part of the scaffold for that.
+/// product compiles.
+///
+/// The PRODUCT's references when the product carries the package, falling back to the test project's only
+/// when it does not — which is what "test-scoped" MEANS for a package, and is how FS.GG.UI.Testing (#432,
+/// referenced from Product.Tests.fsproj alone) enters the catalog at all.
+///
+/// Deliberately NOT a blind union of the two. Unioning the test project into every capability would let a
+/// package added to Product.Tests.fsproj widen the reach R-CAT blesses for a capability whose author consumes
+/// it from PRODUCT source: the catalog could then claim `layout` on a profile where `open FS.GG.UI.Layout` in
+/// Program.fs does not compile, and this guard would bless it. That is the permissive direction `testScopedSkills`
+/// above exists to police, and the whole bug class (#430) this file was written for. Erring the other way merely
+/// under-reports, which R-CAT reports as a loud RED rather than a silent green.
 let private capabilityReach pkg =
     let pin = profilesDeclaring (File.ReadAllText propsPath) pkg
 
     let refs =
-        [ projPath; testsProjPath ]
-        |> List.choose (fun path -> profilesDeclaring (File.ReadAllText path) pkg)
+        match profilesDeclaring (File.ReadAllText projPath) pkg with
+        | Some product -> Some product
+        | None -> profilesDeclaring (File.ReadAllText testsProjPath) pkg
 
     match pin, refs with
-    | Some pins, (_ :: _) -> Some(Set.intersect pins (Set.unionMany refs))
+    | Some pins, Some refs -> Some(Set.intersect pins refs)
     | _ -> None
 
 /// KNOWN, FILED violations of R-REACH that predate this guard — named, never silent.
