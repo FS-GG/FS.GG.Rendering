@@ -559,6 +559,33 @@ let private treeFingerprint (root: string) =
         rel, sha.ComputeHash(File.ReadAllBytes full) |> Convert.ToHexString)
     |> List.sortBy fst
 
+/// Install THIS WORKING TREE's template as the `fs-gg-ui` this run scaffolds from (#452).
+///
+/// The live loop below shells out to `dotnet new fs-gg-ui`, which resolves against the machine's
+/// template cache — NOT against `.template.config/template.json` in this repo. So without this step
+/// the "live" audit silently scaffolds from whatever `FS.GG.UI.Template` package happens to be
+/// installed (on the box that found this, a published 0.8.0 predating #434), and then reports a
+/// verdict about it as though it had proven something about the tree under review. A CI lane wired
+/// up that way is worse than no lane: it is green, it is fast, and its subject is the wrong one.
+/// That is the same fail-open this whole item exists to close, so closing it here too.
+///
+/// The install is scoped to a temp `DOTNET_CLI_HOME` rather than the caller's real one, for two
+/// reasons: it does not mutate a developer's global template cache as a side effect of running a
+/// validator, and it dodges the short-name collision that `dotnet new install .` would otherwise
+/// hit on any box that already has the published FS.GG.UI.Template installed (two packages, one
+/// `fs-gg-ui` short name). Child `dotnet` processes inherit this env, so every scaffold below —
+/// and only this run's — sees the isolated cache.
+let private installTemplateUnderTest (tmpRoot: string) =
+    let cliHome = Path.Combine(tmpRoot, ".cli-home")
+    Directory.CreateDirectory cliHome |> ignore
+    Environment.SetEnvironmentVariable("DOTNET_CLI_HOME", cliHome)
+    Environment.SetEnvironmentVariable("DOTNET_NOLOGO", "1")
+    let code, out, err = runProc repoRoot "dotnet" [ "new"; "install"; repoRoot ]
+    if code <> 0 then
+        failwithf "could not install the working-tree template from %s (exit %d) — the live loop has no subject to audit:\n%s\n%s"
+            repoRoot code out err
+    printfn "live subject: %s (isolated DOTNET_CLI_HOME=%s)" repoRoot cliHome
+
 /// Scaffold one combination, killing the trailing post-action once the tree has stabilised.
 /// `extra` carries the `--lifecycle`/`--designSystem`/`--feedback` flags. Returns Some outDir on
 /// success, None if generation was EXPECTED to fail (used by the unknown-value rejection check
@@ -625,11 +652,35 @@ type private ProfileVerdict =
 // Feature 231: the expected fs-gg-* skill-dir set per profile (mirrors the Feature 219 G-EMIT
 // matrix) + the spec-kit-only base authoring skill. Any OTHER fs-gg-* dir in a scaffold is a
 // vendored dev-surface wrapper (audit F3) and fails the run.
+//
+// This set is deliberately a HAND-MAINTAINED restatement of the G-EMIT matrix, not something
+// derived from template.json's conditions: deriving it would make the audit tautological (it would
+// mirror whatever the conditions say, including a wrong condition) and it would stop being an
+// independent statement of intent. The cost of that choice is that widening a skill's
+// `materializes-when` must ALSO widen this map — issue #90 widened fs-gg-testing to all five
+// profiles and did not, which is what rotted this lane red (#452). If you gate a skill onto a new
+// profile, add it here in the same change.
 let private expectedFrameworkSkills =
-    [ "app", Set.ofList [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-keyboard-input"; "fs-gg-ui-widgets"; "fs-gg-styling"; "fs-gg-layout"; "fs-gg-symbology" ]
-      "headless-scene", Set.ofList [ "fs-gg-scene"; "fs-gg-symbology" ]
-      "governed", Set.ofList [ "fs-gg-scene"; "fs-gg-testing"; "fs-gg-symbology" ]
-      "sample-pack", Set.ofList [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-symbology"; "fs-gg-samples" ] ]
+    // fs-gg-testing: profile-gated onto every profile, with NO lifecycle term (template.json
+    // `(profile == "app" || … || profile == "game")`), so it emits on every profile AND every lane
+    // — spec-kit, sdd and none alike (#90).
+    //
+    // fs-gg-symbology: NOT on headless-scene/governed. Issue #430 narrowed it to the three profiles
+    // that carry SkiaViewer (app, sample-pack, game): the skill's loop is `Render.toPng`, which lives
+    // in FS.GG.UI.Symbology.Render -> FS.GG.UI.SkiaViewer, and the viewerless profiles pin no viewer,
+    // so it could never compile there. Matches its manifest `materializes-when: profile in [app,
+    // sample-pack, game]`.
+    [ "app", Set.ofList [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-keyboard-input"; "fs-gg-ui-widgets"; "fs-gg-styling"; "fs-gg-layout"; "fs-gg-symbology"; "fs-gg-testing" ]
+      "headless-scene", Set.ofList [ "fs-gg-scene"; "fs-gg-testing" ]
+      "governed", Set.ofList [ "fs-gg-scene"; "fs-gg-testing" ]
+      // sample-pack shares the game profile's capability set (audio/collision/game-core/grids/
+      // line-drawing/model-swap/persistence/visibility are all gated `profile == "game" || profile ==
+      // "sample-pack"`). Each of those was added to the profile by its own feature without updating this
+      // map — eight silent drifts, invisible because the lane that would have caught them never ran.
+      // fs-gg-samples is the one spec-kit-gated member and is dropped from the sdd/none expectation below.
+      "sample-pack", Set.ofList [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-symbology"; "fs-gg-samples"; "fs-gg-testing"
+                                  "fs-gg-audio"; "fs-gg-collision"; "fs-gg-game-core"; "fs-gg-grids"
+                                  "fs-gg-line-drawing"; "fs-gg-model-swap"; "fs-gg-persistence"; "fs-gg-visibility" ] ]
     |> Map.ofList
 
 // ---- Feature 231 live helpers -------------------------------------------------------------------
@@ -704,12 +755,23 @@ let private manifestPresent (dir: string) =
 /// Feature 219: the lifecycle WORKSPACE is absent (FR-003) even though the framework `fs-gg-*` product
 /// skills are now PRESENT under `.agents/skills/`/`.claude/skills/` (FR-001). "Absent" is therefore no
 /// longer "no `.agents` dir at all"; it is: no `.specify/`, no agent-context `CLAUDE.md`/`AGENTS.md`,
-/// no `speckit-*` command skills, and no base authoring skill (`fs-gg-project`, blanket-copy only).
+/// and no `speckit-*` command skills.
+///
+/// `.agents/skills/fs-gg-project/` is deliberately NOT part of this predicate (#452). It used to be:
+/// fs-gg-project arrived only via a `lifecycle == "spec-kit"`-gated blanket copy of `template/base/.agents/`,
+/// so its presence was a sound proxy for "a Spec Kit workspace was written here". Issue #91 (ADR-0017 §C2)
+/// promoted it to a dedicated PROFILE-gated, lifecycle-INDEPENDENT source, precisely so the default sdd lane
+/// stops shipping capability skills with no top-level product map. It therefore materializes on EVERY lane,
+/// and asserting its absence under sdd/none contradicts #91. Of the two, #91 is the deliberate decision and
+/// this predicate was the stale one — so the clause is dropped rather than #91 reverted.
+///
+/// `.claude/skills/fs-gg-project/` IS still asserted: `template/base/.claude/` remains `lifecycle == "spec-kit"`-gated,
+/// so under sdd/none the orchestrator roots hold no product skills at all, and a write there is the
+/// `scaffold.providerWroteSddTree` intrusion (#47/#55) this lane exists to catch.
 let private workspaceAbsent (dir: string) =
     not (Directory.Exists(Path.Combine(dir, ".specify")))
     && not (File.Exists(Path.Combine(dir, "CLAUDE.md")))
     && not (File.Exists(Path.Combine(dir, "AGENTS.md")))
-    && not (Directory.Exists(Path.Combine(dir, ".agents", "skills", "fs-gg-project")))
     && not (Directory.Exists(Path.Combine(dir, ".claude", "skills", "fs-gg-project")))
     && (Directory.Exists dir
         && (Directory.EnumerateDirectories(dir, "speckit-*", SearchOption.AllDirectories) |> Seq.isEmpty))
@@ -746,11 +808,29 @@ let private codexProductSkillCount (dir: string) = orchestratorRootProductSkillC
 /// Feature 231: the emitted fs-gg-* dir set must be EXACTLY the expected profile set (+ the
 /// spec-kit-only authoring/conditional skills) — any extra dir is a vendored wrapper (F3).
 let private assertNoWrapperDirs (dir: string) (profile: string) (specKit: bool) =
-    let allowedSpecKitExtras = Set.ofList [ "fs-gg-project"; "fs-gg-feedback-capture" ]
+    // fs-gg-feedback-capture is the per-phase CAPTURE skill, gated `(feedback == true) && lifecycle == "spec-kit"`.
+    // `feedback` defaults to false and no call site of this function scaffolds with `--feedback true`, so in
+    // practice it never emits here — this is a tolerance for a spec-kit lane that turns the flag on, not a
+    // requirement. (Contrast fs-gg-feedback-report below, which is unconditional and so is REQUIRED.)
+    let allowedSpecKitExtras = Set.ofList [ "fs-gg-feedback-capture" ]
     let expected =
-        let baseSet = Map.find profile expectedFrameworkSkills
+        let baseSet =
+            match Map.tryFind profile expectedFrameworkSkills with
+            | Some s -> s
+            | None ->
+                failwithf "profile %s is in `profiles` but has no entry in `expectedFrameworkSkills` — add its expected fs-gg-* set (see the note there)"
+                    profile
+
         // fs-gg-samples is spec-kit-gated (sample-pack only): drop it from the sdd/none expectation.
         let baseSet = if specKit then baseSet else Set.remove "fs-gg-samples" baseSet
+        // Issue #91 (ADR-0017 §C2): fs-gg-project is profile-gated and lifecycle-INDEPENDENT — it is the
+        // product-orientation umbrella, and #91 promoted it precisely so the sdd lane stops shipping
+        // capability skills with no top-level map. So it is REQUIRED on every lane, not merely tolerated
+        // on spec-kit. It sat in `allowedSpecKitExtras` until #452, which (a) read as an unexpected
+        // vendored wrapper under sdd/none, redding this lane, and (b) — had the polarity gone the other
+        // way — could never have caught its ABSENCE, the same hole that shipped fs-gg-feedback-report to
+        // nobody (#434). Requiring it is what makes a regression of #91 loud.
+        let baseSet = Set.add "fs-gg-project" baseSet
         // Issue #434: fs-gg-feedback-report is UNCONDITIONAL — every profile, every lane, with or
         // without `--feedback`. So it is EXPECTED here, not merely tolerated. While it was gated on
         // `feedback` it sat in an `allowedCapabilityExtras` allow-list, which only ever PERMITTED it
@@ -1051,6 +1131,8 @@ let private runValidation () =
         let tmpRoot = Path.Combine(Path.GetTempPath(), "fs-gg-lifecycle-validation")
         if Directory.Exists tmpRoot then Directory.Delete(tmpRoot, true)
         Directory.CreateDirectory tmpRoot |> ignore
+
+        installTemplateUnderTest tmpRoot
 
         let verdicts = profiles |> List.map (validateProfileLive tmpRoot)
         let matrixCount = validateCompositionMatrix tmpRoot values
