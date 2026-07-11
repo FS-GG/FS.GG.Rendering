@@ -3,7 +3,8 @@
 Ships one **product-owned, adaptable** source file into `game` / `sample-pack` products:
 
 - `src/<ProductDir>/Vec2.fs` — a collision-safe 2D vector (`Geometry.Vec2`, position/velocity/displacement)
-  plus `toPoint` / `toRect` interop into the shared scene vocabulary, that you **own and edit**.
+  plus interop into **both** framework vocabularies — `toPoint` / `toRect` (render) and
+  `toSimPoint` / `ofSimPoint` / `toSimRect` / `ofSimRectCenter` (simulation) — that you **own and edit**.
 
 ## Why this exists
 

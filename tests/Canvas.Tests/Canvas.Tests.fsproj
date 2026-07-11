@@ -22,6 +22,10 @@
          `namespace Product`, the default sourceName) so its logic is tested framework-side. -->
     <Compile Include="..\..\template\fragments\visibility\src\Product\Visibility.fs" />
     <Compile Include="VisibilityHelperTests.fs" />
+    <!-- #446: the Vec2 -> FS.GG.Game.Core crossings. Compiled AFTER the collision + visibility
+         fragments because it drives them from a Vec2-modelled product, which is the acceptance
+         criterion (the fragments themselves only need Vec2.fs, compiled above). -->
+    <Compile Include="Issue446SimCrossingTests.fs" />
     <!-- Feature 249 (US1): compile the raw import-and-adapt grid-parts helper source (literal
          `namespace Product`, the default sourceName) so its logic is tested framework-side. -->
     <Compile Include="..\..\template\fragments\grids\src\Product\Grids.fs" />
