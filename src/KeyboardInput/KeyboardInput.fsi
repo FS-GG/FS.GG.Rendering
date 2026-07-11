@@ -210,3 +210,22 @@ module ViewerKeyboard =
     /// key). Pure, total; never throws.
     val mapKeyOfKeymap:
         keymap: Keymap -> mapCommand: (CommandId -> 'msg option) -> (ViewerKey -> bool -> 'msg option)
+
+    /// Issue 456 (epic FS-GG/.github#416): the `MapKey` seam that loses nothing — and the one a key-rebind
+    /// CAPTURE must be built on, because `mapKeyOfKeymap` cannot serve one.
+    ///
+    /// `MapKey` is a closure fixed when the host record is built; it never sees the model. `mapKeyOfKeymap`
+    /// therefore resolves against the keymap it CLOSED OVER and drops two things: key-up, and every key the
+    /// keymap does not bind. A rebind capture needs precisely what it drops — the key the user presses next
+    /// is by definition not bound yet — so the key the product waits for is the one key that seam cannot
+    /// deliver, and the capture never completes.
+    ///
+    /// `mapKeyRaw` forwards the key instead of resolving it: every key-DOWN and key-UP reaches `onKey` as a
+    /// raw `KeyId` plus its down flag, and `onKey` returns `'msg option` so the product declines what it does
+    /// not want. The product then routes the key in `update`, where its keymap and its capture state live: a
+    /// capture is an ordinary model transition, `Keymap.rebind` re-routes the very next key, and host key
+    /// capture needs NO viewer state and NO `ViewerEffect`.
+    ///
+    /// This is why `KeyboardEffect.RequestHostKeyCapture` — which no host interprets — is not the way to ask
+    /// for a capture. Pure, total; never throws.
+    val mapKeyRaw: onKey: (KeyId -> bool -> 'msg option) -> (ViewerKey -> bool -> 'msg option)

@@ -60,6 +60,12 @@ type KeyboardEffect =
     | PendingSequenceChanged of KeyId list
     | StateDisplayChanged of KeyboardStateDisplay
     | ReportKeyboardDiagnostic of KeyboardDiagnostic
+    /// Issue 456: NOT INTERPRETED BY ANY HOST. No `ViewerEffect` carries a `KeyboardEffect`
+    /// (`DispatchInput` is host->product only), so this request never reaches a host and the capture it
+    /// appears to arm never fires. `ControlsElmish.interpretKeyboardEffect` reports it as a
+    /// `keyboard-input/HostKeyCaptureNotInterpreted` diagnostic rather than pretending to serve it.
+    /// To actually capture a rebind key, set the host's `MapKey` to `ViewerKeyboard.mapKeyRaw` and route
+    /// the key in your `update`, where your keymap and capture state live.
     | RequestHostKeyCapture of KeyId
 
 /// Public contract type exposed by this FS.GG.UI package.
@@ -125,3 +131,17 @@ module ViewerKeyboard =
     /// `normalizeEvent` (byte-identical routing); a chord recovers every held modifier — zero silent
     /// loss (SC-009). Pure, total; never throws.
     val normalizeEventWithModifiers: event: ViewerKeyEvent -> ViewerKey * bool * KeyModifiers
+
+    /// Issue 456: the `MapKey` seam that loses nothing — and the one a key-rebind CAPTURE must be built
+    /// on. `MapKey` is a closure fixed when your host record is built and it never sees your model, so a
+    /// seam that RESOLVES a key (against a keymap it closed over) necessarily drops both key-up and every
+    /// key that keymap does not bind. A rebind capture needs exactly what that drops: the key the user
+    /// presses next is, by definition, not bound yet.
+    ///
+    /// `mapKeyRaw` forwards instead of resolving — every key-DOWN and key-UP reaches `onKey` as a raw
+    /// `KeyId` plus its down flag, and `onKey` returns `'msg option` so you decline what you do not want.
+    /// Route the key in your `update`, where your keymap and capture state live: a capture becomes an
+    /// ordinary model transition, and the rebind re-routes the very next key. This is why host key capture
+    /// needs no viewer state and no `ViewerEffect` — and why `KeyboardEffect.RequestHostKeyCapture`, which
+    /// no host interprets, is not the way to ask for one. Pure, total; never throws.
+    val mapKeyRaw: onKey: (KeyId -> bool -> 'msg option) -> (ViewerKey -> bool -> 'msg option)
