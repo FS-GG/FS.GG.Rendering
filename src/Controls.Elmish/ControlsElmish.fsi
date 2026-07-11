@@ -335,8 +335,16 @@ module AdapterCmd =
     /// (= `[ DispatchProductMessage msg ]`). Law: `productMessages (ofMessage m) = [ m ]`.
     val ofMessage: msg: 'msg -> AdapterCommand<'msg>
     /// The ordered `DispatchProductMessage` payloads carried by the command
-    /// (the round-trip oracle); no other effect case contributes.
+    /// (the round-trip oracle); no other effect case contributes. NOTE that this DISCARDS
+    /// every other effect, diagnostics included — a routing site that extracts messages with
+    /// it and nothing else silently drops whatever the interpreter reported (issue #457).
+    /// Pair it with `diagnostics`, as the pointer routing sites now do.
     val productMessages: command: AdapterCommand<'msg> -> 'msg list
+    /// Issue #457: the ordered `ReportAdapterDiagnostic` payloads carried by the command —
+    /// the companion `productMessages` never had, so a host can route what an interpreter
+    /// reported (a pointer hit-test miss, a stale target, an unresolved control id) to an
+    /// observer instead of filtering it out. Law: `diagnostics (ofMessage m) = []`.
+    val diagnostics: command: AdapterCommand<'msg> -> AdapterDiagnostic list
     /// Total conversion to an Elmish `Cmd<'msg>`: `route` maps EVERY `AdapterEffect`
     /// case (product and non-product) to a `'msg`, preserving list order; `[]` ->
     /// `Cmd.none`. Pure to construct; never throws. FR-003/FR-008.
