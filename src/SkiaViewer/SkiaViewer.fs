@@ -430,6 +430,31 @@ module Viewer =
           Message = message
           LastDiagnosticSummary = lastDiagnostic |> Option.map _.Message }
 
+    /// Issue #396: guard the FIRST product `View` — the startup frame produced before a persistent
+    /// window opens, and the single frame of a one-shot run. Unlike `tryProductStep` (which drops a
+    /// throwing *runtime* frame and keeps the last-good scene), there is no prior scene to fall back
+    /// to here, so a throw cannot be dropped: it fails the run as an `App`-stage `ProductDefect` — the
+    /// classification #365 established for every product-code fault — reporting one diagnostic and
+    /// returning the typed failure rather than escaping as an uncaught exception.
+    let private tryFirstProductView
+        (report: ViewerDiagnosticEvent -> unit)
+        (phase: string)
+        (view: unit -> 'scene)
+        : Result<'scene, ViewerRunFailure> =
+        try
+            Result.Ok(view ())
+        with ex ->
+            let diagnostic =
+                { productDefectDiagnostic phase ex.Message with
+                    Message =
+                        sprintf
+                            "Product %s raised an exception (%s) producing its first frame; the run cannot start (App-stage product defect, not a render failure)."
+                            phase
+                            ex.Message }
+
+            report diagnostic
+            Result.Error(failureFromDiagnostic diagnostic)
+
     let classifyWindowObservation outcome (inputs: WindowObservationInputs) =
         let externalObservationAttempted = inputs.ExternalObservationAttempted
         let externalWindowMatched = inputs.ExternalWindowMatched
@@ -1962,117 +1987,125 @@ module Viewer =
                 else
                     let model, initEffects = host.Init()
                     let mutable currentModel = model
-                    let mutable currentScene = host.View currentModel
-                    let mutable inputDispatch = "false"
-                    // Issue #365: guard the product `Update`/`View` so one throwing step drops that input
-                    // and keeps the persistent window on its last-good scene, rather than escaping to a
-                    // teardown mislabeled `frameRenderFailed`.
+                    // Issue #365: a product `Update`/`View` fault is an App-stage defect captured through
+                    // the host's diagnostics, never a window teardown.
                     let reportProductDefect ev = captureDiagnostic host.Diagnostics ev |> ignore
-                    let safeView model =
-                        tryProductStep reportProductDefect "View" (fun () -> host.View model)
-                        |> Option.defaultValue currentScene
-                    // Issue #246: `GeneratedAppHost.View` withholds the window size on purpose, so the
-                    // product always draws in its own coordinate space. Track the live surface so a
-                    // `LogicalSize` product can be fitted to it; without one this stays inert and the
-                    // presented scene is the view output verbatim.
-                    let mutable currentSurfaceSize = options.InitialSize
-
-                    let presentScene () = presentedFor options currentSurfaceSize currentScene
-
-                    let handleResize (size: Size) = currentSurfaceSize <- size
-
-                    let interpretEffects effects =
-                        effects
-                        |> List.fold
-                            (fun closeRequested effect ->
-                                match effect with
-                                | RenderScene scene ->
-                                    currentScene <- scene
-                                    closeRequested
-                                | DispatchInput _ ->
-                                    inputDispatch <- "true"
-                                    closeRequested
-                                | CloseWindow -> true
-                                | EmitDiagnostic diagnostic ->
-                                    captureDiagnostic host.Diagnostics diagnostic |> ignore
-                                    closeRequested
-                                | PlayAudio effects ->
-                                    audioSink effects
-                                    closeRequested
-                                | OpenWindow _
-                                | ApplyWindowOptions _
-                                | QueryNativeWindowState
-                                | StartBoundedRun _
-                                | CheckDesktopSession
-                                | CaptureScreenshot _
-                                | CaptureImageEvidence _
-                                | ReadPixels
-                                | WriteVisualEvidence _
-                                | WriteRunEvidence _ -> closeRequested)
-                            false
-
-                    let initialCloseRequested = interpretEffects initEffects
-
-                    let _, _ =
-                        update
-                            Start
-                            { Options = options
-                              WindowBehavior = behavior
-                              IsRunning = false
-                              LifecycleState = NotStarted
-                              FirstFramePresented = false
-                              UserCloseObserved = false
-                              InputDispatch = NotRequired
-                              LastScene = None }
-
-                    let dispatchHostMsg msg =
-                        match tryProductStep reportProductDefect "Update" (fun () -> host.Update msg currentModel) with
-                        | None -> false // product Update threw; drop the message, keep window + last-good scene
-                        | Some(next, effects) ->
-                            currentModel <- next
-                            currentScene <- safeView currentModel
-                            interpretEffects effects
-
-                    let handleTick elapsed =
-                        match host.Tick elapsed with
-                        | Some msg -> dispatchHostMsg msg
-                        | None -> false
-
-                    let handleKey rawKey isDown =
-                        let key, normalizedDown =
-                            ViewerKeyboard.normalizeEvent
-                                { RawKey = rawKey
-                                  Direction =
-                                    if isDown then
-                                        ViewerKeyDirection.KeyDown
-                                    else
-                                        ViewerKeyDirection.KeyUp }
-
-                        match host.MapKey key normalizedDown with
-                        | Some msg ->
-                            inputDispatch <- "true"
-                            dispatchHostMsg msg
-                        | None ->
-                            inputDispatch <- "false"
-                            // F1: a key that maps to no product message may still have changed
-                            // host-internal runtime state (focus traversal, scroll keys); re-derive so
-                            // it renders on THIS key. (Previously only the full-interactive loop did this.)
-                            currentScene <- runtimeStateRepaint false currentScene (fun () -> safeView currentModel)
-                            false
-
-                    let inputVerified () =
-                        not (requireInputDispatchVerification ()) || inputDispatch = "true"
-
-                    match runPresentedPersistentWindow options behavior host.Diagnostics inputDispatch presentScene handleTick (Some handleKey) None (Some handleResize) inputVerified None with
-                    | Result.Ok outcome ->
-                        Result.Ok(
-                            { outcome with
-                                InputDispatch = inputDispatch
-                                OptionResults = validateWindowLaunchBehavior options.InitialSize behavior
-                                ExitPath = initialCloseRequested || outcome.ExitPath
-                                Message = "Persistent generated app host launch completed after intentional close." }
-                        )
+                    // Issue #396: guard the FIRST product View — there is no last-good scene to fall
+                    // back to as the runtime `safeView` does, so a first-frame throw fails the run as a
+                    // startup App-stage ProductDefect instead of escaping as an uncaught exception.
+                    match tryFirstProductView reportProductDefect "View" (fun () -> host.View currentModel) with
                     | Result.Error failure -> Result.Error failure
+                    | Result.Ok initialScene ->
+                        let mutable currentScene = initialScene
+                        let mutable inputDispatch = "false"
+                        // Issue #365: guard the product `Update`/`View` so one throwing step drops that input
+                        // and keeps the persistent window on its last-good scene, rather than escaping to a
+                        // teardown mislabeled `frameRenderFailed`.
+                        let safeView model =
+                            tryProductStep reportProductDefect "View" (fun () -> host.View model)
+                            |> Option.defaultValue currentScene
+                        // Issue #246: `GeneratedAppHost.View` withholds the window size on purpose, so the
+                        // product always draws in its own coordinate space. Track the live surface so a
+                        // `LogicalSize` product can be fitted to it; without one this stays inert and the
+                        // presented scene is the view output verbatim.
+                        let mutable currentSurfaceSize = options.InitialSize
+
+                        let presentScene () = presentedFor options currentSurfaceSize currentScene
+
+                        let handleResize (size: Size) = currentSurfaceSize <- size
+
+                        let interpretEffects effects =
+                            effects
+                            |> List.fold
+                                (fun closeRequested effect ->
+                                    match effect with
+                                    | RenderScene scene ->
+                                        currentScene <- scene
+                                        closeRequested
+                                    | DispatchInput _ ->
+                                        inputDispatch <- "true"
+                                        closeRequested
+                                    | CloseWindow -> true
+                                    | EmitDiagnostic diagnostic ->
+                                        captureDiagnostic host.Diagnostics diagnostic |> ignore
+                                        closeRequested
+                                    | PlayAudio effects ->
+                                        audioSink effects
+                                        closeRequested
+                                    | OpenWindow _
+                                    | ApplyWindowOptions _
+                                    | QueryNativeWindowState
+                                    | StartBoundedRun _
+                                    | CheckDesktopSession
+                                    | CaptureScreenshot _
+                                    | CaptureImageEvidence _
+                                    | ReadPixels
+                                    | WriteVisualEvidence _
+                                    | WriteRunEvidence _ -> closeRequested)
+                                false
+
+                        let initialCloseRequested = interpretEffects initEffects
+
+                        let _, _ =
+                            update
+                                Start
+                                { Options = options
+                                  WindowBehavior = behavior
+                                  IsRunning = false
+                                  LifecycleState = NotStarted
+                                  FirstFramePresented = false
+                                  UserCloseObserved = false
+                                  InputDispatch = NotRequired
+                                  LastScene = None }
+
+                        let dispatchHostMsg msg =
+                            match tryProductStep reportProductDefect "Update" (fun () -> host.Update msg currentModel) with
+                            | None -> false // product Update threw; drop the message, keep window + last-good scene
+                            | Some(next, effects) ->
+                                currentModel <- next
+                                currentScene <- safeView currentModel
+                                interpretEffects effects
+
+                        let handleTick elapsed =
+                            match host.Tick elapsed with
+                            | Some msg -> dispatchHostMsg msg
+                            | None -> false
+
+                        let handleKey rawKey isDown =
+                            let key, normalizedDown =
+                                ViewerKeyboard.normalizeEvent
+                                    { RawKey = rawKey
+                                      Direction =
+                                        if isDown then
+                                            ViewerKeyDirection.KeyDown
+                                        else
+                                            ViewerKeyDirection.KeyUp }
+
+                            match host.MapKey key normalizedDown with
+                            | Some msg ->
+                                inputDispatch <- "true"
+                                dispatchHostMsg msg
+                            | None ->
+                                inputDispatch <- "false"
+                                // F1: a key that maps to no product message may still have changed
+                                // host-internal runtime state (focus traversal, scroll keys); re-derive so
+                                // it renders on THIS key. (Previously only the full-interactive loop did this.)
+                                currentScene <- runtimeStateRepaint false currentScene (fun () -> safeView currentModel)
+                                false
+
+                        let inputVerified () =
+                            not (requireInputDispatchVerification ()) || inputDispatch = "true"
+
+                        match runPresentedPersistentWindow options behavior host.Diagnostics inputDispatch presentScene handleTick (Some handleKey) None (Some handleResize) inputVerified None with
+                        | Result.Ok outcome ->
+                            Result.Ok(
+                                { outcome with
+                                    InputDispatch = inputDispatch
+                                    OptionResults = validateWindowLaunchBehavior options.InitialSize behavior
+                                    ExitPath = initialCloseRequested || outcome.ExitPath
+                                    Message = "Persistent generated app host launch completed after intentional close." }
+                            )
+                        | Result.Error failure -> Result.Error failure
 
     let runAppWithWindowBehavior options behavior (host: GeneratedAppHost<'model, 'msg>) =
         runGeneratedApp options behavior ignore host
@@ -2119,207 +2152,215 @@ module Viewer =
                     let mutable currentSurfaceSize = options.InitialSize
                     let viewSize () = options.LogicalSize |> Option.defaultValue currentSurfaceSize
                     let mutable currentSize = viewSize ()
-                    let mutable currentScene = host.View currentSize currentModel
-                    let mutable inputDispatch = "false"
-                    // Issue #365: guard the product `Update`/`View` so one throwing step drops that input
-                    // and keeps the persistent window on its last-good scene, rather than escaping to a
-                    // teardown mislabeled `frameRenderFailed`.
+                    // Issue #365: a product `Update`/`View` fault is an App-stage defect captured through
+                    // the host's diagnostics, never a window teardown.
                     let reportProductDefect ev = captureDiagnostic host.Diagnostics ev |> ignore
-                    let safeView size model =
-                        tryProductStep reportProductDefect "View" (fun () -> host.View size model)
-                        |> Option.defaultValue currentScene
-
-                    let presentScene () = presentedFor options currentSurfaceSize currentScene
-
-                    let interpretEffects effects =
-                        effects
-                        |> List.fold
-                            (fun closeRequested effect ->
-                                match effect with
-                                | RenderScene scene ->
-                                    currentScene <- scene
-                                    closeRequested
-                                | DispatchInput _ ->
-                                    inputDispatch <- "true"
-                                    closeRequested
-                                | CloseWindow -> true
-                                | EmitDiagnostic diagnostic ->
-                                    captureDiagnostic host.Diagnostics diagnostic |> ignore
-                                    closeRequested
-                                // The interactive (pointer/size-aware) host has no audio sink: audio is a
-                                // game-family seam reached through `runAppWithAudio` (issue #245). A
-                                // `PlayAudio` here is discarded, exactly as the other unhandled effects are.
-                                | PlayAudio _
-                                | OpenWindow _
-                                | ApplyWindowOptions _
-                                | QueryNativeWindowState
-                                | StartBoundedRun _
-                                | CheckDesktopSession
-                                | CaptureScreenshot _
-                                | CaptureImageEvidence _
-                                | ReadPixels
-                                | WriteVisualEvidence _
-                                | WriteRunEvidence _ -> closeRequested)
-                            false
-
-                    let initialCloseRequested = interpretEffects initEffects
-
-                    let dispatchHostMsg msg =
-                        let msgText = (sprintf "%A" msg).Replace(" ", "_").Replace(Environment.NewLine, "_")
-                        let updateSw = Stopwatch.StartNew()
-                        RenderLagTrace.emit "model-update-start" [ "msg", msgText ]
-
-                        match tryProductStep reportProductDefect "Update" (fun () -> host.Update msg currentModel) with
-                        | None ->
-                            // Issue #365: a throwing product Update drops this input and keeps the window
-                            // alive on its last-good model/scene, rather than tearing it down.
-                            updateSw.Stop()
-                            RenderLagTrace.emit
-                                "model-update-end"
-                                [ "msg", msgText
-                                  "durationMs", updateSw.Elapsed.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture)
-                                  "dropped", "true" ]
-
-                            false
-                        | Some(next, effects) ->
-                            updateSw.Stop()
-                            RenderLagTrace.emit
-                                "model-update-end"
-                                [ "msg", msgText
-                                  "durationMs", updateSw.Elapsed.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture) ]
-                            currentModel <- next
-                            let viewSw = Stopwatch.StartNew()
-                            RenderLagTrace.emit "view-start" [ "msg", msgText ]
-                            currentScene <- safeView currentSize currentModel
-                            viewSw.Stop()
-                            RenderLagTrace.emit
-                                "view-end"
-                                [ "msg", msgText
-                                  "durationMs", viewSw.Elapsed.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture) ]
-                            let effectsSw = Stopwatch.StartNew()
-                            interpretEffects effects
-                            |> fun closeRequested ->
-                                effectsSw.Stop()
-                                RenderLagTrace.emit
-                                    "effects-end"
-                                    [ "msg", msgText
-                                      "durationMs", effectsSw.Elapsed.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture)
-                                      "closeRequested", string closeRequested ]
-                                closeRequested
-
-                    let handleTick elapsed =
-                        match host.Tick elapsed with
-                        | Some msg -> dispatchHostMsg msg
-                        | None -> false
-
-                    let handleKey rawKey isDown =
-                        let key, normalizedDown =
-                            ViewerKeyboard.normalizeEvent
-                                { RawKey = rawKey
-                                  Direction =
-                                    if isDown then
-                                        ViewerKeyDirection.KeyDown
-                                    else
-                                        ViewerKeyDirection.KeyUp }
-
-                        let msgs = host.MapKey key normalizedDown
-                        if not (List.isEmpty msgs) then
-                            RenderLagTrace.emit
-                                "key-routed"
-                                [ "key", rawKey
-                                  "isDown", string normalizedDown
-                                  "messageCount", string msgs.Length ]
-                            inputDispatch <- "true"
-                        let closeRequested = msgs |> List.fold (fun close msg -> dispatchHostMsg msg || close) false
-                        // F1 general repaint signal: if the key produced no product message it may still
-                        // have changed runtime state (focus traversal, scroll keys); re-derive so it
-                        // renders on THIS key, not the next. (When messages ran, dispatchHostMsg already
-                        // re-derived, so this is a no-op.)
-                        currentScene <- runtimeStateRepaint (not (List.isEmpty msgs)) currentScene (fun () -> safeView currentSize currentModel)
-                        closeRequested
-
-                    let handlePointer (input: ViewerPointerInput) =
-                        let pointerSw = Stopwatch.StartNew()
-                        // The trace keeps SURFACE coordinates, matching what the input queue recorded for
-                        // this same event — the two are correlated during render-lag analysis, so they must
-                        // speak one coordinate space.
-                        RenderLagTrace.emit
-                            "pointer-route-start"
-                            [ "phase", string input.Phase
-                              "x", input.X.ToString("0.###", CultureInfo.InvariantCulture)
-                              "y", input.Y.ToString("0.###", CultureInfo.InvariantCulture) ]
-
-                        // Issue #246: the native pointer arrives in surface coordinates. A letterboxed
-                        // product draws through a scale+offset, so route the inverse or every hit test
-                        // is wrong by exactly that transform. `DeltaX/DeltaY` are wheel ticks, not
-                        // positions, so they are not scaled.
-                        let routed =
-                            match options.LogicalSize with
-                            | Some logical ->
-                                let x, y = LogicalCanvas.toLogicalPoint logical currentSurfaceSize input.X input.Y
-                                { input with X = x; Y = y }
-                            | None -> input
-
-                        let msgs = host.MapPointer routed currentSize currentModel
-                        pointerSw.Stop()
-                        RenderLagTrace.emit
-                            "pointer-route-end"
-                            [ "phase", string input.Phase
-                              "messageCount", string msgs.Length
-                              "durationMs", pointerSw.Elapsed.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture) ]
-
-                        if not (List.isEmpty msgs) then
-                            inputDispatch <- "true"
-
-                        let closeRequested = msgs |> List.fold (fun close msg -> dispatchHostMsg msg || close) false
-
-                        // F1 general repaint signal: `MapPointer` may mutate host-internal runtime state
-                        // (focus/hover/scroll) WITHOUT producing a product message, leaving the model
-                        // unchanged so `dispatchHostMsg` never re-derived — the "focus one click behind",
-                        // dead-hover, and dead-scroll class. `runtimeStateRepaint` re-derives from
-                        // `host.View` (the single source reflecting model + every runtime ref) on the
-                        // no-message path, and is a no-op when messages already drove a re-derive.
-                        currentScene <- runtimeStateRepaint (not (List.isEmpty msgs)) currentScene (fun () -> safeView currentSize currentModel)
-
-                        closeRequested
-
-                    let handleResize (size: Size) =
-                        currentSurfaceSize <- size
-                        // Re-derive only when the space the product draws in actually moved. With a
-                        // `LogicalSize` it never does — `presentScene` alone applies the new fit — so a
-                        // fixed-resolution game does not re-render once per resize tick.
-                        let nextViewSize = viewSize ()
-
-                        if nextViewSize <> currentSize then
-                            currentSize <- nextViewSize
-                            currentScene <- safeView currentSize currentModel
-
-                    let inputVerified () =
-                        not (requireInputDispatchVerification ()) || inputDispatch = "true"
-
-                    match
-                        runPresentedPersistentWindow
-                            options
-                            behavior
-                            host.Diagnostics
-                            inputDispatch
-                            presentScene
-                            handleTick
-                            (Some handleKey)
-                            (Some handlePointer)
-                            (Some handleResize)
-                            inputVerified
-                            script
-                    with
-                    | Result.Ok outcome ->
-                        Result.Ok(
-                            { outcome with
-                                InputDispatch = inputDispatch
-                                OptionResults = validateWindowLaunchBehavior options.InitialSize behavior
-                                ExitPath = initialCloseRequested || outcome.ExitPath
-                                Message = "Persistent interactive viewer launch completed after intentional close." }
-                        )
+                    // Issue #396: guard the FIRST product View — as in the generated-app runner, a
+                    // first-frame throw has no last-good scene to fall back to, so it fails the run as a
+                    // startup App-stage ProductDefect rather than escaping as an uncaught exception.
+                    match tryFirstProductView reportProductDefect "View" (fun () -> host.View currentSize currentModel) with
                     | Result.Error failure -> Result.Error failure
+                    | Result.Ok initialScene ->
+                        let mutable currentScene = initialScene
+                        let mutable inputDispatch = "false"
+                        // Issue #365: guard the product `Update`/`View` so one throwing step drops that input
+                        // and keeps the persistent window on its last-good scene, rather than escaping to a
+                        // teardown mislabeled `frameRenderFailed`.
+                        let safeView size model =
+                            tryProductStep reportProductDefect "View" (fun () -> host.View size model)
+                            |> Option.defaultValue currentScene
+
+                        let presentScene () = presentedFor options currentSurfaceSize currentScene
+
+                        let interpretEffects effects =
+                            effects
+                            |> List.fold
+                                (fun closeRequested effect ->
+                                    match effect with
+                                    | RenderScene scene ->
+                                        currentScene <- scene
+                                        closeRequested
+                                    | DispatchInput _ ->
+                                        inputDispatch <- "true"
+                                        closeRequested
+                                    | CloseWindow -> true
+                                    | EmitDiagnostic diagnostic ->
+                                        captureDiagnostic host.Diagnostics diagnostic |> ignore
+                                        closeRequested
+                                    // The interactive (pointer/size-aware) host has no audio sink: audio is a
+                                    // game-family seam reached through `runAppWithAudio` (issue #245). A
+                                    // `PlayAudio` here is discarded, exactly as the other unhandled effects are.
+                                    | PlayAudio _
+                                    | OpenWindow _
+                                    | ApplyWindowOptions _
+                                    | QueryNativeWindowState
+                                    | StartBoundedRun _
+                                    | CheckDesktopSession
+                                    | CaptureScreenshot _
+                                    | CaptureImageEvidence _
+                                    | ReadPixels
+                                    | WriteVisualEvidence _
+                                    | WriteRunEvidence _ -> closeRequested)
+                                false
+
+                        let initialCloseRequested = interpretEffects initEffects
+
+                        let dispatchHostMsg msg =
+                            let msgText = (sprintf "%A" msg).Replace(" ", "_").Replace(Environment.NewLine, "_")
+                            let updateSw = Stopwatch.StartNew()
+                            RenderLagTrace.emit "model-update-start" [ "msg", msgText ]
+
+                            match tryProductStep reportProductDefect "Update" (fun () -> host.Update msg currentModel) with
+                            | None ->
+                                // Issue #365: a throwing product Update drops this input and keeps the window
+                                // alive on its last-good model/scene, rather than tearing it down.
+                                updateSw.Stop()
+                                RenderLagTrace.emit
+                                    "model-update-end"
+                                    [ "msg", msgText
+                                      "durationMs", updateSw.Elapsed.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture)
+                                      "dropped", "true" ]
+
+                                false
+                            | Some(next, effects) ->
+                                updateSw.Stop()
+                                RenderLagTrace.emit
+                                    "model-update-end"
+                                    [ "msg", msgText
+                                      "durationMs", updateSw.Elapsed.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture) ]
+                                currentModel <- next
+                                let viewSw = Stopwatch.StartNew()
+                                RenderLagTrace.emit "view-start" [ "msg", msgText ]
+                                currentScene <- safeView currentSize currentModel
+                                viewSw.Stop()
+                                RenderLagTrace.emit
+                                    "view-end"
+                                    [ "msg", msgText
+                                      "durationMs", viewSw.Elapsed.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture) ]
+                                let effectsSw = Stopwatch.StartNew()
+                                interpretEffects effects
+                                |> fun closeRequested ->
+                                    effectsSw.Stop()
+                                    RenderLagTrace.emit
+                                        "effects-end"
+                                        [ "msg", msgText
+                                          "durationMs", effectsSw.Elapsed.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture)
+                                          "closeRequested", string closeRequested ]
+                                    closeRequested
+
+                        let handleTick elapsed =
+                            match host.Tick elapsed with
+                            | Some msg -> dispatchHostMsg msg
+                            | None -> false
+
+                        let handleKey rawKey isDown =
+                            let key, normalizedDown =
+                                ViewerKeyboard.normalizeEvent
+                                    { RawKey = rawKey
+                                      Direction =
+                                        if isDown then
+                                            ViewerKeyDirection.KeyDown
+                                        else
+                                            ViewerKeyDirection.KeyUp }
+
+                            let msgs = host.MapKey key normalizedDown
+                            if not (List.isEmpty msgs) then
+                                RenderLagTrace.emit
+                                    "key-routed"
+                                    [ "key", rawKey
+                                      "isDown", string normalizedDown
+                                      "messageCount", string msgs.Length ]
+                                inputDispatch <- "true"
+                            let closeRequested = msgs |> List.fold (fun close msg -> dispatchHostMsg msg || close) false
+                            // F1 general repaint signal: if the key produced no product message it may still
+                            // have changed runtime state (focus traversal, scroll keys); re-derive so it
+                            // renders on THIS key, not the next. (When messages ran, dispatchHostMsg already
+                            // re-derived, so this is a no-op.)
+                            currentScene <- runtimeStateRepaint (not (List.isEmpty msgs)) currentScene (fun () -> safeView currentSize currentModel)
+                            closeRequested
+
+                        let handlePointer (input: ViewerPointerInput) =
+                            let pointerSw = Stopwatch.StartNew()
+                            // The trace keeps SURFACE coordinates, matching what the input queue recorded for
+                            // this same event — the two are correlated during render-lag analysis, so they must
+                            // speak one coordinate space.
+                            RenderLagTrace.emit
+                                "pointer-route-start"
+                                [ "phase", string input.Phase
+                                  "x", input.X.ToString("0.###", CultureInfo.InvariantCulture)
+                                  "y", input.Y.ToString("0.###", CultureInfo.InvariantCulture) ]
+
+                            // Issue #246: the native pointer arrives in surface coordinates. A letterboxed
+                            // product draws through a scale+offset, so route the inverse or every hit test
+                            // is wrong by exactly that transform. `DeltaX/DeltaY` are wheel ticks, not
+                            // positions, so they are not scaled.
+                            let routed =
+                                match options.LogicalSize with
+                                | Some logical ->
+                                    let x, y = LogicalCanvas.toLogicalPoint logical currentSurfaceSize input.X input.Y
+                                    { input with X = x; Y = y }
+                                | None -> input
+
+                            let msgs = host.MapPointer routed currentSize currentModel
+                            pointerSw.Stop()
+                            RenderLagTrace.emit
+                                "pointer-route-end"
+                                [ "phase", string input.Phase
+                                  "messageCount", string msgs.Length
+                                  "durationMs", pointerSw.Elapsed.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture) ]
+
+                            if not (List.isEmpty msgs) then
+                                inputDispatch <- "true"
+
+                            let closeRequested = msgs |> List.fold (fun close msg -> dispatchHostMsg msg || close) false
+
+                            // F1 general repaint signal: `MapPointer` may mutate host-internal runtime state
+                            // (focus/hover/scroll) WITHOUT producing a product message, leaving the model
+                            // unchanged so `dispatchHostMsg` never re-derived — the "focus one click behind",
+                            // dead-hover, and dead-scroll class. `runtimeStateRepaint` re-derives from
+                            // `host.View` (the single source reflecting model + every runtime ref) on the
+                            // no-message path, and is a no-op when messages already drove a re-derive.
+                            currentScene <- runtimeStateRepaint (not (List.isEmpty msgs)) currentScene (fun () -> safeView currentSize currentModel)
+
+                            closeRequested
+
+                        let handleResize (size: Size) =
+                            currentSurfaceSize <- size
+                            // Re-derive only when the space the product draws in actually moved. With a
+                            // `LogicalSize` it never does — `presentScene` alone applies the new fit — so a
+                            // fixed-resolution game does not re-render once per resize tick.
+                            let nextViewSize = viewSize ()
+
+                            if nextViewSize <> currentSize then
+                                currentSize <- nextViewSize
+                                currentScene <- safeView currentSize currentModel
+
+                        let inputVerified () =
+                            not (requireInputDispatchVerification ()) || inputDispatch = "true"
+
+                        match
+                            runPresentedPersistentWindow
+                                options
+                                behavior
+                                host.Diagnostics
+                                inputDispatch
+                                presentScene
+                                handleTick
+                                (Some handleKey)
+                                (Some handlePointer)
+                                (Some handleResize)
+                                inputVerified
+                                script
+                        with
+                        | Result.Ok outcome ->
+                            Result.Ok(
+                                { outcome with
+                                    InputDispatch = inputDispatch
+                                    OptionResults = validateWindowLaunchBehavior options.InitialSize behavior
+                                    ExitPath = initialCloseRequested || outcome.ExitPath
+                                    Message = "Persistent interactive viewer launch completed after intentional close." }
+                            )
+                        | Result.Error failure -> Result.Error failure
 
     let runInteractiveViewerWithWindowBehavior options behavior host =
         runInteractiveViewerWithWindowBehaviorCore options behavior None host
@@ -2335,48 +2376,55 @@ module Viewer =
 
     let runAppEvidence (request: ViewerRunRequest) options (host: GeneratedAppHost<'model, 'msg>) =
         let model, _ = host.Init()
-        // Issue #246: `runBounded` fits the scene to the evidence surface itself, so hand it the raw
-        // view output; the visual artifacts render off the same surface and need the fitted scene.
-        let scene = host.View model
-
-        match runBounded request options scene with
-        | Result.Ok evidence ->
-            let visualEvidence =
-                VisualEvidenceHandling.artifacts request options (presentedFor options options.InitialSize scene)
-
-            let outcome =
-                { Status = "ok"
-                  Mode = "persistent-evidence"
-                  Command = Some "runAppEvidence"
-                  RendererMode = evidence.RendererMode
-                  WindowOpened = true
-                  WindowVisible = ViewerObservedValue.Unsupported
-                  FirstFramePresented = evidence.FramesRendered > 0
-                  CloseReason = Some EvidenceRequestedClose
-                  UserCloseObserved = false
-                  AppCloseObserved = false
-                  EvidenceCloseObserved = true
-                  SelfClosedForEvidence = true
-                  InputDispatch = "not-required"
-                  ExitPath = true
-                  WindowDiagnostics = []
-                  OptionResults = []
-                  VisualEvidence = visualEvidence
-                  FailureClass = None
-                  BlockedStage = None
-                  Classification = None
-                  Category = None
-                  Message = "Persistent evidence launch completed after evidence target." }
-
-            request.EvidencePath
-            |> Option.iter (fun path ->
-                if not (isPngPath path) && parseRendererMode request.RendererMode <> RendererModeKind.MetadataHash then
-                    writeLaunchOutcome path outcome)
-
-            Result.Ok outcome
+        let reportProductDefect ev = captureDiagnostic host.Diagnostics ev |> ignore
+        // Issue #396: guard the one-shot product View. A throw here is an App-stage ProductDefect (the
+        // #365 classification), reported and written to the evidence path exactly like a bounded-run
+        // failure, rather than escaping runAppEvidence as an uncaught exception.
+        match tryFirstProductView reportProductDefect "View" (fun () -> host.View model) with
         | Result.Error failure ->
             request.EvidencePath |> Option.iter (fun path -> writeLaunchFailure path "persistent-evidence" "runAppEvidence" failure)
             Result.Error failure
+        | Result.Ok scene ->
+            // Issue #246: `runBounded` fits the scene to the evidence surface itself, so hand it the raw
+            // view output; the visual artifacts render off the same surface and need the fitted scene.
+            match runBounded request options scene with
+            | Result.Ok evidence ->
+                let visualEvidence =
+                    VisualEvidenceHandling.artifacts request options (presentedFor options options.InitialSize scene)
+
+                let outcome =
+                    { Status = "ok"
+                      Mode = "persistent-evidence"
+                      Command = Some "runAppEvidence"
+                      RendererMode = evidence.RendererMode
+                      WindowOpened = true
+                      WindowVisible = ViewerObservedValue.Unsupported
+                      FirstFramePresented = evidence.FramesRendered > 0
+                      CloseReason = Some EvidenceRequestedClose
+                      UserCloseObserved = false
+                      AppCloseObserved = false
+                      EvidenceCloseObserved = true
+                      SelfClosedForEvidence = true
+                      InputDispatch = "not-required"
+                      ExitPath = true
+                      WindowDiagnostics = []
+                      OptionResults = []
+                      VisualEvidence = visualEvidence
+                      FailureClass = None
+                      BlockedStage = None
+                      Classification = None
+                      Category = None
+                      Message = "Persistent evidence launch completed after evidence target." }
+
+                request.EvidencePath
+                |> Option.iter (fun path ->
+                    if not (isPngPath path) && parseRendererMode request.RendererMode <> RendererModeKind.MetadataHash then
+                        writeLaunchOutcome path outcome)
+
+                Result.Ok outcome
+            | Result.Error failure ->
+                request.EvidencePath |> Option.iter (fun path -> writeLaunchFailure path "persistent-evidence" "runAppEvidence" failure)
+                Result.Error failure
 
     let private captureScreenshotEvidenceResult (request: ScreenshotEvidenceRequest) (options: ViewerOptions) scene : ScreenshotEvidenceResult =
         let diagnostics =
@@ -2668,14 +2716,32 @@ module GeneratedAppHost =
 
     let smoke (host: GeneratedAppHost<'model, 'msg>) (request: ViewerRunRequest) =
         let model, _ = host.Init()
-        let scene = host.View model
-        let size =
-            match request.Target with
-            | FirstFrame
-            | FrameCount _ -> { Width = 1; Height = 1 }
-            | Duration _ -> { Width = 1; Height = 1 }
+        // Issue #396: guard the one-shot product View. GeneratedAppHost sits outside module `Viewer`,
+        // so it cannot reach the private `tryFirstProductView`; guard inline through the public #365
+        // seam instead (message kept in sync). A throw is an App-stage ProductDefect, not a crash.
+        match
+            (try
+                Result.Ok(host.View model)
+             with ex ->
+                 let diagnostic =
+                     { Viewer.productDefectDiagnostic "View" ex.Message with
+                         Message =
+                             sprintf
+                                 "Product View raised an exception (%s) producing its first frame; the run cannot start (App-stage product defect, not a render failure)."
+                                 ex.Message }
 
-        Viewer.runBounded request { Title = "Generated App"; InitialSize = size; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None } scene
+                 Viewer.captureDiagnostic host.Diagnostics diagnostic |> ignore
+                 Result.Error(Viewer.failureFromDiagnostic diagnostic))
+        with
+        | Result.Error failure -> Result.Error failure
+        | Result.Ok scene ->
+            let size =
+                match request.Target with
+                | FirstFrame
+                | FrameCount _ -> { Width = 1; Height = 1 }
+                | Duration _ -> { Width = 1; Height = 1 }
+
+            Viewer.runBounded request { Title = "Generated App"; InitialSize = size; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None } scene
 
 /// Feature 136 (R2/FR-001/FR-002): the rendering-edge text seam. Hosts install the bundled-font
 /// real-metrics measurer once before building/laying out control scenes so box sizing equals draw
