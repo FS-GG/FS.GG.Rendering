@@ -166,13 +166,14 @@ let private profilesOf (materializesWhen: string) =
 
 /// KNOWN, FILED violations of R-REACH that predate this guard — named, never silent.
 ///
-/// `fs-gg-project` (issue #431): the product-orientation umbrella ships on all five profiles, and its
-/// `## Usage` example opens FS.GG.UI.SkiaViewer + calls `Viewer.runApp` — but `headless-scene` and
-/// `governed` pin no viewer. It is the same defect this file exists for, one skill over, and #430 does
-/// NOT fix it: those two profiles have no host entry point at all, so no single example is true on all
-/// five, and markdown cannot be profile-gated (template.json's skillist-reference row records that
-/// inline `#if` in markdown is unproven). Making the umbrella lane-neutral is a content decision, taken
-/// in #431 rather than smuggled into #430's touch-set.
+/// `fs-gg-project` (issue #431) is FIXED. The product-orientation umbrella ships on all five profiles and
+/// its `## Usage` example opened FS.GG.UI.SkiaViewer + called `Viewer.runApp`, while `headless-scene` and
+/// `governed` pin no viewer. Markdown cannot be profile-gated (template.json's skillist-reference row
+/// records that inline `#if` in markdown is unproven), so the example had to become true on EVERY profile:
+/// it is now lane-neutral and opens only FS.GG.UI.Scene, the one package all five pin. Nothing was lost —
+/// the viewer wiring it dropped was a verbatim duplicate of `fs-gg-skiaviewer`'s, and THAT skill is already
+/// gated to exactly the three profiles that pin a viewer. An umbrella that ships everywhere may only teach
+/// what holds everywhere; the profile-specific entry point belongs to the profile-specific skill.
 ///
 /// `fs-gg-testing` (issue #432) is FIXED and its exemption is therefore GONE — it is now held to R-REACH
 /// like every other skill. #90 had widened the skill's materializes-when to all five profiles and never
@@ -182,12 +183,17 @@ let private profilesOf (materializesWhen: string) =
 /// the package, and spreading a test-only dependency across all five profiles would have traded one defect
 /// for a worse one.
 ///
-/// An exemption is a debt with a number on it, not a pass: R-PINNED/R-REF still hold for these skills
-/// (the package must exist and be referenced SOMEWHERE), only the profile-subset check is waived. Adding
-/// a row here requires a filed issue; the guard is worthless the moment it becomes a place to put things
-/// that are merely inconvenient. The row below is a PRE-EXISTING defect this guard DISCOVERED — it found
-/// it on the day it was written, which is the argument for it.
-let private reachExemptions = Map.ofList [ "fs-gg-project", "#431" ]
+/// **THE MAP IS NOW EMPTY, AND THAT IS THE POINT.** This guard shipped with two exemptions because it
+/// DISCOVERED two pre-existing defects on the day it was written — which was always the argument for it.
+/// Both are now fixed (#431, #432), so every product skill is held to R-REACH with no exceptions, and the
+/// class #430 opened is closed.
+///
+/// The machinery stays. An exemption is a debt with a number on it, not a pass: R-PINNED/R-REF still hold
+/// for an exempted skill (the package must exist and be referenced SOMEWHERE), only the profile-subset
+/// check is waived, and the "still violating" test below deletes the row the moment its defect is fixed.
+/// Adding a row requires a filed issue; the guard is worthless the moment it becomes a place to put things
+/// that are merely inconvenient. Re-opening this map should feel like taking on debt, because it is.
+let private reachExemptions : Map<string, string> = Map.empty
 
 /// (skill id, profiles it materializes on, the FS.GG.* packages its body says to `open`).
 let private productSkills =

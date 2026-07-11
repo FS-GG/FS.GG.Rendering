@@ -17,23 +17,29 @@ belong in product `.fsi` files when public surfaces are introduced.
 
 ## Usage
 
-Compose selected capability packages at the product entry point:
+This umbrella is **lane-neutral**: it opens only what every profile pins. `FS.GG.UI.Scene` is the
+base capability all five profiles select, so a product's view is always a pure `SceneNode`:
 
 ```fsharp
 open FS.GG.UI.Scene
-open FS.GG.UI.SkiaViewer
 
-// Product entry point wiring selected capabilities into the host.
+// A product's view is a pure function of its model. Every profile has this.
 let view model : SceneNode =
     Scene.group [ Scene.textAt { X = 12.0; Y = 24.0 } "product"
                     { Red = 255uy; Green = 255uy; Blue = 255uy; Alpha = 255uy } ]
-
-[<EntryPoint>]
-let main _ =
-    match Viewer.runApp viewerOptions generatedHost with
-    | Ok _ -> 0
-    | Error _ -> 1
 ```
+
+**How that scene reaches a host is profile-specific, and this skill deliberately does not say.**
+`headless-scene` and `governed` have no host entry point at all and pin no viewer package. Consult
+the capability skill your profile actually selected:
+
+- `fs-gg-skiaviewer` — `Viewer.runApp` and the `[<EntryPoint>]` wiring. Vendored on **app**,
+  **sample-pack** and **game** only; it is deliberately not linked here, because on the other two
+  profiles it is not in your workspace and the link would dangle.
+- [[fs-gg-testing]] — asserting the generated scene headlessly, with no host. Vendored everywhere.
+
+Read the skills your scaffold vendored (`docs/skillist-reference.md` lists them); an example that
+does not compile on your profile is worse than no example.
 
 ## Build Commands
 
