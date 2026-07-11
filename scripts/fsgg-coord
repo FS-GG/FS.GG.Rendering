@@ -2352,12 +2352,18 @@ live_claim_worker() {  # $1=owner $2=repo $3=num
 # A read we cannot complete DIES, exactly as `claims_of` and `paths_of` do: an unreadable repo may be
 # holding claims, and answering "nothing is running" for it is how the scheduler double-books work.
 open_claim_candidates() {  # $1=owner/repo -> JSON array of {number,title,url,body}
-  local o="${1%%/*}" r="${1#*/}" out
+  local o="${1%%/*}" r="${1#*/}" out json
   out="$(gh api --paginate "repos/$o/$r/issues?state=open&per_page=100" \
            --jq '.[] | select(.pull_request == null) | select(.comments > 0)
                  | {number, title, url: .html_url, body: (.body // "")}' 2>/dev/null)" \
     || die "cannot list the open issues of $o/$r (rate limit? network? no access?) — refusing to guess which of its items are claimed."
-  printf '%s' "$out" | jq -s '.'
+  # A non-zero `gh` is not the only way this read fails (#461). A malformed or truncated page exits 0
+  # and hands back bytes that are not JSON; `jq -s` then errors, and the caller — running under a
+  # `set -e` that is SUPPRESSED in any `if`/`&&`/`$( )`-in-condition context — can carry on with an
+  # empty candidate list. Name it and die, per this function's own contract above.
+  json="$(printf '%s' "$out" | jq -s '.' 2>/dev/null)" \
+    || die "the open-issue list for $o/$r came back malformed — refusing to guess which of its items are claimed."
+  printf '%s' "$json"
 }
 
 # ---- active_claims: the one view of "what is actually running right now" -------------------------
@@ -2424,7 +2430,25 @@ active_claims() {
             inProgress: ([ .[].inProgress ] | any) })
     | sort_by(.repo, .number)')"
 
+  # FAIL CLOSED ON AN UNREADABLE CLAIM SET (#461, epic #266). `[]` is a CLAIM: "I read the locks and
+  # nobody holds anything." A failed scan is not entitled to make it. If the merge above produced
+  # nothing — a `gh` hiccup, a rate-limited read, a transient 5xx, a malformed page — `$cand` is the
+  # EMPTY STRING, and `jq 'length'` on empty input prints nothing and EXITS 0, so `set -euo pipefail`
+  # never fires. `n` is then `""`, `[ 0 -lt "" ]` errors with `integer expected`, the loop body never
+  # runs, and this function returns `[]` — a failed read wearing an empty set's clothes.
+  #
+  # Downstream, that is a fail-open on the LOCK ITSELF: `take`/`batch` would schedule an item another
+  # worker is actively holding, and `widen` would report a confident DISJOINT over a real collision.
+  # So an unreadable claim set is a hard error, never an empty result. `n=0` (a valid, empty array) is
+  # the only way to say "nothing is claimed", and it is reachable only when the scan actually SUCCEEDED.
+  if ! jq -e 'type == "array"' >/dev/null 2>&1 <<<"$cand"; then
+    die "cannot read the claim set${repo:+ for '$repo'} (rate limit? network? malformed scan?) — refusing to report an empty one. An empty claim set reads as 'nobody holds anything', which would hand a held item to a second worker."
+  fi
   n="$(jq 'length' <<<"$cand")"
+  case "$n" in
+    ''|*[!0-9]*) die "the claim set${repo:+ for '$repo'} did not yield a count (got '$n') — refusing to proceed on an unread lock." ;;
+  esac
+
   tmp="$(mktemp "$CACHE/.claims.XXXXXX")"; : >"$tmp"
   while [ "$i" -lt "$n" ]; do
     local it r2 num o rp claims paths pathsjson
