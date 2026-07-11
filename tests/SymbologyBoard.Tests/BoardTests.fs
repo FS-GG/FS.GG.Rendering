@@ -112,7 +112,7 @@ let legibilityTests =
 
               let factionWarnings =
                   report.Findings
-                  |> List.filter (fun f -> f.Channel = Legibility.Faction && f.Severity = Legibility.Warning)
+                  |> List.filter (fun f -> f.Channel = Legibility.Faction && f.Severity = Legibility.Severity.Warning)
 
               Expect.equal factionWarnings.Length 1 "exactly one actionable Warning on the overloaded Faction channel"
           } ]

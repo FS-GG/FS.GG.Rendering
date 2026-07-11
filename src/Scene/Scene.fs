@@ -386,9 +386,9 @@ module Scene =
 
         let paintDiagnostics paint =
             [ match paint.PathEffect with
-              | Dash([], _) -> diagnostic Warning "Dash path effect has no intervals." (Some "path-effect")
-              | Discrete(segmentLength, _) when segmentLength <= 0.0 -> diagnostic Warning "Discrete path effect requires a positive segment length." (Some "path-effect")
-              | Corner radius when radius < 0.0 -> diagnostic Warning "Corner path effect requires a non-negative radius." (Some "path-effect")
+              | Dash([], _) -> diagnostic DiagnosticSeverity.Warning "Dash path effect has no intervals." (Some "path-effect")
+              | Discrete(segmentLength, _) when segmentLength <= 0.0 -> diagnostic DiagnosticSeverity.Warning "Discrete path effect requires a positive segment length." (Some "path-effect")
+              | Corner radius when radius < 0.0 -> diagnostic DiagnosticSeverity.Warning "Corner path effect requires a non-negative radius." (Some "path-effect")
               | _ -> () ]
 
         let rec nodeDiagnostics node =
@@ -397,14 +397,14 @@ module Scene =
             | PaintedRectangle(_, paint) -> paintDiagnostics paint
             | FilledEllipse(_, fill) ->
                 if fill.Alpha = 0uy then
-                    [ diagnostic Warning "Filled ellipse is transparent." (Some "fill") ]
+                    [ diagnostic DiagnosticSeverity.Warning "Filled ellipse is transparent." (Some "fill") ]
                 else
                     []
             | Circle(_, radius, fill) ->
                 [ if radius <= 0.0 then
-                      diagnostic Error "Circle radius must be positive." (Some "radius")
+                      diagnostic DiagnosticSeverity.Error "Circle radius must be positive." (Some "radius")
                   if fill.Alpha = 0uy then
-                      diagnostic Warning "Circle fill is transparent." (Some "fill") ]
+                      diagnostic DiagnosticSeverity.Warning "Circle fill is transparent." (Some "fill") ]
             | Ellipse(_, paint)
             | Line(_, _, paint)
             | Path(_, paint)
@@ -416,8 +416,8 @@ module Scene =
             | GlyphRun run ->
                 paintDiagnostics run.Paint
                 @ (run.Data.FallbackDiagnostics
-                   |> List.map (fun message -> diagnostic Warning message (Some "glyph-run-proof")))
-            | Image(_, source) when String.IsNullOrWhiteSpace source -> [ diagnostic Error "Invalid image resource declaration." (Some "Image source path is empty.") ]
+                   |> List.map (fun message -> diagnostic DiagnosticSeverity.Warning message (Some "glyph-run-proof")))
+            | Image(_, source) when String.IsNullOrWhiteSpace source -> [ diagnostic DiagnosticSeverity.Error "Invalid image resource declaration." (Some "Image source path is empty.") ]
             // Existence of the source on disk is a host-level (render-edge) concern, not a pure
             // structural property of the Scene value. Probing IO.File.Exists here made diagnostics
             // non-deterministic (machine/CWD/filesystem-dependent) in the dependency root every

@@ -164,10 +164,10 @@ module SceneCodec =
           ResourceId = resourceId }
 
     let private error (stage: PackageDiagnosticStage) (message: string) =
-        diagnostic Error stage message None None None
+        diagnostic DiagnosticSeverity.Error stage message None None None
 
     let private warning (stage: PackageDiagnosticStage) (message: string) =
-        diagnostic Warning stage message None None None
+        diagnostic DiagnosticSeverity.Warning stage message None None None
 
     let private sha256Hex (bytes: byte[]) =
         SHA256.HashData bytes |> Convert.ToHexString |> fun value -> value.ToLowerInvariant()
@@ -559,7 +559,7 @@ module SceneCodec =
             let degraded = (not isSupported) && requirement.RequirementLevel = Optional && requirement.DegradationPolicy <> Reject
             let diagnostics =
                 [ if not isSupported then
-                      let severity = if requirement.RequirementLevel = Required || requirement.DegradationPolicy = Reject then Error else Warning
+                      let severity = if requirement.RequirementLevel = Required || requirement.DegradationPolicy = Reject then DiagnosticSeverity.Error else DiagnosticSeverity.Warning
                       yield
                           diagnostic
                               severity
@@ -607,21 +607,21 @@ module SceneCodec =
                         | _ -> false
 
                     if kindMismatch || hashMismatch || lengthMismatch then
-                        false, false, [ diagnostic Error Resource $"Resource '{entry.ResourceId}' metadata does not match the manifest." None None (Some entry.ResourceId) ]
+                        false, false, [ diagnostic DiagnosticSeverity.Error Resource $"Resource '{entry.ResourceId}' metadata does not match the manifest." None None (Some entry.ResourceId) ]
                     else
                         true, false, []
                 | Some ResourceAvailable, None ->
-                    false, false, [ diagnostic Error Resource $"Resource '{entry.ResourceId}' was marked available without metadata." None None (Some entry.ResourceId) ]
+                    false, false, [ diagnostic DiagnosticSeverity.Error Resource $"Resource '{entry.ResourceId}' was marked available without metadata." None None (Some entry.ResourceId) ]
                 | Some ResourceHashMismatch, _
                 | Some ResourceCorrupted, _
                 | Some ResourceDuplicated, _ ->
-                    false, false, [ diagnostic Error Resource $"Resource '{entry.ResourceId}' is not usable: {status.Value}." None None (Some entry.ResourceId) ]
+                    false, false, [ diagnostic DiagnosticSeverity.Error Resource $"Resource '{entry.ResourceId}' is not usable: {status.Value}." None None (Some entry.ResourceId) ]
                 | Some ResourceMissing, _
                 | None, _ ->
                     if entry.Required then
-                        false, false, [ diagnostic Error Resource $"Required resource '{entry.ResourceId}' is unavailable." None None (Some entry.ResourceId) ]
+                        false, false, [ diagnostic DiagnosticSeverity.Error Resource $"Required resource '{entry.ResourceId}' is unavailable." None None (Some entry.ResourceId) ]
                     else
-                        true, true, [ diagnostic Warning Resource $"Optional resource '{entry.ResourceId}' is unavailable and will degrade." None None (Some entry.ResourceId) ]
+                        true, true, [ diagnostic DiagnosticSeverity.Warning Resource $"Optional resource '{entry.ResourceId}' is unavailable and will degrade." None None (Some entry.ResourceId) ]
 
             { Entry = entry
               Availability = observed
@@ -649,12 +649,12 @@ module SceneCodec =
                   yield! resourceVerdicts |> List.collect _.Diagnostics ]
 
             let rejected =
-                diagnostics |> List.exists (fun d -> d.Severity = Error || d.Severity = Fatal)
+                diagnostics |> List.exists (fun d -> d.Severity = DiagnosticSeverity.Error || d.Severity = DiagnosticSeverity.Fatal)
 
             let degraded =
                 capabilityVerdicts |> List.exists _.Degraded
                 || resourceVerdicts |> List.exists _.Degraded
-                || diagnostics |> List.exists (fun d -> d.Severity = Warning)
+                || diagnostics |> List.exists (fun d -> d.Severity = DiagnosticSeverity.Warning)
 
             let status =
                 if rejected then PackageRejected
@@ -678,9 +678,9 @@ module SceneCodec =
 
         let diagnostics =
             [ if expectedCapabilities <> actualCapabilities then
-                  yield diagnostic Error ScenePayload "Scene capability sequence differs." None None None
+                  yield diagnostic DiagnosticSeverity.Error ScenePayload "Scene capability sequence differs." None None None
               if expected <> actual then
-                  yield diagnostic Error ScenePayload "Scene payload differs after import." None None None ]
+                  yield diagnostic DiagnosticSeverity.Error ScenePayload "Scene payload differs after import." None None None ]
 
         { Equivalent = diagnostics.IsEmpty
           ExpectedCapabilities = expectedCapabilities

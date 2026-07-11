@@ -6,6 +6,7 @@ open System.IO
 open System.Text
 open System.Text.Json
 
+[<RequireQualifiedAccess>]
 type DiagnosticSeverity =
     | Informational
     | Warning
@@ -175,9 +176,9 @@ module RuntimeDiagnostics =
 
     let severityToken severity =
         match severity with
-        | Informational -> "informational"
-        | Warning -> "warning"
-        | Error -> "error"
+        | DiagnosticSeverity.Informational -> "informational"
+        | DiagnosticSeverity.Warning -> "warning"
+        | DiagnosticSeverity.Error -> "error"
 
     let categoryToken category =
         match category with
@@ -275,9 +276,9 @@ module RuntimeDiagnostics =
         |> List.sortBy (fun group ->
             let severityRank =
                 match group.Severity with
-                | Some Error -> 0
-                | Some Warning -> 1
-                | Some Informational -> 2
+                | Some DiagnosticSeverity.Error -> 0
+                | Some DiagnosticSeverity.Warning -> 1
+                | Some DiagnosticSeverity.Informational -> 2
                 | None -> -1
 
             severityRank, group.Fingerprint)
@@ -334,7 +335,7 @@ module RuntimeDiagnostics =
         create
             src
             (Some code)
-            (Some Warning)
+            (Some DiagnosticSeverity.Warning)
             (Some DeveloperAction)
             message
             (Some "Fix or remove the diagnostic exception before accepting readiness.")
@@ -342,13 +343,13 @@ module RuntimeDiagnostics =
 
     let private developerActionRequiresReview (group: AggregatedDiagnostic) =
         match group.Category, group.Severity with
-        | Some DeveloperAction, Some Warning
-        | Some DeveloperAction, Some Error -> true
+        | Some DeveloperAction, Some DiagnosticSeverity.Warning
+        | Some DeveloperAction, Some DiagnosticSeverity.Error -> true
         | _ -> false
 
     let private environmentLimits (group: AggregatedDiagnostic) =
         match group.Category, group.Severity with
-        | Some Environment, Some Error -> true
+        | Some Environment, Some DiagnosticSeverity.Error -> true
         | _ -> false
 
     let summarize (runId: string option) (exceptions: DiagnosticException list) (artifactPaths: string list) (diagnostics: RuntimeDiagnostic list) =
@@ -664,7 +665,7 @@ module RuntimeDiagnostics =
         create
             src
             (Some "ArtifactWriteFailed")
-            (Some Warning)
+            (Some DiagnosticSeverity.Warning)
             (Some DeveloperAction)
             $"Could not write diagnostic artifact `{path}`: {message}"
             (Some "Fix the artifact output path and rerun diagnostics; in-memory classification completed.")

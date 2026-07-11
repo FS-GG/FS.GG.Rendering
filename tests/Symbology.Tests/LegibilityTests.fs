@@ -9,6 +9,20 @@ open Expecto
 open FS.GG.UI.Scene
 open FS.GG.UI.Symbology
 
+// #496 regression guard: this must keep COMPILING.
+//
+// `Legibility.Severity` declares an `Error` case, and this file opens the namespace that carries it.
+// Before the type gained `[<RequireQualifiedAccess>]`, that case shadowed `FSharp.Core`'s
+// `Result.Error` for any consumer who opened it, and the bare `Error "..."` below failed with an
+// FS0003 naming neither `Result` nor the fix. Delete the attribute and this file stops building --
+// strictly stronger than a runtime assertion, since the failure guarded against is itself a compile
+// failure in consumer code. The static half of the guard lives in
+// Package.Tests/Issue496FSharpCoreShadowingTests.fs.
+let private decodeRailway (input: string) : Result<int, string> =
+    match System.Int32.TryParse input with
+    | true, value -> Ok value
+    | _ -> Error $"not a number: {input}"
+
 /// A clean, fully in-domain baseline unit.
 let private baseUnit = Symbology.defaultToken
 
@@ -76,7 +90,7 @@ let tests =
               Expect.equal report.Findings.Length 1 "exactly one finding"
               let f = report.Findings.Head
               Expect.equal f.Channel Legibility.Faction "finding is on Faction"
-              Expect.equal f.Severity Legibility.Warning "overload is a Warning"
+              Expect.equal f.Severity Legibility.Severity.Warning "overload is a Warning"
               Expect.stringContains f.Message "8" "message reports the used count"
               Expect.stringContains f.Message "7" "message reports the capacity"
               Expect.isNonEmpty f.Units "the contributing units are named"
@@ -95,7 +109,7 @@ let tests =
               Expect.equal report.Findings.Length 1 "exactly one finding"
               let f = report.Findings.Head
               Expect.equal f.Channel Legibility.Sigil "finding is on Sigil"
-              Expect.equal f.Severity Legibility.Warning "overload is a Warning"
+              Expect.equal f.Severity Legibility.Severity.Warning "overload is a Warning"
               Expect.stringContains f.Message "13" "message reports 13 distinct"
           }
 
@@ -106,7 +120,7 @@ let tests =
               Expect.equal report.Findings.Length 1 "exactly one finding"
               let f = report.Findings.Head
               Expect.equal f.Channel Legibility.Speed "finding is on Speed"
-              Expect.equal f.Severity Legibility.Warning "ordered overload is a Warning"
+              Expect.equal f.Severity Legibility.Severity.Warning "ordered overload is a Warning"
               Expect.isNonEmpty f.Units "units are named"
           }
 
@@ -120,12 +134,12 @@ let tests =
 
               let threat = report.Findings |> List.filter (fun f -> f.Channel = Legibility.Threat)
               Expect.equal threat.Length 1 "one Threat error"
-              Expect.equal threat.Head.Severity Legibility.Error "Threat out-of-domain is an Error"
+              Expect.equal threat.Head.Severity Legibility.Severity.Error "Threat out-of-domain is an Error"
               Expect.equal threat.Head.Units [ 0 ] "names the offending unit"
 
               let speed = report.Findings |> List.filter (fun f -> f.Channel = Legibility.Speed)
               Expect.equal speed.Length 1 "one Speed error"
-              Expect.equal speed.Head.Severity Legibility.Error "Speed out-of-domain is an Error"
+              Expect.equal speed.Head.Severity Legibility.Severity.Error "Speed out-of-domain is an Error"
               Expect.equal speed.Head.Units [ 2 ] "names the offending unit (scan continued past unit 0)"
           }
 
@@ -137,7 +151,7 @@ let tests =
 
               let size = report.Findings |> List.filter (fun f -> f.Channel = Legibility.Size)
               Expect.equal size.Length 1 "one Size error"
-              Expect.equal size.Head.Severity Legibility.Error "degenerate is an Error"
+              Expect.equal size.Head.Severity Legibility.Severity.Error "degenerate is an Error"
               Expect.equal size.Head.Units [ 0 ] "names the degenerate unit"
 
               let threat = report.Findings |> List.filter (fun f -> f.Channel = Legibility.Threat)
@@ -164,7 +178,7 @@ let tests =
                   (report.Findings |> List.filter (fun f -> f.Channel = Legibility.Heading) |> List.length)
                   1
                   "non-finite Heading → one Error on Heading"
-              Expect.isTrue (report.Findings |> List.forall (fun f -> f.Severity = Legibility.Error)) "all are Errors"
+              Expect.isTrue (report.Findings |> List.forall (fun f -> f.Severity = Legibility.Severity.Error)) "all are Errors"
           }
 
           // ── C9 (continuous exempt) — many distinct continuous values, no overload ─────────
@@ -203,7 +217,7 @@ let tests =
               for ch in [ Legibility.Size; Legibility.Threat; Legibility.Charge ] do
                   let found = report.Findings |> List.filter (fun f -> f.Channel = ch)
                   Expect.equal found.Length 1 (sprintf "exactly one %A overload" ch)
-                  Expect.equal found.Head.Severity Legibility.Warning (sprintf "%A overload is a Warning" ch)
+                  Expect.equal found.Head.Severity Legibility.Severity.Warning (sprintf "%A overload is a Warning" ch)
                   Expect.stringContains found.Head.Message "12" (sprintf "%A message reports the 12 used levels" ch)
                   Expect.stringContains found.Head.Message "4" (sprintf "%A message reports the capacity" ch)
                   Expect.equal (usageOf report ch).Capacity 4 (sprintf "%A usage carries the capacity as evidence" ch)
@@ -242,7 +256,7 @@ let tests =
               let report = Legibility.scoreAnimated [ (Pulse, baseUnit); (Spin, baseUnit) ]
               let motion = report.Findings |> List.filter (fun f -> f.Channel = Legibility.Motion)
               Expect.equal motion.Length 1 "one Motion finding"
-              Expect.equal motion.Head.Severity Legibility.Warning "motion load is a Warning"
+              Expect.equal motion.Head.Severity Legibility.Severity.Warning "motion load is a Warning"
               Expect.equal motion.Head.Units [] "a whole-board finding names no single unit"
           }
 
@@ -270,8 +284,8 @@ let tests =
                   [ for i in 0..7 -> { baseUnit with Faction = customFaction i } ] @ [ { baseUnit with Threat = 9.0 } ]
 
               let report = Legibility.score board
-              let warnings = report.Findings |> List.filter (fun f -> f.Severity = Legibility.Warning)
-              let errors = report.Findings |> List.filter (fun f -> f.Severity = Legibility.Error)
+              let warnings = report.Findings |> List.filter (fun f -> f.Severity = Legibility.Severity.Warning)
+              let errors = report.Findings |> List.filter (fun f -> f.Severity = Legibility.Severity.Error)
               Expect.isNonEmpty warnings "the faction overload is filterable as a Warning"
               Expect.isNonEmpty errors "the out-of-domain Threat is filterable as an Error"
               Expect.isTrue (warnings |> List.exists (fun f -> f.Channel = Legibility.Faction)) "Warning on Faction by identity"
@@ -299,7 +313,7 @@ let tests =
 
               let report = Legibility.score board
               let f = report.Findings |> List.find (fun f -> f.Channel = Legibility.Speed)
-              Expect.equal f.Severity Legibility.Warning "overload is a Warning"
+              Expect.equal f.Severity Legibility.Severity.Warning "overload is a Warning"
               Expect.equal f.Units [ 8 ] "only the unit holding the 5th (rarest) Speed level is named"
               Expect.notEqual f.Units [ 0..8 ] "the whole scored set is NOT named"
           }
@@ -369,7 +383,7 @@ let secondaryHeadingLinter =
 
               let found = report.Findings |> List.filter (fun f -> f.Channel = Legibility.SecondaryHeading)
               Expect.equal found.Length 2 "one Error per non-finite unit"
-              Expect.isTrue (found |> List.forall (fun f -> f.Severity = Legibility.Error)) "non-finite is an Error"
+              Expect.isTrue (found |> List.forall (fun f -> f.Severity = Legibility.Severity.Error)) "non-finite is an Error"
               Expect.equal (found |> List.collect (fun f -> f.Units)) [ 1; 2 ] "the offending units are named, in ascending order"
           }
 

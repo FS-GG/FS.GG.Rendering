@@ -47,6 +47,10 @@ module Legibility =
         | Continuous
 
     /// Finding severity (FR-006). Error = grammar cannot encode the value; Warning = encodable but overloaded.
+    ///
+    /// Qualified access is mandatory: the bare `Error` case would otherwise shadow `FSharp.Core`'s
+    /// `Result.Error` for every consumer that opens this module. Write `Legibility.Severity.Error`.
+    [<RequireQualifiedAccess>]
     type Severity =
         | Warning
         | Error

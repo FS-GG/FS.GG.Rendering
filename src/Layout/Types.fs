@@ -72,6 +72,7 @@ type LayoutGap =
     { Row: float
       Column: float }
 
+[<RequireQualifiedAccess>]
 type DiagnosticSeverity =
     | Info
     | Warning

@@ -103,7 +103,7 @@ if report1.Verdict <> Legibility.HasWarnings then
     failwith "reference recipe: round 1 was supposed to score HasWarnings"
 
 match report1.Findings |> List.tryFind (fun f -> f.Channel = Legibility.Speed) with
-| Some f when f.Severity = Legibility.Warning && f.Units = [ 4 ] -> ()
+| Some f when f.Severity = Legibility.Severity.Warning && f.Units = [ 4 ] -> ()
 | other -> failwithf "reference recipe: round 1 was supposed to warn that unit 4 alone overloads Speed; got %A" other
 
 // --- TWEAK: a WARNING is fixed in the ChannelMap, never in the library. Widen the bands so the
