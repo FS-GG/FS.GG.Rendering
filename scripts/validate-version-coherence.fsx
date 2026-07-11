@@ -709,10 +709,10 @@ let liveProof (i: Inputs) : LiveResult =
       CleanBuild = (bc = 0) }
 
 // ---- aggregate verdict + report (T014/T024/T028) ----------------------------------------------
-let reportPath = repo "specs/209-version-staleness-guard/readiness/version-coherence.md"
+let reportPathRel = "specs/209-version-staleness-guard/readiness/version-coherence.md"
+let reportPath = repo reportPathRel
 
-let writeReport (i: Inputs) (provenance: string) (failures: Failure list) (liveOpt: LiveResult option) =
-    Directory.CreateDirectory(Path.GetDirectoryName reportPath) |> ignore
+let renderReport (i: Inputs) (provenance: string) (failures: Failure list) (liveOpt: LiveResult option) =
     let sb = System.Text.StringBuilder()
     let line (s: string) = sb.AppendLine s |> ignore
     let ok = failures.IsEmpty
@@ -745,7 +745,90 @@ let writeReport (i: Inputs) (provenance: string) (failures: Failure list) (liveO
         line ""
         for f in failures do
             line (sprintf "- `DRIFT [%s]` %s — expected `%s`; actual `%s`" f.Rule f.Location f.Expected f.Actual)
-    File.WriteAllText(reportPath, sb.ToString())
+    sb.ToString()
+
+let writeRendered (content: string) =
+    Directory.CreateDirectory(Path.GetDirectoryName reportPath) |> ignore
+    File.WriteAllText(reportPath, content)
+
+let writeReport (i: Inputs) (provenance: string) (failures: Failure list) (liveOpt: LiveResult option) =
+    writeRendered (renderReport i provenance failures liveOpt)
+
+// ---- the artifact is EVIDENCE, so something must read it (#435) --------------------------------
+//
+// This script has always WRITTEN the verdict report; nothing ever checked that the copy COMMITTED to
+// the repo still says what a fresh run would say. So the artifact rotted in place: it recorded the
+// 0.5.0 world while the repo sat at 0.8.0 — the 0.6.0, 0.7.0 and 0.8.0 releases each moved the pin and
+// none regenerated it. The gate stayed green throughout, because the LIVE script always computes the
+// right answer; only the committed evidence lied. An evidence artifact no gate reads is not evidence,
+// and it will always drift — so read it here, in the guard that owns it, and call a stale copy DRIFT.
+//
+// Compared against the copy at HEAD, NOT the working tree. gate.yml runs this script TWICE — once bare,
+// then once with FS_GG_RUN_VERSION_COHERENCE_SMOKE=1 — and the second run overwrites the file with the
+// `live` render. A working-tree comparison would therefore be self-satisfying on the first run and
+// impossible on the second. HEAD is the only stable subject.
+//
+// The canonical committed artifact is the VERDICT-CORE render (its `provenance:` line says so, and the
+// live lines it lacks say `pending-live`). The live render is transient CI output that is never
+// committed, so the check runs in verdict-core mode only and always compares against a verdict-core
+// render — which is also why `writeReport` below is handed `structural` rather than the full failure
+// list: the report must not describe its own staleness, or regenerating it could never make it match.
+//
+// KNOWN, INTENDED FRICTION — a RELEASE makes this rule fire once. The report records the latest
+// `fs-gg-ui/v*`, `v*` and `fs-gg-ui-template/v*` tags, and those tags are pushed AFTER the release
+// commit merges — so the artifact the release PR committed names the PREVIOUS tags the moment the new
+// ones are cut. The first change to land after a release therefore reds with `artifact-stale` and must
+// regenerate the artifact (one command, named in `Fix`). That is the rule working, not misfiring: the
+// three releases that rotted this file (0.6.0, 0.7.0, 0.8.0) are precisely the events it must not sleep
+// through. If that friction is ever judged too high, the answer is to regenerate-and-commit from the
+// release lane — NOT to stop reading the artifact, which is how it rotted in the first place.
+let normalize (s: string) = s.Replace("\r\n", "\n")
+
+/// The artifact as COMMITTED at HEAD — `None` when HEAD has no such path (never committed / deleted).
+/// Fails closed (exit 2) if git cannot answer at all: "the guard could not decide" is not "the repo is
+/// coherent", and a shallow or detached checkout must not silently waive the only check of this file.
+let committedReport () : string option =
+    let ec, out = run repoRoot "git" [ "rev-parse"; "--verify"; "HEAD" ]
+    if ec <> 0 then
+        raise (GuardError(sprintf "git rev-parse HEAD failed — cannot read the committed artifact to compare against; fail closed rather than green-by-absence:\n%s" out))
+    let ec, out = run repoRoot "git" [ "show"; sprintf "HEAD:%s" reportPathRel ]
+    if ec <> 0 then None else Some out
+
+/// The first line on which the committed artifact and a fresh render disagree — so the operator sees
+/// WHAT rotted (house style: expected-vs-actual), not merely that the file is "different". `None` ⇔ the
+/// two agree, so this IS the equality test: line-wise over the newline-normalized text, which keeps a
+/// CRLF checkout from reading as drift.
+let private firstDiff (committed: string) (fresh: string) =
+    let c = (normalize committed).Split('\n')
+    let f = (normalize fresh).Split('\n')
+    Seq.init (max c.Length f.Length) id
+    |> Seq.tryPick (fun n ->
+        let at (a: string[]) = if n < a.Length then a.[n] else "<end of file>"
+        if at c <> at f then Some(n + 1, at c, at f) else None)
+
+/// Takes the ALREADY-RENDERED verdict-core report — the same string that is written to disk — so the
+/// bytes compared against HEAD and the bytes offered as the fix cannot drift apart.
+let artifactStaleFailures (fresh: string) : Failure list =
+    let fix =
+        sprintf
+            "regenerate and commit it: `dotnet fsi scripts/validate-version-coherence.fsx && git add -- %s`  (commit the BARE run's output — the FS_GG_RUN_VERSION_COHERENCE_SMOKE=1 render is transient CI output, not the artifact)"
+            reportPathRel
+    match committedReport () with
+    | None ->
+        [ { Rule = "artifact-not-committed"
+            Location = reportPathRel
+            Expected = "the verdict report is committed — it is this feature's readiness evidence"
+            Actual = "no such path at HEAD"
+            Fix = fix } ]
+    | Some committed ->
+        match firstDiff committed fresh with
+        | None -> []
+        | Some(n, committed', fresh') ->
+            [ { Rule = "artifact-stale"
+                Location = sprintf "%s:%d" reportPathRel n
+                Expected = fresh'
+                Actual = sprintf "%s (committed)" committed'
+                Fix = fix } ]
 
 let printDrift (failures: Failure list) =
     for f in failures do
@@ -825,8 +908,18 @@ let main () =
             eprintfn "version coherence: DRIFT — %d failure(s); wrote %s" allFailures.Length reportPath
             1
     else
-        let failures = structuralFailures i
-        writeReport i "verdict-core" failures None
+        // Render ONCE, then write that exact string and compare that exact string against HEAD — the
+        // staleness verdict is added to the EXIT code, never to the file. An artifact that described its
+        // own staleness would move the target every time it was regenerated, so it could never converge.
+        let structural = structuralFailures i
+        let fresh = renderReport i "verdict-core" structural None
+        writeRendered fresh
+        // The artifact records a VERDICT, so only check the evidence when there is a clean verdict for it
+        // to record. Running it while the repo is ALREADY incoherent adds a second red for a file nobody
+        // broke, and its `Fix` would tell the author to commit an artifact whose own `result:` is `fail` —
+        // advice that fixes nothing and enters a failing verdict into the readiness record. Fix the drift;
+        // the evidence is checked on the way back to green.
+        let failures = if structural.IsEmpty then artifactStaleFailures fresh else structural
         if failures.IsEmpty then
             // Say what is true of the PIN. `pendingTags` also carries the two package-lane tags, so on a
             // template-only release (the common shape: pin held, <Version> bumped) keying off the whole
