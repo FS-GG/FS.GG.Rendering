@@ -375,6 +375,7 @@ type LayoutUnsupportedReason =
       Reason: string
       Diagnostic: string }
 
+[<RequireQualifiedAccess>]
 type DiagnosticSeverity =
     | Info
     | Warning

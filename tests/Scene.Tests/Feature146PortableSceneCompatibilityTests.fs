@@ -51,6 +51,6 @@ let feature146PortableSceneCompatibilityTests =
             let bytes = packageBytes () |> appendSection 1000 Array.empty
             let report = SceneCodec.inspect bytes
             Expect.equal report.Status PackageAcceptedWithDegradation "optional tag is skipped with warning"
-            Expect.exists report.Diagnostics (fun d -> d.Severity = Warning && d.Stage = Parse) "optional tag warning is reported"
+            Expect.exists report.Diagnostics (fun d -> d.Severity = DiagnosticSeverity.Warning && d.Stage = Parse) "optional tag warning is reported"
         }
     ]

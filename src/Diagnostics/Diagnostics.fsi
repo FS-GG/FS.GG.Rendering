@@ -1,5 +1,8 @@
 namespace FS.GG.UI.Diagnostics
 
+/// Qualified access is mandatory: the bare `Error` case would otherwise shadow `FSharp.Core`'s
+/// `Result.Error` for every consumer that opens this namespace.
+[<RequireQualifiedAccess>]
 type DiagnosticSeverity =
     | Informational
     | Warning

@@ -98,7 +98,7 @@ let scoreInTests =
               for g in [ Grammar.Badge; Grammar.Ring ] do
                   let findings = findingsOn Legibility.Label (Legibility.scoreIn g board)
                   Expect.hasLength findings 1 $"%A{g} budgets 2 lines"
-                  Expect.equal findings.Head.Severity Legibility.Warning "the surplus is dropped, not un-encodable"
+                  Expect.equal findings.Head.Severity Legibility.Severity.Warning "the surplus is dropped, not un-encodable"
                   Expect.equal findings.Head.Units [ 0 ] "the finding names the offending unit"
           }
 
@@ -159,7 +159,7 @@ let scoreAnimatedInTests =
                       let findings = findingsOn Legibility.Motion report
 
                       Expect.hasLength findings 1 $"%A{g} drops Motion.%A{motion}"
-                      Expect.equal findings.Head.Severity Legibility.Error "a dropped channel is an Error, not a Warning"
+                      Expect.equal findings.Head.Severity Legibility.Severity.Error "a dropped channel is an Error, not a Warning"
                       Expect.equal findings.Head.Units [ 0 ] "the finding names the offending unit"
                       Expect.notEqual report.Verdict Legibility.Clean "the board no longer scores Clean"
           }
@@ -193,7 +193,7 @@ let scoreAnimatedInTests =
               let motionFindings = findingsOn Legibility.Motion (Legibility.scoreAnimatedIn Grammar.Badge board)
 
               Expect.hasLength motionFindings 3 "one board Warning + two per-unit Errors"
-              Expect.equal motionFindings.Head.Severity Legibility.Warning "the board-level overload sorts first"
+              Expect.equal motionFindings.Head.Severity Legibility.Severity.Warning "the board-level overload sorts first"
               Expect.equal motionFindings.Head.Units [] "...and names no unit"
               Expect.equal (motionFindings |> List.map (fun f -> f.Units)) [ []; [ 0 ]; [ 1 ] ] "then ascending unit index"
           }

@@ -32,6 +32,7 @@ module Legibility =
         | Ordered
         | Continuous
 
+    [<RequireQualifiedAccess>]
     type Severity =
         | Warning
         | Error
@@ -194,7 +195,7 @@ module Legibility =
                   if used > spec.Capacity then
                       let finding =
                           { Channel = spec.Channel
-                            Severity = Warning
+                            Severity = Severity.Warning
                             Message =
                                 sprintf
                                     "%A overloaded: %d distinct levels used, capacity %d"
@@ -212,13 +213,13 @@ module Legibility =
             if not (isFiniteF v) then
                 Some
                     { Channel = channel
-                      Severity = Error
+                      Severity = Severity.Error
                       Message = sprintf "%A non-finite: %g" channel v
                       Units = [ i ] }
             elif v < 0.0 || v > 1.0 then
                 Some
                     { Channel = channel
-                      Severity = Error
+                      Severity = Severity.Error
                       Message = sprintf "%A out of domain: %g (expected 0..1)" channel v
                       Units = [ i ] }
             else
@@ -236,7 +237,7 @@ module Legibility =
               yield
                   (channelOrder Size, i),
                   { Channel = Size
-                    Severity = Error
+                    Severity = Severity.Error
                     Message = msg
                     Units = [ i ] }
           | None -> ()
@@ -246,7 +247,7 @@ module Legibility =
               yield
                   (channelOrder Speed, i),
                   { Channel = Speed
-                    Severity = Error
+                    Severity = Severity.Error
                     Message = sprintf "Speed out of domain: %d (expected 0..6)" t.Speed
                     Units = [ i ] }
 
@@ -261,7 +262,7 @@ module Legibility =
               yield
                   (channelOrder Heading, i),
                   { Channel = Heading
-                    Severity = Error
+                    Severity = Severity.Error
                     Message = sprintf "Heading non-finite: %g" t.Heading
                     Units = [ i ] }
 
@@ -272,7 +273,7 @@ module Legibility =
               yield
                   (channelOrder SecondaryHeading, i),
                   { Channel = SecondaryHeading
-                    Severity = Error
+                    Severity = Severity.Error
                     Message = sprintf "SecondaryHeading non-finite: %g" a
                     Units = [ i ] }
           | _ -> () ]
@@ -317,7 +318,7 @@ module Legibility =
 
         if List.length activeRhythms > motionBudget then
             [ { Channel = Motion
-                Severity = Warning
+                Severity = Severity.Warning
                 Message =
                     sprintf
                         "Motion overloaded: %d distinct active rhythms across the board, budget %d"
@@ -377,7 +378,7 @@ module Legibility =
                   yield
                       (channelOrder Label, i),
                       { Channel = Label
-                        Severity = Warning
+                        Severity = Severity.Warning
                         Message =
                             sprintf
                                 "Label over budget under %A: %d hard lines, budget %d — the surplus is dropped and the last drawn line gains an ellipsis"
@@ -401,7 +402,7 @@ module Legibility =
                       yield
                           (channelOrder Motion, i),
                           { Channel = Motion
-                            Severity = Error
+                            Severity = Severity.Error
                             Message =
                                 sprintf
                                     "%A cannot draw Motion.%A: the rhythm is dropped, so the unit renders identically to Idle"

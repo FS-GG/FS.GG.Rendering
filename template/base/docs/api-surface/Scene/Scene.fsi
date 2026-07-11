@@ -307,6 +307,11 @@ type LayoutUnsupportedReason =
       Diagnostic: string }
 
 /// Public contract type exposed by this FS.GG.UI package.
+///
+/// Qualified access is mandatory: the bare `Error` case would otherwise shadow `FSharp.Core`'s
+/// `Result.Error` for every consumer that opens this namespace — and your `Model.fs` opens it.
+/// Write `DiagnosticSeverity.Error`; a bare `Error "..."` in your code means `Result.Error`.
+[<RequireQualifiedAccess>]
 type DiagnosticSeverity =
     | Info
     | Warning
