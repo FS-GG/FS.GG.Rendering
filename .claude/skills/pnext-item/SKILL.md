@@ -289,6 +289,13 @@ gh pr create --fill --base main
 scripts/fsgg-coord verify-paths --pr <n>    # did the PR stay inside its declaration?
 ```
 
+> **Every `gh pr …` command is GraphQL.** So is `gh issue create`. On an exhausted budget — the state
+> §1 tells you to *expect*, and the one you are most likely to be in by the time you are merging —
+> they all fail with `API rate limit already exceeded`, and you are left with finished, green,
+> reviewed work you cannot land. **Use the REST forms below** ([#528](https://github.com/FS-GG/.github/issues/528)).
+> They are not a workaround for the rules, only for the transport: REST enforces branch protection
+> exactly as GraphQL does. See [REST when the budget is gone](#rest-when-the-budget-is-gone).
+
 `verify-paths` is **advisory** — the touch-set is a declaration, not an enforced boundary, and CI
 reports drift rather than blocking it. Drift means one of three things, and each needs an answer
 before merge: you should have `widen`ed; you edited a file that is not this item's work; or you
@@ -324,6 +331,63 @@ scripts/fsgg-coord done <issue> --flip      # green FSGG-DONE only if PR merged 
 parent epic whose children are now all `Done`. A **red** stamp means a check failed — the item is
 not done, whatever you believe. Do not hand-set `Status` to make the stamp green; the stamp is
 earned, and faking it is how the board starts lying.
+
+**`done --flip` is a board write, so an exhausted budget DROPS it — silently.** It exits 75 saying
+*"Board WRITES are queued: see `fsgg-coord flush`"*, and that is **false**: only `claim` defers.
+Nothing is queued, `flush` has an empty queue and will cheerfully report success, and your merged
+work sits **unstamped** with your claim still reserving its touch-set
+([#510](https://github.com/FS-GG/.github/issues/510)). Check, don't trust:
+
+```sh
+scripts/fsgg-coord budget | jq .pendingBoardWrites   # 0 means your stamp was DROPPED, not queued
+```
+
+**Wait for the reset and re-run `done --flip`.** Do not hand-set `Status` to close the gap — an
+unstamped item is a nuisance; a hand-stamped one is a board that lies.
+
+### REST when the budget is gone
+
+Verified end-to-end at **0 remaining** GraphQL. `gh api repos/…` spends the **REST** budget, which is
+separate and almost never exhausted — `fsgg-coord budget` shows both.
+
+```sh
+# CREATE the PR  (gh pr create is GraphQL)
+jq -n --arg t "<title>" --rawfile b pr-body.md \
+      '{title:$t, body:$b, head:"item/<n>-<slug>", base:"main"}' \
+  | gh api -X POST repos/FS-GG/<repo>/pulls --input - --jq '"PR #\(.number)  \(.html_url)"'
+
+# WATCH the checks  (gh pr checks is GraphQL)
+SHA=$(gh api repos/FS-GG/<repo>/pulls/<n> --jq .head.sha)
+gh api "repos/FS-GG/<repo>/commits/$SHA/check-runs" \
+  --jq '"pending=\([.check_runs[]|select(.status!="completed")]|length) failed=\([.check_runs[]|select(.conclusion!=null and .conclusion!="success")]|length)"'
+
+# MERGE  (gh pr merge is GraphQL). NOT a protection bypass — REST enforces the same rules,
+# and a PR that needs a human review is refused here exactly as it is there.
+gh api -X PUT repos/FS-GG/<repo>/pulls/<n>/merge \
+  -f merge_method=squash -f commit_title="<title> (#<pr>)" --jq '"merged=\(.merged)"'
+
+gh api -X DELETE repos/FS-GG/<repo>/git/refs/heads/item/<n>-<slug>    # --delete-branch
+```
+
+Two more that bite in the same state:
+
+- **`verify-paths` blames the wrong thing.** It reports *"not inside a GitHub checkout"* when the real
+  cause is the rate limit, because it derives the repo via a GraphQL call and reads the empty result
+  as "no checkout" ([#430](https://github.com/FS-GG/.github/issues/430)). Pass the repo explicitly:
+  `scripts/fsgg-coord verify-paths --pr <n> --repo FS-GG/<repo>`.
+- **`gh issue create` is GraphQL too** — which strands you in §4, at the exact moment you are filing
+  a finding after a long session, i.e. precisely when the budget is gone:
+
+  ```sh
+  jq -n --arg t "<title>" --rawfile b body.md \
+        '{title:$t, body:$b, labels:["cross-repo","cross-repo:request"]}' \
+    | gh api -X POST repos/FS-GG/<target>/issues --input - --jq '"#\(.number) \(.html_url)"'
+  ```
+
+  The **board** placement that follows it (`gh project item-add`, `set-field`) is Projects v2 and has
+  no REST form. It cannot be done on an exhausted budget, and `set-field` will *say* it queued the
+  write and drop it (#510). File the issue now, place it after the reset, and say so on the issue so
+  the gap is a decision somebody made rather than an omission nobody noticed.
 
 ## 6. Clean up, then go again
 
