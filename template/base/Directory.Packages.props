@@ -60,6 +60,15 @@
     <!-- Feature 125: design-system primitives + default theme carved out of Controls. -->
     <PackageVersion Include="FS.GG.UI.DesignSystem" Version="$(FsGgUiVersion)" />
     <PackageVersion Include="FS.GG.UI.Themes.Default" Version="$(FsGgUiVersion)" />
+    <!-- Issue #430: the fs-gg-symbology skill ships a full authoring loop (build a ChannelMap, lint it
+         with Legibility.scoreIn, rasterise boards with Render.toPng) and the scaffold bundles the
+         authoritative Symbology/Symbology.Render api-surface — but neither package was ever pinned, so
+         the first line an author wrote did not compile. Pinned on THIS gate, not the wider skill reach
+         it used to claim: Symbology.Render is the raster bridge and depends on FS.GG.UI.SkiaViewer, so
+         it can only live where SkiaViewer already does. The skill's materializes-when was narrowed to
+         match (.template.config/template.json) — a skill may never out-reach the packages it needs. -->
+    <PackageVersion Include="FS.GG.UI.Symbology" Version="$(FsGgUiVersion)" />
+    <PackageVersion Include="FS.GG.UI.Symbology.Render" Version="$(FsGgUiVersion)" />
     <!--#endif -->
     <!--#if (profile == "governed") -->
     <PackageVersion Include="FS.GG.UI.Testing" Version="$(FsGgUiVersion)" />

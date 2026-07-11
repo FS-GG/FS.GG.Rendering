@@ -199,13 +199,16 @@ let templateFsprojRel = ".template.package/FS.GG.UI.Template.fsproj"
 // set (which can predate the recipe and make it throw — #304).
 let symbologyRecipeRel = "template/product-skills/fs-gg-symbology/reference.fsx"
 
-// The documented consumed manifest (data-model §5, surface-map T004) — 12 product-facing members.
+// The documented consumed manifest (data-model §5, surface-map T004) — 14 product-facing members.
 // Feature 240 (#73): FS.GG.UI.Canvas is consumed on the game/sample-pack profiles (FixedStep + Rng).
+// Issue #430: FS.GG.UI.Symbology(.Render) are consumed on the app/sample-pack/game profiles — the
+// scaffold shipped the fs-gg-symbology skill and the Symbology api-surface while pinning neither.
 let templateExpected =
     Set.ofList
         [ "FS.GG.UI.Build"; "FS.GG.UI.Scene"; "FS.GG.UI.Canvas"; "FS.GG.UI.SkiaViewer"; "FS.GG.UI.Elmish"
           "FS.GG.UI.KeyboardInput"; "FS.GG.UI.Layout"; "FS.GG.UI.Controls"; "FS.GG.UI.Controls.Elmish"
-          "FS.GG.UI.DesignSystem"; "FS.GG.UI.Themes.Default"; "FS.GG.UI.Testing" ]
+          "FS.GG.UI.DesignSystem"; "FS.GG.UI.Themes.Default"; "FS.GG.UI.Testing"
+          "FS.GG.UI.Symbology"; "FS.GG.UI.Symbology.Render" ]
 
 // The FS.GG.UI packages the symbology reference recipe MUST `#r` (#304). A floor so the pin check cannot
 // go silently green when the regex matches nothing — a recipe reformatted, renamed, or switched to

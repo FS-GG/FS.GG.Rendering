@@ -27,7 +27,7 @@ each. Each is a self-contained canonical body declared (with its content digest)
 | skillist id (`name:`) | resolved SKILL.md path | Profiles |
 |---|---|---|
 | `fs-gg-scene` | .agents/skills/fs-gg-scene/SKILL.md | app, headless-scene, governed, sample-pack, game |
-| `fs-gg-symbology` | .agents/skills/fs-gg-symbology/SKILL.md | app, headless-scene, governed, sample-pack, game |
+| `fs-gg-symbology` | .agents/skills/fs-gg-symbology/SKILL.md | app, sample-pack, game |
 | `fs-gg-skiaviewer` | .agents/skills/fs-gg-skiaviewer/SKILL.md | app, sample-pack, game |
 | `fs-gg-elmish` | .agents/skills/fs-gg-elmish/SKILL.md | app, sample-pack, game |
 | `fs-gg-keyboard-input` | .agents/skills/fs-gg-keyboard-input/SKILL.md | app, game |
