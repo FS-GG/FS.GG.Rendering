@@ -156,7 +156,17 @@ let private registry =
       { Twin = $"{twinDirectory}/SwapChecklistCoherenceTests.fs"
         ReleaseOnly = "tests/Package.Tests/SwapChecklistTemplateTests.fs"
         HeaderNames = "SwapChecklistTemplateTests"
-        SharedInputs = true } ]
+        SharedInputs = true }
+      // #366 — the embedded-token substitution guard (#282). Faithful text-mirror of a release-only
+      // Package.Tests rule, but SharedInputs = false: its counterpart derives the scanned file set via
+      // `ScaffoldSources.substitutionSubjectFiles`, not the `repositoryPath`/`repo` helper L-INPUTS keys
+      // on, so the input-set equality cannot be mechanically checked for this shape (a byte-faithful hoist
+      // extracts zero literal inputs and would trip L-INPUTS's non-empty guard). Byte-faithfulness keeps
+      // the two in step; L-EXISTS/L-NAMES/L-CLOSED still guard the pairing.
+      { Twin = $"{twinDirectory}/EmbeddedTokenGuardCoherenceTests.fs"
+        ReleaseOnly = "tests/Package.Tests/Feature282EmbeddedTokenGuardTests.fs"
+        HeaderNames = "Feature282EmbeddedTokenGuardTests"
+        SharedInputs = false } ]
 
 /// The repository source-of-truth paths a test source reads, extracted from its `repositoryPath "…"`
 /// / `repo "…"` helper calls (the convention every twin and its Package.Tests counterpart follow).
