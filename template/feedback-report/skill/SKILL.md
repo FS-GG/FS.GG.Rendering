@@ -67,8 +67,12 @@ version**, and the commit the report describes. A finding is unattributable with
 instead.
 
 Record the toolchain version as `fsgg-sdd --version`, or lift the `toolVersion` field that
-any stage report already carries — prefer lifting it; the artifact has it. This is the field
-a stale finding is adjudicated from, so it is not optional. See **Check before you file**.
+any stage report already carries — prefer lifting it; the artifact has it. This is the field a
+stale finding is adjudicated from, so never leave it unstated. A lane that runs no SDD
+lifecycle may have no stage report and no `fsgg-sdd` at all: say so, and version the findings
+against the package pins instead — exactly the degradation an absent `scaffold-provenance.json`
+already gets. An absent toolchain is a fact about the lane; an unstated one is a hole in the
+report. See **Check before you file**.
 
 `§2 What worked` / `§3 What did not` — prose, not a list of adjectives. Name the component.
 
@@ -122,9 +126,11 @@ Before writing §4, establish two versions and record both:
 
 - **What you ran.** `fsgg-sdd --version`, or the `toolVersion` field carried by any stage
   report. Prefer lifting it out of the artifact over re-running the CLI — the artifact
-  cannot disagree with itself about what produced it.
-- **What is current.** The latest released tag. Check each candidate defect against *that*,
-  not against whatever CLI happens to be installed in this workspace.
+  cannot disagree with itself about what produced it. If the lane has neither, fall back to
+  the package pins recorded in §1 and say that is what you are versioning against.
+- **What is current.** The latest released tag of whatever you versioned against. Check each
+  candidate defect against *that*, not against whatever happens to be installed in this
+  workspace.
 
 Then state, per finding, which version it was reproduced on. A defect that survives on the
 latest tag is live; one that does not is already fixed, and filing it as though it were live
@@ -155,7 +161,7 @@ toolVersion: 0.9.0
 
 ## §1 Provenance
 Scaffolded from fs-gg-ui 0.4.2, `--profile game --lifecycle sdd --feedback true`.
-Pins: FS.GG.UI 0.2.0. Toolchain: fsgg-sdd 0.9.0 (`toolVersion` from the plan stage report;
+Pins: FS.GG.UI 0.2.0. Toolchain: fsgg-sdd 0.9.0 (`toolVersion` lifted from the stage report;
 latest tag at time of writing, so findings below are checked against current).
 Report describes commit a1b2c3d.
 

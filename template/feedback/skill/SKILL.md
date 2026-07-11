@@ -41,7 +41,7 @@ Markdown record; it calls no shipped `.fsi` surface.
 ```markdown
 ---
 phase: plan
-date: 2026-06-03
+date: 2026-07-10
 severity: minor            # none | minor | major | blocker
 toolVersion: 0.9.0         # `fsgg-sdd --version`, or `toolVersion` from any stage report
 ---
@@ -99,7 +99,8 @@ rather than hard-failing the phase.
 
 ## Related
 
-[[fs-gg-project]], [[fsharp-build-orchestration]]
+[[fs-gg-project]], [[fsharp-build-orchestration]], [[fs-gg-feedback-report]] — the synthesis
+counterpart that reads these records at cycle end.
 
 ## Sources / links
 
