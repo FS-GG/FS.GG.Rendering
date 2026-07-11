@@ -61,9 +61,14 @@ this report **synthesizes** them — it does not restate them; cite the phase an
 
 ## Report structure
 
-`§1 Provenance` — the lane, the effective parameters, the package pins, and the commit the
-report describes. A finding is unattributable without it; if `scaffold-provenance.json` is
-absent, say so explicitly and record what you could recover instead.
+`§1 Provenance` — the lane, the effective parameters, the package pins, the **toolchain
+version**, and the commit the report describes. A finding is unattributable without it; if
+`scaffold-provenance.json` is absent, say so explicitly and record what you could recover
+instead.
+
+Record the toolchain version as `fsgg-sdd --version`, or lift the `toolVersion` field that
+any stage report already carries — prefer lifting it; the artifact has it. This is the field
+a stale finding is adjudicated from, so it is not optional. See **Check before you file**.
 
 `§2 What worked` / `§3 What did not` — prose, not a list of adjectives. Name the component.
 
@@ -75,12 +80,15 @@ absent, say so explicitly and record what you could recover instead.
 - **Expected:** <what the docs, the signature, or the skill said would happen>
 - **Observed:** <what happened>
 - **Evidence:** the command, and its output, verbatim
+- **Version:** <the toolchain version this was reproduced on, and the latest tag you checked it against>
 - **Component:** <the owning module / skill / script>
 - **Disposition:** issue | ADR | doc fix | won't-fix — and why
 ```
 
 A finding without expected-vs-observed is an opinion. A finding without a command and its
-output is unreproducible and will be closed as such by whoever triages it.
+output is unreproducible and will be closed as such by whoever triages it. A finding without
+a version cannot be told apart from one that was fixed and tagged before your run began, and
+costs every reader a full re-verification pass against `main` to find that out.
 
 `§5 Did not exercise` — an explicit list of what this cycle never ran. Silence is otherwise
 read as endorsement, and a report that omits this section quietly claims full coverage.
@@ -105,6 +113,29 @@ green validation. Rough is fine; the trend across reports is the point.
 this run**, citing a section above. A proposal that prevents nothing observed here is a
 preference, and belongs in an issue rather than a report.
 
+## Check before you file
+
+A defect reproduced on a stale toolchain is not a finding. It is rediscovery, and it costs
+every reader of this report a re-verification pass against `main` to establish that.
+
+Before writing §4, establish two versions and record both:
+
+- **What you ran.** `fsgg-sdd --version`, or the `toolVersion` field carried by any stage
+  report. Prefer lifting it out of the artifact over re-running the CLI — the artifact
+  cannot disagree with itself about what produced it.
+- **What is current.** The latest released tag. Check each candidate defect against *that*,
+  not against whatever CLI happens to be installed in this workspace.
+
+Then state, per finding, which version it was reproduced on. A defect that survives on the
+latest tag is live; one that does not is already fixed, and filing it as though it were live
+is how a report stops being usable as signal — a reader who cannot tell the two apart has to
+re-verify all of them.
+
+If you cannot upgrade to re-check, file the finding anyway and say so: *"reproduced on 0.8.1;
+not re-checked against 0.9.0"* is honest and still triageable. Silence is not. Where the
+toolchain is pinned (`.config/dotnet-tools.json`), name the pin — it explains a version gap
+that would otherwise read as carelessness.
+
 ## Redaction
 
 These reports are **committed**. Before writing, strip absolute paths outside the
@@ -119,11 +150,14 @@ stated without a secret, state the shape of it and reference where the secret li
 date: 2026-07-10
 workspace: AcmeGame
 lane: sdd
+toolVersion: 0.9.0
 ---
 
 ## §1 Provenance
 Scaffolded from fs-gg-ui 0.4.2, `--profile game --lifecycle sdd --feedback true`.
-Pins: FS.GG.UI 0.2.0. Report describes commit a1b2c3d.
+Pins: FS.GG.UI 0.2.0. Toolchain: fsgg-sdd 0.9.0 (`toolVersion` from the plan stage report;
+latest tag at time of writing, so findings below are checked against current).
+Report describes commit a1b2c3d.
 
 ## §2 What worked
 The fixed-step loop and the seeded RNG composed with no glue.
@@ -137,6 +171,7 @@ The fixed-step loop and the seeded RNG composed with no glue.
 - **Expected:** `ViewerEffect.Audio` per the skill body
 - **Observed:** no such case; the union has four cases
 - **Evidence:** `dotnet fsi scripts/print-effects.fsx` → `Render | Resize | Close | Quit`
+- **Version:** reproduced on fsgg-sdd 0.9.0, the latest tag — live, not already fixed
 - **Component:** src/SkiaViewer
 - **Disposition:** issue — filed as Rendering#245
 

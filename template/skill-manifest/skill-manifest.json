@@ -28,7 +28,7 @@
     {
       "id": "fs-gg-feedback-capture",
       "scope": "product",
-      "sha256": "e6c16f33a3f9b06995378952ba07408cee8a9f4eb4a9ce18bf2142602c40f499",
+      "sha256": "515f56735c70cb711f747ec7e5a36f3212e73503a5b1cc1e453f8bee27ccd002",
       "resolvablePath": ".agents/skills/fs-gg-feedback-capture/SKILL.md",
       "materializes-when": "feedback == true and lifecycle == spec-kit",
       "supplied-by": "template/feedback/skill/"
@@ -36,7 +36,7 @@
     {
       "id": "fs-gg-feedback-report",
       "scope": "product",
-      "sha256": "ba7cfe74127e1b558690d61a20b4be122997a96d3fa421de4e7831482239838e",
+      "sha256": "40c8e8451307a521181f9be4c622051510456db7a5234664dd7898162758332c",
       "resolvablePath": ".agents/skills/fs-gg-feedback-report/SKILL.md",
       "materializes-when": "always",
       "supplied-by": "template/feedback-report/skill/"

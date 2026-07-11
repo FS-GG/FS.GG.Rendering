@@ -43,6 +43,7 @@ Markdown record; it calls no shipped `.fsi` surface.
 phase: plan
 date: 2026-06-03
 severity: minor            # none | minor | major | blocker
+toolVersion: 0.9.0         # `fsgg-sdd --version`, or `toolVersion` from any stage report
 ---
 
 ## Process friction
@@ -63,6 +64,28 @@ severity: minor            # none | minor | major | blocker
 One record per phase (FR-014). Severity is mandatory (FR-015). A record naming
 generalizable code MUST capture the skill family/topic + candidate helper so it can be
 triaged into `FS.GG.UI.SkillSupport` (FR-015 → US2).
+
+## Version every record, and check before you file
+
+`toolVersion` is mandatory too. Record what you actually ran — `fsgg-sdd --version`, or the
+`toolVersion` field any stage report already carries (prefer lifting it out of the artifact;
+it cannot disagree with itself about what produced it) — and check each candidate defect
+against the **latest tag** before filing, not against whatever CLI happens to be installed.
+
+Without it a reader cannot tell a live defect from one that was fixed and tagged before the
+phase even began, so every finding costs a re-verification pass against `main` before it can
+be trusted — and a record that cannot be trusted at a glance stops working as signal. State
+which version each finding was reproduced on and a stale one is legible as stale, instead of
+being rediscovered at full price by the next reader.
+
+If you cannot upgrade to re-check, still file it and say so: *"reproduced on 0.8.1; not
+re-checked against 0.9.0"* is honest and triageable. Silence is not. Where the toolchain is
+pinned (`.config/dotnet-tools.json`), name the pin — it explains a version gap that would
+otherwise read as carelessness.
+
+The synthesis counterpart [[fs-gg-feedback-report]] carries the same rule in its §1
+Provenance and its per-finding record — it ships on every lane, including the ones that never
+materialize this skill.
 
 ## Persistent problems
 
