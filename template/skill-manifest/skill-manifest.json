@@ -44,7 +44,7 @@
     {
       "id": "fs-gg-game-core",
       "scope": "product",
-      "sha256": "db299500236e780142ad7fe2605640be72bf103a4921e98e2ee8eb4c129bf489",
+      "sha256": "16978c46a5002af989dd1040781d4de3789652e3687d61168280126d2bcd44e7",
       "resolvablePath": ".agents/skills/fs-gg-game-core/SKILL.md",
       "materializes-when": "profile in [game, sample-pack]",
       "supplied-by": "template/product-skills/fs-gg-game-core/"
@@ -92,7 +92,7 @@
     {
       "id": "fs-gg-persistence",
       "scope": "product",
-      "sha256": "5aea4524eb2f09cd403bac37e06fad07fc8380631ba298fa09b6b24d479535af",
+      "sha256": "e9f471b06cf30e4dd9347c9dd34bfe0b555a94845f5da23c05d82958b9fb935a",
       "resolvablePath": ".agents/skills/fs-gg-persistence/SKILL.md",
       "materializes-when": "profile in [game, sample-pack]",
       "supplied-by": "template/product-skills/fs-gg-persistence/"
