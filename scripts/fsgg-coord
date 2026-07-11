@@ -2825,8 +2825,12 @@ batch_cmd() {
       printf 'schedulable in parallel (%s):\n' "${#chosen_ids[@]}"
       printf '  → %s\n' "${chosen_ids[@]}"
     fi
-    [ -n "$skipped" ] && { echo "passed over:"; printf '%s' "$skipped"; } >&2
   fi
+  # The passed-over reasons go to stderr in BOTH modes (#440). They ARE the answer to "why is there
+  # nothing to do", and `take` — which calls this with --json — used to throw them away and print a
+  # fixed sentence naming four causes instead, none of which had to be true. stdout still carries
+  # only the JSON, so no consumer is disturbed.
+  [ -n "$skipped" ] && { echo "passed over:"; printf '%s' "$skipped"; } >&2
   return 0
 }
 
@@ -2857,12 +2861,33 @@ take_cmd() {
     # board, and re-reading it would re-pick the item we just lost, burn the retries, and idle the
     # worker. So a retry pays for a fresh scan — the one case where the 7 points are worth it (#418).
     [ "$attempt" -gt 1 ] && export FRESH=1
-    pick="$(CACHED=1 batch_cmd "${repoflag[@]+"${repoflag[@]}"}" -n 1 --json 2>/dev/null | jq -r '.[0] // empty')"
+    local berr from_backlog=""
+    berr="$(mktemp "$CACHE/.batch-err.XXXXXX")"
+    pick="$(CACHED=1 batch_cmd "${repoflag[@]+"${repoflag[@]}"}" -n 1 --json 2>"$berr" | jq -r '.[0] // empty')"
+    # READY, ELSE BACKLOG — the same rule `next` already follows (#440). `take` used to stop at
+    # `Ready`, so a board with zero Ready items and a queue of startable Backlog ones reported
+    # "nothing to do" while a worker stood idle in front of it. The two commands a worker treats as
+    # "what do I do next" must agree about what EXISTS; this is the line that makes them.
     if [ -z "$pick" ]; then
-      echo "fsgg-coord: no schedulable item${repo:+ for repo '$repo'} — every candidate is blocked, claimed, overlapping, or undeclared." >&2
-      echo "  see why:  fsgg-coord batch${repo:+ --repo $repo}" >&2
+      pick="$(CACHED=1 batch_cmd "${repoflag[@]+"${repoflag[@]}"}" --include-backlog -n 1 --json 2>"$berr" \
+              | jq -r '.[0] // empty')"
+      [ -n "$pick" ] && from_backlog=1
+    fi
+    if [ -z "$pick" ]; then
+      # Say what is TRUE, and let `batch` say WHY — per item, in its own words. The old sentence
+      # ("every candidate is blocked, claimed, overlapping, or undeclared") was a guess dressed as a
+      # finding: on the board that produced #440, all four clauses were false and the real reason —
+      # the item was in Backlog — was not among them. A worker that believes such a message stops.
+      echo "fsgg-coord: nothing schedulable${repo:+ for repo '$repo'} — no Ready or Backlog item is startable." >&2
+      if [ -s "$berr" ]; then cat "$berr" >&2
+      else echo "  (no open board item${repo:+ for '$repo'} at all — this is an empty queue, not a blocked one.)" >&2
+      fi
+      rm -f "$berr"
       return 0
     fi
+    rm -f "$berr"
+    [ -n "$from_backlog" ] && \
+      echo "fsgg-coord: no Ready item${repo:+ for '$repo'}; taking $pick from Backlog." >&2
     # claim in a subshell: its `die` (a lost race) must end the attempt, not `take`. SOFT_DIE=1 keeps
     # that `die` local under #344's fatal-die rule — the board read that must fail closed already
     # happened in `batch_cmd` above, before we ever get a `$pick` to claim.

@@ -48,12 +48,29 @@ A request is a **GitHub issue in the target repo**, using the org-wide
 the affected contract/registry id and the work it blocks; cross-reference with
 `FS-GG/<repo>#<n>`, commit shas, and contract ids.
 
+**End the body with a `Paths:` line.** An issue with no declared touch-set **cannot be
+scheduled** — `take`/`batch` refuse it, correctly, because an undeclared touch-set cannot be
+proven disjoint from another worker's. A request filed without one lands on the board looking
+like work and is invisible to every worker who asks for work
+([#442](https://github.com/FS-GG/.github/issues/442): twelve items, filed by the book, none
+schedulable). You are the one holding the context — you can usually name the files better than
+the eventual claimant can.
+
 ```sh
 gh issue create --repo FS-GG/<target> \
   --title "[cross-repo] <short summary>" \
   --label cross-repo --label cross-repo:request [--label blocked] \
-  --body "From: <your repo>. Blocks: <ref>. Contract: <id>. <what you need and why>"
+  --body "From: <your repo>. Blocks: <ref>. Contract: <id>. <what you need and why>
+
+Paths: src/Scene/ tests/Scene/"
 ```
+
+`Paths:` is not a glob language — exact paths, directory prefixes, and a *trailing* `/**` or
+`/*`; a leading `**/` matches nothing and is refused, and so is a backticked one
+([#435](https://github.com/FS-GG/.github/issues/435)). If you genuinely cannot name the
+touch-set (a decision item, an epic, an investigation whose scope *is* the question), **say so
+in the body** — "no touch-set: declare at claim time with `widen`". Then an undeclared item is
+a decision somebody made, not an omission nobody noticed.
 
 ## Respond / resolve
 
