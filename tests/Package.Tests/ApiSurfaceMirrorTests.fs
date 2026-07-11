@@ -85,6 +85,7 @@ module ApiSurfaceMirrorTests
 //     declarations — the mirror need match ANY ONE of them (same reason `Vals` maps a name to a SET
 //     of signatures: two modules may each declare `create`, and the mirror teaches one of them).
 
+open System.Collections.Concurrent
 open System.Collections.Generic
 open System.IO
 open System.Text
@@ -347,35 +348,27 @@ let private mirroredSubjects () =
 let private fsiFilesUnder (root: string) =
     Directory.GetFiles(root, "*.fsi", SearchOption.AllDirectories) |> Array.toList
 
-/// Drift M-MIR has FOUND and this repo has not yet fixed, because the file is not ours to fix:
-/// `template/base/docs/api-surface/Controls` is inside the live touch-set of #459, so #437 could not
-/// edit it without two workers writing one file. Each entry is `<mirror dir>.<type or val>` — both
-/// rules honour it, so an unowned mirror's drift can always be RECORDED rather than forcing someone
-/// to disable a rule to get CI green. Each is a REAL defect, itemised in #499: the mirror teaches a
-/// retired `ControlEvent.Payload` field and omits 10+ live DU cases. Fixing #499 means DELETING these
-/// lines; the guard below fails if an entry stops drifting, so the exemption cannot outlive the bug
-/// and quietly re-open the hole this gate exists to close.
-let private knownDrift =
-    set
-        [ "Controls.AttrValue" // #499 — missing case SceneValue
-          "Controls.ControlDiagnosticCode" // #499 — missing 10 overlay/scroll cases
-          "Controls.ControlEvent" // #499 — teaches `Payload`, RETIRED from src
-          "Controls.ControlRuntimeEffect" // #499 — missing case ScrollChanged
-          "Controls.ControlRuntimeModel" // #499 — missing field ScrollOffsets
-          "Controls.ControlRuntimeMsg" // #499 — missing cases ScrollControl / SetScrollExtent
-          "Controls.NavPayload" ] // #499 — missing case EditedText
+/// Drift M-MIR has found that this repo has not yet fixed, keyed `<mirror dir>.<type or val>`. Both
+/// rules honour it, so drift in a mirror another worker holds can be RECORDED rather than forcing
+/// someone to disable a rule to get CI green — the fails-open pressure that produced the original
+/// hole. It is EMPTY, and the aim is to keep it that way: an entry is a receipt for a bug, not a
+/// licence. The guard below fails if an entry stops drifting, so an exemption cannot outlive the bug
+/// it was written for and quietly re-open the hole this gate exists to close.
+///
+/// It was briefly non-empty: the Controls mirror taught a `ControlEvent.Payload` field src had
+/// RETIRED and omitted Feature 175's whole scroll layer, but `docs/api-surface/Controls` was inside
+/// #459's live touch-set and could not be edited from here. #459 merged, so the drift is fixed
+/// outright instead (#499) and the exemption is gone with it.
+let private knownDrift: Set<string> = Set.empty
 
 /// The parse is pure and every rule below needs the same two surfaces per subject, so read each tree
-/// once rather than once per rule.
-let private surfaceCache = Dictionary<string, Fsi.Surface>()
+/// once rather than once per rule. CONCURRENT, because Expecto runs the three M-MIR tests in
+/// parallel and they share this cache — a plain Dictionary corrupts under that and the tests error
+/// out (they pass in isolation, which is the tell).
+let private surfaceCache = ConcurrentDictionary<string, Fsi.Surface>()
 
 let private surfaceOf (root: string) =
-    match surfaceCache.TryGetValue root with
-    | true, cached -> cached
-    | _ ->
-        let parsed = Fsi.read (fsiFilesUnder root)
-        surfaceCache.[root] <- parsed
-        parsed
+    surfaceCache.GetOrAdd(root, fun path -> Fsi.read (fsiFilesUnder path))
 
 let private mirrorSurface (directory: string) =
     surfaceOf (Path.Combine(apiSurfaceRoot, directory))
@@ -755,8 +748,8 @@ let apiSurfaceMirrorTests =
           }
 
           test "every knownDrift exemption still drifts" {
-              // The exemption is a receipt for a bug someone else owns (#499), not a permanent hole. When
-              // the Controls mirror is fixed, this fails until the entry is deleted — so the gate cannot
+              // The exemption is a receipt for a bug someone else owns, not a permanent hole. When
+              // an exempted mirror is fixed, this fails until the entry is deleted — so the gate cannot
               // be left half-blind by inattention, which is the failure #437 is about in the first place.
               let stillDrifting =
                   mirroredSubjects ()
@@ -772,6 +765,6 @@ let apiSurfaceMirrorTests =
 
               Expect.isEmpty
                   stale
-                  $"every knownDrift entry names a mirror type that STILL drifts — a fixed one must be deleted from the set (see #499).{report}"
+                  $"every knownDrift entry names a mirror type that STILL drifts — a fixed one must be deleted from the set.{report}"
           }
         ]
