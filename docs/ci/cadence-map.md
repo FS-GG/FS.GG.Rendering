@@ -262,9 +262,37 @@ nonexistent passed every check in this repo — which is exactly how #235 happen
   `NU1102`/`NU1605` promoted to errors so a nonexistent pin cannot resolve upward silently; every
   pinned `(id, version)` present on the feed; and the Game/Audio pins not **lagging** feed-newest.
 
-Exit codes: `0` coherent · `1` drift (named, expected-vs-actual) · `2` guard error (feed unreachable,
-restore tooling failed, an unevaluable gate, zero pins matched). It **fails closed**, per
-`FS-GG/.github#266`: *"nothing to check" and "checked, and it's fine" must not share an exit code.*
+Exit codes: `0` coherent **or `RELEASE-PENDING`** (see below) · `1` drift (named, expected-vs-actual) ·
+`2` guard error (feed unreachable, restore tooling failed, an unevaluable gate, zero pins matched). It
+**fails closed**, per `FS-GG/.github#266`: *"nothing to check" and "checked, and it's fine" must not
+share an exit code.*
+
+**`RELEASE-PENDING` — why this gate is no longer expected-red on a release PR** (#506). The pin bump is
+what *causes* the publish: `release-tags.yml` cuts `fs-gg-ui/v<pin>` on merge and calls `release.yml`.
+So at PR time `$(FsGgUiVersion)` necessarily names a version nuget.org does not carry yet, and this gate
+reported `pin-not-published` plus `NU1102 pin-does-not-resolve` on all five profiles — **by
+construction**, on every framework release ([#426](https://github.com/FS-GG/FS.GG.Rendering/pull/426)
+for 0.8.0, [#498](https://github.com/FS-GG/FS.GG.Rendering/pull/498) for 0.9.0), merged past both times.
+That is the always-red advisory gate of `FS.GG.SDD#362`, and it was worse than noise: a **genuine**
+`pin-not-published` — a typo, a pin onto a version never published, a half-failed release — produced a
+**byte-identical** red, so the gate camouflaged the very defect it exists to catch.
+
+The guard now waives it, bounded exactly as `validate-version-coherence.fsx`'s `PinPending` is:
+
+- **`$(FsGgUiVersion)` only** — the axis this repo publishes. `FS.GG.Game.*` / `FS.GG.Audio.*` ship from
+  **other** repos, where a bump here publishes nothing, so an unpublished pin on those axes is a real
+  defect *even on the commit that bumped it*, and stays red. (A naive "bumped ⇒ waive" would reopen
+  #235 — a stale component pin, green.)
+- **only when *this* commit bumped it** (`git diff HEAD~1 HEAD` over the props file — hence the job's
+  `fetch-depth: 0`). A pin nobody bumped that the feed does not carry is stale or typo'd: drift, as before.
+- **only when the pin is genuinely absent from the feed**, so the ordinary case still runs the full proof.
+- **never in the release lane** (`FS_GG_VERSION_COHERENCE_RELEASE_LANE`), where every package is due.
+
+In the window the resolved-graph proofs genuinely **cannot** run — no profile can restore against
+packages that do not exist — so they are **skipped and reported as skipped**, never as passed. The
+`RELEASE-PENDING` block names what was not proved (the five profiles' graphs) and what still was (the
+structural core, and Game/Audio existence + staleness). If the publish never lands, the next commit to
+`main` does not bump the pin, the waiver is off, and the gate reds on `pin-not-published`.
 
 **Why the restore half is a separate, non-required job.** It reads nuget.org, and requiring a
 feed-dependent check takes a dependency on that feed's availability — an outage would wedge every
