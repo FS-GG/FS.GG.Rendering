@@ -96,6 +96,7 @@
     <Compile Include="LineDrawingSkillCoherenceTests.fs" />
     <Compile Include="GridsSkillCoherenceTests.fs" />
     <Compile Include="AudioSkillSurfaceCoherenceTests.fs" />
+    <Compile Include="SwapChecklistCoherenceTests.fs" />
     <Compile Include="ReleaseOnlyTwinLockstepTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
