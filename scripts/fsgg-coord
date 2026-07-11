@@ -359,11 +359,22 @@ HARNESS_SESSION=""
 _WORKER_WORDS=(finch heron wren swift kite tern rook crake snipe plover
                merlin godwit curlew dunlin teal smew osprey shrike avocet brant)
 
+# A genuinely random id. Both halves come from /dev/urandom, INCLUDING the word: `$RANDOM` is seeded
+# from the pid+time, so N agents a harness fans out within the same second draw the SAME word (#419).
+# The suffix is 4 hex chars, not 2 — 20 words x 65,536 is a space a dozen concurrent workers do not
+# meaningfully collide in, and the id is still short enough to read in a `who` table.
+# The $RANDOM branch is a fallback for a system with no /dev/urandom, and is NOT collision-safe under
+# a same-second fan-out — it is strictly better than dying, and nothing more.
 gen_worker() {
-  local w h
-  w="${_WORKER_WORDS[$((RANDOM % ${#_WORKER_WORDS[@]}))]}"
-  h="$(head -c 2 /dev/urandom 2>/dev/null | od -An -tx1 | tr -d ' \n')"
-  [ -n "$h" ] || h="$(printf '%04x' "$((RANDOM % 65536))")"
+  local w h bytes
+  bytes="$(head -c 3 /dev/urandom 2>/dev/null | od -An -tx1 | tr -d ' \n')"
+  if [ "${#bytes}" -eq 6 ]; then
+    w="${_WORKER_WORDS[$(( 16#${bytes:0:2} % ${#_WORKER_WORDS[@]} ))]}"
+    h="${bytes:2:4}"
+  else
+    w="${_WORKER_WORDS[$((RANDOM % ${#_WORKER_WORDS[@]}))]}"
+    h="$(printf '%04x' "$((RANDOM % 65536))")"
+  fi
   printf '%s-%s' "$w" "$h"
 }
 
@@ -442,12 +453,21 @@ worker() {
 
 # Rules 4 and 5 can each hand the same id to several workers — for different reasons. Say which one,
 # loudly, at every point a claim depends on it: a lock that cannot separate two workers is not a lock.
+#
+# The remedy must be a command to RUN, never an id to INVENT. "set FSGG_WORKER explicitly" is what
+# this warning used to say, and #419 is what came back: an LLM agent told to make up an id does not
+# make up a unique one. Eight live workers, not one of them using its derived id, drawn from four of
+# the twenty words — two of them independently picking the suffix `7c2`. Any literal a worker can
+# copy (the skill's `finch-a3f`) is a collision attractor, so this prints none.
 warn_shared_identity() {
   [ -n "$WORKER_SHARED_WHY" ] || return 0
   echo "fsgg-coord: WARNING — worker id '$WORKER_ID' may not be unique to this worker:" >&2
   echo "  $WORKER_SHARED_WHY." >&2
   echo "  The claim lock cannot separate workers that share an id. Give each worker its own git" >&2
-  echo "  worktree (the identity ADR-0021 already mandates), or set FSGG_WORKER explicitly." >&2
+  echo "  worktree (the identity ADR-0021 already mandates), or mint an id — do NOT invent one:" >&2
+  echo "" >&2
+  echo "      eval \"\$(fsgg-coord whoami --mint)\"" >&2
+  echo "" >&2
 }
 
 # Stamp the worker into the worktree itself, so "who edited these files?" is a `git config` read
@@ -473,6 +493,19 @@ stamp_worktree() {
 }
 
 whoami_cmd() {
+  # `--mint` is the executable remedy the warning points at. It prints ONE shell line and nothing
+  # else on stdout, so `eval "$(fsgg-coord whoami --mint)"` is the whole ritual — the worker runs a
+  # command instead of inventing a name, which is the entire fix for #419. Commentary goes to stderr
+  # so it survives the eval. It deliberately does NOT consult the current identity: minting is for
+  # the case where the derived id is known to be shared, and reusing it would defeat the point.
+  if [ "${1:-}" = "--mint" ]; then
+    local id; id="$(gen_worker)"
+    printf 'export FSGG_WORKER=%s\n' "$id"
+    echo "fsgg-coord: minted worker id '$id' — eval this line, or export it, in EACH worker's shell." >&2
+    return 0
+  fi
+  [ -z "${1:-}" ] || die "whoami: unknown argument '$1' (only --mint is accepted)."
+
   worker >/dev/null; local w="$WORKER_ID"
   printf 'worker  %s\n' "$w"
   printf 'source  %s\n' "$WORKER_FROM"
@@ -528,8 +561,10 @@ parse_claims() {
     | map(. as $c
         | (($c.body | [capture("^<!--\\s*fsgg:claim\\s+worker=(?<w>[^\\s>]+)")] | first) // null) as $m
         | (($c.body | [capture("^<!--[^>]*\\sprev=(?<p>[^\\s>]*)")] | first) // null) as $p
+        | (($c.body | [capture("^<!--[^>]*\\ssession=(?<s>[^\\s>]+)")] | first) // null) as $x
         | { id: $c.id, worker: ($m.w // "unparsed-marker"), user: $c.user.login,
             updatedAt: $c.updated_at,
+            session: ($x.s // ""),
             prev: (($p.p // "") | gsub("%20"; " ") | gsub("%25"; "%")),
             ageSec: ((now - ($c.updated_at | fromdateiso8601)) | floor) })
     | map(. + { stale: (.ageSec > $lease) })
@@ -2011,6 +2046,37 @@ claim_cmd() {
   fi
 
   live="$(jq -c 'map(select(.stale | not))' <<<"$claims")"
+
+  # THE TWIN BACKSTOP (#419). A marker bearing our worker id is not proof it is OURS — and `mine`
+  # below cannot tell the difference, so a twin's lock gets silently adopted by the heartbeat path.
+  # The marker has carried `session=` since ADR-0027; nothing ever read it. Now it does: same worker
+  # id + a DIFFERENT session is two workers on one id, which is the failure the whole lock exists to
+  # prevent. Refuse, loudly, and hand over the one remedy that resolves it.
+  #
+  # Both sessions must be non-empty to conclude anything: a marker with no `session=` (a human, a
+  # harness that exports none, a pre-#419 marker) is genuinely indistinguishable from ours, so it
+  # keeps the old behaviour — treated as ours, and warned about — rather than failing on old data.
+  #
+  # NOT overridable with --force. `--force` steals another WORKER's item; this is not a contested
+  # item, it is a broken identity, and the fix for a broken identity is a new identity, never a
+  # steal — stealing here would delete a marker that our own twin is actively working behind.
+  local twin=""
+  if [ -n "$HARNESS_SESSION" ]; then
+    twin="$(jq -c --arg w "$w" --arg s "$HARNESS_SESSION" \
+              'map(select(.worker == $w and .session != "" and .session != $s)) | first // empty' <<<"$live")"
+  fi
+  if [ -n "$twin" ]; then
+    die "claim: worker id '$w' is ALREADY held on $R_REPO#$R_NUM by a DIFFERENT session — two workers share one id.
+  theirs: session $(jq -r '.session' <<<"$twin") (claimed $(jq -r '.ageSec / 60 | floor' <<<"$twin")m ago)
+  ours:   session $HARNESS_SESSION
+  The claim lock keys on the worker id, so it cannot separate you from them: renewing that marker
+  would put TWO workers on this item, which is the exact failure this lock exists to prevent.
+  Do NOT --force (that steals a marker your twin is working behind). Take a unique id and retry:
+
+      eval \"\$(fsgg-coord whoami --mint)\"
+"
+  fi
+
   mine="$(jq -c --arg w "$w" 'map(select(.worker == $w)) | first // empty' <<<"$live")"
   others="$(jq -c --arg w "$w" 'map(select(.worker != $w))' <<<"$live")"
 
@@ -3510,7 +3576,7 @@ case "$cmd" in
   lint)      lint "$@" ;;
   child)     child_cmd "$@" ;;
   done)      autoflush; done_cmd "$@" ;;
-  whoami)    whoami_cmd ;;
+  whoami)    whoami_cmd "$@" ;;
   claim)     autoflush; claim_cmd "$@" ;;
   heartbeat) heartbeat_cmd "$@" ;;
   release)   release_cmd "$@" ;;
