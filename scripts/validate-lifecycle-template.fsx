@@ -814,7 +814,13 @@ let private assertNoWrapperDirs (dir: string) (profile: string) (specKit: bool) 
     // requirement. (Contrast fs-gg-feedback-report below, which is unconditional and so is REQUIRED.)
     let allowedSpecKitExtras = Set.ofList [ "fs-gg-feedback-capture" ]
     let expected =
-        let baseSet = Map.find profile expectedFrameworkSkills
+        let baseSet =
+            match Map.tryFind profile expectedFrameworkSkills with
+            | Some s -> s
+            | None ->
+                failwithf "profile %s is in `profiles` but has no entry in `expectedFrameworkSkills` — add its expected fs-gg-* set (see the note there)"
+                    profile
+
         // fs-gg-samples is spec-kit-gated (sample-pack only): drop it from the sdd/none expectation.
         let baseSet = if specKit then baseSet else Set.remove "fs-gg-samples" baseSet
         // Issue #91 (ADR-0017 §C2): fs-gg-project is profile-gated and lifecycle-INDEPENDENT — it is the
