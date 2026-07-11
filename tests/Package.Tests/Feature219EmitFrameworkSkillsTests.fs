@@ -59,10 +59,16 @@ let private SPEC_KIT_COND = "lifecycle == \"spec-kit\""
 // Feature 246 wired `fs-gg-collision` and Feature 247 `fs-gg-visibility` (per-frame geometry passes) on the
 // same (game, sample-pack) gate. Feature 249 wires `fs-gg-grids` (grid parts: faces/edges/vertices, adjacency
 // conversions, pixel mapping) on that same gate, so it joins those two rows too.
+// Issue #430 CORRECTS the Feature 223 row above: `fs-gg-symbology` was wired to FOLLOW `fs-gg-scene`'s
+// profile set, but the skill's design loop is `Render.toPng` — FS.GG.UI.Symbology.Render, which reaches
+// FS.GG.UI.SkiaViewer. `headless-scene` and `governed` pin no viewer, so the skill could never compile
+// on them (and it pinned no Symbology package on ANY profile, which is the bug #430 was filed for). It
+// now follows the SkiaViewer profile set — app, sample-pack, game — and drops off these two rows.
+// SkillPackageReachTests holds the general invariant that produced this correction.
 let private expectedFrameworkSkills =
     [ "app", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-keyboard-input"; "fs-gg-ui-widgets"; "fs-gg-styling"; "fs-gg-layout"; "fs-gg-symbology"; "fs-gg-testing" ]
-      "headless-scene", set [ "fs-gg-scene"; "fs-gg-symbology"; "fs-gg-testing" ]
-      "governed", set [ "fs-gg-scene"; "fs-gg-testing"; "fs-gg-symbology" ]
+      "headless-scene", set [ "fs-gg-scene"; "fs-gg-testing" ]
+      "governed", set [ "fs-gg-scene"; "fs-gg-testing" ]
       "sample-pack", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-symbology"; "fs-gg-game-core"; "fs-gg-audio"; "fs-gg-persistence"; "fs-gg-model-swap"; "fs-gg-collision"; "fs-gg-visibility"; "fs-gg-grids"; "fs-gg-line-drawing"; "fs-gg-testing" ]
       "game", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-keyboard-input"; "fs-gg-ui-widgets"; "fs-gg-styling"; "fs-gg-layout"; "fs-gg-symbology"; "fs-gg-game-core"; "fs-gg-audio"; "fs-gg-persistence"; "fs-gg-model-swap"; "fs-gg-collision"; "fs-gg-visibility"; "fs-gg-grids"; "fs-gg-line-drawing"; "fs-gg-testing" ] ]
 

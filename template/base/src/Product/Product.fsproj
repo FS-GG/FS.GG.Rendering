@@ -84,6 +84,12 @@
     <!-- Feature 125: design-system primitives + default theme carved out of Controls. -->
     <PackageReference Include="FS.GG.UI.DesignSystem" />
     <PackageReference Include="FS.GG.UI.Themes.Default" />
+    <!-- Issue #430: the pure channel-grammar vocabulary (Symbology, Scene-only) and its headless
+         Scene->PNG design-loop bridge (Symbology.Render, which reaches SkiaViewer's ReferenceRendering
+         path). Both are what the fs-gg-symbology skill and the bundled docs/api-surface/Symbology*
+         reference tell an author to `open`; without the references that instruction did not compile. -->
+    <PackageReference Include="FS.GG.UI.Symbology" />
+    <PackageReference Include="FS.GG.UI.Symbology.Render" />
     <!--#endif -->
     <!--#if (profile == "governed") -->
     <PackageReference Include="FS.GG.UI.Testing" />

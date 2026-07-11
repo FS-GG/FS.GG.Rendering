@@ -338,7 +338,8 @@
       "comment": "Feature 231 (ADR-0014): product skills emit to the provider source root `.agents/skills/` ONLY — Feature 230's per-skill `.claude`/`.codex` twins are superseded by the single standalone materialize step (spec-kit) / the orchestrator fan-out (sdd). copyOnly (fixes audit F5): canonical bodies ship verbatim so skill prose keeps the English word 'product' and each body byte-matches its skill-manifest sha256. Same rationale for every product-skill source below."
     },
     {
-      "condition": "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\")",
+      "comment": "Issue #430: narrowed from all five profiles to the three that carry SkiaViewer. The skill's whole loop is `Render.toPng`, which lives in FS.GG.UI.Symbology.Render -> FS.GG.UI.SkiaViewer; `headless-scene` and `governed` pin no viewer, so the skill could never compile there and they are not offered fs-gg-skiaviewer either. A skill's reach may not exceed the reach of the packages it instructs the author to `open` — this row and the two Symbology pins in template/base/Directory.Packages.props are now the same gate. (The docs/api-surface/Symbology* mirror stays on the ungated base source, as Audio.Core/Game.Core's mirrors do: that tree is the whole framework contract surface, not a per-profile promise.)",
+      "condition": "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\")",
       "source": "template/product-skills/fs-gg-symbology/",
       "target": ".agents/skills/fs-gg-symbology/",
       "copyOnly": [

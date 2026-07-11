@@ -259,10 +259,15 @@ let private templatePins () =
 let private templateExpected =
     Set.ofList
         // Feature 240 (#73): FS.GG.UI.Canvas is pinned for the game/sample-pack profiles (FixedStep + Rng
-        // simulation primitives consumed via the fs-gg-game-core skill) — a 12-member manifest.
+        // simulation primitives consumed via the fs-gg-game-core skill).
+        // Issue #430: FS.GG.UI.Symbology (pure channel grammar) and FS.GG.UI.Symbology.Render (its
+        // headless Scene->PNG design-loop bridge) are pinned for the app/sample-pack/game profiles — the
+        // scaffold shipped the fs-gg-symbology skill and the Symbology api-surface while pinning neither,
+        // so the loop it documents did not compile. A 14-member manifest.
         [ "FS.GG.UI.Build"; "FS.GG.UI.Scene"; "FS.GG.UI.Canvas"; "FS.GG.UI.SkiaViewer"; "FS.GG.UI.Elmish"
           "FS.GG.UI.KeyboardInput"; "FS.GG.UI.Layout"; "FS.GG.UI.Controls"; "FS.GG.UI.Controls.Elmish"
-          "FS.GG.UI.DesignSystem"; "FS.GG.UI.Themes.Default"; "FS.GG.UI.Testing" ]
+          "FS.GG.UI.DesignSystem"; "FS.GG.UI.Themes.Default"; "FS.GG.UI.Testing"
+          "FS.GG.UI.Symbology"; "FS.GG.UI.Symbology.Render" ]
 
 [<Tests>]
 let feature209VersionCoherenceTests =

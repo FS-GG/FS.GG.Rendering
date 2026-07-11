@@ -1,0 +1,244 @@
+module SkillPackageReachTests
+
+// Issue #430 — a product skill may never out-reach the packages it tells the author to `open`.
+//
+// THE BUG THIS CLOSES
+// -------------------
+// The scaffold shipped `fs-gg-symbology` on all five profiles, plus the authoritative
+// `docs/api-surface/Symbology*` mirror — while `template/base/Directory.Packages.props` pinned neither
+// FS.GG.UI.Symbology nor FS.GG.UI.Symbology.Render, on any profile. So a generated product carried a
+// skill instructing the author to `open FS.GG.UI.Symbology` and rasterise boards with `Render.toPng`,
+// and the first line they wrote did not compile. Every signal the scaffold gave said the API was there.
+//
+// It survived because every existing gate is one-directional:
+//   * M-REF (ApiSurfaceMirrorTests) asserts package => mirror. The converse is not asserted.
+//   * M-PTR asserts a mirrored .fsi names a SHIPPED skill — which symbology's did. Skill + surface were
+//     perfectly consistent with each other; the package was simply absent from the pair.
+//   * validate-version-coherence checks the symbology REFERENCE RECIPE's `#r` pins — and an .fsx
+//     resolves its own packages from nuget, so the recipe worked while the product did not.
+// Nothing anywhere asserted the direction that actually bites an author: skill => package.
+//
+// THE INVARIANT (asserted for EVERY product skill, not just symbology)
+//   R-PINNED — every FS.GG.* namespace a product skill's body tells the author to `open`, whose name is
+//              exactly a real package id, is pinned in the template's Directory.Packages.props.
+//   R-REF    — ...and referenced by Product.fsproj, so it is on the compile graph and not merely pinned.
+//   R-REACH  — ...and the profiles the SKILL materializes on are a SUBSET of the profiles that pin it.
+//              A skill reaching a profile its package does not is exactly #430: silent, type-check-free,
+//              and indistinguishable from working until an author types the `open`.
+//
+// Deliberately sound rather than exhaustive: an `open` is only held against a package when the namespace
+// is EXACTLY a known package id, so a namespace that merely lives inside a differently-named package is
+// never mis-attributed. That is enough to have caught #430 on the PR that introduced it.
+
+open System.IO
+open System.Text.RegularExpressions
+open Expecto
+open FS.GG.TestSupport
+
+let private repositoryRoot = RepositoryRoot.value
+
+let private repositoryPath (relativePath: string) =
+    Path.Combine(repositoryRoot, relativePath.Replace('/', Path.DirectorySeparatorChar))
+
+let private propsPath = repositoryPath "template/base/Directory.Packages.props"
+let private projPath = repositoryPath "template/base/src/Product/Product.fsproj"
+let private manifestPath = repositoryPath "template/skill-manifest/skill-manifest.json"
+
+/// Every profile a scaffold can be generated on (.template.config/template.json `symbols.profile`).
+let private allProfiles = set [ "app"; "headless-scene"; "governed"; "sample-pack"; "game" ]
+
+/// Package ids the scaffold COULD pin: everything packable in this repo, plus everything the template
+/// already pins (which is how the external FS.GG.Game.* / FS.GG.Audio.* components enter the set).
+/// A package that is packable but UNPINNED is precisely the #430 shape, so the repo side must be in
+/// here — deriving the candidate set from the props file alone would make the bug invisible to its own
+/// guard.
+let private candidatePackages =
+    let packable =
+        Directory.GetFiles(repositoryPath "src", "*.fsproj", SearchOption.AllDirectories)
+        |> Seq.map File.ReadAllText
+        |> Seq.filter (fun t -> t.Contains "<IsPackable>true</IsPackable>")
+        |> Seq.choose (fun t ->
+            let m = Regex.Match(t, "<PackageId>([^<]+)</PackageId>")
+            if m.Success then Some(m.Groups.[1].Value.Trim()) else None)
+    let pinned =
+        Regex.Matches(File.ReadAllText propsPath, "<PackageVersion\\s+Include=\"([^\"]+)\"")
+        |> Seq.map (fun m -> m.Groups.[1].Value)
+        |> Seq.filter (fun id -> id.StartsWith "FS.GG.")
+    Set.union (Set.ofSeq packable) (Set.ofSeq pinned)
+
+/// The `dotnet new` gate opening the region a line sits in, or None when the line is ungated.
+/// Walks upward to the nearest `<!--#if -->` not already closed by an intervening `<!--#endif -->`
+/// (the same walk AudioProfileWiringTests and validate-template-payload-pins.fsx use).
+let private enclosingGate (lines: string[]) (lineIndex: int) =
+    let ifRegex = Regex(@"<!--#if\s+\((?<cond>.*?)\)\s*-->")
+    let rec walk i depth =
+        if i < 0 then None
+        elif lines.[i].Contains "<!--#endif" then walk (i - 1) (depth + 1)
+        else
+            let m = ifRegex.Match lines.[i]
+            if m.Success then
+                if depth = 0 then Some(m.Groups.["cond"].Value.Trim()) else walk (i - 1) (depth - 1)
+            else walk (i - 1) depth
+    walk lineIndex 0
+
+/// The profiles on which `packageId` is declared in `text` (a props or fsproj file), or None when it is
+/// not declared there at all. An ungated declaration reaches every profile.
+let private profilesDeclaring (text: string) (packageId: string) =
+    let lines = text.Replace("\r\n", "\n").Split('\n')
+    lines
+    |> Array.tryFindIndex (fun l -> l.Contains($"Include=\"{packageId}\""))
+    |> Option.map (fun idx ->
+        match enclosingGate lines idx with
+        | None -> allProfiles
+        | Some cond ->
+            Regex.Matches(cond, "\"([^\"]+)\"")
+            |> Seq.map (fun m -> m.Groups.[1].Value)
+            |> Set.ofSeq)
+
+/// The profile set of a manifest `materializes-when` clause (ADR-0017 grammar: `profile in [a, b]`,
+/// optionally `and`-ed with non-profile clauses such as `lifecycle == spec-kit`, which we ignore — they
+/// narrow WHEN a skill ships, never onto a profile its `profile in [..]` clause excluded).
+/// A row with no profile clause constrains no profile, so it reaches all of them.
+let private profilesOf (materializesWhen: string) =
+    let m = Regex.Match(materializesWhen, @"profile\s+in\s+\[([^\]]+)\]")
+    if m.Success then
+        m.Groups.[1].Value.Split(',') |> Seq.map (fun s -> s.Trim()) |> Set.ofSeq
+    else
+        let eq = Regex.Match(materializesWhen, @"profile\s*==\s*(\w[\w-]*)")
+        if eq.Success then set [ eq.Groups.[1].Value ] else allProfiles
+
+/// KNOWN, FILED violations of R-REACH that predate this guard — named, never silent.
+///
+/// `fs-gg-project` (issue #431): the product-orientation umbrella ships on all five profiles, and its
+/// `## Usage` example opens FS.GG.UI.SkiaViewer + calls `Viewer.runApp` — but `headless-scene` and
+/// `governed` pin no viewer. It is the same defect this file exists for, one skill over, and #430 does
+/// NOT fix it: those two profiles have no host entry point at all, so no single example is true on all
+/// five, and markdown cannot be profile-gated (template.json's skillist-reference row records that
+/// inline `#if` in markdown is unproven). Making the umbrella lane-neutral is a content decision, taken
+/// in #431 rather than smuggled into #430's touch-set.
+///
+/// `fs-gg-testing` (issue #432): materializes on all five profiles and opens FS.GG.UI.Testing, which is
+/// pinned and referenced on `governed` ONLY — so four of the five profiles ship a testing skill whose
+/// first `open` does not compile. Wider blast radius than #430 itself. Issue #90 widened the skill's
+/// materializes-when and never widened the pin with it; the Feature219 comment asserting all five ship
+/// the package is part of the bug, and is why nobody re-checked. Finishing #90 is a decision about what
+/// `Product.fsproj` vs `Product.Tests.fsproj` should carry — #432, not smuggled into #430.
+///
+/// An exemption is a debt with a number on it, not a pass: R-PINNED/R-REF still hold for these skills
+/// (the package must exist and be referenced SOMEWHERE), only the profile-subset check is waived. Adding
+/// a row here requires a filed issue; the guard is worthless the moment it becomes a place to put things
+/// that are merely inconvenient. Both rows below are PRE-EXISTING defects this guard DISCOVERED — it
+/// found them on the day it was written, which is the argument for it.
+let private reachExemptions = Map.ofList [ "fs-gg-project", "#431"; "fs-gg-testing", "#432" ]
+
+/// (skill id, profiles it materializes on, the FS.GG.* packages its body says to `open`).
+let private productSkills =
+    let manifest = File.ReadAllText manifestPath
+    // Each product row: id, materializes-when, supplied-by (the skill's source directory).
+    Regex.Matches(
+        manifest,
+        "\"id\":\\s*\"(?<id>[^\"]+)\"[\\s\\S]*?\"materializes-when\":\\s*\"(?<when>[^\"]+)\"[\\s\\S]*?\"supplied-by\":\\s*\"(?<dir>[^\"]+)\""
+    )
+    |> Seq.map (fun m ->
+        let id = m.Groups.["id"].Value
+        let profiles = profilesOf m.Groups.["when"].Value
+        let dir = repositoryPath (m.Groups.["dir"].Value)
+        // The instructional body only — an author copies `open` lines out of SKILL.md into product
+        // source. A reference .fsx is NOT read: it is an FSI script that `#r`s its own packages from
+        // nuget, so its opens prove nothing about the compiled product's reference set.
+        let skillMd = Path.Combine(dir, "SKILL.md")
+        let opens =
+            if File.Exists skillMd then
+                Regex.Matches(File.ReadAllText skillMd, @"open\s+(FS\.GG\.[A-Za-z0-9_.]+)")
+                |> Seq.map (fun o -> o.Groups.[1].Value)
+                |> Seq.filter candidatePackages.Contains
+                |> Set.ofSeq
+            else
+                Set.empty
+        id, profiles, opens)
+    |> Seq.filter (fun (_, _, opens) -> not opens.IsEmpty)
+    |> List.ofSeq
+
+[<Tests>]
+let skillPackageReachTests =
+    testList
+        "Skill package reach (#430) — a skill may not out-reach the packages it says to open"
+        [
+          // A floor: if the manifest regex ever stops matching, every assertion below vacuously passes
+          // and the guard reads green while asserting nothing. Symbology is named because it is the bug
+          // this file exists for — it must always be one of the rows under test.
+          test "the guard actually has product skills (with FS.GG package opens) under test" {
+              Expect.isGreaterThan (List.length productSkills) 3 "several product skills open FS.GG packages"
+
+              let symbology = productSkills |> List.tryFind (fun (id, _, _) -> id = "fs-gg-symbology")
+              Expect.isSome symbology "fs-gg-symbology is under test — it is the skill #430 was filed for"
+
+              let _, _, opens = symbology.Value
+              Expect.contains opens "FS.GG.UI.Symbology" "the symbology skill's body opens the pure vocabulary"
+              Expect.contains opens "FS.GG.UI.Symbology.Render" "...and the render bridge its design loop calls"
+          }
+
+          // R-PINNED / R-REF — the package an author is told to `open` is on the compile graph at all.
+          test "every package a product skill says to open is pinned AND referenced by the product" {
+              let props = File.ReadAllText propsPath
+              let proj = File.ReadAllText projPath
+
+              for id, _, opens in productSkills do
+                  for pkg in opens do
+                      Expect.isSome
+                          (profilesDeclaring props pkg)
+                          $"the {id} skill tells the author to `open {pkg}`, so {pkg} must be pinned in template/base/Directory.Packages.props — a skill that names a package the scaffold does not pin does not compile (#430)"
+
+                      Expect.isSome
+                          (profilesDeclaring proj pkg)
+                          $"the {id} skill tells the author to `open {pkg}`, so Product.fsproj must reference {pkg} — pinning it centrally without referencing it leaves it off the compile graph (#430)"
+          }
+
+          // An exemption that outlives its defect is a lie of a quieter kind: it keeps the guard green
+          // over a skill that no longer needs the waiver, and the next real violation of that skill
+          // passes unseen. So every exemption must STILL be violating — fix #431 and this test fails
+          // until the row is deleted, which is exactly when it should be.
+          test "every R-REACH exemption is still violating (a stale waiver must be deleted, not kept)" {
+              let props = File.ReadAllText propsPath
+              let proj = File.ReadAllText projPath
+
+              for KeyValue(id, issue) in reachExemptions do
+                  let row = productSkills |> List.tryFind (fun (sid, _, _) -> sid = id)
+                  Expect.isSome row $"exempted skill {id} ({issue}) still exists and still opens FS.GG packages"
+
+                  let _, skillProfiles, opens = row.Value
+                  let stillOrphaned =
+                      opens
+                      |> Set.exists (fun pkg ->
+                          match profilesDeclaring props pkg, profilesDeclaring proj pkg with
+                          | Some pins, Some refs -> not (Set.isEmpty (Set.difference skillProfiles (Set.intersect pins refs)))
+                          | _ -> true)
+
+                  Expect.isTrue
+                      stillOrphaned
+                      $"the {id} exemption ({issue}) no longer violates R-REACH — the defect it waives is fixed, so DELETE the row from reachExemptions and let the guard hold {id} to the invariant like every other skill"
+          }
+
+          // R-REACH — the heart of #430. Pinning is not enough: the skill must not reach a profile the
+          // package does not. A `game`-gated package under an all-profile skill is the same silent
+          // failure, one profile over.
+          test "every product skill's profiles are a subset of the profiles pinning the packages it opens" {
+              let props = File.ReadAllText propsPath
+              let proj = File.ReadAllText projPath
+
+              for id, skillProfiles, opens in productSkills do
+                  for pkg in opens do
+                      match profilesDeclaring props pkg, profilesDeclaring proj pkg with
+                      | _ when reachExemptions.ContainsKey id -> ()
+                      | Some pinProfiles, Some refProfiles ->
+                          let reachable = Set.intersect pinProfiles refProfiles
+                          let orphaned = Set.difference skillProfiles reachable
+
+                          Expect.isEmpty
+                              orphaned
+                              $"the {id} skill materializes on {Set.toList skillProfiles} and tells the author to `open {pkg}`, but {pkg} only reaches {Set.toList reachable} — on {Set.toList orphaned} the scaffold ships the skill with no package, so the author's first line fails to compile with nothing in the type system objecting (#430). Either gate the skill to the package's profiles, or pin the package on the skill's."
+                      | _ ->
+                          // Absence is R-PINNED/R-REF's failure to report, not this test's.
+                          ()
+          }
+        ]

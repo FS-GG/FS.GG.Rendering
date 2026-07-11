@@ -74,6 +74,11 @@ let private frameworkProjects =
           "FS.GG.UI.Controls.Elmish", "src/Controls.Elmish/Controls.Elmish.fsproj"
           "FS.GG.UI.DesignSystem", "src/DesignSystem/DesignSystem.fsproj"
           "FS.GG.UI.Themes.Default", "src/Themes.Default/Themes.Default.fsproj"
+          // Issue #430: the fs-gg-symbology skill ships on the app profile, so the packages it tells the
+          // author to `open` are now referenced there (they were pinned on NO profile before — the bug).
+          // Symbology.Render is the raster bridge and reaches SkiaViewer, already mapped above.
+          "FS.GG.UI.Symbology", "src/Symbology/Symbology.fsproj"
+          "FS.GG.UI.Symbology.Render", "src/Symbology.Render/Symbology.Render.fsproj"
           // Not in the app branch today, but legitimately reachable if a future edit widens the gate;
           // keeping them mapped means such an edit still probes offline instead of failing P-MAP-COMPLETE.
           "FS.GG.UI.Canvas", "src/Canvas/Canvas.Lib.fsproj"

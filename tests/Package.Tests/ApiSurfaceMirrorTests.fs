@@ -12,8 +12,14 @@ module ApiSurfaceMirrorTests
 //
 // This gate supersedes that omission and answers its objection rather than ignoring it:
 //   M-REF   every FS.GG.* package `Product.fsproj` REFERENCES has a mirrored api-surface directory.
-//           The converse is NOT asserted: a directory may outlive a reference (e.g. Symbology, which
-//           is bundled but referenced only by the sample-pack content, not Product.fsproj).
+//           The converse is NOT asserted here: the bundled tree is the framework's WHOLE contract
+//           surface, so a mirror legitimately outlives any one profile's reference set (an `app`
+//           scaffold ships the Audio.Core/Game.Core mirrors while pinning neither package).
+//           That latitude is exactly what hid #430 — Symbology was bundled, and named in this comment
+//           as the example of a mirror with no reference, while the fs-gg-symbology SKILL told authors
+//           to `open` it on every profile. A mirror may outlive a reference; a SKILL may not. The
+//           skill => package direction is asserted by SkillPackageReachTests (R-PINNED/R-REF/R-REACH),
+//           and Symbology is now referenced by Product.fsproj on the app/sample-pack/game gate.
 //   M-PTR   every bundled .fsi names a SHIPPED product skill, so the .fsi and the SKILL.md stop being
 //           an unlinked pair (§5.3 — the report's author read the .fsi and never found
 //           `Scene.measureText`, which the fs-gg-scene skill documents under its own heading).
