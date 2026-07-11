@@ -27,7 +27,7 @@ Wrappers: `65`
 | fs-gg-diagnostics | 2 | 2 | 0 | 0 |
 | fs-gg-elmish | 9 | 9 | 0 | 0 |
 | fs-gg-generated-controls-guidance | 25 | 25 | 0 | 0 |
-| fs-gg-keyboard-input | 4 | 4 | 0 | 0 |
+| fs-gg-keyboard-input | 7 | 7 | 0 | 0 |
 | fs-gg-layout | 3 | 3 | 0 | 0 |
 | fs-gg-persistence | 5 | 5 | 0 | 0 |
 | fs-gg-samples | 2 | 2 | 0 | 0 |
