@@ -483,6 +483,60 @@ jobs:
           FS_GG_RUN_TEMPLATE_PAYLOAD_RESTORE: '1'
         run: dotnet fsi scripts/validate-template-payload-pins.fsx
 
+  # #475 — skill parity. `scripts/check-agent-skill-parity.fsx` was a real check that ran only when a
+  # human remembered to: it was referenced by NO workflow. So `docs/reports/skills-parity.md` — a
+  # TRACKED, DERIVED artifact — drifted, and on main it was a day stale with a whole skill (fs-gg-game-core)
+  # silently dropped out of its table, under a `Checked at UTC` line asserting a freshness it did not have.
+  #
+  # This is the repo's own recurring class (#252, #255, #435, #216): a committed evidence file whose
+  # generator no gate runs. The two steps below are the two halves of actually closing it, and BOTH are
+  # needed — either alone is a fail-open.
+  #
+  # 1. Run the check. It exits non-zero when parity FAILS.
+  # 2. Diff the regenerated report against the committed one. Because step 1 REGENERATES the report and
+  #    exits on the parity STATUS, it is perfectly happy to rewrite a stale file and report `passed` —
+  #    which is precisely how the artifact rotted while the script "worked". The generator was made
+  #    deterministic in #475 (the wall-clock timestamp is gone; it now lives in the JSON summary) so that
+  #    this exact-diff is meaningful rather than a guaranteed false positive.
+  skill-parity-gate:
+    name: Skill parity gate (report regenerates clean, every product skill has a wrapper)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Check skill parity
+        run: |
+          set -euo pipefail
+          if ! dotnet fsi scripts/check-agent-skill-parity.fsx; then
+            echo "::error::skill parity FAILED — see the findings above. A 'missing-wrapper' finding against the manifest means a skill the manifest declares as 'scope: product' (it materializes into every generated workspace) has no activation wrapper under .claude/skills or .agents/skills in this repo (refs #475/#465)."
+            exit 1
+          fi
+
+      - name: Assert the committed parity report is not stale
+        run: |
+          set -euo pipefail
+          if ! git diff --exit-code --stat -- docs/reports/skills-parity.md; then
+            echo "::error::docs/reports/skills-parity.md is STALE — it is a committed, derived artifact and the run above regenerated it into something different. Run 'dotnet fsi scripts/check-agent-skill-parity.fsx' and commit the result. (The report is deterministic: a diff here is real drift, not a timestamp — refs #475.)"
+            git diff -- docs/reports/skills-parity.md
+            exit 1
+          fi
+
+      - name: Upload the parity summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: skill-parity
+          path: |
+            docs/reports/skills-parity.md
+            artifacts/skill-parity/skill-parity-summary.json
+          if-no-files-found: warn
+
   # #452 — the LIVE lifecycle-validation lane. This is the only thing in the repo that checks what a
   # scaffold actually EMITS, as opposed to what template.json SAYS: it instantiates every
   # profile x lifecycle combination with `dotnet new` and audits the emitted tree.
