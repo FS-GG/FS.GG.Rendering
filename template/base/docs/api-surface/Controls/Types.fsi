@@ -15,6 +15,14 @@ type ControlId = string
 /// `StandardControlKind` such as `"button"` or `"line-chart"`.
 type ControlKind = string
 
+/// Feature 175 (FR-001/FR-002): the scroll model owned per `scroll-viewer` ControlId. Pure value;
+/// derived geometry (scrollable, thumb height/position) is computed by the `ScrollState` module.
+/// Carried by `ControlRuntimeModel.ScrollOffsets`.
+type ScrollState =
+    { Offset: float
+      ContentHeight: float
+      ViewportHeight: float }
+
 /// A single plotted datum (`ChartPoint`): `X`/`Y` coordinates plus an optional `Label`
 /// for line, bar, pie, and scatter chart kinds.
 type ChartPoint =
@@ -165,6 +173,16 @@ type ControlDiagnosticCode =
     | UnsupportedEnvironment
     | KeyCollision
     | StaleGeneratedReference
+    | MissingOverlayAnchor
+    | StaleOverlayFocusTarget
+    | BlockedOverlayDismissal
+    | DisabledOverlayTrigger
+    | NoFitOverlayPlacement
+    | DuplicateOverlayDispatch
+    | InvalidOverlayMessage
+    | LowerLayerBlocked
+    | ScrollIntrinsicUnavailable
+    | ScrollExtentFallback
     /// Feature 113 (Phase 5): an always-new input (a rebuilt `UntypedValue`, a per-frame event
     /// closure, an unstable key) that compared unequal across two builds of the same model and so
     /// defeats memoized subtree reuse. Reported by `Diagnostics.stabilityReport`; advisory only.
@@ -274,6 +292,7 @@ type NavPayload =
     | SteppedValue of value: float
     | MovedSelection of index: int * item: string option
     | MovedCell of row: int * col: int
+    | EditedText of text: string
 
 /// A dispatched control event (`ControlEvent`): its `Kind`, the source `ControlId`, the
 /// `Origin` input source, an optional string `Payload`, and an optional typed `Nav` outcome.
@@ -281,12 +300,9 @@ type ControlEvent =
     { Kind: string
       ControlId: ControlId option
       Origin: ControlEventOrigin
-      Payload: string option
-      /// Feature 100 (R5): the closed typed navigation outcome for a focused-key navigation
-      /// dispatch. A selection move dual-sets <c>Payload</c> (the moved item id, for existing
-      /// string consumers) AND <c>Nav</c> (the closed <c>MovedSelection</c>); non-navigation
-      /// events leave it <c>None</c>. <c>Payload : string option</c> is retained for backward
-      /// compatibility (research R-3).
+      /// Feature 184 (US3): the closed typed navigation/interaction outcome, and the single typed
+      /// replacement for the RETIRED stringly `Payload`. Project it with `Types.navText` /
+      /// `Types.navValue` rather than re-deriving a string; non-navigation events leave it `None`.
       Nav: NavPayload option }
 
 /// Classification (`AttrCategory`) of what an attribute affects — `Content`, `Children`,
@@ -348,6 +364,11 @@ and AttrValue<'msg> =
     /// template (FR-008). Lowering injects the fills into the control's `Children`, so they inherit
     /// E1–E4 + E2 retained identity by construction (FR-004, FR-005).
     | SlotFillsValue of (string * Control<'msg>) list
+    /// Feature 191 (US1, C1/FR-001): an application-supplied immutable `Scene` carried by a `canvas`
+    /// control and painted into its laid-out box (box-origin local coordinates, clipped). Rides the
+    /// existing `Attr` mechanism rather than adding a `Control<'msg>` field, so every existing
+    /// construction/clone/test site is untouched and `hashScene` already fingerprints the content.
+    | SceneValue of FS.GG.UI.Scene.Scene
     | AccessibilityValue of AccessibilityMetadata
     | ThemeValue of Theme
     | ChildValue of Control<'msg>

@@ -34,6 +34,8 @@ type ControlRuntimeEffect =
     | SelectionChanged of ControlSelection option
     | CompositionChanged of ControlComposition option
     | DragChanged of ControlDrag option
+    /// Feature 175: the new clamped scroll offset for the named `scroll-viewer`.
+    | ScrollChanged of ControlId * float
     | StaleTarget of ControlId
     | CancelledInteraction of ControlId option
     | ReportControlRuntimeDiagnostic of ControlDiagnostic
@@ -47,6 +49,8 @@ type ControlRuntimeModel =
       Selection: ControlSelection option
       Composition: ControlComposition option
       ActiveDrag: ControlDrag option
+      /// Feature 175: per-`scroll-viewer` scroll model, keyed by ControlId. Absent ⇒ `ScrollState.empty`.
+      ScrollOffsets: Map<ControlId, ScrollState>
       Diagnostics: ControlDiagnostic list
       RecentEffects: ControlRuntimeEffect list }
 
@@ -67,6 +71,10 @@ type ControlRuntimeMsg =
     | RemoveControl of ControlId
     | RecoverStaleTarget of ControlId
     | CancelInteraction of ControlId option
+    /// Feature 175: record the measured (contentHeight, viewportHeight) for a `scroll-viewer`.
+    | SetScrollExtent of ControlId * float * float
+    /// Feature 175: apply a scroll delta (drag/wheel/keyboard) to a `scroll-viewer`, clamped.
+    | ScrollControl of ControlId * float
     | Reset
 
 /// Feature 112 (FR-007): the targeted runtime-stamp result — the stamped tree plus the number of nodes

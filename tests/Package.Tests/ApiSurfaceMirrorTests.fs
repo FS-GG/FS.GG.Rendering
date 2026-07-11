@@ -42,8 +42,53 @@ module ApiSurfaceMirrorTests
 // What M-PROV can and cannot see: it proves the stamp equals the pin, not that the bytes equal the
 // package — CI cannot see the other repo. That is enough for the drift it exists to catch, because
 // bumping a pin without recopying leaves the stamp behind and fails here.
+//
+// #437 — and the hole all of the above still left open. Every rule so far checks a mirror's
+// PROVENANCE (a stamp, a copy) and none checks its CONTENT, so a mirror that is neither a
+// cross-repo copy nor a listed exact copy was checked by NOTHING. `SkiaViewer/` was exactly that:
+// it has a src/ original (so M-PROV skips it) but is a hand-MERGED surface, not a file copy (so it
+// could not join `inRepoExactCopies`), and it had drifted — `classifyWindowObservation` taught a
+// signature that no longer existed, and an author following the bundled contract wrote code that
+// did not compile. `Scene/` was in the same position for the same reason, and had drifted too.
+//
+//   M-MIR   the content check the other rules imply but never make. It compares a mirror's
+//           DECLARATIONS against its src/ original's, for EVERY bundled mirror that has one —
+//           merged or not — so a surface can no longer be un-checked merely by being un-copyable.
+//           Two rules, both COHERENCE (mirror => src), never completeness:
+//
+//             M-MIR/VAL   every `val` the mirror teaches exists in src with an IDENTICAL signature.
+//             M-MIR/TYPE  every type the mirror declares matches a src type of the same name AND
+//                         generic arity, member for member — same cases, same fields, same types.
+//
+//           Coherence, not completeness, because `docs/scaffold-map.md` sanctions curation in as
+//           many words: the typed front door is deliberately absent from this tree, and "it's not in
+//           docs/api-surface" does not mean it's unavailable. Measured, the mirrors omit 113 Controls
+//           vals and 74 SkiaViewer vals — omission is the DESIGN. So M-MIR lets a mirror omit a val
+//           or a whole type, and never lets it LIE about one it does teach.
+//
+//           A type is the exception that proves it: records and DUs are CLOSED. A record the mirror
+//           teaches without `Mode` cannot be constructed; a DU taught without `GlyphRun` cannot be
+//           matched exhaustively. So for a type the mirror declares, M-MIR/TYPE demands the WHOLE
+//           member set — curating a type's fields is not curation, it is a lie about its shape.
+//
+// Two traps, both hit while writing this, both the reason it is a declaration comparison and not a
+// text diff (a text diff over these files is 800+ lines of noise — the mirrors are merged and
+// re-commented, so nearly every line differs "legitimately"):
+//
+//   - The source of a mirror is the WHOLE src/<dir> tree, recursively. `Controls/Display.fsi` is
+//     merged from `src/Controls/Widgets/Display.fsi` — a SUBDIRECTORY. Globbing `src/<dir>/*.fsi`
+//     reports `Badge.view` as a phantom that does not exist. It exists.
+//   - A type's identity is its name AND its generic arity. `src/SkiaViewer` declares TWO types named
+//     `ViewerEffect` — the mirrored `ViewerEffect` and an unrelated `ViewerEffect<'msg>` in
+//     `Host/Diagnostics.fsi`. Keyed on the bare name they merge, and the gate invents five missing
+//     cases. Hence `Types: Map<name * arity, _>`, and a src name may resolve to SEVERAL candidate
+//     declarations — the mirror need match ANY ONE of them (same reason `Vals` maps a name to a SET
+//     of signatures: two modules may each declare `create`, and the mirror teaches one of them).
 
+open System.Collections.Concurrent
+open System.Collections.Generic
 open System.IO
+open System.Text
 open System.Text.RegularExpressions
 open Expecto
 open FS.GG.TestSupport
@@ -89,10 +134,259 @@ let private hasInRepoSource (directory: string) =
 
 /// Mirrors copied verbatim from THIS repo's src/, so their freshness is checkable directly rather
 /// than by a stamp. `Scene/` is deliberately absent: it is a hand-MERGED surface (it inlines
-/// Types.fsi), not a file copy, so it has no single original to compare against.
+/// Types.fsi), not a file copy, so it has no single original to compare against — M-MIR is what
+/// checks the merged ones, by declaration rather than by byte.
 let private inRepoExactCopies =
     [ "Controls.Elmish/ControlsElmish.fsi", "src/Controls.Elmish/ControlsElmish.fsi"
       "Controls.Elmish/Authoring.fsi", "src/Controls.Elmish/Authoring.fsi" ]
+
+/// M-MIR's reader: the declarations an .fsi teaches. Not an F# parser — a line-shape reader over
+/// signature files, which are the most regular F# there is. It models `val`s, types, record fields
+/// and DU cases. It does NOT model `member`/`abstract`: no in-repo src/ .fsi under a mirrored
+/// directory declares one (the 17 in the tree are all in the Audio.* cross-repo mirrors, which M-MIR
+/// does not cover), so they are treated as a member BOUNDARY and skipped rather than compared. If a
+/// mirrored surface ever grows one, model it here — do not let it ride along inside a field's text.
+module private Fsi =
+
+    /// A field or a DU case. `Name` identifies it; `Text` is the whole normalized declaration, so a
+    /// member whose TYPE changed fails as loudly as one that was removed.
+    type Member = { Name: string; Text: string }
+
+    type Surface =
+        {
+            /// val name -> every signature declared under that name (two modules may each declare `create`).
+            Vals: Map<string, Set<string>>
+            /// (type name, generic arity) -> one member set per declaration of it (see the ViewerEffect trap).
+            Types: Map<string * int, Set<Member> list>
+        }
+
+    let private normalize (text: string) = Regex.Replace(text, @"\s+", " ").Trim()
+
+    let private indentOf (line: string) = line.Length - line.TrimStart().Length
+
+    /// A line that opens a new declaration, and therefore ENDS whatever we were accumulating. The
+    /// word boundary is load-bearing: without it a wrapped signature's own parameter truncates it —
+    /// `typeName: string ->` starts with `type`, `andThen: …` with `and`, `openPath: …` with `open`.
+    let private opensDeclaration (line: string) =
+        Regex.IsMatch(line, @"^\s*(?:(?:val|type|and|module|namespace|open)\b|\[<)")
+
+    /// A line that declares something M-MIR does not model (a class member). It is a member BOUNDARY,
+    /// not filler: appending it to the pending field would corrupt that field's text with a
+    /// declaration that is not part of it.
+    let private opensUnmodelled (line: string) =
+        Regex.IsMatch(line, @"^\s*(?:member|abstract|static|override|new|inherit|interface)\b")
+
+    let private caseName (line: string) =
+        let m = Regex.Match(line, @"^\s*\|\s*([A-Z][\w']*)")
+        if m.Success then Some m.Groups.[1].Value else None
+
+    /// `{ Id: ControlId option`, `  Mode: ThemeMode`, `; Text: string`. A DU case cannot match: it
+    /// opens with `|`, which is not in the optional `[{;]` prefix.
+    let private fieldName (line: string) =
+        if opensUnmodelled line then
+            None
+        else
+            let m = Regex.Match(line, @"^\s*[{;]?\s*(?:mutable\s+)?([A-Z][\w']*)\s*:")
+            if m.Success then Some m.Groups.[1].Value else None
+
+    /// `<'msg>` -> 1; `<'a, 'b>` -> 2; `<'msg when 'msg: equality>` -> 1. Counting DISTINCT type
+    /// variables rather than commas keeps a constraint clause from inflating the arity.
+    let private arityOf (generics: string) =
+        Regex.Matches(generics, @"'[A-Za-z_][\w']*")
+        |> Seq.map (fun m -> m.Value)
+        |> Seq.distinct
+        |> Seq.length
+
+    /// Strip `//` comments and trailing space. Doc comments carry the mirror's teaching prose — the
+    /// whole point of hand-merging — so they must not count as drift.
+    let private significantLines (file: string) =
+        File.ReadAllLines file
+        |> Array.map (fun line ->
+            let stripped =
+                match line.IndexOf "//" with
+                | -1 -> line
+                | i -> line.Substring(0, i)
+
+            stripped.TrimEnd())
+
+    let read (files: string seq) : Surface =
+        let vals = Dictionary<string, Set<string>>()
+        let types = Dictionary<string * int, ResizeArray<Set<Member>>>()
+
+        let addVal name signature =
+            vals.[name] <-
+                match vals.TryGetValue name with
+                | true, existing -> Set.add signature existing
+                | _ -> Set.singleton signature
+
+        let addType key members =
+            match types.TryGetValue key with
+            | true, bucket -> bucket.Add members
+            | _ ->
+                let bucket = ResizeArray()
+                bucket.Add members
+                types.[key] <- bucket
+
+        for file in files do
+            let lines = significantLines file
+            let mutable i = 0
+
+            while i < lines.Length do
+                let line = lines.[i]
+
+                let valMatch =
+                    Regex.Match(line, @"^(\s*)val\s+(?:mutable\s+)?([A-Za-z_][\w']*)\s*:\s*(.*)$")
+
+                let typeMatch =
+                    Regex.Match(line, @"^(\s*)(?:type|and)\s+(?:\[<[^\]]*>\]\s*)?([A-Za-z_][\w']*)\s*(<[^=]*>)?\s*=(.*)$")
+
+                if valMatch.Success then
+                    // A signature wraps across lines as often as not; join it so that two files which
+                    // merely WRAP a type differently do not read as drift.
+                    let indent = valMatch.Groups.[1].Value.Length
+                    let signature = StringBuilder(valMatch.Groups.[3].Value)
+                    let mutable j = i + 1
+
+                    let wraps (index: int) =
+                        index < lines.Length
+                        && lines.[index].Trim() <> ""
+                        && indentOf lines.[index] > indent
+                        && not (opensDeclaration lines.[index])
+
+                    while wraps j do
+                        signature.Append(' ').Append(lines.[j].Trim()) |> ignore
+                        j <- j + 1
+
+                    addVal valMatch.Groups.[2].Value (normalize (signature.ToString()))
+                    i <- j
+                elif typeMatch.Success then
+                    let indent = typeMatch.Groups.[1].Value.Length
+                    let name = typeMatch.Groups.[2].Value
+                    let arity = arityOf typeMatch.Groups.[3].Value
+
+                    // The body is every line indented past the header — plus whatever trails the `=`,
+                    // for a one-line `type Foo = { A: int }`.
+                    let body = ResizeArray<string>()
+                    let trailing = typeMatch.Groups.[4].Value
+
+                    if trailing.Trim() <> "" then
+                        body.Add("    " + trailing.Trim())
+
+                    let mutable j = i + 1
+
+                    while j < lines.Length && (lines.[j].Trim() = "" || indentOf lines.[j] > indent) do
+                        if lines.[j].Trim() <> "" then
+                            body.Add lines.[j]
+
+                        j <- j + 1
+
+                    // A record may put several fields on ONE line — `{ Operation: PathOperation; Message:
+                    // string }` — and members are detected per line, so split on `;` or the second field
+                    // is swallowed into the first one's text. Then the SAME record written across lines
+                    // (the prevailing style here) would not compare equal to it, and two files that agree
+                    // would report as drift. `;` cannot occur inside an .fsi field TYPE, so this is safe.
+                    let fragments =
+                        body
+                        |> Seq.collect (fun bodyLine ->
+                            if bodyLine.Contains ";" && not (bodyLine.TrimStart().StartsWith "|") then
+                                bodyLine.Split ';' |> Seq.filter (fun fragment -> fragment.Trim() <> "")
+                            else
+                                Seq.singleton bodyLine)
+
+                    // Fold the fragments into members, joining each member's continuation lines onto it.
+                    let members = ResizeArray<Member>()
+                    let pending = StringBuilder()
+                    let mutable pendingName = None
+
+                    let flush () =
+                        match pendingName with
+                        | Some memberName ->
+                            let text =
+                                (normalize (pending.ToString())).TrimStart('{').TrimEnd('}', ';') |> normalize
+
+                            members.Add { Name = memberName; Text = text }
+                        | None -> ()
+
+                        pending.Clear() |> ignore
+                        pendingName <- None
+
+                    for bodyLine in fragments do
+                        match caseName bodyLine, fieldName bodyLine with
+                        | Some case, _ ->
+                            flush ()
+                            pendingName <- Some case
+                            pending.Append bodyLine |> ignore
+                        | None, Some field ->
+                            flush ()
+                            pendingName <- Some field
+                            pending.Append bodyLine |> ignore
+                        // A `member`/`abstract` line ends the field before it and starts nothing M-MIR
+                        // models. Appending it would corrupt that field's text with a declaration that
+                        // is not part of it.
+                        | None, None when opensUnmodelled bodyLine -> flush ()
+                        | None, None when pendingName.IsSome -> pending.Append(' ').Append(bodyLine.Trim()) |> ignore
+                        | None, None -> ()
+
+                    flush ()
+                    addType (name, arity) (Set.ofSeq members)
+                    i <- j
+                else
+                    i <- i + 1
+
+        { Vals = vals |> Seq.map (fun kv -> kv.Key, kv.Value) |> Map.ofSeq
+          Types =
+            types
+            |> Seq.map (fun kv -> kv.Key, List.ofSeq kv.Value)
+            |> Map.ofSeq }
+
+/// The mirrors M-MIR checks: every bundled directory with a src/ original, derived from the tree
+/// rather than listed. #259's lesson was not "Game.Core was missing from a table" but "the table was
+/// taken on trust" — so the next merged mirror is covered on the day it is added, by nobody's effort.
+let private mirroredSubjects () =
+    bundledSurfaceDirectories () |> List.filter hasInRepoSource
+
+let private fsiFilesUnder (root: string) =
+    Directory.GetFiles(root, "*.fsi", SearchOption.AllDirectories) |> Array.toList
+
+/// Drift M-MIR has found that this repo has not yet fixed, keyed `<mirror dir>.<type or val>`. Both
+/// rules honour it, so drift in a mirror another worker holds can be RECORDED rather than forcing
+/// someone to disable a rule to get CI green — the fails-open pressure that produced the original
+/// hole. It is EMPTY, and the aim is to keep it that way: an entry is a receipt for a bug, not a
+/// licence. The guard below fails if an entry stops drifting, so an exemption cannot outlive the bug
+/// it was written for and quietly re-open the hole this gate exists to close.
+///
+/// It was briefly non-empty: the Controls mirror taught a `ControlEvent.Payload` field src had
+/// RETIRED and omitted Feature 175's whole scroll layer, but `docs/api-surface/Controls` was inside
+/// #459's live touch-set and could not be edited from here. #459 merged, so the drift is fixed
+/// outright instead (#499) and the exemption is gone with it.
+let private knownDrift: Set<string> = Set.empty
+
+/// The parse is pure and every rule below needs the same two surfaces per subject, so read each tree
+/// once rather than once per rule. CONCURRENT, because Expecto runs the three M-MIR tests in
+/// parallel and they share this cache — a plain Dictionary corrupts under that and the tests error
+/// out (they pass in isolation, which is the tell).
+let private surfaceCache = ConcurrentDictionary<string, Fsi.Surface>()
+
+let private surfaceOf (root: string) =
+    surfaceCache.GetOrAdd(root, fun path -> Fsi.read (fsiFilesUnder path))
+
+let private mirrorSurface (directory: string) =
+    surfaceOf (Path.Combine(apiSurfaceRoot, directory))
+
+let private sourceSurface (directory: string) =
+    surfaceOf (repositoryPath $"src/{directory}")
+
+/// Every type DECLARATION the mirror makes, paired with the src candidates of that name and arity.
+/// Per declaration, not unioned across them: a merged mirror could declare one name twice, and
+/// union-merging the two would let a stale declaration hide inside a fresh one's member set.
+let private typeComparison (directory: string) =
+    let source = sourceSurface directory
+
+    (mirrorSurface directory).Types
+    |> Map.toList
+    |> List.collect (fun ((name, arity), declarations) ->
+        let candidates = source.Types |> Map.tryFind (name, arity) |> Option.defaultValue []
+        declarations |> List.map (fun mirrored -> directory, name, arity, mirrored, candidates))
 
 let private referencedFsGgPackages () =
     Regex.Matches(File.ReadAllText productProjPath, @"<PackageReference\s+Include=""(FS\.GG\.[^""]+)""")
@@ -354,5 +648,123 @@ let apiSurfaceMirrorTests =
                   (File.ReadAllText scenePath)
                   "Scene.measureText"
                   "the Scene surface points at measureText for text layout"
+          }
+
+          // M-MIR/VAL — the drift #437 was filed for. `classifyWindowObservation` sat in the bundled
+          // SkiaViewer surface with a signature src had replaced; `Scene.combine` promised a bare
+          // `PathSpec` where src returns `Result<PathSpec, PathCombineError>`. Both compile-break an
+          // author who trusts the contract the scaffold calls authoritative.
+          test "no bundled mirror teaches a val its src original does not declare with that exact signature" {
+              let offenders =
+                  mirroredSubjects ()
+                  |> List.collect (fun directory ->
+                      let source = sourceSurface directory
+
+                      (mirrorSurface directory).Vals
+                      |> Map.toList
+                      |> List.filter (fun (name, _) -> not (knownDrift.Contains $"{directory}.{name}"))
+                      |> List.collect (fun (name, mirrored) ->
+                          match source.Vals |> Map.tryFind name with
+                          | None -> [ $"{directory}: val {name} — teaches a val no src/{directory} .fsi declares" ]
+                          | Some declared ->
+                              // EVERY signature the mirror teaches under this name must be one src declares
+                              // — not merely one of them. A merged mirror carries a name from several
+                              // modules, and an intersection test would let a stale overload ride along
+                              // beside a fresh one, which is precisely the lie the rule exists to catch.
+                              Set.difference mirrored declared
+                              |> Set.toList
+                              |> List.map (fun taught ->
+                                  let actual = declared |> Set.toList |> List.head
+
+                                  $"{directory}: val {name} — mirror teaches `{taught}`, src declares `{actual}`")))
+
+              let report = offenders |> List.map (fun o -> "\n  " + o) |> String.concat ""
+
+              Expect.isEmpty
+                  offenders
+                  $"each val a mirror teaches is declared in its src original with an identical signature (M-MIR/VAL).{report}"
+          }
+
+          // M-MIR/TYPE — a record or a DU is a CLOSED declaration, so a mirror that teaches one at all
+          // must teach the whole of it: a `RolePalette` without `Mode` cannot be constructed, and a
+          // `SceneNode` without `GlyphRun` cannot be matched exhaustively. Omitting a val is curation
+          // (scaffold-map sanctions it); omitting a case is a lie about the type's shape.
+          test "every type a bundled mirror declares matches a src type of that name and arity, member for member" {
+              let offenders =
+                  mirroredSubjects ()
+                  |> List.collect typeComparison
+                  |> List.filter (fun (directory, name, _, _, _) -> not (knownDrift.Contains $"{directory}.{name}"))
+                  |> List.choose (fun (directory, name, arity, mirrored, candidates) ->
+                      let describe (members: Set<Fsi.Member>) =
+                          members |> Set.map (fun m -> m.Name) |> Set.toList |> String.concat ", "
+
+                      match candidates with
+                      | [] -> Some $"{directory}: type {name} (arity {arity}) — no src/{directory} type of that name and arity"
+                      | _ when candidates |> List.exists (fun candidate -> candidate = mirrored) -> None
+                      | _ ->
+                          // Report against the closest candidate — with several, the nearest is the one
+                          // the mirror was plainly copied from, and diffing against the others is noise.
+                          let closest =
+                              candidates
+                              |> List.minBy (fun candidate ->
+                                  Set.count (Set.difference candidate mirrored)
+                                  + Set.count (Set.difference mirrored candidate))
+
+                          let missing = Set.difference closest mirrored
+                          let phantom = Set.difference mirrored closest
+
+                          // A member present on both sides under one name but with different text has not
+                          // been added or removed — its DECLARATION changed, which is the drift that most
+                          // needs saying plainly (it is how `classifyWindowObservation` went wrong).
+                          let changed =
+                              Set.intersect (missing |> Set.map (fun m -> m.Name)) (phantom |> Set.map (fun m -> m.Name))
+
+                          let unchangedBy (members: Set<Fsi.Member>) =
+                              members |> Set.filter (fun m -> not (changed.Contains m.Name))
+
+                          let complaints =
+                              [ if not (Set.isEmpty changed) then
+                                    let names = changed |> Set.toList |> String.concat ", "
+                                    $"members whose declaration CHANGED: {names}"
+
+                                let trulyMissing = unchangedBy missing
+
+                                if not (Set.isEmpty trulyMissing) then
+                                    $"mirror OMITS {describe trulyMissing}"
+
+                                let trulyPhantom = unchangedBy phantom
+
+                                if not (Set.isEmpty trulyPhantom) then
+                                    $"mirror teaches members src does not have: {describe trulyPhantom}" ]
+
+                          let detail = complaints |> String.concat "; "
+                          Some $"{directory}: type {name} — {detail}")
+
+              let report = offenders |> List.map (fun o -> "\n  " + o) |> String.concat ""
+
+              Expect.isEmpty
+                  offenders
+                  $"each type a mirror declares carries its src original's exact member set (M-MIR/TYPE).{report}"
+          }
+
+          test "every knownDrift exemption still drifts" {
+              // The exemption is a receipt for a bug someone else owns, not a permanent hole. When
+              // an exempted mirror is fixed, this fails until the entry is deleted — so the gate cannot
+              // be left half-blind by inattention, which is the failure #437 is about in the first place.
+              let stillDrifting =
+                  mirroredSubjects ()
+                  |> List.collect typeComparison
+                  |> List.filter (fun (_, _, _, mirrored, candidates) ->
+                      not (candidates |> List.exists (fun candidate -> candidate = mirrored)))
+                  |> List.map (fun (directory, name, _, _, _) -> $"{directory}.{name}")
+                  |> Set.ofList
+
+              let stale = Set.difference knownDrift stillDrifting
+
+              let report = stale |> Set.toList |> List.map (fun o -> "\n  " + o) |> String.concat ""
+
+              Expect.isEmpty
+                  stale
+                  $"every knownDrift entry names a mirror type that STILL drifts — a fixed one must be deleted from the set.{report}"
           }
         ]
