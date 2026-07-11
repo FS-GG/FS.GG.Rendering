@@ -29,12 +29,13 @@ let private mkText (theme: Theme) (x: float) (baseline: float) (size: float) (co
 // ---- frozen pre-refactor procedural geometry (the parity oracle) ---------------------------
 let private frozenButtonGeom (theme: Theme) (label: string) : Scene list =
     // #385: dimensions now flow from the theme metric model (Ant control-size + Space scale).
+    // #384: typography now flows from it too — the base font tracks `theme.FontSize` (was a frozen 15.0).
     let h = theme.ControlHeight
-    let textW = (Scene.measureText label { Family = theme.FontFamily; Size = 15.0; Weight = None }).Width
+    let textW = (Scene.measureText label { Family = theme.FontFamily; Size = theme.FontSize; Weight = None }).Width
     let w = min box.Width (max 70.0 (textW + 2.0 * theme.SpaceMd))
     let by = box.Y + box.Height / 2.0 - h / 2.0
     [ Scene.rectangle (box.X, by, w, h) theme.Accent
-      mkText theme (box.X + theme.SpaceMd) (by + h / 2.0 + 5.0) 15.0 theme.Background label ]
+      mkText theme (box.X + theme.SpaceMd) (by + h / 2.0 + 5.0) theme.FontSize theme.Background label ]
 
 let private frozenCheckboxGeom (theme: Theme) (on: bool) (label: string) : Scene list =
     let s = theme.ControlHeightSm + theme.SpaceXs

@@ -69,10 +69,11 @@ let issue383TypographyResolverTests =
               Expect.equal font.Weight (Some 700) "the label font weight is the resolved weight, not a hardcoded None"
           }
 
-          test "byte-identity anchor: under the neutral Default policy the button label stays 15.0/None" {
-              // Theme.light carries IntentPolicy.neutral, so the resolved base is unperturbed: the
-              // former literal (15.0) and the former hardcoded None must be preserved exactly.
+          test "under the neutral Default policy the button label tracks theme.FontSize (#384)" {
+              // Theme.light carries IntentPolicy.neutral, so the resolved base is unperturbed. #384
+              // reconciled the base FontSize (was a frozen 15.0) to `theme.FontSize`, so a neutral
+              // button now paints the theme's body size; weight stays the hardcoded None.
               let font = labelFont Theme.light (Button.create [ Button.text "Go" ]) "Go"
-              Expect.equal font.Size 15.0 "default button label stays at the pre-change 15.0"
+              Expect.equal font.Size Theme.light.FontSize "default button label tracks theme.FontSize (#384)"
               Expect.equal font.Weight None "default button label weight stays None"
           } ]

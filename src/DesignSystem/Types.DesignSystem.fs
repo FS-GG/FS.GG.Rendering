@@ -34,9 +34,22 @@ type StyleVariant =
     | Success
     | Warning
 
+// #384: a typography delta a `StyleClass` can carry. The class layer was colour-only
+// (`Style.applyVariant`/`applyCustom` only ever rewrote Fill/Stroke/Foreground), so no attached
+// class could restyle `FontSize`/`FontWeight`. `FontDelta` names those two overridable fields as
+// options: `Some` overrides the folded-in value, `None` leaves it — the same last-writer-wins,
+// only-the-fields-it-owns overlay the colour classes already use.
+type FontDelta =
+    { Size: float option
+      Weight: int option }
+
 type StyleClass =
     | Variant of StyleVariant
     | Custom of string
+    // #384: restyle typography without touching colour. Carries an explicit `FontDelta` into the
+    // resolver fold so a control (or a theme's `IntentPolicy`, which composes over the same
+    // `ResolvedStyle`) can change label size/weight the way `Variant`/`Custom` change colour.
+    | Font of FontDelta
 
 // Feature 173: a `Theme` carries the `IntentPolicy` that maps its semantic intents onto structural
 // style deltas, so the policy reaches the render path with the theme — no control names a theme, and

@@ -140,6 +140,9 @@ FS.GG.UI.DesignSystem.DesignTokensExt+Type+Small.fontSize : System.Double [get]
 FS.GG.UI.DesignSystem.DesignTokensExt+Type+Small.lineHeight : System.Double [get]
 FS.GG.UI.DesignSystem.DesignTokensExt+Type+Title.fontSize : System.Double [get]
 FS.GG.UI.DesignSystem.DesignTokensExt+Type+Title.lineHeight : System.Double [get]
+FS.GG.UI.DesignSystem.FontDelta.Size : Microsoft.FSharp.Core.FSharpOption<System.Double> [get]
+FS.GG.UI.DesignSystem.FontDelta.Weight : Microsoft.FSharp.Core.FSharpOption<System.Int32> [get]
+FS.GG.UI.DesignSystem.FontDelta.new(Microsoft.FSharp.Core.FSharpOption<System.Double>, Microsoft.FSharp.Core.FSharpOption<System.Int32>)
 FS.GG.UI.DesignSystem.IntentPolicy.ApplyIntent : Microsoft.FSharp.Core.FSharpFunc<FS.GG.UI.DesignSystem.Theme, Microsoft.FSharp.Core.FSharpFunc<System.String, Microsoft.FSharp.Core.FSharpFunc<System.String, Microsoft.FSharp.Core.FSharpFunc<FS.GG.UI.DesignSystem.ResolvedStyle, FS.GG.UI.DesignSystem.ResolvedStyle>>>> [get]
 FS.GG.UI.DesignSystem.IntentPolicy.Equals(System.Object) : System.Boolean
 FS.GG.UI.DesignSystem.IntentPolicy.GetHashCode() : System.Int32
@@ -157,6 +160,7 @@ FS.GG.UI.DesignSystem.ResolvedStyle.StrokeWidth : System.Double [get]
 FS.GG.UI.DesignSystem.ResolvedStyle.new(FS.GG.UI.Scene.Color, FS.GG.UI.Scene.Color, FS.GG.UI.Scene.Color, System.Double, Microsoft.FSharp.Collections.FSharpList<System.Double>, Microsoft.FSharp.Core.FSharpOption<System.String>, System.Double, Microsoft.FSharp.Core.FSharpOption<System.Int32>)
 FS.GG.UI.DesignSystem.Style.resolve(FS.GG.UI.DesignSystem.Theme, FS.GG.UI.DesignSystem.ResolvedStyle, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.DesignSystem.StyleClass>, FS.GG.UI.DesignSystem.VisualState) : FS.GG.UI.DesignSystem.ResolvedStyle
 FS.GG.UI.DesignSystem.StyleClass+Tags.Custom : System.Int32
+FS.GG.UI.DesignSystem.StyleClass+Tags.Font : System.Int32
 FS.GG.UI.DesignSystem.StyleClass+Tags.Variant : System.Int32
 FS.GG.UI.DesignSystem.StyleResolver.baseStyleFor(FS.GG.UI.DesignSystem.Theme, System.String) : FS.GG.UI.DesignSystem.ResolvedStyle
 FS.GG.UI.DesignSystem.StyleResolver.resolve(FS.GG.UI.DesignSystem.Theme, System.String, System.String, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.DesignSystem.StyleClass>, FS.GG.UI.DesignSystem.VisualState) : FS.GG.UI.DesignSystem.ResolvedStyle

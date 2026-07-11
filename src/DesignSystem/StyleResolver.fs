@@ -29,7 +29,10 @@ module StyleResolver =
               StrokeWidth = 2.0
               StrokeDash = []
               FontFamily = theme.FontFamily
-              FontSize = 15.0
+              // #384: the base tracks the theme's body size (Ant `fontSize` = 14) instead of a frozen
+              // 15.0. A theme now restyles button typography, and the class layer's `StyleClass.Font`
+              // (or the theme's `IntentPolicy`) overlays deltas on top of this themed base.
+              FontSize = theme.FontSize
               FontWeight = None }
         | _ ->
             // filled (the "button" base, and the defined fallback for any unknown kind).
@@ -39,7 +42,8 @@ module StyleResolver =
               StrokeWidth = 0.0
               StrokeDash = []
               FontFamily = theme.FontFamily
-              FontSize = 15.0
+              // #384: base tracks `theme.FontSize` (was a frozen 15.0) — see the icon-button branch.
+              FontSize = theme.FontSize
               FontWeight = None }
 
     /// The single front-half resolution path: supply the kind's structural base, let the theme's
