@@ -194,8 +194,19 @@ scripts/fsgg-coord issues <target> --jq '.[] | select(.title | test("<keyword>";
 
 # 2. If you are filing a CHILD of an item you hold — look at what it ALREADY has. This is the
 #    highest-signal place to look, and the one people skip.
-gh api repos/FS-GG/<repo>/issues/<parent>/sub_issues --jq '.[] | "#\(.number) \(.title)"'
+#    --paginate is NOT optional: this endpoint pages at 30, and the parents worth checking are
+#    exactly the big ones. Without it, #266 lists 30 of its 51 children and confidently omits
+#    the rest (#547).
+gh api repos/FS-GG/<repo>/issues/<parent>/sub_issues --paginate --jq '.[] | "#\(.number) \(.title)"'
 ```
+
+**Every `gh api` read of a LIST needs `--paginate`.** A truncated read does not look truncated — it
+looks like an answer, and here it is the answer to "has someone already filed this?", so the failure
+mode is a confident *no* on a parent that already has the child you are about to duplicate. Worse, it
+is a false negative on **linkage**: `done --flip` rolls up over the native sub-issue graph and
+nothing else (#322), so a worker reading a truncated graph can conclude an epic's children are all
+done when 19 of them are merely off-page. `fsgg-coord issues` pages for you; hand-written `gh api`
+lines do not. `scripts/check-recipe-pagination.py` gates this recipe so the rule cannot rot.
 
 This step exists because eager filing plus N workers **deterministically** produces duplicates, and
 they are worst exactly where the protocol is working hardest — several workers splitting one parent
@@ -357,9 +368,14 @@ jq -n --arg t "<title>" --rawfile b pr-body.md \
   | gh api -X POST repos/FS-GG/<repo>/pulls --input - --jq '"PR #\(.number)  \(.html_url)"'
 
 # WATCH the checks  (gh pr checks is GraphQL)
+# --paginate, again, and it matters MOST here: check-runs pages at 30, this repo has ~30 workflows,
+# and a truncated read reports `pending=0 failed=0` while the checks that would have stopped you sit
+# on page 2. That is a merge gate that greenlights a red PR (#547).
+# `--slurp` cannot be combined with `--jq`, so aggregate in a separate `jq`.
 SHA=$(gh api repos/FS-GG/<repo>/pulls/<n> --jq .head.sha)
-gh api "repos/FS-GG/<repo>/commits/$SHA/check-runs" \
-  --jq '"pending=\([.check_runs[]|select(.status!="completed")]|length) failed=\([.check_runs[]|select(.conclusion!=null and .conclusion!="success")]|length)"'
+gh api "repos/FS-GG/<repo>/commits/$SHA/check-runs" --paginate --slurp \
+  | jq -r '[.[].check_runs[]]
+           | "checks=\(length) pending=\([.[]|select(.status!="completed")]|length) failed=\([.[]|select(.conclusion!=null and .conclusion!="success")]|length)"'
 
 # MERGE  (gh pr merge is GraphQL). NOT a protection bypass — REST enforces the same rules,
 # and a PR that needs a human review is refused here exactly as it is there.

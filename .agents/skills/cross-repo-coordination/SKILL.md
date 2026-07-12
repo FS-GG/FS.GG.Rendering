@@ -55,8 +55,14 @@ by two workers who could not see each other's filing —
 
 ```sh
 scripts/fsgg-coord issues <target> --jq '.[] | select(.title | test("<keyword>"; "i")) | "#\(.number) \(.title)"'
-gh api repos/FS-GG/<repo>/issues/<parent>/sub_issues --jq '.[] | "#\(.number) \(.title)"'   # filing a child? look here
+gh api repos/FS-GG/<repo>/issues/<parent>/sub_issues --paginate --jq '.[] | "#\(.number) \(.title)"'   # filing a child? look here
 ```
+
+**`--paginate` is load-bearing, not tidiness.** `sub_issues` pages at 30, and the parents worth
+checking are precisely the big, active epics where several workers are splitting one parent at once —
+so the read truncates exactly where the duplicate it is meant to catch actually lives. Without it,
+#266 returns 30 of its 51 children and says nothing about the other 21 (#547). Any `gh api` read of a
+LIST needs it; `fsgg-coord issues` already pages for you.
 
 On a hit, **comment on the existing issue** rather than opening a rival — the finding's value is its
 context, and a comment carries that just as well.
