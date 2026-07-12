@@ -28,8 +28,12 @@ The signatures you consume are bundled with this product:
   (`Save`/`Load`/`DeleteSlot`), the `SaveSlot`/`SavePayload` identifiers, the `SaveEnvelope` record,
   the `PersistenceEvidence` record, and the `Persistence` module (smart constructors + the
   record-only `interpret`/`record`). Shipped in `FS.GG.UI.Canvas`, referenced on the
-  `game` and `sample-pack` profiles (the same package that carries the simulation primitives and
-  audio).
+  `game` and `sample-pack` profiles. That package carries **only** the pure elements, the render loop,
+  and this persistence request surface — the pinned Canvas api-surface is exactly `Elements.fsi` and
+  `Persistence.fsi`. It carries **no audio** (that vocabulary was retired at the Canvas `0.3.0` major;
+  audio is `FS.GG.Audio.Core`/`FS.GG.Audio.Host`, a separate package your product pins itself) and
+  **no simulation primitives** (those are `FS.GG.Game.Core`). [[fs-gg-audio]] says the same thing from
+  its side; if the two ever disagree, the api-surface bundled with your product settles it.
 
 All helpers are **total**: the save-format version is clamped to `>= minVersion` at the boundary, and
 no helper throws or performs I/O. The payload is **opaque** — the framework never parses it.
@@ -85,6 +89,79 @@ let persistFor (model: Model) (msg: Msg) : PersistenceEffect =
 you stamp lets a future load migrate or reject an old save; that migration policy is yours, in your
 own deserialize step.
 
+## Deciding *when* to save: the cue seam, and the `Init` blind spot
+
+Products decide their save/load requests in **one place**, by analogy with `AudioCues.forTransition`
+([[fs-gg-audio]]): a `SaveCues.forTransition : Msg -> Model -> Model -> PersistenceEffect list` that
+maps a **transition** to the effects it implies. Writing one is the normal thing to do; this section is
+about the hole in the pattern.
+
+`forTransition` is a function of a **transition**, and **the initial model does not make one.** It
+comes out of `initialModel`, and nothing is ever dispatched into it — so anything the initial state
+*implies* is never requested.
+
+**Persistence is where that bites hardest, and it is the reason to read this twice.** Save/load state
+is *by definition* state you **load** rather than transition into, so the blind spot is not an edge
+case here — it is the main path. Restore a save in `initialModel` and the model is *correct*: the game
+genuinely is at the restored checkpoint. And **nothing was ever asked of the sink**, because no
+transition carried a request there. Nothing catches it: no type is wrong, and **a test that asserts on
+the model passes** — from inside the model, a checkpoint nobody recorded is indistinguishable from one
+that was.
+
+`Started` is the door that closes it — **and unlike audio's, you have to hang it yourself.** Audio's
+seam is scaffold-wired: the generated host calls `AudioCues.forTransition Started m m` from `Init`.
+**Persistence has no such host.** No `ViewerEffect` case carries a `PersistenceEffect`, so nothing in
+the framework will ever call a `SaveCues` of yours — see [Package Boundary](#package-boundary), which
+spells out that today there is no host at all. The seam, the `Started` case, and the call from your own
+`Init` are **all product-owned**:
+
+- give your `Msg` a `Started` case;
+- from wherever you build the initial model, call `SaveCues.forTransition Started m m` yourself — the
+  **same** function `Update` calls, with the initial model on both sides, so there is no separate
+  startup path to drift out of sync;
+- fold what it returns into the same evidence your `update`'s requests feed.
+
+And the move that actually removes the blind spot: **stop reaching into a save inside `initialModel`,
+and request the restore through the seam instead.** Then the request exists — which is the only reason
+anything downstream, including your tests, can ever see it:
+
+```fsharp
+open FS.GG.UI.Canvas
+
+type Model = { Slot: string; Score: int }
+type Msg = Started | CheckpointReached | ContinueGame | EraseSave
+
+let serialize (model: Model) : string = string model.Score
+
+// Nothing in the framework calls this. YOU call it from `Update`, and from `Init` as
+// `forTransition Started m m` — one seam, so a save cannot be requested down a path nobody watches.
+let forTransition (msg: Msg) (previous: Model) (next: Model) : PersistenceEffect list =
+    match msg with
+    // The initial model is LOADED, not transitioned into. Asking for the restore HERE — rather than
+    // reading a save inside `initialModel` — is what makes it a request at all, and so provable.
+    | Started
+    | ContinueGame -> [ Persistence.load (SaveSlot next.Slot) ]
+    | CheckpointReached ->
+        [ Persistence.save (Persistence.saveEnvelope 1 (SaveSlot next.Slot) (serialize next)) ]
+    | EraseSave -> [ Persistence.deleteSlot (SaveSlot next.Slot) ]
+```
+
+(The `Load` result cannot come *back* while the backend is deferred — that is the next pitfall down, and
+it is a different defect from this one. A product that genuinely needs restored state at frame 0 still
+builds it in `initialModel`; `Started` is then where it *declares* what it did, so the sink hears about
+it and a test can prove it.)
+
+**Assert at the sink, not at the model.** The only test shape that catches this class asks what the
+sink was *told*, not what the model *holds* — [[fs-gg-rendering:fs-gg-testing]] works the case end to
+end. While the backend is deferred the "sink" is the record-only interpreter, so that means asserting
+on `PersistenceEvidence.Requested`; if you own a real backend, assert on the **files** it wrote (see
+[If you own the backend](#if-you-own-the-backend)).
+
+> **This spreads by imitation, which is why the warning is here rather than only in `fs-gg-audio`.** A
+> product wrote its own `SaveCues.forTransition` by analogy with the audio seam, unaided — and
+> inherited the identical blind spot (FS-GG/FS.GG.Rendering#494). The pattern travels faster than the
+> caveat does.
+
 ## Recording what was requested (headless-safe evidence)
 
 `Persistence.interpret` folds a batch of requests into `PersistenceEvidence` — the requested effects
@@ -119,6 +196,11 @@ let evidence =
   your deserialize step's job, which is why you stamp the version.
 - **Expecting `Load`/`DeleteSlot` of an empty slot to error.** The interpreter records exactly what
   you request; "no such save" is a deferred-backend concern, not an exception here.
+- **Expecting a save restored in `initialModel` to have *asked* for anything.** The initial model
+  makes no *transition*, so `forTransition` never runs for it and every request the loaded state
+  implies is silently never made — while the model is perfectly correct and a test that asserts on it
+  **passes**. This is the main path for persistence, not an edge case. Handle it under `Started`; see
+  [Deciding *when* to save](#deciding-when-to-save-the-cue-seam-and-the-init-blind-spot).
 - **Expecting real save files in CI — *while the backend is deferred*.** With the record-only
   interpreter there is no file backend, so the evidence is the *requested* values: assert on
   `PersistenceEvidence.Requested`, not on files on disk. **If you are building the backend, invert
