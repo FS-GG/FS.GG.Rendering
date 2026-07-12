@@ -85,7 +85,7 @@ Each finding has a code, a ground truth, and a fix — or an explicit refusal to
 |---|---|---|
 | `CLOSED-ISSUE-NOT-DONE` | `state == CLOSED` and `status != Done` | `set-field <i> Status Done` |
 | `DONE-STATUS-OPEN-ISSUE` | `status == Done` and `state == OPEN` | **report only** — is the work done, or was the flip premature? |
-| `OFF-BOARD-ISSUE` | open `roadmap` issue in a rostered repo with no board item | `gh project item-add` |
+| `OFF-BOARD-ISSUE` | open `roadmap` issue in a rostered repo with no board item | `fsgg-coord add <i>` |
 | `BLOCKER-CLEARED` | every blocker `CLOSED`, but `status == Blocked` | `set-field <i> Status Ready` |
 | `BLOCKER-UNKNOWN` | a blocker ref is not on the board | resolve over REST, then `item-add` the blocker if it is open |
 | `BLOCKER-UNPARSEABLE` | a `Blocked by` token is not an issue ref | **report only** — hand-fix the field |
@@ -178,7 +178,7 @@ Then, per blocker state:
 
   `CLOSED` → treat as `BLOCKER-CLEARED`. `OPEN` → the blocker is genuine but **off-board**, so
   `next` will refuse this item forever and never say why in a way you can act on. Fix the *cause*:
-  add the blocker to the board (`gh project item-add`, which accepts a PR URL too), turning
+  add the blocker to the board (`fsgg-coord add`, which accepts a PR ref too), turning
   `UNKNOWN` into `OPEN`. The remedy is the same whether the blocker is an issue or a PR; only the
   diagnosis gets clearer.
 - **`UNPARSEABLE`** — prose or a placeholder leaked into the field before it was validated. Report
@@ -193,7 +193,7 @@ Order matters — later steps read state the earlier ones changed.
 scripts/fsgg-coord flush                        # 0. replay board writes QUEUED behind the budget
 scripts/fsgg-coord reap --repo <r>              # 1. dry run: whose lease expired?
 scripts/fsgg-coord reap --repo <r> --apply      #    release them (tells the reaped worker)
-gh project item-add <n> --owner FS-GG --url <url>   # 2. off-board issues + off-board blockers
+scripts/fsgg-coord add <i>                      # 2. off-board issues + off-board blockers
 scripts/fsgg-coord set-field <i> Status <V>     # 3. the status flips
 scripts/fsgg-coord ready --all --json           # 4. RE-READ: adding items changed the blocker index
 ```

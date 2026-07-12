@@ -245,15 +245,16 @@ just as well as an issue does:
 ```sh
 # 1. The message: an issue in the repo that OWNS the problem, not the one that found it.
 #    The `Paths:` line is NOT optional — see below. Without it the item cannot be scheduled.
-gh issue create --repo FS-GG/<target> \
-  --title "[cross-repo] <short summary>" \
-  --label cross-repo --label cross-repo:request \
-  --body "From: <this repo>, found while working <this repo>#<n>. Contract: <id>. <what and why>
+#    REST, because `gh issue create` is GraphQL and the budget is routinely gone by now (#587).
+gh api -X POST repos/FS-GG/<target>/issues \
+  -f title='[cross-repo] <short summary>' \
+  -f 'labels[]=cross-repo' -f 'labels[]=cross-repo:request' \
+  -f body="From: <this repo>, found while working <this repo>#<n>. Contract: <id>. <what and why>
 
-Paths: src/Scene/ tests/Scene/"
+Paths: src/Scene/ tests/Scene/" --jq .html_url
 
 # 2. Put it on the board, so it is sequenced rather than merely filed.
-gh project item-add <board> --owner FS-GG --url <issue-url>
+scripts/fsgg-coord add FS-GG/<target>#<new>
 scripts/fsgg-coord set-field <new> 'Repo Scope' <target-short-id>
 scripts/fsgg-coord set-field <new> Phase '<the target repo's phase>'
 scripts/fsgg-coord set-field <new> Status Backlog
@@ -324,7 +325,12 @@ late, and they are cheap to file the moment you are standing in front of them.
 ## 5. PR, review, merge, stamp
 
 ```sh
-gh pr create --fill --base main
+# REST: every `gh pr` subcommand is GraphQL, and by now the budget is usually gone (#587, #528).
+gh api -X POST repos/FS-GG/<repo>/pulls \
+  -f title="$(git log -1 --format=%s)" \
+  -f body="$(git log -1 --format=%b)" \
+  -f head="item/<n>-<slug>" -f base=main --jq .html_url
+
 scripts/fsgg-coord verify-paths --pr <n>    # did the PR stay inside its declaration?
 ```
 
@@ -379,7 +385,13 @@ the one worth a second look.
 Merge once — and only once — **every required check is green**:
 
 ```sh
-gh pr checks <n> --watch                    # wait for CI, don't merge into a pending run
+# Wait for CI over REST — every `gh pr` subcommand is GraphQL, and this is the one you run when the
+# budget is emptiest (#587). `--paginate` is not optional: a failing check on page 2 is invisible
+# without it, and the aggregate then reads as green (#547).
+runs=repos/FS-GG/<repo>/commits/item/<n>-<slug>/check-runs
+pending() { gh api "$runs" --paginate --jq '.check_runs[] | select(.completed_at == null) | .name'; }
+until [ -z "$(pending)" ]; do sleep 20; done
+gh api "$runs" --paginate --jq '.check_runs[] | [.conclusion, .name] | @tsv' | sort
 
 # MERGE over REST. This is the DEFAULT here, not a rate-limit workaround (#564) — see below.
 gh api -X PUT repos/FS-GG/<repo>/pulls/<n>/merge \
