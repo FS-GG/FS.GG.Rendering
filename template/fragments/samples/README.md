@@ -1,6 +1,6 @@
-# Samples Fragment
+# Samples
 
-Adds optional sample content only for the sample-pack profile.
+Optional sample content, included only in the sample-pack profile.
 
 ## Pointer interaction sample
 

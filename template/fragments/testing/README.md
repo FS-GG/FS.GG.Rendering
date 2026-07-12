@@ -1,5 +1,12 @@
 # Testing Fragment
 
+> **Not shipped — this is repo-side fragment documentation.**
+> `.template.config/template.json` sources nothing from `template/fragments/testing/`, so no generated
+> product ever receives this file. The guidance a product actually gets is
+> [`template/product-skills/fs-gg-testing/SKILL.md`](../../../template/product-skills/fs-gg-testing/SKILL.md) — the capability's `supplied-by`.
+> Recorded as `materializes: none` on the `testing` row of `template/capabilities.yml`, and held there
+> by R-FRAG in `tests/Package.Tests/SkillPackageReachTests.fs` (#510).
+
 Adds testing helper package references and product validation guidance.
 
 Generated evidence can record semantic scene facts such as lander, terrain,

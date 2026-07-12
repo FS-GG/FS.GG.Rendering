@@ -1,5 +1,12 @@
 # Scene Fragment
 
+> **Not shipped — this is repo-side fragment documentation.**
+> `.template.config/template.json` sources nothing from `template/fragments/scene/`, so no generated
+> product ever receives this file. The guidance a product actually gets is
+> [`template/product-skills/fs-gg-scene/SKILL.md`](../../../template/product-skills/fs-gg-scene/SKILL.md) — the capability's `supplied-by`.
+> Recorded as `materializes: none` on the `scene` row of `template/capabilities.yml`, and held there
+> by R-FRAG in `tests/Package.Tests/SkillPackageReachTests.fs` (#510).
+
 Adds Scene package references and pure scene authoring guidance.
 
 Generated game, chart, and interaction examples should use shared Scene geometry

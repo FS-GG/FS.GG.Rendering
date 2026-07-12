@@ -1,5 +1,15 @@
 # Controls Fragment
 
+> **Not shipped — this is repo-side fragment documentation.**
+> `.template.config/template.json` sources nothing from `template/fragments/controls/`, so no generated
+> product ever receives this file. The guidance a product actually gets is
+> [`template/product-skills/fs-gg-ui-widgets/SKILL.md`](../../../template/product-skills/fs-gg-ui-widgets/SKILL.md) — the capability's `supplied-by`.
+> Recorded as `materializes: none` on the `controls` row of `template/capabilities.yml`, and held there
+> by R-FRAG in `tests/Package.Tests/SkillPackageReachTests.fs` (#510).
+
+> This fragment's `skill/SKILL.md` *is* live, but as an **agent-skill** source: the
+> `fs-gg-generated-controls-guidance` wrapper points at it. That is not scaffold materialization either.
+
 Adds the `FS.GG.UI.Controls` package reference, Skia-rendered Controls
 guidance, product-owned example views, product test coverage, and generated
 controls guidance. The fragment skill is `fs-gg-generated-controls-guidance`
