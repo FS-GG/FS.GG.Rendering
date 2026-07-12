@@ -4,6 +4,7 @@ open System
 open System.IO
 open System.Reflection
 open System.Runtime.CompilerServices
+open System.Text.RegularExpressions
 open Expecto
 open FS.GG.TestSupport
 
@@ -22,19 +23,24 @@ let memberBaseline packageName =
     Path.Combine(repositoryRoot, "readiness", "surface-baselines", "members", packageName + ".txt")
     |> readBaseline
 
-let exportedNames (assembly: Assembly) =
-    assembly.GetExportedTypes()
-    |> Array.map (fun ty ->
-        let fullName =
-            match ty.FullName with
-            | null -> ty.Name
-            | value -> value
+let private fullNameOf (ty: Type) =
+    match ty.FullName with
+    | null -> ty.Name
+    | value -> value
 
-        if ty.Name.EndsWith("Module", StringComparison.Ordinal) then
-            fullName.Replace("Module", "")
-        else
-            fullName)
-    |> Set.ofArray
+// `fullName` always ends with `ty.Name`, so the suffix is exact at `Length - "Module".Length`. A
+// `Replace` would strip the word wherever it occurs: `ModuleRegistryModule` renders as `…Registry`,
+// naming a type that does not exist. Must match `scripts/refresh-surface-baselines.fsx`.
+let private displayName (ty: Type) =
+    let fullName = fullNameOf ty
+
+    if ty.Name.EndsWith("Module", StringComparison.Ordinal) then
+        fullName.Substring(0, fullName.Length - "Module".Length)
+    else
+        fullName
+
+let exportedNames (assembly: Assembly) =
+    assembly.GetExportedTypes() |> Array.map displayName |> Set.ofArray
 
 let assertBaseline packageName (assembly: Assembly) =
     let expected = baseline packageName
@@ -55,19 +61,6 @@ let private isCompilerGenerated (m: MemberInfo) =
     m.GetCustomAttributes(typeof<CompilerGeneratedAttribute>, false).Length > 0
     || m.Name.StartsWith("<", StringComparison.Ordinal)
 
-let private fullNameOf (ty: Type) =
-    match ty.FullName with
-    | null -> ty.Name
-    | value -> value
-
-let private displayName (ty: Type) =
-    let fullName = fullNameOf ty
-
-    if ty.Name.EndsWith("Module", StringComparison.Ordinal) then
-        fullName.Replace("Module", "")
-    else
-        fullName
-
 /// Stable rendering of a type reference: no assembly-qualified generic arguments, no arity suffix.
 let rec private typeRef (ty: Type) : string =
     if ty.IsGenericParameter then
@@ -82,12 +75,23 @@ let rec private typeRef (ty: Type) : string =
         | null -> ty.Name
         | element -> typeRef element + suffix
     elif ty.IsGenericType then
+        // A constructed generic's `FullName` carries the arity on EVERY generic segment, not just the
+        // last (`Dictionary`2+Enumerator[[…],[…]]`), and appends its arguments assembly-qualified in
+        // brackets. Cut the arguments, then strip the arity per segment. Truncating at the FIRST
+        // backtick instead would erase a nested generic's own name — and because THIS renderer is the
+        // gate (it re-derives the signatures and compares them to the baseline), that erasure is the
+        // gate going blind: a member returning `Dictionary<K,V>.Enumerator` and one returning
+        // `Dictionary<K,V>` would render to the same line, and a change between them would compare
+        // equal. Must match `scripts/refresh-surface-baselines.fsx`.
         let stem =
             let raw = fullNameOf ty
 
-            match raw.IndexOf('`') with
-            | -1 -> raw
-            | tick -> raw.Substring(0, tick)
+            let withoutArguments =
+                match raw.IndexOf('[') with
+                | -1 -> raw
+                | bracket -> raw.Substring(0, bracket)
+
+            Regex.Replace(withoutArguments, @"`\d+", "")
 
         let args = ty.GetGenericArguments() |> Array.map typeRef |> String.concat ", "
         $"{stem}<{args}>"
