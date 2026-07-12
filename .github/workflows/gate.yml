@@ -298,6 +298,28 @@ jobs:
           dotnet fsi scripts/validate-version-coherence.fsx
           FS_GG_RUN_VERSION_COHERENCE_SMOKE=1 dotnet fsi scripts/validate-version-coherence.fsx
 
+      # #541 — this repo ships FROZEN MIRRORS of four product skills whose canonical bodies live in
+      # FS.GG.Game (ADR-0022 §6), and until now NOTHING here knew they existed. `skill-parity` only
+      # checks wrapper↔body parity WITHIN this repo, so an author could edit a body Rendering does not
+      # own, pass every required gate, merge — and the break surfaced later, in another repo's red gate,
+      # after the context that produced the edit was gone. It happened three times to fs-gg-persistence
+      # alone, each time under a full set of green checks, each time by an author doing correct work who
+      # was never told they were editing a mirror.
+      #
+      # It FAILS rather than warns, deliberately: all three breaks merged under six green checks, and a
+      # warning in that stream is a warning nobody reads.
+      #
+      # Needs GH_TOKEN because it reads the org registry (FS-GG/.github registry/skills.yml) — the only
+      # place that records who OWNS each skill and the canonical digest. A registry it cannot read is a
+      # HARD FAIL, not a skip: a check that did not run has proved nothing (the apicompat-check.sh rule).
+      - name: Frozen skill-mirror guard (you are editing a body this repo does not own)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          unset NUGET_PACKAGES
+          dotnet fsi scripts/check-frozen-mirrors.fsx
+
       # #241 — the OFFLINE half of the template payload pin guard. The three axis literals in
       # template/base/Directory.Packages.props become a scaffolded product's pins; this step proves
       # they are well-formed, declared once, derived through an axis (never a bare literal, which no
