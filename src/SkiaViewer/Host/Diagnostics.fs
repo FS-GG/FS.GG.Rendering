@@ -22,6 +22,7 @@ type ViewerConfiguration =
       // Live present mechanism (feature 118), threaded from ViewerOptions.PresentMode.
       PresentMode: ViewerPresentMode }
 
+[<RequireQualifiedAccess>]
 type DiagnosticSeverity =
     | Info
     | Warning
@@ -106,7 +107,7 @@ module Diagnostics =
           Cause = cause }
 
     let unsupportedPlatform (platform: string) =
-        create Fatal PlatformCheck $"Unsupported platform '{platform}'. OpenGL desktop support is limited to Windows and Linux." None
+        create DiagnosticSeverity.Fatal PlatformCheck $"Unsupported platform '{platform}'. OpenGL desktop support is limited to Windows and Linux." None
 
     let invalidConfiguration message =
         create DiagnosticSeverity.Error DiagnosticStage.PlatformCheck message None

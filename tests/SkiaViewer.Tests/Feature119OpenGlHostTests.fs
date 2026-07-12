@@ -56,7 +56,7 @@ let feature119OpenGlHostTests =
             let diagnostic = Diagnostics.glUnavailable "GL context creation unavailable"
             let rendered = diagnostic.Message + "\n" + (diagnostic.Cause |> Option.defaultValue "")
 
-            Expect.equal diagnostic.Severity Fatal "an unavailable GL backend is fatal"
+            Expect.equal diagnostic.Severity DiagnosticSeverity.Fatal "an unavailable GL backend is fatal"
             Expect.equal diagnostic.Stage GlContext "GL availability fails at context setup"
             Expect.stringContains rendered "OpenGL" "diagnostic names OpenGL availability"
             Expect.stringContains diagnostic.Message "no fallback renderer" "diagnostic states there is no fallback renderer"

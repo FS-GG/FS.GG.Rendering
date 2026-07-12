@@ -302,7 +302,7 @@ let tests =
                   EvidencePath = Some "readiness/logs/viewer-smoke.txt" }
 
             let diagnostic =
-                { Level = Info
+                { Level = ViewerDiagnosticLevel.Info
                   Category = Frame
                   Message = "frame 1 presented"
                   FrameIndex = Some 1
@@ -382,7 +382,7 @@ let tests =
                 |> List.fold
                     (fun current frame ->
                         let diagnostic =
-                            { Level = Info
+                            { Level = ViewerDiagnosticLevel.Info
                               Category = Frame
                               Message = $"frame {frame} presented"
                               FrameIndex = Some frame
@@ -533,7 +533,7 @@ let tests =
                   EvidencePath = None }
 
             let diagnostic =
-                { Level = Warning
+                { Level = ViewerDiagnosticLevel.Warning
                   Category = Startup
                   Message = "waiting for first frame"
                   FrameIndex = None
@@ -557,7 +557,7 @@ let tests =
         test "diagnostics and viewer key events flow through public update effects" {
             let model, _ = Viewer.init { Title = "Product"; InitialSize = { Width = 640; Height = 480 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None }
             let diagnostic =
-                { Level = Info
+                { Level = ViewerDiagnosticLevel.Info
                   Category = Startup
                   Message = "window-created"
                   FrameIndex = None
@@ -1314,7 +1314,7 @@ let tests =
                     fun () ->
                         { Count = 0; Closed = false },
                         [ EmitDiagnostic
-                              { Level = Info
+                              { Level = ViewerDiagnosticLevel.Info
                                 Category = Startup
                                 Message = "generated host init"
                                 FrameIndex = None
@@ -1569,7 +1569,7 @@ let tests =
 
             let model, _ = Viewer.initRun request
             let diagnostic =
-                { Level = Warning
+                { Level = ViewerDiagnosticLevel.Warning
                   Category = Startup
                   Message = "waiting for evidence target"
                   FrameIndex = None
@@ -1597,7 +1597,7 @@ let tests =
         test "diagnostic filtering honors categories and level thresholds across startup input renderer and readback categories" {
             let options =
                 { Viewer.defaultDiagnostics with
-                    MinimumLevel = Warning
+                    MinimumLevel = ViewerDiagnosticLevel.Warning
                     Categories = Set.ofList [ ViewerDiagnosticCategory.Startup; Input; ViewerDiagnosticCategory.Renderer; Screenshot ] }
 
             let diagnostic level category message =
@@ -1609,26 +1609,26 @@ let tests =
                   Elapsed = Some TimeSpan.Zero }
 
             let captured =
-                [ diagnostic Error ViewerDiagnosticCategory.Startup "startup failed"
-                  diagnostic Warning Input "input fallback"
-                  diagnostic Warning ViewerDiagnosticCategory.Renderer "renderer fallback"
-                  diagnostic Warning Screenshot "readback unavailable" ]
+                [ diagnostic ViewerDiagnosticLevel.Error ViewerDiagnosticCategory.Startup "startup failed"
+                  diagnostic ViewerDiagnosticLevel.Warning Input "input fallback"
+                  diagnostic ViewerDiagnosticLevel.Warning ViewerDiagnosticCategory.Renderer "renderer fallback"
+                  diagnostic ViewerDiagnosticLevel.Warning Screenshot "readback unavailable" ]
 
             captured
             |> List.iter (fun item ->
                 Expect.isTrue (Viewer.shouldCaptureDiagnostic options item) $"captures {item.Category} {item.Level}")
 
-            Expect.isFalse (Viewer.shouldCaptureDiagnostic options (diagnostic Info ViewerDiagnosticCategory.Startup "startup info")) "info below warning threshold is filtered"
-            Expect.isFalse (Viewer.shouldCaptureDiagnostic options (diagnostic Warning OpenGl "opengl detail")) "unselected category is filtered"
-            Expect.isFalse (Viewer.shouldCaptureDiagnostic options (diagnostic Error Skia "skia detail")) "unselected Skia category is filtered"
-            Expect.isFalse (Viewer.shouldCaptureDiagnostic options (diagnostic Error ViewerDiagnosticCategory.Framebuffer "framebuffer detail")) "unselected framebuffer category is filtered"
-            Expect.isFalse (Viewer.shouldCaptureDiagnostic options (diagnostic Error ViewerDiagnosticCategory.Scene "scene detail")) "unselected scene category is filtered"
-            Expect.isFalse (Viewer.shouldCaptureDiagnostic options (diagnostic Error Frame "frame detail")) "unselected frame category is filtered"
+            Expect.isFalse (Viewer.shouldCaptureDiagnostic options (diagnostic ViewerDiagnosticLevel.Info ViewerDiagnosticCategory.Startup "startup info")) "info below warning threshold is filtered"
+            Expect.isFalse (Viewer.shouldCaptureDiagnostic options (diagnostic ViewerDiagnosticLevel.Warning OpenGl "opengl detail")) "unselected category is filtered"
+            Expect.isFalse (Viewer.shouldCaptureDiagnostic options (diagnostic ViewerDiagnosticLevel.Error Skia "skia detail")) "unselected Skia category is filtered"
+            Expect.isFalse (Viewer.shouldCaptureDiagnostic options (diagnostic ViewerDiagnosticLevel.Error ViewerDiagnosticCategory.Framebuffer "framebuffer detail")) "unselected framebuffer category is filtered"
+            Expect.isFalse (Viewer.shouldCaptureDiagnostic options (diagnostic ViewerDiagnosticLevel.Error ViewerDiagnosticCategory.Scene "scene detail")) "unselected scene category is filtered"
+            Expect.isFalse (Viewer.shouldCaptureDiagnostic options (diagnostic ViewerDiagnosticLevel.Error Frame "frame detail")) "unselected frame category is filtered"
         }
 
         test "frame sampling excludes repeated per-frame diagnostics unless enabled and bounded by the frame limit" {
             let frame index =
-                { Level = Info
+                { Level = ViewerDiagnosticLevel.Info
                   Category = ViewerDiagnosticCategory.Frame
                   Message = $"frame {index} presented"
                   FrameIndex = Some index
@@ -1636,7 +1636,7 @@ let tests =
                   Elapsed = Some(TimeSpan.FromMilliseconds(float index * 16.0)) }
 
             let startup =
-                { Level = Info
+                { Level = ViewerDiagnosticLevel.Info
                   Category = ViewerDiagnosticCategory.Startup
                   Message = "window-created"
                   FrameIndex = None
@@ -1674,7 +1674,7 @@ let tests =
                     Sink = Some captured.Add }
 
             let diagnostic category message frame =
-                { Level = Info
+                { Level = ViewerDiagnosticLevel.Info
                   Category = category
                   Message = message
                   FrameIndex = frame

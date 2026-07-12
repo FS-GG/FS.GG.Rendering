@@ -78,20 +78,22 @@ module private ConsumerRailwayGuard =
 let private fsharpCoreConstructors =
     set [ "Error"; "Ok"; "Some"; "None"; "Choice1Of2"; "Choice2Of2" ]
 
-/// Types that still shadow, and are NOT fixed by #496 because another worker holds their files under
-/// a live claim (intra-repo-parallel-work: a declared touch-set is a boundary, and editing across it
-/// is how two workers silently clobber each other).
+/// Types that still shadow, and are NOT fixed because another worker holds their files under a live
+/// claim (intra-repo-parallel-work: a declared touch-set is a boundary, and editing across it is how
+/// two workers silently clobber each other).
 ///
 /// This is a RATCHET, not an amnesty. The second test below fails if an entry stops shadowing, so an
 /// exemption cannot outlive its defect -- which is the "enforced by whoever remembers" failure this
 /// whole gate exists to end.
 ///
-/// Both entries are owned by FS.GG.Rendering#522, which lands once #456 releases `src/SkiaViewer/`
-/// and `tests/SkiaViewer.Tests`. Fixing them REQUIRES deleting them from here, or the ratchet fails.
-let private knownViolations =
-    Set.ofList
-        [ "src/SkiaViewer/Viewer.Types.fsi", "ViewerDiagnosticLevel"
-          "src/SkiaViewer/Host/Diagnostics.fsi", "DiagnosticSeverity" ]
+/// EMPTY, as of #522. It carried the two `src/SkiaViewer/` types #496 could not reach — `ViewerDiagnosticLevel`
+/// and Host `DiagnosticSeverity` — and it said, in as many words, that fixing them REQUIRED deleting them from
+/// here or the ratchet would fail. #522 fixed them, so they are gone, and the ratchet did exactly what it was
+/// built to do: it made the exemption impossible to forget, because leaving it would have turned the fix RED.
+///
+/// Keep it empty. A new entry is a promise to come back, and it is only worth the paper if the second test
+/// below is the one collecting on it.
+let private knownViolations : Set<string * string> = Set.empty
 
 let private repositoryRoot = RepositoryRoot.value
 
