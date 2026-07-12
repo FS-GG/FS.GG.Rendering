@@ -33,3 +33,36 @@ So delete `Vec2.fs` only together with (or after) swapping the starter model off
 
 See the **`fs-gg-model-swap`** and **`fs-gg-game-core`** skills for the collision rule, the accumulator + `stepSim`
 + `Tick` pattern, and the durable-vs-replaceable map. Guidance-only; no backing package (`no-public-surface`).
+
+## Consuming this fragment from another repo (#570)
+
+"No backing package" above means **no product references `Vec2` from a package** — that is the point, and it is
+what keeps the file yours to rename, extend or delete. It does **not** mean the source is unpublished.
+
+`.template.package/FS.GG.UI.Template.fsproj` packs the repo under `content/`, so the canonical file ships inside
+the **`FS.GG.UI.Template`** package at a stable path:
+
+```
+content/template/fragments/vec2/src/Product/Vec2.fs
+```
+
+**Generate from that; do not re-declare it.** `FS.GG.Game` used to hand-maintain a twin in
+`scripts/skill-block-context/_scaffold.fs` because it "cannot reference ours" — true of a *reference*, false of the
+*source*. A twin is a second shape that can drift, and only a test stood between a rename here and a downstream
+gate reporting green over a fiction (#519). Restoring the template package and generating from the real file removes
+the twin instead of guarding it (FS-GG/FS.GG.Game#141).
+
+The file is compilable **verbatim** by a consumer that is not a generated product: it carries no `dotnet new`
+conditional, its namespace (`AppRoot`) is fixed, and both of its edges resolve from published packages —
+`FS.GG.UI.Scene` (`toPoint` / `toRect`) and `FS.GG.Game.Core` (`toSimPoint` / `toSimRect`). That is what lets a
+consumer compile the render/sim crossings, which a hand-written twin deliberately **cannot**: faking `toPoint`
+against the sim `Point` would be the exact lie such a gate exists to catch, so the twin omits the helpers a game
+product most needs to get right.
+
+Publishing the source rather than a generated surface declaration is deliberate: a declaration would be a *third*
+statement of the same shape, with its own generator and its own drift gate — one more copy to keep in step, which
+is what #570 set out to remove. The source cannot disagree with itself.
+
+`tests/Rendering.Harness.Tests/Feature570PublishedScaffoldGeometryTests.fs` holds this contract: the package's
+`Content` item is a broad `..\**\*` glob, so the fragment ships **by default rather than by decision**, and one
+added `Exclude` would stop publishing a file another repo compiles against with nothing to say so.
