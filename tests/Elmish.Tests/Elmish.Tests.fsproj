@@ -80,6 +80,7 @@
     <Compile Include="Feature333PrecedenceTests.fs" />
     <Compile Include="Issue429ControlsAudioTests.fs" />
     <Compile Include="Issue438LiveScriptedAudioTests.fs" />
+    <Compile Include="Issue641ControlsAudioAssertionTests.fs" />
     <Compile Include="Issue456HostKeyCaptureTests.fs" />
     <Compile Include="Issue457PointerDiagnosticSinkTests.fs" />
     <Compile Include="Program.fs" />
