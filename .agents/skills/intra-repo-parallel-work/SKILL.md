@@ -106,6 +106,13 @@ of a contract: it makes the shared surface explicit and checkable *before* work 
 Paths: src/Scene/**, tests/Scene/**, Directory.Packages.props
 ```
 
+**An item with no touch-set says `Paths: none`** (`.github#496`) — an epic, a decision item, an
+investigation whose scope *is* the question. It stays unschedulable either way; the sentinel makes
+the absence **deliberate and machine-readable**. `fsgg-coord lint` errors (`NO-TOUCH-SET`) on a
+`Ready`/`Backlog` item declaring neither, because the alternative is what actually happened: an epic
+and an omission rendered identically, nine items of real work went invisible to every worker who
+asked for work, and the one surface whose job is board health reported `0 error(s)` over a dead queue.
+
 **Not globs** (ADR-0021, `.github#273`). A token matches by exact equality or subtree containment;
 the only wildcard is a **trailing** `/**` or `/*`. A leading `**/` — or a `*` in the middle —
 matches nothing, and a token that matches nothing would conflict with nothing, i.e. read as
