@@ -685,6 +685,22 @@ module ControlsElmish =
         host: InteractiveAppHost<'model, 'msg> ->
             Result<ViewerLaunchOutcome, ViewerRunFailure>
 
+    /// Issue #641 — every sound request in an effect batch, flattened in dispatch order; non-audio
+    /// effects are dropped. The Controls-family name for the narrowing the generated-app family has had
+    /// since #245 (`GeneratedAppHost.audioRequests`), so `… |> audioRequests |> Audio.interpret` yields
+    /// the same `AudioEvidence` on both families and a product that changes host family does not have to
+    /// change its audio assertions.
+    ///
+    /// Until this existed, an `app` product could REQUEST sound (#429/#436) and could not ASSERT it: the
+    /// narrowing was `GeneratedAppHost`-only, and every audio-capable Controls path needed a live GL
+    /// window. Pair it with `Perf.runScriptToEffects`, the headless fold that produces the effect list.
+    ///
+    /// NEWER THAN THE PIN: this and `Perf.runScriptToEffects` are newer than the
+    /// `FS.GG.UI.Controls.Elmish` a scaffolded product restores, so a product CANNOT BIND THEM YET —
+    /// FS.GG.Rendering#587 (the release) publishes them, and `tests/Build.Tests/pinned-api-doc-ledger.txt`
+    /// carries the debt until it does.
+    val audioRequests: effects: ViewerEffect list -> AudioEffect list
+
     /// Launch `host` through the live GL-backed viewer, deliver a bounded `FrameInput` script through
     /// the viewer input queue, and return the live frame metrics observed by the adapter.
     module Live =
@@ -772,3 +788,26 @@ module ControlsElmish =
             size: Size ->
             script: FrameInput<'msg> list ->
                 'model * FrameMetrics list
+
+        /// Issue #641 — as `runScriptToModel`, but ALSO returns every `ViewerEffect` the script's `Init`
+        /// and `Update` calls requested, in dispatch order (`Init` first). Same pure, headless,
+        /// byte-stable fold: no window, no GL, no device.
+        ///
+        /// This is the Controls family's record-only assertion path, and the model cannot substitute for
+        /// it. A restored volume the mixer was never TOLD about is indistinguishable, from inside the
+        /// model, from one that was applied — so the `Started` trap (a product that flips a `Started`
+        /// flag but never emits the `PlayAudio`) is not merely untested on this family without it, it is
+        /// structurally UNCATCHABLE. Assert at the sink, not at the model:
+        ///
+        ///     let _, effects, _ = Perf.runScriptToEffects host size [ FrameInput.Pointer click ]
+        ///     effects |> ControlsElmish.audioRequests |> Audio.interpret   // AudioEvidence
+        ///
+        /// The stream is the one the LIVE loop hands its `audioSink` for this script — `Init`'s batch
+        /// before frame 0, then each `Update`'s — not a test-local re-derivation of it. That distinction
+        /// is the point: a hand-rolled fold in a test asserts what the TEST does, while the bug being
+        /// hunted is the product loop doing something else.
+        val runScriptToEffects:
+            host: InteractiveAppHost<'model, 'msg> ->
+            size: Size ->
+            script: FrameInput<'msg> list ->
+                'model * ViewerEffect list * FrameMetrics list

@@ -121,6 +121,42 @@ Expect.equal finalModel.Count 1 "the scripted click incremented the counter"
 final model) — reach for it when you are asserting frame/coalescing behaviour, and
 for `runScriptToModel` whenever you care what the interaction *did*.
 
+### When the model cannot answer, ask what the script REQUESTED
+
+`Perf.runScriptToEffects` is the same fold once more, returning the final model, **every
+`ViewerEffect` the script's `Init` and `Update` asked for** (in dispatch order, `Init`
+first), and the metrics:
+
+```fsharp
+let finalModel, effects, _metrics = ControlsElmish.Perf.runScriptToEffects host size script
+```
+
+Reach for it when the thing you need to prove is a **request**, not a state change —
+because for a whole class of bug the model simply cannot testify. Sound is the sharp
+case: a volume the product restored into its model but never told the mixer about is
+*indistinguishable, from inside the model*, from one that was applied. A model-level
+test passes on the silent product. Asking what the frame requested separates them:
+
+```fsharp
+let _, effects, _ = ControlsElmish.Perf.runScriptToEffects host size script
+
+effects
+|> ControlsElmish.audioRequests    // ViewerEffect list -> AudioEffect list
+|> Audio.interpret                 // AudioEvidence
+```
+
+The stream is the one the *live* loop would hand its sink for this script — not a
+re-fold of `host.Update` written in your test. That distinction is the point: a
+hand-rolled fold asserts what your test does, and the bug you are hunting is the
+product loop doing something else.
+
+> **Newer than your pin.** `Perf.runScriptToEffects` and `ControlsElmish.audioRequests`
+> are NEWER than the `FS.GG.UI.Controls.Elmish` your product restores, so you cannot
+> bind them yet — FS.GG.Rendering#587 (the release) publishes them. Until it lands, the
+> only headless way to see what a Controls product requested is to fold `host.Update`
+> yourself, which is exactly the re-fold this section warns about; prefer waiting to
+> shipping an assertion that cannot see the product's own loop (FS.GG.Rendering#641).
+
 ### Guard every click with `BoundIds`
 
 `ControlRenderResult.BoundIds` is the set of canonical ids of every node carrying at
