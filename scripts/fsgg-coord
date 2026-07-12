@@ -3033,6 +3033,21 @@ batch_cmd() {
   if [ -n "$include_backlog" ]; then
     cands="$(jq -c -s 'add' <(printf '%s' "$cands") <(board_filter "$repo" "Backlog" "" "0" <<<"$items"))"
   fi
+  # A BLOCKED candidate is dropped here — but it must not be dropped SILENTLY (#488). It never reaches
+  # the skip-reason loop below, so before this fix it contributed nothing to `$skipped`, `take`'s stderr
+  # came back empty, and `take` concluded from that emptiness that there were "no open board items at
+  # all — an empty queue, not a blocked one". The one state most likely to starve a queue was the one
+  # state that left no trace. `blocked` is a REASON, and reasons are what `batch` exists to report.
+  local blocked_out skipped=""
+  blocked_out="$(jq -r '
+    .[] | select(.number != null) | select(.blocked)
+    | ( [ (.blockers // [])[] | select(.state != "CLOSED") | (.ref | sub("^[^/]+/";"")) ]
+        | if length == 0 then "an unnamed blocker" else join(", ") end ) as $b
+    | "  \(.repo | sub("^[^/]+/";""))#\(.number) — blocked by \($b)"' <<<"$cands")"
+  # An `&&` statement here would return 1 when there are NO blocked candidates — the common case —
+  # and `set -euo pipefail` would exit the script on it, silently. Use an explicit `if`.
+  if [ -n "$blocked_out" ]; then skipped="$skipped$blocked_out"$'\n'; fi
+
   cands="$(jq -c 'map(select(.blocked | not) | select(.number != null)) | sort_by(.number)' <<<"$cands")"
 
   # Touch-sets already spoken for by in-flight work. `active_claims` finds a claim by its MARKER, so
@@ -3051,8 +3066,8 @@ batch_cmd() {
   [ -z "$active_bad" ] || die "batch: in-flight claim(s) declare unmatchable touch-set token(s) and therefore reserve nothing: $active_bad — refusing to schedule against an unknown touch-set. Fix with: fsgg-coord widen <issue> --paths '<paths>'"
 
   local -a chosen_ids=() chosen_paths=() chosen_repos=()
-  local n i=0 skipped=""
-  n="$(jq 'length' <<<"$cands")"
+  local n i=0                    # NB: `skipped` is declared ABOVE — it is pre-seeded with the blocked
+  n="$(jq 'length' <<<"$cands")" # candidates (#488). Re-declaring it here would silently drop them.
   while [ "$i" -lt "$n" ]; do
     local it r num id p hits j clash holder
     it="$(jq -c ".[$i]" <<<"$cands")"; i=$((i + 1))
@@ -3167,8 +3182,56 @@ take_cmd() {
       # finding: on the board that produced #440, all four clauses were false and the real reason —
       # the item was in Backlog — was not among them. A worker that believes such a message stops.
       echo "fsgg-coord: nothing schedulable${repo:+ for repo '$repo'} — no Ready or Backlog item is startable." >&2
-      if [ -s "$berr" ]; then cat "$berr" >&2
-      else echo "  (no open board item${repo:+ for '$repo'} at all — this is an empty queue, not a blocked one.)" >&2
+      # `batch`'s stderr carries the per-item skip REASONS — and also anything else it writes there,
+      # `dbg` included. The old branch asked `[ -s "$berr" ]`: "did batch write ANY byte to stderr?"
+      # That is not the question, and it is wrong in both directions. With FSGG_COORD_DEBUG=1 a single
+      # "scan cache HIT" line made `$berr` non-empty, so the whole diagnosis below was skipped — the
+      # branch that explains a starved queue, suppressed by a debug line. Key on the reasons: `passed
+      # over:` is the header `batch` prints when, and only when, it actually has some.
+      if [ -s "$berr" ]; then cat "$berr" >&2; fi   # `&&` here would exit on an empty $berr (set -e)
+      if ! grep -q '^passed over:' "$berr" 2>/dev/null; then
+        # COUNT IT. DO NOT INFER IT FROM AN EMPTY STDERR (#488).
+        #
+        # This branch used to assert the strongest available negative — "no open board item at all —
+        # this is an empty queue, not a blocked one" — on the sole evidence that `batch` wrote nothing
+        # to stderr. An empty stderr is not an empty board. Nothing here counted anything, and the
+        # sentence stated as fact something the code never established.
+        #
+        # It was the same defect #440 was closed for, sitting directly beneath #440's own comment
+        # warning against it ("a guess dressed as a finding … A worker that believes such a message
+        # stops"). And it pointed the worker AWAY from the true cause: it does not merely omit
+        # "blocked", it rules it out.
+        #
+        # The scan is the one `batch` just paid for (CACHED=1), so counting is FREE — no extra
+        # GraphQL, which is why there was never a good reason to guess.
+        # `$repo` here is what `scope_repo` produced — a registry short-id (`audio`), NOT the repo name
+        # the board carries (`FS-GG/FS.GG.Audio`). `batch` resolves it internally; this count has to do
+        # the same, or `board_filter` matches nothing and every queue reads as empty — which is the very
+        # lie being fixed, reintroduced by the fix.
+        local open_items n_open rrepo=""
+        [ -n "$repo" ] && rrepo="$(resolve_repo "$repo" 2>/dev/null || printf '%s' "$repo")"
+        open_items="$(CACHED=1 board_items 2>/dev/null | board_filter "$rrepo" "" "" 1 2>/dev/null)" || open_items=''
+        n_open="$(jq 'length' <<<"${open_items:-}" 2>/dev/null || true)"
+        case "${n_open:-}" in
+          '' | *[!0-9]*)
+            # A failed count is NOT an empty queue. "I could not look" and "I looked, and it is empty"
+            # must not produce the same sentence (#266's ratified rule).
+            echo "  (could not read the board to say WHY — so this is 'no verdict', not 'an empty queue'. Retry, or run: fsgg-coord ready --repo '${repo:-<repo>}' --all)" >&2
+            ;;
+          0)
+            echo "  (no open board item${repo:+ for '$repo'} at all — this is an empty queue, not a blocked one.)" >&2
+            ;;
+          *)
+            echo "  $n_open open board item(s)${repo:+ for '$repo'}, and NONE of them is startable — a BLOCKED queue, not an empty one:" >&2
+            jq -r 'group_by(.status // "(no Status)")
+                   | map("    \(length) × \(.[0].status // "(no Status)")") | .[]' <<<"$open_items" >&2
+            jq -r '.[] | select(.blocked)
+                   | ( [ (.blockers // [])[] | select(.state != "CLOSED") | (.ref | sub("^[^/]+/";"")) ]
+                       | if length == 0 then "an unnamed blocker" else join(", ") end ) as $b
+                   | "    \(.repo | sub("^[^/]+/";""))#\(.number) — blocked by \($b)"' <<<"$open_items" >&2
+            echo "  See them all: fsgg-coord ready --repo '${repo:-<repo>}' --all" >&2
+            ;;
+        esac
       fi
       rm -f "$berr"
       return 0

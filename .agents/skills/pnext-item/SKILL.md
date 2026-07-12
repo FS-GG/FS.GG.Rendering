@@ -34,19 +34,24 @@ harness session id — and on Claude Code every subagent of a session shares one
 `CLAUDE_CODE_SESSION_ID`, so a fan-out silently collapses onto **one id**. That is the same-account
 bug one level down, and it defeats the lock you are about to take.
 
-**Mint the id. Do not invent one** — run this verbatim, before anything else:
+**Mint the id with the tool. Do not invent one, and do not copy one out of a document** — run this
+verbatim, before anything else:
 
 ```sh
-export FSGG_WORKER="w-$(od -An -tx1 -N4 /dev/urandom | tr -d ' \n')"
+eval "$(scripts/fsgg-coord whoami --mint)"
 ```
+
+This is the **one** mint idiom across the tool, the protocol doc, and both skill roots. It is the line
+`whoami`'s own warning prints, so the thing the tool tells you to run is the thing written here.
 
 Inventing one *feels* safe and is not. Agents asked to pick an id converge on the same corner of the
 name space, and an id two workers share is an id the lock cannot separate — `release` would drop the
 other's claim mid-flight, `heartbeat` would renew a marker that is not yours, and `say`/`inbox` would
-cross-deliver. This board has carried **four `finch-*` workers at once**, all of them hand-picked from
-the example that used to sit on this line, while `whoami`'s own derived ids spread cleanly across the
-word list (#419). The attractor is the *word*, not the suffix: randomising `-a3f` does not help if you
-still reach for the bird you just read.
+cross-deliver. This board has carried **four `finch-*` workers at once**, all of them pattern-matched
+off the single example id that used to sit on this line, while `whoami`'s own minted ids spread
+cleanly across the word list (#419). The attractor is the *word*, not the suffix: re-rolling the hex
+does not help if you still reach for the bird you just read — which is why **no literal id appears
+anywhere in these docs for you to copy**, and why minting is the tool's job, not yours (#551).
 
 Until `claim` refuses a marker whose `worker=` duplicates a live one (the tool half of #419), **the id
 scheme is advisory** — a mint you skip is a lock you do not have.
@@ -157,10 +162,14 @@ discipline, managed for you.
   tells you to stop working it. Believe it. Re-take with `claim`, or walk away — renewing a dead
   marker would put two workers on one item, which is the entire failure this protocol exists to
   prevent.
-- **Commit with the trailer** `claim` printed, so attribution survives into history:
+- **Commit with the trailer `claim` printed** — the literal line, with your id already in it — so
+  attribution survives into history. No id is written here to copy (#551), and **do not derive one**:
+  `$FSGG_WORKER` is empty if your id came from the worktree name, and `$(git config fsgg.worker)`
+  returns whoever claimed most recently (it is repo-shared unless `extensions.worktreeConfig` is set).
+  A blank trailer loses the attribution; a borrowed one asserts a false one.
 
-  ```
-  FSGG-Worker: w-4f2a91c7
+  ```sh
+  git commit --trailer "FSGG-Worker: <the id `claim` printed>"
   ```
 
 - Watch for stray build artifacts (`.pyc`, `bin/`, `obj/`) sneaking into the commit from a fresh
@@ -300,11 +309,18 @@ gh pr create --fill --base main
 scripts/fsgg-coord verify-paths --pr <n>    # did the PR stay inside its declaration?
 ```
 
-> **Every `gh pr …` command is GraphQL.** So is `gh issue create`. On an exhausted budget — the state
-> §1 tells you to *expect*, and the one you are most likely to be in by the time you are merging —
-> they all fail with `API rate limit already exceeded`, and you are left with finished, green,
-> reviewed work you cannot land. **Use the REST forms below** ([#528](https://github.com/FS-GG/.github/issues/528)).
-> They are not a workaround for the rules, only for the transport: REST enforces branch protection
+> **Two independent reasons the landing steps below are `gh api`, not `gh pr …`.**
+>
+> 1. **The merge must be, always.** `gh pr merge` merges and *then* fails, because its local cleanup
+>    cannot check out `main` from the worktree §2 puts you in — so a successful merge reports failure
+>    and the branch survives ([#564](https://github.com/FS-GG/.github/issues/564)). This has nothing
+>    to do with the budget; it is true on a fresh one.
+> 2. **Every `gh pr …` command is GraphQL**, and so is `gh issue create`. On an exhausted budget — the
+>    state §1 tells you to *expect*, and the one you are most likely to be in by the time you are
+>    merging — they fail with `API rate limit already exceeded`, and you are left with finished,
+>    green, reviewed work you cannot land ([#528](https://github.com/FS-GG/.github/issues/528)).
+>
+> Neither is a workaround for the *rules*, only for the transport: REST enforces branch protection
 > exactly as GraphQL does. See [REST when the budget is gone](#rest-when-the-budget-is-gone).
 
 `verify-paths` is **advisory** — the touch-set is a declaration, not an enforced boundary, and CI
@@ -324,13 +340,44 @@ Merge once — and only once — **every required check is green**:
 
 ```sh
 gh pr checks <n> --watch                    # wait for CI, don't merge into a pending run
-gh pr merge <n> --squash --delete-branch
+
+# MERGE over REST. This is the DEFAULT here, not a rate-limit workaround (#564) — see below.
+gh api -X PUT repos/FS-GG/<repo>/pulls/<n>/merge \
+  -f merge_method=squash -f commit_title="<title> (#<pr>)" --jq '"merged=\(.merged)"'
+
+gh api -X DELETE repos/FS-GG/<repo>/git/refs/heads/item/<n>-<slug>    # the branch, explicitly
 ```
+
+**Why not `gh pr merge <n> --squash --delete-branch`?** Because §2 mandates a worktree, and under
+that layout `gh pr merge` **merges the PR and then exits 1**:
+
+```
+failed to run git: fatal: 'main' is already used by worktree at '/…/<repo>'
+```
+
+The API merge already succeeded. What failed is `gh`'s *local* post-merge cleanup — check out the
+base branch, delete the local branch — and `git checkout main` cannot succeed in a worktree whose
+repo has `main` checked out in the shared checkout. Which it always does: that is the checkout every
+other worker is standing in. So this is not an edge case; it is **deterministic for every worker who
+follows §2**, on every item. The remote branch is left undeleted (`--delete-branch` was part of the
+aborted cleanup), and — the serious half — **a successful merge reports failure**. An agent loop
+reads the exit code, concludes the merge failed, and then retries it, "fixes" something that is not
+broken, or walks away without stamping, leaving merged work with `Status` un-flipped and its claim
+still reserving the touch-set for the rest of the lease.
+
+The REST form does no local checkout switching, so none of this arises. It is **not** a protection
+bypass: REST enforces branch protection exactly as `gh pr merge` does, and a PR that needs a human
+review is refused there identically. `gh pr merge` remains fine when you are merging from a plain
+shared checkout — but that is not the layout this skill puts you in.
+
+Do not "fix" this by reading past the `fatal:`. A recipe whose happy path depends on the worker
+disbelieving an error is one that teaches them to skip errors, and the next one will be real.
 
 **Hard rules on the merge.** Never `--admin`. Never bypass branch protection, and never disable a
 required check to get past it. The repo's rules are authoritative over this skill: if protection
-requires a human review, `gh pr merge` will refuse — **stop there and report the PR for review**
-rather than looking for a way around it. A red check is a finding, not an obstacle.
+requires a human review, the merge is **refused** — `gh api` exits non-zero and prints GitHub's
+reason — and you **stop there and report the PR for review** rather than looking for a way around it.
+A red check is a finding, not an obstacle.
 
 Then earn the stamp:
 
@@ -358,8 +405,11 @@ unstamped item is a nuisance; a hand-stamped one is a board that lies.
 
 ### REST when the budget is gone
 
-Verified end-to-end at **0 remaining** GraphQL. `gh api repos/…` spends the **REST** budget, which is
-separate and almost never exhausted — `fsgg-coord budget` shows both.
+The **merge** is already REST above — it has to be, under §2's worktree (#564). These are the *other*
+`gh pr …` / `gh issue …` commands, which are GraphQL and die on an exhausted budget with
+`API rate limit already exceeded`. Verified end-to-end at **0 remaining** GraphQL. `gh api repos/…`
+spends the **REST** budget, which is separate and almost never exhausted — `fsgg-coord budget` shows
+both.
 
 ```sh
 # CREATE the PR  (gh pr create is GraphQL)
@@ -376,14 +426,10 @@ SHA=$(gh api repos/FS-GG/<repo>/pulls/<n> --jq .head.sha)
 gh api "repos/FS-GG/<repo>/commits/$SHA/check-runs" --paginate --slurp \
   | jq -r '[.[].check_runs[]]
            | "checks=\(length) pending=\([.[]|select(.status!="completed")]|length) failed=\([.[]|select(.conclusion!=null and .conclusion!="success")]|length)"'
-
-# MERGE  (gh pr merge is GraphQL). NOT a protection bypass — REST enforces the same rules,
-# and a PR that needs a human review is refused here exactly as it is there.
-gh api -X PUT repos/FS-GG/<repo>/pulls/<n>/merge \
-  -f merge_method=squash -f commit_title="<title> (#<pr>)" --jq '"merged=\(.merged)"'
-
-gh api -X DELETE repos/FS-GG/<repo>/git/refs/heads/item/<n>-<slug>    # --delete-branch
 ```
+
+`gh pr checks <n> --watch` itself is fine in a worktree — it is GraphQL, but it reads the API and
+never touches your local checkout, so only the budget can take it from you, not the layout.
 
 Two more that bite in the same state:
 
@@ -413,9 +459,16 @@ worker rediscovers it from scratch.
 
 ```sh
 cd - && git worktree remove ../<repo>-<n>
+git branch -D item/<n>-<slug>               # the LOCAL branch; §5's REST DELETE removed only the remote
 scripts/fsgg-coord inbox --repo <r>         # anything arrive while you were heads-down?
 /pnext-item                                 # next
 ```
+
+**The local branch is not cleaned by anything else.** `--delete-branch` never deleted it either — `gh`
+aborted at the `git checkout main` step *before* it got that far (#564) — so these have been quietly
+accumulating for as long as the bug existed: the shared checkout of `.github` was holding **~40**
+stale `item/*` branches from merged, done-stamped items when this was written. Harmless individually,
+noise in every `git branch` you will ever run.
 
 ## Abandoning an item
 
