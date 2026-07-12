@@ -660,6 +660,17 @@ type private ProfileVerdict =
 // `materializes-when` must ALSO widen this map — issue #90 widened fs-gg-testing to all five
 // profiles and did not, which is what rotted this lane red (#452). If you gate a skill onto a new
 // profile, add it here in the same change.
+//
+// #549 — that instruction is now a GATE, not a comment. `verifyFrameworkSkillRoster` (verdict core,
+// env-free) reconciles this map against the roster template.json actually declares, so forgetting the
+// second edit fails in a second at your desk instead of twenty minutes into a live scaffold in CI.
+//
+// The double-entry above is PRESERVED on purpose, and the distinction is worth stating because it is
+// the reason this map still exists: reconciling two statements is not the same as deriving one from
+// the other. A derived map would agree with template.json even when template.json is WRONG. This one
+// disagrees, loudly, and forces somebody to decide which of the two is the mistake — which is exactly
+// what a double-entry check is for. What #436 proved is not that the second statement is worthless,
+// but that an UNRECONCILED second statement is: it drifted, silently, and only a live CI lane noticed.
 let private expectedFrameworkSkills =
     // fs-gg-testing: profile-gated onto every profile, with NO lifecycle term (template.json
     // `(profile == "app" || … || profile == "game")`), so it emits on every profile AND every lane
@@ -689,6 +700,115 @@ let private expectedFrameworkSkills =
                                   "fs-gg-audio"; "fs-gg-collision"; "fs-gg-game-core"; "fs-gg-grids"
                                   "fs-gg-line-drawing"; "fs-gg-model-swap"; "fs-gg-persistence"; "fs-gg-visibility" ] ]
     |> Map.ofList
+
+/// The skill id a provider-surface source emits, if it emits one: `.agents/skills/<id>/`.
+let private emittedSkillId (target: string) =
+    let m = Regex.Match(target.Replace('\\', '/'), @"^\.agents/skills/(fs-gg-[a-z0-9-]+)/?$")
+    if m.Success then Some m.Groups.[1].Value else None
+
+/// The SAME roster, read from the only place the scaffold actually obeys: template.json's `condition`
+/// per `sources` row. This is the OTHER side of the double-entry — never a replacement for
+/// `expectedFrameworkSkills`, only the thing it gets reconciled against.
+///
+/// `fs-gg-project` is excluded here for exactly the reason the hand map excludes it: it is REQUIRED on
+/// every lane and every profile, so `assertNoWrapperDirs` adds it back at the call site rather than
+/// carrying it per profile (#91/#452). Skills with no `profile ==` term at all (`fs-gg-feedback-report`,
+/// unconditional; `fs-gg-feedback-capture`, gated on the `feedback` flag) are likewise not part of the
+/// per-profile roster and are handled at the call site.
+let private declaredFrameworkSkills () =
+    use doc = templateDoc ()
+
+    let emitted =
+        sourceRows (doc.RootElement.GetProperty "sources")
+        |> List.choose (fun row -> emittedSkillId row.Target |> Option.map (fun id -> id, row.Condition))
+        |> List.filter (fun (id, _) -> id <> "fs-gg-project")
+
+    expectedFrameworkSkills
+    |> Map.map (fun profile _ ->
+        emitted
+        |> List.filter (fun (_, condition) -> condition.Contains(sprintf "profile == \"%s\"" profile))
+        |> List.map fst
+        |> Set.ofList)
+
+/// The emitted skills whose gate carries a `lifecycle == "spec-kit"` conjunct: they reach the spec-kit
+/// lane and no other.
+///
+/// #549 — this exists because the lane expectation used to spell it `Set.remove "fs-gg-samples"`, inline.
+/// That was a FIFTH hand-written statement of the roster, on the lifecycle axis, reconciled against
+/// nothing — the same shape as the fourth one this item is about, hiding one line below it. It survived
+/// because the "no spec-kit clause on a framework skill" rule in `verifyGatedSources` covers only the 18
+/// `template/product-skills/` rows, and `fs-gg-samples` sources from `template/fragments/samples/skill/`,
+/// outside that prefix. So a NEW fragment-sourced, lifecycle-gated skill would be expected on the sdd and
+/// none lanes, where it never emits — #436's failure again, through the seam this guard was written to
+/// close. Derived, so there is nothing left to forget.
+let private specKitOnlyFrameworkSkills () =
+    use doc = templateDoc ()
+
+    sourceRows (doc.RootElement.GetProperty "sources")
+    |> List.choose (fun row -> emittedSkillId row.Target |> Option.map (fun id -> id, row.Condition))
+    |> List.filter (fun (id, condition) -> id <> "fs-gg-project" && condition.Contains SPEC_KIT_COND)
+    |> List.map fst
+    |> Set.ofList
+
+/// #549 — hold the hand-maintained roster to the one template.json declares.
+///
+/// The roster of "which fs-gg-* skills a profile gets" is stated FOUR times across the repo, in four
+/// languages. Three of the four are now reconciled against template.json — the manifest by G-EQUIV
+/// (Feature238SkillMaterializesWhenTests), the G-EMIT matrix by Feature219EmitFrameworkSkillsTests —
+/// and this one, the fourth, was reconciled against NOTHING. So it drifted: #436 moved fs-gg-audio onto
+/// `app` in template.json, the manifest and the G-EMIT matrix, every unit test in the repo went green,
+/// and the stale roster here was caught only when CI scaffolded a live tree and found a skill dir it did
+/// not expect. This is that check, moved to where it is cheap: env-free, in the verdict core, ~1s.
+///
+/// Deliberately EQUALITY, not subset. An over-stated roster reds the live lane on a skill the scaffold
+/// never emits; an under-stated one is #436 exactly — a real skill vendored into every generated product
+/// with nothing expecting it.
+let private verifyFrameworkSkillRoster () =
+    let declared = declaredFrameworkSkills ()
+
+    for KeyValue (profile, expected) in expectedFrameworkSkills do
+        let actual = Map.find profile declared
+
+        let missing = Set.difference actual expected
+        let extra = Set.difference expected actual
+
+        assertTrue
+            (actual = expected)
+            (sprintf
+                "profile `%s`: `expectedFrameworkSkills` (this file) disagrees with the roster .template.config/template.json declares. template.json gates these onto `%s` but this map omits them: %s. This map claims these but template.json does not gate them onto `%s`: %s. template.json is what the scaffold OBEYS, so a skill it gates is one every generated product really receives — update this map in the SAME change that widens or narrows a skill's gate (#549; #436 is the drift that proved nothing was checking)."
+                profile
+                profile
+                (if Set.isEmpty missing then "(none)" else missing |> Set.toList |> String.concat ", ")
+                profile
+                (if Set.isEmpty extra then "(none)" else extra |> Set.toList |> String.concat ", "))
+
+    // A profile this lane does not validate is a profile whose emitted tree nobody audits, so the gap
+    // must be DECLARED rather than merely true. `game` is that gap (#469) — it is offered by
+    // template.json and absent from `profiles` above, so no live scaffold ever checks what it vendors.
+    // Pinning it here means ADDING a sixth profile cannot silently inherit the same hole.
+    use doc = templateDoc ()
+
+    let offered =
+        doc.RootElement.GetProperty("symbols").GetProperty("profile").GetProperty("choices")
+        |> fun arr -> [ for c in arr.EnumerateArray() -> c.GetProperty("choice").GetString() ]
+        |> Set.ofList
+
+    // SUBSET, not equality — the difference matters and it is not pedantry. Equality would assert that
+    // `game` must stay unvalidated FOREVER: the moment somebody closes #469 the way this very message
+    // tells them to (add it to `profiles`), `unvalidated` empties, and the gate reds ON THE FIX. A guard
+    // whose own prescribed remedy trips it is a booby-trap, and #469 is the likeliest next edit to this
+    // file. The intent was only ever "no NEW hole".
+    let newHoles = Set.difference (Set.difference offered (Set.ofList profiles)) (Set.ofList [ "game" ])
+
+    assertTrue
+        (Set.isEmpty newHoles)
+        (sprintf
+            "template.json offers profiles %s and this lane validates %s, so %s is audited by nothing — no live scaffold ever checks what it vendors. `game` is the known, tracked gap (#469) and is tolerated here; the above is a NEW one. Add it to `profiles` (and to `expectedFrameworkSkills`), or widen the tolerated set deliberately and say why."
+            (offered |> Set.toList |> String.concat ", ")
+            (profiles |> String.concat ", ")
+            (newHoles |> Set.toList |> String.concat ", "))
+
+    Map.count expectedFrameworkSkills
 
 // ---- Feature 231 live helpers -------------------------------------------------------------------
 
@@ -828,8 +948,15 @@ let private assertNoWrapperDirs (dir: string) (profile: string) (specKit: bool) 
                 failwithf "profile %s is in `profiles` but has no entry in `expectedFrameworkSkills` — add its expected fs-gg-* set (see the note there)"
                     profile
 
-        // fs-gg-samples is spec-kit-gated (sample-pack only): drop it from the sdd/none expectation.
-        let baseSet = if specKit then baseSet else Set.remove "fs-gg-samples" baseSet
+        // The spec-kit-gated skills (today: fs-gg-samples) reach only the spec-kit lane, so drop them from
+        // the sdd/none expectation. DERIVED from template.json's conditions (#549) — this line used to say
+        // `Set.remove "fs-gg-samples"`, which was a fifth hand-written roster nobody reconciled: add a new
+        // fragment-sourced, lifecycle-gated skill and the sdd lane would expect a skill that never emits.
+        let baseSet =
+            if specKit then
+                baseSet
+            else
+                Set.difference baseSet (specKitOnlyFrameworkSkills ())
         // Issue #91 (ADR-0017 §C2): fs-gg-project is profile-gated and lifecycle-INDEPENDENT — it is the
         // product-orientation umbrella, and #91 promoted it precisely so the sdd lane stops shipping
         // capability skills with no top-level map. So it is REQUIRED on every lane, not merely tolerated
@@ -1121,6 +1248,13 @@ let private classifyFixtureArg () =
 
 let private runValidation () =
     let values = verifyVerdictCore ()
+
+    // #549 — env-free, and BEFORE the live loop on purpose. The roster this file states by hand was
+    // reconciled against nothing, so #436's drift surfaced only after CI had scaffolded a whole tree.
+    // Here it costs a JSON parse and fails at the author's desk. (Declared after the verdict core only
+    // because `expectedFrameworkSkills` lives with the live helpers it feeds; it gates every lane.)
+    let rosters = verifyFrameworkSkillRoster ()
+    printfn "verdict-core OK: %d profile skill-roster(s) reconciled against .template.config/template.json" rosters
 
     let emitReport = fsi.CommandLineArgs |> Array.exists (fun a -> a = "--emit-report")
     let liveGate = Environment.GetEnvironmentVariable "FS_GG_RUN_LIFECYCLE_VALIDATION" = "1"
