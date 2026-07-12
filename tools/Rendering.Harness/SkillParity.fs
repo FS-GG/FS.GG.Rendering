@@ -1342,6 +1342,14 @@ module SkillParity =
     /// A normative requirement citation: `FR-014`, `FR-7`, and so on.
     let private requirementCitation = Regex(@"\bFR-\d+\b", RegexOptions.Compiled)
 
+    /// `FR-014` and `FR-14` are the same requirement. Compare the NUMBER, so a citation that merely omits
+    /// the zero-padding is not reported as a phantom — a gate that reds on a correct citation gets switched
+    /// off, which is the failure mode this whole family of rules is trying to avoid.
+    let private requirementNumber (citation: string) =
+        match Int32.TryParse(citation.Substring(citation.IndexOf('-') + 1)) with
+        | true, n -> n
+        | _ -> -1
+
     /// #573 (the other half of #466) — an FR number is only unique WITHIN a feature, so a bare `FR-014`
     /// with nothing to hang it on is not a citation, it is a coincidence waiting to happen.
     ///
@@ -1353,12 +1361,20 @@ module SkillParity =
     /// first. That is exactly #466: not a dead link, but a live one that resolves to something plausible
     /// and wrong.
     ///
-    /// So two things are checked, and the second is the one that bites:
-    ///   1. a skill that cites FR-nnn must DECLARE `metadata.source` (which #529's rule then forces to
-    ///      resolve), and
-    ///   2. every FR it cites must actually BE in that source. A citation pointing at a real spec that does
-    ///      not contain the requirement is the #466 failure with a source line bolted on — it reads MORE
-    ///      authoritative while being just as wrong.
+    /// Three things are checked:
+    ///   1. a skill that cites FR-nnn must DECLARE `metadata.source`;
+    ///   2. that source must resolve to a READABLE spec (a directory with a `spec.md`, or a spec file), and
+    ///      it must be inside this repository; and
+    ///   3. every FR it cites must be DEFINED there (`- **FR-014**: …`), not merely mentioned in passing.
+    ///
+    /// WHAT THIS DOES NOT CATCH, stated plainly so nobody reads more protection into it than it has: a spec's
+    /// FRs are numbered contiguously, so once a citation is placed in a spec, any number within that spec's
+    /// range is accepted. If a future section of the symbology skill cites `FR-017` MEANING spec 198's ("the
+    /// skill MUST document rich-text runs") while the skill is sourced to 192 (whose FR-017 is provenance),
+    /// this rule passes it — both specs define an FR-017. Number membership cannot distinguish two
+    /// requirements that share a number; only a human reading the diff can. What the rule does buy is that
+    /// every citation now has exactly ONE declared home, which is what makes that human check possible at all
+    /// — before this, there was nothing to check the citation against.
     ///
     /// Exempt: the vendored spec-kit skills and the externally-owned coordination kit (FS-GG/.github,
     /// synced verbatim — `cross-repo-coordination` cites FR-007 and cannot be fixed in this repo; an edit
@@ -1372,6 +1388,12 @@ module SkillParity =
                 |> Option.map (fun value -> value.Trim())
                 |> Option.filter (fun value -> value <> "")
 
+            // The coordination-kit clause is BELT-AND-BRACES, and saying so matters: `filesForSurface`
+            // already drops those skills at inventory, so today they never reach this function at all and
+            // removing this line would change nothing. It stays because the inventory exclusion is a
+            // property of a DIFFERENT rule (wrapper parity) that could reasonably be relaxed, and the day it
+            // is, `cross-repo-coordination` — which cites FR-007, is synced verbatim from FS-GG/.github, and
+            // cannot be fixed in this repo — would start reddening a gate nobody can clear.
             let vendored =
                 Set.contains (normalizeText entry.SkillName) (coordinationKitSkills |> Set.map normalizeText)
                 || (declared "author" |> Option.map normalizeText |> Option.exists vendoredAuthors.Contains)
@@ -1422,18 +1444,42 @@ module SkillParity =
                         else
                             sourcePath
 
-                    if not (File.Exists specFile) then
-                        // The source does not resolve to something readable. That is #529's finding, not this
-                        // one — reporting it twice would just make the author fix one and re-run.
+                    if not (File.Exists sourcePath || Directory.Exists sourcePath) then
+                        // The source names nothing at all. That IS #529's finding (UnresolvedMetadataSource),
+                        // and it is reported there — repeating it here would only make the author fix one copy
+                        // and re-run. This is the ONE case where deferring is correct, because #529 genuinely
+                        // fires; see below for the case where it does not.
                         None
+                    elif not (File.Exists specFile) then
+                        // FAIL-OPEN, CLOSED. The first draft of this rule skipped here too, on the belief that
+                        // #529 would catch it. It does not: #529 accepts `File.Exists || Directory.Exists`, so a
+                        // source naming ANY existing directory satisfies it — and this rule then found no
+                        // spec.md and stayed silent as well. Each rule deferred to the other and both went
+                        // green, which made a one-line edit (`source: src/Symbology`) a complete bypass of a
+                        // High gate. A citation whose source cannot be READ has not been checked by anybody.
+                        finding
+                            $"`{entry.Path}` cites {citedList}, but its `metadata.source: {source}` has no `spec.md` to check them against — so nothing verifies that the requirements it cites are the ones that spec states."
+                            $"Point `metadata.source` at the feature directory whose `spec.md` states these requirements (e.g. `specs/<nnn>-<slug>`), or at the spec file itself. A source that cannot be read is a citation nobody has checked."
+                    elif not (withinRepository root specFile) then
+                        finding
+                            $"`{entry.Path}` cites {citedList}, but its `metadata.source: {source}` resolves OUTSIDE this repository (to `{specFile}`) — so the requirements it is checked against exist only on this machine."
+                            $"Point `metadata.source` at a spec inside this repository. `{source}` names a document no other checkout can open."
                     else
+                        // DEFINED requirements, not merely mentioned ones. The spec's own prose cross-references
+                        // other features' FRs ("unlike FR-021 in 194"), and counting those as "stated" would let
+                        // a citation be blessed by a passing mention. A spec DEFINES a requirement in bold:
+                        //   - **FR-014**: The system MUST …
                         let stated =
-                            requirementCitation.Matches(File.ReadAllText specFile)
+                            Regex.Matches(File.ReadAllText specFile, @"\*\*(FR-\d+)\*\*")
                             |> Seq.cast<Match>
-                            |> Seq.map (fun m -> m.Value)
+                            |> Seq.map (fun m -> requirementNumber m.Groups.[1].Value)
                             |> Set.ofSeq
 
-                        let phantom = Set.difference cited stated
+                        // Compared as NUMBERS, not strings: a human writing `FR-14` means the spec's `FR-014`,
+                        // and reporting that as a phantom citation would be a false red — and a gate that reds
+                        // on a correct citation is a gate somebody switches off.
+                        let phantom =
+                            cited |> Set.filter (fun c -> not (Set.contains (requirementNumber c) stated))
 
                         let phantomList = phantom |> Set.toList |> String.concat ", "
 
@@ -1441,8 +1487,8 @@ module SkillParity =
                             None
                         else
                             finding
-                                $"`{entry.Path}` cites {phantomList}, which `{source}` does not state. The citation resolves to a real spec that does not contain the requirement — so it reads as checked while pointing at nothing, which is #466's failure with a source line bolted on."
-                                $"Cite the requirements `{source}` actually states, or point `metadata.source` at the spec that states these ones.")
+                                $"`{entry.Path}` cites {phantomList}, which `{source}` does not define. The citation resolves to a real spec that does not state the requirement — so it reads as checked while pointing at nothing, which is #466's failure with a source line bolted on."
+                                $"Cite the requirements `{source}` actually defines, or point `metadata.source` at the spec that defines these ones.")
 
     let private classifyFindings request entries symbols artifacts =
         wrapperFindings entries

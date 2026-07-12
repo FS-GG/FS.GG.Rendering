@@ -85,15 +85,75 @@ let tests =
                   Feature168SkillParityFixtures.deleteTempRoot root
           }
 
-          // Must NOT fire. The coordination kit is synced verbatim from FS-GG/.github and cites FR-007; an
-          // edit here is reverted by the next sync, so a red would be one nobody can clear.
-          test "the externally-owned coordination kit is exempt" {
+          // A source that RESOLVES but cannot be read is the fail-open this rule shipped with in review: a
+          // directory source satisfies #529 (`File.Exists || Directory.Exists`), and the first draft of THIS
+          // rule then found no spec.md and skipped too. Both went green, so `source: src/Symbology` — one
+          // line — was a complete bypass of a High gate. Neither rule may defer to the other here.
+          test "a source that resolves but has no spec.md is a finding, not a free pass" {
+              let root = Feature168SkillParityFixtures.createTempRoot "feature573-unreadable"
+
+              try
+                  Directory.CreateDirectory(Path.Combine(root, "src", "Symbology")) |> ignore
+                  writeSkill root "fs-gg-bypass" "metadata:\n  author: \"FS.GG\"\n  source: \"src/Symbology\"\n" "The loop is fixed (FR-014)."
+
+                  Expect.hasLength (citationFindings root) 1 "an existing directory with no spec.md checks NOTHING — if this passes, any skill can silence this gate by pointing `source:` at any folder in the repo"
+              finally
+                  Feature168SkillParityFixtures.deleteTempRoot root
+          }
+
+          // A requirement merely MENTIONED in the source's prose must not bless a citation — only one the
+          // spec DEFINES (`- **FR-014**: …`). Specs cross-reference each other's FRs constantly.
+          test "a requirement the source only mentions in passing does not count as stated" {
+              let root = Feature168SkillParityFixtures.createTempRoot "feature573-mentioned"
+
+              try
+                  writeSpec root "192-real" "- **FR-014**: an orchestrating skill.\n\nUnlike FR-021 in spec 194, this stays scoped."
+                  writeSkill root "fs-gg-mention" "metadata:\n  author: \"FS.GG\"\n  source: \"specs/192-real\"\n" "See FR-021."
+
+                  Expect.hasLength (citationFindings root) 1 "FR-021 is name-dropped in 192's prose, not DEFINED by it — a passing mention is not a requirement this spec states"
+              finally
+                  Feature168SkillParityFixtures.deleteTempRoot root
+          }
+
+          // `FR-14` and `FR-014` are the same requirement. Reporting the unpadded form as phantom would be a
+          // false RED — and a gate that reds on a correct citation is one somebody switches off.
+          test "an unpadded citation is the same requirement, not a phantom" {
+              let root = Feature168SkillParityFixtures.createTempRoot "feature573-padding"
+
+              try
+                  writeSpec root "192-real" "- **FR-014**: an orchestrating skill."
+                  writeSkill root "fs-gg-padding" "metadata:\n  author: \"FS.GG\"\n  source: \"specs/192-real\"\n" "See FR-14."
+
+                  Expect.isEmpty (citationFindings root) "FR-14 means the spec's FR-014 — comparing as strings would red a correct citation"
+              finally
+                  Feature168SkillParityFixtures.deleteTempRoot root
+          }
+
+          // The coordination kit is synced verbatim from FS-GG/.github and cites FR-007, so it must never red
+          // this gate. It cannot today — `filesForSurface` drops it at INVENTORY, so it never reaches the
+          // rule. Assert that real mechanism: a test that writes a kit skill and finds no finding would pass
+          // even with the exemption deleted, and would be proving nothing.
+          test "the externally-owned coordination kit never reaches this rule (it is not inventoried)" {
               let root = Feature168SkillParityFixtures.createTempRoot "feature573-kit"
 
               try
                   writeSkill root "cross-repo-coordination" "" "Follow the protocol (FR-007)."
+                  writeSkill root "fs-gg-ordinary" "metadata:\n  author: \"FS.GG\"\n  source: \"specs/192-real\"\n" "No citations here."
+                  writeSpec root "192-real" "- **FR-014**: an orchestrating skill."
 
-                  Expect.isEmpty (citationFindings root) "the coordination kit is owned by FS-GG/.github and synced verbatim — reddening on it would be an unfixable red, and an unfixable red is a gate somebody switches off"
+                  let request = Feature168SkillParityFixtures.repositoryRequest root
+
+                  let inventoried =
+                      SkillParity.inventorySkills request (SkillParity.discoverDefaultSurfaces root)
+                      |> List.map (fun entry -> entry.SkillName)
+
+                  Expect.contains inventoried "fs-gg-ordinary" "the fixture root really is being inventoried (else this test proves nothing)"
+
+                  Expect.isFalse
+                      (List.contains "cross-repo-coordination" inventoried)
+                      "the kit is externally owned (FS-GG/.github, synced verbatim) and is excluded at inventory — an edit here is reverted by the next sync, so reddening on it would be a gate nobody can clear"
+
+                  Expect.isEmpty (citationFindings root) "and so its FR-007 produces no finding"
               finally
                   Feature168SkillParityFixtures.deleteTempRoot root
           }
@@ -115,16 +175,27 @@ let tests =
               let request = Feature168SkillParityFixtures.repositoryRequest root
               let report = SkillParity.runCheck request
 
+              // Count only the skills the rule ACTUALLY governs. Counting every citing skill would include the
+              // vendored speckit ones, which are exempt — so the guard would stay satisfied even if every
+              // enforced citation vanished, and `isEmpty` below would go vacuous without anybody noticing.
               let citing =
                   SkillParity.inventorySkills request (SkillParity.discoverDefaultSurfaces root)
                   |> List.filter (fun entry ->
-                      let _, body = SkillParity.parseFrontMatter entry.Content
-                      System.Text.RegularExpressions.Regex.IsMatch(body, @"\bFR-\d+\b"))
+                      let metadata, body = SkillParity.parseFrontMatter entry.Content
+
+                      let vendored =
+                          metadata
+                          |> Map.tryFind "author"
+                          |> Option.map (fun a -> a.Trim().ToLowerInvariant())
+                          |> Option.exists (fun a -> a = "github-spec-kit")
+
+                      not vendored
+                      && System.Text.RegularExpressions.Regex.IsMatch(body, @"\bFR-\d+\b"))
 
               Expect.isGreaterThan
                   (List.length citing)
                   0
-                  "at least one inventoried skill cites an FR (if this fails, the assertion below passes vacuously and the rule guards nothing)"
+                  "at least one inventoried, NON-EXEMPT skill cites an FR (if this fails, the assertion below passes vacuously and the rule guards nothing)"
 
               let unsourced =
                   report.Findings
