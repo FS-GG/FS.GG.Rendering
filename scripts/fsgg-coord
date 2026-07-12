@@ -95,6 +95,25 @@
 #                                             # count, and a WARNING while there is still budget left
 #                                             # to act on (free — rate_limit does not meter itself)
 #
+# THE SHADOW (ADR-0034 Phase 2). The coordination domain is moving to a typed F# core, and this tool
+# schedules the work that rewrites this tool — so nothing is cut over on faith. With `--engine shadow`
+# (or FSGG_COORD_ENGINE=shadow) BOTH engines decide every `batch`/`next`/`take`, BASH'S ANSWER IS THE
+# ONE RETURNED, and every disagreement is logged. Zero risk: the fleet is unaffected, and if the port
+# stalls the shadow costs nothing. Bash stays authoritative until the log has been empty for three
+# consecutive days across the live fleet — which is what `--engine fs` is waiting for, and why it is
+# still refused.
+#
+#   fsgg-coord --engine shadow next           # decide with bash, compare with the typed engine
+#   fsgg-coord divergence [--json] [--since T] [--clear]
+#                                             # the acceptance test for the port. Reports OUTCOME
+#                                             # divergences (the engines disagree about what may be
+#                                             # HANDED OUT — the release blocker) apart from REASON
+#                                             # divergences (they agree it is unschedulable and name a
+#                                             # different fact — a decision to record, not a bug). An
+#                                             # empty log exits 3, NOT 0: a shadow that never ran
+#                                             # reports zero divergence, and zero divergence is exactly
+#                                             # what success looks like (#266).
+#
 # EXIT CODES: 0 ok · 1 error · 3 the issue is not on the board · 75 (EX_RATE) the GraphQL budget is
 # exhausted — TRY AGAIN LATER. A worker loop must treat 75 as "back off until the reset", never as a
 # protocol failure, and never by retrying immediately.
@@ -3643,6 +3662,555 @@ reap_cmd() {
   return 0
 }
 
+# ---- THE SHADOW: run the typed engine beside bash, return BASH's answer, log the difference -------
+# ADR-0034 Phase 2. The coordination domain is moving to a typed F# core, and the one thing that may
+# not happen on the way is a big-bang cutover: this tool schedules the work that rewrites this tool.
+# So the engine runs in SHADOW — both engines decide, bash's answer is the one returned, and every
+# disagreement is logged. Bash stays authoritative until the divergence log is empty. If the port
+# stalls, the shadow costs nothing and bash keeps running.
+#
+# THREE RULES, AND THEY ARE NOT NEGOTIABLE:
+#
+#   1. THE SHADOW MAY NOT CHANGE THE ANSWER. Not the stdout, not the stderr, not the exit code. It is
+#      an observer. `shadow_run` is called for its side effect on a LOG FILE and nothing else, and it
+#      swallows every failure it can have.
+#   2. THE SHADOW MAY NOT BREAK A RECEIVER. This script is byte-copied into six repos whose CI has no
+#      .NET step until Phase 3. A missing engine is therefore a LOGGED SKIP, never an error — the
+#      shadow simply does not run there.
+#   3. ...AND THEREFORE IT MUST NOT BE ABLE TO GO SILENTLY VACUOUS. Rules 1 and 2 have just built a
+#      component that is *designed* to do nothing when it goes wrong, which is the exact shape of epic
+#      #266 — a check that fails open and reports green. So the log records the runs it SKIPPED and
+#      why, `divergence` reports them, and .github's CI asserts the shadow actually executed. "Zero
+#      divergence" must mean "we compared and they agreed", never "we never looked".
+#
+# WHAT IT COSTS. Zero GraphQL points: the engine reads NOTHING. Bash has already paid for the board
+# scan and the claim markers by the time it decides, so it hands that state over on stdin. The one
+# real cost is on the REST budget — the typed core checks the touch-set BEFORE the blockers, so a
+# BLOCKED candidate (which bash short-circuits without ever reading a body) needs one body read and
+# one marker read to reach the same question. That is bounded by the number of blocked candidates,
+# it is on the 5,000-*requests*/hr budget rather than the 5,000-*points*/hr one that dies first, and
+# it is paid only when the shadow is switched on. The log counts those reads rather than assuming
+# them.
+ENGINE_MODE="${FSGG_COORD_ENGINE:-bash}"
+DIVERGENCE_LOG="${FSGG_COORD_DIVERGENCE_LOG:-$CACHE/divergence.jsonl}"
+SNAPSHOT_SCHEMA='fsgg.coord.snapshot/1'
+SHADOW_EXTRA_READS=0
+# Candidates the shadow could not OBSERVE (an unreadable body or marker on one of the items bash
+# short-circuited). Distinct from a skipped RUN: the run happened, and it compared everything else.
+# Conflating the two would let one unreadable issue read as "the shadow did not run", which is the
+# number whose entire job is to stop a silent no-op from passing for agreement.
+SHADOW_UNOBSERVED=0
+
+shadow_enabled() { [ "$ENGINE_MODE" = "shadow" ] || [ "$ENGINE_MODE" = "fs" ]; }
+
+# Where the engine lives. In Phase 2 `.github` builds it FROM SOURCE and never depends on the feed —
+# that asymmetry is what breaks the publish cycle (to fix coord you would otherwise have to publish,
+# and to publish you would need coord to schedule the fix). Phase 3 replaces this with the shim that
+# resolves it from `.config/dotnet-tools.json`.
+ENGINE_BIN_MEMO=""
+engine_bin() {
+  [ -n "$ENGINE_BIN_MEMO" ] && { printf '%s' "$ENGINE_BIN_MEMO"; return 0; }
+  local top candidate
+
+  # AN EXPLICIT PATH IS AN INSTRUCTION, NOT A HINT. If the caller named an engine and that engine is
+  # not there, FALLING BACK to some other one is the worst available behaviour: they would be told the
+  # shadow ran, and it would have run against a binary they did not choose — quite possibly a stale
+  # build from a different branch, silently answering for the one they meant to test. Refuse, and let
+  # the caller find out. (Same shape as `--snapshot --json` swallowing the next flag; same rule.)
+  if [ -n "${FSGG_COORD_ENGINE_BIN:-}" ]; then
+    if [ -x "${FSGG_COORD_ENGINE_BIN}" ]; then ENGINE_BIN_MEMO="$FSGG_COORD_ENGINE_BIN"; fi
+    printf '%s' "$ENGINE_BIN_MEMO"
+    return 0
+  fi
+
+  if command -v fsgg-coord-engine >/dev/null 2>&1; then
+    # The shape Phase 3's shim will use: the tool on PATH, resolved from `.config/dotnet-tools.json`.
+    ENGINE_BIN_MEMO="$(command -v fsgg-coord-engine)"
+  else
+    # `.github` builds the engine FROM SOURCE and never depends on the feed — the asymmetry that
+    # breaks the publish cycle (to fix coord you would otherwise have to publish, and to publish you
+    # would need coord to schedule the fix).
+    top="$(git_toplevel)"
+    candidate="$top/src/FS.GG.Coord.Cli/bin/Release/net10.0/fsgg-coord-engine"
+    if [ -n "$top" ] && [ -x "$candidate" ]; then ENGINE_BIN_MEMO="$candidate"; fi
+  fi
+  printf '%s' "$ENGINE_BIN_MEMO"
+}
+
+# One JSONL row per shadowed invocation. NEVER fails the caller: a log we cannot write is a log we
+# cannot write, and it is not a reason to refuse a worker their item.
+shadow_log() {  # <json object on stdin>
+  mkdir -p "$(dirname "$DIVERGENCE_LOG")" 2>/dev/null || true
+  cat >>"$DIVERGENCE_LOG" 2>/dev/null || true
+}
+
+shadow_skip() {  # <reason>
+  jq -c -n --arg ts "$(now_iso)" --arg reason "$1" --arg mode "$ENGINE_MODE" \
+    '{ts: $ts, mode: $mode, ran: false, reason: $reason}' 2>/dev/null | shadow_log
+}
+
+# Compare the two engines, and CLASSIFY the difference — because the two kinds are not the same news.
+#
+#   OUTCOME  — one engine says startable and the other does not. This is the release blocker: it is a
+#              disagreement about WHETHER work may be handed out, and it is how two workers end up in
+#              one file. Any of these and the flip does not happen.
+#   REASON   — both agree the item is not startable, and they name a different fact. Not a bug, and
+#              expected at Phase 2: the two engines check in a DIFFERENT ORDER. Bash filters blocked
+#              candidates in bulk before it ever reads a lock, so a blocked-AND-held item reads as
+#              "blocked by X"; the typed core checks the lock first and reads it as "held by W".
+#              Both are true. Only one can be the one we print, and choosing is a DECISION for the
+#              flip — recorded, not silently merged (which is precisely how #485's five predicates
+#              came to disagree in the first place).
+#
+# Counting them together would drown the first in the second, and "zero divergence for three days"
+# would never go green for a reason that was never a bug.
+shadow_compare() {  # $1=bash verdict NDJSON file  $2=engine decision JSON file  $3=repo scope
+  local bashf="$1" enginef="$2" repo="${3:-}"
+  jq -c -n \
+    --slurpfile engine "$enginef" \
+    --slurpfile bash_rows "$bashf" \
+    --arg ts "$(now_iso)" --arg mode "$ENGINE_MODE" --arg repo "$repo" \
+    --argjson extra "$SHADOW_EXTRA_READS" --argjson unobserved "$SHADOW_UNOBSERVED" '
+    ($engine[0] // {}) as $e
+    | ($bash_rows | map(select(. != null))) as $b
+    | ($e.decisions // []) as $ed
+    | ( $b | map({key: .short, value: .}) | from_entries ) as $bmap
+    | ( $ed | map({key: .short, value: .}) | from_entries ) as $emap
+    | ( [ ($b | map(.short)), ($ed | map(.short)) ] | add | unique ) as $ids
+    | [ $ids[]
+        | . as $id
+        | ($bmap[$id] // null) as $bv
+        | ($emap[$id] // null) as $ev
+        | if $bv == null then
+            {id: $id, class: "engine-only", bash: null, engine: $ev.verdict}
+          elif $ev == null then
+            {id: $id, class: "bash-only", bash: $bv.verdict, engine: null}
+          elif ($bv.verdict == "startable") != ($ev.verdict == "startable") then
+            {id: $id, class: "outcome", bash: $bv.verdict, engine: $ev.verdict,
+             bashPaths: $bv.paths, enginePaths: $ev.paths, explain: $ev.explain}
+          elif $bv.verdict != $ev.verdict then
+            {id: $id, class: "reason", bash: $bv.verdict, engine: $ev.verdict,
+             bashHolder: $bv.holder, engineHolder: $ev.collidedWith.kind}
+          else
+            empty
+          end ]                                                        as $diffs
+    # `compared` COUNTS THE PAIRS, NOT THE UNION — and the difference is a false green.
+    #
+    # The first cut counted `$ids | length` — the UNION of the two id sets. So an engine that decided
+    # NOTHING — a RED verdict refusing the batch, or an empty `decisions` array — still produced
+    # `compared: 28`, with every item classed `bash-only` and `outcome: 0`. `divergence` read that as
+    # green: a confident agreement with an engine that had agreed to nothing. An id only one engine
+    # ruled on was not compared; saying otherwise is the same lie as a shadow that never ran.
+    | ( [ $ids[] | select($bmap[.] != null and $emap[.] != null) ] | length ) as $paired
+    | { ts: $ts, mode: $mode, repo: $repo, ran: true,
+        engineVerdict: ($e.verdict // "missing"),
+        compared: $paired,
+        extraReads: $extra,
+        unobserved: $unobserved,
+        outcome: ($diffs | map(select(.class == "outcome")) | length),
+        reason:  ($diffs | map(select(.class == "reason"))  | length),
+        unpaired: ($diffs | map(select(.class == "bash-only" or .class == "engine-only")) | length),
+        divergences: $diffs }' 2>/dev/null | shadow_log
+}
+
+# The two engines' inputs and outputs travel as FILES, never as argv (#497, #507). A single issue body
+# can reach ~196 KB — GitHub caps a body at 65,536 CHARACTERS, not bytes, so a CJK-heavy one blows the
+# 128 KiB MAX_ARG_STRLEN cap on ONE argument — and when that happened, `execve` returned E2BIG, `jq`
+# never ran, the `$( )` yielded the empty string, and every claim-aware read in the tool died at once.
+# The shadow carries MANY bodies. `--rawfile` and `--slurpfile` keep all of it off the command line.
+SHADOW_ITEMS=""
+SHADOW_VERDICTS=""
+SHADOW_SEEN=""
+
+shadow_init() {
+  shadow_enabled || return 0
+  SHADOW_ITEMS="$(mktemp "$CACHE/.snap-items.XXXXXX")"
+  SHADOW_VERDICTS="$(mktemp "$CACHE/.snap-verdicts.XXXXXX")"
+  SHADOW_SEEN="$(mktemp "$CACHE/.snap-seen.XXXXXX")"
+  TMPFILES+=("$SHADOW_ITEMS" "$SHADOW_VERDICTS" "$SHADOW_SEEN")
+  SHADOW_EXTRA_READS=0
+  SHADOW_UNOBSERVED=0
+}
+
+# BASH's verdict for one candidate, in the vocabulary the typed core also speaks. The tokens are the
+# comparable surface; the human sentence beside them in `skipped` is not, and never was.
+shadow_verdict() {  # <short> <verdict> [holder-kind] [paths(newline-separated)]
+  shadow_enabled || return 0
+  jq -c -n --arg short "$1" --arg verdict "$2" --arg holder "${3:-}" --arg paths "${4:-}" \
+    '{short: $short, verdict: $verdict,
+      holder: (if $holder == "" then null else $holder end),
+      paths: ($paths | split("\n") | map(select(length > 0)))}' 2>/dev/null >>"$SHADOW_VERDICTS" || true
+}
+
+# One snapshot item — the state BASH OBSERVED, handed to the engine so that both decide from the same
+# facts. Anything the engine had to fetch for itself would be a second observation of a moving board,
+# and the comparison would be measuring the clock rather than the rule.
+shadow_item() {  # <owner> <repo> <num> <status> <state> <body-file> <blockers-json> <claim-json>
+  shadow_enabled || return 0
+  printf '%s/%s#%s\n' "$1" "$2" "$3" >>"$SHADOW_SEEN"
+  jq -c -n \
+    --arg owner "$1" --arg repo "$2" --argjson number "$3" \
+    --arg status "$4" --arg state "$5" --rawfile body "$6" \
+    --argjson blockers "${7:-[]}" --argjson claim "${8:-null}" '
+    { owner: $owner, repo: $repo, number: $number,
+      status: (if $status == "" or $status == "null" then null else $status end),
+      state: $state, body: $body, blockers: $blockers, claim: $claim }' \
+    2>/dev/null >>"$SHADOW_ITEMS" || true
+}
+
+# The board scan carries blockers as `{ref: "owner/repo#n", state: "OPEN"|…|"UNPARSEABLE"}`. The engine
+# wants them split. An UNPARSEABLE blocker has no ref BY DEFINITION — it is prose somebody typed into a
+# dependency field — so it lands as number 0. That is cosmetic: it still BLOCKS, in both engines, which
+# is the only property that decides anything (#476, #266 — "I could not read it" is not "it is fine").
+#
+# UNDER `--ignore-blocked`, THE BLOCKER LIST IS EMPTY — because that is what bash ENFORCED.
+#
+# The flag is a diagnostic ("what WOULD be startable if the blockers cleared") and it relaxes the
+# blocker filter and nothing else. The shadow's whole premise is that both engines decide from the
+# SAME observations, so it must hand the engine the rule bash actually applied. Sending the blockers
+# anyway would have the engine dutifully return `blocked-by` for every candidate bash deliberately let
+# through — and each one would be logged as an OUTCOME divergence, the release-blocking class, while
+# both engines were behaving exactly as designed. A diagnostic flag would then poison the one signal
+# that has to stay trustworthy.
+SHADOW_IGNORE_BLOCKED=""
+shadow_blockers_json() {  # <item json> -> the engine's blocker array
+  [ -z "$SHADOW_IGNORE_BLOCKED" ] || { printf '[]'; return 0; }
+  jq -c '[ (.blockers // [])[]
+           | (.ref // "") as $r
+           | { owner: ($r | capture("^(?<o>[^/]+)/") | .o // ""),
+               repo:  ($r | capture("^[^/]+/(?<n>[^#]+)#") | .n // ""),
+               number: (($r | capture("#(?<n>[0-9]+)$") | .n | tonumber) // 0),
+               state: (.state // "UNKNOWN" | ascii_downcase) } ]' 2>/dev/null <<<"$1" || printf '[]'
+}
+
+# The claim BASH saw, and — crucially — WHAT IT CHECKED. `liveness` is not a detail: a lapsed lease is
+# EVIDENCE of abandonment and never proof, so the engine must be told whether anybody actually looked
+# for an open `item/<n>-*` PR. `unknown` is the case that reaped live work (#581), and it has to be
+# sayable on the wire or the shadow would launder it into a confident "no PR".
+shadow_claim_json() {  # <worker> <ageSec> <liveness-kind> [pr]
+  local worker="$1" age="${2:-0}" kind="$3" pr="${4:-}"
+  [ -n "$worker" ] || { printf 'null'; return 0; }
+  jq -c -n --arg w "$worker" --argjson age "${age:-0}" --arg kind "$kind" --arg pr "${pr:-}" \
+    '{ worker: $w, session: null, ageSeconds: $age, prevStatus: null,
+       liveness: ({kind: $kind} + (if $pr == "" then {} else {pr: ($pr | tonumber)} end)) }' \
+    2>/dev/null || printf 'null'
+}
+
+# Record ONE candidate exactly as bash saw it: the board row, the body it read (or did not), and the
+# claim — including WHICH liveness question was actually asked.
+shadow_observe() {  # <item json> <body> <liveness-kind|""> <worker|""> <ageSec> [pr]
+  shadow_enabled || return 0
+  local it="$1" body="$2" kind="$3" worker="$4" age="${5:-0}" pr="${6:-}"
+  local r num owner repo status state bf claim blockers
+  r="$(jq -r '.repo // ""' <<<"$it")"; num="$(jq -r '.number // ""' <<<"$it")"
+  { [ -n "$r" ] && [ -n "$num" ]; } || return 0
+  owner="${r%%/*}"; repo="${r#*/}"
+  status="$(jq -r '.status // ""' <<<"$it")"
+  # A NULL `.state` is treated as OPEN — because that is what bash's own closed-filter does
+  # (`select(.state != null and .state != "OPEN")`). Mirroring it is deliberate: the shadow's job is to
+  # compare the two RULES, so it must not manufacture a divergence out of a default that only one of
+  # them has. That bash reads an unknown state as open is arguably its own fail-open, and it is a
+  # finding for the flip — not something to fix silently inside the observer.
+  state="$(jq -r '.state // "OPEN"' <<<"$it")"
+  blockers="$(shadow_blockers_json "$it")"
+  claim="$(shadow_claim_json "$worker" "$age" "$kind" "$pr")"
+  bf="$(mktemp "$CACHE/.snap-body.XXXXXX")"; TMPFILES+=("$bf")
+  printf '%s' "$body" >"$bf"
+  shadow_item "$owner" "$repo" "$num" "$status" "$state" "$bf" "$blockers" "$claim"
+}
+
+# Bash's verdict for every candidate a jq filter selects — the bulk pre-filters (closed, blocked),
+# which never reach the per-item loop and so have no other place to be recorded.
+shadow_verdict_bulk() {  # <cands json> <jq select expr> <verdict token>
+  shadow_enabled || return 0
+  local id
+  while IFS= read -r id; do
+    [ -n "$id" ] || continue
+    shadow_verdict "$id" "$3"
+  done < <(jq -r "[ .[] | $2 | \"\(.repo | sub(\"^[^/]+/\";\"\"))#\(.number)\" ] | .[]" <<<"$1" 2>/dev/null || true)
+}
+
+# THE CANDIDATES BASH NEVER LOOKED AT.
+#
+# Bash short-circuits a CLOSED or BLOCKED candidate straight off the board scan and never reads its
+# body or its markers. The typed core checks the touch-set and the lock BEFORE the blockers, so it
+# cannot reach the same question without them — and handing it an empty body would fabricate a
+# `NoTouchSet` verdict that neither engine actually holds. That is not a divergence, it is a lie, and
+# a shadow that lies is worse than no shadow.
+#
+# So the shadow pays for those reads itself, and COUNTS them. REST only — never the points budget that
+# dies under fan-out. If this number turns out to be large in practice, that is a real argument about
+# the check ORDER, and it belongs in the flip decision with evidence attached rather than in a guess.
+shadow_sweep() {  # <all cands json>
+  shadow_enabled || return 0
+  local n i=0 it r num id body hold holder age stale alive kind pr
+  n="$(jq 'length' <<<"$1" 2>/dev/null || echo 0)"
+  while [ "$i" -lt "$n" ]; do
+    it="$(jq -c ".[$i]" <<<"$1")"; i=$((i + 1))
+    r="$(jq -r '.repo // ""' <<<"$it")"; num="$(jq -r '.number // ""' <<<"$it")"
+    { [ -n "$r" ] && [ -n "$num" ]; } || continue
+    id="${r#*/}#$num"
+    grep -qxF "$r#$num" "$SHADOW_SEEN" 2>/dev/null && continue   # the loop already observed it
+
+    # EVERY READ HERE RUNS UNDER `soft_run`, AND THAT IS NOT BELT-AND-BRACES — IT IS RULE 1.
+    #
+    # `live_claim_holder` and `stale_claim_worker` go through `claims_of`, which is documented "or DIE"
+    # and MEANS it: a lock guessed from a failed read is the one thing a lock may never be. But `die`
+    # is `kill -s TERM $$` — it takes down the TOP-LEVEL shell, and no `|| true` can catch a signal.
+    # So an unguarded read here would let one transient 5xx on a BLOCKED candidate's markers abort the
+    # whole tool: a worker running `--engine shadow take` would get a hard failure and no item, on a
+    # run bash alone would have completed. The OBSERVER would have changed the answer.
+    #
+    # `soft_run` is the house containment: SOFT_DIE makes `die` exit its own subshell, and it clears
+    # RC_FILE afterwards — which matters, because "FIRST die wins" and a stray code left there by the
+    # shadow would be reported as the cause of the NEXT real one.
+    #
+    # Failing to observe a candidate is a normal outcome here, not an error. It is counted (below) and
+    # it withholds that candidate from the comparison; it never withholds the item from the worker.
+    body="$(gh api "repos/${r%%/*}/${r#*/}/issues/$num" --jq '.body // ""' 2>/dev/null)" \
+      || { SHADOW_UNOBSERVED=$((SHADOW_UNOBSERVED + 1)); continue; }
+    SHADOW_EXTRA_READS=$((SHADOW_EXTRA_READS + 1))
+
+    # A FAILED MARKER READ MAKES THE CANDIDATE UNOBSERVABLE — IT DOES NOT MAKE IT UNHELD.
+    #
+    # `soft_run` contains the die, and containing it is what stops the tool being killed. But a
+    # contained die returns the EMPTY STRING, and taking that for "nobody holds this item" would be
+    # the original sin of this whole codebase reproduced inside its own remedy: an empty answer wearing
+    # a failed read's clothes (#461, epic #266). The engine would then be handed `claim: null` for an
+    # item that may well be locked, and would agree — or disagree — about a board nobody read.
+    #
+    # So the read's STATUS is checked, not its output. We could not observe this candidate; we say so,
+    # we count it, and we withhold it from the comparison. What we never do is guess.
+    if hold="$(soft_run live_claim_holder "${r%%/*}" "${r#*/}" "$num" 2>/dev/null)"; then
+      SHADOW_EXTRA_READS=$((SHADOW_EXTRA_READS + 1))
+    else
+      SHADOW_UNOBSERVED=$((SHADOW_UNOBSERVED + 1)); continue
+    fi
+
+    holder="${hold%%$'\t'*}"; age="${hold##*$'\t'}"
+    kind=""; pr=""
+    if [ -n "$holder" ]; then
+      kind="lease-held"
+    else
+      if stale="$(soft_run stale_claim_worker "${r%%/*}" "${r#*/}" "$num" 2>/dev/null)"; then
+        :
+      else
+        SHADOW_UNOBSERVED=$((SHADOW_UNOBSERVED + 1)); continue
+      fi
+      if [ -n "$stale" ]; then
+        holder="$stale"; age="${age:-0}"
+        # `pr_alive` is a raw `gh` read that cannot die — but it CAN come back empty for two entirely
+        # different reasons, and #581 is the story of confusing them: "no open item/<n> PR" is a fact
+        # about the work, "I could not ask" is a fact about us. Only the first licenses `no-pr`.
+        if alive="$(pr_alive "${r%%/*}" "${r#*/}" "$num" 2>/dev/null)"; then
+          SHADOW_EXTRA_READS=$((SHADOW_EXTRA_READS + 1))
+        else
+          SHADOW_UNOBSERVED=$((SHADOW_UNOBSERVED + 1)); continue
+        fi
+        if [ -n "$alive" ]; then
+          kind="lease-expired-pr-open"; pr="${alive%% *}"; pr="${pr#\#}"
+        else
+          kind="lease-expired-no-pr"
+        fi
+      fi
+    fi
+    case "$age" in ''|*[!0-9]*) age=0 ;; esac
+    shadow_observe "$it" "$body" "$kind" "$holder" "$age" "$pr"
+  done
+}
+
+# Assemble the snapshot and run the engine. Returns nothing, changes nothing, and is called for its
+# effect on the divergence log alone. EVERY failure path here is a SKIP, never an error — see rule 1.
+shadow_run() {  # <allowBacklog 0|1> <limit> <inflight-ndjson-file> <repo>
+  shadow_enabled || return 0
+
+  local allow="$1" limit="$2" inflight="$3" repo="${4:-}"
+  local bin; bin="$(engine_bin)"
+  if [ -z "$bin" ]; then
+    # Rule 2. Six receivers carry this script and have no .NET on the coordination path until Phase 3.
+    # Their shadow does not run, and that is a fact to RECORD, not an error to raise.
+    shadow_skip "no engine on PATH (build it: dotnet build src/FS.GG.Coord.Cli -c Release)"
+    return 0
+  fi
+
+  local snap out
+  snap="$(mktemp "$CACHE/.snap.XXXXXX")"; out="$(mktemp "$CACHE/.snapout.XXXXXX")"
+  TMPFILES+=("$snap" "$out")
+
+  jq -n --slurpfile items "$SHADOW_ITEMS" --slurpfile inflight "$inflight" \
+    --arg schema "$SNAPSHOT_SCHEMA" --argjson allow "$allow" --argjson limit "${limit:-0}" '
+    { schema: $schema, allowBacklog: ($allow == 1), limit: $limit,
+      inFlight: $inflight, items: $items }' >"$snap" 2>/dev/null \
+    || { shadow_skip "could not assemble the snapshot"; return 0; }
+
+  if ! "$bin" decide <"$snap" >"$out" 2>/dev/null; then
+    # A RED verdict (exit 3) is a real answer and is logged below. Any other failure is the engine
+    # being broken, which is news — but it is OUR news, not the caller's, and it may not cost them
+    # their item.
+    if ! jq -e '.verdict' >/dev/null 2>&1 <"$out"; then
+      shadow_skip "the engine did not produce a decision (it exited non-zero with no verdict)"
+      return 0
+    fi
+  fi
+
+  shadow_compare "$SHADOW_VERDICTS" "$out" "$repo"
+}
+
+# ---- divergence: the acceptance test for the whole port -------------------------------------------
+# ADR-0034's exit criterion is ZERO DIVERGENCE across the live fleet for three consecutive days. This
+# is the surface that says whether that has happened — and, just as importantly, whether the question
+# was ever actually ASKED.
+#
+# The two classes are reported apart, because they are not the same news:
+#
+#   OUTCOME — the engines disagree about whether an item may be HANDED OUT. This is the blocker. One
+#             of them is wrong, and the failure mode is two workers in one file.
+#   REASON  — they agree it is not startable and name a different fact. Expected at Phase 2, because
+#             they check in a different ORDER, and both statements are true. Which one to PRINT is a
+#             decision for the flip; it is recorded here, not merged silently. (#485 exists because
+#             five predicates were merged silently.)
+#
+# And the third number, which is the one that keeps this honest: SKIPPED. A shadow that never ran
+# reports zero divergence, and zero divergence is exactly what success looks like. So a run that did
+# not happen is logged as loudly as one that disagreed — otherwise "the engines agree" and "we never
+# compared them" are the same output, which is epic #266 wearing the uniform of its own remedy.
+divergence_cmd() {
+  local json="" since=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --json)  json=1; shift ;;
+      --since) since="${2:?--since needs a value (an ISO timestamp)}"; shift 2 ;;
+      --clear) rm -f "$DIVERGENCE_LOG"; echo "fsgg-coord: cleared $DIVERGENCE_LOG"; return 0 ;;
+      *)       die "divergence: unknown argument '$1'." ;;
+    esac
+  done
+
+  if [ ! -s "$DIVERGENCE_LOG" ]; then
+    # NOT "green". An empty log is the ABSENCE of evidence, and the whole of ADR-0034 is the refusal
+    # to read that as evidence of absence.
+    if [ -n "$json" ]; then
+      jq -c -n '{runs: 0, ran: 0, skipped: 0, outcome: 0, reason: 0, verdict: "no-verdict",
+                 reason_text: "the shadow has never run — there is nothing to conclude"}'
+    else
+      echo "fsgg-coord: the divergence log is empty ($DIVERGENCE_LOG)." >&2
+      echo "That is NOT zero divergence — it is zero EVIDENCE. Nothing has been compared." >&2
+      echo "Enable the shadow with: fsgg-coord --engine shadow next   (or export FSGG_COORD_ENGINE=shadow)" >&2
+    fi
+    return 3
+  fi
+
+  local rows
+  rows="$(jq -c -s --arg since "$since" '
+    map(select($since == "" or (.ts >= $since)))
+    | { runs: length,
+        ran:      (map(select(.ran)) | length),
+        skipped:  (map(select(.ran | not)) | length),
+        compared: (map(select(.ran) | .compared // 0) | add // 0),
+        extraReads: (map(select(.ran) | .extraReads // 0) | add // 0),
+        unobserved: (map(select(.ran) | .unobserved // 0) | add // 0),
+        outcome:  (map(select(.ran) | .outcome // 0) | add // 0),
+        reason:   (map(select(.ran) | .reason // 0) | add // 0),
+        unpaired: (map(select(.ran) | .unpaired // 0) | add // 0),
+        # A RED engine verdict is the engine REFUSING the batch outright — an in-flight reservation
+        # whose touch-set is unmatchable, so it reserves nothing while occupying files (#273). Bash
+        # `die`s in that case too, so the two agree; but if bash proceeded and the engine refused,
+        # they could not disagree more sharply. It was recorded and never read. Now it gates.
+        engineRed: (map(select(.ran) | select((.engineVerdict // "green") != "green")) | length),
+        firstTs:  (map(.ts) | min // null),
+        lastTs:   (map(.ts) | max // null),
+        skips:    (map(select(.ran | not) | .reason) | unique),
+        outcomes: (map(select(.ran) | .divergences // [] | .[] | select(.class == "outcome"))),
+        reasons:  (map(select(.ran) | .divergences // [] | .[] | select(.class == "reason"))
+                   | group_by([.bash, .engine])
+                   | map({bash: .[0].bash, engine: .[0].engine, count: length})) }' \
+    <"$DIVERGENCE_LOG" 2>/dev/null)" || die "divergence: could not read $DIVERGENCE_LOG."
+
+  if [ -n "$json" ]; then printf '%s\n' "$rows"; else
+    local ran skipped outcome reason compared extra unpaired unobserved enginered
+    ran="$(jq -r '.ran' <<<"$rows")";        skipped="$(jq -r '.skipped' <<<"$rows")"
+    outcome="$(jq -r '.outcome' <<<"$rows")"; reason="$(jq -r '.reason' <<<"$rows")"
+    compared="$(jq -r '.compared' <<<"$rows")"; extra="$(jq -r '.extraReads' <<<"$rows")"
+    unpaired="$(jq -r '.unpaired' <<<"$rows")"; unobserved="$(jq -r '.unobserved' <<<"$rows")"
+    enginered="$(jq -r '.engineRed' <<<"$rows")"
+    printf 'shadow runs: %s ran, %s skipped  ·  %s item-verdicts compared  ·  %s extra REST read(s)\n' \
+      "$ran" "$skipped" "$compared" "$extra"
+    # WHAT WAS *NOT* COMPARED IS PART OF THE ANSWER. A number that only ever reports what it looked at
+    # is how "we agreed" and "we never checked" come to print the same sentence.
+    if [ "$unobserved" -gt 0 ] || [ "$unpaired" -gt 0 ] || [ "$enginered" -gt 0 ]; then
+      printf '  NOT compared: %s unobservable item(s) · %s ruled on by ONE engine only · %s run(s) the engine REFUSED outright\n' \
+        "$unobserved" "$unpaired" "$enginered"
+    fi
+    printf '  window: %s → %s\n' "$(jq -r '.firstTs // "—"' <<<"$rows")" "$(jq -r '.lastTs // "—"' <<<"$rows")"
+    echo
+    printf 'OUTCOME divergences (the release blocker): %s\n' "$outcome"
+    jq -r '.outcomes[] | "  \(.id) — bash says \(.bash), the engine says \(.engine)"' <<<"$rows"
+    echo
+    printf 'REASON divergences (a decision to record, not a bug): %s\n' "$reason"
+    jq -r '.reasons[] | "  \(.count)×  bash: \(.bash)  ·  engine: \(.engine)"' <<<"$rows"
+    if [ "$skipped" -gt 0 ]; then
+      echo
+      echo "SKIPPED runs — these are NOT agreement:" >&2
+      jq -r '.skips[] | "  " + .' <<<"$rows" >&2
+    fi
+    echo
+    if [ "$ran" -eq 0 ]; then
+      echo "VERDICT: no-verdict — the shadow never ran, so nothing has been compared." >&2
+    elif [ "$compared" -eq 0 ]; then
+      echo "VERDICT: no-verdict — the shadow ran $ran time(s) and compared ZERO item-verdicts." >&2
+      echo "  A run over an empty candidate set agrees with everything, because it decided nothing." >&2
+      echo "  Three days of an empty queue is not three days of agreement. Nothing is proven yet." >&2
+    elif [ "$outcome" -gt 0 ]; then
+      echo "VERDICT: RED — the engines disagree about what may be handed out. The flip is blocked." >&2
+    elif [ "$enginered" -gt 0 ]; then
+      echo "VERDICT: RED — the engine REFUSED $enginered batch(es) outright while bash proceeded. That is not" >&2
+      echo "  a disagreement about one item; it is a disagreement about whether the board is safe to" >&2
+      echo "  schedule from at all." >&2
+    elif [ "$unpaired" -gt 0 ]; then
+      echo "VERDICT: RED — $unpaired item(s) were ruled on by only ONE engine. The two did not evaluate the" >&2
+      echo "  same candidate set, which is a divergence in the FOLD even when every shared verdict agrees." >&2
+    else
+      echo "VERDICT: green on OUTCOME. $reason reason-divergence(s) remain to be decided (ADR-0034 Phase 3)."
+    fi
+  fi
+
+  # NoVerdict is NON-ZERO, always (§4.2).
+  #
+  # AND "RAN" IS NOT THE BAR — "COMPARED" IS. The first cut of this checked only that the shadow had
+  # run, and the very first live invocation walked straight through it: the board happened to hold no
+  # Ready item, so the shadow ran, compared NOTHING, and this printed `green on OUTCOME`. A run over an
+  # empty candidate set agrees with every other engine in the world, because it did not decide
+  # anything — and an exit code of 0 would have fed that into "zero divergence for three consecutive
+  # days" as if it were evidence.
+  #
+  # That is epic #266 — a gate that reports green over a subject it never read — rebuilt inside the
+  # tool whose entire purpose is to retire it, and it survived exactly as long as it took to run it
+  # once against a real board. Which is the argument for the shadow, in miniature.
+  #
+  # Explicit `if`s, NOT `[ … ] && return`: this file has been bitten by that once already (see the
+  # blocked-candidate branch in `batch`). A `&&` list whose left side is false returns 1, and under
+  # `set -euo pipefail` that is an exit — from a function whose whole job is to report a status.
+  # AND `outcome` IS NOT THE ONLY WAY TO DISAGREE. Two more were recorded in the log and read by
+  # nothing, and each one could carry a green past this gate:
+  #   * `engineRed`  — the engine REFUSED the batch (a reservation that reserves nothing, #273) while
+  #                    bash went ahead. `decisions` is then empty, so `outcome` is 0. Sharpest possible
+  #                    disagreement, scoring as agreement.
+  #   * `unpaired`   — an item only ONE engine ruled on. With `-n` both engines stop at their own cap,
+  #                    so a different evaluated set IS a divergence in the fold, even when every shared
+  #                    verdict matches.
+  local final_ran final_compared final_outcome final_unpaired final_enginered
+  final_ran="$(jq -r '.ran' <<<"$rows")"
+  final_compared="$(jq -r '.compared' <<<"$rows")"
+  final_outcome="$(jq -r '.outcome' <<<"$rows")"
+  final_unpaired="$(jq -r '.unpaired' <<<"$rows")"
+  final_enginered="$(jq -r '.engineRed' <<<"$rows")"
+  if [ "$final_ran" -eq 0 ]; then return 3; fi
+  if [ "$final_compared" -eq 0 ]; then return 3; fi
+  if [ "$final_enginered" -gt 0 ]; then return 1; fi
+  if [ "$final_unpaired" -gt 0 ]; then return 1; fi
+  if [ "$final_outcome" -gt 0 ]; then return 1; fi
+  return 0
+}
+
 # ---- batch: THE scheduler. A maximal set of items that may run at once. --------------------------
 # ADR-0021 shipped a pairwise `overlap` and told the scheduler to loop over candidate pairs by hand.
 # That is O(n²) of a human's attention, and it silently ignores the items already in flight. `batch`
@@ -3705,6 +4273,16 @@ batch_cmd() {
   if [ -n "$include_backlog" ]; then
     cands="$(jq -c -s 'add' <(printf '%s' "$cands") <(board_filter "$repo" "Backlog" "" "0" <<<"$items"))"
   fi
+
+  # ADR-0034 Phase 2. The typed engine decides the SAME candidate set, from the SAME observations, and
+  # its answer is thrown away — only the disagreement is kept. `all_cands` is snapshotted here, before
+  # the closed/blocked filters below drop candidates from bash's view: those filters are exactly where
+  # the two engines' check ORDER differs, so a shadow that never saw the dropped items would be blind
+  # to the one class of divergence it is most likely to find.
+  shadow_init
+  # The engine must be told the rule bash APPLIED, not the rule bash knows — see shadow_blockers_json.
+  SHADOW_IGNORE_BLOCKED="$ignore_blocked"
+  local all_cands="$cands"
   # A BLOCKED candidate is dropped here — but it must not be dropped SILENTLY (#488). It never reaches
   # the skip-reason loop below, so before that fix it contributed nothing to `$skipped`, `take`'s stderr
   # came back empty, and `take` concluded from that emptiness that there were "no open board items at
@@ -3738,6 +4316,7 @@ batch_cmd() {
     .[] | select(.number != null) | select(.state != null and .state != "OPEN")
     | "  \(.repo | sub("^[^/]+/";""))#\(.number) — the issue is \(.state | ascii_downcase) (the board column says \(.status // "unset"); /check-board reconciles it)"' <<<"$cands")"
   if [ -n "$closed_out" ]; then skipped="$skipped$closed_out"$'\n'; fi
+  shadow_verdict_bulk "$cands" 'select(.number != null) | select(.state != null and .state != "OPEN")' 'issue-closed'
   cands="$(jq -c 'map(select(.state == null or .state == "OPEN"))' <<<"$cands")"
 
   if [ -z "$ignore_blocked" ]; then
@@ -3752,6 +4331,7 @@ batch_cmd() {
     # An `&&` statement here would return 1 when there are NO blocked candidates — the common case —
     # and `set -euo pipefail` would exit the script on it, silently. Use an explicit `if`.
     if [ -n "$blocked_out" ]; then skipped="$skipped$blocked_out"$'\n'; fi
+    shadow_verdict_bulk "$cands" 'select(.number != null) | select(.blocked)' 'blocked-by'
     cands="$(jq -c 'map(select(.blocked | not) | select(.number != null)) | sort_by(.number)' <<<"$cands")"
   else
     # `--ignore-blocked` is a DIAGNOSTIC, never a scheduling mode (#485 leg a): it answers "what WOULD
@@ -3796,6 +4376,8 @@ batch_cmd() {
     hold="$(live_claim_holder "${r%%/*}" "${r#*/}" "$num")"
     holder="${hold%%$'\t'*}"; age="${hold##*$'\t'}"
     if [ -n "$holder" ]; then
+      shadow_observe "$it" "$body" "lease-held" "$holder" "$age"
+      shadow_verdict "$id" "held-by" "live-claim" "$p"
       # Same rule as the `active` pre-check, for a claim that never reached the board: an unmatchable
       # touch-set reserves nothing, so its holder's files are invisible to every later comparison.
       [ -z "$(invalid_paths "$p")" ] || die "batch: $id is claimed by worker $holder but declares unmatchable touch-set token(s): $(fmt_bad_paths "$(invalid_paths "$p")") — it reserves nothing, so refusing to schedule against an unknown touch-set. Fix with: fsgg-coord widen $id --paths '<paths>'"
@@ -3820,6 +4402,9 @@ batch_cmd() {
     if [ -n "$stale_holder" ]; then
       alive="$(pr_alive "${r%%/*}" "${r#*/}" "$num")"
       if [ -n "$alive" ]; then
+        local alive_pr; alive_pr="${alive%% *}"; alive_pr="${alive_pr#\#}"
+        shadow_observe "$it" "$body" "lease-expired-pr-open" "$stale_holder" "0" "$alive_pr"
+        shadow_verdict "$id" "held-by-live-work" "live-claim" "$p"
         [ -z "$(invalid_paths "$p")" ] || die "batch: $id has an expired claim by worker $stale_holder whose work is still live (PR $alive), but it declares unmatchable touch-set token(s): $(fmt_bad_paths "$(invalid_paths "$p")") — it reserves nothing. Fix with: fsgg-coord widen $id --paths '<paths>'"
         active_paths="$active_paths${active_paths:+$'\n'}$(tag_repo "$p" "$r")"
         skipped="$skipped  $id — lease EXPIRED, but PR $alive is open: worker $stale_holder is demonstrably still working it (#581). Not offering it; its touch-set stays reserved."$'\n'
@@ -3827,13 +4412,17 @@ batch_cmd() {
       fi
     fi
 
+    shadow_observe "$it" "$body" "" "" "0"
+
     if [ -z "$p" ]; then
       # Two very different states used to print one sentence (#496). Neither is schedulable, but only
       # one is a BUG: `Paths: none` is a decision somebody made, an absent line is an omission nobody
       # noticed. Say which — the worker reading this list is the person who can fix the second.
       if declares_no_touchset "$body"; then
+        shadow_verdict "$id" "deliberately-no-touch-set"
         skipped="$skipped  $id — 'Paths: none' (deliberately has no touch-set; not schedulable by design)"$'\n'
       else
+        shadow_verdict "$id" "no-touch-set"
         skipped="$skipped  $id — no 'Paths:' declared (cannot schedule — this is an OMISSION; declare one, or 'Paths: none' if it truly has no touch-set)"$'\n'
       fi
       continue
@@ -3845,6 +4434,7 @@ batch_cmd() {
       # sin was writing the line in markdown saw their item vanish from the queue and were told
       # nothing they could act on. Backticks are now stripped at parse, so anything still flagged here
       # is a REAL author error — and the grammar is the one thing that says which.
+      shadow_verdict "$id" "unusable-touch-set" "" "$p"
       skipped="$skipped  $id — unmatchable 'Paths:' token(s): $(fmt_bad_paths "$(invalid_paths "$p")") (cannot schedule; $TOUCHSET_GRAMMAR)"$'\n'; continue
     fi
     hits="$(conflicts_between "$p" "$(reserved_in "$active_paths" "$r")")"
@@ -3865,9 +4455,11 @@ batch_cmd() {
         # IFS=US, never TAB: an empty leading field must survive the split — see `claim_reserving`.
         IFS=$'\x1f' read -r oworker oitem oage <<<"$owner_rec"
         if [ -n "$oworker" ]; then
+          shadow_verdict "$id" "overlaps-in-flight" "live-claim" "$p"
           skipped="$skipped  $id — overlaps in-flight work held by $oworker on $oitem ($(lease_window "$oage")): $hit1"$'\n'
           queued="$queued$oworker"$'\t'"$oage"$'\n'
         else
+          shadow_verdict "$id" "overlaps-in-flight" "unowned" "$p"
           # RESERVED, BUT BY NOBODY THE PROTOCOL CAN NAME: the board says $oitem is `In progress` and
           # no marker backs it, so its touch-set is held by someone working outside the protocol. It
           # is deliberately NOT counted into `queued`: there is no lease to wait out and no worker to
@@ -3878,6 +4470,7 @@ batch_cmd() {
       else
         # Belt and braces: the reserved token came FROM the claim set, so a miss here means the two
         # went out of step. Report the collision we can prove rather than inventing an owner for it.
+        shadow_verdict "$id" "overlaps-in-flight" "unknown" "$p"
         skipped="$skipped  $id — overlaps in-flight work: $hit1"$'\n'
       fi
       continue
@@ -3890,11 +4483,37 @@ batch_cmd() {
       [ -n "$hits" ] && { clash="${chosen_ids[j]} ($(printf '%s' "$hits" | head -1))"; break; }
     done
     if [ -n "$clash" ]; then
+      # The typed core reports this as `overlaps-in-flight` too, and distinguishes it by WHO holds the
+      # tokens — `collidedWith.kind = batch-member` rather than `live-claim`. So the verdict TOKEN
+      # agrees and the holder is compared separately: a batch member frees at the end of this run and
+      # has no lease, which is a different instruction to an operator than "wait ~12m for worker w-x".
+      shadow_verdict "$id" "overlaps-in-flight" "batch-member" "$p"
       skipped="$skipped  $id — overlaps batch member $clash"$'\n'; continue
     fi
+    shadow_verdict "$id" "startable" "" "$p"
     chosen_ids+=("$id"); chosen_paths+=("$p"); chosen_repos+=("$r")
     [ "$want" -gt 0 ] && [ "${#chosen_ids[@]}" -ge "$want" ] && break
   done
+
+  # THE SHADOW RUNS HERE — after bash has decided, and before bash prints. It observes the candidates
+  # bash short-circuited (see `shadow_sweep`), hands the engine the state bash saw, and records the
+  # disagreement. It cannot reach any of the variables printed below, and it is the last thing that
+  # could ever be allowed to.
+  if shadow_enabled; then
+    local infl; infl="$(mktemp "$CACHE/.snap-inflight.XXXXXX")"; TMPFILES+=("$infl")
+    # The reservation set, as bash built it: every live claim, with the repo its tokens belong to.
+    # Tokens are repo-relative (#312), and a reservation that loses its repo invents collisions.
+    jq -c '.[] | select(.paths != null and (.paths | length) > 0)
+           | { owner: (.repo | split("/")[0]), repo: (.repo | split("/")[1:] | join("/")),
+               paths: .paths,
+               holder: (if (.worker // "") == "" then {kind: "unowned"}
+                        else {kind: "live-claim", worker: .worker, ageSeconds: (.ageSec // 0)} end
+                        + { owner: (.repo | split("/")[0]),
+                            repo: (.repo | split("/")[1:] | join("/")),
+                            number: .number }) }' <<<"$active" >"$infl" 2>/dev/null || true
+    shadow_sweep "$all_cands"
+    shadow_run "$([ -n "$include_backlog" ] && echo 1 || echo 0)" "$want" "$infl" "$repo"
+  fi
 
   if [ -n "$json" ]; then
     printf '%s\n' "${chosen_ids[@]+"${chosen_ids[@]}"}" | jq -R -s -c 'split("\n") | map(select(length > 0))'
@@ -4609,6 +5228,27 @@ if [ "${1:-}" = "--worker" ]; then
   WORKER_OVERRIDE="${2:?--worker needs a value}"; shift 2
 fi
 
+# ...and a global `--engine`, for the same reason (ADR-0034 Phase 2). DEFAULTS TO `bash`: the typed
+# engine is not authoritative and will not be until its divergence log has been empty for three days.
+#
+# `shadow` is the mode that earns the flip — both engines decide, BASH'S ANSWER IS RETURNED, and the
+# disagreement is logged. `fs` is reserved for the flip itself and is refused here rather than quietly
+# accepted, because an option that is accepted and ignored is indistinguishable from one that was
+# honoured — and a worker who believed they were running the typed engine would be reading bash's
+# answer and calling it evidence.
+while [ $# -gt 0 ]; do
+  case "${1:-}" in
+    --engine)   ENGINE_MODE="${2:?--engine needs a value (bash|shadow)}"; shift 2 ;;
+    --engine=*) ENGINE_MODE="${1#--engine=}"; shift ;;
+    *) break ;;
+  esac
+done
+case "$ENGINE_MODE" in
+  bash|shadow) ;;
+  fs) die "--engine fs is not available yet: the typed engine is not authoritative until its divergence log has been empty across the fleet for three consecutive days (ADR-0034 Phase 3). Run '--engine shadow' to help get it there, and 'fsgg-coord divergence' to see how far off it is." ;;
+  *)  die "--engine: unknown mode '$ENGINE_MODE' (bash|shadow)." ;;
+esac
+
 cmd="${1:-}"; [ $# -gt 0 ] && shift || true
 case "$cmd" in
   bootstrap) case "${1:-}" in --refresh) bootstrap 1 ;; "") bootstrap ;; *) die "bootstrap: unknown arg '$1'." ;; esac ;;
@@ -4649,6 +5289,7 @@ case "$cmd" in
   say)       say_cmd "$@" ;;
   inbox)     inbox_cmd "$@" ;;
   verify-paths) verify_paths_cmd "$@" ;;
+  divergence) divergence_cmd "$@" ;;
   budget)    budget ;;
   -h|--help|help|"") usage ;;
   *)         die "unknown command '$cmd' (try: fsgg-coord --help)." ;;
