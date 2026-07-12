@@ -69,8 +69,16 @@ let private ledgerPath = repositoryPath ledgerRel
 /// A PUBLIC `val` in a shipped signature file. `val internal` is deliberately NOT matched: it is not part of
 /// the product's surface (it should not be in the mirror at all — see the note above), and admitting it here
 /// would let an internal leak be excused by a ledger line instead of fixed.
+///
+/// THE NAME MAY END IN A PRIME, and this must take it (#654). `checked` is a reserved F# word, so the
+/// attribute is spelled `checked'` — and a name pattern of `[a-z][A-Za-z0-9_]*` stops dead at the quote,
+/// never reaches the `:`, and matches NOTHING. `CheckBox.checked'` is therefore public, shipped, named in no
+/// skill and in no ledger line, and S-DOC passed it anyway: it satisfied "neither documented nor listed" by
+/// being UNPARSEABLE. A surface the extractor cannot see is a surface the gate cannot hold, which is this
+/// item's whole thesis one level further down. (TemplateConsumesPinnedApiTests learned the same lesson from
+/// the other side in #598: "the member may end in a prime, and it must, or the rule invents violations".)
 let private publicValRegex =
-    Regex(@"^\s+val\s+(?!internal\b)(?:inline\s+)?(?<name>[a-z][A-Za-z0-9_]*)\s*:", RegexOptions.Compiled)
+    Regex(@"^\s+val\s+(?!internal\b)(?:inline\s+)?(?<name>[a-z][A-Za-z0-9_]*'?)\s*:", RegexOptions.Compiled)
 
 /// (name, the shipped .fsi it appears in) for every public val the product is given.
 let private shippedSurface =
@@ -86,16 +94,83 @@ let private shippedSurface =
     |> Seq.map (fun (name, entries) -> name, entries |> Seq.map snd |> Set.ofSeq)
     |> Map.ofSeq
 
-/// Everything the product is TOLD, as one body of prose. Concatenated on purpose: S-DOC asks whether a
+/// Everything the product is TOLD, as one body of text. Concatenated on purpose: S-DOC asks whether a
 /// surface is documented AT ALL, and which skill says it is R-REACH's question, not this one.
-let private productSkillProse =
+let private productSkillText =
     Directory.EnumerateFiles(productSkillsRoot, "SKILL.md", SearchOption.AllDirectories)
     |> Seq.map File.ReadAllText
     |> String.concat "\n"
 
-/// Word-boundary match, so `withKey` is not credited to a skill that merely says `withKeyboard`.
+/// An opening or closing CommonMark fence: up to 3 leading spaces, then 3+ backticks or 3+ tildes.
+let private fenceRegex = Regex(@"^ {0,3}(?<fence>`{3,}|~{3,})", RegexOptions.Compiled)
+
+/// An inline code span: one or more backticks, the shortest run closed by the same number. Confined to a
+/// single line, which is what every citation in these skills actually is.
+let private inlineCodeRegex = Regex(@"(?<ticks>`+)(?<code>[^\n`](?:[^\n]*?[^\n`])?)\k<ticks>(?!`)", RegexOptions.Compiled)
+
+/// The code a skill SHOWS, split out from the prose it writes: fenced blocks, plus inline code spans taken
+/// from the unfenced lines (the fences themselves would otherwise read as inline delimiters).
+///
+/// #654: this split is the whole gate. `isDocumented` used to be a bare word-boundary match over the full
+/// text, which credits a public val whose name is also an ordinary English word to any sentence that happens
+/// to use the word, about anything. FS.GG.Game#240 wrote "the block above can bind all four the same way" —
+/// about a fenced code block — into the frozen-mirror `fs-gg-audio` canonical, and S-DOC concluded a product
+/// skill now documents the RichText combinator `block`, declared its (correct) ledger line stale, and red-ed
+/// `main`. It was doing this for 32 surfaces: `arc`, `background`, `count`, `fill`, `image`, `success`,
+/// `warning` … all credited by homonym, 31 of them in no ledger line at all. The guard for #507 had a #507
+/// inside it.
+///
+/// A skill that means `RichText.block` writes it as code — in a `fsharp` block or in backticks — because that
+/// is what a citation IS. So credit only code, and the English language stops being able to document an API.
+///
+/// Returns the code, and whether the file ended with a fence still OPEN — which the caller must treat as a
+/// defect, not a curiosity. See `skillsWithUnclosedFence`.
+let private codeReferencesIn (markdown: string) =
+    let mutable openFence: string option = None
+    let code = Text.StringBuilder()
+    let prose = Text.StringBuilder()
+
+    for line in markdown.Replace("\r\n", "\n").Split '\n' do
+        let fence = fenceRegex.Match line
+
+        match openFence with
+        // A fence closes only on the same character, repeated at least as many times as it was opened.
+        | Some opening when fence.Success && fence.Groups.["fence"].Value.StartsWith opening -> openFence <- None
+        | Some _ -> code.AppendLine line |> ignore
+        | None when fence.Success -> openFence <- Some fence.Groups.["fence"].Value
+        | None -> prose.AppendLine line |> ignore
+
+    for m in inlineCodeRegex.Matches(prose.ToString()) do
+        code.AppendLine m.Groups.["code"].Value |> ignore
+
+    code.ToString(), Option.isSome openFence
+
+let private skillCode =
+    Directory.EnumerateFiles(productSkillsRoot, "SKILL.md", SearchOption.AllDirectories)
+    |> Seq.map (fun path -> Path.GetRelativePath(productSkillsRoot, path).Replace('\\', '/'), codeReferencesIn (File.ReadAllText path))
+    |> Seq.toList
+
+/// Everything the product is told IN CODE — the only thing that can document a surface (#654).
+let private productSkillCode =
+    skillCode |> Seq.map (fun (_, (code, _)) -> code) |> String.concat "\n"
+
+/// A skill whose last fence is never closed. This is the one way the split above can fail SILENTLY and in the
+/// dangerous direction: every line after the stray fence is read as code, so the skill's PROSE starts
+/// documenting APIs again — which is #654 reopening, in the file that closed it. It cannot be caught by
+/// measuring how much is documented, because it makes that number go UP, not down. So it is caught here.
+let private skillsWithUnclosedFence =
+    skillCode |> List.filter (fun (_, (_, unclosed)) -> unclosed) |> List.map fst
+
+/// A skill documents a surface when it CITES it as code. Code-only, so a surface is not credited to a skill
+/// that merely uses its name as an English word (#654).
+///
+/// The boundary is `[\w']`, not `\b`, because a prime is part of the NAME and `\b` cannot see that. `\b` sits
+/// between a word char and a non-word char, so `\bchecked'\b` demands a word char after the quote and can
+/// never match `CheckBox.checked'` at all — while a bare `\bcount\b` happily matches the `count'` in some
+/// other symbol. Treating the quote as a name character settles both: `withKey` is still not credited to a
+/// skill that shows `withKeyboard`, and `count` is not credited to one that shows `count'`.
 let private isDocumented (name: string) =
-    Regex.IsMatch(productSkillProse, $@"\b{Regex.Escape name}\b")
+    Regex.IsMatch(productSkillCode, $@"(?<![\w']){Regex.Escape name}(?![\w'])")
 
 /// The declared exemptions: `<category>  <name>` lines, `#` comments and blanks ignored.
 let private ledger =
@@ -117,7 +192,8 @@ let surfaceDocCoverageTests =
         // failure mode this whole item is about (FS-GG/.github#266).
         test "the inputs are real (S-DOC is not vacuous)" {
             Expect.isNonEmpty (Map.toList shippedSurface) "the shipped api-surface declares public vals"
-            Expect.isNonEmpty productSkillProse "the product skills carry prose"
+            Expect.isNonEmpty productSkillText "the product skills carry prose"
+            Expect.isNonEmpty productSkillCode "the product skills cite code"
             Expect.isNonEmpty (Map.toList ledger) $"{ledgerRel} declares exemptions"
 
             Expect.isTrue
@@ -125,6 +201,29 @@ let surfaceDocCoverageTests =
                 $"the api-surface parse found {shippedSurface.Count} public vals — far fewer than the ~428 this \
                   repo ships, so the extractor has stopped seeing the surface. That is a defect in this test, \
                   not a smaller surface."
+
+            // The code extractor is the half that can fail SILENTLY. If `codeReferencesIn` ever stops seeing
+            // fences or backticks it returns little or nothing, and then NOTHING is documented — which reds
+            // rule 1 loudly, but makes both anti-rot rules pass by checking nothing, and those are the two
+            // that keep the ledger a ratchet. So measure the credit it actually issues, not just that it ran.
+            let documented = shippedSurface |> Map.toList |> List.filter (fun (name, _) -> isDocumented name)
+
+            Expect.isTrue
+                (documented.Length > 100)
+                $"only {documented.Length} of {shippedSurface.Count} public vals are cited as code by any \
+                  product skill — far fewer than the 100+ that were, so the code extractor has stopped seeing \
+                  the skills' fenced blocks or backticks. That is a defect in this test, not a documentation \
+                  regression."
+
+            // ...and the floor above CANNOT catch the failure that matters most, because that one makes the
+            // number go up. An unclosed fence spills the rest of the file into the code corpus, and the
+            // skill's prose starts documenting APIs again — silently, which is exactly #654.
+            Expect.isEmpty
+                skillsWithUnclosedFence
+                $"these product skills end with a code fence still OPEN: {commaSep skillsWithUnclosedFence}. \
+                  Every line after the stray fence is then read as CODE, so the skill's PROSE can document an \
+                  API again by using its name as an English word — the #654 homonym, reopened in the file that \
+                  closed it. Close the fence."
         }
 
         // S-DOC. The rule.
@@ -180,7 +279,7 @@ let surfaceDocCoverageTests =
             let mandate = "Responsiveness evidence must validate pointer and keyboard activation"
 
             Expect.isTrue
-                (productSkillProse.Contains mandate)
+                (productSkillText.Contains mandate)
                 "a product skill still mandates responsiveness evidence (if this mandate is ever dropped, drop \
                  this test with it — but do not drop the instruments and keep the mandate, which is #507)"
 
