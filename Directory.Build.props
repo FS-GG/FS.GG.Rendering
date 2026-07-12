@@ -6,8 +6,11 @@
        Distributed by scripts/sync-build-config.sh. DO NOT EDIT in a consumer repo —
        edits are overwritten on the next sync and fail the drift check (check mode).
        Repo-specific properties (TargetFramework, package metadata, F# warning
-       promotions, fsdocs, …) go in Directory.Build.local.props, imported at the end
-       so a repo may override anything below (last definition wins).
+       promotions, fsdocs, …) go in Directory.Build.local.props, imported after the
+       org defaults so a repo may override any of them (last definition wins). The one
+       block deliberately placed AFTER that import is the api-breaking-change-gate: it
+       must READ the adopter's $(FsggApiGate), which is set in local.props (H1 fix,
+       .github#125 — see its note below).
        Contract: lockfile-restore-enforcement + shared-build-config (registry/dependencies.yml).
        ════════════════════════════════════════════════════════════════════════════ -->
 
@@ -18,6 +21,60 @@
   <PropertyGroup Label="Central Package Management">
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+
+  <!-- lock-hash determinism (ADR-0032, .github#473/#471): FSharp.Core resolves from ONE source, so a
+       regenerated packages.lock.json is byte-identical on any machine.
+
+       THE DEFECT. The F# SDK injects its OWN bundled copy of FSharp.Core as a restore source:
+       Microsoft.FSharp.NetSdk.targets appends $(_FSharpCoreLibraryPacksFolder) —
+       …/sdk/<ver>/FSharp/library-packs — to RestoreAdditionalProjectSources, and pins
+       FSCorePackageVersion to exactly the version this org references (10.1.301). That copy is a
+       DIFFERENT .nupkg than nuget.org serves at the same id+version (3,051,664 B vs 3,066,660 B).
+       Nothing was ever re-published and no feed lied — there have always been two packages. A lock
+       file's `contentHash` is therefore a function of WHICH SOURCE served the package, and a local
+       folder source BEATS nuget.org when both are offered. So CI (no packageSourceMapping) resolved
+       library-packs and committed `FwQFuqOA…`, while a dev box whose mapping does not admit
+       library-packs resolved nuget.org and produced `excLf2zM…`. Same id, same version, two hashes,
+       and whichever machine ran the restore last won the `git diff`.
+
+       WHY IT HAS TO BE FIXED HERE, in MSBuild. The injection arrives via
+       RestoreAdditionalProjectSources, NOT as a configured NuGet source, so none of the usual
+       hermeticity levers touch it: `<clear/>` in nuget.config does not remove it, a fresh
+       NUGET_PACKAGES does not bypass it, and clearing the NuGet http-cache does not either. A
+       perfectly COLD restore still resolves the SDK's copy — cold is not hermetic (ADR-0031 §1 still
+       stands on its own merits; it just never closed this hole).
+       (Note for editors: XML comments cannot contain a double hyphen, so CLI flags are named without
+       their leading dashes throughout this comment.)
+
+       THE FIX. DisableImplicitLibraryPacksFolder is the SDK's own opt-out and it guards the
+       injection itself, so the folder is REMOVED from the source list rather than deprioritised —
+       with it set, a restore that can reach no other source fails NU1100 instead of quietly falling
+       back to the SDK copy. FSharp.Core then comes from nuget.org (also the signed copy) everywhere,
+       and `contentHash` becomes a function of (id, version) alone — no longer of the SDK patch level.
+
+       WHY THAT MATTERS, STATED HONESTLY (.github#536). This comment used to say it mattered "because
+       global.json says rollForward: latestFeature". That was FALSE of most of the repos reading it:
+       four of the five consumers — Game, Rendering, SDD, Governance — have NO global.json at all, so
+       there is no floor and no rollForward policy to reason from. Only FS.GG.Audio had one.
+
+       The conclusion survives the correction, and is in fact STRONGER: with no SDK pin, the SDK that
+       serves a build is whatever the machine happens to have. So an SDK-dependent contentHash is not
+       a risk that materialises the next time somebody bumps a pin — it is a difference between any
+       two machines, today. An UNPINNED SDK makes SDK-independence more valuable, not less.
+
+       The SDK pin is being distributed as a managed file (dist/dotnet/global.json, #536), but it is
+       NOT in sync-build-config's FILES list yet and MUST NOT BE ADDED until every consumer carries
+       one — see the ordering note in scripts/sync-build-config.sh before you touch that list.
+
+       ADOPTING THIS IS A ONE-TIME RE-PIN, AND THE ORDER IS LOAD-BEARING. Syncing this file flips the
+       source a repo restores from, so its committed `FwQFuqOA…` becomes `excLf2zM…`. Regenerate the
+       lock in the SAME PR that syncs this file (a cold `dotnet restore` with force-evaluate). Do NOT
+       re-pin a repo ahead of the sync: a lock re-pinned to nuget.org's hash, met by a CI that still
+       resolves library-packs, fails locked restore on a CORRECT lock file — which is precisely what
+       blocked #429's repair for a day (ADR-0032 §3). -->
+  <PropertyGroup Label="lock-hash determinism">
+    <DisableImplicitLibraryPacksFolder>true</DisableImplicitLibraryPacksFolder>
   </PropertyGroup>
 
   <PropertyGroup Label="lockfile-restore-enforcement">
@@ -37,8 +94,80 @@
     <WarningsAsErrors>$(WarningsAsErrors);NU1603;NU1608</WarningsAsErrors>
   </PropertyGroup>
 
-  <!-- Repo-specific overrides. Keep this import LAST so a repo can override any org
-       default above (MSBuild property last-write-wins). -->
+  <!-- Bootstrap fail-open guard (review low). The RestoreLockedMode condition above deliberately
+       `And Exists(...lockfile)` so a first restore can bootstrap a missing lockfile instead of
+       wedging a brand-new project. The cost: a repo that NEVER committed packages.lock.json restores
+       UNLOCKED in CI with no signal — the lockfile-restore-enforcement gate silently does nothing.
+       Surface it as a high-importance MESSAGE (not a Warning: an MSBuild <Warning> is promoted to an
+       error under `-warnaserror`/`MSBuildTreatWarningsAsErrors`, which would fail the very first
+       bootstrap restore and re-wedge the case this is meant to keep unblocked). Hooked to the single
+       restore target CollectPackageReferences so it prints once per restore; the repo closes the hole
+       by committing the generated lockfile. -->
+  <Target Name="FsggWarnMissingLockfileInCI"
+          BeforeTargets="CollectPackageReferences"
+          Condition="'$(GITHUB_ACTIONS)' == 'true' And '$(RestorePackagesWithLockFile)' == 'true' And !Exists('$(MSBuildProjectDirectory)/packages.lock.json')">
+    <Message Importance="high" Text="[lockfile-restore-enforcement] packages.lock.json is missing in CI (GITHUB_ACTIONS=true) — locked restore is NOT enforced for $(MSBuildProjectName); restore is running UNLOCKED (bootstrap fail-open). Commit the generated packages.lock.json to arm the gate." />
+  </Target>
+
+  <!-- Repo-specific overrides. This import sits AFTER the org defaults above (so a consumer can
+       override any of them — MSBuild property last-write-wins) and BEFORE the api-breaking-change-gate
+       below (so that gate can READ the adopter's $(FsggApiGate), which is set here in local.props).
+       H1 (.github#125): MSBuild evaluates PropertyGroup Conditions in document order, so a gate placed
+       ABOVE this import would test $(FsggApiGate) before local.props defines it and silently no-op the
+       EnablePackageValidation / WarningsNotAsErrors demotion — while its ItemGroup, evaluated in the
+       later item pass, would STILL inject the analyzer PackageReference, breaking an adopter's
+       TreatWarningsAsErrors build. Placing the whole gate after this import removes that asymmetry. -->
   <Import Project="Directory.Build.local.props" Condition="Exists('$(MSBuildThisFileDirectory)Directory.Build.local.props')" />
+
+  <!-- api-breaking-change-gate (H3 / .github#20, epic #16 Pillar 5): catch accidental public-API
+       breaks on packable libraries (FS.GG.Contracts, FS.GG.UI.*) so a break forces a SemVer major,
+       which the registry version ranges then enforce.
+
+       OPT-IN and OFF by default (FsggApiGate unset). Turning it on adds a PackageReference, so a
+       repo enables it deliberately as an adoption step and regenerates its packages.lock.json then.
+       This keeps a plain sync of the shared config non-breaking under locked restore.
+
+       Evaluated AFTER the *.local.props import above so the Condition observes the adopter's
+       $(FsggApiGate) (H1 fix, .github#125).
+
+       F# NO-OP (M7 / .github#125; mechanism recorded on the apicompat-publicapi-gate registry row +
+       the #20 note): Microsoft.CodeAnalysis.PublicApiAnalyzers is a Roslyn C#/VB source analyzer and
+       is a SILENT NO-OP on the org's F# packables (FS.GG.Contracts, FS.GG.UI.*) — the RS00xx
+       diagnostics never fire there. On F# projects only the Package Validation / ApiCompat half
+       (EnablePackageValidation, below) yields API-break signal; the F# source-surface record stays the
+       constitution's committed .fsi signatures + surface/*.surface.txt baselines. Do NOT rely on the
+       RS00xx analyzer half to guard an F# public API — it bites on C#/VB packables only.
+
+       Stages (set FsggApiGate in Directory.Build.local.props):
+         unset / false  → off.
+         advisory / true → on; public-API analyzer diagnostics stay WARNINGS even under the repo's
+                           TreatWarningsAsErrors, so adoption never breaks a build. Add the baselines
+                           (PublicAPI.Shipped.txt / PublicAPI.Unshipped.txt) per packable project.
+         required        → ratchet; the same diagnostics surface as build-breaking errors, and a repo
+                           that also sets PackageValidationBaselineVersion gets ApiCompat at pack. -->
+  <PropertyGroup Label="api-breaking-change-gate"
+                 Condition="'$(FsggApiGate)' != '' And '$(FsggApiGate)' != 'false'">
+    <!-- Package Validation = the SDK-integrated ApiCompat: compares the packed output against the
+         last published baseline at pack. Dormant until a repo sets PackageValidationBaselineVersion
+         (in *.local.props, to its last released version), so enabling it here is harmless. This is the
+         ONLY half of the gate that bites on the F# packables (see F# NO-OP above). -->
+    <EnablePackageValidation Condition="'$(IsPackable)' != 'false'">true</EnablePackageValidation>
+    <!-- Advisory keeps the public-API analyzer diagnostics non-breaking regardless of the repo's
+         TreatWarningsAsErrors; FsggApiGate=required drops this demotion so they fail the build.
+         RS0016/RS0017 symbol (not) in declared API; RS0022 constructor; RS0024/RS0025/RS0026/RS0027
+         shape/overload; RS0036/RS0037 nullability/annotation; RS0041 oblivious API. -->
+    <WarningsNotAsErrors Condition="'$(FsggApiGate)' != 'required'">$(WarningsNotAsErrors);RS0016;RS0017;RS0022;RS0024;RS0025;RS0026;RS0027;RS0036;RS0037;RS0041</WarningsNotAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup Label="api-breaking-change-gate"
+             Condition="'$(FsggApiGate)' != '' And '$(FsggApiGate)' != 'false'">
+    <!-- Analyzer-only (PrivateAssets=all): never flows to a package's dependencies. Version is
+         centrally pinned in Directory.Packages.props. The analyzer tracks the declared API only when
+         both baseline files are present, so an opt-in repo that has not added them yet stays silent
+         (run the analyzer's code-fix to generate them). C#/VB only — a no-op on F# (see above). -->
+    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="all" />
+    <AdditionalFiles Include="PublicAPI.Shipped.txt"   Condition="Exists('$(MSBuildProjectDirectory)/PublicAPI.Shipped.txt')" />
+    <AdditionalFiles Include="PublicAPI.Unshipped.txt" Condition="Exists('$(MSBuildProjectDirectory)/PublicAPI.Unshipped.txt')" />
+  </ItemGroup>
 
 </Project>

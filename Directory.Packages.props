@@ -6,7 +6,7 @@
        Distributed by scripts/sync-build-config.sh. DO NOT EDIT in a consumer repo.
        Repo-specific PackageVersion items go in Directory.Packages.local.props,
        imported at the end. A package pinned here MUST NOT be re-declared locally
-       (CPM raises NU1504/NU1011 on a duplicate PackageVersion).
+       (CPM raises NU1506 on a duplicate PackageVersion).
        Contract: shared-build-config (registry/dependencies.yml).
        ════════════════════════════════════════════════════════════════════════════ -->
 
@@ -22,6 +22,17 @@
        remove their local FSharp.Core PackageVersion (see docs/build/README.md). -->
   <ItemGroup Label="org-baseline">
     <PackageVersion Include="FSharp.Core" Version="10.1.301" />
+  </ItemGroup>
+
+  <!-- api-breaking-change-gate (H3 / .github#20, epic #16 Pillar 5). Centrally pins the public-API
+       analyzer used by the OPT-IN breaking-change gate in Directory.Build.props. Declaring the
+       version here is non-breaking: a PackageVersion with no matching PackageReference does NOT
+       enter the restore graph or packages.lock.json, so this sync alone cannot fail a consumer's
+       locked restore. The analyzer enters the graph only in a repo that turns the gate on
+       (FsggApiGate), which regenerates that repo's lockfile as its adoption step. Package Validation
+       (the SDK-integrated ApiCompat) needs no package reference. -->
+  <ItemGroup Label="api-breaking-change-gate">
+    <PackageVersion Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="5.6.0" />
   </ItemGroup>
 
   <!-- Repo-specific package versions. -->
