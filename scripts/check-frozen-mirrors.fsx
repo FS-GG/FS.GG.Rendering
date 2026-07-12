@@ -176,8 +176,19 @@ let private waivers =
         Because =
           "Rendering#520 (#462), Rendering#539 (#445) and Rendering#590 (#550) each edited this body — correctly, and none of them was told it was a mirror. The content belongs in FS.GG.Game's canonical: FS-GG/FS.GG.Game#163 is the adoption, and it must be READ, not re-frozen over." }
       { Id = "fs-gg-audio"
-        DriftedSha = "8421dfd19cc1c1f1fb05fa43539afbb18ec3746675a082704eee1894f8281fa1"
-        Because = "Drifted before this guard existed. Route the content to FS.GG.Game's canonical (ADR-0022 §6); do not re-freeze without reading the diff." }
+        DriftedSha = "7142cfc6e921ac7c2f8de6c1f97ee52387fd7f3f6bd9896cb12c116180f6f0ef"
+        Because =
+          "#620 asked for a straight re-freeze from the canonical, and READING THE DIFF — which this waiver \
+           told the next person to do — is what stopped it. Rendering's mirror carries the #436/#429 content \
+           (audio materializes on the `app` profile too, and the four-package × profile table), and the \
+           canonical still teaches `game`/`sample-pack` ONLY. Copying it over would have destroyed correct \
+           work AND shipped an `app` author a skill that says it does not apply to them — while the template \
+           materializes it for them (`skill-manifest.json`: `profile in [app, sample-pack, game]`). Strictly \
+           worse than the drift it was fixing. So #620's VALUE was merged in instead (the Init trap: \
+           `forTransition` is never called for the initial model) and the local content kept; the digest is \
+           re-pinned here because a waived mirror's next edit must still be a RED. The debt is unchanged and \
+           now has a creditor: FS.GG.Game#204 routes the app-profile content UP to the canonical, and when it \
+           lands this mirror can finally be re-frozen and this waiver DELETED." }
       { Id = "fs-gg-model-swap"
         DriftedSha = "4c88cf8fbafd878e8deaaefb5699dad751d332ada7e95fb921f62163041a3805"
         Because = "Drifted before this guard existed. Route the content to FS.GG.Game's canonical (ADR-0022 §6); do not re-freeze without reading the diff." } ]

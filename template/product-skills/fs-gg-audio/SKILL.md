@@ -109,6 +109,10 @@ let evidence =
 - **Expecting actual sound in a headless test.** The record-only interpreter yields the *requested*
   values, and the device backend degrades to a null/record path with no hardware. Assert on
   `AudioEvidence.Requested`, not on audio output.
+- **Expecting the initial model to make a sound.** It makes no *transition*, so `forTransition` is
+  never called for it and anything the initial state implies — a restored volume, a menu track — is
+  silently never requested. Handle it under `Started`; see
+  [`Started` — the initial model makes no transition](#started--the-initial-model-makes-no-transition).
 
 ## Build Commands
 
@@ -172,6 +176,47 @@ use backend = OpenAlBackend.create AudioCues.resolver
 // `ViewerEffect.PlayAudio` batch, in dispatch order.
 let audioSink = Audio.play backend
 ```
+
+### `Started` — the initial model makes no transition
+
+`forTransition` is a function of a **transition**, and the initial model does not make one: it comes
+out of `initialModel`, and nothing is ever dispatched into it. So any sound the initial state
+*implies* is never requested. That is a hole in the pattern rather than a bug in a function, and it
+bites the moment you **load** state instead of transitioning into it.
+
+Load the player's saved volume in `initialModel` and the model is correct — the setting genuinely
+*is* loaded — and the mixer is never told, because no transition ever carried it there. Nothing
+catches this: no type is wrong, and a test that asserts on the model **passes**, because from inside
+the model a restored volume the mixer never heard is indistinguishable from one that was applied. It
+reaches the player as *turn the music down, restart, and get full-volume music from a settings screen
+that correctly reports it as quiet*. A save game, a restored window, a resumed session, a replayed
+checkpoint — anything that enters the model through a door a transition-shaped seam is not watching
+has this same shape.
+
+`Started` is that door, and the scaffold ships it wired: the generated host dispatches it from `Init`
+as `AudioCues.forTransition Started m m` — the **same** function `Update` calls, with the initial
+model on both sides, so there is no separate startup-cue path to keep in sync. Put whatever the
+initial state implies under it:
+
+```fsharp
+let forTransition (msg: Msg) (previous: Model) (next: Model) : AudioEffect list =
+    match msg with
+    // The initial model is LOADED, not transitioned into, so `Started` is the only chance state that
+    // arrived that way has to reach the mixer: a restored volume, a menu track, a resumed session.
+    | Started ->
+        [ Audio.setMasterVolume next.Settings.Volume
+          Audio.playMusic (TrackId "menu") true ]
+    | Fired -> [ Audio.playSfx (SoundId "fire") 0.8 ]
+```
+
+Assert it **at the sink, not at the model**: the only test that catches this class asks what the
+mixer was *told*, not what the model *holds* — which is exactly what `GeneratedAppHost.audioRequests`
+(below) hands you. [[fs-gg-rendering:fs-gg-testing]] works the case end to end.
+
+`SoundId`/`TrackId` stay yours — `AudioCues.resolver` is the product-owned `id -> bytes` mapping, and
+an id with no file resolves to `None`, which the backend records as a no-op rather than throwing. So a
+game with no assets yet still runs, and still requests the right sounds.
+
 
 ### The launch entry point is per FAMILY — take the one your profile launches with
 
