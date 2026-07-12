@@ -1,0 +1,336 @@
+# S-DOC ledger — public api-surface entries a product skill does NOT name (#507)
+#
+# WHAT THIS IS. `template/base/docs/api-surface/**` is the signature set a generated product is GIVEN and
+# which docs/scaffold-map.md designates authoritative. `template/product-skills/**` is what the product is
+# TOLD. Nothing held the two against each other in EITHER direction, so the gap between them grew in
+# silence: 242 of 428 public `val`s were named in no product skill at all — and among them were the ONLY
+# instruments for the responsiveness evidence those same skills MANDATE (#507, epic FS-GG/.github#423).
+#
+# SurfaceDocCoverageTests (S-DOC) now holds them together: every public `val` in the shipped api-surface is
+# either NAMED in a product skill, or listed HERE. This file is the declared half. Curation is legitimate —
+# not every value wants a paragraph — but it must be a DECISION SOMEBODY MADE rather than an omission nobody
+# noticed, and that distinction is the entire issue.
+#
+# THE LEDGER CANNOT ROT. S-DOC fails three ways, not one:
+#   * a public val neither documented nor listed here    -> the gap grew, and silently. The #507 shape.
+#   * a listed val a skill NOW documents                 -> stale exemption. Delete the line.
+#   * a listed val the api-surface no longer ships       -> stale exemption. Delete the line.
+# So the ledger can only shrink by documenting, and it cannot outlive its subjects. Without the last two, the
+# cheapest response to a growing gap would be to append here, and this file would become the record of the
+# problem instead of its fix.
+#
+# FORMAT:  <category>  <name>
+#
+#   tracked     A surface a product author would WANT and cannot find. A real gap, tracked by #507 / epic
+#               FS-GG/.github#423 — listed, NOT blessed. These are the ones to write next.
+#   vocabulary  A constructor or combinator in a type's own vocabulary (a scene shape, a colour, a design
+#               token, a geometry helper). A product composes it straight from the `.fsi`, and a skill that
+#               listed them would be a worse copy of the signature file.
+#
+# `vocabulary` is a CLAIM, and it is deliberately visible so it can be challenged. If one of these deserves
+# prose, move it: delete the line and write the paragraph. Down is the intended direction of travel.
+#
+# Documenting a surface is constrained by R-REACH (#430): a skill may only name APIs every profile it
+# materializes on actually receives. Find the skill whose profile gate matches the package's reach — not the
+# one whose subject matter feels closest.
+
+
+# ---- Audio.Elmish/Elmish.fsi
+vocabulary  ofEffects
+vocabulary  ofEngine
+
+# ---- Audio.Engine/Engine.fsi
+vocabulary  createWith
+vocabulary  crossFade
+vocabulary  defaultSpatial
+vocabulary  fadeBus
+vocabulary  setListener
+
+# ---- Audio.Host/Host.fsi
+vocabulary  panToPosition
+vocabulary  tryParse
+
+# ---- Canvas/Elements.fsi
+vocabulary  cached
+vocabulary  polyline
+
+# ---- Canvas/Persistence.fsi
+vocabulary  clampVersion
+
+# ---- Controls.Elmish/ControlsElmish.fsi
+vocabulary  adapterDiagnosticToRuntimeDiagnostic
+vocabulary  diagnosticsDisabledCompatibility
+tracked     interpretControlEffect
+tracked     interpretOverlayEffect
+vocabulary  interpretOverlayOutcome
+vocabulary  interpretPointerEffect
+tracked     interpretPointerOutcome
+vocabulary  isCoalescibleSample
+vocabulary  isMoveInteraction
+vocabulary  isSupersedablePosition
+vocabulary  ofMessage
+tracked     programOfWidget
+vocabulary  routedInCoalescedFrame
+tracked     runInteractiveAppWithWindowBehavior
+vocabulary  runScriptWithAudio
+vocabulary  runScriptWithWindowBehavior
+vocabulary  runScriptWithWindowBehaviorAndAudio
+vocabulary  toCmd
+tracked     widgetView
+
+# ---- Controls/Accessibility.fsi
+vocabulary  defaultFor
+vocabulary  metadata
+
+# ---- Controls/Attributes.fsi
+vocabulary  accessibility
+vocabulary  enabled
+vocabulary  margin
+vocabulary  onWith
+vocabulary  padding
+vocabulary  readOnly
+vocabulary  standardAttribute
+vocabulary  standardEvent
+
+# ---- Controls/Buttons.fsi
+vocabulary  defaults
+
+# ---- Controls/Catalog.fsi
+vocabulary  categories
+vocabulary  knownControlKinds
+vocabulary  markdownSummary
+tracked     requiredAttributes
+tracked     standardSchema
+vocabulary  supportedAttributes
+tracked     supportedControls
+vocabulary  supportedCount
+tracked     supportedEvents
+tracked     validateStandardControl
+
+# ---- Controls/Control.fsi
+vocabulary  boundIdsOf
+vocabulary  chartValues
+vocabulary  collectBoundsWith
+vocabulary  dataGridCells
+vocabulary  evaluateLayout
+vocabulary  evaluateLayoutIncremental
+vocabulary  eventBindingsOf
+vocabulary  faithfulContent
+vocabulary  hitTest
+vocabulary  icon
+vocabulary  layoutAffectingAttrNames
+vocabulary  lowerCustom
+vocabulary  lowerSlots
+vocabulary  lowerStandard
+vocabulary  nearestAuthored
+vocabulary  nodeBox
+vocabulary  onClickWith
+vocabulary  onSelected
+vocabulary  paintNode
+vocabulary  setMeasureTextHook
+vocabulary  slotFill
+vocabulary  slotFillsOf
+vocabulary  slotFor
+vocabulary  styleClassesOf
+vocabulary  visualStateOf
+tracked     withKey
+
+# ---- Controls/ControlRuntime.fsi
+tracked     deriveVisualState
+
+# ---- Controls/CustomControlWidget.fsi
+vocabulary  ofControl
+
+# ---- Controls/DataGrid.fsi
+vocabulary  focusedCell
+vocabulary  selectedRows
+
+# ---- Controls/Diagnostics.fsi
+vocabulary  catalogOmission
+vocabulary  customExtension
+vocabulary  dependencyLeak
+vocabulary  duplicateAttribute
+vocabulary  duplicateRuntimeDefinition
+vocabulary  keyCollision
+vocabulary  missingAccessibility
+vocabulary  missingRequired
+vocabulary  missingStandardAttribute
+tracked     stabilityReport
+vocabulary  staleEventTarget
+vocabulary  stalePackageReference
+vocabulary  unsupportedEnvironment
+vocabulary  unsupportedScopeExpansion
+vocabulary  unsupportedStandardAttribute
+vocabulary  unsupportedStandardEvent
+
+# ---- Controls/Pointer.fsi
+vocabulary  toMsg
+
+# ---- Controls/RichText.fsi
+vocabulary  block
+vocabulary  defaultStyle
+
+# ---- DesignSystem/DesignTokens.fsi
+vocabulary  contrastRequiredRatio
+vocabulary  controlHeight
+vocabulary  controlHeightLg
+vocabulary  controlHeightSm
+vocabulary  cornerRadius
+vocabulary  danger
+vocabulary  density
+vocabulary  fontFamily
+vocabulary  fontSize
+vocabulary  foreground
+vocabulary  muted
+vocabulary  spaceLg
+vocabulary  spaceMd
+vocabulary  spaceSm
+vocabulary  spaceXs
+
+# ---- DesignSystem/Types.DesignSystem.fsi
+vocabulary  neutral
+
+# ---- Game.Core/Geometry.fsi
+vocabulary  circleAabbContact
+vocabulary  circleContact
+vocabulary  obbPolygon
+vocabulary  ofCenter
+vocabulary  polygonContact
+vocabulary  polygonManifold
+vocabulary  segmentAabbHit
+vocabulary  segmentCircleHit
+vocabulary  segmentPolygonHit
+
+# ---- Game.Core/Pathfinding.fsi
+tracked     distanceField
+tracked     flowField
+vocabulary  reachableWithin
+
+# ---- Game.Core/Rng.fsi
+vocabulary  nextBool
+
+# ---- Game.Core/SpatialGrid.fsi
+tracked     buildBounds
+vocabulary  queryBounds
+
+# ---- KeyboardInput/KeyboardInput.fsi
+vocabulary  noModifiers
+vocabulary  normalizeEvent
+vocabulary  normalizeEventWithModifiers
+vocabulary  stateDisplay
+vocabulary  toKeyId
+
+# ---- Layout/Graph.fsi
+vocabulary  directed
+vocabulary  undirected
+
+# ---- Layout/GraphValidation.fsi
+vocabulary  disconnectedComponents
+vocabulary  hasCycle
+
+# ---- Layout/Layout.fsi
+vocabulary  dock
+tracked     evaluateIncremental
+tracked     hitTestComputed
+vocabulary  horizontalStack
+vocabulary  initWorkflow
+vocabulary  interpretWorkflowEffect
+vocabulary  measureHorizontal
+vocabulary  measureVertical
+vocabulary  renderComputed
+vocabulary  snapBounds
+vocabulary  updateWorkflow
+vocabulary  verticalStack
+
+# ---- Layout/Types.fsi
+vocabulary  dockConfig
+vocabulary  graphConfig
+vocabulary  layoutGap
+vocabulary  layoutIntent
+vocabulary  layoutSize
+vocabulary  pixelSnapPolicy
+vocabulary  stackConfig
+
+# ---- Scene/Scene.fsi
+vocabulary  black
+vocabulary  circleEvidence
+vocabulary  classify
+vocabulary  close
+vocabulary  cubicTo
+vocabulary  describe
+vocabulary  ellipse
+vocabulary  ellipseEvidence
+vocabulary  filledEllipse
+vocabulary  fromRenderEvidence
+vocabulary  lineTo
+vocabulary  moveTo
+vocabulary  picture
+vocabulary  quadTo
+vocabulary  rectangle
+vocabulary  rectangleWithPaint
+vocabulary  renderHash
+vocabulary  renderPng
+vocabulary  renderReadbackEvidence
+vocabulary  rgb
+vocabulary  rgba
+vocabulary  sizedText
+vocabulary  textRun
+vocabulary  transparent
+vocabulary  unsupported
+vocabulary  white
+vocabulary  withAntialias
+vocabulary  withBlendMode
+vocabulary  withColorFilter
+vocabulary  withColorSpace
+vocabulary  withImageFilter
+vocabulary  withMaskFilter
+vocabulary  withMiter
+vocabulary  withOpacity
+vocabulary  withPathEffect
+vocabulary  withShader
+vocabulary  withStrokeCap
+vocabulary  withStrokeJoin
+
+# ---- SkiaViewer/SkiaViewer.fsi
+vocabulary  captureDiagnostic
+vocabulary  classifyWindowObservation
+vocabulary  classifyWindowState
+vocabulary  defaultWindowBehavior
+tracked     desktopSessionDiagnostic
+vocabulary  failureFromDiagnostic
+vocabulary  initEvidenceWorkflow
+vocabulary  initRun
+vocabulary  initWithWindowBehavior
+vocabulary  runAppWithWindowBehavior
+vocabulary  runInteractiveViewer
+vocabulary  runInteractiveViewerScriptWithAudio
+vocabulary  runInteractiveViewerScriptWithWindowBehaviorAndAudio
+vocabulary  runInteractiveViewerWithAudio
+vocabulary  runInteractiveViewerWithWindowBehavior
+vocabulary  runInteractiveViewerWithWindowBehaviorAndAudio
+vocabulary  runUntilFirstFrame
+tracked     runtimeCapability
+vocabulary  shouldCaptureDiagnostic
+vocabulary  smoke
+vocabulary  toLogicalPoint
+vocabulary  updateEvidenceWorkflow
+vocabulary  updateRun
+tracked     validateWindowBehavior
+vocabulary  validateWindowLaunchBehavior
+
+# ---- Symbology/Symbology.fsi
+vocabulary  badge
+
+# ---- Testing/Testing.fsi
+vocabulary  buildValidationContractOutput
+vocabulary  classifyDrift
+vocabulary  parseScreenshotEvidenceRecord
+vocabulary  selectVisualEvidence
+vocabulary  statusText
+vocabulary  validateDefaultInteractiveLaunch
+vocabulary  validateScreenshotArtifact
+vocabulary  validateScreenshotEvidence
+vocabulary  validateVisualEvidenceCommandOutput
+vocabulary  validateWindowDiagnostics
+vocabulary  verifyGeneratedTests
+vocabulary  verifyPackageResolution
