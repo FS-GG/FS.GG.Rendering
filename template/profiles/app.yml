@@ -1,6 +1,11 @@
+# DERIVED — do not hand-edit `capabilities:`. It is the TRANSPOSE of template/capabilities.yml's
+# per-capability `profiles:` field, and R-PROF (tests/Package.Tests/Tests.fs) asserts the two agree
+# EXACTLY. capabilities.yml is in turn held to the scaffold's real `<!--#if -->` package gates by
+# R-CAT, so this list is what an `app` product can actually `open` — not a wish. To change what this
+# profile gets, change the template's gates; this file follows.
 name: app
 description: Explicit, opt-in controls-showcase starter (no longer the default — the `game` profile is the game/rendering default; see docs/product/decisions/0010-fs-gg-ui-template-default-starter.md).
-capabilities: [scene, skiaviewer, elmish, keyboard-input, layout, controls, full-governance]
+capabilities: [scene, skiaviewer, elmish, keyboard-input, layout, controls, testing]
 governance: full
 samples: false
 sourceFrameworkMode: false

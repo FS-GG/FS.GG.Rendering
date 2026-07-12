@@ -1,0 +1,17 @@
+# DERIVED — do not hand-edit `capabilities:`. It is the TRANSPOSE of template/capabilities.yml's
+# per-capability `profiles:` field, and R-PROF (tests/Package.Tests/Tests.fs) asserts the two agree
+# EXACTLY. capabilities.yml is in turn held to the scaffold's real `<!--#if -->` package gates by
+# R-CAT, so this list is what a `governed` product can actually `open` — not a wish. To change what
+# this profile gets, change the template's gates; this file follows.
+#
+# This file did not exist until #511, though `governed` has been one of the five real profiles in
+# .template.config/template.json all along. The one profile shipping the strictest governance was the
+# one with no profile file — and the guard that named it (`generatedProductInputs`, Tests.fs) filtered
+# it out with `File.Exists` and read green over a file it never opened.
+name: governed
+description: Governed starter — Scene plus Testing helpers, under full product governance.
+capabilities: [scene, testing]
+governance: full
+samples: false
+sourceFrameworkMode: false
+validationCommands: [Dev, Test, Verify]

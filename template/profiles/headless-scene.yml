@@ -1,7 +1,16 @@
+# DERIVED — do not hand-edit `capabilities:`. It is the TRANSPOSE of template/capabilities.yml's
+# per-capability `profiles:` field, and R-PROF (tests/Package.Tests/Tests.fs) asserts the two agree
+# EXACTLY. capabilities.yml is in turn held to the scaffold's real `<!--#if -->` package gates by
+# R-CAT, so this list is what a `headless-scene` product can actually `open` — not a wish. To change
+# what this profile gets, change the template's gates; this file follows.
+#
+# `optionalCapabilities: [layout, controls, testing]` USED to sit here and was fiction on all three
+# counts (#511). FS.GG.UI.Layout and FS.GG.UI.Controls are neither pinned nor referenced on this
+# profile, so there is no opt-in to take — a product here cannot `open` them at all — and Testing is
+# not optional but unconditional. Nothing read the field, and nothing held it to anything.
 name: headless-scene
 description: Headless scene/widget authoring profile.
-capabilities: [scene]
-optionalCapabilities: [layout, controls, testing]
+capabilities: [scene, testing]
 governance: full
 samples: false
 sourceFrameworkMode: false
