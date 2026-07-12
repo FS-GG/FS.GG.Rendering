@@ -84,6 +84,18 @@ If the work is cross-repo (needs a change/release from *another* FS-GG repo), us
 
 ## The loop
 
+**Once per machine, first:** `dotnet tool install -g FS.GG.Coord.Cli`
+
+Optional, and safe to skip — `fsgg-coord` works exactly as before without it. What it buys is the
+**shadow** (ADR-0034): with an engine present, every `take`/`next`/`batch` is decided by *both* the
+bash client and the typed F# engine, **bash's answer is still the one you get**, and any disagreement
+is logged (`fsgg-coord divergence`). Your run does not change — not the answer, not the exit code.
+
+It is worth the one command because the shadow is how the port earns its cutover: bash stays
+authoritative until that log has been clean across the live fleet for three consecutive days, and the
+log only fills where an engine exists. A worker without one contributes no evidence, and the clock
+does not move.
+
 ```sh
 eval "$(scripts/fsgg-coord whoami --mint)"     # MINT one; never invent or copy one (#419, #551)
 scripts/fsgg-coord take --repo <this-repo>     # pick + claim the next SCHEDULABLE item, retrying a lost race
