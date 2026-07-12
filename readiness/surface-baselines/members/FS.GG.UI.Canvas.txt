@@ -20,6 +20,12 @@ FS.GG.UI.Canvas.PersistenceEffect+Tags.Load : System.Int32
 FS.GG.UI.Canvas.PersistenceEffect+Tags.Save : System.Int32
 FS.GG.UI.Canvas.PersistenceEvidence.Requested : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Canvas.PersistenceEffect> [get]
 FS.GG.UI.Canvas.PersistenceEvidence.new(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Canvas.PersistenceEffect>)
+FS.GG.UI.Canvas.PersistenceOutcome+Tags.Absent : System.Int32
+FS.GG.UI.Canvas.PersistenceOutcome+Tags.Deleted : System.Int32
+FS.GG.UI.Canvas.PersistenceOutcome+Tags.Failed : System.Int32
+FS.GG.UI.Canvas.PersistenceOutcome+Tags.Loaded : System.Int32
+FS.GG.UI.Canvas.PersistenceOutcome+Tags.Saved : System.Int32
+FS.GG.UI.Canvas.PersistenceOutcome+Tags.Unreadable : System.Int32
 FS.GG.UI.Canvas.SaveEnvelope.Payload : FS.GG.UI.Canvas.SavePayload [get]
 FS.GG.UI.Canvas.SaveEnvelope.Slot : FS.GG.UI.Canvas.SaveSlot [get]
 FS.GG.UI.Canvas.SaveEnvelope.Version : System.Int32 [get]

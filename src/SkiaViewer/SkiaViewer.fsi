@@ -2,6 +2,7 @@ namespace FS.GG.UI.SkiaViewer
 
 open System
 open FS.GG.Audio.Core
+open FS.GG.UI.Canvas
 open FS.GG.UI.KeyboardInput
 open FS.GG.UI.Scene
 
@@ -42,6 +43,7 @@ module Viewer =
     /// Each loop passes in its own mutations; the returned flag is "this batch requested a close".
     val internal interpretViewerEffects:
         audioSink: (AudioEffect list -> unit) ->
+        persistenceSink: (PersistenceEffect list -> unit) ->
         onScene: (SceneNode -> unit) ->
         onInputDispatch: (unit -> unit) ->
         onDiagnostic: (ViewerDiagnosticEvent -> unit) ->
@@ -195,6 +197,37 @@ module Viewer =
     /// `runApp`/`runAppWithWindowBehavior` already have. The generated game template uses this when a
     /// `--window-*` flag is supplied and `runAppWithAudio` otherwise.
     val runAppWithWindowBehaviorAndAudio: options: ViewerOptions -> behavior: ViewerWindowBehaviorRequest -> audioSink: (AudioEffect list -> unit) -> host: GeneratedAppHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
+
+    /// Issue #535 — the launch that gives a product's save/load requests somewhere to GO, and an answer
+    /// to come BACK on.
+    ///
+    /// `persistenceSink` PERFORMS the batch: it is the only thing in the process that owns a save
+    /// location, because the framework deliberately does not own the `SaveSlot` -> path mapping. Every
+    /// `PersistenceOutcome` it returns is handed to `mapOutcome` and, if that yields a message, dispatched
+    /// into `update` exactly as a key or a tick would be — so a `Load` is finally answerable. An outcome
+    /// `mapOutcome` returns `None` for is dropped: the host has still answered, and inventing a message
+    /// would be the framework deciding what "no save" means to a game.
+    ///
+    /// Before this existed, no `ViewerEffect` carried a `PersistenceEffect` at all: a product could request
+    /// a save and no host could ever see it. `runApp` and `runAppWithAudio` still discard `Persist`, which
+    /// is the honest behaviour for a launch given no sink — a request that goes nowhere, rather than a save
+    /// that silently did not happen.
+    val runAppWithPersistence:
+        options: ViewerOptions ->
+        persistenceSink: (PersistenceEffect list -> PersistenceOutcome list) ->
+        mapOutcome: (PersistenceOutcome -> 'msg option) ->
+        host: GeneratedAppHost<'model,'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
+
+    /// Issue #535 — sound AND saves. Without this pairing, adopting persistence would mean giving up
+    /// audio, which is the kind of forced choice that gets a seam worked around instead of used.
+    val runAppWithAudioAndPersistence:
+        options: ViewerOptions ->
+        audioSink: (AudioEffect list -> unit) ->
+        persistenceSink: (PersistenceEffect list -> PersistenceOutcome list) ->
+        mapOutcome: (PersistenceOutcome -> 'msg option) ->
+        host: GeneratedAppHost<'model,'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
     /// Feature 085 — pointer-aware, size-aware durable launch. Routes native pointer events
     /// and window resizes to the host and renders the size-aware `View`; additive to
     /// `runApp`/`runAppWithWindowBehavior`, which stay intact (FR-004/FR-006/FR-009).

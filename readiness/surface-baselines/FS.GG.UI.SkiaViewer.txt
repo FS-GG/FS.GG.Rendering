@@ -208,6 +208,7 @@ FS.GG.UI.SkiaViewer.ViewerEffect+CaptureScreenshot
 FS.GG.UI.SkiaViewer.ViewerEffect+DispatchInput
 FS.GG.UI.SkiaViewer.ViewerEffect+EmitDiagnostic
 FS.GG.UI.SkiaViewer.ViewerEffect+OpenWindow
+FS.GG.UI.SkiaViewer.ViewerEffect+Persist
 FS.GG.UI.SkiaViewer.ViewerEffect+PlayAudio
 FS.GG.UI.SkiaViewer.ViewerEffect+RenderScene
 FS.GG.UI.SkiaViewer.ViewerEffect+StartBoundedRun

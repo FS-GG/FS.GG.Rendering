@@ -8,6 +8,7 @@ open System.Text.Json
 open System.Threading
 open Elmish
 open FS.GG.Audio.Core
+open FS.GG.UI.Canvas
 open FS.GG.UI.KeyboardInput
 open FS.GG.UI.Scene
 open SkiaSharp
@@ -2063,6 +2064,7 @@ module Viewer =
         | CloseWindow
         | EmitDiagnostic _
         | PlayAudio _
+        | Persist _
         | OpenWindow _
         | ApplyWindowOptions _
         | QueryNativeWindowState
@@ -2082,6 +2084,7 @@ module Viewer =
     /// Returns whether the batch requested a close.
     let internal interpretViewerEffects
         (audioSink: AudioEffect list -> unit)
+        (persistenceSink: PersistenceEffect list -> unit)
         (onScene: SceneNode -> unit)
         (onInputDispatch: unit -> unit)
         (onDiagnostic: ViewerDiagnosticEvent -> unit)
@@ -2104,6 +2107,14 @@ module Viewer =
                     closeRequested
                 | PlayAudio batch ->
                     audioSink batch
+                    closeRequested
+                // #535 — the whole point: a product's save/load requests now REACH a host. The sink is
+                // where the outcome is dispatched back into `update`, so a `Load` can finally be answered.
+                // `runApp`/`runAppWithAudio` pass `ignore` here, which is the honest behaviour for a host
+                // that owns no save location — a request that goes nowhere, rather than a save that
+                // silently did not happen.
+                | Persist batch ->
+                    persistenceSink batch
                     closeRequested
                 // Issue #444: evidence is WRITTEN, not discarded. These four used to fall through to the
                 // group below and vanish — no file, no error, success. `productEvidenceSink` honors them
@@ -2137,6 +2148,8 @@ module Viewer =
         options
         behavior
         (audioSink: AudioEffect list -> unit)
+        (persistenceSink: PersistenceEffect list -> PersistenceOutcome list)
+        (mapOutcome: PersistenceOutcome -> 'msg option)
         (host: GeneratedAppHost<'model, 'msg>)
         =
         match validateOptions options with
@@ -2202,8 +2215,30 @@ module Viewer =
                         let evidenceSink =
                             productEvidenceSink onDiagnostic (fun () -> options.InitialSize) (fun () -> currentScene)
 
+                        // #535 — a `Load` must be ANSWERED, and the answer is a `'msg`. That means the
+                        // persistence sink has to re-enter `dispatchHostMsg`, which is defined below (it
+                        // needs `currentModel`, which the fold deliberately does not have). A forward
+                        // reference through a mutable is what ties that knot; the alternative is a second
+                        // copy of the update path, and a second copy of the update path is exactly how
+                        // #429's two effect folds drifted until one of them silently dropped audio.
+                        //
+                        // Re-entrant BY DESIGN: an outcome dispatches a message, whose `update` may emit
+                        // more effects — including more `Persist` ones. That is the same loop any Elmish
+                        // message takes, and a product that saves in response to its own save outcome
+                        // spins for the same reason it would anywhere else.
+                        let mutable outcomeCloseRequested = false
+                        let mutable dispatchOutcome: PersistenceOutcome -> unit = ignore
+
+                        let persistenceBatchSink batch =
+                            persistenceSink batch |> List.iter dispatchOutcome
+
                         let interpretEffects effects =
-                            interpretViewerEffects audioSink onScene onInputDispatch onDiagnostic evidenceSink effects
+                            let closeRequested =
+                                interpretViewerEffects audioSink persistenceBatchSink onScene onInputDispatch onDiagnostic evidenceSink effects
+
+                            // Sticky, and that is correct: a close is terminal, so an outcome-driven message
+                            // that asked to close must not be forgotten by the next batch that did not.
+                            closeRequested || outcomeCloseRequested
 
                         let initialCloseRequested = interpretEffects initEffects
 
@@ -2226,6 +2261,18 @@ module Viewer =
                                 currentModel <- next
                                 currentScene <- safeView currentModel
                                 interpretEffects effects
+
+                        // #535 — the forward reference, now that `dispatchHostMsg` exists. An outcome the
+                        // product does not map is DROPPED, deliberately: a host that reports `Absent` to a
+                        // product with no message for it has still answered, and inventing a message would
+                        // be the framework deciding what "no save" means to a game.
+                        dispatchOutcome <-
+                            fun outcome ->
+                                match mapOutcome outcome with
+                                | Some msg ->
+                                    if dispatchHostMsg msg then
+                                        outcomeCloseRequested <- true
+                                | None -> ()
 
                         let handleTick elapsed =
                             match host.Tick elapsed with
@@ -2269,16 +2316,32 @@ module Viewer =
                         | Result.Error failure -> Result.Error failure
 
     let runAppWithWindowBehavior options behavior (host: GeneratedAppHost<'model, 'msg>) =
-        runGeneratedApp options behavior ignore host
+        runGeneratedApp options behavior ignore (fun (_: PersistenceEffect list) -> []) (fun (_: PersistenceOutcome) -> None) host
 
     let runApp options host =
         runAppWithWindowBehavior options defaultWindowBehavior host
 
     let runAppWithWindowBehaviorAndAudio options behavior audioSink (host: GeneratedAppHost<'model, 'msg>) =
-        runGeneratedApp options behavior audioSink host
+        runGeneratedApp options behavior audioSink (fun (_: PersistenceEffect list) -> []) (fun (_: PersistenceOutcome) -> None) host
 
     let runAppWithAudio options audioSink (host: GeneratedAppHost<'model, 'msg>) =
-        runGeneratedApp options defaultWindowBehavior audioSink host
+        runGeneratedApp options defaultWindowBehavior audioSink (fun (_: PersistenceEffect list) -> []) (fun (_: PersistenceOutcome) -> None) host
+
+    // #535 — the seam a product actually needs: the sink PERFORMS the save/load (it is the only thing in
+    // the process that owns a save location), and every `PersistenceOutcome` it returns is dispatched back
+    // into `update` through `mapOutcome`. That is what makes a `Load` answerable; before this, a product
+    // could ask and nothing could reply.
+    //
+    // The sink is the caller's, and deliberately so: the framework does not own the slot -> path mapping
+    // (`SaveSlot` is an opaque, product-owned name), so a viewer that invented one would be guessing where
+    // a player's saves live.
+    let runAppWithPersistence options persistenceSink mapOutcome (host: GeneratedAppHost<'model, 'msg>) =
+        runGeneratedApp options defaultWindowBehavior ignore persistenceSink mapOutcome host
+
+    // A game usually wants both. Without this, adopting persistence would mean giving up sound — which is
+    // the kind of forced choice that gets a seam worked around rather than used.
+    let runAppWithAudioAndPersistence options audioSink persistenceSink mapOutcome (host: GeneratedAppHost<'model, 'msg>) =
+        runGeneratedApp options defaultWindowBehavior audioSink persistenceSink mapOutcome host
 
     // Feature 085 — pointer-aware, size-aware durable launch. Mirrors
     // `runAppWithWindowBehavior` but routes native pointer events and resizes to the host,
@@ -2362,8 +2425,16 @@ module Viewer =
                         let evidenceSink =
                             productEvidenceSink onDiagnostic (fun () -> currentSize) (fun () -> currentScene)
 
+                        // #535 — the interactive (Controls) host family owns no persistence seam yet, so a
+                        // `Persist` batch is DROPPED here rather than silently pretended. Named, not
+                        // wildcarded: #429 is the precedent — the interactive fold left `PlayAudio` in the
+                        // discard group and a product on this host got silence with nothing objecting. The
+                        // parallel seam for `InteractiveViewerHost` is its own change, and this line is what
+                        // stops that gap being invisible.
+                        let persistenceBatchSink (_: PersistenceEffect list) = ()
+
                         let interpretEffects effects =
-                            interpretViewerEffects audioSink onScene onInputDispatch onDiagnostic evidenceSink effects
+                            interpretViewerEffects audioSink persistenceBatchSink onScene onInputDispatch onDiagnostic evidenceSink effects
 
                         let initialCloseRequested = interpretEffects initEffects
 

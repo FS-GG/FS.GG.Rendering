@@ -90,6 +90,10 @@
     <ProjectReference Include="..\KeyboardInput\KeyboardInput.fsproj" />
     <ProjectReference Include="..\Diagnostics\Diagnostics.fsproj" />
     <ProjectReference Include="..\Scene\Scene.fsproj" />
+    <!-- #535: the host needs the persistence REQUEST vocabulary to carry it to a sink, and the
+         ANSWER vocabulary to report back. Canvas is a pure, Scene-only package — the same shape
+         as the Scene reference above, so this adds no layer and no cycle. -->
+    <ProjectReference Include="..\Canvas\Canvas.Lib.fsproj" />
     <!-- Issue #245: the pure AudioEffect vocabulary, so `ViewerEffect.PlayAudio` can carry what a
          product's `update` requested. Core is data-only (no device, no OpenAL); the real backend
          (FS.GG.Audio.Host/Engine) is supplied by the caller of `runAppWithAudio`. -->

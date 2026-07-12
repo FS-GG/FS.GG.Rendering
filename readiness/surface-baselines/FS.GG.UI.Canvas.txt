@@ -6,6 +6,14 @@ FS.GG.UI.Canvas.PersistenceEffect+Load
 FS.GG.UI.Canvas.PersistenceEffect+Save
 FS.GG.UI.Canvas.PersistenceEffect+Tags
 FS.GG.UI.Canvas.PersistenceEvidence
+FS.GG.UI.Canvas.PersistenceOutcome
+FS.GG.UI.Canvas.PersistenceOutcome+Absent
+FS.GG.UI.Canvas.PersistenceOutcome+Deleted
+FS.GG.UI.Canvas.PersistenceOutcome+Failed
+FS.GG.UI.Canvas.PersistenceOutcome+Loaded
+FS.GG.UI.Canvas.PersistenceOutcome+Saved
+FS.GG.UI.Canvas.PersistenceOutcome+Tags
+FS.GG.UI.Canvas.PersistenceOutcome+Unreadable
 FS.GG.UI.Canvas.SaveEnvelope
 FS.GG.UI.Canvas.SavePayload
 FS.GG.UI.Canvas.SaveSlot

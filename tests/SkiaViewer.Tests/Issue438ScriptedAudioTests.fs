@@ -58,6 +58,7 @@ let private playedBy (effects: ViewerEffect list) =
 
     Viewer.interpretViewerEffects
         (fun batch -> played.AddRange batch)
+        ignore // #535 persistence sink: this script emits no Persist effect
         ignore
         ignore
         ignore

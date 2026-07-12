@@ -189,6 +189,13 @@
         "resolved": "3.4.0",
         "contentHash": "Iy22JopynbOJ32vA0lBhFEzGi65GQJBuJHYBYRBpydrDpNoTiHnjIXfA65Gu+8qsOr/ZEoIF8r9aHCgAXuO6DA=="
       },
+      "FS.GG.UI.Canvas": {
+        "type": "Project",
+        "dependencies": {
+          "FS.GG.UI.Scene": "[0.4.0-preview.1, )",
+          "FSharp.Core": "[10.1.301, )"
+        }
+      },
       "FS.GG.UI.Diagnostics": {
         "type": "Project",
         "dependencies": {
