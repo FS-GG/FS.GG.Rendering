@@ -472,6 +472,26 @@ let private failedOnlyOnUnpublishedUiPin (output: string) (uiPin: string) =
 // The pin-grounded proof: compile the call sites against the RESTORED pinned packages.
 // ---------------------------------------------------------------------------------------------
 
+let private pinnedPackageIds =
+    Regex.Matches(File.ReadAllText packagesPropsPath, @"<PackageVersion\s+Include=""(FS\.GG\.[^""]+)""")
+    |> Seq.map (fun m -> m.Groups.[1].Value)
+    |> Seq.distinct
+    |> List.ofSeq
+
+/// The package that SHIPS a namespace: the longest pinned id that prefixes it. A namespace no pinned
+/// package covers is a hole in the oracle, so it raises rather than being dropped — silently skipping it
+/// would excuse every doc symbol underneath it.
+let private packageForNamespace (ns: string) =
+    pinnedPackageIds
+    |> List.filter (fun id -> ns = id || ns.StartsWith(id + ".", StringComparison.Ordinal))
+    |> List.sortByDescending String.length
+    |> List.tryHead
+    |> Option.defaultWith (fun () ->
+        failwith
+            $"the api-surface mirror declares `namespace {ns}`, and NO FS.GG.* package pinned in \
+              {packagesPropsRel} ships it. The doc-vs-pin oracle cannot restore it, and skipping it would \
+              EXCUSE every doc symbol it declares.")
+
 /// A stalled restore must fail, not hang. Generous enough for a cold restore on a slow runner.
 let private probeTimeoutMs = 6 * 60 * 1000
 
@@ -489,7 +509,16 @@ let private probePackagesDir =
 /// One body, because the guarantee that makes either probe mean anything is the `<clear />` + probe-local
 /// packages folder below, and a second copy of that setup is a second place for it to rot. A probe that
 /// silently resolved from the machine's global cache would answer a question nobody asked.
-let private runNameofProbe (packages: string list) (nameofLines: string list) =
+let private runNameofProbe (namespaces: string list) (nameofLines: string list) =
+    // F4 — a NAMESPACE IS NOT A PACKAGE ID, and conflating them makes the probe un-greenable. The mirror
+    // declares sub-namespaces that no package is named after (`FS.GG.UI.Controls.Typed`,
+    // `FS.GG.UI.Controls.Elmish.Authoring`, `FS.GG.UI.Themes.Default.Theming`); referencing one of those as
+    // a package is an NU1101, the probe fails for a reason that is nothing to do with the symbol, and the
+    // failure reads as "this member is absent from the pin". A rule whose diagnosis blames the ledger for a
+    // bug in the prober is worse than no rule. `packageForNamespace` is the existing, correct mapping — the
+    // PackageReferences come from it, and the `open` lines stay as the namespaces they are.
+    let packages =
+        namespaces |> List.map packageForNamespace |> List.distinct |> List.sort
     let workDir = Path.Combine(Path.GetTempPath(), "fsgg-pinned-api-probe-" + Guid.NewGuid().ToString("N"))
     Directory.CreateDirectory workDir |> ignore
 
@@ -548,7 +577,7 @@ let private runNameofProbe (packages: string list) (nameofLines: string list) =
         let probe = StringBuilder()
         probe.AppendLine("module Probe").AppendLine() |> ignore
 
-        for ns in packages do
+        for ns in namespaces do
             probe.AppendLine($"open {ns}") |> ignore
 
         probe.AppendLine().AppendLine("let private probed : string list =").AppendLine("    [") |> ignore
@@ -611,8 +640,8 @@ let private runNameofProbe (packages: string list) (nameofLines: string list) =
 
 /// #504's probe: every entry point the TEMPLATE'S `Program.fs` calls, resolved against the pin.
 let private runProbeBuild () =
-    // The namespaces actually called, each one a package to restore at its axis pin.
-    let packages =
+    // The namespaces actually called. `runNameofProbe` maps each to the package that carries it.
+    let namespaces =
         callSites |> List.choose callNamespace |> List.distinct |> List.sort
 
     let lines =
@@ -620,7 +649,7 @@ let private runProbeBuild () =
         |> List.sortBy (fun c -> c.Module, c.Member)
         |> List.map (fun c -> $"{c.Module}.{c.Member}")
 
-    runNameofProbe packages lines
+    runNameofProbe namespaces lines
 
 // ---------------------------------------------------------------------------------------------
 // #589 — the same question, asked of the DOCS instead of Program.fs.
@@ -1006,7 +1035,75 @@ let private duCaseRegex = Regex(@"^\s*\|\s*(?<case>[A-Z]\w*)\b", RegexOptions.Co
 /// false positive is the one failure this rule cannot survive: the first person it wrongly accuses will
 /// ledger it, and a ledgered lie is a rule that has been switched off.
 let private typeDeclRegex =
-    Regex(@"^(?<indent>\s*)(?:type|and)\s+(?<name>[A-Z]\w*)\b", RegexOptions.Compiled)
+    Regex(
+        @"^(?<indent>\s*)(?:type|and)\s+(?<name>[A-Z]\w*)\s*(?<gen><[^>]*>)?(?<rest>.*)$",
+        RegexOptions.Compiled
+    )
+
+/// A type's identity is its NAME AND ITS GENERIC ARITY. Keyed on the bare name, `Attr<'msg>` and a
+/// hypothetical `Attr` would merge — and in the pin they really do: FS.GG.UI.SkiaViewer 0.9.0 exports both
+/// `ViewerEffect` and `ViewerEffect<'msg>`. The key is IL's own spelling (``Attr`1``), so the mirror side
+/// and the oracle side need no translation between them.
+let private arityKey (name: string) (generics: string) =
+    if String.IsNullOrWhiteSpace generics then
+        name
+    else
+        // `<'a, 'b when 'a: comparison>` — the constraints follow the parameters, and the commas inside
+        // them are not parameter separators. Cut them off before counting.
+        let inner = generics.Trim([| '<'; '>' |])
+
+        let parameters =
+            match inner.IndexOf(" when ", StringComparison.Ordinal) with
+            | -1 -> inner
+            | i -> inner.Substring(0, i)
+
+        let arity =
+            parameters.Split(',')
+            |> Array.filter (fun s -> not (String.IsNullOrWhiteSpace s))
+            |> Array.length
+
+        if arity = 0 then name else $"{name}`{arity}"
+
+/// #611 (F3) — the WHOLE BODY on the `type` line: `type Rng = { State: uint64; Bump: int }`, or
+/// `type ThemeMode = Light | Dark`. Ten shipped mirror types are written this way, and a line-by-line
+/// reader that treats a `type` line as nothing but a header never looks at them again — so every member
+/// they declare was silently unjudged. That is the fails-open direction: the rule reported green on types
+/// it had never read.
+///
+/// It reads only the two shapes it can be SURE of. `type Foo = Bar` is a type ABBREVIATION and
+/// `type Foo = Bar of int` is a single-case union, and nothing in the text tells them apart — so a
+/// one-line body with neither `{` nor `|` is left alone rather than guessed at, and `assertNoAmbiguousOneLiner`
+/// below makes sure no mirror ever writes one.
+let private oneLineFieldRegex = Regex(@"(?<field>[A-Z]\w*)\s*:", RegexOptions.Compiled)
+
+let private inlineMembers (rest: string) =
+    let body = rest.TrimStart()
+
+    let body =
+        if body.StartsWith("=", StringComparison.Ordinal) then
+            body.Substring(1).Trim()
+        else
+            ""
+
+    if body.StartsWith("{", StringComparison.Ordinal) then
+        [ for m in oneLineFieldRegex.Matches body -> m.Groups.["field"].Value, RecordField ]
+    elif body.Contains "|" then
+        body.Split('|')
+        |> Array.choose (fun segment ->
+            let name = segment.Trim()
+
+            // `Light`, or `Circle of radius: float` — the case is the leading capitalised token.
+            let token =
+                name.Split([| ' '; '\t' |], StringSplitOptions.RemoveEmptyEntries)
+                |> Array.tryHead
+
+            match token with
+            | Some tk when tk.Length > 0 && Char.IsUpper tk.[0] && tk |> Seq.forall (fun c -> Char.IsLetterOrDigit c || c = '_') ->
+                Some(tk, UnionCase)
+            | _ -> None)
+        |> List.ofArray
+    else
+        []
 
 /// A record field: `{ Field: T` or a continuation line `  Field: T }`. Deliberately requires the
 /// capital-initial + colon shape, which is what a record field IS — an inline `///` comment above it is
@@ -1041,7 +1138,19 @@ let private mirrorTypeMembers =
             if trimmed.StartsWith("///", StringComparison.Ordinal) || trimmed = "" then
                 ()
             elif typeDeclRegex.IsMatch line then
-                current <- Some(typeDeclRegex.Match(line).Groups.["name"].Value)
+                let m = typeDeclRegex.Match line
+                let typeName = arityKey m.Groups.["name"].Value m.Groups.["gen"].Value
+                current <- Some typeName
+
+                // F3: the body may be RIGHT HERE, on this same line, and this is the only chance to read it.
+                for (memberName, kind) in inlineMembers m.Groups.["rest"].Value do
+                    acc.Add
+                        { Doc = rel
+                          Line = i + 1
+                          Namespace = ns
+                          Type = typeName
+                          Member = memberName
+                          Kind = kind }
             elif
                 trimmed.StartsWith("val ", StringComparison.Ordinal)
                 || trimmed.StartsWith("module ", StringComparison.Ordinal)
@@ -1119,26 +1228,6 @@ let private renderDocSymbol (s: DocSymbol) =
 /// all happen to be package ids, but the mirror at large declares SUB-namespaces that are not —
 /// `FS.GG.UI.Controls.Typed`, `FS.GG.UI.Controls.Elmish.Authoring`, `FS.GG.UI.Themes.Default.Theming`.
 /// Referencing one of those as a package is an NU1101 for a package that was never supposed to exist.
-let private pinnedPackageIds =
-    Regex.Matches(File.ReadAllText packagesPropsPath, @"<PackageVersion\s+Include=""(FS\.GG\.[^""]+)""")
-    |> Seq.map (fun m -> m.Groups.[1].Value)
-    |> Seq.distinct
-    |> List.ofSeq
-
-/// The package that SHIPS a namespace: the longest pinned id that prefixes it. A namespace no pinned
-/// package covers is a hole in the oracle, so it raises rather than being dropped — silently skipping it
-/// would excuse every doc symbol underneath it.
-let private packageForNamespace (ns: string) =
-    pinnedPackageIds
-    |> List.filter (fun id -> ns = id || ns.StartsWith(id + ".", StringComparison.Ordinal))
-    |> List.sortByDescending String.length
-    |> List.tryHead
-    |> Option.defaultWith (fun () ->
-        failwith
-            $"the api-surface mirror declares `namespace {ns}`, and NO FS.GG.* package pinned in \
-              {packagesPropsRel} ships it. The doc-vs-pin oracle cannot restore it, and skipping it would \
-              EXCUSE every doc symbol it declares.")
-
 /// The packages the docs actually talk about — derived from the mirror and the props, never hardcoded,
 /// so the set cannot rot as the framework grows.
 let private docPackages =
@@ -1276,6 +1365,11 @@ let private readTypeSurface (dll: string) =
     use pe = new PEReader(stream)
     let md = pe.GetMetadataReader()
 
+    // An F# MODULE is abstract+sealed; a type is not.
+    let isModule (td: TypeDefinition) =
+        td.Attributes.HasFlag TypeAttributes.Abstract
+        && td.Attributes.HasFlag TypeAttributes.Sealed
+
     [ for handle in md.TypeDefinitions do
         let td = md.GetTypeDefinition handle
         let visibility = td.Attributes &&& TypeAttributes.VisibilityMask
@@ -1283,20 +1377,27 @@ let private readTypeSurface (dll: string) =
         let isPublic =
             visibility = TypeAttributes.Public || visibility = TypeAttributes.NestedPublic
 
-        // An F# MODULE is abstract+sealed; a type is not. `readModuleSurface` owns the former, and the two
-        // maps stay apart so that a `type Scene` case can never excuse a `module Scene` member.
-        let isFSharpModule =
-            td.Attributes.HasFlag TypeAttributes.Abstract
-            && td.Attributes.HasFlag TypeAttributes.Sealed
+        // A type NESTED IN A TYPE is not something a mirror can declare — it is the compiler's own
+        // furniture: a DU's `Tags`, and one class per union case (`ViewerEffect+CaptureScreenshot`).
+        // Registering those as top-level types mints entries called `Circle`, `KeyDown`, `Custom`, each
+        // carrying `Item`/`Item1`, which then collide with REAL types of the same name in other packages.
+        // A type nested in a MODULE is different — that is what `module Foo = type Bar = …` compiles to,
+        // and a mirror can declare it — so those are kept.
+        let declaredAtTypeLevel =
+            let parent = td.GetDeclaringType()
+            parent.IsNil || isModule (md.GetTypeDefinition parent)
 
-        if isPublic && not isFSharpModule then
-            let raw = md.GetString td.Name
-
-            // `Attr`1` -> `Attr`. An `.fsi` writes `Attr<'msg>`, and the mirror extractor reads `Attr`.
-            let name =
-                match raw.IndexOf '`' with
-                | -1 -> raw
-                | i -> raw.Substring(0, i)
+        // `readModuleSurface` owns the modules, and the two maps stay apart so a `type Scene` case can
+        // never excuse a `module Scene` member.
+        if isPublic && not (isModule td) && declaredAtTypeLevel then
+            // IL's own name, arity mangle AND ALL (`Attr`1`). NOT stripped: a type's identity is its name
+            // AND its arity, and published FS.GG.UI.SkiaViewer 0.9.0 exports BOTH `ViewerEffect` and
+            // `ViewerEffect`1` (an unrelated `ViewerEffect<'msg>` from Host/Diagnostics). Merge them and a
+            // case the generic one carries EXCUSES the same-named case on the closed one — a wider oracle,
+            // and a wider oracle excuses a real violation. #594's ledger keys on arity for this exact
+            // reason; the oracle it is checked against has to agree with it. The mirror extractor mangles
+            // its side to match, so no translation is needed between them.
+            let name = md.GetString td.Name
 
             for methodHandle in td.GetMethods() do
                 let m = md.GetMethodDefinition methodHandle
@@ -1320,7 +1421,7 @@ let private readTypeSurface (dll: string) =
                 if flags = Some SourceConstructField || flags = Some SourceConstructUnionCase then
                     yield name, md.GetString pd.Name ]
 
-let private readPinnedSurface () : Result<Map<string, Set<string>> * Map<string, Set<string>>, string> =
+let private readPinnedSurface () : Result<Map<string, Set<string>> * Map<string * string, Set<string>>, string> =
     let workDir = Path.Combine(Path.GetTempPath(), "fsgg-doc-pin-probe-" + Guid.NewGuid().ToString("N"))
     Directory.CreateDirectory workDir |> ignore
 
@@ -1401,7 +1502,8 @@ let private readPinnedSurface () : Result<Map<string, Set<string>> * Map<string,
                     // symbol that would have landed in it.
                     let missing = ResizeArray<string>()
                     let surface = Collections.Generic.Dictionary<string, Collections.Generic.HashSet<string>>()
-                    let types = Collections.Generic.Dictionary<string, Collections.Generic.HashSet<string>>()
+                    let types =
+                        Collections.Generic.Dictionary<string * string, Collections.Generic.HashSet<string>>()
 
                     for packageId in docPackages do
                         let dir =
@@ -1434,14 +1536,25 @@ let private readPinnedSurface () : Result<Map<string, Set<string>> * Map<string,
                                 surface.[moduleName].Add memberName |> ignore
 
                             // #611 — the SAME assembly, read a second way. Modules and types are disjoint
-                            // in the metadata (abstract+sealed vs not), so these two maps cannot collide,
+                            // in the metadata (abstract+sealed vs not), so those two maps cannot collide,
                             // which is why they are kept apart rather than merged: a merged map would let a
                             // `type Scene` case excuse a `module Scene` member, and vice versa.
+                            //
+                            // And the type map is keyed by (PACKAGE, type) — NOT by type name alone. The
+                            // pinned packages declare seventeen type names TWICE or more (`DiagnosticSeverity`
+                            // is in both FS.GG.UI.Layout and FS.GG.UI.Scene; so are `Point`, `Rect`,
+                            // `ViewerMsg`, …), and Scene's has a `Fatal` case that Layout's does not. Keyed
+                            // on the bare name they merge, and adding `| Fatal` to the LAYOUT mirror — the
+                            // precise scenario this rule was written for — would be EXCUSED by Scene's
+                            // unrelated type, silently, with every gate green. A mirror is judged against the
+                            // package it actually belongs to, or it is not judged at all.
                             for (typeName, memberName) in readTypeSurface path do
-                                if not (types.ContainsKey typeName) then
-                                    types.[typeName] <- Collections.Generic.HashSet<string>()
+                                let key = (packageId, typeName)
 
-                                types.[typeName].Add memberName |> ignore
+                                if not (types.ContainsKey key) then
+                                    types.[key] <- Collections.Generic.HashSet<string>()
+
+                                types.[key].Add memberName |> ignore
 
                     if missing.Count > 0 then
                         let names = String.Join(", ", missing)
@@ -1536,7 +1649,11 @@ let private pendingEntryRegex =
 type PendingMember =
     { Line: int
       Dir: string
-      Namespace: string
+      /// EVERY namespace the mirror directory declares. A directory can declare more than one
+      /// (`Controls/` declares `FS.GG.UI.Controls` and `FS.GG.UI.Controls.Typed`), and the probe must
+      /// `open` all of them or the ledgered type may simply not be in scope — which would fail the probe
+      /// for a reason that has nothing to do with the claim it is testing.
+      Namespaces: string list
       Type: string
       Member: string }
 
@@ -1549,11 +1666,16 @@ let private namespaceOfMirrorDir (dir: string) =
     else
         Directory.EnumerateFiles(full, "*.fsi", SearchOption.AllDirectories)
         |> Seq.collect File.ReadAllLines
-        |> Seq.tryPick (fun line ->
+        |> Seq.choose (fun line ->
             if line.StartsWith("namespace ", StringComparison.Ordinal) then
                 Some(line.Substring(10).Trim())
             else
                 None)
+        |> Seq.distinct
+        |> List.ofSeq
+        |> function
+            | [] -> None
+            | namespaces -> Some namespaces
 
 let private pendingMembers =
     if not (File.Exists pendingLedgerPath) then
@@ -1580,10 +1702,10 @@ let private pendingMembers =
                         $"{bare}`{arity}"
 
                 namespaceOfMirrorDir dir
-                |> Option.map (fun ns ->
+                |> Option.map (fun namespaces ->
                     { Line = lineNo
                       Dir = dir
-                      Namespace = ns
+                      Namespaces = namespaces
                       Type = typeName
                       Member = m.Groups.["member"].Value }))
         |> List.ofArray
@@ -1959,7 +2081,9 @@ let templateConsumesPinnedApiTests =
                     let undeclared =
                         mirrorTypeMembers
                         |> List.filter (fun m ->
-                            match Map.tryFind m.Type pinnedTypes with
+                            // Against the package this mirror IS, never against "some package that happens
+                            // to have a type of that name" — see the (package, type) key in the oracle.
+                            match Map.tryFind (packageForNamespace m.Namespace, m.Type) pinnedTypes with
                             | Some members -> not (members.Contains m.Member)
                             // The pin has NO type of that name — and that is the rule at its SHARPEST, not
                             // an exemption. A whole type a product cannot reach is strictly worse than one
@@ -2010,7 +2134,7 @@ let templateConsumesPinnedApiTests =
                 match pinnedSurface.Value with
                 | Error why -> skiptest why
                 | Ok(_, pinnedTypes) ->
-                    match Map.tryFind "ViewerEffect" pinnedTypes with
+                    match Map.tryFind ("FS.GG.UI.SkiaViewer", "ViewerEffect") pinnedTypes with
                     | None ->
                         failtest
                             "the oracle sees no `ViewerEffect` in the pinned FS.GG.UI.SkiaViewer at all. It \
@@ -2094,9 +2218,11 @@ let templateConsumesPinnedApiTests =
                     let released =
                         entries
                         |> List.filter (fun e ->
-                            match Map.tryFind e.Type pinnedTypes with
-                            | Some members -> members.Contains e.Member
-                            | None -> false)
+                            e.Namespaces
+                            |> List.exists (fun ns ->
+                                match Map.tryFind (packageForNamespace ns, e.Type) pinnedTypes with
+                                | Some members -> members.Contains e.Member
+                                | None -> false))
                         |> List.map (fun e -> $"{e.Type}.{e.Member} ({pendingLedgerRel}:{e.Line})")
 
                     let renderedReleased = String.concat "; " released
@@ -2117,9 +2243,11 @@ let templateConsumesPinnedApiTests =
                     match probeable with
                     | [] -> ()
                     | probeable ->
-                        let packages = probeable |> List.map (fun e -> e.Namespace) |> List.distinct |> List.sort
+                        let namespaces =
+                            probeable |> List.collect (fun e -> e.Namespaces) |> List.distinct |> List.sort
+
                         let lines = probeable |> List.map (fun e -> $"{e.Type}.{e.Member}")
-                        let exitCode, output = runNameofProbe packages lines
+                        let exitCode, output = runNameofProbe namespaces lines
                         let uiPin = readAxis uiAxis
 
                         if exitCode = 0 then
@@ -2143,10 +2271,15 @@ let templateConsumesPinnedApiTests =
                                 output.Replace("\r\n", "\n").Split('\n')
                                 |> Array.filter (fun l -> l.Contains "FS0039")
 
+                            // F5 — the member is matched QUOTED, as F# writes it ("...member named
+                            // 'Persist'"). A bare substring test would let an FS0039 about
+                            // `PersistRunEvidence` — a real case of this very DU — "prove" that `Persist`
+                            // is absent. Two entries, one diagnostic, and the shorter name rides in free.
                             let unproven =
                                 probeable
                                 |> List.filter (fun e ->
-                                    unresolved |> Array.exists (fun l -> l.Contains e.Member) |> not)
+                                    let quoted = $"'{e.Member}'"
+                                    unresolved |> Array.exists (fun l -> l.Contains quoted) |> not)
                                 |> List.map (fun e -> $"{e.Type}.{e.Member}")
 
                             let renderedUnproven = String.concat "; " unproven
@@ -2184,7 +2317,7 @@ let templateConsumesPinnedApiTests =
                         mirrorTypeMembers
                         |> List.filter (fun m ->
                             docLedger.Contains(typeMemberKey m)
-                            && (match Map.tryFind m.Type pinnedTypes with
+                            && (match Map.tryFind (packageForNamespace m.Namespace, m.Type) pinnedTypes with
                                 | Some members -> members.Contains m.Member
                                 | None -> false))
                         |> List.map typeMemberKey
