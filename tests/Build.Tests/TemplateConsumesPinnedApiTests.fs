@@ -880,11 +880,73 @@ let private mirrorDocCommentSymbols =
                 |> Array.ofSeq))
     |> List.ofSeq
 
+/// `Module.member` inside a `///` DOC-COMMENT of the SCAFFOLD'S OWN SOURCE — `template/base/src/**` and
+/// `template/fragments/**` (#608).
+///
+/// THE LAST UNJUDGED SHIPPED DOC SURFACE. #598 widened this rule to the mirror's prose and closed the
+/// blind spot it was filed for; it did not close the CLASS. These files are shipped into every scaffolded
+/// product — they are the product's own source, the first thing a reader opens — and the rule read their
+/// CODE (via #504's `Program.fs` call sites) while the PROSE WRAPPED AROUND THE CODE went unjudged. A
+/// `///` comment here naming a symbol the pin does not export is exactly #550/#598: a shipped doc telling
+/// a product author to call something they cannot bind.
+///
+/// FILED WHILE THE SURFACE IS CLEAN, WHICH IS THE ONLY CHEAP MOMENT. Today these files name exactly one
+/// framework symbol in prose (`SpatialGrid.build`, in the vec2 fragment) and it RESOLVES — so there is no
+/// violation to fix, and the gate can simply be widened. Widen it after the first violation lands and you
+/// are paying #550's price again, with a ledger entry instead of a green build.
+///
+/// THE SCAFFOLD'S OWN MODULES MUST STAY EXEMPT, and that matters more here than anywhere else, because
+/// these files ARE the scaffold: `template/fragments/vec2/src/Product/Vec2.fs` DEFINES `module Geometry`,
+/// and FS.GG.Game.Core exports a `Geometry` module too — a different one. Judging the product's own module
+/// against the framework's same-named one reports a defect in correct guidance. `isJudgedDocModule` already
+/// does this (it is what `scaffoldModules` is for), so this extractor inherits it rather than re-deriving
+/// it — the whole point of reusing #598's machinery instead of writing a second one that drifts.
+///
+/// The two guards are #598's, unchanged and for its reasons: a `/` immediately before the match means a
+/// PATH (prose names files constantly — `Model.fs` yields the member `fs` on the module `Model`), and the
+/// member may not be one of the three F# SOURCE extensions. Not a blanket extension list: `md`/`txt`/`json`
+/// are legal F# identifiers, so blacklisting them fails OPEN the day someone exports one.
+let private scaffoldSourceRoots =
+    [ repoPath "template/base/src"; repoPath "template/fragments" ]
+    |> List.filter Directory.Exists
+
+let private scaffoldSourceDocCommentSymbols =
+    scaffoldSourceRoots
+    |> Seq.collect (fun root ->
+        Seq.append
+            (Directory.EnumerateFiles(root, "*.fs", SearchOption.AllDirectories))
+            (Directory.EnumerateFiles(root, "*.fsi", SearchOption.AllDirectories)))
+    |> Seq.collect (fun path ->
+        let rel = Path.GetRelativePath(repoRoot, path).Replace('\\', '/')
+
+        File.ReadAllLines path
+        |> Array.mapi (fun i line -> i + 1, line)
+        |> Array.collect (fun (lineNo, raw) ->
+            let trimmed = raw.TrimStart()
+
+            if not (trimmed.StartsWith("///", StringComparison.Ordinal)) then
+                [||]
+            else
+                let text = trimmed.Substring 3
+
+                callRegex.Matches text
+                |> Seq.filter (fun m ->
+                    let precededBySlash = m.Index > 0 && text.[m.Index - 1] = '/'
+                    not precededBySlash && not (sourceFileExtensions.Contains m.Groups.[3].Value))
+                |> Seq.map (fun m ->
+                    m.Groups.[1].Value,
+                    { Doc = rel
+                      Line = lineNo
+                      Module = m.Groups.[2].Value
+                      Member = m.Groups.[3].Value })
+                |> Array.ofSeq))
+    |> List.ofSeq
+
 /// Every shipped doc surface, reduced to the symbols this rule may judge — EVERY occurrence, not one per
 /// symbol. `docSymbols` below dedups for the verdict; this keeps the sites, because the verdict and the
 /// WORK are different questions.
 let private judgedDocOccurrences =
-    List.concat [ skillFenceSymbols; mirrorValSymbols; mirrorDocCommentSymbols ]
+    List.concat [ skillFenceSymbols; mirrorValSymbols; mirrorDocCommentSymbols; scaffoldSourceDocCommentSymbols ]
     |> List.filter (fun (qualifier, s) -> isJudgedDocModule qualifier s.Module)
     |> List.map snd
 
@@ -1351,6 +1413,26 @@ let templateConsumesPinnedApiTests =
                 "`Module.member` symbols were extracted from the `///` doc-comments of the shipped \
                  api-surface mirror. Zero means the doc-comment extractor has stopped seeing the prose \
                  the mirror instructs a product author with — the #598 blind spot, reopened."
+
+            // #608's extractor, under the same guard as its three siblings and for the same reason. It was
+            // added because the rule was blind to the prose in the scaffold's OWN SOURCE — the files a
+            // product author opens on day one — so an implementation that matches nothing restores that
+            // blind spot while reporting green (#266).
+            //
+            // Anchored on the ONE framework symbol these files actually name in prose today. That is not an
+            // arbitrary pick: `isNonEmpty` alone would survive an extractor that read only, say,
+            // `template/base/src` and silently dropped `template/fragments` — the fragments being exactly
+            // where the symbol lives, and exactly where the scaffold-module collision (`Geometry`) makes the
+            // exemption load-bearing. A named anchor fails when the coverage narrows; a count does not.
+            Expect.isTrue
+                (scaffoldSourceDocCommentSymbols
+                 |> List.exists (fun (_, s) -> s.Module = "SpatialGrid" && s.Member = "build"))
+                $"`SpatialGrid.build` must be among the symbols extracted from the `///` doc-comments of the \
+                  scaffold's own source ({List.length scaffoldSourceDocCommentSymbols} found across \
+                  template/base/src + template/fragments). It is the only framework symbol these SHIPPED \
+                  files name in prose today, and it lives in the vec2 FRAGMENT — so if it falls out, the \
+                  extractor has stopped reading the fragments, and the last unjudged shipped doc surface is \
+                  unjudged again (#608). It resolves against the pin, so this is coverage, not a violation."
 
             Expect.isNonEmpty
                 docSymbols
