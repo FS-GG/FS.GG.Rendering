@@ -418,7 +418,7 @@ module ControlsElmish =
                   diagnostic
                       "keyboard-input"
                       hostKeyCaptureNotInterpretedCode
-                      $"RequestHostKeyCapture '{key}' is not interpreted by any host: no ViewerEffect carries a KeyboardEffect, so the request never reaches one and the capture never fires. Capture the key in the product instead: set the host's MapKey to ViewerKeyboard.mapKeyRaw and route the key in update, where the keymap and the capture state live."
+                      $"RequestHostKeyCapture '{key}' is not interpreted by any host: no ViewerEffect carries a KeyboardEffect, so the request never reaches one and the capture never fires. Capture the key in the product instead: forward the raw key out of the host's MapKey — MapKey = fun key isDown -> Some(YourMsg(ViewerKeyboard.toKeyId key, isDown)) — and route it in update, where the keymap and the capture state live."
               ) ]
         | ReportKeyboardDiagnostic keyboardDiagnostic ->
             [ ReportAdapterDiagnostic(diagnostic "keyboard-input" keyboardDiagnostic.Code keyboardDiagnostic.Message) ]

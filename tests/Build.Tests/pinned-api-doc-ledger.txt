@@ -42,13 +42,37 @@
 # lesson: an absent HELPER is not an absent capability. Before ledgering a symbol, check whether the pin
 # already exports what it is made of.
 #
-# THE DEBT IS NOT FULLY PAID, AND THIS RULE CANNOT SEE THE REST OF IT. `mapKeyRaw` survives in one more
-# SHIPPED doc — Controls.Elmish/ControlsElmish.fsi — in a `///` comment telling a product author to set
-# `MapKey` to it. This rule reads `val` declarations and ```fsharp fences, NOT doc-comments, so it is
-# green on that site and always was; ledgering it would not help, because the extractor never looks
-# there. It is also an `inRepoExactCopies` mirror (#585), so it cannot be fixed here at all — the edit
-# has to land in src/Controls.Elmish, which also carries it in a runtime diagnostic string. Tracked as
-# FS.GG.Rendering#598. Do not read the two deletions above as "no shipped doc names mapKeyRaw".
+# THE DEBT IS PAID, AND THE RULE CAN NOW SEE THE CLASS IT COULD NOT (#598). The paragraph that stood here
+# recorded a `mapKeyRaw` this rule was structurally BLIND to: a `///` comment in
+# Controls.Elmish/ControlsElmish.fsi telling a product author to set `MapKey` to it. The extractor read
+# `val` declarations and ```fsharp fences and nothing else, so it was green on that site and always would
+# have been — ledgering it would not have helped, because the extractor never looked there.
+#
+# #598 fixed BOTH halves. The doc now teaches the lambda `mapKeyRaw` was sugar for
+# (`fun key isDown -> Some(YourMsg(ViewerKeyboard.toKeyId key, isDown))`), in src/Controls.Elmish so the
+# exact-copy mirror follows, and in the runtime diagnostic that carried the same instruction. And the
+# extractor now reads `///` doc-comments of the shipped mirror, so the next one cannot hide there.
+#
+# WIDENING IT FOUND MORE, WHICH IS THE POINT: 13 doc-comments in Controls/Control.fsi taught
+# `Attr.onClick` / `Attr.onChanged` / `Attr.onSelected` / `Attr.checked'` — a module that exports none of
+# them (they live on the widget: `Button.onClick`, `CheckBox.checked'`). Those were fixed, not ledgered;
+# no release retires a wrong qualifier. `Persistence.interpretRecordOnly` was still taught by
+# SkiaViewer.fsi — the #550 symbol, in the third doc #550 could not see — and now teaches `interpret`.
+
+# ---------------------------------------------------------------------------------------------------
+# `Viewer.runAppWithPersistence` — FS.GG.Rendering#587 (the release)
+#
+# The one violation #598 found that a doc fix CANNOT retire, and the shape this ledger exists for. It is
+# not a wrong name: `runAppWithPersistence` is the NEW sink-carrying entry point (#535), it exists in
+# src/SkiaViewer, and published FS.GG.UI.SkiaViewer 0.9.0 does not carry it. There is no spelling a
+# product on the pin can bind, so there is nothing to rewrite it TO — only a release retires this.
+#
+# The doc-comment that names it says so, in as many words ("this case is NEWER than the
+# `FS.GG.UI.SkiaViewer` your product pins, so you cannot bind it yet"), which is why it stays: a reader is
+# told the truth, and #587 makes the sentence obsolete. Delete this line when the release lands — the
+# stale rule will demand it.
+# ---------------------------------------------------------------------------------------------------
+template/base/docs/api-surface/SkiaViewer/SkiaViewer.fsi::Viewer.runAppWithPersistence
 
 # ---------------------------------------------------------------------------------------------------
 # `AdapterCmd.diagnostics` — FS.GG.Rendering#592

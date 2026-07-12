@@ -546,7 +546,13 @@ type ViewerEffect =
     ///
     /// NOTE — this case is NEWER than the `FS.GG.UI.SkiaViewer` your product pins, so you cannot bind it
     /// yet. It arrives with the next framework release. Until then a product records its requests with
-    /// `Persistence.interpretRecordOnly` and writes its own backend, exactly as before.
+    /// `Persistence.interpret` and writes its own backend, exactly as before.
+    ///
+    /// `interpret`, NOT `interpretRecordOnly` (#550, and #598 for why this line survived it). The honest
+    /// name is coming, but it is not on the package you pin: published FS.GG.UI.Canvas 0.9.0 exports
+    /// `interpret` and does not export `interpretRecordOnly`, and the `[<Obsolete>]` that makes `interpret`
+    /// look wrong on `main` is itself unreleased. Naming the unreleased spelling here handed the reader an
+    /// escape hatch as unbindable as the case it escapes — both halves of the advice a build error.
     | Persist of effects: PersistenceEffect list
 
 /// Public contract type exposed by this FS.GG.UI package.
