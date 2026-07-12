@@ -212,14 +212,25 @@ let private waivers: Waiver list =
     // PAID. That is what a waiver is for: it held the drift still, with a name on it, until the repo that
     // owned the body could take the content.
     //
-    // ONE THING THE RE-FREEZE DELIBERATELY REMOVED, so the next reader does not "restore" it: the
-    // app-family ```fsharp block calling `ControlsElmish.runInteractiveAppWithAudio`. That entry point
-    // first ships in FS.GG.UI 0.9.0, Game pins the UI train at 0.5.0, and Game COMPILES every ```fsharp
-    // block in a published SKILL.md — so the repo that OWNS this body cannot typecheck it, and fencing it
-    // as non-F# to slip past that gate would be a green tick over uncompiled code. The canonical carries
-    // those entry points as a TABLE instead, which loses no names and no argument order. Getting the block
-    // back means moving Game's UI train first (FS.GG.Game#216/#217) — it is not something this repo can do
-    // unilaterally without re-opening the divergence this closes.
+    // AND THE LAST PIECE OF THAT DEBT IS PAID TOO (#649). This paragraph used to warn the next reader NOT
+    // to "restore" the app-family ```fsharp block calling `ControlsElmish.runInteractiveAppWithAudio`: that
+    // entry point first shipped in FS.GG.UI 0.9.0, Game pinned the UI train at 0.5.0, and Game COMPILES
+    // every ```fsharp block in a published SKILL.md — so the repo that OWNED the body could not typecheck
+    // it, and fencing it as non-F# to slip past that gate would have been a green tick over uncompiled code.
+    // The canonical carried those entry points as a TABLE instead, and getting the block back meant moving
+    // Game's UI train first.
+    //
+    // Game moved it. The train is on 0.9.0 (FS.GG.Game#217), `FS.GG.UI.Controls.Elmish` 0.9.0 is pinned
+    // gate-only and in the skills-corpus `PackageRefs`, and the canonical typechecks the block it once could
+    // not — 51 blocks compiled, green (FS.GG.Game#225). So the block is BACK in the canonical, on purpose,
+    // and this mirror now carries it (4bee8ef2). Every premise of the old warning is false, which is why it
+    // is deleted rather than kept: left standing it would have told whoever did this re-freeze to treat the
+    // new block as something the mirror must not carry — i.e. to re-introduce the exact divergence the
+    // re-freeze closes.
+    //
+    // That is the same failure mode as a stale waiver, one level up: the COMMENTARY that outlives a waiver
+    // can lie just as loudly as the waiver did, and it is read by exactly the person least able to catch it.
+    // Sunset the prose with the condition it described.
     []
 
 /// The OWNER'S canonical body, fetched from the owning repo — the thing ADR-0022 §6 actually says this
@@ -422,7 +433,13 @@ for row, body, local in mirrors do
                 row.Owner
                 row.Source
                 (local.Substring(0, 12) + "…")
-                (row.Sha256.Substring(0, 12) + "…")
+                // The BODY's digest, not `row.Sha256` — the registry's CACHE, which lags behind a canonical
+                // edit until the nightly bot runs (#629). This message used to print the cache while calling
+                // it "the canonical": the guard judged the body and then named a ghost. It misdirects exactly
+                // the reader it is written for — on #649 it demanded `9401ccd9…` while the canonical body
+                // hashed `4bee8ef2…`, so a correct re-freeze lands on a digest the error says is wrong.
+                // Judge the body, REPORT the body.
+                (canonical.Substring(0, 12) + "…")
                 row.Source
                 extra
 

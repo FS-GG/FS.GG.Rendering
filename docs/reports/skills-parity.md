@@ -1,7 +1,7 @@
 <!-- SKILL-PARITY:START -->
 # Skill Parity Report
 
-Overall status: `passed`
+Overall status: `warning`
 Canonical sources: `32`
 Wrappers: `65`
 
@@ -18,12 +18,12 @@ Wrappers: `65`
 ## Severity Counts
 | Critical | High | Warning | Info |
 | --- | --- | --- | --- |
-| 0 | 0 | 0 | 0 |
+| 0 | 0 | 1 | 0 |
 
 ## API Symbol Coverage
 | Skill | Documented | Exercised | Unexercised | Unresolved |
 | --- | --- | --- | --- | --- |
-| fs-gg-audio | 2 | 2 | 0 | 0 |
+| fs-gg-audio | 6 | 5 | 1 | 0 |
 | fs-gg-diagnostics | 2 | 2 | 0 | 0 |
 | fs-gg-elmish | 11 | 11 | 0 | 0 |
 | fs-gg-generated-controls-guidance | 25 | 25 | 0 | 0 |
@@ -46,7 +46,9 @@ Wrappers: `65`
 | readiness-allowlisting | 5 | 5 | 0 | 0 |
 
 ## Findings
-No unresolved parity findings.
+| Skill | Surface | Category | Severity | Path | Message | Next action |
+| --- | --- | --- | --- | --- | --- | --- |
+| fs-gg-audio | template-canonical | unexercised-api-symbol | warning | template/product-skills/fs-gg-audio/SKILL.md | Skill documents `ControlsElmish.runInteractiveApp`, but no test calls it — the seam may be dead. | Add a test that calls the documented API, or stop documenting it. |
 
 ## Intentional Exceptions
 No intentional exceptions were applied.

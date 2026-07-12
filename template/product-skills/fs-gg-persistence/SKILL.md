@@ -157,6 +157,9 @@ end. While the backend is deferred the "sink" is the record-only interpreter, so
 on `PersistenceEvidence.Requested`; if you own a real backend, assert on the **files** it wrote (see
 [If you own the backend](#if-you-own-the-backend)).
 
+<!-- skill-refs: closed-ok FS-GG/FS.GG.Rendering#494 — cited as the ORIGIN of the blind spot, not as
+     open work. It is the issue this very section answers, so its closure is what success looked like;
+     the citation is history and stays correct closed. -->
 > **This spreads by imitation, which is why the warning is here rather than only in `fs-gg-audio`.** A
 > product wrote its own `SaveCues.forTransition` by analogy with the audio seam, unaided — and
 > inherited the identical blind spot (FS-GG/FS.GG.Rendering#494). The pattern travels faster than the

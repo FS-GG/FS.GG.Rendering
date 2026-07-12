@@ -145,7 +145,12 @@ vocabulary  unsupportedStandardEvent
 vocabulary  toMsg
 
 # ---- Controls/RichText.fsi
-vocabulary  block
+# `block` (RichText) was removed here by #649, and NOT because a skill documents it. S-DOC's `isDocumented`
+# is a bare word-boundary regex over skill PROSE, so FS.GG.Game#240 writing "the launcher block above" in the
+# fs-gg-audio canonical credited this RichText combinator as documented and made the line stale. It is a
+# HOMONYM, not a doc. 31 other public vals (`background`, `count`, `fill`, `image`, `success`, `warning`, …)
+# are credited the same accidental way and are in NO ledger line — S-DOC is vacuous for them. Tracked by #654,
+# which tightens `isDocumented` to require a code reference and restores this line with the rest.
 vocabulary  defaultStyle
 
 # ---- DesignSystem/DesignTokens.fsi
