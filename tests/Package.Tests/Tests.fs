@@ -3,6 +3,8 @@ module PackageTests
 open System
 open System.Diagnostics
 open System.IO
+open System.Text.Json
+open System.Text.RegularExpressions
 open Expecto
 open FS.GG.TestSupport
 
@@ -108,6 +110,246 @@ let main _ =
     0
 """
 
+// -------------------------------------------------------------------------------------------------
+// R-PROF (#511) — `template/profiles/<p>.yml` is the TRANSPOSE of `template/capabilities.yml`.
+//
+// THE ROSTER PROBLEM. "Which capability reaches which profile" is written down in five places. Four are
+// now gated: R-PINNED / R-REF / R-REACH / R-CAT (tests/Package.Tests/SkillPackageReachTests.fs, issues
+// #430 and #483). `template/profiles/*.yml` was the fifth, and NOTHING held it — so it drifted, exactly
+// as the others had: `sample-pack.yml` under-reported its own profile by FOUR capabilities, three files
+// listed a `full-governance` capability that is not a row in any catalog, and `governed.yml` — one of the
+// five real profiles — simply did not exist.
+//
+// WHY THIS GATE DOES NOT RECOMPUTE PACKAGE REACH. The obvious move is to assert these files against the
+// scaffold's real `<!--#if -->` package gates, the way R-CAT does. That would be a SECOND copy of a subtle
+// computation (`enclosingGate` / `profilesDeclaring` / `capabilityReach`), and a roster problem is not
+// solved by adding a sixth roster's worth of parsing. capabilities.yml ALREADY carries that fact, and
+// R-CAT already holds it to the real gates. So this gate asserts the one thing left: that the per-profile
+// view and the per-capability view are the same table read two ways.
+//
+//     profiles/<p>.yml  --(R-PROF, here)-->  capabilities.yml  --(R-CAT, #483)-->  the template's gates
+//
+// Both links are equality, so the composition is: a profile file lists EXACTLY the capabilities a product
+// on that profile can actually `open`. One source of truth, one derivation, no second parser.
+//
+// The files say so themselves ("DERIVED — do not hand-edit"), which is the other half of #511's fix: a
+// directory named `profiles/` that silently disagrees with the scaffold is worse than no directory.
+// -------------------------------------------------------------------------------------------------
+
+let private capabilitiesYmlRel = "template/capabilities.yml"
+
+/// Bound rather than inlined: F# forbids a string literal inside an interpolated expression in a
+/// single-quoted interpolated string, and every failure message below renders a set.
+let private commaSep (items: string seq) = String.Join(", ", items)
+
+/// Every profile a scaffold can be generated on, read from `.template.config/template.json`'s
+/// `symbols.profile` choices — the SAME list `dotnet new` offers, not a copy of it.
+///
+/// Derived rather than hardcoded on purpose. A hardcoded set is how `governed` went missing: it is a real
+/// profile that no profile file described, and no list that a human maintains would have noticed. Read from
+/// template.json, adding a sixth profile makes `every generatable profile has a profile file` fail until
+/// somebody writes the file.
+let private generatableProfiles =
+    use doc = JsonDocument.Parse(File.ReadAllText(repositoryPath ".template.config/template.json"))
+
+    doc.RootElement
+        .GetProperty("symbols")
+        .GetProperty("profile")
+        .GetProperty("choices")
+        .EnumerateArray()
+    |> Seq.map (fun choice -> choice.GetProperty("choice").GetString())
+    |> Seq.choose Option.ofObj
+    |> Set.ofSeq
+
+/// (capability id, the profiles that row claims) for EVERY row in the catalog.
+///
+/// Runtime AND non-runtime: R-CAT drops the non-runtime `samples` row (it pins no package, so there is no
+/// reach to hold it to), but a profile file's `capabilities:` names `samples` all the same, so the transpose
+/// has to carry it or R-PROF would demand its removal. The `samples` row's own `profiles:` is instead
+/// cross-checked below, against each profile file's `samples:` flag.
+///
+/// Anchored on the two-space `  - id:` list indent, each row's body running to the next row, so a field is
+/// never read out of a neighbouring row — the same boundary discipline SkillPackageReachTests uses.
+let private catalogRows =
+    let text = File.ReadAllText(repositoryPath capabilitiesYmlRel)
+
+    Regex.Matches(text, @"^  - id: (?<id>\S+)(?<body>(?:\n(?!  - id: ).*)*)", RegexOptions.Multiline)
+    |> Seq.map (fun m ->
+        let profiles =
+            Regex.Match(m.Groups.["body"].Value, @"^\s+profiles:\s*\[(?<p>[^\]]*)\]", RegexOptions.Multiline)
+                .Groups.["p"].Value.Split(',')
+            |> Seq.map (fun s -> s.Trim())
+            |> Seq.filter (fun s -> s <> "")
+            |> Set.ofSeq
+
+        m.Groups.["id"].Value, profiles)
+    |> List.ofSeq
+
+/// The capabilities the CATALOG gives `profile` — the transpose, and the expected `capabilities:` list.
+let private catalogCapabilitiesFor profile =
+    catalogRows
+    |> List.filter (fun (_, profiles) -> Set.contains profile profiles)
+    |> List.map fst
+    |> Set.ofList
+
+let private profileFileRel profile = $"template/profiles/{profile}.yml"
+
+/// A `key: [a, b, c]` inline list, or the empty set when the key is absent.
+let private ymlList (text: string) (key: string) =
+    let m = Regex.Match(text, $@"^{Regex.Escape key}:\s*\[(?<v>[^\]]*)\]", RegexOptions.Multiline)
+
+    if not m.Success then
+        Set.empty
+    else
+        m.Groups.["v"].Value.Split(',')
+        |> Seq.map (fun s -> s.Trim())
+        |> Seq.filter (fun s -> s <> "")
+        |> Set.ofSeq
+
+/// A `key: value` scalar, or None. Comment lines cannot match: the key is anchored at column 0.
+let private ymlScalar (text: string) (key: string) =
+    let m = Regex.Match(text, $@"^{Regex.Escape key}:\s*(?<v>.+?)\s*$", RegexOptions.Multiline)
+    if m.Success then Some(m.Groups.["v"].Value) else None
+
+[<Tests>]
+let profileRosterTests =
+    testList "Profile roster (R-PROF, #511)" [
+
+        // The existence check `generatedProductInputs` could not make, because it filtered by File.Exists.
+        // `governed` was a real, generatable profile with no profile file for the life of the directory.
+        test "every generatable profile has a profile file" {
+            Expect.isNonEmpty
+                (Set.toList generatableProfiles)
+                "template.json declares at least one profile — an empty set would make every assertion below \
+                 vacuous, which is the fails-open shape this gate exists to close"
+
+            let missing =
+                generatableProfiles
+                |> Set.filter (fun p -> not (File.Exists(repositoryPath (profileFileRel p))))
+
+            Expect.isEmpty
+                (Set.toList missing)
+                $"every profile in .template.config/template.json symbols.profile has a template/profiles/<p>.yml. \
+                  Missing: {commaSep missing}"
+        }
+
+        // The catalog must be readable, or every transpose below is silently empty and R-PROF passes by
+        // checking nothing.
+        test "the capability catalog parses (R-PROF is not vacuous)" {
+            Expect.isNonEmpty catalogRows $"{capabilitiesYmlRel} declares capability rows"
+
+            let rowsWithNoProfiles = catalogRows |> List.filter (snd >> Set.isEmpty) |> List.map fst
+
+            Expect.isEmpty
+                rowsWithNoProfiles
+                $"every capability row declares a `profiles:` list — a row with none contributes to no \
+                  profile's transpose and would silently narrow what R-PROF demands. Rows: \
+                  {commaSep rowsWithNoProfiles}"
+        }
+
+        // R-PROF itself. Equality, not subset — over-claiming and under-claiming are both lies, and the
+        // directory had one of each.
+        for profile in Set.toList generatableProfiles do
+            test $"R-PROF — {profile}.yml lists exactly the capabilities the catalog gives {profile}" {
+                let rel = profileFileRel profile
+                let text = File.ReadAllText(repositoryPath rel)
+
+                let declared = ymlList text "capabilities"
+                let expected = catalogCapabilitiesFor profile
+                let catalogIds = catalogRows |> List.map fst |> Set.ofList
+
+                // Reported separately from the equality below: "names a capability that does not exist" is a
+                // different defect from "under-reports its profile", and `full-governance` — which three of
+                // these files carried, and which is a row in NO catalog — deserves to be named as such
+                // rather than buried in a set diff.
+                let unknown = Set.difference declared catalogIds
+
+                Expect.isEmpty
+                    (Set.toList unknown)
+                    $"{rel} names only capabilities that are rows in {capabilitiesYmlRel}. \
+                      Unknown: {commaSep unknown}"
+
+                let underReported = Set.difference expected declared
+                let overClaimed = Set.difference declared expected
+
+                Expect.isEmpty
+                    (Set.toList underReported)
+                    $"{rel} lists every capability the catalog gives '{profile}' — these reach the profile and \
+                      the file does not say so: {commaSep underReported}"
+
+                Expect.isEmpty
+                    (Set.toList overClaimed)
+                    $"{rel} claims no capability the catalog does NOT give '{profile}' — the catalog does not \
+                      put these on this profile: {commaSep overClaimed}"
+            }
+
+        // The one link R-CAT cannot make. `samples` is non-runtime (it pins no package), so R-CAT drops it
+        // and nothing holds its `profiles:` to anything. The profile files carry the same fact a second way,
+        // in the `samples:` boolean — so hold the two against each other and the row stops being unasserted.
+        for profile in Set.toList generatableProfiles do
+            test $"the samples capability and {profile}.yml's `samples:` flag agree" {
+                let rel = profileFileRel profile
+                let text = File.ReadAllText(repositoryPath rel)
+
+                let hasSamplesCapability = catalogCapabilitiesFor profile |> Set.contains "samples"
+                let samplesFlag = ymlScalar text "samples" = Some "true"
+                let catalogSays = if hasSamplesCapability then "gives" else "does NOT give"
+
+                Expect.equal
+                    samplesFlag
+                    hasSamplesCapability
+                    $"{rel}'s `samples: {samplesFlag}` agrees with the catalog, which {catalogSays} \
+                      '{profile}' the samples capability"
+            }
+
+        // A file whose `name:` disagrees with its filename is a file the transpose above checked against the
+        // WRONG profile's expectations — and it would pass, because the filename is what selects the row.
+        for profile in Set.toList generatableProfiles do
+            test $"{profile}.yml's `name:` field matches its filename" {
+                let rel = profileFileRel profile
+                let text = File.ReadAllText(repositoryPath rel)
+
+                Expect.equal
+                    (ymlScalar text "name")
+                    (Some profile)
+                    $"{rel} declares `name: {profile}`"
+            }
+
+        // The schema is CLOSED, and that is the actual cure for the disease #511 describes.
+        //
+        // Every assertion above reads a key it already knows about, so a key it does NOT know about is
+        // invisible to all of them — which is exactly what `optionalCapabilities: [layout, controls, testing]`
+        // was: a roster field, in the profiles directory, naming capabilities the scaffold cannot give that
+        // profile, read by nothing and held to nothing. Pinning the key set means the next such field cannot
+        // be added silently: it either gets a gate, or it does not get in.
+        for profile in Set.toList generatableProfiles do
+            test $"{profile}.yml declares no ungated field" {
+                let rel = profileFileRel profile
+
+                let known =
+                    set [ "name"; "description"; "capabilities"; "governance"; "samples"; "sourceFrameworkMode"; "validationCommands" ]
+
+                let declared =
+                    File.ReadAllLines(repositoryPath rel)
+                    |> Array.choose (fun line ->
+                        let m = Regex.Match(line, @"^(?<k>[A-Za-z][\w-]*):")
+                        if m.Success then Some m.Groups.["k"].Value else None)
+                    |> Set.ofArray
+
+                let ungated = Set.difference declared known
+
+                Expect.isEmpty
+                    (Set.toList ungated)
+                    $"{rel} declares only fields this gate asserts. An unknown key is a roster nothing holds — \
+                      which is what `optionalCapabilities` was. Either gate it here or drop it. \
+                      Ungated: {commaSep ungated}"
+
+                Expect.isEmpty
+                    (Set.toList (Set.difference known declared))
+                    $"{rel} declares every field a profile file is required to carry: {commaSep known}"
+            }
+    ]
+
 [<Tests>]
 let packageContractTests =
     let v1PackageTests = [
@@ -147,9 +389,14 @@ let packageContractTests =
         test "generated products and surface checks do not keep Charts as an active package" {
             let build = buildFrontEnd ()
 
+            // Every profile, not four of five: `game` — the template's DEFAULT starter since Feature 220 —
+            // was absent from this list, so the one profile most products actually generate was never
+            // Charts-checked (#511). `governed.yml` WAS named here and did not exist, and the
+            // `File.Exists` filter below turned that into a silent pass. See the existence assertion.
             let generatedProductInputs =
                 [ "template/capabilities.yml"
                   "template/profiles/app.yml"
+                  "template/profiles/game.yml"
                   "template/profiles/governed.yml"
                   "template/profiles/headless-scene.yml"
                   "template/profiles/sample-pack.yml"
@@ -165,9 +412,21 @@ let packageContractTests =
                   "template/fragments/charts"
                   ".agents/skills/fs-gg-charts/SKILL.md" ]
 
+            // A REQUIRED-input list that skips what it cannot find is not a gate (#511). This used to read
+            // `List.filter (repositoryPath >> File.Exists)`, which converted "this required input is
+            // MISSING" into "nothing to check here" — and it was not hypothetical: `governed.yml` was on
+            // the list, did not exist, and was silently dropped, so the guard reported green over a file it
+            // never opened. Scanning zero inputs and scanning ten clean ones must not share a verdict
+            // (the fails-open class of FS-GG/.github#266).
+            let missing = generatedProductInputs |> List.filter (repositoryPath >> File.Exists >> not)
+
+            Expect.isEmpty
+                missing
+                "every input this guard claims to scan EXISTS — a missing one means the guard is checking \
+                 less than it says, not that there is nothing to check"
+
             let activeHits =
                 generatedProductInputs
-                |> List.filter (repositoryPath >> File.Exists)
                 |> List.collect (fun relative ->
                     let content = File.ReadAllText(repositoryPath relative)
 
