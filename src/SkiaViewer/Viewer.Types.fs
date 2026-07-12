@@ -130,6 +130,7 @@ type ViewerInputDispatchStatus =
     | NotVerified
     | NotRequired
 
+[<RequireQualifiedAccess>]
 type ViewerDiagnosticLevel =
     | Error
     | Warning

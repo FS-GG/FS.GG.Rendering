@@ -947,7 +947,7 @@ module GlHost =
                 SKSurface.Create(context, true, imageInfo, 1, GRSurfaceOrigin.TopLeft)
 
             if isNull surface then
-                Result.Error(Diagnostics.create Error FrameRender "SkiaSharp did not create an offscreen GL surface for scene rendering." None)
+                Result.Error(Diagnostics.create DiagnosticSeverity.Error FrameRender "SkiaSharp did not create an offscreen GL surface for scene rendering." None)
             else
                 let clear =
                     configuration.ClearColor
@@ -971,11 +971,11 @@ module GlHost =
                     if ok then
                         Ok pixels
                     else
-                        Result.Error(Diagnostics.create Error FrameRender "SkiaSharp could not read the rendered scene pixels." None)
+                        Result.Error(Diagnostics.create DiagnosticSeverity.Error FrameRender "SkiaSharp could not read the rendered scene pixels." None)
                 finally
                     handle.Free()
         with ex ->
-            Result.Error(Diagnostics.create Error FrameRender "Skia scene rendering failed." (Some ex.Message))
+            Result.Error(Diagnostics.create DiagnosticSeverity.Error FrameRender "Skia scene rendering failed." (Some ex.Message))
 
     /// DirectToSwapchain (the GL default, FR-001/FR-007): draw the scene straight onto the
     /// FBO-0-bound `SKSurface` and present with the toolkit buffer swap — **no GPU→CPU readback**,
@@ -1131,7 +1131,7 @@ module GlHost =
                     // Stage→Category mapping), non-golden.
                     if not announced.Value then
                         announced.Value <- true
-                        report (Diagnostics.create Info Framebuffer "present-mode=DirectToSwapchain readback=false (live frames render straight onto the default framebuffer)." None)
+                        report (Diagnostics.create DiagnosticSeverity.Info Framebuffer "present-mode=DirectToSwapchain readback=false (live frames render straight onto the default framebuffer)." None)
 
                     Ok snapshot
                 | Result.Error diagnostic -> Result.Error diagnostic

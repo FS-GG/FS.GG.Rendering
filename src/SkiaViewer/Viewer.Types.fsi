@@ -163,6 +163,7 @@ type ViewerInputDispatchStatus =
     | NotRequired
 
 /// Public contract type exposed by this FS.GG.UI package.
+[<RequireQualifiedAccess>]
 type ViewerDiagnosticLevel =
     | Error
     | Warning

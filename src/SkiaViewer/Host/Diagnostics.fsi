@@ -26,6 +26,7 @@ type ViewerConfiguration =
       PresentMode: ViewerPresentMode }
 
 /// Viewer host contract type (moved from the FS.GG.UI monolith, retyped onto FS.GG.UI.Scene).
+[<RequireQualifiedAccess>]
 type DiagnosticSeverity =
     | Info
     | Warning

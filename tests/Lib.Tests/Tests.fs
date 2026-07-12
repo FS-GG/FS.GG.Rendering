@@ -321,9 +321,9 @@ let diagnosticTests =
     testList "Diagnostics" [
         test "diagnostic helpers preserve severity stage message and cause" {
             let diagnostic =
-                Diagnostics.create Fatal GlRenderer "device failed" (Some "driver")
+                Diagnostics.create DiagnosticSeverity.Fatal GlRenderer "device failed" (Some "driver")
 
-            Expect.equal diagnostic.Severity Fatal "severity is retained"
+            Expect.equal diagnostic.Severity DiagnosticSeverity.Fatal "severity is retained"
             Expect.equal diagnostic.Stage GlRenderer "stage is retained"
             Expect.equal diagnostic.Message "device failed" "message is retained"
             Expect.equal diagnostic.Cause (Some "driver") "cause is retained"
@@ -687,7 +687,7 @@ let us2DiagnosticTests =
         test "unsupported platform diagnostic is fatal before rendering" {
             let diagnostic = Diagnostics.unsupportedPlatform "Browser"
 
-            Expect.equal diagnostic.Severity Fatal "unsupported platform is fatal"
+            Expect.equal diagnostic.Severity DiagnosticSeverity.Fatal "unsupported platform is fatal"
             Expect.equal diagnostic.Stage PlatformCheck "unsupported platform fails before Vulkan startup"
             Expect.stringContains diagnostic.Message "Unsupported platform" "message identifies platform support"
             Expect.stringContains diagnostic.Message "Windows and Linux" "message lists supported desktop OSes"
@@ -697,7 +697,7 @@ let us2DiagnosticTests =
             let diagnostic = Diagnostics.glUnavailable "GL context creation unavailable"
             let rendered = diagnostic.Message + "\n" + (diagnostic.Cause |> Option.defaultValue "")
 
-            Expect.equal diagnostic.Severity Fatal "unavailable OpenGL is fatal"
+            Expect.equal diagnostic.Severity DiagnosticSeverity.Fatal "unavailable OpenGL is fatal"
             Expect.equal diagnostic.Stage GlContext "OpenGL availability fails at context setup"
             Expect.stringContains rendered "OpenGL" "diagnostic names OpenGL availability"
             Expect.stringContains diagnostic.Message "no fallback renderer" "message states no fallback renderer is used"
@@ -716,7 +716,7 @@ let us2DiagnosticTests =
             let diagnostics =
                 simulatedFailures
                 |> List.map (fun (stage, cause) ->
-                    Diagnostics.create Fatal stage "OpenGL initialization failed. The viewer has no fallback renderer." (Some cause))
+                    Diagnostics.create DiagnosticSeverity.Fatal stage "OpenGL initialization failed. The viewer has no fallback renderer." (Some cause))
 
             diagnostics
             |> List.iter2
