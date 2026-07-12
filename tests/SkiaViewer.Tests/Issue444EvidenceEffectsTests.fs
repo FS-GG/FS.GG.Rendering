@@ -88,7 +88,7 @@ let tests =
                   WriteVisualEvidence("visual.txt", visualArtifact)
                   WriteRunEvidence("run.txt", runEvidence) ]
 
-            Viewer.interpretViewerEffects ignore ignore ignore ignore routed.Add effects
+            Viewer.interpretViewerEffects ignore ignore ignore ignore ignore routed.Add effects
             |> ignore
 
             Expect.equal
@@ -104,6 +104,7 @@ let tests =
 
             Viewer.interpretViewerEffects
                 ignore
+                ignore // #535 persistence sink
                 ignore
                 ignore
                 ignore

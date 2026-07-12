@@ -84,6 +84,7 @@
     <Compile Include="Issue365ProductFaultTests.fs" />
     <Compile Include="Issue396FirstFrameFaultTests.fs" />
     <Compile Include="Issue444EvidenceEffectsTests.fs" />
+    <Compile Include="Issue535PersistenceSeamTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

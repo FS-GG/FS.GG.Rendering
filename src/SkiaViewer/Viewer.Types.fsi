@@ -2,6 +2,7 @@ namespace FS.GG.UI.SkiaViewer
 
 open System
 open FS.GG.Audio.Core
+open FS.GG.UI.Canvas
 open FS.GG.UI.KeyboardInput
 open FS.GG.UI.Scene
 
@@ -719,6 +720,19 @@ type ViewerEffect =
     /// batch to the caller-supplied sink; `runApp` and the evidence paths discard it (a viewer
     /// owns no audio device). Effects within one batch are played in list order.
     | PlayAudio of effects: AudioEffect list
+    /// Issue #535 — a batch of save/load requests a product's `update` emitted, in dispatch order.
+    /// Pure data: no file handle, no stream, no closure.
+    ///
+    /// THIS CASE IS THE POINT OF #535. Until it existed, no `ViewerEffect` carried a
+    /// `PersistenceEffect`, so a product could request a save and no host could ever see it: the
+    /// record-only interpreter was the only thing that would ever consume one, and it records and
+    /// drops. A product's save requests had nowhere to go, and nothing said so.
+    ///
+    /// Only `runAppWithPersistence` / `runAppWithAudioAndPersistence` realize it — by handing the batch to the caller-supplied sink and
+    /// dispatching each `PersistenceOutcome` the sink returns back into `update` as a `'msg`. `runApp`
+    /// and `runAppWithAudio` discard it, exactly as they discard `PlayAudio`: a viewer owns no save
+    /// location, and inventing one would be worse than owning none.
+    | Persist of effects: PersistenceEffect list
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ViewerRunEffect =

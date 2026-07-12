@@ -36,6 +36,48 @@ type PersistenceEffect =
     | DeleteSlot of slot: SaveSlot
 
 /// Public contract type exposed by this FS.GG.UI package.
+///
+/// `[<RequireQualifiedAccess>]` deliberately: `Saved` / `Loaded` / `Failed` are among the most collidable
+/// names in any codebase — `ViewerLifecycleState` already owns some of them, and this repo is actively
+/// fighting DU cases that shadow `Result.Error` (#496/#522). An unqualified `Failed` here would be a new
+/// instance of a bug class the org is mid-way through removing, so `PersistenceOutcome.Failed` it is.
+///
+/// What a HOST reports back after actually performing a `PersistenceEffect` — the answer half of the
+/// vocabulary, which until #535 did not exist at all. A product that requested a `Load` had nowhere to
+/// receive the result: `PersistenceEffect` is request-only, and the viewer's effect fold "has no channel
+/// to answer on". So a `Load` could be asked and never answered, and nothing said so.
+///
+/// A host produces these; the pure surface never does. `Persistence.interpretRecordOnly` cannot invent one
+/// — it writes no bytes, so it has nothing to report — which is exactly why a `Requested`-only test suite
+/// passes green against a backend that writes nothing (see the `fs-gg-persistence` skill).
+///
+/// `Absent` and `Unreadable` are DELIBERATELY distinct, and collapsing them is the bug this type exists to
+/// prevent: "there is no save here" is a normal answer a product handles by starting fresh, while "there
+/// are bytes here and they cannot be used" is data loss the player must be told about. One `LoadFailed`
+/// case would let a corrupt save be silently reported as a new game, and the corruption would be
+/// overwritten by the next autosave.
+[<RequireQualifiedAccess>]
+type PersistenceOutcome =
+    /// The save was written and is durable. Carries the slot it landed in.
+    | Saved of slot: SaveSlot
+    /// The slot held a readable save. Carries the envelope the host read back — the product's own bytes,
+    /// verbatim, with the version it stamped.
+    | Loaded of envelope: SaveEnvelope
+    /// The slot holds NO save. A normal answer, not a failure: a new player has no save. Handle it by
+    /// starting fresh — never by treating it as an error.
+    | Absent of slot: SaveSlot
+    /// The slot holds bytes that could not be turned back into a save — truncated, corrupt, or written by
+    /// a version this product refuses. NOT `Absent`: something was there and is now unusable, and the
+    /// player is about to lose it. Tell them, and do not silently overwrite it.
+    | Unreadable of slot: SaveSlot * reason: string
+    /// The slot was deleted (or was already absent — deletion is idempotent).
+    | Deleted of slot: SaveSlot
+    /// The host could not perform the request at all: the disk was full, the location was not writable,
+    /// the process lacked permission. Distinct from `Unreadable`, which is about the SAVE's bytes; this is
+    /// about the request never completing.
+    | Failed of effect: PersistenceEffect * reason: string
+
+/// Public contract type exposed by this FS.GG.UI package.
 /// Ordered evidence of what a product *requested*, produced by the record-only interpreter. It is
 /// evidence of intent, NOT of durability: nothing in this framework writes a byte, so `Requested`
 /// proves your `update` asked to save — never that a save happened.
@@ -49,10 +91,18 @@ type PersistenceEvidence =
 /// emits `PersistenceEffect` values (it never reads or writes a file); `interpretRecordOnly` folds
 /// a batch into `PersistenceEvidence` — it records the requests and drops them.
 ///
-/// There is no file-backed backend, here or anywhere in this framework, and nothing routes these
-/// requests to one: no `ViewerEffect` case carries a `PersistenceEffect`, so no host runner will
-/// ever see one. A product that emits `PersistenceEffect` values and calls `interpretRecordOnly`
-/// has saved nothing. Writing the backend is the product's own job.
+/// `interpretRecordOnly` STILL WRITES NOTHING, and that has not changed: it records the requests and
+/// drops them, and evidence of what a product asked for is not evidence that anything was saved.
+///
+/// What changed with #535 is that the requests now have somewhere to GO. `ViewerEffect.Persist` carries
+/// a batch to a host, and `Viewer.runAppWithPersistence` hands it to a sink that performs the real I/O
+/// and reports each `PersistenceOutcome` back into `update` as a message — so a `Load` is finally
+/// answerable. Before that case existed, no host could ever see a `PersistenceEffect` at all, and a
+/// product could request a save that nothing in the framework could possibly perform.
+///
+/// The framework still owns no save location: `SaveSlot` is an opaque, product-owned name, and the sink
+/// that resolves it to a real path is the product's. What it no longer does is accept the request and
+/// quietly drop it.
 [<RequireQualifiedAccess>]
 module Persistence =
 
@@ -95,8 +145,10 @@ module Persistence =
 
     /// Public contract function exposed by this FS.GG.UI package.
     /// Record-only interpreter over a batch, preserving dispatch order: it RECORDS the requests
-    /// into `PersistenceEvidence.Requested` and DROPS them. No file is written, read, or deleted —
-    /// not here, and not later by a host: no `ViewerEffect` case carries a `PersistenceEffect`.
+    /// into `PersistenceEvidence.Requested` and DROPS them. No file is written, read, or deleted by
+    /// THIS function — it is the record-only interpreter, and that is all it is. A host reached through
+    /// `ViewerEffect.Persist` / `Viewer.runAppWithPersistence` is what actually performs the I/O (#535);
+    /// this fold is what a headless test uses to assert what the product ASKED for.
     /// Headless-safe: no filesystem access, never blocks, never throws. The evidence it returns
     /// proves what the product ASKED for, and nothing about durability.
     val interpretRecordOnly: effects: PersistenceEffect list -> PersistenceEvidence

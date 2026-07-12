@@ -56,6 +56,7 @@ let private interpret (effects: ViewerEffect list) =
     let closeRequested =
         Viewer.interpretViewerEffects
             (fun batch -> played.AddRange batch)
+            ignore // #535 persistence sink: these cases emit no Persist effect
             scenes.Add
             (fun () -> dispatched <- true)
             diagnostics.Add
@@ -189,7 +190,7 @@ let tests =
 
             // Drive the sink through the REAL shared fold, the way the live loop does: one batch per frame.
             let run effects =
-                Viewer.interpretViewerEffects sink ignore ignore ignore ignore effects |> ignore
+                Viewer.interpretViewerEffects sink ignore ignore ignore ignore ignore effects |> ignore
 
             run initEffects
             run clickEffects

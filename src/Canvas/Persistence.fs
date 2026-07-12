@@ -8,9 +8,13 @@ namespace FS.GG.UI.Canvas
 // Issue #445 (epic .github#416, the silent no-op family): the record-only status now lives in the
 // NAME (`interpretRecordOnly`) and on the compiler's diagnostic channel (`[<Obsolete>]` on the old
 // `interpret`), not only in this comment. Candor in a comment is not a mechanism — it does not
-// survive being called from another file. The file-backed backend is NOT "a deferred follow-up"
-// that exists somewhere: it does not exist at all, and no ViewerEffect case carries a
-// PersistenceEffect, so no host can route these requests to one.
+// survive being called from another file.
+//
+// Issue #535: the requests now have somewhere to go. `ViewerEffect.Persist` carries a batch to a host and
+// `Viewer.runAppWithPersistence` hands it to a caller-supplied sink, whose `PersistenceOutcome` values are
+// dispatched back into `update` — so a Load is answerable. This module still writes no bytes, and that is
+// the point of its name: it records intent. The BACKEND is the product's, because the framework does not
+// own the SaveSlot -> path mapping.
 
 type SaveSlot = SaveSlot of string
 
@@ -25,6 +29,18 @@ type PersistenceEffect =
     | Save of envelope: SaveEnvelope
     | Load of slot: SaveSlot
     | DeleteSlot of slot: SaveSlot
+
+// #535 — the ANSWER half of the vocabulary. `Absent` and `Unreadable` are deliberately distinct: one
+// `LoadFailed` case would let a corrupt save be reported as a new game, and the next autosave would
+// overwrite it. See the .fsi for the full rationale.
+[<RequireQualifiedAccess>]
+type PersistenceOutcome =
+    | Saved of slot: SaveSlot
+    | Loaded of envelope: SaveEnvelope
+    | Absent of slot: SaveSlot
+    | Unreadable of slot: SaveSlot * reason: string
+    | Deleted of slot: SaveSlot
+    | Failed of effect: PersistenceEffect * reason: string
 
 type PersistenceEvidence = { Requested: PersistenceEffect list }
 

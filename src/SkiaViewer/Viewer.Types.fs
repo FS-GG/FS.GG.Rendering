@@ -8,6 +8,7 @@ open System.Text.Json
 open System.Threading
 open Elmish
 open FS.GG.Audio.Core
+open FS.GG.UI.Canvas
 open FS.GG.UI.KeyboardInput
 open FS.GG.UI.Scene
 open SkiaSharp
@@ -637,6 +638,9 @@ type ViewerEffect =
     | WriteVisualEvidence of path: string * artifact: ViewerVisualEvidenceArtifact
     | WriteRunEvidence of path: string * evidence: ViewerRunEvidence
     | PlayAudio of effects: AudioEffect list
+    // #535 — the case that gives a product's save/load requests somewhere to go. Only
+    // `runAppWithPersistence`/`runAppWithAudioAndPersistence` realize it; the others diagnose the drop.
+    | Persist of effects: PersistenceEffect list
 
 type ViewerRunEffect =
     | OpenBoundedWindow of ViewerRunRequest
