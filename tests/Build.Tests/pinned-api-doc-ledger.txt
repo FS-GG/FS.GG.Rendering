@@ -1,0 +1,57 @@
+# pinned-api-doc-ledger — declared violations of the doc-vs-PIN rule (#589).
+#
+# THE RULE. No shipped template doc may name an `FS.GG.*` symbol that is absent from the package
+# version a scaffolded product restores ($(FsGgUiVersion) et al, template/base/Directory.Packages.props).
+# A reader who copies the block gets a hard build error. That is #550, and the rule is asserted by
+# `TemplateConsumesPinnedApiTests`.
+#
+# WHAT THIS FILE IS FOR. The rule landed on a repo that already violated it. Narrowing the rule until it
+# went green would have been the quiet choice and the wrong one, so the violations are DECLARED instead:
+# a gap must be a decision somebody made, not an omission nobody noticed. Same idiom, same reason, as
+# S-DOC's `tests/Package.Tests/surface-doc-ledger.txt`.
+#
+# AN ENTRY IS NOT AN EXCUSE — IT IS A DEBT, AND IT NAMES ITS CREDITOR. Every line carries the issue that
+# retires it. A line with nobody's name on it is a line that never leaves.
+#
+# IT IS A RATCHET. Two rules keep it shrinking, and both are asserted:
+#   * the pin NOW exports the symbol   -> the release landed. Delete the line.   (stale)
+#   * no shipped doc names it any more -> the doc was fixed.  Delete the line.   (phantom)
+#
+# The phantom rule is why this file cannot re-open the very bug it records. #587 will publish
+# `interpretRecordOnly`, and someone will then re-apply that spelling to the docs #550 reverted. If they
+# re-apply it EARLY, a dead ledger entry would wave the build error straight back through — so a ledger
+# entry is not allowed to outlive its subject.
+#
+# FORMAT: <repo-relative doc path>::<Module.member>     (one per line; `#` comments and blanks ignored)
+#
+# NOT LISTED, DELIBERATELY: `Persistence.interpretRecordOnly` — the instance this rule was written for.
+# It is NOT here because it is FIXED: #550 (PR #590) removed it from both shipped docs, and this rule was
+# red on exactly those two sites until that merged. Ledgering it would have been wrong twice over — the
+# entry would have gone PHANTOM on their merge and reddened `main` for a fix that was correct, and a debt
+# that is paid does not belong in a ledger. It is named here only so the next reader knows the rule has
+# already caught, and cleared, the bug it was built for.
+
+# ---------------------------------------------------------------------------------------------------
+# `ViewerKeyboard.mapKeyRaw` — FS.GG.Rendering#591
+#
+# Published FS.GG.UI.KeyboardInput 0.9.0 exports `formatChord`, `isModifierKey`, `mapKeyOfKeymap`,
+# `noModifiers`, `normalize`, `normalizeEvent`, `normalizeEventWithModifiers`, `toKeyId` — and NOT
+# `mapKeyRaw`. It is not a spelling slip like #550's: fs-gg-keyboard-input's entire "Capturing a key for
+# a rebind (the path that works)" section is BUILT on it, and the section's own argument is that
+# `mapKeyOfKeymap` cannot do the job (it drops every key the keymap does not bind — which is exactly the
+# key a rebind is waiting for). So there is no released spelling to fall back to: the capability itself
+# is unreleased, and the honest fix is a release, not a rename. Retire this when it publishes.
+# ---------------------------------------------------------------------------------------------------
+template/product-skills/fs-gg-keyboard-input/SKILL.md::ViewerKeyboard.mapKeyRaw
+template/base/docs/api-surface/KeyboardInput/KeyboardInput.fsi::ViewerKeyboard.mapKeyRaw
+
+# ---------------------------------------------------------------------------------------------------
+# `AdapterCmd.diagnostics` — FS.GG.Rendering#592
+#
+# Published FS.GG.UI.Controls.Elmish 0.9.0 exports `AdapterCmd.none`, `.ofMessage`, `.productMessages`,
+# `.toCmd` — and NOT `.diagnostics`. Same family as #585 (S-INT: the mirror advertises API a product
+# cannot call) but a different cause — unpublished, not `internal` — so #585's `grep "val internal"` does
+# not see it. The file is inside #585's declared touch-set, so this is declared here rather than edited
+# out from under a live claim.
+# ---------------------------------------------------------------------------------------------------
+template/base/docs/api-surface/Controls.Elmish/ControlsElmish.fsi::AdapterCmd.diagnostics

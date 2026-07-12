@@ -3,6 +3,9 @@ module TemplateConsumesPinnedApiTests
 open System
 open System.Diagnostics
 open System.IO
+open System.Reflection
+open System.Reflection.Metadata
+open System.Reflection.PortableExecutable
 open System.Text
 open System.Text.RegularExpressions
 open Expecto
@@ -594,6 +597,486 @@ let private runProbeBuild () =
         try Directory.Delete(workDir, true) with _ -> ()
 
 // ---------------------------------------------------------------------------------------------
+// #589 — the same question, asked of the DOCS instead of Program.fs.
+//
+// THE GAP #504 LEFT. Everything above asks "can the template's CODE call the pin?". Nothing asked
+// whether the template's DOCS only NAME the pin. They are different subjects with the same failure:
+// a scaffolded product pins $(FsGgUiVersion), restores THAT package, and a reader who copies a skill's
+// `fsharp` block verbatim gets a hard build error.
+//
+// It was invisible from inside this repo BY CONSTRUCTION, because every doc check here resolves
+// against `src/`, where the symbol exists: SkillParity's `UnresolvedApiSymbol` resolves fenced symbols
+// against `src/**` plus the surface baselines; S-DOC and M-MIR assert against `src/`. Source has the
+// symbol. The package a reader restores does not. Every gate is green and the shipped doc is wrong.
+// #550 is the instance (`Persistence.interpretRecordOnly`, taught by two shipped docs, exported by no
+// published FS.GG.UI.Canvas — FS.GG.Game#163 could not adopt it), and it was fixed BY HAND. This is
+// the rule, so the next one cannot be.
+//
+// Every OTHER doc gate in this repo is a COHERENCE check (doc => src). This is a REACHABILITY check
+// (doc => what a consumer can BIND), and the distinction is the entire bug: #445's rename was coherent
+// with `src/` on the commit that made it, and wrong for every reader on a released package from that
+// moment until #550.
+//
+// THE ORACLE IS THE PACKAGE, NOT THE MIRROR. The mirror is a defendant here, not a witness: it tracks
+// `src/`, so it advertises exactly the unreleased API this rule exists to find (two of the three
+// findings below are IN it). The mirror decides only WHICH MODULES ARE FRAMEWORK — a closed-world
+// question `src/` can answer — and the restored package decides what those modules EXPORT.
+//
+// WHY THIS READS METADATA WHERE THE PROBE ABOVE COMPILES. The probe asks one yes/no question about a
+// whole file; this rule needs a PER-SYMBOL verdict, because it carries a ledger and must name the doc
+// site and line of each violation. `PEReader` answers exactly that, is IN-BOX (no PackageReference —
+// the objection the header raises against `MetadataLoadContext` does not reach it), and never loads an
+// assembly, so it cannot trip over the unresolved dependencies that rule out `Assembly.LoadFrom`.
+// ---------------------------------------------------------------------------------------------
+
+let private productSkillsRoot = repoPath "template/product-skills"
+let private docLedgerRel = "tests/Build.Tests/pinned-api-doc-ledger.txt"
+let private docLedgerPath = repoPath docLedgerRel
+
+/// The TFM a scaffolded product compiles against — the same one `runProbeBuild` writes into its probe.
+let private templateTfm = "net10.0"
+
+/// Modules the SCAFFOLD MATERIALIZES INTO THE PRODUCT'S OWN SOURCE — `template/base/src/**` and the
+/// profile fragments. A reader binds these from a file the template WROTE them, not from a package, so
+/// they must never be judged against the pin.
+///
+/// This is not hypothetical tidiness: it is the one false-positive class this rule actually has, and it
+/// exists because the package oracle is WIDER than the src one. `fs-gg-model-swap` teaches
+/// `Geometry.toRect`, and `template/fragments/vec2/src/Product/Vec2.fs` defines `module Geometry` with
+/// `toRect` — while FS.GG.Game.Core ALSO exports a `Geometry` module, which does NOT. Judging the
+/// scaffold's own module against the framework's same-named one reports a defect in correct guidance.
+/// `productModules` above covers only `template/base/src/Product/*.fs`, so it does not see the fragment;
+/// it is deliberately left alone (it feeds the #504 rule) and this widens the exemption for #589 alone.
+///
+/// A module ALIAS IS NOT A MATERIALIZED MODULE, and the `$` anchor is what says so. `View.fs` opens with
+/// eight of them —
+///
+///     module Button = FS.GG.UI.Controls.Typed.Button
+///
+/// — which do not DEFINE `Button`, they POINT AT the framework's. Reading them as scaffold-local exempts
+/// `Button`, `Stack`, `DataGrid`, `TextBlock`, `TextBox`, `RichText`, `LineChart` and `GraphView` from
+/// this rule outright, and with them every `Button.create` / `DataGrid.visibleRange` the widget skills
+/// teach: a silent hole through the middle of the surface most likely to drift, reporting green because
+/// it checked nothing. That is the fails-open shape (FS-GG/.github#266) this file exists to refuse, so
+/// an aliased module is judged against the pin exactly like the framework module it resolves to.
+///
+/// `module X` and `module X =` (a real definition) match; `module X = A.B.C` (an alias) does not.
+let private scaffoldModuleRegex =
+    Regex(@"^module\s+(?:[\w.]+\.)?(?<name>\w+)\s*(?:=\s*)?$", RegexOptions.Compiled)
+
+let private scaffoldModules =
+    [ repoPath "template/base/src"; repoPath "template/fragments" ]
+    |> List.filter Directory.Exists
+    |> List.collect (fun root ->
+        Directory.EnumerateFiles(root, "*.fs", SearchOption.AllDirectories) |> List.ofSeq)
+    |> List.collect (fun path -> File.ReadAllLines path |> List.ofArray)
+    |> List.choose (fun line ->
+        let m = scaffoldModuleRegex.Match line
+        if m.Success then Some m.Groups.["name"].Value else None)
+    |> Set.ofList
+
+/// One `Module.member` a SHIPPED template doc names, and where it says it.
+type DocSymbol =
+    { Doc: string // repo-relative, so a failure is clickable
+      Line: int
+      Module: string
+      Member: string }
+
+let private docKey (s: DocSymbol) = $"{s.Doc}::{s.Module}.{s.Member}"
+
+/// Judged only if the mirror declares the module (=> framework, not product or FSharp.Core) AND the
+/// scaffold does not materialize one of that name. A module NOBODY declares is product-local or
+/// pseudo-code in an example, and is not this rule's business — the same closed world SkillParity uses.
+let private isJudgedDocModule (qualifier: string) (moduleName: string) =
+    isFrameworkCall qualifier moduleName && not (scaffoldModules.Contains moduleName)
+
+/// `Module.member` inside the ```fsharp fences of a product skill — the block a reader COPIES, which is
+/// what makes it the sharpest subject. Prose is deliberately not matched: naming an API in a sentence
+/// ("`interpret` is deprecated") is not teaching a reader to call it.
+let private skillFenceSymbols =
+    Directory.EnumerateFiles(productSkillsRoot, "*.md", SearchOption.AllDirectories)
+    |> Seq.collect (fun path ->
+        let rel = Path.GetRelativePath(repoRoot, path).Replace('\\', '/')
+        let mutable inFence = false
+
+        (File.ReadAllText path |> eraseKeepingLines).Split('\n')
+        |> Array.mapi (fun i line -> i + 1, line)
+        |> Array.collect (fun (lineNo, raw) ->
+            let opener = raw.TrimStart()
+
+            if opener.StartsWith("```", StringComparison.Ordinal) then
+                // Close ANY fence; open only an fsharp one. A ```console block's closing fence is seen
+                // while `inFence` is false and correctly opens nothing.
+                inFence <-
+                    not inFence
+                    && opener.TrimStart('`').TrimStart().StartsWith("fsharp", StringComparison.OrdinalIgnoreCase)
+
+                [||]
+            elif not inFence then
+                [||]
+            else
+                callRegex.Matches(stripCommentsAndStrings raw)
+                |> Seq.map (fun m ->
+                    m.Groups.[1].Value,
+                    { Doc = rel
+                      Line = lineNo
+                      Module = m.Groups.[2].Value
+                      Member = m.Groups.[3].Value })
+                |> Array.ofSeq))
+    |> List.ofSeq
+
+/// The public `val`s of the SHIPPED api-surface mirror, qualified by the INNERMOST module that declares
+/// them. The mirror is what `docs/scaffold-map.md` designates a product's authoritative signature set —
+/// so a `val` it declares that the pinned package does not export is a signature a product author reads,
+/// at length, and cannot call.
+///
+/// INNERMOST, by indent, and not the column-0 module `parseMirrorFile` tracks for #504. A nested `module
+/// Perf` inside `module ControlsElmish` is its OWN type in the assembly (`ControlsElmish+Perf`) and is
+/// its own name at a call site (`Perf.runScript`) — so attributing its `val`s to the parent invents
+/// `ControlsElmish.runScript`, which nothing exports and no doc names. That misreading put nine
+/// phantom violations on the first run of this rule. `parseMirrorFile` is deliberately left alone: it
+/// feeds #504, whose subject IS the column-0 entry points `Program.fs` writes.
+///
+/// `val internal` and `module internal` are not product surface — that is #585's subject, not this
+/// rule's — and are not judged. Both exclusions are load-bearing, and the SECOND one is subtle: an
+/// internal module must still be TRACKED, or its `val`s fall through to the nearest public ancestor.
+/// `module internal Coalescing` inside `module ControlsElmish` is exactly that shape, and refusing to
+/// push it invented four violations (`ControlsElmish.isCoalescibleSample`, …) that name nothing anyone
+/// exports and no product can reach. Track it; mark it; judge nothing under it.
+let private mirrorModuleRegex =
+    Regex(
+        @"^(?<indent>\s*)(?:\[<[^>]*>\]\s*)*module\s+(?<access>internal\s+|private\s+)?(?<name>\w+)",
+        RegexOptions.Compiled
+    )
+
+let private mirrorValRegex =
+    Regex(@"^(?<indent>\s*)val\s+(?!internal\b)(?:inline\s+)?(?<name>[a-z]\w*)\s*:", RegexOptions.Compiled)
+
+let private mirrorValSymbols =
+    Directory.EnumerateFiles(mirrorRoot, "*.fsi", SearchOption.AllDirectories)
+    |> Seq.collect (fun path ->
+        let rel = Path.GetRelativePath(repoRoot, path).Replace('\\', '/')
+
+        // (indent, name, isInternal), innermost first. A line at indent N closes every module opened at
+        // indent >= N, which is what puts a parent-level `val` back under its parent after a nested
+        // module ends.
+        let mutable stack: (int * string * bool) list = []
+
+        let closeTo (indent: int) =
+            stack <- stack |> List.skipWhile (fun (i, _, _) -> i >= indent)
+
+        File.ReadAllLines path
+        |> Array.mapi (fun i line -> i + 1, line)
+        |> Array.choose (fun (lineNo, line) ->
+            let moduleMatch = mirrorModuleRegex.Match line
+            let valMatch = mirrorValRegex.Match line
+
+            if line.StartsWith("namespace", StringComparison.Ordinal) then
+                stack <- []
+                None
+            elif moduleMatch.Success then
+                let indent = moduleMatch.Groups.["indent"].Value.Length
+                closeTo indent
+
+                stack <-
+                    (indent, moduleMatch.Groups.["name"].Value, moduleMatch.Groups.["access"].Success)
+                    :: stack
+
+                None
+            elif valMatch.Success then
+                let indent = valMatch.Groups.["indent"].Value.Length
+                closeTo indent
+
+                match stack with
+                // An internal ANYWHERE up the chain makes everything beneath it internal.
+                | _ when stack |> List.exists (fun (_, _, isInternal) -> isInternal) -> None
+                | (_, owner, _) :: _ ->
+                    Some(
+                        "",
+                        { Doc = rel
+                          Line = lineNo
+                          Module = owner
+                          Member = valMatch.Groups.["name"].Value }
+                    )
+                | [] -> None
+            else
+                None))
+    |> List.ofSeq
+
+/// Both shipped doc surfaces, reduced to the symbols this rule may judge.
+let private docSymbols =
+    List.append skillFenceSymbols mirrorValSymbols
+    |> List.filter (fun (qualifier, s) -> isJudgedDocModule qualifier s.Module)
+    |> List.map snd
+    |> List.distinctBy docKey
+    |> List.sortBy (fun s -> s.Doc, s.Line)
+
+/// Every `FS.GG.*` package a scaffolded product pins — read from the props file, which IS the set it
+/// restores. This is the authority for turning a mirrored NAMESPACE into a PACKAGE, and the two are not
+/// the same string: `runProbeBuild` above may assume they are, because the namespaces `Program.fs` calls
+/// all happen to be package ids, but the mirror at large declares SUB-namespaces that are not —
+/// `FS.GG.UI.Controls.Typed`, `FS.GG.UI.Controls.Elmish.Authoring`, `FS.GG.UI.Themes.Default.Theming`.
+/// Referencing one of those as a package is an NU1101 for a package that was never supposed to exist.
+let private pinnedPackageIds =
+    Regex.Matches(File.ReadAllText packagesPropsPath, @"<PackageVersion\s+Include=""(FS\.GG\.[^""]+)""")
+    |> Seq.map (fun m -> m.Groups.[1].Value)
+    |> Seq.distinct
+    |> List.ofSeq
+
+/// The package that SHIPS a namespace: the longest pinned id that prefixes it. A namespace no pinned
+/// package covers is a hole in the oracle, so it raises rather than being dropped — silently skipping it
+/// would excuse every doc symbol underneath it.
+let private packageForNamespace (ns: string) =
+    pinnedPackageIds
+    |> List.filter (fun id -> ns = id || ns.StartsWith(id + ".", StringComparison.Ordinal))
+    |> List.sortByDescending String.length
+    |> List.tryHead
+    |> Option.defaultWith (fun () ->
+        failwith
+            $"the api-surface mirror declares `namespace {ns}`, and NO FS.GG.* package pinned in \
+              {packagesPropsRel} ships it. The doc-vs-pin oracle cannot restore it, and skipping it would \
+              EXCUSE every doc symbol it declares.")
+
+/// The packages the docs actually talk about — derived from the mirror and the props, never hardcoded,
+/// so the set cannot rot as the framework grows.
+let private docPackages =
+    docSymbols
+    |> List.choose (fun s ->
+        frameworkModulesByName
+        |> Map.tryFind s.Module
+        |> Option.bind (fun candidates ->
+            candidates
+            |> List.tryFind (fun m -> m.Members.Contains s.Member)
+            |> Option.orElse (List.tryHead candidates))
+        |> Option.map (fun m -> packageForNamespace m.Namespace))
+    |> List.distinct
+    |> List.sort
+
+// ---------------------------------------------------------------------------------------------
+// The oracle: what the PINNED packages actually export.
+// ---------------------------------------------------------------------------------------------
+
+/// Simple module name -> the members the PUBLISHED assembly exports.
+///
+/// An F# module compiles to a STATIC class — `abstract` AND `sealed`. A union, a record or a class is
+/// never both, so this keys modules and nothing else, which is what a doc's `Module.member` means. Two
+/// spellings have to be undone: F# suffixes a module whose name collides with a type's (`module Scene`
+/// beside `type Scene` becomes `SceneModule`), and generic arity is mangled (``Foo`1``) — a doc writes
+/// neither. Property accessors are recorded under their bare name as well as their `get_`/`set_` one.
+let private readModuleSurface (dll: string) =
+    use stream = File.OpenRead dll
+    use pe = new PEReader(stream)
+    let md = pe.GetMetadataReader()
+
+    [ for handle in md.TypeDefinitions do
+        let td = md.GetTypeDefinition handle
+        let visibility = td.Attributes &&& TypeAttributes.VisibilityMask
+
+        let isPublic =
+            visibility = TypeAttributes.Public || visibility = TypeAttributes.NestedPublic
+
+        let isFSharpModule =
+            td.Attributes.HasFlag TypeAttributes.Abstract
+            && td.Attributes.HasFlag TypeAttributes.Sealed
+
+        if isPublic && isFSharpModule then
+            let raw = md.GetString td.Name
+            let withoutArity = match raw.IndexOf '`' with | -1 -> raw | i -> raw.Substring(0, i)
+
+            let name =
+                if withoutArity.EndsWith("Module", StringComparison.Ordinal) && withoutArity.Length > 6 then
+                    withoutArity.Substring(0, withoutArity.Length - 6)
+                else
+                    withoutArity
+
+            for methodHandle in td.GetMethods() do
+                let m = md.GetMethodDefinition methodHandle
+
+                if (m.Attributes &&& MethodAttributes.MemberAccessMask) = MethodAttributes.Public then
+                    let memberName = md.GetString m.Name
+                    yield name, memberName
+
+                    for prefix in [ "get_"; "set_" ] do
+                        if memberName.StartsWith(prefix, StringComparison.Ordinal) then
+                            yield name, memberName.Substring prefix.Length ]
+
+/// Restore the pinned packages and read their exported module surface. `Error` — never an empty map —
+/// if anything at all went wrong: an oracle that silently knows nothing would report every doc symbol
+/// as unresolved, and an oracle that silently knows nothing about ONE package would excuse every symbol
+/// in it. Both are the fails-open shape (FS-GG/.github#266) this file's header forbids.
+let private readPinnedSurface () : Result<Map<string, Set<string>>, string> =
+    let workDir = Path.Combine(Path.GetTempPath(), "fsgg-doc-pin-probe-" + Guid.NewGuid().ToString("N"))
+    Directory.CreateDirectory workDir |> ignore
+
+    try
+        let references =
+            docPackages
+            |> List.map (fun id -> $"    <PackageReference Include=\"{id}\" Version=\"{pinFor id}\" />")
+            |> String.concat "\n"
+
+        // Same isolation, and for the same reason, as `runProbeBuild`: `<clear />` down to nuget.org so
+        // nothing this repo `dotnet pack`s locally can satisfy the restore. A locally-packed 0.9.0
+        // carries whatever was in `src/` at pack time — INCLUDING the very symbols this rule exists to
+        // catch — so resolving against the ambient cache would make it green precisely when it should
+        // be red.
+        let nugetConfig =
+            """<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <packageSources>
+    <clear />
+    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+  </packageSources>
+</configuration>
+"""
+
+        let project =
+            $"""<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    <RestorePackagesPath>{probePackagesDir}</RestorePackagesPath>
+    <WarningsAsErrors>NU1603;NU1101;NU1102;NU1608</WarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+{references}
+  </ItemGroup>
+</Project>
+"""
+
+        File.WriteAllText(Path.Combine(workDir, "NuGet.config"), nugetConfig)
+        File.WriteAllText(Path.Combine(workDir, "Probe.fsproj"), project)
+
+        let psi = ProcessStartInfo("dotnet", "restore Probe.fsproj --nologo")
+        psi.WorkingDirectory <- workDir
+        psi.RedirectStandardOutput <- true
+        psi.RedirectStandardError <- true
+
+        match Process.Start psi with
+        | null -> Error "could not start 'dotnet' to restore the doc-vs-pin oracle"
+        | started ->
+            use proc = started
+            let output = StringBuilder()
+
+            let append (data: string | null) =
+                match data with
+                | null -> ()
+                | text -> lock output (fun () -> output.AppendLine text |> ignore)
+
+            proc.OutputDataReceived.Add(fun e -> append e.Data)
+            proc.ErrorDataReceived.Add(fun e -> append e.Data)
+            proc.BeginOutputReadLine()
+            proc.BeginErrorReadLine()
+
+            if not (proc.WaitForExit probeTimeoutMs) then
+                try proc.Kill true with _ -> ()
+                Error $"the doc-vs-pin restore did not finish within {probeTimeoutMs / 60_000} minute(s) — most \
+                        likely the restore from nuget.org stalled. This is an infrastructure failure, NOT a \
+                        missing API.\n\n{lock output (fun () -> output.ToString())}"
+            else
+                proc.WaitForExit()
+                let text = lock output (fun () -> output.ToString())
+
+                if proc.ExitCode <> 0 then
+                    Error $"the doc-vs-pin restore FAILED, so the pinned surface is unknown and no doc symbol \
+                            can be judged against it.\n\n{text}"
+                else
+                    // Every pinned package must yield exactly one assembly. A package that restored but
+                    // whose lib/ we cannot find is an oracle with a hole in it, and a hole excuses every
+                    // symbol that would have landed in it.
+                    let missing = ResizeArray<string>()
+                    let surface = Collections.Generic.Dictionary<string, Collections.Generic.HashSet<string>>()
+
+                    for packageId in docPackages do
+                        let dir =
+                            Path.Combine(probePackagesDir, packageId.ToLowerInvariant(), pinFor packageId, "lib")
+
+                        // The template's REAL TFM, and the one a scaffolded product compiles against — so
+                        // it is the surface to judge, not merely the "newest" folder. Ordering the paths
+                        // lexically would be worse than arbitrary: `netstandard2.0` sorts ABOVE `net10.0`
+                        // (and so does `net9.0`), so "take the last" reliably picks the wrong one the day a
+                        // package multi-targets. Ask for the TFM by name; fall back only if it has none.
+                        let dll =
+                            if Directory.Exists dir then
+                                let byTfm = Path.Combine(dir, templateTfm, $"{packageId}.dll")
+
+                                if File.Exists byTfm then
+                                    Some byTfm
+                                else
+                                    Directory.EnumerateFiles(dir, $"{packageId}.dll", SearchOption.AllDirectories)
+                                    |> Seq.tryHead
+                            else
+                                None
+
+                        match dll with
+                        | None -> missing.Add $"{packageId} {pinFor packageId}"
+                        | Some path ->
+                            for (moduleName, memberName) in readModuleSurface path do
+                                if not (surface.ContainsKey moduleName) then
+                                    surface.[moduleName] <- Collections.Generic.HashSet<string>()
+
+                                surface.[moduleName].Add memberName |> ignore
+
+                    if missing.Count > 0 then
+                        let names = String.Join(", ", missing)
+
+                        Error $"restored, but no lib assembly was found under {probePackagesDir} for: \
+                                {names}. The oracle would have a hole in it, and a hole EXCUSES every doc \
+                                symbol that belongs in it — fail closed instead.\n\n{text}"
+                    elif surface.Count = 0 then
+                        Error "the pinned packages exported ZERO F# modules — the metadata reader has stopped \
+                               seeing the surface. That is a defect in this test, not an empty framework."
+                    else
+                        surface
+                        |> Seq.map (fun kvp -> kvp.Key, Set.ofSeq kvp.Value)
+                        |> Map.ofSeq
+                        |> Ok
+    finally
+        try Directory.Delete(workDir, true) with _ -> ()
+
+/// Restored ONCE per run, not once per test. Two tests below ask for the pinned surface (the rule, and
+/// the ledger's staleness check), and a restore is the expensive, network-bound half of this file — so
+/// asking twice would double the gate's exposure to nuget.org for an answer that cannot have changed
+/// between them. `Lazy` is thread-safe by default, which matters: Expecto runs the list in parallel.
+let private pinnedSurface = lazy (readPinnedSurface ())
+
+/// Does the PINNED package export what the doc names?
+let private resolvesInPin (pinned: Map<string, Set<string>>) (s: DocSymbol) =
+    match pinned |> Map.tryFind s.Module with
+    | Some members -> members.Contains s.Member
+    | None ->
+        // The mirror calls this module framework, and the pinned package has no module of that name at
+        // all. That is the rule's subject at its sharpest — an ENTIRE module a product cannot reach —
+        // so it is a violation, not an exemption.
+        false
+
+// ---------------------------------------------------------------------------------------------
+// The ledger: violations that are KNOWN, and whose fix is somebody's declared work.
+//
+// A gate landing on a repo that already violates it has two honest options, and "quietly narrow the
+// rule until it is green" is not one of them. This is S-DOC's idiom (`surface-doc-ledger.txt`), for
+// S-DOC's reason: a gap must be A DECISION SOMEBODY MADE rather than an omission nobody noticed.
+//
+// It is a RATCHET, not a dumping ground, and the two anti-rot rules below are what make it one:
+//   * a ledger entry the pin NOW exports  -> the release landed. Delete the line.  (stale)
+//   * a ledger entry no doc names anymore -> the doc was fixed. Delete the line.   (phantom)
+//
+// The phantom rule is the load-bearing one, and it is why the ledger cannot re-open #550. Without it a
+// dead entry would sit there excusing its symbol forever — so when #587 publishes `interpretRecordOnly`
+// and someone re-applies the spelling EARLY, the stale entry would wave it straight back through. That
+// is the precise re-opening this item exists to prevent, so the ledger refuses to outlive its subjects.
+// ---------------------------------------------------------------------------------------------
+
+/// `<doc-path>::<Module.member>` per line; `#` comments and blanks ignored.
+let private docLedger =
+    if not (File.Exists docLedgerPath) then
+        Set.empty
+    else
+        File.ReadAllLines docLedgerPath
+        |> Array.map (fun l -> l.Trim())
+        |> Array.filter (fun l -> l <> "" && not (l.StartsWith("#", StringComparison.Ordinal)))
+        |> Set.ofArray
+
+// ---------------------------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------------------------
 
@@ -737,4 +1220,152 @@ let templateConsumesPinnedApiTests =
                 skiptest
                     "FS_GG_SKIP_TEMPLATE_PINNED_API is set — the pinned-package proof did NOT run. This \
                      check is default-on; skipping it means the template-vs-pin question is unanswered."
+
+        // ---- #589: the shipped DOCS, against the same pin ------------------------------------
+
+        // Same guard as the extractor test above, for the same reason: every assertion below is a
+        // `forall` over these lists, so an extractor that silently matches nothing turns all of them
+        // green having checked nothing (FS-GG/.github#266).
+        test "the shipped docs name framework API (the doc extractor is not vacuous)" {
+            Expect.isNonEmpty
+                skillFenceSymbols
+                $"`Module.member` symbols were extracted from the ```fsharp fences of {productSkillsRoot}. \
+                  Zero means the fence extractor has stopped seeing the skills — a defect in this test, \
+                  not a repo whose skills teach no API."
+
+            Expect.isNonEmpty
+                mirrorValSymbols
+                "public `val`s were extracted from the shipped api-surface mirror."
+
+            Expect.isNonEmpty
+                docSymbols
+                "at least one shipped doc symbol survives the framework/product filter and is judged."
+
+            // The exemption is what keeps this rule off correct guidance, so it must not silently
+            // evaporate: if the fragments ever stop being read, `Geometry.toRect` becomes a false
+            // finding and someone "fixes" a doc that was right all along.
+            Expect.isTrue
+                (scaffoldModules.Contains "Geometry")
+                $"the scaffold-materialized modules were read from template/base/src + template/fragments \
+                  ({scaffoldModules.Count} found). `Geometry` must be among them — the scaffold writes \
+                  `module Geometry` into the product (template/fragments/vec2/src/Product/Vec2.fs) while \
+                  FS.GG.Game.Core ALSO exports one, and without this exemption the product's own module is \
+                  judged against the framework's and correct guidance is reported as a defect."
+
+            // And the exemption must not OVERREACH, which is the far more dangerous direction: it makes
+            // the rule silently check less while still reporting green. `View.fs` ALIASES eight framework
+            // modules (`module Button = FS.GG.UI.Controls.Typed.Button`); reading an alias as a
+            // materialized module exempts the entire widget surface the skills teach.
+            for aliased in [ "Button"; "Stack"; "DataGrid"; "TextBlock"; "TextBox"; "RichText"; "LineChart"; "GraphView" ] do
+                Expect.isFalse
+                    (scaffoldModules.Contains aliased)
+                    $"`{aliased}` is ALIASED by the scaffold (`module {aliased} = FS.GG.UI.Controls.Typed.{aliased}` \
+                      in template/base/src/Product/View.fs), not DEFINED by it — the alias resolves to the \
+                      framework module, so every `{aliased}.member` a skill teaches must be judged against the \
+                      pin. Treating it as scaffold-local exempts it, and the rule goes quietly blind to the \
+                      widget surface while still reporting green."
+
+            // The positive half of the same guard, asserted on the real subject rather than on the
+            // exemption set: the widget symbols the skills teach must actually reach the rule.
+            let judged = docSymbols |> List.map (fun s -> $"{s.Module}.{s.Member}") |> Set.ofList
+
+            Expect.isTrue
+                (judged.Contains "Button.create" && judged.Contains "DataGrid.visibleRange")
+                "the widget symbols the product skills teach (`Button.create`, `DataGrid.visibleRange`) are \
+                 among the symbols this rule judges. If they fall out, the exemption has overreached again \
+                 and the rule is checking less than it claims."
+        }
+
+        // THE RULE (#589).
+        //
+        // Deferred in the same window, on the same bounds, as the probe above: in the release window the
+        // pinned packages do not exist, so the oracle cannot be built. SKIPPED, NOT PASSED.
+        testCase "every FS.GG.* symbol a shipped template doc names exists in the PINNED package" <| fun _ ->
+            match Environment.GetEnvironmentVariable "FS_GG_SKIP_TEMPLATE_PINNED_API" with
+            | null | "" ->
+                let uiPin = readAxis uiAxis
+
+                match pinnedSurface.Value with
+                | Error why when failedOnlyOnUnpublishedUiPin why uiPin && not releaseLane ->
+                    match bumpedInCommitUnderTest packagesPropsRel uiAxis with
+                    | Ok true ->
+                        skiptest
+                            $"RELEASE-PENDING: this commit bumps $({uiAxis}) to {uiPin}, which nuget.org does \
+                              not carry yet — merging it is what publishes it. The pinned surface cannot be \
+                              read, so the doc-vs-pin rule is DEFERRED to the publish; it is NOT passing. \
+                              (The docs may legitimately name API that only {uiPin} will export — which is \
+                              exactly why this cannot be judged here.)\n\n{why}"
+                    | Ok false ->
+                        failtest
+                            $"the feed does not carry the FS.GG.UI.* packages at $({uiAxis})={uiPin}, and this \
+                              commit did NOT bump $({uiAxis}) — so this is NOT the release window. The pin is \
+                              stale or typo'd.\n\n{why}"
+                    | Error gitWhy -> failtest $"{gitWhy}\n\n{why}"
+
+                | Error why -> failtest why
+
+                | Ok pinned ->
+                    let undeclared =
+                        docSymbols
+                        |> List.filter (fun s -> not (resolvesInPin pinned s))
+                        |> List.filter (fun s -> not (docLedger.Contains(docKey s)))
+                        |> List.map (fun s -> $"{s.Doc}:{s.Line}  {s.Module}.{s.Member}")
+
+                    let rendered = String.concat "; " undeclared
+
+                    Expect.isEmpty
+                        undeclared
+                        $"these symbols are named by a SHIPPED template doc and are exported by NO package a \
+                          scaffolded product restores at $({uiAxis})={uiPin}. A reader who copies the block \
+                          gets a hard build error — the #550 class, which every other doc gate in this repo is \
+                          blind to because they all resolve against `src/`, where the symbol exists.\n\n\
+                          Fix the DOC to name the spelling the released package exports (that is what #550 \
+                          did), or — if the symbol is genuinely unreleased and the doc must wait for it — cut \
+                          the release, bump $({uiAxis}), and re-apply the doc AFTER the publish. Declaring it \
+                          in {docLedgerRel} is the third option, and it is for a violation whose fix is \
+                          somebody's named, filed work.\n\n\
+                          Undeclared: {rendered}"
+
+            | _ ->
+                skiptest
+                    "FS_GG_SKIP_TEMPLATE_PINNED_API is set — the doc-vs-pin rule did NOT run."
+
+        // Anti-rot 1 (stale). The release landed and the symbol is reachable now; the excuse has outlived
+        // its reason. This is the rule that retires a ledger entry at exactly the right moment.
+        testCase "no doc-ledger entry names a symbol the PINNED package now exports" <| fun _ ->
+            match Environment.GetEnvironmentVariable "FS_GG_SKIP_TEMPLATE_PINNED_API", Set.isEmpty docLedger with
+            | (null | ""), false ->
+                match pinnedSurface.Value with
+                | Error _ -> skiptest "the pinned surface could not be read — the rule above reports why."
+                | Ok pinned ->
+                    let stale =
+                        docSymbols
+                        |> List.filter (fun s -> docLedger.Contains(docKey s) && resolvesInPin pinned s)
+                        |> List.map docKey
+
+                    let rendered = String.concat "; " stale
+
+                    Expect.isEmpty
+                        stale
+                        $"these are declared in {docLedgerRel} as naming API the pin does not carry — and the \
+                          pinned package NOW EXPORTS them. The release landed; the ledger only shrinks. Delete \
+                          the line.\n\nStale: {rendered}"
+            | _ -> skiptest "no ledger entries, or the pinned proof is skipped."
+
+        // Anti-rot 2 (phantom), and the one that keeps the ledger from re-opening #550: a dead entry
+        // would excuse its symbol forever, so when #587 publishes `interpretRecordOnly` and someone
+        // re-applies the spelling EARLY, the entry would wave the bug straight back through. The ledger
+        // is not allowed to outlive its subjects.
+        test "no doc-ledger entry names a doc site that no longer names it" {
+            let live = docSymbols |> List.map docKey |> Set.ofList
+            let phantom = docLedger - live |> Set.toList
+            let rendered = String.concat "; " phantom
+
+            Expect.isEmpty
+                phantom
+                $"these are declared in {docLedgerRel}, and no shipped doc names them any more — the doc was \
+                  fixed and the exemption outlived it. Delete the line: an entry that survives its subject \
+                  silently re-excuses the symbol if a doc ever names it again.\n\n\
+                  Phantom: {rendered}"
+        }
     ]
