@@ -28,6 +28,13 @@
     <Project Path="tests/KeyboardInput.Tests/KeyboardInput.Tests.fsproj" />
     <Project Path="tests/Layout.Tests/Layout.Tests.fsproj" />
     <Project Path="tests/Lib.Tests/Lib.Tests.fsproj" />
+    <!-- #540 — Package.Tests is a MEMBER, and that is the whole point. It used to be excluded to keep
+         release-scoped checks off the PR, but the effect was that its ~325 working-tree rules ran in
+         ZERO gate cadences: every one of them fired after the merge that broke it, never on the PR.
+         The release-scoped checks in here are already deferred behind env flags the release lane sets
+         (FS_SKIA_RUN_PACKAGE_CONSUMER_SMOKE, FS_GG_RUN_TEMPLATE_PAYLOAD_RESTORE), so membership costs
+         the gate ~4s and buys it every rule that a PR can actually break. See tests/Package.Tests/Tests.fs. -->
+    <Project Path="tests/Package.Tests/Package.Tests.fsproj" />
     <Project Path="tests/Rendering.Harness.Tests/Rendering.Harness.Tests.fsproj" />
     <Project Path="tests/Scene.Tests/Scene.Tests.fsproj" />
     <Project Path="tests/SkiaViewer.Tests/SkiaViewer.Tests.fsproj" />

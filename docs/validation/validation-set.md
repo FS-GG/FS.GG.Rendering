@@ -79,7 +79,13 @@ summary visible.
 
 ## Release-only (separate from local; runs at packaging/release)
 
-- `Package.Tests` — package restore + consumption contract.
+- `Package.Tests` **(release tier only)** — the package consumption smoke: pack the coherent set to a
+  throwaway feed, build a fresh consumer against it, run it. Needs a real `dotnet pack`, so it is deferred
+  behind `FS_SKIA_RUN_PACKAGE_CONSUMER_SMOKE`, which only `release.yml` sets.
+  **The rest of `Package.Tests` is NOT release-only (#540).** The project is a slnx member, so its default
+  tier — ~325 hermetic working-tree rules (capability catalog, skill-manifest digests, R-CAT, R-PROF, pin
+  and feed coherence) — runs on **every PR** in the deterministic gate. It used to be excluded from the
+  slnx, which kept those rules off the PR too: each fired only after the merge that broke it.
 - `Product.Tests` (template) — generated product restores / builds / instantiates.
 
 ## Manual / advisory

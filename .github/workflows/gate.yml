@@ -109,8 +109,21 @@ jobs:
           target: FS.GG.Rendering.slnx
 
       # T007 (FR-002) — a build failure MUST fail the gate. Debug so test/harness steps reuse it
-      # with --no-build. The slnx contains src + all local-tier tests + the harness; it does NOT
-      # contain Package.Tests (release-only), so no release check can leak into the gate.
+      # with --no-build. The slnx contains src + all local-tier tests + the harness — and, since #540,
+      # Package.Tests too.
+      #
+      # #540 — that exclusion used to be the rule ("it does NOT contain Package.Tests (release-only), so
+      # no release check can leak into the gate"), and it cost more than it bought. Keeping the project
+      # out of the slnx kept release checks off the PR, but it also kept ~325 WORKING-TREE rules off the
+      # PR: the capability catalog, the skill-manifest digests, R-CAT, R-PROF. Every one of them fired
+      # after the merge that broke it, never on it — which is how Renovate PR #233 reached 4/4 green on a
+      # pin no local pack could produce (see the version-coherence step below, which had to move its own
+      # rule out of Package.Tests for exactly this reason).
+      #
+      # The release checks do NOT leak in, because they were never held out by the SOLUTION — they are
+      # deferred by their own env flags, which only release.yml sets (FS_SKIA_RUN_PACKAGE_CONSUMER_SMOKE,
+      # FS_GG_RUN_TEMPLATE_PAYLOAD_RESTORE). The split is by TIMING and it lives in the code, where the
+      # author writing the rule can see it. Membership costs this gate ~4s.
       # --no-restore: restore already happened in the locked step above (FR-002, GR3) — exactly once.
       - name: Build solution (net10.0)
         run: dotnet build FS.GG.Rendering.slnx -c Debug --no-restore
@@ -198,11 +211,17 @@ jobs:
       #
       # This rule already had a test — `tests/Package.Tests/Feature163PackageFeedValidationTests.fs`,
       # "all package-consuming samples' FS.GG.UI pins match source-controlled package versions". But
-      # Package.Tests is RELEASE-ONLY and not in the slnx, so it runs after the merge that breaks it,
+      # Package.Tests was RELEASE-ONLY and not in the slnx, so it ran after the merge that broke it,
       # never on the PR. That is how Renovate PR #233 reached `4/4 green` while proposing a
       # `0.4.0` pin no local `dotnet pack` can produce: the samples map `FS.GG.UI.*` exclusively to
       # the machine-local feed, and the bot reads `nuget.pkg.github.com`. Nothing pre-merge read the
       # files it changed.
+      #
+      # #540 PUT PACKAGE.TESTS IN THE SLNX, so that test now runs on the PR — this step and it are no
+      # longer the same rule at two cadences. This step is kept deliberately: it is an independent,
+      # dependency-free reading of the same invariant, and #300's whole point was that a rule this
+      # cheap should not have a single point of failure. If you ever find yourself deleting one of
+      # them, delete THIS one — the test is the better-specified half — and say so out loud.
       #
       # `--mode check` touches NO network and packs nothing: it reads the 16 `src` `<Version>`s and
       # the 57 sample `PackageReference` pins as text and compares them. That is why it belongs in
@@ -298,7 +317,9 @@ jobs:
       # gating invariant is classified by TWO parallel sources: this fsx's env-free verdict-core
       # (`verifyGatedSources`) and Package.Tests' independent `gatedSourceAudit`. A PR that adds/moves a
       # template.json source under `template/product-skills/` or `.agents/skills/` and updates only ONE
-      # classifier desyncs them. That failure is RELEASE-ONLY (Package.Tests) and, worse, silent: the
+      # classifier desyncs them. That failure USED to be release-only (Package.Tests) and, worse, silent —
+      # #540 put Package.Tests in the slnx, so `gatedSourceAudit` now runs on the PR too and this is belt
+      # AND braces rather than the only brace. The silence is why it needed both: the
       # release test self-provisions its report by running THIS script, so a stale verdict-core throws,
       # writes no report, and its stderr is swallowed — surfacing only as "lifecycle validation report
       # missing" pointing at CI regeneration, not the real cause (it blocked the fs-gg-ui 0.1.64-preview.1
@@ -661,13 +682,17 @@ jobs:
       # "ok: all 1 project-reference range(s) ..." and go green. A check that inspects one subject and
       # reports on 196 is the epic #266 defect living inside the guard built to catch it.
       #
-      # So the floor is the REAL subject count, verified against this repo's main (196/196 green, 38
-      # lock files) before this was wired. A silent skip now fails the gate instead of shrinking it.
+      # So the floor is the REAL subject count, verified against this repo before it is changed. A silent
+      # skip then fails the gate instead of shrinking it.
       #
       # It is a floor, not an equality: adding a project raises the count and stays green. A DROP is
       # what must never be silent — so if a project is legitimately removed, lower this number in the
       # same change, and let that be a decision somebody made rather than an omission nobody noticed.
-      min-ranges: 196
+      #
+      # 196 (38 lock files) -> 219 (39) in #540, which put tests/Package.Tests in the slnx and therefore
+      # under the locked-restore policy, giving it a committed lock with 12 project-reference ranges of
+      # its own. Raised in the same change that raised the count, per the rule above.
+      min-ranges: 219
 
   # ---------------------------------------------------------------------------------------------
   # Build-config drift check (shared-build-config; ADR-0006 / ADR-0032, adopted per #538).
