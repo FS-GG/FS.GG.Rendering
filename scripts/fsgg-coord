@@ -1633,6 +1633,30 @@ lint() {
   local items findings
   items="$(lint_items)"
   findings="$(jq --arg repo "$repo" "$JQ_BODY_CHILD_REFS"'
+    # touchset_decl (#496) -> null if the body declares NO touch-set at all (the omission NO-TOUCH-SET
+    # fires on), "none" for the sentinel, otherwise the declared token string.
+    #
+    # It must skip FENCED lines, exactly as `paths_from_body` does. A `Paths:` line quoted inside a
+    # ``` block is invisible to the scheduler — so an item whose only declaration is fenced really
+    # does declare nothing, and a checker that counted it would report the item healthy while `take`
+    # kept refusing it. That is the gate failing open on the one state it exists to catch (#277 is the
+    # same trap on the write side). Same rule, both sides.
+    def unfenced:
+      (. // "") | split("\n")
+      | reduce .[] as $l ({f:false, out:[]};
+          if ($l | test("^\\s{0,3}(```|~~~)")) then .f = (.f | not)
+          elif .f then .
+          else .out += [$l] end)
+      | .out;
+    def touchset_decl:
+      ( unfenced | map(select(test("^ {0,3}[Pp]aths:"))) ) as $lines
+      | if ($lines | length) == 0 then null
+        else ( $lines | map(sub("^ *[Pp]aths:\\s*"; "")) | join(" ")
+               | gsub("`"; "") | gsub(","; " ") | ascii_downcase
+               | gsub("\\s+"; " ") | ltrimstr(" ") | rtrimstr(" ") )
+             | if . == "" then null else . end
+        end;
+
     def repo_match($f): ($f|ascii_downcase) as $q
       | (.repo // "" | ascii_downcase) as $r
       | ($q=="") or ($r==$q) or (($r|split("/")|last // "")==$q);
@@ -1661,7 +1685,28 @@ lint() {
               detail:"body declares child(ren) absent from the sub-issue graph, so rollup cannot see them: \([$unlinked[]|short]|join(", "))" } ),
         ( .[] | select(.status == "Done" and .state == "OPEN")
           | { code:"DONE-STATUS-OPEN-ISSUE", severity:"note", id:.id, status:.status, url:.url,
-              detail:"board Status is Done but the issue is still open" } )
+              detail:"board Status is Done but the issue is still open" } ),
+
+        # NO-TOUCH-SET (#496) — the rule whose absence let `lint` report 0 errors over a DEAD queue.
+        #
+        # Every other rule here validates the epic ROLL-UP GRAPH. Not one asked the only question a
+        # worker actually has: CAN ANYONE PICK THIS UP? A Ready/Backlog item with no `Paths:` is
+        # refused by `batch`/`take` — correctly, an undeclared touch-set cannot be proven disjoint —
+        # so it sits on the board looking like work and is invisible to every worker who asks for
+        # work. Nine such items had accumulated in `.github` while this surface said `0 error(s)`.
+        # That is the #266 shape (a gate green on a missing subject) in the one place whose whole
+        # job is board health.
+        #
+        # `Paths: none` is the out, and it is the POINT: a touch-set-less item (an epic, a decision,
+        # an investigation whose scope IS the question) is legitimate, but it must SAY so. Before the
+        # sentinel, "deliberately undeclared" and "somebody forgot" rendered identically and no gate
+        # could tell them apart — so no gate could be written at all.
+        ( .[] | select(.number != null)
+          | select(.state == "OPEN")
+          | select(.status == "Ready" or .status == "Backlog")
+          | select((.body | touchset_decl) == null)
+          | { code:"NO-TOUCH-SET", severity:"error", id:.id, status:.status, url:.url,
+              detail:"\(.status) but declares no `Paths:` — `batch`/`take` cannot schedule it, so no worker can ever pick it up. Declare a touch-set, or `Paths: none` if it genuinely has none (an epic, a decision item)." } )
       ]' <<<"$items")"
 
   # A body-declared ref that resolves to a PR is not an unlinked child — a PR can never be a
@@ -2510,14 +2555,54 @@ paths_from_body() {  # $1=issue body -> one normalized touch-set token per line 
   #
   # A touch-set token can never legitimately contain a backtick (it is not a path character anyone
   # means), so stripping is unambiguous — and `widen` shares this function, so both sides stay coherent.
-  printf '%s\n' "$1" \
+  # `Paths: none` is the SENTINEL, not a directory called `none` (#496). It is how an epic, a decision
+  # item, or an investigation whose scope IS the question says "this item deliberately has no
+  # touch-set" — in a form a machine can read. Emit NOTHING for it: it declares no files, so it
+  # reserves no files, and `batch` still (correctly) refuses to schedule it. The difference the
+  # sentinel buys is not schedulability, it is INTENT — `lint` can now tell an epic from an omission,
+  # which it could not do while both rendered as "no 'Paths:' declared".
+  #
+  # Recognised only when it is the WHOLE declaration. `Paths: none src/Foo` is NOT a sentinel: `none`
+  # stays an ordinary token (it matches no file, so it reserves nothing and conflicts with nothing),
+  # and the item schedules on its real paths. That is the safe reading of a contradictory declaration
+  # — "I have no touch-set, and here it is" cannot be honoured as written, and the alternative
+  # (treating the whole line as the sentinel) would silently DISCARD a declared path and hand two
+  # workers the same files. Half-honouring it errs toward reserving too much, never too little.
+  local toks
+  toks="$(printf '%s\n' "$1" \
     | awk "$FENCE_AWK"'{ if (fence_delim($0)) next; if (!IN_FENCE) print }' \
     | grep -E '^ {0,3}[Pp]aths:' \
     | sed -E 's/^ *[Pp]aths:[[:space:]]*//' \
     | tr -d '`' \
     | tr ',' ' ' | tr '\t' ' ' | tr -s ' ' '\n' | sed '/^$/d' \
     | sed -E 's#^\./##; s#/\*\*$##; s#/\*$##; s#/+$##' \
-    || true                                  # normalize: strip backticks, ./ prefix, /** /* and trailing /
+    || true)"                                # normalize: strip backticks, ./ prefix, /** /* and trailing /
+  if [ "$(printf '%s' "$toks" | tr '[:upper:]' '[:lower:]')" = "$NO_TOUCHSET" ]; then return 0; fi
+  printf '%s' "$toks"
+  [ -n "$toks" ] && echo
+  return 0
+}
+
+# The machine-readable "this item deliberately has no touch-set" declaration (#496).
+#
+# The protocol always DEPENDED on this distinction — the recipe asks a filer to write "no touch-set:
+# declare at claim time with `widen`" in the body — but it asked for it as PROSE, and nothing read
+# prose. So an epic and an omission rendered identically ("no 'Paths:' declared"), the distinction
+# existed only in the filer's head, a real omission hid among the legitimate ones, and no gate could
+# be written to catch it: there was nothing to check against. Nine items of real work sat on the board
+# looking like work and invisible to every worker who asked for work, while `lint` said 0 errors.
+NO_TOUCHSET='none'
+
+# 0 iff the body carries the sentinel as its whole `Paths:` declaration.
+declares_no_touchset() {  # $1=issue body
+  local raw
+  raw="$(printf '%s\n' "$1" \
+    | awk "$FENCE_AWK"'{ if (fence_delim($0)) next; if (!IN_FENCE) print }' \
+    | grep -E '^ {0,3}[Pp]aths:' \
+    | sed -E 's/^ *[Pp]aths:[[:space:]]*//' \
+    | tr -d '`' | tr ',' ' ' | tr '\t' ' ' | tr -s ' ' '\n' | sed '/^$/d' \
+    | tr '[:upper:]' '[:lower:]' || true)"
+  [ "$raw" = "$NO_TOUCHSET" ]
 }
 
 # The touch-set grammar the matcher ACTUALLY implements — and the refusal that keeps the gap between
@@ -2577,11 +2662,17 @@ die_on_invalid_paths() {  # $1=normalized tokens $2=what declared them (e.g. 'FS
   die "$2 declares touch-set token(s) that can never match a file: $(fmt_bad_paths "$bad") — $TOUCHSET_GRAMMAR"
 }
 
-paths_of() {  # $1=owner $2=repo $3=num -> one normalized touch-set token per line (possibly none)
-  local body
-  body="$(gh api "repos/$1/$2/issues/$3" --jq '.body // ""' 2>/dev/null)" \
+# The issue body, or a hard failure. Split out of `paths_of` (#496) so a caller that needs BOTH the
+# touch-set and whether it is the `Paths: none` sentinel reads the body ONCE. Two reads per item would
+# have doubled the REST cost of the scheduling loop — on the hot path, for a distinction that is free
+# to compute from bytes already in hand.
+body_of() {  # $1=owner $2=repo $3=num -> the issue body (dies if unreadable)
+  gh api "repos/$1/$2/issues/$3" --jq '.body // ""' 2>/dev/null \
     || die "cannot read the touch-set on $2#$3 (rate limit? network?) — refusing to schedule against an unknown touch-set."
-  paths_from_body "$body"
+}
+
+paths_of() {  # $1=owner $2=repo $3=num -> one normalized touch-set token per line (possibly none)
+  paths_from_body "$(body_of "$1" "$2" "$3")"
 }
 # The comparison core, shared by `overlap`, `batch`, `take`, and `widen`. Two newline-separated token
 # lists in; the conflicting pairs out (empty = disjoint). Subtree containment in either direction.
@@ -3210,7 +3301,7 @@ batch_cmd() {
   local n i=0                    # NB: `skipped` is declared ABOVE — it is pre-seeded with the blocked
   n="$(jq 'length' <<<"$cands")" # candidates (#488). Re-declaring it here would silently drop them.
   while [ "$i" -lt "$n" ]; do
-    local it r num id p hits j clash holder
+    local it r num id p hits j clash holder body
     it="$(jq -c ".[$i]" <<<"$cands")"; i=$((i + 1))
     r="$(jq -r '.repo' <<<"$it")"; num="$(jq -r '.number' <<<"$it")"
     id="${r#*/}#$num"
@@ -3218,7 +3309,10 @@ batch_cmd() {
     # a claimed item does not merely drop out of the batch — its touch-set is OCCUPIED, so it must
     # also be added to `active_paths`. Skipping without reserving would happily schedule a candidate
     # that overlaps the very item another worker is holding.
-    p="$(paths_of "${r%%/*}" "${r#*/}" "$num")"
+    #
+    # ONE body read, two questions (#496): the touch-set, and whether it is the `Paths: none` sentinel.
+    body="$(body_of "${r%%/*}" "${r#*/}" "$num")"
+    p="$(paths_from_body "$body")"
     holder="$(live_claim_worker "${r%%/*}" "${r#*/}" "$num")"
     if [ -n "$holder" ]; then
       # Same rule as the `active` pre-check, for a claim that never reached the board: an unmatchable
@@ -3228,7 +3322,15 @@ batch_cmd() {
       skipped="$skipped  $id — already claimed by worker $holder"$'\n'; continue
     fi
     if [ -z "$p" ]; then
-      skipped="$skipped  $id — no 'Paths:' declared (cannot schedule)"$'\n'; continue
+      # Two very different states used to print one sentence (#496). Neither is schedulable, but only
+      # one is a BUG: `Paths: none` is a decision somebody made, an absent line is an omission nobody
+      # noticed. Say which — the worker reading this list is the person who can fix the second.
+      if declares_no_touchset "$body"; then
+        skipped="$skipped  $id — 'Paths: none' (deliberately has no touch-set; not schedulable by design)"$'\n'
+      else
+        skipped="$skipped  $id — no 'Paths:' declared (cannot schedule — this is an OMISSION; declare one, or 'Paths: none' if it truly has no touch-set)"$'\n'
+      fi
+      continue
     fi
     # A candidate is merely unschedulable, not fatal: pass it over with the reason, as an undeclared
     # touch-set is. Never let it fall through to `conflicts_between`, which would clear it against all.

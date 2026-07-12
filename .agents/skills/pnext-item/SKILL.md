@@ -266,10 +266,22 @@ context — you can name the files better than the eventual claimant can.
 Declare it **narrowly and honestly**: exact paths, directory prefixes, and a *trailing* `/**` or
 `/*` (a leading `**/` matches nothing and is refused; so is a backticked line, #435), and **no
 generated artifact** — see §1: a file a generator emits and a CI regeneration gate guards is not
-authored, and reserving it serialises every item that regenerates it. If you truly
-cannot name a touch-set — a decision item, an epic, an investigation whose scope *is* the question —
-**write that in the body** ("no touch-set: declare at claim time with `widen`"), so an undeclared
-item is a decision somebody made rather than an omission nobody noticed.
+authored, and reserving it serialises every item that regenerates it.
+
+If you truly cannot name a touch-set — a decision item, an epic, an investigation whose scope *is*
+the question — say so **in the declaration itself**, not in prose:
+
+```
+Paths: none
+```
+
+`Paths: none` is a real sentinel, not a comment ([#496](https://github.com/FS-GG/.github/issues/496)).
+It does not make the item schedulable — nothing does, without files — but it makes the *absence*
+**deliberate and machine-readable**, and `fsgg-coord lint` now goes **red** on a `Ready`/`Backlog`
+item that declares neither. This used to be a prose instruction, and **nothing read prose**: an epic
+and an omission rendered identically (`no 'Paths:' declared`), so nine items of real work sat on the
+board looking like work, invisible to every worker who asked for work, while `lint` reported
+`0 error(s)`. Write the sentinel, or write the paths — those are the only two honest states.
 
 `Repo Scope` decides the `Phase`, not the subject matter — a `game` item is `P6 Game` even when it
 happens to do geometry. Always name the contract/registry id and cross-reference the item you were

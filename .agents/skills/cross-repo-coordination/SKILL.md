@@ -86,10 +86,16 @@ Paths: src/Scene/ tests/Scene/"
 
 `Paths:` is not a glob language — exact paths, directory prefixes, and a *trailing* `/**` or
 `/*`; a leading `**/` matches nothing and is refused, and so is a backticked one
-([#435](https://github.com/FS-GG/.github/issues/435)). If you genuinely cannot name the
-touch-set (a decision item, an epic, an investigation whose scope *is* the question), **say so
-in the body** — "no touch-set: declare at claim time with `widen`". Then an undeclared item is
-a decision somebody made, not an omission nobody noticed.
+([#435](https://github.com/FS-GG/.github/issues/435)).
+
+If you genuinely cannot name the touch-set (a decision item, an epic, an investigation whose
+scope *is* the question), declare **`Paths: none`** — the sentinel, not a comment
+([#496](https://github.com/FS-GG/.github/issues/496)). It does not make the item schedulable;
+it makes the absence **deliberate and machine-readable**, and `fsgg-coord lint` goes **red** on a
+`Ready`/`Backlog` item that declares neither paths nor the sentinel. Prose here was the old
+instruction, and **nothing read prose** — so an epic and a forgotten touch-set looked identical,
+and real work went invisible to every worker who asked for work. **A finding filed without either
+is a finding nobody can pick up.**
 
 ## Respond / resolve
 
