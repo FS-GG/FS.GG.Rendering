@@ -1,6 +1,13 @@
 ---
 name: fs-gg-ui-widgets
 description: Generated product guidance for Skia-rendered FS.GG.UI Controls, rich text, chart controls, graph controls, DataGrid, and custom wrappers.
+# This skill MANDATES a rule whose instrument lives in another skill. Declaring it holds the two
+# `materializes-when` sets to each other (R-INST, #624): if `fs-gg-elmish` ever stops materializing
+# where this skill does, a product would be handed the rule and never the instrument. See
+# template/product-skills/README.md.
+instruments:
+  - rule: responsiveness evidence (respondsProofOf / captureRespondsProof, OnFrameMetrics)
+    skill: fs-gg-elmish
 ---
 
 # Generated Controls
