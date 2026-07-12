@@ -49,10 +49,11 @@ let issue535PersistenceSeamTests =
                   "every requested effect reaches the host sink, in the order the product dispatched them — before #535 no ViewerEffect carried a PersistenceEffect at all, so none of them reached anything"
           }
 
-          // The honest no-op. A launch given no sink must DROP the batch, not pretend. `runApp` and
-          // `runAppWithAudio` do exactly this — a request that goes nowhere is honest; a save that
-          // silently did not happen is not.
-          test "a launch with no persistence sink drops the batch rather than pretending" {
+          // Named for what it actually asserts. It says nothing about a launch: it pins that the fold only
+          // routes a PERSIST batch to the persistence sink, and leaves every other effect alone. (The earlier
+          // name claimed to test `runApp`'s drop behaviour and tested no such thing — the message gave it
+          // away, and review called it.)
+          test "the fold routes only a Persist batch to the persistence sink" {
               let mutable reached = false
 
               Viewer.interpretViewerEffects
@@ -68,19 +69,19 @@ let issue535PersistenceSeamTests =
               Expect.isFalse reached "a batch with no Persist effect must not reach the persistence sink"
           }
 
-          // THE ANSWER PATH — the half that did not exist: a host reports outcomes, the product maps them to
-          // messages, the loop dispatches them into `update`.
+          // THE ANSWER PATH — driven through the REAL function, not a local re-enactment of it.
           //
-          // Driven through the REAL fold. An earlier draft of this test defined its own sink and mapper and
-          // looped over them by hand, asserting nothing about the framework at all — it would have passed
-          // with `ViewerEffect.Persist` deleted. A test that re-implements the thing it is testing is a
-          // tautology, and the only reason to keep it would be that it looks like coverage.
-          test "an outcome the sink returns is dispatched back as a product message" {
+          // Two earlier drafts of this test were theatre. The first defined its own sink and mapper and
+          // looped over them by hand: it called no framework code and would have passed with
+          // `ViewerEffect.Persist` deleted. The second re-implemented the launch body's forward-reference
+          // shape locally, which pins the AUTHOR'S MODEL of the code rather than the code — and that is not a
+          // hypothetical: this seam shipped an ordering bug that dropped every Init-time save, with 350 green
+          // tests attached. `dispatchPersistenceBatch` is `internal` precisely so a test can reach the wiring
+          // that `runAppWithPersistence` builds, because the launch itself bails at
+          // `capability.PersistentWindow` and can never be driven headless.
+          test "every outcome the sink returns is dispatched back as a product message" {
               let dispatched = List<string>()
-              let mutable dispatchOutcome: PersistenceOutcome -> unit = ignore
 
-              // Exactly the shape `runAppWithPersistence` builds: the sink PERFORMS the batch and reports
-              // outcomes; each outcome is mapped and dispatched.
               let sink (effects: PersistenceEffect list) =
                   effects
                   |> List.map (fun effect ->
@@ -89,73 +90,63 @@ let issue535PersistenceSeamTests =
                       | Load s -> PersistenceOutcome.Loaded { envelope with Slot = s }
                       | DeleteSlot s -> PersistenceOutcome.Deleted s)
 
-              let persistenceBatchSink batch = sink batch |> List.iter dispatchOutcome
+              let mapOutcome outcome =
+                  match outcome with
+                  | PersistenceOutcome.Saved _ -> Some "saved"
+                  | PersistenceOutcome.Loaded _ -> Some "loaded"
+                  | PersistenceOutcome.Deleted _ -> Some "deleted"
+                  | PersistenceOutcome.Absent _
+                  | PersistenceOutcome.Unreadable _
+                  | PersistenceOutcome.Failed _ -> None
 
-              dispatchOutcome <-
-                  fun outcome ->
-                      match outcome with
-                      | PersistenceOutcome.Saved _ -> dispatched.Add "saved"
-                      | PersistenceOutcome.Loaded _ -> dispatched.Add "loaded"
-                      | PersistenceOutcome.Deleted _ -> dispatched.Add "deleted"
-                      | PersistenceOutcome.Absent _
-                      | PersistenceOutcome.Unreadable _
-                      | PersistenceOutcome.Failed _ -> ()
+              let dispatch msg =
+                  dispatched.Add msg
+                  false // no message asked to close
 
-              Viewer.interpretViewerEffects
-                  ignore
-                  persistenceBatchSink
-                  ignore
-                  ignore
-                  ignore
-                  ignore
-                  [ Persist [ Persistence.save envelope; Persistence.load slot; Persistence.deleteSlot slot ] ]
-              |> ignore
+              let closeRequested =
+                  Viewer.dispatchPersistenceBatch
+                      sink
+                      mapOutcome
+                      dispatch
+                      [ Persistence.save envelope; Persistence.load slot; Persistence.deleteSlot slot ]
 
               Expect.equal
                   (List.ofSeq dispatched)
                   [ "saved"; "loaded"; "deleted" ]
-                  "a Load is finally ANSWERABLE: the batch goes through the real fold to the sink, and every outcome comes back as a message the product's update handles"
+                  "a Load is finally ANSWERABLE: the sink performs the batch and every outcome comes back as a message the product's update handles"
+
+              Expect.isFalse closeRequested "no dispatched message asked to close"
           }
 
-          // THE ORDERING BUG THIS SEAM SHIPPED WITH, and the reason it is pinned here.
-          //
-          // A product LOADS ITS SAVE ON INIT — that is the whole pattern; the first thing a game does is ask
-          // "is there a save?". The launch body closes the outcome-dispatch forward reference with a mutable,
-          // and in the first draft that assignment sat AFTER `interpretEffects initEffects`. So an `Init`
-          // that emitted a `Persist` had its batch performed by the sink — the save really was read off the
-          // disk — and the resulting `Loaded` went to a `dispatchOutcome` that was still `ignore`. The save
-          // was read and thrown away, and the product started at a title screen with no error anywhere.
-          //
-          // A fresh silent no-op inside the fix for the silent-no-op family (epic .github#416). Reversing the
-          // two statements below turns this red, which is the point of it.
-          test "an outcome from an Init-time Persist batch is dispatched, not dropped" {
+          // An outcome the product has no message for is DROPPED — the host has still answered, and inventing
+          // a message would be the framework deciding what "no save" means to a game.
+          test "an outcome the product does not map is dropped, not invented" {
               let dispatched = List<string>()
-              let mutable dispatchOutcome: PersistenceOutcome -> unit = ignore
 
-              let sink (effects: PersistenceEffect list) =
-                  effects |> List.map (fun _ -> PersistenceOutcome.Loaded envelope)
+              let closeRequested =
+                  Viewer.dispatchPersistenceBatch
+                      (fun _ -> [ PersistenceOutcome.Absent slot ])
+                      (fun _ -> None) // the product maps nothing
+                      (fun msg ->
+                          dispatched.Add msg
+                          false)
+                      [ Persistence.load slot ]
 
-              let persistenceBatchSink batch = sink batch |> List.iter dispatchOutcome
+              Expect.isEmpty dispatched "an unmapped outcome must not become a message the product never asked for"
+              Expect.isFalse closeRequested "and it cannot request a close"
+          }
 
-              // Init's effects — a product asking for its save on startup.
-              let initEffects = [ Persist [ Persistence.load slot ] ]
+          // A close asked for by an outcome-driven message must be honoured. Losing it would leave a product
+          // that quits on a failed load stuck in a window it asked to shut.
+          test "a close requested by an outcome-driven message is propagated" {
+              let closeRequested =
+                  Viewer.dispatchPersistenceBatch
+                      (fun _ -> [ PersistenceOutcome.Unreadable(slot, "truncated") ])
+                      (fun _ -> Some "quit")
+                      (fun _ -> true) // this message asks to close
+                      [ Persistence.load slot ]
 
-              // CLOSE THE REFERENCE FIRST. This is the ordering the launch body must have.
-              dispatchOutcome <-
-                  fun outcome ->
-                      match outcome with
-                      | PersistenceOutcome.Loaded e ->
-                          let (SavePayload payload) = e.Payload
-                          dispatched.Add payload
-                      | _ -> ()
-
-              Viewer.interpretViewerEffects ignore persistenceBatchSink ignore ignore ignore ignore initEffects
-              |> ignore
-
-              Expect.equal
-                  (List.ofSeq dispatched)
-                  [ "{score:42}" ]
-                  "the save a product asks for on Init must be ANSWERED. If the dispatcher is still `ignore` when Init's effects are interpreted, the sink reads the save off the disk and the outcome is thrown away — the product starts fresh over a save that exists, with nothing reporting an error."
+              Expect.isTrue closeRequested "the close a product asked for on a corrupt save must reach the loop"
           }
 
           // THE CORRUPTION BUG THIS TYPE EXISTS TO PREVENT. `Absent` and `Unreadable` are different

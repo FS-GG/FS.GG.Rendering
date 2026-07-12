@@ -41,6 +41,20 @@ module Viewer =
     /// regression assert the policy — notably that audio reaches the sink, and that evidence reaches
     /// `evidenceSink` rather than the floor (#444) — deterministically.
     /// Each loop passes in its own mutations; the returned flag is "this batch requested a close".
+    /// #535 — the outcome dispatch, extracted so a test can reach it.
+    ///
+    /// `internal` for exactly the reason `interpretViewerEffects` is: `runAppWithPersistence` bails at
+    /// `capability.PersistentWindow` long before it builds this wiring, so headless CI can never drive it
+    /// through the public entry point. A test that re-implements the launch body's shape locally pins the
+    /// author's MODEL of the code and not the code — which is how the seam's first ordering bug shipped with
+    /// 350 green tests attached. Returns whether any dispatched message asked to close.
+    val internal dispatchPersistenceBatch:
+        sink: (PersistenceEffect list -> PersistenceOutcome list) ->
+        mapOutcome: (PersistenceOutcome -> 'msg option) ->
+        dispatch: ('msg -> bool) ->
+        batch: PersistenceEffect list ->
+            bool
+
     val internal interpretViewerEffects:
         audioSink: (AudioEffect list -> unit) ->
         persistenceSink: (PersistenceEffect list -> unit) ->
@@ -208,10 +222,18 @@ module Viewer =
     /// `mapOutcome` returns `None` for is dropped: the host has still answered, and inventing a message
     /// would be the framework deciding what "no save" means to a game.
     ///
+    /// THE SINK RUNS ON THE WINDOW THREAD. It is called from the effect fold, which the tick and key
+    /// handlers drive, so a slow save STALLS THE FRAME for as long as the write takes. Unlike the audio sink
+    /// (fire-and-forget, `-> unit`), this one must return an answer, so it cannot be made async without a
+    /// different seam. Keep it fast, or hand the work to your own worker and answer later with a message.
+    ///
+    /// DO NOT emit a persistence effect from the handler for a persistence outcome. The dispatch is
+    /// SYNCHRONOUS RECURSION, not the Elmish dispatch queue: it recurses on one stack and terminates in a
+    /// StackOverflowException, which .NET cannot catch — the process dies with no diagnostic.
+    ///
     /// Before this existed, no `ViewerEffect` carried a `PersistenceEffect` at all: a product could request
-    /// a save and no host could ever see it. `runApp` and `runAppWithAudio` still discard `Persist`, which
-    /// is the honest behaviour for a launch given no sink — a request that goes nowhere, rather than a save
-    /// that silently did not happen.
+    /// a save and no host could ever see it. `runApp` and `runAppWithAudio` still discard `Persist` — but
+    /// they now say so on the diagnostics channel rather than dropping it in silence (#416).
     val runAppWithPersistence:
         options: ViewerOptions ->
         persistenceSink: (PersistenceEffect list -> PersistenceOutcome list) ->

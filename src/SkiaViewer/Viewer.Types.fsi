@@ -728,7 +728,7 @@ type ViewerEffect =
     /// record-only interpreter was the only thing that would ever consume one, and it records and
     /// drops. A product's save requests had nowhere to go, and nothing said so.
     ///
-    /// Only `runAppWithPersistence` realizes it — by handing the batch to the caller-supplied sink and
+    /// Only `runAppWithPersistence` / `runAppWithAudioAndPersistence` realize it — by handing the batch to the caller-supplied sink and
     /// dispatching each `PersistenceOutcome` the sink returns back into `update` as a `'msg`. `runApp`
     /// and `runAppWithAudio` discard it, exactly as they discard `PlayAudio`: a viewer owns no save
     /// location, and inventing one would be worse than owning none.

@@ -639,7 +639,7 @@ type ViewerEffect =
     | WriteRunEvidence of path: string * evidence: ViewerRunEvidence
     | PlayAudio of effects: AudioEffect list
     // #535 — the case that gives a product's save/load requests somewhere to go. Only
-    // `runAppWithPersistence` realizes it; `runApp`/`runAppWithAudio` discard it.
+    // `runAppWithPersistence`/`runAppWithAudioAndPersistence` realize it; the others diagnose the drop.
     | Persist of effects: PersistenceEffect list
 
 type ViewerRunEffect =
