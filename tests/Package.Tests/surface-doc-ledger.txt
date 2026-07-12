@@ -19,6 +19,14 @@
 # cheapest response to a growing gap would be to append here, and this file would become the record of the
 # problem instead of its fix.
 #
+# DOCUMENTED MEANS CITED AS CODE (#654). A skill documents a surface when it names it inside a fenced block
+# or an inline code span — not when its prose happens to use the word. `isDocumented` used to match the bare
+# name anywhere in the skills' text, which credits any public val whose name is also an ordinary English word
+# to any sentence that uses the word, about anything: FS.GG.Game#240 wrote "the block above can bind all four
+# the same way" — about a fenced code block — and S-DOC concluded a product skill documents the RichText
+# combinator `block`. 32 surfaces passed this gate by homonym, 31 of them in no ledger line at all, so for
+# them S-DOC was vacuous. They are all declared below, and the guard now requires a citation.
+#
 # FORMAT:  <category>  <name>
 #
 #   tracked     A surface a product author would WANT and cannot find. A real gap, tracked by #507 / epic
@@ -26,6 +34,10 @@
 #   vocabulary  A constructor or combinator in a type's own vocabulary (a scene shape, a colour, a design
 #               token, a geometry helper). A product composes it straight from the `.fsi`, and a skill that
 #               listed them would be a worse copy of the signature file.
+#
+# The ledger keys on the NAME, so one line covers every `.fsi` that declares it. The `# ---- <file>` headers
+# are for readers; names carried by more than one signature file are gathered at the foot of this file, since
+# no single header is the honest home for them.
 #
 # `vocabulary` is a CLAIM, and it is deliberately visible so it can be challenged. If one of these deserves
 # prose, move it: delete the line and write the paragraph. Down is the intended direction of travel.
@@ -59,6 +71,7 @@ vocabulary  clampVersion
 
 # ---- Controls.Elmish/ControlsElmish.fsi
 vocabulary  adapterDiagnosticToRuntimeDiagnostic
+vocabulary  diagnostic
 vocabulary  diagnosticsDisabledCompatibility
 tracked     interpretControlEffect
 tracked     interpretOverlayEffect
@@ -66,6 +79,9 @@ vocabulary  interpretOverlayOutcome
 vocabulary  interpretPointerEffect
 tracked     interpretPointerOutcome
 vocabulary  ofMessage
+# `program` is the Elmish front door itself — init/update/view/subscriptions -> AdapterProgram. No skill cites
+# it in code; it passed S-DOC on the English word "program". Its own wrapper `programOfWidget` is tracked too.
+tracked     program
 tracked     programOfWidget
 tracked     runInteractiveAppWithWindowBehavior
 vocabulary  runScriptWithAudio
@@ -75,14 +91,17 @@ vocabulary  toCmd
 tracked     widgetView
 
 # ---- Controls/Accessibility.fsi
+vocabulary  contrast
 vocabulary  defaultFor
 vocabulary  metadata
 
 # ---- Controls/Attributes.fsi
 vocabulary  accessibility
 vocabulary  enabled
+vocabulary  loading
 vocabulary  margin
 vocabulary  onWith
+vocabulary  orientation
 vocabulary  padding
 vocabulary  readOnly
 vocabulary  standardAttribute
@@ -104,6 +123,11 @@ tracked     supportedEvents
 tracked     validateStandardControl
 
 # ---- Controls/Control.fsi
+# `checked'` was invisible to S-DOC until #654: the name pattern stopped at the prime, so this public val was
+# never extracted, never credited, never ledgered — it passed the gate by being unparseable. An attribute
+# combinator, beside `enabled` / `readOnly` / `selected`.
+vocabulary  checked'
+vocabulary  count
 vocabulary  hitTest
 vocabulary  icon
 vocabulary  lowerCustom
@@ -111,6 +135,9 @@ vocabulary  lowerStandard
 vocabulary  nearestAuthored
 vocabulary  onClickWith
 vocabulary  onSelected
+# The sibling constructors `create` and `customControl` ARE cited in code by a skill; `standard` is the typed
+# `StandardControlKind` variant of the same one-liner, composed straight from the `.fsi`.
+vocabulary  standard
 tracked     withKey
 
 # ---- Controls/ControlRuntime.fsi
@@ -120,6 +147,7 @@ tracked     deriveVisualState
 vocabulary  ofControl
 
 # ---- Controls/DataGrid.fsi
+vocabulary  columns
 vocabulary  focusedCell
 vocabulary  selectedRows
 
@@ -142,18 +170,23 @@ vocabulary  unsupportedStandardAttribute
 vocabulary  unsupportedStandardEvent
 
 # ---- Controls/Pointer.fsi
+vocabulary  origin
+# `Pointer.replay` folds a recorded message sequence to a final state + effects, and is the surface SC-005's
+# determinism claim rests on — exactly what a product driving its UI headlessly needs, and it is taught
+# nowhere. The skills' only "replay" is the English word ("a headless replay").
+tracked     replay
 vocabulary  toMsg
 
 # ---- Controls/RichText.fsi
-# `block` (RichText) was removed here by #649, and NOT because a skill documents it. S-DOC's `isDocumented`
-# is a bare word-boundary regex over skill PROSE, so FS.GG.Game#240 writing "the launcher block above" in the
-# fs-gg-audio canonical credited this RichText combinator as documented and made the line stale. It is a
-# HOMONYM, not a doc. 31 other public vals (`background`, `count`, `fill`, `image`, `success`, `warning`, …)
-# are credited the same accidental way and are in NO ledger line — S-DOC is vacuous for them. Tracked by #654,
-# which tightens `isDocumented` to require a code reference and restores this line with the rest.
+# Restored by #654. #649 deleted this line under protest: no skill documented `block`, but FS.GG.Game#240
+# wrote "the block above can bind all four the same way" — about a fenced code block — into the frozen-mirror
+# fs-gg-audio canonical, and the old prose-matching `isDocumented` read that as documentation and called this
+# line stale. `isDocumented` now requires a code citation, so the homonym no longer counts and the line stands.
+vocabulary  block
 vocabulary  defaultStyle
 
 # ---- DesignSystem/DesignTokens.fsi
+vocabulary  background
 vocabulary  contrastRequiredRatio
 vocabulary  controlHeight
 vocabulary  controlHeightLg
@@ -169,6 +202,8 @@ vocabulary  spaceLg
 vocabulary  spaceMd
 vocabulary  spaceSm
 vocabulary  spaceXs
+vocabulary  success
+vocabulary  warning
 
 # ---- DesignSystem/Types.DesignSystem.fsi
 vocabulary  neutral
@@ -192,12 +227,20 @@ vocabulary  reachableWithin
 # ---- Game.Core/Rng.fsi
 vocabulary  nextBool
 
+# ---- Game.Core/Resolution.fsi
+# The collision skill teaches `knockback` and calls it "discrete grid push" — so it documents the specialised
+# helper in prose and never names the general primitive it is built on. `push` carries a real footgun in its
+# own `.fsi` (`distance` bounds MEMORY, not just the loop: Int32.MaxValue exhausts it), which is precisely the
+# kind of thing a skill should say out loud. A gap, not a blessing.
+tracked     push
+
 # ---- Game.Core/SpatialGrid.fsi
 tracked     buildBounds
 vocabulary  queryBounds
 
 # ---- KeyboardInput/KeyboardInput.fsi
 vocabulary  noModifiers
+vocabulary  normalize
 vocabulary  normalizeEvent
 vocabulary  normalizeEventWithModifiers
 vocabulary  stateDisplay
@@ -234,19 +277,25 @@ vocabulary  pixelSnapPolicy
 vocabulary  stackConfig
 
 # ---- Scene/Scene.fsi
+vocabulary  arc
 vocabulary  black
 vocabulary  circleEvidence
 vocabulary  classify
+vocabulary  clipped
 vocabulary  close
+vocabulary  combine
 vocabulary  cubicTo
 vocabulary  describe
 vocabulary  ellipse
 vocabulary  ellipseEvidence
+vocabulary  fill
 vocabulary  filledEllipse
 vocabulary  fromRenderEvidence
+vocabulary  image
 vocabulary  lineTo
 vocabulary  moveTo
 vocabulary  picture
+vocabulary  points
 vocabulary  quadTo
 vocabulary  rectangle
 vocabulary  rectangleWithPaint
@@ -255,10 +304,12 @@ vocabulary  renderPng
 vocabulary  renderReadbackEvidence
 vocabulary  rgb
 vocabulary  rgba
+vocabulary  segment
 vocabulary  sizedText
 vocabulary  textRun
 vocabulary  transparent
 vocabulary  unsupported
+vocabulary  vertices
 vocabulary  white
 vocabulary  withAntialias
 vocabulary  withBlendMode
@@ -280,9 +331,11 @@ vocabulary  classifyWindowState
 vocabulary  defaultWindowBehavior
 tracked     desktopSessionDiagnostic
 vocabulary  failureFromDiagnostic
+vocabulary  fit
 vocabulary  initEvidenceWorkflow
 vocabulary  initRun
 vocabulary  initWithWindowBehavior
+vocabulary  present
 vocabulary  runAppWithWindowBehavior
 vocabulary  runInteractiveViewer
 vocabulary  runInteractiveViewerScriptWithAudio
@@ -302,10 +355,12 @@ vocabulary  validateWindowLaunchBehavior
 
 # ---- Symbology/Symbology.fsi
 vocabulary  badge
+vocabulary  ring
 
 # ---- Testing/Testing.fsi
 vocabulary  buildValidationContractOutput
 vocabulary  classifyDrift
+vocabulary  field
 vocabulary  parseScreenshotEvidenceRecord
 vocabulary  selectVisualEvidence
 vocabulary  statusText
@@ -316,3 +371,25 @@ vocabulary  validateVisualEvidenceCommandOutput
 vocabulary  validateWindowDiagnostics
 vocabulary  verifyGeneratedTests
 vocabulary  verifyPackageResolution
+
+# ---- carried by more than one signature file
+# The ledger keys on the NAME, so these lines each cover every `.fsi` that declares the name, and no single
+# `# ---- <file>` header above would be an honest home for them. All four were credited to English prose
+# ("validate your GridSpec", "a headless replay", "(diagnostics) refers to the local update") until #654.
+
+# `diagnostics` — Scene, Control, ControlRuntime, TextInput, ControlsElmish. The introspection front door in
+# every one of them: how a product asks what is wrong with the tree it just built. The Diagnostics.fsi
+# CONSTRUCTORS are vocabulary; the query that hands you the list is a capability, and it is taught nowhere.
+tracked     diagnostics
+
+# `validate` — Accessibility, Catalog, CustomControl, GraphValidation, Testing. Same shape: the primary
+# validation entry point in five packages, and its siblings `validateStandardControl` / `validateWindowBehavior`
+# are already tracked. A product author would want it and cannot find it.
+tracked     validate
+
+# `measure` — RichText (text measurement) and Scene (path measurement). Peers `measureHorizontal` /
+# `measureVertical` are vocabulary; these are the same kind of total query over a value you already hold.
+vocabulary  measure
+
+# `selected` — Attributes and Control. An attribute combinator, beside `enabled` / `readOnly` / `onSelected`.
+vocabulary  selected
