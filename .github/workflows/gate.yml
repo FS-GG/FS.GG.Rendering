@@ -90,16 +90,19 @@ jobs:
       # a WARM one validates the committed contentHash against the package copy already on the
       # runner, never contacting the feed, so it compares a record of reality against another record
       # of it. The enforcement, the error text and the --force-evaluate regenerate hint live in ONE
-      # place across the two GATE lanes (packaged-consumer.yml restores through the same action),
-      # because two inline copies is how they drift — the comment here used to claim it was "the
+      # place, because two inline copies is how they drift — this comment used to claim it was "the
       # single restore enforcement point" while packaged-consumer.yml quietly ran a second, warm one.
       #
-      # Scoped deliberately, so this comment does not repeat that mistake: release.yml is NOT routed
-      # through the action yet. Its `dotnet build`/`dotnet restore` of the slnx are still locked
-      # restores — RestoreLockedMode (Directory.Build.props) turns locked mode on implicitly whenever
-      # GITHUB_ACTIONS is true — but WARM ones, against the default package folder and without
-      # --configfile. That is #559, and until it lands the publish lane still validates the committed
-      # contentHash against whatever the runner already has.
+      # That claim is now TRUE, and repo-wide: #559 routed release.yml's three slnx restores through
+      # this same action, so every locked restore in this repo — the two gate lanes and the lane that
+      # actually PUBLISHES — is cold, `--configfile`-pinned, and defined here. The release lane was the
+      # one that mattered most and was fixed last: its `dotnet build`/`dotnet restore` were already
+      # locked restores that nobody had written as one (RestoreLockedMode, Directory.Build.props, turns
+      # locked mode on implicitly whenever GITHUB_ACTIONS is true), just warm ones — so a lock file no
+      # fresh clone could restore could be green here and still ship.
+      #
+      # Keep it that way: a new `dotnet restore`/`dotnet build` of the slnx in ANY workflow is a fourth
+      # copy of this policy, and it will be a warm one by default.
       - name: Restore (locked, cold)
         uses: ./.github/actions/locked-restore
         with:
