@@ -228,14 +228,35 @@ mixer was *told*, not what the model *holds* — which is exactly what `Generate
 
 The sink is the same value everywhere; only the entry point that accepts it differs. Reaching for the
 game family's function on a Controls product (or vice versa) will not type-check, so this is the table
-to read before you wire anything (FS.GG.Rendering#429, FS.GG.Rendering#436). Each takes the sink
-between `viewerOptions` and your host record — e.g.
-`Viewer.runAppWithAudio viewerOptions audioSink generatedHost`:
+to read before you wire anything (FS.GG.Rendering#429, FS.GG.Rendering#436):
 
 | Profile | Host record | Silent (discards audio) | **With sound** |
 | --- | --- | --- | --- |
 | `app` | `interactiveHost` | `ControlsElmish.runInteractiveApp` | **`ControlsElmish.runInteractiveAppWithAudio`** |
 | `game`, `sample-pack` | `generatedHost` | `Viewer.runApp` | **`Viewer.runAppWithAudio`** |
+
+Each takes the sink **between** `viewerOptions` and your host record, and each has a **silent** twin
+that is the same call with that argument left out. Take one line: the family you scaffolded with, and —
+all but always — the `*WithAudio` one.
+
+```fsharp
+// `app` — the Controls family. Host record: `interactiveHost`.
+let appOutcome       = ControlsElmish.runInteractiveAppWithAudio viewerOptions audioSink interactiveHost
+let appSilentOutcome = ControlsElmish.runInteractiveApp          viewerOptions           interactiveHost
+
+// `game`, `sample-pack` — the viewer family. Host record: `generatedHost`.
+let gameOutcome       = Viewer.runAppWithAudio viewerOptions audioSink generatedHost
+let gameSilentOutcome = Viewer.runApp          viewerOptions           generatedHost
+```
+
+All four return `Result<ViewerLaunchOutcome, ViewerRunFailure>`, so a failed launch is an `Error`
+**value** rather than an exception — `ViewerRunFailure` names the stage it blocked at, and that stage is
+not always an early one (`WindowCreation`, but also `FirstFrameRender`, `ControlledExit`,
+`ArtifactWrite`). Do not read `Ok` as *a window appeared*, either: `ViewerLaunchOutcome` is a **record
+of what actually happened** — `WindowOpened`, `FirstFramePresented`, `CloseReason` — so the run that
+reports itself is the thing to ask, not the `Result` tag. Neither type is audio-specific: a `*WithAudio`
+launcher returns exactly what its silent twin does, which is why the block above can bind all four the
+same way.
 
 Each has a window-behavior sibling — `ControlsElmish.runInteractiveAppWithWindowBehaviorAndAudio` and
 `Viewer.runAppWithWindowBehaviorAndAudio` — which slots the parsed `--window-*` request in ahead of
@@ -255,10 +276,10 @@ sound **without editing the host**: add a case to `AudioCues.forTransition` and 
 an id with no file resolves to `None`, which the backend records as a no-op rather than throwing. So a
 product with no assets yet still runs, and still requests the right sounds.
 
-Two escape hatches you rarely need. The silent entry points in the table above still exist and simply
-**discard** audio — use one when a product should make no sound. And `GeneratedAppHost.audioRequests :
-ViewerEffect list -> AudioEffect list` flattens a frame's batches in dispatch order, so a test can
-assert what was requested with no window and no device:
+Two escape hatches you rarely need. The silent entry points — the second line of each family in the
+launcher block above — simply **discard** audio: use one when a product should make no sound at all.
+And `GeneratedAppHost.audioRequests : ViewerEffect list -> AudioEffect list` flattens a frame's batches
+in dispatch order, so a test can assert what was requested with no window and no device:
 
 ```fsharp
 GeneratedAppHost.dispatchKey host keyEvent model

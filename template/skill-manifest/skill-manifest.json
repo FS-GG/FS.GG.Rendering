@@ -4,7 +4,7 @@
     {
       "id": "fs-gg-audio",
       "scope": "product",
-      "sha256": "66ad2654a4b00bbb6c230e6359ec17ae8268858a9f06f30cf1b859173bd861f7",
+      "sha256": "9b092e8a84e8a7acf2903203c51fa343de96fc1d525040cef6152fc1004029c0",
       "resolvablePath": ".agents/skills/fs-gg-audio/SKILL.md",
       "materializes-when": "profile in [app, sample-pack, game]",
       "supplied-by": "template/product-skills/fs-gg-audio/"
@@ -92,7 +92,7 @@
     {
       "id": "fs-gg-persistence",
       "scope": "product",
-      "sha256": "23b12851317663fdd2788cdc26cec80815c75dde29ddcb0f3c57adf6169bc222",
+      "sha256": "820676f7c6d7884467790eeb490707737b3d7be6b49c1b0072e5803ffa63ec81",
       "resolvablePath": ".agents/skills/fs-gg-persistence/SKILL.md",
       "materializes-when": "profile in [game, sample-pack]",
       "supplied-by": "template/product-skills/fs-gg-persistence/"
