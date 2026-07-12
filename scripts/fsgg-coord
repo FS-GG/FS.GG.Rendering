@@ -2321,6 +2321,42 @@ done_cmd() {
       return 1
     fi
   fi
+  # A COMPLETED ITEM MUST NOT KEEP ITS LOCK (#533). `done --flip` verified the merge, set Status,
+  # and rolled up the epic — and never touched the claim marker. `release` was the only path that
+  # dropped it, and `release` REWRITES Status, so running it on an item you just stamped Done clobbers
+  # the stamp you just earned. `pnext-item` §6 removes the worktree and never mentions the claim; the
+  # only place `release` appears in the recipe is the ABANDON path. So on the SUCCESS path there was
+  # no action, in the tool or in the recipe, that dropped the lock.
+  #
+  # The marker stayed live for the rest of the 120m lease, and a live marker's `Paths:` keep reserving
+  # its touch-set. The items most likely to overlap a just-finished item are its own FOLLOW-UP
+  # findings — the ones §4 tells you to file precisely BECAUSE you were standing in those files. So
+  # the recipe reliably produced an item its own author had locked out for two hours, and `take`
+  # reported a dead queue over it. The worker who filed #533 cleared it by hand-deleting their own
+  # marker comment over REST: a hand-fix of protocol state that no worker should have to invent.
+  #
+  # The claim's lifetime is the WORK's lifetime. The work is done, so the claim is done.
+  # BEST-EFFORT, and deliberately so. The stamp is EARNED — the PR merged, the children are closed,
+  # the board write landed. A claim marker we could not read or delete is a cleanup we owe, not a
+  # reason to retract a verdict we already reached. `soft_run` keeps `claims_of`'s fail-closed `die`
+  # (correct in its own right: an unreadable claim set must never read as "nobody holds this") from
+  # unwinding a legitimately earned stamp.
+  local done_claim done_holder
+  done_claim="$(soft_run claims_of "$R_OWNER" "$R_REPO" "$R_NUM" 2>/dev/null | jq -c 'map(select(.stale | not)) | .[0] // empty' 2>/dev/null || true)"
+  if [ -n "$done_claim" ]; then
+    done_holder="$(jq -r '.worker' <<<"$done_claim")"
+    if [ "$done_holder" = "$(worker)" ]; then
+      if delete_comment "$R_OWNER" "$R_REPO" "$(jq -r '.id' <<<"$done_claim")" 2>/dev/null; then
+        dbg "done: dropped our own claim marker on $item_lbl (#533)"
+      else
+        echo "fsgg-coord: WARNING — the item is Done but its claim marker could NOT be deleted. It will keep reserving $(jq -r '.paths // [] | join(" ")' <<<"$done_claim") until the lease expires. Drop it with: fsgg-coord release $ref --status Done" >&2
+      fi
+    else
+      # Not ours to delete. Say so — a finished item held by somebody else is worth a human look.
+      echo "fsgg-coord: note — $item_lbl is Done, but worker '$done_holder' still holds its claim; their touch-set stays reserved until the lease expires. If that is stale, run: fsgg-coord reap --repo $R_REPO --apply" >&2
+    fi
+  fi
+
   banner done "✓✓ FSGG-DONE   $item_lbl" \
               "merged PR #$prnum @ ${prsha:-?}${prday:+ ($prday)}  ·  board: Done"
   # Roll the completion up: if this item is a sub-issue and --flip is in play, flip any parent epic
@@ -2377,6 +2413,44 @@ claim_cmd() {
   # which is how `overlap` (`pa="$(paths_for_ref …)"`) already gets it right.
   local declared_paths; declared_paths="$(paths_of "$R_OWNER" "$R_REPO" "$R_NUM")"
   die_on_invalid_paths "$declared_paths" "claim: $R_REPO#$R_NUM"
+
+  # ORDER MATTERS. The item-level refusal above comes FIRST: "this item is unclaimable BY ANYONE"
+  # is a stronger and cheaper statement than "you already hold something", and a worker who is told
+  # the second when the first is also true will fix the wrong thing.
+  # AT MOST ONE ITEM PER WORKER (#516). The CAS is keyed on the ITEM, so it guarantees at most one
+  # worker per item. NOTHING guaranteed the converse — and the protocol's whole cost model assumes it.
+  #
+  # This is #419/ADR-0027 turned inside out. That family is N workers colliding on ONE id; this is one
+  # id holding N items, and the remedy for the first ("give every worker its own id") does nothing for
+  # the second. The lock's asymmetry is the point: the CAS protects the item, so the item is what it
+  # protects. Nobody was protecting the worker.
+  #
+  # And it is not untidy bookkeeping. A claim RESERVES A TOUCH-SET (parallel-work.md §3), so a second,
+  # unattended claim is a live lock on files nobody is editing, held for the full lease, and `batch`
+  # will refuse to schedule anything overlapping it. One worker's slip silently costs every OTHER
+  # worker two hours of a contended path — and in this repo `scripts/fsgg-coord` IS that path (#428).
+  # It also makes `who` — which reads as "who is working what, right now" — simply wrong.
+  #
+  # The worker who found it found it BY DOING IT: two `take`s, both succeeded, neither said a word.
+  if [ -z "$force" ]; then
+    local held_elsewhere
+    # CACHED=1: ride the shared scan cache. `active_claims` needs a board scan to enumerate repos, and
+    # a claim is on the HOT path — #418 is the whole reason this client exists, and paying a fresh
+    # board scan per claim is exactly the burn it was written to stop. Under `take` the scan is already
+    # paid (batch just did it), so this costs ZERO; a bare `claim` rides the 90s window like `next`.
+    # A stale-by-90s claim set cannot cause a double-hold here: it can only fail to notice OUR OWN
+    # very recent second claim, and the CAS on the item still protects the item itself.
+    held_elsewhere="$(CACHED=1 soft_run active_claims "$R_OWNER/$R_REPO" 2>/dev/null \
+      | jq -r --arg w "$w" --argjson n "$R_NUM" '
+          [ .[] | select(.worker == $w) | select(.state == "held") | select(.number != $n)
+            | "\(.repo | sub("^[^/]+/";""))#\(.number)" ] | join(", ")' 2>/dev/null || true)"
+    if [ -n "$held_elsewhere" ]; then
+      die "claim: worker '$w' ALREADY HOLDS $held_elsewhere. A claim reserves a touch-set, so a second one locks files nobody is editing for the rest of the lease (${CLAIM_LEASE_MIN}m) — and \`batch\` will refuse every item that overlaps it (#516).
+  Finish or drop the item you hold:  fsgg-coord done <issue> --flip   (or: fsgg-coord release <issue>)
+  If you genuinely mean to hold two, say so:  fsgg-coord claim $ref --force"
+    fi
+  fi
+
 
   local claims live stale mine others
   claims="$(claims_of "$R_OWNER" "$R_REPO" "$R_NUM")"
@@ -2590,7 +2664,21 @@ heartbeat_cmd() {
     die "heartbeat: worker '$w' no longer holds $R_REPO#$R_NUM — worker '$(jq -r '.worker' <<<"$holder")' does$why. STOP working it."
   fi
   if [ -z "$holder" ] || [ "$(jq -r '.stale' <<<"$mine")" = "true" ]; then
-    die "heartbeat: worker '$w' lease on $R_REPO#$R_NUM EXPIRED ($(jq -r '.ageSec / 60 | floor' <<<"$mine")m > ${CLAIM_LEASE_MIN}m). STOP working it. Re-take it with 'fsgg-coord claim $ref'."
+    # AN EXPIRED LEASE WHOSE WORK IS DEMONSTRABLY ALIVE IS RENEWABLE (#581, item 4).
+    #
+    # The sharp edge this closes: an expired lease could not be renewed — correctly, in the general
+    # case — so a worker whose long build outran the lease could not recover their OWN claim. They
+    # had to re-`claim` and race a `take` that was, by then, actively offering their item to someone
+    # else. The remedy for overrunning was to enter a race you might lose to a stranger.
+    #
+    # But an open PR on `item/<n>-*` is proof the work is alive, and it is proof of WHOSE work: this
+    # marker is ours. Renewing our own lease over our own live PR is not a steal — nobody else can
+    # hold this item, because a live PR now blocks `batch` and `reap` from touching it too.
+    local alive; alive="$(pr_alive "$R_OWNER" "$R_REPO" "$R_NUM")"
+    if [ -z "$alive" ]; then
+      die "heartbeat: worker '$w' lease on $R_REPO#$R_NUM EXPIRED ($(jq -r '.ageSec / 60 | floor' <<<"$mine")m > ${CLAIM_LEASE_MIN}m), and no open PR on 'item/$R_NUM-*' shows the work is still alive. STOP working it. Re-take it with 'fsgg-coord claim $ref'."
+    fi
+    echo "fsgg-coord: the lease had EXPIRED ($(jq -r '.ageSec / 60 | floor' <<<"$mine")m > ${CLAIM_LEASE_MIN}m), but PR $alive is open — the work is alive, so the claim is yours to renew (#581)." >&2
   fi
   heartbeat_comment "$R_OWNER" "$R_REPO" "$R_NUM" "$(jq -r '.id' <<<"$mine")" "$w" "$ref" \
     "$(jq -r '.prev // ""' <<<"$mine")"
@@ -2991,6 +3079,46 @@ claim_reserving() {  # $1=active-claims JSON  $2=owner/repo  $3=token -> "worker
       else "\(.worker // "")\((.repo // "" | sub("^[^/]+/"; "")))#\(.number)\(.ageSec // -1)" end' <<<"$1"
 }
 
+# The holder of an EXPIRED marker. `live_claim_worker` deliberately ignores these — an expired lease
+# is not a lock. But it is not proof of abandonment either, and telling the two apart is what
+# `pr_alive` below is for (#581).
+stale_claim_worker() {  # $1=owner $2=repo $3=num
+  claims_of "$1" "$2" "$3" | jq -r 'map(select(.stale)) | .[0].worker // empty'
+}
+
+# ---- PROOF OF LIFE: an open PR on the item's branch ----------------------------------------------
+# THE LEASE IS EVIDENCE OF ABANDONMENT. IT IS NOT PROOF (#581).
+#
+# Its false-positive mode is systematic, not incidental: WORK THAT TAKES LONGER THAN THE LEASE. And
+# the protocol's own remedy — heartbeat — is precisely what a busy worker forgets when the work is
+# long, i.e. exactly when the lease is most likely to lapse. `take --repo rendering` handed out
+# FS.GG.Rendering#429 while its worker was actively on it WITH PR #433 OPEN, because a loaded box
+# (five workers, 40+ dotnet processes, an FSI OutOfMemoryException from contention) stretched one
+# build past 120 minutes.
+#
+# It then happened AGAIN, to the worker fixing #485 — the claim lapsed mid-test-cycle and was reaped
+# with the work uncommitted. It survived only because the reaping worker chose to preserve the
+# worktree as a WIP commit. That is generosity, not a guarantee.
+#
+# "Workers should heartbeat" is true and insufficient. ADR-0027's whole argument is that THE LOCK,
+# not worker diligence, prevents collisions. A lock that releases itself while the holder is
+# demonstrably still working is a lock with a liveness bug, and the fix belongs in the scheduler.
+#
+# A far stronger, cheap, SERVER-SIDE signal sits right there: an open PR whose head is `item/<n>-*`.
+# The worktree protocol (§2) mandates that branch name, so this is not a heuristic — it is the
+# protocol's own artifact.
+#
+# COST IS THE DESIGN QUESTION (#581 says so explicitly). So: REST, never GraphQL — a different budget
+# from the one that is routinely exhausted (#418) — and only on the ONE item about to be offered or
+# reaped, never on every candidate in the scan. In practice that means only items carrying an EXPIRED
+# marker, which is rare.
+#
+# Prints "#<pr> <branch>" if the work is demonstrably alive; nothing otherwise.
+pr_alive() {  # $1=owner $2=repo $3=num
+  gh api "repos/$1/$2/pulls?state=open&per_page=100" --paginate \
+    --jq ".[] | select(.head.ref | startswith(\"item/$3-\")) | \"#\(.number) \(.head.ref)\"" 2>/dev/null | head -1
+}
+
 # Every OPEN issue in a repo that could possibly hold a claim, with the body its touch-set is
 # declared in. A claim marker IS a comment, so `comments == 0` cannot hold a lock: that prune is
 # sound and free, straight off the list payload. Pull requests are excluded — a PR is neither
@@ -3360,6 +3488,26 @@ who_cmd() {
             | map(select((.item | tostring) == ($c.number | tostring)) | .path) | first // null ) })' <<<"$claims")"
   fi
 
+  # #581: a bare `STALE` and `STALE (PR #433 open)` are not the same fact, and `who` is what a human
+  # reads immediately before deciding to reap. Probe only the STALE rows — a held claim needs no proof
+  # of life, and an unclaimed item has nothing to prove. REST, and rare.
+  local nstale
+  nstale="$(jq '[.[] | select(.state == "stale")] | length' <<<"$claims")"
+  if [ "$nstale" -gt 0 ]; then
+    local k=0 kn cwr cwn cwc cwpr enriched="[]"
+    kn="$(jq 'length' <<<"$claims")"
+    while [ "$k" -lt "$kn" ]; do
+      cwc="$(jq -c ".[$k]" <<<"$claims")"; k=$((k + 1))
+      if [ "$(jq -r '.state' <<<"$cwc")" = "stale" ]; then
+        cwr="$(jq -r '.repo' <<<"$cwc")"; cwn="$(jq -r '.number' <<<"$cwc")"
+        cwpr="$(pr_alive "${cwr%%/*}" "${cwr#*/}" "$cwn")"
+        cwc="$(jq -c --arg pr "$cwpr" '. + { livePr: (if $pr == "" then null else $pr end) }' <<<"$cwc")"
+      fi
+      enriched="$(jq -c --argjson c "$cwc" '. + [$c]' <<<"$enriched")"
+    done
+    claims="$enriched"
+  fi
+
   if [ -n "$json" ]; then jq '.' <<<"$claims"; return 0; fi
 
   if [ "$(jq 'length' <<<"$claims")" -eq 0 ]; then
@@ -3370,7 +3518,10 @@ who_cmd() {
     | ((.repo // "" | sub("^[^/]+/"; "")) + "#" + (.number | tostring)) as $item
     | (if .ageSec == null then "—" elif .ageSec < 3600 then "\(.ageSec / 60 | floor)m"
        else "\(.ageSec / 3600 | floor)h" end) as $age
-    | (if .state == "held" then "ok" elif .state == "stale" then "STALE" else "UNCLAIMED" end) as $lease
+    | (if .state == "held" then "ok"
+       elif .state == "stale" then
+         (if .livePr then "STALE (\(.livePr | split(" ")[0]) OPEN)" else "STALE" end)
+       else "UNCLAIMED" end) as $lease
     | ((.paths // []) | if length == 0 then "—" else join(" ") end) as $paths
     | [ (.worker // "—"), $item, $age, $lease ]
       + (if $wt != "" then [ (.worktree // "—") ] else [] end)
@@ -3421,6 +3572,19 @@ reap_cmd() {
     cw="$(jq -r '.worker' <<<"$c")"; cid="$(jq -r '.claimId' <<<"$c")"
     age="$(jq -r '.ageSec / 60 | floor' <<<"$c")"
     o="${r%%/*}"; rp="${r#*/}"
+    # PROOF OF LIFE OUTRANKS THE LEASE (#581). This is the destructive path, and it is the one that
+    # reaped the claim on #485 itself — mid-test-cycle, work uncommitted — while its worker was very
+    # much alive. The work survived only because the reaping worker chose to preserve the worktree as
+    # a WIP commit. That is generosity, not a guarantee, and a janitor must not depend on it.
+    local alive
+    alive="$(pr_alive "$o" "$rp" "$num")"
+    if [ -n "$alive" ]; then
+      printf 'REFUSING %s#%s  worker %s  (idle %sm) — PR %s is OPEN. The lease lapsed; the WORK did not.\n' \
+        "$rp" "$num" "$cw" "$age" "$alive"
+      printf '  A long build outrunning a %sm lease is the systematic false positive here, and reaping\n' "$CLAIM_LEASE_MIN" >&2
+      printf '  it destroys live, uncommitted work. If the PR really is abandoned, close it, then reap.\n' >&2
+      continue
+    fi
     if [ -z "$apply" ]; then
       printf 'would reap  %s#%s  worker %s  (idle %sm > %sm lease)\n' "$rp" "$num" "$cw" "$age" "$CLAIM_LEASE_MIN"
       continue
@@ -3640,6 +3804,29 @@ batch_cmd() {
       queued="$queued$holder"$'\t'"$age"$'\n'
       continue
     fi
+
+    # AN EXPIRED LEASE IS NOT PROOF OF ABANDONMENT (#581). `live_claim_worker` ignores an expired
+    # marker — correctly, an expired lease is not a lock — and that is exactly how this item gets
+    # handed to a second worker while the first is still on it. Before offering it, ASK THE SERVER:
+    # an open PR whose head is `item/<n>-*` is the worktree protocol's own artifact, and it is proof
+    # of life the lease cannot see.
+    #
+    # Cost is bounded by construction: only a candidate carrying an EXPIRED marker reaches this, which
+    # is rare — and the probe is REST, on a different budget from the one that is routinely gone.
+    #
+    # Note the item is still RESERVED, not merely skipped. Its worker is alive and in those files.
+    local stale_holder alive
+    stale_holder="$(stale_claim_worker "${r%%/*}" "${r#*/}" "$num")"
+    if [ -n "$stale_holder" ]; then
+      alive="$(pr_alive "${r%%/*}" "${r#*/}" "$num")"
+      if [ -n "$alive" ]; then
+        [ -z "$(invalid_paths "$p")" ] || die "batch: $id has an expired claim by worker $stale_holder whose work is still live (PR $alive), but it declares unmatchable touch-set token(s): $(fmt_bad_paths "$(invalid_paths "$p")") — it reserves nothing. Fix with: fsgg-coord widen $id --paths '<paths>'"
+        active_paths="$active_paths${active_paths:+$'\n'}$(tag_repo "$p" "$r")"
+        skipped="$skipped  $id — lease EXPIRED, but PR $alive is open: worker $stale_holder is demonstrably still working it (#581). Not offering it; its touch-set stays reserved."$'\n'
+        continue
+      fi
+    fi
+
     if [ -z "$p" ]; then
       # Two very different states used to print one sentence (#496). Neither is schedulable, but only
       # one is a BUG: `Paths: none` is a decision somebody made, an absent line is an omission nobody
