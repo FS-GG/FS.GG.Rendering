@@ -60,7 +60,7 @@
     {
       "id": "fs-gg-keyboard-input",
       "scope": "product",
-      "sha256": "7a74a837b23675515422318a12ef20203086f09d37f95f77a2638a77440e1338",
+      "sha256": "cb74e2a9b92b5393294bf990fe079c8c727c42844cd7261bb0e08d2b7060ea27",
       "resolvablePath": ".agents/skills/fs-gg-keyboard-input/SKILL.md",
       "materializes-when": "profile in [app, game]",
       "supplied-by": "template/product-skills/fs-gg-keyboard-input/"
