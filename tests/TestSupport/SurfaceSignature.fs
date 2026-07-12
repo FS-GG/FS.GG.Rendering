@@ -38,11 +38,13 @@ module SurfaceSignature =
     /// `.fsi` that merely omits a value makes it PRIVATE to its implementation file rather than internal to
     /// the assembly — so deleting them at the source would break the tests that legitimately reach them.
     /// The mirror is therefore not a byte copy of its original but its original MINUS the internals, and
-    /// every gate that compares the two (`ApiSurfaceMirrorTests`, `ApiSurfaceMirrorCoherenceTests`,
-    /// `Symbology.Tests.ApiSurfaceMirrorTests`) composes this with its own comparison.
+    /// every gate that compares the two (`ApiSurfaceMirrorTests`, `Symbology.Tests.ApiSurfaceMirrorTests`)
+    /// composes this with its own comparison.
     ///
-    /// Defined ONCE, here, rather than copied into each of those three gates. A copy of a subtle text
-    /// transform rots — which is the very risk `ReleaseOnlyTwinLockstepTests` exists to police.
+    /// Defined ONCE, here, rather than copied into each of those gates. A copy of a subtle text transform
+    /// rots — the risk that `ApiSurfaceMirrorCoherenceTests`, a byte-identical copy of
+    /// `ApiSurfaceMirrorTests`, embodied until #613 retired it (its rule had been running on the PR gate
+    /// at its source ever since #540 put Package.Tests in the slnx).
     ///
     /// HONESTY CAVEAT (constitution Principle V): a line-shape reader over signature files, not an F#
     /// parser. It is sound for the declaration shapes this repo's `.fsi` files actually use.

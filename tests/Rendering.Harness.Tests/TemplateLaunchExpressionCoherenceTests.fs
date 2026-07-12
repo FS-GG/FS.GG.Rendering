@@ -11,7 +11,17 @@ module TemplateLaunchExpressionCoherenceTests
 // while the mirroring assertions in `template/base/tests/Product.Tests` still expected the pre-audio
 // call. Those Product.Tests run ONLY when the template is instantiated in the release lane, so no PR
 // gate ever exercised them — the drift sat latent until release, where it skipped the publish job
-// (fixed after the fact by #352). This is the standing "PR-gated tests must be in the slnx" gap.
+// (fixed after the fact by #352).
+//
+// WHY THIS TWIN SURVIVED #613. #613 retired fifteen sibling twins. Each of those hoisted a rule out of
+// Package.Tests, and #540 had already made Package.Tests a slnx member — so those rules now run on the
+// PR gate at their source, and the copies were dead weight. This twin is different in kind, and #540
+// does not touch it: its counterpart is not a Package.Tests file but `template/base/tests/Product.Tests`,
+// which exists only once the template has been INSTANTIATED, and only release.yml instantiates it
+// (`dotnet test "$PRODUCT_DIR"`). No solution membership can put those tests on a PR, because on a PR
+// they have not been generated yet. The hoist is still the only thing standing between a
+// Program.fs/Product.Tests drift and a failed release — exactly the failure it was written for. So do
+// not "finish the job" by deleting it; see ReleaseOnlyTwinLockstepTests before adding another.
 //
 // WHAT IT LOCKS. This test reads the two template files STATICALLY (no instantiation, so it is cheap
 // enough for the PR-gated slnx lane) and asserts the SET of default-branch launch expressions

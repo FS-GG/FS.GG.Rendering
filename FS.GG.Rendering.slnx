@@ -33,7 +33,15 @@
          ZERO gate cadences: every one of them fired after the merge that broke it, never on the PR.
          The release-scoped checks in here are already deferred behind env flags the release lane sets
          (FS_SKIA_RUN_PACKAGE_CONSUMER_SMOKE, FS_GG_RUN_TEMPLATE_PAYLOAD_RESTORE), so membership costs
-         the gate ~4s and buys it every rule that a PR can actually break. See tests/Package.Tests/Tests.fs. -->
+         the gate ~4s and buys it every rule that a PR can actually break. See tests/Package.Tests/Tests.fs.
+
+         #613 — and this line is now LOAD-BEARING for more than itself. Fifteen `*CoherenceTests.fs`
+         twins existed only to hoist rules out of this project back when it was excluded; #613 deleted
+         them because membership already puts those rules on the PR gate. Remove this entry and they do
+         not merely stop running here — they stop running on the PR at all, with no twin left to catch
+         it. `PackageTestsGateMembershipTests` asserts this membership so that removal reds instead of
+         passing quietly; if you are excluding Package.Tests deliberately, restore the twins in the same
+         PR. -->
     <Project Path="tests/Package.Tests/Package.Tests.fsproj" />
     <Project Path="tests/Rendering.Harness.Tests/Rendering.Harness.Tests.fsproj" />
     <Project Path="tests/Scene.Tests/Scene.Tests.fsproj" />
