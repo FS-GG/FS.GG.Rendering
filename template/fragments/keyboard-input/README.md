@@ -1,5 +1,15 @@
 # KeyboardInput Fragment
 
+> **Not shipped — this is repo-side fragment documentation.**
+> `.template.config/template.json` sources nothing from `template/fragments/keyboard-input/`, so no generated
+> product ever receives this file. The guidance a product actually gets is
+> [`template/product-skills/fs-gg-keyboard-input/SKILL.md`](../../../template/product-skills/fs-gg-keyboard-input/SKILL.md) — the capability's `supplied-by`.
+> Recorded as `materializes: none` on the `keyboard-input` row of `template/capabilities.yml`, and held there
+> by R-FRAG in `tests/Package.Tests/SkillPackageReachTests.fs` (#510).
+
+> This README is deliberately kept in **parity** with the product-skill above (feature 251, FR-004): the
+> capability-boundary note appears in both. Parity is the point — it is not a second source of truth.
+
 Adds keyboard input package references and reducer guidance.
 
 Use `FS.GG.UI.KeyboardInput` for product-owned keyboard runtime state,

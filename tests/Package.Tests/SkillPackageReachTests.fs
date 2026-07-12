@@ -205,6 +205,44 @@ let private capabilityRows =
         | _ -> None)
     |> List.ofSeq
 
+/// R-FRAG's two inputs.
+///
+/// EVERY capability row — including the `non-runtime` ones `capabilityRows` drops, because `samples` is a
+/// non-runtime row and is the ONE row whose fragment actually ships. A parser that skipped it would leave the
+/// only true `materializes:` in the catalog unasserted, which is the exact shape of the hole #510 reports.
+let private capabilityFragments =
+    let text = File.ReadAllText capabilitiesPath
+
+    Regex.Matches(text, @"^  - id: (?<id>\S+)(?<body>(?:\n(?!  - id: ).*)*)", RegexOptions.Multiline)
+    |> Seq.map (fun m ->
+        let body = m.Groups.["body"].Value
+
+        let field name =
+            let f = Regex.Match(body, $@"^\s+{name}:\s*(?<v>.+?)\s*$", RegexOptions.Multiline)
+            if f.Success then Some f.Groups.["v"].Value else None
+
+        let materializes =
+            field "materializes"
+            |> Option.map (fun v ->
+                if v.Trim() = "none" then
+                    Set.empty
+                else
+                    Regex.Match(v, @"\[(?<p>[^\]]*)\]").Groups.["p"].Value.Split(',')
+                    |> Seq.map (fun s -> s.Trim())
+                    |> Seq.filter (fun s -> s <> "")
+                    |> Set.ofSeq)
+
+        m.Groups.["id"].Value, field "templateFragment", materializes)
+    |> List.ofSeq
+
+/// What the scaffold REALLY copies: every `"source": "…"` in .template.config/template.json that lives under
+/// `template/fragments/`. This is the authority — template.json is the only thing `dotnet new` reads.
+let private templateJsonFragmentSources =
+    File.ReadAllText(repositoryPath ".template.config/template.json")
+    |> fun t -> Regex.Matches(t, "\"source\"\\s*:\\s*\"(?<s>template/fragments/[^\"]*)\"")
+    |> Seq.map (fun m -> m.Groups.["s"].Value)
+    |> Set.ofSeq
+
 /// The profiles a capability's package actually reaches: pinned AND referenced by a project the generated
 /// product compiles.
 ///
@@ -473,6 +511,64 @@ let skillPackageReachTests =
                           id
                           pkg
                           pkg
+          }
+
+          // R-FRAG — `templateFragment:` was read as "where this capability's scaffold content lives" while
+          // resolving to shipped content for exactly ONE row in eight (`samples`). The other seven name
+          // directories .template.config/template.json does not source, so nothing in them is ever copied into a
+          // generated product — and the READMEs in them read like shipped product guidance, which is what makes
+          // them a trap rather than merely dead (#510).
+          //
+          // The field is settled as a SOURCE pointer (see the capabilities.yml header): it says where the
+          // fragment's sources live in this repo, and never that they ship. `materializes:` carries the shipping
+          // fact per row, and this rule holds it EXACTLY to template.json — the same duplicate-then-assert
+          // discipline R-CAT applies to `profiles:`, and for the same reason. #483's lesson, restated by #510:
+          // fixing the values without adding the assertion buys correct rows and zero protection.
+          //
+          // Asserted in BOTH directions deliberately. A row over-claiming sends a reader looking for shipped
+          // content that does not exist; a fragment wired into template.json whose row still says `none` ships
+          // content the catalog denies — and that direction is the one no human notices, because the scaffold
+          // just quietly works.
+          test "every capability's materializes: is exactly what template.json sources from its fragment (#510)" {
+              Expect.isGreaterThan
+                  (List.length capabilityFragments)
+                  3
+                  $"{capabilitiesRel} has a parseable capability roster (if this fails the guard is vacuous)"
+
+              Expect.isNonEmpty
+                  templateJsonFragmentSources
+                  ".template.config/template.json sources at least one template/fragments/ path (if this fails the guard is vacuous — it would bless every row as `none`)"
+
+              for id, fragment, materializes in capabilityFragments do
+                  match fragment with
+                  | None ->
+                      failtestf
+                          "%s declares the `%s` capability with no `templateFragment:` line — R-FRAG has nothing to hold it to."
+                          capabilitiesRel
+                          id
+                  | Some fragment ->
+                      let dir = repositoryPath fragment
+
+                      Expect.isTrue
+                          (Directory.Exists dir)
+                          $"{capabilitiesRel} points the `{id}` capability's templateFragment at `{fragment}`, which does not exist. The pointer is the only thing telling a reader where the fragment's sources live."
+
+                      // Everything template.json actually takes from THIS fragment directory.
+                      let actual =
+                          templateJsonFragmentSources
+                          |> Set.filter (fun s -> s.StartsWith(fragment.TrimEnd('/') + "/"))
+
+                      match materializes with
+                      | None ->
+                          failtestf
+                              "%s declares the `%s` capability with no `materializes:` line, so nothing says whether its fragment ships. Declare the template.json sources it materializes, or `none` (#510)."
+                              capabilitiesRel
+                              id
+                      | Some declared ->
+                          Expect.equal
+                              declared
+                              actual
+                              $"{capabilitiesRel} says the `{id}` capability materializes {Set.toList declared}, but .template.config/template.json sources {Set.toList actual} from `{fragment}`. template.json is the only thing `dotnet new` reads, so it is the authority — a row that over-claims sends a reader hunting for scaffold content that never ships, and one that under-claims hides content a generated product really receives (#510)."
           }
 
           // R-REACH — the heart of #430. Pinning is not enough: the skill must not reach a profile the

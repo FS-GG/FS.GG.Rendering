@@ -7,6 +7,24 @@ catalogVersion: "2026-05-16"
 # app+game while FS.GG.UI.Controls reaches sample-pack too), and the manifest's `materializes-when` is the
 # authority for that. Asserted by R-CAT in tests/Package.Tests/SkillPackageReachTests.fs — issue #483, where six
 # of these seven rows had drifted unseen because nothing held them against anything.
+# `templateFragment:` on a capability row means: the directory in THIS repo that holds the capability's fragment
+# SOURCES. It is NOT a promise that any of it ships. What a scaffold actually materializes is decided by
+# `.template.config/template.json` and by nothing else — it sources a fragment's `src/`, or its `skill/`, or the
+# whole directory, and it sources NO fragment's README.md. So a fragment directory can be pure repo-side authoring
+# documentation, and seven of the eight below are exactly that.
+#
+# `materializes:` is that fact, made local: the `source:` paths template.json takes from this fragment, or `none`
+# for a docs-only one. It exists because `templateFragment:` alone read as a materialization pointer while
+# resolving to shipped content for one row in eight, and the only way to tell the rows apart was to diff the
+# catalog against template.json by hand (#510). Held EXACTLY to template.json by R-FRAG in
+# tests/Package.Tests/SkillPackageReachTests.fs — the same duplicate-then-assert discipline R-CAT applies to
+# `profiles:` — so a fragment wired in (or unwired) without updating its row is a RED, not a silent drift.
+#
+# `materializes: none` does not mean "unused". A docs-only fragment may still be live: `controls`' `skill/SKILL.md`
+# is the target of the fs-gg-generated-controls-guidance agent-skill wrapper, and `keyboard-input`'s README carries
+# the capability-boundary note that feature 251 (FR-004) keeps in parity with its product-skill. It means only that
+# the SCAFFOLD does not copy it into a generated product. The guidance a product actually receives lives in the
+# `template/product-skills/` skill the manifest names as its `supplied-by`.
 # validation paths are listed through tests, docs, evidence, and surfaceBaseline fields per capability.
 # implementationSkills inventory (feature 059 split the former
 # fs-gg-layout-evidence catch-all into two registered skills):
@@ -43,6 +61,7 @@ capabilities:
       - tests/Scene.Tests/Scene.Tests.fsproj
     skill: template/product-skills/fs-gg-scene/SKILL.md
     templateFragment: template/fragments/scene
+    materializes: none
     dependencies: []
     profiles: [app, headless-scene, governed, sample-pack, game]
     defaultApp: true
@@ -60,6 +79,7 @@ capabilities:
       - tests/SkiaViewer.Tests/SkiaViewer.Tests.fsproj
     skill: template/product-skills/fs-gg-skiaviewer/SKILL.md
     templateFragment: template/fragments/skiaviewer
+    materializes: none
     dependencies: [scene]
     profiles: [app, sample-pack, game]
     defaultApp: true
@@ -77,6 +97,7 @@ capabilities:
       - tests/Elmish.Tests/Elmish.Tests.fsproj
     skill: template/product-skills/fs-gg-elmish/SKILL.md
     templateFragment: template/fragments/elmish
+    materializes: none
     dependencies: [scene, skiaviewer]
     profiles: [app, sample-pack, game]
     defaultApp: true
@@ -94,6 +115,7 @@ capabilities:
       - tests/KeyboardInput.Tests/KeyboardInput.Tests.fsproj
     skill: template/product-skills/fs-gg-keyboard-input/SKILL.md
     templateFragment: template/fragments/keyboard-input
+    materializes: none
     dependencies: [scene]
     profiles: [app, sample-pack, game]
     defaultApp: true
@@ -114,6 +136,7 @@ capabilities:
       - tests/Layout.Tests/Layout.Tests.fsproj
     skill: src/Layout/skill/SKILL.md
     templateFragment: template/fragments/layout
+    materializes: none
     dependencies: [scene]
     profiles: [app, sample-pack, game]
     defaultApp: true
@@ -163,6 +186,7 @@ capabilities:
       - tests/Controls.Tests/Controls.Tests.fsproj
     skill: template/product-skills/fs-gg-ui-widgets/SKILL.md
     templateFragment: template/fragments/controls
+    materializes: none
     dependencies: [scene, layout, keyboard-input]
     profiles: [app, sample-pack, game]
     defaultApp: true
@@ -180,6 +204,7 @@ capabilities:
       - tests/Testing.Tests/Testing.Tests.fsproj
     skill: template/product-skills/fs-gg-testing/SKILL.md
     templateFragment: template/fragments/testing
+    materializes: none
     dependencies: [scene]
     profiles: [app, headless-scene, governed, sample-pack, game]
     defaultApp: false
@@ -197,6 +222,7 @@ capabilities:
       - tests/Smoke.Tests/Smoke.Tests.fsproj
     skill: template/fragments/samples/skill/SKILL.md
     templateFragment: template/fragments/samples
+    materializes: [template/fragments/samples/, template/fragments/samples/skill/]
     dependencies: [scene, skiaviewer, elmish]
     profiles: [sample-pack]
     defaultApp: false
