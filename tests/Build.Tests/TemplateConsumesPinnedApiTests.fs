@@ -482,18 +482,18 @@ let private probeTimeoutMs = 6 * 60 * 1000
 let private probePackagesDir =
     Path.Combine(Path.GetTempPath(), "fsgg-pinned-api-probe-packages")
 
-let private runProbeBuild () =
+/// Restore `packages` at their axis pins from nuget.org ALONE, compile a `Probe.fs` whose body is nothing
+/// but `nameof` lines, and hand back the compiler's verdict. Both probes in this file are this function:
+/// #504's (do the template's CALLS resolve against the pin?) and #611's (does a LEDGERED case really NOT?).
+///
+/// One body, because the guarantee that makes either probe mean anything is the `<clear />` + probe-local
+/// packages folder below, and a second copy of that setup is a second place for it to rot. A probe that
+/// silently resolved from the machine's global cache would answer a question nobody asked.
+let private runNameofProbe (packages: string list) (nameofLines: string list) =
     let workDir = Path.Combine(Path.GetTempPath(), "fsgg-pinned-api-probe-" + Guid.NewGuid().ToString("N"))
     Directory.CreateDirectory workDir |> ignore
 
     try
-        // The namespaces actually called, each one a package to restore at its axis pin.
-        let packages =
-            callSites
-            |> List.choose callNamespace
-            |> List.distinct
-            |> List.sort
-
         let references =
             packages
             |> List.map (fun id -> $"    <PackageReference Include=\"{id}\" Version=\"{pinFor id}\" />")
@@ -551,10 +551,10 @@ let private runProbeBuild () =
         for ns in packages do
             probe.AppendLine($"open {ns}") |> ignore
 
-        probe.AppendLine().AppendLine("let private entryPointsTheTemplateCalls : string list =").AppendLine("    [") |> ignore
+        probe.AppendLine().AppendLine("let private probed : string list =").AppendLine("    [") |> ignore
 
-        for call in callSites |> List.sortBy (fun c -> c.Module, c.Member) do
-            probe.AppendLine($"      nameof {call.Module}.{call.Member}") |> ignore
+        for line in nameofLines do
+            probe.AppendLine($"      nameof {line}") |> ignore
 
         probe.AppendLine("    ]") |> ignore
 
@@ -608,6 +608,19 @@ let private runProbeBuild () =
                   API.\n\n{lock output (fun () -> output.ToString())}"
     finally
         try Directory.Delete(workDir, true) with _ -> ()
+
+/// #504's probe: every entry point the TEMPLATE'S `Program.fs` calls, resolved against the pin.
+let private runProbeBuild () =
+    // The namespaces actually called, each one a package to restore at its axis pin.
+    let packages =
+        callSites |> List.choose callNamespace |> List.distinct |> List.sort
+
+    let lines =
+        callSites
+        |> List.sortBy (fun c -> c.Module, c.Member)
+        |> List.map (fun c -> $"{c.Module}.{c.Member}")
+
+    runNameofProbe packages lines
 
 // ---------------------------------------------------------------------------------------------
 // #589 — the same question, asked of the DOCS instead of Program.fs.
@@ -942,6 +955,128 @@ let private scaffoldSourceDocCommentSymbols =
                 |> Array.ofSeq))
     |> List.ofSeq
 
+// ---------------------------------------------------------------------------------------------
+// #611 — the pin-grounded rule judged VALS, not CASES.
+//
+// `callRegex` demands a LOWERCASE member (the F# convention for functions and values), and a DU case is
+// capitalised and hangs off a TYPE, not a module. So `ViewerEffect.Persist` — and every union case and
+// record field a shipped mirror declares — was invisible to the pin, whether the mirror taught it or
+// omitted it. That is not a defect in the regex; vals were the class it was built for. It is a hole in
+// the coverage, and it is not hypothetical: #535 added `ViewerEffect.Persist` to the shipped mirror
+// (M-MIR/TYPE compels it — a mirrored type must match src member-for-member), the published
+// FS.GG.UI.SkiaViewer 0.9.0 exports 15 `ViewerEffect` cases and `Persist` is not among them, and every
+// gate in this repo was green. A product author reading the shipped mirror is told about a case they
+// cannot construct.
+//
+// The `val` half of that same commit — `Viewer.runAppWithPersistence` — WAS caught, and is ledgered two
+// lines above this one. The case half sat unseen. Same doc, same release, same fix; one visible to the
+// oracle and one not.
+//
+// EXTRACTED FROM DECLARATIONS, NOT PROSE, and that is the whole reason this is cheap and safe. A `///`
+// comment naming `ViewerEffect.Persist` is ambiguous (is it a case? a module member? a sentence?), but
+// `| Persist of effects: PersistenceEffect list` under `type ViewerEffect =` is not ambiguous at all.
+// So this reads the mirror's own syntax and asks the pin about exactly what the mirror DECLARES.
+/// Which construct the mirror DECLARED. Kept because the compile-probe below can only address one of
+/// them: `nameof ViewerEffect.Persist` resolves a union case with no value and no instance, but a record
+/// field is an instance member and `nameof Attr.Name` does not compile even when the field exists. Probing
+/// a field would therefore report "unreachable" for a field that is perfectly reachable — confirming a
+/// false ledger entry, which is the one outcome a proof must never produce.
+type MemberKind =
+    | UnionCase
+    | RecordField
+
+type TypeMember =
+    { Doc: string
+      Line: int
+      Namespace: string
+      Type: string
+      Member: string
+      Kind: MemberKind }
+
+/// `| Case`, at the DU's indent, under a `type X =`. `of …` is dropped: the pin is asked about the case's
+/// NAME, which is what a reader writes.
+let private duCaseRegex = Regex(@"^\s*\|\s*(?<case>[A-Z]\w*)\b", RegexOptions.Compiled)
+
+/// `type X =` AND `and X =` — column 0 or nested; the arity mangle (``Foo`1``) never appears in an `.fsi`.
+///
+/// The `and` half is not a nicety. F# joins mutually recursive types with it and the mirrors are full of
+/// them (`type Control<'msg> = { … }` / `and Attr<'msg> = { … }` / `and AttrValue<'msg> = | TextValue …`).
+/// Reading only `type` hangs every `and`-joined type's members on the last `type` seen and manufactures
+/// members that exist nowhere — `Control.TextValue`, `SceneNode.Nodes`. That is a FALSE POSITIVE, and a
+/// false positive is the one failure this rule cannot survive: the first person it wrongly accuses will
+/// ledger it, and a ledgered lie is a rule that has been switched off.
+let private typeDeclRegex =
+    Regex(@"^(?<indent>\s*)(?:type|and)\s+(?<name>[A-Z]\w*)\b", RegexOptions.Compiled)
+
+/// A record field: `{ Field: T` or a continuation line `  Field: T }`. Deliberately requires the
+/// capital-initial + colon shape, which is what a record field IS — an inline `///` comment above it is
+/// skipped by the `///` guard, and a `val` line cannot match because `val` is lowercase.
+let private recordFieldRegex = Regex(@"^\s*[{]?\s*(?<field>[A-Z]\w*)\s*:", RegexOptions.Compiled)
+
+let private mirrorTypeMembers =
+    let acc = ResizeArray<TypeMember>()
+
+    for path in Directory.EnumerateFiles(mirrorRoot, "*.fsi", SearchOption.AllDirectories) do
+        let rel = Path.GetRelativePath(repoRoot, path).Replace('\\', '/')
+        let lines = File.ReadAllLines path
+
+        let ns =
+            lines
+            |> Array.tryPick (fun line ->
+                if line.StartsWith("namespace ", StringComparison.Ordinal) then
+                    Some(line.Substring(10).Trim())
+                else
+                    None)
+            |> Option.defaultValue ""
+
+        // The type a `| Case` / `Field:` line belongs to is simply the last `type X =` seen. A `val` or a
+        // `module` closes it: neither is a type body, and continuing to attribute lines to the last type
+        // across them is how a record field of one type gets hung on another.
+        let mutable current: string option = None
+
+        for i in 0 .. lines.Length - 1 do
+            let line = lines.[i]
+            let trimmed = line.TrimStart()
+
+            if trimmed.StartsWith("///", StringComparison.Ordinal) || trimmed = "" then
+                ()
+            elif typeDeclRegex.IsMatch line then
+                current <- Some(typeDeclRegex.Match(line).Groups.["name"].Value)
+            elif
+                trimmed.StartsWith("val ", StringComparison.Ordinal)
+                || trimmed.StartsWith("module ", StringComparison.Ordinal)
+                || trimmed.StartsWith("namespace", StringComparison.Ordinal)
+            then
+                current <- None
+            else
+                match current with
+                | None -> ()
+                | Some typeName ->
+                    let case = duCaseRegex.Match line
+                    let field = recordFieldRegex.Match line
+
+                    if case.Success then
+                        acc.Add
+                            { Doc = rel
+                              Line = i + 1
+                              Namespace = ns
+                              Type = typeName
+                              Member = case.Groups.["case"].Value
+                              Kind = UnionCase }
+                    elif field.Success then
+                        acc.Add
+                            { Doc = rel
+                              Line = i + 1
+                              Namespace = ns
+                              Type = typeName
+                              Member = field.Groups.["field"].Value
+                              Kind = RecordField }
+
+    List.ofSeq acc
+
+let private typeMemberKey (m: TypeMember) = $"{m.Doc}::{m.Type}.{m.Member}"
+
+
 /// Every shipped doc surface, reduced to the symbols this rule may judge — EVERY occurrence, not one per
 /// symbol. `docSymbols` below dedups for the verdict; this keeps the sites, because the verdict and the
 /// WORK are different questions.
@@ -1071,7 +1206,111 @@ let private readModuleSurface (dll: string) =
 /// if anything at all went wrong: an oracle that silently knows nothing would report every doc symbol
 /// as unresolved, and an oracle that silently knows nothing about ONE package would excuse every symbol
 /// in it. Both are the fails-open shape (FS-GG/.github#266) this file's header forbids.
-let private readPinnedSurface () : Result<Map<string, Set<string>>, string> =
+
+/// #611 — the PINNED package's TYPE surface: every union case and record field, keyed by type.
+///
+/// A DU's cases are not methods and are not on a module, so `readModuleSurface` cannot see them.
+///
+/// Read from the F# COMPILER'S OWN MARKING — `CompilationMappingAttribute`, whose first fixed argument is
+/// the `SourceConstructFlags` (`UnionCase = 8`, `Field = 4`) — and not from the shapes those constructs
+/// happen to take in IL. Every shape-based reading of this is WRONG, and each was tried:
+///
+///   * the nested `Tags` type: absent on a SINGLE-CASE union (`type CollectionEffect = | VisibleRangeChanged
+///     of VisibleRange` compiles to a class with no `Tags` at all), so the oracle would not know the one
+///     case it has and would accuse the mirror of inventing it — a false positive, and a false positive is
+///     how this rule gets ledgered into silence by the first person it wrongly accuses;
+///   * a `New`-prefix match: a genuine member `NewSession` would mint the phantom case `Session`, WIDENING
+///     the oracle — and a wider oracle excuses a real violation, the fail-open direction this file forbids;
+///   * every `get_`: `Tag` and `Item` are compiler-generated on any DU, and both would land in the oracle.
+///
+/// The attribute is authoritative, and it costs nothing: the compiler puts it there precisely so a reader
+/// can recover the F# construct from the IL. Nullary cases arrive as `get_Case`, the rest as `NewCase`.
+let private compilationMappingFlags (md: MetadataReader) (handle: CustomAttributeHandle) =
+    let ca = md.GetCustomAttribute handle
+
+    let name =
+        match ca.Constructor.Kind with
+        | HandleKind.MemberReference ->
+            let mr = md.GetMemberReference(MemberReferenceHandle.op_Explicit ca.Constructor)
+
+            match mr.Parent.Kind with
+            | HandleKind.TypeReference ->
+                md.GetString (md.GetTypeReference(TypeReferenceHandle.op_Explicit mr.Parent)).Name
+            | _ -> ""
+        | HandleKind.MethodDefinition ->
+            let m = md.GetMethodDefinition(MethodDefinitionHandle.op_Explicit ca.Constructor)
+            md.GetString (md.GetTypeDefinition(m.GetDeclaringType())).Name
+        | _ -> ""
+
+    if name <> "CompilationMappingAttribute" then
+        None
+    else
+        // Blob layout: `01 00` prolog, then the fixed args. The first is the SourceConstructFlags enum,
+        // an int32. A shorter blob is a constructor overload this reader does not model — skip it rather
+        // than guess, since a guess here silently changes what the oracle believes.
+        let bytes = md.GetBlobBytes ca.Value
+
+        if bytes.Length >= 6 then
+            Some(BitConverter.ToInt32(bytes, 2))
+        else
+            None
+
+[<Literal>]
+let private SourceConstructUnionCase = 8
+
+[<Literal>]
+let private SourceConstructField = 4
+
+let private readTypeSurface (dll: string) =
+    use stream = File.OpenRead dll
+    use pe = new PEReader(stream)
+    let md = pe.GetMetadataReader()
+
+    [ for handle in md.TypeDefinitions do
+        let td = md.GetTypeDefinition handle
+        let visibility = td.Attributes &&& TypeAttributes.VisibilityMask
+
+        let isPublic =
+            visibility = TypeAttributes.Public || visibility = TypeAttributes.NestedPublic
+
+        // An F# MODULE is abstract+sealed; a type is not. `readModuleSurface` owns the former, and the two
+        // maps stay apart so that a `type Scene` case can never excuse a `module Scene` member.
+        let isFSharpModule =
+            td.Attributes.HasFlag TypeAttributes.Abstract
+            && td.Attributes.HasFlag TypeAttributes.Sealed
+
+        if isPublic && not isFSharpModule then
+            let raw = md.GetString td.Name
+
+            // `Attr`1` -> `Attr`. An `.fsi` writes `Attr<'msg>`, and the mirror extractor reads `Attr`.
+            let name =
+                match raw.IndexOf '`' with
+                | -1 -> raw
+                | i -> raw.Substring(0, i)
+
+            for methodHandle in td.GetMethods() do
+                let m = md.GetMethodDefinition methodHandle
+                let memberName = md.GetString m.Name
+
+                let flags =
+                    m.GetCustomAttributes() |> Seq.tryPick (compilationMappingFlags md)
+
+                if flags = Some SourceConstructUnionCase then
+                    if memberName.StartsWith("New", StringComparison.Ordinal) then
+                        yield name, memberName.Substring 3
+                    elif memberName.StartsWith("get_", StringComparison.Ordinal) then
+                        yield name, memberName.Substring 4
+
+            for propertyHandle in td.GetProperties() do
+                let pd = md.GetPropertyDefinition propertyHandle
+
+                let flags =
+                    pd.GetCustomAttributes() |> Seq.tryPick (compilationMappingFlags md)
+
+                if flags = Some SourceConstructField || flags = Some SourceConstructUnionCase then
+                    yield name, md.GetString pd.Name ]
+
+let private readPinnedSurface () : Result<Map<string, Set<string>> * Map<string, Set<string>>, string> =
     let workDir = Path.Combine(Path.GetTempPath(), "fsgg-doc-pin-probe-" + Guid.NewGuid().ToString("N"))
     Directory.CreateDirectory workDir |> ignore
 
@@ -1152,6 +1391,7 @@ let private readPinnedSurface () : Result<Map<string, Set<string>>, string> =
                     // symbol that would have landed in it.
                     let missing = ResizeArray<string>()
                     let surface = Collections.Generic.Dictionary<string, Collections.Generic.HashSet<string>>()
+                    let types = Collections.Generic.Dictionary<string, Collections.Generic.HashSet<string>>()
 
                     for packageId in docPackages do
                         let dir =
@@ -1183,6 +1423,16 @@ let private readPinnedSurface () : Result<Map<string, Set<string>>, string> =
 
                                 surface.[moduleName].Add memberName |> ignore
 
+                            // #611 — the SAME assembly, read a second way. Modules and types are disjoint
+                            // in the metadata (abstract+sealed vs not), so these two maps cannot collide,
+                            // which is why they are kept apart rather than merged: a merged map would let a
+                            // `type Scene` case excuse a `module Scene` member, and vice versa.
+                            for (typeName, memberName) in readTypeSurface path do
+                                if not (types.ContainsKey typeName) then
+                                    types.[typeName] <- Collections.Generic.HashSet<string>()
+
+                                types.[typeName].Add memberName |> ignore
+
                     if missing.Count > 0 then
                         let names = String.Join(", ", missing)
 
@@ -1193,10 +1443,9 @@ let private readPinnedSurface () : Result<Map<string, Set<string>>, string> =
                         Error "the pinned packages exported ZERO F# modules — the metadata reader has stopped \
                                seeing the surface. That is a defect in this test, not an empty framework."
                     else
-                        surface
-                        |> Seq.map (fun kvp -> kvp.Key, Set.ofSeq kvp.Value)
-                        |> Map.ofSeq
-                        |> Ok
+                        let modules = surface |> Seq.map (fun kvp -> kvp.Key, Set.ofSeq kvp.Value) |> Map.ofSeq
+                        let typeMap = types |> Seq.map (fun kvp -> kvp.Key, Set.ofSeq kvp.Value) |> Map.ofSeq
+                        Ok(modules, typeMap)
     finally
         try Directory.Delete(workDir, true) with _ -> ()
 
@@ -1552,7 +1801,7 @@ let templateConsumesPinnedApiTests =
 
                 | Error why -> failtest why
 
-                | Ok pinned ->
+                | Ok(pinned, _pinnedTypes) ->
                     let undeclared =
                         docSymbols
                         |> List.filter (fun s -> not (resolvesInPin pinned s))
@@ -1560,6 +1809,7 @@ let templateConsumesPinnedApiTests =
                         |> List.map renderDocSymbol
 
                     let rendered = String.concat "; " undeclared
+                    let pin = readAxis uiAxis
 
                     Expect.isEmpty
                         undeclared
@@ -1578,6 +1828,209 @@ let templateConsumesPinnedApiTests =
                 skiptest
                     "FS_GG_SKIP_TEMPLATE_PINNED_API is set — the doc-vs-pin rule did NOT run."
 
+
+        // #611 — THE SAME QUESTION, ASKED OF CASES.
+        //
+        // The rule above judges `Module.member` and is blind to union cases and record fields by
+        // construction (`callRegex` demands a lowercase member; a case is capitalised and hangs off a TYPE).
+        // So a shipped mirror could declare a case the pinned package does not export, and every gate in
+        // this repo stayed green. That is not hypothetical: #535 added `ViewerEffect.Persist` to the shipped
+        // SkiaViewer mirror — M-MIR/TYPE COMPELS it, since a mirrored type must match src member-for-member —
+        // and published FS.GG.UI.SkiaViewer 0.9.0 exports 15 `ViewerEffect` cases, of which `Persist` is not
+        // one. The `val` half of that same commit (`Viewer.runAppWithPersistence`) WAS caught and is
+        // ledgered. The case half was not, because nothing could see it.
+        //
+        // This is #550's rule applied to types, and it is the half #611 calls the more valuable one: it
+        // would have caught `Persist` on the day #535 landed, without anybody reasoning about it.
+        //
+        // Judged from DECLARATIONS, not prose — `| Persist of effects: …` under `type ViewerEffect =` is
+        // unambiguous in a way a sentence never is.
+        testCase "every union case and record field a SHIPPED mirror declares exists in the PINNED package" <| fun _ ->
+            match Environment.GetEnvironmentVariable "FS_GG_SKIP_TEMPLATE_PINNED_API" with
+            | null | "" ->
+                match pinnedSurface.Value with
+                | Error why -> failtest why
+                | Ok(_, pinnedTypes) ->
+                    // The oracle must actually KNOW about types, or this rule excuses everything while
+                    // reporting green — the fails-open shape (#266) this file refuses.
+                    Expect.isNonEmpty
+                        (Map.toList pinnedTypes)
+                        "the pinned packages exported ZERO types with cases or fields — the TYPE oracle has \
+                         stopped seeing the surface. That is a defect in this test, not an empty framework."
+
+                    Expect.isNonEmpty
+                        mirrorTypeMembers
+                        "the shipped mirror declares union cases / record fields (if this is empty the \
+                         extractor has stopped reading them, and the rule below judges nothing)."
+
+                    let undeclared =
+                        mirrorTypeMembers
+                        |> List.filter (fun m ->
+                            match Map.tryFind m.Type pinnedTypes with
+                            | Some members -> not (members.Contains m.Member)
+                            // The pinned package has NO type of that name. A whole type a product cannot
+                            // reach is the rule at its sharpest, not an exemption — BUT the mirror also
+                            // declares product-facing types that are not framework at all, so only judge a
+                            // type the pin knows SOMETHING about. (A type absent entirely is #592's class,
+                            // and the val rule above already reports it.)
+                            | None -> false)
+                        |> List.filter (fun m -> not (docLedger.Contains(typeMemberKey m)))
+                        |> List.map (fun m -> $"{m.Type}.{m.Member} ({m.Doc}:{m.Line})")
+
+                    let rendered = String.concat "; " undeclared
+                    let pin = readAxis uiAxis
+
+                    Expect.isEmpty
+                        undeclared
+                        $"these union cases / record fields are DECLARED by a shipped api-surface mirror and \
+                          are exported by NO package a scaffolded product restores at $({uiAxis})={pin}. A \
+                          product author reading the mirror is told about a case they cannot construct — the \
+                          #550 class, one type-system level down, and invisible to every other gate here \
+                          because they all judge `Module.member` and a case is neither.\n\n\
+                          Fix the MIRROR to declare what the released package exports, or — if the member is \
+                          genuinely unreleased and the mirror must carry it anyway (M-MIR/TYPE compels a \
+                          mirrored type to match src member-for-member, so this WILL happen) — declare it in \
+                          {docLedgerRel}, whose anti-rot rules retire the entry the moment the release \
+                          lands.\n\n\
+                          Undeclared: {rendered}"
+
+            | _ -> skiptest "FS_GG_SKIP_TEMPLATE_PINNED_API is set — the case-vs-pin rule did NOT run."
+
+        // #611 — THE ORACLE, ANCHORED. The rules above are only as good as `readTypeSurface`, and every way
+        // it can be wrong is SILENT:
+        //
+        //   * blinded (it stops seeing cases) -> the case rule finds nothing and reports GREEN;
+        //   * widened (it invents members)    -> a real violation is excused and it reports GREEN.
+        //
+        // Both were live bugs in this file's first cut, and neither made a test red. So the oracle is
+        // pinned to facts about a package that is PUBLISHED AND IMMUTABLE — FS.GG.UI.SkiaViewer 0.9.0 —
+        // and a published (id, version) cannot change under us. If these stop holding, the reader broke.
+        testCase "the pinned-TYPE oracle reads a published DU the way F# actually emits it" <| fun _ ->
+            match Environment.GetEnvironmentVariable "FS_GG_SKIP_TEMPLATE_PINNED_API" with
+            | null | "" ->
+                match pinnedSurface.Value with
+                | Error why -> skiptest why
+                | Ok(_, pinnedTypes) ->
+                    match Map.tryFind "ViewerEffect" pinnedTypes with
+                    | None ->
+                        failtest
+                            "the oracle sees no `ViewerEffect` in the pinned FS.GG.UI.SkiaViewer at all. It \
+                             has gone BLIND, and a blind oracle passes every rule above by finding nothing."
+                    | Some cases ->
+                        // Multi-field case (emitted `NewOpenWindow`) and nullary case (emitted
+                        // `get_CloseWindow`): the two shapes a union case takes in IL, and the reader must
+                        // read both. Missing the nullary half would hide exactly the cases that look most
+                        // like ordinary properties.
+                        Expect.isTrue
+                            (cases.Contains "OpenWindow")
+                            "the oracle lost `ViewerEffect.OpenWindow` — a case with fields, emitted as \
+                             `NewOpenWindow`. The union-case reader is broken."
+
+                        Expect.isTrue
+                            (cases.Contains "CloseWindow")
+                            "the oracle lost `ViewerEffect.CloseWindow` — a NULLARY case, emitted as a \
+                             static property `get_CloseWindow` and not as a `New…` factory. Reading only \
+                             `New…` silently drops every nullary case."
+
+                        // The negative half, and the one no other test can reach. `Tag` and `Item` are
+                        // compiler-generated on EVERY union; if they appear, the reader is matching IL
+                        // SHAPE (a `get_` prefix) instead of the compiler's `CompilationMappingAttribute`,
+                        // and a widened oracle excuses real violations while every test stays green.
+                        Expect.isFalse
+                            (cases.Contains "Tag" || cases.Contains "Item")
+                            "the oracle invented `ViewerEffect.Tag` / `.Item` — compiler-generated members \
+                             that are not union cases. It is reading IL shape rather than the F# compiler's \
+                             own CompilationMappingAttribute, and a WIDER oracle EXCUSES a real violation."
+
+                        // And the subject of the ledger entry, asserted directly: the pin really does not
+                        // carry `Persist`. If a future 0.9.0 somehow did, the stale rule fires — but this
+                        // says out loud what the whole item rests on.
+                        Expect.isFalse
+                            (cases.Contains "Persist")
+                            "published FS.GG.UI.SkiaViewer 0.9.0 now exports `ViewerEffect.Persist` — which \
+                             it cannot, since a published version is immutable. The oracle is reading \
+                             something other than the pin (a locally-packed package leaking into the probe \
+                             folder is the classic cause), and the ledger entry it justifies is void."
+            | _ -> skiptest "FS_GG_SKIP_TEMPLATE_PINNED_API is set — the oracle anchor did NOT run."
+
+        // #611 — THE LEDGER'S CLAIM, PROVED BY THE COMPILER.
+        //
+        // Every rule above trusts ONE oracle: `readTypeSurface`, a metadata reader I wrote. When a ledger
+        // entry says "the pin does not carry this case", that reader is the only thing asserting it — and a
+        // reader that is WRONG in the narrow direction manufactures the very entry it then justifies. That
+        // is not hypothetical either: the first cut of this file read the nested `Tags` type, which a
+        // single-case union does not have, and it duly accused `CollectionEffect.VisibleRangeChanged` — a
+        // case published FS.GG.UI.Controls 0.9.0 exports perfectly well. Ledgering THAT would have written
+        // a lie into the file and switched the rule off for the type it lied about.
+        //
+        // So a ledgered case is checked against a SECOND, independent oracle: F# itself. `nameof
+        // ViewerEffect.Persist`, compiled against the restored pin, needs no value and no instance and is
+        // exactly the question — and if the case is really absent, the compiler says FS0039 and the build
+        // fails. A ledger entry that COMPILES is an entry with no subject, and the rule says so.
+        //
+        // Only union cases are probed. A record field is an instance member — `nameof Attr.Name` does not
+        // compile even when the field is there — so probing one would report a reachable field unreachable
+        // and CONFIRM a false entry, which is the single outcome a proof may not produce. Fields keep the
+        // metadata oracle alone, and this comment is the reason.
+        testCase "every LEDGERED union case really is absent from the pinned package (the compiler agrees)"
+        <| fun _ ->
+            let ledgered =
+                mirrorTypeMembers
+                |> List.filter (fun m -> m.Kind = UnionCase && docLedger.Contains(typeMemberKey m))
+                |> List.distinctBy (fun m -> m.Namespace, m.Type, m.Member)
+
+            match Environment.GetEnvironmentVariable "FS_GG_SKIP_TEMPLATE_PINNED_API", ledgered with
+            | (null | ""), [] -> skiptest "no union case is ledgered — nothing to disprove."
+            | (null | ""), entries ->
+                let packages = entries |> List.map (fun m -> m.Namespace) |> List.distinct |> List.sort
+                let lines = entries |> List.map (fun m -> $"{m.Type}.{m.Member}")
+                let exitCode, output = runNameofProbe packages lines
+                let uiPin = readAxis uiAxis
+                if exitCode = 0 then
+                    let rendered =
+                        entries |> List.map (fun m -> typeMemberKey m) |> String.concat "; "
+
+                    failtest
+                        $"these are declared in {docLedgerRel} as cases the pin does NOT carry — and they \
+                          COMPILE against it. The claim is false, so the exemption has no subject and is \
+                          silently excusing a case the rule would otherwise judge. Either the release landed \
+                          (delete the line — the stale rule will say so too) or the entry was never true.\n\n\
+                          Compiled fine: {rendered}"
+
+                elif failedOnlyOnUnpublishedUiPin output uiPin then
+                    // The release window: this commit bumped $(FsGgUiVersion) to a version nuget.org does
+                    // not carry yet, so NOTHING restores and the probe cannot speak. Same waiver, same
+                    // three conditions, as #543 applies to the probe above — and it fails CLOSED.
+                    skiptest
+                        $"release window: the pinned FS.GG.UI.* packages at {uiPin} are not published yet, \
+                          so the ledger's claim cannot be probed on this commit."
+                else
+                    // The build failed — but it must have failed for THE REASON CLAIMED, and not because
+                    // the probe was malformed. An FS0039 that never names the member would let any broken
+                    // probe "prove" any entry: the fails-open shape (#266) this whole file is written
+                    // against. So each entry must be named by an FS0039 of its own.
+                    let unresolved =
+                        output.Replace("\r\n", "\n").Split('\n')
+                        |> Array.filter (fun l -> l.Contains "FS0039")
+
+                    let unproven =
+                        entries
+                        |> List.filter (fun m ->
+                            unresolved |> Array.exists (fun l -> l.Contains m.Member) |> not)
+                        |> List.map typeMemberKey
+
+                    let rendered = String.concat "; " unproven
+
+                    Expect.isEmpty
+                        unproven
+                        $"the ledger probe failed to build, but NOT with an FS0039 naming these ledgered \
+                          cases — so their absence from the pin is UNPROVEN and the failure is something \
+                          else (a malformed probe, a feed error, a package that no longer restores). A probe \
+                          that fails for the wrong reason proves nothing, and must not be read as \
+                          proof.\n\nUnproven: {rendered}\n\nProbe output:\n{output}"
+
+            | _ -> skiptest "FS_GG_SKIP_TEMPLATE_PINNED_API is set — the ledger probe did NOT run."
+
         // Anti-rot 1 (stale). The release landed and the symbol is reachable now; the excuse has outlived
         // its reason. This is the rule that retires a ledger entry at exactly the right moment.
         testCase "no doc-ledger entry names a symbol the PINNED package now exports" <| fun _ ->
@@ -1585,12 +2038,27 @@ let templateConsumesPinnedApiTests =
             | (null | ""), false ->
                 match pinnedSurface.Value with
                 | Error _ -> skiptest "the pinned surface could not be read — the rule above reports why."
-                | Ok pinned ->
-                    let stale =
+                | Ok(pinned, pinnedTypes) ->
+                    let staleVals =
                         docSymbols
                         |> List.filter (fun s -> docLedger.Contains(docKey s) && resolvesInPin pinned s)
                         |> List.map docKey
 
+                    // #611 — and the same retirement for a ledgered CASE or FIELD. Without this, the type
+                    // half of the ledger is write-only: entries go in and nothing ever takes them out, so
+                    // `ViewerEffect.Persist` would keep excusing itself for as long as the file exists —
+                    // long after the release that makes it reachable. An exemption that cannot expire is
+                    // not an exemption, it is a hole.
+                    let staleTypes =
+                        mirrorTypeMembers
+                        |> List.filter (fun m ->
+                            docLedger.Contains(typeMemberKey m)
+                            && (match Map.tryFind m.Type pinnedTypes with
+                                | Some members -> members.Contains m.Member
+                                | None -> false))
+                        |> List.map typeMemberKey
+
+                    let stale = staleVals @ staleTypes
                     let rendered = String.concat "; " stale
 
                     Expect.isEmpty
@@ -1605,7 +2073,16 @@ let templateConsumesPinnedApiTests =
         // re-applies the spelling EARLY, the entry would wave the bug straight back through. The ledger
         // is not allowed to outlive its subjects.
         test "no doc-ledger entry names a doc site that no longer names it" {
-            let live = docSymbols |> List.map docKey |> Set.ofList
+            // #611 — BOTH kinds of subject, because the ledger now carries both. Leaving the type members
+            // out would not merely miss a phantom: `ViewerEffect.Persist` is a live doc site, so this rule
+            // would call the ONLY entry keeping the build green a phantom and demand its deletion — a gate
+            // that orders you to remove the exemption another gate requires. The two halves have to see the
+            // same world.
+            let live =
+                Set.union
+                    (docSymbols |> List.map docKey |> Set.ofList)
+                    (mirrorTypeMembers |> List.map typeMemberKey |> Set.ofList)
+
             let phantom = docLedger - live |> Set.toList
             let rendered = String.concat "; " phantom
 
