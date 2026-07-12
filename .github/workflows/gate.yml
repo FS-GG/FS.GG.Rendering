@@ -630,3 +630,38 @@ jobs:
           name: lifecycle-template-validation
           path: specs/204-template-lifecycle-symbol/readiness/lifecycle-template-validation.md
           if-no-files-found: warn
+
+  # ---------------------------------------------------------------------------------------------
+  # Lock-range coherence (FS-GG/.github#495, adopted per #521; ADR-0006, epic #266).
+  #
+  # THE BLIND SPOT. `dotnet restore --locked-mode` validates package entries — id, version,
+  # contentHash — and NEVER looks at the dependency ranges under a `"type": "Project"` entry. So a
+  # release bump that edits a `<Version>` and regenerates no lock leaves every sibling project
+  # reference recording the OLD version, and every gate here stays green over it, the cold locked
+  # restore included. That is not hypothetical: FS.GG.Game's `main` has carried a stale range since
+  # `release: v0.4.0`. This repo has the org's largest exposure — 196 ranges across 38 lock files.
+  #
+  # Harmless at runtime (project references resolve from the project graph, not the lock), which is
+  # exactly why it survives. The cost is a poisoned lock diff at the one moment the repo can least
+  # afford noise: the reviewer scrutinising a contentHash reads it mixed with release-bump residue.
+  #
+  # Static — committed files only. No restore, no SDK, no network, no feed, no NuGet auth.
+  # ---------------------------------------------------------------------------------------------
+  lock-ranges:
+    uses: FS-GG/.github/.github/workflows/lock-range-coherence.yml@main
+    with:
+      # NOT the default. The gate's default floor is 1, and FS-GG/.github#545 is open against exactly
+      # that: a range is only a SUBJECT if its dependency resolves to a package id this repo produces,
+      # and a range that stops resolving is silently skipped rather than failed. With the floor at 1,
+      # 195 of our 196 ranges could vanish — a renamed <PackageId>, a project moving under a
+      # Directory.Build.props the walker stops at — and the gate would still print
+      # "ok: all 1 project-reference range(s) ..." and go green. A check that inspects one subject and
+      # reports on 196 is the epic #266 defect living inside the guard built to catch it.
+      #
+      # So the floor is the REAL subject count, verified against this repo's main (196/196 green, 38
+      # lock files) before this was wired. A silent skip now fails the gate instead of shrinking it.
+      #
+      # It is a floor, not an equality: adding a project raises the count and stays green. A DROP is
+      # what must never be silent — so if a project is legitimately removed, lower this number in the
+      # same change, and let that be a decision somebody made rather than an omission nobody noticed.
+      min-ranges: 196
