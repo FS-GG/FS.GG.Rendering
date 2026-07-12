@@ -522,6 +522,29 @@ accumulating for as long as the bug existed: the shared checkout of `.github` wa
 stale `item/*` branches from merged, done-stamped items when this was written. Harmless individually,
 noise in every `git branch` you will ever run.
 
+**The claim is dropped by `done --flip`, and you no longer have to think about it**
+([#533](https://github.com/FS-GG/.github/issues/533)). It did not used to be. `done --flip` verified
+the merge, set `Status: Done`, rolled up the epic — and **never touched the claim marker**. `release`
+was the only path that dropped it, and `release` *rewrites* `Status`, so running it on an item you
+have just stamped `Done` clobbers the stamp you just earned. This section removed the worktree and
+never mentioned the claim; `release` appears only under *Abandoning an item*. **So on the success
+path there was no action, in the tool or in this recipe, that dropped the lock.**
+
+The marker stayed live for the rest of the lease (**120m**), and a live marker's `Paths:` keep
+**reserving its touch-set**. And it bites hardest exactly where the protocol is working: the items
+most likely to overlap a just-finished item are its own **follow-up findings** — the ones §4 tells
+you to file *because* you were standing in those files. So the recipe reliably produced an item its
+own author had locked out for two hours, and `take` reported a dead queue over it.
+
+**The claim's lifetime is the work's lifetime.** The work is done, so the claim is done.
+
+**And an expired lease is not proof that you stopped** ([#581](https://github.com/FS-GG/.github/issues/581)).
+If a long build outruns the lease, an **open PR on `item/<n>-*` is proof of life**: `batch` will not
+offer your item to anyone else, `reap` refuses to collect it, `who` shows `STALE (#433 OPEN)` rather
+than a bare `STALE`, and `heartbeat` will let you **renew your own lapsed lease** rather than making
+you re-`claim` and race a `take` that is already offering your work to a stranger. You still should
+heartbeat. You are no longer punished for the one case where you predictably won't.
+
 ## Abandoning an item
 
 Do not just walk away — the lease holds the item for two hours and blocks its touch-set.
