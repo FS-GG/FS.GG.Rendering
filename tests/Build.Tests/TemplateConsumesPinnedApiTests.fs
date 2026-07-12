@@ -1506,6 +1506,89 @@ let private docLedger =
 // Tests
 // ---------------------------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------------------------
+// #611 / #594 — THE PENDING-RELEASE LEDGER'S CLAIM, ASKED OF THE ACTUAL PACKAGE.
+//
+// #594 gave a mirrored TYPE a way to wait for its release: `tests/Package.Tests/
+// mirror-pending-release-ledger.txt` declares "src has this member, the pin does not, so the mirror omits
+// it", and M-MIR/TYPE honours the omission. Three rules keep it honest — P-PEND/SRC (src really declares
+// it), P-PEND/OMIT (the mirror really omits it), P-PEND/PIN (the entry's version stamp equals the pin).
+//
+// NOTHING ASKS THE PACKAGE. P-PEND/PIN is a string comparison: it proves the entry was WRITTEN against
+// this pin, not that this pin LACKS the member. Every P-PEND rule resolves against `src/`, which is where
+// the member always exists; the published package is never opened. So the ledger's load-bearing claim —
+// the one that buys the omission — is the only one taken on trust.
+//
+// This file already restores and reads that package, so asking costs nothing.
+// ---------------------------------------------------------------------------------------------------
+
+let private pendingLedgerRel = "tests/Package.Tests/mirror-pending-release-ledger.txt"
+let private pendingLedgerPath = repoPath pendingLedgerRel
+
+/// `SkiaViewer::ViewerEffect.Persist @ 0.9.0 #587`, and its generic form `Foo::Bar<1>.Baz @ …`. The arity
+/// is carried through into IL's spelling (``Bar`1``) so it keys the same map the mirror does.
+let private pendingEntryRegex =
+    Regex(
+        @"^(?<dir>[\w.]+)::(?<type>[A-Z]\w*)(?:<(?<arity>\d+)>)?\.(?<member>\w+)\s*@\s*(?<pin>[^\s#]+)",
+        RegexOptions.Compiled
+    )
+
+type PendingMember =
+    { Line: int
+      Dir: string
+      Namespace: string
+      Type: string
+      Member: string }
+
+/// The namespace a mirror DIRECTORY declares — which, per this file's header, IS its package id.
+let private namespaceOfMirrorDir (dir: string) =
+    let full = Path.Combine(mirrorRoot, dir)
+
+    if not (Directory.Exists full) then
+        None
+    else
+        Directory.EnumerateFiles(full, "*.fsi", SearchOption.AllDirectories)
+        |> Seq.collect File.ReadAllLines
+        |> Seq.tryPick (fun line ->
+            if line.StartsWith("namespace ", StringComparison.Ordinal) then
+                Some(line.Substring(10).Trim())
+            else
+                None)
+
+let private pendingMembers =
+    if not (File.Exists pendingLedgerPath) then
+        []
+    else
+        File.ReadAllLines pendingLedgerPath
+        |> Array.mapi (fun i line -> i + 1, line.Trim())
+        |> Array.filter (fun (_, line) ->
+            line.Length > 0 && not (line.StartsWith("#", StringComparison.Ordinal)))
+        |> Array.choose (fun (lineNo, line) ->
+            let m = pendingEntryRegex.Match line
+
+            if not m.Success then
+                None
+            else
+                let dir = m.Groups.["dir"].Value
+                let arity = m.Groups.["arity"].Value
+                let bare = m.Groups.["type"].Value
+
+                let typeName =
+                    if String.IsNullOrEmpty arity || arity = "0" then
+                        bare
+                    else
+                        $"{bare}`{arity}"
+
+                namespaceOfMirrorDir dir
+                |> Option.map (fun ns ->
+                    { Line = lineNo
+                      Dir = dir
+                      Namespace = ns
+                      Type = typeName
+                      Member = m.Groups.["member"].Value }))
+        |> List.ofArray
+
+
 [<Tests>]
 let templateConsumesPinnedApiTests =
     testList "Template consumes the pinned framework API (#504)" [
@@ -1969,83 +2052,115 @@ let templateConsumesPinnedApiTests =
                              folder is the classic cause), and the ledger entry it justifies is void."
             | _ -> skiptest "FS_GG_SKIP_TEMPLATE_PINNED_API is set — the oracle anchor did NOT run."
 
-        // #611 — THE LEDGER'S CLAIM, PROVED BY THE COMPILER.
+        // #611 / #594 — THE PENDING-RELEASE LEDGER'S CLAIM, PROVED. TWICE.
         //
-        // Every rule above trusts ONE oracle: `readTypeSurface`, a metadata reader I wrote. When a ledger
-        // entry says "the pin does not carry this case", that reader is the only thing asserting it — and a
-        // reader that is WRONG in the narrow direction manufactures the very entry it then justifies. That
-        // is not hypothetical either: the first cut of this file read the nested `Tags` type, which a
-        // single-case union does not have, and it duly accused `CollectionEffect.VisibleRangeChanged` — a
-        // case published FS.GG.UI.Controls 0.9.0 exports perfectly well. Ledgering THAT would have written
-        // a lie into the file and switched the rule off for the type it lied about.
+        // An entry in #594's ledger BUYS an omission from the shipped mirror: M-MIR/TYPE stops demanding
+        // the member, and the reader is never told the case exists. What it buys it with is the claim "the
+        // pinned package does not carry this member" — and P-PEND/PIN, the rule that supposedly guards
+        // that claim, only checks the entry's version STAMP equals the current pin. It never opens the
+        // package. If the claim is false, the ledger suppresses a member a product could have used, and
+        // every gate in the repo is green.
         //
-        // So a ledgered case is checked against a SECOND, independent oracle: F# itself. `nameof
-        // ViewerEffect.Persist`, compiled against the restored pin, needs no value and no instance and is
-        // exactly the question — and if the case is really absent, the compiler says FS0039 and the build
-        // fails. A ledger entry that COMPILES is an entry with no subject, and the rule says so.
+        // So it is asked of the package, and asked twice, because the two witnesses fail differently:
         //
-        // Only union cases are probed. A record field is an instance member — `nameof Attr.Name` does not
-        // compile even when the field is there — so probing one would report a reachable field unreachable
-        // and CONFIRM a false entry, which is the single outcome a proof may not produce. Fields keep the
-        // metadata oracle alone, and this comment is the reason.
-        testCase "every LEDGERED union case really is absent from the pinned package (the compiler agrees)"
+        //   * the METADATA oracle (`readTypeSurface`) — cheap, reads every entry, and is code I wrote;
+        //   * the F# COMPILER (`nameof Type.Case` against the restored pin) — the ground truth, and the
+        //     only witness that cannot share a bug with the oracle it is checking.
+        //
+        // Only arity-0 types are compile-probed: `nameof` on a generic type needs its type arguments, and
+        // a probe that fails for a reason other than the one claimed proves nothing. The metadata oracle
+        // judges every entry regardless, so a generic entry is checked, just not twice.
+        testCase "every PENDING-RELEASE entry really is absent from the pinned package (#594's claim)"
         <| fun _ ->
-            let ledgered =
-                mirrorTypeMembers
-                |> List.filter (fun m -> m.Kind = UnionCase && docLedger.Contains(typeMemberKey m))
-                |> List.distinctBy (fun m -> m.Namespace, m.Type, m.Member)
+            match Environment.GetEnvironmentVariable "FS_GG_SKIP_TEMPLATE_PINNED_API", pendingMembers with
+            | (null | ""), [] ->
+                // Empty is a legitimate state — every pending member has been released. But the FILE going
+                // missing is not: this rule would then check nothing and report green, and #594's ledger
+                // would have been deleted with nobody noticing. "Nothing to check" and "checked, and it's
+                // fine" must not share a verdict (#266).
+                Expect.isTrue
+                    (File.Exists pendingLedgerPath)
+                    $"{pendingLedgerRel} does not exist. #594's pending-release ledger is the file this \
+                      rule verifies, and without it the rule is a silent no-op — it would report green \
+                      forever while checking nothing."
 
-            match Environment.GetEnvironmentVariable "FS_GG_SKIP_TEMPLATE_PINNED_API", ledgered with
-            | (null | ""), [] -> skiptest "no union case is ledgered — nothing to disprove."
+                skiptest "#594's pending-release ledger is empty — every pending member has been released."
+
             | (null | ""), entries ->
-                let packages = entries |> List.map (fun m -> m.Namespace) |> List.distinct |> List.sort
-                let lines = entries |> List.map (fun m -> $"{m.Type}.{m.Member}")
-                let exitCode, output = runNameofProbe packages lines
-                let uiPin = readAxis uiAxis
-                if exitCode = 0 then
-                    let rendered =
-                        entries |> List.map (fun m -> typeMemberKey m) |> String.concat "; "
-
-                    failtest
-                        $"these are declared in {docLedgerRel} as cases the pin does NOT carry — and they \
-                          COMPILE against it. The claim is false, so the exemption has no subject and is \
-                          silently excusing a case the rule would otherwise judge. Either the release landed \
-                          (delete the line — the stale rule will say so too) or the entry was never true.\n\n\
-                          Compiled fine: {rendered}"
-
-                elif failedOnlyOnUnpublishedUiPin output uiPin then
-                    // The release window: this commit bumped $(FsGgUiVersion) to a version nuget.org does
-                    // not carry yet, so NOTHING restores and the probe cannot speak. Same waiver, same
-                    // three conditions, as #543 applies to the probe above — and it fails CLOSED.
-                    skiptest
-                        $"release window: the pinned FS.GG.UI.* packages at {uiPin} are not published yet, \
-                          so the ledger's claim cannot be probed on this commit."
-                else
-                    // The build failed — but it must have failed for THE REASON CLAIMED, and not because
-                    // the probe was malformed. An FS0039 that never names the member would let any broken
-                    // probe "prove" any entry: the fails-open shape (#266) this whole file is written
-                    // against. So each entry must be named by an FS0039 of its own.
-                    let unresolved =
-                        output.Replace("\r\n", "\n").Split('\n')
-                        |> Array.filter (fun l -> l.Contains "FS0039")
-
-                    let unproven =
+                match pinnedSurface.Value with
+                | Error why -> skiptest why
+                | Ok(_, pinnedTypes) ->
+                    // Witness 1: the metadata oracle, on every entry.
+                    let released =
                         entries
-                        |> List.filter (fun m ->
-                            unresolved |> Array.exists (fun l -> l.Contains m.Member) |> not)
-                        |> List.map typeMemberKey
+                        |> List.filter (fun e ->
+                            match Map.tryFind e.Type pinnedTypes with
+                            | Some members -> members.Contains e.Member
+                            | None -> false)
+                        |> List.map (fun e -> $"{e.Type}.{e.Member} ({pendingLedgerRel}:{e.Line})")
 
-                    let rendered = String.concat "; " unproven
+                    let renderedReleased = String.concat "; " released
 
                     Expect.isEmpty
-                        unproven
-                        $"the ledger probe failed to build, but NOT with an FS0039 naming these ledgered \
-                          cases — so their absence from the pin is UNPROVEN and the failure is something \
-                          else (a malformed probe, a feed error, a package that no longer restores). A probe \
-                          that fails for the wrong reason proves nothing, and must not be read as \
-                          proof.\n\nUnproven: {rendered}\n\nProbe output:\n{output}"
+                        released
+                        $"these are declared in {pendingLedgerRel} as members the pin does NOT carry — and \
+                          the pinned package EXPORTS them. The claim is false, so the entry is buying an \
+                          omission it has not paid for: the shipped mirror is HIDING a member a product on \
+                          the pin could use, and M-MIR/TYPE has been told not to mind. Either the release \
+                          landed (delete the entry and grow the mirror) or the entry was never \
+                          true.\n\nReleased: {renderedReleased}"
 
-            | _ -> skiptest "FS_GG_SKIP_TEMPLATE_PINNED_API is set — the ledger probe did NOT run."
+                    // Witness 2: the compiler. Ground truth, and it cannot share a bug with witness 1.
+                    let probeable =
+                        entries |> List.filter (fun e -> not (e.Type.Contains "`"))
+
+                    match probeable with
+                    | [] -> ()
+                    | probeable ->
+                        let packages = probeable |> List.map (fun e -> e.Namespace) |> List.distinct |> List.sort
+                        let lines = probeable |> List.map (fun e -> $"{e.Type}.{e.Member}")
+                        let exitCode, output = runNameofProbe packages lines
+                        let uiPin = readAxis uiAxis
+
+                        if exitCode = 0 then
+                            let rendered =
+                                probeable |> List.map (fun e -> $"{e.Type}.{e.Member}") |> String.concat "; "
+
+                            failtest
+                                $"the pending-release ledger says the pin does not carry these, and they \
+                                  COMPILE against it. The omission they buy from the shipped mirror is \
+                                  unpaid for.\n\nCompiled fine: {rendered}"
+
+                        elif failedOnlyOnUnpublishedUiPin output uiPin then
+                            skiptest
+                                $"release window: the pinned FS.GG.UI.* packages at {uiPin} are not \
+                                  published yet, so the claim cannot be probed on this commit."
+                        else
+                            // The build failed — but it must have failed for THE REASON CLAIMED. An FS0039
+                            // that never names the member would let ANY broken probe "prove" ANY entry,
+                            // which is the fails-open shape this whole file is written against.
+                            let unresolved =
+                                output.Replace("\r\n", "\n").Split('\n')
+                                |> Array.filter (fun l -> l.Contains "FS0039")
+
+                            let unproven =
+                                probeable
+                                |> List.filter (fun e ->
+                                    unresolved |> Array.exists (fun l -> l.Contains e.Member) |> not)
+                                |> List.map (fun e -> $"{e.Type}.{e.Member}")
+
+                            let renderedUnproven = String.concat "; " unproven
+
+                            Expect.isEmpty
+                                unproven
+                                $"the probe failed to build, but NOT with an FS0039 naming these pending \
+                                  members — so their absence from the pin is UNPROVEN, and the failure is \
+                                  something else (a malformed probe, a feed error, a package that no longer \
+                                  restores). A probe that fails for the wrong reason proves \
+                                  nothing.\n\nUnproven: {renderedUnproven}\n\nProbe \
+                                  output:\n{output}"
+
+            | _ -> skiptest "FS_GG_SKIP_TEMPLATE_PINNED_API is set — the pending-release claim was NOT probed."
 
         // Anti-rot 1 (stale). The release landed and the symbol is reachable now; the excuse has outlived
         // its reason. This is the rule that retires a ledger entry at exactly the right moment.

@@ -85,23 +85,3 @@ template/base/docs/api-surface/SkiaViewer/SkiaViewer.fsi::Viewer.runAppWithPersi
 # out from under a live claim.
 # ---------------------------------------------------------------------------------------------------
 template/base/docs/api-surface/Controls.Elmish/ControlsElmish.fsi::AdapterCmd.diagnostics
-
-# ---------------------------------------------------------------------------------------------------
-# `ViewerEffect.Persist` — FS.GG.Rendering#587 (the release)
-#
-# THE FIRST ENTRY THIS LEDGER COULD NOT SEE, AND THE REASON #611 EXISTS. It is the same commit, the same
-# release, and the same debt as `Viewer.runAppWithPersistence` above — #535 added both — but only the
-# `val` half was ever caught. The rule judged `Module.member` and demanded a LOWERCASE member, so a union
-# case, which is capitalised and hangs off a TYPE, was invisible to it. `Persist` sat in the shipped
-# mirror naming a case published FS.GG.UI.SkiaViewer 0.9.0 does not carry (it exports 15 `ViewerEffect`
-# cases; this is not one), and every gate in the repo was green.
-#
-# Two independent oracles now say so: the pinned assembly's own `CompilationMappingAttribute` metadata,
-# and F# itself — `nameof ViewerEffect.Persist`, compiled against the restored pin, answers "The type
-# 'ViewerEffect' does not define a field, constructor, or member named 'Persist'".
-#
-# It cannot be retired by editing the doc, for the same reason its `val` twin cannot: M-MIR/TYPE compels a
-# mirrored type to match src member-for-member, so the mirror MUST carry the case that src carries. Only
-# the release retires it — the stale rule will demand this line's deletion the day it publishes.
-# ---------------------------------------------------------------------------------------------------
-template/base/docs/api-surface/SkiaViewer/SkiaViewer.fsi::ViewerEffect.Persist
