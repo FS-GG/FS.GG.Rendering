@@ -127,8 +127,16 @@ calls**. If you want it called, you call it, and you route what it returns.
 constructs it (`Keyboard.update` never emits it), no `ViewerEffect` carries it, and no runner is
 listening for it. It used to lower to `DispatchHostCommand "capture-key:<key>"` — a string nothing
 consumed — so wiring a rebind button to it did nothing, silently. Issue 456 removed that decoy: it now
-lowers to a **diagnostic that says it is not interpreted**. Surface it with `AdapterCmd.diagnostics`
-(`AdapterCmd.productMessages` keeps only product messages and would drop it). Do not build a rebind on
+lowers to a **diagnostic that says it is not interpreted**. Surface it by picking the
+`ReportAdapterDiagnostic` effects out of the command — an `AdapterCommand<'msg>` **is** an
+`AdapterEffect<'msg> list`, so this is a `List.choose` and needs no helper:
+
+```fsharp
+let diagnosticsOf (command: AdapterCommand<'msg>) : AdapterDiagnostic list =
+    command |> List.choose (function ReportAdapterDiagnostic d -> Some d | _ -> None)
+```
+
+`AdapterCmd.productMessages` keeps only product messages and would drop it. Do not build a rebind on
 it; build it as below.
 
 ### Capturing a key for a rebind (the path that works)

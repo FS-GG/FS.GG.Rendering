@@ -746,8 +746,8 @@ let private isJudgedDocModule (qualifier: string) (moduleName: string) =
     isFrameworkCall qualifier moduleName && not (scaffoldModules.Contains moduleName)
 
 /// `Module.member` inside the ```fsharp fences of a product skill — the block a reader COPIES, which is
-/// what makes it the sharpest subject. Prose is deliberately not matched: naming an API in a sentence
-/// ("`interpret` is deprecated") is not teaching a reader to call it.
+/// what makes it the sharpest subject. The PROSE around it is judged too, by `skillProseSymbols` below
+/// (#597); this extractor stays fence-only so the two can be read, and reasoned about, separately.
 let private skillFenceSymbols =
     Directory.EnumerateFiles(productSkillsRoot, "*.md", SearchOption.AllDirectories)
     |> Seq.collect (fun path ->
@@ -1185,12 +1185,91 @@ let private mirrorTypeMembers =
 
 let private typeMemberKey (m: TypeMember) = $"{m.Doc}::{m.Type}.{m.Member}"
 
+/// `Module.member` in the PROSE of a shipped product skill — every line that is not inside a fence (#597).
+///
+/// THE LAST UNJUDGED SHIPPED DOC SURFACE, and the one aimed straight at the reader. #598 widened this rule
+/// to the mirror's `///` prose and #608 to the scaffold source's; the product SKILLS — the documents the
+/// scaffold hands an author as *the* way to use a capability — had only their ```fsharp fences read.
+///
+/// THE ARGUMENT THIS OVERTURNS was `skillFenceSymbols`' own: *"naming an API in a sentence (`interpret` is
+/// deprecated) is not teaching a reader to call it."* That is true of a MENTION and false of the corpus.
+/// These skills teach in prose and merely illustrate in fences — `fs-gg-keyboard-input` says **"Surface it
+/// with `AdapterCmd.diagnostics`"**, which is an imperative, and published FS.GG.UI.Controls.Elmish 0.9.0
+/// exports no such member. #592 saw it, could not act on it, and said so: *"which compounds the lie —
+/// though prose is not what #589's gate judges."* It is now.
+///
+/// And the distinction never protected anything, because the rule only fires on a symbol the PIN DOES NOT
+/// EXPORT. A skill that merely mentions a real symbol resolves and stays green; a skill that mentions an
+/// unbindable one is misleading a reader whether or not the sentence was an instruction — they cannot tell
+/// a mention from a recommendation, and #592 called that compounding the lie. Where naming an unpinned
+/// symbol is DELIBERATE — a warning that a spelling is not in the pin yet — the ledger is the honest
+/// remedy, and it already carries exactly that shape for `Viewer.runAppWithPersistence`.
+///
+/// FENCES vs PROSE, and why this is not simply "read the whole file". A fence is F# and gets
+/// `stripCommentsAndStrings`; prose is English and must not. Prose also needs #598's two guards, which a
+/// fence does not: a `/` immediately before the match (prose names PATHS constantly —
+/// `docs/api-surface/Canvas/Persistence.fsi` would otherwise yield the member `fsi` on the module
+/// `Persistence`), and the three F# SOURCE extensions. Not a blanket extension list: `md`/`txt`/`json` are
+/// legal F# identifiers, so blacklisting them fails OPEN the day someone exports one (#266).
+///
+/// A NON-fsharp FENCE IS NEITHER. `skillFenceSymbols` opens only on ```fsharp; this one must skip EVERY
+/// fence, or a ```console block's `dotnet build` becomes a call site. So it tracks any fence open/close,
+/// and reads only what falls outside.
+///
+/// FOUR OF THESE SKILLS ARE FROZEN MIRRORS THIS REPO MAY NOT EDIT, and a violation in one has a DIFFERENT
+/// remedy — read this before "fixing the doc" the failure tells you to fix. `fs-gg-persistence`,
+/// `fs-gg-game-core`, `fs-gg-audio` and `fs-gg-model-swap` are mirrors of FS.GG.Game's canonicals;
+/// `scripts/check-frozen-mirrors.fsx` (#541) REDS a Rendering PR that edits one, and its own comment records
+/// that three PRs already did so "correctly, and none of them was told it was a mirror". So this rule and
+/// that one can pull in opposite directions: this one says *fix the doc*, and #541 says *you do not own it*.
+///
+/// The LEDGER is the way out, and it is the honest one — it is already built for a violation "whose fix is
+/// somebody's named, filed work", which is exactly what a canonical in another repo is. Ledger the symbol
+/// against the OWNING repo's issue; do not edit the mirror, and do not narrow this rule to exclude the
+/// mirrors (that would blind it to four shipped skills a product actually receives, which is the fails-open
+/// shape (#266) this file refuses everywhere else). No mirrored skill violates today.
+let private skillProseSymbols =
+    Directory.EnumerateFiles(productSkillsRoot, "*.md", SearchOption.AllDirectories)
+    |> Seq.collect (fun path ->
+        let rel = Path.GetRelativePath(repoRoot, path).Replace('\\', '/')
+        let mutable inFence = false
+
+        File.ReadAllLines path
+        |> Array.mapi (fun i line -> i + 1, line)
+        |> Array.collect (fun (lineNo, raw) ->
+            let opener = raw.TrimStart()
+
+            if opener.StartsWith("```", StringComparison.Ordinal) then
+                // ANY fence, not just an fsharp one: inside a ```console or ```json block this rule has no
+                // subject, and outside every fence it has all of them.
+                inFence <- not inFence
+                [||]
+            elif inFence then
+                [||]
+            else
+                callRegex.Matches raw
+                |> Seq.filter (fun m ->
+                    let precededBySlash = m.Index > 0 && raw.[m.Index - 1] = '/'
+                    not precededBySlash && not (sourceFileExtensions.Contains m.Groups.[3].Value))
+                |> Seq.map (fun m ->
+                    m.Groups.[1].Value,
+                    { Doc = rel
+                      Line = lineNo
+                      Module = m.Groups.[2].Value
+                      Member = m.Groups.[3].Value })
+                |> Array.ofSeq))
+    |> List.ofSeq
 
 /// Every shipped doc surface, reduced to the symbols this rule may judge — EVERY occurrence, not one per
 /// symbol. `docSymbols` below dedups for the verdict; this keeps the sites, because the verdict and the
 /// WORK are different questions.
 let private judgedDocOccurrences =
-    List.concat [ skillFenceSymbols; mirrorValSymbols; mirrorDocCommentSymbols; scaffoldSourceDocCommentSymbols ]
+    List.concat
+        [ skillFenceSymbols
+          skillProseSymbols
+          mirrorValSymbols
+          mirrorDocCommentSymbols
+          scaffoldSourceDocCommentSymbols ]
     |> List.filter (fun (qualifier, s) -> isJudgedDocModule qualifier s.Module)
     |> List.map snd
 
@@ -1864,6 +1943,22 @@ let templateConsumesPinnedApiTests =
                   Zero means the fence extractor has stopped seeing the skills — a defect in this test, \
                   not a repo whose skills teach no API."
 
+            // #597's extractor, under the same guard as its siblings and for the same reason: it was ADDED
+            // because the rule read a product skill's FENCES and not the prose around them, so an
+            // implementation that matches nothing restores that blind spot while reporting green (#266).
+            //
+            // Anchored by NAME, not by count. `isNonEmpty` would be satisfied by any one skill, so an
+            // extractor that silently stopped skipping fences — reading only code, or only ```console
+            // blocks — could still pass a bare count. `Keyboard.update` is named in fs-gg-keyboard-input's
+            // PROSE, outside every fence, and it resolves; if it falls out, the prose reader has broken.
+            Expect.isTrue
+                (skillProseSymbols
+                 |> List.exists (fun (_, s) -> s.Module = "Keyboard" && s.Member = "update"))
+                $"`Keyboard.update` must be among the symbols extracted from the PROSE of the shipped product \
+                  skills ({List.length skillProseSymbols} found). It is named in a sentence of \
+                  fs-gg-keyboard-input, outside any fence — so if it falls out, the prose extractor has \
+                  stopped seeing the surface a product author actually reads (#597's blind spot, reopened)."
+
             Expect.isNonEmpty
                 mirrorValSymbols
                 "public `val`s were extracted from the shipped api-surface mirror."
@@ -1960,6 +2055,49 @@ let templateConsumesPinnedApiTests =
                  among the symbols this rule judges. If they fall out, the exemption has overreached again \
                  and the rule is checking less than it claims."
 
+            // #597's JUDGED half, and it needs its own anchor for exactly the reason the #608 one above
+            // does: being EXTRACTED is not being CHECKED. `Keyboard.update` is named in fs-gg-keyboard-input's
+            // PROSE, `Keyboard` is a mirror module and no fragment declares one, so it must survive
+            // `isJudgedDocModule`. If it stops, skill prose is being read and then discarded, and #597's
+            // blind spot is open again behind a green run.
+            Expect.isTrue
+                (judged.Contains "Keyboard.update")
+                "`Keyboard.update` must survive into the JUDGED set from a product skill's PROSE, not merely \
+                 be extracted from it. If it falls out, prose is being read and thrown away — the #597 blind \
+                 spot, reopened while every test stays green."
+
+            // #597's fence tracking FAILS OPEN, so the fences have to be proven balanced.
+            //
+            // `skillProseSymbols` decides prose-vs-code by toggling on every ``` line. An UNBALANCED fence
+            // — an opener whose closer was dropped, a stray ``` in a sentence — therefore leaves the reader
+            // stuck "inside code" for the WHOLE REST OF THE FILE, and every prose line below it is silently
+            // skipped. A skill could then name any unpinned symbol past that point and this rule would report
+            // green having read none of it: "nothing to check" and "checked, and it's fine" sharing an exit
+            // code, which is the shape (.github#266) this file refuses everywhere else.
+            //
+            // The anti-vacuity anchor above cannot catch it — it proves ONE symbol in ONE file survives, and
+            // says nothing about the other sixteen. An even fence count per file is what actually holds it.
+            let unbalanced =
+                Directory.EnumerateFiles(productSkillsRoot, "*.md", SearchOption.AllDirectories)
+                |> Seq.choose (fun path ->
+                    let fences =
+                        File.ReadAllLines path
+                        |> Array.filter (fun line -> line.TrimStart().StartsWith("```", StringComparison.Ordinal))
+                        |> Array.length
+
+                    if fences % 2 = 0 then
+                        None
+                    else
+                        Some $"{Path.GetRelativePath(repoRoot, path).Replace('\\', '/')} ({fences} fence lines)")
+                |> List.ofSeq
+
+            Expect.isEmpty
+                unbalanced
+                "every shipped product skill closes every ``` fence it opens. An ODD fence count leaves the \
+                 prose reader stuck inside a code block for the rest of the file, so every symbol below the \
+                 unclosed fence goes UNJUDGED and this rule reports green having read nothing — the fails-open \
+                 shape (.github#266). Fix the fence in the skill; do not relax this."
+
             // #598's path guard, held from BOTH sides.
             //
             // It must bite: no judged symbol may have an F# source extension as its member. `Scene`,
@@ -1992,6 +2130,91 @@ let templateConsumesPinnedApiTests =
         //
         // Deferred in the same window, on the same bounds, as the probe above: in the release window the
         // pinned packages do not exist, so the oracle cannot be built. SKIPPED, NOT PASSED.
+        // #597 — the `advance` trap, which is the reason this rule resolves QUALIFIED names and never bare
+        // ones. Asserted rather than assumed, because the trap is invisible until it fires and the failure
+        // is silent in both directions.
+        //
+        // `fs-gg-game-core` teaches `Loop.advance` — Game.Core, public, exported at the pin, correct
+        // guidance. The framework ALSO has `RetainedRender.advance`, an `AnimationClock` seam declared
+        // `module internal` and reachable only through `InternalsVisibleTo`. Same bare name, different
+        // module, OPPOSITE verdicts. A bare-name matcher conflates them and fails whichever way it guesses:
+        // red on `Loop.advance` (a correct doc reported as a defect, with no honest remedy), or green on a
+        // doc that genuinely taught the internal.
+        //
+        // Both halves are asserted. The first is the one #597's acceptance names; the second is the one that
+        // rots quietly, because a module that stops being judged stops being reported.
+        test "the rule resolves QUALIFIED names, so `Loop.advance` and `RetainedRender.advance` part company (#597)" {
+            let judged = docSymbols |> List.map (fun s -> $"{s.Module}.{s.Member}") |> Set.ofList
+
+            Expect.isTrue
+                (judged.Contains "Loop.advance")
+                "`Loop.advance` is taught by fs-gg-game-core, is public in FS.GG.Game.Core, and is exported at \
+                 the pin — so it must be JUDGED and must PASS. (That it passes is the rule above; that it is \
+                 judged at all is this assertion.) If it is missing, the extractor has stopped reading the \
+                 skill that teaches it, and the trap below is no longer being tested by anything."
+
+            let retained = judged |> Set.filter (fun s -> s.StartsWith("RetainedRender.", StringComparison.Ordinal))
+
+            Expect.isEmpty
+                retained
+                "`RetainedRender` is `module internal` and is NOT in the shipped mirror, so no symbol on it may \
+                 ever enter the judged set. If one does, the closed world has been widened to modules a product \
+                 cannot reach, and `RetainedRender.advance` will now be conflated with the `Loop.advance` that \
+                 fs-gg-game-core correctly teaches — the bare-name unsoundness this rule exists to avoid."
+        }
+
+        // #597 / #585 — FRAMEWORK skills are not judged, and that is a decision, not an omission.
+        //
+        // #585's second criterion read "framework skills teach APIs a product cannot reach, as if it could",
+        // and named three: `InteractionRepro` (InternalsVisibleTo), `RetainedRender.hitTestLayout` (`module
+        // internal`), `Viewer.traceStartCapture`/`traceDrainCapture`/`traceEmit` (`val internal`). All three
+        // are taught in `src/*/skill/SKILL.md`.
+        //
+        // ON THOSE THREE THERE IS NO DEFECT, and this test is where that verdict is written down.
+        // A FRAMEWORK skill is not shipped: it is not packed into the package and it is not in
+        // `template/product-skills/`, so no generated product ever receives one. Its audience is people
+        // working ON this framework, who reach internals through `InternalsVisibleTo` — which is precisely
+        // what `traceStartCapture` EXISTS for. So `src/Diagnostics/skill/SKILL.md` saying "a test or tool can
+        // `Viewer.traceStartCapture ()`" is TRUE FOR ITS READERS, and its doc comment ("internal — diagnostic
+        // seam, not a product contract") agrees with it rather than contradicting it.
+        //
+        // The audience is the whole distinction, and it is the thing to carry away: a doc is honest or
+        // dishonest RELATIVE TO WHO RECEIVES IT. Judging a framework skill against the product's pin would
+        // report a defect in a document no product will ever read, and would pressure someone to delete a
+        // true sentence from it. The rule that generalizes: judge a doc against the surface ITS READER has.
+        //
+        // The real gap #585 was pointing at is the one this rule now closes — nothing held a SHIPPED product
+        // skill to the symbols a product can actually call — and it is the opposite direction from the one
+        // the criterion described.
+        test "framework skills are not a judged doc surface, and no product skill is a framework skill (#585/#597)" {
+            let frameworkSkills =
+                Directory.EnumerateDirectories(repoPath "src")
+                |> Seq.map (fun d -> Path.Combine(d, "skill", "SKILL.md"))
+                |> Seq.filter File.Exists
+                |> List.ofSeq
+
+            Expect.isNonEmpty
+                frameworkSkills
+                "there are framework skills under src/*/skill/ — if there are none, this test's subject is gone \
+                 and the comment above it is stale."
+
+            // The rule's subject is `template/product-skills/**` and the shipped scaffold. Not one framework
+            // skill may leak into it: they are allowed to teach internals, so judging one would either report
+            // a false defect or, worse, force a true sentence out of a doc whose readers can call the symbol.
+            let judgedDocs = docSymbols |> List.map (fun s -> s.Doc) |> List.distinct
+
+            let leaked =
+                judgedDocs
+                |> List.filter (fun doc -> doc.StartsWith("src/", StringComparison.Ordinal) && doc.Contains "/skill/")
+
+            Expect.isEmpty
+                leaked
+                "no `src/*/skill/SKILL.md` may enter the judged set. A framework skill is NOT shipped (not \
+                 packed, not in template/product-skills/), its readers reach internals through \
+                 InternalsVisibleTo, and `Viewer.traceStartCapture` is exactly such a seam — so teaching it \
+                 there is correct. Judge a doc against the surface ITS READER has."
+        }
+
         testCase "every FS.GG.* symbol a shipped template doc names exists in the PINNED package" <| fun _ ->
             match Environment.GetEnvironmentVariable "FS_GG_SKIP_TEMPLATE_PINNED_API" with
             | null | "" ->
