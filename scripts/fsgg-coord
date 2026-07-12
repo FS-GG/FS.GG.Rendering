@@ -758,7 +758,7 @@ board_get()  { jq -r "$1" "$BOARD_FILE"; }   # read a jq expression from the cac
 field_id() {
   ensure_board >/dev/null
   local id; id="$(board_get ".fields[\"$1\"].id // empty")"
-  [ -n "$id" ] || die "no field named '$1' on board '$TITLE' (fields: $(board_get '.fields | keys | join(\", \")'))."
+  [ -n "$id" ] || die "no field named '$1' on board '$TITLE' (fields: $(board_get '.fields | keys | join(", ")'))."
   printf '%s\n' "$id"
 }
 
@@ -965,7 +965,7 @@ set_field() {
   local pid dtype fid item
   pid="$(board_get '.id')"
   dtype="$(board_get ".fields[\"$field\"].dataType // empty")"
-  [ -n "$dtype" ] || die "no field named '$field' on board '$TITLE' (fields: $(board_get '.fields | keys | join(\", \")'))."
+  [ -n "$dtype" ] || die "no field named '$field' on board '$TITLE' (fields: $(board_get '.fields | keys | join(", ")'))."
   fid="$(field_id "$field")"
 
   # Canonicalize BEFORE resolving the item: a rejected value must cost zero GraphQL.
@@ -1023,6 +1023,58 @@ defer_write() {  # <ref> <field> <value>
 }
 
 pending_count() { [ -s "$PENDING" ] && wc -l <"$PENDING" | tr -d ' ' || echo 0; }
+
+# ---- board_write: the ONE board write, and it QUEUES (#510) ---------------------------------------
+# EVERY board write goes through here. Nothing else may call `set_field` directly.
+#
+# The defect this closes: `claim` deferred its write. NOTHING ELSE DID — and yet `die_rate` told every
+# caller, in the same breath, "Board WRITES are queued: see `fsgg-coord flush`". So a `set-field` (or
+# a `done --flip`) that met an exhausted budget PRINTED THE PROMISE AND DROPPED THE WRITE; `flush`
+# then found an empty queue and reported success, CONFIRMING the lie. A finding filed mid-recipe
+# landed on the board with no Status, no Phase and no Repo Scope — and the worker who read the
+# message did the correct thing, trusted it, and carried on (#510; family: epic #416).
+#
+# So the promise in that message is now true of every board write, because there is only one.
+#
+# The one thing that is NOT queued is a write to something that is not on the board: that write can
+# never land (flush drops it too, permanently), so queueing it would be a second unkeepable promise —
+# which is the defect, not the cure. Say so, loudly, and return EX_OFFBOARD.
+#
+# Sets BOARD_WRITE_NOTE, a caller-printable phrase. Returns:
+#   0            written
+#   EX_OFFBOARD  permanent — not on the board. NOT queued.
+#   EX_RATE      QUEUED behind an exhausted budget.
+#   other        QUEUED behind a transient failure.
+# ONLY EX_RATE IS QUEUED, and that is the whole subtlety. A write can fail three ways and they are
+# three different facts — collapsing them is the defect this command exists to fix, one level down:
+#
+#   EX_RATE      TRANSIENT.  The budget will come back and the same write will then succeed. QUEUE it.
+#   EX_OFFBOARD  PERMANENT.  There is no board item to write to. A queued write here can NEVER land
+#                (flush drops it too), so queueing it is a second unkeepable promise.
+#   anything else  REFUSED.  `set_field` rejected the write — an unknown field, an unknown option, a
+#                `Blocked by` value that is not a ref (it canonicalises BEFORE spending any GraphQL,
+#                precisely so a bad value costs nothing). Queueing a REFUSED write would replay a
+#                write that can never succeed, forever, and swallow the refusal that says why.
+#                So: never queued, and `set_field`'s own message is carried out in BOARD_WRITE_ERR.
+BOARD_WRITE_NOTE=""
+BOARD_WRITE_ERR=""
+board_write() {  # <ref> <field> <value> [refresh]
+  local ref="$1" field="$2" value="$3" refresh="${4:-}" rc=0
+  # A SUBSHELL, not just a redirect: set_field's `die` is an `exit`. soft_run carries out the code the
+  # die actually chose (EX_RATE / EX_OFFBOARD / 1), however deeply nested it fired. Its stderr is
+  # CAPTURED, not discarded — a refusal that nobody can read is a refusal that did not happen.
+  BOARD_WRITE_ERR=""
+  BOARD_WRITE_ERR="$(soft_run set_field "$ref" "$field" "$value" "$refresh" 2>&1 1>/dev/null)" || rc=$?
+  case "$rc" in
+    0)              BOARD_WRITE_NOTE="board: ${value:-<cleared>}" ;;
+    "$EX_OFFBOARD") BOARD_WRITE_NOTE="note: not on board '$TITLE' — NOT queued (a queued write to a non-item can never land); add it, then rerun" ;;
+    "$EX_RATE")     defer_write "$ref" "$field" "$value"
+                    BOARD_WRITE_NOTE="board: DEFERRED — GraphQL budget exhausted, resets in $(rate_reset_in). The write is QUEUED; run 'fsgg-coord flush' (or any board write auto-flushes)." ;;
+    *)              BOARD_WRITE_NOTE="board: WRITE REFUSED (rc=$rc) — NOT queued; the value or the field was rejected, and replaying it would never succeed" ;;
+  esac
+  dbg "board_write $ref $field='$value' -> rc=$rc"
+  return "$rc"
+}
 
 # Replay the queue. Each entry is retried ONCE per flush: a success drops it, another rate-limit
 # stops the whole flush (the budget is gone; the rest would fail identically), and a PERMANENT
@@ -1943,8 +1995,12 @@ epic_rollup() {
     if [ "$p_status" = "Done" ]; then
       dbg "epic_rollup: $p_lbl already Done — walking up"
     else
-      set_field "$p_or#$p_num" Status Done >/dev/null
-      banner done "✓✓ FSGG-DONE   $p_lbl (epic)" "all $total children Done + closed  ·  board: Done"
+      # #510: a rolled-up epic whose board write the budget refused is QUEUED, and the banner says so
+      # rather than asserting a `board: Done` that never landed.
+      local erc=0
+      board_write "$p_or#$p_num" Status Done || erc=$?
+      banner done "✓✓ FSGG-DONE   $p_lbl (epic)" "all $total children Done + closed  ·  $BOARD_WRITE_NOTE"
+      [ "$erc" = 0 ] || break   # the climb rests on THIS epic being Done; if it is only queued, stop.
     fi
     cur="$p_or#$p_num"
   done
@@ -2091,8 +2147,19 @@ done_cmd() {
   if [ "$status" != "Done" ]; then
     if [ -n "$flip" ]; then
       dbg "done: PR #$prnum merged — flipping board Status -> Done"
-      set_field "$ref" Status Done >/dev/null
-      status="Done"
+      # The stamp attests the WORK; the board write is a separate fact. If the budget refused the
+      # write it is now QUEUED (#510) — so keep the stamp green (the work IS done and saying otherwise
+      # is how a red stamp becomes noise, #558) but say plainly that the board does not know yet, and
+      # exit EX_RATE so a worker loop backs off and flushes instead of believing the board.
+      local wrc=0
+      board_write "$ref" Status Done || wrc=$?
+      if [ "$wrc" = 0 ]; then
+        status="Done"
+      else
+        banner done "✓✓ FSGG-DONE   $item_lbl" \
+                    "merged PR #$prnum @ ${prsha:-?}${prday:+ ($prday)}  ·  $BOARD_WRITE_NOTE"
+        return "$wrc"
+      fi
     else
       banner fail "✗✗ FSGG-NOT-DONE   $item_lbl" \
                   "merged PR #$prnum @ ${prsha:-?}  ·  board: '${status:-unset}' != Done  ->  rerun with --flip"
@@ -2326,15 +2393,12 @@ claim_cmd() {
   # while a worker held the item and `next` hid it from everyone else (the CLAIM-STATUS-LAG drift
   # /check-board reconciles). The three outcomes are now three outcomes:
   local boardnote rc=0
-  soft_run set_field "$ref" Status "$CLAIM_STATUS" >/dev/null 2>&1 || rc=$?
-  case "$rc" in
-    0)                boardnote="board: $CLAIM_STATUS" ;;
-    "$EX_OFFBOARD")   boardnote="note: not on board '$TITLE' (the marker is the lock; add it to sequence it)" ;;
-    "$EX_RATE")       defer_write "$ref" Status "$CLAIM_STATUS"
-                      boardnote="board: DEFERRED — GraphQL budget exhausted, resets in $(rate_reset_in). The write is QUEUED (flushes on the next board write, or run 'fsgg-coord flush')" ;;
-    *)                defer_write "$ref" Status "$CLAIM_STATUS"
-                      boardnote="board: WRITE FAILED (rc=$rc) — queued; run 'fsgg-coord flush'" ;;
-  esac
+  board_write "$ref" Status "$CLAIM_STATUS" || rc=$?
+  boardnote="$BOARD_WRITE_NOTE"
+  # One claim-specific wording: off-board is not a failure HERE, because the marker is the lock and it
+  # is already held. Everywhere else off-board means the write is lost; here it means only that the
+  # item cannot be SEQUENCED until someone adds it.
+  [ "$rc" = "$EX_OFFBOARD" ] && boardnote="note: not on board '$TITLE' (the marker is the lock; add it to sequence it)"
   printf 'claimed %s by worker %s  ·  %s\n' "$R_REPO#$R_NUM" "$w" "$boardnote"
   # `origin/main` is not decoration. `git worktree add -b <new>` with no commit-ish branches from the
   # shared checkout's HEAD, and this protocol's premise is that N workers pass through that checkout —
@@ -2465,11 +2529,17 @@ release_cmd() {
   fi
 
   if [ -z "$boardnote" ]; then
-    # SOFT_DIE=1: the board write is best-effort (the lease is already dropped); its `die` must not
-    # escalate to the whole command under #344's fatal-die rule.
-    if ( SOFT_DIE=1; set_field "$ref" Status "$status" ) >/dev/null 2>&1; then
-      boardnote="board: $status${restored:+ (restored — the column this claim overwrote)}"
-    else boardnote="note: not on board '$TITLE'"; fi
+    # The board write is best-effort (the lease is already dropped) but it is NOT don't-care: this
+    # used to report "not on board" for EVERY failure, so an exhausted budget silently DROPPED the
+    # restore and left the item sitting in the column the claim overwrote, with no claim on it —
+    # #418's defect, still live in `release` (#510). board_write queues it instead.
+    local rrc=0
+    board_write "$ref" Status "$status" || rrc=$?
+    case "$rrc" in
+      0)           boardnote="board: $status${restored:+ (restored — the column this claim overwrote)}" ;;
+      "$EX_RATE")  boardnote="$BOARD_WRITE_NOTE" ;;
+      *)           boardnote="note: not on board '$TITLE'" ;;
+    esac
   fi
   printf 'released %s (worker %s)  ·  %s\n' "$R_REPO#$R_NUM" "$w" "$boardnote"
 }
@@ -3177,8 +3247,16 @@ reap_cmd() {
     local rnote ract rval
     IFS=$'\t' read -r ract rval < <(unclaim_status "$r#$num" "$(jq -r '.prev // ""' <<<"$now_state")")
     case "$ract" in
-      write) if ( SOFT_DIE=1; set_field "$r#$num" Status "$rval" ) >/dev/null 2>&1; then rnote="board: $rval"
-             else rnote="not on board (marker cleared; nothing to reset)"; fi ;;
+      # As in `release`: an exhausted budget is not "not on board" — that misdiagnosis is #418's, and
+      # it was still live here. Queue the reset in that case (#510); every other failure keeps the
+      # existing wording, which correctly claims no reset it did not perform.
+      write) wrc=0
+             board_write "$r#$num" Status "$rval" || wrc=$?
+             case "$wrc" in
+               0)           rnote="board: $rval" ;;
+               "$EX_RATE")  rnote="$BOARD_WRITE_NOTE" ;;
+               *)           rnote="not on board (marker cleared; nothing to reset)" ;;
+             esac ;;
       keep)  rnote="board: $rval (preserved)" ;;
       offboard)   rnote="not on board (marker cleared; nothing to reset)" ;;
       *)          rnote="board: Status unchanged — could not read it (marker cleared)" ;;
@@ -3997,7 +4075,18 @@ case "$cmd" in
   field-id)  [ $# -ge 1 ] || die "field-id: <Field> required.";  field_id "$1" ;;
   option-id) [ $# -ge 2 ] || die "option-id: <Field> <Option> required."; option_id "$1" "$2" ;;
   item-id)   [ $# -ge 1 ] || die "item-id: <issue> required.";  item_id "$1" "${2:-}" ;;
-  set-field) [ $# -ge 3 ] || die "set-field: <issue> <Field> <Value> required."; autoflush; set_field "$1" "$2" "$3" "${4:-}" ;;
+  # #510: this used to call set_field directly, so an exhausted budget printed die_rate's "Board
+  # WRITES are queued" and queued NOTHING. It goes through the one board write now, which really does.
+  set-field) [ $# -ge 3 ] || die "set-field: <issue> <Field> <Value> required."; autoflush
+             sf_rc=0; board_write "$1" "$2" "$3" "${4:-}" || sf_rc=$?
+             if [ "$sf_rc" != 0 ]; then
+               # set_field's OWN message first — it is the precise one ("'none' is not a ref", "no
+               # field named X"). Swallowing it and printing a generic note is how a refusal becomes
+               # a mystery.
+               [ -n "$BOARD_WRITE_ERR" ] && printf '%s\n' "$BOARD_WRITE_ERR" >&2
+               echo "fsgg-coord: $BOARD_WRITE_NOTE" >&2
+             fi
+             exit "$sf_rc" ;;
   flush)     flush_cmd "$@" ;;
   issues)    issues "$@" ;;
   ready)     ready "$@" ;;
