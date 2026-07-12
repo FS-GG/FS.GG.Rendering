@@ -45,6 +45,52 @@ control-bearing profiles (`app`, `sample-pack`, `game`) ship; a `headless-scene`
 or `governed` product has no controls to click, and this skill must not tell it to
 open a package it was never given.
 
+## Assert at the sink, not at the model
+
+The same shape one level out, and it is the only test that catches this class.
+
+An **effect seam** — `AudioCues.forTransition` is the one your product ships — turns
+a model transition into effects that go to a **sink** (the mixer, the file, the
+device). The model is the *input* to that decision, never the evidence that it was
+made. So a test that asserts on the model **cannot see whether the effect ever
+left the building**, and it passes just as happily when it did not.
+
+The bite (issue #458, and it shipped): `forTransition` is a function of a
+**transition**, and *loaded* state does not make one. Restore the player's saved
+volume in `initialModel` and the model is correct, the setting genuinely **is**
+loaded — and the mixer is never told. Nothing catches it. No type is wrong. A test
+that asserts on the model passes, because from inside the model a restored volume
+the mixer never heard is **indistinguishable** from one that was applied. It
+surfaces to a player as *"turn the music down, restart, and get full-volume music
+from a settings screen that correctly reports it as quiet."*
+
+The scaffold closes the hole with a `Started` message the host dispatches as
+`AudioCues.forTransition Started m m`, so the initial model still crosses the seam.
+Your test's job is to prove the batch **arrived**:
+
+```fsharp
+// Assert on what was REQUESTED — no window, no device, no GL.
+GeneratedAppHost.dispatchKey host keyEvent model
+|> snd
+|> GeneratedAppHost.audioRequests   // ViewerEffect list -> AudioEffect list, in dispatch order
+|> Audio.interpret                  // AudioEvidence
+```
+
+Two rules that follow, and they generalise past audio:
+
+- **Assert at the sink.** `audioRequests` flattens a frame's batches, so the
+  question "did this interaction ask for a sound?" is answerable purely, headlessly
+  and deterministically. Ask *that*, not "is the model's `Volume` field 0.3".
+- **Cover the state you LOAD, not just the state you transition into.** Every seam
+  of this shape has an initial-state blind spot, because initialisation is not a
+  transition. Save/load is the worst case — loaded state is the entire point — so a
+  product with persistence should have a test that boots from a restored model and
+  asserts the sink heard about it.
+
+If you write your own cue seam by analogy (a `SaveCues.forTransition`, say), you
+inherit this blind spot along with the pattern. Give it a `Started` too, and test it
+here.
+
 ## Public Contract
 
 The signatures you consume are bundled with this product at
