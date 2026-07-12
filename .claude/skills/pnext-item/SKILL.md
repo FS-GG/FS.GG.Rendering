@@ -82,9 +82,16 @@ fan-out that scales and one that takes the board down with it:
 - **Read issues over REST, not GraphQL.** `fsgg-coord issues <repo>` is free; `gh issue list` /
   `gh issue view` cost 2 points each, and `gh issue edit` costs 4. When GraphQL is gone, REST is still
   up — `gh api repos/…` will still open your PR and post your comments.
-- **A rate-limited board write is DEFERRED, not lost.** `claim` says so, queues it, and `fsgg-coord
-  flush` (or the next board write) replays it. Do not "fix" the board by hand; you will just duplicate
-  the write.
+- **A rate-limited board write is DEFERRED, not lost.** *Every* board write — `set-field`, `claim`,
+  `done --flip`, `release`, `reap` — says so, queues it, and `fsgg-coord flush` (or the next board
+  write) replays it. Do not "fix" the board by hand; you will just duplicate the write.
+  Until `.github#510` this was true of `claim` **only**, while the exhaustion message promised it to
+  everyone — so a `set-field` on an exhausted budget printed "Board WRITES are queued" and dropped
+  the write, and `flush` then reported "nothing pending" and confirmed the lie. If you are running an
+  older kit, check `fsgg-coord flush --dry-run` after any board write you did not see land.
+- **A REFUSED write is not queued, and that is deliberate.** An unknown field, an unknown option, a
+  `Blocked by` that is not a ref — the tool rejects these *before* spending any GraphQL, and replaying
+  them could never succeed. You get the refusal and a non-zero exit, not a queue entry.
 
 **If `take` finds nothing, that is a finding, not an empty queue.** Diagnose before you idle:
 
