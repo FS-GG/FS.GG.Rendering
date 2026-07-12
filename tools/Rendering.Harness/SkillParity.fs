@@ -1234,9 +1234,30 @@ module SkillParity =
                             $"Add `{root}/skills/{alias}/SKILL.md` (or `{root}/skills/{id}/SKILL.md`) routing to the canonical body, or drop the skill's `scope: product` in the manifest."
                           ExceptionId = None }))
 
-    /// The author whose skills cite THIS repo. `metadata.source` means two unrelated things depending on who
-    /// wrote the skill, and only one of them is a path this repo can resolve — see `metadataSourceFindings`.
-    let private authoredHere = "fs.gg"
+    /// The ONLY authors whose `metadata.source` is upstream provenance rather than a citation of this repo.
+    ///
+    /// A CLOSED ALLOW-LIST, and deliberately the inverse of the obvious design. Keying the rule on "is the author
+    /// FS.GG?" and exempting everyone else looks equivalent and is not: it fails OPEN. This repo's own skills are
+    /// authored under more than one name — `FS.GG` and `fs-gg-ui` — and #466's actual file
+    /// (template/feedback/skill/SKILL.md) is an `fs-gg-ui` one, so an FS.GG-only rule would have exempted the very
+    /// skill this guard exists to catch, and reported green while doing it.
+    ///
+    /// Listing the VENDORED authors instead makes the default enforcement: a new author name, or a typo in an old
+    /// one, is CHECKED rather than silently excused. That is the same argument this file already makes for a
+    /// missing `author:` below — an exemption must be entered deliberately, never by omission or by accident.
+    let private vendoredAuthors = set [ "github-spec-kit" ]
+
+    /// Does `resolved` actually live inside this repository?
+    ///
+    /// `absolutePath` honours a rooted path and resolves `..`, so without this a `source:` of `/etc/passwd` — or
+    /// `../<some-other-checkout>/specs/…` — resolves to something that EXISTS and the citation passes. That is
+    /// #466's shape exactly: a pointer carried in from a different repo that happens to resolve on the author's
+    /// disk. The repo root itself is not "inside" it: a `source:` of `.` or `..` cites nothing.
+    let private withinRepository (root: string) (resolved: string) =
+        let root = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar)
+        let resolved = Path.GetFullPath resolved
+
+        resolved.StartsWith(root + string Path.DirectorySeparatorChar, StringComparison.Ordinal)
 
     /// #529 (from #466) — a skill that defers its authority to a document nobody can open has no authority.
     ///
@@ -1246,16 +1267,17 @@ module SkillParity =
     /// it resolves to something plausible and wrong. Nothing checked the citation, so it stayed wrong for as long
     /// as nobody tried to follow it. This is the check.
     ///
-    /// SCOPED TO SKILLS THIS REPO AUTHORS, and that scoping is the whole design problem. Thirty vendored spec-kit
-    /// skills also declare `metadata.source`, but theirs is UPSTREAM PROVENANCE — a path inside the github/spec-kit
-    /// repo (`templates/commands/analyze.md`), or an `<extension>:` scheme — which cannot resolve here by
-    /// construction. Failing the gate on those would be a red nobody can clear: they are synced from upstream, so
-    /// an edit here is reverted by the next sync. That is the same reason a generated artifact is never reserved
+    /// EXEMPTION IS THE HARD PART, and it is inverted on purpose — see `vendoredAuthors`. Thirty vendored spec-kit
+    /// skills declare `metadata.source` as UPSTREAM PROVENANCE — a path inside the github/spec-kit repo
+    /// (`templates/commands/analyze.md`), or an `<extension>:` scheme — which cannot resolve here by construction.
+    /// Failing the gate on those would be a red nobody can clear: they are synced from upstream, so an edit here is
+    /// reverted by the next sync. That is the same reason a generated artifact is never reserved
     /// (FS-GG/.github#309) — a gate that fires on content you do not own is a gate that gets switched off.
     ///
-    /// So the exemption is keyed on `metadata.author`, and it must be ENTERED BY DECLARING one, never by omitting
-    /// one. An unattributed `source:` is its own finding, at the same severity: otherwise the cheapest way to
-    /// silence this rule would be to delete a line, which is precisely the silent-drift shape it exists to stop.
+    /// So exactly two things earn an exemption, and both must be DECLARED:
+    ///   * a `metadata.author` on the vendored allow-list, or
+    ///   * nothing else. A missing `author:` is a finding in its own right, because otherwise the cheapest way to
+    ///     silence this rule is to delete a line — which is precisely the silent drift it exists to stop.
     let private metadataSourceFindings (root: string) (entries: SkillEntry list) =
         entries
         |> List.choose (fun entry ->
@@ -1265,48 +1287,55 @@ module SkillParity =
                 |> Option.map (fun value -> value.Trim())
                 |> Option.filter (fun value -> value <> "")
 
+            // Two entries can share a SurfaceId AND a SkillName (the spec-kit surface concatenates the .agents and
+            // .claude trees), and `classifyFindings` dedupes by FindingId — so without the path, two broken files
+            // collapse into one finding and the fixer only ever sees one of them. `CanonicalDrift` disambiguates
+            // the same way, for the same reason.
+            let identity =
+                findingId UnresolvedMetadataSource entry.SurfaceId entry.SkillName
+                + ":"
+                + entry.Path.Replace("/", "-")
+
+            let finding message remediation =
+                Some
+                    { FindingId = identity
+                      SkillName = entry.SkillName
+                      SurfaceId = entry.SurfaceId
+                      Category = UnresolvedMetadataSource
+                      Severity = High
+                      CanonicalPath = Some entry.Path
+                      WrapperPath = None
+                      Symbol = None
+                      Message = message
+                      Remediation = remediation
+                      ExceptionId = None }
+
             match declared "source" with
             | None -> None
             | Some source ->
                 match declared "author" with
                 | None ->
-                    Some
-                        { FindingId = findingId UnresolvedMetadataSource entry.SurfaceId entry.SkillName
-                          SkillName = entry.SkillName
-                          SurfaceId = entry.SurfaceId
-                          Category = UnresolvedMetadataSource
-                          Severity = High
-                          CanonicalPath = Some entry.Path
-                          WrapperPath = None
-                          Symbol = None
-                          Message =
-                            $"Skill declares `metadata.source: {source}` but no `metadata.author`, so there is no way to tell whether that path is a citation of this repo (which must resolve) or upstream provenance (which cannot)."
-                          Remediation =
-                            "Declare `metadata.author`. Use `FS.GG` for a skill authored here — its `source` is then required to resolve — or the upstream owner's name for a vendored skill."
-                          ExceptionId = None }
-                | Some author when normalizeText author <> authoredHere ->
+                    finding
+                        $"`{entry.Path}` declares `metadata.source: {source}` but no `metadata.author`, so nothing says whether that path is a citation of THIS repo (which must resolve) or upstream provenance (which cannot)."
+                        "Declare `metadata.author`. A skill authored here is then held to a `source` that resolves; only the vendored authors are exempt, and the exemption must be claimed, not inherited by leaving the field out."
+                | Some author when vendoredAuthors.Contains(normalizeText author) ->
                     // Vendored. `source` is provenance in the upstream repo, not a path in this one.
                     None
                 | Some _ ->
                     let resolved = absolutePath root source
 
-                    if File.Exists resolved || Directory.Exists resolved then
+                    let exists = File.Exists resolved || Directory.Exists resolved
+
+                    if exists && withinRepository root resolved then
                         None
+                    elif exists then
+                        finding
+                            $"`{entry.Path}` declares `metadata.source: {source}`, which resolves OUTSIDE this repository (to `{resolved}`). It exists on this machine and nowhere else — which is exactly how #466's pointer survived: it was carried in from another repo and read as though it had been checked."
+                            $"Point `metadata.source` at a path inside this repository, or remove it. `{source}` cites a document no other checkout of this repo can open."
                     else
-                        Some
-                            { FindingId = findingId UnresolvedMetadataSource entry.SurfaceId entry.SkillName
-                              SkillName = entry.SkillName
-                              SurfaceId = entry.SurfaceId
-                              Category = UnresolvedMetadataSource
-                              Severity = High
-                              CanonicalPath = Some entry.Path
-                              WrapperPath = None
-                              Symbol = None
-                              Message =
-                                $"Skill declares `metadata.source: {source}`, which does not resolve to any file or directory in this repository. The skill defers its authority to a document nobody can open, and any FR-nnn it cites now hangs on a number that may resolve to an unrelated feature (#466)."
-                              Remediation =
-                                $"Point `metadata.source` at the path that actually backs this skill, or remove it. Do not leave it naming `{source}` — a citation that cannot be followed is worse than none, because it reads as though it were checked."
-                              ExceptionId = None })
+                        finding
+                            $"`{entry.Path}` declares `metadata.source: {source}`, which does not resolve to any file or directory in this repository. The skill defers its authority to a document nobody can open, and any FR-nnn it cites now hangs on a number that may resolve to an unrelated feature (#466)."
+                            $"Point `metadata.source` at the path that actually backs this skill, or remove it. Do not leave it naming `{source}` — a citation that cannot be followed is worse than none, because it reads as though it were checked.")
 
     let private classifyFindings request entries symbols artifacts =
         wrapperFindings entries
