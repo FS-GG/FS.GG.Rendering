@@ -730,6 +730,26 @@ let private declaredFrameworkSkills () =
         |> List.map fst
         |> Set.ofList)
 
+/// The emitted skills whose gate carries a `lifecycle == "spec-kit"` conjunct: they reach the spec-kit
+/// lane and no other.
+///
+/// #549 — this exists because the lane expectation used to spell it `Set.remove "fs-gg-samples"`, inline.
+/// That was a FIFTH hand-written statement of the roster, on the lifecycle axis, reconciled against
+/// nothing — the same shape as the fourth one this item is about, hiding one line below it. It survived
+/// because the "no spec-kit clause on a framework skill" rule in `verifyGatedSources` covers only the 18
+/// `template/product-skills/` rows, and `fs-gg-samples` sources from `template/fragments/samples/skill/`,
+/// outside that prefix. So a NEW fragment-sourced, lifecycle-gated skill would be expected on the sdd and
+/// none lanes, where it never emits — #436's failure again, through the seam this guard was written to
+/// close. Derived, so there is nothing left to forget.
+let private specKitOnlyFrameworkSkills () =
+    use doc = templateDoc ()
+
+    sourceRows (doc.RootElement.GetProperty "sources")
+    |> List.choose (fun row -> emittedSkillId row.Target |> Option.map (fun id -> id, row.Condition))
+    |> List.filter (fun (id, condition) -> id <> "fs-gg-project" && condition.Contains SPEC_KIT_COND)
+    |> List.map fst
+    |> Set.ofList
+
 /// #549 — hold the hand-maintained roster to the one template.json declares.
 ///
 /// The roster of "which fs-gg-* skills a profile gets" is stated FOUR times across the repo, in four
@@ -773,15 +793,20 @@ let private verifyFrameworkSkillRoster () =
         |> fun arr -> [ for c in arr.EnumerateArray() -> c.GetProperty("choice").GetString() ]
         |> Set.ofList
 
-    let unvalidated = Set.difference offered (Set.ofList profiles)
+    // SUBSET, not equality — the difference matters and it is not pedantry. Equality would assert that
+    // `game` must stay unvalidated FOREVER: the moment somebody closes #469 the way this very message
+    // tells them to (add it to `profiles`), `unvalidated` empties, and the gate reds ON THE FIX. A guard
+    // whose own prescribed remedy trips it is a booby-trap, and #469 is the likeliest next edit to this
+    // file. The intent was only ever "no NEW hole".
+    let newHoles = Set.difference (Set.difference offered (Set.ofList profiles)) (Set.ofList [ "game" ])
 
     assertTrue
-        (unvalidated = Set.ofList [ "game" ])
+        (Set.isEmpty newHoles)
         (sprintf
-            "template.json offers profiles %s and this lane validates %s, leaving %s audited by nothing. `game` is the known, tracked gap (#469); any OTHER unvalidated profile is a new hole — add it to `profiles` (and to `expectedFrameworkSkills`), or extend #469 to name it deliberately."
+            "template.json offers profiles %s and this lane validates %s, so %s is audited by nothing — no live scaffold ever checks what it vendors. `game` is the known, tracked gap (#469) and is tolerated here; the above is a NEW one. Add it to `profiles` (and to `expectedFrameworkSkills`), or widen the tolerated set deliberately and say why."
             (offered |> Set.toList |> String.concat ", ")
             (profiles |> String.concat ", ")
-            (unvalidated |> Set.toList |> String.concat ", "))
+            (newHoles |> Set.toList |> String.concat ", "))
 
     Map.count expectedFrameworkSkills
 
@@ -923,8 +948,15 @@ let private assertNoWrapperDirs (dir: string) (profile: string) (specKit: bool) 
                 failwithf "profile %s is in `profiles` but has no entry in `expectedFrameworkSkills` — add its expected fs-gg-* set (see the note there)"
                     profile
 
-        // fs-gg-samples is spec-kit-gated (sample-pack only): drop it from the sdd/none expectation.
-        let baseSet = if specKit then baseSet else Set.remove "fs-gg-samples" baseSet
+        // The spec-kit-gated skills (today: fs-gg-samples) reach only the spec-kit lane, so drop them from
+        // the sdd/none expectation. DERIVED from template.json's conditions (#549) — this line used to say
+        // `Set.remove "fs-gg-samples"`, which was a fifth hand-written roster nobody reconciled: add a new
+        // fragment-sourced, lifecycle-gated skill and the sdd lane would expect a skill that never emits.
+        let baseSet =
+            if specKit then
+                baseSet
+            else
+                Set.difference baseSet (specKitOnlyFrameworkSkills ())
         // Issue #91 (ADR-0017 §C2): fs-gg-project is profile-gated and lifecycle-INDEPENDENT — it is the
         // product-orientation umbrella, and #91 promoted it precisely so the sdd lane stops shipping
         // capability skills with no top-level map. So it is REQUIRED on every lane, not merely tolerated
