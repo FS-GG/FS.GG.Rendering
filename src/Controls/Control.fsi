@@ -427,7 +427,7 @@ module Button =
     /// Set whether a `Button` is interactive (`Attr`; `false` greys it out and suppresses click
     /// dispatch). Omitted ≡ enabled.
     val enabled: bool -> Attr<'msg>
-    /// Emit a fixed `'msg` when the `Button` is clicked (`Attr.onClick`); use `onClickWith` when
+    /// Emit a fixed `'msg` when the `Button` is clicked (`Button.onClick`); use `onClickWith` when
     /// the message depends on the event.
     val onClick: 'msg -> Attr<'msg>
     /// Emit a `'msg` derived from the `ControlEvent` when the `Button` is clicked — the
@@ -442,7 +442,7 @@ module IconButton =
     /// Choose the glyph an `IconButton` shows (`Attr` carrying the icon-set name; the visual
     /// stand-in for a text label).
     val icon: string -> Attr<'msg>
-    /// Emit a fixed `'msg` when the `IconButton` is clicked (`Attr.onClick`).
+    /// Emit a fixed `'msg` when the `IconButton` is clicked (`IconButton.onClick`).
     val onClick: 'msg -> Attr<'msg>
 
 /// Builders for the `CheckBox` control — a labelled boolean toggle with a tick box.
@@ -452,10 +452,10 @@ module CheckBox =
     val create: Attr<'msg> list -> Control<'msg>
     /// Set the label beside a `CheckBox` (`Attr` carrying the descriptive caption text).
     val text: string -> Attr<'msg>
-    /// Set the checked state of a `CheckBox` (`Attr.checked'`; `true` ticks the box). This is a
+    /// Set the checked state of a `CheckBox` (`CheckBox.checked'`; `true` ticks the box). This is a
     /// controlled value — drive it from model state and reconcile via `onChanged`.
     val checked': bool -> Attr<'msg>
-    /// Emit a `'msg` carrying the new `bool` when a `CheckBox` is toggled (`Attr.onChanged`).
+    /// Emit a `'msg` carrying the new `bool` when a `CheckBox` is toggled (`CheckBox.onChanged`).
     val onChanged: (bool -> 'msg) -> Attr<'msg>
 
 /// Builders for the `Switch` control — a sliding on/off toggle (the track-and-thumb form of a
@@ -464,10 +464,10 @@ module Switch =
     /// Build a `Switch` from its attributes; pair with `Switch.checked'` and `onChanged`. The
     /// typed `Props` front door (`FS.GG.UI.Controls.Typed`) is the recommended authoring path.
     val create: Attr<'msg> list -> Control<'msg>
-    /// Set the on/off position of a `Switch` (`Attr.checked'`; `true` slides the thumb on). A
+    /// Set the on/off position of a `Switch` (`Switch.checked'`; `true` slides the thumb on). A
     /// controlled value driven from model state and reconciled via `onChanged`.
     val checked': bool -> Attr<'msg>
-    /// Emit a `'msg` carrying the new `bool` when a `Switch` is flipped (`Attr.onChanged`).
+    /// Emit a `'msg` carrying the new `bool` when a `Switch` is flipped (`Switch.onChanged`).
     val onChanged: (bool -> 'msg) -> Attr<'msg>
 
 /// Builders for the `Slider` control — a draggable thumb selecting a continuous value along a
@@ -479,7 +479,7 @@ module Slider =
     /// Set the `Slider` position (`Attr.value`; a `float` over the control's range, default 0–1).
     /// A controlled value driven from model state and reconciled via `onChanged`.
     val value: float -> Attr<'msg>
-    /// Emit a `'msg` carrying the new `float` as a `Slider` is dragged (`Attr.onChanged`).
+    /// Emit a `'msg` carrying the new `float` as a `Slider` is dragged (`Slider.onChanged`).
     val onChanged: (float -> 'msg) -> Attr<'msg>
 
 /// Builders for the `NumericInput` control — a typed numeric field, typically with stepper
@@ -492,7 +492,7 @@ module NumericInput =
     /// model state and reconciled via `onChanged`).
     val value: float -> Attr<'msg>
     /// Emit a `'msg` carrying the edited `float` when a `NumericInput` value changes
-    /// (`Attr.onChanged`).
+    /// (`NumericInput.onChanged`).
     val onChanged: (float -> 'msg) -> Attr<'msg>
 
 /// Builders for the `TextBox` control — a single-line editable text field.
@@ -509,7 +509,7 @@ module TextBox =
     /// Attach a `ValidationState` to a `TextBox` so it renders the matching valid/invalid styling
     /// (`Attr.validation`).
     val validation: ValidationState -> Attr<'msg>
-    /// Emit a `'msg` carrying the edited `string` on each `TextBox` change (`Attr.onChanged`).
+    /// Emit a `'msg` carrying the edited `string` on each `TextBox` change (`TextBox.onChanged`).
     val onChanged: (string -> 'msg) -> Attr<'msg>
 
 /// Builders for the `TextArea` control — a multi-line editable text field (the wrapping
@@ -521,7 +521,7 @@ module TextArea =
     /// Set the current multi-line text in a `TextArea` (`Attr.value`; a controlled `string`
     /// reconciled via `onChanged`).
     val value: string -> Attr<'msg>
-    /// Emit a `'msg` carrying the edited `string` on each `TextArea` change (`Attr.onChanged`).
+    /// Emit a `'msg` carrying the edited `string` on each `TextArea` change (`TextArea.onChanged`).
     val onChanged: (string -> 'msg) -> Attr<'msg>
 
 /// Builders for the `RadioGroup` control — a set of mutually-exclusive options, one selected at
@@ -537,7 +537,7 @@ module RadioGroup =
     /// of `items`). A controlled value reconciled via `onChanged`.
     val selected: string -> Attr<'msg>
     /// Emit a `'msg` carrying the newly-chosen option `string` when a `RadioGroup` selection
-    /// changes (`Attr.onChanged`).
+    /// changes (`RadioGroup.onChanged`).
     val onChanged: (string -> 'msg) -> Attr<'msg>
 
 /// Builders for the `Stack` container — lays its children single-file along one axis (vertical
@@ -632,7 +632,7 @@ module Tabs =
     /// `items`). A controlled value reconciled via `onChanged`.
     val selected: string -> Attr<'msg>
     /// Emit a `'msg` carrying the newly-activated tab `string` when the `Tabs` selection changes
-    /// (`Attr.onChanged`).
+    /// (`Tabs.onChanged`).
     val onChanged: (string -> 'msg) -> Attr<'msg>
 
 /// Builders for the `Menu` control — a list of selectable command entries.
@@ -644,7 +644,7 @@ module Menu =
     /// order).
     val items: string list -> Attr<'msg>
     /// Emit a `'msg` carrying the chosen entry `string` when a `Menu` item is selected
-    /// (`Attr.onSelected`).
+    /// (`Menu.onSelected`).
     val onSelected: (string -> 'msg) -> Attr<'msg>
 
 /// Builders for the `Toolbar` container — a horizontal band of command controls (buttons,

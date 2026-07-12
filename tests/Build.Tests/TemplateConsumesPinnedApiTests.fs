@@ -235,7 +235,20 @@ let private stripCommentsAndStrings (line: string) =
 /// `FS.GG.UI.Scene.LayoutEvidence`, and the TEMPLATE'S OWN `AppRoot.LayoutEvidence` shares its name.
 /// Matching on the bare module name alone would read the product's calls to itself as framework
 /// calls — and then demand the pinned package export them.
-let private callRegex = Regex(@"(?<![\w.])((?:[A-Z]\w*\.)*)([A-Z]\w*)\.([a-z]\w*)", RegexOptions.Compiled)
+///
+/// THE MEMBER MAY END IN A PRIME, and it must, or the rule INVENTS violations. `checked` is a reserved
+/// F# word, so the attribute is spelled `checked'` — `CheckBox.checked'`, `Switch.checked'`. Stopping the
+/// member at `\w*` truncates that to `CheckBox.checked`, which no package exports BECAUSE IT DOES NOT
+/// EXIST, and the rule then reports a correct doc as a defect. (It was latent in the fence extractor
+/// before #598 widened this regex to doc-comments, where the mirror actually writes the spelling.)
+///
+/// `'?(?!\w)` takes the prime ONLY when the identifier really ends there. English prose in a doc-comment
+/// is full of possessives — "`Control.render`'s output" — and a bare `'?` would swallow the apostrophe
+/// and extract `render'`, a symbol nothing exports: the same invented violation, from the other side. The
+/// lookahead makes the prime backtrack when a word character follows it, so `render's` yields `render`
+/// and `checked'` yields `checked'`.
+let private callRegex =
+    Regex(@"(?<![\w.])((?:[A-Z]\w*\.)*)([A-Z]\w*)\.([a-z]\w*'?(?!\w))", RegexOptions.Compiled)
 
 /// The template's own modules (`module AppRoot.LayoutEvidence`), so an unqualified reference to one
 /// of them is never mistaken for the framework module it happens to share a name with.
@@ -803,9 +816,52 @@ let private mirrorValSymbols =
                 None))
     |> List.ofSeq
 
-/// Both shipped doc surfaces, reduced to the symbols this rule may judge.
+/// `Module.member` inside a `///` DOC-COMMENT of the shipped api-surface mirror (#598).
+///
+/// THE BLIND SPOT THIS CLOSES. The two extractors above read DECLARATIONS — a mirror's `val`, a skill's
+/// ```fsharp fence. Neither reads the prose wrapped around them, so a mirror could *instruct* a product
+/// author, at length, to call a symbol the pin does not export, and this rule stayed green. That is not
+/// hypothetical: `ControlsElmish.fsi` told its reader to set `MapKey` to `ViewerKeyboard.mapKeyRaw`,
+/// which NO published FS.GG.UI.KeyboardInput exports — #589's own gate was blind to it BY CONSTRUCTION,
+/// and #591 fixed the two *ledgered* sites while this one sat, unseeable, in a `///` comment. The
+/// instance is cheap; the CLASS is unbounded, and these doc-comments are dense with API names.
+///
+/// WHY THE MIRROR'S PROSE IS JUDGED WHERE A SKILL'S IS NOT. `skillFenceSymbols` deliberately skips prose,
+/// because a sentence in a skill ("`interpret` is deprecated") MENTIONS an API rather than teaching a
+/// reader to call it. The mirror is not that. `docs/scaffold-map.md` designates it the product author's
+/// authoritative signature set: it is the file they read to find out what they may call, and a `///`
+/// comment on a `val` is the instruction attached to that val. A name in it is guidance, not chatter.
+///
+/// ONLY `Module.lowercaseMember` MATCHES, which is what keeps this off the prose that is genuinely not a
+/// call: `callRegex` demands a lowercase member, so a DU case (`ViewerEffect.DispatchInput`), an issue
+/// ref (`FS-GG/.github#416`) and a bare type name are all correctly invisible. What survives is the
+/// shape a reader can actually copy into their `update`.
+let private mirrorDocCommentSymbols =
+    Directory.EnumerateFiles(mirrorRoot, "*.fsi", SearchOption.AllDirectories)
+    |> Seq.collect (fun path ->
+        let rel = Path.GetRelativePath(repoRoot, path).Replace('\\', '/')
+
+        File.ReadAllLines path
+        |> Array.mapi (fun i line -> i + 1, line)
+        |> Array.collect (fun (lineNo, raw) ->
+            let trimmed = raw.TrimStart()
+
+            if not (trimmed.StartsWith("///", StringComparison.Ordinal)) then
+                [||]
+            else
+                callRegex.Matches(trimmed.Substring 3)
+                |> Seq.map (fun m ->
+                    m.Groups.[1].Value,
+                    { Doc = rel
+                      Line = lineNo
+                      Module = m.Groups.[2].Value
+                      Member = m.Groups.[3].Value })
+                |> Array.ofSeq))
+    |> List.ofSeq
+
+/// Every shipped doc surface, reduced to the symbols this rule may judge.
 let private docSymbols =
-    List.append skillFenceSymbols mirrorValSymbols
+    List.concat [ skillFenceSymbols; mirrorValSymbols; mirrorDocCommentSymbols ]
     |> List.filter (fun (qualifier, s) -> isJudgedDocModule qualifier s.Module)
     |> List.map snd
     |> List.distinctBy docKey
@@ -1236,6 +1292,16 @@ let templateConsumesPinnedApiTests =
             Expect.isNonEmpty
                 mirrorValSymbols
                 "public `val`s were extracted from the shipped api-surface mirror."
+
+            // #598's extractor, under the same guard as its two siblings and for the same reason: this
+            // one was ADDED because the rule was silently blind to doc-comments, so an implementation
+            // that matches nothing would restore the exact blind spot it exists to close — and would do
+            // it while reporting green, which is the shape (#266) this file refuses.
+            Expect.isNonEmpty
+                mirrorDocCommentSymbols
+                "`Module.member` symbols were extracted from the `///` doc-comments of the shipped \
+                 api-surface mirror. Zero means the doc-comment extractor has stopped seeing the prose \
+                 the mirror instructs a product author with — the #598 blind spot, reopened."
 
             Expect.isNonEmpty
                 docSymbols

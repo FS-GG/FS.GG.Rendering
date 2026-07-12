@@ -364,9 +364,15 @@ module ControlsElmish =
     /// carries a `KeyboardEffect` (`DispatchInput` is host->product only), so the request cannot reach a
     /// host and the capture it arms never fires. This arm previously lowered it to
     /// `DispatchHostCommand "capture-key:{key}"`, an effect the framework never interprets either — a
-    /// decoy that made an inert request look wired. To actually capture a rebind key, set the host's
-    /// `MapKey` to `ViewerKeyboard.mapKeyRaw` and route the key in `update`, where the product's keymap
-    /// and capture state live (`MapKey` itself never sees the model, so it cannot resolve either).
+    /// decoy that made an inert request look wired. To actually capture a rebind key, forward the RAW
+    /// key out of the host's `MapKey` and route it in `update`, where the product's keymap and capture
+    /// state live (`MapKey` itself never sees the model, so it cannot resolve either):
+    ///
+    ///     MapKey = fun key isDown -> Some(YourMsg(ViewerKeyboard.toKeyId key, isDown))
+    ///
+    /// The lambda IS the seam — `MapKey` is only a function, so a product writes it inline and loses
+    /// nothing. `toKeyId` is what a released FS.GG.UI.KeyboardInput exports; do not reach for a helper
+    /// that wraps it, because the helper is what a scaffolded product cannot bind (#598).
     ///
     /// Surface the diagnostic with `AdapterCmd.diagnostics`: `AdapterCmd.productMessages` keeps only
     /// product messages and would drop it.

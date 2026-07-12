@@ -194,10 +194,15 @@ let tests =
                   "RequestHostKeyCapture"
                   "the message NAMES the effect that is not interpreted"
 
+              // `toKeyId`, NOT `mapKeyRaw` (#598). The diagnostic is read by a product author on the
+              // PINNED package, and no released FS.GG.UI.KeyboardInput exports `mapKeyRaw` — so naming
+              // the helper pointed them at a symbol they cannot bind. `toKeyId` ships, and the lambda
+              // the message now spells out is what `mapKeyRaw` was sugar for, so the advice is
+              // actionable for the reader who actually receives it.
               Expect.stringContains
                   d.Message
-                  "mapKeyRaw"
-                  "and points at the seam that DOES capture a key, so the diagnostic is actionable"
+                  "ViewerKeyboard.toKeyId"
+                  "and points at the seam that DOES capture a key, in a spelling the pinned package exports"
           }
 
           test "RequestHostKeyCapture no longer lowers to a host command (the decoy is gone)" {
