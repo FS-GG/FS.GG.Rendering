@@ -40,6 +40,7 @@ module SkillPackageReachTests
 // never mis-attributed. That is enough to have caught #430 on the PR that introduced it.
 
 open System.IO
+open System.Text.Json
 open System.Text.RegularExpressions
 open Expecto
 open FS.GG.TestSupport
@@ -228,19 +229,35 @@ let private capabilityFragments =
                     Set.empty
                 else
                     Regex.Match(v, @"\[(?<p>[^\]]*)\]").Groups.["p"].Value.Split(',')
-                    |> Seq.map (fun s -> s.Trim())
+                    |> Seq.map (fun s -> s.Trim().TrimEnd '/')
                     |> Seq.filter (fun s -> s <> "")
                     |> Set.ofSeq)
 
         m.Groups.["id"].Value, field "templateFragment", materializes)
     |> List.ofSeq
 
-/// What the scaffold REALLY copies: every `"source": "…"` in .template.config/template.json that lives under
-/// `template/fragments/`. This is the authority — template.json is the only thing `dotnet new` reads.
+/// What the scaffold REALLY copies: the `sources[].source` roots in .template.config/template.json that live
+/// under `template/fragments/`. template.json is the only thing `dotnet new` reads, so it is the authority.
+///
+/// Parsed as JSON and normalized with `TrimEnd '/'` — the same normalization tests/TestSupport/ScaffoldSources.fs
+/// applies to this exact field, for the same reason. `"template/fragments/scene"` and `"template/fragments/scene/"`
+/// name the SAME tree and `dotnet new` treats them identically, so a comparison that only handles the trailing-slash
+/// spelling would find nothing under the slash-less one, report the fragment as shipping nothing, and bless a
+/// `materializes: none` row for a fragment a product receives IN FULL. That is the precise direction this rule
+/// exists to catch, so it is normalized on BOTH sides rather than trusted to a house style in a JSON file.
 let private templateJsonFragmentSources =
-    File.ReadAllText(repositoryPath ".template.config/template.json")
-    |> fun t -> Regex.Matches(t, "\"source\"\\s*:\\s*\"(?<s>template/fragments/[^\"]*)\"")
-    |> Seq.map (fun m -> m.Groups.["s"].Value)
+    use document = JsonDocument.Parse(File.ReadAllText(repositoryPath ".template.config/template.json"))
+
+    document.RootElement.GetProperty("sources").EnumerateArray()
+    |> Seq.choose (fun source ->
+        match source.TryGetProperty "source" with
+        | true, value ->
+            match value.GetString() with
+            | null -> None
+            | raw ->
+                let root = raw.TrimEnd '/'
+                if root.StartsWith "template/fragments/" then Some root else None
+        | _ -> None)
     |> Set.ofSeq
 
 /// The profiles a capability's package actually reaches: pinned AND referenced by a project the generated
@@ -553,10 +570,14 @@ let skillPackageReachTests =
                           (Directory.Exists dir)
                           $"{capabilitiesRel} points the `{id}` capability's templateFragment at `{fragment}`, which does not exist. The pointer is the only thing telling a reader where the fragment's sources live."
 
-                      // Everything template.json actually takes from THIS fragment directory.
+                      // Everything template.json actually takes from THIS fragment directory. Both sides are
+                      // already TrimEnd'd, and the root itself counts: a fragment sourced whole is spelled as
+                      // the directory, not as something strictly beneath it.
+                      let frag = fragment.TrimEnd '/'
+
                       let actual =
                           templateJsonFragmentSources
-                          |> Set.filter (fun s -> s.StartsWith(fragment.TrimEnd('/') + "/"))
+                          |> Set.filter (fun s -> s = frag || s.StartsWith(frag + "/"))
 
                       match materializes with
                       | None ->
@@ -569,6 +590,52 @@ let skillPackageReachTests =
                               declared
                               actual
                               $"{capabilitiesRel} says the `{id}` capability materializes {Set.toList declared}, but .template.config/template.json sources {Set.toList actual} from `{fragment}`. template.json is the only thing `dotnet new` reads, so it is the authority — a row that over-claims sends a reader hunting for scaffold content that never ships, and one that under-claims hides content a generated product really receives (#510)."
+          }
+
+          // R-FRAG-ALL — the converse of R-FRAG, and without it the rule above is half a guard.
+          //
+          // R-FRAG walks the CATALOG's rows, so it can only see fragments a row already points at. Ten
+          // `template/fragments/` sources exist in template.json and only two of them (`samples/`, `samples/skill/`)
+          // belong to a capability row — so `mkdir template/fragments/foo`, wire it into template.json, add no row,
+          // and R-FRAG stays green while the scaffold ships it. That is the #510 shape again, one level out: the
+          // catalog is silent about content a generated product really receives.
+          //
+          // So every fragment source must be accounted for: claimed by a row's `materializes:`, or named in the
+          // waiver below. The waiver is not a loophole — a stale entry is a RED (the discipline R-REACH's
+          // exemption test already applies), so a fragment that stops shipping cannot rot here unnoticed.
+          test "every fragment template.json sources is claimed by a capability row or an explicit waiver (#510)" {
+              // Fragments that genuinely have NO capability row: product-OWNED source helpers the author edits
+              // (they back no package, so there is no reach to catalog) and the per-profile swap checklists.
+              // Explicit, so that an eleventh fragment source is a decision somebody makes rather than one nobody
+              // notices.
+              let nonCapabilityFragments =
+                  set
+                      [ "template/fragments/swap-checklist/game"
+                        "template/fragments/swap-checklist/app"
+                        "template/fragments/swap-checklist/governed"
+                        "template/fragments/vec2/src"
+                        "template/fragments/collision/src"
+                        "template/fragments/visibility/src"
+                        "template/fragments/grids/src"
+                        "template/fragments/line-drawing/src" ]
+
+              let claimed =
+                  capabilityFragments
+                  |> List.choose (fun (_, _, materializes) -> materializes)
+                  |> List.fold Set.union Set.empty
+
+              let unaccounted =
+                  Set.difference templateJsonFragmentSources (Set.union claimed nonCapabilityFragments)
+
+              Expect.isEmpty
+                  unaccounted
+                  $".template.config/template.json sources {Set.toList unaccounted} from template/fragments/, and NO capability row's `materializes:` claims it and no waiver names it. The scaffold ships it into a generated product while {capabilitiesRel} — the human-facing inventory of what a profile gets — says nothing about it (#510). Claim it on the owning row, or add it to nonCapabilityFragments with a reason."
+
+              let staleWaivers = Set.difference nonCapabilityFragments templateJsonFragmentSources
+
+              Expect.isEmpty
+                  staleWaivers
+                  $"nonCapabilityFragments waives {Set.toList staleWaivers}, but .template.config/template.json no longer sources it. A waiver for a fragment that does not ship is a lie that hides the next one: delete the entry."
           }
 
           // R-REACH — the heart of #430. Pinning is not enough: the skill must not reach a profile the

@@ -10,8 +10,10 @@ catalogVersion: "2026-05-16"
 # `templateFragment:` on a capability row means: the directory in THIS repo that holds the capability's fragment
 # SOURCES. It is NOT a promise that any of it ships. What a scaffold actually materializes is decided by
 # `.template.config/template.json` and by nothing else — it sources a fragment's `src/`, or its `skill/`, or the
-# whole directory, and it sources NO fragment's README.md. So a fragment directory can be pure repo-side authoring
-# documentation, and seven of the eight below are exactly that.
+# whole directory. Which of those it takes is what decides whether a given file reaches a product, README included:
+# the seven docs-only fragments below are sourced NOT AT ALL, so nothing in them ships — but `samples` is sourced
+# WHOLE (excluding only `skill/**`), so `template/fragments/samples/README.md` DOES ship, landing in a generated
+# sample-pack product as `samples/README.md`. Read template.json, not the file's name, to know which it is.
 #
 # `materializes:` is that fact, made local: the `source:` paths template.json takes from this fragment, or `none`
 # for a docs-only one. It exists because `templateFragment:` alone read as a materialization pointer while
@@ -19,6 +21,11 @@ catalogVersion: "2026-05-16"
 # catalog against template.json by hand (#510). Held EXACTLY to template.json by R-FRAG in
 # tests/Package.Tests/SkillPackageReachTests.fs — the same duplicate-then-assert discipline R-CAT applies to
 # `profiles:` — so a fragment wired in (or unwired) without updating its row is a RED, not a silent drift.
+# R-FRAG-ALL closes the converse: a fragment template.json sources that NO row claims is also a RED, so a new
+# fragment cannot ship into a product while this catalog stays silent about it.
+#
+# `materializes:` records which SOURCE ENTRIES template.json takes, not a file list — an entry's `exclude:` can
+# still hold a file back (`samples` excludes `skill/**`, which is why that subtree needs its own row entry).
 #
 # `materializes: none` does not mean "unused". A docs-only fragment may still be live: `controls`' `skill/SKILL.md`
 # is the target of the fs-gg-generated-controls-guidance agent-skill wrapper, and `keyboard-input`'s README carries
