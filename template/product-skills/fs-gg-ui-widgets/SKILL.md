@@ -125,6 +125,19 @@ framework readiness reports.
 - Canceled, timed-out, skipped, synthetic, substitute, degraded,
   pending-review, or environment-limited checks remain visibly caveated.
 
+**The instruments for the responsiveness rule are in [[fs-gg-elmish]]**, which is
+where they are explained — `ControlsElmish.respondsProofOf` / `captureRespondsProof`
+for the activation half (their `RespondsVerdict` is the only evidence class that
+tells *renders* from *responds*), and the per-frame projection
+(`compositorDiagnostics`, `layoutMetrics`, `responsivenessTimingContribution`,
+`InteractiveAppHost.OnFrameMetrics`) for the latency half, which separates routing
+from update, render and present. A screenshot proves neither.
+
+They live in that skill rather than this one because `Perf`, `BoundIds` and
+`ControlsElmish` come from the Controls packages, and a single copy of the recipe
+is the one that cannot rot — not because a widget product lacks them: every
+profile this skill ships to (`app`, `game`) also receives [[fs-gg-elmish]].
+
 ## Package Boundary
 
 Controls owns ordinary controls, rich text, chart controls, graph controls,
@@ -160,7 +173,9 @@ rather than hard-failing the phase.
 - [[fs-gg-styling]] — to theme and style the controls above (pick a theme, set a
   control's style variant and class, consume the resolved style), see the
   `fs-gg-styling` skill.
-- [[fs-gg-elmish]] — wire control messages through the pure adapter at the edge.
+- [[fs-gg-elmish]] — wire control messages through the pure adapter at the edge,
+  and the instruments the responsiveness Evidence Rule above requires
+  (`captureRespondsProof`, the `OnFrameMetrics` projection).
 - [[fs-gg-scene]] — the primitive layer controls ultimately render into.
 
 ## Sources / links

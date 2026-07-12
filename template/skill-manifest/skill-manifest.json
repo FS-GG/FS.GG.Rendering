@@ -156,7 +156,7 @@
     {
       "id": "fs-gg-ui-widgets",
       "scope": "product",
-      "sha256": "e935367032e1b37ac5bfa4db40656f3b6c48b37a30b0d668545d0688c8e445f7",
+      "sha256": "b3da9ed4be7c0d96509bc500b301af06fbb56e269d9808cff6fca7c0c62192ac",
       "resolvablePath": ".agents/skills/fs-gg-ui-widgets/SKILL.md",
       "materializes-when": "profile in [app, game]",
       "supplied-by": "template/product-skills/fs-gg-ui-widgets/"
