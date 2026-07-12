@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <Compile Include="RepositoryRoot.fs" />
+    <Compile Include="SurfaceSignature.fs" />
     <Compile Include="ScaffoldSources.fs" />
     <Compile Include="SelfProvision.fs" />
   </ItemGroup>

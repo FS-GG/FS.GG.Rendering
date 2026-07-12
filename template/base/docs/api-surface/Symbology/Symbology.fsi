@@ -271,15 +271,3 @@ module Symbology =
     /// grammar-agnostic centre/radius overlays (Pulse/Blink/Damage); directional motions degrade to the
     /// static base symbol. `animateIn Grammar.Token` reproduces `animate` byte-for-byte.
     val animateIn: grammar: Grammar -> motion: Motion -> token: Token -> phase: float -> Scene
-
-    /// The label the renderer will actually draw: the explicit `Label` if present, else the projected
-    /// `AutoLabel`, else none (the FR-003 resolution order). `internal`, not public: `Legibility.scoreIn`
-    /// must score the SAME text the grammar draws, and an `AutoLabelSpec.Separator` is caller-supplied and
-    /// may itself carry hard breaks — so the linter cannot reconstruct the resolved label from `Label`
-    /// alone without the two drifting apart.
-    val internal resolvedLabel: token: Token -> LabelText option
-
-    /// How many label lines a grammar draws before the surplus is dropped (Token 3, Badge 2, Ring 2).
-    /// `internal` for the same reason as `resolvedLabel`: the emitters cap at this, and
-    /// `Legibility.scoreIn` warns against it, so it must be a single number rather than two copies.
-    val internal labelLineBudget: grammar: Grammar -> int

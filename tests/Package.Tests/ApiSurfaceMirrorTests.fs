@@ -432,6 +432,14 @@ let private bodyOf (path: string) =
     |> Array.skipWhile (fun line -> line.StartsWith "//")
     |> String.concat "\n"
 
+/// The mirror ships the PRODUCT-VISIBLE surface only (S-INT, #585), so an exact-copy mirror is its
+/// src original MINUS the internal declarations. The transform is defined once, in TestSupport, and
+/// shared with the Symbology mirror gate — a copy of it in each gate would rot.
+let private stripInternalDeclarations (text: string) =
+    text.Replace("\r\n", "\n").Split('\n')
+    |> SurfaceSignature.stripInternalDeclarations
+    |> String.concat "\n"
+
 /// No shipped product skill covers FS.GG.UI.Canvas's immediate-mode drawing surface. Recorded
 /// here rather than papered over with a pointer to a skill that does not teach these members.
 /// (`Canvas/Loop.fsi` removed with the surface; retires at the next framework major, 0.6.0 —
@@ -603,7 +611,8 @@ let apiSurfaceMirrorTests =
 
           // The in-repo half of the same staleness problem. A cross-repo copy gets a stamp because we
           // cannot see the other repo from here; an in-repo copy has its original one directory away,
-          // so compare them outright.
+          // so compare them outright — modulo the internals the mirror deliberately does not ship
+          // (S-INT, #585: see `stripInternalDeclarations`).
           test "every in-repo exact-copy mirror still matches its src original" {
               let offenders =
                   inRepoExactCopies
@@ -611,12 +620,14 @@ let apiSurfaceMirrorTests =
                       let mirror = Path.Combine(apiSurfaceRoot, rel.Replace('/', Path.DirectorySeparatorChar))
                       let original = repositoryPath srcRelative
 
-                      if bodyOf mirror = bodyOf original then
+                      if bodyOf mirror = stripInternalDeclarations (bodyOf original) then
                           None
                       else
                           Some(rel, srcRelative))
 
-              Expect.isEmpty offenders "each in-repo exact-copy mirror is identical to its src original (modulo the // header)"
+              Expect.isEmpty
+                  offenders
+                  "each in-repo exact-copy mirror is its src original minus the internal declarations (modulo the // header)"
           }
 
           // §5.3 — the report's author hand-rolled `len * size * 0.6` centring while `measureText` sat
