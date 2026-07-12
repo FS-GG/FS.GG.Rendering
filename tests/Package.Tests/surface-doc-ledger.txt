@@ -65,12 +65,8 @@ tracked     interpretOverlayEffect
 vocabulary  interpretOverlayOutcome
 vocabulary  interpretPointerEffect
 tracked     interpretPointerOutcome
-vocabulary  isCoalescibleSample
-vocabulary  isMoveInteraction
-vocabulary  isSupersedablePosition
 vocabulary  ofMessage
 tracked     programOfWidget
-vocabulary  routedInCoalescedFrame
 tracked     runInteractiveAppWithWindowBehavior
 vocabulary  runScriptWithAudio
 vocabulary  runScriptWithWindowBehavior
@@ -108,31 +104,13 @@ tracked     supportedEvents
 tracked     validateStandardControl
 
 # ---- Controls/Control.fsi
-vocabulary  boundIdsOf
-vocabulary  chartValues
-vocabulary  collectBoundsWith
-vocabulary  dataGridCells
-vocabulary  evaluateLayout
-vocabulary  evaluateLayoutIncremental
-vocabulary  eventBindingsOf
-vocabulary  faithfulContent
 vocabulary  hitTest
 vocabulary  icon
-vocabulary  layoutAffectingAttrNames
 vocabulary  lowerCustom
-vocabulary  lowerSlots
 vocabulary  lowerStandard
 vocabulary  nearestAuthored
-vocabulary  nodeBox
 vocabulary  onClickWith
 vocabulary  onSelected
-vocabulary  paintNode
-vocabulary  setMeasureTextHook
-vocabulary  slotFill
-vocabulary  slotFillsOf
-vocabulary  slotFor
-vocabulary  styleClassesOf
-vocabulary  visualStateOf
 tracked     withKey
 
 # ---- Controls/ControlRuntime.fsi

@@ -77,15 +77,6 @@ type ControlRuntimeMsg =
     | ScrollControl of ControlId * float
     | Reset
 
-/// Feature 112 (FR-007): the targeted runtime-stamp result — the stamped tree plus the number of nodes
-/// the targeted walk REBUILT this frame (the changed-state paths: affected identities + ancestor paths).
-/// `internal` (the runtime-state stamp is a host-internal concern); reached by the Controls.Elmish host
-/// and Controls.Tests via InternalsVisibleTo. `RuntimeStateTouchedNodeCount` is `0` on a no-change frame
-/// and far below the node count on a localized hover/focus/press change.
-type internal RuntimeStampResult<'msg> =
-    { Stamped: Control<'msg>
-      RuntimeStateTouchedNodeCount: int }
-
 /// MVU runtime tracking control focus, hover, press, caret/selection, composition, drag, and derived visual state.
 module ControlRuntime =
     /// Seeds an empty `ControlRuntimeModel` with no focus or interaction and its initial effects.
@@ -103,40 +94,3 @@ module ControlRuntime =
     /// > Normal). A control named by no interaction state yields `Normal`. No per-kind
     /// branching; identical inputs always yield an identical result.
     val deriveVisualState: model: ControlRuntimeModel -> controlId: ControlId -> VisualState
-
-    /// Feature 096 (R1): internal host bridge — NOT public surface. Stamps each control's derived
-    /// VisualState onto the lowered Control<'msg> tree in the ControlId domain (pre-reconcile),
-    /// preserving a consumer-set non-Normal attribute and emitting NOTHING at Normal (byte-identity
-    /// at rest). Declared `internal` so the Controls.Elmish host and Controls.Tests / Elmish.Tests
-    /// reach it via InternalsVisibleTo without enlarging the package's public contract.
-    val internal applyRuntimeVisualState: model: ControlRuntimeModel -> control: Control<'msg> -> Control<'msg>
-
-    /// Feature 112 (FR-001/FR-004/FR-005/FR-007): the TARGETED runtime visual-state stamp — re-stamps
-    /// only the controls whose FINAL visual state changed between `prev` and `cur`, reusing every
-    /// unchanged subtree from `prevStamped` (which, on the live model-unchanged path, has the same
-    /// structure as `fresh`). `finalState M node = if visualStateOf node.Attributes <> Normal then that
-    /// consumer-set state else deriveVisualState M (node.Key ?? node.Kind)`, computed from the `fresh`
-    /// (un-stamped) node so the consumer state is unambiguous. A node is reused (touched 0) when its
-    /// final state is unchanged and no descendant changed; else it is rebuilt from `fresh` with
-    /// `finalState cur` stamped. Byte-identical to `applyRuntimeVisualState cur fresh` (the full oracle).
-    /// A per-node structural misalignment (child-count mismatch) self-heals by oracle-stamping that
-    /// subtree (FR-006). Returns the stamped tree + the rebuilt-node count. `internal`; tests reach it
-    /// via InternalsVisibleTo.
-    val internal applyRuntimeVisualStateTargeted:
-        prev: ControlRuntimeModel ->
-        cur: ControlRuntimeModel ->
-        prevStamped: Control<'msg> ->
-        fresh: Control<'msg> ->
-            RuntimeStampResult<'msg>
-
-    /// Feature 112 (FR-002/FR-006): the live route choice as a pure, deterministically-testable helper.
-    /// Returns the TARGETED result (`applyRuntimeVisualStateTargeted`) when `prior = Some(prevModel,
-    /// prevStamped)` (a model-unchanged frame with a prior stamped tree), else the FULL-tree oracle
-    /// result over `fresh` (`applyRuntimeVisualState cur fresh`, touched = the whole node count — a
-    /// first / model-changing frame re-builds the tree anyway). Encapsulates the `renderRetained` route
-    /// decision so it is covered without driving the live loop. `internal`.
-    val internal runtimeStampFor:
-        prior: (ControlRuntimeModel * Control<'msg>) option ->
-        cur: ControlRuntimeModel ->
-        fresh: Control<'msg> ->
-            RuntimeStampResult<'msg>
