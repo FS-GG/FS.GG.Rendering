@@ -425,13 +425,22 @@ jobs:
   # (Microsoft.CodeAnalysis.PublicApiAnalyzers is C#-only). A removed/changed public member is a
   # break that must force a SemVer major (registry coherence id `apicompat-publicapi-gate`).
   #
-  # "ADVISORY" MEANS NOT-REQUIRED, NOT continue-on-error (#216). This job has NO `continue-on-error`
-  # and must not grow one. Advisory is a statement about branch protection — this job's context is
-  # not in the required set, so a red here informs a merge rather than blocking one. It is NOT a
-  # statement that the job may report success when it failed. `continue-on-error: true` would paint
-  # the check green whatever it found, which is the green-by-omission class this gate exists to
-  # detect, and would make the elevation below meaningless. The contradiction #216 named — "advisory"
-  # prose next to a job that reddens the run — resolves in favour of the job: it should redden.
+  # THIS JOB IS REQUIRED (ADR-0103), AND THE ELEVATION HAS HAPPENED (#618). `API compatibility gate
+  # (breaking-change → SemVer major)` — the string in this job's `name:` — is in branch protection's
+  # required-contexts set on `main`. A red here does NOT inform a merge; it BLOCKS every merge in the
+  # repo until it is green. Everything below that reads as "advisory", "not required yet", or "elevation
+  # is a one-line change" was written before that happened and has been corrected in place; if you meet
+  # such a sentence anywhere else, the branch-protection API is the source of truth, not the prose.
+  #
+  # That is the point of the gate and it is also its hazard, so it is worth saying plainly: THE COST OF A
+  # RED HERE IS THE WHOLE REPO. It must never be red on `main`, and a change that reddens it must carry
+  # its own discharge (a published SemVer major, or a re-baseline) in the SAME PR — because the only PR
+  # that could fix it is the one that broke it, and that is a deadlock, not a merge conflict. #618 is the
+  # cross-repo warning about exactly this shape; see the ADR-0032 note below.
+  #
+  # NO `continue-on-error`, AND IT MUST NOT GROW ONE (#216). That would paint the check green whatever it
+  # found — the green-by-omission class this gate exists to detect. "Advisory" was only ever a statement
+  # about branch protection, never a licence for the job to report success when it failed.
   #
   # ENFORCING AT THE WORKFLOW LEVEL (FS-GG/.github#20 resolved): a SEPARATE job (Package Validation
   # stays OFF in the normal build/release, so the required `gate` job above is unaffected). The
@@ -450,29 +459,43 @@ jobs:
   # split out as FeedUnavailable so ADR-0101's bound still holds (requiring this job takes a
   # dependency on the feed, and a feed outage must not wedge the repo).
   #
-  # WHY NOT A REQUIRED CHECK YET (#219, ADR-0101). Not because the detector is weak — it is a sound
-  # hard gate — but because it was RED ON `main` AS OF 2026-07-09, and a required check that is red
-  # on the base branch wedges every merge in the repo. Three packables carried public-API breaks that
-  # no published major had discharged: FS.GG.UI.Controls (`CustomControlDefinition<'msg>` lost its
-  # type parameter), FS.GG.UI.DesignSystem (`IntentPolicy` moved out of the `StyleResolver` module,
-  # and `Theme` lost `IComparable`), and FS.GG.UI.Themes.AntDesign (which re-exports that policy).
-  # The gate is doing its job: those breaks force the next FS.GG.UI release to be a SemVer major.
+  # HOW IT BECAME REQUIRED, since the history is the argument. It was RED on `main` as of 2026-07-09:
+  # three packables carried public-API breaks no published major had discharged — FS.GG.UI.Controls
+  # (`CustomControlDefinition<'msg>` lost its type parameter), FS.GG.UI.DesignSystem (`IntentPolicy` moved
+  # out of the `StyleResolver` module, and `Theme` lost `IComparable`), and FS.GG.UI.Themes.AntDesign
+  # (which re-exports that policy). The gate was doing its job. #225 cut the major that discharged them,
+  # it published, the job went green on `main`, and only THEN was the context added to the required set —
+  # because a required check that is red on the base branch wedges the repo, which is the same trap in a
+  # different coat.
   #
-  # THAT SENTENCE HAS AN EXPIRY. #225 cut `0.4.0-preview.1` to discharge exactly those three; this
-  # job goes green the moment that major is PUBLISHED to the feed (the cut alone is not enough — the
-  # baseline is read from the feed, not from the tree). Do not read the paragraph above as current
-  # state. The live answer is one line: the `summary:` line in this job's log, which now also reports
-  # how many packables were actually `compared`.
+  # DO NOT RE-DERIVE THAT RED FROM FOLKLORE. Until 2026-07-09 both this comment and ADR-0100 blamed the
+  # `FS.GG.UI.Canvas.Audio` removal from specs/252 — but `FS.GG.UI.Canvas` reports OK and Audio appears in
+  # none of the CP#### lines. The run log is the source of truth; read it before asserting a cause.
   #
-  # DO NOT re-derive that red from folklore. Until 2026-07-09 both this comment and ADR-0100 blamed
-  # the `FS.GG.UI.Canvas.Audio` removal from specs/252 — but `FS.GG.UI.Canvas` reports OK, and Audio
-  # appears in none of the CP#### lines. The run log is the source of truth; read it before
-  # asserting a cause.
+  # THE LIVE ANSWER IS ONE LINE, and it is the only thing worth trusting here:
   #
-  # ELEVATION IS A ONE-LINE CHANGE, on ONE precondition: this job goes green on `main` (i.e. the
-  # major that discharges the three breaks is published to the feed). Then add the context named by
-  # this job's `name:` to branch protection's required set — cadence-map §5 already authorizes it
-  # and lists the exact string. No workflow or script change is needed.
+  #   summary: OK=17  BREAK=0  NoBaselineYet=0  Indeterminate=0  FeedUnavailable=0  (total 17, compared 17)
+  #
+  # `compared` is the number that matters. A green with `compared 0` is a gate that ran and asked nothing
+  # — check it before you believe the check.
+  #
+  # ADR-0032 DOES NOT DEADLOCK THIS REPO, and the reason is worth writing down because the org's
+  # blast-radius table said it would (#618, FS-GG/FS.GG.SDD#384). The predicted trap: ADR-0032 moves
+  # FSharp.Core off the SDK's `library-packs` and onto nuget.org, the two copies carry the same VERSION but
+  # different BYTES and different nullable metadata, so every assembly built after the switch differs — as
+  # ApiCompat sees it — from a baseline published before it. CP0002 on a type nobody touched, on a REQUIRED
+  # gate, fixable only by the PR that caused it. SDD sat merge-frozen on precisely that.
+  #
+  # Rendering is immune, and not by luck: it disabled the implicit library-packs source on 2026-07-09
+  # (#186/#214, `Directory.Build.local.props`), and cut fs-gg-ui 0.9.0 on 2026-07-11 — so THE BASELINE THIS
+  # GATE COMPARES AGAINST WAS ITSELF BUILT FROM NUGET.ORG'S FSharp.Core. There is no pre/post boundary to
+  # straddle. The 2026-07-12 shared-config sync (#571) set the same property a second time and changed
+  # nothing about what restore resolves. Confirmed, not assumed: with the switch on and the baseline at
+  # 0.9.0, this gate reports `Indeterminate=0 … compared 17` and zero CP0002s.
+  #
+  # So the precondition for the deadlock is NOT "adopting ADR-0032". It is "adopting ADR-0032 while your
+  # published baseline was built against the SDK's FSharp.Core." A repo whose baseline predates its own
+  # switch is the one at risk. Rendering has no such baseline.
   #
   # The baseline this compares against is each package's LATEST published feed version, computed as
   # a SemVer max — see the `latest_version` note in scripts/apicompat-check.sh for why it must never
