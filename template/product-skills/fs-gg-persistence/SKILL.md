@@ -27,19 +27,23 @@ The signatures you consume are bundled with this product:
 - `docs/api-surface/Canvas/Persistence.fsi` — the `PersistenceEffect` request DU
   (`Save`/`Load`/`DeleteSlot`), the `SaveSlot`/`SavePayload` identifiers, the `SaveEnvelope` record,
   the `PersistenceEvidence` record, and the `Persistence` module (smart constructors + the
-  record-only `interpretRecordOnly`/`record`). Shipped in `FS.GG.UI.Canvas`, referenced on the
+  record-only `interpret`/`record`). Shipped in `FS.GG.UI.Canvas`, referenced on the
   `game` and `sample-pack` profiles (the same package that carries the simulation primitives and
   audio).
 
 All helpers are **total**: the save-format version is clamped to `>= minVersion` at the boundary, and
 no helper throws or performs I/O. The payload is **opaque** — the framework never parses it.
 
-> **The interpreter is called `interpretRecordOnly`, and the name is the whole warning.** It records
-> your requests and drops them. The package still carries an older spelling, `Persistence.interpret`,
-> which forwards to it — that name is **deprecated**, and calling it is a hard build error in any
-> product that treats warnings as errors. It read as though it performed the save (everywhere else in
-> this framework `interpret*` means *do it*: `GlHost.interpretEffect` drives real GL work), while
-> writing no bytes at all. Call `interpretRecordOnly`.
+> **`Persistence.interpret` PERSISTS NOTHING.** It records your requests into
+> `PersistenceEvidence.Requested` and drops them. No file is written, read or deleted — not here, and
+> not later by a host: no `ViewerEffect` case carries a `PersistenceEffect`, so no host runner will
+> ever see one. A product that calls it has saved nothing.
+>
+> The name is a trap, and a known one: everywhere else in this framework `interpret*` means *do it*
+> (`GlHost.interpretEffect` drives real GL work), while this one writes no bytes at all. A later
+> framework release renames it to `interpretRecordOnly`, which says what it does — but **that
+> spelling is not in the `FS.GG.UI.Canvas` your product pins**, so `interpret` is the one to call
+> today.
 
 ## Requesting save/load from `update`
 
@@ -70,7 +74,7 @@ own deserialize step.
 
 ## Recording what was requested (headless-safe evidence)
 
-`Persistence.interpretRecordOnly` folds a batch of requests into `PersistenceEvidence` — the requested effects
+`Persistence.interpret` folds a batch of requests into `PersistenceEvidence` — the requested effects
 in dispatch order, with `Save` versions normalized and payloads carried verbatim. This is the
 record-only interpreter: it never blocks, never touches the filesystem, and is the evidence you
 assert on in tests. `Persistence.record` appends a single effect if you accumulate frame by frame.
@@ -79,7 +83,7 @@ assert on in tests. `Persistence.record` appends a single effect if you accumula
 open FS.GG.UI.Canvas
 
 let evidence =
-    Persistence.interpretRecordOnly
+    Persistence.interpret
         [ Persistence.save (Persistence.saveEnvelope 1 (SaveSlot "slot-1") "{score:42}")
           Persistence.load (SaveSlot "slot-1")
           Persistence.deleteSlot (SaveSlot "old") ]
@@ -113,7 +117,7 @@ let evidence =
 Everything above is written for a product that *consumes* a deferred backend. **If your work item is
 to build the file backend itself, the guidance above describes the trap, not the target.**
 
-`Persistence.interpretRecordOnly`/`record` are **record-only**: they fold requests into
+`Persistence.interpret`/`record` are **record-only**: they fold requests into
 `PersistenceEvidence.Requested` and touch no filesystem. So a suite that asserts on `Requested`
 **passes perfectly against a backend that writes nothing.** It exercises the framework's interpreter,
 never your code — and it will stay green through every bug you ship. Requests are not effects.
@@ -171,7 +175,7 @@ write the backend yourself ([If you own the backend](#if-you-own-the-backend)).
 
 ### Which host interprets each `PersistenceEffect`
 
-| `PersistenceEffect` | `Persistence.interpretRecordOnly` does | Which host runner interprets it |
+| `PersistenceEffect` | `Persistence.interpret` does | Which host runner interprets it |
 |---|---|---|
 | `Save` | records the request into `PersistenceEvidence.Requested` (clamping `Version` to `>= 0`); **writes no bytes** | **none** |
 | `Load` | records the request; returns **no payload** | **none** |
@@ -179,7 +183,7 @@ write the backend yourself ([If you own the backend](#if-you-own-the-backend)).
 
 The "none" column is structural, not an oversight: a host runner interprets `ViewerEffect`, and **no
 `ViewerEffect` case carries a `PersistenceEffect`**. A persistence request cannot reach a host runner
-even in principle — `Persistence.interpretRecordOnly` is the only thing that will ever see it, and all it does
+even in principle — `Persistence.interpret` is the only thing that will ever see it, and all it does
 is hand the requests back to you.
 
 So `PersistenceEvidence.Requested` proves that your `update` **asked** to save. It proves **nothing
@@ -188,7 +192,7 @@ about durability**, because no code in the framework writes a byte.
 ## Generated Product
 
 Map each `Msg` that should save, load, or delete to a `PersistenceEffect` in your `update`, collect
-the frame's requests, and pass them to `Persistence.interpretRecordOnly` for evidence today. The
+the frame's requests, and pass them to `Persistence.interpret` for evidence today. The
 request surface is designed so that a real backend can interpret the same values into file I/O
 without changing it —
 but no such backend exists yet, and handing a loaded save back to `update` as a `Msg` additionally

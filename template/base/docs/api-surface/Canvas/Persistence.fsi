@@ -45,13 +45,13 @@ type PersistenceEvidence =
 
 /// Public contract module exposed by this FS.GG.UI package.
 /// The persistence request vocabulary plus a pure RECORD-ONLY interpreter. A product's `update`
-/// emits `PersistenceEffect` values (it never reads or writes a file); `interpretRecordOnly` folds
-/// a batch into `PersistenceEvidence` — it records the requests and drops them.
+/// emits `PersistenceEffect` values (it never reads or writes a file); `interpret` folds a batch
+/// into `PersistenceEvidence` — it records the requests and drops them.
 ///
 /// There is no file-backed backend, here or anywhere in this framework, and nothing routes these
 /// requests to one: no `ViewerEffect` case carries a `PersistenceEffect`, so no host runner will
-/// ever see one. A product that emits `PersistenceEffect` values and calls `interpretRecordOnly`
-/// has saved nothing. Writing the backend is your own job — see the `fs-gg-persistence` skill.
+/// ever see one. A product that emits `PersistenceEffect` values and calls `interpret` has saved
+/// nothing. Writing the backend is your own job — see the `fs-gg-persistence` skill.
 [<RequireQualifiedAccess>]
 module Persistence =
 
@@ -99,7 +99,9 @@ module Persistence =
     /// Headless-safe: no filesystem access, never blocks, never throws. The evidence it returns
     /// proves what your product ASKED for, and nothing about durability.
     ///
-    /// (An older, deprecated spelling `Persistence.interpret` still exists on the package for
-    /// source compatibility. It forwards here. Do not call it — it reads as though it performs the
-    /// save, and it does not.)
-    val interpretRecordOnly: effects: PersistenceEffect list -> PersistenceEvidence
+    /// The name is a trap, and a known one: everywhere else in this framework `interpret*` means
+    /// *perform the effect* — `GlHost.interpretEffect` drives real GL work — while this one writes
+    /// no bytes at all. A later framework release renames it to `interpretRecordOnly`, which says
+    /// what it does; that spelling is not in the `FS.GG.UI.Canvas` this product pins, so `interpret`
+    /// is the one to call today.
+    val interpret: effects: PersistenceEffect list -> PersistenceEvidence
