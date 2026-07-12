@@ -45,13 +45,13 @@ type PersistenceEvidence =
 
 /// Public contract module exposed by this FS.GG.UI package.
 /// The persistence request vocabulary plus a pure RECORD-ONLY interpreter. A product's `update`
-/// emits `PersistenceEffect` values (it never reads or writes a file); `interpretRecordOnly` folds
-/// a batch into `PersistenceEvidence` — it records the requests and drops them.
+/// emits `PersistenceEffect` values (it never reads or writes a file); `interpret` folds a batch
+/// into `PersistenceEvidence` — it records the requests and drops them.
 ///
 /// There is no file-backed backend, here or anywhere in this framework, and nothing routes these
 /// requests to one: no `ViewerEffect` case carries a `PersistenceEffect`, so no host runner will
-/// ever see one. A product that emits `PersistenceEffect` values and calls `interpretRecordOnly`
-/// has saved nothing. Writing the backend is your own job — see the `fs-gg-persistence` skill.
+/// ever see one. A product that emits `PersistenceEffect` values and calls `interpret` has saved
+/// nothing. Writing the backend is your own job — see the `fs-gg-persistence` skill.
 [<RequireQualifiedAccess>]
 module Persistence =
 
@@ -99,7 +99,12 @@ module Persistence =
     /// Headless-safe: no filesystem access, never blocks, never throws. The evidence it returns
     /// proves what your product ASKED for, and nothing about durability.
     ///
-    /// (An older, deprecated spelling `Persistence.interpret` still exists on the package for
-    /// source compatibility. It forwards here. Do not call it — it reads as though it performs the
-    /// save, and it does not.)
-    val interpretRecordOnly: effects: PersistenceEffect list -> PersistenceEvidence
+    /// The name is a trap, and a known one: everywhere else in this framework `interpret*` means
+    /// *perform the effect* — `GlHost.interpretEffect` drives real GL work — while this one writes
+    /// no bytes at all. It is being renamed to `interpretRecordOnly`, which says what it does.
+    ///
+    /// That spelling is NOT in the `FS.GG.UI.Canvas` your product restores (see `FsGgUiVersion` in
+    /// `Directory.Packages.props`), so calling it today is a hard build error. This mirror teaches
+    /// the spelling you can actually bind, and the rename lands with the next framework release —
+    /// FS-GG/FS.GG.Rendering#587. Re-apply it here in the SAME change that publishes it (#550).
+    val interpret: effects: PersistenceEffect list -> PersistenceEvidence
