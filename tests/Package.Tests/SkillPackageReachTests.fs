@@ -381,11 +381,248 @@ let private productSkills =
     |> Seq.filter (fun (_, _, opens) -> not opens.IsEmpty)
     |> List.ofSeq
 
+// ---------------------------------------------------------------------------------------------
+// R-INST (#624) — A SKILL MAY NOT MANDATE A RULE WHOSE INSTRUMENT THE PRODUCT NEVER RECEIVES.
+//
+// A product skill may DELEGATE: state a rule in its own Evidence Rules and point at another skill for
+// the instrument that satisfies it. #507 does exactly that — `fs-gg-ui-widgets` demands responsiveness
+// evidence and points at `[[fs-gg-elmish]]` for `captureRespondsProof` / the `OnFrameMetrics`
+// projection. Nothing compared the two `materializes-when` sets, so narrowing `fs-gg-elmish` to `[app]`
+// would hand a `game` product a MANDATE WITH NO INSTRUMENT, with every test green.
+//
+// THE OBVIOUS RULE IS WRONG, and that is the whole difficulty. "A skill's `[[link]]` target must
+// materialize wherever the linking skill does" would go RED on correct, deliberate guidance:
+// `fs-gg-testing` ships to `headless-scene` and `governed`, `fs-gg-elmish` does not, and it links there
+// ANYWAY — on purpose, and it says why (a headless product has no controls to click, so the mandate is
+// vacuous for it). A gate with a wrong oracle is worse than no gate: the first thing it does is force an
+// exemption for correct work, and the exemption is what the next real bug hides behind.
+//
+// SO THE INVARIANT IS ABOUT THE MANDATE, NOT THE LINK. Containment is required only where the linking
+// skill DECLARES that the target supplies the instrument for a rule it states. That declaration is a
+// frontmatter block — structural, not prose:
+//
+//     ---
+//     name: fs-gg-ui-widgets
+//     instruments:
+//       - rule: responsiveness evidence
+//         skill: fs-gg-elmish
+//     ---
+//
+// Frontmatter rather than a marker inside the prose sentence, deliberately: a prose marker is lost by
+// the next person who rewords the paragraph, and losing it is SILENT — the pointer stops being judged
+// and the gate goes on reporting green. That is the exact rot this rule exists to catch, so the
+// declaration is kept where a rewording cannot reach it.
+//
+// It fails OPEN by construction, and that is a known, bounded cost: an author who delegates and does not
+// declare it is not judged. The alternative — judging every `[[link]]` — is the wrong oracle above. The
+// shape is documented in `template/product-skills/README.md`, where the next skill author is looking.
+// ---------------------------------------------------------------------------------------------
+
+/// (id, profiles, skill-body path) for EVERY product skill — not just the ones that `open` a package.
+/// `productSkills` above filters to skills with FS.GG opens, which is right for R-REACH and wrong here:
+/// a skill that opens nothing can still mandate a rule and delegate its instrument.
+let private allProductSkills =
+    let manifest = File.ReadAllText manifestPath
+
+    Regex.Matches(
+        manifest,
+        "\"id\":\\s*\"(?<id>[^\"]+)\"[^{}]*?\"materializes-when\":\\s*\"(?<when>[^\"]+)\"[^{}]*?\"supplied-by\":\\s*\"(?<dir>[^\"]+)\""
+    )
+    |> Seq.map (fun m ->
+        m.Groups.["id"].Value,
+        profilesOf m.Groups.["when"].Value,
+        Path.Combine(repositoryPath (m.Groups.["dir"].Value), "SKILL.md"))
+    |> List.ofSeq
+
+/// A declared delegation: "I state RULE, and SKILL supplies the instrument for it."
+type InstrumentDeclaration =
+    { Linker: string
+      LinkerProfiles: Set<string>
+      LinkerBody: string
+      Rule: string
+      Target: string }
+
+/// The YAML frontmatter block — the leading `---` … `---`. Read as its own region so an `instruments:`
+/// word occurring in the PROSE cannot be mistaken for the declaration.
+let private frontmatterOf (path: string) =
+    if not (File.Exists path) then
+        ""
+    else
+        let text = File.ReadAllText path
+        let m = Regex.Match(text, @"\A---\s*\n(?<body>[\s\S]*?)\n---\s*\n")
+        if m.Success then m.Groups.["body"].Value else ""
+
+let private instrumentEntryRegex =
+    Regex(@"-\s*rule:\s*(?<rule>[^\n]+?)\s*\n\s*skill:\s*(?<skill>[\w-]+)", RegexOptions.Compiled)
+
+let private instrumentDeclarations =
+    allProductSkills
+    |> List.collect (fun (id, profiles, bodyPath) ->
+        let front = frontmatterOf bodyPath
+
+        // Only the `instruments:` block, so a `skill:` key elsewhere in the frontmatter cannot be read
+        // as a declaration.
+        let block =
+            let m = Regex.Match(front, @"(?m)^instruments:\s*\n(?<body>(?:[ \t]+.*\n?)+)")
+            if m.Success then m.Groups.["body"].Value else ""
+
+        let body = if File.Exists bodyPath then File.ReadAllText bodyPath else ""
+
+        instrumentEntryRegex.Matches block
+        |> Seq.map (fun m ->
+            { Linker = id
+              LinkerProfiles = profiles
+              LinkerBody = body
+              Rule = m.Groups.["rule"].Value.Trim()
+              Target = m.Groups.["skill"].Value })
+        |> List.ofSeq)
+
+
 [<Tests>]
 let skillPackageReachTests =
     testList
         "Skill package reach (#430) — a skill may not out-reach the packages it says to open"
         [
+          // ---- R-INST (#624) -----------------------------------------------------------------
+
+          // The floor. A gate whose subject set is empty asserts nothing and reports green — the shape
+          // this whole file is written against — and R-INST is unusually exposed to it, because its
+          // subjects are OPT-IN. If the frontmatter parser breaks, or the last declaration is deleted,
+          // every assertion below passes vacuously.
+          test "R-INST has instrument declarations under test (the parser still reads frontmatter)" {
+              Expect.isNonEmpty
+                  instrumentDeclarations
+                  "NO skill declares an `instruments:` block, so R-INST judges nothing and every \
+                   assertion below is vacuous. Either the frontmatter parser broke, or the last \
+                   declaration was deleted — both are defects, and neither is a pass. The shape is in \
+                   template/product-skills/README.md."
+
+              let widgets =
+                  instrumentDeclarations
+                  |> List.tryFind (fun d -> d.Linker = "fs-gg-ui-widgets" && d.Target = "fs-gg-elmish")
+
+              Expect.isSome
+                  widgets
+                  "fs-gg-ui-widgets -> fs-gg-elmish is the delegation #507 created and #624 was filed \
+                   for; it must be one of the declarations under test."
+          }
+
+          // The rule. Containment, and only for DECLARED instruments.
+          test "R-INST — a declared instrument skill materializes wherever the skill that mandates it does" {
+              let known = allProductSkills |> List.map (fun (id, _, _) -> id) |> Set.ofList
+
+              // A target that is not a skill at all. Fail CLOSED: a typo'd id would otherwise resolve to
+              // no profiles and be silently excused, which turns the declaration into a decoration.
+              let unknown =
+                  instrumentDeclarations
+                  |> List.filter (fun d -> not (known.Contains d.Target))
+                  |> List.map (fun d -> $"{d.Linker} -> {d.Target}")
+
+              Expect.isEmpty
+                  unknown
+                  $"an `instruments:` entry names a skill that does not exist in the manifest — so it \
+                    resolves to no profiles and would be excused by every check below. Fix the id.\n\n\
+                    Unknown: {commaSorted unknown}"
+
+              // The declaration must still match the PROSE. A frontmatter entry whose `[[link]]` has been
+              // deleted from the body is a mandate whose pointer is gone — the reader is told to produce
+              // evidence and never told where the instrument is.
+              let unlinked =
+                  instrumentDeclarations
+                  |> List.filter (fun d -> not (d.LinkerBody.Contains $"[[{d.Target}]]"))
+                  |> List.map (fun d -> $"{d.Linker} -> {d.Target}")
+
+              Expect.isEmpty
+                  unlinked
+                  $"a skill DECLARES that another supplies the instrument for one of its rules, and its \
+                    body no longer links `[[that skill]]` anywhere. The declaration and the prose have \
+                    drifted apart: a reader is handed the mandate and never handed the pointer.\n\n\
+                    Declared but not linked: {commaSorted unlinked}"
+
+              // The invariant itself.
+              let starved =
+                  instrumentDeclarations
+                  |> List.filter (fun d -> known.Contains d.Target)
+                  |> List.choose (fun d ->
+                      let targetProfiles =
+                          allProductSkills
+                          |> List.tryPick (fun (id, profiles, _) -> if id = d.Target then Some profiles else None)
+                          |> Option.defaultValue Set.empty
+
+                      let missing = Set.difference d.LinkerProfiles targetProfiles
+
+                      if missing.IsEmpty then
+                          None
+                      else
+                          Some
+                              $"{d.Linker} mandates \"{d.Rule}\" on [{commaSorted d.LinkerProfiles}] and \
+                                delegates its instrument to {d.Target}, which does not materialize on \
+                                [{commaSorted missing}]")
+
+              let renderedStarved = String.Join("\n", starved)
+
+              Expect.isEmpty
+                  starved
+                  $"a product on these profiles is handed a RULE and never handed the INSTRUMENT for it. \
+                    That is #507's contradiction, one level up: the skill tells the author to produce \
+                    evidence, and the skill that teaches how to produce it is not in their scaffold.\n\n\
+                    Either widen the instrument skill's `materializes-when`, narrow the mandating \
+                    skill's, or move the rule.\n\n{renderedStarved}"
+          }
+
+          // THE ORACLE, ANCHORED — and this is the test that earns R-INST its shape. `fs-gg-testing`
+          // links `[[fs-gg-elmish]]` and ships to two profiles fs-gg-elmish does NOT reach. A gate that
+          // judged every `[[link]]` would redden it, and it is CORRECT: a headless-scene product has no
+          // controls to click, so the mandate is vacuous for it, and the skill says so.
+          //
+          // R-INST is silent on it because it is UNDECLARED, not because the numbers happen to work out.
+          // This test proves that distinction is real: the containment it would fail is asserted here
+          // explicitly, so if someone ever "helpfully" marks that link, R-INST reddens — correctly, and
+          // loudly — rather than the anchor rotting into a tautology.
+          test "R-INST does not fire on fs-gg-testing -> fs-gg-elmish (the deliberate cross-profile reference)" {
+              let profilesFor id =
+                  allProductSkills
+                  |> List.tryPick (fun (skill, profiles, _) -> if skill = id then Some profiles else None)
+
+              let testing = profilesFor "fs-gg-testing"
+              let elmish = profilesFor "fs-gg-elmish"
+
+              Expect.isSome testing "fs-gg-testing is in the manifest"
+              Expect.isSome elmish "fs-gg-elmish is in the manifest"
+
+              let body =
+                  allProductSkills
+                  |> List.tryPick (fun (id, _, path) ->
+                      if id = "fs-gg-testing" && File.Exists path then Some(File.ReadAllText path) else None)
+                  |> Option.defaultValue ""
+
+              Expect.stringContains
+                  body
+                  "[[fs-gg-elmish]]"
+                  "fs-gg-testing really does link fs-gg-elmish — if this ever stops being true, this \
+                   anchor is testing nothing and R-INST's hardest case has quietly left the repo."
+
+              let gap = Set.difference testing.Value elmish.Value
+
+              Expect.isNonEmpty
+                  gap
+                  "fs-gg-testing is supposed to reach profiles fs-gg-elmish does not (headless-scene, \
+                   governed) — that gap is the whole reason R-INST judges declarations and not links. If \
+                   the gap has closed, this anchor no longer proves anything and R-INST's oracle needs \
+                   re-examining, not re-blessing."
+
+              let declared =
+                  instrumentDeclarations
+                  |> List.exists (fun d -> d.Linker = "fs-gg-testing" && d.Target = "fs-gg-elmish")
+
+              Expect.isFalse
+                  declared
+                  $"fs-gg-testing now DECLARES fs-gg-elmish as an instrument, and fs-gg-elmish does not \
+                    materialize on [{commaSorted gap}]. If that delegation is real, the rule it supplies \
+                    must not be mandated on those profiles. If it is a cross-reference — which is what it \
+                    has always been — it must not be declared as an instrument."
+          }
+
           // A floor: if the manifest regex ever stops matching, every assertion below vacuously passes
           // and the guard reads green while asserting nothing. Symbology is named because it is the bug
           // this file exists for — it must always be one of the rows under test.
