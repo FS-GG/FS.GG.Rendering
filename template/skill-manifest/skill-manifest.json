@@ -84,7 +84,7 @@
     {
       "id": "fs-gg-model-swap",
       "scope": "product",
-      "sha256": "e6be58c8761466445adf27359289a9c2c111699a45b03e7cd3e4494317465d4c",
+      "sha256": "4c88cf8fbafd878e8deaaefb5699dad751d332ada7e95fb921f62163041a3805",
       "resolvablePath": ".agents/skills/fs-gg-model-swap/SKILL.md",
       "materializes-when": "profile in [game, sample-pack]",
       "supplied-by": "template/product-skills/fs-gg-model-swap/"

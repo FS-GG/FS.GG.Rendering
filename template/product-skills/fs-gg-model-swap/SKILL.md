@@ -118,9 +118,16 @@ re-point files untouched too — then the swap is just `Model.fs` + `View.fs` + 
   Build your positions on it and cross into the scene with its `toPoint`/`toRect` (express a size via
   `toRect`, never `Width`/`Height` labels on your record):
   ```fsharp
-  open Geometry                                          // Vec2 = { Vx: float; Vy: float } (collision-safe)
-  type Enemy = { Pos: Vec2; Velocity: Vec2 }             // NO X/Y/Width/Height labels on your record
-  let bounds (e: Enemy) : Rect = toRect e.Pos 24.0 24.0  // centered size, no Width/Height labels
+  // Keep `Geometry` QUALIFIED. `open Geometry` does not compile in a file that also opens
+  // `FS.GG.Game.Core` — the sim ships its own `[<RequireQualifiedAccess>]` Geometry, and the open
+  // resolves to that one (FS0892). Qualified access reaches both halves; this is that same
+  // two-Geometry seam, one level up.
+  type Enemy =
+      { Pos: Geometry.Vec2                     // Vec2 = { Vx: float; Vy: float } — collision-safe
+        Velocity: Geometry.Vec2 }              // NO X/Y/Width/Height labels on your record
+
+  let bounds (e: Enemy) : Rect =
+      Geometry.toRect e.Pos 24.0 24.0          // centered size, no Width/Height labels
   ```
 - **Consumer-vs-consumer record-label collision.** Distinct from the clash above: if two of
   *your own* records share a label (a `Creep` and a `Tower` both carrying `.Pos`/`.Id`/`.Hp`), a
