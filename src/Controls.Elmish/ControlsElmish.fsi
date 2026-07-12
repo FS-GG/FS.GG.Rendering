@@ -403,8 +403,8 @@ module ControlsElmish =
     ///     MapKey = fun key isDown -> Some(YourMsg(ViewerKeyboard.toKeyId key, isDown))
     ///
     /// The lambda IS the seam — `MapKey` is only a function, so a product writes it inline and loses
-    /// nothing. `toKeyId` is what a released FS.GG.UI.KeyboardInput exports; do not reach for a helper
-    /// that wraps it, because the helper is what a scaffolded product cannot bind (#598).
+    /// nothing. `toKeyId` is exported by the `FS.GG.UI.KeyboardInput` your product pins, so this compiles
+    /// against the released package and against `main` alike (#598).
     ///
     /// Surface the diagnostic with `AdapterCmd.diagnostics`: `AdapterCmd.productMessages` keeps only
     /// product messages and would drop it.

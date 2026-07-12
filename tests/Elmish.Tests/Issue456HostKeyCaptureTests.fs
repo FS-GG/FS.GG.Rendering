@@ -203,6 +203,15 @@ let tests =
                   d.Message
                   "ViewerKeyboard.toKeyId"
                   "and points at the seam that DOES capture a key, in a spelling the pinned package exports"
+
+              // NAMING the symbol is not TEACHING the seam. The message earns its keep by spelling the
+              // lambda out, so a reader can paste it; asserting only the symbol would let someone drop
+              // the lambda and still go green, leaving a diagnostic that names an API without showing
+              // how to use it — a weaker form of the very defect #598 fixed.
+              Expect.stringContains
+                  d.Message
+                  "fun key isDown ->"
+                  "and SHOWS the lambda, so the advice can be copied rather than merely looked up"
           }
 
           test "RequestHostKeyCapture no longer lowers to a host command (the decoy is gone)" {
