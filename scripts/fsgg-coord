@@ -1240,7 +1240,15 @@ board_items() {
     cursor="$(jq -r '.data.organization.projectV2.items.pageInfo.endCursor // empty' <<<"$out")"
     [ "$hasNext" = "true" ] && [ -z "$cursor" ] && break   # defensive: stop if a page lies
   done
-  local scan; scan="$(jq -s '.' "$tmp" | board_annotate)"; rm -f "$tmp"
+  # Annotate in two steps (#485 leg e): the scan can only resolve blockers that are ON the board, and a
+  # PR never is — so those refs used to resolve to UNKNOWN and block their item FOREVER. Resolve them
+  # server-side first, in ONE batched query, then annotate with that map in hand. Both the resolution
+  # and the annotation are paid for once per scan and stored in the shared cache below, so this is one
+  # query per TTL across every worker — not one per read.
+  local raw extra scan
+  raw="$(jq -s '.' "$tmp")"; rm -f "$tmp"
+  extra="$(resolve_offboard_blockers "$raw")"
+  scan="$(board_annotate "$extra" <<<"$raw")"
   # Store the ANNOTATED scan — every reader wants the blocker resolution, and re-deriving it per read
   # would make the cache a half-measure. Stored on every scan, whoever paid for it: the next worker
   # through the door reads it for free (that is the point — the cache dir is user-level, not per-worker).
@@ -1270,7 +1278,23 @@ board_items() {
 # `next` refuse work that is in fact startable. Only the READ side is forgiving — `set-field` still
 # refuses to write one (it tells you to clear the field instead), so they cannot spread.
 board_annotate() {
-  jq '
+  # $1 (optional): a JSON map of refs the SCAN could not resolve, resolved server-side —
+  # {"FS-GG/.github#449": "MERGED", ...}. See resolve_offboard_blockers.
+  #
+  # RESOLVED MEANS CLOSED *OR* MERGED (#485 leg e, was #476). This used to be
+  #
+  #     blocked: ($blockers | any(.state != "CLOSED"))
+  #
+  # which is exactly right for an Issue — `IssueState` is only OPEN|CLOSED — and silently wrong for a
+  # PullRequest, whose state is OPEN|CLOSED|**MERGED**. So a `Blocked by` naming a PR unblocked when
+  # that PR was ABANDONED (closed unmerged) and stayed blocked FOREVER once it was MERGED. The gate
+  # opened precisely when the blocking work was thrown away, and shut precisely when it was finished.
+  #
+  # `board_items` really does select `... on PullRequest { state }`, so MERGED genuinely reaches here.
+  # Live on a critical path: FS.GG.SDD#350 is `Blocked by: FS-GG/.github#449` — the PR carrying the very
+  # ADR that resolves it. Adding MERGED is strictly safe for issues, which are never MERGED.
+  local extra="${1:-{\}}"
+  jq --argjson extra "$extra" '
     def placeholder: test("^(-+|—|–|none|n/?a|tbd|todo)$"; "i");
     def canon($owner; $selfrepo):
       if   test("^https?://github\\.com/[^/]+/[^/]+/issues/[0-9]+$")
@@ -1293,11 +1317,70 @@ board_annotate() {
               | select(length > 0) | select(placeholder | not) ]
             | map( canon($owner; $selfrepo) as $c
                    | if $c == null then { ref: ., state: "UNPARSEABLE" }
-                     else { ref: $c, state: ($idx[$c] // "UNKNOWN") } end )
+                     # The board scan first, then the server-resolved map for refs the board never had
+                     # (a PR is never a board item, so it could ONLY ever resolve to UNKNOWN — which
+                     # counts as blocking, i.e. blocked-forever). UNKNOWN survives only when BOTH miss,
+                     # and it still blocks: an unresolvable blocker is the safe direction.
+                     else { ref: $c, state: ($idx[$c] // $extra[$c] // "UNKNOWN") } end )
             | unique_by(.ref) ) as $blockers
         | $it + { blockers: $blockers,
-                  blocked: ($blockers | any(.state != "CLOSED")) }
+                  blocked: ($blockers | any(.state != "CLOSED" and .state != "MERGED")) }
       )'
+}
+
+# ---- resolve_offboard_blockers: the refs the SCAN cannot see (#485 leg e) -------------------------
+#
+# `board_annotate` resolves a blocker against the scan, and the scan is THE BOARD. Two whole classes of
+# blocker are therefore unresolvable by construction, and both starve the item forever:
+#
+#   * a PULL REQUEST — never a board item, so it can never appear in the index. This is the normal way
+#     to reference blocking work, and it was the one guaranteed never to resolve.
+#   * an ISSUE THAT IS NOT ON THE BOARD — filed but never placed (which is #485 leg c's whole subject).
+#
+# Both resolve to UNKNOWN, and UNKNOWN blocks. That is the right default for a thing you cannot see —
+# but the fix is to LOOK, not to keep guessing.
+#
+# OVER REST, DELIBERATELY. GraphQL has `issueOrPullRequest`, which would answer this in one batched
+# query — and that is the wrong budget. GraphQL is the scarce one, shared by every worker and drained
+# by exactly this loop (#418); REST has its own, and `gh api repos/O/R/issues/N` serves PULL REQUESTS
+# TOO (a PR is an issue in REST), carrying `pull_request.merged_at` — so one cheap call per unresolved
+# ref answers both kinds AND distinguishes MERGED from CLOSED. Resolution is paid for once per scan and
+# stored in the shared cache with it, so it is a handful of REST calls per TTL across every worker.
+#
+# $1: the raw (unannotated) scan.  stdout: {"owner/repo#n": "STATE", ...}, or {} if nothing to do.
+resolve_offboard_blockers() {
+  local raw="$1"
+  # Two-pass: annotate with an empty map to reuse `canon` (ONE ref grammar, not two — re-deriving it
+  # here would be a second implementation of the very thing this item is about), then take the refs it
+  # could not resolve.
+  local unknown
+  unknown="$(board_annotate '{}' <<<"$raw" \
+    | jq -r '[ .[].blockers[]? | select(.state == "UNKNOWN") | .ref ] | unique | .[]' 2>/dev/null || true)"
+  [ -n "$unknown" ] || { printf '{}'; return 0; }
+
+  # BOUND THE COST, AND SAY SO IF IT BITES. A board with hundreds of dangling refs must not turn one
+  # scan into hundreds of reads — but a SILENT cap would leave the overflow blocked-forever with no
+  # trace, which is the exact failure this function exists to remove (#266: no silent caps).
+  local total; total="$(printf '%s\n' "$unknown" | grep -c . || true)"
+  if [ "${total:-0}" -gt 60 ]; then
+    printf 'fsgg-coord: %s off-board blocker refs; resolving the first 60. The rest stay UNKNOWN — which BLOCKS, so nothing is handed out wrongly, but those items need placing on the board.\n' "$total" >&2
+    unknown="$(printf '%s\n' "$unknown" | head -60)"
+  fi
+
+  local ref o r num st merged out="{}"
+  while IFS= read -r ref; do
+    [ -n "$ref" ] || continue
+    o="${ref%%/*}"; r="${ref#*/}"; num="${r##*#}"; r="${r%%#*}"
+    case "$num" in ''|*[!0-9]*) continue ;; esac
+    # A failed lookup must NOT become "unblocked": skip it, leaving the ref UNKNOWN, which blocks. That
+    # is the same safe direction the old code reached by never looking at all.
+    st="$(gh api "repos/$o/$r/issues/$num" \
+            --jq 'if (.pull_request.merged_at // null) != null then "MERGED"
+                  elif .state == "closed" then "CLOSED" else "OPEN" end' 2>/dev/null)" || continue
+    [ -n "$st" ] || continue
+    out="$(jq -c --arg k "$ref" --arg v "$st" '. + {($k): $v}' <<<"$out")"
+  done <<<"$unknown"
+  printf '%s' "$out"
 }
 
 # Resolve a --repo value to the actual GitHub repo name the board items carry. Accepts the registry
@@ -1399,28 +1482,52 @@ next() {
   # command the recipe reaches for when `take` says there is nothing to do.
   repo="$(scope_repo "$repo")"
   [ -n "$repo" ] && repo="$(resolve_repo "$repo")"
+  # ONE ANSWER TO "WHAT CAN I START?" (#485 leg a, was #431).
+  #
+  # `next` used to decide schedulability ITSELF, and it decided it DIFFERENTLY from `batch`: it filtered
+  # on Status and `.blocked`, and nothing else. It never called `paths_of`, never called
+  # `conflicts_between`, and never read a live claim marker. So it recommended items that `batch` — the
+  # thing `take` actually schedules from — passes over as unschedulable, and it recommended them to the
+  # one audience with no way to check: a human asking "what should I do next".
+  #
+  # Live, 6 workers in flight: every FS.GG.Rendering candidate was undeclared, so `take` reported "no
+  # schedulable item" while `next` recommended #436 — which OVERLAPPED #453, held by a LIVE claim. It
+  # was not merely optimistic; it pointed a worker at a collision the tool had already detected.
+  #
+  # So it is not a second implementation any more. `batch` IS the predicate — blockers, undeclared
+  # touch-sets, unmatchable tokens, live claims, batch-mate overlaps — and `next` is its presentation
+  # layer, exactly as `take` is its claiming layer. Ready first, then Backlog: the same two-step `take`
+  # performs, so the two commands a worker treats as "what do I do next" can no longer disagree.
+  local -a repoflag=(); [ -n "$repo" ] && repoflag=(--repo "$repo")
+  local -a ignflag=();  [ -n "$ignore_blocked" ] && ignflag=(--ignore-blocked)
+  local pickid
   # SCHEDULING read: a scan another worker paid for within the TTL is good enough, because the claim
   # CAS — not this list — is what decides who gets the item (#418).
-  local items; items="$(CACHED=1 FRESH="$fresh" board_items)"
-  local pick="" cand="" s skipped=""
-  for s in Ready Backlog; do
-    cand="$(board_filter "$repo" "$s" "" "0" <<<"$items")"
-    if [ -z "$ignore_blocked" ]; then
-      # Say WHY an otherwise-startable item was passed over — a silent skip reads as "nothing to do".
-      local notes
-      notes="$(jq -r '.[] | select(.blocked)
-        | "fsgg-coord: skipping " + ((.repo // "" | sub("^[^/]+/";"")) + "#" + (.number|tostring))
-          + " — blocked by " + ([.blockers[] | "\(.ref) (\(.state|ascii_downcase))"] | join(", "))' \
-        <<<"$cand")"
-      if [ -n "$notes" ]; then printf '%s\n' "$notes" >&2; skipped=1; fi
-      cand="$(jq -c 'map(select(.blocked | not))' <<<"$cand")"
-    fi
-    pick="$(jq -c 'first(.[])? // empty' <<<"$cand")"
-    [ -n "$pick" ] && break
-  done
+  #
+  # --fresh BUYS EXACTLY ONE SCAN. Spend it here, up front, and let everything below read the cache it
+  # writes. `batch_cmd` reaches `board_items` TWICE — once for its candidates and once inside
+  # `active_claims` — and the Ready/Backlog split is a CLIENT-SIDE filter over the same bytes, so
+  # handing FRESH down into either call would rescan the whole board again. `next --fresh` would then
+  # silently cost two or three full scans of the one budget #418 exists to protect.
+  [ -n "$fresh" ] && CACHED=1 FRESH=1 board_items >/dev/null
+  pickid="$(CACHED=1 batch_cmd "${repoflag[@]+"${repoflag[@]}"}" \
+              "${ignflag[@]+"${ignflag[@]}"}" -n 1 --json | jq -r '.[0] // empty')"
+  if [ -z "$pickid" ]; then
+    pickid="$(CACHED=1 batch_cmd "${repoflag[@]+"${repoflag[@]}"}" \
+                "${ignflag[@]+"${ignflag[@]}"}" --include-backlog -n 1 --json | jq -r '.[0] // empty')"
+  fi
+  # `batch --json` hands back the ID (`repo#n`) — that is the contract `take` reads. `next` prints a
+  # human line, so resolve the id back to its board row through the SAME cached scan batch just used.
+  local pick=""
+  if [ -n "$pickid" ]; then
+    pick="$(CACHED=1 board_items \
+            | jq -c --arg id "$pickid" 'map(select(((.repo // "" | sub("^[^/]+/";"")) + "#" + ((.number // 0)|tostring)) == $id)) | .[0] // empty')"
+  fi
   if [ -z "$pick" ]; then
+    # `batch` has already said, on stderr and per item, WHY each candidate was passed over — in the
+    # words of the check that actually passed it over (#440). Restating that as a guess is what the
+    # old "every candidate was blocked" line did, and it was frequently just wrong.
     echo "fsgg-coord: no startable item (Ready/Backlog)${repo:+ for repo '$repo'} on board '$TITLE'." >&2
-    [ -n "$skipped" ] && echo "fsgg-coord: (every candidate was blocked — see above, or pass --ignore-blocked)" >&2
     return 0
   fi
   jq -r '"→ " + ((.repo // "" | sub("^[^/]+/";"")) + (if .number then "#"+(.number|tostring) else "" end))
@@ -2390,13 +2497,27 @@ function fence_delim(line,   t, lead, ch, n, rest) {
 # patches a quoted line inside a fence and the reader never sees the new touch-set — so both sides
 # share `FENCE_AWK` and the same `^ {0,3}[Pp]aths:` bound.
 paths_from_body() {  # $1=issue body -> one normalized touch-set token per line (possibly none)
+  # BACKTICKS ARE STRIPPED BEFORE ANYTHING ELSE (#485 leg b, was #435). A `Paths:` line written the way
+  # everyone naturally writes one — ``Paths: `src/Foo/**`, `tests/Foo/**` `` — used to normalize to
+  # tokens with the backticks STILL ATTACHED, and the trailing-glob strip below is anchored at
+  # end-of-string. The token ends in a backtick, not `*`, so `/\*\*$` never matched: the `**` survived,
+  # `invalid_paths` flagged the token as unmatchable, and the item was refused.
+  #
+  # The refusal itself was CORRECT and fail-closed (#273: an unmatchable token must never answer
+  # DISJOINT). The defect was that a GRAMMAR-LEGAL declaration was rejected for its markdown, and the
+  # item then vanished from `batch` while `take` reported an empty queue — a well-formed touch-set
+  # made invisible by a formatting character. FS.GG.Audio#29 and #31 were both filed this way.
+  #
+  # A touch-set token can never legitimately contain a backtick (it is not a path character anyone
+  # means), so stripping is unambiguous — and `widen` shares this function, so both sides stay coherent.
   printf '%s\n' "$1" \
     | awk "$FENCE_AWK"'{ if (fence_delim($0)) next; if (!IN_FENCE) print }' \
     | grep -E '^ {0,3}[Pp]aths:' \
     | sed -E 's/^ *[Pp]aths:[[:space:]]*//' \
+    | tr -d '`' \
     | tr ',' ' ' | tr '\t' ' ' | tr -s ' ' '\n' | sed '/^$/d' \
     | sed -E 's#^\./##; s#/\*\*$##; s#/\*$##; s#/+$##' \
-    || true                                  # normalize: strip ./ prefix, /** /* and trailing /
+    || true                                  # normalize: strip backticks, ./ prefix, /** /* and trailing /
 }
 
 # The touch-set grammar the matcher ACTUALLY implements — and the refusal that keeps the gap between
@@ -3004,13 +3125,19 @@ reserved_in() {  # $1=repo-tagged lines  $2=owner/repo -> the bare tokens reserv
   printf '%s\n' "$1" | awk -F'\t' -v r="$2" 'NF >= 2 && $1 == r { print $2 }'
 }
 batch_cmd() {
-  local repo="" want=0 json="" include_backlog=""
+  local repo="" want=0 json="" include_backlog="" ignore_blocked=""
   while [ $# -gt 0 ]; do
     case "$1" in
       --repo)   repo="${2:?--repo needs a value}"; shift 2 ;;
       -n)       want="${2:?-n needs a value}"; shift 2 ;;
       --json)   json=1; shift ;;
       --include-backlog) include_backlog=1; shift ;;
+      # A DIAGNOSTIC, never a scheduling mode (#485 leg a). `next --ignore-blocked` exists to answer
+      # "what WOULD be startable if the blockers cleared", and `next` is now this function's
+      # presentation layer, so the flag has to live here. It relaxes the blocker filter and NOTHING
+      # else: touch-sets, unmatchable tokens and live claims are still enforced, because those are
+      # collisions rather than sequencing — no flag may hand out an item two workers would fight over.
+      --ignore-blocked)  ignore_blocked=1; shift ;;
       -*)       die "batch: unknown flag '$1'." ;;
       *)        die "batch: unexpected argument '$1'." ;;
     esac
@@ -3034,21 +3161,35 @@ batch_cmd() {
     cands="$(jq -c -s 'add' <(printf '%s' "$cands") <(board_filter "$repo" "Backlog" "" "0" <<<"$items"))"
   fi
   # A BLOCKED candidate is dropped here — but it must not be dropped SILENTLY (#488). It never reaches
-  # the skip-reason loop below, so before this fix it contributed nothing to `$skipped`, `take`'s stderr
+  # the skip-reason loop below, so before that fix it contributed nothing to `$skipped`, `take`'s stderr
   # came back empty, and `take` concluded from that emptiness that there were "no open board items at
   # all — an empty queue, not a blocked one". The one state most likely to starve a queue was the one
   # state that left no trace. `blocked` is a REASON, and reasons are what `batch` exists to report.
+  #
+  # It is also where `next` gets its blocker diagnostic from now (#485 leg a): `next` used to compute
+  # and print this itself, with its own idea of what "startable" meant. It no longer has one — `batch`
+  # is the predicate, so the reason has to be produced HERE or it is lost.
   local blocked_out skipped=""
-  blocked_out="$(jq -r '
-    .[] | select(.number != null) | select(.blocked)
-    | ( [ (.blockers // [])[] | select(.state != "CLOSED") | (.ref | sub("^[^/]+/";"")) ]
-        | if length == 0 then "an unnamed blocker" else join(", ") end ) as $b
-    | "  \(.repo | sub("^[^/]+/";""))#\(.number) — blocked by \($b)"' <<<"$cands")"
-  # An `&&` statement here would return 1 when there are NO blocked candidates — the common case —
-  # and `set -euo pipefail` would exit the script on it, silently. Use an explicit `if`.
-  if [ -n "$blocked_out" ]; then skipped="$skipped$blocked_out"$'\n'; fi
-
-  cands="$(jq -c 'map(select(.blocked | not) | select(.number != null)) | sort_by(.number)' <<<"$cands")"
+  if [ -z "$ignore_blocked" ]; then
+    # Name the blocker's STATE too. A MERGED blocker is RESOLVED (#485 leg e), so it can never be why
+    # an item is blocked — listing it among the reasons would send a reader to look at finished work.
+    blocked_out="$(jq -r '
+      .[] | select(.number != null) | select(.blocked)
+      | ( [ (.blockers // [])[] | select(.state != "CLOSED" and .state != "MERGED")
+            | "\(.ref | sub("^[^/]+/";"")) (\(.state | ascii_downcase))" ]
+          | if length == 0 then "an unnamed blocker" else join(", ") end ) as $b
+      | "  \(.repo | sub("^[^/]+/";""))#\(.number) — blocked by \($b)"' <<<"$cands")"
+    # An `&&` statement here would return 1 when there are NO blocked candidates — the common case —
+    # and `set -euo pipefail` would exit the script on it, silently. Use an explicit `if`.
+    if [ -n "$blocked_out" ]; then skipped="$skipped$blocked_out"$'\n'; fi
+    cands="$(jq -c 'map(select(.blocked | not) | select(.number != null)) | sort_by(.number)' <<<"$cands")"
+  else
+    # `--ignore-blocked` is a DIAGNOSTIC, never a scheduling mode (#485 leg a): it answers "what WOULD
+    # be startable if the blockers cleared". It relaxes the blocker filter and NOTHING else — touch-sets,
+    # unmatchable tokens and live claims are still enforced, because those are COLLISIONS rather than
+    # sequencing, and no flag may hand out an item two workers would fight over.
+    cands="$(jq -c 'map(select(.number != null)) | sort_by(.number)' <<<"$cands")"
+  fi
 
   # Touch-sets already spoken for by in-flight work. `active_claims` finds a claim by its MARKER, so
   # this reserves the touch-sets of items the board has lost track of (a failed `Status` flip, or an
@@ -3092,7 +3233,11 @@ batch_cmd() {
     # A candidate is merely unschedulable, not fatal: pass it over with the reason, as an undeclared
     # touch-set is. Never let it fall through to `conflicts_between`, which would clear it against all.
     if [ -n "$(invalid_paths "$p")" ]; then
-      skipped="$skipped  $id — unmatchable 'Paths:' token(s): $(fmt_bad_paths "$(invalid_paths "$p")") (cannot schedule)"$'\n'; continue
+      # NAME THE CAUSE (#485 leg b). This used to print the tokens and stop, so an author whose only
+      # sin was writing the line in markdown saw their item vanish from the queue and were told
+      # nothing they could act on. Backticks are now stripped at parse, so anything still flagged here
+      # is a REAL author error — and the grammar is the one thing that says which.
+      skipped="$skipped  $id — unmatchable 'Paths:' token(s): $(fmt_bad_paths "$(invalid_paths "$p")") (cannot schedule; $TOUCHSET_GRAMMAR)"$'\n'; continue
     fi
     hits="$(conflicts_between "$p" "$(reserved_in "$active_paths" "$r")")"
     if [ -n "$hits" ]; then
@@ -3126,7 +3271,45 @@ batch_cmd() {
   # nothing to do", and `take` — which calls this with --json — used to throw them away and print a
   # fixed sentence naming four causes instead, none of which had to be true. stdout still carries
   # only the JSON, so no consumer is disturbed.
+  # Blocked candidates are passed over BEFORE the touch-set loop runs, so their reasons are collected
+  # separately — but they are the same answer to the same question, and a worker should not have to
+  # know which stage rejected their item to find out why (#485 leg a).
   [ -n "$skipped" ] && { echo "passed over:"; printf '%s' "$skipped"; } >&2
+  return 0
+}
+
+# ---- assert_blockers_clear: the scheduler's last word before it points a worker at an item --------
+#
+# The board scan says an item is startable. This asks the SERVER whether that is still true, for the
+# ONE item about to be claimed. It exists because #485 leg (f) is an observed fail-open whose mechanism
+# was never pinned: `batch` handed out an item whose blocker was open, with `blocked=false`.
+#
+# Deliberately NOT a re-derivation from the same scan — that would re-read the input that was already
+# wrong. It goes to the source. Cost is bounded by the picked item's blocker count (almost always
+# zero, occasionally one or two), and it spends REST, which is not the budget under pressure.
+#
+# REST answers both kinds in one endpoint: `/issues/N` serves pull requests too, and a MERGED PR is
+# `state: closed` there — so "still blocking" is exactly `state == "open"`, for issues and PRs alike.
+# A lookup that FAILS leaves the ref unresolved, and an unresolved blocker blocks: the safe direction.
+assert_blockers_clear() {
+  local pick="$1" item refs ref o r n st open="" failed=""
+  item="$(CACHED=1 board_items \
+          | jq -c --arg id "$pick" 'map(select(((.repo // "" | sub("^[^/]+/";"")) + "#" + ((.number // 0)|tostring)) == $id)) | .[0] // empty')"
+  [ -n "$item" ] || return 0
+  refs="$(jq -r '.blockers[]?.ref // empty' <<<"$item" 2>/dev/null || true)"
+  [ -n "$refs" ] || return 0                       # the common case: no blockers, no calls, no cost
+  while IFS= read -r ref; do
+    [ -n "$ref" ] || continue
+    o="${ref%%/*}"; r="${ref#*/}"; n="${r##*#}"; r="${r%%#*}"
+    case "$n" in ''|*[!0-9]*) continue ;; esac
+    if st="$(gh api "repos/$o/$r/issues/$n" --jq '.state' 2>/dev/null)"; then
+      [ "$st" = "open" ] && open="$open $ref"
+    else
+      failed="$failed $ref"                        # could not read it -> cannot claim it resolved
+    fi
+  done <<<"$refs"
+  [ -z "$open" ] || die "take: refusing to claim $pick — its blocker(s) are OPEN right now:$open. The board scan called this item startable and the server disagrees, so the board is lying about a dependency (.github#485 leg f). Claiming it would put you on work another item still owns. Re-run with --fresh, and if it persists, run /check-board."
+  [ -z "$failed" ] || die "take: refusing to claim $pick — could not read its blocker(s):$failed. An unverifiable blocker is not a cleared one, and this is the last check before a worker is pointed at the item."
   return 0
 }
 
@@ -3239,6 +3422,21 @@ take_cmd() {
     rm -f "$berr"
     [ -n "$from_backlog" ] && \
       echo "fsgg-coord: no Ready item${repo:+ for '$repo'}; taking $pick from Backlog." >&2
+    # DO NOT TRUST THE ANNOTATED BOOLEAN AT THE MOMENT OF CLAIMING (#485 leg f, was #343).
+    #
+    # `batch` once handed out FS.GG.Game#75 with `blockedBy=…#74, …#84` and `blocked=false` while #84
+    # was demonstrably OPEN — and #75 and #84 overlap on two files. Two workers would have been editing
+    # the same source with no `Blocked by` between them; it was caught only because the reporter had
+    # just claimed #84 by hand. The jq is provably correct on those exact rows, so the bad input came
+    # from somewhere in the scan (a stale `content.state` on some page, or a last-wins `from_entries`
+    # collision) and the mechanism is STILL NOT PINNED.
+    #
+    # An unexplained fail-open is not a reason to keep trusting the cached flag. Ask the SERVER about
+    # this one item's blockers, at the instant we are about to claim it — a handful of REST calls, on a
+    # budget that is not the scarce one — and refuse if any is still open. That converts the silent
+    # double-assignment into a refusal that names the disagreement, which is what a scheduler owes a
+    # worker it is about to point at a collision. It stays correct whatever leg (f) turns out to be.
+    assert_blockers_clear "$pick"
     # claim in a subshell: its `die` (a lost race) must end the attempt, not `take`. SOFT_DIE=1 keeps
     # that `die` local under #344's fatal-die rule — the board read that must fail closed already
     # happened in `batch_cmd` above, before we ever get a `$pick` to claim.
