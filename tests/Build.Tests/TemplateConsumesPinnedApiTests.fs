@@ -1419,20 +1419,21 @@ let templateConsumesPinnedApiTests =
             // product author opens on day one — so an implementation that matches nothing restores that
             // blind spot while reporting green (#266).
             //
-            // Anchored on the ONE framework symbol these files actually name in prose today. That is not an
-            // arbitrary pick: `isNonEmpty` alone would survive an extractor that read only, say,
-            // `template/base/src` and silently dropped `template/fragments` — the fragments being exactly
-            // where the symbol lives, and exactly where the scaffold-module collision (`Geometry`) makes the
-            // exemption load-bearing. A named anchor fails when the coverage narrows; a count does not.
+            // The RAW half: did the extractor read the fragments at all? Anchored by NAME, because
+            // `isNonEmpty` would be satisfied by `template/base/src` alone (Model.fs names two symbols), so
+            // an extractor that silently dropped `template/fragments` would pass a count check. A named
+            // anchor fails when the coverage narrows; a count does not.
             Expect.isTrue
                 (scaffoldSourceDocCommentSymbols
                  |> List.exists (fun (_, s) -> s.Module = "SpatialGrid" && s.Member = "build"))
                 $"`SpatialGrid.build` must be among the symbols extracted from the `///` doc-comments of the \
                   scaffold's own source ({List.length scaffoldSourceDocCommentSymbols} found across \
-                  template/base/src + template/fragments). It is the only framework symbol these SHIPPED \
-                  files name in prose today, and it lives in the vec2 FRAGMENT — so if it falls out, the \
-                  extractor has stopped reading the fragments, and the last unjudged shipped doc surface is \
-                  unjudged again (#608). It resolves against the pin, so this is coverage, not a violation."
+                  template/base/src + template/fragments). It is named in template/fragments/vec2/src/Product/\
+                  Vec2.fs, which is a FRAGMENT — so if it falls out, either that comment was reworded (the \
+                  likelier cause: the file's own header tells a product author to adapt it) or the extractor \
+                  has stopped reading the fragments. Check the comment FIRST; a wrong diagnosis on a real \
+                  failure is worse than no diagnosis."
+
 
             Expect.isNonEmpty
                 docSymbols
@@ -1465,6 +1466,29 @@ let templateConsumesPinnedApiTests =
             // The positive half of the same guard, asserted on the real subject rather than on the
             // exemption set: the widget symbols the skills teach must actually reach the rule.
             let judged = docSymbols |> List.map (fun s -> $"{s.Module}.{s.Member}") |> Set.ofList
+
+            // The JUDGED half — and this is the one that actually guards #608's contribution.
+            //
+            // The raw check above is NOT enough, and review proved it. EXACTLY ONE scaffold-source symbol
+            // survives `isJudgedDocModule` today (`SpatialGrid.build`; the other five are scaffold modules or
+            // absent from the mirror). So a single `module SpatialGrid =` appearing in any fragment — and
+            // five such fragments already exist, all wrapping FS.GG.Game.Core, with `fs-gg-product-collision`
+            // already teaching "broad-phase over SpatialGrid" — makes `scaffoldModules` swallow every
+            // `SpatialGrid.*` on EVERY surface. #608's contribution to the judged set goes to ZERO, and the
+            // raw anchor stays green because the symbol is still extracted.
+            //
+            // Review planted exactly that and got 39/39 passing with an undeclared symbol sitting in a
+            // shipped scaffold doc-comment — the #550 class, in the surface this item exists to close. The
+            // #598 sibling below anchors on `judged` for this reason; the first draft of this one did not,
+            // while claiming to be "under the same guard".
+            Expect.isTrue
+                (judged.Contains "SpatialGrid.build")
+                $"`SpatialGrid.build` must survive into the JUDGED set, not merely be extracted. It is the \
+                  ONLY scaffold-source symbol that does, so if a `module SpatialGrid` ever appears in the \
+                  scaffold (a `spatial-grid` fragment beside the five that already exist), `scaffoldModules` \
+                  exempts it and #608 silently judges NOTHING while every test stays green. That is the \
+                  fails-open shape (.github#266) this file refuses everywhere else. If this fires, do not \
+                  delete it — find what started exempting the symbol."
 
             Expect.isTrue
                 (judged.Contains "Button.create" && judged.Contains "DataGrid.visibleRange")
