@@ -74,6 +74,7 @@
     <Compile Include="Feature222GuardedThemeTests.fs" />
     <Compile Include="Feature168SkillInventoryTests.fs" />
     <Compile Include="Feature168ParityFindingTests.fs" />
+    <Compile Include="Feature529MetadataSourceTests.fs" />
     <Compile Include="Feature168ParityReportTests.fs" />
     <Compile Include="Feature169ValidationDiagnosticsTests.fs" />
     <Compile Include="Feature169DiagnosticArtifactTests.fs" />

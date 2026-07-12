@@ -86,6 +86,7 @@ module SkillParity =
         | UnresolvedArtifactReference
         | MissingRequiredArtifact
         | MetadataDrift
+        | UnresolvedMetadataSource
         | IntentionalExceptionFinding
         | UnreadableSurface
 
@@ -289,6 +290,7 @@ module SkillParity =
         | UnresolvedArtifactReference -> "unresolved-artifact-reference"
         | MissingRequiredArtifact -> "missing-required-artifact"
         | MetadataDrift -> "metadata-drift"
+        | UnresolvedMetadataSource -> "unresolved-metadata-source"
         | IntentionalExceptionFinding -> "intentional-exception"
         | UnreadableSurface -> "unreadable-surface"
 
@@ -1232,6 +1234,80 @@ module SkillParity =
                             $"Add `{root}/skills/{alias}/SKILL.md` (or `{root}/skills/{id}/SKILL.md`) routing to the canonical body, or drop the skill's `scope: product` in the manifest."
                           ExceptionId = None }))
 
+    /// The author whose skills cite THIS repo. `metadata.source` means two unrelated things depending on who
+    /// wrote the skill, and only one of them is a path this repo can resolve — see `metadataSourceFindings`.
+    let private authoredHere = "fs.gg"
+
+    /// #529 (from #466) — a skill that defers its authority to a document nobody can open has no authority.
+    ///
+    /// #466 was a `template/**` SKILL.md whose `metadata.source` named a spec path that had NEVER existed in this
+    /// repo (it was imported wholesale, carrying the pre-migration repo's pointer with it). Its FR-014/FR-015/FR-016
+    /// citations then landed on *unrelated* features holding those same numbers — worse than a dead link, because
+    /// it resolves to something plausible and wrong. Nothing checked the citation, so it stayed wrong for as long
+    /// as nobody tried to follow it. This is the check.
+    ///
+    /// SCOPED TO SKILLS THIS REPO AUTHORS, and that scoping is the whole design problem. Thirty vendored spec-kit
+    /// skills also declare `metadata.source`, but theirs is UPSTREAM PROVENANCE — a path inside the github/spec-kit
+    /// repo (`templates/commands/analyze.md`), or an `<extension>:` scheme — which cannot resolve here by
+    /// construction. Failing the gate on those would be a red nobody can clear: they are synced from upstream, so
+    /// an edit here is reverted by the next sync. That is the same reason a generated artifact is never reserved
+    /// (FS-GG/.github#309) — a gate that fires on content you do not own is a gate that gets switched off.
+    ///
+    /// So the exemption is keyed on `metadata.author`, and it must be ENTERED BY DECLARING one, never by omitting
+    /// one. An unattributed `source:` is its own finding, at the same severity: otherwise the cheapest way to
+    /// silence this rule would be to delete a line, which is precisely the silent-drift shape it exists to stop.
+    let private metadataSourceFindings (root: string) (entries: SkillEntry list) =
+        entries
+        |> List.choose (fun entry ->
+            let declared key =
+                entry.Metadata
+                |> Map.tryFind key
+                |> Option.map (fun value -> value.Trim())
+                |> Option.filter (fun value -> value <> "")
+
+            match declared "source" with
+            | None -> None
+            | Some source ->
+                match declared "author" with
+                | None ->
+                    Some
+                        { FindingId = findingId UnresolvedMetadataSource entry.SurfaceId entry.SkillName
+                          SkillName = entry.SkillName
+                          SurfaceId = entry.SurfaceId
+                          Category = UnresolvedMetadataSource
+                          Severity = High
+                          CanonicalPath = Some entry.Path
+                          WrapperPath = None
+                          Symbol = None
+                          Message =
+                            $"Skill declares `metadata.source: {source}` but no `metadata.author`, so there is no way to tell whether that path is a citation of this repo (which must resolve) or upstream provenance (which cannot)."
+                          Remediation =
+                            "Declare `metadata.author`. Use `FS.GG` for a skill authored here — its `source` is then required to resolve — or the upstream owner's name for a vendored skill."
+                          ExceptionId = None }
+                | Some author when normalizeText author <> authoredHere ->
+                    // Vendored. `source` is provenance in the upstream repo, not a path in this one.
+                    None
+                | Some _ ->
+                    let resolved = absolutePath root source
+
+                    if File.Exists resolved || Directory.Exists resolved then
+                        None
+                    else
+                        Some
+                            { FindingId = findingId UnresolvedMetadataSource entry.SurfaceId entry.SkillName
+                              SkillName = entry.SkillName
+                              SurfaceId = entry.SurfaceId
+                              Category = UnresolvedMetadataSource
+                              Severity = High
+                              CanonicalPath = Some entry.Path
+                              WrapperPath = None
+                              Symbol = None
+                              Message =
+                                $"Skill declares `metadata.source: {source}`, which does not resolve to any file or directory in this repository. The skill defers its authority to a document nobody can open, and any FR-nnn it cites now hangs on a number that may resolve to an unrelated feature (#466)."
+                              Remediation =
+                                $"Point `metadata.source` at the path that actually backs this skill, or remove it. Do not leave it naming `{source}` — a citation that cannot be followed is worse than none, because it reads as though it were checked."
+                              ExceptionId = None })
+
     let private classifyFindings request entries symbols artifacts =
         wrapperFindings entries
         @ missingWrapperFindings entries
@@ -1239,6 +1315,7 @@ module SkillParity =
         @ symbolFindings symbols
         @ artifactFindings artifacts
         @ manifestCoverageFindings request
+        @ metadataSourceFindings request.RepositoryRoot entries
         |> List.distinctBy (fun finding -> finding.FindingId)
 
     let private severityCounts findings =
