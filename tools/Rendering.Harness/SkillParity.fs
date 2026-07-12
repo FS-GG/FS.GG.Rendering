@@ -1173,8 +1173,19 @@ module SkillParity =
     /// alias-only rule exists to close: delete BOTH `fs-gg-product-scene` wrappers and the product skill has
     /// no activation wrapper at all, yet coverage stays green, because the FRAMEWORK wrapper named
     /// `fs-gg-scene` satisfies `present id`. Verified: the gate reported `warning`, high=0, and did not fail.
-    /// Deriving the required name from `supplied-by` closes that, and encodes the convention at the same time.
-    let private manifestCoverageFindings (request: ParityCheckRequest) =
+    ///
+    /// BUT THE NAME RULE ALONE ONLY MOVES THE HOLE, so it is not the invariant. Derive `required` from
+    /// `supplied-by` and the masking returns the moment a body is RELOCATED off the convention — an ordinary
+    /// refactor. `fs-gg-scene` moved to `template/fragments/scene/skill/` becomes an off-convention skill,
+    /// `required` becomes the bare canonical id, the FRAMEWORK wrapper of that name satisfies it, and the
+    /// product skill has no wrapper at all with the gate green again. The convention is a proxy; it is not
+    /// the thing that matters.
+    ///
+    /// The thing that matters is: A PRODUCT SKILL'S WRAPPER MUST NOT BE ONE A FRAMEWORK WRAPPER CLAIMS. So
+    /// that is what is asserted — the wrapper at `required` must exist AND must not route into
+    /// `src/<X>/skill/`. A wrapper that routes there is the framework skill's, whatever it is named and
+    /// wherever the product body happens to live, and it cannot stand in for the product's own.
+    let private manifestCoverageFindings (request: ParityCheckRequest) (entries: SkillEntry list) =
         // Fixture mode uses synthetic trees with no manifest; it is not real repository parity evidence.
         if request.FixtureMode.IsSome then
             []
@@ -1229,8 +1240,10 @@ module SkillParity =
         // them (rather than inventing a surface name) keeps two invariants: the finding names a surface
         // that appears in the report's Supported Surfaces table, and it shares a FindingId with the
         // scan-driven `missingWrapperFindings` above — so when both fire for the same skill+surface, the
-        // `List.distinctBy` in `classifyFindings` collapses them to one finding instead of reporting the
-        // same missing wrapper twice under two different names.
+        // severity-resolving dedupe in `classifyFindings` collapses them to ONE finding rather than
+        // reporting the same missing wrapper twice under two different names. (It used to be
+        // `List.distinctBy`, which kept the FIRST — the scan-driven Warning — and silently downgraded this
+        // producer's High. That is the fail-open #489 closes; see `classifyFindings`.)
         let roots = [ "claude", ".claude"; "codex-local", ".agents" ]
 
         productIds
@@ -1254,14 +1267,31 @@ module SkillParity =
                 let present name =
                     File.Exists(Path.Combine(request.RepositoryRoot, root, "skills", name, "SKILL.md"))
 
-                if present required then
+                /// A wrapper that routes into `src/<X>/skill/` is the FRAMEWORK skill's, whatever it is named.
+                /// It cannot stand in for a product wrapper — that substitution IS the #465 bug.
+                let routesToFramework name =
+                    let wrapperPath = $"{root}/skills/{name}/SKILL.md"
+
+                    entries
+                    |> List.tryFind (fun entry -> normalizeSeparators entry.Path = wrapperPath)
+                    |> Option.bind (fun entry -> entry.WrapperTarget)
+                    |> Option.exists (fun target ->
+                        let raw = normalizeSeparators target.RawTarget
+                        raw.Contains "/src/" && raw.EndsWith "/skill/SKILL.md")
+
+                let satisfied = present required && not (routesToFramework required)
+
+                if satisfied then
                     None
                 else
-                    // Say WHICH failure this is. "Wrapper missing" and "wrapper is there under the other
-                    // name" are different edits, and conflating them is how the last person guessed wrong.
+                    // Say WHICH failure this is. "No wrapper", "wrapper is under the other name" and "the
+                    // wrapper of that name belongs to the framework skill" are three different edits, and
+                    // conflating them is how somebody fixes the wrong one.
                     let detail =
-                        if present otherName then
-                            $" A wrapper exists at `{root}/skills/{otherName}/`, but that is not the name this skill's wrapper takes: its body is supplied from `{suppliedBy}`, so it is wrapped under `{required}`. For a capability skill (`template/product-skills/…`) the bare canonical id is the FRAMEWORK wrapper's name — accepting it here is exactly the masking Feature 223 forbids (#489)."
+                        if present required && routesToFramework required then
+                            $" A wrapper DOES exist at `{root}/skills/{required}/`, but it routes into `src/…/skill/` — it is the FRAMEWORK skill's wrapper, not this product skill's, and it cannot stand in for one. That substitution is exactly the masking Feature 223 forbids and the #465 bug (a product skill materializing into every workspace with no wrapper of its own, while coverage reported green)."
+                        elif present otherName then
+                            $" A wrapper exists at `{root}/skills/{otherName}/`, but that is not the name this skill's wrapper takes: its body is supplied from `{suppliedBy}`, so it is wrapped under `{required}` (#489)."
                         else
                             ""
 
@@ -1535,12 +1565,19 @@ module SkillParity =
                                 $"Cite the requirements `{source}` actually defines, or point `metadata.source` at the spec that defines these ones.")
 
     let private classifyFindings request entries symbols artifacts =
-        wrapperFindings entries
+        // `manifestCoverageFindings` runs BEFORE `missingWrapperFindings` on purpose. The two share a
+        // FindingId for the same missing wrapper, and the dedupe below breaks a SEVERITY TIE by keeping the
+        // first — so on an equal-severity collision the survivor should be the manifest-driven one, which
+        // knows the required wrapper name and why. The scan-driven message is generic ("Canonical skill is
+        // not exposed on this supported wrapper surface"). Today the scan producer is Warning so no tie can
+        // occur; this ordering is what stops that from becoming a silent message regression the day somebody
+        // raises it to High.
+        manifestCoverageFindings request entries
+        @ wrapperFindings entries
         @ missingWrapperFindings entries
         @ canonicalDriftFindings request entries
         @ symbolFindings symbols
         @ artifactFindings artifacts
-        @ manifestCoverageFindings request
         @ metadataSourceFindings request.RepositoryRoot entries
         @ requirementCitationFindings request.RepositoryRoot entries
         // #489 — dedupe to the WORST, not to the first.
@@ -1557,6 +1594,13 @@ module SkillParity =
         // the graver one, whatever order the producers run in.
         |> List.groupBy (fun finding -> finding.FindingId)
         |> List.map (fun (_, colliding) -> colliding |> List.maxBy (fun finding -> severityRank finding.Severity))
+        // Sorted, because the findings are rendered into `docs/reports/skills-parity.md` — a COMMITTED,
+        // derived artifact whose CI gate fails on any diff. `List.distinctBy` documents its output order;
+        // `List.groupBy` is built on a Dictionary whose enumeration order is an implementation detail. With
+        // zero findings today the difference is unobservable, which is exactly why it would be discovered
+        // the hard way: as a report that regenerates differently on some future runtime, on a PR that has
+        // nothing to do with any of this.
+        |> List.sortBy (fun finding -> -(severityRank finding.Severity), finding.FindingId)
 
     let private severityCounts findings =
         { Critical = findings |> List.filter (fun f -> f.Severity = Critical) |> List.length

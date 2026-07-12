@@ -44,17 +44,33 @@ let private writeManifest (root: string) (rows: (string * string) list) =
 
     File.WriteAllText(Path.Combine(dir, "skill-manifest.json"), $"{{\n  \"skills\": [\n    {entries}\n  ]\n}}\n")
 
+/// A canonical skill body, at a real path the wrappers can route to.
+let private writeCanonical (root: string) (relativeDir: string) (name: string) =
+    let dir = Path.Combine(root, relativeDir.Replace('/', Path.DirectorySeparatorChar))
+    Directory.CreateDirectory dir |> ignore
+
+    File.WriteAllText(
+        Path.Combine(dir, "SKILL.md"),
+        $"---\nname: \"{name}\"\ndescription: \"Canonical body for {name}.\"\n---\n\n# {name}\n\nBody.\n"
+    )
+
 /// An activation wrapper on BOTH orchestrator roots — a skill wrapped for one agent and not the other is
 /// half-shipped, which is what the coverage check exists to catch.
-let private writeWrapper (root: string) (name: string) =
+///
+/// `routesTo` matters: a wrapper pointing into `src/<X>/skill/` is the FRAMEWORK skill's, and the whole
+/// point of #489 is that such a wrapper may not stand in for a product one.
+let private writeWrapperRouting (root: string) (name: string) (routesTo: string) =
     for surface in [ ".claude"; ".agents" ] do
         let dir = Path.Combine(root, surface, "skills", name)
         Directory.CreateDirectory dir |> ignore
 
         File.WriteAllText(
             Path.Combine(dir, "SKILL.md"),
-            $"---\nname: \"{name}\"\ndescription: \"Wrapper for {name}.\"\n---\n\n# {name}\n\nBefore acting, read `../../../template/product-skills/x/SKILL.md`.\n"
+            $"---\nname: \"{name}\"\ndescription: \"Canonical body for {name}.\"\n---\n\n# {name}\n\nBefore acting, read `../../../{routesTo}/SKILL.md`.\n"
         )
+
+let private writeWrapper (root: string) (name: string) =
+    writeWrapperRouting root name "template/product-skills/fs-gg-scene"
 
 let private missingWrapperFindings (root: string) =
     SkillParity.runCheck (Feature168SkillParityFixtures.repositoryRequest root)
@@ -128,23 +144,80 @@ let tests =
                   Feature168SkillParityFixtures.deleteTempRoot root
           }
 
-          // GUARDS THE FIX ITSELF. Two producers deliberately share a FindingId so a missing wrapper is
-          // reported once. `List.distinctBy` kept the FIRST — the scan-driven Warning — and silently
-          // downgraded the manifest-driven High, which is what made the fail-open above merely a warning.
-          // Dedupe now resolves a collision by severity, so the milder finding can never hide the graver one.
+          // GUARDS THE DEDUPE FIX ITSELF — and the first version of this test did NOT.
+          //
+          // It asserted `FindingCountsBySeverity.High > 0` on a fixture whose canonical body was never
+          // written. With no canonical, the scan-driven `missingWrapperFindings` emits nothing, so no two
+          // findings ever share a FindingId and the dedupe is never exercised. Worse, the High count was
+          // already satisfied by unrelated BrokenTarget findings from the fixture's own dangling wrapper —
+          // so it passed even with `manifestCoverageFindings` returning []. Reverting the dedupe left all
+          // 371 tests green.
+          //
+          // The collision needs the canonical body to exist. Then BOTH producers fire for the same
+          // skill+surface, they share a FindingId by design, and the dedupe has to choose. It must choose the
+          // graver one: `List.distinctBy` kept the FIRST — the scan-driven Warning — silently downgrading
+          // this producer's High, and `FailOnSeverity = High` then let a product skill ship with no
+          // activation wrapper at all.
+          //
+          // WHAT THIS TEST GUARDS, precisely — because overclaiming here is how the first version of it ended
+          // up vacuous. It guards the FAIL-OPEN, not either fix individually. Two changes close it and either
+          // alone is sufficient today: emitting `manifestCoverageFindings` first (so first-wins keeps the
+          // High), and resolving the dedupe by severity (so order stops mattering). Reverting BOTH turns this
+          // test red; reverting one does not. The severity dedupe is kept anyway, because "correct only
+          // because of the order the producers happen to be concatenated in" is the property that failed here
+          // in the first place, and a test cannot observe an ordering it does not control.
           test "when two rules collide on one finding id, the WORSE severity survives" {
               let root = Feature168SkillParityFixtures.createTempRoot "feature489-dedupe"
 
               try
                   writeManifest root [ "fs-gg-scene", "template/product-skills/fs-gg-scene/" ]
-                  writeWrapper root "fs-gg-scene"
+                  // The canonical body — WITHOUT it the scan-driven producer is silent and nothing collides.
+                  writeCanonical root "template/product-skills/fs-gg-scene" "fs-gg-scene"
+                  // Only the framework wrapper. The product wrapper (`fs-gg-product-scene`) is absent.
+                  writeWrapperRouting root "fs-gg-scene" "src/Scene/skill"
+                  writeCanonical root "src/Scene/skill" "fs-gg-scene"
 
                   let report = SkillParity.runCheck (Feature168SkillParityFixtures.repositoryRequest root)
 
-                  Expect.isGreaterThan
-                      report.FindingCountsBySeverity.High
-                      0
-                      "the manifest-driven High must survive the dedupe — if a same-id Warning wins, FailOnSeverity=High lets a product skill ship with no activation wrapper at all"
+                  let collided =
+                      report.Findings
+                      |> List.filter (fun f ->
+                          f.Category = SkillParity.MissingWrapper && f.SkillName = "fs-gg-scene")
+
+                  Expect.isNonEmpty collided "the product wrapper is missing, so this must be reported"
+
+                  Expect.all
+                      collided
+                      (fun f -> f.Severity = SkillParity.High)
+                      "the manifest-driven High must SURVIVE the collision. If the same-id Warning wins (List.distinctBy keeps the first), FailOnSeverity=High lets a product skill ship with no activation wrapper at all — which is the fail-open #489 is about."
+              finally
+                  Feature168SkillParityFixtures.deleteTempRoot root
+          }
+
+          // THE HOLE THE NAME RULE ONLY MOVED. Deriving the required name from `supplied-by` is a proxy for
+          // the real invariant, and a proxy can be stepped around: RELOCATE the body off the convention — an
+          // ordinary refactor — and `required` becomes the bare canonical id, which is the FRAMEWORK
+          // wrapper's name. Masking returns, gate green. So the invariant is asserted directly instead: a
+          // wrapper that routes into `src/<X>/skill/` is the framework's and cannot stand in for a product's,
+          // whatever it is called and wherever the body was moved to.
+          test "a wrapper routing into src/*/skill/ never satisfies a product skill — even after a relocation" {
+              let root = Feature168SkillParityFixtures.createTempRoot "feature489-relocated"
+
+              try
+                  // The body has moved OFF template/product-skills/, so the name rule now asks for the bare
+                  // canonical id — the very name the framework wrapper already occupies.
+                  writeManifest root [ "fs-gg-scene", "template/fragments/scene/skill/" ]
+                  writeCanonical root "template/fragments/scene/skill" "fs-gg-scene"
+                  writeWrapperRouting root "fs-gg-scene" "src/Scene/skill"
+                  writeCanonical root "src/Scene/skill" "fs-gg-scene"
+
+                  let findings = missingWrapperFindings root
+
+                  Expect.isNonEmpty
+                      findings
+                      "the only wrapper named `fs-gg-scene` routes into src/Scene/skill — it is the FRAMEWORK skill's. The product skill has no wrapper of its own, and a name-only rule would have called this satisfied (#465, Feature 223)."
+
+                  Expect.all findings (fun f -> f.Severity = SkillParity.High) "High"
               finally
                   Feature168SkillParityFixtures.deleteTempRoot root
           }
