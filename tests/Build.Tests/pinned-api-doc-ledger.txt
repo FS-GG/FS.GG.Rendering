@@ -31,19 +31,24 @@
 # that is paid does not belong in a ledger. It is named here only so the next reader knows the rule has
 # already caught, and cleared, the bug it was built for.
 
-# ---------------------------------------------------------------------------------------------------
-# `ViewerKeyboard.mapKeyRaw` — FS.GG.Rendering#591
+# NOT LISTED, DELIBERATELY: `ViewerKeyboard.mapKeyRaw` — ledgered by #589, retired by #591 (PHANTOM).
+# It was ledgered on the belief that the CAPABILITY was unreleased, so only a release could retire it.
+# That was wrong, and worth recording because the mistake is an easy one to repeat: `mapKeyRaw` is sugar,
 #
-# Published FS.GG.UI.KeyboardInput 0.9.0 exports `formatChord`, `isModifierKey`, `mapKeyOfKeymap`,
-# `noModifiers`, `normalize`, `normalizeEvent`, `normalizeEventWithModifiers`, `toKeyId` — and NOT
-# `mapKeyRaw`. It is not a spelling slip like #550's: fs-gg-keyboard-input's entire "Capturing a key for
-# a rebind (the path that works)" section is BUILT on it, and the section's own argument is that
-# `mapKeyOfKeymap` cannot do the job (it drops every key the keymap does not bind — which is exactly the
-# key a rebind is waiting for). So there is no released spelling to fall back to: the capability itself
-# is unreleased, and the honest fix is a release, not a rename. Retire this when it publishes.
-# ---------------------------------------------------------------------------------------------------
-template/product-skills/fs-gg-keyboard-input/SKILL.md::ViewerKeyboard.mapKeyRaw
-template/base/docs/api-surface/KeyboardInput/KeyboardInput.fsi::ViewerKeyboard.mapKeyRaw
+#     let mapKeyRaw onKey = fun key isDown -> onKey (toKeyId key) isDown
+#
+# and `toKeyId` DOES ship in 0.9.0. `MapKey` is only a function, so a product writes that lambda itself
+# and loses nothing — the rebind section now teaches the lambda, and both LEDGERED sites are gone. The
+# lesson: an absent HELPER is not an absent capability. Before ledgering a symbol, check whether the pin
+# already exports what it is made of.
+#
+# THE DEBT IS NOT FULLY PAID, AND THIS RULE CANNOT SEE THE REST OF IT. `mapKeyRaw` survives in one more
+# SHIPPED doc — Controls.Elmish/ControlsElmish.fsi — in a `///` comment telling a product author to set
+# `MapKey` to it. This rule reads `val` declarations and ```fsharp fences, NOT doc-comments, so it is
+# green on that site and always was; ledgering it would not help, because the extractor never looks
+# there. It is also an `inRepoExactCopies` mirror (#585), so it cannot be fixed here at all — the edit
+# has to land in src/Controls.Elmish, which also carries it in a runtime diagnostic string. Tracked as
+# FS.GG.Rendering#598. Do not read the two deletions above as "no shipped doc names mapKeyRaw".
 
 # ---------------------------------------------------------------------------------------------------
 # `AdapterCmd.diagnostics` — FS.GG.Rendering#592

@@ -140,13 +140,15 @@ and **every key that keymap does not bind**. A rebind capture needs exactly what
 user presses next is, by definition, not bound yet. Drive `MapKey` from a keymap and the key you are
 waiting for is the one key that never arrives.
 
-Forward the key instead of resolving it, and do the routing in `update`, where your model is:
+Forward the key instead of resolving it, and do the routing in `update`, where your model is. `MapKey`
+is just a function — `ViewerKey -> bool -> 'msg option` — so the forwarding seam is one you write, and
+`ViewerKeyboard.toKeyId` is the only piece of the framework it needs:
 
 ```fsharp
 type Msg = Key of KeyId * isDown: bool     // every key arrives raw; YOU decide what it means
 
-// The seam: forwards key-down AND key-up, bound or not. Nothing is dropped.
-MapKey = ViewerKeyboard.mapKeyRaw (fun key isDown -> Some(Key(key, isDown)))
+// The seam: forwards key-down AND key-up, bound or not. It resolves nothing, so it drops nothing.
+MapKey = fun key isDown -> Some(Key(ViewerKeyboard.toKeyId key, isDown))
 
 let update (Key(key, isDown)) model =
     if not isDown then model, [] else
