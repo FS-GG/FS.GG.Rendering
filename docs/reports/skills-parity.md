@@ -35,7 +35,7 @@ Wrappers: `65`
 | fs-gg-skiaviewer | 4 | 4 | 0 | 0 |
 | fs-gg-styling | 17 | 17 | 0 | 0 |
 | fs-gg-symbology | 20 | 20 | 0 | 0 |
-| fs-gg-testing | 5 | 5 | 0 | 0 |
+| fs-gg-testing | 7 | 7 | 0 | 0 |
 | fs-gg-ui-widgets | 41 | 41 | 0 | 0 |
 
 ## Guarded Theme Coverage
