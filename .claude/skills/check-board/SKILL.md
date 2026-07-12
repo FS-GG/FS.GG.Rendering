@@ -71,11 +71,19 @@ scripts/fsgg-coord who  --repo <r> --json > /tmp/who.json   # live claims, per r
 ```
 
 **Know where `blockers[].state` comes from, or you will misread every blocker finding.**
-`board_annotate` resolves each ref against an index built from **the board's own items only**. A
-blocker that was never added to the board is therefore `UNKNOWN` — *not* `CLOSED` — and
-`blocked: any(.state != "CLOSED")` makes the item **blocked forever**. That is a real, common,
-invisible failure: `next` skips the item citing a blocker nobody can see. Resolve every `UNKNOWN`
-over REST before you believe it (§3).
+A blocker is **RESOLVED iff it is `CLOSED` *or* `MERGED`** — one rule, spelled once in the tool
+(`JQ_BLOCKER_RULE`) and consumed by the annotator, the scheduler, the `BLOCKED BY` column and
+`take`'s diagnostic alike.
+
+`MERGED` is not pedantry. `Blocked by` may name a **pull request**, whose state is `OPEN | CLOSED |
+MERGED` — so a rule that only clears on `CLOSED` unblocks when the PR is **abandoned** and blocks
+forever once it is **finished**. The gate opened precisely when the blocking work was thrown away,
+and shut precisely when it was done (`.github#476`). Two copies of that pre-#476 rule survived
+inside the tool until `.github#520`; if you are re-spelling it here, you are writing the third.
+
+`board_annotate` resolves an off-board ref **over REST itself** now, in the scan, and caches it — you
+no longer have to. What it cannot resolve stays `UNKNOWN`, and an `UNKNOWN` **blocks**: "I could not
+look" is not "I looked and it is fine" (epic `#266`). Same for `UNPARSEABLE`.
 
 ## 2. The findings
 
@@ -86,7 +94,7 @@ Each finding has a code, a ground truth, and a fix — or an explicit refusal to
 | `CLOSED-ISSUE-NOT-DONE` | `state == CLOSED` and `status != Done` | `set-field <i> Status Done` |
 | `DONE-STATUS-OPEN-ISSUE` | `status == Done` and `state == OPEN` | **report only** — is the work done, or was the flip premature? |
 | `OFF-BOARD-ISSUE` | open `roadmap` issue in a rostered repo with no board item | `fsgg-coord add <i>` |
-| `BLOCKER-CLEARED` | every blocker `CLOSED`, but `status == Blocked` | `set-field <i> Status Ready` |
+| `BLOCKER-CLEARED` | every blocker `CLOSED` **or `MERGED`**, but `status == Blocked` | `set-field <i> Status Ready` |
 | `BLOCKER-UNKNOWN` | a blocker ref is not on the board | resolve over REST, then `item-add` the blocker if it is open |
 | `BLOCKER-UNPARSEABLE` | a `Blocked by` token is not an issue ref | **report only** — hand-fix the field |
 | `STATUS-NOT-BLOCKED` | an open blocker, but `status` is `Ready`/`Backlog` | `set-field <i> Status Blocked` |
@@ -125,10 +133,23 @@ is the ordering ADR-0021 requires anyway (the marker is the CAS; the body is not
 The touch-set lives in the issue body, which the REST issue list already carries — so this costs
 **no extra call**:
 
+**Do not re-grep for `Paths:` — ask the tool.** A hand-rolled `test("(?m)^Paths:")` is a **fourth**
+parser of a grammar that already has three, and it is the loosest: it is not fence-aware (a `Paths:`
+line inside a code fence **declares nothing** — `#277`), it is case-sensitive where the tool accepts
+up to three leading spaces and either case, and it counts the `Paths: none` **sentinel** as a
+declaration when the whole point of `#496` was to tell those two apart. `lint` applies the real
+grammar, and since `#520` it also reports a touch-set that is *declared but unusable*:
+
 ```sh
-scripts/fsgg-coord issues <r> --jq '.[] | select((.body // "") | test("(?m)^Paths:") | not)
-  | "UNDECLARED-PATHS  #\(.number)  \(.title)"'
+scripts/fsgg-coord lint --repo <r> --json \
+  | jq -r '.[] | select(.code == "NO-TOUCH-SET" or .code == "BAD-TOUCH-SET")
+           | "\(.code)  \(.id)  \(.detail)"'
 ```
+
+`NO-TOUCH-SET` = nothing was declared. `BAD-TOUCH-SET` = something was, and **every token of it is
+unmatchable** — a token that matches no file conflicts with nothing, so `batch` refuses the item and
+no worker can ever pick it up. Both are the same death; only the diagnosis differs. Both are
+**report-only** here: the fix is an *issue* edit, and this skill never edits an issue.
 
 `DONE-STATUS-OPEN-ISSUE` is deliberately **not** auto-fixed, in either direction. `lint` calls it a
 *note* rather than an error for the same reason: `Done` over an open issue is how a premature flip

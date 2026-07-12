@@ -1385,7 +1385,7 @@ board_annotate() {
   # Live on a critical path: FS.GG.SDD#350 is `Blocked by: FS-GG/.github#449` — the PR carrying the very
   # ADR that resolves it. Adding MERGED is strictly safe for issues, which are never MERGED.
   local extra="${1:-{\}}"
-  jq --argjson extra "$extra" '
+  jq --argjson extra "$extra" "$JQ_BLOCKER_RULE"'
     def placeholder: test("^(-+|—|–|none|n/?a|tbd|todo)$"; "i");
     def canon($owner; $selfrepo):
       if   test("^https?://github\\.com/[^/]+/[^/]+/issues/[0-9]+$")
@@ -1415,7 +1415,7 @@ board_annotate() {
                      else { ref: $c, state: ($idx[$c] // $extra[$c] // "UNKNOWN") } end )
             | unique_by(.ref) ) as $blockers
         | $it + { blockers: $blockers,
-                  blocked: ($blockers | any(.state != "CLOSED" and .state != "MERGED")) }
+                  blocked: ([ $blockers[] | unresolved ] | length > 0) }
       )'
 }
 
@@ -1521,10 +1521,10 @@ board_filter() {
 # Pretty TSV: STATUS | ITEM (repo#num, owner stripped) | PHASE | BLOCKED BY | TITLE. Draft items show
 # `draft`/`-`. BLOCKED BY lists only the refs still holding the item (closed blockers are noise).
 board_table() {
-  jq -r '.[]
+  jq -r "$JQ_BLOCKER_RULE"'.[]
     | ((.status // "—")) as $s
     | (if .number then ((.repo // "" | sub("^[^/]+/";"")) + "#" + (.number|tostring)) else "draft" end) as $item
-    | ( [ (.blockers // [])[] | select(.state != "CLOSED") | (.ref | sub("^[^/]+/";"")) ]
+    | ( [ (.blockers // [])[] | unresolved | (.ref | sub("^[^/]+/";"")) ]
         | if length == 0 then "—" else join(", ") end ) as $b
     | [ $s, $item, (.phase // "—"), $b, (.title // "") ] | @tsv' \
   | { printf "STATUS\tITEM\tPHASE\tBLOCKED BY\tTITLE\n"; cat; } | column -t -s $'\t'
@@ -1739,6 +1739,16 @@ lint() {
           elif .f then .
           else .out += [$l] end)
       | .out;
+    # THE SAME GRAMMAR THE SCHEDULER ENFORCES (#485 thesis, applied to the touch-set). `batch`
+    # refuses a token that can match no file — a leading `**/`, a `*` in the middle — because a token
+    # that matches nothing CONFLICTS with nothing, and would read as DISJOINT against every other
+    # worker: the ADR-0021 failure, one level down. `lint` never applied that rule. It asked only
+    # whether a `Paths:` line EXISTED. So an item whose every token is unmatchable reported
+    # 0 error(s) from the one surface whose job is board health, while `batch` skipped it forever.
+    #
+    # That is #496 — lint was GREEN over a DEAD queue — reopened for the unmatchable case. The
+    # distinction is machine-readable in BOTH surfaces now, because it is the same rule.
+    def unmatchable: test("^\\*\\*/") or (test("[*?\\[]") and (test("/\\*\\*$") or test("/\\*$") | not));
     def touchset_decl:
       ( unfenced | map(select(test("^ {0,3}[Pp]aths:"))) ) as $lines
       | if ($lines | length) == 0 then null
@@ -1797,7 +1807,19 @@ lint() {
           | select(.status == "Ready" or .status == "Backlog")
           | select((.body | touchset_decl) == null)
           | { code:"NO-TOUCH-SET", severity:"error", id:.id, status:.status, url:.url,
-              detail:"\(.status) but declares no `Paths:` — `batch`/`take` cannot schedule it, so no worker can ever pick it up. Declare a touch-set, or `Paths: none` if it genuinely has none (an epic, a decision item)." } )
+              detail:"\(.status) but declares no `Paths:` — `batch`/`take` cannot schedule it, so no worker can ever pick it up. Declare a touch-set, or `Paths: none` if it genuinely has none (an epic, a decision item)." } ),
+        # ...and an item that DECLARED a touch-set the scheduler cannot use is just as dead, and was
+        # green. Same condition — "no worker can ever pick this up" — so it is the same severity.
+        ( .[] | select(.number != null)
+          | select(.state == "OPEN")
+          | select(.status == "Ready" or .status == "Backlog")
+          | select((.body | touchset_decl) != null)
+          | select((.body | touchset_decl) != "none")
+          | ( (.body | touchset_decl) | split(" ") | map(select(length > 0)) ) as $toks
+          | ( $toks | map(select(unmatchable)) ) as $bad
+          | select(($bad | length) > 0 and ($bad | length) == ($toks | length))
+          | { code:"BAD-TOUCH-SET", severity:"error", id:.id, status:.status, url:.url,
+              detail:"\(.status), and EVERY declared `Paths:` token is unmatchable: \($bad | join(", ")). A token that matches no file conflicts with nothing, so `batch` refuses it and no worker can ever pick this up — the item is as dead as one with no touch-set at all. Not a glob language: exact paths, directory prefixes, and a TRAILING `/**` or `/*`." } )
       ]' <<<"$items")"
 
   # A body-declared ref that resolves to a PR is not an unlinked child — a PR can never be a
@@ -1881,6 +1903,18 @@ banner() {   # $1=done|fail  $2=line1  $3=line2  — two full-width rows
 # matcher that knows only `-` would read an epic written with `+` as declaring NO children — and the
 # gate below would wave it through. A gate that fails open on a formatting choice is the bug this
 # whole epic is about.
+# THE ONE BLOCKER RULE (#476, #485 leg e, #520). A blocker is RESOLVED iff it is CLOSED or MERGED.
+#
+# It was written out by hand in FOUR places, and after #476 fixed two of them, TWO STILL CARRIED THE
+# PRE-#476 FORM (`state != "CLOSED"`, no MERGED clause): `board_table`'s BLOCKED BY column, and
+# `take`'s "a BLOCKED queue, not an empty one" diagnostic. So `.blocked` computed false while the
+# display and the diagnostic both named a MERGED pull request as the reason — sending a worker to go
+# and look at FINISHED work, which is the exact reader-harm the blocker naming exists to prevent.
+#
+# That is #485's thesis one level down: a rule spelled out in N places agrees in N-1 at best. It is
+# spelled ONCE now, and every site consumes this definition.
+JQ_BLOCKER_RULE='def unresolved: select(.state != "CLOSED" and .state != "MERGED");'
+
 JQ_BODY_CHILD_REFS='
 def body_child_refs($self):
   (. // "") | split("\n")
@@ -3460,12 +3494,33 @@ batch_cmd() {
   # and print this itself, with its own idea of what "startable" meant. It no longer has one — `batch`
   # is the predicate, so the reason has to be produced HERE or it is lost.
   local blocked_out skipped=""
+
+  # THE SIXTH DISAGREEMENT (#520, the residue of #485). Candidate selection reads the board `Status`
+  # column and NOTHING ELSE — so a CLOSED issue whose column was never flipped to `Done` stays a
+  # candidate forever. `board_items` has carried `.state` all along (1327); nothing ever read it.
+  #
+  # This is not theoretical. FS.GG.Rendering#502 was handed to a worker TWO HOURS after it was closed
+  # as completed — and then, when that worker released the claim, #481's restore-the-column logic
+  # promoted it `Backlog` -> `Ready`, re-arming it for the next one. The board column is a PROJECTION
+  # of the work; the issue's state is the WORK. When they disagree, the issue wins.
+  #
+  # `lint` has always known this (`select(.state == "OPEN")`, 1796) — the scheduler simply never
+  # asked. #520 said the guard belongs in "the one surviving leg" once #485 landed. #485 landed. This
+  # is that guard, and it is here rather than in `board_filter` because `ready --all` must still be
+  # able to SHOW a closed item; only the SCHEDULER may refuse to hand it out.
+  local closed_out
+  closed_out="$(jq -r '
+    .[] | select(.number != null) | select(.state != null and .state != "OPEN")
+    | "  \(.repo | sub("^[^/]+/";""))#\(.number) — the issue is \(.state | ascii_downcase) (the board column says \(.status // "unset"); /check-board reconciles it)"' <<<"$cands")"
+  if [ -n "$closed_out" ]; then skipped="$skipped$closed_out"$'\n'; fi
+  cands="$(jq -c 'map(select(.state == null or .state == "OPEN"))' <<<"$cands")"
+
   if [ -z "$ignore_blocked" ]; then
     # Name the blocker's STATE too. A MERGED blocker is RESOLVED (#485 leg e), so it can never be why
     # an item is blocked — listing it among the reasons would send a reader to look at finished work.
-    blocked_out="$(jq -r '
+    blocked_out="$(jq -r "$JQ_BLOCKER_RULE"'
       .[] | select(.number != null) | select(.blocked)
-      | ( [ (.blockers // [])[] | select(.state != "CLOSED" and .state != "MERGED")
+      | ( [ (.blockers // [])[] | unresolved
             | "\(.ref | sub("^[^/]+/";"")) (\(.state | ascii_downcase))" ]
           | if length == 0 then "an unnamed blocker" else join(", ") end ) as $b
       | "  \(.repo | sub("^[^/]+/";""))#\(.number) — blocked by \($b)"' <<<"$cands")"
@@ -3602,7 +3657,13 @@ assert_blockers_clear() {
   while IFS= read -r ref; do
     [ -n "$ref" ] || continue
     o="${ref%%/*}"; r="${ref#*/}"; n="${r##*#}"; r="${r%%#*}"
-    case "$n" in ''|*[!0-9]*) continue ;; esac
+    # A ref we cannot PARSE is not a ref we have cleared. This used to `continue` — silently DROPPING
+    # it — which is fail-OPEN in the one function whose entire purpose is to distrust the scan and go
+    # ask the server. `board_annotate` counts an UNPARSEABLE ref as blocking (its own comment: "an
+    # unresolvable blocker blocks: the safe direction"), and every other read in this file dies rather
+    # than guess. This one agreed with neither. "I could not look" is not "I looked and it is fine"
+    # (#266) — and this is the LAST check before a worker is pointed at the item.
+    case "$n" in ''|*[!0-9]*) failed="$failed $ref"; continue ;; esac
     if st="$(gh api "repos/$o/$r/issues/$n" --jq '.state' 2>/dev/null)"; then
       [ "$st" = "open" ] && open="$open $ref"
     else
@@ -3709,8 +3770,8 @@ take_cmd() {
             echo "  $n_open open board item(s)${repo:+ for '$repo'}, and NONE of them is startable — a BLOCKED queue, not an empty one:" >&2
             jq -r 'group_by(.status // "(no Status)")
                    | map("    \(length) × \(.[0].status // "(no Status)")") | .[]' <<<"$open_items" >&2
-            jq -r '.[] | select(.blocked)
-                   | ( [ (.blockers // [])[] | select(.state != "CLOSED") | (.ref | sub("^[^/]+/";"")) ]
+            jq -r "$JQ_BLOCKER_RULE"'.[] | select(.blocked)
+                   | ( [ (.blockers // [])[] | unresolved | (.ref | sub("^[^/]+/";"")) ]
                        | if length == 0 then "an unnamed blocker" else join(", ") end ) as $b
                    | "    \(.repo | sub("^[^/]+/";""))#\(.number) — blocked by \($b)"' <<<"$open_items" >&2
             echo "  See them all: fsgg-coord ready --repo '${repo:-<repo>}' --all" >&2
