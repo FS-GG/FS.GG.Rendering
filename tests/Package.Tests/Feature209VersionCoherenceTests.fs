@@ -525,4 +525,107 @@ let feature209VersionCoherenceTests =
             Expect.isTrue (Regex.IsMatch(buildText, "<FsGgUiVersion>\\(\\[\\^<\\]\\+\\)</FsGgUiVersion>")) "build.fsx keeps the resolution regex"
             Expect.isTrue (Regex.IsMatch(propsText, "<FsGgUiVersion>([^<]+)</FsGgUiVersion>")) "the literal still matches that regex"
         }
+
+        // #514 (class #517) — CUTTING A RELEASE TAG MUST NOT ROT THE COMMITTED ARTIFACT.
+        //
+        // The verdict report is a committed artifact and the Deterministic gate byte-compares it against a
+        // fresh render. It used to record the tags it OBSERVED (`git tag --list`) — external state that
+        // changes with no commit — so every release rotted it: `release-tags.yml` cuts `fs-gg-ui/v<pin>`
+        // AFTER the bump merges, and the artifact the release PR committed named the previous tag the
+        // instant the new one appeared. The gate is REQUIRED on `main`, so main went red and every PR
+        // branched from it inherited that red. #515 stopped the entire repo; #435 and #477 had each already
+        // regenerated the file by hand. The fix records the tags the COMMIT OWES (pin/package-derived), so
+        // there is nothing left for a tag push to invalidate.
+        //
+        // This replays a real release against a throwaway CLONE — bump the three files a release bump
+        // actually touches (see 893757b5), regenerate, commit, then cut the tag triple — and asserts the
+        // artifact still matches afterwards. On the pre-#514 script step 5 below FAILS with
+        // `DRIFT [artifact-stale] … latest-snapshot-tag`, which is precisely #515.
+        test "a release tag cut does not make the committed verdict artifact stale" {
+            let tmp = Path.Combine(Path.GetTempPath(), "vcoh514-" + Guid.NewGuid().ToString("N").Substring(0, 8))
+
+            let git args =
+                let ec, out = runIn tmp "git" args
+                if ec <> 0 then failwithf "git %s failed in the clone:\n%s" (String.concat " " args) out
+                out
+
+            let guard () = runIn tmp "dotnet" [ "fsi"; Path.Combine("scripts", "validate-version-coherence.fsx") ]
+
+            try
+                // A clone, so the tag namespace is ours to cut into and the real repo is never touched.
+                // `--no-hardlinks`: the temp dir is routinely on a different filesystem from the checkout,
+                // and git's default object-hardlinking fails outright across one.
+                //
+                // NOTE the clone takes HEAD, not the working tree — so this exercises the guard AS COMMITTED,
+                // which is exactly the subject the gate judges. Editing the script without committing it will
+                // not change what this test sees.
+                let ec, out = runIn (Path.GetTempPath()) "git" [ "clone"; "--quiet"; "--no-hardlinks"; root; tmp ]
+                if ec <> 0 then failwithf "could not clone the repo under test:\n%s" out
+
+                git [ "config"; "user.email"; "vcoh514@example.invalid" ] |> ignore
+                git [ "config"; "user.name"; "vcoh514" ] |> ignore
+
+                // 1. Bump the coherent-set axes, exactly as a release does. Not a synthetic edit: these are
+                //    the three files the 0.9.0 release (893757b5) touched, and the guard cross-checks all of
+                //    them against the pin, so bumping fewer would fail for reasons that are not the subject.
+                let current = pinVersion
+
+                // Deliberately a version no real release will ever cut. The clone carries the repo's real
+                // tags, and this test CREATES the triple for `next` — so deriving it from the pin (0.9.0 ->
+                // 0.10.0) would plant a time bomb that goes off the day the repo actually ships that
+                // version and `git tag` finds it already there. It only has to sort above every existing
+                // tag, which is all the guard's ordering rules ask of a pin.
+                let next = "999.0.0"
+
+                for rel in
+                    [ "template/base/Directory.Packages.props"
+                      ".template.package/FS.GG.UI.Template.fsproj"
+                      "template/product-skills/fs-gg-symbology/reference.fsx" ] do
+                    let path = Path.Combine(tmp, rel.Replace('/', Path.DirectorySeparatorChar))
+                    File.WriteAllText(path, File.ReadAllText(path).Replace(current, next))
+
+                git [ "commit"; "-am"; sprintf "release: cut %s" next ] |> ignore
+
+                // 2. Regenerate and fold the artifact INTO the release commit — what a release PR does, and
+                //    what it must do: the bump and the artifact it invalidates belong to one commit.
+                guard () |> ignore
+                git [ "add"; "-A" ] |> ignore
+                git [ "commit"; "--amend"; "--no-edit" ] |> ignore
+
+                // 3. The release PR is green: pin bumped, tags not cut yet, waivers hold, artifact matches.
+                let ec, out = guard ()
+                Expect.equal ec 0 (sprintf "the release commit must be coherent before its tags are cut:\n%s" out)
+
+                // 4. THE REGRESSION, asserted before anything else about the artifact's shape — so that a
+                //    reintroduction fails HERE, naming the bug, rather than tripping a cosmetic field check
+                //    further down. Cut the triple `release-tags.yml` cuts, in its order, and re-run. NOTHING
+                //    IN THE TREE CHANGED: only the tag namespace, which no commit owns. That is the entire
+                //    point — a committed artifact may not depend on it.
+                for tag in [ sprintf "fs-gg-ui/v%s" next; sprintf "fs-gg-ui-template/v%s" next; sprintf "v%s" next ] do
+                    git [ "tag"; tag ] |> ignore
+
+                let ec, out = guard ()
+
+                Expect.isFalse (out.Contains "artifact-stale")
+                    (sprintf "cutting the release tags must not rot the committed artifact — this is #515, and it stopped the whole repo:\n%s" out)
+
+                Expect.equal ec 0
+                    (sprintf "the guard is still coherent after its own release tags are cut:\n%s" out)
+
+                // 5. And the reason it survived: it recorded the tag the commit OWES, not the tag that
+                //    happened to exist when it was rendered. Pre-#514 this line read the OBSERVED latest tag
+                //    — the one the cut above was about to supersede.
+                let artifact = File.ReadAllText(Path.Combine(tmp, "specs", "209-version-staleness-guard", "readiness", "version-coherence.md"))
+                Expect.stringContains artifact (sprintf "snapshot-tag-for-pin: fs-gg-ui/v%s" next)
+                    "the artifact records the snapshot tag the PIN owes — a value the tag cut cannot change"
+                Expect.isFalse (artifact.Contains "latest-snapshot-tag")
+                    "the observed-tag field is gone; reintroducing it makes the artifact self-invalidating again"
+            finally
+                // A clone is read-only .git objects; on Windows they are marked read-only and Delete throws.
+                try
+                    for f in Directory.EnumerateFiles(tmp, "*", SearchOption.AllDirectories) do
+                        File.SetAttributes(f, FileAttributes.Normal)
+                    Directory.Delete(tmp, true)
+                with _ -> ()
+        }
     ]
