@@ -96,14 +96,18 @@
 #                                             # to act on (free — rate_limit does not meter itself)
 #
 # THE SHADOW (ADR-0034 Phase 2). The coordination domain is moving to a typed F# core, and this tool
-# schedules the work that rewrites this tool — so nothing is cut over on faith. With `--engine shadow`
-# (or FSGG_COORD_ENGINE=shadow) BOTH engines decide every `batch`/`next`/`take`, BASH'S ANSWER IS THE
-# ONE RETURNED, and every disagreement is logged. Zero risk: the fleet is unaffected, and if the port
-# stalls the shadow costs nothing. Bash stays authoritative until the log has been empty for three
-# consecutive days across the live fleet — which is what `--engine fs` is waiting for, and why it is
-# still refused.
+# schedules the work that rewrites this tool — so nothing is cut over on faith. BOTH engines decide
+# every `batch`/`next`/`take`, BASH'S ANSWER IS THE ONE RETURNED, and every disagreement is logged.
+# Bash stays authoritative until the log has been empty for three consecutive days across the live
+# fleet — which is what `--engine fs` is waiting for, and why it is still refused.
 #
-#   fsgg-coord --engine shadow next           # decide with bash, compare with the typed engine
+# IT IS ON BY DEFAULT WHEREVER AN ENGINE EXISTS (`--engine auto`), and off wherever one does not — so
+# a repo without the engine on its coordination path is byte-for-byte unaffected, and a repo with it
+# starts contributing evidence without anybody remembering to opt in. A shadow nobody switches on is
+# not a cautious shadow; it is a decoration, and the three-day clock never starts.
+#
+#   fsgg-coord --engine bash next             # the escape hatch: never shadow
+#   fsgg-coord --engine shadow next           # insist on it; a missing engine is a logged skip
 #   fsgg-coord divergence [--json] [--since T] [--clear]
 #                                             # the acceptance test for the port. Reports OUTCOME
 #                                             # divergences (the engines disagree about what may be
@@ -3691,7 +3695,26 @@ reap_cmd() {
 # it is on the 5,000-*requests*/hr budget rather than the 5,000-*points*/hr one that dies first, and
 # it is paid only when the shadow is switched on. The log counts those reads rather than assuming
 # them.
-ENGINE_MODE="${FSGG_COORD_ENGINE:-bash}"
+# AUTO, NOT OFF — and this is the difference between a shadow and a shadow-shaped ornament.
+#
+# The first cut defaulted to `bash`, faithfully to the roadmap's "defaulting off". The result is a
+# harness that never runs: nothing in the fleet sets FSGG_COORD_ENGINE, so nothing ever compares, the
+# divergence log stays empty forever, and the exit criterion this whole phase is FOR — zero divergence
+# across the live fleet for three consecutive days — can never be met, because the clock never starts.
+# An observer nobody switches on is not a cautious observer. It is a decoration.
+#
+# So the default is AUTO: shadow WHEREVER AN ENGINE ACTUALLY EXISTS, and plain bash everywhere else.
+# That is safe because "exists" is the honest gate — the six receivers have no engine on the
+# coordination path until it is published, so they are byte-for-byte unaffected and cannot be broken
+# by a thing that is not there. And it is safe because the shadow has been proven unable to change
+# bash's answer, its exit code, or its life: 709 assertions, including a mutation test that removes
+# the containment and watches the tool die.
+#
+#   auto (default)  shadow iff an engine resolves; bash otherwise. No ceremony, no env var, no opt-in.
+#   bash            never shadow. The escape hatch, for when you want the old thing exactly.
+#   shadow          always shadow; a missing engine is a LOGGED SKIP (you asked, we could not).
+#   fs              refused until the flip (ADR-0034 Phase 3).
+ENGINE_MODE="${FSGG_COORD_ENGINE:-auto}"
 DIVERGENCE_LOG="${FSGG_COORD_DIVERGENCE_LOG:-$CACHE/divergence.jsonl}"
 SNAPSHOT_SCHEMA='fsgg.coord.snapshot/1'
 SHADOW_EXTRA_READS=0
@@ -3701,16 +3724,44 @@ SHADOW_EXTRA_READS=0
 # number whose entire job is to stop a silent no-op from passing for agreement.
 SHADOW_UNOBSERVED=0
 
-shadow_enabled() { [ "$ENGINE_MODE" = "shadow" ] || [ "$ENGINE_MODE" = "fs" ]; }
+# In `auto`, the presence of an engine IS the switch. In `shadow`, the switch is the caller's word, and
+# a missing engine is a skip they get told about — because they asked for a comparison and did not get
+# one, which is a different fact from "this machine does not do comparisons".
+shadow_enabled() {
+  case "$ENGINE_MODE" in
+    shadow|fs) return 0 ;;
+    auto)      engine_resolve ;;
+    *)         return 1 ;;
+  esac
+}
 
-# Where the engine lives. In Phase 2 `.github` builds it FROM SOURCE and never depends on the feed —
-# that asymmetry is what breaks the publish cycle (to fix coord you would otherwise have to publish,
-# and to publish you would need coord to schedule the fix). Phase 3 replaces this with the shim that
-# resolves it from `.config/dotnet-tools.json`.
-ENGINE_BIN_MEMO=""
-engine_bin() {
-  [ -n "$ENGINE_BIN_MEMO" ] && { printf '%s' "$ENGINE_BIN_MEMO"; return 0; }
-  local top candidate
+# HOW TO RUN THE ENGINE — AND IT IS AN ARGV, NOT A PATH, BECAUSE A LOCAL TOOL IS NOT ON $PATH.
+#
+# This is the trap that would have made the whole distribution a no-op. `dotnet tool restore` installs
+# a MANIFEST-scoped ("local") tool, and a local tool is deliberately NOT placed on $PATH — it is
+# invoked as `dotnet tool run <command>`. So a receiver could take the package, restore it, and have
+# `command -v fsgg-coord-engine` still find NOTHING: the manifest lands, the tool restores, and the
+# shadow silently never runs. The tool would be shipped, installed, and inert — which is the exact
+# shape of every defect this engine exists to end, one layer beneath it.
+#
+# ADR-0034 §4.4 always meant the shim to resolve the tool "from `.config/dotnet-tools.json`". This is
+# what that actually requires.
+#
+# Resolution order, most specific first:
+#   1. FSGG_COORD_ENGINE_BIN   — an explicit instruction. Honoured or refused, NEVER fallen back from.
+#   2. a global tool on PATH   — `dotnet tool install -g`, or any binary the operator put there.
+#   3. a LOCAL tool manifest   — the receivers' shape: `.config/dotnet-tools.json` + `dotnet tool run`.
+#   4. a repo-local build      — `.github` alone, which builds the engine FROM SOURCE and never
+#                                depends on the feed. That asymmetry is what breaks the publish cycle:
+#                                fixing coord would otherwise require publishing, and publishing would
+#                                require coord to schedule the fix.
+ENGINE_ARGV=()
+ENGINE_RESOLVED=""
+engine_resolve() {  # 0 iff an engine was found; the command lands in ENGINE_ARGV
+  [ -n "$ENGINE_RESOLVED" ] && { [ "${#ENGINE_ARGV[@]}" -gt 0 ]; return; }
+  ENGINE_RESOLVED=1
+  ENGINE_ARGV=()
+  local top candidate manifest
 
   # AN EXPLICIT PATH IS AN INSTRUCTION, NOT A HINT. If the caller named an engine and that engine is
   # not there, FALLING BACK to some other one is the worst available behaviour: they would be told the
@@ -3718,23 +3769,37 @@ engine_bin() {
   # build from a different branch, silently answering for the one they meant to test. Refuse, and let
   # the caller find out. (Same shape as `--snapshot --json` swallowing the next flag; same rule.)
   if [ -n "${FSGG_COORD_ENGINE_BIN:-}" ]; then
-    if [ -x "${FSGG_COORD_ENGINE_BIN}" ]; then ENGINE_BIN_MEMO="$FSGG_COORD_ENGINE_BIN"; fi
-    printf '%s' "$ENGINE_BIN_MEMO"
-    return 0
+    [ -x "${FSGG_COORD_ENGINE_BIN}" ] && ENGINE_ARGV=("$FSGG_COORD_ENGINE_BIN")
+    [ "${#ENGINE_ARGV[@]}" -gt 0 ]
+    return
   fi
 
   if command -v fsgg-coord-engine >/dev/null 2>&1; then
-    # The shape Phase 3's shim will use: the tool on PATH, resolved from `.config/dotnet-tools.json`.
-    ENGINE_BIN_MEMO="$(command -v fsgg-coord-engine)"
-  else
-    # `.github` builds the engine FROM SOURCE and never depends on the feed — the asymmetry that
-    # breaks the publish cycle (to fix coord you would otherwise have to publish, and to publish you
-    # would need coord to schedule the fix).
-    top="$(git_toplevel)"
-    candidate="$top/src/FS.GG.Coord.Cli/bin/Release/net10.0/fsgg-coord-engine"
-    if [ -n "$top" ] && [ -x "$candidate" ]; then ENGINE_BIN_MEMO="$candidate"; fi
+    ENGINE_ARGV=("$(command -v fsgg-coord-engine)")
+    return 0
   fi
-  printf '%s' "$ENGINE_BIN_MEMO"
+
+  top="$(git_toplevel)"
+
+  # THE RECEIVERS' SHAPE. A restored local tool answers to `dotnet tool run`, and to nothing else.
+  # Check the MANIFEST rather than probing blindly: `dotnet tool run` on a repo that has no manifest is
+  # a slow, noisy failure on every single scheduling call, and this runs in a worker's hot loop.
+  if [ -n "$top" ]; then
+    manifest="$top/.config/dotnet-tools.json"
+    if [ -f "$manifest" ] && command -v dotnet >/dev/null 2>&1 \
+       && jq -e '.tools | to_entries[] | select(.value.commands // [] | index("fsgg-coord-engine"))' \
+            >/dev/null 2>&1 <"$manifest"; then
+      ENGINE_ARGV=(dotnet tool run fsgg-coord-engine)
+      return 0
+    fi
+
+    candidate="$top/src/FS.GG.Coord.Cli/bin/Release/net10.0/fsgg-coord-engine"
+    if [ -x "$candidate" ]; then
+      ENGINE_ARGV=("$candidate")
+      return 0
+    fi
+  fi
+  return 1
 }
 
 # One JSONL row per shadowed invocation. NEVER fails the caller: a log we cannot write is a log we
@@ -4025,11 +4090,10 @@ shadow_run() {  # <allowBacklog 0|1> <limit> <inflight-ndjson-file> <repo>
   shadow_enabled || return 0
 
   local allow="$1" limit="$2" inflight="$3" repo="${4:-}"
-  local bin; bin="$(engine_bin)"
-  if [ -z "$bin" ]; then
-    # Rule 2. Six receivers carry this script and have no .NET on the coordination path until Phase 3.
-    # Their shadow does not run, and that is a fact to RECORD, not an error to raise.
-    shadow_skip "no engine on PATH (build it: dotnet build src/FS.GG.Coord.Cli -c Release)"
+  if ! engine_resolve; then
+    # Rule 2. This script is byte-copied into six repos, and a repo without the engine simply does not
+    # shadow. That is a fact to RECORD, not an error to raise — it may never red a receiver's CI.
+    shadow_skip "no engine (install it: dotnet tool restore, or dotnet tool install -g FS.GG.Coord.Cli)"
     return 0
   fi
 
@@ -4043,7 +4107,7 @@ shadow_run() {  # <allowBacklog 0|1> <limit> <inflight-ndjson-file> <repo>
       inFlight: $inflight, items: $items }' >"$snap" 2>/dev/null \
     || { shadow_skip "could not assemble the snapshot"; return 0; }
 
-  if ! "$bin" decide <"$snap" >"$out" 2>/dev/null; then
+  if ! "${ENGINE_ARGV[@]}" decide <"$snap" >"$out" 2>/dev/null; then
     # A RED verdict (exit 3) is a real answer and is logged below. Any other failure is the engine
     # being broken, which is news — but it is OUR news, not the caller's, and it may not cost them
     # their item.
@@ -5244,9 +5308,9 @@ while [ $# -gt 0 ]; do
   esac
 done
 case "$ENGINE_MODE" in
-  bash|shadow) ;;
-  fs) die "--engine fs is not available yet: the typed engine is not authoritative until its divergence log has been empty across the fleet for three consecutive days (ADR-0034 Phase 3). Run '--engine shadow' to help get it there, and 'fsgg-coord divergence' to see how far off it is." ;;
-  *)  die "--engine: unknown mode '$ENGINE_MODE' (bash|shadow)." ;;
+  auto|bash|shadow) ;;
+  fs) die "--engine fs is not available yet: the typed engine is not authoritative until its divergence log has been empty across the fleet for three consecutive days (ADR-0034 Phase 3). The default (auto) is already shadowing wherever an engine exists; run 'fsgg-coord divergence' to see how far off it is." ;;
+  *)  die "--engine: unknown mode '$ENGINE_MODE' (auto|bash|shadow)." ;;
 esac
 
 cmd="${1:-}"; [ $# -gt 0 ] && shift || true
