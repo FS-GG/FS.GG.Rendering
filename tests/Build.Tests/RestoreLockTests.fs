@@ -134,4 +134,34 @@ let restoreLockTests =
             Expect.stringContains action "--locked-mode --configfile nuget.config"
                 "the locked restore must name the committed config, so the pinned sources are intentional rather than inherited"
         }
+
+        // 482 — COLDNESS is the invariant this action exists to create, and the #186 check above
+        // cannot see it: strip the fresh package folder and the http-cache clear and --locked-mode
+        // goes straight back to validating the committed contentHash against whatever copy is
+        // already on the runner, with every other test in this suite still green. Both lanes are
+        // asserted because a second inline restore is exactly how the warm one survived last time.
+        test "the locked restore is cold, and both gate lanes route through it" {
+            let action = File.ReadAllText(repoPath ".github/actions/locked-restore/action.yml")
+            Expect.stringContains action "NUGET_PACKAGES=\"$(mktemp -d)\""
+                "the locked restore must resolve into a FRESH package folder, or --locked-mode compares the committed contentHash against a record of reality rather than against the feed"
+            Expect.stringContains action "dotnet nuget locals http-cache --clear"
+                "the locked restore must clear the HTTP cache — NUGET_PACKAGES relocates the global-packages folder but NOT the http cache, which will replay stale .nupkg bytes into the fresh folder"
+
+            let consumer = File.ReadAllText(repoPath ".github/workflows/packaged-consumer.yml")
+            Expect.stringContains consumer "uses: ./.github/actions/locked-restore"
+                "packaged-consumer.yml must restore through the same action, or it reintroduces the second, warm, inline locked restore that 482 removed"
+        }
+
+        // 482 — the action exports NUGET_PACKAGES to $GITHUB_ENV, which is JOB-WIDE, and the
+        // NUGET_PACKAGES *env var* OVERRIDES a `globalPackagesFolder` set in a nuget.config. The
+        // version-coherence smoke isolates its clean consumer with exactly that config key, so
+        // inheriting the variable would redirect its "clean restore" into the shared folder, where a
+        // cached FS.GG.UI@V could satisfy a member the freshly-packed feed never produced — the
+        // restore-partial proof would then report green on a partial graph. Cheap line, silent
+        // fail-open if it is ever dropped.
+        test "the version-coherence guard does not inherit the locked restore's package folder" {
+            let gate = File.ReadAllText(repoPath ".github/workflows/gate.yml")
+            Expect.stringContains gate "unset NUGET_PACKAGES"
+                "gate.yml's version-coherence step must unset NUGET_PACKAGES, or the env var overrides the globalPackagesFolder the smoke uses to isolate its clean consumer, and restore-partial can pass on a partial graph"
+        }
     ]

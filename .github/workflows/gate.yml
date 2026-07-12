@@ -89,10 +89,17 @@ jobs:
       # 482 (FS-GG/.github#429) — the restore is COLD, and that is the whole point of the action:
       # a WARM one validates the committed contentHash against the package copy already on the
       # runner, never contacting the feed, so it compares a record of reality against another record
-      # of it. The enforcement, the error text and the --force-evaluate regenerate hint now live in
-      # exactly ONE place (packaged-consumer.yml restores through the same action), because two
-      # inline copies is how they drift — the comment here used to claim it was "the single restore
-      # enforcement point" while packaged-consumer.yml quietly ran a second, warm one.
+      # of it. The enforcement, the error text and the --force-evaluate regenerate hint live in ONE
+      # place across the two GATE lanes (packaged-consumer.yml restores through the same action),
+      # because two inline copies is how they drift — the comment here used to claim it was "the
+      # single restore enforcement point" while packaged-consumer.yml quietly ran a second, warm one.
+      #
+      # Scoped deliberately, so this comment does not repeat that mistake: release.yml is NOT routed
+      # through the action yet. Its `dotnet build`/`dotnet restore` of the slnx are still locked
+      # restores — RestoreLockedMode (Directory.Build.props) turns locked mode on implicitly whenever
+      # GITHUB_ACTIONS is true — but WARM ones, against the default package folder and without
+      # --configfile. That is #559, and until it lands the publish lane still validates the committed
+      # contentHash against whatever the runner already has.
       - name: Restore (locked, cold)
         uses: ./.github/actions/locked-restore
         with:
@@ -255,9 +262,17 @@ jobs:
       #     (FR-008, anti-text-grep). The deeper product-from-template build stays on release.yml.
       # Non-zero exit (1 drift / 2 guard-error) fails the gate ⇒ PR blocked from merging to main. The
       # script echoes the DRIFT lines to $GITHUB_STEP_SUMMARY on failure (SC-006).
+      # 482 — this step must NOT inherit the locked-restore action's NUGET_PACKAGES. The smoke builds
+      # its own clean consumer and isolates it with `globalPackagesFolder` in a generated nuget.config
+      # (validate-version-coherence.fsx), and the NUGET_PACKAGES *environment variable* OVERRIDES that
+      # config key. Inheriting it would silently redirect the "clean restore" into the shared package
+      # folder, so a cached FS.GG.UI@V could satisfy a member the freshly-packed feed never produced —
+      # restore-partial would report green on a partial graph. Unsetting restores exactly the
+      # environment this step had before the action existed.
       - name: Version coherence guard
         run: |
           set -euo pipefail
+          unset NUGET_PACKAGES
           dotnet fsi scripts/validate-version-coherence.fsx
           FS_GG_RUN_VERSION_COHERENCE_SMOKE=1 dotnet fsi scripts/validate-version-coherence.fsx
 
