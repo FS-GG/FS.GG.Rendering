@@ -2927,11 +2927,68 @@ conflicts_between() {
 
 paths_for_ref() { parse_ref "$1"; paths_of "$R_OWNER" "$R_REPO" "$R_NUM"; }
 
-# The worker holding a live claim on an item, or empty. The MARKER is the lock; the board's `Status`
-# is a projection of it that `claim` writes best-effort and can therefore lag (or fail). Any scheduler
-# decision that asks "is this taken?" must read the marker, never the column.
-live_claim_worker() {  # $1=owner $2=repo $3=num
-  claims_of "$1" "$2" "$3" | jq -r 'map(select(.stale | not)) | .[0].worker // empty'
+# The worker holding a live claim on an item, WITH the age of that claim. The MARKER is the lock; the
+# board's `Status` is a projection of it that `claim` writes best-effort and can therefore lag (or
+# fail). Any scheduler decision that asks "is this taken?" must read the marker, never the column.
+#
+# Holder and age come back TOGETHER, in ONE comment read: the scheduler calls this per candidate, so
+# splitting them across two `claims_of` calls would double the REST cost of the hot loop. (It replaces
+# `live_claim_worker`, which returned the holder alone and had no other caller.)
+#
+# `batch` needs the age as much as the holder (#428). "Already claimed" tells a worker to go away;
+# "already claimed, lease frees in ~12m" tells them whether going away is even the right move. The
+# lock already knew this — it simply was not on the line the worker reads.
+live_claim_holder() {  # $1=owner $2=repo $3=num -> "worker<TAB>ageSec" (empty iff no LIVE claim)
+  claims_of "$1" "$2" "$3" \
+    | jq -r 'map(select(.stale | not)) | .[0] // empty | "\(.worker // "—")\t\(.ageSec // -1)"'
+}
+
+# What is left of a claim's lease, in the words the blocked worker's next decision is made in (#428).
+# That decision is WAIT or GO ELSEWHERE, and a holder's name alone cannot inform it.
+#
+# An UNKNOWN age says so rather than guessing a window: `claim` has always recorded a timestamp, but a
+# hand-written or truncated marker may not, and inventing "frees in ~120m" from a missing field is the
+# class of confident-but-unfounded sentence #440 and #488 were both closed for.
+lease_window() {  # $1=ageSec (empty, or -1 = unknown) -> a human phrase, never empty
+  local age="${1:-}"
+  case "$age" in ''|*[!0-9]*) printf 'lease unknown'; return 0 ;; esac
+  local left=$(( CLAIM_LEASE_MIN - age / 60 ))
+  if [ "$left" -le 0 ]; then
+    # An expired lease is not a wait — it is a REAP. Saying "frees in ~-180m" (or rounding it to zero
+    # and implying "any moment now") would send a worker off to wait for a holder that is very likely
+    # dead. `batch` still reserves its touch-set, correctly, because only `reap` may break a lock.
+    printf 'lease EXPIRED — reapable'
+  else
+    printf 'lease frees in ~%sm' "$left"
+  fi
+}
+
+# Which live claim RESERVED a given touch-set token — the join that turns a path collision into a
+# PERSON (#428). `conflicts_between` reports which paths clash; a worker blocked by one needs to know
+# whose they are, because every remedy in the protocol (wait, `say`, take other work) is addressed to
+# a worker, not to a file.
+#
+# The token is matched EXACTLY: `reserved_in` emits the claims' own tokens verbatim, so the colliding
+# token on the reserved side of a `⇄` pair is, by construction, one of these. Same-repo only — a
+# `Paths:` token is repo-relative, so the caller has already confined both sides to one repo (see
+# `conflicts_between`'s contract), and this must not widen that.
+#
+# The worker may be EMPTY, and that is a real state, not a gap: `active_claims` also reserves the
+# touch-set of an item the board says is `In progress` with NO claim marker on it. Something is
+# reserving those files and the protocol cannot name it — so the caller must say exactly that rather
+# than dress it up as a holder. There is no lease on a claim that does not exist, and no one to `say`
+# to; advertising "held by — (lease unknown)" would invite a worker to wait for a marker that is never
+# coming.
+# SEPARATED BY US (\x1f), NOT BY TAB, and that is load-bearing. Tab is an IFS *whitespace* character,
+# so `read -r a b c` with IFS=$'\t' silently COLLAPSES a leading empty field: on the markerless case
+# above — where the worker is deliberately empty — `a` would be handed the ITEM and `b` the age, and
+# the item ref would then be printed as the holder's name. A non-whitespace separator preserves empty
+# fields positionally, which is the whole reason the empty worker can be trusted to mean something.
+claim_reserving() {  # $1=active-claims JSON  $2=owner/repo  $3=token -> "worker<US>item<US>ageSec"
+  jq -r --arg r "$2" --arg t "$3" '
+    [ .[] | select(.repo == $r) | select((.paths // []) | any(. == $t)) ] | first
+    | if . == null then empty
+      else "\(.worker // "")\((.repo // "" | sub("^[^/]+/"; "")))#\(.number)\(.ageSec // -1)" end' <<<"$1"
 }
 
 # Every OPEN issue in a repo that could possibly hold a claim, with the body its touch-set is
@@ -3494,6 +3551,10 @@ batch_cmd() {
   # and print this itself, with its own idea of what "startable" meant. It no longer has one — `batch`
   # is the predicate, so the reason has to be produced HERE or it is lost.
   local blocked_out skipped=""
+  # The subset of `skipped` that a LIVE CLAIM is responsible for, as `worker<TAB>ageSec` rows (#428).
+  # Kept apart from `skipped` because it answers a different question: that list says why each ITEM is
+  # not startable, this says whether the QUEUE is worth waiting for — and only a lease can say that.
+  local queued=""
 
   # THE SIXTH DISAGREEMENT (#520, the residue of #485). Candidate selection reads the board `Status`
   # column and NOTHING ELSE — so a CLOSED issue whose column was never flipped to `Done` stays a
@@ -3555,7 +3616,7 @@ batch_cmd() {
   local n i=0                    # NB: `skipped` is declared ABOVE — it is pre-seeded with the blocked
   n="$(jq 'length' <<<"$cands")" # candidates (#488). Re-declaring it here would silently drop them.
   while [ "$i" -lt "$n" ]; do
-    local it r num id p hits j clash holder body
+    local it r num id p hits j clash holder body hold age
     it="$(jq -c ".[$i]" <<<"$cands")"; i=$((i + 1))
     r="$(jq -r '.repo' <<<"$it")"; num="$(jq -r '.number' <<<"$it")"
     id="${r#*/}#$num"
@@ -3567,13 +3628,17 @@ batch_cmd() {
     # ONE body read, two questions (#496): the touch-set, and whether it is the `Paths: none` sentinel.
     body="$(body_of "${r%%/*}" "${r#*/}" "$num")"
     p="$(paths_from_body "$body")"
-    holder="$(live_claim_worker "${r%%/*}" "${r#*/}" "$num")"
+    # ONE marker read, holder AND age (#428) — the age is what turns "go away" into "wait ~12m".
+    hold="$(live_claim_holder "${r%%/*}" "${r#*/}" "$num")"
+    holder="${hold%%$'\t'*}"; age="${hold##*$'\t'}"
     if [ -n "$holder" ]; then
       # Same rule as the `active` pre-check, for a claim that never reached the board: an unmatchable
       # touch-set reserves nothing, so its holder's files are invisible to every later comparison.
       [ -z "$(invalid_paths "$p")" ] || die "batch: $id is claimed by worker $holder but declares unmatchable touch-set token(s): $(fmt_bad_paths "$(invalid_paths "$p")") — it reserves nothing, so refusing to schedule against an unknown touch-set. Fix with: fsgg-coord widen $id --paths '<paths>'"
       active_paths="$active_paths${active_paths:+$'\n'}$(tag_repo "$p" "$r")"
-      skipped="$skipped  $id — already claimed by worker $holder"$'\n'; continue
+      skipped="$skipped  $id — already claimed by worker $holder ($(lease_window "$age"))"$'\n'
+      queued="$queued$holder"$'\t'"$age"$'\n'
+      continue
     fi
     if [ -z "$p" ]; then
       # Two very different states used to print one sentence (#496). Neither is schedulable, but only
@@ -3597,7 +3662,38 @@ batch_cmd() {
     fi
     hits="$(conflicts_between "$p" "$(reserved_in "$active_paths" "$r")")"
     if [ -n "$hits" ]; then
-      skipped="$skipped  $id — overlaps in-flight work: $(printf '%s' "$hits" | head -1)"$'\n'; continue
+      # NAME THE HOLDER, NOT JUST THE FILES (#428). This line used to report the colliding PATHS and
+      # stop — which tells a worker that they are blocked, and withholds the one fact every remedy in
+      # the protocol needs: WHO. Waiting, `say`, and "is this worth waiting for at all" are decisions
+      # about a worker and a lease; a pair of paths cannot inform any of them, so the worker's only
+      # move was to go read `who` and join the two lists by hand.
+      #
+      # `conflicts_between` prints `candidate  ⇄  reserved`, so the RESERVED side is the token some
+      # live claim is holding — the key that joins this collision back to its owner.
+      local hit1 rtok owner_rec oworker oitem oage
+      hit1="$(printf '%s' "$hits" | head -1)"
+      rtok="${hit1##*  ⇄  }"
+      owner_rec="$(claim_reserving "$active" "$r" "$rtok")"
+      if [ -n "$owner_rec" ]; then
+        # IFS=US, never TAB: an empty leading field must survive the split — see `claim_reserving`.
+        IFS=$'\x1f' read -r oworker oitem oage <<<"$owner_rec"
+        if [ -n "$oworker" ]; then
+          skipped="$skipped  $id — overlaps in-flight work held by $oworker on $oitem ($(lease_window "$oage")): $hit1"$'\n'
+          queued="$queued$oworker"$'\t'"$oage"$'\n'
+        else
+          # RESERVED, BUT BY NOBODY THE PROTOCOL CAN NAME: the board says $oitem is `In progress` and
+          # no marker backs it, so its touch-set is held by someone working outside the protocol. It
+          # is deliberately NOT counted into `queued`: there is no lease to wait out and no worker to
+          # `say` to, and folding it into "queued behind live claims … soonest frees in ~Nm" would
+          # advertise a wait that nothing will ever end. `who` already flags the item; point there.
+          skipped="$skipped  $id — overlaps $oitem, which the board says is In progress with NO claim marker (someone is working outside the protocol — there is no lease to wait out; see: fsgg-coord who): $hit1"$'\n'
+        fi
+      else
+        # Belt and braces: the reserved token came FROM the claim set, so a miss here means the two
+        # went out of step. Report the collision we can prove rather than inventing an owner for it.
+        skipped="$skipped  $id — overlaps in-flight work: $hit1"$'\n'
+      fi
+      continue
     fi
     clash=""
     for ((j = 0; j < ${#chosen_paths[@]}; j++)); do
@@ -3631,6 +3727,39 @@ batch_cmd() {
   # separately — but they are the same answer to the same question, and a worker should not have to
   # know which stage rejected their item to find out why (#485 leg a).
   [ -n "$skipped" ] && { echo "passed over:"; printf '%s' "$skipped"; } >&2
+
+  # THE OPERATOR LINE (#428), and ONLY when the worker got nothing — that is the moment the question
+  # changes. The per-item list above answers "why is this item not startable". A worker standing in
+  # front of a queue that handed them nothing is asking something else entirely: "is there anything
+  # coming, and should I wait for it?" That question is about LEASES, and until now the answer was
+  # spread across `next`, `who` and a mental join between them.
+  #
+  # It is the difference #428 was filed on: "nothing schedulable" and "4 items are queued behind a
+  # claim held by <worker>, lease frees in ~96m" are the same fact and two completely different
+  # operator instructions. The first reads as an empty queue and sends a worker home; only the second
+  # says the repo is BUSY, names who to talk to, and gives a number to decide against.
+  #
+  # The SOONEST lease to free is the OLDEST claim — max age, not min. Getting that backwards would
+  # advertise the longest wait as the shortest, which is worse than saying nothing.
+  if [ -n "$queued" ] && [ "${#chosen_ids[@]}" -eq 0 ]; then
+    local qn qworkers qoldest qexpired
+    qn="$(printf '%s' "$queued" | grep -c . || true)"
+    qworkers="$(printf '%s' "$queued" | cut -f1 | sort -u | paste -sd',' - | sed 's/,/, /g')"
+    qoldest="$(printf '%s' "$queued" | cut -f2 | grep -E '^[0-9]+$' | sort -n | tail -1 || true)"
+    qexpired="$(printf '%s' "$queued" | cut -f2 | grep -E '^[0-9]+$' \
+                | awk -v lease="$CLAIM_LEASE_MIN" '$1 / 60 >= lease' | grep -c . || true)"
+    {
+      echo "$qn item(s) are QUEUED BEHIND LIVE CLAIMS held by: $qworkers — soonest: $(lease_window "${qoldest:-}")."
+      echo "  this queue is BUSY, not empty. wait for the lease, take work in another repo (--repo <r>),"
+      echo "  or talk to the holder:  fsgg-coord say <issue> --to <worker> '<message>'"
+      # A dead holder is not a wait, and it is the one case a worker can clear THEMSELVES.
+      # An `&&` one-liner here would be the LAST command of this group: on the (common) zero-expired
+      # path it returns 1, and under `set -e` that would take the whole scan down at the finish line.
+      if [ "${qexpired:-0}" -gt 0 ]; then
+        echo "  $qexpired of those lease(s) have EXPIRED — collect them: fsgg-coord reap${repo:+ --repo $repo} --apply"
+      fi
+    } >&2
+  fi
   return 0
 }
 
