@@ -79,4 +79,47 @@ let tests =
 
           test "template.json sources the vec2 fragment gated to game/sample-pack" {
               Expect.stringContains templateJson "template/fragments/vec2/src/" "vec2 fragment is a template source"
+          }
+
+          // --- the OUTWARD half: FS.GG.Game RE-DECLARES this shape, and nothing over there can see us ---
+          //
+          // #519. `Vec2` lives in the GENERATED PRODUCT, not in a package — so FS.GG.Game, whose product
+          // skills teach it by name (`type Creep = { Pos: Geometry.Vec2 }`), has nothing to reference. Its
+          // skill-block gate (FS-GG/FS.GG.Game#141) therefore RECONSTRUCTS it:
+          //
+          //     FS.GG.Game/scripts/skill-block-context/_scaffold.fs
+          //         module Geometry =
+          //             type Vec2 = { Vx: float; Vy: float }
+          //
+          // That reconstruction is a contract, and it is invisible from over there. Rename `Vx`, add a
+          // field, or move the module, and FS.GG.Game's copy still compiles and its gate still reports
+          // GREEN — over skills that now teach a type this scaffold no longer ships. A gate examining a
+          // subject that no longer exists is FS-GG/.github#416's silent no-op, one repo over.
+          //
+          // The tests above already red on a rename, but they say "Vec2 uses Vx/Vy" — which tells the
+          // person doing the renaming NOTHING about the repo they are breaking. This one fails in the
+          // same commit as the change, and names the file that must move with it. It also pins the shape
+          // EXACTLY: adding a `Vz` keeps every assertion above green while silently breaking the
+          // downstream `{ Vx = …; Vy = … }` literal, which cannot construct a three-field record.
+          test "Vec2's shape is EXACTLY what FS.GG.Game re-declares — a change here must move FS.GG.Game too" {
+              let decl = Regex.Match(vec2Source, @"type\s+Vec2\s*=\s*\{([^}]*)\}")
+
+              Expect.isTrue
+                  decl.Success
+                  "Vec2 must remain a brace-record `type Vec2 = { ... }`. FS.GG.Game/scripts/skill-block-context/_scaffold.fs re-declares it as one (FS-GG/FS.GG.Game#141); any other shape leaves that gate compiling a fiction."
+
+              let fields =
+                  Regex.Matches(decl.Groups.[1].Value, @"([A-Za-z_][A-Za-z0-9_]*)\s*:\s*([A-Za-z_][A-Za-z0-9_.]*)")
+                  |> Seq.map (fun m -> m.Groups.[1].Value, m.Groups.[2].Value)
+                  |> List.ofSeq
+
+              Expect.equal
+                  fields
+                  [ "Vx", "float"; "Vy", "float" ]
+                  "Vec2's fields must stay EXACTLY `Vx: float; Vy: float`, in `module Geometry`. FS.GG.Game re-declares this record verbatim in scripts/skill-block-context/_scaffold.fs to compile the skill blocks that teach `Geometry.Vec2` (FS-GG/FS.GG.Game#141) — it cannot reference ours, because Vec2 ships in the generated PRODUCT, not in a package. Change the shape and their gate keeps reporting GREEN over skills teaching a type this scaffold no longer ships (#519, and FS-GG/.github#416's silent-no-op class). If this change is intended: open a cross-repo issue on FS-GG/FS.GG.Game to move _scaffold.fs in lockstep, and do not merge this until it is filed."
+
+              Expect.stringContains
+                  vec2Source
+                  "module Geometry"
+                  "the module name is half the contract — FS.GG.Game's skills say `Geometry.Vec2`, and its _scaffold.fs re-declares `module Geometry`. Moving or renaming it breaks them silently (#519)."
           } ]
