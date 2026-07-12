@@ -27,6 +27,7 @@ open System.IO
 open System.Reflection
 open System.Runtime.CompilerServices
 open System.Text.Json
+open System.Text.RegularExpressions
 
 let scriptDir = __SOURCE_DIRECTORY__
 let repoRoot = Path.GetFullPath(Path.Combine(scriptDir, ".."))
@@ -114,9 +115,6 @@ let private restoredAssemblies () =
                         | None -> ()
                     | _ -> ()
         | _ -> ()
-                            | _ -> ()
-                    | _ -> ()
-                | _ -> ()
 
     for (_, proj) in packages do
         let assets = Path.Combine(repoRoot, "src", proj, "obj", "project.assets.json")
@@ -152,11 +150,14 @@ let fullNameOf (ty: Type) =
     | null -> ty.Name
     | value -> value
 
+// `fullName` always ends with `ty.Name`, so the suffix is exact at `Length - "Module".Length`. A
+// `Replace` would strip the word wherever it occurs: `ModuleRegistryModule` renders as `…Registry`,
+// naming a type that does not exist.
 let displayName (ty: Type) =
     let fullName = fullNameOf ty
 
     if ty.Name.EndsWith("Module", StringComparison.Ordinal) then
-        fullName.Replace("Module", "")
+        fullName.Substring(0, fullName.Length - "Module".Length)
     else
         fullName
 
@@ -182,12 +183,22 @@ let rec typeRef (ty: Type) : string =
         | null -> ty.Name
         | element -> typeRef element + suffix
     elif ty.IsGenericType then
+        // A constructed generic's `FullName` carries the arity on EVERY generic segment, not just the
+        // last (`Dictionary`2+Enumerator[[…],[…]]`), and appends its arguments assembly-qualified in
+        // brackets. So: cut the arguments, then strip the arity from each segment. Truncating at the
+        // FIRST backtick instead would erase a nested generic's own name — `Dictionary`2+Enumerator`
+        // would render as plain `Dictionary`, and since `memberSignatures` ends in `Array.distinct`,
+        // a member returning the enumerator and one returning the dictionary would collapse onto one
+        // line. That is a signature change this baseline cannot see.
         let stem =
             let raw = fullNameOf ty
 
-            match raw.IndexOf('`') with
-            | -1 -> raw
-            | tick -> raw.Substring(0, tick)
+            let withoutArguments =
+                match raw.IndexOf('[') with
+                | -1 -> raw
+                | bracket -> raw.Substring(0, bracket)
+
+            Regex.Replace(withoutArguments, @"`\d+", "")
 
         let args = ty.GetGenericArguments() |> Array.map typeRef |> String.concat ", "
         $"{stem}<{args}>"
@@ -258,9 +269,20 @@ let memberSignatures (assembly: Assembly) =
     |> Array.distinct
     |> Array.sort
 
+// LF, explicitly. `WriteAllLines` separates with `Environment.NewLine`, so a contributor
+// regenerating on Windows would rewrite every line of every baseline as CRLF — the whole file reads
+// as drift and the gate goes red on the machine that ran it rather than on an API change. No
+// `.gitattributes` normalises these. Empty stays a 0-byte file, as `WriteAllLines` wrote it.
 let private writeLines path (values: string array) noun =
     Directory.CreateDirectory(Path.GetDirectoryName(path: string)) |> ignore
-    File.WriteAllLines(path, values)
+
+    let text =
+        if Array.isEmpty values then
+            ""
+        else
+            (values |> String.concat "\n") + "\n"
+
+    File.WriteAllText(path, text)
     printfn "wrote %s (%d public %s)" path (Array.length values) noun
 
 let write packageName (assembly: Assembly) =
