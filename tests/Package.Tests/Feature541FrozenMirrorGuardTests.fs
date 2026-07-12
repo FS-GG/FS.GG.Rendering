@@ -42,6 +42,37 @@ let private waivers =
     |> Seq.map (fun m -> m.Groups.["id"].Value, m.Groups.["sha"].Value)
     |> List.ofSeq
 
+/// The script with its `//` comment lines stripped, so prose about waivers cannot be counted as one.
+let private scriptCode =
+    script.Split '\n'
+    |> Array.filter (fun line -> not (line.TrimStart().StartsWith "//"))
+    |> String.concat "\n"
+
+/// A crude, INDEPENDENT count of the same records — one `DriftedSha = "…"` assignment per waiver.
+///
+/// The structured parse above can fail in two ways that look identical from here: the script genuinely
+/// declares no waivers, or the regex has rotted against a shape the script now uses. Counting the same
+/// thing a second way tells them apart — the trick the guarded script already plays on the org registry
+/// ("A PARTIAL parse is not a pass either": it counts the YAML rows and insists the structured parse
+/// agrees). Same overloaded-absence bug, same treatment.
+///
+/// INDEPENDENT is the load-bearing word, and the first version of this was not (#640). It anchored the
+/// count at the start of a line (`^\s*DriftedSha`) — the same assumption the structured regex makes — so
+/// a waiver written `{ Id = "…"; DriftedSha = "…"` defeated BOTH, both counted zero, `0 = 0` compared
+/// equal, and the vacuous green this cross-check exists to prevent came back wearing its badge. A
+/// backstop that shares the parser's blind spot is not a backstop. This one matches the assignment
+/// wherever it sits.
+let private driftedShaAssignments =
+    Regex.Matches(scriptCode, @"DriftedSha\s*=\s*""").Count
+
+/// Both readers above scrape one field NAME out of F# source. That is the last assumption they share, and
+/// it is the last way they can both go blind at once: rename `DriftedSha` and BOTH count zero, `0 = 0`
+/// compares equal, and a waiver list full of unchecked pins sails through green. Cross-checking two parsers
+/// against each other cannot catch what neither can see, so the schema itself is asserted rather than
+/// assumed — a rename now has to come here and say so.
+let private declaresDriftedShaField =
+    Regex.IsMatch(script, @"type\s+Waiver\s*=(.|\n)*?DriftedSha\s*:\s*string")
+
 /// The skills the script declares this repo MIRRORS (as opposed to `NoCounterpart`).
 let private mirrored =
     Regex.Matches(script, @"""(?<id>fs-gg-[a-z-]+)"",\s*Mirrored")
@@ -60,8 +91,27 @@ let feature541FrozenMirrorGuardTests =
           // the waiver never matches and the guard reds `main` for a reason nobody can see. And a pin
           // copy-pasted from the CANONICAL digest instead of the drifted one would never fire at all,
           // silently un-waiving the drift it was written for.
+          //
+          // AN EMPTY WAIVER LIST IS THE END STATE, NOT A BUG — and this test used to say otherwise (#640).
+          // It asserted `Expect.isNonEmpty waivers`, so it went RED on the day the last drifted mirror was
+          // re-frozen: the script's stated goal ("a waiver whose mirror is back in sync is DELETED") was a
+          // state its own test forbade. The two guards contradicted each other at exactly one point — zero
+          // waivers — and the repo could not be healthy and green at the same time.
+          //
+          // The intent behind `isNonEmpty` was sound: with no waivers parsed, the loop below asserts NOTHING,
+          // so a rotted regex would pass vacuously. That is a real hazard and it is still guarded — just not
+          // by forbidding the healthy state. Absence is now CROSS-CHECKED (`driftedShaAssignments`, plus the
+          // `declaresDriftedShaField` schema canary) instead of being read as failure, which is the same fix
+          // the script itself applies to the registry parse.
           test "every waiver's pinned digest is the digest of the file it waives" {
-              Expect.isNonEmpty waivers "the script declares waivers (if this parses to nothing, the assertion below is vacuous)"
+              Expect.isTrue
+                  declaresDriftedShaField
+                  "scripts/check-frozen-mirrors.fsx no longer declares a `DriftedSha: string` field on `type Waiver`. BOTH readers in this file scrape that field name, so a rename blinds them together: they would both count zero, `0 = 0` would compare equal, and every waiver's pin would go unchecked under a green tick. If you renamed the field, rename it here too."
+
+              Expect.equal
+                  (List.length waivers)
+                  driftedShaAssignments
+                  "the waiver parser in this file disagrees with a crude count of `DriftedSha =` assignments in scripts/check-frozen-mirrors.fsx. The regex has rotted against the script's shape, so the per-waiver assertions below would silently assert NOTHING — a vacuous green over unchecked pins. Teach the regex the new shape. (0 = 0 is fine, and is the end state: every mirror in sync, nothing left to waive.)"
 
               for id, pinned in waivers do
                   let body = repositoryPath $"template/product-skills/{id}/SKILL.md"
