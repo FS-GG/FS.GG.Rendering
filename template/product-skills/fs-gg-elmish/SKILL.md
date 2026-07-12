@@ -161,6 +161,43 @@ let result = Viewer.captureScreenshotEvidence request { options with PresentMode
 The state half is deterministic and needs no GL. Only the PNG readback does, and it
 degrades-and-discloses on a no-GL host.
 
+### Responsiveness evidence: prove it *responds*, not that it *renders*
+
+Your Evidence Rules (and [[fs-gg-testing]]'s, and [[fs-gg-ui-widgets]]') require
+responsiveness evidence that **validates pointer and keyboard activation separately
+from screenshot readiness**, and separates routing from update/render/present
+latency. These are the instruments for it. They ship in the package you already
+have, and until now no skill named them — so the rules demanded evidence and
+withheld every means of producing it (#507).
+
+**`ControlsElmish.respondsProofOf` / `captureRespondsProof`** are the only evidence
+class that tells *renders* from *responds*:
+
+```fsharp
+let proof = ControlsElmish.captureRespondsProof host size model script
+// proof.Verdict : RespondsVerdict — Responded | Inert
+```
+
+The point is the `Inert` verdict. An app whose authored binding was **dropped**
+produces identical before/after frames, so a screenshot diff calls it fine. This
+does not: no state moved, so it reports `Inert`, and *"renders" cannot be passed off
+as "responds"*. Assert on `Verdict`, not on a pixel diff.
+
+**The per-frame projection** answers the latency half — `compositorDiagnostics`,
+`layoutMetrics`, `responsivenessTimingContribution`, and the `FrameMetrics` /
+`FrameCause` records they yield. A live product subscribes through
+`InteractiveAppHost.OnFrameMetrics`; a headless test reads the projection directly.
+Routing, update, render and present are separate contributions — which is exactly the
+separation the rule asks for, and it cannot be produced from a screenshot.
+
+**`routeInteractivePointer`** is the primitive `Perf.runScript*` and
+`captureRespondsProof` are built on, *"exposed so a headless test exercises the real
+adapter path without opening a window"*. Reach for it when you need one raw pointer
+route rather than a scripted fold; prefer the derivatives otherwise.
+
+The rule to carry away, and it is the same one [[fs-gg-testing]] states at the sink:
+**a frame proves the renderer ran. Only a verdict proves the app answered.**
+
 ## Build Commands
 
 Run `./fake.sh build -t Dev` then `./fake.sh build -t Verify` in this product.

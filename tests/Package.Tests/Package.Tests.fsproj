@@ -59,6 +59,10 @@
     <Compile Include="AudioSkillSurfaceTests.fs" />
     <Compile Include="ApiSurfaceMirrorTests.fs" />
     <Compile Include="SkillPackageReachTests.fs" />
+    <!-- #507 — S-DOC, the mirror image of SkillPackageReachTests' R-REACH: R-REACH stops a skill naming a
+         package the product was not given; S-DOC stops a package the product WAS given going undocumented
+         by accident. They belong next to each other and are read together. -->
+    <Compile Include="SurfaceDocCoverageTests.fs" />
     <Compile Include="Feature246CollisionSkillTests.fs" />
     <Compile Include="Feature247VisibilitySkillTests.fs" />
     <Compile Include="Feature249GridsSkillTests.fs" />
