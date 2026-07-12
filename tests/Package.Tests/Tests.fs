@@ -1,5 +1,38 @@
 module PackageTests
 
+// =================================================================================================
+// WHEN DOES A RULE YOU WRITE HERE ACTUALLY RUN? (#540 — read this before adding a check)
+//
+// This project has TWO tiers, and the difference is TIMING, not subject:
+//
+//   DEFAULT TIER — runs on EVERY PR (the `Deterministic gate`) and again in the release lane.
+//     Package.Tests is a member of FS.GG.Rendering.slnx, and the gate's test loop is derived from the
+//     slnx, so anything you add here runs pre-merge by default. It must therefore be HERMETIC: reads
+//     of the working tree, no network, no `dotnet pack`, no published package. ~325 rules, ~4 seconds.
+//
+//   RELEASE TIER — runs ONLY in release.yml, because it needs something a PR does not have (a real
+//     pack, a real feed, a published version). You get it by DEFERRING a test behind an env flag that
+//     only release.yml sets — today that is FS_SKIA_RUN_PACKAGE_CONSUMER_SMOKE (see
+//     `deferredPackageSmokeTests` below). "the release lane opts the package consumer smoke in" asserts
+//     release.yml really does set it, because a check deferred behind a flag NOBODY sets is a check
+//     that never runs.
+//
+// THE DEFAULT IS THE SAFE ONE, AND THAT IS THE POINT. This project used to be release-ONLY — excluded
+// from the slnx so that release checks could not gate a PR. The effect was that EVERY rule in here fired
+// after the merge that broke it, never on it: the capability catalog, the skill-manifest digests, R-CAT,
+// R-PROF. Nothing told the author. That is how Renovate PR #233 reached 4/4 green while proposing a pin
+// no local `dotnet pack` could produce — `Feature163PackageFeedValidationTests` had the rule, and the
+// rule ran three days late (gate.yml's #300 step says so at length).
+//
+// So the polarity is inverted: a rule now runs pre-merge unless you SAY OUT LOUD that it cannot, by
+// gating it. "I am writing a check that will not run on PRs" is a sentence you have to write, rather
+// than a property you inherit from a workflow comment and discover afterwards (FS-GG/.github#266 — a
+// check that reports green because it never ran).
+//
+// If your check needs a real feed or a real pack, defer it. If it can be broken by editing a file in
+// this repo, LEAVE IT IN THE DEFAULT TIER — that is the whole reason it is here.
+// =================================================================================================
+
 open System
 open System.Diagnostics
 open System.IO

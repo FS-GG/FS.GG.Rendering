@@ -11,7 +11,7 @@ open Expecto
 // restore proof (readiness/restore-proof.md) so the policy cannot silently regress.
 //
 // VR-1: every FS.GG.Rendering.slnx member has a committed packages.lock.json.
-// VR-2: the excluded lanes (Package.Tests + the 4 shadowing samples) do NOT.
+// VR-2: the excluded lanes (the 4 shadowing samples) do NOT. (Package.Tests left this set in #540.)
 // The props assertion also backstops US2 (NU1603-as-error contract).
 
 // Walk up from the test's base directory until the repo root (the dir holding FS.GG.Rendering.slnx).
@@ -40,9 +40,16 @@ let private slnxProjectDirs =
     |> Seq.toList
 
 // EXCLUDED lanes — never locked (data-model.md / contracts/restore-policy.md G5/G6).
+//
+// #540 removed `tests/Package.Tests` from this list. It is now a slnx member, so VR-1 above REQUIRES the
+// lockfile that VR-2 below used to forbid — the two rules would contradict each other if it stayed here.
+//
+// It was excluded because it was a release-only lane whose FS.GG.UI.* preview pins "churn every merge".
+// Neither half survived: #453 rebound those packages as ProjectReferences (so there are no such pins left
+// to churn — its only PackageReferences are Expecto, FS.GG.Contracts and the test SDKs), and #540 put the
+// project on the gate. The four `samples/*` shadowing lanes are genuinely still excluded and stay.
 let private excludedProjectDirs =
-    [ "tests/Package.Tests"
-      "samples/AntShowcase"
+    [ "samples/AntShowcase"
       "samples/SampleApps"
       "samples/SecondAntShowcase"
       "samples/ControlsGallery" ]
@@ -54,11 +61,17 @@ let private hasLockfile (projDir: string) =
 let restoreLockTests =
     testList "Feature 211 — locked-restore policy" [
 
-        test "the gate solution membership is the expected 38-project LOCKED set" {
+        test "the gate solution membership is the expected 39-project LOCKED set" {
             // Guards against the slnx silently gaining/losing a project without the lockfile coverage
-            // assertion below being updated; 18 src + 17 tests + 2 samples + 1 tools = 38.
-            Expect.equal slnxProjectDirs.Length 38
-                (sprintf "expected 38 slnx projects, found %d: %A" slnxProjectDirs.Length slnxProjectDirs)
+            // assertion below being updated; 18 src + 18 tests + 2 samples + 1 tools = 39.
+            //
+            // 38 -> 39 in #540, which added tests/Package.Tests. It arrived with NO packages.lock.json and
+            // an explicit <RestorePackagesWithLockFile>false</RestorePackagesWithLockFile>, and VR-1 below
+            // is what said so — the moment the project entered the slnx, the policy it had been exempt from
+            // for two features applied to it and it was one line short. Which is the point of #540: this
+            // guard is scoped to slnx MEMBERS, so a project outside the solution was invisible to it.
+            Expect.equal slnxProjectDirs.Length 39
+                (sprintf "expected 39 slnx projects, found %d: %A" slnxProjectDirs.Length slnxProjectDirs)
         }
 
         test "VR-1: every FS.GG.Rendering.slnx member has a committed packages.lock.json" {
@@ -67,7 +80,7 @@ let restoreLockTests =
                 (sprintf "these slnx members are missing a committed packages.lock.json: %A" missing)
         }
 
-        test "VR-2: the excluded lanes (Package.Tests + the 4 shadowing samples) do NOT have a lockfile" {
+        test "VR-2: the excluded lanes (the 4 shadowing samples) do NOT have a lockfile" {
             let leaked = excludedProjectDirs |> List.filter hasLockfile
             Expect.isEmpty leaked
                 (sprintf "these EXCLUDED lanes must never be locked but have a packages.lock.json: %A" leaked)

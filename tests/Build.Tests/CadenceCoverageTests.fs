@@ -23,8 +23,14 @@ let private repoRoot =
 let private repoPath (rel: string) = Path.Combine(repoRoot, rel.Replace('/', Path.DirectorySeparatorChar))
 
 // Every `tests/<Name>.Tests` project the slnx builds — the authoritative test set the gate must cover.
-// (`TestSupport` is a helper lib, not a `.Tests` project; `Package.Tests` is release-only and NOT in
-// the slnx, so neither appears here — exactly the gate's coverage boundary.)
+// (`TestSupport` is a helper lib, not a `.Tests` project, so it does not appear here.)
+//
+// #540 — `Package.Tests` IS in this set now, and the comment that used to sit here ("release-only and
+// NOT in the slnx, so it does not appear here — exactly the gate's coverage boundary") was naming the
+// hole rather than a boundary. This file exists to close the "test project in the solution but in NO CI
+// cadence" class; a project OUTSIDE the solution ran in no cadence either, and was invisible to the very
+// guard written to catch that. Its ~325 working-tree rules — R-CAT, R-PROF, the manifest digests, the
+// capability catalog — all fired after the merge that broke them, never on the PR.
 let private slnxTestNames =
     let suffix = ".Tests.fsproj"
     let slnx = File.ReadAllText(repoPath "FS.GG.Rendering.slnx")
@@ -47,7 +53,16 @@ let private glTestNames =
     m.Groups.[1].Value.Split([| ' '; '\t' |], StringSplitOptions.RemoveEmptyEntries) |> Set.ofArray
 
 // Every `X.Tests` name a doc legitimately names besides the slnx set: the release-only lanes.
-let private releaseOnlyTestNames = Set.ofList [ "Package"; "Product" ]
+//
+// `Package` came OFF this list in #540. It is now a slnx member and runs on the gate, so it is no longer
+// release-ONLY — it is a project with two tiers: a hermetic default tier that runs on every PR, and a
+// release tier its own env flags defer (see tests/Package.Tests/Tests.fs). Leaving it here would have
+// been harmless to the assertions and a lie to the reader, which is precisely the failure #540 is about:
+// the timing of a rule was a thing you discovered from a comment, days after it did not run for you.
+//
+// `Product` stays: the generated product's test project is instantiated from the template at release
+// time and exists in no checkout of this repo.
+let private releaseOnlyTestNames = Set.ofList [ "Product" ]
 
 let private retiredTestNames = Set.ofList [ "Color"; "Input" ]
 

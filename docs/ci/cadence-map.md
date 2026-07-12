@@ -89,7 +89,8 @@ R5 source label `infra (R5)` and are not validation-set members.
 | harness **T2** (`live-x11`) | infra (R5) | capability | x11 | degrade-and-disclose until capable runner | capability.yml |
 | harness **T3** (`perf` paced-native) | infra (R5) | capability | gl/x11 | degrade-and-disclose until capable runner | capability.yml |
 | harness **T-uinput** (`input --backend uinput`) | infra (R5) | capability | uinput | inert + disclosed (backend pending) | capability.yml |
-| `Package.Tests` | release-only | release | none | runs on release trigger | release.yml |
+| `Package.Tests` (default tier) | validation-set | **gate** + release | none | hermetic; slnx member since #540 | gate.yml (slnx-derived loop), release.yml |
+| `Package.Tests` (release tier) | release-only | release | none | deferred behind `FS_SKIA_RUN_PACKAGE_CONSUMER_SMOKE` | release.yml |
 | `Product.Tests` (template) | release-only | release | none | runs on release trigger (template instantiation) | release.yml |
 
 ## 3. Audit invariants and result
@@ -97,7 +98,14 @@ R5 source label `infra (R5)` and are not validation-set members.
 The audit (FR-009) checks these invariants by inspection of this map against the sources:
 
 1. **Exactly one cadence per member** — no member appears in two cadence rows.
-2. **No release-only member in `gate`** — `Package.Tests` / template `Product.Tests` never on push/PR.
+2. **No release-only member in `gate`** — the *release tier* of `Package.Tests` (the consumer smoke, deferred
+   behind `FS_SKIA_RUN_PACKAGE_CONSUMER_SMOKE`) and template `Product.Tests` never run on push/PR.
+   **#540 changed what this invariant is protecting.** It used to be enforced by keeping the whole
+   `Package.Tests` *project* out of the slnx — which also kept its ~325 hermetic, working-tree rules off
+   every PR, so each fired only after the merge that broke it. The project is now a slnx member and its
+   default tier runs on the gate; the release-scoped checks are held back by their own env flag, which is
+   where the timing distinction belongs. The invariant is unchanged; the mechanism enforcing it moved from
+   the *solution* to the *code*, where the author writing the rule can see it.
 3. **Every row traces to a settled source** — validation-set members → `validation-set.md` (R3);
    harness tiers → `harness.md` (R5). Nothing is invented here.
 4. **Only `gate` is required** — release/capability never block merge. Branch protection is enabled
@@ -114,11 +122,16 @@ after the gate loop became slnx-derived and the coverage machine-enforced. **PAS
 
 1. **Exactly one cadence per member** — ✅ every row above appears once; no member is in two cadences.
    `CadenceCoverageTests` now asserts `deterministic ∪ GL == slnx test set` with no overlap.
-2. **No release-only member in `gate`** — ✅ `gate.yml` runs all 16 slnx test projects (the 14
+2. **No release-only member in `gate`** — ✅ `gate.yml` runs all 17 slnx test projects (the 15
    deterministic members above + `SkiaViewer, Smoke` GL) plus `surface-baselines`, `fsdocs`, and
-   harness `offscreen` (T0/T1) only. `Package.Tests` and template `Product.Tests` appear **only** in
-   `release.yml`. The slnx itself excludes `Package.Tests`, so the gate's slnx-derived `--no-build`
-   test loop physically cannot reach it.
+   harness `offscreen` (T0/T1) only. Template `Product.Tests` appears **only** in `release.yml` (it is
+   instantiated from the template and exists in no checkout).
+   **Re-audited 2026-07-12 (#540):** `Package.Tests` is now a slnx member, so the gate's slnx-derived
+   loop *does* reach it — deliberately. Its default tier is hermetic (working-tree reads only, ~4s) and
+   its release-scoped checks stay out of the gate by being deferred behind
+   `FS_SKIA_RUN_PACKAGE_CONSUMER_SMOKE`, which only `release.yml` sets. So no release check runs on a PR,
+   and — new — no PR-breakable check waits for a release either. The old arrangement enforced half of
+   that invariant and silently violated the other half.
 3. **No trigger overlap** — ✅ `gate` = `push`/`pull_request` to `main`; `release` = `release:
    published` + `v*` **tag** push + manual; `capability` = weekly `schedule` + manual. The `release`
    `push` filter is tag-only, so it never fires on a branch push or PR. No event reaches two cadences
