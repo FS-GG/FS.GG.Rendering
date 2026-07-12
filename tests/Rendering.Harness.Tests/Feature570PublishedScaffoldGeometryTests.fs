@@ -19,7 +19,7 @@ module Feature570PublishedScaffoldGeometryTests
 //
 // FS.GG.Game can therefore GENERATE its `_scaffold.fs` from that file instead of hand-writing a twin. The
 // fragment stays exactly as adaptable as it is today — nothing about the product's copy changes — and the
-// duplicate disappears at its root rather than being guarded (FS-GG/FS.GG.Game#141 is the consuming half).
+// duplicate disappears at its root rather than being guarded (FS-GG/FS.GG.Game#189 is the consuming half).
 //
 // Deliberately NOT a new machine-readable surface format. A generated declaration would be a THIRD
 // statement of the same shape, needing its own generator and its own drift gate — the exact "one more copy
@@ -28,13 +28,27 @@ module Feature570PublishedScaffoldGeometryTests
 // `toPoint`/`toRect`/`toSimPoint`/`toSimRect` bodies, which is why their gate currently cannot cover the
 // render/sim boundary at all (it omits those helpers rather than fake them).
 //
-// WHAT THIS FILE GUARDS. The package's `Content` item is one broad `..\**\*` glob with an Exclude list. So
-// the fragment ships today by DEFAULT, not by decision — and one added Exclude would stop publishing it
-// with nothing to say so. That is a silent break of a cross-repo contract another repo compiles against.
-// This is the assertion that makes the publication deliberate.
+// WHY THIS PACKS THE PACKAGE INSTEAD OF READING THE .fsproj.
+//
+// The first version of this guard parsed the `Exclude=` attribute and re-implemented MSBuild's glob
+// semantics — a MODEL of the artifact. Review broke it three ways in one sitting, and every one of them is
+// a way somebody would really do it:
+//
+//   * `<Content Remove="..\template\fragments\vec2\**" />` — the idiomatic MSBuild way to drop an item.
+//     The fragment vanished from the nupkg; the guard passed, because `Remove` is not `Exclude`.
+//   * narrowing `Include="..\**\*"` to `Include="..\src\**\*"`. The guard never read `Include` at all.
+//     Same for `PackagePath`: move it and the consumed path moves with it, silently.
+//   * the conditional check tested `<!--#if`, the XML form. F# template sources use `//#if` (see
+//     template/base/src/Product/Model.fs:4). A real conditional in Vec2.fs sailed through.
+//
+// The lesson is not "add the three missing cases" — it is that modeling MSBuild is the wrong altitude, and
+// a fourth construct would have been found the moment the third was patched. The CONTRACT is about the
+// nupkg, so this reads the nupkg: pack it, open it, look. ~3s, and it cannot be fooled by an MSBuild
+// construct nobody thought of, because it never reasons about MSBuild at all.
 
+open System.Diagnostics
 open System.IO
-open System.Text.RegularExpressions
+open System.IO.Compression
 open Expecto
 open FS.GG.TestSupport
 
@@ -43,33 +57,71 @@ let private repositoryRoot = RepositoryRoot.value
 let private repositoryPath (relative: string) =
     Path.Combine(repositoryRoot, relative.Replace('/', Path.DirectorySeparatorChar))
 
-/// The published path FS.GG.Game consumes. Changing it is a cross-repo break, so it is spelled once.
+/// The path FS.GG.Game consumes, on both sides of the package boundary. Changing either is a cross-repo
+/// break, so they are spelled once.
 let private fragmentRelative = "template/fragments/vec2/src/Product/Vec2.fs"
+let private packedEntry = "content/" + fragmentRelative
 
-let private templatePackageProject =
-    File.ReadAllText(repositoryPath ".template.package/FS.GG.UI.Template.fsproj")
+/// Pack the template package into a scratch directory and return its entries.
+///
+/// Deliberately isolated: `-o` and `BaseIntermediateOutputPath` both point at the scratch dir and the lock
+/// file is suppressed, so a run leaves the working tree byte-for-byte unchanged. (It does not: a stray
+/// `packages.lock.json` from an unisolated pack is exactly the kind of artifact that reddens an unrelated
+/// regeneration gate later.)
+let private packedFragmentBytes =
+    lazy
+        (let scratch = Path.Combine(Path.GetTempPath(), "fs-gg-570-" + System.Guid.NewGuid().ToString("N"))
+         Directory.CreateDirectory scratch |> ignore
 
-/// The `Exclude=` globs on the package's Content item, normalised to repo-relative forward-slash form
-/// (they are written relative to `.template.package/`, hence the leading `..\`).
-let private excludeGlobs =
-    let attribute = Regex.Match(templatePackageProject, "Exclude=\"(?<globs>[^\"]*)\"", RegexOptions.Singleline)
+         let psi = ProcessStartInfo "dotnet"
+         psi.WorkingDirectory <- repositoryRoot
+         psi.UseShellExecute <- false
+         psi.RedirectStandardOutput <- true
+         psi.RedirectStandardError <- true
 
-    if not attribute.Success then
-        []
-    else
-        attribute.Groups.["globs"].Value.Split(';')
-        |> Array.map (fun glob -> glob.Trim().Replace('\\', '/'))
-        |> Array.filter (fun glob -> glob <> "")
-        |> Array.map (fun glob -> if glob.StartsWith "../" then glob.Substring 3 else glob)
-        |> List.ofArray
+         [ "pack"
+           ".template.package/FS.GG.UI.Template.fsproj"
+           "-o"
+           scratch
+           "-m:1"
+           "--nologo"
+           $"-p:BaseIntermediateOutputPath={scratch}/obj/"
+           "-p:RestorePackagesWithLockFile=false" ]
+         |> List.iter psi.ArgumentList.Add
 
-/// MSBuild glob semantics, narrowed to the two forms this Exclude list actually uses: `**` spans any number
-/// of directories, `*` stops at a separator.
-let private globMatches (glob: string) (path: string) =
-    let pattern =
-        Regex.Escape(glob).Replace(@"\*\*/", "(.*/)?").Replace(@"\*\*", ".*").Replace(@"\*", "[^/]*")
+         match Process.Start psi with
+         | null -> failwith "could not start `dotnet pack` for the template package"
+         | started ->
+             use proc = started
+             // Drain both streams BEFORE WaitForExit, or a full pipe buffer deadlocks the child.
+             let out = proc.StandardOutput.ReadToEnd()
+             let err = proc.StandardError.ReadToEnd()
+             proc.WaitForExit()
 
-    Regex.IsMatch(path, "^" + pattern + "$")
+             if proc.ExitCode <> 0 then
+                 failwithf "dotnet pack of the template package failed (exit %d) — this guard cannot verify what the package publishes:\n%s\n%s" proc.ExitCode out err
+
+             let nupkg =
+                 match Directory.GetFiles(scratch, "*.nupkg") with
+                 | [| single |] -> single
+                 | found -> failwithf "expected exactly one .nupkg from the template package, found %d" found.Length
+
+             let bytes, names =
+                 use archive = ZipFile.OpenRead nupkg
+
+                 let bytes =
+                     archive.Entries
+                     |> Seq.tryFind (fun entry -> entry.FullName.Replace('\\', '/') = packedEntry)
+                     |> Option.map (fun entry ->
+                         use stream = entry.Open()
+                         use buffer = new MemoryStream()
+                         stream.CopyTo buffer
+                         buffer.ToArray())
+
+                 bytes, (archive.Entries |> Seq.map (fun e -> e.FullName) |> Seq.toList)
+
+             Directory.Delete(scratch, true)
+             bytes, names)
 
 [<Tests>]
 let tests =
@@ -78,44 +130,60 @@ let tests =
         [ test "the canonical Vec2 fragment exists at the path FS.GG.Game consumes" {
               Expect.isTrue
                   (File.Exists(repositoryPath fragmentRelative))
-                  $"`{fragmentRelative}` is the file FS.GG.Game generates its skill-block scaffold FROM (FS-GG/FS.GG.Game#141). Moving it is a cross-repo break: update their generator in the same change."
+                  $"`{fragmentRelative}` is the file FS.GG.Game generates its skill-block scaffold FROM (FS-GG/FS.GG.Game#189). Moving it is a cross-repo break: update their generator in the same change."
           }
 
-          // The whole point. The package ships the fragment because a broad glob happens to include it; this
-          // makes it a decision. An Exclude that swallowed `template/**` would silently stop publishing the
-          // file another repo compiles against, and nothing anywhere would say so.
-          test "the FS.GG.UI.Template package still publishes it — no Exclude may swallow the fragment" {
-              Expect.isNonEmpty
-                  excludeGlobs
-                  "the package's Content Exclude list parsed as empty — if this fails the guard below is vacuous and would bless any exclusion"
+          // THE CONTRACT. Not "the .fsproj looks right" — "the artifact contains the file".
+          test "the FS.GG.UI.Template package really publishes it — asserted against the packed nupkg" {
+              let bytes, names = packedFragmentBytes.Force()
 
-              let swallowing =
-                  excludeGlobs |> List.filter (fun glob -> globMatches glob fragmentRelative)
+              Expect.isGreaterThan
+                  (List.length names)
+                  10
+                  "the packed nupkg has entries at all (if this fails the assertion below is vacuous)"
 
-              Expect.isEmpty
-                  swallowing
-                  $"`.template.package/FS.GG.UI.Template.fsproj` excludes {swallowing} from the package, which drops `{fragmentRelative}` out of `content/`. FS.GG.Game restores FS.GG.UI.Template and GENERATES its skill-block scaffold from that file (#570); excluding it makes their gate compile a stale hand-written twin, or nothing at all, and reports green either way. If the exclusion is intended, re-home the fragment and file the cross-repo issue on FS-GG/FS.GG.Game in the SAME change."
+              match bytes with
+              | Some _ -> ()
+              | None ->
+                  failtestf
+                      "the FS.GG.UI.Template package does NOT contain `%s`. FS.GG.Game restores this package and GENERATES its skill-block scaffold from that file (#570, FS-GG/FS.GG.Game#189); without it their gate compiles a stale hand-written twin — or nothing — and reports green either way. Whatever dropped it (an Exclude, a Content Remove, a narrowed Include, a changed PackagePath) is a silent cross-repo break: re-home the fragment and update their generator in the SAME change. The package DOES contain %d entries, e.g. %A"
+                      packedEntry
+                      (List.length names)
+                      (names |> List.truncate 5)
           }
 
-          // Guards the guard: the matcher must actually match, or the assertion above is decorative.
-          test "the exclude matcher really matches the globs this project uses" {
-              Expect.isTrue (globMatches "obj/**" "obj/Debug/x.fs") "a directory-prefix glob matches beneath it"
-              Expect.isTrue (globMatches "**/bin/**" "src/Scene/bin/x.dll") "a **/ glob spans directories"
-              Expect.isTrue (globMatches "specs/**" "specs/192-x/spec.md") "the specs exclusion matches specs"
-              Expect.isFalse (globMatches "specs/**" fragmentRelative) "and does NOT match the fragment"
-              Expect.isTrue (globMatches "template/**" fragmentRelative) "a template/** exclusion WOULD swallow the fragment — this is the case the guard above must catch"
+          // The published bytes must be the canonical bytes. `dotnet new`'s `sourceName` / `replaces`
+          // transforms happen at INSTANTIATION, not at pack — so a consumer who unzips gets this file
+          // verbatim. If that ever stopped being true, "generate from the published source" would quietly
+          // become "generate from a transformed copy of it", which is a twin again.
+          test "the published bytes are the canonical source, unmodified" {
+              let bytes, _ = packedFragmentBytes.Force()
+              let onDisk = File.ReadAllBytes(repositoryPath fragmentRelative)
+
+              match bytes with
+              | None -> failtest "the fragment is not in the package (see the previous test)"
+              | Some packed ->
+                  Expect.equal
+                      (packed.Length)
+                      (onDisk.Length)
+                      "the packed fragment must be byte-identical to the working-tree source — a consumer generating from the package must get exactly what this repo reviews"
+
+                  Expect.isTrue (packed = onDisk) "the packed fragment must be byte-identical to the working-tree source"
           }
 
-          // The consumption contract is the SHAPE, not just the path: FS.GG.Game compiles this file, so it
-          // must stay a self-contained `module Geometry` that opens only published packages.
+          // The consumption contract is the SHAPE too: FS.GG.Game compiles this file OUTSIDE a generated
+          // product, so it must stay self-contained and free of `dotnet new` conditionals.
           test "the published fragment is compilable by a consumer that is not a generated product" {
               let source = File.ReadAllText(repositoryPath fragmentRelative)
 
               Expect.stringContains source "module Geometry" "FS.GG.Game's skills say `Geometry.Vec2`; the module name is half the contract (#519)"
-              Expect.stringContains source "open FS.GG.UI.Scene" "the scene edge (toPoint/toRect) resolves from the PUBLISHED FS.GG.UI.Scene package, which is what lets a consumer compile the helpers their own gate cannot fake"
+              Expect.stringContains source "open FS.GG.UI.Scene" "the scene edge (toPoint/toRect) resolves from the PUBLISHED FS.GG.UI.Scene package — which is what lets a consumer compile the helpers their own gate cannot fake"
               Expect.stringContains source "FS.GG.Game.Core" "the sim edge (toSimPoint/toSimRect) resolves from FS.GG.Game.Core — also a package, so a consumer needs no scaffolded product to compile this file"
 
-              // A `#if`/template token would make the published file uncompilable as-is, and the generator on
-              // the other side would have to strip it — re-introducing a hand-maintained transform.
-              Expect.isFalse (source.Contains "<!--#if") "the fragment must carry no dotnet-new conditional, or a consumer cannot compile the published text verbatim"
+              // `//#if`, NOT `<!--#if`. The F# template sources use the slash form (template/base/src/Product/
+              // Model.fs:4); the first version of this guard checked the XML form and so was decorative
+              // against the only conditional syntax that can actually appear here.
+              Expect.isFalse
+                  (System.Text.RegularExpressions.Regex.IsMatch(source, @"^\s*//#(if|else|endif)", System.Text.RegularExpressions.RegexOptions.Multiline))
+                  "the fragment must carry no `dotnet new` conditional (`//#if`), or the published text is not compilable verbatim and the consumer needs a hand-maintained transform to strip it — which is the twin, back again"
           } ]
