@@ -136,20 +136,75 @@ jobs:
 
           echo "Pending tags (guard order, $declared declared): ${tags[*]}"
 
-          # Push in the guard's order. `v<pkg>` is LAST by construction: it is the tag whose presence
-          # means "the release is under way", and the guard's successor-tag bounds report every earlier
-          # tag as DRIFT once it exists. So if a push fails midway, the state left behind is
-          # "earlier tags cut, v* absent" — which the guard still reads as RELEASE-PENDING and this
-          # workflow will finish on the next run, rather than a v*-first state it would call drift.
-          release_tag=false; template_tag=false; pkg_version=""
+          # ---- CUT LOCALLY FIRST. #517 — a release must not be able to red `main` after the fact. ----
+          #
+          # A committed, derived artifact whose inputs live OUTSIDE its commit is invalidated by the very
+          # act of cutting a tag, and there is no commit to blame. That is a class, not an incident:
+          #
+          #   #515  version-coherence.md recorded the OBSERVED tag set. The 0.9.0 cut rotted it, the
+          #         Deterministic gate is REQUIRED on `main`, and NOTHING IN THE REPO COULD MERGE — a
+          #         state discovered one PR at a time, by five different workers. It was the third
+          #         recurrence (#435, #477 had each regenerated it by hand).
+          #
+          # The window is unclosable from the other end: `main` requires that same gate with
+          # `enforce_admins`, so this workflow cannot push a fix commit to `main` to repair the red it
+          # just caused. The only moment at which the damage is still preventable is BEFORE the push.
+          #
+          # So the tags are created LOCALLY, the generators re-run against a world in which the release
+          # has happened, and the tree must come back clean. Dirty ⇒ some committed artifact reads the tag
+          # namespace ⇒ THE RELEASE FAILS AND NOTHING IS PUSHED. `main` stays green, the tags stay uncut,
+          # and the operator gets the artifact's name instead of a repo-wide freeze.
+          #
+          # `git tag` here is purely local; the runner is ephemeral, so a failure leaves nothing behind.
           for t in "${tags[@]}"; do
             if git rev-parse -q --verify "refs/tags/$t" >/dev/null; then
-              echo "  $t — already exists locally, skipping"
+              echo "  $t — already exists locally"
             else
               git tag "$t"
-              git push origin "$t"
-              echo "  $t — cut and pushed"
+              echo "  $t — cut locally (not yet pushed)"
             fi
+          done
+
+          # The generators whose output is COMMITTED and which can read state outside the commit. The
+          # coherence guard is the one that reads `git tag --list`, so it is the subject of this check;
+          # the parity report is cheap and is the other committed artifact #517 tabulates. Both are now
+          # expected to be pure functions of the tree (#514 made the coherence artifact one), and this
+          # step is what PROVES that claim on every release instead of asserting it in a comment.
+          #
+          # ADDING A GENERATOR whose artifact is committed? Add it here, or the class comes back.
+          echo "::group::#517 — re-deriving committed artifacts against the post-cut tag set"
+          dotnet fsi scripts/validate-version-coherence.fsx || true
+          dotnet fsi scripts/check-agent-skill-parity.fsx  || true
+          echo "::endgroup::"
+
+          # `|| true` above: a non-zero exit is the guard's own verdict on the REPO and this step is not
+          # re-litigating it (the required gate already judged this commit, and the run above was gated on
+          # its exit code). What is being judged HERE is narrower and is a property of the ARTIFACTS: did
+          # cutting a tag change a committed file? Only the diff can answer that.
+          # `--untracked-files=no`: the subject is COMMITTED artifacts that MOVED. A stray file `fsi`
+          # happened to leave behind is not a release defect, and failing the release on one would be a
+          # false red in the one place a false red is most expensive.
+          dirty="$(git status --porcelain --untracked-files=no -- . | sed 's/^...//')"
+
+          if [[ -n "$dirty" ]]; then
+            echo "::error::#517 — cutting the release tags changed a COMMITTED artifact. Refusing to push: this is exactly the state that reddened main in #515, and once the tags are pushed it cannot be undone from here (main requires the Deterministic gate with enforce_admins, so this workflow cannot push the repair). Files: $(echo "$dirty" | tr '\n' ' ')"
+            echo "::error::Fix the ARTIFACT, not the release: make it a pure function of its commit (as #514 did for version-coherence.md — record the tag the pin OWES, not the tag git happens to hold), or stop committing it. No tags were pushed; main is untouched."
+            git --no-pager diff -- . | head -100
+            exit 1
+          fi
+
+          echo "#517 OK — no committed artifact depends on the tag namespace. Safe to push."
+
+          # ---- NOW push, in the guard's order. -------------------------------------------------------
+          # `v<pkg>` is LAST by construction: it is the tag whose presence means "the release is under
+          # way", and the guard's successor-tag bounds report every earlier tag as DRIFT once it exists.
+          # So if a push fails midway, the state left behind is "earlier tags cut, v* absent" — which the
+          # guard still reads as RELEASE-PENDING and this workflow will finish on the next run, rather
+          # than a v*-first state it would call drift.
+          release_tag=false; template_tag=false; pkg_version=""
+          for t in "${tags[@]}"; do
+            git push origin "$t"
+            echo "  $t — pushed"
             case "$t" in
               fs-gg-ui-template/v*) template_tag=true ;;
               fs-gg-ui/v*)          ;;   # framework snapshot tag; triggers nothing
