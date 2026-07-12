@@ -23,6 +23,7 @@
 # entry is not allowed to outlive its subject.
 #
 # FORMAT: <repo-relative doc path>::<Module.member>     (one per line; `#` comments and blanks ignored)
+#         <repo-relative doc path>::<Type.case-or-field>  — same shape, judged against the pin's TYPES (#611)
 #
 # NOT LISTED, DELIBERATELY: `Persistence.interpretRecordOnly` — the instance this rule was written for.
 # It is NOT here because it is FIXED: #550 (PR #590) removed it from both shipped docs, and this rule was
