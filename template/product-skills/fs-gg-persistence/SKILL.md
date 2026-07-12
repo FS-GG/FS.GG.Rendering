@@ -40,11 +40,10 @@ no helper throws or performs I/O. The payload is **opaque** — the framework ne
 > ever see one. A product that calls it has saved nothing.
 >
 > The name is a trap, and a known one: everywhere else in this framework `interpret*` means *do it*
-> (`GlHost.interpretEffect` drives real GL work), while this one writes no bytes at all. It is being
-> renamed to `interpretRecordOnly`, which says what it does — but **that spelling is not in the
-> `FS.GG.UI.Canvas` your product restores**, so calling it today is a hard build error. This skill
-> teaches the spelling you can actually bind; the rename lands with the next framework release
-> (FS-GG/FS.GG.Rendering#587).
+> (`GlHost.interpretEffect` drives real GL work), while this one writes no bytes at all. A later
+> framework release renames it to `interpretRecordOnly`, which says what it does — but **that
+> spelling is not in the `FS.GG.UI.Canvas` your product pins**, so `interpret` is the one to call
+> today.
 
 ## Requesting save/load from `update`
 

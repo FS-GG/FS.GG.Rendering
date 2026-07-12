@@ -101,10 +101,7 @@ module Persistence =
     ///
     /// The name is a trap, and a known one: everywhere else in this framework `interpret*` means
     /// *perform the effect* — `GlHost.interpretEffect` drives real GL work — while this one writes
-    /// no bytes at all. It is being renamed to `interpretRecordOnly`, which says what it does.
-    ///
-    /// That spelling is NOT in the `FS.GG.UI.Canvas` your product restores (see `FsGgUiVersion` in
-    /// `Directory.Packages.props`), so calling it today is a hard build error. This mirror teaches
-    /// the spelling you can actually bind, and the rename lands with the next framework release —
-    /// FS-GG/FS.GG.Rendering#587. Re-apply it here in the SAME change that publishes it (#550).
+    /// no bytes at all. A later framework release renames it to `interpretRecordOnly`, which says
+    /// what it does; that spelling is not in the `FS.GG.UI.Canvas` this product pins, so `interpret`
+    /// is the one to call today.
     val interpret: effects: PersistenceEffect list -> PersistenceEvidence
