@@ -3871,48 +3871,91 @@ widen_cmd() {
 # So: name the obligation the moment a kit source appears in a file list. Advisory, never fatal — the
 # authority is `repos-registry`, and this only stops it being a surprise. Silent where there is no
 # registry to read (a receiver repo mirrors the kit but not `registry/repos.yml`).
-kit_sources() {  # -> one kit `source:` per line, or nothing if there is no registry to read
-  local reg="${FSGG_REPOS_YML:-$(git rev-parse --show-toplevel 2>/dev/null)/registry/repos.yml}"
-  [ -f "$reg" ] || return 0
-  sed -n 's/.*[{,][[:space:]]*source:[[:space:]]*\([^,}]*\).*/\1/p' "$reg" | sed 's/[[:space:]]*$//'
-}
-
-# $1 = newline-separated file list (declared touch-set, or a PR's changed files).
-# Prints the kit sources it touches, IFF `registry/repos.yml` is absent from that same list.
-kit_digest_gap() {
-  local files="$1" src hit=""
-  printf '%s\n' "$files" | grep -qx 'registry/repos.yml' && return 0   # obligation already met
-  while IFS= read -r src; do
+# POST-#527 THE OBLIGATION IS A FACT YOU CAN GO AND LOOK AT — SO GO AND LOOK (#563, #588).
+#
+# This used to ask "is `registry/repos.yml` in your touch-set?" and call the obligation MET if it was.
+# #527 then moved the digests OUT of the authored `repos.yml` and INTO the generated `repos.lock`, and
+# neither this warning nor the four SKILL.md moved with it. The result was not a stale string:
+#
+#   1. IT FAILED OPEN. Declare `repos.yml` and the warning returned SILENTLY — while `repos.lock` was
+#      still stale and `repos-registry-selftest` still red `main`. Mute exactly where it was needed.
+#      That is epic #266's shape, inside the tool written to name #266-class obligations.
+#      The SKILL ROOTS half hung off the same early return, so declaring `repos.yml` silently
+#      suppressed BOTH obligations at once.
+#   2. ITS ADVICE BROKE #309. It told you to declare `repos.yml` in the touch-set — which is the
+#      three-worker serialisation deadlock (#428) that #527 was merged to REMOVE — and to run
+#      `scripts/repos.sh digest`, which still exists but no longer WRITES anything. A command that
+#      runs, reports success, and does nothing: epic #416, in the advice for fixing epic #266.
+#
+# The cure is not a better string. A DECLARATION is not the obligation; a MATCHING DIGEST is. So this
+# no longer infers the obligation from what you declared — it recomputes the digest and looks. The
+# warning goes quiet exactly when the work is actually done, and never before.
+#
+# Silent where there is no lock to read: a receiver mirrors the kit but not the registry.
+kit_digest_stale() {  # -> each kit source whose ACTUAL digest differs from registry/repos.lock
+  local root lock want src path have
+  # FSGG_KIT_ROOT exists so the fixture can stand up a throwaway tree and make a digest genuinely
+  # stale. Without it the only observable subject is this repo, which is (correctly) never stale — and
+  # a test whose subject cannot be made to fail is the #436 shape.
+  root="${FSGG_KIT_ROOT:-$(git rev-parse --show-toplevel 2>/dev/null)}" || return 0
+  [ -n "$root" ] || return 0
+  lock="${FSGG_REPOS_LOCK:-$root/registry/repos.lock}"
+  [ -f "$lock" ] || return 0
+  command -v sha256sum >/dev/null 2>&1 || return 0
+  while read -r want src; do
+    case "$want" in ''|'#'*) continue ;; esac
     [ -n "$src" ] || continue
-    # a file IS the source (a client script) or lives UNDER it (a skill directory)
-    # Escape the regex metacharacters a path can legitimately contain. `/` is NOT one of them — escaping
-    # it makes grep warn "stray \ before /" on every kit, and a tool that cries wolf gets ignored.
-    if printf '%s\n' "$files" | grep -qE "^$(sed 's|[.[*^$]|\\&|g' <<<"$src")(/|$)"; then
-      hit="$hit$src"$'\n'
-    fi
-  done <<<"$(kit_sources)"
-  printf '%s' "$hit"
+    path="$root/$src"
+    # A skill kit is content-addressed on its SKILL.md; a client kit on the file itself (repos.sh).
+    [ -d "$path" ] && path="$path/SKILL.md"
+    [ -f "$path" ] || continue
+    have="$(sha256sum "$path" | cut -d' ' -f1)"
+    [ "$have" = "$want" ] || printf '%s\n' "$src"
+  done < "$lock"
 }
 
-kit_digest_warn() {  # $1 = file list, $2 = context label
-  local gap; gap="$(kit_digest_gap "$1")"
-  [ -n "$gap" ] || return 0
-  printf '\nfsgg-coord: KIT DIGEST — %s touches a content-addressed kit source but not `registry/repos.yml`:\n' "$2" >&2
-  printf '%s' "$gap" | sed 's/^/  /' >&2
-  printf 'Its pinned sha256 is now stale, and `repos-registry` will red `main` (ADR-0019, #469). Regenerate:\n' >&2
-  printf '%s' "$gap" | sed 's|^|  scripts/repos.sh digest |' >&2
-  printf '...then commit `registry/repos.yml` — and declare it in the touch-set.\n' >&2
+# Every agent-skill root carries the BYTE-IDENTICAL union (ADR-0011/0014), so a skill edited in one
+# root and not the other reds the `roots` gate. Same discipline: OBSERVE the divergence rather than
+# infer it from a file list.
+kit_roots_diverged() {  # -> each skill dir whose roots are not byte-identical
+  local root d name other
+  root="${FSGG_KIT_ROOT:-$(git rev-parse --show-toplevel 2>/dev/null)}" || return 0
+  [ -n "$root" ] || return 0
+  [ -d "$root/.claude/skills" ] && [ -d "$root/.agents/skills" ] || return 0
+  for d in "$root"/.claude/skills/*/; do
+    [ -f "$d/SKILL.md" ] || continue
+    name="$(basename "$d")"
+    other="$root/.agents/skills/$name/SKILL.md"
+    if [ ! -f "$other" ] || ! cmp -s "$d/SKILL.md" "$other"; then
+      printf '%s\n' "$name"
+    fi
+  done
+}
 
-  # A SKILL kit carries a SECOND obligation, and it is the same trap one step along: every agent-skill
-  # root holds the BYTE-IDENTICAL union (ADR-0011/0014), so editing `.claude/skills/<kit>/` without
-  # mirroring into `.agents/skills/<kit>/` reds the `roots` gate. Found by walking straight into it
-  # while fixing the digest half of this very bug — which is the argument for naming it here: ONE edit
-  # carries SEVERAL invisible obligations, and the tooling named none of them.
-  local sk; sk="$(printf '%s' "$gap" | grep '^\.claude/skills/' || true)"
-  [ -n "$sk" ] || return 0
-  printf '\nfsgg-coord: SKILL ROOTS — a skill kit must stay BYTE-IDENTICAL across every root\n' >&2
-  printf '(ADR-0011/0014), or the `roots` gate reds `main`. Mirror it:\n' >&2
-  printf '%s' "$sk" | sed 's|^\(\.claude/skills/.*\)$|  cp -r \1/. .agents/skills/|' >&2
+kit_digest_warn() {  # ($1 file list, $2 context label — kept for call-site compatibility; unused now:
+                     #  the facts are OBSERVED, not inferred from what the caller declared)
+  local stale roots name
+  stale="$(kit_digest_stale)"
+  roots="$(kit_roots_diverged)"
+
+  if [ -n "$stale" ]; then
+    printf '\nfsgg-coord: KIT DIGEST — a content-addressed kit source is STALE in `registry/repos.lock`:\n' >&2
+    printf '%s\n' "$stale" | sed 's/^/  /' >&2
+    printf '`repos-registry-selftest` reds `main` until it is regenerated (ADR-0019, #469). Run:\n' >&2
+    printf '  scripts/repos.sh relock\n' >&2
+    printf 'Then name `registry/repos.lock` as EXPECTED DRIFT in the PR — do NOT reserve it in the\n' >&2
+    printf 'touch-set. It is a GENERATED, CI-GATED artifact, so a collision in it is a REBASE, not a\n' >&2
+    printf 'decision (#309). Reserving it is the three-worker deadlock #527 removed (#428).\n' >&2
+  fi
+
+  if [ -n "$roots" ]; then
+    printf '\nfsgg-coord: SKILL ROOTS — a skill kit must stay BYTE-IDENTICAL across every root\n' >&2
+    printf '(ADR-0011/0014), or the `roots` gate reds `main`. These have diverged:\n' >&2
+    while IFS= read -r name; do
+      [ -n "$name" ] || continue
+      printf '  cp .claude/skills/%s/SKILL.md .agents/skills/%s/SKILL.md\n' "$name" "$name" >&2
+    done <<<"$roots"
+  fi
   return 0
 }
 

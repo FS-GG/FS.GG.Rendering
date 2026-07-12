@@ -119,20 +119,35 @@ matches nothing, and a token that matches nothing would conflict with nothing, i
 `DISJOINT` against everything. So the tool **refuses** it: `claim`, `widen`, `batch`, `overlap`,
 and `verify-paths` all reject an unmatchable token and name it. Want every lockfile? List them.
 
-**Editing a kit source obliges `registry/repos.yml`** (`.github#469`, ADR-0019). The coordination kit
-is **content-addressed**: `registry/repos.yml` pins a `sha256` of every kit source — `scripts/fsgg-coord`
-and each `.claude/skills/<kit>/` directory. Any edit to one invalidates its digest, and `repos-registry`
-reds `main` until it is regenerated. So the touch-set for a kit change is **three** files, not two:
+**Editing a kit source obliges `registry/repos.lock` — and you must NOT reserve it** (`.github#469`,
+`#527`, ADR-0019). The coordination kit is **content-addressed**: `registry/repos.lock` pins a `sha256`
+of every kit source — `scripts/fsgg-coord` and each `.claude/skills/<kit>/` directory. Any edit to one
+invalidates its digest, and `repos-registry-selftest` reds `main` until it is regenerated:
 
 ```sh
-scripts/repos.sh digest scripts/fsgg-coord    # then commit registry/repos.yml
+scripts/repos.sh relock          # regenerates registry/repos.lock
 ```
 
-`widen` and `verify-paths` now name this the moment a kit source appears in a touch-set — advisory,
-because `repos-registry` is the authority. Note what bit before they did: `verify-paths` asks *"did the
-PR stay **inside** what you declared"*, never *"was your declaration **sufficient** for what you
-touched"* — so a touch-set of `scripts/fsgg-coord` alone reported **OK** and red `main` anyway. A gate
-can be most reassuring exactly when it is least informed (epic `.github#266`).
+**The touch-set for a kit change is the kit source ONLY.** `registry/repos.lock` is a **generated,
+CI-gated artifact**, so `#309`'s rule applies to it: *do not reserve a generated artifact*. Regenerate
+it, commit it, and name it as **expected drift** in the PR body. A collision in it is a **rebase, not a
+decision**.
+
+> This paragraph used to say the opposite — reserve `registry/repos.yml`, run `repos.sh digest`. Both
+> were true before `#527`, which moved the digest out of the authored roster and into the generated
+> lock *precisely to end the deadlock that reserving it caused*: three workers serialised on one file
+> in a single afternoon (`#428`). `#527` touched seven files and **none of them was a skill**, so this
+> recipe went on telling every worker to re-create the deadlock the fix had just removed, and
+> `repos.sh digest` — which still exists, and now writes nothing — went on reporting success and doing
+> nothing (`#588`, `#563`; epic `#416`). The rule reached the registry and the tool, and not the one
+> artifact a worker actually loads. That is the projection defect, and it is why ADR-0034 proposes
+> generating this file rather than copying it.
+
+`widen` and `verify-paths` now **look**: they recompute each kit source's digest and compare it against
+`registry/repos.lock`, so the warning fires exactly when the lock is genuinely stale and goes quiet
+exactly when you have relocked. It used to ask whether you had *declared* a file, and call the
+obligation met if you had — which was silent in precisely the case where it was wrong (`#563`).
+Advisory, because `repos-registry-selftest` is the authority.
 
 **A declaration is a line you wrote as one** (`.github#277`). A `Paths:` line inside a fenced
 (``` or `~~~`) or indented code block is a **quotation**, not a declaration — quote freely in
