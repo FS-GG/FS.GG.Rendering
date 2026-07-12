@@ -170,7 +170,12 @@ type Waiver =
       DriftedSha: string
       Because: string }
 
-let private waivers =
+// THE LIST IS NOW EMPTY, and that is the end state the pattern above was aiming at: all four mirrors are
+// byte-identical to their canonicals, so there is no drift left to excuse. The machinery stays — the
+// stale-waiver arms below are what let this list drain, and a fifth mirror arriving drifted would need
+// them again. What must NOT come back is a waiver for NEW drift: the error text below says so, and the
+// three that were here all recorded edits made BEFORE this guard existed.
+let private waivers: Waiver list =
     // fs-gg-persistence's waiver is GONE, and that is this file working exactly as designed (#629).
     //
     // It waived three correct-but-unowned edits (Rendering#520/#462, #539/#445, #590/#550) and said the
@@ -180,31 +185,42 @@ let private waivers =
     // canonical again (067c0842), the drift this waiver excused no longer exists, and the waiver is
     // deleted rather than kept — a stale waiver is a lie that hides the next one, and this file has said
     // so from the day it landed. The round trip closed. One waiver down, two to go.
-    [ { Id = "fs-gg-audio"
-        DriftedSha = "7142cfc6e921ac7c2f8de6c1f97ee52387fd7f3f6bd9896cb12c116180f6f0ef"
-        Because =
-          "#620 asked for a straight re-freeze from the canonical, and READING THE DIFF — which this waiver \
-           told the next person to do — is what stopped it. Rendering's mirror carries the #436/#429 content \
-           (audio materializes on the `app` profile too, and the four-package × profile table), and the \
-           canonical still teaches `game`/`sample-pack` ONLY. Copying it over would have destroyed correct \
-           work AND shipped an `app` author a skill that says it does not apply to them — while the template \
-           materializes it for them (`skill-manifest.json`: `profile in [app, sample-pack, game]`). Strictly \
-           worse than the drift it was fixing. So #620's VALUE was merged in instead (the Init trap: \
-           `forTransition` is never called for the initial model) and the local content kept; the digest is \
-           re-pinned here because a waived mirror's next edit must still be a RED. The debt is unchanged and \
-           now has a creditor: FS.GG.Game#204 routes the app-profile content UP to the canonical, and when it \
-           lands this mirror can finally be re-frozen and this waiver DELETED." }
-      // fs-gg-model-swap's waiver is gone too, and it was a LIE THIS GUARD WAS TELLING ITSELF (#629).
-      //
-      // #560/#576 re-mirrored it and the round trip closed — the mirror has matched its canonical for a
-      // while. But the old comparison judged the mirror against the REGISTRY's `sha256`, which lagged, so
-      // the guard went on believing the mirror was drifted and went on excusing it. The waiver outlived its
-      // cause by exactly as long as nobody could see it: precisely the "stale waiver hides the next break"
-      // failure the paragraph above warns about, running inside the file that warns about it.
-      //
-      // Judging the BODY made it visible in one run. That is the argument for the oracle change in a
-      // sentence.
-      ]
+    //
+    // fs-gg-model-swap's waiver is gone too, and it was a LIE THIS GUARD WAS TELLING ITSELF (#629).
+    //
+    // #560/#576 re-mirrored it and the round trip closed — the mirror has matched its canonical for a
+    // while. But the old comparison judged the mirror against the REGISTRY's `sha256`, which lagged, so
+    // the guard went on believing the mirror was drifted and went on excusing it. The waiver outlived its
+    // cause by exactly as long as nobody could see it: precisely the "stale waiver hides the next break"
+    // failure the paragraph above warns about, running inside the file that warns about it.
+    //
+    // Judging the BODY made it visible in one run. That is the argument for the oracle change in a
+    // sentence.
+    //
+    // fs-gg-audio's waiver is gone LAST, and it is the one this whole pattern was written for (#640).
+    //
+    // It did not excuse a careless edit — it excused a REFUSAL. #620 asked for a straight re-freeze from
+    // the canonical, and READING THE DIFF (which the waiver told the next person to do) is what stopped
+    // it: Rendering's mirror carried the FS.GG.Rendering#436/#429 content — audio materializes on the
+    // `app` profile too, plus the four-package × profile table — and the canonical still taught
+    // `game`/`sample-pack` ONLY. Copying it over would have destroyed correct work AND shipped an `app`
+    // author a skill saying it did not apply to them, while the template materialized it for them anyway.
+    // So the waiver named its own creditor instead: FS.GG.Game#204, to route that content UP.
+    //
+    // It landed (FS.GG.Game#215). The canonical now carries the widened `## Scope`, the profile table and
+    // the per-family launch entry points, so the mirror is byte-identical again (66ad2654) and the debt is
+    // PAID. That is what a waiver is for: it held the drift still, with a name on it, until the repo that
+    // owned the body could take the content.
+    //
+    // ONE THING THE RE-FREEZE DELIBERATELY REMOVED, so the next reader does not "restore" it: the
+    // app-family ```fsharp block calling `ControlsElmish.runInteractiveAppWithAudio`. That entry point
+    // first ships in FS.GG.UI 0.9.0, Game pins the UI train at 0.5.0, and Game COMPILES every ```fsharp
+    // block in a published SKILL.md — so the repo that OWNS this body cannot typecheck it, and fencing it
+    // as non-F# to slip past that gate would be a green tick over uncompiled code. The canonical carries
+    // those entry points as a TABLE instead, which loses no names and no argument order. Getting the block
+    // back means moving Game's UI train first (FS.GG.Game#216/#217) — it is not something this repo can do
+    // unilaterally without re-opening the divergence this closes.
+    []
 
 /// The OWNER'S canonical body, fetched from the owning repo — the thing ADR-0022 §6 actually says this
 /// mirror must be byte-identical to.
