@@ -2076,7 +2076,28 @@ done_cmd() {
   ensure_board >/dev/null
   local boardnum; boardnum="$(board_get '.number')"
 
-  # ONE query gets both facts: the merge (closedByPullRequestsReferences) and the board Status.
+  # ONE query gets every fact the stamp needs: the merge, what GitHub says CLOSED the issue, the
+  # item's own children, and the board Status.
+  #
+  # `timelineItems(CLOSED_EVENT).closer` — WHAT ACTUALLY CLOSED THIS ISSUE, per GitHub (#558/#543).
+  #   `closingIssuesReferences` is populated ONLY from the PR BODY, and ONLY while the PR is open.
+  #   `gh pr create --fill` — which pnext-item §5 prescribes — maps the commit SUBJECT to the PR
+  #   TITLE, so the near-universal `fix: the thing (closes #165)` convention puts the keyword exactly
+  #   where that field never looks. The squash commit still closes the issue (GitHub honours it), so
+  #   the work lands, the PR merges, the issue closes, the board flips — and the stamp goes RED.
+  #   Permanently: editing the merged PR's body does NOT backfill the link; the window shuts at merge.
+  #   A red stamp that fires reproducibly on correct, merged, green work, from a standard commit
+  #   convention, is the fastest way to teach every worker that red stamps are noise. `closer` is
+  #   GitHub's OWN record of the closing act — a STRONGER signal than a body reference, not a weaker
+  #   one, and it needs no regex over a commit message.
+  #
+  # `subIssues` — THE ITEM'S OWN CHILDREN (#583). `epic_rollup` walks the graph of the item's PARENT
+  #   and never asks the same question of the item in hand. So `done --flip` stamped an item Done and
+  #   closed it over an OPEN sub-issue carrying one of its own acceptance criteria — the #322 failure,
+  #   in the command written to prevent it. It fires on the COMMON case: pnext-item §4 tells a worker
+  #   to split off what they cannot land and `child`-link it, so the more faithfully a worker splits
+  #   their work, the more reliably they close a parent over it. A green stamp over unfinished work is
+  #   a board that lies, which the recipe names as the one thing worse than an unstamped item.
   local q='query($owner:String!, $repo:String!, $num:Int!){
     repository(owner:$owner, name:$repo){ issue(number:$num){
       number title url state
@@ -2084,6 +2105,14 @@ done_cmd() {
         nodes{ number url merged mergedAt mergeCommit{ abbreviatedOid }
           closingIssuesReferences(first:10){ nodes{ number repository{ nameWithOwner } } } }
       }
+      timelineItems(last:10, itemTypes:[CLOSED_EVENT]){
+        nodes{ ... on ClosedEvent { closer{
+          __typename
+          ... on PullRequest{ number }
+          ... on Commit{ oid associatedPullRequests(first:5){ nodes{ number } } }
+        } } }
+      }
+      subIssues(first:100){ totalCount nodes{ number state repository{ nameWithOwner } } }
       projectItems(first:20){ nodes{
         project{ number title }
         status: fieldValueByName(name:"Status"){ ... on ProjectV2ItemFieldSingleSelectValue{ name } }
@@ -2105,26 +2134,54 @@ done_cmd() {
   status="$(jq -r --argjson pn "$boardnum" \
     '[.data.repository.issue.projectItems.nodes[]? | select(.project.number==$pn) | .status.name] | first // ""' <<<"$out")"
 
-  # The closing PR. `closedByPullRequestsReferences` also lists PRs that merely MENTION the issue in
-  # prose (our "Filed, not fixed: #N" convention is exactly this), and GitHub returns them
-  # lowest-number-first — so taking the first merged one stamped the wrong commit, or stamped green
-  # off an unrelated merge that never touched the work (.github#342). Provenance, not just outcome:
-  #   - keep only PRs whose `closingIssuesReferences` actually contains THIS issue (`Closes #N`, the
-  #     field that distinguishes a closer from a mention), in this repo;
-  #   - among those, take the one merged LAST, not the lowest-numbered;
-  #   - if none survive, fall through to the existing "no merged PR closes this issue" refusal below
-  #     (merged="" -> false) — never fall back to a mention.
-  # An explicit --pr is a human override: honour it by number and let the merged-check below judge it.
+  # THE CLOSING PR — ONE definition of provenance, and BOTH paths use it.
+  #
+  # `closedByPullRequestsReferences` also lists PRs that merely MENTION the issue in prose (our
+  # "Filed, not fixed: #N" convention is exactly this), and GitHub returns them lowest-number-first —
+  # so taking the first merged one stamped the wrong commit, or stamped green off an unrelated merge
+  # that never touched the work (.github#342). Provenance, not just outcome.
+  #
+  # A PR CLOSES this issue if EITHER of GitHub's own records says so. Both are records of the closing
+  # act; neither is a mention:
+  #
+  #   (A) its `closingIssuesReferences` contains THIS issue — the `Closes #N` in the PR BODY; or
+  #   (B) GitHub's own CLOSED_EVENT names it as the `closer` — directly, or as the PR associated with
+  #       the commit that closed it. This is the leg that was missing (#558/#543): the recipe's own
+  #       `gh pr create --fill` routes a closing keyword in the commit SUBJECT to the PR TITLE, where
+  #       (A) cannot see it — so a correctly-merged, correctly-closed item was PERMANENTLY unstampable,
+  #       and the worker was told (correctly) not to hand-set Status to fix it.
+  #
+  # `--pr` USED TO SKIP THIS ENTIRELY — it selected by NUMBER alone (#543 leg 2), so the documented
+  # escape hatch from the bug above was a soundness hole that reintroduced #342: point it at any
+  # merged PR that merely mentions the issue and the stamp went green. It is a HUMAN OVERRIDE OF WHICH
+  # PR, NEVER OF WHETHER IT CLOSED THE ISSUE. Same predicate, both paths.
+  local JQ_CLOSERS='
+    def closer_prs:
+      [ .data.repository.issue.timelineItems.nodes[]?
+        | .closer
+        | select(. != null)
+        | if .__typename == "PullRequest" then .number
+          elif .__typename == "Commit" then (.associatedPullRequests.nodes[]?.number)
+          else empty end ];
+    def closes_this($num; $repo): . as $pr
+      | ( [ $pr.closingIssuesReferences.nodes[]?
+            | select(.number==$num and .repository.nameWithOwner==$repo) ] | length > 0 );'
+
   local prsel
   if [ -n "$pr" ]; then
-    prsel="$(jq -c --argjson prn "$pr" \
-      '[.data.repository.issue.closedByPullRequestsReferences.nodes[]? | select(.number==$prn)] | first // null' <<<"$out")"
+    prsel="$(jq -c --argjson prn "$pr" --argjson num "$R_NUM" --arg repo "$R_OWNER/$R_REPO" "$JQ_CLOSERS"'
+      (closer_prs) as $closers
+      | [ .data.repository.issue.closedByPullRequestsReferences.nodes[]?
+          | select(.number==$prn)
+          | select( (. | closes_this($num; $repo)) or ([$closers[] | select(. == $prn)] | length > 0) ) ]
+      | first // null' <<<"$out")"
   else
-    prsel="$(jq -c --argjson num "$R_NUM" --arg repo "$R_OWNER/$R_REPO" '
-      [ .data.repository.issue.closedByPullRequestsReferences.nodes[]?
-        | select(.merged==true)
-        | select([.closingIssuesReferences.nodes[]?
-                    | select(.number==$num and .repository.nameWithOwner==$repo)] | length > 0) ]
+    prsel="$(jq -c --argjson num "$R_NUM" --arg repo "$R_OWNER/$R_REPO" "$JQ_CLOSERS"'
+      (closer_prs) as $closers
+      | [ .data.repository.issue.closedByPullRequestsReferences.nodes[]?
+          | select(.merged==true)
+          | . as $p
+          | select( ($p | closes_this($num; $repo)) or ([$closers[] | select(. == $p.number)] | length > 0) ) ]
       | sort_by(.mergedAt) | last // null' <<<"$out")"
   fi
   local merged prnum prsha prday
@@ -2140,10 +2197,35 @@ done_cmd() {
   fi
   if [ "$merged" != "true" ]; then
     local why="no merged PR closes this issue"
-    [ -n "$pr" ] && why="PR #$pr is not merged (or does not close this issue)"
+    [ -n "$pr" ] && why="PR #$pr does not close this issue (it must be merged, and either name it in the PR body or be what GitHub recorded as closing it)"
     banner fail "✗✗ FSGG-NOT-DONE   $item_lbl" \
                 "$why  ·  board: ${status:-unset}"; return 1
   fi
+
+  # THIS ITEM'S OWN CHILDREN (#583). `epic_rollup` asks this of the item's PARENT and never of the
+  # item in hand, so a worker who followed pnext-item §4 — split off what you cannot land, `child`-link
+  # it — closed the parent over the split-out criterion, with a green ✓✓ actively saying otherwise.
+  # A red stamp is a finding; a GREEN stamp over unfinished work is a board that lies.
+  local kids_seen kids_total kids_open
+  kids_total="$(jq -r '[.data.repository.issue.subIssues.nodes[]?] | length' <<<"$out")"
+  kids_seen="$(jq -r '.data.repository.issue.subIssues.totalCount // 0' <<<"$out")"
+  # Truncation FIRST: a child list we could not see whole makes "no open children" a statement about a
+  # set we already know is incomplete — an unverifiable subject must not report green (#266).
+  if [ "$kids_seen" != "$kids_total" ]; then
+    banner fail "✗✗ FSGG-NOT-DONE   $item_lbl" \
+                "$kids_seen sub-issue(s), only $kids_total visible — cannot verify they are finished"
+    return 1
+  fi
+  kids_open="$(jq -r '[.data.repository.issue.subIssues.nodes[]? | select(.state != "CLOSED")
+                       | "\(.repository.nameWithOwner | sub("^[^/]+/";""))#\(.number)"] | join(", ")' <<<"$out")"
+  if [ -n "$kids_open" ]; then
+    banner fail "✗✗ FSGG-NOT-DONE   $item_lbl" \
+                "merged PR #$prnum, but this item has OPEN sub-issue(s): $kids_open"
+    printf '  the work is not finished until they are. Close them, or move them out from under this\n' >&2
+    printf '  item (`Blocked by` sequences; a sub-issue is a PART OF).\n' >&2
+    return 1
+  fi
+
   if [ "$status" != "Done" ]; then
     if [ -n "$flip" ]; then
       dbg "done: PR #$prnum merged — flipping board Status -> Done"
