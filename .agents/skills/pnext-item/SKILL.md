@@ -328,6 +328,27 @@ gh pr create --fill --base main
 scripts/fsgg-coord verify-paths --pr <n>    # did the PR stay inside its declaration?
 ```
 
+> **Put `Closes #<n>` in the commit BODY, never in the subject — and know why.**
+>
+> `--fill` maps the commit **subject → PR title** and the commit **body → PR body**. GitHub builds
+> `closingIssuesReferences` — the field that says *"this PR closes that issue"* — from the **PR body
+> only**, and **only while the PR is open**. So the near-universal convention
+>
+> ```
+> gate: reconstruct the scaffold's scene edge (closes #165)
+> ```
+>
+> puts the keyword in the **title**, where that field never looks. Everything still *works* — the
+> squash commit closes the issue, because GitHub honours the keyword there too — so you get: PR
+> merged ✓, issue closed ✓, CI green ✓, board Done ✓ … and the linkage GitHub records for the *PR* is
+> **empty**. Before [#558](https://github.com/FS-GG/.github/issues/558) that meant a **permanently red
+> stamp** on correct, merged, green work, unrepairable after the fact (editing the merged PR's body
+> does **not** backfill the link — the window shuts at merge).
+>
+> `done` now also reads GitHub's own `CLOSED_EVENT` closer, so the stamp is earned either way. **The
+> guidance stands anyway**: the body reference is the one that makes the link visible on the PR itself,
+> and the two records agreeing is worth more than either alone.
+
 > **Two independent reasons the landing steps below are `gh api`, not `gh pr …`.**
 >
 > 1. **The merge must be, always.** `gh pr merge` merges and *then* fails, because its local cleanup
