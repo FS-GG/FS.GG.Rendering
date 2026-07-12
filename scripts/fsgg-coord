@@ -875,8 +875,47 @@ item_id() {
   # EX_OFFBOARD, not a bare 1: "this issue is not on the board" is a PERMANENT fact a caller acts on
   # differently from "the budget is gone, try later" (#418). `claim` tells the two apart on this code.
   [ -n "$iid" ] && [ "$iid" != "null" ] \
-    || die_rc "$EX_OFFBOARD" "issue $R_OWNER/$R_REPO#$R_NUM is not on board '$TITLE' — add it first: gh project item-add $boardnum --owner $OWNER --url https://github.com/$R_OWNER/$R_REPO/issues/$R_NUM"
+    || die_rc "$EX_OFFBOARD" "issue $R_OWNER/$R_REPO#$R_NUM is not on board '$TITLE' — add it first: fsgg-coord add $R_REPO#$R_NUM"
   jq -n --arg itemId "$iid" '{itemId:$itemId}' > "$itemfile"
+  printf '%s\n' "$iid"
+}
+
+# ---- add: put an issue ON the board --------------------------------------------------------------
+# THE VERB THAT WAS MISSING, and its absence is why every recipe reached PAST the tool (#587).
+# `check-board`, `pnext-item`, `cross-repo-coordination` — and this tool's own "add it first" message,
+# two lines up — all told a worker to run `gh project item-add`. That is a Projects v2 call on the
+# GraphQL budget that is SHARED BY THE WHOLE FLEET, and going around the client means nothing meters
+# it, nothing caches it, and nothing queues it when the budget is gone. A rule you cannot obey is not
+# a rule, it is a reprimand — so the monopoly needed this verb before it could need a gate.
+add_item() {  # <issue> -> prints the board item id (idempotent)
+  local ref="$1"
+  parse_ref "$ref"
+  ensure_board >/dev/null
+  local boardnum; boardnum="$(board_get '.number')"
+
+  # Already there? Say so and print the id, rather than creating a twin.
+  local existing rc=0
+  existing="$(soft_run item_id "$ref" --refresh 2>/dev/null)" || rc=$?
+  if [ "$rc" = 0 ] && [ -n "$existing" ]; then
+    echo "fsgg-coord: $R_REPO#$R_NUM is already on board '$TITLE'." >&2
+    printf '%s\n' "$existing"
+    return 0
+  fi
+  # EX_OFFBOARD is the EXPECTED path — not being on the board is why we are here. Any other code is a
+  # FAILED READ, and adding on a failed read is exactly how you create a duplicate board item: #421's
+  # lesson, one verb along. A lookup that could not run is not an absence.
+  [ "$rc" = "$EX_OFFBOARD" ] || die_rc "$rc" \
+    "add: could not determine whether $R_REPO#$R_NUM is already on the board — REFUSING to add. A failed lookup is not an absence (#421); adding on one creates a duplicate item."
+
+  local url="https://github.com/$R_OWNER/$R_REPO/issues/$R_NUM"
+  local out iid
+  out="$(project_write project item-add "$boardnum" --owner "$OWNER" --url "$url" --format json)"
+  iid="$(jq -r '.id // empty' <<<"$out")"
+  [ -n "$iid" ] || die "add: the board accepted $R_REPO#$R_NUM but returned no item id."
+  # Cache it, so the set-field that always follows does not pay for another lookup.
+  local itemfile="$CACHE/item-$(slug "$OWNER")-$(slug "$TITLE")-$(slug "$R_OWNER")-$(slug "$R_REPO")-$R_NUM.json"
+  jq -n --arg itemId "$iid" '{itemId:$itemId}' > "$itemfile"
+  echo "fsgg-coord: added $R_REPO#$R_NUM to board '$TITLE'." >&2
   printf '%s\n' "$iid"
 }
 
@@ -4200,6 +4239,7 @@ case "$cmd" in
   field-id)  [ $# -ge 1 ] || die "field-id: <Field> required.";  field_id "$1" ;;
   option-id) [ $# -ge 2 ] || die "option-id: <Field> <Option> required."; option_id "$1" "$2" ;;
   item-id)   [ $# -ge 1 ] || die "item-id: <issue> required.";  item_id "$1" "${2:-}" ;;
+  add)       [ $# -ge 1 ] || die "add: <issue> required (URL, owner/repo#n, or repo#n)."; autoflush; add_item "$1" ;;
   # #510: this used to call set_field directly, so an exhausted budget printed die_rate's "Board
   # WRITES are queued" and queued NOTHING. It goes through the one board write now, which really does.
   set-field) [ $# -ge 3 ] || die "set-field: <issue> <Field> <Value> required."; autoflush
