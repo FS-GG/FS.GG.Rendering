@@ -348,6 +348,110 @@ let private mirroredSubjects () =
 let private fsiFilesUnder (root: string) =
     Directory.GetFiles(root, "*.fsi", SearchOption.AllDirectories) |> Array.toList
 
+// #594 — the contradiction M-MIR/TYPE could not survive, and the ledger that resolves it.
+//
+// M-MIR/TYPE is an EQUALITY rule (above: a closed type curated is a type lied about). #550's rule is that
+// a shipped doc must not name a symbol absent from the package a product PINS. Between a feature landing on
+// `main` and the release that publishes it, `src/` is AHEAD of the pin — so for any mirrored type that
+// GROWS, those two rules cannot both hold: the gate compelled the mirror to declare a member the pinned
+// package does not have, manufacturing the very bug #550 exists to fix. #535's `ViewerEffect.Persist` is
+// the instance that proved it.
+//
+// The asymmetry is the whole reason this needed a mechanism rather than a relaxation: M-MIR/VAL is a SUBSET
+// rule, so a val can wait for its release by simply being absent (that is how #550 was fixed at all). A
+// UNION CASE cannot — omitting it was drift. There was no way to say "this member arrives next release".
+//
+// Now there is, and it is a DECLARATION rather than a silence: `mirror-pending-release-ledger.txt`. An entry
+// claims src has the member, the pin does not, and the mirror therefore omits it. M-MIR/TYPE honours exactly
+// that omission and nothing else — a member the mirror TEACHES that src lacks is still drift, and a member
+// missing with no entry is still drift. The three rules below keep the ledger from becoming a licence.
+//
+// P-PEND/PIN is the load-bearing one, and it is the M-PROV idiom (a stamp that must equal the pin). A pin
+// bump IS a release, and a release is the only thing that can retire an entry — so a bump reds every line and
+// forces each to be judged afresh. Without it the file rots silently in the one direction the offline gate
+// cannot see: the release lands, the member becomes bindable, and the mirror under-teaches a closed type
+// forever with M-MIR/TYPE green.
+//
+// What is NOT asserted here: that the pinned package really lacks the member. This repo has no snapshot of
+// the published surface (the mirrors are frozen against `src/`, which is the side that is ahead), so that
+// claim is held by construction — the stamp records which pin was judged. The probe that could prove it is
+// `tests/Build.Tests/TemplateConsumesPinnedApiTests.fs` (#589), whose extractor reads `Module.member` and so
+// cannot see a DU case at all. #611 tracks closing that.
+
+/// A DECLARED omission: a member `src/` has, the PINNED package does not, and the mirror therefore omits.
+type private PendingMember =
+    { Directory: string
+      TypeName: string
+      /// GENERIC ARITY — part of the type's identity, not decoration. `src/SkiaViewer` really does declare
+      /// two types named `ViewerEffect`: the mirrored one, and an unrelated `ViewerEffect<'msg>` in
+      /// Host/Diagnostics.fsi. Keyed on the bare name they MERGE (the trap this file's header opens with),
+      /// and an entry written for one would silently excuse an omission from the other. So an entry names
+      /// the arity it means — `Type` is arity 0, `Type<1>` is one type parameter.
+      Arity: int
+      MemberName: string
+      /// The `$(FsGgUiVersion)` the omission was judged against. P-PEND/PIN holds it to the current pin, so
+      /// a release cannot quietly leave the entry behind.
+      Pin: string
+      /// The issue that retires the entry — the release that publishes the member.
+      Creditor: string
+      Line: int }
+
+/// Every M-MIR subject is a mirror with an in-repo `src/` original, i.e. an `FS.GG.UI.*` package, which a
+/// scaffolded product binds at this pin. (The cross-repo mirrors are M-PROV's, not M-MIR's.)
+let private uiPinProperty = "FsGgUiVersion"
+
+let private pendingLedgerPath = repositoryPath "tests/Package.Tests/mirror-pending-release-ledger.txt"
+
+/// `SkiaViewer::ViewerEffect.Persist @ 0.9.0 #587`, or `Foo::Bar<1>.Baz @ … #…` for a generic type.
+let private pendingEntryPattern =
+    Regex(@"^(?<dir>[\w.]+)::(?<type>[\w']+)(?:<(?<arity>\d+)>)?\.(?<member>[\w']+)\s+@\s+(?<pin>\S+)\s+#(?<issue>\d+)$")
+
+/// Read once — the rules below all need it, and the parse is pure. A line that does not parse is a HARD
+/// FAIL, never a silent skip: a ledger that quietly ignores a typo'd entry excuses an omission nobody
+/// declared, which is the fails-open shape (FS-GG/.github#266) this suite refuses everywhere else.
+let private pendingLedger =
+    lazy
+        (File.ReadAllLines pendingLedgerPath
+         |> Array.mapi (fun index line -> index + 1, line.Trim())
+         |> Array.filter (fun (_, line) -> line <> "" && not (line.StartsWith "#"))
+         |> Array.map (fun (number, line) ->
+             let m = pendingEntryPattern.Match line
+
+             if not m.Success then
+                 failwithf
+                     "mirror-pending-release-ledger.txt:%d — cannot parse '%s'. Expected `<mirror dir>::<Type>.<Member> @ <pin> #<issue>`."
+                     number
+                     line
+
+             { Directory = m.Groups.["dir"].Value
+               TypeName = m.Groups.["type"].Value
+               Arity = (if m.Groups.["arity"].Success then int m.Groups.["arity"].Value else 0)
+               MemberName = m.Groups.["member"].Value
+               Pin = m.Groups.["pin"].Value
+               Creditor = m.Groups.["issue"].Value
+               Line = number })
+         |> Array.toList)
+
+/// The members the ledger excuses this mirror from declaring on this type. Keyed by (name, ARITY) — the
+/// same identity `Fsi.Surface.Types` uses, because `ViewerEffect` and `ViewerEffect<'msg>` are different
+/// types and an entry for one must not excuse the other. Within that, the member is matched by NAME: a
+/// pending member the mirror teaches under a CHANGED signature still shows up as a phantom below, so
+/// excusing by name cannot let a mistaught member ride along.
+let private pendingMembersOf (directory: string) (typeName: string) (arity: int) =
+    pendingLedger.Value
+    |> List.filter (fun p -> p.Directory = directory && p.TypeName = typeName && p.Arity = arity)
+    |> List.map (fun p -> p.MemberName)
+    |> Set.ofList
+
+/// Does this src candidate satisfy the mirror's declaration? The mirror may omit exactly the members the
+/// ledger declares pending, and nothing else. It may never teach a member src does not have.
+let private candidateSatisfies (pending: Set<string>) (mirrored: Set<Fsi.Member>) (candidate: Set<Fsi.Member>) =
+    let omitted = Set.difference candidate mirrored
+    let taughtButAbsent = Set.difference mirrored candidate
+
+    Set.isEmpty taughtButAbsent
+    && omitted |> Set.forall (fun m -> pending.Contains m.Name)
+
 /// Drift M-MIR has found that this repo has not yet fixed, keyed `<mirror dir>.<type or val>`. Both
 /// rules honour it, so drift in a mirror another worker holds can be RECORDED rather than forcing
 /// someone to disable a rule to get CI green — the fails-open pressure that produced the original
@@ -709,9 +813,13 @@ let apiSurfaceMirrorTests =
                       let describe (members: Set<Fsi.Member>) =
                           members |> Set.map (fun m -> m.Name) |> Set.toList |> String.concat ", "
 
+                      // #594 — the members this mirror is DECLARED to omit until the next release. Keyed on
+                      // (name, arity), the same identity the comparison itself uses.
+                      let pending = pendingMembersOf directory name arity
+
                       match candidates with
                       | [] -> Some $"{directory}: type {name} (arity {arity}) — no src/{directory} type of that name and arity"
-                      | _ when candidates |> List.exists (fun candidate -> candidate = mirrored) -> None
+                      | _ when candidates |> List.exists (candidateSatisfies pending mirrored) -> None
                       | _ ->
                           // Report against the closest candidate — with several, the nearest is the one
                           // the mirror was plainly copied from, and diffing against the others is noise.
@@ -721,7 +829,13 @@ let apiSurfaceMirrorTests =
                                   Set.count (Set.difference candidate mirrored)
                                   + Set.count (Set.difference mirrored candidate))
 
-                          let missing = Set.difference closest mirrored
+                          // A pending member is not missing — it is DECLARED absent (#594). Subtract it here
+                          // rather than at the match above, so the report names only the drift someone must
+                          // actually fix.
+                          let missing =
+                              Set.difference closest mirrored
+                              |> Set.filter (fun m -> not (pending.Contains m.Name))
+
                           let phantom = Set.difference mirrored closest
 
                           // A member present on both sides under one name but with different text has not
@@ -753,9 +867,114 @@ let apiSurfaceMirrorTests =
 
               let report = offenders |> List.map (fun o -> "\n  " + o) |> String.concat ""
 
+              // The pointer matters as much as the failure. An author who GREW a mirrored type is looking at
+              // "mirror OMITS X" with no way past it that does not break #550 — which is exactly how the
+              // unbindable `Persist` case got shipped. Tell them the third option exists (#594).
               Expect.isEmpty
                   offenders
-                  $"each type a mirror declares carries its src original's exact member set (M-MIR/TYPE).{report}"
+                  $"each type a mirror declares carries its src original's exact member set (M-MIR/TYPE).\n\
+                    If the member is NEWER than the package a product pins — it is on `main`, not on the \
+                    release — do NOT add it to the mirror: that ships a doc teaching a member nobody can \
+                    bind (#550). Declare the omission in tests/Package.Tests/mirror-pending-release-ledger.txt \
+                    instead (#594).{report}"
+          }
+
+          // P-PEND/SRC — an entry claims src HAS the member. If it does not, the feature was reverted or
+          // renamed and the entry is a PHANTOM: it now excuses an omission that is plain drift, which is the
+          // one way this ledger could re-open the hole it closes.
+          test "every pending-release entry names a member its src original actually declares" {
+              let subjects = mirroredSubjects () |> Set.ofList
+
+              let offenders =
+                  pendingLedger.Value
+                  |> List.choose (fun pending ->
+                      let where = $"mirror-pending-release-ledger.txt:{pending.Line}"
+
+                      if not (subjects.Contains pending.Directory) then
+                          // Not an M-MIR subject, so M-MIR/TYPE never reads the entry — it excuses nothing
+                          // and silently rots. (A cross-repo mirror is M-PROV's; it has no src/ to be ahead.)
+                          Some
+                              $"{where}: '{pending.Directory}' is not a bundled mirror with a src/ original, so M-MIR/TYPE never consults this entry"
+                      else
+                          let declarations =
+                              (sourceSurface pending.Directory).Types
+                              |> Map.tryFind (pending.TypeName, pending.Arity)
+                              |> Option.defaultValue []
+
+                          match declarations with
+                          | [] ->
+                              Some
+                                  $"{where}: src/{pending.Directory} declares no type {pending.TypeName} of arity {pending.Arity} — PHANTOM entry, delete it (if the type is generic, name its arity: {pending.TypeName}<n>.{pending.MemberName})"
+                          | _ when
+                              declarations
+                              |> List.exists (Set.exists (fun m -> m.Name = pending.MemberName))
+                              ->
+                              None
+                          | _ ->
+                              Some
+                                  $"{where}: src/{pending.Directory}'s {pending.TypeName} (arity {pending.Arity}) has no member {pending.MemberName} — PHANTOM entry (reverted or renamed?), delete it")
+
+              let report = offenders |> List.map (fun o -> "\n  " + o) |> String.concat ""
+
+              Expect.isEmpty
+                  offenders
+                  $"every pending-release entry names a member src actually declares — a phantom entry excuses real drift (P-PEND/SRC).{report}"
+          }
+
+          // P-PEND/OMIT — the converse, and the rule that makes an entry MEAN something. An entry says the
+          // mirror omits the member. If the mirror declares it anyway, the entry excuses nothing and the
+          // shipped doc is back to teaching a member a product on the pin cannot bind — #550's bug, with a
+          // ledger entry next to it saying we knew.
+          test "no bundled mirror declares a member the ledger says is pending release" {
+              // Enumerated once, not once per entry — and a directory that is not an M-MIR subject is left to
+              // P-PEND/SRC, which is the rule that reports it.
+              let subjects = mirroredSubjects () |> Set.ofList
+
+              let offenders =
+                  pendingLedger.Value
+                  |> List.filter (fun pending -> subjects.Contains pending.Directory)
+                  |> List.choose (fun pending ->
+                      let declared =
+                          (mirrorSurface pending.Directory).Types
+                          |> Map.tryFind (pending.TypeName, pending.Arity)
+                          |> Option.defaultValue []
+                          |> List.exists (Set.exists (fun m -> m.Name = pending.MemberName))
+
+                      if declared then
+                          Some
+                              $"mirror-pending-release-ledger.txt:{pending.Line}: the {pending.Directory} mirror DECLARES {pending.TypeName}.{pending.MemberName}, which this entry says it omits until #{pending.Creditor} — either the mirror is teaching a member the pin cannot bind (#550), or the entry is stale and should be deleted"
+                      else
+                          None)
+
+              let report = offenders |> List.map (fun o -> "\n  " + o) |> String.concat ""
+
+              Expect.isEmpty
+                  offenders
+                  $"a ledgered member is one the mirror OMITS — an entry beside a declaration excuses nothing (P-PEND/OMIT).{report}"
+          }
+
+          // P-PEND/PIN — the ratchet. A pin bump IS a release, and a release is the only thing that can
+          // retire an entry, so a bump must red EVERY line and force it to be judged afresh: delete the ones
+          // the release published (and let M-MIR/TYPE demand the case back), re-stamp any that genuinely
+          // still are not there. Without this the file rots silently in the direction the offline gate cannot
+          // see — the member becomes bindable, and the mirror under-teaches a closed type forever, green.
+          //
+          // This is M-PROV's idiom, and it is here for M-PROV's reason: a stamp that must equal the pin is
+          // the only staleness check available to a gate that cannot see the published package.
+          test "every pending-release entry is stamped with the version the template pins" {
+              let pinned = pinnedVersion uiPinProperty
+
+              let offenders =
+                  pendingLedger.Value
+                  |> List.filter (fun pending -> pending.Pin <> pinned)
+                  |> List.map (fun pending ->
+                      $"mirror-pending-release-ledger.txt:{pending.Line}: {pending.TypeName}.{pending.MemberName} was judged against {uiPinProperty} {pending.Pin}, but the template now pins {pinned} — re-judge it: if {pinned} exports the member, DELETE the line and restore the member to the mirror; if it still does not, re-stamp to {pinned}")
+
+              let report = offenders |> List.map (fun o -> "\n  " + o) |> String.concat ""
+
+              Expect.isEmpty
+                  offenders
+                  $"every pending-release omission was judged against the CURRENT pin — a bump retires or re-stamps each one (P-PEND/PIN).{report}"
           }
 
           test "every knownDrift exemption still drifts" {
@@ -765,8 +984,12 @@ let apiSurfaceMirrorTests =
               let stillDrifting =
                   mirroredSubjects ()
                   |> List.collect typeComparison
-                  |> List.filter (fun (_, _, _, mirrored, candidates) ->
-                      not (candidates |> List.exists (fun candidate -> candidate = mirrored)))
+                  |> List.filter (fun (directory, name, arity, mirrored, candidates) ->
+                      // The SAME satisfaction test M-MIR/TYPE uses, or the two disagree about what "drifts"
+                      // means: a type whose only gap is a DECLARED pending omission (#594) is not drifting,
+                      // and counting it here would keep a knownDrift entry alive that no longer has a bug.
+                      let pending = pendingMembersOf directory name arity
+                      not (candidates |> List.exists (candidateSatisfies pending mirrored)))
                   |> List.map (fun (directory, name, _, _, _) -> $"{directory}.{name}")
                   |> Set.ofList
 
