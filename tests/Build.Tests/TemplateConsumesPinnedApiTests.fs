@@ -48,6 +48,49 @@ open Expecto
 // never on the PR" (gate.yml) — that is how Renovate PR #233 reached 4/4 green on a pin no local
 // pack could produce. A check that fires after the merge cannot deliver #504, whose entire point is
 // to fire ON it. Build.Tests is in the slnx, so this runs on every gate.
+//
+// RELEASE-PENDING (#543) — THE ONE WINDOW IN WHICH THE PROBE CANNOT RUN.
+//
+// The FS.GG.UI.* packages are published FROM THIS REPO, and the pin bump is what CAUSES the publish:
+// `release-tags.yml` cuts `fs-gg-ui/v<pin>` on merge to `main` and calls `release.yml`. So on a
+// release PR, $(FsGgUiVersion) NECESSARILY names a version nuget.org does not carry yet, the restore
+// fails NU1102 BY CONSTRUCTION, and this test goes red on the commit whose whole job is to be merged.
+//
+// That is fatal here in a way it was not for the sibling gates. `scripts/validate-template-payload-pins.fsx`
+// (#506) sits on an ADVISORY job a releaser could merge past; this test runs in Build.Tests, on the
+// REQUIRED `Deterministic gate`. `main` has `enforce_admins` ON and `--admin` is forbidden (ADR-0103),
+// so the red does not merely shout — it wedges the merge button, and the release cannot land at all.
+//
+// So the probe is DEFERRED in that window, on the same bounds `validate-version-coherence.fsx`'s
+// `PinPending` and `validate-template-payload-pins.fsx`'s `releasePending` already carry. Copied, not
+// approximated — each conjunct is load-bearing:
+//
+//   * ONLY when the probe's failure is EXACTLY "the pinned FS.GG.UI.* packages are not on the feed".
+//     Read off the restore we already ran, so the evidence for the waiver is the very diagnostic it
+//     excuses. Any OTHER error — an FS0039 from a call site the pin does not export, an NU1101 typo'd
+//     id, an NU1603 upward resolution — and the waiver is off: those are the failures this test exists
+//     to catch, and none of them is what a release window looks like.
+//
+//   * ONLY the $(FsGgUiVersion) axis. This is the whole safety of the waiver. FS.GG.Audio.* is pinned
+//     in this probe too and ships from ANOTHER repo, where a bump HERE publishes nothing — so an
+//     unpublished Audio pin is a real defect EVEN ON THE COMMIT THAT BUMPED IT, and is never waived.
+//     A naive "this commit bumped an axis ⇒ waive" would reopen #235: a stale component pin, green.
+//     The bound falls out of the rule above — an NU1102 naming FS.GG.Audio.* is not a UI NU1102.
+//
+//   * ONLY when THIS commit bumped it (`bumpedInCommitUnderTest`, the predicate #209 proved out). A pin
+//     NOBODY bumped that the feed does not carry is stale or typo'd — drift, and still red. That is the
+//     half of this check that must survive the waiver, and it is the reason the waiver is not simply
+//     "NU1102 on a UI package is fine".
+//
+//   * NEVER in the release lane (`FS_GG_VERSION_COHERENCE_RELEASE_LANE`, set job-wide by `release.yml`).
+//     The premise is "these packages cannot exist yet — this very commit creates them", which is only
+//     true BEFORE the publish. At publish time they are DUE, and a missing one is drift.
+//
+// SKIPPED IS NOT PASSED. The probe genuinely cannot run in the window, so it says so and is reported
+// IGNORED — it does not report green having verified nothing, which is the fails-open shape (#266) this
+// file's own header forbids. The three structural tests above it are offline and keep running, so the
+// extractor, the launch seam and the mirror are still asserted on a release PR; it is the pin-grounded
+// layer, and only that, which defers to the publish.
 
 // ---------------------------------------------------------------------------------------------
 // Repo layout
@@ -68,7 +111,14 @@ let private repoPath (rel: string) =
 
 let private mirrorRoot = repoPath "template/base/docs/api-surface"
 let private programPath = repoPath "template/base/src/Product/Program.fs"
-let private packagesPropsPath = repoPath "template/base/Directory.Packages.props"
+
+/// Repo-RELATIVE, and the absolute path is derived from it — because the RELEASE-PENDING waiver below
+/// asks `git diff` about this same file, and git only speaks repo-relative. Two literals could drift,
+/// and the failure would be silent in the worst possible way: `git diff` on a path that no longer
+/// exists exits 0 with empty output, which reads as "nobody bumped the pin", and the waiver quietly
+/// stops firing — putting the always-red release gate (#543) back with nothing to show why.
+let private packagesPropsRel = "template/base/Directory.Packages.props"
+let private packagesPropsPath = repoPath packagesPropsRel
 
 // ---------------------------------------------------------------------------------------------
 // The framework surface, as the TEMPLATE bundles it.
@@ -266,6 +316,141 @@ let private pinFor (packageId: string) =
     elif packageId.StartsWith("FS.GG.Audio.", StringComparison.Ordinal) then readAxis "FsGgAudioVersion"
     elif packageId.StartsWith("FS.GG.Game.", StringComparison.Ordinal) then readAxis "FsGgGameVersion"
     else failwith $"no version axis covers package '{packageId}'"
+
+// ---------------------------------------------------------------------------------------------
+// RELEASE-PENDING (#543): is this the release window, in which the pin CANNOT resolve yet?
+// See the header for why each conjunct below is load-bearing.
+// ---------------------------------------------------------------------------------------------
+
+let private uiAxis = "FsGgUiVersion"
+
+/// Set job-wide by any job that gates a PUBLISH (`release.yml`). Kills the waiver outright: its
+/// premise is "these packages cannot exist yet — this very commit creates them", which stops being
+/// true at publish time, when they are due. Nothing runs this test in that lane today; reading the
+/// flag `release.yml` already sets shuts the door the moment someone adds it, rather than depending
+/// on them reading this comment.
+let private releaseLane =
+    Environment.GetEnvironmentVariable "FS_GG_VERSION_COHERENCE_RELEASE_LANE" = "1"
+
+/// Sequential pipe drain is safe HERE and would not be in `runProbeBuild`: a `--unified=0` diff of one
+/// small props file is a few hundred bytes, far under the pipe buffer, so the child cannot block on a
+/// pipe nobody is reading. `dotnet build` can and does, which is why that one drains concurrently.
+let private runGit (args: string list) =
+    let psi = ProcessStartInfo "git"
+    psi.WorkingDirectory <- repoRoot
+    psi.UseShellExecute <- false
+    psi.RedirectStandardOutput <- true
+    psi.RedirectStandardError <- true
+    args |> List.iter psi.ArgumentList.Add
+
+    match Process.Start psi with
+    | null -> -1, "could not start 'git'"
+    | started ->
+        use proc = started
+        let out = proc.StandardOutput.ReadToEnd()
+        let err = proc.StandardError.ReadToEnd()
+        proc.WaitForExit()
+        proc.ExitCode, out + err
+
+/// Did the commit under test change the VALUE of `<element>` in `rel`? — the RELEASE-PENDING signal,
+/// with the semantics of `scripts/validate-template-payload-pins.fsx`'s `bumpedInCommitUnderTest`.
+/// Duplicated rather than shared for the same reason that one duplicates the SemVer comparator: it is
+/// a standalone `dotnet fsi` entry point, with no package reference between it and this project.
+///
+/// Compares the element's VALUE across the diff, not merely whether its line was TOUCHED: this
+/// predicate waives a fail-closed check, so a reindent or a line-ending change to the <FsGgUiVersion>
+/// line must not be able to silence it. Added values must exist and differ from removed ones.
+///
+/// Env-free by construction: `HEAD~1` is the first parent, which is the base branch for a
+/// `pull_request` merge-ref checkout AND the previous `main` commit for a squash push — so the same
+/// diff answers both contexts without reading GITHUB_*.
+///
+/// `Error` — never `false` — if git cannot answer (a shallow clone with no `HEAD~1`). Reading that as
+/// "not bumped" would be the quiet choice and the wrong one: it silently restores the always-red gate
+/// this waiver exists to remove, and nobody would know why. The `gate` job that runs Build.Tests checks
+/// out with `fetch-depth: 0`, so the diff is available.
+let private bumpedInCommitUnderTest (rel: string) (element: string) : Result<bool, string> =
+    let exitCode, out = runGit [ "diff"; "HEAD~1"; "HEAD"; "--unified=0"; "--"; rel ]
+
+    if exitCode <> 0 then
+        Error
+            $"`git diff HEAD~1 HEAD -- {rel}` failed, so the RELEASE-PENDING waiver cannot be \
+              evaluated — most likely a shallow clone. CI must check out with `fetch-depth: 0`.\n\n{out}"
+    else
+        let rx = Regex($"<{Regex.Escape element}>([^<]*)</{Regex.Escape element}>")
+
+        // "+++" / "---" are the file headers, not content lines.
+        let valuesOn (sign: char) =
+            let header = String(sign, 3)
+
+            out.Replace("\r\n", "\n").Split('\n')
+            |> Array.filter (fun l -> l.Length > 0 && l.[0] = sign && not (l.StartsWith(header, StringComparison.Ordinal)))
+            |> Array.choose (fun l ->
+                let m = rx.Match l
+                if m.Success then Some(m.Groups.[1].Value.Trim()) else None)
+            |> Set.ofArray
+
+        let removed = valuesOn '-'
+        let added = valuesOn '+'
+        Ok(not added.IsEmpty && added <> removed)
+
+/// The severity+code of a build diagnostic, in MSBuild's canonical format (`… error NU1102: …`).
+let private errorCodeRegex = Regex(@"\berror\s+[A-Z]+[0-9]+\b", RegexOptions.Compiled)
+
+/// The FS.GG.* package ids named on a line. Read off the IDS THEMSELVES rather than NuGet's English
+/// prose ("Unable to find package X with version (>= Y)"), so the waiver's scope is decided by what the
+/// diagnostic is ABOUT and not by wording that a localized or reworded NuGet could change underneath it.
+let private fsGgIdRegex = Regex(@"\bFS\.GG\.[A-Za-z0-9.]*[A-Za-z0-9]", RegexOptions.Compiled)
+
+/// Is the probe's failure EXACTLY "the FS.GG.UI.* packages this commit pins are not on the feed yet",
+/// and nothing else? That is the only failure a release window can produce, and the only one waivable.
+///
+/// Three conditions, and each rules out a failure that is NOT a release window:
+///
+///   1. EVERY error is an NU1102 ("the feed does not carry this exact id@version"). An FS0039 from a
+///      call site the pinned package does not export, an NU1101 typo'd id, an NU1603 upward resolution
+///      — any of those and the waiver is off. They are the failures this test exists to catch.
+///
+///   2. At least one NU1102 actually NAMES a pinned package, so an output carrying no identifiable pin
+///      diagnostic at all — a probe TIMEOUT, say, which reports no diagnostics whatsoever — cannot waive
+///      by vacuous `forall`. "Nothing to check" and "checked, and it's fine" must not share a verdict
+///      (the fails-open shape of FS-GG/.github#266, which this file's own header forbids).
+///
+///   3. Every NU1102 that NAMES an FS.GG.* package names ONLY FS.GG.UI.* ids, at EXACTLY the current
+///      $(FsGgUiVersion). This is the axis bound, and the restore hands it to us for free: an unpublished
+///      FS.GG.Audio.* pin — a real defect even on the commit that bumped it, since Audio publishes from
+///      another repo — produces an NU1102 naming FS.GG.Audio.*, and the waiver is off.
+///
+/// NuGet prefixes an NU1102's CONTINUATION lines with the code as well, so ONE unresolved pin arrives as
+/// three `error NU1102:` lines: the header that names id and version, then `  - Found N version(s)…` and
+/// `  - Versions from …/library-packs were not considered`, neither of which names a package. Those are
+/// elaboration of the header above them, so condition 3 is asked only of the lines that name a package.
+/// Asking it of every NU1102 line lets a NuGet detail line veto the waiver — which is precisely what the
+/// first cut of this predicate did, and it is why the bound is written against `namedPins`.
+///
+/// It fails CLOSED: if NuGet's diagnostics ever stop matching, the waiver does not fire and this test is
+/// red in the release window exactly as it is today. That is the safe direction to be wrong in.
+let private failedOnlyOnUnpublishedUiPin (output: string) (uiPin: string) =
+    let errorLines =
+        output.Replace("\r\n", "\n").Split('\n')
+        |> Array.filter errorCodeRegex.IsMatch
+
+    let unresolvedPins = errorLines |> Array.filter (fun l -> l.Contains "NU1102")
+
+    let namedPins =
+        unresolvedPins
+        |> Array.map (fun line -> line, fsGgIdRegex.Matches line |> Seq.map (fun m -> m.Value) |> List.ofSeq)
+        |> Array.filter (fun (_, ids) -> not ids.IsEmpty)
+
+    // 1. nothing failed except unresolved pins ...
+    unresolvedPins.Length = errorLines.Length
+    // 2. ... the pins are really what failed (never waive on an empty diagnostic set) ...
+    && not (Array.isEmpty namedPins)
+    // 3. ... and every pin named is the UI axis, at the version THIS commit pins.
+    && namedPins
+       |> Array.forall (fun (line, ids) ->
+           ids |> List.forall (fun id -> id.StartsWith("FS.GG.UI.", StringComparison.Ordinal))
+           && line.Contains uiPin)
 
 // ---------------------------------------------------------------------------------------------
 // The pin-grounded proof: compile the call sites against the RESTORED pinned packages.
@@ -495,21 +680,58 @@ let templateConsumesPinnedApiTests =
         // The cost is honest and named: this restores from nuget.org, so the gate's test step now
         // depends on the feed being up. FS_GG_SKIP_TEMPLATE_PINNED_API=1 skips it for offline work —
         // an explicit, visible opt-OUT rather than a silent default-off.
+        //
+        // And it DEFERS, rather than failing, in the one window where the pin cannot resolve by
+        // construction: the release PR that bumps $(FsGgUiVersion) to the version it is about to
+        // publish (#543 — see the RELEASE-PENDING note in the header for the bounds).
         testCase "every framework entry point the template calls exists in the PINNED package" <| fun _ ->
             match Environment.GetEnvironmentVariable "FS_GG_SKIP_TEMPLATE_PINNED_API" with
             | null | "" ->
                 let exitCode, output = runProbeBuild ()
-                let uiPin = readAxis "FsGgUiVersion"
+                let uiPin = readAxis uiAxis
                 let audioPin = readAxis "FsGgAudioVersion"
 
-                Expect.equal
-                    exitCode
-                    0
+                // The verdict the probe was BUILT to deliver. Everything below only decides whether a
+                // failure is the release window or the real thing — so on a green probe none of it runs,
+                // and the common case pays for no git call and no extra analysis.
+                let probeFailed =
                     $"the template's framework call sites compile against the PINNED packages \
                       (FsGgUiVersion={uiPin}, FsGgAudioVersion={audioPin}). \
                       A failure here means the framework has grown public API that a scaffolded product \
                       CANNOT reach — the #429/#492 class. Either the seam is unreleased (cut the release, \
                       then bump the pin) or the template calls API that no longer exists.\n\n{output}"
+
+                if exitCode = 0 then
+                    () // The probe ran and the template consumes the pin. The only pass.
+                elif not (failedOnlyOnUnpublishedUiPin output uiPin) then
+                    // Not the release window: the probe failed for a reason a release does not produce.
+                    failtest probeFailed
+                elif releaseLane then
+                    failtest
+                        $"RELEASE LANE: $(FsGgUiVersion)={uiPin} is not on the feed, and this job gates the \
+                          PUBLISH — so those packages are DUE, not pending. RELEASE-PENDING does not apply \
+                          here; a missing package at publish time is drift.\n\n{probeFailed}"
+                else
+                    match bumpedInCommitUnderTest packagesPropsRel uiAxis with
+                    | Error why -> failtest $"{why}\n\n{probeFailed}"
+
+                    | Ok false ->
+                        failtest
+                            $"the feed does not carry the FS.GG.UI.* packages at $({uiAxis})={uiPin}, and this \
+                              commit did NOT bump $({uiAxis}) — so this is NOT the release window. The pin is \
+                              stale or typo'd, or a release half-failed. Publish it, or re-pin onto a version \
+                              the feed carries.\n\n{probeFailed}"
+
+                    | Ok true ->
+                        skiptest
+                            $"RELEASE-PENDING: this commit bumps $({uiAxis}) to {uiPin}, and the FS.GG.UI.* \
+                              packages it pins are not on nuget.org yet — the merge of this very commit is what \
+                              publishes them (release-tags.yml). The pin-grounded proof therefore CANNOT run and \
+                              is DEFERRED to the publish; it is NOT passing. Still asserted on this commit: the \
+                              extractor is non-vacuous, the viewer launch seam is called, every call site resolves \
+                              in the bundled mirror, and the SAME restore reported no unresolved FS.GG.Audio.* / \
+                              FS.GG.Game.* pin (FsGgAudioVersion={audioPin}) — those axes publish from other repos, \
+                              so the waiver is bounded to $({uiAxis}) alone and would not have fired for them.\n\n{output}"
 
             | _ ->
                 skiptest
