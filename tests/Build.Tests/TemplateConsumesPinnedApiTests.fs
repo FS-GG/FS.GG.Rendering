@@ -1142,17 +1142,27 @@ let private packageForNamespace (ns: string) =
 /// The packages the docs actually talk about — derived from the mirror and the props, never hardcoded,
 /// so the set cannot rot as the framework grows.
 let private docPackages =
-    docSymbols
-    |> List.choose (fun s ->
-        frameworkModulesByName
-        |> Map.tryFind s.Module
-        |> Option.bind (fun candidates ->
-            candidates
-            |> List.tryFind (fun m -> m.Members.Contains s.Member)
-            |> Option.orElse (List.tryHead candidates))
-        |> Option.map (fun m -> packageForNamespace m.Namespace))
-    |> List.distinct
-    |> List.sort
+    let fromVals =
+        docSymbols
+        |> List.choose (fun s ->
+            frameworkModulesByName
+            |> Map.tryFind s.Module
+            |> Option.bind (fun candidates ->
+                candidates
+                |> List.tryFind (fun m -> m.Members.Contains s.Member)
+                |> Option.orElse (List.tryHead candidates))
+            |> Option.map (fun m -> packageForNamespace m.Namespace))
+
+    // #611 — and every package whose mirror declares a TYPE, because the case rule judges those and can
+    // only judge what the oracle restored. Deriving the restore set from the `val` symbols ALONE (which is
+    // all it used to need) silently coupled one rule's coverage to another rule's subject matter: a mirror
+    // that declares cases but no `val` would restore no package, every one of its types would be missing
+    // from the oracle, and the case rule would pass over them without a word. It happens to cover all 21
+    // mirrors today — which is luck, not structure, and luck is what this file is written against.
+    let fromTypes =
+        mirrorTypeMembers |> List.map (fun m -> packageForNamespace m.Namespace)
+
+    fromVals @ fromTypes |> List.distinct |> List.sort
 
 // ---------------------------------------------------------------------------------------------
 // The oracle: what the PINNED packages actually export.
@@ -1868,12 +1878,18 @@ let templateConsumesPinnedApiTests =
                         |> List.filter (fun m ->
                             match Map.tryFind m.Type pinnedTypes with
                             | Some members -> not (members.Contains m.Member)
-                            // The pinned package has NO type of that name. A whole type a product cannot
-                            // reach is the rule at its sharpest, not an exemption — BUT the mirror also
-                            // declares product-facing types that are not framework at all, so only judge a
-                            // type the pin knows SOMETHING about. (A type absent entirely is #592's class,
-                            // and the val rule above already reports it.)
-                            | None -> false)
+                            // The pin has NO type of that name — and that is the rule at its SHARPEST, not
+                            // an exemption. A whole type a product cannot reach is strictly worse than one
+                            // missing case on a type it can.
+                            //
+                            // Returning `false` here was the comfortable choice and a fails-open one:
+                            // "the pin has never heard of this type" and "the pin is happy with this type"
+                            // would share a verdict (#266), and the hole would be invisible — a mirror could
+                            // evade the rule ENTIRELY by declaring a type the pin does not know, which is
+                            // exactly what an unreleased type IS. It is green today because all 2,083
+                            // members of all 21 mirrors resolve to a type the pin carries; if that stops
+                            // being true it must be somebody's decision, not this branch's silence.
+                            | None -> true)
                         |> List.filter (fun m -> not (docLedger.Contains(typeMemberKey m)))
                         |> List.map (fun m -> $"{m.Type}.{m.Member} ({m.Doc}:{m.Line})")
 
