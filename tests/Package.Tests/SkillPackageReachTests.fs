@@ -39,6 +39,7 @@ module SkillPackageReachTests
 // is EXACTLY a known package id, so a namespace that merely lives inside a differently-named package is
 // never mis-attributed. That is enough to have caught #430 on the PR that introduced it.
 
+open System
 open System.IO
 open System.Text.Json
 open System.Text.RegularExpressions
@@ -235,6 +236,39 @@ let private capabilityFragments =
 
         m.Groups.["id"].Value, field "templateFragment", materializes)
     |> List.ofSeq
+
+/// R-SKILL's two inputs (#564).
+
+/// (capability id, its `skill:` pointer) for EVERY capability row — non-runtime included, for the same reason
+/// `capabilityFragments` includes them: `samples` carries a `skill:` too, and a rule that quietly skipped the
+/// one row that is shaped differently is how these catalogs drift in the first place.
+let private capabilitySkills =
+    let text = File.ReadAllText capabilitiesPath
+
+    Regex.Matches(text, @"^  - id: (?<id>\S+)(?<body>(?:\n(?!  - id: ).*)*)", RegexOptions.Multiline)
+    |> Seq.map (fun m ->
+        let body = m.Groups.["body"].Value
+
+        let skill =
+            Regex.Match(body, @"^\s+skill:\s*(?<v>.+?)\s*$", RegexOptions.Multiline)
+            |> fun f -> if f.Success then Some(f.Groups.["v"].Value) else None
+
+        m.Groups.["id"].Value, skill)
+    |> List.ofSeq
+
+/// Bound rather than inlined: F# forbids a string literal inside an interpolated expression in a
+/// single-quoted interpolated string, and R-SKILL's failure message renders a set.
+let private commaSorted (items: string seq) = String.Join(", ", Seq.sort items)
+
+/// Every directory the MANIFEST names as some skill's `supplied-by`.
+///
+/// The manifest is the authority on which SKILL.md a generated product actually receives — capabilities.yml's
+/// own header concedes as much ("the manifest's `materializes-when` is the authority for that"). So it is the
+/// side R-SKILL holds the catalog TO, rather than the other way round.
+let private manifestSuppliedByDirs =
+    Regex.Matches(File.ReadAllText manifestPath, "\"supplied-by\":\\s*\"(?<dir>[^\"]+)\"")
+    |> Seq.map (fun m -> m.Groups.["dir"].Value.Replace('\\', '/').TrimEnd '/')
+    |> Set.ofSeq
 
 /// What the scaffold REALLY copies: the `sources[].source` roots in .template.config/template.json that live
 /// under `template/fragments/`. template.json is the only thing `dotnet new` reads, so it is the authority.
@@ -658,5 +692,56 @@ let skillPackageReachTests =
                       | _ ->
                           // Absence is R-PINNED/R-REF's failure to report, not this test's.
                           ()
+          }
+
+          // R-SKILL (#564) — a capability's `skill:` names the PRODUCT-skill the manifest supplies, and
+          // nothing else.
+          //
+          // `skill:` is meant to answer "where is the guidance for consuming this capability?", and seven of
+          // the eight rows answered it with a `template/product-skills/…` path — the SKILL.md a generated
+          // product actually receives. `layout` answered with `src/Layout/skill/SKILL.md`, the FRAMEWORK
+          // skill: guidance for working on `src/Layout/` IN THIS REPO. A reader following the catalog for
+          // `layout` was sent to instructions for building the framework when they wanted instructions for
+          // consuming it — the same "two answers, no signal which one ships" failure #510 found in
+          // `templateFragment:`, one field over. Nothing asserted it, so it drifted, exactly as `profiles:`
+          // had (#483) and `templateFragment:` had (#510).
+          //
+          // The MANIFEST is the side to hold the catalog to, not the reverse: it is what `dotnet new`
+          // materializes, and capabilities.yml's own header already concedes it is the authority. So the rule
+          // is `skill:`'s directory ∈ the manifest's `supplied-by` set — which makes the framework skill
+          // unnameable here by construction, since the manifest supplies no such directory.
+          //
+          // No row is exempt. A `skill:` line that is MISSING fails too: a pointer nobody wrote is a pointer
+          // nothing can hold, and "the row said nothing" and "the row said the right thing" must not share a
+          // verdict (FS-GG/.github#266).
+          test "R-SKILL — every capability's `skill:` is the product-skill the manifest supplies (#564)" {
+              Expect.isNonEmpty capabilitySkills $"{capabilitiesRel} declares capability rows to check"
+              Expect.isNonEmpty (Set.toList manifestSuppliedByDirs) "the skill manifest declares `supplied-by` directories"
+
+              for id, skill in capabilitySkills do
+                  match skill with
+                  | None ->
+                      failtestf
+                          "%s: the `%s` capability declares no `skill:` — R-SKILL has nothing to hold it to, and a reader has nowhere to go."
+                          capabilitiesRel
+                          id
+
+                  | Some path ->
+                      let normalized = path.Replace('\\', '/')
+
+                      let dir =
+                          match normalized.LastIndexOf '/' with
+                          | -1 -> ""
+                          | i -> normalized.Substring(0, i)
+
+                      Expect.isTrue
+                          (manifestSuppliedByDirs.Contains dir)
+                          $"{capabilitiesRel}: the `{id}` capability points `skill:` at `{normalized}`, whose directory `{dir}` is NOT one the skill manifest supplies. `skill:` names the PRODUCT-skill a generated product receives — the manifest's `supplied-by` is the authority on that, and it offers: {commaSorted manifestSuppliedByDirs}. Pointing at a framework skill (e.g. `src/<Pkg>/skill/`) sends a reader to guidance for building the framework when they wanted guidance for consuming it (#564)."
+
+                      // ...and it has to actually be there. A pointer at a supplied directory that ships no
+                      // SKILL.md is a dangling reference the manifest cannot catch on the catalog's behalf.
+                      Expect.isTrue
+                          (File.Exists(repositoryPath normalized))
+                          $"{capabilitiesRel}: the `{id}` capability points `skill:` at `{normalized}`, which does not exist."
           }
         ]
