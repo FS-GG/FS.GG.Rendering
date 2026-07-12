@@ -141,7 +141,11 @@ capabilities:
       - src/Layout/Graph.fsi
     tests:
       - tests/Layout.Tests/Layout.Tests.fsproj
-    skill: src/Layout/skill/SKILL.md
+    # #564 — the PRODUCT skill, not `src/Layout/skill/SKILL.md`. That one is the FRAMEWORK skill (how to
+    # work on src/Layout/ in this repo); this column is what a generated product receives, which is what
+    # the manifest records as fs-gg-layout's `supplied-by`, and what the other seven rows point at.
+    # Asserted by R-SKILL in tests/Package.Tests/SkillPackageReachTests.fs.
+    skill: template/product-skills/fs-gg-layout/SKILL.md
     templateFragment: template/fragments/layout
     materializes: none
     dependencies: [scene]
