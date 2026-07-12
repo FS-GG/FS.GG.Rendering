@@ -94,9 +94,23 @@ jobs:
       # --no-restore: the locked, cold restore above is the one restore (gate.yml's pattern, FR-002/GR3).
       - name: Build solution (warms the suites that shell out to dotnet against this repo)
         run: dotnet build FS.GG.Rendering.slnx --no-restore
-      # Package.Tests is an exe test project outside the slnx; run it directly, so it restores itself —
-      # into the cold NUGET_PACKAGES the action exported, which is what makes ITS committed lock file
-      # validated against the feed too. It carries one, and nothing else in the repo restores it.
+      # Package.Tests has been a slnx MEMBER since #540 — it is NOT "outside the solution", and every
+      # clause that used to follow from that is now false: the locked, cold restore above already covers
+      # it (that is what validates its committed lock file against the feed), and gate.yml already runs
+      # it on every PR, in Debug, off the slnx-derived test list.
+      #
+      # It is run AGAIN here, directly, for the one thing the PR gate cannot give it: this job's
+      # FS_SKIA_RUN_PACKAGE_CONSUMER_SMOKE=1, which opts in the pack -> fresh-consumer -> build -> run
+      # suite that is too slow for the push gate (Package.Tests asserts the flag is set here, so
+      # dropping it fails the build rather than silently un-testing the packages).
+      #
+      # `-c Release` runs the SUITE in the configuration this lane ships. It does NOT drive the smoke:
+      # the smoke shells out with its own explicit `-c Release` to pack, build and run the throwaway
+      # consumer (see tests/Package.Tests/Tests.fs), so it is independent of this flag. Do not infer a
+      # link that is not there — a plausible-but-wrong rationale here is what this comment is fixing.
+      #
+      # So do NOT delete this step as "redundant with the gate": the gate never sets the flag, so its
+      # run skips the smoke entirely, and the smoke runs nowhere else.
       - name: Run Package.Tests
         run: dotnet test tests/Package.Tests/Package.Tests.fsproj -c Release
 
