@@ -121,9 +121,22 @@ jobs:
       # rule out of Package.Tests for exactly this reason).
       #
       # The release checks do NOT leak in, because they were never held out by the SOLUTION — they are
-      # deferred by their own env flags, which only release.yml sets (FS_SKIA_RUN_PACKAGE_CONSUMER_SMOKE,
-      # FS_GG_RUN_TEMPLATE_PAYLOAD_RESTORE). The split is by TIMING and it lives in the code, where the
-      # author writing the rule can see it. Membership costs this gate ~4s.
+      # deferred by their own env flag, which only release.yml sets: FS_SKIA_RUN_PACKAGE_CONSUMER_SMOKE
+      # (release.yml:63; read by tests/Package.Tests, which says so in Tests.fs:15). The split is by
+      # TIMING and it lives in the code, where the author writing the rule can see it. Membership costs
+      # this gate ~4s.
+      #
+      # This used to name a second flag, FS_GG_RUN_TEMPLATE_PAYLOAD_RESTORE, and that was FALSE (#635):
+      # release.yml never sets it, THIS file does (in `template-payload-restore-gate` below), and no test
+      # in Package.Tests reads it — it gates a script, `validate-template-payload-pins.fsx`, and has
+      # nothing to do with deferring a Package.Tests suite.
+      #
+      # Worth spelling out rather than quietly deleting, because of what the sentence is FOR: it exists to
+      # reassure a reader that requiring Package.Tests here is safe. Offering a false fact as proof of a
+      # true claim is the worst possible way to be wrong — a reader who checks it finds the flag set in
+      # this very file, concludes the reasoning is broken, and either "fixes" a non-problem or stops
+      # trusting the comment. #613 is what that costs: 15 tests deleted on the strength of a header that
+      # nobody had re-checked.
       # --no-restore: restore already happened in the locked step above (FR-002, GR3) — exactly once.
       - name: Build solution (net10.0)
         run: dotnet build FS.GG.Rendering.slnx -c Debug --no-restore
