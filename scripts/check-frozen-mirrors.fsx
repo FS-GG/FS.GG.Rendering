@@ -18,11 +18,31 @@
 // The cost of a warning here would be nil: all three breaks happened under six green checks, and a
 // warning in that stream is a warning nobody reads. This FAILS.
 //
-// THE IDS ARE DERIVED, NEVER LISTED. A mirror is any registry row whose `owner` is not
-// `fs-gg-rendering` and whose body this repo also ships. Hand-listing them is how a ninth mirror
-// arrives unguarded — and it is also how you get the count wrong: #541 says there are eight. There
-// are four. The other four game-owned skills have no Rendering counterpart at all, which the
-// derivation gets right for free and a hand-list would not.
+// THE MIRROR SET IS DERIVED, AND ABSENCE IS DECLARED. Those are two different things and the first
+// draft of this guard conflated them, with a fail-open at the bottom.
+//
+// Deriving "a mirror is a registry row this repo also ships a body for" reads well and is wrong,
+// because it makes `File.Exists = false` mean TWO things: "this row correctly has no Rendering
+// counterpart" (fs-gg-ballistics/ai/effects/physics — authored in Game, never migrated) and "somebody
+// deleted the mirror". So `rm -rf template/product-skills/fs-gg-game-core` printed "3 mirrors" and
+// exited 0. A `--profile game` scaffold silently loses a skill, which is every bit as much a break as
+// editing one.
+//
+// Worse, it DECAYED. The three drifted mirrors survived deletion only by accident — via the stale-waiver
+// arm — and this file tells you to delete a waiver once its mirror is re-synced. So the day the drift is
+// fixed (the stated end state) all four mirrors become silently deletable. A guard that is strongest on
+// the day it lands and weakens as the repo gets healthier is worse than none.
+//
+// So every non-Rendering-owned product row now needs an EXPLICIT disposition, and BOTH directions are
+// asserted:
+//   * `Mirrored`     — this repo ships it; the body must EXIST and match the canonical.
+//   * `NoCounterpart`— this repo never had it; the body must NOT exist (vendoring one in would
+//                      manufacture a two-copies obligation ADR-0022 §6 never imposed — .github#486
+//                      warns about exactly that, and Rendering#505 asked for it).
+//
+// A row with no disposition is a HARD FAIL. That is what keeps a ninth mirror from arriving unguarded —
+// the property a hand-list of "what to check" would lose, and the reason #541 asks for derivation. The
+// count is still not hand-trusted: #541 says there are eight mirrors; there are four.
 
 open System
 open System.Diagnostics
@@ -111,6 +131,26 @@ let private parseRegistry (yaml: string) =
         | _ -> None)
     |> List.ofSeq
 
+/// What this repo does about a product skill it does not own. Absence is a DECISION here, never an
+/// inference from a missing file.
+type Disposition =
+    /// Rendering ships a byte-identical copy (ADR-0022 §6, the two-copies cost of the P4 migration).
+    | Mirrored
+    /// Authored in the owning repo and never migrated — Rendering has no counterpart, and must not grow
+    /// one. (.github#486; Rendering#505 asked for exactly that and was refused.)
+    | NoCounterpart
+
+let private dispositions =
+    [ "fs-gg-game-core", Mirrored
+      "fs-gg-audio", Mirrored
+      "fs-gg-persistence", Mirrored
+      "fs-gg-model-swap", Mirrored
+      "fs-gg-ballistics", NoCounterpart
+      "fs-gg-ai", NoCounterpart
+      "fs-gg-effects", NoCounterpart
+      "fs-gg-physics", NoCounterpart ]
+    |> Map.ofList
+
 // ---- the waivers ------------------------------------------------------------------------------
 //
 // THREE MIRRORS ARE ALREADY BROKEN ON MAIN, which is the whole reason #541 exists. This guard cannot
@@ -144,25 +184,91 @@ let private waivers =
 
 // ---- the check --------------------------------------------------------------------------------
 
-let private registry = parseRegistry (fetchRegistry ())
+let private registryYaml = fetchRegistry ()
+let private registry = parseRegistry registryYaml
 
 if List.isEmpty registry then
     eprintfn "::error title=frozen-mirror check did not run::the org registry parsed to ZERO rows, so no mirror was compared. Not a pass."
     exit 2
 
-/// A frozen mirror: a product skill this repo SHIPS but does not OWN.
-let mirrors =
+// A PARTIAL parse is not a pass either. `parseRegistry` reads flow-style rows (`- { … }`), which is all
+// the registry emits today — but if `.github`'s writer ever wraps a line or switches one row to block
+// style, that row is SILENTLY SKIPPED and its mirror goes unguarded. The "registry is empty" check above
+// only fires when EVERYTHING is gone; dropping one row would be green. Same overloaded-absence bug the
+// dispositions above exist to kill, so it gets the same treatment: count the rows, and insist they match.
+let private rowsInYaml =
+    registryYaml.Split '\n'
+    |> Array.filter (fun line -> Regex.IsMatch(line, @"^\s*- "))
+    |> Array.length
+
+if rowsInYaml <> List.length registry then
+    eprintfn
+        "::error title=frozen-mirror check did not fully parse::the registry has %d list rows but only %d parsed. A row this guard cannot read is a mirror it cannot check, and silently skipping it is the fail-open this guard exists to close. Teach `parseRegistry` the new shape."
+        rowsInYaml
+        (List.length registry)
+
+    exit 2
+
+/// Every product skill this repo does NOT own — mirrored or not. The disposition decides which.
+let private foreign =
     registry
     |> List.filter (fun row -> row.Scope = "product" && row.Owner <> "fs-gg-rendering")
-    |> List.choose (fun row ->
-        let body = repoPath $"template/product-skills/{row.Id}/SKILL.md"
-        if File.Exists body then Some(row, body, sha256Of body) else None)
 
-if List.isEmpty mirrors then
-    eprintfn "::error title=frozen-mirror check is vacuous::the registry declares product skills this repo does not own, but none of their bodies was found under template/product-skills/. Either the mirrors moved or the derivation is broken — both mean this guard is asserting nothing."
+if List.isEmpty foreign then
+    eprintfn "::error title=frozen-mirror check is vacuous::the registry names NO product skill owned outside fs-gg-rendering, so this guard is asserting nothing. Either the ownership migration was reverted or the derivation is broken."
     exit 2
 
 let mutable failed = false
+
+// EVERY foreign row needs a declared disposition. An undeclared one is how a ninth mirror arrives
+// unguarded — the exact thing #541's acceptance asks to prevent.
+let private mirrors =
+    foreign
+    |> List.choose (fun row ->
+        let relative = $"template/product-skills/{row.Id}/SKILL.md"
+        let body = repoPath relative
+        let exists = File.Exists body
+
+        match Map.tryFind row.Id dispositions with
+        | None ->
+            failed <- true
+
+            eprintfn
+                "::error title=undeclared foreign skill::the org registry says `%s` is a product skill owned by %s, and scripts/check-frozen-mirrors.fsx does not say what this repo does about it. Declare it: `Mirrored` (this repo ships a byte-identical copy — ADR-0022 §6) or `NoCounterpart` (it was authored there and never migrated; do NOT vendor it in — .github#486). An undeclared row is an unguarded mirror."
+                row.Id
+                row.Owner
+
+            None
+
+        | Some NoCounterpart when exists ->
+            failed <- true
+
+            eprintfn
+                "::error file=%s::`%s` is owned by %s and this repo declares it has NO counterpart — but a body now exists here. Vendoring it in manufactures a two-copies obligation ADR-0022 §6 never imposed (.github#486; Rendering#505 asked for exactly this and was refused). Delete it, or change the disposition to `Mirrored` deliberately and freeze it against the canonical."
+                relative
+                row.Id
+                row.Owner
+
+            None
+
+        | Some NoCounterpart -> None
+
+        | Some Mirrored when not exists ->
+            // THE FAIL-OPEN THIS CLOSES. A deleted mirror used to be indistinguishable from a row that
+            // never had one, so `rm -rf template/product-skills/fs-gg-game-core` exited 0 — and a
+            // `--profile game` scaffold silently lost a skill.
+            failed <- true
+
+            eprintfn
+                "::error title=frozen mirror DELETED::`%s` is declared `Mirrored` (this repo ships a byte-identical copy of %s's canonical, ADR-0022 §6) but `%s` does not exist. Deleting a mirror is as much a break as editing one: a `--profile game` scaffold loses the skill. Restore it, or change the disposition to `NoCounterpart` deliberately and say why."
+                row.Id
+                row.Owner
+                relative
+
+            None
+
+        | Some Mirrored -> Some(row, body, sha256Of body))
+
 
 for row, body, local in mirrors do
     let relative = $"template/product-skills/{row.Id}/SKILL.md"
@@ -182,7 +288,6 @@ for row, body, local in mirrors do
     else
         match waivers |> List.tryFind (fun w -> w.Id = row.Id && w.DriftedSha = local) with
         | Some w -> printfn "  frozen-mirror WAIVED %-20s (known drift) — %s" row.Id (w.Because.Substring(0, min 60 w.Because.Length) + "…")
-        | Some _
         | None ->
             failed <- true
 
@@ -195,7 +300,7 @@ for row, body, local in mirrors do
                 | None -> ""
 
             eprintfn
-                "::error file=%s::FROZEN MIRROR EDITED — `%s` is owned by %s (%s), and this repo only ships a byte-identical copy (ADR-0022 §6). Your copy now hashes %s; the canonical is %s.\n\nDO NOT REVERT YOUR WORK, and do NOT re-freeze this file from the canonical — that would silently delete it. Take the change to the OWNING repo's canonical body (%s), and re-freeze here once it lands. This repo gives you no other signal that you are editing a body it does not own, which is why three correct edits to this file merged green before this check existed (#541).%s"
+                "::error file=%s::FROZEN MIRROR EDITED — `%s` is owned by %s (%s), and this repo only ships a byte-identical copy (ADR-0022 §6). Your copy now hashes %s; the canonical is %s.\n\nDO NOT REVERT YOUR WORK, do NOT re-freeze this file from the canonical (that would silently delete it), and DO NOT ADD A WAIVER FOR YOURSELF in scripts/check-frozen-mirrors.fsx — a waiver records drift that already existed before this guard, and is not a way to land new drift. Take the change to the OWNING repo's canonical body (%s), and re-freeze here once it lands. This repo gives you no other signal that you are editing a body it does not own, which is why three correct edits to this file merged green before this check existed (#541).%s"
                 relative
                 row.Id
                 row.Owner
