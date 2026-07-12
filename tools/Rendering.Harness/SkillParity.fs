@@ -1145,11 +1145,35 @@ module SkillParity =
     /// It is deliberately manifest-driven and filesystem-checked, so it stays true for a skill supplied
     /// from a directory nobody has thought of yet.
     ///
-    /// Either wrapper name satisfies it: the `fs-gg-product-*` alias (the `template/product-skills`
-    /// convention) or the canonical id (what the two feedback skills use). Feature 223's alias-only rule
-    /// exists so a same-named FRAMEWORK wrapper cannot mask a missing PRODUCT wrapper; both feedback
-    /// wrappers were read and do route to their product canonical, so there is nothing being masked.
-    /// The naming inconsistency itself is real but is not this check's business — filed separately.
+    /// THE WRAPPER-NAMING RULE (#489), written down here because until now it lived nowhere — not in a doc,
+    /// not in a check, only in the tree.
+    ///
+    /// A product skill's wrapper name is determined by WHERE ITS BODY IS SUPPLIED FROM:
+    ///
+    ///   supplied-by `template/product-skills/<id>/`  ->  wrapper is the `fs-gg-product-*` ALIAS
+    ///   supplied-by anywhere else                    ->  wrapper is the CANONICAL id
+    ///
+    /// The tree obeys this exactly — 17 of 17 on the convention use the alias, and 4 of 4 off it use the
+    /// canonical id (`fs-gg-feedback-capture`, `fs-gg-feedback-report`, `fs-gg-project`, `fs-gg-samples`).
+    /// #489 read it as an inconsistency between the rule and the tree, having found two of those four; it is
+    /// not. The tree was consistent and the RULE was missing, which is a worse bug than an inconsistency
+    /// because nothing can disagree with a rule nobody wrote.
+    ///
+    /// Why the split is principled rather than historical: `template/product-skills/` is the CAPABILITY
+    /// family, and those ids collide with the framework skills in `src/<X>/skill/` that teach the library
+    /// side of the same capability — `.claude/skills/fs-gg-scene` is the FRAMEWORK wrapper (it routes to
+    /// `src/Scene/skill/`), while `.claude/skills/fs-gg-product-scene` is the product one. The alias is what
+    /// keeps those two apart. The four off-convention skills have no framework counterpart and cannot
+    /// acquire one (they are authoring/process/scaffold skills, not capabilities), so there is nothing to
+    /// disambiguate — and `fs-gg-project` and the feedback pair are invoked in THIS repo too, where a
+    /// `product-` prefix would be a plain lie about their scope.
+    ///
+    /// AND THIS IS WHY IT IS ASSERTED, NOT MERELY TOLERATED. The old rule here was `present alias || present
+    /// id` — either name satisfies any skill — which quietly re-opened the exact hole Feature 223's
+    /// alias-only rule exists to close: delete BOTH `fs-gg-product-scene` wrappers and the product skill has
+    /// no activation wrapper at all, yet coverage stays green, because the FRAMEWORK wrapper named
+    /// `fs-gg-scene` satisfies `present id`. Verified: the gate reported `warning`, high=0, and did not fail.
+    /// Deriving the required name from `supplied-by` closes that, and encodes the convention at the same time.
     let private manifestCoverageFindings (request: ParityCheckRequest) =
         // Fixture mode uses synthetic trees with no manifest; it is not real repository parity evidence.
         if request.FixtureMode.IsSome then
@@ -1192,7 +1216,7 @@ module SkillParity =
                         | _ -> None
 
                     match prop "id", prop "scope" with
-                    | Some id, Some "product" -> Some id
+                    | Some id, Some "product" -> Some(id, prop "supplied-by" |> Option.defaultValue "")
                     | _ -> None)
             with _ ->
                 []
@@ -1210,17 +1234,37 @@ module SkillParity =
         let roots = [ "claude", ".claude"; "codex-local", ".agents" ]
 
         productIds
-        |> List.collect (fun id ->
-            let alias = id.Replace("fs-gg-", "fs-gg-product-")
+        |> List.collect (fun (id, suppliedBy) ->
+            // The ONE name that satisfies this skill, derived from where its body is supplied (see above).
+            // Not "either name": for a capability skill the canonical id belongs to the FRAMEWORK wrapper,
+            // and accepting it here is what let a deleted product wrapper pass unnoticed.
+            let onConvention =
+                suppliedBy.Replace('\\', '/').StartsWith("template/product-skills/", StringComparison.Ordinal)
+
+            let required =
+                if onConvention then
+                    id.Replace("fs-gg-", "fs-gg-product-")
+                else
+                    id
+
+            let otherName = if onConvention then id else id.Replace("fs-gg-", "fs-gg-product-")
 
             roots
             |> List.choose (fun (surfaceId, root) ->
                 let present name =
                     File.Exists(Path.Combine(request.RepositoryRoot, root, "skills", name, "SKILL.md"))
 
-                if present alias || present id then
+                if present required then
                     None
                 else
+                    // Say WHICH failure this is. "Wrapper missing" and "wrapper is there under the other
+                    // name" are different edits, and conflating them is how the last person guessed wrong.
+                    let detail =
+                        if present otherName then
+                            $" A wrapper exists at `{root}/skills/{otherName}/`, but that is not the name this skill's wrapper takes: its body is supplied from `{suppliedBy}`, so it is wrapped under `{required}`. For a capability skill (`template/product-skills/…`) the bare canonical id is the FRAMEWORK wrapper's name — accepting it here is exactly the masking Feature 223 forbids (#489)."
+                        else
+                            ""
+
                     Some
                         { FindingId = findingId MissingWrapper surfaceId id
                           SkillName = id
@@ -1231,9 +1275,9 @@ module SkillParity =
                           WrapperPath = None
                           Symbol = None
                           Message =
-                            $"Manifest declares `{id}` as a product skill (it materializes into generated workspaces), but no activation wrapper exists under `{root}/skills/`."
+                            $"Manifest declares `{id}` as a product skill (it materializes into generated workspaces), but no activation wrapper exists at `{root}/skills/{required}/`.{detail}"
                           Remediation =
-                            $"Add `{root}/skills/{alias}/SKILL.md` (or `{root}/skills/{id}/SKILL.md`) routing to the canonical body, or drop the skill's `scope: product` in the manifest."
+                            $"Add `{root}/skills/{required}/SKILL.md` routing to the canonical body, or drop the skill's `scope: product` in the manifest. The name is not a choice: a body supplied from `template/product-skills/` is wrapped under the `fs-gg-product-*` alias, and one supplied from anywhere else under its canonical id (#489)."
                           ExceptionId = None }))
 
     /// The ONLY authors whose `metadata.source` is upstream provenance rather than a citation of this repo.
@@ -1499,7 +1543,20 @@ module SkillParity =
         @ manifestCoverageFindings request
         @ metadataSourceFindings request.RepositoryRoot entries
         @ requirementCitationFindings request.RepositoryRoot entries
-        |> List.distinctBy (fun finding -> finding.FindingId)
+        // #489 — dedupe to the WORST, not to the first.
+        //
+        // Two rules can describe the same skill+surface on purpose (the scan-driven `missingWrapperFindings`
+        // and the manifest-driven `manifestCoverageFindings` deliberately share a FindingId so a missing
+        // wrapper is reported once, not twice). But `List.distinctBy` keeps the FIRST occurrence, and the
+        // scan-driven one is emitted first at Warning — so a manifest-driven HIGH was being silently
+        // downgraded to that Warning, and `FailOnSeverity = High` then let it through. Deleting BOTH
+        // `fs-gg-product-scene` wrappers left a product skill with no activation wrapper at all and the gate
+        // reported `warning`, not `failed`.
+        //
+        // A dedupe that resolves a collision by severity cannot do that: the milder finding can never hide
+        // the graver one, whatever order the producers run in.
+        |> List.groupBy (fun finding -> finding.FindingId)
+        |> List.map (fun (_, colliding) -> colliding |> List.maxBy (fun finding -> severityRank finding.Severity))
 
     let private severityCounts findings =
         { Critical = findings |> List.filter (fun f -> f.Severity = Critical) |> List.length
