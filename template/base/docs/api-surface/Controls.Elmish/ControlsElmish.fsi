@@ -660,7 +660,7 @@ module ControlsElmish =
                 'model * FrameMetrics list
 
         /// Issue #641 — as `runScriptToModel`, but ALSO returns every `ViewerEffect` the script's `Init`
-        /// and `Update` calls requested, in dispatch order (`Init` first). Same pure, headless,
+        /// and `Update` calls REQUESTED, in dispatch order (`Init`'s batch first). Same pure, headless,
         /// byte-stable fold: no window, no GL, no device.
         ///
         /// This is the Controls family's record-only assertion path, and the model cannot substitute for
@@ -672,10 +672,18 @@ module ControlsElmish =
         ///     let _, effects, _ = Perf.runScriptToEffects host size [ FrameInput.Pointer click ]
         ///     effects |> ControlsElmish.audioRequests |> Audio.interpret   // AudioEvidence
         ///
-        /// The stream is the one the LIVE loop hands its `audioSink` for this script — `Init`'s batch
-        /// before frame 0, then each `Update`'s — not a test-local re-derivation of it. That distinction
-        /// is the point: a hand-rolled fold in a test asserts what the TEST does, while the bug being
-        /// hunted is the product loop doing something else.
+        /// REQUESTED, not PERFORMED. The list is what the product ASKED FOR; nothing here interprets it,
+        /// and this host does not honour all of it — a `Persist` is DROPPED live, with a warning
+        /// diagnostic, because the Controls family owns no persistence seam (#535). A recorded effect is
+        /// not evidence that it would happen.
+        ///
+        /// And it is NOT a claim of frame-for-frame parity with the live loop's sink. What holds is what
+        /// this fold already guarantees above: no state transition is lost, and the `Update` calls are
+        /// the product's own. The two loops coalesce different alphabets, so a MOVE-derived request may
+        /// be counted differently live — do not read this as "what the live sink would receive, effect
+        /// for effect". What it IS: the product's REAL fold rather than a test-local re-derivation of it,
+        /// and that is the distinction that matters — a hand-rolled fold in a test asserts what the TEST
+        /// does, while the bug being hunted is the product loop doing something else.
         val runScriptToEffects:
             host: InteractiveAppHost<'model, 'msg> ->
             size: Size ->

@@ -2411,22 +2411,25 @@ module ControlsElmish =
               mutable LastTextCache: int * int // mutable: hot path
               mutable LastInvalidated: int } // mutable: hot path
 
+        // Issue #641: ONE fold, parameterised by the sink — the same shape the scripted Live runners
+        // take (#438), and deliberately not a sinkless copy plus a recording copy: two folds that must
+        // agree are two folds that drift, which is exactly what #429 had to unpick. `ignore` is what
+        // makes `runScript`/`runScriptToModel` behave as before AND pay nothing for a recording they
+        // would discard — `ViewerEffect` carries whole `SceneNode`s, so retaining every batch of a long
+        // responsiveness script would hold scene graphs alive for the run.
+        //
+        // `recordEffects` sees `Init`'s batch first, then every `Update`'s, in dispatch order. Seeding
+        // from `Init` is not a detail: a product that restores a saved volume at startup emits it THERE,
+        // and that request-at-startup is the one the `Started` trap turns into silence.
         let private runScriptCore
+            (recordEffects: ViewerEffect list -> unit)
             (host: InteractiveAppHost<'model, 'msg>)
             (size: Size)
             (script: FrameInput<'msg> list)
-            : 'model * ViewerEffect list * FrameMetrics list =
+            : 'model * FrameMetrics list =
             let initModel, initEffects = host.Init()
             let mutable model = initModel
-
-            // Issue #641: the effects this fold used to drop on the floor. `Init` seeds the list and
-            // `applyMessages` appends every `Update` batch, so `requested` is the same stream, in the
-            // same dispatch order, that the LIVE loop hands its `audioSink` — which interprets
-            // `initEffects` before frame 0 (`Viewer.runInteractiveViewerWithWindowBehaviorCore`) and each
-            // update's batch thereafter. Seeding from `Init` is not a detail: a product that restores a
-            // saved volume at startup emits it HERE, and that request-at-startup is the one the `Started`
-            // trap turns into silence.
-            let requested = ResizeArray<ViewerEffect>(initEffects)
+            recordEffects initEffects
             let mutable retained: RetainedRender<'msg> option = None
             // Feature 110 (FR-002): carry the retained frame's `ControlRenderResult` alongside the
             // threaded retained value, so a routed interaction reads `EventBindings`/`BoundIds` without a
@@ -2520,7 +2523,7 @@ module ControlsElmish =
                     |> List.fold
                         (fun acc msg ->
                             let next, produced = host.Update msg acc
-                            requested.AddRange produced
+                            recordEffects produced
                             next)
                         model
 
@@ -2816,26 +2819,24 @@ module ControlsElmish =
                         PaintRan = hasMsgs }
                 | _ -> zero)
             // `List.map` is eager, so the mutable `model` now holds the FINAL post-script model.
-            |> fun frames -> model, List.ofSeq requested, frames
+            |> fun frames -> model, frames
 
         /// Fold an ordered `FrameInput` script over the host's pure `Update` + `RetainedRender.step`,
         /// returning the per-frame `FrameMetrics` (consecutive pointer-MOVE inputs coalesce into one
         /// frame). Pure, headless, byte-stable in its count/bool fields (SC-003/004/005).
         let runScript host size script : FrameMetrics list =
-            let _, _, frames = runScriptCore host size script
-            frames
+            runScriptCore ignore host size script |> snd
 
         /// As `runScript`, but also returns the FINAL folded model. Lets a caller render the
         /// POST-interaction frame — e.g. capture an offscreen screenshot of the scene AFTER a
         /// scroll/hover/focus/click script — closing the "drive interaction → see resulting frame"
         /// loop without a live window (Feature 175 S1). Same pure, headless, byte-stable fold.
         let runScriptToModel host size script : 'model * FrameMetrics list =
-            let model, _, frames = runScriptCore host size script
-            model, frames
+            runScriptCore ignore host size script
 
         /// Issue #641: as `runScriptToModel`, but ALSO returns every `ViewerEffect` the script's
-        /// `Init` and `Update` calls requested, in dispatch order. Same pure, headless fold — no
-        /// window, no device, no GL.
+        /// `Init` and `Update` calls REQUESTED, in dispatch order (`Init`'s batch first). Same pure,
+        /// headless fold — no window, no device, no GL.
         ///
         /// This is the Controls family's record-only assertion path, and it exists because the model
         /// cannot answer the question. A restored volume the mixer was never TOLD about is
@@ -2846,9 +2847,19 @@ module ControlsElmish =
         ///     let _, effects, _ = Perf.runScriptToEffects host size script
         ///     effects |> audioRequests |> Audio.interpret    // AudioEvidence, same as the game family
         ///
-        /// The effect stream is the one the LIVE loop would hand its `audioSink` for this script, in
-        /// the same order, `Init` first — not a test-local re-derivation of it. That is the whole point:
-        /// a hand-rolled fold in a test asserts what the TEST does, and the bug being hunted is the
-        /// product loop doing something else.
+        /// REQUESTED, not PERFORMED — the list is what the product ASKED FOR. Nothing here interprets
+        /// it, and the Controls host does not honour all of it: a `Persist` is DROPPED live, with a
+        /// warning diagnostic, because this family owns no persistence seam (#535). Seeing one recorded
+        /// here is not evidence that it would happen.
+        ///
+        /// It is also NOT a claim of frame-for-frame parity with the live loop. What holds is what this
+        /// fold already guarantees (see the `Perf` module comment): no state transition is lost, and the
+        /// `Update` calls a script drives are the product's own. The two loops coalesce different
+        /// alphabets — a MOVE-derived request may be counted differently live — so do not read this as
+        /// "what the live sink would receive, effect for effect". What it IS: the product's real fold,
+        /// not a test-local re-derivation of it. That is the point — a hand-rolled fold in a test
+        /// asserts what the TEST does, and the bug being hunted is the product loop doing something else.
         let runScriptToEffects host size script : 'model * ViewerEffect list * FrameMetrics list =
-            runScriptCore host size script
+            let requested = ResizeArray<ViewerEffect>()
+            let model, frames = runScriptCore (fun batch -> requested.AddRange batch) host size script
+            model, List.ofSeq requested, frames

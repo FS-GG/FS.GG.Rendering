@@ -12,8 +12,8 @@ module Issue641ControlsAudioAssertionTests
 // bug being hunted is the product loop doing something else.
 
 open Expecto
-open System
 open FS.GG.Audio.Core
+open FS.GG.UI.KeyboardInput
 open FS.GG.UI.Scene
 open FS.GG.UI.Controls
 open FS.GG.UI.Controls.Elmish
@@ -23,6 +23,7 @@ open FS.GG.UI.Themes.Default
 type private Msg =
     | StartPressed
     | VolumeChanged of float
+    | MutePressed
 
 type private Model = { Started: bool; Volume: float }
 
@@ -46,7 +47,8 @@ let private baseHost: InteractiveAppHost<Model, Msg> =
       Update = fun _ model -> model, []
       View = startScreen
       Theme = Theme.light
-      MapKey = fun _ _ -> None
+      // The KEY path into `update`, so the recording is proven on more than one dispatch kind.
+      MapKey = fun k _ -> (match k with | Escape -> Some MutePressed | _ -> None)
       MapPointer = fun _ -> None
       Tick = fun _ -> None
       MapKeyChord = fun _ _ -> None
@@ -54,7 +56,7 @@ let private baseHost: InteractiveAppHost<Model, Msg> =
       Diagnostics = Viewer.defaultDiagnostics }
 
 /// The CORRECT product. Startup restores the saved volume by TELLING the mixer; a press asks for the
-/// click sfx.
+/// click sfx; Escape mutes the music bus.
 let private correctHost: InteractiveAppHost<Model, Msg> =
     { baseHost with
         Init = fun () -> { Started = false; Volume = savedVolume }, [ PlayAudio [ Audio.setBusVolume Bus.Music savedVolume ] ]
@@ -62,7 +64,8 @@ let private correctHost: InteractiveAppHost<Model, Msg> =
             fun msg model ->
                 match msg with
                 | StartPressed -> { model with Started = true }, [ PlayAudio [ Audio.playSfx click 1.0 ] ]
-                | VolumeChanged v -> { model with Volume = v }, [ PlayAudio [ Audio.setBusVolume Bus.Music v ] ] }
+                | VolumeChanged v -> { model with Volume = v }, [ PlayAudio [ Audio.setBusVolume Bus.Music v ] ]
+                | MutePressed -> { model with Volume = 0.0 }, [ PlayAudio [ Audio.setBusVolume Bus.Music 0.0 ] ] }
 
 /// The TRAPPED product — the `Started` trap, and its startup twin. Both transitions land the model in
 /// EXACTLY the state the correct host lands it in: `Started` flips, `Volume` holds the restored value.
@@ -74,7 +77,8 @@ let private trappedHost: InteractiveAppHost<Model, Msg> =
             fun msg model ->
                 match msg with
                 | StartPressed -> { model with Started = true }, []
-                | VolumeChanged v -> { model with Volume = v }, [] }
+                | VolumeChanged v -> { model with Volume = v }, []
+                | MutePressed -> { model with Volume = 0.0 }, [] }
 
 let private centreOf (host: InteractiveAppHost<Model, Msg>) (model: Model) (nodeId: ControlId) =
     let rendered = Control.renderTree host.Theme size (host.View size model)
@@ -176,7 +180,8 @@ let tests =
                                 [ CaptureScreenshot "shot.png"
                                   PlayAudio [ Audio.playSfx click 1.0 ]
                                   CloseWindow ]
-                            | VolumeChanged v -> { model with Volume = v }, [] }
+                            | VolumeChanged v -> { model with Volume = v }, []
+                            | MutePressed -> { model with Volume = 0.0 }, [] }
 
             let _, effects, _ = ControlsElmish.Perf.runScriptToEffects noisyHost size (pressStart noisyHost)
 
@@ -191,7 +196,21 @@ let tests =
                 "…and the narrowing yields the sound requests alone"
           }
 
-          // The recorder is an addition, not a change: threading the effect list through `runScriptCore`
+          // The recording lives at `applyMessages`, the ONE place the fold calls `host.Update` — so it
+          // must catch a KEY-driven request as surely as a pointer-driven one. Without this, all the
+          // coverage sits on the pointer branch, and a regression that recorded only there would pass:
+          // the silent-discard class #429/#438 keep having to re-fix.
+          test "a key-driven request is recorded too, not just a pointer-driven one" {
+            let _, effects, _ =
+                ControlsElmish.Perf.runScriptToEffects correctHost size [ FrameInput.Key(Escape, ViewerKeyboard.noModifiers) ]
+
+            Expect.equal
+                (effects |> ControlsElmish.audioRequests)
+                [ Audio.setBusVolume Bus.Music savedVolume; Audio.setBusVolume Bus.Music 0.0 ]
+                "startup's restore, then the mute the Escape key asked for"
+          }
+
+          // The recorder is an addition, not a change: threading the sink through `runScriptCore`
           // must leave the two existing entry points folding exactly as they did.
           test "runScript and runScriptToModel are unchanged by the recording" {
             let script = pressStart correctHost
