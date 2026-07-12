@@ -196,7 +196,6 @@ vocabulary  noModifiers
 vocabulary  normalizeEvent
 vocabulary  normalizeEventWithModifiers
 vocabulary  stateDisplay
-vocabulary  toKeyId
 
 # ---- Layout/Graph.fsi
 vocabulary  directed
