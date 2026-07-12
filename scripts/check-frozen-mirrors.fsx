@@ -171,11 +171,16 @@ type Waiver =
       Because: string }
 
 let private waivers =
-    [ { Id = "fs-gg-persistence"
-        DriftedSha = "5848164d540ff236d6e3516251ca8c269ff48985ad0507b2733c4c05b4a4875e"
-        Because =
-          "Rendering#520 (#462), Rendering#539 (#445) and Rendering#590 (#550) each edited this body — correctly, and none of them was told it was a mirror. The content belongs in FS.GG.Game's canonical: FS-GG/FS.GG.Game#163 is the adoption, and it must be READ, not re-frozen over." }
-      { Id = "fs-gg-audio"
+    // fs-gg-persistence's waiver is GONE, and that is this file working exactly as designed (#629).
+    //
+    // It waived three correct-but-unowned edits (Rendering#520/#462, #539/#445, #590/#550) and said the
+    // content had to be READ into FS.GG.Game's canonical rather than re-frozen over. It was:
+    // FS.GG.Game#163 -> #199 adopted this very body upstream, #201 then repointed the dead #535 at #587,
+    // and the canonical has since taken #619's correction too. So the mirror is byte-identical to the
+    // canonical again (067c0842), the drift this waiver excused no longer exists, and the waiver is
+    // deleted rather than kept — a stale waiver is a lie that hides the next one, and this file has said
+    // so from the day it landed. The round trip closed. One waiver down, two to go.
+    [ { Id = "fs-gg-audio"
         DriftedSha = "7142cfc6e921ac7c2f8de6c1f97ee52387fd7f3f6bd9896cb12c116180f6f0ef"
         Because =
           "#620 asked for a straight re-freeze from the canonical, and READING THE DIFF — which this waiver \
@@ -189,9 +194,80 @@ let private waivers =
            re-pinned here because a waived mirror's next edit must still be a RED. The debt is unchanged and \
            now has a creditor: FS.GG.Game#204 routes the app-profile content UP to the canonical, and when it \
            lands this mirror can finally be re-frozen and this waiver DELETED." }
-      { Id = "fs-gg-model-swap"
-        DriftedSha = "4c88cf8fbafd878e8deaaefb5699dad751d332ada7e95fb921f62163041a3805"
-        Because = "Drifted before this guard existed. Route the content to FS.GG.Game's canonical (ADR-0022 §6); do not re-freeze without reading the diff." } ]
+      // fs-gg-model-swap's waiver is gone too, and it was a LIE THIS GUARD WAS TELLING ITSELF (#629).
+      //
+      // #560/#576 re-mirrored it and the round trip closed — the mirror has matched its canonical for a
+      // while. But the old comparison judged the mirror against the REGISTRY's `sha256`, which lagged, so
+      // the guard went on believing the mirror was drifted and went on excusing it. The waiver outlived its
+      // cause by exactly as long as nobody could see it: precisely the "stale waiver hides the next break"
+      // failure the paragraph above warns about, running inside the file that warns about it.
+      //
+      // Judging the BODY made it visible in one run. That is the argument for the oracle change in a
+      // sentence.
+      ]
+
+/// The OWNER'S canonical body, fetched from the owning repo — the thing ADR-0022 §6 actually says this
+/// mirror must be byte-identical to.
+///
+/// NOT the registry's `sha256`, which is what this guard used to compare against and which is WRONG in a
+/// way that only shows up when the guard is working (#629). That digest is a CACHE, reconciled by a nightly
+/// bot, so between a canonical edit and the bot's next run it names a body that no longer exists. In that
+/// window the registry disagrees with the file it points at — right now it says `e9f471b0…` for
+/// fs-gg-persistence while that file hashes `067c0842…` — and the mirror is judged against a ghost.
+///
+/// The consequence was backwards: re-mirroring CORRECTLY (mirror == canonical, which is the entire point of
+/// the exercise) FAILED, while leaving the mirror stale PASSED via its waiver. A guard that reds the fix and
+/// greens the bug is worse than no guard, and this one would have done it to every re-mirror from now on.
+///
+/// So the body is the oracle and the registry supplies only OWNERSHIP and the PATH. A registry that has not
+/// caught up is then merely a registry that has not caught up — which is the bot's job, not this file's.
+let private fetchCanonicalBody (source: string) =
+    // `FS.GG.Game/template/product-skills/fs-gg-audio/SKILL.md` -> repo `FS-GG/FS.GG.Game`, path `template/…`.
+    let parts = source.Split('/')
+
+    if parts.Length < 2 then
+        eprintfn "::error title=frozen-mirror check did not run::registry `source` is not <repo>/<path>: %s" source
+        exit 2
+
+    let repo = parts.[0]
+    let path = String.Join("/", parts.[1..])
+
+    let psi = ProcessStartInfo "gh"
+    psi.UseShellExecute <- false
+    psi.RedirectStandardOutput <- true
+    psi.RedirectStandardError <- true
+
+    [ "api"; $"repos/FS-GG/{repo}/contents/{path}"; "--jq"; ".content" ]
+    |> List.iter psi.ArgumentList.Add
+
+    match Process.Start psi with
+    | null -> failwith "could not start `gh` to read a canonical skill body"
+    | proc ->
+        use proc = proc
+        let out = proc.StandardOutput.ReadToEnd()
+        let err = proc.StandardError.ReadToEnd()
+        proc.WaitForExit()
+
+        // Fail CLOSED, exactly as the registry read does: a canonical we could not read is a comparison
+        // that did not happen, and reporting green for it is how a gate becomes decoration.
+        if proc.ExitCode <> 0 || String.IsNullOrWhiteSpace out then
+            eprintfn
+                "::error title=frozen-mirror check did not run::could not read the canonical body FS-GG/%s/%s (gh exit %d). NO comparison was made for this mirror, so this is NOT a pass. %s"
+                repo
+                path
+                proc.ExitCode
+                err
+
+            exit 2
+
+        let bytes = Convert.FromBase64String(out.Trim())
+
+        use sha = SHA256.Create()
+
+        sha.ComputeHash bytes
+        |> Array.map (fun b -> b.ToString "x2")
+        |> String.concat ""
+
 
 // ---- the check --------------------------------------------------------------------------------
 
@@ -284,7 +360,20 @@ let private mirrors =
 for row, body, local in mirrors do
     let relative = $"template/product-skills/{row.Id}/SKILL.md"
 
-    if local = row.Sha256 then
+    // The OWNER'S BODY, not the registry's record of it. See `fetchCanonicalBody`.
+    let canonical = fetchCanonicalBody row.Source
+
+    // The registry lagging its own canonical is normal (a nightly bot reconciles it) and is NOT this
+    // guard's business — but it IS worth saying out loud, because a reader comparing digests by hand will
+    // otherwise be baffled by exactly the discrepancy that used to break this check.
+    if canonical <> row.Sha256 then
+        printfn
+            "  frozen-mirror NOTE %-22s registry sha256 (%s…) lags its canonical (%s…) — the autofix bot will reconcile it; this guard judges the BODY."
+            row.Id
+            (row.Sha256.Substring(0, 12))
+            (canonical.Substring(0, 12))
+
+    if local = canonical then
         // In sync. Any waiver for it is now a lie.
         match waivers |> List.tryFind (fun w -> w.Id = row.Id) with
         | Some _ ->

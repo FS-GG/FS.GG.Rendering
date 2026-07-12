@@ -39,9 +39,22 @@ no helper throws or performs I/O. The payload is **opaque** — the framework ne
 > not later by a host: no `ViewerEffect` case carries a `PersistenceEffect`, so no host runner will
 > ever see one. A product that calls it has saved nothing.
 >
-> The name is a trap, and a known one: everywhere else in this framework `interpret*` means *do it*
-> (`GlHost.interpretEffect` drives real GL work), while this one writes no bytes at all. A later
-> framework release renames it to `interpretRecordOnly`, which says what it does — but **that
+> The name is a trap, and a known one — but not in the way you would guess. It is **not** that
+> `interpret*` means *perform the effect* everywhere else in this framework and this one is the lone
+> exception. **Nothing named `interpret` here performs anything.** The surface your product pins
+> carries exactly two, and both are pure folds that hand you back a value: this one, and
+> `Audio.interpret` — which calls itself a *"record-only interpreter"* with *"no device access"* and
+> returns an `AudioEvidence`, precisely as this returns a `PersistenceEvidence`. Performing an effect
+> is always a **host** call: `Audio.play` takes a backend, `Viewer.runApp` opens a window. **Not one
+> of them is spelled `interpret`.**
+>
+> So do not go looking for a counter-example among its siblings — it has one, and it has this same
+> shape. What `interpret` really promises you is a **downstream**: something, somewhere, that
+> eventually carries your requests out. For persistence there is none, and that is the whole defect.
+> The convention is what misleads you here, not an exception to it — which makes the honest reading
+> the stronger one.
+>
+> A later framework release renames it to `interpretRecordOnly`, which says what it does — but **that
 > spelling is not in the `FS.GG.UI.Canvas` your product pins**, so `interpret` is the one to call
 > today.
 
@@ -136,14 +149,20 @@ Assert on the **effect**, not the request:
   the same as `Load` of a slot whose bytes are truncated or unparseable. A backend that collapses
   both into one "no save" answer silently eats corruption. Decide what each reports, then test it.
 
-⚠️ **The pure surface has no load-result type — you will have to add one, and it is not yours.**
+⚠️ **The pinned surface has no load-result type — and the one you need is not yours to invent.**
 `PersistenceEffect` is request-only (`Save`/`Load`/`DeleteSlot`), and `Persistence.fsi` says so
-outright: *"how a real backend reports 'no such save' is a deferred concern."* There is no
-`LoadResult`, no absent/corrupt vocabulary, and no path that dispatches a loaded save back to
-`update` as a `Msg`. Reporting a load's outcome therefore needs a **new type on the
-`FS.GG.UI.Canvas` surface**, which is an `fs-gg-rendering` change, not a product-local one. It is
-tracked at [FS-GG/FS.GG.Rendering#535](https://github.com/FS-GG/FS.GG.Rendering/issues/535) — add
-your case there rather than inventing a private result type no host will ever dispatch.
+outright: *"how a real backend reports 'no such save' is a deferred concern."* On the
+`FS.GG.UI.Canvas` this product pins (**0.5.0**) there is no `LoadResult`, no absent/corrupt
+vocabulary, and no path that dispatches a loaded save back to `update` as a `Msg` — so a product
+that needs one today cannot get it from the framework, and a private one no host dispatches buys
+nothing.
+
+Reporting a load's outcome needs a **new type on the `FS.GG.UI.Canvas` surface**, which is an
+`fs-gg-rendering` change, not a product-local one. That type is **no longer an open question**: it is
+designed and merged upstream, and is waiting on a release to carry it, tracked at
+[FS-GG/FS.GG.Rendering#587](https://github.com/FS-GG/FS.GG.Rendering/issues/587). Follow that
+release — and expect this section to change when this product's pin moves to it — rather than
+inventing a private result type you would only have to unpick when the real vocabulary lands.
 
 ## Build Commands
 
