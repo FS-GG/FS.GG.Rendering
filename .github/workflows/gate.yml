@@ -665,3 +665,44 @@ jobs:
       # what must never be silent — so if a project is legitimately removed, lower this number in the
       # same change, and let that be a decision somebody made rather than an omission nobody noticed.
       min-ranges: 196
+
+  # ---------------------------------------------------------------------------------------------
+  # Build-config drift check (shared-build-config; ADR-0006 / ADR-0032, adopted per #538).
+  #
+  # Directory.Build.props and Directory.Packages.props are DISTRIBUTED files: their source of truth is
+  # FS-GG/.github → dist/dotnet/, and their own header says "DO NOT EDIT in a consumer repo — edits are
+  # overwritten on the next sync and fail the drift check (check mode)."
+  #
+  # Until now nothing here ran that check, so that sentence was simply false: this repo could diverge
+  # from the org config — and had — with no signal at all. Every sibling adopter (Game, Governance, SDD)
+  # runs one. A gate that is green on a subject it never checks is strictly worse than a red one; the
+  # red at least tells you.
+  #
+  # Static: two checkouts and a diff. No SDK, no restore, no feed, no NuGet auth.
+  # ---------------------------------------------------------------------------------------------
+  build-config-drift:
+    name: Build-config drift check (shared-build-config)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # The source of truth. Tracked at `main` deliberately, exactly as the sibling adopters track it:
+      # the POINT of this check is to notice when the org moves and this repo has not followed, so
+      # pinning a SHA here would defeat it — the check would go on passing against a frozen snapshot
+      # while the thing it calls the source of truth drifted away from it.
+      - name: Checkout the org build config
+        uses: actions/checkout@v7
+        with:
+          repository: FS-GG/.github
+          ref: main
+          path: _org-build
+
+      - name: Assert this repo's build config matches the org source of truth
+        run: |
+          set -euo pipefail
+          if ! _org-build/scripts/sync-build-config.sh --check "$GITHUB_WORKSPACE"; then
+            echo "::error::build-config drift — Directory.Build.props / Directory.Packages.props / .config/dotnet-tools.json differ from FS-GG/.github → dist/dotnet/. These are DISTRIBUTED files: do not hand-edit them here. Re-sync with 'scripts/sync-build-config.sh <repo>' from a checkout of FS-GG/.github and commit the result. If the sync changes what the restore graph resolves (ADR-0032), regenerate the lock files in the SAME commit."
+            exit 1
+          fi
