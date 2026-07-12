@@ -1,6 +1,9 @@
 ---
 name: fs-gg-symbology
 description: Author legible unit-symbology with the fixed channel grammar (Token -> Scene), drive the headless render->eyeball->tweak design loop, and keep the per-game stat mapping out of the library.
+metadata:
+  author: FS.GG
+  source: specs/192-agent-unit-symbology
 ---
 
 # Symbology Capability

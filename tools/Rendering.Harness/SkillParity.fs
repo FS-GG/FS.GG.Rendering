@@ -87,6 +87,7 @@ module SkillParity =
         | MissingRequiredArtifact
         | MetadataDrift
         | UnresolvedMetadataSource
+        | UnsourcedRequirementCitation
         | IntentionalExceptionFinding
         | UnreadableSurface
 
@@ -291,6 +292,7 @@ module SkillParity =
         | MissingRequiredArtifact -> "missing-required-artifact"
         | MetadataDrift -> "metadata-drift"
         | UnresolvedMetadataSource -> "unresolved-metadata-source"
+        | UnsourcedRequirementCitation -> "unsourced-requirement-citation"
         | IntentionalExceptionFinding -> "intentional-exception"
         | UnreadableSurface -> "unreadable-surface"
 
@@ -1337,6 +1339,111 @@ module SkillParity =
                             $"`{entry.Path}` declares `metadata.source: {source}`, which does not resolve to any file or directory in this repository. The skill defers its authority to a document nobody can open, and any FR-nnn it cites now hangs on a number that may resolve to an unrelated feature (#466)."
                             $"Point `metadata.source` at the path that actually backs this skill, or remove it. Do not leave it naming `{source}` — a citation that cannot be followed is worse than none, because it reads as though it were checked.")
 
+    /// A normative requirement citation: `FR-014`, `FR-7`, and so on.
+    let private requirementCitation = Regex(@"\bFR-\d+\b", RegexOptions.Compiled)
+
+    /// #573 (the other half of #466) — an FR number is only unique WITHIN a feature, so a bare `FR-014`
+    /// with nothing to hang it on is not a citation, it is a coincidence waiting to happen.
+    ///
+    /// This is not hypothetical and it is not small. `src/Symbology/skill/SKILL.md` cited FR-014, FR-016,
+    /// FR-017, FR-018 and FR-019 with no `metadata.source` at all — while SEVEN symbology specs each define
+    /// their own FR-014 and FR-016, meaning entirely different things (192's FR-014 is "provide an
+    /// orchestrating skill"; 194's is "the approved symbol set must lint clean"; 196's is "stay in the pure
+    /// scene-only layer"). A reader chasing the skill's FR-014 lands on whichever of the seven they find
+    /// first. That is exactly #466: not a dead link, but a live one that resolves to something plausible
+    /// and wrong.
+    ///
+    /// So two things are checked, and the second is the one that bites:
+    ///   1. a skill that cites FR-nnn must DECLARE `metadata.source` (which #529's rule then forces to
+    ///      resolve), and
+    ///   2. every FR it cites must actually BE in that source. A citation pointing at a real spec that does
+    ///      not contain the requirement is the #466 failure with a source line bolted on — it reads MORE
+    ///      authoritative while being just as wrong.
+    ///
+    /// Exempt: the vendored spec-kit skills and the externally-owned coordination kit (FS-GG/.github,
+    /// synced verbatim — `cross-repo-coordination` cites FR-007 and cannot be fixed in this repo; an edit
+    /// here is reverted by the next sync, and an unfixable red is a gate somebody switches off).
+    let private requirementCitationFindings (root: string) (entries: SkillEntry list) =
+        entries
+        |> List.choose (fun entry ->
+            let declared key =
+                entry.Metadata
+                |> Map.tryFind key
+                |> Option.map (fun value -> value.Trim())
+                |> Option.filter (fun value -> value <> "")
+
+            let vendored =
+                Set.contains (normalizeText entry.SkillName) (coordinationKitSkills |> Set.map normalizeText)
+                || (declared "author" |> Option.map normalizeText |> Option.exists vendoredAuthors.Contains)
+
+            let _, body = parseFrontMatter entry.Content
+
+            let cited =
+                requirementCitation.Matches body
+                |> Seq.cast<Match>
+                |> Seq.map (fun m -> m.Value)
+                |> Set.ofSeq
+
+            let finding message remediation =
+                Some
+                    { FindingId =
+                        findingId UnsourcedRequirementCitation entry.SurfaceId entry.SkillName
+                        + ":"
+                        + entry.Path.Replace("/", "-")
+                      SkillName = entry.SkillName
+                      SurfaceId = entry.SurfaceId
+                      Category = UnsourcedRequirementCitation
+                      Severity = High
+                      CanonicalPath = Some entry.Path
+                      WrapperPath = None
+                      Symbol = None
+                      Message = message
+                      Remediation = remediation
+                      ExceptionId = None }
+
+            let citedList = cited |> Set.toList |> String.concat ", "
+
+            if vendored || Set.isEmpty cited then
+                None
+            else
+                match declared "source" with
+                | None ->
+                    finding
+                        $"`{entry.Path}` cites {citedList} but declares no `metadata.source`. An FR number is unique only WITHIN a feature, so a bare one names nothing — and this repo has several specs holding the same FR numbers with unrelated meanings, so a reader lands on whichever they find first (#466)."
+                        "Declare `metadata.source` naming the spec these requirements come from (and `metadata.author: FS.GG`), so the citation can be followed and is checked."
+                | Some source ->
+                    // The requirements the declared source actually states. A directory source (`specs/192-…`)
+                    // is read through its spec.md — that is where a feature's FRs live.
+                    let sourcePath = absolutePath root source
+
+                    let specFile =
+                        if Directory.Exists sourcePath then
+                            Path.Combine(sourcePath, "spec.md")
+                        else
+                            sourcePath
+
+                    if not (File.Exists specFile) then
+                        // The source does not resolve to something readable. That is #529's finding, not this
+                        // one — reporting it twice would just make the author fix one and re-run.
+                        None
+                    else
+                        let stated =
+                            requirementCitation.Matches(File.ReadAllText specFile)
+                            |> Seq.cast<Match>
+                            |> Seq.map (fun m -> m.Value)
+                            |> Set.ofSeq
+
+                        let phantom = Set.difference cited stated
+
+                        let phantomList = phantom |> Set.toList |> String.concat ", "
+
+                        if Set.isEmpty phantom then
+                            None
+                        else
+                            finding
+                                $"`{entry.Path}` cites {phantomList}, which `{source}` does not state. The citation resolves to a real spec that does not contain the requirement — so it reads as checked while pointing at nothing, which is #466's failure with a source line bolted on."
+                                $"Cite the requirements `{source}` actually states, or point `metadata.source` at the spec that states these ones.")
+
     let private classifyFindings request entries symbols artifacts =
         wrapperFindings entries
         @ missingWrapperFindings entries
@@ -1345,6 +1452,7 @@ module SkillParity =
         @ artifactFindings artifacts
         @ manifestCoverageFindings request
         @ metadataSourceFindings request.RepositoryRoot entries
+        @ requirementCitationFindings request.RepositoryRoot entries
         |> List.distinctBy (fun finding -> finding.FindingId)
 
     let private severityCounts findings =

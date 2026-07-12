@@ -93,6 +93,7 @@ module SkillParity =
         | MissingRequiredArtifact
         | MetadataDrift
         | UnresolvedMetadataSource
+        | UnsourcedRequirementCitation
         | IntentionalExceptionFinding
         | UnreadableSurface
 
