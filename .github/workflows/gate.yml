@@ -82,20 +82,28 @@ jobs:
       # 211 (FR-002/FR-004) — locked restore against committed packages.lock.json. On a graph that
       # differs from the lockfile (or an un-pinnable version, NU1603) restore fails and the gate
       # blocks. The RestoreLockedMode property (Directory.Build.props) makes the repo behave like the
-      # generated products; --locked-mode here forces it explicitly and gives one clear place to point
-      # at the regenerate command. This is the single restore enforcement point (the build below uses
-      # --no-restore), so NU1603/NU1608 promotion is anchored here.
-      # 186 — restore against the COMMITTED nuget.config, explicitly. `--configfile` replaces the
-      # inherited config chain rather than merging it, so the sources a locked restore resolves from
-      # are exactly the ones in the repo, and deleting the file fails the gate here instead of
-      # silently handing restore back to whatever the machine has.
-      - name: Restore (locked)
-        run: |
-          set -euo pipefail
-          if ! dotnet restore FS.GG.Rendering.slnx --locked-mode --configfile nuget.config; then
-            echo "::error::locked restore failed — the resolved graph does not match the committed packages.lock.json (or a version was substituted, NU1603). If this is an intentional dependency change, run: dotnet restore FS.GG.Rendering.slnx --force-evaluate  and commit the updated lockfiles."
-            exit 1
-          fi
+      # generated products; --locked-mode forces it explicitly. This is the gate's restore
+      # enforcement point (the build below uses --no-restore), so NU1603/NU1608 promotion is
+      # anchored here.
+      #
+      # 482 (FS-GG/.github#429) — the restore is COLD, and that is the whole point of the action:
+      # a WARM one validates the committed contentHash against the package copy already on the
+      # runner, never contacting the feed, so it compares a record of reality against another record
+      # of it. The enforcement, the error text and the --force-evaluate regenerate hint live in ONE
+      # place across the two GATE lanes (packaged-consumer.yml restores through the same action),
+      # because two inline copies is how they drift — the comment here used to claim it was "the
+      # single restore enforcement point" while packaged-consumer.yml quietly ran a second, warm one.
+      #
+      # Scoped deliberately, so this comment does not repeat that mistake: release.yml is NOT routed
+      # through the action yet. Its `dotnet build`/`dotnet restore` of the slnx are still locked
+      # restores — RestoreLockedMode (Directory.Build.props) turns locked mode on implicitly whenever
+      # GITHUB_ACTIONS is true — but WARM ones, against the default package folder and without
+      # --configfile. That is #559, and until it lands the publish lane still validates the committed
+      # contentHash against whatever the runner already has.
+      - name: Restore (locked, cold)
+        uses: ./.github/actions/locked-restore
+        with:
+          target: FS.GG.Rendering.slnx
 
       # T007 (FR-002) — a build failure MUST fail the gate. Debug so test/harness steps reuse it
       # with --no-build. The slnx contains src + all local-tier tests + the harness; it does NOT
@@ -254,9 +262,17 @@ jobs:
       #     (FR-008, anti-text-grep). The deeper product-from-template build stays on release.yml.
       # Non-zero exit (1 drift / 2 guard-error) fails the gate ⇒ PR blocked from merging to main. The
       # script echoes the DRIFT lines to $GITHUB_STEP_SUMMARY on failure (SC-006).
+      # 482 — this step must NOT inherit the locked-restore action's NUGET_PACKAGES. The smoke builds
+      # its own clean consumer and isolates it with `globalPackagesFolder` in a generated nuget.config
+      # (validate-version-coherence.fsx), and the NUGET_PACKAGES *environment variable* OVERRIDES that
+      # config key. Inheriting it would silently redirect the "clean restore" into the shared package
+      # folder, so a cached FS.GG.UI@V could satisfy a member the freshly-packed feed never produced —
+      # restore-partial would report green on a partial graph. Unsetting restores exactly the
+      # environment this step had before the action existed.
       - name: Version coherence guard
         run: |
           set -euo pipefail
+          unset NUGET_PACKAGES
           dotnet fsi scripts/validate-version-coherence.fsx
           FS_GG_RUN_VERSION_COHERENCE_SMOKE=1 dotnet fsi scripts/validate-version-coherence.fsx
 

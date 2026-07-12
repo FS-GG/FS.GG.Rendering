@@ -97,8 +97,15 @@ jobs:
       # The pack below is `--no-restore` (PackageFeed.runPackIfRequested), so the solution must be
       # restored first. Locked, against the committed nuget.config, for the same reason `gate` is:
       # the sources a restore resolves from are exactly the ones in the repo (#186).
-      - name: Restore the solution (locked)
-        run: dotnet restore FS.GG.Rendering.slnx --locked-mode --configfile nuget.config
+      #
+      # 482 — through the shared action, so this lane gets the COLD restore too. It used to run its
+      # own inline warm `--locked-mode`, which validated the committed contentHash against whatever
+      # package copy the runner already had rather than against the feed (FS-GG/.github#429). A
+      # second copy of the enforcement is also a second copy to drift.
+      - name: Restore the solution (locked, cold)
+        uses: ./.github/actions/locked-restore
+        with:
+          target: FS.GG.Rendering.slnx
 
       - name: Build the prover
         run: dotnet build tools/Rendering.Harness/Rendering.Harness.fsproj -c Debug --no-restore
