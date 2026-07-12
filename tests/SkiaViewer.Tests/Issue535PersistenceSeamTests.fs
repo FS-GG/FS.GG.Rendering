@@ -68,14 +68,19 @@ let issue535PersistenceSeamTests =
               Expect.isFalse reached "a batch with no Persist effect must not reach the persistence sink"
           }
 
-          // THE ANSWER PATH — the half that did not exist. A host reports outcomes; the product maps them
-          // to messages; the loop dispatches them into `update`. This asserts the mapper contract the loop
-          // is wired to: every outcome the sink returns is offered to `mapOutcome`, and the ones it maps
-          // become messages.
-          test "every outcome the sink returns is offered to the product's mapper" {
+          // THE ANSWER PATH — the half that did not exist: a host reports outcomes, the product maps them to
+          // messages, the loop dispatches them into `update`.
+          //
+          // Driven through the REAL fold. An earlier draft of this test defined its own sink and mapper and
+          // looped over them by hand, asserting nothing about the framework at all — it would have passed
+          // with `ViewerEffect.Persist` deleted. A test that re-implements the thing it is testing is a
+          // tautology, and the only reason to keep it would be that it looks like coverage.
+          test "an outcome the sink returns is dispatched back as a product message" {
               let dispatched = List<string>()
+              let mutable dispatchOutcome: PersistenceOutcome -> unit = ignore
 
-              // The shape `runAppWithPersistence` wires: sink -> outcomes -> mapOutcome -> dispatch.
+              // Exactly the shape `runAppWithPersistence` builds: the sink PERFORMS the batch and reports
+              // outcomes; each outcome is mapped and dispatched.
               let sink (effects: PersistenceEffect list) =
                   effects
                   |> List.map (fun effect ->
@@ -84,24 +89,73 @@ let issue535PersistenceSeamTests =
                       | Load s -> PersistenceOutcome.Loaded { envelope with Slot = s }
                       | DeleteSlot s -> PersistenceOutcome.Deleted s)
 
-              let mapOutcome outcome =
-                  match outcome with
-                  | PersistenceOutcome.Saved _ -> Some "saved"
-                  | PersistenceOutcome.Loaded _ -> Some "loaded"
-                  | PersistenceOutcome.Deleted _ -> Some "deleted"
-                  | PersistenceOutcome.Absent _
-                  | PersistenceOutcome.Unreadable _
-                  | PersistenceOutcome.Failed _ -> None
+              let persistenceBatchSink batch = sink batch |> List.iter dispatchOutcome
 
-              for outcome in sink [ Save envelope; Load slot; DeleteSlot slot ] do
-                  match mapOutcome outcome with
-                  | Some msg -> dispatched.Add msg
-                  | None -> ()
+              dispatchOutcome <-
+                  fun outcome ->
+                      match outcome with
+                      | PersistenceOutcome.Saved _ -> dispatched.Add "saved"
+                      | PersistenceOutcome.Loaded _ -> dispatched.Add "loaded"
+                      | PersistenceOutcome.Deleted _ -> dispatched.Add "deleted"
+                      | PersistenceOutcome.Absent _
+                      | PersistenceOutcome.Unreadable _
+                      | PersistenceOutcome.Failed _ -> ()
+
+              Viewer.interpretViewerEffects
+                  ignore
+                  persistenceBatchSink
+                  ignore
+                  ignore
+                  ignore
+                  ignore
+                  [ Persist [ Persistence.save envelope; Persistence.load slot; Persistence.deleteSlot slot ] ]
+              |> ignore
 
               Expect.equal
                   (List.ofSeq dispatched)
                   [ "saved"; "loaded"; "deleted" ]
-                  "a Load is finally ANSWERABLE: the outcome comes back as a message the product's update handles"
+                  "a Load is finally ANSWERABLE: the batch goes through the real fold to the sink, and every outcome comes back as a message the product's update handles"
+          }
+
+          // THE ORDERING BUG THIS SEAM SHIPPED WITH, and the reason it is pinned here.
+          //
+          // A product LOADS ITS SAVE ON INIT — that is the whole pattern; the first thing a game does is ask
+          // "is there a save?". The launch body closes the outcome-dispatch forward reference with a mutable,
+          // and in the first draft that assignment sat AFTER `interpretEffects initEffects`. So an `Init`
+          // that emitted a `Persist` had its batch performed by the sink — the save really was read off the
+          // disk — and the resulting `Loaded` went to a `dispatchOutcome` that was still `ignore`. The save
+          // was read and thrown away, and the product started at a title screen with no error anywhere.
+          //
+          // A fresh silent no-op inside the fix for the silent-no-op family (epic .github#416). Reversing the
+          // two statements below turns this red, which is the point of it.
+          test "an outcome from an Init-time Persist batch is dispatched, not dropped" {
+              let dispatched = List<string>()
+              let mutable dispatchOutcome: PersistenceOutcome -> unit = ignore
+
+              let sink (effects: PersistenceEffect list) =
+                  effects |> List.map (fun _ -> PersistenceOutcome.Loaded envelope)
+
+              let persistenceBatchSink batch = sink batch |> List.iter dispatchOutcome
+
+              // Init's effects — a product asking for its save on startup.
+              let initEffects = [ Persist [ Persistence.load slot ] ]
+
+              // CLOSE THE REFERENCE FIRST. This is the ordering the launch body must have.
+              dispatchOutcome <-
+                  fun outcome ->
+                      match outcome with
+                      | PersistenceOutcome.Loaded e ->
+                          let (SavePayload payload) = e.Payload
+                          dispatched.Add payload
+                      | _ -> ()
+
+              Viewer.interpretViewerEffects ignore persistenceBatchSink ignore ignore ignore ignore initEffects
+              |> ignore
+
+              Expect.equal
+                  (List.ofSeq dispatched)
+                  [ "{score:42}" ]
+                  "the save a product asks for on Init must be ANSWERED. If the dispatcher is still `ignore` when Init's effects are interpreted, the sink reads the save off the disk and the outcome is thrown away — the product starts fresh over a save that exists, with nothing reporting an error."
           }
 
           // THE CORRUPTION BUG THIS TYPE EXISTS TO PREVENT. `Absent` and `Unreadable` are different

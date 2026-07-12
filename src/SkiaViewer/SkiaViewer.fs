@@ -2240,6 +2240,34 @@ module Viewer =
                             // that asked to close must not be forgotten by the next batch that did not.
                             closeRequested || outcomeCloseRequested
 
+                        let dispatchHostMsg msg =
+                            match tryProductStep reportProductDefect "Update" (fun () -> host.Update msg currentModel) with
+                            | None -> false // product Update threw; drop the message, keep window + last-good scene
+                            | Some(next, effects) ->
+                                currentModel <- next
+                                currentScene <- safeView currentModel
+                                interpretEffects effects
+
+                        // #535 — the forward reference, closed BEFORE any effect is interpreted, and that
+                        // ordering is load-bearing. `Init` is where a product LOADS ITS SAVE — the single
+                        // most common persistence pattern there is. If this assignment sat after
+                        // `interpretEffects initEffects` (it did, in the first draft), the sink would perform
+                        // the read, hand back a `Loaded`, and `dispatchOutcome` would still be `ignore`: the
+                        // save is read off the disk and thrown away, and the product starts at a title screen
+                        // with no error anywhere. That is a fresh silent no-op inside the fix for the silent
+                        // no-op family (epic .github#416) — so it is closed first, and a test pins it.
+                        //
+                        // An outcome the product does not map is dropped deliberately: a host that reports
+                        // `Absent` to a product with no message for it has still ANSWERED, and inventing a
+                        // message would be the framework deciding what "no save" means to a game.
+                        dispatchOutcome <-
+                            fun outcome ->
+                                match mapOutcome outcome with
+                                | Some msg ->
+                                    if dispatchHostMsg msg then
+                                        outcomeCloseRequested <- true
+                                | None -> ()
+
                         let initialCloseRequested = interpretEffects initEffects
 
                         let _, _ =
@@ -2253,26 +2281,6 @@ module Viewer =
                                   UserCloseObserved = false
                                   InputDispatch = NotRequired
                                   LastScene = None }
-
-                        let dispatchHostMsg msg =
-                            match tryProductStep reportProductDefect "Update" (fun () -> host.Update msg currentModel) with
-                            | None -> false // product Update threw; drop the message, keep window + last-good scene
-                            | Some(next, effects) ->
-                                currentModel <- next
-                                currentScene <- safeView currentModel
-                                interpretEffects effects
-
-                        // #535 — the forward reference, now that `dispatchHostMsg` exists. An outcome the
-                        // product does not map is DROPPED, deliberately: a host that reports `Absent` to a
-                        // product with no message for it has still answered, and inventing a message would
-                        // be the framework deciding what "no save" means to a game.
-                        dispatchOutcome <-
-                            fun outcome ->
-                                match mapOutcome outcome with
-                                | Some msg ->
-                                    if dispatchHostMsg msg then
-                                        outcomeCloseRequested <- true
-                                | None -> ()
 
                         let handleTick elapsed =
                             match host.Tick elapsed with
