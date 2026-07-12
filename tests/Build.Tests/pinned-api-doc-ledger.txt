@@ -61,50 +61,12 @@
 # SkiaViewer.fsi — the #550 symbol, in the third doc #550 could not see — and now teaches `interpret`.
 
 # ---------------------------------------------------------------------------------------------------
-# `Viewer.runAppWithPersistence` — FS.GG.Rendering#587 (the release)
+# EMPTY, and that is the point. Both entries this file carried — `Viewer.runAppWithPersistence` (#587) and
+# `AdapterCmd.diagnostics` (#592) — were debts owed to ONE creditor: the release that publishes the member.
+# FS.GG.UI 0.9.1 (#587) is that release. It exports both, the pin now names it, so a product CAN bind what
+# these docs teach, and there is nothing left to excuse. #592 is closed by this release.
 #
-# The one violation #598 found that a doc fix CANNOT retire, and the shape this ledger exists for. It is
-# not a wrong name: `runAppWithPersistence` is the NEW sink-carrying entry point (#535), it exists in
-# src/SkiaViewer, and published FS.GG.UI.SkiaViewer 0.9.0 does not carry it. There is no spelling a
-# product on the pin can bind, so there is nothing to rewrite it TO — only a release retires this.
-#
-# The doc-comment that names it says so, in as many words ("this case is NEWER than the
-# `FS.GG.UI.SkiaViewer` your product pins, so you cannot bind it yet"), which is why it stays: a reader is
-# told the truth, and #587 makes the sentence obsolete. Delete this line when the release lands — the
-# stale rule will demand it.
+# The ledger stays. An empty ledger is not a dead one: `src/` runs ahead of the pin again the moment the
+# next unreleased member lands, and the next release retires whatever accumulates here in the same way.
+# (The 0.10.0 major — #537's removals — is the next one, and it will find this file empty.)
 # ---------------------------------------------------------------------------------------------------
-template/base/docs/api-surface/SkiaViewer/SkiaViewer.fsi::Viewer.runAppWithPersistence
-
-# ---------------------------------------------------------------------------------------------------
-# `AdapterCmd.diagnostics` — FS.GG.Rendering#592
-#
-# Published FS.GG.UI.Controls.Elmish 0.9.0 exports `AdapterCmd.none`, `.ofMessage`, `.productMessages`,
-# `.toCmd` — and NOT `.diagnostics`. Same family as #585 (S-INT: the mirror advertises API a product
-# cannot call) but a different cause — unpublished, not `internal` — so #585's `grep "val internal"` does
-# not see it. The file is inside #585's declared touch-set, so this is declared here rather than edited
-# out from under a live claim.
-# ---------------------------------------------------------------------------------------------------
-template/base/docs/api-surface/Controls.Elmish/ControlsElmish.fsi::AdapterCmd.diagnostics
-
-# ---------------------------------------------------------------------------------------------------
-# `ControlsElmish.audioRequests` — FS.GG.Rendering#587 (the release)
-#
-# The `runAppWithPersistence` shape again, and for the same reason: #641 ADDED this (with
-# `Perf.runScriptToEffects`, the headless fold that produces the `ViewerEffect list` it narrows), so it
-# exists in src/Controls.Elmish and published FS.GG.UI.Controls.Elmish 0.9.0 does not carry it. Only a
-# release retires it.
-#
-# APPLY THE `mapKeyRaw` TEST BEFORE YOU BELIEVE THAT — an absent helper is not an absent capability, and
-# `audioRequests` really is a four-line `List.collect` a product could write itself. It fails the test
-# anyway, because the thing it CONSUMES is what the pin lacks: on 0.9.0 an `app` product has no way to
-# obtain a `ViewerEffect list` from a headless Controls fold at all (`Perf.runScriptToModel` returns the
-# model and drops the effects), so there is nothing to run the collect OVER. `GeneratedAppHost.audioRequests`
-# does ship in 0.9.0 and is the same function — but pointing an `app` reader at it is the exact cross-family
-# error #641 exists to end, and it would still leave them with no effect list to feed it.
-#
-# The doc-comment and the skill section that name it SAY SO, as `runAppWithPersistence`'s does — a reader
-# on the pin is told they cannot bind it yet, rather than left to discover it at the compiler. Delete this
-# line when the release lands; the stale rule will demand it.
-# ---------------------------------------------------------------------------------------------------
-template/base/docs/api-surface/Controls.Elmish/ControlsElmish.fsi::ControlsElmish.audioRequests
-template/product-skills/fs-gg-elmish/SKILL.md::ControlsElmish.audioRequests

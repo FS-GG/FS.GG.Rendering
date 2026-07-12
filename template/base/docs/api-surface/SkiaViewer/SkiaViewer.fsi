@@ -517,15 +517,6 @@ type ViewerRunMsg =
 
 /// Public contract type exposed by this FS.GG.UI package.
 ///
-/// PENDING RELEASE — the framework's `ViewerEffect` has one case more than this: `Persist of effects:
-/// PersistenceEffect list` (#535), the save/load seam realized by `Viewer.runAppWithPersistence`. It is
-/// NOT on the `FS.GG.UI.SkiaViewer` your product pins, so you cannot bind it yet, and it is omitted here
-/// rather than advertised: a case you cannot construct or match is a build error waiting to be copied
-/// (#550). It arrives with the next framework release, and this mirror grows it on that day — the
-/// omission is declared, and checked, in `tests/Package.Tests/mirror-pending-release-ledger.txt` (#594).
-///
-/// Until then a product records its own persistence requests with `Persistence.interpret` and writes its
-/// own backend, exactly as before. That is the whole of the difference; every case below is bindable.
 type ViewerEffect =
     | OpenWindow of title: string * size: Size
     | ApplyWindowOptions of ViewerWindowBehaviorRequest
@@ -546,6 +537,15 @@ type ViewerEffect =
     /// batch to the caller-supplied sink; `runApp` and the evidence paths discard it (a viewer
     /// owns no audio device). Effects within one batch are played in list order.
     | PlayAudio of effects: AudioEffect list
+    /// Issue #535 — a batch of save/load requests a product's `update` emitted, in dispatch order.
+    /// Pure data: no file handle, no stream, no closure.
+    ///
+    /// Only `Viewer.runAppWithPersistence` / `runAppWithAudioAndPersistence` realize it — by handing the
+    /// batch to your sink and dispatching each `PersistenceOutcome` it returns back into `update` as a
+    /// message, which is what finally makes a `Load` answerable. `runApp` and `runAppWithAudio` discard
+    /// it, exactly as they discard `PlayAudio`: a viewer owns no save location, and inventing one would
+    /// be worse than owning none.
+    | Persist of effects: PersistenceEffect list
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ViewerRunEffect =
@@ -716,6 +716,30 @@ module Viewer =
     /// `runApp`/`runAppWithWindowBehavior` already have. The generated game template uses this when a
     /// `--window-*` flag is supplied and `runAppWithAudio` otherwise.
     val runAppWithWindowBehaviorAndAudio: options: ViewerOptions -> behavior: ViewerWindowBehaviorRequest -> audioSink: (AudioEffect list -> unit) -> host: GeneratedAppHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
+    /// Issue #535 — as `runApp`, but every `ViewerEffect.Persist` batch is handed to `persistenceSink`
+    /// instead of being discarded, and each `PersistenceOutcome` the sink returns is mapped by
+    /// `mapOutcome` and dispatched back into `update` as a message. That return path is the whole point:
+    /// it is what makes a `Load` answerable. The sink is yours — the framework owns no save location, and
+    /// `SaveSlot` is an opaque, product-owned name.
+    ///
+    /// DO NOT emit a persistence effect from the handler for a persistence outcome. The dispatch is
+    /// SYNCHRONOUS RECURSION, not the Elmish dispatch queue: it recurses on one stack and terminates in a
+    /// StackOverflowException, which .NET cannot catch — the process dies with no diagnostic.
+    val runAppWithPersistence:
+        options: ViewerOptions ->
+        persistenceSink: (PersistenceEffect list -> PersistenceOutcome list) ->
+        mapOutcome: (PersistenceOutcome -> 'msg option) ->
+        host: GeneratedAppHost<'model,'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
+    /// Issue #535 — sound AND saves. Without this pairing, adopting persistence would mean giving up
+    /// audio, which is the kind of forced choice that gets a seam worked around instead of used.
+    val runAppWithAudioAndPersistence:
+        options: ViewerOptions ->
+        audioSink: (AudioEffect list -> unit) ->
+        persistenceSink: (PersistenceEffect list -> PersistenceOutcome list) ->
+        mapOutcome: (PersistenceOutcome -> 'msg option) ->
+        host: GeneratedAppHost<'model,'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
     /// Feature 085 — pointer-aware, size-aware durable launch. Routes native pointer events
     /// and window resizes to the host and renders the size-aware `View`; additive to
     /// `runApp`/`runAppWithWindowBehavior`, which stay intact (FR-004/FR-006/FR-009).

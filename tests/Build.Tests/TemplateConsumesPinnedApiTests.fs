@@ -2286,7 +2286,36 @@ let templateConsumesPinnedApiTests =
         testCase "every union case and record field a SHIPPED mirror declares exists in the PINNED package" <| fun _ ->
             match Environment.GetEnvironmentVariable "FS_GG_SKIP_TEMPLATE_PINNED_API" with
             | null | "" ->
+                let uiPin = readAxis uiAxis
+
                 match pinnedSurface.Value with
+                // RELEASE-PENDING (#543) — the same window, and the same four bounds, the val-level rule
+                // above already defers on. This rule was added without them, so it `failtest`ed on the one
+                // commit it must not: a release PR NECESSARILY pins a version the feed does not carry yet
+                // (merging it is what publishes it), the restore fails NU1102 BY CONSTRUCTION, and this file
+                // sits in Build.Tests on the REQUIRED `Deterministic gate` with `enforce_admins` ON. So the
+                // gap did not merely shout — it wedged the merge button, and NO release could land at all.
+                // Found cutting 0.9.1 (#587), which is the first release since this rule shipped.
+                //
+                // Copied from the val rule, not approximated — each conjunct is load-bearing, and the
+                // reasons are stated at the head of this file: ONLY an NU1102 that names the pinned
+                // FS.GG.UI.* packages (any other error is what this test exists to catch), ONLY the
+                // $(FsGgUiVersion) axis (FS.GG.Audio ships from another repo, where a bump HERE publishes
+                // nothing — an unpublished Audio pin is a real defect even on the commit that bumped it),
+                // ONLY when THIS commit bumped it (a pin nobody bumped that the feed lacks is drift), and
+                // NEVER in the release lane (there, the packages are DUE and a missing one is drift).
+                | Error why when failedOnlyOnUnpublishedUiPin why uiPin && not releaseLane ->
+                    match bumpedInCommitUnderTest packagesPropsRel uiAxis with
+                    | Ok true ->
+                        skiptest
+                            $"RELEASE-PENDING: this commit bumps $({uiAxis}) to {uiPin}, which the feed does \
+                              not carry yet — merging it is what publishes it. The pinned surface cannot be \
+                              read, so the case-vs-pin rule is DEFERRED to the publish; it is NOT passing. \
+                              (A mirror may legitimately declare a case that only {uiPin} will export — \
+                              `ViewerEffect.Persist` is exactly that — which is why it cannot be judged \
+                              here.)\n\n{why}"
+                    | Ok false -> failtest why
+                    | Error e -> failtest $"{why}\n\ncould not decide whether this commit bumped the pin: {e}"
                 | Error why -> failtest why
                 | Ok(_, pinnedTypes) ->
                     // The oracle must actually KNOW about types, or this rule excuses everything while

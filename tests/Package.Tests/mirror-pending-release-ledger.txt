@@ -74,16 +74,15 @@
 #         M-MIR key its type map on (name, arity) in the first place.
 
 # ---------------------------------------------------------------------------------------------------
-# `ViewerEffect.Persist` — the case #594 was filed for, retired by FS.GG.Rendering#587.
+# EMPTY. `SkiaViewer::ViewerEffect.Persist @ 0.9.0 #587` was the only entry, and FS.GG.UI 0.9.1 (#587) is
+# the release that retired it: the pin now names a package that EXPORTS `Persist`, so the omission it
+# excused is no longer honest — a product can construct and match the case. P-PEND/PIN is what forced the
+# judgement (a bump reds every line); the answer was "the new pin has it", so the line is deleted and
+# M-MIR/TYPE demands the case back in the mirror, which is where it now is.
 #
-# #535 added `Persist of effects: PersistenceEffect list` to `src/SkiaViewer`'s `ViewerEffect`: the pure
-# save/load seam, realized by `Viewer.runAppWithPersistence`. Published FS.GG.UI.SkiaViewer 0.9.0 has
-# neither. The mirror carried the case anyway — it had no choice — under a prose caveat telling the reader
-# they could not bind it, which is not a fix: the shipped contract still declared a member of a closed type
-# that a product on the pin cannot construct or match.
+# Its counterpart in `tests/Build.Tests/pinned-api-doc-ledger.txt`
+# (`SkiaViewer.fsi::Viewer.runAppWithPersistence`, #587) was deleted in the same commit, as that file said
+# it must be: one release, both sides of one debt.
 #
-# The entry point is ledgered on the OTHER side of the same debt, and to the same creditor:
-# `pinned-api-doc-ledger.txt` carries `SkiaViewer.fsi::Viewer.runAppWithPersistence` (#587). One release
-# retires both lines. Delete them together.
+# The ledger stays, empty, for the next member that lands on `main` ahead of its release.
 # ---------------------------------------------------------------------------------------------------
-SkiaViewer::ViewerEffect.Persist @ 0.9.0 #587
