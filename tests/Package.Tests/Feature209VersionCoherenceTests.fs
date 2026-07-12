@@ -497,6 +497,45 @@ let feature209VersionCoherenceTests =
                 "…nor after the last (nuget.org dual-publish, ADR-0012)"
         }
 
+        // #517 — THE CLASS: a release must not be able to red `main` after the fact.
+        //
+        // A committed, derived artifact whose inputs live OUTSIDE its commit is invalidated by the act of
+        // cutting a tag, and there is no commit to blame. #515 was the unlucky draw — the Deterministic
+        // gate is REQUIRED, so `main` went red and NOTHING IN THE REPO COULD MERGE, discovered one PR at a
+        // time by five separate workers. #514 made `version-coherence.md` pure so it cannot happen to THAT
+        // artifact again; this asserts the structural guard that stops the class returning via a NEW one.
+        //
+        // `release-tags.yml` now cuts the tags LOCALLY, re-derives the committed artifacts against the
+        // post-cut world, and refuses to push if any of them moved. What makes that load-bearing is its
+        // POSITION: the window is unclosable from the other end — `main` requires this very gate with
+        // `enforce_admins`, so the workflow cannot push a repair commit to `main` for a red it caused, and
+        // a check placed after `git push origin <tag>` cannot un-push it. Assert the order, exactly as the
+        // `publish-packages` binding test above does.
+        test "release-tags.yml: a tag cut that dirties a committed artifact fails the release, before any push" {
+            let yml = File.ReadAllText(repo ".github/workflows/release-tags.yml")
+            let idx (needle: string) = yml.IndexOf(needle, StringComparison.Ordinal)
+
+            let regenerate = idx "re-deriving committed artifacts against the post-cut tag set"
+            Expect.isGreaterThan regenerate -1
+                "the cut must re-derive the committed artifacts against the tag set it just created (#517)"
+
+            let check = idx "git status --porcelain --untracked-files=no"
+            Expect.isGreaterThan check regenerate
+                "…and read the diff AFTER regenerating them, or it is asserting nothing"
+
+            // THE ORDER. A push cannot be taken back; the only moment the damage is preventable is before it.
+            let firstPush = idx "git push origin \"$t\""
+            Expect.isGreaterThan firstPush -1 "the cut still pushes the tags"
+            Expect.isGreaterThan firstPush check
+                "the artifact check must run BEFORE the first tag push — after it, main is already red and this workflow cannot repair it (main requires the Deterministic gate with enforce_admins)"
+
+            // And it must actually FAIL the release, not merely warn: a red that does not stop the release
+            // is the always-red advisory this repo already knows trains everyone to ignore it (#506).
+            let failure = yml.Substring(check)
+            Expect.stringContains failure "exit 1"
+                "a dirtied artifact must fail the release — warning and pushing anyway is how #515 happened"
+        }
+
         // US2 / FR-003/004 — BOM token + bracket + member parity (policy-independent, structural).
         test "BOM: single [$version$] token, exact bracket, B.ids == P.members" {
             let deps = bomDeps ()
