@@ -121,9 +121,17 @@ let restoreLockTests =
                 "Directory.Build.local.props must disable the SDK's implicit library-packs restore source"
         }
 
+        // 482 — the locked restore has ONE definition now, the .github/actions/locked-restore
+        // composite action, so gate.yml `uses:` it instead of spelling the flags inline. The 186
+        // invariant is unchanged; only its home moved, which is why this reads the action. The gate
+        // is still asserted to route through it: a definition nobody invokes would satisfy the flag
+        // check below while the gate quietly restored warm.
         test "the gate restores against the committed nuget.config" {
             let gate = File.ReadAllText(repoPath ".github/workflows/gate.yml")
-            Expect.stringContains gate "--locked-mode --configfile nuget.config"
-                "gate.yml's locked restore must name the committed config, so the pinned sources are intentional rather than inherited"
+            Expect.stringContains gate "uses: ./.github/actions/locked-restore"
+                "gate.yml must run its restore through the locked-restore action, or the cold locked restore is defined but never reached"
+            let action = File.ReadAllText(repoPath ".github/actions/locked-restore/action.yml")
+            Expect.stringContains action "--locked-mode --configfile nuget.config"
+                "the locked restore must name the committed config, so the pinned sources are intentional rather than inherited"
         }
     ]
