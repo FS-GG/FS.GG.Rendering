@@ -516,6 +516,16 @@ type ViewerRunMsg =
     | TimeoutRun
 
 /// Public contract type exposed by this FS.GG.UI package.
+///
+/// PENDING RELEASE — the framework's `ViewerEffect` has one case more than this: `Persist of effects:
+/// PersistenceEffect list` (#535), the save/load seam realized by `Viewer.runAppWithPersistence`. It is
+/// NOT on the `FS.GG.UI.SkiaViewer` your product pins, so you cannot bind it yet, and it is omitted here
+/// rather than advertised: a case you cannot construct or match is a build error waiting to be copied
+/// (#550). It arrives with the next framework release, and this mirror grows it on that day — the
+/// omission is declared, and checked, in `tests/Package.Tests/mirror-pending-release-ledger.txt` (#594).
+///
+/// Until then a product records its own persistence requests with `Persistence.interpret` and writes its
+/// own backend, exactly as before. That is the whole of the difference; every case below is bindable.
 type ViewerEffect =
     | OpenWindow of title: string * size: Size
     | ApplyWindowOptions of ViewerWindowBehaviorRequest
@@ -536,24 +546,6 @@ type ViewerEffect =
     /// batch to the caller-supplied sink; `runApp` and the evidence paths discard it (a viewer
     /// owns no audio device). Effects within one batch are played in list order.
     | PlayAudio of effects: AudioEffect list
-    /// Issue #535 — a batch of save/load requests a product's `update` emitted, in dispatch order.
-    /// Pure data: no file handle, no stream, no closure.
-    ///
-    /// Only `Viewer.runAppWithPersistence` realizes it — by handing the batch to a caller-supplied sink
-    /// and dispatching each `PersistenceOutcome` the sink returns back into `update` as a message, so a
-    /// `Load` is finally answerable. `runApp` and `runAppWithAudio` discard it: a viewer owns no save
-    /// location, and inventing one would be worse than owning none.
-    ///
-    /// NOTE — this case is NEWER than the `FS.GG.UI.SkiaViewer` your product pins, so you cannot bind it
-    /// yet. It arrives with the next framework release. Until then a product records its requests with
-    /// `Persistence.interpret` and writes its own backend, exactly as before.
-    ///
-    /// `interpret`, NOT `interpretRecordOnly` (#550, and #598 for why this line survived it). The honest
-    /// name is coming, but it is not on the package you pin: published FS.GG.UI.Canvas 0.9.0 exports
-    /// `interpret` and does not export `interpretRecordOnly`, and the `[<Obsolete>]` that makes `interpret`
-    /// look wrong on `main` is itself unreleased. Naming the unreleased spelling here handed the reader an
-    /// escape hatch as unbindable as the case it escapes — both halves of the advice a build error.
-    | Persist of effects: PersistenceEffect list
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ViewerRunEffect =

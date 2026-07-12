@@ -1,0 +1,89 @@
+# mirror-pending-release-ledger — members a bundled mirror deliberately OMITS because the pin has
+# not shipped them yet (FS.GG.Rendering#594).
+#
+# THE CONTRADICTION THIS RESOLVES. Two of this repo's rules could not both hold.
+#
+#   * #550's rule — a shipped template doc must not name a symbol absent from the `FS.GG.UI.*` version a
+#     scaffolded product restores ($(FsGgUiVersion), template/base/Directory.Packages.props). A reader who
+#     copies the block gets a hard build error.
+#   * M-MIR/TYPE — every type a bundled mirror declares carries its src original's exact member set,
+#     MEMBER FOR MEMBER (tests/Package.Tests/ApiSurfaceMirrorTests.fs).
+#
+# Between a feature landing on `main` and the release that publishes it, `src/` is AHEAD of the pin. So for
+# any mirrored type that GROWS, M-MIR/TYPE compelled the mirror to declare a member the pinned package does
+# not have — manufacturing the very bug #550 was filed to fix. #535's `ViewerEffect.Persist` is the instance
+# that proved it: the gate could not be satisfied and the doc kept honest at the same time.
+#
+# WHY A VAL COULD WAIT AND A CASE COULD NOT. The asymmetry is exact, and it is the reason this file exists
+# rather than a one-line relaxation. M-MIR/VAL is a SUBSET rule — a mirror MAY omit a val, which is how #550
+# was fixed at all (leave `interpretRecordOnly` out until it ships). M-MIR/TYPE is an EQUALITY rule, because
+# a record or a DU is CLOSED: a `RolePalette` taught without `Mode` cannot be constructed, a `SceneNode`
+# taught without `GlyphRun` cannot be matched exhaustively. Curating a type's members is not curation, it is
+# a lie about its shape. So a FUNCTION can wait for its release by simply being absent; a UNION CASE cannot.
+# There was no way to say "this member arrives next release" — so the gate said "declare it now" instead.
+#
+# WHAT AN ENTRY MEANS. Exactly this, and it is three claims, not one:
+#   1. `src/` declares the member.                      (it is real, and it is coming)
+#   2. The PINNED package does not export it.           (a product cannot bind it today)
+#   3. The mirror therefore OMITS it, deliberately.     (the shipped doc stays honest)
+# M-MIR/TYPE honours the omission. Nothing else about the type is relaxed: a member the mirror teaches that
+# src does not have is still drift, and a member missing WITHOUT an entry here is still drift.
+#
+# AN ENTRY IS NOT AN EXCUSE — IT IS A DEBT, AND IT NAMES ITS CREDITOR. Every line carries the issue that
+# retires it (the release that publishes the member). Same idiom, same reason, as the doc-vs-pin rule's
+# `tests/Build.Tests/pinned-api-doc-ledger.txt` and M-MIR's own `knownDrift`.
+#
+# IT IS A RATCHET, AND THE PIN STAMP IS WHAT WINDS IT. Three rules keep it shrinking, all asserted:
+#   * P-PEND/SRC   src still declares the member         -> else the feature was reverted or renamed.
+#                                                           The entry is a PHANTOM. Delete the line.
+#   * P-PEND/OMIT  the mirror does NOT declare it        -> else the entry excuses nothing and the doc is
+#                                                           back to teaching an unbindable member. Red.
+#   * P-PEND/PIN   the stamp equals $(FsGgUiVersion)     -> a PIN BUMP IS A RELEASE, and a release is the
+#                                                           only thing that can retire an entry here. So a
+#                                                           bump reds EVERY line, forcing each to be judged
+#                                                           afresh: if the new pin exports the member, delete
+#                                                           the line and let M-MIR/TYPE demand the case back;
+#                                                           if it genuinely still does not, re-stamp — a
+#                                                           deliberate act, with a diff, that someone reviews.
+#
+# The pin stamp is the load-bearing half, and it is the M-PROV idiom (a mirror records the version it was
+# copied from, and that version must equal the pin). Without it this file could ROT SILENTLY in the one
+# direction the offline gate cannot otherwise see: the release lands, the member becomes bindable, and the
+# mirror goes on omitting it forever with M-MIR/TYPE green — a doc that under-teaches, which is quieter than
+# #550's bug but is still the mirror lying about the shape of a closed type.
+#
+# WHAT THIS FILE CANNOT CHECK, AND WHO CAN. Claim 2 — "the pinned package does not export it" — is not
+# checkable offline: this repo has no snapshot of the published surface, and the mirrors are frozen against
+# `src/`, which is the side that is ahead. It is asserted by CONSTRUCTION here (the stamp says which pin was
+# judged, and a bump forces a re-judgement) and it is checkable for real only where the network probe already
+# lives — `tests/Build.Tests/TemplateConsumesPinnedApiTests.fs` (#589), which restores the pinned packages and
+# compiles against them. Its extractor reads `Module.member` and a DU case is neither, so a case is invisible
+# to the pin in BOTH directions; holding a ledgered case against the pin there is the natural next turn of
+# this screw. It is not done here, and FS.GG.Rendering#611 tracks it. Do not read an entry as proof the pin
+# lacks the member — read it as a declaration that somebody judged so, against the stamped pin.
+#
+# FORMAT: <mirror dir>::<Type>.<Member> @ <pin the omission was judged against> #<issue that retires it>
+#         (one per line; `#` comments and blanks ignored; a line that does not parse is a HARD FAIL, never
+#          a silent skip — "nothing to check" and "checked, and it's fine" must not share an exit code.)
+#
+#         A GENERIC TYPE NAMES ITS ARITY: `<Type><n>`, e.g. `SkiaViewer::ViewerEffect<1>.Foo`. A bare name
+#         means arity 0. This is not ceremony — a type's identity here is its name AND its generic arity, and
+#         `src/SkiaViewer` genuinely declares TWO types called `ViewerEffect` (the mirrored one, and an
+#         unrelated `ViewerEffect<'msg>` in Host/Diagnostics.fsi). Keyed on the bare name they merge, and an
+#         entry written for one would silently excuse an omission from the other — the same trap that made
+#         M-MIR key its type map on (name, arity) in the first place.
+
+# ---------------------------------------------------------------------------------------------------
+# `ViewerEffect.Persist` — the case #594 was filed for, retired by FS.GG.Rendering#587.
+#
+# #535 added `Persist of effects: PersistenceEffect list` to `src/SkiaViewer`'s `ViewerEffect`: the pure
+# save/load seam, realized by `Viewer.runAppWithPersistence`. Published FS.GG.UI.SkiaViewer 0.9.0 has
+# neither. The mirror carried the case anyway — it had no choice — under a prose caveat telling the reader
+# they could not bind it, which is not a fix: the shipped contract still declared a member of a closed type
+# that a product on the pin cannot construct or match.
+#
+# The entry point is ledgered on the OTHER side of the same debt, and to the same creditor:
+# `pinned-api-doc-ledger.txt` carries `SkiaViewer.fsi::Viewer.runAppWithPersistence` (#587). One release
+# retires both lines. Delete them together.
+# ---------------------------------------------------------------------------------------------------
+SkiaViewer::ViewerEffect.Persist @ 0.9.0 #587
