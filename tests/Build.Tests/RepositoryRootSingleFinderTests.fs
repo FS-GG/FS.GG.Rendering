@@ -7,14 +7,20 @@ open FS.GG.TestSupport
 
 // #700 — the gate that makes `RepositoryRoot`'s central claim CHECKABLE rather than merely asserted.
 //
-// `tests/TestSupport/RepositoryRoot.fs` calls itself "the single shared repository-root finder for
-// every test/harness project". That sentence was FALSE for as long as it existed. Until #699 gave it
-// the ProjectReference, `tests/Build.Tests` could not even SEE TestSupport — so it hand-rolled the
-// pre-refactor walk instead, and #699 landing the reference did not retract the five copies already
-// written. All five were byte-identical, and all five disagreed with the shared finder on the marker
-// set: `RepositoryRoot.find` accepts any `*.sln`, any `*.slnx`, or `build.fsx`; the hand-rolled walk
+// `tests/TestSupport/RepositoryRoot.fs` used to call itself "the single shared repository-root finder
+// for every test/harness project". That sentence was FALSE twice over, and #725 has since narrowed it
+// to what it can actually cover ("every project under `tests/`") — so do not go looking for the old
+// wording; look for what each half of it got wrong.
+//
+// It was false about SINGLE, which is what this gate is for. Until #699 gave it the ProjectReference,
+// `tests/Build.Tests` could not even SEE TestSupport — so it hand-rolled the pre-refactor walk
+// instead, and #699 landing the reference did not retract the five copies already written. All five
+// were byte-identical, and all five disagreed with the shared finder on the marker set:
+// `RepositoryRoot.find` accepts any `*.sln`, any `*.slnx`, or `build.fsx`; the hand-rolled walk
 // accepted only the literal name `FS.GG.Rendering.slnx`. They resolved to the same directory purely
 // because this repo owns exactly one solution file and it happens to carry that name.
+//
+// It was also false about EVERY, which is #725 and the SCOPE note at the bottom of this header.
 //
 // The failure that mattered was the QUIET one. A hand-rolled walk fails loud when it finds NOTHING
 // (`failwith`), but it cannot fail loud about finding the WRONG root — it would simply resolve every
@@ -37,8 +43,24 @@ open FS.GG.TestSupport
 // SCOPE: `tests/`. Not `samples/**/*.Tests`, and that is deliberate rather than an oversight — the
 // sample suites consume the PUBLISHED packages (`PackageReference FS.GG.UI.Controls`), not this repo's
 // projects, so they structurally cannot reference TestSupport and cannot consume the shared finder.
-// One of them does hand-roll an ancestor walk (samples/SampleApps/SampleApps.Tests), but it hunts a
-// marker FILE rather than the repo root, so it is a different subject; it is filed separately.
+// A ProjectReference to "fix" that would puncture the shadowing isolation those suites exist to prove.
+//
+// #725 closed the one hand-rolled walk that used to live out there (samples/SampleApps/SampleApps.Tests
+// ascended from the test binary hunting a `coverage-backlog.md`). It is gone — MSBuild now copies that
+// file next to the binary, so the sample needs no finder at all rather than needing a second one. No
+// sample hand-rolls a walk today.
+//
+// DO NOT SIMPLY POINT THE CORPUS AT `samples/` TO KEEP IT THAT WAY. It would go red immediately, on
+// four HONEST lines. `ascendsTheTree` is an over-approximation: it fires on `Directory.GetParent`
+// anywhere, and cannot tell a repeated ascent from a single-step `Directory.GetParent(file)` — plain
+// dirname. Under `tests/` that costs nothing, because nothing there happens to take a dirname that way.
+// `samples/SecondAntShowcase/SecondAntShowcase.Tests` does, four times (Feature173LiveResponsiveness-
+// ArtifactTests, Feature174RenderLagFixtures, Feature174ResponsivenessBudgetTests), to get the run
+// directory holding a summary file it already located. Those are not walks and must not be flagged.
+// Widening the corpus therefore means first sharpening the signal from "names an ascent token" to
+// "ascends REPEATEDLY" — a walk is an ascent inside a loop or a `let rec`, which is what both the real
+// walks had and what dirname never does. That is a real change to the detector, not a corpus edit, and
+// it is not this gate's current subject.
 
 let private repoRoot = RepositoryRoot.value
 
