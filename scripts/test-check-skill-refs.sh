@@ -279,7 +279,7 @@ The design doc's "#4242 LOS bug" is the one to read first.
 MD
 run
 expect_rc 0 'prose-ok excuses the bare ref'
-expect_out_has 'bare #N ref(s); every one is marked prose-ok' 'states the subject it excused'
+expect_out_has 'bare #N ref(s) in published bodies; every one is marked prose-ok' 'states the subject it excused — and WHICH bodies it is a claim about (#698)'
 
 case_start '§3 a prose-ok marker that excuses nothing is dead config'
 fixture
@@ -952,6 +952,63 @@ expect_rc 0 'green'
 expect_out_has 'skills published' 'names the published subject'
 expect_out_has 'repo-internal body/bodies' 'and names the repo subject'
 expect_out_has '.claude/skills/' 'and the vocabulary it judged the second one against'
+
+# ── § 7.4  the SCOPED run — the one gate.yml actually makes on every PR ─────────────────────────
+
+case_start '§7 a --changed run SEES a repo body — the link scope is the SUBJECT, not the manifest'
+# THE REGRESSION THIS SECTION EXISTS FOR, and it was live in this very change until a scoped run was
+# tried by hand. `link_md_files` intersected the diff with the MANIFEST's bodies — correct while the
+# manifest WAS the subject, and silently wrong the moment it stopped being. A repo body is not in the
+# manifest, so it was dropped from the link scope; and the link half is the ONLY half that is scoped.
+# So under `--changed` — which is what gate.yml runs on every PR — the repo surface's links were
+# resolved by NOBODY, and the gate reported green having examined none of them, on precisely the diffs
+# that touched them.
+#
+# It is invisible from the full sweep, where `link_md_files` falls through to the whole tree and
+# everything looks fine. Only a SCOPED run over a REPO body can state it. That is this case.
+fixture
+skill fs-gg-alpha <<'MD'
+# alpha
+MD
+repo_skill Symbology <<'MD'
+# Symbology
+Nothing yet.
+MD
+git_init
+BASE=$(git_head)
+repo_skill Symbology <<'MD'
+# Symbology
+They filed FS.GG.Rendering#4242 rather than working around it.
+MD
+git_commit 'touch exactly one REPO body'
+issue 'FS-GG/FS.GG.Rendering#4242' closed
+run --changed "$BASE"
+expect_rc 1 'the stale link in the repo body IS resolved under a scoped run'
+expect_out_has 'stale link' 'and reported — not skipped for not being in the manifest'
+expect_out_has 'src/Symbology' 'in the repo body the diff touched'
+
+case_start '§7 ...and a scoped run over a repo body resolves its BARE #N too'
+# The other half of the same scope. A repo body's bare `#N` is promoted into the LINK half (§ 3's
+# inversion), so it inherits the link half's scoping — and would inherit its blindness too.
+fixture
+skill fs-gg-alpha <<'MD'
+# alpha
+MD
+repo_skill Diagnostics <<'MD'
+# Diagnostics
+Nothing yet.
+MD
+git_init
+BASE=$(git_head)
+repo_skill Diagnostics <<'MD'
+# Diagnostics
+The remaining gap is tracked in #4242.
+MD
+git_commit 'introduce a bare ref in a repo body'
+issue 'FS-GG/FS.GG.Rendering#4242' closed
+run --changed "$BASE"
+expect_rc 1 'a bare ref in a touched repo body is resolved, and its issue is closed'
+expect_out_has 'stale link' 'reported as § 2 decay, under the scope, exactly as an explicit link would be'
 
 case_start '§7 a tree with NO repo bare refs exits 0 WITH output — never a silent exit 1'
 # A regression pin for a real bug in this change, and the ugliest kind. Under `set -o pipefail` a

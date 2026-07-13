@@ -330,6 +330,14 @@ while (($#)); do
       echo "  (no args)          full sweep: every issue/PR link in the tree"
       echo "  --changed <ref>    link half only for skill bodies changed since <ref>"
       echo "                     ([[refs]] and bare #N are hermetic and always sweep the tree)"
+      echo
+      echo "TWO SUBJECTS, always both — there is no flag to narrow this (see § 0b):"
+      echo "  PUBLISHED  the 21 bodies the skill manifest ships into a product."
+      echo "             A [[ref]] resolves against the MANIFEST; a bare #N is REJECTED (it would"
+      echo "             point at the reader's own tracker once materialized)."
+      echo "  REPO       src/*/skill/SKILL.md + template/product-skills/README.md — they ship"
+      echo "             nowhere, so their reader is standing HERE. A [[ref]] resolves against"
+      echo "             .claude/skills/; a bare #N is RESOLVED against this repo, not rejected."
       exit 0 ;;
     *) echo "check-skill-refs: unknown argument '$1'" >&2; exit 2 ;;
   esac
@@ -826,15 +834,28 @@ if [[ -n $CHANGED_BASE ]]; then
   fi
 fi
 
-# Under `--changed`, intersect the diff with the manifest's bodies. The `-f` test is not enough on its
-# own: a diff may touch any `.md` under a body dir (a README beside a SKILL.md), and only the BODIES
-# are this gate's subject — so filter to paths the manifest actually supplies, not merely to paths
-# that changed under the right directory.
+# Under `--changed`, intersect the diff with THE SUBJECT. The `-f` test is not enough on its own: a diff
+# may touch any `.md` under a body dir (a README beside a SKILL.md), and only the BODIES are this gate's
+# subject — so filter to paths the subject actually contains, not merely to paths that changed under the
+# right directory.
+#
+# `all_body_paths`, NOT `body_paths` (#698). This filtered against the MANIFEST's bodies alone, and it
+# had to change with the subject: a repo-internal body is not in the manifest, so it would be dropped
+# here — and the link half is EXACTLY the half that is scoped, so under `--changed` (which is what
+# gate.yml runs on every PR) the repo surface's links would be checked by NOBODY. The gate would report
+# green having examined none of them, on precisely the diffs that touched them. That is the
+# `.github#416` shape this whole change exists to close, re-created inside its own fix, and it is
+# invisible from the full sweep — where `link_md_files` falls through to `md_files` and everything
+# looks fine. § 7 pins it with a scoped run over a repo body.
 link_md_files() {
   if [[ $link_scope == diff ]]; then
     git diff --name-only -z --diff-filter=ACMR "$CHANGED_BASE...HEAD" -- "${body_dirs[@]}" \
       | while IFS= read -r -d '' f; do
-          [[ -f $f ]] && grep -qxF -- "$f" <<<"$body_paths" && printf '%s\0' "$f"
+          # `if`, not an `&&` chain. The while's status is its LAST command's, so a final changed file
+          # that is NOT a body leaves this returning 1 — and under `pipefail` that reddens every
+          # pipeline this feeds, aborting an assignment downstream and killing the script with a bare
+          # `exit 1` and no output at all. The filter's verdict on the last file is not the scan's.
+          if [[ -f $f ]] && grep -qxF -- "$f" <<<"$all_body_paths"; then printf '%s\0' "$f"; fi
         done
   else
     md_files
@@ -1238,8 +1259,14 @@ fi
 # Said out loud even at zero. § 3 is the half that still runs when the link half is skipped, so a
 # silent pass here is indistinguishable from a check that did not happen — and "I found nothing" and
 # "I did not look" being the same output is the defect this gate keeps being extended to kill.
+#
+# AND IT NAMES ITS SUBJECT, which since #698 is narrower than the tree: § 3's REJECTION applies to the
+# PUBLISHED bodies only. A repo-internal body's bare `#N` is not a defect to count here — it is a link,
+# and it was resolved by the link half above (§ 3's inversion note). Saying "no bare #N refs" flat would
+# be a claim about a subject this line does not have, which is the exact error the line exists to
+# prevent. Name the subject, or say nothing you cannot stand behind.
 if ((n_bare > 0)); then
-  echo "check-skill-refs: ok — $n_bare bare #N ref(s); every one is marked prose-ok."
+  echo "check-skill-refs: ok — $n_bare bare #N ref(s) in published bodies; every one is marked prose-ok."
 else
-  echo "check-skill-refs: ok — no bare #N refs."
+  echo "check-skill-refs: ok — no bare #N refs in published bodies (in a repo-internal body a bare #N is a link, and was resolved as one)."
 fi
