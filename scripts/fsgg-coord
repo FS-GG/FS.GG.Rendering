@@ -117,6 +117,19 @@
 #                                             # empty log exits 3, NOT 0: a shadow that never ran
 #                                             # reports zero divergence, and zero divergence is exactly
 #                                             # what success looks like (#266).
+#   fsgg-coord divergence --publish           # send YOUR evidence to the fleet ledger (#634). One
+#                                             # summary per (worker, day, engine), rewritten in place —
+#                                             # over REST, so it never touches the GraphQL budget. Your
+#                                             # local log lives in a CACHE dir on ONE machine; until it
+#                                             # is published it is not evidence, and the three-day clock
+#                                             # does not move for it. Run it when your loop is done.
+#   fsgg-coord divergence --fleet             # THE cut-over gate (ADR-0034 §5). Folds the whole ledger
+#                                             # in the typed core and answers the one question the flip
+#                                             # is conditional on: has the shadow agreed with bash,
+#                                             # across the LIVE FLEET, on THIS engine build, for three
+#                                             # consecutive days? 0 green · 1 they disagreed · 3 no
+#                                             # verdict (absent, thin, one-worker, or another build's
+#                                             # evidence). An empty ledger is NEVER green.
 #
 # EXIT CODES: 0 ok · 1 error · 3 the issue is not on the board · 75 (EX_RATE) the GraphQL budget is
 # exhausted — TRY AGAIN LATER. A worker loop must treat 75 as "back off until the reset", never as a
@@ -3809,9 +3822,43 @@ shadow_log() {  # <json object on stdin>
   cat >>"$DIVERGENCE_LOG" 2>/dev/null || true
 }
 
+# WHICH BUILD PRODUCED THIS EVIDENCE (#634). Agreement proved by 0.1.0 says NOTHING about 0.2.0, and the
+# shadow exists to prove the build we are about to trust — so every row is stamped, `divergence --fleet`
+# counts only the rows for the build under test, and republishing the engine legitimately restarts the
+# three-day clock. Resolved ONCE per process: this runs in a worker's hot scheduling loop, and an
+# `--version` fork per invocation would be a real cost for a string that cannot change mid-run.
+ENGINE_VERSION=""
+engine_version() {
+  [ -n "$ENGINE_VERSION" ] && { printf '%s' "$ENGINE_VERSION"; return 0; }
+  engine_resolve || return 1
+  ENGINE_VERSION="$("${ENGINE_ARGV[@]}" --version 2>/dev/null | head -1 | tr -d '[:space:]')"
+  # An engine that cannot say what it is still gets recorded — as `unknown`, which matches only ANOTHER
+  # engine that cannot say what it is. Refusing to log would lose the evidence; guessing a version would
+  # forge it. Neither is available, so name the gap.
+  [ -n "$ENGINE_VERSION" ] || ENGINE_VERSION="unknown"
+  printf '%s' "$ENGINE_VERSION"
+}
+
+# WHO PRODUCED IT (#634). The row did not carry this, so the fold could not have counted fleet members
+# even once the logs were collected: one worker's 500 runs and 500 workers' one run each rendered
+# IDENTICALLY, and "across the live fleet" is unanswerable from rows that do not say who wrote them.
+#
+# Never dies, and that matters: `worker` exits non-zero when it cannot derive an id, and the shadow may
+# not take a worker's item away over its own bookkeeping. An underivable id becomes `unknown-worker` —
+# which COLLAPSES every such machine onto one name in the quorum count, and so can only ever make the
+# criterion HARDER to meet. Fail closed, in the direction that costs evidence rather than invents it.
+shadow_worker() {
+  local w
+  w="$(worker 2>/dev/null)" || w=""
+  [ -n "$w" ] || w="unknown-worker"
+  printf '%s' "$w"
+}
+
 shadow_skip() {  # <reason>
   jq -c -n --arg ts "$(now_iso)" --arg reason "$1" --arg mode "$ENGINE_MODE" \
-    '{ts: $ts, mode: $mode, ran: false, reason: $reason}' 2>/dev/null | shadow_log
+    --arg worker "$(shadow_worker)" --arg engine "$(engine_version 2>/dev/null || echo none)" \
+    '{ts: $ts, mode: $mode, worker: $worker, engine: $engine, ran: false, reason: $reason}' \
+    2>/dev/null | shadow_log
 }
 
 # Compare the two engines, and CLASSIFY the difference — because the two kinds are not the same news.
@@ -3835,6 +3882,7 @@ shadow_compare() {  # $1=bash verdict NDJSON file  $2=engine decision JSON file 
     --slurpfile engine "$enginef" \
     --slurpfile bash_rows "$bashf" \
     --arg ts "$(now_iso)" --arg mode "$ENGINE_MODE" --arg repo "$repo" \
+    --arg worker "$(shadow_worker)" --arg engine "$(engine_version 2>/dev/null || echo none)" \
     --argjson extra "$SHADOW_EXTRA_READS" --argjson unobserved "$SHADOW_UNOBSERVED" '
     ($engine[0] // {}) as $e
     | ($bash_rows | map(select(. != null))) as $b
@@ -3867,7 +3915,7 @@ shadow_compare() {  # $1=bash verdict NDJSON file  $2=engine decision JSON file 
     # green: a confident agreement with an engine that had agreed to nothing. An id only one engine
     # ruled on was not compared; saying otherwise is the same lie as a shadow that never ran.
     | ( [ $ids[] | select($bmap[.] != null and $emap[.] != null) ] | length ) as $paired
-    | { ts: $ts, mode: $mode, repo: $repo, ran: true,
+    | { ts: $ts, mode: $mode, repo: $repo, worker: $worker, engine: $engine, ran: true,
         engineVerdict: ($e.verdict // "missing"),
         compared: $paired,
         extraReads: $extra,
@@ -4142,10 +4190,12 @@ divergence_cmd() {
   local json="" since=""
   while [ $# -gt 0 ]; do
     case "$1" in
-      --json)  json=1; shift ;;
-      --since) since="${2:?--since needs a value (an ISO timestamp)}"; shift 2 ;;
-      --clear) rm -f "$DIVERGENCE_LOG"; echo "fsgg-coord: cleared $DIVERGENCE_LOG"; return 0 ;;
-      *)       die "divergence: unknown argument '$1'." ;;
+      --json)    json=1; shift ;;
+      --since)   since="${2:?--since needs a value (an ISO timestamp)}"; shift 2 ;;
+      --clear)   rm -f "$DIVERGENCE_LOG"; echo "fsgg-coord: cleared $DIVERGENCE_LOG"; return 0 ;;
+      --publish) shift; divergence_publish "$@"; return $? ;;
+      --fleet)   shift; divergence_fleet "$@"; return $? ;;
+      *)         die "divergence: unknown argument '$1'." ;;
     esac
   done
 
@@ -4273,6 +4323,255 @@ divergence_cmd() {
   if [ "$final_unpaired" -gt 0 ]; then return 1; fi
   if [ "$final_outcome" -gt 0 ]; then return 1; fi
   return 0
+}
+
+# ==================================================================================================
+# THE FLEET LEDGER (#634) — where the shadow's evidence goes to become an ARGUMENT.
+# ==================================================================================================
+#
+# Everything above this line reports on ONE MACHINE'S log, in a DISPOSABLE CACHE DIRECTORY. That was
+# the whole of the evidence, and ADR-0034 §5 gates the cut-over on a sentence it cannot support:
+#
+#     "zero divergence across the LIVE FLEET for three consecutive days"
+#
+# A local log is not a fleet. Nothing collected it, nothing aggregated it, the rows did not say WHO
+# wrote them, and no code computed the criterion — so the flip would have been decided by a human
+# reading one laptop's counters over whatever window that cache happened to survive. CI was worse than
+# that: `touch-set-drift` shells out to this tool on a bare runner and its cache dies with the job, so
+# 100% of everything it ever observed was thrown away.
+#
+# The client already refuses to call an EMPTY log green. This is that same refusal, carried to the
+# three things a local log CANNOT see: a LOCAL log is not the FLEET, a CHATTY WORKER is not a QUORUM,
+# and agreement by a DIFFERENT BUILD is not agreement by this one.
+#
+# WHY AN ISSUE, AND WHY REST. The claim lock already works exactly this way, and the reason is the one
+# ADR-0034 gives for hosting the lock there: GraphQL is the first budget to die under fan-out, and a
+# lock — or a ledger — may never live on the budget that dies first. Issue comments are durable,
+# org-visible, and served by the 5,000-*requests*/hr REST budget. The hot scheduling loop pays NOTHING:
+# it still writes locally, and publishes ONE summary at the end.
+LEDGER_REPO="${FSGG_COORD_LEDGER_REPO:-FS-GG/.github}"
+LEDGER_ISSUE="${FSGG_COORD_LEDGER_ISSUE:-635}"
+DIVERGENCE_MARK='fsgg:divergence'
+FLEET_DAYS="${FSGG_COORD_FLEET_DAYS:-3}"
+FLEET_MIN_WORKERS="${FSGG_COORD_FLEET_MIN_WORKERS:-2}"
+
+# The marker grammar, in ONE place. Written by `--publish`, read by `--fleet`, and asserted by the
+# fixture — so a publisher and a reader cannot drift apart the way five startability predicates did.
+DIVERGENCE_MARKER_RE="^<!--\\s*fsgg:divergence\\s+worker=(?<w>[^\\s>]+)\\s+day=(?<d>[0-9]{4}-[0-9]{2}-[0-9]{2})\\s+engine=(?<e>[^\\s>]+)\\s+ran=(?<ran>[0-9]+)\\s+skipped=(?<sk>[0-9]+)\\s+compared=(?<c>[0-9]+)\\s+outcome=(?<o>[0-9]+)\\s+unpaired=(?<u>[0-9]+)\\s+engineRed=(?<er>[0-9]+)\\s+reason=(?<rs>[0-9]+)"
+
+# Fold the LOCAL log into one summary per (worker, engine, day).
+#
+# Grouped by WORKER as well as day, because the local log is not one worker's: the cache dir is SHARED
+# between the N agents on a box (that sharing is what keeps them inside one GraphQL budget, #418), so a
+# five-agent machine legitimately publishes five rows a day — and the quorum that then counts them is a
+# real one.
+#
+# Grouped by ENGINE too, so that a worker who upgrades mid-day does not silently blend evidence from
+# two builds into a single row that is true of neither.
+divergence_summaries() {  # -> JSONL, one summary per (worker, engine, day)
+  jq -c -s '
+    map(select(.ran))
+    | group_by([(.worker // "unknown-worker"), (.engine // "unknown"), (.ts[0:10])])
+    | map({ worker:   (.[0].worker // "unknown-worker"),
+            engine:   (.[0].engine // "unknown"),
+            day:      (.[0].ts[0:10]),
+            ran:      length,
+            compared: (map(.compared // 0)   | add),
+            outcome:  (map(.outcome // 0)    | add),
+            unpaired: (map(.unpaired // 0)   | add),
+            engineRed:(map(select((.engineVerdict // "green") != "green")) | length),
+            reason:   (map(.reason // 0)     | add) })
+    | .[]' 2>/dev/null
+}
+
+# `skipped` is counted SEPARATELY, and deliberately not inside the group above: a skipped run has no
+# engine (that is WHY it skipped), so grouping it by engine would invent a row for a build that never
+# ran. It is attributed to the worker and the day, and it is never agreement.
+divergence_skips_for() {  # $1=worker $2=day -> count
+  jq -s --arg w "$1" --arg d "$2" \
+    '[ .[] | select((.ran | not) and ((.worker // "unknown-worker") == $w) and (.ts[0:10] == $d)) ] | length' \
+    2>/dev/null <"$DIVERGENCE_LOG" || echo 0
+}
+
+divergence_publish() {
+  local dry=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --dry-run) dry=1; shift ;;
+      *) die "divergence --publish: unknown argument '$1'." ;;
+    esac
+  done
+
+  [ -s "$DIVERGENCE_LOG" ] || {
+    # Publishing nothing is not an error — a worker whose shadow never ran has nothing to say, and
+    # saying it loudly would be noise. But it is NOT success either: it contributes no evidence, and
+    # the clock does not move for it. Say so, and exit 3 like every other no-verdict in this tool.
+    echo "fsgg-coord: nothing to publish — the local divergence log is empty ($DIVERGENCE_LOG)." >&2
+    echo "  Your runs contributed NO evidence, so the three-day clock did not move. If you meant to" >&2
+    echo "  shadow, check that an engine resolves: fsgg-coord divergence  (and see ADR-0034 §5)." >&2
+    return 3
+  }
+
+  local o="${LEDGER_REPO%%/*}" r="${LEDGER_REPO##*/}"
+  local summaries; summaries="$(divergence_summaries <"$DIVERGENCE_LOG")" \
+    || die "divergence --publish: could not fold $DIVERGENCE_LOG."
+
+  [ -n "$summaries" ] || {
+    echo "fsgg-coord: the log holds only SKIPPED runs — the shadow never actually compared anything." >&2
+    echo "  That is not agreement, so there is nothing to publish and the clock did not move." >&2
+    return 3
+  }
+
+  # Read the ledger's existing markers ONCE, not once per row. A worker publishing three days of
+  # backlog must not pay three paginated reads for them.
+  local existing=""
+  if [ -z "$dry" ]; then
+    existing="$(issue_comments "$o" "$r" "$LEDGER_ISSUE")" \
+      || die "divergence --publish: cannot read the ledger ($LEDGER_REPO#$LEDGER_ISSUE) — refusing to post a duplicate row over evidence I could not see."
+  fi
+
+  local n=0
+  while IFS= read -r row; do
+    [ -n "$row" ] || continue
+    local w d e ran cmp out unp erd rsn skipped body id
+    w="$(jq -r '.worker'    <<<"$row")"; d="$(jq -r '.day'       <<<"$row")"
+    e="$(jq -r '.engine'    <<<"$row")"; ran="$(jq -r '.ran'     <<<"$row")"
+    cmp="$(jq -r '.compared'<<<"$row")"; out="$(jq -r '.outcome' <<<"$row")"
+    unp="$(jq -r '.unpaired'<<<"$row")"; erd="$(jq -r '.engineRed'<<<"$row")"
+    rsn="$(jq -r '.reason'  <<<"$row")"
+    skipped="$(divergence_skips_for "$w" "$d")"
+
+    body="$(printf '<!-- %s worker=%s day=%s engine=%s ran=%s skipped=%s compared=%s outcome=%s unpaired=%s engineRed=%s reason=%s -->\n' \
+      "$DIVERGENCE_MARK" "$w" "$d" "$e" "$ran" "$skipped" "$cmp" "$out" "$unp" "$erd" "$rsn")
+**$w** · $d · engine \`$e\`
+
+| ran | skipped | compared | outcome | unpaired | engineRed | reason |
+|----:|--------:|---------:|--------:|---------:|----------:|-------:|
+| $ran | $skipped | $cmp | **$out** | **$unp** | **$erd** | $rsn |
+
+\`compared\` is the unit of evidence: item-verdicts on which BOTH engines ruled. A run that compared
+nothing agrees with nothing. Read this ledger with \`fsgg-coord divergence --fleet\`, never by eye."
+
+    if [ -n "$dry" ]; then
+      printf '%s\n' "$body"; n=$((n + 1)); continue
+    fi
+
+    # IDEMPOTENT BY (worker, engine, day). A worker publishes many times a day — after every loop, in
+    # some harnesses — and appending would turn the ledger into a transcript that double-counts its own
+    # evidence. So the worker-day-engine row is REWRITTEN in place, and the ledger stays a set of facts
+    # rather than a log of them.
+    #
+    # The row is found by CAPTURING the marker and comparing the fields for EQUALITY — never by testing
+    # the body against a regex built out of the values. An engine version is `0.1.0`, and in a regex
+    # those dots match any character: `engine=0.1.0\s` would happily claim a row reading `engine=0x1x0`.
+    # A near-miss here does not fail loudly; it PATCHES SOMEBODY ELSE'S EVIDENCE, which is the one thing
+    # a ledger may never do.
+    id="$(jq -r --arg re "$DIVERGENCE_MARKER_RE" --arg w "$w" --arg d "$d" --arg e "$e" '
+      map(select(.body | test("^<!--\\s*fsgg:divergence\\s")))
+      | map({id: .id, m: ((.body | [capture($re)] | first) // null)})
+      | map(select(.m != null and .m.w == $w and .m.d == $d and .m.e == $e))
+      | (.[0].id // empty)' <<<"$existing" 2>/dev/null)" || id=""
+
+    if [ -n "$id" ]; then
+      patch_comment "$o" "$r" "$id" "$body" \
+        || die "divergence --publish: could not update the $w/$d row on the ledger."
+    else
+      post_comment "$o" "$r" "$LEDGER_ISSUE" "$body" >/dev/null \
+        || die "divergence --publish: could not post the $w/$d row to the ledger."
+    fi
+    n=$((n + 1))
+  done <<<"$summaries"
+
+  if [ -n "$dry" ]; then
+    echo "fsgg-coord: --dry-run — $n row(s) would be published to $LEDGER_REPO#$LEDGER_ISSUE." >&2
+  else
+    echo "fsgg-coord: published $n row(s) to the fleet ledger ($LEDGER_REPO#$LEDGER_ISSUE)."
+    echo "  Read the fleet's verdict with: fsgg-coord divergence --fleet"
+  fi
+  return 0
+}
+
+# Fold the LEDGER into ADR-0034 §5's cut-over verdict — in the ENGINE, which is the only place this
+# rule is allowed to exist. Bash reads (one paginated REST call); the typed core decides.
+divergence_fleet() {
+  local json="" want_engine="" days="$FLEET_DAYS" min_workers="$FLEET_MIN_WORKERS"
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --json)        json=1; shift ;;
+      --engine-version) want_engine="${2:?--engine-version needs a value}"; shift 2 ;;
+      --days)        days="${2:?--days needs a value}"; shift 2 ;;
+      --min-workers) min_workers="${2:?--min-workers needs a value}"; shift 2 ;;
+      *) die "divergence --fleet: unknown argument '$1'." ;;
+    esac
+  done
+
+  # THE VERDICT IS THE ENGINE'S, SO THERE MUST BE ONE. Computing "are the two engines agreeing?" with
+  # no engine present is the shape of the whole defect record: an answer produced by a thing that is
+  # not there. Refuse, and say how to fix it.
+  if ! engine_resolve; then
+    echo "fsgg-coord: no engine resolves, so the fleet verdict cannot be computed." >&2
+    echo "  The criterion is a function in the typed core, and the core is what is missing." >&2
+    echo "  Install it:  dotnet tool install -g FS.GG.Coord.Cli" >&2
+    return 3
+  fi
+
+  [ -n "$want_engine" ] || want_engine="$(engine_version)"
+
+  local o="${LEDGER_REPO%%/*}" r="${LEDGER_REPO##*/}"
+  local raw; raw="$(issue_comments "$o" "$r" "$LEDGER_ISSUE")" \
+    || die "divergence --fleet: cannot read the ledger ($LEDGER_REPO#$LEDGER_ISSUE) — refusing to compute a verdict over evidence I could not read."
+
+  # AN UNREADABLE MARKER IS NOT AN ABSENT ONE. A `fsgg:divergence` comment we cannot parse might be the
+  # one carrying the divergence, and dropping it would turn a broken publisher into a green fleet. So
+  # the two counts must agree, or there is no verdict. (This is #461's lesson — a failed scan reading as
+  # "nothing is claimed" — applied to the ledger before it can bite.)
+  local total parsed reports
+  total="$(jq '[ .[] | select(.body | test("^<!--\\s*fsgg:divergence\\s")) ] | length' <<<"$raw")"
+  reports="$(jq -c --arg re "$DIVERGENCE_MARKER_RE" '
+    map(select(.body | test("^<!--\\s*fsgg:divergence\\s")))
+    | map((.body | [capture($re)] | first) // null)
+    | map(select(. != null))
+    | map({ worker: .w, day: .d, engine: .e,
+            ran: (.ran | tonumber), skipped: (.sk | tonumber), compared: (.c | tonumber),
+            outcome: (.o | tonumber), unpaired: (.u | tonumber),
+            engineRed: (.er | tonumber), reason: (.rs | tonumber) })' <<<"$raw")" \
+    || die "divergence --fleet: could not parse the ledger's markers."
+  parsed="$(jq 'length' <<<"$reports")"
+
+  if [ "$total" -ne "$parsed" ]; then
+    echo "fsgg-coord: $((total - parsed)) of $total marker(s) on the ledger are UNREADABLE." >&2
+    echo "  One of them may be the one that diverged, so there is no verdict — an unparseable row is" >&2
+    echo "  not an absent one, and reading it as absent is how a failed scan becomes a green fleet." >&2
+    return 3
+  fi
+
+  local doc out rc=0
+  doc="$(jq -c -n --arg engine "$want_engine" --argjson days "$days" \
+    --argjson min "$min_workers" --arg today "$(date -u +%Y-%m-%d)" --argjson reports "$reports" \
+    '{schema: "fsgg.coord.ledger/1", engine: $engine, requiredDays: $days,
+      minWorkers: $min, today: $today, reports: $reports}')" \
+    || die "divergence --fleet: could not build the ledger document."
+
+  if [ -n "$json" ]; then
+    out="$(printf '%s' "$doc" | "${ENGINE_ARGV[@]}" fleet --json 2>/dev/null)" || rc=$?
+    printf '%s\n' "$out"
+  else
+    printf '%s' "$doc" | "${ENGINE_ARGV[@]}" fleet --text || rc=$?
+  fi
+
+  # TRANSLATE THE ENGINE'S CODES INTO THE CLIENT'S. They are deliberately different alphabets (the
+  # engine's `--help` says so), and collapsing them would be the last place left to lose a no-verdict.
+  #   engine 0 green      -> 0   the criterion is MET
+  #   engine 3 red        -> 1   the engines disagreed. The flip is blocked.
+  #   engine 4 no-verdict -> 3   we did not establish it. NEVER zero.
+  #   engine 1 error / 2 defect -> 3. A malformed ledger or a broken engine is not a clean fleet; it is
+  #                                   an answer we could not reach, which is exactly what 3 means here.
+  case "$rc" in
+    0) return 0 ;;
+    3) return 1 ;;
+    4) return 3 ;;
+    *) echo "fsgg-coord: the engine could not fold the ledger (exit $rc) — no verdict." >&2; return 3 ;;
+  esac
 }
 
 # ---- batch: THE scheduler. A maximal set of items that may run at once. --------------------------

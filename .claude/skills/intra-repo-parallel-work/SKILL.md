@@ -96,6 +96,18 @@ authoritative until that log has been clean across the live fleet for three cons
 log only fills where an engine exists. A worker without one contributes no evidence, and the clock
 does not move.
 
+**And when your loop is done, publish what it saw — your local log is not evidence until you do:**
+
+```sh
+fsgg-coord divergence --publish                # one command, at the END of your run
+fsgg-coord divergence --fleet                  # where the FLEET stands: 0 green · 1 red · 3 no verdict
+```
+
+The log lives in a *cache dir* on one machine, which nothing collects and which dies with your
+container. `--publish` sends a per-day summary to the fleet ledger over REST (no GraphQL budget, and
+never one comment per call). The criterion is about the **live fleet**, and a worker who shadows but
+never publishes has moved the clock exactly as far as one who never shadowed at all (#634).
+
 ```sh
 eval "$(scripts/fsgg-coord whoami --mint)"     # MINT one; never invent or copy one (#419, #551)
 scripts/fsgg-coord take --repo <this-repo>     # pick + claim the next SCHEDULABLE item, retrying a lost race
