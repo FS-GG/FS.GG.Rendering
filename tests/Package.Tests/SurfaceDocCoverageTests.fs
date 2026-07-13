@@ -219,7 +219,57 @@ let private skillsWithUntaggedFence =
 let private citesName (corpus: string) (name: string) =
     Regex.IsMatch(corpus, $@"(?<![\w']){Regex.Escape name}(?![\w'])")
 
-let private isDocumented (name: string) = citesName productSkillCode name
+/// The F# forms that BIND a name rather than cite one (#692). `let`/`and`/`use` with any modifier order, and
+/// `member` with an optional self-identifier — the shapes a skill's own example helper actually takes.
+let private bindsName (corpus: string) (name: string) =
+    let n = Regex.Escape name
+
+    Regex.IsMatch(
+        corpus,
+        $@"(?<![\w'])(?:let|and|use)\s+(?:rec\s+|mutable\s+|inline\s+|private\s+|internal\s+)*{n}(?![\w'])"
+        + $@"|(?<![\w'])member\s+(?:val\s+)?(?:[\w']+\.)?{n}(?![\w'])"
+    )
+
+/// A citation that names the module it comes from: `Scene.describe`, `FS.GG.UI.Scene.describe`. This is what
+/// reaches PAST a local binding of the same name, which is exactly what it is for.
+let private qualifiedCite (corpus: string) (name: string) =
+    Regex.IsMatch(corpus, $@"(?<![\w'])(?:[A-Z][\w']*\.)+{Regex.Escape name}(?![\w'])")
+
+/// Does THIS skill cite `name` as the shipped API? (#692 — the SAME-LANGUAGE homonym.)
+///
+/// #654 found that an English word credited a surface, and moved the corpus from prose to code. #664 found
+/// that a word in a `bash` fence still did, and restricted the corpus to F#-tagged fences. Both narrowed
+/// WHERE a match may come from. Neither changed what a match MEANS — so the homonym walked in one level
+/// further, in F# itself: a skill that **defines** `let describe` is not citing `Scene.describe`, and the
+/// matcher could not tell a binding site from a usage. The anti-rot rule then declared the (correct,
+/// BLESSED `vocabulary`) ledger line stale, and "the ledger only shrinks" made deleting it the only way to a
+/// green gate — a one-way door onto a fact that was still true (#692, and PR #691 walked through it).
+///
+/// SHADOWING IS THE RULE, because shadowing is the FACT. Once a skill writes `let visible = …`, every
+/// unqualified `visible` in that skill IS the local one — that is not a heuristic, it is what F# scoping
+/// says. So within a skill that binds the name, only a QUALIFIED citation (`Attr.visible`) reaches the API;
+/// an unqualified occurrence is the binding, or a use of it. A skill that does NOT bind the name is
+/// unchanged: a bare `` `respondsProofOf` `` in backticks still cites, which is what backticks mean.
+///
+/// PER SKILL, and that matters. The corpus is concatenated for the question "is this documented AT ALL", but
+/// shadowing is not a property of the concatenation — one skill's local helper must not silence ANOTHER
+/// skill's honest citation. `describe` is the live case: `fs-gg-persistence` binds `let describe` for an
+/// unrelated example, and `fs-gg-scene` writes `Scene.describe hud`. The first credits nothing; the second
+/// credits, and `describe` is documented — correctly, and for the first time actually because a skill
+/// documents it.
+///
+/// The weaker rule — "count occurrences, subtract definition sites" — is NOT enough, and the corpus proves
+/// it: `fs-gg-game-core` binds `let visible : Rect` and then uses `visible` on the next line inside its
+/// culling example, so occurrences (2) exceed definitions (1) and `Attr.visible` stays credited by a local
+/// rectangle in a skill about game simulation. Counting cannot see scope. Shadowing can.
+let private skillCites (code: string) (name: string) =
+    if bindsName code name then
+        qualifiedCite code name
+    else
+        citesName code name
+
+let private isDocumented (name: string) =
+    skillCode |> List.exists (fun (_, c) -> skillCites c.Code name)
 
 /// The declared exemptions: `<category>  <name>` lines, `#` comments and blanks ignored.
 let private ledger =
@@ -372,7 +422,112 @@ let surfaceDocCoverageTests =
 let surfaceDocExtractorTests =
     let cites markdown name = citesName (codeReferencesIn markdown).Code name
 
+    // What a SKILL credits, shadowing included (#692) — the question `isDocumented` actually asks, per skill.
+    let skillDocuments markdown name = skillCites (codeReferencesIn markdown).Code name
+
     testList "S-DOC code extractor (#664)" [
+
+        // ---- #692: the SAME-LANGUAGE homonym. -------------------------------------------------------
+        //
+        // These are latent in the corpus too, in the direction that matters: with the bug in place every
+        // assertion above still passes, because the false credit makes a surface look DOCUMENTED — and a
+        // surface that looks documented is one the gate stops asking about. That is the failure mode #654
+        // records ("it makes the number go UP, not down"), one language in. So it is pinned here.
+
+        test "a skill that DEFINES `let describe` does not thereby document `Scene.describe`" {
+            // The bug, exactly as it shipped. `fs-gg-persistence`'s canonical body (a FROZEN MIRROR of
+            // FS.GG.Game's — we cannot edit it) carries an unrelated example helper called `describe`. That
+            // binding credited `Scene.describe`, a BLESSED `vocabulary` line, and the anti-rot rule then
+            // demanded the line be deleted — a one-way door onto a fact that was still true (#692, PR #691).
+            let markdown =
+                """
+```fsharp
+let describe (outcome: PersistenceOutcome) : string =
+    match outcome with
+    | PersistenceOutcome.Saved slot -> $"saved to {slot}"
+```
+"""
+
+            Expect.isFalse
+                (skillDocuments markdown "describe")
+                "a skill DEFINING `describe` is not citing `Scene.describe` — a binding site is not a citation"
+        }
+
+        test "...and a USE of that local binding does not document it either" {
+            // Why counting is not enough, and this is the case that settles the design. `fs-gg-game-core`
+            // binds `let visible : Rect` and then USES it on the next line — so "occurrences (2) exceed
+            // definition sites (1)" credits it, and `Attr.visible` (a real shipped control attribute, beside
+            // `enabled`/`readOnly`) is documented by a rectangle in a skill about game simulation. Once the
+            // name is bound, every unqualified use of it is the LOCAL one: that is F# shadowing, not a guess.
+            let markdown =
+                """
+```fsharp
+let visible : Rect = { X = 0.0; Y = 0.0; Width = 1280.0; Height = 720.0 }
+
+let onScreen (bounds: Rect list) : Rect list =
+    bounds |> List.filter (fun b -> Geometry.intersects b visible)
+```
+"""
+
+            Expect.isFalse
+                (skillDocuments markdown "visible")
+                "a local binding and its own uses cannot document `Attr.visible` — counting cannot see scope"
+        }
+
+        test "a QUALIFIED citation reaches past a local binding of the same name" {
+            // The other half, or the rule would be a blunt instrument: a skill may legitimately bind a helper
+            // AND cite the API it shadows. Naming the module is exactly how you say which one you mean.
+            let markdown =
+                """
+```fsharp
+let describe (outcome: Outcome) : string = "..."
+
+let kinds = Scene.describe hud
+```
+"""
+
+            Expect.isTrue
+                (skillDocuments markdown "describe")
+                "`Scene.describe` names its module, so it cites the API even where `describe` is also bound"
+        }
+
+        test "a skill that does NOT bind the name still cites it bare" {
+            // The rule must not cost the corpus its ordinary citations. Backticks are a citation (#654), and
+            // most of the corpus cites unqualified — so shadowing may only bite where a binding really exists.
+            let markdown = "Call `respondsProofOf` to tell \"renders\" from \"responds\"."
+
+            Expect.isTrue
+                (skillDocuments markdown "respondsProofOf")
+                "no binding, so the bare name still cites — shadowing narrows nothing it should not"
+        }
+
+        test "every binding form is a binding, not a citation" {
+            // The modifiers are not decoration: miss one and the homonym walks straight back through it.
+            for binding in
+                [ "let describe x = x"
+                  "let rec describe x = x"
+                  "let private describe x = x"
+                  "let inline describe x = x"
+                  "let mutable describe = 1"
+                  "and describe x = x"
+                  "use describe = foo ()"
+                  "member this.describe x = x"
+                  "member _.describe x = x"
+                  "member val describe = 1" ] do
+                let markdown = $"```fsharp\n{binding}\n```\n"
+
+                Expect.isFalse
+                    (skillDocuments markdown "describe")
+                    $"`{binding}` BINDS `describe`; it does not cite `Scene.describe`"
+
+            // ...and the shape that is NOT a binding must still cite, or the regex is over-reaching and would
+            // silently un-credit honest docs — the "rule INVENTS violations" failure (#598), inverted.
+            Expect.isTrue
+                (skillDocuments "```fsharp\nlet kinds = describe hud\n```\n" "describe")
+                "`describe` on the RIGHT of a binding is a USE of it — the binder here is `kinds`"
+        }
+        // ---- end #692 -------------------------------------------------------------------------------
+
 
         test "a fence indented inside a list item still opens a block" {
             // Hole 1. `^ {0,3}` is CommonMark's indent allowance AT THE TOP LEVEL, and a fence nested in a list

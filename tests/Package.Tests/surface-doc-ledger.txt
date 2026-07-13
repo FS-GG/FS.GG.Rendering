@@ -106,6 +106,13 @@ vocabulary  padding
 vocabulary  readOnly
 vocabulary  standardAttribute
 vocabulary  standardEvent
+# `Attr.visible` (`value: bool -> Attr<'msg>`) — a state builder beside `enabled` / `readOnly` / `loading`
+# directly above, and vocabulary for the same reason they are. It gets a line only NOW because until #692 it
+# did not need one: it was CREDITED AS DOCUMENTED by `fs-gg-game-core`'s `let visible : Rect = …` — a local
+# rectangle, in a culling example, in a different package, in a skill about game simulation. The same-language
+# homonym was not merely deleting blessed lines; it was HIDING a surface that had never had a decision made
+# about it. This is that decision.
+vocabulary  visible
 
 # ---- Controls/Buttons.fsi
 vocabulary  defaults
@@ -266,6 +273,21 @@ vocabulary  pixelSnapPolicy
 vocabulary  stackConfig
 
 # ---- Scene/Scene.fsi
+# `describe` has NO line here, and #692 is the record of why — because its absence has meant two different
+# things and only the second one is honest.
+#
+# It WAS `vocabulary describe` (blessed: a product composes `Scene.describe` straight from the `.fsi`). PR #691
+# had to delete it, with `main` red and no cheap alternative: `fs-gg-persistence`'s canonical body — a FROZEN
+# MIRROR of FS.GG.Game's, so not editable here — carries an unrelated example helper `let describe (outcome:
+# PersistenceOutcome)`, the matcher read that BINDING as a citation, and the anti-rot rule ("no ledger entry
+# names a surface a product skill now documents") called the line stale. The ledger only shrinks, so the
+# deletion was one-way, onto a fact that was still exactly as true as when it was written.
+#
+# #692 fixed the matcher: a binding is not a citation, and within a skill that binds a name only a QUALIFIED
+# use reaches the API. So the false credit is gone — and the line still does not come back, because #663
+# meanwhile documented `Scene.describe` FOR REAL (`fs-gg-scene` cites `Scene.describe hud` in an F# fence).
+# It is now documented rather than blessed-as-undocumented, and a ledger line would be stale for the honest
+# reason. Restoring it — which #692 asked for, written before #663 landed — would red the gate.
 vocabulary  arc
 vocabulary  black
 vocabulary  circleEvidence
