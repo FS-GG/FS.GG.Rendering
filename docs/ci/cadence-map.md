@@ -91,7 +91,7 @@ R5 source label `infra (R5)` and are not validation-set members.
 | harness **T-uinput** (`input --backend uinput`) | infra (R5) | capability | uinput | inert + disclosed (backend pending) | capability.yml |
 | `Package.Tests` (default tier) | validation-set | **gate** + release | none | hermetic; slnx member since #540 | gate.yml (slnx-derived loop), release.yml |
 | `Package.Tests` (release tier) | release-only | release | none | deferred behind `FS_SKIA_RUN_PACKAGE_CONSUMER_SMOKE` | release.yml |
-| `Product.Tests` (template) | **gate** + release | gate + release | none | instantiated from the template; all five profiles on every PR since #680 (§4d) | gate.yml `generated-product-gate`, release.yml |
+| `Product.Tests` (template) | validation-set | **gate** + release | none | instantiated from the template; all five profiles on every PR since #680 (§4d) | gate.yml `generated-product-gate`, release.yml |
 
 ## 3. Audit invariants and result
 
