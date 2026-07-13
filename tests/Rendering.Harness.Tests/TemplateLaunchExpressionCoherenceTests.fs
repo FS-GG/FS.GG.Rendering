@@ -13,21 +13,47 @@ module TemplateLaunchExpressionCoherenceTests
 // gate ever exercised them — the drift sat latent until release, where it skipped the publish job
 // (fixed after the fact by #352).
 //
-// WHY THIS TWIN SURVIVED #613. #613 retired fifteen sibling twins. Each of those hoisted a rule out of
-// Package.Tests, and #540 had already made Package.Tests a slnx member — so those rules now run on the
-// PR gate at their source, and the copies were dead weight. This twin is different in kind, and #540
-// does not touch it: its counterpart is not a Package.Tests file but `template/base/tests/Product.Tests`,
-// which exists only once the template has been INSTANTIATED, and only release.yml instantiates it
-// (`dotnet test "$PRODUCT_DIR"`). No solution membership can put those tests on a PR, because on a PR
-// they have not been generated yet. The hoist is still the only thing standing between a
-// Program.fs/Product.Tests drift and a failed release — exactly the failure it was written for. So do
-// not "finish the job" by deleting it; see ReleaseOnlyTwinLockstepTests before adding another.
+// WHY THIS TWIN SURVIVED #613 — AND WHY THAT REASON IS NOW DEAD (#719). #613 retired fifteen sibling
+// twins and kept this one, on the stated ground that "no PR job instantiates the template": its
+// counterpart is `template/base/tests/Product.Tests`, which exists only once the template has been
+// scaffolded, and only release.yml scaffolded it. #680 (PR #704) FALSIFIED that sentence. gate.yml's
+// `generated-product-gate` now scaffolds EVERY profile and runs `dotnet build` + `dotnet test` on each,
+// on every PR. The instantiated Product.Tests run pre-merge, at their source. Do not reason from the
+// old premise; it is gone.
+//
+// WHY IT SURVIVES ANYWAY, ON A DIFFERENT AND NARROWER GROUND. Every launch assertion the Product.Tests
+// make is EXISTENTIAL — `Expect.stringContains defaultBranch "Viewer.runAppWithAudio …"`. Every
+// assertion below is UNIVERSAL: the SET of launch expressions `Program.fs` emits equals the SET the
+// Product.Tests assert, and EVERY member of that set carries `audioSink`. You cannot build a universal
+// out of a pile of existentials, and the gap between them is not academic:
+//
+//   - A branch that emits `Viewer.runAppWithAudio … generatedHost` AND, beside it, a sinkless
+//     `Viewer.runApp … generatedHost` satisfies every `stringContains` in Product.Tests. It reds here.
+//   - That is #436, exactly. `sample-pack` sat on the sink-discarding overload — referencing all four
+//     FS.GG.Audio packages and wiring none — while the positive assertions stayed green, because a
+//     presence check cannot see a silent twin standing next to what it asserts. The universal loop at
+//     the bottom of this file is what ended that, and it is the only thing that did.
+//   - The gate scaffolds a HARDCODED profile list. A family branch added to `Program.fs` but not to
+//     that list is never instantiated, so no Product.Test of any profile reads it. This file reads the
+//     template TEXT with every `//#if` branch present at once, so it sees the family the gate does not.
+//
+// So: the per-family drift this was written for (#350 — a family's launch changed, its Product.Tests
+// not) IS now caught at its source by the gate, and that half of the set equality (`onlyInTests`, a
+// stale expectation) is genuinely redundant. It stays because it is one direction of a single set
+// comparison and costs nothing to keep. What is NOT redundant, and what earns this file its place, is
+// the closure: an expression nobody asserts, and the absence of a silent launch. Delete this and that
+// class goes uncovered — do not "finish the job" of #613 on the strength of a premise #680 already
+// retired. See ReleaseOnlyTwinLockstepTests before adding another twin.
+//
+// AND THE NEW PREMISE IS ASSERTED, NOT ASSUMED. Both residues above are stated against a job that has
+// to keep existing and keep covering every profile. `GeneratedProductGateCoverageTests` locks exactly
+// that (#613's `PackageTestsGateMembershipTests` pattern), so this header cannot rot into a lie a
+// second time the way the last one did.
 //
 // WHAT IT LOCKS. This test reads the two template files STATICALLY (no instantiation, so it is cheap
 // enough for the PR-gated slnx lane) and asserts the SET of default-branch launch expressions
-// `Program.fs` emits equals the SET the `Product.Tests` assert. Change one without the other and this
-// reds the PR instead of the release. It is deliberately the same coherence the release-only
-// generated tests enforce, hoisted one gate earlier.
+// `Program.fs` emits equals the SET the `Product.Tests` assert, and that every one of them carries the
+// audio sink. Change one without the other and this reds.
 
 open System
 open System.IO

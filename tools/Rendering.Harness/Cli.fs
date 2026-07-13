@@ -593,9 +593,17 @@ let private runPackageFeedProof (rest: string list) =
             eprintfn "package-feed: no package-consuming samples found under samples/ (a sample qualifies by mapping FS.GG.UI.* to the local feed in its own nuget.config), and none given with --sample"
             2
         else
+            // Default OUT of the worktree, not into it (#702). The default used to be feature 163's
+            // committed readiness directory, so a bare `package-feed --mode proof` overwrote a
+            // recorded validation run as a side effect of merely running the tool — and proof output
+            // is verbatim tool output (a fresh `generatedAtUtc`, `restore.log`, `project.assets.json`),
+            // so it churned on every run and the churn was indistinguishable from a real change. That
+            // is how the committed record drifted into a mixture: two tables refreshed in July, five
+            // proof files left over from a June run against one sample. Writing the readiness record
+            // is now something you ASK for with an explicit `--out`, and `artifacts/` is gitignored.
             let out =
                 flagValue "--out" rest
-                |> Option.defaultValue "specs/163-package-feed-validation-lanes/readiness/package-proof"
+                |> Option.defaultValue "artifacts/package-proof"
 
             let feed =
                 flagValue "--feed" rest

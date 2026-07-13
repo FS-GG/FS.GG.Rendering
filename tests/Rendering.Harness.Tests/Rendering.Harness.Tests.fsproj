@@ -90,6 +90,7 @@
     <Compile Include="Feature151CompositorReadinessRegressionTests.fs" />
     <Compile Include="FeatureCatalogTests.fs" />
     <Compile Include="PackageTestsGateMembershipTests.fs" />
+    <Compile Include="GeneratedProductGateCoverageTests.fs" />
     <Compile Include="TemplateLaunchExpressionCoherenceTests.fs" />
     <Compile Include="TemplateProductProbeCompileTests.fs" />
     <Compile Include="ReleaseOnlyTwinLockstepTests.fs" />

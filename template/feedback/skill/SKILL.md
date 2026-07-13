@@ -101,7 +101,7 @@ rather than hard-failing the phase.
 
 ## Related
 
-[[fs-gg-project]], [[fsharp-build-orchestration]], [[fs-gg-feedback-report]] — the synthesis
+[[fs-gg-project]], [[fs-gg-feedback-report]] — the synthesis
 counterpart that reads these records at cycle end.
 
 ## Sources / links

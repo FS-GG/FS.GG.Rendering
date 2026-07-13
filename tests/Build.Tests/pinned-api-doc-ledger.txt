@@ -63,14 +63,13 @@
 # ---------------------------------------------------------------------------------------------------
 # EMPTY, AND THAT IS THE RATCHET WORKING — DO NOT DELETE THIS FILE.
 #
-# Every entry that stood here was RETIRED by the 0.9.1 release (FS.GG.Rendering#587), which is the only
-# thing that could retire any of them: each named a symbol that `src/` declared and published 0.9.0 did
-# not carry, so there was no spelling to rewrite them TO. `$(FsGgUiVersion)` is now 0.9.1 and the pinned
-# packages export all four, so the STALE rule ("the pin NOW exports the symbol -> delete the line") is
-# what deleted them:
+# Every entry that stood here is RETIRED BY A RELEASE, which is the only thing that could retire any of
+# them: each named a symbol that `src/` declared and published 0.9.0 did not carry, so there was no
+# spelling to rewrite them TO. `$(FsGgUiVersion)` is now 0.9.2 and the pinned packages export all four, so
+# the STALE rule ("the pin NOW exports the symbol -> delete the line") is what deleted them:
 #
 #   * `SkiaViewer.fsi::Viewer.runAppWithPersistence`               (#535's sink-carrying entry point)
-#   * `ControlsElmish.fsi::AdapterCmd.diagnostics`                 (#592 — closed by this release)
+#   * `ControlsElmish.fsi::AdapterCmd.diagnostics`                 (#592 — closed by the 0.9.1 cut)
 #   * `ControlsElmish.fsi::ControlsElmish.audioRequests`           (#641)
 #   * `fs-gg-elmish/SKILL.md::ControlsElmish.audioRequests`        (#641, the skill's half)
 #
@@ -81,6 +80,24 @@
 # The doc-comments that told a reader "you cannot bind this yet" are now false, and were rewritten in the
 # same change. That is the phantom rule's twin, and the reason this ledger is not allowed to outlive its
 # subject: a dead entry would wave a real build error straight back through.
+#
+# THE RELEASE THAT PAID THESE DEBTS IS 0.9.2 — NOT 0.9.1, WHICH NEVER SHIPPED (FS.GG.Rendering#690). The
+# four lines were deleted by the 0.9.1 cut (#587 / commit 1fddbd0b), and this paragraph credited "the 0.9.1
+# release" ever since — but there is no such release. 0.9.1's tag triple was cut, then BOTH release-only
+# gate jobs failed, `publish-packages` was correctly skipped, and no `0.9.1` package reached nuget.org: the
+# published line runs 0.9.0 -> 0.9.2, and `fs-gg-ui/v0.9.1` still points at 1fddbd0b. 0.9.2 (#679 / #684) is
+# what published all four symbols, so the DELETIONS were right and only their creditor was misnamed. `main`
+# pinned the phantom for EXACTLY ONE COMMIT: with the pin naming a version nuget.org does not have, every PR
+# restore was NU1102, and the only PR that could go green was the one that bumped it.
+#
+# (A phantom TAG — not this ledger's PHANTOM ENTRY, which is the unrelated rule above: a line no shipped doc
+# names any more, i.e. the doc was fixed. Same word, different subject; mind which one you are reading.)
+#
+# AND NOTE WHAT DID NOT CATCH IT, BECAUSE IT IS THE SAME BLIND SPOT ON BOTH LEDGERS. A pin bump reds every
+# LINE, on purpose, so a release forces each entry to be judged afresh. Both files are EMPTY — the goal
+# state — so the 0.9.1 -> 0.9.2 bump had nothing to red, and the prose went on naming a release that does
+# not exist with every gate green. The entries are machine-checked; the paragraph explaining them is not.
+# When you retire the next entry here, the release you name in its epitaph is checked by nobody but you.
 #
 # An empty ledger is the goal state, not a dead file. The rules above still bind every FUTURE entry.
 # ---------------------------------------------------------------------------------------------------

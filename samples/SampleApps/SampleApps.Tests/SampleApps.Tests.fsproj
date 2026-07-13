@@ -21,6 +21,14 @@
   <ItemGroup>
     <ProjectReference Include="..\SampleApps.Core\SampleApps.Core.fsproj" />
   </ItemGroup>
+  <!-- The committed coverage report, placed next to the test binary so CoverageBacklogTests can read
+       it without ascending the tree to hunt for it (#725). `..` is the sample tree root — the
+       directory holding Directory.Build.props / nuget.config — so this stays inside the standalone
+       sample and a copied-out tree still works. PreserveNewest re-copies whenever the committed file
+       changes, so the suite always judges what is actually committed. -->
+  <ItemGroup>
+    <None Include="..\coverage-backlog.md" Link="coverage-backlog.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="FS.GG.UI.Controls" Version="0.4.0-preview.1" />
     <PackageReference Include="FS.GG.UI.Controls.Elmish" Version="0.4.0-preview.1" />

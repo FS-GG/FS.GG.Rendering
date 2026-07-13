@@ -179,7 +179,9 @@ The fixed-step loop and the seeded RNG composed with no glue.
 - **Evidence:** `dotnet fsi scripts/print-effects.fsx` → `Render | Resize | Close | Quit`
 - **Version:** reproduced on fsgg-sdd 0.9.0, the latest tag — live, not already fixed
 - **Component:** src/SkiaViewer
-- **Disposition:** issue — filed as Rendering#245
+- **Disposition:** issue — filed as FS.GG.Rendering#245
+<!-- skill-refs: closed-ok FS.GG.Rendering#245 — a worked EXAMPLE of a finished report, citing the issue it filed; closed is what a filed-and-fixed finding looks like. Not somewhere to go. -->
+
 
 ## §5 Did not exercise
 Persistence, collision narrow-phase, the sample pack.

@@ -101,37 +101,15 @@ let private productSkillText =
     |> Seq.map File.ReadAllText
     |> String.concat "\n"
 
-/// An opening or closing CommonMark fence: any indent, then 3+ backticks or 3+ tildes, then the info string
-/// (the language tag, on an opening fence; empty on a closing one).
-///
-/// THE INDENT IS UNBOUNDED, and it must be (#664). CommonMark allows a fence up to 3 leading spaces *at the top
-/// level*, and this was `^ {0,3}` to match — but a fence nested in a list item is legitimately indented past
-/// that, and then the block never opens and **every line of its code lands in the prose buffer**, where it can
-/// document nothing. A surface cited only in such a block is reported undeclared, and the author is told to
-/// ledger a surface a skill genuinely documents — the same "the rule INVENTS violations" failure
-/// `TemplateConsumesPinnedApiTests` records for its own extractor (#598). Nothing in the corpus indents a fence
-/// that far today; the point is that nothing stops it. Pairing carries the weight instead: a fence closes only
-/// on its own character, repeated at least as many times, wherever either sits.
-let private fenceRegex = Regex(@"^\s*(?<fence>`{3,}|~{3,})(?<info>.*)$", RegexOptions.Compiled)
-
-/// The language tags that mean "this block is F#" — the only blocks that can CITE an F# API (#664).
-///
-/// EVERY SPELLING OF F# BELONGS HERE, and the cost of a missing one is not symmetric. A tag this set does not
-/// know is dropped from the corpus — and dropped SILENTLY, because it HAS a language and so does not trip
-/// `skillsWithUntaggedFence`. An `fsi` transcript citing `respondsProofOf` would therefore document nothing,
-/// S-DOC would report the surface undeclared, and the author would be sent to the ledger to excuse a surface
-/// their skill genuinely documents — "the rule INVENTS violations" (#598), which is the failure the fence-indent
-/// half of this very item exists to close. A tag wrongly INCLUDED costs a homonym; a tag wrongly OMITTED costs a
-/// false accusation against a correct doc. So this errs towards inclusion, and covers every extension F# ships
-/// under. (`TemplateConsumesPinnedApiTests` reaches the same place from the other side with a case-insensitive
-/// `StartsWith "fsharp"`.)
-let private fsharpLanguages = set [ "fsharp"; "fs"; "f#"; "fsx"; "fsi" ]
-
-/// The language an opening fence declares, if it declares one: the first word of the info string.
-let private fenceLanguage (info: string) =
-    info.Split([| ' '; '\t'; ',' |], StringSplitOptions.RemoveEmptyEntries)
-    |> Array.tryHead
-    |> Option.map (fun lang -> lang.ToLowerInvariant())
+// WHERE THE FENCE READER WENT (#669). The fence regex, the F#-language set and the pairing rule used to live
+// here, and were hand-mirrored — differently — in `TemplateConsumesPinnedApiTests`' two extractors. They now
+// live once, in `FS.GG.TestSupport.MarkdownFences`, which is the ONLY thing in the repo that decides what a
+// fence is. The #664 lessons this file paid for — the unbounded indent, the F#-only corpus, every spelling of
+// F# — are written up there, at the definitions that hold them.
+//
+// What is left below is what is genuinely S-DOC's OWN: the code/prose SPLIT (an F# block is the corpus; a
+// non-F# block is dropped from BOTH buffers; prose is mined for inline spans). That is a choice over the
+// scanner's classified lines, not a second reading of the document.
 
 /// An inline code span: one or more backticks, the shortest run closed by the same number. Confined to a
 /// single line, which is what every citation in these skills actually is.
@@ -179,32 +157,26 @@ type private SkillCode =
       UntaggedFences: int }
 
 let private codeReferencesIn (markdown: string) =
-    // The delimiter that opened the block, and whether the block is F# — i.e. whether it can cite an API.
-    let mutable openFence: (string * bool) option = None
-    let mutable untaggedFences = 0
+    let scanned = MarkdownFences.scan markdown
     let code = Text.StringBuilder()
     let prose = Text.StringBuilder()
 
-    for line in markdown.Replace("\r\n", "\n").Split '\n' do
-        let fence = fenceRegex.Match line
-
-        match openFence with
-        // A fence closes only on the same character, repeated at least as many times as it was opened.
-        | Some(opening, _) when fence.Success && fence.Groups.["fence"].Value.StartsWith opening -> openFence <- None
-        // Inside a block: F# is the corpus, anything else is dropped on the floor (see above — NOT to prose).
-        | Some(_, isFSharp) -> if isFSharp then code.AppendLine line |> ignore
-        | None when fence.Success ->
-            let language = fenceLanguage fence.Groups.["info"].Value
-            if Option.isNone language then untaggedFences <- untaggedFences + 1
-            openFence <- Some(fence.Groups.["fence"].Value, language |> Option.exists fsharpLanguages.Contains)
-        | None -> prose.AppendLine line |> ignore
+    for line in scanned.Lines do
+        match line.Kind with
+        // F# is the corpus.
+        | MarkdownFences.Fenced(_, true) -> code.AppendLine line.Text |> ignore
+        // Anything else fenced is dropped on the floor — NOT routed to prose (see above).
+        | MarkdownFences.Fenced _ -> ()
+        // The fence line itself is neither.
+        | MarkdownFences.Delimiter -> ()
+        | MarkdownFences.Prose -> prose.AppendLine line.Text |> ignore
 
     for m in inlineCodeRegex.Matches(prose.ToString()) do
         code.AppendLine m.Groups.["code"].Value |> ignore
 
     { Code = code.ToString()
-      UnclosedFence = Option.isSome openFence
-      UntaggedFences = untaggedFences }
+      UnclosedFence = scanned.UnclosedFence
+      UntaggedFences = scanned.UntaggedFences }
 
 let private skillCode =
     Directory.EnumerateFiles(productSkillsRoot, "SKILL.md", SearchOption.AllDirectories)
@@ -247,7 +219,80 @@ let private skillsWithUntaggedFence =
 let private citesName (corpus: string) (name: string) =
     Regex.IsMatch(corpus, $@"(?<![\w']){Regex.Escape name}(?![\w'])")
 
-let private isDocumented (name: string) = citesName productSkillCode name
+/// The F# forms that BIND a name rather than cite one (#692). `let`/`and`/`use` with any modifier order,
+/// `member` with an optional self-identifier, and the `fun`/`for` binders — the shapes a skill's own example
+/// helper and its locals actually take.
+///
+/// EVERY FORM MATTERS, because a form left out is a form the homonym walks back in through. `fun`/`for` are
+/// latent today (no surface is credited by a lambda or loop variable), and so was `let` until it deleted a
+/// blessed ledger line — so they are here rather than waiting for their turn. Adding them un-credits nothing.
+///
+/// KNOWN GAP: a function PARAMETER (`let onScreen (bounds: Rect list) = … bounds …`) is a binding this cannot
+/// see, and matching one properly means parsing F# rather than pattern-matching it. Nothing is credited that
+/// way today. Filed rather than half-done — see the qualified-module gap below, which is the same family.
+let private bindsName (corpus: string) (name: string) =
+    let n = Regex.Escape name
+
+    Regex.IsMatch(
+        corpus,
+        $@"(?<![\w'])(?:let|and|use)\s+(?:rec\s+|mutable\s+|inline\s+|private\s+|internal\s+)*{n}(?![\w'])"
+        + $@"|(?<![\w'])member\s+(?:val\s+)?(?:[\w']+\.)?{n}(?![\w'])"
+        + $@"|(?<![\w'])fun\s+{n}\s*->"
+        + $@"|(?<![\w'])for\s+{n}\s+in(?![\w'])"
+    )
+
+/// A citation that names the module it comes from: `Scene.describe`, `FS.GG.UI.Scene.describe`. This is what
+/// reaches PAST a local binding of the same name, which is exactly what it is for.
+///
+/// IT DOES NOT CHECK **WHICH** MODULE, and that is a known hole rather than an oversight (#713). Any
+/// uppercase-qualified name satisfies it — including a PRODUCT module's. The live instance: `fs-gg-elmish`
+/// binds `let subscriptions _ = Sub.none` (the product's own) and writes `AppRoot.Model.subscriptions` in its
+/// `program` example, which credits the shipped `ControlsElmish.subscriptions` (the keyboard+controls MERGE
+/// helper) — a surface no skill teaches and no ledger line declares. That is the same hidden-surface failure
+/// as `visible`, one hop further out, and it survives this fix through the very hatch this function opens.
+///
+/// Closing it means holding the qualifier against the module that DECLARES the surface, which `shippedSurface`
+/// does not currently record (it keys on the `.fsi` FILE, not the module), and it carries its own cascade —
+/// `Perf.runScriptToModel` is qualified by a NESTED module, so the check must accept those too. That is a
+/// change with its own blast radius, not a line in this one.
+let private qualifiedCite (corpus: string) (name: string) =
+    Regex.IsMatch(corpus, $@"(?<![\w'])(?:[A-Z][\w']*\.)+{Regex.Escape name}(?![\w'])")
+
+/// Does THIS skill cite `name` as the shipped API? (#692 — the SAME-LANGUAGE homonym.)
+///
+/// #654 found that an English word credited a surface, and moved the corpus from prose to code. #664 found
+/// that a word in a `bash` fence still did, and restricted the corpus to F#-tagged fences. Both narrowed
+/// WHERE a match may come from. Neither changed what a match MEANS — so the homonym walked in one level
+/// further, in F# itself: a skill that **defines** `let describe` is not citing `Scene.describe`, and the
+/// matcher could not tell a binding site from a usage. The anti-rot rule then declared the (correct,
+/// BLESSED `vocabulary`) ledger line stale, and "the ledger only shrinks" made deleting it the only way to a
+/// green gate — a one-way door onto a fact that was still true (#692, and PR #691 walked through it).
+///
+/// SHADOWING IS THE RULE, because shadowing is the FACT. Once a skill writes `let visible = …`, every
+/// unqualified `visible` in that skill IS the local one — that is not a heuristic, it is what F# scoping
+/// says. So within a skill that binds the name, only a QUALIFIED citation (`Attr.visible`) reaches the API;
+/// an unqualified occurrence is the binding, or a use of it. A skill that does NOT bind the name is
+/// unchanged: a bare `` `respondsProofOf` `` in backticks still cites, which is what backticks mean.
+///
+/// PER SKILL, and that matters. The corpus is concatenated for the question "is this documented AT ALL", but
+/// shadowing is not a property of the concatenation — one skill's local helper must not silence ANOTHER
+/// skill's honest citation. `describe` is the live case: `fs-gg-persistence` binds `let describe` for an
+/// unrelated example, and `fs-gg-scene` writes `Scene.describe hud`. The first credits nothing; the second
+/// credits, and `describe` is documented — correctly, and for the first time actually because a skill
+/// documents it.
+///
+/// The weaker rule — "count occurrences, subtract definition sites" — is NOT enough, and the corpus proves
+/// it: `fs-gg-game-core` binds `let visible : Rect` and then uses `visible` on the next line inside its
+/// culling example, so occurrences (2) exceed definitions (1) and `Attr.visible` stays credited by a local
+/// rectangle in a skill about game simulation. Counting cannot see scope. Shadowing can.
+let private skillCites (code: string) (name: string) =
+    if bindsName code name then
+        qualifiedCite code name
+    else
+        citesName code name
+
+let private isDocumented (name: string) =
+    skillCode |> List.exists (fun (_, c) -> skillCites c.Code name)
 
 /// The declared exemptions: `<category>  <name>` lines, `#` comments and blanks ignored.
 let private ledger =
@@ -400,7 +445,114 @@ let surfaceDocCoverageTests =
 let surfaceDocExtractorTests =
     let cites markdown name = citesName (codeReferencesIn markdown).Code name
 
+    // What a SKILL credits, shadowing included (#692) — the question `isDocumented` actually asks, per skill.
+    let skillDocuments markdown name = skillCites (codeReferencesIn markdown).Code name
+
     testList "S-DOC code extractor (#664)" [
+
+        // ---- #692: the SAME-LANGUAGE homonym. -------------------------------------------------------
+        //
+        // These are latent in the corpus too, in the direction that matters: with the bug in place every
+        // assertion above still passes, because the false credit makes a surface look DOCUMENTED — and a
+        // surface that looks documented is one the gate stops asking about. That is the failure mode #654
+        // records ("it makes the number go UP, not down"), one language in. So it is pinned here.
+
+        test "a skill that DEFINES `let describe` does not thereby document `Scene.describe`" {
+            // The bug, exactly as it shipped. `fs-gg-persistence`'s canonical body (a FROZEN MIRROR of
+            // FS.GG.Game's — we cannot edit it) carries an unrelated example helper called `describe`. That
+            // binding credited `Scene.describe`, a BLESSED `vocabulary` line, and the anti-rot rule then
+            // demanded the line be deleted — a one-way door onto a fact that was still true (#692, PR #691).
+            let markdown =
+                """
+```fsharp
+let describe (outcome: PersistenceOutcome) : string =
+    match outcome with
+    | PersistenceOutcome.Saved slot -> $"saved to {slot}"
+```
+"""
+
+            Expect.isFalse
+                (skillDocuments markdown "describe")
+                "a skill DEFINING `describe` is not citing `Scene.describe` — a binding site is not a citation"
+        }
+
+        test "...and a USE of that local binding does not document it either" {
+            // Why counting is not enough, and this is the case that settles the design. `fs-gg-game-core`
+            // binds `let visible : Rect` and then USES it on the next line — so "occurrences (2) exceed
+            // definition sites (1)" credits it, and `Attr.visible` (a real shipped control attribute, beside
+            // `enabled`/`readOnly`) is documented by a rectangle in a skill about game simulation. Once the
+            // name is bound, every unqualified use of it is the LOCAL one: that is F# shadowing, not a guess.
+            let markdown =
+                """
+```fsharp
+let visible : Rect = { X = 0.0; Y = 0.0; Width = 1280.0; Height = 720.0 }
+
+let onScreen (bounds: Rect list) : Rect list =
+    bounds |> List.filter (fun b -> Geometry.intersects b visible)
+```
+"""
+
+            Expect.isFalse
+                (skillDocuments markdown "visible")
+                "a local binding and its own uses cannot document `Attr.visible` — counting cannot see scope"
+        }
+
+        test "a QUALIFIED citation reaches past a local binding of the same name" {
+            // The other half, or the rule would be a blunt instrument: a skill may legitimately bind a helper
+            // AND cite the API it shadows. Naming the module is exactly how you say which one you mean.
+            let markdown =
+                """
+```fsharp
+let describe (outcome: Outcome) : string = "..."
+
+let kinds = Scene.describe hud
+```
+"""
+
+            Expect.isTrue
+                (skillDocuments markdown "describe")
+                "`Scene.describe` names its module, so it cites the API even where `describe` is also bound"
+        }
+
+        test "a skill that does NOT bind the name still cites it bare" {
+            // The rule must not cost the corpus its ordinary citations. Backticks are a citation (#654), and
+            // most of the corpus cites unqualified — so shadowing may only bite where a binding really exists.
+            let markdown = "Call `respondsProofOf` to tell \"renders\" from \"responds\"."
+
+            Expect.isTrue
+                (skillDocuments markdown "respondsProofOf")
+                "no binding, so the bare name still cites — shadowing narrows nothing it should not"
+        }
+
+        test "every binding form is a binding, not a citation" {
+            // The modifiers are not decoration: miss one and the homonym walks straight back through it.
+            for binding in
+                [ "let describe x = x"
+                  "let rec describe x = x"
+                  "let private describe x = x"
+                  "let inline describe x = x"
+                  "let mutable describe = 1"
+                  "and describe x = x"
+                  "use describe = foo ()"
+                  "member this.describe x = x"
+                  "member _.describe x = x"
+                  "member val describe = 1"
+                  "let f = items |> List.map (fun describe -> describe)"
+                  "for describe in scenes do ignore describe" ] do
+                let markdown = $"```fsharp\n{binding}\n```\n"
+
+                Expect.isFalse
+                    (skillDocuments markdown "describe")
+                    $"`{binding}` BINDS `describe`; it does not cite `Scene.describe`"
+
+            // ...and the shape that is NOT a binding must still cite, or the regex is over-reaching and would
+            // silently un-credit honest docs — the "rule INVENTS violations" failure (#598), inverted.
+            Expect.isTrue
+                (skillDocuments "```fsharp\nlet kinds = describe hud\n```\n" "describe")
+                "`describe` on the RIGHT of a binding is a USE of it — the binder here is `kinds`"
+        }
+        // ---- end #692 -------------------------------------------------------------------------------
+
 
         test "a fence indented inside a list item still opens a block" {
             // Hole 1. `^ {0,3}` is CommonMark's indent allowance AT THE TOP LEVEL, and a fence nested in a list
@@ -449,7 +601,11 @@ let model = Resolution.push model shot
         }
 
         test "every spelling of F# is a citation, because a missed one accuses a correct doc" {
-            // The asymmetry in `fsharpLanguages`. A tag the set does not know is dropped SILENTLY — it has a
+            // The asymmetry in `MarkdownFences`' F#-language set (#669 moved it there, and the fence-level
+            // conformance now lives beside it in `MarkdownFencesTests`; this case stays because it is S-DOC's
+            // own composition — tag set THROUGH the code/prose split — not the scanner's).
+            //
+            // A tag the set does not know is dropped SILENTLY — it has a
             // language, so `skillsWithUntaggedFence` does not catch it — and the surfaces it cites are then
             // reported undeclared. That is the gate inventing a violation against a doc that is correct, which
             // is the same failure as hole 1. `fsi` is not hypothetical here: this repo ships FSI transcripts.

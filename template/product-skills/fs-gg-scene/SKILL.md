@@ -52,6 +52,22 @@ let placeScore (hudWidth: float) (font: FontSpec) (ink: Color) (scoreText: strin
     Scene.textAt { X = hudWidth - m.Width; Y = m.Baseline } scoreText ink
 ```
 
+### Ask the scene what is wrong with it — `Scene.diagnostics`
+
+A scene is a pure value, so you can interrogate it before anything renders — no host, no window, no GL:
+
+```fsharp
+open FS.GG.UI.Scene
+
+Scene.describe hud       // SceneElementKind list — what this scene is MADE of
+Scene.diagnostics hud    // RenderDiagnostic list — what is WRONG with it
+```
+
+`describe` answers *what did I build*; `diagnostics` answers *what will bite me*. Reach for the second
+in a test over a scene your `view` produced: a scene that renders to a blank frame is otherwise
+indistinguishable from one that renders correctly to a frame you have not looked at, and the diagnostic
+list is the cheapest thing that can tell them apart.
+
 ## Common pitfalls
 
 - **Consumer geometry records colliding with framework `Point`/`Rect`.** Scene exposes

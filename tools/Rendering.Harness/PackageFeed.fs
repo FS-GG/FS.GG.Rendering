@@ -216,6 +216,49 @@ module PackageFeed =
         with _ ->
             path.Replace('\\', '/')
 
+    /// A path bound for COMMITTED evidence, written relative to the repository root.
+    ///
+    /// The evidence under `readiness/package-proof/` is checked in, so an absolute path in it names
+    /// the machine that last regenerated the file. Every other checkout — every parallel worktree —
+    /// then rewrites all 60-odd rows on the next run, which makes the artifact unreadable as
+    /// evidence: a pin that has actually gone stale is indistinguishable in the diff from "someone
+    /// ran this from a different directory" (#686).
+    ///
+    /// A path OUTSIDE the root (the local feed, `~/.local/share/nuget-local`) is left ALONE on
+    /// purpose. `Path.GetRelativePath` would happily turn it into `../../../.local/share/…`, which
+    /// is no less machine-specific than the absolute form and only harder to read.
+    ///
+    /// A package SOURCE is not always a path — `SourceRule.AllowedSources` carries the feed directory
+    /// and `https://api.nuget.org/v3/index.json` in the same list. A URI must survive untouched:
+    /// `Path.IsPathRooted` says false for one, so it would be combined with the root and then
+    /// normalised into `https:/api.nuget.org/…`, silently naming a source that does not exist.
+    let evidencePath (root: string) (path: string) =
+        if String.IsNullOrWhiteSpace path || path.Contains "://" then
+            path
+        else
+            let relative = relativePath (Path.GetFullPath root) (absolutePath root path)
+            // `relativePath` normalises to '/', so an escape is exactly ".." or a "../" prefix — NOT
+            // any leading "..", which would also swallow a directory legitimately named `..foo`.
+            let escapesRoot =
+                relative = ".." || relative.StartsWith("../", StringComparison.Ordinal)
+
+            if escapesRoot || Path.IsPathRooted relative then path else relative
+
+    /// `evidencePath`, for a free-form line that EMBEDS the root rather than being a path (the
+    /// recorded restore command). `runProcess` runs with `WorkingDirectory = repositoryRoot`, so the
+    /// root-relative rendering describes the very same command.
+    let evidenceLine (root: string) (line: string) =
+        if String.IsNullOrWhiteSpace line then
+            line
+        else
+            let rooted = Path.GetFullPath root
+            let separator = string Path.DirectorySeparatorChar
+
+            let prefix =
+                if rooted.EndsWith(separator, StringComparison.Ordinal) then rooted else rooted + separator
+
+            line.Replace(prefix, "")
+
     let ensureParentDirectory (path: string) =
         match Path.GetDirectoryName path with
         | null
@@ -613,7 +656,7 @@ module PackageFeed =
         ensureParentDirectory path
         File.WriteAllText(path, String.concat Environment.NewLine lines + Environment.NewLine)
 
-    let writePackageVersions (outDir: string) (packages: PackablePackage list) =
+    let writePackageVersions (repositoryRoot: string) (outDir: string) (packages: PackablePackage list) =
         let path = Path.Combine(outDir, "package-versions.md")
         let lines =
             [ "# Package Versions"
@@ -622,12 +665,14 @@ module PackageFeed =
               "|---------|---------|---------|--------------|" ]
             @ (packages
                |> List.map (fun package ->
-                   $"| `{package.PackageId}` | `{package.Version}` | `{package.ProjectPath}` | `{package.PackageFilePath}` |"))
+                   let project = evidencePath repositoryRoot package.ProjectPath
+                   let feedPackage = evidencePath repositoryRoot package.PackageFilePath
+                   $"| `{package.PackageId}` | `{package.Version}` | `{project}` | `{feedPackage}` |"))
 
         writeLines path lines
         path
 
-    let writePackagePins (outDir: string) (pins: PackagePin list) =
+    let writePackagePins (repositoryRoot: string) (outDir: string) (pins: PackagePin list) =
         let path = Path.Combine(outDir, "package-pins.md")
         let lines =
             [ "# Package Pins"
@@ -638,7 +683,8 @@ module PackageFeed =
                |> List.map (fun pin ->
                    let expected = pin.ExpectedVersion |> Option.defaultValue "(missing)"
                    let ex = pin.CompatibilityExceptionId |> Option.defaultValue ""
-                   $"| `{pin.PackageId}` | `{pin.DeclaredVersion}` | `{expected}` | `{statusToken pin.Status}` | `{pin.ProjectFilePath}` | `{ex}` |"))
+                   let project = evidencePath repositoryRoot pin.ProjectFilePath
+                   $"| `{pin.PackageId}` | `{pin.DeclaredVersion}` | `{expected}` | `{statusToken pin.Status}` | `{project}` | `{ex}` |"))
 
         writeLines path lines
         path
@@ -646,22 +692,31 @@ module PackageFeed =
     let jsonEscape (text: string) =
         JsonSerializer.Serialize(text)
 
-    let writeSourceProof (outDir: string) (proof: SourceProof) (pins: PackagePin list) (packages: PackablePackage list) =
+    let writeSourceProof
+        (repositoryRoot: string)
+        (outDir: string)
+        (proof: SourceProof)
+        (pins: PackagePin list)
+        (packages: PackablePackage list)
+        =
         let markdown = Path.Combine(outDir, "source-proof.md")
         let json = Path.Combine(outDir, "source-proof.json")
-        let restoreCommand = proof.RestoreCommand |> Option.defaultValue "not-run"
-        let restoreLogPath = proof.RestoreLogPath |> Option.defaultValue "not-written"
+        let asPath = evidencePath repositoryRoot
+        let restoreCommand =
+            proof.RestoreCommand |> Option.map (evidenceLine repositoryRoot) |> Option.defaultValue "not-run"
+        let restoreLogPath = proof.RestoreLogPath |> Option.map asPath |> Option.defaultValue "not-written"
         // "not-run" is load-bearing: it distinguishes a proof that compiled the consumers from one
         // that short-circuited before it ever got there (a stale pin, a missing feed package).
-        let buildLogPath = proof.BuildLogPath |> Option.defaultValue "not-run"
+        let buildLogPath = proof.BuildLogPath |> Option.map asPath |> Option.defaultValue "not-run"
+        let cachePath = asPath proof.CachePath
         let selectedSamples = String.concat ", " proof.SelectedSamples
 
         let lines =
             [ "# Package Source Proof"
               ""
               $"- Status: `{proofStatusToken proof.Status}`"
-              $"- Local feed: `{proof.FeedPath}`"
-              $"- Package cache: `{proof.CachePath}`"
+              $"- Local feed: `{asPath proof.FeedPath}`"
+              $"- Package cache: `{cachePath}`"
               $"- Global cache cleared: `{proof.GlobalCacheCleared.ToString().ToLowerInvariant()}`"
               $"- Selected samples: `{selectedSamples}`"
               $"- Restore command: `{restoreCommand}`"
@@ -672,7 +727,7 @@ module PackageFeed =
               "" ]
             @ (proof.SourceRules
                |> List.map (fun rule ->
-                   let sources = String.concat ", " rule.AllowedSources
+                   let sources = rule.AllowedSources |> List.map asPath |> String.concat ", "
                    $"- `{rule.PackagePattern}` -> `{sources}`"))
             @ [ ""
                 "## Violations"
@@ -690,7 +745,7 @@ module PackageFeed =
                     [ "\"packageId\":" + jsonEscape pin.PackageId
                       "\"declaredVersion\":" + jsonEscape pin.DeclaredVersion
                       "\"expectedVersion\":" + jsonEscape (pin.ExpectedVersion |> Option.defaultValue "")
-                      "\"projectFilePath\":" + jsonEscape pin.ProjectFilePath
+                      "\"projectFilePath\":" + jsonEscape (asPath pin.ProjectFilePath)
                       "\"status\":" + jsonEscape (statusToken pin.Status) ]
                 + "}")
             |> String.concat ","
@@ -703,18 +758,18 @@ module PackageFeed =
                     ","
                     [ "\"packageId\":" + jsonEscape package.PackageId
                       "\"version\":" + jsonEscape package.Version
-                      "\"projectPath\":" + jsonEscape package.ProjectPath ]
+                      "\"projectPath\":" + jsonEscape (asPath package.ProjectPath) ]
                 + "}")
             |> String.concat ","
 
         let rulesJson =
             proof.SourceRules
             |> List.map (fun rule ->
-                let sources = rule.AllowedSources |> List.map jsonEscape |> String.concat ","
+                let sources = rule.AllowedSources |> List.map (asPath >> jsonEscape) |> String.concat ","
                 $"{{\"ruleId\":{jsonEscape rule.RuleId},\"packagePattern\":{jsonEscape rule.PackagePattern},\"allowedSources\":[{sources}]}}")
             |> String.concat ","
 
-        let assetsJson = proof.AssetsFiles |> List.map jsonEscape |> String.concat ","
+        let assetsJson = proof.AssetsFiles |> List.map (asPath >> jsonEscape) |> String.concat ","
         let violationsJson = proof.Violations |> List.map jsonEscape |> String.concat ","
         let selectedSamplesJson = proof.SelectedSamples |> List.map jsonEscape |> String.concat ","
 
@@ -723,8 +778,8 @@ module PackageFeed =
             + String.concat
                 ","
                 [ "\"status\":" + jsonEscape (proofStatusToken proof.Status)
-                  "\"feedPath\":" + jsonEscape proof.FeedPath
-                  "\"cachePath\":" + jsonEscape proof.CachePath
+                  "\"feedPath\":" + jsonEscape (asPath proof.FeedPath)
+                  "\"cachePath\":" + jsonEscape cachePath
                   "\"globalCacheCleared\":" + proof.GlobalCacheCleared.ToString().ToLowerInvariant()
                   "\"selectedSamples\":[" + selectedSamplesJson + "]"
                   "\"currentPackages\":[" + packageJson + "]"
@@ -732,8 +787,9 @@ module PackageFeed =
                   "\"sourceRules\":[" + rulesJson + "]"
                   "\"resolvedPackages\":[" + pinJson + "]"
                   "\"violations\":[" + violationsJson + "]"
-                  "\"restoreCommand\":" + jsonEscape (proof.RestoreCommand |> Option.defaultValue "")
-                  "\"restoreLog\":" + jsonEscape (proof.RestoreLogPath |> Option.defaultValue "")
+                  "\"restoreCommand\":"
+                  + jsonEscape (proof.RestoreCommand |> Option.map (evidenceLine repositoryRoot) |> Option.defaultValue "")
+                  "\"restoreLog\":" + jsonEscape (proof.RestoreLogPath |> Option.map asPath |> Option.defaultValue "")
                   "\"assetsFiles\":[" + assetsJson + "]"
                   "\"generatedAtUtc\":" + jsonEscape (DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture)) ]
             + "}"
@@ -857,11 +913,16 @@ module PackageFeed =
 
         let pinViolationLines = pinViolations options.RepositoryRoot pins
 
+        // Relativised for the same reason `pinViolations` is: a violation line is read in a CI log AND
+        // committed into the proof evidence, so it must not carry the runner's root (#686).
         let feedViolations =
             feedStatuses
             |> List.choose (fun status ->
-                if status.Present then None
-                else Some $"missing-local-package: {status.PackageId} {status.Version} at {status.PackageFilePath}")
+                if status.Present then
+                    None
+                else
+                    let where = evidencePath options.RepositoryRoot status.PackageFilePath
+                    Some $"missing-local-package: {status.PackageId} {status.Version} at {where}")
 
         let projectFiles =
             options.SelectedSamples
@@ -1016,8 +1077,8 @@ module PackageFeed =
                 initialPins
 
         let feedStatuses = checkLocalFeed packages
-        let versionEvidence = writePackageVersions options.OutDir packages
-        let pinEvidence = writePackagePins options.OutDir pins
+        let versionEvidence = writePackageVersions options.RepositoryRoot options.OutDir packages
+        let pinEvidence = writePackagePins options.RepositoryRoot options.OutDir pins
 
         let proof =
             if options.Mode = Proof then
@@ -1027,7 +1088,7 @@ module PackageFeed =
 
         let proofFiles =
             match proof with
-            | Some p -> writeSourceProof options.OutDir p pins packages
+            | Some p -> writeSourceProof options.RepositoryRoot options.OutDir p pins packages
             | None -> []
 
         let status = resultStatus options.Mode pins proof
