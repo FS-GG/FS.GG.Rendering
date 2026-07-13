@@ -134,52 +134,132 @@ let private packagesPropsPath = repoPath packagesPropsRel
 type FrameworkModule =
     { /// The package id AND the namespace to `open` — they are the same string.
       Namespace: string
-      /// Top-level module name, as a call site spells it (`Viewer`, `ControlsElmish`, `Audio`).
+      /// Dotted module path WITHIN the namespace (`ControlsElmish`, `ControlsElmish.Perf`). This is
+      /// the spelling a `nameof` needs under `open <Namespace>`, and `Name` is not: a nested module
+      /// cannot be named bare.
+      Path: string
+      /// INNERMOST module name, as a call site spells it (`Viewer`, `ControlsElmish`, `Perf`).
       Name: string
-      /// `val` members exported by that module.
+      /// `val` members declared DIRECTLY by that module — not by its children.
       Members: Set<string> }
 
 let private namespaceRegex = Regex(@"^namespace\s+([\w.]+)", RegexOptions.Compiled)
-let private moduleRegex = Regex(@"^module\s+(\w+)", RegexOptions.Compiled)
-let private valRegex = Regex(@"^\s+val\s+(?:inline\s+)?([a-z]\w*)\s*:", RegexOptions.Compiled)
 
-/// Parse one mirrored `.fsi` into its top-level modules. Only column-0 `module` declarations are
-/// entry points a call site can name; nested modules are reached through their parent and are not
-/// what `Program.fs` writes.
+/// `module` and `val`, with their INDENT, so a nested declaration can be told from a column-0 one.
+/// Shared by both mirror walks below — there used to be two spellings of "what is a module
+/// declaration", and the weaker one is what #648 was.
+///
+/// `val internal` and `module internal` are not product surface (#585's subject, not this file's),
+/// so the `val` regex refuses the former and the module regex CAPTURES the latter — an internal
+/// module must still be TRACKED, or its `val`s fall through to the nearest public ancestor and
+/// invent members nobody exports (`module internal Coalescing` inside `ControlsElmish` is exactly
+/// that shape). Track it; mark it; judge nothing under it.
+let private mirrorModuleRegex =
+    Regex(
+        @"^(?<indent>\s*)(?:\[<[^>]*>\]\s*)*module\s+(?<access>internal\s+|private\s+)?(?<name>\w+)",
+        RegexOptions.Compiled
+    )
+
+let private mirrorValRegex =
+    Regex(@"^(?<indent>\s*)val\s+(?!internal\b)(?:inline\s+)?(?<name>[a-z]\w*)\s*:", RegexOptions.Compiled)
+
+/// Parse one mirrored `.fsi` into the modules a call site can NAME — every public one, at every
+/// depth, each owning only the `val`s it declares ITSELF.
+///
+/// IT USED TO READ COLUMN-0 MODULES ONLY, and that was #648. A nested `module Perf` inside `module
+/// ControlsElmish` is its own type in the assembly (`ControlsElmish+Perf`), its own key in the
+/// pinned-package oracle below (which reads `NestedPublic` types and always did), and its own name
+/// at a call site (`ControlsElmish.Perf.runScript`). Reading only column-0 declarations left the
+/// EXTRACTOR blind to a module the ORACLE could see, and the two disagreeing is the whole bug:
+/// `isFrameworkCall` found no module named `Perf`, returned false, and every `Module.Submodule.member`
+/// a shipped doc named was dropped as "the product calling itself" — silently, with no diagnostic.
+/// It fails in the DANGEROUS direction: not a false alarm, a false PASS, on the exact spelling
+/// `fs-gg-elmish` teaches product authors to drive their UI with.
+///
+/// The old reading of this was that #504's subject IS the column-0 entry points `Program.fs` writes,
+/// so the narrow walk was adequate and `mirrorValSymbols` (below) could keep its own, correct one.
+/// That reasoning had a hole: `frameworkModulesByName` does not only feed #504. It feeds
+/// `isJudgedDocModule`, and #589's subject is every spelling a shipped DOC names — nested ones
+/// included. One walk now, so the two cannot drift apart again.
+///
+/// Attributing a nested `val` to the PARENT — which the old walk also did, since its `val` regex
+/// matched at any indent — invents `ControlsElmish.runScript` (from `Perf.runScript`) and
+/// `ControlsElmish.foreground` (from `DesignTokens.Light`), members nothing exports. Nothing looked
+/// them up, so it never fired; it is fixed here because the correct walk gives it away for free, and
+/// a member set that lies is a trap left armed for the next reader.
 let private parseMirrorFile (path: string) =
     let mutable ns = ""
-    let mutable current = ""
-    // Keyed by (namespace, module): the namespace is bound when the MODULE is declared, not read off
-    // a mutable after the loop, so a file that ever declares two namespaces attributes each module to
+
+    // (indent, name, isInternal), innermost first. A declaration at indent N closes every module
+    // opened at indent >= N, which is what puts a parent-level `val` back under its parent after a
+    // nested module ends.
+    let mutable stack: (int * string * bool) list = []
+
+    // Keyed by (namespace, PATH): the namespace is bound when the module is declared, not read off a
+    // mutable after the loop, so a file that ever declares two namespaces attributes each module to
     // the one it was actually written under instead of to whichever came last.
-    let members = System.Collections.Generic.Dictionary<string * string, ResizeArray<string>>()
+    let members = Collections.Generic.Dictionary<string * string, ResizeArray<string>>()
+    let declared = ResizeArray<string * string>()
+
+    let closeTo (indent: int) =
+        stack <- stack |> List.skipWhile (fun (i, _, _) -> i >= indent)
+
+    let underInternal () = stack |> List.exists (fun (_, _, isInternal) -> isInternal)
+    let currentPath () = stack |> List.rev |> List.map (fun (_, name, _) -> name) |> String.concat "."
 
     for line in File.ReadAllLines path do
         let nsMatch = namespaceRegex.Match line
-        let moduleMatch = moduleRegex.Match line
-        let valMatch = valRegex.Match line
+        let moduleMatch = mirrorModuleRegex.Match line
+        let valMatch = mirrorValRegex.Match line
 
-        if nsMatch.Success then ns <- nsMatch.Groups.[1].Value
+        if nsMatch.Success then
+            ns <- nsMatch.Groups.[1].Value
+            stack <- []
         elif moduleMatch.Success then
-            current <- moduleMatch.Groups.[1].Value
-            if ns <> "" && not (members.ContainsKey((ns, current))) then
-                members.[(ns, current)] <- ResizeArray()
-        elif valMatch.Success && current <> "" && ns <> "" then
-            match members.TryGetValue((ns, current)) with
-            | true, vals -> vals.Add(valMatch.Groups.[1].Value)
-            | _ -> ()
+            let indent = moduleMatch.Groups.["indent"].Value.Length
+            closeTo indent
 
-    members
-    |> Seq.map (fun kvp ->
-        { Namespace = fst kvp.Key
-          Name = snd kvp.Key
-          Members = Set.ofSeq kvp.Value })
+            stack <-
+                (indent, moduleMatch.Groups.["name"].Value, moduleMatch.Groups.["access"].Success)
+                :: stack
+
+            // An internal ANYWHERE up the chain makes everything beneath it internal, and an internal
+            // module is not a name a product can reach: `RetainedRender` must never become framework.
+            if ns <> "" && not (underInternal ()) then
+                let key = ns, currentPath ()
+
+                if not (members.ContainsKey key) then
+                    members.[key] <- ResizeArray()
+                    declared.Add key
+        elif valMatch.Success then
+            let indent = valMatch.Groups.["indent"].Value.Length
+            closeTo indent
+
+            if ns <> "" && not (underInternal ()) && not stack.IsEmpty then
+                match members.TryGetValue((ns, currentPath ())) with
+                | true, vals -> vals.Add valMatch.Groups.["name"].Value
+                | _ -> ()
+
+    declared
+    |> Seq.map (fun (moduleNs, modulePath) ->
+        { Namespace = moduleNs
+          Path = modulePath
+          Name = modulePath.Substring(modulePath.LastIndexOf '.' + 1)
+          Members = Set.ofSeq members.[(moduleNs, modulePath)] })
     |> List.ofSeq
 
+/// EVERY public module the mirror declares, INCLUDING the ones that declare no `val` of their own.
+///
+/// The old walk dropped a member-less module, which was harmless when only column-0 modules existed
+/// (a column-0 module with no `val`s declares only types, and no `Module.member` can name it). It is
+/// NOT harmless now: a CONTAINER — `module DesignTokens` around `Light`/`Dark`, `module Audio` around
+/// `Cmd` — legitimately declares nothing itself, and dropping it would take its NAME out of the closed
+/// world. A doc naming `DesignTokens.foo` would then be read as the product calling itself and go
+/// unjudged, which is the fails-open shape (.github#266) this file refuses. A module that exports
+/// nothing is exactly a module on which every member a doc names is a violation, so it must be IN.
 let private frameworkModules =
     Directory.EnumerateFiles(mirrorRoot, "*.fsi", SearchOption.AllDirectories)
     |> Seq.collect parseMirrorFile
-    |> Seq.filter (fun m -> not m.Members.IsEmpty)
     |> List.ofSeq
 
 /// A module name is only a framework entry point if the mirror declares it. This is what keeps the
@@ -260,18 +340,42 @@ let private productModules =
         if m.Success then Some m.Groups.[1].Value else None)
     |> Set.ofSeq
 
+/// Everything that ENCLOSES a module: its namespace, plus its parent modules if it is nested.
+/// `ControlsElmish.Perf` is enclosed by `FS.GG.UI.Controls.Elmish.ControlsElmish`; the top-level
+/// `ControlsElmish` is enclosed by `FS.GG.UI.Controls.Elmish` alone.
+let private enclosingPath (m: FrameworkModule) =
+    match m.Path.LastIndexOf '.' with
+    | -1 -> m.Namespace
+    | i -> $"{m.Namespace}.{m.Path.Substring(0, i)}"
+
 /// A match is a framework call only if the mirror declares the module AND the qualifier agrees:
-/// either the call is unqualified (reached through an `open`) or it is spelled out in full with the
-/// framework namespace (`FS.GG.Audio.Host.OpenAlBackend.create`). A qualifier that is anything else
-/// — `AppRoot.` — is the product calling itself.
+/// either the call is unqualified (reached through an `open`) or the qualifier names some SUFFIX of
+/// what encloses the module — which is precisely what F# resolution accepts given the `open`s in
+/// scope. `FS.GG.Audio.Host.OpenAlBackend.create` (the whole path) and `ControlsElmish.Perf.runScript`
+/// (the tail of one, under `open FS.GG.UI.Controls.Elmish`) are both the framework; a qualifier that
+/// is anything else — `AppRoot.` — is the product calling itself.
+///
+/// IT USED TO DEMAND `m.Namespace = qualifier`, an EXACT match against the namespace. That reads a
+/// nested call as unresolvable even once the module is known: `ControlsElmish.Perf.runScript` offers
+/// the qualifier `ControlsElmish`, and `Perf`'s namespace is `FS.GG.UI.Controls.Elmish` — never equal,
+/// so the call was dropped. Both halves of #648 had to move: the extractor could not SEE `Perf`, and
+/// this could not have resolved it if it had.
+///
+/// The suffix must be DOT-ALIGNED. A bare `EndsWith` would let the qualifier `mish` match
+/// `...Controls.Elmish`, and a substring is not a name.
 let private isFrameworkCall (qualifier: string) (moduleName: string) =
     match frameworkModulesByName.TryFind moduleName with
     | None -> false
     | Some candidates ->
         let qualified = qualifier.TrimEnd('.')
 
-        if qualified = "" then not (productModules.Contains moduleName)
-        else candidates |> List.exists (fun m -> m.Namespace = qualified)
+        if qualified = "" then
+            not (productModules.Contains moduleName)
+        else
+            candidates
+            |> List.exists (fun m ->
+                let enclosing = enclosingPath m
+                enclosing = qualified || enclosing.EndsWith($".{qualified}", StringComparison.Ordinal))
 
 let private callSites =
     (File.ReadAllText programPath |> eraseKeepingLines).Split('\n')
@@ -298,22 +402,54 @@ let private owningModule (call: CallSite) =
     |> Map.tryFind call.Module
     |> Option.bind (fun candidates -> candidates |> List.tryFind (fun m -> m.Members.Contains call.Member))
 
-/// The namespace to `open` (and the package to reference) for a call site — resolved at MODULE level,
-/// deliberately falling back to any module of that name when no mirrored module declares the member.
+/// The mirrored module a `Module.member` resolves to: the one that DECLARES the member, else — when no
+/// mirrored module of that name declares it — ANY module of that name.
 ///
-/// The probe emits a `nameof` for EVERY call site, so it must emit an `open` for every call site too.
-/// Deriving the namespace from `owningModule` instead would drop exactly the call sites the mirror is
-/// missing, and the probe would then fail FS0039 on an unopened namespace and blame the PIN — reporting
-/// "the framework grew API a scaffolded product cannot reach" when the pin is fine and only the mirror
-/// is stale. A wrong diagnosis on a real failure is worse than no diagnosis.
-let private callNamespace (call: CallSite) =
+/// The fallback is deliberate, and it is what `callNamespace` below needs. The probe emits a `nameof`
+/// for EVERY call site, so it must emit an `open` for every call site too. Resolving through
+/// `owningModule` instead would drop exactly the call sites the mirror is MISSING, and the probe would
+/// then fail FS0039 on an unopened namespace and blame the PIN — reporting "the framework grew API a
+/// scaffolded product cannot reach" when the pin is fine and only the mirror is stale. A wrong diagnosis
+/// on a real failure is worse than no diagnosis.
+///
+/// ONE resolver, used by `callNamespace`, `probeSpelling` and `docPackages`. They each need a different
+/// FIELD of the answer (namespace, path, package) and they must all get it from the SAME module — see
+/// `probeSpelling` for what a disagreement costs.
+let private resolveModule (moduleName: string) (memberName: string) =
     frameworkModulesByName
-    |> Map.tryFind call.Module
+    |> Map.tryFind moduleName
     |> Option.bind (fun candidates ->
         candidates
-        |> List.tryFind (fun m -> m.Members.Contains call.Member)
+        |> List.tryFind (fun m -> m.Members.Contains memberName)
         |> Option.orElse (List.tryHead candidates))
-    |> Option.map (fun m -> m.Namespace)
+
+/// The namespace to `open` (and the package to reference) for a call site.
+let private callNamespace (call: CallSite) =
+    resolveModule call.Module call.Member |> Option.map (fun m -> m.Namespace)
+
+/// How the PROBE must spell a call site: the module's path WITHIN its namespace, which is the bare
+/// name for a top-level module and a dotted one for a nested module.
+///
+/// `nameof Perf.runScript` does not compile under `open FS.GG.UI.Controls.Elmish` — `Perf` is reached
+/// through its parent, so the probe has to write `ControlsElmish.Perf.runScript`. The extractor keys a
+/// call site by its INNERMOST name (that is what a call site spells, and what the oracle keys on), so
+/// the path has to be recovered here or the probe would emit a line that cannot bind and blame the PIN
+/// for it — a wrong diagnosis on a real failure, which is worse than no diagnosis.
+///
+/// It resolves through `resolveModule`, the SAME function `callNamespace` uses, and that is a
+/// correctness requirement rather than tidiness: the probe writes `open <Namespace>` from one and
+/// `nameof <Path>.<member>` from the other. Let the two pick DIFFERENT candidates of a name the mirror
+/// declares twice — `Cmd` is both `Authoring.Cmd` and `Audio.Cmd` — and the probe opens one package and
+/// names a path from another, which cannot bind. It would then report the PIN as missing an API that is
+/// present. One resolver, so they cannot disagree.
+///
+/// `Program.fs` calls no nested module TODAY, so nothing currently depends on the nested spelling. That
+/// is exactly why it is written now: the day someone adds `ControlsElmish.Perf.runScript` to the
+/// template, the probe must fail on the PIN or pass on the PIN, and not fail on itself.
+let private probeSpelling (call: CallSite) =
+    resolveModule call.Module call.Member
+    |> Option.map (fun m -> m.Path)
+    |> Option.defaultValue call.Module
 
 // ---------------------------------------------------------------------------------------------
 // The pins the template hands a scaffolded product.
@@ -647,7 +783,7 @@ let private runProbeBuild () =
     let lines =
         callSites
         |> List.sortBy (fun c -> c.Module, c.Member)
-        |> List.map (fun c -> $"{c.Module}.{c.Member}")
+        |> List.map (fun c -> $"{probeSpelling c}.{c.Member}")
 
     runNameofProbe namespaces lines
 
@@ -785,28 +921,18 @@ let private skillFenceSymbols =
 /// so a `val` it declares that the pinned package does not export is a signature a product author reads,
 /// at length, and cannot call.
 ///
-/// INNERMOST, by indent, and not the column-0 module `parseMirrorFile` tracks for #504. A nested `module
-/// Perf` inside `module ControlsElmish` is its OWN type in the assembly (`ControlsElmish+Perf`) and is
-/// its own name at a call site (`Perf.runScript`) — so attributing its `val`s to the parent invents
-/// `ControlsElmish.runScript`, which nothing exports and no doc names. That misreading put nine
-/// phantom violations on the first run of this rule. `parseMirrorFile` is deliberately left alone: it
-/// feeds #504, whose subject IS the column-0 entry points `Program.fs` writes.
+/// INNERMOST, by indent. A nested `module Perf` inside `module ControlsElmish` is its OWN type in the
+/// assembly (`ControlsElmish+Perf`) and is its own name at a call site (`Perf.runScript`) — so
+/// attributing its `val`s to the parent invents `ControlsElmish.runScript`, which nothing exports and
+/// no doc names. That misreading put nine phantom violations on the first run of this rule.
 ///
-/// `val internal` and `module internal` are not product surface — that is #585's subject, not this
-/// rule's — and are not judged. Both exclusions are load-bearing, and the SECOND one is subtle: an
-/// internal module must still be TRACKED, or its `val`s fall through to the nearest public ancestor.
-/// `module internal Coalescing` inside `module ControlsElmish` is exactly that shape, and refusing to
-/// push it invented four violations (`ControlsElmish.isCoalescibleSample`, …) that name nothing anyone
-/// exports and no product can reach. Track it; mark it; judge nothing under it.
-let private mirrorModuleRegex =
-    Regex(
-        @"^(?<indent>\s*)(?:\[<[^>]*>\]\s*)*module\s+(?<access>internal\s+|private\s+)?(?<name>\w+)",
-        RegexOptions.Compiled
-    )
-
-let private mirrorValRegex =
-    Regex(@"^(?<indent>\s*)val\s+(?!internal\b)(?:inline\s+)?(?<name>[a-z]\w*)\s*:", RegexOptions.Compiled)
-
+/// This walk used to be the ONLY correct one, because `parseMirrorFile` read column-0 modules alone and
+/// was "deliberately left alone: it feeds #504, whose subject IS the column-0 entry points `Program.fs`
+/// writes." That was wrong, and #648 is the bill: `parseMirrorFile` also builds `frameworkModulesByName`,
+/// which `isJudgedDocModule` gates THIS rule on — so every symbol extracted here under a nested owner
+/// (`Perf`, `Live`, `Light`, `Dark`, `Cmd`) was thrown away downstream by a registry that had never
+/// heard of the module. Both walks read indents now, and `mirrorModuleRegex`/`mirrorValRegex` are shared
+/// with `parseMirrorFile` so a third spelling of "what is a module declaration" cannot appear.
 let private mirrorValSymbols =
     Directory.EnumerateFiles(mirrorRoot, "*.fsi", SearchOption.AllDirectories)
     |> Seq.collect (fun path ->
@@ -1312,14 +1438,7 @@ let private renderDocSymbol (s: DocSymbol) =
 let private docPackages =
     let fromVals =
         docSymbols
-        |> List.choose (fun s ->
-            frameworkModulesByName
-            |> Map.tryFind s.Module
-            |> Option.bind (fun candidates ->
-                candidates
-                |> List.tryFind (fun m -> m.Members.Contains s.Member)
-                |> Option.orElse (List.tryHead candidates))
-            |> Option.map (fun m -> packageForNamespace m.Namespace))
+        |> List.choose (fun s -> resolveModule s.Module s.Member |> Option.map (fun m -> packageForNamespace m.Namespace))
 
     // #611 — and every package whose mirror declares a TYPE, because the case rule judges those and can
     // only judge what the oracle restored. Deriving the restore set from the `val` symbols ALONE (which is
@@ -2193,6 +2312,212 @@ let templateConsumesPinnedApiTests =
                  ever enter the judged set. If one does, the closed world has been widened to modules a product \
                  cannot reach, and `RetainedRender.advance` will now be conflated with the `Loop.advance` that \
                  fs-gg-game-core correctly teaches — the bare-name unsoundness this rule exists to avoid."
+        }
+
+        // #648 — `Module.Submodule.member`, the spelling the rule was blind to.
+        //
+        // The extractor read COLUMN-0 `module` declarations only, so `ControlsElmish.Perf.runScript` found no
+        // module named `Perf`, `isFrameworkCall` returned false, and the call site was dropped as "the product
+        // calling itself" — SILENTLY, with no diagnostic. It failed in the dangerous direction: not a false
+        // alarm, a false PASS. A shipped doc could teach an UNRELEASED nested API and merge green, which is
+        // precisely the #550 class this rule was built to close.
+        //
+        // It was found because the gate flagged `ControlsElmish.audioRequests` and said NOTHING about
+        // `ControlsElmish.Perf.runScriptToEffects` — named on the line ABOVE it, in the same doc, in the same
+        // fenced block, and just as unbindable on the pin.
+        //
+        // The oracle could always see these: `readModuleSurface` reads `NestedPublic` types and keys them by
+        // simple name, so `Perf` was in the pinned surface the whole time. Only the EXTRACTOR was blind, and a
+        // gate whose two halves disagree about what a module IS reports green on the difference.
+        test "a NESTED framework module is judged, so a doc cannot teach an unreleased `Module.Submodule.member` (#648)" {
+            let judged = docSymbols |> List.map (fun s -> $"{s.Module}.{s.Member}") |> Set.ofList
+
+            // The anti-vacuity anchor, by NAME rather than by count: the walk must actually reach the nested
+            // declarations. `Perf` and `Live` are nested in `ControlsElmish`, `Light`/`Dark` in `DesignTokens`,
+            // `Cmd` in `Audio` — five, across three packages.
+            for nested in [ "Perf"; "Live"; "Light"; "Dark" ] do
+                Expect.isTrue
+                    (frameworkModules |> List.exists (fun m -> m.Name = nested && m.Path.Contains "."))
+                    $"`{nested}` is a NESTED module of the shipped mirror and must be a framework entry point in \
+                      its own right. If it falls out, `parseMirrorFile` has gone back to reading column-0 \
+                      declarations only, and every `Module.{nested}.member` a shipped doc names is silently \
+                      unjudged again (#648)."
+
+            // THE INSTANCE, and the sharpest anchor in this test: it must be JUDGED, not merely extracted.
+            // `fs-gg-elmish` is what teaches a product author to drive their UI headlessly, so `Perf.*` is one
+            // of the most-copied spellings in the shipped corpus — and it was the one nothing could see.
+            Expect.isTrue
+                (judged.Contains "Perf.runScriptToEffects")
+                "`ControlsElmish.Perf.runScriptToEffects` — named by the shipped mirror AND by fs-gg-elmish's \
+                 fenced block — must survive into the JUDGED set. It is #648's instance: the gate flagged \
+                 `ControlsElmish.audioRequests` on the very next line and was silent on this one. If it falls \
+                 out, the nested spelling is unjudged again and a doc can teach an unreleased nested API green."
+
+            Expect.isTrue
+                (judged.Contains "Perf.runScriptToModel" && judged.Contains "Live.runScript")
+                "the nested spellings the product skills actually teach (`Perf.runScriptToModel` in fs-gg-elmish \
+                 and fs-gg-testing, `Live.runScript` in the mirror) must be judged. A single instance passing \
+                 proves the walk reached one file; these prove it reached the surface."
+
+            // A nested `val` belongs to the module that DECLARES it, not to its parent. The old walk matched
+            // `val` at ANY indent while tracking only column-0 modules, so `Perf.runScript` was recorded as
+            // `ControlsElmish.runScript` — a member nothing exports. Nothing looked it up, so it never fired;
+            // this keeps it from being re-armed.
+            let controlsElmish =
+                frameworkModules |> List.filter (fun m -> m.Path = "ControlsElmish")
+
+            Expect.isNonEmpty controlsElmish "the mirror declares `module ControlsElmish`."
+
+            for m in controlsElmish do
+                Expect.isFalse
+                    (m.Members.Contains "runScript")
+                    "`runScript` is declared by `ControlsElmish.Perf` and `ControlsElmish.Live`, NOT by \
+                     `ControlsElmish` itself. If it appears among the parent's members, the walk is attributing \
+                     nested `val`s to their ancestor again and inventing `ControlsElmish.runScript` — a spelling \
+                     nothing exports and no doc names."
+
+            // THE RESOLUTION HALF, asserted DIRECTLY — and it has to be, because nothing else in this test can
+            // see it. The docs spell a nested call BOTH ways: `ControlsElmish.Perf.runScriptToEffects` in
+            // fs-gg-elmish's fences, and a bare `Perf.runScript` in its prose. The mirror's own `val` always
+            // arrives UNQUALIFIED (`mirrorValSymbols` reports the innermost owner and no qualifier), so a nested
+            // symbol lands in the judged SET through the empty-qualifier path whatever this function does — which
+            // means every symbol-level assertion above still passes with the qualified path completely broken.
+            //
+            // Verified, not assumed: reverting this to the old `m.Namespace = qualified` leaves all 39 tests
+            // green. The exact-namespace test can never match a nested module — `Perf`'s namespace is
+            // `FS.GG.UI.Controls.Elmish`, and the qualifier a call site offers is `ControlsElmish` — so every
+            // QUALIFIED occurrence is dropped, silently, and only the mirror's `val` keeps the symbol alive.
+            Expect.isTrue
+                (isFrameworkCall "ControlsElmish." "Perf")
+                "`ControlsElmish.Perf.runScript` must resolve as a framework call. The qualifier a call site \
+                 offers (`ControlsElmish`) is a SUFFIX of what encloses the module \
+                 (`FS.GG.UI.Controls.Elmish.ControlsElmish`), never equal to its namespace — so an \
+                 exact-namespace test drops every qualified nested spelling in the shipped corpus (#648)."
+
+            Expect.isFalse
+                (isFrameworkCall "AppRoot." "Perf")
+                "a qualifier that is NOT a suffix of the module's enclosing path is the product calling itself, \
+                 and must not resolve. If this passes, the suffix match has been widened into a bare substring \
+                 or dropped altogether, and the product's own modules are being judged against the pin."
+
+            // The SITES half, which is what the reader actually pays for. `renderDocSymbol` names every line a
+            // symbol occurs on, deliberately ("a message that understates the work by 3x sends the reader back
+            // around the loop for nothing"). fs-gg-elmish teaches `Perf.runScriptToEffects` once in PROSE (bare)
+            // and twice in FENCES (qualified) — the blocks a reader COPIES. Drop the qualified path and the bare
+            // prose mention is the ONLY site that still resolves: the symbol still reports, and the two lines a
+            // reader must actually edit vanish from the message.
+            //
+            // Asserted as a COUNT, not as a line number. `List.exists (fun line -> line > 126)` was the first
+            // spelling, and it is the fails-open shape in miniature: 126 is where the prose mention happens to
+            // sit today, so one edit to the skill that pushes the prose further down the file satisfies it with
+            // the fenced sites gone and the qualified path completely broken. A count cannot be satisfied by the
+            // site it is meant to be checking PAST.
+            let effectsSites =
+                docKeySites
+                |> Map.tryFind "template/product-skills/fs-gg-elmish/SKILL.md::Perf.runScriptToEffects"
+                |> Option.defaultValue []
+
+            Expect.isGreaterThan
+                effectsSites.Length
+                1
+                $"`ControlsElmish.Perf.runScriptToEffects` is named by fs-gg-elmish in PROSE (bare) and in two \
+                  FENCES (qualified), so it must report MORE THAN ONE site (found: {effectsSites}). Only the bare \
+                  prose mention resolves through the empty-qualifier path — so a single site means the QUALIFIED \
+                  spelling is being dropped again, and the fenced blocks a reader actually copies have gone \
+                  unjudged (#648)."
+
+            // The probe has to be able to SPELL what the extractor found. `nameof Perf.runScript` does not
+            // compile under `open FS.GG.UI.Controls.Elmish`; only `ControlsElmish.Perf.runScript` does. Nothing
+            // in `Program.fs` calls a nested module today, so this is the guard that keeps the probe honest on
+            // the day something does — otherwise it would fail on ITSELF and blame the pin.
+            Expect.equal
+                (probeSpelling { Module = "Perf"; Member = "runScript"; Line = 0 })
+                "ControlsElmish.Perf"
+                "the probe must spell a nested call site by its path WITHIN the namespace. A bare `Perf.runScript` \
+                 cannot bind under `open FS.GG.UI.Controls.Elmish`, so the probe would fail to compile and report \
+                 the PIN as missing an API that is present — a wrong diagnosis on a real failure."
+        }
+
+        // The walk itself, against a mirror written FOR the test — the only way to assert the half of it the
+        // shipped corpus cannot reach.
+        //
+        // `internal` IS handled by `parseMirrorFile`, and today's mirror exercises NONE of it: the api-surface
+        // mirror ships zero `module internal` / `val internal` declarations (src has 55; mirroring strips them).
+        // So an assertion phrased against the real corpus — "`Coalescing` is not a framework module" — is
+        // vacuously true, stays green if the handling is deleted outright, and is exactly the "green because it
+        // checked nothing" shape (.github#266) this file refuses everywhere else. It was written that way first,
+        // and a mutation run is what exposed it: removing the `internal` tracking left all 39 tests passing.
+        //
+        // The handling still has to be there and still has to be RIGHT, because the mirror is REGENERATED from
+        // src, and one regen that carries an internal module through is all it takes. An internal module must be
+        // TRACKED, not skipped: refuse to push it and its `val`s fall through to the nearest public ancestor,
+        // inventing `ControlsElmish.isCoalescibleSample` — a member no package exports, a phantom violation
+        // against a correct mirror, with no honest remedy. Track it; mark it; judge nothing under it.
+        //
+        // A synthetic mirror asserts the contract directly, so the walk is pinned by something that fails when
+        // it breaks rather than by the corpus's current good luck.
+        test "the mirror walk: a nested module owns its own `val`s, and `internal` is tracked but never judged (#648)" {
+            let dir = Path.Combine(Path.GetTempPath(), "fsgg-mirror-walk-" + Guid.NewGuid().ToString("N"))
+            Directory.CreateDirectory dir |> ignore
+
+            try
+                let source =
+                    "namespace FS.GG.Test.Pkg\n\
+                     \n\
+                     module Outer =\n\
+                     \n\
+                     \x20   val topLevel: int -> int\n\
+                     \n\
+                     \x20   module Inner =\n\
+                     \x20       val nested: int -> int\n\
+                     \n\
+                     \x20   module internal Hidden =\n\
+                     \x20       val secret: int -> int\n\
+                     \n\
+                     \x20   val afterNested: int -> int\n\
+                     \x20   val internal notSurface: int -> int\n"
+
+                let path = Path.Combine(dir, "Probe.fsi")
+                File.WriteAllText(path, source)
+
+                let parsed = parseMirrorFile path
+                let byPath = parsed |> List.map (fun m -> m.Path, m) |> Map.ofList
+
+                // `Hidden` is internal: tracked (so `secret` does not fall through to `Outer`) and registered
+                // NOWHERE. If it appears here, the closed world now contains a module no product can bind.
+                Expect.equal
+                    (parsed |> List.map (fun m -> m.Path) |> List.sort)
+                    [ "Outer"; "Outer.Inner" ]
+                    "the walk registers every PUBLIC module at every depth, and no internal one. `Outer.Hidden` \
+                     is `module internal` — a product cannot reach it, so it must never become a framework entry \
+                     point (the `RetainedRender` unsoundness, one level down)."
+
+                let outer = byPath.["Outer"]
+
+                // The indent stack, asserted end to end: `topLevel` precedes the nested blocks and `afterNested`
+                // FOLLOWS them, so it is only attributed correctly if the nested modules were CLOSED at dedent.
+                // `nested` and `secret` must not appear, and neither may `notSurface` (`val internal`).
+                Expect.equal
+                    (outer.Members |> Set.toList |> List.sort)
+                    [ "afterNested"; "topLevel" ]
+                    "a module owns the `val`s it declares ITSELF. `nested` belongs to `Outer.Inner` and `secret` \
+                     to the internal `Outer.Hidden`; attributing either to the parent invents `Outer.nested` — the \
+                     `ControlsElmish.runScript` phantom. `afterNested` is declared AFTER the nested blocks, so it \
+                     lands on `Outer` only if they were closed at the dedent. And `val internal notSurface` is not \
+                     product surface at all."
+
+                let inner = byPath.["Outer.Inner"]
+
+                Expect.equal (inner.Name, inner.Members |> Set.toList) ("Inner", [ "nested" ])
+                    "a nested module is keyed by its INNERMOST name — that is what a call site spells \
+                     (`Outer.Inner.nested`) and what the pinned-package oracle keys on (`Outer+Inner`)."
+
+                Expect.equal (enclosingPath inner) "FS.GG.Test.Pkg.Outer"
+                    "what ENCLOSES a nested module is its namespace PLUS its parents, which is why a qualifier \
+                     (`Outer`) is a suffix of it and never equal to the namespace. This is the comparison \
+                     `isFrameworkCall` makes, and the one #648's exact-namespace test could never satisfy."
+            finally
+                try Directory.Delete(dir, true) with _ -> ()
         }
 
         // #597 / #585 — FRAMEWORK skills are not judged, and that is a decision, not an omission.
