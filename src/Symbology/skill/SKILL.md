@@ -277,6 +277,9 @@ mapping; it is not a refusal to grow.
 
 ### Worked example — the turret with nowhere to go
 
+<!-- skill-refs: closed-ok FS.GG.Rendering#260 — cited as the issue that PROMPTED ADR-0102, which answered it. History; it stays closed. -->
+
+
 FS.GG.Game mapped a tank and found `Token` carried a single `Heading`. A tank rotates twice: the **hull**
 decides which armor plate a shot lands on, the **turret** where the gun points. Neither is inspection
 detail, and the skill offered no legal way to say both. They filed

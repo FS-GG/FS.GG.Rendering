@@ -1,6 +1,6 @@
 ---
 name: pnext-item
-description: Claim the next schedulable item assigned to THIS FS-GG repo and take it all the way to merged and done-stamped. Use when you are a worker (agent or person) picking up work in a repo, especially one of several running in parallel. Wraps the intra-repo-parallel-work protocol — worker id, comment-order claim lock, per-item git worktree, disjoint `Paths:` touch-set — then implements, opens a PR, reviews it, merges on green, and earns the done-stamp. Any problem or improvement it finds that another repo owns gets filed on the Coordination board rather than fixed in place or forgotten. Canonical protocol lives in FS-GG/.github. See ADR-0001, ADR-0021 and ADR-0027.
+description: Claim the next schedulable item assigned to THIS FS-GG repo and take it all the way to merged and done-stamped. Use when you are a worker (agent or person) picking up work in a repo, especially one of several running in parallel. Wraps the intra-repo-parallel-work protocol — worker id, comment-order claim lock, per-item git worktree, disjoint `Paths:` touch-set — then implements, opens a PR, reviews it, merges on green, and earns the done-stamp. A problem it finds along the way is FIXED, in the same PR when that keeps the change reviewable; it is filed only when it is genuinely not fixable from here — another repo owns it, or it needs a decision a human has to make. Canonical protocol lives in FS-GG/.github. See ADR-0001, ADR-0021 and ADR-0027.
 ---
 
 # pnext-item (FS-GG)
@@ -120,9 +120,10 @@ scripts/fsgg-coord widen <issue> --paths "src/Scene/**, tests/Scene/**"   # 2. t
 ```
 
 `widen` re-checks the touch-set against every live claim and notifies whoever it now collides with;
-it exits non-zero on a collision. Declare **narrowly and honestly** — `Paths:` is not a glob
-language (exact paths, directory prefixes, and a *trailing* `/**` or `/*`; a leading `**/` matches
-nothing and is refused).
+it exits non-zero on a collision. Despite the name it is a **re-declare, not an append**: it sets
+`Paths:` to exactly what you pass, so it hands paths back as readily as it takes them (§3). Declare
+**narrowly and honestly** — `Paths:` is not a glob language (exact paths, directory prefixes, and a
+*trailing* `/**` or `/*`; a leading `**/` matches nothing and is refused).
 
 **And do not reserve a generated artifact** (`.github#309`). If a checked-in generator produces the file
 and a CI **regeneration gate** fails on any diff in it, nobody *authors* it — a collision there is a
@@ -158,6 +159,34 @@ discipline, managed for you.
   regenerated it — you did not author it. Declaring it now reserves a file nobody owns and
   serialises every other item that regenerates it, which is the exact failure §1 keeps you out of.
   Leave it undeclared, and name it as expected drift in the PR (§5).
+- **And the mirror of that rule: if the work turns out NARROWER than declared, re-declare it
+  narrower — the moment you know.** `widen` sets the touch-set rather than extending it, so the same
+  command gives paths back:
+
+  ```sh
+  scripts/fsgg-coord widen <issue> --paths "<what you are ACTUALLY touching>"
+  ```
+
+  **A narrowing can never collide** — a subset reserves nothing its superset did not — so it will
+  never cost you an `OVERLAP`, and there is never a reason to sit on one. (It can still exit
+  non-zero for a reason that is not yours: `widen` refuses to report `DISJOINT` when some *other*
+  live claim declares unmatchable tokens, because it cannot see that claim's files to check against.
+  That fires in either direction and means "fix theirs", not "your narrowing was rejected" — your
+  re-declaration has already landed.) Two triggers fire in practice:
+
+  - **A file you find you cannot edit.** A distributed or generated file whose CI gate fails on a
+    consumer edit is not yours to author. You read it and moved on; give it back.
+  - **A directory you turn out only to READ.** `src/` in the declaration, one file in the diff.
+
+  Until you do, your declaration keeps reserving those files for the rest of the lease and `take`
+  reports **"nothing schedulable"** over items that are startable but for a reservation nobody is
+  using. Both triggers are one real item: FS.GG.Rendering#618 declared
+  `Directory.Build.props src/ .github/workflows/`, merged a **one-file** diff, and never touched
+  `Directory.Build.props` (a distributed file a consumer may not edit) or `src/` (the whole source
+  tree). That unused `src/` alone held #619 off the board for the life of the claim — an entire
+  source tree reserved, colliding on **one `.fsi` file** — and #618's holder had `widen` in hand the
+  whole time with no reason to think of it
+  ([#601](https://github.com/FS-GG/.github/issues/601)).
 - **Heartbeat long work.** A claim goes stale after `FSGG_CLAIM_LEASE_MIN` (default 120m) without
   one, and the next claimant collects it.
 
@@ -182,23 +211,64 @@ discipline, managed for you.
 - Watch for stray build artifacts (`.pyc`, `bin/`, `obj/`) sneaking into the commit from a fresh
   worktree.
 
-## 4. Findings that aren't yours to fix — file them, don't carry them
+## 4. Findings you make along the way — **FIX them. File only what you cannot.**
 
-Working an item is when you find the *other* things: an upstream API that forces a workaround, a
-contract whose version is incoherent, a doc that lies, an obvious improvement two repos over. You
-have three options and only one of them is right.
+Working an item is when you find the *other* things: a doc that lies, a gate that fails open, an
+obvious improvement two files over, a contract whose version is incoherent.
 
-- **Don't fix it here.** It is outside your declared `Paths:`, and usually outside this repo
-  entirely. Widening a touch-set across a repo boundary is not a thing you can do.
-- **Don't drop it.** A finding that lives only in your PR description, a code comment, or your
-  session transcript is lost the moment the worktree is removed. This is the failure mode: the
-  worker who *had* the context is the only one who ever sees the problem, and they moved on.
-- **File it**, then carry on with your item.
+**The default is to fix it, in the PR you already have open.** You are the one holding the context.
+You have the files checked out, the tests running, and the problem in front of you. Nobody who reads
+your issue three weeks from now will have any of that, and they will spend an hour rebuilding what you
+already know.
 
-Anything owned by another repo — a bug, an incoherence, a missing capability, an improvement — goes
-on the **Coordination board** as a real issue, per
-[cross-repo-coordination](../cross-repo-coordination/SKILL.md). Issues are the mailbox; git is not
-a queue, and neither is a TODO comment.
+> **This rule used to be the opposite**, and the opposite was wrong. It said *"don't fix it here — file
+> it"*, and what that produced was **churn**: a worker fixes A, files B and C, and the worker who takes B
+> files D and E. The board fills with findings faster than anyone can close them, the queue stops being
+> a list of work and becomes a list of *observations*, and the same defect gets re-filed under a new
+> number because nobody can find the first one. **A filed issue is not progress. A merged fix is.**
+
+### The test, in order
+
+**1. Can you fix it here, honestly?** Same repo; inside your declared `Paths:`, or a `widen` that
+`widen` accepts; and the fix leaves your PR as **one story** a reviewer can hold in their head.
+→ **Fix it.** Say so in the PR body, in a line that names what you found and why it belonged here.
+
+**2. Can you fix it, but not in *this* PR?** Same repo, but it is its own change — a different subject,
+a different touch-set, or a diff that would make this PR two stories.
+→ **Take it next.** Land this item, then claim that one and fix it. It is still yours; you just do it
+in the right order. (If it needs an issue to be claimable, file one — but you are filing it *to work
+it*, not to be rid of it.)
+
+**3. Can you not fix it?** Only these count:
+
+- **Another repo owns it.** You cannot open a PR there from this worktree. This is a hard boundary, not
+  a preference.
+- **It needs a DECISION, not a fix** — an architectural call, a contract or ADR change, a trade-off with
+  no obviously right answer, or anything that changes how somebody else's work has to be done. **This is
+  the "needs a human" case, and it is the one worth filing.** A decision filed as an issue is the system
+  working. A typo filed as an issue is the system clogging.
+- **`widen` refuses it.** A live claim holds those files. Do not edit them — `say` to their holder
+  instead, and if it still needs doing after they land, take it next.
+- **You cannot verify the fix.** You would be guessing, and a guess merged is worse than a finding filed.
+
+→ **File it.**
+
+**4. Never drop it.** A finding that lives only in a PR description, a code comment, or your session
+transcript is lost the moment the worktree is removed. That has not changed. The worker who *had* the
+context is the only one who ever sees the problem, and they moved on.
+
+### Before you file anything, three questions
+
+- **Would fixing it take less time than writing the issue?** Then writing the issue is the *expensive*
+  option, and you chose it to avoid the work. Fix it.
+- **Is the issue you are about to write mostly a restatement of a rule that already exists?** Then the
+  rule is not the problem — the code is. Fix the code.
+- **Has this, or its sibling, been filed before?** *Look* (below). And if a fix keeps regenerating the
+  same finding, **the finding is not the bug — the thing that regenerates it is.** File *that*, once,
+  and fix it. Do not file the symptom for the seventh time.
+
+**Do not file an issue about a file that is already open in your diff.** That is the clearest case there
+is: you are looking at it, you can change it, and you are choosing to write about it instead.
 
 ### Look before you file — you are not the only one filing
 
@@ -271,6 +341,14 @@ filed by this very recipe, **none** of them schedulable, and `/pnext-item` repor
 over a full one ([#442](https://github.com/FS-GG/.github/issues/442)). You are the one holding the
 context — you can name the files better than the eventual claimant can.
 
+**But on a `[cross-repo]` item it is still a guess, and in the target repo it lands as a lock.** You
+are naming files in a repo whose layout you are reading from the outside, and every worker there is
+held out of those paths for the life of the claim. So declaring a wide touch-set "to be safe" is not
+safe — it is a lock you took on somebody else's behalf. Declare what you can defend, and know that
+**the claimant is expected to correct you**: when they find the declaration over-reserves, §3 tells
+them to `widen` it narrower on the spot rather than inherit the guess
+([#601](https://github.com/FS-GG/.github/issues/601)).
+
 Declare it **narrowly and honestly**: exact paths, directory prefixes, and a *trailing* `/**` or
 `/*` (a leading `**/` matches nothing and is refused; so is a backticked line, #435), and **no
 generated artifact** — see §1: a file a generator emits and a CI regeneration gate guards is not
@@ -313,12 +391,19 @@ scripts/fsgg-coord release <this-issue>     # don't hold a lease on work you can
 
 Then `/pnext-item` again — take something startable while the other repo responds.
 
-**If it doesn't block you, file it and keep going.** Do not let a drive-by improvement grow your
-diff: an item that quietly fixes three other repos' problems is unreviewable, and its touch-set was
-a lie. `Status: Backlog` is the honest resting place for a finding nobody has scheduled yet.
+**If it doesn't block you, and it is genuinely not yours to fix (§4), file it and keep going.**
+`Status: Backlog` is the honest resting place for a finding nobody has scheduled yet.
 
-Judgement, not a rule: file the thing that would make *another worker's* next hour better. A typo in
-a comment is noise. A contract that cannot be satisfied, a doc that will mislead the next reader, a
+**But the constraint that makes this a real limit is REVIEWABILITY, not repo hygiene.** Do not let a
+drive-by fix grow your diff into two stories: a PR that quietly fixes three unrelated things is
+unreviewable, and its touch-set was a lie. That is the line — not "is this my item", but *"can one
+reviewer hold this whole change in their head, and does the title still describe it?"* A small,
+in-scope, verified fix belongs in your diff. A second subject does not, and it is not filed away
+either — you take it next (§4, case 2).
+
+Judgement, not a rule: fix the thing that would make *another worker's* next hour better; file only the
+thing you cannot. A typo in a comment is noise **and it is also a one-character fix — so just fix it**. A
+contract that cannot be satisfied, a doc that will mislead the next reader, a
 gate that reports green on a missing subject — those are the findings this org keeps discovering
 late, and they are cheap to file the moment you are standing in front of them.
 
@@ -505,9 +590,15 @@ Two more that bite in the same state:
 
 ## 6. Clean up, then go again
 
-Before you remove the worktree, empty your head into the board (§4). Everything you noticed and did
-not fix is about to become unrecoverable — the branch is gone, the context is gone, and the next
-worker rediscovers it from scratch.
+Before you remove the worktree, deal with what you found (§4) — and **"deal with" means fix, not file.**
+Everything you noticed and did not act on is about to become unrecoverable: the branch is gone, the
+context is gone, and the next worker rediscovers it from scratch.
+
+But the answer to that is **not** to empty your head onto the board on the way out. A finding you dump
+into an issue at the last minute, written by someone who has already stopped thinking about it, is the
+lowest-value artefact this protocol produces — it costs the next worker an hour to rebuild what you knew
+five minutes ago, and it costs everyone the noise. If it was worth noticing, it was worth either fixing
+or leaving alone.
 
 ```sh
 cd - && git worktree remove ../<repo>-<n>
@@ -521,6 +612,29 @@ aborted at the `git checkout main` step *before* it got that far (#564) — so t
 accumulating for as long as the bug existed: the shared checkout of `.github` was holding **~40**
 stale `item/*` branches from merged, done-stamped items when this was written. Harmless individually,
 noise in every `git branch` you will ever run.
+
+**The claim is dropped by `done --flip`, and you no longer have to think about it**
+([#533](https://github.com/FS-GG/.github/issues/533)). It did not used to be. `done --flip` verified
+the merge, set `Status: Done`, rolled up the epic — and **never touched the claim marker**. `release`
+was the only path that dropped it, and `release` *rewrites* `Status`, so running it on an item you
+have just stamped `Done` clobbers the stamp you just earned. This section removed the worktree and
+never mentioned the claim; `release` appears only under *Abandoning an item*. **So on the success
+path there was no action, in the tool or in this recipe, that dropped the lock.**
+
+The marker stayed live for the rest of the lease (**120m**), and a live marker's `Paths:` keep
+**reserving its touch-set**. And it bites hardest exactly where the protocol is working: the items
+most likely to overlap a just-finished item are its own **follow-up findings** — the ones §4 tells
+you to file *because* you were standing in those files. So the recipe reliably produced an item its
+own author had locked out for two hours, and `take` reported a dead queue over it.
+
+**The claim's lifetime is the work's lifetime.** The work is done, so the claim is done.
+
+**And an expired lease is not proof that you stopped** ([#581](https://github.com/FS-GG/.github/issues/581)).
+If a long build outruns the lease, an **open PR on `item/<n>-*` is proof of life**: `batch` will not
+offer your item to anyone else, `reap` refuses to collect it, `who` shows `STALE (#433 OPEN)` rather
+than a bare `STALE`, and `heartbeat` will let you **renew your own lapsed lease** rather than making
+you re-`claim` and race a `take` that is already offering your work to a stranger. You still should
+heartbeat. You are no longer punished for the one case where you predictably won't.
 
 ## Abandoning an item
 

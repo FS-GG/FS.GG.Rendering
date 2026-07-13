@@ -94,12 +94,35 @@ jobs:
       # --no-restore: the locked, cold restore above is the one restore (gate.yml's pattern, FR-002/GR3).
       - name: Build solution (warms the suites that shell out to dotnet against this repo)
         run: dotnet build FS.GG.Rendering.slnx --no-restore
-      # Package.Tests is an exe test project outside the slnx; run it directly, so it restores itself —
-      # into the cold NUGET_PACKAGES the action exported, which is what makes ITS committed lock file
-      # validated against the feed too. It carries one, and nothing else in the repo restores it.
+      # Package.Tests has been a slnx MEMBER since #540 — it is NOT "outside the solution", and every
+      # clause that used to follow from that is now false: the locked, cold restore above already covers
+      # it (that is what validates its committed lock file against the feed), and gate.yml already runs
+      # it on every PR, in Debug, off the slnx-derived test list.
+      #
+      # It is run AGAIN here, directly, for the one thing the PR gate cannot give it: this job's
+      # FS_SKIA_RUN_PACKAGE_CONSUMER_SMOKE=1, which opts in the pack -> fresh-consumer -> build -> run
+      # suite that is too slow for the push gate (Package.Tests asserts the flag is set here, so
+      # dropping it fails the build rather than silently un-testing the packages).
+      #
+      # `-c Release` runs the SUITE in the configuration this lane ships. It does NOT drive the smoke:
+      # the smoke shells out with its own explicit `-c Release` to pack, build and run the throwaway
+      # consumer (see tests/Package.Tests/Tests.fs), so it is independent of this flag. Do not infer a
+      # link that is not there — a plausible-but-wrong rationale here is what this comment is fixing.
+      #
+      # So do NOT delete this step as "redundant with the gate": the gate never sets the flag, so its
+      # run skips the smoke entirely, and the smoke runs nowhere else.
       - name: Run Package.Tests
         run: dotnet test tests/Package.Tests/Package.Tests.fsproj -c Release
 
+  # NOTE (#680): this job is NO LONGER the only thing that compiles the scaffolded product. `gate.yml`'s
+  # `generated-product-gate` now scaffolds all five profiles and compiles + runs their tests on EVERY PR,
+  # sharing this job's feed setup verbatim via `.github/actions/product-local-feed`. That is deliberate:
+  # what remains release-only here is what is genuinely release-shaped — the STOCK `dotnet run` path and
+  # the ADR-0024 audio consumer edge — and everything else has moved left, because a gate that only ever
+  # runs at publish time discovers its findings at the worst possible moment (#679).
+  #
+  # Keep this job anyway. It is the last line of defence, it runs against the real release commit, and it
+  # asserts things the PR gate does not.
   template-product-tests:
     name: Generated product (template instantiation, release-only)
     runs-on: ubuntu-latest
@@ -111,108 +134,27 @@ jobs:
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '10.0.x'
-      # The generated product consumes FS.GG.UI.* as PACKAGES at $(FsGgUiVersion) — the FRAMEWORK pin,
-      # which is DECOUPLED from the template-package release tag $VER (a template-only release, e.g.
-      # v0.1.61, ships new template content over an UNCHANGED framework pin 0.1.58; registry
-      # fs-gg-ui-template: version=pin vs package-version=tag). On a release the coherent framework set
-      # is not on any public feed yet — publish-packages runs AFTER this gate (needs: this job), so a
-      # stock restore hits NU1101. Pack the whole solution to a runner-local feed at the PIN (what the
-      # instantiated product actually restores — packing at $VER would leave a dead-weight feed the
-      # product never touches), and add it as a source. Throwaway (RUNNER_TEMP); it does not publish.
-      - name: Read the framework pin (FsGgUiVersion — what the product restores)
-        id: pin
-        shell: bash
-        run: |
-          set -euo pipefail
-          pin="$(grep -oP '(?<=<FsGgUiVersion>)[^<]+' template/base/Directory.Packages.props)"
-          [[ -n "$pin" ]] || { echo "::error::<FsGgUiVersion> not found in template/base/Directory.Packages.props"; exit 1; }
-          echo "version=$pin" >> "$GITHUB_OUTPUT"
-          echo "Framework pin for the gate feed: $pin"
-      # The feed must be reachable FROM THE GENERATED PRODUCT, which is instantiated under `mktemp -d`
-      # (/tmp), not under this repo. `dotnet nuget add source` writes to the NEAREST nuget.config, and
-      # since #186 (3b0605b) that is this repo's own pinned `nuget.config` — which declares `<clear />`
-      # and maps every pattern to nuget.org, so the added source is both invisible to /tmp and excluded
-      # by mapping where it IS visible. The release lane has not cut a real release since #186, so the
-      # regression stayed latent until 0.4.0-preview.1 (#225): the product resolved FS.GG.UI.* from
-      # nuget.org, found only the previous major, and failed NU1102 — taking the publish (needs: this
-      # job) down with it while the tag triple had already been cut.
+      # #680: the pin + pack + user-level NuGet.Config + feed assertion used to live inline here, and
+      # were the ONLY copy. They are now the shared `.github/actions/product-local-feed`, used verbatim
+      # by `gate.yml`'s PR-time `generated-product-gate` as well — so the gate that is supposed to
+      # PREDICT this job restores from a feed built exactly the way this job's feed is built. Two
+      # hand-maintained copies would drift, and the first thing the drift would cost is the prediction.
+      # All the reasoning that was in this block (why pack rather than restore the published pin; why
+      # the USER-LEVEL config and not `dotnet nuget add source`; the #186/#225 NU1102 history; why the
+      # pack must not take --no-restore) moved with it — read it there.
       #
-      # Write the USER-LEVEL config instead: NuGet always applies it, whatever directory the restore is
-      # rooted in, so both instantiated products see the feed. Author it whole rather than appending a
-      # source, so the mapping is explicit and this step does not depend on whatever the runner image
-      # left behind. FS.GG.UI.* (and the bare `FS.GG.UI` BOM) come from the local feed and nowhere else;
-      # everything else — FS.GG.Game.Core, FS.GG.Audio.*, FS.GG.Contracts, FSharp.Core — from nuget.org,
-      # exactly as a real consumer restores. The mapping also excludes the SDK's implicit
-      # `FSharp/library-packs` source, matching the hermeticity #186 established for the repo.
-      #
-      # This repo's own restores are unaffected: its `nuget.config` <clear />s packageSources, which
-      # drops `release-local-feed` for anything rooted here.
-      # 559 — cold, locked, config-pinned, exactly as the gate restores since #482. This must come BEFORE
-      # the pack step below, and it deliberately restores with the REPO's `nuget.config`: at this point
-      # the user-level config that adds `release-local-feed` has not been written yet, so this restore
-      # sees the same sources a fresh clone does.
+      # The cold locked restore below still runs FIRST, and must: it deliberately restores with the
+      # REPO's `nuget.config`, before the action writes the user-level config that adds the local feed,
+      # so it sees exactly the sources a fresh clone does. 559 — cold, locked, config-pinned, as the
+      # gate has restored since #482.
       - name: Restore (locked, cold)
         uses: ./.github/actions/locked-restore
         with:
           target: FS.GG.Rendering.slnx
 
-      # NOTE ON THE PACK BELOW: it deliberately does NOT take `--no-restore`, unlike the `dotnet build`
-      # in `package-tests`. `-p:Version=$PIN` has to be in effect during restore, because pack converts
-      # each ProjectReference into a package dependency at the version the restore resolved. Packing
-      # with `--no-restore` would reuse assets restored at the projects' own <Version> and emit a
-      # coherent set whose INTERNAL dependencies point at the wrong version — a broken publish that
-      # every gate here would still call green. So pack re-restores, warm, inside the cold
-      # NUGET_PACKAGES the action just populated: no feed round-trip, and the version applies.
       - name: Pack the framework set (at the pin) to a runner-local feed
-        shell: bash
-        env:
-          PIN: ${{ steps.pin.outputs.version }}
-        run: |
-          set -euo pipefail
-          feed="$RUNNER_TEMP/release-local-feed"
-          mkdir -p "$feed"
-          dotnet pack FS.GG.Rendering.slnx -c Release -p:Version="$PIN" -o "$feed"
-          cfg="$HOME/.nuget/NuGet/NuGet.Config"
-          mkdir -p "$(dirname "$cfg")"
-          cat > "$cfg" <<XML
-          <?xml version="1.0" encoding="utf-8"?>
-          <configuration>
-            <packageSources>
-              <clear />
-              <add key="nuget.org" value="https://api.nuget.org/v3/index.json" protocolVersion="3" />
-              <add key="release-local-feed" value="$feed" />
-            </packageSources>
-            <packageSourceMapping>
-              <packageSource key="release-local-feed">
-                <package pattern="FS.GG.UI" />
-                <package pattern="FS.GG.UI.*" />
-              </packageSource>
-              <packageSource key="nuget.org">
-                <package pattern="*" />
-              </packageSource>
-            </packageSourceMapping>
-          </configuration>
-          XML
-          echo "Packed FS.GG.UI.* $PIN to $feed"; ls -1 "$feed"/*.nupkg
-          echo "--- user-level NuGet.Config ---"; cat "$cfg"
-      # Fail here, loudly, rather than 40 lines deep in an NU1102 dump: the whole point of the feed is
-      # that the product restores the pin from it, so prove the pin is actually IN it before we install
-      # the template. A pack that silently produced a different version is the failure this catches.
-      - name: Assert the local feed carries the pin
-        shell: bash
-        env:
-          PIN: ${{ steps.pin.outputs.version }}
-        run: |
-          set -euo pipefail
-          feed="$RUNNER_TEMP/release-local-feed"
-          for id in FS.GG.UI.Scene FS.GG.UI.SkiaViewer FS.GG.UI.Elmish; do
-            [[ -f "$feed/$id.$PIN.nupkg" ]] || {
-              echo "::error::$id.$PIN.nupkg is not in the runner-local feed — the generated product cannot restore the pin."
-              ls -1 "$feed" || true
-              exit 1
-            }
-          done
-          echo "✓ runner-local feed carries the framework set at $PIN"
+        uses: ./.github/actions/product-local-feed
+
       # Exercise the real consumer path: install the in-repo `dotnet new` template, instantiate a
       # product, and run THAT generated product's tests (template/base/tests/Product.Tests becomes
       # the generated product's tests). This is gated on the instantiation tooling actually working

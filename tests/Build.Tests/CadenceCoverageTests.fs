@@ -4,6 +4,7 @@ open System
 open System.IO
 open System.Text.RegularExpressions
 open Expecto
+open FS.GG.TestSupport
 
 // Feature 235 (FR-004/FR-005) — the permanent closure for the "test project in the solution but in
 // NO CI cadence" class (repo review P4 / #47). These are straight filesystem assertions over real
@@ -11,14 +12,7 @@ open Expecto
 // auditable cadence docs. Together they guarantee the gate's test list == the slnx test set, so a
 // newly added test project cannot silently run in zero cadences again.
 
-let private repoRoot =
-    let rec up (dir: DirectoryInfo | null) =
-        match dir with
-        | null -> failwith "could not locate repo root (FS.GG.Rendering.slnx) walking up from test base dir"
-        | d ->
-            if File.Exists(Path.Combine(d.FullName, "FS.GG.Rendering.slnx")) then d.FullName
-            else up d.Parent
-    up (DirectoryInfo(AppContext.BaseDirectory))
+let private repoRoot = RepositoryRoot.value
 
 let private repoPath (rel: string) = Path.Combine(repoRoot, rel.Replace('/', Path.DirectorySeparatorChar))
 

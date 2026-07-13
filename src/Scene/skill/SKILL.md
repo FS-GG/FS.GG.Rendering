@@ -43,11 +43,16 @@ When changing this surface:
 
 ## Build Commands
 
-Run `./fake.sh build -t CapabilityCheck`, `./fake.sh build -t PackageSurfaceCheck`, and `./fake.sh build -t PackLocal` when this capability changes.
+Run `dotnet build FS.GG.Rendering.slnx`. The capability-catalog, public-surface and local-pack
+checks are Expecto tests, not build targets — `dotnet test tests/Package.Tests/Package.Tests.fsproj`
+covers all three. After an `.fsi` change, regenerate the baseline with
+`dotnet fsi scripts/refresh-surface-baselines.fsx` and commit it: the gate re-runs the generator
+and fails on any diff.
 
 ## Test Commands
 
-Run `dotnet test tests/Scene.Tests/Scene.Tests.fsproj` and `./fake.sh build -t GeneratedProductCheck`.
+Run `dotnet test tests/Scene.Tests/Scene.Tests.fsproj` and
+`dotnet test tests/Package.Tests/Package.Tests.fsproj` (generated-product and package validation).
 
 ## Evidence
 

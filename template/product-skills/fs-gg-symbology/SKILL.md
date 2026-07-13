@@ -256,6 +256,7 @@ is a channel the linter cannot see.
 **Worked example.** FS.GG.Game mapped a tank and found `Token` carried a single `Heading` — but a tank
 rotates twice, the **hull** (which armor plate faces you) and the **turret** (where the gun points).
 Neither is inspection detail. They filed
+<!-- skill-refs: closed-ok FS.GG.Rendering#260 — cited as the issue that WAS filed and answered (ADR-0102 below is the answer), not as somewhere to go. Closed is correct; it stays closed. -->
 [FS.GG.Rendering#260](https://github.com/FS-GG/FS.GG.Rendering/issues/260) instead of working around it,
 naming the cost of each option and leaving the choice to Rendering. The answer was **(2)** —
 `Token.SecondaryHeading : float option`, per

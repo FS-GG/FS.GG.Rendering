@@ -1,0 +1,445 @@
+name: skill-refs sweep
+
+# Ported from FS.GG.Game with the gate itself (FS.GG.Rendering#655). It binds to
+# `${{ github.repository }}` throughout, so it needed no adaptation; the `FS.GG.Game#NNN` citations
+# below are HISTORY — the issues where each decision was argued — and are qualified precisely so they
+# still resolve from here.
+#
+# The FULL issue/PR-link sweep over every published skill body — the half of check-skill-refs that is
+# f(tree, WORLD) rather than f(tree). It is here, on a schedule, and NOT on the per-PR `gate`
+# workflow, and that split is the whole point (FS.GG.Game#238; the script's § 4 carries the argument).
+#
+# WHY IT IS NOT A MERGE GATE. A link's state moves on its own. FS-GG/FS.GG.Rendering#494 closed at
+# 14:43:32Z and `main`@e4c07c2 — green at 14:35:30Z, and unchanged since — failed from that minute on.
+# Nothing in this repo changed. As a required check that is a false accusation: it reddens whoever
+# happens to have a PR open, and worse, the only edit that clears it is in a skill body their item
+# never declared in its `Paths:` — so under ADR-0021/0027 they cannot even fix it without widening
+# onto a file they have no business touching. A merge gate may only demand a change inside the diff
+# it gates; this check cannot promise that, so it does not gate.
+#
+# WHY IT STILL EXISTS. Because scoping the gate to the diff, on its own, would leave every link in an
+# unchanged body resolved by NOBODY — a gate green over a subject it never examined, which is the
+# exact FS-GG/.github#416 shape check-skill-refs was written to close, reintroduced by its own fix.
+# So the subject is still swept in full, daily. The two changes are one change: neither is correct
+# alone, and deleting this workflow silently guts the gate rather than merely removing a job.
+#
+# WHERE A RED GOES (FS.GG.Game#242). Non-blocking was the right call; SILENT was not, and for a while
+# this workflow was both. A failing SCHEDULED run notifies almost nobody — GitHub mails whoever last
+# touched the workflow file, and only if they have Actions notifications on. No PR, no reviewer, no
+# blocked merge, nothing in a human's path. So the honest description of the old steady state was: a
+# red sweep sitting unread in the Actions tab while everyone's PRs are green — the links effectively
+# unchecked, which is the #416 shape one level up, moved rather than removed.
+#
+# So the sweep FILES ITS FINDING where this org already looks: an issue. One issue, labelled
+# `skill-refs-decay`, rewritten in place on every run and REOPENED rather than duplicated, and it
+# CLOSES ITSELF the next time the sweep is green. That turns decay from a notification nobody gets
+# into a work item somebody can pick up — it even carries a `Paths:` line so it is schedulable under
+# ADR-0021/0027 the moment someone puts it on the board.
+#
+# The fix is still the one the script names — repoint the link at live work, or, if it is cited as
+# history (which a closed issue usually is), mark it:
+#
+#     <!-- skill-refs: closed-ok FS-GG/FS.GG.Rendering#494 — why -->
+#
+# AND IT IS STILL NOT A GATE. Filing an issue is how the finding reaches a human; it is not an
+# escalation, and nothing here blocks a merge. Do not "fix" a noisy sweep by making it required —
+# that reintroduces FS.GG.Game#238 verbatim, demanding a fix in a file the blocked PR never declared.
+# A signal that cannot block is information. The same signal wired to block is a false accusation.
+#
+# Authorship-time strictness is untouched and lives where it belongs: a PR that TOUCHES a skill still
+# resolves that skill's links, blocking, in `gate`. Every rot this check was written for is
+# introduced by such a diff. This job catches only the decay that no diff can be blamed for.
+on:
+  schedule:
+    # 07:00 UTC daily. Decay is not urgent — an issue that closed overnight is not on fire — and a
+    # slower cadence keeps this a signal people trust rather than noise they mute.
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+  # The sweep is itself code, and a change to it must be checked BY it — otherwise its first real run
+  # is post-merge, on a schedule nobody is watching, and a typo here disables the load-bearing half of
+  # the gate SILENTLY. That is the #416 shape at the top level: the check that makes the scoped gate
+  # honest, quietly checking nothing. Same for the script it drives.
+  #
+  # AND YES, THIS ONE RUN IS A FULL SWEEP ON A PR — the exact shape the rest of this file exists to
+  # abolish, so it is deliberate and narrow rather than an oversight. Two things make it affordable,
+  # and both must stay true: it is NOT a required check (a decay cannot block the merge, it can only
+  # inform it), and it fires ONLY on a PR that edits skill-refs itself — whose author is, by
+  # construction, the one person already holding this machinery in their head and the right reader for
+  # "a citation has rotted". If it ever becomes required, this trigger must go: a signal that cannot
+  # block is information, and the same signal wired to block is the false accusation #238 removed.
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/skill-refs-sweep.yml'
+      - 'scripts/check-skill-refs.sh'
+
+concurrency:
+  # Never cancel a scheduled sweep in flight: the reconcile step below is a read-modify-write of one
+  # shared issue, and a half-run that is killed between "render" and "reconcile" leaves that issue
+  # asserting a decay set that is no longer the truth. PR runs are still cancellable — they only ever
+  # render, never write.
+  group: skill-refs-sweep-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+  # For the tracking issue. Note the sweep NEVER writes on a `pull_request` run (see `reconcile`), so
+  # this grant is unused there — and on a fork PR the token is read-only regardless.
+  issues: write
+
+env:
+  DECAY_LABEL: skill-refs-decay
+  DECAY_TITLE: "[skill-refs] A published skill points at something that no longer resolves"
+
+jobs:
+  sweep:
+    name: Skill-ref link sweep (whole tree)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # No --changed: this is the full sweep, and it is the ONLY run that resolves every link in the
+      # tree. GH_TOKEN buys the 1,000/hr authenticated REST budget instead of a shared-IP 60/hr; the
+      # links are public repos and no GraphQL is spent. The script REFUSES to self-skip in CI — a link
+      # it cannot read is one it will not call green.
+      #
+      # The step does NOT fail here; `verdict` (last step) re-raises. Everything between the two needs
+      # to run on the red path — that is the whole point of this workflow — and a step that dies takes
+      # its successors with it unless every one of them says `if: always()`, which is a footgun waiting
+      # for the next person to add a step and forget. The exit code is carried, not discarded.
+      - name: "Resolve every issue/PR link in every published skill"
+        id: sweep
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -uo pipefail
+          rc=0
+          scripts/check-skill-refs.sh >"$RUNNER_TEMP/sweep.out" 2>"$RUNNER_TEMP/sweep.err" || rc=$?
+
+          # Replay both streams into the log — stdout carries the ::error annotations, so re-emitting
+          # it here is what puts them on the run.
+          cat "$RUNNER_TEMP/sweep.out"
+          cat "$RUNNER_TEMP/sweep.err" >&2
+
+          # The script's findings are its stderr lines of the form `path:line: message` (its `report`
+          # function; every § emits through it). Anything else on stderr is a banner. This line format
+          # is the one contract this workflow has with the script — it is also the one a human reads,
+          # which is what makes it the safe one to depend on.
+          #
+          # THERE ARE NO "NOTES" ANY MORE (#714), and the difference matters here. The script used to
+          # DEMOTE a §1 finding inside one of the four frozen mirrors to a note on STDOUT, deliberately
+          # kept off stderr so this sweep could not file it: the refs were correct upstream, we were
+          # forbidden to touch the bytes, and filing them would have opened the same unactionable issue
+          # every day forever. Game#279 made those bodies fixable (qualify the ref in the canonical and
+          # re-sync), so the demotion is gone and a mirror finding is now an ordinary finding that
+          # reaches stderr and SHOULD be filed. Do not re-add a mirror exclusion here: it would silently
+          # stop real, actionable decay from ever being reported.
+          grep -E '^[^ :]+:[0-9]+: ' "$RUNNER_TEMP/sweep.err" \
+            | sort -t: -k1,1 -k2,2n > "$RUNNER_TEMP/findings.txt" || true
+
+          n=$(wc -l < "$RUNNER_TEMP/findings.txt" | tr -d ' ')
+
+          # AND HERE IS THE CHECK ON THAT CONTRACT. The script prints this banner if, and only if, it
+          # called `report` at least once — so "banner, but nothing parsed" means the format drifted
+          # and this workflow can no longer read the findings it is built to file.
+          #
+          # Without this, that drift degrades into a LIE rather than an error: 0 parsed findings looks
+          # exactly like an infra failure, so the sweep would file "could not complete — links
+          # UNCHECKED" over a run that completed fine and found real decay, and point the fixer at the
+          # wrong files. A check that misreports its own subject is the thing this workflow exists to
+          # stop; it does not get to do it to itself.
+          # THE PINNED SENTENCE — one half of the two-ended contract above; the other is `report`'s
+          # `path:line: message`. It said "a published skill" until #698, which widened the script's
+          # subject past what ships (it now also sweeps the LIBRARY skill bodies under src/*/skill/ and
+          # the authoring note, whose reader stands in THIS repo rather than in a scaffolded product).
+          # "A skill body" is the noun that is true of both surfaces. A contract sentence that is false
+          # of half its subject is exactly how two ends drift apart without either looking wrong —
+          # which is what this `banner` check exists to catch, so it does not get to be the thing that
+          # rots. scripts/test-skill-refs-sweep.sh drives the REAL script and pins this.
+          banner=false
+          grep -qF 'every pointer in a skill body must resolve' "$RUNNER_TEMP/sweep.err" && banner=true
+
+          {
+            echo "rc=$rc"
+            echo "findings=$n"
+            echo "reported=$banner"
+          } >> "$GITHUB_OUTPUT"
+          echo "sweep: rc=$rc, $n finding(s), script-reported=$banner"
+
+      # Render the issue body. This runs on EVERY trigger, including `pull_request` — that is
+      # deliberate. The renderer is the part most likely to carry a typo, and a PR that changes this
+      # workflow must exercise it. On a PR it renders to the step summary and stops; only a scheduled
+      # or dispatched run is allowed to touch the API (see `reconcile`).
+      - name: Render the finding
+        id: render
+        if: steps.sweep.outputs.rc != '0'
+        env:
+          REPO: ${{ github.repository }}
+          SERVER: ${{ github.server_url }}
+          SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          FINDINGS: ${{ steps.sweep.outputs.findings }}
+          REPORTED: ${{ steps.sweep.outputs.reported }}
+          DRY_RUN: ${{ github.event_name == 'pull_request' }}
+        run: |
+          set -euo pipefail
+          body="$RUNNER_TEMP/body.md"
+          # If the sweep step died before it wrote these, treat it as "no findings" — which renders the
+          # "could not complete" body below, and that is exactly what happened.
+          : "${FINDINGS:=0}"
+          : "${REPORTED:=false}"
+          touch "$RUNNER_TEMP/findings.txt" "$RUNNER_TEMP/sweep.err"
+
+          {
+            echo "<!-- Managed by .github/workflows/skill-refs-sweep.yml. Rewritten on every sweep;"
+            echo "     closed automatically when the sweep next goes green. Edit the SKILLS, not this. -->"
+            echo
+          } > "$body"
+
+          if [ "$FINDINGS" -eq 0 ]; then
+            # Red with nothing parsed. Two very different causes, and calling one of them by the
+            # other's name is the failure this whole workflow is about — so they get separate bodies.
+            {
+              if [ "$REPORTED" = "true" ]; then
+                # The script DID report pointers; this workflow could not read them. Its one contract —
+                # the `path:line: message` line — has drifted, and the parser in the sweep step is now
+                # blind. The decay is real and is NOT listed below, because we cannot list it.
+                echo "## The sweep found decay — and this workflow could not read it"
+                echo
+                echo "\`check-skill-refs.sh\` reported at least one bad pointer (it printed its \`FAILED\` banner),"
+                echo "but the sweep workflow parsed **zero** findings out of it. That means the one contract"
+                echo "between them — the \`path:line: message\` line that \`report()\` emits — has changed, and the"
+                echo "\`grep\` in \`.github/workflows/skill-refs-sweep.yml\` no longer matches it."
+                echo
+                echo "**The decay is real, and it is not listed here, because this workflow cannot see it.**"
+                echo "Run \`scripts/check-skill-refs.sh\` locally to read the findings, then repair the parser so"
+                echo "the next sweep can file them itself."
+              else
+                # The script never got as far as judging a pointer. Wrong token, exhausted budget, an
+                # unreadable link, a bug in the script. This matters as much as decay does and is easier
+                # to miss: the links came out UNCHECKED, and an unchecked link called green is precisely
+                # the #416 defect the sweep exists to prevent. So it gets the same issue.
+                echo "## The sweep could not complete — the links are UNCHECKED"
+                echo
+                echo "\`check-skill-refs.sh\` exited non-zero **without judging a single pointer**, so this is not"
+                echo "decay: the sweep itself failed to run. Nothing was verified. Until it runs clean, every"
+                echo "issue/PR link published in a product skill is unchecked — which is the exact"
+                echo "\`FS-GG/.github#416\` shape (a green over an unread subject) that this sweep exists to close."
+                echo
+                echo "Usual causes: no authenticated \`gh\` in the job, an exhausted REST budget, or a link the"
+                echo "API would not return after 3 tries. The script refuses to self-skip in CI, by design."
+              fi
+              echo
+              echo "<details><summary>Last 40 lines of the run</summary>"
+              echo
+              echo '```'
+              tail -n 40 "$RUNNER_TEMP/sweep.err" | sed 's/```/ʼʼʼ/g'
+              echo '```'
+              echo
+              echo "</details>"
+              echo
+              echo "Paths: .github/workflows/skill-refs-sweep.yml scripts/check-skill-refs.sh"
+            } >> "$body"
+          else
+            {
+              echo "The daily skill-refs sweep is **red**: a pointer published in a product skill no longer"
+              echo "resolves."
+              echo
+              echo "**Nobody's commit did this.** The world moved under a citation we published — an issue we"
+              echo "point at closed, reopened, or vanished. That is why the sweep does not gate a merge"
+              echo "(\`FS.GG.Game#238\`), and why it files this instead: a decayed citation is a small,"
+              echo "well-specified, unblocked piece of work, not a broken build."
+              echo
+              echo "Swept [\`${SHA:0:7}\`]($SERVER/$REPO/commit/$SHA) · [run]($RUN_URL) · **$FINDINGS finding(s)**"
+              echo
+              echo "## Findings"
+            } >> "$body"
+
+            cur=""
+            # shellcheck disable=SC2016
+            #
+            # SC2016 ("expressions don't expand in single quotes") is a FALSE POSITIVE on both printf
+            # formats below. They are single-quoted because they are Markdown, and the BACKTICKS in
+            # them are literal code-span delimiters — which shellcheck reads as a command
+            # substitution you forgot to let expand.
+            #
+            # The span is load-bearing, not decoration: it is what stops GitHub swallowing the
+            # `<!-- skill-refs: closed-ok … -->` marker that IS the fix, and what stops the bare `#N`s
+            # autolinking onto unrelated issues. Double-quoting these formats to silence the lint
+            # would break the thing the span exists for — and scripts/test-skill-refs-sweep.sh § 2
+            # asserts the span, so it would fail there too.
+            #
+            # Scoped to this loop (the directive binds to the next command, and both offenders are
+            # inside it) and to SC2016 alone — SC2086 and the rest still gate this script.
+            while IFS= read -r ln; do
+              f=${ln%%:*}; rest=${ln#*:}
+              n=${rest%%:*}; msg=${rest#*: }
+              if [ "$f" != "$cur" ]; then
+                printf '\n### `%s`\n\n' "$f" >> "$body"
+                cur="$f"
+              fi
+              # The message goes in a code span, and that is not cosmetic. It carries the literal
+              # `<!-- skill-refs: closed-ok … -->` marker that IS the fix — rendered raw, GitHub would
+              # swallow it as an HTML comment and the reader would be told to write nothing. It also
+              # carries bare `#N`s, which raw would autolink and spam a cross-reference onto whatever
+              # unrelated issue happens to hold that number.
+              printf -- '- [L%s](%s/%s/blob/%s/%s#L%s) — `%s`\n' \
+                "$n" "$SERVER" "$REPO" "$SHA" "$f" "$n" "$(printf '%s' "$msg" | tr '`' "'")" >> "$body"
+            done < "$RUNNER_TEMP/findings.txt"
+
+            {
+              echo
+              echo "## Fixing it"
+              echo
+              echo "Each finding above names its own fix. In short:"
+              echo
+              echo "- **stale link** — the issue closed. Repoint it at live work, or, if it is cited as history"
+              echo "  (which a closed issue usually is), excuse it in place with the marker the finding prints."
+              echo "- **dangling / unresolvable link** — the target does not exist, or the API would not return"
+              echo "  it. Fix the reference."
+              echo "- **stale marker** — an excuse that excuses nothing: the sentence it guarded was rewritten,"
+              echo "  or the issue reopened. Drop it."
+              echo "- **\`[[ref]]\` or bare \`#N\`** — these checks are *hermetic*: they do not depend on the world,"
+              echo "  so \`gate\` is red on them for every PR too. A finding of this kind is a **gate regression on"
+              echo "  \`main\`**, not decay — it is more urgent than the rest of this issue, not less."
+              echo
+              echo "Reproduce locally with \`scripts/check-skill-refs.sh\`."
+              echo
+              echo "---"
+              echo
+              echo "*This issue is written by the sweep: its body is rewritten on every run, and it closes itself"
+              echo "when the sweep next goes green. Edit the skills, not this issue.*"
+              echo
+
+              # A finding filed without a touch-set is a finding nobody can pick up: `take`/`batch` refuse
+              # an item whose `Paths:` cannot be proven disjoint from a live claim, so it lands on the
+              # board LOOKING like work and is invisible to every worker who asks for work
+              # (FS-GG/.github#442). The sweep knows exactly which files it is asking someone to edit, so
+              # it declares them. It cannot place the item on the board itself — that is Projects v2, and
+              # GITHUB_TOKEN has no project scope — but the moment a human adds it, it is schedulable.
+              printf 'Paths:'
+              cut -d: -f1 "$RUNNER_TEMP/findings.txt" | sort -u | sed 's/^/ /' | tr -d '\n'
+              echo
+            } >> "$body"
+          fi
+
+          {
+            echo "### Rendered tracking issue"
+            echo
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "> **Dry run.** This is a \`pull_request\` run, so nothing was filed — you are already"
+              echo "> looking at the red check, and filing an issue at you would be the noise that gets this"
+              echo "> muted. What follows is the body a *scheduled* run would have written."
+              echo
+            fi
+            cat "$body"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # The API half. Scheduled and dispatched runs only.
+      #
+      # A `pull_request` run must NOT write. Two reasons, and either alone is enough: the PR author is
+      # already looking at this red check — filing an issue at them is the noise that gets a signal
+      # muted — and a fork PR's token is read-only anyway, so the write would simply fail. The render
+      # above still ran, so the PR does exercise the interesting half.
+      - name: Reconcile the tracking issue
+        id: reconcile
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SHA: ${{ github.sha }}
+          RC: ${{ steps.sweep.outputs.rc }}
+        run: |
+          set -euo pipefail
+
+          # REST throughout. It is the cheap budget, it is the one that is still up when GraphQL is
+          # gone, and `gh issue create|edit|close` are all GraphQL (FS-GG/.github#587).
+
+          # `-X GET` IS LOAD-BEARING. `gh api` defaults to POST the moment any `-f` is present, so
+          # without it this "read" POSTs to /issues — the CREATE-ISSUE endpoint — and the daily sweep
+          # opens a blank issue instead of finding the tracker. It fails 422 today only because
+          # `title` is missing; it is one field away from being a silent issue factory.
+          #
+          # --paginate, because a truncated read here does not look truncated — it looks like "no
+          # tracking issue exists", and the sweep would then file a SECOND tracker every day
+          # (FS-GG/.github#547). `--slurp` cannot be combined with `--jq`, so aggregate in a separate
+          # `jq`. `/issues` returns PRs too; filter them out. Oldest-first, so the ORIGINAL tracker
+          # stays the tracker even if a duplicate ever gets made by hand.
+          tracker=$(gh api -X GET "repos/$REPO/issues" \
+                      -f "labels=$DECAY_LABEL" -f state=all -f sort=created -f direction=asc \
+                      --paginate --slurp \
+                    | jq -c '[.[][] | select(.pull_request == null)] | first // {}')
+          num=$(jq -r '.number // empty' <<<"$tracker")
+          state=$(jq -r '.state // empty' <<<"$tracker")
+          echo "tracker: ${num:-none} ${state:-}"
+
+          if [ "$RC" != "0" ]; then
+            if [ -z "$num" ]; then
+              # Give the label a colour and a description the first time it is needed. Only this branch
+              # needs it — an existing tracker already carries it — so a green repo that has never
+              # decayed never grows the label, and a green run spends no call on it.
+              #
+              # `|| true`, deliberately: the probe reads ANY non-zero as "absent", including a 5xx or a
+              # rate-limit blip, and the POST that follows would then 422 with `already_exists` and, under
+              # `set -e`, abort the step. That would lose the finding to a cosmetic detail about a label,
+              # at exactly the moment the sweep is red and has something to say. Label bookkeeping does
+              # not get to veto the report; if the label is genuinely unusable, the issue POST below says
+              # so loudly.
+              if ! gh api "repos/$REPO/labels/$DECAY_LABEL" --silent 2>/dev/null; then
+                gh api -X POST "repos/$REPO/labels" \
+                  -f "name=$DECAY_LABEL" -f color=B60205 \
+                  -f "description=A pointer published in a product skill stopped resolving. Filed by the skill-refs sweep." \
+                  --silent 2>/dev/null || echo "note: could not create label $DECAY_LABEL (it probably exists)"
+              fi
+
+              url=$(jq -n --arg t "$DECAY_TITLE" --rawfile b "$RUNNER_TEMP/body.md" --arg l "$DECAY_LABEL" \
+                      '{title:$t, body:$b, labels:[$l]}' \
+                    | gh api -X POST "repos/$REPO/issues" --input - --jq .html_url)
+              echo "FILED $url"
+              echo "- Filed [the tracking issue]($url)." >> "$GITHUB_STEP_SUMMARY"
+            else
+              # Rewrite the body every run so it is never stale, and reopen if it had closed. A body
+              # edit notifies nobody, which is right: while the issue is open it is already somebody's
+              # work item and a daily comment on it would be the noise that gets this muted. A REOPEN
+              # is a fresh regression, so that one gets a comment — and a notification with it.
+              jq -n --rawfile b "$RUNNER_TEMP/body.md" '{body:$b, state:"open"}' \
+                | gh api -X PATCH "repos/$REPO/issues/$num" --input - --silent
+
+              if [ "$state" = "closed" ]; then
+                gh api -X POST "repos/$REPO/issues/$num/comments" \
+                  -f "body=Reopened: the sweep went red again at \`${SHA:0:7}\`. The decayed pointers are listed in the issue body, which has been rewritten. ([run]($RUN_URL))" \
+                  --silent
+                echo "REOPENED #$num"
+              else
+                echo "UPDATED #$num (already open)"
+              fi
+              echo "- Updated [#$num]($GITHUB_SERVER_URL/$REPO/issues/$num) — still red." >> "$GITHUB_STEP_SUMMARY"
+            fi
+          else
+            if [ -n "$num" ] && [ "$state" = "open" ]; then
+              # Green. The decay is gone, so the work item is done — say so where it was filed, and
+              # close it. This is the half that keeps the issue trustworthy: a tracker that only ever
+              # opens is one people learn to ignore.
+              gh api -X POST "repos/$REPO/issues/$num/comments" \
+                -f "body=Resolved: every pointer in every published skill resolves again as of \`${SHA:0:7}\`. Closing. ([run]($RUN_URL))" \
+                --silent
+              jq -n '{state:"closed", state_reason:"completed"}' \
+                | gh api -X PATCH "repos/$REPO/issues/$num" --input - --silent
+              echo "CLOSED #$num"
+              echo "- Sweep is green; closed [#$num]($GITHUB_SERVER_URL/$REPO/issues/$num)." >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "green; no open tracking issue. Nothing to do."
+            fi
+          fi
+
+      # Re-raise the sweep's verdict. The job is RED when a pointer does not resolve — the issue above
+      # is where the finding goes to be worked, not a way of swallowing it. What this red must never
+      # become is a REQUIRED check: see the header.
+      - name: Verdict
+        if: steps.sweep.outputs.rc != '0'
+        run: |
+          echo "::notice::The sweep is red. The finding is on the \`$DECAY_LABEL\` issue; this check does not gate a merge."
+          exit 1

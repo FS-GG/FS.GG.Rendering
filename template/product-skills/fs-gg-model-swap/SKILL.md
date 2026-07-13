@@ -48,7 +48,7 @@ From `docs/scaffold-map.md`, three classes — you only edit the last two:
 - **Replaceable — rewrite freely** (they define/return the starter model):
   - `src/<ProductDir>/Model.fs` — the starter `Model`/`Msg`/`update`. Your state machine goes here.
     Entity positions/velocities are the collision-safe `Geometry.Vec2`; `stepSim` advances them via the
-    `FixedStep.drain` accumulator on `Tick` (see [[fs-gg-game-core]]).
+    `FixedStep.drain` accumulator on `Tick` (see [[fs-gg-game:fs-gg-game-core]]).
   - `src/<ProductDir>/Vec2.fs` *(game / sample-pack)* — the collision-safe vector helper (`Geometry.Vec2`,
     `Vx`/`Vy`, `toPoint`/`toRect`). **Use it for your own positions/sizes so you never reuse `Scene`'s
     `X`/`Y`/`Width`/`Height` labels** (see the record-label pitfall below). Rename/extend it freely; but
@@ -56,18 +56,18 @@ From `docs/scaffold-map.md`, three classes — you only edit the last two:
     the starter model off it — then its `Exists`-guarded compile item keeps the build green.
   - `src/<ProductDir>/View.fs` — the starter `view : Model -> SceneNode`. Your rendering goes here.
   - `src/<ProductDir>/Collision.fs` *(game / sample-pack)* — the adaptable collision helper
-    (see [[fs-gg-collision]]). Edit the response rule, add layers, or delete it entirely: its compile
+    (see [[fs-gg-game:fs-gg-collision]]). Edit the response rule, add layers, or delete it entirely: its compile
     item is `Exists`-guarded, so the build stays green and `Product.fsproj` stays durable.
   - `src/<ProductDir>/Visibility.fs` *(game / sample-pack)* — the adaptable 2D-visibility helper
-    (see [[fs-gg-visibility]]). Edit the sight radius, cone the field of view, swap the polygon for a
+    (see [[fs-gg-game:fs-gg-visibility]]). Edit the sight radius, cone the field of view, swap the polygon for a
     fog-of-war mask, or delete it entirely: its compile item is `Exists`-guarded, so the build stays
     green and `Product.fsproj` stays durable.
   - `src/<ProductDir>/Grids.fs` *(game / sample-pack)* — the adaptable grid-parts helper
-    (see [[fs-gg-grids]]). Edit the edge/vertex addressing, move the grid origin, extend it toward hex
+    (see [[fs-gg-game:fs-gg-grids]]). Edit the edge/vertex addressing, move the grid origin, extend it toward hex
     grids, or delete it entirely: its compile item is `Exists`-guarded, so the build stays green and
     `Product.fsproj` stays durable.
   - `src/<ProductDir>/LineDrawing.fs` *(game / sample-pack)* — the adaptable grid line-drawing helper
-    (see [[fs-gg-line-drawing]]). Switch the thin line for the supercover, cap the length for a
+    (see [[fs-gg-game:fs-gg-line-drawing]]). Switch the thin line for the supercover, cap the length for a
     limited-range beam, or delete it entirely: its compile item is `Exists`-guarded, so the build stays
     green and `Product.fsproj` stays durable.
   - `tests/Product.Tests/BehaviorTests.fs` — the replaceable behaviour tests that drive the
@@ -133,7 +133,7 @@ re-point files untouched too — then the swap is just `Model.fs` + `View.fs` + 
   *your own* records share a label (a `Creep` and a `Tower` both carrying `.Pos`/`.Id`/`.Hp`), a
   bare `let posOf x = x.Pos` makes F# infer the *last-declared* record for `x`, so the helper
   silently type-checks against the wrong type. Annotate the parameter — `let posOf (c: Creep) = c.Pos`
-  — at every such shared-label access. Plan your record label names up front (see [[fs-gg-game-core]]'s
+  — at every such shared-label access. Plan your record label names up front (see [[fs-gg-game:fs-gg-game-core]]'s
   grid-sim recipe — it is far cheaper than reworking the model after the inference errors appear).
 
 ## Build Commands
@@ -175,7 +175,7 @@ and any product-local `docs/` location. Offline, the mandate degrades to recordi
 
 - [[fs-gg-rendering:fs-gg-scene]] — the `Scene`/`Point`/`Rect` primitives your new `view` builds; owns the
   framework geometry records the collision note is about.
-- [[fs-gg-game-core]] — the grid-sim recipe and the consumer-vs-consumer record-label guidance.
+- [[fs-gg-game:fs-gg-game-core]] — the grid-sim recipe and the consumer-vs-consumer record-label guidance.
 - [[fs-gg-rendering:fs-gg-skiaviewer]] — the host boundary the re-exported `generatedHost` drives.
 - [[fs-gg-rendering:fs-gg-layout]] — the HUD + gameplay regions the re-pointed `LayoutEvidence.fs` computes.
 
