@@ -1,9 +1,9 @@
 module Feature242DocsCurrencyTests
 
-open System
 open System.IO
 open System.Text.RegularExpressions
 open Expecto
+open FS.GG.TestSupport
 
 // Feature 242 (repo review P11 / X1, X2, #54) — the permanent closure for the "front-door narrative
 // drifted from the shipped pipeline" class. The 2026-07-02 review's meta-observation was that
@@ -13,14 +13,7 @@ open Expecto
 // packable projects and the three front-door docs, so the package map and theme/feed status cannot
 // silently fall out of sync with what the repo actually ships again.
 
-let private repoRoot =
-    let rec up (dir: DirectoryInfo | null) =
-        match dir with
-        | null -> failwith "could not locate repo root (FS.GG.Rendering.slnx) walking up from test base dir"
-        | d ->
-            if File.Exists(Path.Combine(d.FullName, "FS.GG.Rendering.slnx")) then d.FullName
-            else up d.Parent
-    up (DirectoryInfo(AppContext.BaseDirectory))
+let private repoRoot = RepositoryRoot.value
 
 let private repoPath (rel: string) = Path.Combine(repoRoot, rel.Replace('/', Path.DirectorySeparatorChar))
 

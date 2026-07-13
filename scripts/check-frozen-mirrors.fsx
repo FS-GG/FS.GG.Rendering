@@ -43,6 +43,16 @@
 // A row with no disposition is a HARD FAIL. That is what keeps a ninth mirror from arriving unguarded —
 // the property a hand-list of "what to check" would lose, and the reason #541 asks for derivation. The
 // count is still not hand-trusted: #541 says there are eight mirrors; there are four.
+//
+// AND IT NO LONGER MISNAMES THE DRIFT IT FINDS (#720). A hash mismatch has more than one cause, and this
+// script used to report every one of them as "FROZEN MIRROR EDITED" — including the case where nobody
+// edited anything and the OWNING repo moved the canonical, where it then forbade the re-freeze that is
+// the actual fix. Deciding WHICH cause it is, and what to say about it, now lives in
+// `FrozenMirrorVerdict.fs`: pure, git-only, no network, and therefore actually tested (see
+// `tests/Package.Tests/Feature541FrozenMirrorGuardTests.fs`). This file keeps what genuinely needs a
+// token — reading the org registry, and reading the owners' canonical bodies.
+
+#load "FrozenMirrorVerdict.fs"
 
 open System
 open System.Diagnostics
@@ -50,6 +60,8 @@ open System.IO
 open System.Security.Cryptography
 open System.Text
 open System.Text.RegularExpressions
+
+open FsGg.Governance.FrozenMirrorVerdict
 
 let repoRoot =
     let rec up (dir: DirectoryInfo) =
@@ -70,8 +82,15 @@ let private sha256Of (path: string) =
 
 // ---- the org registry -------------------------------------------------------------------------
 //
-// Fetched, not vendored: a vendored copy is a fifth statement of the same fact, and it would go
-// stale in exactly the direction this guard cannot see (the canonical moving underneath us).
+// Fetched, not vendored: a vendored copy is a fifth statement of the same fact, and it would go stale in
+// exactly the direction that matters most here — the canonical moving underneath us.
+//
+// This used to end "…the direction this guard CANNOT SEE", and that clause is now false, which is why it
+// is deleted rather than left standing: the guard sees that direction, names it `CANONICAL MOVED`, and
+// tells you to re-freeze (#720). Leaving the sentence would have taught the next reader that the blind
+// spot is still there — and this file has already been bitten once by commentary that outlived its
+// condition (see the `fs-gg-audio` paragraph in the waiver block: "the COMMENTARY that outlives a waiver
+// can lie just as loudly as the waiver did").
 //
 // A registry we cannot read is NOT a pass. That is the `apicompat-check.sh` rule, and it is the same
 // rule for the same reason: a check that did not run has proved nothing, and reporting green for it
@@ -400,7 +419,39 @@ for row, body, local in mirrors do
             (row.Sha256.Substring(0, 12))
             (canonical.Substring(0, 12))
 
-    if local = canonical then
+    // WHY does it differ? `git` answers the only question that can convict this author — did THIS change
+    // touch the file — and the registry's lagging sha answers the other one. Both are already to hand; the
+    // guard used to consult neither and simply assert an edit. See `FrozenMirrorVerdict.fs`.
+    let baseline = baselineOf repoRoot relative local
+
+    // A PROBE THAT DID NOT RUN HAS PROVED NOTHING, and it must not prove it QUIETLY — the same rule this
+    // file already applies to the registry read, one level down.
+    //
+    // If git cannot find a merge base (an unfetched `origin/main`, a shallow clone, a fork), every verdict
+    // silently falls back to the registry signal ALONE, which is strictly weaker: it can still recognise a
+    // canonical that moved, but a genuine local edit — #541's entire subject — decays from `MIRROR EDITED`
+    // to "the cause cannot be determined". That is a real loss of teeth, and on a HEALTHY run it would be
+    // completely invisible: all four mirrors print OK and nobody learns the probe is dead until the day it
+    // has to convict someone and cannot. So it is said out loud, every run, whether or not there is drift.
+    match baseline with
+    | Unknown why ->
+        printfn
+            "  frozen-mirror NOTE %-22s git cannot say whether this change edited it (%s). Falling back to the registry signal alone — a real local edit will read as 'cause undecidable' rather than MIRROR EDITED. Fix the checkout (fetch-depth: 0), or set FSGG_FROZEN_MIRROR_BASE."
+            row.Id
+            why
+    | UnchangedHere _
+    | EditedHere _
+    | AddedHere -> ()
+
+    // The BODY's digest is the oracle, not `row.Sha256` — the registry's CACHE, which lags behind a
+    // canonical edit until the nightly bot runs (#629). The old message printed the cache while CALLING it
+    // "the canonical": the guard judged the body and then named a ghost, so on #649 it demanded
+    // `9401ccd9…` while the canonical body hashed `4bee8ef2…`, and a correct re-freeze landed on a digest
+    // the error said was wrong. Judge the body, REPORT the body — `describe` takes `canonical`.
+    let verdict = decide baseline local row.Sha256 canonical
+
+    match verdict with
+    | InSync ->
         // In sync. Any waiver for it is now a lie.
         match waivers |> List.tryFind (fun w -> w.Id = row.Id) with
         | Some _ ->
@@ -412,36 +463,23 @@ for row, body, local in mirrors do
                 row.Id
                 row.Owner
         | None -> printfn "  frozen-mirror OK   %-22s == %s canonical" row.Id row.Owner
-    else
+
+    | drift ->
         match waivers |> List.tryFind (fun w -> w.Id = row.Id && w.DriftedSha = local) with
         | Some w -> printfn "  frozen-mirror WAIVED %-20s (known drift) — %s" row.Id (w.Because.Substring(0, min 60 w.Because.Length) + "…")
         | None ->
-            failed <- true
+            if fails drift then
+                failed <- true
 
-            let waived = waivers |> List.tryFind (fun w -> w.Id = row.Id)
+            // A waiver pinned to a DIFFERENT body means this mirror was edited again — which is only a
+            // coherent accusation for `MirrorEdited`, so `describe` is the one that decides what to do
+            // with it.
+            let waivedAt =
+                waivers
+                |> List.tryFind (fun w -> w.Id = row.Id)
+                |> Option.map (fun w -> w.DriftedSha)
 
-            let extra =
-                match waived with
-                | Some w ->
-                    $"\n\nThis mirror HAS a waiver, but for a different body ({w.DriftedSha.Substring(0, 12)}…) — you have edited it AGAIN. A waiver excuses the drift that already existed, never the next edit."
-                | None -> ""
-
-            eprintfn
-                "::error file=%s::FROZEN MIRROR EDITED — `%s` is owned by %s (%s), and this repo only ships a byte-identical copy (ADR-0022 §6). Your copy now hashes %s; the canonical is %s.\n\nDO NOT REVERT YOUR WORK, do NOT re-freeze this file from the canonical (that would silently delete it), and DO NOT ADD A WAIVER FOR YOURSELF in scripts/check-frozen-mirrors.fsx — a waiver records drift that already existed before this guard, and is not a way to land new drift. Take the change to the OWNING repo's canonical body (%s), and re-freeze here once it lands. This repo gives you no other signal that you are editing a body it does not own, which is why three correct edits to this file merged green before this check existed (#541).%s"
-                relative
-                row.Id
-                row.Owner
-                row.Source
-                (local.Substring(0, 12) + "…")
-                // The BODY's digest, not `row.Sha256` — the registry's CACHE, which lags behind a canonical
-                // edit until the nightly bot runs (#629). This message used to print the cache while calling
-                // it "the canonical": the guard judged the body and then named a ghost. It misdirects exactly
-                // the reader it is written for — on #649 it demanded `9401ccd9…` while the canonical body
-                // hashed `4bee8ef2…`, so a correct re-freeze lands on a digest the error says is wrong.
-                // Judge the body, REPORT the body.
-                (canonical.Substring(0, 12) + "…")
-                row.Source
-                extra
+            eprintfn "%s" (describe drift row.Id row.Owner row.Source relative baseline local canonical waivedAt)
 
 // A waiver for a skill that is not a mirror at all is dead weight that will mask a real one later.
 for w in waivers do

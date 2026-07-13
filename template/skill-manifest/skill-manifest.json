@@ -4,7 +4,7 @@
     {
       "id": "fs-gg-audio",
       "scope": "product",
-      "sha256": "9b092e8a84e8a7acf2903203c51fa343de96fc1d525040cef6152fc1004029c0",
+      "sha256": "d1833a673c2a970716e36923f6247253a614b79ddcf7f7c2a482dc0071527420",
       "resolvablePath": ".agents/skills/fs-gg-audio/SKILL.md",
       "materializes-when": "profile in [app, sample-pack, game]",
       "supplied-by": "template/product-skills/fs-gg-audio/"
@@ -44,7 +44,7 @@
     {
       "id": "fs-gg-game-core",
       "scope": "product",
-      "sha256": "ffdbc63a546ffbdb7f7141830fb7487a4d3b54eb9dc2de3c5ceed03f75e17e55",
+      "sha256": "ebf302b8dac1eea2d3edb85da3e133163c1c5c696c3afbabb05a61237ee3cd2a",
       "resolvablePath": ".agents/skills/fs-gg-game-core/SKILL.md",
       "materializes-when": "profile in [game, sample-pack]",
       "supplied-by": "template/product-skills/fs-gg-game-core/"
@@ -84,7 +84,7 @@
     {
       "id": "fs-gg-model-swap",
       "scope": "product",
-      "sha256": "4c88cf8fbafd878e8deaaefb5699dad751d332ada7e95fb921f62163041a3805",
+      "sha256": "720a21596be6d24b05191c91da82e228ff9c8f63837a82ad60d3c089fdbb5a26",
       "resolvablePath": ".agents/skills/fs-gg-model-swap/SKILL.md",
       "materializes-when": "profile in [game, sample-pack]",
       "supplied-by": "template/product-skills/fs-gg-model-swap/"
@@ -92,7 +92,7 @@
     {
       "id": "fs-gg-persistence",
       "scope": "product",
-      "sha256": "ea900d3f72b1eb3bfae9c618c83132d32065f778a372f8e493bf138c6ae30cfc",
+      "sha256": "cfb935493f856a2ce4d13bb4966fad57feaaf01c51861c38f91280eb2fcabc64",
       "resolvablePath": ".agents/skills/fs-gg-persistence/SKILL.md",
       "materializes-when": "profile in [game, sample-pack]",
       "supplied-by": "template/product-skills/fs-gg-persistence/"

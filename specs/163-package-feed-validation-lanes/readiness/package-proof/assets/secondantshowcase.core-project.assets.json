@@ -1633,11 +1633,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/home/developer/projects/FS.GG.Rendering-702/samples/AntShowcase/AntShowcase.Core/AntShowcase.Core.fsproj",
-      "projectName": "AntShowcase.Core",
-      "projectPath": "/home/developer/projects/FS.GG.Rendering-702/samples/AntShowcase/AntShowcase.Core/AntShowcase.Core.fsproj",
+      "projectUniqueName": "/home/developer/projects/FS.GG.Rendering-702/samples/SecondAntShowcase/SecondAntShowcase.Core/SecondAntShowcase.Core.fsproj",
+      "projectName": "SecondAntShowcase.Core",
+      "projectPath": "/home/developer/projects/FS.GG.Rendering-702/samples/SecondAntShowcase/SecondAntShowcase.Core/SecondAntShowcase.Core.fsproj",
       "packagesPath": "/home/developer/projects/FS.GG.Rendering-702/artifacts/package-feed-cache",
-      "outputPath": "/home/developer/projects/FS.GG.Rendering-702/samples/AntShowcase/AntShowcase.Core/obj/",
+      "outputPath": "/home/developer/projects/FS.GG.Rendering-702/samples/SecondAntShowcase/SecondAntShowcase.Core/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "/home/developer/projects/FS.GG.Rendering-702/specs/163-package-feed-validation-lanes/readiness/package-proof/source-rules.nuget.config"

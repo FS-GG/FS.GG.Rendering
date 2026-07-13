@@ -28,8 +28,8 @@ The signatures you consume are bundled with this product:
   queries. Also `FS.GG.Game.Core`, same profiles — reuse these instead of hand-rolling BFS/A* or bucketing.
 
 The rest of the simulation substrate ships in the same package, each with a skill that teaches it:
-`Resolution` ([[fs-gg-collision]]), `Grids` ([[fs-gg-grids]]), `Los` ([[fs-gg-line-drawing]]), `Visibility`
-and `Fov` ([[fs-gg-visibility]]), and `Ballistics` ([[fs-gg-ballistics]]). Reach for those before writing
+`Resolution` ([[fs-gg-game:fs-gg-collision]]), `Grids` ([[fs-gg-game:fs-gg-grids]]), `Los` ([[fs-gg-game:fs-gg-line-drawing]]), `Visibility`
+and `Fov` ([[fs-gg-game:fs-gg-visibility]]), and `Ballistics` ([[fs-gg-game:fs-gg-ballistics]]). Reach for those before writing
 your own — they are the authoritative implementations, not starting points to copy.
 
 Every draw returns a `struct` tuple `(value, nextState)` — deconstruct with `let struct(v, next) = …`.
@@ -100,7 +100,7 @@ game step; if it moves anything continuously, carry a `StepState` instead of a b
 Store entity positions/velocities in the scaffold's **collision-safe** `Geometry.Vec2` (`src/<ProductDir>/Vec2.fs`),
 **not** a record you name with `X`/`Y`/`Width`/`Height`. Those labels collide with `FS.GG.UI.Scene.Point`/`Rect`,
 and because the durable `LayoutEvidence.fs` opens both `Scene` and your model, the collision surfaces as a wall of
-errors in a file you must not touch — only after a whole model is written (see [[fs-gg-model-swap]]). `Vec2` uses
+errors in a file you must not touch — only after a whole model is written (see [[fs-gg-game:fs-gg-model-swap]]). `Vec2` uses
 `Vx`/`Vy` (zero overlap) and crosses into the scene with `toPoint`/`toRect` (express a size via `toRect`, never
 `Width`/`Height` labels). This is also the cheapest time to plan your *own* records' labels so two of them don't
 share one (the consumer-vs-consumer inference footgun below).
@@ -133,7 +133,7 @@ let forkStream (model: Model) : Rng * Model =
 
 ## Collision
 
-Collision detection **and** response now have a dedicated skill — see **[[fs-gg-collision]]**. It covers
+Collision detection **and** response now have a dedicated skill — see **[[fs-gg-game:fs-gg-collision]]**. It covers
 narrow-phase (`Geometry` box/circle/polygon contacts and segment casts on the shared `Rect`/`Point`),
 broad-phase over `SpatialGrid`, and the `Resolution` response layer — which `FS.GG.Game.Core` keeps
 deliberately separate from detection. Reach for it instead of hand-rolling AABB or a duplicate bounds
@@ -344,12 +344,12 @@ community sources. If your product uses Spec Kit, record findings and resolving 
 
 ## Related
 
-- [[fs-gg-collision]] — detect and resolve collisions: the `Geometry` narrow phase, a `SpatialGrid` broad
+- [[fs-gg-game:fs-gg-collision]] — detect and resolve collisions: the `Geometry` narrow phase, a `SpatialGrid` broad
   phase, and the `Resolution` response layer kept deliberately separate from detection.
-- [[fs-gg-grids]] — the grid's geometry *vocabulary*: faces, edges, vertices, and the pixel↔cell map.
-- [[fs-gg-line-drawing]] — `Los`: the Bresenham/supercover cell walk and discrete grid line-of-sight.
-- [[fs-gg-visibility]] — `Visibility`'s continuous angular-sweep polygon and `Fov`'s symmetric shadowcasting.
-- [[fs-gg-ballistics]] — swept projectile advance, lead solves, and splash over the same `Geometry` casts.
+- [[fs-gg-game:fs-gg-grids]] — the grid's geometry *vocabulary*: faces, edges, vertices, and the pixel↔cell map.
+- [[fs-gg-game:fs-gg-line-drawing]] — `Los`: the Bresenham/supercover cell walk and discrete grid line-of-sight.
+- [[fs-gg-game:fs-gg-visibility]] — `Visibility`'s continuous angular-sweep polygon and `Fov`'s symmetric shadowcasting.
+- [[fs-gg-game:fs-gg-ballistics]] — swept projectile advance, lead solves, and splash over the same `Geometry` casts.
 - [[fs-gg-rendering:fs-gg-scene]] — build the `Scene` the simulated world renders into.
 - [[fs-gg-rendering:fs-gg-skiaviewer]] — drive the fixed-step loop from the host window.
 - [[fs-gg-rendering:fs-gg-layout]] — compute the gameplay region (the visible `Rect`) entities are culled against.
