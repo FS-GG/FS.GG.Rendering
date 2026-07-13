@@ -359,6 +359,35 @@ scripts/fsgg-coord done <issue> --flip     # green FSGG-DONE only after PR merge
 
 Same stamp and epic roll-up as cross-repo. Check your PR stayed inside its declaration:
 
+### Never write a closing keyword next to an issue you do not mean to close
+
+GitHub scans the PR body for `close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved` followed
+by an issue ref, and links the two. **It does not parse the sentence.** A body that said, in as many
+words, `It does not close #422` **closed #422** on merge — the string contains `close #422`, and the
+negation is invisible to the parser. The board then stamped the item **Done**, so an open, unfinished,
+explicitly-not-done item was closed and stamped with its acceptance criteria unmet
+([#643](https://github.com/FS-GG/.github/issues/643)).
+
+`done --flip` cannot save you here: it refuses to stamp work that is not *merged*, and this work
+**was** merged — it just did not *finish the item*.
+
+It needs no negation, either — only adjacency. Narrative past tense (`On merge, GitHub closed #422`),
+a quoted example, a deferral (`a follow-up will resolve #N`): none carries the word "not", and every
+one closes an issue. So the rule is:
+
+> **Say what you close, on a line that says nothing else. Everywhere else in the body, GitHub must
+> not be able to bind a keyword to a number.**
+
+```
+Closes #643.                  ← a declaration: the whole line, nothing else on it
+Closes #1, closes #2.         ← REPEAT the keyword. `Closes #1, #2` closes only #1; the bare
+                                `#2` binds to nothing and is silently dropped.
+```
+
+Everywhere else, deny the binding: write it as code (`closed #422`), reword it (`does NOT complete
+#422`), or drop the verb (`Refs #422.`). The `closing-keywords` gate fails the PR on every undeclared
+closing reference.
+
 ### If you filed an issue, LINK it — a mention is not a link
 
 `done --flip` rolls an epic up from its **native sub-issue graph**. A `(j) child of #266` title, a
