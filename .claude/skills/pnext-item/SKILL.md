@@ -442,6 +442,44 @@ scripts/fsgg-coord verify-paths --pr <pr>    # did the PR stay inside its declar
 > guidance stands anyway**: the body reference is the one that makes the link visible on the PR itself,
 > and the two records agreeing is worth more than either alone.
 
+> **And NEVER write a closing keyword next to an issue number you do not mean to close. GitHub does
+> not read the word "not."**
+>
+> It scans the body for `close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved` followed by an
+> issue ref and links the two. **It does not parse the sentence.** A PR body that said, in as many
+> words, `It does not close #422` **closed #422** on merge: the string contains `close #422`, and the
+> negation is invisible to the parser. The board's auto-workflow then stamped the item **Done** — so
+> an open, unfinished, *explicitly-not-done* item was closed and stamped with its acceptance criteria
+> unmet ([#643](https://github.com/FS-GG/.github/issues/643)).
+>
+> **Nothing downstream catches this.** `done --flip` refuses to stamp work that is not *merged*, and
+> this work **was** merged — it just did not *finish the item*. The only reason it surfaced at all is
+> that the worker re-read the `release` output and disbelieved it.
+>
+> **And it needs no negation — only adjacency.** Narrative past tense (`On merge, GitHub closed
+> #422`), an example you quoted, a `fixes #N` pasted from a log, a deferral (`a follow-up will
+> resolve #N`): not one of them carries the word "not", and every one of them closes an issue. There
+> is no such thing as a harmless closing keyword in a PR body. So the rule is **not** "avoid the word
+> not":
+>
+> **Say what you close, on a line that says nothing else. Everywhere else, GitHub must not be able to
+> bind a keyword to a number.**
+>
+> ```
+> Closes #643.                  ← a declaration: the whole line, nothing else on it
+> Closes #1, closes #2.         ← REPEAT the keyword. `Closes #1, #2` closes only #1; the
+>                                 bare `#2` binds to nothing and is silently dropped.
+> ```
+>
+> Everywhere else, deny GitHub the binding — write it as code (`closed #422`), reword it (`does NOT
+> complete #422`), or drop the verb (`Refs #422.`).
+>
+> The `closing-keywords` gate fails the PR on every undeclared closing reference. It was written
+> against the body of the change that introduced it — a body that argued about this bug for forty
+> lines and, in prose, would have re-closed #422.
+
+
+
 > **Two independent reasons the landing steps below are `gh api`, not `gh pr …`.**
 >
 > 1. **The merge must be, always.** `gh pr merge` merges and *then* fails, because its local cleanup
