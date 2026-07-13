@@ -525,6 +525,19 @@ run
 expect_rc 1 'a directory is not a publication'
 expect_out_has 'dangling [[fs-gg-stray]]' 'asks the manifest, not the filesystem'
 
+case_start '§5 a manifest row whose BODY is missing fails — an unreadable subject is not an absent one'
+fixture
+skill fs-gg-alpha <<'MD'
+# alpha
+MD
+# The manifest promises a body; the tree does not have it. Skipping it would mean the gate reports
+# green having examined one fewer body than it claims to publish — the shortfall invisible, because
+# nothing counts what it did not open.
+rm -f "$FIX/template/product-skills/fs-gg-alpha/SKILL.md"
+run
+expect_rc 1 'a promised body that is not on disk fails'
+expect_out_has 'which does not exist' 'names the body the manifest promised'
+
 case_start '§5 the manifest is the SUBJECT — its absence fails, and is never a green no-op'
 fixture
 skill fs-gg-alpha <<'MD'

@@ -247,7 +247,12 @@ DEFAULT_OWNER="FS-GG"
 # The FROZEN MIRRORS (§ 0): bodies we ship but FS.GG.Game owns and authors. Exactly the registry rows
 # whose `owner:` is fs-gg-game AND which we also publish — i.e. ADR-0022 P4's migration set. It is a
 # constant because the registry lives in another repo and this gate takes no network to answer a
-# hermetic question; the `is_published` guard below catches it if it ever falls out of step.
+# hermetic question.
+#
+# NOTHING VERIFIES IT, and that is stated here rather than left to be discovered: the manifest carries
+# no `owner` field, so this repo holds no local evidence of who owns a body. Both ways it can rot fail
+# SAFE, which is why the absence is tolerable — see the note above `mirror_bodies` for the argument,
+# and do not add a guard here that only appears to check it.
 MIRRORED_SKILLS=$'fs-gg-game-core\nfs-gg-audio\nfs-gg-persistence\nfs-gg-model-swap'
 
 # NOT `exit 0`. A missing manifest is not "nothing to check" — it is this gate's entire subject gone
@@ -289,7 +294,12 @@ body_files() { while IFS= read -r b; do [[ -n $b ]] && printf '%s\0' "$b"; done 
 # The directories the bodies live in — the pathspec `--changed` diffs against (§ 4). Derived from the
 # manifest too, so a skill supplied from a new root is picked up here the moment it is published,
 # rather than being quietly outside the merge gate's scope.
-body_dirs=$(jq -r '.skills[]."supplied-by"' "$MANIFEST" | sed 's:/*$::' | sort -u)
+#
+# An ARRAY, not a word-split string. A `supplied-by` with a space in it would split into two pathspecs
+# that match nothing, and `git diff` would report no changed files — so the link half would announce
+# "this diff touches no published skill body" on a PR that edited one. That is a green gate over a
+# subject it never examined, arriving through the very fallback that exists to prevent it (§ 4).
+mapfile -t body_dirs < <(jq -r '.skills[]."supplied-by"' "$MANIFEST" | sed 's:/*$::' | sort -u)
 
 # -x -F, never -w: `grep -w game` matches inside `fs-gg-game` (a `-` is a word boundary), and an
 # unanchored pattern is a REGEX, so `fs.gg.game` would match too. Both would wave a typo'd owner
@@ -516,8 +526,7 @@ fi
 # that changed under the right directory.
 link_md_files() {
   if [[ $link_scope == diff ]]; then
-    # shellcheck disable=SC2086  # body_dirs is a deliberate multi-pathspec word split
-    git diff --name-only -z --diff-filter=ACMR "$CHANGED_BASE...HEAD" -- $body_dirs \
+    git diff --name-only -z --diff-filter=ACMR "$CHANGED_BASE...HEAD" -- "${body_dirs[@]}" \
       | while IFS= read -r -d '' f; do
           [[ -f $f ]] && grep -qxF -- "$f" <<<"$body_paths" && printf '%s\0' "$f"
         done
