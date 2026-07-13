@@ -29,6 +29,11 @@
          both, a bug in both copies agreed with itself and the gate stayed green while recording
          something other than the public surface (#657). One definition, two consumers, no drift. -->
     <Compile Include="..\..\scripts\SurfaceRenderer.fs" Link="SurfaceRenderer.fs" />
+    <!-- #674 — the single reading of "what actually packs" (it wraps the harness's own
+         PackageFeed.discoverPackablePackages). Compiled FIRST because three suites below consume it:
+         Feature163PackageFeedValidationTests, Feature207BomMembershipTests, and Tests.fs, each of which
+         used to re-derive the rule by hand. -->
+    <Compile Include="PackablePackages.fs" />
     <Compile Include="SurfaceAreaTests.fs" Condition="Exists('SurfaceAreaTests.fs')" />
     <Compile Include="PackageApiReferenceTests.fs" />
     <Compile Include="NameCollisionSafetyTests.fs" />
@@ -92,6 +97,7 @@
     <Compile Include="Feature282EmbeddedTokenGuardTests.fs" />
     <Compile Include="Issue496FSharpCoreShadowingTests.fs" />
     <Compile Include="ApiSurfaceInternalTests.fs" />
+    <Compile Include="Feature706TemplateConditionalBalanceTests.fs" />
     <Compile Include="Tests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

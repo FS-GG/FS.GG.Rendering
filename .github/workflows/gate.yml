@@ -304,12 +304,69 @@ jobs:
       # folder, so a cached FS.GG.UI@V could satisfy a member the freshly-packed feed never produced —
       # restore-partial would report green on a partial graph. Unsetting restores exactly the
       # environment this step had before the action existed.
+      # `release_pending` (#689): the guard's own answer to "does THIS commit bump the pin, with its tags
+      # not cut yet?" — captured here rather than re-derived, because `bumpedInCommitUnderTest` is the
+      # single source of that truth and a second copy of it in YAML is precisely #673's disease. The
+      # release-lane step below is the only consumer. `pipefail` keeps a guard failure fatal through the
+      # `tee`, exactly as before.
       - name: Version coherence guard
+        id: coherence
         run: |
           set -euo pipefail
           unset NUGET_PACKAGES
-          dotnet fsi scripts/validate-version-coherence.fsx
+          dotnet fsi scripts/validate-version-coherence.fsx | tee /tmp/version-coherence.out
           FS_GG_RUN_VERSION_COHERENCE_SMOKE=1 dotnet fsi scripts/validate-version-coherence.fsx
+          if grep -q '^RELEASE-PENDING:' /tmp/version-coherence.out; then
+            echo 'release_pending=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'release_pending=false' >> "$GITHUB_OUTPUT"
+          fi
+
+      # #689 — RUN PACKAGE.TESTS IN THE CONFIGURATION THAT PUBLISHES, BEFORE THE RUN THAT PUBLISHES.
+      #
+      # `release.yml`'s `package-tests` job sets FS_GG_VERSION_COHERENCE_RELEASE_LANE=1 at JOB level, and
+      # until this step it was the ONLY thing in the repo that set it — that is the bug, and the step below
+      # is deliberately the second. So Package.Tests had TWO behaviours — waivers on (every PR) and waivers
+      # off (the one run that gates a publish) — and CI only ever exercised the first before merge.
+      # A test that passes unset and fails set was green on every PR and red on exactly the run that cannot
+      # afford it: after `release-tags` has already cut and pushed the tag triple. That is what aborted
+      # 0.9.1 (#679): the #514 fixture spawned the guard, the child inherited the job's lane, and the guard
+      # then demanded tags for the fixture's own synthetic 999.0.0 one line before it cut them. `main` sat
+      # pinned to a version nobody published and every PR went red on NU1102 until #684.
+      #
+      # WHY THIS IS CONDITIONAL, AND WHY THAT IS NOT A LOOPHOLE. The lane disables the RELEASE-PENDING
+      # waivers. Those waivers are the ONLY reason a release commit is legal before its tags exist — so on
+      # a release commit the lane is unsatisfiable BY DESIGN, and running it here would red the one PR that
+      # must be green in order to ship. Measured on the real 0.9.2 release commit (88f8ae2c) with its tag
+      # triple removed — i.e. that PR exactly as the gate saw it: lane off => 357 passed; lane on => 2
+      # failed (`pin-no-tag`, `pkg-no-template-tag`, `pkg-no-release-tag`). An unconditional lane run here
+      # would have BLOCKED the PR that unwedged main, which is the same wedge from the other side.
+      # `release-tags.yml` states the rule this obeys: "the release lane is for jobs that gate a publish,
+      # after the tags exist" — and this file's own header (THE RELEASE TAG WINDOW IS CLOSED) says a
+      # release PR "is NOT expected-red". Both stay true.
+      #
+      # On every OTHER commit the current pin's tags DO exist, so the lane is satisfiable and is exercised
+      # — and that is enough to have caught #514 on the PR that introduced it, because that fixture builds
+      # its own synthetic clone and fails under the lane regardless of what the real repo's tags say.
+      #
+      # The skip is fail-LOUD, not fail-quiet: if the guard's `RELEASE-PENDING:` line is ever reworded, the
+      # grep above yields false, this step RUNS on the release PR, and the release PR goes red where a human
+      # is already looking. The dangerous direction — a check that silently stops running — is the one the
+      # wording cannot produce.
+      - name: Package.Tests in the RELEASE LANE (the configuration release.yml publishes under)
+        env:
+          # Bound through `env:`, not interpolated into the script: a `${{ }}` in `run:` is substituted as
+          # TEXT before bash ever sees it, and that is the shape of every Actions script-injection bug.
+          # This particular value is our own true/false, so nothing is exploitable here — the point is that
+          # the safe form costs nothing and does not need a reader to prove the unsafe one is fine.
+          RELEASE_PENDING: ${{ steps.coherence.outputs.release_pending }}
+        run: |
+          set -euo pipefail
+          if [[ "$RELEASE_PENDING" == 'true' ]]; then
+            echo "::notice::Release-pending commit: the pin is bumped and its tags are not cut yet, so the RELEASE-PENDING waivers are load-bearing and the release lane is unsatisfiable by design (#689). Package.Tests already ran waivers-on in the default local tier; release.yml re-runs it lane-on after the tags exist."
+            exit 0
+          fi
+          FS_GG_VERSION_COHERENCE_RELEASE_LANE=1 dotnet test tests/Package.Tests/Package.Tests.fsproj -c Debug --no-build
 
       # #541 — this repo ships FROZEN MIRRORS of four product skills whose canonical bodies live in
       # FS.GG.Game (ADR-0022 §6), and until now NOTHING here knew they existed. `skill-parity` only
@@ -1025,3 +1082,26 @@ jobs:
 
       - name: Behavioural test suite (planted decay in, filed issue out)
         run: scripts/test-skill-refs-sweep.sh
+
+  # ── Cross-repo contract-coherence gate ──────────────────────────────────────────────────
+  # Adopted per FS-GG/.github#519 (decision: yes, the framework repos call it). The gate lives
+  # in FS-GG/.github and is CALLED, never copied — it asserts that the org registry is
+  # schema-valid and that its declared `fsgg-contracts` pin equals the ACTUAL FS.GG.Contracts
+  # package version. This repo consumes FS.GG.Contracts, so a registry that has drifted from
+  # the real package version is this repo's problem, and until now nothing here said so.
+  #
+  # `check-build-config` is left at its default (true) because registry/repos.yml declares this
+  # repo a `build-config` receiver. That DUPLICATES the hand-rolled `build-config-drift` job in
+  # this same file, and the duplication is DELIBERATE: that job's `name:` is a REQUIRED status
+  # check on main, so deleting it here would leave a required context permanently unreported —
+  # a PR that can never merge, which is exactly the silent deadlock FS-GG/.github#574's verifier
+  # is being built to catch. Retiring the hand-rolled job must happen in a change that updates
+  # this repo's branch protection in the same stroke. Tracked separately; do not "tidy" it away.
+  #
+  # `packages: read` is MANDATORY for callers: the gate restores the typed fsgg-sdd registry
+  # validator from the org GitHub Packages feed using the run-scoped GITHUB_TOKEN.
+  contract-coherence:
+    uses: FS-GG/.github/.github/workflows/contract-coherence.yml@main
+    permissions:
+      contents: read
+      packages: read

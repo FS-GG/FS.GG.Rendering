@@ -21,7 +21,9 @@ open System.IO
 /// The samples need no finder anyway: a sample locates its own files from its own tree, which
 /// `SampleApps.Tests` now does by having MSBuild copy them next to the test binary rather than by
 /// ascending to look for them. `tests/Build.Tests/RepositoryRootSingleFinderTests.fs` (#700) enforces
-/// that this stays the only walk under `tests/`.
+/// that this stays the only walk under `tests/` — and, since #734 sharpened it to detect a REPEATED
+/// ascent rather than a token, over `samples/**/*.Tests` as well. So the samples are CHECKED for a
+/// hand-rolled walk, not merely trusted not to have one; they just cannot be sent here to fix it.
 module RepositoryRoot =
 
     /// Nearest ancestor of `start` containing a repository marker (`*.sln`, `*.slnx`, or
