@@ -58,6 +58,7 @@
     <Compile Include="Feature160ReadinessPackageTests.fs" />
     <Compile Include="Feature163TestFixtures.fs" />
     <Compile Include="Feature163PackageFeedTests.fs" />
+    <Compile Include="Feature677PackDiscoveryFailsClosedTests.fs" />
     <Compile Include="Feature163PackageSourceProofTests.fs" />
     <Compile Include="Feature163ValidationLaneTests.fs" />
     <Compile Include="Feature163ValidationSummaryTests.fs" />
