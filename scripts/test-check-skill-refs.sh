@@ -76,7 +76,7 @@ git_init() {
   # fixture that tracked it would carry a file that mutates while the subject runs — and a case
   # that committed after a `run` would find the harness's own call log inside the diff it is
   # asserting on. Excluded before the first `add`, so none of it is ever tracked.
-  printf '%s\n' bin/ gh.log gh-state gh-bodies/ trackers.json unlabelled.json kit.txt \
+  printf '%s\n' bin/ gh.log gh-state gh-bodies/ trackers.json unlabelled.json kit.txt mirrors.txt \
     >"$FIX/.git/info/exclude"
   git -C "$FIX" add -A
   git -C "$FIX" commit -qm 'fixture base'
@@ -99,14 +99,18 @@ git_orphan() {
   git -C "$FIX" commit-tree "$empty" -m 'unrelated root'
 }
 
-# run [args…] — env knobs: CI_MODE=1, SKIP_LINKS=1, GH_NOAUTH=1, KIT_FAIL=1
+# run [args…] — env knobs: CI_MODE=1, SKIP_LINKS=1, GH_NOAUTH=1, KIT_FAIL=1, MIRRORS_FAIL=1,
+# MIRRORS_EMPTY=1
 run() {
-  local -a e=(env -u GITHUB_ACTIONS -u SKILL_REFS_SKIP_LINKS -u GH_NOAUTH -u GH_KIT_FAIL) base
+  local -a e=(env -u GITHUB_ACTIONS -u SKILL_REFS_SKIP_LINKS -u GH_NOAUTH -u GH_KIT_FAIL \
+                  -u GH_MIRRORS_FAIL -u GH_MIRRORS_EMPTY) base
   mapfile -t base < <(gh_env); e+=("${base[@]}")
   [[ ${CI_MODE:-0}   == 1 ]] && e+=("GITHUB_ACTIONS=true")
   [[ ${SKIP_LINKS:-0} == 1 ]] && e+=("SKILL_REFS_SKIP_LINKS=1")
   [[ ${GH_NOAUTH:-0}  == 1 ]] && e+=("GH_NOAUTH=1")
   [[ ${KIT_FAIL:-0}   == 1 ]] && e+=("GH_KIT_FAIL=1")
+  [[ ${MIRRORS_FAIL:-0}  == 1 ]] && e+=("GH_MIRRORS_FAIL=1")
+  [[ ${MIRRORS_EMPTY:-0} == 1 ]] && e+=("GH_MIRRORS_EMPTY=1")
   OUT=$("${e[@]}" "$FIX/scripts/check-skill-refs.sh" "$@" 2>&1)
   RC=$?
   ((VERBOSE)) && { printf '    ── %s\n' "$*"; printf '%s\n' "$OUT" | sed 's/^/    │ /'; }
@@ -583,12 +587,20 @@ expect_out_has 'cannot be green without its subject' 'refuses to pass over an ab
 #
 # What is pinned here is the new contract, in both directions: a fully-qualified mirror is GREEN, and a
 # BARE ref inside one is a HARD FAILURE — the one shape that cannot be right in both repos.
+#
+# EVERY FIXTURE HERE NOW DECLARES THE REGISTRY'S VIEW (`mirror_roster`, #722), and that is not harness
+# ceremony — it is the contract these cases are pinning. Publishing `fs-gg-game-core` used to be enough
+# to make it a mirror, because `MIRRORED_SKILLS` was the only reading of "which skills are frozen
+# mirrors" and nothing checked it. It is checked now: a mirror is `owner: foreign` AND `we publish it`,
+# and the fixture supplies both halves. A case that publishes a mirror body and does NOT say the registry
+# calls it foreign is asserting that the constant is stale — which is the § 9 red, not this § .
 # ════════════════════════════════════════════════════════════════════════════════════════════════
 
 case_start '§6 a fully-QUALIFIED frozen mirror is green — both directions of ref'
 # The bytes Game actually ships now. A foreign ref we cannot see is trusted; a self-qualified ref to a
 # skill we DO publish resolves. This is the case the old convention could not produce.
 fixture
+mirror_roster fs-gg-game-core
 skill fs-gg-game-core <<'MD'
 # game-core — a frozen mirror of FS.GG.Game's body
 See [[fs-gg-game:fs-gg-ballistics]], which Game publishes and we do not.
@@ -606,6 +618,7 @@ case_start '§6 a BARE ref inside a FROZEN MIRROR is now a HARD FAILURE'
 # it would do so with BOTH gates green, which is precisely how this got lost the first time. It fails
 # even when we DO publish the skill, because it is Game's gate it breaks, not ours.
 fixture
+mirror_roster fs-gg-game-core
 skill fs-gg-game-core <<'MD'
 # game-core
 See [[fs-gg-alpha]] — bare, and we publish it, so nothing else here would object.
@@ -620,18 +633,21 @@ expect_out_has 'QUALIFY it' 'tells the author what to write instead'
 
 case_start '§6 ...and a bare ref in a mirror to a skill NOBODY here publishes fails too'
 fixture
+mirror_roster fs-gg-game-core
 skill fs-gg-game-core <<'MD'
 # game-core
 See [[fs-gg-ballistics]], which Game publishes and we do not.
 MD
 run
 expect_rc 1 'the old NOTE is gone — this is a failure now, and it is clearable: qualify it upstream'
+expect_out_has 'MIRRORED body' 'and it is the REF that failed — not the mirror-list check upstream of it'
 
 case_start '§6 the stopgap is GONE — no note stream survives on the green path'
 # The stopgap printed "N [[ref]](s) in the frozen mirrors" on success. If that sentence ever comes back,
 # § 1 has stopped checking the four bodies again, and it will do so QUIETLY — which is the failure this
 # whole section exists to prevent. So the absence is asserted, not assumed.
 fixture
+mirror_roster fs-gg-game-core
 skill fs-gg-game-core <<'MD'
 # game-core
 See [[fs-gg-game:fs-gg-ballistics]].
@@ -655,6 +671,7 @@ expect_out_hasnt 'not ours to fix' 'and does not call it a note'
 
 case_start '§6 §2 STILL FAILS inside a mirror — a closed issue is closed in every repo'
 fixture
+mirror_roster fs-gg-audio
 skill fs-gg-audio <<'MD'
 # audio — a frozen mirror
 Go and add your case in FS.GG.Rendering#900.
@@ -677,6 +694,7 @@ case_start '§6 a mirror finding IS on STDERR now — the sweep must be able to 
 # file can catch a seam bug alone: the script would look correct, the sweep would look correct, and the
 # finding would be lost between them.
 fixture
+mirror_roster fs-gg-game-core
 skill fs-gg-game-core <<'MD'
 # game-core — a frozen mirror
 See [[fs-gg-ballistics]].
@@ -701,6 +719,7 @@ expect_has 'byte-identity' "$(grep -E '^[^ :]+:[0-9]+: ' <<<"$err")" \
 
 case_start '§6 §3 STILL FAILS inside a mirror — a bare #N is unresolvable in every repo'
 fixture
+mirror_roster fs-gg-persistence
 skill fs-gg-persistence <<'MD'
 # persistence — a frozen mirror
 Track it in #4242.
@@ -1289,6 +1308,153 @@ run
 expect_rc 0 'green'
 expect_out_has 'OUT of subject' 'the skipped bodies are stated, not left to be inferred'
 expect_out_has "verified against FS-GG/.github's kit roster" 'and so is the fact that the skip was earned'
+
+# ════════════════════════════════════════════════════════════════════════════════════════════════
+# § 9  MIRRORED_SKILLS IS VERIFIED — the OTHER hand-written narrowing  (#722)
+#
+# Two scripts in the same required job answered "which skills are frozen mirrors?", from two places:
+# `check-frozen-mirrors.fsx` DERIVES the set from the org registry, and this gate read it off a constant
+# nothing checked. One rule, two hand-maintained readings, and only one of them could drift.
+#
+# AND #714 MADE THE DRIFT DANGEROUS. Being listed used to DEMOTE a § 1 finding to a note, so an omission
+# meant MORE checking and rot failed safe. #714 inverted that: a listed body hard-fails a bare `[[ref]]`,
+# so a mirror MISSING from the list has its refs judged against OUR publish set alone — green here, and
+# dangling in the owning repo's gate. It fails OPEN, which is the incoherence #714 exists to end,
+# re-created by an omission.
+#
+# A mirror is `owner: foreign` AND `we publish it`. The registry settles only the first half — its eight
+# foreign product rows are indistinguishable there, and Rendering mirrors four while deliberately shipping
+# no counterpart for the other four — so both halves are exercised here, and so is the seam between them.
+# ════════════════════════════════════════════════════════════════════════════════════════════════
+
+case_start '§9 MIRRORED_SKILLS drift, the FAIL-OPEN direction: a mirror the constant does not know'
+# The one that matters. The registry says we do not own this published body; the constant does not list
+# it; so § 1 judges its bare refs against OUR publish set and calls them green — while they dangle in the
+# gate of the repo that actually owns the bytes.
+fixture
+mirror_roster fs-gg-scene            # the registry says fs-gg-scene is owned elsewhere now...
+skill fs-gg-scene <<'MD'
+# scene — a fifth mirror, and this gate does not know it
+See [[fs-gg-alpha]] — bare, and green here, because nothing told this gate to look harder.
+MD
+skill fs-gg-alpha <<'MD'
+# alpha
+MD
+run                                   # ...and MIRRORED_SKILLS still names only the four
+expect_rc 1 'a mirror the constant omits is a fail-open, and the gate refuses to run on it'
+expect_out_has '< fs-gg-scene' 'names the mirror it did not know about'
+expect_out_has 'DANGEROUS' 'and says which direction of drift this is'
+expect_out_has 'publish set ALONE' 'spelling out what the omission costs'
+
+case_start '§9 MIRRORED_SKILLS drift, the other direction: the constant claims a mirror we OWN'
+# #696's end state, arrived at halfway: the mirror is retired, the registry says the body is ours, and the
+# constant still names it — so this gate hard-fails bare refs in a body we fully own. A loud false red.
+fixture
+skill fs-gg-audio <<'MD'
+# audio — ours now, per the registry, and no `mirror_roster` says otherwise
+MD
+run
+expect_rc 1 'a stale entry is also fatal — loudly, which is the point'
+expect_out_has '> fs-gg-audio' 'names the entry the registry no longer backs'
+expect_out_has 'false red' 'and diagnoses it as the harmless-but-loud direction'
+
+case_start '§9 a FOREIGN product row we do NOT publish is not a mirror'
+# ballistics/ai/effects/physics are `owner: fs-gg-game` product rows that Rendering deliberately ships no
+# counterpart for (.github#486). They are indistinguishable in the registry from the four we DO mirror, so
+# a derivation that takes every foreign product row instead of intersecting with the publish set would
+# manufacture four mirrors that do not exist here. The fake serves them in every fixture; this pins that
+# they stay out.
+fixture
+skill fs-gg-alpha <<'MD'
+# alpha
+MD
+run
+expect_rc 0 'a body we do not ship is not a mirror, however foreign the registry says it is'
+expect_out_has '0 frozen mirror(s)' 'and the count says so'
+
+case_start '§9 a foreign PROCESS row is not a mirror either — the scope filter is real'
+# The fake always serves `fs-gg-decoy-process`: `owner: fs-gg-game`, but `scope: process`. Publish it, and
+# a parse that ignores `scope:` derives it as a mirror the constant does not list — i.e. it reddens with
+# the § 9 fail-open message. The scope filter is what keeps that from happening.
+fixture
+skill fs-gg-decoy-process <<'MD'
+# a process skill, foreign-owned, and NOT a product mirror
+MD
+run
+expect_rc 0 'a process row is not in the mirror question at all'
+expect_out_hasnt 'fs-gg-decoy-process' 'the scope filter dropped it, so it never reached the comparison'
+
+case_start '§9 an entry for a body we do NOT publish is inert, and is not flagged'
+# THE EXACT BOUNDARY, and it is asserted rather than left to be inferred. `mirror_bodies` filters this
+# constant through `is_published`, so an entry naming a body we do not publish reaches no verdict this
+# gate can render. The comparison is scoped to the published set for that reason — everything that CAN
+# change a verdict is checked, and this cannot. A fixture publishing none of the four is the normal case,
+# and it is green.
+fixture
+skill fs-gg-alpha <<'MD'
+# alpha
+MD
+run
+expect_rc 0 'the four unpublished entries change no verdict, so they are not a finding'
+expect_out_has "verified against FS-GG/.github's skill registry" 'and the list was still verified'
+
+case_start '§9 a registry that parses to NO product rows is the check FAILING, not an empty mirror set'
+# An empty read is not "there are no mirrors" — it is the registry's shape moving under the parse, and
+# blessing the constant on the strength of a match that found nothing is the fail-open one `sed` away.
+fixture
+skill fs-gg-alpha <<'MD'
+# alpha
+MD
+MIRRORS_EMPTY=1 run
+expect_rc 1 'a registry with no product rows is a broken parse, not an empty answer'
+expect_out_has 'found no `scope: product` rows' 'says what it went looking for and did not find'
+expect_out_has 'teach this parse' 'and sends the reader at the parse, not at the constant'
+
+case_start '§9 CI + unauthenticated gh → MIRRORED_SKILLS cannot be verified, so the gate FAILS'
+fixture
+CI_MODE=1 GH_NOAUTH=1 run
+expect_rc 1 'a narrowing it cannot verify is one it may not act on in CI'
+expect_out_has 'MIRRORED_SKILLS cannot be verified' 'says which claim it could not stand behind'
+expect_out_has 'dangling in the owning' 'and what the blind spot would cost'
+
+case_start '§9 locally, an unverified mirror list is ANNOUNCED, never silently trusted'
+fixture
+GH_NOAUTH=1 run
+expect_rc 0 'the local run still gates — the subject is hermetic, only the cross-check is not'
+expect_out_has 'MIRRORED_SKILLS was NOT verified' 'and it says the list went unchecked'
+
+case_start '§9 the registry read FAILS → the gate quotes gh, and does not blame the parse'
+# "COULD NOT READ IT" and "READ IT AND IT SAID NOTHING" are different sentences (.github#430). A rate
+# limit must not surface as a shape change, or the reader goes off to debug a parse that was fine.
+fixture
+CI_MODE=1 MIRRORS_FAIL=1 run
+expect_rc 1 'a registry it could not read is not a constant it may call verified'
+expect_out_has 'could not READ' 'names the read as the thing that failed'
+expect_out_has 'HTTP 403' "and quotes gh's own error rather than swallowing it"
+expect_out_hasnt 'found no `scope: product` rows' 'it does NOT claim it read a registry with no rows'
+
+case_start '§9 SKILL_REFS_SKIP_LINKS does NOT skip the mirror check — that flag is about LINKS'
+# The § 0c rule, and it applies to both narrowings: degrade toward MORE checking, never less. A flag that
+# means "skip the link half" says nothing about whether a registry can be read.
+fixture
+skill fs-gg-audio <<'MD'
+# audio — the constant lists it, and no `mirror_roster` says the registry agrees
+MD
+SKIP_LINKS=1 run
+expect_rc 1 'the mirror list is still verified, and still wrong'
+expect_out_has '> fs-gg-audio' 'the drift is reported even with the link half off'
+
+case_start '§9 a green run NAMES the verification — an unchecked narrowing is not silently green'
+fixture
+mirror_roster fs-gg-game-core
+skill fs-gg-game-core <<'MD'
+# game-core — a real mirror, and the registry agrees
+See [[fs-gg-game:fs-gg-ballistics]].
+MD
+run
+expect_rc 0 'green'
+expect_out_has '1 frozen mirror(s)' 'the count of bodies held to the stricter rule is stated'
+expect_out_has "verified against FS-GG/.github's skill registry" 'and so is the fact that it was earned'
 
 # ── summary ─────────────────────────────────────────────────────────────────────────────────────
 harness_summary test-check-skill-refs

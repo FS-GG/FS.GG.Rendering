@@ -177,6 +177,15 @@ fixture_new() {
   # fixture that does not care about the kit gets a roster that AGREES with the subject and is silent.
   # `kit_roster` overrides it to drive the drift cases.
   printf '%s\n' cross-repo-coordination intra-repo-parallel-work check-board pnext-item >"$FIX/kit.txt"
+  # FS-GG/.github's SKILL registry (#722) — the other constant check-skill-refs.sh narrows itself by.
+  # `MIRRORED_SKILLS` names the bodies it treats HARDER (a bare `[[ref]]` in one is a hard failure), and
+  # since #714 the omission of a mirror fails OPEN, so that list is verified against `owner:` here.
+  #
+  # This file holds the published ids the registry marks as owned ELSEWHERE. Empty by default, which is
+  # the honest default: a fixture's skills are its own, so the registry calls them ours, the derived
+  # mirror set is empty, and a fixture that does not care about mirrors is silent. `mirror_roster`
+  # overrides it to drive the drift cases.
+  : >"$FIX/mirrors.txt"
   _write_manifest                     # a real manifest, even when empty: the subject refuses to run without one
   _seed_repo_surface                  # ditto the REPO surface (#698) — see below
   _write_fake_gh
@@ -269,6 +278,8 @@ gh_env() {
   echo "GH_TRACKERS=$FIX/trackers.json"
   echo "GH_UNLABELLED=$FIX/unlabelled.json"
   echo "GH_KIT=$FIX/kit.txt"
+  echo "GH_MIRRORS=$FIX/mirrors.txt"
+  echo "GH_PUBLISHED=$FIX/skills.tsv"
 }
 
 # skill <id> — the SKILL.md body on stdin. Publishes it from the conventional root, and REGISTERS it
@@ -304,6 +315,21 @@ issue() { printf '%s\t%s\n' "$1" "$2" >>"$FIX/gh-state"; }
 # the roster does not have (fail-OPEN — a body of ours going unexamined), and a name the roster has
 # but the subject does not exclude (the kit grew, and the subject is resolving .github's numbers here).
 kit_roster() { printf '%s\n' "$@" >"$FIX/kit.txt"; }
+
+# mirror_roster <id>… — the PUBLISHED ids FS-GG/.github's skill registry says are owned ELSEWHERE, as
+# the fake serves them (#722). No args = the fixture owns everything it publishes, which is the default.
+#
+# A frozen mirror is `owner: foreign` AND `we publish it` — the registry settles only the first half (its
+# eight foreign product rows look identical, and Rendering mirrors four of them and ships no counterpart
+# for the other four). So this helper marks OWNERSHIP, and the fixture's own `skill` calls decide the
+# other half. That is what makes both drift directions expressible:
+#
+#   mirror_roster fs-gg-x  +  skill fs-gg-x   and fs-gg-x NOT in MIRRORED_SKILLS
+#       -> the FAIL-OPEN direction: a mirror this gate does not know is one, so its bare refs are judged
+#          against our publish set alone — green here, dangling in the owner's gate.
+#   skill fs-gg-audio      +  no mirror_roster
+#       -> the other direction: the constant claims a mirror the registry says we own. A loud false red.
+mirror_roster() { printf '%s\n' "$@" >"$FIX/mirrors.txt"; }
 
 # The repo's issues, as a flat JSON array on stdin. `trackers` carry DECAY_LABEL; `unlabelled` do not.
 trackers()   { cat >"$FIX/trackers.json"; }
@@ -459,6 +485,54 @@ case "$method $path" in
       rows+="  - { id: $id, kind: skill,  source: .claude/skills/$id }"$'\n'
     done <"${GH_KIT:-/dev/null}"
     yaml=$'repos:\n  - { id: rendering, full: FS-GG/FS.GG.Rendering, role: framework }\nbefore-kit:\n  - { id: decoy-before, kind: skill, source: nowhere }\nkit:\n'"$rows"$'  - { id: fsgg-coord, kind: client, source: scripts/fsgg-coord }\nafter-kit:\n  - { id: decoy-after, kind: skill, source: nowhere }\n'
+    if ((wants_raw)); then
+      resp=$yaml
+    else
+      resp=$(jq -nc --arg c "$(printf '%s' "$yaml" | base64 | tr -d '\n')" '{content:$c}')
+    fi ;;
+  "GET repos/FS-GG/.github/contents/registry/skills.yml")
+    # THE SKILL REGISTRY (#722). check-skill-refs.sh verifies `MIRRORED_SKILLS` against it, because that
+    # list decides which bodies get the STRICTER bare-ref rule and — since #714 inverted its polarity —
+    # a mirror MISSING from it fails OPEN.
+    #
+    # GH_MIRRORS_FAIL — the request itself fails, as opposed to succeeding and returning a registry the
+    # subject cannot parse. Different states, and the subject must not conflate them (.github#430).
+    [[ ${GH_MIRRORS_FAIL:-0} == 1 ]] && { echo "gh: API rate limit exceeded (HTTP 403)" >&2; exit 1; }
+    # GH_MIRRORS_EMPTY — the bytes arrive and carry no `scope: product` row at all. That is the registry's
+    # SHAPE moving under the parse, and it must be refused rather than read as "there are no mirrors":
+    # blessing the constant on a match that found nothing is the fail-open the verification exists to
+    # close. It is NOT the same as an empty MIRROR set, which is legal (#696's end state).
+    #
+    # A MIRROR IS `owner: foreign` AND `we publish it`, and only the first half is the registry's to say —
+    # so the rows are built from the fixture's OWN publish set, exactly as the real registry is reconciled
+    # from the producer manifests. `GH_MIRRORS` names the published ids that are owned elsewhere.
+    #
+    # AND IT IS A FAKE THAT CAN BE WRONG — three ways, deliberately:
+    #
+    #  * THE FOUR NEVER-MIRRORED FOREIGN ROWS. ballistics/ai/effects/physics are `owner: fs-gg-game`
+    #    product rows that Rendering deliberately ships NO counterpart for (.github#486). They are always
+    #    served, and they are indistinguishable in the registry from the four we DO mirror. A derivation
+    #    that takes every foreign product row — instead of intersecting with the publish set — picks these
+    #    up and reddens.
+    #  * A `scope: process` ROW WITH A FOREIGN OWNER. A parse that ignores `scope:` derives it as a mirror.
+    #    Its id is publishable, so a fixture can put it in the publish set and make that bug fire.
+    #  * THE ACCEPT HEADER IS HONOURED, as on the roster: raw gives bytes, its absence gives the JSON
+    #    envelope whose `.content` is base64. A subject that forgot the header gets exactly what the real
+    #    API would hand it.
+    rows=""
+    if [[ ${GH_MIRRORS_EMPTY:-0} != 1 ]]; then
+      while IFS=$'\t' read -r id _dir; do
+        [[ -z $id ]] && continue
+        owner=fs-gg-rendering
+        grep -qxF -- "$id" "${GH_MIRRORS:-/dev/null}" 2>/dev/null && owner=fs-gg-game
+        rows+="  - { id: $id, scope: product, owner: $owner, source: FS.GG.X/template/product-skills/$id/SKILL.md, sha256: 0 }"$'\n'
+      done <"${GH_PUBLISHED:-/dev/null}"
+      for ns in fs-gg-ballistics fs-gg-ai fs-gg-effects fs-gg-physics; do
+        rows+="  - { id: $ns, scope: product, owner: fs-gg-game, source: FS.GG.Game/template/product-skills/$ns/SKILL.md, sha256: 0 }"$'\n'
+      done
+      rows+="  - { id: fs-gg-decoy-process, scope: process, owner: fs-gg-game, source: FS.GG.Game/x/SKILL.md, sha256: 0 }"$'\n'
+    fi
+    yaml=$'schemaVersion: 1\nupdated: 2026-07-13\nskills:\n'"$rows"
     if ((wants_raw)); then
       resp=$yaml
     else

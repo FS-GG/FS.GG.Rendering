@@ -385,14 +385,18 @@ KNOWN_OWNERS=$'fs-gg-game\nfs-gg-rendering\nfs-gg-sdd'
 DEFAULT_OWNER="FS-GG"
 
 # The FROZEN MIRRORS (§ 0): bodies we ship but FS.GG.Game owns and authors. Exactly the registry rows
-# whose `owner:` is fs-gg-game AND which we also publish — i.e. ADR-0022 P4's migration set. It is a
-# constant because the registry lives in another repo and this gate takes no network to answer a
-# hermetic question.
+# whose `owner:` is not ours AND which we also publish — i.e. ADR-0022 P4's migration set.
 #
-# NOTHING VERIFIES IT, and that is stated here rather than left to be discovered: the manifest carries
-# no `owner` field, so this repo holds no local evidence of who owns a body. Both ways it can rot fail
-# SAFE, which is why the absence is tolerable — see the note above `mirror_bodies` for the argument,
-# and do not add a guard here that only appears to check it.
+# IT IS VERIFIED AGAINST THE ORG REGISTRY (#722), and it did not use to be. This comment used to say
+# "NOTHING VERIFIES IT", and justified that by arguing that BOTH ways it can rot fail SAFE. That was
+# true while being listed DEMOTED a § 1 finding to a note: omitting a skill meant it got MORE checking.
+# #714 inverted the polarity — being listed now makes the gate STRICTER — so the omission is the
+# direction that fails OPEN, and the tolerance was left standing on a premise that had died one PR
+# earlier. See `verify_mirrors` below, next to the subject it validates.
+#
+# It stays a CONSTANT, and that is not a hedge: § 1's verdicts are still f(tree) (§ 4), because the
+# SUBJECT is built from this list, hermetically. The registry read only asserts that the list still
+# tells the truth — the same split `KIT_SKILLS` runs under (§ 0c).
 MIRRORED_SKILLS=$'fs-gg-game-core\nfs-gg-audio\nfs-gg-persistence\nfs-gg-model-swap'
 
 # NOT `exit 0`. A missing manifest is not "nothing to check" — it is this gate's entire subject gone
@@ -473,15 +477,20 @@ AGENT_SKILLS=".agents/skills"
 # below, because an agent standing in this tree really can invoke `[[pnext-item]]`, and a body of ours
 # that points at one is CORRECT.
 #
-# UNLIKE `MIRRORED_SKILLS`, THIS ONE IS VERIFIED — and it has to be, because it does not fail safe. A
-# name wrongly IN this list is a body of OURS excluded from its own gate: its refs go unexamined and the
-# gate still says `ok`. That is fail-OPEN, it is the `.github#416` shape, and it is the precise hazard
-# § 0b refused a `--surface` flag over ("a subject a caller can NARROW is a subject a caller can
-# FORGET"). `MIRRORED_SKILLS` can honestly say "nothing verifies it" because BOTH its rot directions
-# fail SAFE; this list cannot, so it does not get that tolerance. The kit rows are fetched from canonical
-# and compared against it below — the subject stays hermetic (it is built from THIS constant, so § 4's
-# f(tree) split still holds for § 1 and § 3), and the fetch is a § 2-style f(world) check that the
-# constant still tells the truth.
+# THIS LIST IS VERIFIED, and it has to be, because it does not fail safe. A name wrongly IN it is a body
+# of OURS excluded from its own gate: its refs go unexamined and the gate still says `ok`. That is
+# fail-OPEN, it is the `.github#416` shape, and it is the precise hazard § 0b refused a `--surface` flag
+# over ("a subject a caller can NARROW is a subject a caller can FORGET"). The kit rows are fetched from
+# canonical and compared against it below — the subject stays hermetic (it is built from THIS constant,
+# so § 4's f(tree) split still holds for § 1 and § 3), and the fetch is a § 2-style f(world) check that
+# the constant still tells the truth.
+#
+# `MIRRORED_SKILLS` IS VERIFIED THE SAME WAY, AND FOR THE SAME REASON (#722). This paragraph used to
+# CONTRAST the two — "unlike MIRRORED_SKILLS, this one is verified" — on the grounds that the mirror
+# list failed SAFE in both directions and so could go unchecked. It did, until #714 inverted its
+# polarity one PR earlier; the contrast was stale on the day it was written, and it argued for the
+# tolerance that #722 was filed about. One rule, one reading: a constant this gate narrows its own
+# behaviour by is a constant it checks.
 KIT_SKILLS=$'cross-repo-coordination\nintra-repo-parallel-work\ncheck-board\npnext-item'
 
 # The RESOLVABLE SET for a body read HERE: the skills an agent in this tree can actually INVOKE. Not
@@ -564,6 +573,73 @@ if [[ -z $wrapper_body_paths ]]; then
   exit 1
 fi
 
+# ── ONE PROBE, TWO CONSTANTS (§ 0c and § 0 · #722) ──────────────────────────────────────────────
+# `KIT_SKILLS` (§ 0c) and `MIRRORED_SKILLS` (§ 0) are both hand-written lists that NARROW this gate's own
+# behaviour, both checked against a registry in FS-GG/.github, and both fatal-in-CI when they cannot be
+# checked. So whether `gh` can answer at all is asked ONCE, and the CI refusal is written ONCE and names
+# both. Two copies of that policy would be #722's own defect one level down: one rule, two readings, and
+# only one of them maintained — which is precisely what this file is being repaired for.
+#
+# f(world), like § 2, and both inherit § 2's contract: in CI they MUST run, because a self-skip widens a
+# blind spot in silence. NEITHER SUBJECT MOVES EITHER WAY — each is built from its own constant,
+# hermetically, so § 4's f(tree) split still holds for § 1 and § 3. What an unverified run loses is only
+# the promise that the constants still match canonical.
+#
+# NOT gated on `SKILL_REFS_SKIP_LINKS`, and NOT on `link_mode`. That flag means "skip the LINK half" — it
+# says nothing about whether a registry can be read, and honouring it here would trade two 1-request
+# checks away for nothing, on a laptop that could perfectly well have made the requests. § 3's rule is
+# "degrade toward MORE checking, never less", and skipping a check the environment can run is the wrong
+# direction. (`link_mode` is worse still: it is `empty` on a tree with no links at all, a branch taken
+# BEFORE this probe, so it says nothing about `gh` either.)
+gh_ready=1
+gh_unready_why=""
+if ! command -v gh >/dev/null 2>&1 || ! gh auth status >/dev/null 2>&1; then
+  gh_ready=0
+  gh_unready_why="no authenticated \`gh\` (run \`gh auth login\`)"
+fi
+
+if ((!gh_ready)) && [[ -n ${GITHUB_ACTIONS:-} ]]; then
+  echo "check-skill-refs: FAILED — $gh_unready_why in CI, so FS-GG/.github's registries cannot be read," >&2
+  echo "  and NEITHER list this gate narrows itself by can be verified:" >&2
+  echo "    * KIT_SKILLS cannot be verified (registry/repos.yml, § 0c) — it decides which bodies this" >&2
+  echo "      gate does NOT examine, so a wrong name there is a body of ours nothing checks." >&2
+  echo "    * MIRRORED_SKILLS cannot be verified (registry/skills.yml, § 0) — it decides which bodies get" >&2
+  echo "      the STRICTER bare-ref rule, so a mirror MISSING from it has its refs judged against our" >&2
+  echo "      publish set alone: green here, dangling in the owning repo's gate (#722)." >&2
+  echo "  Both are blind spots, not details. Give the step a token (env: GH_TOKEN: \${{ secrets.GITHUB_TOKEN }})." >&2
+  exit 1
+fi
+
+# fetch_registry <file> — the BYTES of FS-GG/.github `registry/<file>` into REGISTRY_YAML; non-zero with
+# `gh`'s own complaint in REGISTRY_WHY.
+#
+# "COULD NOT READ IT" AND "READ IT AND IT SAID NOTHING" ARE DIFFERENT SENTENCES, and this gate has already
+# been burned once by a tool that conflated them — `verify-paths` reports "not inside a GitHub checkout"
+# when the real cause is an exhausted rate limit (.github#430), sending the reader to debug a checkout
+# that was fine. So the FETCH is kept separate from the PARSE: `gh`'s own stderr is captured and quoted
+# back, and a failed request never gets to masquerade as a registry whose shape we misread. BOTH callers
+# inherit that, and a fix to it fixes both — the shape #722 is about.
+#
+# `Accept: …raw` — the file's BYTES, not the `contents` JSON envelope whose `.content` is base64. It is
+# one fewer stage, and it drops `base64 -d`, which is GNU-only: BSD/macOS spell it `-D`, so the decode
+# would have failed on a maintainer's laptop and surfaced as an empty-parse refusal — a portability bug
+# wearing the costume of a parse bug.
+REGISTRY_YAML=""
+REGISTRY_WHY=""
+fetch_registry() { # <file>
+  local err
+  err=$(mktemp)
+  if REGISTRY_YAML=$(gh api "repos/FS-GG/.github/contents/registry/$1" \
+                       -H 'Accept: application/vnd.github.raw' 2>"$err"); then
+    rm -f "$err"
+    return 0
+  fi
+  REGISTRY_WHY=$(grep -v '^[[:space:]]*$' "$err" | head -2 | tr '\n' ' ' | sed 's/[[:space:]]*$//' || true)
+  rm -f "$err"
+  : "${REGISTRY_WHY:=\`gh api\` failed with no message}"
+  return 1
+}
+
 # ── THE KIT EXCLUSION IS CHECKED, NOT ASSUMED (§ 0c) ────────────────────────────────────────────
 # `KIT_SKILLS` decides what this gate DOES NOT LOOK AT, and § 0c is the argument for why that list, of
 # all the lists in this repo, may not go unverified: its fail-open direction is a body of OURS whose refs
@@ -574,52 +650,18 @@ fi
 # that narrowed set. A check that says "the narrowing was legitimate" belongs BEFORE the narrowing is
 # relied on, not several hundred lines after — the dependency and the ordering should agree, or the next
 # person to add a finding between them inherits a verdict over a subject nobody had validated yet.
-#
-# f(world), like § 2, and it inherits § 2's contract: in CI it MUST run, because a self-skip here widens
-# the blind spot in silence. THE SUBJECT DOES NOT MOVE EITHER WAY — it is built from the constant,
-# hermetically, so § 4's f(tree) split still holds for § 1 and § 3. What an unverified run loses is only
-# the promise that the exclusion still matches canonical: the same bodies are checked, and no MORE are
-# skipped.
-#
-# NOT gated on `SKILL_REFS_SKIP_LINKS`, and NOT on `link_mode`. That flag means "skip the LINK half" —
-# it says nothing about whether the roster can be read, and honouring it here would trade a whole
-# 1-request check away for nothing, on a laptop that could perfectly well have made the request. § 3's
-# rule is "degrade toward MORE checking, never less", and skipping a check the environment can run is
-# the wrong direction. (`link_mode` is worse still: it is `empty` on a tree with no links at all, a
-# branch taken BEFORE the `gh` probe, so it says nothing about `gh` either.)
+# `verify_mirrors` sits where ITS subject is built, for the same reason.
 kit_mode=checked
 kit_skip_reason=""
-if ! command -v gh >/dev/null 2>&1 || ! gh auth status >/dev/null 2>&1; then
-  if [[ -n ${GITHUB_ACTIONS:-} ]]; then
-    echo "check-skill-refs: FAILED — no authenticated \`gh\` in CI, so the coordination-kit roster" >&2
-    echo "  (FS-GG/.github registry/repos.yml) cannot be read, and KIT_SKILLS cannot be verified." >&2
-    echo "  That list decides which bodies this gate does NOT examine (§ 0c) — leaving it unchecked is" >&2
-    echo "  a blind spot, not a detail. Give the step a token (env: GH_TOKEN: \${{ secrets.GITHUB_TOKEN }})." >&2
-    exit 1
-  fi
+if ((!gh_ready)); then
   kit_mode=skipped
-  kit_skip_reason="no authenticated \`gh\` (run \`gh auth login\`)"
+  kit_skip_reason=$gh_unready_why
 fi
 
 if [[ $kit_mode == checked ]]; then
-  # "COULD NOT READ IT" AND "READ IT AND IT SAID NOTHING" ARE DIFFERENT SENTENCES, and this gate has
-  # already been burned once by a tool that conflated them — `verify-paths` reports "not inside a GitHub
-  # checkout" when the real cause is an exhausted rate limit (.github#430), sending the reader to debug a
-  # checkout that was fine. So the fetch is kept SEPARATE from the parse: `gh`'s own stderr is captured
-  # and quoted back, and a failed request never gets to masquerade as a roster whose shape we misread.
-  #
-  # `Accept: …raw` — the file's BYTES, not the `contents` JSON envelope whose `.content` is base64.
-  # It is one fewer stage, and it drops `base64 -d`, which is GNU-only: BSD/macOS spell it `-D`, so the
-  # decode would have failed on a maintainer's laptop and surfaced as the empty-roster refusal below —
-  # a portability bug wearing the costume of a parse bug.
-  kit_err=$(mktemp)
-  if ! kit_yaml=$(gh api repos/FS-GG/.github/contents/registry/repos.yml \
-                    -H 'Accept: application/vnd.github.raw' 2>"$kit_err"); then
-    kit_why=$(grep -v '^[[:space:]]*$' "$kit_err" | head -2 | tr '\n' ' ' | sed 's/[[:space:]]*$//' || true)
-    rm -f "$kit_err"
-    : "${kit_why:=\`gh api\` failed with no message}"
+  if ! fetch_registry repos.yml; then
     if [[ -n ${GITHUB_ACTIONS:-} ]]; then
-      echo "check-skill-refs: FAILED — could not READ FS-GG/.github registry/repos.yml: $kit_why" >&2
+      echo "check-skill-refs: FAILED — could not READ FS-GG/.github registry/repos.yml: $REGISTRY_WHY" >&2
       echo "  So KIT_SKILLS (§ 0c) is unverified, and that list decides which bodies this gate does NOT" >&2
       echo "  examine. This is the ROSTER being unreadable, not the roster being wrong — do not go" >&2
       echo "  looking for a parse bug. A check that did not run has proved nothing." >&2
@@ -627,9 +669,9 @@ if [[ $kit_mode == checked ]]; then
     fi
     # Locally, an unreachable roster is the offline case, not a defect in the tree. Announce and degrade.
     kit_mode=skipped
-    kit_skip_reason="could not read the roster: $kit_why"
+    kit_skip_reason="could not read the roster: $REGISTRY_WHY"
   else
-    rm -f "$kit_err"
+    kit_yaml=$REGISTRY_YAML
     # The kit rows of the roster: `kind: skill` only. `fsgg-coord` is a kit row too, but it is
     # `kind: client` — a script, not a body — and no part of this gate's subject either way.
     kit_canonical=$(
@@ -811,16 +853,148 @@ report() {
 #     so a bare `[[fs-gg-scene]]` in it PASSES here, silently, while dangling in Game's gate. That is
 #     precisely the incoherence #714 exists to end, re-created by an omission. It fails OPEN.
 #
-# NOTHING HERE CAN CATCH THAT, and pretending otherwise would be worse than the gap: the mirror set
-# turns on the registry's `owner:`, which lives in FS-GG/.github, and this gate deliberately takes no
-# network so it can answer a hermetic question. The manifest carries no `owner` field, so there is no
-# local evidence to check against — a guard here would be a gate reporting green over a question it
-# never asked.
+# ── SO THE LIST IS CHECKED (#722) ───────────────────────────────────────────────────────────────
+# This comment used to end "NOTHING HERE CAN CATCH THAT", and argued the gap was better than a guard:
+# the mirror set turns on the registry's `owner:`, which lives in FS-GG/.github, and this gate "takes
+# no network so it can answer a hermetic question". The first half is true and is why the check below
+# is f(world). The second half was already false when it was written — § 0c's kit check reads
+# FS-GG/.github over the network, in this file, and landed one PR earlier (#723). What #723 also
+# supplied was the ARGUMENT: a constant this gate narrows its own behaviour by, whose rot fails OPEN,
+# gets verified against canonical. That is this list, since #714.
 #
-# What DOES know is `scripts/check-frozen-mirrors.fsx`, which derives the mirror set FROM the org
-# registry ("4 mirror(s) derived from the org registry") and runs in the same required job. That it and
-# this constant are two hand-maintained readings of one rule is a real hazard — the #661/#674 shape —
-# and it is filed rather than papered over here: FS.GG.Rendering#722.
+# TWO READINGS OF ONE RULE WAS THE ACTUAL DEFECT. `scripts/check-frozen-mirrors.fsx` DERIVES the mirror
+# set from the registry; this gate read it off a constant nothing checked. Both run in the same required
+# job, so a fifth mirror already reds that job — the `.fsx` hard-fails on a foreign registry row it has
+# no `Disposition` for. But the fix it names is "declare a disposition in check-frozen-mirrors.fsx", and
+# doing exactly that clears its red while THIS list is still stale and still fail-open. The hole was
+# never a missing red; it was that the two readings could be repaired independently. Now they cannot:
+# the reading that narrows THIS gate is checked against the same registry the other one derives from.
+#
+# WHAT THE REGISTRY CAN SETTLE, AND WHAT IT CANNOT. It names the OWNER — and that is all it can name.
+# The eight `owner: fs-gg-game` product rows are indistinguishable from one another there (same scope,
+# same owner, same shape), yet we mirror four of them and deliberately ship NO counterpart for the other
+# four — ballistics/ai/effects/physics were authored in Game and never migrated, and vendoring one in
+# would manufacture a two-copies obligation ADR-0022 §6 never imposed (.github#486; Rendering#505 asked
+# and was refused). So "is it a mirror" is `owner: foreign` AND `we publish it`, and only the first half
+# is the registry's to answer. `check-frozen-mirrors.fsx` makes the same split and calls it a
+# `Disposition`; here the second half is `is_published`, which is the same fact read off the manifest.
+#
+# AND THE SUBJECT IS THE PUBLISHED SET — the exact boundary, not a convenient one. `mirror_bodies` below
+# turns this constant into behaviour by filtering it through `is_published`, so an entry naming a body we
+# do NOT publish reaches no verdict this gate can render: it is inert, and it is not flagged. Everything
+# that CAN change a verdict is checked. A typo'd entry is still caught, and from the other side — writing
+# `fs-gg-persistance` does not silence `fs-gg-persistence`, which is published, foreign, and thereby
+# missing from the list.
+verify_mirrors() {
+  local yaml product canonical declared d
+
+  if ! fetch_registry skills.yml; then
+    if [[ -n ${GITHUB_ACTIONS:-} ]]; then
+      echo "check-skill-refs: FAILED — could not READ FS-GG/.github registry/skills.yml: $REGISTRY_WHY" >&2
+      echo "  So MIRRORED_SKILLS (§ 0) is unverified, and that list decides which bodies get the STRICTER" >&2
+      echo "  bare-ref rule. This is the REGISTRY being unreadable, not the constant being wrong — do not" >&2
+      echo "  go looking for a parse bug. A check that did not run has proved nothing." >&2
+      exit 1
+    fi
+    # Locally, an unreachable registry is the offline case, not a defect in the tree. Announce and degrade.
+    mirror_mode=skipped
+    mirror_skip_reason="could not read the registry: $REGISTRY_WHY"
+    return 0
+  fi
+  yaml=$REGISTRY_YAML
+
+  # Every PRODUCT row, as `owner<TAB>id`. Anchored on `[{,]` exactly as § 0c's kit parse is: an
+  # unanchored `id:` would match inside another field's VALUE too, and a row whose `source:` carried the
+  # string would hand back an id that is not one.
+  product=$(
+    printf '%s\n' "$yaml" \
+      | awk '
+          /^[[:space:]]*-[[:space:]]*\{/ {
+            if (!match($0, /[{,][[:space:]]*id:[[:space:]]*[A-Za-z0-9_.-]+/))    next
+            id = substr($0, RSTART, RLENGTH); sub(/.*id:[[:space:]]*/, "", id)
+            if (!match($0, /[{,][[:space:]]*scope:[[:space:]]*[A-Za-z0-9_.-]+/)) next
+            sc = substr($0, RSTART, RLENGTH); sub(/.*scope:[[:space:]]*/, "", sc)
+            if (!match($0, /[{,][[:space:]]*owner:[[:space:]]*[A-Za-z0-9_.-]+/)) next
+            ow = substr($0, RSTART, RLENGTH); sub(/.*owner:[[:space:]]*/, "", ow)
+            if (sc == "product") print ow "\t" id
+          }' || true)
+
+  # AN EMPTY PARSE IS THE CHECK FAILING, NOT A REGISTRY WITH NO MIRRORS. The bytes arrived; if they carry
+  # no `scope: product` row at all, the registry's SHAPE has moved under this parse, and blessing the
+  # constant on the strength of a match that found nothing is the fail-open one `sed` away.
+  #
+  # The MIRROR set may legitimately be empty — that is #696's end state, and it is compared against an
+  # empty constant below rather than refused here. The PRODUCT set may not: this repo publishes 17 of
+  # those rows, and a registry naming none of them is one we failed to read.
+  if [[ -z $product ]]; then
+    echo "check-skill-refs: FAILED — read FS-GG/.github registry/skills.yml ($(wc -l <<<"$yaml") lines)" >&2
+    echo "  but found no \`scope: product\` rows in it. MIRRORED_SKILLS (§ 0) is therefore unverified, and" >&2
+    echo "  this gate will not call an unverified narrowing green. The registry PARSED to nothing, so its" >&2
+    echo "  shape has changed: teach this parse. Do not skip it." >&2
+    exit 1
+  fi
+
+  # `if`, NOT an `&&` chain — a `while` returns the status of the LAST command its body ran, and a
+  # short-circuit on the final line would return 1 and kill the script under `set -e` without a word.
+  # The same trap `published_body_files` documents; it is no less lethal here.
+  canonical=""
+  while IFS=$'\t' read -r ow id; do
+    if [[ -n $id && $ow != "$SELF_OWNER" ]] && is_published "$id"; then
+      canonical+="$id"$'\n'
+    fi
+  done <<<"$product"
+
+  declared=""
+  while IFS= read -r id; do
+    if [[ -n $id ]] && is_published "$id"; then
+      declared+="$id"$'\n'
+    fi
+  done <<<"$MIRRORED_SKILLS"
+
+  # CANONICAL FIRST, DECLARED SECOND — the OPPOSITE order to § 0c's kit diff, and deliberately so. In
+  # both blocks `<` is the DANGEROUS direction, because that is the thing a reader must be able to trust
+  # without re-deriving it: there, a name we exclude that no kit row protects; here, a mirror the registry
+  # names that this gate does not know about. The operand order is what makes those line up, so do not
+  # "harmonise" it with the kit's without also swapping the two messages below.
+  if ! d=$(diff <(sort -u <<<"$canonical" | grep -v '^$' || true) \
+                <(sort -u <<<"$declared"  | grep -v '^$' || true)); then
+    echo "check-skill-refs: FAILED — MIRRORED_SKILLS does not match FS-GG/.github's skill registry." >&2
+    echo "  '<' is a mirror the REGISTRY names and this script does NOT list; '>' is listed here and the" >&2
+    echo "  registry says we OWN it:" >&2
+    # `|| true`: a `grep` that matches nothing exits 1, which `pipefail` would promote and `set -e` would
+    # turn into a wordless death — killing the lines below, which are the ones that say which direction is
+    # dangerous. A gate does not die mid-explanation.
+    grep -E '^[<>]' <<<"$d" | sed 's/^/    /' >&2 || true
+    echo "  A '<' line is the DANGEROUS one: this gate does not know that body is a mirror, so its bare" >&2
+    echo "  [[refs]] are judged against OUR publish set ALONE — green here, and dangling in the owning" >&2
+    echo "  repo's gate, which is the incoherence #714 closed and an omission here re-opens (§ 0)." >&2
+    echo "  A '>' line means the registry says that body is OURS now, and this gate is hard-failing bare" >&2
+    echo "  refs in it that are perfectly correct — a loud false red." >&2
+    echo "  Fix MIRRORED_SKILLS in this script to match the registry." >&2
+    exit 1
+  fi
+}
+
+# Same policy as § 0c's kit check, from the same probe: verified when `gh` can answer, fatal in CI when
+# it cannot (handled at the probe, which names both lists), announced-and-degraded locally.
+#
+# YES, THIS CAN RED A DIFF THAT TOUCHED NO SKILL — § 4's objection, and it is answered rather than
+# ignored. The registry moving under us is f(world), so a fifth mirror reds whoever next opens a PR, and
+# the fix (one line, here) is not in their diff. Three things make that the right trade, and the first is
+# decisive: `check-frozen-mirrors.fsx` ALREADY reds that PR, in this same required job, because a foreign
+# registry row with no `Disposition` is a hard fail there. The red is not new — only its second half is,
+# and the second half is the one that says WHICH list is now lying. Then: `owner:` changes at a migration,
+# not continuously as § 2's link state does (it has moved once, at ADR-0022 P4, and moves once more when
+# #696 retires the mirror); and while it is stale this gate is fail-OPEN, so merging past it is the thing
+# § 4 would actually be protecting.
+mirror_mode=checked
+mirror_skip_reason=""
+if ((!gh_ready)); then
+  mirror_mode=skipped
+  mirror_skip_reason=$gh_unready_why
+fi
+if [[ $mirror_mode == checked ]]; then verify_mirrors; fi
+
 mirror_bodies=""
 while IFS= read -r mid; do
   [[ -z $mid ]] && continue
@@ -1462,6 +1636,18 @@ if [[ $kit_mode == checked ]]; then
 else
   echo "check-skill-refs: NOTE — $n_kit coordination-kit body/bodies per skill root were skipped as OUT of subject (§ 0c), but KIT_SKILLS was NOT verified against FS-GG/.github's roster ($kit_skip_reason)." >&2
   echo "  A name wrongly in that list is a body of OURS whose refs nothing examined. CI verifies it; this run did not." >&2
+fi
+
+# AND THE STRICTER RULE IS REPORTED ON THE SAME TERMS (#722) — for the same reason, and it is the newer
+# half of it: the mirrors are the bodies this gate treats HARDER than the rest, and a run that did not
+# confirm WHICH bodies those are has not earned the silence. Say the number, and say whether the list
+# that produced it was checked.
+n_mirror=$(grep -c . <<<"$mirror_bodies" || true)
+if [[ $mirror_mode == checked ]]; then
+  echo "check-skill-refs: ok — $n_mirror frozen mirror(s) (§ 0) hard-fail a bare [[ref]]; MIRRORED_SKILLS verified against FS-GG/.github's skill registry."
+else
+  echo "check-skill-refs: NOTE — $n_mirror frozen mirror(s) (§ 0) were treated as such, but MIRRORED_SKILLS was NOT verified against FS-GG/.github's skill registry ($mirror_skip_reason)." >&2
+  echo "  A mirror MISSING from that list has its bare [[refs]] judged against our publish set alone — green here, dangling in the owning repo. CI verifies it; this run did not." >&2
 fi
 
 # The link half reports its SUBJECT, not just its verdict. "I found no stale links" and "I did not
