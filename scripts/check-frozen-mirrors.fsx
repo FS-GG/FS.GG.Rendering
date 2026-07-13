@@ -424,6 +424,25 @@ for row, body, local in mirrors do
     // guard used to consult neither and simply assert an edit. See `FrozenMirrorVerdict.fs`.
     let baseline = baselineOf repoRoot relative local
 
+    // A PROBE THAT DID NOT RUN HAS PROVED NOTHING, and it must not prove it QUIETLY — the same rule this
+    // file already applies to the registry read, one level down.
+    //
+    // If git cannot find a merge base (an unfetched `origin/main`, a shallow clone, a fork), every verdict
+    // silently falls back to the registry signal ALONE, which is strictly weaker: it can still recognise a
+    // canonical that moved, but a genuine local edit — #541's entire subject — decays from `MIRROR EDITED`
+    // to "the cause cannot be determined". That is a real loss of teeth, and on a HEALTHY run it would be
+    // completely invisible: all four mirrors print OK and nobody learns the probe is dead until the day it
+    // has to convict someone and cannot. So it is said out loud, every run, whether or not there is drift.
+    match baseline with
+    | Unknown why ->
+        printfn
+            "  frozen-mirror NOTE %-22s git cannot say whether this change edited it (%s). Falling back to the registry signal alone — a real local edit will read as 'cause undecidable' rather than MIRROR EDITED. Fix the checkout (fetch-depth: 0), or set FSGG_FROZEN_MIRROR_BASE."
+            row.Id
+            why
+    | UnchangedHere _
+    | EditedHere _
+    | AddedHere -> ()
+
     // The BODY's digest is the oracle, not `row.Sha256` — the registry's CACHE, which lags behind a
     // canonical edit until the nightly bot runs (#629). The old message printed the cache while CALLING it
     // "the canonical": the guard judged the body and then named a ghost, so on #649 it demanded

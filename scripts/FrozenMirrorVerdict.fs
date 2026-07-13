@@ -130,8 +130,13 @@ let decide (baseline: Baseline) (local: string) (registry: string) (canonical: s
 /// Moving it is a GATE-POLICY change, not a message fix: demoting it to a warning inside the required job
 /// with nowhere else to land would be a fail-open, and this guard exists precisely because "a warning in
 /// that stream is a warning nobody reads". It needs a non-required lane to land in first (gate.yml,
-/// cadence-map, CadenceCoverageTests) — filed separately. This predicate is the single place that decision
-/// will be made, so making it is a one-line change with a test, not a rewrite.
+/// cadence-map, CadenceCoverageTests) — filed separately.
+///
+/// WHOEVER DOES THAT: this predicate is where the decision belongs, but flipping it is not the whole job,
+/// and a comment claiming otherwise would be the next thing to mislead somebody. `describe` emits a
+/// literal `::error` for every drift verdict, and an `::error` annotation on a verdict that no longer reds
+/// the gate is the same class of lie this file was written to remove — the ANNOTATION LEVEL has to move
+/// with the exit code.
 let fails (verdict: Verdict) : bool =
     match verdict with
     | InSync -> false
@@ -161,6 +166,9 @@ let private git (repoRoot: string) (args: string list) : int * byte[] * string =
         psi.UseShellExecute <- false
         psi.RedirectStandardOutput <- true
         psi.RedirectStandardError <- true
+        // Git speaks the caller's language. Nothing below parses its prose any more (see `baselineOf`),
+        // but the strings we DO surface in an `Unknown` reason are read by whoever is unwedging the repo.
+        psi.Environment.["LC_ALL"] <- "C"
         args |> List.iter psi.ArgumentList.Add
 
         match Process.Start psi with
@@ -191,7 +199,18 @@ let private sha256OfBytes (bytes: byte[]) =
 let private baseRefCandidates () =
     match Environment.GetEnvironmentVariable "FSGG_FROZEN_MIRROR_BASE" with
     | null
-    | "" -> [ "origin/main"; "main" ]
+    | "" ->
+        // `GITHUB_BASE_REF` is the branch a PULL REQUEST targets, and it is the most accurate base there
+        // is on the event this guard mostly runs on. It is empty on a `push`, where `origin/main` is
+        // right (and on a push to `main` the merge base is HEAD itself — the pristine-main case #720 is
+        // about, which must read `UnchangedHere`).
+        let prBase =
+            match Environment.GetEnvironmentVariable "GITHUB_BASE_REF" with
+            | null
+            | "" -> []
+            | branch -> [ $"origin/{branch}"; branch ]
+
+        prBase @ [ "origin/main"; "main" ]
     | explicitRef -> [ explicitRef ]
 
 /// Did THIS change touch the mirror body?
@@ -215,23 +234,35 @@ let baselineOf (repoRoot: string) (relative: string) (localSha: string) : Baseli
     match tryRefs (baseRefCandidates ()) with
     | Error why -> Unknown why
     | Ok baseCommit ->
-        // `cat-file blob` rather than `show`: `show` is a porcelain command and will happily apply
-        // textconv/smudge filters, which is precisely how a digest oracle acquires a silent bug.
-        match git repoRoot [ "cat-file"; "blob"; $"{baseCommit}:{relative}" ] with
-        | 0, blob, _ ->
-            let baseSha = sha256OfBytes blob
-
-            if baseSha = localSha then
-                UnchangedHere baseSha
-            else
-                EditedHere baseSha
-
-        | _, _, err when err.Contains "does not exist" || err.Contains "exists on disk, but not in" ->
-            // The path is not in the base commit at all, so this change added it. NOT `Unknown`: git
-            // answered, and the answer was "there was nothing there".
+        // IS THE PATH IN THE BASE COMMIT AT ALL? Asked STRUCTURALLY — `rev-parse --verify --quiet` exits 0
+        // (printing the blob id) when it is and 1, silently, when it is not.
+        //
+        // The obvious alternative is to run `cat-file` and read the failure out of git's stderr
+        // ("path '…' does not exist in '…'"). That is a guard whose verdict depends on git's PROSE: it
+        // has two different spellings depending on whether the file is also on disk, it is localised, and
+        // it is free to change between versions. When it fails to match, a mirror this change VENDORED IN
+        // (`.github#486`: vendoring one in is itself the break) stops reading as `AddedHere` and decays to
+        // `Unknown` — a conviction lost to a translated string. Ask git a question with an exit code.
+        match git repoRoot [ "rev-parse"; "--verify"; "--quiet"; $"{baseCommit}:{relative}" ] with
+        | 1, _, _ ->
+            // git ANSWERED — "there is nothing there" — so this is knowledge, not ignorance.
             AddedHere
 
-        | code, _, err -> Unknown $"git cat-file {baseCommit}:{relative} exited {code}: {err.Trim()}"
+        | 0, _, _ ->
+            // `cat-file blob` rather than `show`: `show` is a porcelain command and will happily apply
+            // textconv/smudge filters, which is precisely how a digest oracle acquires a silent bug.
+            match git repoRoot [ "cat-file"; "blob"; $"{baseCommit}:{relative}" ] with
+            | 0, blob, _ ->
+                let baseSha = sha256OfBytes blob
+
+                if baseSha = localSha then
+                    UnchangedHere baseSha
+                else
+                    EditedHere baseSha
+
+            | code, _, err -> Unknown $"git cat-file {baseCommit}:{relative} exited {code}: {err.Trim()}"
+
+        | code, _, err -> Unknown $"git rev-parse {baseCommit}:{relative} exited {code}: {err.Trim()}"
 
 let private shortSha (sha: string) =
     if sha.Length >= 12 then sha.Substring(0, 12) + "…" else sha
