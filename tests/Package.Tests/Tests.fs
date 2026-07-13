@@ -81,7 +81,9 @@ let buildFrontEnd () =
         |> Array.sort
 
     if Array.isEmpty sources then
-        failtestf "build front-end sources are missing: %s contains no .fs files. See above — an empty scan is not a clean scan." dir
+        failtestf
+            "build front-end sources are missing: %s exists but contains no .fs files. The PackLocal and Charts guards below scan this text; with no text, every one of their negative assertions passes vacuously."
+            dir
 
     sources |> Array.map File.ReadAllText |> String.concat Environment.NewLine
 
