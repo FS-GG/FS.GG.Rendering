@@ -36,11 +36,30 @@ name: release-tags
 # and no long-lived secret is stored. The `push:`-tag triggers on both lanes are retained as the
 # operator's manual escape hatch (a human-pushed tag still triggers normally).
 #
-# RESIDUAL WINDOW. The freeze is now bounded by this workflow's own `cut` job (one checkout + one
-# offline structural guard run, no restore), not by an operator's attention span. It is not
-# mathematically zero: a PR whose gate run starts inside that span still reds. Closing it fully would
-# require cutting the tags before the bump commit exists, which is exactly the unsatisfiable rule
-# `bumpedInCommitUnderTest` was written to waive.
+# RESIDUAL WINDOW. The freeze is bounded by this workflow's own run, not by an operator's attention
+# span. It is not mathematically zero: a PR whose gate run starts inside that span still reds. Closing
+# it fully would require cutting the tags before the bump commit exists, which is exactly the
+# unsatisfiable rule `bumpedInCommitUnderTest` was written to waive.
+#
+# #681 WIDENED THAT WINDOW ON PURPOSE, AND THE TRADE IS THE POINT. The cut now waits for `validate` —
+# a real run of the release-only validators — so the span is the validators' runtime (~minutes), not
+# one offline guard run (~one). What it buys is that the cut can no longer happen on a commit that
+# cannot be published:
+#
+#   BEFORE (cut → validate → publish)   the tags were pushed on the strength of the guard's EXIT CODE,
+#     a STRUCTURAL verdict that says nothing about whether the artifacts this commit describes can be
+#     built, tested or published. When the validators then failed, the publish was correctly skipped —
+#     and the repo was left with a full tag triple, NO PACKAGE ON ANY FEED, and `main` pinned to a
+#     version that does not exist (#679). Worse, the guard then read `pin == latest tag` as COHERENT,
+#     so RELEASE-PENDING was gone and NO FUTURE RUN WOULD EVER CUT OR PUBLISH IT. Un-retryable.
+#
+#   NOW    (plan → validate → cut → publish → rollback-on-failure)   a validator failure means NO TAG
+#     IS EVER PUSHED. The guard still says RELEASE-PENDING, so fixing the cause and pushing to `main`
+#     retries the entire release. And if the publish fails AFTER the cut — for a reason no pre-cut
+#     check can see, like a feed outage — `rollback-failed-cut` takes the tags back off, restoring the
+#     same retryable state.
+#
+# Both orders fail into a freeze; only one of them can be un-frozen by fixing the code. That is #681.
 on:
   push:
     branches: [main]
@@ -56,23 +75,30 @@ permissions:
   contents: read
 
 jobs:
-  cut:
-    name: Cut the pending release tags
+  # #681 — PLAN. Decide what this commit owes, and prove it is SAFE to cut — but push NOTHING.
+  #
+  # This job used to be `cut`, and it both decided and pushed. Splitting it is the whole fix: a tag
+  # push cannot be taken back by this workflow, so everything that could refuse the release has to
+  # happen strictly before it. What now sits between this job and the push is `validate` — a real run
+  # of the release-only validators against this exact commit.
+  plan:
+    name: Plan the release (what to cut, and may we)
     runs-on: ubuntu-latest
     # Forks never cut tags or publish (mirrors release.yml / template-dispatch.yml).
     if: github.repository == 'FS-GG/FS.GG.Rendering'
     permissions:
-      contents: write   # push the tag triple
+      contents: read    # #681: this job no longer pushes, so it no longer needs write.
     outputs:
-      pkg-version:   ${{ steps.cut.outputs.pkg-version }}
-      release-tag:   ${{ steps.cut.outputs.release-tag }}
-      template-tag:  ${{ steps.cut.outputs.template-tag }}
+      pkg-version:   ${{ steps.plan.outputs.pkg-version }}
+      release-tag:   ${{ steps.plan.outputs.release-tag }}
+      template-tag:  ${{ steps.plan.outputs.template-tag }}
+      tags:          ${{ steps.plan.outputs.tags }}
+      has-pending:   ${{ steps.plan.outputs.has-pending }}
     steps:
       - uses: actions/checkout@v4
         with:
           # The guard reads `git diff HEAD~1 HEAD` (`bumpedInCommitUnderTest`) and `git tag --list`;
-          # both fail closed on a shallow clone. `persist-credentials` (default true) leaves the
-          # GITHUB_TOKEN on `origin` so the tag push below authenticates with no extra wiring.
+          # both fail closed on a shallow clone.
           fetch-depth: 0
 
       - uses: actions/setup-dotnet@v5
@@ -90,7 +116,7 @@ jobs:
       # waivers, which would make this very commit — a bump whose tags do not exist yet, because we are
       # about to create them — fail. The release lane is for jobs that gate a publish, after the tags exist.
       - name: Read the pending tag triple from the coherence guard
-        id: cut
+        id: plan
         shell: bash
         run: |
           set -euo pipefail
@@ -125,7 +151,8 @@ jobs:
               exit 1
             fi
             echo "No RELEASE-PENDING tags — this commit is not a release bump. Nothing to cut."
-            { echo "release-tag=false"; echo "template-tag=false"; echo "pkg-version="; } >> "$GITHUB_OUTPUT"
+            { echo "release-tag=false"; echo "template-tag=false"; echo "pkg-version=";
+              echo "tags="; echo "has-pending=false"; } >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -195,16 +222,13 @@ jobs:
 
           echo "#517 OK — no committed artifact depends on the tag namespace. Safe to push."
 
-          # ---- NOW push, in the guard's order. -------------------------------------------------------
-          # `v<pkg>` is LAST by construction: it is the tag whose presence means "the release is under
-          # way", and the guard's successor-tag bounds report every earlier tag as DRIFT once it exists.
-          # So if a push fails midway, the state left behind is "earlier tags cut, v* absent" — which the
-          # guard still reads as RELEASE-PENDING and this workflow will finish on the next run, rather
-          # than a v*-first state it would call drift.
+          # ---- CLASSIFY the triple, and STOP. #681 — this job pushes nothing. ------------------------
+          # Everything above is a REFUSAL: the guard's verdict, the parser cross-check, the #517 purity
+          # proof. What used to follow was the push. It now lives in the `cut` job, three jobs down,
+          # behind a real run of the release validators (`validate`) — because a tag push cannot be
+          # taken back by this workflow, and #679 is what "cut first, validate second" costs.
           release_tag=false; template_tag=false; pkg_version=""
           for t in "${tags[@]}"; do
-            git push origin "$t"
-            echo "  $t — pushed"
             case "$t" in
               fs-gg-ui-template/v*) template_tag=true ;;
               fs-gg-ui/v*)          ;;   # framework snapshot tag; triggers nothing
@@ -216,18 +240,118 @@ jobs:
             echo "release-tag=$release_tag"
             echo "template-tag=$template_tag"
             echo "pkg-version=$pkg_version"
+            echo "tags=${tags[*]}"
+            echo "has-pending=true"
           } >> "$GITHUB_OUTPUT"
+
+          {
+            echo "### Release planned (nothing pushed yet)"
+            echo ""
+            for t in "${tags[@]}"; do echo "- \`$t\`"; done
+            echo ""
+            echo "Validating this commit before any tag is cut (#681)."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # #681 — VALIDATE BEFORE CUTTING. THIS JOB IS THE FIX.
+  #
+  # The release-only validators (`Package consumption`, `Generated product`) already gate the PUBLISH.
+  # They did not gate the CUT — the tags were pushed on the strength of the guard's exit code, which is
+  # a STRUCTURAL verdict and says nothing about whether the artifacts this commit describes can be
+  # built, tested or published. On `1fddbd0b` the cut succeeded, these validators failed, the publish
+  # was correctly skipped, and the repo was left with the full `v0.9.1` tag triple, NO PACKAGE ON ANY
+  # FEED, and `main` pinned to a version that does not exist (#679).
+  #
+  # AND IT WAS UN-RETRYABLE, which is the half that turns an incident into a trap. `release-tags` derives
+  # what to cut from the guard's RELEASE-PENDING block; with `fs-gg-ui/v0.9.1` already pushed, the guard
+  # reports `COHERENT — pin 0.9.1 == latest tag`, exit 0, nothing pending. So no future push to `main`
+  # would ever cut, therefore never call `release.yml`, therefore NEVER PUBLISH 0.9.1 — the repo's own
+  # guard certifying a release that does not exist.
+  #
+  # WHY THIS MAKES THE RELEASE RETRYABLE, which is the property that actually matters. Both orders fail
+  # into a freeze — that is unavoidable once a bump is on `main` — but they fail into DIFFERENT freezes:
+  #
+  #   cut-then-validate (before)  tags cut · publish failed · guard says COHERENT · RELEASE-PENDING gone
+  #                               ⇒ the release can NEVER be retried by any automation. Human surgery.
+  #   validate-then-cut (now)     no tags · publish never ran · guard still says RELEASE-PENDING
+  #                               ⇒ fix the code, push to `main`, and this workflow cuts and publishes.
+  #
+  # Same red, self-healing instead of trapped. That is the whole of #681.
+  #
+  # WHY IT CALLS `release.yml` RATHER THAN COPYING IT. The validators are heavy and subtle (a cold locked
+  # restore, a pack→consume→build→run smoke, a template instantiation per profile). A second copy here
+  # would drift from the one that gates the publish, and a pre-cut gate that has drifted from the publish
+  # gate predicts nothing — the #680 lesson, one workflow up. `validate-only: true` runs exactly those
+  # jobs and skips `publish-packages`.
+  #
+  # THE COST IS A DOUBLE RUN OF THE HEAVY VALIDATORS ON A RELEASE, AND IT IS WORTH IT. The `release` job
+  # below runs them again (it must: it is also the entry point for the operator's manual `push: tags`
+  # escape hatch, which nothing else validates), and its `package-tests` re-runs with the release-lane
+  # waivers OFF — a genuinely different assertion, namely that the tags this workflow just cut are
+  # actually there. A release happens every few weeks; #679 cost the repo days.
+  validate:
+    name: Validate the release (before any tag is pushed)
+    needs: plan
+    if: needs.plan.outputs.has-pending == 'true'
+    uses: ./.github/workflows/release.yml
+    with:
+      version: ${{ needs.plan.outputs.pkg-version }}
+      validate-only: true
+    # THE SAME GRANT AS THE `release` CALL BELOW, DELIBERATELY, EVEN THOUGH THIS RUN PUBLISHES NOTHING.
+    # A called workflow's jobs may not declare permissions exceeding the caller's grant, and that is
+    # checked against the workflow's DECLARED graph — `publish-packages` still declares `packages: write`
+    # + `id-token: write` here even though `validate-only` skips it. Granting less risks failing the call
+    # itself rather than merely skipping the job, and a pre-cut gate that cannot run is worse than none.
+    # Nothing in this run USES the extra scopes: `publish-packages` is the only job that touches a feed,
+    # and it is skipped (`if: … && !inputs.validate-only`).
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    secrets: inherit
+
+  # #681 — THE PUSH, and nothing else. Reachable only after `validate` went green.
+  cut:
+    name: Cut the pending release tags
+    needs: [plan, validate]
+    if: needs.plan.outputs.has-pending == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # push the tag triple
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # `persist-credentials` (default true) leaves the GITHUB_TOKEN on `origin`, so the pushes below
+          # authenticate with no extra wiring. Full history so the tag objects resolve.
+          fetch-depth: 0
+
+      # The tags were cut LOCALLY in `plan` — on a runner that no longer exists — purely so the #517
+      # purity check could ask "does creating these tags move a committed artifact?". Nothing was pushed
+      # and nothing carried over, so they are re-created here, from the same list `plan` published, and
+      # THEN pushed. `plan` proved this is safe; this job is only the hand that does it.
+      - name: Push the tag triple (guard order)
+        shell: bash
+        env:
+          TAGS: ${{ needs.plan.outputs.tags }}
+        run: |
+          set -euo pipefail
+          read -r -a tags <<< "$TAGS"
+          [[ ${#tags[@]} -gt 0 ]] || { echo "::error::cut reached with no tags — plan said has-pending=true. Refusing."; exit 1; }
+
+          # `v<pkg>` is LAST by construction: it is the tag whose presence means "the release is under
+          # way", and the guard's successor-tag bounds report every earlier tag as DRIFT once it exists.
+          # So if a push fails midway, the state left behind is "earlier tags cut, v* absent" — which the
+          # guard still reads as RELEASE-PENDING and this workflow will finish on the next run, rather
+          # than a v*-first state it would call drift.
+          for t in "${tags[@]}"; do
+            git rev-parse -q --verify "refs/tags/$t" >/dev/null || git tag "$t"
+            git push origin "$t"
+            echo "  $t — pushed"
+          done
 
           {
             echo "### Release tags cut"
             echo ""
             for t in "${tags[@]}"; do echo "- \`$t\`"; done
-            echo ""
-            if [[ "$release_tag" == "true" ]]; then
-              echo "Invoking \`release.yml\` for \`$pkg_version\`; \`template-dispatch.yml\` follows on a successful publish."
-            else
-              echo "No \`v*\` tag in this cut — no publish, no template dispatch."
-            fi
           } >> "$GITHUB_STEP_SUMMARY"
 
   # `GITHUB_TOKEN` pushed the tags, so `release.yml`'s `push: tags: ['v*']` did NOT fire. Call it.
@@ -236,11 +360,11 @@ jobs:
   # construction — and still checks, because construction is an argument and that step is a proof.
   release:
     name: Publish the coherent set
-    needs: cut
-    if: needs.cut.outputs.release-tag == 'true'
+    needs: [plan, cut]
+    if: needs.plan.outputs.release-tag == 'true'
     uses: ./.github/workflows/release.yml
     with:
-      version: ${{ needs.cut.outputs.pkg-version }}
+      version: ${{ needs.plan.outputs.pkg-version }}
     # A called workflow's GITHUB_TOKEN can only be equal to or more restrictive than the caller's, so
     # the union release.yml's jobs ask for must be granted HERE or `publish-packages` fails: `packages:
     # write` for the org feed, `id-token: write` to mint the nuget.org Trusted Publishing token (ADR-0013).
@@ -250,6 +374,85 @@ jobs:
       id-token: write
     # `NUGET_USER` is read by release.yml's NuGet/login step and is not a `workflow_call` input.
     secrets: inherit
+
+  # #681 — ROLL BACK A TAG TRIPLE WHOSE PUBLISH FAILED. The compensating half.
+  #
+  # `validate` removes the KNOWN cause of #679 (a validator that only ever ran after the cut). It cannot
+  # remove every cause: the publish can still fail AFTER the tags are pushed, for reasons no pre-cut
+  # check can see — nuget.org 5xx, an expired Trusted-Publishing trust, a feed outage. That lands the
+  # repo in exactly #679's state: tags cut, nothing published, and the guard then reporting `COHERENT`
+  # because pin == latest tag, which is indistinguishable from a release that WORKED. Un-retryable,
+  # and silent.
+  #
+  # So if the publish fails, the tags come back off. The guard returns to RELEASE-PENDING, and the next
+  # push to `main` retries the whole thing — cut included. A tag exists iff the publish behind it did.
+  #
+  # RETRYING IS SAFE EVEN IF THE PUBLISH PARTIALLY SUCCEEDED. `publish-packages` pushes with
+  # `--skip-duplicate`, and a nuget.org version cannot be deleted (only unlisted), so a re-run at the
+  # SAME version — which is what a retry produces, since `<Version>` is a property of the commit — is
+  # idempotent, not a conflict.
+  #
+  # This is a COMPENSATING action and it can itself fail (that is why `validate` above is the real fix,
+  # not this). It fails LOUD: the job reds, and the error names the tags a human must delete by hand.
+  # It is not a substitute for the guard learning that a tag with no package behind it is DRIFT rather
+  # than COHERENCE — that lives in `scripts/validate-version-coherence.fsx`, and is filed separately.
+  rollback-failed-cut:
+    name: Roll back the tag triple (the publish failed)
+    needs: [plan, cut, release]
+    # `always()` is required: without it a failed `release` skips this job, which is the one moment it
+    # exists for. Guarded to the exact state it repairs — the tags ARE pushed (`cut` succeeded) and the
+    # publish did NOT happen. A cancelled publish leaves the same phantom tags as a failed one.
+    if: >-
+      always()
+      && needs.cut.result == 'success'
+      && (needs.release.result == 'failure' || needs.release.result == 'cancelled')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # delete the tag triple it is taking back
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Delete the tags this run pushed
+        shell: bash
+        env:
+          TAGS: ${{ needs.plan.outputs.tags }}
+        run: |
+          set -uo pipefail
+          read -r -a tags <<< "$TAGS"
+
+          # Reverse order — drop `v<pkg>` FIRST. It is the tag whose presence means "the release is under
+          # way", and while it exists the guard reports every earlier tag as drift. Deleting it first
+          # means every intermediate state this loop passes through is one the guard can still read as
+          # RELEASE-PENDING, so even a rollback that dies halfway leaves a retryable repo.
+          failed=()
+          for (( i=${#tags[@]}-1; i>=0; i-- )); do
+            t="${tags[$i]}"
+            if git push origin --delete "$t"; then
+              echo "  $t — deleted"
+            else
+              failed+=("$t")
+              echo "::error::failed to delete $t"
+            fi
+          done
+
+          if (( ${#failed[@]} > 0 )); then
+            echo "::error::ROLLBACK INCOMPLETE. The publish failed and these tags could NOT be deleted: ${failed[*]}. Delete them BY HAND (git push origin --delete <tag>), or the coherence guard will report COHERENT over a version that was never published and this release can never be retried (#679/#681)."
+            exit 1
+          fi
+
+          echo "::error::The publish FAILED, so the tag triple was rolled back: ${tags[*]}. Nothing was released. The coherence guard is back to RELEASE-PENDING, so fixing the cause and pushing to main will retry the whole release — cut included. This job is red on purpose: a rolled-back release is not a successful one."
+          {
+            echo "### Release rolled back"
+            echo ""
+            echo "The publish failed, so these tags were deleted again:"
+            echo ""
+            for t in "${tags[@]}"; do echo "- \`$t\`"; done
+            echo ""
+            echo "Fix the cause and push to \`main\`; the release retries from the top."
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 1
 
   # Sequenced AFTER the publish, not merely after the cut. `template-dispatch.yml` tells
   # FS.GG.Templates to open a pin-bump PR for this template version; that PR's restore can only
@@ -261,11 +464,11 @@ jobs:
   # this job is never stranded by a skipped `release`.
   notify-templates:
     name: Notify FS.GG.Templates
-    needs: [cut, release]
-    if: needs.cut.outputs.template-tag == 'true'
+    needs: [plan, cut, release]
+    if: needs.plan.outputs.template-tag == 'true'
     uses: ./.github/workflows/template-dispatch.yml
     with:
-      version: ${{ needs.cut.outputs.pkg-version }}
+      version: ${{ needs.plan.outputs.pkg-version }}
     # The org App-token secrets (`FSGG_DISPATCH_APP_ID` / `FSGG_DISPATCH_APP_PRIVATE_KEY`) are read by
     # template-dispatch.yml's own `dispatch` job, which forwards them to the org reusable sender.
     secrets: inherit

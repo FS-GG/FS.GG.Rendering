@@ -21,6 +21,21 @@ on:
         description: "Version to pack+publish, without the leading `v` (e.g. 0.1.51-preview.1). Must equal the repo's <Version> at the called SHA — the publish job asserts it."
         type: string
         required: true
+      # #681 — RUN THE VALIDATORS WITHOUT PUBLISHING, so `release-tags.yml` can prove this commit is
+      # releasable BEFORE it pushes a tag that cannot be un-pushed.
+      #
+      # THE NAME IS NEGATIVE ON PURPOSE. `validate-only: false` is the default and the publishing path;
+      # an affirmative `publish: true` would look nicer and would be a live bug, because for the
+      # `push: tags` / `release` / `workflow_dispatch` triggers the `inputs` context is EMPTY. GitHub
+      # casts across types when comparing, so `inputs.publish != false` evaluates `null != false` as
+      # `0 != 0` — FALSE — and the escape-hatch publish would silently stop running. Phrased as
+      # `!inputs.validate-only`, an absent input is falsy, `!falsy` is true, and every non-call trigger
+      # keeps publishing exactly as before. Do not "improve" this to a positive flag.
+      validate-only:
+        description: "Run the release validators and publish NOTHING (#681 — release-tags.yml's pre-cut gate). Default false: the normal publishing path."
+        type: boolean
+        required: false
+        default: false
   workflow_dispatch:
     inputs:
       version:
@@ -56,7 +71,18 @@ jobs:
       # `fs-gg-ui-template/v*` — never ran. `publish-packages` now asserts the two are the same string
       # before it packs (see "Verify the version to publish is the version the guard validated"), so a
       # dispatch can only republish the version this job proved coherent.
-      FS_GG_VERSION_COHERENCE_RELEASE_LANE: "1"
+      #
+      # #681 — AND IT IS OFF ON THE PRE-CUT RUN, WHICH IS NOT A WEAKENING. `release-tags.yml` now calls
+      # this workflow ONCE BEFORE it pushes any tag (`validate-only: true`), so that a commit whose
+      # validators fail never gets a tag it cannot take back. On THAT run the tags genuinely do not exist
+      # yet — cutting them is what comes next — so the RELEASE-PENDING waivers are exactly right, and
+      # forcing them off would red the gate by construction on every release: precisely the always-red
+      # lane #506 removed, reintroduced one workflow up. On the real (publishing) call the flag is "1",
+      # every tag is due, and a missing one is drift — unchanged.
+      #
+      # Any value that is not the literal "1" disables it (both readers test `= "1"`), so the string here
+      # is chosen to SAY WHY it is off rather than to be a cryptic "0".
+      FS_GG_VERSION_COHERENCE_RELEASE_LANE: ${{ inputs.validate-only && 'off-pre-cut-tags-not-yet-pushed' || '1' }}
       # The pack -> fresh-consumer -> build -> run path. Too slow for the push gate, so it is opt-in
       # everywhere else; the release lane is the "somewhere" it must run. Package.Tests asserts this
       # flag is set here, so deleting it fails the build rather than silently un-testing the packages.
@@ -222,7 +248,11 @@ jobs:
   publish-packages:
     name: Publish FS.GG.UI.* to org GitHub Packages (release-only)
     runs-on: ubuntu-latest
-    if: github.repository == 'FS-GG/FS.GG.Rendering'
+    # `!inputs.validate-only` — #681. On `release-tags.yml`'s PRE-CUT call this workflow runs its
+    # validators and ships nothing; the publish happens on the second call, after the tags are cut.
+    # The negative phrasing is load-bearing: see the `validate-only` input's comment. An absent `inputs`
+    # context (push/release/dispatch) is falsy, so every escape-hatch trigger still publishes.
+    if: github.repository == 'FS-GG/FS.GG.Rendering' && !inputs.validate-only
     # Only publish a set that passed the release-only consumption checks above.
     needs: [package-tests, template-product-tests]
     permissions:
