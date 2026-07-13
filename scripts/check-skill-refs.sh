@@ -472,9 +472,40 @@ if [[ -z $repo_body_paths ]]; then
   exit 1
 fi
 
+# A BODY HAS EXACTLY ONE SURFACE, AND THAT IS CHECKED, NOT ASSUMED.
+#
+# `is_repo_body` decides which set judges a body, and it WINS everywhere it is consulted — `resolves_for`,
+# `published_body_files`, `emit_bare`. So a body that is somehow BOTH — published by the manifest AND
+# sitting under `src/*/skill/` — is silently treated as repo-internal, and BOTH halves of that are wrong
+# in the dangerous direction:
+#
+#   * it loses § 3's rejection of a bare `#N` — while genuinely MATERIALIZING into a stranger's repo,
+#     which is the precise hazard § 3 exists for and the precise body it would fire on; and
+#   * its `[[refs]]` are judged against `.claude/skills/` rather than the manifest, so a ref that
+#     dangles for the product reader who actually receives it is called green.
+#
+# The gate would report `ok`, and the one body it was most wrong about is the one it never mentioned.
+#
+# This IS disjoint today — the manifest supplies from `template/` roots, never from `src/` — so it would
+# be easy to write "disjoint by construction" in a comment and move on. That is exactly what the first
+# draft of this line did. But the manifest ALREADY supplies four skills from off-convention roots
+# (`template/base/`, `template/fragments/`, `template/feedback*/`), so "the roots never overlap" is a
+# convention, not a construction, and the day someone publishes a library skill straight out of
+# `src/*/skill/` this gate goes quietly wrong. An invariant this file relies on is one it checks — and
+# here it is free, because both lists are already in hand.
+overlap=$(comm -12 <(sort -u <<<"$body_paths") <(sort -u <<<"$repo_body_paths") | grep -v '^[[:space:]]*$' || true)
+if [[ -n $overlap ]]; then
+  echo "check-skill-refs: FAILED — a body cannot be on BOTH surfaces, and these are:" >&2
+  while IFS= read -r b; do [[ -n $b ]] && echo "    $b" >&2; done <<<"$overlap"
+  echo "  Each is supplied by $MANIFEST (so it MATERIALIZES into a product) and also matches the" >&2
+  echo "  repo-internal glob (src/*/skill/SKILL.md, template/product-skills/README.md). This gate" >&2
+  echo "  would judge it as repo-internal — against $CLAUDE_SKILLS/ instead of the publish set, and" >&2
+  echo "  WITHOUT § 3's bare-#N rejection, which a materialized body is exactly the thing that needs." >&2
+  echo "  Supply it from a template/ root, or stop publishing it. See § 0b." >&2
+  exit 1
+fi
+
 # The FULL subject: both surfaces. There is no invocation that checks one and not the other (§ 0b).
-# The two sets are disjoint by construction — `src/*/skill/` and the README on one side, the manifest's
-# `supplied-by` roots on the other — so a body has exactly one surface and `is_repo_body` decides it.
 all_body_paths=$(printf '%s\n%s\n' "$body_paths" "$repo_body_paths" | grep -v '^[[:space:]]*$' | sort -u)
 
 # NUL-separated, so a path with a space cannot split. `-r` on every consuming xargs: with an empty
@@ -1262,11 +1293,42 @@ fi
 #
 # AND IT NAMES ITS SUBJECT, which since #698 is narrower than the tree: § 3's REJECTION applies to the
 # PUBLISHED bodies only. A repo-internal body's bare `#N` is not a defect to count here — it is a link,
-# and it was resolved by the link half above (§ 3's inversion note). Saying "no bare #N refs" flat would
-# be a claim about a subject this line does not have, which is the exact error the line exists to
-# prevent. Name the subject, or say nothing you cannot stand behind.
+# and the LINK half judges it (§ 3's inversion note). Saying "no bare #N refs" flat would be a claim
+# about a subject this line does not have, which is the exact error the line exists to prevent. Name
+# the subject, or say nothing you cannot stand behind.
 if ((n_bare > 0)); then
   echo "check-skill-refs: ok — $n_bare bare #N ref(s) in published bodies; every one is marked prose-ok."
 else
-  echo "check-skill-refs: ok — no bare #N refs in published bodies (in a repo-internal body a bare #N is a link, and was resolved as one)."
+  echo "check-skill-refs: ok — no bare #N refs in published bodies."
+fi
+
+# ── AND THE REPO SURFACE'S BARE REFS ARE ONLY AS CHECKED AS THE LINK HALF IS ────────────────────
+# The bill this surface pays for § 3's inversion, and it is stated rather than buried.
+#
+# On a published body a bare `#N` is wrong BY FORM, so § 3 can damn it with no network — which is why
+# § 3's header (above) insists it stays UNGATED by `link_mode`: "hanging it off `link_mode` would make
+# an offline check silently skippable — the very shape § 3 exists to close." On a REPO body the same
+# token is not wrong by form at all; it is a LINK, and whether it resolves is f(world). So its verdict
+# genuinely CANNOT be reached offline, and promoting it into the link half necessarily hands it that
+# half's fate: when the link half does not run, these are not examined by anything.
+#
+# THAT IS TOLERABLE. WHAT IS NOT is saying nothing about it — which is precisely what this line did
+# when first written: it printed "in a repo-internal body a bare #N is a link, and was resolved as one"
+# UNCONDITIONALLY, so an offline run over a body citing an issue that does not exist passed green while
+# asserting an examination that never happened. The `.github#416` shape, in the gate written to close
+# it. CI is safe (an unauthenticated `gh` is fatal there, and `SKILL_REFS_SKIP_LINKS` is ignored), so
+# it could have sat here for a long time being wrong only on the laptops of the people maintaining it.
+#
+# Counted from the PROMOTED rows, not the raw scan: a bare ref silenced by `prose-ok` is not a link and
+# was never going to be resolved, so counting it here would manufacture a warning about a ref the author
+# has already, deliberately, declared to be prose.
+n_repo_bare=$(grep -c . <<<"$repo_bare_links" || true)
+if ((n_repo_bare > 0)); then
+  if [[ $link_mode == checked ]]; then
+    echo "check-skill-refs: ok — $n_repo_bare bare #N ref(s) in repo-internal bodies; each resolved as a link to $SELF_REPO, which is what GitHub makes of it where that body is read."
+  else
+    echo "check-skill-refs: NOTE — $n_repo_bare bare #N ref(s) in repo-internal bodies were NOT examined ($skip_reason)." >&2
+    echo "  On that surface a bare #N is a LINK to $SELF_REPO (§ 3), so the link half is the only thing" >&2
+    echo "  that judges it — and it did not run. This is NOT a clean bill of health for them." >&2
+  fi
 fi

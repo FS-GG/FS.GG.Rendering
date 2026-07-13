@@ -1010,6 +1010,71 @@ run --changed "$BASE"
 expect_rc 1 'a bare ref in a touched repo body is resolved, and its issue is closed'
 expect_out_has 'stale link' 'reported as § 2 decay, under the scope, exactly as an explicit link would be'
 
+# ── § 7.5  the bill § 3's inversion pays: OFFLINE, a repo bare #N is not examined ───────────────
+
+case_start '§7 OFFLINE, a repo bare #N is NOT claimed as resolved — it was not examined at all'
+# THE FALSE SUBJECT CLAIM, and it was live until a review ran the offline path by hand.
+#
+# On a published body a bare `#N` is wrong BY FORM, so § 3 damns it with no network — which is why its
+# header insists § 3 stay UNGATED by `link_mode`. On a REPO body the same token is a LINK, and whether
+# it resolves is f(world): the verdict genuinely cannot be reached offline. That is a fair price. What
+# is NOT fair is the summary saying "in a repo-internal body a bare #N is a link, and was resolved as
+# one" — unconditionally — while the link half sat skipped. An offline run over a body citing an issue
+# that does not exist passed GREEN, asserting an examination that never happened: the `.github#416`
+# shape, inside the gate written to close it, and invisible in CI (where an unauthenticated `gh` is
+# fatal) so it would have been wrong only on the laptops of the people maintaining it.
+fixture
+skill fs-gg-alpha <<'MD'
+# alpha
+MD
+repo_skill Diagnostics <<'MD'
+# Diagnostics
+The remaining gap is tracked in #4242.
+MD
+SKIP_LINKS=1 run
+expect_rc 0 'offline, it cannot judge the ref, so it does not fail on it'
+expect_out_hasnt 'was resolved as one' 'and it does NOT claim to have resolved it'
+expect_out_has 'were NOT examined' 'it says plainly that these refs went unjudged'
+expect_out_has 'NOT a clean bill of health' 'and refuses to let the green be read as one'
+
+case_start '§7 ...but a prose-ok bare #N is NOT counted among them — it was never going to be a link'
+# The marker says "this is prose, do not resolve it". Warning that it went unresolved would be noise
+# about a ref the author has already, deliberately, declared is not a pointer.
+fixture
+skill fs-gg-alpha <<'MD'
+# alpha
+MD
+repo_skill LineDrawing <<'MD'
+# Line drawing
+
+<!-- skill-refs: prose-ok #1 — the design doc's number-one bug, not issue #1 -->
+Mind the design doc's "#1 LOS bug".
+MD
+SKIP_LINKS=1 run
+expect_rc 0 'green'
+expect_out_hasnt 'were NOT examined' 'a ref declared to be prose is not a link that went unchecked'
+
+# ── § 7.6  a body may not be on BOTH surfaces ───────────────────────────────────────────────────
+
+case_start '§7 a body that is BOTH published and repo-internal is REFUSED, not silently mis-judged'
+# `is_repo_body` wins wherever it is consulted, so such a body would be judged against `.claude/skills/`
+# instead of the publish set AND would lose § 3's bare-#N rejection — while genuinely materializing into
+# a stranger's repo, which is the exact hazard § 3 exists for. The gate would print `ok`, and the one
+# body it was most wrong about is the one it never named.
+#
+# It is disjoint TODAY, and it would have been easy to write "disjoint by construction" in a comment and
+# move on — which is what the first draft did. But the manifest already supplies four skills from
+# off-convention roots, so it is a convention, not a construction.
+fixture
+skill_at fs-gg-diag 'src/Diag/skill' <<'MD'
+# Diag — published from src/, so it is on both surfaces
+The remaining gap is tracked in #4242.
+MD
+run
+expect_rc 1 'a body on two surfaces is a refusal, not a guess'
+expect_out_has 'cannot be on BOTH surfaces' 'and it says which invariant broke'
+expect_out_has 'src/Diag/skill/SKILL.md' 'and names the body'
+
 case_start '§7 a tree with NO repo bare refs exits 0 WITH output — never a silent exit 1'
 # A regression pin for a real bug in this change, and the ugliest kind. Under `set -o pipefail` a
 # filter loop whose LAST test fails returns 1, which reddens the pipeline it feeds, which aborts the
