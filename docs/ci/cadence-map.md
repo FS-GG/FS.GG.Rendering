@@ -392,15 +392,77 @@ context, which blocks the merge button forever.
 Tracking issue: FS.GG.Rendering#300. Evidence that the gate fails a hand-reverted #233:
 `specs/163-package-feed-validation-lanes/readiness/packaged-consumer-gate.md`.
 
+## 4d. The scaffolded product — chosen gate behavior (#680)
+
+`template/base/tests/Product.Tests/**` becomes the **generated product's own test suite**. Until #680
+the only thing that ever compiled it was `release.yml`'s release-only `template-product-tests`. The
+neighbouring lanes each stop one step short: `lifecycle-live-gate` scaffolds every profile × lifecycle
+and **audits the emitted tree** — it reads files, it never builds them — and `Package.Tests` reads the
+template as **text**. So an uncompilable scaffolded test was green on every gate and detonated
+mid-publish, after `release-tags` had already pushed the `v0.9.1` tag triple, leaving `main` pinned to
+a version that does not exist (#679).
+
+**A gate that only ever runs at publish time discovers its findings at the worst possible moment.**
+`gate.yml`'s `generated-product-gate` now scaffolds, compiles and tests the product on every PR.
+
+**All five profiles, and that is the gate — not gold-plating.** The two scaffolded test files are cut
+into *mutually exclusive* `//#if (profile == …)` regions, so **each profile compiles different
+source**:
+
+| file | regions |
+|---|---|
+| `BehaviorTests.fs` | `{governed\|headless-scene}` · `{game}` · `{app\|sample-pack}` |
+| `GovernanceTests.fs` | `{governed\|headless-scene}` · `{the rest}` |
+
+#680 originally proposed *one representative profile* per PR to hold the cost down. That was measured
+and rejected: `app` — the obvious representative — touches neither governed region, and a stray
+`//#endif` in `GovernanceTests.fs` (arriving with #436, the change family that caused #679) had left
+`governed` and `headless-scene` **uncompilable on green `main`**. Reintroducing that one line reds the
+gate on exactly those two profiles while `app`, `sample-pack` and `game` stay green — so a
+one-profile gate would have shipped the break. **A profile that is not compiled is not gated.**
+
+**Cost is not the constraint it looks like.** The pack dominates and is *shared*: pack once (~40s),
+then each profile is an instantiate + build + test (~15–20s). All five land in ~2 min, in **one job
+with a loop** — deliberately *not* a `strategy.matrix`, which would give each profile a fresh runner
+and re-pack the whole solution five times to buy nothing.
+
+**Hermetic on the `FS.GG.UI.*` axis.** `.github/actions/product-local-feed` — shared verbatim with
+`release.yml`, so the gate cannot drift from the lane it is supposed to predict — packs the framework
+set **from this tree** at the template's pin and maps `FS.GG.UI.*` to that feed alone. Two consequences
+matter: the gate is **green on a release PR**, where the pin names an unpublished version by
+construction (#506's trap — a lane that is expected-red at release time is one people merge past), and
+it tests the template against **this diff** rather than against the last release (#452's rule, one
+layer down).
+
+**Unconditional — no `paths:` filter.** #679 arrived through a *test* file; no plausible hand-written
+filter over `src/**` would have caught it.
+
+**Why it cannot be required.** Everything that is *not* `FS.GG.UI.*` — FSharp.Core, Expecto, and
+Game/Audio on the game and sample-pack profiles — still restores from nuget.org, exactly as a real
+consumer does. Its subject includes that feed, so an outage is indistinguishable from a real break:
+the same bar that keeps `template-payload-restore-gate` (§4b) and `packaged-consumer` (§4c)
+non-required, and that `api-compatibility-gate` clears only because it can classify a silent feed as
+`FeedUnavailable` → exit 0. This lane has no such classification and therefore **no elevation path**.
+NOT-REQUIRED IS NOT `continue-on-error` (#216): the job has none and must not grow one.
+
+Tracking issues: FS.GG.Rendering#680 (this lane), FS.GG.Rendering#679 (the wedged release it exists to
+prevent).
+
 ## 5. Branch protection (one-time maintainer step)
 
 The spec defines which checks are required; **enabling** branch protection is the maintainer's
 one-time action (it cannot be set from the repo tree). On `main`:
 
-- **Require status checks to pass before merging** → select **two** of the `gate` workflow's three
+- **Require status checks to pass before merging** → select exactly **two** of the `gate` workflow's
   jobs: **`Deterministic gate`** and **`API compatibility gate (breaking-change → SemVer major)`**
   (§5.1). Do **not** add `release` or `capability` jobs as required (FR-007) — that constraint is
-  about those two *workflows*, and says nothing about `gate.yml`'s own jobs.
+  about those two *workflows*, and says nothing about `gate.yml`'s own jobs. Every OTHER job in
+  `gate.yml` is evidence, not a gate; the ones with a standing reason to stay that way are listed
+  below.
+- Leave **`Generated product gate (scaffold every profile, compile and run its tests)`** unselected
+  (§4d). It restores the scaffolded product's third-party dependencies (FSharp.Core, Expecto, and
+  Game/Audio on the game and sample-pack profiles) from nuget.org, so it is feed-dependent for the
+  same reason — and with the same absence of an elevation path — as the two below.
 - Leave **`Template payload restore gate (scaffolded pins resolve, stable)`** unselected. It is
   feed-dependent, and ADR-0101's bound applies to it as it does to ApiCompat (§4b). Unlike ApiCompat,
   it has **no elevation path**: its subject *is* an external feed, so a nuget.org outage is

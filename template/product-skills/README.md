@@ -40,6 +40,7 @@ prose cannot drift apart.
 
 ### When NOT to declare one
 
+<!-- skill-refs: prose-ok [[link]] — the SHAPE of a ref, not a ref. This doc teaches the convention, so it must be able to write the syntax without invoking it. -->
 **A `[[link]]` is not an instrument declaration.** Most links are cross-references, and one of them
 crosses a profile gap *on purpose*: `fs-gg-testing` ships to `headless-scene` and `governed`, where
 `fs-gg-elmish` does not, and links it anyway — because a headless product has no controls to click,

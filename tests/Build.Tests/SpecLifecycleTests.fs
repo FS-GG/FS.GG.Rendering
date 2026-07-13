@@ -1,9 +1,9 @@
 module SpecLifecycleTests
 
-open System
 open System.IO
 open System.Text.RegularExpressions
 open Expecto
+open FS.GG.TestSupport
 
 // Feature 187 — `specs/` is a build journal that never pruned and never re-stated itself: 150 of
 // 155 spec.md files read `**Status**: Draft`, including specs whose implementation had shipped and
@@ -13,14 +13,7 @@ open Expecto
 //
 // Canonical doc: docs/product/spec-lifecycle.md.
 
-let private repoRoot =
-    let rec up (dir: DirectoryInfo | null) =
-        match dir with
-        | null -> failwith "could not locate repo root (FS.GG.Rendering.slnx) walking up from test base dir"
-        | d ->
-            if File.Exists(Path.Combine(d.FullName, "FS.GG.Rendering.slnx")) then d.FullName
-            else up d.Parent
-    up (DirectoryInfo(AppContext.BaseDirectory))
+let private repoRoot = RepositoryRoot.value
 
 let private repoPath (rel: string) = Path.Combine(repoRoot, rel.Replace('/', Path.DirectorySeparatorChar))
 

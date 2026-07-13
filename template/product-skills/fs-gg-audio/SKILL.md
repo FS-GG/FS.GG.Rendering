@@ -301,7 +301,7 @@ community sources. If your product uses Spec Kit, record findings and resolving 
 
 ## Related
 
-- [[fs-gg-game-core]] — the simulation half of a game product; audio requests come from the same `update`.
+- [[fs-gg-game:fs-gg-game-core]] — the simulation half of a game product; audio requests come from the same `update`.
 - [[fs-gg-rendering:fs-gg-skiaviewer]] — the host window; audio's own device backend lives in `FS.GG.Audio.Host`.
 - [[fs-gg-rendering:fs-gg-keyboard-input]] — map input to the `Msg` values whose `update` requests sound.
 - [[fs-gg-rendering:fs-gg-scene]] — the visual half; audio and scene are both effects requested from `update`.

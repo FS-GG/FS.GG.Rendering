@@ -284,7 +284,6 @@ let governanceTests =
             //#else
             Expect.stringContains source "Viewer.runAppWithAudio viewerOptions audioSink generatedHost" "game/sample-pack default path runs the keyboard-only persistent generated app host (with the #245 audio sink)"
             //#endif
-            //#endif
             Expect.stringContains source "mode=interactive-window" "default path reports interactive mode"
             Expect.stringContains source "accessible-window=true" "successful default path reports accessible desktop window claim"
             Expect.stringContains source "window-visible=observed:true" "successful default path reports observed visible window"
