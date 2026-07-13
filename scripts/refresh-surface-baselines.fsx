@@ -13,11 +13,18 @@
 // `readiness/surface-baselines/`, so the generator WRITES there too — writer and reader agree by
 // construction (no second copy of the baselines to sync).
 //
-// This header used to name `build/Governance/PackageSurface.fs` as a second, governance-side reader
-// that also READ `readiness/surface-baselines/`. It does not read anything: no project compiles it
-// and nothing executes it. It is an inert DECLARATION — a list of baseline paths that
-// `tests/Package.Tests/Tests.fs` text-scans (#666). So it constrains nothing about this generator's
-// output, and there is no third consumer of the baseline format to preserve anything for.
+// This header used to name `build/Governance/PackageSurface.fs` as a second, governance-side reader of
+// `readiness/surface-baselines/`. It never read anything — no project compiled it and nothing executed
+// it (#666) — and as of #670 it is DELETED, along with the `Tests.fs` text-scan that was its only
+// consumer. There is no second reader of the baselines and no other consumer of their format.
+//
+// THE PACKAGE TABLE BELOW IS A GATE, not a convenience. `SurfaceAreaTests` live-compares only the three
+// packages it holds a ProjectReference to; for every other package the ONLY thing standing between a
+// public-surface change and `main` is gate.yml regenerating with THIS script and failing on the diff. So
+// a package missing from the table is a package whose entire public API is watched by nothing — it is
+// never regenerated, so there is no diff to fail on. `tests/Package.Tests/Tests.fs` asserts that this
+// table names every packable package, precisely so that adding a package cannot silently skip the gate
+// (#670). Add the package here when you add it to `src/`.
 //
 // Loads each assembly by path (with a cross-assembly resolve handler) rather than `#r` + a hardcoded
 // representative type, so adding a package is a one-line table entry.
