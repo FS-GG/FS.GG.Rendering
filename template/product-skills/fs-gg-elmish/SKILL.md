@@ -297,18 +297,21 @@ open FS.GG.UI.Controls.Elmish
 
 Control.diagnostics rendered          // authoring issues in a Control<'msg> tree, without rendering it
 ControlRuntime.diagnostics runtime    // what the focus/hover/press/drag runtime has accumulated
-ControlsElmish.diagnostics command    // what an interpreter REPORTED while producing this command
+AdapterCmd.diagnostics command        // what an interpreter REPORTED while producing this command
 ```
 
+Mind the module on the third: it is **`AdapterCmd`**, beside `AdapterCmd.productMessages` — not
+`ControlsElmish`, which is the *runner* module next door.
+
 <!-- skill-refs: closed-ok FS.GG.Rendering#457 — cited as the issue where this gap was FOUND, not as somewhere to go. Closed is correct; it stays closed. -->
-The third is the one that bites. **`productMessages` extracts messages and nothing else** — so a
-routing site that calls it alone *silently drops every diagnostic the interpreter raised*: a pointer
-hit-test miss, a stale target, an unresolved control id (issue FS.GG.Rendering#457). Route both, as
-the shipped pointer routing sites now do:
+That third one is the one that bites. **`AdapterCmd.productMessages` extracts messages and nothing
+else** — so a routing site that calls it alone *silently drops every diagnostic the interpreter
+raised*: a pointer hit-test miss, a stale target, an unresolved control id (issue
+FS.GG.Rendering#457). Route both, as the shipped pointer routing sites now do:
 
 ```fsharp
-let messages = ControlsElmish.productMessages command
-let reported = ControlsElmish.diagnostics command   // AdapterDiagnostic list, in order
+let messages = AdapterCmd.productMessages command
+let reported = AdapterCmd.diagnostics command   // AdapterDiagnostic list, in order
 
 // Hand `reported` to your observer/log. Dropping it is how a mis-routed click
 // becomes "nothing happened" with nothing anywhere saying why.

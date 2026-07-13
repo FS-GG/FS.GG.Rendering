@@ -1,7 +1,7 @@
 <!-- SKILL-PARITY:START -->
 # Skill Parity Report
 
-Overall status: `passed`
+Overall status: `warning`
 Canonical sources: `32`
 Wrappers: `65`
 
@@ -18,25 +18,25 @@ Wrappers: `65`
 ## Severity Counts
 | Critical | High | Warning | Info |
 | --- | --- | --- | --- |
-| 0 | 0 | 0 | 0 |
+| 0 | 0 | 2 | 0 |
 
 ## API Symbol Coverage
 | Skill | Documented | Exercised | Unexercised | Unresolved |
 | --- | --- | --- | --- | --- |
 | fs-gg-audio | 6 | 6 | 0 | 0 |
 | fs-gg-diagnostics | 2 | 2 | 0 | 0 |
-| fs-gg-elmish | 11 | 11 | 0 | 0 |
+| fs-gg-elmish | 18 | 17 | 1 | 0 |
 | fs-gg-generated-controls-guidance | 25 | 25 | 0 | 0 |
 | fs-gg-keyboard-input | 7 | 7 | 0 | 0 |
 | fs-gg-layout | 3 | 3 | 0 | 0 |
 | fs-gg-persistence | 5 | 5 | 0 | 0 |
 | fs-gg-samples | 2 | 2 | 0 | 0 |
-| fs-gg-scene | 12 | 12 | 0 | 0 |
+| fs-gg-scene | 14 | 14 | 0 | 0 |
 | fs-gg-skiaviewer | 5 | 5 | 0 | 0 |
 | fs-gg-styling | 17 | 17 | 0 | 0 |
 | fs-gg-symbology | 20 | 20 | 0 | 0 |
-| fs-gg-testing | 7 | 7 | 0 | 0 |
-| fs-gg-ui-widgets | 41 | 41 | 0 | 0 |
+| fs-gg-testing | 12 | 12 | 0 | 0 |
+| fs-gg-ui-widgets | 44 | 43 | 1 | 0 |
 
 ## Guarded Theme Coverage
 | Theme | Scoped | Resolved | Dangling | Unnamed |
@@ -46,7 +46,10 @@ Wrappers: `65`
 | readiness-allowlisting | 5 | 5 | 0 | 0 |
 
 ## Findings
-No unresolved parity findings.
+| Skill | Surface | Category | Severity | Path | Message | Next action |
+| --- | --- | --- | --- | --- | --- | --- |
+| fs-gg-elmish | template-canonical | unexercised-api-symbol | warning | template/product-skills/fs-gg-elmish/SKILL.md | Skill documents `ControlRuntime.diagnostics`, but no test calls it — the seam may be dead. | Add a test that calls the documented API, or stop documenting it. |
+| fs-gg-ui-widgets | template-canonical | unexercised-api-symbol | warning | template/product-skills/fs-gg-ui-widgets/SKILL.md | Skill documents `Catalog.validate`, but no test calls it — the seam may be dead. | Add a test that calls the documented API, or stop documenting it. |
 
 ## Intentional Exceptions
 No intentional exceptions were applied.
