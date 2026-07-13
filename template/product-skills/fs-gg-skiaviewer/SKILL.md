@@ -37,6 +37,32 @@ match Viewer.runApp viewerOptions generatedHost with
 | Error _ -> 1       // classified host/launch/verification failure
 ```
 
+## Saving and loading: `runAppWithPersistence`
+
+`Viewer.runApp` **discards** `ViewerEffect.Persist`. Your `update` can request a save all day and
+nothing will happen — so if your product saves, launch it with `Viewer.runAppWithPersistence`, which
+takes the two things the framework deliberately does not own:
+
+- `persistenceSink` — performs the real I/O. `SaveSlot` is an opaque, product-owned name, and
+  resolving it to a real path is your job. The framework owns no save location.
+- `mapOutcome` — turns each `PersistenceOutcome` the sink returns back into one of *your* messages.
+
+That return path is the point. Without it a `Load` is unanswerable: the pure interpreter records what
+your product asked for and drops it, which proves intent, never durability.
+
+```fsharp
+match Viewer.runAppWithPersistence viewerOptions saveToDisk PersistenceAnswered generatedHost with
+| Ok _ -> 0
+| Error _ -> 1
+```
+
+Use `Viewer.runAppWithAudioAndPersistence` for sound *and* saves — adopting persistence should not
+cost you audio.
+
+**Do not emit a persistence effect from the handler for a persistence outcome.** That dispatch is
+synchronous recursion, not the Elmish queue: it recurses on one stack and dies in a
+`StackOverflowException`, which .NET cannot catch and which prints no diagnostic.
+
 ## Build Commands
 
 Run `./fake.sh build -t Dev` then `./fake.sh build -t Verify` in this product.

@@ -564,11 +564,6 @@ module ControlsElmish =
     /// Until this existed, an `app` product could REQUEST sound (#429/#436) and could not ASSERT it: the
     /// narrowing was `GeneratedAppHost`-only, and every audio-capable Controls path needed a live GL
     /// window. Pair it with `Perf.runScriptToEffects`, the headless fold that produces the effect list.
-    ///
-    /// NEWER THAN THE PIN: this and `Perf.runScriptToEffects` are newer than the
-    /// `FS.GG.UI.Controls.Elmish` a scaffolded product restores, so a product CANNOT BIND THEM YET —
-    /// FS.GG.Rendering#587 (the release) publishes them, and `tests/Build.Tests/pinned-api-doc-ledger.txt`
-    /// carries the debt until it does.
     val audioRequests: effects: ViewerEffect list -> AudioEffect list
 
     /// Launch `host` through the live GL-backed viewer, deliver a bounded `FrameInput` script through
