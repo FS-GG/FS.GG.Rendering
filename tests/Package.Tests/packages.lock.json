@@ -14,9 +14,9 @@
       },
       "FS.GG.Contracts": {
         "type": "Direct",
-        "requested": "[1.4.0, 1.4.0]",
-        "resolved": "1.4.0",
-        "contentHash": "iq1uWFlkADsM7F6L34HIekJHhI2mHeO77k1lm97KcJlZGi5/JJPO05HodY0jLoOk17v9hxaZuy3hvNgoEdzCnA==",
+        "requested": "[2.0.0, 2.0.0]",
+        "resolved": "2.0.0",
+        "contentHash": "rQVo2MtYRkmN4G8X/3hTWzl3AfPyxE7CP/Kjgh/HikIO1Q8eNPzec8HIdl8ivx+Vz9oAEdQBVW7Rkl7+lWbeNg==",
         "dependencies": {
           "FSharp.Core": "10.1.301"
         }
