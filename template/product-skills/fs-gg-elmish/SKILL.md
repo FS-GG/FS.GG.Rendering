@@ -300,10 +300,11 @@ ControlRuntime.diagnostics runtime    // what the focus/hover/press/drag runtime
 ControlsElmish.diagnostics command    // what an interpreter REPORTED while producing this command
 ```
 
+<!-- skill-refs: closed-ok FS.GG.Rendering#457 — cited as the issue where this gap was FOUND, not as somewhere to go. Closed is correct; it stays closed. -->
 The third is the one that bites. **`productMessages` extracts messages and nothing else** — so a
 routing site that calls it alone *silently drops every diagnostic the interpreter raised*: a pointer
-hit-test miss, a stale target, an unresolved control id (issue #457). Route both, as the shipped
-pointer routing sites now do:
+hit-test miss, a stale target, an unresolved control id (issue FS.GG.Rendering#457). Route both, as
+the shipped pointer routing sites now do:
 
 ```fsharp
 let messages = ControlsElmish.productMessages command

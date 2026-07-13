@@ -71,6 +71,11 @@ mislabeled extension seam and a screen reader that says nothing.
 `Control.diagnostics` is the tree-wide companion — it collects what a whole `Control<'msg>` reports,
 without rendering it. See [[fs-gg-elmish]] for it and the runtime/adapter `diagnostics` beside it.
 
+**Pointer lives next door.** `docs/api-surface/Controls/Pointer.fsi` names this skill, but the pointer
+route is taught in [[fs-gg-elmish]] — `Pointer.replay` (the pure fold SC-005's determinism rests on),
+`routeInteractivePointer`, and the `Perf.runScript*` drivers built on them. Go there for anything that
+drives a click rather than authors one.
+
 ## No-new-dependency property tests
 
 When the product test project ships no FsCheck reference and the governance decision is

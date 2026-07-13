@@ -111,17 +111,21 @@ primitive is `Resolution.push`: advance from `start` by the per-cell delta `step
 cells, asking a classifier what each *next* cell does.
 
 The classifier is the whole coupling to your world. It absorbs terrain, occupancy and board bounds
-without `Resolution` learning any of them, and it answers with one of **three** states — because two
-are not enough:
+without `Resolution` learning any of them, and it answers with one of **three** `Resolution.CellStep`
+states — because two are not enough:
 
-- `Enter` — move onto it and keep going. Ordinary ground; also lava, which is entered, hurts, and is left.
-- `Stop` — move onto it and **halt there**. Water, a chasm: a destination, usually fatal.
-- `Block` — cannot enter; halt on the *previous* cell. A wall, a mountain, an occupied cell, off-board.
+- `Resolution.Enter` — move onto it and keep going. Ordinary ground; also lava, which is entered, hurts, and is left.
+- `Resolution.Stop` — move onto it and **halt there**. Water, a chasm: a destination, usually fatal.
+- `Resolution.Block` — cannot enter; halt on the *previous* cell. A wall, a mountain, an occupied cell, off-board.
 
 A binary `blocked` predicate can only say *stop before it* or *walk through it*. It cannot say **enter
 it and stop there** — so mark water blocked and your unit halts on dry land; mark it passable and the
 unit walks out the far side. Neither is the game. That is why `knockback`, which took exactly such a
 predicate, is deprecated.
+
+**Qualify the cases.** `Resolution` is `[<RequireQualifiedAccess>]` and `CellStep`/`PushStop` are
+declared inside it, so a bare `Enter`/`Block` does not resolve — and you cannot `open Resolution` to
+make it (RQA forbids exactly that). Write `Resolution.Enter`, and match on `Resolution.Stopped`.
 
 ```fsharp
 open FS.GG.Game.Core       // Cell, Resolution
@@ -129,14 +133,18 @@ open FS.GG.Game.Core       // Cell, Resolution
 // Shove the target 2 cells along `step`. The lambda is your world; `Resolution` never learns it.
 let shove =
     Resolution.push target step 2 (fun cell ->
-        if not (board.Contains cell) then Block
-        elif board.IsWall cell || board.Occupied cell then Block
-        elif board.IsWater cell then Stop
-        else Enter)
+        if not (board.Contains cell) then Resolution.Block
+        elif board.IsWall cell || board.Occupied cell then Resolution.Block
+        elif board.IsWater cell then Resolution.Stop
+        else Resolution.Enter)
 
 shove.Final      // the cell it occupies now
 shove.Entered    // every cell actually ENTERED, in order, excluding `start`
-shove.Outcome    // Completed | Stopped of Cell | Blocked of Cell — why the walk ended, and where
+
+match shove.Outcome with
+| Resolution.Completed -> ()                     // all `distance` steps taken; nothing interrupted it
+| Resolution.Stopped cell -> drown unit cell     // it ENTERED `cell` and halted there — it occupies it
+| Resolution.Blocked cell -> bruise unit cell    // it could NOT enter `cell`; it occupies `shove.Final`
 ```
 
 `Entered` is what a per-cell terrain tick folds over — a unit shoved across two lava tiles takes the
@@ -168,9 +176,13 @@ never touch the durable `Product.fsproj`.
   don't define a look-alike bounds/vector type.
 - **Reaching for the deprecated `knockback`.** It is `[<Obsolete>]`: a binary predicate cannot express
   a cell that is entered *and* ends the walk, and it discards both the stop reason and the cells crossed.
-  `Resolution.push` is the replacement and is strictly more informative —
-  `(push start step distance (fun c -> if blocked c then Block else Enter)).Final` *is* the old
-  `knockback`. Reach for `push`.
+  `Resolution.push` is the replacement and is strictly more informative — the old `knockback` is exactly
+  `(Resolution.push start step distance (fun c -> if blocked c then Resolution.Block else Resolution.Enter)).Final`.
+  Reach for `push`.
+- **Writing a bare `Enter`/`Stop`/`Block`.** `Resolution` is `[<RequireQualifiedAccess>]`, so the
+  `CellStep` cases declared inside it are only reachable as `Resolution.Enter` — and RQA forbids the
+  `open Resolution` that would otherwise import them. A bare case is `error FS0039: The value or
+  constructor 'Block' is not defined`, which reads like a missing package and is not one.
 - **Framework `Resolution`/`Contact` vs your `Collision.Resolution`/`Contact`.** Game.Core 0.3.0 bundles
   a `Resolution` *module* (`pushOut`/`slide`/`push`) and a `Contact` *manifold* type; your
   `Collision.fs` ships its own generic `Resolution<'T>`/`Contact<'T>` *records*. Same names, different

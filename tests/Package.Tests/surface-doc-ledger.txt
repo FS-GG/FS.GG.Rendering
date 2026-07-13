@@ -223,8 +223,6 @@ vocabulary  reachableWithin
 # ---- Game.Core/Rng.fsi
 vocabulary  nextBool
 
-# ---- Game.Core/Resolution.fsi
-
 # ---- Game.Core/SpatialGrid.fsi
 tracked     buildBounds
 vocabulary  queryBounds
@@ -364,15 +362,15 @@ vocabulary  verifyPackageResolution
 
 # ---- carried by more than one signature file
 # The ledger keys on the NAME, so these lines each cover every `.fsi` that declares the name, and no single
-# `# ---- <file>` header above would be an honest home for them. All four were credited to English prose
-# ("validate your GridSpec", "a headless replay", "(diagnostics) refers to the local update") until #654.
+# `# ---- <file>` header above would be an honest home for them. FOUR names sat here, all credited to English
+# prose ("validate your GridSpec", "a headless replay", "(diagnostics) refers to the local update") until #654
+# required a citation.
 #
-# The two that were `tracked` are WRITTEN (#663), and the ratchet took their lines: `diagnostics` — the query
-# that hands you the list, as opposed to the Diagnostics.fsi constructors, which remain vocabulary — is cited
-# by fs-gg-elmish (Control/ControlRuntime/ControlsElmish) and by fs-gg-scene, which is the only one of the two
-# that reaches a headless-scene or governed product. `validate` is cited by fs-gg-testing (the evidence and
-# readiness entry points) and fs-gg-ui-widgets (the control-authoring ones). The two below are vocabulary and
-# stay.
+# TWO REMAIN, and both are vocabulary — see below. The other two were `tracked`, and #663 WROTE them, so the
+# ratchet took their lines: `diagnostics` — the query that hands you the list, as against the Diagnostics.fsi
+# constructors, which stay vocabulary — is cited by fs-gg-elmish (Control/ControlRuntime/ControlsElmish) and by
+# fs-gg-scene, the only one of the two that reaches a headless-scene or governed product. `validate` is cited by
+# fs-gg-testing (the evidence/readiness entry points) and fs-gg-ui-widgets (the control-authoring ones).
 
 # `measure` — RichText (text measurement) and Scene (path measurement). Peers `measureHorizontal` /
 # `measureVertical` are vocabulary; these are the same kind of total query over a value you already hold.
