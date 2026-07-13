@@ -411,12 +411,14 @@ late, and they are cheap to file the moment you are standing in front of them.
 
 ```sh
 # REST: every `gh pr` subcommand is GraphQL, and by now the budget is usually gone (#587, #528).
+# `<n>` is the ITEM number, everywhere in this recipe. `<pr>` is the PULL number, and it is NOT the
+# same number — which is why this prints it. Everything below that addresses the PR takes `<pr>`.
 gh api -X POST repos/FS-GG/<repo>/pulls \
   -f title="$(git log -1 --format=%s)" \
   -f body="$(git log -1 --format=%b)" \
-  -f head="item/<n>-<slug>" -f base=main --jq .html_url
+  -f head="item/<n>-<slug>" -f base=main --jq '"PR #\(.number)  \(.html_url)"'
 
-scripts/fsgg-coord verify-paths --pr <n>    # did the PR stay inside its declaration?
+scripts/fsgg-coord verify-paths --pr <pr>    # did the PR stay inside its declaration?
 ```
 
 > **Put `Closes #<n>` in the commit BODY, never in the subject — and know why.**
@@ -526,7 +528,7 @@ gh api -X DELETE repos/FS-GG/<repo>/git/refs/heads/item/<n>-<slug>    # the bran
 > `dirty` PR anyway — but a PR whose checks are merely *late* is indistinguishable to the old loop, and
 > **that one merges.**
 
-**Why not `gh pr merge <n> --squash --delete-branch`?** Because §2 mandates a worktree, and under
+**Why not `gh pr merge <pr> --squash --delete-branch`?** Because §2 mandates a worktree, and under
 that layout `gh pr merge` **merges the PR and then exits 1**:
 
 ```
@@ -612,7 +614,7 @@ gh api "repos/FS-GG/<repo>/commits/$SHA/check-runs" --paginate --slurp \
                 else "all \(length) checks green" end'
 ```
 
-`gh pr checks <n> --watch` itself is fine in a worktree — it is GraphQL, but it reads the API and
+`gh pr checks <pr> --watch` itself is fine in a worktree — it is GraphQL, but it reads the API and
 never touches your local checkout, so only the budget can take it from you, not the layout.
 
 Two more that bite in the same state:
@@ -620,7 +622,7 @@ Two more that bite in the same state:
 - **`verify-paths` blames the wrong thing.** It reports *"not inside a GitHub checkout"* when the real
   cause is the rate limit, because it derives the repo via a GraphQL call and reads the empty result
   as "no checkout" ([#430](https://github.com/FS-GG/.github/issues/430)). Pass the repo explicitly:
-  `scripts/fsgg-coord verify-paths --pr <n> --repo FS-GG/<repo>`.
+  `scripts/fsgg-coord verify-paths --pr <pr> --repo FS-GG/<repo>`.
 - **`gh issue create` is GraphQL too** — which strands you in §4, at the exact moment you are filing
   a finding after a long session, i.e. precisely when the budget is gone:
 
