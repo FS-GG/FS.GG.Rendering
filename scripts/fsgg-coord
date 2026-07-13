@@ -3896,6 +3896,41 @@ shadow_log() {  # <json object on stdin>
 # counts only the rows for the build under test, and republishing the engine legitimately restarts the
 # three-day clock. Resolved ONCE per process: this runs in a worker's hot scheduling loop, and an
 # `--version` fork per invocation would be a real cost for a string that cannot change mid-run.
+# THE OLDEST ENGINE WHOSE EVIDENCE IS WORTH ANYTHING (#655).
+#
+# A global `dotnet tool` does not self-update, and the kit only ever said INSTALL. So the fleet went on
+# shadowing with 0.1.0 long after it was superseded — and 0.1.0 is not merely old, it is WRONG: it strips
+# the leading dot from every dotfile path (#649), so `.github/workflows/gate.yml` becomes a token that
+# matches no file, conflicts with nothing, and the engine reports STARTABLE on an item a live claim is
+# holding. The shadow caught it 7 times on the live board in one day.
+#
+# A STALE ENGINE IS WORSE THAN NO ENGINE. A worker without one contributes nothing and says so. A worker
+# with a superseded one contributes DIVERGENCES FROM A BUILD NOBODY SHOULD TRUST — noise that buries the
+# real findings, and, before #644 stamped the rows with a version, noise that could not even be
+# attributed to the build that produced it. `Divergence.evaluate` already refuses to count it (it counts
+# only reports from the build under test); this refuses to GENERATE it.
+#
+# Raise this whenever a republished engine changes a SCHEDULING ANSWER. It travels with the kit, so
+# raising it here is what actually reaches the fleet — and `tests/fsgg-coord` asserts it never exceeds
+# the version this repo builds, so the floor can never lock everybody out of shadowing.
+ENGINE_MIN_VERSION="0.1.1"
+
+# `sort -V` is the only version comparator worth using in bash, and it handles the 4-part assembly
+# version the engine actually reports (`0.1.1.0`) against a 3-part floor without special-casing.
+version_lt() {  # 0 iff $1 < $2
+  [ "$1" = "$2" ] && return 1
+  [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -1)" = "$1" ]
+}
+
+# An engine too old to trust. `unknown` counts as stale: an engine that cannot say what it is cannot be
+# known to be current, and "I could not tell" is not "it is fine" (#266).
+engine_is_stale() {
+  local v; v="$(engine_version 2>/dev/null)" || return 0
+  [ -n "$v" ] || return 0
+  [ "$v" = "unknown" ] && return 0
+  version_lt "$v" "$ENGINE_MIN_VERSION"
+}
+
 ENGINE_VERSION=""
 engine_version() {
   [ -n "$ENGINE_VERSION" ] && { printf '%s' "$ENGINE_VERSION"; return 0; }
@@ -4221,6 +4256,15 @@ shadow_run() {  # <allowBacklog 0|1> <limit> <inflight-ndjson-file> <repo>
     # Rule 2. This script is byte-copied into six repos, and a repo without the engine simply does not
     # shadow. That is a fact to RECORD, not an error to raise — it may never red a receiver's CI.
     shadow_skip "no engine (install it: dotnet tool restore, or dotnet tool install -g FS.GG.Coord.Cli)"
+    return 0
+  fi
+
+  # A STALE ENGINE IS WORSE THAN NO ENGINE (#655), and this is the same rule one notch stricter: it is a
+  # SKIP, not an error. A receiver whose worker has an old tool must not have its CI redded over it, and
+  # the skip is RECORDED — so "we did not compare" can never be mistaken for "they agreed", which is the
+  # whole of #266 and the reason the skip exists at all.
+  if engine_is_stale; then
+    shadow_skip "engine $(engine_version) is STALE (need >= $ENGINE_MIN_VERSION) — its answers are known-wrong, so its evidence is not collected. Update: dotnet tool update -g FS.GG.Coord.Cli"
     return 0
   fi
 
@@ -4783,6 +4827,21 @@ lanes_cmd() {
     echo "fsgg-coord: no engine resolves, so lanes cannot be computed." >&2
     echo "  A lane is a claim about SAFETY, and it is computed in the typed core — not guessed at here." >&2
     echo "  Install it:  dotnet tool install -g FS.GG.Coord.Cli" >&2
+    return 3
+  fi
+
+  # A STALE ENGINE MAY NOT PARTITION THE BOARD (#655). Unlike the shadow — where a stale engine merely
+  # produces evidence nobody should count — here its answer is USED. Engines before 0.1.1 strip the
+  # leading dot from every dotfile path (#649), so `.github/workflows/**` becomes a token that matches no
+  # file: it conflicts with nothing, and the lane it belongs to is wrong. A wrong lane is not a bad
+  # suggestion, it is a corrupted lock — it tells a worker two items are safe to run together when they
+  # are not. Refuse, loudly, and say exactly how to fix it.
+  if engine_is_stale; then
+    echo "fsgg-coord: the engine ($(engine_version)) is STALE — need >= $ENGINE_MIN_VERSION." >&2
+    echo "  Engines before 0.1.1 mis-parse every dotfile path (.github/, .agents/, .claude/), so the" >&2
+    echo "  partition they compute is WRONG — and a wrong lane says two items are safe to run together" >&2
+    echo "  when they are not (#649, #273). Refusing to print one." >&2
+    echo "  Update:  dotnet tool update -g FS.GG.Coord.Cli" >&2
     return 3
   fi
 
