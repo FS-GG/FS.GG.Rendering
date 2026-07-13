@@ -8,6 +8,7 @@ module Feature246CollisionSkillTests
 // fs-gg-game-core Collision section was trimmed to a single-source-of-truth pointer (US2/US3).
 
 open System.IO
+open System.Text.RegularExpressions
 open System.Text.Json
 open Expecto
 open FS.GG.TestSupport
@@ -91,7 +92,15 @@ let feature246CollisionSkillTests =
 
           // ---- US3: game-core points at the new skill (single source of truth) -------------------
           test "fs-gg-game-core's Collision section is a pointer, not a duplicated write-up" {
-              Expect.stringContains gameCoreBody "[[fs-gg-collision]]" "game-core points at the dedicated skill"
+              // OWNER-AGNOSTIC, and it must be (#714). This body is a FROZEN MIRROR of FS.GG.Game's, and
+              // Game now QUALIFIES every ref in it — `[[fs-gg-game:fs-gg-collision]]` — because the same bytes are
+              // judged by both repos and a bare ref resolves in exactly one publish set (Game#279). Pinning
+              // the bare spelling asserted a CONVENTION we do not own, in a body we may not edit, so it broke
+              // the moment the owner re-qualified. What this test actually means is "the body LINKS that
+              // skill", so that is what it now asks — with or without an owner prefix.
+              Expect.isTrue
+                  (Regex.IsMatch(gameCoreBody, @"\[\[(?:[a-z][a-z-]*:)?fs\-gg\-collision\]\]"))
+                  "game-core points at the dedicated skill (bare or owner-qualified)"
               // the old detailed narrow-phase list must no longer live here
               Expect.isFalse
                   (gameCoreBody.Contains("`Geometry.intersects a b` — box-vs-box overlap on positive area", System.StringComparison.Ordinal))

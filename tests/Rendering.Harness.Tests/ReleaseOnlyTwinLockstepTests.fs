@@ -11,10 +11,16 @@ module ReleaseOnlyTwinLockstepTests
 // is `PackageTestsGateMembershipTests` — an explicit assertion that Package.Tests stays in the slnx,
 // which is the premise the deletion rests on.
 //
-// ONE TWIN SURVIVES, and it is not a Package.Tests mirror at all: `TemplateLaunchExpressionCoherenceTests`
-// pairs with `template/base/tests/Product.Tests` — the tests of the INSTANTIATED product. Those run only
-// where release.yml scaffolds the template (`dotnet test "$PRODUCT_DIR"`); no PR job instantiates it. So
-// its premise — a real release-only rule, hoisted one gate earlier — is untouched by #540 and holds.
+// ONE TWIN SURVIVES: `TemplateLaunchExpressionCoherenceTests`, paired with `template/base/tests/Product.Tests`
+// — the tests of the INSTANTIATED product. #613 kept it because "no PR job instantiates the template",
+// and #680 (PR #704) MADE THAT FALSE: gate.yml's `generated-product-gate` now scaffolds every profile
+// and runs its tests on every PR. #719 re-derived the pair from scratch rather than re-asserting the
+// dead sentence, and the twin still earns its keep — on a narrower ground. Its counterpart's launch
+// assertions are all EXISTENTIAL (`stringContains`); the twin's are UNIVERSAL (set equality over the
+// launch expressions the template emits, and `audioSink` on every one of them). An expression NOBODY
+// asserts — a new family's, or a sinkless call added beside an asserted one — passes all five
+// instantiated profiles and reds only in the twin. That is #436 exactly. The twin's own header carries
+// the full argument; `GeneratedProductGateCoverageTests` asserts the premise it now rests on.
 //
 // L-RULES, L-INPUTS AND L-FORMS ARE GONE, AND THAT IS NOT A ROLLBACK OF #612 (#623). Those three checks
 // landed days before this change and were RIGHT: L-INPUTS had proxied "do the two check the same things?"
@@ -46,11 +52,21 @@ module ReleaseOnlyTwinLockstepTests
 //   L-CLOSED  every `*CoherenceTests.fs` in this project is registered here. A new twin cannot be added
 //             without declaring the release-only rule it pairs with.
 //
-// ADDING A TWIN: first ask whether you need one. A rule that lives in Package.Tests ALREADY RUNS ON THE
-// PR GATE (#540) — write it there and stop; a twin of it is a second copy of a check that already fires,
-// which is exactly what #613 deleted 3,600 lines of. A twin earns its keep only when its counterpart
-// genuinely cannot run on a PR, which today means the instantiated product. If that is your case, give it
-// the `…CoherenceTests.fs` name, register it below, and restore L-RULES (above) so the copy cannot rot.
+// ADDING A TWIN: first ask whether you need one, and note that the OLD test for that is obsolete (#719).
+// It used to be "can the counterpart run on a PR?" — and the answer was no only for the instantiated
+// product. #680 put the instantiated product on the PR gate too, so by that test NOTHING would ever
+// earn a twin again, and the one twin left would already be gone. That test is not the right one.
+//
+// The right test is: CAN THE COUNTERPART EXPRESS THE RULE AT ALL? A twin earns its keep when it asserts
+// something its counterpart structurally cannot, even with the counterpart running on every PR. The
+// surviving twin qualifies because its counterpart's assertions are existential and the rule is
+// universal — a closure over what the template emits, which no per-profile presence check can state.
+// A twin that merely re-states a rule its counterpart already runs is a second copy of a check that
+// already fires, which is exactly what #613 deleted 3,600 lines of — write the rule where it belongs
+// and stop.
+//
+// If you do have a real case, give it the `…CoherenceTests.fs` name, register it below, and restore
+// L-RULES (above) so the copy cannot rot.
 
 open System.IO
 open Expecto
@@ -73,11 +89,13 @@ type private TwinPair =
 
 let private registry =
     [ // #350 — the generated product's per-family default launch host. The counterpart is the INSTANTIATED
-      // template/base/tests/Product.Tests, which exists only where release.yml scaffolds the template — so
-      // no slnx membership can put it on a PR, and #540 does not retire this pair the way it retired the
-      // other fifteen. It is a directory, not a text-mirror of one source: no input set to compare, and no
-      // `test "…"` set to compare rule-for-rule (which is why it carried `SharedInputs = false` and
-      // `MirroredRules = false` while those checks existed). L-EXISTS/L-NAMES/L-CLOSED guard it.
+      // template/base/tests/Product.Tests. Since #680 those tests DO run on every PR (gate.yml scaffolds
+      // every profile), so this pair is no longer "a release-only rule hoisted one gate earlier" — what
+      // it is now is a UNIVERSAL rule standing over an existential counterpart, which is the whole of why
+      // #719 kept it. See the twin's header. It is a directory, not a text-mirror of one source: no input
+      // set to compare, and no `test "…"` set to compare rule-for-rule (which is why it carried
+      // `SharedInputs = false` and `MirroredRules = false` while those checks existed).
+      // L-EXISTS/L-NAMES/L-CLOSED guard it.
       { Twin = $"{twinDirectory}/TemplateLaunchExpressionCoherenceTests.fs"
         ReleaseOnly = "template/base/tests/Product.Tests"
         HeaderNames = "Product.Tests" } ]

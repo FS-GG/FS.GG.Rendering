@@ -13,6 +13,7 @@
     <Compile Include="Feature242DocsCurrencyTests.fs" />
     <Compile Include="SpecLifecycleTests.fs" />
     <Compile Include="TemplateConsumesPinnedApiTests.fs" />
+    <Compile Include="RepositoryRootSingleFinderTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

@@ -172,8 +172,53 @@ fixture_new() {
   echo '[]' >"$FIX/trackers.json"    # issues carrying DECAY_LABEL. Empty: no tracker exists yet.
   echo '[]' >"$FIX/unlabelled.json"  # issues that do NOT carry it — visible only if `labels=` is dropped
   _write_manifest                     # a real manifest, even when empty: the subject refuses to run without one
+  _seed_repo_surface                  # ditto the REPO surface (#698) — see below
   _write_fake_gh
 }
+
+# The REPO surface, seeded into every fixture (#698). The subject checks TWO subjects now — the bodies
+# it PUBLISHES (the manifest) and the bodies it merely READS here (`src/*/skill/`, and the authoring
+# note under template/product-skills/) — and it REFUSES TO RUN without either one, for the same reason
+# it refuses without a manifest: a subject that has gone missing is not "nothing to check", and passing
+# green over it is the `.github#416` shape the whole gate exists to close.
+#
+# So a fixture needs a repo surface exactly as it needs a manifest, and for exactly as long as the
+# subject is entitled to demand one. Seeded EMPTY-BUT-REAL: one vocabulary entry and one body with no
+# refs in it. It contributes no findings, so every case that predates #698 keeps asserting precisely
+# what it asserted before — and the surface is nonetheless PRESENT, so a case that wants to exercise it
+# adds to it (`claude_skill`, `repo_skill`) rather than conjuring it.
+#
+# DO NOT "fix" a repo-surface failure by making the subject tolerate an absent one. That would trade a
+# loud, correct refusal for a gate that silently stops checking ten skill bodies the day somebody moves
+# them — which is the exact defect #698 was filed about, re-introduced through its own test harness.
+_seed_repo_surface() {
+  mkdir -p "$FIX/.claude/skills/fs-gg-fixture" "$FIX/src/Fixture/skill"
+  printf -- '---\nname: fs-gg-fixture\n---\n\n# Fixture wrapper\n' \
+    >"$FIX/.claude/skills/fs-gg-fixture/SKILL.md"
+  printf -- '# Fixture library skill\n\nNo refs.\n' >"$FIX/src/Fixture/skill/SKILL.md"
+}
+
+# claude_skill <id> — add <id> to the REPO vocabulary: the set a `[[ref]]` in a repo-internal body
+# resolves against (`.claude/skills/`). This is NOT the manifest, and the difference is the whole point
+# of #698 — `[[fs-gg-ant-design]]` resolves HERE and dangles in a published body, and the same string
+# can name a different body on each surface. A case that wants a repo ref to RESOLVE registers it here;
+# one that wants it to DANGLE simply does not.
+claude_skill() {
+  mkdir -p "$FIX/.claude/skills/$1"
+  printf -- '---\nname: %s\n---\n\n# %s\n' "$1" "$1" >"$FIX/.claude/skills/$1/SKILL.md"
+}
+
+# repo_skill <name> — a LIBRARY-facing body at src/<name>/skill/SKILL.md, content on stdin. Ships
+# nowhere, so its reader is standing in this repo: its `[[refs]]` are judged against `.claude/skills/`,
+# and its bare `#N` are RESOLVED against this repo rather than rejected (the subject's § 3 inversion).
+repo_skill() {
+  mkdir -p "$FIX/src/$1/skill"
+  cat >"$FIX/src/$1/skill/SKILL.md"
+}
+
+# repo_readme — the authoring note at template/product-skills/README.md, content on stdin. A repo body
+# like any other, and the one that must be able to WRITE the `[[…]]` syntax without INVOKING it.
+repo_readme() { cat >"$FIX/template/product-skills/README.md"; }
 
 # The fixture's skill-manifest — the PUBLISH SET the subject reads (Rendering's script asks the
 # manifest, not the directory listing; see the MANIFEST note in check-skill-refs.sh).

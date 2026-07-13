@@ -78,8 +78,8 @@
           "lib/net10.0/FS.GG.UI.Controls.dll": {}
         },
         "contentFiles": {
-          "contentFiles/any/any/catalog.yml": {
-            "buildAction": "Content",
+          "contentFiles/any/any/_._": {
+            "buildAction": "None",
             "codeLanguage": "any",
             "copyToOutput": false
           }
@@ -226,17 +226,24 @@
           "lib/net10.0/FS.GG.UI.Testing.dll": {}
         }
       },
-      "FS.GG.UI.Themes.AntDesign/0.4.0-preview.1": {
+      "FS.GG.UI.Themes.Default/0.4.0-preview.1": {
         "type": "package",
         "dependencies": {
           "FS.GG.UI.DesignSystem": "0.4.0-preview.1",
           "FSharp.Core": "10.1.301"
         },
         "compile": {
-          "lib/net10.0/FS.GG.UI.Themes.AntDesign.dll": {}
+          "lib/net10.0/FS.GG.UI.Themes.Default.dll": {}
         },
         "runtime": {
-          "lib/net10.0/FS.GG.UI.Themes.AntDesign.dll": {}
+          "lib/net10.0/FS.GG.UI.Themes.Default.dll": {}
+        },
+        "contentFiles": {
+          "contentFiles/any/any/_._": {
+            "buildAction": "None",
+            "codeLanguage": "any",
+            "copyToOutput": false
+          }
         }
       },
       "FSharp.Core/10.1.301": {
@@ -761,6 +768,25 @@
         "runtime": {
           "lib/net10.0/Yoga.Net.dll": {}
         }
+      },
+      "SampleApps.Core/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v10.0",
+        "dependencies": {
+          "FS.GG.UI.Controls": "0.4.0-preview.1",
+          "FS.GG.UI.Controls.Elmish": "0.4.0-preview.1",
+          "FS.GG.UI.DesignSystem": "0.4.0-preview.1",
+          "FS.GG.UI.KeyboardInput": "0.4.0-preview.1",
+          "FS.GG.UI.SkiaViewer": "0.4.0-preview.1",
+          "FS.GG.UI.Themes.Default": "0.4.0-preview.1",
+          "FSharp.Core": "10.1.301"
+        },
+        "compile": {
+          "bin/placeholder/SampleApps.Core.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/SampleApps.Core.dll": {}
+        }
       }
     }
   },
@@ -934,15 +960,16 @@
         "lib/net10.0/FS.GG.UI.Testing.dll"
       ]
     },
-    "FS.GG.UI.Themes.AntDesign/0.4.0-preview.1": {
-      "sha512": "aSNHPojcOsXSdFVl2w66y1F9hUQShlUcOKVcXind+JWXTzBTtOszmPvfCQTcr7veyTbOo42ol+KuIFLFnn1KlA==",
+    "FS.GG.UI.Themes.Default/0.4.0-preview.1": {
+      "sha512": "LWeH1l7YFmD8N8+ATufP73lSzQ0D2Wcg6Hp5OjQAQJyAopFZ7E2ofaXSc6hiTxdxDIYvP7LDD56drakrMj8YBg==",
       "type": "package",
-      "path": "fs.gg.ui.themes.antdesign/0.4.0-preview.1",
+      "path": "fs.gg.ui.themes.default/0.4.0-preview.1",
       "files": [
         ".nupkg.metadata",
-        "fs.gg.ui.themes.antdesign.0.4.0-preview.1.nupkg.sha512",
-        "fs.gg.ui.themes.antdesign.nuspec",
-        "lib/net10.0/FS.GG.UI.Themes.AntDesign.dll"
+        "contentFiles/any/any/design-tokens.tokens.json",
+        "fs.gg.ui.themes.default.0.4.0-preview.1.nupkg.sha512",
+        "fs.gg.ui.themes.default.nuspec",
+        "lib/net10.0/FS.GG.UI.Themes.Default.dll"
       ]
     },
     "FSharp.Core/10.1.301": {
@@ -1612,19 +1639,20 @@
         "yoga.net.3.2.3.nupkg.sha512",
         "yoga.net.nuspec"
       ]
+    },
+    "SampleApps.Core/1.0.0": {
+      "type": "project",
+      "path": "../SampleApps.Core/SampleApps.Core.fsproj",
+      "msbuildProject": "../SampleApps.Core/SampleApps.Core.fsproj"
     }
   },
   "projectFileDependencyGroups": {
     "net10.0": [
-      "FS.GG.UI.Controls >= 0.4.0-preview.1",
       "FS.GG.UI.Controls.Elmish >= 0.4.0-preview.1",
-      "FS.GG.UI.DesignSystem >= 0.4.0-preview.1",
-      "FS.GG.UI.KeyboardInput >= 0.4.0-preview.1",
-      "FS.GG.UI.Scene >= 0.4.0-preview.1",
       "FS.GG.UI.SkiaViewer >= 0.4.0-preview.1",
       "FS.GG.UI.Testing >= 0.4.0-preview.1",
-      "FS.GG.UI.Themes.AntDesign >= 0.4.0-preview.1",
-      "FSharp.Core >= 10.1.301"
+      "FSharp.Core >= 10.1.301",
+      "SampleApps.Core >= 1.0.0"
     ]
   },
   "packageFolders": {
@@ -1633,11 +1661,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/home/developer/projects/FS.GG.Rendering-702/samples/AntShowcase/AntShowcase.Core/AntShowcase.Core.fsproj",
-      "projectName": "AntShowcase.Core",
-      "projectPath": "/home/developer/projects/FS.GG.Rendering-702/samples/AntShowcase/AntShowcase.Core/AntShowcase.Core.fsproj",
+      "projectUniqueName": "/home/developer/projects/FS.GG.Rendering-702/samples/SampleApps/SampleApps.App/SampleApps.App.fsproj",
+      "projectName": "SampleApps",
+      "projectPath": "/home/developer/projects/FS.GG.Rendering-702/samples/SampleApps/SampleApps.App/SampleApps.App.fsproj",
       "packagesPath": "/home/developer/projects/FS.GG.Rendering-702/artifacts/package-feed-cache",
-      "outputPath": "/home/developer/projects/FS.GG.Rendering-702/samples/AntShowcase/AntShowcase.Core/obj/",
+      "outputPath": "/home/developer/projects/FS.GG.Rendering-702/samples/SampleApps/SampleApps.App/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "/home/developer/projects/FS.GG.Rendering-702/specs/163-package-feed-validation-lanes/readiness/package-proof/source-rules.nuget.config"
@@ -1654,7 +1682,11 @@
         "net10.0": {
           "framework": "net10.0",
           "targetAlias": "net10.0",
-          "projectReferences": {}
+          "projectReferences": {
+            "/home/developer/projects/FS.GG.Rendering-702/samples/SampleApps/SampleApps.Core/SampleApps.Core.fsproj": {
+              "projectPath": "/home/developer/projects/FS.GG.Rendering-702/samples/SampleApps/SampleApps.Core/SampleApps.Core.fsproj"
+            }
+          }
         }
       },
       "restoreAuditProperties": {
@@ -1669,27 +1701,7 @@
         "framework": "net10.0",
         "targetAlias": "net10.0",
         "dependencies": {
-          "FS.GG.UI.Controls": {
-            "target": "Package",
-            "version": "[0.4.0-preview.1, )",
-            "generatePathProperty": true
-          },
           "FS.GG.UI.Controls.Elmish": {
-            "target": "Package",
-            "version": "[0.4.0-preview.1, )",
-            "generatePathProperty": true
-          },
-          "FS.GG.UI.DesignSystem": {
-            "target": "Package",
-            "version": "[0.4.0-preview.1, )",
-            "generatePathProperty": true
-          },
-          "FS.GG.UI.KeyboardInput": {
-            "target": "Package",
-            "version": "[0.4.0-preview.1, )",
-            "generatePathProperty": true
-          },
-          "FS.GG.UI.Scene": {
             "target": "Package",
             "version": "[0.4.0-preview.1, )",
             "generatePathProperty": true
@@ -1700,11 +1712,6 @@
             "generatePathProperty": true
           },
           "FS.GG.UI.Testing": {
-            "target": "Package",
-            "version": "[0.4.0-preview.1, )",
-            "generatePathProperty": true
-          },
-          "FS.GG.UI.Themes.AntDesign": {
             "target": "Package",
             "version": "[0.4.0-preview.1, )",
             "generatePathProperty": true

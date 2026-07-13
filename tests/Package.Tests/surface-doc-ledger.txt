@@ -79,9 +79,9 @@ vocabulary  interpretOverlayOutcome
 vocabulary  interpretPointerEffect
 tracked     interpretPointerOutcome
 vocabulary  ofMessage
-# `program` is the Elmish front door itself — init/update/view/subscriptions -> AdapterProgram. No skill cites
-# it in code; it passed S-DOC on the English word "program". Its own wrapper `programOfWidget` is tracked too.
-tracked     program
+# `program` — WRITTEN (#663). The Elmish front door is now cited in code by fs-gg-elmish, which also records
+# what the .fsi cannot: nothing in the shipped surface CONSUMES an AdapterProgram, so an author must not go
+# looking for a `run(program)`. Its wrapper `programOfWidget` is still a gap.
 tracked     programOfWidget
 tracked     runInteractiveAppWithWindowBehavior
 vocabulary  runScriptWithAudio
@@ -106,6 +106,13 @@ vocabulary  padding
 vocabulary  readOnly
 vocabulary  standardAttribute
 vocabulary  standardEvent
+# `Attr.visible` (`value: bool -> Attr<'msg>`) — a state builder beside `enabled` / `readOnly` / `loading`
+# directly above, and vocabulary for the same reason they are. It gets a line only NOW because until #692 it
+# did not need one: it was CREDITED AS DOCUMENTED by `fs-gg-game-core`'s `let visible : Rect = …` — a local
+# rectangle, in a culling example, in a different package, in a skill about game simulation. The same-language
+# homonym was not merely deleting blessed lines; it was HIDING a surface that had never had a decision made
+# about it. This is that decision.
+vocabulary  visible
 
 # ---- Controls/Buttons.fsi
 vocabulary  defaults
@@ -171,10 +178,6 @@ vocabulary  unsupportedStandardEvent
 
 # ---- Controls/Pointer.fsi
 vocabulary  origin
-# `Pointer.replay` folds a recorded message sequence to a final state + effects, and is the surface SC-005's
-# determinism claim rests on — exactly what a product driving its UI headlessly needs, and it is taught
-# nowhere. The skills' only "replay" is the English word ("a headless replay").
-tracked     replay
 vocabulary  toMsg
 
 # ---- Controls/RichText.fsi
@@ -227,13 +230,6 @@ vocabulary  reachableWithin
 # ---- Game.Core/Rng.fsi
 vocabulary  nextBool
 
-# ---- Game.Core/Resolution.fsi
-# The collision skill teaches `knockback` and calls it "discrete grid push" — so it documents the specialised
-# helper in prose and never names the general primitive it is built on. `push` carries a real footgun in its
-# own `.fsi` (`distance` bounds MEMORY, not just the loop: Int32.MaxValue exhausts it), which is precisely the
-# kind of thing a skill should say out loud. A gap, not a blessing.
-tracked     push
-
 # ---- Game.Core/SpatialGrid.fsi
 tracked     buildBounds
 vocabulary  queryBounds
@@ -277,6 +273,21 @@ vocabulary  pixelSnapPolicy
 vocabulary  stackConfig
 
 # ---- Scene/Scene.fsi
+# `describe` has NO line here, and #692 is the record of why — because its absence has meant two different
+# things and only the second one is honest.
+#
+# It WAS `vocabulary describe` (blessed: a product composes `Scene.describe` straight from the `.fsi`). PR #691
+# had to delete it, with `main` red and no cheap alternative: `fs-gg-persistence`'s canonical body — a FROZEN
+# MIRROR of FS.GG.Game's, so not editable here — carries an unrelated example helper `let describe (outcome:
+# PersistenceOutcome)`, the matcher read that BINDING as a citation, and the anti-rot rule ("no ledger entry
+# names a surface a product skill now documents") called the line stale. The ledger only shrinks, so the
+# deletion was one-way, onto a fact that was still exactly as true as when it was written.
+#
+# #692 fixed the matcher: a binding is not a citation, and within a skill that binds a name only a QUALIFIED
+# use reaches the API. So the false credit is gone — and the line still does not come back, because #663
+# meanwhile documented `Scene.describe` FOR REAL (`fs-gg-scene` cites `Scene.describe hud` in an F# fence).
+# It is now documented rather than blessed-as-undocumented, and a ledger line would be stale for the honest
+# reason. Restoring it — which #692 asked for, written before #663 landed — would red the gate.
 vocabulary  arc
 vocabulary  black
 vocabulary  circleEvidence
@@ -373,18 +384,15 @@ vocabulary  verifyPackageResolution
 
 # ---- carried by more than one signature file
 # The ledger keys on the NAME, so these lines each cover every `.fsi` that declares the name, and no single
-# `# ---- <file>` header above would be an honest home for them. All four were credited to English prose
-# ("validate your GridSpec", "a headless replay", "(diagnostics) refers to the local update") until #654.
-
-# `diagnostics` — Scene, Control, ControlRuntime, TextInput, ControlsElmish. The introspection front door in
-# every one of them: how a product asks what is wrong with the tree it just built. The Diagnostics.fsi
-# CONSTRUCTORS are vocabulary; the query that hands you the list is a capability, and it is taught nowhere.
-tracked     diagnostics
-
-# `validate` — Accessibility, Catalog, CustomControl, GraphValidation, Testing. Same shape: the primary
-# validation entry point in five packages, and its siblings `validateStandardControl` / `validateWindowBehavior`
-# are already tracked. A product author would want it and cannot find it.
-tracked     validate
+# `# ---- <file>` header above would be an honest home for them. FOUR names sat here, all credited to English
+# prose ("validate your GridSpec", "a headless replay", "(diagnostics) refers to the local update") until #654
+# required a citation.
+#
+# TWO REMAIN, and both are vocabulary — see below. The other two were `tracked`, and #663 WROTE them, so the
+# ratchet took their lines: `diagnostics` — the query that hands you the list, as against the Diagnostics.fsi
+# constructors, which stay vocabulary — is cited by fs-gg-elmish (Control/ControlRuntime/ControlsElmish) and by
+# fs-gg-scene, the only one of the two that reaches a headless-scene or governed product. `validate` is cited by
+# fs-gg-testing (the evidence/readiness entry points) and fs-gg-ui-widgets (the control-authoring ones).
 
 # `measure` — RichText (text measurement) and Scene (path measurement). Peers `measureHorizontal` /
 # `measureVertical` are vocabulary; these are the same kind of total query over a value you already hold.
