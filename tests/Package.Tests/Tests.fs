@@ -40,52 +40,46 @@ open System.Text.Json
 open System.Text.RegularExpressions
 open Expecto
 open FS.GG.TestSupport
+// #670 — the harness that OWNS the pack path. `PackageFeed.discoverPackablePackages` is the function the
+// real `package-feed` workflow uses to decide which packages the feed must contain; the pack guards below
+// call it rather than re-deriving the rule, so there is one definition and no copy to drift (the #661
+// lesson: two copies of one rule agree with each other, including when they are both wrong).
+open Rendering.Harness
 
 let repositoryRoot = RepositoryRoot.value
 
 let repositoryPath (relativePath: string) =
     Path.Combine(repositoryRoot, relativePath.Replace('/', Path.DirectorySeparatorChar))
 
-// Feature 045: build.fsx was relocated into compiled build/Governance modules; the PackLocal
-// package list and build wiring now live there. Aggregate those sources for the contract
-// assertions that historically scanned build.fsx text (behaviour/intent preserved).
+// #670 — WHAT ACTUALLY PACKS. These guards call the production discovery function, so they watch the
+// code that packs rather than a document describing it.
 //
-// #666 — a MISSING subject fails LOUDLY. This used to `else ""`, and every NEGATIVE assertion over
-// the result then passed vacuously: `Expect.isFalse (build.Contains "FS.GG.UI.Charts")` is green
-// because there is no build wiring at all, not because the wiring is Charts-free. Proven by deleting
-// `build/Governance/` and re-running: "controls boundary has no active Charts package capability"
-// — whose ONLY build-based assertion is that negative — still passed. Its two sibling tests reddened,
-// but only because they happen to also assert POSITIVES (`stringContains`), which an empty string
-// fails. That is an accident of assertion order, not a guard.
+// The real pack path is `dotnet pack FS.GG.Rendering.slnx` (PackageFeed.runPackIfRequested), and what
+// it produces is decided by two things and no list: slnx membership, and each `src/**/*.fsproj`'s
+// `<PackageId>FS.GG.UI.*` + `<IsPackable>true`. `PackageFeed.discoverPackablePackages` is the harness's
+// own reading of that rule — the set it expects to find in the feed — so asking IT is asking the pack
+// path itself.
 //
-// It is a live trap rather than a theoretical one: #666 was filed proposing to DELETE
-// `build/Governance/PackageSurface.fs` as dead code (it is not — it is the text these guards scan).
-// A worker who does that, sees the two positive tests red, and "fixes" them by dropping the
-// assertions, silently converts the remaining Charts guard into a tautology.
+// What these guards used to watch: `buildFrontEnd()`, which read every `.fs` under `build/Governance/`
+// as TEXT. The only file there was `PackageSurface.fs`: two hardcoded lists stranded when feature 045's
+// relocation of `build.fsx` into compiled build modules never completed. No project compiled it, nothing
+// executed it, and `./fake.sh` is absent from the repo root — so `PackLocal` and `PackageSurfaceCheck`,
+// the targets those lists fed, could not be run at all. `Expect.stringContains build
+// "src/Scene/Scene.fsproj"` therefore asserted that an inert file mentioned a string the test itself also
+// hardcoded: green forever, and blind in both directions. Add a package to the real pack path and nothing
+// here moved; re-introduce the retired Charts package THROUGH the real pack path and the Charts guards
+// would not have seen it. The list named five packages, its own comment said nine, and the repo ships
+// seventeen — nobody noticed, because nothing read it.
 //
-// Scanning zero inputs and scanning a clean one must not share a verdict — the same fails-open class
-// #511 fixed for `generatedProductInputs` a few tests below, in this same file.
-let buildFrontEnd () =
-    let dir = Path.Combine(repositoryRoot, "build", "Governance")
+// That is FS-GG/.github#266's "gate reports green on a missing subject" one level up: the subject was
+// present, but it was not the subject that mattered.
+let packablePackages () =
+    // Reads the project files and nothing else — packs nothing, touches no network — so these stay in
+    // the hermetic default tier (#540) and run pre-merge. The feed path only names the .nupkg each
+    // package WOULD produce; discovery never looks for it.
+    PackageFeed.discoverPackablePackages repositoryRoot (Path.Combine(Path.GetTempPath(), "fs-gg-packable-probe"))
 
-    if not (Directory.Exists dir) then
-        failtestf
-            "build front-end sources are missing: %s does not exist. The PackLocal and Charts guards below scan this text; with no text, every one of their negative assertions passes vacuously."
-            dir
-
-    let sources =
-        Directory.GetFiles(dir, "*.fs", SearchOption.AllDirectories)
-        |> Array.filter (fun p ->
-            let n = p.Replace('\\', '/')
-            not (n.Contains "/bin/" || n.Contains "/obj/"))
-        |> Array.sort
-
-    if Array.isEmpty sources then
-        failtestf
-            "build front-end sources are missing: %s exists but contains no .fs files. The PackLocal and Charts guards below scan this text; with no text, every one of their negative assertions passes vacuously."
-            dir
-
-    sources |> Array.map File.ReadAllText |> String.concat Environment.NewLine
+let packablePackageIds () = packablePackages () |> List.map _.PackageId |> Set.ofList
 
 let runDotnetWithin (timeoutMilliseconds: int) (workingDirectory: string) (arguments: string) =
     let startInfo: ProcessStartInfo = ProcessStartInfo("dotnet", arguments)
@@ -410,24 +404,58 @@ let profileRosterTests =
 [<Tests>]
 let packageContractTests =
     let v1PackageTests = [
-        test "active packages are declared for PackLocal" {
-            let build = buildFrontEnd ()
+        // #670 — the ANCHOR half of the pack contract, and it is deliberately not redundant with
+        // Feature207BomMembershipTests. That test asserts the BOM nuspec EQUALS the discovered packable
+        // set — a parity test, and a parity test passes whenever BOTH sides move together. Flip Scene's
+        // <IsPackable> to false and delete its nuspec <dependency> in one commit and it stays green,
+        // because the two sides still agree; they just agree about a framework that no longer ships a
+        // scene package. This names the packages the framework may not silently stop shipping, so
+        // dropping one has to be argued for HERE, in words, instead of falling out of an edit elsewhere.
+        test "the core packages really are packable by the real pack path" {
+            let packable = packablePackageIds ()
 
-            // V3 Stage 5: the monolith is retired; PackLocal packs the nine split packages only.
-            [ "src/Scene/Scene.fsproj", "FS.GG.UI.Scene"
-              "src/SkiaViewer/SkiaViewer.fsproj", "FS.GG.UI.SkiaViewer"
-              "src/Layout/Layout.fsproj", "FS.GG.UI.Layout"
-              "src/Controls.Elmish/Controls.Elmish.fsproj", "FS.GG.UI.Controls.Elmish"
-              "src/Controls/Controls.fsproj", "FS.GG.UI.Controls" ]
-            |> List.iter (fun (project, packageId) ->
-                Expect.stringContains build project $"{project} is packed by PackLocal"
-                Expect.stringContains build packageId $"{packageId} is packed by PackLocal")
+            // Non-empty FIRST. Every Charts assertion in this list is negative, and a discovery that
+            // returned the empty set would satisfy all of them vacuously. That is not hypothetical: it is
+            // exactly what `buildFrontEnd()` did before #667 hardened it — its `else ""` made three
+            // negative guards green over nothing, and one of them was demonstrated green over nothing.
+            // Re-pointing at a real subject does not by itself retire that failure mode, so close it.
+            Expect.isNonEmpty packable "the real pack path discovers at least one packable FS.GG.UI.* package"
 
-            Expect.isFalse (build.Contains("\"src/Charts/Charts.fsproj\", \"FS.GG.UI.Charts\"")) "Charts is not an active PackLocal package"
+            [ "FS.GG.UI.Scene"
+              "FS.GG.UI.SkiaViewer"
+              "FS.GG.UI.Layout"
+              "FS.GG.UI.Controls.Elmish"
+              "FS.GG.UI.Controls" ]
+            |> List.iter (fun packageId ->
+                Expect.isTrue
+                    (Set.contains packageId packable)
+                    $"{packageId} is packable, so `dotnet pack FS.GG.Rendering.slnx` ships it")
+
+            Expect.isFalse (Set.contains "FS.GG.UI.Charts" packable) "the retired Charts package is not packable"
+        }
+
+        // #670 — `dotnet pack FS.GG.Rendering.slnx` is the pack COMMAND, but `discoverPackablePackages`
+        // scans `src/**` and never reads the slnx. So the two can disagree, and the direction that hurts
+        // is a packable project the slnx does not list: it never packs, yet the harness still expects it
+        // in the feed and reds with MissingExpectedPackage — at RELEASE, after the merge that caused it.
+        // Nothing else in the repo compares these two sets. Feature207 compares discovery to the nuspec;
+        // Feature242 parses the slnx but only to demand the docs name what it finds. This is the join.
+        test "every packable project is a member of the slnx the pack command actually packs" {
+            let slnx = File.ReadAllText(repositoryPath "FS.GG.Rendering.slnx")
+
+            let orphaned =
+                packablePackages ()
+                |> List.filter (fun package -> not (slnx.Contains(package.ProjectPath, StringComparison.Ordinal)))
+                |> List.map _.PackageId
+
+            Expect.isEmpty
+                orphaned
+                $"every packable project is listed in FS.GG.Rendering.slnx, or the pack command cannot \
+                  produce it and the feed check reds a release later: {orphaned}"
         }
 
         test "controls boundary has no active Charts package capability or monolithic viewer coupling" {
-            let build = buildFrontEnd ()
+            let packable = packablePackageIds ()
             let capabilities = File.ReadAllText(Path.Combine(repositoryRoot, "template", "capabilities.yml"))
             let controlsProject = File.ReadAllText(Path.Combine(repositoryRoot, "src", "Controls", "Controls.fsproj"))
 
@@ -436,15 +464,19 @@ let packageContractTests =
             let monolithDir = "Lib"
             let monolithRef = $@"..\{monolithDir}\{monolithDir}.fsproj"
 
+            // #670 — the anti-vacuity guard belongs with the negative it protects: this assertion is
+            // "Charts is absent from the packable set", and an empty packable set satisfies it for free.
+            Expect.isNonEmpty packable "the real pack path discovers at least one packable FS.GG.UI.* package"
+
             Expect.isFalse (File.Exists(Path.Combine(repositoryRoot, "src", "Charts", "Charts.fsproj"))) "legacy Charts project is removed or deactivated from source ownership"
-            Expect.isFalse (build.Contains("FS.GG.UI.Charts", StringComparison.Ordinal)) "build wiring has no active Charts package reference"
+            Expect.isFalse (Set.contains "FS.GG.UI.Charts" packable) "the real pack path does not produce a Charts package"
             Expect.isFalse (capabilities.Contains("id: charts", StringComparison.OrdinalIgnoreCase)) "generated capability catalog has no active charts capability"
             Expect.isFalse (controlsProject.Contains(monolithRef, StringComparison.Ordinal)) "Controls package does not depend on the retired monolithic viewer/runtime project"
             Expect.isTrue (File.Exists(Path.Combine(repositoryRoot, "src", "Controls", "DataGrid.fsi"))) "DataGrid public contract is owned by Controls"
         }
 
         test "generated products and surface checks do not keep Charts as an active package" {
-            let build = buildFrontEnd ()
+            let packable = packablePackageIds ()
 
             // Every profile, not four of five: `game` — the template's DEFAULT starter since Feature 220 —
             // was absent from this list, so the one profile most products actually generate was never
@@ -495,13 +527,50 @@ let packageContractTests =
                             None))
 
             Expect.isEmpty activeHits "active generated product inputs do not select Charts package, capability, project, or chart-specific generated skill"
-            Expect.isFalse (build.Contains("\"FS.GG.UI.Charts\"", StringComparison.Ordinal)) "generated product package validation does not enumerate Charts as an available capability package"
+            Expect.isNonEmpty packable "the real pack path discovers at least one packable FS.GG.UI.* package"
+            Expect.isFalse (Set.contains "FS.GG.UI.Charts" packable) "the real pack path does not produce a Charts package"
             Expect.isFalse (File.Exists(repositoryPath "readiness/surface-baselines/FS.GG.UI.Charts.txt")) "legacy Charts package has no active surface baseline"
             Expect.isFalse (File.Exists(repositoryPath "template/fragments/charts/skill/SKILL.md")) "template has no chart-specific generated skill fragment"
             Expect.isFalse (File.Exists(repositoryPath "template/base/.agents/skills/fs-gg-charts/SKILL.md")) "generated product base has no chart-specific generated skill"
-            Expect.stringContains build "readiness/surface-baselines/FS.GG.UI.Controls.Elmish.txt" "package surface report includes the Controls.Elmish adapter baseline"
-            Expect.stringContains build "readiness/surface-baselines/FS.GG.UI.Controls.txt" "package surface report includes the Controls baseline"
-            Expect.stringContains build "readiness/surface-baselines/FS.GG.UI.KeyboardInput.txt" "package surface report includes the KeyboardInput baseline"
+        }
+
+        // #670 — the "surface checks" half of the guard above, re-pointed at what a surface check IS.
+        //
+        // It used to assert that an inert text file MENTIONED three of the baseline paths
+        // (`Expect.stringContains build "readiness/surface-baselines/FS.GG.UI.Controls.txt"`). Three of
+        // sixteen, named by hand, checked against a file nobody runs — so it could not tell you the one
+        // thing worth knowing: whether a package ships a public surface that nothing has baselined.
+        //
+        // And that hole is REACHABLE. `scripts/refresh-surface-baselines.fsx` — the generator gate.yml
+        // runs, and the only thing that writes these files — enumerates its packages from a HARDCODED
+        // list of sixteen. Add a packable package and the generator does not know about it, so it writes
+        // no baseline, so gate.yml's regenerate-then-git-diff sees no drift and no untracked file, and
+        // SurfaceAreaTests never names it either. Every gate stays green while a package's entire public
+        // API goes unwatched. Deriving the expectation from the packable set is what closes it: the new
+        // package has no baseline, and this test says so by name.
+        test "every packable package has a committed public-surface baseline" {
+            let packable = packablePackageIds ()
+            Expect.isNonEmpty packable "the real pack path discovers at least one packable FS.GG.UI.* package"
+
+            // The BOM metapackage is dependencies-only (IncludeBuildOutput=false — see src/Meta): it
+            // carries no assembly, so it has no public surface to baseline. Every OTHER packable package
+            // ships one, and must have both baselines: the type-name file, and the `members/` file that
+            // Issue #200 added because the type-name file cannot see a member added to an existing type.
+            let surfaceBearing = packable |> Set.remove "FS.GG.UI"
+
+            let missing =
+                surfaceBearing
+                |> Set.toList
+                |> List.collect (fun packageId ->
+                    [ $"readiness/surface-baselines/{packageId}.txt"
+                      $"readiness/surface-baselines/members/{packageId}.txt" ])
+                |> List.filter (repositoryPath >> File.Exists >> not)
+
+            Expect.isEmpty
+                missing
+                $"every packable package has a committed type-name AND member baseline — a missing one is a \
+                  public API that no surface gate watches, because the generator's package list never \
+                  learned about it: {missing}"
         }
 
         // The smoke is too slow for the push gate, so it stays opt-in for Dev/Verify/Ci. "Opt-in"
