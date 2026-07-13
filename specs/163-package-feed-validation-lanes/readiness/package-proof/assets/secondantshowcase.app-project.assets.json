@@ -78,8 +78,8 @@
           "lib/net10.0/FS.GG.UI.Controls.dll": {}
         },
         "contentFiles": {
-          "contentFiles/any/any/catalog.yml": {
-            "buildAction": "Content",
+          "contentFiles/any/any/_._": {
+            "buildAction": "None",
             "codeLanguage": "any",
             "copyToOutput": false
           }
@@ -760,6 +760,27 @@
         },
         "runtime": {
           "lib/net10.0/Yoga.Net.dll": {}
+        }
+      },
+      "SecondAntShowcase.Core/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v10.0",
+        "dependencies": {
+          "FS.GG.UI.Controls": "0.4.0-preview.1",
+          "FS.GG.UI.Controls.Elmish": "0.4.0-preview.1",
+          "FS.GG.UI.DesignSystem": "0.4.0-preview.1",
+          "FS.GG.UI.KeyboardInput": "0.4.0-preview.1",
+          "FS.GG.UI.Scene": "0.4.0-preview.1",
+          "FS.GG.UI.SkiaViewer": "0.4.0-preview.1",
+          "FS.GG.UI.Testing": "0.4.0-preview.1",
+          "FS.GG.UI.Themes.AntDesign": "0.4.0-preview.1",
+          "FSharp.Core": "10.1.301"
+        },
+        "compile": {
+          "bin/placeholder/SecondAntShowcase.Core.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/SecondAntShowcase.Core.dll": {}
         }
       }
     }
@@ -1612,19 +1633,22 @@
         "yoga.net.3.2.3.nupkg.sha512",
         "yoga.net.nuspec"
       ]
+    },
+    "SecondAntShowcase.Core/1.0.0": {
+      "type": "project",
+      "path": "../SecondAntShowcase.Core/SecondAntShowcase.Core.fsproj",
+      "msbuildProject": "../SecondAntShowcase.Core/SecondAntShowcase.Core.fsproj"
     }
   },
   "projectFileDependencyGroups": {
     "net10.0": [
-      "FS.GG.UI.Controls >= 0.4.0-preview.1",
       "FS.GG.UI.Controls.Elmish >= 0.4.0-preview.1",
-      "FS.GG.UI.DesignSystem >= 0.4.0-preview.1",
-      "FS.GG.UI.KeyboardInput >= 0.4.0-preview.1",
-      "FS.GG.UI.Scene >= 0.4.0-preview.1",
+      "FS.GG.UI.Diagnostics >= 0.4.0-preview.1",
       "FS.GG.UI.SkiaViewer >= 0.4.0-preview.1",
       "FS.GG.UI.Testing >= 0.4.0-preview.1",
-      "FS.GG.UI.Themes.AntDesign >= 0.4.0-preview.1",
-      "FSharp.Core >= 10.1.301"
+      "FSharp.Core >= 10.1.301",
+      "SecondAntShowcase.Core >= 1.0.0",
+      "SkiaSharp >= 4.150.0"
     ]
   },
   "packageFolders": {
@@ -1633,11 +1657,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/home/developer/projects/FS.GG.Rendering-702/samples/AntShowcase/AntShowcase.Core/AntShowcase.Core.fsproj",
-      "projectName": "AntShowcase.Core",
-      "projectPath": "/home/developer/projects/FS.GG.Rendering-702/samples/AntShowcase/AntShowcase.Core/AntShowcase.Core.fsproj",
+      "projectUniqueName": "/home/developer/projects/FS.GG.Rendering-702/samples/SecondAntShowcase/SecondAntShowcase.App/SecondAntShowcase.App.fsproj",
+      "projectName": "SecondAntShowcase",
+      "projectPath": "/home/developer/projects/FS.GG.Rendering-702/samples/SecondAntShowcase/SecondAntShowcase.App/SecondAntShowcase.App.fsproj",
       "packagesPath": "/home/developer/projects/FS.GG.Rendering-702/artifacts/package-feed-cache",
-      "outputPath": "/home/developer/projects/FS.GG.Rendering-702/samples/AntShowcase/AntShowcase.Core/obj/",
+      "outputPath": "/home/developer/projects/FS.GG.Rendering-702/samples/SecondAntShowcase/SecondAntShowcase.App/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "/home/developer/projects/FS.GG.Rendering-702/specs/163-package-feed-validation-lanes/readiness/package-proof/source-rules.nuget.config"
@@ -1654,7 +1678,11 @@
         "net10.0": {
           "framework": "net10.0",
           "targetAlias": "net10.0",
-          "projectReferences": {}
+          "projectReferences": {
+            "/home/developer/projects/FS.GG.Rendering-702/samples/SecondAntShowcase/SecondAntShowcase.Core/SecondAntShowcase.Core.fsproj": {
+              "projectPath": "/home/developer/projects/FS.GG.Rendering-702/samples/SecondAntShowcase/SecondAntShowcase.Core/SecondAntShowcase.Core.fsproj"
+            }
+          }
         }
       },
       "restoreAuditProperties": {
@@ -1669,27 +1697,12 @@
         "framework": "net10.0",
         "targetAlias": "net10.0",
         "dependencies": {
-          "FS.GG.UI.Controls": {
-            "target": "Package",
-            "version": "[0.4.0-preview.1, )",
-            "generatePathProperty": true
-          },
           "FS.GG.UI.Controls.Elmish": {
             "target": "Package",
             "version": "[0.4.0-preview.1, )",
             "generatePathProperty": true
           },
-          "FS.GG.UI.DesignSystem": {
-            "target": "Package",
-            "version": "[0.4.0-preview.1, )",
-            "generatePathProperty": true
-          },
-          "FS.GG.UI.KeyboardInput": {
-            "target": "Package",
-            "version": "[0.4.0-preview.1, )",
-            "generatePathProperty": true
-          },
-          "FS.GG.UI.Scene": {
+          "FS.GG.UI.Diagnostics": {
             "target": "Package",
             "version": "[0.4.0-preview.1, )",
             "generatePathProperty": true
@@ -1704,15 +1717,15 @@
             "version": "[0.4.0-preview.1, )",
             "generatePathProperty": true
           },
-          "FS.GG.UI.Themes.AntDesign": {
-            "target": "Package",
-            "version": "[0.4.0-preview.1, )",
-            "generatePathProperty": true
-          },
           "FSharp.Core": {
             "include": "Runtime, Compile, Build, Native, Analyzers, BuildTransitive",
             "target": "Package",
             "version": "[10.1.301, )",
+            "generatePathProperty": true
+          },
+          "SkiaSharp": {
+            "target": "Package",
+            "version": "[4.150.0, )",
             "generatePathProperty": true
           }
         },

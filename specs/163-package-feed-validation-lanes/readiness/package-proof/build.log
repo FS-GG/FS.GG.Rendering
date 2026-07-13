@@ -1,0 +1,127 @@
+dotnet build /home/developer/projects/FS.GG.Rendering-702/samples/AntShowcase/AntShowcase.Core/AntShowcase.Core.fsproj -c Release --no-restore
+  AntShowcase.Core -> /home/developer/projects/FS.GG.Rendering-702/samples/AntShowcase/AntShowcase.Core/bin/Release/net10.0/AntShowcase.Core.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:03.43
+
+dotnet build /home/developer/projects/FS.GG.Rendering-702/samples/AntShowcase/AntShowcase.App/AntShowcase.App.fsproj -c Release --no-restore
+  AntShowcase.Core -> /home/developer/projects/FS.GG.Rendering-702/samples/AntShowcase/AntShowcase.Core/bin/Release/net10.0/AntShowcase.Core.dll
+/home/developer/projects/FS.GG.Rendering-702/samples/AntShowcase/AntShowcase.App/VisualReadiness.fs(61,17): warning FS0044: This construct is deprecated. Use the overload with SKSamplingOptions instead. [/home/developer/projects/FS.GG.Rendering-702/samples/AntShowcase/AntShowcase.App/AntShowcase.App.fsproj]
+  AntShowcase.App -> /home/developer/projects/FS.GG.Rendering-702/samples/AntShowcase/AntShowcase.App/bin/Release/net10.0/AntShowcase.dll
+
+Build succeeded.
+
+/home/developer/projects/FS.GG.Rendering-702/samples/AntShowcase/AntShowcase.App/VisualReadiness.fs(61,17): warning FS0044: This construct is deprecated. Use the overload with SKSamplingOptions instead. [/home/developer/projects/FS.GG.Rendering-702/samples/AntShowcase/AntShowcase.App/AntShowcase.App.fsproj]
+    1 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:03.49
+
+dotnet build /home/developer/projects/FS.GG.Rendering-702/samples/AntShowcase/AntShowcase.Tests/AntShowcase.Tests.fsproj -c Release --no-restore
+  AntShowcase.Core -> /home/developer/projects/FS.GG.Rendering-702/samples/AntShowcase/AntShowcase.Core/bin/Release/net10.0/AntShowcase.Core.dll
+  AntShowcase.App -> /home/developer/projects/FS.GG.Rendering-702/samples/AntShowcase/AntShowcase.App/bin/Release/net10.0/AntShowcase.dll
+  AntShowcase.Tests -> /home/developer/projects/FS.GG.Rendering-702/samples/AntShowcase/AntShowcase.Tests/bin/Release/net10.0/AntShowcase.Tests.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:03.18
+
+dotnet build /home/developer/projects/FS.GG.Rendering-702/samples/ControlsGallery/ControlsGallery.App/ControlsGallery.App.fsproj -c Release --no-restore
+  ControlsGallery.Core -> /home/developer/projects/FS.GG.Rendering-702/samples/ControlsGallery/ControlsGallery.Core/bin/Release/net10.0/ControlsGallery.Core.dll
+  ControlsGallery.App -> /home/developer/projects/FS.GG.Rendering-702/samples/ControlsGallery/ControlsGallery.App/bin/Release/net10.0/ControlsGallery.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:04.68
+
+dotnet build /home/developer/projects/FS.GG.Rendering-702/samples/ControlsGallery/ControlsGallery.Tests/ControlsGallery.Tests.fsproj -c Release --no-restore
+  ControlsGallery.Core -> /home/developer/projects/FS.GG.Rendering-702/samples/ControlsGallery/ControlsGallery.Core/bin/Release/net10.0/ControlsGallery.Core.dll
+/home/developer/projects/FS.GG.Rendering-702/samples/ControlsGallery/ControlsGallery.Tests/ThemeInvarianceTests.fs(23,9): warning FS3221: This expression returns a value of type 'Test' but is implicitly discarded. Consider using 'let' to bind the result to a name, e.g. 'let result = expression'. If you intended to use the expression as a value in the sequence then use an explicit 'yield'. [/home/developer/projects/FS.GG.Rendering-702/samples/ControlsGallery/ControlsGallery.Tests/ControlsGallery.Tests.fsproj]
+  ControlsGallery.Tests -> /home/developer/projects/FS.GG.Rendering-702/samples/ControlsGallery/ControlsGallery.Tests/bin/Release/net10.0/ControlsGallery.Tests.dll
+
+Build succeeded.
+
+/home/developer/projects/FS.GG.Rendering-702/samples/ControlsGallery/ControlsGallery.Tests/ThemeInvarianceTests.fs(23,9): warning FS3221: This expression returns a value of type 'Test' but is implicitly discarded. Consider using 'let' to bind the result to a name, e.g. 'let result = expression'. If you intended to use the expression as a value in the sequence then use an explicit 'yield'. [/home/developer/projects/FS.GG.Rendering-702/samples/ControlsGallery/ControlsGallery.Tests/ControlsGallery.Tests.fsproj]
+    1 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:02.73
+
+dotnet build /home/developer/projects/FS.GG.Rendering-702/samples/ControlsGallery/ControlsGallery.Core/ControlsGallery.Core.fsproj -c Release --no-restore
+  ControlsGallery.Core -> /home/developer/projects/FS.GG.Rendering-702/samples/ControlsGallery/ControlsGallery.Core/bin/Release/net10.0/ControlsGallery.Core.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:00.57
+
+dotnet build /home/developer/projects/FS.GG.Rendering-702/samples/SampleApps/SampleApps.App/SampleApps.App.fsproj -c Release --no-restore
+  SampleApps.Core -> /home/developer/projects/FS.GG.Rendering-702/samples/SampleApps/SampleApps.Core/bin/Release/net10.0/SampleApps.Core.dll
+  SampleApps.App -> /home/developer/projects/FS.GG.Rendering-702/samples/SampleApps/SampleApps.App/bin/Release/net10.0/SampleApps.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:05.27
+
+dotnet build /home/developer/projects/FS.GG.Rendering-702/samples/SampleApps/SampleApps.Tests/SampleApps.Tests.fsproj -c Release --no-restore
+  SampleApps.Core -> /home/developer/projects/FS.GG.Rendering-702/samples/SampleApps/SampleApps.Core/bin/Release/net10.0/SampleApps.Core.dll
+  SampleApps.Tests -> /home/developer/projects/FS.GG.Rendering-702/samples/SampleApps/SampleApps.Tests/bin/Release/net10.0/SampleApps.Tests.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:02.75
+
+dotnet build /home/developer/projects/FS.GG.Rendering-702/samples/SampleApps/SampleApps.Core/SampleApps.Core.fsproj -c Release --no-restore
+  SampleApps.Core -> /home/developer/projects/FS.GG.Rendering-702/samples/SampleApps/SampleApps.Core/bin/Release/net10.0/SampleApps.Core.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:00.57
+
+dotnet build /home/developer/projects/FS.GG.Rendering-702/samples/SecondAntShowcase/SecondAntShowcase.Tests/SecondAntShowcase.Tests.fsproj -c Release --no-restore
+  SecondAntShowcase.Core -> /home/developer/projects/FS.GG.Rendering-702/samples/SecondAntShowcase/SecondAntShowcase.Core/bin/Release/net10.0/SecondAntShowcase.Core.dll
+/home/developer/projects/FS.GG.Rendering-702/samples/SecondAntShowcase/SecondAntShowcase.App/VisualReadiness.fs(61,17): warning FS0044: This construct is deprecated. Use the overload with SKSamplingOptions instead. [/home/developer/projects/FS.GG.Rendering-702/samples/SecondAntShowcase/SecondAntShowcase.App/SecondAntShowcase.App.fsproj]
+  SecondAntShowcase.App -> /home/developer/projects/FS.GG.Rendering-702/samples/SecondAntShowcase/SecondAntShowcase.App/bin/Release/net10.0/SecondAntShowcase.dll
+  SecondAntShowcase.Tests -> /home/developer/projects/FS.GG.Rendering-702/samples/SecondAntShowcase/SecondAntShowcase.Tests/bin/Release/net10.0/SecondAntShowcase.Tests.dll
+
+Build succeeded.
+
+/home/developer/projects/FS.GG.Rendering-702/samples/SecondAntShowcase/SecondAntShowcase.App/VisualReadiness.fs(61,17): warning FS0044: This construct is deprecated. Use the overload with SKSamplingOptions instead. [/home/developer/projects/FS.GG.Rendering-702/samples/SecondAntShowcase/SecondAntShowcase.App/SecondAntShowcase.App.fsproj]
+    1 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:11.03
+
+dotnet build /home/developer/projects/FS.GG.Rendering-702/samples/SecondAntShowcase/SecondAntShowcase.Core/SecondAntShowcase.Core.fsproj -c Release --no-restore
+  SecondAntShowcase.Core -> /home/developer/projects/FS.GG.Rendering-702/samples/SecondAntShowcase/SecondAntShowcase.Core/bin/Release/net10.0/SecondAntShowcase.Core.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:00.66
+
+dotnet build /home/developer/projects/FS.GG.Rendering-702/samples/SecondAntShowcase/SecondAntShowcase.App/SecondAntShowcase.App.fsproj -c Release --no-restore
+  SecondAntShowcase.Core -> /home/developer/projects/FS.GG.Rendering-702/samples/SecondAntShowcase/SecondAntShowcase.Core/bin/Release/net10.0/SecondAntShowcase.Core.dll
+  SecondAntShowcase.App -> /home/developer/projects/FS.GG.Rendering-702/samples/SecondAntShowcase/SecondAntShowcase.App/bin/Release/net10.0/SecondAntShowcase.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:00.83
+
