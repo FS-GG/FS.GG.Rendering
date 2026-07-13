@@ -1,9 +1,9 @@
 module RestoreLockTests
 
-open System
 open System.IO
 open System.Text.RegularExpressions
 open Expecto
+open FS.GG.TestSupport
 
 // Feature 211 — deterministic policy/coverage assertion for the locked-restore mechanism (research R6,
 // Principle V). These are straight filesystem assertions over real committed artifacts (no mocks): the
@@ -14,15 +14,7 @@ open Expecto
 // VR-2: the excluded lanes (the 4 shadowing samples) do NOT. (Package.Tests left this set in #540.)
 // The props assertion also backstops US2 (NU1603-as-error contract).
 
-// Walk up from the test's base directory until the repo root (the dir holding FS.GG.Rendering.slnx).
-let private repoRoot =
-    let rec up (dir: DirectoryInfo | null) =
-        match dir with
-        | null -> failwith "could not locate repo root (FS.GG.Rendering.slnx) walking up from test base dir"
-        | d ->
-            if File.Exists(Path.Combine(d.FullName, "FS.GG.Rendering.slnx")) then d.FullName
-            else up d.Parent
-    up (DirectoryInfo(AppContext.BaseDirectory))
+let private repoRoot = RepositoryRoot.value
 
 let private repoPath (rel: string) = Path.Combine(repoRoot, rel.Replace('/', Path.DirectorySeparatorChar))
 

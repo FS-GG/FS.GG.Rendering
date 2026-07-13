@@ -539,20 +539,15 @@ type ViewerEffect =
     /// Issue #535 — a batch of save/load requests a product's `update` emitted, in dispatch order.
     /// Pure data: no file handle, no stream, no closure.
     ///
-    /// Only `Viewer.runAppWithPersistence` realizes it — by handing the batch to a caller-supplied sink
-    /// and dispatching each `PersistenceOutcome` the sink returns back into `update` as a message, so a
-    /// `Load` is finally answerable. `runApp` and `runAppWithAudio` discard it: a viewer owns no save
+    /// THIS CASE IS THE POINT OF #535. Until it existed, no `ViewerEffect` carried a
+    /// `PersistenceEffect`, so a product could request a save and no host could ever see it: the
+    /// record-only interpreter was the only thing that would ever consume one, and it records and
+    /// drops. A product's save requests had nowhere to go, and nothing said so.
+    ///
+    /// Only `runAppWithPersistence` / `runAppWithAudioAndPersistence` realize it — by handing the batch to the caller-supplied sink and
+    /// dispatching each `PersistenceOutcome` the sink returns back into `update` as a `'msg`. `runApp`
+    /// and `runAppWithAudio` discard it, exactly as they discard `PlayAudio`: a viewer owns no save
     /// location, and inventing one would be worse than owning none.
-    ///
-    /// NOTE — this case is NEWER than the `FS.GG.UI.SkiaViewer` your product pins, so you cannot bind it
-    /// yet. It arrives with the next framework release. Until then a product records its requests with
-    /// `Persistence.interpret` and writes its own backend, exactly as before.
-    ///
-    /// `interpret`, NOT `interpretRecordOnly` (#550, and #598 for why this line survived it). The honest
-    /// name is coming, but it is not on the package you pin: published FS.GG.UI.Canvas 0.9.0 exports
-    /// `interpret` and does not export `interpretRecordOnly`, and the `[<Obsolete>]` that makes `interpret`
-    /// look wrong on `main` is itself unreleased. Naming the unreleased spelling here handed the reader an
-    /// escape hatch as unbindable as the case it escapes — both halves of the advice a build error.
     | Persist of effects: PersistenceEffect list
 
 /// Public contract type exposed by this FS.GG.UI package.

@@ -99,9 +99,20 @@ module Persistence =
     /// Headless-safe: no filesystem access, never blocks, never throws. The evidence it returns
     /// proves what your product ASKED for, and nothing about durability.
     ///
-    /// The name is a trap, and a known one: everywhere else in this framework `interpret*` means
-    /// *perform the effect* — `GlHost.interpretEffect` drives real GL work — while this one writes
-    /// no bytes at all. A later framework release renames it to `interpretRecordOnly`, which says
-    /// what it does; that spelling is not in the `FS.GG.UI.Canvas` this product pins, so `interpret`
-    /// is the one to call today.
+    /// The name is a trap, and a known one — but not the trap this comment used to claim (#619). It is
+    /// NOT that `interpret*` means *perform the effect* elsewhere in this framework: no public
+    /// `interpret*` performs anything. Every one is a pure fold to a value — `Audio.interpret` calls
+    /// itself a "record-only interpreter" with "no device access", `Layout.interpretWorkflowEffect`
+    /// returns a `Msg`. Performing an effect is a HOST call, and a host call takes a backend or an
+    /// engine.
+    ///
+    /// What `interpret` really promises you is a DOWNSTREAM — something that carries your requests out
+    /// — and for persistence there is none: no `ViewerEffect` case carries a `PersistenceEffect`, so
+    /// the requests are recorded and dropped, and the pipeline the name implies has no other end. If
+    /// you want durability you write the backend yourself, and this fold is what proves to a headless
+    /// test what your product ASKED for.
+    ///
+    /// A later framework release renames it to `interpretRecordOnly`, which says what it does; that
+    /// spelling is not in the `FS.GG.UI.Canvas` this product pins, so `interpret` is the one to call
+    /// today.
     val interpret: effects: PersistenceEffect list -> PersistenceEvidence

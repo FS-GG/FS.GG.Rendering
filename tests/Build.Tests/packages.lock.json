@@ -120,6 +120,12 @@
         "dependencies": {
           "FSharp.Core": "[10.1.301, )"
         }
+      },
+      "testsupport": {
+        "type": "Project",
+        "dependencies": {
+          "FSharp.Core": "[10.1.301, )"
+        }
       }
     }
   }

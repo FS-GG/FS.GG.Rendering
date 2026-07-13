@@ -15,11 +15,16 @@ The supported API lives in `src/Layout/*.fsi`. Surface changes require `readines
 
 ## Build Commands
 
-Run `./fake.sh build -t CapabilityCheck`, `./fake.sh build -t DependencyReport`, and `./fake.sh build -t PackageSurfaceCheck`.
+Run `dotnet build FS.GG.Rendering.slnx`. The capability-catalog, public-surface and local-pack
+checks are Expecto tests, not build targets — `dotnet test tests/Package.Tests/Package.Tests.fsproj`
+covers all three. After an `.fsi` change, regenerate the baseline with
+`dotnet fsi scripts/refresh-surface-baselines.fsx` and commit it: the gate re-runs the generator
+and fails on any diff.
 
 ## Test Commands
 
-Run `dotnet test tests/Layout.Tests/Layout.Tests.fsproj` and `./fake.sh build -t GeneratedProductCheck`.
+Run `dotnet test tests/Layout.Tests/Layout.Tests.fsproj` and
+`dotnet test tests/Package.Tests/Package.Tests.fsproj` (generated-product and package validation).
 
 ## Evidence
 
