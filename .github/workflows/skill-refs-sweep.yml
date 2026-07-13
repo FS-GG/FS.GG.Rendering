@@ -124,9 +124,18 @@ jobs:
           cat "$RUNNER_TEMP/sweep.err" >&2
 
           # The script's findings are its stderr lines of the form `path:line: message` (its `report`
-          # function; every § emits through it). Anything else on stderr is a banner or a NOTE. This
-          # line format is the one contract this workflow has with the script — it is also the one a
-          # human reads, which is what makes it the safe one to depend on.
+          # function; every § emits through it). Anything else on stderr is a banner. This line format
+          # is the one contract this workflow has with the script — it is also the one a human reads,
+          # which is what makes it the safe one to depend on.
+          #
+          # THERE ARE NO "NOTES" ANY MORE (#714), and the difference matters here. The script used to
+          # DEMOTE a §1 finding inside one of the four frozen mirrors to a note on STDOUT, deliberately
+          # kept off stderr so this sweep could not file it: the refs were correct upstream, we were
+          # forbidden to touch the bytes, and filing them would have opened the same unactionable issue
+          # every day forever. Game#279 made those bodies fixable (qualify the ref in the canonical and
+          # re-sync), so the demotion is gone and a mirror finding is now an ordinary finding that
+          # reaches stderr and SHOULD be filed. Do not re-add a mirror exclusion here: it would silently
+          # stop real, actionable decay from ever being reported.
           grep -E '^[^ :]+:[0-9]+: ' "$RUNNER_TEMP/sweep.err" \
             | sort -t: -k1,1 -k2,2n > "$RUNNER_TEMP/findings.txt" || true
 

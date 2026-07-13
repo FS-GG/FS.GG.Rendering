@@ -358,24 +358,33 @@ report() {
 # The mirrored bodies, by path. A mirrored id we do not publish contributes nothing and is SKIPPED,
 # not failed — there is no body, so there is nothing to protect and nothing to demote.
 #
-# THE ESCAPE HATCH FAILS SAFE IN BOTH DIRECTIONS, which is why no guard is needed here and why an
-# earlier draft's guard was removed (it fired on every case in the test suite, and it was checking the
-# wrong thing):
+# THIS LIST'S POLARITY INVERTED WITH THE STOPGAP (#714), AND THE ROT ANALYSIS INVERTS WITH IT. It used
+# to be an ESCAPE HATCH — being listed DEMOTED a § 1 finding to a note — so omitting a skill meant it
+# got MORE checking, and the old argument here was that it "degrades toward MORE checking, never less".
 #
-#   * MIRRORED_SKILLS goes STALE (the P6 provider epic retires the mirror, and the bodies go away).
-#     The entries then match no body, `mirror_bodies` is empty, and every § 1 finding hard-fails
-#     again — which is correct, because with no mirror there is nothing we may not edit. Dead config,
-#     no effect.
-#   * A FIFTH skill is mirrored and nobody adds it here. Its § 1 findings hard-fail, unfixably — a
-#     loud red, with § 0 at the top of this file explaining exactly what it means and what to do. It
-#     degrades toward MORE checking, never less, which is the rule this script keeps everywhere else.
+# It is now the opposite. Being listed makes this gate STRICTER: a bare `[[ref]]` in a listed body is a
+# hard failure (§ 1), because a bare ref cannot be right in both repos. So:
 #
-# The one direction that WOULD be dangerous — an entry here for a skill whose ownership came BACK to
-# us, silently demoting its real findings to notes — cannot be detected locally at all: it turns on
-# the registry's `owner:`, which lives in FS-GG/.github and which this gate deliberately takes no
-# network to read. The org's own `fsgg-skill-registry-check` (`frozen-mirror` arm) is what adjudicates
-# that, and it is the right place for it. Pretending to check it here with the manifest — which
-# carries no `owner` field — would be a gate reporting green over a question it never asked.
+#   * MIRRORED_SKILLS goes STALE — a body stops being mirrored (the #696 provider epic retires it) and
+#     nobody removes it here. Bare refs in a body we now fully OWN are hard-failed as "bare in a
+#     MIRRORED body", telling the author to qualify a ref that is perfectly correct. A FALSE RED — loud
+#     and wrong, but loud. Someone hits it, reads § 0, deletes the entry.
+#
+#   * A FIFTH skill becomes mirrored and nobody adds it here — AND THIS IS NOW THE DANGEROUS ONE, so it
+#     is written down rather than argued away. Its bare refs are judged against OUR publish set alone,
+#     so a bare `[[fs-gg-scene]]` in it PASSES here, silently, while dangling in Game's gate. That is
+#     precisely the incoherence #714 exists to end, re-created by an omission. It fails OPEN.
+#
+# NOTHING HERE CAN CATCH THAT, and pretending otherwise would be worse than the gap: the mirror set
+# turns on the registry's `owner:`, which lives in FS-GG/.github, and this gate deliberately takes no
+# network so it can answer a hermetic question. The manifest carries no `owner` field, so there is no
+# local evidence to check against — a guard here would be a gate reporting green over a question it
+# never asked.
+#
+# What DOES know is `scripts/check-frozen-mirrors.fsx`, which derives the mirror set FROM the org
+# registry ("4 mirror(s) derived from the org registry") and runs in the same required job. That it and
+# this constant are two hand-maintained readings of one rule is a real hazard — the #661/#674 shape —
+# and it is filed rather than papered over here: FS.GG.Rendering#722.
 mirror_bodies=""
 while IFS= read -r mid; do
   [[ -z $mid ]] && continue
