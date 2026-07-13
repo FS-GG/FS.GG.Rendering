@@ -219,8 +219,17 @@ let private skillsWithUntaggedFence =
 let private citesName (corpus: string) (name: string) =
     Regex.IsMatch(corpus, $@"(?<![\w']){Regex.Escape name}(?![\w'])")
 
-/// The F# forms that BIND a name rather than cite one (#692). `let`/`and`/`use` with any modifier order, and
-/// `member` with an optional self-identifier — the shapes a skill's own example helper actually takes.
+/// The F# forms that BIND a name rather than cite one (#692). `let`/`and`/`use` with any modifier order,
+/// `member` with an optional self-identifier, and the `fun`/`for` binders — the shapes a skill's own example
+/// helper and its locals actually take.
+///
+/// EVERY FORM MATTERS, because a form left out is a form the homonym walks back in through. `fun`/`for` are
+/// latent today (no surface is credited by a lambda or loop variable), and so was `let` until it deleted a
+/// blessed ledger line — so they are here rather than waiting for their turn. Adding them un-credits nothing.
+///
+/// KNOWN GAP: a function PARAMETER (`let onScreen (bounds: Rect list) = … bounds …`) is a binding this cannot
+/// see, and matching one properly means parsing F# rather than pattern-matching it. Nothing is credited that
+/// way today. Filed rather than half-done — see the qualified-module gap below, which is the same family.
 let private bindsName (corpus: string) (name: string) =
     let n = Regex.Escape name
 
@@ -228,10 +237,24 @@ let private bindsName (corpus: string) (name: string) =
         corpus,
         $@"(?<![\w'])(?:let|and|use)\s+(?:rec\s+|mutable\s+|inline\s+|private\s+|internal\s+)*{n}(?![\w'])"
         + $@"|(?<![\w'])member\s+(?:val\s+)?(?:[\w']+\.)?{n}(?![\w'])"
+        + $@"|(?<![\w'])fun\s+{n}\s*->"
+        + $@"|(?<![\w'])for\s+{n}\s+in(?![\w'])"
     )
 
 /// A citation that names the module it comes from: `Scene.describe`, `FS.GG.UI.Scene.describe`. This is what
 /// reaches PAST a local binding of the same name, which is exactly what it is for.
+///
+/// IT DOES NOT CHECK **WHICH** MODULE, and that is a known hole rather than an oversight (#713). Any
+/// uppercase-qualified name satisfies it — including a PRODUCT module's. The live instance: `fs-gg-elmish`
+/// binds `let subscriptions _ = Sub.none` (the product's own) and writes `AppRoot.Model.subscriptions` in its
+/// `program` example, which credits the shipped `ControlsElmish.subscriptions` (the keyboard+controls MERGE
+/// helper) — a surface no skill teaches and no ledger line declares. That is the same hidden-surface failure
+/// as `visible`, one hop further out, and it survives this fix through the very hatch this function opens.
+///
+/// Closing it means holding the qualifier against the module that DECLARES the surface, which `shippedSurface`
+/// does not currently record (it keys on the `.fsi` FILE, not the module), and it carries its own cascade —
+/// `Perf.runScriptToModel` is qualified by a NESTED module, so the check must accept those too. That is a
+/// change with its own blast radius, not a line in this one.
 let private qualifiedCite (corpus: string) (name: string) =
     Regex.IsMatch(corpus, $@"(?<![\w'])(?:[A-Z][\w']*\.)+{Regex.Escape name}(?![\w'])")
 
@@ -513,7 +536,9 @@ let kinds = Scene.describe hud
                   "use describe = foo ()"
                   "member this.describe x = x"
                   "member _.describe x = x"
-                  "member val describe = 1" ] do
+                  "member val describe = 1"
+                  "let f = items |> List.map (fun describe -> describe)"
+                  "for describe in scenes do ignore describe" ] do
                 let markdown = $"```fsharp\n{binding}\n```\n"
 
                 Expect.isFalse
