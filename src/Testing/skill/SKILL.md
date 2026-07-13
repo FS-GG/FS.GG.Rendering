@@ -131,7 +131,6 @@ rather than hard-failing the phase.
 ## Related
 
 - [[fs-gg-scene]] supplies the `LayoutEvidenceReport` types these helpers validate.
-- [[fsharp-build-orchestration]] runs the governed targets these helpers back.
 - [[fs-gg-ui-widgets]] produces retained inspection artifacts through
   `ControlInspection.inspectRetained`.
 
