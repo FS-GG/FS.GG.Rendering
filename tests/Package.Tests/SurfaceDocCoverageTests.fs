@@ -101,8 +101,37 @@ let private productSkillText =
     |> Seq.map File.ReadAllText
     |> String.concat "\n"
 
-/// An opening or closing CommonMark fence: up to 3 leading spaces, then 3+ backticks or 3+ tildes.
-let private fenceRegex = Regex(@"^ {0,3}(?<fence>`{3,}|~{3,})", RegexOptions.Compiled)
+/// An opening or closing CommonMark fence: any indent, then 3+ backticks or 3+ tildes, then the info string
+/// (the language tag, on an opening fence; empty on a closing one).
+///
+/// THE INDENT IS UNBOUNDED, and it must be (#664). CommonMark allows a fence up to 3 leading spaces *at the top
+/// level*, and this was `^ {0,3}` to match — but a fence nested in a list item is legitimately indented past
+/// that, and then the block never opens and **every line of its code lands in the prose buffer**, where it can
+/// document nothing. A surface cited only in such a block is reported undeclared, and the author is told to
+/// ledger a surface a skill genuinely documents — the same "the rule INVENTS violations" failure
+/// `TemplateConsumesPinnedApiTests` records for its own extractor (#598). Nothing in the corpus indents a fence
+/// that far today; the point is that nothing stops it. Pairing carries the weight instead: a fence closes only
+/// on its own character, repeated at least as many times, wherever either sits.
+let private fenceRegex = Regex(@"^\s*(?<fence>`{3,}|~{3,})(?<info>.*)$", RegexOptions.Compiled)
+
+/// The language tags that mean "this block is F#" — the only blocks that can CITE an F# API (#664).
+///
+/// EVERY SPELLING OF F# BELONGS HERE, and the cost of a missing one is not symmetric. A tag this set does not
+/// know is dropped from the corpus — and dropped SILENTLY, because it HAS a language and so does not trip
+/// `skillsWithUntaggedFence`. An `fsi` transcript citing `respondsProofOf` would therefore document nothing,
+/// S-DOC would report the surface undeclared, and the author would be sent to the ledger to excuse a surface
+/// their skill genuinely documents — "the rule INVENTS violations" (#598), which is the failure the fence-indent
+/// half of this very item exists to close. A tag wrongly INCLUDED costs a homonym; a tag wrongly OMITTED costs a
+/// false accusation against a correct doc. So this errs towards inclusion, and covers every extension F# ships
+/// under. (`TemplateConsumesPinnedApiTests` reaches the same place from the other side with a case-insensitive
+/// `StartsWith "fsharp"`.)
+let private fsharpLanguages = set [ "fsharp"; "fs"; "f#"; "fsx"; "fsi" ]
+
+/// The language an opening fence declares, if it declares one: the first word of the info string.
+let private fenceLanguage (info: string) =
+    info.Split([| ' '; '\t'; ',' |], StringSplitOptions.RemoveEmptyEntries)
+    |> Array.tryHead
+    |> Option.map (fun lang -> lang.ToLowerInvariant())
 
 /// An inline code span: one or more backticks, the shortest run closed by the same number. Confined to a
 /// single line, which is what every citation in these skills actually is.
@@ -123,10 +152,36 @@ let private inlineCodeRegex = Regex(@"(?<ticks>`+)(?<code>[^\n`](?:[^\n]*?[^\n`]
 /// A skill that means `RichText.block` writes it as code — in a `fsharp` block or in backticks — because that
 /// is what a citation IS. So credit only code, and the English language stops being able to document an API.
 ///
-/// Returns the code, and whether the file ended with a fence still OPEN — which the caller must treat as a
-/// defect, not a curiosity. See `skillsWithUnclosedFence`.
+/// #664: and only code that could be a CITATION. #654 moved the corpus from prose to code; the homonym moved
+/// with it, because "code" meant every fence regardless of language. A skill is free to show a `bash` block —
+///
+///     git push origin main
+///
+/// — and `push` is `Game.Core.Resolution.push`, which #654 ledgered as a `tracked` gap (#663). The bare word
+/// credits it, S-DOC declares that correct ledger line stale, and `main` reds: FS.GG.Game#240's prose bug,
+/// one level in. `push`, `fill`, `image`, `count`, `field`, `origin`, `standard` and `success` are all
+/// unremarkable words in a `bash` / `json` / `text` block. So the fenced half of the corpus is F# ONLY.
+///
+/// A non-F# block is therefore DROPPED — not routed to the prose buffer, which would be the obvious thing and
+/// is a trap: prose is mined for inline spans, and a shell block is full of backticks (`` echo `date` ``). It
+/// would hand the homonym straight back through the inline half. It cannot document an F# API, so it is not
+/// part of the corpus at all.
+///
+/// Inline spans are untouched: a skill writing `` `push` `` in backticks IS citing the API — that is what
+/// backticks mean, whatever the surrounding sentence is about.
+///
+/// Returns the code, plus the two ways the extraction can have gone wrong — an unclosed fence and an untagged
+/// one — which the caller must treat as defects, not curiosities. See `skillsWithUnclosedFence` and
+/// `skillsWithUntaggedFence`.
+type private SkillCode =
+    { Code: string
+      UnclosedFence: bool
+      UntaggedFences: int }
+
 let private codeReferencesIn (markdown: string) =
-    let mutable openFence: string option = None
+    // The delimiter that opened the block, and whether the block is F# — i.e. whether it can cite an API.
+    let mutable openFence: (string * bool) option = None
+    let mutable untaggedFences = 0
     let code = Text.StringBuilder()
     let prose = Text.StringBuilder()
 
@@ -135,15 +190,21 @@ let private codeReferencesIn (markdown: string) =
 
         match openFence with
         // A fence closes only on the same character, repeated at least as many times as it was opened.
-        | Some opening when fence.Success && fence.Groups.["fence"].Value.StartsWith opening -> openFence <- None
-        | Some _ -> code.AppendLine line |> ignore
-        | None when fence.Success -> openFence <- Some fence.Groups.["fence"].Value
+        | Some(opening, _) when fence.Success && fence.Groups.["fence"].Value.StartsWith opening -> openFence <- None
+        // Inside a block: F# is the corpus, anything else is dropped on the floor (see above — NOT to prose).
+        | Some(_, isFSharp) -> if isFSharp then code.AppendLine line |> ignore
+        | None when fence.Success ->
+            let language = fenceLanguage fence.Groups.["info"].Value
+            if Option.isNone language then untaggedFences <- untaggedFences + 1
+            openFence <- Some(fence.Groups.["fence"].Value, language |> Option.exists fsharpLanguages.Contains)
         | None -> prose.AppendLine line |> ignore
 
     for m in inlineCodeRegex.Matches(prose.ToString()) do
         code.AppendLine m.Groups.["code"].Value |> ignore
 
-    code.ToString(), Option.isSome openFence
+    { Code = code.ToString()
+      UnclosedFence = Option.isSome openFence
+      UntaggedFences = untaggedFences }
 
 let private skillCode =
     Directory.EnumerateFiles(productSkillsRoot, "SKILL.md", SearchOption.AllDirectories)
@@ -152,14 +213,28 @@ let private skillCode =
 
 /// Everything the product is told IN CODE — the only thing that can document a surface (#654).
 let private productSkillCode =
-    skillCode |> Seq.map (fun (_, (code, _)) -> code) |> String.concat "\n"
+    skillCode |> Seq.map (fun (_, c) -> c.Code) |> String.concat "\n"
 
 /// A skill whose last fence is never closed. This is the one way the split above can fail SILENTLY and in the
 /// dangerous direction: every line after the stray fence is read as code, so the skill's PROSE starts
 /// documenting APIs again — which is #654 reopening, in the file that closed it. It cannot be caught by
 /// measuring how much is documented, because it makes that number go UP, not down. So it is caught here.
+///
+/// (An unclosed NON-F# fence is just as bad in the other direction — it swallows the rest of the file into a
+/// block that documents nothing — so this counts every fence, whatever its language.)
 let private skillsWithUnclosedFence =
-    skillCode |> List.filter (fun (_, (_, unclosed)) -> unclosed) |> List.map fst
+    skillCode |> List.filter (fun (_, c) -> c.UnclosedFence) |> List.map fst
+
+/// A skill that opens a fenced block with NO language tag. This is the price of the F#-only corpus (#664), and
+/// it is worth paying only because it is collected here: an untagged block is ambiguous — credit it and the
+/// homonym is back, drop it and a genuine F# example silently stops documenting its surfaces, which reports
+/// them undeclared and sends the author to the ledger to excuse a surface their skill already documents.
+///
+/// Neither, then. An untagged fence is a defect in the SKILL, and a cheap one to fix: say what the block is.
+/// Tagging is already the corpus's own habit — all 61 fences say `fsharp` — so this holds a convention that
+/// exists rather than imposing one, and it turns a silent loss of credit into a red gate that names the file.
+let private skillsWithUntaggedFence =
+    skillCode |> List.filter (fun (_, c) -> c.UntaggedFences > 0) |> List.map fst
 
 /// A skill documents a surface when it CITES it as code. Code-only, so a surface is not credited to a skill
 /// that merely uses its name as an English word (#654).
@@ -169,8 +244,10 @@ let private skillsWithUnclosedFence =
 /// never match `CheckBox.checked'` at all — while a bare `\bcount\b` happily matches the `count'` in some
 /// other symbol. Treating the quote as a name character settles both: `withKey` is still not credited to a
 /// skill that shows `withKeyboard`, and `count` is not credited to one that shows `count'`.
-let private isDocumented (name: string) =
-    Regex.IsMatch(productSkillCode, $@"(?<![\w']){Regex.Escape name}(?![\w'])")
+let private citesName (corpus: string) (name: string) =
+    Regex.IsMatch(corpus, $@"(?<![\w']){Regex.Escape name}(?![\w'])")
+
+let private isDocumented (name: string) = citesName productSkillCode name
 
 /// The declared exemptions: `<category>  <name>` lines, `#` comments and blanks ignored.
 let private ledger =
@@ -224,6 +301,17 @@ let surfaceDocCoverageTests =
                   Every line after the stray fence is then read as CODE, so the skill's PROSE can document an \
                   API again by using its name as an English word — the #654 homonym, reopened in the file that \
                   closed it. Close the fence."
+
+            // The corpus is F#-ONLY (#664), so a fence that does not say what it is cannot be placed: crediting
+            // it reopens the homonym, dropping it silently un-documents whatever it cites. Neither is a thing a
+            // gate may decide on the author's behalf, so it is the author's to say.
+            Expect.isEmpty
+                skillsWithUntaggedFence
+                $"these product skills open a fenced block with NO language tag: {commaSep skillsWithUntaggedFence}. \
+                  Only F#-tagged blocks document a surface (#664 — a bare word in a `bash` block credited \
+                  `push`, `fill`, `count` … by homonym), so an untagged block is ambiguous: it either documents \
+                  by accident or documents nothing, silently. Say what it is — ```fsharp if it is F# and you \
+                  want its APIs credited, ```bash / ```text / ```json if it is not."
         }
 
         // S-DOC. The rule.
@@ -296,5 +384,151 @@ let surfaceDocCoverageTests =
                       not merely absent from the ledger. It belongs in a skill whose profile gate matches \
                       FS.GG.UI.Controls.Elmish's reach [app, sample-pack, game] — i.e. fs-gg-elmish, NOT \
                       fs-gg-testing (which also ships to headless-scene/governed and may not name it, R-REACH)."
+        }
+    ]
+
+// THE INSTRUMENT, not the corpus (#664). Everything above measures the SKILLS; a gate is only ever as good as
+// the extractor underneath it, and `codeReferencesIn` is the half of S-DOC that can fail silently — which is
+// why the vacuity floor watches the credit it issues. These tests watch it directly, on markdown written to
+// break it.
+//
+// They are the only thing that CAN. Both holes are latent: no skill indents a fence 4+ spaces, and all 61
+// fences say `fsharp`, so the corpus cannot witness either one and every assertion above passes with the bugs
+// in place. A fix pinned only by the corpus would be a fix nothing holds, and would rot the first time a skill
+// wrote a `bash` block.
+[<Tests>]
+let surfaceDocExtractorTests =
+    let cites markdown name = citesName (codeReferencesIn markdown).Code name
+
+    testList "S-DOC code extractor (#664)" [
+
+        test "a fence indented inside a list item still opens a block" {
+            // Hole 1. `^ {0,3}` is CommonMark's indent allowance AT THE TOP LEVEL, and a fence nested in a list
+            // item is legitimately indented past it. The block then never opened, every line of its code landed
+            // in the PROSE buffer where it can document nothing, and a surface cited only here was reported
+            // undeclared — the gate inventing a violation against a doc that is correct.
+            let markdown =
+                """
+- To drive the program headlessly:
+
+      ```fsharp
+      let p = Program.program init update view subs
+      ```
+"""
+
+            Expect.isTrue (cites markdown "program") "a list-indented `fsharp` fence documents the API it shows"
+            Expect.isFalse (cites markdown "headlessly") "...and the prose around it still documents nothing"
+        }
+
+        test "a bash block cannot document an API by homonym" {
+            // Hole 2 — #654's bug, moved one level in. `Resolution.push` is a real public val that #654 ledgered
+            // as a `tracked` gap (#663); an ordinary `git push` line credited it as documented, which declares
+            // that correct ledger line STALE and reds `main`. Exactly what FS.GG.Game#240's prose did to `block`.
+            let markdown =
+                """
+Publish the product:
+
+```bash
+git push origin main
+```
+"""
+
+            Expect.isFalse (cites markdown "push") "`git push` does not document `Resolution.push`"
+            Expect.isFalse (cites markdown "origin") "...nor does any other ordinary word that happens to be a surface"
+        }
+
+        test "an F# block documents the API it shows" {
+            let markdown =
+                """
+```fsharp
+let model = Resolution.push model shot
+```
+"""
+
+            Expect.isTrue (cites markdown "push") "an `fsharp` block IS a citation — that is the whole corpus"
+        }
+
+        test "every spelling of F# is a citation, because a missed one accuses a correct doc" {
+            // The asymmetry in `fsharpLanguages`. A tag the set does not know is dropped SILENTLY — it has a
+            // language, so `skillsWithUntaggedFence` does not catch it — and the surfaces it cites are then
+            // reported undeclared. That is the gate inventing a violation against a doc that is correct, which
+            // is the same failure as hole 1. `fsi` is not hypothetical here: this repo ships FSI transcripts.
+            for tag in [ "fsharp"; "fs"; "f#"; "fsx"; "fsi"; "FSharp" ] do
+                let markdown = $"```{tag}\nlet model = Resolution.push model shot\n```\n"
+
+                Expect.isTrue (cites markdown "push") $"a ```{tag} block documents the API it shows"
+                Expect.equal (codeReferencesIn markdown).UntaggedFences 0 $"a ```{tag} block is tagged, not bare"
+
+            // ...and the exclusion still holds where it must, or the homonym is back.
+            for tag in [ "bash"; "json"; "text"; "console" ] do
+                let markdown = $"```{tag}\ngit push origin main\n```\n"
+
+                Expect.isFalse (cites markdown "push") $"a ```{tag} block documents nothing"
+        }
+
+        test "a non-F# block's backticks cannot leak back in through the prose buffer" {
+            // The obvious way to write hole 2's fix — send a non-F# block to the PROSE buffer rather than the
+            // code one — hands the homonym straight back, because prose is mined for inline spans and a shell
+            // block is full of backticks. So a dropped block is dropped from BOTH. This is that decision, pinned.
+            let markdown =
+                """
+```bash
+echo `push` > /dev/null
+```
+"""
+
+            Expect.isFalse (cites markdown "push") "a backtick inside a dropped block is not an inline citation"
+        }
+
+        test "an inline code span still documents, whatever the sentence around it is about" {
+            let markdown = "Call `respondsProofOf` to tell \"renders\" from \"responds\"."
+
+            Expect.isTrue (cites markdown "respondsProofOf") "backticks are a citation — that is what they mean (#654)"
+        }
+
+        test "prose still documents nothing (#654 holds)" {
+            let markdown = "The block above can bind all four the same way."
+
+            Expect.isFalse (cites markdown "block") "an English word is not a citation of `RichText.block`"
+        }
+
+        test "an unclosed fence is still caught, at any indent" {
+            // The unbounded indent must not cost the #654 guard its teeth: an unclosed fence spills the rest of
+            // the file into a block, and that is the one failure that makes the documented count go UP.
+            let closed =
+                """
+```fsharp
+let x = 1
+```
+"""
+
+            let unclosed =
+                """
+- like so:
+
+      ```fsharp
+      let x = 1
+"""
+
+            Expect.isFalse (codeReferencesIn closed).UnclosedFence "a closed fence is closed"
+            Expect.isTrue (codeReferencesIn unclosed).UnclosedFence "a list-indented fence that never closes is not"
+        }
+
+        test "an untagged fence is reported rather than guessed at" {
+            // The price of the F#-only corpus, and why `skillsWithUntaggedFence` exists. An untagged block is
+            // ambiguous — credit it and the homonym is back; drop it and a genuine F# example silently stops
+            // documenting its surfaces, sending the author to the ledger to excuse a surface they DID document.
+            // So: drop it (safe direction) AND red the gate by name (so the drop can never be silent).
+            let markdown =
+                """
+```
+let model = Resolution.push model shot
+```
+"""
+
+            let extracted = codeReferencesIn markdown
+
+            Expect.equal extracted.UntaggedFences 1 "the bare fence is counted"
+            Expect.isFalse (citesName extracted.Code "push") "an untagged block is not credited — it might not be F#"
         }
     ]
