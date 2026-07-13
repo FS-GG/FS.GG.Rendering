@@ -73,13 +73,39 @@ let repositoryPath (relativePath: string) =
 //
 // That is FS-GG/.github#266's "gate reports green on a missing subject" one level up: the subject was
 // present, but it was not the subject that mattered.
-let packablePackages () =
-    // Reads the project files and nothing else — packs nothing, touches no network — so these stay in
-    // the hermetic default tier (#540) and run pre-merge. The feed path only names the .nupkg each
-    // package WOULD produce; discovery never looks for it.
-    PackageFeed.discoverPackablePackages repositoryRoot (Path.Combine(Path.GetTempPath(), "fs-gg-packable-probe"))
+// The packable set cannot change while the suite runs, and each call walks `src/` and parses ~18
+// project files. Compute it once.
+//
+// AND FAIL LOUDLY ON EMPTY, here, rather than asking every caller to remember. Most of what the guards
+// below assert about Charts is NEGATIVE ("Charts is not packable"), and an empty set satisfies every
+// negative for free. That is not a hypothetical: it is what `buildFrontEnd()`'s `else ""` did before
+// #667 hardened it — three negative guards green over nothing. A non-emptiness assertion copy-pasted
+// into each test only protects the tests that remembered to copy it, and the next negative guard
+// someone adds is exactly the one that will not. Making vacuity impossible in the helper protects all
+// of them, including the ones not written yet.
+let private packablePackagesLazy =
+    lazy
+        (// Reads the project files and nothing else — packs nothing, touches no network — so these stay
+         // in the hermetic default tier (#540) and run pre-merge. The feed path only names the .nupkg
+         // each package WOULD produce; discovery never looks for it.
+         let discovered =
+             PackageFeed.discoverPackablePackages repositoryRoot (Path.Combine(Path.GetTempPath(), "fs-gg-packable-probe"))
+
+         if List.isEmpty discovered then
+             failwith
+                 "the real pack path discovered NO packable FS.GG.UI.* package. Every Charts guard below is \
+                  a negative assertion and would pass vacuously over this empty set, so this is a hard \
+                  failure rather than a silent green (#670)."
+
+         discovered)
+
+let packablePackages () = packablePackagesLazy.Value
 
 let packablePackageIds () = packablePackages () |> List.map _.PackageId |> Set.ofList
+
+/// The project file behind a discovered package, as text.
+let private projectFileOf (package: PackageFeed.PackablePackage) =
+    File.ReadAllText(repositoryPath package.ProjectPath)
 
 let runDotnetWithin (timeoutMilliseconds: int) (workingDirectory: string) (arguments: string) =
     let startInfo: ProcessStartInfo = ProcessStartInfo("dotnet", arguments)
@@ -414,13 +440,6 @@ let packageContractTests =
         test "the core packages really are packable by the real pack path" {
             let packable = packablePackageIds ()
 
-            // Non-empty FIRST. Every Charts assertion in this list is negative, and a discovery that
-            // returned the empty set would satisfy all of them vacuously. That is not hypothetical: it is
-            // exactly what `buildFrontEnd()` did before #667 hardened it — its `else ""` made three
-            // negative guards green over nothing, and one of them was demonstrated green over nothing.
-            // Re-pointing at a real subject does not by itself retire that failure mode, so close it.
-            Expect.isNonEmpty packable "the real pack path discovers at least one packable FS.GG.UI.* package"
-
             [ "FS.GG.UI.Scene"
               "FS.GG.UI.SkiaViewer"
               "FS.GG.UI.Layout"
@@ -441,11 +460,19 @@ let packageContractTests =
         // Nothing else in the repo compares these two sets. Feature207 compares discovery to the nuspec;
         // Feature242 parses the slnx but only to demand the docs name what it finds. This is the join.
         test "every packable project is a member of the slnx the pack command actually packs" {
-            let slnx = File.ReadAllText(repositoryPath "FS.GG.Rendering.slnx")
+            // Parse the `<Project Path="..."/>` elements rather than substring-matching the raw file, the
+            // same way Feature242DocsCurrencyTests reads it. A bare `slnx.Contains "src/Scene/Scene.fsproj"`
+            // would count a path that appears ANYWHERE — including inside an XML comment — as membership,
+            // so commenting a project out would still read as "the pack command builds it", which is the
+            // exact silent-never-ships failure this test exists to catch.
+            let slnxMembers =
+                Regex.Matches(File.ReadAllText(repositoryPath "FS.GG.Rendering.slnx"), "Path=\"([^\"]+\\.fsproj)\"")
+                |> Seq.map (fun m -> m.Groups.[1].Value.Replace('\\', '/'))
+                |> Set.ofSeq
 
             let orphaned =
                 packablePackages ()
-                |> List.filter (fun package -> not (slnx.Contains(package.ProjectPath, StringComparison.Ordinal)))
+                |> List.filter (fun package -> not (Set.contains package.ProjectPath slnxMembers))
                 |> List.map _.PackageId
 
             Expect.isEmpty
@@ -463,10 +490,6 @@ let packageContractTests =
             // stays meaningful without re-introducing a literal monolith path reference.
             let monolithDir = "Lib"
             let monolithRef = $@"..\{monolithDir}\{monolithDir}.fsproj"
-
-            // #670 — the anti-vacuity guard belongs with the negative it protects: this assertion is
-            // "Charts is absent from the packable set", and an empty packable set satisfies it for free.
-            Expect.isNonEmpty packable "the real pack path discovers at least one packable FS.GG.UI.* package"
 
             Expect.isFalse (File.Exists(Path.Combine(repositoryRoot, "src", "Charts", "Charts.fsproj"))) "legacy Charts project is removed or deactivated from source ownership"
             Expect.isFalse (Set.contains "FS.GG.UI.Charts" packable) "the real pack path does not produce a Charts package"
@@ -527,7 +550,6 @@ let packageContractTests =
                             None))
 
             Expect.isEmpty activeHits "active generated product inputs do not select Charts package, capability, project, or chart-specific generated skill"
-            Expect.isNonEmpty packable "the real pack path discovers at least one packable FS.GG.UI.* package"
             Expect.isFalse (Set.contains "FS.GG.UI.Charts" packable) "the real pack path does not produce a Charts package"
             Expect.isFalse (File.Exists(repositoryPath "readiness/surface-baselines/FS.GG.UI.Charts.txt")) "legacy Charts package has no active surface baseline"
             Expect.isFalse (File.Exists(repositoryPath "template/fragments/charts/skill/SKILL.md")) "template has no chart-specific generated skill fragment"
@@ -544,23 +566,43 @@ let packageContractTests =
         // And that hole is REACHABLE. `scripts/refresh-surface-baselines.fsx` — the generator gate.yml
         // runs, and the only thing that writes these files — enumerates its packages from a HARDCODED
         // list of sixteen. Add a packable package and the generator does not know about it, so it writes
-        // no baseline, so gate.yml's regenerate-then-git-diff sees no drift and no untracked file, and
-        // SurfaceAreaTests never names it either. Every gate stays green while a package's entire public
-        // API goes unwatched. Deriving the expectation from the packable set is what closes it: the new
-        // package has no baseline, and this test says so by name.
-        test "every packable package has a committed public-surface baseline" {
-            let packable = packablePackageIds ()
-            Expect.isNonEmpty packable "the real pack path discovers at least one packable FS.GG.UI.* package"
+        // no baseline, so gate.yml's regenerate-then-git-diff sees no drift and no untracked file. Nor
+        // does the live comparison catch it: `SurfaceAreaTests` only names the three packages it holds a
+        // ProjectReference to (Build/Controls/Layout). For the other thirteen, the generator's list IS
+        // the gate. Every check stays green while a package's entire public API goes unwatched.
+        //
+        // So assert BOTH halves, because either alone is a proxy:
+        //   * the generator ENUMERATES the package — this is the load-bearing one, since a package the
+        //     generator does not know about is never regenerated and therefore never diffed; and
+        //   * the baselines are COMMITTED — the generator's output is actually in the tree.
+        // Checking only the files would let a hand-copied baseline satisfy a package the generator never
+        // emits: green here, and still unwatched by the gate that matters.
+        test "every packable package is enumerated by the surface generator and has committed baselines" {
+            // Dependencies-only packages carry no assembly (IncludeBuildOutput=false), so they have no
+            // public surface to baseline — today that is the FS.GG.UI BOM metapackage. Derive that from
+            // the project file rather than hardcoding the id: a second such package must not red this
+            // gate demanding a baseline that cannot exist, and renaming the BOM must not silently drop
+            // the exclusion.
+            let surfaceBearing =
+                packablePackages ()
+                |> List.filter (fun package ->
+                    not ((projectFileOf package).Contains("<IncludeBuildOutput>false", StringComparison.OrdinalIgnoreCase)))
+                |> List.map _.PackageId
 
-            // The BOM metapackage is dependencies-only (IncludeBuildOutput=false — see src/Meta): it
-            // carries no assembly, so it has no public surface to baseline. Every OTHER packable package
-            // ships one, and must have both baselines: the type-name file, and the `members/` file that
-            // Issue #200 added because the type-name file cannot see a member added to an existing type.
-            let surfaceBearing = packable |> Set.remove "FS.GG.UI"
+            let generator = File.ReadAllText(repositoryPath "scripts/refresh-surface-baselines.fsx")
+
+            let unknownToGenerator =
+                surfaceBearing
+                |> List.filter (fun packageId -> not (generator.Contains($"\"{packageId}\"", StringComparison.Ordinal)))
+
+            Expect.isEmpty
+                unknownToGenerator
+                $"scripts/refresh-surface-baselines.fsx enumerates every packable package — one it does not \
+                  name is never regenerated, so the gate's regenerate-then-diff has nothing to compare and \
+                  the package's public surface is watched by nothing: {unknownToGenerator}"
 
             let missing =
                 surfaceBearing
-                |> Set.toList
                 |> List.collect (fun packageId ->
                     [ $"readiness/surface-baselines/{packageId}.txt"
                       $"readiness/surface-baselines/members/{packageId}.txt" ])
@@ -568,9 +610,9 @@ let packageContractTests =
 
             Expect.isEmpty
                 missing
-                $"every packable package has a committed type-name AND member baseline — a missing one is a \
-                  public API that no surface gate watches, because the generator's package list never \
-                  learned about it: {missing}"
+                $"every packable package has a committed type-name AND member baseline (Issue #200 added the \
+                  member file, because the type-name file cannot see a member added to an existing type): \
+                  {missing}"
         }
 
         // The smoke is too slow for the push gate, so it stays opt-in for Dev/Verify/Ci. "Opt-in"
