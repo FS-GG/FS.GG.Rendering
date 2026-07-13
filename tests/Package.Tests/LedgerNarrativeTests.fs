@@ -67,8 +67,15 @@ type private PinClaim =
 
 /// The extractor. `$(FsGgUiVersion)` — optionally backticked, as both ledgers write it — followed by `is`
 /// or `is now` and a version. Nothing else is a claim about the present pin.
+///
+/// The version is `\d+(\.\d+){2,}` — two dots OR MORE, not exactly two, and greedy. Both halves are load-
+/// bearing, and this repo has been bitten through each of them. Greedy, because `0.9.2` must not match
+/// inside `0.9.20` and silently agree with the wrong pin (#711 found exactly that bound). Two-or-more,
+/// because a 4-segment pin — NuGet permits `1.2.3.4` — would otherwise be read as `1.2.3`, which does not
+/// equal the pin it was copied from, and the gate would red on prose that is CORRECT. A guard that reds on
+/// correct input gets silenced, and then there is no guard at all.
 let private pinClaimPattern =
-    Regex(@"\$\(FsGgUiVersion\)`?\s+is(?:\s+now)?\s+(?<v>\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)", RegexOptions.Compiled)
+    Regex(@"\$\(FsGgUiVersion\)`?\s+is(?:\s+now)?\s+(?<v>\d+(?:\.\d+){2,}(?:-[0-9A-Za-z.-]+)?)", RegexOptions.Compiled)
 
 /// Claims in raw text. Split out from the file read so the fixtures below can drive it directly — the
 /// extractor is the part that can silently stop matching, so it is the part that must be provably able to.
@@ -84,20 +91,46 @@ let private claimsIn (text: string) : PinClaim list =
               Text = line.Trim() })
         |> Seq.toList)
 
-let private claimsOf (relative: string) = claimsIn (File.ReadAllText(repo relative))
-
 /// The ledgers whose prose NARRATES A RELEASE — each exists to say which version shipped what, so each
-/// carries an epitaph crediting the pin. They are required to make a claim (see the vacuity test).
+/// carries an epitaph crediting the pin. Only these are REQUIRED to make a claim (the vacuity test), and the
+/// distinction is a real one rather than a convenience.
+///
+/// `surface-doc-ledger.txt` (S-DOC) is the third ledger and is deliberately NOT here. #709 guessed it
+/// "likely has the same shape"; it does not — it curates the documented public surface and names no version
+/// at all, so demanding an epitaph of it would be inventing a rule to satisfy a guess. It is still CHECKED:
+/// the glob finds it, and any claim it grows must equal the pin. What it does not get is the vacuity guard —
+/// so a claim written there in a spelling the pattern does not know (a backticked version, a line-wrapped
+/// sentence) would go unchecked in silence, where the same mistake in the two files below reds. If S-DOC
+/// ever does start narrating a release, move it up here and it inherits the teeth.
 let private narratingLedgers =
     [ "tests/Package.Tests/mirror-pending-release-ledger.txt"
       "tests/Build.Tests/pinned-api-doc-ledger.txt" ]
 
-/// Every ledger in the repo. `surface-doc-ledger.txt` (S-DOC) is checked but NOT required to claim: #709
-/// guessed it "likely has the same shape", and it does not — it curates the documented public surface and
-/// mentions no version at all. Requiring an epitaph of it would be inventing a rule. Including it costs
-/// nothing and means that if anyone ever DOES write a version claim into it, that claim is born checked.
+/// Every ledger — DISCOVERED, not listed. A hand-written list is a finder that silently stops reaching its
+/// subject the moment somebody adds a fourth ledger: its epitaph would rot with every gate green, which is
+/// #690 all over again in a file this gate never looks at. That failure has a name in this repo — #725, the
+/// finder that never reached the samples — and a list is how you get it. So the set is globbed, and the
+/// discovery is itself asserted below (a glob that matches nothing is the vacuous pass, one level up again).
+///
+/// `bin`/`obj` are excluded: nothing copies these to the output today, but a future `CopyToOutputDirectory`
+/// would otherwise have the gate grading a build artifact's stale duplicate of the file it already checks.
 let private allLedgers =
-    narratingLedgers @ [ "tests/Package.Tests/surface-doc-ledger.txt" ]
+    Directory.GetFiles(repo "tests", "*ledger*.txt", SearchOption.AllDirectories)
+    |> Array.map (fun f -> Path.GetRelativePath(root, f).Replace(Path.DirectorySeparatorChar, '/'))
+    |> Array.filter (fun rel -> not (rel.Contains "/bin/" || rel.Contains "/obj/"))
+    |> Array.sort
+    |> Array.toList
+
+/// Read once each. The neighbouring guard (#706) sets the precedent and the reason: this suite runs in the
+/// REQUIRED deterministic tier on every PR, and rescanning the same file for the same answer is pure
+/// duplicate work in the gate everyone waits on.
+let private claimsByLedger =
+    lazy (allLedgers |> List.map (fun l -> l, claimsIn (File.ReadAllText(repo l))) |> Map.ofList)
+
+let private claimsOf (relative: string) =
+    match Map.tryFind relative claimsByLedger.Value with
+    | Some claims -> claims
+    | None -> failwith $"{relative} was not discovered under tests/ — the glob and the narrating list disagree, which the discovery test below exists to catch."
 
 [<Tests>]
 let ledgerNarrativeTests =
@@ -136,6 +169,22 @@ let ledgerNarrativeTests =
                   $"could not read <FsGgUiVersion> out of template/base/Directory.Packages.props (got '{pin}'). Every assertion in this file compares against it."
           }
 
+          // DISCOVERY, ASSERTED. The two tests above are only as wide as the glob that feeds them, so the
+          // glob is the next place this gate can go quietly vacuous: match nothing, check nothing, pass.
+          // It must find at least the ledgers we KNOW exist — a rename or a move that slips past it would
+          // otherwise silently drop a file from the gate rather than red.
+          test "the ledger set is really DISCOVERED — the glob reaches its subjects" {
+              Expect.isNonEmpty
+                  allLedgers
+                  "the `*ledger*.txt` glob under tests/ matched NOTHING, so both tests above iterated an empty list and passed without checking a single file. That is the vacuous pass this whole suite exists to refuse."
+
+              for narrating in narratingLedgers do
+                  Expect.contains
+                      allLedgers
+                      narrating
+                      $"""the discovery glob no longer reaches {narrating} — a release-narrating ledger has been renamed or moved out of tests/, and with it out of this gate. Its epitaph would rot unchecked, which is #690 exactly. Found: {String.Join(", ", allLedgers)}"""
+          }
+
           // ---- The extractor, driven against fixtures. A guard that cannot fail is not a guard. ----
 
           // The #690 prose, verbatim. The gate must SEE this claim and read 0.9.1 out of it — if it did not,
@@ -155,6 +204,31 @@ let ledgerNarrativeTests =
 
               Expect.hasLength claims 1 "`is now` is the same claim as `is`"
               Expect.equal claims.[0].Version "0.9.1" "the claimed version is read out of the sentence"
+          }
+
+          // THE VERSION IS READ WHOLE, OR THE GATE REDS ON PROSE THAT IS RIGHT. Two bounds, one test:
+          //
+          //   * a 4-segment pin (NuGet permits it) must not be truncated to its first three. Read `1.2.3`
+          //     out of a correct `is 1.2.3.4` and the claim no longer equals the pin it was copied from —
+          //     the gate reds on a correct sentence, and a guard that reds on correct input gets silenced.
+          //   * `0.9.2` must not match inside `0.9.20`. #711 found precisely that bound in the pin-probe
+          //     waiver, so it is not hypothetical in this repo; it is a bug that has already happened once.
+          test "a version is read WHOLE — 4 segments are not truncated, and 0.9.2 does not match inside 0.9.20" {
+              let four = claimsIn "# `$(FsGgUiVersion)` is 1.2.3.4 and the pinned packages export all four"
+              Expect.hasLength four 1 "the claim is found"
+
+              Expect.equal
+                  four.[0].Version
+                  "1.2.3.4"
+                  "a 4-segment version must be captured WHOLE. Truncating it to `1.2.3` makes a correct sentence disagree with the pin it names, and reds the gate on prose that is right."
+
+              let twenty = claimsIn "# `$(FsGgUiVersion)` is 0.9.20, published FS.GG.UI.SkiaViewer 0.9.20 exports the case"
+              Expect.hasLength twenty 1 "the claim is found"
+
+              Expect.equal
+                  twenty.[0].Version
+                  "0.9.20"
+                  "`0.9.20` must be captured whole, not read as `0.9.2` with a stray `0`. A prefix match here would let a ledger claiming 0.9.20 agree with a 0.9.2 pin — green, and wrong (the #711 bound)."
           }
 
           // NO FALSE POSITIVES, AND THIS IS THE TEST THAT KEEPS THE GATE ALIVE. Every line below is real
