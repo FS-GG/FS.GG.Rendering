@@ -1082,3 +1082,26 @@ jobs:
 
       - name: Behavioural test suite (planted decay in, filed issue out)
         run: scripts/test-skill-refs-sweep.sh
+
+  # ── Cross-repo contract-coherence gate ──────────────────────────────────────────────────
+  # Adopted per FS-GG/.github#519 (decision: yes, the framework repos call it). The gate lives
+  # in FS-GG/.github and is CALLED, never copied — it asserts that the org registry is
+  # schema-valid and that its declared `fsgg-contracts` pin equals the ACTUAL FS.GG.Contracts
+  # package version. This repo consumes FS.GG.Contracts, so a registry that has drifted from
+  # the real package version is this repo's problem, and until now nothing here said so.
+  #
+  # `check-build-config` is left at its default (true) because registry/repos.yml declares this
+  # repo a `build-config` receiver. That DUPLICATES the hand-rolled `build-config-drift` job in
+  # this same file, and the duplication is DELIBERATE: that job's `name:` is a REQUIRED status
+  # check on main, so deleting it here would leave a required context permanently unreported —
+  # a PR that can never merge, which is exactly the silent deadlock FS-GG/.github#574's verifier
+  # is being built to catch. Retiring the hand-rolled job must happen in a change that updates
+  # this repo's branch protection in the same stroke. Tracked separately; do not "tidy" it away.
+  #
+  # `packages: read` is MANDATORY for callers: the gate restores the typed fsgg-sdd registry
+  # validator from the org GitHub Packages feed using the run-scoped GITHUB_TOKEN.
+  contract-coherence:
+    uses: FS-GG/.github/.github/workflows/contract-coherence.yml@main
+    permissions:
+      contents: read
+      packages: read
