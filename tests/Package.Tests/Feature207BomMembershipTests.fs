@@ -29,23 +29,17 @@ let private repo (path: string) = Path.Combine(root, path.Replace('/', Path.Dire
 
 let private nuspecPath = repo "src/Meta/FS.GG.UI.nuspec"
 
-let private xmlValue (doc: XDocument) (name: string) =
-    doc.Descendants()
-    |> Seq.tryFind (fun e -> e.Name.LocalName = name)
-    |> Option.map (fun e -> e.Value.Trim())
-
 /// The discovered packable framework set: IsPackable=true projects under src/** whose PackageId is
-/// `FS.GG.UI.*`. ColorPolicy (IsPackable=false) and the bare BOM itself are excluded by construction.
-let private discoveredMembers () : Set<string> =
-    Directory.GetFiles(repo "src", "*.fsproj", SearchOption.AllDirectories)
-    |> Array.choose (fun project ->
-        let doc = XDocument.Load project
-        match xmlValue doc "PackageId", xmlValue doc "IsPackable" with
-        | Some id, Some packable when
-            id.StartsWith("FS.GG.UI.", StringComparison.Ordinal)
-            && String.Equals(packable, "true", StringComparison.OrdinalIgnoreCase) -> Some id
-        | _ -> None)
-    |> Set.ofArray
+/// `FS.GG.UI.*`. ColorPolicy (IsPackable=false) and the bare BOM itself are excluded by construction —
+/// the rule matches the DOTTED prefix `FS.GG.UI.`, which the bare id does not satisfy.
+///
+/// #674 — this used to re-derive that rule by hand, in a copy that happened to agree with the harness's.
+/// It now asks the harness. The parity this test proves is only worth something if the "discovered" side
+/// really is what packs: a hand-mirrored copy that drifts from `PackageFeed.discoverPackablePackages`
+/// would still compare cleanly against the nuspec and stay green, while proving parity between the BOM
+/// and a stale reading of the source tree. Same shape as #661/#657, where a bug in two copies of one
+/// renderer agreed with itself and the gate never noticed.
+let private discoveredMembers () : Set<string> = PackablePackages.packablePackageIds ()
 
 /// (id, rawVersionString) for every <dependency> in the nuspec.
 let private nuspecDependencies () : (string * string) list =
