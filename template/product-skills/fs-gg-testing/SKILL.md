@@ -117,6 +117,31 @@ let expectation =
 let summary = GeneratedProductAssertions.summarize expectation
 ```
 
+## `validate` — the entry point that says whether the evidence holds
+
+Building a report and *checking* it are different acts, and only the second can fail. `validate` is the
+primary entry point for the second, and it is the same name in every validation module the product
+receives — so when you have a value and want the verdict on it, this is the function to look for:
+
+```fsharp
+open FS.GG.UI.Testing
+
+EvidenceReports.validate report                   // EvidenceReportValidationResult
+GeneratedLayoutValidation.validate layoutCheck    // your generated layout really matches what you declared
+ReadinessFileDiscovery.validate discoveryCheck    // the readiness files you claim exist, do
+DefaultTextGlyphEvidence.validate glyphCheck      // text actually rasterized glyphs, not empty boxes
+PersistentLaunchArtifactValidation.validate launchCheck
+```
+
+Each is a pure function from a value you already hold — a *check* record, or the `EvidenceReport` you
+just built — to a *result*. No I/O, no runner, no window, so a validation failure is an ordinary
+assertion in your suite rather than a thing you eyeball in a log.
+
+**`EvidenceReports.build` gives you a report; it does not give you a passing one.** A report that was
+written but never validated is the failure mode this whole section exists for: it looks like evidence,
+it reads like evidence, and nothing has checked that it says anything true. Build it, `validate` it,
+and assert on the result.
+
 ## Build Commands
 
 Run `./fake.sh build -t Dev` then `./fake.sh build -t Verify` in this product.
@@ -129,8 +154,8 @@ reports.
 ## Evidence
 
 Build and write evidence with `EvidenceReports.build` / `write` into this
-product's `readiness/` paths. Do not copy framework readiness reports into the
-product.
+product's `readiness/` paths, and `EvidenceReports.validate` it — an unvalidated
+report is not evidence. Do not copy framework readiness reports into the product.
 
 ## Evidence Rules
 

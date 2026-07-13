@@ -79,9 +79,9 @@ vocabulary  interpretOverlayOutcome
 vocabulary  interpretPointerEffect
 tracked     interpretPointerOutcome
 vocabulary  ofMessage
-# `program` is the Elmish front door itself — init/update/view/subscriptions -> AdapterProgram. No skill cites
-# it in code; it passed S-DOC on the English word "program". Its own wrapper `programOfWidget` is tracked too.
-tracked     program
+# `program` — WRITTEN (#663). The Elmish front door is now cited in code by fs-gg-elmish, which also records
+# what the .fsi cannot: nothing in the shipped surface CONSUMES an AdapterProgram, so an author must not go
+# looking for a `run(program)`. Its wrapper `programOfWidget` is still a gap.
 tracked     programOfWidget
 tracked     runInteractiveAppWithWindowBehavior
 vocabulary  runScriptWithAudio
@@ -171,10 +171,6 @@ vocabulary  unsupportedStandardEvent
 
 # ---- Controls/Pointer.fsi
 vocabulary  origin
-# `Pointer.replay` folds a recorded message sequence to a final state + effects, and is the surface SC-005's
-# determinism claim rests on — exactly what a product driving its UI headlessly needs, and it is taught
-# nowhere. The skills' only "replay" is the English word ("a headless replay").
-tracked     replay
 vocabulary  toMsg
 
 # ---- Controls/RichText.fsi
@@ -226,13 +222,6 @@ vocabulary  reachableWithin
 
 # ---- Game.Core/Rng.fsi
 vocabulary  nextBool
-
-# ---- Game.Core/Resolution.fsi
-# The collision skill teaches `knockback` and calls it "discrete grid push" — so it documents the specialised
-# helper in prose and never names the general primitive it is built on. `push` carries a real footgun in its
-# own `.fsi` (`distance` bounds MEMORY, not just the loop: Int32.MaxValue exhausts it), which is precisely the
-# kind of thing a skill should say out loud. A gap, not a blessing.
-tracked     push
 
 # ---- Game.Core/SpatialGrid.fsi
 tracked     buildBounds
@@ -373,18 +362,15 @@ vocabulary  verifyPackageResolution
 
 # ---- carried by more than one signature file
 # The ledger keys on the NAME, so these lines each cover every `.fsi` that declares the name, and no single
-# `# ---- <file>` header above would be an honest home for them. All four were credited to English prose
-# ("validate your GridSpec", "a headless replay", "(diagnostics) refers to the local update") until #654.
-
-# `diagnostics` — Scene, Control, ControlRuntime, TextInput, ControlsElmish. The introspection front door in
-# every one of them: how a product asks what is wrong with the tree it just built. The Diagnostics.fsi
-# CONSTRUCTORS are vocabulary; the query that hands you the list is a capability, and it is taught nowhere.
-tracked     diagnostics
-
-# `validate` — Accessibility, Catalog, CustomControl, GraphValidation, Testing. Same shape: the primary
-# validation entry point in five packages, and its siblings `validateStandardControl` / `validateWindowBehavior`
-# are already tracked. A product author would want it and cannot find it.
-tracked     validate
+# `# ---- <file>` header above would be an honest home for them. FOUR names sat here, all credited to English
+# prose ("validate your GridSpec", "a headless replay", "(diagnostics) refers to the local update") until #654
+# required a citation.
+#
+# TWO REMAIN, and both are vocabulary — see below. The other two were `tracked`, and #663 WROTE them, so the
+# ratchet took their lines: `diagnostics` — the query that hands you the list, as against the Diagnostics.fsi
+# constructors, which stay vocabulary — is cited by fs-gg-elmish (Control/ControlRuntime/ControlsElmish) and by
+# fs-gg-scene, the only one of the two that reaches a headless-scene or governed product. `validate` is cited by
+# fs-gg-testing (the evidence/readiness entry points) and fs-gg-ui-widgets (the control-authoring ones).
 
 # `measure` — RichText (text measurement) and Scene (path measurement). Peers `measureHorizontal` /
 # `measureVertical` are vocabulary; these are the same kind of total query over a value you already hold.
