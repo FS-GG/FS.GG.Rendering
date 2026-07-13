@@ -76,7 +76,7 @@ git_init() {
   # fixture that tracked it would carry a file that mutates while the subject runs — and a case
   # that committed after a `run` would find the harness's own call log inside the diff it is
   # asserting on. Excluded before the first `add`, so none of it is ever tracked.
-  printf '%s\n' bin/ gh.log gh-state gh-bodies/ trackers.json unlabelled.json \
+  printf '%s\n' bin/ gh.log gh-state gh-bodies/ trackers.json unlabelled.json kit.txt \
     >"$FIX/.git/info/exclude"
   git -C "$FIX" add -A
   git -C "$FIX" commit -qm 'fixture base'
@@ -99,13 +99,14 @@ git_orphan() {
   git -C "$FIX" commit-tree "$empty" -m 'unrelated root'
 }
 
-# run [args…] — env knobs: CI_MODE=1, SKIP_LINKS=1, GH_NOAUTH=1
+# run [args…] — env knobs: CI_MODE=1, SKIP_LINKS=1, GH_NOAUTH=1, KIT_FAIL=1
 run() {
-  local -a e=(env -u GITHUB_ACTIONS -u SKILL_REFS_SKIP_LINKS -u GH_NOAUTH) base
+  local -a e=(env -u GITHUB_ACTIONS -u SKILL_REFS_SKIP_LINKS -u GH_NOAUTH -u GH_KIT_FAIL) base
   mapfile -t base < <(gh_env); e+=("${base[@]}")
   [[ ${CI_MODE:-0}   == 1 ]] && e+=("GITHUB_ACTIONS=true")
   [[ ${SKIP_LINKS:-0} == 1 ]] && e+=("SKILL_REFS_SKIP_LINKS=1")
   [[ ${GH_NOAUTH:-0}  == 1 ]] && e+=("GH_NOAUTH=1")
+  [[ ${KIT_FAIL:-0}   == 1 ]] && e+=("GH_KIT_FAIL=1")
   OUT=$("${e[@]}" "$FIX/scripts/check-skill-refs.sh" "$@" 2>&1)
   RC=$?
   ((VERBOSE)) && { printf '    ── %s\n' "$*"; printf '%s\n' "$OUT" | sed 's/^/    │ /'; }
@@ -1089,6 +1090,205 @@ MD
 run
 expect_rc 0 'a clean tree with no repo-surface bare refs is green'
 expect_out_has 'check-skill-refs: ok' 'and it SAYS so — an exit code with no words is not a verdict'
+
+# ════════════════════════════════════════════════════════════════════════════════════════════════
+# § 8  THE THIRD SURFACE — the wrappers are a SUBJECT; the coordination kit is not  (#723)
+# ════════════════════════════════════════════════════════════════════════════════════════════════
+# #698 left `.claude/skills/` and `.agents/skills/` out of the subject because they carry 88 bare `#N`
+# that are FS-GG/.github's issue numbers, not ours. The provenance is what unpicks that: all 88 sit in
+# the FOUR coordination-kit bodies, which a bot syncs and `coordination-coherence.yml` byte-locks — we
+# could not qualify them if we tried, because the qualified bytes would fail that gate. The other 49
+# wrappers are ours, and they carry nothing at all.
+#
+# So the subject widens and the kit is carved out of it — and a CARVE-OUT IS THE DANGEROUS DIRECTION,
+# which is what most of these cases are about. A gate that skips a body says `ok` in exactly the same
+# words as one that examined it.
+
+case_start '§8 a wrapper body in .claude/skills/ is IN the subject — its dangling ref is caught'
+fixture
+claude_skill fs-gg-alpha
+claude_body fs-gg-alpha <<'MD'
+# alpha wrapper
+See [[fs-gg-nowhere]].
+MD
+run
+expect_rc 1 'a wrapper is a body, and its refs are checked like any other'
+expect_out_has 'dangling [[fs-gg-nowhere]]' 'names the dangling ref'
+expect_out_has '.claude/skills/fs-gg-alpha/SKILL.md' 'and the wrapper it is in'
+
+case_start '§8 ...and so is one in .agents/skills/ — the root a single-root scan would never see'
+fixture
+claude_skill fs-gg-alpha
+agents_body fs-gg-alpha <<'MD'
+# alpha wrapper, Codex-active
+See [[fs-gg-nowhere]].
+MD
+run
+expect_rc 1 'the second root is a subject too — scanning one and calling the surface checked is the #698 hole, one directory over'
+expect_out_has '.agents/skills/fs-gg-alpha/SKILL.md' 'and the finding names THAT root, not the Claude one'
+
+case_start '§8 a KIT body is OUT of the subject — its bare #N is not resolved against us'
+# The whole point. `#419` here is `.github`'s issue number; there is no FS.GG.Rendering#419 in this
+# fixture's tracker, so a subject that scanned this body would resolve it, 404, and report a dangling
+# link — a red that no diff of ours could clear, because qualifying it would break the byte-identity
+# `coordination-coherence.yml` enforces.
+fixture
+claude_body pnext-item <<'MD'
+# pnext-item
+Canonical protocol lives in FS-GG/.github. The lock is a CAS (#419), and minting is the tool's job (#551).
+MD
+run
+expect_rc 0 'the kit body is not scanned, so its .github issue numbers are not resolved here'
+expect_out_hasnt 'dangling link' 'no dangling link is manufactured out of another repo issue number'
+expect_out_hasnt '#419' 'and the ref is never mentioned at all — it is out of subject, not excused'
+
+case_start '§8 ...and a dangling [[ref]] in a kit body is not reported either — OUT is out'
+fixture
+claude_body cross-repo-coordination <<'MD'
+# cross-repo-coordination
+See [[fs-gg-nowhere]] — .github's word, not ours.
+MD
+run
+expect_rc 0 'a body we cannot edit is not a body we report on'
+expect_out_hasnt 'dangling [[fs-gg-nowhere]]' 'the carve-out covers the wiki half too'
+
+case_start '§8 the carve-out is SCOPED to the four — the same ref in OUR wrapper still fails'
+# The hatch is not "anything under .claude/skills/". If it were, the widening would have bought nothing.
+fixture
+claude_skill fs-gg-alpha
+claude_body fs-gg-alpha <<'MD'
+# alpha
+The lock is a CAS (#419), and see [[fs-gg-nowhere]].
+MD
+run
+expect_rc 1 'our own wrapper gets no such excuse'
+expect_out_has 'dangling [[fs-gg-nowhere]]' 'the wiki half fires'
+
+case_start '§8 the kit is in the VOCABULARY even though it is out of the subject'
+# Out of subject ≠ out of the world. An agent standing in this tree really can invoke [[pnext-item]],
+# so a body of OURS that points at one is CORRECT, and calling it dangling would fire on right work.
+fixture
+claude_body pnext-item <<'MD'
+# pnext-item
+MD
+repo_skill Scene <<'MD'
+# Scene
+To take an item, use [[pnext-item]].
+MD
+run
+expect_rc 0 'a ref to a kit skill RESOLVES — the kit is a name an agent here can invoke'
+expect_out_hasnt 'dangling [[pnext-item]]' 'and is not reported'
+
+case_start '§8 KIT_SKILLS drift, the FAIL-OPEN direction: excluding a body no kit row protects'
+# The one that matters. A name wrongly in KIT_SKILLS is a body of OURS whose refs nothing examines,
+# under a gate that still prints `ok`. It cannot be allowed to be quiet, so it is not.
+fixture
+kit_roster cross-repo-coordination intra-repo-parallel-work check-board   # pnext-item is NOT a kit row
+run
+expect_rc 1 'a constant that excludes more than canonical does is a blind spot, and it is fatal'
+expect_out_has 'does not match' 'says the constant and the roster disagree'
+expect_out_has '< pnext-item' 'names the body it was about to skip for no reason'
+expect_out_has 'examined by NOTHING' 'and says what that would have cost'
+
+case_start '§8 KIT_SKILLS drift, the other direction: the kit GREW and the constant is stale'
+fixture
+kit_roster cross-repo-coordination intra-repo-parallel-work check-board pnext-item fs-gg-newkit
+run
+expect_rc 1 'a kit row the constant does not know about is also fatal'
+expect_out_has '> fs-gg-newkit' 'names the new kit body'
+expect_out_has 'the kit grew' 'and diagnoses which way the drift went'
+
+case_start '§8 a roster the gate cannot parse is a REFUSAL, not a green pass'
+# An empty read is not "the kit is empty" — it is the check failing to run, and blessing every name in
+# the constant on the strength of a fetch that returned nothing is the `.github#416` shape exactly.
+#
+# This case doubles as the DECOY test. The fake's roster carries `kind: skill` rows OUTSIDE the `kit:`
+# block, before it and after it. A parse that greps the whole file, or that enters the block and never
+# leaves, would pick them up — and would then report DRIFT (a `>` line naming a decoy) instead of this
+# refusal. So the verdict here is only reachable by a parse that scopes to the block correctly.
+fixture
+kit_roster    # no kit rows at all
+run
+expect_rc 1 'a kit roster with no skill rows is a broken check, not an empty one'
+expect_out_has 'found no `kind: skill`' 'says the read came back without the rows it needed'
+expect_out_hasnt 'decoy' 'and the parse never picked up a kind: skill row outside the kit block'
+
+case_start '§8 the WRAPPER subject cannot silently vanish either — two constituents, two refusals'
+# The bug this widening nearly shipped, in reverse. Build the subject as one union and refuse only when
+# the whole union is empty, and deleting every src/*/skill/SKILL.md stops refusing — the wrappers hold
+# the union up, and the gate reports green over a library surface that has GONE. Both constituents get
+# their own refusal; this pins the new one.
+fixture
+skill fs-gg-alpha <<'MD'
+# alpha
+MD
+rm -rf "$FIX/.claude/skills/fs-gg-fixture"
+mkdir -p "$FIX/.claude/skills/pnext-item"          # vocabulary survives; only KIT bodies remain
+printf -- '---\nname: pnext-item\n---\n' >"$FIX/.claude/skills/pnext-item/SKILL.md"
+run
+expect_rc 1 'a wrapper subject consisting only of the kit is a subject that has moved, not an empty one'
+expect_out_has 'no non-kit wrapper bodies' 'and it names what it went looking for'
+
+case_start '§8 CI + unauthenticated gh → the kit exclusion cannot be verified, so the gate FAILS'
+fixture
+CI_MODE=1 GH_NOAUTH=1 run
+expect_rc 1 'an exclusion it cannot verify is one it may not act on in CI'
+expect_out_has 'KIT_SKILLS cannot be verified' 'says which claim it could not stand behind'
+expect_out_hasnt 'ok — 4 coordination-kit' 'and does NOT report the exclusion as verified'
+
+case_start '§8 locally, an unverifiable exclusion is ANNOUNCED, never silently trusted'
+fixture
+GH_NOAUTH=1 run
+expect_rc 0 'the local run still gates — the subject is hermetic, only the cross-check is not'
+expect_out_has 'was NOT verified' 'and it says the exclusion went unchecked'
+expect_out_has 'refs nothing examined' 'spelling out what a wrong name in that list would cost'
+
+case_start '§8 SKILL_REFS_SKIP_LINKS does NOT skip the kit check — that flag is about LINKS'
+# "Degrade toward MORE checking, never less" (§ 3). The flag exists to spare a laptop ~14 link
+# round-trips; it says nothing about whether the roster can be read, and a run that CAN verify the
+# exclusion in one request must not throw that away because an unrelated half was turned off.
+fixture
+# A real link, so that "the link half was SKIPPED" is distinguishable from "there was nothing to skip"
+# (`link_mode=empty`). Without one this case would pass while asserting nothing about the flag at all.
+skill fs-gg-alpha <<'MD'
+# alpha
+Filed as https://github.com/FS-GG/FS.GG.Rendering/issues/4242.
+MD
+issue FS-GG/FS.GG.Rendering#4242 open
+SKIP_LINKS=1 run
+expect_rc 0 'green'
+expect_out_has "verified against FS-GG/.github's kit roster" 'the exclusion was still verified'
+expect_out_hasnt 'was NOT verified' 'skipping the link half did not silently widen the blind spot'
+expect_out_has 'were NOT checked' 'while the LINK half really was skipped, as asked'
+
+case_start '§8 a roster the gate could not READ is diagnosed as unreadable, NOT as a parse bug'
+# The .github#430 shape, and the one this gate must never commit: a fetch that FAILED (rate limit, 403,
+# network) reported as "the roster's shape changed", sending the reader off to debug a parse that is
+# perfectly fine. The two states get two messages, and the real error is quoted back.
+fixture
+CI_MODE=1 KIT_FAIL=1 run
+expect_rc 1 'a roster it could not read is not one it may act on in CI'
+expect_out_has 'could not READ' 'says it failed to READ the file'
+expect_out_has 'HTTP 403' "and quotes gh's own error rather than swallowing it"
+expect_out_has 'do not go' 'and steers the reader AWAY from the parse'
+expect_out_hasnt 'found no `kind: skill`' 'it does NOT claim it read a roster with no kit rows'
+
+case_start '§8 ...and locally that same unreadable roster degrades to a NOTE, naming the real cause'
+fixture
+KIT_FAIL=1 run
+expect_rc 0 'an offline laptop is not a defect in the tree'
+expect_out_has 'was NOT verified' 'the exclusion is announced as unverified'
+expect_out_has 'HTTP 403' 'and the reason is the one gh actually gave'
+
+case_start '§8 a green run NAMES the exclusion — what you did not look at is part of the verdict'
+fixture
+skill fs-gg-alpha <<'MD'
+# alpha
+MD
+run
+expect_rc 0 'green'
+expect_out_has 'OUT of subject' 'the skipped bodies are stated, not left to be inferred'
+expect_out_has "verified against FS-GG/.github's kit roster" 'and so is the fact that the skip was earned'
 
 # ── summary ─────────────────────────────────────────────────────────────────────────────────────
 harness_summary test-check-skill-refs
