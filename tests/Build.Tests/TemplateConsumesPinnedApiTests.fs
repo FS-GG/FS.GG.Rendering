@@ -326,12 +326,19 @@ let private enclosingPath (m: FrameworkModule) =
     | -1 -> m.Namespace
     | i -> $"{m.Namespace}.{m.Path.Substring(0, i)}"
 
-/// A match is a framework call only if the mirror declares the module AND the qualifier agrees:
-/// either the call is unqualified (reached through an `open`) or the qualifier names some SUFFIX of
-/// what encloses the module — which is precisely what F# resolution accepts given the `open`s in
-/// scope. `FS.GG.Audio.Host.OpenAlBackend.create` (the whole path) and `ControlsElmish.Perf.runScript`
-/// (the tail of one, under `open FS.GG.UI.Controls.Elmish`) are both the framework; a qualifier that
-/// is anything else — `AppRoot.` — is the product calling itself.
+/// Reached through an `open` rather than spelled out. ONE definition, because BOTH halves branch on it
+/// — `admittedCandidates` admits every candidate when it holds, and `isFrameworkCall` must then rule out
+/// the product's own module of that name — and two spellings of "unqualified" that drift apart is the
+/// two-halves-disagree shape this file keeps paying for (#648, #683).
+let private isUnqualified (qualifier: string) = qualifier.TrimEnd('.') = ""
+
+/// The mirrored modules a `[qualifier.]Module` spelling could REACH: the ones the mirror declares
+/// under that name, keeping only those the qualifier admits — either the spelling is unqualified
+/// (reached through an `open`, so every candidate is in play) or the qualifier names some SUFFIX of
+/// what encloses the module, which is precisely what F# resolution accepts given the `open`s in scope.
+/// `FS.GG.Audio.Host.OpenAlBackend.create` (the whole path) and `ControlsElmish.Perf.runScript` (the
+/// tail of one, under `open FS.GG.UI.Controls.Elmish`) both admit their module; a qualifier that is
+/// anything else — `AppRoot.` — admits nothing, and is the product calling itself.
 ///
 /// IT USED TO DEMAND `m.Namespace = qualifier`, an EXACT match against the namespace. That reads a
 /// nested call as unresolvable even once the module is known: `ControlsElmish.Perf.runScript` offers
@@ -341,19 +348,34 @@ let private enclosingPath (m: FrameworkModule) =
 ///
 /// The suffix must be DOT-ALIGNED. A bare `EndsWith` would let the qualifier `mish` match
 /// `...Controls.Elmish`, and a substring is not a name.
-let private isFrameworkCall (qualifier: string) (moduleName: string) =
+///
+/// ONE candidate set, and #683 is why it is its own function rather than a clause inside
+/// `isFrameworkCall`. "Which modules can this spelling reach?" is asked TWICE — once to decide the
+/// spelling is framework at all, and once to decide WHICH PACKAGE'S module the pinned oracle must be
+/// asked about. Answering it two ways is how a module map keyed on the bare name got to excuse a doc
+/// with an unrelated package's member; the two questions now read the same answer.
+let private admittedCandidates (qualifier: string) (moduleName: string) =
     match frameworkModulesByName.TryFind moduleName with
-    | None -> false
+    | None -> []
     | Some candidates ->
-        let qualified = qualifier.TrimEnd('.')
-
-        if qualified = "" then
-            not (productModules.Contains moduleName)
-        else
+        if isUnqualified qualifier then
             candidates
-            |> List.exists (fun m ->
+        else
+            let qualified = qualifier.TrimEnd('.')
+
+            candidates
+            |> List.filter (fun m ->
                 let enclosing = enclosingPath m
                 enclosing = qualified || enclosing.EndsWith($".{qualified}", StringComparison.Ordinal))
+
+/// A match is a framework call only if the mirror declares the module AND the qualifier agrees.
+let private isFrameworkCall (qualifier: string) (moduleName: string) =
+    match admittedCandidates qualifier moduleName with
+    | [] -> false
+    | _ ->
+        // An unqualified spelling admits every candidate, so the only thing left to rule out is the
+        // product's OWN module of that name (`AppRoot.LayoutEvidence` reached through its `open`).
+        not (isUnqualified qualifier && productModules.Contains moduleName)
 
 let private callSites =
     (File.ReadAllText programPath |> eraseKeepingLines).Split('\n')
@@ -1094,8 +1116,12 @@ let private skillProseSymbols =
     |> List.ofSeq
 
 /// Every shipped doc surface, reduced to the symbols this rule may judge — EVERY occurrence, not one per
-/// symbol. `docSymbols` below dedups for the verdict; this keeps the sites, because the verdict and the
-/// WORK are different questions.
+/// symbol, and each still carrying THE QUALIFIER IT WAS WRITTEN WITH. `docSymbols` below dedups for the
+/// verdict; this keeps the sites, because the verdict and the WORK are different questions.
+///
+/// The qualifier used to be dropped here (`List.map snd`) the moment `isJudgedDocModule` had consumed it,
+/// and #683 is what that cost: it is the ONLY thing that says which package a doc means by `Cmd`, so
+/// throwing it away left the pinned oracle with no choice but to answer for all of them at once.
 let private judgedDocOccurrences =
     List.concat
         [ skillFenceSymbols
@@ -1104,7 +1130,19 @@ let private judgedDocOccurrences =
           mirrorDocCommentSymbols
           scaffoldSourceDocCommentSymbols ]
     |> List.filter (fun (qualifier, s) -> isJudgedDocModule qualifier s.Module)
-    |> List.map snd
+
+/// The judged occurrences as bare symbols — what everything except the pin resolution wants.
+let private judgedDocSymbols = judgedDocOccurrences |> List.map snd
+
+/// Every QUALIFIER a judged `docKey` is written with, deduped. `resolvesInPin` judges the symbol under
+/// each of them: one docKey, but a doc can reach the same member by more than one spelling, and each
+/// spelling is a separate claim about a separate package.
+let private docKeyQualifiers =
+    judgedDocOccurrences
+    |> List.groupBy (fun (_, s) -> docKey s)
+    |> List.map (fun (key, occurrences) ->
+        key, occurrences |> List.map (fun (qualifier, _) -> qualifier.TrimEnd('.')) |> List.distinct)
+    |> Map.ofList
 
 /// Every line a judged `docKey` occurs on. The dedup below is right for the VERDICT (one symbol in one
 /// doc is one violation) and badly wrong for the REPORT: `Attr.onChanged` was written in EIGHT
@@ -1113,14 +1151,14 @@ let private judgedDocOccurrences =
 /// place — but a message that understates the work by 3x sends the reader back around the loop for
 /// nothing. Name them all.
 let private docKeySites =
-    judgedDocOccurrences
+    judgedDocSymbols
     |> List.groupBy docKey
     |> List.map (fun (key, sites) -> key, sites |> List.map (fun s -> s.Line) |> List.distinct |> List.sort)
     |> Map.ofList
 
 /// The symbols this rule judges: one verdict per `docKey`.
 let private docSymbols =
-    judgedDocOccurrences
+    judgedDocSymbols
     |> List.distinctBy docKey
     |> List.sortBy (fun s -> s.Doc, s.Line)
 
@@ -1157,55 +1195,101 @@ let private docPackages =
     let fromTypes =
         mirrorTypeMembers |> List.map (fun m -> packageForNamespace m.Namespace)
 
-    fromVals @ fromTypes |> List.distinct |> List.sort
+    // #683 — and every package declaring a module a judged occurrence could RESOLVE TO, which is not the
+    // same set as `fromVals`. That derives one package per symbol, from `resolveModule`'s single pick;
+    // the oracle now asks EVERY admitted candidate, and a candidate whose package was never restored has
+    // no key in the map. In a per-package oracle an absent key does not excuse the symbol — it ACCUSES
+    // it — so an unrestored candidate would read as "the pin does not export this" and report a correct
+    // doc as a defect. The restore set has to cover every package the resolution can reach.
+    let fromCandidates =
+        judgedDocOccurrences
+        |> List.collect (fun (qualifier, s) -> admittedCandidates qualifier s.Module)
+        |> List.map (fun m -> packageForNamespace m.Namespace)
+
+    fromVals @ fromTypes @ fromCandidates |> List.distinct |> List.sort
 
 // ---------------------------------------------------------------------------------------------
 // The oracle: what the PINNED packages actually export.
 // ---------------------------------------------------------------------------------------------
 
-/// Simple module name -> the members the PUBLISHED assembly exports.
+/// Module PATH within its namespace -> the members the PUBLISHED assembly exports.
 ///
 /// An F# module compiles to a STATIC class — `abstract` AND `sealed`. A union, a record or a class is
 /// never both, so this keys modules and nothing else, which is what a doc's `Module.member` means. Two
 /// spellings have to be undone: F# suffixes a module whose name collides with a type's (`module Scene`
 /// beside `type Scene` becomes `SceneModule`), and generic arity is mangled (``Foo`1``) — a doc writes
 /// neither. Property accessors are recorded under their bare name as well as their `get_`/`set_` one.
+///
+/// THE PATH, NOT THE BARE NAME, and #683 is the bill for the bare name. `Audio.Cmd` (a `module Cmd`
+/// nested in `module Audio`, FS.GG.Audio.Elmish) and `Cmd` (top-level in namespace
+/// `FS.GG.UI.Controls.Elmish.Authoring`) are DIFFERENT modules with DISJOINT members — `ofEngine`,
+/// `playSfx`, … on one; `none` alone on the other. Keyed on the innermost name they are both `Cmd`,
+/// and `readSurfaceAt` then unioned them, so FS.GG.Audio.Elmish's `ofEngine` EXCUSED a UI doc naming
+/// `Cmd.ofEngine` — whose reader gets a hard build error. The path is what the MIRROR keys on
+/// (`FrameworkModule.Path`), so it is what the two sides can agree on, and agreeing is the whole job:
+/// a gate whose two halves disagree about what a module IS reports green on the difference (#648).
 let private readModuleSurface (dll: string) =
     use stream = File.OpenRead dll
     use pe = new PEReader(stream)
     let md = pe.GetMetadataReader()
 
+    let isPublic (td: TypeDefinition) =
+        let visibility = td.Attributes &&& TypeAttributes.VisibilityMask
+        visibility = TypeAttributes.Public || visibility = TypeAttributes.NestedPublic
+
+    let isFSharpModule (td: TypeDefinition) =
+        td.Attributes.HasFlag TypeAttributes.Abstract
+        && td.Attributes.HasFlag TypeAttributes.Sealed
+
+    // Per SEGMENT, because every segment of a nested path carries both manglings.
+    let segment (raw: string) =
+        let withoutArity = match raw.IndexOf '`' with | -1 -> raw | i -> raw.Substring(0, i)
+
+        if withoutArity.EndsWith("Module", StringComparison.Ordinal) && withoutArity.Length > 6 then
+            withoutArity.Substring(0, withoutArity.Length - 6)
+        else
+            withoutArity
+
+    // The dotted path WITHIN the namespace — `Audio.Cmd` for a module nested in `module Audio`, `Cmd`
+    // for a top-level one. The namespace does not appear: it is not part of the mirror's `Path` either,
+    // and the PACKAGE (which `readSurfaceAt` pairs this with) is what identifies the assembly.
+    let rec pathOf (td: TypeDefinition) =
+        let name = segment (md.GetString td.Name)
+        let parent = td.GetDeclaringType()
+
+        if parent.IsNil then
+            name
+        else
+            $"{pathOf (md.GetTypeDefinition parent)}.{name}"
+
+    // A module reachable only THROUGH something a product cannot name is not surface. Every ancestor
+    // must itself be a public F# module — which is what `module Foo = module Bar` compiles to, and
+    // what the mirror's own walk records. Anything else nested in here is the compiler's furniture.
+    let rec nameable (td: TypeDefinition) =
+        let parent = td.GetDeclaringType()
+
+        if parent.IsNil then
+            true
+        else
+            let pd = md.GetTypeDefinition parent
+            isPublic pd && isFSharpModule pd && nameable pd
+
     [ for handle in md.TypeDefinitions do
         let td = md.GetTypeDefinition handle
-        let visibility = td.Attributes &&& TypeAttributes.VisibilityMask
 
-        let isPublic =
-            visibility = TypeAttributes.Public || visibility = TypeAttributes.NestedPublic
-
-        let isFSharpModule =
-            td.Attributes.HasFlag TypeAttributes.Abstract
-            && td.Attributes.HasFlag TypeAttributes.Sealed
-
-        if isPublic && isFSharpModule then
-            let raw = md.GetString td.Name
-            let withoutArity = match raw.IndexOf '`' with | -1 -> raw | i -> raw.Substring(0, i)
-
-            let name =
-                if withoutArity.EndsWith("Module", StringComparison.Ordinal) && withoutArity.Length > 6 then
-                    withoutArity.Substring(0, withoutArity.Length - 6)
-                else
-                    withoutArity
+        if isPublic td && isFSharpModule td && nameable td then
+            let path = pathOf td
 
             for methodHandle in td.GetMethods() do
                 let m = md.GetMethodDefinition methodHandle
 
                 if (m.Attributes &&& MethodAttributes.MemberAccessMask) = MethodAttributes.Public then
                     let memberName = md.GetString m.Name
-                    yield name, memberName
+                    yield path, memberName
 
                     for prefix in [ "get_"; "set_" ] do
                         if memberName.StartsWith(prefix, StringComparison.Ordinal) then
-                            yield name, memberName.Substring prefix.Length ]
+                            yield path, memberName.Substring prefix.Length ]
 
 /// Restore the pinned packages and read their exported module surface. `Error` — never an empty map —
 /// if anything at all went wrong: an oracle that silently knows nothing would report every doc symbol
@@ -1398,8 +1482,14 @@ let private readTypeSurface (dll: string) =
 /// unforgettable rather than merely documented: a rule cannot hold the pinned surface without having gone
 /// through the door that defers in the release window.
 type PinnedSurface =
-    { /// Simple module name -> the `val`s the published assembly exports.
-      Modules: Map<string, Set<string>>
+    { /// (package, module path) -> the `val`s the published assembly exports. Keyed by PACKAGE as well as
+      /// path for the SAME reason `Types` is, and it took a second bug (#683) to say so: `Cmd` is
+      /// FS.GG.Audio.Elmish's `Audio.Cmd` (`ofEngine`, `playSfx`, …) AND FS.GG.UI.Controls.Elmish's
+      /// top-level `Cmd` (`none`, alone) — disjoint member sets. Keyed on the bare name they merge, and the
+      /// Audio package's `ofEngine` then EXCUSES a UI doc naming `Cmd.ofEngine`, whose reader gets a hard
+      /// build error. And by PATH, not by simple name, because that is what the mirror keys on: the two
+      /// halves have to agree about what a module IS, or the gate reports green on the difference (#648).
+      Modules: Map<string * string, Set<string>>
       /// (package, type) -> the union cases / record fields it exports. Keyed by PACKAGE as well as name
       /// because the pinned packages declare seventeen type names twice or more, and `Scene`'s `Fatal`
       /// case must not excuse its absence from `Layout`'s same-named type.
@@ -1838,7 +1928,7 @@ module private PinnedApi =
     let private readSurfaceAt
         (packages: string list)
         (versionOf: string -> string)
-        : Result<Map<string, Set<string>> * Map<string * string, Set<string>>, string> =
+        : Result<Map<string * string, Set<string>> * Map<string * string, Set<string>>, string> =
         let workDir = Path.Combine(Path.GetTempPath(), "fsgg-doc-pin-probe-" + Guid.NewGuid().ToString("N"))
         Directory.CreateDirectory workDir |> ignore
 
@@ -1918,7 +2008,8 @@ module private PinnedApi =
                         // whose lib/ we cannot find is an oracle with a hole in it, and a hole excuses every
                         // symbol that would have landed in it.
                         let missing = ResizeArray<string>()
-                        let surface = Collections.Generic.Dictionary<string, Collections.Generic.HashSet<string>>()
+                        let surface =
+                            Collections.Generic.Dictionary<string * string, Collections.Generic.HashSet<string>>()
                         let types =
                             Collections.Generic.Dictionary<string * string, Collections.Generic.HashSet<string>>()
 
@@ -1946,11 +2037,26 @@ module private PinnedApi =
                             match dll with
                             | None -> missing.Add $"{packageId} {versionOf packageId}"
                             | Some path ->
-                                for (moduleName, memberName) in readModuleSurface path do
-                                    if not (surface.ContainsKey moduleName) then
-                                        surface.[moduleName] <- Collections.Generic.HashSet<string>()
+                                // #683 — keyed by (PACKAGE, module path), for the SAME reason the type map
+                                // below is keyed by (package, type), and it took a second bug to say so. This
+                                // used to key on the module's BARE NAME and union the members of every
+                                // restored package under it — so `resolvesInPin` answered "does ANY pinned
+                                // package export a module of this name that has this member?" rather than
+                                // "does the package this doc's module actually belongs to export it?". Two
+                                // names span packages today: `Audio` (FS.GG.Audio.Core, .Elmish and .Host,
+                                // whose member sets are disjoint BY DESIGN — Core plays, Host devices, Elmish
+                                // commands) and `Cmd` (`Audio.Cmd` in FS.GG.Audio.Elmish; `Cmd` in
+                                // FS.GG.UI.Controls.Elmish, which exports `none` and nothing else). Under the
+                                // union, a UI doc naming `Cmd.ofEngine` resolved against the merged key and
+                                // PASSED — and its reader gets a hard build error, the #550 class this rule
+                                // exists to refuse.
+                                for (modulePath, memberName) in readModuleSurface path do
+                                    let key = (packageId, modulePath)
 
-                                    surface.[moduleName].Add memberName |> ignore
+                                    if not (surface.ContainsKey key) then
+                                        surface.[key] <- Collections.Generic.HashSet<string>()
+
+                                    surface.[key].Add memberName |> ignore
 
                                 // #611 — the SAME assembly, read a second way. Modules and types are disjoint
                                 // in the metadata (abstract+sealed vs not), so those two maps cannot collide,
@@ -2094,15 +2200,55 @@ let private runProbeBuild () =
 
     PinnedApi.probe "the pin-grounded proof that the template's call sites compile" namespaces lines
 
-/// Does the PINNED package export what the doc names?
-let private resolvesInPin (pinned: Map<string, Set<string>>) (s: DocSymbol) =
-    match pinned |> Map.tryFind s.Module with
-    | Some members -> members.Contains s.Member
-    | None ->
-        // The mirror calls this module framework, and the pinned package has no module of that name at
-        // all. That is the rule's subject at its sharpest — an ENTIRE module a product cannot reach —
-        // so it is a violation, not an exemption.
-        false
+/// Does the PINNED package export what ONE occurrence of a doc symbol names, spelled the way that
+/// occurrence spells it?
+///
+/// The doc says `Cmd.none`; it does NOT say which package it means. The MIRROR does — `Cmd` is
+/// declared by FS.GG.UI.Controls.Elmish and (as `Audio.Cmd`) by FS.GG.Audio.Elmish — and the
+/// occurrence's own QUALIFIER is what picks between them, exactly as F# resolution would given the
+/// `open`s in scope. So the candidates are the ones `admittedCandidates` allows, each is asked of the
+/// package IT belongs to, and the symbol resolves if one of them exports the member.
+///
+/// A candidate whose (package, path) is absent from the pin resolves to `false`, not to "unknown".
+/// That is the rule's subject at its sharpest — an ENTIRE module a product cannot reach — and it is
+/// now asked PER PACKAGE, which is the half #683 was missing: a UI module the pin does not ship used
+/// to be excused by an unrelated Audio module that merely shared its name.
+///
+/// PASS IF ANY ADMITTED CANDIDATE RESOLVES, and that is a stated rule rather than an accident. For a
+/// QUALIFIED spelling the qualifier usually leaves exactly one candidate, so this is a strict
+/// per-package judgement. For a BARE `Cmd.x` with two candidates it is not: the rule passes if either
+/// package exports it, which is honest about what the oracle can know (a doc-comment or a prose
+/// sentence carries no `open`s to resolve against) and still catches the case this rule was built for
+/// — that NO candidate exports it. The stricter reading, judging a bare name against the package the
+/// surrounding block's `open`s imply, needs a notion of doc context this rule does not have; it is
+/// #695's subject (compile the docs, do not parse them), not something to smuggle in here. Anything
+/// stricter that does NOT read the `open`s was measured and rejected: admitting only the candidates
+/// that are top-level in their namespace would wrongly accuse the 20 shipped sites that write a bare
+/// `Perf.runScript`, and a false positive is how this rule gets ledgered into silence by the first
+/// person it wrongly accuses.
+let private occurrenceResolvesInPin
+    (pinned: Map<string * string, Set<string>>)
+    (qualifier: string)
+    (s: DocSymbol)
+    =
+    admittedCandidates qualifier s.Module
+    |> List.exists (fun m ->
+        match pinned |> Map.tryFind (packageForNamespace m.Namespace, m.Path) with
+        | Some members -> members.Contains s.Member
+        | None -> false)
+
+/// Does the PINNED package export what the doc names — at EVERY spelling the doc names it with?
+///
+/// One verdict per `docKey`, but a docKey is a set of OCCURRENCES, and they need not agree: a doc may
+/// write `Cmd.none` bare in one place and `FS.GG.UI.Controls.Elmish.Authoring.Cmd.ofEngine` in
+/// another. Each occurrence is a claim a reader can copy, so each must resolve on its own qualifier —
+/// `forall`, not `exists`. Taking the verdict from whichever occurrence `distinctBy` happened to keep
+/// would make it depend on file order.
+let private resolvesInPin (pinned: Map<string * string, Set<string>>) (s: DocSymbol) =
+    docKeyQualifiers
+    |> Map.tryFind (docKey s)
+    |> Option.defaultValue [ "" ]
+    |> List.forall (fun qualifier -> occurrenceResolvesInPin pinned qualifier s)
 
 // ---------------------------------------------------------------------------------------------
 // The ledger: violations that are KNOWN, and whose fix is somebody's declared work.
@@ -2574,9 +2720,11 @@ let templateConsumesPinnedApiTests =
         // `ControlsElmish.Perf.runScriptToEffects` — named on the line ABOVE it, in the same doc, in the same
         // fenced block, and just as unbindable on the pin.
         //
-        // The oracle could always see these: `readModuleSurface` reads `NestedPublic` types and keys them by
-        // simple name, so `Perf` was in the pinned surface the whole time. Only the EXTRACTOR was blind, and a
-        // gate whose two halves disagree about what a module IS reports green on the difference.
+        // The oracle could always see these: `readModuleSurface` reads `NestedPublic` types, so `Perf` was in
+        // the pinned surface the whole time. Only the EXTRACTOR was blind, and a gate whose two halves
+        // disagree about what a module IS reports green on the difference. (It keyed them by their SIMPLE
+        // NAME then, which was a second bug in the same neighbourhood and is #683 below; the two halves now
+        // agree on the PATH.)
         test "a NESTED framework module is judged, so a doc cannot teach an unreleased `Module.Submodule.member` (#648)" {
             let judged = docSymbols |> List.map (fun s -> $"{s.Module}.{s.Member}") |> Set.ofList
 
@@ -2710,6 +2858,98 @@ let templateConsumesPinnedApiTests =
                  Audio.Core / Audio.Host mirrors. They must stay judged. If they fall out, the `Audio` name is \
                  resolving through the EMPTY Elmish container instead of the mirrors that declare the members, \
                  and the real audio surface has gone unjudged — silently, with every other test still green."
+        }
+
+        // #683 — THE MODULE ORACLE IS KEYED BY (PACKAGE, PATH), NOT BY BARE NAME.
+        //
+        // `readSurfaceAt` used to key the module surface by the module's SIMPLE NAME and union the members of
+        // every restored package under it, so `resolvesInPin` answered "does ANY pinned package export a
+        // module of this name that has this member?" — not "does the package this doc's module actually
+        // belongs to export it?". #611 had already keyed the TYPE map by (package, type) for precisely this
+        // reason, and spelled the reasoning out at length; the module map was the same shape and never got
+        // the same treatment.
+        //
+        // Two names span packages TODAY, so this is not hypothetical. `Cmd` is `FS.GG.Audio.Elmish`'s
+        // `Audio.Cmd` (`ofEffects`, `ofEngine`, `playSfx`, …) and `FS.GG.UI.Controls.Elmish`'s top-level `Cmd`
+        // (`none`, and nothing else) — DISJOINT member sets, by design. Merged under one key, the Audio
+        // package's `ofEngine` EXCUSED a UI doc naming `Cmd.ofEngine`, and its reader gets a hard build
+        // error: a false PASS, the #550 class this rule exists to refuse. (`Audio` is the same shape across
+        // Core/Elmish/Host.) It never bit for want of luck, not structure — no shipped doc happened to name a
+        // colliding member on the wrong side.
+        //
+        // The surface below is SYNTHETIC, with the shape the real pin has, so the property is stated without
+        // paying for a restore — and the anchor above it is what keeps the statement from going vacuous if
+        // the framework ever stops colliding on `Cmd`. The REAL oracle's keys are held against the real
+        // packages by the doc-vs-pin rule itself, which is the half a hand-written surface cannot prove.
+        test "the module oracle is keyed by (package, path), so one package's module cannot excuse another's (#683)" {
+            let candidates = admittedCandidates "" "Cmd"
+
+            let packages =
+                candidates
+                |> List.map (fun m -> packageForNamespace m.Namespace)
+                |> List.distinct
+                |> List.sort
+
+            // ANTI-VACUITY. Every assertion below is about what happens when ONE NAME spans TWO PACKAGES; if
+            // the mirror stops declaring `Cmd` in more than one, they all pass by describing nothing.
+            Expect.isGreaterThan
+                packages.Length
+                1
+                $"`Cmd` must be declared by MORE THAN ONE pinned package for this test to be testing anything \
+                  (found: {packages}). It is `Audio.Cmd` in FS.GG.Audio.Elmish and a top-level `Cmd` in \
+                  FS.GG.UI.Controls.Elmish. If the collision is gone, re-point this test at whatever name \
+                  spans packages now — do NOT delete it: the unsoundness it guards is in the KEY, not in the \
+                  particular name that exposed it."
+
+            // The two `Cmd`s, keyed the way the real oracle keys them, with the members the real packages
+            // export. Under the old bare-name key these two rows were ONE, and its member set was the union.
+            let surface =
+                Map.ofList
+                    [ ("FS.GG.UI.Controls.Elmish", "Cmd"), Set.ofList [ "none" ]
+                      ("FS.GG.Audio.Elmish", "Audio.Cmd"),
+                      Set.ofList
+                          [ "ofEffects"; "ofEngine"; "playMusic"; "playSfx"; "setMasterVolume"; "stopMusic" ] ]
+
+            let cmd memberName =
+                { Doc = "synthetic"; Line = 0; Module = "Cmd"; Member = memberName }
+
+            // THE INSTANCE. A doc that reaches `Cmd` through the UI package's own namespace and names
+            // `ofEngine` is naming a member of the AUDIO package's unrelated `Cmd`. The UI `Cmd` exports
+            // `none` and nothing else, so this must be REFUSED — and under the bare-name key it was not.
+            Expect.isFalse
+                (occurrenceResolvesInPin surface "FS.GG.UI.Controls.Elmish.Authoring" (cmd "ofEngine"))
+                "`Cmd.ofEngine`, qualified into FS.GG.UI.Controls.Elmish, must NOT resolve: that package's \
+                 `Cmd` exports `none` alone, and `ofEngine` belongs to FS.GG.Audio.Elmish's unrelated \
+                 `Audio.Cmd`. If it resolves, the module surface is keyed on the BARE NAME again and one \
+                 package's module is excusing another's — a false PASS on a doc whose reader gets a hard \
+                 build error (#683)."
+
+            // The other half, and it is what keeps the fix from being "refuse everything": the SAME qualifier
+            // must still resolve the member that package really does export.
+            Expect.isTrue
+                (occurrenceResolvesInPin surface "FS.GG.UI.Controls.Elmish.Authoring" (cmd "none"))
+                "`Cmd.none` IS exported by FS.GG.UI.Controls.Elmish, and must resolve. If this fails, the \
+                 (package, path) key does not agree with the mirror's `Path` and the oracle now accuses \
+                 correct docs — a false POSITIVE, which is how this rule gets ledgered into silence by the \
+                 first person it wrongly accuses."
+
+            // ...and the qualifier is what picks the package. Reached through `module Audio`, the very same
+            // `Cmd.ofEngine` is correct.
+            Expect.isTrue
+                (occurrenceResolvesInPin surface "Audio" (cmd "ofEngine"))
+                "`Audio.Cmd.ofEngine` must resolve: the qualifier `Audio` admits FS.GG.Audio.Elmish's nested \
+                 `Audio.Cmd`, which exports it. If this fails, the qualifier is no longer selecting the \
+                 candidate — and a rule that cannot tell the two `Cmd`s apart can only be wrong in one \
+                 direction or the other."
+
+            // AND A MEMBER NO CANDIDATE EXPORTS IS STILL A VIOLATION, from either side. This is the rule's
+            // subject at its sharpest, and the one thing the ANY-of-candidates reading must never lose.
+            for qualifier in [ ""; "Audio"; "FS.GG.UI.Controls.Elmish.Authoring" ] do
+                Expect.isFalse
+                    (occurrenceResolvesInPin surface qualifier (cmd "ofNothing"))
+                    $"`Cmd.ofNothing` (qualifier: '{qualifier}') is exported by NO candidate, so it must be a \
+                      violation however it is spelled. If it resolves, the oracle has a hole in it, and a \
+                      hole EXCUSES every symbol that belongs in it (.github#266)."
         }
 
         // The walk itself, against a mirror written FOR the test — the only way to assert the half of it the
@@ -2849,6 +3089,38 @@ let templateConsumesPinnedApiTests =
         testCase "every FS.GG.* symbol a shipped template doc names exists in the PINNED package" <| fun _ ->
             PinnedApi.withPinnedSurface "the doc-vs-pin rule" <| fun surface ->
                 let uiPin = readAxis uiAxis
+
+                // #683 — THE ORACLE ITSELF, held against the REAL packages before it is asked anything.
+                // The synthetic test above proves the RESOLVER reads a (package, path) key correctly; only
+                // this proves `readModuleSurface` actually EMITS one. Re-key it by the bare name and the two
+                // rows below merge into one whose members are the union — which is #683 exactly, and the
+                // resolver test would not notice, because its surface is hand-written.
+                //
+                // Held as DISJOINT MEMBER SETS rather than as two keys: two keys can exist and still carry
+                // the merged members, and it is the merge that excuses the doc.
+                for (package, path, mustHave, mustNotHave) in
+                    [ "FS.GG.UI.Controls.Elmish", "Cmd", "none", "ofEngine"
+                      "FS.GG.Audio.Elmish", "Audio.Cmd", "ofEngine", "none" ] do
+                    match surface.Modules |> Map.tryFind (package, path) with
+                    | None ->
+                        failtest
+                            $"the pinned surface has no module `{path}` in {package}. The (package, path) \
+                              key no longer agrees with the mirror's `Path`, so every doc symbol on that \
+                              module now reads as unexported and the rule is about to accuse correct docs \
+                              (#683)."
+                    | Some members ->
+                        Expect.isTrue
+                            (members.Contains mustHave)
+                            $"{package}'s `{path}` must export `{mustHave}` at the pin — it is what the \
+                              module is FOR. If it does not, the oracle is reading the wrong assembly."
+
+                        Expect.isFalse
+                            (members.Contains mustNotHave)
+                            $"{package}'s `{path}` must NOT export `{mustNotHave}` — that member belongs to \
+                              the OTHER package's same-named `Cmd`. If it appears here, the module surface \
+                              has been keyed on the bare name again and the two packages' members are \
+                              unioned, so one package's `Cmd` will excuse a doc naming the other's — a false \
+                              PASS on a doc whose reader gets a hard build error (#683)."
 
                 let undeclared =
                     docSymbols
