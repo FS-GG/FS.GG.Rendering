@@ -120,9 +120,10 @@ scripts/fsgg-coord widen <issue> --paths "src/Scene/**, tests/Scene/**"   # 2. t
 ```
 
 `widen` re-checks the touch-set against every live claim and notifies whoever it now collides with;
-it exits non-zero on a collision. Declare **narrowly and honestly** — `Paths:` is not a glob
-language (exact paths, directory prefixes, and a *trailing* `/**` or `/*`; a leading `**/` matches
-nothing and is refused).
+it exits non-zero on a collision. Despite the name it is a **re-declare, not an append**: it sets
+`Paths:` to exactly what you pass, so it hands paths back as readily as it takes them (§3). Declare
+**narrowly and honestly** — `Paths:` is not a glob language (exact paths, directory prefixes, and a
+*trailing* `/**` or `/*`; a leading `**/` matches nothing and is refused).
 
 **And do not reserve a generated artifact** (`.github#309`). If a checked-in generator produces the file
 and a CI **regeneration gate** fails on any diff in it, nobody *authors* it — a collision there is a
@@ -158,6 +159,34 @@ discipline, managed for you.
   regenerated it — you did not author it. Declaring it now reserves a file nobody owns and
   serialises every other item that regenerates it, which is the exact failure §1 keeps you out of.
   Leave it undeclared, and name it as expected drift in the PR (§5).
+- **And the mirror of that rule: if the work turns out NARROWER than declared, re-declare it
+  narrower — the moment you know.** `widen` sets the touch-set rather than extending it, so the same
+  command gives paths back:
+
+  ```sh
+  scripts/fsgg-coord widen <issue> --paths "<what you are ACTUALLY touching>"
+  ```
+
+  **A narrowing can never collide** — a subset reserves nothing its superset did not — so it will
+  never cost you an `OVERLAP`, and there is never a reason to sit on one. (It can still exit
+  non-zero for a reason that is not yours: `widen` refuses to report `DISJOINT` when some *other*
+  live claim declares unmatchable tokens, because it cannot see that claim's files to check against.
+  That fires in either direction and means "fix theirs", not "your narrowing was rejected" — your
+  re-declaration has already landed.) Two triggers fire in practice:
+
+  - **A file you find you cannot edit.** A distributed or generated file whose CI gate fails on a
+    consumer edit is not yours to author. You read it and moved on; give it back.
+  - **A directory you turn out only to READ.** `src/` in the declaration, one file in the diff.
+
+  Until you do, your declaration keeps reserving those files for the rest of the lease and `take`
+  reports **"nothing schedulable"** over items that are startable but for a reservation nobody is
+  using. Both triggers are one real item: FS.GG.Rendering#618 declared
+  `Directory.Build.props src/ .github/workflows/`, merged a **one-file** diff, and never touched
+  `Directory.Build.props` (a distributed file a consumer may not edit) or `src/` (the whole source
+  tree). That unused `src/` alone held #619 off the board for the life of the claim — an entire
+  source tree reserved, colliding on **one `.fsi` file** — and #618's holder had `widen` in hand the
+  whole time with no reason to think of it
+  ([#601](https://github.com/FS-GG/.github/issues/601)).
 - **Heartbeat long work.** A claim goes stale after `FSGG_CLAIM_LEASE_MIN` (default 120m) without
   one, and the next claimant collects it.
 
@@ -311,6 +340,14 @@ worker who asks for work. This is not theoretical: `.github` reached **twelve** 
 filed by this very recipe, **none** of them schedulable, and `/pnext-item` reported a dead queue
 over a full one ([#442](https://github.com/FS-GG/.github/issues/442)). You are the one holding the
 context — you can name the files better than the eventual claimant can.
+
+**But on a `[cross-repo]` item it is still a guess, and in the target repo it lands as a lock.** You
+are naming files in a repo whose layout you are reading from the outside, and every worker there is
+held out of those paths for the life of the claim. So declaring a wide touch-set "to be safe" is not
+safe — it is a lock you took on somebody else's behalf. Declare what you can defend, and know that
+**the claimant is expected to correct you**: when they find the declaration over-reserves, §3 tells
+them to `widen` it narrower on the spot rather than inherit the guess
+([#601](https://github.com/FS-GG/.github/issues/601)).
 
 Declare it **narrowly and honestly**: exact paths, directory prefixes, and a *trailing* `/**` or
 `/*` (a leading `**/` matches nothing and is refused; so is a backticked line, #435), and **no

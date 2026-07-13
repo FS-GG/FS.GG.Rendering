@@ -331,13 +331,25 @@ scripts/fsgg-coord say <issue> --to <worker> 'I own src/Audio until this lands.'
 scripts/fsgg-coord inbox --repo <r>          # what is new for me, across every live claim
 ```
 
-Widening a touch-set mid-flight re-checks it **and notifies whoever it now collides with**:
+`widen` **re-declares** a touch-set mid-flight. It sets `Paths:` to exactly what you pass — it does
+not union with what was there — then re-checks the result against every live claim **and notifies
+whoever it now collides with**:
 
 ```sh
 scripts/fsgg-coord widen <issue> --paths "src/Scene/**, src/Audio/**"   # non-zero on a collision
 ```
 
 Stop editing the shared paths until the collision is resolved.
+
+**So it narrows, too — and narrowing is the direction nobody ever uses.** Pass a smaller set and the
+reservation genuinely shrinks. A narrowing can never be refused for collision, because a subset
+collides with nothing its superset did not; the capability is already there and it is safe. The name
+says "widen" and only the *growth* direction is ever taught, so an over-reservation is **never handed
+back** — it holds for the full lease, against files nobody is touching, and the workers it locks out
+see only a dead queue ([#601](https://github.com/FS-GG/.github/issues/601)).
+
+**When you learn your declaration over-reserves, re-declare it smaller — at once, not at merge.**
+[pnext-item §3](../pnext-item/SKILL.md) names the two triggers that actually fire.
 
 ## 5. Finish — the earned done-stamp (unchanged)
 
