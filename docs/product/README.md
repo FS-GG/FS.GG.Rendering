@@ -58,6 +58,15 @@ any source is copied (source import is Stage R4).
     — the fixed-step double buffer is a simulation primitive owned by `FS.GG.Game.Core.Loop`;
     `FS.GG.UI.Canvas.Loop`/`StepState` were deprecated (#269/#317) and retire at the next FS.GG.UI
     framework major, `0.6.0` (#319, decision 5), with no re-export.
+  - [0105-a-required-gate-reads-only-the-commit.md](./decisions/0105-a-required-gate-reads-only-the-commit.md)
+    — **Proposed.** A context may be `required` only if its verdict on a commit is stable: it may not
+    turn an already-green commit red without a change in this repo. Supplies the eligibility
+    precondition ADR-0103 never stated; `check-frozen-mirrors` (which reads `FS-GG/.github`'s live
+    `main`) violates it (#738).
+  - [0106-governance-is-generated-not-compared.md](./decisions/0106-governance-is-generated-not-compared.md)
+    — **Proposed.** A fact has one home; where a second copy exists, the gate comparing them is deleted
+    **with** the copy, not improved. Applies ADR-0014/ADR-0034's ratified move to the build/publish/pin
+    substrate ADR-0034 explicitly excluded. Closing rule: "added a gate" is not a close (#694/#695/#696).
   - **Org-level pointer stubs** (canonical text in `FS-GG/.github`):
     - [0011-agent-skill-roots-full-union-orchestrator-owned-mirror.md](./decisions/0011-agent-skill-roots-full-union-orchestrator-owned-mirror.md)
       — agent-skill roots carry the full union; `fsgg-sdd` owns the mirror; providers confined
