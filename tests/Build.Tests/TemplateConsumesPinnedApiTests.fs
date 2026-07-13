@@ -1500,14 +1500,24 @@ let private readTypeSurface (dll: string) =
                 if flags = Some SourceConstructField || flags = Some SourceConstructUnionCase then
                     yield name, md.GetString pd.Name ]
 
-let private readPinnedSurface () : Result<Map<string, Set<string>> * Map<string * string, Set<string>>, string> =
+/// Restore `packages` at `versionOf`, and read their module + type surface out of the restored assemblies.
+///
+/// PARAMETERISED BY VERSION, and that is the whole point (#688). Two callers want two different subjects:
+/// the RULES below judge the doc against `$(FsGgUiVersion)` — a moving target, which is correct, because
+/// that is what a scaffolded product restores. The ORACLE SELF-CHECK judges the READER, and for that it
+/// needs a package that CANNOT change under it. Those are different versions, and collapsing them into one
+/// is what reddened `main`.
+let private readSurfaceAt
+    (packages: string list)
+    (versionOf: string -> string)
+    : Result<Map<string, Set<string>> * Map<string * string, Set<string>>, string> =
     let workDir = Path.Combine(Path.GetTempPath(), "fsgg-doc-pin-probe-" + Guid.NewGuid().ToString("N"))
     Directory.CreateDirectory workDir |> ignore
 
     try
         let references =
-            docPackages
-            |> List.map (fun id -> $"    <PackageReference Include=\"{id}\" Version=\"{pinFor id}\" />")
+            packages
+            |> List.map (fun id -> $"    <PackageReference Include=\"{id}\" Version=\"{versionOf id}\" />")
             |> String.concat "\n"
 
         // Same isolation, and for the same reason, as `runProbeBuild`: `<clear />` down to nuget.org so
@@ -1584,9 +1594,9 @@ let private readPinnedSurface () : Result<Map<string, Set<string>> * Map<string 
                     let types =
                         Collections.Generic.Dictionary<string * string, Collections.Generic.HashSet<string>>()
 
-                    for packageId in docPackages do
+                    for packageId in packages do
                         let dir =
-                            Path.Combine(probePackagesDir, packageId.ToLowerInvariant(), pinFor packageId, "lib")
+                            Path.Combine(probePackagesDir, packageId.ToLowerInvariant(), versionOf packageId, "lib")
 
                         // The template's REAL TFM, and the one a scaffolded product compiles against — so
                         // it is the surface to judge, not merely the "newest" folder. Ordering the paths
@@ -1606,7 +1616,7 @@ let private readPinnedSurface () : Result<Map<string, Set<string>> * Map<string 
                                 None
 
                         match dll with
-                        | None -> missing.Add $"{packageId} {pinFor packageId}"
+                        | None -> missing.Add $"{packageId} {versionOf packageId}"
                         | Some path ->
                             for (moduleName, memberName) in readModuleSurface path do
                                 if not (surface.ContainsKey moduleName) then
@@ -1655,7 +1665,29 @@ let private readPinnedSurface () : Result<Map<string, Set<string>> * Map<string 
 /// the ledger's staleness check), and a restore is the expensive, network-bound half of this file — so
 /// asking twice would double the gate's exposure to nuget.org for an answer that cannot have changed
 /// between them. `Lazy` is thread-safe by default, which matters: Expecto runs the list in parallel.
-let private pinnedSurface = lazy (readPinnedSurface ())
+let private pinnedSurface = lazy (readSurfaceAt docPackages pinFor)
+
+/// THE ORACLE'S GROUND TRUTH — a published, IMMUTABLE (id, version), deliberately NOT `$(FsGgUiVersion)`.
+///
+/// The self-check below validates the READER (does it see nullary cases? does it invent `Tag`/`Item`?), and
+/// a reader is validated against facts that cannot move. `0.9.0` is the last release before `#535` added
+/// `ViewerEffect.Persist`, so it pins both halves the self-check needs: `OpenWindow`/`CloseWindow` present,
+/// `Persist` absent.
+///
+/// It used to read `pinnedSurface`, which was the same thing only for as long as the pin HAPPENED to be
+/// 0.9.0 (#688). The moment 0.9.2 published, the oracle restored a package that legitimately DOES export
+/// `Persist`, the "immutable" assertion failed, and the required `Deterministic gate` went red on `main` —
+/// on a repo where nothing was wrong. Worse, it stayed hidden through the whole 0.9.1 window because the
+/// pin named a version nobody had published, so the restore failed and the test SKIPPED rather than ran.
+///
+/// Only FS.GG.UI.SkiaViewer, because `ViewerEffect` is all the self-check reads: restoring the other twelve
+/// doc packages a second time would double this gate's nuget.org exposure to answer a question about one
+/// type. If a future case needs another package, add it here — not to `docPackages`, which is the RULES'
+/// subject and must keep tracking the pin.
+let private oracleVersion = "0.9.0"
+
+let private oracleSurface =
+    lazy (readSurfaceAt [ "FS.GG.UI.SkiaViewer" ] (fun _ -> oracleVersion))
 
 /// Does the PINNED package export what the doc names?
 let private resolvesInPin (pinned: Map<string, Set<string>>) (s: DocSymbol) =
@@ -2386,14 +2418,15 @@ let templateConsumesPinnedApiTests =
         testCase "the pinned-TYPE oracle reads a published DU the way F# actually emits it" <| fun _ ->
             match Environment.GetEnvironmentVariable "FS_GG_SKIP_TEMPLATE_PINNED_API" with
             | null | "" ->
-                match pinnedSurface.Value with
+                match oracleSurface.Value with
                 | Error why -> skiptest why
                 | Ok(_, pinnedTypes) ->
                     match Map.tryFind ("FS.GG.UI.SkiaViewer", "ViewerEffect") pinnedTypes with
                     | None ->
                         failtest
-                            "the oracle sees no `ViewerEffect` in the pinned FS.GG.UI.SkiaViewer at all. It \
-                             has gone BLIND, and a blind oracle passes every rule above by finding nothing."
+                            $"the oracle sees no `ViewerEffect` in FS.GG.UI.SkiaViewer {oracleVersion} at \
+                              all. It has gone BLIND, and a blind oracle passes every rule above by finding \
+                              nothing."
                     | Some cases ->
                         // Multi-field case (emitted `NewOpenWindow`) and nullary case (emitted
                         // `get_CloseWindow`): the two shapes a union case takes in IL, and the reader must
@@ -2420,14 +2453,16 @@ let templateConsumesPinnedApiTests =
                              that are not union cases. It is reading IL shape rather than the F# compiler's \
                              own CompilationMappingAttribute, and a WIDER oracle EXCUSES a real violation."
 
-                        // And the subject of the ledger entry, asserted directly: the pin really does not
-                        // carry `Persist`. If a future 0.9.0 somehow did, the stale rule fires — but this
-                        // says out loud what the whole item rests on.
+                        // The NEGATIVE half of the reader's ground truth: `oracleVersion` predates #535, so
+                        // it genuinely does not carry `Persist`. This is a fact about THAT version and no
+                        // other — asserting it against `$(FsGgUiVersion)` is exactly what reddened `main`
+                        // once the pin moved past #535 (#688). The message names the version it READ, so it
+                        // can never again accuse an innocent 0.9.0 of a fact about some other release.
                         Expect.isFalse
                             (cases.Contains "Persist")
-                            "published FS.GG.UI.SkiaViewer 0.9.0 now exports `ViewerEffect.Persist` — which \
-                             it cannot, since a published version is immutable. The oracle is reading \
-                             something other than the pin (a locally-packed package leaking into the probe \
+                            $"published FS.GG.UI.SkiaViewer {oracleVersion} now exports `ViewerEffect.Persist` \
+                             — which it cannot, since a published version is immutable. The oracle is reading \
+                             something other than {oracleVersion} (a locally-packed package leaking into the probe \
                              folder is the classic cause), and the ledger entry it justifies is void."
             | _ -> skiptest "FS_GG_SKIP_TEMPLATE_PINNED_API is set — the oracle anchor did NOT run."
 

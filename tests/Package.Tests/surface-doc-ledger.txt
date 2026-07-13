@@ -285,7 +285,6 @@ vocabulary  clipped
 vocabulary  close
 vocabulary  combine
 vocabulary  cubicTo
-vocabulary  describe
 vocabulary  ellipse
 vocabulary  ellipseEvidence
 vocabulary  fill

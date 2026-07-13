@@ -27,7 +27,7 @@ The signatures you consume are bundled with this product:
 - `docs/api-surface/Canvas/Persistence.fsi` — the `PersistenceEffect` request DU
   (`Save`/`Load`/`DeleteSlot`), the `SaveSlot`/`SavePayload` identifiers, the `SaveEnvelope` record,
   the `PersistenceEvidence` record, and the `Persistence` module (smart constructors + the
-  record-only `interpret`/`record`). Shipped in `FS.GG.UI.Canvas`, referenced on the
+  record-only `interpretRecordOnly`/`record`). Shipped in `FS.GG.UI.Canvas`, referenced on the
   `game` and `sample-pack` profiles. That package carries **only** the pure elements, the render loop,
   and this persistence request surface — the pinned Canvas api-surface is exactly `Elements.fsi` and
   `Persistence.fsi`. It carries **no audio** (that vocabulary was retired at the Canvas `0.3.0` major;
@@ -38,29 +38,34 @@ The signatures you consume are bundled with this product:
 All helpers are **total**: the save-format version is clamped to `>= minVersion` at the boundary, and
 no helper throws or performs I/O. The payload is **opaque** — the framework never parses it.
 
-> **`Persistence.interpret` PERSISTS NOTHING.** It records your requests into
+> **`Persistence.interpretRecordOnly` PERSISTS NOTHING.** It records your requests into
 > `PersistenceEvidence.Requested` and drops them. No file is written, read or deleted — not here, and
 > not later by a host: no `ViewerEffect` case carries a `PersistenceEffect`, so no host runner will
 > ever see one. A product that calls it has saved nothing.
 >
-> The name is a trap, and a known one — but not in the way you would guess. It is **not** that
-> `interpret*` means *perform the effect* everywhere else in this framework and this one is the lone
-> exception. **Nothing named `interpret` here performs anything.** The surface your product pins
-> carries exactly two, and both are pure folds that hand you back a value: this one, and
-> `Audio.interpret` — which calls itself a *"record-only interpreter"* with *"no device access"* and
-> returns an `AudioEvidence`, precisely as this returns a `PersistenceEvidence`. Performing an effect
-> is always a **host** call: `Audio.play` takes a backend, `Viewer.runApp` opens a window. **Not one
-> of them is spelled `interpret`.**
+> **The name says so now. It did not always, and the old one is still in the package**, so you will
+> meet it: this function was called `Persistence.interpret`, and that name was a trap — though not in
+> the way you would guess. It is **not** that `interpret*` means *perform the effect* everywhere else
+> in this framework and this one was the lone exception. **Nothing named `interpret` here performs
+> anything.** The surface your product pins carries exactly two functions so spelled, and both are pure
+> folds that hand you back a value: this function under its old name, and `Audio.interpret` — which
+> calls itself a *"record-only interpreter"* with *"no device access"* and returns an `AudioEvidence`,
+> precisely as this returns a `PersistenceEvidence`. Performing an effect is always a **host** call:
+> `Audio.play` takes a backend, `Viewer.runApp` opens a window. **Not one of them is spelled
+> `interpret`.**
 >
 > So do not go looking for a counter-example among its siblings — it has one, and it has this same
-> shape. What `interpret` really promises you is a **downstream**: something, somewhere, that
+> shape. What `interpret` really promised you was a **downstream**: something, somewhere, that
 > eventually carries your requests out. For persistence there is none, and that is the whole defect.
 > The convention is what misleads you here, not an exception to it — which makes the honest reading
 > the stronger one.
 >
-> A later framework release renames it to `interpretRecordOnly`, which says what it does — but **that
-> spelling is not in the `FS.GG.UI.Canvas` your product pins**, so `interpret` is the one to call
-> today.
+> **The rename does not fix that, and does not pretend to.** `interpretRecordOnly` is the same
+> function under a name that cannot mislead you: it still records, and still drops. What it buys you is
+> that you no longer have to read this callout to know that.
+>
+> `Persistence.interpret` remains in the `FS.GG.UI.Canvas` your product pins, as an `[<Obsolete>]`
+> forwarder with identical behaviour, and a later release removes it. **Call `interpretRecordOnly`.**
 
 ## Requesting save/load from `update`
 
@@ -167,8 +172,8 @@ on `PersistenceEvidence.Requested`; if you own a real backend, assert on the **f
 
 ## Recording what was requested (headless-safe evidence)
 
-`Persistence.interpret` folds a batch of requests into `PersistenceEvidence` — the requested effects
-in dispatch order, with `Save` versions normalized and payloads carried verbatim. This is the
+`Persistence.interpretRecordOnly` folds a batch of requests into `PersistenceEvidence` — the requested
+effects in dispatch order, with `Save` versions normalized and payloads carried verbatim. This is the
 record-only interpreter: it never blocks, never touches the filesystem, and is the evidence you
 assert on in tests. `Persistence.record` appends a single effect if you accumulate frame by frame.
 
@@ -176,7 +181,7 @@ assert on in tests. `Persistence.record` appends a single effect if you accumula
 open FS.GG.UI.Canvas
 
 let evidence =
-    Persistence.interpret
+    Persistence.interpretRecordOnly
         [ Persistence.save (Persistence.saveEnvelope 1 (SaveSlot "slot-1") "{score:42}")
           Persistence.load (SaveSlot "slot-1")
           Persistence.deleteSlot (SaveSlot "old") ]
@@ -215,7 +220,7 @@ let evidence =
 Everything above is written for a product that *consumes* a deferred backend. **If your work item is
 to build the file backend itself, the guidance above describes the trap, not the target.**
 
-`Persistence.interpret`/`record` are **record-only**: they fold requests into
+`Persistence.interpretRecordOnly`/`record` are **record-only**: they fold requests into
 `PersistenceEvidence.Requested` and touch no filesystem. So a suite that asserts on `Requested`
 **passes perfectly against a backend that writes nothing.** It exercises the framework's interpreter,
 never your code — and it will stay green through every bug you ship. Requests are not effects.
@@ -234,20 +239,41 @@ Assert on the **effect**, not the request:
   the same as `Load` of a slot whose bytes are truncated or unparseable. A backend that collapses
   both into one "no save" answer silently eats corruption. Decide what each reports, then test it.
 
-⚠️ **The pinned surface has no load-result type — and the one you need is not yours to invent.**
-`PersistenceEffect` is request-only (`Save`/`Load`/`DeleteSlot`), and `Persistence.fsi` says so
-outright: *"how a real backend reports 'no such save' is a deferred concern."* On the
-`FS.GG.UI.Canvas` this product pins (**0.5.0**) there is no `LoadResult`, no absent/corrupt
-vocabulary, and no path that dispatches a loaded save back to `update` as a `Msg` — so a product
-that needs one today cannot get it from the framework, and a private one no host dispatches buys
-nothing.
+⚠️ **The answer half of the vocabulary has LANDED — report in it, and do not invent your own.**
+`PersistenceEffect` is request-only (`Save`/`Load`/`DeleteSlot`), so a product that asked for a `Load`
+once had nowhere to receive the answer: it could be asked and never answered, and nothing said so.
+The `FS.GG.UI.Canvas` this product pins (**0.9.2**) closes that hole with `PersistenceOutcome` — what
+a host reports back *after actually performing* a request:
 
-Reporting a load's outcome needs a **new type on the `FS.GG.UI.Canvas` surface**, which is an
-`fs-gg-rendering` change, not a product-local one. That type is **no longer an open question**: it is
-designed and merged upstream, and is waiting on a release to carry it, tracked at
-[FS-GG/FS.GG.Rendering#587](https://github.com/FS-GG/FS.GG.Rendering/issues/587). Follow that
-release — and expect this section to change when this product's pin moves to it — rather than
-inventing a private result type you would only have to unpick when the real vocabulary lands.
+```fsharp
+open FS.GG.UI.Canvas
+
+// The words YOUR backend answers in. Every case is a distinct thing that really happened.
+let describe (outcome: PersistenceOutcome) : string =
+    match outcome with
+    | PersistenceOutcome.Saved slot -> $"written and durable: {slot}"
+    | PersistenceOutcome.Loaded envelope -> $"read back v{envelope.Version} from {envelope.Slot}"
+    | PersistenceOutcome.Deleted slot -> $"deleted (idempotent): {slot}"
+    // A NORMAL answer, not a failure: a new player has no save. Start fresh.
+    | PersistenceOutcome.Absent slot -> $"no save in {slot} — start fresh"
+    // DATA LOSS: bytes were there and are unusable. Tell the player; do NOT silently overwrite.
+    | PersistenceOutcome.Unreadable (slot, reason) -> $"CORRUPT save in {slot}: {reason}"
+    // The request never completed at all — disk full, location not writable, no permission.
+    | PersistenceOutcome.Failed (_, reason) -> $"request never completed: {reason}"
+```
+
+**`Absent` and `Unreadable` are deliberately distinct, and collapsing them is the bug this type exists
+to prevent** — the same bug the bullet above warns you about, now guarded by the type system rather
+than by your memory. A single `LoadFailed` case lets a corrupt save be reported as a new game, and the
+next autosave then overwrites the bytes the player was about to lose.
+
+**But nothing in the framework produces one, and that has not changed.**
+`Persistence.interpretRecordOnly` cannot invent a `PersistenceOutcome` — it writes no bytes, so it has
+nothing to report — and no `ViewerEffect` case carries a `PersistenceEffect`, so no host runner in this
+org will hand you one either (see [Package Boundary](#package-boundary)). **A `PersistenceOutcome` is
+produced by the backend *you* write.** What the pinned surface gives you is the vocabulary to report
+in: so that you are not inventing a private result type, and so that two products' backends answer in
+the same words.
 
 ## Build Commands
 
@@ -279,7 +305,7 @@ write the backend yourself ([If you own the backend](#if-you-own-the-backend)).
 
 ### Which host interprets each `PersistenceEffect`
 
-| `PersistenceEffect` | `Persistence.interpret` does | Which host runner interprets it |
+| `PersistenceEffect` | `Persistence.interpretRecordOnly` does | Which host runner interprets it |
 |---|---|---|
 | `Save` | records the request into `PersistenceEvidence.Requested` (clamping `Version` to `>= 0`); **writes no bytes** | **none** |
 | `Load` | records the request; returns **no payload** | **none** |
@@ -287,8 +313,8 @@ write the backend yourself ([If you own the backend](#if-you-own-the-backend)).
 
 The "none" column is structural, not an oversight: a host runner interprets `ViewerEffect`, and **no
 `ViewerEffect` case carries a `PersistenceEffect`**. A persistence request cannot reach a host runner
-even in principle — `Persistence.interpret` is the only thing that will ever see it, and all it does
-is hand the requests back to you.
+even in principle — `Persistence.interpretRecordOnly` is the only thing that will ever see it, and all
+it does is hand the requests back to you.
 
 So `PersistenceEvidence.Requested` proves that your `update` **asked** to save. It proves **nothing
 about durability**, because no code in the framework writes a byte.
@@ -296,14 +322,19 @@ about durability**, because no code in the framework writes a byte.
 ## Generated Product
 
 Map each `Msg` that should save, load, or delete to a `PersistenceEffect` in your `update`, collect
-the frame's requests, and pass them to `Persistence.interpret` for evidence today. The
+the frame's requests, and pass them to `Persistence.interpretRecordOnly` for evidence today. The
 request surface is designed so that a real backend can interpret the same values into file I/O
-without changing it —
-but no such backend exists yet, and handing a loaded save back to `update` as a `Msg` additionally
-needs a result type the Canvas surface does not have (see
-[If you own the backend](#if-you-own-the-backend)). Treat "the host will handle it later" as
-*unbuilt work*, not as a delivered guarantee. The natural thing to snapshot is your seeded,
-deterministic game-core `Model`.
+without changing it — but **no such backend exists yet**, and that is the part you own.
+
+What the pinned surface now gives you is the *vocabulary for the answer*: `PersistenceOutcome` (see
+[If you own the backend](#if-you-own-the-backend)), so a backend you write reports `Loaded`/`Absent`/
+`Unreadable` in the framework's words rather than a private result type of your own. What it still
+does **not** give you is a **dispatch path**: no `ViewerEffect` case carries a `PersistenceEffect`, so
+nothing in the framework will hand a `PersistenceOutcome` back into your `update` as a `Msg`. Wiring
+that answer into your own `Msg` is yours to build too.
+
+Treat "the host will handle it later" as *unbuilt work*, not as a delivered guarantee. The natural
+thing to snapshot is your seeded, deterministic game-core `Model`.
 
 ## Persistent problems
 
