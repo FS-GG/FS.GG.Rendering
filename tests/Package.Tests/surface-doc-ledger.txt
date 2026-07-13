@@ -19,6 +19,14 @@
 # cheapest response to a growing gap would be to append here, and this file would become the record of the
 # problem instead of its fix.
 #
+# DOCUMENTED MEANS CITED AS CODE (#654). A skill documents a surface when it names it inside a fenced block
+# or an inline code span — not when its prose happens to use the word. `isDocumented` used to match the bare
+# name anywhere in the skills' text, which credits any public val whose name is also an ordinary English word
+# to any sentence that uses the word, about anything: FS.GG.Game#240 wrote "the block above can bind all four
+# the same way" — about a fenced code block — and S-DOC concluded a product skill documents the RichText
+# combinator `block`. 32 surfaces passed this gate by homonym, 31 of them in no ledger line at all, so for
+# them S-DOC was vacuous. They are all declared below, and the guard now requires a citation.
+#
 # FORMAT:  <category>  <name>
 #
 #   tracked     A surface a product author would WANT and cannot find. A real gap, tracked by #507 / epic
@@ -26,6 +34,10 @@
 #   vocabulary  A constructor or combinator in a type's own vocabulary (a scene shape, a colour, a design
 #               token, a geometry helper). A product composes it straight from the `.fsi`, and a skill that
 #               listed them would be a worse copy of the signature file.
+#
+# The ledger keys on the NAME, so one line covers every `.fsi` that declares it. The `# ---- <file>` headers
+# are for readers; names carried by more than one signature file are gathered at the foot of this file, since
+# no single header is the honest home for them.
 #
 # `vocabulary` is a CLAIM, and it is deliberately visible so it can be challenged. If one of these deserves
 # prose, move it: delete the line and write the paragraph. Down is the intended direction of travel.
@@ -59,6 +71,7 @@ vocabulary  clampVersion
 
 # ---- Controls.Elmish/ControlsElmish.fsi
 vocabulary  adapterDiagnosticToRuntimeDiagnostic
+vocabulary  diagnostic
 vocabulary  diagnosticsDisabledCompatibility
 tracked     interpretControlEffect
 tracked     interpretOverlayEffect
@@ -66,6 +79,9 @@ vocabulary  interpretOverlayOutcome
 vocabulary  interpretPointerEffect
 tracked     interpretPointerOutcome
 vocabulary  ofMessage
+# `program` — WRITTEN (#663). The Elmish front door is now cited in code by fs-gg-elmish, which also records
+# what the .fsi cannot: nothing in the shipped surface CONSUMES an AdapterProgram, so an author must not go
+# looking for a `run(program)`. Its wrapper `programOfWidget` is still a gap.
 tracked     programOfWidget
 tracked     runInteractiveAppWithWindowBehavior
 vocabulary  runScriptWithAudio
@@ -75,18 +91,28 @@ vocabulary  toCmd
 tracked     widgetView
 
 # ---- Controls/Accessibility.fsi
+vocabulary  contrast
 vocabulary  defaultFor
 vocabulary  metadata
 
 # ---- Controls/Attributes.fsi
 vocabulary  accessibility
 vocabulary  enabled
+vocabulary  loading
 vocabulary  margin
 vocabulary  onWith
+vocabulary  orientation
 vocabulary  padding
 vocabulary  readOnly
 vocabulary  standardAttribute
 vocabulary  standardEvent
+# `Attr.visible` (`value: bool -> Attr<'msg>`) — a state builder beside `enabled` / `readOnly` / `loading`
+# directly above, and vocabulary for the same reason they are. It gets a line only NOW because until #692 it
+# did not need one: it was CREDITED AS DOCUMENTED by `fs-gg-game-core`'s `let visible : Rect = …` — a local
+# rectangle, in a culling example, in a different package, in a skill about game simulation. The same-language
+# homonym was not merely deleting blessed lines; it was HIDING a surface that had never had a decision made
+# about it. This is that decision.
+vocabulary  visible
 
 # ---- Controls/Buttons.fsi
 vocabulary  defaults
@@ -104,6 +130,11 @@ tracked     supportedEvents
 tracked     validateStandardControl
 
 # ---- Controls/Control.fsi
+# `checked'` was invisible to S-DOC until #654: the name pattern stopped at the prime, so this public val was
+# never extracted, never credited, never ledgered — it passed the gate by being unparseable. An attribute
+# combinator, beside `enabled` / `readOnly` / `selected`.
+vocabulary  checked'
+vocabulary  count
 vocabulary  hitTest
 vocabulary  icon
 vocabulary  lowerCustom
@@ -111,6 +142,9 @@ vocabulary  lowerStandard
 vocabulary  nearestAuthored
 vocabulary  onClickWith
 vocabulary  onSelected
+# The sibling constructors `create` and `customControl` ARE cited in code by a skill; `standard` is the typed
+# `StandardControlKind` variant of the same one-liner, composed straight from the `.fsi`.
+vocabulary  standard
 tracked     withKey
 
 # ---- Controls/ControlRuntime.fsi
@@ -120,6 +154,7 @@ tracked     deriveVisualState
 vocabulary  ofControl
 
 # ---- Controls/DataGrid.fsi
+vocabulary  columns
 vocabulary  focusedCell
 vocabulary  selectedRows
 
@@ -142,13 +177,19 @@ vocabulary  unsupportedStandardAttribute
 vocabulary  unsupportedStandardEvent
 
 # ---- Controls/Pointer.fsi
+vocabulary  origin
 vocabulary  toMsg
 
 # ---- Controls/RichText.fsi
+# Restored by #654. #649 deleted this line under protest: no skill documented `block`, but FS.GG.Game#240
+# wrote "the block above can bind all four the same way" — about a fenced code block — into the frozen-mirror
+# fs-gg-audio canonical, and the old prose-matching `isDocumented` read that as documentation and called this
+# line stale. `isDocumented` now requires a code citation, so the homonym no longer counts and the line stands.
 vocabulary  block
 vocabulary  defaultStyle
 
 # ---- DesignSystem/DesignTokens.fsi
+vocabulary  background
 vocabulary  contrastRequiredRatio
 vocabulary  controlHeight
 vocabulary  controlHeightLg
@@ -164,6 +205,8 @@ vocabulary  spaceLg
 vocabulary  spaceMd
 vocabulary  spaceSm
 vocabulary  spaceXs
+vocabulary  success
+vocabulary  warning
 
 # ---- DesignSystem/Types.DesignSystem.fsi
 vocabulary  neutral
@@ -193,6 +236,7 @@ vocabulary  queryBounds
 
 # ---- KeyboardInput/KeyboardInput.fsi
 vocabulary  noModifiers
+vocabulary  normalize
 vocabulary  normalizeEvent
 vocabulary  normalizeEventWithModifiers
 vocabulary  stateDisplay
@@ -229,19 +273,39 @@ vocabulary  pixelSnapPolicy
 vocabulary  stackConfig
 
 # ---- Scene/Scene.fsi
+# `describe` has NO line here, and #692 is the record of why — because its absence has meant two different
+# things and only the second one is honest.
+#
+# It WAS `vocabulary describe` (blessed: a product composes `Scene.describe` straight from the `.fsi`). PR #691
+# had to delete it, with `main` red and no cheap alternative: `fs-gg-persistence`'s canonical body — a FROZEN
+# MIRROR of FS.GG.Game's, so not editable here — carries an unrelated example helper `let describe (outcome:
+# PersistenceOutcome)`, the matcher read that BINDING as a citation, and the anti-rot rule ("no ledger entry
+# names a surface a product skill now documents") called the line stale. The ledger only shrinks, so the
+# deletion was one-way, onto a fact that was still exactly as true as when it was written.
+#
+# #692 fixed the matcher: a binding is not a citation, and within a skill that binds a name only a QUALIFIED
+# use reaches the API. So the false credit is gone — and the line still does not come back, because #663
+# meanwhile documented `Scene.describe` FOR REAL (`fs-gg-scene` cites `Scene.describe hud` in an F# fence).
+# It is now documented rather than blessed-as-undocumented, and a ledger line would be stale for the honest
+# reason. Restoring it — which #692 asked for, written before #663 landed — would red the gate.
+vocabulary  arc
 vocabulary  black
 vocabulary  circleEvidence
 vocabulary  classify
+vocabulary  clipped
 vocabulary  close
+vocabulary  combine
 vocabulary  cubicTo
-vocabulary  describe
 vocabulary  ellipse
 vocabulary  ellipseEvidence
+vocabulary  fill
 vocabulary  filledEllipse
 vocabulary  fromRenderEvidence
+vocabulary  image
 vocabulary  lineTo
 vocabulary  moveTo
 vocabulary  picture
+vocabulary  points
 vocabulary  quadTo
 vocabulary  rectangle
 vocabulary  rectangleWithPaint
@@ -250,10 +314,12 @@ vocabulary  renderPng
 vocabulary  renderReadbackEvidence
 vocabulary  rgb
 vocabulary  rgba
+vocabulary  segment
 vocabulary  sizedText
 vocabulary  textRun
 vocabulary  transparent
 vocabulary  unsupported
+vocabulary  vertices
 vocabulary  white
 vocabulary  withAntialias
 vocabulary  withBlendMode
@@ -275,9 +341,11 @@ vocabulary  classifyWindowState
 vocabulary  defaultWindowBehavior
 tracked     desktopSessionDiagnostic
 vocabulary  failureFromDiagnostic
+vocabulary  fit
 vocabulary  initEvidenceWorkflow
 vocabulary  initRun
 vocabulary  initWithWindowBehavior
+vocabulary  present
 vocabulary  runAppWithWindowBehavior
 vocabulary  runInteractiveViewer
 vocabulary  runInteractiveViewerScriptWithAudio
@@ -297,10 +365,12 @@ vocabulary  validateWindowLaunchBehavior
 
 # ---- Symbology/Symbology.fsi
 vocabulary  badge
+vocabulary  ring
 
 # ---- Testing/Testing.fsi
 vocabulary  buildValidationContractOutput
 vocabulary  classifyDrift
+vocabulary  field
 vocabulary  parseScreenshotEvidenceRecord
 vocabulary  selectVisualEvidence
 vocabulary  statusText
@@ -311,3 +381,22 @@ vocabulary  validateVisualEvidenceCommandOutput
 vocabulary  validateWindowDiagnostics
 vocabulary  verifyGeneratedTests
 vocabulary  verifyPackageResolution
+
+# ---- carried by more than one signature file
+# The ledger keys on the NAME, so these lines each cover every `.fsi` that declares the name, and no single
+# `# ---- <file>` header above would be an honest home for them. FOUR names sat here, all credited to English
+# prose ("validate your GridSpec", "a headless replay", "(diagnostics) refers to the local update") until #654
+# required a citation.
+#
+# TWO REMAIN, and both are vocabulary — see below. The other two were `tracked`, and #663 WROTE them, so the
+# ratchet took their lines: `diagnostics` — the query that hands you the list, as against the Diagnostics.fsi
+# constructors, which stay vocabulary — is cited by fs-gg-elmish (Control/ControlRuntime/ControlsElmish) and by
+# fs-gg-scene, the only one of the two that reaches a headless-scene or governed product. `validate` is cited by
+# fs-gg-testing (the evidence/readiness entry points) and fs-gg-ui-widgets (the control-authoring ones).
+
+# `measure` — RichText (text measurement) and Scene (path measurement). Peers `measureHorizontal` /
+# `measureVertical` are vocabulary; these are the same kind of total query over a value you already hold.
+vocabulary  measure
+
+# `selected` — Attributes and Control. An attribute combinator, beside `enabled` / `readOnly` / `onSelected`.
+vocabulary  selected

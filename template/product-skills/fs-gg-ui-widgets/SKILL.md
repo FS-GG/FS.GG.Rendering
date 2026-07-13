@@ -1,7 +1,15 @@
 ---
 name: fs-gg-ui-widgets
 description: Generated product guidance for Skia-rendered FS.GG.UI Controls, rich text, chart controls, graph controls, DataGrid, and custom wrappers.
+# This skill MANDATES a rule whose instrument lives in another skill. Declaring it holds the two
+# `materializes-when` sets to each other (R-INST, FS.GG.Rendering#624): if `fs-gg-elmish` ever stops
+# materializing where this skill does, a product would be handed the rule and never the instrument.
+# See template/product-skills/README.md.
+instruments:
+  - rule: responsiveness evidence (respondsProofOf / captureRespondsProof, OnFrameMetrics)
+    skill: fs-gg-elmish
 ---
+<!-- skill-refs: closed-ok FS.GG.Rendering#624 — cited as the issue that ESTABLISHED the R-INST rule, not as somewhere to go. Closed is correct; it stays closed. The ref it excuses is in the YAML frontmatter above, which cannot host an HTML comment without breaking the parse; closed-ok is file-scoped, so it is honoured from here. -->
 
 # Generated Controls
 
@@ -39,6 +47,34 @@ render path, clipped and translated to the laid-out box. For must-show chrome, *
 primitive controls** (`Border` + `TextBlock` + `Stack`); a reusable recipe is a fixed-cell grid
 composed of framed cells/rows that `renderTree` paints reliably. Reserve `CustomControl` for
 non-visual extension seams.
+
+## Check the control you authored — `validate`
+
+Authoring errors in a control tree are **not** type errors: a custom control with a missing accessible
+label, a definition that declares an event nothing routes, a control that fails its accessibility
+contract — all of these compile, render, and ship. `validate` is the entry point that says so, and it
+is the same name in each authoring module:
+
+```fsharp
+open FS.GG.UI.Controls
+
+Accessibility.validate control       // ControlDiagnostic list — the a11y contract this control breaks
+CustomControl.validate definition    // ControlDiagnostic list — authoring errors in a CustomControlDefinition
+Catalog.validate ()                  // ControlDiagnostic list — the catalog's own self-check
+```
+
+Each returns a `ControlDiagnostic` list — **empty means clean**, so the assertion is
+`Expect.isEmpty`, and it costs one line in the suite you already have. Validate a control you authored
+by hand, and *every* `CustomControlDefinition` you write: it is the only check standing between a
+mislabeled extension seam and a screen reader that says nothing.
+
+`Control.diagnostics` is the tree-wide companion — it collects what a whole `Control<'msg>` reports,
+without rendering it. See [[fs-gg-elmish]] for it and the runtime/adapter `diagnostics` beside it.
+
+**Pointer lives next door.** `docs/api-surface/Controls/Pointer.fsi` names this skill, but the pointer
+route is taught in [[fs-gg-elmish]] — `Pointer.replay` (the pure fold SC-005's determinism rests on),
+`routeInteractivePointer`, and the `Perf.runScript*` drivers built on them. Go there for anything that
+drives a click rather than authors one.
 
 ## No-new-dependency property tests
 
@@ -125,6 +161,19 @@ framework readiness reports.
 - Canceled, timed-out, skipped, synthetic, substitute, degraded,
   pending-review, or environment-limited checks remain visibly caveated.
 
+**The instruments for the responsiveness rule are in [[fs-gg-elmish]]**, which is
+where they are explained — `ControlsElmish.respondsProofOf` / `captureRespondsProof`
+for the activation half (their `RespondsVerdict` is the only evidence class that
+tells *renders* from *responds*), and the per-frame projection
+(`compositorDiagnostics`, `layoutMetrics`, `responsivenessTimingContribution`,
+`InteractiveAppHost.OnFrameMetrics`) for the latency half, which separates routing
+from update, render and present. A screenshot proves neither.
+
+They live in that skill rather than this one because `Perf`, `BoundIds` and
+`ControlsElmish` come from the Controls packages, and a single copy of the recipe
+is the one that cannot rot — not because a widget product lacks them: every
+profile this skill ships to (`app`, `game`) also receives [[fs-gg-elmish]].
+
 ## Package Boundary
 
 Controls owns ordinary controls, rich text, chart controls, graph controls,
@@ -160,7 +209,9 @@ rather than hard-failing the phase.
 - [[fs-gg-styling]] — to theme and style the controls above (pick a theme, set a
   control's style variant and class, consume the resolved style), see the
   `fs-gg-styling` skill.
-- [[fs-gg-elmish]] — wire control messages through the pure adapter at the edge.
+- [[fs-gg-elmish]] — wire control messages through the pure adapter at the edge,
+  and the instruments the responsiveness Evidence Rule above requires
+  (`captureRespondsProof`, the `OnFrameMetrics` projection).
 - [[fs-gg-scene]] — the primitive layer controls ultimately render into.
 
 ## Sources / links

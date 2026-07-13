@@ -155,8 +155,24 @@ module Persistence =
 
     /// Public contract function exposed by this FS.GG.UI package.
     /// DEPRECATED — call `interpretRecordOnly`, which is this function under a name that does not
-    /// lie. Behaviour is identical (this forwards to it). The old name claimed the sense
-    /// `interpret*` carries everywhere else in this codebase — *perform the effect*, as
-    /// `GlHost.interpretEffect` performs real GL work — while writing no bytes at all.
+    /// lie. Behaviour is identical (this forwards to it).
+    ///
+    /// WHAT THE NAME ACTUALLY LIES ABOUT. It is not that `interpret*` means *perform the effect*
+    /// elsewhere and this one is the exception — that is what this comment used to say, and it was
+    /// false twice over (#619). It cited an `interpretEffect` on the `GlHost` module, which has never
+    /// existed in any version of anything (the spelling is left un-dotted here on purpose: a doc-symbol
+    /// extractor cannot tell a phantom being CORRECTED from one being TAUGHT, and #597 is closing the
+    /// very hole that let it ship). And NO public `interpret*` in this framework performs anything. Every one
+    /// of them is a pure fold to a VALUE: `Audio.interpret` calls itself a "record-only interpreter"
+    /// with "no device access", `Layout.interpretWorkflowEffect` returns a `Msg`, the
+    /// `ControlsElmish.interpret*` family returns an `AdapterCommand`. Performing an effect is a HOST
+    /// call, and a host call takes a backend or an engine.
+    ///
+    /// The real lie is a promised DOWNSTREAM. `interpret` invites you to believe something, somewhere,
+    /// carries these requests out. For persistence nothing does: no `ViewerEffect` case carries a
+    /// `PersistenceEffect`, so the fold records into `PersistenceEvidence.Requested` and drops them,
+    /// and the pipeline the name implies has no other end. The honest version of the point is the
+    /// stronger one — `interpret*` never performs, so a reader who expects it to is misled by the
+    /// convention, not by an exception to it.
     [<Obsolete("Persistence.interpret PERSISTS NOTHING: it records the requests into PersistenceEvidence.Requested and drops them. No file is written, read, or deleted, and no host in this framework will ever interpret a PersistenceEffect (no ViewerEffect case carries one). Call Persistence.interpretRecordOnly instead — identical behaviour, honest name. If you need durability you must write the backend yourself.")>]
     val interpret: effects: PersistenceEffect list -> PersistenceEvidence

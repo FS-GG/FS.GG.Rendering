@@ -27,23 +27,45 @@ The signatures you consume are bundled with this product:
 - `docs/api-surface/Canvas/Persistence.fsi` — the `PersistenceEffect` request DU
   (`Save`/`Load`/`DeleteSlot`), the `SaveSlot`/`SavePayload` identifiers, the `SaveEnvelope` record,
   the `PersistenceEvidence` record, and the `Persistence` module (smart constructors + the
-  record-only `interpret`/`record`). Shipped in `FS.GG.UI.Canvas`, referenced on the
-  `game` and `sample-pack` profiles (the same package that carries the simulation primitives and
-  audio).
+  record-only `interpretRecordOnly`/`record`). Shipped in `FS.GG.UI.Canvas`, referenced on the
+  `game` and `sample-pack` profiles. That package carries **only** the pure elements, the render loop,
+  and this persistence request surface — the pinned Canvas api-surface is exactly `Elements.fsi` and
+  `Persistence.fsi`. It carries **no audio** (that vocabulary was retired at the Canvas `0.3.0` major;
+  audio is `FS.GG.Audio.Core`/`FS.GG.Audio.Host`, a separate package your product pins itself) and
+  **no simulation primitives** (those are `FS.GG.Game.Core`). [[fs-gg-game:fs-gg-audio]] says the same thing from
+  its side; if the two ever disagree, the api-surface bundled with your product settles it.
 
 All helpers are **total**: the save-format version is clamped to `>= minVersion` at the boundary, and
 no helper throws or performs I/O. The payload is **opaque** — the framework never parses it.
 
-> **`Persistence.interpret` PERSISTS NOTHING.** It records your requests into
+> **`Persistence.interpretRecordOnly` PERSISTS NOTHING.** It records your requests into
 > `PersistenceEvidence.Requested` and drops them. No file is written, read or deleted — not here, and
 > not later by a host: no `ViewerEffect` case carries a `PersistenceEffect`, so no host runner will
 > ever see one. A product that calls it has saved nothing.
 >
-> The name is a trap, and a known one: everywhere else in this framework `interpret*` means *do it*
-> (`GlHost.interpretEffect` drives real GL work), while this one writes no bytes at all. A later
-> framework release renames it to `interpretRecordOnly`, which says what it does — but **that
-> spelling is not in the `FS.GG.UI.Canvas` your product pins**, so `interpret` is the one to call
-> today.
+> **The name says so now. It did not always, and the old one is still in the package**, so you will
+> meet it: this function was called `Persistence.interpret`, and that name was a trap — though not in
+> the way you would guess. It is **not** that `interpret*` means *perform the effect* everywhere else
+> in this framework and this one was the lone exception. **Nothing named `interpret` here performs
+> anything.** The surface your product pins carries exactly two functions so spelled, and both are pure
+> folds that hand you back a value: this function under its old name, and `Audio.interpret` — which
+> calls itself a *"record-only interpreter"* with *"no device access"* and returns an `AudioEvidence`,
+> precisely as this returns a `PersistenceEvidence`. Performing an effect is always a **host** call:
+> `Audio.play` takes a backend, `Viewer.runApp` opens a window. **Not one of them is spelled
+> `interpret`.**
+>
+> So do not go looking for a counter-example among its siblings — it has one, and it has this same
+> shape. What `interpret` really promised you was a **downstream**: something, somewhere, that
+> eventually carries your requests out. For persistence there is none, and that is the whole defect.
+> The convention is what misleads you here, not an exception to it — which makes the honest reading
+> the stronger one.
+>
+> **The rename does not fix that, and does not pretend to.** `interpretRecordOnly` is the same
+> function under a name that cannot mislead you: it still records, and still drops. What it buys you is
+> that you no longer have to read this callout to know that.
+>
+> `Persistence.interpret` remains in the `FS.GG.UI.Canvas` your product pins, as an `[<Obsolete>]`
+> forwarder with identical behaviour, and a later release removes it. **Call `interpretRecordOnly`.**
 
 ## Requesting save/load from `update`
 
@@ -72,10 +94,86 @@ let persistFor (model: Model) (msg: Msg) : PersistenceEffect =
 you stamp lets a future load migrate or reject an old save; that migration policy is yours, in your
 own deserialize step.
 
+## Deciding *when* to save: the cue seam, and the `Init` blind spot
+
+Products decide their save/load requests in **one place**, by analogy with `AudioCues.forTransition`
+([[fs-gg-game:fs-gg-audio]]): a `SaveCues.forTransition : Msg -> Model -> Model -> PersistenceEffect list` that
+maps a **transition** to the effects it implies. Writing one is the normal thing to do; this section is
+about the hole in the pattern.
+
+`forTransition` is a function of a **transition**, and **the initial model does not make one.** It
+comes out of `initialModel`, and nothing is ever dispatched into it — so anything the initial state
+*implies* is never requested.
+
+**Persistence is where that bites hardest, and it is the reason to read this twice.** Save/load state
+is *by definition* state you **load** rather than transition into, so the blind spot is not an edge
+case here — it is the main path. Restore a save in `initialModel` and the model is *correct*: the game
+genuinely is at the restored checkpoint. And **nothing was ever asked of the sink**, because no
+transition carried a request there. Nothing catches it: no type is wrong, and **a test that asserts on
+the model passes** — from inside the model, a checkpoint nobody recorded is indistinguishable from one
+that was.
+
+`Started` is the door that closes it — **and unlike audio's, you have to hang it yourself.** Audio's
+seam is scaffold-wired: the generated host calls `AudioCues.forTransition Started m m` from `Init`.
+**Persistence has no such host.** No `ViewerEffect` case carries a `PersistenceEffect`, so nothing in
+the framework will ever call a `SaveCues` of yours — see [Package Boundary](#package-boundary), which
+spells out that today there is no host at all. The seam, the `Started` case, and the call from your own
+`Init` are **all product-owned**:
+
+- give your `Msg` a `Started` case;
+- from wherever you build the initial model, call `SaveCues.forTransition Started m m` yourself — the
+  **same** function `Update` calls, with the initial model on both sides, so there is no separate
+  startup path to drift out of sync;
+- fold what it returns into the same evidence your `update`'s requests feed.
+
+And the move that actually removes the blind spot: **stop reaching into a save inside `initialModel`,
+and request the restore through the seam instead.** Then the request exists — which is the only reason
+anything downstream, including your tests, can ever see it:
+
+```fsharp
+open FS.GG.UI.Canvas
+
+type Model = { Slot: string; Score: int }
+type Msg = Started | CheckpointReached | ContinueGame | EraseSave
+
+let serialize (model: Model) : string = string model.Score
+
+// Nothing in the framework calls this. YOU call it from `Update`, and from `Init` as
+// `forTransition Started m m` — one seam, so a save cannot be requested down a path nobody watches.
+let forTransition (msg: Msg) (previous: Model) (next: Model) : PersistenceEffect list =
+    match msg with
+    // The initial model is LOADED, not transitioned into. Asking for the restore HERE — rather than
+    // reading a save inside `initialModel` — is what makes it a request at all, and so provable.
+    | Started
+    | ContinueGame -> [ Persistence.load (SaveSlot next.Slot) ]
+    | CheckpointReached ->
+        [ Persistence.save (Persistence.saveEnvelope 1 (SaveSlot next.Slot) (serialize next)) ]
+    | EraseSave -> [ Persistence.deleteSlot (SaveSlot next.Slot) ]
+```
+
+(The `Load` result cannot come *back* while the backend is deferred — that is the next pitfall down, and
+it is a different defect from this one. A product that genuinely needs restored state at frame 0 still
+builds it in `initialModel`; `Started` is then where it *declares* what it did, so the sink hears about
+it and a test can prove it.)
+
+**Assert at the sink, not at the model.** The only test shape that catches this class asks what the
+sink was *told*, not what the model *holds* — [[fs-gg-rendering:fs-gg-testing]] works the case end to
+end. While the backend is deferred the "sink" is the record-only interpreter, so that means asserting
+on `PersistenceEvidence.Requested`; if you own a real backend, assert on the **files** it wrote (see
+[If you own the backend](#if-you-own-the-backend)).
+
+<!-- skill-refs: closed-ok FS-GG/FS.GG.Rendering#494 — cited as the ORIGIN of the blind spot, not as
+     open work. It is the issue this very section answers, so its closure is what success looked like;
+     the citation is history and stays correct closed. -->
+> **This spreads by imitation, which is why the warning is here rather than only in `fs-gg-audio`.** A
+> product wrote its own `SaveCues.forTransition` by analogy with the audio seam, unaided — and
+> inherited the identical blind spot (FS-GG/FS.GG.Rendering#494). The pattern travels faster than the
+> caveat does.
+
 ## Recording what was requested (headless-safe evidence)
 
-`Persistence.interpret` folds a batch of requests into `PersistenceEvidence` — the requested effects
-in dispatch order, with `Save` versions normalized and payloads carried verbatim. This is the
+`Persistence.interpretRecordOnly` folds a batch of requests into `PersistenceEvidence` — the requested
+effects in dispatch order, with `Save` versions normalized and payloads carried verbatim. This is the
 record-only interpreter: it never blocks, never touches the filesystem, and is the evidence you
 assert on in tests. `Persistence.record` appends a single effect if you accumulate frame by frame.
 
@@ -83,7 +181,7 @@ assert on in tests. `Persistence.record` appends a single effect if you accumula
 open FS.GG.UI.Canvas
 
 let evidence =
-    Persistence.interpret
+    Persistence.interpretRecordOnly
         [ Persistence.save (Persistence.saveEnvelope 1 (SaveSlot "slot-1") "{score:42}")
           Persistence.load (SaveSlot "slot-1")
           Persistence.deleteSlot (SaveSlot "old") ]
@@ -106,6 +204,11 @@ let evidence =
   your deserialize step's job, which is why you stamp the version.
 - **Expecting `Load`/`DeleteSlot` of an empty slot to error.** The interpreter records exactly what
   you request; "no such save" is a deferred-backend concern, not an exception here.
+- **Expecting a save restored in `initialModel` to have *asked* for anything.** The initial model
+  makes no *transition*, so `forTransition` never runs for it and every request the loaded state
+  implies is silently never made — while the model is perfectly correct and a test that asserts on it
+  **passes**. This is the main path for persistence, not an edge case. Handle it under `Started`; see
+  [Deciding *when* to save](#deciding-when-to-save-the-cue-seam-and-the-init-blind-spot).
 - **Expecting real save files in CI — *while the backend is deferred*.** With the record-only
   interpreter there is no file backend, so the evidence is the *requested* values: assert on
   `PersistenceEvidence.Requested`, not on files on disk. **If you are building the backend, invert
@@ -117,7 +220,7 @@ let evidence =
 Everything above is written for a product that *consumes* a deferred backend. **If your work item is
 to build the file backend itself, the guidance above describes the trap, not the target.**
 
-`Persistence.interpret`/`record` are **record-only**: they fold requests into
+`Persistence.interpretRecordOnly`/`record` are **record-only**: they fold requests into
 `PersistenceEvidence.Requested` and touch no filesystem. So a suite that asserts on `Requested`
 **passes perfectly against a backend that writes nothing.** It exercises the framework's interpreter,
 never your code — and it will stay green through every bug you ship. Requests are not effects.
@@ -136,14 +239,41 @@ Assert on the **effect**, not the request:
   the same as `Load` of a slot whose bytes are truncated or unparseable. A backend that collapses
   both into one "no save" answer silently eats corruption. Decide what each reports, then test it.
 
-⚠️ **The pure surface has no load-result type — you will have to add one, and it is not yours.**
-`PersistenceEffect` is request-only (`Save`/`Load`/`DeleteSlot`), and `Persistence.fsi` says so
-outright: *"how a real backend reports 'no such save' is a deferred concern."* There is no
-`LoadResult`, no absent/corrupt vocabulary, and no path that dispatches a loaded save back to
-`update` as a `Msg`. Reporting a load's outcome therefore needs a **new type on the
-`FS.GG.UI.Canvas` surface**, which is an `fs-gg-rendering` change, not a product-local one. It is
-tracked at [FS-GG/FS.GG.Rendering#535](https://github.com/FS-GG/FS.GG.Rendering/issues/535) — add
-your case there rather than inventing a private result type no host will ever dispatch.
+⚠️ **The answer half of the vocabulary has LANDED — report in it, and do not invent your own.**
+`PersistenceEffect` is request-only (`Save`/`Load`/`DeleteSlot`), so a product that asked for a `Load`
+once had nowhere to receive the answer: it could be asked and never answered, and nothing said so.
+The `FS.GG.UI.Canvas` this product pins (**0.9.2**) closes that hole with `PersistenceOutcome` — what
+a host reports back *after actually performing* a request:
+
+```fsharp
+open FS.GG.UI.Canvas
+
+// The words YOUR backend answers in. Every case is a distinct thing that really happened.
+let describe (outcome: PersistenceOutcome) : string =
+    match outcome with
+    | PersistenceOutcome.Saved slot -> $"written and durable: {slot}"
+    | PersistenceOutcome.Loaded envelope -> $"read back v{envelope.Version} from {envelope.Slot}"
+    | PersistenceOutcome.Deleted slot -> $"deleted (idempotent): {slot}"
+    // A NORMAL answer, not a failure: a new player has no save. Start fresh.
+    | PersistenceOutcome.Absent slot -> $"no save in {slot} — start fresh"
+    // DATA LOSS: bytes were there and are unusable. Tell the player; do NOT silently overwrite.
+    | PersistenceOutcome.Unreadable (slot, reason) -> $"CORRUPT save in {slot}: {reason}"
+    // The request never completed at all — disk full, location not writable, no permission.
+    | PersistenceOutcome.Failed (_, reason) -> $"request never completed: {reason}"
+```
+
+**`Absent` and `Unreadable` are deliberately distinct, and collapsing them is the bug this type exists
+to prevent** — the same bug the bullet above warns you about, now guarded by the type system rather
+than by your memory. A single `LoadFailed` case lets a corrupt save be reported as a new game, and the
+next autosave then overwrites the bytes the player was about to lose.
+
+**But nothing in the framework produces one, and that has not changed.**
+`Persistence.interpretRecordOnly` cannot invent a `PersistenceOutcome` — it writes no bytes, so it has
+nothing to report — and no `ViewerEffect` case carries a `PersistenceEffect`, so no host runner in this
+org will hand you one either (see [Package Boundary](#package-boundary)). **A `PersistenceOutcome` is
+produced by the backend *you* write.** What the pinned surface gives you is the vocabulary to report
+in: so that you are not inventing a private result type, and so that two products' backends answer in
+the same words.
 
 ## Build Commands
 
@@ -175,7 +305,7 @@ write the backend yourself ([If you own the backend](#if-you-own-the-backend)).
 
 ### Which host interprets each `PersistenceEffect`
 
-| `PersistenceEffect` | `Persistence.interpret` does | Which host runner interprets it |
+| `PersistenceEffect` | `Persistence.interpretRecordOnly` does | Which host runner interprets it |
 |---|---|---|
 | `Save` | records the request into `PersistenceEvidence.Requested` (clamping `Version` to `>= 0`); **writes no bytes** | **none** |
 | `Load` | records the request; returns **no payload** | **none** |
@@ -183,8 +313,8 @@ write the backend yourself ([If you own the backend](#if-you-own-the-backend)).
 
 The "none" column is structural, not an oversight: a host runner interprets `ViewerEffect`, and **no
 `ViewerEffect` case carries a `PersistenceEffect`**. A persistence request cannot reach a host runner
-even in principle — `Persistence.interpret` is the only thing that will ever see it, and all it does
-is hand the requests back to you.
+even in principle — `Persistence.interpretRecordOnly` is the only thing that will ever see it, and all
+it does is hand the requests back to you.
 
 So `PersistenceEvidence.Requested` proves that your `update` **asked** to save. It proves **nothing
 about durability**, because no code in the framework writes a byte.
@@ -192,14 +322,19 @@ about durability**, because no code in the framework writes a byte.
 ## Generated Product
 
 Map each `Msg` that should save, load, or delete to a `PersistenceEffect` in your `update`, collect
-the frame's requests, and pass them to `Persistence.interpret` for evidence today. The
+the frame's requests, and pass them to `Persistence.interpretRecordOnly` for evidence today. The
 request surface is designed so that a real backend can interpret the same values into file I/O
-without changing it —
-but no such backend exists yet, and handing a loaded save back to `update` as a `Msg` additionally
-needs a result type the Canvas surface does not have (see
-[If you own the backend](#if-you-own-the-backend)). Treat "the host will handle it later" as
-*unbuilt work*, not as a delivered guarantee. The natural thing to snapshot is your seeded,
-deterministic game-core `Model`.
+without changing it — but **no such backend exists yet**, and that is the part you own.
+
+What the pinned surface now gives you is the *vocabulary for the answer*: `PersistenceOutcome` (see
+[If you own the backend](#if-you-own-the-backend)), so a backend you write reports `Loaded`/`Absent`/
+`Unreadable` in the framework's words rather than a private result type of your own. What it still
+does **not** give you is a **dispatch path**: no `ViewerEffect` case carries a `PersistenceEffect`, so
+nothing in the framework will hand a `PersistenceOutcome` back into your `update` as a `Msg`. Wiring
+that answer into your own `Msg` is yours to build too.
+
+Treat "the host will handle it later" as *unbuilt work*, not as a delivered guarantee. The natural
+thing to snapshot is your seeded, deterministic game-core `Model`.
 
 ## Persistent problems
 
@@ -211,8 +346,8 @@ community sources. If your product uses Spec Kit, record findings and resolving 
 
 ## Related
 
-- [[fs-gg-game-core]] — the simulation half of a game product; the seeded, deterministic `Model` is the natural thing to save.
-- [[fs-gg-audio]] — the sibling requested-effect surface; persistence and audio are both effects requested from `update`.
+- [[fs-gg-game:fs-gg-game-core]] — the simulation half of a game product; the seeded, deterministic `Model` is the natural thing to save.
+- [[fs-gg-game:fs-gg-audio]] — the sibling requested-effect surface; persistence and audio are both effects requested from `update`.
 - [[fs-gg-rendering:fs-gg-keyboard-input]] — map input to the `Msg` values whose `update` requests a save/load.
 
 ## Sources / links

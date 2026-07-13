@@ -195,6 +195,106 @@ let tests =
                 Feature163TestFixtures.deleteTempRoot root
         }
 
+        // #686 — the evidence under readiness/package-proof/ is COMMITTED, so it must not name the
+        // machine that wrote it. It used to: the pin table wrote `pin.ProjectFilePath` raw, which is
+        // absolute, so regenerating from any other checkout rewrote all 60-odd rows. That is not just
+        // churn — it makes the artifact unreadable AS EVIDENCE, because a pin that has actually gone
+        // stale is indistinguishable in the diff from "someone ran this from a different directory".
+        //
+        // Two checkouts of identical content are the whole bug, so assert the whole bug: same content,
+        // different root, byte-identical evidence.
+        test "evidence from two different checkouts of the same content is byte-identical" {
+            let rootA = Feature163TestFixtures.createTempRoot "feature163-checkout-a"
+            let rootB = Feature163TestFixtures.createTempRoot "feature163-checkout-b"
+
+            try
+                let evidence (root: string) =
+                    Feature163TestFixtures.writePackageProject root "src/Controls/Controls.fsproj" "FS.GG.UI.Controls" "1.0.0" |> ignore
+                    Feature163TestFixtures.writeSampleProject root "samples/Demo/Demo.fsproj" [ "FS.GG.UI.Controls", "1.0.0" ] |> ignore
+
+                    let outDir = Path.Combine(root, "out")
+                    PackageFeed.runWorkflow (baseOptions root (Path.Combine(root, "feed")) outDir PackageFeed.Check)
+                    |> ignore
+
+                    File.ReadAllText(Path.Combine(outDir, "package-pins.md")),
+                    File.ReadAllText(Path.Combine(outDir, "package-versions.md"))
+
+                let pinsA, versionsA = evidence rootA
+                let pinsB, versionsB = evidence rootB
+
+                Expect.equal pinsA pinsB "the pin table does not move when the checkout does"
+                Expect.equal versionsA versionsB "the version table does not move when the checkout does"
+
+                // ...and it is relative because the paths were relativised, not because both runs
+                // happened to be empty.
+                Expect.stringContains pinsA "samples/Demo/Demo.fsproj" "the pin names its project, relative to the root"
+                Expect.stringContains versionsA "src/Controls/Controls.fsproj" "the package names its project, relative to the root"
+                Expect.isFalse (pinsA.Contains rootA) "no absolute path survives into the committed pin table"
+                Expect.isFalse (versionsA.Contains rootA) "no absolute path survives into the committed version table"
+            finally
+                Feature163TestFixtures.deleteTempRoot rootA
+                Feature163TestFixtures.deleteTempRoot rootB
+        }
+
+        // #686 — the same rule for the proof evidence, which carries paths the tables do not: the
+        // package cache and the recorded restore command both embedded the runner's root.
+        test "source proof evidence names paths under the root relatively" {
+            let root = Feature163TestFixtures.createTempRoot "feature163-proof-paths"
+
+            try
+                let outDir = Path.Combine(root, "out")
+                Feature163TestFixtures.writePackageProject root "src/Controls/Controls.fsproj" "FS.GG.UI.Controls" "1.0.0" |> ignore
+                Feature163TestFixtures.writeSampleProject root "samples/Demo/Demo.fsproj" [ "FS.GG.UI.Controls", "1.0.0" ] |> ignore
+
+                // Fails closed on the missing feed package, which is what keeps this test off `dotnet
+                // restore` — the evidence is still written, and it is the evidence under test.
+                let result = PackageFeed.runWorkflow (baseOptions root (Path.Combine(root, "feed")) outDir PackageFeed.Proof)
+                Expect.equal result.Status PackageFeed.Failed "missing local package still fails closed"
+
+                let markdown = File.ReadAllText(Path.Combine(outDir, "source-proof.md"))
+                let json = File.ReadAllText(Path.Combine(outDir, "source-proof.json"))
+
+                Expect.isFalse (markdown.Contains root) "no absolute path survives into source-proof.md"
+                Expect.isFalse (json.Contains root) "no absolute path survives into source-proof.json"
+                Expect.stringContains markdown "out/cache" "the package cache is named relative to the root"
+                Expect.stringContains json "samples/Demo/Demo.fsproj" "the pin is named relative to the root"
+
+                // A package SOURCE is not always a path: `AllowedSources` carries the feed directory
+                // and the nuget.org URL in one list. Relativising a URL is not a no-op — it is
+                // CORRUPTION. `Path.IsPathRooted "https://…"` is false, so the URL gets combined with
+                // the root and normalised back down to `https:/api.nuget.org/…`, a source that does
+                // not exist. The evidence would name it and nothing would notice.
+                Expect.stringContains markdown "https://api.nuget.org/v3/index.json" "the nuget.org URL survives the markdown rules list intact"
+                Expect.stringContains json "https://api.nuget.org/v3/index.json" "the nuget.org URL survives the json rules list intact"
+                Expect.isFalse (markdown.Contains "https:/api.nuget.org") "the URL's scheme separator is not collapsed"
+            finally
+                Feature163TestFixtures.deleteTempRoot root
+        }
+
+        // #686 — the converse, and the reason this is `evidencePath` rather than a bare `relativePath`.
+        // The default feed lives OUTSIDE the repository (`~/.local/share/nuget-local`), and
+        // `Path.GetRelativePath` would happily render it `../../../.local/share/nuget-local` — no less
+        // machine-specific than the absolute form, only harder to read. Leave it alone.
+        test "a feed outside the repository root is left absolute, not relativised into ../.." {
+            let root = Feature163TestFixtures.createTempRoot "feature163-external-feed"
+            let feed = Feature163TestFixtures.createTempRoot "feature163-external-feed-store"
+
+            try
+                let outDir = Path.Combine(root, "out")
+                Feature163TestFixtures.writePackageProject root "src/Controls/Controls.fsproj" "FS.GG.UI.Controls" "1.0.0" |> ignore
+                Feature163TestFixtures.writeSampleProject root "samples/Demo/Demo.fsproj" [ "FS.GG.UI.Controls", "1.0.0" ] |> ignore
+
+                PackageFeed.runWorkflow (baseOptions root feed outDir PackageFeed.Check) |> ignore
+
+                let versions = File.ReadAllText(Path.Combine(outDir, "package-versions.md"))
+
+                Expect.stringContains versions feed "the out-of-tree feed keeps the only form it has"
+                Expect.isFalse (versions.Contains "..") "an out-of-tree path is never walked out of the root"
+            finally
+                Feature163TestFixtures.deleteTempRoot root
+                Feature163TestFixtures.deleteTempRoot feed
+        }
+
         test "clear-global-cache without cold mode is a cache policy violation" {
             let root = Feature163TestFixtures.createTempRoot "feature163-cache-policy"
 

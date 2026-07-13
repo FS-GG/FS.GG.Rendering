@@ -53,11 +53,27 @@ gate reporting green over a fiction (#519). Restoring the template package and g
 the twin instead of guarding it (FS-GG/FS.GG.Game#141).
 
 The file is compilable **verbatim** by a consumer that is not a generated product: it carries no `dotnet new`
-conditional, its namespace (`AppRoot`) is fixed, and both of its edges resolve from published packages —
-`FS.GG.UI.Scene` (`toPoint` / `toRect`) and `FS.GG.Game.Core` (`toSimPoint` / `toSimRect`). That is what lets a
-consumer compile the render/sim crossings, which a hand-written twin deliberately **cannot**: faking `toPoint`
-against the sim `Point` would be the exact lie such a gate exists to catch, so the twin omits the helpers a game
-product most needs to get right.
+conditional, and its namespace (`AppRoot`) is fixed. It defines **both** crossings itself — `toPoint` / `toRect`
+into the render vocabulary, and `toSimPoint` / `ofSimPoint` / `toSimRect` / `ofSimRectCenter` into the simulation
+one — so a consumer needs the two packages those vocabularies live in (`FS.GG.UI.Scene` and `FS.GG.Game.Core`)
+and nothing else. That is what lets a consumer compile the render/sim crossings, which a hand-written twin
+deliberately **cannot**: faking `toPoint` against the sim `Point` would be the exact lie such a gate exists to
+catch, so the twin omits the helpers a game product most needs to get right.
+
+> **Mind the pin: the SIM half is newer than the published template.** An earlier version of this note said both
+> edges "resolve from published packages", and that was wrong in a way that cost somebody real time — it read as
+> though `toSimPoint` / `toSimRect` were members of `FS.GG.Game.Core`. They are not: **this file defines them**,
+> and `FS.GG.Game.Core` supplies only the `Point` / `Rect` **types** they cross into. Worse, the sim half landed
+> in #446 (PR #530), **after** the `fs-gg-ui/v0.9.0` tag — so the fragment inside the **published**
+> `FS.GG.UI.Template` still carries only `toPoint` / `toRect`. A consumer generating from the published package
+> today gets the render edge and no sim edge, and will conclude the sim crossing does not exist.
+>
+> It does. It is on `main`, it ships with the next framework release, and until then a consumer wanting the sim
+> half must generate from `main` rather than from the package. FS-GG/FS.GG.Rendering#603 is where that was
+> rediscovered; FS-GG/FS.GG.Rendering#587 is the release that closes it.
+>
+> The lesson is the one #550 taught and this note repeated anyway: **a claim about what a consumer can bind is a
+> claim about the PUBLISHED artifact, never about `main`.**
 
 Publishing the source rather than a generated surface declaration is deliberate: a declaration would be a *third*
 statement of the same shape, with its own generator and its own drift gate — one more copy to keep in step, which

@@ -4,7 +4,7 @@
     {
       "id": "fs-gg-audio",
       "scope": "product",
-      "sha256": "8421dfd19cc1c1f1fb05fa43539afbb18ec3746675a082704eee1894f8281fa1",
+      "sha256": "d1833a673c2a970716e36923f6247253a614b79ddcf7f7c2a482dc0071527420",
       "resolvablePath": ".agents/skills/fs-gg-audio/SKILL.md",
       "materializes-when": "profile in [app, sample-pack, game]",
       "supplied-by": "template/product-skills/fs-gg-audio/"
@@ -12,7 +12,7 @@
     {
       "id": "fs-gg-collision",
       "scope": "product",
-      "sha256": "0ae0d753e71f76193f1053ec4bc99eb626d4eb72195770db60dc344e3f373aa6",
+      "sha256": "598f25f8d651110f130e551f2dc76119395dd1c7143fb689b50072958dfed0a4",
       "resolvablePath": ".agents/skills/fs-gg-collision/SKILL.md",
       "materializes-when": "profile in [game, sample-pack]",
       "supplied-by": "template/product-skills/fs-gg-collision/"
@@ -20,7 +20,7 @@
     {
       "id": "fs-gg-elmish",
       "scope": "product",
-      "sha256": "af5371a99a68c9758133a22bfb16263aa7749ab452d69bb5f17cd0bc69d91b90",
+      "sha256": "4b1fbf4a90f53e453737139bdfc08f4cd0cf33578cc676fa9cf4d586bda3c7f2",
       "resolvablePath": ".agents/skills/fs-gg-elmish/SKILL.md",
       "materializes-when": "profile in [app, sample-pack, game]",
       "supplied-by": "template/product-skills/fs-gg-elmish/"
@@ -28,7 +28,7 @@
     {
       "id": "fs-gg-feedback-capture",
       "scope": "product",
-      "sha256": "6c3822b522b0745c6df739153357d64cac08fc9b69a9f2d0d81428aa36de41e6",
+      "sha256": "509a7e89500da7675c90a363c7530d3a20061d8fad3493f953e5df7926763b07",
       "resolvablePath": ".agents/skills/fs-gg-feedback-capture/SKILL.md",
       "materializes-when": "feedback == true and lifecycle == spec-kit",
       "supplied-by": "template/feedback/skill/"
@@ -36,7 +36,7 @@
     {
       "id": "fs-gg-feedback-report",
       "scope": "product",
-      "sha256": "68626e2408d31b665c7ec7300df51a7e1037f26e9a4b6cc2b2e8e0b522aca5db",
+      "sha256": "e3a4e8e2984deee4e253065f9d89197be9755b0094323f5aba0102018250897c",
       "resolvablePath": ".agents/skills/fs-gg-feedback-report/SKILL.md",
       "materializes-when": "always",
       "supplied-by": "template/feedback-report/skill/"
@@ -44,7 +44,7 @@
     {
       "id": "fs-gg-game-core",
       "scope": "product",
-      "sha256": "ffdbc63a546ffbdb7f7141830fb7487a4d3b54eb9dc2de3c5ceed03f75e17e55",
+      "sha256": "ebf302b8dac1eea2d3edb85da3e133163c1c5c696c3afbabb05a61237ee3cd2a",
       "resolvablePath": ".agents/skills/fs-gg-game-core/SKILL.md",
       "materializes-when": "profile in [game, sample-pack]",
       "supplied-by": "template/product-skills/fs-gg-game-core/"
@@ -60,7 +60,7 @@
     {
       "id": "fs-gg-keyboard-input",
       "scope": "product",
-      "sha256": "7a74a837b23675515422318a12ef20203086f09d37f95f77a2638a77440e1338",
+      "sha256": "cb74e2a9b92b5393294bf990fe079c8c727c42844cd7261bb0e08d2b7060ea27",
       "resolvablePath": ".agents/skills/fs-gg-keyboard-input/SKILL.md",
       "materializes-when": "profile in [app, game]",
       "supplied-by": "template/product-skills/fs-gg-keyboard-input/"
@@ -84,7 +84,7 @@
     {
       "id": "fs-gg-model-swap",
       "scope": "product",
-      "sha256": "4c88cf8fbafd878e8deaaefb5699dad751d332ada7e95fb921f62163041a3805",
+      "sha256": "720a21596be6d24b05191c91da82e228ff9c8f63837a82ad60d3c089fdbb5a26",
       "resolvablePath": ".agents/skills/fs-gg-model-swap/SKILL.md",
       "materializes-when": "profile in [game, sample-pack]",
       "supplied-by": "template/product-skills/fs-gg-model-swap/"
@@ -92,7 +92,7 @@
     {
       "id": "fs-gg-persistence",
       "scope": "product",
-      "sha256": "5848164d540ff236d6e3516251ca8c269ff48985ad0507b2733c4c05b4a4875e",
+      "sha256": "cfb935493f856a2ce4d13bb4966fad57feaaf01c51861c38f91280eb2fcabc64",
       "resolvablePath": ".agents/skills/fs-gg-persistence/SKILL.md",
       "materializes-when": "profile in [game, sample-pack]",
       "supplied-by": "template/product-skills/fs-gg-persistence/"
@@ -116,7 +116,7 @@
     {
       "id": "fs-gg-scene",
       "scope": "product",
-      "sha256": "f95e1a5677f53785e3575467d746db6d7ee2fde3253c0e0066e0c836902b1287",
+      "sha256": "12b79ec6eb23ef6a0e2634fbdbcdc50bb7ff006a3ff9b96f97a276f366fac38b",
       "resolvablePath": ".agents/skills/fs-gg-scene/SKILL.md",
       "materializes-when": "profile in [app, headless-scene, governed, sample-pack, game]",
       "supplied-by": "template/product-skills/fs-gg-scene/"
@@ -124,7 +124,7 @@
     {
       "id": "fs-gg-skiaviewer",
       "scope": "product",
-      "sha256": "6ea4c582cf6d18ac048640af54040d451bfc2dd4b815f859d08963df65028900",
+      "sha256": "c567859da9862e713e3905d30f898e0494e3537500e0541272c86b81b48439a8",
       "resolvablePath": ".agents/skills/fs-gg-skiaviewer/SKILL.md",
       "materializes-when": "profile in [app, sample-pack, game]",
       "supplied-by": "template/product-skills/fs-gg-skiaviewer/"
@@ -140,7 +140,7 @@
     {
       "id": "fs-gg-symbology",
       "scope": "product",
-      "sha256": "966c46120987bc3e32c8fce857bcd952b54eb0e42e06376a4f1fc16711c0121f",
+      "sha256": "6abd824b616b2796a69a0d03fddaf569083df8061ea319b31f79f243ebe6dd08",
       "resolvablePath": ".agents/skills/fs-gg-symbology/SKILL.md",
       "materializes-when": "profile in [app, sample-pack, game]",
       "supplied-by": "template/product-skills/fs-gg-symbology/"
@@ -148,7 +148,7 @@
     {
       "id": "fs-gg-testing",
       "scope": "product",
-      "sha256": "e8bb258f83db1d87590ac7bfaae471735fbdbeef73b59e16cea5915e1a209e54",
+      "sha256": "0c159485f8a1f8b1897d5424052a9a7b59e0c4b7ea64937b9815b221bd3a5808",
       "resolvablePath": ".agents/skills/fs-gg-testing/SKILL.md",
       "materializes-when": "profile in [app, headless-scene, governed, sample-pack, game]",
       "supplied-by": "template/product-skills/fs-gg-testing/"
@@ -156,7 +156,7 @@
     {
       "id": "fs-gg-ui-widgets",
       "scope": "product",
-      "sha256": "e935367032e1b37ac5bfa4db40656f3b6c48b37a30b0d668545d0688c8e445f7",
+      "sha256": "6a4b0ba0de19628806079d5c08e6561fb01cceaf8bcf897e50714814bea4c7b6",
       "resolvablePath": ".agents/skills/fs-gg-ui-widgets/SKILL.md",
       "materializes-when": "profile in [app, game]",
       "supplied-by": "template/product-skills/fs-gg-ui-widgets/"
