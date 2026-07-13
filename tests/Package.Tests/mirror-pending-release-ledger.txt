@@ -101,13 +101,22 @@
 # have, every PR restore was NU1102 and the ONLY PR that could go green was the one that bumped it (#679).
 # A phantom tag is not a version you can restore from. It is a version nobody ever could.
 #
-# THAT THIS ROTTED AT ALL IS THE ONE THING THE RATCHET ABOVE CANNOT CATCH, AND IT IS WORTH KNOWING. P-PEND/PIN
-# reds EVERY LINE on a pin bump, on purpose, so that a release forces each entry to be judged afresh. It binds
-# LINES. This file has none — it is empty, which is the goal state — so the 0.9.1 -> 0.9.2 bump forced no
-# re-judgement of anything, and the prose went on naming a release that does not exist with every gate green.
-# That is precisely the SILENT ROT this file's own rules were built to prevent, one level up: the entries are
-# machine-checked, and the paragraph that explains them is not. If you retire the next entry here, the pin you
-# name in its epitaph is checked by nobody but you.
+# THAT THIS ROTTED AT ALL WAS THE ONE THING THE RATCHET ABOVE COULD NOT CATCH — AND IT IS CAUGHT NOW (#709).
+# P-PEND/PIN reds EVERY LINE on a pin bump, on purpose, so that a release forces each entry to be judged
+# afresh. It binds LINES. This file has none — it is empty, which is the goal state — so the 0.9.1 -> 0.9.2
+# bump forced no re-judgement of anything, and the prose went on naming a release that does not exist with
+# every gate green. That was precisely the SILENT ROT this file's own rules were built to prevent, one level
+# up: the entries were machine-checked, and the paragraph that explains them was not.
+#
+# THE PARAGRAPH IS MACHINE-CHECKED NOW. `tests/Package.Tests/LedgerNarrativeTests.fs` holds this file's
+# present-tense pin claim against the real `$(FsGgUiVersion)`, so the sentence above naming 0.9.2 reds if the
+# pin moves and nobody comes back here. It binds the claim `$(FsGgUiVersion)` is <version> — the only phrase
+# in this file that asserts what the pin IS — and deliberately nothing else: every OTHER version above is
+# history (the 0.9.1 phantom, the 0.9.0 -> 0.9.2 published line, the retired `@ 0.9.0` stamp) and a guard that
+# reddened on a correct account of the past is a guard somebody deletes. It also refuses to go vacuous: if
+# this file ever stops making a claim the extractor can see, that is a hard failure rather than a silent pass.
+# So when you retire the next entry here, the pin you name in its epitaph IS checked — but the release you
+# credit for publishing the member is still yours to get right.
 #
 # An empty ledger is the goal state, not a dead file. The rules above still bind every FUTURE entry, and
 # the next mirrored type that grows a case ahead of the pin lands here.
