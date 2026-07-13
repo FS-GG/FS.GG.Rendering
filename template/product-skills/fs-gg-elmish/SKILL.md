@@ -150,13 +150,6 @@ re-fold of `host.Update` written in your test. That distinction is the point: a
 hand-rolled fold asserts what your test does, and the bug you are hunting is the
 product loop doing something else.
 
-> **Newer than your pin.** `Perf.runScriptToEffects` and `ControlsElmish.audioRequests`
-> are NEWER than the `FS.GG.UI.Controls.Elmish` your product restores, so you cannot
-> bind them yet — FS.GG.Rendering#587 (the release) publishes them. Until it lands, the
-> only headless way to see what a Controls product requested is to fold `host.Update`
-> yourself, which is exactly the re-fold this section warns about; prefer waiting to
-> shipping an assertion that cannot see the product's own loop (FS.GG.Rendering#641).
-
 ### Guard every click with `BoundIds`
 
 `ControlRenderResult.BoundIds` is the set of canonical ids of every node carrying at

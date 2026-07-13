@@ -2283,11 +2283,43 @@ let templateConsumesPinnedApiTests =
         //
         // Judged from DECLARATIONS, not prose — `| Persist of effects: …` under `type ViewerEffect =` is
         // unambiguous in a way a sentence never is.
+        //
+        // RELEASE-PENDING (#587) — THE WAIVER BELOW IS NOT OPTIONAL, AND ITS ABSENCE WEDGED THE RELEASE LANE.
+        // This rule shipped (#611) without the deferral its val-level siblings above already carried, and the
+        // omission is invisible until the one commit it breaks: a RELEASE. On that commit `$(FsGgUiVersion)`
+        // names a version nuget.org does not carry yet — the merge is what publishes it — so `pinnedSurface`
+        // cannot restore, and a bare `failtest` here hard-fails NU1102 on the required `Deterministic gate`
+        // with `enforce_admins` ON and `--admin` forbidden. The commit whose whole job is to be merged CANNOT
+        // BE MERGED. 0.9.1 is the first release cut since #611 landed, and it is how this was found.
+        //
+        // The bounds are copied from the val-level sibling, not re-invented, because the safety IS the bounds:
+        // only an NU1102 (never an FS0039, never a feed error), only on the $(FsGgUiVersion) axis, only when
+        // THIS commit bumped it, and NEVER in the release lane — where the packages are DUE, not pending.
         testCase "every union case and record field a SHIPPED mirror declares exists in the PINNED package" <| fun _ ->
             match Environment.GetEnvironmentVariable "FS_GG_SKIP_TEMPLATE_PINNED_API" with
             | null | "" ->
+                let uiPin = readAxis uiAxis
+
                 match pinnedSurface.Value with
+                | Error why when failedOnlyOnUnpublishedUiPin why uiPin && not releaseLane ->
+                    match bumpedInCommitUnderTest packagesPropsRel uiAxis with
+                    | Ok true ->
+                        skiptest
+                            $"RELEASE-PENDING: this commit bumps $({uiAxis}) to {uiPin}, which nuget.org does \
+                              not carry yet — merging it is what publishes it. The pinned TYPE surface cannot \
+                              be read, so the case/field-vs-pin rule is DEFERRED to the publish; it is NOT \
+                              passing. (The mirror may legitimately declare cases that only {uiPin} will \
+                              export — `ViewerEffect.Persist` is exactly that, and judging it here would fail \
+                              the release that publishes it.)\n\n{why}"
+                    | Ok false ->
+                        failtest
+                            $"the feed does not carry the FS.GG.UI.* packages at $({uiAxis})={uiPin}, and this \
+                              commit did NOT bump $({uiAxis}) — so this is NOT the release window. The pin is \
+                              stale or typo'd.\n\n{why}"
+                    | Error gitWhy -> failtest $"{gitWhy}\n\n{why}"
+
                 | Error why -> failtest why
+
                 | Ok(_, pinnedTypes) ->
                     // The oracle must actually KNOW about types, or this rule excuses everything while
                     // reporting green — the fails-open shape (#266) this file refuses.
