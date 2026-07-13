@@ -1497,6 +1497,24 @@ module private PinnedApi =
     /// diagnostic is ABOUT and not by wording that a localized or reworded NuGet could change underneath it.
     let private fsGgIdRegex = Regex(@"\bFS\.GG\.[A-Za-z0-9.]*[A-Za-z0-9]", RegexOptions.Compiled)
 
+    /// Does this line name EXACTLY `version` — as a whole version token, not as a substring of a longer one?
+    ///
+    /// #711. This used to be `line.Contains uiPin`, and a bare substring test reads "0.9.2" INSIDE "0.9.20"
+    /// and inside "0.9.2-preview.1". So with the pin at 0.9.2, an NU1102 naming an FS.GG.UI.* package at
+    /// EITHER of those versions satisfied the version bound, and the waiver fired for a version THIS COMMIT
+    /// NEVER BUMPED — a stale or typo'd pin, deferred instead of reddened, in exactly the fail-open
+    /// direction the axis bound exists to close. It reaches the same defect as a widened id check, just
+    /// through the version half instead. And it stops being exotic the moment a patch number passes 9:
+    /// 0.9.1 is a substring of 0.9.10 … 0.9.19, and this repo is at 0.9.x today.
+    ///
+    /// A version token ends where a version character ends, so the boundary rejects `[\w.-]` on both sides:
+    /// that takes `(>= 0.9.2)` (the real diagnostic) and refuses `0.9.20` (longer patch) and
+    /// `0.9.2-preview.1` (a prerelease of it). It is deliberately NOT a match against NuGet's sentence —
+    /// the whole reason `fsGgIdRegex` exists is to keep this predicate off wording that could be localized
+    /// or reworded, and a bound that demanded "with version (>= …)" would throw that away.
+    let private namesVersion (line: string) (version: string) =
+        Regex.IsMatch(line, $@"(?<![\w.\-]){Regex.Escape version}(?![\w.\-])")
+
     /// Is the failure EXACTLY "the FS.GG.UI.* packages this commit pins are not on the feed yet", and
     /// nothing else? That is the only failure a release window can produce, and the only one waivable.
     ///
@@ -1542,11 +1560,12 @@ module private PinnedApi =
         unresolvedPins.Length = errorLines.Length
         // 2. ... the pins are really what failed (never waive on an empty diagnostic set) ...
         && not (Array.isEmpty namedPins)
-        // 3. ... and every pin named is the UI axis, at the version THIS commit pins.
+        // 3. ... and every pin named is the UI axis, at the version THIS commit pins — as a whole version
+        //    token, because "0.9.2" is a SUBSTRING of "0.9.20" and of "0.9.2-preview.1" (#711).
         && namedPins
            |> Array.forall (fun (line, ids) ->
                ids |> List.forall (fun id -> id.StartsWith("FS.GG.UI.", StringComparison.Ordinal))
-               && line.Contains uiPin)
+               && namesVersion line uiPin)
 
     // -----------------------------------------------------------------------------------------
     // The verdict on a FAILED probe — the one place the waiver can be granted.
@@ -1555,7 +1574,12 @@ module private PinnedApi =
     /// What a failed pin probe MEANS. `ReleasePending` is UNFORGEABLE outside this module: it is the only
     /// thing that can turn a red release into an honest IGNORED, and it is constructed in exactly one
     /// place, from exactly the bounds above.
-    type private PinFailure =
+    ///
+    /// Not `private` (#711), and the distinction is narrow on purpose: `PinnedApi` is itself `module
+    /// private`, so this type is reachable within THIS FILE and nowhere else in the repo. What that buys is
+    /// `pinnedApiWaiverBoundsTests` at the foot of the file, which drives the bounds below over every world
+    /// and asserts the verdict. What it costs is nothing: a verdict is not a surface — see `classifyIn`.
+    type PinFailure =
         /// Not about the pin's AVAILABILITY at all — an FS0039, a feed error, a malformed probe, a timeout.
         /// The rule that asked must judge this ITSELF: this is the failure it exists to catch, and the
         /// waiver has no opinion on it.
@@ -1572,9 +1596,34 @@ module private PinnedApi =
     /// same thread-safety: Expecto runs the list in parallel, and `Lazy` is thread-safe by default.
     let private uiPinBumped = lazy (bumpedInCommitUnderTest packagesPropsRel uiAxis)
 
-    let private classify (subject: string) (output: string) : PinFailure =
-        let uiPin = readAxis uiAxis
-
+    /// THE BOUNDS, as a total function OF the world rather than a reader OF it (#711).
+    ///
+    /// `classify` below reads three things off the ambient process — the release-lane env var, the `git
+    /// diff` that answers "did THIS commit bump the pin?", and the version the props file pins — and a
+    /// function that reads its world cannot be driven through the worlds it is not in. The test process is
+    /// always the same world (no release lane, no bump, whatever `main` pins today), so a truth table over
+    /// the ambient reader would exercise ONE row and call itself a table. Every conjunct here is
+    /// load-bearing in the FAIL-OPEN direction — weaken one and the waiver starts excusing a real defect,
+    /// silently, with the gate green — and until #711 no test went red if one was deleted.
+    ///
+    /// The parameters deliberately SHADOW the module-level `releaseLane` and `uiPinBumped`. That is the
+    /// point: inside this function there is no way to name the ambient ones, so it cannot half-read its
+    /// world and it cannot be driven into a world that is only partly synthetic.
+    ///
+    /// THIS IS NOT A WIDENING OF #673's DOOR, and the difference is exactly what makes it safe. What #673
+    /// makes unreachable is the PINNED SURFACE — `runNameofProbe`, `readSurfaceAt` and the lazies over them
+    /// — so that no rule can hold a restore's answer without having come through the waiver. All of those
+    /// are still `private`, and this adds no path to any of them. What is reachable here is the VERDICT
+    /// function: it restores nothing, opens no feed, and hands back no surface, so a rule that called it
+    /// would still have precisely nothing to assert against. The un-waived door stays shut; only the bounds
+    /// became checkable.
+    let classifyIn
+        (releaseLane: bool)
+        (uiPinBumped: Result<bool, string>)
+        (uiPin: string)
+        (subject: string)
+        (output: string)
+        : PinFailure =
         if not (failedOnlyOnUnpublishedUiPin output uiPin) then
             NotAboutAvailability
         elif releaseLane then
@@ -1583,7 +1632,7 @@ module private PinnedApi =
                   those packages are DUE, not pending. RELEASE-PENDING does not apply here; a missing package \
                   at publish time is drift.\n\n{output}"
         else
-            match uiPinBumped.Value with
+            match uiPinBumped with
             | Error why -> Unavailable $"{why}\n\n{output}"
 
             | Ok false ->
@@ -1603,15 +1652,28 @@ module private PinnedApi =
                       those axes publish from other repos, where a bump here publishes nothing. Still asserted \
                       on this commit: every rule in this file that does not need the pinned package.\n\n{output}"
 
+    /// The AMBIENT reading of the bounds: the same function, over the world this process is actually in.
+    /// The one place the world is read, so `classifyIn` can stay total.
+    let private classify (subject: string) (output: string) : PinFailure =
+        classifyIn releaseLane uiPinBumped.Value (readAxis uiAxis) subject output
+
+    /// What a verdict COSTS the rule that asked. Split out of `settle` (#711) because a truth table on the
+    /// verdict alone is only half a proof: leave every conjunct above perfect and invert THIS mapping — let
+    /// a `ReleasePending` fall through to `()` — and the caller sails on to read a surface that was never
+    /// restored, which is the same fail-open by another door. The verdict and its consequence are both
+    /// load-bearing, so both are asserted.
+    let enact (verdict: PinFailure) : unit =
+        match verdict with
+        | NotAboutAvailability -> ()
+        | ReleasePending why -> skiptest why
+        | Unavailable why -> failtest why
+
     /// Settle a failed probe's AVAILABILITY question, and ONLY that. It RETURNS — rather than throwing —
     /// exactly when the failure is the calling rule's own business to judge.
     ///
     /// This is the whole waiver, and it is the only path to it.
     let private settle (subject: string) (output: string) : unit =
-        match classify subject output with
-        | NotAboutAvailability -> ()
-        | ReleasePending why -> skiptest why
-        | Unavailable why -> failtest why
+        enact (classify subject output)
 
     /// The skip message, in one place, so the opt-out reads the same whichever door was knocked on.
     let private skipped (subject: string) : 'a =
@@ -3147,3 +3209,373 @@ let templateConsumesPinnedApiTests =
                   Phantom: {rendered}"
         }
     ]
+
+// ---------------------------------------------------------------------------------------------
+// #711 — THE WAIVER'S BOUNDS, DRIVEN.
+//
+// #673 collapsed the RELEASE-PENDING waiver from four copy-pasted copies into ONE, behind `PinnedApi`,
+// whose accessors are the only way to reach the pin — so a rule that FORGETS the waiver does not compile.
+// That fixed the omission class outright, and it left the harder one untouched: nothing tested the BOUNDS.
+// `PinnedApi.classifyIn` is where all four are decided, which makes it simultaneously the best-protected
+// code in this file and the highest-consequence, and no test in this repo went red if a conjunct were
+// deleted from it. Each one is load-bearing in the FAIL-OPEN direction — weaken any of them and the waiver
+// starts excusing a real defect, silently, on the REQUIRED `Deterministic gate`:
+//
+//   * only an NU1102 (never an FS0039, an NU1101, an NU1603) — the others are the defects these tests exist
+//     to catch, and a waiver that swallowed them would retire the whole file;
+//   * only on the $(FsGgUiVersion) axis — an unpublished FS.GG.Audio.* / FS.GG.Game.* pin is a real defect
+//     even on the commit that bumped it, because those publish from OTHER repos, where a bump here
+//     publishes nothing (that is #235, the defect the sibling script was written for);
+//   * only when THIS commit bumped it — a pin nobody bumped that the feed lacks is stale or typo'd, and
+//     stays red;
+//   * never in the release lane — there the packages are DUE, not pending.
+//
+// THE ASYMMETRY THIS CLOSES. The SIBLING waiver — `releasePending` in
+// `scripts/validate-template-payload-pins.fsx` — has had an eight-world truth table since #544
+// (`tests/Package.Tests/TemplatePayloadPinsWaiverTests.fs`). It guards an ADVISORY job. This one guards the
+// REQUIRED gate, and had nothing. The better-protected waiver was on the weaker gate.
+//
+// AND THIS TESTS THE REAL PREDICATE, WHERE THE SIBLING COULD ONLY MIRROR ONE. #544 had to re-implement its
+// script's decision layer in the test — the guard is a `dotnet fsi` entry point that ends in `exit`, so it
+// cannot be `#load`ed — and then pin the copy to the original with `source lockstep` string assertions,
+// because a mirror that drifts from its subject passes while the subject rots. `PinnedApi` is ordinary F#
+// in a compiled project, so there is no copy here and there is nothing to keep in lockstep: these tests
+// call the function the gate calls. That is strictly the stronger of the two arrangements, and it is why
+// this file grows a truth table instead of a mirror.
+//
+// NO NETWORK, NO GIT, NO ENV. `classifyIn` takes the world as an argument (that is the #711 seam), so the
+// eight worlds are eight tuples and the restore outputs are string fixtures. The suite is offline and runs
+// on every gate — including, and this is the point, inside the release window it exists to bound.
+// ---------------------------------------------------------------------------------------------
+
+/// A synthetic pin, NOT `readAxis uiAxis`. These tests drive worlds the repo is not in, and reading the
+/// real pin would make the table's rows depend on whatever `main` happens to pin this week.
+let private testPin = "0.9.2"
+
+/// MSBuild prefixes every diagnostic with the project that raised it. The probe's work dir is under
+/// `Path.GetTempPath()` and is spelled `fsgg-…`, not `FS.GG.…`, so the path itself names no package —
+/// which matters, because `fsGgIdRegex` reads ids off the LINE, and a path that looked like an id would
+/// veto the waiver from inside the noise.
+let private probeProj = "/tmp/fsgg-pinned-api-probe-4f2a/Probe.fsproj"
+
+/// One NU1102, AS NUGET REALLY EMITS IT: a header naming the id and version, then two CONTINUATION lines
+/// that repeat the code and name no package at all.
+///
+/// The continuations are not decoration. They are the exact shape that broke the first cut of the axis
+/// bound — a detail line, naming no pin, failing the "every named pin is FS.GG.UI.*" test and vetoing a
+/// waiver that should have fired — which is why the bound is asked only of the lines that NAME a package,
+/// and why every fixture here that carries an NU1102 carries its continuations too. A fixture that emitted
+/// the header alone would pass without ever touching the reason the code is written the way it is.
+let private nu1102 (packageId: string) (version: string) =
+    [ $"{probeProj} : error NU1102: Unable to find package {packageId} with version (>= {version})"
+      $"{probeProj} : error NU1102:   - Found 12 version(s) in nuget.org [ Nearest version: 0.9.1 ]"
+      $"{probeProj} : error NU1102:   - Versions from /usr/lib/dotnet/library-packs were not considered" ]
+
+/// The framework grew API the template cannot consume — #504's entire subject, and the failure the waiver
+/// must NEVER swallow.
+let private fs0039 (symbol: string) =
+    [ $"/tmp/fsgg-pinned-api-probe-4f2a/Probe.fs(7,13): error FS0039: The value, constructor, namespace or \
+       field '{symbol}' is not defined." ]
+
+let private restoreOutput (lines: string list) = String.concat "\n" lines
+
+/// The one world that may defer: the UI pin is unresolved, this commit bumped it, and we are not gating a
+/// publish.
+let private releaseWindowOutput = restoreOutput (nu1102 "FS.GG.UI.Scene" testPin)
+
+let private subject = "the pin-grounded proof"
+
+let private classify releaseLane bumped output =
+    PinnedApi.classifyIn releaseLane bumped testPin subject output
+
+/// Every reason a verdict carries must ECHO the restore that produced it. Asserted instead of the prose,
+/// which is a releaser-facing message that may legitimately be reworded — the EVIDENCE may not go missing.
+let private reasonOf =
+    function
+    | PinnedApi.ReleasePending why
+    | PinnedApi.Unavailable why -> why
+    | PinnedApi.NotAboutAvailability -> ""
+
+[<Tests>]
+let pinnedApiWaiverBoundsTests =
+    testList
+        "issue-711 PinnedApi RELEASE-PENDING waiver bounds"
+        [
+          // ---- the headline, and the shape #544 froze for the sibling ----------------------------
+          //
+          // A conjunction is exactly the thing a well-meaning edit loosens by one term, so assert the
+          // whole space rather than the rows someone thought to write down.
+
+          test "the waiver opens in exactly one of the eight possible worlds" {
+            let worlds =
+                [ for unresolvedUiPin in [ true; false ] do
+                      for releaseLane in [ true; false ] do
+                          for bumpedHere in [ true; false ] do
+                              yield unresolvedUiPin, releaseLane, bumpedHere ]
+
+            let defers (unresolvedUiPin, releaseLane, bumpedHere) =
+                let output =
+                    if unresolvedUiPin then
+                        releaseWindowOutput
+                    else
+                        restoreOutput (fs0039 "Viewer.runAppWithAudio")
+
+                match classify releaseLane (Ok bumpedHere) output with
+                | PinnedApi.ReleasePending _ -> true
+                | _ -> false
+
+            let opened = worlds |> List.filter defers
+
+            Expect.equal
+                opened
+                [ true, false, true ]
+                "exactly ONE of the eight worlds may defer: the UI pin is unresolved, we are NOT gating the \
+                 publish, and THIS commit bumped it. Every other world names a defect that must stay red. If \
+                 this is now failing, a conjunct in `PinnedApi.classifyIn` was weakened — re-derive the \
+                 bounds from its header before you touch this table."
+          }
+
+          // ---- conjunct 1: only an NU1102. The rest are what this file exists to catch -----------
+
+          test "an FS0039 is NEVER waived — it is the defect the probe exists to find" {
+            // #429's audio seam: the framework grew `Viewer.runAppWithAudio`, the template pinned a version
+            // that did not carry it, and nothing went red for the life of 0.8.0. A waiver that swallowed an
+            // FS0039 would retire this entire file, and would do it in the release window — when the pin is
+            // MOST likely to be the thing that is wrong.
+            let verdict =
+                classify false (Ok true) (restoreOutput (fs0039 "Viewer.runAppWithAudio"))
+
+            Expect.equal
+                verdict
+                PinnedApi.NotAboutAvailability
+                "an unresolved SYMBOL is not an unresolved PACKAGE. The waiver has no opinion on it, and the \
+                 rule that asked must judge it itself (that is what `NotAboutAvailability` buys)."
+          }
+
+          test "an FS0039 is not waived even in the release lane — the availability question is asked first" {
+            // Order is load-bearing: `classifyIn` asks "is this even ABOUT availability?" BEFORE it asks
+            // about the lane. Swap the two and a genuine API break in the release lane is reported as
+            // "the packages are DUE" — a true statement, and the wrong diagnosis, on the commit that ships.
+            let verdict = classify true (Ok true) (restoreOutput (fs0039 "Viewer.runAppWithPersistence"))
+
+            Expect.equal
+                verdict
+                PinnedApi.NotAboutAvailability
+                "the lane decides what an UNAVAILABLE pin means; it does not turn a compile error into one"
+          }
+
+          test "an NU1101 (typo'd id) and an NU1603 (upward resolution) are never waived" {
+            for code, line in
+                [ "NU1101", $"{probeProj} : error NU1101: Unable to find package FS.GG.UI.Scne. No packages \
+                              exist with this id."
+                  "NU1603", $"{probeProj} : error NU1603: FS.GG.UI.Scene depends on FS.GG.UI.Core (>= \
+                              {testPin}) but FS.GG.UI.Core {testPin} was not found. FS.GG.UI.Core 0.9.3 was \
+                              resolved instead." ] do
+                Expect.equal
+                    (classify false (Ok true) line)
+                    PinnedApi.NotAboutAvailability
+                    $"only an NU1102 means 'the feed does not carry this exact id@version'. An {code} is a \
+                      different defect and the waiver must not reach it — it fails CLOSED, and a release \
+                      wedged by a real {code} is the correct outcome."
+          }
+
+          test "an NU1102 mixed with an FS0039 is not waived — EVERY error must be the pin" {
+            // The dangerous shape: a genuine release window that ALSO broke an API. Waive on "some error is
+            // an NU1102" instead of "every error is" and the API break ships inside the window.
+            let output = restoreOutput (nu1102 "FS.GG.UI.Scene" testPin @ fs0039 "Viewer.runAppWithAudio")
+
+            Expect.equal
+                (classify false (Ok true) output)
+                PinnedApi.NotAboutAvailability
+                "the window excuses an absent PACKAGE, never an absent SYMBOL. One FS0039 anywhere in the \
+                 output and the whole restore is the rule's own business again."
+          }
+
+          // ---- conjunct 2: the UI axis alone. This is the fail-open the sibling calls its worst ----
+
+          test "an unpublished FS.GG.Audio.* / FS.GG.Game.* pin is NEVER waived, window or not" {
+            // Bumping $(FsGgAudioVersion) HERE publishes nothing — that package ships from its own repo — so
+            // an absent Audio/Game pin is a real defect on every commit, including the one that bumped it.
+            // A waiver keyed on "an axis was bumped and the feed lacks it" would sail straight past it: #235,
+            // the exact defect the sibling script was written to catch, in a new coat.
+            for packageId in [ "FS.GG.Audio.Core"; "FS.GG.Game.Core" ] do
+                let alone = restoreOutput (nu1102 packageId "0.4.0")
+
+                Expect.equal
+                    (classify false (Ok true) alone)
+                    PinnedApi.NotAboutAvailability
+                    $"{packageId} publishes from ANOTHER repo. A bump here publishes nothing, so an \
+                      unpublished pin is drift on every commit — there is no window for it to be pending in."
+
+                // ...and it survives a genuine UI release window happening around it, which is the case a
+                // careless axis bound really would let through.
+                let alongsideAGenuineWindow =
+                    restoreOutput (nu1102 "FS.GG.UI.Scene" testPin @ nu1102 packageId "0.4.0")
+
+                Expect.equal
+                    (classify false (Ok true) alongsideAGenuineWindow)
+                    PinnedApi.NotAboutAvailability
+                    $"the UI release window is genuinely open, and it still may not excuse {packageId}. The \
+                      waiver is bounded to $(FsGgUiVersion) ALONE."
+          }
+
+          test "an FS.GG.UI.* pin at a version this commit does NOT pin is not waived" {
+            // The window's premise is "the packages THIS commit pins are not published yet". A UI package
+            // unresolved at some OTHER version is not that: it is a stale transitive pin, and it is red.
+            //
+            // THE LAST TWO ARE WHY THE BOUND IS A TOKEN MATCH AND NOT A SUBSTRING. `line.Contains uiPin`
+            // reads "0.9.2" INSIDE "0.9.20" and inside "0.9.2-preview.1" — so with the pin at 0.9.2, an
+            // unresolved UI package at either of those versions satisfied the version bound and the waiver
+            // fired on a pin this commit never bumped. That is the fail-open the axis bound exists to
+            // prevent, reached through the version half of it instead of the id half, and it becomes
+            // ORDINARY the moment a patch number passes 9 (0.9.1 is a substring of 0.9.10 through 0.9.19).
+            // Found by #711 while building this table; the bound now demands a delimited version token.
+            for absent in [ "0.7.1"; "0.9.20"; $"{testPin}-preview.1" ] do
+                Expect.equal
+                    (classify false (Ok true) (restoreOutput (nu1102 "FS.GG.UI.Scene" absent)))
+                    PinnedApi.NotAboutAvailability
+                    $"the NU1102 names FS.GG.UI.Scene at {absent}, and this commit pins {testPin} — a \
+                      DIFFERENT version. Waiving it excuses a stale pin that the bump merely happened to \
+                      look like."
+          }
+
+          // ---- conjunct 3: THIS commit bumped it ------------------------------------------------
+
+          test "an ordinary commit inheriting an unpublished pin is NOT waived — it is stale, and red" {
+            // Without the bumped-here conjunct the waiver keys on "the feed lacks it", which is true of a
+            // typo'd or half-released pin on every commit thereafter — so the gate would go quiet exactly
+            // when the repo is broken, and stay quiet.
+            let verdict = classify false (Ok false) releaseWindowOutput
+
+            match verdict with
+            | PinnedApi.Unavailable why ->
+                Expect.stringContains
+                    why
+                    releaseWindowOutput
+                    "the verdict must carry the restore that produced it, or nobody can diagnose it"
+            | other ->
+                failtestf
+                    "a pin nobody bumped that the feed does not carry is STALE — a half-failed release, or a \
+                     typo. It must be `Unavailable` (red), never deferred. Got: %A"
+                    other
+          }
+
+          test "a git that cannot answer 'was it bumped?' is Unavailable — never a silent 'no'" {
+            // A shallow clone has no HEAD~1. Reading that as "not bumped" would be the QUIET choice and the
+            // wrong one: it silently restores the always-red release gate #543 exists to remove, and nobody
+            // would ever learn why. `bumpedInCommitUnderTest` returns Error, and Error is red.
+            let why = "`git diff HEAD~1 HEAD` failed — most likely a shallow clone."
+            let verdict = classify false (Error why) releaseWindowOutput
+
+            match verdict with
+            | PinnedApi.Unavailable reason ->
+                Expect.stringContains reason why "the git failure must reach the human, not be swallowed"
+            | other ->
+                failtestf
+                    "an unanswerable bump question must fail CLOSED — it is neither a window nor a pass. \
+                     Got: %A"
+                    other
+          }
+
+          // ---- conjunct 4: never in the release lane ---------------------------------------------
+
+          test "FS_GG_VERSION_COHERENCE_RELEASE_LANE=1 kills the waiver — the packages are DUE, not pending" {
+            // The waiver's premise is "these packages cannot exist yet — this very commit creates them".
+            // That stops being true at publish time. A waiver that survived into the lane would let
+            // `release.yml` publish a coherent set whose members are not there.
+            let verdict = classify true (Ok true) releaseWindowOutput
+
+            match verdict with
+            | PinnedApi.Unavailable _ -> ()
+            | other ->
+                failtestf
+                    "the lane that gates the PUBLISH gets no waiver: by then the version must really be on \
+                     the feed. Got: %A"
+                    other
+          }
+
+          // ---- the vacuous case: "nothing to check" may not read as "checked, and it's fine" ------
+
+          test "a probe that names no pin at all cannot waive by empty `forall` (.github#266)" {
+            // THE FAILS-OPEN SHAPE THIS FILE'S OWN HEADER FORBIDS. `failedOnlyOnUnpublishedUiPin` asks
+            // "is every error an NU1102, and is every NAMED pin a UI pin at this version?" — and over an
+            // EMPTY set of diagnostics both halves are vacuously true. A probe TIMEOUT reports no
+            // diagnostics whatsoever, and would then have waived itself into a green release window while
+            // having verified precisely nothing. The `not (Array.isEmpty namedPins)` conjunct is the whole
+            // defence, and this is the test that holds it there.
+            let vacuous =
+                [ "", "a timeout: the probe reported nothing at all"
+                  "The build timed out after 360s and was killed.", "a timeout that reports PROSE, not diagnostics"
+                  restoreOutput
+                      [ $"{probeProj} : error NU1102:   - Found 12 version(s) in nuget.org"
+                        $"{probeProj} : error NU1102:   - Versions from /usr/lib/dotnet/library-packs were not considered" ],
+                  "NU1102 CONTINUATION lines only — the code is there, but no line names a package" ]
+
+            for output, description in vacuous do
+                Expect.equal
+                    (classify false (Ok true) output)
+                    PinnedApi.NotAboutAvailability
+                    $"{description}. 'Nothing to check' and 'checked, and it's fine' must not share a \
+                      verdict. Even in a real release window, an output that names no unresolved pin is not \
+                      evidence OF one."
+          }
+
+          test "the NU1102 continuation lines do not VETO a waiver that should fire" {
+            // The other side of the same coin, and the bug the first cut of this predicate really had:
+            // NuGet repeats the error code on its detail lines, so one unresolved pin arrives as three
+            // `error NU1102:` lines and only the first names a package. Ask "is every NU1102 line about a UI
+            // pin?" of ALL of them and the detail lines — which name nothing — fail the test, the waiver
+            // never fires, and the release is wedged by its own elaboration. Hence: asked of `namedPins`.
+            match classify false (Ok true) releaseWindowOutput with
+            | PinnedApi.ReleasePending why ->
+                Expect.stringContains
+                    why
+                    releaseWindowOutput
+                    "the deferral must show the releaser the restore it is deferring on"
+            | other ->
+                failtestf
+                    "this is THE release window — a single unresolved UI pin at the bumped version, with the \
+                     detail lines NuGet really emits. It must defer. Got: %A"
+                    other
+          }
+
+          // ---- the verdict's CONSEQUENCE. A perfect table over a broken mapping is still a fail-open --
+
+          test "a verdict's consequence is not merely its name: `enact` must skip, fail, or return" {
+            // `classifyIn` can be flawless and the gate still fail open if `enact` mishandles the verdict —
+            // a `ReleasePending` that fell through to `()` would hand the calling rule a surface that was
+            // never restored, and a `NotAboutAvailability` that skipped would retire every rule in this file
+            // on the first unrelated restore hiccup. Both halves are load-bearing; both are asserted.
+
+            Expect.throwsT<Expecto.IgnoreException>
+                (fun () -> PinnedApi.enact (PinnedApi.ReleasePending "the window is open"))
+                "RELEASE-PENDING must be reported IGNORED — skipped is not passed, and it is not red either"
+
+            // `AssertException` is what `failtest` raises, and it is the same exception a failed `Expect`
+            // throws — which is the point: an `Unavailable` verdict must be indistinguishable from the rule
+            // itself asserting and losing. Red is red.
+            Expect.throwsT<Expecto.AssertException>
+                (fun () -> PinnedApi.enact (PinnedApi.Unavailable "the pin is stale"))
+                "an unavailable pin that is NOT a release window is a DEFECT, and must redden the gate"
+
+            // No exception: the rule that asked gets its failure back to judge itself. This is the case that
+            // keeps the waiver from having an opinion on an FS0039.
+            PinnedApi.enact PinnedApi.NotAboutAvailability
+          }
+
+          test "every verdict that carries a reason carries the RESTORE that produced it" {
+            // The messages are releaser-facing prose and may be reworded; the EVIDENCE may not go missing.
+            // A deferral or a failure whose reason does not show the restore is one nobody can act on.
+            let worlds =
+                [ classify false (Ok true) releaseWindowOutput, "the release window"
+                  classify false (Ok false) releaseWindowOutput, "a stale pin"
+                  classify true (Ok true) releaseWindowOutput, "the release lane" ]
+
+            for verdict, description in worlds do
+                Expect.stringContains
+                    (reasonOf verdict)
+                    releaseWindowOutput
+                    $"the verdict for {description} must echo the restore output — it is the only evidence a \
+                      human has, and every one of these lands in CI where the restore itself is long gone"
+          }
+        ]
