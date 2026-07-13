@@ -1,6 +1,6 @@
 ---
 name: pnext-item
-description: Claim the next schedulable item assigned to THIS FS-GG repo and take it all the way to merged and done-stamped. Use when you are a worker (agent or person) picking up work in a repo, especially one of several running in parallel. Wraps the intra-repo-parallel-work protocol — worker id, comment-order claim lock, per-item git worktree, disjoint `Paths:` touch-set — then implements, opens a PR, reviews it, merges on green, and earns the done-stamp. Any problem or improvement it finds that another repo owns gets filed on the Coordination board rather than fixed in place or forgotten. Canonical protocol lives in FS-GG/.github. See ADR-0001, ADR-0021 and ADR-0027.
+description: Claim the next schedulable item assigned to THIS FS-GG repo and take it all the way to merged and done-stamped. Use when you are a worker (agent or person) picking up work in a repo, especially one of several running in parallel. Wraps the intra-repo-parallel-work protocol — worker id, comment-order claim lock, per-item git worktree, disjoint `Paths:` touch-set — then implements, opens a PR, reviews it, merges on green, and earns the done-stamp. A problem it finds along the way is FIXED, in the same PR when that keeps the change reviewable; it is filed only when it is genuinely not fixable from here — another repo owns it, or it needs a decision a human has to make. Canonical protocol lives in FS-GG/.github. See ADR-0001, ADR-0021 and ADR-0027.
 ---
 
 # pnext-item (FS-GG)
@@ -182,23 +182,64 @@ discipline, managed for you.
 - Watch for stray build artifacts (`.pyc`, `bin/`, `obj/`) sneaking into the commit from a fresh
   worktree.
 
-## 4. Findings that aren't yours to fix — file them, don't carry them
+## 4. Findings you make along the way — **FIX them. File only what you cannot.**
 
-Working an item is when you find the *other* things: an upstream API that forces a workaround, a
-contract whose version is incoherent, a doc that lies, an obvious improvement two repos over. You
-have three options and only one of them is right.
+Working an item is when you find the *other* things: a doc that lies, a gate that fails open, an
+obvious improvement two files over, a contract whose version is incoherent.
 
-- **Don't fix it here.** It is outside your declared `Paths:`, and usually outside this repo
-  entirely. Widening a touch-set across a repo boundary is not a thing you can do.
-- **Don't drop it.** A finding that lives only in your PR description, a code comment, or your
-  session transcript is lost the moment the worktree is removed. This is the failure mode: the
-  worker who *had* the context is the only one who ever sees the problem, and they moved on.
-- **File it**, then carry on with your item.
+**The default is to fix it, in the PR you already have open.** You are the one holding the context.
+You have the files checked out, the tests running, and the problem in front of you. Nobody who reads
+your issue three weeks from now will have any of that, and they will spend an hour rebuilding what you
+already know.
 
-Anything owned by another repo — a bug, an incoherence, a missing capability, an improvement — goes
-on the **Coordination board** as a real issue, per
-[cross-repo-coordination](../cross-repo-coordination/SKILL.md). Issues are the mailbox; git is not
-a queue, and neither is a TODO comment.
+> **This rule used to be the opposite**, and the opposite was wrong. It said *"don't fix it here — file
+> it"*, and what that produced was **churn**: a worker fixes A, files B and C, and the worker who takes B
+> files D and E. The board fills with findings faster than anyone can close them, the queue stops being
+> a list of work and becomes a list of *observations*, and the same defect gets re-filed under a new
+> number because nobody can find the first one. **A filed issue is not progress. A merged fix is.**
+
+### The test, in order
+
+**1. Can you fix it here, honestly?** Same repo; inside your declared `Paths:`, or a `widen` that
+`widen` accepts; and the fix leaves your PR as **one story** a reviewer can hold in their head.
+→ **Fix it.** Say so in the PR body, in a line that names what you found and why it belonged here.
+
+**2. Can you fix it, but not in *this* PR?** Same repo, but it is its own change — a different subject,
+a different touch-set, or a diff that would make this PR two stories.
+→ **Take it next.** Land this item, then claim that one and fix it. It is still yours; you just do it
+in the right order. (If it needs an issue to be claimable, file one — but you are filing it *to work
+it*, not to be rid of it.)
+
+**3. Can you not fix it?** Only these count:
+
+- **Another repo owns it.** You cannot open a PR there from this worktree. This is a hard boundary, not
+  a preference.
+- **It needs a DECISION, not a fix** — an architectural call, a contract or ADR change, a trade-off with
+  no obviously right answer, or anything that changes how somebody else's work has to be done. **This is
+  the "needs a human" case, and it is the one worth filing.** A decision filed as an issue is the system
+  working. A typo filed as an issue is the system clogging.
+- **`widen` refuses it.** A live claim holds those files. Do not edit them — `say` to their holder
+  instead, and if it still needs doing after they land, take it next.
+- **You cannot verify the fix.** You would be guessing, and a guess merged is worse than a finding filed.
+
+→ **File it.**
+
+**4. Never drop it.** A finding that lives only in a PR description, a code comment, or your session
+transcript is lost the moment the worktree is removed. That has not changed. The worker who *had* the
+context is the only one who ever sees the problem, and they moved on.
+
+### Before you file anything, three questions
+
+- **Would fixing it take less time than writing the issue?** Then writing the issue is the *expensive*
+  option, and you chose it to avoid the work. Fix it.
+- **Is the issue you are about to write mostly a restatement of a rule that already exists?** Then the
+  rule is not the problem — the code is. Fix the code.
+- **Has this, or its sibling, been filed before?** *Look* (below). And if a fix keeps regenerating the
+  same finding, **the finding is not the bug — the thing that regenerates it is.** File *that*, once,
+  and fix it. Do not file the symptom for the seventh time.
+
+**Do not file an issue about a file that is already open in your diff.** That is the clearest case there
+is: you are looking at it, you can change it, and you are choosing to write about it instead.
 
 ### Look before you file — you are not the only one filing
 
@@ -313,12 +354,19 @@ scripts/fsgg-coord release <this-issue>     # don't hold a lease on work you can
 
 Then `/pnext-item` again — take something startable while the other repo responds.
 
-**If it doesn't block you, file it and keep going.** Do not let a drive-by improvement grow your
-diff: an item that quietly fixes three other repos' problems is unreviewable, and its touch-set was
-a lie. `Status: Backlog` is the honest resting place for a finding nobody has scheduled yet.
+**If it doesn't block you, and it is genuinely not yours to fix (§4), file it and keep going.**
+`Status: Backlog` is the honest resting place for a finding nobody has scheduled yet.
 
-Judgement, not a rule: file the thing that would make *another worker's* next hour better. A typo in
-a comment is noise. A contract that cannot be satisfied, a doc that will mislead the next reader, a
+**But the constraint that makes this a real limit is REVIEWABILITY, not repo hygiene.** Do not let a
+drive-by fix grow your diff into two stories: a PR that quietly fixes three unrelated things is
+unreviewable, and its touch-set was a lie. That is the line — not "is this my item", but *"can one
+reviewer hold this whole change in their head, and does the title still describe it?"* A small,
+in-scope, verified fix belongs in your diff. A second subject does not, and it is not filed away
+either — you take it next (§4, case 2).
+
+Judgement, not a rule: fix the thing that would make *another worker's* next hour better; file only the
+thing you cannot. A typo in a comment is noise **and it is also a one-character fix — so just fix it**. A
+contract that cannot be satisfied, a doc that will mislead the next reader, a
 gate that reports green on a missing subject — those are the findings this org keeps discovering
 late, and they are cheap to file the moment you are standing in front of them.
 
@@ -505,9 +553,15 @@ Two more that bite in the same state:
 
 ## 6. Clean up, then go again
 
-Before you remove the worktree, empty your head into the board (§4). Everything you noticed and did
-not fix is about to become unrecoverable — the branch is gone, the context is gone, and the next
-worker rediscovers it from scratch.
+Before you remove the worktree, deal with what you found (§4) — and **"deal with" means fix, not file.**
+Everything you noticed and did not act on is about to become unrecoverable: the branch is gone, the
+context is gone, and the next worker rediscovers it from scratch.
+
+But the answer to that is **not** to empty your head onto the board on the way out. A finding you dump
+into an issue at the last minute, written by someone who has already stopped thinking about it, is the
+lowest-value artefact this protocol produces — it costs the next worker an hour to rebuild what you knew
+five minutes ago, and it costs everyone the noise. If it was worth noticing, it was worth either fixing
+or leaving alone.
 
 ```sh
 cd - && git worktree remove ../<repo>-<n>
