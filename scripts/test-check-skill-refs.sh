@@ -140,7 +140,11 @@ expect_rc 1 'dangling bare ref fails'
 expect_out_has 'dangling [[fs-gg-nowhere]]' 'names the dangling ref'
 expect_out_has 'qualify it as' 'tells the author how to fix it'
 
-case_start '§1 a SELF-qualified ref to a skill we do publish fails — write it bare'
+case_start '§1 a SELF-qualified ref to a skill we DO publish RESOLVES (#714, Game#279)'
+# It used to FAIL here ("write it bare"), and that refusal is what made the mirror convention
+# unsatisfiable: the four bodies are byte-identical to Game's, and Game must qualify OUR skills to
+# reach them. So the same bytes were correct there and refused here, and no diff could fix both.
+# A ref that RESOLVES is true. Naming its owner does not make it less so.
 fixture
 skill fs-gg-alpha <<'MD'
 # alpha
@@ -150,8 +154,19 @@ skill fs-gg-beta <<'MD'
 # beta
 MD
 run
-expect_rc 1 'self-qualified ref fails'
-expect_out_has 'write it bare' 'says to write it bare'
+expect_rc 0 'a self-qualified ref that resolves is accepted'
+
+case_start '§1 a SELF-qualified ref to a skill we do NOT publish still dangles'
+# The other half, and it is what keeps the acceptance above from being a hole: qualification is not a
+# licence. We can SEE our own tree, so we still check it.
+fixture
+skill fs-gg-alpha <<'MD'
+# alpha
+See [[fs-gg-rendering:fs-gg-nowhere]].
+MD
+run
+expect_rc 1 'a self-qualified ref to a skill we do not publish fails'
+expect_out_has 'does not publish' 'says we do not publish it'
 
 case_start '§1 a ref qualified with an owner outside the registry vocabulary fails'
 fixture
@@ -549,39 +564,77 @@ expect_rc 1 'a missing manifest fails'
 expect_out_has 'cannot be green without its subject' 'refuses to pass over an absent publish set'
 
 # ════════════════════════════════════════════════════════════════════════════════════════════════
-# § 6  THE FROZEN MIRRORS   (ADR-0022 §6 · FS-GG/FS.GG.Game#273)
+# § 6  THE FROZEN MIRRORS   (ADR-0022 §6 · Game#279 · #714)
 #
-# Four bodies we ship but FS.GG.Game owns, byte-identical to theirs by ADR. A § 1 verdict is relative
-# to a publish set, so the SAME BYTES are correct in Game and dangling here — and we may not edit them
-# to fix it. A red no diff can clear is the one thing a merge gate may never raise (§ 4), so § 1 NOTEs
-# them. § 2 and § 3 still FAIL on them, because a closed issue and a bare #N are wrong in EVERY repo.
-# That asymmetry is the whole design, so it is the thing most worth pinning.
+# Four bodies we ship but FS.GG.Game owns, byte-identical to theirs by ADR — so the SAME BYTES are read
+# by two gates against two publish sets.
+#
+# § 1 used to NOTE them instead of failing, because a BARE ref resolves in exactly one repo and a
+# SELF-qualified one was REFUSED, so no byte sequence was green in both and no diff of ours could clear
+# the red. Game removed the self-qualified refusal (Game#279) and qualified every ref in the four
+# bodies, both directions. One byte sequence now satisfies both gates, so the red is clearable — and the
+# stopgap, which had been leaving § 1 UNCHECKED in exactly these four bodies, is gone (#714).
+#
+# What is pinned here is the new contract, in both directions: a fully-qualified mirror is GREEN, and a
+# BARE ref inside one is a HARD FAILURE — the one shape that cannot be right in both repos.
 # ════════════════════════════════════════════════════════════════════════════════════════════════
 
-case_start '§6 a §1 dangling ref inside a FROZEN MIRROR is a NOTE, not a failure'
+case_start '§6 a fully-QUALIFIED frozen mirror is green — both directions of ref'
+# The bytes Game actually ships now. A foreign ref we cannot see is trusted; a self-qualified ref to a
+# skill we DO publish resolves. This is the case the old convention could not produce.
 fixture
 skill fs-gg-game-core <<'MD'
 # game-core — a frozen mirror of FS.GG.Game's body
-See [[fs-gg-ballistics]], which Game publishes and we do not.
-MD
-run
-expect_rc 0 'a mirror cannot redden a gate we could never turn green'
-expect_out_has 'not ours to fix' 'says the fix is not ours'
-expect_out_has 'FROZEN MIRROR' 'names why'
-expect_out_has 'FS.GG.Game#273' 'points at the filed incoherence'
-
-case_start '§6 the notes are COUNTED on the success path — an unseen escape hatch is an unaudited one'
-fixture
-skill fs-gg-game-core <<'MD'
-# game-core
-See [[fs-gg-ballistics]] and [[fs-gg-rendering:fs-gg-alpha]].
+See [[fs-gg-game:fs-gg-ballistics]], which Game publishes and we do not.
+And [[fs-gg-rendering:fs-gg-alpha]], which we publish and Game does not.
 MD
 skill fs-gg-alpha <<'MD'
 # alpha
 MD
 run
-expect_rc 0 'still green'
-expect_out_has '2 [[ref]](s) in the frozen mirrors' 'counts them out loud, on the GREEN path'
+expect_rc 0 'one byte sequence, green in both repos'
+
+case_start '§6 a BARE ref inside a FROZEN MIRROR is now a HARD FAILURE'
+# The invariant that keeps the whole convention standing. A bare ref in a mirrored body resolves in
+# exactly ONE repo, so it silently re-creates the incoherence the qualification exists to remove — and
+# it would do so with BOTH gates green, which is precisely how this got lost the first time. It fails
+# even when we DO publish the skill, because it is Game's gate it breaks, not ours.
+fixture
+skill fs-gg-game-core <<'MD'
+# game-core
+See [[fs-gg-alpha]] — bare, and we publish it, so nothing else here would object.
+MD
+skill fs-gg-alpha <<'MD'
+# alpha
+MD
+run
+expect_rc 1 'a bare ref in a mirrored body fails even when WE can resolve it'
+expect_out_has 'MIRRORED body' 'names the reason it is judged differently'
+expect_out_has 'QUALIFY it' 'tells the author what to write instead'
+
+case_start '§6 ...and a bare ref in a mirror to a skill NOBODY here publishes fails too'
+fixture
+skill fs-gg-game-core <<'MD'
+# game-core
+See [[fs-gg-ballistics]], which Game publishes and we do not.
+MD
+run
+expect_rc 1 'the old NOTE is gone — this is a failure now, and it is clearable: qualify it upstream'
+
+case_start '§6 the stopgap is GONE — no note stream survives on the green path'
+# The stopgap printed "N [[ref]](s) in the frozen mirrors" on success. If that sentence ever comes back,
+# § 1 has stopped checking the four bodies again, and it will do so QUIETLY — which is the failure this
+# whole section exists to prevent. So the absence is asserted, not assumed.
+fixture
+skill fs-gg-game-core <<'MD'
+# game-core
+See [[fs-gg-game:fs-gg-ballistics]].
+MD
+run
+expect_rc 0 'green'
+expect_out_hasnt 'in the frozen mirrors' 'no note stream — the mirrors are CHECKED, not excused'
+expect_out_hasnt 'not ours to fix' 'and no note findings'
+expect_out_has 'every [[ref]] resolves' 'says it plainly: every ref, mirrors included'
 
 case_start '§6 the SAME ref outside a mirror still FAILS — the hatch is scoped to the four bodies'
 fixture
@@ -605,12 +658,18 @@ run
 expect_rc 1 'a stale link in a mirror is still a hard failure'
 expect_out_has 'stale link' 'names it as a stale link, not a note'
 
-case_start '§6 a mirror NOTE is not on STDERR — so the sweep cannot file it as decay'
-# THE CROSS-FILE CONTRACT, pinned with the sweep's OWN regex. skill-refs-sweep.yml decides what to
-# file by grepping stderr for `^[^ :]+:[0-9]+: `. A note carries a file and a line, so if it ever went
-# back to stderr it would match that regex — and the sweep would file all 16 mirror notes as decay,
-# every day, for refs nobody here may touch. Neither file can catch that alone: the script would still
-# be "correct", the sweep would still be "correct", and the daily false alarm would come from the seam.
+case_start '§6 a mirror finding IS on STDERR now — the sweep must be able to file it'
+# THE CROSS-FILE CONTRACT, pinned with the sweep's OWN regex, and #714 INVERTS it.
+#
+# skill-refs-sweep.yml decides what to file by grepping stderr for `^[^ :]+:[0-9]+: ` — `report()`'s
+# line shape. Under the stopgap a mirror finding was a NOTE on stdout, deliberately kept OFF stderr so
+# the sweep could not file 16 unactionable issues a day about refs nobody here could touch.
+#
+# That reasoning died with the stopgap. A §1 finding in a mirror is now a REAL failure with a REAL fix
+# (qualify it in the canonical, re-sync), so it must reach stderr and the sweep MUST file it — the
+# decay it reports is now decay somebody can act on. Pinned with the sweep's regex, because neither
+# file can catch a seam bug alone: the script would look correct, the sweep would look correct, and the
+# finding would be lost between them.
 fixture
 skill fs-gg-game-core <<'MD'
 # game-core — a frozen mirror
@@ -619,14 +678,20 @@ MD
 # shellcheck disable=SC2034  # OUT/RC are read by the expect_* helpers
 mapfile -t _e < <(gh_env)
 err=$(env -u GITHUB_ACTIONS "${_e[@]}" "$FIX/scripts/check-skill-refs.sh" 2>&1 >/dev/null)
-out=$(env -u GITHUB_ACTIONS "${_e[@]}" "$FIX/scripts/check-skill-refs.sh" 2>/dev/null)
-expect_hasnt 'fs-gg-ballistics' "$err" 'the note is not on stderr'
-expect_has   'fs-gg-ballistics' "$out" 'the note IS on stdout, so nothing is hidden'
+expect_has 'fs-gg-ballistics' "$err" 'the finding reaches stderr, where the sweep looks'
 if grep -qE '^[^ :]+:[0-9]+: ' <<<"$err"; then
-  bad "the sweep's own regex finds no finding to file" "a note matched ^[^ :]+:[0-9]+: on stderr"
+  ok "the sweep's own regex matches it, so it can be filed"
 else
-  ok "the sweep's own regex finds no finding to file"
+  bad "the sweep's own regex matches it, so it can be filed" "no line matched ^[^ :]+:[0-9]+: on stderr"
 fi
+
+# ...and the WHOLE finding must sit on that ONE line. The sweep files what its regex matched and drops
+# everything else, so a finding wrapped over several lines would file with half its reason missing —
+# and it would look fine in the CI log, where the continuation lines are still printed, which is what
+# makes it the kind of bug nobody sees. This is the longest finding the script emits, so it is the one
+# that wraps first. Asserted by looking for its LAST phrase among the report-shaped lines only.
+expect_has 'byte-identity' "$(grep -E '^[^ :]+:[0-9]+: ' <<<"$err")" \
+  'the whole finding is on the report line — its tail did not wrap onto a line the sweep drops'
 
 case_start '§6 §3 STILL FAILS inside a mirror — a bare #N is unresolvable in every repo'
 fixture

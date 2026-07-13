@@ -34,19 +34,40 @@
 # already clean, and we inherit every fix byte-for-byte — the `closed-ok` markers already sitting in
 # our audio and persistence bodies arrived exactly that way, authored in Game and mirrored in.
 #
-# AND THE MIRROR IS WHY BARE IS RIGHT FOR ALL OF THEM. `is_published` is what we SHIP — the manifest
-# (see MANIFEST below) — and NOT the registry's `owner:`, which is a different question with a
-# different answer. What a `[[ref]]` promises is *"a skill by this name resolves where you are reading
-# this"*, and where the reader is standing is a SCAFFOLDED PRODUCT, whose `.agents/skills/` we materialize
-# from OUR manifest. `[[fs-gg-game-core]]` resolves there because WE ship a body for it, regardless of
-# who owns it upstream. Qualifying it `[[fs-gg-game:fs-gg-game-core]]` would be no MORE correct and
-# would read as a pointer out of the product, so bare is right — for the mirrors as much as for ours.
+# INSIDE A MIRRORED BODY, EVERY [[ref]] IS QUALIFIED — AND THAT IS THE WHOLE POINT (#714, Game#279).
 #
-# This is the one place Rendering's answer differs from Game's, and it is why #655 (filed from Game,
-# reasoning from `owner:`) counted 47 dangling wiki refs here and this gate finds none. Both are
-# consistent: in GAME, `[[fs-gg-scene]]` really is dangling, because Game ships no fs-gg-scene body.
-# In RENDERING, `[[fs-gg-game-core]]` is not, because we ship one. Publication, not ownership, is what
-# a reader can follow — so publication is what the gate asks about.
+# This repo used to argue the opposite, and the argument was: a `[[ref]]` promises *"a skill by this
+# name resolves WHERE YOU ARE READING THIS"*, the reader stands in a SCAFFOLDED PRODUCT whose
+# `.agents/skills/` we materialize from OUR manifest, and `[[fs-gg-game-core]]` resolves there because
+# WE ship a body for it. True — and it settles the question for OUR OWN bodies, which only we mirror
+# into products. It does NOT settle it for the four the mirror duplicates, because those bytes are read
+# by TWO gates against TWO publish sets, and a bare ref resolves in exactly one of them:
+#
+#   [[fs-gg-ballistics]]   resolves in GAME (they publish it), dangles HERE (we do not).
+#   [[fs-gg-scene]]        resolves HERE (we publish it),       dangles in GAME (they do not).
+#
+# Whichever way you write it bare, it is wrong in one repo. That is arithmetic, not a policy dispute —
+# and it is why this gate NOTE'd the mirrors instead of failing on them (the #655 stopgap): the red was
+# real and no diff of ours could clear it.
+#
+# The premise that made it unclearable was that a SELF-qualified ref was REFUSED ("write it bare"). Game
+# removed that refusal — a ref that RESOLVES is true, whether or not you name its owner — and qualified
+# every ref in the four bodies, both directions. Now one byte sequence satisfies both gates:
+#
+#   [[fs-gg-game:fs-gg-ballistics]]   in GAME: self + published -> CHECKED, ok.   HERE: foreign -> trusted.
+#   [[fs-gg-rendering:fs-gg-scene]]   in GAME: foreign -> trusted.                HERE: self + published -> CHECKED, ok.
+#
+# Each ref is validated EXACTLY ONCE, by the only repo that can see the tree it names, and trusted
+# everywhere else — which is better than a tie-break, because under the old convention this gate was
+# obliged to have an opinion about `fs-gg-ballistics`, a skill it cannot see.
+#
+# So § 1 now: accepts a self-qualified ref that resolves; trusts a foreign qualified one; and REJECTS A
+# BARE REF INSIDE A MIRRORED BODY, because that is the one shape that cannot be right in both repos.
+# Bare is still right everywhere else — in our own 13 bodies, which no one else reads.
+#
+# The cost, paid knowingly: a product reader sees `[[fs-gg-game:fs-gg-game-core]]`, which reads like a
+# pointer OUT of the product for a skill that is in fact IN it. Retiring the mirror (#696) is the real
+# fix and makes the qualifiers merely redundant rather than load-bearing; this is the coherent cheap one.
 #
 # ── 1. WIKI REFS (Game#35) ──────────────────────────────────────────────────────────────────────
 # A skill body that writes `[[fs-gg-ballistics]]` promises the reader a skill this repo publishes. It
@@ -315,57 +336,55 @@ report() {
   fail=1
 }
 
-# A finding we are REPORTING but not FAILING on, because the fix is not ours to make (§ 0). Loud —
-# stderr, and a CI annotation — but not fatal.
+# THE #655 STOPGAP IS GONE (#714), and this is its gravestone, because a reader who finds the mirrors
+# fully checked should know they were once not.
 #
-# This is the one concession to the mirror, and it is deliberately narrow. The alternative to a note
-# is not silence; silence is `.github#416`, the shape this whole script exists to close. It is a RED
-# WE CANNOT CLEAR: a merge gate may only demand a change inside the diff it is gating (§ 4), and here
-# it could not be cleared by ANY diff of ours — ADR-0022 §6 forbids us to touch the bytes. That is
-# § 4's rule violated harder than #238 violated it, because there the fix merely lay outside the
-# author's `Paths:`; here it lies outside the repo, and no `widen` reaches it.
-# STDOUT, NOT STDERR, AND THAT IS A CONTRACT — NOT A STYLE CHOICE.
+# There WAS a `note()` here: a §1 finding in a mirrored body was reported and NOT failed on, because it
+# was a RED WE COULD NOT CLEAR. The reasoning was sound and the premise was "ONE BYTE SEQUENCE CANNOT
+# SATISFY BOTH REPOS" — `[[fs-gg-ballistics]]` is right in Game and dangles here, `[[fs-gg-rendering:
+# fs-gg-scene]]` is right in Game and was refused HERE as self-qualified. No edit made both repos green,
+# so a hard fail would have demanded a change no diff of ours could make.
 #
-# .github/workflows/skill-refs-sweep.yml decides what to FILE by grepping the script's STDERR for
-# `^[^ :]+:[0-9]+: ` — `report()`'s line shape. That grep is the one contract between the two files.
-# A note carries a file and a line too, so on stderr it would match that regex exactly and the sweep
-# would file all 16 mirror notes as decay, EVERY DAY, FOREVER — a tracking issue nobody can act on,
-# for refs that are correct upstream and that we are forbidden to touch. The daily false alarm would
-# then teach everyone to ignore the one issue that exists to be read, which is a worse outcome than
-# the gate not existing.
+# FS.GG.Game falsified the premise (Game#279): they REMOVED the self-qualified refusal — a ref that
+# resolves is true, whether or not you name its owner — and qualified every ref in the four bodies, both
+# directions. One byte sequence now satisfies both gates, so the red is clearable, so the stopgap is not
+# merely unnecessary but harmful: while it stood, §1 findings in the four mirrored bodies were not
+# CHECKED AT ALL, which is the thing this script exists to prevent. They are checked now.
 #
-# So the streams carry the meaning: STDERR is "a finding somebody here must fix" (and the sweep files
-# it); STDOUT is everything else — the banners, the ok-lines, the CI annotations, and these notes.
-# Nothing is hidden: stdout is replayed into the CI log and the ::warning still annotates the exact
-# line. It simply is not a work item for THIS repo, so it does not enter the queue of this repo's work.
-n_notes=0
-note() {
-  printf '%s:%s: NOTE (not ours to fix) — %s\n' "$1" "$2" "$3"
-  [[ -n ${GITHUB_ACTIONS:-} ]] && printf '::warning file=%s,line=%s::%s\n' "$1" "$2" "$3"
-  n_notes=$((n_notes + 1))
-}
+# What the note bought is kept elsewhere and does not need a stream of its own: a §1 finding in a mirror
+# is still not fixable HERE (the bytes are Game's), and §1 now says so in the finding itself — fix it in
+# the canonical and re-sync. It is a real failure, because now it CAN be cleared.
 
 # The mirrored bodies, by path. A mirrored id we do not publish contributes nothing and is SKIPPED,
 # not failed — there is no body, so there is nothing to protect and nothing to demote.
 #
-# THE ESCAPE HATCH FAILS SAFE IN BOTH DIRECTIONS, which is why no guard is needed here and why an
-# earlier draft's guard was removed (it fired on every case in the test suite, and it was checking the
-# wrong thing):
+# THIS LIST'S POLARITY INVERTED WITH THE STOPGAP (#714), AND THE ROT ANALYSIS INVERTS WITH IT. It used
+# to be an ESCAPE HATCH — being listed DEMOTED a § 1 finding to a note — so omitting a skill meant it
+# got MORE checking, and the old argument here was that it "degrades toward MORE checking, never less".
 #
-#   * MIRRORED_SKILLS goes STALE (the P6 provider epic retires the mirror, and the bodies go away).
-#     The entries then match no body, `mirror_bodies` is empty, and every § 1 finding hard-fails
-#     again — which is correct, because with no mirror there is nothing we may not edit. Dead config,
-#     no effect.
-#   * A FIFTH skill is mirrored and nobody adds it here. Its § 1 findings hard-fail, unfixably — a
-#     loud red, with § 0 at the top of this file explaining exactly what it means and what to do. It
-#     degrades toward MORE checking, never less, which is the rule this script keeps everywhere else.
+# It is now the opposite. Being listed makes this gate STRICTER: a bare `[[ref]]` in a listed body is a
+# hard failure (§ 1), because a bare ref cannot be right in both repos. So:
 #
-# The one direction that WOULD be dangerous — an entry here for a skill whose ownership came BACK to
-# us, silently demoting its real findings to notes — cannot be detected locally at all: it turns on
-# the registry's `owner:`, which lives in FS-GG/.github and which this gate deliberately takes no
-# network to read. The org's own `fsgg-skill-registry-check` (`frozen-mirror` arm) is what adjudicates
-# that, and it is the right place for it. Pretending to check it here with the manifest — which
-# carries no `owner` field — would be a gate reporting green over a question it never asked.
+#   * MIRRORED_SKILLS goes STALE — a body stops being mirrored (the #696 provider epic retires it) and
+#     nobody removes it here. Bare refs in a body we now fully OWN are hard-failed as "bare in a
+#     MIRRORED body", telling the author to qualify a ref that is perfectly correct. A FALSE RED — loud
+#     and wrong, but loud. Someone hits it, reads § 0, deletes the entry.
+#
+#   * A FIFTH skill becomes mirrored and nobody adds it here — AND THIS IS NOW THE DANGEROUS ONE, so it
+#     is written down rather than argued away. Its bare refs are judged against OUR publish set alone,
+#     so a bare `[[fs-gg-scene]]` in it PASSES here, silently, while dangling in Game's gate. That is
+#     precisely the incoherence #714 exists to end, re-created by an omission. It fails OPEN.
+#
+# NOTHING HERE CAN CATCH THAT, and pretending otherwise would be worse than the gap: the mirror set
+# turns on the registry's `owner:`, which lives in FS-GG/.github, and this gate deliberately takes no
+# network so it can answer a hermetic question. The manifest carries no `owner` field, so there is no
+# local evidence to check against — a guard here would be a gate reporting green over a question it
+# never asked.
+#
+# What DOES know is `scripts/check-frozen-mirrors.fsx`, which derives the mirror set FROM the org
+# registry ("4 mirror(s) derived from the org registry") and runs in the same required job. That it and
+# this constant are two hand-maintained readings of one rule is a real hazard — the #661/#674 shape —
+# and it is filed rather than papered over here: FS.GG.Rendering#722.
 mirror_bodies=""
 while IFS= read -r mid; do
   [[ -z $mid ]] && continue
@@ -379,28 +398,28 @@ is_mirror() { [[ -n $mirror_bodies ]] && grep -qxF -- "$1" <<<"$mirror_bodies"; 
 # ────────────────────────────────────────────────────────────────────────────────────────────────
 # 1. WIKI REFS
 # ────────────────────────────────────────────────────────────────────────────────────────────────
-# A § 1 verdict is RELATIVE TO A PUBLISH SET, and the frozen mirrors are judged against the wrong one
-# here. That is not a limitation of the check — it is arithmetic, and it cuts both ways:
+# A § 1 verdict is RELATIVE TO A PUBLISH SET — that much was always true, and it is why the mirrors
+# used to be NOTE'd rather than failed on (the #655 stopgap, now gone; see the gravestone above `report`).
+# The premise was that ONE BYTE SEQUENCE COULD NOT SATISFY BOTH REPOS, and it was true only because a
+# SELF-qualified ref was refused. Game removed that refusal (Game#279), qualified every ref in the four
+# bodies, and the premise is false: a fully-qualified body is green in both.
 #
-#   [[fs-gg-ballistics]]          in game-core — Game PUBLISHES ballistics, so bare is right THERE.
-#                                 We do not, so the same bytes are a dangling ref HERE.
-#   [[fs-gg-rendering:fs-gg-scene]] in game-core — scene is FOREIGN to Game, so qualified is right
-#                                 THERE. It is ours, so the same bytes are self-qualified HERE.
+# So § 1 FAILS on the mirrors now, like everything else. Three rules, and each says which repo owns the
+# verdict:
 #
-# ONE BYTE SEQUENCE CANNOT SATISFY BOTH REPOS. ADR-0022 §6 requires these four bodies to be byte-
-# identical to FS.GG.Game's, and Game's copy of THIS GATE is green on exactly these bytes. So there is
-# no edit that makes both repos green, and any § 1 red we raise here is a red no diff can clear.
+#   SELF-qualified + published  -> OK.      We can see the tree; the ref resolves; it is TRUE.
+#   FOREIGN-qualified           -> TRUSTED. We cannot see their tree. Their gate checks it, and does.
+#   BARE, in a MIRRORED body    -> FAIL.    The one shape that cannot be right in both repos. Fix it in
+#                                           the canonical and re-sync; do not edit the mirror.
+#   BARE, in one of OUR bodies  -> checked against our publish set, exactly as before.
 #
-# So § 1 NOTES them and does not fail. The bodies are not thereby unchecked: Game runs this same gate
-# over them, against the publish set they were written for, which is the only set that can judge them.
-# What we lose is a verdict we could not have acted on; what we keep is the report, so the incoherence
-# stays visible rather than being quietly waved through. Filed cross-repo as FS-GG/FS.GG.Game#273.
+# Every ref is now validated EXACTLY ONCE, by the only repo that can see the tree it names. Nothing is
+# weakened: a typo'd owner still fails, a self-qualified ref to a skill we do NOT publish still dangles,
+# and a bare ref we do not publish still dangles.
 #
-# § 2 and § 3 still FAIL on a mirror, and the asymmetry is the whole point: a CLOSED issue is closed in
-# every repo and a bare `#N` is unresolvable in every repo, so those verdicts do not depend on whose
-# publish set you ask — Game's gate would have caught them at authorship, and if one reaches us anyway
-# the re-sync imported something broken. Fail on what is universally wrong; note only what is wrong
-# relative to a publish set we do not own.
+# § 2 and § 3 always failed on a mirror and still do: a CLOSED issue is closed in every repo and a bare
+# `#N` is unresolvable in every repo, so those verdicts never depended on whose publish set you ask.
+# What changed is that § 1's verdict no longer does either.
 while IFS=: read -r file line ref; do
   [[ -z ${ref:-} ]] && continue
   finding=""
@@ -409,23 +428,25 @@ while IFS=: read -r file line ref; do
     id=${ref#*:}
     if ! is_known_owner "$owner"; then
       finding="dangling [[$ref]] — unknown owner '$owner' (known: $KNOWN_OWNERS)"
-    elif [[ $owner == "$SELF_OWNER" ]]; then
-      if is_published "$id"; then
-        finding="dangling [[$ref]] — self-qualified; this repo publishes '$id' — write it bare as [[$id]]"
-      else
-        finding="dangling [[$ref]] — qualified to this repo, which does not publish '$id'"
-      fi
+    elif [[ $owner == "$SELF_OWNER" ]] && ! is_published "$id"; then
+      finding="dangling [[$ref]] — qualified to this repo, which does not publish '$id'"
     fi
-    # A foreign qualified ref is trusted: this repo cannot see the other repo's tree.
+    # A SELF-qualified ref that RESOLVES is accepted (Game#279 / #714). It used to be refused —
+    # "write it bare as [[$id]]" — and that refusal is what made the convention unmirrorable, so it
+    # is what Game removed. A ref that resolves is TRUE; naming the owner does not make it less so.
+    #
+    # A FOREIGN qualified ref is trusted: this repo cannot see the other repo's tree.
+  elif is_mirror "$file"; then
+    # ONE LINE, and it must be: `report` writes `path:line: message` to stderr, and that shape is the
+    # only contract skill-refs-sweep.yml has with this script (it greps `^[^ :]+:[0-9]+: `). A finding
+    # wrapped over several lines still matches on its first line, and every continuation line is then
+    # silently dropped by the sweep — so the issue it files would carry half the reason.
+    finding="bare [[$ref]] in a MIRRORED body — the same bytes are judged by BOTH repos, and a bare ref resolves in exactly ONE publish set ([[fs-gg-scene]] resolves here and dangles in Game; [[fs-gg-ballistics]] the reverse), so it is wrong in one of them whichever way you write it. QUALIFY it as [[<owner>:$ref]]. Fix it in the OWNING canonical (FS.GG.Game) and re-sync — do NOT edit the mirror here, which would break the byte-identity ADR-0022 §6 requires"
   elif ! is_published "$ref"; then
     finding="dangling [[$ref]] — this repo does not publish it; qualify it as [[<owner>:$ref]]"
   fi
   [[ -z $finding ]] && continue
-  if is_mirror "$file"; then
-    note "$file" "$line" "$finding — but this is a FROZEN MIRROR of FS.GG.Game's body (ADR-0022 §6): our bytes must stay identical to theirs, and this ref is CORRECT against Game's publish set. Not fixable here. See FS-GG/FS.GG.Game#273."
-  else
-    report "$file" "$line" "$finding"
-  fi
+  report "$file" "$line" "$finding"
 done < <(body_files | xargs -0 -r grep -HEon '\[\[[A-Za-z0-9._:-]+\]\]' \
   | sed -E 's/\[\[(.*)\]\]$/\1/')
 
@@ -797,17 +818,9 @@ if ((fail)); then
 fi
 
 n_skills=$(grep -c . <<<"$published")
-if ((n_notes > 0)); then
-  # Said on the SUCCESS path, loudly, and counted. A note that only appeared next to a failure would
-  # be invisible on exactly the green runs that are the normal case — and an escape hatch nobody can
-  # see is one nobody audits, which is how a temporary concession becomes permanent.
-  echo "check-skill-refs: ok — $n_skills skills published; every [[ref]] we OWN resolves."
-  echo "check-skill-refs: NOTE — $n_notes [[ref]](s) in the frozen mirrors (${MIRRORED_SKILLS//$'\n'/, })"
-  echo "  cannot resolve against OUR publish set, and cannot be fixed here: ADR-0022 §6 pins those"
-  echo "  bytes to FS.GG.Game's, where the same refs are correct. Tracked as FS-GG/FS.GG.Game#273."
-else
-  echo "check-skill-refs: ok — $n_skills skills published; every [[ref]] resolves."
-fi
+# No "we OWN" hedge any more (#714). Every [[ref]] in every published body — the four mirrors included —
+# is now judged, and every one of them resolves. That sentence could not be said while the stopgap stood.
+echo "check-skill-refs: ok — $n_skills skills published; every [[ref]] resolves."
 
 # The link half reports its SUBJECT, not just its verdict. "I found no stale links" and "I did not
 # look at any" are different sentences, and a gate that prints one when it means the other is the
