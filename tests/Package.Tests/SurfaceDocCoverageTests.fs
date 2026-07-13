@@ -101,37 +101,15 @@ let private productSkillText =
     |> Seq.map File.ReadAllText
     |> String.concat "\n"
 
-/// An opening or closing CommonMark fence: any indent, then 3+ backticks or 3+ tildes, then the info string
-/// (the language tag, on an opening fence; empty on a closing one).
-///
-/// THE INDENT IS UNBOUNDED, and it must be (#664). CommonMark allows a fence up to 3 leading spaces *at the top
-/// level*, and this was `^ {0,3}` to match — but a fence nested in a list item is legitimately indented past
-/// that, and then the block never opens and **every line of its code lands in the prose buffer**, where it can
-/// document nothing. A surface cited only in such a block is reported undeclared, and the author is told to
-/// ledger a surface a skill genuinely documents — the same "the rule INVENTS violations" failure
-/// `TemplateConsumesPinnedApiTests` records for its own extractor (#598). Nothing in the corpus indents a fence
-/// that far today; the point is that nothing stops it. Pairing carries the weight instead: a fence closes only
-/// on its own character, repeated at least as many times, wherever either sits.
-let private fenceRegex = Regex(@"^\s*(?<fence>`{3,}|~{3,})(?<info>.*)$", RegexOptions.Compiled)
-
-/// The language tags that mean "this block is F#" — the only blocks that can CITE an F# API (#664).
-///
-/// EVERY SPELLING OF F# BELONGS HERE, and the cost of a missing one is not symmetric. A tag this set does not
-/// know is dropped from the corpus — and dropped SILENTLY, because it HAS a language and so does not trip
-/// `skillsWithUntaggedFence`. An `fsi` transcript citing `respondsProofOf` would therefore document nothing,
-/// S-DOC would report the surface undeclared, and the author would be sent to the ledger to excuse a surface
-/// their skill genuinely documents — "the rule INVENTS violations" (#598), which is the failure the fence-indent
-/// half of this very item exists to close. A tag wrongly INCLUDED costs a homonym; a tag wrongly OMITTED costs a
-/// false accusation against a correct doc. So this errs towards inclusion, and covers every extension F# ships
-/// under. (`TemplateConsumesPinnedApiTests` reaches the same place from the other side with a case-insensitive
-/// `StartsWith "fsharp"`.)
-let private fsharpLanguages = set [ "fsharp"; "fs"; "f#"; "fsx"; "fsi" ]
-
-/// The language an opening fence declares, if it declares one: the first word of the info string.
-let private fenceLanguage (info: string) =
-    info.Split([| ' '; '\t'; ',' |], StringSplitOptions.RemoveEmptyEntries)
-    |> Array.tryHead
-    |> Option.map (fun lang -> lang.ToLowerInvariant())
+// WHERE THE FENCE READER WENT (#669). The fence regex, the F#-language set and the pairing rule used to live
+// here, and were hand-mirrored — differently — in `TemplateConsumesPinnedApiTests`' two extractors. They now
+// live once, in `FS.GG.TestSupport.MarkdownFences`, which is the ONLY thing in the repo that decides what a
+// fence is. The #664 lessons this file paid for — the unbounded indent, the F#-only corpus, every spelling of
+// F# — are written up there, at the definitions that hold them.
+//
+// What is left below is what is genuinely S-DOC's OWN: the code/prose SPLIT (an F# block is the corpus; a
+// non-F# block is dropped from BOTH buffers; prose is mined for inline spans). That is a choice over the
+// scanner's classified lines, not a second reading of the document.
 
 /// An inline code span: one or more backticks, the shortest run closed by the same number. Confined to a
 /// single line, which is what every citation in these skills actually is.
@@ -179,32 +157,26 @@ type private SkillCode =
       UntaggedFences: int }
 
 let private codeReferencesIn (markdown: string) =
-    // The delimiter that opened the block, and whether the block is F# — i.e. whether it can cite an API.
-    let mutable openFence: (string * bool) option = None
-    let mutable untaggedFences = 0
+    let scanned = MarkdownFences.scan markdown
     let code = Text.StringBuilder()
     let prose = Text.StringBuilder()
 
-    for line in markdown.Replace("\r\n", "\n").Split '\n' do
-        let fence = fenceRegex.Match line
-
-        match openFence with
-        // A fence closes only on the same character, repeated at least as many times as it was opened.
-        | Some(opening, _) when fence.Success && fence.Groups.["fence"].Value.StartsWith opening -> openFence <- None
-        // Inside a block: F# is the corpus, anything else is dropped on the floor (see above — NOT to prose).
-        | Some(_, isFSharp) -> if isFSharp then code.AppendLine line |> ignore
-        | None when fence.Success ->
-            let language = fenceLanguage fence.Groups.["info"].Value
-            if Option.isNone language then untaggedFences <- untaggedFences + 1
-            openFence <- Some(fence.Groups.["fence"].Value, language |> Option.exists fsharpLanguages.Contains)
-        | None -> prose.AppendLine line |> ignore
+    for line in scanned.Lines do
+        match line.Kind with
+        // F# is the corpus.
+        | MarkdownFences.Fenced(_, true) -> code.AppendLine line.Text |> ignore
+        // Anything else fenced is dropped on the floor — NOT routed to prose (see above).
+        | MarkdownFences.Fenced _ -> ()
+        // The fence line itself is neither.
+        | MarkdownFences.Delimiter -> ()
+        | MarkdownFences.Prose -> prose.AppendLine line.Text |> ignore
 
     for m in inlineCodeRegex.Matches(prose.ToString()) do
         code.AppendLine m.Groups.["code"].Value |> ignore
 
     { Code = code.ToString()
-      UnclosedFence = Option.isSome openFence
-      UntaggedFences = untaggedFences }
+      UnclosedFence = scanned.UnclosedFence
+      UntaggedFences = scanned.UntaggedFences }
 
 let private skillCode =
     Directory.EnumerateFiles(productSkillsRoot, "SKILL.md", SearchOption.AllDirectories)
@@ -449,7 +421,11 @@ let model = Resolution.push model shot
         }
 
         test "every spelling of F# is a citation, because a missed one accuses a correct doc" {
-            // The asymmetry in `fsharpLanguages`. A tag the set does not know is dropped SILENTLY — it has a
+            // The asymmetry in `MarkdownFences`' F#-language set (#669 moved it there, and the fence-level
+            // conformance now lives beside it in `MarkdownFencesTests`; this case stays because it is S-DOC's
+            // own composition — tag set THROUGH the code/prose split — not the scanner's).
+            //
+            // A tag the set does not know is dropped SILENTLY — it has a
             // language, so `skillsWithUntaggedFence` does not catch it — and the surfaces it cites are then
             // reported undeclared. That is the gate inventing a violation against a doc that is correct, which
             // is the same failure as hole 1. `fsi` is not hypothetical here: this repo ships FSI transcripts.

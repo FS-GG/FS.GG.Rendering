@@ -18,6 +18,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Build\FS.GG.UI.Build.fsproj" />
+    <!-- #669: the ONE markdown-fence reader. This project used to hand-roll two of its own, which
+         disagreed with S-DOC's and with each other about what an F# block is. -->
+    <ProjectReference Include="..\TestSupport\TestSupport.fsproj" />
     <PackageReference Include="Expecto" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" />
