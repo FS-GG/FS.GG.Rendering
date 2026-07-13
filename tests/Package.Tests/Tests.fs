@@ -73,39 +73,11 @@ let repositoryPath (relativePath: string) =
 //
 // That is FS-GG/.github#266's "gate reports green on a missing subject" one level up: the subject was
 // present, but it was not the subject that mattered.
-// The packable set cannot change while the suite runs, and each call walks `src/` and parses ~18
-// project files. Compute it once.
 //
-// AND FAIL LOUDLY ON EMPTY, here, rather than asking every caller to remember. Most of what the guards
-// below assert about Charts is NEGATIVE ("Charts is not packable"), and an empty set satisfies every
-// negative for free. That is not a hypothetical: it is what `buildFrontEnd()`'s `else ""` did before
-// #667 hardened it — three negative guards green over nothing. A non-emptiness assertion copy-pasted
-// into each test only protects the tests that remembered to copy it, and the next negative guard
-// someone adds is exactly the one that will not. Making vacuity impossible in the helper protects all
-// of them, including the ones not written yet.
-let private packablePackagesLazy =
-    lazy
-        (// Reads the project files and nothing else — packs nothing, touches no network — so these stay
-         // in the hermetic default tier (#540) and run pre-merge. The feed path only names the .nupkg
-         // each package WOULD produce; discovery never looks for it.
-         let discovered =
-             PackageFeed.discoverPackablePackages repositoryRoot (Path.Combine(Path.GetTempPath(), "fs-gg-packable-probe"))
-
-         if List.isEmpty discovered then
-             failwith
-                 "the real pack path discovered NO packable FS.GG.UI.* package. Every Charts guard below is \
-                  a negative assertion and would pass vacuously over this empty set, so this is a hard \
-                  failure rather than a silent green (#670)."
-
-         discovered)
-
-let packablePackages () = packablePackagesLazy.Value
-
-let packablePackageIds () = packablePackages () |> List.map _.PackageId |> Set.ofList
-
-/// The project file behind a discovered package, as text.
-let private projectFileOf (package: PackageFeed.PackablePackage) =
-    File.ReadAllText(repositoryPath package.ProjectPath)
+// #674 moved the call itself — and the fail-loudly-on-empty invariant that keeps these negative guards
+// from passing vacuously — into `PackablePackages`, which `Feature207BomMembershipTests` and
+// `Feature163PackageFeedValidationTests` now share. They each used to re-derive the rule by hand.
+open PackablePackages
 
 let runDotnetWithin (timeoutMilliseconds: int) (workingDirectory: string) (arguments: string) =
     let startInfo: ProcessStartInfo = ProcessStartInfo("dotnet", arguments)
